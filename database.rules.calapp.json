@@ -1,0 +1,7 @@
+{
+  "_안내": "기존 database.rules.json의 rules 바로 아래에 이 calapp 블록을 추가해 병합하세요. 하자처리 현황 규칙과 동일한 원칙: 이메일 인증된 @hdec.co.kr 계정 + 차단(blocked) 아님 → 읽기·쓰기 허용. GitHub Actions의 리마인드 스크립트는 Admin SDK라 규칙과 무관하게 읽습니다.",
+  "calapp": {
+    ".read": "auth != null && auth.token.email_verified == true && auth.token.email.endsWith('@hdec.co.kr') && root.child('users').child(auth.uid).child('role').val() != 'blocked'",
+    ".write": "auth != null && auth.token.email_verified == true && auth.token.email.endsWith('@hdec.co.kr') && root.child('users').child(auth.uid).child('role').val() != 'blocked'"
+  }
+}
