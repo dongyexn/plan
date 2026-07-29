@@ -442,7 +442,7 @@ function rCfg(){
 }
 
 /* ═══════════ 화면 전환 · 공통 UI ═══════════ */
-const VIEW_TTL={calendar:['업무 일정','팀 일정을 함께 작성합니다'],tasks:['주요업무현황','팀 · 공구 · 담당자별 업무를 나란히 봅니다'],settings:['설정','']};
+const VIEW_TTL={calendar:['업무 일정'],tasks:['주요업무현황'],settings:['설정','']};
 function go(view){
   S.view=view;
   $$('.view').forEach(v=>v.classList.toggle('act',v.id==='view-'+view));
