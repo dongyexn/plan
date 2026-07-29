@@ -442,7 +442,7 @@ function rCfg(){
 }
 
 /* ═══════════ 화면 전환 · 공통 UI ═══════════ */
-const VIEW_TTL={calendar:['업무 일정'],tasks:['주요업무현황'],settings:['설정','']};
+const VIEW_TTL={calendar:['업무 일정',''],tasks:['주요업무 현황',''],settings:['설정','']};
 function go(view){
   S.view=view;
   $$('.view').forEach(v=>v.classList.toggle('act',v.id==='view-'+view));
