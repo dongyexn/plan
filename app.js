@@ -774,7 +774,7 @@ function savePlanFromModal(){
 function roster(){
   /* 로컬 모드는 계정이 없다 — 화면이 비지 않도록 '나' 한 명을 가정한다(이 브라우저 전용) */
   if(!S.live&&!Object.keys(S.people||{}).length)
-    return[{id:'me',name:'나',email:'',team:S.tk.t||'',region:'',sites:{},role:'editor',acct:false}];
+    return[{id:'me',name:'나',email:'',team:'',region:'',sites:{},role:'editor',acct:false,local:true}];
   const out={};
   Object.keys(S.accounts||{}).forEach(uid=>{
     const a=S.accounts[uid]||{};
@@ -798,9 +798,9 @@ function tkSel(){
   const teams=(S.org.teams||[]).filter(t=>t.name),regions=(S.org.regions||[]).filter(r=>r.name),all=roster();
   const tabs=teams.slice();
   const team=tabs.find(x=>x.id===S.tk.t)||tabs[0]||null;S.tk.t=team?team.id:null;
-  let mems=team?all.filter(p=>p.team===team.id):[];
-  const regIds=[...new Set(mems.map(p=>p.region).filter(Boolean))];
-  const regs=regions.filter(r=>regIds.includes(r.id));
+  /* 로컬 모드의 가상 담당자는 선택한 팀에 속한 것으로 본다 */
+  let mems=team?all.filter(p=>p.team===team.id||p.local):[];
+  const regs=regions;   /* 등록된 권역 전체 — 사람이 없다고 버튼이 사라지면 기능을 못 찾는다 */
   if(S.tk.r!=='*'&&!regs.some(r=>r.id===S.tk.r))S.tk.r='*';
   if(S.tk.r!=='*')mems=mems.filter(p=>p.region===S.tk.r);
   const mem=mems.find(x=>x.id===S.tk.m)||mems[0]||null;S.tk.m=mem?mem.id:null;
@@ -854,14 +854,14 @@ function rTasks(){
   const root=$('#tkRoot');
   const{teams,team,regs,mems,mem,total}=tkSel();
   if(!teams.length&&!total){
-    root.innerHTML='<div class="tk-none">아직 등록된 계정·팀이 없습니다.<br>설정에서 팀·권역을 만들고 계정에 배정하세요.<br><button class="btn bp bsm" data-act="nav.go" data-view="settings">설정으로 이동</button></div>';
+    root.innerHTML='<div class="tk-none">아직 등록된 계정·팀이 없습니다.<br>조직 관리에서 팀·권역을 만들고 계정에 배정하세요.<br><button class="btn bp bsm" data-act="nav.go" data-view="org">조직 관리로 이동</button></div>';
     return;
   }
   const regRow=regs.length?'<div class="reg-row"><span class="reg'+(S.tk.r==='*'?' act':'')+'" data-act="tk.tab" data-lv="r" data-id="*">전체 권역</span>'
     +regs.map(r=>'<span class="reg'+(S.tk.r===r.id?' act':'')+'" data-act="tk.tab" data-lv="r" data-id="'+esc(r.id)+'">'+esc(r.name)+'</span>').join('')+'</div>':'';
   root.innerHTML='<div class="tk3">'
-    +tkCard('팀 공통업무','',team?team.name:'',(team&&team.id!=='_none')?team.id:null,'설정에서 팀을 먼저 등록하세요.')
-    +tkCard('담당자별 업무',regRow+(mems.length?tkTabs(mems,S.tk.m,'m'):''),team?team.name:'',mem?mem.id:null,'이 팀에 배정된 담당자가 없습니다. 설정에서 계정에 팀을 지정하세요.')
+    +tkCard('팀 공통업무','',team?team.name:'',(team&&team.id!=='_none')?team.id:null,'조직 관리에서 팀을 먼저 등록하세요.')
+    +tkCard('담당자별 업무',regRow+(mems.length?tkTabs(mems,S.tk.m,'m'):''),team?team.name:'',mem?mem.id:null,'이 팀에 배정된 담당자가 없습니다. 조직 관리에서 계정에 팀을 지정하세요.')
     +'</div>';
 }
 function tkStartEdit(el){
@@ -979,7 +979,10 @@ function moveSite(id,rgn,targetId,after){
   }else list.push(moved);
   S.org.sites=list;orgSave();rOrg();
 }
+function curTeam(){const ts=(S.org.teams||[]).filter(t=>t.name);return ts.find(t=>t.id===S.tk.t)||ts[0]||null;}
 function rOrg(){
+  const t=curTeam(),lbl=t?'· '+t.name:'';
+  ['#regTeamLbl','#siteTeamLbl','#acctTeamLbl'].forEach(id=>{const e=$(id);if(e)e.textContent=lbl;});
   const tr=$('#teamRoot'),rr=$('#regRoot'),sr=$('#siteRoot');
   if(tr)tr.innerHTML=teamRows();
   if(rr)rr.innerHTML=regRows();
@@ -987,8 +990,8 @@ function rOrg(){
   rTeamSel();
 
   const ar=$('#acctRoot');if(!ar)return;
-  const list=roster();
-  if(!list.length){
+  const all=roster();
+  if(!all.length){
     ar.innerHTML='<div class="set-empty">'+(!S.live
       ? '로컬 모드에서는 계정 목록이 없습니다.'
       : (S.acctDenied
@@ -996,33 +999,47 @@ function rOrg(){
         : '아직 로그인한 계정이 없습니다.'))+'</div>';
     rFilter();return;
   }
+  /* 팀은 사이드바에서 고르므로 표에서 팀 열은 없앤다 —
+     선택한 팀 소속과 아직 팀이 없는 계정만 보여주고, 소속은 버튼으로 넣고 뺀다 */
+  const mine=t?all.filter(p=>p.team===t.id||p.local):[];
+  const free=all.filter(p=>!p.local&&(!p.team||!(S.org.teams||[]).some(x=>x.id===p.team)));
   const myUid=S.user?S.user.uid:'';
-  const editors=list.filter(p=>p.role==='editor');
+  const editors=all.filter(p=>p.role==='editor');
   const order={editor:0,viewer:1,blocked:2};
-  list.sort((a,b)=>{const ra=order[a.role]??1,rb=order[b.role]??1;
-    return ra!==rb?ra-rb:String(a.email||'').localeCompare(String(b.email||''));});
-  const opt=(arr2,sel)=>'<option value="">—</option>'+arr2.map(x=>'<option value="'+esc(x.id)+'"'+(x.id===sel?' selected':'')+'>'+esc(x.name)+'</option>').join('');
-  const roleOpt=(v,t,cur)=>'<option value="'+v+'"'+(cur===v?' selected':'')+'>'+t+'</option>';
-  const sitesOf=t=>(S.org.sites||[]).filter(x=>!t||!x.team||x.team===t);
-  ar.innerHTML='<table class="utbl"><thead><tr><th>이름</th><th>팀</th><th>권역</th><th>담당 현장</th><th class="utbl-r">권한</th></tr></thead><tbody>'
-    +list.map(p=>{
-      const role=p.role||'viewer',rc='r-'+role,isMe=p.id===myUid,lastEd=role==='editor'&&editors.length<=1;
-      const lock=isMe?'본인 계정':(lastEd?'마지막 관리자':'');
-      const ctl=(!isEditor()||isMe||lastEd)
-        ? (lock?'<span class="fbu-lock">'+lock+'</span> ':'')+'<span class="fbu-role '+rc+'">'+esc(roleLabel(role))+'</span>'
-        : '<select class="fbu-sel" data-act="acct.role" data-id="'+esc(p.id)+'" aria-label="권한">'
-          +roleOpt('editor','관리자',role)+roleOpt('viewer','사용자',role)+roleOpt('blocked','차단',role)+'</select>';
-      return `<tr>
-        <td><div class="utbl-name"><div class="fbu-av ${rc}">${ICON_PERSON}</div>
-          <div style="min-width:0"><div class="utbl-nick">${esc(p.name)}</div><div class="utbl-mail">${esc(p.email||'')}</div></div></div></td>
-        <td><select class="mg-inp" data-act="acct.set" data-f="team" data-id="${esc(p.id)}" aria-label="팀">${opt(S.org.teams||[],p.team)}</select></td>
-        <td><select class="mg-inp" data-act="acct.set" data-f="region" data-id="${esc(p.id)}" aria-label="권역">${opt(S.org.regions||[],p.region)}</select></td>
-        <td>${(()=>{const ss=sitesOf(p.team);
-          if(!ss.length)return '<span class="site-none">현장 없음</span>';
-          return '<div class="site-chk">'+ss.map(x=>'<span class="site-tag'+((p.sites||{})[x.id]?' on':'')
-            +'" data-act="acct.site" data-id="'+esc(p.id)+'" data-sid="'+esc(x.id)+'">'+esc(x.name)+'</span>').join('')+'</div>';})()}</td>
-        <td class="utbl-r">${ctl}</td>
-      </tr>`;}).join('')+'</tbody></table>';
+  const sortFn=(a,b)=>{const ra=order[a.role]??1,rb=order[b.role]??1;
+    return ra!==rb?ra-rb:String(a.email||'').localeCompare(String(b.email||''));};
+  mine.sort(sortFn);free.sort(sortFn);
+  const regOpt=sel=>'<option value="">권역 —</option>'+(S.org.regions||[]).map(x=>'<option value="'+esc(x.id)+'"'+(x.id===sel?' selected':'')+'>'+esc(x.name)+'</option>').join('');
+  const roleOpt=(v,txt,cur)=>'<option value="'+v+'"'+(cur===v?' selected':'')+'>'+txt+'</option>';
+  const sitesOf=p=>{
+    const list=(S.org.sites||[]).filter(x=>(p.sites||{})[x.id]);
+    const shown=list.slice(0,3).map(x=>'<span class="site-on">'+esc(x.name)+'</span>').join('');
+    return '<div class="site-chk">'
+      +'<button class="site-pick" data-act="acct.sitePick" data-id="'+esc(p.id)+'" aria-label="담당 현장 선택" title="담당 현장 선택"><svg class="icn"><use href="#i-plus"></use></svg></button>'
+      +(list.length?shown+(list.length>3?'<span class="site-more">+'+(list.length-3)+'</span>':''):'<span class="site-none">미지정</span>')
+      +'</div>';
+  };
+  const row=(p,inTeam)=>{
+    const role=p.role||'viewer',rc='r-'+role,isMe=p.id===myUid,lastEd=role==='editor'&&editors.length<=1;
+    const lock=isMe?'본인 계정':(lastEd?'마지막 관리자':'');
+    const ctl=(!isEditor()||isMe||lastEd)
+      ? (lock?'<span class="fbu-lock">'+lock+'</span> ':'')+'<span class="fbu-role '+rc+'">'+esc(roleLabel(role))+'</span>'
+      : '<select class="fbu-sel" data-act="acct.role" data-id="'+esc(p.id)+'" aria-label="권한">'
+        +roleOpt('editor','관리자',role)+roleOpt('viewer','사용자',role)+roleOpt('blocked','차단',role)+'</select>';
+    return `<tr>
+      <td><div class="utbl-name"><div class="fbu-av ${rc}">${ICON_PERSON}</div>
+        <div style="min-width:0"><div class="utbl-nick">${esc(p.name)}</div><div class="utbl-mail">${esc(p.email||'')}</div></div></div></td>
+      ${inTeam?`<td><select class="mg-inp" data-act="acct.set" data-f="region" data-id="${esc(p.id)}" aria-label="권역">${regOpt(p.region)}</select></td>
+      <td>${sitesOf(p)}</td>`
+      :`<td colspan="2"><button class="btn bo bxs" data-act="acct.join" data-id="${esc(p.id)}">이 팀에 추가</button></td>`}
+      <td class="utbl-r">${ctl}</td>
+    </tr>`;
+  };
+  ar.innerHTML='<table class="utbl"><thead><tr><th>이름</th><th style="width:120px">권역</th><th>담당 현장</th><th class="utbl-r">권한</th></tr></thead><tbody>'
+    +(mine.length?mine.map(p=>row(p,true)).join('')
+      :'<tr><td colspan="4" style="font-size:12px;color:var(--lbl3);padding:10px">이 팀에 배정된 계정이 없습니다.</td></tr>')
+    +(free.length?'<tr><td colspan="4" class="ulex-lbl" style="padding:12px 10px 4px">팀 미배정</td></tr>'+free.map(p=>row(p,false)).join(''):'')
+    +'</tbody></table>';
   rFilter();
 }
 function orgSave(){normOrg(S.org);store.putOrg(S.org);if(!S.live){rOrg();rTasks();}}
@@ -1220,6 +1237,37 @@ const ACT={
       Object.keys(S.people||{}).forEach(id=>{const p=S.people[id];
         if(p.sites&&p.sites[st.id]){const ns={...p.sites};delete ns[st.id];store.putPerson(id,{...p,sites:ns});}});
       orgSave();});
+  },
+  'acct.join':el=>{
+    if(!isEditor())return denyEdit();
+    const t=curTeam();if(!t){toast('팀을 먼저 등록하세요');return;}
+    const id=el.dataset.id,base=roster().find(p=>p.id===id)||{},cur=(S.people||{})[id]||{};
+    store.putPerson(id,{name:base.name||cur.name||'',email:base.email||cur.email||'',
+      team:t.id,region:cur.region||'',sites:cur.sites||{}});
+    if(!S.live)rOrg();
+  },
+  'acct.sitePick':el=>{
+    if(!isEditor())return denyEdit();
+    const id=el.dataset.id,p=roster().find(x=>x.id===id);if(!p)return;
+    const regs=(S.org.regions||[]).filter(r=>r.name);
+    const sites=S.org.sites||[];
+    if(!sites.length){toast('등록된 현장이 없습니다');return;}
+    const group=(rid,label)=>{
+      const items=sites.filter(x=>(x.region||'')===rid);
+      if(!items.length)return '';
+      return '<div class="spk-g">'+esc(label)+'</div>'+items.map(x=>
+        '<label class="spk-i"><input type="checkbox" data-sid="'+esc(x.id)+'"'+((p.sites||{})[x.id]?' checked':'')+'>'+esc(x.name)+'</label>').join('');
+    };
+    openModal(esc(p.name)+' · 담당 현장',
+      '<div class="spk">'+regs.map(r=>group(r.id,r.name)).join('')+group('','권역 미지정')+'</div>',
+      '<button class="btn bg2 bsm" data-act="modal.close">취소</button><button class="btn bp bsm" data-act="modal.ok">저장</button>');
+    MODAL_CB={type:'sites',ok:()=>{
+      const sel={};
+      $$('.spk input:checked').forEach(c=>{sel[c.dataset.sid]=1;});
+      const cur=(S.people||{})[id]||{};
+      store.putPerson(id,{name:p.name||'',email:p.email||'',team:cur.team||p.team||'',region:cur.region||p.region||'',sites:sel});
+      closeModal();if(!S.live)rOrg();
+    }};
   },
   'acct.site':el=>{
     if(!isEditor())return denyEdit();
