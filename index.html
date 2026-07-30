@@ -116,11 +116,14 @@ svg{display:block;flex-shrink:0;}
 
 
 /* 달력 카드 헤더 컨트롤 */
-.cal-ctl{display:flex;align-items:center;gap:8px;}
+.cal-ctl{display:flex;align-items:center;gap:8px;min-width:0;}
+#regSeg{flex:0 1 auto;min-width:0;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;}
+#regSeg::-webkit-scrollbar{display:none;}
+#regSeg .reg{flex:0 0 auto;}
 .seg{display:inline-flex;background:var(--fill);border-radius:var(--rp);padding:2px;}
 .seg button{padding:4px 13px;border-radius:var(--rp);font-size:12px;font-weight:700;color:var(--lbl2);transition:all .14s;}
 .seg button.act{background:var(--bg2);color:var(--bt1);box-shadow:0 1px 3px rgba(0,0,0,.08);}
-.cal-sel{width:auto;min-width:100px;padding:5px 24px 5px 10px;font-size:12px;border-radius:var(--rp);border-width:1px;}
+.cal-sel{width:auto;min-width:0;max-width:118px;padding:5px 22px 5px 9px;font-size:12px;border-radius:var(--rp);border-width:1px;text-overflow:ellipsis;}
 
 /* ══════════ 카드 · 버튼 · 입력 ══════════ */
 .card{background:var(--bg2);border-radius:var(--rxl);padding:18px 20px;border:1px solid var(--sep);}
@@ -150,7 +153,8 @@ select.inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-ima
 .cal-wrap{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;align-items:stretch;height:calc(100dvh - var(--th) - 40px);min-height:520px;}
 .cal-card{padding:16px 18px;display:flex;flex-direction:column;min-height:0;}
 #fcal{flex:1;min-height:0;}
-.cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.cal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:nowrap;margin-bottom:12px;}
+.cal-title{flex:0 0 auto;}
 .cal-title{font-size:18px;font-weight:800;color:var(--lbl);letter-spacing:-.01em;display:flex;align-items:baseline;gap:7px;}
 .cal-title .y{font-size:12.5px;font-weight:600;color:var(--lbl2);}
 .cal-nav{display:flex;align-items:center;gap:4px;}
@@ -320,6 +324,7 @@ html.dark #fcal .fc-day-today .dnum{color:var(--b300)!important;}
 /* 팀·권역 관리 — 참조 앱 이식 */
 .tm-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font-size:12px;font-weight:700;color:var(--lbl2);text-transform:uppercase;letter-spacing:.05em;}
 .tm-add{padding:4px 10px;font-size:11px;}
+.tm-sub{color:var(--lbl3);font-weight:500;text-transform:none;letter-spacing:0;}
 .tm-list{display:flex;flex-direction:column;gap:4px;}
 .tm-row{display:flex;align-items:center;gap:6px;padding:4px 7px;border:1px solid var(--sep);border-radius:var(--rsm);background:var(--bg2);}
 .tm-row.act{border-color:var(--b400);background:linear-gradient(135deg,var(--b50),var(--b100));}
@@ -333,6 +338,7 @@ html.dark #fcal .fc-day-today .dnum{color:var(--b300)!important;}
 .tm-del:hover{color:var(--rd);background:rgba(255,59,48,.1);}
 .tm-empty{font-size:12px;color:var(--lbl3);padding:10px 4px;}
 .ulex-sep{height:1px;background:var(--sep);margin:14px 0;}
+.mb12{margin-bottom:12px;}
 .mg-grid{display:grid;grid-template-columns:300px minmax(0,1fr);gap:16px;align-items:start;}
 @media(max-width:980px){.mg-grid{grid-template-columns:minmax(0,1fr);}}
 .sw{position:relative;display:inline-block;width:34px;height:20px;cursor:pointer;vertical-align:middle;}
@@ -359,7 +365,18 @@ html.dark #fcal .fc-day-today .dnum{color:var(--b300)!important;}
 .sti2.drop-above::before{top:-2px;}
 .sti2.drop-below::after{bottom:-2px;}
 .sg-empty{font-size:11px;color:var(--lbl3);padding:5px 8px;}
-.site-chk{display:flex;flex-wrap:wrap;gap:5px;}
+.site-chk{display:flex;flex-wrap:wrap;gap:4px;align-items:center;}
+.site-pick{flex-shrink:0;width:22px;height:22px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;color:var(--lbl3);border:1px dashed var(--sepo);}
+.site-pick:hover{background:var(--fill);color:var(--bt1);border-color:var(--b300);}
+.site-pick .icn{width:11px;height:11px;}
+.site-on{display:inline-flex;align-items:center;padding:2px 8px;border-radius:var(--rp);background:var(--b50);border:1px solid var(--b200);font-size:11px;font-weight:600;color:var(--bt1);}
+.site-more{font-size:11px;color:var(--lbl3);font-weight:600;}
+/* 담당 현장 선택 모달 */
+.spk{display:flex;flex-direction:column;gap:4px;max-height:48dvh;overflow-y:auto;}
+.spk-g{font-size:10px;font-weight:700;color:var(--lbl3);letter-spacing:.06em;text-transform:uppercase;padding:8px 2px 3px;}
+.spk-i{display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:var(--rmd);cursor:pointer;font-size:13px;color:var(--lbl);}
+.spk-i:hover{background:var(--fill);}
+.spk-i input{width:16px;height:16px;accent-color:var(--b600);}
 .site-tag{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:var(--rp);border:1px solid var(--sep);font-size:11px;font-weight:600;color:var(--lbl2);cursor:pointer;transition:all .13s;user-select:none;}
 .site-tag:hover{background:var(--fill);}
 .site-tag.on{background:var(--b50);border-color:var(--b300);color:var(--bt1);}
@@ -395,12 +412,12 @@ html.dark #fcal .fc-day-today .dnum{color:var(--b300)!important;}
 /* 계정 표 — 참조 앱 utbl 이식 */
 .utbl{width:100%;border-collapse:collapse;}
 .utbl thead th{font-size:10.5px;font-weight:700;color:var(--lbl3);text-transform:uppercase;letter-spacing:.04em;text-align:left;padding:0 10px 9px;border-bottom:1px solid var(--sep);white-space:nowrap;}
-.utbl tbody td{padding:7px 10px;border-bottom:1px solid var(--sep);vertical-align:middle;}
+.utbl tbody td{padding:8px 10px;border-bottom:1px solid var(--sep);vertical-align:middle;}
 .utbl tbody tr:last-child td{border-bottom:none;}
 .utbl tbody tr:hover{background:var(--fill);}
 .utbl-name{display:flex;align-items:center;gap:9px;min-width:0;}
 .utbl-nick{font-size:13px;font-weight:600;color:var(--lbl);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.utbl-mail{font-size:12.5px;color:var(--lbl2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.utbl-mail{font-size:12.5px;color:var(--lbl2);white-space:nowrap;}
 /* 인라인 편집 표 — 참조 앱 mgtbl · mg-inp 이식 */
 .mgtbl{width:100%;border-collapse:collapse;}
 .mgtbl td{padding:4px 6px;vertical-align:middle;}
@@ -641,23 +658,23 @@ html.dark #toast{background:#2B313A;}
         <div class="set-empty">보기 전용 계정입니다. 팀 · 권역 · 현장 · 계정 설정은 관리자만 변경할 수 있습니다.</div>
       </div>
       <div class="mg-grid">
-        <div class="set-col set-col-stack">
-          <div class="card">
-            <div class="tm-h">팀 <button class="btn bo bsm tm-add" data-act="org.addTeam">+ 추가</button></div>
+        <div class="set-col">
+          <div class="card mb12">
+            <div class="tm-h"><span>팀</span><button class="btn bo bsm tm-add" data-act="org.addTeam">+ 팀 추가</button></div>
             <div class="tm-list" id="teamRoot"></div>
           </div>
-          <div class="card">
-            <div class="tm-h">권역 <button class="btn bo bsm tm-add" data-act="org.addReg">+ 추가</button></div>
+          <div class="card mb12">
+            <div class="tm-h"><span>권역 <span class="tm-sub" id="regTeamLbl"></span></span><button class="btn bo bsm tm-add" data-act="org.addReg">+ 권역 추가</button></div>
             <div class="tm-list" id="regRoot"></div>
           </div>
           <div class="card">
-            <div class="tm-h">현장 <button class="btn bo bsm tm-add" data-act="org.addSite">+ 추가</button></div>
+            <div class="tm-h"><span>현장 <span class="tm-sub" id="siteTeamLbl"></span></span><button class="btn bo bsm tm-add" data-act="org.addSite">+ 현장 추가</button></div>
             <div id="siteRoot"></div>
           </div>
         </div>
-        <div class="set-col set-col-stack">
+        <div class="set-col">
           <div class="card">
-            <div class="set-h">계정</div>
+            <div class="tm-h"><span>계정 <span class="tm-sub" id="acctTeamLbl"></span></span></div>
             <div id="acctRoot"></div>
           </div>
         </div>
