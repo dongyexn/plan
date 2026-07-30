@@ -245,6 +245,15 @@
             "$other": { ".validate": false }
           }
         },
+        "sites": {
+          "$i": {
+            "id":     { ".validate": "newData.isString() && newData.val().length <= 40" },
+            "name":   { ".validate": "newData.isString() && newData.val().length <= 60" },
+            "team":   { ".validate": "newData.isString() && newData.val().length <= 40" },
+            "region": { ".validate": "newData.isString() && newData.val().length <= 40" },
+            "$other": { ".validate": false }
+          }
+        },
         "$other": { ".validate": false }
       },
 
@@ -256,6 +265,7 @@
           "email":  { ".validate": "newData.isString() && newData.val().length <= 200" },
           "team":   { ".validate": "newData.isString() && newData.val().length <= 40" },
           "region": { ".validate": "newData.isString() && newData.val().length <= 40" },
+          "sites":  { "$sid": { ".validate": "newData.isNumber()" } },
           "$other": { ".validate": false }
         }
       },
