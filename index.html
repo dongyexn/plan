@@ -201,7 +201,7 @@ select.inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-ima
 #fcal .fc-daygrid-day{position:relative;}
 #fcal .fc-scrollgrid-sync-table tbody tr{height:10%;}
 #fcal .fc-daygrid-day-frame{position:absolute;inset:0;display:flex;flex-direction:column;min-height:0;}
-#fcal .fc-daygrid-day-events{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;margin:0;padding-bottom:2px;}
+#fcal .fc-daygrid-day-events{position:relative;flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;margin:0;padding-bottom:2px;}
 #fcal .fc-daygrid-day-events::-webkit-scrollbar{width:3px;}
 #fcal .fc-daygrid-day-events::-webkit-scrollbar-thumb{background:var(--sepo);border-radius:99px;}
 #fcal .fc-daygrid-day-bottom{display:none;}
@@ -283,8 +283,8 @@ html.dark #fcal .fc-day-today .dnum{color:var(--b300)!important;}
 #fcal .fc-timegrid .fc-daygrid-day-events{margin:0;padding:2px 0;min-height:34px;}
 #fcal .fc-timegrid-event{padding:2px 5px;font-size:11.5px;border-radius:6px;}
 #fcal .fc-timegrid-event .fc-event-time{display:block;font-size:10.5px;opacity:.85;}
-#fcal .fc-event.duev{background:transparent!important;border:1.5px dashed var(--sepo)!important;color:var(--lbl2)!important;font-weight:600;}
-#fcal .fc-event.duev.over{border-color:var(--rd)!important;color:var(--rd)!important;}
+#fcal .fc-event.duev{background:transparent!important;border:1.5px dashed var(--lbl3);color:var(--lbl2);font-weight:600;}
+#fcal .fc-event.duev.over{border-color:var(--rd);color:var(--rd);}
 
 /* 색 팔레트 선택 */
 .pal{display:flex;gap:7px;flex-wrap:wrap;}
@@ -306,6 +306,11 @@ html.dark #fcal .fc-day-today .dnum{color:var(--b300)!important;}
 .tks-item .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .tks-item .c{font-size:11px;font-weight:700;color:var(--lbl2);background:var(--fill);border-radius:99px;padding:1px 8px;}
 .tks-item.act .c{background:var(--bg2);color:var(--bt1);}
+.tks-item.tks-reg{font-weight:700;margin-top:4px;}
+.tks-item.tks-reg:first-of-type{margin-top:0;}
+.tks-item.tks-reg .n{font-size:12.5px;color:var(--bt1);letter-spacing:.02em;}
+.tks-item.tks-reg.act .n{color:var(--bt1);}
+.tks-item.sub{padding-left:24px;font-size:13.5px;}
 .tkm-h{display:flex;align-items:center;gap:9px;margin-bottom:12px;flex-shrink:0;}
 .tkm-h .bar{width:4px;height:18px;border-radius:99px;background:linear-gradient(135deg,var(--b500),var(--b800));}
 .tkm-h b{font-size:16px;font-weight:800;color:var(--lbl);letter-spacing:-.01em;}
@@ -380,6 +385,23 @@ html.dark #fcal .fc-day-today .dnum{color:var(--b300)!important;}
 .th-in{width:100%;border:1px solid var(--sep);border-radius:var(--rmd);padding:8px 11px;font-family:inherit;font-size:13px;line-height:1.55;color:var(--lbl);background:var(--bg2);resize:vertical;min-height:38px;outline:none;}
 .th-in:focus{border-color:var(--b400);box-shadow:0 0 0 3px rgba(83,140,222,.12);}
 .th-f{display:flex;justify-content:flex-end;margin-top:6px;}
+/* 업무 색 — 좌측 색 바 (일정 카드 .pc 와 동일한 문법) */
+.tk-item .tkc{position:absolute;left:5px;top:9px;bottom:9px;width:4px;border-radius:99px;}
+/* 펼침 상태 — 수정 버튼은 우측 상단 */
+.tk-editbtn{flex-shrink:0;}
+/* 집계 보기(팀 전체 · 권역) 구분 헤더 */
+.tk-sub{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;color:var(--bt1);letter-spacing:.05em;padding:10px 2px 3px;}
+.tk-sub::after{content:"";flex:1;height:1px;background:var(--sep);}
+.tk-sub .c{font-size:10px;color:var(--lbl2);background:var(--fill);border-radius:99px;padding:1px 7px;}
+.tk-sub2{font-size:10.5px;font-weight:700;color:var(--lbl3);padding:6px 2px 2px;}
+/* 인라인 편집 폼 — 작성창(.tk-new)과 같은 골격을 그대로 쓴다 */
+.tk-new .pal{align-items:center;}
+.tk-new .pal-c{width:20px;height:20px;border-radius:7px;}
+/* 일자 패널 인라인 편집기 — 모달 대신 패널 안에서 작성·수정 */
+.dp-edit{border:1.5px solid var(--b300);border-radius:var(--rlg);padding:13px;background:var(--bg2);display:flex;flex-direction:column;flex-shrink:0;}
+.dp-edit .frow{margin-bottom:10px;}
+.dp-edit .pal-c{width:20px;height:20px;border-radius:7px;}
+.dp-edit-f{display:flex;justify-content:flex-end;gap:8px;margin-top:2px;}
 .tk-edit-row{display:flex;justify-content:flex-end;}
 .tk-empty{font-size:13px;color:var(--lbl3);padding:20px 2px;text-align:center;}
 .tk-fold{font-size:12.5px;font-weight:700;color:var(--lbl3);padding:7px 2px;cursor:pointer;text-align:center;}
@@ -442,7 +464,7 @@ html.dark #fcal .fc-day-today .dnum{color:var(--b300)!important;}
 .set-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
 .set-col{min-width:0;}
 .set-col-stack{display:flex;flex-direction:column;gap:16px;}
-.mg-grid{display:grid;grid-template-columns:300px 300px minmax(0,1fr);gap:10px;align-items:start;}
+.mg-grid{display:grid;grid-template-columns:300px 300px minmax(0,1fr);gap:16px;align-items:start;}
 @media(max-width:1240px){.mg-grid{grid-template-columns:1fr 1fr;}}
 @media(max-width:860px){.mg-grid{grid-template-columns:1fr;}}
 .set-h{font-size:12px;font-weight:700;color:var(--lbl2);text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;justify-content:space-between;gap:8px;padding-bottom:10px;border-bottom:1px solid var(--sep);margin-bottom:13px;}
@@ -507,19 +529,10 @@ select.mg-inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-
 .utbl-name{display:flex;align-items:center;gap:9px;min-width:0;}
 .utbl-nick{font-size:13px;font-weight:600;color:var(--lbl);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .utbl-mail{font-size:12.5px;color:var(--lbl2);white-space:nowrap;}
-/* 인라인 편집 표 — 참조 앱 mgtbl · mg-inp 이식 */
+/* 인라인 편집 표 — 참조 앱 mgtbl 이식 (mg-inp·tm-x 는 위에서 참조 앱 값으로 1회만 정의) */
 .mgtbl{width:100%;border-collapse:collapse;}
 .mgtbl td{padding:4px 6px;vertical-align:middle;}
 .mgtbl tbody tr:hover{background:var(--fill);}
-.mg-inp{width:100%;border:1px solid transparent;border-radius:6px;padding:5px 7px;font-size:12.5px;font-family:inherit;color:var(--lbl);background:transparent;transition:border-color .15s,background .15s;}
-.mg-inp:hover{border-color:var(--sep);}
-.mg-inp:focus{border-color:var(--b400);background:var(--bg2);}
-select.mg-inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 10 10'%3E%3Cpath d='M2 3.5l3 3 3-3' fill='none' stroke='%238E8E93' stroke-width='1.4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 6px center;padding-right:20px;}
-.tm-x{width:24px;height:24px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;color:var(--lbl3);transition:background .14s,color .14s;}
-.tm-x:hover{background:var(--tint-rd);color:var(--rd);}
-.tm-x .icn{width:13px;height:13px;}
-.tm-add{margin-top:8px;}
-.ulex-lbl{font-size:11px;font-weight:600;color:var(--lbl3);letter-spacing:0;text-transform:none;display:flex;align-items:center;gap:5px;margin-bottom:5px;}
 .set-empty{font-size:12px;color:var(--lbl3);padding:16px 4px;line-height:1.6;text-align:center;}
 .reg-row{display:flex;flex-wrap:wrap;gap:5px;}
 .reg{padding:5px 13px;border-radius:var(--rp);background:transparent;border:1px solid var(--sep);font-size:12.5px;font-weight:600;color:var(--lbl2);cursor:pointer;transition:all .13s;white-space:nowrap;}
@@ -669,7 +682,7 @@ html.dark #toast{background:#2B313A;}
 <symbol id="i-ext" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
 <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></symbol>
 <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
-<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
 <symbol id="i-me" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
 <symbol id="i-cmt" viewBox="0 0 24 24"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></symbol>
 <symbol id="i-org" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="8.5" y="14" width="7" height="7" rx="1.5"/><path d="M6.5 10v2h11v-2"/><path d="M12 12v2"/></symbol>
@@ -723,12 +736,12 @@ html.dark #toast{background:#2B313A;}
       <span class="nil">주요업무 현황</span>
       <span class="nv-badge" id="mentionBadge" data-act="mention.open" style="display:none" title="내 멘션"></span>
     </div>
+    <div class="sbsl">개인</div>
+    <div class="nvi" role="button" tabindex="0" data-view="mine" data-act="nav.go">
+      <div class="nic"><svg class="icn" aria-hidden="true"><use href="#i-me"></use></svg></div>
+      <span class="nil">내 업무</span>
+    </div>
     <div class="sb-bottom">
-      <div class="sbsl">개인</div>
-      <div class="nvi" role="button" tabindex="0" data-view="mine" data-act="nav.go">
-        <div class="nic"><svg class="icn" aria-hidden="true"><use href="#i-me"></use></svg></div>
-        <span class="nil">내 업무</span>
-      </div>
       <div class="sbsl">바로가기</div>
       <div class="nvi" role="button" tabindex="0" data-act="link.defect">
         <div class="nic"><svg class="icn" aria-hidden="true"><use href="#i-dash"></use></svg></div>
@@ -828,9 +841,13 @@ html.dark #toast{background:#2B313A;}
           </div>
         </div>
         <div class="set-col">
-          <div class="card">
+          <div class="card mb12">
             <div class="tm-h"><span>계정 <span class="tm-sub" id="acctTeamLbl"></span></span></div>
             <div id="acctRoot"></div>
+          </div>
+          <div class="card" id="freeCard" style="display:none">
+            <div class="tm-h"><span>팀 미배정 계정</span></div>
+            <div id="freeRoot"></div>
           </div>
         </div>
       </div>
