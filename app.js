@@ -80,6 +80,45 @@ document.addEventListener('focusout',()=>{setTimeout(()=>{if(shEditing())return;
   if(PEND.org){PEND.org=false;rOrg();}
 },60);});
 
+/* DB 규칙이 스키마 외 키를 거부($other:false)하므로, 저장 전에 필드를 정제한다.
+   반복이 아닌 일정에 doneOn/skipOn 이 남아 들어가는 것도 여기서 걸러진다. */
+function cleanPlan(p){
+  const rec=p.recur&&p.recur.f?{f:p.recur.f,until:String(p.recur.until||'')}:{f:'',until:''};
+  const o={
+    id:String(p.id),date:String(p.date),end:String(p.end||''),
+    title:String(p.title||'').slice(0,120),time:String(p.time||''),
+    body:String(p.body||'').slice(0,1000),color:String(p.color||'auto'),
+    owner:String(p.owner||''),by:String(p.by||''),
+    remind:!!p.remind,done:!!p.done,
+    createdAt:Number(p.createdAt)||Date.now(),updatedAt:Number(p.updatedAt)||Date.now(),
+    recur:rec
+  };
+  if(rec.f){
+    if(p.doneOn&&Object.keys(p.doneOn).length)o.doneOn=p.doneOn;
+    if(p.skipOn&&Object.keys(p.skipOn).length)o.skipOn=p.skipOn;
+  }
+  return o;
+}
+function cleanTask(t){
+  const o={text:String(t.text||'').slice(0,500),st:stOf(t.st),
+    createdAt:Number(t.createdAt)||Date.now(),updatedAt:Number(t.updatedAt)||Date.now()};
+  if(t.due)o.due=String(t.due);
+  if(t.comments&&Object.keys(t.comments).length){
+    o.comments={};
+    Object.keys(t.comments).forEach(k=>{const c=t.comments[k]||{};
+      o.comments[k]={by:String(c.by||'').slice(0,60),text:String(c.text||'').slice(0,500),at:Number(c.at)||Date.now()};});
+  }
+  return o;
+}
+function cleanPerson(p){
+  return{name:String(p.name||'').slice(0,60),email:String(p.email||'').slice(0,200),
+    team:String(p.team||''),region:String(p.region||'')};
+}
+function cleanOrg(org){
+  return{teams:(org.teams||[]).filter(Boolean).map(t=>({id:String(t.id),name:String(t.name||'').slice(0,60)})),
+    regions:(org.regions||[]).filter(Boolean).map(r=>({id:String(r.id),name:String(r.name||'').slice(0,60)}))};
+}
+
 /* ═══════════ 저장소 — 로컬 ⇄ Firebase 공용 인터페이스 ═══════════ */
 const LS_KEY='calapp.v1';
 function lsLoad(){try{return JSON.parse(localStorage.getItem(LS_KEY))||{};}catch(e){return{};}}
@@ -134,14 +173,14 @@ const FbStore={
   },
   putPlan(p){
     const path=(p.recur&&p.recur.f)?'calapp/recur/'+p.id:'calapp/plans/'+ymOf(p.date)+'/'+p.id;
-    FB.db.ref(path).set(p).catch(fbErr);},
+    FB.db.ref(path).set(cleanPlan(p)).catch(fbErr);},
   delPlan(ym,id){
     const path=S.recur[id]?'calapp/recur/'+id:'calapp/plans/'+ym+'/'+id;
     FB.db.ref(path).remove().catch(fbErr);},
-  movePlan(p,oldYm){const u={};u['calapp/plans/'+oldYm+'/'+p.id]=null;u['calapp/plans/'+ymOf(p.date)+'/'+p.id]=p;FB.db.ref().update(u).catch(fbErr);},
-  putOrg(org){FB.db.ref('calapp/org').set(org).catch(fbErr);},
-  putPerson(id,p){const r=FB.db.ref('calapp/people/'+id);(p?r.set(p):r.remove()).catch(fbErr);},
-  putTask(mid,iid,item){const r=FB.db.ref('calapp/tasks/'+mid+'/'+iid);(item?r.set(item):r.remove()).catch(fbErr);},
+  movePlan(p,oldYm){const u={};u['calapp/plans/'+oldYm+'/'+p.id]=null;u['calapp/plans/'+ymOf(p.date)+'/'+p.id]=cleanPlan(p);FB.db.ref().update(u).catch(fbErr);},
+  putOrg(org){FB.db.ref('calapp/org').set(cleanOrg(org)).catch(fbErr);},
+  putPerson(id,p){const r=FB.db.ref('calapp/people/'+id);(p?r.set(cleanPerson(p)):r.remove()).catch(fbErr);},
+  putTask(mid,iid,item){const r=FB.db.ref('calapp/tasks/'+mid+'/'+iid);(item?r.set(cleanTask(item)):r.remove()).catch(fbErr);},
   putCfg(k,v){FB.db.ref('calapp/cfg/'+k).set(v).catch(fbErr);},
   bindShared(){
     this._on('calapp/recur',v=>{S.recur=v||{};
@@ -165,7 +204,13 @@ const FbStore={
     this._on('calapp/cfg',v=>{S.cfg=v||{};rCfg();});
   }
 };
-function fbErr(e){console.warn('[FB]',e);toast('저장 실패 — 권한 또는 네트워크를 확인하세요');}
+function fbErr(e){
+  console.warn('[FB]',e);
+  const c=String((e&&e.code)||'');
+  if(/permission|PERMISSION/i.test(c+String(e&&e.message)))
+    toast('저장 권한이 없습니다 — Firebase 규칙에 calapp 블록이 반영됐는지 확인하세요');
+  else toast('저장 실패 — 네트워크 상태를 확인하세요');
+}
 /* Firebase 배열 직렬화 보정: 빈 배열은 사라지고 객체로 돌아올 수 있다 */
 function normOrg(org){org.teams=arr(org.teams);org.regions=arr(org.regions);}
 /* 구버전(팀→공구→담당자) 데이터를 팀·권역·계정 구조로 1회 이관 */
@@ -245,14 +290,20 @@ async function fbDoResend(){
 async function resolveRole(user){
   const uid=user.uid,email=String(user.email||'').toLowerCase();
   const ref=FB.db.ref('users/'+uid);
-  let rec=null;
-  try{rec=(await ref.once('value')).val();}catch(e){console.warn('[FB] role read',e);}
+  let rec=null,readOk=true;
+  try{rec=(await ref.once('value')).val();}
+  catch(e){readOk=false;console.warn('[FB] role read',e);}
+  /* 읽기에 실패했으면 기록이 없다고 단정하면 안 된다 — 기존 관리자 기록을 viewer로 덮어쓸 수 있다 */
+  if(!rec&&!readOk){FB.userRec=null;return 'viewer';}
   if(!rec){
     rec={email,role:'viewer',createdAt:Date.now(),lastSeen:Date.now()};
     try{await ref.set(rec);}catch(e){console.warn('[FB] self-register',e);}
   }else{
-    try{await ref.child('lastSeen').set(Date.now());}catch(e){}
-    if(rec.email!==email){try{await ref.child('email').set(email);}catch(e){}}
+    /* 규칙상 users/{uid} 는 email 일치 + role 유지 조건으로 '전체 레코드'를 써야 통과한다.
+       lastSeen 만 부분 쓰기하면 email 검증에 걸려 거부된다. */
+    const next={email,role:rec.role,createdAt:rec.createdAt||Date.now(),lastSeen:Date.now()};
+    if(rec.name)next.name=rec.name;
+    try{await ref.set(next);rec=next;}catch(e){console.warn('[FB] lastSeen',e);}
   }
   FB.userRec=rec;
   const r=rec&&rec.role;
@@ -313,7 +364,17 @@ async function acctSaveName(){
   const name=inp.value.trim().slice(0,60);
   const u=FB.auth&&FB.auth.currentUser;if(!u){toast('로그인이 필요합니다');return;}
   try{await u.updateProfile({displayName:name});}catch(e){toast('이름 저장 실패 · '+(e.message||e));return;}
-  try{await FB.db.ref('users/'+u.uid+'/name').set(name);}catch(e){}
+  /* 부분 쓰기는 규칙에 막히므로 레코드 전체를 다시 쓴다(역할·생성일 유지) */
+  const rec=FB.userRec||{};
+  try{
+    await FB.db.ref('users/'+u.uid).set({
+      email:String(u.email||'').toLowerCase(),
+      role:rec.role||S.role||'viewer',
+      createdAt:rec.createdAt||Date.now(),
+      lastSeen:Date.now(),
+      name
+    });
+  }catch(e){console.warn('[FB] name save',e);toast('이름은 이 브라우저에만 반영됩니다');}
   S.user=u;if(FB.userRec)FB.userRec.name=name;
   rAcct();toast('이름이 저장되었습니다');
 }
@@ -369,6 +430,16 @@ function exitLive(){
   S.plans={};S._subYms=[];
   subVisibleMonths();rAll();rAcct();
   if(was)toast('로컬 저장 모드로 전환됨');
+}
+function rTeamSel(){
+  const el=$('#teamsel');if(!el)return;
+  const teams=(S.org.teams||[]).filter(t=>t.name);
+  if(!teams.length){el.innerHTML='';el.style.display='none';return;}
+  el.style.display='';
+  if(!teams.some(t=>t.id===S.tk.t))S.tk.t=teams[0].id;
+  const opts=teams.map(t=>'<option value="'+esc(t.id)+'"'+(t.id===S.tk.t?' selected':'')+'>'+esc(t.name)+'</option>').join('');
+  el.innerHTML='<div class="tsel-wrap"><select data-act="team.switch" aria-label="팀 선택">'+opts+'</select>'
+    +'<span class="tsel-ch"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3.5l3 3 3-3"/></svg></span></div>';
 }
 function rAcct(){
   const nm=$('#sbAcctName'),rb=$('#sbAcctRole');
@@ -654,27 +725,33 @@ function savePlanFromModal(){
 /* ═══════════ 주요업무현황 — 팀 공통업무 | 담당자별 업무 (1:2) ═══════════ */
 /* 명부 = 로그인 계정(users, 하자처리 현황과 공용) + 이 앱의 팀·권역 배정(calapp/people) */
 function roster(){
+  /* 로컬 모드는 계정이 없다 — 화면이 비지 않도록 '나' 한 명을 가정한다(이 브라우저 전용) */
+  if(!S.live&&!Object.keys(S.people||{}).length)
+    return[{id:'me',name:'나',email:'',team:S.tk.t||'',region:'',role:'editor',acct:false}];
   const out={};
   Object.keys(S.accounts||{}).forEach(uid=>{
     const a=S.accounts[uid]||{};
     if(a.role==='blocked')return;
-    out[uid]={id:uid,name:a.name||String(a.email||'').split('@')[0]||'이름없음',email:a.email||'',team:'',region:'',acct:true};
+    out[uid]={id:uid,name:a.name||String(a.email||'').split('@')[0]||'이름없음',email:a.email||'',team:'',region:'',role:a.role||'viewer',acct:true};
   });
+  /* calapp/people 은 모든 팀원이 읽을 수 있다 — 관리자가 팀·권역을 지정하면
+     이름·이메일이 여기 함께 저장되어, users 목록을 못 읽는 사용자에게도 명부가 보인다. */
   Object.keys(S.people||{}).forEach(id=>{
-    const p=S.people[id]||{};
-    out[id]={...(out[id]||{id,name:p.name||'이름없음',email:p.email||'',acct:false}),
+    const p=S.people[id]||{},prev=out[id];
+    out[id]={id,
+      name:(prev&&prev.acct&&prev.name)||p.name||'이름없음',
+      email:(prev&&prev.email)||p.email||'',
       team:p.team||'',region:p.region||'',
-      name:(out[id]&&out[id].acct)?out[id].name:(p.name||'이름없음')};
+      role:(prev&&prev.role)||'viewer',
+      acct:!!(prev&&prev.acct)};
   });
   return Object.values(out).sort((a,b)=>String(a.name).localeCompare(String(b.name),'ko'));
 }
 function tkSel(){
   const teams=(S.org.teams||[]).filter(t=>t.name),regions=(S.org.regions||[]).filter(r=>r.name),all=roster();
-  const unassigned=all.filter(p=>!p.team||!teams.some(t=>t.id===p.team));
   const tabs=teams.slice();
-  if(unassigned.length)tabs.push({id:'_none',name:'미배정'});
   const team=tabs.find(x=>x.id===S.tk.t)||tabs[0]||null;S.tk.t=team?team.id:null;
-  let mems=team?(team.id==='_none'?unassigned:all.filter(p=>p.team===team.id)):[];
+  let mems=team?all.filter(p=>p.team===team.id):[];
   const regIds=[...new Set(mems.map(p=>p.region).filter(Boolean))];
   const regs=regions.filter(r=>regIds.includes(r.id));
   if(S.tk.r!=='*'&&!regs.some(r=>r.id===S.tk.r))S.tk.r='*';
@@ -736,7 +813,7 @@ function rTasks(){
   const regRow=regs.length?'<div class="reg-row"><span class="reg'+(S.tk.r==='*'?' act':'')+'" data-act="tk.tab" data-lv="r" data-id="*">전체 권역</span>'
     +regs.map(r=>'<span class="reg'+(S.tk.r===r.id?' act':'')+'" data-act="tk.tab" data-lv="r" data-id="'+esc(r.id)+'">'+esc(r.name)+'</span>').join('')+'</div>':'';
   root.innerHTML='<div class="tk3">'
-    +tkCard('팀 공통업무',tkTabs(teams,S.tk.t,'t'),null,(team&&team.id!=='_none')?team.id:null,'팀을 먼저 등록하세요.')
+    +tkCard('팀 공통업무','',team?team.name:'',(team&&team.id!=='_none')?team.id:null,'설정에서 팀을 먼저 등록하세요.')
     +tkCard('담당자별 업무',regRow+(mems.length?tkTabs(mems,S.tk.m,'m'):''),team?team.name:'',mem?mem.id:null,'이 팀에 배정된 담당자가 없습니다. 설정에서 계정에 팀을 지정하세요.')
     +'</div>';
 }
@@ -760,51 +837,74 @@ function tkCommit(el){
 }
 
 /* ═══════════ 설정 — 팀 · 권역 · 계정 배정 ═══════════ */
-function inlineTbl(list,kind,ph){
-  if(!list.length)return '<div class="set-empty">등록된 항목이 없습니다.</div>';
-  return '<table class="mgtbl"><tbody>'+list.map(x=>`<tr>
-    <td><input class="mg-inp" value="${esc(x.name)}" data-act="org.ren" data-kind="${kind}" data-id="${esc(x.id)}" placeholder="${esc(ph)}" aria-label="이름"></td>
-    <td style="width:30px"><button class="tm-x" data-act="org.del${kind}" data-id="${esc(x.id)}" aria-label="삭제"><svg class="icn"><use href="#i-trash"></use></svg></button></td>
-  </tr>`).join('')+'</tbody></table>';
+const ICON_TRASH='<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M10 11v6M14 11v6"/></svg>';
+const ICON_RADIO_ON='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.6" fill="currentColor" stroke="none"/></svg>';
+const ICON_RADIO_OFF='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/></svg>';
+function teamRows(){
+  const list=S.org.teams||[];
+  if(!list.length)return '<div class="tm-empty">등록된 팀이 없습니다. + 추가를 누르세요.</div>';
+  return list.map(t=>{
+    const act=t.id===S.tk.t,cnt=roster().filter(p=>p.team===t.id).length;
+    return `<div class="tm-row${act?' act':''}">
+      <button class="tm-pick" data-act="team.switch" data-tid="${esc(t.id)}" aria-label="이 팀 선택">${act?ICON_RADIO_ON:ICON_RADIO_OFF}</button>
+      <input class="mg-inp tm-nameinp" value="${esc(t.name)}" data-act="org.ren" data-kind="Team" data-id="${esc(t.id)}" placeholder="팀 이름" aria-label="팀 이름">
+      <span class="tm-cnt">${cnt}</span>
+      <button class="tm-x tm-del" data-act="org.delTeam" data-id="${esc(t.id)}" aria-label="삭제">${ICON_TRASH}</button>
+    </div>`;}).join('');
 }
+function regRows(){
+  const list=S.org.regions||[];
+  if(!list.length)return '<div class="tm-empty">등록된 권역이 없습니다. + 추가를 누르세요.</div>';
+  return list.map(r=>{
+    const used=roster().filter(p=>p.region===r.id).length;
+    return `<div class="tm-row">
+      <input class="mg-inp tm-nameinp" value="${esc(r.name)}" data-act="org.ren" data-kind="Reg" data-id="${esc(r.id)}" placeholder="권역 이름" aria-label="권역 이름">
+      <span class="tm-cnt">${used}</span>
+      <button class="tm-x tm-del" data-act="org.delReg" data-id="${esc(r.id)}" aria-label="삭제">${ICON_TRASH}</button>
+    </div>`;}).join('');
+}
+const ICON_PERSON='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M12 13c-3.9 0-7 2.4-7 5.4 0 .9.5 1.6 1.6 1.6h10.8c1.1 0 1.6-.7 1.6-1.6 0-3-3.1-5.4-7-5.4z"/></svg>';
 function rOrg(){
   const tr=$('#teamRoot'),rr=$('#regRoot');
-  if(tr)tr.innerHTML=inlineTbl(S.org.teams||[],'Team','팀 이름');
-  if(rr)rr.innerHTML=inlineTbl(S.org.regions||[],'Reg','권역 이름');
+  if(tr)tr.innerHTML=teamRows();
+  if(rr)rr.innerHTML=regRows();
+  rTeamSel();
 
   const ar=$('#acctRoot');if(!ar)return;
   const list=roster();
   if(!list.length){
     ar.innerHTML='<div class="set-empty">'+(!S.live
-      ? '로그인 전에는 계정 목록을 불러올 수 없습니다.<br>테스트용으로 담당자를 직접 추가할 수 있습니다.'
+      ? '로컬 모드에서는 계정 목록이 없습니다.'
       : (S.acctDenied
-        ? '계정 목록을 읽을 권한이 없습니다. Firebase 규칙에서 users 읽기를 허용하면 자동으로 채워집니다.'
-        : '아직 등록된 계정이 없습니다. 하자처리 현황에 로그인한 계정이 여기에 자동으로 나타납니다.'))
-      +'</div><button class="btn bo bsm tm-add" data-act="acct.addLocal"><svg class="icn"><use href="#i-plus"></use></svg> 담당자 추가</button>';
+        ? '계정 목록을 읽을 권한이 없습니다. Firebase 규칙에서 users 노드 읽기를 허용하세요.'
+        : '아직 로그인한 계정이 없습니다.'))+'</div>';
     rFilter();return;
   }
+  const myUid=S.user?S.user.uid:'';
+  const editors=list.filter(p=>p.role==='editor');
+  const order={editor:0,viewer:1,blocked:2};
+  list.sort((a,b)=>{const ra=order[a.role]??1,rb=order[b.role]??1;
+    return ra!==rb?ra-rb:String(a.email||'').localeCompare(String(b.email||''));});
   const opt=(arr2,sel)=>'<option value="">—</option>'+arr2.map(x=>'<option value="'+esc(x.id)+'"'+(x.id===sel?' selected':'')+'>'+esc(x.name)+'</option>').join('');
-  ar.innerHTML='<table class="utbl"><thead><tr><th>이름</th><th>이메일</th><th style="width:110px">팀</th><th style="width:110px">권역</th><th style="width:34px"></th></tr></thead><tbody>'
-    +list.map(p=>`<tr>
-      <td><div class="utbl-name"><div class="utbl-av">${esc((p.name||'?').slice(0,1))}</div><div class="utbl-nick">${esc(p.name)}</div></div></td>
-      <td class="utbl-mail">${esc(p.email||'—')}</td>
-      <td><select class="mg-inp" data-act="acct.set" data-f="team" data-id="${esc(p.id)}" aria-label="팀">${opt(S.org.teams||[],p.team)}</select></td>
-      <td><select class="mg-inp" data-act="acct.set" data-f="region" data-id="${esc(p.id)}" aria-label="권역">${opt(S.org.regions||[],p.region)}</select></td>
-      <td>${p.acct?'<span class="utbl-badge acct">계정</span>':'<button class="tm-x" data-act="acct.del" data-id="'+esc(p.id)+'" aria-label="삭제"><svg class="icn"><use href="#i-trash"></use></svg></button>'}</td>
-    </tr>`).join('')+'</tbody></table>'
-    +'<button class="btn bo bsm tm-add" data-act="acct.addLocal"><svg class="icn"><use href="#i-plus"></use></svg> 담당자 추가</button>';
+  const roleOpt=(v,t,cur)=>'<option value="'+v+'"'+(cur===v?' selected':'')+'>'+t+'</option>';
+  ar.innerHTML='<table class="utbl"><thead><tr><th>이름</th><th>팀</th><th>권역</th><th class="utbl-r">권한</th></tr></thead><tbody>'
+    +list.map(p=>{
+      const role=p.role||'viewer',rc='r-'+role,isMe=p.id===myUid,lastEd=role==='editor'&&editors.length<=1;
+      const lock=isMe?'본인 계정':(lastEd?'마지막 관리자':'');
+      const ctl=(!isEditor()||isMe||lastEd)
+        ? (lock?'<span class="fbu-lock">'+lock+'</span> ':'')+'<span class="fbu-role '+rc+'">'+esc(roleLabel(role))+'</span>'
+        : '<select class="fbu-sel" data-act="acct.role" data-id="'+esc(p.id)+'" aria-label="권한">'
+          +roleOpt('editor','관리자',role)+roleOpt('viewer','사용자',role)+roleOpt('blocked','차단',role)+'</select>';
+      return `<tr>
+        <td><div class="utbl-name"><div class="fbu-av ${rc}">${ICON_PERSON}</div>
+          <div style="min-width:0"><div class="utbl-nick">${esc(p.name)}</div><div class="utbl-mail">${esc(p.email||'')}</div></div></div></td>
+        <td><select class="mg-inp" data-act="acct.set" data-f="team" data-id="${esc(p.id)}" aria-label="팀">${opt(S.org.teams||[],p.team)}</select></td>
+        <td><select class="mg-inp" data-act="acct.set" data-f="region" data-id="${esc(p.id)}" aria-label="권역">${opt(S.org.regions||[],p.region)}</select></td>
+        <td class="utbl-r">${ctl}</td>
+      </tr>`;}).join('')+'</tbody></table>';
   rFilter();
 }
 function orgSave(){normOrg(S.org);store.putOrg(S.org);if(!S.live){rOrg();rTasks();}}
-function openMemModal(title,mem,cb){
-  openModal(title,`
-    <div class="frow"><label>이름</label><input class="inp" id="mmName" value="${esc(mem.name||'')}" maxlength="20"></div>
-    <div class="frow"><label>이메일 (리마인드 수신)</label><input class="inp" id="mmMail" type="email" placeholder="name@hdec.co.kr" value="${esc(mem.email||'')}"></div>`,
-    `<button class="btn bg2 bsm" data-act="modal.close">취소</button><button class="btn bp bsm" data-act="modal.ok">저장</button>`);
-  MODAL_CB={type:'mem',ok:()=>{const n=($('#mmName').value||'').trim();if(!n){toast('이름을 입력하세요');return;}
-    cb(n,($('#mmMail').value||'').trim());closeModal();}};
-  setTimeout(()=>{const t=$('#mmName');if(t)t.focus();},50);
-}
 function rCfg(){
   const i=$('#setDefectUrl');
   if(i&&document.activeElement!==i)i.value=S.cfg.defectUrl||DEFECT_URL;
@@ -978,11 +1078,22 @@ const ACT={
       Object.keys(S.people||{}).forEach(id=>{if(S.people[id].region===r.id)store.putPerson(id,{...S.people[id],region:''});});
       orgSave();});
   },
-  'acct.addLocal':()=>{
-    if(!isEditor())return denyEdit();
-    openMemModal('담당자 추가',{},(name,email)=>{store.putPerson(uid(),{name,email,team:'',region:''});if(!S.live){rOrg();rTasks();}});
+  'team.switch':el=>{
+    const tid=el.dataset.tid||(el.value||'');
+    if(!tid)return;
+    S.tk.t=tid;S.tk.r='*';S.tk.m=null;
+    rTeamSel();
+    if(S.view==='tasks')rTasks();
+    if(S.view==='settings')rOrg();
   },
-  'acct.del':el=>{if(!isEditor())return denyEdit();store.putPerson(el.dataset.id,null);if(!S.live){rOrg();rTasks();}},
+  'acct.role':el=>{
+    if(!isEditor())return denyEdit();
+    const uid=el.dataset.id,v=el.value;
+    if(!S.live){toast('로그인 후에 변경할 수 있습니다');return;}
+    FB.db.ref('users/'+uid+'/role').set(v)
+      .then(()=>toast('권한을 변경했습니다'))
+      .catch(e=>{fbErr(e);rOrg();});
+  },
   'set.saveUrl':()=>{if(!isEditor())return denyEdit();store.putCfg('defectUrl',($('#setDefectUrl').value||'').trim());if(!S.live)rCfg();toast('저장했습니다');}
 };
 function openCmtModal(sid,iid){
@@ -1024,6 +1135,10 @@ document.addEventListener('click',e=>{
   if(pal){$$('#pfPal .pal-c').forEach(x=>x.classList.remove('sel'));pal.classList.add('sel');}
 });
 document.addEventListener('change',e=>{
+  const sw=e.target.closest('[data-act="team.switch"]');
+  if(sw&&sw.tagName==='SELECT'){ACT['team.switch'](sw);return;}
+  const rl=e.target.closest('[data-act="acct.role"]');
+  if(rl){ACT['acct.role'](rl);return;}
   if(e.target.id==='ownFilter'){S.filter.own=e.target.value;refetchCal();rDay();return;}
   const ren=e.target.closest('[data-act="org.ren"]');
   if(ren){
@@ -1039,8 +1154,11 @@ document.addEventListener('change',e=>{
   const id=el.dataset.id,f=el.dataset.f;
   const cur=(S.people||{})[id]||{};
   const base=roster().find(p=>p.id===id)||{};
-  store.putPerson(id,{name:cur.name||base.name||'',email:cur.email||base.email||'',
-    team:f==='team'?el.value:(cur.team||''),region:f==='region'?el.value:(cur.region||'')});
+  store.putPerson(id,{
+    name:base.name||cur.name||'',
+    email:base.email||cur.email||'',
+    team:f==='team'?el.value:(cur.team||''),
+    region:f==='region'?el.value:(cur.region||'')});
   if(!S.live){rOrg();rTasks();}
 });
 document.addEventListener('keydown',e=>{

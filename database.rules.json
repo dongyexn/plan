@@ -1,0 +1,273 @@
+{
+  // ===================================================================
+  // H서비스센터 — Firebase Realtime Database 보안 규칙 (report-c29a1)
+  //   · 하자처리 현황  : users · report · reportIndex · plans · analysis · meta · siteConfig · aiRules
+  //   · 주요업무 현황  : calapp/*            ← 이번에 추가된 블록
+  // 두 앱이 같은 프로젝트·같은 계정을 쓴다. 기존 블록은 손대지 않았다.
+  //
+  // 권한 모델(공통)
+  //   - 접근 자격(VERIF): 로그인 + 이메일 인증 완료 + @hdec.co.kr 도메인
+  //   - 역할(users/{uid}/role): editor(관리자) / viewer(사용자) / blocked(차단)
+  //   - MEMBER = VERIF 이고 role 이 editor 또는 viewer (blocked·미등록 제외)
+  //   - EDITOR = VERIF 이고 role 이 editor
+  //   - 최초 관리자는 콘솔에서 users/{uid}/role="editor" 로 1회 부트스트랩.
+  //
+  // 주요업무 현황(calapp) 경로별 권한
+  //   calapp/plans/{YYYY-MM}/{id} : MEMBER 읽기·쓰기 — 단발 일정(기간 포함)
+  //   calapp/recur/{id}           : MEMBER 읽기·쓰기 — 반복 일정 원본
+  //   calapp/tasks/{sid}/{iid}    : MEMBER 읽기·쓰기 — 주요업무 항목(+코멘트)
+  //   calapp/people/{uid}         : MEMBER 읽기 / EDITOR 쓰기 — 팀·권역 배정 명부
+  //   calapp/org · calapp/cfg     : MEMBER 읽기 / EDITOR 쓰기 — 팀·권역 목록, 연결 설정
+  //
+  //   ※ users 목록 읽기는 관리자 전용이므로, 일반 사용자 화면의 담당자 명부는
+  //     calapp/people 을 통해 제공된다(관리자가 팀·권역을 지정할 때 이름·이메일이 함께 기록됨).
+  // ===================================================================
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "users": {
+      // 목록 전체 읽기는 관리자만(계정 관리 화면용)
+      ".read": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'",
+      "$uid": {
+        // 본인 레코드는 본인이, 그 외에는 관리자가 읽을 수 있음
+        ".read": "auth != null && (auth.uid == $uid || (auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'))",
+        // 쓰기: ① 본인이면 (최초 등록 시에만) role을 viewer로 생성 / 등록 이후엔 기존 role 유지만 가능
+        //         (자기 권한 상승 차단 + blocked 계정이 스스로 viewer로 되돌리는 자가해제 차단)
+        //         + email 은 본인 토큰 이메일과 일치해야 함(타인 이메일 기재 레코드 생성·변조 차단)
+        //           클라이언트가 가입·기록 시 이메일을 소문자로 정규화하므로 토큰 이메일과 대소문자 일치.
+        //           ※ 이 조건 때문에 부분 쓰기(lastSeen·name 단독)는 거부된다 — 클라이언트는 레코드 전체를 set 한다.
+        //       ② 또는 관리자면 누구든 변경 가능
+        ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && ( (auth.uid == $uid && newData.child('email').val() == auth.token.email && ( (!data.exists() && newData.child('role').val() == 'viewer') || (data.exists() && newData.child('role').val() == data.child('role').val()) )) || root.child('users').child(auth.uid).child('role').val() == 'editor' )",
+        // 레코드에는 최소 email·role 이 있어야 함(역할 없는 레코드 생성 차단)
+        ".validate": "newData.hasChildren(['email','role'])",
+        "email":     { ".validate": "newData.isString() && newData.val().length <= 200" },
+        "role":      { ".validate": "newData.isString() && (newData.val() == 'editor' || newData.val() == 'viewer' || newData.val() == 'blocked')" },
+        "name":      { ".validate": "newData.isString() && newData.val().length <= 60" },
+        "createdAt": { ".validate": "newData.isNumber()" },
+        "lastSeen":  { ".validate": "newData.isNumber()" },
+        "$other":    { ".validate": false }
+      }
+    },
+
+    "report": {
+      // 게시 집계 읽기: 모든 MEMBER (뷰어는 최신 기준월을 limitToLast로 조회)
+      ".read": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
+      "$rm": {
+        // 게시(쓰기)는 관리자만
+        ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'",
+        ".validate": "$rm.matches(/^[0-9]{4}-[0-9]{2}$/)"
+      }
+    },
+
+    "reportIndex": {
+      // 게시월 인덱스: 뷰어 기준월 선택기가 이 노드만 읽어 목록을 구성(report 전체 다운로드 방지).
+      // 게시(fb2Publish) 시 reportIndex/{rm}=Date.now() 로 편집자가 기록.
+      ".read": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
+      "$rm": {
+        ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'",
+        ".validate": "$rm.matches(/^[0-9]{4}-[0-9]{2}$/) && newData.isNumber()"
+      }
+    },
+
+    "plans": {
+      ".read": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
+      "$sid": {
+        "$field": {
+          "$key": {
+            // 처리계획 리프 쓰기: MEMBER, 허용된 3개 필드만, 문자열 ≤5000자
+            ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer') && ($field == 'processingPlan' || $field == 'vacantProcessingPlan' || $field == 'commercialProcessingPlan')",
+            ".validate": "newData.isString() && newData.val().length <= 5000"
+          }
+        }
+      }
+    },
+
+    "analysis": {
+      ".read": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
+      "$sid": {
+        // 분석의견은 기준월별 아카이브: analysis/{sid}/{YYYY-MM} = HTML 문자열 ≤20000자.
+        // 쓰기는 월 노드에만 허용 — 구버전 형태(analysis/{sid} = 문자열) 직접 쓰기는 거부된다.
+        // 기존 레거시 문자열 데이터는 읽기 가능하며, 클라이언트가 최초 조우 시 현재 기준월 노드로
+        // 재기록해 마이그레이션한다(하위 경로 쓰기가 원시값 부모를 대체하는 RTDB 의미론, 멱등).
+        "$rm": {
+          ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
+          ".validate": "$rm.matches(/^[0-9]{4}-[0-9]{2}$/) && newData.isString() && newData.val().length <= 20000"
+        }
+      }
+    },
+
+    "meta": {
+      ".read": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
+      "$sid": {
+        ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
+        "updatedAt": { ".validate": "newData.isNumber()" },
+        "updatedBy": { ".validate": "newData.isString() && newData.val().length <= 200" },
+        "$other":    { ".validate": false }
+      }
+    },
+
+    "siteConfig": {
+      ".read": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
+      "$sid": {
+        // 현장 토글 쓰기: 관리자만
+        ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'",
+        "hasCommercial": { ".validate": "newData.isBoolean()" },
+        "showVacant":    { ".validate": "newData.isBoolean()" },
+        "updatedAt":     { ".validate": "newData.isNumber()" },
+        "$other":        { ".validate": false }
+      }
+    },
+
+    "aiRules": {
+      // AI 분석 규칙 팀 공유(설정 > AI 분석): 추가 지침(custom)·중대하자 키워드(critKw)·
+      // 기본 규칙 항목별 수정본(ovr/{ruleId})을 한 노드에 저장 — 전 MEMBER 실시간 구독, 쓰기는 관리자만.
+      // 클라이언트는 항상 노드 전체를 set() 하며, 수정본이 없으면 ovr:null 로 키를 제거한다.
+      ".read": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
+      ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'",
+      "custom":    { ".validate": "newData.isString() && newData.val().length <= 20000" },
+      "critKw":    { ".validate": "newData.isString() && newData.val().length <= 5000" },
+      "ovr": {
+        // ruleId 형식: s_*(현장 분석) / d_*(대시보드) / c_*(중대하자 추출) — index.html 의 RULE_DEF·CRIT_DEF 와 일치
+        "$ruleId": { ".validate": "$ruleId.matches(/^[sdc]_[A-Za-z0-9]+$/) && newData.isString() && newData.val().length <= 20000" }
+      },
+      "updatedAt": { ".validate": "newData.isNumber()" },
+      "updatedBy": { ".validate": "newData.isString() && newData.val().length <= 200" },
+      "$other":    { ".validate": false }
+    },
+
+    // ===================================================================
+    // 주요업무 현황 앱 (일정 달력 + 주요업무 현황)
+    //   읽기는 MEMBER 전체. 쓰기는 두 단계로 나눈다.
+    //     · 일정·업무 : MEMBER 누구나 (협업 도구이므로 사용자도 작성 가능)
+    //     · 팀·권역·명부·설정 : EDITOR 만 (하자처리 현황의 현장 관리와 같은 원칙)
+    // ===================================================================
+    "calapp": {
+      ".read": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
+
+      // 단발 일정 — calapp/plans/{YYYY-MM}/{id}
+      "plans": {
+        "$ym": {
+          ".validate": "$ym.matches(/^[0-9]{4}-[0-9]{2}$/)",
+          "$id": {
+            ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
+            ".validate": "!newData.exists() || newData.hasChildren(['id','date','title'])",
+            "id":        { ".validate": "newData.isString() && newData.val().length <= 40" },
+            "date":      { ".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)" },
+            "end":       { ".validate": "newData.isString() && (newData.val() == '' || newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/))" },
+            "title":     { ".validate": "newData.isString() && newData.val().length <= 120" },
+            "time":      { ".validate": "newData.isString() && newData.val().length <= 5" },
+            "body":      { ".validate": "newData.isString() && newData.val().length <= 1000" },
+            "color":     { ".validate": "newData.isString() && newData.val().length <= 16" },
+            "owner":     { ".validate": "newData.isString() && newData.val().length <= 60" },
+            "by":        { ".validate": "newData.isString() && newData.val().length <= 60" },
+            "remind":    { ".validate": "newData.isBoolean()" },
+            "done":      { ".validate": "newData.isBoolean()" },
+            "createdAt": { ".validate": "newData.isNumber()" },
+            "updatedAt": { ".validate": "newData.isNumber()" },
+            "recur": {
+              "f":     { ".validate": "newData.isString() && (newData.val() == '' || newData.val() == 'w' || newData.val() == '2w' || newData.val() == 'm' || newData.val() == 'y')" },
+              "until": { ".validate": "newData.isString() && (newData.val() == '' || newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/))" },
+              "$other": { ".validate": false }
+            },
+            "$other":    { ".validate": false }
+          }
+        }
+      },
+
+      // 반복 일정 원본 — 월 경계와 무관하므로 별도 노드에 둔다
+      "recur": {
+        "$id": {
+          ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
+          ".validate": "!newData.exists() || newData.hasChildren(['id','date','title'])",
+          "id":        { ".validate": "newData.isString() && newData.val().length <= 40" },
+          "date":      { ".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)" },
+          "end":       { ".validate": "newData.isString() && (newData.val() == '' || newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/))" },
+          "title":     { ".validate": "newData.isString() && newData.val().length <= 120" },
+          "time":      { ".validate": "newData.isString() && newData.val().length <= 5" },
+          "body":      { ".validate": "newData.isString() && newData.val().length <= 1000" },
+          "color":     { ".validate": "newData.isString() && newData.val().length <= 16" },
+          "owner":     { ".validate": "newData.isString() && newData.val().length <= 60" },
+          "by":        { ".validate": "newData.isString() && newData.val().length <= 60" },
+          "remind":    { ".validate": "newData.isBoolean()" },
+          "done":      { ".validate": "newData.isBoolean()" },
+          "createdAt": { ".validate": "newData.isNumber()" },
+          "updatedAt": { ".validate": "newData.isNumber()" },
+          "recur": {
+            "f":     { ".validate": "newData.isString() && (newData.val() == 'w' || newData.val() == '2w' || newData.val() == 'm' || newData.val() == 'y')" },
+            "until": { ".validate": "newData.isString() && (newData.val() == '' || newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/))" },
+            "$other": { ".validate": false }
+          },
+          // 회차별 완료 표시 / 제외 날짜 — {"2026-07-29": 1}
+          "doneOn": { "$d": { ".validate": "$d.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/) && newData.isNumber()" } },
+          "skipOn": { "$d": { ".validate": "$d.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/) && newData.isNumber()" } },
+          "$other": { ".validate": false }
+        }
+      },
+
+      // 주요업무 항목 — subjectId 는 팀 id 또는 담당자 id
+      "tasks": {
+        "$sid": {
+          "$iid": {
+            ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
+            "text":      { ".validate": "newData.isString() && newData.val().length <= 500" },
+            "st":        { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3" },
+            "due":       { ".validate": "newData.isString() && (newData.val() == '' || newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/))" },
+            "createdAt": { ".validate": "newData.isNumber()" },
+            "updatedAt": { ".validate": "newData.isNumber()" },
+            "comments": {
+              "$cid": {
+                "by":   { ".validate": "newData.isString() && newData.val().length <= 60" },
+                "text": { ".validate": "newData.isString() && newData.val().length <= 500" },
+                "at":   { ".validate": "newData.isNumber()" },
+                "$other": { ".validate": false }
+              }
+            },
+            "$other": { ".validate": false }
+          }
+        }
+      },
+
+      // 팀·권역 목록 — 관리자만 변경
+      "org": {
+        ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'",
+        "teams": {
+          "$i": {
+            "id":   { ".validate": "newData.isString() && newData.val().length <= 40" },
+            "name": { ".validate": "newData.isString() && newData.val().length <= 60" },
+            "$other": { ".validate": false }
+          }
+        },
+        "regions": {
+          "$i": {
+            "id":   { ".validate": "newData.isString() && newData.val().length <= 40" },
+            "name": { ".validate": "newData.isString() && newData.val().length <= 60" },
+            "$other": { ".validate": false }
+          }
+        },
+        "$other": { ".validate": false }
+      },
+
+      // 담당자 명부(팀·권역 배정) — 관리자만 변경. 일반 사용자는 이 노드로 명부를 본다.
+      "people": {
+        ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'",
+        "$pid": {
+          "name":   { ".validate": "newData.isString() && newData.val().length <= 60" },
+          "email":  { ".validate": "newData.isString() && newData.val().length <= 200" },
+          "team":   { ".validate": "newData.isString() && newData.val().length <= 40" },
+          "region": { ".validate": "newData.isString() && newData.val().length <= 40" },
+          "$other": { ".validate": false }
+        }
+      },
+
+      // 앱 설정(하자처리 현황 바로가기 주소 등) — 관리자만 변경
+      "cfg": {
+        ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'",
+        "defectUrl": { ".validate": "newData.isString() && newData.val().length <= 300" },
+        "$other":    { ".validate": false }
+      },
+
+      "$other": { ".validate": false }
+    }
+  }
+}
