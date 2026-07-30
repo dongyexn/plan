@@ -17,8 +17,18 @@ function dstr(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDat
 function ymOf(ds){return ds.slice(0,7);}
 function todayStr(){return dstr(new Date());}
 const DOW=['일','월','화','수','목','금','토'];
-const PAL=['#3E71D2','#16A34A','#D97706','#DC2626','#7C5CD6','#64748B'];
+const PAL=['#6B7280','#3E71D2','#16A34A','#D97706','#DC2626','#7C5CD6'];
+/* 담당자 자동 색 — 명부 순서에 따라 안정적으로 배정 */
+const OWN_PAL=['#3E71D2','#16A34A','#D97706','#DC2626','#7C5CD6','#0EA5E9','#DB2777','#65A30D','#EA580C','#0D9488'];
+function ownColor(pid){
+  if(!pid)return PAL[0];
+  const list=roster();const i=list.findIndex(p=>p.id===pid);
+  return i<0?PAL[0]:OWN_PAL[i%OWN_PAL.length];
+}
+function ownName(pid){const p=roster().find(x=>x.id===pid);return p?p.name:'';}
+function planColor(p){return (!p.color||p.color==='auto')?(p.owner?ownColor(p.owner):PAL[0]):p.color;}
 const ST_LBL=['예정','진행','완료','보류'];
+const DEFECT_URL='https://dongyexn.github.io/report/';  // 하자처리 현황 배포 주소(기본값)
 /* ── 한국 공휴일(대체공휴일 포함, 2025~2030) — 임시공휴일 지정 등 변동 시 이 표만 수정 ── */
 const HOLI={
 '2025-01-01':'신정','2025-01-27':'임시공휴일','2025-01-28':'설날 연휴','2025-01-29':'설날','2025-01-30':'설날 연휴','2025-03-01':'삼일절','2025-03-03':'대체공휴일','2025-05-05':'어린이날·석가탄신일','2025-05-06':'대체공휴일','2025-06-03':'임시공휴일','2025-06-06':'현충일','2025-08-15':'광복절','2025-10-03':'개천절','2025-10-05':'추석 연휴','2025-10-06':'추석','2025-10-07':'추석 연휴','2025-10-08':'대체공휴일','2025-10-09':'한글날','2025-12-25':'성탄절',
@@ -31,6 +41,11 @@ const HOLI={
 const ANNIV={'04-05':'식목일','05-01':'근로자의날','05-08':'어버이날','05-15':'스승의날','07-17':'제헌절','10-01':'국군의날'};
 function holOf(ds){if(HOLI[ds])return{n:HOLI[ds],h:true};const a=ANNIV[ds.slice(5)];return a?{n:a,h:false}:null;}
 function toDate(ds){const[a,b,c]=ds.split('-').map(Number);return new Date(a,b-1,c);}
+function addDays(ds,n){const d=toDate(ds);d.setDate(d.getDate()+n);return dstr(d);}
+function addMonths(ds,n){const d=toDate(ds);const day=d.getDate();d.setDate(1);d.setMonth(d.getMonth()+n);
+  const last=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();d.setDate(Math.min(day,last));return dstr(d);}
+function daysBetween(a,b){return Math.round((toDate(b)-toDate(a))/86400000);}
+const REC_LBL={'':'반복 없음',w:'매주','2w':'격주',m:'매월',y:'매년'};
 function fmtTime(t){if(!t)return'';const[h,m]=t.split(':').map(Number);const ap=h<12?'오전':'오후';const hh=h%12===0?12:h%12;return ap+' '+hh+':'+pad(m);}
 function relTime(ts){if(!ts)return'';const d=Date.now()-ts;const m=Math.floor(d/6e4);if(m<1)return'방금';if(m<60)return m+'분 전';const h=Math.floor(m/60);if(h<24)return h+'시간 전';return Math.floor(h/24)+'일 전';}
 
@@ -39,11 +54,19 @@ const S={
   view:'calendar',
   selDate:todayStr(),
   plans:{},          // {ym:{id:plan}}
-  org:{teams:[]},    // {teams:[{id,name,ggs:[{id,name,members:[{id,name,email}]}]}]}
+  org:{teams:[],regions:[]},  // {teams:[{id,name}], regions:[{id,name}]}
+  people:{},         // calapp/people/{id}: {name,email,team,region} — id는 로그인 uid
+  accounts:{},       // users/{uid}: {email,name,role} — 하자처리 현황과 공용
   tasks:{},          // {memberId:{itemId:{text,st,updatedAt}}}
   cfg:{},            // {defectUrl}
-  tk:{t:null,g:null,m:null},  // 주요업무현황 탭 선택(팀/공구/담당자)
+  tk:{t:null,r:'*',m:null},   // 주요업무 현황 탭 선택(팀/권역/담당자)
+  recur:{},          // calapp/recur/{id} — 반복 일정 원본(월 경계와 무관하게 항상 구독)
+  filter:{own:'*'},  // 달력 필터: 담당자
+  calView:'dayGridMonth',
+  foldOpen:{},       // 완료 항목 접힘 해제(subjectId별)
   live:false,        // Firebase 실시간 모드 여부
+  role:null,         // editor · viewer (users/{uid})
+  acctDenied:false,  // users 노드 읽기 권한 없음
   user:null,
   _subYms:[]
 };
@@ -65,13 +88,19 @@ function lsSave(d){try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){
 const LocalStore={
   name:'local',
   _d:null,
-  init(){this._d=lsLoad();this._d.plans=this._d.plans||{};this._d.org=this._d.org||{teams:[]};this._d.tasks=this._d.tasks||{};this._d.cfg=this._d.cfg||{};
-    S.org=this._d.org;S.tasks=this._d.tasks;S.cfg=this._d.cfg;},
+  init(){this._d=lsLoad();this._d.plans=this._d.plans||{};this._d.recur=this._d.recur||{};this._d.org=this._d.org||{teams:[],regions:[]};this._d.tasks=this._d.tasks||{};this._d.cfg=this._d.cfg||{};this._d.people=this._d.people||{};
+    migrateOrg(this._d);normOrg(this._d.org);
+    S.org=this._d.org;S.tasks=this._d.tasks;S.cfg=this._d.cfg;S.people=this._d.people;S.recur=this._d.recur;S.accounts={};},
   subPlans(ym){S.plans[ym]=this._d.plans[ym]||{};},
-  putPlan(p){const ym=ymOf(p.date);this._d.plans[ym]=this._d.plans[ym]||{};this._d.plans[ym][p.id]=p;S.plans[ym]=this._d.plans[ym];lsSave(this._d);},
-  delPlan(ym,id){if(this._d.plans[ym]){delete this._d.plans[ym][id];S.plans[ym]=this._d.plans[ym];lsSave(this._d);}},
+  putPlan(p){
+    if(p.recur&&p.recur.f){this._d.recur[p.id]=p;S.recur=this._d.recur;lsSave(this._d);return;}
+    const ym=ymOf(p.date);this._d.plans[ym]=this._d.plans[ym]||{};this._d.plans[ym][p.id]=p;S.plans[ym]=this._d.plans[ym];lsSave(this._d);},
+  delPlan(ym,id){
+    if(this._d.recur[id]){delete this._d.recur[id];S.recur=this._d.recur;lsSave(this._d);return;}
+    if(this._d.plans[ym]){delete this._d.plans[ym][id];S.plans[ym]=this._d.plans[ym];lsSave(this._d);}},
   movePlan(p,oldYm){this.delPlan(oldYm,p.id);this.putPlan(p);},
   putOrg(org){this._d.org=org;S.org=org;lsSave(this._d);},
+  putPerson(id,p){if(p)this._d.people[id]=p;else delete this._d.people[id];S.people=this._d.people;lsSave(this._d);},
   putTask(mid,iid,item){this._d.tasks[mid]=this._d.tasks[mid]||{};if(item)this._d.tasks[mid][iid]=item;else delete this._d.tasks[mid][iid];S.tasks=this._d.tasks;lsSave(this._d);},
   putCfg(k,v){this._d.cfg[k]=v;S.cfg=this._d.cfg;lsSave(this._d);}
 };
@@ -96,37 +125,219 @@ function fbDomainOk(email){return /@hdec\.co\.kr$/i.test(String(email||'').trim(
 const FbStore={
   name:'fb',
   init(){},
-  _on(path,cb){const r=FB.db.ref(path);r.on('value',s=>cb(s.val()));FB._subs.push(r);},
+  _on(path,cb,onErr){const r=FB.db.ref(path);r.on('value',s=>cb(s.val()),e=>{if(onErr)onErr(e);else console.warn('[FB] read',path,e);});FB._subs.push(r);},
   subPlans(ym){
     if(S._subYms.includes(ym))return;S._subYms.push(ym);
     this._on('calapp/plans/'+ym,v=>{S.plans[ym]=v||{};
       if(shEditing()){PEND.day=true;return;}
       refetchCal();if(ymOf(S.selDate)===ym)rDay();});
   },
-  putPlan(p){FB.db.ref('calapp/plans/'+ymOf(p.date)+'/'+p.id).set(p).catch(fbErr);},
-  delPlan(ym,id){FB.db.ref('calapp/plans/'+ym+'/'+id).remove().catch(fbErr);},
+  putPlan(p){
+    const path=(p.recur&&p.recur.f)?'calapp/recur/'+p.id:'calapp/plans/'+ymOf(p.date)+'/'+p.id;
+    FB.db.ref(path).set(p).catch(fbErr);},
+  delPlan(ym,id){
+    const path=S.recur[id]?'calapp/recur/'+id:'calapp/plans/'+ym+'/'+id;
+    FB.db.ref(path).remove().catch(fbErr);},
   movePlan(p,oldYm){const u={};u['calapp/plans/'+oldYm+'/'+p.id]=null;u['calapp/plans/'+ymOf(p.date)+'/'+p.id]=p;FB.db.ref().update(u).catch(fbErr);},
   putOrg(org){FB.db.ref('calapp/org').set(org).catch(fbErr);},
+  putPerson(id,p){const r=FB.db.ref('calapp/people/'+id);(p?r.set(p):r.remove()).catch(fbErr);},
   putTask(mid,iid,item){const r=FB.db.ref('calapp/tasks/'+mid+'/'+iid);(item?r.set(item):r.remove()).catch(fbErr);},
   putCfg(k,v){FB.db.ref('calapp/cfg/'+k).set(v).catch(fbErr);},
   bindShared(){
-    this._on('calapp/org',v=>{S.org=(v&&v.teams)?v:{teams:[]};normOrg(S.org);
+    this._on('calapp/recur',v=>{S.recur=v||{};
+      if(shEditing()){PEND.day=true;return;}
+      refetchCal();rDay();rWidget();});
+    this._on('calapp/org',v=>{S.org=v||{teams:[],regions:[]};normOrg(S.org);
       if(shEditing()){PEND.org=true;PEND.tasks=true;return;}
       rOrg();rTasks();});
     this._on('calapp/tasks',v=>{S.tasks=v||{};
       if(shEditing()){PEND.tasks=true;return;}
       rTasks();});
+    this._on('calapp/people',v=>{S.people=v||{};
+      if(shEditing()){PEND.org=true;PEND.tasks=true;return;}
+      rOrg();rTasks();});
+    /* 하자처리 현황과 공용인 users 노드 — 계정 목록을 그대로 가져온다.
+       규칙상 읽기가 막히면(관리자 전용 등) 조용히 수동 명부로 대체한다. */
+    this._on('users',v=>{S.accounts=v||{};S.acctDenied=false;
+      if(shEditing()){PEND.org=true;PEND.tasks=true;return;}
+      rOrg();rTasks();rFilter();},
+      e=>{S.accounts={};S.acctDenied=true;console.warn('[FB] users 읽기 권한 없음',e);rOrg();rTasks();});
     this._on('calapp/cfg',v=>{S.cfg=v||{};rCfg();});
   }
 };
 function fbErr(e){console.warn('[FB]',e);toast('저장 실패 — 권한 또는 네트워크를 확인하세요');}
 /* Firebase 배열 직렬화 보정: 빈 배열은 사라지고 객체로 돌아올 수 있다 */
-function normOrg(org){org.teams=arr(org.teams);org.teams.forEach(t=>{t.ggs=arr(t.ggs);t.ggs.forEach(g=>{g.members=arr(g.members);});});}
+function normOrg(org){org.teams=arr(org.teams);org.regions=arr(org.regions);}
+/* 구버전(팀→공구→담당자) 데이터를 팀·권역·계정 구조로 1회 이관 */
+function migrateOrg(d){
+  const t=(d.org&&d.org.teams)||[];
+  if(!t.some(x=>x&&x.ggs))return;
+  d.people=d.people||{};
+  t.forEach(tm=>arr(tm.ggs).forEach(g=>arr(g.members).forEach(m=>{
+    d.people[m.id]={name:m.name,email:m.email||'',team:tm.id,region:''};
+  })));
+  d.org={teams:t.map(x=>({id:x.id,name:x.name})),regions:[]};
+}
 function arr(v){if(Array.isArray(v))return v.filter(Boolean);if(v&&typeof v==='object')return Object.values(v).filter(Boolean);return[];}
 
 let store=LocalStore;
 
 /* ═══════════ Firebase 초기화 · 세션 감지 ═══════════ */
+/* ═══════════ 로그인 게이트 — 하자처리 현황과 동일한 절차 ═══════════ */
+const DEV_LOCAL=/[?&]local=1\b/.test(location.search);   // 계정 없이 둘러보는 로컬 모드(개발·시연용)
+function showCover(){const g=$('#coverGate');if(g)g.style.display='flex';}
+function hideCover(){const g=$('#coverGate');if(g)g.style.display='none';}
+function showGateForm(){const ld=$('#cvLoading');if(ld)ld.style.display='none';const bd=$('#cvBody');if(bd)bd.style.display='';showCover();}
+function fbMsg(t,ok){const e=$('#cvMsg');if(e){e.textContent=t||'';e.style.color=ok?'#7CFC9A':'#ff8a80';}}
+function fbCreds(){return{email:($('#fbEmail')||{}).value||'',pw:($('#fbPw')||{}).value||''};}
+function fbAuthErr(e){
+  const c=(e&&e.code)||'';
+  return{
+    'auth/invalid-credential':'이메일 또는 비밀번호가 올바르지 않습니다',
+    'auth/wrong-password':'비밀번호가 올바르지 않습니다',
+    'auth/user-not-found':'가입되지 않은 계정입니다 · [신규 가입]을 눌러주세요',
+    'auth/invalid-email':'이메일 형식이 올바르지 않습니다',
+    'auth/email-already-in-use':'이미 가입된 계정입니다 · 로그인하세요',
+    'auth/too-many-requests':'시도가 많습니다 · 잠시 후 다시 시도하세요',
+    'auth/network-request-failed':'네트워크 오류 · 사내망에서 Firebase 접속이 허용되는지 확인하세요',
+    'auth/weak-password':'비밀번호는 6자 이상이어야 합니다',
+    'auth/operation-not-allowed':'이메일/비밀번호 로그인이 콘솔에서 활성화되지 않았습니다'
+  }[c]||('오류: '+((e&&e.message)||c||'알 수 없음'));
+}
+/* 로그인·가입 공통 검증 — 통과하면 {email,pw}, 아니면 null(메시지는 여기서 띄운다) */
+function fbValidCreds(verb){
+  if(!FB.auth){fbMsg('네트워크에 연결할 수 없습니다.');return null;}
+  const c=fbCreds(),email=c.email.trim().toLowerCase();
+  if(!fbDomainOk(email)){fbMsg('@hdec.co.kr 계정만 '+verb+'할 수 있습니다');return null;}
+  if((c.pw||'').length<6){fbMsg('비밀번호는 6자 이상이어야 합니다');return null;}
+  return{email,pw:c.pw};
+}
+async function fbDoLogin(){
+  const c=fbValidCreds('사용');if(!c)return;
+  const email=c.email;
+  fbMsg('로그인 중…',true);
+  clearTimeout(FB._watch);
+  FB._watch=setTimeout(()=>{if(!S.live)fbMsg('로그인 처리가 지연되고 있습니다 · 새로고침(F5) 후 다시 시도해 주세요.');},9000);
+  try{
+    await FB.auth.signInWithEmailAndPassword(email,c.pw);
+    /* 가입 직후엔 이미 같은 계정으로 로그인돼 있어 onAuthStateChanged가 다시 울리지 않는다 —
+       reload로 emailVerified를 최신화한 뒤 진입 판정을 직접 호출한다. */
+    const u=FB.auth.currentUser;
+    if(u){try{await u.reload();}catch(e){}onAuth(FB.auth.currentUser);}
+  }catch(e){clearTimeout(FB._watch);fbMsg(fbAuthErr(e));}
+}
+async function fbDoSignup(){
+  const c=fbValidCreds('가입');if(!c)return;
+  const email=c.email;
+  fbMsg('가입 처리 중…',true);
+  try{
+    const cred=await FB.auth.createUserWithEmailAndPassword(email,c.pw);
+    try{await cred.user.sendEmailVerification();}catch(e){}
+    fbMsg('인증메일을 보냈습니다. 메일의 링크를 클릭한 뒤 [로그인]을 눌러주세요.',true);
+  }catch(e){fbMsg(fbAuthErr(e));}
+}
+async function fbDoResend(){
+  if(!FB.auth||!FB.auth.currentUser){fbMsg('먼저 로그인 또는 가입을 진행하세요');return;}
+  try{await FB.auth.currentUser.sendEmailVerification();fbMsg('인증메일을 다시 보냈습니다. 받은 메일의 링크를 클릭하세요.',true);}
+  catch(e){fbMsg(fbAuthErr(e));}
+}
+/* 역할 해석 — users/{uid}. 최초 로그인 시 본인을 viewer로 자기 등록(하자처리 현황과 동일 규칙) */
+async function resolveRole(user){
+  const uid=user.uid,email=String(user.email||'').toLowerCase();
+  const ref=FB.db.ref('users/'+uid);
+  let rec=null;
+  try{rec=(await ref.once('value')).val();}catch(e){console.warn('[FB] role read',e);}
+  if(!rec){
+    rec={email,role:'viewer',createdAt:Date.now(),lastSeen:Date.now()};
+    try{await ref.set(rec);}catch(e){console.warn('[FB] self-register',e);}
+  }else{
+    try{await ref.child('lastSeen').set(Date.now());}catch(e){}
+    if(rec.email!==email){try{await ref.child('email').set(email);}catch(e){}}
+  }
+  FB.userRec=rec;
+  const r=rec&&rec.role;
+  return(r==='editor'||r==='viewer'||r==='blocked')?r:'viewer';
+}
+async function onAuth(user){
+  clearTimeout(FB._watch);
+  if(!user){exitLive();showGateForm();return;}
+  if(!fbDomainOk(user.email)){showGateForm();fbMsg('@hdec.co.kr 계정만 접근할 수 있습니다.');try{FB.auth.signOut();}catch(e){}return;}
+  if(!user.emailVerified){
+    showGateForm();
+    fbMsg('이메일 인증이 필요합니다. 받은 인증메일의 링크를 클릭한 뒤 [로그인]을 다시 누르세요. (메일이 없으면 [인증메일 재발송])');
+    return;
+  }
+  const role=await resolveRole(user);
+  if(role==='blocked'){showGateForm();fbMsg('이 계정은 접근이 차단되었습니다. 관리자에게 문의하세요.');return;}
+  S.role=role;
+  enterLive(user);
+  hideCover();
+}
+function acctNick(){
+  const u=S.user;if(!u)return'';
+  return String(u.displayName||(FB.userRec&&FB.userRec.name)||String(u.email||'').split('@')[0]||'').trim();
+}
+function isEditor(){return !S.live||S.role==='editor';}   /* 로컬 모드는 제한 없음 */
+function denyEdit(){toast('보기 전용 · 변경은 관리자만 가능');return false;}
+function roleLabel(r){return r==='editor'?'관리자':(r==='blocked'?'차단':'사용자');}
+function openAcctModal(){
+  const u=S.user;if(!u){toast('로그인이 필요합니다');return;}
+  const role=S.role||'viewer';
+  let last='';try{if(u.metadata&&u.metadata.lastSignInTime)last=new Date(u.metadata.lastSignInTime).toLocaleString('ko-KR');}catch(e){}
+  openModal('계정',`
+    <div class="acct-head">
+      <div class="acct-av"><svg viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M12 13c-3.9 0-7 2.4-7 5.4 0 .9.5 1.6 1.6 1.6h10.8c1.1 0 1.6-.7 1.6-1.6 0-3-3.1-5.4-7-5.4z"/></svg></div>
+      <div style="min-width:0;flex:1">
+        <div class="acct-mail">${esc(u.email||'')}</div>
+        <span class="acct-rolebadge ${role==='editor'?'r-editor':'r-viewer'}">${esc(roleLabel(role))}</span>
+      </div>
+    </div>
+    <div class="acct-sep"></div>
+    <label class="il" for="acctName">이름 (닉네임)</label>
+    <div class="acct-row">
+      <input class="inp" id="acctName" maxlength="60" value="${esc(acctNick())}" placeholder="표시할 이름" style="flex:1">
+      <button class="acct-btn acct-btn-primary" data-act="acct.saveName">저장</button>
+    </div>
+    <div class="acct-sep"></div>
+    <label class="il">비밀번호 변경</label>
+    <input class="inp acct-gap" id="acctPwCur" type="password" autocomplete="current-password" placeholder="현재 비밀번호">
+    <input class="inp acct-gap" id="acctPwNew" type="password" autocomplete="new-password" placeholder="새 비밀번호 (6자 이상)">
+    <input class="inp acct-gap" id="acctPwNew2" type="password" autocomplete="new-password" placeholder="새 비밀번호 확인">
+    <button class="acct-btn acct-btn-primary acct-btn-full" data-act="acct.changePw">비밀번호 변경</button>
+    ${last?'<div class="acct-last">마지막 로그인 · '+esc(last)+'</div>':''}`,
+    '<button class="acct-btn acct-btn-danger" data-act="acct.signout" style="margin-right:auto">로그아웃</button><button class="acct-btn acct-btn-ghost" data-act="modal.close">닫기</button>');
+  MODAL_CB={type:'acct'};
+}
+async function acctSaveName(){
+  const inp=$('#acctName');if(!inp)return;
+  const name=inp.value.trim().slice(0,60);
+  const u=FB.auth&&FB.auth.currentUser;if(!u){toast('로그인이 필요합니다');return;}
+  try{await u.updateProfile({displayName:name});}catch(e){toast('이름 저장 실패 · '+(e.message||e));return;}
+  try{await FB.db.ref('users/'+u.uid+'/name').set(name);}catch(e){}
+  S.user=u;if(FB.userRec)FB.userRec.name=name;
+  rAcct();toast('이름이 저장되었습니다');
+}
+async function acctChangePw(){
+  const u=FB.auth&&FB.auth.currentUser;if(!u){toast('로그인이 필요합니다');return;}
+  const cur=($('#acctPwCur')||{}).value||'',n1=($('#acctPwNew')||{}).value||'',n2=($('#acctPwNew2')||{}).value||'';
+  if(!cur){toast('현재 비밀번호를 입력하세요');return;}
+  if(n1.length<6){toast('새 비밀번호는 6자 이상이어야 합니다');return;}
+  if(n1!==n2){toast('새 비밀번호 확인이 일치하지 않습니다');return;}
+  if(n1===cur){toast('현재와 다른 비밀번호를 사용하세요');return;}
+  try{
+    const cred=firebase.auth.EmailAuthProvider.credential(u.email,cur);
+    await u.reauthenticateWithCredential(cred);
+    await u.updatePassword(n1);
+    ['#acctPwCur','#acctPwNew','#acctPwNew2'].forEach(id=>{const e=$(id);if(e)e.value='';});
+    toast('비밀번호 변경됨');
+  }catch(e){toast(fbAuthErr(e));}
+}
+function acctSignout(){
+  if(!confirm('로그아웃하시겠습니까?'))return;
+  closeModal();
+  try{FB.auth.signOut();}catch(e){toast('로그아웃 실패');}
+}
+
 function fbInit(){
   if(typeof firebase==='undefined'||!firebase.initializeApp)return;
   try{
@@ -137,19 +348,17 @@ function fbInit(){
       catch(e){console.warn('[FB] appCheck',e);}
     }
     FB.auth=firebase.auth();FB.db=firebase.database();
-    FB.auth.onAuthStateChanged(u=>{
-      if(u&&u.emailVerified&&fbDomainOk(u.email))enterLive(u);
-      else exitLive();
-    });
-  }catch(e){console.warn('[FB] init',e);}
+    FB.auth.onAuthStateChanged(onAuth);
+  }catch(e){console.warn('[FB] init',e);showGateForm();fbMsg('네트워크에 연결할 수 없습니다.');}
 }
 function enterLive(u){
   if(S.live)return;
+  clearTimeout(FB._boot);clearTimeout(FB._watch);hideCover();
   S.live=true;S.user=u;store=FbStore;
   S.plans={};S._subYms=[];
   FbStore.bindShared();
   subVisibleMonths();
-  rSync();rAcct();
+  rAcct();
   toast('팀 실시간 공유 모드로 연결됨');
 }
 function exitLive(){
@@ -158,59 +367,131 @@ function exitLive(){
   FB._subs.forEach(r=>{try{r.off();}catch(e){}});FB._subs=[];
   store=LocalStore;LocalStore.init();
   S.plans={};S._subYms=[];
-  subVisibleMonths();rAll();rSync();rAcct();
+  subVisibleMonths();rAll();rAcct();
   if(was)toast('로컬 저장 모드로 전환됨');
 }
-function rSync(){
-  const b=$('#syncBadge'),t=$('#syncTxt');
-  b.classList.toggle('on',S.live);
-  t.textContent=S.live?'실시간 공유':'로컬 저장';
-  const st=$('#setSyncState'),sd=$('#setSyncDesc');
-  if(st){st.textContent=S.live?'팀 실시간 공유 모드':'로컬 저장 모드';
-    sd.textContent=S.live?'모든 변경이 즉시 팀 전체에 공유됩니다. ('+(S.user?S.user.email:'')+')':'로그인 전에는 이 브라우저에만 저장됩니다. 로그인하면 팀 실시간 공유로 전환됩니다.';}
-}
 function rAcct(){
-  $('#sbAcctName').textContent=S.user?(S.user.email||'').split('@')[0]:'로그인 전';
-  $('#sbAcctSub').textContent=S.user?'실시간 공유':'로컬 저장';
+  const nm=$('#sbAcctName'),rb=$('#sbAcctRole');
+  if(!nm)return;
+  if(!S.user){nm.textContent=DEV_LOCAL?'로컬 모드':'로그인 전';nm.title='';if(rb){rb.textContent='';rb.className='sb-acct-role';}return;}
+  const nick=acctNick()||'사용자';
+  nm.textContent=nick;nm.title=nick;
+  if(rb){const role=S.role||'viewer';rb.textContent=roleLabel(role);rb.className='sb-acct-role '+(role==='editor'?'r-editor':'r-viewer');}
 }
 
 /* ═══════════ 달력 (FullCalendar) ═══════════ */
 let CAL=null;
 function calInit(){
   CAL=new FullCalendar.Calendar($('#fcal'),{
-    initialView:'dayGridMonth',
+    initialView:S.calView,
     initialDate:S.selDate,
     firstDay:0,fixedWeekCount:false,showNonCurrentDates:true,
-    headerToolbar:false,height:'100%',dayMaxEvents:true,
-    moreLinkContent:a=>'+'+a.num+'건',
+    headerToolbar:false,height:'100%',dayMaxEvents:false,
     dayHeaderContent:a=>DOW[a.date.getDay()],
     dayCellClassNames:a=>{const o=holOf(dstr(a.date));return o&&o.h?['hol']:[];},
     dayCellContent:a=>{const ds=dstr(a.date),o=holOf(ds);
-      return{html:'<span>'+a.date.getDate()+'</span>'+(o?'<span class="dhol'+(o.h?'':' anv')+'">'+esc(o.n)+'</span>':'')};},
+      return{html:(o?'<span class="dhol'+(o.h?'':' anv')+'">'+esc(o.n)+'</span>':'')+'<span class="dnum">'+a.date.getDate()+'</span>'};},
     events:(info,ok)=>ok(buildEvents()),
     dateClick:info=>{selDate(info.dateStr);},
-    eventClick:info=>{info.jsEvent.preventDefault();const p=findPlan(info.event.id);if(p)openPlanModal(p);},
-    eventDrop:info=>{const p=findPlan(info.event.id);if(!p)return;
-      const oldYm=ymOf(p.date);p.date=info.event.startStr;p.updatedAt=Date.now();
+    eventClick:info=>{info.jsEvent.preventDefault();
+      const t=info.event.extendedProps.task;
+      if(t){go('tasks');S.tk.m=null;setTimeout(()=>toast('주요업무 현황에서 확인하세요'),50);return;}
+      const p=findPlan(info.event.extendedProps.pid);
+      if(p)openPlanModal(p,null,null,info.event.extendedProps.occ);},
+    eventDrop:info=>{const p=findPlan(info.event.extendedProps.pid);if(!p||(p.recur&&p.recur.f)){info.revert();return;}
+      const oldYm=ymOf(p.date);const ns=info.event.startStr.slice(0,10);
+      if(p.end)p.end=addDays(p.end,daysBetween(p.date,ns));
+      p.date=ns;p.updatedAt=Date.now();
       if(oldYm===ymOf(p.date))store.putPlan(p);else store.movePlan(p,oldYm);
       if(!S.live){refetchCal();}
       selDate(p.date);toast('플랜 날짜를 옮겼습니다');},
     editable:true,eventDurationEditable:false,
+    selectable:true,selectMirror:true,
+    /* 하루만 클릭한 건 날짜 선택으로만 처리하고(dateClick), 이틀 이상 끌었을 때만 기간 플랜 작성 */
+    select:info=>{
+      const a=info.startStr.slice(0,10),b=addDays(info.endStr.slice(0,10),-1);
+      CAL.unselect();
+      if(b<=a)return;
+      selDate(a);openPlanModal(null,a,b);},
+    nowIndicator:true,slotMinTime:'06:00:00',slotMaxTime:'22:00:00',allDaySlot:true,
+    views:{timeGridWeek:{dayHeaderContent:a=>({html:'<div style="font-size:11px;font-weight:700;color:var(--lbl2)">'+DOW[a.date.getDay()]+'</div><div style="font-size:13px;font-weight:800">'+a.date.getDate()+'</div>'})}},
     datesSet:()=>{rMonTitle();subVisibleMonths();markSel();}
   });
   CAL.render();
   markSel();
 }
+/* 반복 일정 전개 — 화면에 보이는 구간(from~to)의 발생일만 만든다 */
+function recurDates(p,from,to){
+  const out=[];const f=p.recur&&p.recur.f;if(!f)return out;
+  const until=(p.recur.until||'').trim();
+  let d=p.date,guard=0;
+  const step=x=>f==='w'?addDays(x,7):f==='2w'?addDays(x,14):f==='m'?addMonths(x,1):addMonths(x,12);
+  /* 시작이 화면보다 한참 이르면 빠르게 근처로 점프 */
+  if(f==='w'||f==='2w'){
+    const per=f==='w'?7:14,gap=daysBetween(d,from);
+    if(gap>per)d=addDays(d,Math.floor(gap/per)*per);
+  }else if(f==='m'||f==='y'){
+    const per=f==='m'?1:12,gapM=(toDate(from).getFullYear()-toDate(d).getFullYear())*12+(toDate(from).getMonth()-toDate(d).getMonth());
+    if(gapM>per)d=addMonths(d,Math.floor(gapM/per)*per);
+  }
+  while(d<from&&guard++<400)d=step(d);
+  while(d<=to&&guard++<400){
+    if(until&&d>until)break;
+    if(!(p.skipOn&&p.skipOn[d]))out.push(d);
+    d=step(d);
+  }
+  return out;
+}
+function planEvent(p,date){
+  const span=p.end?daysBetween(p.date,p.end):0;
+  const done=p.recur&&p.recur.f?!!(p.doneOn&&p.doneOn[date]):!!p.done;
+  const own=p.owner?ownName(p.owner):'';
+  return{
+    id:p.id+'@'+date,
+    title:(p.time?fmtTime(p.time)+' ':'')+p.title+(own?' · '+own:''),
+    start:date,end:span>0?addDays(date,span+1):undefined,allDay:!p.time||!!p.end,
+    backgroundColor:planColor(p),borderColor:'transparent',textColor:'#fff',
+    classNames:done?['done']:[],
+    extendedProps:{pid:p.id,occ:date,recur:!!(p.recur&&p.recur.f)},
+    editable:!(p.recur&&p.recur.f)
+  };
+}
+function visibleRange(){
+  if(!CAL)return[S.selDate,S.selDate];
+  const a=CAL.view.activeStart,b=new Date(CAL.view.activeEnd);b.setDate(b.getDate()-1);
+  return[dstr(a),dstr(b)];
+}
+function ownOk(p){return S.filter.own==='*'||(p.owner||'')===S.filter.own;}
 function buildEvents(){
-  const evs=[];
-  Object.keys(S.plans).forEach(ym=>{const m=S.plans[ym]||{};Object.keys(m).forEach(id=>{const p=m[id];if(!p||!p.date)return;
-    evs.push({id:p.id,title:(p.time?fmtTime(p.time)+' ':'')+p.title,start:p.date,allDay:true,
-      backgroundColor:p.color||PAL[0],borderColor:'transparent',textColor:'#fff',
-      classNames:p.done?['done']:[]});});});
+  const evs=[],[from,to]=visibleRange();
+  Object.keys(S.plans).forEach(ym=>{const m=S.plans[ym]||{};Object.keys(m).forEach(id=>{
+    const p=m[id];if(!p||!p.date||!ownOk(p))return;
+    evs.push(planEvent(p,p.date));});});
+  Object.keys(S.recur||{}).forEach(id=>{const p=S.recur[id];if(!p||!p.date||!ownOk(p))return;
+    recurDates(p,from,to).forEach(d=>evs.push(planEvent(p,d)));});
+  /* 기한이 있는 미완료 업무 — 읽기 전용으로 늘 함께 얹는다 */
+  const today=todayStr();
+  Object.keys(S.tasks||{}).forEach(sid=>{
+    const items=S.tasks[sid]||{};
+    Object.keys(items).forEach(iid=>{
+      const it=items[iid];
+      if(!it||!it.due||stOf(it.st)===2)return;
+      if(it.due<from||it.due>to)return;
+      const who=subjectName(sid);
+      evs.push({id:'task:'+sid+':'+iid,title:'⏳ '+it.text.slice(0,28)+(who?' · '+who:''),
+        start:it.due,allDay:true,display:'block',editable:false,
+        classNames:it.due<today?['duev','over']:['duev'],
+        extendedProps:{task:{sid,iid}}});
+    });
+  });
   return evs;
 }
+function subjectName(sid){
+  const t=(S.org.teams||[]).find(x=>x.id===sid);if(t)return t.name;
+  const p=roster().find(x=>x.id===sid);return p?p.name:'';
+}
 function refetchCal(){if(CAL)CAL.refetchEvents();}
-function findPlan(id){for(const ym in S.plans){if(S.plans[ym]&&S.plans[ym][id])return S.plans[ym][id];}return null;}
+function findPlan(id){if(S.recur&&S.recur[id])return S.recur[id];for(const ym in S.plans){if(S.plans[ym]&&S.plans[ym][id])return S.plans[ym][id];}return null;}
 function subVisibleMonths(){
   if(!CAL)return;
   const c=CAL.view.currentStart;
@@ -219,7 +500,12 @@ function subVisibleMonths(){
 }
 function rMonTitle(){
   if(!CAL)return;const c=CAL.view.currentStart;
-  $('#calMonTxt').textContent=(c.getMonth()+1)+'월';
+  if(S.calView==='timeGridWeek'){
+    const e=new Date(CAL.view.activeEnd);e.setDate(e.getDate()-1);
+    $('#calMonTxt').textContent=(c.getMonth()+1)+'월 '+c.getDate()+'일 – '+(e.getMonth()+1)+'월 '+e.getDate()+'일';
+  }else{
+    $('#calMonTxt').textContent=(c.getMonth()+1)+'월';
+  }
   $('#calYearTxt').textContent=c.getFullYear();
 }
 function markSel(){
@@ -229,41 +515,60 @@ function markSel(){
 }
 function selDate(ds){
   S.selDate=ds;
+  setTimeout(rWidget,0);
   if(CAL&&ymOf(ds)!==CAL.view.currentStart.getFullYear()+'-'+pad(CAL.view.currentStart.getMonth()+1))CAL.gotoDate(ds);
   markSel();rDay();
 }
 
 /* ───── 우측 일자 패널 ───── */
 function dayPlans(ds){
+  const out=[];
   const m=S.plans[ymOf(ds)]||{};
-  return Object.values(m).filter(p=>p&&p.date===ds)
-    .sort((a,b)=>(a.time||'99')<(b.time||'99')?-1:(a.time||'99')>(b.time||'99')?1:(a.createdAt||0)-(b.createdAt||0));
+  Object.values(m).forEach(p=>{
+    if(!p||!ownOk(p))return;
+    const last=p.end||p.date;
+    if(ds>=p.date&&ds<=last)out.push({p,occ:p.date});
+  });
+  /* 기간 일정이 이전 달에서 시작한 경우도 포함 */
+  const prev=S.plans[ymOf(addDays(ds,-31))]||{};
+  Object.values(prev).forEach(p=>{if(!p||!p.end||!ownOk(p))return;
+    if(ds>=p.date&&ds<=p.end&&!out.some(x=>x.p.id===p.id))out.push({p,occ:p.date});});
+  Object.values(S.recur||{}).forEach(p=>{
+    if(!p||!ownOk(p))return;
+    if(recurDates(p,ds,ds).length)out.push({p,occ:ds});
+  });
+  return out.sort((a,b)=>((a.p.time||'99')<(b.p.time||'99')?-1:(a.p.time||'99')>(b.p.time||'99')?1:(a.p.createdAt||0)-(b.p.createdAt||0)));
 }
+function isDone(p,occ){return (p.recur&&p.recur.f)?!!(p.doneOn&&p.doneOn[occ]):!!p.done;}
 function rDay(){
   const ds=S.selDate,d=toDate(ds),ps=dayPlans(ds);
   const ho=holOf(ds);
   $('#dpDow').textContent=d.getFullYear()+'년 · '+DOW[d.getDay()]+'요일'+(ho?' · '+ho.n:'')+(ds===todayStr()?' · 오늘':'');
   $('#dpDate').textContent=(d.getMonth()+1)+'월 '+d.getDate()+'일';
-  $('#dpCnt').textContent=ps.length?'플랜 '+ps.length+'건'+(ps.filter(p=>p.remind).length?' · 리마인드 '+ps.filter(p=>p.remind).length+'건':''):'등록된 플랜 없음';
+  $('#dpCnt').textContent=ps.length?'플랜 '+ps.length+'건'+(ps.filter(x=>x.p.remind).length?' · 리마인드 '+ps.filter(x=>x.p.remind).length+'건':''):'등록된 플랜 없음';
   const box=$('#dpList');
   if(!ps.length){box.innerHTML='<div class="dp-empty">이 날짜에 등록된 플랜이 없습니다.</div>';return;}
-  box.innerHTML=ps.map(p=>`
-    <div class="plan${p.done?' done':''}" data-pid="${esc(p.id)}">
-      <div class="pc" style="background:${esc(p.color||PAL[0])}"></div>
-      <div class="plan-main" data-act="plan.edit" data-pid="${esc(p.id)}">
+  box.innerHTML=ps.map(({p,occ})=>{
+    const done=isDone(p,occ),rep=p.recur&&p.recur.f,span=p.end&&p.end!==p.date;
+    return `
+    <div class="plan${done?' done':''}" data-pid="${esc(p.id)}">
+      <div class="pc" style="background:${esc(planColor(p))}"></div>
+      <div class="plan-main" data-act="plan.edit" data-pid="${esc(p.id)}" data-occ="${esc(occ)}">
         <div class="plan-t">${esc(p.title)}</div>
+        ${p.body?'<div class="plan-body">'+esc(p.body)+'</div>':''}
         <div class="plan-meta">
           ${p.time?'<span class="pm-chip">'+esc(fmtTime(p.time))+'</span>':''}
+          ${span?'<span class="pm-chip">'+(toDate(p.date).getMonth()+1)+'/'+toDate(p.date).getDate()+'–'+(toDate(p.end).getMonth()+1)+'/'+toDate(p.end).getDate()+'</span>':''}
+          ${rep?'<span class="pm-chip rep">'+esc(REC_LBL[p.recur.f])+'</span>':''}
+          ${p.owner?'<span class="pm-chip own"><span class="dot-c" style="background:'+esc(ownColor(p.owner))+'"></span>'+esc(ownName(p.owner))+'</span>':''}
           ${p.remind?'<span class="pm-chip remind"><svg class="icn"><use href="#i-bell"></use></svg>리마인드</span>':''}
-          ${p.by?'<span>'+esc(p.by)+'</span>':''}
         </div>
-        ${p.body?'<div class="plan-body">'+esc(p.body)+'</div>':''}
       </div>
       <div class="plan-side">
-        <button class="p-ico${p.done?' on':''}" data-act="plan.done" data-pid="${esc(p.id)}" aria-label="완료 표시" style="${p.done?'color:var(--gn)':''}"><svg class="icn"><use href="#i-check"></use></svg></button>
+        <button class="p-ico${done?' on':''}" data-act="plan.done" data-pid="${esc(p.id)}" data-occ="${esc(occ)}" aria-label="완료 표시" style="${done?'color:var(--gn)':''}"><svg class="icn"><use href="#i-check"></use></svg></button>
         <button class="p-ico${p.remind?' on':''}" data-act="plan.remind" data-pid="${esc(p.id)}" aria-label="리마인드 전환"><svg class="icn"><use href="#i-bell"></use></svg></button>
       </div>
-    </div>`).join('');
+    </div>`;}).join('');
 }
 
 /* ───── 플랜 작성·수정 모달 ───── */
@@ -273,25 +578,41 @@ function openModal(title,bodyHTML,footHTML){
   $('#mo').classList.add('open');
 }
 function closeModal(){$('#mo').classList.remove('open');MODAL_CB=null;}
-function openPlanModal(p){
+function openPlanModal(p,startD,endD,occ){
   const isNew=!p;
-  const d=p||{id:uid(),date:S.selDate,title:'',time:'',body:'',color:PAL[0],remind:false,done:false,createdAt:Date.now()};
-  const dd=toDate(d.date);
+  const d=p||{id:uid(),date:startD||S.selDate,end:endD||'',title:'',time:'',body:'',color:'auto',owner:'',
+    remind:false,done:false,recur:{f:'',until:''},createdAt:Date.now()};
+  const rc=(d.recur&&d.recur.f)||'';
+  const people=roster();
   openModal(isNew?'플랜 추가':'플랜 수정',`
-    <div class="frow"><label>날짜</label><input type="date" class="inp inp-sm" id="pfDate" value="${esc(d.date)}"></div>
+    <div class="frow2">
+      <div class="frow"><label>시작일</label><input type="date" class="inp inp-sm" id="pfDate" value="${esc(d.date)}"></div>
+      <div class="frow"><label>종료일 <span style="font-weight:500;color:var(--lbl3)">여러 날이면 지정</span></label><input type="date" class="inp inp-sm" id="pfEnd" value="${esc(d.end||'')}"></div>
+    </div>
     <div class="frow"><label>제목</label><input class="inp" id="pfTitle" maxlength="80" placeholder="무엇을 하나요?" value="${esc(d.title)}"></div>
     <div class="frow2">
       <div class="frow"><label>시간 (선택)</label><input type="time" class="inp inp-sm" id="pfTime" value="${esc(d.time||'')}"></div>
-      <div class="frow"><label>색</label><div class="pal" id="pfPal">${PAL.map(c=>'<div class="pal-c'+(c===(d.color||PAL[0])?' sel':'')+'" data-c="'+c+'" style="background:'+c+'"></div>').join('')}</div></div>
+      <div class="frow"><label>담당자</label><select class="inp inp-sm" id="pfOwner"><option value="">지정 안 함</option>${people.map(x=>'<option value="'+esc(x.id)+'"'+(x.id===d.owner?' selected':'')+'>'+esc(x.name)+'</option>').join('')}</select></div>
     </div>
+    <div class="frow2">
+      <div class="frow"><label>반복</label><select class="inp inp-sm" id="pfRec">${Object.keys(REC_LBL).map(k=>'<option value="'+k+'"'+(k===rc?' selected':'')+'>'+REC_LBL[k]+'</option>').join('')}</select></div>
+      <div class="frow" id="pfUntilRow" style="${rc?'':'display:none'}"><label>반복 종료 (선택)</label><input type="date" class="inp inp-sm" id="pfUntil" value="${esc((d.recur&&d.recur.until)||'')}"></div>
+    </div>
+    <div class="frow"><label>색 <span style="font-weight:500;color:var(--lbl3)">첫 번째는 담당자 색</span></label>
+      <div class="pal" id="pfPal">
+        <div class="pal-c${(!d.color||d.color==='auto')?' sel':''}" data-c="auto" style="background:linear-gradient(135deg,#3E71D2,#16A34A,#D97706)" title="담당자 색"></div>
+        ${PAL.map(c=>'<div class="pal-c'+(c===d.color?' sel':'')+'" data-c="'+c+'" style="background:'+c+'"></div>').join('')}
+      </div></div>
     <div class="frow"><label>내용 (선택)</label><textarea class="inp" id="pfBody" maxlength="500" placeholder="메모·세부 내용">${esc(d.body||'')}</textarea></div>
     <label class="chk-row"><input type="checkbox" id="pfRemind"${d.remind?' checked':''}> 당일 아침 팀원에게 리마인드 메일 발송</label>
   `,`
-    ${isNew?'':'<button class="btn btn-danger bsm" data-act="plan.del" data-pid="'+esc(d.id)+'" data-ym="'+esc(ymOf(d.date))+'" style="margin-right:auto">삭제</button>'}
+    ${isNew?'':'<button class="btn btn-danger bsm" data-act="plan.del" data-pid="'+esc(d.id)+'" data-ym="'+esc(ymOf(d.date))+'" data-occ="'+esc(occ||'')+'" style="margin-right:auto">삭제</button>'}
     <button class="btn bg2 bsm" data-act="modal.close">취소</button>
     <button class="btn bp bsm" data-act="plan.save">저장</button>
   `);
-  MODAL_CB={type:'plan',orig:isNew?null:{...d},draft:d};
+  MODAL_CB={type:'plan',orig:isNew?null:{...d},draft:d,occ:occ||''};
+  const rec=$('#pfRec');
+  if(rec)rec.addEventListener('change',()=>{$('#pfUntilRow').style.display=rec.value?'':'none';});
   setTimeout(()=>{const t=$('#pfTitle');if(t)t.focus();},50);
 }
 function savePlanFromModal(){
@@ -299,74 +620,124 @@ function savePlanFromModal(){
   const title=($('#pfTitle').value||'').trim();
   if(!title){toast('제목을 입력하세요');$('#pfTitle').focus();return;}
   const date=$('#pfDate').value||S.selDate;
+  let end=($('#pfEnd').value||'').trim();
+  if(end&&end<date){toast('종료일이 시작일보다 빠릅니다');return;}
+  if(end===date)end='';
+  const f=$('#pfRec').value||'';
   const sel=$('#pfPal .pal-c.sel');
   const p={...cb.draft,
-    date,title,
+    date,end,title,
     time:$('#pfTime').value||'',
+    owner:$('#pfOwner').value||'',
     body:($('#pfBody').value||'').trim(),
-    color:sel?sel.dataset.c:PAL[0],
+    color:sel?sel.dataset.c:'auto',
+    recur:f?{f,until:($('#pfUntil').value||'')}:{f:'',until:''},
     remind:$('#pfRemind').checked,
     by:S.user?(S.user.email||'').split('@')[0]:(cb.draft.by||''),
     updatedAt:Date.now()};
-  const oldYm=cb.orig?ymOf(cb.orig.date):null;
-  if(oldYm&&oldYm!==ymOf(p.date))store.movePlan(p,oldYm);
-  else store.putPlan(p);
+  const wasRec=!!(cb.orig&&cb.orig.recur&&cb.orig.recur.f);
+  const nowRec=!!f;
+  if(cb.orig&&wasRec!==nowRec){
+    store.delPlan(ymOf(cb.orig.date),cb.orig.id);
+    store.putPlan(p);
+  }else{
+    const oldYm=cb.orig?ymOf(cb.orig.date):null;
+    if(!nowRec&&oldYm&&oldYm!==ymOf(p.date))store.movePlan(p,oldYm);
+    else store.putPlan(p);
+  }
   closeModal();
   selDate(p.date);
   if(!S.live){refetchCal();rDay();}
   toast(cb.orig?'플랜을 수정했습니다':'플랜을 추가했습니다');
 }
 
-/* ═══════════ 주요업무현황 — 팀 | 공구 | 담당자 3열 ═══════════ */
-function allMembers(){
-  const out=[];
-  (S.org.teams||[]).forEach(t=>(t.ggs||[]).forEach(g=>(g.members||[]).forEach(m=>out.push({...m,team:t.name,gg:g.name}))));
-  return out;
+/* ═══════════ 주요업무현황 — 팀 공통업무 | 담당자별 업무 (1:2) ═══════════ */
+/* 명부 = 로그인 계정(users, 하자처리 현황과 공용) + 이 앱의 팀·권역 배정(calapp/people) */
+function roster(){
+  const out={};
+  Object.keys(S.accounts||{}).forEach(uid=>{
+    const a=S.accounts[uid]||{};
+    if(a.role==='blocked')return;
+    out[uid]={id:uid,name:a.name||String(a.email||'').split('@')[0]||'이름없음',email:a.email||'',team:'',region:'',acct:true};
+  });
+  Object.keys(S.people||{}).forEach(id=>{
+    const p=S.people[id]||{};
+    out[id]={...(out[id]||{id,name:p.name||'이름없음',email:p.email||'',acct:false}),
+      team:p.team||'',region:p.region||'',
+      name:(out[id]&&out[id].acct)?out[id].name:(p.name||'이름없음')};
+  });
+  return Object.values(out).sort((a,b)=>String(a.name).localeCompare(String(b.name),'ko'));
 }
-/* 탭 선택 검증 — 삭제·변경돼도 항상 유효한 대상을 가리키게 */
 function tkSel(){
-  const teams=S.org.teams||[];
-  const team=teams.find(x=>x.id===S.tk.t)||teams[0]||null;S.tk.t=team?team.id:null;
-  const ggs=team?(team.ggs||[]):[];
-  const gg=ggs.find(x=>x.id===S.tk.g)||ggs[0]||null;S.tk.g=gg?gg.id:null;
-  const mems=gg?(gg.members||[]):[];
+  const teams=(S.org.teams||[]).filter(t=>t.name),regions=(S.org.regions||[]).filter(r=>r.name),all=roster();
+  const unassigned=all.filter(p=>!p.team||!teams.some(t=>t.id===p.team));
+  const tabs=teams.slice();
+  if(unassigned.length)tabs.push({id:'_none',name:'미배정'});
+  const team=tabs.find(x=>x.id===S.tk.t)||tabs[0]||null;S.tk.t=team?team.id:null;
+  let mems=team?(team.id==='_none'?unassigned:all.filter(p=>p.team===team.id)):[];
+  const regIds=[...new Set(mems.map(p=>p.region).filter(Boolean))];
+  const regs=regions.filter(r=>regIds.includes(r.id));
+  if(S.tk.r!=='*'&&!regs.some(r=>r.id===S.tk.r))S.tk.r='*';
+  if(S.tk.r!=='*')mems=mems.filter(p=>p.region===S.tk.r);
   const mem=mems.find(x=>x.id===S.tk.m)||mems[0]||null;S.tk.m=mem?mem.id:null;
-  return{teams,team,ggs,gg,mems,mem};
+  return{teams:tabs,team,regs,mems,mem,total:all.length};
 }
 function tkTabs(list,selId,lv){
   return '<div class="tabs">'+list.map(x=>'<span class="tab'+(x.id===selId?' act':'')+'" data-act="tk.tab" data-lv="'+lv+'" data-id="'+esc(x.id)+'">'+esc(x.name)+'</span>').join('')+'</div>';
 }
+function stOf(v){const n=Number(v);return (n===1||n===2||n===3)?n:0;}
+function dueInfo(due){
+  if(!due)return{cls:'none',txt:'기한'};
+  const n=daysBetween(todayStr(),due);
+  if(n<0)return{cls:'over',txt:'D+'+(-n)};
+  if(n===0)return{cls:'over',txt:'D-DAY'};
+  if(n<=3)return{cls:'soon',txt:'D-'+n};
+  return{cls:'',txt:'D-'+n};
+}
 function taskListHTML(sid){
   const items=S.tasks[sid]||{};
-  const ids=Object.keys(items).sort((a,b)=>(items[a].createdAt||0)-(items[b].createdAt||0));
-  if(!ids.length)return '<div class="tk-empty">등록된 업무가 없습니다.</div>';
-  return ids.map(iid=>{const it=items[iid];return `
-    <div class="tk-item s${it.st||0}" data-sid="${esc(sid)}" data-iid="${esc(iid)}">
-      <span class="tk-st s${it.st||0}" data-act="tk.st" data-sid="${esc(sid)}" data-iid="${esc(iid)}">${ST_LBL[it.st||0]}</span>
+  const all=Object.keys(items).sort((a,b)=>(items[a].createdAt||0)-(items[b].createdAt||0));
+  if(!all.length)return '<div class="tk-empty">등록된 업무가 없습니다.</div>';
+  /* 완료된 지 7일 넘은 항목은 접어 둔다 */
+  const cut=Date.now()-7*86400000;
+  const old=all.filter(iid=>stOf(items[iid].st)===2&&(items[iid].updatedAt||0)<cut);
+  const open=S.foldOpen[sid];
+  const shown=open?all:all.filter(iid=>!old.includes(iid));
+  const row=iid=>{
+    const it=items[iid],di=dueInfo(it.due),cn=Object.keys(it.comments||{}).length,st=stOf(it.st);
+    return `
+    <div class="tk-item s${st}" data-sid="${esc(sid)}" data-iid="${esc(iid)}">
+      <span class="tk-st s${st}" data-act="tk.st" data-sid="${esc(sid)}" data-iid="${esc(iid)}">${ST_LBL[st]}</span>
       <div class="tk-txt" data-act="tk.editable" data-sid="${esc(sid)}" data-iid="${esc(iid)}">${esc(it.text)}</div>
-      <span class="tk-time">${relTime(it.updatedAt)}</span>
+      <span class="due-chip ${di.cls}" data-act="tk.due" data-sid="${esc(sid)}" data-iid="${esc(iid)}" title="기한 설정">${esc(di.txt)}</span>
+      <button class="tk-ico${cn?' on':''}" data-act="tk.cmt" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="댓글" title="댓글">
+        <svg class="icn"><use href="#i-cmt"></use></svg>${cn?'<span style="font-size:9px;font-weight:800;margin-left:1px">'+cn+'</span>':''}</button>
+      <button class="tk-ico" data-act="tk.toPlan" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="일정으로 추가" title="일정으로 추가"><svg class="icn"><use href="#i-cal"></use></svg></button>
       <button class="tk-del" data-act="tk.del" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="삭제"><svg class="icn"><use href="#i-close"></use></svg></button>
-    </div>`;}).join('');
+    </div>`;};
+  return shown.map(row).join('')
+    +(old.length?`<div class="tk-fold" data-act="tk.fold" data-sid="${esc(sid)}">${open?'▲ 지난 완료 '+old.length+'건 접기':'▼ 지난 완료 '+old.length+'건 보기'}</div>`:'');
 }
-function tkCard(title,tabsHTML,sub,sid,emptyGuide){
+function tkCard(title,headHTML,sub,sid,emptyGuide){
   return `<div class="tkc">
     <div class="tkc-h"><div class="bar"></div><b>${esc(title)}</b>${sub?'<span>'+esc(sub)+'</span>':''}</div>
-    ${tabsHTML}
+    ${headHTML}
     ${sid?'<div class="tk-list">'+taskListHTML(sid)+'</div><button class="btn bo bxs tkc-add" data-act="tk.add" data-sid="'+esc(sid)+'"><svg class="icn"><use href="#i-plus"></use></svg> 업무 추가</button>'
         :'<div class="tk-empty">'+esc(emptyGuide)+'</div>'}
   </div>`;
 }
 function rTasks(){
   const root=$('#tkRoot');
-  const{teams,team,ggs,gg,mems,mem}=tkSel();
-  if(!teams.length){
-    root.innerHTML='<div class="tk-none">아직 조직 구성이 없습니다.<br>설정에서 팀 · 공구 · 담당자를 먼저 등록하세요.<br><button class="btn bp bsm" data-act="nav.go" data-view="settings">설정으로 이동</button></div>';
+  const{teams,team,regs,mems,mem,total}=tkSel();
+  if(!teams.length&&!total){
+    root.innerHTML='<div class="tk-none">아직 등록된 계정·팀이 없습니다.<br>설정에서 팀·권역을 만들고 계정에 배정하세요.<br><button class="btn bp bsm" data-act="nav.go" data-view="settings">설정으로 이동</button></div>';
     return;
   }
+  const regRow=regs.length?'<div class="reg-row"><span class="reg'+(S.tk.r==='*'?' act':'')+'" data-act="tk.tab" data-lv="r" data-id="*">전체 권역</span>'
+    +regs.map(r=>'<span class="reg'+(S.tk.r===r.id?' act':'')+'" data-act="tk.tab" data-lv="r" data-id="'+esc(r.id)+'">'+esc(r.name)+'</span>').join('')+'</div>':'';
   root.innerHTML='<div class="tk3">'
-    +tkCard('팀의 업무',tkTabs(teams,S.tk.t,'t'),null,team?team.id:null,'')
-    +tkCard('공구별 업무',ggs.length?tkTabs(ggs,S.tk.g,'g'):'',team?team.name:'',gg?gg.id:null,'설정에서 이 팀의 공구를 등록하세요.')
-    +tkCard('담당자별 업무',mems.length?tkTabs(mems,S.tk.m,'m'):'',gg?gg.name:'',mem?mem.id:null,'설정에서 이 공구의 담당자를 등록하세요.')
+    +tkCard('팀 공통업무',tkTabs(teams,S.tk.t,'t'),null,(team&&team.id!=='_none')?team.id:null,'팀을 먼저 등록하세요.')
+    +tkCard('담당자별 업무',regRow+(mems.length?tkTabs(mems,S.tk.m,'m'):''),team?team.name:'',mem?mem.id:null,'이 팀에 배정된 담당자가 없습니다. 설정에서 계정에 팀을 지정하세요.')
     +'</div>';
 }
 function tkStartEdit(el){
@@ -385,48 +756,46 @@ function tkCommit(el){
   const item={...(cur||{createdAt:Date.now()}),text:txt,st:cur?cur.st:0,updatedAt:Date.now()};
   store.putTask(mid,iid,item);
   if(!S.live)rTasks();
+  refetchCal();
 }
 
-/* ═══════════ 설정 — 조직 구성 편집 ═══════════ */
-function rOrg(){
-  const root=$('#orgRoot');
-  const teams=S.org.teams||[];
-  root.innerHTML=teams.length?teams.map(t=>`
-    <div class="org-team" data-tid="${esc(t.id)}">
-      <div class="org-th"><b>${esc(t.name)}</b>
-        <button class="p-ico" data-act="org.renTeam" data-tid="${esc(t.id)}" aria-label="팀 이름 변경"><svg class="icn"><use href="#i-edit"></use></svg></button>
-        <div class="sp"></div>
-        <button class="org-x" data-act="org.delTeam" data-tid="${esc(t.id)}" aria-label="팀 삭제"><svg class="icn"><use href="#i-trash"></use></svg></button>
-      </div>
-      ${(t.ggs||[]).map(g=>`
-        <div class="org-gg" data-gid="${esc(g.id)}">
-          <div class="org-ggh"><b>${esc(g.name)}</b>
-            <button class="p-ico" style="width:22px;height:22px" data-act="org.renGg" data-tid="${esc(t.id)}" data-gid="${esc(g.id)}" aria-label="공구 이름 변경"><svg class="icn" style="width:12px;height:12px"><use href="#i-edit"></use></svg></button>
-            <div class="sp" style="flex:1"></div>
-            <button class="org-x" data-act="org.delGg" data-tid="${esc(t.id)}" data-gid="${esc(g.id)}" aria-label="공구 삭제"><svg class="icn"><use href="#i-trash"></use></svg></button>
-          </div>
-          ${(g.members||[]).map(m=>`
-            <div class="org-mem"><b>${esc(m.name)}</b><span class="em">${esc(m.email||'이메일 없음')}</span>
-              <button class="p-ico" style="width:22px;height:22px" data-act="org.editMem" data-tid="${esc(t.id)}" data-gid="${esc(g.id)}" data-mid="${esc(m.id)}" aria-label="담당자 수정"><svg class="icn" style="width:12px;height:12px"><use href="#i-edit"></use></svg></button>
-              <button class="org-x" data-act="org.delMem" data-tid="${esc(t.id)}" data-gid="${esc(g.id)}" data-mid="${esc(m.id)}" aria-label="담당자 삭제"><svg class="icn"><use href="#i-close"></use></svg></button>
-            </div>`).join('')}
-          <div class="org-addrow"><button class="btn bo bxs" data-act="org.addMem" data-tid="${esc(t.id)}" data-gid="${esc(g.id)}"><svg class="icn"><use href="#i-plus"></use></svg> 담당자</button></div>
-        </div>`).join('')}
-      <div class="org-addrow"><input class="inp inp-sm" id="gg-${esc(t.id)}" placeholder="새 공구 이름 (예: 1공구)"><button class="btn bo bsm" data-act="org.addGg" data-tid="${esc(t.id)}">공구 추가</button></div>
-    </div>`).join(''):'<div class="tk-empty" style="padding:8px 2px">등록된 팀이 없습니다. 아래에서 팀을 추가하세요.</div>';
+/* ═══════════ 설정 — 팀 · 권역 · 계정 배정 ═══════════ */
+function inlineTbl(list,kind,ph){
+  if(!list.length)return '<div class="set-empty">등록된 항목이 없습니다.</div>';
+  return '<table class="mgtbl"><tbody>'+list.map(x=>`<tr>
+    <td><input class="mg-inp" value="${esc(x.name)}" data-act="org.ren" data-kind="${kind}" data-id="${esc(x.id)}" placeholder="${esc(ph)}" aria-label="이름"></td>
+    <td style="width:30px"><button class="tm-x" data-act="org.del${kind}" data-id="${esc(x.id)}" aria-label="삭제"><svg class="icn"><use href="#i-trash"></use></svg></button></td>
+  </tr>`).join('')+'</tbody></table>';
 }
-function orgFind(tid,gid){
-  const t=(S.org.teams||[]).find(x=>x.id===tid);
-  const g=t&&gid?(t.ggs||[]).find(x=>x.id===gid):null;
-  return{t,g};
+function rOrg(){
+  const tr=$('#teamRoot'),rr=$('#regRoot');
+  if(tr)tr.innerHTML=inlineTbl(S.org.teams||[],'Team','팀 이름');
+  if(rr)rr.innerHTML=inlineTbl(S.org.regions||[],'Reg','권역 이름');
+
+  const ar=$('#acctRoot');if(!ar)return;
+  const list=roster();
+  if(!list.length){
+    ar.innerHTML='<div class="set-empty">'+(!S.live
+      ? '로그인 전에는 계정 목록을 불러올 수 없습니다.<br>테스트용으로 담당자를 직접 추가할 수 있습니다.'
+      : (S.acctDenied
+        ? '계정 목록을 읽을 권한이 없습니다. Firebase 규칙에서 users 읽기를 허용하면 자동으로 채워집니다.'
+        : '아직 등록된 계정이 없습니다. 하자처리 현황에 로그인한 계정이 여기에 자동으로 나타납니다.'))
+      +'</div><button class="btn bo bsm tm-add" data-act="acct.addLocal"><svg class="icn"><use href="#i-plus"></use></svg> 담당자 추가</button>';
+    rFilter();return;
+  }
+  const opt=(arr2,sel)=>'<option value="">—</option>'+arr2.map(x=>'<option value="'+esc(x.id)+'"'+(x.id===sel?' selected':'')+'>'+esc(x.name)+'</option>').join('');
+  ar.innerHTML='<table class="utbl"><thead><tr><th>이름</th><th>이메일</th><th style="width:110px">팀</th><th style="width:110px">권역</th><th style="width:34px"></th></tr></thead><tbody>'
+    +list.map(p=>`<tr>
+      <td><div class="utbl-name"><div class="utbl-av">${esc((p.name||'?').slice(0,1))}</div><div class="utbl-nick">${esc(p.name)}</div></div></td>
+      <td class="utbl-mail">${esc(p.email||'—')}</td>
+      <td><select class="mg-inp" data-act="acct.set" data-f="team" data-id="${esc(p.id)}" aria-label="팀">${opt(S.org.teams||[],p.team)}</select></td>
+      <td><select class="mg-inp" data-act="acct.set" data-f="region" data-id="${esc(p.id)}" aria-label="권역">${opt(S.org.regions||[],p.region)}</select></td>
+      <td>${p.acct?'<span class="utbl-badge acct">계정</span>':'<button class="tm-x" data-act="acct.del" data-id="'+esc(p.id)+'" aria-label="삭제"><svg class="icn"><use href="#i-trash"></use></svg></button>'}</td>
+    </tr>`).join('')+'</tbody></table>'
+    +'<button class="btn bo bsm tm-add" data-act="acct.addLocal"><svg class="icn"><use href="#i-plus"></use></svg> 담당자 추가</button>';
+  rFilter();
 }
 function orgSave(){normOrg(S.org);store.putOrg(S.org);if(!S.live){rOrg();rTasks();}}
-function openTextModal(title,label,val,cb){
-  openModal(title,`<div class="frow"><label>${esc(label)}</label><input class="inp" id="tmVal" value="${esc(val||'')}" maxlength="40"></div>`,
-    `<button class="btn bg2 bsm" data-act="modal.close">취소</button><button class="btn bp bsm" data-act="modal.ok">저장</button>`);
-  MODAL_CB={type:'text',ok:()=>{const v=($('#tmVal').value||'').trim();if(!v){toast('내용을 입력하세요');return;}cb(v);closeModal();}};
-  setTimeout(()=>{const t=$('#tmVal');if(t){t.focus();t.select();}},50);
-}
 function openMemModal(title,mem,cb){
   openModal(title,`
     <div class="frow"><label>이름</label><input class="inp" id="mmName" value="${esc(mem.name||'')}" maxlength="20"></div>
@@ -438,21 +807,24 @@ function openMemModal(title,mem,cb){
 }
 function rCfg(){
   const i=$('#setDefectUrl');
-  if(i&&document.activeElement!==i)i.value=S.cfg.defectUrl||'';
+  if(i&&document.activeElement!==i)i.value=S.cfg.defectUrl||DEFECT_URL;
 }
 
 /* ═══════════ 화면 전환 · 공통 UI ═══════════ */
-const VIEW_TTL={calendar:['업무 일정',''],tasks:['주요업무 현황',''],settings:['설정','']};
+const VIEW_TTL={calendar:'업무 일정',tasks:'주요업무 현황',settings:'설정'};
 function go(view){
   S.view=view;
   $$('.view').forEach(v=>v.classList.toggle('act',v.id==='view-'+view));
   $$('#sidebar .nvi[data-view]').forEach(n=>n.classList.toggle('act',n.dataset.view===view));
-  $('#tbt').textContent=VIEW_TTL[view][0];
-  $('#tbsu').textContent=VIEW_TTL[view][1];
-  $('#btnToday').style.display=view==='calendar'?'':'none';
+  $('#tbt').textContent=VIEW_TTL[view];
   if(view==='calendar'&&CAL)setTimeout(()=>CAL.updateSize(),30);
   if(view==='tasks')rTasks();
-  if(view==='settings'){rOrg();rCfg();rSync();}
+  if(view==='settings'){
+    const ed=isEditor();
+    $$('#view-settings .set-col').forEach(c=>c.style.display=ed?'':'none');
+    const note=$('#setViewerNote');if(note)note.style.display=ed?'none':'';
+    if(ed){rOrg();rCfg();}
+  }
   mobClose();
 }
 let toastT=null;
@@ -477,26 +849,57 @@ const ACT={
   'nav.mobClose':mobClose,
   'theme.toggle':()=>applyTheme(!document.documentElement.classList.contains('dark')),
   'link.defect':()=>{
-    const u=(S.cfg.defectUrl||'').trim();
+    const u=(S.cfg.defectUrl||DEFECT_URL).trim();
     if(!u){toast('설정에서 하자처리 현황 주소를 먼저 입력하세요');go('settings');return;}
     window.open(u,'_blank','noopener');
   },
+  'cal.view':el=>{S.calView=el.dataset.v;
+    $$('#calSeg button').forEach(b=>b.classList.toggle('act',b.dataset.v===S.calView));
+    if(CAL){CAL.changeView(S.calView);rMonTitle();}},
+  'cal.filter':()=>{},
   'cal.prev':()=>CAL&&CAL.prev(),
   'cal.next':()=>CAL&&CAL.next(),
   'cal.today':()=>{selDate(todayStr());},
   'plan.new':()=>openPlanModal(null),
-  'plan.edit':el=>{const p=findPlan(el.dataset.pid);if(p)openPlanModal(p);},
-  'plan.done':el=>{const p=findPlan(el.dataset.pid);if(!p)return;p.done=!p.done;p.updatedAt=Date.now();store.putPlan(p);if(!S.live){rDay();refetchCal();}},
+  'plan.edit':el=>{const p=findPlan(el.dataset.pid);if(p)openPlanModal(p,null,null,el.dataset.occ||'');},
+  'plan.done':el=>{const p=findPlan(el.dataset.pid);if(!p)return;
+    const occ=el.dataset.occ||p.date;
+    if(p.recur&&p.recur.f){p.doneOn=p.doneOn||{};if(p.doneOn[occ])delete p.doneOn[occ];else p.doneOn[occ]=1;}
+    else p.done=!p.done;
+    p.updatedAt=Date.now();store.putPlan(p);if(!S.live){rDay();refetchCal();rWidget();}},
   'plan.remind':el=>{const p=findPlan(el.dataset.pid);if(!p)return;p.remind=!p.remind;p.updatedAt=Date.now();store.putPlan(p);if(!S.live)rDay();toast(p.remind?'당일 아침 리마인드 메일이 발송됩니다':'리마인드를 해제했습니다');},
   'plan.save':savePlanFromModal,
-  'plan.del':el=>{store.delPlan(el.dataset.ym,el.dataset.pid);closeModal();if(!S.live){rDay();refetchCal();}toast('플랜을 삭제했습니다');},
+  'plan.del':el=>{
+    const p=findPlan(el.dataset.pid),occ=el.dataset.occ||'';
+    if(p&&p.recur&&p.recur.f&&occ){
+      closeModal();
+      openModal('반복 일정 삭제','<div style="font-size:13px;color:var(--lbl2);line-height:1.6">"'+esc(p.title)+'" — 이 날짜만 뺄지, 반복 전체를 지울지 고르세요.</div>',
+        '<button class="btn bg2 bsm" data-act="modal.close">취소</button>'
+        +'<button class="btn bo bsm" data-act="plan.skipOcc" data-pid="'+esc(p.id)+'" data-occ="'+esc(occ)+'">이 날짜만 제외</button>'
+        +'<button class="btn btn-danger bsm" data-act="plan.delAll" data-pid="'+esc(p.id)+'">반복 전체 삭제</button>');
+      return;
+    }
+    store.delPlan(el.dataset.ym,el.dataset.pid);closeModal();
+    if(!S.live){rDay();refetchCal();rWidget();}toast('플랜을 삭제했습니다');},
+  'plan.skipOcc':el=>{const p=findPlan(el.dataset.pid);if(!p)return;
+    p.skipOn=p.skipOn||{};p.skipOn[el.dataset.occ]=1;p.updatedAt=Date.now();store.putPlan(p);
+    closeModal();if(!S.live){rDay();refetchCal();rWidget();}toast('이 날짜를 반복에서 제외했습니다');},
+  'plan.delAll':el=>{store.delPlan('',el.dataset.pid);closeModal();
+    if(!S.live){rDay();refetchCal();rWidget();}toast('반복 일정을 삭제했습니다');},
+  'auth.login':fbDoLogin,
+  'auth.signup':fbDoSignup,
+  'auth.resend':fbDoResend,
+  'acct.open':openAcctModal,
+  'acct.saveName':acctSaveName,
+  'acct.changePw':acctChangePw,
+  'acct.signout':acctSignout,
   'modal.close':closeModal,
   'modal.stop':()=>{},
   'modal.ok':()=>{if(MODAL_CB&&MODAL_CB.ok)MODAL_CB.ok();},
   'tk.tab':el=>{
     const lv=el.dataset.lv;S.tk[lv]=el.dataset.id;
-    if(lv==='t'){S.tk.g=null;S.tk.m=null;}
-    if(lv==='g')S.tk.m=null;
+    if(lv==='t'){S.tk.r='*';S.tk.m=null;}
+    if(lv==='r')S.tk.m=null;
     rTasks();
   },
   'tk.add':el=>{
@@ -511,48 +914,100 @@ const ACT={
   'tk.st':el=>{
     const sid=el.dataset.sid,iid=el.dataset.iid;
     const cur=(S.tasks[sid]||{})[iid];if(!cur)return;
-    store.putTask(sid,iid,{...cur,st:((cur.st||0)+1)%4,updatedAt:Date.now()});
+    store.putTask(sid,iid,{...cur,st:(stOf(cur.st)+1)%4,updatedAt:Date.now()});
     if(!S.live)rTasks();
+    refetchCal();   /* 완료 처리하면 달력의 기한 표시도 즉시 사라져야 한다 */
   },
-  'tk.del':el=>{store.putTask(el.dataset.sid,el.dataset.iid,null);if(!S.live)rTasks();},
+  'tk.del':el=>{store.putTask(el.dataset.sid,el.dataset.iid,null);if(!S.live)rTasks();refetchCal();},
+  'tk.fold':el=>{const sid=el.dataset.sid;S.foldOpen[sid]=!S.foldOpen[sid];rTasks();},
+  'tk.due':el=>{
+    const sid=el.dataset.sid,iid=el.dataset.iid,cur=(S.tasks[sid]||{})[iid];if(!cur)return;
+    openModal('기한 설정',`<div class="frow"><label>완료 기한</label><input type="date" class="inp" id="dueVal" value="${esc(cur.due||'')}"></div>`,
+      (cur.due?'<button class="btn bg2 bsm" data-act="tk.dueClear" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" style="margin-right:auto">기한 해제</button>':'')
+      +'<button class="btn bg2 bsm" data-act="modal.close">취소</button><button class="btn bp bsm" data-act="modal.ok">저장</button>');
+    MODAL_CB={type:'due',ok:()=>{
+      const v=$('#dueVal').value||'';
+      store.putTask(sid,iid,{...cur,due:v,updatedAt:Date.now()});
+      closeModal();if(!S.live)rTasks();refetchCal();}};
+  },
+  'tk.dueClear':el=>{const sid=el.dataset.sid,iid=el.dataset.iid,cur=(S.tasks[sid]||{})[iid];if(!cur)return;
+    store.putTask(sid,iid,{...cur,due:'',updatedAt:Date.now()});closeModal();if(!S.live)rTasks();refetchCal();},
+  'tk.cmt':el=>openCmtModal(el.dataset.sid,el.dataset.iid),
+  'tk.cmtSend':el=>{
+    const sid=el.dataset.sid,iid=el.dataset.iid,cur=(S.tasks[sid]||{})[iid];if(!cur)return;
+    const t=($('#cmtIn').value||'').trim();if(!t){$('#cmtIn').focus();return;}
+    const cid=uid(),who=S.user?(S.user.email||'').split('@')[0]:'나';
+    store.putTask(sid,iid,{...cur,comments:{...(cur.comments||{}),[cid]:{by:who,text:t,at:Date.now()}},updatedAt:cur.updatedAt||Date.now()});
+    $('#cmtIn').value='';
+    setTimeout(()=>{openCmtModal(sid,iid);if(!S.live)rTasks();},S.live?250:20);
+  },
+  'tk.toPlan':el=>{
+    const sid=el.dataset.sid,iid=el.dataset.iid,cur=(S.tasks[sid]||{})[iid];if(!cur)return;
+    const when=cur.due||todayStr();
+    go('calendar');selDate(when);
+    setTimeout(()=>{
+      openPlanModal(null,when,'');
+      const t=$('#pfTitle');if(t)t.value=cur.text;
+      const o=$('#pfOwner');if(o&&roster().some(p=>p.id===sid))o.value=sid;
+    },60);
+  },
   'tk.editable':el=>{if(el.isContentEditable)return;tkStartEdit(el);},
   'org.addTeam':()=>{
-    const i=$('#orgNewTeam'),v=(i.value||'').trim();
-    if(!v){toast('팀 이름을 입력하세요');i.focus();return;}
-    S.org.teams=S.org.teams||[];S.org.teams.push({id:uid(),name:v,ggs:[]});i.value='';orgSave();toast('팀을 추가했습니다');
+    if(!isEditor())return denyEdit();
+    const id=uid();S.org.teams=(S.org.teams||[]).concat([{id,name:''}]);orgSave();
+    setTimeout(()=>{const i=document.querySelector('#teamRoot .mg-inp[data-id="'+id+'"]');if(i)i.focus();},S.live?260:20);
   },
-  'org.renTeam':el=>{const{t}=orgFind(el.dataset.tid);if(!t)return;openTextModal('팀 이름 변경','팀 이름',t.name,v=>{t.name=v;orgSave();});},
+  'org.addReg':()=>{
+    if(!isEditor())return denyEdit();
+    const id=uid();S.org.regions=(S.org.regions||[]).concat([{id,name:''}]);orgSave();
+    setTimeout(()=>{const i=document.querySelector('#regRoot .mg-inp[data-id="'+id+'"]');if(i)i.focus();},S.live?260:20);
+  },
   'org.delTeam':el=>{
-    const{t}=orgFind(el.dataset.tid);if(!t)return;
-    confirmModal('팀 삭제','"'+t.name+'" 팀과 소속 공구·담당자를 모두 삭제합니다. 담당자의 주요업무도 화면에서 사라집니다.',()=>{
-      S.org.teams=S.org.teams.filter(x=>x.id!==t.id);orgSave();});
+    if(!isEditor())return denyEdit();
+    const t=(S.org.teams||[]).find(x=>x.id===el.dataset.id);if(!t)return;
+    confirmModal('팀 삭제','"'+t.name+'" 팀을 삭제합니다. 이 팀의 공통업무도 화면에서 사라지고, 배정된 담당자는 미배정으로 돌아갑니다.',()=>{
+      S.org.teams=S.org.teams.filter(x=>x.id!==t.id);
+      Object.keys(S.people||{}).forEach(id=>{if(S.people[id].team===t.id)store.putPerson(id,{...S.people[id],team:''});});
+      orgSave();});
   },
-  'org.addGg':el=>{
-    const{t}=orgFind(el.dataset.tid);if(!t)return;
-    const i=$('#gg-'+t.id),v=(i.value||'').trim();
-    if(!v){toast('공구 이름을 입력하세요');i.focus();return;}
-    t.ggs=t.ggs||[];t.ggs.push({id:uid(),name:v,members:[]});orgSave();
+  'org.delReg':el=>{
+    if(!isEditor())return denyEdit();
+    const r=(S.org.regions||[]).find(x=>x.id===el.dataset.id);if(!r)return;
+    confirmModal('권역 삭제','"'+r.name+'" 권역을 삭제합니다. 배정된 담당자의 권역은 비워집니다.',()=>{
+      S.org.regions=S.org.regions.filter(x=>x.id!==r.id);
+      Object.keys(S.people||{}).forEach(id=>{if(S.people[id].region===r.id)store.putPerson(id,{...S.people[id],region:''});});
+      orgSave();});
   },
-  'org.renGg':el=>{const{g}=orgFind(el.dataset.tid,el.dataset.gid);if(!g)return;openTextModal('공구 이름 변경','공구 이름',g.name,v=>{g.name=v;orgSave();});},
-  'org.delGg':el=>{
-    const{t,g}=orgFind(el.dataset.tid,el.dataset.gid);if(!t||!g)return;
-    confirmModal('공구 삭제','"'+g.name+'" 공구와 소속 담당자를 삭제합니다.',()=>{t.ggs=t.ggs.filter(x=>x.id!==g.id);orgSave();});
+  'acct.addLocal':()=>{
+    if(!isEditor())return denyEdit();
+    openMemModal('담당자 추가',{},(name,email)=>{store.putPerson(uid(),{name,email,team:'',region:''});if(!S.live){rOrg();rTasks();}});
   },
-  'org.addMem':el=>{
-    const{g}=orgFind(el.dataset.tid,el.dataset.gid);if(!g)return;
-    openMemModal('담당자 추가',{},(name,email)=>{g.members=g.members||[];g.members.push({id:uid(),name,email});orgSave();});
-  },
-  'org.editMem':el=>{
-    const{g}=orgFind(el.dataset.tid,el.dataset.gid);if(!g)return;
-    const m=(g.members||[]).find(x=>x.id===el.dataset.mid);if(!m)return;
-    openMemModal('담당자 수정',m,(name,email)=>{m.name=name;m.email=email;orgSave();});
-  },
-  'org.delMem':el=>{
-    const{g}=orgFind(el.dataset.tid,el.dataset.gid);if(!g)return;
-    g.members=(g.members||[]).filter(x=>x.id!==el.dataset.mid);orgSave();
-  },
-  'set.saveUrl':()=>{store.putCfg('defectUrl',($('#setDefectUrl').value||'').trim());if(!S.live)rCfg();toast('저장했습니다');}
+  'acct.del':el=>{if(!isEditor())return denyEdit();store.putPerson(el.dataset.id,null);if(!S.live){rOrg();rTasks();}},
+  'set.saveUrl':()=>{if(!isEditor())return denyEdit();store.putCfg('defectUrl',($('#setDefectUrl').value||'').trim());if(!S.live)rCfg();toast('저장했습니다');}
 };
+function openCmtModal(sid,iid){
+  const it=(S.tasks[sid]||{})[iid];if(!it)return;
+  const cs=Object.entries(it.comments||{}).sort((a,b)=>(a[1].at||0)-(b[1].at||0));
+  openModal('업무 코멘트',
+    '<div style="font-size:13px;font-weight:700;color:var(--lbl);margin-bottom:12px;word-break:break-all">'+esc(it.text)+'</div>'
+    +'<div class="cmt">'+(cs.length?cs.map(([cid,c])=>`
+      <div class="cmt-i"><div class="cmt-h"><b>${esc(c.by||'')}</b><span>${esc(relTime(c.at))}</span></div>
+      <div class="cmt-t">${esc(c.text)}</div></div>`).join(''):'<div class="cmt-empty">아직 코멘트가 없습니다.</div>')+'</div>'
+    +'<div class="frow"><textarea class="inp" id="cmtIn" maxlength="300" placeholder="진행 상황이나 확인 사항을 남기세요"></textarea></div>',
+    '<button class="btn bg2 bsm" data-act="modal.close">닫기</button>'
+    +'<button class="btn bp bsm" data-act="tk.cmtSend" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'">등록</button>');
+  MODAL_CB={type:'cmt',sid,iid};
+  setTimeout(()=>{const t=$('#cmtIn');if(t)t.focus();},50);
+}
+function rFilter(){
+  const sel=$('#ownFilter');if(!sel)return;
+  const list=roster(),me=S.user?list.find(p=>p.id===(S.user.uid||'')):null;
+  const cur=S.filter.own;
+  sel.innerHTML='<option value="*">전체 일정</option>'+(me?'<option value="'+esc(me.id)+'">내 일정</option>':'')
+    +list.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.name)+'</option>').join('');
+  sel.value=[...sel.options].some(o=>o.value===cur)?cur:'*';
+  S.filter.own=sel.value;
+}
 function confirmModal(title,msg,cb){
   openModal(title,'<div style="font-size:13px;color:var(--lbl2);line-height:1.6">'+esc(msg)+'</div>',
     '<button class="btn bg2 bsm" data-act="modal.close">취소</button><button class="btn btn-danger bsm" data-act="modal.ok">삭제</button>');
@@ -568,7 +1023,28 @@ document.addEventListener('click',e=>{
   const pal=e.target.closest('.pal-c');
   if(pal){$$('#pfPal .pal-c').forEach(x=>x.classList.remove('sel'));pal.classList.add('sel');}
 });
+document.addEventListener('change',e=>{
+  if(e.target.id==='ownFilter'){S.filter.own=e.target.value;refetchCal();rDay();return;}
+  const ren=e.target.closest('[data-act="org.ren"]');
+  if(ren){
+    if(!isEditor()){denyEdit();rOrg();return;}
+    const list=ren.dataset.kind==='Team'?(S.org.teams||[]):(S.org.regions||[]);
+    const it=list.find(x=>x.id===ren.dataset.id);
+    if(it){it.name=(ren.value||'').trim();orgSave();if(S.view==='tasks')rTasks();}
+    return;
+  }
+  const el=e.target.closest('[data-act="acct.set"]');
+  if(!el)return;
+  if(!isEditor()){denyEdit();rOrg();return;}
+  const id=el.dataset.id,f=el.dataset.f;
+  const cur=(S.people||{})[id]||{};
+  const base=roster().find(p=>p.id===id)||{};
+  store.putPerson(id,{name:cur.name||base.name||'',email:cur.email||base.email||'',
+    team:f==='team'?el.value:(cur.team||''),region:f==='region'?el.value:(cur.region||'')});
+  if(!S.live){rOrg();rTasks();}
+});
 document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&(e.target.id==='fbEmail'||e.target.id==='fbPw')){e.preventDefault();fbDoLogin();return;}
   if(e.key==='Escape'){if($('#mo').classList.contains('open'))closeModal();else mobClose();}
   if(e.key==='Enter'&&e.target.classList&&e.target.classList.contains('tk-txt')&&!e.shiftKey){e.preventDefault();e.target.blur();}
   if(e.key==='Enter'&&$('#mo').classList.contains('open')&&e.target.tagName==='INPUT'){
@@ -578,15 +1054,53 @@ document.addEventListener('keydown',e=>{
   }
 });
 
+/* 사이드바 폭 전환·창 크기 변경 후 FullCalendar 재계산
+   (transition이 끝나야 실제 폭이 확정되므로 transitionend에서 호출) */
+function bindCalResize(){
+  const sb=$('#sidebar');
+  if(sb)sb.addEventListener('transitionend',e=>{
+    if((e.propertyName==='width'||e.propertyName==='min-width')&&CAL)CAL.updateSize();
+  });
+  let rt=null;
+  window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{if(CAL)CAL.updateSize();},120);});
+}
+
+/* ═══════════ 위젯 모드 (?w=1) — 데스크톱 PWA 창용 컴팩트 화면 ═══════════ */
+const WIDGET=/[?&]w=1\b/.test(location.search);
+function rWidget(){
+  if(!WIDGET)return;
+  const ds=S.selDate,ps=dayPlans(ds),d=toDate(ds),ho=holOf(ds);
+  $('#widPanel').innerHTML='<div class="wid-h">'+(d.getMonth()+1)+'월 '+d.getDate()+'일 · '+DOW[d.getDay()]+(ho?' · '+esc(ho.n):'')+(ds===todayStr()?' · 오늘':'')+'</div>'
+    +(ps.length?ps.map(p=>`<div class="plan${p.done?' done':''}">
+        <div class="pc" style="background:${esc(p.color||PAL[0])}"></div>
+        <div class="plan-main"><div class="plan-t">${esc(p.title)}</div>
+        ${p.time?'<div class="plan-meta"><span class="pm-chip">'+esc(fmtTime(p.time))+'</span></div>':''}</div></div>`).join('')
+      :'<div class="dp-empty" style="padding:10px 0">플랜 없음</div>');
+}
+
 /* ═══════════ 부팅 ═══════════ */
-function rAll(){rDay();rTasks();rOrg();rCfg();refetchCal();}
+function rAll(){rDay();rTasks();rOrg();rCfg();rFilter();refetchCal();rWidget();}
 (function boot(){
   let dark=false;
   try{dark=localStorage.getItem('calapp.theme')==='dark';}catch(e){}
   applyTheme(dark);
+  if(WIDGET)document.body.classList.add('wid');
   LocalStore.init();
   calInit();
+  bindCalResize();
   subVisibleMonths();
-  rDay();rSync();rAcct();
-  fbInit();
+  rDay();rAcct();rFilter();rWidget();
+  if(DEV_LOCAL){hideCover();}
+  else{
+    fbInit();
+    /* SDK가 아예 안 뜨거나(사내망 차단 등) 응답이 없으면 안내와 함께 로그인 폼을 연다 */
+    if(typeof firebase==='undefined'||!FB.auth){showGateForm();fbMsg('네트워크에 연결할 수 없습니다.');}
+    else FB._boot=setTimeout(()=>{if(!S.live)showGateForm();},2500);
+  }
+  /* 이전 버전에서 등록됐을 수 있는 서비스워커·캐시 제거 —
+     캐시가 남아 있으면 배포해도 옛 코드가 계속 뜬다. (한동안 유지 후 삭제해도 됨) */
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister())).catch(()=>{});
+    if(window.caches&&caches.keys)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k))).catch(()=>{});
+  }
 })();

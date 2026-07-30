@@ -1,0 +1,21 @@
+{
+  "name": "hservice-calendar-widget",
+  "version": "1.0.0",
+  "description": "H서비스센터 업무 일정 데스크톱 위젯",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win portable"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "kr.co.hdec.hservice.calwidget",
+    "productName": "업무일정위젯",
+    "files": ["main.js", "package.json", "tray.png"],
+    "win": { "target": "portable", "icon": "tray.png" },
+    "portable": { "artifactName": "업무일정위젯.exe" }
+  }
+}
