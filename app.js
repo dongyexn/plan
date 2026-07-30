@@ -13,7 +13,7 @@ const GUIDE_HTML=`<div class="gd">
 <h4>찾기</h4>
 <p>오른쪽 아래 <b>돋보기</b> 버튼(또는 <code>Ctrl</code>+<code>K</code>)으로 업무 제목·내용, 일정, 코멘트를 한 번에 찾습니다. 결과를 누르면 그 자리로 이동합니다.</p>
 <h4>업무 일정</h4>
-<p>달력에서 날짜를 누르면 오른쪽에 그날의 업무가 나옵니다. <b>업무 추가</b>로 등록하고, 날짜를 가로로 끌면 여러 날에 걸친 업무가 됩니다.</p>
+<p>달력에서 날짜를 누르면 오른쪽에 그날의 업무가 나옵니다. <b>업무 추가</b>를 누르면 오른쪽 패널 안에서 바로 작성·수정하고(따로 창이 뜨지 않습니다), 날짜를 가로로 끌면 여러 날에 걸친 업무가 됩니다.</p>
 <ul>
 <li>반복: 매주 · 격주 · 매월 · 매년. 반복 업무는 회차별로 완료 표시하며, 삭제할 때 이 날짜만 뺄지 전체를 지울지 고릅니다.</li>
 <li>담당자를 지정하면 담당자별 색으로 표시되고, 권역 칩과 담당자 선택으로 좁혀 볼 수 있습니다.</li>
@@ -22,10 +22,10 @@ const GUIDE_HTML=`<div class="gd">
 <li>기한이 있는 미완료 업무는 점선 배지로 달력에 함께 표시됩니다.</li>
 </ul>
 <h4>주요업무 현황</h4>
-<p>왼쪽에서 대상을 고르면 오른쪽에 그 업무가 나옵니다. 팀 공통업무, 담당자별 업무 전체, 또는 개별 담당자를 고를 수 있고 담당자는 권역별로 묶여 있습니다.</p>
+<p>왼쪽에서 대상을 고르면 오른쪽에 그 업무가 나옵니다. <b>팀 전체 업무</b>(공통업무와 모든 권역·담당자 업무를 한 화면에), <b>공통업무</b>, <b>권역</b>, 개별 <b>담당자</b>를 고를 수 있습니다.</p>
 <ul>
-<li><b>업무 추가</b>를 누르면 목록 위에 작성창이 열립니다. 제목과 함께 <b>진행경과</b>·<b>처리계획</b>을 나눠 적고, 현장·기한·담당자(여러 명)를 지정합니다.</li>
-<li>항목을 누르면 펼쳐집니다. 진행경과·처리계획은 그 자리에서 고치고, 아래 스레드에 코멘트를 남깁니다. 제목·현장·담당자·기한·링크는 <b>수정</b> 버튼에서 바꿉니다.</li>
+<li><b>업무 추가</b>를 누르면 목록 위에 작성창이 열립니다. 제목과 함께 <b>진행경과</b>·<b>처리계획</b>을 나눠 적고, 현장·기한·색·담당자(여러 명)·링크를 지정합니다.</li>
+<li>항목을 누르면 스레드처럼 펼쳐집니다. 진행경과·처리계획은 그 자리에서 고치고, 아래 스레드에 코멘트를 남깁니다. 나머지는 오른쪽 위 <b>수정</b>을 누르면 작성창과 같은 폼이 그 자리에 열립니다.</li>
 <li>왼쪽의 ⠿ 를 잡고 끌면 순서가 바뀝니다.</li>
 <li>코멘트에 <code>@이름</code> 을 쓰면 그 사람에게 알림이 가고, 사이드바 배지로 표시됩니다.</li>
 <li>상태 칩을 누르면 예정 → 진행 → 완료 → 보류 순으로 바뀝니다.</li>
@@ -116,7 +116,9 @@ const S={
   calView:'dayGridMonth',
   foldOpen:{},       // 완료 항목 접힘 해제(subjectId별)
   tkNew:null,        // 인라인 작성창이 열린 대상
+  tkEdit:null,       // 인라인 수정 중인 업무 'sid/iid'
   tkOpen:null,       // 펼쳐 놓은 업무 'sid/iid'
+  planEdit:null,     // 일자 패널 인라인 편집기 상태
   prefs:{},          // calapp/prefs/{uid} — 저장한 필터 등 개인 설정
   mentions:{},       // calapp/mentions/{uid} — 나를 부른 코멘트
   live:false,        // Firebase 실시간 모드 여부
@@ -139,8 +141,8 @@ document.addEventListener('focusout',e=>{
     }
   }
   setTimeout(()=>{if(shEditing())return;
-  if(PEND.day){PEND.day=false;rDay();refetchCal();}
-  if(PEND.tasks){PEND.tasks=false;rTasks();}
+  if(PEND.day){PEND.day=false;if(!S.planEdit)rDay();refetchCal();}
+  if(PEND.tasks){PEND.tasks=false;if(!S.tkNew&&!S.tkEdit)rTasks();}
   if(PEND.org){PEND.org=false;rOrg();}
 },60);});
 
@@ -171,6 +173,7 @@ function cleanTask(t){
   if(t.prog)o.prog=String(t.prog).slice(0,2000);
   if(t.plan)o.plan=String(t.plan).slice(0,2000);
   if(t.site)o.site=String(t.site).slice(0,40);
+  if(t.color)o.color=String(t.color).slice(0,16);
   if(t.due)o.due=String(t.due);
   if(Number.isFinite(Number(t.order)))o.order=Number(t.order);
   if(t.assignees&&Object.keys(t.assignees).length){o.assignees={};Object.keys(t.assignees).forEach(k=>{if(t.assignees[k])o.assignees[k]=1;});}
@@ -513,7 +516,6 @@ function enterLive(u){
   FbStore.bindShared();
   subVisibleMonths();
   rAcct();
-  toast('팀 실시간 공유 모드로 연결됨');
 }
 function exitLive(){
   const was=S.live;
@@ -522,7 +524,6 @@ function exitLive(){
   store=LocalStore;LocalStore.init();
   S.plans={};S._subYms=[];
   subVisibleMonths();rAll();rAcct();
-  if(was)toast('로컬 저장 모드로 전환됨');
 }
 function rTeamSel(){
   const el=$('#teamsel');if(!el)return;
@@ -584,9 +585,9 @@ function calInit(){
     dateClick:info=>{selDate(String(info.dateStr).slice(0,10));},
     eventClick:info=>{info.jsEvent.preventDefault();
       const t=info.event.extendedProps.task;
-      if(t){go('tasks');S.tk.m=null;setTimeout(()=>toast('주요업무 현황에서 확인하세요'),50);return;}
+      if(t){gotoTask(t.sid,t.iid);return;}
       const p=findPlan(info.event.extendedProps.pid);
-      if(p)openPlanModal(p,null,null,info.event.extendedProps.occ);},
+      if(p){selDate(info.event.extendedProps.occ||p.date);openPlanEdit(p,null,null,info.event.extendedProps.occ);}},
     eventDrop:info=>{const p=findPlan(info.event.extendedProps.pid);if(!p||(p.recur&&p.recur.f)){info.revert();return;}
       const oldYm=ymOf(p.date);const ns=info.event.startStr.slice(0,10);
       if(p.end)p.end=addDays(p.end,daysBetween(p.date,ns));
@@ -601,8 +602,10 @@ function calInit(){
       const a=info.startStr.slice(0,10),b=addDays(info.endStr.slice(0,10),-1);
       CAL.unselect();
       if(b<=a)return;
-      selDate(a);openPlanModal(null,a,b);},
-    nowIndicator:true,slotMinTime:'07:00:00',slotMaxTime:'19:00:00',allDaySlot:true,expandRows:false,
+      selDate(a);openPlanEdit(null,a,b);},
+    /* 주간: 오전 7시 ~ 오후 7시(19~20시 칸까지) 표시. expandRows 로 남는 높이를 행에 균등 분배 —
+       빈 여백 없이 모든 행이 같은 높이(최소 34px)가 된다 */
+    nowIndicator:true,slotMinTime:'07:00:00',slotMaxTime:'20:00:00',allDaySlot:true,expandRows:true,
     views:{timeGridWeek:{
       dayHeaderContent:a=>{const o=holOf(dstr(a.date));
         return{html:'<div style="font-size:11px;font-weight:700">'+DOW[a.date.getDay()]+'</div>'
@@ -615,6 +618,9 @@ function calInit(){
   });
   CAL.render();
   markSel();
+  /* Pretendard 가 늦게 스왑되면 칩 높이가 바뀌어 FullCalendar 가 측정해 둔
+     기간 바 위치와 어긋난다(칩 겹침의 원인) — 폰트 로드 완료 후 한 번 재계산 */
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{if(CAL)CAL.updateSize();});
 }
 /* 반복 일정 전개 — 화면에 보이는 구간(from~to)의 발생일만 만든다 */
 function recurDates(p,from,to){
@@ -683,9 +689,13 @@ function buildEvents(){
       if(!it||!it.due||stOf(it.st)===2)return;
       if(it.due<from||it.due>to)return;
       const who=subjectName(sid);
+      const col=(it.color&&it.color!=='auto')?it.color:'';
+      const over=it.due<today;
       evs.push({id:'task:'+sid+':'+iid,title:'⏳ '+it.text.slice(0,28)+(who?' · '+who:''),
         start:it.due,allDay:true,display:'block',editable:false,
-        classNames:it.due<today?['duev','over']:['duev'],
+        backgroundColor:'transparent',
+        ...(col&&!over?{borderColor:col,textColor:col}:{}),   /* 기한 초과는 항상 빨강 */
+        classNames:over?['duev','over']:['duev'],
         extendedProps:{task:{sid,iid}}});
     });
   });
@@ -724,7 +734,14 @@ function selDate(ds){
   S.selDate=ds;
   setTimeout(rWidget,0);
   if(CAL&&ymOf(ds)!==CAL.view.currentStart.getFullYear()+'-'+pad(CAL.view.currentStart.getMonth()+1))CAL.gotoDate(ds);
-  markSel();rDay();
+  markSel();
+  /* 편집기가 열려 있으면 입력을 지우지 않는다 — 새 업무 작성 중엔 시작일만 따라간다 */
+  if(S.planEdit&&$('#dpEdit')){
+    rDayHead();
+    if(!S.planEdit.orig){const i=$('#peDate');if(i)i.value=ds;}
+    return;
+  }
+  rDay();
 }
 
 /* ───── 우측 일자 패널 ───── */
@@ -747,15 +764,22 @@ function dayPlans(ds){
   return out.sort((a,b)=>((a.p.time||'99')<(b.p.time||'99')?-1:(a.p.time||'99')>(b.p.time||'99')?1:(a.p.createdAt||0)-(b.p.createdAt||0)));
 }
 function isDone(p,occ){return (p.recur&&p.recur.f)?!!(p.doneOn&&p.doneOn[occ]):!!p.done;}
-function rDay(){
-  const ds=S.selDate,d=toDate(ds),ps=dayPlans(ds);
-  const ho=holOf(ds);
+function rDayHead(){
+  const ds=S.selDate,d=toDate(ds),ps=dayPlans(ds),ho=holOf(ds);
   $('#dpDow').textContent=d.getFullYear()+'년 · '+DOW[d.getDay()]+'요일'+(ho?' · '+ho.n:'')+(ds===todayStr()?' · 오늘':'');
   $('#dpDate').textContent=(d.getMonth()+1)+'월 '+d.getDate()+'일';
   $('#dpCnt').textContent=ps.length?'업무 '+ps.length+'건'+(ps.filter(x=>x.p.remind).length?' · 리마인드 '+ps.filter(x=>x.p.remind).length+'건':''):'등록된 업무 없음';
+  return ps;
+}
+function rDay(){
+  const ps=rDayHead();
   const box=$('#dpList');
-  if(!ps.length){box.innerHTML='<div class="dp-empty">이 날짜에 등록된 업무가 없습니다.</div>';return;}
-  box.innerHTML=ps.map(({p,occ})=>{
+  const add=$('.dp-add');if(add)add.style.display=S.planEdit?'none':'';
+  const editorHTML=S.planEdit?planFormHTML():'';
+  const editingId=S.planEdit&&S.planEdit.orig?S.planEdit.orig.id:null;
+  const shown=ps.filter(x=>x.p.id!==editingId);   /* 편집 중인 항목은 폼이 대신한다 */
+  if(!shown.length&&!editorHTML){box.innerHTML='<div class="dp-empty">이 날짜에 등록된 업무가 없습니다.</div>';return;}
+  box.innerHTML=editorHTML+shown.map(({p,occ})=>{
     const done=isDone(p,occ),rep=p.recur&&p.recur.f,span=p.end&&p.end!==p.date;
     return `
     <div class="plan${done?' done':''}" data-pid="${esc(p.id)}">
@@ -776,6 +800,8 @@ function rDay(){
         <button class="p-ico${p.remind?' on':''}" data-act="plan.remind" data-pid="${esc(p.id)}" aria-label="리마인드 전환"><svg class="icn"><use href="#i-bell"></use></svg></button>
       </div>
     </div>`;}).join('');
+  const rec=$('#peRec');
+  if(rec)rec.addEventListener('change',()=>{const r=$('#peUntilRow');if(r)r.style.display=rec.value?'':'none';});
 }
 
 /* ───── 업무 작성·수정 모달 ───── */
@@ -787,79 +813,83 @@ function openModal(title,bodyHTML,footHTML){
   $('#mo').classList.add('open');
 }
 function closeModal(){$('#mo').classList.remove('open');MODAL_CB=null;}
-function openPlanModal(p,startD,endD,occ){
-  const isNew=!p;
-  const d=p||{id:uid(),date:startD||S.selDate,end:endD||'',title:'',time:'',body:'',color:'auto',owner:'',
+/* 인라인 편집기 — 모달 대신 우측 일자 패널 안에서 작성·수정한다 */
+function openPlanEdit(p,startD,endD,occ){
+  S.planEdit={orig:p?{...p}:null,occ:occ||'',start:startD||S.selDate,end:endD||''};
+  rDay();
+  setTimeout(()=>{const t=$('#peTitle');if(t)t.focus();},30);
+}
+function closePlanEdit(){if(!S.planEdit)return;S.planEdit=null;rDay();}
+function planFormHTML(){
+  const pe=S.planEdit;if(!pe)return'';
+  const d=pe.orig||{id:uid(),date:pe.start,end:pe.end,title:'',time:'',body:'',color:'auto',
     remind:false,done:false,recur:{f:'',until:''},createdAt:Date.now()};
+  pe.draft=d;
   const rc=(d.recur&&d.recur.f)||'';
   const people=roster();
-  openModal(isNew?'업무 추가':'업무 수정',`
+  return `<div class="dp-edit" id="dpEdit">
+    <div class="frow"><label>제목</label><input class="inp inp-sm" id="peTitle" maxlength="80" placeholder="무엇을 하나요?" value="${esc(d.title)}"></div>
     <div class="frow2">
-      <div class="frow"><label>시작일</label><input type="date" class="inp inp-sm" id="pfDate" value="${esc(d.date)}"></div>
-      <div class="frow"><label>종료일 <span style="font-weight:500;color:var(--lbl3)">여러 날이면 지정</span></label><input type="date" class="inp inp-sm" id="pfEnd" value="${esc(d.end||'')}"></div>
+      <div class="frow"><label>시작일</label><input type="date" class="inp inp-sm" id="peDate" value="${esc(d.date)}"></div>
+      <div class="frow"><label>종료일 <span style="font-weight:500;color:var(--lbl3)">여러 날이면</span></label><input type="date" class="inp inp-sm" id="peEnd" value="${esc(d.end||'')}"></div>
     </div>
-    <div class="frow"><label>제목</label><input class="inp" id="pfTitle" maxlength="80" placeholder="무엇을 하나요?" value="${esc(d.title)}"></div>
     <div class="frow2">
-      <div class="frow"><label>시간 (선택)</label><input type="time" class="inp inp-sm" id="pfTime" value="${esc(d.time||'')}"></div>
+      <div class="frow"><label>시간 (선택)</label><input type="time" class="inp inp-sm" id="peTime" value="${esc(d.time||'')}"></div>
+      <div class="frow"><label>반복</label><select class="inp inp-sm" id="peRec">${Object.keys(REC_LBL).map(k=>'<option value="'+k+'"'+(k===rc?' selected':'')+'>'+REC_LBL[k]+'</option>').join('')}</select></div>
     </div>
+    <div class="frow" id="peUntilRow" style="${rc?'':'display:none'}"><label>반복 종료 (선택)</label><input type="date" class="inp inp-sm" id="peUntil" value="${esc((d.recur&&d.recur.until)||'')}"></div>
     <div class="frow"><label>담당자 <span style="font-weight:500;color:var(--lbl3)">여러 명 선택 가능</span></label>
-      <div class="chipbar" id="pfOwners">${people.map(x=>'<span class="chip2'+(planOwners(d).includes(x.id)?' act':'')+'" data-own="'+esc(x.id)+'">'+esc(x.name)+'</span>').join('')||'<span class="site-none">담당자가 없습니다</span>'}</div>
-    </div>
-    <div class="frow2">
-      <div class="frow"><label>반복</label><select class="inp inp-sm" id="pfRec">${Object.keys(REC_LBL).map(k=>'<option value="'+k+'"'+(k===rc?' selected':'')+'>'+REC_LBL[k]+'</option>').join('')}</select></div>
-      <div class="frow" id="pfUntilRow" style="${rc?'':'display:none'}"><label>반복 종료 (선택)</label><input type="date" class="inp inp-sm" id="pfUntil" value="${esc((d.recur&&d.recur.until)||'')}"></div>
+      <div class="chipbar" id="peOwners">${people.map(x=>'<span class="chip2'+(planOwners(d).includes(x.id)?' act':'')+'" data-own="'+esc(x.id)+'">'+esc(x.name)+'</span>').join('')||'<span class="site-none">담당자가 없습니다</span>'}</div>
     </div>
     <div class="frow"><label>색 <span style="font-weight:500;color:var(--lbl3)">첫 번째는 담당자 색</span></label>
-      <div class="pal" id="pfPal">
+      <div class="pal" id="pePal">
         <div class="pal-c${(!d.color||d.color==='auto')?' sel':''}" data-c="auto" style="background:linear-gradient(135deg,#3E71D2,#16A34A,#D97706)" title="담당자 색"></div>
         ${PAL.map(c=>'<div class="pal-c'+(c===d.color?' sel':'')+'" data-c="'+c+'" style="background:'+c+'"></div>').join('')}
       </div></div>
-    <div class="frow"><label>내용 (선택)</label><textarea class="inp" id="pfBody" maxlength="500" placeholder="메모·세부 내용">${esc(d.body||'')}</textarea></div>
-    <label class="chk-row"><input type="checkbox" id="pfRemind"${d.remind?' checked':''}> 당일 아침 팀원에게 리마인드 메일 발송</label>
-  `,`
-    ${isNew?'':'<button class="btn btn-danger bsm" data-act="plan.del" data-pid="'+esc(d.id)+'" data-ym="'+esc(ymOf(d.date))+'" data-occ="'+esc(occ||'')+'" style="margin-right:auto">삭제</button>'}
-    <button class="btn bg2 bsm" data-act="modal.close">취소</button>
-    <button class="btn bp bsm" data-act="plan.save">저장</button>
-  `);
-  MODAL_CB={type:'plan',orig:isNew?null:{...d},draft:d,occ:occ||''};
-  const rec=$('#pfRec');
-  if(rec)rec.addEventListener('change',()=>{$('#pfUntilRow').style.display=rec.value?'':'none';});
-  setTimeout(()=>{const t=$('#pfTitle');if(t)t.focus();},50);
+    <div class="frow"><label>내용 (선택)</label><textarea class="inp inp-sm" id="peBody" maxlength="500" placeholder="메모·세부 내용">${esc(d.body||'')}</textarea></div>
+    <label class="chk-row" style="margin-bottom:10px"><input type="checkbox" id="peRemind"${d.remind?' checked':''}> 당일 아침 리마인드 메일</label>
+    <div class="dp-edit-f">
+      ${pe.orig?'<button class="btn btn-danger bsm" data-act="plan.del" data-pid="'+esc(d.id)+'" data-ym="'+esc(ymOf(d.date))+'" data-occ="'+esc(pe.occ||'')+'" style="margin-right:auto">삭제</button>':''}
+      <button class="btn bg2 bsm" data-act="plan.cancel">취소</button>
+      <button class="btn bp bsm" data-act="plan.save">저장</button>
+    </div>
+  </div>`;
 }
-function savePlanFromModal(){
-  const cb=MODAL_CB;if(!cb||cb.type!=='plan')return;
-  const title=($('#pfTitle').value||'').trim();
-  if(!title){toast('제목을 입력하세요');$('#pfTitle').focus();return;}
-  const date=$('#pfDate').value||S.selDate;
-  let end=($('#pfEnd').value||'').trim();
+function savePlanInline(){
+  const pe=S.planEdit;if(!pe)return;
+  const title=($('#peTitle').value||'').trim();
+  if(!title){toast('제목을 입력하세요');$('#peTitle').focus();return;}
+  const date=$('#peDate').value||S.selDate;
+  let end=($('#peEnd').value||'').trim();
   if(end&&end<date){toast('종료일이 시작일보다 빠릅니다');return;}
   if(end===date)end='';
-  const f=$('#pfRec').value||'';
-  const sel=$('#pfPal .pal-c.sel');
-  const p={...cb.draft,
+  const f=$('#peRec').value||'';
+  const sel=$('#pePal .pal-c.sel');
+  const p={...pe.draft,
     date,end,title,
-    time:$('#pfTime').value||'',
-    owners:(()=>{const o={};$$('#pfOwners .chip2.act').forEach(c=>{o[c.dataset.own]=1;});return o;})(),owner:'',
-    body:($('#pfBody').value||'').trim(),
+    time:$('#peTime').value||'',
+    owners:(()=>{const o={};$$('#peOwners .chip2.act').forEach(c=>{o[c.dataset.own]=1;});return o;})(),owner:'',
+    body:($('#peBody').value||'').trim(),
     color:sel?sel.dataset.c:'auto',
-    recur:f?{f,until:($('#pfUntil').value||'')}:{f:'',until:''},
-    remind:$('#pfRemind').checked,
-    by:S.user?(S.user.email||'').split('@')[0]:(cb.draft.by||''),
+    recur:f?{f,until:($('#peUntil').value||'')}:{f:'',until:''},
+    remind:$('#peRemind').checked,
+    by:S.user?(S.user.email||'').split('@')[0]:(pe.draft.by||''),
     updatedAt:Date.now()};
-  const wasRec=!!(cb.orig&&cb.orig.recur&&cb.orig.recur.f);
+  const wasRec=!!(pe.orig&&pe.orig.recur&&pe.orig.recur.f);
   const nowRec=!!f;
-  if(cb.orig&&wasRec!==nowRec){
-    store.delPlan(ymOf(cb.orig.date),cb.orig.id);
+  if(pe.orig&&wasRec!==nowRec){
+    store.delPlan(ymOf(pe.orig.date),pe.orig.id);
     store.putPlan(p);
   }else{
-    const oldYm=cb.orig?ymOf(cb.orig.date):null;
+    const oldYm=pe.orig?ymOf(pe.orig.date):null;
     if(!nowRec&&oldYm&&oldYm!==ymOf(p.date))store.movePlan(p,oldYm);
     else store.putPlan(p);
   }
-  closeModal();
+  const wasNew=!pe.orig;
+  S.planEdit=null;
   selDate(p.date);
   if(!S.live){refetchCal();rDay();}
-  toast(cb.orig?'업무를 수정했습니다':'업무를 추가했습니다');
+  toast(wasNew?'업무를 추가했습니다':'업무를 수정했습니다');
 }
 
 /* ═══════════ 주요업무 현황 — 좌: 대상 선택 · 우: 작성/목록 ═══════════ */
@@ -891,7 +921,13 @@ function tkSel(){
   const team=teams.find(x=>x.id===S.tk.t)||teams[0]||null;S.tk.t=team?team.id:null;
   /* 로컬 모드의 가상 담당자는 선택한 팀에 속한 것으로 본다 */
   const mems=team?all.filter(p=>p.team===team.id||p.local):[];
-  if(S.tk.m!=='team'&&S.tk.m!=='all'&&!mems.some(p=>p.id===S.tk.m))S.tk.m='team';
+  /* 선택값: teamall(팀 전체) · team(공통업무) · reg:<권역id>(권역) · 담당자 id */
+  const m=S.tk.m;
+  const regOk=rid=>rid===''?mems.some(p=>!p.region||!regions.some(r=>r.id===p.region)):regions.some(r=>r.id===rid);
+  const valid=m==='teamall'||m==='team'
+    ||(typeof m==='string'&&m.indexOf('reg:')===0&&regOk(m.slice(4)))
+    ||mems.some(p=>p.id===m);
+  if(!valid)S.tk.m='teamall';
   return{teams,team,regions,mems,total:all.length};
 }
 function taskCount(sid){
@@ -908,13 +944,17 @@ function dueInfo(due){
 }
 function siteName(id){const s=(S.org.sites||[]).find(x=>x.id===id);return s?s.name:'';}
 function taskItemHTML(sid,iid,it,withSubject){
+  const key=sid+'/'+iid;
+  if(S.tkEdit===key)return taskFormHTML(sid,iid,it);   /* 수정 중이면 항목 자리에 폼이 들어간다 */
   const di=dueInfo(it.due),cn=Object.keys(it.comments||{}).length,st=stOf(it.st);
   const asg=Object.keys(it.assignees||{}).map(id=>roster().find(p=>p.id===id)).filter(Boolean);
   const lnk=Object.entries(it.links||{});
   const sn=siteName(it.site);
-  const open=S.tkOpen===sid+'/'+iid;
+  const open=S.tkOpen===key;
+  const col=(it.color&&it.color!=='auto')?it.color:'';
   return `
   <div class="tk-item s${st}${open?' open':''}" draggable="true" data-sid="${esc(sid)}" data-iid="${esc(iid)}">
+    ${col?'<span class="tkc" style="background:'+esc(col)+'"></span>':''}
     <div class="tk-line">
       <span class="tk-grip" aria-hidden="true">⠿</span>
       <span class="tk-st s${st}" data-act="tk.st" data-sid="${esc(sid)}" data-iid="${esc(iid)}">${ST_LBL[st]}</span>
@@ -931,12 +971,13 @@ function taskItemHTML(sid,iid,it,withSubject){
       <button class="tk-ico${cn?' on':''}" data-act="tk.open" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="코멘트">
         <svg class="icn"><use href="#i-cmt"></use></svg>${cn?'<span class="cn">'+cn+'</span>':''}</button>
       <button class="tk-ico" data-act="tk.toPlan" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="일정으로"><svg class="icn"><use href="#i-cal"></use></svg></button>
+      ${open?'<button class="btn bg2 bxs tk-editbtn" data-act="tk.edit" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'">수정</button>':''}
       <button class="tk-del" data-act="tk.del" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="삭제"><svg class="icn"><use href="#i-close"></use></svg></button>
     </div>
     ${open?taskDetailHTML(sid,iid,it):''}
   </div>`;
 }
-/* 펼친 업무 — 진행경과·처리계획과 코멘트 스레드 */
+/* 펼친 업무 — 진행경과·처리계획과 코멘트 스레드 (수정 버튼은 위 tk-line 우측 상단) */
 function taskDetailHTML(sid,iid,it){
   const cs=Object.entries(it.comments||{}).sort((a,b)=>(a[1].at||0)-(b[1].at||0));
   const box=(lbl,val,field)=>`<div class="tk-sec">
@@ -960,9 +1001,6 @@ function taskDetailHTML(sid,iid,it){
         </div>
       </div>
     </div>
-    <div class="tk-edit-row">
-      <button class="btn bg2 bxs" data-act="tk.edit" data-sid="${esc(sid)}" data-iid="${esc(iid)}">제목 · 현장 · 담당자 · 기한 수정</button>
-    </div>
   </div>`;
 }
 function taskListHTML(sid){
@@ -977,39 +1015,109 @@ function taskListHTML(sid){
   return shown.map(iid=>taskItemHTML(sid,iid,items[iid],false)).join('')
     +(old.length?`<div class="tk-fold" data-act="tk.fold" data-sid="${esc(sid)}">${open?'▲ 지난 완료 '+old.length+'건 접기':'▼ 지난 완료 '+old.length+'건 보기'}</div>`:'');
 }
-/* 담당자 전체 보기 — 팀원들의 업무를 한 목록에 */
-function allMembersListHTML(mems){
-  const rows=[];
-  mems.forEach(p=>{
-    const m=S.tasks[p.id]||{};
-    Object.keys(m).forEach(iid=>{if(stOf(m[iid].st)!==2)rows.push({sid:p.id,iid,it:m[iid]});});
-  });
-  if(!rows.length)return '<div class="tk-empty">담당자에게 등록된 미완료 업무가 없습니다.</div>';
-  rows.sort((a,b)=>{const ad=a.it.due||'9999',bd=b.it.due||'9999';return ad<bd?-1:ad>bd?1:0;});
-  return rows.map(r=>taskItemHTML(r.sid,r.iid,r.it,true)).join('');
+/* ── 집계 보기 보조 — 미완료만, 기한순 ── */
+function openItems(sid){
+  const m=S.tasks[sid]||{};
+  return Object.keys(m).filter(iid=>m[iid]&&stOf(m[iid].st)!==2)
+    .sort((a,b)=>{const ad=m[a].due||'9999',bd=m[b].due||'9999';
+      return ad<bd?-1:ad>bd?1:(m[a].createdAt||0)-(m[b].createdAt||0);})
+    .map(iid=>({iid,it:m[iid]}));
 }
-/* 인라인 작성창 — 모달 없이 목록 위에서 바로 적는다 */
-function composerHTML(sid){
+function regionMembers(mems,regions,rid){
+  return rid===''?mems.filter(p=>!p.region||!regions.some(r=>r.id===p.region))
+                 :mems.filter(p=>p.region===rid);
+}
+/* 담당자 묶음 — 담당자별 소제목 아래 그 사람의 미완료 업무 */
+function memberGroupHTML(list){
+  if(!list.length)return '<div class="tk-empty">배정된 담당자가 없습니다.</div>';
+  let any=false;
+  const html=list.map(p=>{
+    const items=openItems(p.id);
+    if(!items.length)return '';
+    any=true;
+    return '<div class="tk-sub2">'+esc(p.name)+'</div>'
+      +items.map(({iid,it})=>taskItemHTML(p.id,iid,it,false)).join('');
+  }).join('');
+  return any?html:'<div class="tk-empty">미완료 업무가 없습니다.</div>';
+}
+/* 권역별 섹션 — 팀 전체 보기에서 권역 단위로 레이아웃을 나눈다 */
+function regionSectionsHTML(mems,regions){
+  const groups=[];
+  regions.forEach(r=>{const list=mems.filter(p=>p.region===r.id);if(list.length)groups.push([r.name,list]);});
+  const none=regionMembers(mems,regions,'');
+  if(none.length)groups.push(['권역 미지정',none]);
+  if(!groups.length)return '<div class="tk-empty">배정된 담당자가 없습니다.</div>';
+  return groups.map(([rn,list])=>{
+    const cnt=list.reduce((a,p)=>a+taskCount(p.id),0);
+    const inner=list.map(p=>{
+      const items=openItems(p.id);
+      if(!items.length)return '';
+      return '<div class="tk-sub2">'+esc(p.name)+'</div>'
+        +items.map(({iid,it})=>taskItemHTML(p.id,iid,it,false)).join('');
+    }).join('')||'<div class="tk-empty" style="padding:8px 2px;text-align:left">미완료 업무가 없습니다.</div>';
+    return '<div class="tk-sub">'+esc(rn)+'<span class="c">'+cnt+'</span></div>'+inner;
+  }).join('');
+}
+/* 작성·수정 공용 폼 — 작성창과 수정 폼이 같은 골격을 쓴다(일관성) */
+function taskFormHTML(sid,iid,cur){
+  const d=cur||{text:'',prog:'',plan:'',site:'',due:'',assignees:{},links:{},color:''};
   const people=tkSel().mems;
   const sites=(S.org.sites||[]).filter(x=>x.name);
+  const col=(d.color&&d.color!=='auto')?d.color:'';
   return `<div class="tk-new" id="tkNew">
-    <input class="inp tk-new-t" id="tnTitle" maxlength="120" placeholder="업무 제목">
+    <input class="inp tk-new-t" id="tnTitle" maxlength="120" placeholder="업무 제목" value="${esc(d.text||'')}">
     <div class="tk-new-g">
       <div class="tk-sec"><div class="tk-sec-h">진행경과</div>
-        <textarea class="inp tk-new-a" id="tnProg" maxlength="2000" placeholder="지금까지의 경과"></textarea></div>
+        <textarea class="inp tk-new-a" id="tnProg" maxlength="2000" placeholder="지금까지의 경과">${esc(d.prog||d.body||'')}</textarea></div>
       <div class="tk-sec"><div class="tk-sec-h">처리계획</div>
-        <textarea class="inp tk-new-a" id="tnPlan" maxlength="2000" placeholder="앞으로의 계획"></textarea></div>
+        <textarea class="inp tk-new-a" id="tnPlan" maxlength="2000" placeholder="앞으로의 계획">${esc(d.plan||'')}</textarea></div>
+    </div>
+    <div class="tk-new-r" style="margin-bottom:9px">
+      <select class="inp inp-sm" id="tnSite"><option value="">현장 —</option>${sites.map(x=>'<option value="'+esc(x.id)+'"'+(x.id===d.site?' selected':'')+'>'+esc(x.name)+'</option>').join('')}</select>
+      <input type="date" class="inp inp-sm" id="tnDue" aria-label="기한" value="${esc(d.due||'')}">
+      <div class="pal" id="tnPal" title="색">
+        <div class="pal-c${col?'':' sel'}" data-c="" style="background:var(--fill2)" title="색 없음"></div>
+        ${PAL.map(c=>'<div class="pal-c'+(c===col?' sel':'')+'" data-c="'+c+'" style="background:'+c+'"></div>').join('')}
+      </div>
+    </div>
+    <div class="tk-new-r" style="margin-bottom:9px">
+      <div class="chipbar" id="tnAsg">${people.map(p=>'<span class="chip2'+((d.assignees||{})[p.id]?' act':'')+'" data-asg="'+esc(p.id)+'">'+esc(p.name)+'</span>').join('')||'<span class="site-none">담당자가 없습니다</span>'}</div>
+    </div>
+    <div class="frow" style="margin-bottom:9px"><label>링크 (선택)</label>
+      <div id="tnLinks">${Object.entries(d.links||{}).map(([k,l])=>linkRowHTML(k,l)).join('')}</div>
+      <button class="btn bo bxs" data-act="tk.linkAdd" style="align-self:flex-start;margin-top:4px"><svg class="icn"><use href="#i-plus"></use></svg> 링크 추가</button>
     </div>
     <div class="tk-new-r">
-      <select class="inp inp-sm" id="tnSite"><option value="">현장 —</option>${sites.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.name)+'</option>').join('')}</select>
-      <input type="date" class="inp inp-sm" id="tnDue" aria-label="기한">
-      <div class="chipbar" id="tnAsg">${people.map(p=>'<span class="chip2" data-asg="'+esc(p.id)+'">'+esc(p.name)+'</span>').join('')}</div>
+      ${iid?'<button class="btn btn-danger bsm" data-act="tk.del" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" style="margin-right:auto">삭제</button>':''}
       <div class="tk-new-btns">
-        <button class="btn bg2 bsm" data-act="tk.newCancel">취소</button>
-        <button class="btn bp bsm" data-act="tk.newSave" data-sid="${esc(sid)}">등록</button>
+        <button class="btn bg2 bsm" data-act="tk.formCancel">취소</button>
+        <button class="btn bp bsm" data-act="tk.formSave" data-sid="${esc(sid)}" data-iid="${esc(iid||'')}">${iid?'저장':'등록'}</button>
       </div>
     </div>
   </div>`;
+}
+function taskFormSave(sid,iid){
+  const t=($('#tnTitle').value||'').trim();
+  if(!t){toast('제목을 입력하세요');$('#tnTitle').focus();return;}
+  const cur=iid?((S.tasks[sid]||{})[iid]||null):null;
+  const id=iid||uid();
+  const asg={};$$('#tnAsg .chip2.act').forEach(c=>{asg[c.dataset.asg]=1;});
+  const links={};
+  $$('#tnLinks .lnk-row').forEach(r=>{
+    const u=(r.querySelector('.lnk-url').value||'').trim();
+    if(!u)return;
+    links[r.dataset.lid]={url:/^https?:\/\//i.test(u)?u:'https://'+u,label:(r.querySelector('.lnk-lbl').value||'').trim()};
+  });
+  const cSel=$('#tnPal .pal-c.sel');
+  store.putTask(sid,id,{...(cur||{st:0,createdAt:Date.now()}),
+    text:t,prog:($('#tnProg').value||'').trim(),plan:($('#tnPlan').value||'').trim(),
+    site:$('#tnSite').value||'',due:$('#tnDue').value||'',
+    assignees:asg,links,color:cSel?(cSel.dataset.c||''):'',
+    order:(cur&&Number.isFinite(Number(cur.order)))?Number(cur.order):nextOrder(sid),
+    updatedAt:Date.now()});
+  S.tkNew=null;S.tkEdit=null;S.tkOpen=sid+'/'+id;
+  if(!S.live)rTasks();else setTimeout(rTasks,220);
+  refetchCal();
 }
 
 /* ── 목록 보조 ── */
@@ -1066,34 +1174,56 @@ function rTasks(){
     return;
   }
   const sel=S.tk.m;
-  const sid=sel==='team'?(team?team.id:null):(sel==='all'?null:sel);
-  const subject=sel==='team'?((team?team.name+' ':'')+'공통업무')
-    :sel==='all'?'담당자별 업무 전체'
-    :((mems.find(p=>p.id===sel)||{}).name||'담당자');
-  /* 담당자는 권역별로 나눠 보여준다 */
-  const byReg=[];
-  regions.forEach(r=>{const list=mems.filter(p=>p.region===r.id);if(list.length)byReg.push([r.name,list]);});
-  const none=mems.filter(p=>!p.region||!regions.some(r=>r.id===p.region));
-  if(none.length)byReg.push(['권역 미지정',none]);
+  const tn=team?team.name:'팀';
+  /* 좌측 카운트 */
+  const cCommon=team?taskCount(team.id):0;
+  const cMems=mems.reduce((a,p)=>a+taskCount(p.id),0);
+  /* 대상별 제목 · 작성 대상(sid) · 목록 */
+  let subject='',sid=null,listHTML='';
+  if(sel==='teamall'){
+    subject=tn+' 전체 업무';
+    const ci=team?openItems(team.id):[];
+    listHTML='<div class="tk-sub">공통업무<span class="c">'+cCommon+'</span></div>'
+      +(ci.length?ci.map(({iid,it})=>taskItemHTML(team.id,iid,it,false)).join('')
+        :'<div class="tk-empty" style="padding:8px 2px;text-align:left">공통업무가 없습니다.</div>')
+      +regionSectionsHTML(mems,regions);
+  }else if(sel==='team'){
+    subject=tn+' 공통업무';sid=team?team.id:null;
+    listHTML=sid?taskListHTML(sid):'<div class="tk-empty">조직 관리에서 팀을 먼저 등록하세요.</div>';
+  }else if(typeof sel==='string'&&sel.indexOf('reg:')===0){
+    const rid=sel.slice(4);
+    subject=(rid===''?'권역 미지정':(((regions.find(r=>r.id===rid)||{}).name)||'권역'))+' 업무';
+    listHTML=memberGroupHTML(regionMembers(mems,regions,rid));
+  }else{
+    const p=mems.find(x=>x.id===sel);
+    subject=p?p.name:'담당자';sid=sel;
+    listHTML=taskListHTML(sid);
+  }
+  /* 담당자 카드 — 권역 행(선택 가능) 아래에 담당자 */
+  const regGroups=[];
+  regions.forEach(r=>{const list=mems.filter(p=>p.region===r.id);if(list.length)regGroups.push([r.id,r.name,list]);});
+  const none=regionMembers(mems,regions,'');
+  if(none.length)regGroups.push(['','권역 미지정',none]);
 
   root.innerHTML=`<div class="tkwrap">
     <div class="tkside">
       <div class="card tks-card">
         <div class="tks-h">팀</div>
+        <div class="tks-item${sel==='teamall'?' act':''}" data-act="tk.pick" data-id="teamall">
+          <span class="n">${esc(tn)} 전체 업무</span>
+          <span class="c">${cCommon+cMems}</span>
+        </div>
         <div class="tks-item${sel==='team'?' act':''}" data-act="tk.pick" data-id="team">
-          <span class="n">${esc(team?team.name:'팀 없음')} 공통업무</span>
-          ${team?'<span class="c">'+taskCount(team.id)+'</span>':''}
+          <span class="n">공통업무</span>
+          ${team?'<span class="c">'+cCommon+'</span>':''}
         </div>
       </div>
       <div class="card tks-card">
-        <div class="tks-h">담당자</div>
-        <div class="tks-item${sel==='all'?' act':''}" data-act="tk.pick" data-id="all">
-          <span class="n">담당자별 업무 전체</span>
-          <span class="c">${mems.reduce((a,p)=>a+taskCount(p.id),0)}</span>
-        </div>
-        ${byReg.map(([rn,list])=>`
-          <div class="tks-g">${esc(rn)}</div>
-          ${list.map(p=>`<div class="tks-item${sel===p.id?' act':''}" data-act="tk.pick" data-id="${esc(p.id)}">
+        <div class="tks-h">담당자 · 권역</div>
+        ${regGroups.map(([rid,rn,list])=>`
+          <div class="tks-item tks-reg${sel==='reg:'+rid?' act':''}" data-act="tk.pick" data-id="reg:${esc(rid)}">
+            <span class="n">${esc(rn)}</span><span class="c">${list.reduce((a,p)=>a+taskCount(p.id),0)}</span></div>
+          ${list.map(p=>`<div class="tks-item sub${sel===p.id?' act':''}" data-act="tk.pick" data-id="${esc(p.id)}">
             <span class="n">${esc(p.name)}</span><span class="c">${taskCount(p.id)}</span></div>`).join('')}
         `).join('')||'<div class="tk-empty" style="text-align:left;padding:6px 2px">배정된 담당자가 없습니다.</div>'}
       </div>
@@ -1102,55 +1232,23 @@ function rTasks(){
       <div class="tkm-h"><div class="bar"></div><b>${esc(subject)}</b>
         ${sid?'<button class="btn bo bsm" data-act="tk.newOpen" data-sid="'+esc(sid)+'"><svg class="icn"><use href="#i-plus"></use></svg> 업무 추가</button>':''}
       </div>
-      ${sid&&S.tkNew===sid?composerHTML(sid):''}
-      <div class="tk-list">${sel==='all'?allMembersListHTML(mems):(sid?taskListHTML(sid):'<div class="tk-empty">조직 관리에서 팀을 먼저 등록하세요.</div>')}</div>
+      ${sid&&S.tkNew===sid?taskFormHTML(sid,null,null):''}
+      <div class="tk-list">${listHTML}</div>
     </div>
   </div>`;
   wireTaskDnD();
-  if(S.tkNew===sid){const t=$('#tnTitle');if(t)t.focus();}
+  if((sid&&S.tkNew===sid)||S.tkEdit){const t=$('#tnTitle');if(t&&document.activeElement!==t)t.focus();}
 }
-/* 제목·현장·담당자·기한만 고치는 작은 모달 */
-function openTaskModal(sid,iid){
-  const cur=iid?((S.tasks[sid]||{})[iid]||null):null;
-  const d=cur||{text:'',st:0,due:'',site:'',assignees:{},createdAt:Date.now()};
-  const people=tkSel().mems;
-  const sites=(S.org.sites||[]).filter(x=>x.name);
-  openModal(cur?'업무 수정':'업무 추가',`
-    <div class="frow"><label>제목</label><input class="inp" id="tfTitle" maxlength="120" placeholder="무엇을 하나요?" value="${esc(d.text||'')}"></div>
-    <div class="frow2">
-      <div class="frow"><label>현장 (선택)</label><select class="inp inp-sm" id="tfSite"><option value="">지정 안 함</option>${sites.map(x=>'<option value="'+esc(x.id)+'"'+(x.id===d.site?' selected':'')+'>'+esc(x.name)+'</option>').join('')}</select></div>
-      <div class="frow"><label>기한 (선택)</label><input type="date" class="inp inp-sm" id="tfDue" value="${esc(d.due||'')}"></div>
-    </div>
-    <div class="frow"><label>상태</label><select class="inp inp-sm" id="tfSt">${ST_LBL.map((x,i)=>'<option value="'+i+'"'+(stOf(d.st)===i?' selected':'')+'>'+x+'</option>').join('')}</select></div>
-    <div class="frow"><label>담당자 <span style="font-weight:500;color:var(--lbl3)">여러 명 선택 가능</span></label>
-      <div class="chipbar" id="tfAsg">${people.map(p=>'<span class="chip2'+((d.assignees||{})[p.id]?' act':'')+'" data-asg="'+esc(p.id)+'">'+esc(p.name)+'</span>').join('')||'<span class="site-none">담당자가 없습니다</span>'}</div>
-    </div>
-    <div class="frow"><label>링크 (선택)</label>
-      <div id="tfLinks">${Object.entries(d.links||{}).map(([k,l])=>linkRowHTML(k,l)).join('')}</div>
-      <button class="btn bo bxs" data-act="tk.linkAdd" style="align-self:flex-start;margin-top:4px"><svg class="icn"><use href="#i-plus"></use></svg> 링크 추가</button>
-    </div>`,
-    (cur?'<button class="btn btn-danger bsm" data-act="tk.del" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" style="margin-right:auto">삭제</button>':'')
-    +'<button class="btn bg2 bsm" data-act="modal.close">취소</button><button class="btn bp bsm" data-act="modal.ok">저장</button>');
-  MODAL_CB={type:'task',ok:()=>{
-    const t=($('#tfTitle').value||'').trim();
-    if(!t){toast('제목을 입력하세요');$('#tfTitle').focus();return;}
-    const id=iid||uid();
-    const asg={};$$('#tfAsg .chip2.act').forEach(c=>{asg[c.dataset.asg]=1;});
-    const links={};
-    $$('#tfLinks .lnk-row').forEach(r=>{
-      const u=(r.querySelector('.lnk-url').value||'').trim();
-      if(!u)return;
-      links[r.dataset.lid]={url:/^https?:\/\//i.test(u)?u:'https://'+u,label:(r.querySelector('.lnk-lbl').value||'').trim()};
-    });
-    store.putTask(sid,id,{...(cur||{createdAt:Date.now()}),
-      text:t,site:$('#tfSite').value||'',
-      st:stOf($('#tfSt').value),due:$('#tfDue').value||'',
-      assignees:asg,links,
-      order:(cur&&Number.isFinite(Number(cur.order)))?Number(cur.order):nextOrder(sid),
-      updatedAt:Date.now()});
-    closeModal();if(!S.live)rTasks();refetchCal();
-  }};
-  setTimeout(()=>{const e=$('#tfTitle');if(e)e.focus();},50);
+/* 업무로 이동 — 검색·내 업무·멘션·달력에서 공통으로 쓰고, 모달 없이 인라인으로 펼친다 */
+function gotoTask(sid,iid){
+  nqOpen(false);closeModal();
+  const isTeam=(S.org.teams||[]).some(t=>t.id===sid);
+  if(isTeam){S.tk.t=sid;S.tk.m='team';}
+  else{const p=roster().find(x=>x.id===sid);if(p&&p.team)S.tk.t=p.team;S.tk.m=sid;}
+  S.tkNew=null;S.tkEdit=null;S.tkOpen=sid+'/'+iid;
+  go('tasks');rTasks();
+  setTimeout(()=>{const el=document.querySelector('.tk-item[data-iid="'+iid+'"]');
+    if(el)el.scrollIntoView({block:'center',behavior:'smooth'});},80);
 }
 
 /* ═══════════ 찾기 — 업무·일정·코멘트를 한 번에 ═══════════ */
@@ -1415,27 +1513,43 @@ function rOrg(){
       +(list.length?shown+(list.length>3?'<span class="site-more">+'+(list.length-3)+'</span>':''):'<span class="site-none">미지정</span>')
       +'</div>';
   };
-  const row=(p,inTeam)=>{
+  const roleCtl=p=>{
     const role=p.role||'viewer',rc='r-'+role,isMe=p.id===myUid,lastEd=role==='editor'&&editors.length<=1;
     const lock=isMe?'본인 계정':(lastEd?'마지막 관리자':'');
-    const ctl=(!isEditor()||isMe||lastEd)
+    return (!isEditor()||isMe||lastEd)
       ? (lock?'<span class="fbu-lock">'+lock+'</span> ':'')+'<span class="fbu-role '+rc+'">'+esc(roleLabel(role))+'</span>'
       : '<select class="fbu-sel" data-act="acct.role" data-id="'+esc(p.id)+'" aria-label="권한">'
         +roleOpt('editor','관리자',role)+roleOpt('viewer','사용자',role)+roleOpt('blocked','차단',role)+'</select>';
+  };
+  const row=p=>{
+    const rc='r-'+(p.role||'viewer');
     return `<tr>
       <td><div class="utbl-name"><div class="fbu-av ${rc}">${ICON_PERSON}</div>
         <div style="min-width:0"><div class="utbl-nick">${esc(p.name)}</div><div class="utbl-mail">${esc(p.email||'')}</div></div></div></td>
-      ${inTeam?`<td><select class="mg-inp" data-act="acct.set" data-f="region" data-id="${esc(p.id)}" aria-label="권역">${regOpt(p.region)}</select></td>
-      <td>${sitesOf(p)}</td>`
-      :`<td colspan="2"><button class="btn bo bxs" data-act="acct.join" data-id="${esc(p.id)}">이 팀에 추가</button></td>`}
-      <td class="utbl-r">${ctl}</td>
+      <td><select class="mg-inp" data-act="acct.set" data-f="region" data-id="${esc(p.id)}" aria-label="권역">${regOpt(p.region)}</select></td>
+      <td>${sitesOf(p)}</td>
+      <td class="utbl-r">${roleCtl(p)}</td>
     </tr>`;
   };
   ar.innerHTML='<table class="utbl"><thead><tr><th>이름</th><th style="width:120px">권역</th><th>담당 현장</th><th class="utbl-r">권한</th></tr></thead><tbody>'
-    +(mine.length?mine.map(p=>row(p,true)).join('')
+    +(mine.length?mine.map(row).join('')
       :'<tr><td colspan="4" style="font-size:12px;color:var(--lbl3);padding:10px">이 팀에 배정된 계정이 없습니다.</td></tr>')
-    +(free.length?'<tr><td colspan="4" class="ulex-lbl" style="padding:12px 10px 4px">팀 미배정</td></tr>'+free.map(p=>row(p,false)).join(''):'')
     +'</tbody></table>';
+  /* 팀 미배정 계정 — 섞어 두면 헷갈린다는 지적에 따라 별도 카드로 분리 */
+  const fc=$('#freeCard'),fr=$('#freeRoot');
+  if(fc&&fr){
+    fc.style.display=free.length?'':'none';
+    fr.innerHTML=free.length
+      ?'<table class="utbl"><thead><tr><th>이름</th><th></th><th class="utbl-r">권한</th></tr></thead><tbody>'
+        +free.map(p=>`<tr>
+          <td><div class="utbl-name"><div class="fbu-av r-${esc(p.role||'viewer')}">${ICON_PERSON}</div>
+            <div style="min-width:0"><div class="utbl-nick">${esc(p.name)}</div><div class="utbl-mail">${esc(p.email||'')}</div></div></div></td>
+          <td><button class="btn bo bxs" data-act="acct.join" data-id="${esc(p.id)}">이 팀에 추가</button></td>
+          <td class="utbl-r">${roleCtl(p)}</td>
+        </tr>`).join('')
+        +'</tbody></table>'
+      :'';
+  }
   rFilter();
 }
 function orgSave(){normOrg(S.org);store.putOrg(S.org);if(!S.live){rOrg();rTasks();}}
@@ -1522,15 +1636,16 @@ const ACT={
   'cal.prev':()=>CAL&&CAL.prev(),
   'cal.next':()=>CAL&&CAL.next(),
   'cal.today':()=>{selDate(todayStr());},
-  'plan.new':()=>openPlanModal(null),
-  'plan.edit':el=>{const p=findPlan(el.dataset.pid);if(p)openPlanModal(p,null,null,el.dataset.occ||'');},
+  'plan.new':()=>openPlanEdit(null),
+  'plan.cancel':closePlanEdit,
+  'plan.edit':el=>{const p=findPlan(el.dataset.pid);if(p)openPlanEdit(p,null,null,el.dataset.occ||'');},
   'plan.done':el=>{const p=findPlan(el.dataset.pid);if(!p)return;
     const occ=el.dataset.occ||p.date;
     if(p.recur&&p.recur.f){p.doneOn=p.doneOn||{};if(p.doneOn[occ])delete p.doneOn[occ];else p.doneOn[occ]=1;}
     else p.done=!p.done;
     p.updatedAt=Date.now();store.putPlan(p);if(!S.live){rDay();refetchCal();rWidget();}},
   'plan.remind':el=>{const p=findPlan(el.dataset.pid);if(!p)return;p.remind=!p.remind;p.updatedAt=Date.now();store.putPlan(p);if(!S.live)rDay();toast(p.remind?'당일 아침 리마인드 메일이 발송됩니다':'리마인드를 해제했습니다');},
-  'plan.save':savePlanFromModal,
+  'plan.save':savePlanInline,
   'plan.del':el=>{
     const p=findPlan(el.dataset.pid),occ=el.dataset.occ||'';
     if(p&&p.recur&&p.recur.f&&occ){
@@ -1541,13 +1656,13 @@ const ACT={
         +'<button class="btn btn-danger bsm" data-act="plan.delAll" data-pid="'+esc(p.id)+'">반복 전체 삭제</button>');
       return;
     }
-    store.delPlan(el.dataset.ym,el.dataset.pid);closeModal();
-    if(!S.live){rDay();refetchCal();rWidget();}toast('업무를 삭제했습니다');},
+    store.delPlan(el.dataset.ym,el.dataset.pid);closeModal();S.planEdit=null;rDay();
+    if(!S.live){refetchCal();rWidget();}toast('업무를 삭제했습니다');},
   'plan.skipOcc':el=>{const p=findPlan(el.dataset.pid);if(!p)return;
     p.skipOn=p.skipOn||{};p.skipOn[el.dataset.occ]=1;p.updatedAt=Date.now();store.putPlan(p);
-    closeModal();if(!S.live){rDay();refetchCal();rWidget();}toast('이 날짜를 반복에서 제외했습니다');},
-  'plan.delAll':el=>{store.delPlan('',el.dataset.pid);closeModal();
-    if(!S.live){rDay();refetchCal();rWidget();}toast('반복 업무를 삭제했습니다');},
+    closeModal();S.planEdit=null;rDay();if(!S.live){refetchCal();rWidget();}toast('이 날짜를 반복에서 제외했습니다');},
+  'plan.delAll':el=>{store.delPlan('',el.dataset.pid);closeModal();S.planEdit=null;rDay();
+    if(!S.live){refetchCal();rWidget();}toast('반복 업무를 삭제했습니다');},
   'auth.login':fbDoLogin,
   'auth.signup':fbDoSignup,
   'auth.resend':fbDoResend,
@@ -1556,28 +1671,14 @@ const ACT={
   'nq.toggle':()=>{const on=!$('#nqPanel').classList.contains('on');nqOpen(on);if(on)rNq();},
   'nq.close':()=>nqOpen(false),
   'nq.q':()=>{},
-  'nq.task':el=>{
-    nqOpen(false);const sid=el.dataset.sid;
-    go('tasks');S.tk.m=(S.org.teams||[]).some(t=>t.id===sid)?'team':sid;rTasks();
-    setTimeout(()=>openTaskModal(sid,el.dataset.iid),60);
-  },
-  'nq.cmt':el=>{
-    nqOpen(false);const sid=el.dataset.sid;
-    go('tasks');S.tk.m=(S.org.teams||[]).some(t=>t.id===sid)?'team':sid;rTasks();
-    setTimeout(()=>openCmtModal(sid,el.dataset.iid),60);
-  },
+  'nq.task':el=>gotoTask(el.dataset.sid,el.dataset.iid),
+  'nq.cmt':el=>gotoTask(el.dataset.sid,el.dataset.iid),
   'nq.plan':el=>{
     nqOpen(false);go('calendar');selDate(el.dataset.date);
-    setTimeout(()=>{const p=findPlan(el.dataset.pid);if(p)openPlanModal(p,null,null,el.dataset.date);},80);
+    setTimeout(()=>{const p=findPlan(el.dataset.pid);if(p)openPlanEdit(p,null,null,el.dataset.date);},80);
   },
   'mine.plan':el=>{go('calendar');selDate(el.dataset.date);},
-  'mine.task':el=>{
-    const sid=el.dataset.sid;
-    go('tasks');
-    S.tk.m=(S.org.teams||[]).some(t=>t.id===sid)?'team':sid;
-    rTasks();
-    setTimeout(()=>openTaskModal(sid,el.dataset.iid),60);
-  },
+  'mine.task':el=>gotoTask(el.dataset.sid,el.dataset.iid),
   'mention.clear':()=>{
     const uid2=S.user&&S.user.uid;if(!uid2)return;
     Object.keys(S.mentions||{}).forEach(id=>store.putMention(uid2,id,null));
@@ -1587,10 +1688,9 @@ const ACT={
     const uid2=S.user&&S.user.uid;
     if(uid2)store.putMention(uid2,el.dataset.id,null);
     delete S.mentions[el.dataset.id];rMention();
-    closeModal();go('tasks');
-    const sid=el.dataset.sid;
-    if(sid){S.tk.m=(S.org.teams||[]).some(t=>t.id===sid)?'team':sid;rTasks();
-      setTimeout(()=>openCmtModal(sid,el.dataset.iid),80);}
+    closeModal();
+    if(el.dataset.sid)gotoTask(el.dataset.sid,el.dataset.iid);
+    else go('tasks');
   },
   'acct.saveName':acctSaveName,
   'acct.changePw':acctChangePw,
@@ -1598,37 +1698,19 @@ const ACT={
   'modal.close':closeModal,
   'modal.stop':()=>{},
   'modal.ok':()=>{if(MODAL_CB&&MODAL_CB.ok)MODAL_CB.ok();},
-  'tk.tab':el=>{
-    const lv=el.dataset.lv;S.tk[lv]=el.dataset.id;
-    if(lv==='t'){S.tk.r='*';S.tk.m=null;}
-    if(lv==='r')S.tk.m=null;
-    rTasks();
-  },
-  'tk.newOpen':el=>{S.tkNew=el.dataset.sid;rTasks();},
-  'tk.newCancel':()=>{S.tkNew=null;rTasks();},
-  'tk.newSave':el=>{
-    const sid=el.dataset.sid;
-    const t=($('#tnTitle').value||'').trim();
-    if(!t){toast('제목을 입력하세요');$('#tnTitle').focus();return;}
-    const asg={};$$('#tnAsg .chip2.act').forEach(c=>{asg[c.dataset.asg]=1;});
-    const id=uid();
-    store.putTask(sid,id,{text:t,prog:($('#tnProg').value||'').trim(),plan:($('#tnPlan').value||'').trim(),
-      site:$('#tnSite').value||'',due:$('#tnDue').value||'',assignees:asg,st:0,
-      order:nextOrder(sid),createdAt:Date.now(),updatedAt:Date.now()});
-    S.tkNew=null;S.tkOpen=sid+'/'+id;
-    if(!S.live)rTasks();else setTimeout(rTasks,220);
-    refetchCal();
-  },
+  'tk.newOpen':el=>{S.tkEdit=null;S.tkNew=el.dataset.sid;rTasks();},
+  'tk.formCancel':()=>{S.tkNew=null;S.tkEdit=null;rTasks();},
+  'tk.formSave':el=>taskFormSave(el.dataset.sid,el.dataset.iid||null),
   'tk.open':el=>{
     const key=el.dataset.sid+'/'+el.dataset.iid;
     S.tkOpen=S.tkOpen===key?null:key;rTasks();
   },
   'tk.field':()=>{},
-  'tk.add':el=>openTaskModal(el.dataset.sid,null),
-  'tk.linkAdd':()=>{const box=$('#tfLinks');if(box)box.insertAdjacentHTML('beforeend',linkRowHTML(uid(),null));},
+  'tk.linkAdd':()=>{const box=$('#tnLinks');if(box)box.insertAdjacentHTML('beforeend',linkRowHTML(uid(),null));},
   'tk.linkDel':el=>{const r=el.closest('.lnk-row');if(r)r.remove();},
   'tk.linkOpen':()=>{},
-  'tk.edit':el=>openTaskModal(el.dataset.sid,el.dataset.iid),
+  'tk.edit':el=>{S.tkNew=null;S.tkEdit=el.dataset.sid+'/'+el.dataset.iid;rTasks();
+    setTimeout(()=>{const t=$('#tnTitle');if(t)t.focus();},30);},
   'tk.pick':el=>{S.tk.m=el.dataset.id;rTasks();},
   'tk.st':el=>{
     const sid=el.dataset.sid,iid=el.dataset.iid;
@@ -1637,7 +1719,13 @@ const ACT={
     if(!S.live)rTasks();
     refetchCal();   /* 완료 처리하면 달력의 기한 표시도 즉시 사라져야 한다 */
   },
-  'tk.del':el=>{store.putTask(el.dataset.sid,el.dataset.iid,null);closeModal();if(!S.live)rTasks();refetchCal();},
+  'tk.del':el=>{
+    const key=el.dataset.sid+'/'+el.dataset.iid;
+    store.putTask(el.dataset.sid,el.dataset.iid,null);closeModal();
+    if(S.tkEdit===key)S.tkEdit=null;
+    if(S.tkOpen===key)S.tkOpen=null;
+    if(!S.live)rTasks();else setTimeout(rTasks,220);
+    refetchCal();},
   'tk.fold':el=>{const sid=el.dataset.sid;S.foldOpen[sid]=!S.foldOpen[sid];rTasks();},
   'tk.due':el=>{
     const sid=el.dataset.sid,iid=el.dataset.iid,cur=(S.tasks[sid]||{})[iid];if(!cur)return;
@@ -1651,7 +1739,6 @@ const ACT={
   },
   'tk.dueClear':el=>{const sid=el.dataset.sid,iid=el.dataset.iid,cur=(S.tasks[sid]||{})[iid];if(!cur)return;
     store.putTask(sid,iid,{...cur,due:'',updatedAt:Date.now()});closeModal();if(!S.live)rTasks();refetchCal();},
-  'tk.cmt':el=>openCmtModal(el.dataset.sid,el.dataset.iid),
   'tk.cmtSend':el=>{
     const sid=el.dataset.sid,iid=el.dataset.iid,cur=(S.tasks[sid]||{})[iid];if(!cur)return;
     const box=document.querySelector('.th-in[data-sid="'+sid+'"][data-iid="'+iid+'"]')||$('#cmtIn');
@@ -1673,9 +1760,9 @@ const ACT={
     const when=cur.due||todayStr();
     go('calendar');selDate(when);
     setTimeout(()=>{
-      openPlanModal(null,when,'');
-      const t=$('#pfTitle');if(t)t.value=cur.text;
-      const c=document.querySelector('#pfOwners .chip2[data-own="'+sid+'"]');if(c)c.classList.add('act');
+      openPlanEdit(null,when,'');
+      const t=$('#peTitle');if(t)t.value=cur.text;
+      const c=document.querySelector('#peOwners .chip2[data-own="'+sid+'"]');if(c)c.classList.add('act');
     },60);
   },
   'org.addTeam':()=>{
@@ -1852,26 +1939,13 @@ const ACT={
     if(!isEditor())return denyEdit();
     const uid=el.dataset.id,v=el.value;
     if(!S.live){toast('로그인 후에 변경할 수 있습니다');return;}
+    const who=(S.accounts[uid]&&S.accounts[uid].email)||'계정';
     FB.db.ref('users/'+uid+'/role').set(v)
-      .then(()=>toast('권한을 변경했습니다'))
+      .then(()=>toast(who+' → '+roleLabel(v)))
       .catch(e=>{fbErr(e);rOrg();});
   },
   'set.saveUrl':()=>{if(!isEditor())return denyEdit();store.putCfg('defectUrl',($('#setDefectUrl').value||'').trim());if(!S.live)rCfg();toast('저장했습니다');}
 };
-function openCmtModal(sid,iid){
-  const it=(S.tasks[sid]||{})[iid];if(!it)return;
-  const cs=Object.entries(it.comments||{}).sort((a,b)=>(a[1].at||0)-(b[1].at||0));
-  openModal('업무 코멘트',
-    '<div style="font-size:13px;font-weight:700;color:var(--lbl);margin-bottom:12px;word-break:break-all">'+esc(it.text)+'</div>'
-    +'<div class="cmt">'+(cs.length?cs.map(([cid,c])=>`
-      <div class="cmt-i"><div class="cmt-h"><b>${esc(c.by||'')}</b><span>${esc(relTime(c.at))}</span></div>
-      <div class="cmt-t">${esc(c.text)}</div></div>`).join(''):'<div class="cmt-empty">아직 코멘트가 없습니다.</div>')+'</div>'
-    +'<div class="frow"><textarea class="inp" id="cmtIn" maxlength="300" placeholder="진행 상황이나 확인 사항을 남기세요"></textarea></div>',
-    '<button class="btn bg2 bsm" data-act="modal.close">닫기</button>'
-    +'<button class="btn bp bsm" data-act="tk.cmtSend" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'">등록</button>');
-  MODAL_CB={type:'cmt',sid,iid};
-  setTimeout(()=>{const t=$('#cmtIn');if(t)t.focus();},50);
-}
 /* 필터 = 권역(세그먼트) + 담당자(선택). 권역을 고르면 담당자 목록도 그 권역으로 좁혀진다. */
 function rFilter(){
   const list=roster(),me=S.user?list.find(p=>p.id===(S.user.uid||'')):null;
@@ -1904,14 +1978,16 @@ function confirmModal(title,msg,cb,okLabel,danger){
 document.addEventListener('click',e=>{
   const el=e.target.closest('[data-act]');
   if(!el)return;
+  if(el.tagName==='SELECT')return;   /* select 는 change 에서만 처리 — 누르기만 해도 실행되던 버그 방지 */
   const fn=ACT[el.dataset.act];
   if(fn){if(el.dataset.act!=='modal.stop')e.stopPropagation();fn(el);}
 });
 document.addEventListener('click',e=>{
-  const chip=e.target.closest('#tfAsg .chip2, #tnAsg .chip2, #pfOwners .chip2');
+  const chip=e.target.closest('#tnAsg .chip2, #peOwners .chip2');
   if(chip){chip.classList.toggle('act');return;}
   const pal=e.target.closest('.pal-c');
-  if(pal){$$('#pfPal .pal-c').forEach(x=>x.classList.remove('sel'));pal.classList.add('sel');}
+  if(pal){const box=pal.closest('.pal');
+    if(box){box.querySelectorAll('.pal-c').forEach(x=>x.classList.remove('sel'));pal.classList.add('sel');}}
 });
 document.addEventListener('change',e=>{
   if(e.target.id==='teamSelEl'){ACT['team.switch'](e.target);return;}
@@ -1953,11 +2029,15 @@ document.addEventListener('keydown',e=>{
   /* Ctrl/⌘+K 로 찾기 */
   if((e.ctrlKey||e.metaKey)&&(e.key==='k'||e.key==='K')){e.preventDefault();nqOpen(true);rNq();return;}
   if(e.key==='Escape'&&$('#nqPanel')&&$('#nqPanel').classList.contains('on')&&!$('#mo').classList.contains('open')){nqOpen(false);return;}
-  if(e.key==='Escape'){if($('#mo').classList.contains('open'))closeModal();else mobClose();}
+  if(e.key==='Escape'){
+    if($('#mo').classList.contains('open')){closeModal();return;}
+    if(S.tkNew||S.tkEdit){S.tkNew=null;S.tkEdit=null;rTasks();return;}
+    if(S.planEdit){closePlanEdit();return;}
+    mobClose();
+  }
   if(e.key==='Enter'&&$('#mo').classList.contains('open')&&e.target.tagName==='INPUT'){
     e.preventDefault();
-    if(MODAL_CB&&MODAL_CB.type==='plan')savePlanFromModal();
-    else if(MODAL_CB&&MODAL_CB.ok)MODAL_CB.ok();
+    if(MODAL_CB&&MODAL_CB.ok)MODAL_CB.ok();
   }
 });
 
@@ -1978,8 +2058,8 @@ function rWidget(){
   if(!WIDGET)return;
   const ds=S.selDate,ps=dayPlans(ds),d=toDate(ds),ho=holOf(ds);
   $('#widPanel').innerHTML='<div class="wid-h">'+(d.getMonth()+1)+'월 '+d.getDate()+'일 · '+DOW[d.getDay()]+(ho?' · '+esc(ho.n):'')+(ds===todayStr()?' · 오늘':'')+'</div>'
-    +(ps.length?ps.map(p=>`<div class="plan${p.done?' done':''}">
-        <div class="pc" style="background:${esc(p.color||PAL[0])}"></div>
+    +(ps.length?ps.map(({p,occ})=>`<div class="plan${isDone(p,occ)?' done':''}">
+        <div class="pc" style="background:${esc(planColor(p))}"></div>
         <div class="plan-main"><div class="plan-t">${esc(p.title)}</div>
         ${p.time?'<div class="plan-meta"><span class="pm-chip">'+esc(fmtTime(p.time))+'</span></div>':''}</div></div>`).join('')
       :'<div class="dp-empty" style="padding:10px 0">업무 없음</div>');
