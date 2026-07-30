@@ -39,7 +39,14 @@ async function main() {
   admin.initializeApp({ credential: admin.credential.cert(sa), databaseURL: DB_URL });
   const db = admin.database();
 
+  const cfgSnap = await db.ref('calapp/cfg/mail').get();
+  const mail = cfgSnap.val() || {};
+  if (mail.weeklyOn === false) { console.log('주간 요약이 설정에서 꺼져 있음 — 종료'); process.exit(0); }
+
   const today = ds(kstNow());
+  /* 설정한 요일에만 보낸다(워크플로는 매일 돌아도 됨) */
+  const wantDow = mail.weeklyDow === undefined ? 1 : Number(mail.weeklyDow);
+  if (dow(today) !== wantDow) { console.log(`오늘은 설정 요일(${wantDow})이 아님 — 종료`); process.exit(0); }
   const monday = addDays(today, -((dow(today) + 6) % 7));
   const sunday = addDays(monday, 6);
   const months = [...new Set([monday.slice(0, 7), sunday.slice(0, 7)])];
@@ -105,13 +112,14 @@ async function main() {
       <span style="font-size:13px;color:#1C1C1E;margin-left:7px;">${esch(t.text)}</span>
       ${t.who ? `<span style="font-size:11px;color:#888;margin-left:6px;">${esch(t.who)}</span>` : ''}</td></tr>`).join('');
 
-  const subject = `[주간 업무] ${Number(monday.slice(5, 7))}/${Number(monday.slice(8))} – ${Number(sunday.slice(5, 7))}/${Number(sunday.slice(8))} 일정 ${occ.length}건 · 기한 ${due.length}건`;
+  const subject = `${mail.prefix || '[주간 업무]'} ${Number(monday.slice(5, 7))}/${Number(monday.slice(8))} – ${Number(sunday.slice(5, 7))}/${Number(sunday.slice(8))} 일정 ${occ.length}건 · 기한 ${due.length}건`;
   const html = `<div style="font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;max-width:560px;margin:0 auto;">
       <div style="background:linear-gradient(135deg,#3E71D2,#2C437C);border-radius:14px 14px 0 0;padding:18px 20px;color:#fff;">
         <div style="font-size:11px;opacity:.8;">H서비스센터 · 주간 업무 요약</div>
         <div style="font-size:19px;font-weight:800;margin-top:2px;">${Number(monday.slice(5, 7))}월 ${Number(monday.slice(8))}일 – ${Number(sunday.slice(5, 7))}월 ${Number(sunday.slice(8))}일</div>
       </div>
       <div style="background:#fff;border:1px solid #EEE;border-top:none;padding:4px 0;">
+        ${mail.intro ? `<div style="padding:12px 12px 0;font-size:12.5px;color:#555;">${esch(mail.intro)}</div>` : ''}
         <div style="font-size:11px;font-weight:800;color:#888;padding:12px 12px 6px;">이번 주 일정</div>
         ${dayRows.length ? `<table style="width:100%;border-collapse:collapse;">${dayRows.join('')}</table>` : '<div style="font-size:12px;color:#999;padding:6px 12px 12px;">등록된 일정이 없습니다.</div>'}
         <div style="font-size:11px;font-weight:800;color:#888;padding:14px 12px 6px;">기한 임박·초과 업무</div>

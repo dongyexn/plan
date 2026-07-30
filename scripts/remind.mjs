@@ -26,6 +26,10 @@ async function main() {
   const today = kstToday();
   const ym = today.slice(0, 7);
 
+  const cfgSnap = await db.ref('calapp/cfg/mail').get();
+  const mail = cfgSnap.val() || {};
+  if (mail.dailyOn === false) { console.log('당일 리마인드가 설정에서 꺼져 있음 — 종료'); process.exit(0); }
+
   const [plansSnap, recurSnap, peopleSnap, usersSnap] = await Promise.all([
     db.ref(`calapp/plans/${ym}`).get(),
     db.ref('calapp/recur').get(),
@@ -76,7 +80,7 @@ async function main() {
     return `${h < 12 ? '오전' : '오후'} ${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, '0')} · `;
   };
   const [, mo, dd] = today.split('-');
-  const subject = `[일정 리마인드] ${Number(mo)}월 ${Number(dd)}일 — ${plans.length}건`;
+  const subject = `${mail.prefix || '[일정 리마인드]'} ${Number(mo)}월 ${Number(dd)}일 — ${plans.length}건`;
   const rows = plans.map(p =>
     `<tr><td style="padding:9px 12px;border-bottom:1px solid #EEE;">
        <div style="font-size:14px;font-weight:700;color:#1C1C1E;">${fmtT(p.time)}${esch(p.title)}</div>
@@ -88,6 +92,7 @@ async function main() {
          <div style="font-size:11px;opacity:.8;">H서비스센터 · 일정 리마인드</div>
          <div style="font-size:19px;font-weight:800;margin-top:2px;">${Number(mo)}월 ${Number(dd)}일 오늘의 플랜</div>
        </div>
+       ${mail.intro ? `<div style="background:#fff;border:1px solid #EEE;border-top:none;padding:12px 14px 0;font-size:12.5px;color:#555;">${esch(mail.intro)}</div>` : ''}
        <table style="width:100%;border-collapse:collapse;background:#fff;border:1px solid #EEE;border-top:none;border-radius:0 0 14px 14px;">${rows}</table>
        <div style="font-size:11px;color:#999;margin-top:10px;">일정·업무 공유 앱에서 자동 발송된 메일입니다.</div>
      </div>`;
