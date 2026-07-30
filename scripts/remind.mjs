@@ -15,7 +15,6 @@ function kstToday() {
   const p = n => String(n).padStart(2, '0');
   return `${now.getUTCFullYear()}-${p(now.getUTCMonth() + 1)}-${p(now.getUTCDate())}`;
 }
-const arr = v => Array.isArray(v) ? v.filter(Boolean) : (v && typeof v === 'object' ? Object.values(v).filter(Boolean) : []);
 const esch = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 async function main() {
@@ -27,23 +26,49 @@ async function main() {
   const today = kstToday();
   const ym = today.slice(0, 7);
 
-  const [plansSnap, orgSnap] = await Promise.all([
+  const [plansSnap, recurSnap, peopleSnap, usersSnap] = await Promise.all([
     db.ref(`calapp/plans/${ym}`).get(),
-    db.ref('calapp/org').get()
+    db.ref('calapp/recur').get(),
+    db.ref('calapp/people').get(),
+    db.ref('users').get()
   ]);
 
-  const plans = Object.values(plansSnap.val() || {})
-    .filter(p => p && p.date === today && p.remind && !p.done)
-    .sort((a, b) => (a.time || '99') < (b.time || '99') ? -1 : 1);
+  /* 오늘 발생하는 반복 일정도 포함 — 앱과 같은 규칙으로 전개 */
+  const p2 = n => String(n).padStart(2, '0');
+  const dsOf = d => `${d.getUTCFullYear()}-${p2(d.getUTCMonth() + 1)}-${p2(d.getUTCDate())}`;
+  const addDays = (s, n) => { const [y, m, d] = s.split('-').map(Number); return dsOf(new Date(Date.UTC(y, m - 1, d + n))); };
+  const addMonths = (s, n) => { const [y, m, d] = s.split('-').map(Number);
+    const last = new Date(Date.UTC(y, m - 1 + n + 1, 0)).getUTCDate();
+    return dsOf(new Date(Date.UTC(y, m - 1 + n, Math.min(d, last)))); };
+  const hitsToday = p => {
+    const f = p.recur && p.recur.f; if (!f) return false;
+    if (p.date > today) return false;
+    if (p.recur.until && today > p.recur.until) return false;
+    if (p.skipOn && p.skipOn[today]) return false;
+    const step = x => f === 'w' ? addDays(x, 7) : f === '2w' ? addDays(x, 14) : f === 'm' ? addMonths(x, 1) : addMonths(x, 12);
+    let d = p.date, guard = 0;
+    while (d < today && guard++ < 2000) d = step(d);
+    return d === today;
+  };
+
+  const plans = [
+    ...Object.values(plansSnap.val() || {})
+      .filter(p => p && p.remind && !p.done && p.date <= today && (p.end || p.date) >= today),
+    ...Object.values(recurSnap.val() || {})
+      .filter(p => p && p.remind && hitsToday(p) && !(p.doneOn && p.doneOn[today]))
+  ].sort((a, b) => (a.time || '99') < (b.time || '99') ? -1 : 1);
 
   if (!plans.length) { console.log(`[${today}] 리마인드 대상 플랜 없음 — 종료`); process.exit(0); }
 
-  const org = orgSnap.val() || {};
+  /* 수신자 = 로그인 계정(users, 차단 제외) + 설정에서 직접 추가한 담당자(calapp/people) */
+  const people = peopleSnap.val() || {}, users = usersSnap.val() || {};
   const emails = [...new Set(
-    arr(org.teams).flatMap(t => arr(t.ggs).flatMap(g => arr(g.members).map(m => (m.email || '').trim())))
+    [...Object.values(users).filter(u => u && u.role !== 'blocked').map(u => u.email),
+     ...Object.values(people).map(p => p && p.email)]
+      .map(e => String(e || '').trim().toLowerCase())
       .filter(e => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e))
   )];
-  if (!emails.length) { console.log('수신자 이메일이 조직 구성에 없음 — 종료'); process.exit(0); }
+  if (!emails.length) { console.log('수신자 이메일 없음 — 종료'); process.exit(0); }
 
   const fmtT = t => {
     if (!t) return '';
