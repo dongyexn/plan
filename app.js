@@ -911,25 +911,79 @@ function regRows(){
     </div>`;}).join('');
 }
 const ICON_PERSON='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M12 13c-3.9 0-7 2.4-7 5.4 0 .9.5 1.6 1.6 1.6h10.8c1.1 0 1.6-.7 1.6-1.6 0-3-3.1-5.4-7-5.4z"/></svg>';
+/* 현장은 권역 그룹 아래에 놓고, 끌어서 다른 권역으로 옮기거나 순서를 바꾼다 */
 function siteRows(){
+  const sites=S.org.sites||[],regs=(S.org.regions||[]).filter(r=>r.name);
+  if(!sites.length&&!regs.length)return '<div class="tm-empty">권역과 현장을 먼저 등록하세요.</div>';
+  const group=(rid,label)=>{
+    const items=sites.filter(x=>(x.region||'')===rid);
+    return `<div class="sg">
+      <div class="sgh">${esc(label)}<span class="cnt">${items.length}</span></div>
+      <div class="sgl" data-rgn="${esc(rid)}">
+        ${items.length?items.map(x=>`
+          <div class="sti2" draggable="true" data-site="${esc(x.id)}">
+            <span class="std"></span>
+            <input class="mg-inp" value="${esc(x.name)}" data-act="org.ren" data-kind="Site" data-id="${esc(x.id)}" placeholder="현장 이름" aria-label="현장 이름">
+            <button class="tm-x tm-del" data-act="org.delSite" data-id="${esc(x.id)}" aria-label="삭제">${ICON_TRASH}</button>
+          </div>`).join(''):'<div class="sg-empty">여기로 끌어다 놓으세요</div>'}
+      </div></div>`;
+  };
+  return regs.map(r=>group(r.id,r.name)).join('')
+    +(sites.some(x=>!x.region||!regs.some(r=>r.id===x.region))?group('','권역 미지정'):'');
+}
+/* 드래그 배선 — 현장 목록을 다시 그릴 때마다 호출 */
+let _dnd=null;
+function wireSiteDnD(){
+  const root=$('#siteRoot');if(!root)return;
+  const clear=()=>root.querySelectorAll('.drop-above,.drop-below,.over').forEach(x=>x.classList.remove('drop-above','drop-below','over'));
+  root.querySelectorAll('.sti2[draggable]').forEach(el=>{
+    el.addEventListener('dragstart',e=>{
+      if(!isEditor()){e.preventDefault();return;}
+      _dnd=el.dataset.site;el.classList.add('dragging');
+      try{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',_dnd);}catch(_){}
+    });
+    el.addEventListener('dragend',()=>{el.classList.remove('dragging');clear();_dnd=null;});
+    el.addEventListener('dragover',e=>{
+      if(!_dnd||_dnd===el.dataset.site)return;
+      e.preventDefault();
+      const r=el.getBoundingClientRect(),after=e.clientY>r.top+r.height/2;
+      el.classList.toggle('drop-below',after);el.classList.toggle('drop-above',!after);
+    });
+    el.addEventListener('dragleave',()=>el.classList.remove('drop-above','drop-below'));
+    el.addEventListener('drop',e=>{
+      if(!_dnd||_dnd===el.dataset.site)return;
+      e.preventDefault();e.stopPropagation();
+      const r=el.getBoundingClientRect(),after=e.clientY>r.top+r.height/2;
+      moveSite(_dnd,el.closest('.sgl').dataset.rgn,el.dataset.site,after);
+    });
+  });
+  root.querySelectorAll('.sgl').forEach(box=>{
+    box.addEventListener('dragover',e=>{if(!_dnd)return;e.preventDefault();box.classList.add('over');});
+    box.addEventListener('dragleave',()=>box.classList.remove('over'));
+    box.addEventListener('drop',e=>{
+      if(!_dnd)return;
+      e.preventDefault();box.classList.remove('over');
+      moveSite(_dnd,box.dataset.rgn,null,false);
+    });
+  });
+}
+function moveSite(id,rgn,targetId,after){
   const list=S.org.sites||[];
-  if(!list.length)return '<div class="tm-empty">등록된 현장이 없습니다. + 추가를 누르세요.</div>';
-  const opt=(arr2,sel)=>'<option value="">—</option>'+arr2.map(x=>'<option value="'+esc(x.id)+'"'+(x.id===sel?' selected':'')+'>'+esc(x.name)+'</option>').join('');
-  return '<table class="mgtbl"><thead><tr><th style="text-align:left;font-size:10.5px;color:var(--lbl3);padding:0 6px 7px">현장</th>'
-    +'<th style="width:110px;text-align:left;font-size:10.5px;color:var(--lbl3)">팀</th>'
-    +'<th style="width:110px;text-align:left;font-size:10.5px;color:var(--lbl3)">권역</th><th style="width:34px"></th></tr></thead><tbody>'
-    +list.map(x=>`<tr>
-      <td><input class="mg-inp" value="${esc(x.name)}" data-act="org.ren" data-kind="Site" data-id="${esc(x.id)}" placeholder="현장 이름" aria-label="현장 이름"></td>
-      <td><select class="mg-inp" data-act="site.set" data-f="team" data-id="${esc(x.id)}" aria-label="팀">${opt(S.org.teams||[],x.team)}</select></td>
-      <td><select class="mg-inp" data-act="site.set" data-f="region" data-id="${esc(x.id)}" aria-label="권역">${opt(S.org.regions||[],x.region)}</select></td>
-      <td><button class="tm-x tm-del" data-act="org.delSite" data-id="${esc(x.id)}" aria-label="삭제">${ICON_TRASH}</button></td>
-    </tr>`).join('')+'</tbody></table>';
+  const i=list.findIndex(x=>x.id===id);if(i<0)return;
+  const [moved]=list.splice(i,1);
+  moved.region=rgn||'';
+  if(targetId){
+    let at=list.findIndex(x=>x.id===targetId);
+    if(at<0)at=list.length;else at=after?at+1:at;
+    list.splice(at,0,moved);
+  }else list.push(moved);
+  S.org.sites=list;orgSave();rOrg();
 }
 function rOrg(){
   const tr=$('#teamRoot'),rr=$('#regRoot'),sr=$('#siteRoot');
   if(tr)tr.innerHTML=teamRows();
   if(rr)rr.innerHTML=regRows();
-  if(sr)sr.innerHTML=siteRows();
+  if(sr){sr.innerHTML=siteRows();wireSiteDnD();}
   rTeamSel();
 
   const ar=$('#acctRoot');if(!ar)return;
@@ -1154,8 +1208,9 @@ const ACT={
   },
   'org.addSite':()=>{
     if(!isEditor())return denyEdit();
-    const id=uid();S.org.sites=(S.org.sites||[]).concat([{id,name:'',team:S.tk.t||'',region:''}]);orgSave();
-    setTimeout(()=>{const i=document.querySelector('#siteRoot .mg-inp[data-id="'+id+'"]');if(i)i.focus();},S.live?260:20);
+    const id=uid();const r0=(S.org.regions||[]).find(x=>x.name);
+    S.org.sites=(S.org.sites||[]).concat([{id,name:'',team:'',region:r0?r0.id:''}]);orgSave();
+    setTimeout(()=>{const i=document.querySelector('#siteRoot .mg-inp[data-id="'+id+'"]');if(i)i.focus();},S.live?300:30);
   },
   'org.delSite':el=>{
     if(!isEditor())return denyEdit();
@@ -1186,56 +1241,74 @@ const ACT={
     else toast('복사를 지원하지 않는 브라우저입니다');
   },
   'org.import':async()=>{
-    if(!isEditor())return denyEdit();
-    if(!S.live){toast('로그인 후에 사용할 수 있습니다');return;}
+    /* 어느 단계에서 막혔는지 화면에 남긴다 — 토스트만으로는 원인을 알 수 없다 */
+    const fail=(t,m)=>openModal(t,'<div style="font-size:13px;color:var(--lbl2);line-height:1.65">'+m+'</div>',
+      '<button class="btn bg2 bsm" data-act="modal.close">닫기</button>');
+    if(!S.live)return fail('가져오기','로그인 상태에서만 사용할 수 있습니다. 로컬 모드에서는 게시본을 읽을 수 없습니다.');
+    if(!isEditor())return fail('가져오기','관리자만 가져올 수 있습니다.<br>현재 권한은 <b>'+esc(roleLabel(S.role||'viewer'))+'</b>입니다. Firebase 콘솔에서 <code>users/{내 uid}/role</code>을 <code>editor</code>로 지정하세요.');
     toast('게시본을 확인하는 중…');
-    try{
-      const idx=(await FB.db.ref('reportIndex').once('value')).val()||{};
-      const months=Object.keys(idx).sort();
-      const rm=months[months.length-1];
-      if(!rm){toast('게시된 자료가 없습니다');return;}
-      const [tSnap,sSnap]=await Promise.all([
-        FB.db.ref('report/'+rm+'/_dash/teams').once('value'),
-        FB.db.ref('report/'+rm+'/_dash/sites').once('value')
-      ]);
-      const teams=arr(tSnap.val()),sites=arr(sSnap.val());
-      if(!teams.length&&!sites.length){toast(rm+' 게시본에 팀·현장 정보가 없습니다');return;}
-      /* 하자처리 현황은 권역을 '이름 문자열'로 다룬다 — 이름을 그대로 id 로 삼아 현장과 연결한다 */
-      const regNames=[...new Set([
-        ...teams.flatMap(t=>arr(t.regions)),
-        ...sites.map(s2=>s2.region)
-      ].map(x=>String(x||'').trim()).filter(Boolean))];
-      const next={
-        teams:teams.map(t=>({id:String(t.id),name:String(t.name||'').slice(0,60)})),
-        regions:regNames.map(n=>({id:n,name:n})),
-        sites:sites.map(s2=>({id:String(s2.id),name:String(s2.name||'').slice(0,60),
-          team:String(s2.teamId||''),region:String(s2.region||'')}))
-      };
-      confirmModal('게시본에서 가져오기',
-        rm+' 게시본 기준 · 팀 '+next.teams.length+'개, 권역 '+next.regions.length+'개, 현장 '+next.sites.length+'개를 가져옵니다. '
-        +'기존 목록은 대체됩니다. 계정 배정은 이름이 같으면 그대로 이어지고, 없어진 항목은 비워집니다.',()=>{
-        /* 가져오기로 id 체계가 바뀌므로, 이름이 같은 항목으로 배정을 다시 연결한다 */
-        const oldName=(list,id)=>{const x=(list||[]).find(y=>y.id===id);return x?x.name:'';};
-        const byName=(list,name)=>{const x=(list||[]).find(y=>y.name&&y.name===name);return x?x.id:'';};
-        const prev=S.org;
-        Object.keys(S.people||{}).forEach(pid=>{
-          const p=S.people[pid];
-          const t=byName(next.teams,oldName(prev.teams,p.team));
-          const r=byName(next.regions,oldName(prev.regions,p.region));
-          const sites={};
-          Object.keys(p.sites||{}).forEach(sid=>{
-            const nid=byName(next.sites,oldName(prev.sites,sid));
-            if(nid)sites[nid]=1;
-          });
-          if(t!==(p.team||'')||r!==(p.region||'')||JSON.stringify(sites)!==JSON.stringify(p.sites||{}))
-            store.putPerson(pid,{...p,team:t,region:r,sites});
-        });
-        S.org=next;orgSave();rOrg();
-        if(!next.teams.some(t=>t.id===S.tk.t))S.tk.t=next.teams.length?next.teams[0].id:null;
-        rTeamSel();rFilter();
-        toast('가져왔습니다');
-      },'가져오기',false);
-    }catch(e){console.warn('[FB] import',e);fbErr(e);}
+    const read=async p=>{try{return{ok:true,val:(await FB.db.ref(p).once('value')).val()};}
+      catch(e){return{ok:false,err:e};}};
+    /* ① 게시월 목록 — reportIndex 가 없거나 못 읽으면 최근 24개월을 직접 훑는다 */
+    let months=[],idxNote='';
+    const idx=await read('reportIndex');
+    if(idx.ok&&idx.val&&Object.keys(idx.val).length)months=Object.keys(idx.val).sort();
+    else{
+      idxNote=idx.ok?'게시월 인덱스가 비어 있어 최근 월을 직접 확인했습니다.'
+                    :'게시월 인덱스를 읽을 수 없어 최근 월을 직접 확인했습니다.';
+      const d=new Date();
+      for(let i=0;i<24;i++){
+        const y=d.getFullYear(),m=d.getMonth()-i;
+        const dd=new Date(y,m,1);
+        months.push(dd.getFullYear()+'-'+pad(dd.getMonth()+1));
+      }
+      months.reverse();
+    }
+    /* ② 최신 월부터 거슬러 올라가며 팀·현장이 담긴 게시본을 찾는다 */
+    let found=null,permDenied=false;
+    for(let i=months.length-1;i>=0&&!found;i--){
+      const rm=months[i];
+      const [t,s2]=await Promise.all([read('report/'+rm+'/_dash/teams'),read('report/'+rm+'/_dash/sites')]);
+      if(!t.ok||!s2.ok){permDenied=true;continue;}
+      const teams=arr(t.val),sites=arr(s2.val);
+      if(teams.length||sites.length)found={rm,teams,sites};
+    }
+    if(!found){
+      return fail('가져오기',(permDenied
+        ? '게시본을 읽을 권한이 없습니다. 규칙의 <code>report</code> 읽기 조건을 확인하세요.'
+        : '팀·현장 정보가 담긴 게시본을 찾지 못했습니다.<br>하자처리 현황에서 <b>설정 &gt; 사내 게시</b>로 한 번 등록한 뒤 다시 시도하세요.')
+        +(idxNote?'<br><br><span style="font-size:11.5px;color:var(--lbl3)">'+idxNote+'</span>':''));
+    }
+    const {rm,teams,sites}=found;
+    /* 하자처리 현황은 권역을 '이름 문자열'로 다룬다 — 이름을 그대로 id 로 삼아 현장과 연결한다 */
+    const regNames=[...new Set([...teams.flatMap(t=>arr(t.regions)),...sites.map(x=>x.region)]
+      .map(x=>String(x||'').trim()).filter(Boolean))];
+    const next={
+      teams:teams.map(t=>({id:String(t.id),name:String(t.name||'').slice(0,60)})),
+      regions:regNames.map(n=>({id:n,name:n})),
+      sites:sites.map(x=>({id:String(x.id),name:String(x.name||'').slice(0,60),
+        team:String(x.teamId||''),region:String(x.region||'')}))
+    };
+    confirmModal('게시본에서 가져오기',
+      rm+' 게시본 기준 · 팀 '+next.teams.length+'개, 권역 '+next.regions.length+'개, 현장 '+next.sites.length+'개를 가져옵니다. '
+      +'기존 목록은 대체됩니다. 계정 배정은 이름이 같으면 그대로 이어지고, 없어진 항목은 비워집니다.',()=>{
+      const oldName=(list,id)=>{const x=(list||[]).find(y=>y.id===id);return x?x.name:'';};
+      const byName=(list,name)=>{const x=(list||[]).find(y=>y.name&&y.name===name);return x?x.id:'';};
+      const prev=S.org;
+      Object.keys(S.people||{}).forEach(pid=>{
+        const p=S.people[pid];
+        const t=byName(next.teams,oldName(prev.teams,p.team));
+        const r=byName(next.regions,oldName(prev.regions,p.region));
+        const st={};
+        Object.keys(p.sites||{}).forEach(sid=>{const nid=byName(next.sites,oldName(prev.sites,sid));if(nid)st[nid]=1;});
+        if(t!==(p.team||'')||r!==(p.region||'')||JSON.stringify(st)!==JSON.stringify(p.sites||{}))
+          store.putPerson(pid,{...p,team:t,region:r,sites:st});
+      });
+      S.org=next;orgSave();rOrg();
+      if(!next.teams.some(t=>t.id===S.tk.t))S.tk.t=next.teams.length?next.teams[0].id:null;
+      rTeamSel();rFilter();
+      toast('가져왔습니다 · 조직 관리에서 확인하세요');
+    },'가져오기',false);
   },
   'team.switch':el=>{
     const tid=el.dataset.tid||(el.value||'');
@@ -1279,8 +1352,8 @@ function rFilter(){
     else{
       seg.style.display='';
       if(S.filter.reg!=='*'&&!regs.some(r=>r.id===S.filter.reg))S.filter.reg='*';
-      seg.innerHTML='<button'+(S.filter.reg==='*'?' class="act"':'')+' data-act="cal.reg" data-r="*">전체</button>'
-        +regs.map(r=>'<button'+(S.filter.reg===r.id?' class="act"':'')+' data-act="cal.reg" data-r="'+esc(r.id)+'">'+esc(r.name)+'</button>').join('');
+      seg.innerHTML='<span class="reg'+(S.filter.reg==='*'?' act':'')+'" data-act="cal.reg" data-r="*">전체</span>'
+        +regs.map(r=>'<span class="reg'+(S.filter.reg===r.id?' act':'')+'" data-act="cal.reg" data-r="'+esc(r.id)+'">'+esc(r.name)+'</span>').join('');
     }
   }
   const sel=$('#ownFilter');if(!sel)return;
@@ -1321,13 +1394,6 @@ document.addEventListener('change',e=>{
     const list=k==='Team'?(S.org.teams||[]):k==='Site'?(S.org.sites||[]):(S.org.regions||[]);
     const it=list.find(x=>x.id===ren.dataset.id);
     if(it){it.name=(ren.value||'').trim();orgSave();if(S.view==='tasks')rTasks();}
-    return;
-  }
-  const st=e.target.closest('[data-act="site.set"]');
-  if(st){
-    if(!isEditor()){denyEdit();rOrg();return;}
-    const x=(S.org.sites||[]).find(y=>y.id===st.dataset.id);
-    if(x){x[st.dataset.f]=st.value;orgSave();}
     return;
   }
   if(e.target.id==='darkChk'){applyTheme(e.target.checked);return;}
