@@ -1211,11 +1211,11 @@ function rTasks(){
     <div class="tkside">
       <div class="card tks-card">
         <div class="tks-h">팀</div>
-        <div class="tks-item${sel==='teamall'?' act':''}" data-act="tk.pick" data-id="teamall">
-          <span class="n">${esc(tn)} 전체 업무</span>
+        <div class="tks-item tks-reg${sel==='teamall'?' act':''}" data-act="tk.pick" data-id="teamall">
+          <span class="n">${esc(tn)}</span>
           <span class="c">${cCommon+cMems}</span>
         </div>
-        <div class="tks-item${sel==='team'?' act':''}" data-act="tk.pick" data-id="team">
+        <div class="tks-item sub${sel==='team'?' act':''}" data-act="tk.pick" data-id="team">
           <span class="n">공통업무</span>
           ${team?'<span class="c">'+cCommon+'</span>':''}
         </div>
@@ -1533,7 +1533,7 @@ function rOrg(){
       <td class="utbl-r">${roleCtl(p)}</td>
     </tr>`;
   };
-  ar.innerHTML='<table class="utbl"><thead><tr><th>이름</th><th style="width:120px">권역</th><th>담당 현장</th><th class="utbl-r">권한</th></tr></thead><tbody>'
+  ar.innerHTML='<table class="utbl"><thead><tr><th style="width:182px">이름</th><th style="width:98px">권역</th><th>담당 현장</th><th class="utbl-r" style="width:124px">권한</th></tr></thead><tbody>'
     +(mine.length?mine.map(row).join('')
       :'<tr><td colspan="4" style="font-size:12px;color:var(--lbl3);padding:10px">이 팀에 배정된 계정이 없습니다.</td></tr>')
     +'</tbody></table>';
@@ -1542,7 +1542,7 @@ function rOrg(){
   if(fc&&fr){
     fc.style.display=free.length?'':'none';
     fr.innerHTML=free.length
-      ?'<table class="utbl"><thead><tr><th>이름</th><th></th><th class="utbl-r">권한</th></tr></thead><tbody>'
+      ?'<table class="utbl"><thead><tr><th style="width:182px">이름</th><th></th><th class="utbl-r" style="width:124px">권한</th></tr></thead><tbody>'
         +free.map(p=>`<tr>
           <td><div class="utbl-name"><div class="fbu-av r-${esc(p.role||'viewer')}">${ICON_PERSON}</div>
             <div style="min-width:0"><div class="utbl-nick">${esc(p.name)}</div><div class="utbl-mail">${esc(p.email||'')}</div></div></div></td>
