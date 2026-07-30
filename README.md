@@ -1,22 +1,21 @@
-# 일정·업무 공유
+# H서비스센터 · 일정·업무 공유
 
 하자처리 현황 앱과 같은 디자인 언어·같은 Firebase 프로젝트(report-c29a1)를 쓰는 별도 앱.
 팀 일정 달력(플랜 작성·리마인드)과 팀·공구·담당자별 주요업무현황을 실시간으로 공유한다.
 
-접속 : https://dongyexn.github.io/plan/
-
 ## 구성
 
 ```
-index.html                     화면·스타일 (인라인 스크립트 없음 — CSP script-src 'self')
+index.html                     화면·스타일
 app.js                         앱 로직 (로컬 ⇄ Firebase 공용 저장소 인터페이스)
+build-single.mjs               단일 HTML 빌드 (node build-single.mjs → dist/)
 widget/                        데스크톱 네이티브 위젯 (Electron)
 vendor/fullcalendar.min.js     FullCalendar 6.1.21 (MIT)
 vendor/PretendardVariable.woff2
 scripts/remind.mjs             당일 리마인드 메일 (매일 07:05 KST)
 scripts/weekly.mjs             주간 요약 메일 (월요일 07:10 KST)
 .github/workflows/*.yml        위 두 메일의 cron
-database.rules.calapp.json     RTDB 규칙 추가분 (기존 규칙에 병합)
+database.rules.json            RTDB 보안 규칙 전체 (하자처리 현황 + calapp)
 ```
 
 ## 데이터 (RTDB `calapp/` 네임스페이스)
@@ -44,6 +43,9 @@ database.rules.calapp.json     RTDB 규칙 추가분 (기존 규칙에 병합)
 | viewer(사용자) | O | X (설정 화면에 안내만 표시) |
 | blocked | 로그인 차단 | — |
 
+최초 관리자 1명은 하자처리 현황과 마찬가지로 Firebase 콘솔에서 `users/{uid}/role`을
+`editor`로 직접 지정해야 한다. 이후에는 설정 > 계정 관리에서 관리자가 다른 계정의 권한을 바꿀 수 있다.
+
 앱에서 막을 뿐 아니라 DB 규칙에서도 `calapp/org` · `calapp/people` · `calapp/cfg` 쓰기를
 editor로 제한한다. 일정·업무 노드는 인증된 팀원 누구나 쓰되, 제목 120자 · 내용 1000자 ·
 업무 500자 · 상태 0~3 같은 값 검증을 규칙에서 건다.
@@ -58,12 +60,25 @@ editor로 제한한다. 일정·업무 노드는 인증된 팀원 누구나 쓰�
 주소 뒤에 `?local=1`을 붙이면 계정 없이 이 브라우저에만 저장되는 로컬 모드로 열린다
 (시연·개발용 — 팀과 공유되지 않는다).
 
+## 단일 파일 빌드
+
+```
+node build-single.mjs      # dist/index.html (앱 전체) + dist/vendor/
+```
+
+index.html과 app.js를 한 파일로 합친다. 인라인 스크립트를 쓰면서도 CSP를 유지하려고
+스크립트 본문의 SHA-256 해시를 계산해 `script-src`에 넣고, 산출물에서 다시 해시를
+검증한다(한 글자만 달라져도 브라우저가 스크립트를 차단하므로).
+배포는 `dist` 폴더(index.html + vendor)만 올리면 된다.
+
 ## 배포 절차
 
 1. 새 저장소에 이 폴더 전체를 push → Settings > Pages → 배포.
-2. Firebase 콘솔 > Realtime Database > 규칙: `database.rules.calapp.json`의
-   `calapp` 블록을 기존 규칙에 추가. 설정 화면의 계정 목록을 모든 팀원이 보려면
-   `users`의 `.read`도 같은 조건으로 완화한다(미완화 시 담당자 직접 추가로 대체 가능).
+   (단일 파일로 올리려면 `node build-single.mjs` 후 `dist` 내용만 올린다.)
+2. Firebase 콘솔 > Realtime Database > 규칙: `database.rules.json` **전체를 붙여넣기**.
+   기존 하자처리 현황 규칙이 그대로 들어 있고 `calapp` 블록만 추가된 파일이다.
+   (`users` 목록 읽기는 기존대로 관리자 전용 — 일반 사용자 화면의 담당자 명부는
+   관리자가 팀·권역을 지정할 때 기록되는 `calapp/people`로 제공된다.)
 3. 저장소 Settings > Secrets and variables > Actions에 등록:
    - `FIREBASE_SERVICE_ACCOUNT` — Firebase 콘솔 > 프로젝트 설정 > 서비스 계정 > 새 비공개 키(JSON 전체 붙여넣기)
    - `BREVO_API_KEY` — brevo.com 가입(무료 300통/일) > SMTP & API > API Keys

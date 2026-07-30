@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko"><head>
 <meta charset="UTF-8">
-<!-- 앱 스크립트는 외부 app.js — script-src 'self' (하자처리 현황과 동일 원칙: 인라인 스크립트 없음) -->
+<!-- CSP: 개발은 외부 app.js('self'), 단일 파일 배포는 build-single.mjs가 인라인 스크립트 해시를 넣는다 -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://www.gstatic.com https://www.google.com; font-src 'self' data:; object-src 'none'; base-uri 'self'; script-src 'self' https://cdn.jsdelivr.net https://www.gstatic.com https://www.google.com https://www.recaptcha.net https://recaptcha.google.com https://apis.google.com https://*.firebasedatabase.app; frame-src https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; connect-src 'self' https://*.googleapis.com https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.firebaseio.com wss://*.firebaseio.com https://www.gstatic.com https://cdn.jsdelivr.net https://www.google.com https://www.recaptcha.net https://recaptcha.google.com">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>H서비스센터 · 주요업무 현황</title>
@@ -96,7 +96,7 @@ svg{display:block;flex-shrink:0;}
 .sb-acct-name{font-size:12.5px;font-weight:600;color:var(--lbl);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;}
 
 #sidebar.mini .sb-acct{display:none;}
-.sb-th1{flex:0 0 auto;position:relative;width:48px;align-self:stretch;min-height:38px;margin-left:6px;display:flex;align-items:center;justify-content:center;border-radius:var(--rmd);color:var(--lbl2);transition:background var(--tr),color var(--tr);}
+.sb-th1{flex:0 0 auto;position:relative;width:48px;align-self:stretch;min-height:38px;margin-left:6px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--rmd);color:var(--lbl3);background:transparent;cursor:pointer;transition:background var(--tr),color var(--tr);}
 .sb-th1::before{content:"";position:absolute;left:0;top:5px;bottom:5px;width:1px;background:var(--sep);}
 .sb-th1:hover{background:var(--fill);color:var(--bt1);}
 .sb-th1 .icn{width:17px;height:17px;}
@@ -105,7 +105,7 @@ svg{display:block;flex-shrink:0;}
 #main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
 #topbar{height:var(--th);flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:var(--glass2);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);border-bottom:1px solid var(--sep);z-index:100;}
 .tbl{display:flex;align-items:center;gap:10px;min-width:0;}
-.tbt{font-size:16px;font-weight:700;color:var(--lbl);white-space:nowrap;}
+.tbt{font-size:20px;font-weight:700;color:var(--lbl);white-space:nowrap;}
 .tbr{display:flex;align-items:center;gap:8px;}
 #content{flex:1;overflow-y:auto;padding:20px;}
 #content::-webkit-scrollbar{width:5px;}
@@ -294,8 +294,9 @@ html.dark #fcal .fc-day-today .dnum{color:var(--b300)!important;}
 .tk-none .btn{margin-top:14px;}
 
 /* ══════════ 설정 페이지 ══════════ */
-.set-grid{display:grid;grid-template-columns:1.25fr 1fr;gap:16px;align-items:start;}
-.set-col{min-width:0;display:flex;flex-direction:column;gap:16px;}
+.set-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
+.set-col{min-width:0;}
+.set-col-stack{display:flex;flex-direction:column;gap:16px;}
 .set-h{font-size:12px;font-weight:700;color:var(--lbl2);text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;justify-content:space-between;gap:8px;padding-bottom:10px;border-bottom:1px solid var(--sep);margin-bottom:13px;}
 .set-h-sub{font-size:10px;font-weight:600;color:var(--lbl3);text-transform:none;letter-spacing:0;}
 .share-row{display:flex;align-items:center;justify-content:space-between;gap:12px;}
@@ -304,6 +305,50 @@ html.dark #fcal .fc-day-today .dnum{color:var(--b300)!important;}
 .share-info span{font-size:11.5px;color:var(--lbl2);line-height:1.45;}
 /* 조직 트리 편집 */
 
+/* 팀 선택기 (사이드바) — 참조 앱 이식 */
+.teamsel{display:flex;align-items:center;gap:6px;padding:8px 4px 10px;margin-bottom:2px;border-bottom:1px solid var(--sep);}
+#sidebar.mini .teamsel{display:none;}
+.teamsel .tsel-wrap{position:relative;flex:1;min-width:0;}
+.teamsel select{width:100%;-webkit-appearance:none;appearance:none;background:var(--fill);border:1px solid var(--sep);border-radius:var(--rsm);padding:7px 26px 7px 10px;font-size:12.5px;font-weight:600;color:var(--lbl);cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.teamsel select:hover{background:var(--fill2);}
+.teamsel .tsel-ch{position:absolute;right:8px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--lbl2);}
+.teamsel .tsel-mgr{flex-shrink:0;width:32px;height:32px;border-radius:var(--rsm);background:var(--fill);display:flex;align-items:center;justify-content:center;color:var(--lbl2);transition:background var(--tr),color var(--tr);}
+.teamsel .tsel-mgr:hover{background:var(--fill2);color:var(--bt1);}
+.teamsel .tsel-mgr svg{width:15px;height:15px;}
+/* 팀·권역 관리 — 참조 앱 이식 */
+.tm-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font-size:12px;font-weight:700;color:var(--lbl2);text-transform:uppercase;letter-spacing:.05em;}
+.tm-add{padding:4px 10px;font-size:11px;}
+.tm-list{display:flex;flex-direction:column;gap:4px;}
+.tm-row{display:flex;align-items:center;gap:6px;padding:4px 7px;border:1px solid var(--sep);border-radius:var(--rsm);background:var(--bg2);}
+.tm-row.act{border-color:var(--b400);background:linear-gradient(135deg,var(--b50),var(--b100));}
+.tm-pick{flex-shrink:0;width:24px;height:24px;display:flex;align-items:center;justify-content:center;color:var(--lbl3);}
+.tm-row.act .tm-pick{color:var(--bt1);}
+.tm-nameinp{flex:1;min-width:0;font-weight:600;font-size:13px;}
+.tm-cnt{flex-shrink:0;font-size:10.5px;font-weight:700;color:var(--lbl2);background:var(--fill);border-radius:99px;padding:1px 7px;}
+.tm-x{flex-shrink:0;width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--lbl3);background:none;}
+.tm-x:hover{background:var(--fill);}
+.tm-x svg{display:block;}
+.tm-del:hover{color:var(--rd);background:rgba(255,59,48,.1);}
+.tm-empty{font-size:12px;color:var(--lbl3);padding:10px 4px;}
+/* 계정 관리 아바타·권한 — 참조 앱 이식 */
+.fbu-av{flex:0 0 auto;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;}
+.fbu-av svg{width:18px;height:18px;display:block;fill:#fff;}
+.fbu-av.r-editor{background:linear-gradient(135deg,var(--b500),var(--b800));}
+.fbu-av.r-viewer{background:rgba(120,120,128,.2);}
+.fbu-av.r-viewer svg{fill:var(--lbl2);}
+.fbu-av.r-blocked{background:rgba(255,59,48,.16);}
+.fbu-av.r-blocked svg{fill:var(--rd);}
+.fbu-lock{font-size:11px;color:var(--lbl3);white-space:nowrap;}
+.fbu-role{font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:7px;white-space:nowrap;}
+.fbu-role.r-editor{color:var(--bt1);background:rgba(62,113,210,.12);}
+.fbu-role.r-viewer{color:var(--lbl2);background:var(--fill);}
+.fbu-role.r-blocked{color:var(--rd);background:rgba(255,59,48,.1);}
+.fbu-sel{-webkit-appearance:none;-moz-appearance:none;appearance:none;width:auto;min-width:96px;padding:7px 30px 7px 12px;font-size:12.5px;line-height:1.35;font-weight:500;color:var(--lbl);border:1.5px solid var(--sepo);border-radius:var(--rmd);background-color:var(--bg2);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23636366' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center;background-size:12px;cursor:pointer;transition:border-color .14s;}
+.fbu-sel:hover{border-color:var(--b500);}
+.utbl th.utbl-r,.utbl td.utbl-r{text-align:right;}
+.utbl-name .fbu-av{width:30px;height:30px;}
+.utbl-name .fbu-av svg{width:16px;height:16px;}
+
 /* 계정 표 — 참조 앱 utbl 이식 */
 .utbl{width:100%;border-collapse:collapse;}
 .utbl thead th{font-size:10.5px;font-weight:700;color:var(--lbl3);text-transform:uppercase;letter-spacing:.04em;text-align:left;padding:0 10px 9px;border-bottom:1px solid var(--sep);white-space:nowrap;}
@@ -311,11 +356,8 @@ html.dark #fcal .fc-day-today .dnum{color:var(--b300)!important;}
 .utbl tbody tr:last-child td{border-bottom:none;}
 .utbl tbody tr:hover{background:var(--fill);}
 .utbl-name{display:flex;align-items:center;gap:9px;min-width:0;}
-.utbl-av{width:30px;height:30px;border-radius:50%;flex:0 0 auto;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--b500),var(--b800));color:#fff;font-size:12px;font-weight:800;}
 .utbl-nick{font-size:13px;font-weight:600;color:var(--lbl);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .utbl-mail{font-size:12.5px;color:var(--lbl2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.utbl-badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;background:var(--fill);color:var(--lbl2);white-space:nowrap;}
-.utbl-badge.acct{background:rgba(62,113,210,.13);color:var(--bt1);}
 /* 인라인 편집 표 — 참조 앱 mgtbl · mg-inp 이식 */
 .mgtbl{width:100%;border-collapse:collapse;}
 .mgtbl td{padding:4px 6px;vertical-align:middle;}
@@ -466,6 +508,7 @@ html.dark #toast{background:#2B313A;}
     </button>
   </div>
   <div class="sbsc">
+    <div class="teamsel" id="teamsel"></div>
     <div class="sbsl">메인</div>
     <div class="nvi act" role="button" tabindex="0" data-view="calendar" data-act="nav.go">
       <div class="nic"><svg class="icn" aria-hidden="true"><use href="#i-cal"></use></svg></div>
@@ -551,30 +594,26 @@ html.dark #toast{background:#2B313A;}
       <div class="set-grid">
         <div class="set-col">
           <div class="card">
-            <div class="set-h">계정 관리 <span class="set-h-sub">하자처리 현황과 같은 계정 · 팀과 권역을 지정하면 주요업무 현황에 반영</span></div>
-            <div id="acctRoot"></div>
+            <div class="tm-h">팀 <button class="btn bo bsm tm-add" data-act="org.addTeam">+ 추가</button></div>
+            <div class="tm-list" id="teamRoot"></div>
+            <div class="ulex-sep" style="height:1px;background:var(--sep);margin:14px 0"></div>
+            <div class="tm-h">권역 <button class="btn bo bsm tm-add" data-act="org.addReg">+ 추가</button></div>
+            <div class="tm-list" id="regRoot"></div>
           </div>
         </div>
-        <div class="set-col">
+        <div class="set-col set-col-stack">
           <div class="card">
-            <div class="set-h">팀 <span class="set-h-sub">이름을 눌러 바로 수정</span></div>
-            <div id="teamRoot"></div>
-            <button class="btn bo bsm tm-add" data-act="org.addTeam"><svg class="icn" aria-hidden="true"><use href="#i-plus"></use></svg> 팀 추가</button>
-          </div>
-          <div class="card">
-            <div class="set-h">권역 <span class="set-h-sub">이름을 눌러 바로 수정</span></div>
-            <div id="regRoot"></div>
-            <button class="btn bo bsm tm-add" data-act="org.addReg"><svg class="icn" aria-hidden="true"><use href="#i-plus"></use></svg> 권역 추가</button>
+            <div class="set-h">계정 관리 <span class="set-h-sub">하자처리 현황과 공용 · 팀과 권역을 지정하면 주요업무 현황에 반영</span></div>
+            <div id="acctRoot"></div>
           </div>
           <div class="card">
             <div class="set-h">연결</div>
-            <div class="share-row">
-              <div class="share-info"><b>하자처리 현황 바로가기</b><span>사이드바 바로가기 버튼이 여는 주소</span></div>
+            <div class="share-info" style="margin-bottom:9px"><b>하자처리 현황 바로가기</b><span>사이드바 바로가기 버튼이 여는 주소</span></div>
+            <div class="acct-row">
+              <input class="inp" id="setDefectUrl" placeholder="https://…" style="flex:1">
+              <button class="acct-btn acct-btn-primary" data-act="set.saveUrl">저장</button>
             </div>
-            <input class="inp inp-sm" id="setDefectUrl" placeholder="https://…" style="margin-top:9px">
-            <div class="mf2" style="margin-top:10px"><button class="btn bp bsm" data-act="set.saveUrl">저장</button></div>
           </div>
-          
         </div>
       </div>
     </div>
