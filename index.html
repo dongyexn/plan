@@ -303,6 +303,8 @@ html.dark #fcal .fc-day-today .dnum{color:var(--b300)!important;}
 .share-info{min-width:0;display:flex;flex-direction:column;gap:2px;}
 .share-info>b{font-size:13px;color:var(--lbl);font-weight:700;}
 .share-info span{font-size:11.5px;color:var(--lbl2);line-height:1.45;}
+.share-info span b{color:var(--lbl);font-weight:600;}
+.share-sep{height:1px;background:var(--sep);margin:13px 0;}
 /* 조직 트리 편집 */
 
 /* 팀 선택기 (사이드바) — 참조 앱 이식 */
@@ -331,9 +333,9 @@ html.dark #fcal .fc-day-today .dnum{color:var(--b300)!important;}
 .tm-del:hover{color:var(--rd);background:rgba(255,59,48,.1);}
 .tm-empty{font-size:12px;color:var(--lbl3);padding:10px 4px;}
 .ulex-sep{height:1px;background:var(--sep);margin:14px 0;}
-.mg-grid{display:grid;grid-template-columns:300px minmax(0,1fr);gap:16px;align-items:start;}
+.mg-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start;}
 @media(max-width:980px){.mg-grid{grid-template-columns:minmax(0,1fr);}}
-.sw{position:relative;display:inline-block;width:34px;height:20px;cursor:pointer;vertical-align:middle;flex-shrink:0;}
+.sw{position:relative;display:inline-block;width:34px;height:20px;cursor:pointer;vertical-align:middle;}
 .sw input{opacity:0;width:0;height:0;position:absolute;}
 .sw .sw-t{position:absolute;inset:0;background:var(--fill2);border-radius:99px;transition:background .2s;}
 .sw .sw-t::before{content:"";position:absolute;width:16px;height:16px;left:2px;top:2px;background:var(--bg2);border-radius:50%;transition:transform .2s;box-shadow:0 1px 2px rgba(0,0,0,.25);}
@@ -585,7 +587,8 @@ html.dark #toast{background:#2B313A;}
           <div class="cal-head">
             <div class="cal-title"><span id="calMonTxt">7월</span><span class="y" id="calYearTxt">2026</span></div>
             <div class="cal-ctl">
-              <select class="inp inp-sm cal-sel" id="ownFilter" data-act="cal.filter" aria-label="담당자 필터"></select>
+              <div class="seg" id="regSeg"></div>
+              <select class="inp inp-sm cal-sel" id="ownFilter" aria-label="담당자 필터"></select>
               <div class="seg" id="calSeg"><button class="act" data-act="cal.view" data-v="dayGridMonth">월</button><button data-act="cal.view" data-v="timeGridWeek">주</button></div>
               <div class="cal-nav">
                 <button class="cal-nb" data-act="cal.prev" aria-label="이전"><svg class="icn" aria-hidden="true"><use href="#i-chevl"></use></svg></button>
@@ -620,19 +623,27 @@ html.dark #toast{background:#2B313A;}
         <div class="set-empty">보기 전용 계정입니다. 팀 · 권역 · 현장 · 계정 설정은 관리자만 변경할 수 있습니다.</div>
       </div>
       <div class="mg-grid">
-        <div class="set-col">
+        <div class="set-col set-col-stack">
           <div class="card">
             <div class="tm-h">팀 <button class="btn bo bsm tm-add" data-act="org.addTeam">+ 추가</button></div>
             <div class="tm-list" id="teamRoot"></div>
-            <div class="ulex-sep"></div>
+          </div>
+          <div class="card">
             <div class="tm-h">권역 <button class="btn bo bsm tm-add" data-act="org.addReg">+ 추가</button></div>
             <div class="tm-list" id="regRoot"></div>
+          </div>
+          <div class="card">
+            <div class="tm-h">현장 <button class="btn bo bsm tm-add" data-act="org.addSite">+ 추가</button></div>
+            <div id="siteRoot"></div>
           </div>
         </div>
         <div class="set-col set-col-stack">
           <div class="card">
-            <div class="tm-h">현장 <button class="btn bo bsm tm-add" data-act="org.addSite">+ 추가</button></div>
-            <div id="siteRoot"></div>
+            <div class="set-h">가져오기</div>
+            <div class="share-row">
+              <div class="share-info"><b>하자처리 현황 게시본</b><span>최신 게시본에 담긴 팀 · 권역 · 현장 목록을 그대로 불러옵니다</span></div>
+              <button class="btn bo bsm" data-act="org.import">불러오기</button>
+            </div>
           </div>
           <div class="card">
             <div class="set-h">계정 <span class="set-h-sub">가입한 계정 목록 · 팀 · 권역 · 담당 현장을 지정합니다</span></div>
