@@ -444,7 +444,7 @@ html.dark #fcal .fc-day-today .dnum{color:var(--b300)!important;}
 .site-pick{flex-shrink:0;width:24px;height:24px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;color:var(--lbl3);border:1px dashed var(--sepo);}
 .site-pick:hover{background:var(--fill);color:var(--bt1);border-color:var(--b300);}
 .site-pick .icn{width:12px;height:12px;}
-.site-on{display:inline-flex;align-items:center;padding:2px 8px;border-radius:var(--rp);background:var(--b50);border:1px solid var(--b200);font-size:11px;font-weight:600;color:var(--bt1);}
+.site-on{display:inline-flex;align-items:center;padding:2px 8px;border-radius:var(--rp);background:var(--b50);border:1px solid var(--b200);font-size:11px;font-weight:600;color:var(--bt1);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;}
 .site-more{font-size:11px;color:var(--lbl3);font-weight:600;}
 .site-none{font-size:11px;color:var(--lbl3);}
 .spk{display:flex;flex-direction:column;gap:4px;max-height:48dvh;overflow-y:auto;}
@@ -655,13 +655,51 @@ html.dark #toast{background:#2B313A;}
   #sidebar.mini .sbb,#sidebar.mini .nil,#sidebar.mini .sbsl{opacity:1!important;display:initial!important;pointer-events:auto!important;}
   #sidebar.mini .sb-acct{display:flex;}
   .mc{display:flex;}
+  /* grid 의 1fr 은 최소폭이 max-content 라서 내용이 넓으면 화면 밖으로 밀려난다 — 전부 minmax(0,1fr) 로 */
+  .cal-wrap{grid-template-columns:minmax(0,1fr);height:auto;min-height:0;}
+  .cal-card{height:72dvh;min-width:0;}
+  .day-panel{max-height:70dvh;min-width:0;}
+  .tk3{grid-template-columns:minmax(0,1fr);}
+  .tkwrap{grid-template-columns:minmax(0,1fr);}
+  .set-grid{grid-template-columns:minmax(0,1fr);}
+  .mg-grid{grid-template-columns:minmax(0,1fr);}
+  #content{padding:14px;overflow-x:hidden;}
+  #content>*{min-width:0;}
+  /* 달력 헤더 — 한 줄에 다 못 들어가므로 제목/조작을 2단으로 접는다 */
+  .cal-head{flex-wrap:wrap;gap:8px;}
+  .cal-ctl{flex:1 1 100%;gap:6px;}
   .cal-ctl .cal-sel{display:none;}
-  .cal-wrap{grid-template-columns:1fr;height:auto;min-height:0;}
-  .cal-card{height:72dvh;}
-  .day-panel{max-height:70dvh;}
-  .tk3{grid-template-columns:1fr;}
-  #content{padding:14px;}
-  .set-grid{grid-template-columns:1fr;}
+  /* 권역 칩은 줄바꿈 대신 가로 스크롤 — 헤더가 세로로 길어지지 않게 */
+  .reg-row{flex:1 1 0;min-width:0;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:1px;}
+  .reg-row::-webkit-scrollbar{display:none;}
+  .seg,.cal-nav{flex:0 0 auto;}
+  /* 셀 내부 스크롤 대신 '+N 더보기' — 좁은 셀에서 스크롤은 잡히지 않고,
+     중첩 스크롤은 iOS 에서 클리핑이 깨져 칩이 겹쳐 보인다 */
+  #fcal .fc-daygrid-day-frame{overflow:hidden;}
+  #fcal .fc-daygrid-day-events{overflow:visible;}
+  #fcal .fc-daygrid-day-bottom{display:block;margin:1px 0 0;padding:0 2px;}
+  #fcal .fc-daygrid-more-link{font-size:10.5px;font-weight:700;color:var(--lbl2);}
+  #fcal .fc-daygrid-more-link:hover{color:var(--bt1);}
+}
+/* 더보기 팝오버 — 앱 카드와 같은 문법으로 */
+#fcal .fc-popover{border:1px solid var(--sep);border-radius:var(--rmd);box-shadow:0 10px 34px rgba(0,0,0,.18);background:var(--bg2);z-index:240;}
+#fcal .fc-popover-header{background:var(--surf2);padding:8px 10px;font-size:12px;font-weight:700;color:var(--lbl);border-radius:var(--rmd) var(--rmd) 0 0;}
+#fcal .fc-popover-body{padding:7px 8px;max-height:52dvh;overflow-y:auto;}
+#fcal .fc-popover-close{opacity:.6;}
+/* 계정 표 — 좁은 화면에서는 열을 눌러 담지 않고 행마다 카드처럼 쌓는다 */
+@media(max-width:720px){
+  .utbl thead{display:none;}
+  .utbl tbody tr{display:flex;flex-wrap:wrap;align-items:center;gap:7px 10px;padding:11px 2px;border-bottom:1px solid var(--sep);}
+  .utbl tbody tr:last-child{border-bottom:none;}
+  .utbl tbody td{display:block;border-bottom:none;padding:0;}
+  .utbl tbody td:first-child{flex:1 1 100%;min-width:0;}
+  .utbl tbody td:not(:first-child):not(.utbl-r){flex:0 1 auto;min-width:0;order:1;}
+  .utbl td.utbl-r{flex:0 0 auto;margin-left:auto;text-align:right;order:2;}
+  /* 담당 현장은 칩이 길어 아래 줄을 통째로 쓴다 — 이름 / 권역+권한 / 현장 3줄 */
+  .utbl tbody td:nth-child(3):not(.utbl-r){flex:1 1 100%;order:3;}
+  .utbl-mail{overflow:hidden;text-overflow:ellipsis;}
+  .site-chk{max-width:100%;}
+  .mgtbl td .mg-inp{min-width:0;}
 }
 </style>
 </head>

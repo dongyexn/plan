@@ -563,13 +563,15 @@ function rAcct(){
 }
 
 /* ═══════════ 달력 (FullCalendar) ═══════════ */
-let CAL=null;
+let CAL=null,MOBILE_CAL=null;
 function calInit(){
+  MOBILE_CAL=isNarrow();
   CAL=new FullCalendar.Calendar($('#fcal'),{
     initialView:S.calView,
     initialDate:S.selDate,
     firstDay:0,fixedWeekCount:false,showNonCurrentDates:true,
-    headerToolbar:false,height:'100%',dayMaxEvents:false,
+    headerToolbar:false,height:'100%',dayMaxEvents:maxEvOf(),
+    moreLinkContent:a=>'+'+a.num,
     dayHeaderContent:a=>DOW[a.date.getDay()],
     dayCellClassNames:a=>{const o=holOf(dstr(a.date));return o&&o.h?['hol']:[];},
     allDayText:'종일',
@@ -2043,13 +2045,33 @@ document.addEventListener('keydown',e=>{
 
 /* 사이드바 폭 전환·창 크기 변경 후 FullCalendar 재계산
    (transition이 끝나야 실제 폭이 확정되므로 transitionend에서 호출) */
+/* 좁은 화면은 셀이 60~70px 밖에 안 돼서 내부 스크롤이 사실상 안 눌린다.
+   그래서 모바일에서만 '+N 더보기'(FullCalendar 표준 팝오버)로 바꾼다.
+   데스크톱은 기존대로 셀 안에서 스크롤해 전부 본다. */
+function isNarrow(){return window.matchMedia('(max-width:960px)').matches;}
+function maxEvOf(){return isNarrow()?2:false;}
+
 function bindCalResize(){
   const sb=$('#sidebar');
   if(sb)sb.addEventListener('transitionend',e=>{
     if((e.propertyName==='width'||e.propertyName==='min-width')&&CAL)CAL.updateSize();
   });
   let rt=null;
-  window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{if(CAL)CAL.updateSize();},120);});
+  const redraw=()=>{clearTimeout(rt);rt=setTimeout(()=>{
+    if(!CAL)return;
+    const nar=isNarrow();
+    if(nar!==MOBILE_CAL){MOBILE_CAL=nar;CAL.setOption('dayMaxEvents',maxEvOf());}
+    CAL.updateSize();
+  },120);};
+  window.addEventListener('resize',redraw);
+  /* iOS 는 회전·주소창 접힘 때 resize 가 늦거나 빠져서 칸 폭이 어긋난 채 남는다 */
+  window.addEventListener('orientationchange',()=>setTimeout(redraw,220));
+  if(window.visualViewport)window.visualViewport.addEventListener('resize',redraw);
+  /* 달력 카드 자체의 크기 변화(사이드바·패널 접힘 등)도 직접 관찰 */
+  if(window.ResizeObserver){
+    const card=$('.cal-card');
+    if(card)new ResizeObserver(redraw).observe(card);
+  }
 }
 
 /* ═══════════ 위젯 모드 (?w=1) — 데스크톱 PWA 창용 컴팩트 화면 ═══════════ */
