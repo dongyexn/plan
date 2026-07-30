@@ -330,6 +330,29 @@ html.dark #fcal .fc-day-today .dnum{color:var(--b300)!important;}
 .tm-x svg{display:block;}
 .tm-del:hover{color:var(--rd);background:rgba(255,59,48,.1);}
 .tm-empty{font-size:12px;color:var(--lbl3);padding:10px 4px;}
+.ulex-sep{height:1px;background:var(--sep);margin:14px 0;}
+.mg-grid{display:grid;grid-template-columns:300px minmax(0,1fr);gap:16px;align-items:start;}
+@media(max-width:980px){.mg-grid{grid-template-columns:minmax(0,1fr);}}
+.sw{position:relative;display:inline-block;width:34px;height:20px;cursor:pointer;vertical-align:middle;flex-shrink:0;}
+.sw input{opacity:0;width:0;height:0;position:absolute;}
+.sw .sw-t{position:absolute;inset:0;background:var(--fill2);border-radius:99px;transition:background .2s;}
+.sw .sw-t::before{content:"";position:absolute;width:16px;height:16px;left:2px;top:2px;background:var(--bg2);border-radius:50%;transition:transform .2s;box-shadow:0 1px 2px rgba(0,0,0,.25);}
+.sw input:checked + .sw-t{background:var(--gn);}
+.sw input:checked + .sw-t::before{transform:translateX(14px);}
+.site-chk{display:flex;flex-wrap:wrap;gap:5px;}
+.site-tag{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:var(--rp);border:1px solid var(--sep);font-size:11px;font-weight:600;color:var(--lbl2);cursor:pointer;transition:all .13s;user-select:none;}
+.site-tag:hover{background:var(--fill);}
+.site-tag.on{background:var(--b50);border-color:var(--b300);color:var(--bt1);}
+.site-none{font-size:11px;color:var(--lbl3);}
+/* 사용 안내 모달 */
+.gd{font-size:13px;line-height:1.75;color:var(--lbl);max-height:62dvh;overflow-y:auto;}
+.gd h4{font-size:13.5px;margin:16px 0 6px;color:var(--bt1);}
+.gd h4:first-child{margin-top:0;}
+.gd p{margin:0 0 8px;color:var(--lbl2);font-size:12.5px;}
+.gd ul{margin:0 0 10px;padding-left:18px;color:var(--lbl2);font-size:12.5px;}
+.gd li{margin:2px 0;}
+.gd code{background:var(--fill2);border-radius:5px;padding:1px 5px;font-size:11.5px;}
+
 /* 계정 관리 아바타·권한 — 참조 앱 이식 */
 .fbu-av{flex:0 0 auto;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;}
 .fbu-av svg{width:18px;height:18px;display:block;fill:#fff;}
@@ -469,6 +492,7 @@ html.dark #toast{background:#2B313A;}
 <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></symbol>
 <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
 <symbol id="i-cmt" viewBox="0 0 24 24"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></symbol>
+<symbol id="i-org" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="8.5" y="14" width="7" height="7" rx="1.5"/><path d="M6.5 10v2h11v-2"/><path d="M12 12v2"/></symbol>
 <symbol id="i-menu" viewBox="0 0 24 24"><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="18" y2="18"/></symbol>
 </svg>
 
@@ -525,6 +549,10 @@ html.dark #toast{background:#2B313A;}
         <span class="nil">하자처리 현황<svg class="icn" style="width:11px;height:11px;display:inline-block;opacity:.5;margin-left:5px"><use href="#i-ext"></use></svg></span>
       </div>
       <div class="sbsl">관리</div>
+      <div class="nvi" role="button" tabindex="0" data-view="org" data-act="nav.go">
+        <div class="nic"><svg class="icn" aria-hidden="true"><use href="#i-org"></use></svg></div>
+        <span class="nil">조직 관리</span>
+      </div>
       <div class="nvi" role="button" tabindex="0" data-view="settings" data-act="nav.go">
         <div class="nic"><svg class="icn" aria-hidden="true"><use href="#i-settings"></use></svg></div>
         <span class="nil">설정</span>
@@ -577,7 +605,7 @@ html.dark #toast{background:#2B313A;}
           </div>
           <div class="dp-body">
             <div id="dpList"></div>
-            <button class="btn bo bsm dp-add" data-act="plan.new"><svg class="icn" aria-hidden="true"><use href="#i-plus"></use></svg> 플랜 추가</button>
+            <button class="btn bo bsm dp-add" data-act="plan.new"><svg class="icn" aria-hidden="true"><use href="#i-plus"></use></svg> 업무 추가</button>
           </div>
         </div>
       </div>
@@ -587,32 +615,59 @@ html.dark #toast{background:#2B313A;}
       <div id="tkRoot"></div>
     </div>
 
-    <div id="view-settings" class="view">
-      <div class="card" id="setViewerNote" style="display:none">
-        <div class="set-empty">보기 전용 계정입니다. 팀 · 권역 · 계정 설정은 관리자만 변경할 수 있습니다.</div>
+    <div id="view-org" class="view">
+      <div class="card" id="orgViewerNote" style="display:none">
+        <div class="set-empty">보기 전용 계정입니다. 팀 · 권역 · 현장 · 계정 설정은 관리자만 변경할 수 있습니다.</div>
       </div>
-      <div class="set-grid">
+      <div class="mg-grid">
         <div class="set-col">
           <div class="card">
             <div class="tm-h">팀 <button class="btn bo bsm tm-add" data-act="org.addTeam">+ 추가</button></div>
             <div class="tm-list" id="teamRoot"></div>
-            <div class="ulex-sep" style="height:1px;background:var(--sep);margin:14px 0"></div>
+            <div class="ulex-sep"></div>
             <div class="tm-h">권역 <button class="btn bo bsm tm-add" data-act="org.addReg">+ 추가</button></div>
             <div class="tm-list" id="regRoot"></div>
           </div>
         </div>
         <div class="set-col set-col-stack">
           <div class="card">
-            <div class="set-h">계정 관리 <span class="set-h-sub">하자처리 현황과 공용 · 팀과 권역을 지정하면 주요업무 현황에 반영</span></div>
-            <div id="acctRoot"></div>
+            <div class="tm-h">현장 <button class="btn bo bsm tm-add" data-act="org.addSite">+ 추가</button></div>
+            <div id="siteRoot"></div>
           </div>
           <div class="card">
-            <div class="set-h">연결</div>
-            <div class="share-info" style="margin-bottom:9px"><b>하자처리 현황 바로가기</b><span>사이드바 바로가기 버튼이 여는 주소</span></div>
-            <div class="acct-row">
-              <input class="inp" id="setDefectUrl" placeholder="https://…" style="flex:1">
-              <button class="acct-btn acct-btn-primary" data-act="set.saveUrl">저장</button>
+            <div class="set-h">계정 <span class="set-h-sub">가입한 계정 목록 · 팀 · 권역 · 담당 현장을 지정합니다</span></div>
+            <div id="acctRoot"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-settings" class="view">
+      <div class="set-grid">
+        <div class="set-col set-col-stack">
+          <div class="card">
+            <div class="set-h">표시</div>
+            <div class="share-row">
+              <div class="share-info"><b>다크 모드</b><span>이 PC에만 저장됩니다</span></div>
+              <label class="sw" aria-label="다크 모드"><input type="checkbox" id="darkChk" data-act="set.dark"><span class="sw-t"></span></label>
             </div>
+            <div class="share-sep"></div>
+            <div class="share-row">
+              <div class="share-info"><b>사용 안내</b><span>화면 구성 · 기능 · 운영 절차</span></div>
+              <button class="btn bo bsm" data-act="set.guide">열기</button>
+            </div>
+            <div class="share-sep"></div>
+            <div class="share-row">
+              <div class="share-info"><b>버전 · 오류 기록</b><span id="buildInfo">—</span></div>
+              <button class="btn bg2 bsm" data-act="set.copyErr">복사</button>
+            </div>
+          </div>
+        </div>
+        <div class="set-col set-col-stack">
+          <div class="card">
+            <div class="set-h">연결</div>
+            <div class="share-info" style="margin-bottom:9px"><b>하자처리 현황 바로가기</b><span>사이드바 바로가기 버튼이 여는 주소 · 입력하면 자동 저장됩니다</span></div>
+            <input class="inp" id="setDefectUrl" placeholder="https://…">
           </div>
         </div>
       </div>
