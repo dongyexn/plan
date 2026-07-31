@@ -7,7 +7,7 @@
    - MAIL_FROM                : 발신 주소 (Brevo에서 인증한 주소, 예: no-reply@…)
 */
 import admin from 'firebase-admin';
-import { buildRoster, recipients, hourGate } from './mail-common.mjs';
+import { buildRoster, recipients, hourGate, expandRecur } from './mail-common.mjs';
 
 const DB_URL = 'https://report-c29a1-default-rtdb.asia-southeast1.firebasedatabase.app';
 
@@ -43,28 +43,15 @@ async function main() {
   Object.entries(tasksSnap.val() || {}).forEach(([sid, items]) =>
     Object.entries(items || {}).forEach(([iid, it]) => { if (it) flat.push({ sid, iid, ...it, title: it.text || '', owners: it.assignees || {} }); }));
 
-  /* 오늘 발생하는 반복 일정도 포함 — 앱과 같은 규칙으로 전개 */
-  const p2 = n => String(n).padStart(2, '0');
-  const dsOf = d => `${d.getUTCFullYear()}-${p2(d.getUTCMonth() + 1)}-${p2(d.getUTCDate())}`;
-  const addDays = (s, n) => { const [y, m, d] = s.split('-').map(Number); return dsOf(new Date(Date.UTC(y, m - 1, d + n))); };
-  const addMonths = (s, n) => { const [y, m, d] = s.split('-').map(Number);
-    const last = new Date(Date.UTC(y, m - 1 + n + 1, 0)).getUTCDate();
-    return dsOf(new Date(Date.UTC(y, m - 1 + n, Math.min(d, last)))); };
-  const hitsToday = p => {
-    const f = p.recur && p.recur.f; if (!f) return false;
-    if (p.date > today) return false;
-    if (p.recur.until && today > p.recur.until) return false;
-    if (p.skipOn && p.skipOn[today]) return false;
-    const step = x => f === 'w' ? addDays(x, 7) : f === '2w' ? addDays(x, 14) : f === 'm' ? addMonths(x, 1) : addMonths(x, 12);
-    let d = p.date, guard = 0;
-    while (d < today && guard++ < 2000) d = step(d);
-    return d === today;
-  };
-
+  /* 오늘 발생하는 반복 일정 — 앱과 같은 규칙(mail-common expandRecur)으로 전개.
+     회차 이동(moveOn)이 반영되고, 완료(doneOn)는 원래 회차일(src) 기준으로 본다. */
   const done = p => Number(p.st) === 2;
   const plans = flat.filter(p => {
     if (!p.remind || !p.date) return false;
-    if (p.recur && p.recur.f) return hitsToday(p) && !(p.doneOn && p.doneOn[today]);
+    if (p.recur && p.recur.f) {
+      const hit = expandRecur(p, today, today).find(o => o.date === today);
+      return !!hit && !(p.doneOn && p.doneOn[hit.src]);
+    }
     return !done(p) && p.date <= today && (p.end || p.date) >= today;
   }).sort((a, b) => (a.time || '99') < (b.time || '99') ? -1 : 1);
 

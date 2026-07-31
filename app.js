@@ -479,6 +479,18 @@ const FB={
 };
 function fbDomainOk(email){return /@hdec\.co\.kr$/i.test(String(email||'').trim());}
 
+/* 라이브 부팅 캐시 — 로그인 직후 FB 응답을 기다리는 동안 마지막 데이터로 먼저 그린다.
+   FB 값이 도착하면 그대로 덮어쓰므로 캐시는 '첫 화면'에만 쓰인다. 로그아웃 시 지운다. */
+const BOOT_KEY='calapp.boot.v1';
+let bootT=null;
+function bootCacheLoad(){try{return JSON.parse(localStorage.getItem(BOOT_KEY))||null;}catch(e){return null;}}
+function bootCacheSave(){
+  clearTimeout(bootT);
+  bootT=setTimeout(()=>{try{
+    localStorage.setItem(BOOT_KEY,JSON.stringify({org:S.org,people:S.people,tasks:S.tasks,cfg:S.cfg,at:Date.now()}));
+  }catch(e){}},500);
+}
+function bootCacheClear(){try{localStorage.removeItem(BOOT_KEY);}catch(e){}}
 const FbStore={
   name:'fb',
   init(){},
@@ -552,13 +564,13 @@ const FbStore={
   bindShared(){
     this.migrateRemote();
 
-    this._on('calapp/org',v=>{S.org=v||{teams:[],regions:[],sites:[]};normOrg(S.org);
+    this._on('calapp/org',v=>{S.org=v||{teams:[],regions:[],sites:[]};normOrg(S.org);bootCacheSave();
       if(shEditing()){PEND.org=true;PEND.tasks=true;return;}
       rOrg();rTasks();});
-    this._on('calapp/tasks',v=>{S.tasks=v||{};
+    this._on('calapp/tasks',v=>{S.tasks=v||{};bootCacheSave();
       if(shEditing()){PEND.tasks=true;PEND.day=true;return;}
       rTasks();refetchCal();rDay();rWidget();});   /* 업무가 곧 일정 — 달력도 함께 갱신 */
-    this._on('calapp/people',v=>{S.people=v||{};
+    this._on('calapp/people',v=>{S.people=v||{};bootCacheSave();
       if(shEditing()){PEND.org=true;PEND.tasks=true;return;}
       rOrg();rTasks();});
     /* 하자처리 현황과 공용인 users 노드 — 계정 목록을 그대로 가져온다.
@@ -570,7 +582,7 @@ const FbStore={
       if(shEditing()){PEND.org=true;PEND.tasks=true;return;}
       rOrg();rTasks();rFilter();},
       e=>{S.accounts={};S.acctDenied=true;console.warn('[FB] users 읽기 권한 없음',e);rOrg();rTasks();});
-    this._on('calapp/cfg',v=>{S.cfg=v||{};rCfg();});
+    this._on('calapp/cfg',v=>{S.cfg=v||{};bootCacheSave();rCfg();});
     const uid=S.user&&S.user.uid;
     if(uid){
         this._on('calapp/mentions/'+uid,v=>{S.mentions=v||{};rMention();if(S.view==='mine')rMine();});
@@ -1021,6 +1033,7 @@ async function acctChangePw(){
 function acctSignout(){
   if(!confirm('로그아웃하시겠습니까?'))return;
   closeModal();
+  bootCacheClear();   /* 공용 PC 대비 — 로그아웃하면 부팅 캐시도 지운다 */
   try{FB.auth.signOut();}catch(e){toast('로그아웃 실패');}
 }
 
@@ -1041,6 +1054,14 @@ function enterLive(u){
   if(S.live)return;
   clearTimeout(FB._boot);clearTimeout(FB._watch);hideCover();
   S.live=true;S.user=u;store=FbStore;
+  /* FB 첫 응답 전까지 마지막 캐시로 먼저 그린다 — 매일 여는 도구의 체감 속도.
+     구독 값이 도착하면 그대로 덮어써서 캐시가 화면에 남는 일은 없다. */
+  const c=bootCacheLoad();
+  if(c){
+    S.org=c.org||S.org;normOrg(S.org);
+    S.people=c.people||{};S.tasks=c.tasks||{};S.cfg=c.cfg||{};
+    rAll();
+  }
   FbStore.bindShared();
   subVisibleMonths();
   rAcct();
@@ -1104,6 +1125,8 @@ function calInit(){
     initialView:S.calView,
     initialDate:S.selDate,
     firstDay:0,fixedWeekCount:false,showNonCurrentDates:true,
+    /* 시간은 제목 안의 fmtSpan 이 담당 — FC 기본 표기("10a")를 켜 두면 이중으로 찍힌다 */
+    displayEventTime:false,
     headerToolbar:false,height:'100%',dayMaxEvents:maxEvOf(),
     moreLinkContent:a=>'+'+a.num,
     dayHeaderContent:a=>DOW[a.date.getDay()],
@@ -1202,10 +1225,10 @@ function recurDates(p,from,to){
     }
     d=step(d);
   }
-  /* 범위 앞쪽 회차가 이 범위로 옮겨온 경우도 포함 */
+  /* 범위 밖(앞·뒤) 회차가 이 범위로 옮겨온 경우도 포함 — 루프는 범위 안 원 회차만 돈다 */
   Object.keys(mv).forEach(src=>{
     const dst=mv[src];
-    if(dst>=from&&dst<=to&&out.indexOf(dst)<0&&src<from&&!(p.skipOn&&p.skipOn[src]))out.push(dst);
+    if(dst>=from&&dst<=to&&out.indexOf(dst)<0&&(src<from||src>to)&&!(p.skipOn&&p.skipOn[src]))out.push(dst);
   });
   return out.sort();
 }
@@ -1240,17 +1263,6 @@ function visibleRange(){
   return[dstr(a),dstr(b)];
 }
 function regSel(){const r=S.filter.reg;return Array.isArray(r)?r:(r&&r!=='*'?[r]:[]);}
-function ownOk(p){
-  const owns=planOwners(p);
-  const rs=regSel();
-  if(rs.length){
-    const ids=roster().filter(x=>rs.includes(x.region)).map(x=>x.id);
-    if(!owns.some(o=>ids.includes(o)))return false;
-  }
-  const f=S.filter.own;
-  if(f==='*')return true;
-  return owns.includes(f);
-}
 /* 모든 업무를 한 곳(tasks)에서 읽는다 — 날짜가 있으면 달력에, 기한이 있으면 기한 배지로 */
 function allTasks(){
   const out=[];
@@ -1297,10 +1309,6 @@ function buildEvents(){
     }
   });
   return evs;
-}
-function subjectName(sid){
-  const t=(S.org.teams||[]).find(x=>x.id===sid);if(t)return t.name;
-  const p=roster().find(x=>x.id===sid);return p?p.name:'';
 }
 function refetchCal(){if(CAL)CAL.refetchEvents();}
 function findPlan(id){
@@ -1610,11 +1618,13 @@ function dueInfo(due){
   return{cls:'',txt:'D-'+n};
 }
 function siteName(id){const s=(S.org.sites||[]).find(x=>x.id===id);return s?s.name:'';}
-function taskItemHTML(sid,iid,it,withSubject){
+function taskItemHTML(sid,iid,it,withSubject,hideOwn){
   const key=sid+'/'+iid;
   if(S.tkEdit===key)return taskFormHTML(sid,iid,it);   /* 수정 중이면 항목 자리에 폼이 들어간다 */
   const di=dueInfo(it.date),cn=Object.keys(it.comments||{}).length,st=stOf(it.st);
-  const asg=Object.keys(it.assignees||{}).map(id=>roster().find(p=>p.id===id)).filter(Boolean);
+  /* 담당자별 묶음 안에서는 소제목이 곧 그 사람 — 본인 배지는 겹말이라 뺀다(공동 담당자만 남긴다) */
+  const asg=Object.keys(it.assignees||{}).filter(id=>id!==hideOwn)
+    .map(id=>roster().find(p=>p.id===id)).filter(Boolean);
   const lnk=Object.entries(it.links||{});
   const sn=siteName(it.site);
   const open=S.tkOpen===key;
@@ -1736,16 +1746,19 @@ function taskListHTML(sid){
   const old=tkFilterOn()?[]:all.filter(iid=>stOf(items[iid].st)===2&&(items[iid].updatedAt||0)<cut);
   const open=S.foldOpen[sid];
   const shown=open?all:all.filter(iid=>!old.includes(iid));
-  return shown.map(iid=>taskItemHTML(sid,iid,items[iid],false)).join('')
+  const hideOwn=isTeamSid(sid)?'':sid;   /* 개인 목록이면 본인 배지는 겹말 */
+  return shown.map(iid=>taskItemHTML(sid,iid,items[iid],false,hideOwn)).join('')
     +(old.length?`<div class="tk-fold" data-act="tk.fold" data-sid="${esc(sid)}">${open?'▲ 지난 완료 '+old.length+'건 접기':'▼ 지난 완료 '+old.length+'건 보기'}</div>`:'');
 }
 /* ── 집계 보기 보조 — 미완료만, 기한순 ── */
 function openItems(sid){
   const m=S.tasks[sid]||{};
-  /* 완료해도 바로 사라지지 않는다 — 7일이 지난 완료만 목록에서 뺀다(담당자 화면과 같은 규칙) */
+  /* 완료해도 바로 사라지지 않는다 — 7일이 지난 완료만 목록에서 뺀다(담당자 화면과 같은 규칙).
+     단 필터·검색이 켜져 있으면 전부 대상 — 상태 '완료'로 지난 완료도 찾아볼 수 있게 */
   const cut=Date.now()-7*86400000;
   const stale=it=>stOf(it.st)===2&&(it.updatedAt||0)<cut;
-  return Object.keys(m).filter(iid=>m[iid]&&!stale(m[iid])&&tkMatch(sid,iid,m[iid]))
+  const showAll=tkFilterOn();
+  return Object.keys(m).filter(iid=>m[iid]&&(showAll||!stale(m[iid]))&&tkMatch(sid,iid,m[iid]))
     .sort((a,b)=>{const ad=m[a].date||'9999',bd=m[b].date||'9999';
       return ad<bd?-1:ad>bd?1:(m[a].createdAt||0)-(m[b].createdAt||0);})
     .map(iid=>({iid,it:m[iid]}));
@@ -1767,7 +1780,7 @@ function memberGroupHTML(list){
     const rk=rankOf(p.rank);
     return '<div class="tk-sub2">'+esc(p.name)
       +(rk==='lead'?'<span class="rk">공구장</span>':'')+'</div>'
-      +items.map(({iid,it})=>taskItemHTML(p.id,iid,it,false)).join('');
+      +items.map(({iid,it})=>taskItemHTML(p.id,iid,it,false,p.id)).join('');
   }).join('');
   return any?html:'<div class="tk-empty">미완료 업무가 없습니다.</div>';
 }
@@ -1792,7 +1805,7 @@ function regionSectionsHTML(mems,regions){
       const rk=rankOf(p.rank);
       return '<div class="tk-sub2">'+esc(p.name)
         +(rk==='lead'?'<span class="rk">공구장</span>':rk==='head'?'<span class="rk">팀장</span>':'')+'</div>'
-        +items.map(({iid,it})=>taskItemHTML(p.id,iid,it,false)).join('');
+        +items.map(({iid,it})=>taskItemHTML(p.id,iid,it,false,p.id)).join('');
     }).join('')||'<div class="tk-empty" style="padding:8px 2px;text-align:left">미완료 업무가 없습니다.</div>';
     return '<div class="tk-sub">'+esc(rn)+'<span class="c">'+cnt+'</span></div>'+inner;
   }).join('');
@@ -2663,10 +2676,6 @@ const ACT={
   'nq.q':()=>{},
   'nq.task':el=>gotoTask(el.dataset.sid,el.dataset.iid),
   'nq.cmt':el=>gotoTask(el.dataset.sid,el.dataset.iid),
-  'nq.plan':el=>{
-    nqOpen(false);go('calendar');selDate(el.dataset.date);
-    setTimeout(()=>{const p=findPlan(el.dataset.pid);if(p)openPlanEdit(p,null,null,el.dataset.date);},80);
-  },
   'mine.plan':el=>{go('calendar');selDate(el.dataset.date);},
   'mine.task':el=>gotoTask(el.dataset.sid,el.dataset.iid),
   'mention.clear':()=>{
@@ -2726,7 +2735,6 @@ const ACT={
   'tk.field':()=>{},
   'tk.linkAdd':()=>{const box=$('#tnLinks');if(box)box.insertAdjacentHTML('beforeend',linkRowHTML(uid(),null));},
   'tk.linkDel':el=>{const r=el.closest('.lnk-row');if(r)r.remove();},
-  'tk.linkOpen':()=>{},
   'tk.edit':el=>{S.tkNew=null;S.tkEdit=el.dataset.sid+'/'+el.dataset.iid;rTasks();
     setTimeout(()=>{const t=$('#tnTitle');if(t)t.focus();},30);},
   'tk.pick':el=>{S.tk.m=el.dataset.id;rTasks();},
@@ -2789,16 +2797,6 @@ const ACT={
     }
     if(box)box.value='';
     setTimeout(()=>{if(!S.live)rTasks();else rTasks();},S.live?250:20);
-  },
-  'tk.toPlan':el=>{
-    /* 통합 뒤에는 같은 업무 — 날짜만 정해 달력에 올린다 */
-    const sid=el.dataset.sid,iid=el.dataset.iid,cur=(S.tasks[sid]||{})[iid];if(!cur)return;
-    const when=cur.date||todayStr();
-    go('calendar');selDate(when);
-    setTimeout(()=>{
-      const p=taskAsPlan(sid,iid,{...cur,date:cur.date||when});
-      openPlanEdit(p,null,null,'');
-    },60);
   },
   'org.addTeam':()=>{
     
@@ -2873,19 +2871,6 @@ const ACT={
       closeModal();if(!S.live)rOrg();
     }};
   },
-  'acct.site':el=>{
-    
-    const id=el.dataset.id,sid=el.dataset.sid;
-    const base=roster().find(p=>p.id===id)||{};
-    const cur=(S.people||{})[id]||{};
-    const sites={...(cur.sites||base.sites||{})};
-    if(sites[sid])delete sites[sid];else sites[sid]=1;
-    store.putPerson(id,{name:base.name||cur.name||'',email:base.email||cur.email||'',
-      team:cur.team||base.team||'',region:cur.region||base.region||'',
-      rank:rankOf(cur.rank||base.rank),sites});
-    if(!S.live)rOrg();
-  },
-  'set.dark':()=>{},
   'set.guide':()=>openModal('사용 안내',GUIDE_HTML,''),
   'set.copyErr':()=>{
     const txt='버전 '+APP_VER+' · '+navigator.userAgent+'\n'+(ERRLOG.length?ERRLOG.join('\n'):'기록된 오류 없음');
@@ -2996,10 +2981,7 @@ const ACT={
     selDate(y+'-'+pad(m)+'-'+pad(same?t.getDate():1));
     rMonTitle();subVisibleMonths();refetchCal();},
   'mail.preview':el=>mailPreview(el.dataset.kind),
-  'set.saveUrl':()=>{if(!isEditor())return denyEdit();
-    store.putCfg('defectUrl',($('#setDefectUrl').value||'').trim(),err=>{
-      if(err){toast('저장 실패 · '+((err&&err.message)||err));return;}
-      if(!S.live)rCfg();toast('저장했습니다');});}
+  'wid.set':()=>{const p=$('#wgSet');if(!p)return;p.classList.toggle('on');p.setAttribute('aria-hidden',p.classList.contains('on')?'false':'true');widApply();}
 };
 /* 필터 = 권역(세그먼트) + 담당자(선택). 권역을 고르면 담당자 목록도 그 권역으로 좁혀진다. */
 function rFilter(){
@@ -3115,6 +3097,18 @@ document.addEventListener('change',e=>{
   if(!S.live){rOrg();rTasks();}
 });
 document.addEventListener('input',e=>{if(e.target.id==='nqQ')rNq();});
+/* 위젯 설정 팝업 조작 */
+document.addEventListener('input',e=>{
+  if(e.target.id==='wgA'){const c=widCfgLoad();c.a=Number(e.target.value);widCfgSave(c);widApply();}
+});
+document.addEventListener('change',e=>{
+  if(e.target.id==='wgPanelChk'){const c=widCfgLoad();c.panel=e.target.checked;widCfgSave(c);widApply();return;}
+  if(e.target.id==='wgDarkChk'){applyTheme(e.target.checked);return;}
+});
+document.addEventListener('click',e=>{
+  const b=e.target.closest('#wgFz button');
+  if(b){const c=widCfgLoad();c.fz=b.dataset.fz;widCfgSave(c);widApply();}
+});
 document.addEventListener('input',e=>{
   if(e.target.id==='dpQ'){S.dayQ=e.target.value;dpSrchMark();rDay();return;}
   if(e.target.id==='tkQ'){
@@ -3201,6 +3195,36 @@ function bindCalResize(){
 
 /* ═══════════ 위젯 모드 (?w=1) — 데스크톱 PWA 창용 컴팩트 화면 ═══════════ */
 const WIDGET=/[?&]w=1\b/.test(location.search);
+const GLASS=/[?&]glass=1\b/.test(location.search);   /* 위젯 유리(반투명) 모드 — 배경을 비운다 */
+/* 위젯 설정 — 진하기·글자 크기·오늘 목록. 위젯 창(PC)별 로컬 저장 */
+const WID_KEY='calapp.wid';
+function widCfgLoad(){try{return JSON.parse(localStorage.getItem(WID_KEY))||{};}catch(e){return{};}}
+function widCfgSave(c){try{localStorage.setItem(WID_KEY,JSON.stringify(c));}catch(e){}}
+function widApply(){
+  if(!WIDGET)return;
+  const c=widCfgLoad();
+  /* 진하기 — FullCalendar 셀에서 var() 상속이 갱신되지 않는 엔진 특이 동작이 있어
+     변수 대신 리터럴 규칙을 스타일 태그로 주입한다 */
+  const a=Number.isFinite(Number(c.a))?Number(c.a)/100:.55;
+  let dyn=document.getElementById('wgDyn');
+  if(!dyn){dyn=document.createElement('style');dyn.id='wgDyn';document.head.appendChild(dyn);}
+  const f=n=>Math.min(1,Math.max(0,n)).toFixed(3);
+  dyn.textContent=GLASS?[
+    'body.wid.glass #fcal td.fc-daygrid-day{background:rgba(24,28,38,'+f(a)+')!important;}',
+    'body.wid.glass #fcal td.fc-daygrid-day.fc-day-sat,body.wid.glass #fcal td.fc-daygrid-day.fc-day-sun{background:rgba(52,56,68,'+f(a*.92)+')!important;}',
+    'body.wid.glass #fcal td.fc-daygrid-day.fc-day-other{background:rgba(24,28,38,'+f(a*.42)+')!important;}',
+    'body.wid.glass #fcal td.fc-daygrid-day.fc-day-today{background:rgba(62,113,210,'+f(a*.88)+')!important;}',
+    'body.wid.glass #fcal .fc-col-header-cell{background:rgba(13,16,24,'+f(a+.12)+')!important;}',
+    'body.wid.glass .plan{background:rgba(13,17,26,'+f(a+.05)+');}',
+    'body.wid.glass .cal-head .seg,body.wid.glass .cal-head .cal-nav{background:rgba(16,20,30,'+f(a*.9)+');}'
+  ].join('\n'):'';
+  const fz=c.fz==='s'?.9:c.fz==='l'?1.14:1;document.body.style.setProperty('--wfz',String(fz));
+  const pn=$('#widPanel');if(pn)pn.style.display=c.panel===false?'none':'';
+  const rng=$('#wgA');if(rng)rng.value=Math.round(a*100);
+  if($('#wgFz'))$$('#wgFz button').forEach(b=>b.classList.toggle('act',b.dataset.fz===(c.fz||'m')));
+  const pc=$('#wgPanelChk');if(pc)pc.checked=c.panel!==false;
+  const dc=$('#wgDarkChk');if(dc)dc.checked=document.documentElement.classList.contains('dark');
+}
 function rWidget(){
   if(!WIDGET)return;
   const ds=S.selDate,ps=dayPlans(ds),d=toDate(ds),ho=holOf(ds);
@@ -3219,6 +3243,8 @@ function rAll(){rDay();rTasks();rOrg();rCfg();rFilter();rMention();rMine();refet
   try{dark=localStorage.getItem('calapp.theme')==='dark';}catch(e){}
   applyTheme(dark);
   if(WIDGET)document.body.classList.add('wid');
+  if(WIDGET&&GLASS)document.body.classList.add('glass');
+  if(WIDGET)widApply();
   LocalStore.init();
   calInit();
   bindCalResize();
