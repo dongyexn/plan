@@ -11,9 +11,10 @@ app.js                         앱 로직 (로컬 ⇄ Firebase 공용 저장소 
 build-single.mjs               단일 HTML 빌드 (node build-single.mjs → dist/)
 vendor/fullcalendar.min.js     FullCalendar 6.1.21 (MIT)
 vendor/PretendardVariable.woff2
-scripts/remind.mjs             당일 리마인드 메일 (매일 07:05 KST)
-scripts/weekly.mjs             주간 요약 메일 (월요일 07:10 KST)
-.github/workflows/*.yml        위 두 메일의 cron
+scripts/mail-common.mjs        메일 수신자 계산 · 발송 시각 게이트 (두 스크립트 공용)
+scripts/remind.mjs             당일 리마인드 메일
+scripts/weekly.mjs             주간 요약 메일 (요일은 앱 설정에서 지정)
+.github/workflows/*.yml        위 두 메일의 cron — 매시 실행(0 * * * *) 권장
 database.rules.json            RTDB 보안 규칙 전체
 widget/                        데스크톱 위젯 (Electron)
 ```
@@ -29,7 +30,8 @@ widget/                        데스크톱 위젯 (Electron)
 | `calapp/org` | 팀 · 권역 · 현장 목록 |
 | `calapp/people/{uid}` | 담당자 배정 — name·email·team·region·sites |
 | `calapp/cfg` | 앱 설정 — 바로가기 주소, 메일 발송 형식 |
-| `users/{uid}` | 계정·권한 — 하자처리 대시보드와 **공용**(이 앱은 읽기 위주) |
+| `calapp/prefs/{uid}` | 개인 설정 — 본인만 쓰기 |
+| `users/{uid}` | 계정·권한·프로필(avColor·avIcon) — 하자처리 대시보드와 **공용** |
 
 항목 단위로 쓰기 때문에 여러 명이 동시에 작성해도 서로 덮어쓰지 않는다.
 입력 중에는 실시간 수신 렌더를 보류해 타이핑이 지워지지 않는다.
@@ -126,4 +128,6 @@ npm run dist       # dist/업무일정위젯.exe (포터블)
 
 두 메일 모두 설정 화면에서 켜고 끌 수 있고, 주간 요약 요일 · 수신 범위(팀 전체 / 담당자에게만) ·
 제목 앞머리 · 안내 문구를 앱에서 정한다. 설정은 `calapp/cfg/mail`에 저장되고 발송 스크립트가 읽는다.
-발송 시각만 워크플로의 cron에서 정한다.
+발송 시각은 앱 설정(메일 발송 > 발송 시각)에서 정하고, 워크플로 cron은 매시 실행(`0 * * * *`)으로 둔다.
+스크립트가 KST 기준 현재 시각과 설정값을 비교해 맞을 때만 발송한다.
+하루 1회만 도는 cron을 유지하려면 워크플로 env에 `SKIP_HOUR_GATE: '1'` 을 넣어 시각 검사를 건너뛴다.
