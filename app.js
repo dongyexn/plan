@@ -752,6 +752,8 @@ function acctHeadHTML(){
         <div class="acct-mail">${esc(u.email||'')}</div>
         <span class="acct-rolebadge ${role==='editor'?'r-editor':'r-viewer'}">${esc(roleLabel(role))}</span>
       </div>
+      <span class="acct-state" id="acctState"></span>
+      <button class="acct-btn acct-btn-danger acct-btn-sm" data-act="acct.signout">로그아웃</button>
     </div>`;
 }
 function acctTabBody(tab){
@@ -907,10 +909,7 @@ function renderAcctModal(tab){
 }
 function openAcctModal(){
   const u=S.user;if(!u){toast('로그인이 필요합니다');return;}
-  openModal('계정','',
-    '<button class="acct-btn acct-btn-danger" data-act="acct.signout">로그아웃</button>'
-    +'<span class="acct-state" id="acctState"></span>');
-  $('#mb').classList.add('has-x');   /* 닫기는 우측 상단 X 로 */
+  openModal('계정','','');   /* 하단 버튼 없음 — 닫기는 우측 상단 X, 로그아웃은 헤더 우측 */
   renderAcctModal('profile');
 }
 /* users/{uid} 는 부분 쓰기가 규칙에 막혀 항상 전체를 다시 쓴다 —
