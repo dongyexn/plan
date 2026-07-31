@@ -332,6 +332,18 @@ html.dark #fcal .fc-day-today .dnum{color:var(--b300)!important;}
 #fcal .fc-event.duev{background:transparent!important;border:1.5px dashed var(--lbl3);color:var(--lbl2);font-weight:600;}
 #fcal .fc-event.duev.over{border-color:var(--rd);color:var(--rd);}
 
+/* 담당자 선택(공용) */
+.pk{display:flex;flex-direction:column;gap:7px;min-width:0;}
+.pk-sel{width:100%;}
+.pk-chips{display:flex;flex-wrap:wrap;gap:5px;align-items:center;min-height:24px;}
+.pk-chip{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 4px 0 9px;border-radius:var(--rp);
+  background:var(--b50);border:1px solid var(--b200);font-size:11.5px;font-weight:600;color:var(--bt1);}
+.pk-chip .dot-c{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.pk-x{width:17px;height:17px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  color:var(--bt1);opacity:.6;}
+.pk-x:hover{opacity:1;background:rgba(62,113,210,.14);}
+.pk-x .icn{width:9px;height:9px;}
+.pe-full{width:100%;margin-bottom:10px;justify-content:center;}
 /* 반복 회차 옮기기 */
 .occ-row{margin-bottom:10px;padding-top:10px;border-top:1px dashed var(--sepo);}
 .occ-line{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
@@ -544,12 +556,12 @@ html.dark #fcal .fc-day-today .dnum{color:var(--b300)!important;}
 .sti2.drop-below::after{bottom:-2px;}
 .sg-empty{font-size:11px;color:var(--lbl3);padding:5px 8px;}
 .site-chk{display:flex;flex-wrap:wrap;gap:4px;align-items:center;min-width:0;}
-.site-pick{flex-shrink:0;width:24px;height:24px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;color:var(--lbl3);border:1px dashed var(--sepo);}
+.site-pick{flex-shrink:0;width:22px;height:22px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;color:var(--lbl3);border:1px dashed var(--sepo);}
 .site-pick:hover{background:var(--fill);color:var(--bt1);border-color:var(--b300);}
 .site-pick .icn{width:12px;height:12px;}
-.site-on{display:inline-flex;align-items:center;padding:2px 7px;border-radius:var(--rp);background:var(--b50);border:1px solid var(--b200);font-size:11px;font-weight:600;color:var(--bt1);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;}
-.site-more{font-size:11px;color:var(--lbl3);font-weight:600;}
-.site-none{font-size:11px;color:var(--lbl3);}
+.site-on{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:var(--rp);background:var(--b50);border:1px solid var(--b200);font-size:11px;font-weight:600;color:var(--bt1);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;}
+.site-more{font-size:11px;color:var(--lbl3);font-weight:600;display:inline-flex;align-items:center;height:22px;}
+.site-none{font-size:11px;color:var(--lbl3);display:inline-flex;align-items:center;height:22px;}
 .spk{display:flex;flex-direction:column;gap:4px;max-height:48dvh;overflow-y:auto;}
 .spk-g{font-size:10px;font-weight:700;color:var(--lbl3);letter-spacing:.06em;text-transform:uppercase;padding:8px 2px 3px;}
 .spk-i{display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:var(--rmd);cursor:pointer;font-size:13px;color:var(--lbl);}
@@ -601,17 +613,12 @@ html.dark #fcal .fc-day-today .dnum{color:var(--b300)!important;}
 .tm-pick{flex-shrink:0;width:24px;height:24px;display:flex;align-items:center;justify-content:center;color:var(--lbl3);}
 .tm-row.act .tm-pick{color:var(--bt1);}
 .tm-nameinp{flex:1;min-width:0;font-weight:600;font-size:13px;}
-.tm-cnt{flex-shrink:0;font-size:10.5px;font-weight:700;color:var(--lbl2);background:var(--fill);border-radius:99px;padding:1px 7px;
-  transition:transform var(--tr);}
-/* 삭제는 평소 숨기고, 마우스를 올리면 카운트가 왼쪽으로 비켜주며 그 자리에 나타난다 */
-.tm-row .tm-del,.sti2 .tm-del{opacity:0;pointer-events:none;transform:scale(.85);
-  transition:opacity var(--tr),transform var(--tr);position:absolute;right:5px;}
-.tm-row,.sti2{position:relative;}
-.tm-row{padding-right:34px;}
-.tm-row:hover .tm-del,.tm-row:focus-within .tm-del,
-.sti2:hover .tm-del,.sti2:focus-within .tm-del{opacity:1;pointer-events:auto;transform:scale(1);}
-.tm-row:hover .tm-cnt,.tm-row:focus-within .tm-cnt{transform:translateX(-30px);}
-.sti2{padding-right:30px;}
+.tm-cnt{flex-shrink:0;font-size:10.5px;font-weight:700;color:var(--lbl2);background:var(--fill);border-radius:99px;padding:1px 7px;}
+/* 삭제는 평소 폭 0으로 접어 두고(카운트가 맨 끝), 마우스를 올리면 펼쳐지며 카운트를 왼쪽으로 민다 */
+.tm-row .tm-del,.sti2 .tm-del{width:0;min-width:0;padding:0;margin-left:-6px;opacity:0;pointer-events:none;overflow:hidden;
+  transition:width var(--tr),opacity var(--tr),margin-left var(--tr);}
+.tm-row:hover .tm-del,.tm-row:focus-within .tm-del{width:28px;margin-left:0;opacity:1;pointer-events:auto;}
+.sti2:hover .tm-del,.sti2:focus-within .tm-del{width:22px;margin-left:0;opacity:1;pointer-events:auto;}
 .tm-x{flex-shrink:0;width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--lbl3);background:none;}
 .tm-x:hover{background:var(--fill);}
 .tm-x svg{display:block;}

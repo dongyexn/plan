@@ -23,15 +23,17 @@ widget/                        데스크톱 위젯 (Electron)
 
 | 경로 | 내용 |
 |---|---|
-| `calapp/plans/{YYYY-MM}/{id}` | 단발 업무 — date·end(기간)·title·time·body·color·owner·remind·done |
-| `calapp/recur/{id}` | 반복 업무 — 위 필드 + recur{f,until}·doneOn·skipOn |
-| `calapp/tasks/{subjectId}/{itemId}` | 주요업무 항목 — text(제목)·prog(진행경과)·plan(처리계획)·site(현장)·st(0예정 1진행 2완료 3보류)·due·order·assignees·links·comments |
+| `calapp/tasks/{subjectId}/{itemId}` | **업무 하나** — 일정과 주요업무가 통합된 단일 엔티티. text(제목)·prog(진행경과)·plan(처리계획)·site(현장)·st(0예정 1진행 2완료 3보류)·due(기한)·order·assignees·links·comments + date·end·time·endTime·recur·remind(달력에 뜨는 일정 성격) |
 | `calapp/mentions/{uid}` | 코멘트에서 나를 부른 알림 |
 | `calapp/org` | 팀 · 권역 · 현장 목록 |
 | `calapp/people/{uid}` | 담당자 배정 — name·email·team·region·sites |
 | `calapp/cfg` | 앱 설정 — 바로가기 주소, 메일 발송 형식 |
 | `calapp/prefs/{uid}` | 개인 설정 — 본인만 쓰기 |
 | `users/{uid}` | 계정·권한·프로필(avColor·avIcon) — 하자처리 대시보드와 **공용** |
+
+업무 일정과 주요업무 현황은 **같은 업무를 다른 각도로 보여준다** — 날짜가 있으면 달력에 뜨고,
+담당자·상태가 있으면 주요업무 목록에 뜬다. 업무 일정에서는 간소한 입력만 받고, 상세는 주요업무에서 채운다.
+예전 구조(plans·recur 분리)로 저장된 데이터는 앱을 열 때 자동으로 업무로 옮겨진다.
 
 항목 단위로 쓰기 때문에 여러 명이 동시에 작성해도 서로 덮어쓰지 않는다.
 입력 중에는 실시간 수신 렌더를 보류해 타이핑이 지워지지 않는다.
