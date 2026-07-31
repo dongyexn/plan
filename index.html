@@ -89,6 +89,7 @@ svg{display:block;flex-shrink:0;}
 .sb-acct:hover{background:var(--fill);}
 .sb-acct-av{flex:0 0 auto;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--b500),var(--b800));}
 .sb-acct-av svg{width:17px;height:17px;display:block;}
+.sb-acct-av.av-cus{background:var(--avc,var(--b600));}
 .sb-acct-info{min-width:0;flex:1;display:flex;flex-direction:column;gap:1px;}
 .sb-acct-role{flex:0 0 auto;font-size:9px;font-weight:700;padding:2px 6px;border-radius:5px;letter-spacing:.02em;}
 .sb-acct-role.r-editor{background:rgba(62,113,210,.13);color:var(--bt1);}
@@ -235,6 +236,14 @@ html.dark #fcal .fc-day-today .dnum{color:var(--b300)!important;}
 .dp-body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:8px;flex:1;min-height:0;overflow-y:auto;}
 .dp-body::-webkit-scrollbar{width:4px;}
 .dp-body::-webkit-scrollbar-thumb{background:var(--sepo);border-radius:99px;}
+.dp-sec{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;color:var(--lbl3);letter-spacing:.04em;margin:6px 0 2px;}
+.dp-sec::after{content:'';flex:1;height:1px;background:var(--sep);}
+.dp-sec .c{font-weight:700;color:var(--lbl2);background:var(--fill);border-radius:99px;padding:1px 7px;font-size:10.5px;}
+.plan.dtk{cursor:pointer;}
+.plan.dtk .plan-main{cursor:pointer;}
+.plan.dtk .pm-chip.over{background:var(--tint-rd);color:var(--rd);}
+.plan.dtk .pm-chip.st{font-weight:700;}
+.dtk-go{font-size:17px;color:var(--lbl3);line-height:1;padding:0 2px;}
 .dp-empty{font-size:12.5px;color:var(--lbl3);text-align:center;padding:22px 0 14px;}
 .plan{border:1px solid var(--sep);border-radius:var(--rlg);padding:11px 13px;display:flex;gap:10px;align-items:flex-start;background:var(--bg2);transition:border-color .15s;position:relative;}
 .plan:hover{border-color:var(--b300);}
@@ -297,6 +306,9 @@ html.dark #fcal .fc-day-today .dnum{color:var(--b300)!important;}
 .pal-c{width:24px;height:24px;border-radius:8px;cursor:pointer;border:2px solid transparent;transition:transform .12s,border-color .12s;}
 .pal-c:hover{transform:scale(1.12);}
 .pal-c.sel{border-color:var(--lbl);transform:scale(1.12);}
+.pal-add{position:relative;display:inline-flex;align-items:center;justify-content:center;border:1px dashed var(--sepo);background:var(--fill);color:var(--lbl3);font-size:15px;font-weight:600;line-height:1;}
+.pal-add:hover{border-color:var(--b400);color:var(--bt1);}
+.pal-add .pal-inp{position:absolute;inset:0;opacity:0;cursor:pointer;padding:0;border:none;}
 
 /* ══════════ 주요업무 현황 — 좌: 대상 선택 · 우: 작성/목록 ══════════ */
 .tkwrap{display:grid;grid-template-columns:320px minmax(0,1fr);gap:16px;align-items:stretch;height:calc(100dvh - var(--th) - 40px);min-height:460px;}
@@ -322,9 +334,24 @@ html.dark #fcal .fc-day-today .dnum{color:var(--b300)!important;}
 .tkm-h b{font-size:16px;font-weight:800;color:var(--lbl);letter-spacing:-.01em;}
 .tkm-h .btn{margin-left:auto;}
 /* 인라인 작성창 */
-.tk-new{border:1.5px solid var(--b300);border-radius:var(--rlg);padding:14px;margin-bottom:12px;background:var(--bg2);flex-shrink:0;}
-.tk-new-t{font-size:15px;font-weight:600;margin-bottom:10px;}
-.tk-new-g{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+.tk-new{border:1.5px solid var(--b300);border-radius:var(--rlg);padding:0;margin-bottom:12px;background:var(--bg2);flex-shrink:0;overflow:hidden;}
+/* 작성·수정 폼 — 제목 / 본문 / 분류 / 담당자 / 링크를 구분선으로 나눈다 */
+.tkf-top{padding:12px 14px 12px;background:var(--surf2);border-bottom:1px solid var(--sep);}
+.tkf-badge{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.04em;color:var(--bt1);
+  background:var(--b50);border:1px solid var(--b200);border-radius:var(--rp);padding:2px 9px;margin-bottom:8px;}
+.tk-new-t{font-size:15px;font-weight:600;margin-bottom:0;}
+.tkf-sec{padding:12px 14px;border-bottom:1px solid var(--sep);}
+.tkf-h{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;color:var(--lbl3);
+  letter-spacing:.04em;margin-bottom:8px;}
+.tkf-h .c{font-weight:600;color:var(--lbl3);background:var(--fill);border-radius:99px;padding:1px 8px;font-size:10.5px;letter-spacing:0;}
+.tkf-g3{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:start;}
+.tkf-f{display:flex;flex-direction:column;gap:5px;min-width:0;}
+.tkf-f label{font-size:11.5px;font-weight:600;color:var(--lbl2);}
+.tkf-f .inp-sm{width:100%;}
+.tkf-foot{display:flex;align-items:center;gap:8px;padding:12px 14px;background:var(--surf2);}
+.tkf-foot .tk-new-btns{margin-left:auto;display:flex;gap:8px;}
+@media(max-width:720px){.tkf-g3{grid-template-columns:1fr;}}
+.tk-new-g{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:0;}
 .tk-new-a{min-height:78px;font-size:13px;line-height:1.6;resize:vertical;}
 .tk-new-r{display:flex;flex-wrap:wrap;align-items:center;gap:8px;}
 .tk-new-r .inp-sm{width:auto;min-width:130px;}
@@ -389,6 +416,17 @@ html.dark #fcal .fc-day-today .dnum{color:var(--b300)!important;}
 .th-h span{font-size:11px;color:var(--lbl3);}
 .th-t{font-size:13px;line-height:1.6;color:var(--lbl);white-space:pre-wrap;word-break:break-all;margin-top:2px;}
 .th-in{width:100%;border:1px solid var(--sep);border-radius:var(--rmd);padding:8px 11px;font-family:inherit;font-size:13px;line-height:1.55;color:var(--lbl);background:var(--bg2);resize:vertical;min-height:38px;outline:none;}
+.th-t .mn{color:var(--bt1);font-weight:700;}
+.cmt-t .mn{color:var(--bt1);font-weight:700;}
+/* @ 자동완성 */
+.mn-pop{position:fixed;z-index:320;background:var(--bg2);border:1px solid var(--sep);border-radius:var(--rmd);
+  box-shadow:0 10px 30px rgba(0,0,0,.16);padding:4px;max-height:214px;overflow-y:auto;}
+.mn-i{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;cursor:pointer;min-width:0;}
+.mn-i.act,.mn-i:hover{background:var(--b50);}
+.mn-av{width:22px;height:22px;border-radius:99px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  color:#fff;font-size:11px;font-weight:700;}
+.mn-n{font-size:13px;font-weight:600;color:var(--lbl);white-space:nowrap;}
+.mn-e{font-size:11.5px;color:var(--lbl3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
 .th-in:focus{border-color:var(--b400);box-shadow:0 0 0 3px rgba(83,140,222,.12);}
 .th-f{display:flex;justify-content:flex-end;margin-top:6px;}
 /* 업무 색 — 좌측 색 바 (일정 카드 .pc 와 동일한 문법) */
@@ -510,6 +548,22 @@ select.mg-inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-
 /* 계정 관리 아바타·권한 */
 .fbu-av{flex:0 0 auto;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;}
 .fbu-av svg{width:18px;height:18px;display:block;fill:#fff;}
+/* 프로필 아이콘(선 그림) — 배경색 원 위에 흰 선으로 그린다 */
+.av-ic{fill:none!important;stroke:#fff;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;}
+.fbu-av.av-cus{background:var(--avc,var(--b600));}
+.fbu-av.av-cus .av-ic{stroke:#fff;}
+.acct-av.av-cus{background:var(--avc,var(--b600));}
+/* 프로필 편집 */
+.pf-row{display:flex;align-items:center;gap:14px;margin-bottom:12px;}
+.pf-prev{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.pf-prev svg{width:28px;height:28px;}
+.pf-grid{display:flex;flex-wrap:wrap;gap:7px;}
+.pf-ic{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+  border:2px solid transparent;background:var(--fill);cursor:pointer;transition:transform .12s,border-color .12s;}
+.pf-ic svg{width:20px;height:20px;fill:none;stroke:var(--lbl2);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;}
+.pf-ic:hover{transform:scale(1.08);}
+.pf-ic.sel{border-color:var(--lbl);}
+.pf-ic.sel svg{stroke:var(--bt1);}
 .fbu-av.r-editor{background:linear-gradient(135deg,var(--b500),var(--b800));}
 .fbu-av.r-viewer{background:rgba(120,120,128,.2);}
 .fbu-av.r-viewer svg{fill:var(--lbl2);}
@@ -539,6 +593,13 @@ select.mg-inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-
 .mgtbl{width:100%;border-collapse:collapse;}
 .mgtbl td{padding:4px 6px;vertical-align:middle;}
 .mgtbl tbody tr:hover{background:var(--fill);}
+.frow-hint{font-size:11.5px;color:var(--lbl3);margin-top:4px;line-height:1.5;}
+.ml-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--sep);}
+/* 메일 미리보기 */
+.mlp-wrap{background:var(--surf2);border:1px solid var(--sep);border-radius:var(--rmd);padding:14px;max-height:56dvh;overflow-y:auto;}
+.mlp-to{font-size:12px;color:var(--lbl2);margin-bottom:8px;line-height:1.6;}
+.mlp-to b{color:var(--lbl);}
+.mlp-sub{font-size:13.5px;font-weight:700;color:var(--lbl);margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--sep);word-break:break-all;}
 .set-empty{font-size:12px;color:var(--lbl3);padding:16px 4px;line-height:1.6;text-align:center;}
 .reg-row{display:flex;flex-wrap:wrap;gap:5px;}
 .reg{padding:5px 13px;border-radius:var(--rp);background:transparent;border:1px solid var(--sep);font-size:12.5px;font-weight:600;color:var(--lbl2);cursor:pointer;transition:all .13s;white-space:nowrap;}
@@ -730,6 +791,8 @@ html.dark #toast{background:#2B313A;}
 <symbol id="i-me" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
 <symbol id="i-cmt" viewBox="0 0 24 24"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></symbol>
 <symbol id="i-org" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="8.5" y="14" width="7" height="7" rx="1.5"/><path d="M6.5 10v2h11v-2"/><path d="M12 12v2"/></symbol>
+
+<symbol id="av-person" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4"/><path d="M5.4 20a6.6 6.6 0 0 1 13.2 0"/></symbol><symbol id="av-helmet" viewBox="0 0 24 24"><path d="M4.4 15a7.6 7.6 0 0 1 15.2 0"/><path d="M10 7.9V5.2h4v2.7"/><rect x="3.2" y="15" width="17.6" height="3" rx="1.5"/></symbol><symbol id="av-star" viewBox="0 0 24 24"><path d="M12 3.6l2.5 5.3 5.8.8-4.2 4 1 5.8L12 16.7l-5.1 2.8 1-5.8-4.2-4 5.8-.8z"/></symbol><symbol id="av-bolt" viewBox="0 0 24 24"><path d="M13.4 2.8 5.6 13.1h5.1l-.9 8.1 8.1-10.6h-5.2z"/></symbol><symbol id="av-leaf" viewBox="0 0 24 24"><path d="M20 4C10.6 4 5 8.1 5 14a6.6 6.6 0 0 0 1.7 4.6C9.2 15.2 12.7 12.6 17 11"/><path d="M6.7 18.6c1.3.6 2.7.9 4.1.9C16.2 19.5 20 14 20 4"/></symbol><symbol id="av-moon" viewBox="0 0 24 24"><path d="M19.2 14.6A7.7 7.7 0 0 1 9.4 4.8a7.7 7.7 0 1 0 9.8 9.8z"/></symbol><symbol id="av-flame" viewBox="0 0 24 24"><path d="M12 2.8c2.4 3.3 1 5.3-.4 6.9-1.2 1.3-2.4 2.6-2.4 4.6a4.8 4.8 0 0 0 9.6 0c0-3-1.6-5.3-3.4-7.1"/><path d="M9.4 16.2a2.6 2.6 0 0 0 5.2 0c0-1.5-1.1-2.4-1.7-3.2"/></symbol><symbol id="av-anchor" viewBox="0 0 24 24"><circle cx="12" cy="5.2" r="2.2"/><path d="M12 7.4V20.4"/><path d="M5 13.6A7 7 0 0 0 12 20.4a7 7 0 0 0 7-6.8"/><path d="M8.6 11.2h6.8"/></symbol><symbol id="av-cube" viewBox="0 0 24 24"><path d="M12 3.2 4.8 7.2v9.6L12 20.8l7.2-4V7.2z"/><path d="M4.8 7.2 12 11.2l7.2-4"/><path d="M12 11.2v9.6"/></symbol><symbol id="av-wave" viewBox="0 0 24 24"><path d="M3.2 8.4c1.8-2 3.6-2 5.4 0s3.6 2 5.4 0 3.6-2 5.4 0"/><path d="M3.2 13.2c1.8-2 3.6-2 5.4 0s3.6 2 5.4 0 3.6-2 5.4 0"/><path d="M3.2 18c1.8-2 3.6-2 5.4 0s3.6 2 5.4 0 3.6-2 5.4 0"/></symbol>
 <symbol id="i-menu" viewBox="0 0 24 24"><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="18" y2="18"/></symbol>
 </svg>
 
@@ -802,7 +865,7 @@ html.dark #toast{background:#2B313A;}
       </div>
       <div class="sb-foot">
         <div class="sb-acct" id="sbAcct" data-act="acct.open" role="button" tabindex="0" aria-label="계정 설정">
-          <div class="sb-acct-av"><svg viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M12 13c-3.9 0-7 2.4-7 5.4 0 .9.5 1.6 1.6 1.6h10.8c1.1 0 1.6-.7 1.6-1.6 0-3-3.1-5.4-7-5.4z"/></svg></div>
+          <div class="sb-acct-av" id="sbAcctAv"><svg class="av-ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#av-person"></use></svg></div>
           <div class="sb-acct-info"><div class="sb-acct-name" id="sbAcctName">—</div></div>
           <span class="sb-acct-role" id="sbAcctRole"></span>
         </div>
@@ -870,9 +933,6 @@ html.dark #toast{background:#2B313A;}
     </div>
 
     <div id="view-org" class="view">
-      <div class="card" id="orgViewerNote" style="display:none">
-        <div class="set-empty">보기 전용 계정입니다. 팀 · 권역 · 현장 · 계정 설정은 관리자만 변경할 수 있습니다.</div>
-      </div>
       <div class="mg-grid">
         <div class="set-col">
           <div class="card mb12">
@@ -924,14 +984,23 @@ html.dark #toast{background:#2B313A;}
                   <option value="1">월요일</option><option value="2">화요일</option><option value="3">수요일</option>
                   <option value="4">목요일</option><option value="5">금요일</option><option value="0">일요일</option>
                 </select></div>
-              <div class="frow"><label>수신 범위</label>
-                <select class="inp inp-sm" id="mlScope" data-act="set.mail">
-                  <option value="all">팀 전체</option><option value="owner">담당자에게만</option>
-                </select></div>
+              <div class="frow"><label>발송 시각</label>
+                <select class="inp inp-sm" id="mlHour" data-act="set.mail"></select></div>
+            </div>
+            <div class="frow"><label>수신 범위</label>
+              <select class="inp inp-sm" id="mlScope" data-act="set.mail">
+                <option value="all">팀 전체 — 모두에게 같은 메일</option>
+                <option value="owner">담당자에게만 — 내 업무만 골라서</option>
+              </select>
+              <span class="frow-hint">담당자에게만으로 두어도 <b>팀 공통업무</b>는 팀원 전체에게 갑니다.</span>
             </div>
             <div class="frow"><label>제목 앞머리</label><input class="inp inp-sm" id="mlPrefix" maxlength="30" placeholder="예: [업무알림]" data-act="set.mail"></div>
             <div class="frow"><label>안내 문구 (선택)</label><textarea class="inp inp-sm" id="mlIntro" maxlength="300" placeholder="메일 상단에 넣을 한 줄 안내" data-act="set.mail"></textarea></div>
-            <div class="share-info"><span>발송 시각은 저장소의 워크플로(cron)에서 정합니다 — 기본 아침 7시대.</span></div>
+            <div class="ml-btns">
+              <button class="btn bo bsm" data-act="mail.preview" data-kind="daily">당일 리마인드 미리보기</button>
+              <button class="btn bo bsm" data-act="mail.preview" data-kind="weekly">주간 요약 미리보기</button>
+            </div>
+            <div class="share-info"><span>워크플로(cron)를 매시 실행으로 두면 위에서 고른 시각에 발송됩니다.</span></div>
           </div>
         </div>
         <div class="set-col set-col-stack">
