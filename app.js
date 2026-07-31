@@ -166,7 +166,7 @@ function pfSync(){
 }
 document.addEventListener('click',e=>{
   const ic=e.target.closest('.pf-ic');
-  if(ic){$$('#pfIcons .pf-ic').forEach(x=>x.classList.remove('sel'));ic.classList.add('sel');pfSync();return;}
+  if(ic&&ic.closest('#pfIcons')){$$('#pfIcons .pf-ic').forEach(x=>x.classList.remove('sel'));ic.classList.add('sel');pfSync();return;}
   if(e.target.closest('#pfPal'))setTimeout(pfSync,0);
 });
 document.addEventListener('input',e=>{if(e.target.closest('#pfPal'))setTimeout(pfSync,0);});
@@ -184,7 +184,9 @@ function palHTML(id,cur,extraFirst){
     +'</div>';
 }
 /* 프로필 아바타 — 계정에 저장한 색·아이콘이 있으면 그것을, 없으면 자동 색 */
-const AV_ICONS=['person','helmet','star','bolt','leaf','moon','flame','anchor','cube','wave'];
+const AV_BUILD=['person','helmet','crane','excavator','building','brick','wrench','ruler','bolt','cone'];
+const AV_ANIMAL=['cat','dog','rabbit','bear','fox','bird','fish','turtle','whale','butterfly'];
+const AV_ICONS=AV_BUILD.concat(AV_ANIMAL);
 function avOf(pid){
   const a=(S.accounts||{})[pid]||{};
   return{color:a.avColor||'',icon:AV_ICONS.indexOf(a.avIcon)>=0?a.avIcon:'person'};
@@ -363,7 +365,7 @@ const LocalStore={
   putOrg(org){this._d.org=org;S.org=org;lsSave(this._d);},
   putPerson(id,p){if(p)this._d.people[id]=p;else delete this._d.people[id];S.people=this._d.people;lsSave(this._d);},
   putTask(mid,iid,item){this._d.tasks[mid]=this._d.tasks[mid]||{};if(item)this._d.tasks[mid][iid]=item;else delete this._d.tasks[mid][iid];S.tasks=this._d.tasks;lsSave(this._d);},
-  putCfg(k,v){this._d.cfg[k]=v;S.cfg=this._d.cfg;lsSave(this._d);},
+  putCfg(k,v,cb){this._d.cfg[k]=v;S.cfg=this._d.cfg;lsSave(this._d);if(cb)cb(null);},
   putPref(k,v){this._d.prefs=this._d.prefs||{};if(v)this._d.prefs[k]=v;else delete this._d.prefs[k];S.prefs=this._d.prefs;lsSave(this._d);},
   putMention(){}
 };
@@ -405,7 +407,7 @@ const FbStore={
   putOrg(org){FB.db.ref('calapp/org').set(cleanOrg(org)).catch(fbErr);},
   putPerson(id,p){const r=FB.db.ref('calapp/people/'+id);(p?r.set(cleanPerson(p)):r.remove()).catch(fbErr);},
   putTask(mid,iid,item){const r=FB.db.ref('calapp/tasks/'+mid+'/'+iid);(item?r.set(cleanTask(item)):r.remove()).catch(fbErr);},
-  putCfg(k,v){FB.db.ref('calapp/cfg/'+k).set(v).catch(fbErr);},
+  putCfg(k,v,cb){FB.db.ref('calapp/cfg/'+k).set(v).then(()=>cb&&cb(null)).catch(e=>{fbErr(e);if(cb)cb(e);});},
   putPref(k,v){const uid=S.user&&S.user.uid;if(!uid)return;
     const r=FB.db.ref('calapp/prefs/'+uid+'/'+k);(v?r.set(v):r.remove()).catch(fbErr);},
   putMention(uid,id,m){FB.db.ref('calapp/mentions/'+uid+'/'+id)[m?'set':'remove'](m).catch(()=>{});},
@@ -562,12 +564,43 @@ function acctNick(){
 function isEditor(){return !S.live||S.role==='editor';}   /* 로컬 모드는 제한 없음 */
 function denyEdit(){toast('보기 전용 · 변경은 관리자만 가능');return false;}
 function roleLabel(r){return r==='editor'?'관리자':(r==='blocked'?'차단':'사용자');}
-function openAcctModal(){
-  const u=S.user;if(!u){toast('로그인이 필요합니다');return;}
-  const role=S.role||'viewer';
-  let last='';try{if(u.metadata&&u.metadata.lastSignInTime)last=new Date(u.metadata.lastSignInTime).toLocaleString('ko-KR');}catch(e){}
+function acctTabBody(tab){
+  const u=S.user;if(!u)return '';
   const av=avOf(u.uid);
-  openModal('계정',`
+  if(tab==='pw'){
+    let last='';try{if(u.metadata&&u.metadata.lastSignInTime)last=new Date(u.metadata.lastSignInTime).toLocaleString('ko-KR');}catch(e){}
+    return `<label class="il">비밀번호 변경</label>
+      <input class="inp acct-gap" id="acctPwCur" type="password" autocomplete="current-password" placeholder="현재 비밀번호">
+      <input class="inp acct-gap" id="acctPwNew" type="password" autocomplete="new-password" placeholder="새 비밀번호 (6자 이상)">
+      <input class="inp acct-gap" id="acctPwNew2" type="password" autocomplete="new-password" placeholder="새 비밀번호 확인">
+      <button class="acct-btn acct-btn-primary acct-btn-full" data-act="acct.changePw">비밀번호 변경</button>
+      ${last?'<div class="acct-last">마지막 로그인 · '+esc(last)+'</div>':''}`;
+  }
+  const grid=(title,keys)=>`<div class="pf-gh">${title}</div>
+    <div class="pf-grid">${keys.map(k=>'<div class="pf-ic'+(k===av.icon?' sel':'')+'" data-ic="'+k+'">'
+      +'<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#av-'+k+'"></use></svg></div>').join('')}</div>`;
+  return `<label class="il" for="acctName">이름 (닉네임)</label>
+    <div class="acct-row">
+      <input class="inp" id="acctName" maxlength="60" value="${esc(acctNick())}" placeholder="표시할 이름" style="flex:1">
+      <button class="acct-btn acct-btn-primary" data-act="acct.saveName">저장</button>
+    </div>
+    <div class="acct-sep"></div>
+    <label class="il">프로필 색</label>
+    <div class="pf-row">
+      <div class="pf-prev" id="pfPrev" style="background:${esc(av.color||ownColor(u.uid))}">
+        <svg class="av-ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#av-${esc(av.icon)}"></use></svg>
+      </div>
+      <div style="flex:1;min-width:0">${palHTML('pfPal',av.color||ownColor(u.uid))}</div>
+    </div>
+    <label class="il">아이콘</label>
+    <div id="pfIcons">${grid('건설',AV_BUILD)}${grid('동물',AV_ANIMAL)}</div>
+    <button class="acct-btn acct-btn-primary acct-btn-full" data-act="acct.saveAvatar" style="margin-top:12px">프로필 저장</button>`;
+}
+function renderAcctModal(tab){
+  const u=S.user;if(!u)return;
+  const role=S.role||'viewer';
+  const t=tab||'profile';
+  $('#mbody').innerHTML=`
     <div class="acct-head">
       ${avHTML(u.uid,'acct-av')}
       <div style="min-width:0;flex:1">
@@ -575,36 +608,18 @@ function openAcctModal(){
         <span class="acct-rolebadge ${role==='editor'?'r-editor':'r-viewer'}">${esc(roleLabel(role))}</span>
       </div>
     </div>
-    <div class="acct-sep"></div>
-    <label class="il">프로필 색 · 아이콘</label>
-    <div class="pf-row">
-      <div class="pf-prev" id="pfPrev" style="background:${esc(av.color||ownColor(u.uid))}">
-        <svg class="av-ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#av-${esc(av.icon)}"></use></svg>
-      </div>
-      <div style="flex:1;min-width:0">
-        ${palHTML('pfPal',av.color||ownColor(u.uid))}
-      </div>
+    <div class="acct-tabs">
+      <button class="acct-tab${t==='profile'?' act':''}" data-act="acct.tab" data-tab="profile">프로필 · 이름</button>
+      <button class="acct-tab${t==='pw'?' act':''}" data-act="acct.tab" data-tab="pw">비밀번호</button>
     </div>
-    <div class="pf-grid" id="pfIcons">
-      ${AV_ICONS.map(k=>'<div class="pf-ic'+(k===av.icon?' sel':'')+'" data-ic="'+k+'" title="'+k+'">'
-        +'<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#av-'+k+'"></use></svg></div>').join('')}
-    </div>
-    <button class="acct-btn acct-btn-primary acct-btn-full" data-act="acct.saveAvatar" style="margin-top:10px">프로필 저장</button>
-    <div class="acct-sep"></div>
-    <label class="il" for="acctName">이름 (닉네임)</label>
-    <div class="acct-row">
-      <input class="inp" id="acctName" maxlength="60" value="${esc(acctNick())}" placeholder="표시할 이름" style="flex:1">
-      <button class="acct-btn acct-btn-primary" data-act="acct.saveName">저장</button>
-    </div>
-    <div class="acct-sep"></div>
-    <label class="il">비밀번호 변경</label>
-    <input class="inp acct-gap" id="acctPwCur" type="password" autocomplete="current-password" placeholder="현재 비밀번호">
-    <input class="inp acct-gap" id="acctPwNew" type="password" autocomplete="new-password" placeholder="새 비밀번호 (6자 이상)">
-    <input class="inp acct-gap" id="acctPwNew2" type="password" autocomplete="new-password" placeholder="새 비밀번호 확인">
-    <button class="acct-btn acct-btn-primary acct-btn-full" data-act="acct.changePw">비밀번호 변경</button>
-    ${last?'<div class="acct-last">마지막 로그인 · '+esc(last)+'</div>':''}`,
+    <div class="acct-pane">${acctTabBody(t)}</div>`;
+  MODAL_CB={type:'acct',tab:t};
+}
+function openAcctModal(){
+  const u=S.user;if(!u){toast('로그인이 필요합니다');return;}
+  openModal('계정','',
     '<button class="acct-btn acct-btn-danger" data-act="acct.signout" style="margin-right:auto">로그아웃</button><button class="acct-btn acct-btn-ghost" data-act="modal.close">닫기</button>');
-  MODAL_CB={type:'acct'};
+  renderAcctModal('profile');
 }
 /* users/{uid} 는 부분 쓰기가 규칙에 막혀 항상 전체를 다시 쓴다 —
    빠뜨린 필드는 지워지므로 기존 값을 모아 두고 patch 만 얹는다. */
@@ -639,6 +654,7 @@ async function acctSaveAvatar(){
     FB.userRec=FB.userRec||{};FB.userRec.avColor=color;FB.userRec.avIcon=icon;
     S.accounts[u.uid]={...(S.accounts[u.uid]||{}),avColor:color,avIcon:icon};
     rAcct();rOrg();if(S.view==='tasks')rTasks();
+    if(MODAL_CB&&MODAL_CB.type==='acct')renderAcctModal('profile');
     toast('프로필을 저장했습니다');
   }catch(e){toast('프로필 저장 실패 · '+(e.message||e));}
 }
@@ -653,7 +669,8 @@ async function acctSaveName(){
     await FB.db.ref('users/'+u.uid).set(userRecord({name}));
   }catch(e){console.warn('[FB] name save',e);toast('이름은 이 브라우저에만 반영됩니다');}
   S.user=u;if(FB.userRec)FB.userRec.name=name;
-  rAcct();toast('이름이 저장되었습니다');
+  rAcct();if(MODAL_CB&&MODAL_CB.type==='acct')renderAcctModal('profile');
+  toast('이름이 저장되었습니다');
 }
 async function acctChangePw(){
   const u=FB.auth&&FB.auth.currentUser;if(!u){toast('로그인이 필요합니다');return;}
@@ -1912,7 +1929,10 @@ function saveMailCfg(){
     prefix:($('#mlPrefix').value||'').trim(),
     intro:($('#mlIntro').value||'').trim()
   };
-  store.putCfg('mail',m);S.cfg={...S.cfg,mail:m};toast('메일 설정을 저장했습니다');
+  store.putCfg('mail',m,err=>{
+    if(err){toast('메일 설정 저장 실패 · '+((err&&err.message)||err));return;}
+    S.cfg={...S.cfg,mail:m};toast('메일 설정을 저장했습니다');
+  });
 }
 
 /* ═══════════ 화면 전환 · 공통 UI ═══════════ */
@@ -2031,6 +2051,7 @@ const ACT={
   },
   'acct.saveName':acctSaveName,
   'acct.saveAvatar':acctSaveAvatar,
+  'acct.tab':el=>renderAcctModal(el.dataset.tab),
   'acct.changePw':acctChangePw,
   'acct.signout':acctSignout,
   'modal.close':closeModal,
@@ -2290,7 +2311,10 @@ const ACT={
   },
   'dtk.go':el=>gotoTask(el.dataset.sid,el.dataset.iid),
   'mail.preview':el=>mailPreview(el.dataset.kind),
-  'set.saveUrl':()=>{if(!isEditor())return denyEdit();store.putCfg('defectUrl',($('#setDefectUrl').value||'').trim());if(!S.live)rCfg();toast('저장했습니다');}
+  'set.saveUrl':()=>{if(!isEditor())return denyEdit();
+    store.putCfg('defectUrl',($('#setDefectUrl').value||'').trim(),err=>{
+      if(err){toast('저장 실패 · '+((err&&err.message)||err));return;}
+      if(!S.live)rCfg();toast('저장했습니다');});}
 };
 /* 필터 = 권역(세그먼트) + 담당자(선택). 권역을 고르면 담당자 목록도 그 권역으로 좁혀진다. */
 function rFilter(){
@@ -2365,8 +2389,9 @@ document.addEventListener('change',e=>{
   if(e.target.closest&&e.target.closest('[data-act="set.mail"]')){saveMailCfg();return;}
   if(e.target.id==='setDefectUrl'){                    /* 연결 주소는 입력을 마치면 자동 저장 */
     if(!isEditor()){denyEdit();rCfg();return;}
-    store.putCfg('defectUrl',(e.target.value||'').trim());
-    toast('저장했습니다');return;
+    store.putCfg('defectUrl',(e.target.value||'').trim(),err=>{
+      toast(err?('저장 실패 · '+((err&&err.message)||err)):'저장했습니다');});
+    return;
   }
   const el=e.target.closest('[data-act="acct.set"]');
   if(!el)return;

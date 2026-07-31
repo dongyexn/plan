@@ -330,6 +330,7 @@
           "dailyOn":   { ".validate": "newData.isBoolean()" },
           "weeklyOn":  { ".validate": "newData.isBoolean()" },
           "weeklyDow": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 6" },
+          "hour":      { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 23" },
           "prefix":    { ".validate": "newData.isString() && newData.val().length <= 30" },
           "intro":     { ".validate": "newData.isString() && newData.val().length <= 300" },
           "scope":     { ".validate": "newData.isString() && (newData.val() == 'all' || newData.val() == 'owner')" },
