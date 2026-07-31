@@ -206,6 +206,7 @@
           // 회차별 완료 표시 / 제외 날짜 — {"2026-07-29": 1}
           "doneOn": { "$d": { ".validate": "$d.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/) && newData.isNumber()" } },
           "skipOn": { "$d": { ".validate": "$d.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/) && newData.isNumber()" } },
+          "moveOn": { "$d": { ".validate": "$d.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/) && newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)" } },
           "$other": { ".validate": false }
         }
       },
