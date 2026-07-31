@@ -53,22 +53,22 @@ async function main() {
   const sunday = addDays(monday, 6);
   const months = [...new Set([monday.slice(0, 7), sunday.slice(0, 7)])];
 
-  const [recurSnap, peopleSnap, usersSnap, tasksSnap, orgSnap, ...planSnaps] = await Promise.all([
-    db.ref('calapp/recur').get(), db.ref('calapp/people').get(), db.ref('users').get(),
-    db.ref('calapp/tasks').get(), db.ref('calapp/org').get(),
-    ...months.map(m => db.ref(`calapp/plans/${m}`).get())
+  const [peopleSnap, usersSnap, tasksSnap, orgSnap] = await Promise.all([
+    db.ref('calapp/people').get(), db.ref('users').get(),
+    db.ref('calapp/tasks').get(), db.ref('calapp/org').get()
   ]);
 
-  /* 이번 주 일정 = 단일 + 기간 + 반복 전개 */
+  /* 업무 = 일정. 날짜가 있는 업무를 이번 주로 전개 */
+  const flat = [];
+  Object.entries(tasksSnap.val() || {}).forEach(([sid, items]) =>
+    Object.entries(items || {}).forEach(([iid, it]) => { if (it) flat.push({ sid, iid, ...it, title: it.text || '', owners: it.assignees || {} }); }));
   const occ = [];
-  planSnaps.forEach(s => Object.values(s.val() || {}).forEach(p => {
-    if (!p || !p.date) return;
+  flat.forEach(p => {
+    if (!p.date) return;
+    if (p.recur && p.recur.f) { recurDates(p, monday, sunday).forEach(d => occ.push({ date: d, p, span: false })); return; }
     const last = p.end || p.date;
     if (last < monday || p.date > sunday) return;
     occ.push({ date: p.date < monday ? monday : p.date, p, span: p.end && p.end !== p.date });
-  }));
-  Object.values(recurSnap.val() || {}).forEach(p => {
-    if (p && p.date) recurDates(p, monday, sunday).forEach(d => occ.push({ date: d, p, span: false }));
   });
   occ.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : (a.p.time || '99') < (b.p.time || '99') ? -1 : 1);
 
