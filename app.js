@@ -1148,9 +1148,10 @@ function calInit(){
     views:{timeGridWeek:{
       dayHeaderContent:a=>{const o=holOf(dstr(a.date));
         /* 공휴일 줄은 항상 자리를 차지한다 — 있는 날만 글자가 들어가 헤더 높이가 흔들리지 않게 */
+        /* 공휴일은 날짜와 같은 줄에 붙인다 — 줄이 늘지 않아 헤더 높이가 그대로 */
         return{html:'<div class="wkh"><div class="wkh-d">'+DOW[a.date.getDay()]+'</div>'
-          +'<div class="wkh-n">'+a.date.getDate()+'</div>'
-          +'<div class="wkh-h">'+(o?esc(o.n):'')+'</div></div>'};},
+          +'<div class="wkh-n">'+(o?'<span class="wkh-h" title="'+esc(o.n)+'">'+esc(o.n)+'</span>':'')
+          +a.date.getDate()+'</div></div>'};},
       dayCellContent:()=>({html:''}),
       dayHeaderFormat:{weekday:'short'}
     }},
@@ -1625,12 +1626,11 @@ function taskItemHTML(sid,iid,it,withSubject){
           ${withSubject?'<span class="asg">'+esc(subjName(sid))+'</span>':''}
           ${sn?'<span class="site-on">'+esc(sn)+'</span>':''}
           ${asg.map(p=>'<span class="asg"><span class="dot-c" style="background:'+esc(ownColor(p.id))+'"></span>'+esc(p.name)+'</span>').join('')}
-          ${lnk.map(([k,l])=>'<a class="lnk" href="'+esc(l.url)+'" target="_blank" rel="noopener">'+esc(l.label||l.url.replace(/^https?:\/\//,'').slice(0,26))+'</a>').join('')}
         </div>
       </div>
       <div class="tk-acts">
-        <button class="tk-ico${cn?' on':''}" data-act="tk.open" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="코멘트">
-          <svg class="icn"><use href="#i-cmt"></use></svg>${cn?'<span class="cn">'+cn+'</span>':''}</button>
+        ${cn?`<button class="tk-ico on" data-act="tk.open" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="코멘트">
+          <svg class="icn"><use href="#i-cmt"></use></svg><span class="cn">${cn}</span></button>`:''}
         ${open?'<button class="btn bg2 bxs tk-editbtn" data-act="tk.edit" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'">수정</button>':''}
         <button class="tk-del" data-act="tk.del" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="삭제"><svg class="icn"><use href="#i-close"></use></svg></button>
       </div>
@@ -1646,8 +1646,15 @@ function taskDetailHTML(sid,iid,it){
       <div class="tk-sec-b" contenteditable="true" data-act="tk.field" data-f="${field}" data-sid="${esc(sid)}" data-iid="${esc(iid)}"
         data-ph="${lbl}를 입력하세요">${esc(val||'')}</div>
     </div>`;
+  const lnk=Object.entries(it.links||{});
   return `<div class="tk-detail">
     <div class="tk-secs">${box('진행경과',it.prog||it.body,'prog')}${box('처리계획',it.plan,'plan')}</div>
+    ${lnk.length?`<div class="tk-sec">
+      <div class="tk-sec-h">링크</div>
+      <div class="tk-links">${lnk.map(([k,l])=>'<a class="tk-link" href="'+esc(l.url)+'" target="_blank" rel="noopener">'
+        +'<svg class="icn"><use href="#i-ext"></use></svg>'
+        +'<span>'+esc(l.label||l.url.replace(/^https?:\/\//,''))+'</span></a>').join('')}</div>
+    </div>`:''}
     <div class="tk-thread">
       ${threadHTML(cs,sid,iid)}
       ${S.cmtNew!==sid+'/'+iid?`<button class="th-open" data-act="tk.cmtOpen" data-sid="${esc(sid)}" data-iid="${esc(iid)}">
@@ -1787,7 +1794,6 @@ function taskFormHTML(sid,iid,cur){
   const nAsg=Object.keys(d.assignees||{}).length;
   return `<div class="tk-new" id="tkNew">
     <div class="tkf-top">
-      <span class="tkf-badge">${iid?'업무 수정':'새 업무'}</span>
       <input class="inp tk-new-t" id="tnTitle" maxlength="120" placeholder="업무 제목을 입력하세요" value="${esc(d.text||'')}">
       ${iid?`<div class="tkf-now">
         <span class="tk-st s${stOf(d.st)}" data-act="tk.st" data-sid="${esc(sid)}" data-iid="${esc(iid)}">${ST_LBL[stOf(d.st)]}</span>
@@ -2304,9 +2310,12 @@ function rOrg(){
   const free=all.filter(p=>!p.local&&(!p.team||!(S.org.teams||[]).some(x=>x.id===p.team)));
   const myUid=S.user?S.user.uid:'';
   const editors=all.filter(p=>p.role==='editor');
-  const order={editor:0,viewer:1,blocked:2};
-  const sortFn=(a,b)=>{const ra=order[a.role]??1,rb=order[b.role]??1;
-    return ra!==rb?ra-rb:String(a.email||'').localeCompare(String(b.email||''));};
+  /* 팀장 → 공구장 → 담당자 순, 같은 직급 안에서는 이름순 */
+  const rankOrd={head:0,lead:1,member:2};
+  const sortFn=(a,b)=>{
+    const ra=rankOrd[rankOf(a.rank)]??2,rb=rankOrd[rankOf(b.rank)]??2;
+    if(ra!==rb)return ra-rb;
+    return String(a.name||'').localeCompare(String(b.name||''),'ko');};
   mine.sort(sortFn);free.sort(sortFn);
   const regOpt=sel=>'<option value="">권역 —</option>'+(S.org.regions||[]).map(x=>'<option value="'+esc(x.id)+'"'+(x.id===sel?' selected':'')+'>'+esc(x.name)+'</option>').join('');
   const roleOpt=(v,txt,cur)=>'<option value="'+v+'"'+(cur===v?' selected':'')+'>'+txt+'</option>';
@@ -2339,12 +2348,12 @@ function rOrg(){
       <td>${rankCtl(p)}</td>
       <td>${u.region
         ?'<select class="mg-inp" data-act="acct.set" data-f="region" data-id="'+esc(p.id)+'" aria-label="권역">'+regOpt(p.region)+'</select>'
-        :'<span class="rk-all">팀 전체</span>'}</td>
+        :'<span class="rk-all mid">팀 전체</span>'}</td>
       <td>${u.sites?sitesOf(p):autoSitesHTML(p)}</td>
       <td class="utbl-r">${roleCtl(p)}</td>
     </tr>`;
   };
-  ar.innerHTML='<table class="utbl"><thead><tr><th style="width:178px">이름</th><th style="width:92px">직급</th><th style="width:78px">권역</th><th>담당 현장</th><th class="utbl-r" style="width:130px">권한</th></tr></thead><tbody>'
+  ar.innerHTML='<table class="utbl"><thead><tr><th style="width:178px">이름</th><th style="width:106px">직급</th><th style="width:106px">권역</th><th>담당 현장</th><th class="utbl-r" style="width:130px">권한</th></tr></thead><tbody>'
     +(mine.length?mine.map(row).join('')
       :'<tr><td colspan="5" style="font-size:12px;color:var(--lbl3);padding:10px">이 팀에 배정된 계정이 없습니다.</td></tr>')
     +'</tbody></table>';
@@ -2353,7 +2362,7 @@ function rOrg(){
   if(fc&&fr){
     fc.style.display=free.length?'':'none';
     fr.innerHTML=free.length
-      ?'<table class="utbl"><thead><tr><th style="width:178px">이름</th><th></th><th class="utbl-r" style="width:130px">권한</th></tr></thead><tbody>'
+      ?'<table class="utbl"><thead><tr><th style="width:178px">이름</th><th></th><th class="utbl-r" style="width:124px">권한</th></tr></thead><tbody>'
         +free.map(p=>`<tr>
           <td><div class="utbl-name">${avHTML(p.id)}
             <div style="min-width:0"><div class="utbl-nick">${esc(p.name)}</div><div class="utbl-mail">${esc(p.email||'')}</div></div></div></td>

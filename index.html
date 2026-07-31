@@ -195,9 +195,10 @@ html.dark #fcal .fc-dayGridMonth-view .fc-col-header{border-bottom-color:rgba(25
 /* 주간 헤더 — 공휴일 줄이 항상 자리를 차지해 높이가 변하지 않는다 */
 #fcal .wkh{display:flex;flex-direction:column;align-items:center;gap:1px;}
 #fcal .wkh-d{font-size:11px;font-weight:700;}
-#fcal .wkh-n{font-size:14px;font-weight:800;}
-#fcal .wkh-h{font-size:10px;font-weight:700;color:var(--rd);min-height:13px;line-height:13px;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+#fcal .wkh-n{font-size:14px;font-weight:800;display:flex;align-items:baseline;justify-content:center;gap:4px;
+  max-width:100%;min-width:0;}
+#fcal .wkh-h{font-size:10.5px;font-weight:700;color:var(--rd);white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;min-width:0;}
 #fcal .fc-col-header-cell-cushion{font-size:13px;font-weight:700;color:var(--lbl2);text-decoration:none;letter-spacing:.02em;}
 #fcal .fc-day-sun .fc-col-header-cell-cushion{color:var(--rd);}
 #fcal .fc-day-sat .fc-col-header-cell-cushion{color:var(--bt1);}
@@ -445,8 +446,6 @@ html.dark #fcal .fc-dayGridMonth-view .fc-daygrid-day.hol{background:rgba(255,59
 .tk-new{border:1.5px solid var(--b300);border-radius:var(--rlg);padding:0;margin-bottom:12px;background:var(--bg2);flex-shrink:0;overflow:hidden;}
 /* 작성·수정 폼 — 제목 / 본문 / 분류 / 담당자 / 링크를 구분선으로 나눈다 */
 .tkf-top{padding:12px 14px 12px;background:var(--surf2);border-bottom:1px solid var(--sep);}
-.tkf-badge{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.04em;color:var(--bt1);
-  background:var(--b50);border:1px solid var(--b200);border-radius:var(--rp);padding:2px 9px;margin-bottom:8px;}
 /* 수정 중에도 지금 상태를 같은 배지로 보여줘 보는 화면과 이어지게 */
 .tkf-now{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin-top:9px;}
 .tkf-now>*{height:22px;display:inline-flex;align-items:center;gap:4px;padding:0 9px;border-radius:var(--rp);
@@ -529,6 +528,14 @@ html.dark #fcal .fc-dayGridMonth-view .fc-daygrid-day.hol{background:rgba(255,59
 .tk-item:hover .tk-del,.tk-item.open .tk-del{width:24px;opacity:1;margin-left:0;}
 .tk-del:hover{background:var(--tint-rd);color:var(--rd);}
 .tk-del .icn{width:13px;height:13px;}
+/* 링크 — 진행경과·처리계획과 같은 칸으로 */
+.tk-links{display:flex;flex-wrap:wrap;gap:6px;}
+.tk-link{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 10px;border-radius:var(--rmd);
+  background:var(--bg2);border:1px solid var(--sep);font-size:12.5px;font-weight:600;color:var(--bt1);
+  text-decoration:none;max-width:100%;min-width:0;}
+.tk-link:hover{border-color:var(--b300);background:var(--b50);}
+.tk-link span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+.tk-link .icn{width:12px;height:12px;flex-shrink:0;}
 /* 코멘트 입력 — 평소엔 접어 두고 누르면 펼친다 */
 .th-open{display:flex;align-items:center;gap:8px;width:100%;padding:8px 11px;border-radius:var(--rmd);
   border:1px dashed var(--sepo);background:var(--bg2);color:var(--lbl3);font-size:12.5px;cursor:pointer;text-align:left;}
@@ -648,7 +655,7 @@ html.dark #fcal .fc-dayGridMonth-view .fc-daygrid-day.hol{background:rgba(255,59
 .set-col-stack{display:flex;flex-direction:column;gap:16px;}
 .mg-grid{display:grid;grid-template-columns:262px 262px minmax(0,1fr);gap:16px;align-items:start;}
 /* 계정 표가 들어갈 폭이 안 나오면 위 3칸을 2열로 접고 계정 카드를 통째로 아래에 둔다 */
-@media(max-width:1420px){
+@media(max-width:1620px){
   .mg-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);}
   .mg-grid>.set-col:nth-child(3){grid-column:1/-1;}
   .mg-grid>.set-col:nth-child(4){grid-column:1/-1;}
@@ -744,11 +751,11 @@ select.mg-inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-
 .pf-lab{font-size:11px;font-weight:700;color:var(--lbl3);letter-spacing:.04em;margin:11px 0 7px;flex-shrink:0;}
 /* 내 소속 — 팀·직급 수정, 권역·현장 보기 전용 */
 .myorg{margin-top:16px;padding-top:14px;border-top:1px solid var(--sep);}
-.myorg-h{font-size:11px;font-weight:700;color:var(--lbl3);letter-spacing:.04em;margin-bottom:9px;}
+.myorg-h{font-size:12px;font-weight:600;color:var(--lbl2);margin-bottom:9px;}
 .myorg-g{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
 .myorg-g+.myorg-g{margin-bottom:0;}
 .myorg-f{display:flex;flex-direction:column;gap:5px;min-width:0;}
-.myorg-f label{font-size:11.5px;font-weight:600;color:var(--lbl2);}
+.myorg-f label{font-size:12px;font-weight:600;color:var(--lbl2);}
 .myorg-f .inp-sm{width:100%;}
 .myorg-fix{background:var(--surf2);border:1px solid var(--sep);border-radius:var(--rmd);
   padding:7px 11px;font-size:12.5px;font-weight:600;color:var(--lbl);line-height:1.35;min-height:36px;
@@ -761,6 +768,7 @@ select.mg-inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-
 .acct-state.ok{color:var(--gn);}
 .rk-fix{font-size:12px;font-weight:600;color:var(--lbl2);display:inline-flex;align-items:center;height:26px;}
 .rk-all{font-size:11.5px;color:var(--lbl3);display:inline-flex;align-items:center;height:26px;}
+.rk-all.mid{display:flex;justify-content:center;width:100%;}
 /* 직급 배지 — 조직상 자리(권한 배지와 구분되게 회색 계열) */
 .rk{display:inline-block;margin-left:6px;font-size:10px;font-weight:700;color:var(--lbl2);
   background:var(--fill);border-radius:var(--rp);padding:1px 6px;vertical-align:1px;letter-spacing:0;}
@@ -772,7 +780,7 @@ select.mg-inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-
   color:var(--lbl2);transition:background var(--tr),color var(--tr);}
 .acct-tab.act{background:var(--bg2);color:var(--bt1);box-shadow:0 1px 3px rgba(0,0,0,.08);}
 /* 탭을 바꾸거나 팝오버가 떠도 모달 크기가 흔들리지 않도록 높이를 고정 */
-.acct-pane{position:relative;min-height:282px;}
+.acct-pane{position:relative;min-height:276px;}
 .fbu-av.r-editor{background:linear-gradient(135deg,var(--b500),var(--b800));}
 .fbu-av.r-viewer{background:rgba(120,120,128,.2);}
 .fbu-av.r-viewer svg{fill:var(--lbl2);}
@@ -968,7 +976,7 @@ html.dark #toast{background:#2B313A;}
 @media(max-width:720px){
   /* 좁은 화면에서는 이모지 칸이 28px 밖에 안 돼 8열로 줄인다 */
   .pf-emg{grid-template-columns:repeat(8,1fr);}
-  .acct-pane{min-height:300px;}
+  .acct-pane{min-height:292px;}
   .myorg-g{grid-template-columns:1fr;}
   .myorg-g3{grid-template-columns:1fr;}
   .utbl thead{display:none;}
