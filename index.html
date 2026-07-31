@@ -847,6 +847,78 @@ body.wid .plan-t{font-size:12.5px;}
 .wid-only{display:none;}
 body.wid .wid-only{display:block;}
 
+/* ── 위젯 유리 모드 (?w=1&glass=1) — 바탕화면에 스며드는 전면 달력.
+     창을 투명하게 띄우고 카드 틀 없이 셀만 앱 컬러의 반투명 틴트로 남긴다.
+     진하기는 --ga 하나로 조절(위젯 설정 팝업). 다크 테마 전제. ── */
+body.wid.glass,html:has(body.wid.glass){background:transparent!important;
+  /* color-scheme:dark 이면 투명 루트라도 브라우저가 #121212 캔버스를 깐다 — 유리 모드는 normal 로 */
+  color-scheme:normal!important;}
+body.wid.glass #content{background:transparent;padding:6px;}
+/* 셀 밑에 깔리는 불투명층 전부 제거 — 다크 테마 배경·FC 페이지 배경까지 */
+body.wid.glass #app,body.wid.glass .view,body.wid.glass .cal-wrap,
+body.wid.glass #fcal .fc-view-harness,body.wid.glass #fcal .fc-scroller,
+body.wid.glass #fcal .fc-scrollgrid,body.wid.glass #fcal table{background:transparent!important;}
+body.wid.glass #fcal{--fc-page-bg-color:transparent;--fc-neutral-bg-color:transparent;}
+body.wid.glass .card{background:transparent;border:0;box-shadow:none;border-radius:0;padding:6px 4px;}
+body.wid.glass .cal-title,body.wid.glass .cal-title .y{color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.55);}
+body.wid.glass .cal-head .seg,body.wid.glass .cal-head .cal-nav{
+  background:rgba(16,20,30,.5);border:1px solid rgba(255,255,255,.14);
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);}
+body.wid.glass .cal-head .cal-nav{border-radius:999px;padding:2px;}
+body.wid.glass .cal-head .seg button,body.wid.glass .cal-nb{color:rgba(255,255,255,.82);}
+body.wid.glass .cal-head .seg .act{background:var(--b600);color:#fff;}
+/* 요일 머리 — 어두운 띠 */
+body.wid.glass #fcal .fc-col-header-cell{background:rgba(13,16,24,.67)!important;}
+body.wid.glass #fcal .fc-col-header-cell-cushion{color:rgba(255,255,255,.85)!important;}
+/* 날짜 셀 — 앱의 중립 다크 틴트. 주말은 한 톤 밝게, 다른 달은 옅게, 오늘은 앱 파랑 */
+body.wid.glass #fcal td.fc-daygrid-day{background:rgba(24,28,38,.55)!important;}
+body.wid.glass #fcal td.fc-daygrid-day.fc-day-sat,
+body.wid.glass #fcal td.fc-daygrid-day.fc-day-sun{background:rgba(52,56,68,.5)!important;}
+body.wid.glass #fcal td.fc-daygrid-day.fc-day-other{background:rgba(24,28,38,.23)!important;}
+body.wid.glass #fcal td.fc-daygrid-day.fc-day-today{background:rgba(62,113,210,.48)!important;}
+/* 격자·글자 — 벽지 위에서 읽히게 */
+body.wid.glass #fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{
+  border-top-color:rgba(255,255,255,.2)!important;
+  border-left-color:rgba(255,255,255,.1)!important;border-right-color:rgba(255,255,255,.1)!important;}
+body.wid.glass #fcal .fc-col-header{border-bottom-color:rgba(255,255,255,.2)!important;}
+body.wid.glass #fcal .dnum{color:rgba(255,255,255,.92)!important;}
+body.wid.glass #fcal .fc-day-sun .dnum{color:#FF9C93!important;}
+body.wid.glass #fcal .fc-day-sat .dnum{color:#9DC3FF!important;}
+body.wid.glass #fcal .dhol{color:#FF9C93;}
+/* 오늘 목록 — 같은 틴트의 띠 */
+body.wid.glass .wid-h{color:rgba(255,255,255,.8);text-shadow:0 1px 3px rgba(0,0,0,.5);}
+body.wid.glass .plan{background:rgba(13,17,26,.6);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);}
+body.wid.glass .plan .plan-t{color:rgba(255,255,255,.94);}
+body.wid.glass .plan .pm-chip{background:rgba(255,255,255,.14);color:rgba(255,255,255,.85);border-color:transparent;}
+body.wid.glass .dp-empty{color:rgba(255,255,255,.6);}
+
+/* ── 위젯 공통(유리 여부 무관) — 헤더 한 줄 유지 · 설정 · 다열 목록 ── */
+.wido{display:none;}
+body.wid .wido{display:flex;}
+body.wid .cal-head{flex-wrap:nowrap;gap:8px;}         /* 좁아도 년월(좌)–컨트롤(우) 한 줄 */
+body.wid .cal-ctl{flex:0 0 auto;min-width:0;}
+body.wid .cal-title{font-size:15px;}
+body.wid .cal-title .y{font-size:inherit;}            /* 연도만 18px 로 남던 것 — 월과 동일 크기 */
+body.wid{--wfz:1;}
+body.wid #fcal{font-size:calc(11px*var(--wfz));}
+body.wid .wid-panel{margin-top:9px;max-height:38%;overflow-y:auto;display:grid;gap:6px;
+  grid-template-columns:repeat(auto-fill,minmax(420px,1fr));align-content:start;}   /* 넓으면 2~3열 자동 */
+body.wid .wid-h{grid-column:1/-1;}
+body.wid .plan .plan-t{font-size:calc(12.5px*var(--wfz));}
+/* 설정 팝업 */
+#wgSet{display:none;position:fixed;top:44px;right:10px;z-index:600;width:236px;
+  background:rgba(22,25,33,.92);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+  border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:12px 14px;
+  box-shadow:0 10px 30px rgba(0,0,0,.45);color:rgba(255,255,255,.9);}
+body.wid #wgSet.on{display:block;}
+#wgSet .wgs-h{display:flex;align-items:center;justify-content:space-between;font-size:12.5px;font-weight:800;margin-bottom:10px;color:#fff;}
+#wgSet .pop-x{color:rgba(255,255,255,.7);}
+#wgSet .wgs-r{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:32px;font-size:12px;}
+#wgSet input[type=range]{width:118px;accent-color:var(--b600);}
+#wgSet .wgs-seg{padding:2px;background:rgba(255,255,255,.1);}
+#wgSet .wgs-seg button{font-size:11px;padding:3px 8px;color:rgba(255,255,255,.75);}
+#wgSet .wgs-seg .act{background:var(--b600);color:#fff;}
+
 /* 계정 모달 — 참조 앱과 동일 */
 .il{font-size:12px;font-weight:600;color:var(--lbl2);margin-bottom:6px;display:block;}
 .acct-head{display:flex;align-items:center;gap:12px;margin-bottom:20px;}
@@ -1131,11 +1203,22 @@ html.dark #toast{background:#2B313A;}
                 <button class="cal-nb cal-today" data-act="cal.today">오늘</button>
                 <button class="cal-nb" data-act="cal.next" aria-label="다음"><svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg></button>
               </div>
+              <button class="cal-nb wido" data-act="wid.set" aria-label="위젯 설정"><svg class="icn" aria-hidden="true"><use href="#i-settings"></use></svg></button>
             </div>
           </div>
           <div id="fcal"></div>
         </div>
         <div class="wid-only wid-panel" id="widPanel"></div>
+        <div id="wgSet" aria-hidden="true">
+          <div class="wgs-h">위젯 설정<button class="pop-x" data-act="wid.set" aria-label="닫기"><svg class="icn"><use href="#i-close"></use></svg></button></div>
+          <div class="wgs-r"><span>배경 진하기</span><input type="range" id="wgA" min="20" max="90" step="5"></div>
+          <div class="wgs-r"><span>글자 크기</span>
+            <div class="seg wgs-seg" id="wgFz"><button data-fz="s">작게</button><button data-fz="m" class="act">보통</button><button data-fz="l">크게</button></div></div>
+          <div class="wgs-r"><span>오늘 목록</span>
+            <label class="sw"><input type="checkbox" id="wgPanelChk" checked><span class="sw-t"></span></label></div>
+          <div class="wgs-r"><span>다크 모드</span>
+            <label class="sw"><input type="checkbox" id="wgDarkChk"><span class="sw-t"></span></label></div>
+        </div>
         <div class="dp-col">
           <div class="card dp-filtercard">
             <div class="dp-top">
@@ -1246,7 +1329,7 @@ html.dark #toast{background:#2B313A;}
             <div class="set-h">표시</div>
             <div class="share-row">
               <div class="share-info"><b>다크 모드</b><span>이 PC에만 저장됩니다</span></div>
-              <label class="sw" aria-label="다크 모드"><input type="checkbox" id="darkChk" data-act="set.dark"><span class="sw-t"></span></label>
+              <label class="sw" aria-label="다크 모드"><input type="checkbox" id="darkChk"><span class="sw-t"></span></label>
             </div>
             <div class="share-sep"></div>
             <div class="share-row">

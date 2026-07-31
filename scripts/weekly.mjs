@@ -2,7 +2,7 @@
    이번 주(월~일) 팀 전체 일정 + 기한 임박·초과 업무를 한 통으로 정리한다.
    Secrets는 remind.mjs와 동일: FIREBASE_SERVICE_ACCOUNT · BREVO_API_KEY · MAIL_FROM */
 import admin from 'firebase-admin';
-import { buildRoster, recipients, hourGate } from './mail-common.mjs';
+import { buildRoster, recipients, hourGate, expandRecur } from './mail-common.mjs';
 
 const DB_URL = 'https://report-c29a1-default-rtdb.asia-southeast1.firebasedatabase.app';
 const p2 = n => String(n).padStart(2, '0');
@@ -11,28 +11,9 @@ const esch = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': 
 function kstNow() { return new Date(Date.now() + 9 * 3600 * 1000); }
 function ds(d) { return `${d.getUTCFullYear()}-${p2(d.getUTCMonth() + 1)}-${p2(d.getUTCDate())}`; }
 function addDays(s, n) { const [y, m, d] = s.split('-').map(Number); const t = new Date(Date.UTC(y, m - 1, d + n)); return ds(t); }
-function addMonths(s, n) {
-  const [y, m, d] = s.split('-').map(Number);
-  const last = new Date(Date.UTC(y, m - 1 + n + 1, 0)).getUTCDate();
-  return ds(new Date(Date.UTC(y, m - 1 + n, Math.min(d, last))));
-}
 function dow(s) { const [y, m, d] = s.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d)).getUTCDay(); }
 const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 
-/* 앱과 같은 규칙으로 반복 일정을 전개 */
-function recurDates(p, from, to) {
-  const f = p.recur && p.recur.f; if (!f) return [];
-  const out = []; const until = (p.recur.until || '').trim();
-  const step = x => f === 'w' ? addDays(x, 7) : f === '2w' ? addDays(x, 14) : f === 'm' ? addMonths(x, 1) : addMonths(x, 12);
-  let d = p.date, guard = 0;
-  while (d < from && guard++ < 600) d = step(d);
-  while (d <= to && guard++ < 600) {
-    if (until && d > until) break;
-    if (!(p.skipOn && p.skipOn[d])) out.push(d);
-    d = step(d);
-  }
-  return out;
-}
 
 async function main() {
   const sa = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || 'null');
@@ -65,7 +46,7 @@ async function main() {
   const occ = [];
   flat.forEach(p => {
     if (!p.date) return;
-    if (p.recur && p.recur.f) { recurDates(p, monday, sunday).forEach(d => occ.push({ date: d, p, span: false })); return; }
+    if (p.recur && p.recur.f) { expandRecur(p, monday, sunday).forEach(o => occ.push({ date: o.date, p, span: false })); return; }
     const last = p.end || p.date;
     if (last < monday || p.date > sunday) return;
     occ.push({ date: p.date < monday ? monday : p.date, p, span: p.end && p.end !== p.date });
