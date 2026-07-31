@@ -163,14 +163,15 @@ function pfPaint(c){
 }
 document.addEventListener('click',e=>{
   const pc=e.target.closest('#pfPal .pal-c');
-  if(pc&&!pc.classList.contains('pal-add')){PF_SEL.color=pc.dataset.c||'';setTimeout(()=>pfPaint(pc.dataset.c),0);return;}
+  if(pc&&!pc.classList.contains('pal-add')){PF_SEL.color=pc.dataset.c||'';setTimeout(()=>pfPaint(pc.dataset.c),0);acctAutoSave();return;}
   /* 팝오버 밖을 누르면 닫는다 — 아바타 버튼 자체는 토글이 처리 */
   const p=$('#pfPop');
   if(p&&p.classList.contains('open')&&!e.target.closest('#pfPop')&&!e.target.closest('[data-act="pf.toggle"]'))
     p.classList.remove('open');
 });
 document.addEventListener('input',e=>{
-  if(e.target.closest('#pfPal')){const v=e.target.value;PF_SEL.color=v;pfPaint(v);return;}
+  if(e.target.id==='acctName'){acctAutoSave();return;}
+  if(e.target.closest('#pfPal')){const v=e.target.value;PF_SEL.color=v;pfPaint(v);acctAutoSave();return;}
   if(e.target.id==='pfSrch'){
     const q=e.target.value.trim();
     $$('#pfCats .pf-cat').forEach(x=>x.classList.remove('act'));
@@ -365,12 +366,9 @@ function canSetRank(){
   return !!me&&(rankOf(me.rank)==='head'||rankOf(me.rank)==='lead');
 }
 function autoSitesHTML(p){
-  const r=rankOf(p.rank),list=coverSites(p);
-  const scope=r==='head'?'팀 전체':'권역 전체';
-  return '<div class="site-chk"><span class="rk-all">'+scope+'</span>'
-    +list.slice(0,2).map(x=>'<span class="site-on">'+esc(x.name)+'</span>').join('')
-    +(list.length>2?'<span class="site-more">+'+(list.length-2)+'</span>':'')
-    +(list.length?'':'<span class="site-none">현장 없음</span>')+'</div>';
+  const r=rankOf(p.rank),n=coverSites(p).length;
+  return '<span class="rk-all">'+(r==='head'?'팀 전체':'권역 전체')
+    +(n?' · '+n+'곳':'')+'</span>';
 }
 /* 공구장·팀장이 실제로 맡는 현장 — 화면 표시용 */
 function coverSites(p){
@@ -621,27 +619,9 @@ function acctNick(){
 function isEditor(){return !S.live||S.role==='editor';}   /* 로컬 모드는 제한 없음 */
 function denyEdit(){toast('보기 전용 · 변경은 관리자만 가능');return false;}
 function roleLabel(r){return r==='editor'?'관리자':(r==='blocked'?'차단':'사용자');}
-function acctTabBody(tab){
+function acctHeadHTML(){
   const u=S.user;if(!u)return '';
-  const av=avOf(u.uid);
-  if(tab==='pw'){
-    let last='';try{if(u.metadata&&u.metadata.lastSignInTime)last=new Date(u.metadata.lastSignInTime).toLocaleString('ko-KR');}catch(e){}
-    const role=S.role||'viewer';
-    return `<div class="acct-head">
-        <div class="acct-av av-cus" style="--avc:${esc(av.color||ownColor(u.uid))}">${avInner(av.icon)}</div>
-        <div style="min-width:0;flex:1">
-          <div class="acct-mail">${esc(u.email||'')}</div>
-          <span class="acct-rolebadge ${role==='editor'?'r-editor':'r-viewer'}">${esc(roleLabel(role))}</span>
-        </div>
-      </div>
-      <label class="il">비밀번호 변경</label>
-      <input class="inp acct-gap" id="acctPwCur" type="password" autocomplete="current-password" placeholder="현재 비밀번호">
-      <input class="inp acct-gap" id="acctPwNew" type="password" autocomplete="new-password" placeholder="새 비밀번호 (6자 이상)">
-      <input class="inp acct-gap" id="acctPwNew2" type="password" autocomplete="new-password" placeholder="새 비밀번호 확인">
-      <button class="acct-btn acct-btn-primary acct-btn-full" data-act="acct.changePw">비밀번호 변경</button>
-      ${last?'<div class="acct-last">마지막 로그인 · '+esc(last)+'</div>':''}`;
-  }
-  const role=S.role||'viewer';
+  const av=avOf(u.uid),role=S.role||'viewer';
   return `<div class="acct-head">
       <button class="acct-av av-cus av-btn" data-act="pf.toggle" aria-label="아바타 변경" style="--avc:${esc(av.color||ownColor(u.uid))}">
         ${avInner(av.icon)}<span class="av-pen"><svg class="icn"><use href="#i-plus"></use></svg></span>
@@ -650,7 +630,24 @@ function acctTabBody(tab){
         <div class="acct-mail">${esc(u.email||'')}</div>
         <span class="acct-rolebadge ${role==='editor'?'r-editor':'r-viewer'}">${esc(roleLabel(role))}</span>
       </div>
-    </div>
+    </div>`;
+}
+function acctTabBody(tab){
+  const u=S.user;if(!u)return '';
+  const av=avOf(u.uid);
+  if(tab==='pw'){
+    let last='';try{if(u.metadata&&u.metadata.lastSignInTime)last=new Date(u.metadata.lastSignInTime).toLocaleString('ko-KR');}catch(e){}
+    /* 아바타는 두 탭 공통 — 비밀번호 탭에서도 눌러 바꿀 수 있다 */
+    return `${acctHeadHTML()}
+      <label class="il">비밀번호 변경</label>
+      <input class="inp acct-gap" id="acctPwCur" type="password" autocomplete="current-password" placeholder="현재 비밀번호">
+      <input class="inp acct-gap" id="acctPwNew" type="password" autocomplete="new-password" placeholder="새 비밀번호 (6자 이상)">
+      <input class="inp acct-gap" id="acctPwNew2" type="password" autocomplete="new-password" placeholder="새 비밀번호 확인">
+      <button class="acct-btn acct-btn-primary acct-btn-full" data-act="acct.changePw">비밀번호 변경</button>
+      ${last?'<div class="acct-last">마지막 로그인 · '+esc(last)+'</div>':''}
+      ${emojiPickerHTML(av)}`;
+  }
+  return `${acctHeadHTML()}
     <label class="il" for="acctName">이름</label>
     <input class="inp" id="acctName" maxlength="60" value="${esc(acctNick())}" placeholder="표시할 이름">
     ${myOrgHTML()}
@@ -665,78 +662,36 @@ function myOrgHTML(){
   const uses=rankUses(me.rank);
   const rk=rankOf(me.rank);
   const canRank=canSetRank();
-  const sites=(S.org.sites||[]).filter(x=>x.name&&(!me.region||!uses.sites||(x.region||'')===(me.region||'')||(me.sites||{})[x.id]));
-  const auto=coverSites(me);
   return `<div class="myorg">
     <div class="myorg-h">소속</div>
-    <div class="myorg-g">
+    <div class="myorg-g myorg-g3">
       <div class="myorg-f"><label for="acctTeam">팀</label>
-        <select class="inp inp-sm" id="acctTeam">
+        <select class="inp inp-sm" id="acctTeam" data-act="pf.org">
           <option value="">미배정</option>
           ${teams.map(t=>'<option value="'+esc(t.id)+'"'+(t.id===me.team?' selected':'')+'>'+esc(t.name)+'</option>').join('')}
         </select></div>
       <div class="myorg-f"><label for="acctRank">직급</label>
         ${canRank
-          ?'<select class="inp inp-sm" id="acctRank" data-act="pf.rank">'
+          ?'<select class="inp inp-sm" id="acctRank" data-act="pf.org">'
             +RANKS.map(([v,l])=>'<option value="'+v+'"'+(v===rk?' selected':'')+'>'+l+'</option>').join('')+'</select>'
-          :'<div class="myorg-fix">'+esc(rankLabel(rk))+'<span>관리자·팀장·공구장만 변경</span></div>'}
+          :'<div class="myorg-fix">'+esc(rankLabel(rk))+'<span>관리자·팀장·공구장만</span></div>'}
       </div>
-    </div>
-    <div class="myorg-g" id="pfScope">
       <div class="myorg-f"><label for="acctRegion">권역</label>
         ${uses.region
-          ?'<select class="inp inp-sm" id="acctRegion" data-act="pf.region"><option value="">미지정</option>'
+          ?'<select class="inp inp-sm" id="acctRegion" data-act="pf.org"><option value="">미지정</option>'
             +regions.map(r=>'<option value="'+esc(r.id)+'"'+(r.id===me.region?' selected':'')+'>'+esc(r.name)+'</option>').join('')+'</select>'
-          :'<div class="myorg-fix">팀 전체<span>팀장은 권역을 두지 않습니다</span></div>'}
-      </div>
-      <div class="myorg-f"><label>담당 현장</label>
-        ${uses.sites?'<div class="myorg-fix myorg-cnt">'+(auto.length?esc(auto.length+'곳'):'미지정')+'<span>아래에서 고릅니다</span></div>'
-          :'<div class="myorg-fix">'+(rk==='head'?'팀 전체':'권역 전체')
-            +'<span>'+(auto.length?esc(auto.slice(0,2).map(x=>x.name).join(', '))+(auto.length>2?' 외 '+(auto.length-2)+'곳':''):'등록된 현장 없음')+'</span></div>'}
+          :'<div class="myorg-fix">팀 전체<span>팀장</span></div>'}
       </div>
     </div>
-    ${uses.sites?`<div class="myorg-sites" id="pfSites">
-      ${sites.length?sites.map(x=>'<span class="chip2'+((me.sites||{})[x.id]?' act':'')+'" data-act="pf.site" data-sid="'+esc(x.id)+'">'+esc(x.name)+'</span>').join('')
-        :'<span class="site-none">'+(me.region?'이 권역에 등록된 현장이 없습니다':'권역을 먼저 고르세요')+'</span>'}
-    </div>`:''}
+    <div class="myorg-note">담당 현장은 조직 관리에서 지정합니다.</div>
   </div>`;
 }
-/* 팝오버를 모달 오른쪽에 띄운다 — 자리가 없으면 아래, 그마저 좁으면 모달 위에 겹친다.
-   프로필 미리보기(아바타)를 가리지 않는 게 목적. */
-function pfDetach(){
-  const p=$('#pfPop');
-  /* #mb 에 transform 이 있어 그 안의 fixed 는 모달 기준이 된다 — body 직속으로 옮겨야 화면 기준이 된다 */
-  if(p&&p.parentElement!==document.body)document.body.appendChild(p);
-  return p;
-}
-function pfPlace(){
-  const p=pfDetach(),mb=$('#mb');if(!p||!mb)return;
-  const m=mb.getBoundingClientRect();
-  const w=p.offsetWidth||336,h=p.offsetHeight||360,gap=12;
-  let left,top;
-  if(m.right+gap+w<=window.innerWidth-8){left=m.right+gap;top=m.top;}
-  else if(m.left-gap-w>=8){left=m.left-gap-w;top=m.top;}
-  else if(m.bottom+gap+h<=window.innerHeight-8){left=Math.max(8,m.left);top=m.bottom+gap;}
-  else{left=Math.max(8,Math.min(m.left+16,window.innerWidth-w-8));top=Math.max(8,m.top+16);}
-  top=Math.max(8,Math.min(top,window.innerHeight-h-8));
-  p.style.left=Math.round(left)+'px';
-  p.style.top=Math.round(top)+'px';
-}
-window.addEventListener('resize',()=>{const p=$('#pfPop');if(p&&p.classList.contains('open'))pfPlace();});
 /* 직급·권역을 바꾸면 아래 칸 구성이 달라진다 — 소속 블록만 다시 그린다 */
 function pfScopeRefresh(){
   const wrap=document.querySelector('.myorg');if(!wrap)return;
   const u=S.user;if(!u)return;
   const tSel=$('#acctTeam'),rSel=$('#acctRank'),gSel=$('#acctRegion');
   const cur=(S.people||{})[u.uid]||{};
-  const picked={};$$('#pfSites .chip2.act').forEach(c=>{picked[c.dataset.sid]=1;});
-  /* 화면에서 고른 값을 임시로 반영해 다시 그린다(저장은 저장 버튼에서) */
-  S.people=S.people||{};
-  S.people[u.uid]={...cur,
-    team:tSel?tSel.value:(cur.team||''),
-    rank:rSel?rankOf(rSel.value):rankOf(cur.rank),
-    region:gSel?gSel.value:(cur.region||''),
-    sites:Object.keys(picked).length?picked:(gSel&&gSel.value!==cur.region?{}:(cur.sites||{}))};
   const tmp=document.createElement('div');tmp.innerHTML=myOrgHTML();
   wrap.replaceWith(tmp.firstElementChild);
 }
@@ -776,6 +731,28 @@ function pfRenderEmg(cat,q){
     +list.map(x=>'<button class="pf-em" data-e="'+esc(x.e)+'" data-act="pf.pick">'+esc(x.e)+'</button>').join('')
     +(list.length?'':'<div class="pf-empty">결과가 없습니다. 이모지를 직접 붙여넣어도 됩니다.</div>');
 }
+function pfDetach(){
+  const p=$('#pfPop');
+  /* #mb 에 transform 이 있어 그 안의 fixed 는 모달 기준이 된다 — body 직속으로 옮겨야 화면 기준이 된다 */
+  if(p&&p.parentElement!==document.body)document.body.appendChild(p);
+  return p;
+}
+/* 팝오버를 모달 오른쪽에 띄운다 — 자리가 없으면 왼쪽, 그다음 아래.
+   프로필 미리보기(아바타)를 가리지 않는 게 목적. */
+function pfPlace(){
+  const p=pfDetach(),mb=$('#mb');if(!p||!mb)return;
+  const m=mb.getBoundingClientRect();
+  const w=p.offsetWidth||336,h=p.offsetHeight||372,gap=12;
+  let left,top;
+  if(m.right+gap+w<=window.innerWidth-8){left=m.right+gap;top=m.top;}
+  else if(m.left-gap-w>=8){left=m.left-gap-w;top=m.top;}
+  else if(m.bottom+gap+h<=window.innerHeight-8){left=Math.max(8,m.left);top=m.bottom+gap;}
+  else{left=Math.max(8,Math.min(m.left+16,window.innerWidth-w-8));top=Math.max(8,m.top+16);}
+  top=Math.max(8,Math.min(top,window.innerHeight-h-8));
+  p.style.left=Math.round(left)+'px';
+  p.style.top=Math.round(top)+'px';
+}
+window.addEventListener('resize',()=>{const p=$('#pfPop');if(p&&p.classList.contains('open'))pfPlace();});
 function pfDrop(){const p=document.getElementById('pfPop');if(p&&p.parentElement===document.body)p.remove();}
 function renderAcctModal(tab){
   const u=S.user;if(!u)return;
@@ -788,16 +765,15 @@ function renderAcctModal(tab){
       <button class="acct-tab${t==='pw'?' act':''}" data-act="acct.tab" data-tab="pw">비밀번호</button>
     </div>
     <div class="acct-pane">${acctTabBody(t)}</div>`;
-  const sb=$('#acctSaveBtn');if(sb)sb.style.display=t==='pw'?'none':'';
   MODAL_CB={type:'acct',tab:t};
-  if(t!=='pw')pfRenderEmg(recentEmoji().length?'recent':'smiley','');
+  pfRenderEmg(recentEmoji().length?'recent':'smiley','');   /* 두 탭 모두 아바타를 바꿀 수 있다 */
 }
 function openAcctModal(){
   const u=S.user;if(!u){toast('로그인이 필요합니다');return;}
   openModal('계정','',
-    '<button class="acct-btn acct-btn-danger" data-act="acct.signout" style="margin-right:auto">로그아웃</button>'
-    +'<button class="acct-btn acct-btn-ghost" data-act="modal.close">닫기</button>'
-    +'<button class="acct-btn acct-btn-primary" data-act="acct.save" id="acctSaveBtn">저장</button>');
+    '<button class="acct-btn acct-btn-danger" data-act="acct.signout">로그아웃</button>'
+    +'<span class="acct-state" id="acctState"></span>');
+  $('#mb').classList.add('has-x');   /* 닫기는 우측 상단 X 로 */
   renderAcctModal('profile');
 }
 /* users/{uid} 는 부분 쓰기가 규칙에 막혀 항상 전체를 다시 쓴다 —
@@ -822,7 +798,23 @@ function userRecord(patch){
 }
 /* 프로필 탭 저장 — 이름·아이콘·색을 한 번에 (버튼 하나) */
 let PF_SEL={icon:null,color:null};
-async function acctSave(){
+let AS_T=null,AS_BUSY=false;
+function acctAutoSave(){
+  clearTimeout(AS_T);
+  acctMark('saving');
+  AS_T=setTimeout(()=>{
+    if(AS_BUSY){acctAutoSave();return;}
+    AS_BUSY=true;
+    Promise.resolve(acctSave(true)).finally(()=>{AS_BUSY=false;});
+  },420);
+}
+function acctMark(state,msg){
+  const el=$('#acctState');if(!el)return;
+  el.className='acct-state '+(state||'');
+  el.textContent=state==='saving'?'저장 중…':state==='err'?(msg||'저장 실패'):state==='ok'?'저장됨':'';
+  if(state==='ok'){clearTimeout(acctMark._t);acctMark._t=setTimeout(()=>{if($('#acctState'))$('#acctState').textContent='';},1600);}
+}
+async function acctSave(silent){
   const u=FB.auth&&FB.auth.currentUser;
   const nameInp=$('#acctName');
   const name=nameInp?nameInp.value.trim().slice(0,60):'';
@@ -839,21 +831,22 @@ async function acctSave(){
     const gSel=$('#acctRegion');
     const rank=rSel?rankOf(rSel.value):rankOf(pcur.rank);
     const uses=rankUses(rank);
-    const picked={};$$('#pfSites .chip2.act').forEach(c=>{picked[c.dataset.sid]=1;});
     store.putPerson(myUid,{
       name:name||me.name||'',email:String((S.user||{}).email||me.email||'').toLowerCase(),
       team:tSel?tSel.value:(pcur.team||''),
       region:uses.region?(gSel?gSel.value:(pcur.region||'')):'',
-      rank,sites:uses.sites?picked:{}});
+      rank,sites:uses.sites?(pcur.sites||{}):{}});
     if(!S.live){rOrg();if(S.view==='tasks')rTasks();}
+    pfScopeRefresh();          /* 직급에 따라 권역 칸 구성이 달라진다 */
   }
   if(!u){
     /* 로컬 모드 — 계정이 없어 이름·아바타는 저장할 수 없다 */
-    if(MODAL_CB&&MODAL_CB.type==='acct')renderAcctModal('profile');
-    toast(myUid?'소속을 저장했습니다':'로그인 후에 저장할 수 있습니다');return;
+    acctMark(myUid?'ok':'err',myUid?'':'로그인 필요');
+    if(!silent&&MODAL_CB&&MODAL_CB.type==='acct')renderAcctModal(MODAL_CB.tab||'profile');
+    return;
   }
   if(name&&name!==acctNick()){
-    try{await u.updateProfile({displayName:name});}catch(e){toast('이름 저장 실패 · '+(e.message||e));return;}
+    try{await u.updateProfile({displayName:name});}catch(e){acctMark('err','이름 저장 실패');return;}
   }
   try{
     await FB.db.ref('users/'+u.uid).set(userRecord({name,avColor:color,avIcon:icon}));
@@ -862,9 +855,8 @@ async function acctSave(){
     if(icon)store.putPref('emoji',[icon].concat(recentEmoji().filter(x=>x!==icon)).slice(0,18).join('|'));
     S.user=u;PF_SEL={icon:null,color:null};
     rAcct();rOrg();if(S.view==='tasks')rTasks();
-    if(MODAL_CB&&MODAL_CB.type==='acct')renderAcctModal('profile');
-    toast('저장했습니다');
-  }catch(e){toast('저장 실패 · '+(e.message||e));}
+    acctMark('ok');
+  }catch(e){acctMark('err',(e&&e.message)||String(e));}
 }
 async function acctChangePw(){
   const u=FB.auth&&FB.auth.currentUser;if(!u){toast('로그인이 필요합니다');return;}
@@ -2016,7 +2008,7 @@ function rOrg(){
       <td class="utbl-r">${roleCtl(p)}</td>
     </tr>`;
   };
-  ar.innerHTML='<table class="utbl"><thead><tr><th style="width:180px">이름</th><th style="width:80px">직급</th><th style="width:90px">권역</th><th>담당 현장</th><th class="utbl-r" style="width:112px">권한</th></tr></thead><tbody>'
+  ar.innerHTML='<table class="utbl"><thead><tr><th style="width:178px">이름</th><th style="width:72px">직급</th><th style="width:84px">권역</th><th>담당 현장</th><th class="utbl-r" style="width:98px">권한</th></tr></thead><tbody>'
     +(mine.length?mine.map(row).join('')
       :'<tr><td colspan="5" style="font-size:12px;color:var(--lbl3);padding:10px">이 팀에 배정된 계정이 없습니다.</td></tr>')
     +'</tbody></table>';
@@ -2025,7 +2017,7 @@ function rOrg(){
   if(fc&&fr){
     fc.style.display=free.length?'':'none';
     fr.innerHTML=free.length
-      ?'<table class="utbl"><thead><tr><th style="width:180px">이름</th><th></th><th class="utbl-r" style="width:112px">권한</th></tr></thead><tbody>'
+      ?'<table class="utbl"><thead><tr><th style="width:178px">이름</th><th></th><th class="utbl-r" style="width:98px">권한</th></tr></thead><tbody>'
         +free.map(p=>`<tr>
           <td><div class="utbl-name">${avHTML(p.id)}
             <div style="min-width:0"><div class="utbl-nick">${esc(p.name)}</div><div class="utbl-mail">${esc(p.email||'')}</div></div></div></td>
@@ -2272,10 +2264,8 @@ const ACT={
     if(el.dataset.sid)gotoTask(el.dataset.sid,el.dataset.iid);
     else go('tasks');
   },
-  'acct.save':acctSave,
-  'pf.rank':()=>pfScopeRefresh(),
-  'pf.region':()=>pfScopeRefresh(),
-  'pf.site':el=>el.classList.toggle('act'),
+
+  'pf.org':()=>acctAutoSave(),
   'pf.toggle':()=>{const p=$('#pfPop');if(!p)return;
     const on=!p.classList.contains('open');
     p.classList.toggle('open',on);
@@ -2290,6 +2280,7 @@ const ACT={
     const av=document.querySelector('.acct-av');
     if(av)av.innerHTML=avInner(PF_SEL.icon)+'<span class="av-pen"><svg class="icn"><use href="#i-plus"></use></svg></span>';
     $$('#pfEmg .pf-em').forEach(x=>x.classList.toggle('on',x===el));   /* 닫지 않는다 — 여러 개 비교해 고를 수 있게 */
+    acctAutoSave();
   },
   'acct.tab':el=>renderAcctModal(el.dataset.tab),
   'acct.changePw':acctChangePw,
@@ -2616,6 +2607,7 @@ document.addEventListener('input',e=>{
 });
 document.addEventListener('change',e=>{
   if(e.target.id==='teamSelEl'){ACT['team.switch'](e.target);return;}
+  if(e.target.closest('[data-act="pf.org"]')){ACT['pf.org']();return;}
   const rl=e.target.closest('[data-act="acct.role"]');
   if(rl){ACT['acct.role'](rl);return;}
   if(e.target.id==='ownFilter'){S.filter.own=e.target.value;refetchCal();rDay();rWidget();return;}
