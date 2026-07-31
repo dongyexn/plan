@@ -1,5 +1,5 @@
 /* 당일 리마인드 메일 발송 — GitHub Actions cron이 매일 아침(KST) 실행.
-   - calapp/plans/{YYYY-MM} 에서 오늘 날짜 + remind=true + 미완료 플랜을 수집
+   - calapp/tasks 에서 오늘 날짜 + remind=true + 미완료 업무를 수집(일정과 업무는 하나로 통합됨)
    - calapp/org 담당자 이메일 전원에게 Brevo(무료 300통/일) API로 발송
    필요한 저장소 Secrets:
    - FIREBASE_SERVICE_ACCOUNT : Firebase 콘솔 > 프로젝트 설정 > 서비스 계정 > 새 비공개 키(JSON 전체)
@@ -32,13 +32,16 @@ async function main() {
   if (mail.dailyOn === false) { console.log('당일 리마인드가 설정에서 꺼져 있음 — 종료'); process.exit(0); }
   if (!hourGate(mail)) { console.log(`설정한 발송 시각(${mail.hour}시)이 아님 — 종료`); process.exit(0); }
 
-  const [plansSnap, recurSnap, peopleSnap, usersSnap, orgSnap] = await Promise.all([
-    db.ref(`calapp/plans/${ym}`).get(),
-    db.ref('calapp/recur').get(),
+  const [tasksSnap, peopleSnap, usersSnap, orgSnap] = await Promise.all([
+    db.ref('calapp/tasks').get(),
     db.ref('calapp/people').get(),
     db.ref('users').get(),
     db.ref('calapp/org').get()
   ]);
+  /* 업무 = 일정. sid(소속)와 함께 펼쳐 둔다 */
+  const flat = [];
+  Object.entries(tasksSnap.val() || {}).forEach(([sid, items]) =>
+    Object.entries(items || {}).forEach(([iid, it]) => { if (it) flat.push({ sid, iid, ...it, title: it.text || '', owners: it.assignees || {} }); }));
 
   /* 오늘 발생하는 반복 일정도 포함 — 앱과 같은 규칙으로 전개 */
   const p2 = n => String(n).padStart(2, '0');
@@ -58,14 +61,14 @@ async function main() {
     return d === today;
   };
 
-  const plans = [
-    ...Object.values(plansSnap.val() || {})
-      .filter(p => p && p.remind && !p.done && p.date <= today && (p.end || p.date) >= today),
-    ...Object.values(recurSnap.val() || {})
-      .filter(p => p && p.remind && hitsToday(p) && !(p.doneOn && p.doneOn[today]))
-  ].sort((a, b) => (a.time || '99') < (b.time || '99') ? -1 : 1);
+  const done = p => Number(p.st) === 2;
+  const plans = flat.filter(p => {
+    if (!p.remind || !p.date) return false;
+    if (p.recur && p.recur.f) return hitsToday(p) && !(p.doneOn && p.doneOn[today]);
+    return !done(p) && p.date <= today && (p.end || p.date) >= today;
+  }).sort((a, b) => (a.time || '99') < (b.time || '99') ? -1 : 1);
 
-  if (!plans.length) { console.log(`[${today}] 리마인드 대상 플랜 없음 — 종료`); process.exit(0); }
+  if (!plans.length) { console.log(`[${today}] 리마인드 대상 업무 없음 — 종료`); process.exit(0); }
 
   /* 수신자 — 설정한 범위대로. 팀 공통업무는 팀원 전체(mail-common.mjs) */
   const roster = buildRoster(usersSnap.val(), peopleSnap.val());
