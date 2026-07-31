@@ -172,11 +172,11 @@ select.inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-ima
 #fcal{flex:1;min-height:0;}
 .cal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:nowrap;margin-bottom:12px;}
 .cal-title{flex:0 0 auto;}
-.cal-title{font-size:18px;font-weight:800;color:var(--lbl);letter-spacing:-.01em;display:flex;align-items:baseline;gap:7px;
+.cal-title{font-size:18px;font-weight:800;color:var(--lbl);letter-spacing:-.01em;display:flex;align-items:center;gap:5px;
   border:none;background:transparent;cursor:pointer;padding:2px 6px 2px 2px;border-radius:9px;transition:background var(--tr);}
 .cal-title:hover{background:var(--fill);}
 .cal-title-c{width:13px;height:13px;align-self:center;color:var(--lbl3);transform:rotate(90deg);}
-.cal-title .y{font-size:13.5px;font-weight:700;color:var(--lbl2);}
+.cal-title .y{font-size:18px;font-weight:800;color:var(--lbl);}
 .cal-nav{display:flex;align-items:center;gap:4px;}
 .cal-nb{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;color:var(--lbl2);transition:background var(--tr),color var(--tr);}
 .cal-nb:hover{background:var(--fill);color:var(--bt1);}
@@ -186,9 +186,10 @@ select.inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-ima
 #fcal{height:100%;--fc-border-color:var(--sep);--fc-today-bg-color:transparent;--fc-page-bg-color:var(--bg2);--fc-neutral-bg-color:var(--surf2);font-size:12.5px;}
 #fcal .fc-theme-standard td,#fcal .fc-theme-standard th{border-color:var(--sep);}
 /* 가로줄(주 구분)을 세로줄보다 한 단계 진하게 — 주 단위가 먼저 읽힌다 */
-#fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-top-color:var(--sepo);}
-#fcal .fc-dayGridMonth-view .fc-col-header{border-bottom-color:var(--sepo);}
-html.dark #fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-top-color:rgba(255,255,255,.16);}
+#fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-top:1.5px solid var(--ct);}
+#fcal .fc-dayGridMonth-view .fc-col-header{border-bottom:1.5px solid var(--ct);}
+html.dark #fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-top-color:rgba(255,255,255,.28);}
+html.dark #fcal .fc-dayGridMonth-view .fc-col-header{border-bottom-color:rgba(255,255,255,.28);}
 #fcal .fc-scrollgrid{border-radius:var(--rmd);overflow:hidden;border-color:var(--sep);}
 #fcal .fc-col-header-cell{background:var(--surf2);padding:9px 0;}
 #fcal .fc-col-header-cell-cushion{font-size:13px;font-weight:700;color:var(--lbl2);text-decoration:none;letter-spacing:.02em;}
@@ -295,8 +296,11 @@ html.dark #fcal .fc-day-today .dnum{color:var(--b300)!important;}
 .cmt-empty{font-size:12px;color:var(--lbl3);text-align:center;padding:18px 0;}
 /* 업무 기한 이벤트(달력) */
 #fcal .fc-timegrid-slot{height:34px;}
-#fcal .fc-timegrid-slot-label{font-size:11.5px;color:var(--lbl2);}
-#fcal .fc-timegrid-axis-cushion{font-size:11px;color:var(--lbl3);}
+#fcal .fc-timegrid-slot-label{font-size:12px;color:var(--lbl2);}
+#fcal .fc-timegrid-axis-cushion{font-size:13px;font-weight:700;color:var(--lbl2);}
+/* 주간뷰 좌측 시간축 — 헤더와 같은 배경으로 묶어 읽기 쉽게 */
+#fcal .fc-timeGridWeek-view .fc-timegrid-axis,
+#fcal .fc-timeGridWeek-view .fc-timegrid-slot-label{background:var(--surf2);}
 #fcal .fc-timegrid-divider{padding:0;}
 /* 종일 칸이 너무 납작해 보이지 않도록 시간 슬롯과 비슷한 높이를 준다 */
 #fcal .fc-timegrid .fc-daygrid-day-frame{min-height:50px;}
@@ -318,7 +322,6 @@ html.dark #fcal .fc-day-today .dnum{color:var(--b300)!important;}
 .ymp-m:hover{background:var(--fill2);}
 .ymp-m.now{box-shadow:inset 0 0 0 1.5px var(--b300);color:var(--bt1);}
 .ymp-m.sel{background:linear-gradient(135deg,var(--b500),var(--b800));color:#fff;box-shadow:none;}
-.ymp-t{width:100%;margin-top:12px;}
 /* 색 팔레트 선택 */
 .pal{display:flex;gap:7px;flex-wrap:wrap;}
 .pal-c{width:24px;height:24px;border-radius:8px;cursor:pointer;border:2px solid transparent;transition:transform .12s,border-color .12s;}
@@ -527,6 +530,12 @@ html.dark #fcal .fc-day-today .dnum{color:var(--b300)!important;}
 .set-col{min-width:0;}
 .set-col-stack{display:flex;flex-direction:column;gap:16px;}
 .mg-grid{display:grid;grid-template-columns:262px 262px minmax(0,1fr);gap:16px;align-items:start;}
+/* 계정 표가 들어갈 폭이 안 나오면 위 3칸을 2열로 접고 계정 카드를 통째로 아래에 둔다 */
+@media(max-width:1420px){
+  .mg-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);}
+  .mg-grid>.set-col:nth-child(3){grid-column:1/-1;}
+  .mg-grid>.set-col:nth-child(4){grid-column:1/-1;}
+}
 @media(max-width:1240px){.mg-grid{grid-template-columns:1fr 1fr;}}
 @media(max-width:860px){.mg-grid{grid-template-columns:1fr;}}
 .set-h{font-size:12px;font-weight:700;color:var(--lbl2);text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;justify-content:space-between;gap:8px;padding-bottom:10px;border-bottom:1px solid var(--sep);margin-bottom:13px;}
@@ -652,9 +661,11 @@ select.mg-inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-
 .fbu-role.r-editor{color:var(--bt1);background:rgba(62,113,210,.12);}
 .fbu-role.r-viewer{color:var(--lbl2);background:var(--fill);}
 .fbu-role.r-blocked{color:var(--rd);background:rgba(255,59,48,.1);}
-.fbu-sel{-webkit-appearance:none;-moz-appearance:none;appearance:none;width:auto;min-width:104px;padding:8px 34px 8px 13px;font-size:12.5px;line-height:1.35;font-weight:500;color:var(--lbl);border:1.5px solid var(--sepo);border-radius:var(--rmd);background-color:var(--bg2);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23636366' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;background-size:12px;cursor:pointer;transition:border-color .14s;}
+.fbu-sel{-webkit-appearance:none;-moz-appearance:none;appearance:none;width:100%;min-width:0;max-width:112px;padding:8px 34px 8px 13px;font-size:12.5px;line-height:1.35;font-weight:500;color:var(--lbl);border:1.5px solid var(--sepo);border-radius:var(--rmd);background-color:var(--bg2);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23636366' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;background-size:12px;cursor:pointer;transition:border-color .14s;}
 .fbu-sel:hover{border-color:var(--b500);}
 .utbl th.utbl-r,.utbl td.utbl-r{text-align:right;}
+.utbl td.utbl-r{white-space:normal;}
+.utbl td.utbl-r .fbu-sel{display:block;margin-left:auto;}
 .utbl-name .fbu-av{width:30px;height:30px;}
 .utbl-name .fbu-av svg{width:16px;height:16px;}
 
@@ -722,7 +733,6 @@ body.wid .wid-only{display:block;}
 .acct-btn-ghost:hover{filter:brightness(.96);}
 .acct-btn-danger{background:transparent;color:var(--rd);border:1.5px solid rgba(255,59,48,.32);}
 .acct-btn-danger:hover{background:rgba(255,59,48,.06);}
-.acct-last{font-size:11px;color:var(--lbl3);margin-top:14px;text-align:center;}
 /* 로그인 게이트 */
 .cv-spin{width:30px;height:30px;margin:0 auto;border-radius:50%;border:3px solid rgba(255,255,255,.16);border-top-color:rgba(255,255,255,.9);animation:cvspin .8s linear infinite;will-change:transform;}
 @keyframes cvspin{to{transform:rotate(360deg);}}
