@@ -590,13 +590,31 @@ select.mg-inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-
 .pf-em.dflt svg{width:19px;height:19px;fill:none;stroke:var(--lbl2);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;}
 .pf-empty{grid-column:1/-1;font-size:12px;color:var(--lbl3);text-align:center;padding:18px 6px;line-height:1.5;}
 .pf-lab{font-size:11px;font-weight:700;color:var(--lbl3);letter-spacing:.04em;margin:11px 0 7px;flex-shrink:0;}
+/* 내 소속 — 팀·직급 수정, 권역·현장 보기 전용 */
+.myorg{margin-top:16px;padding-top:14px;border-top:1px solid var(--sep);}
+.myorg-h{font-size:11px;font-weight:700;color:var(--lbl3);letter-spacing:.04em;margin-bottom:9px;}
+.myorg-g{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+.myorg-f{display:flex;flex-direction:column;gap:5px;min-width:0;}
+.myorg-f label{font-size:11.5px;font-weight:600;color:var(--lbl2);}
+.myorg-f .inp-sm{width:100%;}
+.myorg-ro{background:var(--surf2);border-radius:var(--rmd);padding:9px 11px;font-size:12px;color:var(--lbl);}
+.myorg-ro>div{display:flex;gap:8px;line-height:1.7;min-width:0;}
+.myorg-ro>div>span{flex:0 0 62px;color:var(--lbl3);font-weight:600;}
+.myorg-note{display:block!important;font-size:11px;color:var(--lbl3);margin-top:4px;line-height:1.5;}
+.lnkbtn{color:var(--bt1);font-weight:700;text-decoration:underline;font-size:11px;}
+.rk-all{font-size:11.5px;color:var(--lbl3);}
+/* 직급 배지 — 조직상 자리(권한 배지와 구분되게 회색 계열) */
+.rk{display:inline-block;margin-left:6px;font-size:10px;font-weight:700;color:var(--lbl2);
+  background:var(--fill);border-radius:var(--rp);padding:1px 6px;vertical-align:1px;letter-spacing:0;}
+.tks-item .rk{font-weight:700;}
+.tk-sub2 .rk{margin-left:5px;}
 /* 계정 모달 탭 */
 .acct-tabs{display:flex;gap:4px;background:var(--fill);border-radius:var(--rmd);padding:3px;margin:0 0 18px;}
 .acct-tab{flex:1;padding:7px 10px;border-radius:calc(var(--rmd) - 3px);font-size:12.5px;font-weight:700;
   color:var(--lbl2);transition:background var(--tr),color var(--tr);}
 .acct-tab.act{background:var(--bg2);color:var(--bt1);box-shadow:0 1px 3px rgba(0,0,0,.08);}
 /* 탭을 바꾸거나 팝오버가 떠도 모달 크기가 흔들리지 않도록 높이를 고정 */
-.acct-pane{position:relative;min-height:352px;}
+.acct-pane{position:relative;min-height:430px;}
 .fbu-av.r-editor{background:linear-gradient(135deg,var(--b500),var(--b800));}
 .fbu-av.r-viewer{background:rgba(120,120,128,.2);}
 .fbu-av.r-viewer svg{fill:var(--lbl2);}
@@ -790,7 +808,8 @@ html.dark #toast{background:#2B313A;}
 @media(max-width:720px){
   /* 좁은 화면에서는 이모지 칸이 28px 밖에 안 돼 8열로 줄인다 */
   .pf-emg{grid-template-columns:repeat(8,1fr);}
-  .acct-pane{min-height:366px;}
+  .acct-pane{min-height:430px;}
+  .myorg-g{grid-template-columns:1fr;}
   .utbl thead{display:none;}
   .utbl tbody tr{display:flex;flex-wrap:wrap;align-items:center;gap:7px 10px;padding:11px 2px;border-bottom:1px solid var(--sep);}
   .utbl tbody tr:last-child{border-bottom:none;}

@@ -352,9 +352,14 @@ function cleanTask(t){
   }
   return o;
 }
+const RANKS=[['member','담당자'],['lead','공구장'],['head','팀장']];
+function rankOf(v){return RANKS.some(r=>r[0]===v)?v:'member';}
+function rankLabel(v){const r=RANKS.find(x=>x[0]===rankOf(v));return r?r[1]:'담당자';}
+/* 직급별로 쓰는 칸이 다르다 — 팀장은 팀 전체를 보므로 권역·현장을 두지 않는다 */
+function rankUses(v){const r=rankOf(v);return{region:r!=='head',sites:r==='member'||r==='lead'};}
 function cleanPerson(p){
   const o={name:String(p.name||'').slice(0,60),email:String(p.email||'').slice(0,200),
-    team:String(p.team||''),region:String(p.region||'')};
+    team:String(p.team||''),region:String(p.region||''),rank:rankOf(p.rank)};
   if(p.sites&&Object.keys(p.sites).length){o.sites={};Object.keys(p.sites).forEach(k=>{if(p.sites[k])o.sites[k]=1;});}
   return o;
 }
@@ -620,7 +625,36 @@ function acctTabBody(tab){
     </div>
     <label class="il" for="acctName">이름 (닉네임)</label>
     <input class="inp" id="acctName" maxlength="60" value="${esc(acctNick())}" placeholder="표시할 이름">
+    ${myOrgHTML()}
     ${emojiPickerHTML(av)}`;
+}
+/* 내 소속 — 팀·직급은 여기서, 권역·담당 현장은 조직 관리에서(양쪽에서 고치면 서로 덮어쓴다) */
+function myOrgHTML(){
+  const u=S.user;if(!u)return '';
+  const me=roster().find(p=>p.id===u.uid)||{};
+  const teams=(S.org.teams||[]).filter(t=>t.name);
+  const uses=rankUses(me.rank);
+  const rname=(S.org.regions||[]).find(r=>r.id===me.region);
+  const snames=(S.org.sites||[]).filter(x=>(me.sites||{})[x.id]).map(x=>x.name);
+  return `<div class="myorg">
+    <div class="myorg-h">소속</div>
+    <div class="myorg-g">
+      <div class="myorg-f"><label for="acctTeam">팀</label>
+        <select class="inp inp-sm" id="acctTeam">
+          <option value="">미배정</option>
+          ${teams.map(t=>'<option value="'+esc(t.id)+'"'+(t.id===me.team?' selected':'')+'>'+esc(t.name)+'</option>').join('')}
+        </select></div>
+      <div class="myorg-f"><label for="acctRank">직급</label>
+        <select class="inp inp-sm" id="acctRank">
+          ${RANKS.map(([v,l])=>'<option value="'+v+'"'+(v===rankOf(me.rank)?' selected':'')+'>'+l+'</option>').join('')}
+        </select></div>
+    </div>
+    <div class="myorg-ro">
+      <div><span>권역</span>${uses.region?esc((rname&&rname.name)||'미지정'):'팀 전체'}</div>
+      <div><span>담당 현장</span>${uses.sites?(snames.length?esc(snames.join(', ')):'미지정'):'팀 전체'}</div>
+      <div class="myorg-note">권역·담당 현장은 <button class="lnkbtn" data-act="acct.goOrg">조직 관리</button>에서 바꿉니다.</div>
+    </div>
+  </div>`;
 }
 /* 아바타 선택 팝오버 — 애플 키보드와 같은 8개 분류 + 검색 + 최근 사용 */
 function recentEmoji(){
@@ -710,7 +744,26 @@ async function acctSave(){
   const icon=PF_SEL.icon===null?cur.icon:PF_SEL.icon;
   const selc=$('#pfPal .pal-c.sel');
   const color=PF_SEL.color!==null?PF_SEL.color:(selc?(selc.dataset.c||''):cur.color);
-  if(!u){toast('로그인 후에 저장할 수 있습니다');return;}
+  /* 소속(팀·직급)은 조직 데이터(people)라 계정 저장과 별개로 먼저 반영한다 */
+  const myUid=(S.user||{}).uid||'';
+  const tSel=$('#acctTeam'),rSel=$('#acctRank');
+  if(myUid&&(tSel||rSel)){
+    const me=roster().find(p=>p.id===myUid)||{};
+    const pcur=(S.people||{})[myUid]||{};
+    const rank=rSel?rankOf(rSel.value):rankOf(pcur.rank);
+    const uses=rankUses(rank);
+    store.putPerson(myUid,{
+      name:name||me.name||'',email:String((S.user||{}).email||me.email||'').toLowerCase(),
+      team:tSel?tSel.value:(pcur.team||''),
+      region:uses.region?(pcur.region||''):'',
+      rank,sites:uses.sites?(pcur.sites||{}):{}});
+    if(!S.live){rOrg();if(S.view==='tasks')rTasks();}
+  }
+  if(!u){
+    /* 로컬 모드 — 계정이 없어 이름·아바타는 저장할 수 없다 */
+    if(MODAL_CB&&MODAL_CB.type==='acct')renderAcctModal('profile');
+    toast(myUid?'소속을 저장했습니다':'로그인 후에 저장할 수 있습니다');return;
+  }
   if(name&&name!==acctNick()){
     try{await u.updateProfile({displayName:name});}catch(e){toast('이름 저장 실패 · '+(e.message||e));return;}
   }
@@ -1198,19 +1251,19 @@ function savePlanInline(){
 function roster(){
   /* 로컬 모드는 계정이 없다 — 화면이 비지 않도록 '나' 한 명을 가정한다(이 브라우저 전용) */
   if(!S.live&&!Object.keys(S.people||{}).length)
-    return[{id:'me',name:'나',email:'',team:'',region:'',sites:{},role:'editor',acct:false,local:true}];
+    return[{id:'me',name:'나',email:'',team:'',region:'',sites:{},rank:'member',role:'editor',acct:false,local:true}];
   const out={};
   Object.keys(S.accounts||{}).forEach(uid=>{
     const a=S.accounts[uid]||{};
     if(a.role==='blocked')return;
-    out[uid]={id:uid,name:a.name||String(a.email||'').split('@')[0]||'이름없음',email:a.email||'',team:'',region:'',role:a.role||'viewer',acct:true};
+    out[uid]={id:uid,name:a.name||String(a.email||'').split('@')[0]||'이름없음',email:a.email||'',team:'',region:'',rank:'member',role:a.role||'viewer',acct:true};
   });
   Object.keys(S.people||{}).forEach(id=>{
     const p=S.people[id]||{},prev=out[id];
     out[id]={id,
       name:(prev&&prev.acct&&prev.name)||p.name||'이름없음',
       email:(prev&&prev.email)||p.email||'',
-      team:p.team||'',region:p.region||'',sites:p.sites||{},
+      team:p.team||'',region:p.region||'',sites:p.sites||{},rank:rankOf(p.rank),
       role:(prev&&prev.role)||'viewer',
       acct:!!(prev&&prev.acct)};
   });
@@ -1331,12 +1384,16 @@ function regionMembers(mems,regions,rid){
 /* 담당자 묶음 — 담당자별 소제목 아래 그 사람의 미완료 업무 */
 function memberGroupHTML(list){
   if(!list.length)return '<div class="tk-empty">배정된 담당자가 없습니다.</div>';
+  list=list.slice().sort((a,b)=>{const w=x=>rankOf(x.rank)==='lead'?0:1;
+    return w(a)-w(b)||String(a.name).localeCompare(String(b.name),'ko');});
   let any=false;
   const html=list.map(p=>{
     const items=openItems(p.id);
     if(!items.length)return '';
     any=true;
-    return '<div class="tk-sub2">'+esc(p.name)+'</div>'
+    const rk=rankOf(p.rank);
+    return '<div class="tk-sub2">'+esc(p.name)
+      +(rk==='lead'?'<span class="rk">공구장</span>':'')+'</div>'
       +items.map(({iid,it})=>taskItemHTML(p.id,iid,it,false)).join('');
   }).join('');
   return any?html:'<div class="tk-empty">미완료 업무가 없습니다.</div>';
@@ -1344,16 +1401,24 @@ function memberGroupHTML(list){
 /* 권역별 섹션 — 팀 전체 보기에서 권역 단위로 레이아웃을 나눈다 */
 function regionSectionsHTML(mems,regions){
   const groups=[];
-  regions.forEach(r=>{const list=mems.filter(p=>p.region===r.id);if(list.length)groups.push([r.name,list]);});
-  const none=regionMembers(mems,regions,'');
-  if(none.length)groups.push(['권역 미지정',none]);
+  const heads=mems.filter(p=>rankOf(p.rank)==='head');
+  const rest=mems.filter(p=>rankOf(p.rank)!=='head');
+  const byRank=list=>list.slice().sort((a,b)=>{
+    const w=x=>rankOf(x.rank)==='lead'?0:1;
+    return w(a)-w(b)||String(a.name).localeCompare(String(b.name),'ko');});
+  if(heads.length)groups.push(['팀장',byRank(heads)]);   /* 권역보다 위 */
+  regions.forEach(r=>{const list=rest.filter(p=>p.region===r.id);if(list.length)groups.push([r.name,byRank(list)]);});
+  const none=regionMembers(rest,regions,'');
+  if(none.length)groups.push(['권역 미지정',byRank(none)]);
   if(!groups.length)return '<div class="tk-empty">배정된 담당자가 없습니다.</div>';
   return groups.map(([rn,list])=>{
     const cnt=list.reduce((a,p)=>a+taskCount(p.id),0);
     const inner=list.map(p=>{
       const items=openItems(p.id);
       if(!items.length)return '';
-      return '<div class="tk-sub2">'+esc(p.name)+'</div>'
+      const rk=rankOf(p.rank);
+      return '<div class="tk-sub2">'+esc(p.name)
+        +(rk==='lead'?'<span class="rk">공구장</span>':rk==='head'?'<span class="rk">팀장</span>':'')+'</div>'
         +items.map(({iid,it})=>taskItemHTML(p.id,iid,it,false)).join('');
     }).join('')||'<div class="tk-empty" style="padding:8px 2px;text-align:left">미완료 업무가 없습니다.</div>';
     return '<div class="tk-sub">'+esc(rn)+'<span class="c">'+cnt+'</span></div>'+inner;
@@ -1517,10 +1582,15 @@ function rTasks(){
     listHTML=taskListHTML(sid);
   }
   /* 담당자 카드 — 권역 행(선택 가능) 아래에 담당자 */
+  const heads=mems.filter(p=>rankOf(p.rank)==='head');          /* 팀장 — 권역에 매이지 않는다 */
+  const rest=mems.filter(p=>rankOf(p.rank)!=='head');
+  const byRank=list=>list.slice().sort((a,b)=>{           /* 공구장을 권역 맨 위로 */
+    const w=x=>rankOf(x.rank)==='lead'?0:1;
+    return w(a)-w(b)||String(a.name).localeCompare(String(b.name),'ko');});
   const regGroups=[];
-  regions.forEach(r=>{const list=mems.filter(p=>p.region===r.id);if(list.length)regGroups.push([r.id,r.name,list]);});
-  const none=regionMembers(mems,regions,'');
-  if(none.length)regGroups.push(['','권역 미지정',none]);
+  regions.forEach(r=>{const list=rest.filter(p=>p.region===r.id);if(list.length)regGroups.push([r.id,r.name,byRank(list)]);});
+  const none=regionMembers(rest,regions,'');
+  if(none.length)regGroups.push(['','권역 미지정',byRank(none)]);
 
   root.innerHTML=`<div class="tkwrap">
     <div class="tkside">
@@ -1534,6 +1604,9 @@ function rTasks(){
           <span class="n">공통업무</span>
           ${team?'<span class="c">'+cCommon+'</span>':''}
         </div>
+        ${heads.map(p=>`<div class="tks-item sub${sel===p.id?' act':''}" data-act="tk.pick" data-id="${esc(p.id)}">
+          <span class="n">${esc(p.name)}<span class="rk">팀장</span></span>
+          <span class="c">${taskCount(p.id)}</span></div>`).join('')}
       </div>
       <div class="card tks-card">
         <div class="tks-h">담당자 · 권역</div>
@@ -1541,7 +1614,8 @@ function rTasks(){
           <div class="tks-item tks-reg${sel==='reg:'+rid?' act':''}" data-act="tk.pick" data-id="reg:${esc(rid)}">
             <span class="n">${esc(rn)}</span><span class="c">${list.reduce((a,p)=>a+taskCount(p.id),0)}</span></div>
           ${list.map(p=>`<div class="tks-item sub${sel===p.id?' act':''}" data-act="tk.pick" data-id="${esc(p.id)}">
-            <span class="n">${esc(p.name)}</span><span class="c">${taskCount(p.id)}</span></div>`).join('')}
+            <span class="n">${esc(p.name)}${rankOf(p.rank)==='lead'?'<span class="rk">공구장</span>':''}</span>
+            <span class="c">${taskCount(p.id)}</span></div>`).join('')}
         `).join('')||'<div class="tk-empty" style="text-align:left;padding:6px 2px">배정된 담당자가 없습니다.</div>'}
       </div>
     </div>
@@ -1836,26 +1910,30 @@ function rOrg(){
       : '<select class="fbu-sel" data-act="acct.role" data-id="'+esc(p.id)+'" aria-label="권한">'
         +roleOpt('editor','관리자',role)+roleOpt('viewer','사용자',role)+roleOpt('blocked','차단',role)+'</select>';
   };
+  const rankOpt=cur=>RANKS.map(([v,l])=>'<option value="'+v+'"'+(v===rankOf(cur)?' selected':'')+'>'+l+'</option>').join('');
   const row=p=>{
-    const rc='r-'+(p.role||'viewer');
+    const u=rankUses(p.rank);
     return `<tr>
       <td><div class="utbl-name">${avHTML(p.id)}
         <div style="min-width:0"><div class="utbl-nick">${esc(p.name)}</div><div class="utbl-mail">${esc(p.email||'')}</div></div></div></td>
-      <td><select class="mg-inp" data-act="acct.set" data-f="region" data-id="${esc(p.id)}" aria-label="권역">${regOpt(p.region)}</select></td>
-      <td>${sitesOf(p)}</td>
+      <td><select class="mg-inp" data-act="acct.set" data-f="rank" data-id="${esc(p.id)}" aria-label="직급">${rankOpt(p.rank)}</select></td>
+      <td>${u.region
+        ?'<select class="mg-inp" data-act="acct.set" data-f="region" data-id="'+esc(p.id)+'" aria-label="권역">'+regOpt(p.region)+'</select>'
+        :'<span class="rk-all">팀 전체</span>'}</td>
+      <td>${u.sites?sitesOf(p):'<span class="rk-all">팀 전체</span>'}</td>
       <td class="utbl-r">${roleCtl(p)}</td>
     </tr>`;
   };
-  ar.innerHTML='<table class="utbl"><thead><tr><th style="width:182px">이름</th><th style="width:98px">권역</th><th>담당 현장</th><th class="utbl-r" style="width:124px">권한</th></tr></thead><tbody>'
+  ar.innerHTML='<table class="utbl"><thead><tr><th style="width:180px">이름</th><th style="width:80px">직급</th><th style="width:90px">권역</th><th>담당 현장</th><th class="utbl-r" style="width:112px">권한</th></tr></thead><tbody>'
     +(mine.length?mine.map(row).join('')
-      :'<tr><td colspan="4" style="font-size:12px;color:var(--lbl3);padding:10px">이 팀에 배정된 계정이 없습니다.</td></tr>')
+      :'<tr><td colspan="5" style="font-size:12px;color:var(--lbl3);padding:10px">이 팀에 배정된 계정이 없습니다.</td></tr>')
     +'</tbody></table>';
   /* 팀 미배정 계정 — 섞어 두면 헷갈린다는 지적에 따라 별도 카드로 분리 */
   const fc=$('#freeCard'),fr=$('#freeRoot');
   if(fc&&fr){
     fc.style.display=free.length?'':'none';
     fr.innerHTML=free.length
-      ?'<table class="utbl"><thead><tr><th style="width:182px">이름</th><th></th><th class="utbl-r" style="width:124px">권한</th></tr></thead><tbody>'
+      ?'<table class="utbl"><thead><tr><th style="width:180px">이름</th><th></th><th class="utbl-r" style="width:112px">권한</th></tr></thead><tbody>'
         +free.map(p=>`<tr>
           <td><div class="utbl-name">${avHTML(p.id)}
             <div style="min-width:0"><div class="utbl-nick">${esc(p.name)}</div><div class="utbl-mail">${esc(p.email||'')}</div></div></div></td>
@@ -2103,6 +2181,7 @@ const ACT={
     else go('tasks');
   },
   'acct.save':acctSave,
+  'acct.goOrg':()=>{closeModal();go('org');},
   'pf.toggle':()=>{const p=$('#pfPop');if(p)p.classList.toggle('open');},
   'pf.close':()=>{const p=$('#pfPop');if(p)p.classList.remove('open');},
   'pf.cat':el=>{
@@ -2239,7 +2318,7 @@ const ACT={
     const t=curTeam();if(!t){toast('팀을 먼저 등록하세요');return;}
     const id=el.dataset.id,base=roster().find(p=>p.id===id)||{},cur=(S.people||{})[id]||{};
     store.putPerson(id,{name:base.name||cur.name||'',email:base.email||cur.email||'',
-      team:t.id,region:cur.region||'',sites:cur.sites||{}});
+      team:t.id,region:cur.region||'',rank:rankOf(cur.rank),sites:cur.sites||{}});
     if(!S.live)rOrg();
   },
   'acct.sitePick':el=>{
@@ -2273,7 +2352,8 @@ const ACT={
     const sites={...(cur.sites||base.sites||{})};
     if(sites[sid])delete sites[sid];else sites[sid]=1;
     store.putPerson(id,{name:base.name||cur.name||'',email:base.email||cur.email||'',
-      team:cur.team||base.team||'',region:cur.region||base.region||'',sites});
+      team:cur.team||base.team||'',region:cur.region||base.region||'',
+      rank:rankOf(cur.rank||base.rank),sites});
     if(!S.live)rOrg();
   },
   'set.dark':()=>{},
@@ -2461,11 +2541,16 @@ document.addEventListener('change',e=>{
   const id=el.dataset.id,f=el.dataset.f;
   const cur=(S.people||{})[id]||{};
   const base=roster().find(p=>p.id===id)||{};
+  const rank=f==='rank'?rankOf(el.value):rankOf(cur.rank);
+  const uses=rankUses(rank);
+  /* 담당 현장을 함께 넘기지 않으면 다른 칸만 바꿔도 배정이 지워진다 */
   store.putPerson(id,{
     name:base.name||cur.name||'',
     email:base.email||cur.email||'',
     team:f==='team'?el.value:(cur.team||''),
-    region:f==='region'?el.value:(cur.region||'')});
+    region:uses.region?(f==='region'?el.value:(cur.region||'')):'',
+    rank,
+    sites:uses.sites?(cur.sites||{}):{}});
   if(!S.live){rOrg();rTasks();}
 });
 document.addEventListener('input',e=>{if(e.target.id==='nqQ')rNq();});
