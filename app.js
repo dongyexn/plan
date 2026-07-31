@@ -377,6 +377,7 @@ function cleanTask(t){
   if(t.prog)o.prog=String(t.prog).slice(0,2000);
   if(t.plan)o.plan=String(t.plan).slice(0,2000);
   if(t.site)o.site=String(t.site).slice(0,40);
+  if(kindOf(t.kind))o.kind=kindOf(t.kind);
   if(t.color)o.color=String(t.color).slice(0,16);
   if(Number.isFinite(Number(t.order)))o.order=Number(t.order);
   if(t.assignees&&Object.keys(t.assignees).length){o.assignees={};Object.keys(t.assignees).forEach(k=>{if(t.assignees[k])o.assignees[k]=1;});}
@@ -502,10 +503,7 @@ const FbStore={
       const [a,b]=await Promise.all([FB.db.ref('calapp/plans').get(),FB.db.ref('calapp/recur').get()]);
       plans=a.val();recur=b.val();
     }catch(e){console.warn('[FB] 옛 일정 읽기 건너뜀',e);return;}
-    const olds=[];
-    Object.values(plans||{}).forEach(m=>Object.values(m||{}).forEach(p=>{if(p&&p.id)olds.push(p);}));
-    Object.values(recur||{}).forEach(p=>{if(p&&p.id)olds.push(p);});
-    /* 기한(due)만 있던 업무도 날짜(date)로 옮긴다 */
+    /* 기한(due)만 있던 업무를 날짜(date)로 — 실패해도 나머지 이전은 계속한다 */
     const dueFix={};
     allTasks().forEach(({sid,iid,it})=>{
       if(!it||!it.due)return;
@@ -515,10 +513,19 @@ const FbStore={
       try{await FB.db.ref().update(dueFix);toast('기한을 날짜로 옮겼습니다');}
       catch(e){console.warn('[FB] 기한 이전 실패',e);}
     }
+    /* 옛 일정 — 원본 경로를 함께 들고 있어야 한 건씩 지울 수 있다
+       (calapp/plans 통째 삭제는 상위에 쓰기 규칙이 없어 거부된다) */
+    const olds=[];
+    Object.keys(plans||{}).forEach(ym=>Object.entries(plans[ym]||{}).forEach(([k,p])=>{
+      if(p&&p.id)olds.push({p,path:'calapp/plans/'+ym+'/'+k});}));
+    Object.entries(recur||{}).forEach(([k,p])=>{if(p&&p.id)olds.push({p,path:'calapp/recur/'+k});});
     if(!olds.length)return;
     const teamId=((S.org.teams||[])[0]||{}).id||'team';
+    const seen=new Set(allTasks().map(x=>x.iid));
     const up={};
-    olds.forEach(p=>{
+    olds.forEach(({p,path})=>{
+      up[path]=null;                       /* 원본은 한 건씩 지운다 */
+      if(seen.has(p.id))return;            /* 이미 옮겨졌으면 새로 쓰지 않는다 */
       const owns=Object.keys(p.owners||{}).filter(k=>p.owners[k]);
       const sid=owns[0]||teamId;
       const it={text:String(p.title||''),prog:String(p.body||''),
@@ -534,11 +541,13 @@ const FbStore={
       }
       up['calapp/tasks/'+sid+'/'+p.id]=cleanTask(it);
     });
-    up['calapp/plans']=null;up['calapp/recur']=null;
     try{
       await FB.db.ref().update(up);
       toast('예전 일정 '+olds.length+'건을 업무로 옮겼습니다');
-    }catch(e){console.warn('[FB] 옛 일정 이전 실패',e);}
+    }catch(e){
+      console.warn('[FB] 옛 일정 이전 실패',e);
+      toast('예전 일정을 옮기지 못했습니다 · 관리자에게 문의하세요');
+    }
   },
   bindShared(){
     this.migrateRemote();
@@ -1584,6 +1593,7 @@ function tkSel(){
   if(!valid)S.tk.m='teamall';
   return{teams,team,regions,mems,total:all.length};
 }
+/* 좌측 카운트는 '아직 끝나지 않은 업무' 수 — 완료는 세지 않는다 */
 function taskCount(sid){
   const m=S.tasks[sid]||{};
   const f=S.tkF||{};
@@ -1622,6 +1632,7 @@ function taskItemHTML(sid,iid,it,withSubject){
         </div>
         <div class="tk-meta">
           <span class="tk-st s${st}" data-act="tk.st" data-sid="${esc(sid)}" data-iid="${esc(iid)}">${ST_LBL[st]}</span>
+          ${kindOf(it.kind)?'<span class="kind">'+esc(kindLabel(it.kind))+'</span>':''}
           ${withSubject?'<span class="asg">'+esc(subjName(sid))+'</span>':''}
           ${sn?'<span class="site-on">'+esc(sn)+'</span>':''}
           ${asg.map(p=>'<span class="asg"><span class="dot-c" style="background:'+esc(ownColor(p.id))+'"></span>'+esc(p.name)+'</span>').join('')}
@@ -1646,8 +1657,10 @@ function taskDetailHTML(sid,iid,it){
         data-ph="${lbl}를 입력하세요">${esc(val||'')}</div>
     </div>`;
   const lnk=Object.entries(it.links||{});
+  const split=kindSplit(it.kind);
   return `<div class="tk-detail">
-    <div class="tk-secs">${box('진행경과',it.prog||it.body,'prog')}${box('처리계획',it.plan,'plan')}</div>
+    ${split?'<div class="tk-secs">'+box('진행경과',it.prog||it.body,'prog')+box('처리계획',it.plan,'plan')+'</div>'
+      :box('내용',it.prog||it.body,'prog')}
     ${lnk.length?`<div class="tk-sec">
       <div class="tk-sec-h">링크</div>
       <div class="tk-links">${lnk.map(([k,l])=>'<a class="tk-link" href="'+esc(l.url)+'" target="_blank" rel="noopener">'
@@ -1729,10 +1742,10 @@ function taskListHTML(sid){
 /* ── 집계 보기 보조 — 미완료만, 기한순 ── */
 function openItems(sid){
   const m=S.tasks[sid]||{};
-  /* 필터를 걸면 완료도 대상에 넣는다 — 완료만 찾고 싶을 수 있다 */
-  const f=S.tkF||{};
-  const keepDone=String(f.st)==='2';
-  return Object.keys(m).filter(iid=>m[iid]&&(keepDone||stOf(m[iid].st)!==2)&&tkMatch(sid,iid,m[iid]))
+  /* 완료해도 바로 사라지지 않는다 — 7일이 지난 완료만 목록에서 뺀다(담당자 화면과 같은 규칙) */
+  const cut=Date.now()-7*86400000;
+  const stale=it=>stOf(it.st)===2&&(it.updatedAt||0)<cut;
+  return Object.keys(m).filter(iid=>m[iid]&&!stale(m[iid])&&tkMatch(sid,iid,m[iid]))
     .sort((a,b)=>{const ad=m[a].date||'9999',bd=m[b].date||'9999';
       return ad<bd?-1:ad>bd?1:(m[a].createdAt||0)-(m[b].createdAt||0);})
     .map(iid=>({iid,it:m[iid]}));
@@ -1786,11 +1799,11 @@ function regionSectionsHTML(mems,regions){
 }
 /* 작성·수정 공용 폼 — 작성창과 수정 폼이 같은 골격을 쓴다(일관성) */
 function taskFormHTML(sid,iid,cur){
-  const d=cur||{text:'',prog:'',plan:'',site:'',assignees:{},links:{},color:'',date:'',time:'',endTime:''};
+  const d=cur||{text:'',prog:'',plan:'',site:'',assignees:{},links:{},color:'',date:'',time:'',endTime:'',kind:''};
   const people=tkSel().mems;
-  const sites=(S.org.sites||[]).filter(x=>x.name);
   const col=(d.color&&d.color!=='auto')?d.color:'';
   const nAsg=Object.keys(d.assignees||{}).length;
+  const kind=kindOf(d.kind),split=kindSplit(kind);
   return `<div class="tk-new" id="tkNew">
     <div class="tkf-top">
       <input class="inp tk-new-t" id="tnTitle" maxlength="120" placeholder="업무 제목을 입력하세요" value="${esc(d.text||'')}">
@@ -1803,12 +1816,26 @@ function taskFormHTML(sid,iid,cur){
     </div>
 
     <div class="tkf-sec">
-      <div class="tk-new-g">
+      <div class="tkf-h">분류</div>
+      <div class="tkf-g4">
+        <div class="tkf-f"><label for="tnKind">업무 구분</label>
+          <select class="inp inp-sm" id="tnKind" data-act="tk.kind">
+            ${TK_KIND.map(([v,l])=>'<option value="'+v+'"'+(v===kind?' selected':'')+'>'+l+'</option>').join('')}
+          </select></div>
+        <div class="tkf-f"><label for="tnSite">현장</label>${sitePickHTML('tnSite',d.site||'')}</div>
+        <div class="tkf-f tkf-f2"><label>색</label>
+          ${palHTML('tnPal',col,'<div class="pal-c'+(col?'':' sel')+'" data-c="" style="background:var(--fill2)" title="색 없음"></div>')}</div>
+      </div>
+    </div>
+
+    <div class="tkf-sec" id="tnBodySec">
+      ${split?`<div class="tk-new-g">
         <div class="tk-sec"><div class="tk-sec-h">진행경과</div>
           <textarea class="inp tk-new-a" id="tnProg" maxlength="2000" placeholder="지금까지의 경과">${esc(d.prog||d.body||'')}</textarea></div>
         <div class="tk-sec"><div class="tk-sec-h">처리계획</div>
           <textarea class="inp tk-new-a" id="tnPlan" maxlength="2000" placeholder="앞으로의 계획">${esc(d.plan||'')}</textarea></div>
-      </div>
+      </div>`:`<div class="tk-sec"><div class="tk-sec-h">내용</div>
+        <textarea class="inp tk-new-a" id="tnProg" maxlength="2000" placeholder="${esc(kindLabel(kind))} 내용을 적으세요">${esc(d.prog||d.body||'')}</textarea></div>`}
     </div>
 
     <div class="tkf-sec">
@@ -1820,16 +1847,6 @@ function taskFormHTML(sid,iid,cur){
           <input type="time" class="inp inp-sm" id="tnTime" value="${esc(d.time||'')}"></div>
         <div class="tkf-f"><label for="tnEndTime">종료 시간</label>
           <input type="time" class="inp inp-sm" id="tnEndTime" value="${esc(d.endTime||'')}"></div>
-      </div>
-    </div>
-
-    <div class="tkf-sec">
-      <div class="tkf-h">분류</div>
-      <div class="tkf-g3">
-        <div class="tkf-f"><label for="tnSite">현장</label>${sitePickHTML('tnSite',d.site||'')}</div>
-
-        <div class="tkf-f"><label>색</label>
-          ${palHTML('tnPal',col,'<div class="pal-c'+(col?'':' sel')+'" data-c="" style="background:var(--fill2)" title="색 없음"></div>')}</div>
       </div>
     </div>
 
@@ -1853,6 +1870,22 @@ function taskFormHTML(sid,iid,cur){
     </div>
   </div>`;
 }
+/* 업무 구분을 바꾸면 본문 칸 구성이 달라진다 — 그 부분만 다시 그려 다른 입력을 지키지 않게 한다 */
+function tkKindRefresh(){
+  const sec=$('#tnBodySec');if(!sec)return;
+  const kind=kindOf(($('#tnKind')&&$('#tnKind').value)||'');
+  const prog=($('#tnProg')&&$('#tnProg').value)||'';
+  const plan=($('#tnPlan')&&$('#tnPlan').value)||'';
+  sec.innerHTML=kindSplit(kind)
+    ? `<div class="tk-new-g">
+        <div class="tk-sec"><div class="tk-sec-h">진행경과</div>
+          <textarea class="inp tk-new-a" id="tnProg" maxlength="2000" placeholder="지금까지의 경과">${esc(prog)}</textarea></div>
+        <div class="tk-sec"><div class="tk-sec-h">처리계획</div>
+          <textarea class="inp tk-new-a" id="tnPlan" maxlength="2000" placeholder="앞으로의 계획">${esc(plan)}</textarea></div>
+      </div>`
+    : `<div class="tk-sec"><div class="tk-sec-h">내용</div>
+        <textarea class="inp tk-new-a" id="tnProg" maxlength="2000" placeholder="${esc(kindLabel(kind))} 내용을 적으세요">${esc(prog)}</textarea></div>`;
+}
 function taskFormSave(sid,iid){
   const t=($('#tnTitle').value||'').trim();
   if(!t){toast('제목을 입력하세요');$('#tnTitle').focus();return;}
@@ -1867,7 +1900,9 @@ function taskFormSave(sid,iid){
   });
   const cSel=$('#tnPal .pal-c.sel');
   store.putTask(sid,id,{...(cur||{st:0,createdAt:Date.now()}),
-    text:t,prog:($('#tnProg').value||'').trim(),plan:($('#tnPlan').value||'').trim(),
+    text:t,kind:kindOf(($('#tnKind')&&$('#tnKind').value)||''),
+    prog:(($('#tnProg')&&$('#tnProg').value)||'').trim(),
+    plan:(($('#tnPlan')&&$('#tnPlan').value)||'').trim(),
     site:$('#tnSite').value||'',
     date:($('#tnDate')&&$('#tnDate').value)||'',
     time:($('#tnTime')&&$('#tnTime').value)||'',
@@ -1928,6 +1963,11 @@ function reorderTask(sid,iid,targetIid,after){
 }
 /* 업무 검색·필터 — 제목·경과·계획·현장·담당자까지 훑고, 상태·기한으로 좁힌다 */
 const TK_ST=[['','전체'],['0','예정'],['1','진행'],['2','완료'],['3','보류']];
+/* 업무 분류 — 일반만 진행경과·처리계획을 나눠 쓰고, 나머지는 내용 한 칸 */
+const TK_KIND=[['','일반'],['gather','취합'],['meet','회의'],['trip','출장'],['etc','기타']];
+function kindOf(v){return TK_KIND.some(k=>k[0]===v)?v:'';}
+function kindLabel(v){const k=TK_KIND.find(x=>x[0]===kindOf(v));return k?k[1]:'일반';}
+function kindSplit(v){return kindOf(v)==='';}   /* 일반이면 두 칸으로 나눈다 */
 const TK_DUE=[['','날짜 전체'],['over','지난 날짜'],['soon','7일 내'],['none','날짜 없음']];
 function tkFilterHTML(){
   const f=S.tkF||{};
@@ -2347,7 +2387,7 @@ function rOrg(){
       <td>${rankCtl(p)}</td>
       <td>${u.region
         ?'<select class="mg-inp" data-act="acct.set" data-f="region" data-id="'+esc(p.id)+'" aria-label="권역">'+regOpt(p.region)+'</select>'
-        :'<span class="rk-all mid">팀 전체</span>'}</td>
+        :'<span class="rk-all">팀 전체</span>'}</td>
       <td>${u.sites?sitesOf(p):autoSitesHTML(p)}</td>
       <td class="utbl-r">${roleCtl(p)}</td>
     </tr>`;
@@ -2677,6 +2717,7 @@ const ACT={
   'tkf.reset':()=>{S.tkF={q:'',st:'',due:''};rTasks();},
   'tk.newOpen':el=>{S.tkEdit=null;S.tkNew=el.dataset.sid;rTasks();},
   'tk.formCancel':()=>{S.tkNew=null;S.tkEdit=null;rTasks();},
+  'tk.kind':()=>tkKindRefresh(),
   'tk.formSave':el=>taskFormSave(el.dataset.sid,el.dataset.iid||null),
   'tk.open':el=>{
     const key=el.dataset.sid+'/'+el.dataset.iid;
@@ -3023,6 +3064,7 @@ document.addEventListener('input',e=>{
 document.addEventListener('change',e=>{
   if(e.target.id==='teamSelEl'){ACT['team.switch'](e.target);return;}
   if(e.target.closest('[data-act="pf.org"]')){ACT['pf.org']();return;}
+  if(e.target.id==='tnKind'){tkKindRefresh();return;}
   const pkSel=e.target.closest('.pk-sel');
   if(pkSel){
     const id=pkSel.value;if(!id)return;

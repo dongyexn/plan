@@ -239,6 +239,7 @@
             "color":     { ".validate": "newData.isString() && newData.val().length <= 16" },
             "plan":      { ".validate": "newData.isString() && newData.val().length <= 2000" },
             "site":      { ".validate": "newData.isString() && newData.val().length <= 40" },
+            "kind":      { ".validate": "newData.isString() && newData.val().length <= 10" },
             "order":     { ".validate": "newData.isNumber()" },
             "assignees": { "$pid": { ".validate": "newData.isNumber()" } },
             "links": {
