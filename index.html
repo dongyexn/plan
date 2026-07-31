@@ -126,9 +126,6 @@ svg{display:block;flex-shrink:0;}
 .tk-item.drop-above::before{top:-3px;}
 .tk-item.drop-below::after{bottom:-3px;}
 .tk-meta{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin-top:4px;}
-.tk-meta .asg{display:inline-flex;align-items:center;gap:4px;padding:1px 8px;border-radius:var(--rp);background:var(--fill);font-size:10.5px;font-weight:600;color:var(--lbl2);}
-.tk-meta .lnk{display:inline-flex;align-items:center;gap:3px;padding:1px 8px;border-radius:var(--rp);background:var(--b50);border:1px solid var(--b200);font-size:10.5px;font-weight:600;color:var(--bt1);text-decoration:none;}
-.tk-meta .lnk:hover{background:var(--b100);}
 .tk-meta .lnk .icn{width:10px;height:10px;}
 /* 링크 입력 행 */
 .lnk-row{display:flex;align-items:center;gap:6px;margin-bottom:5px;}
@@ -195,6 +192,12 @@ html.dark #fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-top-co
 html.dark #fcal .fc-dayGridMonth-view .fc-col-header{border-bottom-color:rgba(255,255,255,.15);}
 #fcal .fc-scrollgrid{border-radius:var(--rmd);overflow:hidden;border-color:var(--sep);}
 #fcal .fc-col-header-cell{background:var(--surf3);padding:9px 0;}
+/* 주간 헤더 — 공휴일 줄이 항상 자리를 차지해 높이가 변하지 않는다 */
+#fcal .wkh{display:flex;flex-direction:column;align-items:center;gap:1px;}
+#fcal .wkh-d{font-size:11px;font-weight:700;}
+#fcal .wkh-n{font-size:14px;font-weight:800;}
+#fcal .wkh-h{font-size:10px;font-weight:700;color:var(--rd);min-height:13px;line-height:13px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
 #fcal .fc-col-header-cell-cushion{font-size:13px;font-weight:700;color:var(--lbl2);text-decoration:none;letter-spacing:.02em;}
 #fcal .fc-day-sun .fc-col-header-cell-cushion{color:var(--rd);}
 #fcal .fc-day-sat .fc-col-header-cell-cushion{color:var(--bt1);}
@@ -444,6 +447,13 @@ html.dark #fcal .fc-dayGridMonth-view .fc-daygrid-day.hol{background:rgba(255,59
 .tkf-top{padding:12px 14px 12px;background:var(--surf2);border-bottom:1px solid var(--sep);}
 .tkf-badge{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.04em;color:var(--bt1);
   background:var(--b50);border:1px solid var(--b200);border-radius:var(--rp);padding:2px 9px;margin-bottom:8px;}
+/* 수정 중에도 지금 상태를 같은 배지로 보여줘 보는 화면과 이어지게 */
+.tkf-now{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin-top:9px;}
+.tkf-now>*{height:22px;display:inline-flex;align-items:center;gap:4px;padding:0 9px;border-radius:var(--rp);
+  font-size:12px;font-weight:700;white-space:nowrap;border:1px solid transparent;box-sizing:border-box;}
+.tkf-now .asg{background:var(--fill);color:var(--lbl);font-weight:600;}
+.tkf-now .site-on{height:22px;padding:0 9px;background:var(--bg2);border-color:var(--b300);color:var(--bt1);font-size:12px;}
+.tkf-now .dot-c{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
 .tk-new-t{font-size:15px;font-weight:600;margin-bottom:0;}
 .tkf-sec{padding:12px 14px;border-bottom:1px solid var(--sep);}
 .tkf-h{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;color:var(--lbl3);
@@ -467,7 +477,11 @@ html.dark #fcal .fc-dayGridMonth-view .fc-daygrid-day.hol{background:rgba(255,59
 .tk-item:hover{background:var(--surf3);}
 .tk-item.open{background:var(--bg2);border:1px solid var(--b200);}
 .tk-line{display:flex;align-items:flex-start;gap:8px;padding:11px 13px;}
-.tk-st{flex-shrink:0;font-size:11px;font-weight:800;padding:1.5px 9px;border-radius:var(--rp);cursor:pointer;user-select:none;white-space:nowrap;transition:transform .1s;}
+/* 업무 배지 공통 — 높이 22px, 12px 글자로 통일하고 역할은 색으로만 구분한다 */
+.tk-meta>*,.tk-row1 .due-chip{height:22px;display:inline-flex;align-items:center;gap:4px;
+  padding:0 9px;border-radius:var(--rp);font-size:12px;font-weight:700;white-space:nowrap;
+  border:1px solid transparent;box-sizing:border-box;}
+.tk-st{flex-shrink:0;cursor:pointer;user-select:none;transition:transform .1s;}
 .tk-st:hover{transform:scale(1.06);}
 .tk-st.s0{background:var(--fill2);color:var(--lbl2);}
 .tk-st.s1{background:var(--b100);color:var(--bt1);}
@@ -476,16 +490,21 @@ html.dark #fcal .fc-dayGridMonth-view .fc-daygrid-day.hol{background:rgba(255,59
 .tk-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;cursor:pointer;}
 /* 첫 줄 — 제목 뒤에 날짜·시각이 바로 붙는다(넓은 화면에서 벌어지지 않게) */
 .tk-row1{display:flex;align-items:center;flex-wrap:wrap;gap:7px;min-width:0;}
-.tk-ttl{font-size:14px;font-weight:600;color:var(--lbl);line-height:1.4;word-break:break-all;min-width:0;}
+.tk-ttl{font-size:14.5px;font-weight:700;color:var(--lbl);line-height:1.4;word-break:break-all;min-width:0;}
 .tk-time{font-size:11.5px;font-weight:600;color:var(--lbl3);white-space:nowrap;}
 /* 둘째 줄 — 상태·현장·담당자를 한 줄에 모은다 */
 .tk-meta .tk-st{margin-right:1px;}
 .tk-item.s2 .tk-ttl{color:var(--lbl3);text-decoration:line-through;}
 .tk-meta{display:flex;flex-wrap:wrap;align-items:center;gap:5px;}
-.tk-meta .asg{display:inline-flex;align-items:center;gap:4px;padding:1.5px 9px;border-radius:var(--rp);background:var(--fill);font-size:11px;font-weight:600;color:var(--lbl2);}
-.tk-meta .lnk{display:inline-flex;align-items:center;gap:3px;padding:1.5px 9px;border-radius:var(--rp);background:var(--b50);border:1px solid var(--b200);font-size:11px;font-weight:600;color:var(--bt1);text-decoration:none;}
+.tk-meta .dot-c{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+/* 담당자 — 회색 바탕 + 색 점 */
+.tk-meta .asg{background:var(--fill);color:var(--lbl);font-weight:600;}
+/* 현장 — 흰 바탕 + 파란 테두리 */
+.tk-meta .site-on{height:22px;padding:0 9px;background:var(--bg2);border-color:var(--b300);color:var(--bt1);font-size:12px;font-weight:700;}
+/* 링크 — 파란 바탕 */
+.tk-meta .lnk{background:var(--b50);border-color:var(--b200);color:var(--bt1);text-decoration:none;font-weight:600;}
 .tk-meta .lnk:hover{background:var(--b100);}
-.due-chip{flex-shrink:0;font-size:11px;font-weight:700;padding:2px 8px;border-radius:var(--rp);background:var(--fill);color:var(--lbl2);white-space:nowrap;cursor:pointer;}
+.due-chip{flex-shrink:0;background:var(--fill);color:var(--lbl2);cursor:pointer;}
 .due-chip.soon{background:var(--tint-am);color:var(--am);}
 .due-chip.over{background:var(--tint-rd);color:var(--rd);}
 .due-chip.none{opacity:0;transition:opacity .13s;}
@@ -504,10 +523,17 @@ html.dark #fcal .fc-dayGridMonth-view .fc-daygrid-day.hol{background:rgba(255,59
 .tk-ico.on{opacity:1;color:var(--bt1);}
 .tk-ico .icn{width:14px;height:14px;}
 .tk-ico .cn{font-size:10px;font-weight:800;}
-.tk-del{flex-shrink:0;width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--lbl3);opacity:0;transition:opacity .12s,background .12s,color .12s;}
-.tk-item:hover .tk-del{opacity:1;}
+.tk-del{flex-shrink:0;width:0;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;
+  color:var(--lbl3);opacity:0;overflow:hidden;margin-left:-2px;
+  transition:width .16s,opacity .16s,margin-left .16s,background .12s,color .12s;}
+.tk-item:hover .tk-del,.tk-item.open .tk-del{width:24px;opacity:1;margin-left:0;}
 .tk-del:hover{background:var(--tint-rd);color:var(--rd);}
 .tk-del .icn{width:13px;height:13px;}
+/* 코멘트 입력 — 평소엔 접어 두고 누르면 펼친다 */
+.th-open{display:flex;align-items:center;gap:8px;width:100%;padding:8px 11px;border-radius:var(--rmd);
+  border:1px dashed var(--sepo);background:var(--bg2);color:var(--lbl3);font-size:12.5px;cursor:pointer;text-align:left;}
+.th-open:hover{border-color:var(--b300);color:var(--bt1);background:var(--b50);}
+.th-f{display:flex;gap:8px;justify-content:flex-end;margin-top:7px;}
 /* 펼친 상세 */
 .tk-detail{padding:0 13px 13px 46px;display:flex;flex-direction:column;gap:12px;}
 .tk-secs{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
@@ -540,7 +566,7 @@ html.dark #fcal .fc-dayGridMonth-view .fc-daygrid-day.hol{background:rgba(255,59
 .mn-n{font-size:13px;font-weight:600;color:var(--lbl);white-space:nowrap;}
 .mn-e{font-size:11.5px;color:var(--lbl3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
 .th-in:focus{border-color:var(--b400);box-shadow:0 0 0 3px rgba(83,140,222,.12);}
-.th-f{display:flex;justify-content:flex-end;margin-top:6px;}
+.th-f{display:flex;gap:8px;justify-content:flex-end;margin-top:7px;}
 /* 업무 색 — 좌측 색 바 (일정 카드 .pc 와 동일한 문법) */
 .tk-item .tkc{position:absolute;left:5px;top:9px;bottom:9px;width:4px;border-radius:99px;}
 /* 펼침 상태 — 수정 버튼은 우측 상단 */
