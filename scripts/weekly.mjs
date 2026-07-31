@@ -81,19 +81,19 @@ async function main() {
   };
   const due = [];
   Object.keys(tasks).forEach(sid => Object.values(tasks[sid] || {}).forEach(it => {
-    if (!it || !it.due || it.st === 2) return;
-    if (it.due <= sunday) due.push({ ...it, who: nameOf(sid), over: it.due < today });
+    if (!it || !it.date || it.st === 2) return;
+    if (it.date <= sunday) due.push({ ...it, who: nameOf(sid), over: it.date < today });
   }));
-  due.sort((a, b) => a.due < b.due ? -1 : 1);
+  due.sort((a, b) => a.date < b.date ? -1 : 1);
 
-  if (!occ.length && !due.length) { console.log('이번 주 일정·기한 없음 — 종료'); process.exit(0); }
+  if (!occ.length && !due.length) { console.log('이번 주 업무 없음 — 종료'); process.exit(0); }
 
   /* 수신자 — 설정 범위대로. 팀 공통업무(tasks 의 sid 가 팀 id)는 팀원 전체 */
   const roster = buildRoster(usersSnap.val(), peopleSnap.val());
   const items = [
     ...occ.map(o => ({ kind: 'plan', p: o.p })),
     ...Object.keys(tasks).flatMap(sid => Object.values(tasks[sid] || {})
-      .filter(it => it && it.due && it.st !== 2 && it.due <= sunday)
+      .filter(it => it && it.date && it.st !== 2 && it.date <= sunday)
       .map(() => ({ kind: 'task', sid })))
   ];
   const emails = recipients(mail.scope || 'all', items, roster, orgSnap.val());
@@ -113,11 +113,11 @@ async function main() {
       </td></tr>`);
   }
   const dueRows = due.map(t => `<tr><td style="padding:8px 12px;border-bottom:1px solid #EEE;">
-      <span style="font-size:11px;font-weight:800;color:${t.over ? '#DC2626' : '#D97706'};">${t.over ? '기한초과' : Number(t.due.slice(5, 7)) + '/' + Number(t.due.slice(8))}</span>
+      <span style="font-size:11px;font-weight:800;color:${t.over ? '#DC2626' : '#D97706'};">${t.over ? '지남' : Number(t.date.slice(5, 7)) + '/' + Number(t.date.slice(8))}</span>
       <span style="font-size:13px;color:#1C1C1E;margin-left:7px;">${esch(t.text)}</span>
       ${t.who ? `<span style="font-size:11px;color:#888;margin-left:6px;">${esch(t.who)}</span>` : ''}</td></tr>`).join('');
 
-  const subject = `${mail.prefix || '[주간 업무]'} ${Number(monday.slice(5, 7))}/${Number(monday.slice(8))} – ${Number(sunday.slice(5, 7))}/${Number(sunday.slice(8))} 일정 ${occ.length}건 · 기한 ${due.length}건`;
+  const subject = `${mail.prefix || '[주간 업무]'} ${Number(monday.slice(5, 7))}/${Number(monday.slice(8))} – ${Number(sunday.slice(5, 7))}/${Number(sunday.slice(8))} 일정 ${occ.length}건 · 마감 ${due.length}건`;
   const html = `<div style="font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;max-width:560px;margin:0 auto;">
       <div style="background:linear-gradient(135deg,#3E71D2,#2C437C);border-radius:14px 14px 0 0;padding:18px 20px;color:#fff;">
         <div style="font-size:11px;opacity:.8;">H서비스센터 · 주간 업무 요약</div>
@@ -142,7 +142,7 @@ async function main() {
     })
   });
   if (!res.ok) throw new Error(`Brevo 발송 실패 ${res.status}: ${await res.text()}`);
-  console.log(`주간 요약: 일정 ${occ.length}건 · 기한 ${due.length}건 → ${emails.length}명 발송`);
+  console.log(`주간 요약: 일정 ${occ.length}건 · 마감 ${due.length}건 → ${emails.length}명 발송`);
   process.exit(0);
 }
 main().catch(e => { console.error(e); process.exit(1); });
