@@ -2,6 +2,7 @@
    이번 주(월~일) 팀 전체 일정 + 기한 임박·초과 업무를 한 통으로 정리한다.
    Secrets는 remind.mjs와 동일: FIREBASE_SERVICE_ACCOUNT · BREVO_API_KEY · MAIL_FROM */
 import admin from 'firebase-admin';
+import { buildRoster, recipients, hourGate } from './mail-common.mjs';
 
 const DB_URL = 'https://report-c29a1-default-rtdb.asia-southeast1.firebasedatabase.app';
 const p2 = n => String(n).padStart(2, '0');
@@ -42,6 +43,7 @@ async function main() {
   const cfgSnap = await db.ref('calapp/cfg/mail').get();
   const mail = cfgSnap.val() || {};
   if (mail.weeklyOn === false) { console.log('주간 요약이 설정에서 꺼져 있음 — 종료'); process.exit(0); }
+  if (!hourGate(mail)) { console.log(`설정한 발송 시각(${mail.hour}시)이 아님 — 종료`); process.exit(0); }
 
   const today = ds(kstNow());
   /* 설정한 요일에만 보낸다(워크플로는 매일 돌아도 됨) */
@@ -86,12 +88,15 @@ async function main() {
 
   if (!occ.length && !due.length) { console.log('이번 주 일정·기한 없음 — 종료'); process.exit(0); }
 
-  const emails = [...new Set(
-    [...Object.values(usersSnap.val() || {}).filter(u => u && u.role !== 'blocked').map(u => u.email),
-     ...Object.values(people).map(p => p && p.email)]
-      .map(e => String(e || '').trim().toLowerCase())
-      .filter(e => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e))
-  )];
+  /* 수신자 — 설정 범위대로. 팀 공통업무(tasks 의 sid 가 팀 id)는 팀원 전체 */
+  const roster = buildRoster(usersSnap.val(), peopleSnap.val());
+  const items = [
+    ...occ.map(o => ({ kind: 'plan', p: o.p })),
+    ...Object.keys(tasks).flatMap(sid => Object.values(tasks[sid] || {})
+      .filter(it => it && it.due && it.st !== 2 && it.due <= sunday)
+      .map(() => ({ kind: 'task', sid })))
+  ];
+  const emails = recipients(mail.scope || 'all', items, roster, orgSnap.val());
   if (!emails.length) { console.log('수신자 없음 — 종료'); process.exit(0); }
 
   const fmtT = t => { if (!t) return ''; const [h, m] = t.split(':').map(Number); return `${h < 12 ? '오전' : '오후'} ${h % 12 === 0 ? 12 : h % 12}:${p2(m)} · `; };
