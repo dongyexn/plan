@@ -377,7 +377,6 @@ function cleanTask(t){
   if(t.plan)o.plan=String(t.plan).slice(0,2000);
   if(t.site)o.site=String(t.site).slice(0,40);
   if(t.color)o.color=String(t.color).slice(0,16);
-  if(t.due)o.due=String(t.due);
   if(Number.isFinite(Number(t.order)))o.order=Number(t.order);
   if(t.assignees&&Object.keys(t.assignees).length){o.assignees={};Object.keys(t.assignees).forEach(k=>{if(t.assignees[k])o.assignees[k]=1;});}
   if(t.links&&Object.keys(t.links).length){
@@ -445,7 +444,7 @@ const LocalStore={
   _d:null,
   init(){this._d=lsLoad();this._d.plans=this._d.plans||{};this._d.recur=this._d.recur||{};this._d.org=this._d.org||{teams:[],regions:[],sites:[]};this._d.tasks=this._d.tasks||{};this._d.cfg=this._d.cfg||{};this._d.people=this._d.people||{};this._d.prefs=this._d.prefs||{};
     migrateOrg(this._d);
-    const moved=migratePlans(this._d);
+    const moved=migratePlans(this._d)|migrateDue(this._d);
     normOrg(this._d.org);
     if(moved)lsSave(this._d);   /* 옮긴 결과를 저장하지 않으면 새로고침 때마다 되살아난다 */
     S.org=this._d.org;S.tasks=this._d.tasks;S.cfg=this._d.cfg;S.people=this._d.people;S.prefs=this._d.prefs;S.accounts={};},
@@ -505,6 +504,16 @@ const FbStore={
     const olds=[];
     Object.values(plans||{}).forEach(m=>Object.values(m||{}).forEach(p=>{if(p&&p.id)olds.push(p);}));
     Object.values(recur||{}).forEach(p=>{if(p&&p.id)olds.push(p);});
+    /* 기한(due)만 있던 업무도 날짜(date)로 옮긴다 */
+    const dueFix={};
+    allTasks().forEach(({sid,iid,it})=>{
+      if(!it||!it.due)return;
+      dueFix['calapp/tasks/'+sid+'/'+iid]=cleanTask({...it,date:it.date||it.due,due:undefined});
+    });
+    if(Object.keys(dueFix).length){
+      try{await FB.db.ref().update(dueFix);toast('기한을 날짜로 옮겼습니다');}
+      catch(e){console.warn('[FB] 기한 이전 실패',e);}
+    }
     if(!olds.length)return;
     const teamId=((S.org.teams||[])[0]||{}).id||'team';
     const up={};
@@ -569,6 +578,19 @@ function fbErr(e){
 function normOrg(org){org.teams=arr(org.teams);org.regions=arr(org.regions);org.sites=arr(org.sites);}
 /* 구버전(팀→공구→담당자) 데이터를 팀·권역·계정 구조로 1회 이관 */
 /* 예전 구조(plans/recur 분리)를 업무 하나로 합친다 — 한 번만 돌고 원본은 지운다 */
+/* 기한(due)을 날짜(date)로 일원화 — 예전 데이터에 due 만 있으면 date 로 옮긴다 */
+function migrateDue(d){
+  let moved=0;
+  Object.keys(d.tasks||{}).forEach(sid=>{
+    const m=d.tasks[sid]||{};
+    Object.keys(m).forEach(iid=>{
+      const it=m[iid];if(!it||!it.due)return;
+      if(!it.date)it.date=it.due;
+      delete it.due;moved++;
+    });
+  });
+  return moved>0;
+}
 function migratePlans(d){
   const has=(d.plans&&Object.keys(d.plans).length)||(d.recur&&Object.keys(d.recur).length);
   if(!has)return false;
@@ -1190,7 +1212,9 @@ function planEvent(p,date){
     end:span>0?addDays(date,span+1):((p.time&&p.endTime&&!p.end&&p.endTime>p.time)?date+'T'+p.endTime:undefined),
     allDay:!p.time||!!p.end,
     backgroundColor:planColor(p),borderColor:'transparent',textColor:'#fff',
-    classNames:(done?['done']:[]).concat(planOwners(p).length?['hasown']:[]),
+    classNames:(done?['done']:[])
+      .concat(planOwners(p).length?['hasown']:[])
+      .concat((!done&&date<todayStr())?['late']:[]),
     extendedProps:{pid:p.id,occ:date,recur:!!(p.recur&&p.recur.f),
       owncol:planOwners(p).length?ownColor(planOwners(p)[0]):''},
     editable:!(p.recur&&p.recur.f)
@@ -1256,18 +1280,6 @@ function buildEvents(){
     if(it.date){
       if(it.recur&&it.recur.f)recurDates(p,from,to).forEach(d=>evs.push(planEvent(p,d)));
       else evs.push(planEvent(p,it.date));
-    }
-    /* 기한 배지 — 날짜와 별개로 늘 함께 얹는다 */
-    if(it.due&&stOf(it.st)!==2&&it.due>=from&&it.due<=to){
-      const who=subjectName(sid);
-      const col=(it.color&&it.color!=='auto')?it.color:'';
-      const over=it.due<today;
-      evs.push({id:'task:'+sid+':'+iid,title:'⏳ '+String(it.text||'').slice(0,28)+(who?' · '+who:''),
-        start:it.due,allDay:true,display:'block',editable:false,
-        backgroundColor:'transparent',
-        ...(col&&!over?{borderColor:col,textColor:col}:{}),
-        classNames:over?['duev','over']:['duev'],
-        extendedProps:{task:{sid,iid}}});
     }
   });
   return evs;
@@ -1367,20 +1379,6 @@ function dayPlans(ds,raw){
 function isDone(p,occ){return (p.recur&&p.recur.f)?!!(p.doneOn&&p.doneOn[occSrc(p,occ)]):!!p.done;}
 function dayQ(){return String((S.dayQ||'')).trim().toLowerCase();}
 function dayHit(txt){const q=dayQ();return !q||String(txt||'').toLowerCase().indexOf(q)>=0;}
-function dayTasks(ds){
-  const out=[];
-  Object.keys(S.tasks||{}).forEach(sid=>Object.keys(S.tasks[sid]||{}).forEach(iid=>{
-    const it=S.tasks[sid][iid];
-    if(!it||it.due!==ds||stOf(it.st)===2)return;
-    if(!taskOwnOk(sid,it))return;
-    if(!dayHit((it.text||'')+' '+(it.prog||'')+' '+(it.plan||'')+' '+subjName(sid)))return;
-    out.push({sid,iid,it});
-  }));
-  return out.sort((a,b)=>(a.it.createdAt||0)-(b.it.createdAt||0));
-}
-/* 달력의 담당자 필터를 업무에도 똑같이 적용 */
-/* 업무 하나가 필터를 통과하는지 — 소속(sid) 또는 담당자(assignees) 기준.
-   통합 뒤에는 달력·주요업무·일자 패널이 모두 이 판정을 쓴다. */
 function taskOwnOk(sid,it){
   const who=[sid].concat(Object.keys(it.assignees||{}).filter(k=>(it.assignees||{})[k]));
   const rs=regSel();
@@ -1398,10 +1396,8 @@ function rDayHead(){
   const ds=S.selDate,d=toDate(ds),ps=dayPlans(ds),ho=holOf(ds);
   $('#dpDow').textContent=DOW[d.getDay()]+'요일'+(ho?' · '+ho.n:'')+(ds===todayStr()?' · 오늘':'');
   $('#dpDate').textContent=d.getFullYear()+'. '+(d.getMonth()+1)+'. '+d.getDate()+'.';
-  const dt=dayTasks(ds).length;
   const parts=[];
   if(ps.length)parts.push('업무 '+ps.length+'건');
-  if(dt)parts.push('기한 '+dt+'건');
   const rm=ps.filter(x=>x.p.remind).length;
   if(rm)parts.push('리마인드 '+rm+'건');
   $('#dpCnt').textContent=parts.length?parts.join(' · '):'등록된 업무 없음';
@@ -1414,8 +1410,7 @@ function rDay(){
   const editorHTML=S.planEdit?planFormHTML():'';
   const editingId=S.planEdit&&S.planEdit.orig?S.planEdit.orig.id:null;
   const shown=ps.filter(x=>x.p.id!==editingId);   /* 편집 중인 항목은 폼이 대신한다 */
-  const dts=dayTasks(S.selDate);
-  if(!shown.length&&!dts.length&&!editorHTML){
+  if(!shown.length&&!editorHTML){
     box.innerHTML='<div class="dp-empty">'+(dayQ()?'검색 결과가 없습니다.':'이 날짜에 등록된 업무가 없습니다.')+'</div>';return;}
   box.innerHTML=editorHTML+shown.map(({p,occ})=>{
     const done=isDone(p,occ),rep=p.recur&&p.recur.f,span=p.end&&p.end!==p.date;
@@ -1439,23 +1434,7 @@ function rDay(){
         <button class="p-ico${p.remind?' on':''}" data-act="plan.remind" data-pid="${esc(p.id)}" aria-label="리마인드 전환"><svg class="icn"><use href="#i-bell"></use></svg></button>
       </div>
     </div>`;}).join('')
-  /* 주요업무의 기한이 이 날짜인 항목 — 달력 배지와 같은 목록을 여기서도 보여준다 */
-  +(dts.length?'<div class="dp-sec">기한 업무<span class="c">'+dts.length+'</span></div>'
-    +dts.map(({sid,iid,it})=>{
-      const col=(it.color&&it.color!=='auto')?it.color:'';
-      const over=it.due<todayStr();
-      return `<div class="plan dtk" data-act="dtk.go" data-sid="${esc(sid)}" data-iid="${esc(iid)}">
-        <div class="pc" style="background:${esc(col||'var(--lbl3)')}"></div>
-        <div class="plan-main">
-          <div class="plan-t">${esc(it.text||'제목 없음')}</div>
-          <div class="plan-meta">
-            <span class="pm-chip ${over?'over':''}">${over?'기한 초과':'기한'}</span>
-            <span class="pm-chip">${esc(subjName(sid))}</span>
-            <span class="pm-chip st s${stOf(it.st)}">${ST_LBL[stOf(it.st)]}</span>
-          </div>
-        </div>
-        <div class="plan-side"><span class="dtk-go" aria-hidden="true">›</span></div>
-      </div>`;}).join(''):'');
+  ;
   const rec=$('#peRec');
   if(rec)rec.addEventListener('change',()=>{const r=$('#peUntilRow');if(r)r.style.display=rec.value?'':'none';});
 }
@@ -1606,8 +1585,9 @@ function taskCount(sid){
   const keepDone=String(f.st)==='2';
   return Object.keys(m).filter(k=>(keepDone||stOf(m[k].st)!==2)&&tkMatch(sid,k,m[k])).length;
 }
+/* 날짜 배지 — 지났는데 미완료면 D+, 오늘이면 D-DAY */
 function dueInfo(due){
-  if(!due)return{cls:'none',txt:'기한'};
+  if(!due)return{cls:'none',txt:'날짜'};
   const n=daysBetween(todayStr(),due);
   if(n<0)return{cls:'over',txt:'D+'+(-n)};
   if(n===0)return{cls:'over',txt:'D-DAY'};
@@ -1618,7 +1598,7 @@ function siteName(id){const s=(S.org.sites||[]).find(x=>x.id===id);return s?s.na
 function taskItemHTML(sid,iid,it,withSubject){
   const key=sid+'/'+iid;
   if(S.tkEdit===key)return taskFormHTML(sid,iid,it);   /* 수정 중이면 항목 자리에 폼이 들어간다 */
-  const di=dueInfo(it.due),cn=Object.keys(it.comments||{}).length,st=stOf(it.st);
+  const di=dueInfo(it.date),cn=Object.keys(it.comments||{}).length,st=stOf(it.st);
   const asg=Object.keys(it.assignees||{}).map(id=>roster().find(p=>p.id===id)).filter(Boolean);
   const lnk=Object.entries(it.links||{});
   const sn=siteName(it.site);
@@ -1629,22 +1609,26 @@ function taskItemHTML(sid,iid,it,withSubject){
     ${col?'<span class="tkc" style="background:'+esc(col)+'"></span>':''}
     <div class="tk-line">
       <span class="tk-grip" aria-hidden="true">⠿</span>
-      <span class="tk-st s${st}" data-act="tk.st" data-sid="${esc(sid)}" data-iid="${esc(iid)}">${ST_LBL[st]}</span>
       <div class="tk-body" data-act="tk.open" data-sid="${esc(sid)}" data-iid="${esc(iid)}">
-        <div class="tk-ttl">${esc(it.text||'제목 없음')}</div>
-        ${(sn||asg.length||lnk.length||withSubject)?`<div class="tk-meta">
+        <div class="tk-row1">
+          <span class="tk-ttl">${esc(it.text||'제목 없음')}</span>
+          <span class="due-chip ${di.cls}" data-act="tk.due" data-sid="${esc(sid)}" data-iid="${esc(iid)}" title="날짜">${esc(di.txt)}</span>
+          ${fmtSpan(it)?'<span class="tk-time">'+esc(fmtSpan(it))+'</span>':''}
+        </div>
+        <div class="tk-meta">
+          <span class="tk-st s${st}" data-act="tk.st" data-sid="${esc(sid)}" data-iid="${esc(iid)}">${ST_LBL[st]}</span>
           ${withSubject?'<span class="asg">'+esc(subjName(sid))+'</span>':''}
           ${sn?'<span class="site-on">'+esc(sn)+'</span>':''}
           ${asg.map(p=>'<span class="asg"><span class="dot-c" style="background:'+esc(ownColor(p.id))+'"></span>'+esc(p.name)+'</span>').join('')}
           ${lnk.map(([k,l])=>'<a class="lnk" href="'+esc(l.url)+'" target="_blank" rel="noopener">'+esc(l.label||l.url.replace(/^https?:\/\//,'').slice(0,26))+'</a>').join('')}
-        </div>`:''}
+        </div>
       </div>
-      <span class="due-chip ${di.cls}" data-act="tk.due" data-sid="${esc(sid)}" data-iid="${esc(iid)}" title="기한">${esc(di.txt)}</span>
-      <button class="tk-ico${cn?' on':''}" data-act="tk.open" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="코멘트">
-        <svg class="icn"><use href="#i-cmt"></use></svg>${cn?'<span class="cn">'+cn+'</span>':''}</button>
-      <button class="tk-ico" data-act="tk.toPlan" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="일정으로"><svg class="icn"><use href="#i-cal"></use></svg></button>
-      ${open?'<button class="btn bg2 bxs tk-editbtn" data-act="tk.edit" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'">수정</button>':''}
-      <button class="tk-del" data-act="tk.del" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="삭제"><svg class="icn"><use href="#i-close"></use></svg></button>
+      <div class="tk-acts">
+        <button class="tk-ico${cn?' on':''}" data-act="tk.open" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="코멘트">
+          <svg class="icn"><use href="#i-cmt"></use></svg>${cn?'<span class="cn">'+cn+'</span>':''}</button>
+        ${open?'<button class="btn bg2 bxs tk-editbtn" data-act="tk.edit" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'">수정</button>':''}
+        <button class="tk-del" data-act="tk.del" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="삭제"><svg class="icn"><use href="#i-close"></use></svg></button>
+      </div>
     </div>
     ${open?taskDetailHTML(sid,iid,it):''}
   </div>`;
@@ -1732,7 +1716,7 @@ function openItems(sid){
   const f=S.tkF||{};
   const keepDone=String(f.st)==='2';
   return Object.keys(m).filter(iid=>m[iid]&&(keepDone||stOf(m[iid].st)!==2)&&tkMatch(sid,iid,m[iid]))
-    .sort((a,b)=>{const ad=m[a].due||'9999',bd=m[b].due||'9999';
+    .sort((a,b)=>{const ad=m[a].date||'9999',bd=m[b].date||'9999';
       return ad<bd?-1:ad>bd?1:(m[a].createdAt||0)-(m[b].createdAt||0);})
     .map(iid=>({iid,it:m[iid]}));
 }
@@ -1785,7 +1769,7 @@ function regionSectionsHTML(mems,regions){
 }
 /* 작성·수정 공용 폼 — 작성창과 수정 폼이 같은 골격을 쓴다(일관성) */
 function taskFormHTML(sid,iid,cur){
-  const d=cur||{text:'',prog:'',plan:'',site:'',due:'',assignees:{},links:{},color:'',date:'',time:'',endTime:''};
+  const d=cur||{text:'',prog:'',plan:'',site:'',assignees:{},links:{},color:'',date:'',time:'',endTime:''};
   const people=tkSel().mems;
   const sites=(S.org.sites||[]).filter(x=>x.name);
   const col=(d.color&&d.color!=='auto')?d.color:'';
@@ -1821,8 +1805,7 @@ function taskFormHTML(sid,iid,cur){
       <div class="tkf-h">분류</div>
       <div class="tkf-g3">
         <div class="tkf-f"><label for="tnSite">현장</label>${sitePickHTML('tnSite',d.site||'')}</div>
-        <div class="tkf-f"><label for="tnDue">완료 기한</label>
-          <input type="date" class="inp inp-sm" id="tnDue" value="${esc(d.due||'')}"></div>
+
         <div class="tkf-f"><label>색</label>
           ${palHTML('tnPal',col,'<div class="pal-c'+(col?'':' sel')+'" data-c="" style="background:var(--fill2)" title="색 없음"></div>')}</div>
       </div>
@@ -1863,7 +1846,7 @@ function taskFormSave(sid,iid){
   const cSel=$('#tnPal .pal-c.sel');
   store.putTask(sid,id,{...(cur||{st:0,createdAt:Date.now()}),
     text:t,prog:($('#tnProg').value||'').trim(),plan:($('#tnPlan').value||'').trim(),
-    site:$('#tnSite').value||'',due:$('#tnDue').value||'',
+    site:$('#tnSite').value||'',
     date:($('#tnDate')&&$('#tnDate').value)||'',
     time:($('#tnTime')&&$('#tnTime').value)||'',
     endTime:($('#tnEndTime')&&$('#tnEndTime').value)||'',
@@ -1923,7 +1906,7 @@ function reorderTask(sid,iid,targetIid,after){
 }
 /* 업무 검색·필터 — 제목·경과·계획·현장·담당자까지 훑고, 상태·기한으로 좁힌다 */
 const TK_ST=[['','전체'],['0','예정'],['1','진행'],['2','완료'],['3','보류']];
-const TK_DUE=[['','기한 전체'],['over','기한 초과'],['soon','7일 내'],['none','기한 없음']];
+const TK_DUE=[['','날짜 전체'],['over','지난 날짜'],['soon','7일 내'],['none','날짜 없음']];
 function tkFilterHTML(){
   const f=S.tkF||{};
   const on=!!(String(f.q||'').trim()||f.st||f.due);
@@ -1955,7 +1938,7 @@ function tkMatch(sid,iid,it){
     if(String(stOf(it.st))!==String(f.st))return false;
   }
   if(f.due){
-    const d=it.due||'';
+    const d=it.date||'';
     if(f.due==='none'&&d)return false;
     if(f.due==='over'&&(!d||d>=todayStr()))return false;
     if(f.due==='soon'){
@@ -2109,7 +2092,7 @@ function rNq(){
   box.innerHTML=
     (r.tasks.length?'<div class="nq-g">업무 '+r.tasks.length+'</div>'+r.tasks.slice(0,20).map(({sid,iid,it})=>
       item('i-tasks',nqMark(it.text,q),
-        subjName(sid)+(it.date?' · '+it.date+(it.end&&it.end!==it.date?'~'+it.end:''):'')+(it.due?' · 기한 '+it.due:''),
+        subjName(sid)+(it.date?' · '+it.date+(it.end&&it.end!==it.date?'~'+it.end:''):''),
         'data-act="nq.task" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"')).join(''):'')
     +(r.cmts.length?'<div class="nq-g">코멘트 '+r.cmts.length+'</div>'+r.cmts.slice(0,20).map(({sid,iid,it,c})=>
       item('i-cmt',nqMark(c.text,q),(c.by||'')+' · '+(it.text||''),
@@ -2130,7 +2113,7 @@ function mineTasks(){
     });
   });
   return out.sort((a,b)=>{
-    const ad=a.it.due||'9999',bd=b.it.due||'9999';
+    const ad=a.it.date||'9999',bd=b.it.date||'9999';
     return ad<bd?-1:ad>bd?1:(a.it.createdAt||0)-(b.it.createdAt||0);});
 }
 function minePlans(days){
@@ -2166,7 +2149,7 @@ function rMine(){
     +`<div class="card">
         <div class="mine-h"><div class="bar"></div><b>내 주요업무</b><span class="c">${tasks.length}</span></div>
         ${tasks.length?tasks.map(({sid,iid,it})=>{
-          const di=it.due?dueInfo(it.due):null;
+          const di=it.date?dueInfo(it.date):null;
           return `<div class="mine-row ${di?di.cls:''}" data-act="mine.task" data-sid="${esc(sid)}" data-iid="${esc(iid)}">
             <span class="d">${di?esc(di.txt):'—'}</span>
             <span class="t">${esc(it.text||'제목 없음')}</span>
@@ -2422,7 +2405,7 @@ function mailItems(kind){
     dayPlans(d,true).forEach(({p,occ})=>{if(!isDone(p,occ))out.push({kind:'plan',p,date:d});});
   Object.keys(S.tasks||{}).forEach(sid=>Object.keys(S.tasks[sid]||{}).forEach(iid=>{
     const it=S.tasks[sid][iid];
-    if(it&&it.due&&stOf(it.st)!==2&&it.due<=sun)out.push({kind:'task',sid,iid,it,over:it.due<today});
+    if(it&&it.date&&stOf(it.st)!==2&&it.date<=sun)out.push({kind:'task',sid,iid,it,over:it.date<today});
   }));
   return out;
 }
@@ -2448,7 +2431,7 @@ function mailHTML(kind,items,m){
       <div style="font-size:13.5px;font-weight:700;color:#1C1C1E;">${esc(date.slice(5).replace('-','/'))} · ${fmtSpan(p)?esc(fmtSpan(p))+' · ':''}${esc(p.title)}</div></td></tr>`).join('')
       ||'<tr><td style="padding:10px 12px;font-size:12.5px;color:#999;border-bottom:1px solid #EEE;">등록된 일정이 없습니다.</td></tr>')
     +sec('기한 임박 · 초과 업무',dues.map(({sid,it,over})=>`<tr><td style="padding:8px 12px;border-bottom:1px solid #EEE;">
-      <div style="font-size:13.5px;font-weight:700;color:${over?'#DC2626':'#1C1C1E'};">${esc(it.text)} <span style="font-weight:600;font-size:11.5px;color:#8E8E93;">${esc(subjName(sid))} · ${esc(it.due)}${over?' 초과':''}</span></div></td></tr>`).join('')
+      <div style="font-size:13.5px;font-weight:700;color:${over?'#DC2626':'#1C1C1E'};">${esc(it.text)} <span style="font-weight:600;font-size:11.5px;color:#8E8E93;">${esc(subjName(sid))} · ${esc(it.date)}${over?' 지남':''}</span></div></td></tr>`).join('')
       ||'<tr><td style="padding:10px 12px;font-size:12.5px;color:#999;">기한이 임박한 업무가 없습니다.</td></tr>');
   return `<div style="max-width:520px;">${head('주간 요약',(d.getMonth()+1)+'월 ' + d.getDate() + '일 주간 업무 요약')}${intro}
     <table style="width:100%;border-collapse:collapse;background:#fff;border:1px solid #EEE;border-top:none;border-radius:0 0 14px 14px;">${rows}</table></div>`;
@@ -2704,16 +2687,16 @@ const ACT={
   'tk.fold':el=>{const sid=el.dataset.sid;S.foldOpen[sid]=!S.foldOpen[sid];rTasks();},
   'tk.due':el=>{
     const sid=el.dataset.sid,iid=el.dataset.iid,cur=(S.tasks[sid]||{})[iid];if(!cur)return;
-    openModal('기한 설정',`<div class="frow"><label>완료 기한</label><input type="date" class="inp" id="dueVal" value="${esc(cur.due||'')}"></div>`,
-      (cur.due?'<button class="btn bg2 bsm" data-act="tk.dueClear" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" style="margin-right:auto">기한 해제</button>':'')
+    openModal('날짜 설정',`<div class="frow"><label>날짜</label><input type="date" class="inp" id="dueVal" value="${esc(cur.date||'')}"></div>`,
+      (cur.date?'<button class="btn bg2 bsm" data-act="tk.dueClear" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" style="margin-right:auto">날짜 지우기</button>':'')
       +'<button class="btn bg2 bsm" data-act="modal.close">취소</button><button class="btn bp bsm" data-act="modal.ok">저장</button>');
     MODAL_CB={type:'due',ok:()=>{
       const v=$('#dueVal').value||'';
-      store.putTask(sid,iid,{...cur,due:v,updatedAt:Date.now()});
-      closeModal();if(!S.live)rTasks();refetchCal();}};
+      store.putTask(sid,iid,{...cur,date:v,updatedAt:Date.now()});
+      closeModal();if(!S.live){rTasks();rDay();}refetchCal();}};
   },
   'tk.dueClear':el=>{const sid=el.dataset.sid,iid=el.dataset.iid,cur=(S.tasks[sid]||{})[iid];if(!cur)return;
-    store.putTask(sid,iid,{...cur,due:'',updatedAt:Date.now()});closeModal();if(!S.live)rTasks();refetchCal();},
+    store.putTask(sid,iid,{...cur,date:'',updatedAt:Date.now()});closeModal();if(!S.live){rTasks();rDay();}refetchCal();},
   'tk.cmtRe':el=>{S.cmtRe=el.dataset.sid+'/'+el.dataset.iid+'/'+el.dataset.cid;rTasks();
     setTimeout(()=>{const t=document.querySelector('.th-new.re .th-in');if(t)t.focus();},40);},
   'tk.cmtReCancel':()=>{S.cmtRe='';rTasks();},
@@ -2741,7 +2724,7 @@ const ACT={
   'tk.toPlan':el=>{
     /* 통합 뒤에는 같은 업무 — 날짜만 정해 달력에 올린다 */
     const sid=el.dataset.sid,iid=el.dataset.iid,cur=(S.tasks[sid]||{})[iid];if(!cur)return;
-    const when=cur.date||cur.due||todayStr();
+    const when=cur.date||todayStr();
     go('calendar');selDate(when);
     setTimeout(()=>{
       const p=taskAsPlan(sid,iid,{...cur,date:cur.date||when});
@@ -2929,7 +2912,6 @@ const ACT={
       .then(()=>toast(who+' → '+roleLabel(v)))
       .catch(e=>{fbErr(e);rOrg();});
   },
-  'dtk.go':el=>gotoTask(el.dataset.sid,el.dataset.iid),
   'day.qclear':()=>{const i=$('#dpQ');if(i){i.value='';}S.dayQ='';dpSrchMark();rDay();},
   'cal.pick':()=>openYMPick(),
   'cal.pickY':el=>{const c=CAL?CAL.view.currentStart:new Date();

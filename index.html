@@ -186,15 +186,15 @@ select.inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-ima
 #fcal{height:100%;--fc-border-color:var(--sep);--fc-today-bg-color:transparent;--fc-page-bg-color:var(--bg2);--fc-neutral-bg-color:var(--surf2);font-size:12.5px;}
 #fcal .fc-theme-standard td,#fcal .fc-theme-standard th{border-color:var(--sep);}
 /* 가로줄(주 구분)을 세로줄보다 한 단계 진하게 — 주 단위가 먼저 읽힌다 */
-#fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-top:2px solid rgba(60,60,67,.18);}
+#fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-top:2px solid rgba(60,60,67,.155);}
 #fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table tr:first-child td{border-top-width:0;}
-#fcal .fc-dayGridMonth-view .fc-col-header{border-bottom:2px solid rgba(60,60,67,.18);}
+#fcal .fc-dayGridMonth-view .fc-col-header{border-bottom:2px solid rgba(60,60,67,.155);}
 /* 세로줄은 반대로 더 옅게 — 가로가 먼저 읽히도록 대비를 벌린다 */
 #fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-left-color:rgba(60,60,67,.08);border-right-color:rgba(60,60,67,.08);}
 html.dark #fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-top-color:rgba(255,255,255,.15);border-left-color:rgba(255,255,255,.07);border-right-color:rgba(255,255,255,.07);}
 html.dark #fcal .fc-dayGridMonth-view .fc-col-header{border-bottom-color:rgba(255,255,255,.15);}
 #fcal .fc-scrollgrid{border-radius:var(--rmd);overflow:hidden;border-color:var(--sep);}
-#fcal .fc-col-header-cell{background:var(--surf2);padding:9px 0;}
+#fcal .fc-col-header-cell{background:var(--surf3);padding:9px 0;}
 #fcal .fc-col-header-cell-cushion{font-size:13px;font-weight:700;color:var(--lbl2);text-decoration:none;letter-spacing:.02em;}
 #fcal .fc-day-sun .fc-col-header-cell-cushion{color:var(--rd);}
 #fcal .fc-day-sat .fc-col-header-cell-cushion{color:var(--bt1);}
@@ -225,19 +225,18 @@ html.dark #fcal .fc-day-today .dnum{color:var(--b300)!important;}
 /* ① 오늘 — 셀에 옅은 배경, 숫자는 원형으로 */
 #fcal .fc-dayGridMonth-view .fc-day-today{background:rgba(83,140,222,.07);}
 #fcal .fc-dayGridMonth-view .fc-day-today .dnum{width:23px;height:23px;border-radius:50%;
-  background:linear-gradient(135deg,var(--b500),var(--b800));color:#fff!important;
+  background:var(--b600);color:#fff!important;
   display:inline-flex;align-items:center;justify-content:center;font-weight:800;}
 html.dark #fcal .fc-dayGridMonth-view .fc-day-today .dnum{color:#fff!important;}
 /* ④ 주말·공휴일 — 아주 옅은 톤으로 주 단위 리듬을 준다 */
-#fcal .fc-dayGridMonth-view .fc-day-sun,
-#fcal .fc-dayGridMonth-view .fc-day-sat{background:rgba(120,120,128,.05);}
-#fcal .fc-dayGridMonth-view .fc-daygrid-day.hol{background:rgba(255,59,48,.055);}
-html.dark #fcal .fc-dayGridMonth-view .fc-day-sun,
-html.dark #fcal .fc-dayGridMonth-view .fc-day-sat{background:rgba(255,255,255,.035);}
+#fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sun,
+#fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sat{background:rgba(120,120,128,.032);}
+#fcal .fc-dayGridMonth-view .fc-daygrid-day.hol{background:rgba(255,59,48,.038);}
+html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sun,
+html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sat{background:rgba(255,255,255,.028);}
 html.dark #fcal .fc-dayGridMonth-view .fc-daygrid-day.hol{background:rgba(255,59,48,.09);}
 /* 오늘·선택일이 주말 배경보다 우선 */
-#fcal .fc-dayGridMonth-view .fc-day-today,
-#fcal .fc-dayGridMonth-view .fc-daygrid-day.sel-day{background-color:rgba(83,140,222,.09);}
+#fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-today{background-color:rgba(83,140,222,.09);}
 #fcal .fc-dayGridMonth-view .fc-daygrid-day.sel-day{background-color:rgba(83,140,222,.15);}
 #fcal .fc-event{border:none;border-radius:6px;padding:1.5px 6px;font-size:11px;font-weight:600;cursor:pointer;margin:1px 3px;box-shadow:none;}
 /* ⑤ 칩 왼쪽에 담당자 색 점 */
@@ -285,14 +284,6 @@ html.dark #fcal .fc-dayGridMonth-view .fc-daygrid-day.hol{background:rgba(255,59
 .dp-body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:8px;flex:1;min-height:0;overflow-y:auto;}
 .dp-body::-webkit-scrollbar{width:4px;}
 .dp-body::-webkit-scrollbar-thumb{background:var(--sepo);border-radius:99px;}
-.dp-sec{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;color:var(--lbl3);letter-spacing:.04em;margin:6px 0 2px;}
-.dp-sec::after{content:'';flex:1;height:1px;background:var(--sep);}
-.dp-sec .c{font-weight:700;color:var(--lbl2);background:var(--fill);border-radius:99px;padding:1px 7px;font-size:10.5px;}
-.plan.dtk{cursor:pointer;}
-.plan.dtk .plan-main{cursor:pointer;}
-.plan.dtk .pm-chip.over{background:var(--tint-rd);color:var(--rd);}
-.plan.dtk .pm-chip.st{font-weight:700;}
-.dtk-go{font-size:17px;color:var(--lbl3);line-height:1;padding:0 2px;}
 .dp-empty{font-size:12.5px;color:var(--lbl3);text-align:center;padding:22px 0 14px;}
 .plan{border:1px solid var(--sep);border-radius:var(--rlg);padding:11px 13px;display:flex;gap:10px;align-items:flex-start;background:var(--bg2);transition:border-color .15s;position:relative;}
 .plan:hover{border-color:var(--b300);}
@@ -357,7 +348,10 @@ html.dark #fcal .fc-dayGridMonth-view .fc-daygrid-day.hol{background:rgba(255,59
 #fcal .fc-timegrid-event{padding:2px 5px;font-size:11.5px;border-radius:6px;}
 #fcal .fc-timegrid-event .fc-event-time{display:block;font-size:10.5px;opacity:.85;}
 #fcal .fc-event.duev{background:transparent!important;border:1.5px dashed var(--lbl3);color:var(--lbl2);font-weight:600;}
-#fcal .fc-event.duev.over{border-color:var(--rd);color:var(--rd);box-shadow:inset 3px 0 0 var(--rd);padding-left:8px;}
+/* 날짜가 지났는데 미완료 — 좌측에 굵은 띠 */
+#fcal .fc-event.late{box-shadow:inset 3px 0 0 rgba(0,0,0,.34);padding-left:8px;}
+#fcal .fc-event.late .fc-event-title::after{content:'지남';margin-left:5px;font-size:9.5px;font-weight:800;
+  background:rgba(255,255,255,.28);border-radius:99px;padding:0 5px;}
 
 /* 코멘트 답글 */
 .th-i.re{margin-left:34px;}
@@ -472,26 +466,33 @@ html.dark #fcal .fc-dayGridMonth-view .fc-daygrid-day.hol{background:rgba(255,59
 .tk-item{border-radius:var(--rmd);background:var(--surf2);transition:background .12s;position:relative;}
 .tk-item:hover{background:var(--surf3);}
 .tk-item.open{background:var(--bg2);border:1px solid var(--b200);}
-.tk-line{display:flex;align-items:center;gap:10px;padding:11px 13px;}
-.tk-st{flex-shrink:0;font-size:11.5px;font-weight:800;padding:4px 10px;border-radius:var(--rp);cursor:pointer;user-select:none;white-space:nowrap;transition:transform .1s;}
+.tk-line{display:flex;align-items:flex-start;gap:8px;padding:11px 13px;}
+.tk-st{flex-shrink:0;font-size:11px;font-weight:800;padding:1.5px 9px;border-radius:var(--rp);cursor:pointer;user-select:none;white-space:nowrap;transition:transform .1s;}
 .tk-st:hover{transform:scale(1.06);}
 .tk-st.s0{background:var(--fill2);color:var(--lbl2);}
 .tk-st.s1{background:var(--b100);color:var(--bt1);}
 .tk-st.s2{background:var(--tint-gn);color:var(--gn);}
 .tk-st.s3{background:var(--tint-am);color:var(--am);}
-.tk-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;cursor:pointer;}
-.tk-ttl{font-size:14px;font-weight:600;color:var(--lbl);line-height:1.45;word-break:break-all;}
+.tk-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;cursor:pointer;}
+/* 첫 줄 — 제목 뒤에 날짜·시각이 바로 붙는다(넓은 화면에서 벌어지지 않게) */
+.tk-row1{display:flex;align-items:center;flex-wrap:wrap;gap:7px;min-width:0;}
+.tk-ttl{font-size:14px;font-weight:600;color:var(--lbl);line-height:1.4;word-break:break-all;min-width:0;}
+.tk-time{font-size:11.5px;font-weight:600;color:var(--lbl3);white-space:nowrap;}
+/* 둘째 줄 — 상태·현장·담당자를 한 줄에 모은다 */
+.tk-meta .tk-st{margin-right:1px;}
 .tk-item.s2 .tk-ttl{color:var(--lbl3);text-decoration:line-through;}
 .tk-meta{display:flex;flex-wrap:wrap;align-items:center;gap:5px;}
 .tk-meta .asg{display:inline-flex;align-items:center;gap:4px;padding:1.5px 9px;border-radius:var(--rp);background:var(--fill);font-size:11px;font-weight:600;color:var(--lbl2);}
 .tk-meta .lnk{display:inline-flex;align-items:center;gap:3px;padding:1.5px 9px;border-radius:var(--rp);background:var(--b50);border:1px solid var(--b200);font-size:11px;font-weight:600;color:var(--bt1);text-decoration:none;}
 .tk-meta .lnk:hover{background:var(--b100);}
-.due-chip{flex-shrink:0;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:var(--rp);background:var(--fill);color:var(--lbl2);white-space:nowrap;cursor:pointer;}
+.due-chip{flex-shrink:0;font-size:11px;font-weight:700;padding:2px 8px;border-radius:var(--rp);background:var(--fill);color:var(--lbl2);white-space:nowrap;cursor:pointer;}
 .due-chip.soon{background:var(--tint-am);color:var(--am);}
 .due-chip.over{background:var(--tint-rd);color:var(--rd);}
 .due-chip.none{opacity:0;transition:opacity .13s;}
 .tk-item:hover .due-chip.none{opacity:1;}
-.tk-grip{flex-shrink:0;color:var(--lbl3);font-size:13px;cursor:grab;opacity:0;transition:opacity .12s;user-select:none;}
+.tk-grip{flex-shrink:0;color:var(--lbl3);font-size:13px;cursor:grab;opacity:0;transition:opacity .12s;user-select:none;line-height:1.5;}
+/* 우측 조작 묶음 — 첫 줄 높이에 맞춰 붙는다 */
+.tk-acts{flex-shrink:0;display:flex;align-items:center;gap:2px;}
 .tk-item:hover .tk-grip{opacity:.7;}
 .tk-item.dragging{opacity:.4;}
 .tk-item.drop-above::before,.tk-item.drop-below::after{content:'';position:absolute;left:8px;right:8px;height:2px;background:var(--b500);border-radius:2px;z-index:5;}
