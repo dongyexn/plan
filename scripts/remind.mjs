@@ -7,6 +7,7 @@
    - MAIL_FROM                : 발신 주소 (Brevo에서 인증한 주소, 예: no-reply@…)
 */
 import admin from 'firebase-admin';
+import { buildRoster, recipients, hourGate } from './mail-common.mjs';
 
 const DB_URL = 'https://report-c29a1-default-rtdb.asia-southeast1.firebasedatabase.app';
 
@@ -29,12 +30,14 @@ async function main() {
   const cfgSnap = await db.ref('calapp/cfg/mail').get();
   const mail = cfgSnap.val() || {};
   if (mail.dailyOn === false) { console.log('당일 리마인드가 설정에서 꺼져 있음 — 종료'); process.exit(0); }
+  if (!hourGate(mail)) { console.log(`설정한 발송 시각(${mail.hour}시)이 아님 — 종료`); process.exit(0); }
 
-  const [plansSnap, recurSnap, peopleSnap, usersSnap] = await Promise.all([
+  const [plansSnap, recurSnap, peopleSnap, usersSnap, orgSnap] = await Promise.all([
     db.ref(`calapp/plans/${ym}`).get(),
     db.ref('calapp/recur').get(),
     db.ref('calapp/people').get(),
-    db.ref('users').get()
+    db.ref('users').get(),
+    db.ref('calapp/org').get()
   ]);
 
   /* 오늘 발생하는 반복 일정도 포함 — 앱과 같은 규칙으로 전개 */
@@ -64,14 +67,9 @@ async function main() {
 
   if (!plans.length) { console.log(`[${today}] 리마인드 대상 플랜 없음 — 종료`); process.exit(0); }
 
-  /* 수신자 = 로그인 계정(users, 차단 제외) + 설정에서 직접 추가한 담당자(calapp/people) */
-  const people = peopleSnap.val() || {}, users = usersSnap.val() || {};
-  const emails = [...new Set(
-    [...Object.values(users).filter(u => u && u.role !== 'blocked').map(u => u.email),
-     ...Object.values(people).map(p => p && p.email)]
-      .map(e => String(e || '').trim().toLowerCase())
-      .filter(e => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e))
-  )];
+  /* 수신자 — 설정한 범위대로. 팀 공통업무는 팀원 전체(mail-common.mjs) */
+  const roster = buildRoster(usersSnap.val(), peopleSnap.val());
+  const emails = recipients(mail.scope || 'all', plans.map(p => ({ kind: 'plan', p })), roster, orgSnap.val());
   if (!emails.length) { console.log('수신자 이메일 없음 — 종료'); process.exit(0); }
 
   const fmtT = t => {
