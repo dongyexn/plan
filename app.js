@@ -16,21 +16,19 @@ const GUIDE_HTML=`<div class="gd">
 <p>달력에서 날짜를 누르면 오른쪽에 그날의 업무가 나옵니다. <b>업무 추가</b>를 누르면 오른쪽 패널 안에서 바로 작성·수정하고(따로 창이 뜨지 않습니다), 날짜를 가로로 끌면 여러 날에 걸친 업무가 됩니다.</p>
 <ul>
 <li>반복: 매주 · 격주 · 매월 · 매년. 반복 업무는 회차별로 완료 표시하며, 삭제할 때 이 날짜만 뺄지 전체를 지울지 고릅니다.</li>
-<li>담당자를 지정하면 담당자별 색으로 표시되고, 권역 칩과 담당자 선택으로 좁혀 볼 수 있습니다.</li>
+<li>담당자를 한 명 지정하면 그 사람 색으로 표시되고, 권역 칩과 담당자 선택으로 좁혀 볼 수 있습니다.</li>
 <li>자주 쓰는 조합은 <b>+ 필터 저장</b>으로 두면 한 번에 불러옵니다(내 계정에만 보임).</li>
 <li>종 아이콘을 켜면 그날 아침 팀 전체에 리마인드 메일이 갑니다.</li>
-<li>기한이 있는 미완료 업무는 점선 배지로 달력에 함께 표시됩니다.</li>
 </ul>
 <h4>주요업무 현황</h4>
 <p>왼쪽에서 대상을 고르면 오른쪽에 그 업무가 나옵니다. <b>팀 전체 업무</b>(공통 업무와 모든 권역·담당자 업무를 한 화면에), <b>공통 업무</b>, <b>권역</b>, 개별 <b>담당자</b>를 고를 수 있습니다.</p>
 <ul>
-<li><b>업무 추가</b>를 누르면 목록 위에 작성창이 열립니다. 제목과 함께 <b>진행경과</b>·<b>처리계획</b>을 나눠 적고, 현장·기한·색·담당자(여러 명)·링크를 지정합니다.</li>
+<li><b>업무 추가</b>를 누르면 목록 위에 작성창이 열립니다. 제목과 함께 <b>진행경과</b>·<b>처리계획</b>을 나눠 적고, 현장·날짜·색·담당자·링크를 지정합니다.</li>
 <li>항목을 누르면 스레드처럼 펼쳐집니다. 진행경과·처리계획은 그 자리에서 고치고, 아래 스레드에 코멘트를 남깁니다. 나머지는 오른쪽 위 <b>수정</b>을 누르면 작성창과 같은 폼이 그 자리에 열립니다.</li>
 <li>왼쪽의 ⠿ 를 잡고 끌면 순서가 바뀝니다.</li>
 <li>코멘트에 <code>@이름</code> 을 쓰면 그 사람에게 알림이 가고, 사이드바 배지로 표시됩니다.</li>
 <li>상태 칩을 누르면 예정 → 진행 → 완료 → 보류 순으로 바뀝니다.</li>
 <li>기한을 넣으면 D-표기가 붙고 임박·초과가 색으로 구분됩니다.</li>
-<li>말풍선으로 진행 상황을 남기고, 달력 아이콘으로 그 업무를 일정에 올릴 수 있습니다.</li>
 <li>완료된 지 7일이 지난 항목은 자동으로 접힙니다.</li>
 </ul>
 <h4>조직 관리 (관리자)</h4>
@@ -180,41 +178,12 @@ document.addEventListener('input',e=>{
 });
 
 /* 고른 뒤 드롭다운 목록과 '지정 안 함' 문구를 다시 맞춘다 */
-function pkSync(box){
-  if(!box)return;
-  const chips=box.querySelector('.pk-chips');
-  const sel=box.querySelector('.pk-sel');
-  const have=[...box.querySelectorAll('.pk-chip')].map(c=>c.dataset.id);
-  const none=chips.querySelector('.site-none');
-  if(have.length&&none)none.remove();
-  if(!have.length&&!none)chips.innerHTML='<span class="site-none">지정 안 함</span>';
-  if(sel){
-    const people=roster();
-    sel.innerHTML='<option value="">'+(people.length?'담당자 추가…':'담당자가 없습니다')+'</option>'
-      +people.filter(p=>!have.includes(p.id))
-        .map(p=>'<option value="'+esc(p.id)+'">'+esc(p.name)+'</option>').join('');
-    sel.value='';
-  }
-}
-/* 담당자·현장 선택 — 업무 일정과 주요업무가 같은 컴포넌트를 쓴다.
-   드롭다운에서 고르면 아래에 칩으로 쌓이고, 칩의 x 로 뺀다. */
-function ownPickHTML(id,picked,people){
-  const sel=Object.keys(picked||{}).filter(k=>picked[k]);
-  const rest=people.filter(p=>!sel.includes(p.id));
-  return `<div class="pk" id="${id}">
-    <select class="inp inp-sm pk-sel" data-act="pk.add" aria-label="담당자 추가">
-      <option value="">${people.length?'담당자 추가…':'담당자가 없습니다'}</option>
-      ${rest.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.name)+'</option>').join('')}
-    </select>
-    <div class="pk-chips">
-      ${sel.map(idv=>{const p=people.find(x=>x.id===idv);
-        return '<span class="pk-chip" data-id="'+esc(idv)+'">'
-          +'<span class="dot-c" style="background:'+esc(ownColor(idv))+'"></span>'
-          +esc((p&&p.name)||ownName(idv)||'담당자')
-          +'<button class="pk-x" data-act="pk.del" data-id="'+esc(idv)+'" aria-label="빼기"><svg class="icn"><use href="#i-close"></use></svg></button></span>';}).join('')
-        ||'<span class="site-none">지정 안 함</span>'}
-    </div>
-  </div>`;
+/* 담당자 단일 지정 select — 53차에 다중 칩(ownPickHTML)에서 단순화 */
+function ownSelHTML(id,cur,people){
+  return `<select class="inp inp-sm" id="${id}" aria-label="담당자">
+    <option value="">지정 안 함 — 팀 공통</option>
+    ${people.map(p=>'<option value="'+esc(p.id)+'"'+(p.id===cur?' selected':'')+'>'+esc(p.name)+'</option>').join('')}
+  </select>`;
 }
 function sitePickHTML(id,cur){
   const sites=(S.org.sites||[]).filter(x=>x.name);
@@ -303,8 +272,8 @@ function addMonths(ds,n){const d=toDate(ds);const day=d.getDate();d.setDate(1);d
   const last=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();d.setDate(Math.min(day,last));return dstr(d);}
 function daysBetween(a,b){return Math.round((toDate(b)-toDate(a))/86400000);}
 const REC_LBL={'':'반복 없음',w:'매주','2w':'격주',m:'매월',y:'매년'};
-function fmtSpan(p){const a=p&&p.time?fmtTime(p.time):'';const b=p&&p.endTime?fmtTime(p.endTime):'';
-  return a?(b?a+'–'+b:a):'';}
+/* 53차: 시각은 시작 하나만 쓴다 — endTime 은 폐기(옛 데이터는 무시) */
+function fmtSpan(p){return p&&p.time?fmtTime(p.time):'';}
 function fmtTime(t){if(!t)return'';const[h,m]=t.split(':').map(Number);const ap=h<12?'오전':'오후';const hh=h%12===0?12:h%12;return ap+' '+hh+':'+pad(m);}
 function relTime(ts){if(!ts)return'';const d=Date.now()-ts;const m=Math.floor(d/6e4);if(m<1)return'방금';if(m<60)return m+'분 전';const h=Math.floor(m/60);if(h<24)return h+'시간 전';return Math.floor(h/24)+'일 전';}
 
@@ -319,7 +288,6 @@ const S={
   cfg:{},            // {defectUrl}
   tk:{t:null,r:'*',m:null},   // 주요업무 현황 탭 선택(팀/권역/담당자)
   filter:{own:'*',reg:'*'},  // 달력 필터: 담당자 · 권역
-  calView:'dayGridMonth',
   foldOpen:{},       // 완료 항목 접힘 해제(subjectId별)
   tkNew:null,        // 인라인 작성창이 열린 대상
   tkEdit:null,       // 인라인 수정 중인 업무 'sid/iid'
@@ -364,7 +332,6 @@ function cleanTask(t){
   if(t.date)o.date=String(t.date).slice(0,10);
   if(t.end)o.end=String(t.end).slice(0,10);
   if(t.time)o.time=String(t.time).slice(0,5);
-  if(t.endTime)o.endTime=String(t.endTime).slice(0,5);
   if(t.remind)o.remind=true;
   const rf=t.recur&&t.recur.f?String(t.recur.f):'';
   if(rf){
@@ -541,7 +508,7 @@ const FbStore={
       const owns=Object.keys(p.owners||{}).filter(k=>p.owners[k]);
       const sid=owns[0]||teamId;
       const it={text:String(p.title||''),prog:String(p.body||''),
-        date:String(p.date||''),end:String(p.end||''),time:String(p.time||''),endTime:String(p.endTime||''),
+        date:String(p.date||''),end:String(p.end||''),time:String(p.time||''),
         site:String(p.site||''),color:String(p.color||''),remind:!!p.remind,
         st:p.done?2:0,assignees:(()=>{const o={};owns.forEach(k=>{o[k]=1;});return o;})(),
         createdAt:Number(p.createdAt)||Date.now(),updatedAt:Date.now()};
@@ -625,7 +592,7 @@ function migratePlans(d){
     d.tasks[sid]=d.tasks[sid]||{};
     if(d.tasks[sid][p.id])return;                 /* 이미 옮겨졌으면 건너뛴다 */
     const it={text:String(p.title||''),prog:String(p.body||''),
-      date:String(p.date||''),end:String(p.end||''),time:String(p.time||''),endTime:String(p.endTime||''),
+      date:String(p.date||''),end:String(p.end||''),time:String(p.time||''),
       site:String(p.site||''),color:String(p.color||''),remind:!!p.remind,
       st:p.done?2:0,assignees:(()=>{const o={};owns.forEach(k=>{o[k]=1;});return o;})(),
       createdAt:Number(p.createdAt)||Date.now(),updatedAt:Date.now()};
@@ -1122,7 +1089,7 @@ let CAL=null,MOBILE_CAL=null;
 function calInit(){
   MOBILE_CAL=isNarrow();
   CAL=new FullCalendar.Calendar($('#fcal'),{
-    initialView:S.calView,
+    initialView:'dayGridMonth',
     initialDate:S.selDate,
     firstDay:0,fixedWeekCount:false,showNonCurrentDates:true,
     /* 시간은 제목 안의 fmtSpan 이 담당 — FC 기본 표기("10a")를 켜 두면 이중으로 찍힌다 */
@@ -1131,13 +1098,7 @@ function calInit(){
     moreLinkContent:a=>'+'+a.num,
     dayHeaderContent:a=>DOW[a.date.getDay()],
     dayCellClassNames:a=>{const o=holOf(dstr(a.date));return o&&o.h?['hol']:[];},
-    allDayText:'종일',
-    /* FullCalendar 로케일 파일을 따로 싣지 않으므로 시간축은 직접 한글로 그린다 */
-    slotLabelContent:a=>{const h=a.date.getHours();return{html:(h<12?'오전':'오후')+' '+((h%12)||12)+'시'};},
-    slotDuration:'01:00:00',
-    /* 날짜 칸의 공휴일 표기는 월간 뷰 전용 — 주간 뷰의 종일 칸에 끼어들면 숫자가 두 번 찍힌다 */
     dayCellContent:a=>{
-      if(a.view&&a.view.type!=='dayGridMonth')return{html:'<span class="dnum">'+a.date.getDate()+'</span>'};
       const ds=dstr(a.date),o=holOf(ds);
       return{html:(o?'<span class="dhol'+(o.h?'':' anv')+'">'+esc(o.n)+'</span>':'')+'<span class="dnum">'+a.date.getDate()+'</span>'};},
     events:(info,ok)=>ok(buildEvents()),
@@ -1159,38 +1120,10 @@ function calInit(){
     /* 하루만 클릭한 건 날짜 선택으로만 처리하고(dateClick), 이틀 이상 끌었을 때만 기간 업무 작성 */
     select:info=>{
       const a=info.startStr.slice(0,10);
-      /* 주간 시간칸을 끈 경우 — 그 시각으로 업무를 만든다(이전엔 그냥 선택만 풀렸다) */
-      if(!info.allDay){
-        const hm=info.startStr.slice(11,16),he=info.endStr.slice(11,16);
-        CAL.unselect();selDate(a);openPlanEdit(null,a,'');
-        setTimeout(()=>{
-          const t=$('#peTime');if(t&&hm)t.value=hm;
-          const t2=$('#peEndTime');if(t2&&he&&he!==hm)t2.value=he;   /* 끈 범위의 끝 시각 */
-        },50);
-        return;
-      }
       const b=addDays(info.endStr.slice(0,10),-1);
       CAL.unselect();
       if(b<=a)return;
       selDate(a);openPlanEdit(null,a,b);},
-    /* 주간: 오전 7시 ~ 오후 7시(19~20시 칸까지) 표시. expandRows 로 남는 높이를 행에 균등 분배 —
-       빈 여백 없이 모든 행이 같은 높이(최소 34px)가 된다 */
-    nowIndicator:true,slotMinTime:'07:00:00',slotMaxTime:'20:00:00',allDaySlot:true,expandRows:true,
-    views:{timeGridWeek:{
-      dayHeaderContent:a=>{const o=holOf(dstr(a.date));
-        /* 공휴일 줄은 항상 자리를 차지한다 — 있는 날만 글자가 들어가 헤더 높이가 흔들리지 않게 */
-        /* 공휴일은 날짜와 같은 줄에 붙인다 — 줄이 늘지 않아 헤더 높이가 그대로 */
-        return{html:'<div class="wkh"><div class="wkh-d">'+DOW[a.date.getDay()]+'</div>'
-          +'<div class="wkh-n">'+(o?'<span class="wkh-h" title="'+esc(o.n)+'">'+esc(o.n)+'</span>':'')
-          +a.date.getDate()+'</div></div>'};},
-      dayCellContent:()=>({html:''}),
-      dayHeaderFormat:{weekday:'short'}
-    }},
-    /* 담당자 색을 칩에 변수로 넘겨 왼쪽 점으로 표시 */
-    eventDidMount:info=>{
-      const c=info.event.extendedProps&&info.event.extendedProps.owncol;
-      if(c)info.el.style.setProperty('--own',c);
-    },
     datesSet:()=>{rMonTitle();subVisibleMonths();markSel();}
   });
   CAL.render();
@@ -1246,14 +1179,11 @@ function planEvent(p,date){
     id:p.id+'@'+date,
     title:(fmtSpan(p)?fmtSpan(p)+' ':'')+p.title+(own?' · '+own:''),
     start:(p.time&&!p.end)?date+'T'+p.time:date,
-    end:span>0?addDays(date,span+1):((p.time&&p.endTime&&!p.end&&p.endTime>p.time)?date+'T'+p.endTime:undefined),
+    end:span>0?addDays(date,span+1):undefined,
     allDay:!p.time||!!p.end,
     backgroundColor:planColor(p),borderColor:'transparent',textColor:'#fff',
-    classNames:(done?['done']:[])
-      .concat(planOwners(p).length?['hasown']:[])
-      .concat((!done&&date<todayStr())?['late']:[]),
-    extendedProps:{pid:p.id,occ:date,recur:!!(p.recur&&p.recur.f),
-      owncol:planOwners(p).length?ownColor(planOwners(p)[0]):''},
+    classNames:done?['done']:[],
+    extendedProps:{pid:p.id,occ:date,recur:!!(p.recur&&p.recur.f)},
     editable:!(p.recur&&p.recur.f)
   };
 }
@@ -1281,7 +1211,7 @@ function planToTask(p){
   const item={...base,
     text:p.title!==undefined?p.title:base.text,
     prog:p.body!==undefined?p.body:base.prog,
-    date:p.date||'',end:p.end||'',time:p.time||'',endTime:p.endTime||'',
+    date:p.date||'',end:p.end||'',time:p.time||'',
     site:p.site!==undefined?p.site:(base.site||''),
     color:p.color||base.color||'',
     remind:!!p.remind,
@@ -1323,12 +1253,7 @@ function subVisibleMonths(){
 }
 function rMonTitle(){
   if(!CAL)return;const c=CAL.view.currentStart;
-  if(S.calView==='timeGridWeek'){
-    const e=new Date(CAL.view.activeEnd);e.setDate(e.getDate()-1);
-    $('#calMonTxt').textContent=(c.getMonth()+1)+'월 '+c.getDate()+'일 – '+(e.getMonth()+1)+'월 '+e.getDate()+'일';
-  }else{
-    $('#calMonTxt').textContent=(c.getMonth()+1)+'월';
-  }
+  $('#calMonTxt').textContent=(c.getMonth()+1)+'월';
   $('#calYearTxt').textContent=c.getFullYear()+'년';
 }
 /* 연·월 바로 가기 — 제목을 누르면 뜬다 */
@@ -1490,17 +1415,14 @@ function planFormHTML(){
       <div class="frow"><label>시작일</label><input type="date" class="inp inp-sm" id="peDate" value="${esc(d.date)}"></div>
       <div class="frow"><label>종료일 <span style="font-weight:500;color:var(--lbl3)">여러 날이면</span></label><input type="date" class="inp inp-sm" id="peEnd" value="${esc(d.end||'')}"></div>
     </div>
-    <div class="frow2">
-      <div class="frow"><label>시작 시간 (선택)</label><input type="time" class="inp inp-sm" id="peTime" value="${esc(d.time||'')}"></div>
-      <div class="frow"><label>종료 시간 (선택)</label><input type="time" class="inp inp-sm" id="peEndTime" value="${esc(d.endTime||'')}"></div>
-    </div>
+    <div class="frow"><label>시간 (선택)</label><input type="time" class="inp inp-sm" id="peTime" value="${esc(d.time||'')}"></div>
     <div class="frow2">
       <div class="frow"><label>현장</label>${sitePickHTML('peSite',d.site||'')}</div>
       <div class="frow"><label>반복</label><select class="inp inp-sm" id="peRec">${Object.keys(REC_LBL).map(k=>'<option value="'+k+'"'+(k===rc?' selected':'')+'>'+REC_LBL[k]+'</option>').join('')}</select></div>
     </div>
     <div class="frow" id="peUntilRow" style="${rc?'':'display:none'}"><label>반복 종료 (선택)</label><input type="date" class="inp inp-sm" id="peUntil" value="${esc((d.recur&&d.recur.until)||'')}"></div>
-    <div class="frow"><label>담당자 <span style="font-weight:500;color:var(--lbl3)">여러 명 선택 가능</span></label>
-      ${ownPickHTML('peOwners',(()=>{const o={};planOwners(d).forEach(x=>{o[x]=1;});return o;})(),people)}
+    <div class="frow"><label>담당자</label>
+      ${ownSelHTML('peOwners',planOwners(d)[0]||'',people)}
     </div>
     <div class="frow"><label>색 <span style="font-weight:500;color:var(--lbl3)">첫 번째는 담당자 색</span></label>
       ${palHTML('pePal',(!d.color||d.color==='auto')?'auto':d.color,
@@ -1537,9 +1459,8 @@ function savePlanInline(){
   const p={...pe.draft,
     date,end,title,
     time:$('#peTime').value||'',
-    endTime:($('#peEndTime')&&$('#peEndTime').value)||'',
     site:($('#peSite')&&$('#peSite').value)||'',
-    owners:(()=>{const o={};$$('#peOwners .pk-chip').forEach(c=>{o[c.dataset.id]=1;});return o;})(),owner:'',
+    owners:(()=>{const v=($('#peOwners')&&$('#peOwners').value)||'';return v?{[v]:1}:{};})(),owner:'',
     body:($('#peBody').value||'').trim(),
     color:sel?sel.dataset.c:'auto',
     recur:f?{f,until:($('#peUntil').value||'')}:{f:'',until:''},
@@ -1812,10 +1733,9 @@ function regionSectionsHTML(mems,regions){
 }
 /* 작성·수정 공용 폼 — 작성창과 수정 폼이 같은 골격을 쓴다(일관성) */
 function taskFormHTML(sid,iid,cur){
-  const d=cur||{text:'',prog:'',plan:'',site:'',assignees:{},links:{},color:'',date:'',time:'',endTime:'',kind:''};
+  const d=cur||{text:'',prog:'',plan:'',site:'',assignees:{},links:{},color:'',date:'',time:'',kind:''};
   const people=tkSel().mems;
   const col=(d.color&&d.color!=='auto')?d.color:'';
-  const nAsg=Object.keys(d.assignees||{}).length;
   const kind=kindOf(d.kind),split=kindSplit(kind);
   return `<div class="tk-new" id="tkNew">
     <div class="tkf-top">
@@ -1853,19 +1773,17 @@ function taskFormHTML(sid,iid,cur){
 
     <div class="tkf-sec">
       <div class="tkf-h">일정 <span class="c">비워 두면 달력에 뜨지 않습니다</span></div>
-      <div class="tkf-g3">
+      <div class="tkf-g3 tkf-g2">
         <div class="tkf-f"><label for="tnDate">날짜</label>
           <input type="date" class="inp inp-sm" id="tnDate" value="${esc(d.date||'')}"></div>
-        <div class="tkf-f"><label for="tnTime">시작 시간</label>
+        <div class="tkf-f"><label for="tnTime">시간 (선택)</label>
           <input type="time" class="inp inp-sm" id="tnTime" value="${esc(d.time||'')}"></div>
-        <div class="tkf-f"><label for="tnEndTime">종료 시간</label>
-          <input type="time" class="inp inp-sm" id="tnEndTime" value="${esc(d.endTime||'')}"></div>
       </div>
     </div>
 
     <div class="tkf-sec">
-      <div class="tkf-h">담당자 <span class="c">${nAsg?nAsg+'명 선택됨':'여러 명 선택 가능'}</span></div>
-      ${ownPickHTML('tnAsg',d.assignees||{},people)}
+      <div class="tkf-h">담당자</div>
+      ${ownSelHTML('tnAsg',Object.keys(d.assignees||{}).find(k=>(d.assignees||{})[k])||'',people)}
     </div>
 
     <div class="tkf-sec">
@@ -1904,7 +1822,7 @@ function taskFormSave(sid,iid){
   if(!t){toast('제목을 입력하세요');$('#tnTitle').focus();return;}
   const cur=iid?((S.tasks[sid]||{})[iid]||null):null;
   const id=iid||uid();
-  const asg={};$$('#tnAsg .pk-chip').forEach(c=>{asg[c.dataset.id]=1;});
+  const v=($('#tnAsg')&&$('#tnAsg').value)||'';const asg=v?{[v]:1}:{};
   const links={};
   $$('#tnLinks .lnk-row').forEach(r=>{
     const u=(r.querySelector('.lnk-url').value||'').trim();
@@ -1919,7 +1837,6 @@ function taskFormSave(sid,iid){
     site:$('#tnSite').value||'',
     date:($('#tnDate')&&$('#tnDate').value)||'',
     time:($('#tnTime')&&$('#tnTime').value)||'',
-    endTime:($('#tnEndTime')&&$('#tnEndTime').value)||'',
     assignees:asg,links,color:cSel?(cSel.dataset.c||''):'',
     order:(cur&&Number.isFinite(Number(cur.order)))?Number(cur.order):nextOrder(sid),
     updatedAt:Date.now()});
@@ -1977,7 +1894,7 @@ function reorderTask(sid,iid,targetIid,after){
 /* 업무 검색·필터 — 제목·경과·계획·현장·담당자까지 훑고, 상태·기한으로 좁힌다 */
 const TK_ST=[['','전체'],['0','예정'],['1','진행'],['2','완료'],['3','보류']];
 /* 업무 분류 — 일반만 진행경과·처리계획을 나눠 쓰고, 나머지는 내용 한 칸 */
-const TK_KIND=[['','일반'],['gather','취합'],['meet','회의'],['trip','출장'],['etc','기타']];
+const TK_KIND=[['','일반'],['gather','공통'],['meet','회의'],['trip','출장'],['etc','기타']];
 function kindOf(v){return TK_KIND.some(k=>k[0]===v)?v:'';}
 function kindLabel(v){const k=TK_KIND.find(x=>x[0]===kindOf(v));return k?k[1]:'일반';}
 function kindSplit(v){return kindOf(v)==='';}   /* 일반이면 두 칸으로 나눈다 */
@@ -2595,10 +2512,6 @@ const ACT={
     if(!u){toast('설정에서 하자처리 현황 주소를 먼저 입력하세요');go('settings');return;}
     window.open(u,'_blank','noopener');
   },
-  'cal.view':el=>{S.calView=el.dataset.v;
-    $$('#calSeg button').forEach(b=>b.classList.toggle('act',b.dataset.v===S.calView));
-    /* 날짜를 함께 넘기지 않으면 그 달 1일이 든 주로 가버린다 — 고른 날(기본 오늘) 기준으로 */
-    if(CAL){CAL.changeView(S.calView,S.selDate||todayStr());rMonTitle();subVisibleMonths();refetchCal();}},
   'cal.reg':el=>{
     const r=el.dataset.r;
     if(r==='*')S.filter.reg='*';
@@ -2701,10 +2614,6 @@ const ACT={
       pfPlace();
     }},
   'pf.close':()=>{const p=$('#pfPop');if(p)p.classList.remove('open');},
-  'pk.del':el=>{
-    const box=el.closest('.pk');if(!box)return;
-    const chip=el.closest('.pk-chip');if(chip)chip.remove();
-    pkSync(box);},
   'pf.cat':el=>{
     $$('#pfCats .pf-cat').forEach(x=>x.classList.toggle('act',x===el));
     const q=$('#pfSrch');if(q)q.value='';
@@ -3023,9 +2932,17 @@ document.addEventListener('click',e=>{
   const fn=ACT[el.dataset.act];
   if(fn){if(el.dataset.act!=='modal.stop')e.stopPropagation();fn(el);}
 });
+/* 임의로 추가한 색 칩은 우클릭으로 지운다 — 지우면 첫 칩(자동)으로 되돌린다 */
+document.addEventListener('contextmenu',e=>{
+  const chip=e.target.closest('.pal-c.pal-custom');
+  if(!chip)return;
+  e.preventDefault();
+  const box=chip.closest('.pal');
+  const wasSel=chip.classList.contains('sel');
+  chip.remove();
+  if(wasSel&&box){const first=box.querySelector('.pal-c');if(first)first.classList.add('sel');}
+});
 document.addEventListener('click',e=>{
-  const chip=e.target.closest('#tnAsg .chip2, #peOwners .chip2');
-  if(chip){chip.classList.toggle('act');return;}
   const pal=e.target.closest('.pal-c');
   if(pal&&!pal.classList.contains('pal-add')){const box=pal.closest('.pal');
     if(box){box.querySelectorAll('.pal-c').forEach(x=>x.classList.remove('sel'));pal.classList.add('sel');}}
@@ -3047,17 +2964,6 @@ document.addEventListener('change',e=>{
   if(e.target.id==='teamSelEl'){ACT['team.switch'](e.target);return;}
   if(e.target.closest('[data-act="pf.org"]')){ACT['pf.org']();return;}
   if(e.target.id==='tnKind'){tkKindRefresh();return;}
-  const pkSel=e.target.closest('.pk-sel');
-  if(pkSel){
-    const id=pkSel.value;if(!id)return;
-    const box=pkSel.closest('.pk');
-    const chips=box.querySelector('.pk-chips');
-    const none=chips.querySelector('.site-none');if(none)none.remove();
-    chips.insertAdjacentHTML('beforeend','<span class="pk-chip" data-id="'+esc(id)+'">'
-      +'<span class="dot-c" style="background:'+esc(ownColor(id))+'"></span>'+esc(ownName(id)||'담당자')
-      +'<button class="pk-x" data-act="pk.del" data-id="'+esc(id)+'" aria-label="빼기"><svg class="icn"><use href="#i-close"></use></svg></button></span>');
-    pkSync(box);return;
-  }
   if(e.target.id==='tkFst'||e.target.id==='tkFdue'){
     S.tkF={...S.tkF,[e.target.id==='tkFst'?'st':'due']:e.target.value};rTasks();return;}
   const rl=e.target.closest('[data-act="acct.role"]');

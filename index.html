@@ -4,7 +4,7 @@
 <!-- CSP: 개발은 외부 app.js('self'), 단일 파일 배포는 build-single.mjs가 인라인 스크립트 해시를 넣는다 -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://www.gstatic.com https://www.google.com; font-src 'self' data:; object-src 'none'; base-uri 'self'; script-src 'self' https://cdn.jsdelivr.net https://www.gstatic.com https://www.google.com https://www.recaptcha.net https://recaptcha.google.com https://apis.google.com https://*.firebasedatabase.app; frame-src https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; connect-src 'self' https://*.googleapis.com https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.firebaseio.com wss://*.firebaseio.com https://www.gstatic.com https://cdn.jsdelivr.net https://www.google.com https://www.recaptcha.net https://recaptcha.google.com">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>H서비스센터 · 주요업무 현황</title>
+<title>H · 주요업무 현황</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0' y1='0' x2='0.8' y2='1'><stop offset='0' stop-color='%236FB0FF'/><stop offset='1' stop-color='%2316357C'/></linearGradient></defs><rect width='64' height='64' rx='13' fill='url(%23g)'/><g transform='translate(11,16) scale(0.4828)' fill='white'><path d='M50.2456 0L44.4349 9.8333L11.2683 65.9786H11.2736H75.6123H86.8843L50.2456 0Z'/><path d='M38.9747 0L0 65.9786H7.58667L42.6533 6.62664L38.9747 0Z'/></g></svg>">
 <script src="./vendor/fullcalendar.min.js"></script>
 <!-- Firebase SDK — 하자처리 현황과 동일: jsdelivr(npm 미러) + SRI 고정 -->
@@ -193,12 +193,6 @@ html.dark #fcal .fc-dayGridMonth-view .fc-col-header{border-bottom-color:rgba(25
 #fcal .fc-scrollgrid{border-radius:var(--rmd);overflow:hidden;border-color:var(--sep);}
 #fcal .fc-col-header-cell{background:var(--surf3);padding:9px 0;}
 /* 주간 헤더 — 공휴일 줄이 항상 자리를 차지해 높이가 변하지 않는다 */
-#fcal .wkh{display:flex;flex-direction:column;align-items:center;gap:1px;}
-#fcal .wkh-d{font-size:11px;font-weight:700;}
-#fcal .wkh-n{font-size:14px;font-weight:800;display:flex;align-items:baseline;justify-content:center;gap:4px;
-  max-width:100%;min-width:0;}
-#fcal .wkh-h{font-size:10.5px;font-weight:700;color:var(--rd);white-space:nowrap;overflow:hidden;
-  text-overflow:ellipsis;min-width:0;}
 #fcal .fc-col-header-cell-cushion{font-size:13px;font-weight:700;color:var(--lbl2);text-decoration:none;letter-spacing:.02em;}
 #fcal .fc-day-sun .fc-col-header-cell-cushion{color:var(--rd);}
 #fcal .fc-day-sat .fc-col-header-cell-cushion{color:var(--bt1);}
@@ -226,12 +220,8 @@ html.dark #fcal .fc-dayGridMonth-view .fc-col-header{border-bottom-color:rgba(25
 #fcal .fc-day-today .dnum{color:var(--b600)!important;font-weight:800;}
 html.dark #fcal .fc-day-today .dnum{color:var(--b300)!important;}
 #fcal .fc-daygrid-day.sel-day{background:rgba(83,140,222,.13);box-shadow:inset 0 0 0 2px var(--b500);}
-/* ① 오늘 — 셀에 옅은 배경, 숫자는 원형으로 */
+/* ① 오늘 — 셀에 옅은 배경, 숫자는 파란색 볼드(원형은 칩 시작 높이를 밀어 단차를 만들었다) */
 #fcal .fc-dayGridMonth-view .fc-day-today{background:rgba(83,140,222,.07);}
-#fcal .fc-dayGridMonth-view .fc-day-today .dnum{width:23px;height:23px;border-radius:50%;
-  background:var(--b600);color:#fff!important;
-  display:inline-flex;align-items:center;justify-content:center;font-weight:800;}
-html.dark #fcal .fc-dayGridMonth-view .fc-day-today .dnum{color:#fff!important;}
 /* ④ 주말·공휴일 — 아주 옅은 톤으로 주 단위 리듬을 준다 */
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sun,
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sat{background:rgba(120,120,128,.032);}
@@ -243,10 +233,6 @@ html.dark #fcal .fc-dayGridMonth-view .fc-daygrid-day.hol{background:rgba(255,59
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-today{background-color:rgba(83,140,222,.09);}
 #fcal .fc-dayGridMonth-view .fc-daygrid-day.sel-day{background-color:rgba(83,140,222,.15);}
 #fcal .fc-event{border:none;border-radius:6px;padding:1.5px 6px;font-size:11px;font-weight:600;cursor:pointer;margin:1px 3px;box-shadow:none;}
-/* ⑤ 칩 왼쪽에 담당자 색 점 */
-#fcal .fc-event.hasown .fc-event-title::before{content:'';display:inline-block;width:5px;height:5px;
-  border-radius:50%;background:var(--own,rgba(255,255,255,.8));box-shadow:0 0 0 1.5px rgba(255,255,255,.55);
-  margin-right:5px;vertical-align:1px;}
 #fcal .fc-event .fc-event-title{font-weight:600;}
 #fcal .fc-event.done{opacity:.5;}
 #fcal .fc-event.done .fc-event-title{text-decoration:line-through;}
@@ -331,31 +317,7 @@ html.dark #fcal .fc-dayGridMonth-view .fc-daygrid-day.hol{background:rgba(255,59
 .cmt-t{font-size:12.5px;color:var(--lbl);white-space:pre-wrap;word-break:break-all;line-height:1.5;}
 .cmt-empty{font-size:12px;color:var(--lbl3);text-align:center;padding:18px 0;}
 /* 업무 기한 이벤트(달력) */
-#fcal .fc-timegrid-slot{height:34px;}
-#fcal .fc-timegrid-slot-label{font-size:12px;color:var(--lbl2);}
-/* 시간축 — 폭은 셀(th/td)에 주고, 안쪽은 가운데 정렬만 한다 */
-#fcal .fc-timegrid-axis,
-#fcal .fc-timegrid-slot-label{width:76px;}
-#fcal .fc-timegrid-slot-label-frame{text-align:center;}
-#fcal .fc-timegrid-slot-label-cushion{float:none;display:inline-block;padding:0 6px;font-weight:700;color:var(--lbl2);}
-#fcal .fc-timegrid-axis-frame{justify-content:center;}
-#fcal .fc-timegrid-axis-cushion{font-size:13px;font-weight:800;color:var(--lbl2);text-align:center;}
-/* 주간뷰 좌측 시간축 — 헤더와 같은 배경으로 묶어 읽기 쉽게 */
-#fcal .fc-timeGridWeek-view .fc-timegrid-axis,
-#fcal .fc-timeGridWeek-view .fc-timegrid-slot-label{background:var(--surf2);}
-#fcal .fc-timegrid-divider{padding:0;}
-/* 종일 칸이 너무 납작해 보이지 않도록 시간 슬롯과 비슷한 높이를 준다 */
-#fcal .fc-timegrid .fc-daygrid-day-frame{min-height:50px;}
-#fcal .fc-timegrid .fc-daygrid-day-events{margin:0;padding:3px 0;min-height:44px;}
-#fcal .fc-timegrid .fc-daygrid-body .fc-daygrid-event-harness{margin-bottom:2px;}
-#fcal .fc-timegrid-axis{vertical-align:middle;}
-#fcal .fc-timegrid-event{padding:2px 5px;font-size:11.5px;border-radius:6px;}
-#fcal .fc-timegrid-event .fc-event-time{display:block;font-size:10.5px;opacity:.85;}
 #fcal .fc-event.duev{background:transparent!important;border:1.5px dashed var(--lbl3);color:var(--lbl2);font-weight:600;}
-/* 날짜가 지났는데 미완료 — 좌측에 굵은 띠 */
-#fcal .fc-event.late{box-shadow:inset 3px 0 0 rgba(0,0,0,.34);padding-left:8px;}
-#fcal .fc-event.late .fc-event-title::after{content:'지남';margin-left:5px;font-size:9.5px;font-weight:800;
-  background:rgba(255,255,255,.28);border-radius:99px;padding:0 5px;}
 
 /* 코멘트 답글 */
 .th-i.re{margin-left:34px;}
@@ -367,17 +329,6 @@ html.dark #fcal .fc-dayGridMonth-view .fc-daygrid-day.hol{background:rgba(255,59
 .th-av.av-cus{background:var(--avc,var(--b600));color:#fff;}
 .th-av .av-em{font-size:14px;line-height:1;}
 .th-av .av-ic{width:15px;height:15px;}
-/* 담당자 선택(공용) */
-.pk{display:flex;flex-direction:column;gap:7px;min-width:0;}
-.pk-sel{width:100%;}
-.pk-chips{display:flex;flex-wrap:wrap;gap:5px;align-items:center;min-height:24px;}
-.pk-chip{display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 4px 0 9px;border-radius:var(--rp);
-  background:var(--b50);border:1px solid var(--b200);font-size:11.5px;font-weight:600;color:var(--bt1);}
-.pk-chip .dot-c{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
-.pk-x{width:17px;height:17px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-  color:var(--bt1);opacity:.6;}
-.pk-x:hover{opacity:1;background:rgba(62,113,210,.14);}
-.pk-x .icn{width:9px;height:9px;}
 .pe-full{width:100%;margin-bottom:10px;justify-content:center;}
 /* 반복 회차 옮기기 */
 .occ-row{margin-bottom:10px;padding-top:10px;border-top:1px dashed var(--sepo);}
@@ -459,6 +410,7 @@ html.dark #fcal .fc-dayGridMonth-view .fc-daygrid-day.hol{background:rgba(255,59
   letter-spacing:.04em;margin-bottom:8px;}
 .tkf-h .c{font-weight:600;color:var(--lbl3);background:var(--fill);border-radius:99px;padding:1px 8px;font-size:10.5px;letter-spacing:0;}
 .tkf-g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:start;}
+.tkf-g2{grid-template-columns:repeat(2,minmax(0,1fr));}
 .tkf-g4{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.4fr);gap:12px;align-items:start;}
 .tkf-f2{min-width:0;}
 .tkf-f2 .pal{padding-top:2px;}
@@ -1197,8 +1149,7 @@ html.dark #toast{background:#2B313A;}
               <svg class="icn cal-title-c" aria-hidden="true"><use href="#i-chevr"></use></svg>
             </button>
             <div class="cal-ctl">
-              <div class="seg" id="calSeg"><button class="act" data-act="cal.view" data-v="dayGridMonth">월</button><button data-act="cal.view" data-v="timeGridWeek">주</button></div>
-              <div class="cal-nav">
+                            <div class="cal-nav">
                 <button class="cal-nb" data-act="cal.prev" aria-label="이전"><svg class="icn" aria-hidden="true"><use href="#i-chevl"></use></svg></button>
                 <button class="cal-nb cal-today" data-act="cal.today">오늘</button>
                 <button class="cal-nb" data-act="cal.next" aria-label="다음"><svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg></button>
