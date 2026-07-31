@@ -1127,6 +1127,11 @@ function calInit(){
       dayCellContent:()=>({html:''}),
       dayHeaderFormat:{weekday:'short'}
     }},
+    /* 담당자 색을 칩에 변수로 넘겨 왼쪽 점으로 표시 */
+    eventDidMount:info=>{
+      const c=info.event.extendedProps&&info.event.extendedProps.owncol;
+      if(c)info.el.style.setProperty('--own',c);
+    },
     datesSet:()=>{rMonTitle();subVisibleMonths();markSel();}
   });
   CAL.render();
@@ -1185,8 +1190,9 @@ function planEvent(p,date){
     end:span>0?addDays(date,span+1):((p.time&&p.endTime&&!p.end&&p.endTime>p.time)?date+'T'+p.endTime:undefined),
     allDay:!p.time||!!p.end,
     backgroundColor:planColor(p),borderColor:'transparent',textColor:'#fff',
-    classNames:done?['done']:[],
-    extendedProps:{pid:p.id,occ:date,recur:!!(p.recur&&p.recur.f)},
+    classNames:(done?['done']:[]).concat(planOwners(p).length?['hasown']:[]),
+    extendedProps:{pid:p.id,occ:date,recur:!!(p.recur&&p.recur.f),
+      owncol:planOwners(p).length?ownColor(planOwners(p)[0]):''},
     editable:!(p.recur&&p.recur.f)
   };
 }
