@@ -3,7 +3,7 @@ name: 주간 요약 메일
 on:
   schedule:
     # 22:10 UTC 일요일 = 매주 월요일 07:10 KST
-    - cron: '10 22 * * 0'
+    - cron: '0 * * * *'
   workflow_dispatch: {}
 
 permissions:
