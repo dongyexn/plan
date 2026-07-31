@@ -284,6 +284,7 @@
           "email":  { ".validate": "newData.isString() && newData.val().length <= 200" },
           "team":   { ".validate": "newData.isString() && newData.val().length <= 40" },
           "region": { ".validate": "newData.isString() && newData.val().length <= 40" },
+          "rank":   { ".validate": "newData.isString() && (newData.val() == 'member' || newData.val() == 'lead' || newData.val() == 'head')" },
           "sites":  { "$sid": { ".validate": "newData.isNumber()" } },
           "$other": { ".validate": false }
         }
