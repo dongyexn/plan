@@ -566,22 +566,22 @@ select.mg-inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-
   box-shadow:0 1px 4px rgba(0,0,0,.14);}
 .av-pen .icn{width:11px;height:11px;}
 .acct-av.av-btn:hover .av-pen{color:var(--bt1);border-color:var(--b300);}
-.pf-note{font-size:11.5px;color:var(--lbl3);margin-top:8px;line-height:1.5;}
-.popbox{position:absolute;z-index:60;top:70px;left:0;width:336px;max-width:calc(100vw - 56px);
-  background:var(--bg2);border:1px solid var(--sep);border-radius:var(--rlg);
-  box-shadow:0 16px 44px rgba(0,0,0,.2);padding:13px;display:none;}
-.popbox.open{display:block;}
-.pop-h{display:flex;align-items:center;font-size:12px;font-weight:700;color:var(--lbl2);margin-bottom:9px;}
+/* 피커는 본문 영역을 정확히 덮는다 — 어떤 경우에도 모달 밖으로 넘치지 않는다 */
+.popbox{position:absolute;z-index:60;inset:0;background:var(--bg2);border:1px solid var(--sep);
+  border-radius:var(--rlg);box-shadow:0 16px 44px rgba(0,0,0,.2);padding:14px;display:none;
+  flex-direction:column;min-height:0;}
+.popbox.open{display:flex;}
+.pop-h{display:flex;align-items:center;font-size:12px;font-weight:700;color:var(--lbl2);margin-bottom:9px;flex-shrink:0;}
 .pop-x{margin-left:auto;width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;color:var(--lbl3);}
 .pop-x:hover{background:var(--fill);color:var(--lbl);}
 .pop-x .icn{width:13px;height:13px;}
-.pf-srch{width:100%;margin-bottom:9px;}
-.pf-cats{display:flex;gap:2px;border-bottom:1px solid var(--sep);padding-bottom:7px;margin-bottom:7px;}
+.pf-srch{width:100%;margin-bottom:9px;flex-shrink:0;}
+.pf-cats{display:flex;gap:2px;border-bottom:1px solid var(--sep);padding-bottom:7px;margin-bottom:7px;flex-shrink:0;}
 .pf-cat{flex:1;height:30px;border-radius:8px;font-size:16px;line-height:1;display:flex;align-items:center;
   justify-content:center;opacity:.55;transition:background .12s,opacity .12s;}
 .pf-cat:hover{background:var(--fill);opacity:.85;}
 .pf-cat.act{background:var(--b50);opacity:1;box-shadow:inset 0 0 0 1.5px var(--b300);}
-.pf-emg{display:grid;grid-template-columns:repeat(8,1fr);gap:2px;height:172px;overflow-y:auto;padding:1px;}
+.pf-emg{display:grid;grid-template-columns:repeat(10,1fr);gap:2px;flex:1;min-height:0;overflow-y:auto;padding:1px;align-content:start;}
 .pf-emg::-webkit-scrollbar{width:4px;}
 .pf-emg::-webkit-scrollbar-thumb{background:var(--sepo);border-radius:99px;}
 .pf-em{aspect-ratio:1;border-radius:8px;font-size:19px;line-height:1;display:flex;align-items:center;
@@ -589,13 +589,14 @@ select.mg-inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-
 .pf-em:hover{background:var(--fill);}
 .pf-em.dflt svg{width:19px;height:19px;fill:none;stroke:var(--lbl2);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;}
 .pf-empty{grid-column:1/-1;font-size:12px;color:var(--lbl3);text-align:center;padding:18px 6px;line-height:1.5;}
-.pf-lab{font-size:11px;font-weight:700;color:var(--lbl3);letter-spacing:.04em;margin:11px 0 7px;}
+.pf-lab{font-size:11px;font-weight:700;color:var(--lbl3);letter-spacing:.04em;margin:11px 0 7px;flex-shrink:0;}
 /* 계정 모달 탭 */
-.acct-tabs{display:flex;gap:4px;background:var(--fill);border-radius:var(--rmd);padding:3px;margin:14px 0 14px;}
+.acct-tabs{display:flex;gap:4px;background:var(--fill);border-radius:var(--rmd);padding:3px;margin:0 0 18px;}
 .acct-tab{flex:1;padding:7px 10px;border-radius:calc(var(--rmd) - 3px);font-size:12.5px;font-weight:700;
   color:var(--lbl2);transition:background var(--tr),color var(--tr);}
 .acct-tab.act{background:var(--bg2);color:var(--bt1);box-shadow:0 1px 3px rgba(0,0,0,.08);}
-.acct-pane{min-height:180px;}
+/* 탭을 바꾸거나 팝오버가 떠도 모달 크기가 흔들리지 않도록 높이를 고정 */
+.acct-pane{position:relative;min-height:352px;}
 .fbu-av.r-editor{background:linear-gradient(135deg,var(--b500),var(--b800));}
 .fbu-av.r-viewer{background:rgba(120,120,128,.2);}
 .fbu-av.r-viewer svg{fill:var(--lbl2);}
@@ -656,7 +657,7 @@ body.wid .wid-only{display:block;}
 
 /* 계정 모달 — 참조 앱과 동일 */
 .il{font-size:12px;font-weight:600;color:var(--lbl2);margin-bottom:6px;display:block;}
-.acct-head{display:flex;align-items:center;gap:13px;}
+.acct-head{display:flex;align-items:center;gap:14px;margin-bottom:20px;}
 .acct-av{flex:0 0 auto;width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--b500),var(--b800));}
 .acct-av svg{width:24px;height:24px;display:block;}
 .acct-mail{font-size:15px;font-weight:600;color:var(--lbl);word-break:break-all;line-height:1.3;}
@@ -731,7 +732,7 @@ body.wid .wid-only{display:block;}
 /* ══════════ 모달 · 토스트 · 툴팁 ══════════ */
 #mo{position:fixed;inset:0;background:rgba(0,0,0,.34);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);z-index:1000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;}
 #mo.open{opacity:1;pointer-events:auto;}
-#mb{position:relative;background:var(--bg2);border-radius:var(--rxl);padding:28px;max-width:500px;width:92%;border:1px solid var(--sep);transform:scale(.96) translateY(12px);transition:transform .22s,opacity .2s;opacity:0;outline:none;max-height:88dvh;overflow-y:auto;}
+#mb{position:relative;background:var(--bg2);border-radius:var(--rxl);padding:28px;max-width:560px;width:92%;border:1px solid var(--sep);transform:scale(.96) translateY(12px);transition:transform .22s,opacity .2s;opacity:0;outline:none;max-height:88dvh;overflow-y:auto;}
 #mo.open #mb{transform:scale(1) translateY(0);opacity:1;}
 .mt2{font-size:17px;font-weight:700;color:var(--lbl);margin-bottom:18px;}
 .mo-x{display:none;position:absolute;top:15px;right:17px;width:30px;height:30px;border-radius:8px;align-items:center;justify-content:center;color:var(--lbl2);background:transparent;z-index:3;transition:background var(--tr),color var(--tr);}
@@ -787,6 +788,9 @@ html.dark #toast{background:#2B313A;}
 #fcal .fc-popover-close{opacity:.6;}
 /* 계정 표 — 좁은 화면에서는 열을 눌러 담지 않고 행마다 카드처럼 쌓는다 */
 @media(max-width:720px){
+  /* 좁은 화면에서는 이모지 칸이 28px 밖에 안 돼 8열로 줄인다 */
+  .pf-emg{grid-template-columns:repeat(8,1fr);}
+  .acct-pane{min-height:366px;}
   .utbl thead{display:none;}
   .utbl tbody tr{display:flex;flex-wrap:wrap;align-items:center;gap:7px 10px;padding:11px 2px;border-bottom:1px solid var(--sep);}
   .utbl tbody tr:last-child{border-bottom:none;}
