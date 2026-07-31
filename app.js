@@ -328,6 +328,7 @@ const S={
   dayQ:'',           // 일자 패널 검색어
   tkF:{q:'',st:'',due:''},   // 주요업무 검색·필터
   cmtRe:'',          // 답글 입력창을 연 코멘트 (sid/iid/cid)
+  cmtNew:'',         // 코멘트 입력창을 연 업무 (sid/iid)
   prefs:{},          // calapp/prefs/{uid} — 저장한 필터 등 개인 설정
   mentions:{},       // calapp/mentions/{uid} — 나를 부른 코멘트
   live:false,        // Firebase 실시간 모드 여부
@@ -1129,9 +1130,12 @@ function calInit(){
       const a=info.startStr.slice(0,10);
       /* 주간 시간칸을 끈 경우 — 그 시각으로 업무를 만든다(이전엔 그냥 선택만 풀렸다) */
       if(!info.allDay){
-        const hm=info.startStr.slice(11,16);
+        const hm=info.startStr.slice(11,16),he=info.endStr.slice(11,16);
         CAL.unselect();selDate(a);openPlanEdit(null,a,'');
-        setTimeout(()=>{const t=$('#peTime');if(t&&hm)t.value=hm;},50);
+        setTimeout(()=>{
+          const t=$('#peTime');if(t&&hm)t.value=hm;
+          const t2=$('#peEndTime');if(t2&&he&&he!==hm)t2.value=he;   /* 끈 범위의 끝 시각 */
+        },50);
         return;
       }
       const b=addDays(info.endStr.slice(0,10),-1);
@@ -1143,9 +1147,10 @@ function calInit(){
     nowIndicator:true,slotMinTime:'07:00:00',slotMaxTime:'20:00:00',allDaySlot:true,expandRows:true,
     views:{timeGridWeek:{
       dayHeaderContent:a=>{const o=holOf(dstr(a.date));
-        return{html:'<div style="font-size:11px;font-weight:700">'+DOW[a.date.getDay()]+'</div>'
-          +'<div style="font-size:14px;font-weight:800">'+a.date.getDate()+'</div>'
-          +(o?'<div style="font-size:9.5px;font-weight:700;margin-top:1px">'+esc(o.n)+'</div>':'')};},
+        /* 공휴일 줄은 항상 자리를 차지한다 — 있는 날만 글자가 들어가 헤더 높이가 흔들리지 않게 */
+        return{html:'<div class="wkh"><div class="wkh-d">'+DOW[a.date.getDay()]+'</div>'
+          +'<div class="wkh-n">'+a.date.getDate()+'</div>'
+          +'<div class="wkh-h">'+(o?esc(o.n):'')+'</div></div>'};},
       dayCellContent:()=>({html:''}),
       dayHeaderFormat:{weekday:'short'}
     }},
@@ -1645,14 +1650,20 @@ function taskDetailHTML(sid,iid,it){
     <div class="tk-secs">${box('진행경과',it.prog||it.body,'prog')}${box('처리계획',it.plan,'plan')}</div>
     <div class="tk-thread">
       ${threadHTML(cs,sid,iid)}
+      ${S.cmtNew!==sid+'/'+iid?`<button class="th-open" data-act="tk.cmtOpen" data-sid="${esc(sid)}" data-iid="${esc(iid)}">
+        <svg class="icn"><use href="#i-cmt"></use></svg> 진행 상황을 남기세요 · @이름으로 부르기
+      </button>`:`
       <div class="th-new">
         <div class="th-av me av-cus" style="--avc:${esc((S.user&&(avOf(S.user.uid).color||ownColor(S.user.uid)))||'var(--b600)')}">
           ${S.user?avInner(avOf(S.user.uid).icon):'나'}</div>
         <div class="th-b">
           <textarea class="th-in" data-sid="${esc(sid)}" data-iid="${esc(iid)}" rows="1" placeholder="진행 상황을 남기세요 · @이름으로 부르기"></textarea>
-          <div class="th-f"><button class="btn bp bxs" data-act="tk.cmtSend" data-sid="${esc(sid)}" data-iid="${esc(iid)}">남기기</button></div>
+          <div class="th-f">
+            <button class="btn bg2 bxs" data-act="tk.cmtCancel">취소</button>
+            <button class="btn bp bxs" data-act="tk.cmtSend" data-sid="${esc(sid)}" data-iid="${esc(iid)}">남기기</button>
+          </div>
         </div>
-      </div>
+      </div>`}
     </div>
   </div>`;
 }
@@ -1778,6 +1789,12 @@ function taskFormHTML(sid,iid,cur){
     <div class="tkf-top">
       <span class="tkf-badge">${iid?'업무 수정':'새 업무'}</span>
       <input class="inp tk-new-t" id="tnTitle" maxlength="120" placeholder="업무 제목을 입력하세요" value="${esc(d.text||'')}">
+      ${iid?`<div class="tkf-now">
+        <span class="tk-st s${stOf(d.st)}" data-act="tk.st" data-sid="${esc(sid)}" data-iid="${esc(iid)}">${ST_LBL[stOf(d.st)]}</span>
+        ${d.date?'<span class="due-chip '+dueInfo(d.date).cls+'">'+esc(dueInfo(d.date).txt)+'</span>':''}
+        ${siteName(d.site)?'<span class="site-on">'+esc(siteName(d.site))+'</span>':''}
+        ${Object.keys(d.assignees||{}).map(id=>'<span class="asg"><span class="dot-c" style="background:'+esc(ownColor(id))+'"></span>'+esc(ownName(id))+'</span>').join('')}
+      </div>`:''}
     </div>
 
     <div class="tkf-sec">
@@ -2011,7 +2028,7 @@ function rTasks(){
           <span class="c">${taskCount(p.id)}</span></div>`).join('')}
       </div>
       <div class="card tks-card">
-        <div class="tks-h">담당자 · 권역</div>
+        <div class="tks-h">권역 · 담당자</div>
         ${regGroups.map(([rid,rn,list])=>`
           <div class="tks-item tks-reg${sel==='reg:'+rid?' act':''}" data-act="tk.pick" data-id="reg:${esc(rid)}">
             <span class="n">${esc(rn)}</span><span class="c">${list.reduce((a,p)=>a+taskCount(p.id),0)}</span></div>
@@ -2697,6 +2714,9 @@ const ACT={
   },
   'tk.dueClear':el=>{const sid=el.dataset.sid,iid=el.dataset.iid,cur=(S.tasks[sid]||{})[iid];if(!cur)return;
     store.putTask(sid,iid,{...cur,date:'',updatedAt:Date.now()});closeModal();if(!S.live){rTasks();rDay();}refetchCal();},
+  'tk.cmtOpen':el=>{S.cmtNew=el.dataset.sid+'/'+el.dataset.iid;rTasks();
+    setTimeout(()=>{const t=document.querySelector('.th-new:not(.re) .th-in');if(t)t.focus();},40);},
+  'tk.cmtCancel':()=>{S.cmtNew='';rTasks();},
   'tk.cmtRe':el=>{S.cmtRe=el.dataset.sid+'/'+el.dataset.iid+'/'+el.dataset.cid;rTasks();
     setTimeout(()=>{const t=document.querySelector('.th-new.re .th-in');if(t)t.focus();},40);},
   'tk.cmtReCancel':()=>{S.cmtRe='';rTasks();},
@@ -2710,7 +2730,7 @@ const ACT={
     if(S.user&&S.user.uid)rec.uid=S.user.uid;
     if(re)rec.re=re;
     store.putTask(sid,iid,{...cur,comments:{...(cur.comments||{}),[cid]:rec},updatedAt:cur.updatedAt||Date.now()});
-    S.cmtRe='';
+    S.cmtRe='';S.cmtNew='';
     /* @이름 을 찾아 그 사람에게 알림을 남긴다 */
     if(S.live){
       const hit=new Set();
