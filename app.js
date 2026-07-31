@@ -22,7 +22,7 @@ const GUIDE_HTML=`<div class="gd">
 <li>기한이 있는 미완료 업무는 점선 배지로 달력에 함께 표시됩니다.</li>
 </ul>
 <h4>주요업무 현황</h4>
-<p>왼쪽에서 대상을 고르면 오른쪽에 그 업무가 나옵니다. <b>팀 전체 업무</b>(공통업무와 모든 권역·담당자 업무를 한 화면에), <b>공통업무</b>, <b>권역</b>, 개별 <b>담당자</b>를 고를 수 있습니다.</p>
+<p>왼쪽에서 대상을 고르면 오른쪽에 그 업무가 나옵니다. <b>팀 전체 업무</b>(공통 업무와 모든 권역·담당자 업무를 한 화면에), <b>공통 업무</b>, <b>권역</b>, 개별 <b>담당자</b>를 고를 수 있습니다.</p>
 <ul>
 <li><b>업무 추가</b>를 누르면 목록 위에 작성창이 열립니다. 제목과 함께 <b>진행경과</b>·<b>처리계획</b>을 나눠 적고, 현장·기한·색·담당자(여러 명)·링크를 지정합니다.</li>
 <li>항목을 누르면 스레드처럼 펼쳐집니다. 진행경과·처리계획은 그 자리에서 고치고, 아래 스레드에 코멘트를 남깁니다. 나머지는 오른쪽 위 <b>수정</b>을 누르면 작성창과 같은 폼이 그 자리에 열립니다.</li>
@@ -281,6 +281,8 @@ const S={
   tkEdit:null,       // 인라인 수정 중인 업무 'sid/iid'
   tkOpen:null,       // 펼쳐 놓은 업무 'sid/iid'
   planEdit:null,     // 일자 패널 인라인 편집기 상태
+  dayQ:'',           // 일자 패널 검색어
+  tkF:{q:'',st:'',due:''},   // 주요업무 검색·필터
   prefs:{},          // calapp/prefs/{uid} — 저장한 필터 등 개인 설정
   mentions:{},       // calapp/mentions/{uid} — 나를 부른 코멘트
   live:false,        // Firebase 실시간 모드 여부
@@ -325,6 +327,7 @@ function cleanPlan(p){
   if(rec.f){
     if(p.doneOn&&Object.keys(p.doneOn).length)o.doneOn=p.doneOn;
     if(p.skipOn&&Object.keys(p.skipOn).length)o.skipOn=p.skipOn;
+    if(p.moveOn&&Object.keys(p.moveOn).length)o.moveOn=p.moveOn;
   }
   return o;
 }
@@ -1027,12 +1030,29 @@ function recurDates(p,from,to){
     if(gapM>per)d=addMonths(d,Math.floor(gapM/per)*per);
   }
   while(d<from&&guard++<400)d=step(d);
+  const mv=p.moveOn||{};
   while(d<=to&&guard++<400){
     if(until&&d>until)break;
-    if(!(p.skipOn&&p.skipOn[d]))out.push(d);
+    if(!(p.skipOn&&p.skipOn[d])){
+      /* 이 회차만 다른 날로 옮긴 경우 — 옮긴 날이 범위 안이면 그 날짜로 낸다 */
+      const to2=mv[d];
+      if(!to2)out.push(d);
+      else if(to2>=from&&to2<=to)out.push(to2);
+    }
     d=step(d);
   }
-  return out;
+  /* 범위 앞쪽 회차가 이 범위로 옮겨온 경우도 포함 */
+  Object.keys(mv).forEach(src=>{
+    const dst=mv[src];
+    if(dst>=from&&dst<=to&&out.indexOf(dst)<0&&src<from&&!(p.skipOn&&p.skipOn[src]))out.push(dst);
+  });
+  return out.sort();
+}
+/* 옮긴 회차의 원래 날짜를 되찾는다 — 완료·제외 표시는 원래 날짜 기준으로 기록한다 */
+function occSrc(p,date){
+  const mv=(p&&p.moveOn)||{};
+  const hit=Object.keys(mv).find(k=>mv[k]===date);
+  return hit||date;
 }
 function planEvent(p,date){
   const span=p.end?daysBetween(p.date,p.end):0;
@@ -1167,24 +1187,25 @@ function dayPlans(ds){
   const m=S.plans[ymOf(ds)]||{};
   Object.values(m).forEach(p=>{
     if(!p||!ownOk(p))return;
+    if(!dayHit((p.title||'')+' '+(p.body||'')))return;
     const last=p.end||p.date;
     if(ds>=p.date&&ds<=last)out.push({p,occ:p.date});
   });
   /* 기간 일정이 이전 달에서 시작한 경우도 포함 */
   const prev=S.plans[ymOf(addDays(ds,-31))]||{};
-  Object.values(prev).forEach(p=>{if(!p||!p.end||!ownOk(p))return;
+  Object.values(prev).forEach(p=>{if(!p||!p.end||!ownOk(p)||!dayHit((p.title||'')+' '+(p.body||'')))return;
     if(ds>=p.date&&ds<=p.end&&!out.some(x=>x.p.id===p.id))out.push({p,occ:p.date});});
   Object.values(S.recur||{}).forEach(p=>{
-    if(!p||!ownOk(p))return;
+    if(!p||!ownOk(p)||!dayHit((p.title||'')+' '+(p.body||'')))return;
     if(recurDates(p,ds,ds).length)out.push({p,occ:ds});
   });
   return out.sort((a,b)=>((a.p.time||'99')<(b.p.time||'99')?-1:(a.p.time||'99')>(b.p.time||'99')?1:(a.p.createdAt||0)-(b.p.createdAt||0)));
 }
-function isDone(p,occ){return (p.recur&&p.recur.f)?!!(p.doneOn&&p.doneOn[occ]):!!p.done;}
+function isDone(p,occ){return (p.recur&&p.recur.f)?!!(p.doneOn&&p.doneOn[occSrc(p,occ)]):!!p.done;}
 function rDayHead(){
   const ds=S.selDate,d=toDate(ds),ps=dayPlans(ds),ho=holOf(ds);
-  $('#dpDow').textContent=d.getFullYear()+'년 · '+DOW[d.getDay()]+'요일'+(ho?' · '+ho.n:'')+(ds===todayStr()?' · 오늘':'');
-  $('#dpDate').textContent=(d.getMonth()+1)+'월 '+d.getDate()+'일';
+  $('#dpDow').textContent=DOW[d.getDay()]+'요일'+(ho?' · '+ho.n:'')+(ds===todayStr()?' · 오늘':'');
+  $('#dpDate').textContent=d.getFullYear()+'. '+(d.getMonth()+1)+'. '+d.getDate()+'.';
   const dt=dayTasks(ds).length;
   const parts=[];
   if(ps.length)parts.push('업무 '+ps.length+'건');
@@ -1194,12 +1215,15 @@ function rDayHead(){
   $('#dpCnt').textContent=parts.length?parts.join(' · '):'등록된 업무 없음';
   return ps;
 }
+function dayQ(){return String((S.dayQ||'')).trim().toLowerCase();}
+function dayHit(txt){const q=dayQ();return !q||String(txt||'').toLowerCase().indexOf(q)>=0;}
 function dayTasks(ds){
   const out=[];
   Object.keys(S.tasks||{}).forEach(sid=>Object.keys(S.tasks[sid]||{}).forEach(iid=>{
     const it=S.tasks[sid][iid];
     if(!it||it.due!==ds||stOf(it.st)===2)return;
     if(!taskOwnOk(sid,it))return;
+    if(!dayHit((it.text||'')+' '+(it.prog||'')+' '+(it.plan||'')+' '+subjName(sid)))return;
     out.push({sid,iid,it});
   }));
   return out.sort((a,b)=>(a.it.createdAt||0)-(b.it.createdAt||0));
@@ -1219,7 +1243,8 @@ function rDay(){
   const editingId=S.planEdit&&S.planEdit.orig?S.planEdit.orig.id:null;
   const shown=ps.filter(x=>x.p.id!==editingId);   /* 편집 중인 항목은 폼이 대신한다 */
   const dts=dayTasks(S.selDate);
-  if(!shown.length&&!dts.length&&!editorHTML){box.innerHTML='<div class="dp-empty">이 날짜에 등록된 업무가 없습니다.</div>';return;}
+  if(!shown.length&&!dts.length&&!editorHTML){
+    box.innerHTML='<div class="dp-empty">'+(dayQ()?'검색 결과가 없습니다.':'이 날짜에 등록된 업무가 없습니다.')+'</div>';return;}
   box.innerHTML=editorHTML+shown.map(({p,occ})=>{
     const done=isDone(p,occ),rep=p.recur&&p.recur.f,span=p.end&&p.end!==p.date;
     return `
@@ -1305,6 +1330,14 @@ function planFormHTML(){
     </div>
     <div class="frow"><label>내용 (선택)</label><textarea class="inp inp-sm" id="peBody" maxlength="500" placeholder="메모·세부 내용">${esc(d.body||'')}</textarea></div>
     <label class="chk-row" style="margin-bottom:10px"><input type="checkbox" id="peRemind"${d.remind?' checked':''}> 당일 아침 리마인드 메일</label>
+    ${(pe.orig&&rc&&pe.occ)?`<div class="frow occ-row">
+      <label>이 회차만 옮기기 <span style="font-weight:500;color:var(--lbl3)">반복 규칙은 그대로</span></label>
+      <div class="occ-line">
+        <input type="date" class="inp inp-sm" id="peOcc" value="${esc(pe.occ)}">
+        <button class="btn bo bxs" data-act="plan.moveOcc" data-pid="${esc(d.id)}" data-occ="${esc(pe.occ)}">이 회차 옮기기</button>
+        ${(d.moveOn&&d.moveOn[occSrc(d,pe.occ)])?'<button class="btn bg2 bxs" data-act="plan.resetOcc" data-pid="'+esc(d.id)+'" data-occ="'+esc(pe.occ)+'">원래대로</button>':''}
+      </div>
+    </div>`:''}
     <div class="dp-edit-f">
       ${pe.orig?'<button class="btn btn-danger bsm" data-act="plan.del" data-pid="'+esc(d.id)+'" data-ym="'+esc(ymOf(d.date))+'" data-occ="'+esc(pe.occ||'')+'" style="margin-right:auto">삭제</button>':''}
       <button class="btn bg2 bsm" data-act="plan.cancel">취소</button>
@@ -1378,7 +1411,7 @@ function tkSel(){
   const team=teams.find(x=>x.id===S.tk.t)||teams[0]||null;S.tk.t=team?team.id:null;
   /* 로컬 모드의 가상 담당자는 선택한 팀에 속한 것으로 본다 */
   const mems=team?all.filter(p=>p.team===team.id||p.local):[];
-  /* 선택값: teamall(팀 전체) · team(공통업무) · reg:<권역id>(권역) · 담당자 id */
+  /* 선택값: teamall(팀 전체) · team(공통 업무) · reg:<권역id>(권역) · 담당자 id */
   const m=S.tk.m;
   const regOk=rid=>rid===''?mems.some(p=>!p.region||!regions.some(r=>r.id===p.region)):regions.some(r=>r.id===rid);
   const valid=m==='teamall'||m==='team'
@@ -1389,7 +1422,9 @@ function tkSel(){
 }
 function taskCount(sid){
   const m=S.tasks[sid]||{};
-  return Object.keys(m).filter(k=>stOf(m[k].st)!==2).length;
+  const f=S.tkF||{};
+  const keepDone=String(f.st)==='2';
+  return Object.keys(m).filter(k=>(keepDone||stOf(m[k].st)!==2)&&tkMatch(sid,k,m[k])).length;
 }
 function dueInfo(due){
   if(!due)return{cls:'none',txt:'기한'};
@@ -1463,10 +1498,12 @@ function taskDetailHTML(sid,iid,it){
 function taskListHTML(sid){
   const items=S.tasks[sid]||{};
   const ord=k=>Number.isFinite(Number(items[k].order))?Number(items[k].order):(items[k].createdAt||0)/1e10;
-  const all=Object.keys(items).sort((a,b)=>ord(a)-ord(b)||(items[a].createdAt||0)-(items[b].createdAt||0));
-  if(!all.length)return '<div class="tk-empty">등록된 업무가 없습니다. 위의 <b>업무 추가</b>를 누르세요.</div>';
+  const all=Object.keys(items).filter(iid=>tkMatch(sid,iid,items[iid]))
+    .sort((a,b)=>ord(a)-ord(b)||(items[a].createdAt||0)-(items[b].createdAt||0));
+  if(!all.length)return '<div class="tk-empty">'
+    +(tkFilterOn()?'조건에 맞는 업무가 없습니다.':'등록된 업무가 없습니다. 위의 <b>업무 추가</b>를 누르세요.')+'</div>';
   const cut=Date.now()-7*86400000;
-  const old=all.filter(iid=>stOf(items[iid].st)===2&&(items[iid].updatedAt||0)<cut);
+  const old=tkFilterOn()?[]:all.filter(iid=>stOf(items[iid].st)===2&&(items[iid].updatedAt||0)<cut);
   const open=S.foldOpen[sid];
   const shown=open?all:all.filter(iid=>!old.includes(iid));
   return shown.map(iid=>taskItemHTML(sid,iid,items[iid],false)).join('')
@@ -1475,7 +1512,10 @@ function taskListHTML(sid){
 /* ── 집계 보기 보조 — 미완료만, 기한순 ── */
 function openItems(sid){
   const m=S.tasks[sid]||{};
-  return Object.keys(m).filter(iid=>m[iid]&&stOf(m[iid].st)!==2)
+  /* 필터를 걸면 완료도 대상에 넣는다 — 완료만 찾고 싶을 수 있다 */
+  const f=S.tkF||{};
+  const keepDone=String(f.st)==='2';
+  return Object.keys(m).filter(iid=>m[iid]&&(keepDone||stOf(m[iid].st)!==2)&&tkMatch(sid,iid,m[iid]))
     .sort((a,b)=>{const ad=m[a].due||'9999',bd=m[b].due||'9999';
       return ad<bd?-1:ad>bd?1:(m[a].createdAt||0)-(m[b].createdAt||0);})
     .map(iid=>({iid,it:m[iid]}));
@@ -1651,6 +1691,52 @@ function reorderTask(sid,iid,targetIid,after){
     if(Number(cur.order)!==i+1)store.putTask(sid,k,{...cur,order:i+1});});
   if(!S.live)rTasks();
 }
+/* 업무 검색·필터 — 제목·경과·계획·현장·담당자까지 훑고, 상태·기한으로 좁힌다 */
+const TK_ST=[['','전체'],['0','예정'],['1','진행'],['2','완료'],['3','보류']];
+const TK_DUE=[['','기한 전체'],['over','기한 초과'],['soon','7일 내'],['none','기한 없음']];
+function tkFilterHTML(){
+  const f=S.tkF||{};
+  const on=!!(String(f.q||'').trim()||f.st||f.due);
+  return `<div class="tkf-bar${on?' on':''}">
+    <div class="tkf-srch">
+      <svg class="icn tkf-srch-i" aria-hidden="true"><use href="#i-search"></use></svg>
+      <input class="inp inp-sm" id="tkQ" placeholder="업무 · 경과 · 계획 · 현장 · 담당자 검색" value="${esc(f.q||'')}" autocomplete="off">
+      ${String(f.q||'').trim()?'<button class="tkf-srch-x" data-act="tkf.qclear" aria-label="지우기"><svg class="icn"><use href="#i-close"></use></svg></button>':''}
+    </div>
+    <select class="inp inp-sm tkf-sel" id="tkFst" data-act="tkf.set" aria-label="상태">
+      ${TK_ST.map(([v,l])=>'<option value="'+v+'"'+(v===(f.st||'')?' selected':'')+'>'+l+'</option>').join('')}
+    </select>
+    <select class="inp inp-sm tkf-sel" id="tkFdue" data-act="tkf.set" aria-label="기한">
+      ${TK_DUE.map(([v,l])=>'<option value="'+v+'"'+(v===(f.due||'')?' selected':'')+'>'+l+'</option>').join('')}
+    </select>
+    ${on?'<button class="btn bg2 bxs tkf-reset" data-act="tkf.reset">초기화</button>':''}
+  </div>`;
+}
+function tkMatch(sid,iid,it){
+  const f=S.tkF||{};
+  const q=String(f.q||'').trim().toLowerCase();
+  if(q){
+    const asg=Object.keys(it.assignees||{}).map(id=>ownName(id)).join(' ');
+    const hay=[it.text,it.prog,it.body,it.plan,siteName(it.site),subjName(sid),asg,
+      Object.values(it.comments||{}).map(c=>c&&c.text).join(' ')].join(' ').toLowerCase();
+    if(hay.indexOf(q)<0)return false;
+  }
+  if(f.st!==''&&f.st!==undefined&&f.st!==null){
+    if(String(stOf(it.st))!==String(f.st))return false;
+  }
+  if(f.due){
+    const d=it.due||'';
+    if(f.due==='none'&&d)return false;
+    if(f.due==='over'&&(!d||d>=todayStr()))return false;
+    if(f.due==='soon'){
+      if(!d)return false;
+      const n=daysBetween(todayStr(),d);
+      if(n<0||n>7)return false;
+    }
+  }
+  return true;
+}
+function tkFilterOn(){const f=S.tkF||{};return !!(String(f.q||'').trim()||f.st||f.due);}
 function rTasks(){
   const root=$('#tkRoot');
   const{teams,team,regions,mems,total}=tkSel();
@@ -1668,12 +1754,12 @@ function rTasks(){
   if(sel==='teamall'){
     subject=tn+' 전체 업무';
     const ci=team?openItems(team.id):[];
-    listHTML='<div class="tk-sub">공통업무<span class="c">'+cCommon+'</span></div>'
+    listHTML='<div class="tk-sub">공통 업무<span class="c">'+cCommon+'</span></div>'
       +(ci.length?ci.map(({iid,it})=>taskItemHTML(team.id,iid,it,false)).join('')
-        :'<div class="tk-empty" style="padding:8px 2px;text-align:left">공통업무가 없습니다.</div>')
+        :'<div class="tk-empty" style="padding:8px 2px;text-align:left">공통 업무가 없습니다.</div>')
       +regionSectionsHTML(mems,regions);
   }else if(sel==='team'){
-    subject=tn+' 공통업무';sid=team?team.id:null;
+    subject=tn+' 공통 업무';sid=team?team.id:null;
     listHTML=sid?taskListHTML(sid):'<div class="tk-empty">조직 관리에서 팀을 먼저 등록하세요.</div>';
   }else if(typeof sel==='string'&&sel.indexOf('reg:')===0){
     const rid=sel.slice(4);
@@ -1704,7 +1790,7 @@ function rTasks(){
           <span class="c">${cCommon+cMems}</span>
         </div>
         <div class="tks-item sub${sel==='team'?' act':''}" data-act="tk.pick" data-id="team">
-          <span class="n">공통업무</span>
+          <span class="n">공통 업무</span>
           ${team?'<span class="c">'+cCommon+'</span>':''}
         </div>
         ${heads.map(p=>`<div class="tks-item sub${sel===p.id?' act':''}" data-act="tk.pick" data-id="${esc(p.id)}">
@@ -1726,6 +1812,7 @@ function rTasks(){
       <div class="tkm-h"><div class="bar"></div><b>${esc(subject)}</b>
         ${sid?'<button class="btn bo bsm" data-act="tk.newOpen" data-sid="'+esc(sid)+'"><svg class="icn"><use href="#i-plus"></use></svg> 업무 추가</button>':''}
       </div>
+      ${tkFilterHTML()}
       ${sid&&S.tkNew===sid?taskFormHTML(sid,null,null):''}
       <div class="tk-list">${listHTML}</div>
     </div>
@@ -1778,7 +1865,7 @@ function nqSearch(q){
 }
 function subjName(sid){
   const t=(S.org.teams||[]).find(x=>x.id===sid);
-  if(t)return t.name+' 공통업무';
+  if(t)return t.name+' 공통 업무';
   const p=roster().find(x=>x.id===sid);
   return p?p.name:'';
 }
@@ -2074,11 +2161,11 @@ function rCfg(){
 }
 /* ═══════════ 메일 — 수신자 계산 · 미리보기 ═══════════
    scope='all'   : 전원에게 같은 내용
-   scope='owner' : 담당자에게만. 단 팀 공통업무는 그 팀 소속 전원에게 간다. */
+   scope='owner' : 담당자에게만. 단 팀 공통 업무는 그 팀 소속 전원에게 간다. */
 function teamIds(){return (S.org.teams||[]).filter(t=>t.name).map(t=>t.id);}
 function isTeamSid(sid){return teamIds().indexOf(sid)>=0;}
 function teamMemberIds(tid){return roster().filter(p=>p.team===tid).map(p=>p.id);}
-/* 항목 하나의 수신 대상 id 목록 — 팀 공통업무면 팀원 전체 */
+/* 항목 하나의 수신 대상 id 목록 — 팀 공통 업무면 팀원 전체 */
 function targetsOf(kind,x){
   if(kind==='task')return isTeamSid(x.sid)?teamMemberIds(x.sid):[x.sid];
   const own=Object.keys((x.p&&x.p.owners)||{});
@@ -2095,7 +2182,7 @@ function mailRecipients(scope,items){
   });
   if(anyAll)return{list:all,note:'수신 범위 · 담당자 지정이 없는 항목이 있어 전체 발송'};
   const list=all.filter(p=>ids.has(p.id));
-  return{list,note:'수신 범위 · 담당자에게만 (팀 공통업무는 팀원 전체)'};
+  return{list,note:'수신 범위 · 담당자에게만 (팀 공통 업무는 팀원 전체)'};
 }
 /* 메일에 담길 항목 수집 */
 function mailItems(kind){
@@ -2233,7 +2320,7 @@ const ACT={
   'plan.cancel':closePlanEdit,
   'plan.edit':el=>{const p=findPlan(el.dataset.pid);if(p)openPlanEdit(p,null,null,el.dataset.occ||'');},
   'plan.done':el=>{const p=findPlan(el.dataset.pid);if(!p)return;
-    const occ=el.dataset.occ||p.date;
+    const occ=occSrc(p,el.dataset.occ||p.date);
     if(p.recur&&p.recur.f){p.doneOn=p.doneOn||{};if(p.doneOn[occ])delete p.doneOn[occ];else p.doneOn[occ]=1;}
     else p.done=!p.done;
     p.updatedAt=Date.now();store.putPlan(p);if(!S.live){rDay();refetchCal();rWidget();}},
@@ -2254,8 +2341,32 @@ const ACT={
       store.delPlan(ym,pid);S.planEdit=null;rDay();
       if(!S.live){refetchCal();rWidget();}toast('업무를 삭제했습니다');
     });},
+  'plan.moveOcc':el=>{
+    const p=findPlan(el.dataset.pid);if(!p)return;
+    const src=occSrc(p,el.dataset.occ);
+    const to=($('#peOcc')&&$('#peOcc').value)||'';
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(to)){toast('옮길 날짜를 고르세요');return;}
+    if(to===src){toast('원래 날짜와 같습니다');return;}
+    p.moveOn={...(p.moveOn||{})};p.moveOn[src]=to;
+    /* 완료·제외 표시는 원래 날짜 기준이라 그대로 둔다 */
+    p.updatedAt=Date.now();store.putPlan(p);
+    S.planEdit=null;selDate(to);
+    if(!S.live){refetchCal();rWidget();}else setTimeout(refetchCal,220);
+    toast('이 회차를 '+to+'로 옮겼습니다');},
+  'plan.resetOcc':el=>{
+    const p=findPlan(el.dataset.pid);if(!p)return;
+    const src=occSrc(p,el.dataset.occ);
+    if(!p.moveOn||!p.moveOn[src]){toast('옮긴 회차가 아닙니다');return;}
+    const mv={...p.moveOn};delete mv[src];p.moveOn=mv;
+    p.updatedAt=Date.now();store.putPlan(p);
+    S.planEdit=null;selDate(src);
+    if(!S.live){refetchCal();rWidget();}else setTimeout(refetchCal,220);
+    toast('원래 날짜로 되돌렸습니다');},
   'plan.skipOcc':el=>{const p=findPlan(el.dataset.pid);if(!p)return;
-    p.skipOn=p.skipOn||{};p.skipOn[el.dataset.occ]=1;p.updatedAt=Date.now();store.putPlan(p);
+    const src=occSrc(p,el.dataset.occ);
+    p.skipOn=p.skipOn||{};p.skipOn[src]=1;
+    if(p.moveOn&&p.moveOn[src]){const mv={...p.moveOn};delete mv[src];p.moveOn=mv;}
+    p.updatedAt=Date.now();store.putPlan(p);
     closeModal();S.planEdit=null;rDay();if(!S.live){refetchCal();rWidget();}toast('이 날짜를 반복에서 제외했습니다');},
   'plan.delAll':el=>{store.delPlan('',el.dataset.pid);closeModal();S.planEdit=null;rDay();
     if(!S.live){refetchCal();rWidget();}toast('반복 업무를 삭제했습니다');},
@@ -2312,6 +2423,8 @@ const ACT={
   'modal.close':closeModal,
   'modal.stop':()=>{},
   'modal.ok':()=>{if(MODAL_CB&&MODAL_CB.ok)MODAL_CB.ok();},
+  'tkf.qclear':()=>{S.tkF={...S.tkF,q:''};rTasks();},
+  'tkf.reset':()=>{S.tkF={q:'',st:'',due:''};rTasks();},
   'tk.newOpen':el=>{S.tkEdit=null;S.tkNew=el.dataset.sid;rTasks();},
   'tk.formCancel':()=>{S.tkNew=null;S.tkEdit=null;rTasks();},
   'tk.formSave':el=>taskFormSave(el.dataset.sid,el.dataset.iid||null),
@@ -2398,7 +2511,7 @@ const ACT={
   'org.delTeam':el=>{
     
     const t=(S.org.teams||[]).find(x=>x.id===el.dataset.id);if(!t)return;
-    confirmModal('팀 삭제','"'+t.name+'" 팀을 삭제합니다. 이 팀의 공통업무도 화면에서 사라지고, 배정된 담당자는 미배정으로 돌아갑니다.',()=>{
+    confirmModal('팀 삭제','"'+t.name+'" 팀을 삭제합니다. 이 팀의 공통 업무도 화면에서 사라지고, 배정된 담당자는 미배정으로 돌아갑니다.',()=>{
       S.org.teams=S.org.teams.filter(x=>x.id!==t.id);
       Object.keys(S.people||{}).forEach(id=>{if(S.people[id].team===t.id)store.putPerson(id,{...S.people[id],team:''});});
       orgSave();});
@@ -2567,6 +2680,7 @@ const ACT={
       .catch(e=>{fbErr(e);rOrg();});
   },
   'dtk.go':el=>gotoTask(el.dataset.sid,el.dataset.iid),
+  'day.qclear':()=>{const i=$('#dpQ');if(i){i.value='';}S.dayQ='';dpSrchMark();rDay();},
   'cal.pick':()=>openYMPick(),
   'cal.pickY':el=>{const c=CAL?CAL.view.currentStart:new Date();
     YM_Y=(YM_Y===null?c.getFullYear():YM_Y)+Number(el.dataset.d);
@@ -2645,6 +2759,8 @@ document.addEventListener('input',e=>{
 document.addEventListener('change',e=>{
   if(e.target.id==='teamSelEl'){ACT['team.switch'](e.target);return;}
   if(e.target.closest('[data-act="pf.org"]')){ACT['pf.org']();return;}
+  if(e.target.id==='tkFst'||e.target.id==='tkFdue'){
+    S.tkF={...S.tkF,[e.target.id==='tkFst'?'st':'due']:e.target.value};rTasks();return;}
   const rl=e.target.closest('[data-act="acct.role"]');
   if(rl){ACT['acct.role'](rl);return;}
   if(e.target.id==='ownFilter'){S.filter.own=e.target.value;refetchCal();rDay();rWidget();return;}
@@ -2682,6 +2798,23 @@ document.addEventListener('change',e=>{
   if(!S.live){rOrg();rTasks();}
 });
 document.addEventListener('input',e=>{if(e.target.id==='nqQ')rNq();});
+document.addEventListener('input',e=>{
+  if(e.target.id==='dpQ'){S.dayQ=e.target.value;dpSrchMark();rDay();return;}
+  if(e.target.id==='tkQ'){
+    S.tkF={...S.tkF,q:e.target.value};
+    clearTimeout(tkQT);tkQT=setTimeout(tkRefresh,160);   /* 전체 렌더는 포커스를 날린다 */
+  }
+});
+let tkQT=null;
+/* 목록·좌측 카운트만 다시 그려 입력 포커스를 유지 */
+function tkRefresh(){
+  const root=$('#tkRoot');if(!root)return;
+  const q=$('#tkQ'),pos=q?q.selectionStart:null;
+  rTasks();
+  const q2=$('#tkQ');
+  if(q2&&q){q2.focus();try{q2.setSelectionRange(pos,pos);}catch(_){}}
+}
+function dpSrchMark(){const w=document.querySelector('.dp-srch');if(w)w.classList.toggle('has',!!String(S.dayQ||'').trim());}
 document.addEventListener('keydown',e=>{
   if(e.key==='Enter'&&(e.target.id==='fbEmail'||e.target.id==='fbPw')){e.preventDefault();fbDoLogin();return;}
   /* Ctrl/⌘+K 로 찾기 */
