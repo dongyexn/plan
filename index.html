@@ -458,13 +458,17 @@ html.dark #fcal .fc-dayGridMonth-view .fc-daygrid-day.hol{background:rgba(255,59
 .tkf-h{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;color:var(--lbl3);
   letter-spacing:.04em;margin-bottom:8px;}
 .tkf-h .c{font-weight:600;color:var(--lbl3);background:var(--fill);border-radius:99px;padding:1px 8px;font-size:10.5px;letter-spacing:0;}
-.tkf-g3{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:start;}
+.tkf-g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:start;}
+.tkf-g4{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.4fr);gap:12px;align-items:start;}
+.tkf-f2{min-width:0;}
+.tkf-f2 .pal{padding-top:2px;}
 .tkf-f{display:flex;flex-direction:column;gap:5px;min-width:0;}
 .tkf-f label{font-size:11.5px;font-weight:600;color:var(--lbl2);}
 .tkf-f .inp-sm{width:100%;}
+.tkf-f select.inp-sm,.tkf-f input.inp-sm{height:36px;}
 .tkf-foot{display:flex;align-items:center;gap:8px;padding:12px 14px;background:var(--surf2);}
 .tkf-foot .tk-new-btns{margin-left:auto;display:flex;gap:8px;}
-@media(max-width:720px){.tkf-g3{grid-template-columns:1fr;}}
+@media(max-width:720px){.tkf-g3,.tkf-g4{grid-template-columns:1fr;}}
 .tk-new-g{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:0;}
 .tk-new-a{min-height:78px;font-size:13px;line-height:1.6;resize:vertical;}
 .tk-new-r{display:flex;flex-wrap:wrap;align-items:center;gap:8px;}
@@ -498,6 +502,8 @@ html.dark #fcal .fc-dayGridMonth-view .fc-daygrid-day.hol{background:rgba(255,59
 .tk-meta .dot-c{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
 /* 담당자 — 회색 바탕 + 색 점 */
 .tk-meta .asg{background:var(--fill);color:var(--lbl);font-weight:600;}
+/* 업무 구분 — 상태와 헷갈리지 않게 테두리만 */
+.tk-meta .kind{background:var(--bg2);border-color:var(--sepo);color:var(--lbl2);}
 /* 현장 — 흰 바탕 + 파란 테두리 */
 .tk-meta .site-on{height:22px;padding:0 9px;background:var(--bg2);border-color:var(--b300);color:var(--bt1);font-size:12px;font-weight:700;}
 /* 링크 — 파란 바탕 */
