@@ -327,6 +327,7 @@ const S={
   planEdit:null,     // 일자 패널 인라인 편집기 상태
   dayQ:'',           // 일자 패널 검색어
   tkF:{q:'',st:'',due:''},   // 주요업무 검색·필터
+  cmtRe:'',          // 답글 입력창을 연 코멘트 (sid/iid/cid)
   prefs:{},          // calapp/prefs/{uid} — 저장한 필터 등 개인 설정
   mentions:{},       // calapp/mentions/{uid} — 나를 부른 코멘트
   live:false,        // Firebase 실시간 모드 여부
@@ -389,7 +390,9 @@ function cleanTask(t){
   if(t.comments&&Object.keys(t.comments).length){
     o.comments={};
     Object.keys(t.comments).forEach(k=>{const c=t.comments[k]||{};
-      o.comments[k]={by:String(c.by||'').slice(0,60),text:String(c.text||'').slice(0,500),at:Number(c.at)||Date.now()};});
+      o.comments[k]={by:String(c.by||'').slice(0,60),text:String(c.text||'').slice(0,500),at:Number(c.at)||Date.now()};
+      if(c.uid)o.comments[k].uid=String(c.uid).slice(0,60);
+      if(c.re)o.comments[k].re=String(c.re).slice(0,40);});
   }
   return o;
 }
@@ -1651,17 +1654,53 @@ function taskDetailHTML(sid,iid,it){
   return `<div class="tk-detail">
     <div class="tk-secs">${box('진행경과',it.prog||it.body,'prog')}${box('처리계획',it.plan,'plan')}</div>
     <div class="tk-thread">
-      ${cs.map(([cid,c])=>`<div class="th-i">
-          <div class="th-av">${esc((c.by||'?').slice(0,1))}</div>
-          <div class="th-b"><div class="th-h"><b>${esc(c.by||'')}</b><span>${esc(relTime(c.at))}</span></div>
-            <div class="th-t">${mentionHTML(c.text)}</div></div>
-        </div>`).join('')}
+      ${threadHTML(cs,sid,iid)}
       <div class="th-new">
-        <div class="th-av me">${esc(((S.user&&acctNick())||'나').slice(0,1))}</div>
+        <div class="th-av me av-cus" style="--avc:${esc((S.user&&(avOf(S.user.uid).color||ownColor(S.user.uid)))||'var(--b600)')}">
+          ${S.user?avInner(avOf(S.user.uid).icon):'나'}</div>
         <div class="th-b">
           <textarea class="th-in" data-sid="${esc(sid)}" data-iid="${esc(iid)}" rows="1" placeholder="진행 상황을 남기세요 · @이름으로 부르기"></textarea>
           <div class="th-f"><button class="btn bp bxs" data-act="tk.cmtSend" data-sid="${esc(sid)}" data-iid="${esc(iid)}">남기기</button></div>
         </div>
+      </div>
+    </div>
+  </div>`;
+}
+/* 코멘트 한 줄 — 작성자 프로필은 저장된 이름이 아니라 지금의 계정 정보를 따른다 */
+function cmtHTML(cid,c,sid,iid,depth){
+  const who=roster().find(p=>p.id===c.uid);
+  const nm=who?who.name:(c.by||'');
+  const av=c.uid?avOf(c.uid):{color:'',icon:''};
+  const col=c.uid?(av.color||ownColor(c.uid)):'var(--fill2)';
+  return `<div class="th-i${depth?' re':''}" data-cid="${esc(cid)}">
+    <div class="th-av av-cus" style="--avc:${esc(col)}">${c.uid?avInner(av.icon):esc(String(nm||'?').slice(0,1))}</div>
+    <div class="th-b">
+      <div class="th-h"><b>${esc(nm)}</b><span>${esc(relTime(c.at))}</span>
+        ${depth?'':'<button class="th-re" data-act="tk.cmtRe" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" data-cid="'+esc(cid)+'">답글</button>'}
+      </div>
+      <div class="th-t">${mentionHTML(c.text)}</div>
+    </div>
+  </div>`;
+}
+function threadHTML(cs,sid,iid){
+  const top=cs.filter(([,c])=>!c.re);
+  const kids=cid=>cs.filter(([,c])=>c.re===cid);
+  return top.map(([cid,c])=>{
+    const rs=kids(cid);
+    return cmtHTML(cid,c,sid,iid,0)
+      +rs.map(([rid,rc])=>cmtHTML(rid,rc,sid,iid,1)).join('')
+      +(S.cmtRe===sid+'/'+iid+'/'+cid?reBoxHTML(sid,iid,cid):'');
+  }).join('');
+}
+function reBoxHTML(sid,iid,cid){
+  return `<div class="th-new re">
+    <div class="th-av me av-cus" style="--avc:${esc((S.user&&(avOf(S.user.uid).color||ownColor(S.user.uid)))||'var(--b600)')}">
+      ${S.user?avInner(avOf(S.user.uid).icon):'나'}</div>
+    <div class="th-b">
+      <textarea class="th-in" data-sid="${esc(sid)}" data-iid="${esc(iid)}" data-re="${esc(cid)}" rows="1" placeholder="답글 · @이름으로 부르기"></textarea>
+      <div class="th-f">
+        <button class="btn bg2 bxs" data-act="tk.cmtReCancel">취소</button>
+        <button class="btn bp bxs" data-act="tk.cmtSend" data-sid="${esc(sid)}" data-iid="${esc(iid)}" data-re="${esc(cid)}">답글 남기기</button>
       </div>
     </div>
   </div>`;
@@ -2669,12 +2708,20 @@ const ACT={
   },
   'tk.dueClear':el=>{const sid=el.dataset.sid,iid=el.dataset.iid,cur=(S.tasks[sid]||{})[iid];if(!cur)return;
     store.putTask(sid,iid,{...cur,due:'',updatedAt:Date.now()});closeModal();if(!S.live)rTasks();refetchCal();},
+  'tk.cmtRe':el=>{S.cmtRe=el.dataset.sid+'/'+el.dataset.iid+'/'+el.dataset.cid;rTasks();
+    setTimeout(()=>{const t=document.querySelector('.th-new.re .th-in');if(t)t.focus();},40);},
+  'tk.cmtReCancel':()=>{S.cmtRe='';rTasks();},
   'tk.cmtSend':el=>{
     const sid=el.dataset.sid,iid=el.dataset.iid,cur=(S.tasks[sid]||{})[iid];if(!cur)return;
-    const box=document.querySelector('.th-in[data-sid="'+sid+'"][data-iid="'+iid+'"]')||$('#cmtIn');
+    const re=el.dataset.re||'';
+    const box=document.querySelector('.th-in[data-sid="'+sid+'"][data-iid="'+iid+'"]'+(re?'[data-re="'+re+'"]':':not([data-re])'))||$('#cmtIn');
     const t=((box&&box.value)||'').trim();if(!t){if(box)box.focus();return;}
     const cid=uid(),who=(S.user&&acctNick())||'나';
-    store.putTask(sid,iid,{...cur,comments:{...(cur.comments||{}),[cid]:{by:who,text:t,at:Date.now()}},updatedAt:cur.updatedAt||Date.now()});
+    const rec={by:who,text:t,at:Date.now()};
+    if(S.user&&S.user.uid)rec.uid=S.user.uid;
+    if(re)rec.re=re;
+    store.putTask(sid,iid,{...cur,comments:{...(cur.comments||{}),[cid]:rec},updatedAt:cur.updatedAt||Date.now()});
+    S.cmtRe='';
     /* @이름 을 찾아 그 사람에게 알림을 남긴다 */
     if(S.live){
       const hit=new Set();
