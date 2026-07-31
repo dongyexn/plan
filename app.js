@@ -636,7 +636,6 @@ function acctTabBody(tab){
   const u=S.user;if(!u)return '';
   const av=avOf(u.uid);
   if(tab==='pw'){
-    let last='';try{if(u.metadata&&u.metadata.lastSignInTime)last=new Date(u.metadata.lastSignInTime).toLocaleString('ko-KR');}catch(e){}
     /* 아바타는 두 탭 공통 — 비밀번호 탭에서도 눌러 바꿀 수 있다 */
     return `${acctHeadHTML()}
       <label class="il">비밀번호 변경</label>
@@ -644,7 +643,6 @@ function acctTabBody(tab){
       <input class="inp acct-gap" id="acctPwNew" type="password" autocomplete="new-password" placeholder="새 비밀번호 (6자 이상)">
       <input class="inp acct-gap" id="acctPwNew2" type="password" autocomplete="new-password" placeholder="새 비밀번호 확인">
       <button class="acct-btn acct-btn-primary acct-btn-full" data-act="acct.changePw">비밀번호 변경</button>
-      ${last?'<div class="acct-last">마지막 로그인 · '+esc(last)+'</div>':''}
       ${emojiPickerHTML(av)}`;
   }
   return `${acctHeadHTML()}
@@ -1135,7 +1133,6 @@ function ymPickHTML(){
         return '<button class="ymp-m'+(sel?' sel':'')+(today?' now':'')+'" data-act="cal.goYM" data-y="'+cy+'" data-m="'+m+'">'+m+'월</button>';
       }).join('')}
     </div>
-    <button class="btn bg2 bsm ymp-t" data-act="cal.goYM" data-y="${ty}" data-m="${tm}">이번 달로</button>
   </div>`;
 }
 function openYMPick(){
@@ -2034,7 +2031,7 @@ function rOrg(){
       <td class="utbl-r">${roleCtl(p)}</td>
     </tr>`;
   };
-  ar.innerHTML='<table class="utbl"><thead><tr><th style="width:180px">이름</th><th style="width:96px">직급</th><th style="width:80px">권역</th><th>담당 현장</th><th class="utbl-r" style="width:92px">권한</th></tr></thead><tbody>'
+  ar.innerHTML='<table class="utbl"><thead><tr><th style="width:178px">이름</th><th style="width:92px">직급</th><th style="width:78px">권역</th><th>담당 현장</th><th class="utbl-r" style="width:130px">권한</th></tr></thead><tbody>'
     +(mine.length?mine.map(row).join('')
       :'<tr><td colspan="5" style="font-size:12px;color:var(--lbl3);padding:10px">이 팀에 배정된 계정이 없습니다.</td></tr>')
     +'</tbody></table>';
@@ -2043,7 +2040,7 @@ function rOrg(){
   if(fc&&fr){
     fc.style.display=free.length?'':'none';
     fr.innerHTML=free.length
-      ?'<table class="utbl"><thead><tr><th style="width:180px">이름</th><th></th><th class="utbl-r" style="width:92px">권한</th></tr></thead><tbody>'
+      ?'<table class="utbl"><thead><tr><th style="width:178px">이름</th><th></th><th class="utbl-r" style="width:130px">권한</th></tr></thead><tbody>'
         +free.map(p=>`<tr>
           <td><div class="utbl-name">${avHTML(p.id)}
             <div style="min-width:0"><div class="utbl-nick">${esc(p.name)}</div><div class="utbl-mail">${esc(p.email||'')}</div></div></div></td>
@@ -2226,7 +2223,8 @@ const ACT={
   },
   'cal.view':el=>{S.calView=el.dataset.v;
     $$('#calSeg button').forEach(b=>b.classList.toggle('act',b.dataset.v===S.calView));
-    if(CAL){CAL.changeView(S.calView);rMonTitle();}},
+    /* 날짜를 함께 넘기지 않으면 그 달 1일이 든 주로 가버린다 — 고른 날(기본 오늘) 기준으로 */
+    if(CAL){CAL.changeView(S.calView,S.selDate||todayStr());rMonTitle();subVisibleMonths();refetchCal();}},
   'cal.reg':el=>{S.filter.reg=el.dataset.r;rFilter();refetchCal();rDay();},
   'cal.prev':()=>CAL&&CAL.prev(),
   'cal.next':()=>CAL&&CAL.next(),
@@ -2711,9 +2709,28 @@ function maxEvOf(){return isNarrow()?2:false;}
 
 function bindCalResize(){
   const sb=$('#sidebar');
-  if(sb)sb.addEventListener('transitionend',e=>{
-    if((e.propertyName==='width'||e.propertyName==='min-width')&&CAL)CAL.updateSize();
-  });
+  if(sb){
+    /* 전환이 끝날 때만 다시 그리면 달력이 마지막에 뚝 바뀐다 —
+       접히는 동안 매 프레임 따라 그려 이어지게 한다 */
+    let raf=null,until=0;
+    const follow=()=>{
+      if(CAL)CAL.updateSize();
+      if(performance.now()<until)raf=requestAnimationFrame(follow);
+      else{raf=null;if(CAL)CAL.updateSize();}
+    };
+    const start=()=>{
+      until=performance.now()+340;          /* --tr 은 .22s, 여유를 둔다 */
+      if(!raf)raf=requestAnimationFrame(follow);
+    };
+    sb.addEventListener('transitionstart',e=>{
+      if(e.propertyName==='width'||e.propertyName==='min-width')start();
+    });
+    sb.addEventListener('transitionend',e=>{
+      if(e.propertyName==='width'||e.propertyName==='min-width'){until=0;if(CAL)CAL.updateSize();}
+    });
+    /* transitionstart 를 못 받는 경우 대비 — 토글 버튼에서도 건다 */
+    document.addEventListener('click',e=>{if(e.target.closest('[data-act="nav.toggle"]'))start();});
+  }
   let rt=null;
   const redraw=()=>{clearTimeout(rt);rt=setTimeout(()=>{
     if(!CAL)return;
