@@ -992,7 +992,15 @@ function calInit(){
     selectable:true,selectMirror:true,
     /* 하루만 클릭한 건 날짜 선택으로만 처리하고(dateClick), 이틀 이상 끌었을 때만 기간 업무 작성 */
     select:info=>{
-      const a=info.startStr.slice(0,10),b=addDays(info.endStr.slice(0,10),-1);
+      const a=info.startStr.slice(0,10);
+      /* 주간 시간칸을 끈 경우 — 그 시각으로 업무를 만든다(이전엔 그냥 선택만 풀렸다) */
+      if(!info.allDay){
+        const hm=info.startStr.slice(11,16);
+        CAL.unselect();selDate(a);openPlanEdit(null,a,'');
+        setTimeout(()=>{const t=$('#peTime');if(t&&hm)t.value=hm;},50);
+        return;
+      }
+      const b=addDays(info.endStr.slice(0,10),-1);
       CAL.unselect();
       if(b<=a)return;
       selDate(a);openPlanEdit(null,a,b);},
@@ -1073,10 +1081,12 @@ function visibleRange(){
   const a=CAL.view.activeStart,b=new Date(CAL.view.activeEnd);b.setDate(b.getDate()-1);
   return[dstr(a),dstr(b)];
 }
+function regSel(){const r=S.filter.reg;return Array.isArray(r)?r:(r&&r!=='*'?[r]:[]);}
 function ownOk(p){
   const owns=planOwners(p);
-  if(S.filter.reg!=='*'){
-    const ids=roster().filter(x=>x.region===S.filter.reg).map(x=>x.id);
+  const rs=regSel();
+  if(rs.length){
+    const ids=roster().filter(x=>rs.includes(x.region)).map(x=>x.id);
     if(!owns.some(o=>ids.includes(o)))return false;
   }
   const f=S.filter.own;
@@ -2312,7 +2322,15 @@ const ACT={
     $$('#calSeg button').forEach(b=>b.classList.toggle('act',b.dataset.v===S.calView));
     /* 날짜를 함께 넘기지 않으면 그 달 1일이 든 주로 가버린다 — 고른 날(기본 오늘) 기준으로 */
     if(CAL){CAL.changeView(S.calView,S.selDate||todayStr());rMonTitle();subVisibleMonths();refetchCal();}},
-  'cal.reg':el=>{S.filter.reg=el.dataset.r;rFilter();refetchCal();rDay();},
+  'cal.reg':el=>{
+    const r=el.dataset.r;
+    if(r==='*')S.filter.reg='*';
+    else{
+      const cur=regSel();
+      const next=cur.includes(r)?cur.filter(x=>x!==r):cur.concat([r]);
+      S.filter.reg=next.length?next:'*';   /* 전부 끄면 전체로 */
+    }
+    rFilter();refetchCal();rDay();},
   'cal.prev':()=>CAL&&CAL.prev(),
   'cal.next':()=>CAL&&CAL.next(),
   'cal.today':()=>{selDate(todayStr());},
@@ -2709,13 +2727,17 @@ function rFilter(){
     if(!regs.length){seg.innerHTML='';seg.style.display='none';}
     else{
       seg.style.display='';
-      if(S.filter.reg!=='*'&&!regs.some(r=>r.id===S.filter.reg))S.filter.reg='*';
-      seg.innerHTML='<span class="reg'+(S.filter.reg==='*'?' act':'')+'" data-act="cal.reg" data-r="*">전체</span>'
-        +regs.map(r=>'<span class="reg'+(S.filter.reg===r.id?' act':'')+'" data-act="cal.reg" data-r="'+esc(r.id)+'">'+esc(r.name)+'</span>').join('');
+      /* 없어진 권역은 걸러낸다 */
+      const keep=regSel().filter(id=>regs.some(r=>r.id===id));
+      S.filter.reg=keep.length?keep:'*';
+      const on=regSel();
+      seg.innerHTML='<span class="reg'+(on.length?'':' act')+'" data-act="cal.reg" data-r="*">전체</span>'
+        +regs.map(r=>'<span class="reg'+(on.includes(r.id)?' act':'')+'" data-act="cal.reg" data-r="'+esc(r.id)+'">'+esc(r.name)+'</span>').join('');
     }
   }
   const sel=$('#ownFilter');if(!sel)return;
-  const inReg=S.filter.reg==='*'?list:list.filter(p=>p.region===S.filter.reg);
+  const rs=regSel();
+  const inReg=rs.length?list.filter(p=>rs.includes(p.region)):list;
   if(S.filter.own!=='*'&&!inReg.some(p=>p.id===S.filter.own))S.filter.own='*';
   /* '내 업무'를 따로 두면 목록의 내 이름과 겹친다 — 이름 뒤에 (나) 만 붙인다 */
   sel.innerHTML='<option value="*">담당자 전체</option>'
