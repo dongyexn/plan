@@ -16,22 +16,23 @@
   //   calapp/plans/{YYYY-MM}/{id} : MEMBER 읽기·쓰기 — 단발 일정(기간 포함)
   //   calapp/recur/{id}           : MEMBER 읽기·쓰기 — 반복 일정 원본
   //   calapp/tasks/{sid}/{iid}    : MEMBER 읽기·쓰기 — 주요업무 항목(+코멘트)
-  //   calapp/people/{uid}         : MEMBER 읽기 / EDITOR 쓰기 — 팀·권역 배정 명부
-  //   calapp/org · calapp/cfg     : MEMBER 읽기 / EDITOR 쓰기 — 팀·권역 목록, 연결 설정
+  //   calapp/people/{uid}         : MEMBER 읽기·쓰기 — 팀·권역·현장 배정 명부
+  //   calapp/org                  : MEMBER 읽기·쓰기 — 팀·권역·현장 목록
+  //   calapp/cfg                  : MEMBER 읽기 / EDITOR 쓰기 — 메일·연결 설정
   //
-  //   ※ users 목록 읽기는 관리자 전용이므로, 일반 사용자 화면의 담당자 명부는
-  //     calapp/people 을 통해 제공된다(관리자가 팀·권역을 지정할 때 이름·이메일이 함께 기록됨).
+  //   ※ users 목록 읽기는 MEMBER 에 열려 있다(조직 관리의 계정 목록).
+  //     단 role 쓰기는 여전히 EDITOR 전용 — 자기 권한 상승·타인 권한 변경 불가.
   // ===================================================================
   "rules": {
     ".read": false,
     ".write": false,
 
     "users": {
-      // 목록 전체 읽기는 관리자만(계정 관리 화면용)
-      ".read": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'",
+      // 목록 전체 읽기는 MEMBER — 조직 관리의 계정 목록은 사용자도 본다(권한 변경은 관리자만)
+      ".read": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
       "$uid": {
-        // 본인 레코드는 본인이, 그 외에는 관리자가 읽을 수 있음
-        ".read": "auth != null && (auth.uid == $uid || (auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'))",
+        // 본인 레코드는 본인이, 그 외에는 MEMBER 가 읽을 수 있음
+        ".read": "auth != null && (auth.uid == $uid || (auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')))",
         // 쓰기: ① 본인이면 (최초 등록 시에만) role을 viewer로 생성 / 등록 이후엔 기존 role 유지만 가능
         //         (자기 권한 상승 차단 + blocked 계정이 스스로 viewer로 되돌리는 자가해제 차단)
         //         + email 은 본인 토큰 이메일과 일치해야 함(타인 이메일 기재 레코드 생성·변조 차단)
@@ -46,6 +47,8 @@
         "name":      { ".validate": "newData.isString() && newData.val().length <= 60" },
         "createdAt": { ".validate": "newData.isNumber()" },
         "lastSeen":  { ".validate": "newData.isNumber()" },
+        "avColor":   { ".validate": "newData.isString() && newData.val().length <= 16" },
+        "avIcon":    { ".validate": "newData.isString() && newData.val().length <= 24" },
         "$other":    { ".validate": false }
       }
     },
@@ -215,6 +218,7 @@
             "text":      { ".validate": "newData.isString() && newData.val().length <= 500" },
             "body":      { ".validate": "newData.isString() && newData.val().length <= 2000" },
             "prog":      { ".validate": "newData.isString() && newData.val().length <= 2000" },
+            "color":     { ".validate": "newData.isString() && newData.val().length <= 16" },
             "plan":      { ".validate": "newData.isString() && newData.val().length <= 2000" },
             "site":      { ".validate": "newData.isString() && newData.val().length <= 40" },
             "order":     { ".validate": "newData.isNumber()" },
@@ -243,9 +247,9 @@
         }
       },
 
-      // 팀·권역 목록 — 관리자만 변경
+      // 팀·권역·현장 목록 — MEMBER 변경 가능
       "org": {
-        ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'",
+        ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
         "teams": {
           "$i": {
             "id":   { ".validate": "newData.isString() && newData.val().length <= 40" },
@@ -272,9 +276,9 @@
         "$other": { ".validate": false }
       },
 
-      // 담당자 명부(팀·권역 배정) — 관리자만 변경. 일반 사용자는 이 노드로 명부를 본다.
+      // 담당자 명부(팀·권역·현장 배정) — MEMBER 변경 가능
       "people": {
-        ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'",
+        ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
         "$pid": {
           "name":   { ".validate": "newData.isString() && newData.val().length <= 60" },
           "email":  { ".validate": "newData.isString() && newData.val().length <= 200" },
