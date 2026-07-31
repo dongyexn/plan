@@ -293,6 +293,7 @@
       "prefs": {
         "$uid": {
           ".write": "auth != null && auth.uid == $uid && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/)",
+          "emoji": { ".validate": "newData.isString() && newData.val().length <= 300" },
           "favs": {
             "$fid": {
               "name":  { ".validate": "newData.isString() && newData.val().length <= 40" },

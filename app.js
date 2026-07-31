@@ -156,20 +156,27 @@ document.addEventListener('mousedown',e=>{
 });
 document.addEventListener('scroll',()=>{if(MN.box)mnClose();},true);
 
-/* 프로필 아이콘 선택 · 미리보기 갱신 */
-function pfSync(){
-  const prev=$('#pfPrev');if(!prev)return;
-  const sel=$('#pfPal .pal-c.sel'),ic=$('#pfIcons .pf-ic.sel');
-  if(sel&&sel.dataset.c)prev.style.background=sel.dataset.c;
-  const use=prev.querySelector('use');
-  if(use&&ic)use.setAttribute('href','#av-'+ic.dataset.ic);
+/* 아바타 배경색 즉시 반영 · 이모지 검색 */
+function pfPaint(c){
+  const av=document.querySelector('.acct-av');
+  if(av&&c)av.style.setProperty('--avc',c);
 }
 document.addEventListener('click',e=>{
-  const ic=e.target.closest('.pf-ic');
-  if(ic&&ic.closest('#pfIcons')){$$('#pfIcons .pf-ic').forEach(x=>x.classList.remove('sel'));ic.classList.add('sel');pfSync();return;}
-  if(e.target.closest('#pfPal'))setTimeout(pfSync,0);
+  const pc=e.target.closest('#pfPal .pal-c');
+  if(pc&&!pc.classList.contains('pal-add')){PF_SEL.color=pc.dataset.c||'';setTimeout(()=>pfPaint(pc.dataset.c),0);return;}
+  /* 팝오버 밖을 누르면 닫는다 — 아바타 버튼 자체는 토글이 처리 */
+  const p=$('#pfPop');
+  if(p&&p.classList.contains('open')&&!e.target.closest('#pfPop')&&!e.target.closest('[data-act="pf.toggle"]'))
+    p.classList.remove('open');
 });
-document.addEventListener('input',e=>{if(e.target.closest('#pfPal'))setTimeout(pfSync,0);});
+document.addEventListener('input',e=>{
+  if(e.target.closest('#pfPal')){const v=e.target.value;PF_SEL.color=v;pfPaint(v);return;}
+  if(e.target.id==='pfSrch'){
+    const q=e.target.value.trim();
+    $$('#pfCats .pf-cat').forEach(x=>x.classList.remove('act'));
+    pfRenderEmg('smiley',q);
+  }
+});
 
 /* 색 선택기 HTML — 기본 팔레트 + 임의 색 추가.
    현재 값이 팔레트에 없으면(직접 고른 색) 맨 뒤에 칩으로 붙여 선택 상태를 유지한다. */
@@ -184,18 +191,35 @@ function palHTML(id,cur,extraFirst){
     +'</div>';
 }
 /* 프로필 아바타 — 계정에 저장한 색·아이콘이 있으면 그것을, 없으면 자동 색 */
-const AV_BUILD=['person','helmet','crane','excavator','building','brick','wrench','ruler','bolt','cone'];
-const AV_ANIMAL=['cat','dog','rabbit','bear','fox','bird','fish','turtle','whale','butterfly'];
-const AV_ICONS=AV_BUILD.concat(AV_ANIMAL);
+/* 아바타 — 기본 아이콘 1종(person SVG) + 시스템 이모지.
+   이모지 목록은 유니코드 표준 분류(애플 키보드와 동일한 8개 묶음). */
+const EMOJI_CATS=[
+  {id:'smiley',label:'표정·사람',s:'😀 grinning|😃 smiley|😄 smile|😁 grin|😆 laughing|😅 sweat_smile|🤣 rolling_on_the_floor_laughing|😂 joy|🙂 slightly_smiling_face|🙃 upside_down_face|🫠 melting_face|😉 wink|😊 blush|😇 innocent|🥰 smiling_face_with_3_hearts|😍 heart_eyes|🤩 star-struck|😘 kissing_heart|😗 kissing|☺️ relaxed|😚 kissing_closed_eyes|😙 kissing_smiling_eyes|🥲 smiling_face_with_tear|😋 yum|😛 stuck_out_tongue|😜 stuck_out_tongue_winking_eye|🤪 zany_face|😝 stuck_out_tongue_closed_eyes|🤑 money_mouth_face|🤗 hugging_face|🤭 face_with_hand_over_mouth|🫢 face_with_open_eyes_and_hand_over_mouth|🫣 face_with_peeking_eye|🤫 shushing_face|🤔 thinking_face|🫡 saluting_face|🤐 zipper_mouth_face|🤨 face_with_raised_eyebrow|😐 neutral_face|😑 expressionless|😶 no_mouth|🫥 dotted_line_face|😶‍🌫️ face_in_clouds|😏 smirk|😒 unamused|🙄 face_with_rolling_eyes|😬 grimacing|😮‍💨 face_exhaling|🤥 lying_face|🫨 shaking_face|🙂‍↔️ head_shaking_horizontally|🙂‍↕️ head_shaking_vertically|😌 relieved|😔 pensive|😪 sleepy|🤤 drooling_face|😴 sleeping|🫩 face_with_bags_under_eyes|😷 mask|🤒 face_with_thermometer|🤕 face_with_head_bandage|🤢 nauseated_face|🤮 face_vomiting|🤧 sneezing_face|🥵 hot_face|🥶 cold_face|🥴 woozy_face|😵 dizzy_face|😵‍💫 face_with_spiral_eyes|🤯 exploding_head|🤠 face_with_cowboy_hat|🥳 partying_face|🥸 disguised_face|😎 sunglasses|🤓 nerd_face|🧐 face_with_monocle|😕 confused|🫤 face_with_diagonal_mouth|😟 worried|🙁 slightly_frowning_face|☹️ white_frowning_face|😮 open_mouth|😯 hushed|😲 astonished|😳 flushed|🥺 pleading_face|🥹 face_holding_back_tears|😦 frowning|😧 anguished|😨 fearful|😰 cold_sweat|😥 disappointed_relieved|😢 cry|😭 sob|😱 scream|😖 confounded|😣 persevere|😞 disappointed|😓 sweat|😩 weary|😫 tired_face|🥱 yawning_face|😤 triumph|😡 rage|😠 angry|🤬 face_with_symbols_on_mouth|😈 smiling_imp|👿 imp|💀 skull|☠️ skull_and_crossbones|💩 hankey|🤡 clown_face|👹 japanese_ogre|👺 japanese_goblin|👻 ghost|👽 alien|👾 space_invader|🤖 robot_face|😺 smiley_cat|😸 smile_cat|😹 joy_cat|😻 heart_eyes_cat|😼 smirk_cat|😽 kissing_cat|🙀 scream_cat|😿 crying_cat_face|😾 pouting_cat|🙈 see_no_evil|🙉 hear_no_evil|🙊 speak_no_evil|💌 love_letter|💘 cupid|💝 gift_heart|💖 sparkling_heart|💗 heartpulse|💓 heartbeat|💞 revolving_hearts|💕 two_hearts|💟 heart_decoration|❣️ heavy_heart_exclamation_mark_ornament|💔 broken_heart|❤️‍🔥 heart_on_fire|❤️‍🩹 mending_heart|❤️ heart|🩷 pink_heart|🧡 orange_heart|💛 yellow_heart|💚 green_heart|💙 blue_heart|🩵 light_blue_heart|💜 purple_heart|🤎 brown_heart|🖤 black_heart|🩶 grey_heart|🤍 white_heart|💋 kiss|💯 100|💢 anger|💥 boom|💫 dizzy|💦 sweat_drops|💨 dash|🕳️ hole|💬 speech_balloon|👁️‍🗨️ eye-in-speech-bubble|🗨️ left_speech_bubble|🗯️ right_anger_bubble|💭 thought_balloon|💤 zzz|👋 wave|🤚 raised_back_of_hand|🖐️ raised_hand_with_fingers_splayed|✋ hand|🖖 spock-hand|🫱 rightwards_hand|🫲 leftwards_hand|🫳 palm_down_hand|🫴 palm_up_hand|🫷 leftwards_pushing_hand|🫸 rightwards_pushing_hand|👌 ok_hand|🤌 pinched_fingers|🤏 pinching_hand|✌️ v|🤞 crossed_fingers|🫰 hand_with_index_finger_and_thumb_crossed|🤟 i_love_you_hand_sign|🤘 the_horns|🤙 call_me_hand|👈 point_left|👉 point_right|👆 point_up_2|🖕 middle_finger|👇 point_down|☝️ point_up|🫵 index_pointing_at_the_viewer|👍 +1|👎 -1|✊ fist|👊 facepunch|🤛 left-facing_fist|🤜 right-facing_fist|👏 clap|🙌 raised_hands|🫶 heart_hands|👐 open_hands|🤲 palms_up_together|🤝 handshake|🙏 pray|✍️ writing_hand|💅 nail_care|🤳 selfie|💪 muscle|🦾 mechanical_arm|🦿 mechanical_leg|🦵 leg|🦶 foot|👂 ear|🦻 ear_with_hearing_aid|👃 nose|🧠 brain|🫀 anatomical_heart|🫁 lungs|🦷 tooth|🦴 bone|👀 eyes|👁️ eye|👅 tongue|👄 lips|🫦 biting_lip|👶 baby|🧒 child|👦 boy|👧 girl|🧑 adult|👨 man|🧔 bearded_person|🧔‍♂️ man_with_beard|🧔‍♀️ woman_with_beard|👨‍🦰 red_haired_man|👨‍🦱 curly_haired_man|👨‍🦳 white_haired_man|👨‍🦲 bald_man|👩 woman|👩‍🦰 red_haired_woman|🧑‍🦰 red_haired_person|👩‍🦱 curly_haired_woman|🧑‍🦱 curly_haired_person|👩‍🦳 white_haired_woman|🧑‍🦳 white_haired_person|👩‍🦲 bald_woman|🧑‍🦲 bald_person|👱‍♀️ blond-haired-woman|👱‍♂️ blond-haired-man|🧓 older_adult|👴 older_man|👵 older_woman|🙍‍♂️ man-frowning|🙍‍♀️ woman-frowning|🙎‍♂️ man-pouting|🙎‍♀️ woman-pouting|🙅‍♂️ man-gesturing-no|🙅‍♀️ woman-gesturing-no|🙆‍♂️ man-gesturing-ok|🙆‍♀️ woman-gesturing-ok|💁‍♂️ man-tipping-hand|💁‍♀️ woman-tipping-hand|🙋‍♂️ man-raising-hand|🙋‍♀️ woman-raising-hand|🧏 deaf_person|🧏‍♂️ deaf_man|🧏‍♀️ deaf_woman|🙇 bow|🙇‍♂️ man-bowing|🙇‍♀️ woman-bowing|🤦 face_palm|🤦‍♂️ man-facepalming|🤦‍♀️ woman-facepalming|🤷 shrug|🤷‍♂️ man-shrugging|🤷‍♀️ woman-shrugging|🧑‍⚕️ health_worker|👨‍⚕️ male-doctor|👩‍⚕️ female-doctor|🧑‍🎓 student|👨‍🎓 male-student|👩‍🎓 female-student|🧑‍🏫 teacher|👨‍🏫 male-teacher|👩‍🏫 female-teacher|🧑‍⚖️ judge|👨‍⚖️ male-judge|👩‍⚖️ female-judge|🧑‍🌾 farmer|👨‍🌾 male-farmer|👩‍🌾 female-farmer|🧑‍🍳 cook|👨‍🍳 male-cook|👩‍🍳 female-cook|🧑‍🔧 mechanic|👨‍🔧 male-mechanic|👩‍🔧 female-mechanic|🧑‍🏭 factory_worker|👨‍🏭 male-factory-worker|👩‍🏭 female-factory-worker|🧑‍💼 office_worker|👨‍💼 male-office-worker|👩‍💼 female-office-worker|🧑‍🔬 scientist|👨‍🔬 male-scientist|👩‍🔬 female-scientist|🧑‍💻 technologist|👨‍💻 male-technologist|👩‍💻 female-technologist|🧑‍🎤 singer|👨‍🎤 male-singer|👩‍🎤 female-singer|🧑‍🎨 artist|👨‍🎨 male-artist|👩‍🎨 female-artist|🧑‍✈️ pilot|👨‍✈️ male-pilot|👩‍✈️ female-pilot|🧑‍🚀 astronaut|👨‍🚀 male-astronaut|👩‍🚀 female-astronaut|🧑‍🚒 firefighter|👨‍🚒 male-firefighter|👩‍🚒 female-firefighter|👮‍♂️ male-police-officer|👮‍♀️ female-police-officer|🕵️‍♂️ male-detective|🕵️‍♀️ female-detective|💂‍♂️ male-guard|💂‍♀️ female-guard|🥷 ninja|👷‍♂️ male-construction-worker|👷‍♀️ female-construction-worker|🫅 person_with_crown|🤴 prince|👸 princess|👳‍♂️ man-wearing-turban|👳‍♀️ woman-wearing-turban|👲 man_with_gua_pi_mao|🧕 person_with_headscarf|🤵 person_in_tuxedo|🤵‍♂️ man_in_tuxedo|🤵‍♀️ woman_in_tuxedo|👰 bride_with_veil|👰‍♂️ man_with_veil|👰‍♀️ woman_with_veil|🤰 pregnant_woman|🫃 pregnant_man|🫄 pregnant_person|🤱 breast-feeding|👩‍🍼 woman_feeding_baby|👨‍🍼 man_feeding_baby|🧑‍🍼 person_feeding_baby|👼 angel|🎅 santa|🤶 mrs_claus|🧑‍🎄 mx_claus|🦸 superhero|🦸‍♂️ male_superhero|🦸‍♀️ female_superhero|🦹 supervillain|🦹‍♂️ male_supervillain|🦹‍♀️ female_supervillain|🧙‍♂️ male_mage|🧙‍♀️ female_mage|🧚‍♂️ male_fairy|🧚‍♀️ female_fairy|🧛‍♂️ male_vampire|🧛‍♀️ female_vampire|🧜‍♂️ merman|🧜‍♀️ mermaid|🧝‍♂️ male_elf|🧝‍♀️ female_elf|🧞‍♂️ male_genie|🧞‍♀️ female_genie|🧟‍♂️ male_zombie|🧟‍♀️ female_zombie|🧌 troll|💆‍♂️ man-getting-massage|💆‍♀️ woman-getting-massage|💇‍♂️ man-getting-haircut|💇‍♀️ woman-getting-haircut|🚶‍♂️ man-walking|🚶‍♀️ woman-walking|🚶‍➡️ person_walking_facing_right|🚶‍♀️‍➡️ woman_walking_facing_right|🚶‍♂️‍➡️ man_walking_facing_right|🧍 standing_person|🧍‍♂️ man_standing|🧍‍♀️ woman_standing|🧎 kneeling_person|🧎‍♂️ man_kneeling|🧎‍♀️ woman_kneeling|🧎‍➡️ person_kneeling_facing_right|🧎‍♀️‍➡️ woman_kneeling_facing_right|🧎‍♂️‍➡️ man_kneeling_facing_right|🧑‍🦯 person_with_probing_cane|🧑‍🦯‍➡️ person_with_white_cane_facing_right|👨‍🦯 man_with_probing_cane|👨‍🦯‍➡️ man_with_white_cane_facing_right|👩‍🦯 woman_with_probing_cane|👩‍🦯‍➡️ woman_with_white_cane_facing_right|🧑‍🦼 person_in_motorized_wheelchair|🧑‍🦼‍➡️ person_in_motorized_wheelchair_facing_right|👨‍🦼 man_in_motorized_wheelchair|👨‍🦼‍➡️ man_in_motorized_wheelchair_facing_right|👩‍🦼 woman_in_motorized_wheelchair|👩‍🦼‍➡️ woman_in_motorized_wheelchair_facing_right|🧑‍🦽 person_in_manual_wheelchair|🧑‍🦽‍➡️ person_in_manual_wheelchair_facing_right|👨‍🦽 man_in_manual_wheelchair|👨‍🦽‍➡️ man_in_manual_wheelchair_facing_right|👩‍🦽 woman_in_manual_wheelchair|👩‍🦽‍➡️ woman_in_manual_wheelchair_facing_right|🏃‍♂️ man-running|🏃‍♀️ woman-running|🏃‍➡️ person_running_facing_right|🏃‍♀️‍➡️ woman_running_facing_right|🏃‍♂️‍➡️ man_running_facing_right|💃 dancer|🕺 man_dancing|🕴️ man_in_business_suit_levitating|👯‍♂️ men-with-bunny-ears-partying|👯‍♀️ women-with-bunny-ears-partying|🧖‍♂️ man_in_steamy_room|🧖‍♀️ woman_in_steamy_room|🧗‍♂️ man_climbing|🧗‍♀️ woman_climbing|🤺 fencer|🏇 horse_racing|⛷️ skier|🏂 snowboarder|🏌️‍♂️ man-golfing|🏌️‍♀️ woman-golfing|🏄‍♂️ man-surfing|🏄‍♀️ woman-surfing|🚣‍♂️ man-rowing-boat|🚣‍♀️ woman-rowing-boat|🏊‍♂️ man-swimming|🏊‍♀️ woman-swimming|⛹️‍♂️ man-bouncing-ball|⛹️‍♀️ woman-bouncing-ball|🏋️‍♂️ man-lifting-weights|🏋️‍♀️ woman-lifting-weights|🚴‍♂️ man-biking|🚴‍♀️ woman-biking|🚵‍♂️ man-mountain-biking|🚵‍♀️ woman-mountain-biking|🤸 person_doing_cartwheel|🤸‍♂️ man-cartwheeling|🤸‍♀️ woman-cartwheeling|🤼 wrestlers|🤼‍♂️ man-wrestling|🤼‍♀️ woman-wrestling|🤽 water_polo|🤽‍♂️ man-playing-water-polo|🤽‍♀️ woman-playing-water-polo|🤾 handball|🤾‍♂️ man-playing-handball|🤾‍♀️ woman-playing-handball|🤹 juggling|🤹‍♂️ man-juggling|🤹‍♀️ woman-juggling|🧘‍♂️ man_in_lotus_position|🧘‍♀️ woman_in_lotus_position|🛀 bath|🛌 sleeping_accommodation|🧑‍🤝‍🧑 people_holding_hands|👭 two_women_holding_hands|👫 man_and_woman_holding_hands|👬 two_men_holding_hands|💏 couplekiss|👩‍❤️‍💋‍👨 woman-kiss-man|👨‍❤️‍💋‍👨 man-kiss-man|👩‍❤️‍💋‍👩 woman-kiss-woman|💑 couple_with_heart|👩‍❤️‍👨 woman-heart-man|👨‍❤️‍👨 man-heart-man|👩‍❤️‍👩 woman-heart-woman|👨‍👩‍👦 man-woman-boy|👨‍👩‍👧 man-woman-girl|👨‍👩‍👧‍👦 man-woman-girl-boy|👨‍👩‍👦‍👦 man-woman-boy-boy|👨‍👩‍👧‍👧 man-woman-girl-girl|👨‍👨‍👦 man-man-boy|👨‍👨‍👧 man-man-girl|👨‍👨‍👧‍👦 man-man-girl-boy|👨‍👨‍👦‍👦 man-man-boy-boy|👨‍👨‍👧‍👧 man-man-girl-girl|👩‍👩‍👦 woman-woman-boy|👩‍👩‍👧 woman-woman-girl|👩‍👩‍👧‍👦 woman-woman-girl-boy|👩‍👩‍👦‍👦 woman-woman-boy-boy|👩‍👩‍👧‍👧 woman-woman-girl-girl|👨‍👦 man-boy|👨‍👦‍👦 man-boy-boy|👨‍👧 man-girl|👨‍👧‍👦 man-girl-boy|👨‍👧‍👧 man-girl-girl|👩‍👦 woman-boy|👩‍👦‍👦 woman-boy-boy|👩‍👧 woman-girl|👩‍👧‍👦 woman-girl-boy|👩‍👧‍👧 woman-girl-girl|🗣️ speaking_head_in_silhouette|👤 bust_in_silhouette|👥 busts_in_silhouette|🫂 people_hugging|🧑‍🧑‍🧒 family_adult_adult_child|🧑‍🧑‍🧒‍🧒 family_adult_adult_child_child|🧑‍🧒 family_adult_child|🧑‍🧒‍🧒 family_adult_child_child|👣 footprints|🫆 fingerprint'},
+  {id:'animal',label:'동물·자연',s:'🐵 monkey_face|🐒 monkey|🦍 gorilla|🦧 orangutan|🐶 dog|🐕 dog2|🦮 guide_dog|🐕‍🦺 service_dog|🐩 poodle|🐺 wolf|🦊 fox_face|🦝 raccoon|🐱 cat|🐈 cat2|🐈‍⬛ black_cat|🦁 lion_face|🐯 tiger|🐅 tiger2|🐆 leopard|🐴 horse|🫎 moose|🫏 donkey|🐎 racehorse|🦄 unicorn_face|🦓 zebra_face|🦌 deer|🦬 bison|🐮 cow|🐂 ox|🐃 water_buffalo|🐄 cow2|🐷 pig|🐖 pig2|🐗 boar|🐽 pig_nose|🐏 ram|🐑 sheep|🐐 goat|🐪 dromedary_camel|🐫 camel|🦙 llama|🦒 giraffe_face|🐘 elephant|🦣 mammoth|🦏 rhinoceros|🦛 hippopotamus|🐭 mouse|🐁 mouse2|🐀 rat|🐹 hamster|🐰 rabbit|🐇 rabbit2|🐿️ chipmunk|🦫 beaver|🦔 hedgehog|🦇 bat|🐻 bear|🐻‍❄️ polar_bear|🐨 koala|🐼 panda_face|🦥 sloth|🦦 otter|🦨 skunk|🦘 kangaroo|🦡 badger|🐾 feet|🦃 turkey|🐔 chicken|🐓 rooster|🐣 hatching_chick|🐤 baby_chick|🐥 hatched_chick|🐦 bird|🐧 penguin|🕊️ dove_of_peace|🦅 eagle|🦆 duck|🦢 swan|🦉 owl|🦤 dodo|🪶 feather|🦩 flamingo|🦚 peacock|🦜 parrot|🪽 wing|🐦‍⬛ black_bird|🪿 goose|🐦‍🔥 phoenix|🐸 frog|🐊 crocodile|🐢 turtle|🦎 lizard|🐍 snake|🐲 dragon_face|🐉 dragon|🦕 sauropod|🦖 t-rex|🐳 whale|🐋 whale2|🐬 dolphin|🦭 seal|🐟 fish|🐠 tropical_fish|🐡 blowfish|🦈 shark|🐙 octopus|🐚 shell|🪸 coral|🪼 jellyfish|🦀 crab|🦞 lobster|🦐 shrimp|🦑 squid|🦪 oyster|🐌 snail|🦋 butterfly|🐛 bug|🐜 ant|🐝 bee|🪲 beetle|🐞 ladybug|🦗 cricket|🪳 cockroach|🕷️ spider|🕸️ spider_web|🦂 scorpion|🦟 mosquito|🪰 fly|🪱 worm|🦠 microbe|💐 bouquet|🌸 cherry_blossom|💮 white_flower|🪷 lotus|🏵️ rosette|🌹 rose|🥀 wilted_flower|🌺 hibiscus|🌻 sunflower|🌼 blossom|🌷 tulip|🪻 hyacinth|🌱 seedling|🪴 potted_plant|🌲 evergreen_tree|🌳 deciduous_tree|🌴 palm_tree|🌵 cactus|🌾 ear_of_rice|🌿 herb|☘️ shamrock|🍀 four_leaf_clover|🍁 maple_leaf|🍂 fallen_leaf|🍃 leaves|🪹 empty_nest|🪺 nest_with_eggs|🍄 mushroom|🪾 leafless_tree'},
+  {id:'food',label:'음식·음료',s:'🍇 grapes|🍈 melon|🍉 watermelon|🍊 tangerine|🍋 lemon|🍋‍🟩 lime|🍌 banana|🍍 pineapple|🥭 mango|🍎 apple|🍏 green_apple|🍐 pear|🍑 peach|🍒 cherries|🍓 strawberry|🫐 blueberries|🥝 kiwifruit|🍅 tomato|🫒 olive|🥥 coconut|🥑 avocado|🍆 eggplant|🥔 potato|🥕 carrot|🌽 corn|🌶️ hot_pepper|🫑 bell_pepper|🥒 cucumber|🥬 leafy_green|🥦 broccoli|🧄 garlic|🧅 onion|🥜 peanuts|🫘 beans|🌰 chestnut|🫚 ginger_root|🫛 pea_pod|🍄‍🟫 brown_mushroom|🫜 root_vegetable|🍞 bread|🥐 croissant|🥖 baguette_bread|🫓 flatbread|🥨 pretzel|🥯 bagel|🥞 pancakes|🧇 waffle|🧀 cheese_wedge|🍖 meat_on_bone|🍗 poultry_leg|🥩 cut_of_meat|🥓 bacon|🍔 hamburger|🍟 fries|🍕 pizza|🌭 hotdog|🥪 sandwich|🌮 taco|🌯 burrito|🫔 tamale|🥙 stuffed_flatbread|🧆 falafel|🥚 egg|🍳 fried_egg|🥘 shallow_pan_of_food|🍲 stew|🫕 fondue|🥣 bowl_with_spoon|🥗 green_salad|🍿 popcorn|🧈 butter|🧂 salt|🥫 canned_food|🍱 bento|🍘 rice_cracker|🍙 rice_ball|🍚 rice|🍛 curry|🍜 ramen|🍝 spaghetti|🍠 sweet_potato|🍢 oden|🍣 sushi|🍤 fried_shrimp|🍥 fish_cake|🥮 moon_cake|🍡 dango|🥟 dumpling|🥠 fortune_cookie|🥡 takeout_box|🍦 icecream|🍧 shaved_ice|🍨 ice_cream|🍩 doughnut|🍪 cookie|🎂 birthday|🍰 cake|🧁 cupcake|🥧 pie|🍫 chocolate_bar|🍬 candy|🍭 lollipop|🍮 custard|🍯 honey_pot|🍼 baby_bottle|🥛 glass_of_milk|☕ coffee|🫖 teapot|🍵 tea|🍶 sake|🍾 champagne|🍷 wine_glass|🍸 cocktail|🍹 tropical_drink|🍺 beer|🍻 beers|🥂 clinking_glasses|🥃 tumbler_glass|🫗 pouring_liquid|🥤 cup_with_straw|🧋 bubble_tea|🧃 beverage_box|🧉 mate_drink|🧊 ice_cube|🥢 chopsticks|🍽️ knife_fork_plate|🍴 fork_and_knife|🥄 spoon|🔪 hocho|🫙 jar|🏺 amphora'},
+  {id:'activity',label:'활동',s:'🎃 jack_o_lantern|🎄 christmas_tree|🎆 fireworks|🎇 sparkler|🧨 firecracker|✨ sparkles|🎈 balloon|🎉 tada|🎊 confetti_ball|🎋 tanabata_tree|🎍 bamboo|🎎 dolls|🎏 flags|🎐 wind_chime|🎑 rice_scene|🧧 red_envelope|🎀 ribbon|🎁 gift|🎗️ reminder_ribbon|🎟️ admission_tickets|🎫 ticket|🎖️ medal|🏆 trophy|🏅 sports_medal|🥇 first_place_medal|🥈 second_place_medal|🥉 third_place_medal|⚽ soccer|⚾ baseball|🥎 softball|🏀 basketball|🏐 volleyball|🏈 football|🏉 rugby_football|🎾 tennis|🥏 flying_disc|🎳 bowling|🏏 cricket_bat_and_ball|🏑 field_hockey_stick_and_ball|🏒 ice_hockey_stick_and_puck|🥍 lacrosse|🏓 table_tennis_paddle_and_ball|🏸 badminton_racquet_and_shuttlecock|🥊 boxing_glove|🥋 martial_arts_uniform|🥅 goal_net|⛳ golf|⛸️ ice_skate|🎣 fishing_pole_and_fish|🤿 diving_mask|🎽 running_shirt_with_sash|🎿 ski|🛷 sled|🥌 curling_stone|🎯 dart|🪀 yo-yo|🪁 kite|🔫 gun|🎱 8ball|🔮 crystal_ball|🪄 magic_wand|🎮 video_game|🕹️ joystick|🎰 slot_machine|🎲 game_die|🧩 jigsaw|🧸 teddy_bear|🪅 pinata|🪩 mirror_ball|🪆 nesting_dolls|♠️ spades|♥️ hearts|♦️ diamonds|♣️ clubs|♟️ chess_pawn|🃏 black_joker|🀄 mahjong|🎴 flower_playing_cards|🎭 performing_arts|🖼️ frame_with_picture|🎨 art|🧵 thread|🪡 sewing_needle|🧶 yarn|🪢 knot'},
+  {id:'travel',label:'여행·장소',s:'🌍 earth_africa|🌎 earth_americas|🌏 earth_asia|🌐 globe_with_meridians|🗺️ world_map|🗾 japan|🧭 compass|🏔️ snow_capped_mountain|⛰️ mountain|🌋 volcano|🗻 mount_fuji|🏕️ camping|🏖️ beach_with_umbrella|🏜️ desert|🏝️ desert_island|🏞️ national_park|🏟️ stadium|🏛️ classical_building|🏗️ building_construction|🧱 bricks|🪨 rock|🪵 wood|🛖 hut|🏘️ house_buildings|🏚️ derelict_house_building|🏠 house|🏡 house_with_garden|🏢 office|🏣 post_office|🏤 european_post_office|🏥 hospital|🏦 bank|🏨 hotel|🏩 love_hotel|🏪 convenience_store|🏫 school|🏬 department_store|🏭 factory|🏯 japanese_castle|🏰 european_castle|💒 wedding|🗼 tokyo_tower|🗽 statue_of_liberty|⛪ church|🕌 mosque|🛕 hindu_temple|🕍 synagogue|⛩️ shinto_shrine|🕋 kaaba|⛲ fountain|⛺ tent|🌁 foggy|🌃 night_with_stars|🏙️ cityscape|🌄 sunrise_over_mountains|🌅 sunrise|🌆 city_sunset|🌇 city_sunrise|🌉 bridge_at_night|♨️ hotsprings|🎠 carousel_horse|🛝 playground_slide|🎡 ferris_wheel|🎢 roller_coaster|💈 barber|🎪 circus_tent|🚂 steam_locomotive|🚃 railway_car|🚄 bullettrain_side|🚅 bullettrain_front|🚆 train2|🚇 metro|🚈 light_rail|🚉 station|🚊 tram|🚝 monorail|🚞 mountain_railway|🚋 train|🚌 bus|🚍 oncoming_bus|🚎 trolleybus|🚐 minibus|🚑 ambulance|🚒 fire_engine|🚓 police_car|🚔 oncoming_police_car|🚕 taxi|🚖 oncoming_taxi|🚗 car|🚘 oncoming_automobile|🚙 blue_car|🛻 pickup_truck|🚚 truck|🚛 articulated_lorry|🚜 tractor|🏎️ racing_car|🏍️ racing_motorcycle|🛵 motor_scooter|🦽 manual_wheelchair|🦼 motorized_wheelchair|🛺 auto_rickshaw|🚲 bike|🛴 scooter|🛹 skateboard|🛼 roller_skate|🚏 busstop|🛣️ motorway|🛤️ railway_track|🛢️ oil_drum|⛽ fuelpump|🛞 wheel|🚨 rotating_light|🚥 traffic_light|🚦 vertical_traffic_light|🛑 octagonal_sign|🚧 construction|⚓ anchor|🛟 ring_buoy|⛵ boat|🛶 canoe|🚤 speedboat|🛳️ passenger_ship|⛴️ ferry|🛥️ motor_boat|🚢 ship|✈️ airplane|🛩️ small_airplane|🛫 airplane_departure|🛬 airplane_arriving|🪂 parachute|💺 seat|🚁 helicopter|🚟 suspension_railway|🚠 mountain_cableway|🚡 aerial_tramway|🛰️ satellite|🚀 rocket|🛸 flying_saucer|🛎️ bellhop_bell|🧳 luggage|⌛ hourglass|⏳ hourglass_flowing_sand|⌚ watch|⏰ alarm_clock|⏱️ stopwatch|⏲️ timer_clock|🕰️ mantelpiece_clock|🕛 clock12|🕧 clock1230|🕐 clock1|🕜 clock130|🕑 clock2|🕝 clock230|🕒 clock3|🕞 clock330|🕓 clock4|🕟 clock430|🕔 clock5|🕠 clock530|🕕 clock6|🕡 clock630|🕖 clock7|🕢 clock730|🕗 clock8|🕣 clock830|🕘 clock9|🕤 clock930|🕙 clock10|🕥 clock1030|🕚 clock11|🕦 clock1130|🌑 new_moon|🌒 waxing_crescent_moon|🌓 first_quarter_moon|🌔 moon|🌕 full_moon|🌖 waning_gibbous_moon|🌗 last_quarter_moon|🌘 waning_crescent_moon|🌙 crescent_moon|🌚 new_moon_with_face|🌛 first_quarter_moon_with_face|🌜 last_quarter_moon_with_face|🌡️ thermometer|☀️ sunny|🌝 full_moon_with_face|🌞 sun_with_face|🪐 ringed_planet|⭐ star|🌟 star2|🌠 stars|🌌 milky_way|☁️ cloud|⛅ partly_sunny|⛈️ thunder_cloud_and_rain|🌤️ mostly_sunny|🌥️ barely_sunny|🌦️ partly_sunny_rain|🌧️ rain_cloud|🌨️ snow_cloud|🌩️ lightning|🌪️ tornado|🌫️ fog|🌬️ wind_blowing_face|🌀 cyclone|🌈 rainbow|🌂 closed_umbrella|☂️ umbrella|☔ umbrella_with_rain_drops|⛱️ umbrella_on_ground|⚡ zap|❄️ snowflake|☃️ snowman|⛄ snowman_without_snow|☄️ comet|🔥 fire|💧 droplet|🌊 ocean'},
+  {id:'object',label:'사물',s:'👓 eyeglasses|🕶️ dark_sunglasses|🥽 goggles|🥼 lab_coat|🦺 safety_vest|👔 necktie|👕 shirt|👖 jeans|🧣 scarf|🧤 gloves|🧥 coat|🧦 socks|👗 dress|👘 kimono|🥻 sari|🩱 one-piece_swimsuit|🩲 briefs|🩳 shorts|👙 bikini|👚 womans_clothes|🪭 folding_hand_fan|👛 purse|👜 handbag|👝 pouch|🛍️ shopping_bags|🎒 school_satchel|🩴 thong_sandal|👞 mans_shoe|👟 athletic_shoe|🥾 hiking_boot|🥿 womans_flat_shoe|👠 high_heel|👡 sandal|🩰 ballet_shoes|👢 boot|🪮 hair_pick|👑 crown|👒 womans_hat|🎩 tophat|🎓 mortar_board|🧢 billed_cap|🪖 military_helmet|⛑️ helmet_with_white_cross|📿 prayer_beads|💄 lipstick|💍 ring|💎 gem|🔇 mute|🔈 speaker|🔉 sound|🔊 loud_sound|📢 loudspeaker|📣 mega|📯 postal_horn|🔔 bell|🔕 no_bell|🎼 musical_score|🎵 musical_note|🎶 notes|🎙️ studio_microphone|🎚️ level_slider|🎛️ control_knobs|🎤 microphone|🎧 headphones|📻 radio|🎷 saxophone|🪗 accordion|🎸 guitar|🎹 musical_keyboard|🎺 trumpet|🎻 violin|🪕 banjo|🥁 drum_with_drumsticks|🪘 long_drum|🪇 maracas|🪈 flute|🪉 harp|📱 iphone|📲 calling|☎️ phone|📞 telephone_receiver|📟 pager|📠 fax|🔋 battery|🪫 low_battery|🔌 electric_plug|💻 computer|🖥️ desktop_computer|🖨️ printer|⌨️ keyboard|🖱️ three_button_mouse|🖲️ trackball|💽 minidisc|💾 floppy_disk|💿 cd|📀 dvd|🧮 abacus|🎥 movie_camera|🎞️ film_frames|📽️ film_projector|🎬 clapper|📺 tv|📷 camera|📸 camera_with_flash|📹 video_camera|📼 vhs|🔍 mag|🔎 mag_right|🕯️ candle|💡 bulb|🔦 flashlight|🏮 izakaya_lantern|🪔 diya_lamp|📔 notebook_with_decorative_cover|📕 closed_book|📖 book|📗 green_book|📘 blue_book|📙 orange_book|📚 books|📓 notebook|📒 ledger|📃 page_with_curl|📜 scroll|📄 page_facing_up|📰 newspaper|🗞️ rolled_up_newspaper|📑 bookmark_tabs|🔖 bookmark|🏷️ label|💰 moneybag|🪙 coin|💴 yen|💵 dollar|💶 euro|💷 pound|💸 money_with_wings|💳 credit_card|🧾 receipt|💹 chart|✉️ email|📧 e-mail|📨 incoming_envelope|📩 envelope_with_arrow|📤 outbox_tray|📥 inbox_tray|📦 package|📫 mailbox|📪 mailbox_closed|📬 mailbox_with_mail|📭 mailbox_with_no_mail|📮 postbox|🗳️ ballot_box_with_ballot|✏️ pencil2|✒️ black_nib|🖋️ lower_left_fountain_pen|🖊️ lower_left_ballpoint_pen|🖌️ lower_left_paintbrush|🖍️ lower_left_crayon|📝 memo|💼 briefcase|📁 file_folder|📂 open_file_folder|🗂️ card_index_dividers|📅 date|📆 calendar|🗒️ spiral_note_pad|🗓️ spiral_calendar_pad|📇 card_index|📈 chart_with_upwards_trend|📉 chart_with_downwards_trend|📊 bar_chart|📋 clipboard|📌 pushpin|📍 round_pushpin|📎 paperclip|🖇️ linked_paperclips|📏 straight_ruler|📐 triangular_ruler|✂️ scissors|🗃️ card_file_box|🗄️ file_cabinet|🗑️ wastebasket|🔒 lock|🔓 unlock|🔏 lock_with_ink_pen|🔐 closed_lock_with_key|🔑 key|🗝️ old_key|🔨 hammer|🪓 axe|⛏️ pick|⚒️ hammer_and_pick|🛠️ hammer_and_wrench|🗡️ dagger_knife|⚔️ crossed_swords|💣 bomb|🪃 boomerang|🏹 bow_and_arrow|🛡️ shield|🪚 carpentry_saw|🔧 wrench|🪛 screwdriver|🔩 nut_and_bolt|⚙️ gear|🗜️ compression|⚖️ scales|🦯 probing_cane|🔗 link|⛓️‍💥 broken_chain|⛓️ chains|🪝 hook|🧰 toolbox|🧲 magnet|🪜 ladder|🪏 shovel|⚗️ alembic|🧪 test_tube|🧫 petri_dish|🧬 dna|🔬 microscope|🔭 telescope|📡 satellite_antenna|💉 syringe|🩸 drop_of_blood|💊 pill|🩹 adhesive_bandage|🩼 crutch|🩺 stethoscope|🩻 x-ray|🚪 door|🛗 elevator|🪞 mirror|🪟 window|🛏️ bed|🛋️ couch_and_lamp|🪑 chair|🚽 toilet|🪠 plunger|🚿 shower|🛁 bathtub|🪤 mouse_trap|🪒 razor|🧴 lotion_bottle|🧷 safety_pin|🧹 broom|🧺 basket|🧻 roll_of_paper|🪣 bucket|🧼 soap|🫧 bubbles|🪥 toothbrush|🧽 sponge|🧯 fire_extinguisher|🛒 shopping_trolley|🚬 smoking|⚰️ coffin|🪦 headstone|⚱️ funeral_urn|🧿 nazar_amulet|🪬 hamsa|🗿 moyai|🪧 placard|🪪 identification_card'},
+  {id:'symbol',label:'기호',s:'🏧 atm|🚮 put_litter_in_its_place|🚰 potable_water|♿ wheelchair|🚹 mens|🚺 womens|🚻 restroom|🚼 baby_symbol|🚾 wc|🛂 passport_control|🛃 customs|🛄 baggage_claim|🛅 left_luggage|⚠️ warning|🚸 children_crossing|⛔ no_entry|🚫 no_entry_sign|🚳 no_bicycles|🚭 no_smoking|🚯 do_not_litter|🚱 non-potable_water|🚷 no_pedestrians|📵 no_mobile_phones|🔞 underage|☢️ radioactive_sign|☣️ biohazard_sign|⬆️ arrow_up|↗️ arrow_upper_right|➡️ arrow_right|↘️ arrow_lower_right|⬇️ arrow_down|↙️ arrow_lower_left|⬅️ arrow_left|↖️ arrow_upper_left|↕️ arrow_up_down|↔️ left_right_arrow|↩️ leftwards_arrow_with_hook|↪️ arrow_right_hook|⤴️ arrow_heading_up|⤵️ arrow_heading_down|🔃 arrows_clockwise|🔄 arrows_counterclockwise|🔙 back|🔚 end|🔛 on|🔜 soon|🔝 top|🛐 place_of_worship|⚛️ atom_symbol|🕉️ om_symbol|✡️ star_of_david|☸️ wheel_of_dharma|☯️ yin_yang|✝️ latin_cross|☦️ orthodox_cross|☪️ star_and_crescent|☮️ peace_symbol|🕎 menorah_with_nine_branches|🔯 six_pointed_star|🪯 khanda|♈ aries|♉ taurus|♊ gemini|♋ cancer|♌ leo|♍ virgo|♎ libra|♏ scorpius|♐ sagittarius|♑ capricorn|♒ aquarius|♓ pisces|⛎ ophiuchus|🔀 twisted_rightwards_arrows|🔁 repeat|🔂 repeat_one|▶️ arrow_forward|⏩ fast_forward|⏭️ black_right_pointing_double_triangle_with_vertical_bar|⏯️ black_right_pointing_triangle_with_double_vertical_bar|◀️ arrow_backward|⏪ rewind|⏮️ black_left_pointing_double_triangle_with_vertical_bar|🔼 arrow_up_small|⏫ arrow_double_up|🔽 arrow_down_small|⏬ arrow_double_down|⏸️ double_vertical_bar|⏹️ black_square_for_stop|⏺️ black_circle_for_record|⏏️ eject|🎦 cinema|🔅 low_brightness|🔆 high_brightness|📶 signal_strength|🛜 wireless|📳 vibration_mode|📴 mobile_phone_off|♀️ female_sign|♂️ male_sign|⚧️ transgender_symbol|✖️ heavy_multiplication_x|➕ heavy_plus_sign|➖ heavy_minus_sign|➗ heavy_division_sign|🟰 heavy_equals_sign|♾️ infinity|‼️ bangbang|⁉️ interrobang|❓ question|❔ grey_question|❕ grey_exclamation|❗ exclamation|〰️ wavy_dash|💱 currency_exchange|💲 heavy_dollar_sign|⚕️ medical_symbol|♻️ recycle|⚜️ fleur_de_lis|🔱 trident|📛 name_badge|🔰 beginner|⭕ o|✅ white_check_mark|☑️ ballot_box_with_check|✔️ heavy_check_mark|❌ x|❎ negative_squared_cross_mark|➰ curly_loop|➿ loop|〽️ part_alternation_mark|✳️ eight_spoked_asterisk|✴️ eight_pointed_black_star|❇️ sparkle|©️ copyright|®️ registered|™️ tm|🫟 splatter|#️⃣ hash|*️⃣ keycap_star|0️⃣ zero|1️⃣ one|2️⃣ two|3️⃣ three|4️⃣ four|5️⃣ five|6️⃣ six|7️⃣ seven|8️⃣ eight|9️⃣ nine|🔟 keycap_ten|🔠 capital_abcd|🔡 abcd|🔢 1234|🔣 symbols|🔤 abc|🅰️ a|🆎 ab|🅱️ b|🆑 cl|🆒 cool|🆓 free|ℹ️ information_source|🆔 id|Ⓜ️ m|🆕 new|🆖 ng|🅾️ o2|🆗 ok|🅿️ parking|🆘 sos|🆙 up|🆚 vs|🈁 koko|🈂️ sa|🈷️ u6708|🈶 u6709|🈯 u6307|🉐 ideograph_advantage|🈹 u5272|🈚 u7121|🈲 u7981|🉑 accept|🈸 u7533|🈴 u5408|🈳 u7a7a|㊗️ congratulations|㊙️ secret|🈺 u55b6|🈵 u6e80|🔴 red_circle|🟠 large_orange_circle|🟡 large_yellow_circle|🟢 large_green_circle|🔵 large_blue_circle|🟣 large_purple_circle|🟤 large_brown_circle|⚫ black_circle|⚪ white_circle|🟥 large_red_square|🟧 large_orange_square|🟨 large_yellow_square|🟩 large_green_square|🟦 large_blue_square|🟪 large_purple_square|🟫 large_brown_square|⬛ black_large_square|⬜ white_large_square|◼️ black_medium_square|◻️ white_medium_square|◾ black_medium_small_square|◽ white_medium_small_square|▪️ black_small_square|▫️ white_small_square|🔶 large_orange_diamond|🔷 large_blue_diamond|🔸 small_orange_diamond|🔹 small_blue_diamond|🔺 small_red_triangle|🔻 small_red_triangle_down|💠 diamond_shape_with_a_dot_inside|🔘 radio_button|🔳 white_square_button|🔲 black_square_button'},
+  {id:'flag',label:'깃발',s:'🏁 checkered_flag|🚩 triangular_flag_on_post|🎌 crossed_flags|🏴 waving_black_flag|🏳️ waving_white_flag|🏳️‍🌈 rainbow-flag|🏳️‍⚧️ transgender_flag|🏴‍☠️ pirate_flag|🇦🇨 flag-ac|🇦🇩 flag-ad|🇦🇪 flag-ae|🇦🇫 flag-af|🇦🇬 flag-ag|🇦🇮 flag-ai|🇦🇱 flag-al|🇦🇲 flag-am|🇦🇴 flag-ao|🇦🇶 flag-aq|🇦🇷 flag-ar|🇦🇸 flag-as|🇦🇹 flag-at|🇦🇺 flag-au|🇦🇼 flag-aw|🇦🇽 flag-ax|🇦🇿 flag-az|🇧🇦 flag-ba|🇧🇧 flag-bb|🇧🇩 flag-bd|🇧🇪 flag-be|🇧🇫 flag-bf|🇧🇬 flag-bg|🇧🇭 flag-bh|🇧🇮 flag-bi|🇧🇯 flag-bj|🇧🇱 flag-bl|🇧🇲 flag-bm|🇧🇳 flag-bn|🇧🇴 flag-bo|🇧🇶 flag-bq|🇧🇷 flag-br|🇧🇸 flag-bs|🇧🇹 flag-bt|🇧🇻 flag-bv|🇧🇼 flag-bw|🇧🇾 flag-by|🇧🇿 flag-bz|🇨🇦 flag-ca|🇨🇨 flag-cc|🇨🇩 flag-cd|🇨🇫 flag-cf|🇨🇬 flag-cg|🇨🇭 flag-ch|🇨🇮 flag-ci|🇨🇰 flag-ck|🇨🇱 flag-cl|🇨🇲 flag-cm|🇨🇳 cn|🇨🇴 flag-co|🇨🇵 flag-cp|🇨🇶 flag-sark|🇨🇷 flag-cr|🇨🇺 flag-cu|🇨🇻 flag-cv|🇨🇼 flag-cw|🇨🇽 flag-cx|🇨🇾 flag-cy|🇨🇿 flag-cz|🇩🇪 de|🇩🇬 flag-dg|🇩🇯 flag-dj|🇩🇰 flag-dk|🇩🇲 flag-dm|🇩🇴 flag-do|🇩🇿 flag-dz|🇪🇦 flag-ea|🇪🇨 flag-ec|🇪🇪 flag-ee|🇪🇬 flag-eg|🇪🇭 flag-eh|🇪🇷 flag-er|🇪🇸 es|🇪🇹 flag-et|🇪🇺 flag-eu|🇫🇮 flag-fi|🇫🇯 flag-fj|🇫🇰 flag-fk|🇫🇲 flag-fm|🇫🇴 flag-fo|🇫🇷 fr|🇬🇦 flag-ga|🇬🇧 gb|🇬🇩 flag-gd|🇬🇪 flag-ge|🇬🇫 flag-gf|🇬🇬 flag-gg|🇬🇭 flag-gh|🇬🇮 flag-gi|🇬🇱 flag-gl|🇬🇲 flag-gm|🇬🇳 flag-gn|🇬🇵 flag-gp|🇬🇶 flag-gq|🇬🇷 flag-gr|🇬🇸 flag-gs|🇬🇹 flag-gt|🇬🇺 flag-gu|🇬🇼 flag-gw|🇬🇾 flag-gy|🇭🇰 flag-hk|🇭🇲 flag-hm|🇭🇳 flag-hn|🇭🇷 flag-hr|🇭🇹 flag-ht|🇭🇺 flag-hu|🇮🇨 flag-ic|🇮🇩 flag-id|🇮🇪 flag-ie|🇮🇱 flag-il|🇮🇲 flag-im|🇮🇳 flag-in|🇮🇴 flag-io|🇮🇶 flag-iq|🇮🇷 flag-ir|🇮🇸 flag-is|🇮🇹 it|🇯🇪 flag-je|🇯🇲 flag-jm|🇯🇴 flag-jo|🇯🇵 jp|🇰🇪 flag-ke|🇰🇬 flag-kg|🇰🇭 flag-kh|🇰🇮 flag-ki|🇰🇲 flag-km|🇰🇳 flag-kn|🇰🇵 flag-kp|🇰🇷 kr|🇰🇼 flag-kw|🇰🇾 flag-ky|🇰🇿 flag-kz|🇱🇦 flag-la|🇱🇧 flag-lb|🇱🇨 flag-lc|🇱🇮 flag-li|🇱🇰 flag-lk|🇱🇷 flag-lr|🇱🇸 flag-ls|🇱🇹 flag-lt|🇱🇺 flag-lu|🇱🇻 flag-lv|🇱🇾 flag-ly|🇲🇦 flag-ma|🇲🇨 flag-mc|🇲🇩 flag-md|🇲🇪 flag-me|🇲🇫 flag-mf|🇲🇬 flag-mg|🇲🇭 flag-mh|🇲🇰 flag-mk|🇲🇱 flag-ml|🇲🇲 flag-mm|🇲🇳 flag-mn|🇲🇴 flag-mo|🇲🇵 flag-mp|🇲🇶 flag-mq|🇲🇷 flag-mr|🇲🇸 flag-ms|🇲🇹 flag-mt|🇲🇺 flag-mu|🇲🇻 flag-mv|🇲🇼 flag-mw|🇲🇽 flag-mx|🇲🇾 flag-my|🇲🇿 flag-mz|🇳🇦 flag-na|🇳🇨 flag-nc|🇳🇪 flag-ne|🇳🇫 flag-nf|🇳🇬 flag-ng|🇳🇮 flag-ni|🇳🇱 flag-nl|🇳🇴 flag-no|🇳🇵 flag-np|🇳🇷 flag-nr|🇳🇺 flag-nu|🇳🇿 flag-nz|🇴🇲 flag-om|🇵🇦 flag-pa|🇵🇪 flag-pe|🇵🇫 flag-pf|🇵🇬 flag-pg|🇵🇭 flag-ph|🇵🇰 flag-pk|🇵🇱 flag-pl|🇵🇲 flag-pm|🇵🇳 flag-pn|🇵🇷 flag-pr|🇵🇸 flag-ps|🇵🇹 flag-pt|🇵🇼 flag-pw|🇵🇾 flag-py|🇶🇦 flag-qa|🇷🇪 flag-re|🇷🇴 flag-ro|🇷🇸 flag-rs|🇷🇺 ru|🇷🇼 flag-rw|🇸🇦 flag-sa|🇸🇧 flag-sb|🇸🇨 flag-sc|🇸🇩 flag-sd|🇸🇪 flag-se|🇸🇬 flag-sg|🇸🇭 flag-sh|🇸🇮 flag-si|🇸🇯 flag-sj|🇸🇰 flag-sk|🇸🇱 flag-sl|🇸🇲 flag-sm|🇸🇳 flag-sn|🇸🇴 flag-so|🇸🇷 flag-sr|🇸🇸 flag-ss|🇸🇹 flag-st|🇸🇻 flag-sv|🇸🇽 flag-sx|🇸🇾 flag-sy|🇸🇿 flag-sz|🇹🇦 flag-ta|🇹🇨 flag-tc|🇹🇩 flag-td|🇹🇫 flag-tf|🇹🇬 flag-tg|🇹🇭 flag-th|🇹🇯 flag-tj|🇹🇰 flag-tk|🇹🇱 flag-tl|🇹🇲 flag-tm|🇹🇳 flag-tn|🇹🇴 flag-to|🇹🇷 flag-tr|🇹🇹 flag-tt|🇹🇻 flag-tv|🇹🇼 flag-tw|🇹🇿 flag-tz|🇺🇦 flag-ua|🇺🇬 flag-ug|🇺🇲 flag-um|🇺🇳 flag-un|🇺🇸 us|🇺🇾 flag-uy|🇺🇿 flag-uz|🇻🇦 flag-va|🇻🇨 flag-vc|🇻🇪 flag-ve|🇻🇬 flag-vg|🇻🇮 flag-vi|🇻🇳 flag-vn|🇻🇺 flag-vu|🇼🇫 flag-wf|🇼🇸 flag-ws|🇽🇰 flag-xk|🇾🇪 flag-ye|🇾🇹 flag-yt|🇿🇦 flag-za|🇿🇲 flag-zm|🇿🇼 flag-zw|🏴󠁧󠁢󠁥󠁮󠁧󠁿 flag-england|🏴󠁧󠁢󠁳󠁣󠁴󠁿 flag-scotland|🏴󠁧󠁢󠁷󠁬󠁳󠁿 flag-wales'}
+];
+let EMOJI_IDX=null;
+function emojiList(cid){
+  if(!EMOJI_IDX){EMOJI_IDX={};EMOJI_CATS.forEach(c=>{
+    EMOJI_IDX[c.id]=c.s.split('|').map(t=>{const i=t.indexOf(' ');return{e:t.slice(0,i),k:t.slice(i+1)};});});}
+  return EMOJI_IDX[cid]||[];
+}
 function avOf(pid){
   const a=(S.accounts||{})[pid]||{};
-  return{color:a.avColor||'',icon:AV_ICONS.indexOf(a.avIcon)>=0?a.avIcon:'person'};
+  const ic=String(a.avIcon||'');
+  return{color:a.avColor||'',icon:(ic&&ic!=='person'&&ic.length<=12)?ic:''};   /* 빈 값 = 기본 사람 아이콘 */
 }
+const AV_DFLT='<svg class="av-ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#av-person"></use></svg>';
+function avInner(icon){return icon?'<span class="av-em">'+esc(icon)+'</span>':AV_DFLT;}
 function avHTML(pid,cls){
   const{color,icon}=avOf(pid);
-  const c=color||ownColor(pid);
-  return '<div class="'+(cls||'fbu-av')+' av-cus" style="--avc:'+esc(c)+'">'
-    +'<svg class="av-ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#av-'+esc(icon)+'"></use></svg></div>';
+  return '<div class="'+(cls||'fbu-av')+' av-cus" style="--avc:'+esc(color||ownColor(pid))+'">'
+    +avInner(icon)+'</div>';
 }
 /* 담당자 자동 색 — 명부 순서에 따라 안정적으로 배정 */
 const OWN_PAL=['#3E71D2','#16A34A','#D97706','#DC2626','#7C5CD6','#0EA5E9','#DB2777','#65A30D','#EA580C','#0D9488'];
@@ -576,25 +600,46 @@ function acctTabBody(tab){
       <button class="acct-btn acct-btn-primary acct-btn-full" data-act="acct.changePw">비밀번호 변경</button>
       ${last?'<div class="acct-last">마지막 로그인 · '+esc(last)+'</div>':''}`;
   }
-  const grid=(title,keys)=>`<div class="pf-gh">${title}</div>
-    <div class="pf-grid">${keys.map(k=>'<div class="pf-ic'+(k===av.icon?' sel':'')+'" data-ic="'+k+'">'
-      +'<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#av-'+k+'"></use></svg></div>').join('')}</div>`;
   return `<label class="il" for="acctName">이름 (닉네임)</label>
-    <div class="acct-row">
-      <input class="inp" id="acctName" maxlength="60" value="${esc(acctNick())}" placeholder="표시할 이름" style="flex:1">
-      <button class="acct-btn acct-btn-primary" data-act="acct.saveName">저장</button>
+    <input class="inp" id="acctName" maxlength="60" value="${esc(acctNick())}" placeholder="표시할 이름">
+    <div class="pf-note">위 아바타를 누르면 아이콘과 배경색을 고를 수 있습니다.</div>
+    ${emojiPickerHTML(av)}`;
+}
+/* 아바타 선택 팝오버 — 애플 키보드와 같은 8개 분류 + 검색 + 최근 사용 */
+function recentEmoji(){
+  const v=(S.prefs&&S.prefs.emoji)||'';
+  return String(v).split('|').filter(Boolean).slice(0,18);
+}
+function emojiPickerHTML(av){
+  const rec=recentEmoji();
+  return `<div class="popbox" id="pfPop">
+    <div class="pop-h">아바타
+      <button class="pop-x" data-act="pf.close" aria-label="닫기"><svg class="icn"><use href="#i-close"></use></svg></button>
     </div>
-    <div class="acct-sep"></div>
-    <label class="il">프로필 색</label>
-    <div class="pf-row">
-      <div class="pf-prev" id="pfPrev" style="background:${esc(av.color||ownColor(u.uid))}">
-        <svg class="av-ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#av-${esc(av.icon)}"></use></svg>
-      </div>
-      <div style="flex:1;min-width:0">${palHTML('pfPal',av.color||ownColor(u.uid))}</div>
+    <input class="inp inp-sm pf-srch" id="pfSrch" placeholder="이모지 검색(영문) · 직접 붙여넣기도 됩니다" autocomplete="off">
+    <div class="pf-cats" id="pfCats">
+      <button class="pf-cat act" data-cat="${rec.length?'recent':'smiley'}" data-act="pf.cat">${rec.length?'🕘':'😀'}</button>
+      ${EMOJI_CATS.map((c,i)=>rec.length||i?'<button class="pf-cat" data-cat="'+c.id+'" data-act="pf.cat" title="'+esc(c.label)+'">'+esc(c.s.slice(0,c.s.indexOf(' ')))+'</button>':'').join('')}
     </div>
-    <label class="il">아이콘</label>
-    <div id="pfIcons">${grid('건설',AV_BUILD)}${grid('동물',AV_ANIMAL)}</div>
-    <button class="acct-btn acct-btn-primary acct-btn-full" data-act="acct.saveAvatar" style="margin-top:12px">프로필 저장</button>`;
+    <div class="pf-emg" id="pfEmg"></div>
+    <div class="pf-lab">배경색</div>
+    ${palHTML('pfPal',av.color||ownColor((S.user||{}).uid))}
+  </div>`;
+}
+function pfRenderEmg(cat,q){
+  const box=$('#pfEmg');if(!box)return;
+  let list;
+  if(q){
+    const s=q.toLowerCase();
+    list=[];
+    EMOJI_CATS.forEach(c=>emojiList(c.id).forEach(x=>{if(x.k.indexOf(s)>=0||x.e===q)list.push(x);}));
+    list=list.slice(0,120);
+  }else if(cat==='recent'){
+    list=recentEmoji().map(e=>({e,k:''}));
+  }else list=emojiList(cat);
+  box.innerHTML='<button class="pf-em dflt" data-e="" data-act="pf.pick" title="기본 아이콘">'+AV_DFLT+'</button>'
+    +list.map(x=>'<button class="pf-em" data-e="'+esc(x.e)+'" data-act="pf.pick">'+esc(x.e)+'</button>').join('')
+    +(list.length?'':'<div class="pf-empty">결과가 없습니다. 이모지를 직접 붙여넣어도 됩니다.</div>');
 }
 function renderAcctModal(tab){
   const u=S.user;if(!u)return;
@@ -602,7 +647,9 @@ function renderAcctModal(tab){
   const t=tab||'profile';
   $('#mbody').innerHTML=`
     <div class="acct-head">
-      ${avHTML(u.uid,'acct-av')}
+      <button class="acct-av av-cus av-btn" data-act="pf.toggle" style="--avc:${esc(avOf(u.uid).color||ownColor(u.uid))}">
+        ${avInner(avOf(u.uid).icon)}<span class="av-pen"><svg class="icn"><use href="#i-plus"></use></svg></span>
+      </button>
       <div style="min-width:0;flex:1">
         <div class="acct-mail">${esc(u.email||'')}</div>
         <span class="acct-rolebadge ${role==='editor'?'r-editor':'r-viewer'}">${esc(roleLabel(role))}</span>
@@ -613,12 +660,16 @@ function renderAcctModal(tab){
       <button class="acct-tab${t==='pw'?' act':''}" data-act="acct.tab" data-tab="pw">비밀번호</button>
     </div>
     <div class="acct-pane">${acctTabBody(t)}</div>`;
+  const sb=$('#acctSaveBtn');if(sb)sb.style.display=t==='pw'?'none':'';
   MODAL_CB={type:'acct',tab:t};
+  if(t!=='pw')pfRenderEmg(recentEmoji().length?'recent':'smiley','');
 }
 function openAcctModal(){
   const u=S.user;if(!u){toast('로그인이 필요합니다');return;}
   openModal('계정','',
-    '<button class="acct-btn acct-btn-danger" data-act="acct.signout" style="margin-right:auto">로그아웃</button><button class="acct-btn acct-btn-ghost" data-act="modal.close">닫기</button>');
+    '<button class="acct-btn acct-btn-danger" data-act="acct.signout" style="margin-right:auto">로그아웃</button>'
+    +'<button class="acct-btn acct-btn-ghost" data-act="modal.close">닫기</button>'
+    +'<button class="acct-btn acct-btn-primary" data-act="acct.save" id="acctSaveBtn">저장</button>');
   renderAcctModal('profile');
 }
 /* users/{uid} 는 부분 쓰기가 규칙에 막혀 항상 전체를 다시 쓴다 —
@@ -641,36 +692,30 @@ function userRecord(patch){
   });
   return out;
 }
-async function acctSaveAvatar(){
+/* 프로필 탭 저장 — 이름·아이콘·색을 한 번에 (버튼 하나) */
+let PF_SEL={icon:null,color:null};
+async function acctSave(){
   const u=FB.auth&&FB.auth.currentUser;
-  const sel=$('#pfPal .pal-c.sel'),ic=$('#pfIcons .pf-ic.sel');
-  const color=sel?(sel.dataset.c||''):'';
-  const icon=ic?ic.dataset.ic:'person';
-  if(!u){   /* 로컬 모드 — 저장할 계정이 없다 */
-    toast('로그인 후에 저장할 수 있습니다');return;
+  const nameInp=$('#acctName');
+  const name=nameInp?nameInp.value.trim().slice(0,60):'';
+  const cur=avOf((S.user||{}).uid||'');
+  const icon=PF_SEL.icon===null?cur.icon:PF_SEL.icon;
+  const selc=$('#pfPal .pal-c.sel');
+  const color=PF_SEL.color!==null?PF_SEL.color:(selc?(selc.dataset.c||''):cur.color);
+  if(!u){toast('로그인 후에 저장할 수 있습니다');return;}
+  if(name&&name!==acctNick()){
+    try{await u.updateProfile({displayName:name});}catch(e){toast('이름 저장 실패 · '+(e.message||e));return;}
   }
   try{
-    await FB.db.ref('users/'+u.uid).set(userRecord({avColor:color,avIcon:icon}));
-    FB.userRec=FB.userRec||{};FB.userRec.avColor=color;FB.userRec.avIcon=icon;
-    S.accounts[u.uid]={...(S.accounts[u.uid]||{}),avColor:color,avIcon:icon};
+    await FB.db.ref('users/'+u.uid).set(userRecord({name,avColor:color,avIcon:icon}));
+    FB.userRec=FB.userRec||{};FB.userRec.name=name;FB.userRec.avColor=color;FB.userRec.avIcon=icon;
+    S.accounts[u.uid]={...(S.accounts[u.uid]||{}),name,avColor:color,avIcon:icon};
+    if(icon)store.putPref('emoji',[icon].concat(recentEmoji().filter(x=>x!==icon)).slice(0,18).join('|'));
+    S.user=u;PF_SEL={icon:null,color:null};
     rAcct();rOrg();if(S.view==='tasks')rTasks();
     if(MODAL_CB&&MODAL_CB.type==='acct')renderAcctModal('profile');
-    toast('프로필을 저장했습니다');
-  }catch(e){toast('프로필 저장 실패 · '+(e.message||e));}
-}
-async function acctSaveName(){
-  const inp=$('#acctName');if(!inp)return;
-  const name=inp.value.trim().slice(0,60);
-  const u=FB.auth&&FB.auth.currentUser;if(!u){toast('로그인이 필요합니다');return;}
-  try{await u.updateProfile({displayName:name});}catch(e){toast('이름 저장 실패 · '+(e.message||e));return;}
-  /* 부분 쓰기는 규칙에 막히므로 레코드 전체를 다시 쓴다(역할·생성일 유지) */
-  const rec=FB.userRec||{};
-  try{
-    await FB.db.ref('users/'+u.uid).set(userRecord({name}));
-  }catch(e){console.warn('[FB] name save',e);toast('이름은 이 브라우저에만 반영됩니다');}
-  S.user=u;if(FB.userRec)FB.userRec.name=name;
-  rAcct();if(MODAL_CB&&MODAL_CB.type==='acct')renderAcctModal('profile');
-  toast('이름이 저장되었습니다');
+    toast('저장했습니다');
+  }catch(e){toast('저장 실패 · '+(e.message||e));}
 }
 async function acctChangePw(){
   const u=FB.auth&&FB.auth.currentUser;if(!u){toast('로그인이 필요합니다');return;}
@@ -2049,8 +2094,18 @@ const ACT={
     if(el.dataset.sid)gotoTask(el.dataset.sid,el.dataset.iid);
     else go('tasks');
   },
-  'acct.saveName':acctSaveName,
-  'acct.saveAvatar':acctSaveAvatar,
+  'acct.save':acctSave,
+  'pf.toggle':()=>{const p=$('#pfPop');if(p)p.classList.toggle('open');},
+  'pf.close':()=>{const p=$('#pfPop');if(p)p.classList.remove('open');},
+  'pf.cat':el=>{
+    $$('#pfCats .pf-cat').forEach(x=>x.classList.toggle('act',x===el));
+    const q=$('#pfSrch');if(q)q.value='';
+    pfRenderEmg(el.dataset.cat,'');},
+  'pf.pick':el=>{
+    PF_SEL.icon=el.dataset.e||'';
+    const av=document.querySelector('.acct-av');
+    if(av)av.innerHTML=avInner(PF_SEL.icon)+'<span class="av-pen"><svg class="icn"><use href="#i-plus"></use></svg></span>';
+    const p=$('#pfPop');if(p)p.classList.remove('open');},
   'acct.tab':el=>renderAcctModal(el.dataset.tab),
   'acct.changePw':acctChangePw,
   'acct.signout':acctSignout,
