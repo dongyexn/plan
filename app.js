@@ -593,16 +593,33 @@ function acctTabBody(tab){
   const av=avOf(u.uid);
   if(tab==='pw'){
     let last='';try{if(u.metadata&&u.metadata.lastSignInTime)last=new Date(u.metadata.lastSignInTime).toLocaleString('ko-KR');}catch(e){}
-    return `<label class="il">비밀번호 변경</label>
+    const role=S.role||'viewer';
+    return `<div class="acct-head">
+        <div class="acct-av av-cus" style="--avc:${esc(av.color||ownColor(u.uid))}">${avInner(av.icon)}</div>
+        <div style="min-width:0;flex:1">
+          <div class="acct-mail">${esc(u.email||'')}</div>
+          <span class="acct-rolebadge ${role==='editor'?'r-editor':'r-viewer'}">${esc(roleLabel(role))}</span>
+        </div>
+      </div>
+      <label class="il">비밀번호 변경</label>
       <input class="inp acct-gap" id="acctPwCur" type="password" autocomplete="current-password" placeholder="현재 비밀번호">
       <input class="inp acct-gap" id="acctPwNew" type="password" autocomplete="new-password" placeholder="새 비밀번호 (6자 이상)">
       <input class="inp acct-gap" id="acctPwNew2" type="password" autocomplete="new-password" placeholder="새 비밀번호 확인">
       <button class="acct-btn acct-btn-primary acct-btn-full" data-act="acct.changePw">비밀번호 변경</button>
       ${last?'<div class="acct-last">마지막 로그인 · '+esc(last)+'</div>':''}`;
   }
-  return `<label class="il" for="acctName">이름 (닉네임)</label>
+  const role=S.role||'viewer';
+  return `<div class="acct-head">
+      <button class="acct-av av-cus av-btn" data-act="pf.toggle" aria-label="아바타 변경" style="--avc:${esc(av.color||ownColor(u.uid))}">
+        ${avInner(av.icon)}<span class="av-pen"><svg class="icn"><use href="#i-plus"></use></svg></span>
+      </button>
+      <div style="min-width:0;flex:1">
+        <div class="acct-mail">${esc(u.email||'')}</div>
+        <span class="acct-rolebadge ${role==='editor'?'r-editor':'r-viewer'}">${esc(roleLabel(role))}</span>
+      </div>
+    </div>
+    <label class="il" for="acctName">이름 (닉네임)</label>
     <input class="inp" id="acctName" maxlength="60" value="${esc(acctNick())}" placeholder="표시할 이름">
-    <div class="pf-note">위 아바타를 누르면 아이콘과 배경색을 고를 수 있습니다.</div>
     ${emojiPickerHTML(av)}`;
 }
 /* 아바타 선택 팝오버 — 애플 키보드와 같은 8개 분류 + 검색 + 최근 사용 */
@@ -646,17 +663,8 @@ function renderAcctModal(tab){
   const role=S.role||'viewer';
   const t=tab||'profile';
   $('#mbody').innerHTML=`
-    <div class="acct-head">
-      <button class="acct-av av-cus av-btn" data-act="pf.toggle" style="--avc:${esc(avOf(u.uid).color||ownColor(u.uid))}">
-        ${avInner(avOf(u.uid).icon)}<span class="av-pen"><svg class="icn"><use href="#i-plus"></use></svg></span>
-      </button>
-      <div style="min-width:0;flex:1">
-        <div class="acct-mail">${esc(u.email||'')}</div>
-        <span class="acct-rolebadge ${role==='editor'?'r-editor':'r-viewer'}">${esc(roleLabel(role))}</span>
-      </div>
-    </div>
     <div class="acct-tabs">
-      <button class="acct-tab${t==='profile'?' act':''}" data-act="acct.tab" data-tab="profile">프로필 · 이름</button>
+      <button class="acct-tab${t==='profile'?' act':''}" data-act="acct.tab" data-tab="profile">프로필</button>
       <button class="acct-tab${t==='pw'?' act':''}" data-act="acct.tab" data-tab="pw">비밀번호</button>
     </div>
     <div class="acct-pane">${acctTabBody(t)}</div>`;
