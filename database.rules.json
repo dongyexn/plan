@@ -257,6 +257,8 @@
                 "by":   { ".validate": "newData.isString() && newData.val().length <= 60" },
                 "text": { ".validate": "newData.isString() && newData.val().length <= 500" },
                 "at":   { ".validate": "newData.isNumber()" },
+                "uid":  { ".validate": "newData.isString() && newData.val().length <= 60" },
+                "re":   { ".validate": "newData.isString() && newData.val().length <= 40" },
                 "$other": { ".validate": false }
               }
             },
