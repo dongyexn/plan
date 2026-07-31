@@ -368,7 +368,7 @@ function canSetRank(){
 function autoSitesHTML(p){
   const r=rankOf(p.rank),n=coverSites(p).length;
   return '<span class="rk-all">'+(r==='head'?'팀 전체':'권역 전체')
-    +(n?' · '+n+'곳':'')+'</span>';
+    +(n?' · '+n+'개 현장':'')+'</span>';
 }
 /* 공구장·팀장이 실제로 맡는 현장 — 화면 표시용 */
 function coverSites(p){
@@ -683,7 +683,6 @@ function myOrgHTML(){
           :'<div class="myorg-fix">팀 전체<span>팀장</span></div>'}
       </div>
     </div>
-    <div class="myorg-note">담당 현장은 조직 관리에서 지정합니다.</div>
   </div>`;
 }
 /* 직급·권역을 바꾸면 아래 칸 구성이 달라진다 — 소속 블록만 다시 그린다 */
@@ -1115,7 +1114,34 @@ function rMonTitle(){
   }else{
     $('#calMonTxt').textContent=(c.getMonth()+1)+'월';
   }
-  $('#calYearTxt').textContent=c.getFullYear();
+  $('#calYearTxt').textContent=c.getFullYear()+'년';
+}
+/* 연·월 바로 가기 — 제목을 누르면 뜬다 */
+let YM_Y=null;
+function ymPickHTML(){
+  const c=CAL?CAL.view.currentStart:new Date();
+  const cy=YM_Y===null?c.getFullYear():YM_Y;
+  const now=new Date(),ty=now.getFullYear(),tm=now.getMonth()+1;
+  const sy=c.getFullYear(),sm=c.getMonth()+1;
+  return `<div class="ymp">
+    <div class="ymp-h">
+      <button class="cal-nb" data-act="cal.pickY" data-d="-1" aria-label="이전 해"><svg class="icn"><use href="#i-chevl"></use></svg></button>
+      <b>${cy}년</b>
+      <button class="cal-nb" data-act="cal.pickY" data-d="1" aria-label="다음 해"><svg class="icn"><use href="#i-chevr"></use></svg></button>
+    </div>
+    <div class="ymp-g">
+      ${Array.from({length:12},(_,i)=>{
+        const m=i+1,sel=cy===sy&&m===sm,today=cy===ty&&m===tm;
+        return '<button class="ymp-m'+(sel?' sel':'')+(today?' now':'')+'" data-act="cal.goYM" data-y="'+cy+'" data-m="'+m+'">'+m+'월</button>';
+      }).join('')}
+    </div>
+    <button class="btn bg2 bsm ymp-t" data-act="cal.goYM" data-y="${ty}" data-m="${tm}">이번 달로</button>
+  </div>`;
+}
+function openYMPick(){
+  YM_Y=null;
+  openModal('연 · 월 선택',ymPickHTML(),'');
+  MODAL_CB={type:'ym'};
 }
 function markSel(){
   $$('#fcal .fc-daygrid-day.sel-day').forEach(el=>el.classList.remove('sel-day'));
@@ -2008,7 +2034,7 @@ function rOrg(){
       <td class="utbl-r">${roleCtl(p)}</td>
     </tr>`;
   };
-  ar.innerHTML='<table class="utbl"><thead><tr><th style="width:178px">이름</th><th style="width:72px">직급</th><th style="width:84px">권역</th><th>담당 현장</th><th class="utbl-r" style="width:98px">권한</th></tr></thead><tbody>'
+  ar.innerHTML='<table class="utbl"><thead><tr><th style="width:180px">이름</th><th style="width:96px">직급</th><th style="width:80px">권역</th><th>담당 현장</th><th class="utbl-r" style="width:92px">권한</th></tr></thead><tbody>'
     +(mine.length?mine.map(row).join('')
       :'<tr><td colspan="5" style="font-size:12px;color:var(--lbl3);padding:10px">이 팀에 배정된 계정이 없습니다.</td></tr>')
     +'</tbody></table>';
@@ -2017,7 +2043,7 @@ function rOrg(){
   if(fc&&fr){
     fc.style.display=free.length?'':'none';
     fr.innerHTML=free.length
-      ?'<table class="utbl"><thead><tr><th style="width:178px">이름</th><th></th><th class="utbl-r" style="width:98px">권한</th></tr></thead><tbody>'
+      ?'<table class="utbl"><thead><tr><th style="width:180px">이름</th><th></th><th class="utbl-r" style="width:92px">권한</th></tr></thead><tbody>'
         +free.map(p=>`<tr>
           <td><div class="utbl-name">${avHTML(p.id)}
             <div style="min-width:0"><div class="utbl-nick">${esc(p.name)}</div><div class="utbl-mail">${esc(p.email||'')}</div></div></div></td>
@@ -2543,6 +2569,19 @@ const ACT={
       .catch(e=>{fbErr(e);rOrg();});
   },
   'dtk.go':el=>gotoTask(el.dataset.sid,el.dataset.iid),
+  'cal.pick':()=>openYMPick(),
+  'cal.pickY':el=>{const c=CAL?CAL.view.currentStart:new Date();
+    YM_Y=(YM_Y===null?c.getFullYear():YM_Y)+Number(el.dataset.d);
+    $('#mbody').innerHTML=ymPickHTML();},
+  'cal.goYM':el=>{
+    const y=Number(el.dataset.y),m=Number(el.dataset.m);
+    closeModal();
+    if(!CAL)return;
+    CAL.gotoDate(new Date(y,m-1,1));
+    /* 그 달에 오늘이 있으면 오늘을, 아니면 1일을 고른다 */
+    const t=new Date(),same=t.getFullYear()===y&&t.getMonth()+1===m;
+    selDate(y+'-'+pad(m)+'-'+pad(same?t.getDate():1));
+    rMonTitle();subVisibleMonths();refetchCal();},
   'mail.preview':el=>mailPreview(el.dataset.kind),
   'set.saveUrl':()=>{if(!isEditor())return denyEdit();
     store.putCfg('defectUrl',($('#setDefectUrl').value||'').trim(),err=>{
