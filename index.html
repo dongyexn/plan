@@ -196,14 +196,15 @@ html.dark #fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-left-c
 #fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table tr:first-child td{border-top:0;}
 
 html.dark #fcal .fc-dayGridMonth-view .fc-col-header{border-bottom-color:rgba(255,255,255,.15);}
-#fcal .fc-scrollgrid{border:0;background:transparent;border-radius:var(--rmd);overflow:hidden;}
+#fcal .fc-scrollgrid{border:0;background:transparent;border-radius:var(--rmd);overflow:hidden;box-shadow:0 0 0 1px rgba(60,60,67,.18);}
+html.dark #fcal .fc-scrollgrid{box-shadow:0 0 0 1px rgba(255,255,255,.14);}
 /* 뒤판은 셀이 실제로 차지하는 영역(요일띠·본문 테이블)에만 — scrollgrid 에 칠하면
    행 높이 반올림 잔여만큼 하단에 띠로 노출된다 */
 
 
 #fcal .fc-col-header-cell{background:#D3D9E2;padding:9px 0;background-clip:padding-box;border-left:2px solid transparent;border-right:0;}
 #fcal .fc-col-header-cell:first-child{border-left:0;}
-html.dark #fcal .fc-col-header-cell{background:#424245;}
+html.dark #fcal .fc-col-header-cell{background:#424245;border-left-color:#0F0F10;}
 /* 주간 헤더 — 공휴일 줄이 항상 자리를 차지해 높이가 변하지 않는다 */
 #fcal .fc-col-header-cell-cushion{font-size:13px;font-weight:800;color:var(--lbl);text-decoration:none;letter-spacing:.02em;}
 #fcal .fc-day-sun .fc-col-header-cell-cushion{color:var(--rd);}
@@ -230,17 +231,17 @@ html.dark #fcal .fc-col-header-cell{background:#424245;}
 #fcal .dhol.anv{color:var(--lbl3);font-weight:600;}
 #fcal .fc-daygrid-day.hol .dnum{color:var(--rd);}
 /* 오늘 — 셀 음영 대신 숫자 배지. padding 팽창분을 음수 마진으로 상쇄해 행 높이에 영향 없음 */
-#fcal .fc-day-today .dnum{color:#fff!important;font-weight:800;background:var(--b600);border-radius:999px;padding:2px 7px;margin:-2px -7px;}
+#fcal .fc-day-today .dnum{color:#fff!important;font-weight:800;background:var(--b600);border-radius:999px;padding:2px 7px;margin:-2px 0 -2px -14px;}
 html.dark #fcal .fc-day-today .dnum{color:#fff!important;background:var(--b500);}
 /* ── 날짜 칸 = 떠 있는 흰 카드 ──
    바탕은 background-color(이번 달 흰색, 이웃 달 50% 반투명), 톤은 background-image 로 얹어
    서로 간섭하지 않는다. 격자선은 투명 2px + background-clip:padding-box 로 뚫어
    칸 사이로 페이지 배경이 보인다. 음영 계층: 오늘 > 공휴일 > 주말(뒤 선언 순). */
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day{background-color:var(--bg2);background-clip:padding-box;}
-#fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-other{background-color:rgba(255,255,255,.4);}
-html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-other{background-color:rgba(33,33,33,.4);}
+#fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-other{background-color:#E7E9EF;}
+html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-other{background-color:#1A1A1C;}
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sun:not(.fc-day-other),
-#fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sat:not(.fc-day-other){background-image:linear-gradient(rgba(60,60,67,.045),rgba(60,60,67,.045));}
+#fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sat:not(.fc-day-other){background-image:linear-gradient(rgba(60,60,67,.03),rgba(60,60,67,.03));}
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day.hol:not(.fc-day-other){background-image:linear-gradient(rgba(255,59,48,.08),rgba(255,59,48,.08));}
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day.sel-day{background-image:linear-gradient(rgba(83,140,222,.15),rgba(83,140,222,.15));box-shadow:inset 0 0 0 2px var(--b500);}
 html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sun:not(.fc-day-other),
