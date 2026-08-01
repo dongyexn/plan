@@ -291,6 +291,10 @@
             "name":   { ".validate": "newData.isString() && newData.val().length <= 60" },
             "team":   { ".validate": "newData.isString() && newData.val().length <= 40" },
             "region": { ".validate": "newData.isString() && newData.val().length <= 40" },
+            "units":           { ".validate": "newData.isNumber()" },
+            "buildings":       { ".validate": "newData.isNumber()" },
+            "commercialUnits": { ".validate": "newData.isNumber()" },
+            "completionDate":  { ".validate": "newData.isString() && newData.val().length <= 10" },
             "$other": { ".validate": false }
           }
         },

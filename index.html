@@ -197,7 +197,7 @@ html.dark #fcal .fc-dayGridMonth-view .fc-col-header{border-bottom-color:rgba(25
 #fcal .fc-day-sun .fc-col-header-cell-cushion{color:var(--rd);}
 #fcal .fc-day-sat .fc-col-header-cell-cushion{color:var(--bt1);}
 #fcal .fc-daygrid-day{cursor:pointer;transition:background .12s;}
-#fcal .fc-daygrid-day:hover{background:var(--fill);}
+
 #fcal .fc-daygrid-day-frame{min-height:0;}
 #fcal .fc-daygrid-day-number{font-size:12px;font-weight:600;color:var(--lbl);padding:6px 8px 2px;text-decoration:none;}
 #fcal .fc-day-sun .fc-daygrid-day-number,#fcal .fc-day-sun .dnum{color:var(--rd);}
@@ -223,12 +223,18 @@ html.dark #fcal .fc-day-today .dnum{color:var(--b300)!important;}
 /* ① 오늘 — 셀에 옅은 배경, 숫자는 파란색 볼드(원형은 칩 시작 높이를 밀어 단차를 만들었다) */
 #fcal .fc-dayGridMonth-view .fc-day-today{background:rgba(83,140,222,.07);}
 /* ④ 주말·공휴일 — 아주 옅은 톤으로 주 단위 리듬을 준다 */
+/* 주말은 옅은 회색(노란끼 없는 중립), 공휴일 붉은 톤이 주말보다 우선(뒤 선언), 마우스 음영이 최우선 */
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sun,
-#fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sat{background:rgba(120,120,128,.032);}
-#fcal .fc-dayGridMonth-view .fc-daygrid-day.hol{background:rgba(255,59,48,.038);}
+#fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sat{background:rgba(60,60,67,.045);}
+#fcal .fc-dayGridMonth-view td.fc-daygrid-day.hol{background:rgba(255,59,48,.05);}
 html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sun,
 html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sat{background:rgba(255,255,255,.028);}
-html.dark #fcal .fc-dayGridMonth-view .fc-daygrid-day.hol{background:rgba(255,59,48,.09);}
+html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.hol{background:rgba(255,59,48,.09);}
+#fcal .fc-dayGridMonth-view td.fc-daygrid-day:hover{background:var(--fill)!important;}
+html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day:hover{background:rgba(255,255,255,.07)!important;}
+/* 오늘 라벨 — 공휴일 이름처럼 숫자 왼쪽에 */
+#fcal .dhol.dtoday{color:var(--b600);}
+html.dark #fcal .dhol.dtoday{color:var(--b300);}
 /* 오늘·선택일이 주말 배경보다 우선 */
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-today{background-color:rgba(83,140,222,.09);}
 #fcal .fc-dayGridMonth-view .fc-daygrid-day.sel-day{background-color:rgba(83,140,222,.15);}
@@ -373,6 +379,10 @@ html.dark #fcal .fc-dayGridMonth-view .fc-daygrid-day.hol{background:rgba(255,59
 .tks-card{padding:14px 15px;}
 .tkmain{display:flex;flex-direction:column;min-height:0;padding:16px 18px 18px;}
 .tks-h{font-size:11px;font-weight:700;color:var(--lbl3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;}
+/* 하위 항목 앞 동그라미 — 하자처리현황 사이드바 현장 점(.std)과 동일 */
+.tks-item .std{width:6px;height:6px;border-radius:50%;flex-shrink:0;background:var(--sepo);transition:background var(--tr);margin-right:2px;}
+.tks-item:hover .std{background:var(--b500);}
+.tks-item.act .std{background:var(--b500);}
 .tks-g{font-size:10.5px;font-weight:700;color:var(--bt1);letter-spacing:.04em;padding:10px 4px 4px;margin-top:4px;border-top:1px solid var(--sep);}
 .tks-g:first-of-type{border-top:0;margin-top:0;}
 .tks-item{display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:var(--rmd);cursor:pointer;font-size:14px;color:var(--lbl);transition:background .13s;}
@@ -392,6 +402,7 @@ html.dark #fcal .fc-dayGridMonth-view .fc-daygrid-day.hol{background:rgba(255,59
 .tkm-h{display:flex;align-items:center;gap:9px;margin-bottom:12px;flex-shrink:0;min-height:28px;}
 .tkm-h .bar{width:4px;height:18px;border-radius:99px;background:linear-gradient(135deg,var(--b500),var(--b800));}
 .tkm-h b{font-size:16px;font-weight:800;color:var(--lbl);letter-spacing:-.01em;}
+.tkm-h .tkm-sub{font-size:12.5px;font-weight:600;color:var(--lbl3);}
 .tkm-h .btn{margin-left:auto;}
 /* 인라인 작성창 */
 .tk-new{border:1.5px solid var(--b300);border-radius:var(--rlg);padding:0;margin-bottom:12px;background:var(--bg2);flex-shrink:0;overflow:hidden;}
@@ -427,7 +438,7 @@ html.dark #fcal .fc-dayGridMonth-view .fc-daygrid-day.hol{background:rgba(255,59
 .tk-new-r .inp-sm{width:auto;min-width:130px;}
 .tk-new-btns{margin-left:auto;display:flex;gap:8px;}
 /* 목록 */
-.tk-list{display:flex;flex-direction:column;gap:7px;flex:1;min-height:0;overflow-y:auto;}
+.tk-list{display:flex;flex-direction:column;gap:12px;flex:1;min-height:0;overflow-y:auto;}
 .tk-item{border-radius:var(--rmd);background:var(--surf2);transition:background .12s;position:relative;}
 .tk-item:hover{background:var(--surf3);}
 .tk-item.open{background:var(--bg2);border:1px solid var(--b200);}
@@ -611,15 +622,17 @@ html.dark #fcal .fc-dayGridMonth-view .fc-daygrid-day.hol{background:rgba(255,59
 .set-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
 .set-col{min-width:0;}
 .set-col-stack{display:flex;flex-direction:column;gap:16px;}
-.mg-grid{display:grid;grid-template-columns:262px 262px minmax(0,1fr);gap:16px;align-items:start;}
-/* 계정 표가 들어갈 폭이 안 나오면 위 3칸을 2열로 접고 계정 카드를 통째로 아래에 둔다 */
-@media(max-width:1620px){
-  .mg-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);}
-  .mg-grid>.set-col:nth-child(3){grid-column:1/-1;}
-  .mg-grid>.set-col:nth-child(4){grid-column:1/-1;}
-}
-@media(max-width:1240px){.mg-grid{grid-template-columns:1fr 1fr;}}
-@media(max-width:860px){.mg-grid{grid-template-columns:1fr;}}
+.mg-grid{display:grid;grid-template-columns:300px minmax(0,1fr);gap:16px;align-items:start;}   /* 하자처리현황과 동일 */
+@media(max-width:980px){.mg-grid{grid-template-columns:minmax(0,1fr);}}   /* 하자처리현황과 동일 */
+/* 조직/현장 탭 세그 */
+.orgseg{display:inline-flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;}
+.orgseg button{font-size:11.5px;padding:3px 11px;}
+/* 현장 표 — 하자처리현황 mgtbl 이식 */
+.mgtbl{width:100%;border-collapse:collapse;font-size:12.5px;}
+.mgtbl th{white-space:nowrap;font-size:11px;font-weight:700;color:var(--lbl2);text-align:left;padding:6px;border-bottom:1px solid var(--sep);}
+.mgtbl th.cc,.mgtbl td.cc{text-align:center;}
+.mgtbl td{padding:4px 6px;vertical-align:middle;border-bottom:1px solid var(--sep2,var(--sep));}
+.mgtbl tr:last-child td{border-bottom:none;}
 .set-h{font-size:12px;font-weight:700;color:var(--lbl2);text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;justify-content:space-between;gap:8px;padding-bottom:10px;border-bottom:1px solid var(--sep);margin-bottom:13px;}
 .set-h-sub{font-size:10px;font-weight:600;color:var(--lbl3);text-transform:none;letter-spacing:0;}
 .share-row{display:flex;align-items:center;justify-content:space-between;gap:12px;}
@@ -1095,7 +1108,7 @@ html.dark #toast{background:#2B313A;}
     </div>
     <div class="nvi" role="button" tabindex="0" data-view="tasks" data-act="nav.go">
       <div class="nic"><svg class="icn" aria-hidden="true"><use href="#i-tasks"></use></svg></div>
-      <span class="nil">주요업무 현황</span>
+      <span class="nil">업무 목록</span>
       <span class="nv-badge" id="mentionBadge" data-act="mention.open" style="display:none" title="내 멘션"></span>
     </div>
     <div class="sbsl">개인</div>
@@ -1112,7 +1125,7 @@ html.dark #toast{background:#2B313A;}
       <div class="sbsl">관리</div>
       <div class="nvi" role="button" tabindex="0" data-view="org" data-act="nav.go">
         <div class="nic"><svg class="icn" aria-hidden="true"><use href="#i-org"></use></svg></div>
-        <span class="nil">조직 관리</span>
+        <span class="nil">조직/현장 관리</span>
       </div>
       <div class="nvi" role="button" tabindex="0" data-view="settings" data-act="nav.go">
         <div class="nic"><svg class="icn" aria-hidden="true"><use href="#i-settings"></use></svg></div>
@@ -1219,15 +1232,17 @@ html.dark #toast{background:#2B313A;}
           </div>
         </div>
         <div class="set-col">
-          <div class="card">
-            <div class="tm-h"><span>현장 <span class="tm-sub" id="siteTeamLbl"></span></span><button class="btn bo bsm tm-add" data-act="org.addSite">+ 현장 추가</button></div>
-            <div id="siteRoot"></div>
-          </div>
-        </div>
-        <div class="set-col">
           <div class="card mb12">
-            <div class="tm-h"><span>계정 <span class="tm-sub" id="acctTeamLbl"></span></span></div>
-            <div id="acctRoot"></div>
+            <div class="tm-h">
+              <span class="seg orgseg"><button class="act" data-act="org.tab" data-t="acct">계정</button><button data-act="org.tab" data-t="site">현장</button><span class="tm-sub" id="acctTeamLbl"></span></span>
+              <button class="btn bo bsm tm-add" id="orgAddSite" data-act="org.addSite" style="display:none">+ 현장 추가</button>
+            </div>
+            <div id="acctPane">
+              <div id="acctRoot"></div>
+            </div>
+            <div id="sitePane" style="display:none">
+              <div id="siteRoot"></div>
+            </div>
           </div>
           <div class="card" id="freeCard" style="display:none">
             <div class="tm-h"><span>팀 미배정 계정</span></div>
