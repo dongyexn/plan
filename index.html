@@ -183,9 +183,9 @@ select.inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-ima
 #fcal{height:100%;--fc-border-color:var(--sep);--fc-today-bg-color:transparent;--fc-page-bg-color:var(--bg2);--fc-neutral-bg-color:var(--surf2);font-size:12.5px;}
 #fcal .fc-theme-standard td,#fcal .fc-theme-standard th{border-color:var(--sep);}
 /* 가로줄(주 구분)을 세로줄보다 한 단계 진하게 — 주 단위가 먼저 읽힌다 */
-#fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-top:2px solid rgba(60,60,67,.155);}
+#fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-top:2px solid rgba(60,60,67,.125);}
 #fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table tr:first-child td{border-top-width:0;}
-#fcal .fc-dayGridMonth-view .fc-col-header{border-bottom:2px solid rgba(60,60,67,.155);}
+#fcal .fc-dayGridMonth-view .fc-col-header{border-bottom:2px solid rgba(60,60,67,.125);}
 /* 세로줄은 반대로 더 옅게 — 가로가 먼저 읽히도록 대비를 벌린다 */
 #fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-left-color:rgba(60,60,67,.08);border-right-color:rgba(60,60,67,.08);}
 html.dark #fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-top-color:rgba(255,255,255,.15);border-left-color:rgba(255,255,255,.07);border-right-color:rgba(255,255,255,.07);}
@@ -224,11 +224,11 @@ html.dark #fcal .fc-day-today .dnum{color:var(--b300)!important;}
 #fcal .fc-dayGridMonth-view .fc-day-today{background:rgba(83,140,222,.07);}
 /* ④ 주말·공휴일 — 아주 옅은 톤으로 주 단위 리듬을 준다 */
 /* 주말은 옅은 회색(노란끼 없는 중립), 공휴일 붉은 톤이 주말보다 우선(뒤 선언), 마우스 음영이 최우선 */
-#fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sun,
-#fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sat{background:rgba(60,60,67,.045);}
+#fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sun:not(.fc-day-other),
+#fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sat:not(.fc-day-other){background:rgba(60,60,67,.045);}
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day.hol{background:rgba(255,59,48,.05);}
-html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sun,
-html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sat{background:rgba(255,255,255,.028);}
+html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sun:not(.fc-day-other),
+html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sat:not(.fc-day-other){background:rgba(255,255,255,.028);}
 html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.hol{background:rgba(255,59,48,.09);}
 @media(hover:hover){ /* 터치에선 :hover 가 눌린 셀에 고착돼 '선택 표시가 남는' 것처럼 보인다 */
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day:hover{background:var(--fill)!important;}
@@ -240,8 +240,8 @@ html.dark #fcal .dhol.dtoday{color:var(--b300);}
 /* 오늘·선택일이 주말 배경보다 우선 */
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-today{background-color:rgba(83,140,222,.09);}
 #fcal .fc-dayGridMonth-view .fc-daygrid-day.sel-day{background-color:rgba(83,140,222,.15);}
-#fcal .fc-event{border:none;border-radius:6px;padding:1.5px 6px;font-size:11px;font-weight:600;cursor:pointer;margin:1px 3px;box-shadow:none;}
-#fcal .fc-event .fc-event-title{font-weight:600;}
+#fcal .fc-event{border:none;border-radius:6px;padding:1.5px 6px;font-size:11px;font-weight:400;cursor:pointer;margin:1px 3px;box-shadow:none;}
+#fcal .fc-event .fc-event-title{font-weight:400;}
 #fcal .fc-event.done{opacity:.5;}
 #fcal .fc-event.done .fc-event-title{text-decoration:line-through;}
 #fcal .fc-daygrid-more-link{font-size:10.5px;color:var(--bt1);font-weight:700;text-decoration:none;margin-left:6px;}
@@ -272,10 +272,9 @@ html.dark #fcal .dhol.dtoday{color:var(--b300);}
   border-radius:var(--rlg) var(--rlg) 0 0;}
 .dp-top .dp-date{color:#fff;font-size:16.5px;}
 .dp-top .dp-dow{color:rgba(255,255,255,.82);}
-.dp-top .dp-cnt{color:rgba(255,255,255,.78);}
 .dp-date{font-size:16px;font-weight:800;color:var(--lbl);}
 .dp-dow{font-size:12px;font-weight:600;color:var(--lbl2);margin-left:6px;}
-.dp-cnt{margin-left:auto;font-size:11.5px;font-weight:600;color:var(--lbl3);white-space:nowrap;}
+.dp-cnt{white-space:nowrap;}
 .dp-dow{font-size:11px;font-weight:600;opacity:.75;letter-spacing:.05em;}
 .dp-date{font-size:21px;font-weight:800;line-height:1.2;margin-top:1px;}
 .dp-cnt{font-size:11.5px;opacity:.8;margin-top:3px;}
@@ -283,7 +282,7 @@ html.dark #fcal .dhol.dtoday{color:var(--b300);}
 .dp-body::-webkit-scrollbar{width:4px;}
 .dp-body::-webkit-scrollbar-thumb{background:var(--sepo);border-radius:99px;}
 .dp-empty{font-size:12.5px;color:var(--lbl3);text-align:center;padding:22px 0 14px;}
-#dpList{display:flex;flex-direction:column;gap:9px;}
+#dpList{display:flex;flex-direction:column;gap:5px;}
 .plan{border:1px solid var(--sep);border-radius:var(--rlg);padding:11px 13px;display:flex;gap:10px;align-items:flex-start;background:var(--bg2);transition:border-color .15s;position:relative;}
 .plan:hover{border-color:var(--b300);}
 .plan .pc{width:4px;align-self:stretch;border-radius:99px;flex-shrink:0;}
@@ -300,9 +299,18 @@ html.dark #fcal .dhol.dtoday{color:var(--b300);}
 .p-ico:hover{background:var(--fill);color:var(--bt1);}
 .p-ico.on{color:var(--am);}
 .p-ico .icn{width:14px;height:14px;}
-.dp-addtop{margin-left:auto;align-self:center;width:26px;height:26px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:#fff;background:rgba(255,255,255,.18);transition:background var(--tr);}
-.dp-addtop:hover{background:rgba(255,255,255,.3);}
-.dp-addtop .icn{width:15px;height:15px;}
+/* 날짜 헤더 — 좌: 날짜(누르면 연·월 이동), 우: 달 넘기기·오늘 */
+.dp-datebtn{display:inline-flex;align-items:baseline;gap:8px;min-width:0;border-radius:9px;padding:3px 7px;margin:-3px 0 -3px -7px;transition:background var(--tr);}
+.dp-datebtn:hover{background:rgba(255,255,255,.14);}
+.dp-date-c{width:11px;height:11px;align-self:center;color:rgba(255,255,255,.75);transform:rotate(90deg);flex-shrink:0;}
+.dp-nav{margin-left:auto;display:flex;align-items:center;gap:3px;background:rgba(255,255,255,.14);border-radius:999px;padding:2px;}
+.dp-nb{width:24px;height:24px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;color:#fff;transition:background var(--tr);}
+.dp-nb:hover{background:rgba(255,255,255,.22);}
+.dp-nb .icn{width:12px;height:12px;}
+.dp-nb.dp-today{width:auto;padding:0 10px;font-size:11.5px;font-weight:700;}
+/* 목록 패널 머리 — 좌 건수 · 우 업무 추가, 아래 구분선 */
+.dp-lh{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 13px;border-bottom:1px solid var(--sep);flex:0 0 auto;}
+.dp-lh .dp-cnt{font-size:12px;font-weight:700;color:var(--lbl2);}
 .dp-x{display:none;margin-left:2px;width:26px;height:26px;border-radius:8px;align-items:center;justify-content:center;color:#fff;background:rgba(255,255,255,.18);}
 .dp-x .icn{width:13px;height:13px;}
 
@@ -983,6 +991,11 @@ body.wid #wgSet.on{display:block;}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 html.dark #toast{background:#2B313A;}
 
+/* 데스크톱은 달력 위 헤더를 걷어내고(기능은 우측 날짜 헤더로 이전) 달력이 그 높이까지 쓴다.
+   위젯(?w=1)과 모바일은 자체 헤더를 유지 */
+@media(min-width:961px){
+  body:not(.wid) .cal-head{display:none;}
+}
 /* ══════════ 모바일 ══════════ */
 #scrim{position:fixed;inset:0;background:rgba(0,0,0,.32);z-index:250;opacity:0;pointer-events:none;transition:opacity .25s;}
 #scrim.on{opacity:1;pointer-events:auto;}
@@ -1011,6 +1024,8 @@ html.dark #toast{background:#2B313A;}
   .dp-col .card{box-shadow:0 -8px 32px rgba(0,0,0,.2);}
   .day-panel{max-height:52dvh;min-width:0;}
   .dp-x{display:inline-flex;}                                     /* 시트 닫기 — 모바일에서만 */
+  .dp-nav{display:none;}                                          /* 달 이동은 위 달력 헤더가 담당 */
+  .dp-datebtn{pointer-events:none;}.dp-date-c{display:none;}      /* 시트에선 날짜가 라벨일 뿐 */
   .tk3{grid-template-columns:minmax(0,1fr);}
   .tkwrap{grid-template-columns:minmax(0,1fr);}
   .set-grid{grid-template-columns:minmax(0,1fr);}
@@ -1208,9 +1223,15 @@ html.dark #toast{background:#2B313A;}
         <div class="dp-col">
           <div class="card dp-filtercard">
             <div class="dp-top">
-              <div><span class="dp-date" id="dpDate">—</span><span class="dp-dow" id="dpDow"></span></div>
-              <span class="dp-cnt" id="dpCnt"></span>
-              <button class="dp-addtop dp-add" data-act="plan.new" aria-label="업무 추가" title="업무 추가"><svg class="icn"><use href="#i-plus"></use></svg></button>
+              <button class="dp-datebtn" data-act="cal.pick" aria-label="연·월 선택" title="연·월 이동">
+                <span class="dp-date" id="dpDate">—</span><span class="dp-dow" id="dpDow"></span>
+                <svg class="icn dp-date-c" aria-hidden="true"><use href="#i-chevr"></use></svg>
+              </button>
+              <div class="dp-nav">
+                <button class="dp-nb" data-act="cal.prev" aria-label="이전 달"><svg class="icn" aria-hidden="true"><use href="#i-chevl"></use></svg></button>
+                <button class="dp-nb dp-today" data-act="cal.today">오늘</button>
+                <button class="dp-nb" data-act="cal.next" aria-label="다음 달"><svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg></button>
+              </div>
               <button class="dp-x" data-act="day.sheetClose" aria-label="닫기"><svg class="icn"><use href="#i-close"></use></svg></button>
             </div>
             <div class="dp-filter">
@@ -1226,6 +1247,10 @@ html.dark #toast{background:#2B313A;}
             </div>
           </div>
           <div class="card day-panel">
+            <div class="dp-lh">
+              <span class="dp-cnt" id="dpCnt"></span>
+              <button class="btn bo bsm dp-add" data-act="plan.new"><svg class="icn" aria-hidden="true"><use href="#i-plus"></use></svg> 업무 추가</button>
+            </div>
             <div class="dp-body">
               <div id="dpList"></div>
             </div>
