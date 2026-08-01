@@ -73,7 +73,7 @@ svg{display:block;flex-shrink:0;}
 .sbsc::-webkit-scrollbar{display:none;}
 .sbsl{font-size:10px;font-weight:700;color:var(--lbl3);letter-spacing:.07em;text-transform:uppercase;padding:10px 8px 4px;white-space:nowrap;transition:opacity var(--tr);}
 /* 접으면 분류 라벨은 글자만 감춘다 — 자리(29px)는 그대로라 아이콘 위치가 안 밀린다 */
-#sidebar.mini .sbsl{opacity:0;height:29px;padding:0;}
+#sidebar.mini .sbsl{visibility:hidden;transition:none;height:29px;padding:0;}
 .nvi{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:var(--rmd);cursor:pointer;font-size:13px;font-weight:500;color:var(--lbl2);transition:background var(--tr),color var(--tr);white-space:nowrap;overflow:hidden;margin-bottom:2px;}
 .nvi:hover{background:var(--fill);color:var(--lbl);}
 .nvi.act{background:linear-gradient(135deg,var(--b50),var(--b100));color:var(--bt1);}
@@ -313,8 +313,8 @@ html.dark #fcal .dhol.dtoday{color:var(--b300);}
 .p-ico.on{color:var(--am);}
 .p-ico .icn{width:14px;height:14px;}
 /* 날짜 헤더 — 좌: 날짜(누르면 연·월 이동), 우: 달 넘기기·오늘 */
-.dp-filtercard{position:relative;}
-#ymPop{position:absolute;top:calc(100% + 7px);left:10px;z-index:60;width:272px;background:var(--bg2);border:1px solid var(--sep);border-radius:var(--rlg);box-shadow:0 12px 34px rgba(0,0,0,.16);padding:13px 14px;}
+.dp-col{position:relative;}
+#ymPop{position:absolute;top:calc(var(--dpTopH, 49px) + 7px);left:10px;z-index:60;width:272px;background:var(--bg2);border:1px solid var(--sep);border-radius:var(--rlg);box-shadow:0 12px 34px rgba(0,0,0,.16);padding:13px 14px;}
 html.dark #ymPop{background:#242426;}
 .dp-datebtn{display:inline-flex;align-items:baseline;gap:8px;min-width:0;border-radius:9px;padding:3px 7px;margin:-3px 0 -3px -7px;transition:background var(--tr);}
 .dp-datebtn:hover{background:rgba(255,255,255,.14);}
@@ -682,7 +682,7 @@ html.dark #ymPop{background:#242426;}
 /* 팀 선택기 (사이드바) */
 .teamsel{display:flex;align-items:center;gap:6px;padding:8px 4px 10px;margin-bottom:2px;border-bottom:1px solid var(--sep);}
 /* 접으면 팀 선택기는 감추되 자리 높이는 그대로 — 아래 메뉴 아이콘이 올라가지 않는다 */
-#sidebar.mini .teamsel{padding:8px 0 10px;height:51px;}
+#sidebar.mini .teamsel{padding:8px 0 10px;height:51px;border-bottom:0;margin-bottom:0;}
 #sidebar.mini .teamsel>*{display:none;}
 .teamsel .tsel-wrap{position:relative;flex:1;min-width:0;}
 .teamsel select{width:100%;-webkit-appearance:none;appearance:none;background:var(--fill);border:1px solid var(--sep);border-radius:var(--rsm);padding:7px 26px 7px 10px;font-size:12.5px;font-weight:600;color:var(--lbl);cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -1409,5 +1409,5 @@ html.dark #toast{background:#2B313A;}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=69"></script>
+<script src="./app.js?v=71"></script>
 </body></html>
