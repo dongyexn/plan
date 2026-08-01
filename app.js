@@ -1301,6 +1301,15 @@ function closeYMPop(){
   const pop=$('#ymPop');if(pop)pop.remove();
   document.removeEventListener('click',ymOutside,true);
 }
+/* 보고 있는 달에 맞춰 선택일을 옮긴다(그 달에 오늘이 있으면 오늘, 없으면 1일) */
+function syncSelToView(){
+  if(!CAL)return;
+  const c=CAL.view.currentStart, y=c.getFullYear(), m=c.getMonth();
+  const t=new Date();
+  const d=(t.getFullYear()===y&&t.getMonth()===m)?t:new Date(y,m,1);
+  selDate(dstr(d));
+}
+
 /* 모바일 하단 시트 — 날짜를 누르면 일자 패널이 올라온다(캘린더 앱 UX) */
 const isMob=()=>matchMedia('(max-width:960px)').matches;
 function dpSheet(open){
@@ -2518,8 +2527,10 @@ const ACT={
     if(!u){toast('설정에서 하자처리 현황 주소를 먼저 입력하세요');go('settings');return;}
     window.open(u,'_blank','noopener');
   },
-  'cal.prev':()=>CAL&&CAL.prev(),
-  'cal.next':()=>CAL&&CAL.next(),
+  /* 달을 넘기면 선택일도 그 달로 따라간다 — 헤더 날짜가 곧 '보고 있는 달'.
+     그 달에 오늘이 들어 있으면 1일이 아니라 오늘을 잡아 되돌아왔을 때 맥락이 복원된다 */
+  'cal.prev':()=>{if(!CAL)return;CAL.prev();syncSelToView();},
+  'cal.next':()=>{if(!CAL)return;CAL.next();syncSelToView();},
   'cal.today':()=>{selDate(todayStr());},
   'plan.new':()=>openPlanEdit(null),
   'plan.cancel':closePlanEdit,
