@@ -1286,9 +1286,12 @@ function openYMPick(){
   YM_Y=null;
   const old=$('#ymPop');
   if(old){old.remove();return;}                       /* 다시 누르면 토글 닫기 */
-  const host=$('#view-calendar .dp-filtercard');if(!host)return;
+  /* 헤더 카드는 overflow:hidden 이라 그 안에 붙이면 잘린다 — 바깥 열(.dp-col)을 기준으로 */
+  const host=$('#view-calendar .dp-col');if(!host)return;
   const pop=document.createElement('div');
   pop.id='ymPop';pop.innerHTML=ymPickHTML();
+  const head=$('#view-calendar .dp-filtercard');
+  if(head)pop.style.top=(head.offsetTop+head.offsetHeight+7)+'px';   /* 헤더 카드 바로 아래 */
   host.appendChild(pop);
   setTimeout(()=>{document.addEventListener('click',ymOutside,true);},0);
 }
