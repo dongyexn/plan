@@ -1135,7 +1135,7 @@ function calInit(){
       const today=ds===todayStr()?'<span class="dhol dtoday">오늘</span>':'';
       return{html:today+(o?'<span class="dhol'+(o.h?'':' anv')+'">'+esc(o.n)+'</span>':'')+'<span class="dnum">'+a.date.getDate()+'</span>'};},
     events:(info,ok)=>ok(buildEvents()),
-    dateClick:info=>{selDate(String(info.dateStr).slice(0,10));},
+    dateClick:info=>{S.selEnd='';selDate(String(info.dateStr).slice(0,10));},
     eventClick:info=>{info.jsEvent.preventDefault();
       const t=info.event.extendedProps.task;
       if(t){gotoTask(t.sid,t.iid);return;}
@@ -1162,8 +1162,8 @@ function calInit(){
         if(S.planEdit.draft){S.planEdit.draft.date=a;S.planEdit.draft.end=b;}
         toast('기간을 '+a+' ~ '+b+' 로 바꿨습니다');return;
       }
-      S.dragRange={a,b};selDate(a);
-      toast(a+' ~ '+b+' — 업무 추가를 누르면 이 기간으로 작성합니다');},
+      /* 드래그는 '기간 선택' — 그 사이 업무를 패널에 보여 주고, 업무 추가를 누르면 이 기간으로 연다 */
+      S.dragRange={a,b};selRange(a,b);},
     datesSet:()=>{rMonTitle();subVisibleMonths();markSel();}
   });
   CAL.render();
@@ -1351,13 +1351,23 @@ function dpSheet(open){
 }
 function markSel(){
   $$('#fcal .fc-daygrid-day.sel-day').forEach(el=>el.classList.remove('sel-day'));
-  const td=$('#fcal td[data-date="'+S.selDate+'"]');
-  if(td)td.classList.add('sel-day');
+  /* 기간 선택이면 그 사이 날짜를 모두 표시한다 */
+  const a=S.selDate,b=S.selEnd||S.selDate;
+  $$('#fcal td.fc-daygrid-day').forEach(td=>{
+    const d=td.getAttribute('data-date');
+    if(d&&d>=a&&d<=b)td.classList.add('sel-day');
+  });
+}
+/* 기간 선택 — 시작·종료를 함께 잡는다(하루면 selEnd 없음) */
+function selRange(a,b){
+  S.selEnd=(b&&b>a)?b:'';
+  selDate(a);
 }
 function selDate(ds){
   ds=String(ds||'').slice(0,10);
   if(!/^\d{4}-\d{2}-\d{2}$/.test(ds))return;   /* 잘못된 값이 들어오면 무시 — NaN 표시 방지 */
   S.selDate=ds;
+  if(S.selEnd&&S.selEnd<=ds)S.selEnd='';
   setTimeout(rWidget,0);
   if(CAL&&ymOf(ds)!==CAL.view.currentStart.getFullYear()+'-'+pad(CAL.view.currentStart.getMonth()+1))CAL.gotoDate(ds);
   markSel();
@@ -1413,12 +1423,41 @@ function taskOwnOk(sid,it){
   return who.includes(f);
 }
 function rDayHead(){
-  const ds=S.selDate,d=toDate(ds),ps=dayPlans(ds),ho=holOf(ds);
-  $('#dpDate').textContent=d.getFullYear()+'. '+(d.getMonth()+1)+'. '+d.getDate()+'.';
-  /* 헤더 우측 보조문구 — 요일·공휴일·오늘 */
+  const ds=S.selDate,d=toDate(ds),ho=holOf(ds);
+  const fmt=x=>{const t=toDate(x);return t.getFullYear()+'. '+(t.getMonth()+1)+'. '+t.getDate()+'.';};
   const dow=$('#dpDow');
-  if(dow)dow.textContent=DOW[d.getDay()]+'요일'+(ho?' · '+ho.n:'')+(ds===todayStr()?' · 오늘':'');
-  return ps;
+  if(S.selEnd){   /* 기간 선택 — 날짜도 요일도 시작 ~ 종료 */
+    const e=toDate(S.selEnd);
+    $('#dpDate').textContent=fmt(ds)+' ~ '+fmt(S.selEnd);
+    if(dow)dow.textContent=DOW[d.getDay()]+' ~ '+DOW[e.getDay()]+'요일';
+  }else{
+    $('#dpDate').textContent=fmt(ds);
+    if(dow)dow.textContent=DOW[d.getDay()]+'요일'+(ho?' · '+ho.n:'')+(ds===todayStr()?' · 오늘':'');
+  }
+  return rangePlans();
+}
+/* 선택 기간(하루면 그날)에 걸친 업무 — 날짜순 */
+/* 목록 정렬 — 완료는 아래로, 그 안에서 시간 있는 업무가 먼저(시간순), 나머지는 날짜순 */
+function sortPlans(list){
+  return list.slice().sort((x,y)=>{
+    const dx=isDone(x.p,x.occ)?1:0, dy=isDone(y.p,y.occ)?1:0;
+    if(dx!==dy)return dx-dy;
+    const tx=x.p.time||'', ty=y.p.time||'';
+    if(!!tx!==!!ty)return tx?-1:1;
+    if(tx&&ty&&tx!==ty)return tx<ty?-1:1;
+    const ax=x.p.date||'', ay=y.p.date||'';
+    if(ax!==ay)return ax<ay?-1:1;
+    return String(x.p.title||'').localeCompare(String(y.p.title||''),'ko');
+  });
+}
+function rangePlans(){
+  const a=S.selDate,b=S.selEnd||S.selDate;
+  if(!S.selEnd)return sortPlans(dayPlans(a));
+  const seen={},out=[];
+  for(let d=a;d<=b;d=addDays(d,1)){
+    dayPlans(d).forEach(x=>{const k=x.p.id+'@'+x.occ;if(seen[k])return;seen[k]=1;out.push(x);});
+  }
+  return sortPlans(out);
 }
 function rDay(){
   const ps=rDayHead();
@@ -1434,20 +1473,23 @@ function rDay(){
     const done=isDone(p,occ),rep=p.recur&&p.recur.f,span=p.end&&p.end!==p.date;
     return `
     <div class="plan${done?' done':''}" data-pid="${esc(p.id)}">
-      <button class="tk-st s${planSt(p,occ)}" data-act="plan.st" data-pid="${esc(p.id)}" data-occ="${esc(occ)}" aria-label="상태 전환">${ST_LBL[planSt(p,occ)]}</button>
+      <span class="plan-c" style="background:${esc(planColor(p))}" title="${esc(ST_LBL[planSt(p,occ)])}"></span>
       <div class="plan-main" data-act="plan.open" data-pid="${esc(p.id)}" data-occ="${esc(occ)}">
         <div class="plan-t">${esc(p.title)}</div>
         ${p.body?'<div class="plan-body">'+esc(p.body)+'</div>':''}
         <div class="plan-meta">
-          ${fmtSpan(p)?'<span class="pm-chip">'+esc(fmtSpan(p))+'</span>':''}
-          ${p.site?'<span class="pm-chip site-on">'+esc(siteName(p.site))+'</span>':''}
-          ${span?'<span class="pm-chip">'+(toDate(p.date).getMonth()+1)+'/'+toDate(p.date).getDate()+'–'+(toDate(p.end).getMonth()+1)+'/'+toDate(p.end).getDate()+'</span>':''}
-          ${rep?'<span class="pm-chip rep">'+esc(REC_LBL[p.recur.f])+'</span>':''}
-          ${planOwners(p).map(o=>'<span class="pm-chip own"><span class="dot-c" style="background:'+esc(ownColor(o))+'"></span>'+esc(ownName(o))+'</span>').join('')}
-          ${p.remind?'<span class="pm-chip remind"><svg class="icn"><use href="#i-bell"></use></svg>리마인드</span>':''}
+          <span class="pm-l">${[
+            ST_LBL[planSt(p,occ)],
+            span?(toDate(p.date).getMonth()+1)+'/'+toDate(p.date).getDate()+'–'+(toDate(p.end).getMonth()+1)+'/'+toDate(p.end).getDate():fmtSpan(p),
+            kindLabel(p.kind)==='일반'?'':kindLabel(p.kind),
+            rep?REC_LBL[p.recur.f]:'',
+            p.site?siteName(p.site):''
+          ].filter(Boolean).map(esc).join(' · ')}</span>
+          <span class="pm-r">${esc(planOwners(p).map(o=>ownName(o)).join(', ')||'팀 공통')}</span>
         </div>
       </div>
       <div class="plan-side">
+        <button class="p-ico p-done${done?' on':''}" data-act="plan.doneToggle" data-pid="${esc(p.id)}" data-occ="${esc(occ)}" aria-label="완료 전환" title="${done?'완료 → 진행':'완료로'}"><svg class="icn"><use href="#i-check"></use></svg></button>
         <button class="p-ico${p.remind?' on':''}" data-act="plan.remind" data-pid="${esc(p.id)}" aria-label="리마인드 전환" title="리마인드"><svg class="icn"><use href="#i-bell"></use></svg></button>
         <button class="p-ico" data-act="plan.edit" data-pid="${esc(p.id)}" data-occ="${esc(occ)}" aria-label="수정" title="수정"><svg class="icn"><use href="#i-pen"></use></svg></button>
       </div>
@@ -1481,8 +1523,8 @@ function setPlanColor(c){
   box.outerHTML=colRowHTML(c);
   const nb=$('#peCols');
   if(pop&&nb)nb.appendChild(pop);
-  const st=$('#peStat');                     /* 제목 바 배지도 새 색으로 */
-  if(st&&!st.classList.contains('on'))st.setAttribute('style','background:'+planColor({color:c,owners:{}})+'1F;color:'+planColor({color:c,owners:{}}));
+  const dot=$('#peColDot');                  /* 제목 앞 점도 새 색으로 */
+  if(dot)dot.setAttribute('style','background:'+planColor({color:c,owners:{}}));
 }
 function colOutside(e){
   const pop=$('#colPop');
@@ -1505,7 +1547,7 @@ function planFormHTML(){
   const kind=kindOf(d.kind);
   return `<div class="dp-edit" id="dpEdit">
     <div class="pe-bar">
-      <button class="tk-st s${stOf(pe.draft.st)}" id="peStat" data-act="plan.stDraft" aria-label="상태 전환">${ST_LBL[stOf(pe.draft.st)]}</button>
+      <span class="pe-c" id="peColDot" style="background:${esc(planColor(d))}"></span>
       <input class="pe-ttl" id="peTitle" maxlength="80" placeholder="무엇을 하나요?" value="${esc(d.title)}">
       ${pe.orig?'<button class="pe-ic pe-del" data-act="plan.del" data-pid="'+esc(d.id)+'" data-ym="'+esc(ymOf(d.date))+'" data-occ="'+esc(pe.occ||'')+'" aria-label="삭제" title="삭제"><svg class="icn"><use href="#i-trash"></use></svg></button>':''}
       <button class="pe-ic pe-save" data-act="plan.save" aria-label="저장 (Enter)" title="저장 (Enter)"><svg class="icn"><use href="#i-check"></use></svg></button>
@@ -1517,14 +1559,16 @@ function planFormHTML(){
         <div class="frow"><label>종료일</label><input type="date" class="inp inp-sm" id="peEnd" value="${esc(d.end||'')}"></div>
       </div>
       <div class="frow2">
+        <div class="frow"><label>상태</label>
+          <select class="inp inp-sm" id="peSt">${ST_LBL.map((l,i)=>'<option value="'+i+'"'+(i===stOf(pe.draft.st)?' selected':'')+'>'+l+'</option>').join('')}</select></div>
         <div class="frow"><label>업무 구분</label>
           <select class="inp inp-sm" id="peKind">${TK_KIND.map(k=>'<option value="'+k[0]+'"'+(k[0]===kind?' selected':'')+'>'+k[1]+'</option>').join('')}</select></div>
-        <div class="frow"><label>시간</label><input type="time" class="inp inp-sm" id="peTime" value="${esc(d.time||'')}"></div>
       </div>
       <div class="frow2">
-        <div class="frow" style="flex:1"><label>담당자</label>${ownSelHTML('peOwners',planOwners(d)[0]||'',people)}</div>
-        <div class="frow pe-colw"><label>색</label>${colRowHTML(d.color)}</div>
+        <div class="frow"><label>시간</label><input type="time" class="inp inp-sm" id="peTime" value="${esc(d.time||'')}"></div>
+        <div class="frow"><label>담당자</label>${ownSelHTML('peOwners',planOwners(d)[0]||'',people)}</div>
       </div>
+      <div class="frow"><label>색</label>${colRowHTML(d.color)}</div>
       <div class="pe-morerow">
         <button class="pe-more" data-act="plan.more" id="peMoreBtn" aria-label="자세히"><svg class="icn"><use href="#i-chevr"></use></svg></button>
         ${pe.orig&&pe.orig.sid?'<button class="pe-ic pe-more-ic" data-act="plan.toTask" data-sid="'+esc(pe.orig.sid)+'" data-iid="'+esc(d.id)+'" aria-label="업무 목록에서 자세히 쓰기" title="업무 목록에서 자세히 쓰기"><svg class="icn"><use href="#i-tasks"></use></svg></button>':''}
@@ -1569,7 +1613,8 @@ function savePlanInline(){
     recur:f?{f,until:(($('#peUntil')&&$('#peUntil').value)||'')}:{f:'',until:''},
     remind:!!($('#peRemind')&&$('#peRemind').value),
     kind:kindOf(($('#peKind')&&$('#peKind').value)||''),
-    st:stOf(pe.draft.st),done:stOf(pe.draft.st)===2,
+    st:stOf(($('#peSt')&&$('#peSt').value)!==undefined?$('#peSt').value:pe.draft.st),
+    done:stOf(($('#peSt')&&$('#peSt').value)||pe.draft.st)===2,
     by:S.user?(S.user.email||'').split('@')[0]:(pe.draft.by||''),
     updatedAt:Date.now()};
   const wasRec=!!(pe.orig&&pe.orig.recur&&pe.orig.recur.f);
@@ -2633,16 +2678,17 @@ const ACT={
     S.planOpen=on?el.dataset.pid:'';},
   'plan.edit':el=>{const p=findPlan(el.dataset.pid);if(p)openPlanEdit(p,null,null,el.dataset.occ||'');},
   'plan.toTask':el=>{closePlanEdit();gotoTask(el.dataset.sid,el.dataset.iid);},
-  /* 배지 클릭 — 예정 → 진행 → 완료 → 보류 → 예정 (반복 회차는 완료 여부만 토글) */
+  /* 체크 아이콘 — 완료 ↔ 진행만 빠르게(예정·보류는 폼에서) */
+  'plan.doneToggle':el=>{const p=findPlan(el.dataset.pid);if(!p)return;
+    const occ=occSrc(p,el.dataset.occ||p.date);
+    if(p.recur&&p.recur.f){p.doneOn=p.doneOn||{};if(p.doneOn[occ])delete p.doneOn[occ];else p.doneOn[occ]=1;}
+    else{p.st=stOf(p.st)===2?1:2;p.done=p.st===2;}
+    p.updatedAt=Date.now();store.putPlan(p);if(!S.live){rDay();refetchCal();rWidget();}},
   'plan.st':el=>{const p=findPlan(el.dataset.pid);if(!p)return;
     const occ=occSrc(p,el.dataset.occ||p.date);
     if(p.recur&&p.recur.f){p.doneOn=p.doneOn||{};if(p.doneOn[occ])delete p.doneOn[occ];else p.doneOn[occ]=1;}
     else{p.st=(stOf(p.st)+1)%4;p.done=p.st===2;}
     p.updatedAt=Date.now();store.putPlan(p);if(!S.live){rDay();refetchCal();rWidget();}},
-  'plan.stDraft':()=>{
-    const pe=S.planEdit;if(!pe||!pe.draft)return;
-    pe.draft.st=(stOf(pe.draft.st)+1)%4;pe.draft.done=pe.draft.st===2;
-    const b=$('#peStat');if(b){b.className='tk-st s'+pe.draft.st;b.textContent=ST_LBL[pe.draft.st];}},
   'plan.remind':el=>{const p=findPlan(el.dataset.pid);if(!p)return;p.remind=!p.remind;p.updatedAt=Date.now();store.putPlan(p);if(!S.live)rDay();toast(p.remind?'당일 아침 리마인드 메일이 발송됩니다':'리마인드를 해제했습니다');},
   'plan.save':savePlanInline,
   'plan.del':el=>{
