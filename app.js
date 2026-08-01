@@ -1286,6 +1286,14 @@ function openYMPick(){
   openModal('연 · 월 선택',ymPickHTML(),'');
   MODAL_CB={type:'ym'};
 }
+/* 모바일 하단 시트 — 날짜를 누르면 일자 패널이 올라온다(캘린더 앱 UX) */
+const isMob=()=>matchMedia('(max-width:960px)').matches;
+function dpSheet(open){
+  const col=$('#view-calendar .dp-col');if(!col)return;
+  S.dpSheet=!!open;
+  col.classList.toggle('on',S.dpSheet);
+  const sc=$('#scrim');if(sc)sc.classList.toggle('on',S.dpSheet||$('#sidebar').classList.contains('mob-open'));
+}
 function markSel(){
   $$('#fcal .fc-daygrid-day.sel-day').forEach(el=>el.classList.remove('sel-day'));
   const td=$('#fcal td[data-date="'+S.selDate+'"]');
@@ -1298,6 +1306,7 @@ function selDate(ds){
   setTimeout(rWidget,0);
   if(CAL&&ymOf(ds)!==CAL.view.currentStart.getFullYear()+'-'+pad(CAL.view.currentStart.getMonth()+1))CAL.gotoDate(ds);
   markSel();
+  if(isMob()&&S.view==='calendar')dpSheet(true);
   /* 편집기가 열려 있으면 입력을 지우지 않는다 — 새 업무 작성 중엔 시작일만 따라간다 */
   if(S.planEdit&&$('#dpEdit')){
     rDayHead();
@@ -2200,9 +2209,11 @@ function siteTable(){
   sites.sort((a,b)=>(ord[a.region]??99)-(ord[b.region]??99)||String(a.name).localeCompare(String(b.name),'ko'));
   const regOpts=x=>'<option value="">권역 —</option>'+regs.map(r=>'<option value="'+esc(r.id)+'"'+(r.id===x.region?' selected':'')+'>'+esc(r.name)+'</option>').join('');
   return `<div style="overflow-x:auto"><table class="mgtbl"><thead><tr>
-    <th style="width:16%">권역</th><th style="width:30%">현장명</th>
-    <th class="cc" style="width:11%">세대수</th><th class="cc" style="width:10%">동수</th>
-    <th class="cc" style="width:11%">상가수</th><th class="cc" style="width:16%">준공일</th><th class="cc" style="width:6%"></th>
+    <th style="width:11%">권역</th><th style="width:21%">현장명</th>
+    <th class="cc" style="width:8%">세대수</th><th class="cc" style="width:7%">동수</th>
+    <th class="cc" style="width:8%">상가수</th><th class="cc" style="width:12%">준공일</th>
+    <th class="cc mg-disth" style="width:8%">공가세대</th><th class="cc mg-disth" style="width:8%">공가상가</th>
+    <th class="cc mg-disth" style="width:10%">업데이트일</th><th class="cc" style="width:5%"></th>
   </tr></thead><tbody>${sites.map(x=>`<tr>
     <td><select class="mg-inp" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="region" aria-label="권역 선택">${regOpts(x)}</select></td>
     <td><input class="mg-inp" value="${esc(x.name)}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="name" aria-label="현장명"></td>
@@ -2210,6 +2221,9 @@ function siteTable(){
     <td><input class="mg-inp n" type="number" value="${x.buildings||0}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="buildings" aria-label="동수" style="text-align:right"></td>
     <td><input class="mg-inp n" type="number" value="${x.commercialUnits||0}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="commercialUnits" aria-label="상가수" style="text-align:right"></td>
     <td class="cc"><input class="mg-inp" type="date" max="9999-12-31" style="width:132px;max-width:100%;text-align:center;display:inline-block" value="${esc(x.completionDate||'')}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="completionDate" aria-label="준공일"></td>
+    <td class="cc mg-dis"><label class="sw"><input type="checkbox" checked disabled aria-label="공가세대 — 하자처리 현황 전용"><span class="sw-t"></span></label></td>
+    <td class="cc mg-dis"><label class="sw"><input type="checkbox" disabled aria-label="공가상가 — 하자처리 현황 전용"><span class="sw-t"></span></label></td>
+    <td class="cc mg-dis" style="font-size:11.5px;white-space:nowrap">—</td>
     <td class="cc"><button class="tm-x tm-del" data-act="org.delSite" data-id="${esc(x.id)}" aria-label="삭제">${ICON_TRASH}</button></td>
   </tr>`).join('')}</tbody></table></div>`;
 }
@@ -2308,7 +2322,7 @@ function rOrg(){
   /* 팀 미배정 계정 — 섞어 두면 헷갈린다는 지적에 따라 별도 카드로 분리 */
   const fc=$('#freeCard'),fr=$('#freeRoot');
   if(fc&&fr){
-    fc.style.display=free.length?'':'none';
+    fc.style.display=(free.length&&(S.orgTab||'acct')==='acct')?'':'none';   /* 현장 탭에선 미배정 카드도 접는다 */
     fr.innerHTML=free.length
       ?'<table class="utbl"><thead><tr><th style="width:178px">이름</th><th></th><th class="utbl-r" style="width:124px">권한</th></tr></thead><tbody>'
         +free.map(p=>`<tr>
@@ -2447,6 +2461,7 @@ function saveMailCfg(){
 const VIEW_TTL={calendar:'업무 일정',mine:'내 업무',tasks:'업무 목록',org:'조직/현장 관리',settings:'설정'};
 function go(view){
   S.view=view;
+  if(S.dpSheet)dpSheet(false);
   $$('.view').forEach(v=>v.classList.toggle('act',v.id==='view-'+view));
   $$('#sidebar .nvi[data-view]').forEach(n=>n.classList.toggle('act',n.dataset.view===view));
   $('#tbt').textContent=VIEW_TTL[view];
@@ -2469,7 +2484,9 @@ function toast(msg){
   const t=$('#toast');t.textContent=msg;t.classList.add('show');
   clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),2400);
 }
-function mobClose(){$('#sidebar').classList.remove('mob-open');$('#scrim').classList.remove('on');}
+function mobClose(){
+  if(S.dpSheet){dpSheet(false);return;}   /* 시트가 열려 있으면 스크림 탭은 시트부터 닫는다 */
+  $('#sidebar').classList.remove('mob-open');$('#scrim').classList.remove('on');}
 
 /* 테마 */
 function applyTheme(dark){
@@ -2485,6 +2502,7 @@ const ACT={
   'nav.toggle':()=>$('#sidebar').classList.toggle('mini'),
   'nav.mob':()=>{$('#sidebar').classList.add('mob-open');$('#scrim').classList.add('on');},
   'nav.mobClose':mobClose,
+  'day.sheetClose':()=>dpSheet(false),
   'theme.toggle':()=>applyTheme(!document.documentElement.classList.contains('dark')),
   'link.defect':()=>{
     const u=(S.cfg.defectUrl||DEFECT_URL).trim();
