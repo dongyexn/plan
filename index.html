@@ -181,7 +181,7 @@ body:not(.wid) .cal-card{border:0;background:transparent;box-shadow:none;border-
 .cal-nav{display:flex;align-items:center;gap:4px;}
 .cal-nb{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;color:var(--lbl2);transition:background var(--tr),color var(--tr);}
 .cal-nb:hover{background:var(--fill);color:var(--bt1);}
-.cal-nav .cal-today{width:auto;min-width:auto;padding:0 11px;font-size:12px;font-weight:700;white-space:nowrap;}
+.cal-nav .cal-today .icn{width:15px;height:15px;}
 .cal-nb .icn{width:16px;height:16px;}
 /* FullCalendar 테마 이식 */
 #fcal{height:100%;--fc-border-color:var(--sep);--fc-today-bg-color:transparent;--fc-page-bg-color:var(--bg2);--fc-neutral-bg-color:var(--surf2);font-size:12.5px;}
@@ -296,6 +296,8 @@ html.dark #fcal .dhol.dtoday{color:var(--b300);}
 .dp-body::-webkit-scrollbar-thumb{background:var(--sepo);border-radius:99px;}
 .dp-empty{font-size:12.5px;color:var(--lbl3);text-align:center;padding:22px 0 14px;}
 #dpList{display:flex;flex-direction:column;gap:5px;}
+.plan .plan-body{display:none;}
+.plan.open .plan-body{display:block;}
 .plan{border:1px solid var(--sep);border-radius:var(--rlg);padding:11px 13px;display:flex;gap:10px;align-items:flex-start;background:var(--bg2);transition:border-color .15s;position:relative;}
 .plan:hover{border-color:var(--b300);}
 .plan .pc{width:4px;align-self:stretch;border-radius:99px;flex-shrink:0;}
@@ -316,20 +318,14 @@ html.dark #fcal .dhol.dtoday{color:var(--b300);}
 .dp-col{position:relative;}
 #ymPop{position:absolute;top:calc(var(--dpTopH, 49px) + 7px);left:10px;z-index:60;width:272px;background:var(--bg2);border:1px solid var(--sep);border-radius:var(--rlg);box-shadow:0 12px 34px rgba(0,0,0,.16);padding:13px 14px;}
 html.dark #ymPop{background:#242426;}
-.dp-datebtn{display:inline-flex;align-items:baseline;gap:8px;min-width:0;border-radius:9px;padding:3px 7px;margin:-3px 0 -3px -7px;transition:background var(--tr);}
-.dp-datebtn:hover{background:rgba(255,255,255,.14);}
-.dp-date-c{width:11px;height:11px;align-self:center;color:rgba(255,255,255,.75);transform:rotate(90deg);flex-shrink:0;}
-.dp-nav{margin-left:auto;display:flex;align-items:center;gap:3px;}
-.dp-nb{width:24px;height:24px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;color:#fff;transition:background var(--tr);}
-.dp-nb:hover{background:rgba(255,255,255,.22);}
-.dp-nb .icn{width:12px;height:12px;}
-.dp-nb.dp-today .icn{width:15px;height:15px;}
+.dp-dow{margin-left:auto;font-size:12px;font-weight:600;color:rgba(255,255,255,.86);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 /* 필터 카드 — 1행 권역·담당자, 2행 검색·업무 추가 */
 .dp-fcard{padding:11px 12px;display:flex;flex-direction:column;gap:8px;flex:0 0 auto;}
 .dp-fcard .dp-frow{display:flex;gap:8px;align-items:center;}
 .dp-fcard .dp-sel{flex:1 1 0;min-width:0;}
 .dp-fcard .dp-srch{flex:1 1 0;min-width:0;}
 .dp-fcard .dp-add{flex:0 0 auto;}
+.dp-fcard .dp-add.on{background:var(--b50);border-color:var(--b300);color:var(--bt1);}
 .dp-x{display:none;margin-left:2px;width:26px;height:26px;border-radius:8px;align-items:center;justify-content:center;color:#fff;background:rgba(255,255,255,.18);}
 .dp-x .icn{width:13px;height:13px;}
 
@@ -590,10 +586,39 @@ html.dark #ymPop{background:#242426;}
 .tk-new .pal{align-items:center;}
 .tk-new .pal-c{width:20px;height:20px;border-radius:7px;}
 /* 일자 패널 인라인 편집기 — 모달 대신 패널 안에서 작성·수정 */
-.dp-edit{border:1.5px solid var(--b300);border-radius:var(--rlg);padding:13px;background:var(--bg2);display:flex;flex-direction:column;flex-shrink:0;}
+/* ── 업무 작성 폼 — 제목 고정 바 + 핵심 4줄 + '자세히' 접기 ── */
+.dp-edit{border:1.5px solid var(--b300);border-radius:var(--rlg);background:var(--bg2);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;}
+.pe-bar{display:flex;align-items:center;gap:6px;padding:8px 8px 8px 12px;border-bottom:1px solid var(--sep);background:var(--b50);}
+.pe-ttl{flex:1;min-width:0;background:transparent;border:0;font-size:13.5px;font-weight:600;color:var(--lbl);font-family:inherit;}
+.pe-ttl::placeholder{color:var(--lbl3);font-weight:500;}
+.pe-ttl:focus{outline:none;}
+.pe-x{width:26px;height:26px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:var(--lbl2);flex:0 0 auto;transition:background var(--tr),color var(--tr);}
+.pe-x:hover{background:var(--fill);color:var(--lbl);}
+.pe-x .icn{width:14px;height:14px;}
+.pe-body{padding:11px 12px 3px;}
+/* 기간 — 한 줄에 시작 → 종료, 평소엔 종료일 접힘 */
+.pe-range{display:flex;align-items:center;gap:6px;}
+.pe-range .pe-end{display:none;}
+.pe-range.on .pe-end{display:block;}
+.pe-rx{flex:0 0 auto;height:30px;padding:0 9px;border-radius:var(--rsm);background:var(--fill);color:var(--lbl2);font-size:11.5px;font-weight:700;white-space:nowrap;transition:background var(--tr),color var(--tr);}
+.pe-rx:hover{background:var(--fill2);color:var(--lbl);}
+.pe-range.on .pe-rx{padding:0 4px;background:transparent;color:var(--lbl3);font-size:13px;}
+/* 색 — 점 하나, 누르면 팝오버 */
+.pe-colw{flex:0 0 auto;position:relative;}
+.pe-col{width:34px;height:30px;border-radius:var(--rsm);border:1px solid var(--sep);background:var(--bg2);display:inline-flex;align-items:center;justify-content:center;transition:background var(--tr);}
+.pe-col:hover{background:var(--fill);}
+.pe-col-d{width:16px;height:16px;border-radius:50%;display:block;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08);}
+.col-pop{position:absolute;top:calc(100% + 6px);right:0;z-index:70;background:var(--bg2);border:1px solid var(--sep);border-radius:var(--rmd);box-shadow:0 10px 28px rgba(0,0,0,.16);padding:9px;width:186px;}
+html.dark .col-pop{background:#242426;}
+.col-pop .pal{display:flex;flex-wrap:wrap;gap:6px;}
+/* 자세히 */
+.pe-more{width:100%;text-align:left;border-top:1px dashed var(--sep);padding:9px 2px 9px;color:var(--bt1);font-size:12px;font-weight:700;background:transparent;}
+.pe-adv{display:none;}
+.dp-edit.adv-on .pe-adv{display:block;}
 .dp-edit .frow{margin-bottom:10px;}
 .dp-edit .pal-c{width:20px;height:20px;border-radius:7px;}
-.dp-edit-f{display:flex;justify-content:flex-end;gap:8px;margin-top:2px;}
+.dp-edit-f{display:flex;justify-content:flex-end;gap:8px;padding:10px 12px;border-top:1px solid var(--sep);background:var(--bg);}
+html.dark .dp-edit-f{background:rgba(255,255,255,.03);}
 .tk-edit-row{display:flex;justify-content:flex-end;}
 .tk-empty{font-size:13px;color:var(--lbl3);padding:20px 2px;text-align:center;}
 .tk-fold{font-size:12.5px;font-weight:700;color:var(--lbl3);padding:7px 2px;cursor:pointer;text-align:center;}
@@ -1010,10 +1035,11 @@ body.wid #wgSet.on{display:block;}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 html.dark #toast{background:#2B313A;}
 
-/* 데스크톱은 달력 위 헤더를 걷어내고(기능은 우측 날짜 헤더로 이전) 달력이 그 높이까지 쓴다.
-   위젯(?w=1)과 모바일은 자체 헤더를 유지 */
+/* 달력 헤더 — 좌 년·월(누르면 이동), 우 ‹·오늘·›.
+   높이 50px + 아래 여백 9px = 날짜 헤더 카드(50) + 카드 간격(9) 과 같아
+   달력 상단선이 우측 필터 카드 시작선과 정확히 맞는다 */
 @media(min-width:961px){
-  body:not(.wid) .cal-head{display:none;}
+  body:not(.wid) .cal-head{height:46px;margin-bottom:9px;padding:0 2px;flex:0 0 auto;}
 }
 /* ══════════ 모바일 ══════════ */
 #scrim{position:fixed;inset:0;background:rgba(0,0,0,.32);z-index:250;opacity:0;pointer-events:none;transition:opacity .25s;}
@@ -1105,6 +1131,7 @@ html.dark #toast{background:#2B313A;}
 <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
 <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></symbol>
 <symbol id="i-bell" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></symbol>
+<symbol id="i-pen" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></symbol>
 <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
 <symbol id="i-ext" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
 <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></symbol>
@@ -1221,7 +1248,7 @@ html.dark #toast{background:#2B313A;}
             <div class="cal-ctl">
                             <div class="cal-nav">
                 <button class="cal-nb" data-act="cal.prev" aria-label="이전"><svg class="icn" aria-hidden="true"><use href="#i-chevl"></use></svg></button>
-                <button class="cal-nb cal-today" data-act="cal.today">오늘</button>
+                <button class="cal-nb cal-today" data-act="cal.today" aria-label="오늘로" title="오늘로"><svg class="icn" aria-hidden="true"><use href="#i-today"></use></svg></button>
                 <button class="cal-nb" data-act="cal.next" aria-label="다음"><svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg></button>
               </div>
               <button class="cal-nb wido" data-act="wid.set" aria-label="위젯 설정"><svg class="icn" aria-hidden="true"><use href="#i-settings"></use></svg></button>
@@ -1243,15 +1270,8 @@ html.dark #toast{background:#2B313A;}
         <div class="dp-col">
           <div class="card dp-filtercard">
             <div class="dp-top">
-              <button class="dp-datebtn" data-act="cal.pick" aria-label="연·월 선택" title="연·월 이동">
-                <span class="dp-date" id="dpDate">—</span>
-                <svg class="icn dp-date-c" aria-hidden="true"><use href="#i-chevr"></use></svg>
-              </button>
-              <div class="dp-nav">
-                <button class="dp-nb" data-act="cal.prev" aria-label="이전 달"><svg class="icn" aria-hidden="true"><use href="#i-chevl"></use></svg></button>
-                <button class="dp-nb dp-today" data-act="cal.today" aria-label="오늘로" title="오늘로"><svg class="icn" aria-hidden="true"><use href="#i-today"></use></svg></button>
-                <button class="dp-nb" data-act="cal.next" aria-label="다음 달"><svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg></button>
-              </div>
+              <span class="dp-date" id="dpDate">—</span>
+              <span class="dp-dow" id="dpDow"></span>
               <button class="dp-x" data-act="day.sheetClose" aria-label="닫기"><svg class="icn"><use href="#i-close"></use></svg></button>
             </div>
           </div>
@@ -1411,5 +1431,5 @@ html.dark #toast{background:#2B313A;}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=72"></script>
+<script src="./app.js?v=74"></script>
 </body></html>
