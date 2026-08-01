@@ -17,7 +17,6 @@ const GUIDE_HTML=`<div class="gd">
 <ul>
 <li>반복: 매주 · 격주 · 매월 · 매년. 반복 업무는 회차별로 완료 표시하며, 삭제할 때 이 날짜만 뺄지 전체를 지울지 고릅니다.</li>
 <li>담당자를 한 명 지정하면 그 사람 색으로 표시되고, 권역 칩과 담당자 선택으로 좁혀 볼 수 있습니다.</li>
-<li>자주 쓰는 조합은 <b>+ 필터 저장</b>으로 두면 한 번에 불러옵니다(내 계정에만 보임).</li>
 <li>종 아이콘을 켜면 그날 아침 팀 전체에 리마인드 메일이 갑니다.</li>
 </ul>
 <h4>업무 목록</h4>
@@ -314,7 +313,7 @@ const S={
   accounts:{},       // users/{uid}: {email,name,role} — 하자처리 현황과 공용
   tasks:{},          // {memberId:{itemId:{text,st,updatedAt}}}
   cfg:{},            // {defectUrl}
-  tk:{t:null,r:'*',m:null},   // 주요업무 현황 탭 선택(팀/권역/담당자)
+  tk:{t:null,m:null},       // 주요업무 현황 탭 선택(팀/권역/담당자)
   filter:{own:'*',reg:'*'},  // 달력 필터: 담당자 · 권역
   foldOpen:{},       // 완료 항목 접힘 해제(subjectId별)
   tkNew:null,        // 인라인 작성창이 열린 대상
@@ -448,7 +447,6 @@ const LocalStore={
     normOrg(this._d.org);
     if(moved)lsSave(this._d);   /* 옮긴 결과를 저장하지 않으면 새로고침 때마다 되살아난다 */
     S.org=this._d.org;S.tasks=this._d.tasks;S.cfg=this._d.cfg;S.people=this._d.people;S.prefs=this._d.prefs;S.accounts={};},
-  subPlans(){},
   putPlan(p){const{sid,iid,item}=planToTask(p);this.putTask(sid,iid,item);},
   delPlan(ym,id){const hit=allTasks().find(x=>x.iid===id);if(hit)this.putTask(hit.sid,hit.iid,null);},
   movePlan(p){this.putPlan(p);},
@@ -493,7 +491,6 @@ const FbStore={
   name:'fb',
   init(){},
   _on(path,cb,onErr){const r=FB.db.ref(path);r.on('value',s=>cb(s.val()),e=>{if(onErr)onErr(e);else console.warn('[FB] read',path,e);});FB._subs.push(r);},
-  subPlans(){},
   putPlan(p){const{sid,iid,item}=planToTask(p);this.putTask(sid,iid,item);},
   delPlan(ym,id){const hit=allTasks().find(x=>x.iid===id);if(hit)this.putTask(hit.sid,hit.iid,null);},
   movePlan(p){this.putPlan(p);},
@@ -575,7 +572,9 @@ const FbStore={
        규칙상 읽기가 막히면(관리자 전용 등) 조용히 수동 명부로 대체한다. */
     this._on('users',v=>{S.accounts=v||{};S.acctDenied=false;
       const me=S.user&&S.accounts[S.user.uid];
-      if(me)FB.userRec={...(FB.userRec||{}),...me};
+      if(me){FB.userRec={...(FB.userRec||{}),...me};
+        /* 접속 중 role 이 바뀌면(관리자 지정) 새로고침 없이 반영한다 */
+        if(['editor','viewer','blocked'].includes(me.role)&&me.role!==S.role)S.role=me.role;}
       rAcct();                                   /* 사이드바 아바타·이름도 함께 갱신 */
       if(shEditing()){PEND.org=true;PEND.tasks=true;return;}
       rOrg();rTasks();rFilter();},
@@ -584,6 +583,7 @@ const FbStore={
     const uid=S.user&&S.user.uid;
     if(uid){
         this._on('calapp/mentions/'+uid,v=>{S.mentions=v||{};rMention();if(S.view==='mine')rMine();});
+        this._on('calapp/prefs/'+uid,v=>{S.prefs=v||{};});   /* 최근 이모지 등 개인 설정 */
     }
   }
 };
@@ -829,9 +829,7 @@ function myOrgHTML(){
 /* 직급·권역을 바꾸면 아래 칸 구성이 달라진다 — 소속 블록만 다시 그린다 */
 function pfScopeRefresh(){
   const wrap=document.querySelector('.myorg');if(!wrap)return;
-  const u=S.user;if(!u)return;
-  const tSel=$('#acctTeam'),rSel=$('#acctRank'),gSel=$('#acctRegion');
-  const cur=(S.people||{})[u.uid]||{};
+  if(!S.user)return;
   const tmp=document.createElement('div');tmp.innerHTML=myOrgHTML();
   wrap.replaceWith(tmp.firstElementChild);
 }
@@ -1065,7 +1063,6 @@ function enterLive(u){
   rAcct();
 }
 function exitLive(){
-  const was=S.live;
   S.live=false;S.user=null;
   FB._subs.forEach(r=>{try{r.off();}catch(e){}});FB._subs=[];
   store=LocalStore;LocalStore.init();
@@ -1163,7 +1160,7 @@ function calInit(){
         toast('기간을 '+a+' ~ '+b+' 로 바꿨습니다');return;
       }
       /* 드래그는 '기간 선택' — 그 사이 업무를 패널에 보여 주고, 업무 추가를 누르면 이 기간으로 연다 */
-      S.dragRange={a,b};selRange(a,b);},
+      selRange(a,b);},
     datesSet:()=>{rMonTitle();subVisibleMonths();markSel();}
   });
   CAL.render();
@@ -1286,10 +1283,9 @@ function findPlan(id){
   const hit=allTasks().find(x=>x.iid===id);
   return hit?taskAsPlan(hit.sid,hit.iid,hit.it):null;
 }
+/* 달 이동 시 로컬 모드 이벤트 재조회 — 예전 월별 구독(subPlans)은 tasks 통합으로 폐기 */
 function subVisibleMonths(){
   if(!CAL)return;
-  const c=CAL.view.currentStart;
-  [-1,0,1].forEach(k=>{const d=new Date(c.getFullYear(),c.getMonth()+k,1);store.subPlans(d.getFullYear()+'-'+pad(d.getMonth()+1));});
   if(!S.live)refetchCal();
 }
 function rMonTitle(){
@@ -1472,7 +1468,7 @@ function rDay(){
   box.innerHTML=editorHTML+shown.map(({p,occ})=>{
     const done=isDone(p,occ),rep=p.recur&&p.recur.f,span=p.end&&p.end!==p.date;
     return `
-    <div class="plan${done?' done':''}" data-pid="${esc(p.id)}">
+    <div class="plan${done?' done':''}${S.planOpen===p.id?' open':''}" data-pid="${esc(p.id)}">
       <span class="plan-c" style="background:${esc(planColor(p))}" title="${esc(ST_LBL[planSt(p,occ)])}"></span>
       <div class="plan-main" data-act="plan.open" data-pid="${esc(p.id)}" data-occ="${esc(occ)}">
         <div class="plan-t">${esc(p.title)}</div>
@@ -1496,7 +1492,7 @@ function rDay(){
     </div>`;}).join('')
   ;
   const rec=$('#peRec');
-  if(rec)rec.addEventListener('change',()=>{const r=$('#peUntilRow');if(r)r.style.visibility=rec.value?'':'hidden';});
+  if(rec)rec.addEventListener('change',()=>{const r=$('#peUntilRow');if(r)r.style.display=rec.value?'':'none';});
 }
 
 /* ───── 업무 작성·수정 모달 ───── */
@@ -1615,7 +1611,6 @@ function savePlanInline(){
     kind:kindOf(($('#peKind')&&$('#peKind').value)||''),
     st:stOf(($('#peSt')&&$('#peSt').value)!==undefined?$('#peSt').value:pe.draft.st),
     done:stOf(($('#peSt')&&$('#peSt').value)||pe.draft.st)===2,
-    by:S.user?(S.user.email||'').split('@')[0]:(pe.draft.by||''),
     updatedAt:Date.now()};
   const wasRec=!!(pe.orig&&pe.orig.recur&&pe.orig.recur.f);
   const nowRec=!!f;
@@ -1696,7 +1691,6 @@ function taskItemHTML(sid,iid,it,withSubject,hideOwn){
   /* 담당자별 묶음 안에서는 소제목이 곧 그 사람 — 본인 배지는 겹말이라 뺀다(공동 담당자만 남긴다) */
   const asg=Object.keys(it.assignees||{}).filter(id=>id!==hideOwn)
     .map(id=>roster().find(p=>p.id===id)).filter(Boolean);
-  const lnk=Object.entries(it.links||{});
   const sn=siteName(it.site);
   const open=S.tkOpen===key;
   const col=(it.color&&it.color!=='auto')?it.color:'';
@@ -2094,9 +2088,9 @@ function tkMatch(sid,iid,it){
 function tkFilterOn(){const f=S.tkF||{};return !!(String(f.q||'').trim()||f.st||f.due);}
 function rTasks(){
   const root=$('#tkRoot');
-  const{teams,team,regions,mems,total}=tkSel();
-  if(!teams.length&&!total){
-    root.innerHTML='<div class="tk-none">아직 등록된 계정·팀이 없습니다.<br>조직/현장 관리에서 팀·권역을 만들고 계정에 배정하세요.<br><button class="btn bp bsm" data-act="nav.go" data-view="org">조직/현장 관리로 이동</button></div>';
+  const{teams,team,regions,mems}=tkSel();
+  if(!teams.length){
+    root.innerHTML='<div class="tk-none">아직 등록된 팀이 없습니다.<br>조직/현장 관리에서 팀·권역을 만들고 계정에 배정하세요.<br><button class="btn bp bsm" data-act="nav.go" data-view="org">조직/현장 관리로 이동</button></div>';
     return;
   }
   const sel=S.tk.m;
@@ -2653,8 +2647,7 @@ const ACT={
   'plan.new':()=>{
     const pe=S.planEdit;
     if(pe&&!pe.orig){const t=$('#peTitle');if(t){t.focus();t.select();return;}}   /* 이미 새 업무 폼이면 제목으로 */
-    const dr=S.dragRange;S.dragRange=null;
-    openPlanEdit(null,dr&&dr.a,dr&&dr.b);},
+    openPlanEdit(null,S.selDate,S.selEnd||'');},
   'plan.cancel':closePlanEdit,
   'plan.more':()=>{
     const box=$('#dpEdit');if(!box)return;
@@ -2683,11 +2676,6 @@ const ACT={
     const occ=occSrc(p,el.dataset.occ||p.date);
     if(p.recur&&p.recur.f){p.doneOn=p.doneOn||{};if(p.doneOn[occ])delete p.doneOn[occ];else p.doneOn[occ]=1;}
     else{p.st=stOf(p.st)===2?1:2;p.done=p.st===2;}
-    p.updatedAt=Date.now();store.putPlan(p);if(!S.live){rDay();refetchCal();rWidget();}},
-  'plan.st':el=>{const p=findPlan(el.dataset.pid);if(!p)return;
-    const occ=occSrc(p,el.dataset.occ||p.date);
-    if(p.recur&&p.recur.f){p.doneOn=p.doneOn||{};if(p.doneOn[occ])delete p.doneOn[occ];else p.doneOn[occ]=1;}
-    else{p.st=(stOf(p.st)+1)%4;p.done=p.st===2;}
     p.updatedAt=Date.now();store.putPlan(p);if(!S.live){rDay();refetchCal();rWidget();}},
   'plan.remind':el=>{const p=findPlan(el.dataset.pid);if(!p)return;p.remind=!p.remind;p.updatedAt=Date.now();store.putPlan(p);if(!S.live)rDay();toast(p.remind?'당일 아침 리마인드 메일이 발송됩니다':'리마인드를 해제했습니다');},
   'plan.save':savePlanInline,
@@ -2742,7 +2730,6 @@ const ACT={
   'mention.open':openMentionModal,
   'nq.toggle':()=>{const on=!$('#nqPanel').classList.contains('on');nqOpen(on);if(on)rNq();},
   'nq.close':()=>nqOpen(false),
-  'nq.q':()=>{},
   'nq.task':el=>gotoTask(el.dataset.sid,el.dataset.iid),
   'nq.cmt':el=>gotoTask(el.dataset.sid,el.dataset.iid),
   'mine.plan':el=>{go('calendar');selDate(el.dataset.date);},
@@ -2845,7 +2832,7 @@ const ACT={
   'tk.cmtSend':el=>{
     const sid=el.dataset.sid,iid=el.dataset.iid,cur=(S.tasks[sid]||{})[iid];if(!cur)return;
     const re=el.dataset.re||'';
-    const box=document.querySelector('.th-in[data-sid="'+sid+'"][data-iid="'+iid+'"]'+(re?'[data-re="'+re+'"]':':not([data-re])'))||$('#cmtIn');
+    const box=document.querySelector('.th-in[data-sid="'+sid+'"][data-iid="'+iid+'"]'+(re?'[data-re="'+re+'"]':':not([data-re])'));
     const t=((box&&box.value)||'').trim();if(!t){if(box)box.focus();return;}
     const cid=uid(),who=(S.user&&acctNick())||'나';
     const rec={by:who,text:t,at:Date.now()};
@@ -2861,7 +2848,7 @@ const ACT={
       if(hit.size)toast(hit.size+'명에게 멘션 알림을 보냈습니다');
     }
     if(box)box.value='';
-    setTimeout(()=>{if(!S.live)rTasks();else rTasks();},S.live?250:20);
+    setTimeout(rTasks,S.live?250:20);
   },
   'org.addTeam':()=>{
     
@@ -2925,7 +2912,7 @@ const ACT={
       return '<div class="spk-g">'+esc(label)+'</div>'+items.map(x=>
         '<label class="spk-i"><input type="checkbox" data-sid="'+esc(x.id)+'"'+((p.sites||{})[x.id]?' checked':'')+'>'+esc(x.name)+'</label>').join('');
     };
-    openModal(esc(p.name)+' · 담당 현장',
+    openModal(p.name+' · 담당 현장',   /* 제목은 textContent — esc 하면 &가 &amp;로 보인다 */
       '<div class="spk">'+regs.map(r=>group(r.id,r.name)).join('')+group('','권역 미지정')+'</div>',
       '<button class="btn bg2 bsm" data-act="modal.close">취소</button><button class="btn bp bsm" data-act="modal.ok">저장</button>');
     MODAL_CB={type:'sites',ok:()=>{
@@ -3019,7 +3006,7 @@ const ACT={
   'team.switch':el=>{
     const tid=el.dataset.tid||(el.value||'');
     if(!tid)return;
-    S.tk.t=tid;S.tk.r='*';S.tk.m=null;
+    S.tk.t=tid;S.tk.m=null;
     if(el.id!=='teamSelEl')rTeamSel();   /* 선택창에서 고른 경우 다시 그리면 열려 있던 목록이 닫힌다 */
     else{const e2=$('#teamSelEl');if(e2)e2.value=tid;}
     if(S.view==='tasks')rTasks();
@@ -3038,7 +3025,7 @@ const ACT={
   'cal.pick':()=>openYMPick(),
   'cal.pickY':el=>{const c=CAL?CAL.view.currentStart:new Date();
     YM_Y=(YM_Y===null?c.getFullYear():YM_Y)+Number(el.dataset.d);
-    const box=$('#ymPop')||$('#mbody');box.innerHTML=ymPickHTML();},
+    const box=$('#ymPop');if(box)box.innerHTML=ymPickHTML();},
   'cal.goYM':el=>{
     const y=Number(el.dataset.y),m=Number(el.dataset.m);
     if($('#ymPop'))closeYMPop();else closeModal();
@@ -3096,7 +3083,14 @@ document.addEventListener('contextmenu',e=>{
   const box=chip.closest('.pal');
   const wasSel=chip.classList.contains('sel');
   chip.remove();
-  if(wasSel&&box){const first=box.querySelector('.pal-c');if(first)first.classList.add('sel');}
+  if(wasSel&&box){
+    const first=box.querySelector('.pal-c');
+    if(first)first.classList.add('sel');
+    const c=first?(first.dataset.c||''):'';
+    /* 화면 선택만 바꾸면 저장값이 지워진 색으로 남는다 — 실제 값도 함께 되돌린다 */
+    if(box.id==='pfPal'){PF_SEL.color=c;pfPaint(c);acctAutoSave();}
+    else if(box.closest('#colPop'))setPlanColor(c||'auto');
+  }
 });
 document.addEventListener('click',e=>{
   const pal=e.target.closest('.pal-c');

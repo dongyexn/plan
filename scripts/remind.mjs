@@ -78,7 +78,7 @@ async function main() {
     `<div style="font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;max-width:520px;margin:0 auto;">
        <div style="background:linear-gradient(135deg,#3E71D2,#2C437C);border-radius:14px 14px 0 0;padding:18px 20px;color:#fff;">
          <div style="font-size:11px;opacity:.8;">H서비스센터 · 일정 리마인드</div>
-         <div style="font-size:19px;font-weight:800;margin-top:2px;">${Number(mo)}월 ${Number(dd)}일 오늘의 플랜</div>
+         <div style="font-size:19px;font-weight:800;margin-top:2px;">${Number(mo)}월 ${Number(dd)}일 오늘의 업무</div>
        </div>
        ${mail.intro ? `<div style="background:#fff;border:1px solid #EEE;border-top:none;padding:12px 14px 0;font-size:12.5px;color:#555;">${esch(mail.intro)}</div>` : ''}
        <table style="width:100%;border-collapse:collapse;background:#fff;border:1px solid #EEE;border-top:none;border-radius:0 0 14px 14px;">${rows}</table>
