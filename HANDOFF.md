@@ -1,6 +1,6 @@
 # 인수인계 — 일정공유 달력 앱 (calapp)
 
-새 대화를 시작할 때 이 파일을 먼저 읽으면 됩니다. 79차 작업까지 반영된 상태입니다.
+새 대화를 시작할 때 이 파일을 먼저 읽으면 됩니다. 81차 작업까지 반영된 상태입니다.
 
 ## 1. 이 앱이 무엇인가
 
@@ -17,7 +17,7 @@ GitHub Pages에 올리고 Firebase Realtime Database(무료 플랜)를 씁니다
 | 파일 | 설명 |
 |---|---|
 | `index.html` | 화면 구조와 전체 스타일. CSS가 전부 여기 들어 있습니다 |
-| `app.js` | 모든 로직. 약 5,700줄 |
+| `app.js` | 모든 로직. 약 3,300줄 |
 | `database.rules.json` | Firebase 보안 규칙. **필드를 추가하면 여기도 반드시 함께 수정** |
 | `scripts/mail-common.mjs` | 메일 수신자 계산 공용 모듈 |
 | `scripts/remind.mjs` | 당일 아침 리마인드 메일 (GitHub Actions) |
@@ -25,7 +25,6 @@ GitHub Pages에 올리고 Firebase Realtime Database(무료 플랜)를 씁니다
 | `vendor/` | FullCalendar, Pretendard 폰트 |
 | `widget/` | Electron 위젯 |
 | `build-single.mjs` | 단일 HTML로 묶는 빌드 스크립트 |
-| `calendar-mockup.html` | 달력 가시성 개선안 비교 샘플 (참고용, 앱과 무관) |
 
 ## 3. 데이터 구조 — 업무 하나로 통합됨
 
@@ -524,6 +523,38 @@ calapp/tasks/{sid}/{iid}
 - 카드 우측에 **완료 체크 아이콘**(plan.doneToggle, .p-done.on 은 초록) — 완료↔진행만
   빠르게 토글하고 예정·보류는 폼의 상태 선택창에서. 반복 업무는 회차별 doneOn 토글.
 - v79 신설(6항목). app.js?v=79.
+
+### 80차 — 실사용 검증 기반 버그 수정·정리
+- **버그**: 새 업무 폼에서 반복 선택 시 '반복 종료' 행이 안 보이던 문제(display/visibility 불일치) ·
+  기간 드래그 후 단일 클릭해도 '업무 추가'가 옛 기간으로 열리던 문제(S.dragRange 폐기, selDate/selEnd 로 일원화) ·
+  라이브 모드에서 calapp/prefs 미구독으로 최근 이모지가 세션마다 초기화되던 문제(구독 추가) ·
+  접속 중 role 변경이 새로고침 전까지 미반영되던 문제 · 담당 현장 모달 제목 이중 이스케이프(&→&amp;) ·
+  팀이 없으면 업무 목록이 안내 없이 빈 화면이던 문제.
+- **동작 개선**: 일자 패널 카드 펼침 상태(S.planOpen)를 재렌더 후에도 복원 ·
+  임의 색 칩 우클릭 삭제 시 저장값(PF_SEL·draft.color)도 함께 되돌림.
+- **정리(데드코드)**: ACT plan.st / nq.q, S.tk.r, store.subPlans 인터페이스, #cmtIn 폴백,
+  cal.pickY 모달 폴백, savePlanInline 의 by 필드, 사용 안내의 '+ 필터 저장' 문구(기능 없음).
+- **메일 스크립트**: weekly.mjs 가 완료 업무를 '이번 주 일정'에 포함하던 것을 앱 미리보기와 동일하게 제외,
+  st 비교를 Number 캐스팅으로 통일. remind.mjs 제목 '오늘의 플랜'→'오늘의 업무'.
+- app.js?v=80.
+
+### 81차 — 디자인 통일성 감사 (실측 기반, 원본 대비 픽셀 diff 로 회귀 0 확인)
+- **아이콘 버튼 radius 를 크기별 규칙으로 통일** (24px→6 · 26px→8 · 28px→8 · 30px→9):
+  tk-ico 7→8, site-pick 6→8, tm-x 6→8, mo-x 8→9, pop-x 7→6.
+- **역할 배지 통일**: radius 6px 로 3곳 일원화(사이드바 5→6, 조직 표 7→6),
+  계정 모달 배지를 조직 표와 동일 규격(11.5px·3px 10px)으로.
+- **삭제 hover 색 토큰화**: tm-del hover 배경 rgba 하드코딩 → var(--tint-rd) (다크 모드에서 tk-del 과 동일해짐).
+- **수정 폼 상단 현장 배지** font-weight 700 (목록과 통일). due-chip 의 데드 선언(fs·pad) 제거,
+  margin-top 을 .tk-row1 스코프로 한정(폼 상단 배지 2px 처짐 해소).
+- **빈 상태 문구 12.5px 통일**(tk/set/tm/pf/cmt-empty · 전면 안내 tk-none 13.5 는 별격 유지),
+  **섹션 라벨 자간 .05em 통일**(tks-h .06→, tkf-h .04→), 소속 라벨(myorg-h) 굵기 600→700.
+- 포커스 링 알파 .14 통일(th-in .12→), tk-list·nq-res 에도 공통 커스텀 스크롤바(4px) 적용.
+- **데드 CSS 45개 규칙 제거**(sti2·chipbar·chip2·sg*·dp-nav·duev·pe-full·tk3 등 폐기 UI 잔재,
+  .tk-meta .lnk, .pe-bar .pst, .pm-chip.rep, .tbr). tk-ico 옛 정의(20px) 삭제.
+- ⚠ **sel-day 규칙의 :not(.x-none) 은 데드가 아니라 명시도 부스터** — 주말·공휴일 background-image
+  규칙을 이기기 위한 것. 제거하면 토·일·공휴일 선택 강조가 사라진다(주석으로 명문화).
+- 검증: 기능 회귀 19/19, 컴포넌트 실측(dmeasure) 목표값 일치, 원본 대비 픽셀 diff —
+  달력 0px, 업무 목록·조직은 의도 지점만 변화. app.js?v=81.
 
 ## 8. 보류하기로 한 것
 

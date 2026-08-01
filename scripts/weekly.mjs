@@ -46,7 +46,14 @@ async function main() {
   const occ = [];
   flat.forEach(p => {
     if (!p.date) return;
-    if (p.recur && p.recur.f) { expandRecur(p, monday, sunday).forEach(o => occ.push({ date: o.date, p, span: false })); return; }
+    /* 완료 제외 — 앱의 주간 미리보기(mailItems)와 같은 규칙. 반복은 회차별 doneOn(src 기준) */
+    if (p.recur && p.recur.f) {
+      expandRecur(p, monday, sunday).forEach(o => {
+        if (!(p.doneOn && p.doneOn[o.src])) occ.push({ date: o.date, p, span: false });
+      });
+      return;
+    }
+    if (Number(p.st) === 2) return;
     const last = p.end || p.date;
     if (last < monday || p.date > sunday) return;
     occ.push({ date: p.date < monday ? monday : p.date, p, span: p.end && p.end !== p.date });
@@ -62,7 +69,7 @@ async function main() {
   };
   const due = [];
   Object.keys(tasks).forEach(sid => Object.values(tasks[sid] || {}).forEach(it => {
-    if (!it || !it.date || it.st === 2) return;
+    if (!it || !it.date || Number(it.st) === 2) return;
     if (it.date <= sunday) due.push({ ...it, who: nameOf(sid), over: it.date < today });
   }));
   due.sort((a, b) => a.date < b.date ? -1 : 1);
@@ -74,7 +81,7 @@ async function main() {
   const items = [
     ...occ.map(o => ({ kind: 'plan', p: o.p })),
     ...Object.keys(tasks).flatMap(sid => Object.values(tasks[sid] || {})
-      .filter(it => it && it.date && it.st !== 2 && it.date <= sunday)
+      .filter(it => it && it.date && Number(it.st) !== 2 && it.date <= sunday)
       .map(() => ({ kind: 'task', sid })))
   ];
   const emails = recipients(mail.scope || 'all', items, roster, orgSnap.val());
