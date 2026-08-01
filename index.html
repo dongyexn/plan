@@ -298,9 +298,13 @@ html.dark #fcal .dhol.dtoday{color:var(--b300);}
 #dpList{display:flex;flex-direction:column;gap:5px;}
 .plan .plan-body{display:none;}
 .plan.open .plan-body{display:block;}
-.plan{border:1px solid var(--sep);border-radius:var(--rlg);padding:11px 13px;display:flex;gap:10px;align-items:flex-start;background:var(--bg2);transition:border-color .15s;position:relative;}
+.plan{border:1px solid var(--sep);border-radius:var(--rlg);padding:11px 13px;display:flex;gap:9px;align-items:flex-start;background:var(--bg2);transition:border-color .15s;position:relative;}
 .plan:hover{border-color:var(--b300);}
-.plan .pc{width:4px;align-self:stretch;border-radius:99px;flex-shrink:0;}
+/* 상태 배지 — 색을 겸한다(진행: 업무 색 연하게 / 완료: 회색) */
+.pst{flex:0 0 auto;height:22px;padding:0 9px;border-radius:var(--rp);font-size:11px;font-weight:800;letter-spacing:-.01em;
+  display:inline-flex;align-items:center;justify-content:center;background:var(--fill);color:var(--lbl2);transition:filter var(--tr);}
+.pst:hover{filter:brightness(.96);}
+.pst.on{background:var(--fill2);color:var(--lbl3);}
 .plan-main{flex:1;min-width:0;cursor:pointer;}
 .plan-t{font-size:13.5px;font-weight:700;color:var(--lbl);word-break:break-all;}
 .plan.done .plan-t{text-decoration:line-through;color:var(--lbl3);}
@@ -309,7 +313,7 @@ html.dark #fcal .dhol.dtoday{color:var(--b300);}
 .pm-chip{display:inline-flex;align-items:center;gap:3px;padding:1px 7px;border-radius:var(--rp);background:var(--fill);font-weight:600;}
 .pm-chip.remind{background:var(--tint-am);color:var(--am);}
 .pm-chip .icn{width:11px;height:11px;}
-.plan-side{display:flex;flex-direction:column;gap:4px;flex-shrink:0;}
+.plan-side{display:flex;align-items:center;gap:2px;flex-shrink:0;}
 .p-ico{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--lbl3);transition:background var(--tr),color var(--tr);}
 .p-ico:hover{background:var(--fill);color:var(--bt1);}
 .p-ico.on{color:var(--am);}
@@ -317,7 +321,7 @@ html.dark #fcal .dhol.dtoday{color:var(--b300);}
 /* 날짜 헤더 — 좌: 날짜(누르면 연·월 이동), 우: 달 넘기기·오늘 */
 .dp-col{position:relative;}
 body:not(.wid) .cal-card{position:relative;}
-#ymPop{position:absolute;top:56px;left:2px;z-index:60;width:272px;background:var(--bg2);border:1px solid var(--sep);border-radius:var(--rlg);box-shadow:0 12px 34px rgba(0,0,0,.16);padding:13px 14px;}
+#ymPop{position:absolute;top:56px;left:-8px;z-index:60;width:272px;background:var(--bg2);border:1px solid var(--sep);border-radius:var(--rlg);box-shadow:0 12px 34px rgba(0,0,0,.16);padding:13px 14px;}
 html.dark #ymPop{background:#242426;}
 .dp-dow{margin-left:auto;font-size:12px;font-weight:600;color:rgba(255,255,255,.86);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 /* 필터 카드 — 1행 권역·담당자, 2행 검색·업무 추가 */
@@ -596,20 +600,27 @@ html.dark #ymPop{background:#242426;}
 .pe-ic{width:26px;height:26px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:var(--lbl2);flex:0 0 auto;transition:background var(--tr),color var(--tr);}
 .pe-ic:hover{background:var(--fill);color:var(--lbl);}
 .pe-ic .icn{width:14px;height:14px;}
-.pe-ic.pe-save{background:var(--b600);color:#fff;}
-.pe-ic.pe-save:hover{background:var(--b800,#2F5CB5);color:#fff;}
-.pe-ic.pe-del:hover{background:rgba(255,59,48,.12);color:var(--rd);}
+.pe-ic.pe-save{color:var(--b600);}
+.pe-ic.pe-save:hover{background:var(--b50);color:var(--b600);}
+.pe-bar .pst{cursor:default;}
+/* 자세히 하단 도구 — 업무 목록에서 쓰기 · 삭제 */
+.pe-tools{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px;}
+.pe-tools .icn{width:12px;height:12px;}
+.pe-delbtn{color:var(--rd);border-color:rgba(255,59,48,.3);}
+.pe-delbtn:hover{background:rgba(255,59,48,.08);}
 .pe-body{padding:11px 12px 11px;}
 /* 기간 — 시작 ~ 종료 한 줄 */
 .pe-range{display:flex;align-items:center;gap:6px;}
 .pe-range .inp{flex:1;min-width:0;}
 .pe-tilde{flex:0 0 auto;color:var(--lbl3);font-size:13px;font-weight:700;}
 /* 색 — 담당자색 + 4색 + 추가(+) */
-.pe-colw{flex:0 0 auto;}
-.pe-cols{display:flex;align-items:center;gap:5px;height:30px;position:relative;}
+.pe-colw{flex:0 0 168px;}
+.pe-cols{display:flex;align-items:center;justify-content:space-between;gap:4px;height:30px;position:relative;width:100%;}
 .pe-cs{width:19px;height:19px;border-radius:50%;flex:0 0 auto;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08);transition:transform .12s;}
 .pe-cs:hover{transform:scale(1.12);}
 .pe-cs.sel{box-shadow:0 0 0 2px var(--bg2),0 0 0 4px var(--b500);}
+.pe-cauto{background:var(--fill);color:var(--lbl2);display:inline-flex;align-items:center;justify-content:center;}
+.pe-cauto svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;}
 .pe-cadd{background:transparent;border:1.5px dashed var(--lbl3);color:var(--lbl2);font-size:13px;font-weight:700;line-height:1;display:inline-flex;align-items:center;justify-content:center;box-shadow:none;}
 .pe-cadd:hover{border-color:var(--bt1);color:var(--bt1);}
 .col-pop{position:absolute;top:calc(100% + 7px);right:0;z-index:70;background:var(--bg2);border:1px solid var(--sep);border-radius:var(--rmd);box-shadow:0 10px 28px rgba(0,0,0,.16);padding:10px;width:196px;}
@@ -1435,5 +1446,5 @@ html.dark #toast{background:#2B313A;}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=75"></script>
+<script src="./app.js?v=76"></script>
 </body></html>
