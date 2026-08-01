@@ -1046,29 +1046,14 @@ function exitLive(){
 function rTeamSel(){
   const el=$('#teamsel');if(!el)return;
   const teams=(S.org.teams||[]).filter(t=>t.name);
-  if(!teams.length){$('#tselWrap').innerHTML='';const m0=$('#tselMini');if(m0)m0.textContent='';el.style.display='none';return;}
+  if(!teams.length){$('#tselWrap').innerHTML='';el.style.display='none';return;}
   el.style.display='';
   if(!teams.some(t=>t.id===S.tk.t))S.tk.t=teams[0].id;
   const opts=teams.map(t=>'<option value="'+esc(t.id)+'"'+(t.id===S.tk.t?' selected':'')+'>'+esc(t.name)+'</option>').join('');
-  const cur=teams.find(t=>t.id===S.tk.t)||teams[0];
-  /* 배지·선택창은 정적 마크업 — 내용만 채운다(조각 교체는 접힘 레이아웃에서 페인트가 어긋났다) */
+  /* 선택창은 정적 마크업 — 내용만 채운다 */
   $('#tselWrap').innerHTML='<select id="teamSelEl" aria-label="팀 선택">'+opts+'</select>'
     +'<span class="tsel-ch"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3.5l3 3 3-3"/></svg></span>';
-  const mini=$('#tselMini');
-  if(mini){mini.textContent=teamAbbr(cur.name);mini.title=cur.name;mini.setAttribute('aria-label','팀 선택 — '+cur.name);}
 }
-/* 팀 이름 약칭 — 'H서비스ㅁㅁ팀' 의 가운데(ㅁㅁ)를 쓴다.
-   'H서비스중부팀'→'중부', 'H서비스수도권팀'→'수도', '천안1팀'→'천1', 그 외는 앞 2자 */
-function teamAbbr(name){
-  let n=(name||'').replace(/\s+/g,'').replace(/팀$/,'');
-  if(!n)return '팀';
-  const mid=n.replace(/^[A-Za-z]*서비스/,'');   /* 공통 접두(H서비스 등)는 구분에 도움이 안 된다 */
-  if(mid&&mid!==n)n=mid;
-  const num=n.match(/[0-9]+$/);
-  if(num&&n.length>1)return n[0]+num[0].slice(-1);
-  return n.slice(0,2);
-}
-
 function mentionCount(){return Object.keys(S.mentions||{}).length;}
 function rMention(){
   const b=$('#mentionBadge');if(!b)return;

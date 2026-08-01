@@ -72,9 +72,8 @@ svg{display:block;flex-shrink:0;}
 .sbsc .sb-bottom{margin-top:auto;padding-top:8px;}
 .sbsc::-webkit-scrollbar{display:none;}
 .sbsl{font-size:10px;font-weight:700;color:var(--lbl3);letter-spacing:.07em;text-transform:uppercase;padding:10px 8px 4px;white-space:nowrap;transition:opacity var(--tr);}
-/* 접으면 분류 라벨은 글자 대신 구분선 — 그룹 리듬은 유지하되 자리 높이는 펼친 상태와 같게 */
-#sidebar.mini .sbsl{color:transparent;position:relative;height:29px;padding:0;}
-#sidebar.mini .sbsl::after{content:"";position:absolute;left:14px;right:14px;top:50%;height:1px;background:var(--sep);}
+/* 접으면 분류 라벨은 글자만 감춘다 — 자리(29px)는 그대로라 아이콘 위치가 안 밀린다 */
+#sidebar.mini .sbsl{opacity:0;height:29px;padding:0;}
 .nvi{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:var(--rmd);cursor:pointer;font-size:13px;font-weight:500;color:var(--lbl2);transition:background var(--tr),color var(--tr);white-space:nowrap;overflow:hidden;margin-bottom:2px;}
 .nvi:hover{background:var(--fill);color:var(--lbl);}
 .nvi.act{background:linear-gradient(135deg,var(--b50),var(--b100));color:var(--bt1);}
@@ -99,8 +98,7 @@ svg{display:block;flex-shrink:0;}
 .sb-acct-name{font-size:12.5px;font-weight:600;color:var(--lbl);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;}
 
 /* 접었을 때: 프로필은 아바타만, 테마 버튼은 아래로 — 둘 다 사라지지 않는다 */
-#sidebar.mini .sb-foot{flex-direction:column;gap:0;}
-#sidebar.mini .sb-acct{flex:0 0 auto;justify-content:center;padding:5px 0;width:100%;}
+#sidebar.mini .sb-acct{flex:1;}
 #sidebar.mini .sb-acct-info,#sidebar.mini .sb-acct-role{display:none;}
 .sb-th1{flex:0 0 auto;position:relative;width:48px;align-self:stretch;min-height:38px;margin-left:6px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--rmd);color:var(--lbl3);background:transparent;cursor:pointer;transition:background var(--tr),color var(--tr);}
 .sb-th1::before{content:"";position:absolute;left:0;top:5px;bottom:5px;width:1px;background:var(--sep);}
@@ -683,13 +681,9 @@ html.dark #ymPop{background:#242426;}
 .share-sep{height:1px;background:var(--sep);margin:13px 0;}
 /* 팀 선택기 (사이드바) */
 .teamsel{display:flex;align-items:center;gap:6px;padding:8px 4px 10px;margin-bottom:2px;border-bottom:1px solid var(--sep);}
-.tsel-mini{display:none;}
-#sidebar.mini .teamsel{padding:8px 0 10px;justify-content:center;position:relative;height:51px;}
-#sidebar.mini .teamsel .tsel-wrap{display:none;}
-#sidebar.mini .tsel-mini{display:inline-flex;align-items:center;justify-content:center;width:38px;height:32px;border-radius:var(--rmd);
-  position:absolute;left:5px;top:8px;   /* flex 재배치에 맡기면 접힘 직후 페인트가 어긋난다 — 좌표로 고정 */
-  background:var(--fill);border:1px solid var(--sep);font-size:12.5px;font-weight:800;color:var(--lbl);letter-spacing:-.02em;transition:background var(--tr),color var(--tr);}
-#sidebar.mini .tsel-mini:hover{background:var(--fill2);color:var(--bt1);}
+/* 접으면 팀 선택기는 감추되 자리 높이는 그대로 — 아래 메뉴 아이콘이 올라가지 않는다 */
+#sidebar.mini .teamsel{padding:8px 0 10px;height:51px;}
+#sidebar.mini .teamsel>*{display:none;}
 .teamsel .tsel-wrap{position:relative;flex:1;min-width:0;}
 .teamsel select{width:100%;-webkit-appearance:none;appearance:none;background:var(--fill);border:1px solid var(--sep);border-radius:var(--rsm);padding:7px 26px 7px 10px;font-size:12.5px;font-weight:600;color:var(--lbl);cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .teamsel select:hover{background:var(--fill2);}
@@ -1161,7 +1155,6 @@ html.dark #toast{background:#2B313A;}
   <div class="sbsc">
     <div class="teamsel" id="teamsel">
       <div class="tsel-wrap" id="tselWrap"></div>
-      <button class="tsel-mini" id="tselMini" data-act="nav.toggle" aria-label="팀 선택"></button>
     </div>
     <div class="sbsl">메인</div>
     <div class="nvi act" role="button" tabindex="0" data-view="calendar" data-act="nav.go">
@@ -1416,5 +1409,5 @@ html.dark #toast{background:#2B313A;}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=67"></script>
+<script src="./app.js?v=69"></script>
 </body></html>
