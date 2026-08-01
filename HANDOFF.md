@@ -1,6 +1,6 @@
 # 인수인계 — 일정공유 달력 앱 (calapp)
 
-새 대화를 시작할 때 이 파일을 먼저 읽으면 됩니다. 71차 작업까지 반영된 상태입니다.
+새 대화를 시작할 때 이 파일을 먼저 읽으면 됩니다. 72차 작업까지 반영된 상태입니다.
 
 ## 1. 이 앱이 무엇인가
 
@@ -398,6 +398,15 @@ calapp/tasks/{sid}/{iid}
   offsetTop+offsetHeight+7 로 계산해 붙인다. 검증에 elementFromPoint 히트 테스트를
   추가해 '실제로 보이는지'까지 확인(v71 7항목).
 - v63 기대치도 .dp-col 기준으로 갱신. app.js?v=71.
+
+## 7.27 — 72차 접힘 시 1px 밀림 제거
+
+- 접으면 메뉴가 1px 위로 올라가던 원인: 팀 자리를 height 51px + border-bottom:0 +
+  margin-bottom:0 으로 뒀는데, 펼침 상태는 **높이 50 + 테두리(border-box 포함) +
+  margin-bottom 2 = 52** 였다. 접힘도 **height 50px + margin-bottom 2px 유지,
+  구분선은 border-bottom-color:transparent 로만 감춤** → 총 점유 52px 로 일치.
+- 검증 강화: v69 첫 항목을 '모든 메뉴·아바타의 y 이동량이 전부 0' 으로 바꿨다
+  (허용 오차 2px 로 두면 1px 밀림을 놓친다). app.js?v=72.
 
 ## 8. 보류하기로 한 것
 
