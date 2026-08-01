@@ -191,7 +191,7 @@ body:not(.wid) .cal-card{border:0;background:transparent;box-shadow:none;border-
 #fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-left-color:rgba(60,60,67,.08);border-right-color:rgba(60,60,67,.08);}
 html.dark #fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-top-color:rgba(255,255,255,.15);border-left-color:rgba(255,255,255,.07);border-right-color:rgba(255,255,255,.07);}
 html.dark #fcal .fc-dayGridMonth-view .fc-col-header{border-bottom-color:rgba(255,255,255,.15);}
-#fcal .fc-scrollgrid{border-radius:var(--rmd);overflow:hidden;border-color:var(--sep);}
+#fcal .fc-scrollgrid{border-radius:var(--rmd);overflow:hidden;border-color:var(--sep);background:var(--bg2);}
 #fcal .fc-col-header-cell{background:var(--surf3);padding:9px 0;}
 /* 주간 헤더 — 공휴일 줄이 항상 자리를 차지해 높이가 변하지 않는다 */
 #fcal .fc-col-header-cell-cushion{font-size:13px;font-weight:700;color:var(--lbl);text-decoration:none;letter-spacing:.02em;}
@@ -203,7 +203,7 @@ html.dark #fcal .fc-dayGridMonth-view .fc-col-header{border-bottom-color:rgba(25
 #fcal .fc-daygrid-day-number{font-size:12px;font-weight:600;color:var(--lbl);padding:6px 8px 2px;text-decoration:none;}
 #fcal .fc-day-sun .fc-daygrid-day-number,#fcal .fc-day-sun .dnum{color:var(--rd);}
 #fcal .fc-day-sat .fc-daygrid-day-number,#fcal .fc-day-sat .dnum{color:var(--bt1);}
-#fcal .fc-day-other .fc-daygrid-day-number{color:var(--lbl3);opacity:.6;}
+#fcal .fc-day-other .fc-daygrid-day-number{color:var(--lbl3);opacity:.85;}
 /* 주차 높이 균일화 — 셀 프레임을 absolute로 띄워 내용이 행 높이에 영향을 주지 않게 하고,
    이벤트가 넘치면 셀 안에서 스크롤(드래그)로 내려본다 */
 #fcal .fc-daygrid-day{position:relative;}
@@ -226,10 +226,10 @@ html.dark #fcal .fc-day-today .dnum{color:var(--b300)!important;}
 /* ④ 주말·공휴일 — 아주 옅은 톤으로 주 단위 리듬을 준다 */
 /* 주말은 옅은 회색(노란끼 없는 중립), 공휴일 붉은 톤이 주말보다 우선(뒤 선언), 마우스 음영이 최우선 */
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sun:not(.fc-day-other),
-#fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sat:not(.fc-day-other){background:rgba(60,60,67,.045);}
+#fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sat:not(.fc-day-other){background:rgba(60,60,67,.035);}
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day.hol:not(.fc-day-other){background:rgba(255,59,48,.05);}
 html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sun:not(.fc-day-other),
-html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sat:not(.fc-day-other){background:rgba(255,255,255,.028);}
+html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sat:not(.fc-day-other){background:rgba(255,255,255,.022);}
 html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.hol:not(.fc-day-other){background:rgba(255,59,48,.09);}
 @media(hover:hover){ /* 터치에선 :hover 가 눌린 셀에 고착돼 '선택 표시가 남는' 것처럼 보인다 */
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day:hover{background:var(--fill)!important;}
@@ -253,7 +253,7 @@ html.dark #fcal .dhol.dtoday{color:var(--b300);}
 #fcal a{color:inherit;}
 
 /* 우측 열 — 필터 카드 + 목록 카드 */
-.dp-col{display:flex;flex-direction:column;gap:16px;min-height:0;min-width:0;}
+.dp-col{display:flex;flex-direction:column;gap:9px;min-height:0;min-width:0;}
 .dp-filtercard{padding:0;flex:0 0 auto;overflow:hidden;}
 .day-panel{padding:0;overflow:hidden;display:flex;flex-direction:column;min-height:0;flex:1;}
 .dp-frow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:8px;}
