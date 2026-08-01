@@ -1046,16 +1046,16 @@ function exitLive(){
 function rTeamSel(){
   const el=$('#teamsel');if(!el)return;
   const teams=(S.org.teams||[]).filter(t=>t.name);
-  if(!teams.length){el.innerHTML='';el.style.display='none';return;}
+  if(!teams.length){$('#tselWrap').innerHTML='';const m0=$('#tselMini');if(m0)m0.textContent='';el.style.display='none';return;}
   el.style.display='';
   if(!teams.some(t=>t.id===S.tk.t))S.tk.t=teams[0].id;
   const opts=teams.map(t=>'<option value="'+esc(t.id)+'"'+(t.id===S.tk.t?' selected':'')+'>'+esc(t.name)+'</option>').join('');
   const cur=teams.find(t=>t.id===S.tk.t)||teams[0];
-  /* 접힌 사이드바에서는 select 대신 팀 약칭 배지 — 누르면 펼쳐지며 선택창이 드러난다 */
-  const ab=teamAbbr(cur.name);
-  el.innerHTML='<div class="tsel-wrap"><select id="teamSelEl" aria-label="팀 선택">'+opts+'</select>'
-    +'<span class="tsel-ch"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3.5l3 3 3-3"/></svg></span></div>'
-    +'<button class="tsel-mini" data-act="nav.toggle" aria-label="팀 선택 — '+esc(cur.name)+'" title="'+esc(cur.name)+'">'+esc(ab)+'</button>';
+  /* 배지·선택창은 정적 마크업 — 내용만 채운다(조각 교체는 접힘 레이아웃에서 페인트가 어긋났다) */
+  $('#tselWrap').innerHTML='<select id="teamSelEl" aria-label="팀 선택">'+opts+'</select>'
+    +'<span class="tsel-ch"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3.5l3 3 3-3"/></svg></span>';
+  const mini=$('#tselMini');
+  if(mini){mini.textContent=teamAbbr(cur.name);mini.title=cur.name;mini.setAttribute('aria-label','팀 선택 — '+cur.name);}
 }
 /* 팀 이름 약칭 — 'H서비스ㅁㅁ팀' 의 가운데(ㅁㅁ)를 쓴다.
    'H서비스중부팀'→'중부', 'H서비스수도권팀'→'수도', '천안1팀'→'천1', 그 외는 앞 2자 */
