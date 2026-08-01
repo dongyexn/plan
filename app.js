@@ -160,6 +160,14 @@ function pfPaint(c){
   if(av&&c)av.style.setProperty('--avc',c);
 }
 document.addEventListener('click',e=>{
+  /* 업무 색 팝오버에서 고르면 점에 반영하고 닫는다 */
+  const ec=e.target.closest('#colPop .pal-c');
+  if(ec&&!ec.classList.contains('pal-add')){
+    const c=ec.dataset.c||'auto';
+    if(S.planEdit&&S.planEdit.draft)S.planEdit.draft.color=c;
+    const dot=$('#peColDot');if(dot)dot.setAttribute('style',colDotStyle(c));
+    closeColPop();return;
+  }
   const pc=e.target.closest('#pfPal .pal-c');
   if(pc&&!pc.classList.contains('pal-add')){PF_SEL.color=pc.dataset.c||'';setTimeout(()=>pfPaint(pc.dataset.c),0);acctAutoSave();return;}
   /* 팝오버 밖을 누르면 닫는다 — 아바타 버튼 자체는 토글이 처리 */
@@ -169,6 +177,9 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('input',e=>{
   if(e.target.id==='acctName'){acctAutoSave();return;}
+  if(e.target.closest('#colPop')){const v=e.target.value;
+    if(S.planEdit&&S.planEdit.draft)S.planEdit.draft.color=v;
+    const dot=$('#peColDot');if(dot)dot.setAttribute('style',colDotStyle(v));return;}
   if(e.target.closest('#pfPal')){const v=e.target.value;PF_SEL.color=v;pfPaint(v);acctAutoSave();return;}
   if(e.target.id==='pfSrch'){
     const q=e.target.value.trim();
@@ -194,6 +205,10 @@ function sitePickHTML(id,cur){
 }
 /* 색 선택기 HTML — 기본 팔레트 + 임의 색 추가.
    현재 값이 팔레트에 없으면(직접 고른 색) 맨 뒤에 칩으로 붙여 선택 상태를 유지한다. */
+/* 색 점 — 'auto'(담당자 색)는 3색 그라디언트로 표시 */
+function colDotStyle(c){
+  return (!c||c==='auto')?'background:linear-gradient(135deg,#3E71D2,#16A34A,#D97706)':'background:'+esc(c);
+}
 function palHTML(id,cur,extraFirst){
   const c=cur||'';
   const custom=c&&c!=='auto'&&PAL.indexOf(c)<0?c:'';
@@ -1298,22 +1313,13 @@ function openYMPick(){
 function ymOutside(e){
   const pop=$('#ymPop');
   if(!pop){document.removeEventListener('click',ymOutside,true);return;}
-  if(pop.contains(e.target)||e.target.closest('.dp-datebtn'))return;
+  if(pop.contains(e.target)||e.target.closest('.cal-title'))return;   /* 여는 버튼 클릭은 토글이 처리한다 */
   closeYMPop();
 }
 function closeYMPop(){
   const pop=$('#ymPop');if(pop)pop.remove();
   document.removeEventListener('click',ymOutside,true);
 }
-/* 보고 있는 달에 맞춰 선택일을 옮긴다(그 달에 오늘이 있으면 오늘, 없으면 1일) */
-function syncSelToView(){
-  if(!CAL)return;
-  const c=CAL.view.currentStart, y=c.getFullYear(), m=c.getMonth();
-  const t=new Date();
-  const d=(t.getFullYear()===y&&t.getMonth()===m)?t:new Date(y,m,1);
-  selDate(dstr(d));
-}
-
 /* 모바일 하단 시트 — 날짜를 누르면 일자 패널이 올라온다(캘린더 앱 UX) */
 const isMob=()=>matchMedia('(max-width:960px)').matches;
 function dpSheet(open){
@@ -1383,12 +1389,16 @@ function taskOwnOk(sid,it){
 function rDayHead(){
   const ds=S.selDate,d=toDate(ds),ps=dayPlans(ds),ho=holOf(ds);
   $('#dpDate').textContent=d.getFullYear()+'. '+(d.getMonth()+1)+'. '+d.getDate()+'.';
+  /* 헤더 우측 보조문구 — 요일·공휴일·오늘 */
+  const dow=$('#dpDow');
+  if(dow)dow.textContent=DOW[d.getDay()]+'요일'+(ho?' · '+ho.n:'')+(ds===todayStr()?' · 오늘':'');
   return ps;
 }
 function rDay(){
   const ps=rDayHead();
   const box=$('#dpList');
-  const add=$('.dp-add');if(add)add.style.display=S.planEdit?'none':'';
+  /* 작성 중에도 버튼은 남기고, 누르면 새 업무 폼으로 바꾼다 */
+  const add=$('.dp-add');if(add)add.classList.toggle('on',!!S.planEdit);
   const editorHTML=S.planEdit?planFormHTML():'';
   const editingId=S.planEdit&&S.planEdit.orig?S.planEdit.orig.id:null;
   const shown=ps.filter(x=>x.p.id!==editingId);   /* 편집 중인 항목은 폼이 대신한다 */
@@ -1399,7 +1409,7 @@ function rDay(){
     return `
     <div class="plan${done?' done':''}" data-pid="${esc(p.id)}">
       <div class="pc" style="background:${esc(planColor(p))}"></div>
-      <div class="plan-main" data-act="plan.edit" data-pid="${esc(p.id)}" data-occ="${esc(occ)}">
+      <div class="plan-main" data-act="plan.open" data-pid="${esc(p.id)}" data-occ="${esc(occ)}">
         <div class="plan-t">${esc(p.title)}</div>
         ${p.body?'<div class="plan-body">'+esc(p.body)+'</div>':''}
         <div class="plan-meta">
@@ -1412,13 +1422,14 @@ function rDay(){
         </div>
       </div>
       <div class="plan-side">
+        <button class="p-ico" data-act="plan.edit" data-pid="${esc(p.id)}" data-occ="${esc(occ)}" aria-label="수정" title="수정"><svg class="icn"><use href="#i-pen"></use></svg></button>
         <button class="p-ico${done?' on':''}" data-act="plan.done" data-pid="${esc(p.id)}" data-occ="${esc(occ)}" aria-label="완료 표시" style="${done?'color:var(--gn)':''}"><svg class="icn"><use href="#i-check"></use></svg></button>
         <button class="p-ico${p.remind?' on':''}" data-act="plan.remind" data-pid="${esc(p.id)}" aria-label="리마인드 전환"><svg class="icn"><use href="#i-bell"></use></svg></button>
       </div>
     </div>`;}).join('')
   ;
   const rec=$('#peRec');
-  if(rec)rec.addEventListener('change',()=>{const r=$('#peUntilRow');if(r)r.style.display=rec.value?'':'none';});
+  if(rec)rec.addEventListener('change',()=>{const r=$('#peUntilRow');if(r)r.style.visibility=rec.value?'':'hidden';});
 }
 
 /* ───── 업무 작성·수정 모달 ───── */
@@ -1436,7 +1447,17 @@ function openPlanEdit(p,startD,endD,occ){
   rDay();
   setTimeout(()=>{const t=$('#peTitle');if(t)t.focus();},30);
 }
-function closePlanEdit(){if(!S.planEdit)return;S.planEdit=null;rDay();}
+function colOutside(e){
+  const pop=$('#colPop');
+  if(!pop){document.removeEventListener('click',colOutside,true);return;}
+  if(pop.contains(e.target)||e.target.closest('#peColBtn'))return;
+  closeColPop();
+}
+function closeColPop(){
+  const pop=$('#colPop');if(pop)pop.remove();
+  document.removeEventListener('click',colOutside,true);
+}
+function closePlanEdit(){if(!S.planEdit)return;closeColPop();S.planEdit=null;rDay();}
 function planFormHTML(){
   const pe=S.planEdit;if(!pe)return'';
   const d=pe.orig||{id:uid(),date:pe.start,end:pe.end,title:'',time:'',body:'',color:'auto',
@@ -1444,36 +1465,51 @@ function planFormHTML(){
   pe.draft=d;
   const rc=(d.recur&&d.recur.f)||'';
   const people=roster();
+  const hasEnd=!!(d.end&&d.end!==d.date);
   return `<div class="dp-edit" id="dpEdit">
-    <div class="frow"><label>제목</label><input class="inp inp-sm" id="peTitle" maxlength="80" placeholder="무엇을 하나요?" value="${esc(d.title)}"></div>
-    <div class="frow2">
-      <div class="frow"><label>시작일</label><input type="date" class="inp inp-sm" id="peDate" value="${esc(d.date)}"></div>
-      <div class="frow"><label>종료일 <span style="font-weight:500;color:var(--lbl3)">여러 날이면</span></label><input type="date" class="inp inp-sm" id="peEnd" value="${esc(d.end||'')}"></div>
+    <div class="pe-bar">
+      <input class="pe-ttl" id="peTitle" maxlength="80" placeholder="무엇을 하나요?" value="${esc(d.title)}">
+      <button class="pe-x" data-act="plan.cancel" aria-label="닫기 (Esc)" title="닫기 (Esc)"><svg class="icn"><use href="#i-close"></use></svg></button>
     </div>
-    <div class="frow2">
-      <div class="frow"><label>시간 (선택)</label><input type="time" class="inp inp-sm" id="peTime" value="${esc(d.time||'')}"></div>
-      <div class="frow"><label>반복</label><select class="inp inp-sm" id="peRec">${Object.keys(REC_LBL).map(k=>'<option value="'+k+'"'+(k===rc?' selected':'')+'>'+REC_LBL[k]+'</option>').join('')}</select></div>
-    </div>
-    <div class="frow2">
-      <div class="frow"><label>현장</label>${sitePickHTML('peSite',d.site||'')}</div>
-      <div class="frow"><label>담당자</label>${ownSelHTML('peOwners',planOwners(d)[0]||'',people)}</div>
-    </div>
-    <div class="frow" id="peUntilRow" style="${rc?'':'display:none'}"><label>반복 종료 (선택)</label><input type="date" class="inp inp-sm" id="peUntil" value="${esc((d.recur&&d.recur.until)||'')}"></div>
-    <div class="frow"><label>색 <span style="font-weight:500;color:var(--lbl3)">첫 번째는 담당자 색</span></label>
-      ${palHTML('pePal',(!d.color||d.color==='auto')?'auto':d.color,
-        '<div class="pal-c'+((!d.color||d.color==='auto')?' sel':'')+'" data-c="auto" style="background:linear-gradient(135deg,#3E71D2,#16A34A,#D97706)" title="담당자 색"></div>')}
-    </div>
-    <div class="frow"><label>내용 (선택)</label><textarea class="inp inp-sm" id="peBody" maxlength="500" placeholder="메모·세부 내용">${esc(d.body||'')}</textarea></div>
-    <label class="chk-row" style="margin-bottom:10px"><input type="checkbox" id="peRemind"${d.remind?' checked':''}> 당일 아침 리마인드 메일</label>
-    ${pe.orig&&pe.orig.sid?'<button class="btn bo bxs pe-full" data-act="plan.toTask" data-sid="'+esc(pe.orig.sid)+'" data-iid="'+esc(d.id)+'">주요업무에서 자세히 쓰기 →</button>':''}
-    ${(pe.orig&&rc&&pe.occ)?`<div class="frow occ-row">
-      <label>이 회차만 옮기기 <span style="font-weight:500;color:var(--lbl3)">반복 규칙은 그대로</span></label>
-      <div class="occ-line">
-        <input type="date" class="inp inp-sm" id="peOcc" value="${esc(pe.occ)}">
-        <button class="btn bo bxs" data-act="plan.moveOcc" data-pid="${esc(d.id)}" data-occ="${esc(pe.occ)}">이 회차 옮기기</button>
-        ${(d.moveOn&&d.moveOn[occSrc(d,pe.occ)])?'<button class="btn bg2 bxs" data-act="plan.resetOcc" data-pid="'+esc(d.id)+'" data-occ="'+esc(pe.occ)+'">원래대로</button>':''}
+    <div class="pe-body">
+      <div class="frow"><label>기간</label>
+        <div class="pe-range${hasEnd?' on':''}" id="peRange">
+          <input type="date" class="inp inp-sm" id="peDate" value="${esc(d.date)}">
+          <button class="pe-rx" data-act="plan.range" aria-label="여러 날">${hasEnd?'→':'＋ 여러 날'}</button>
+          <input type="date" class="inp inp-sm pe-end" id="peEnd" value="${esc(d.end||'')}">
+        </div>
       </div>
-    </div>`:''}
+      <div class="frow2">
+        <div class="frow"><label>시간</label><input type="time" class="inp inp-sm" id="peTime" value="${esc(d.time||'')}"></div>
+        <div class="frow"><label>담당자</label>${ownSelHTML('peOwners',planOwners(d)[0]||'',people)}</div>
+      </div>
+      <div class="frow2">
+        <div class="frow" style="flex:1"><label>현장</label>${sitePickHTML('peSite',d.site||'')}</div>
+        <div class="frow pe-colw"><label>색</label>
+          <button class="pe-col" id="peColBtn" data-act="plan.color" aria-label="색 고르기" title="색 고르기">
+            <span class="pe-col-d" id="peColDot" style="${colDotStyle(d.color)}"></span>
+          </button>
+        </div>
+      </div>
+      <button class="pe-more" data-act="plan.more" id="peMoreBtn">자세히 <span style="font-weight:500">(반복 · 메모 · 리마인드)</span> ▾</button>
+      <div class="pe-adv" id="peAdv">
+        <div class="frow2">
+          <div class="frow"><label>반복</label><select class="inp inp-sm" id="peRec">${Object.keys(REC_LBL).map(k=>'<option value="'+k+'"'+(k===rc?' selected':'')+'>'+REC_LBL[k]+'</option>').join('')}</select></div>
+          <div class="frow" id="peUntilRow" style="${rc?'':'visibility:hidden'}"><label>반복 종료</label><input type="date" class="inp inp-sm" id="peUntil" value="${esc((d.recur&&d.recur.until)||'')}"></div>
+        </div>
+        <div class="frow"><label>내용</label><textarea class="inp inp-sm" id="peBody" maxlength="500" placeholder="메모·세부 내용">${esc(d.body||'')}</textarea></div>
+        <label class="chk-row"><input type="checkbox" id="peRemind"${d.remind?' checked':''}> 당일 아침 리마인드 메일</label>
+        ${pe.orig&&pe.orig.sid?'<button class="btn bo bxs pe-full" data-act="plan.toTask" data-sid="'+esc(pe.orig.sid)+'" data-iid="'+esc(d.id)+'">주요업무에서 자세히 쓰기 →</button>':''}
+        ${(pe.orig&&rc&&pe.occ)?`<div class="frow occ-row">
+          <label>이 회차만 옮기기 <span style="font-weight:500;color:var(--lbl3)">반복 규칙은 그대로</span></label>
+          <div class="occ-line">
+            <input type="date" class="inp inp-sm" id="peOcc" value="${esc(pe.occ)}">
+            <button class="btn bo bxs" data-act="plan.moveOcc" data-pid="${esc(d.id)}" data-occ="${esc(pe.occ)}">이 회차 옮기기</button>
+            ${(d.moveOn&&d.moveOn[occSrc(d,pe.occ)])?'<button class="btn bg2 bxs" data-act="plan.resetOcc" data-pid="'+esc(d.id)+'" data-occ="'+esc(pe.occ)+'">원래대로</button>':''}
+          </div>
+        </div>`:''}
+      </div>
+    </div>
     <div class="dp-edit-f">
       ${pe.orig?'<button class="btn btn-danger bsm" data-act="plan.del" data-pid="'+esc(d.id)+'" data-ym="'+esc(ymOf(d.date))+'" data-occ="'+esc(pe.occ||'')+'" style="margin-right:auto">삭제</button>':''}
       <button class="btn bg2 bsm" data-act="plan.cancel">취소</button>
@@ -1486,20 +1522,20 @@ function savePlanInline(){
   const title=($('#peTitle').value||'').trim();
   if(!title){toast('제목을 입력하세요');$('#peTitle').focus();return;}
   const date=$('#peDate').value||S.selDate;
-  let end=($('#peEnd').value||'').trim();
+  const rangeOn=$('#peRange')&&$('#peRange').classList.contains('on');
+  let end=rangeOn?(($('#peEnd').value||'').trim()):'';
   if(end&&end<date){toast('종료일이 시작일보다 빠릅니다');return;}
   if(end===date)end='';
-  const f=$('#peRec').value||'';
-  const sel=$('#pePal .pal-c.sel');
+  const f=($('#peRec')&&$('#peRec').value)||'';
   const p={...pe.draft,
     date,end,title,
     time:$('#peTime').value||'',
     site:($('#peSite')&&$('#peSite').value)||'',
     owners:(()=>{const v=($('#peOwners')&&$('#peOwners').value)||'';return v?{[v]:1}:{};})(),owner:'',
-    body:($('#peBody').value||'').trim(),
-    color:sel?sel.dataset.c:'auto',
-    recur:f?{f,until:($('#peUntil').value||'')}:{f:'',until:''},
-    remind:$('#peRemind').checked,
+    body:(($('#peBody')&&$('#peBody').value)||'').trim(),
+    color:(pe.draft&&pe.draft.color)||'auto',
+    recur:f?{f,until:(($('#peUntil')&&$('#peUntil').value)||'')}:{f:'',until:''},
+    remind:!!($('#peRemind')&&$('#peRemind').checked),
     by:S.user?(S.user.email||'').split('@')[0]:(pe.draft.by||''),
     updatedAt:Date.now()};
   const wasRec=!!(pe.orig&&pe.orig.recur&&pe.orig.recur.f);
@@ -2531,13 +2567,42 @@ const ACT={
     if(!u){toast('설정에서 하자처리 현황 주소를 먼저 입력하세요');go('settings');return;}
     window.open(u,'_blank','noopener');
   },
-  /* 달을 넘기면 선택일도 그 달로 따라간다 — 헤더 날짜가 곧 '보고 있는 달'.
-     그 달에 오늘이 들어 있으면 1일이 아니라 오늘을 잡아 되돌아왔을 때 맥락이 복원된다 */
-  'cal.prev':()=>{if(!CAL)return;CAL.prev();syncSelToView();},
-  'cal.next':()=>{if(!CAL)return;CAL.next();syncSelToView();},
+  /* 달 이동은 보기만 바꾼다 — 선택일(날짜 헤더)은 그대로 둔다 */
+  'cal.prev':()=>CAL&&CAL.prev(),
+  'cal.next':()=>CAL&&CAL.next(),
   'cal.today':()=>{selDate(todayStr());},
-  'plan.new':()=>openPlanEdit(null),
+  'plan.new':()=>{
+    const pe=S.planEdit;
+    if(pe&&!pe.orig){const t=$('#peTitle');if(t){t.focus();t.select();return;}}   /* 이미 새 업무 폼이면 제목으로 */
+    openPlanEdit(null);},
   'plan.cancel':closePlanEdit,
+  /* 기간 — 평소엔 하루, 누르면 종료일이 같은 줄에 펼쳐진다 */
+  'plan.range':()=>{
+    const box=$('#peRange');if(!box)return;
+    const on=box.classList.toggle('on');
+    const btn=box.querySelector('.pe-rx');if(btn)btn.textContent=on?'→':'＋ 여러 날';
+    const end=$('#peEnd');
+    if(on){if(!end.value)end.value=$('#peDate').value||S.selDate;end.focus();}
+    else end.value='';},
+  'plan.more':()=>{
+    const box=$('#dpEdit');if(!box)return;
+    box.classList.toggle('adv-on');},
+  /* 색 — 점 하나만 두고, 누르면 그리드 팝오버 */
+  'plan.color':()=>{
+    const old=$('#colPop');if(old){closeColPop();return;}
+    const btn=$('#peColBtn');if(!btn)return;
+    const cur=(S.planEdit&&S.planEdit.draft&&S.planEdit.draft.color)||'auto';
+    const pop=document.createElement('div');
+    pop.id='colPop';pop.className='col-pop';
+    pop.innerHTML=palHTML('pePal',(!cur||cur==='auto')?'auto':cur,
+      '<div class="pal-c'+((!cur||cur==='auto')?' sel':'')+'" data-c="auto" style="'+colDotStyle('auto')+'" title="담당자 색"></div>');
+    btn.parentElement.appendChild(pop);
+    setTimeout(()=>document.addEventListener('click',colOutside,true),0);},
+  /* 카드 클릭은 '펼쳐 보기' — 수정은 연필 버튼으로 (실수로 값이 바뀌지 않게) */
+  'plan.open':el=>{
+    const card=el.closest('.plan');if(!card)return;
+    const on=card.classList.toggle('open');
+    S.planOpen=on?el.dataset.pid:'';},
   'plan.edit':el=>{const p=findPlan(el.dataset.pid);if(p)openPlanEdit(p,null,null,el.dataset.occ||'');},
   'plan.toTask':el=>{closePlanEdit();gotoTask(el.dataset.sid,el.dataset.iid);},
   'plan.done':el=>{const p=findPlan(el.dataset.pid);if(!p)return;
@@ -3059,12 +3124,14 @@ function tkRefresh(){
 function dpSrchMark(){const w=document.querySelector('.dp-srch');if(w)w.classList.toggle('has',!!String(S.dayQ||'').trim());}
 document.addEventListener('keydown',e=>{
   if(e.key==='Enter'&&(e.target.id==='fbEmail'||e.target.id==='fbPw')){e.preventDefault();fbDoLogin();return;}
+  if(e.key==='Enter'&&e.target.id==='peTitle'){e.preventDefault();savePlanInline();return;}
   /* Ctrl/⌘+K 로 찾기 */
   if((e.ctrlKey||e.metaKey)&&(e.key==='k'||e.key==='K')){e.preventDefault();nqOpen(true);rNq();return;}
   if(e.key==='Escape'&&$('#nqPanel')&&$('#nqPanel').classList.contains('on')&&!$('#mo').classList.contains('open')){nqOpen(false);return;}
   if(e.key==='Escape'){
     if($('#mo').classList.contains('open')){closeModal();return;}
     if(S.tkNew||S.tkEdit){S.tkNew=null;S.tkEdit=null;rTasks();return;}
+    if($('#colPop')){closeColPop();return;}
     if(S.planEdit){closePlanEdit();return;}
     mobClose();
   }
