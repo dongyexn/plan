@@ -224,7 +224,9 @@ html.dark #fcal .fc-col-header-cell{background:#424245;border-left-color:#0F0F10
 #fcal .fc-daygrid-day{position:relative;}
 #fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table tbody tr{height:10%;}
 #fcal .fc-dayGridMonth-view .fc-daygrid-day-frame{position:absolute;inset:0;display:flex;flex-direction:column;min-height:0;}
-#fcal .fc-dayGridMonth-view .fc-daygrid-day-events{position:relative;flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;margin:0;padding-bottom:2px;}
+/* overflow-y:auto 를 두면 x 는 자동으로 auto 가 되어(스펙) 여러 날 막대가 옆 칸에서 잘린다.
+   칸 넘침은 dayMaxEvents(+N 더보기)가 이미 처리하므로 스크롤을 두지 않는다 */
+#fcal .fc-dayGridMonth-view .fc-daygrid-day-events{position:relative;flex:1;min-height:0;overflow:visible;margin:0;padding-bottom:2px;}
 #fcal .fc-daygrid-day-events::-webkit-scrollbar{width:3px;}
 #fcal .fc-daygrid-day-events::-webkit-scrollbar-thumb{background:var(--sepo);border-radius:99px;}
 #fcal .fc-dayGridMonth-view .fc-daygrid-day-bottom{display:none;}
@@ -245,6 +247,9 @@ html.dark #fcal .fc-day-today .dnum{color:#fff!important;background:var(--b500);
    서로 간섭하지 않는다. 격자선은 투명 2px + background-clip:padding-box 로 뚫어
    칸 사이로 페이지 배경이 보인다. 음영 계층: 오늘 > 공휴일 > 주말(뒤 선언 순). */
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day{background-color:var(--bg2);background-clip:padding-box;}
+/* 여러 날 업무 막대는 옆 칸 위로 넘어가 그려진다 — 뒤에 오는 칸 배경이 덮지 않도록 위로 올린다 */
+#fcal .fc-daygrid-day-frame{position:relative;z-index:1;}
+#fcal .fc-daygrid-event-harness{z-index:2;}
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-other{background-color:#E7E9EF;}
 html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-other{background-color:#1A1A1C;}
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sun:not(.fc-day-other),
@@ -603,18 +608,18 @@ html.dark #ymPop{background:#242426;}
 .pe-ic.pe-save{color:var(--b600);}
 .pe-ic.pe-save:hover{background:var(--b50);color:var(--b600);}
 .pe-bar .pst{cursor:default;}
-/* 자세히 하단 도구 — 업무 목록에서 쓰기 · 삭제 */
-.pe-tools{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px;}
-.pe-tools .icn{width:12px;height:12px;}
-.pe-delbtn{color:var(--rd);border-color:rgba(255,59,48,.3);}
-.pe-delbtn:hover{background:rgba(255,59,48,.08);}
+.pe-ic.pe-del{color:var(--rd);}
+.pe-ic.pe-del:hover{background:rgba(255,59,48,.1);color:var(--rd);}
+/* '자세히' 줄 — 가운데 아래 화살표 + 우측 보조 아이콘 */
+.pe-morerow{display:flex;align-items:center;border-top:1px dashed var(--sep);margin-top:2px;position:relative;}
+.pe-more{width:100%;display:flex;align-items:center;justify-content:center;padding:7px 0 3px;color:var(--lbl3);background:transparent;transition:color var(--tr);}
+.pe-more:hover{color:var(--bt1);}
+.pe-more .icn{width:15px;height:15px;transform:rotate(90deg);transition:transform var(--tr);}
+.dp-edit.adv-on .pe-more .icn{transform:rotate(-90deg);}
+.pe-more-ic{position:absolute;right:0;top:50%;transform:translateY(-45%);}
 .pe-body{padding:11px 12px 11px;}
-/* 기간 — 시작 ~ 종료 한 줄 */
-.pe-range{display:flex;align-items:center;gap:6px;}
-.pe-range .inp{flex:1;min-width:0;}
-.pe-tilde{flex:0 0 auto;color:var(--lbl3);font-size:13px;font-weight:700;}
-/* 색 — 담당자색 + 4색 + 추가(+) */
-.pe-colw{flex:0 0 168px;}
+/* 색 — 담당자색 + 4색 + 추가(+) : 담당자 칸과 정확히 반반 */
+.pe-colw{flex:1 1 0;min-width:0;}
 .pe-cols{display:flex;align-items:center;justify-content:space-between;gap:4px;height:30px;position:relative;width:100%;}
 .pe-cs{width:19px;height:19px;border-radius:50%;flex:0 0 auto;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08);transition:transform .12s;}
 .pe-cs:hover{transform:scale(1.12);}
@@ -628,11 +633,12 @@ html.dark #ymPop{background:#242426;}
 html.dark .col-pop{background:#242426;}
 .col-pop .pal{display:flex;flex-wrap:wrap;gap:6px;}
 /* 자세히 */
-.pe-more{width:100%;text-align:left;border-top:1px dashed var(--sep);padding:9px 2px 2px;color:var(--bt1);font-size:12px;font-weight:700;background:transparent;}
-.dp-edit.adv-on .pe-more{padding-bottom:9px;}
+
 .pe-adv{display:none;}
 .dp-edit.adv-on .pe-adv{display:block;}
 .dp-edit .frow{margin-bottom:10px;}
+.dp-edit .frow2{display:flex;gap:8px;}
+.dp-edit .frow2>.frow{flex:1 1 0;min-width:0;}
 .dp-edit .pal-c{width:20px;height:20px;border-radius:7px;}
 .tk-edit-row{display:flex;justify-content:flex-end;}
 .tk-empty{font-size:13px;color:var(--lbl3);padding:20px 2px;text-align:center;}
@@ -1446,5 +1452,5 @@ html.dark #toast{background:#2B313A;}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=76"></script>
+<script src="./app.js?v=77"></script>
 </body></html>
