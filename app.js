@@ -1283,8 +1283,23 @@ function ymPickHTML(){
 }
 function openYMPick(){
   YM_Y=null;
-  openModal('연 · 월 선택',ymPickHTML(),'');
-  MODAL_CB={type:'ym'};
+  const old=$('#ymPop');
+  if(old){old.remove();return;}                       /* 다시 누르면 토글 닫기 */
+  const host=$('#view-calendar .dp-filtercard');if(!host)return;
+  const pop=document.createElement('div');
+  pop.id='ymPop';pop.innerHTML=ymPickHTML();
+  host.appendChild(pop);
+  setTimeout(()=>{document.addEventListener('click',ymOutside,true);},0);
+}
+function ymOutside(e){
+  const pop=$('#ymPop');
+  if(!pop){document.removeEventListener('click',ymOutside,true);return;}
+  if(pop.contains(e.target)||e.target.closest('.dp-datebtn'))return;
+  closeYMPop();
+}
+function closeYMPop(){
+  const pop=$('#ymPop');if(pop)pop.remove();
+  document.removeEventListener('click',ymOutside,true);
 }
 /* 모바일 하단 시트 — 날짜를 누르면 일자 패널이 올라온다(캘린더 앱 UX) */
 const isMob=()=>matchMedia('(max-width:960px)').matches;
@@ -1354,7 +1369,6 @@ function taskOwnOk(sid,it){
 }
 function rDayHead(){
   const ds=S.selDate,d=toDate(ds),ps=dayPlans(ds),ho=holOf(ds);
-  $('#dpDow').textContent=DOW[d.getDay()]+'요일'+(ho?' · '+ho.n:'')+(ds===todayStr()?' · 오늘':'');
   $('#dpDate').textContent=d.getFullYear()+'. '+(d.getMonth()+1)+'. '+d.getDate()+'.';
   return ps;
 }
@@ -2865,10 +2879,10 @@ const ACT={
   'cal.pick':()=>openYMPick(),
   'cal.pickY':el=>{const c=CAL?CAL.view.currentStart:new Date();
     YM_Y=(YM_Y===null?c.getFullYear():YM_Y)+Number(el.dataset.d);
-    $('#mbody').innerHTML=ymPickHTML();},
+    const box=$('#ymPop')||$('#mbody');box.innerHTML=ymPickHTML();},
   'cal.goYM':el=>{
     const y=Number(el.dataset.y),m=Number(el.dataset.m);
-    closeModal();
+    if($('#ymPop'))closeYMPop();else closeModal();
     if(!CAL)return;
     CAL.gotoDate(new Date(y,m-1,1));
     /* 그 달에 오늘이 있으면 오늘을, 아니면 1일을 고른다 */

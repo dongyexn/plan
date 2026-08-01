@@ -183,11 +183,15 @@ body:not(.wid) .cal-card{border:0;background:transparent;box-shadow:none;border-
 /* FullCalendar 테마 이식 */
 #fcal{height:100%;--fc-border-color:var(--sep);--fc-today-bg-color:transparent;--fc-page-bg-color:var(--bg2);--fc-neutral-bg-color:var(--surf2);font-size:12.5px;}
 #fcal .fc-theme-standard td,#fcal .fc-theme-standard th{border-color:transparent;}
+/* scrollgrid 래퍼 td 의 1px 보더(--fc-border-color)가 우·하단에 선으로 남는다 */
+#fcal .fc-scrollgrid-section>td,#fcal .fc-scrollgrid-section>th{border:0;}
 /* 가로줄(주 구분)을 세로줄보다 한 단계 진하게 — 주 단위가 먼저 읽힌다 */
-#fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-top:2px solid transparent;}
+#fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-top:2px solid #DCDFE6;}
+html.dark #fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-top-color:#0F0F10;}
 #fcal .fc-dayGridMonth-view .fc-col-header{border-bottom:2px solid transparent;}
 /* 세로줄은 반대로 더 옅게 — 가로가 먼저 읽히도록 대비를 벌린다 */
-#fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-left:2px solid transparent;border-right:0;}
+#fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-left:2px solid #DCDFE6;border-right:0;}
+html.dark #fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-left-color:#0F0F10;}
 #fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td:first-child{border-left:0;}
 #fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table tr:first-child td{border-top:0;}
 
@@ -195,8 +199,8 @@ html.dark #fcal .fc-dayGridMonth-view .fc-col-header{border-bottom-color:rgba(25
 #fcal .fc-scrollgrid{border:0;background:transparent;border-radius:var(--rmd);overflow:hidden;}
 /* 뒤판은 셀이 실제로 차지하는 영역(요일띠·본문 테이블)에만 — scrollgrid 에 칠하면
    행 높이 반올림 잔여만큼 하단에 띠로 노출된다 */
-#fcal .fc-col-header,#fcal .fc-daygrid-body{background:#DCDFE6;}
-html.dark #fcal .fc-col-header,html.dark #fcal .fc-daygrid-body{background:#0F0F10;}
+
+
 #fcal .fc-col-header-cell{background:#D3D9E2;padding:9px 0;background-clip:padding-box;border-left:2px solid transparent;border-right:0;}
 #fcal .fc-col-header-cell:first-child{border-left:0;}
 html.dark #fcal .fc-col-header-cell{background:#424245;}
@@ -225,8 +229,9 @@ html.dark #fcal .fc-col-header-cell{background:#424245;}
 #fcal .dhol{font-size:12.5px;font-weight:700;line-height:1.2;color:var(--rd);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:104px;margin-right:auto;}
 #fcal .dhol.anv{color:var(--lbl3);font-weight:600;}
 #fcal .fc-daygrid-day.hol .dnum{color:var(--rd);}
-#fcal .fc-day-today .dnum{color:var(--b600)!important;font-weight:800;}
-html.dark #fcal .fc-day-today .dnum{color:var(--b300)!important;}
+/* 오늘 — 셀 음영 대신 숫자 배지. padding 팽창분을 음수 마진으로 상쇄해 행 높이에 영향 없음 */
+#fcal .fc-day-today .dnum{color:#fff!important;font-weight:800;background:var(--b600);border-radius:999px;padding:2px 7px;margin:-2px -7px;}
+html.dark #fcal .fc-day-today .dnum{color:#fff!important;background:var(--b500);}
 /* ── 날짜 칸 = 떠 있는 흰 카드 ──
    바탕은 background-color(이번 달 흰색, 이웃 달 50% 반투명), 톤은 background-image 로 얹어
    서로 간섭하지 않는다. 격자선은 투명 2px + background-clip:padding-box 로 뚫어
@@ -237,12 +242,10 @@ html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-other{background-
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sun:not(.fc-day-other),
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sat:not(.fc-day-other){background-image:linear-gradient(rgba(60,60,67,.045),rgba(60,60,67,.045));}
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day.hol:not(.fc-day-other){background-image:linear-gradient(rgba(255,59,48,.08),rgba(255,59,48,.08));}
-#fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-today:not(.fc-day-other){background-image:linear-gradient(rgba(83,140,222,.15),rgba(83,140,222,.15));}
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day.sel-day{background-image:linear-gradient(rgba(83,140,222,.15),rgba(83,140,222,.15));box-shadow:inset 0 0 0 2px var(--b500);}
 html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sun:not(.fc-day-other),
 html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sat:not(.fc-day-other){background-image:linear-gradient(rgba(255,255,255,.03),rgba(255,255,255,.03));}
 html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.hol:not(.fc-day-other){background-image:linear-gradient(rgba(255,59,48,.13),rgba(255,59,48,.13));}
-html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-today:not(.fc-day-other){background-image:linear-gradient(rgba(83,140,222,.25),rgba(83,140,222,.25));}
 @media(hover:hover){ /* 터치에선 :hover 가 눌린 셀에 고착돼 '선택 표시가 남는' 것처럼 보인다 */
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day:hover{background-image:linear-gradient(var(--fill),var(--fill))!important;}
 html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day:hover{background-image:linear-gradient(rgba(255,255,255,.07),rgba(255,255,255,.07))!important;}
@@ -279,8 +282,6 @@ html.dark #fcal .dhol.dtoday{color:var(--b300);}
   background:linear-gradient(135deg,var(--b500),var(--b800));
   border-radius:var(--rlg) var(--rlg) 0 0;}
 .dp-top .dp-date{color:#fff;font-size:16.5px;}
-.dp-top .dp-dow{color:rgba(255,255,255,.82);}
-.dp-dow{font-size:11px;font-weight:600;opacity:.75;letter-spacing:.05em;}
 .dp-date{font-size:21px;font-weight:800;line-height:1.2;margin-top:1px;display:inline-block;min-width:108px;font-variant-numeric:tabular-nums;text-align:left;}
 .dp-body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:8px;flex:1;min-height:0;overflow-y:auto;}
 .dp-body::-webkit-scrollbar{width:4px;}
@@ -304,6 +305,9 @@ html.dark #fcal .dhol.dtoday{color:var(--b300);}
 .p-ico.on{color:var(--am);}
 .p-ico .icn{width:14px;height:14px;}
 /* 날짜 헤더 — 좌: 날짜(누르면 연·월 이동), 우: 달 넘기기·오늘 */
+.dp-filtercard{position:relative;}
+#ymPop{position:absolute;top:calc(100% + 7px);left:10px;z-index:60;width:272px;background:var(--bg2);border:1px solid var(--sep);border-radius:var(--rlg);box-shadow:0 12px 34px rgba(0,0,0,.16);padding:13px 14px;}
+html.dark #ymPop{background:#242426;}
 .dp-datebtn{display:inline-flex;align-items:baseline;gap:8px;min-width:0;border-radius:9px;padding:3px 7px;margin:-3px 0 -3px -7px;transition:background var(--tr);}
 .dp-datebtn:hover{background:rgba(255,255,255,.14);}
 .dp-date-c{width:11px;height:11px;align-self:center;color:rgba(255,255,255,.75);transform:rotate(90deg);flex-shrink:0;}
@@ -1228,7 +1232,6 @@ html.dark #toast{background:#2B313A;}
                 <span class="dp-date" id="dpDate">—</span>
                 <svg class="icn dp-date-c" aria-hidden="true"><use href="#i-chevr"></use></svg>
               </button>
-              <span class="dp-dow" id="dpDow"></span>
               <div class="dp-nav">
                 <button class="dp-nb" data-act="cal.prev" aria-label="이전 달"><svg class="icn" aria-hidden="true"><use href="#i-chevl"></use></svg></button>
                 <button class="dp-nb dp-today" data-act="cal.today">오늘</button>
