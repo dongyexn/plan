@@ -1050,9 +1050,25 @@ function rTeamSel(){
   el.style.display='';
   if(!teams.some(t=>t.id===S.tk.t))S.tk.t=teams[0].id;
   const opts=teams.map(t=>'<option value="'+esc(t.id)+'"'+(t.id===S.tk.t?' selected':'')+'>'+esc(t.name)+'</option>').join('');
+  const cur=teams.find(t=>t.id===S.tk.t)||teams[0];
+  /* 접힌 사이드바에서는 select 대신 팀 약칭 배지 — 누르면 펼쳐지며 선택창이 드러난다 */
+  const ab=teamAbbr(cur.name);
   el.innerHTML='<div class="tsel-wrap"><select id="teamSelEl" aria-label="팀 선택">'+opts+'</select>'
-    +'<span class="tsel-ch"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3.5l3 3 3-3"/></svg></span></div>';
+    +'<span class="tsel-ch"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3.5l3 3 3-3"/></svg></span></div>'
+    +'<button class="tsel-mini" data-act="nav.toggle" aria-label="팀 선택 — '+esc(cur.name)+'" title="'+esc(cur.name)+'">'+esc(ab)+'</button>';
 }
+/* 팀 이름 약칭 — 'H서비스ㅁㅁ팀' 의 가운데(ㅁㅁ)를 쓴다.
+   'H서비스중부팀'→'중부', 'H서비스수도권팀'→'수도', '천안1팀'→'천1', 그 외는 앞 2자 */
+function teamAbbr(name){
+  let n=(name||'').replace(/\s+/g,'').replace(/팀$/,'');
+  if(!n)return '팀';
+  const mid=n.replace(/^[A-Za-z]*서비스/,'');   /* 공통 접두(H서비스 등)는 구분에 도움이 안 된다 */
+  if(mid&&mid!==n)n=mid;
+  const num=n.match(/[0-9]+$/);
+  if(num&&n.length>1)return n[0]+num[0].slice(-1);
+  return n.slice(0,2);
+}
+
 function mentionCount(){return Object.keys(S.mentions||{}).length;}
 function rMention(){
   const b=$('#mentionBadge');if(!b)return;
@@ -3164,7 +3180,7 @@ function rWidget(){
 }
 
 /* ═══════════ 부팅 ═══════════ */
-function rAll(){rDay();rTasks();rOrg();rCfg();rFilter();rMention();rMine();refetchCal();rWidget();}
+function rAll(){rDay();rTasks();rOrg();rCfg();rFilter();rMention();rMine();rTeamSel();refetchCal();rWidget();}   /* 팀 선택기는 조직 화면 밖(사이드바)이라 rAll 에서도 그린다 */
 (function boot(){
   let dark=false;
   try{dark=localStorage.getItem('calapp.theme')==='dark';}catch(e){}
@@ -3176,7 +3192,7 @@ function rAll(){rDay();rTasks();rOrg();rCfg();rFilter();rMention();rMine();refet
   calInit();
   bindCalResize();
   subVisibleMonths();
-  rDay();rAcct();rFilter();rWidget();
+  rDay();rAcct();rFilter();rTeamSel();rWidget();   /* 팀 선택기는 사이드바 상시 요소 — 부팅 때부터 그린다 */
   if(DEV_LOCAL){hideCover();}
   else{
     fbInit();
