@@ -21,13 +21,15 @@ const hash = 'sha256-' + crypto.createHash('sha256').update(inlineBody, 'utf8').
 /* CSP 메타의 script-src 만 정확히 고친다 — 문서 앞쪽 주석 등에 같은 문구가 있어도 안전하게 */
 /* 함수 치환을 쓴다 — 문자열 치환은 삽입 텍스트의 $& · $` · $' 를 특수 패턴으로 해석해
    실제 삽입 내용이 달라지고, 그러면 CSP 해시가 어긋나 스크립트가 통째로 차단된다. */
-let out = html.replace('<script src="./app.js"></script>', () => `<script>${inlineBody}</script>`);
+const tag = (html.match(/<script src="\.\/app\.js[^"]*"><\/script>/) || [])[0];
+if (!tag) throw new Error('app.js 스크립트 태그를 찾지 못했습니다');
+let out = html.replace(tag, () => `<script>${inlineBody}</script>`);
 out = out.replace(/(<meta http-equiv="Content-Security-Policy"[^>]*?)script-src 'self'/,
   (_m, pre) => `${pre}script-src '${hash}' 'self'`);
 
 if (!/Content-Security-Policy[^>]*script-src '(sha256-[^']+)'/.test(out))
   throw new Error('CSP 메타에 해시가 들어가지 않았습니다');
-if (out.includes('src="./app.js"')) throw new Error('app.js 인라인 실패');
+if (/src="\.\/app\.js/.test(out)) throw new Error('app.js 인라인 실패');
 
 /* 최종 산출물에서 인라인 스크립트를 다시 꺼내 해시를 재검증한다 —
    삽입 과정에서 한 글자라도 달라졌으면 여기서 잡힌다 */
