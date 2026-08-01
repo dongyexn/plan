@@ -134,7 +134,6 @@ svg{display:block;flex-shrink:0;}
 
 /* 달력 카드 헤더 컨트롤 */
 .cal-ctl{display:flex;align-items:center;gap:8px;min-width:0;}
-#regSeg{flex-wrap:wrap;min-width:0;}
 .seg{display:inline-flex;background:var(--fill);border-radius:var(--rp);padding:2px;}
 .seg button{padding:4px 13px;border-radius:var(--rp);font-size:12px;font-weight:700;color:var(--lbl2);transition:all .14s;}
 .seg button.act{background:var(--bg2);color:var(--bt1);box-shadow:0 1px 3px rgba(0,0,0,.08);}
@@ -166,6 +165,8 @@ select.inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-ima
 /* ══════════ 달력 페이지 ══════════ */
 .cal-wrap{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;align-items:stretch;height:calc(100dvh - var(--th) - 40px);min-height:520px;}
 .cal-card{padding:16px 18px;display:flex;flex-direction:column;min-height:0;}
+/* 달력을 감싸던 카드 프레임 제거 — 달력(fc-scrollgrid 테두리)이 곧 외곽 */
+body:not(.wid) .cal-card{border:0;background:transparent;box-shadow:none;border-radius:0;padding:0;}
 #fcal{flex:1;min-height:0;}
 .cal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:nowrap;margin-bottom:12px;}
 .cal-title{flex:0 0 auto;}
@@ -193,7 +194,7 @@ html.dark #fcal .fc-dayGridMonth-view .fc-col-header{border-bottom-color:rgba(25
 #fcal .fc-scrollgrid{border-radius:var(--rmd);overflow:hidden;border-color:var(--sep);}
 #fcal .fc-col-header-cell{background:var(--surf3);padding:9px 0;}
 /* 주간 헤더 — 공휴일 줄이 항상 자리를 차지해 높이가 변하지 않는다 */
-#fcal .fc-col-header-cell-cushion{font-size:13px;font-weight:700;color:var(--lbl2);text-decoration:none;letter-spacing:.02em;}
+#fcal .fc-col-header-cell-cushion{font-size:13px;font-weight:700;color:var(--lbl);text-decoration:none;letter-spacing:.02em;}
 #fcal .fc-day-sun .fc-col-header-cell-cushion{color:var(--rd);}
 #fcal .fc-day-sat .fc-col-header-cell-cushion{color:var(--bt1);}
 #fcal .fc-daygrid-day{cursor:pointer;transition:background .12s;}
@@ -226,10 +227,10 @@ html.dark #fcal .fc-day-today .dnum{color:var(--b300)!important;}
 /* 주말은 옅은 회색(노란끼 없는 중립), 공휴일 붉은 톤이 주말보다 우선(뒤 선언), 마우스 음영이 최우선 */
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sun:not(.fc-day-other),
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sat:not(.fc-day-other){background:rgba(60,60,67,.045);}
-#fcal .fc-dayGridMonth-view td.fc-daygrid-day.hol{background:rgba(255,59,48,.05);}
+#fcal .fc-dayGridMonth-view td.fc-daygrid-day.hol:not(.fc-day-other){background:rgba(255,59,48,.05);}
 html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sun:not(.fc-day-other),
 html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sat:not(.fc-day-other){background:rgba(255,255,255,.028);}
-html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.hol{background:rgba(255,59,48,.09);}
+html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.hol:not(.fc-day-other){background:rgba(255,59,48,.09);}
 @media(hover:hover){ /* 터치에선 :hover 가 눌린 셀에 고착돼 '선택 표시가 남는' 것처럼 보인다 */
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day:hover{background:var(--fill)!important;}
 html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day:hover{background:rgba(255,255,255,.07)!important;}
@@ -255,8 +256,6 @@ html.dark #fcal .dhol.dtoday{color:var(--b300);}
 .dp-col{display:flex;flex-direction:column;gap:16px;min-height:0;min-width:0;}
 .dp-filtercard{padding:0;flex:0 0 auto;overflow:hidden;}
 .day-panel{padding:0;overflow:hidden;display:flex;flex-direction:column;min-height:0;flex:1;}
-.dp-filter{display:flex;flex-direction:column;gap:9px;padding:11px 14px 13px;}
-.dp-filter .reg-row{gap:5px;}
 .dp-frow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:8px;}
 .dp-sel{width:100%;padding:7px 24px 7px 10px;font-size:12.5px;border-radius:var(--rp);border-width:1px;}
 .dp-srch{position:relative;min-width:0;}
@@ -272,12 +271,8 @@ html.dark #fcal .dhol.dtoday{color:var(--b300);}
   border-radius:var(--rlg) var(--rlg) 0 0;}
 .dp-top .dp-date{color:#fff;font-size:16.5px;}
 .dp-top .dp-dow{color:rgba(255,255,255,.82);}
-.dp-date{font-size:16px;font-weight:800;color:var(--lbl);}
-.dp-dow{font-size:12px;font-weight:600;color:var(--lbl2);margin-left:6px;}
-.dp-cnt{white-space:nowrap;}
 .dp-dow{font-size:11px;font-weight:600;opacity:.75;letter-spacing:.05em;}
 .dp-date{font-size:21px;font-weight:800;line-height:1.2;margin-top:1px;}
-.dp-cnt{font-size:11.5px;opacity:.8;margin-top:3px;}
 .dp-body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:8px;flex:1;min-height:0;overflow-y:auto;}
 .dp-body::-webkit-scrollbar{width:4px;}
 .dp-body::-webkit-scrollbar-thumb{background:var(--sepo);border-radius:99px;}
@@ -303,14 +298,17 @@ html.dark #fcal .dhol.dtoday{color:var(--b300);}
 .dp-datebtn{display:inline-flex;align-items:baseline;gap:8px;min-width:0;border-radius:9px;padding:3px 7px;margin:-3px 0 -3px -7px;transition:background var(--tr);}
 .dp-datebtn:hover{background:rgba(255,255,255,.14);}
 .dp-date-c{width:11px;height:11px;align-self:center;color:rgba(255,255,255,.75);transform:rotate(90deg);flex-shrink:0;}
-.dp-nav{margin-left:auto;display:flex;align-items:center;gap:3px;background:rgba(255,255,255,.14);border-radius:999px;padding:2px;}
+.dp-nav{margin-left:auto;display:flex;align-items:center;gap:3px;}
 .dp-nb{width:24px;height:24px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;color:#fff;transition:background var(--tr);}
 .dp-nb:hover{background:rgba(255,255,255,.22);}
 .dp-nb .icn{width:12px;height:12px;}
 .dp-nb.dp-today{width:auto;padding:0 10px;font-size:11.5px;font-weight:700;}
-/* 목록 패널 머리 — 좌 건수 · 우 업무 추가, 아래 구분선 */
-.dp-lh{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 13px;border-bottom:1px solid var(--sep);flex:0 0 auto;}
-.dp-lh .dp-cnt{font-size:12px;font-weight:700;color:var(--lbl2);}
+/* 필터 카드 — 1행 권역·담당자, 2행 검색·업무 추가 */
+.dp-fcard{padding:11px 12px;display:flex;flex-direction:column;gap:8px;flex:0 0 auto;}
+.dp-fcard .dp-frow{display:flex;gap:8px;align-items:center;}
+.dp-fcard .dp-sel{flex:1 1 0;min-width:0;}
+.dp-fcard .dp-srch{flex:1 1 0;min-width:0;}
+.dp-fcard .dp-add{flex:0 0 auto;}
 .dp-x{display:none;margin-left:2px;width:26px;height:26px;border-radius:8px;align-items:center;justify-content:center;color:#fff;background:rgba(255,255,255,.18);}
 .dp-x .icn{width:13px;height:13px;}
 
@@ -809,10 +807,6 @@ select.mg-inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-
 .mlp-to b{color:var(--lbl);}
 .mlp-sub{font-size:13.5px;font-weight:700;color:var(--lbl);margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--sep);word-break:break-all;}
 .set-empty{font-size:12px;color:var(--lbl3);padding:16px 4px;line-height:1.6;text-align:center;}
-.reg-row{display:flex;flex-wrap:wrap;gap:5px;}
-.reg{padding:5px 13px;border-radius:var(--rp);background:transparent;border:1px solid var(--sep);font-size:12.5px;font-weight:600;color:var(--lbl2);cursor:pointer;transition:all .13s;white-space:nowrap;}
-.reg:hover{background:var(--fill);}
-.reg.act{background:var(--fill2);color:var(--lbl);border-color:transparent;}
 
 /* ══════════ 위젯 모드 (?w=1 — 데스크톱 PWA 창) ══════════ */
 body.wid #sidebar,body.wid #topbar,body.wid .dp-col,body.wid #scrim{display:none!important;}
@@ -1036,8 +1030,6 @@ html.dark #toast{background:#2B313A;}
   .cal-head{flex-wrap:nowrap;gap:8px;}
   .cal-ctl{flex:0 0 auto;gap:6px;}
   /* 권역 칩은 줄바꿈 대신 가로 스크롤 — 헤더가 세로로 길어지지 않게 */
-  .reg-row{flex:1 1 0;min-width:0;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:1px;}
-  .reg-row::-webkit-scrollbar{display:none;}
   .seg,.cal-nav{flex:0 0 auto;}
   /* 셀 내부 스크롤 대신 '+N 더보기' — 좁은 셀에서 스크롤은 잡히지 않고,
      중첩 스크롤은 iOS 에서 클리핑이 깨져 칩이 겹쳐 보인다 */
@@ -1224,9 +1216,10 @@ html.dark #toast{background:#2B313A;}
           <div class="card dp-filtercard">
             <div class="dp-top">
               <button class="dp-datebtn" data-act="cal.pick" aria-label="연·월 선택" title="연·월 이동">
-                <span class="dp-date" id="dpDate">—</span><span class="dp-dow" id="dpDow"></span>
+                <span class="dp-date" id="dpDate">—</span>
                 <svg class="icn dp-date-c" aria-hidden="true"><use href="#i-chevr"></use></svg>
               </button>
+              <span class="dp-dow" id="dpDow"></span>
               <div class="dp-nav">
                 <button class="dp-nb" data-act="cal.prev" aria-label="이전 달"><svg class="icn" aria-hidden="true"><use href="#i-chevl"></use></svg></button>
                 <button class="dp-nb dp-today" data-act="cal.today">오늘</button>
@@ -1234,23 +1227,22 @@ html.dark #toast{background:#2B313A;}
               </div>
               <button class="dp-x" data-act="day.sheetClose" aria-label="닫기"><svg class="icn"><use href="#i-close"></use></svg></button>
             </div>
-            <div class="dp-filter">
-              <div class="reg-row" id="regSeg"></div>
-              <div class="dp-frow">
-                <select class="inp inp-sm dp-sel" id="ownFilter" aria-label="담당자 필터"></select>
-                <div class="dp-srch">
-                  <svg class="icn dp-srch-i" aria-hidden="true"><use href="#i-search"></use></svg>
-                  <input class="inp inp-sm" id="dpQ" placeholder="이 날짜에서 찾기" autocomplete="off">
-                  <button class="dp-srch-x" data-act="day.qclear" aria-label="지우기"><svg class="icn"><use href="#i-close"></use></svg></button>
-                </div>
+          </div>
+          <div class="card dp-fcard">
+            <div class="dp-frow">
+              <select class="inp inp-sm dp-sel" id="regFilter" aria-label="권역 필터"></select>
+              <select class="inp inp-sm dp-sel" id="ownFilter" aria-label="담당자 필터"></select>
+            </div>
+            <div class="dp-frow">
+              <div class="dp-srch">
+                <svg class="icn dp-srch-i" aria-hidden="true"><use href="#i-search"></use></svg>
+                <input class="inp inp-sm" id="dpQ" placeholder="이 날짜에서 찾기" autocomplete="off">
+                <button class="dp-srch-x" data-act="day.qclear" aria-label="지우기"><svg class="icn"><use href="#i-close"></use></svg></button>
               </div>
+              <button class="btn bo bsm dp-add" data-act="plan.new"><svg class="icn" aria-hidden="true"><use href="#i-plus"></use></svg> 업무 추가</button>
             </div>
           </div>
           <div class="card day-panel">
-            <div class="dp-lh">
-              <span class="dp-cnt" id="dpCnt"></span>
-              <button class="btn bo bsm dp-add" data-act="plan.new"><svg class="icn" aria-hidden="true"><use href="#i-plus"></use></svg> 업무 추가</button>
-            </div>
             <div class="dp-body">
               <div id="dpList"></div>
             </div>

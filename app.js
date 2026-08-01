@@ -1356,11 +1356,6 @@ function rDayHead(){
   const ds=S.selDate,d=toDate(ds),ps=dayPlans(ds),ho=holOf(ds);
   $('#dpDow').textContent=DOW[d.getDay()]+'요일'+(ho?' · '+ho.n:'')+(ds===todayStr()?' · 오늘':'');
   $('#dpDate').textContent=d.getFullYear()+'. '+(d.getMonth()+1)+'. '+d.getDate()+'.';
-  const parts=[];
-  if(ps.length)parts.push('업무 '+ps.length+'건');
-  const rm=ps.filter(x=>x.p.remind).length;
-  if(rm)parts.push('리마인드 '+rm+'건');
-  $('#dpCnt').textContent=parts.length?parts.join(' · '):'등록된 업무 없음';
   return ps;
 }
 function rDay(){
@@ -2509,15 +2504,6 @@ const ACT={
     if(!u){toast('설정에서 하자처리 현황 주소를 먼저 입력하세요');go('settings');return;}
     window.open(u,'_blank','noopener');
   },
-  'cal.reg':el=>{
-    const r=el.dataset.r;
-    if(r==='*')S.filter.reg='*';
-    else{
-      const cur=regSel();
-      const next=cur.includes(r)?cur.filter(x=>x!==r):cur.concat([r]);
-      S.filter.reg=next.length?next:'*';   /* 전부 끄면 전체로 */
-    }
-    rFilter();refetchCal();rDay();},
   'cal.prev':()=>CAL&&CAL.prev(),
   'cal.next':()=>CAL&&CAL.next(),
   'cal.today':()=>{selDate(todayStr());},
@@ -2896,18 +2882,15 @@ const ACT={
 function rFilter(){
   const list=roster(),me=S.user?list.find(p=>p.id===(S.user.uid||'')):null;
   const regs=(S.org.regions||[]).filter(r=>r.name);
-  const seg=$('#regSeg');
-  if(seg){
-    if(!regs.length){seg.innerHTML='';seg.style.display='none';}
-    else{
-      seg.style.display='';
-      /* 없어진 권역은 걸러낸다 */
-      const keep=regSel().filter(id=>regs.some(r=>r.id===id));
-      S.filter.reg=keep.length?keep:'*';
-      const on=regSel();
-      seg.innerHTML='<span class="reg'+(on.length?'':' act')+'" data-act="cal.reg" data-r="*">전체</span>'
-        +regs.map(r=>'<span class="reg'+(on.includes(r.id)?' act':'')+'" data-act="cal.reg" data-r="'+esc(r.id)+'">'+esc(r.name)+'</span>').join('');
-    }
+  const rf=$('#regFilter');
+  if(rf){
+    /* 없어진 권역은 걸러낸다 — select 는 단일 선택 */
+    const keep=regSel().filter(id=>regs.some(r=>r.id===id));
+    S.filter.reg=keep.length?[keep[0]]:'*';
+    const cur=regSel()[0]||'*';
+    rf.innerHTML='<option value="*">권역 전체</option>'
+      +regs.map(r=>'<option value="'+esc(r.id)+'"'+(r.id===cur?' selected':'')+'>'+esc(r.name)+'</option>').join('');
+    rf.value=cur;
   }
   const sel=$('#ownFilter');if(!sel)return;
   const rs=regSel();
@@ -2968,6 +2951,7 @@ document.addEventListener('change',e=>{
     S.tkF={...S.tkF,[e.target.id==='tkFst'?'st':'due']:e.target.value};rTasks();return;}
   const rl=e.target.closest('[data-act="acct.role"]');
   if(rl){ACT['acct.role'](rl);return;}
+  if(e.target.id==='regFilter'){const v=e.target.value;S.filter.reg=v==='*'?'*':[v];rFilter();refetchCal();rDay();rWidget();return;}
   if(e.target.id==='ownFilter'){S.filter.own=e.target.value;refetchCal();rDay();rWidget();return;}
   const ren=e.target.closest('[data-act="org.ren"]');
   if(ren){
