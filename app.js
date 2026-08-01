@@ -210,12 +210,13 @@ function colDotStyle(c){
   return (!c||c==='auto')?'background:linear-gradient(135deg,#3E71D2,#16A34A,#D97706)':'background:'+esc(c);
 }
 /* 색 — 담당자 색 + 자주 쓰는 4색 + '추가'(점선 원). 추가를 누르면 전체 팔레트 팝오버 */
-const COL_QUICK=['#3E71D2','#16A34A','#D97706','#DC2626'];
+const COL_QUICK=['#7FA8E8','#7FC9A4','#EDBB77','#E89A9A'];   /* 파스텔 4색 */
 function colRowHTML(cur){
   const c=(!cur||cur==='auto')?'auto':cur;
   const extra=(c!=='auto'&&COL_QUICK.indexOf(c)<0)?c:'';
   return '<div class="pe-cols" id="peCols">'
-    +'<button class="pe-cs'+(c==='auto'?' sel':'')+'" data-c="auto" title="담당자 색" style="'+colDotStyle('auto')+'"></button>'
+    +'<button class="pe-cs pe-cauto'+(c==='auto'?' sel':'')+'" data-c="auto" title="담당자 색(프로필 색)" aria-label="담당자 색">'
+      +'<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#av-person"></use></svg></button>'
     +COL_QUICK.map(x=>'<button class="pe-cs'+(x===c?' sel':'')+'" data-c="'+x+'" style="background:'+x+'"></button>').join('')
     +(extra?'<button class="pe-cs sel" data-c="'+esc(extra)+'" style="background:'+esc(extra)+'"></button>':'')
     +'<button class="pe-cs pe-cadd" data-act="plan.color" aria-label="색 추가" title="색 추가">+</button>'
@@ -1155,6 +1156,12 @@ function calInit(){
       const b=addDays(info.endStr.slice(0,10),-1);
       CAL.unselect();
       if(b<=a)return;
+      /* 폼이 열려 있으면 새로 열지 않고 기간만 채운다 */
+      if(S.planEdit&&$('#peDate')){
+        $('#peDate').value=a;$('#peEnd').value=b;
+        if(S.planEdit.draft){S.planEdit.draft.date=a;S.planEdit.draft.end=b;}
+        toast('기간을 '+a+' ~ '+b+' 로 바꿨습니다');return;
+      }
       selDate(a);openPlanEdit(null,a,b);},
     datesSet:()=>{rMonTitle();subVisibleMonths();markSel();}
   });
@@ -1421,7 +1428,8 @@ function rDay(){
     const done=isDone(p,occ),rep=p.recur&&p.recur.f,span=p.end&&p.end!==p.date;
     return `
     <div class="plan${done?' done':''}" data-pid="${esc(p.id)}">
-      <div class="pc" style="background:${esc(planColor(p))}"></div>
+      <button class="pst${done?' on':''}" data-act="plan.done" data-pid="${esc(p.id)}" data-occ="${esc(occ)}" aria-label="상태 전환"
+        style="${done?'':'background:'+esc(planColor(p))+'1F;color:'+esc(planColor(p))}">${done?'완료':'진행'}</button>
       <div class="plan-main" data-act="plan.open" data-pid="${esc(p.id)}" data-occ="${esc(occ)}">
         <div class="plan-t">${esc(p.title)}</div>
         ${p.body?'<div class="plan-body">'+esc(p.body)+'</div>':''}
@@ -1435,9 +1443,8 @@ function rDay(){
         </div>
       </div>
       <div class="plan-side">
+        <button class="p-ico${p.remind?' on':''}" data-act="plan.remind" data-pid="${esc(p.id)}" aria-label="리마인드 전환" title="리마인드"><svg class="icn"><use href="#i-bell"></use></svg></button>
         <button class="p-ico" data-act="plan.edit" data-pid="${esc(p.id)}" data-occ="${esc(occ)}" aria-label="수정" title="수정"><svg class="icn"><use href="#i-pen"></use></svg></button>
-        <button class="p-ico${done?' on':''}" data-act="plan.done" data-pid="${esc(p.id)}" data-occ="${esc(occ)}" aria-label="완료 표시" style="${done?'color:var(--gn)':''}"><svg class="icn"><use href="#i-check"></use></svg></button>
-        <button class="p-ico${p.remind?' on':''}" data-act="plan.remind" data-pid="${esc(p.id)}" aria-label="리마인드 전환"><svg class="icn"><use href="#i-bell"></use></svg></button>
       </div>
     </div>`;}).join('')
   ;
@@ -1464,10 +1471,13 @@ function openPlanEdit(p,startD,endD,occ){
 function setPlanColor(c){
   if(S.planEdit&&S.planEdit.draft)S.planEdit.draft.color=c;
   const box=$('#peCols');if(!box)return;
-  const wrap=box.parentElement;
   const pop=$('#colPop');
-  wrap.innerHTML=colRowHTML(c);
-  if(pop){const nb=$('#peCols');if(nb)nb.appendChild(pop);}
+  if(pop)pop.remove();                       /* 팝오버는 잠시 떼어 두고 색 줄만 다시 그린다(라벨은 그대로) */
+  box.outerHTML=colRowHTML(c);
+  const nb=$('#peCols');
+  if(pop&&nb)nb.appendChild(pop);
+  const st=$('#peStat');                     /* 제목 바 배지도 새 색으로 */
+  if(st&&!st.classList.contains('on'))st.setAttribute('style','background:'+planColor({color:c,owners:{}})+'1F;color:'+planColor({color:c,owners:{}}));
 }
 function colOutside(e){
   const pop=$('#colPop');
@@ -1490,9 +1500,8 @@ function planFormHTML(){
   const kind=kindOf(d.kind);
   return `<div class="dp-edit" id="dpEdit">
     <div class="pe-bar">
+      <span class="pst" id="peStat" style="${d.done?'':'background:'+esc(planColor(d))+'1F;color:'+esc(planColor(d))}">${d.done?'완료':'진행'}</span>
       <input class="pe-ttl" id="peTitle" maxlength="80" placeholder="무엇을 하나요?" value="${esc(d.title)}">
-      ${pe.orig&&pe.orig.sid?'<button class="pe-ic" data-act="plan.toTask" data-sid="'+esc(pe.orig.sid)+'" data-iid="'+esc(d.id)+'" aria-label="주요업무에서 자세히 쓰기" title="주요업무에서 자세히 쓰기"><svg class="icn"><use href="#i-ext"></use></svg></button>':''}
-      ${pe.orig?'<button class="pe-ic pe-del" data-act="plan.del" data-pid="'+esc(d.id)+'" data-ym="'+esc(ymOf(d.date))+'" data-occ="'+esc(pe.occ||'')+'" aria-label="삭제" title="삭제"><svg class="icn"><use href="#i-trash"></use></svg></button>':''}
       <button class="pe-ic pe-save" data-act="plan.save" aria-label="저장 (Enter)" title="저장 (Enter)"><svg class="icn"><use href="#i-check"></use></svg></button>
       <button class="pe-ic" data-act="plan.cancel" aria-label="닫기 (Esc)" title="닫기 (Esc)"><svg class="icn"><use href="#i-close"></use></svg></button>
     </div>
@@ -1522,6 +1531,10 @@ function planFormHTML(){
         </div>
         <div class="frow" id="peUntilRow" style="${rc?'':'display:none'}"><label>반복 종료</label><input type="date" class="inp inp-sm" id="peUntil" value="${esc((d.recur&&d.recur.until)||'')}"></div>
         <div class="frow"><label>내용</label><textarea class="inp inp-sm" id="peBody" maxlength="500" placeholder="메모·세부 내용">${esc(d.body||'')}</textarea></div>
+        ${pe.orig?`<div class="pe-tools">
+          ${pe.orig.sid?'<button class="btn bo bxs" data-act="plan.toTask" data-sid="'+esc(pe.orig.sid)+'" data-iid="'+esc(d.id)+'"><svg class="icn"><use href="#i-tasks"></use></svg> 업무 목록에서 자세히 쓰기</button>':''}
+          <button class="btn bo bxs pe-delbtn" data-act="plan.del" data-pid="${esc(d.id)}" data-ym="${esc(ymOf(d.date))}" data-occ="${esc(pe.occ||'')}"><svg class="icn"><use href="#i-trash"></use></svg> 삭제</button>
+        </div>`:''}
         ${(pe.orig&&rc&&pe.occ)?`<div class="frow occ-row">
           <label>이 회차만 옮기기 <span style="font-weight:500;color:var(--lbl3)">반복 규칙은 그대로</span></label>
           <div class="occ-line">
