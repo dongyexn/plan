@@ -20,7 +20,7 @@ const GUIDE_HTML=`<div class="gd">
 <li>자주 쓰는 조합은 <b>+ 필터 저장</b>으로 두면 한 번에 불러옵니다(내 계정에만 보임).</li>
 <li>종 아이콘을 켜면 그날 아침 팀 전체에 리마인드 메일이 갑니다.</li>
 </ul>
-<h4>주요업무 현황</h4>
+<h4>업무 목록</h4>
 <p>왼쪽에서 대상을 고르면 오른쪽에 그 업무가 나옵니다. <b>팀 전체 업무</b>(공통 업무와 모든 권역·담당자 업무를 한 화면에), <b>공통 업무</b>, <b>권역</b>, 개별 <b>담당자</b>를 고를 수 있습니다.</p>
 <ul>
 <li><b>업무 추가</b>를 누르면 목록 위에 작성창이 열립니다. 제목과 함께 <b>진행경과</b>·<b>처리계획</b>을 나눠 적고, 현장·날짜·색·담당자·링크를 지정합니다.</li>
@@ -31,11 +31,11 @@ const GUIDE_HTML=`<div class="gd">
 <li>기한을 넣으면 D-표기가 붙고 임박·초과가 색으로 구분됩니다.</li>
 <li>완료된 지 7일이 지난 항목은 자동으로 접힙니다.</li>
 </ul>
-<h4>조직 관리 (관리자)</h4>
+<h4>조직/현장 관리 (관리자)</h4>
 <p>팀 · 권역 · 현장을 등록하고, 가입한 계정에 팀 · 권역 · 담당 현장과 권한을 지정합니다. 이름은 눌러서 바로 고칩니다.</p>
 <h4>권한</h4>
 <ul>
-<li><b>관리자</b> — 조직 관리와 설정 변경까지 가능</li>
+<li><b>관리자</b> — 조직/현장 관리와 설정 변경까지 가능</li>
 <li><b>사용자</b> — 일정과 업무는 자유롭게 작성, 조직 설정은 보기 전용</li>
 </ul>
 <h4>메일</h4>
@@ -295,6 +295,7 @@ const S={
   planEdit:null,     // 일자 패널 인라인 편집기 상태
   dayQ:'',           // 일자 패널 검색어
   tkF:{q:'',st:'',due:''},   // 주요업무 검색·필터
+  orgTab:'acct',     // 조직/현장 관리 우측 탭 (acct | site)
   cmtRe:'',          // 답글 입력창을 연 코멘트 (sid/iid/cid)
   cmtNew:'',         // 코멘트 입력창을 연 업무 (sid/iid)
   prefs:{},          // calapp/prefs/{uid} — 저장한 필터 등 개인 설정
@@ -399,7 +400,9 @@ function cleanOrg(org){
   return{
     teams:(org.teams||[]).filter(Boolean).map(nm),
     regions:(org.regions||[]).filter(Boolean).map(nm),
-    sites:(org.sites||[]).filter(Boolean).map(x=>({...nm(x),team:String(x.team||''),region:String(x.region||'')}))
+    sites:(org.sites||[]).filter(Boolean).map(x=>({...nm(x),team:String(x.team||''),region:String(x.region||''),
+      units:Number(x.units)||0,buildings:Number(x.buildings)||0,commercialUnits:Number(x.commercialUnits)||0,
+      completionDate:String(x.completionDate||'').slice(0,10)}))
   };
 }
 
@@ -1100,7 +1103,8 @@ function calInit(){
     dayCellClassNames:a=>{const o=holOf(dstr(a.date));return o&&o.h?['hol']:[];},
     dayCellContent:a=>{
       const ds=dstr(a.date),o=holOf(ds);
-      return{html:(o?'<span class="dhol'+(o.h?'':' anv')+'">'+esc(o.n)+'</span>':'')+'<span class="dnum">'+a.date.getDate()+'</span>'};},
+      const today=ds===todayStr()?'<span class="dhol dtoday">오늘</span>':'';
+      return{html:today+(o?'<span class="dhol'+(o.h?'':' anv')+'">'+esc(o.n)+'</span>':'')+'<span class="dnum">'+a.date.getDate()+'</span>'};},
     events:(info,ok)=>ok(buildEvents()),
     dateClick:info=>{selDate(String(info.dateStr).slice(0,10));},
     eventClick:info=>{info.jsEvent.preventDefault();
@@ -1415,15 +1419,15 @@ function planFormHTML(){
       <div class="frow"><label>시작일</label><input type="date" class="inp inp-sm" id="peDate" value="${esc(d.date)}"></div>
       <div class="frow"><label>종료일 <span style="font-weight:500;color:var(--lbl3)">여러 날이면</span></label><input type="date" class="inp inp-sm" id="peEnd" value="${esc(d.end||'')}"></div>
     </div>
-    <div class="frow"><label>시간 (선택)</label><input type="time" class="inp inp-sm" id="peTime" value="${esc(d.time||'')}"></div>
     <div class="frow2">
-      <div class="frow"><label>현장</label>${sitePickHTML('peSite',d.site||'')}</div>
+      <div class="frow"><label>시간 (선택)</label><input type="time" class="inp inp-sm" id="peTime" value="${esc(d.time||'')}"></div>
       <div class="frow"><label>반복</label><select class="inp inp-sm" id="peRec">${Object.keys(REC_LBL).map(k=>'<option value="'+k+'"'+(k===rc?' selected':'')+'>'+REC_LBL[k]+'</option>').join('')}</select></div>
     </div>
-    <div class="frow" id="peUntilRow" style="${rc?'':'display:none'}"><label>반복 종료 (선택)</label><input type="date" class="inp inp-sm" id="peUntil" value="${esc((d.recur&&d.recur.until)||'')}"></div>
-    <div class="frow"><label>담당자</label>
-      ${ownSelHTML('peOwners',planOwners(d)[0]||'',people)}
+    <div class="frow2">
+      <div class="frow"><label>현장</label>${sitePickHTML('peSite',d.site||'')}</div>
+      <div class="frow"><label>담당자</label>${ownSelHTML('peOwners',planOwners(d)[0]||'',people)}</div>
     </div>
+    <div class="frow" id="peUntilRow" style="${rc?'':'display:none'}"><label>반복 종료 (선택)</label><input type="date" class="inp inp-sm" id="peUntil" value="${esc((d.recur&&d.recur.until)||'')}"></div>
     <div class="frow"><label>색 <span style="font-weight:500;color:var(--lbl3)">첫 번째는 담당자 색</span></label>
       ${palHTML('pePal',(!d.color||d.color==='auto')?'auto':d.color,
         '<div class="pal-c'+((!d.color||d.color==='auto')?' sel':'')+'" data-c="auto" style="background:linear-gradient(135deg,#3E71D2,#16A34A,#D97706)" title="담당자 색"></div>')}
@@ -1946,7 +1950,7 @@ function rTasks(){
   const root=$('#tkRoot');
   const{teams,team,regions,mems,total}=tkSel();
   if(!teams.length&&!total){
-    root.innerHTML='<div class="tk-none">아직 등록된 계정·팀이 없습니다.<br>조직 관리에서 팀·권역을 만들고 계정에 배정하세요.<br><button class="btn bp bsm" data-act="nav.go" data-view="org">조직 관리로 이동</button></div>';
+    root.innerHTML='<div class="tk-none">아직 등록된 계정·팀이 없습니다.<br>조직/현장 관리에서 팀·권역을 만들고 계정에 배정하세요.<br><button class="btn bp bsm" data-act="nav.go" data-view="org">조직/현장 관리로 이동</button></div>';
     return;
   }
   const sel=S.tk.m;
@@ -1965,7 +1969,7 @@ function rTasks(){
       +regionSectionsHTML(mems,regions);
   }else if(sel==='team'){
     subject=tn+' 공통 업무';sid=team?team.id:null;
-    listHTML=sid?taskListHTML(sid):'<div class="tk-empty">조직 관리에서 팀을 먼저 등록하세요.</div>';
+    listHTML=sid?taskListHTML(sid):'<div class="tk-empty">조직/현장 관리에서 팀을 먼저 등록하세요.</div>';
   }else if(typeof sel==='string'&&sel.indexOf('reg:')===0){
     const rid=sel.slice(4);
     subject=(rid===''?'권역 미지정':(((regions.find(r=>r.id===rid)||{}).name)||'권역'))+' 업무';
@@ -1994,11 +1998,11 @@ function rTasks(){
           <span class="n">${esc(tn)}</span>
           <span class="c">${cCommon+cMems}</span>
         </div>
-        <div class="tks-item sub${sel==='team'?' act':''}" data-act="tk.pick" data-id="team">
+        <div class="tks-item sub${sel==='team'?' act':''}" data-act="tk.pick" data-id="team"><span class="std"></span>
           <span class="n">공통 업무</span>
           ${team?'<span class="c">'+cCommon+'</span>':''}
         </div>
-        ${heads.map(p=>`<div class="tks-item sub${sel===p.id?' act':''}" data-act="tk.pick" data-id="${esc(p.id)}">
+        ${heads.map(p=>`<div class="tks-item sub${sel===p.id?' act':''}" data-act="tk.pick" data-id="${esc(p.id)}"><span class="std"></span>
           <span class="n">${esc(p.name)}<span class="rk">팀장</span></span>
           <span class="c">${taskCount(p.id)}</span></div>`).join('')}
       </div>
@@ -2007,14 +2011,14 @@ function rTasks(){
         ${regGroups.map(([rid,rn,list])=>`
           <div class="tks-item tks-reg${sel==='reg:'+rid?' act':''}" data-act="tk.pick" data-id="reg:${esc(rid)}">
             <span class="n">${esc(rn)}</span><span class="c">${list.reduce((a,p)=>a+taskCount(p.id),0)}</span></div>
-          ${list.map(p=>`<div class="tks-item sub${sel===p.id?' act':''}" data-act="tk.pick" data-id="${esc(p.id)}">
+          ${list.map(p=>`<div class="tks-item sub${sel===p.id?' act':''}" data-act="tk.pick" data-id="${esc(p.id)}"><span class="std"></span>
             <span class="n">${esc(p.name)}${rankOf(p.rank)==='lead'?'<span class="rk">공구장</span>':''}</span>
             <span class="c">${taskCount(p.id)}</span></div>`).join('')}
         `).join('')||'<div class="tk-empty" style="text-align:left;padding:6px 2px">배정된 담당자가 없습니다.</div>'}
       </div>
     </div>
     <div class="card tkmain">
-      <div class="tkm-h"><div class="bar"></div><b>${esc(subject)}</b>
+      <div class="tkm-h"><div class="bar"></div><b>업무 목록</b><span class="tkm-sub">${esc(subject)}</span>
         ${sid?'<button class="btn bo bsm" data-act="tk.newOpen" data-sid="'+esc(sid)+'"><svg class="icn"><use href="#i-plus"></use></svg> 업무 추가</button>':''}
       </div>
       ${tkFilterHTML()}
@@ -2187,59 +2191,27 @@ function regRows(){
     </div>`;}).join('');
 }
 /* 현장은 권역 그룹 아래에 놓고, 끌어서 다른 권역으로 옮기거나 순서를 바꾼다 */
-function siteRows(){
-  const sites=S.org.sites||[],regs=(S.org.regions||[]).filter(r=>r.name);
-  if(!sites.length&&!regs.length)return '<div class="tm-empty">권역과 현장을 먼저 등록하세요.</div>';
-  const group=(rid,label)=>{
-    const items=sites.filter(x=>(x.region||'')===rid);
-    return `<div class="sg">
-      <div class="sgh">${esc(label)}<span class="cnt">${items.length}</span></div>
-      <div class="sgl" data-rgn="${esc(rid)}">
-        ${items.length?items.map(x=>`
-          <div class="sti2" draggable="true" data-site="${esc(x.id)}">
-            <span class="std"></span>
-            <input class="mg-inp" value="${esc(x.name)}" data-act="org.ren" data-kind="Site" data-id="${esc(x.id)}" placeholder="현장 이름" aria-label="현장 이름">
-            <button class="tm-x tm-del" data-act="org.delSite" data-id="${esc(x.id)}" aria-label="삭제">${ICON_TRASH}</button>
-          </div>`).join(''):'<div class="sg-empty">여기로 끌어다 놓으세요</div>'}
-      </div></div>`;
-  };
-  return regs.map(r=>group(r.id,r.name)).join('')
-    +(sites.some(x=>!x.region||!regs.some(r=>r.id===x.region))?group('','권역 미지정'):'');
-}
-/* 드래그 배선 — 현장 목록을 다시 그릴 때마다 호출 */
-let _dnd=null;
-function wireSiteDnD(){
-  const root=$('#siteRoot');if(!root)return;
-  const clear=()=>root.querySelectorAll('.drop-above,.drop-below,.over').forEach(x=>x.classList.remove('drop-above','drop-below','over'));
-  root.querySelectorAll('.sti2[draggable]').forEach(el=>{
-    el.addEventListener('dragstart',e=>{
-      _dnd=el.dataset.site;el.classList.add('dragging');
-      try{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',_dnd);}catch(_){}
-    });
-    el.addEventListener('dragend',()=>{el.classList.remove('dragging');clear();_dnd=null;});
-    el.addEventListener('dragover',e=>{
-      if(!_dnd||_dnd===el.dataset.site)return;
-      e.preventDefault();
-      const r=el.getBoundingClientRect(),after=e.clientY>r.top+r.height/2;
-      el.classList.toggle('drop-below',after);el.classList.toggle('drop-above',!after);
-    });
-    el.addEventListener('dragleave',()=>el.classList.remove('drop-above','drop-below'));
-    el.addEventListener('drop',e=>{
-      if(!_dnd||_dnd===el.dataset.site)return;
-      e.preventDefault();e.stopPropagation();
-      const r=el.getBoundingClientRect(),after=e.clientY>r.top+r.height/2;
-      moveSite(_dnd,el.closest('.sgl').dataset.rgn,el.dataset.site,after);
-    });
-  });
-  root.querySelectorAll('.sgl').forEach(box=>{
-    box.addEventListener('dragover',e=>{if(!_dnd)return;e.preventDefault();box.classList.add('over');});
-    box.addEventListener('dragleave',()=>box.classList.remove('over'));
-    box.addEventListener('drop',e=>{
-      if(!_dnd)return;
-      e.preventDefault();box.classList.remove('over');
-      moveSite(_dnd,box.dataset.rgn,null,false);
-    });
-  });
+/* 현장 표 — 하자처리현황의 현장 관리 표를 그대로 이식(권역·현장명·세대수·동수·상가수·준공일).
+   행에서 바로 고치면 즉시 저장된다. 순서는 권역 등록 순 → 이름순. */
+function siteTable(){
+  const sites=(S.org.sites||[]).slice(),regs=(S.org.regions||[]).filter(r=>r.name);
+  if(!sites.length)return '<p class="tm-empty" style="padding:22px 0;text-align:center">등록된 현장이 없습니다.<br><b>+ 현장 추가</b>로 등록하세요.</p>';
+  const ord={};regs.forEach((r,i)=>{ord[r.id]=i;});
+  sites.sort((a,b)=>(ord[a.region]??99)-(ord[b.region]??99)||String(a.name).localeCompare(String(b.name),'ko'));
+  const regOpts=x=>'<option value="">권역 —</option>'+regs.map(r=>'<option value="'+esc(r.id)+'"'+(r.id===x.region?' selected':'')+'>'+esc(r.name)+'</option>').join('');
+  return `<div style="overflow-x:auto"><table class="mgtbl"><thead><tr>
+    <th style="width:16%">권역</th><th style="width:30%">현장명</th>
+    <th class="cc" style="width:11%">세대수</th><th class="cc" style="width:10%">동수</th>
+    <th class="cc" style="width:11%">상가수</th><th class="cc" style="width:16%">준공일</th><th class="cc" style="width:6%"></th>
+  </tr></thead><tbody>${sites.map(x=>`<tr>
+    <td><select class="mg-inp" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="region" aria-label="권역 선택">${regOpts(x)}</select></td>
+    <td><input class="mg-inp" value="${esc(x.name)}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="name" aria-label="현장명"></td>
+    <td><input class="mg-inp n" type="number" value="${x.units||0}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="units" aria-label="세대수" style="text-align:right"></td>
+    <td><input class="mg-inp n" type="number" value="${x.buildings||0}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="buildings" aria-label="동수" style="text-align:right"></td>
+    <td><input class="mg-inp n" type="number" value="${x.commercialUnits||0}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="commercialUnits" aria-label="상가수" style="text-align:right"></td>
+    <td class="cc"><input class="mg-inp" type="date" max="9999-12-31" style="width:132px;max-width:100%;text-align:center;display:inline-block" value="${esc(x.completionDate||'')}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="completionDate" aria-label="준공일"></td>
+    <td class="cc"><button class="tm-x tm-del" data-act="org.delSite" data-id="${esc(x.id)}" aria-label="삭제">${ICON_TRASH}</button></td>
+  </tr>`).join('')}</tbody></table></div>`;
 }
 function moveSite(id,rgn,targetId,after){
   const list=S.org.sites||[];
@@ -2260,7 +2232,14 @@ function rOrg(){
   const tr=$('#teamRoot'),rr=$('#regRoot'),sr=$('#siteRoot');
   if(tr)tr.innerHTML=teamRows();
   if(rr)rr.innerHTML=regRows();
-  if(sr){sr.innerHTML=siteRows();wireSiteDnD();}
+  if(sr)sr.innerHTML=siteTable();
+  /* 계정/현장 탭 상태 */
+  const tab=S.orgTab||'acct';
+  const ap=$('#acctPane'),sp=$('#sitePane'),ab=$('#orgAddSite');
+  if(ap)ap.style.display=tab==='acct'?'':'none';
+  if(sp)sp.style.display=tab==='site'?'':'none';
+  if(ab)ab.style.display=tab==='site'?'':'none';
+  $$('.orgseg button').forEach(b=>b.classList.toggle('act',b.dataset.t===tab));
   rTeamSel();
 
   const ar=$('#acctRoot');if(!ar)return;
@@ -2465,7 +2444,7 @@ function saveMailCfg(){
 }
 
 /* ═══════════ 화면 전환 · 공통 UI ═══════════ */
-const VIEW_TTL={calendar:'업무 일정',mine:'내 업무',tasks:'주요업무 현황',org:'조직 관리',settings:'설정'};
+const VIEW_TTL={calendar:'업무 일정',mine:'내 업무',tasks:'업무 목록',org:'조직/현장 관리',settings:'설정'};
 function go(view){
   S.view=view;
   $$('.view').forEach(v=>v.classList.toggle('act',v.id==='view-'+view));
@@ -2733,6 +2712,7 @@ const ACT={
       Object.keys(S.people||{}).forEach(id=>{if(S.people[id].region===r.id)store.putPerson(id,{...S.people[id],region:''});});
       orgSave();});
   },
+  'org.tab':el=>{S.orgTab=el.dataset.t;rOrg();},
   'org.addSite':()=>{
     
     const id=uid();const r0=(S.org.regions||[]).find(x=>x.name);
@@ -2834,7 +2814,9 @@ const ACT={
       teams:teams.map(t=>({id:String(t.id),name:String(t.name||'').slice(0,60)})),
       regions:regNames.map(n=>({id:n,name:n})),
       sites:sites.map(x=>({id:String(x.id),name:String(x.name||'').slice(0,60),
-        team:String(x.teamId||''),region:String(x.region||'')}))
+        team:String(x.teamId||''),region:String(x.region||''),
+        units:Number(x.units)||0,buildings:Number(x.buildings)||0,
+        commercialUnits:Number(x.commercialUnits)||0,completionDate:String(x.completionDate||'').slice(0,10)}))
     };
     confirmModal('게시본에서 가져오기',
       rm+' 게시본 기준 · 팀 '+next.teams.length+'개, 권역 '+next.regions.length+'개, 현장 '+next.sites.length+'개를 가져옵니다. '
@@ -2854,7 +2836,7 @@ const ACT={
       S.org=next;orgSave();rOrg();
       if(!next.teams.some(t=>t.id===S.tk.t))S.tk.t=next.teams.length?next.teams[0].id:null;
       rTeamSel();rFilter();
-      toast('가져왔습니다 · 조직 관리에서 확인하세요');
+      toast('가져왔습니다 · 조직/현장 관리에서 확인하세요');
     },'가져오기',false);
   },
   'team.switch':el=>{
@@ -3003,6 +2985,18 @@ document.addEventListener('change',e=>{
   if(!S.live){rOrg();rTasks();}
 });
 document.addEventListener('input',e=>{if(e.target.id==='nqQ')rNq();});
+/* 현장 표 인라인 저장 — 하자처리현황과 같은 즉시 반영 */
+document.addEventListener('change',e=>{
+  const el=e.target.closest('[data-act="org.siteUpd"]');
+  if(!el)return;
+  if(!isEditor()){denyEdit();rOrg();return;}
+  const st=(S.org.sites||[]).find(x=>x.id===el.dataset.id);if(!st)return;
+  const f=el.dataset.f,v=el.value;
+  if(f==='units'||f==='buildings'||f==='commercialUnits')st[f]=Number(v)||0;
+  else st[f]=String(v||'');
+  orgSave();
+  if(f==='region'&&!S.live)rOrg();   /* 권역이 바뀌면 정렬 위치가 달라진다 */
+});
 /* 위젯 설정 팝업 조작 */
 document.addEventListener('input',e=>{
   if(e.target.id==='wgA'){const c=widCfgLoad();c.a=Number(e.target.value);widCfgSave(c);widApply();}
