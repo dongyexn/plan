@@ -188,12 +188,18 @@ body:not(.wid) .cal-card{border:0;background:transparent;box-shadow:none;border-
 #fcal .fc-dayGridMonth-view .fc-col-header{border-bottom:2px solid transparent;}
 /* 세로줄은 반대로 더 옅게 — 가로가 먼저 읽히도록 대비를 벌린다 */
 #fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-left:2px solid transparent;border-right:0;}
+#fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td:first-child{border-left:0;}
+#fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table tr:first-child td{border-top:0;}
 
 html.dark #fcal .fc-dayGridMonth-view .fc-col-header{border-bottom-color:rgba(255,255,255,.15);}
-#fcal .fc-scrollgrid{border:0;background:#DCDFE6;border-radius:var(--rmd);}
-html.dark #fcal .fc-scrollgrid{background:#0F0F10;}
-#fcal .fc-col-header-cell{background:#DEE3EA;padding:9px 0;background-clip:padding-box;border-left:2px solid transparent;border-right:0;}
-html.dark #fcal .fc-col-header-cell{background:#3A3A3C;}
+#fcal .fc-scrollgrid{border:0;background:transparent;border-radius:var(--rmd);overflow:hidden;}
+/* 뒤판은 셀이 실제로 차지하는 영역(요일띠·본문 테이블)에만 — scrollgrid 에 칠하면
+   행 높이 반올림 잔여만큼 하단에 띠로 노출된다 */
+#fcal .fc-col-header,#fcal .fc-daygrid-body{background:#DCDFE6;}
+html.dark #fcal .fc-col-header,html.dark #fcal .fc-daygrid-body{background:#0F0F10;}
+#fcal .fc-col-header-cell{background:#D3D9E2;padding:9px 0;background-clip:padding-box;border-left:2px solid transparent;border-right:0;}
+#fcal .fc-col-header-cell:first-child{border-left:0;}
+html.dark #fcal .fc-col-header-cell{background:#424245;}
 /* 주간 헤더 — 공휴일 줄이 항상 자리를 차지해 높이가 변하지 않는다 */
 #fcal .fc-col-header-cell-cushion{font-size:13px;font-weight:800;color:var(--lbl);text-decoration:none;letter-spacing:.02em;}
 #fcal .fc-day-sun .fc-col-header-cell-cushion{color:var(--rd);}
@@ -229,14 +235,14 @@ html.dark #fcal .fc-day-today .dnum{color:var(--b300)!important;}
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-other{background-color:rgba(255,255,255,.4);}
 html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-other{background-color:rgba(33,33,33,.4);}
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sun:not(.fc-day-other),
-#fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sat:not(.fc-day-other){background-image:linear-gradient(rgba(60,60,67,.06),rgba(60,60,67,.06));}
+#fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sat:not(.fc-day-other){background-image:linear-gradient(rgba(60,60,67,.045),rgba(60,60,67,.045));}
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day.hol:not(.fc-day-other){background-image:linear-gradient(rgba(255,59,48,.08),rgba(255,59,48,.08));}
-#fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-today:not(.fc-day-other){background-image:linear-gradient(rgba(83,140,222,.13),rgba(83,140,222,.13));}
+#fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-today:not(.fc-day-other){background-image:linear-gradient(rgba(83,140,222,.15),rgba(83,140,222,.15));}
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day.sel-day{background-image:linear-gradient(rgba(83,140,222,.15),rgba(83,140,222,.15));box-shadow:inset 0 0 0 2px var(--b500);}
 html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sun:not(.fc-day-other),
-html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sat:not(.fc-day-other){background-image:linear-gradient(rgba(255,255,255,.04),rgba(255,255,255,.04));}
+html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sat:not(.fc-day-other){background-image:linear-gradient(rgba(255,255,255,.03),rgba(255,255,255,.03));}
 html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.hol:not(.fc-day-other){background-image:linear-gradient(rgba(255,59,48,.13),rgba(255,59,48,.13));}
-html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-today:not(.fc-day-other){background-image:linear-gradient(rgba(83,140,222,.22),rgba(83,140,222,.22));}
+html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-today:not(.fc-day-other){background-image:linear-gradient(rgba(83,140,222,.25),rgba(83,140,222,.25));}
 @media(hover:hover){ /* 터치에선 :hover 가 눌린 셀에 고착돼 '선택 표시가 남는' 것처럼 보인다 */
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day:hover{background-image:linear-gradient(var(--fill),var(--fill))!important;}
 html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day:hover{background-image:linear-gradient(rgba(255,255,255,.07),rgba(255,255,255,.07))!important;}
