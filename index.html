@@ -230,8 +230,10 @@ html.dark #fcal .fc-day-today .dnum{color:var(--b300)!important;}
 html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sun,
 html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sat{background:rgba(255,255,255,.028);}
 html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.hol{background:rgba(255,59,48,.09);}
+@media(hover:hover){ /* 터치에선 :hover 가 눌린 셀에 고착돼 '선택 표시가 남는' 것처럼 보인다 */
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day:hover{background:var(--fill)!important;}
 html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day:hover{background:rgba(255,255,255,.07)!important;}
+}
 /* 오늘 라벨 — 공휴일 이름처럼 숫자 왼쪽에 */
 #fcal .dhol.dtoday{color:var(--b600);}
 html.dark #fcal .dhol.dtoday{color:var(--b300);}
@@ -265,7 +267,7 @@ html.dark #fcal .dhol.dtoday{color:var(--b300);}
 .dp-srch-x .icn{width:10px;height:10px;}
 .dp-srch.has .dp-srch-x{display:flex;}
 /* 날짜 머리 — 목록 카드 안에 한 줄로 */
-.dp-top{display:flex;align-items:baseline;gap:10px;padding:14px 15px 13px;flex:0 0 auto;
+.dp-top{display:flex;align-items:center;gap:10px;padding:12px 13px 11px 15px;flex:0 0 auto;
   background:linear-gradient(135deg,var(--b500),var(--b800));
   border-radius:var(--rlg) var(--rlg) 0 0;}
 .dp-top .dp-date{color:#fff;font-size:16.5px;}
@@ -281,6 +283,7 @@ html.dark #fcal .dhol.dtoday{color:var(--b300);}
 .dp-body::-webkit-scrollbar{width:4px;}
 .dp-body::-webkit-scrollbar-thumb{background:var(--sepo);border-radius:99px;}
 .dp-empty{font-size:12.5px;color:var(--lbl3);text-align:center;padding:22px 0 14px;}
+#dpList{display:flex;flex-direction:column;gap:9px;}
 .plan{border:1px solid var(--sep);border-radius:var(--rlg);padding:11px 13px;display:flex;gap:10px;align-items:flex-start;background:var(--bg2);transition:border-color .15s;position:relative;}
 .plan:hover{border-color:var(--b300);}
 .plan .pc{width:4px;align-self:stretch;border-radius:99px;flex-shrink:0;}
@@ -297,7 +300,11 @@ html.dark #fcal .dhol.dtoday{color:var(--b300);}
 .p-ico:hover{background:var(--fill);color:var(--bt1);}
 .p-ico.on{color:var(--am);}
 .p-ico .icn{width:14px;height:14px;}
-.dp-add{margin-top:2px;}
+.dp-addtop{margin-left:auto;align-self:center;width:26px;height:26px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:#fff;background:rgba(255,255,255,.18);transition:background var(--tr);}
+.dp-addtop:hover{background:rgba(255,255,255,.3);}
+.dp-addtop .icn{width:15px;height:15px;}
+.dp-x{display:none;margin-left:2px;width:26px;height:26px;border-radius:8px;align-items:center;justify-content:center;color:#fff;background:rgba(255,255,255,.18);}
+.dp-x .icn{width:13px;height:13px;}
 
 /* 담당자 색 점 · 기한 칩 · 반복 표시 */
 .dot-c{width:9px;height:9px;border-radius:50%;flex-shrink:0;display:inline-block;}
@@ -633,6 +640,9 @@ html.dark #fcal .dhol.dtoday{color:var(--b300);}
 .mgtbl th.cc,.mgtbl td.cc{text-align:center;}
 .mgtbl td{padding:4px 6px;vertical-align:middle;border-bottom:1px solid var(--sep2,var(--sep));}
 .mgtbl tr:last-child td{border-bottom:none;}
+/* 하자처리현황 전용 항목 — 균형 유지를 위해 표기하되 회색 비활성 */
+.mgtbl .mg-dis{opacity:.4;pointer-events:none;filter:grayscale(1);}
+.mgtbl th.mg-disth{color:var(--lbl3);}
 .set-h{font-size:12px;font-weight:700;color:var(--lbl2);text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;justify-content:space-between;gap:8px;padding-bottom:10px;border-bottom:1px solid var(--sep);margin-bottom:13px;}
 .set-h-sub{font-size:10px;font-weight:600;color:var(--lbl3);text-transform:none;letter-spacing:0;}
 .share-row{display:flex;align-items:center;justify-content:space-between;gap:12px;}
@@ -984,20 +994,32 @@ html.dark #toast{background:#2B313A;}
   #sidebar.mini .sbb,#sidebar.mini .nil,#sidebar.mini .sbsl{opacity:1!important;display:initial!important;pointer-events:auto!important;}
   #sidebar.mini .sb-acct{display:flex;}
   .mc{display:flex;}
+  /* 접기 버튼은 드로어에선 무의미 — mini 상태만 만들고 혼란을 준다 */
+  .sbtg{display:none!important;}
   /* grid 의 1fr 은 최소폭이 max-content 라서 내용이 넓으면 화면 밖으로 밀려난다 — 전부 minmax(0,1fr) 로 */
   .cal-wrap{grid-template-columns:minmax(0,1fr);height:auto;min-height:0;}
-  .cal-card{height:72dvh;min-width:0;}
-  .dp-col{min-width:0;}
-  .day-panel{max-height:70dvh;min-width:0;}
+  /* ── 업무 일정: 달력을 화면 가득(캘린더 앱처럼), 일자 패널은 날짜를 누르면 올라오는 하단 시트 ── */
+  #view-calendar{margin:-14px;}                                   /* content 패딩 상쇄 — 풀블리드 */
+  #view-calendar .cal-wrap{height:calc(100dvh - var(--th));}
+  #view-calendar .cal-card{height:100%;min-width:0;border:0;border-radius:0;box-shadow:none;padding:10px 8px 4px;}
+  .cal-head{margin-bottom:6px;}
+  .dp-col{position:fixed;left:0;right:0;bottom:0;z-index:320;min-width:0;
+    display:flex;flex-direction:column;gap:8px;max-height:78dvh;
+    padding:10px 10px calc(10px + env(safe-area-inset-bottom));
+    transform:translateY(103%);transition:transform .3s cubic-bezier(.4,0,.2,1);}
+  .dp-col.on{transform:none;}
+  .dp-col .card{box-shadow:0 -8px 32px rgba(0,0,0,.2);}
+  .day-panel{max-height:52dvh;min-width:0;}
+  .dp-x{display:inline-flex;}                                     /* 시트 닫기 — 모바일에서만 */
   .tk3{grid-template-columns:minmax(0,1fr);}
   .tkwrap{grid-template-columns:minmax(0,1fr);}
   .set-grid{grid-template-columns:minmax(0,1fr);}
   .mg-grid{grid-template-columns:minmax(0,1fr);}
   #content{padding:14px;overflow-x:hidden;}
   #content>*{min-width:0;}
-  /* 달력 헤더 — 한 줄에 다 못 들어가므로 제목/조작을 2단으로 접는다 */
-  .cal-head{flex-wrap:wrap;gap:8px;}
-  .cal-ctl{flex:1 1 100%;gap:6px;}
+  /* 달력 헤더 — 년월(좌) · 넘기기/오늘(우) 한 줄 */
+  .cal-head{flex-wrap:nowrap;gap:8px;}
+  .cal-ctl{flex:0 0 auto;gap:6px;}
   /* 권역 칩은 줄바꿈 대신 가로 스크롤 — 헤더가 세로로 길어지지 않게 */
   .reg-row{flex:1 1 0;min-width:0;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:1px;}
   .reg-row::-webkit-scrollbar{display:none;}
@@ -1188,6 +1210,8 @@ html.dark #toast{background:#2B313A;}
             <div class="dp-top">
               <div><span class="dp-date" id="dpDate">—</span><span class="dp-dow" id="dpDow"></span></div>
               <span class="dp-cnt" id="dpCnt"></span>
+              <button class="dp-addtop dp-add" data-act="plan.new" aria-label="업무 추가" title="업무 추가"><svg class="icn"><use href="#i-plus"></use></svg></button>
+              <button class="dp-x" data-act="day.sheetClose" aria-label="닫기"><svg class="icn"><use href="#i-close"></use></svg></button>
             </div>
             <div class="dp-filter">
               <div class="reg-row" id="regSeg"></div>
@@ -1204,7 +1228,6 @@ html.dark #toast{background:#2B313A;}
           <div class="card day-panel">
             <div class="dp-body">
               <div id="dpList"></div>
-              <button class="btn bo bsm dp-add" data-act="plan.new"><svg class="icn" aria-hidden="true"><use href="#i-plus"></use></svg> 업무 추가</button>
             </div>
           </div>
         </div>
@@ -1234,7 +1257,7 @@ html.dark #toast{background:#2B313A;}
         <div class="set-col">
           <div class="card mb12">
             <div class="tm-h">
-              <span class="seg orgseg"><button class="act" data-act="org.tab" data-t="acct">계정</button><button data-act="org.tab" data-t="site">현장</button><span class="tm-sub" id="acctTeamLbl"></span></span>
+              <span style="display:inline-flex;align-items:center;gap:9px;text-transform:none;letter-spacing:0"><span class="seg orgseg"><button class="act" data-act="org.tab" data-t="acct">계정</button><button data-act="org.tab" data-t="site">현장</button></span><span class="tm-sub" id="acctTeamLbl"></span></span>
               <button class="btn bo bsm tm-add" id="orgAddSite" data-act="org.addSite" style="display:none">+ 현장 추가</button>
             </div>
             <div id="acctPane">
