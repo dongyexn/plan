@@ -1237,6 +1237,9 @@ function planEvent(p,date){
     end:span>0?addDays(date,span+1):undefined,
     allDay:!p.time||!!p.end,
     backgroundColor:planColor(p),borderColor:'transparent',textColor:'#fff',
+    /* ⚠ display 를 지정하지 않으면 시간이 있는 업무는 FullCalendar 가 '점 형식'으로 그린다 —
+       배경 없이 어두운 글자라 유리(어두운) 배경 위에서 거의 보이지 않는다. 전부 색 막대로 통일한다 */
+    display:'block',
     classNames:done?['done']:[],
     extendedProps:{pid:p.id,occ:date,recur:!!(p.recur&&p.recur.f)},
     editable:!(p.recur&&p.recur.f)
@@ -2542,18 +2545,6 @@ function siteTable(){
     <td class="cc"><button class="tm-x tm-del" data-act="org.delSite" data-id="${esc(x.id)}" aria-label="삭제">${ICON_TRASH}</button></td>
   </tr>`).join('')}</tbody></table></div>`;
 }
-function moveSite(id,rgn,targetId,after){
-  const list=S.org.sites||[];
-  const i=list.findIndex(x=>x.id===id);if(i<0)return;
-  const [moved]=list.splice(i,1);
-  moved.region=rgn||'';
-  if(targetId){
-    let at=list.findIndex(x=>x.id===targetId);
-    if(at<0)at=list.length;else at=after?at+1:at;
-    list.splice(at,0,moved);
-  }else list.push(moved);
-  S.org.sites=list;orgSave();rOrg();
-}
 function curTeam(){const ts=(S.org.teams||[]).filter(t=>t.name);return ts.find(t=>t.id===S.tk.t)||ts[0]||null;}
 function rOrg(){
   const t=curTeam(),lbl=t?'· '+t.name:'';
@@ -3030,18 +3021,6 @@ const ACT={
         refetchCal();toast('업무를 삭제했습니다');
       });},
   'tk.fold':el=>{const sid=el.dataset.sid;S.foldOpen[sid]=!S.foldOpen[sid];rTasks();},
-  'tk.due':el=>{
-    const sid=el.dataset.sid,iid=el.dataset.iid,cur=(S.tasks[sid]||{})[iid];if(!cur)return;
-    openModal('날짜 설정',`<div class="frow"><label>날짜</label><input type="date" class="inp" id="dueVal" value="${esc(cur.date||'')}"></div>`,
-      (cur.date?'<button class="btn bg2 bsm" data-act="tk.dueClear" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" style="margin-right:auto">날짜 지우기</button>':'')
-      +'<button class="btn bg2 bsm" data-act="modal.close">취소</button><button class="btn bp bsm" data-act="modal.ok">저장</button>');
-    MODAL_CB={type:'due',ok:()=>{
-      const v=$('#dueVal').value||'';
-      store.putTask(sid,iid,{...cur,date:v,updatedAt:Date.now()});
-      closeModal();if(!S.live){rTasks();rDay();}refetchCal();}};
-  },
-  'tk.dueClear':el=>{const sid=el.dataset.sid,iid=el.dataset.iid,cur=(S.tasks[sid]||{})[iid];if(!cur)return;
-    store.putTask(sid,iid,{...cur,date:'',updatedAt:Date.now()});closeModal();if(!S.live){rTasks();rDay();}refetchCal();},
   'tk.cmtOpen':el=>{S.cmtNew=el.dataset.sid+'/'+el.dataset.iid;rTasks();
     setTimeout(()=>{const t=document.querySelector('.th-new:not(.re) .th-in');if(t)t.focus();},40);},
   'tk.cmtCancel':()=>{S.cmtNew='';rTasks();},
@@ -3258,7 +3237,7 @@ const ACT={
     selDate(y+'-'+pad(m)+'-'+pad(same?t.getDate():1),true);   /* 이동만 — 업무 팝업은 열지 않는다 */
     rMonTitle();subVisibleMonths();refetchCal();},
   'mail.preview':el=>mailPreview(el.dataset.kind),
-  'wid.popClose':()=>{S.widPop=false;rWidget();},
+  'wid.popClose':()=>{S.widPop=false;if(S.planEdit)closePlanEdit();rWidget();},
   /* 위젯 내려받기 — 관리자가 설정에 넣어 둔 exe 주소를 연다(팀원은 받아서 두 번 누르면 끝) */
   'wid.dl':()=>{
     const u=String(S.cfg.widgetUrl||'').trim();
@@ -3609,17 +3588,27 @@ function rWidget(){
   const dw=$('#wpDow');
   if(dw)dw.textContent=[ho?ho.n:'',DOW[d.getDay()]+'요일',ds===todayStr()?'오늘':''].filter(Boolean).join(' · ');
   box.classList.add('on');
-  /* 누른 칸 옆에 붙이되 화면 밖으로 나가지 않게 접는다 */
-  const td=document.querySelector('#fcal td[data-date="'+ds+'"]');
-  const r=td?td.getBoundingClientRect():{left:20,right:20,top:60};
-  /* 창 밖으로 나가면 잘린다(위젯은 창이 곧 화면) — 가로·세로 모두 창 안으로 밀어 넣는다 */
+  widPlace();
+  /* 폼이 열리고 닫힐 때마다 팝업 높이가 달라진다 — 내용이 바뀌면 자리를 다시 잡는다 */
+  if(!box.dataset.ro&&window.ResizeObserver){box.dataset.ro='1';new ResizeObserver(widPlace).observe(box);}
+}
+/* Electron 트레이의 '오늘 업무 보기' 가 부르는 훅 — 오늘로 옮기고 업무 패널을 띄운다 */
+window.widToday=function(){
+  if(!WIDGET)return;
+  selDate(todayStr(),true);
+  S.widPop=true;rWidget();
+};
+/* 누른 칸 옆에 붙이되 창 밖으로 나가지 않게 한다 — 위젯은 창이 곧 화면이라 넘치면 잘려서 못 본다 */
+function widPlace(){
+  const box=$('#widPop');if(!box||!box.classList.contains('on'))return;
   const M=8;
-  box.style.maxHeight=Math.max(180,innerHeight-M*2)+'px';
+  box.style.maxHeight=Math.max(160,innerHeight-M*2)+'px';
+  const td=document.querySelector('#fcal td[data-date="'+S.selDate+'"]');
+  const r=td?td.getBoundingClientRect():{left:20,right:20,top:60};
   const w=box.offsetWidth,ht=box.offsetHeight;
   let x=r.right+M;if(x+w>innerWidth-M)x=r.left-w-M;
   x=Math.min(Math.max(M,x),Math.max(M,innerWidth-w-M));
-  let y=r.top;
-  y=Math.min(Math.max(M,y),Math.max(M,innerHeight-ht-M));
+  const y=Math.min(Math.max(M,r.top),Math.max(M,innerHeight-ht-M));
   box.style.left=Math.round(x)+'px';box.style.top=Math.round(y)+'px';
 }
 
