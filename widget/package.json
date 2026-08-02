@@ -19,18 +19,26 @@
       "desktop-pin.js",
       "package.json",
       "tray.png",
-      "node_modules/koffi/**/*"
+      "node_modules/koffi/**/*",
+      "!node_modules/koffi/src/**",
+      "!node_modules/koffi/build/koffi/darwin_*",
+      "!node_modules/koffi/build/koffi/linux_*",
+      "!node_modules/koffi/build/koffi/freebsd_*",
+      "!node_modules/koffi/build/koffi/openbsd_*",
+      "!node_modules/koffi/build/koffi/win32_arm64",
+      "!node_modules/koffi/build/koffi/win32_ia32"
     ],
     "win": {
       "target": "portable",
       "icon": "tray.png"
     },
     "portable": {
-      "artifactName": "업무일정위젯.exe"
+      "artifactName": "HPlanWidget.exe"
     },
     "asarUnpack": [
       "node_modules/koffi/**/*"
-    ]
+    ],
+    "compression": "maximum"
   },
   "dependencies": {
     "koffi": "^2.8.0"
