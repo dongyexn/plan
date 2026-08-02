@@ -72,7 +72,7 @@ svg{display:block;flex-shrink:0;}
 .sbsc::-webkit-scrollbar{display:none;}
 .sbsl{font-size:11.5px;font-weight:700;color:var(--lbl3);letter-spacing:.07em;text-transform:uppercase;padding:10px 8px 4px;white-space:nowrap;transition:opacity var(--tr);}
 /* 접으면 분류 라벨은 글자만 감춘다 — 자리(29px)는 그대로라 아이콘 위치가 안 밀린다 */
-#sidebar.mini .sbsl{visibility:hidden;transition:none;height:29px;padding:0;}
+#sidebar.mini .sbsl{visibility:hidden;transition:none;}   /* 높이를 고정하면 글자 크기를 바꿀 때 접힘 전후로 어긋난다 — 자리만 그대로 둔다 */
 .nvi{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:var(--rmd);cursor:pointer;font-size:13px;font-weight:500;color:var(--lbl2);transition:background var(--tr),color var(--tr);white-space:nowrap;overflow:hidden;margin-bottom:2px;}
 .nvi:hover{background:var(--fill);color:var(--lbl);}
 .nvi.act{background:linear-gradient(135deg,var(--b50),var(--b100));color:var(--bt1);}
@@ -299,6 +299,8 @@ html.dark #fcal .dhol.dtoday{color:var(--b300);}
 .day-panel{padding:0;overflow:hidden;display:flex;flex-direction:column;min-height:0;flex:1;}
 .dp-frow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:8px;}
 .dp-sel{width:100%;padding:7px 24px 7px 10px;font-size:12.5px;border-radius:var(--rp);border-width:1px;}
+/* date·time 은 브라우저 기본 위젯이라 같은 padding 이어도 선택창보다 높다 — 높이를 직접 맞춘다 */
+.inp-sm[type="date"],.inp-sm[type="time"]{height:31px;padding-top:0;padding-bottom:0;}
 .dp-srch{position:relative;min-width:0;}
 .dp-srch .inp{width:100%;padding:7px 26px 7px 28px;font-size:12.5px;border-radius:var(--rp);border-width:1px;}
 .dp-srch-i{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:13px;height:13px;color:var(--lbl3);pointer-events:none;}
@@ -332,25 +334,28 @@ html.dark #fcal .dhol.dtoday{color:var(--b300);}
 /* 업무 카드 — 업무 목록(.tk-item)과 같은 회색 면. 업무 색은 --pc 로만 들어오고
    표현 방식(좌측 색 바 등)은 아래 색 표현 규칙에서 정한다 — 레이아웃에는 영향이 없어야 한다 */
 #dpList .plan{display:block;padding:8px;background:var(--surf2);border:1px solid var(--sep);position:relative;}
-/* 업무 색 = 카드 밖 왼쪽 색 바. absolute 라 자리를 차지하지 않아 카드·제목·아이콘 좌표에 영향이 없다.
-   일자 패널의 왼쪽 안여백(16px) 안에 들어간다 — 여백을 줄일 땐 left 값(-10)도 함께 볼 것.
-   4px 캡슐 · 카드와 간격 6 · 위아래 인셋 5 (업무 목록 .tkc 와 같은 굵기, 인셋만 9→5) */
-#dpList .plan::before,.dp-edit::before{content:'';position:absolute;left:-10px;top:5px;bottom:5px;width:4px;
-  border-radius:99px;background:var(--pc,transparent);}
+/* 업무 색 = 제목 앞 색 원. 누르면 팔레트 팝오버가 열리고, 그 자리가 곧 색 변경 버튼이다.
+   지름 20px = 제목 줄 높이. 읽기·편집 모두 같은 자리라 수정으로 바꿔도 제목 x 가 움직이지 않는다 */
+.p-col{position:relative;flex:0 0 auto;width:20px;height:20px;border-radius:50%;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.10);transition:transform .12s;}
+.p-col:hover{transform:scale(1.1);}
+.p-col .col-pop{left:0;right:auto;}
 .plan-hd{display:flex;align-items:center;gap:9px;min-width:0;}
-/* 2행 들여쓰기 = 상태 배지 폭 + 간격 9 (스크립트가 --pst-w 로 실측값을 넣는다) */
-#dpList .plan-main{padding-left:calc(var(--pst-w,45px) + 9px);margin-top:3px;}
+#dpList .plan-main{padding-left:29px;margin-top:3px;}   /* 색 원 20 + 간격 9 */
 /* 업무 색은 카드 아웃라인으로 — 색 점(.plan-c/.pe-c)은 폐기 */
-/* 상태 배지 — 업무 목록의 .tk-st 와 같은 규격(22px·12px)을 쓴다. 색 변형은 .tk-st.s0~3 재사용 */
-.plan-hd .tk-st,.pe-bar .tk-st{height:22px;flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;
-  padding:0 9px;border-radius:var(--rp);font-size:12px;font-weight:700;white-space:nowrap;
-  border:1px solid transparent;box-sizing:border-box;}
-.plan.done .plan-hd .tk-st{opacity:.6;}
+/* 상태 배지 — 보조문구 줄 앞에 붙는 작은 배지(글자 크기는 보조문구와 같은 11.5px). 색 변형은 .tk-st.s0~3 재사용 */
+.plan-meta .tk-st,.pe-side .tk-st{height:18px;flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;
+  padding:0 7px;border-radius:var(--rp);font-size:11.5px;font-weight:700;white-space:nowrap;
+  border:1px solid transparent;box-sizing:border-box;align-self:center;}
+.plan-meta .tk-st{margin-right:2px;}
+.plan.done .plan-meta .tk-st{opacity:.6;}
 .plan-main{flex:1;min-width:0;cursor:pointer;}
 .plan-t{font-size:13.5px;font-weight:700;color:var(--lbl);word-break:break-all;}
 .plan-hd .plan-t{flex:1;min-width:0;cursor:pointer;}
+/* 펼칠 내용이 없는 카드는 손가락 커서를 띄우지 않는다 — 눌러도 반응이 없는 헛손질 방지 */
+#dpList .plan:not(.has-det) .plan-t,#dpList .plan:not(.has-det) .plan-main{cursor:default;}
 .plan.done .plan-t{text-decoration:line-through;color:var(--lbl3);}
-.plan-meta{display:flex;align-items:baseline;gap:8px;margin-top:4px;font-size:11.5px;color:var(--lbl2);font-weight:500;line-height:1.45;}
+.plan-meta{display:flex;align-items:center;gap:8px;margin-top:4px;font-size:11.5px;color:var(--lbl2);font-weight:500;line-height:1.45;}
 .pm-l{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .pm-r{margin-left:auto;flex:0 0 auto;color:var(--lbl2);font-weight:600;}
 .plan.done .pm-r{color:var(--lbl3);font-weight:500;}
@@ -639,10 +644,11 @@ html.dark #ymPop{background:#242426;}
 .tk-new .pal-c{width:20px;height:20px;border-radius:7px;}
 /* 일자 패널 인라인 편집기 — 모달 대신 패널 안에서 작성·수정 */
 /* ── 업무 작성 폼 — 제목 고정 바 + 핵심 4줄 + '자세히' 접기 ── */
-.dp-edit{position:relative;border:1px solid var(--b300);border-radius:var(--rlg);background:var(--bg2);display:flex;flex-direction:column;flex-shrink:0;}
+.dp-edit{position:relative;border:1px solid var(--b300);border-radius:var(--rlg);background:var(--surf2);display:flex;flex-direction:column;flex-shrink:0;}
 .pe-bar{position:relative;display:flex;align-items:center;gap:9px;padding:8px 8px 11px;}
 .pe-bar::after{content:'';position:absolute;left:8px;right:8px;bottom:0;height:1px;background:var(--sep);}
-.pe-side{display:flex;align-items:center;gap:2px;flex-shrink:0;}   /* 읽기 카드 .plan-side 와 같은 간격 — 좌표 고정 */
+.pe-side{display:flex;align-items:center;gap:2px;flex-shrink:0;}
+.pe-side .tk-st{margin-right:5px;}   /* 읽기 카드 .plan-side 와 같은 간격 — 좌표 고정 */
 
 .pe-ttl{flex:1;min-width:0;background:transparent;border:0;padding:0;font-size:13.5px;font-weight:700;color:var(--lbl);font-family:inherit;line-height:1.5;}
 .pe-ttl::placeholder{color:var(--lbl3);font-weight:500;}
@@ -665,14 +671,6 @@ html.dark #ymPop{background:#242426;}
 .pe-more-ic{position:absolute;right:0;top:50%;transform:translateY(-45%);}
 .pe-body{padding:11px 12px 11px;}
 
-.pe-cols{display:flex;align-items:center;justify-content:space-between;gap:4px;height:30px;position:relative;width:100%;}
-.pe-cs{width:19px;height:19px;border-radius:50%;flex:0 0 auto;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08);transition:transform .12s;}
-.pe-cs:hover{transform:scale(1.12);}
-.pe-cs.sel{box-shadow:0 0 0 2px var(--bg2),0 0 0 4px var(--b500);}
-.pe-cauto{background:var(--fill);color:var(--lbl2);display:inline-flex;align-items:center;justify-content:center;}
-.pe-cauto svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;}
-.pe-cadd{background:transparent;border:1.5px dashed var(--lbl3);color:var(--lbl2);font-size:13px;font-weight:700;line-height:1;display:inline-flex;align-items:center;justify-content:center;box-shadow:none;}
-.pe-cadd:hover{border-color:var(--bt1);color:var(--bt1);}
 .col-pop{position:absolute;top:calc(100% + 7px);right:0;z-index:70;background:var(--bg2);border:1px solid var(--sep);border-radius:var(--rmd);box-shadow:0 10px 28px rgba(0,0,0,.16);padding:10px;width:196px;}
 .col-pop-h{font-size:11.5px;font-weight:700;color:var(--lbl2);margin-bottom:7px;}
 html.dark .col-pop{background:#242426;}
@@ -1145,7 +1143,7 @@ html.dark #toast{background:#2B313A;}
 <body>
 <!-- 아이콘: Lucide (ISC) — 24 그리드 · stroke 2 -->
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true" focusable="false">
-<symbol id="i-today" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-today" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.6V20a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V9.6"/><path d="M9.6 21v-6.2h4.8V21"/></symbol>
 <symbol id="i-cal" viewBox="0 0 24 24"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></symbol>
 <symbol id="i-tasks" viewBox="0 0 24 24"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></symbol>
 <symbol id="i-settings" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
@@ -1229,7 +1227,7 @@ html.dark #toast{background:#2B313A;}
       <div class="sbsl">바로가기</div>
       <div class="nvi" role="button" tabindex="0" data-act="link.defect">
         <div class="nic"><svg class="icn" aria-hidden="true"><use href="#i-dash"></use></svg></div>
-        <span class="nil">하자처리현황<svg class="icn" style="width:11px;height:11px;display:inline-block;opacity:.5;margin-left:5px"><use href="#i-ext"></use></svg></span>
+        <span class="nil">H · 하자처리현황<svg class="icn" style="width:11px;height:11px;display:inline-block;opacity:.5;margin-left:5px"><use href="#i-ext"></use></svg></span>
       </div>
       <div class="sbsl">관리</div>
       <div class="nvi" role="button" tabindex="0" data-view="org" data-act="nav.go">
@@ -1472,5 +1470,5 @@ html.dark #toast{background:#2B313A;}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=85"></script>
+<script src="./app.js?v=86"></script>
 </body></html>

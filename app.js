@@ -159,11 +159,6 @@ function pfPaint(c){
   if(av&&c)av.style.setProperty('--avc',c);
 }
 document.addEventListener('click',e=>{
-  /* 색 줄의 스와치 */
-  const qs=e.target.closest('#peCols .pe-cs');
-  if(qs&&!qs.classList.contains('pe-cadd')){
-    setPlanColor(qs.dataset.c||'auto');return;
-  }
   /* 팝오버에서 고르면 줄에 반영하고 닫는다 */
   const ec=e.target.closest('#colPop .pal-c');
   if(ec&&!ec.classList.contains('pal-add')){
@@ -202,24 +197,16 @@ function sitePickHTML(id,cur){
     ${sites.map(x=>'<option value="'+esc(x.id)+'"'+(x.id===cur?' selected':'')+'>'+esc(x.name)+'</option>').join('')}
   </select>`;
 }
+/* 업무 색 = 제목 앞 색 원. 누르면 팔레트 팝오버가 열린다(읽기 카드는 pid 를 달아 바로 저장) */
+function colDotHTML(c,pid){
+  return '<button class="p-col" data-act="plan.color"'+(pid?' data-pid="'+esc(pid)+'"':'')
+    +' aria-label="색 고르기" title="색 고르기" style="background:'+esc(c)+'"></button>';
+}
 /* 색 선택기 HTML — 기본 팔레트 + 임의 색 추가.
    현재 값이 팔레트에 없으면(직접 고른 색) 맨 뒤에 칩으로 붙여 선택 상태를 유지한다. */
 /* 색 점 — 'auto'(담당자 색)는 3색 그라디언트로 표시 */
 function colDotStyle(c){
   return (!c||c==='auto')?'background:linear-gradient(135deg,#3E71D2,#16A34A,#D97706)':'background:'+esc(c);
-}
-/* 색 — 담당자 색 + 자주 쓰는 4색 + '추가'(점선 원). 추가를 누르면 전체 팔레트 팝오버 */
-const COL_QUICK=['#5B8FDD','#3FA57C','#E0A44A','#DD6B6B'];   /* 완료 회색과 구분되도록 한 톤 진하게 */
-function colRowHTML(cur){
-  const c=(!cur||cur==='auto')?'auto':cur;
-  const extra=(c!=='auto'&&COL_QUICK.indexOf(c)<0)?c:'';
-  return '<div class="pe-cols" id="peCols">'
-    +'<button class="pe-cs pe-cauto'+(c==='auto'?' sel':'')+'" data-c="auto" title="담당자 색(프로필 색)" aria-label="담당자 색">'
-      +'<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#av-person"></use></svg></button>'
-    +COL_QUICK.map(x=>'<button class="pe-cs'+(x===c?' sel':'')+'" data-c="'+x+'" style="background:'+x+'"></button>').join('')
-    +'<button class="pe-cs pe-cadd'+(extra?' sel':'')+'" data-act="plan.color" aria-label="색 더 고르기" title="색 더 고르기"'
-      +(extra?' style="background:'+esc(extra)+';border-style:solid;border-color:transparent"':'')+'>'+(extra?'':'+')+'</button>'
-    +'</div>';
 }
 function palHTML(id,cur,extraFirst){
   const c=cur||'';
@@ -1510,14 +1497,14 @@ function rangePlans(){
 }
 /* 펼쳐 보기 — 내용(진행경과·처리계획)과 링크를 읽기 전용으로 보여 준다 */
 function planDetHTML(p){
-  const sec=(h,v)=>'<div class="pd-sec"><div class="pd-h">'+h+'</div><div class="pd-b'+(v?'':' none')+'">'+esc(v||'적힌 내용이 없습니다')+'</div></div>';
+  const sec=(h,v)=>v?'<div class="pd-sec"><div class="pd-h">'+h+'</div><div class="pd-b">'+esc(v)+'</div></div>':'';
   const lnk=Object.values(p.links||{}).filter(l=>l&&l.url);
-  return '<div class="plan-det">'
-    +(kindSplit(p.kind)?sec('진행경과',p.body)+sec('처리계획',p.plan):sec('내용',p.body))
-    +(lnk.length?'<div class="pd-sec"><div class="pd-h">링크</div><div>'
+  const body=kindSplit(p.kind)?sec('진행경과',p.body)+sec('처리계획',p.plan):sec('내용',p.body);
+  const links=lnk.length?'<div class="pd-sec"><div class="pd-h">링크</div><div>'
       +lnk.map(l=>'<a class="pd-lnk" data-act="lnk.open" href="'+esc(l.url)+'" target="_blank" rel="noopener"><svg class="icn"><use href="#i-ext"></use></svg>'
-        +esc(l.label||l.url.replace(/^https?:\/\//,''))+'</a>').join('')+'</div></div>':'')
-    +'</div>';
+        +esc(l.label||l.url.replace(/^https?:\/\//,''))+'</a>').join('')+'</div></div>':'';
+  /* 보여 줄 게 없으면 펼침 자체를 만들지 않는다 — 눌러도 아무 일이 없던 헛손질 방지 */
+  return (body||links)?'<div class="plan-det">'+body+links+'</div>':'';
 }
 function rDay(){
   const ps=rDayHead();
@@ -1528,31 +1515,34 @@ function rDay(){
      자동 저장이 목록을 다시 그려도 입력 중인 값·포커스·커서가 살아남는다 */
   const keep=(S.planEdit&&S.planEdit.mounted&&$('#dpEdit'))?$('#dpEdit'):null;
   if(keep)keep.remove();
-  const editorHTML=(S.planEdit&&!keep)?planFormHTML():'';
-  const editingId=S.planEdit&&S.planEdit.draft?S.planEdit.draft.id:null;
-  const shown=ps.filter(x=>x.p.id!==editingId);   /* 편집 중인 항목은 폼이 대신한다 */
-  const cnt0=$('#dpCount');if(cnt0)cnt0.textContent='업무 '+ps.length+'건';
-  if(!shown.length&&!editorHTML&&!keep){
+  /* 처음 여는 순간엔 draft 가 아직 없다(planFormHTML 이 만든다) — orig 로도 찾아야 자리를 지킨다 */
+  const editingId=S.planEdit?(((S.planEdit.draft||{}).id)||((S.planEdit.orig||{}).id)||null):null;
+  const cnt=$('#dpCount');if(cnt)cnt.textContent='업무 '+ps.length+'건';
+  if(!ps.length&&!S.planEdit){
     box.innerHTML='<div class="dp-empty">'+(dayQ()?'검색 결과가 없습니다.':'이 날짜에 등록된 업무가 없습니다.')+'</div>';return;}
-  box.innerHTML=editorHTML+shown.map(({p,occ})=>{
+  /* 폼은 원래 카드가 있던 자리에 그대로 들어간다 — 수정을 눌러도 목록이 위로 튀지 않는다 */
+  let slot=false;
+  const parts=ps.map(({p,occ})=>{
+    if(editingId&&p.id===editingId){slot=true;return '<div id="peSlot"></div>';}
     const done=isDone(p,occ),rep=p.recur&&p.recur.f,span=p.end&&p.end!==p.date,st=planSt(p,occ);
     const md=x=>{const t=toDate(x);return (t.getMonth()+1)+'/'+t.getDate();};
     const lnk=Object.values(p.links||{}).filter(l=>l&&l.url)[0];
-    const c=planColor(p);
+    const det=planDetHTML(p);
+    const openAct=det?' data-act="plan.open" data-pid="'+esc(p.id)+'" data-occ="'+esc(occ)+'"':'';
     return `
-    <div class="plan${done?' done':''}${S.planOpen===p.id?' open':''}" data-pid="${esc(p.id)}" style="--pc:${esc(c)}">
+    <div class="plan${done?' done':''}${det?' has-det':''}${det&&S.planOpen===p.id?' open':''}" data-pid="${esc(p.id)}">
       <div class="plan-hd">
-        <span class="tk-st s${st}" data-act="plan.stCycle" data-pid="${esc(p.id)}" data-occ="${esc(occ)}" title="눌러서 상태 변경">${ST_LBL[st]}</span>
-        <div class="plan-t" data-act="plan.open" data-pid="${esc(p.id)}" data-occ="${esc(occ)}">${esc(p.title)}</div>
+        ${colDotHTML(planColor(p),p.id)}
+        <div class="plan-t"${openAct}>${esc(p.title)}</div>
         <div class="plan-side">
-          ${lnk?'<a class="p-ico" href="'+esc(lnk.url)+'" target="_blank" rel="noopener" aria-label="링크 열기" title="'+esc(lnk.label||lnk.url)+'"><svg class="icn"><use href="#i-ext"></use></svg></a>':''}
           <button class="p-ico p-rem${p.remind?' on':''}" data-act="plan.remind" data-pid="${esc(p.id)}" aria-label="리마인드 전환" title="리마인드"><svg class="icn"><use href="#i-bell"></use></svg></button>
+          ${lnk?'<a class="p-ico" href="'+esc(lnk.url)+'" target="_blank" rel="noopener" aria-label="링크 열기" title="'+esc(lnk.label||lnk.url)+'"><svg class="icn"><use href="#i-ext"></use></svg></a>':''}
           <button class="p-ico p-edit" data-act="plan.edit" data-pid="${esc(p.id)}" data-occ="${esc(occ)}" aria-label="수정" title="수정"><svg class="icn"><use href="#i-pen"></use></svg></button>
         </div>
       </div>
-      <div class="plan-main" data-act="plan.open" data-pid="${esc(p.id)}" data-occ="${esc(occ)}">
+      <div class="plan-main"${openAct}>
         <div class="plan-meta">
-          <span class="pm-l">${[
+          <span class="pm-l"><span class="tk-st s${st}" data-act="plan.stCycle" data-pid="${esc(p.id)}" data-occ="${esc(occ)}" title="눌러서 상태 변경">${ST_LBL[st]}</span>${[
             kindLabel(p.kind),
             span?md(p.date)+'–'+md(p.end):md(p.date),
             fmtSpan(p),
@@ -1561,22 +1551,19 @@ function rDay(){
           <span class="pm-r">${[p.site?siteName(p.site):'',planOwners(p).map(o=>ownName(o)).join(', ')||'팀 공통']
             .filter(Boolean).map(esc).join(' · ')}</span>
         </div>
-        ${planDetHTML(p)}
+        ${det}
       </div>
-    </div>`;}).join('')
-  ;
-  if(keep)box.insertBefore(keep,box.firstChild);
-  const cnt=$('#dpCount');if(cnt)cnt.textContent='업무 '+ps.length+'건';
+    </div>`;}).join('');
+  /* 편집 중인 업무가 목록에 없으면(새 업무·날짜를 옮긴 경우) 맨 위에 둔다 */
+  box.innerHTML=(S.planEdit&&!slot?'<div id="peSlot"></div>':'')+parts;
+  const sl=$('#peSlot');
+  if(sl){
+    if(keep)sl.replaceWith(keep);
+    else sl.outerHTML=planFormHTML();
+  }
   const rec=$('#peRec');
   if(rec&&!rec.dataset.wired){rec.dataset.wired='1';
     rec.addEventListener('change',()=>{const r=$('#peUntilRow');if(r)r.style.display=rec.value?'':'none';});}
-  pstWidth();
-}
-/* 카드 2행 들여쓰기를 상태 배지 실측 폭에 맞춘다 — 배지 글자가 바뀌어도 어긋나지 않는다 */
-function pstWidth(){
-  const b=document.querySelector('#dpList .tk-st');if(!b)return;
-  const w=Math.round(b.getBoundingClientRect().width);
-  if(w)document.querySelector('#dpList').style.setProperty('--pst-w',w+'px');
 }
 
 /* ───── 업무 작성·수정 모달 ───── */
@@ -1594,23 +1581,25 @@ function openPlanEdit(p,startD,endD,occ){
   rDay();
   setTimeout(()=>{const t=$('#peTitle');if(t)t.focus();},30);
 }
-/* 고른 색을 draft 에 저장하고 색 줄을 다시 그린다 */
+/* 고른 색 적용 — 읽기 카드에서 골랐으면 바로 저장, 편집 폼이면 draft 에 담고 자동 저장 */
+let COL_PID=null;
 function setPlanColor(c){
-  if(S.planEdit&&S.planEdit.draft)S.planEdit.draft.color=c;
-  const box=$('#peCols');if(!box)return;
-  const pop=$('#colPop');
-  if(pop)pop.remove();                       /* 팝오버는 잠시 떼어 두고 색 줄만 다시 그린다(라벨은 그대로) */
-  box.outerHTML=colRowHTML(c);
-  const nb=$('#peCols');
-  if(pop&&nb)nb.appendChild(pop);
-  const ed=$('#dpEdit');                     /* 업무 색은 왼쪽 색 바 — 새 색으로 다시 칠한다 */
-  if(ed)ed.style.setProperty('--pc',planColor({color:c,owners:(S.planEdit&&S.planEdit.draft&&S.planEdit.draft.owners)||{}}));
+  if(COL_PID){
+    const p=findPlan(COL_PID);if(!p)return;
+    p.color=c;p.updatedAt=Date.now();store.putPlan(p);
+    if(!S.live){rDay();refetchCal();rWidget();}
+    return;
+  }
+  const pe=S.planEdit;if(!pe||!pe.draft)return;
+  pe.draft.color=c;
+  const btn=$('#dpEdit .p-col');
+  if(btn)btn.style.background=planColor(pe.draft);
   planAutosave();
 }
 function colOutside(e){
   const pop=$('#colPop');
   if(!pop){document.removeEventListener('click',colOutside,true);return;}
-  if(pop.contains(e.target)||e.target.closest('.pe-cadd'))return;
+  if(pop.contains(e.target)||e.target.closest('.p-col'))return;
   closeColPop();
 }
 function closeColPop(){
@@ -1657,11 +1646,12 @@ function planFormHTML(){
   const kind=kindOf(d.kind);
   const st=stOf(d.st);
   const lnk=Object.values(d.links||{}).filter(l=>l&&l.url)[0];
-  return `<div class="dp-edit" id="dpEdit" style="--pc:${esc(planColor(d))}">
+  return `<div class="dp-edit" id="dpEdit">
     <div class="pe-bar">
-      <span class="tk-st s${st}" data-act="plan.stCycle" title="눌러서 상태 변경">${ST_LBL[st]}</span>
+      ${colDotHTML(planColor(d))}
       <input class="pe-ttl" id="peTitle" maxlength="80" placeholder="무엇을 하나요?" value="${esc(d.title)}">
       <div class="pe-side">
+        <span class="tk-st s${st}" data-act="plan.stCycle" title="눌러서 상태 변경">${ST_LBL[st]}</span>
         ${pe.orig?'<button class="pe-ic pe-del" data-act="plan.del" data-pid="'+esc(d.id)+'" data-ym="'+esc(ymOf(d.date))+'" data-occ="'+esc(pe.occ||'')+'" aria-label="삭제" title="삭제"><svg class="icn"><use href="#i-trash"></use></svg></button>':''}
         <button class="pe-ic pe-rem${d.remind?' on':''}" data-act="plan.remindDraft" aria-label="리마인드 전환" title="리마인드"><svg class="icn"><use href="#i-bell"></use></svg></button>
         <button class="pe-ic pe-ok" data-act="plan.cancel" aria-label="저장하고 닫기 (Esc)" title="저장하고 닫기 (Esc)"><svg class="icn"><use href="#i-check"></use></svg></button>
@@ -1677,10 +1667,7 @@ function planFormHTML(){
           <select class="inp inp-sm" id="peKind">${TK_KIND.map(k=>'<option value="'+k[0]+'"'+(k[0]===kind?' selected':'')+'>'+k[1]+'</option>').join('')}</select></div>
         <div class="frow"><label>담당자</label>${ownSelHTML('peOwners',planOwners(d)[0]||'',people)}</div>
       </div>
-      <div class="frow2">
-        <div class="frow"><label>링크</label><input class="inp inp-sm" id="peLink" maxlength="500" placeholder="https://…" value="${esc((lnk&&lnk.url)||'')}"></div>
-        <div class="frow"><label>색</label>${colRowHTML(d.color)}</div>
-      </div>
+      <div class="frow"><label>링크</label><input class="inp inp-sm" id="peLink" maxlength="500" placeholder="https://…" value="${esc((lnk&&lnk.url)||'')}"></div>
       <div class="pe-morerow">
         <button class="pe-more" data-act="plan.more" id="peMoreBtn" aria-label="자세히"><svg class="icn"><use href="#i-chevr"></use></svg></button>
         ${pe.orig&&pe.orig.sid?'<button class="pe-ic pe-more-ic" data-act="plan.toTask" data-sid="'+esc(pe.orig.sid)+'" data-iid="'+esc(d.id)+'" aria-label="업무 목록에서 자세히 쓰기" title="업무 목록에서 자세히 쓰기"><svg class="icn"><use href="#i-tasks"></use></svg></button>':''}
@@ -2807,11 +2794,13 @@ const ACT={
   'plan.more':()=>{
     const box=$('#dpEdit');if(!box)return;
     box.classList.toggle('adv-on');},
-  /* 색 — 점 하나만 두고, 누르면 그리드 팝오버 */
-  'plan.color':()=>{
-    const old=$('#colPop');if(old){closeColPop();return;}
-    const btn=$('#peCols');if(!btn)return;
-    const cur=(S.planEdit&&S.planEdit.draft&&S.planEdit.draft.color)||'auto';
+  /* 색 원 — 누르면 팔레트 팝오버. 읽기 카드에서 열면 data-pid 로 그 업무에 바로 적용된다 */
+  'plan.color':btn=>{
+    const old=$('#colPop');
+    if(old){const same=old.parentElement===btn;closeColPop();if(same)return;}
+    COL_PID=btn.dataset.pid||null;
+    const cur=COL_PID?((findPlan(COL_PID)||{}).color||'auto')
+      :((S.planEdit&&S.planEdit.draft&&S.planEdit.draft.color)||'auto');
     const pop=document.createElement('div');
     pop.id='colPop';pop.className='col-pop';
     pop.innerHTML='<div class="col-pop-h">색 고르기</div>'
