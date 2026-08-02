@@ -3510,6 +3510,7 @@ document.addEventListener('change',e=>{
   if(e.target.id==='teamSelEl'){ACT['team.switch'](e.target);return;}
   if(e.target.closest('[data-act="pf.org"]')){ACT['pf.org']();return;}
   if(e.target.id==='tnRec'){const r=$('#tnUntilRow');if(r)r.style.display=e.target.value?'':'none';return;}
+  if(e.target.id==='tnKind'){tkKindRefresh();return;}   /* 구분에 따라 내용 칸 구성이 달라진다 */
   if(e.target.id==='peKind'){peKindRefresh();return;}
   const rl=e.target.closest('[data-act="acct.role"]');
   if(rl){ACT['acct.role'](rl);return;}
