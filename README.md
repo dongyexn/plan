@@ -112,8 +112,17 @@ index.html과 app.js를 한 파일로 합친다. 인라인 스크립트를 쓰�
 2. `widget` 폴더를 연다 → 주소창에 `cmd` 를 치고 Enter (그 폴더에서 명령창이 열린다).
 3. `npm install` 입력 후 Enter — 필요한 파일을 받는다(몇 분).
 4. `npm run dist` 입력 후 Enter — `widget/dist/HPlanWidget.exe` 가 만들어진다(약 80~100MB).
-   ⚠ 파일 이름이 `default.exe` 로 나오거나 크기가 150MB 를 넘으면 **옛 `package.json` 으로 만든 것**이다 —
-   `widget/dist` 폴더를 지우고 최신 파일로 다시 만든다(koffi 가 여러 OS 용 바이너리를 다 넣어 두 배가 된다).
+   ⚠ `dist/win-unpacked` 는 **중간 산출물**이다(폴더 전체가 있어야 도는 170MB 짜리). 배포용은 `dist` 바로 아래 파일 하나.
+   ⚠ 파일 이름이 `default.exe` 로 나오면 옛 `package.json` 으로 만든 것 — `widget/dist` 를 지우고 다시 만든다.
+
+   ⚠ **`Cannot create symbolic link` 오류로 멈추면** — electron-builder 가 받는 서명 도구 압축에
+   macOS 심볼릭 링크가 들어 있는데, 윈도우는 기본적으로 일반 사용자가 심볼릭 링크를 못 만든다.
+   둘 중 하나만 하면 된다(한 번만 하면 계속 유효하다).
+   - **개발자 모드 켜기**(권장): 설정 > 개인 정보 및 보안 > 개발자용 > **개발자 모드** 켬 → 명령창을 다시 열고 재실행
+   - **관리자 권한 명령창**: 시작 > `cmd` 검색 > 오른쪽 클릭 > 관리자 권한으로 실행 →
+     `d:` Enter → `cd "D:\...\widget"` Enter → `npm run dist`
+   그래도 막히면 서명·아이콘 삽입을 건너뛰는 `npm run dist:nosign` 을 쓴다
+   (동작은 같고 exe 아이콘만 Electron 기본 아이콘이 된다).
 5. 그 exe 를 **Releases** 에 올린다(아래 절차). 저장소(main)에 그냥 올리지 말 것 —
    **GitHub 는 50MB 부터 경고, 100MB 는 거부**하고, 한 번 올리면 기록에 영원히 남아 저장소가 무거워진다.
 6. 올라간 파일 이름에 **오른쪽 클릭 > 링크 주소 복사** → 앱 **설정 > 바탕화면 위젯 > 위젯 파일 주소** 에 붙여넣는다.

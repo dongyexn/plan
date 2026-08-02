@@ -6,7 +6,8 @@
   "scripts": {
     "start": "electron .",
     "dist": "electron-builder --win portable",
-    "dist:zip": "electron-builder --win zip"
+    "dist:zip": "electron-builder --win zip",
+    "dist:nosign": "electron-builder --win portable -c.win.signAndEditExecutable=false"
   },
   "devDependencies": {
     "electron": "^31.0.0",
@@ -44,5 +45,6 @@
   },
   "dependencies": {
     "koffi": "^2.8.0"
-  }
+  },
+  "author": "H서비스중부팀"
 }
