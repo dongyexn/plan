@@ -111,9 +111,22 @@ index.html과 app.js를 한 파일로 합친다. 인라인 스크립트를 쓰�
 1. Node.js 설치 — https://nodejs.org/ko/download 에서 **LTS** 를 받아 그대로 다음만 누른다.
 2. `widget` 폴더를 연다 → 주소창에 `cmd` 를 치고 Enter (그 폴더에서 명령창이 열린다).
 3. `npm install` 입력 후 Enter — 필요한 파일을 받는다(몇 분).
-4. `npm run dist` 입력 후 Enter — `widget/dist/업무일정위젯.exe` 가 만들어진다.
-5. 그 exe 를 GitHub 저장소 **Releases > Draft a new release** 에 올리고, 파일 주소를 복사한다.
-6. 앱 **설정 > 바탕화면 위젯 > 위젯 파일 주소** 에 붙여넣는다.
+4. `npm run dist` 입력 후 Enter — `widget/dist/HPlanWidget.exe` 가 만들어진다(약 80~100MB).
+   ⚠ 파일 이름이 `default.exe` 로 나오거나 크기가 150MB 를 넘으면 **옛 `package.json` 으로 만든 것**이다 —
+   `widget/dist` 폴더를 지우고 최신 파일로 다시 만든다(koffi 가 여러 OS 용 바이너리를 다 넣어 두 배가 된다).
+5. 그 exe 를 **Releases** 에 올린다(아래 절차). 저장소(main)에 그냥 올리지 말 것 —
+   **GitHub 는 50MB 부터 경고, 100MB 는 거부**하고, 한 번 올리면 기록에 영원히 남아 저장소가 무거워진다.
+6. 올라간 파일 이름에 **오른쪽 클릭 > 링크 주소 복사** → 앱 **설정 > 바탕화면 위젯 > 위젯 파일 주소** 에 붙여넣는다.
+   주소 모양은 `https://github.com/<계정>/<저장소>/releases/download/widget-v1/HPlanWidget.exe` 이다.
+   옆에 적힌 `sha256:…` 은 파일이 손상되지 않았는지 확인하는 검증값일 뿐 주소가 아니다.
+
+**Releases 에 올리는 법**
+1. 저장소 첫 화면 오른쪽 목록에서 **Releases** 클릭 (없으면 **Create a new release**).
+2. **Draft a new release** 버튼.
+3. **Choose a tag** → 칸에 `widget-v1` 입력 → 아래 뜨는 **Create new tag** 클릭.
+4. Release title 에 `위젯 v1` 정도로 적는다.
+5. 아래 **Attach binaries by dropping them here** 상자에 `HPlanWidget.exe` 를 끌어다 놓는다(업로드 완료까지 대기).
+6. **Publish release** 클릭.
 
 팀원은 **설정 > 내려받기 → 파일 두 번 클릭**이면 끝이다. 설치도, Node 도, 명령창도 없다.
 앱을 고쳤을 때는 exe 를 다시 만들 필요가 없다 — 위젯은 배포된 웹 주소를 불러오므로 새로고침만으로 반영된다.
