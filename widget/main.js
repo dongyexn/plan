@@ -79,12 +79,6 @@ function setAutoStart(on) {
 function isAutoStart() {
   try { return app.getLoginItemSettings().openAtLogin; } catch { return !!state.autoStart; }
 }
-/* 오늘 업무 패널을 띄운다 — 페이지에 열어 둔 훅을 부른다 */
-function openTodayPanel() {
-  if (!win) return;
-  win.show();
-  win.webContents.executeJavaScript('window.widToday && window.widToday()').catch(() => {});
-}
 
 function createWindow() {
   state = loadState();
@@ -113,6 +107,7 @@ function createWindow() {
   /* 예전 실행에서 자식 창으로 바뀐 상태가 남아 있을 수 있다 — 어떤 모드로 가든 먼저 원래 모양으로 되돌린다 */
   pin.unpin(win);
   applyMode(state.mode || 'below');   /* 기본 = 바탕화면 모드: 반투명 · 다른 창 아래 · 입력 가능 */
+  if (state.autoStart === undefined) setAutoStart(true);   /* 첫 실행이면 자동 실행을 켜 둔다 */
   /* 유리 모드로 열어야 벽지가 비친다 — 주소에 &glass=1 을 붙인다 */
   win.loadURL(APP_URL + (APP_URL.indexOf('glass=') < 0 ? '&glass=1' : ''));
 
@@ -157,14 +152,17 @@ function createWindow() {
 
 function toggleWindow() {
   if (!win) return createWindow();
-  if (win.isVisible()) win.hide(); else { win.show(); win.focus(); }
+  if (win.isVisible()) { win.hide(); return; }
+  /* 바탕화면 모드는 z-순서가 맨 아래라 그냥 show() 하면 다른 창에 가려 안 뜬 것처럼 보인다 —
+     일단 앞으로 꺼낸 뒤 모드를 다시 적용해 제자리로 돌려놓는다 */
+  win.show(); win.focus();
+  setTimeout(() => applyMode(state.mode || 'below'), 400);
 }
 
 function buildTray() {
   const icon = path.join(__dirname, 'tray.png');
   if (!tray) tray = new Tray(icon);
   const menu = Menu.buildFromTemplate([
-    { label: '오늘 업무 보기', click: openTodayPanel },
     { label: '위젯 보이기 / 숨기기', click: toggleWindow },
     { type: 'separator' },
     {
@@ -177,7 +175,7 @@ function buildTray() {
     },
     { type: 'separator' },
     { label: '새로고침', click: () => win && win.reload() },
-    { label: '브라우저에서 전체 화면 열기', click: () => shell.openExternal(APP_URL.replace('?w=1', '')) },
+    { label: '브라우저 앱 열기', click: () => shell.openExternal(APP_URL.replace('?w=1', '')) },
     { type: 'separator' },
     { label: '종료', click: () => { app.quit(); } }
   ]);
