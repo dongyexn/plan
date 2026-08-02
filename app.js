@@ -320,7 +320,7 @@ const S={
   tasks:{},          // {memberId:{itemId:{text,st,updatedAt}}}
   cfg:{},            // {defectUrl}
   tk:{t:null,m:null},       // 주요업무 현황 탭 선택(팀/권역/담당자)
-  filter:{own:'*',reg:'*',kind:'*',st:'*',site:'*'},  // 달력 필터: 담당자 · 권역 · 업무 구분 · 진행 상태 · 현장
+  filter:{kind:[],st:[],reg:[],own:[],site:[]},  // 달력 필터 — 모두 다중 선택(빈 배열이 '전체')
   foldOpen:{},       // 완료 항목 접힘 해제(subjectId별)
   tkNew:null,        // 인라인 작성창이 열린 대상
   tkEdit:null,       // 인라인 수정 중인 업무 'sid/iid'
@@ -329,7 +329,7 @@ const S={
   dayQ:'',           // 일자 패널 검색어
   dayScope:'day',    // 찾는 범위: day(이 날짜) · month(이 달) · all(전체)
   widPop:false,      // 위젯: 날짜를 눌렀을 때 뜨는 업무 팝업
-  tkF:{q:'',st:'',due:''},   // 주요업무 검색·필터
+  tkF:{q:'',st:[],kind:[],reg:[],site:[]},   // 업무 목록 검색·필터 — 모두 다중 선택
   orgTab:'acct',     // 조직/현장 관리 우측 탭 (acct | site)
   cmtRe:'',          // 답글 입력창을 연 코멘트 (sid/iid/cid)
   cmtNew:'',         // 코멘트 입력창을 연 업무 (sid/iid)
@@ -759,6 +759,7 @@ async function onAuth(user){
   if(role==='blocked'){showGateForm();fbMsg('이 계정은 접근이 차단되었습니다. 관리자에게 문의하세요.');return;}
   S.role=role;
   enterLive(user);
+  filtLoad();          /* 계정마다 저장해 둔 필터로 바꿔 읽는다 */
   hideCover();
 }
 function acctNick(){
@@ -905,6 +906,8 @@ function pfDetach(){
    프로필 미리보기(아바타)를 가리지 않는 게 목적. */
 function pfPlace(){
   const p=pfDetach(),mb=$('#mb');if(!p||!mb)return;
+  /* 위젯은 창이 좁아 가운데 모달 옆에 팝오버가 설 자리가 없다 — 열려 있는 동안만 모달을 왼쪽으로 비킨다 */
+  const mo=$('#mo');if(mo)mo.classList.add('pf-on');
   const m=mb.getBoundingClientRect();
   const w=p.offsetWidth||336,h=p.offsetHeight||372,gap=12;
   let left,top;
@@ -919,7 +922,7 @@ function pfPlace(){
   p.style.top=Math.round(top)+'px';
 }
 window.addEventListener('resize',()=>{const p=$('#pfPop');if(p&&p.classList.contains('open'))pfPlace();});
-function pfDrop(){const p=document.getElementById('pfPop');if(p&&p.parentElement===document.body)p.remove();}
+function pfDrop(){const p=document.getElementById('pfPop');if(p&&p.parentElement===document.body)p.remove();pfClosed();}
 function renderAcctModal(tab){
   const u=S.user;if(!u)return;
   pfDrop();
@@ -1250,7 +1253,7 @@ function visibleRange(){
   const a=CAL.view.activeStart,b=new Date(CAL.view.activeEnd);b.setDate(b.getDate()-1);
   return[dstr(a),dstr(b)];
 }
-function regSel(){const r=S.filter.reg;return Array.isArray(r)?r:(r&&r!=='*'?[r]:[]);}
+function regSel(){const r=S.filter.reg;return Array.isArray(r)?r.map(String):(r&&r!=='*'?[String(r)]:[]);}
 /* 모든 업무를 한 곳(tasks)에서 읽는다 — 날짜가 있으면 달력에, 기한이 있으면 기한 배지로 */
 function allTasks(){
   const out=[];
@@ -1413,7 +1416,7 @@ function selDate(ds,quiet){
   if(S.selEnd&&S.selEnd<=ds)S.selEnd='';
   /* 위젯: 첫 클릭은 날짜 선택까지만, **같은 칸을 한 번 더** 눌러야 업무 팝업이 뜬다.
      quiet 는 '이동만'(오늘·연월 이동·업무 바 클릭 뒤 별도 처리) */
-  if(WIDGET)S.widPop=quiet?false:(same&&!S.widPop);   /* 같은 칸: 안 떠 있으면 열고, 떠 있으면 닫는다 */
+  if(WIDGET){if(!same)S.planOpen='';S.widPop=quiet?false:(same&&!S.widPop);}   /* 같은 칸: 안 떠 있으면 열고, 떠 있으면 닫는다 */
   setTimeout(rWidget,0);
   if(CAL&&ymOf(ds)!==CAL.view.currentStart.getFullYear()+'-'+pad(CAL.view.currentStart.getMonth()+1))CAL.gotoDate(ds);
   markSel();
@@ -1421,7 +1424,9 @@ function selDate(ds,quiet){
   /* 편집기가 열려 있을 때 — 새 업무면 날짜가 따라가고, 기존 업무를 고치는 중이면 폼을 닫는다.
      (다른 날을 눌렀는데 그 날 목록 위에 남의 날 업무 폼이 계속 떠 있으면 혼란스럽다) */
   if(S.planEdit&&$('#dpEdit')){
-    if(S.planEdit.orig){closePlanEdit();rDayHead();rDay();setTimeout(rWidget,0);return;}
+    /* 다른 날로 옮기면 열려 있던 폼은 닫는다. closePlanEdit 이 제목이 있을 때만 저장하므로
+       빈 폼은 그대로 버려지고, 새 날짜의 팝업이 수정 상태로 열리는 일도 없다 */
+    if(S.planEdit.orig||!same){closePlanEdit();S.planOpen='';rDayHead();rDay();setTimeout(rWidget,0);return;}
     rDayHead();
     /* ⚠ 이미 있는 업무를 고치는 중이라면 날짜를 따라가지 않는다 —
        달력을 둘러보려고 다른 날을 눌렀을 뿐인데 업무가 그 날로 옮겨져 버렸다(실사용 지적).
@@ -1474,17 +1479,18 @@ function taskOwnOk(sid,it){
     const isTeam=(S.org.teams||[]).some(t=>t.id===sid);
     if(!isTeam&&!who.some(o=>ids.includes(o)))return false;
   }
-  const f=S.filter.own;
-  if(!f||f==='*')return true;
-  return who.includes(f);
+  const own=(S.filter.own||[]).map(String);
+  if(!own.length)return true;
+  return who.some(o=>own.includes(String(o)));
 }
 /* 화면 필터 단일 관문 — 달력(buildEvents)·일자 패널(dayPlans)이 함께 거친다 */
 function taskFilterOk(sid,it){
   if(!taskOwnOk(sid,it))return false;
   const f=S.filter;
-  if(f.kind&&f.kind!=='*'&&kindOf(it.kind)!==(f.kind==='_gen'?'':f.kind))return false;
-  if(f.st&&f.st!=='*'&&String(stOf(it.st))!==String(f.st))return false;
-  if(f.site&&f.site!=='*'&&String(it.site||'')!==f.site)return false;
+  const K=(f.kind||[]).map(String),ST=(f.st||[]).map(String),SI=(f.site||[]).map(String);
+  if(K.length&&!K.includes(kindOf(it.kind)||'_gen'))return false;
+  if(ST.length&&!ST.includes(String(stOf(it.st))))return false;
+  if(SI.length&&!SI.includes(String(it.site||'')))return false;
   return true;
 }
 function rDayHead(){
@@ -1646,6 +1652,7 @@ function colOutside(e){
   if(pop.contains(e.target)||e.target.closest('.p-col'))return;
   closeColPop();
 }
+function pfClosed(){const mo=$('#mo');if(mo)mo.classList.remove('pf-on');}
 function closeColPop(){
   const pop=$('#colPop');if(pop)pop.remove();
   document.removeEventListener('click',colOutside,true);
@@ -1922,16 +1929,13 @@ function taskDetailHTML(sid,iid,it){
     </div>`:''}
     <div class="tk-thread">
       ${threadHTML(cs,sid,iid)}
-      ${S.cmtNew!==sid+'/'+iid?`<button class="th-open" data-act="tk.cmtOpen" data-sid="${esc(sid)}" data-iid="${esc(iid)}">
-        <svg class="icn"><use href="#i-cmt"></use></svg> 진행 상황을 남기세요 · @이름으로 부르기
-      </button>`:`
-      <div class="th-new">
+      ${`
+      <div class="th-new th-always">
         <div class="th-av me av-cus" style="--avc:${esc((S.user&&(avOf(S.user.uid).color||ownColor(S.user.uid)))||'var(--b600)')}">
           ${S.user?avInner(avOf(S.user.uid).icon):'나'}</div>
         <div class="th-b">
           <textarea class="th-in" data-sid="${esc(sid)}" data-iid="${esc(iid)}" rows="1" placeholder="진행 상황을 남기세요 · @이름으로 부르기"></textarea>
           <div class="th-f">
-            <button class="btn bg2 bxs" data-act="tk.cmtCancel">취소</button>
             <button class="btn bp bxs" data-act="tk.cmtSend" data-sid="${esc(sid)}" data-iid="${esc(iid)}">남기기</button>
           </div>
         </div>
@@ -2222,23 +2226,47 @@ const KIND_DEF='gather';
 function kindOf(v){return TK_KIND.some(k=>k[0]===v)?v:'';}
 function kindLabel(v){const k=TK_KIND.find(x=>x[0]===kindOf(v));return k?k[1]:'일반';}
 function kindSplit(v){return kindOf(v)==='';}   /* 일반이면 두 칸으로 나눈다 */
-const TK_DUE=[['','날짜 전체'],['over','지난 날짜'],['soon','7일 내'],['none','날짜 없음']];
+/* 필터는 매번 다시 고르기 번거롭다 — 계정별로 이 브라우저에 저장해 다음에 그대로 연다 */
+function filtKey(){return 'calapp.filt.'+((S.user&&S.user.uid)||'local');}
+function filtSave(){
+  try{localStorage.setItem(filtKey(),JSON.stringify({filter:S.filter,dayScope:S.dayScope,tkF:S.tkF}));}
+  catch(e){/* 저장 실패는 무시 */}
+}
+function filtLoad(){
+  try{
+    const v=JSON.parse(localStorage.getItem(filtKey())||'null');if(!v)return;
+    if(v.filter)S.filter={...S.filter,...v.filter};
+    if(v.dayScope)S.dayScope=v.dayScope;
+    if(v.tkF)S.tkF={...S.tkF,...v.tkF};
+  }catch(e){/* 깨진 값은 무시 */}
+}
 function tkFilterHTML(){
   const f=S.tkF||{};
-  const on=!!(String(f.q||'').trim()||f.st||f.due);
-  return `<div class="tkf-bar${on?' on':''}">
-    <div class="tkf-srch">
-      <svg class="icn tkf-srch-i" aria-hidden="true"><use href="#i-search"></use></svg>
-      <input class="inp inp-sm" id="tkQ" placeholder="업무 · 경과 · 계획 · 현장 · 담당자 검색" value="${esc(f.q||'')}" autocomplete="off">
-      ${String(f.q||'').trim()?'<button class="tkf-srch-x" data-act="tkf.qclear" aria-label="지우기"><svg class="icn"><use href="#i-close"></use></svg></button>':''}
+  const on=!!(String(f.q||'').trim()||(f.st||[]).length||(f.kind||[]).length||(f.reg||[]).length||(f.site||[]).length);
+  const regs=(S.org.regions||[]).filter(r=>r.name);
+  let sites=(S.org.sites||[]).filter(x=>x.name);
+  if((f.reg||[]).length)sites=sites.filter(x=>(f.reg||[]).includes(x.region));
+  const M=(g,all,items)=>mselHTML('tk',g,all,items,f[g]);
+  return `<div class="dp-fcard tkf-card${on?' adv-on':''}" id="tkFcard">
+    <div class="dp-frow">
+      <div class="dp-srch">
+        <svg class="icn dp-srch-i" aria-hidden="true"><use href="#i-search"></use></svg>
+        <input class="inp inp-sm" id="tkQ" placeholder="찾기" value="${esc(f.q||'')}" autocomplete="off">
+        ${String(f.q||'').trim()?'<button class="dp-srch-x" data-act="tkf.qclear" aria-label="지우기"><svg class="icn"><use href="#i-close"></use></svg></button>':''}
+      </div>
+      ${on?'<button class="btn bg2 bxs" data-act="tkf.reset">초기화</button>':''}
+      <button class="dp-fmore" data-act="tkf.more" aria-label="필터 펼치기" title="필터"><svg class="icn"><use href="#i-chevr"></use></svg></button>
     </div>
-    <select class="inp inp-sm tkf-sel" id="tkFst" data-act="tkf.set" aria-label="상태">
-      ${TK_ST.map(([v,l])=>'<option value="'+v+'"'+(v===(f.st||'')?' selected':'')+'>'+l+'</option>').join('')}
-    </select>
-    <select class="inp inp-sm tkf-sel" id="tkFdue" data-act="tkf.set" aria-label="기한">
-      ${TK_DUE.map(([v,l])=>'<option value="'+v+'"'+(v===(f.due||'')?' selected':'')+'>'+l+'</option>').join('')}
-    </select>
-    ${on?'<button class="btn bg2 bxs tkf-reset" data-act="tkf.reset">초기화</button>':''}
+    <div class="dp-fadv">
+      <div class="dp-frow">
+        ${M('kind','업무 구분 전체',TK_KIND.map(k=>[k[0]||'_gen',k[1]]))}
+        ${M('st','진행 상태 전체',ST_LBL.map((l,i)=>[String(i),l]))}
+      </div>
+      <div class="dp-frow">
+        ${M('reg','권역 전체',regs.map(r=>[r.id,r.name]))}
+        ${M('site','현장 전체',sites.map(x=>[x.id,x.name]))}
+      </div>
+    </div>
   </div>`;
 }
 function tkMatch(sid,iid,it){
@@ -2250,17 +2278,16 @@ function tkMatch(sid,iid,it){
       Object.values(it.comments||{}).map(c=>c&&c.text).join(' ')].join(' ').toLowerCase();
     if(hay.indexOf(q)<0)return false;
   }
-  if(f.st!==''&&f.st!==undefined&&f.st!==null){
-    if(String(stOf(it.st))!==String(f.st))return false;
-  }
-  if(f.due){
-    const d=it.date||'';
-    if(f.due==='none'&&d)return false;
-    if(f.due==='over'&&(!d||d>=todayStr()))return false;
-    if(f.due==='soon'){
-      if(!d)return false;
-      const n=daysBetween(todayStr(),d);
-      if(n<0||n>7)return false;
+  const ST=(f.st||[]).map(String),K=(f.kind||[]).map(String),SI=(f.site||[]).map(String),RG=(f.reg||[]).map(String);
+  if(ST.length&&!ST.includes(String(stOf(it.st))))return false;
+  if(K.length&&!K.includes(kindOf(it.kind)||'_gen'))return false;
+  if(SI.length&&!SI.includes(String(it.site||'')))return false;
+  /* 권역 — 그 업무의 대상(담당자)이 속한 권역으로 거른다. 팀 공통 업무는 권역이 없으므로 항상 남긴다 */
+  if(RG.length){
+    const isTeam=(S.org.teams||[]).some(t=>t.id===sid);
+    if(!isTeam){
+      const p=roster().find(x=>x.id===sid);
+      if(!p||!RG.includes(String(p.region||'')))return false;
     }
   }
   return true;
@@ -2960,7 +2987,7 @@ const ACT={
       if(!PF_MORE)pfRenderEmg(recentEmoji().length?'recent':'smiley','');
       pfPlace();
     }},
-  'pf.close':()=>{const p=$('#pfPop');if(p)p.classList.remove('open');},
+  'pf.close':()=>{const p=$('#pfPop');if(p)p.classList.remove('open');pfClosed();},
   'pf.cat':el=>{
     $$('#pfCats .pf-cat').forEach(x=>x.classList.toggle('act',x===el));
     const q=$('#pfSrch');if(q)q.value='';
@@ -2978,8 +3005,9 @@ const ACT={
   'modal.close':closeModal,
   'modal.stop':()=>{},
   'modal.ok':()=>{if(MODAL_CB&&MODAL_CB.ok)MODAL_CB.ok();},
-  'tkf.qclear':()=>{S.tkF={...S.tkF,q:''};rTasks();},
-  'tkf.reset':()=>{S.tkF={q:'',st:'',due:''};rTasks();},
+  'tkf.qclear':()=>{S.tkF={...S.tkF,q:''};filtSave();rTasks();},
+  'tkf.more':()=>{const c=$('#tkFcard');if(c)c.classList.toggle('adv-on');},
+  'tkf.reset':()=>{S.tkF={q:'',st:[],kind:[],reg:[],site:[]};filtSave();rTasks();},
   'tk.newOpen':el=>{S.tkEdit=null;S.tkNew=el.dataset.sid;rTasks();},
   'tk.formCancel':()=>{S.tkNew=null;S.tkEdit=null;rTasks();},
   'tk.kind':()=>tkKindRefresh(),
@@ -3221,6 +3249,13 @@ const ACT={
   },
   'day.qclear':()=>{const i=$('#dpQ');if(i){i.value='';}S.dayQ='';dpSrchMark();rDay();},
   'day.fmore':()=>{const c=$('#dpFcard');if(c)c.classList.toggle('adv-on');},
+  'filt.msel':el=>{const m=el.closest('.msel'),was=m.classList.contains('open');mselClose();if(!was)m.classList.add('open');},
+  'filt.mopt':el=>{
+    const m=el.closest('.msel'),g=m.dataset.g,st=mselStore(m);
+    const cur=(st[g]||[]).map(String),i=cur.indexOf(el.dataset.v);
+    if(i<0)cur.push(el.dataset.v);else cur.splice(i,1);
+    st[g]=cur;mselApply(m);},
+  'filt.mall':el=>{const m=el.closest('.msel');mselStore(m)[m.dataset.g]=[];mselApply(m);},
   /* 펼친 카드 안의 링크 — 클릭이 위임을 타고 올라가 '펼침'을 도로 접지 않게 여기서 멈춘다(이동은 a 기본 동작) */
   'lnk.open':()=>{},
   'cal.pick':()=>openYMPick(),
@@ -3250,61 +3285,58 @@ const ACT={
 };
 /* 필터 = 업무 구분 · 진행 상태 · 권역 · 담당자 · 현장.
    팀 - 권역 - 담당자 - 현장 계층이라 위 단계를 고르면 아래 목록이 함께 좁혀진다. */
+/* 다중 선택 선택창 — 생김새는 기존 select 와 같고, 누르면 체크 목록이 열린다.
+   값은 배열이며 빈 배열이 곧 '전체'. scope 는 'cal'(업무 일정) 또는 'tk'(업무 목록) */
+function mselHTML(scope,g,all,items,sel){
+  const on=(sel||[]).map(String);
+  const names=items.filter(([v])=>on.includes(String(v))).map(([,l])=>l);
+  const label=!names.length?all:(names.length===1?names[0]:names[0]+' 외 '+(names.length-1));
+  return '<div class="msel'+(on.length?' on':'')+'" data-g="'+g+'" data-scope="'+scope+'">'
+    +'<button class="msel-b" data-act="filt.msel" title="'+esc(names.join(', ')||all)+'">'
+      +'<span>'+esc(label)+'</span><svg class="icn msel-c"><use href="#i-chevr"></use></svg></button>'
+    +'<div class="msel-pop">'
+      +'<button class="msel-all" data-act="filt.mall">전체</button>'
+      +items.map(([v,l])=>'<button class="msel-o'+(on.includes(String(v))?' on':'')+'" data-act="filt.mopt" data-v="'+esc(v)+'">'
+        +'<span class="msel-k"><svg class="icn"><use href="#i-check"></use></svg></span>'+esc(l)+'</button>').join('')
+    +'</div></div>';
+}
+function mselStore(el){return el.dataset.scope==='tk'?(S.tkF=S.tkF||{}):(S.filter=S.filter||{});}
+function mselApply(el){
+  if(el.dataset.scope==='tk'){filtSave();rTasks();}
+  else{filtSave();rFilter();refetchCal();rDay();rWidget();}
+}
+function mselClose(){document.querySelectorAll('.msel.open').forEach(x=>x.classList.remove('open'));}
 function rFilter(){
+  const box=$('#dpFadv');if(!box)return;
   const list=roster(),me=S.user?list.find(p=>p.id===(S.user.uid||'')):null;
   const regs=(S.org.regions||[]).filter(r=>r.name);
-  const kf=$('#kindFilter');
-  if(kf){
-    if(!S.filter.kind)S.filter.kind='*';
-    kf.innerHTML='<option value="*">업무 구분 전체</option>'
-      +TK_KIND.map(k=>'<option value="'+(k[0]||'_gen')+'">'+esc(k[1])+'</option>').join('');
-    kf.value=[...kf.options].some(o=>o.value===S.filter.kind)?S.filter.kind:'*';
-    S.filter.kind=kf.value;
-  }
-  const sf=$('#stFilter');
-  if(sf){
-    if(!S.filter.st)S.filter.st='*';
-    sf.innerHTML='<option value="*">진행 상태 전체</option>'
-      +ST_LBL.map((l,i)=>'<option value="'+i+'">'+esc(l)+'</option>').join('');
-    sf.value=[...sf.options].some(o=>o.value===String(S.filter.st))?String(S.filter.st):'*';
-    S.filter.st=sf.value;
-  }
-  const rf=$('#regFilter');
-  if(rf){
-    /* 없어진 권역은 걸러낸다 — select 는 단일 선택 */
-    const keep=regSel().filter(id=>regs.some(r=>r.id===id));
-    S.filter.reg=keep.length?[keep[0]]:'*';
-    const cur=regSel()[0]||'*';
-    rf.innerHTML='<option value="*">권역 전체</option>'
-      +regs.map(r=>'<option value="'+esc(r.id)+'"'+(r.id===cur?' selected':'')+'>'+esc(r.name)+'</option>').join('');
-    rf.value=cur;
-  }
-  const rs=regSel();
-  const inReg=rs.length?list.filter(p=>rs.includes(p.region)):list;
-  const sel=$('#ownFilter');
-  if(sel){
-    if(S.filter.own!=='*'&&!inReg.some(p=>p.id===S.filter.own))S.filter.own='*';
-    /* '내 업무'를 따로 두면 목록의 내 이름과 겹친다 — 이름 뒤에 (나) 만 붙인다 */
-    sel.innerHTML='<option value="*">담당자 전체</option>'
-      +inReg.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.name)+(me&&p.id===me.id?' (나)':'')+'</option>').join('');
-    sel.value=[...sel.options].some(o=>o.value===S.filter.own)?S.filter.own:'*';
-    S.filter.own=sel.value;
-  }
-  const stf=$('#siteFilter');if(!stf)return;
+  const f=S.filter;
+  /* 값은 모두 배열 — 빈 배열이 '전체'다. 없어진 항목은 걸러 낸다 */
+  const keep=(arr,ids)=>(arr||[]).map(String).filter(v=>ids.includes(v));
+  f.reg=keep(f.reg,regs.map(r=>r.id));
+  /* 권역을 고르면 담당자·현장 목록이 그만큼 좁아진다 */
+  const inReg=f.reg.length?list.filter(p=>f.reg.includes(p.region)):list;
+  f.own=keep(f.own,inReg.map(p=>p.id));
   let sites=(S.org.sites||[]).filter(x=>x.name);
-  if(rs.length)sites=sites.filter(x=>rs.includes(x.region));
-  if(S.filter.own!=='*'){
-    /* 담당자에게 배정된 현장이 하나도 없으면 좁히지 않는다 — 목록이 빈 채로 잠기는 것을 막는다 */
-    const my=list.find(p=>p.id===S.filter.own);
-    const ids=my?Object.keys(my.sites||{}).filter(k=>(my.sites||{})[k]):[];
+  if(f.reg.length)sites=sites.filter(x=>f.reg.includes(x.region));
+  if(f.own.length){
+    /* 고른 담당자에게 배정된 현장이 하나도 없으면 좁히지 않는다 — 목록이 빈 채로 잠기는 것을 막는다 */
+    const ids=[];
+    f.own.forEach(id=>{const p=list.find(x=>x.id===id);if(p)Object.keys(p.sites||{}).filter(k=>(p.sites||{})[k]).forEach(k=>ids.push(k));});
     if(ids.length)sites=sites.filter(x=>ids.includes(x.id));
   }
-  if(!S.filter.site)S.filter.site='*';
-  if(S.filter.site!=='*'&&!sites.some(x=>x.id===S.filter.site))S.filter.site='*';
-  stf.innerHTML='<option value="*">현장 전체</option>'
-    +sites.map(x=>'<option value="'+esc(x.id)+'">'+esc(x.name)+'</option>').join('');
-  stf.value=[...stf.options].some(o=>o.value===S.filter.site)?S.filter.site:'*';
-  S.filter.site=stf.value;
+  f.site=keep(f.site,sites.map(x=>x.id));
+  const M=(g,all,items)=>mselHTML('cal',g,all,items,f[g]);
+  box.innerHTML=
+    '<div class="dp-frow">'
+      +M('kind','업무 구분 전체',TK_KIND.map(k=>[k[0]||'_gen',k[1]]))
+      +M('st','진행 상태 전체',ST_LBL.map((l,i)=>[String(i),l]))
+    +'</div><div class="dp-frow">'
+      +M('reg','권역 전체',regs.map(r=>[r.id,r.name]))
+      +M('own','담당자 전체',inReg.map(p=>[p.id,p.name+(me&&p.id===me.id?' (나)':'')]))
+    +'</div><div class="dp-frow">'
+      +M('site','현장 전체',sites.map(x=>[x.id,x.name]))
+    +'</div>';
 }
 function confirmModal(title,msg,cb,okLabel,danger){
   openModal(title,'<div style="font-size:13px;color:var(--lbl2);line-height:1.6">'+esc(msg)+'</div>',
@@ -3313,6 +3345,8 @@ function confirmModal(title,msg,cb,okLabel,danger){
   MODAL_CB={type:'confirm',ok:()=>{cb();closeModal();}};
 }
 document.addEventListener('click',e=>{
+  /* 다중 선택 목록은 바깥을 누르면 닫는다 */
+  if(!e.target.closest('.msel'))mselClose();
   /* 위젯 업무 팝업 — 달력 칸이나 팝업 자신이 아닌 곳을 누르면 닫는다 */
   if(WIDGET&&S.widPop&&!e.target.closest('#widPop')&&!e.target.closest('#fcal td.fc-daygrid-day')){
     S.widPop=false;rWidget();
@@ -3371,16 +3405,9 @@ document.addEventListener('change',e=>{
   if(e.target.id==='teamSelEl'){ACT['team.switch'](e.target);return;}
   if(e.target.closest('[data-act="pf.org"]')){ACT['pf.org']();return;}
   if(e.target.id==='tnKind'){tkKindRefresh();return;}
-  if(e.target.id==='tkFst'||e.target.id==='tkFdue'){
-    S.tkF={...S.tkF,[e.target.id==='tkFst'?'st':'due']:e.target.value};rTasks();return;}
   const rl=e.target.closest('[data-act="acct.role"]');
   if(rl){ACT['acct.role'](rl);return;}
-  if(e.target.id==='regFilter'){const v=e.target.value;S.filter.reg=v==='*'?'*':[v];rFilter();refetchCal();rDay();rWidget();return;}
-  if(e.target.id==='ownFilter'){S.filter.own=e.target.value;rFilter();refetchCal();rDay();rWidget();return;}
-  if(e.target.id==='dpScope'){S.dayScope=e.target.value;rDay();return;}
-  if(e.target.id==='kindFilter'||e.target.id==='stFilter'||e.target.id==='siteFilter'){
-    S.filter[e.target.id==='kindFilter'?'kind':e.target.id==='stFilter'?'st':'site']=e.target.value;
-    refetchCal();rDay();rWidget();return;}
+  if(e.target.id==='dpScope'){S.dayScope=e.target.value;filtSave();rDay();return;}
   const ren=e.target.closest('[data-act="org.ren"]');
   if(ren){
     const k=ren.dataset.kind;
@@ -3438,7 +3465,11 @@ document.addEventListener('click',e=>{
   if(b){const c=widCfgLoad();c.fz=b.dataset.fz;widCfgSave(c);widApply();}
 });
 document.addEventListener('input',e=>{
-  if(e.target.id==='dpQ'){S.dayQ=e.target.value;dpSrchMark();rDay();return;}
+  if(e.target.id==='dpQ'){
+    S.dayQ=e.target.value;dpSrchMark();
+    /* 위젯은 결과가 업무 팝업 안에 그려진다 — 글자를 치면 팝업을 열어 준다 */
+    if(WIDGET&&String(e.target.value||'').trim()){S.widPop=true;rWidget();}
+    rDay();return;}
   if(e.target.id==='tkQ'){
     S.tkF={...S.tkF,q:e.target.value};
     clearTimeout(tkQT);tkQT=setTimeout(tkRefresh,160);   /* 전체 렌더는 포커스를 날린다 */
@@ -3536,7 +3567,7 @@ function widApply(){
   const c=widCfgLoad();
   /* 진하기 — FullCalendar 셀에서 var() 상속이 갱신되지 않는 엔진 특이 동작이 있어
      변수 대신 리터럴 규칙을 스타일 태그로 주입한다 */
-  const a=Number.isFinite(Number(c.a))?Number(c.a)/100:.55;
+  const a=Number.isFinite(Number(c.a))?Number(c.a)/100:.85;   /* 기본 85% */
   let dyn=document.getElementById('wgDyn');
   if(!dyn){dyn=document.createElement('style');dyn.id='wgDyn';document.head.appendChild(dyn);}
   const f=n=>Math.min(1,Math.max(0,n)).toFixed(3);
@@ -3571,6 +3602,8 @@ function widMove(on){
    패널을 새로 만들지 않고 **일자 패널(.day-panel) 자체를 팝업 안으로 옮겨** 쓴다.
    그래야 카드·수정 아이콘·편집 폼·자동 저장이 앱과 완전히 같게 동작한다. */
 function widMount(){
+  const slot=$('#widFilterSlot'),fc=$('#dpFcard');
+  if(slot&&fc&&!slot.contains(fc))slot.appendChild(fc);   /* 검색창·필터를 헤더 줄로 옮긴다 */
   const pop=$('#widPop'),panel=document.querySelector('.day-panel');
   if(!pop||!panel||pop.contains(panel))return;
   pop.innerHTML='<div class="wp-h"><span class="wp-d" id="wpDate"></span><span class="wp-w" id="wpDow"></span>'
@@ -3592,12 +3625,6 @@ function rWidget(){
   /* 폼이 열리고 닫힐 때마다 팝업 높이가 달라진다 — 내용이 바뀌면 자리를 다시 잡는다 */
   if(!box.dataset.ro&&window.ResizeObserver){box.dataset.ro='1';new ResizeObserver(widPlace).observe(box);}
 }
-/* Electron 트레이의 '오늘 업무 보기' 가 부르는 훅 — 오늘로 옮기고 업무 패널을 띄운다 */
-window.widToday=function(){
-  if(!WIDGET)return;
-  selDate(todayStr(),true);
-  S.widPop=true;rWidget();
-};
 /* 누른 칸 옆에 붙이되 창 밖으로 나가지 않게 한다 — 위젯은 창이 곧 화면이라 넘치면 잘려서 못 본다 */
 function widPlace(){
   const box=$('#widPop');if(!box||!box.classList.contains('on'))return;
@@ -3621,6 +3648,7 @@ function rAll(){rDay();rTasks();rOrg();rCfg();rFilter();rMention();rMine();rTeam
   if(WIDGET)document.body.classList.add('wid');
   if(WIDGET&&GLASS)document.body.classList.add('glass');
   if(WIDGET)widApply();
+  filtLoad();          /* 지난번에 고른 필터를 되살린다(계정별·이 브라우저) */
   LocalStore.init();
   calInit();
   bindCalResize();
