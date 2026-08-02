@@ -198,7 +198,7 @@ html.dark #fcal .fc-scrollgrid{box-shadow:0 0 0 1px rgba(255,255,255,.14);}
    행 높이 반올림 잔여만큼 하단에 띠로 노출된다 */
 
 
-#fcal .fc-col-header-cell{background:#D3D9E2;padding:9px 0;background-clip:padding-box;border-left:2px solid transparent;border-right:0;}
+#fcal .fc-col-header-cell{background:#C4CCDA;padding:9px 0;background-clip:padding-box;border-left:2px solid transparent;border-right:0;}
 #fcal .fc-col-header-cell:first-child{border-left:0;}
 html.dark #fcal .fc-col-header-cell{background:#424245;border-left-color:#0F0F10;}
 /* 주간 헤더 — 공휴일 줄이 항상 자리를 차지해 높이가 변하지 않는다 */
@@ -254,11 +254,14 @@ html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-other{background-
    ::after 를 셀 padding-box 밖 2px(격자 간극)까지 늘려 칸 사이에서 선이 끊기지 않게 하고,
    좌·우 변은 그 행 구간의 시작(sel-s)·끝(sel-e)에만 그린다. */
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day.sel-day .fc-daygrid-day-frame::after{content:'';display:block;position:absolute;z-index:4;pointer-events:none;
-  top:-2px;right:-2px;bottom:-2px;left:-2px;border-top:2px solid var(--b500);border-bottom:2px solid var(--b500);}
+  top:-2px;right:-2px;bottom:-2px;left:-2px;border:0 solid var(--b500);}
+/* 위·아래 변은 같은 요일의 이웃 주가 선택되지 않았을 때만 — 여러 주에 걸친 기간이 하나의 계단형 도형이 된다 */
+#fcal .fc-dayGridMonth-view td.fc-daygrid-day.sel-day.sel-t .fc-daygrid-day-frame::after{border-top-width:2px;}
+#fcal .fc-dayGridMonth-view td.fc-daygrid-day.sel-day.sel-b .fc-daygrid-day-frame::after{border-bottom-width:2px;}
 /* display:block 은 필수 — FullCalendar 가 .fc-daygrid-day-frame::after 를 clearfix(display:table)로 쓰고 있어,
    그대로 두면 shrink-to-fit 되어 2×4px 짜리 점만 그려진다 */
-#fcal .fc-dayGridMonth-view td.fc-daygrid-day.sel-day.sel-s .fc-daygrid-day-frame::after{border-left:2px solid var(--b500);}
-#fcal .fc-dayGridMonth-view td.fc-daygrid-day.sel-day.sel-e .fc-daygrid-day-frame::after{border-right:2px solid var(--b500);}
+#fcal .fc-dayGridMonth-view td.fc-daygrid-day.sel-day.sel-l .fc-daygrid-day-frame::after{border-left:2px solid var(--b500);}
+#fcal .fc-dayGridMonth-view td.fc-daygrid-day.sel-day.sel-r .fc-daygrid-day-frame::after{border-right:2px solid var(--b500);}
 /* 표 가장자리 칸은 바깥에 격자 간극이 없다 — 밖으로 나간 변이 scrollgrid 의 overflow 에 잘리므로 되돌린다 */
 #fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table tr:first-child td.sel-day .fc-daygrid-day-frame::after{top:0;}
 #fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table tr:last-child td.sel-day .fc-daygrid-day-frame::after{bottom:0;}
@@ -316,16 +319,16 @@ html.dark #fcal .dhol.dtoday{color:var(--b300);}
 /* ── 일자 패널의 업무 폼(읽기 상태) — 편집 폼(.dp-edit)과 같은 골격 ──
    [1.5 테두리][8 패딩][26 상태 아이콘][9][제목 …][아이콘 26·간격 2][8 패딩]
    두 상태의 제목 x·아이콘 좌표가 같아야 수정 버튼을 눌러도 화면이 튀지 않는다. 값을 바꿀 땐 .pe-bar 도 함께. */
-#dpList .plan{display:block;padding:8px;border-width:1.5px;}
+#dpList .plan{display:block;padding:8px;border-width:2px;}
 .plan-hd{display:flex;align-items:center;gap:9px;min-width:0;}
-#dpList .plan-main{padding-left:35px;margin-top:2px;}   /* 35 = 상태 아이콘 26 + 간격 9 */
+/* 2행 들여쓰기 = 상태 배지 폭 + 간격 9 (스크립트가 --pst-w 로 실측값을 넣는다) */
+#dpList .plan-main{padding-left:calc(var(--pst-w,45px) + 9px);margin-top:3px;}
 /* 업무 색은 카드 아웃라인으로 — 색 점(.plan-c/.pe-c)은 폐기 */
-.p-st{flex:0 0 auto;width:26px;height:26px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:var(--lbl3);}
-.p-st .icn,.pe-st .icn{width:16px;height:16px;}
-.p-st.s1,.pe-st.s1{color:var(--bt1);}
-.p-st.s2,.pe-st.s2{color:var(--gn);}
-.p-st.s3,.pe-st.s3{color:var(--am);}
-.plan.done .p-st{opacity:.55;}
+/* 상태 배지 — 업무 목록의 .tk-st 와 같은 규격(22px·12px)을 쓴다. 색 변형은 .tk-st.s0~3 재사용 */
+.plan-hd .tk-st,.pe-bar .tk-st{height:22px;flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;
+  padding:0 9px;border-radius:var(--rp);font-size:12px;font-weight:700;white-space:nowrap;
+  border:1px solid transparent;box-sizing:border-box;}
+.plan.done .plan-hd .tk-st{opacity:.6;}
 .plan-main{flex:1;min-width:0;cursor:pointer;}
 .plan-t{font-size:13.5px;font-weight:700;color:var(--lbl);word-break:break-all;}
 .plan-hd .plan-t{flex:1;min-width:0;cursor:pointer;}
@@ -344,10 +347,11 @@ html.dark #fcal .dhol.dtoday{color:var(--b300);}
 .p-ico:hover{background:var(--fill);color:var(--bt1);}
 .p-ico.on{color:var(--am);}
 .p-ico .icn{width:14px;height:14px;}
-/* 수정 버튼은 평소 숨김 — 자리는 남겨 둔다(폭을 줄이면 옆 아이콘이 밀렸다 돌아와 위치가 튄다) */
-#dpList .plan .p-edit{opacity:0;pointer-events:none;transition:opacity var(--tr);}
-#dpList .plan:hover .p-edit,#dpList .plan:focus-within .p-edit{opacity:1;pointer-events:auto;}
-@media(hover:none){#dpList .plan .p-edit{opacity:1;pointer-events:auto;}}
+/* 수정 버튼 — 조직관리(.tm-del)와 같은 방식: 평소 폭 0 으로 접고 마우스를 올리면 펼친다 */
+#dpList .plan .p-edit{width:0;min-width:0;padding:0;margin-left:-2px;opacity:0;pointer-events:none;overflow:hidden;
+  transition:width var(--tr),margin var(--tr),opacity var(--tr);}
+#dpList .plan:hover .p-edit,#dpList .plan:focus-within .p-edit{width:26px;margin-left:0;opacity:1;pointer-events:auto;}
+@media(hover:none){#dpList .plan .p-edit{width:26px;margin-left:0;opacity:1;pointer-events:auto;}}
 /* 날짜 헤더 — 좌: 날짜(누르면 연·월 이동), 우: 달 넘기기·오늘 */
 .dp-col{position:relative;}
 body:not(.wid) .cal-card{position:relative;}
@@ -603,19 +607,21 @@ html.dark #ymPop{background:#242426;}
 .tk-new .pal-c{width:20px;height:20px;border-radius:7px;}
 /* 일자 패널 인라인 편집기 — 모달 대신 패널 안에서 작성·수정 */
 /* ── 업무 작성 폼 — 제목 고정 바 + 핵심 4줄 + '자세히' 접기 ── */
-.dp-edit{border:1.5px solid var(--b300);border-radius:var(--rlg);background:var(--bg2);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;}
+.dp-edit{border:2px solid var(--b300);border-radius:var(--rlg);background:var(--bg2);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;}
 .pe-bar{display:flex;align-items:center;gap:9px;padding:8px;border-bottom:1px solid var(--sep);}
 .pe-side{display:flex;align-items:center;gap:2px;flex-shrink:0;}   /* 읽기 카드 .plan-side 와 같은 간격 — 좌표 고정 */
-.pe-st{width:26px;height:26px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:var(--lbl3);flex:0 0 auto;transition:background var(--tr),color var(--tr);}
-.pe-st:hover{background:var(--fill);}
-.pe-ttl{flex:1;min-width:0;background:transparent;border:0;font-size:13.5px;font-weight:600;color:var(--lbl);font-family:inherit;}
+
+.pe-ttl{flex:1;min-width:0;background:transparent;border:0;padding:0;font-size:13.5px;font-weight:700;color:var(--lbl);font-family:inherit;line-height:1.5;}
 .pe-ttl::placeholder{color:var(--lbl3);font-weight:500;}
 .pe-ttl:focus{outline:none;}
 .pe-ic{width:26px;height:26px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:var(--lbl2);flex:0 0 auto;transition:background var(--tr),color var(--tr);}
 .pe-ic:hover{background:var(--fill);color:var(--lbl);}
 .pe-ic .icn{width:14px;height:14px;}
-.pe-ic.pe-save{color:var(--b600);}
-.pe-ic.pe-save:hover{background:var(--b100);color:var(--b800,#2F5CB5);}.pe-ic.pe-del{color:var(--rd);}
+.pe-ic.pe-rem.on{color:var(--am);}
+/* 저장하고 닫기 — 아이콘만 파랑 + hover 배경 */
+.pe-ic.pe-ok{color:var(--b600);}
+.pe-ic.pe-ok:hover{background:var(--b100);color:var(--b800,#2F5CB5);}
+.pe-ic.pe-del{color:var(--rd);}
 .pe-ic.pe-del:hover{background:rgba(255,59,48,.1);color:var(--rd);}
 /* '자세히' 줄 — 가운데 아래 화살표 + 우측 보조 아이콘 */
 .pe-morerow{display:flex;align-items:center;border-top:1px dashed var(--sep);margin-top:2px;position:relative;}
@@ -1109,11 +1115,6 @@ html.dark #toast{background:#2B313A;}
 <!-- 아이콘: Lucide (ISC) — 24 그리드 · stroke 2 -->
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true" focusable="false">
 <symbol id="i-today" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2" fill="currentColor" stroke="none"/></symbol>
-<!-- 진행 상태 4단계 — 원 하나로 묶은 한 가족(예정·진행·완료·보류) -->
-<symbol id="i-st0" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/></symbol>
-<symbol id="i-st1" viewBox="0 0 24 24"><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="8.5"/></symbol>
-<symbol id="i-st2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="m8.2 12.2 2.6 2.6 5-5.6"/></symbol>
-<symbol id="i-st3" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M10.2 9.3v5.4"/><path d="M13.8 9.3v5.4"/></symbol>
 <symbol id="i-cal" viewBox="0 0 24 24"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></symbol>
 <symbol id="i-tasks" viewBox="0 0 24 24"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></symbol>
 <symbol id="i-settings" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
@@ -1431,5 +1432,5 @@ html.dark #toast{background:#2B313A;}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=82"></script>
+<script src="./app.js?v=83"></script>
 </body></html>

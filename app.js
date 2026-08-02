@@ -1251,6 +1251,8 @@ function planToTask(p){
     date:p.date||'',end:p.end||'',time:p.time||'',
     site:p.site!==undefined?p.site:(base.site||''),
     kind:p.kind!==undefined?kindOf(p.kind):kindOf(base.kind||''),
+    plan:p.plan!==undefined?String(p.plan||''):(base.plan||''),
+    links:p.links!==undefined?(p.links||{}):(base.links||{}),
     color:p.color||base.color||'',
     remind:!!p.remind,
     assignees:(()=>{const o={};owns.forEach(k=>{o[k]=1;});return o;})(),
@@ -1346,18 +1348,28 @@ function dpSheet(open){
   const sc=$('#scrim');if(sc)sc.classList.toggle('on',S.dpSheet||$('#sidebar').classList.contains('mob-open'));
 }
 function markSel(){
-  $$('#fcal .fc-daygrid-day.sel-day').forEach(el=>el.classList.remove('sel-day','sel-s','sel-e'));
+  $$('#fcal .fc-daygrid-day.sel-day').forEach(el=>el.classList.remove('sel-day','sel-t','sel-b','sel-l','sel-r'));
   /* 기간 선택이면 그 사이 날짜를 모두 표시한다 */
   const a=S.selDate,b=S.selEnd||S.selDate;
-  $$('#fcal td.fc-daygrid-day').forEach(td=>{
+  const inSel=d=>!!d&&d>=a&&d<=b;
+  const tds=$$('#fcal .fc-scrollgrid-sync-table td.fc-daygrid-day');
+  tds.forEach(td=>{
     const d=td.getAttribute('data-date');
-    if(d&&d>=a&&d<=b)td.classList.add('sel-day');
+    if(inSel(d))td.classList.add('sel-day');
   });
-  /* 테두리는 주(행) 단위로 하나의 박스 — 그 행에서 처음·마지막 칸에만 좌·우 변을 준다 */
-  $$('#fcal .fc-scrollgrid-sync-table tr').forEach(tr=>{
-    const on=Array.from(tr.querySelectorAll('td.sel-day'));
-    if(!on.length)return;
-    on[0].classList.add('sel-s');on[on.length-1].classList.add('sel-e');
+  /* 각 변은 그 방향 이웃 칸이 선택되지 않았을 때만 그린다 — 여러 주에 걸치면 하나의 계단형 도형이 된다.
+     이웃은 좌우 ±1일, 위아래 ±7일(같은 요일). 표 가장자리 칸은 무조건 변을 둔다(격자 밖은 이웃이 없다) */
+  const rows=$$('#fcal .fc-scrollgrid-sync-table tr');
+  rows.forEach((tr,ri)=>{
+    const cells=Array.from(tr.querySelectorAll('td.fc-daygrid-day'));
+    cells.forEach((td,ci)=>{
+      if(!td.classList.contains('sel-day'))return;
+      const d=td.getAttribute('data-date');
+      if(ci===0||!inSel(addDays(d,-1)))td.classList.add('sel-l');
+      if(ci===cells.length-1||!inSel(addDays(d,1)))td.classList.add('sel-r');
+      if(ri===0||!inSel(addDays(d,-7)))td.classList.add('sel-t');
+      if(ri===rows.length-1||!inSel(addDays(d,7)))td.classList.add('sel-b');
+    });
   });
 }
 /* 기간 선택 — 시작·종료를 함께 잡는다(하루면 selEnd 없음) */
@@ -1475,20 +1487,26 @@ function rDay(){
   const box=$('#dpList');
   /* 작성 중에도 버튼은 남기고, 누르면 새 업무 폼으로 바꾼다 */
   const add=$('.dp-add');if(add)add.classList.toggle('on',!!S.planEdit);
-  const editorHTML=S.planEdit?planFormHTML():'';
-  const editingId=S.planEdit&&S.planEdit.orig?S.planEdit.orig.id:null;
+  /* 이미 떠 있는 폼은 다시 그리지 않고 그대로 떼었다 도로 꽂는다 —
+     자동 저장이 목록을 다시 그려도 입력 중인 값·포커스·커서가 살아남는다 */
+  const keep=(S.planEdit&&S.planEdit.mounted&&$('#dpEdit'))?$('#dpEdit'):null;
+  if(keep)keep.remove();
+  const editorHTML=(S.planEdit&&!keep)?planFormHTML():'';
+  const editingId=S.planEdit&&S.planEdit.draft?S.planEdit.draft.id:null;
   const shown=ps.filter(x=>x.p.id!==editingId);   /* 편집 중인 항목은 폼이 대신한다 */
-  if(!shown.length&&!editorHTML){
+  if(!shown.length&&!editorHTML&&!keep){
     box.innerHTML='<div class="dp-empty">'+(dayQ()?'검색 결과가 없습니다.':'이 날짜에 등록된 업무가 없습니다.')+'</div>';return;}
   box.innerHTML=editorHTML+shown.map(({p,occ})=>{
     const done=isDone(p,occ),rep=p.recur&&p.recur.f,span=p.end&&p.end!==p.date,st=planSt(p,occ);
+    const md=x=>{const t=toDate(x);return (t.getMonth()+1)+'/'+t.getDate();};
+    const lnk=Object.values(p.links||{}).filter(l=>l&&l.url)[0];
     return `
     <div class="plan${done?' done':''}${S.planOpen===p.id?' open':''}" data-pid="${esc(p.id)}" style="border-color:${esc(planColor(p))}">
       <div class="plan-hd">
-        <span class="p-st s${st}" title="${esc(ST_LBL[st])}" aria-label="${esc(ST_LBL[st])}"><svg class="icn"><use href="#i-st${st}"></use></svg></span>
+        <span class="tk-st s${st}" data-act="plan.stCycle" data-pid="${esc(p.id)}" data-occ="${esc(occ)}" title="눌러서 상태 변경">${ST_LBL[st]}</span>
         <div class="plan-t" data-act="plan.open" data-pid="${esc(p.id)}" data-occ="${esc(occ)}">${esc(p.title)}</div>
         <div class="plan-side">
-          <button class="p-ico p-done${done?' on':''}" data-act="plan.doneToggle" data-pid="${esc(p.id)}" data-occ="${esc(occ)}" aria-label="완료 전환" title="${done?'완료 → 진행':'완료로'}"><svg class="icn"><use href="#i-check"></use></svg></button>
+          ${lnk?'<a class="p-ico" href="'+esc(lnk.url)+'" target="_blank" rel="noopener" aria-label="링크 열기" title="'+esc(lnk.label||lnk.url)+'"><svg class="icn"><use href="#i-ext"></use></svg></a>':''}
           <button class="p-ico${p.remind?' on':''}" data-act="plan.remind" data-pid="${esc(p.id)}" aria-label="리마인드 전환" title="리마인드"><svg class="icn"><use href="#i-bell"></use></svg></button>
           <button class="p-ico p-edit" data-act="plan.edit" data-pid="${esc(p.id)}" data-occ="${esc(occ)}" aria-label="수정" title="수정"><svg class="icn"><use href="#i-pen"></use></svg></button>
         </div>
@@ -1497,19 +1515,28 @@ function rDay(){
         ${p.body?'<div class="plan-body">'+esc(p.body)+'</div>':''}
         <div class="plan-meta">
           <span class="pm-l">${[
-            ST_LBL[st],
-            span?(toDate(p.date).getMonth()+1)+'/'+toDate(p.date).getDate()+'–'+(toDate(p.end).getMonth()+1)+'/'+toDate(p.end).getDate():fmtSpan(p),
-            kindLabel(p.kind)==='일반'?'':kindLabel(p.kind),
-            rep?REC_LBL[p.recur.f]:'',
-            p.site?siteName(p.site):''
+            kindLabel(p.kind),
+            span?md(p.date)+'–'+md(p.end):md(p.date),
+            fmtSpan(p),
+            rep?REC_LBL[p.recur.f]:''
           ].filter(Boolean).map(esc).join(' · ')}</span>
-          <span class="pm-r">${esc(planOwners(p).map(o=>ownName(o)).join(', ')||'팀 공통')}</span>
+          <span class="pm-r">${[p.site?siteName(p.site):'',planOwners(p).map(o=>ownName(o)).join(', ')||'팀 공통']
+            .filter(Boolean).map(esc).join(' · ')}</span>
         </div>
       </div>
     </div>`;}).join('')
   ;
+  if(keep)box.insertBefore(keep,box.firstChild);
   const rec=$('#peRec');
-  if(rec)rec.addEventListener('change',()=>{const r=$('#peUntilRow');if(r)r.style.display=rec.value?'':'none';});
+  if(rec&&!rec.dataset.wired){rec.dataset.wired='1';
+    rec.addEventListener('change',()=>{const r=$('#peUntilRow');if(r)r.style.display=rec.value?'':'none';});}
+  pstWidth();
+}
+/* 카드 2행 들여쓰기를 상태 배지 실측 폭에 맞춘다 — 배지 글자가 바뀌어도 어긋나지 않는다 */
+function pstWidth(){
+  const b=document.querySelector('#dpList .tk-st');if(!b)return;
+  const w=Math.round(b.getBoundingClientRect().width);
+  if(w)document.querySelector('#dpList').style.setProperty('--pst-w',w+'px');
 }
 
 /* ───── 업무 작성·수정 모달 ───── */
@@ -1538,6 +1565,7 @@ function setPlanColor(c){
   if(pop&&nb)nb.appendChild(pop);
   const ed=$('#dpEdit');                     /* 업무 색은 폼 아웃라인 — 새 색으로 다시 칠한다 */
   if(ed)ed.style.borderColor=planColor({color:c,owners:(S.planEdit&&S.planEdit.draft&&S.planEdit.draft.owners)||{}});
+  planAutosave();
 }
 function colOutside(e){
   const pop=$('#colPop');
@@ -1549,24 +1577,46 @@ function closeColPop(){
   const pop=$('#colPop');if(pop)pop.remove();
   document.removeEventListener('click',colOutside,true);
 }
-function closePlanEdit(){if(!S.planEdit)return;closeColPop();S.planEdit=null;rDay();}
+function closePlanEdit(){
+  if(!S.planEdit)return;
+  clearTimeout(PE_SAVE);
+  const p=planCollect(S.planEdit.draft);   /* 자동 저장 대기 중인 입력을 확정한다 */
+  if(p&&p.title)planCommit(p);
+  closeColPop();S.planEdit=null;rDay();
+}
+/* 본문 칸 — 업무 구분이 '일반'이면 진행경과·처리계획 두 칸(업무 목록 폼과 동일), 그 외는 한 칸 */
+function peBodyHTML(d,kind){
+  return kindSplit(kind)
+    ? `<div class="frow"><label>진행경과</label><textarea class="inp inp-sm" id="peProg" maxlength="2000" placeholder="지금까지의 경과">${esc(d.body||'')}</textarea></div>
+       <div class="frow"><label>처리계획</label><textarea class="inp inp-sm" id="pePlan" maxlength="2000" placeholder="앞으로의 계획">${esc(d.plan||'')}</textarea></div>`
+    : `<div class="frow"><label>내용</label><textarea class="inp inp-sm" id="peProg" maxlength="2000" placeholder="${esc(kindLabel(kind))} 내용을 적으세요">${esc(d.body||'')}</textarea></div>`;
+}
+/* 업무 구분을 바꾸면 본문 칸 구성이 달라진다 — 그 부분만 다시 그려 다른 입력을 지키지 않게 한다 */
+function peKindRefresh(){
+  const pe=S.planEdit,sec=$('#peBodySec');if(!pe||!sec)return;
+  planCollect(pe.draft);                       /* 지금 입력값을 draft 에 담아 두고 */
+  const kind=kindOf(($('#peKind')&&$('#peKind').value)||'');
+  sec.innerHTML=peBodyHTML(pe.draft,kind);     /* 본문 칸만 새 구성으로 */
+  planAutosave();
+}
 function planFormHTML(){
   const pe=S.planEdit;if(!pe)return'';
-  const d=pe.orig||{id:uid(),date:pe.start,end:pe.end,title:'',time:'',body:'',color:'auto',
-    remind:false,done:false,recur:{f:'',until:''},createdAt:Date.now()};
-  pe.draft=d;
+  const d=pe.orig||{id:uid(),date:pe.start,end:pe.end,title:'',time:'',body:'',plan:'',links:{},color:'auto',
+    remind:false,done:false,kind:KIND_DEF,recur:{f:'',until:''},createdAt:Date.now()};
+  pe.draft=d;pe.mounted=true;
   const rc=(d.recur&&d.recur.f)||'';
   const people=roster();
   const kind=kindOf(d.kind);
   const st=stOf(d.st);
+  const lnk=Object.values(d.links||{}).filter(l=>l&&l.url)[0];
   return `<div class="dp-edit" id="dpEdit" style="border-color:${esc(planColor(d))}">
     <div class="pe-bar">
-      <button class="pe-st s${st}" data-act="plan.stCycle" title="${esc(ST_LBL[st])} · 눌러서 상태 변경" aria-label="진행 상태 ${esc(ST_LBL[st])}"><svg class="icn"><use href="#i-st${st}"></use></svg></button>
+      <span class="tk-st s${st}" data-act="plan.stCycle" title="눌러서 상태 변경">${ST_LBL[st]}</span>
       <input class="pe-ttl" id="peTitle" maxlength="80" placeholder="무엇을 하나요?" value="${esc(d.title)}">
       <div class="pe-side">
         ${pe.orig?'<button class="pe-ic pe-del" data-act="plan.del" data-pid="'+esc(d.id)+'" data-ym="'+esc(ymOf(d.date))+'" data-occ="'+esc(pe.occ||'')+'" aria-label="삭제" title="삭제"><svg class="icn"><use href="#i-trash"></use></svg></button>':''}
-        <button class="pe-ic pe-save" data-act="plan.save" aria-label="저장 (Enter)" title="저장 (Enter)"><svg class="icn"><use href="#i-check"></use></svg></button>
-        <button class="pe-ic" data-act="plan.cancel" aria-label="닫기 (Esc)" title="닫기 (Esc)"><svg class="icn"><use href="#i-close"></use></svg></button>
+        <button class="pe-ic pe-rem${d.remind?' on':''}" data-act="plan.remindDraft" aria-label="리마인드 전환" title="리마인드"><svg class="icn"><use href="#i-bell"></use></svg></button>
+        <button class="pe-ic pe-ok" data-act="plan.cancel" aria-label="저장하고 닫기 (Esc)" title="저장하고 닫기 (Esc)"><svg class="icn"><use href="#i-check"></use></svg></button>
       </div>
     </div>
     <div class="pe-body">
@@ -1577,10 +1627,10 @@ function planFormHTML(){
       <div class="frow2">
         <div class="frow"><label>업무 구분</label>
           <select class="inp inp-sm" id="peKind">${TK_KIND.map(k=>'<option value="'+k[0]+'"'+(k[0]===kind?' selected':'')+'>'+k[1]+'</option>').join('')}</select></div>
-        <div class="frow"><label>시간</label><input type="time" class="inp inp-sm" id="peTime" value="${esc(d.time||'')}"></div>
+        <div class="frow"><label>담당자</label>${ownSelHTML('peOwners',planOwners(d)[0]||'',people)}</div>
       </div>
       <div class="frow2">
-        <div class="frow"><label>담당자</label>${ownSelHTML('peOwners',planOwners(d)[0]||'',people)}</div>
+        <div class="frow"><label>링크</label><input class="inp inp-sm" id="peLink" maxlength="500" placeholder="https://…" value="${esc((lnk&&lnk.url)||'')}"></div>
         <div class="frow"><label>색</label>${colRowHTML(d.color)}</div>
       </div>
       <div class="pe-morerow">
@@ -1590,11 +1640,11 @@ function planFormHTML(){
       <div class="pe-adv" id="peAdv">
         <div class="frow"><label>현장</label>${sitePickHTML('peSite',d.site||'')}</div>
         <div class="frow2">
+          <div class="frow"><label>시간</label><input type="time" class="inp inp-sm" id="peTime" value="${esc(d.time||'')}"></div>
           <div class="frow"><label>반복</label><select class="inp inp-sm" id="peRec">${Object.keys(REC_LBL).map(k=>'<option value="'+k+'"'+(k===rc?' selected':'')+'>'+REC_LBL[k]+'</option>').join('')}</select></div>
-          <div class="frow"><label>리마인드 메일</label><select class="inp inp-sm" id="peRemind"><option value=""${d.remind?'':' selected'}>보내지 않음</option><option value="1"${d.remind?' selected':''}>당일 아침</option></select></div>
         </div>
         <div class="frow" id="peUntilRow" style="${rc?'':'display:none'}"><label>반복 종료</label><input type="date" class="inp inp-sm" id="peUntil" value="${esc((d.recur&&d.recur.until)||'')}"></div>
-        <div class="frow"><label>내용</label><textarea class="inp inp-sm" id="peBody" maxlength="500" placeholder="메모·세부 내용">${esc(d.body||'')}</textarea></div>
+        <div id="peBodySec">${peBodyHTML(d,kind)}</div>
 
         ${(pe.orig&&rc&&pe.occ)?`<div class="frow occ-row">
           <label>이 회차만 옮기기 <span style="font-weight:500;color:var(--lbl3)">반복 규칙은 그대로</span></label>
@@ -1608,43 +1658,78 @@ function planFormHTML(){
     </div>
   </div>`;
 }
-function savePlanInline(){
-  const pe=S.planEdit;if(!pe)return;
-  const title=($('#peTitle').value||'').trim();
-  if(!title){toast('제목을 입력하세요');$('#peTitle').focus();return;}
-  const date=$('#peDate').value||S.selDate;
+/* 폼의 현재 입력을 draft 위에 얹어 저장할 업무 객체를 만든다(검증 없음) */
+function planCollect(base){
+  const pe=S.planEdit;if(!pe)return null;
+  const d=base||pe.draft;
+  const date=($('#peDate')&&$('#peDate').value)||pe.start||S.selDate;
   let end=(($('#peEnd')&&$('#peEnd').value)||'').trim();
-  if(end&&end<date){toast('종료일이 시작일보다 빠릅니다');return;}
-  if(end===date)end='';
+  if(end&&end<=date)end='';
   const f=($('#peRec')&&$('#peRec').value)||'';
-  const p={...pe.draft,
-    date,end,title,
-    time:$('#peTime').value||'',
+  /* 링크는 한 칸만 편집한다 — 업무 목록에서 넣은 나머지 링크는 그대로 둔다 */
+  const links={...(d.links||{})};
+  const lk=Object.keys(links).find(k=>links[k]&&links[k].url)||'l1';
+  const url=(($('#peLink')&&$('#peLink').value)||'').trim();
+  if(url)links[lk]={url,label:(links[lk]&&links[lk].label)||''};
+  else delete links[lk];
+  const p={...d,
+    date,end,
+    title:(($('#peTitle')&&$('#peTitle').value)||'').trim(),
+    time:($('#peTime')&&$('#peTime').value)||'',
     site:($('#peSite')&&$('#peSite').value)||'',
     owners:(()=>{const v=($('#peOwners')&&$('#peOwners').value)||'';return v?{[v]:1}:{};})(),owner:'',
-    body:(($('#peBody')&&$('#peBody').value)||'').trim(),
-    color:(pe.draft&&pe.draft.color)||'auto',
+    body:(($('#peProg')&&$('#peProg').value)||'').trim(),
+    plan:(($('#pePlan')&&$('#pePlan').value)||'').trim(),
+    links,
+    color:(d&&d.color)||'auto',
     recur:f?{f,until:(($('#peUntil')&&$('#peUntil').value)||'')}:{f:'',until:''},
-    remind:!!($('#peRemind')&&$('#peRemind').value),
+    remind:!!d.remind,
     kind:kindOf(($('#peKind')&&$('#peKind').value)||''),
-    st:stOf(pe.draft.st),
-    done:stOf(pe.draft.st)===2,
+    st:stOf(d.st),
+    done:stOf(d.st)===2,
     updatedAt:Date.now()};
-  const wasRec=!!(pe.orig&&pe.orig.recur&&pe.orig.recur.f);
-  const nowRec=!!f;
-  if(pe.orig&&wasRec!==nowRec){
+  if(base)Object.assign(base,p);   /* draft 를 현재 화면 값으로 최신화 */
+  return p;
+}
+/* 저장 — 반복 여부가 바뀌면 옛 항목을 지우고 새로 넣어야 한다 */
+function planCommit(p){
+  const pe=S.planEdit;
+  const wasRec=!!(pe&&pe.orig&&pe.orig.recur&&pe.orig.recur.f);
+  const nowRec=!!(p.recur&&p.recur.f);
+  if(pe&&pe.orig&&wasRec!==nowRec){
     store.delPlan(ymOf(pe.orig.date),pe.orig.id);
     store.putPlan(p);
   }else{
-    const oldYm=pe.orig?ymOf(pe.orig.date):null;
+    const oldYm=(pe&&pe.orig)?ymOf(pe.orig.date):null;
     if(!nowRec&&oldYm&&oldYm!==ymOf(p.date))store.movePlan(p,oldYm);
     else store.putPlan(p);
   }
-  const wasNew=!pe.orig;
+}
+/* 자동 저장 — 입력이 멎으면 조용히 반영한다(토스트 없음).
+   일자 패널은 다시 그리지 않는다(rDay 가 열린 폼은 떼었다 도로 꽂으므로 입력·포커스는 살아남는다) */
+let PE_SAVE=null;
+function planAutosave(now){
+  clearTimeout(PE_SAVE);
+  const run=()=>{
+    const pe=S.planEdit;if(!pe||!$('#dpEdit'))return;
+    const p=planCollect(pe.draft);
+    if(!p||!p.title)return;                 /* 제목이 없으면 아직 만들지 않는다 */
+    planCommit(p);
+    if(!pe.orig)pe.orig={...p};             /* 처음 저장한 뒤부터는 '수정' */
+    if(!S.live){refetchCal();rDay();rWidget();}
+  };
+  if(now)run();else PE_SAVE=setTimeout(run,600);
+}
+function savePlanInline(){
+  const pe=S.planEdit;if(!pe)return;
+  clearTimeout(PE_SAVE);
+  const p=planCollect(pe.draft);
+  if(!p)return;
+  if(!p.title){closePlanEdit();return;}     /* 제목 없이 닫으면 저장하지 않는다 */
+  planCommit(p);
   S.planEdit=null;
   selDate(p.date);
   if(!S.live){refetchCal();rDay();}
-  toast(wasNew?'업무를 추가했습니다':'업무를 수정했습니다');
 }
 
 /* ═══════════ 주요업무 현황 — 좌: 대상 선택 · 우: 작성/목록 ═══════════ */
@@ -1895,7 +1980,7 @@ function regionSectionsHTML(mems,regions){
 }
 /* 작성·수정 공용 폼 — 작성창과 수정 폼이 같은 골격을 쓴다(일관성) */
 function taskFormHTML(sid,iid,cur){
-  const d=cur||{text:'',prog:'',plan:'',site:'',assignees:{},links:{},color:'',date:'',time:'',kind:''};
+  const d=cur||{text:'',prog:'',plan:'',site:'',assignees:{},links:{},color:'',date:'',time:'',kind:KIND_DEF};
   const people=tkSel().mems;
   const col=(d.color&&d.color!=='auto')?d.color:'';
   const kind=kindOf(d.kind),split=kindSplit(kind);
@@ -2056,7 +2141,8 @@ function reorderTask(sid,iid,targetIid,after){
 /* 업무 검색·필터 — 제목·경과·계획·현장·담당자까지 훑고, 상태·기한으로 좁힌다 */
 const TK_ST=[['','전체'],['0','예정'],['1','진행'],['2','완료'],['3','보류']];
 /* 업무 분류 — 일반만 진행경과·처리계획을 나눠 쓰고, 나머지는 내용 한 칸 */
-const TK_KIND=[['','일반'],['gather','공통'],['meet','회의'],['trip','출장'],['etc','기타']];
+const TK_KIND=[['gather','공통'],['','일반'],['meet','회의'],['trip','출장'],['etc','기타']];   /* 첫 항목이 새 업무 기본값 — 공통 */
+const KIND_DEF='gather';
 function kindOf(v){return TK_KIND.some(k=>k[0]===v)?v:'';}
 function kindLabel(v){const k=TK_KIND.find(x=>x[0]===kindOf(v));return k?k[1]:'일반';}
 function kindSplit(v){return kindOf(v)==='';}   /* 일반이면 두 칸으로 나눈다 */
@@ -2688,25 +2774,35 @@ const ACT={
     const on=card.classList.toggle('open');
     S.planOpen=on?el.dataset.pid:'';},
   'plan.edit':el=>{const p=findPlan(el.dataset.pid);if(p)openPlanEdit(p,null,null,el.dataset.occ||'');},
-  /* 상태 아이콘 — 누를 때마다 예정→진행→완료→보류 순환. 저장 전까지는 draft 에만 담는다
-     (폼 전체를 다시 그리면 입력 중인 값이 날아가므로 버튼만 손본다) */
+  /* 상태 배지 — 누를 때마다 예정→진행→완료→보류 순환.
+     편집 폼에서는 draft 만 바꾸고 배지 DOM 을 제자리에서 갈아 끼운다(폼을 다시 그리면 입력 중인 값이 날아간다) */
   'plan.stCycle':el=>{
+    if(el.closest('#dpEdit')){
+      const pe=S.planEdit;if(!pe||!pe.draft)return;
+      const n=(stOf(pe.draft.st)+1)%4;
+      pe.draft.st=n;pe.draft.done=n===2;
+      el.className='tk-st s'+n;el.textContent=ST_LBL[n];
+      planAutosave();
+      return;
+    }
+    const p=findPlan(el.dataset.pid);if(!p)return;
+    const occ=el.dataset.occ||p.date;
+    const n=(planSt(p,occ)+1)%4;
+    if(p.recur&&p.recur.f){                 /* 반복은 회차별 완료(doneOn)가 우선한다 */
+      const k=occSrc(p,occ);
+      p.doneOn=p.doneOn||{};
+      if(n===2)p.doneOn[k]=1;else{delete p.doneOn[k];p.st=n;p.done=false;}
+    }else{p.st=n;p.done=n===2;}
+    p.updatedAt=Date.now();store.putPlan(p);
+    if(!S.live){rDay();refetchCal();rWidget();}},
+  /* 편집 폼의 알림 버튼 — 저장 전에는 draft 만 바꾼다 */
+  'plan.remindDraft':el=>{
     const pe=S.planEdit;if(!pe||!pe.draft)return;
-    const n=(stOf(pe.draft.st)+1)%4;
-    pe.draft.st=n;
-    el.className='pe-st s'+n;
-    el.title=ST_LBL[n]+' · 눌러서 상태 변경';
-    el.setAttribute('aria-label','진행 상태 '+ST_LBL[n]);
-    const u=el.querySelector('use');if(u)u.setAttribute('href','#i-st'+n);},
+    pe.draft.remind=!pe.draft.remind;
+    el.classList.toggle('on',!!pe.draft.remind);
+    planAutosave();},
   'plan.toTask':el=>{closePlanEdit();gotoTask(el.dataset.sid,el.dataset.iid);},
-  /* 체크 아이콘 — 완료 ↔ 진행만 빠르게(예정·보류는 폼에서) */
-  'plan.doneToggle':el=>{const p=findPlan(el.dataset.pid);if(!p)return;
-    const occ=occSrc(p,el.dataset.occ||p.date);
-    if(p.recur&&p.recur.f){p.doneOn=p.doneOn||{};if(p.doneOn[occ])delete p.doneOn[occ];else p.doneOn[occ]=1;}
-    else{p.st=stOf(p.st)===2?1:2;p.done=p.st===2;}
-    p.updatedAt=Date.now();store.putPlan(p);if(!S.live){rDay();refetchCal();rWidget();}},
   'plan.remind':el=>{const p=findPlan(el.dataset.pid);if(!p)return;p.remind=!p.remind;p.updatedAt=Date.now();store.putPlan(p);if(!S.live)rDay();toast(p.remind?'당일 아침 리마인드 메일이 발송됩니다':'리마인드를 해제했습니다');},
-  'plan.save':savePlanInline,
   'plan.del':el=>{
     const p=findPlan(el.dataset.pid),occ=el.dataset.occ||'';
     if(p&&p.recur&&p.recur.f&&occ){
@@ -3171,6 +3267,12 @@ document.addEventListener('input',e=>{
     box.insertBefore(chip,inp.closest('.pal-add'));
   }
   chip.dataset.c=v;chip.style.background=v;chip.classList.add('sel');
+});
+/* 업무 폼은 자동 저장 — 입력이 멎으면 조용히 반영된다(저장 버튼 없음) */
+document.addEventListener('input',e=>{if(e.target.closest&&e.target.closest('#dpEdit'))planAutosave();});
+document.addEventListener('change',e=>{
+  if(e.target.id==='peKind'){peKindRefresh();return;}
+  if(e.target.closest&&e.target.closest('#dpEdit'))planAutosave();
 });
 document.addEventListener('change',e=>{
   if(e.target.id==='teamSelEl'){ACT['team.switch'](e.target);return;}
