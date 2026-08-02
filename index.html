@@ -340,10 +340,12 @@ body.wid.glass #fcal .fc-daygrid-more-link{color:#fff;background:rgba(255,255,25
 #dpList .plan{display:block;padding:8px 8px 12px;background:var(--surf2);border:1px solid var(--sep);position:relative;}   /* 위는 아이콘 줄(26px) 때문에 제목까지 10.9px — 아래도 그만큼 */
 /* 업무 색 = 제목 앞 색 원. 누르면 팔레트 팝오버가 열리고, 그 자리가 곧 색 변경 버튼이다.
    지름 8px + 왼쪽 여백 6px. 원 크기를 바꿀 땐 여백으로 상쇄해 6+8+9=23 을 지킨다(제목 x·2행 들여쓰기 고정) */
-.p-col{position:relative;flex:0 0 auto;width:8px;height:8px;margin-left:6px;border-radius:50%;
-  box-shadow:inset 0 0 0 1px rgba(0,0,0,.10);transition:transform .12s;}
-.p-col:hover{transform:scale(1.1);}
-.p-col .col-pop{left:0;right:auto;}
+/* 색 원 — 확대 호버 없음(작은 원이 커졌다 작아지면 카드가 흔들려 보인다) */
+.p-col{flex:0 0 auto;width:8px;height:8px;margin-left:6px;border-radius:50%;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.10);}
+button.p-col{transition:box-shadow .12s;}
+button.p-col:hover{box-shadow:inset 0 0 0 1px rgba(0,0,0,.10),0 0 0 3px var(--fill2);}
+.p-col-ro{cursor:default;}
 .plan-hd{display:flex;align-items:center;gap:9px;min-width:0;}
 #dpList .plan-main{padding-left:23px;padding-right:12px;margin-top:2px;}   /* 우측 담당자가 모서리에 붙지 않게 12px 띄운다 */
 /* 상태 배지 — 보조문구 줄 앞에 붙는 작은 배지(글자 크기는 보조문구와 같은 11.5px). 색 변형은 .tk-st.s0~3 재사용 */
@@ -535,7 +537,7 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 .tks-card{padding:14px 15px;}
 /* 오른쪽 열 — 업무 일정과 같은 구성: 제목 없는 필터 카드 + 제목이 붙은 업무 패널 */
 .tkcol{display:flex;flex-direction:column;gap:9px;min-height:0;min-width:0;}
-.tkf-card{padding:11px 12px;flex:0 0 auto;background:var(--bg2);border:1px solid var(--sep);border-radius:var(--rxl);box-shadow:0 1px 2px rgba(16,24,40,.05),0 1px 3px rgba(16,24,40,.04);}
+.tkf-card{flex:0 0 auto;}   /* .dp-fcard 가 이미 카드 껍데기다 — 여기서 또 씌우면 테두리가 두 겹으로 보인다 */
 .tkmain{display:flex;flex-direction:column;min-height:0;padding:0;flex:1;overflow:hidden;}
 .tks-h{font-size:11.5px;font-weight:700;color:var(--lbl3);letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px;}
 /* 하위 항목 앞 동그라미 — 하자처리현황 사이드바 현장 점(.std)과 동일 */
@@ -557,7 +559,6 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 .tks-item.sub{padding-left:24px;font-size:13.5px;}
 /* 업무 패널 머리 — 아래 분류 구분선보다 굵게 해서 층이 구분되도록 */
 .tkm-h{position:relative;display:flex;align-items:center;gap:9px;padding:15px 16px 13px;flex-shrink:0;}
-.tkm-h::after{content:'';position:absolute;left:16px;right:16px;bottom:0;height:2px;background:var(--sepo);}
 .tkm-c{margin-left:auto;margin-right:2px;font-size:12.5px;font-weight:700;color:var(--lbl2);}   /* 아래 분류 건수 배지와 같은 선(패널 우측에서 19px) */
 .tkm-h .bar{width:4px;height:18px;border-radius:99px;background:linear-gradient(135deg,var(--b500),var(--b800));}
 .tkm-h b{font-size:16px;font-weight:800;color:var(--lbl);letter-spacing:-.01em;}
@@ -601,8 +602,8 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 .tk-item{cursor:grab;}
 .tk-item:active{cursor:grabbing;}
 /* 1행 — 업무 일정 카드(.plan-hd)와 같은 골격: [색 원][제목][아이콘] */
-.tk-line{display:flex;align-items:center;gap:9px;padding:8px;}
-.tk-item .plan-meta{padding:0 8px 8px 31px;margin-top:0;}   /* 2행 들여쓰기 = 1행 패딩 8 + 색 원 6+8+9 */
+.tk-line{display:flex;align-items:center;gap:9px;padding:8px 8px 0;}
+.tk-item .plan-meta{padding:2px 8px 12px 31px;margin-top:0;}   /* 2행 들여쓰기 = 1행 패딩 8 + 색 원 6+8+9, 아래는 업무 일정 카드와 같은 12px */
 .tk-item .tk-detail{padding-left:31px;}
 /* 배지 공통 — 업무 일정 카드의 상태 배지(18px·11.5px)와 같은 규격. 목록 카드는 보조문구로 바뀌어 폼 상단 요약(.tkf-now)에서만 쓴다 */
 .tkf-now>*{height:18px;display:inline-flex;align-items:center;gap:4px;
@@ -693,11 +694,14 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 .th-f{display:flex;gap:8px;justify-content:flex-end;margin-top:7px;}
 /* 펼침 상태 — 수정 버튼은 우측 상단 */
 /* 집계 보기(팀 전체 · 권역) 구분 헤더 */
-.tk-sub{display:flex;align-items:center;gap:7px;font-size:11.5px;font-weight:700;color:var(--bt1);letter-spacing:.05em;padding:10px 2px 3px;}
-.tk-sub::after{content:"";order:1;flex:1;height:1px;background:var(--sep);}
-.tk-sub .c{order:2;margin-left:0;}
+.tk-sub{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:800;color:var(--bt1);letter-spacing:.01em;padding:10px 2px 5px;}
+.tk-sub .c{margin-left:auto;}
+.tk-sub+*{margin-top:0;}
+/* 분류와 분류 사이에만 얇은 구분선 */
+.tk-list>.tk-sub:not(:first-child){margin-top:14px;padding-top:14px;border-top:1px solid var(--sep);}
 .tk-sub .c{font-size:11.5px;color:var(--lbl2);background:var(--fill);border-radius:99px;padding:1px 7px;}
-.tk-sub2{font-size:11.5px;font-weight:700;color:var(--lbl3);padding:6px 2px 2px;}
+.tk-sub2{display:flex;align-items:center;gap:7px;font-size:11.5px;font-weight:700;color:var(--lbl2);padding:8px 2px 3px;}
+.tk-sub2::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--b500);flex-shrink:0;}
 /* 인라인 편집 폼 — 작성창(.tk-new)과 같은 골격을 그대로 쓴다 */
 .tk-new .pal{align-items:center;}
 .tk-new .pal-c{width:20px;height:20px;border-radius:7px;}
@@ -730,15 +734,9 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 .pe-more-ic{position:absolute;right:0;top:50%;transform:translateY(-45%);}
 .pe-body{padding:11px 12px 11px;}
 
-.col-pop{position:absolute;top:calc(100% + 7px);right:0;z-index:70;background:var(--bg2);border:1px solid var(--sep);border-radius:var(--rmd);box-shadow:0 10px 28px rgba(0,0,0,.16);padding:10px;width:196px;}
+/* 화면 최상위에 뜬다 — 카드·목록의 overflow 에 잘리지 않는다 */
+.col-pop{position:fixed;z-index:900;background:var(--bg2);border:1px solid var(--sep);border-radius:var(--rmd);box-shadow:0 12px 32px rgba(0,0,0,.2);padding:11px;width:222px;}
 .col-pop-h{font-size:11.5px;font-weight:700;color:var(--lbl2);margin-bottom:7px;}
-/* 직접 고르기 — 별도 창을 띄우지 않고 팝오버 안에서 끝낸다 */
-.col-cus{margin-top:10px;padding-top:9px;border-top:1px solid var(--sep);display:flex;align-items:center;gap:8px;}
-.col-hue{-webkit-appearance:none;appearance:none;flex:1;min-width:0;height:12px;border-radius:99px;cursor:pointer;
-  background:linear-gradient(90deg,#f00 0%,#ff0 17%,#0f0 33%,#0ff 50%,#00f 67%,#f0f 83%,#f00 100%);}
-.col-hue::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;
-  background:var(--bg2);border:2px solid var(--lbl);cursor:pointer;}
-.col-cus .pal-c{width:22px;height:22px;flex:0 0 auto;}
 html.dark .col-pop{background:#242426;}
 .col-pop .pal{display:flex;flex-wrap:wrap;gap:6px;}
 /* 자세히 */
@@ -907,7 +905,7 @@ select.mg-inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-
 .rk{display:inline-block;margin-left:6px;font-size:11.5px;font-weight:700;color:var(--lbl2);
   background:var(--fill);border-radius:var(--rp);padding:1px 6px;vertical-align:1px;letter-spacing:0;}
 .tks-item .rk{font-weight:700;}
-.tk-sub2 .rk{margin-left:5px;}
+.tk-sub2 .rk{margin-left:5px;font-size:10.5px;padding:0 5px;vertical-align:0;}
 /* 계정 모달 탭 */
 .acct-tabs{display:flex;gap:4px;background:var(--fill);border-radius:var(--rmd);padding:3px;margin:0 0 18px;}
 .acct-tab{flex:1;padding:7px 10px;border-radius:calc(var(--rmd) - 3px);font-size:12.5px;font-weight:700;
@@ -1623,5 +1621,5 @@ html.dark #toast{background:#2B313A;}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=108"></script>
+<script src="./app.js?v=109"></script>
 </body></html>
