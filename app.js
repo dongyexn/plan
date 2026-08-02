@@ -271,6 +271,11 @@ function ownColor(pid){
   return i<0?PAL[0]:OWN_PAL[i%OWN_PAL.length];
 }
 function ownName(pid){const p=roster().find(x=>x.id===pid);return p?p.name:'';}
+/* 로그인한 본인이 담당자 명단에 있으면 {uid:1} 로 — 없으면 팀 공통({}) */
+function meOwner(){
+  const id=S.user&&S.user.uid;
+  return (id&&roster().some(p=>p.id===id))?{[id]:1}:{};
+}
 function planOwners(p){
   const o=Object.keys((p&&p.owners)||{});
   if(o.length)return o;
@@ -1127,7 +1132,11 @@ function calInit(){
     /* 시간은 제목 안의 fmtSpan 이 담당 — FC 기본 표기("10a")를 켜 두면 이중으로 찍힌다 */
     displayEventTime:false,
     headerToolbar:false,height:'100%',dayMaxEvents:maxEvOf(),
-    moreLinkContent:a=>'+'+a.num,
+    moreLinkContent:a=>'+'+a.num+'건',
+    /* 기본 더보기 팝오버 대신 그 날짜를 골라 업무 패널(위젯은 팝업)에서 전부 보게 한다 */
+    moreLinkClick:a=>{const ds=dstr(a.date);selDate(ds,true);
+      if(WIDGET){S.widPop=true;rWidget();}
+      return 'none';},
     dayHeaderContent:a=>DOW[a.date.getDay()],
     dayCellClassNames:a=>{const o=holOf(dstr(a.date));return o&&o.h?['hol']:[];},
     dayCellContent:a=>{
@@ -1140,7 +1149,11 @@ function calInit(){
       const t=info.event.extendedProps.task;
       if(t){gotoTask(t.sid,t.iid);return;}
       const p=findPlan(info.event.extendedProps.pid);
-      if(p){selDate(info.event.extendedProps.occ||p.date);openPlanEdit(p,null,null,info.event.extendedProps.occ);}},
+      if(!p)return;
+      const ds=info.event.extendedProps.occ||p.date;
+      /* 위젯: 막대를 누르면 바로 그 날 팝업을 열고 그 업무를 펼친다(수정 모드로는 들어가지 않는다) */
+      if(WIDGET){S.planOpen=p.id;selDate(ds,true);S.widPop=true;rDay();rWidget();return;}
+      selDate(ds);openPlanEdit(p,null,null,info.event.extendedProps.occ);},
     eventDrop:info=>{const p=findPlan(info.event.extendedProps.pid);if(!p||(p.recur&&p.recur.f)){info.revert();return;}
       const oldYm=ymOf(p.date);const ns=info.event.startStr.slice(0,10);
       if(p.end)p.end=addDays(p.end,daysBetween(p.date,ns));
@@ -1387,12 +1400,15 @@ function selRange(a,b){
   S.selEnd=(b&&b>a)?b:'';
   selDate(a);
 }
-function selDate(ds){
+function selDate(ds,quiet){
   ds=String(ds||'').slice(0,10);
   if(!/^\d{4}-\d{2}-\d{2}$/.test(ds))return;   /* 잘못된 값이 들어오면 무시 — NaN 표시 방지 */
+  const same=S.selDate===ds;
   S.selDate=ds;
   if(S.selEnd&&S.selEnd<=ds)S.selEnd='';
-  if(WIDGET)S.widPop=true;      /* 위젯에서는 날짜를 누르면 그 칸 옆에 업무 패널이 뜬다 */
+  /* 위젯: 첫 클릭은 날짜 선택까지만, **같은 칸을 한 번 더** 눌러야 업무 팝업이 뜬다.
+     quiet 는 '이동만'(오늘·연월 이동·업무 바 클릭 뒤 별도 처리) */
+  if(WIDGET)S.widPop=quiet?false:same;   /* 이미 고른 날짜를 한 번 더 눌렀을 때만 팝업 */
   setTimeout(rWidget,0);
   if(CAL&&ymOf(ds)!==CAL.view.currentStart.getFullYear()+'-'+pad(CAL.view.currentStart.getMonth()+1))CAL.gotoDate(ds);
   markSel();
@@ -1400,7 +1416,7 @@ function selDate(ds){
   /* 편집기가 열려 있을 때 — 새 업무면 날짜가 따라가고, 기존 업무를 고치는 중이면 폼을 닫는다.
      (다른 날을 눌렀는데 그 날 목록 위에 남의 날 업무 폼이 계속 떠 있으면 혼란스럽다) */
   if(S.planEdit&&$('#dpEdit')){
-    if(S.planEdit.orig&&ds!==(S.planEdit.draft||S.planEdit.orig).date){closePlanEdit();rDayHead();rDay();return;}
+    if(S.planEdit.orig){closePlanEdit();rDayHead();rDay();setTimeout(rWidget,0);return;}
     rDayHead();
     /* ⚠ 이미 있는 업무를 고치는 중이라면 날짜를 따라가지 않는다 —
        달력을 둘러보려고 다른 날을 눌렀을 뿐인데 업무가 그 날로 옮겨져 버렸다(실사용 지적).
@@ -1653,8 +1669,9 @@ function peKindRefresh(){
 }
 function planFormHTML(){
   const pe=S.planEdit;if(!pe)return'';
+  /* 새 업무의 담당자는 로그인한 본인이 기본 — 대부분 자기 일을 쓴다(앱·위젯 공통) */
   const d=pe.orig||{id:uid(),date:pe.start,end:pe.end,title:'',time:'',body:'',plan:'',links:{},color:'auto',
-    remind:false,done:false,kind:KIND_DEF,recur:{f:'',until:''},createdAt:Date.now()};
+    remind:false,done:false,kind:KIND_DEF,recur:{f:'',until:''},owners:meOwner(),createdAt:Date.now()};
   pe.draft=d;pe.mounted=true;
   const rc=(d.recur&&d.recur.f)||'';
   const people=roster();
@@ -2033,7 +2050,8 @@ function regionSectionsHTML(mems,regions){
 }
 /* 작성·수정 공용 폼 — 작성창과 수정 폼이 같은 골격을 쓴다(일관성) */
 function taskFormHTML(sid,iid,cur){
-  const d=cur||{text:'',prog:'',plan:'',site:'',assignees:{},links:{},color:'',date:'',time:'',kind:KIND_DEF};
+  /* 새 업무의 공동 담당자도 로그인한 본인을 기본으로 — 업무 일정 폼과 같은 규칙 */
+  const d=cur||{text:'',prog:'',plan:'',site:'',assignees:meOwner(),links:{},color:'',date:'',time:'',kind:KIND_DEF};
   const people=tkSel().mems;
   const col=(d.color&&d.color!=='auto')?d.color:'';
   const kind=kindOf(d.kind),split=kindSplit(kind);
@@ -2809,7 +2827,8 @@ const ACT={
   /* 달 이동은 보기만 바꾼다 — 선택일(날짜 헤더)은 그대로 둔다 */
   'cal.prev':()=>CAL&&CAL.prev(),
   'cal.next':()=>CAL&&CAL.next(),
-  'cal.today':()=>{selDate(todayStr());},
+  /* 이동만 한다 — 위젯에서 날짜를 고른 것처럼 업무 팝업이 열리던 문제(오늘·연월 이동 공통) */
+  'cal.today':()=>{selDate(todayStr(),true);},
   'plan.new':()=>{
     const pe=S.planEdit;
     if(pe&&!pe.orig){const t=$('#peTitle');if(t){t.focus();t.select();return;}}   /* 이미 새 업무 폼이면 제목으로 */
@@ -3234,7 +3253,7 @@ const ACT={
     CAL.gotoDate(new Date(y,m-1,1));
     /* 그 달에 오늘이 있으면 오늘을, 아니면 1일을 고른다 */
     const t=new Date(),same=t.getFullYear()===y&&t.getMonth()+1===m;
-    selDate(y+'-'+pad(m)+'-'+pad(same?t.getDate():1));
+    selDate(y+'-'+pad(m)+'-'+pad(same?t.getDate():1),true);   /* 이동만 — 업무 팝업은 열지 않는다 */
     rMonTitle();subVisibleMonths();refetchCal();},
   'mail.preview':el=>mailPreview(el.dataset.kind),
   'wid.popClose':()=>{S.widPop=false;rWidget();},
@@ -3244,7 +3263,8 @@ const ACT={
     if(!u){toast('설정에 위젯 파일 주소가 아직 없습니다 — 관리자에게 문의해 주세요');return;}
     window.open(u,'_blank','noopener');
   },
-  'wid.moveOff':()=>{const c=$('#wgMoveChk');if(c)c.checked=false;widMove(false);},
+  'wid.moveOn':()=>{const p=$('#wgSet');if(p){p.classList.remove('on');p.setAttribute('aria-hidden','true');}widMove(true);},
+  'wid.moveOff':()=>widMove(false),
   'wid.set':()=>{const p=$('#wgSet');if(!p)return;p.classList.toggle('on');p.setAttribute('aria-hidden',p.classList.contains('on')?'false':'true');widApply();}
 };
 /* 필터 = 업무 구분 · 진행 상태 · 권역 · 담당자 · 현장.
@@ -3431,7 +3451,6 @@ document.addEventListener('input',e=>{
   if(e.target.id==='wgA'){const c=widCfgLoad();c.a=Number(e.target.value);widCfgSave(c);widApply();}
 });
 document.addEventListener('change',e=>{
-  if(e.target.id==='wgMoveChk'){widMove(e.target.checked);return;}
 });
 document.addEventListener('click',e=>{
   const b=e.target.closest('#wgFz button');
@@ -3479,7 +3498,8 @@ document.addEventListener('keydown',e=>{
    그래서 모바일에서만 '+N 더보기'(FullCalendar 표준 팝오버)로 바꾼다.
    데스크톱은 기존대로 셀 안에서 스크롤해 전부 본다. */
 function isNarrow(){return window.matchMedia('(max-width:960px)').matches;}
-function maxEvOf(){return isNarrow()?2:false;}
+/* false(무제한)면 칸 밖으로 넘쳐 잘린다 — true 는 칸 높이에 맞춰 넣고 나머지를 '+N건' 으로 알린다 */
+function maxEvOf(){return isNarrow()?2:true;}
 
 function bindCalResize(){
   const sb=$('#sidebar');
@@ -3572,7 +3592,7 @@ function widMove(on){
 function widMount(){
   const pop=$('#widPop'),panel=document.querySelector('.day-panel');
   if(!pop||!panel||pop.contains(panel))return;
-  pop.innerHTML='<div class="wp-h"><span id="wpDate"></span>'
+  pop.innerHTML='<div class="wp-h"><span class="wp-d" id="wpDate"></span><span class="wp-w" id="wpDow"></span>'
     +'<button class="wp-x" data-act="wid.popClose" aria-label="닫기"><svg class="icn"><use href="#i-close"></use></svg></button></div>';
   pop.appendChild(panel);
 }
@@ -3583,7 +3603,9 @@ function rWidget(){
   if(!S.widPop){box.classList.remove('on');return;}
   const ds=S.selDate,d=toDate(ds),ho=holOf(ds);
   const h=$('#wpDate');
-  if(h)h.textContent=(d.getMonth()+1)+'월 '+d.getDate()+'일 · '+DOW[d.getDay()]+(ho?' · '+ho.n:'')+(ds===todayStr()?' · 오늘':'');
+  if(h)h.textContent=d.getFullYear()+'년 '+(d.getMonth()+1)+'월 '+d.getDate()+'일';
+  const dw=$('#wpDow');
+  if(dw)dw.textContent=[ho?ho.n:'',DOW[d.getDay()]+'요일',ds===todayStr()?'오늘':''].filter(Boolean).join(' · ');
   box.classList.add('on');
   /* 누른 칸 옆에 붙이되 화면 밖으로 나가지 않게 접는다 */
   const td=document.querySelector('#fcal td[data-date="'+ds+'"]');

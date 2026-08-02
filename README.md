@@ -104,15 +104,27 @@ index.html과 app.js를 한 파일로 합친다. 인라인 스크립트를 쓰�
 `widget/` 폴더가 Electron 위젯이다. 반투명·테두리 없는 창으로 **달력만** 띄우고,
 날짜를 누르면 그 칸 옆에 **앱과 똑같은 업무 패널**(카드 · 수정 · 자동 저장)이 뜬다.
 
+### 배포용 exe 만들기 (관리자가 한 번만)
+
+팀원 PC 에는 Node 를 깔지 않는다. **관리자 PC 에서 exe 를 한 번 만들어 배포**하면 끝이다.
+
+1. Node.js 설치 — https://nodejs.org/ko/download 에서 **LTS** 를 받아 그대로 다음만 누른다.
+2. `widget` 폴더를 연다 → 주소창에 `cmd` 를 치고 Enter (그 폴더에서 명령창이 열린다).
+3. `npm install` 입력 후 Enter — 필요한 파일을 받는다(몇 분).
+4. `npm run dist` 입력 후 Enter — `widget/dist/업무일정위젯.exe` 가 만들어진다.
+5. 그 exe 를 GitHub 저장소 **Releases > Draft a new release** 에 올리고, 파일 주소를 복사한다.
+6. 앱 **설정 > 바탕화면 위젯 > 위젯 파일 주소** 에 붙여넣는다.
+
+팀원은 **설정 > 내려받기 → 파일 두 번 클릭**이면 끝이다. 설치도, Node 도, 명령창도 없다.
+앱을 고쳤을 때는 exe 를 다시 만들 필요가 없다 — 위젯은 배포된 웹 주소를 불러오므로 새로고침만으로 반영된다.
+(위젯 자체 코드인 `main.js`·`desktop-pin.js` 를 고쳤을 때만 다시 만든다.)
+
 ```
 cd widget
 npm install
-npm start                       # 실행해 확인
+npm start                       # 개발 중 확인
 npm run dist                    # dist/업무일정위젯.exe (포터블)
 ```
-
-한글 윈도우에서는 `widget/위젯 실행하기.bat` 을 두 번 눌러도 된다
-(Node 가 없으면 설치 안내 → 다시 실행하면 자동으로 npm install → npm start).
 
 ### 표시 모드 (트레이 아이콘에서 전환)
 
