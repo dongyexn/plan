@@ -132,7 +132,7 @@ svg{display:block;flex-shrink:0;}
 .tk-item.drop-above::before,.tk-item.drop-below::after{content:'';position:absolute;left:8px;right:8px;height:2px;background:var(--b500);border-radius:2px;z-index:5;}
 .tk-item.drop-above::before{top:-3px;}
 .tk-item.drop-below::after{bottom:-3px;}
-.tk-meta{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin-top:4px;}/* 링크 입력 행 */
+/* 링크 입력 행 */
 .lnk-row{display:flex;align-items:center;gap:6px;margin-bottom:5px;}
 .lnk-row .lnk-lbl{flex:0 0 34%;}
 .lnk-row .lnk-url{flex:1;min-width:0;}
@@ -145,7 +145,6 @@ svg{display:block;flex-shrink:0;}
 
 /* ══════════ 카드 · 버튼 · 입력 ══════════ */
 .card{background:var(--bg2);border-radius:var(--rxl);padding:18px 20px;border:1px solid var(--sep);box-shadow:0 1px 2px rgba(16,24,40,.05),0 1px 3px rgba(16,24,40,.04);}
-.ct{font-size:11.5px;font-weight:700;color:var(--lbl2);letter-spacing:.05em;text-transform:uppercase;margin-bottom:14px;}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--rp);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap;}
 .bp{background:linear-gradient(135deg,var(--b500),var(--b800));color:#fff;border:none;}
 .bp:hover{opacity:.86;transform:translateY(-1px);}
@@ -281,7 +280,9 @@ html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day:hover{background-image:l
 /* 오늘 라벨 — 공휴일 이름처럼 숫자 왼쪽에 */
 #fcal .dhol.dtoday{color:var(--b600);}
 html.dark #fcal .dhol.dtoday{color:var(--b300);}
-#fcal .fc-event{border:none;border-radius:5px;padding:0 6px;font-size:11.5px;line-height:1.55;font-weight:500;letter-spacing:-.01em;cursor:pointer;margin:2px 3px;box-shadow:none;}
+#fcal .fc-event{border:none;border-radius:5px;padding:0 6px;font-size:11.5px;line-height:1;font-weight:500;letter-spacing:-.01em;cursor:pointer;margin:2px 3px;box-shadow:none;
+  height:18px;display:flex;align-items:center;box-sizing:border-box;}
+/* ⚠ 높이를 못 박지 않으면 시간 있는 막대(점 표시)와 기간 막대의 높이가 달라 칸마다 줄이 어긋난다 */
 /* ⚠ 줄 간격은 막대의 상하 여백으로만 준다 — harness 의 margin-top 은 FullCalendar 가 인라인으로 정하는 줄 맞춤 값이라 건드리면 칸마다 어긋난다 */
 #fcal .fc-event .fc-event-title{font-weight:500;}
 #fcal .fc-event.done{opacity:.5;}
@@ -336,7 +337,7 @@ body.wid.glass #fcal .fc-daygrid-more-link{color:#fff;background:rgba(255,255,25
    두 상태의 제목 x·아이콘 좌표가 같아야 수정 버튼을 눌러도 화면이 튀지 않는다. 값을 바꿀 땐 .pe-bar 도 함께. */
 /* 업무 카드 — 업무 목록(.tk-item)과 같은 회색 면. 업무 색은 --pc 로만 들어오고
    표현 방식(좌측 색 바 등)은 아래 색 표현 규칙에서 정한다 — 레이아웃에는 영향이 없어야 한다 */
-#dpList .plan{display:block;padding:8px 8px 7px;background:var(--surf2);border:1px solid var(--sep);position:relative;}   /* 위 패딩은 편집 폼과 맞춰야 하므로 아래만 줄인다 */
+#dpList .plan{display:block;padding:8px;background:var(--surf2);border:1px solid var(--sep);position:relative;}
 /* 업무 색 = 제목 앞 색 원. 누르면 팔레트 팝오버가 열리고, 그 자리가 곧 색 변경 버튼이다.
    지름 8px + 왼쪽 여백 6px. 원 크기를 바꿀 땐 여백으로 상쇄해 6+8+9=23 을 지킨다(제목 x·2행 들여쓰기 고정) */
 .p-col{position:relative;flex:0 0 auto;width:8px;height:8px;margin-left:6px;border-radius:50%;
@@ -345,7 +346,6 @@ body.wid.glass #fcal .fc-daygrid-more-link{color:#fff;background:rgba(255,255,25
 .p-col .col-pop{left:0;right:auto;}
 .plan-hd{display:flex;align-items:center;gap:9px;min-width:0;}
 #dpList .plan-main{padding-left:23px;padding-right:6px;margin-top:2px;}   /* 좌 6+8+9, 우도 좌측 색 원 여백(6)만큼 */
-/* 업무 색은 카드 아웃라인으로 — 색 점(.plan-c/.pe-c)은 폐기 */
 /* 상태 배지 — 보조문구 줄 앞에 붙는 작은 배지(글자 크기는 보조문구와 같은 11.5px). 색 변형은 .tk-st.s0~3 재사용 */
 .plan-meta .tk-st,.pe-side .tk-st{height:18px;flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;
   padding:0 7px;border-radius:var(--rp);font-size:11.5px;font-weight:700;white-space:nowrap;
@@ -362,11 +362,7 @@ body.wid.glass #fcal .fc-daygrid-more-link{color:#fff;background:rgba(255,255,25
 .pm-l{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .pm-r{margin-left:auto;flex:0 0 auto;color:var(--lbl2);font-weight:600;}
 .plan.done .pm-r{color:var(--lbl3);font-weight:500;}
-.p-ico.p-done.on{color:var(--gn);}
-.pm-chip{display:inline-flex;align-items:center;gap:3px;padding:1px 7px;border-radius:var(--rp);background:var(--fill);font-weight:600;}
-.pm-chip.remind{background:var(--tint-am);color:var(--am);}
-.pm-chip .icn{width:11px;height:11px;}
-.plan-side{display:flex;align-items:center;gap:2px;flex-shrink:0;margin-right:-2px;}
+.plan-side{display:flex;align-items:center;gap:2px;flex-shrink:0;}
 .p-ico{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--lbl3);transition:background var(--tr),color var(--tr);}
 .p-ico:hover{background:var(--fill);color:var(--bt1);}
 .p-ico.on{color:var(--am);}
@@ -419,8 +415,7 @@ body.wid.glass .cal-title,body.wid.glass .cal-title .y{color:#fff;}
 
 /* 담당자 색 점 · 기한 칩 · 반복 표시 */
 .dot-c{width:9px;height:9px;border-radius:50%;flex-shrink:0;display:inline-block;}
-.pm-chip.own{background:var(--fill);}.due-chip{flex-shrink:0;background:var(--fill);color:var(--lbl2);white-space:nowrap;cursor:pointer;}
-.tk-row1 .due-chip{margin-top:2px;}
+.due-chip{flex-shrink:0;background:var(--fill);color:var(--lbl2);white-space:nowrap;cursor:pointer;}
 .due-chip.soon{background:var(--tint-am);color:var(--am);}
 .due-chip.over{background:var(--tint-rd);color:var(--rd);}
 .due-chip.none{opacity:0;transition:opacity .13s;}
@@ -566,22 +561,14 @@ body.wid.glass .cal-title,body.wid.glass .cal-title .y{color:#fff;}
 .tk-st.s1{background:var(--b100);color:var(--bt1);}
 .tk-st.s2{background:var(--tint-gn);color:var(--gn);}
 .tk-st.s3{background:var(--tint-am);color:var(--am);}
-.tk-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;cursor:pointer;}
 /* 첫 줄 — 제목 뒤에 날짜·시각이 바로 붙는다(넓은 화면에서 벌어지지 않게) */
-.tk-row1{display:flex;align-items:center;flex-wrap:wrap;gap:7px;min-width:0;}
 .tk-ttl{flex:1;min-width:0;font-size:13.5px;font-weight:700;color:var(--lbl);word-break:break-all;cursor:pointer;}
-.tk-time{font-size:11.5px;font-weight:600;color:var(--lbl3);white-space:nowrap;}
 /* 둘째 줄 — 상태·현장·담당자를 한 줄에 모은다 */
-.tk-meta .tk-st{margin-right:1px;}
 .tk-item.s2 .tk-ttl{color:var(--lbl3);text-decoration:line-through;}
-.tk-meta{display:flex;flex-wrap:wrap;align-items:center;gap:5px;}
-.tk-meta .dot-c{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
 /* 담당자 — 회색 바탕 + 색 점 */
-.tk-meta .asg{background:var(--fill);color:var(--lbl);font-weight:600;}
 /* 업무 구분 — 상태와 헷갈리지 않게 테두리만 */
-.tk-meta .kind{background:var(--bg2);border-color:var(--sepo);color:var(--lbl2);}
 /* 현장 — 흰 바탕 + 파란 테두리 */
-.tk-meta .site-on{height:22px;padding:0 9px;background:var(--bg2);border-color:var(--b300);color:var(--bt1);font-size:12px;font-weight:700;}.due-chip.soon{background:var(--tint-am);color:var(--am);}
+.due-chip.soon{background:var(--tint-am);color:var(--am);}
 .due-chip.over{background:var(--tint-rd);color:var(--rd);}
 .due-chip.none{opacity:0;transition:opacity .13s;}
 .tk-item:hover .due-chip.none{opacity:1;}
@@ -646,7 +633,6 @@ body.wid.glass .cal-title,body.wid.glass .cal-title .y{color:#fff;}
 .mn-e{font-size:11.5px;color:var(--lbl3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
 .th-in:focus{border-color:var(--b400);box-shadow:0 0 0 3px rgba(83,140,222,.14);}
 .th-f{display:flex;gap:8px;justify-content:flex-end;margin-top:7px;}
-/* 업무 색 — 좌측 색 바 (일정 카드 .pc 와 동일한 문법) */
 /* 펼침 상태 — 수정 버튼은 우측 상단 */
 /* 집계 보기(팀 전체 · 권역) 구분 헤더 */
 .tk-sub{display:flex;align-items:center;gap:7px;font-size:11.5px;font-weight:700;color:var(--bt1);letter-spacing:.05em;padding:10px 2px 3px;}
@@ -658,7 +644,7 @@ body.wid.glass .cal-title,body.wid.glass .cal-title .y{color:#fff;}
 .tk-new .pal-c{width:20px;height:20px;border-radius:7px;}
 /* 일자 패널 인라인 편집기 — 모달 대신 패널 안에서 작성·수정 */
 /* ── 업무 작성 폼 — 제목 고정 바 + 핵심 4줄 + '자세히' 접기 ── */
-.dp-edit{position:relative;border:1px solid var(--b300);border-radius:var(--rlg);background:var(--surf2);display:flex;flex-direction:column;flex-shrink:0;}
+.dp-edit{position:relative;border:1px solid var(--sep);border-radius:var(--rlg);background:var(--surf2);display:flex;flex-direction:column;flex-shrink:0;}
 .pe-bar{position:relative;display:flex;align-items:center;gap:9px;padding:8px 8px 11px;}
 .pe-bar::after{content:'';position:absolute;left:8px;right:8px;bottom:0;height:1px;background:var(--sep);}
 .pe-side{display:flex;align-items:center;gap:2px;flex-shrink:0;}
@@ -719,8 +705,7 @@ html.dark .col-pop{background:#242426;}
 .sw .sw-t::before{content:"";position:absolute;width:16px;height:16px;left:2px;top:2px;background:var(--bg2);border-radius:50%;transition:transform .2s;box-shadow:0 1px 2px rgba(0,0,0,.25);}
 .sw input:checked + .sw-t{background:var(--gn);}
 .sw input:checked + .sw-t::before{transform:translateX(14px);}
-.sg{margin-bottom:10px;}
-.sg:last-child{margin-bottom:0;}.site-chk{display:flex;flex-wrap:wrap;gap:4px;align-items:center;min-width:0;min-height:26px;}
+.site-chk{display:flex;flex-wrap:wrap;gap:4px;align-items:center;min-width:0;min-height:26px;}
 .site-pick{flex-shrink:0;width:26px;height:26px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:var(--lbl3);border:1px dashed var(--sepo);}
 .site-pick:hover{background:var(--fill);color:var(--bt1);border-color:var(--b300);}
 .site-pick .icn{width:12px;height:12px;}
@@ -935,11 +920,8 @@ body.wid .cal-title{font-size:15px;}
 body.wid #fcal{font-size:11px;}
 body.wid #fcal .fc-daygrid-day-number{padding:3px 5px 1px;}
 body.wid #fcal .dhol{max-width:52px;font-size:10px;}
-body.wid .wid-h{font-size:10.5px;font-weight:700;color:var(--lbl3);letter-spacing:.05em;text-transform:uppercase;margin-bottom:2px;}
 body.wid .plan{padding:8px 10px;border-radius:12px;}
 body.wid .plan-t{font-size:12.5px;}
-.wid-only{display:none;}
-body.wid .wid-only{display:block;}
 
 /* ── 위젯 유리 모드 (?w=1&glass=1) — 바탕화면에 스며드는 전면 달력.
      창을 투명하게 띄우고 카드 틀 없이 셀만 앱 컬러의 반투명 틴트로 남긴다.
@@ -985,7 +967,6 @@ body.wid.glass #fcal .fc-day-sun .dnum{color:#FF9C93!important;}
 body.wid.glass #fcal .fc-day-sat .dnum{color:#9DC3FF!important;}
 body.wid.glass #fcal .dhol{color:#FF9C93;}
 /* 오늘 목록 — 같은 틴트의 띠 */
-body.wid.glass .wid-h{color:rgba(255,255,255,.8);text-shadow:0 1px 3px rgba(0,0,0,.5);}
 body.wid.glass .plan{background:rgba(13,17,26,.6);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);}
 body.wid.glass .plan .plan-t{color:rgba(255,255,255,.94);}
 body.wid.glass .plan .pm-chip{background:rgba(255,255,255,.14);color:rgba(255,255,255,.85);border-color:transparent;}
@@ -1003,7 +984,7 @@ body.wid #fcal{font-size:calc(11px*var(--wfz));}
 body.wid #fcal .dnum{font-size:calc(12px*var(--wfz));}
 body.wid #fcal .fc-col-header-cell-cushion{font-size:calc(11.5px*var(--wfz));}
 body.wid #fcal .fc-event-title,body.wid #fcal .fc-event-time{font-size:calc(10.5px*var(--wfz));}
-body.wid #fcal .fc-daygrid-event{padding:0 calc(5px*var(--wfz));}
+body.wid #fcal .fc-event{height:calc(18px*var(--wfz));padding:0 calc(5px*var(--wfz));}
 /* ⚠ 글자를 키워도 달력이 창보다 커지면 안 된다 — 표는 창에 맞추고 칸 안에서만 줄인다 */
 body.wid #fcal .fc-daygrid-body,body.wid #fcal table{width:100%!important;}
 body.wid .cal-card{min-height:0;overflow:hidden;}
@@ -1025,7 +1006,7 @@ body.wid .wid-pop .dp-lh-t{color:rgba(255,255,255,.75);}
 body.wid .wid-pop .dp-body{padding:9px 4px 2px 4px;}
 /* ⚠ 카드 규칙이 #dpList(아이디)로 걸려 있어 클래스만으로는 못 이긴다 — 같은 아이디를 끼워 명시도를 맞춘다 */
 body.wid .wid-pop #dpList .plan{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.20);}
-body.wid .wid-pop #dpList .dp-edit{background:rgba(255,255,255,.10);border-color:var(--b400);}
+body.wid .wid-pop #dpList .dp-edit{background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.20);}
 body.wid .wid-pop .dp-add{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.28);color:#fff;}
 body.wid .wid-pop .dp-add:hover{background:rgba(255,255,255,.2);}
 /* H. 프로필 등 모달도 위젯 유리 카드로 */
@@ -1040,14 +1021,17 @@ body.wid #mb .inp{background:rgba(255,255,255,.08);border-color:rgba(255,255,255
 body.wid #mb .btn.bg2,body.wid #mb .btn.bo{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.24);color:#fff;}
 /* 위젯은 창이 좁다 — 모달을 줄여 프로필 팝오버가 옆에 설 자리를 만든다 */
 body.wid #mo{justify-content:flex-start;padding-left:12px;}   /* 모달을 왼쪽으로 — 팝오버가 오른쪽에 선다 */
-body.wid #mb{padding:16px;max-width:270px;}
-body.wid #pfPop{width:300px;}
+body.wid #mb{padding:20px;max-width:300px;}
+body.wid #pfPop{width:290px;}
 body.wid #pfPop{background:rgba(22,25,33,.96);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);
   border-color:rgba(255,255,255,.16);
   --lbl:#fff;--lbl2:rgba(255,255,255,.80);--lbl3:rgba(255,255,255,.62);
   --sep:rgba(255,255,255,.18);--bg2:transparent;--surf2:rgba(255,255,255,.07);
   --fill:rgba(255,255,255,.12);--fill2:rgba(255,255,255,.18);color:#fff;}
 body.wid #pfPop .inp{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.22);color:#fff;}
+/* 선택된 탭·분류 칩이 유리 배경에 묻히던 것 */
+body.wid #mb .acct-tab.act{background:var(--b600);color:#fff;}
+body.wid #pfPop .pf-cat.act{background:var(--b600);color:#fff;}
 /* 업무 팝업도 같은 방식 — 카드·라벨·구분선·아이콘이 한꺼번에 밝아진다 */
 body.wid .wid-pop{--lbl:#fff;--lbl2:rgba(255,255,255,.80);--lbl3:rgba(255,255,255,.62);
   --sep:rgba(255,255,255,.20);--sepo:rgba(255,255,255,.32);--surf2:rgba(255,255,255,.08);
@@ -1060,20 +1044,13 @@ body.wid .wid-pop input.inp::placeholder,body.wid .wid-pop textarea.inp::placeho
 body.wid .wid-pop input[type=date].inp,body.wid .wid-pop input[type=time].inp{color-scheme:dark;}
 body.wid .wid-pop .p-ico,body.wid .wid-pop .pe-ic{color:rgba(255,255,255,.72);}
 body.wid .wid-pop .p-ico:hover,body.wid .wid-pop .pe-ic:hover{background:rgba(255,255,255,.14);color:#fff;}
-.wid-pop .wp-h{display:flex;align-items:center;gap:8px;padding:2px 6px 9px 16px;margin-bottom:0;}
+.wid-pop .wp-h{display:flex;align-items:center;gap:8px;padding:2px 8px 9px 8px;margin-bottom:0;}   /* 좌우 8px = 아래 '업무 N건'(.dp-lh)과 같은 자리 */
 .wid-pop .wp-d{font-size:13px;font-weight:800;color:#fff;line-height:22px;}
 .wid-pop .wp-w{font-size:11.5px;font-weight:600;color:rgba(255,255,255,.6);margin-left:auto;line-height:22px;}
 .wid-pop .wp-x{width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;
   color:rgba(255,255,255,.7);flex:0 0 auto;margin-left:2px;}
 .wid-pop .wp-x:hover{background:rgba(255,255,255,.14);color:#fff;}
 .wid-pop .wp-x .icn{width:11px;height:11px;}
-.wid-pop .wp-i{display:flex;align-items:flex-start;gap:8px;padding:6px 0;}
-.wid-pop .wp-i+.wp-i{border-top:1px solid rgba(255,255,255,.1);}
-.wid-pop .wp-c{width:7px;height:7px;border-radius:50%;flex:0 0 auto;margin-top:5px;}
-.wid-pop .wp-t{font-size:12.5px;font-weight:700;color:#fff;word-break:break-all;line-height:1.4;}
-.wid-pop .wp-m{font-size:11px;color:rgba(255,255,255,.62);margin-top:2px;}
-.wid-pop .wp-i.done .wp-t{text-decoration:line-through;color:rgba(255,255,255,.5);}
-.wid-pop .wp-none{font-size:11.5px;color:rgba(255,255,255,.55);padding:6px 0 2px;}
 body.wid .plan .plan-t{font-size:calc(12.5px*var(--wfz));}
 /* 설정 팝업 */
 #wgSet{display:none;position:fixed;top:44px;right:10px;z-index:600;width:236px;
@@ -1595,5 +1572,5 @@ html.dark #toast{background:#2B313A;}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=99"></script>
+<script src="./app.js?v=101"></script>
 </body></html>
