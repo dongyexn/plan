@@ -2205,15 +2205,15 @@ function taskFormHTML(sid,iid,cur){
         <div class="frow"><label>반복</label><select class="inp inp-sm" id="tnRec">${Object.keys(REC_LBL).map(k=>'<option value="'+k+'"'+(k===rc?' selected':'')+'>'+REC_LBL[k]+'</option>').join('')}</select></div>
       </div>
       <div class="frow" id="tnUntilRow" style="${rc?'':'display:none'}"><label>반복 종료</label><input type="date" class="inp inp-sm" id="tnUntil" value="${esc((d.recur&&d.recur.until)||'')}"></div>
-      <div class="frow-ks">
+      <div class="frow4">
         <div class="frow"><label>업무 구분</label>
           <select class="inp inp-sm" id="tnKind" data-act="tk.kind">
             ${TK_KIND.map(([v,l])=>'<option value="'+v+'"'+(v===kind?' selected':'')+'>'+esc(l)+'</option>').join('')}
           </select></div>
         <div class="frow"><label>담당자</label>${ownSelHTML('tnAsg',own,people)}</div>
         <div class="frow"><label>현장</label>${sitePickHTML('tnSite',d.site||'')}</div>
+        <div class="frow"><label>링크</label><input class="inp inp-sm" id="tnLink" maxlength="500" placeholder="https://…" value="${esc((lnk&&lnk.url)||'')}"></div>
       </div>
-      <div class="frow"><label>링크</label><input class="inp inp-sm" id="tnLink" maxlength="500" placeholder="https://…" value="${esc((lnk&&lnk.url)||'')}"></div>
       <div id="tnBodySec">${tkBodyHTML(split,d.prog||d.body||'',d.plan||'',kind)}</div>
     </div>
   </div>`;
