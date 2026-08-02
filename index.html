@@ -904,7 +904,6 @@ body.wid .cal-title{font-size:15px;}
 body.wid #fcal{font-size:11px;}
 body.wid #fcal .fc-daygrid-day-number{padding:3px 5px 1px;}
 body.wid #fcal .dhol{max-width:52px;font-size:10px;}
-body.wid .wid-panel{margin-top:9px;max-height:38%;overflow-y:auto;display:flex;flex-direction:column;gap:6px;}
 body.wid .wid-h{font-size:10.5px;font-weight:700;color:var(--lbl3);letter-spacing:.05em;text-transform:uppercase;margin-bottom:2px;}
 body.wid .plan{padding:8px 10px;border-radius:12px;}
 body.wid .plan-t{font-size:12.5px;}
@@ -966,9 +965,25 @@ body.wid .cal-title{font-size:15px;}
 body.wid .cal-title .y{font-size:inherit;}            /* 연도만 18px 로 남던 것 — 월과 동일 크기 */
 body.wid{--wfz:1;}
 body.wid #fcal{font-size:calc(11px*var(--wfz));}
-body.wid .wid-panel{margin-top:9px;max-height:38%;overflow-y:auto;display:grid;gap:6px;
-  grid-template-columns:repeat(auto-fill,minmax(420px,1fr));align-content:start;}   /* 넓으면 2~3열 자동 */
-body.wid .wid-h{grid-column:1/-1;}
+/* 날짜를 누르면 그 칸 옆에 뜨는 업무 팝업 — 위젯은 달력만 보이고 목록은 띄우지 않는다 */
+.wid-pop{display:none;position:fixed;z-index:620;width:268px;max-height:52vh;overflow-y:auto;
+  background:rgba(22,25,33,.94);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+  border:1px solid rgba(255,255,255,.16);border-radius:13px;padding:11px 12px;
+  box-shadow:0 12px 34px rgba(0,0,0,.5);color:rgba(255,255,255,.92);}
+body.wid .wid-pop.on{display:block;}
+.wid-pop .wp-h{display:flex;align-items:center;justify-content:space-between;gap:8px;
+  font-size:12px;font-weight:800;color:#fff;margin-bottom:8px;}
+.wid-pop .wp-x{width:20px;height:20px;border-radius:6px;display:flex;align-items:center;justify-content:center;
+  color:rgba(255,255,255,.7);flex:0 0 auto;}
+.wid-pop .wp-x:hover{background:rgba(255,255,255,.14);color:#fff;}
+.wid-pop .wp-x .icn{width:11px;height:11px;}
+.wid-pop .wp-i{display:flex;align-items:flex-start;gap:8px;padding:6px 0;}
+.wid-pop .wp-i+.wp-i{border-top:1px solid rgba(255,255,255,.1);}
+.wid-pop .wp-c{width:7px;height:7px;border-radius:50%;flex:0 0 auto;margin-top:5px;}
+.wid-pop .wp-t{font-size:12.5px;font-weight:700;color:#fff;word-break:break-all;line-height:1.4;}
+.wid-pop .wp-m{font-size:11px;color:rgba(255,255,255,.62);margin-top:2px;}
+.wid-pop .wp-i.done .wp-t{text-decoration:line-through;color:rgba(255,255,255,.5);}
+.wid-pop .wp-none{font-size:11.5px;color:rgba(255,255,255,.55);padding:6px 0 2px;}
 body.wid .plan .plan-t{font-size:calc(12.5px*var(--wfz));}
 /* 설정 팝업 */
 #wgSet{display:none;position:fixed;top:44px;right:10px;z-index:600;width:236px;
@@ -1283,14 +1298,12 @@ html.dark #toast{background:#2B313A;}
           </div>
           <div id="fcal"></div>
         </div>
-        <div class="wid-only wid-panel" id="widPanel"></div>
+        <div class="wid-pop" id="widPop"></div>
         <div id="wgSet" aria-hidden="true">
           <div class="wgs-h">위젯 설정<button class="pop-x" data-act="wid.set" aria-label="닫기"><svg class="icn"><use href="#i-close"></use></svg></button></div>
           <div class="wgs-r"><span>배경 진하기</span><input type="range" id="wgA" min="20" max="90" step="5"></div>
           <div class="wgs-r"><span>글자 크기</span>
             <div class="seg wgs-seg" id="wgFz"><button data-fz="s">작게</button><button data-fz="m" class="act">보통</button><button data-fz="l">크게</button></div></div>
-          <div class="wgs-r"><span>오늘 목록</span>
-            <label class="sw"><input type="checkbox" id="wgPanelChk" checked><span class="sw-t"></span></label></div>
           <div class="wgs-r"><span>다크 모드</span>
             <label class="sw"><input type="checkbox" id="wgDarkChk"><span class="sw-t"></span></label></div>
         </div>
@@ -1486,5 +1499,5 @@ html.dark #toast{background:#2B313A;}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=90"></script>
+<script src="./app.js?v=91"></script>
 </body></html>
