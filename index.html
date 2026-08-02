@@ -5,6 +5,10 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://www.gstatic.com https://www.google.com; font-src 'self' data:; object-src 'none'; base-uri 'self'; script-src 'self' https://cdn.jsdelivr.net https://www.gstatic.com https://www.google.com https://www.recaptcha.net https://recaptcha.google.com https://apis.google.com https://*.firebasedatabase.app; frame-src https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; connect-src 'self' https://*.googleapis.com https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.firebaseio.com wss://*.firebaseio.com https://www.gstatic.com https://cdn.jsdelivr.net https://www.google.com https://www.recaptcha.net https://recaptcha.google.com">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>H · 주요업무현황</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#3E71D2">
+<link rel="icon" href="./icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0' y1='0' x2='0.8' y2='1'><stop offset='0' stop-color='%236FB0FF'/><stop offset='1' stop-color='%2316357C'/></linearGradient></defs><rect width='64' height='64' rx='13' fill='url(%23g)'/><g transform='translate(11,16) scale(0.4828)' fill='white'><path d='M50.2456 0L44.4349 9.8333L11.2683 65.9786H11.2736H75.6123H86.8843L50.2456 0Z'/><path d='M38.9747 0L0 65.9786H7.58667L42.6533 6.62664L38.9747 0Z'/></g></svg>">
 <script src="./vendor/fullcalendar.min.js"></script>
 <!-- Firebase SDK — 하자처리 현황과 동일: jsdelivr(npm 미러) + SRI 고정 -->
@@ -128,8 +132,6 @@ svg{display:block;flex-shrink:0;}
 .nv-badge{flex-shrink:0;min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:var(--rd);color:#fff;font-size:11.5px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;}
 #sidebar.mini .nv-badge{display:none!important;}
 /* 업무 항목 — 담당자·링크·드래그 */
-.tk-grip{flex-shrink:0;color:var(--lbl3);font-size:12px;cursor:grab;opacity:0;transition:opacity .12s;user-select:none;}
-.tk-item:hover .tk-grip{opacity:.7;}
 .tk-item.dragging{opacity:.4;}
 .tk-item.drop-above::before,.tk-item.drop-below::after{content:'';position:absolute;left:8px;right:8px;height:2px;background:var(--b500);border-radius:2px;z-index:5;}
 .tk-item.drop-above::before{top:-3px;}
@@ -335,8 +337,8 @@ html.dark #fcal .dhol.dtoday{color:var(--b300);}
    표현 방식(좌측 색 바 등)은 아래 색 표현 규칙에서 정한다 — 레이아웃에는 영향이 없어야 한다 */
 #dpList .plan{display:block;padding:8px;background:var(--surf2);border:1px solid var(--sep);position:relative;}
 /* 업무 색 = 제목 앞 색 원. 누르면 팔레트 팝오버가 열리고, 그 자리가 곧 색 변경 버튼이다.
-   지름 11px + 왼쪽 여백 3px(= 카드 안쪽 12px). 원이 작아져도 제목 x 는 그대로다(3+11+9=23). 읽기·편집 동일 */
-.p-col{position:relative;flex:0 0 auto;width:11px;height:11px;margin-left:3px;border-radius:50%;
+   지름 8px + 왼쪽 여백 6px. 원 크기를 바꿀 땐 여백으로 상쇄해 6+8+9=23 을 지킨다(제목 x·2행 들여쓰기 고정) */
+.p-col{position:relative;flex:0 0 auto;width:8px;height:8px;margin-left:6px;border-radius:50%;
   box-shadow:inset 0 0 0 1px rgba(0,0,0,.10);transition:transform .12s;}
 .p-col:hover{transform:scale(1.1);}
 .p-col .col-pop{left:0;right:auto;}
@@ -432,9 +434,7 @@ html.dark #ymPop{background:#242426;}
 .occ-line{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
 .occ-line .inp{width:auto;flex:1 1 128px;min-width:0;}
 /* 주요업무 검색·필터 바 */
-.tkf-bar{display:flex;align-items:center;gap:8px;margin-bottom:11px;padding-bottom:11px;
-  border-bottom:1px solid var(--sep);flex-shrink:0;}
-.tkf-bar.on{border-bottom-color:var(--b300);}
+.tkf-bar{display:flex;align-items:center;gap:8px;flex-shrink:0;}
 .tkf-srch{position:relative;flex:1;min-width:0;}
 .tkf-srch .inp{width:100%;padding:7px 26px 7px 28px;font-size:12.5px;border-radius:var(--rp);border-width:1px;}
 .tkf-srch-i{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:13px;height:13px;color:var(--lbl3);pointer-events:none;}
@@ -468,7 +468,10 @@ html.dark #ymPop{background:#242426;}
 .tkwrap{display:grid;grid-template-columns:320px minmax(0,1fr);gap:16px;align-items:stretch;height:calc(100dvh - var(--th) - 29px);min-height:460px;}   /* 29 = 상단 9 + 하단 20 */
 .tkside{display:flex;flex-direction:column;gap:12px;min-height:0;overflow-y:auto;}
 .tks-card{padding:14px 15px;}
-.tkmain{display:flex;flex-direction:column;min-height:0;padding:16px 18px 18px;}
+/* 오른쪽 열 — 업무 일정과 같은 구성: 제목 없는 필터 카드 + 제목이 붙은 업무 패널 */
+.tkcol{display:flex;flex-direction:column;gap:9px;min-height:0;min-width:0;}
+.tkf-card{padding:11px 12px;flex:0 0 auto;}
+.tkmain{display:flex;flex-direction:column;min-height:0;padding:0;flex:1;overflow:hidden;}
 .tks-h{font-size:11.5px;font-weight:700;color:var(--lbl3);letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px;}
 /* 하위 항목 앞 동그라미 — 하자처리현황 사이드바 현장 점(.std)과 동일 */
 .tks-item .std{width:6px;height:6px;border-radius:50%;flex-shrink:0;background:var(--sepo);transition:background var(--tr);margin-right:2px;}
@@ -487,13 +490,16 @@ html.dark #ymPop{background:#242426;}
 .tks-item.tks-reg .n{font-size:12.5px;color:var(--bt1);letter-spacing:.02em;}
 .tks-item.tks-reg.act .n{color:var(--bt1);}
 .tks-item.sub{padding-left:24px;font-size:13.5px;}
-.tkm-h{display:flex;align-items:center;gap:9px;margin-bottom:12px;flex-shrink:0;min-height:28px;}
+/* 업무 패널 머리 — 업무 일정의 .dp-lh 와 같은 규격(구분선은 양옆을 띄운다) */
+.tkm-h{position:relative;display:flex;align-items:center;gap:9px;padding:11px 16px 10px;flex-shrink:0;}
+.tkm-h::after{content:'';position:absolute;left:16px;right:16px;bottom:0;height:1px;background:var(--sep);}
+.tkm-c{margin-left:auto;font-size:12.5px;font-weight:700;color:var(--lbl2);}
 .tkm-h .bar{width:4px;height:18px;border-radius:99px;background:linear-gradient(135deg,var(--b500),var(--b800));}
 .tkm-h b{font-size:16px;font-weight:800;color:var(--lbl);letter-spacing:-.01em;}
 .tkm-h .tkm-sub{font-size:12.5px;font-weight:600;color:var(--lbl3);}
-.tkm-h .btn{margin-left:auto;}
+.tkm-h .btn{flex:0 0 auto;}   /* 우측 정렬은 .tkm-c 의 margin-left:auto 가 맡는다 */
 /* 인라인 작성창 */
-.tk-new{border:1.5px solid var(--b300);border-radius:var(--rlg);padding:0;margin-bottom:12px;background:var(--bg2);flex-shrink:0;overflow:hidden;}
+.tk-new{border:1px solid var(--b300);border-radius:var(--rlg);padding:0;margin-bottom:12px;background:var(--surf2);flex-shrink:0;overflow:hidden;}
 /* 작성·수정 폼 — 제목 / 본문 / 분류 / 담당자 / 링크를 구분선으로 나눈다 */
 .tkf-top{padding:12px 14px 12px;background:var(--surf2);border-bottom:1px solid var(--sep);}
 /* 수정 중에도 지금 상태를 같은 배지로 보여줘 보는 화면과 이어지게 */
@@ -523,13 +529,18 @@ html.dark #ymPop{background:#242426;}
 .tk-new-g{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:0;}
 .tk-new-a{min-height:78px;font-size:13px;line-height:1.6;resize:vertical;}.tk-new-btns{margin-left:auto;display:flex;gap:8px;}
 /* 목록 */
-.tk-list{display:flex;flex-direction:column;gap:12px;flex:1;min-height:0;overflow-y:auto;}
+.tk-list{display:flex;flex-direction:column;gap:5px;flex:1;min-height:0;overflow-y:auto;padding:12px 12px 16px 16px;}
 .tk-item{border-radius:var(--rmd);background:var(--surf2);border:1px solid var(--sep);transition:background .12s;position:relative;}
 .tk-item:hover{background:var(--surf3);}
-.tk-item.open{background:var(--bg2);border-color:var(--b200);}
-.tk-line{display:flex;align-items:flex-start;gap:8px;padding:11px 13px;}
-/* 업무 배지 공통 — 업무 일정 카드의 상태 배지(18px·11.5px)와 같은 규격. 역할은 색으로만 구분한다 */
-.tk-meta>*,.tk-row1 .due-chip{height:18px;display:inline-flex;align-items:center;gap:4px;
+.tk-item.open{background:var(--surf2);border-color:var(--b200);}
+.tk-item{cursor:grab;}
+.tk-item:active{cursor:grabbing;}
+/* 1행 — 업무 일정 카드(.plan-hd)와 같은 골격: [색 원][제목][아이콘] */
+.tk-line{display:flex;align-items:center;gap:9px;padding:8px;}
+.tk-item .plan-meta{padding:0 8px 8px 31px;margin-top:0;}   /* 2행 들여쓰기 = 1행 패딩 8 + 색 원 6+8+9 */
+.tk-item .tk-detail{padding-left:31px;}
+/* 배지 공통 — 업무 일정 카드의 상태 배지(18px·11.5px)와 같은 규격. 목록 카드는 보조문구로 바뀌어 폼 상단 요약(.tkf-now)에서만 쓴다 */
+.tkf-now>*{height:18px;display:inline-flex;align-items:center;gap:4px;
   padding:0 7px;border-radius:var(--rp);font-size:11.5px;font-weight:700;white-space:nowrap;
   border:1px solid transparent;box-sizing:border-box;}
 .tk-st{flex-shrink:0;cursor:pointer;user-select:none;transition:transform .1s;}
@@ -541,7 +552,7 @@ html.dark #ymPop{background:#242426;}
 .tk-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;cursor:pointer;}
 /* 첫 줄 — 제목 뒤에 날짜·시각이 바로 붙는다(넓은 화면에서 벌어지지 않게) */
 .tk-row1{display:flex;align-items:center;flex-wrap:wrap;gap:7px;min-width:0;}
-.tk-ttl{font-size:14.5px;font-weight:700;color:var(--lbl);line-height:1.4;word-break:break-all;min-width:0;}
+.tk-ttl{flex:1;min-width:0;font-size:13.5px;font-weight:700;color:var(--lbl);word-break:break-all;cursor:pointer;}
 .tk-time{font-size:11.5px;font-weight:600;color:var(--lbl3);white-space:nowrap;}
 /* 둘째 줄 — 상태·현장·담당자를 한 줄에 모은다 */
 .tk-meta .tk-st{margin-right:1px;}
@@ -557,10 +568,8 @@ html.dark #ymPop{background:#242426;}
 .due-chip.over{background:var(--tint-rd);color:var(--rd);}
 .due-chip.none{opacity:0;transition:opacity .13s;}
 .tk-item:hover .due-chip.none{opacity:1;}
-.tk-grip{flex-shrink:0;color:var(--lbl3);font-size:13px;cursor:grab;opacity:0;transition:opacity .12s;user-select:none;line-height:1.5;}
 /* 우측 조작 묶음 — 첫 줄 높이에 맞춰 붙는다 */
 .tk-acts{flex-shrink:0;display:flex;align-items:center;gap:2px;}
-.tk-item:hover .tk-grip{opacity:.7;}
 .tk-item.dragging{opacity:.4;}
 .tk-item.drop-above::before,.tk-item.drop-below::after{content:'';position:absolute;left:8px;right:8px;height:2px;background:var(--b500);border-radius:2px;z-index:5;}
 .tk-item.drop-above::before{top:-4px;}
@@ -661,6 +670,13 @@ html.dark #ymPop{background:#242426;}
 
 .col-pop{position:absolute;top:calc(100% + 7px);right:0;z-index:70;background:var(--bg2);border:1px solid var(--sep);border-radius:var(--rmd);box-shadow:0 10px 28px rgba(0,0,0,.16);padding:10px;width:196px;}
 .col-pop-h{font-size:11.5px;font-weight:700;color:var(--lbl2);margin-bottom:7px;}
+/* 직접 고르기 — 별도 창을 띄우지 않고 팝오버 안에서 끝낸다 */
+.col-cus{margin-top:10px;padding-top:9px;border-top:1px solid var(--sep);display:flex;align-items:center;gap:8px;}
+.col-hue{-webkit-appearance:none;appearance:none;flex:1;min-width:0;height:12px;border-radius:99px;cursor:pointer;
+  background:linear-gradient(90deg,#f00 0%,#ff0 17%,#0f0 33%,#0ff 50%,#00f 67%,#f0f 83%,#f00 100%);}
+.col-hue::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;
+  background:var(--bg2);border:2px solid var(--lbl);cursor:pointer;}
+.col-cus .pal-c{width:22px;height:22px;flex:0 0 auto;}
 html.dark .col-pop{background:#242426;}
 .col-pop .pal{display:flex;flex-wrap:wrap;gap:6px;}
 /* 자세히 */
@@ -1423,6 +1439,18 @@ html.dark #toast{background:#2B313A;}
             </div>
           </div>
           <div class="card">
+            <div class="set-h">위젯</div>
+            <div class="share-row">
+              <div class="share-info"><b>바탕화면 위젯</b><span id="wgHint">엣지·크롬에서 버튼 한 번이면 바탕화면에 아이콘이 생깁니다</span></div>
+              <button class="btn bp bsm" id="wgInstall" data-act="wid.install">바탕화면에 만들기</button>
+            </div>
+            <div class="share-sep"></div>
+            <div class="share-row">
+              <div class="share-info"><b>지금 창으로 열기</b><span>설치하지 않고 작은 창으로 바로 띄웁니다</span></div>
+              <button class="btn bo bsm" data-act="wid.open">창으로 열기</button>
+            </div>
+          </div>
+          <div class="card">
             <div class="set-h">가져오기</div>
             <div class="share-row">
               <div class="share-info"><b>하자처리현황 게시본</b><span>최신 게시본의 팀 · 권역 · 현장 목록을 그대로 불러옵니다</span></div>
@@ -1458,5 +1486,5 @@ html.dark #toast{background:#2B313A;}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=88"></script>
+<script src="./app.js?v=90"></script>
 </body></html>

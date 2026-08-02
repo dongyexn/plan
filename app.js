@@ -159,6 +159,7 @@ function pfPaint(c){
   if(av&&c)av.style.setProperty('--avc',c);
 }
 document.addEventListener('click',e=>{
+  /* 색상환 슬라이더 — 끌 때는 미리보기만, 놓을 때 확정한다(끌 때마다 저장하면 목록이 다시 그려져 팝오버가 사라진다) */
   /* 팝오버에서 고르면 줄에 반영하고 닫는다 */
   const ec=e.target.closest('#colPop .pal-c');
   if(ec&&!ec.classList.contains('pal-add')){
@@ -173,7 +174,13 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('input',e=>{
   if(e.target.id==='acctName'){acctAutoSave();return;}
-  if(e.target.closest('#colPop')){setPlanColor(e.target.value);return;}
+  if(e.target.classList&&e.target.classList.contains('col-hue')){
+    const c=hueHex(+e.target.value);
+    const btn=e.target.closest('.p-col');if(btn)btn.style.background=c;
+    const ci=e.target.parentElement.querySelector('.pal-inp');if(ci)ci.value=c;
+    return;
+  }
+  if(e.target.closest('#colPop')){setPlanColor(e.target.value);closeColPop();return;}
   if(e.target.closest('#pfPal')){const v=e.target.value;PF_SEL.color=v;pfPaint(v);acctAutoSave();return;}
   if(e.target.id==='pfSrch'){
     const q=e.target.value.trim();
@@ -205,6 +212,13 @@ function colDotHTML(c,pid){
 /* 색 선택기 HTML — 기본 팔레트 + 임의 색 추가.
    현재 값이 팔레트에 없으면(직접 고른 색) 맨 뒤에 칩으로 붙여 선택 상태를 유지한다. */
 /* 색 점 — 'auto'(담당자 색)는 3색 그라디언트로 표시 */
+/* 색상환 각도 → 팔레트와 어울리는 채도·명도의 hex */
+function hueHex(h){
+  const s=.62,l=.52,a=s*Math.min(l,1-l);
+  const f=n=>{const k=(n+h/30)%12;const v=l-a*Math.max(-1,Math.min(k-3,9-k,1));
+    return Math.round(255*v).toString(16).padStart(2,'0').toUpperCase();};
+  return '#'+f(0)+f(8)+f(4);
+}
 function colDotStyle(c){
   return (!c||c==='auto')?'background:linear-gradient(135deg,#3E71D2,#16A34A,#D97706)':'background:'+esc(c);
 }
@@ -1825,28 +1839,21 @@ function taskItemHTML(sid,iid,it,withSubject,hideOwn){
     .map(id=>roster().find(p=>p.id===id)).filter(Boolean);
   const sn=siteName(it.site);
   const open=S.tkOpen===key;
-  /* 업무 색·아이콘 규칙은 업무 일정 카드와 같다 — 제목 앞 색 원(=색 변경), 알림은 켜졌을 때만, 링크는 있을 때만 */
+  /* 업무 일정 카드와 같은 골격 — 1행 [색 원][제목][아이콘], 2행 [상태 배지][구분·날짜]//[현장·담당자] */
   const p0=taskAsPlan(sid,iid,it);
   const lnk=Object.values(it.links||{}).filter(l=>l&&l.url)[0];
+  const md=x=>{const t=toDate(x);return (t.getMonth()+1)+'/'+t.getDate();};
+  const span=it.end&&it.end!==it.date;
+  const left=[kindLabel(it.kind),
+    it.date?(span?md(it.date)+'–'+md(it.end):md(it.date)):'',
+    fmtSpan(it),
+    (it.recur&&it.recur.f)?REC_LBL[it.recur.f]:''].filter(Boolean);
+  const right=[sn,withSubject?subjName(sid):'',asg.map(x=>x.name).join(', ')].filter(Boolean);
   return `
   <div class="tk-item s${st}${open?' open':''}" draggable="true" data-sid="${esc(sid)}" data-iid="${esc(iid)}">
     <div class="tk-line">
-      <span class="tk-grip" aria-hidden="true">⠿</span>
       ${colDotHTML(planColor(p0),iid)}
-      <div class="tk-body" data-act="tk.open" data-sid="${esc(sid)}" data-iid="${esc(iid)}">
-        <div class="tk-row1">
-          <span class="tk-ttl">${esc(it.text||'제목 없음')}</span>
-          <span class="due-chip ${di.cls}" data-act="tk.due" data-sid="${esc(sid)}" data-iid="${esc(iid)}" title="날짜">${esc(di.txt)}</span>
-          ${fmtSpan(it)?'<span class="tk-time">'+esc(fmtSpan(it))+'</span>':''}
-        </div>
-        <div class="tk-meta">
-          <span class="tk-st s${st}" data-act="tk.st" data-sid="${esc(sid)}" data-iid="${esc(iid)}">${ST_LBL[st]}</span>
-          ${kindOf(it.kind)?'<span class="kind">'+esc(kindLabel(it.kind))+'</span>':''}
-          ${withSubject?'<span class="asg">'+esc(subjName(sid))+'</span>':''}
-          ${sn?'<span class="site-on">'+esc(sn)+'</span>':''}
-          ${asg.map(p=>'<span class="asg"><span class="dot-c" style="background:'+esc(ownColor(p.id))+'"></span>'+esc(p.name)+'</span>').join('')}
-        </div>
-      </div>
+      <div class="tk-ttl" data-act="tk.open" data-sid="${esc(sid)}" data-iid="${esc(iid)}">${esc(it.text||'제목 없음')}</div>
       <div class="tk-acts">
         ${cn?`<button class="tk-ico on" data-act="tk.open" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="코멘트">
           <svg class="icn"><use href="#i-cmt"></use></svg><span class="cn">${cn}</span></button>`:''}
@@ -1855,6 +1862,10 @@ function taskItemHTML(sid,iid,it,withSubject,hideOwn){
         <button class="tk-ico" data-act="tk.edit" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="수정" title="수정"><svg class="icn"><use href="#i-pen"></use></svg></button>
         <button class="tk-del" data-act="tk.del" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="삭제"><svg class="icn"><use href="#i-close"></use></svg></button>
       </div>
+    </div>
+    <div class="plan-meta" data-act="tk.open" data-sid="${esc(sid)}" data-iid="${esc(iid)}">
+      <span class="pm-l"><span class="tk-st s${st}" data-act="tk.st" data-sid="${esc(sid)}" data-iid="${esc(iid)}" title="눌러서 상태 변경">${ST_LBL[st]}</span>${left.map(esc).join(' · ')}</span>
+      <span class="pm-r">${right.map(esc).join(' · ')}</span>
     </div>
     ${open?taskDetailHTML(sid,iid,it):''}
   </div>`;
@@ -2256,6 +2267,8 @@ function rTasks(){
     subject=p?p.name:'담당자';sid=sel;
     listHTML=taskListHTML(sid);
   }
+  /* 화면에 실제로 그려진 업무 수 — 업무 패널 머리 우측에 표시 */
+  const shownCnt=(listHTML.match(/class="tk-item /g)||[]).length;
   /* 담당자 카드 — 권역 행(선택 가능) 아래에 담당자 */
   const heads=mems.filter(p=>rankOf(p.rank)==='head');          /* 팀장 — 권역에 매이지 않는다 */
   const rest=mems.filter(p=>rankOf(p.rank)!=='head');
@@ -2294,13 +2307,18 @@ function rTasks(){
         `).join('')||'<div class="tk-empty" style="text-align:left;padding:6px 2px">배정된 담당자가 없습니다.</div>'}
       </div>
     </div>
-    <div class="card tkmain">
-      <div class="tkm-h"><div class="bar"></div><b>업무 목록</b><span class="tkm-sub">${esc(subject)}</span>
-        ${sid?'<button class="btn bo bsm" data-act="tk.newOpen" data-sid="'+esc(sid)+'"><svg class="icn"><use href="#i-plus"></use></svg> 업무 추가</button>':''}
+    <div class="tkcol">
+      <div class="card tkf-card">${tkFilterHTML()}</div>
+      <div class="card tkmain">
+        <div class="tkm-h"><div class="bar"></div><b>업무 목록</b><span class="tkm-sub">${esc(subject)}</span>
+          <span class="tkm-c">${shownCnt}건</span>
+          ${sid?'<button class="btn bo bxs" data-act="tk.newOpen" data-sid="'+esc(sid)+'"><svg class="icn"><use href="#i-plus"></use></svg> 업무 추가</button>':''}
+        </div>
+        <div class="tk-list">
+          ${sid&&S.tkNew===sid?taskFormHTML(sid,null,null):''}
+          ${listHTML}
+        </div>
       </div>
-      ${tkFilterHTML()}
-      ${sid&&S.tkNew===sid?taskFormHTML(sid,null,null):''}
-      <div class="tk-list">${listHTML}</div>
     </div>
   </div>`;
   wireTaskDnD();
@@ -2606,6 +2624,7 @@ function rOrg(){
 }
 function orgSave(){normOrg(S.org);store.putOrg(S.org);if(!S.live){rOrg();rTasks();}}
 function rCfg(){
+  rWidgetSet();
   const i=$('#setDefectUrl');
   if(i&&document.activeElement!==i)i.value=S.cfg.defectUrl||DEFECT_URL;
   const m=S.cfg.mail||{};
@@ -2800,7 +2819,11 @@ const ACT={
     pop.id='colPop';pop.className='col-pop';
     pop.innerHTML='<div class="col-pop-h">색 고르기</div>'
       +palHTML('pePal',(!cur||cur==='auto')?'auto':cur,
-      '<div class="pal-c'+((!cur||cur==='auto')?' sel':'')+'" data-c="auto" style="'+colDotStyle('auto')+'" title="담당자 색"></div>');
+      '<div class="pal-c'+((!cur||cur==='auto')?' sel':'')+'" data-c="auto" style="'+colDotStyle('auto')+'" title="담당자 색"></div>')
+      /* 직접 고르기 — 색상환 슬라이더와 정밀 선택기를 같은 팝오버 안에 둔다(별도 창 없음) */
+      +'<div class="col-cus"><input type="range" class="col-hue" min="0" max="359" value="210" aria-label="색상 직접 고르기">'
+      +'<label class="pal-c pal-add" title="정확한 색 지정"><input type="color" class="pal-inp" value="'
+      +esc((cur&&cur!=='auto')?cur:'#3E71D2')+'"><span>+</span></label></div>';
     btn.appendChild(pop);
     setTimeout(()=>document.addEventListener('click',colOutside,true),0);},
   /* 카드 클릭은 '펼쳐 보기' — 수정은 연필 버튼으로 (실수로 값이 바뀌지 않게) */
@@ -3204,6 +3227,22 @@ const ACT={
     selDate(y+'-'+pad(m)+'-'+pad(same?t.getDate():1));
     rMonTitle();subVisibleMonths();refetchCal();},
   'mail.preview':el=>mailPreview(el.dataset.kind),
+  /* 설정 → 위젯: 브라우저 설치 대화상자를 바로 띄운다(사용자는 '설치'만 누르면 끝) */
+  'wid.install':async ()=>{
+    if(isInstalled()){toast('이미 설치되어 있습니다');return;}
+    if(!INSTALL_PROMPT){
+      toast('엣지·크롬에서 열어 주세요 — 주소창의 설치 아이콘으로도 만들 수 있습니다');
+      return;
+    }
+    const p=INSTALL_PROMPT;INSTALL_PROMPT=null;rWidgetSet();
+    try{p.prompt();const r=await p.userChoice;if(r&&r.outcome!=='accepted'){INSTALL_PROMPT=p;rWidgetSet();}}
+    catch(e){INSTALL_PROMPT=p;rWidgetSet();}
+  },
+  /* 설치가 막힌 환경(사내 정책 등)을 위한 대안 — 지금 바로 작은 창으로 띄운다 */
+  'wid.open':()=>{
+    const u=location.origin+location.pathname+'?w=1';
+    window.open(u,'calwidget','width=390,height=640,menubar=no,toolbar=no,location=no,status=no');
+  },
   'wid.set':()=>{const p=$('#wgSet');if(!p)return;p.classList.toggle('on');p.setAttribute('aria-hidden',p.classList.contains('on')?'false':'true');widApply();}
 };
 /* 필터 = 업무 구분 · 진행 상태 · 권역 · 담당자 · 현장.
@@ -3271,6 +3310,8 @@ function confirmModal(title,msg,cb,okLabel,danger){
   MODAL_CB={type:'confirm',ok:()=>{cb();closeModal();}};
 }
 document.addEventListener('click',e=>{
+  /* 팝오버는 색 원 버튼 안에 들어 있다 — 여기서 막지 않으면 안쪽 클릭이 버튼까지 올라가 팝오버가 닫힌다 */
+  if(e.target.closest('#colPop'))return;
   const el=e.target.closest('[data-act]');
   if(!el)return;
   if(el.tagName==='SELECT')return;   /* select 는 change 에서만 처리 — 누르기만 해도 실행되던 버그 방지 */
@@ -3315,6 +3356,7 @@ document.addEventListener('input',e=>{
 /* 업무 폼은 자동 저장 — 입력이 멎으면 조용히 반영된다(저장 버튼 없음) */
 document.addEventListener('input',e=>{if(e.target.closest&&e.target.closest('#dpEdit'))planAutosave();});
 document.addEventListener('change',e=>{
+  if(e.target.classList&&e.target.classList.contains('col-hue')){setPlanColor(hueHex(+e.target.value));closeColPop();return;}
   if(e.target.id==='peKind'){peKindRefresh();return;}
   if(e.target.closest&&e.target.closest('#dpEdit'))planAutosave();
 });
@@ -3519,6 +3561,24 @@ function rWidget(){
       :'<div class="dp-empty" style="padding:10px 0">업무 없음</div>');
 }
 
+/* ═══════════ 위젯(앱으로 설치) ═══════════
+   브라우저가 설치 가능하다고 판단하면 beforeinstallprompt 를 한 번 보낸다.
+   기본 배너를 막고 들고 있다가 설정의 버튼에서 꺼내 쓴다 — 사용자에겐 '버튼 한 번'이 된다. */
+let INSTALL_PROMPT=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();INSTALL_PROMPT=e;rWidgetSet();});
+window.addEventListener('appinstalled',()=>{INSTALL_PROMPT=null;rWidgetSet();toast('바탕화면에 위젯을 만들었습니다');});
+function isInstalled(){
+  return matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: window-controls-overlay)').matches||!!navigator.standalone;
+}
+/* 설정 화면의 위젯 줄 — 상태에 따라 버튼과 안내를 바꾼다 */
+function rWidgetSet(){
+  const b=$('#wgInstall'),h=$('#wgHint');if(!b||!h)return;
+  if(isInstalled()){b.disabled=true;b.textContent='설치됨';h.textContent='이미 이 PC에 설치되어 있습니다.';return;}
+  b.disabled=false;b.textContent='바탕화면에 만들기';
+  h.textContent=INSTALL_PROMPT
+    ? '버튼을 누르면 바탕화면·시작 메뉴에 위젯 아이콘이 생깁니다.'
+    : '엣지·크롬에서만 만들 수 있습니다. 안 되면 아래 \'창으로 열기\'를 쓰세요.';
+}
 /* ═══════════ 부팅 ═══════════ */
 function rAll(){rDay();rTasks();rOrg();rCfg();rFilter();rMention();rMine();rTeamSel();refetchCal();rWidget();}   /* 팀 선택기는 조직 화면 밖(사이드바)이라 rAll 에서도 그린다 */
 (function boot(){
@@ -3542,8 +3602,10 @@ function rAll(){rDay();rTasks();rOrg();rCfg();rFilter();rMention();rMine();rTeam
   }
   /* 이전 버전에서 등록됐을 수 있는 서비스워커·캐시 제거 —
      캐시가 남아 있으면 배포해도 옛 코드가 계속 뜬다. (한동안 유지 후 삭제해도 됨) */
+  /* 서비스워커 — '앱으로 설치'(PWA) 조건을 만족시키려고 최소한만 둔다(sw.js 는 캐시를 두지 않는다).
+     예전 캐시는 계속 지운다 — 캐시 때문에 옛 코드가 돌던 사고가 있었다. 로컬(file/http) 에선 등록하지 않는다 */
   if('serviceWorker' in navigator){
-    navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister())).catch(()=>{});
     if(window.caches&&caches.keys)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k))).catch(()=>{});
+    if(location.protocol==='https:')navigator.serviceWorker.register('./sw.js').catch(()=>{});
   }
 })();
