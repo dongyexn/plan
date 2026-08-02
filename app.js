@@ -1612,14 +1612,6 @@ function closePlanEdit(){
   const p=planCollect(S.planEdit.draft);   /* 자동 저장 대기 중인 입력을 확정한다 */
   if(p&&p.title)planCommit(p);
   closeColPop();S.planEdit=null;rDay();
-  lockHover();
-}
-/* 폼을 닫으면 커서가 그대로 카드 위에 있어 hover 가 즉시 켜진다 — 마우스를 움직일 때까지 막는다 */
-function lockHover(){
-  const box=$('#dpList');if(!box)return;
-  box.classList.add('nohov');
-  const off=()=>{box.classList.remove('nohov');document.removeEventListener('mousemove',off,true);};
-  document.addEventListener('mousemove',off,true);
 }
 /* 본문 칸 — 업무 구분이 '일반'이면 진행경과·처리계획 두 칸(업무 목록 폼과 동일), 그 외는 한 칸 */
 function peBodyHTML(d,kind){
@@ -1767,7 +1759,6 @@ function savePlanInline(){
   S.planEdit=null;
   selDate(p.date);
   if(!S.live){refetchCal();rDay();}
-  lockHover();
 }
 
 /* ═══════════ 주요업무 현황 — 좌: 대상 선택 · 우: 작성/목록 ═══════════ */

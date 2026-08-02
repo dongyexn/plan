@@ -10,7 +10,7 @@ const path = require('path');
 const fs = require('fs');
 
 /* 위젯이 띄울 주소 — 배포 주소를 여기서 바꾸면 된다 */
-const APP_URL = process.env.CALWIDGET_URL || 'https://dongyexn.github.io/calapp/?w=1';
+const APP_URL = process.env.CALWIDGET_URL || 'https://dongyexn.github.io/plan/?w=1';
 
 const STATE_FILE = path.join(app.getPath('userData'), 'widget-state.json');
 const DEFAULT_BOUNDS = { width: 380, height: 560 };
