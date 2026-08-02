@@ -631,6 +631,38 @@ calapp/tasks/{sid}/{iid}
   다크 모드 배지·아웃라인 토큰 정상, 폼 내부 넘침 0, 색 칩 6개 145px 반칸에 수용.
   검증 스크립트 /home/claude/{v83,v82r,smoke82,probe,pshot}.mjs. app.js?v=83.
 
+### 84차 — 카드 색면화 · 스크롤바 규약 · 필터 접기 · 펼쳐 보기
+- **업무 카드**: 아웃라인 2px→**1px**, 대신 배경을 업무 색 **20%**(`color-mix(in srgb, C 20%, var(--bg2))`).
+  다크 모드도 --bg2 와 섞이므로 자동 대응. 폼(.dp-edit)도 1px 로 맞췄다(배경은 흰색 유지 — 입력칸 가독성).
+- ⚠ **스크롤바 규약(앱 전체)**: 크롬은 네이티브 스크롤바를 내용 위에 겹칠 수 없다(overflow:overlay 제거됨,
+  ::-webkit-scrollbar 는 항상 레이아웃 폭을 먹는다). 그래서 **폭(--sbw:4px)을 늘 확보(scrollbar-gutter:stable)하고
+  그만큼 오른쪽 패딩에서 뺀다** — 스크롤 유무와 무관하게 내용 폭이 불변이고 여백 위에 겹친 것처럼 보인다.
+  적용: #content(9px 16px 20px 20px) · .dp-body(12px 12px 16px 16px) · .tk-list · .nq-res(10px 6px 14px 10px) · .pf-emg,
+  모바일 #content(9px 10px 14px 14px) · 위젯(10px 6px 10px 10px) · 유리(6px 2px 6px 6px).
+  폭이 5·4·3px 로 섞여 있던 것을 4px 로 통일. **새 스크롤 영역은 `[data-sb]` 속성만 달면 규약이 적용된다.**
+  달력 셀(.fc-daygrid-day-events)은 overflow:visible 이라 스크롤바 규칙이 데드였다 — 제거.
+- **일자 패널 우측 아이콘**: 편집 버튼이 상시 노출, **알림 버튼이 hover 접기/펼치기**(83차와 반대).
+  ⚠ 폼을 닫으면 커서가 카드 위에 그대로라 hover 가 즉시 켜진다 → `#dpList.nohov` 로 잠그고
+  **실제 mousemove 가 오면 해제**(lockHover()). closePlanEdit·savePlanInline 양쪽에서 호출.
+- **펼쳐 보기(planDetHTML)**: 내용(일반이면 진행경과·처리계획)·링크를 읽기 전용으로. 비면 '적힌 내용이 없습니다'.
+  이전엔 body 가 없으면 눌러도 아무 일이 없어 cursor:pointer 가 거짓말이었다.
+  펼친 상태에서 수정을 눌러도 카드·배지·제목 좌표 불변(헤더 골격이 폼과 동일).
+  ⚠ 펼침 영역의 링크는 클릭이 위임을 타고 .plan-main(plan.open)으로 올라가 도로 접힌다 →
+  앵커에 `data-act="lnk.open"`(빈 핸들러)을 달아 closest 가 앵커에서 멈추게 한다.
+- **필터 패널 접기**: 1행 `[검색][범위 선택][꺾쇠]` 만 상시, 나머지 3행은 `.dp-fadv`(폼의 '자세히'와 같은 방식).
+- **찾는 범위 (일/월/전체)** — S.dayScope. 검색어가 있고 범위가 day 가 아니면 rangePlans 가 선택 날짜를 벗어나 찾는다
+  (month 는 기간이 그 달에 걸치기만 해도 포함). **검색어가 없으면 범위와 무관하게 선택 날짜만** — 빈 검색어로 전체를 쏟지 않게.
+- **목록 카드 머리(.dp-lh)**: 좌 '업무 N건'(#dpCount) · 우 업무 추가 버튼(필터 카드에서 이동).
+  하단 구분선은 border 가 아니라 ::after(left/right 16px)로 — 양옆을 띄운다.
+- **폼 제목 밑 구분선도 같은 방식**: .pe-bar 의 border-bottom 제거 → ::after(left/right 8px), padding-bottom 8→11 로 살짝 아래.
+- **수정 중 날짜 클릭이 먹지 않던 버그**: selDate 가 `if(!S.planEdit.orig)` 로 **새 업무일 때만** 시작일을 갱신했다.
+  조건 제거 — 한 칸 클릭이면 시작일 갱신 + 종료일 해제 + 자동 저장. 드래그(select)도 planAutosave 로 통일.
+- **수정 중 달력 즉시 반영**: buildEvents 가 편집 중인 업무를 저장본 대신 **draft 로 그린다**(같은 iid 는 건너뛰고 draft 를 push).
+  planAutosave 는 600ms 저장을 기다리지 않고 planCollect+refetchCal 을 먼저 돌린다.
+- 검증: 신규 33/33 · 83차 48/48 · 82차 잔여 24/24 · 스모크 20/20 ·
+  v83 대비 픽셀 diff(조직·설정·내 업무 0px, 업무 목록은 스크롤바 자리 4px 띠만).
+  검증 스크립트 /home/claude/{v84,v83,v82r,smoke82,probe,pshot}.mjs. app.js?v=84.
+
 ## 8. 보류하기로 한 것
 
 - 업무 이력(변경 기록) — 과도하다고 판단

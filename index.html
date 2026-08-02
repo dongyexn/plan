@@ -26,7 +26,7 @@
 --bt1:#3259B6;--bt2:#1F2B4C;
 --glass:rgba(255,255,255,.88);--glass2:rgba(255,255,255,.75);
 --tint-rd:#FDEAEA;--tint-gn:#E9F6EE;--tint-am:#FBF0DE;
---rsm:8px;--rmd:12px;--rlg:16px;--rxl:20px;--rp:999px;
+--rsm:8px;--rmd:12px;--rlg:16px;--rxl:20px;--rp:999px;--sbw:4px;
 --sw:240px;--swm:64px;--th:52px;--tr:.22s cubic-bezier(.4,0,.2,1);--ct:#5C5C60;}
 html.dark{
   --bg:#191919;--bg2:#212121;--surf2:#2A2A2A;--surf3:#333333;
@@ -109,9 +109,18 @@ svg{display:block;flex-shrink:0;}
 #main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
 #topbar{height:var(--th);flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:var(--glass2);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);border-bottom:1px solid var(--sep);z-index:100;}
 .tbl{display:flex;align-items:center;gap:10px;min-width:0;}
-.tbt{font-size:16px;font-weight:700;color:var(--lbl);}#content{flex:1;overflow-y:auto;padding:9px 20px 20px;}   /* 상단 여백은 레이아웃 간 세로 간격(9px)과 같게 */
-#content::-webkit-scrollbar{width:5px;}
-#content::-webkit-scrollbar-thumb{background:var(--sepo);border-radius:99px;}
+.tbt{font-size:16px;font-weight:700;color:var(--lbl);}/* -- 스크롤바 공통 규약 --
+   크롬은 네이티브 스크롤바를 내용 위에 겹칠 수 없다. 대신 폭(--sbw)을 늘 확보(scrollbar-gutter:stable)하고
+   그만큼 오른쪽 패딩에서 빼서, 스크롤 유무와 관계없이 내용 폭이 변하지 않게 한다(여백 위에 겹친 것처럼 보인다).
+   새 스크롤 영역도 이 규약을 따를 것 - 요소에 data-sb 를 달고 padding-right = 원하는 여백 - var(--sbw). */
+#content,.dp-body,.tk-list,.nq-res,.pf-emg,[data-sb]{scrollbar-gutter:stable;}
+#content::-webkit-scrollbar,.dp-body::-webkit-scrollbar,.tk-list::-webkit-scrollbar,
+.nq-res::-webkit-scrollbar,.pf-emg::-webkit-scrollbar,[data-sb]::-webkit-scrollbar{width:var(--sbw);height:var(--sbw);}
+#content::-webkit-scrollbar-thumb,.dp-body::-webkit-scrollbar-thumb,.tk-list::-webkit-scrollbar-thumb,
+.nq-res::-webkit-scrollbar-thumb,.pf-emg::-webkit-scrollbar-thumb,[data-sb]::-webkit-scrollbar-thumb{background:var(--sepo);border-radius:99px;}
+#content::-webkit-scrollbar-track,.dp-body::-webkit-scrollbar-track,.tk-list::-webkit-scrollbar-track,
+.nq-res::-webkit-scrollbar-track,.pf-emg::-webkit-scrollbar-track,[data-sb]::-webkit-scrollbar-track{background:transparent;}
+#content{flex:1;overflow-y:auto;padding:9px 16px 20px 20px;}   /* 우측 16+스크롤바 4 = 20 */
 .view{display:none;}
 .view.act{display:block;animation:fu .2s ease;}
 @keyframes fu{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
@@ -220,8 +229,6 @@ html.dark #fcal .fc-col-header-cell{background:#424245;border-left-color:#0F0F10
 /* overflow-y:auto 를 두면 x 는 자동으로 auto 가 되어(스펙) 여러 날 막대가 옆 칸에서 잘린다.
    칸 넘침은 dayMaxEvents(+N 더보기)가 이미 처리하므로 스크롤을 두지 않는다 */
 #fcal .fc-dayGridMonth-view .fc-daygrid-day-events{position:relative;flex:1;min-height:0;overflow:visible;margin:0;padding-bottom:2px;}
-#fcal .fc-daygrid-day-events::-webkit-scrollbar{width:3px;}
-#fcal .fc-daygrid-day-events::-webkit-scrollbar-thumb{background:var(--sepo);border-radius:99px;}
 #fcal .fc-dayGridMonth-view .fc-daygrid-day-bottom{display:none;}
 /* 공휴일·기념일 — 날짜 숫자 바로 왼쪽, 한 줄 고정(겹침 없음) */
 #fcal .fc-daygrid-day-number{display:flex;align-items:center;justify-content:flex-end;gap:5px;max-width:100%;flex:1;min-width:0;}
@@ -306,20 +313,24 @@ html.dark #fcal .dhol.dtoday{color:var(--b300);}
   border-radius:var(--rlg) var(--rlg) 0 0;}
 .dp-top .dp-date{color:#fff;font-size:16.5px;}
 .dp-date{font-size:21px;font-weight:800;line-height:1.2;margin-top:1px;display:inline-block;min-width:108px;font-variant-numeric:tabular-nums;text-align:left;}
-.dp-body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:8px;flex:1;min-height:0;overflow-y:auto;}
-.dp-body::-webkit-scrollbar{width:4px;}
-.dp-body::-webkit-scrollbar-thumb{background:var(--sepo);border-radius:99px;}
-.tk-list::-webkit-scrollbar,.nq-res::-webkit-scrollbar{width:4px;}
-.tk-list::-webkit-scrollbar-thumb,.nq-res::-webkit-scrollbar-thumb{background:var(--sepo);border-radius:99px;}
+.dp-body{padding:12px 12px 16px 16px;display:flex;flex-direction:column;gap:8px;flex:1;min-height:0;overflow-y:auto;}
 .dp-empty{font-size:12.5px;color:var(--lbl3);text-align:center;padding:22px 0 14px;}
 #dpList{display:flex;flex-direction:column;gap:5px;}
-.plan .plan-body{display:none;}
-.plan.open .plan-body{display:block;}
+/* 펼쳐 보기 — 내용·링크를 읽기 전용으로 (편집 폼과 헤더 골격이 같아 수정으로 바꿔도 위가 안 움직인다) */
+#dpList .plan .plan-det{display:none;}
+#dpList .plan.open .plan-det{display:block;margin-top:9px;}
+.pd-sec+.pd-sec{margin-top:9px;}
+.pd-h{font-size:11px;font-weight:700;color:var(--lbl3);letter-spacing:.05em;margin-bottom:3px;}
+.pd-b{font-size:12.5px;color:var(--lbl2);line-height:1.55;white-space:pre-wrap;word-break:break-all;}
+.pd-b.none{color:var(--lbl3);}
+.pd-lnk{display:inline-flex;align-items:center;gap:4px;font-size:12.5px;color:var(--bt1);text-decoration:none;font-weight:600;}
+.pd-lnk .icn{width:12px;height:12px;}
+.pd-lnk+.pd-lnk{margin-left:10px;}
 .plan{border:1px solid var(--sep);border-radius:var(--rlg);padding:11px 13px;display:flex;gap:9px;align-items:flex-start;background:var(--bg2);transition:border-color .15s;position:relative;}
 /* ── 일자 패널의 업무 폼(읽기 상태) — 편집 폼(.dp-edit)과 같은 골격 ──
    [1.5 테두리][8 패딩][26 상태 아이콘][9][제목 …][아이콘 26·간격 2][8 패딩]
    두 상태의 제목 x·아이콘 좌표가 같아야 수정 버튼을 눌러도 화면이 튀지 않는다. 값을 바꿀 땐 .pe-bar 도 함께. */
-#dpList .plan{display:block;padding:8px;border-width:2px;}
+#dpList .plan{display:block;padding:8px;border-width:1px;}
 .plan-hd{display:flex;align-items:center;gap:9px;min-width:0;}
 /* 2행 들여쓰기 = 상태 배지 폭 + 간격 9 (스크립트가 --pst-w 로 실측값을 넣는다) */
 #dpList .plan-main{padding-left:calc(var(--pst-w,45px) + 9px);margin-top:3px;}
@@ -338,7 +349,6 @@ html.dark #fcal .dhol.dtoday{color:var(--b300);}
 .pm-r{margin-left:auto;flex:0 0 auto;color:var(--lbl2);font-weight:600;}
 .plan.done .pm-r{color:var(--lbl3);font-weight:500;}
 .p-ico.p-done.on{color:var(--gn);}
-.plan-body{font-size:12px;color:var(--lbl2);margin-top:3px;white-space:pre-wrap;word-break:break-all;line-height:1.5;}
 .pm-chip{display:inline-flex;align-items:center;gap:3px;padding:1px 7px;border-radius:var(--rp);background:var(--fill);font-weight:600;}
 .pm-chip.remind{background:var(--tint-am);color:var(--am);}
 .pm-chip .icn{width:11px;height:11px;}
@@ -347,11 +357,12 @@ html.dark #fcal .dhol.dtoday{color:var(--b300);}
 .p-ico:hover{background:var(--fill);color:var(--bt1);}
 .p-ico.on{color:var(--am);}
 .p-ico .icn{width:14px;height:14px;}
-/* 수정 버튼 — 조직관리(.tm-del)와 같은 방식: 평소 폭 0 으로 접고 마우스를 올리면 펼친다 */
-#dpList .plan .p-edit{width:0;min-width:0;padding:0;margin-left:-2px;opacity:0;pointer-events:none;overflow:hidden;
+/* 알림 버튼 — 조직관리(.tm-del)와 같은 방식: 평소 폭 0 으로 접고 마우스를 올리면 펼친다.
+   편집 버튼은 늘 보인다(카드의 주 동작). #dpList.nohov 는 폼을 닫은 직후 한 번 hover 를 막는 잠금 */
+#dpList .plan .p-rem{width:0;min-width:0;padding:0;margin-left:-2px;opacity:0;pointer-events:none;overflow:hidden;
   transition:width var(--tr),margin var(--tr),opacity var(--tr);}
-#dpList .plan:hover .p-edit,#dpList .plan:focus-within .p-edit{width:26px;margin-left:0;opacity:1;pointer-events:auto;}
-@media(hover:none){#dpList .plan .p-edit{width:26px;margin-left:0;opacity:1;pointer-events:auto;}}
+#dpList:not(.nohov) .plan:hover .p-rem,#dpList:not(.nohov) .plan:focus-within .p-rem{width:26px;margin-left:0;opacity:1;pointer-events:auto;}
+@media(hover:none){#dpList .plan .p-rem{width:26px;margin-left:0;opacity:1;pointer-events:auto;}}
 /* 날짜 헤더 — 좌: 날짜(누르면 연·월 이동), 우: 달 넘기기·오늘 */
 .dp-col{position:relative;}
 body:not(.wid) .cal-card{position:relative;}
@@ -363,8 +374,22 @@ html.dark #ymPop{background:#242426;}
 .dp-fcard .dp-frow{display:flex;gap:8px;align-items:center;}
 .dp-fcard .dp-sel{flex:1 1 0;min-width:0;}
 .dp-fcard .dp-srch{flex:1 1 0;min-width:0;}
-.dp-fcard .dp-add{flex:0 0 auto;}
-.dp-fcard .dp-add.on{background:var(--b50);border-color:var(--b300);color:var(--bt1);}
+.dp-fcard .dp-scope{flex:0 0 auto;width:72px;}
+.dp-fadv{display:none;flex-direction:column;gap:8px;}
+.dp-fcard.adv-on .dp-fadv{display:flex;}
+.dp-fmore{flex:0 0 auto;width:30px;height:30px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;
+  color:var(--lbl3);transition:background var(--tr),color var(--tr);}
+.dp-fmore:hover{background:var(--fill);color:var(--bt1);}
+.dp-fmore .icn{width:15px;height:15px;transform:rotate(90deg);transition:transform var(--tr);}
+.dp-fcard.adv-on .dp-fmore{color:var(--bt1);}
+.dp-fcard.adv-on .dp-fmore .icn{transform:rotate(-90deg);}
+/* 7. 목록 카드 머리 — 좌 건수, 우 업무 추가. 구분선은 양옆을 띄운다 */
+.dp-lh{position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:11px 16px 10px;flex:0 0 auto;}
+.dp-lh::after{content:'';position:absolute;left:16px;right:16px;bottom:0;height:1px;background:var(--sep);}
+.dp-lh-t{font-size:12.5px;font-weight:700;color:var(--lbl2);}
+.dp-add{flex:0 0 auto;}
+.dp-add.on{background:var(--b50);border-color:var(--b300);color:var(--bt1);}
 .dp-x{display:none;margin-left:2px;width:26px;height:26px;border-radius:8px;align-items:center;justify-content:center;color:#fff;background:rgba(255,255,255,.18);}
 .dp-x .icn{width:13px;height:13px;}
 
@@ -607,8 +632,9 @@ html.dark #ymPop{background:#242426;}
 .tk-new .pal-c{width:20px;height:20px;border-radius:7px;}
 /* 일자 패널 인라인 편집기 — 모달 대신 패널 안에서 작성·수정 */
 /* ── 업무 작성 폼 — 제목 고정 바 + 핵심 4줄 + '자세히' 접기 ── */
-.dp-edit{border:2px solid var(--b300);border-radius:var(--rlg);background:var(--bg2);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;}
-.pe-bar{display:flex;align-items:center;gap:9px;padding:8px;border-bottom:1px solid var(--sep);}
+.dp-edit{border:1px solid var(--b300);border-radius:var(--rlg);background:var(--bg2);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;}
+.pe-bar{position:relative;display:flex;align-items:center;gap:9px;padding:8px 8px 11px;}
+.pe-bar::after{content:'';position:absolute;left:8px;right:8px;bottom:0;height:1px;background:var(--sep);}
 .pe-side{display:flex;align-items:center;gap:2px;flex-shrink:0;}   /* 읽기 카드 .plan-side 와 같은 간격 — 좌표 고정 */
 
 .pe-ttl{flex:1;min-width:0;background:transparent;border:0;padding:0;font-size:13.5px;font-weight:700;color:var(--lbl);font-family:inherit;line-height:1.5;}
@@ -782,8 +808,6 @@ select.mg-inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-
 .pf-cat:hover{background:var(--fill);opacity:.85;}
 .pf-cat.act{background:var(--b50);opacity:1;box-shadow:inset 0 0 0 1.5px var(--b300);}
 .pf-emg{display:grid;grid-template-columns:repeat(10,1fr);gap:2px;flex:1;min-height:0;overflow-y:auto;padding:1px;align-content:start;}
-.pf-emg::-webkit-scrollbar{width:4px;}
-.pf-emg::-webkit-scrollbar-thumb{background:var(--sepo);border-radius:99px;}
 .pf-em{aspect-ratio:1;border-radius:8px;font-size:19px;line-height:1;display:flex;align-items:center;
   justify-content:center;transition:background .1s;}
 .pf-em:hover{background:var(--fill);}
@@ -864,7 +888,7 @@ select.mg-inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-
 
 /* ══════════ 위젯 모드 (?w=1 — 데스크톱 PWA 창) ══════════ */
 body.wid #sidebar,body.wid #topbar,body.wid .dp-col,body.wid #scrim{display:none!important;}
-body.wid #content{padding:10px;}
+body.wid #content{padding:10px 6px 10px 10px;}
 body.wid .cal-wrap{grid-template-columns:1fr;height:calc(100dvh - 20px);}
 body.wid .card{border-radius:14px;padding:11px 12px;}
 body.wid .cal-title{font-size:15px;}
@@ -884,7 +908,7 @@ body.wid .wid-only{display:block;}
 body.wid.glass,html:has(body.wid.glass){background:transparent!important;
   /* color-scheme:dark 이면 투명 루트라도 브라우저가 #121212 캔버스를 깐다 — 유리 모드는 normal 로 */
   color-scheme:normal!important;}
-body.wid.glass #content{background:transparent;padding:6px;}
+body.wid.glass #content{background:transparent;padding:6px 2px 6px 6px;}
 /* 셀 밑에 깔리는 불투명층 전부 제거 — 다크 테마 배경·FC 페이지 배경까지 */
 body.wid.glass #app,body.wid.glass .view,body.wid.glass .cal-wrap,
 body.wid.glass #fcal .fc-view-harness,body.wid.glass #fcal .fc-scroller,
@@ -993,7 +1017,7 @@ body.wid #wgSet.on{display:block;}
 .nq-in{padding:12px 14px 0;position:relative;}
 .nq-in input{width:100%;height:42px;border:1.5px solid var(--sep);border-radius:11px;padding:0 38px 0 13px;font:inherit;font-size:14px;color:var(--lbl);background:var(--bg2);transition:border-color var(--tr);}
 .nq-in input:focus{border-color:var(--b600);outline:none;}
-.nq-res{flex:1;min-height:0;overflow-y:auto;padding:10px 10px 14px;}
+.nq-res{flex:1;min-height:0;overflow-y:auto;padding:10px 6px 14px 10px;}
 .nq-g{font-size:10px;font-weight:700;color:var(--lbl3);letter-spacing:.06em;text-transform:uppercase;padding:8px 6px 4px;}
 .nq-item{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:var(--rmd);cursor:pointer;}
 .nq-item:hover{background:var(--fill);}
@@ -1069,7 +1093,7 @@ html.dark #toast{background:#2B313A;}
   .dp-x{display:inline-flex;}  .tkwrap{grid-template-columns:minmax(0,1fr);}
   .set-grid{grid-template-columns:minmax(0,1fr);}
   .mg-grid{grid-template-columns:minmax(0,1fr);}
-  #content{padding:9px 14px 14px;overflow-x:hidden;}
+  #content{padding:9px 10px 14px 14px;overflow-x:hidden;}
   #content>*{min-width:0;}
   /* 달력 헤더 — 년월(좌) · 넘기기/오늘(우) 한 줄 */
   .cal-head{flex-wrap:nowrap;gap:8px;}
@@ -1269,28 +1293,37 @@ html.dark #toast{background:#2B313A;}
               <button class="dp-x" data-act="day.sheetClose" aria-label="닫기"><svg class="icn"><use href="#i-close"></use></svg></button>
             </div>
           </div>
-          <div class="card dp-fcard">
-            <div class="dp-frow">
-              <select class="inp inp-sm dp-sel" id="kindFilter" aria-label="업무 구분 필터"></select>
-              <select class="inp inp-sm dp-sel" id="stFilter" aria-label="진행 상태 필터"></select>
-            </div>
-            <div class="dp-frow">
-              <select class="inp inp-sm dp-sel" id="regFilter" aria-label="권역 필터"></select>
-              <select class="inp inp-sm dp-sel" id="ownFilter" aria-label="담당자 필터"></select>
-            </div>
-            <div class="dp-frow">
-              <select class="inp inp-sm dp-sel" id="siteFilter" aria-label="현장 필터"></select>
-            </div>
+          <div class="card dp-fcard" id="dpFcard">
             <div class="dp-frow">
               <div class="dp-srch">
                 <svg class="icn dp-srch-i" aria-hidden="true"><use href="#i-search"></use></svg>
-                <input class="inp inp-sm" id="dpQ" placeholder="이 날짜에서 찾기" autocomplete="off">
+                <input class="inp inp-sm" id="dpQ" placeholder="찾기" autocomplete="off">
                 <button class="dp-srch-x" data-act="day.qclear" aria-label="지우기"><svg class="icn"><use href="#i-close"></use></svg></button>
               </div>
-              <button class="btn bo bsm dp-add" data-act="plan.new"><svg class="icn" aria-hidden="true"><use href="#i-plus"></use></svg> 업무 추가</button>
+              <select class="inp inp-sm dp-sel dp-scope" id="dpScope" aria-label="찾는 범위">
+                <option value="day">일</option><option value="month">월</option><option value="all">전체</option>
+              </select>
+              <button class="dp-fmore" data-act="day.fmore" aria-label="필터 펼치기" title="필터"><svg class="icn"><use href="#i-chevr"></use></svg></button>
+            </div>
+            <div class="dp-fadv">
+              <div class="dp-frow">
+                <select class="inp inp-sm dp-sel" id="kindFilter" aria-label="업무 구분 필터"></select>
+                <select class="inp inp-sm dp-sel" id="stFilter" aria-label="진행 상태 필터"></select>
+              </div>
+              <div class="dp-frow">
+                <select class="inp inp-sm dp-sel" id="regFilter" aria-label="권역 필터"></select>
+                <select class="inp inp-sm dp-sel" id="ownFilter" aria-label="담당자 필터"></select>
+              </div>
+              <div class="dp-frow">
+                <select class="inp inp-sm dp-sel" id="siteFilter" aria-label="현장 필터"></select>
+              </div>
             </div>
           </div>
           <div class="card day-panel">
+            <div class="dp-lh">
+              <span class="dp-lh-t" id="dpCount">업무 0건</span>
+              <button class="btn bo bxs dp-add" data-act="plan.new"><svg class="icn" aria-hidden="true"><use href="#i-plus"></use></svg> 업무 추가</button>
+            </div>
             <div class="dp-body">
               <div id="dpList"></div>
             </div>
@@ -1432,5 +1465,5 @@ html.dark #toast{background:#2B313A;}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=83"></script>
+<script src="./app.js?v=84"></script>
 </body></html>

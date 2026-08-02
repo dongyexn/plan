@@ -321,6 +321,7 @@ const S={
   tkOpen:null,       // 펼쳐 놓은 업무 'sid/iid'
   planEdit:null,     // 일자 패널 인라인 편집기 상태
   dayQ:'',           // 일자 패널 검색어
+  dayScope:'day',    // 찾는 범위: day(이 날짜) · month(이 달) · all(전체)
   tkF:{q:'',st:'',due:''},   // 주요업무 검색·필터
   orgTab:'acct',     // 조직/현장 관리 우측 탭 (acct | site)
   cmtRe:'',          // 답글 입력창을 연 코멘트 (sid/iid/cid)
@@ -1156,7 +1157,7 @@ function calInit(){
       /* 폼이 열려 있으면 기간만 채우고, 아니면 기억만 해 둔다('업무 추가'를 누를 때 적용) */
       if(S.planEdit&&$('#peDate')){
         $('#peDate').value=a;$('#peEnd').value=b;
-        if(S.planEdit.draft){S.planEdit.draft.date=a;S.planEdit.draft.end=b;}
+        planAutosave();
         toast('기간을 '+a+' ~ '+b+' 로 바꿨습니다');return;
       }
       /* 드래그는 '기간 선택' — 그 사이 업무를 패널에 보여 주고, 업무 추가를 누르면 이 기간으로 연다 */
@@ -1270,7 +1271,10 @@ function taskAsPlan(sid,iid,it){
 }
 function buildEvents(){
   const evs=[],[from,to]=visibleRange(),today=todayStr();
+  /* 수정 중인 업무는 저장 전이라도 draft 로 그린다 — 입력하는 대로 달력에 바로 반영된다 */
+  const pe=S.planEdit,dr=(pe&&pe.draft&&pe.draft.title)?pe.draft:null;
   allTasks().forEach(({sid,iid,it})=>{
+    if(dr&&iid===dr.id)return;
     if(!taskFilterOk(sid,it))return;
     const p=taskAsPlan(sid,iid,it);
     if(it.date){
@@ -1278,6 +1282,10 @@ function buildEvents(){
       else evs.push(planEvent(p,it.date));
     }
   });
+  if(dr&&dr.date){
+    if(dr.recur&&dr.recur.f)recurDates(dr,from,to).forEach(d=>evs.push(planEvent(dr,d)));
+    else evs.push(planEvent(dr,dr.date));
+  }
   return evs;
 }
 function refetchCal(){if(CAL)CAL.refetchEvents();}
@@ -1386,10 +1394,13 @@ function selDate(ds){
   if(CAL&&ymOf(ds)!==CAL.view.currentStart.getFullYear()+'-'+pad(CAL.view.currentStart.getMonth()+1))CAL.gotoDate(ds);
   markSel();
   if(isMob()&&S.view==='calendar')dpSheet(true);
-  /* 편집기가 열려 있으면 입력을 지우지 않는다 — 새 업무 작성 중엔 시작일만 따라간다 */
+  /* 편집기가 열려 있으면 다른 입력은 지우지 않고 날짜만 따라간다(수정 중인 업무도 같다) */
   if(S.planEdit&&$('#dpEdit')){
     rDayHead();
-    if(!S.planEdit.orig){const i=$('#peDate');if(i)i.value=ds;}
+    const i=$('#peDate'),e=$('#peEnd');
+    if(i)i.value=ds;
+    if(e)e.value='';            /* 한 칸만 눌렀으니 기간은 해제 */
+    planAutosave();
     return;
   }
   rDay();
@@ -1474,6 +1485,21 @@ function sortPlans(list){
   });
 }
 function rangePlans(){
+  const q=dayQ(),sc=S.dayScope||'day';
+  /* 검색어가 있고 범위가 '월·전체'면 선택 날짜를 벗어나 찾는다 */
+  if(q&&sc!=='day'){
+    const ym=ymOf(S.selDate),out=[];
+    allTasks().forEach(({sid,iid,it})=>{
+      if(!it.date||!taskFilterOk(sid,it))return;
+      if(!dayHit((it.text||'')+' '+(it.prog||'')+' '+(it.plan||'')))return;
+      if(sc==='month'){
+        const s0=it.date,e0=it.end||it.date;
+        if(ymOf(s0)>ym||ymOf(e0)<ym)return;   /* 기간이 이 달에 걸치기만 해도 포함 */
+      }
+      out.push({p:taskAsPlan(sid,iid,it),occ:it.date});
+    });
+    return sortPlans(out);
+  }
   const a=S.selDate,b=S.selEnd||S.selDate;
   if(!S.selEnd)return sortPlans(dayPlans(a));
   const seen={},out=[];
@@ -1481,6 +1507,17 @@ function rangePlans(){
     dayPlans(d).forEach(x=>{const k=x.p.id+'@'+x.occ;if(seen[k])return;seen[k]=1;out.push(x);});
   }
   return sortPlans(out);
+}
+/* 펼쳐 보기 — 내용(진행경과·처리계획)과 링크를 읽기 전용으로 보여 준다 */
+function planDetHTML(p){
+  const sec=(h,v)=>'<div class="pd-sec"><div class="pd-h">'+h+'</div><div class="pd-b'+(v?'':' none')+'">'+esc(v||'적힌 내용이 없습니다')+'</div></div>';
+  const lnk=Object.values(p.links||{}).filter(l=>l&&l.url);
+  return '<div class="plan-det">'
+    +(kindSplit(p.kind)?sec('진행경과',p.body)+sec('처리계획',p.plan):sec('내용',p.body))
+    +(lnk.length?'<div class="pd-sec"><div class="pd-h">링크</div><div>'
+      +lnk.map(l=>'<a class="pd-lnk" data-act="lnk.open" href="'+esc(l.url)+'" target="_blank" rel="noopener"><svg class="icn"><use href="#i-ext"></use></svg>'
+        +esc(l.label||l.url.replace(/^https?:\/\//,''))+'</a>').join('')+'</div></div>':'')
+    +'</div>';
 }
 function rDay(){
   const ps=rDayHead();
@@ -1494,25 +1531,26 @@ function rDay(){
   const editorHTML=(S.planEdit&&!keep)?planFormHTML():'';
   const editingId=S.planEdit&&S.planEdit.draft?S.planEdit.draft.id:null;
   const shown=ps.filter(x=>x.p.id!==editingId);   /* 편집 중인 항목은 폼이 대신한다 */
+  const cnt0=$('#dpCount');if(cnt0)cnt0.textContent='업무 '+ps.length+'건';
   if(!shown.length&&!editorHTML&&!keep){
     box.innerHTML='<div class="dp-empty">'+(dayQ()?'검색 결과가 없습니다.':'이 날짜에 등록된 업무가 없습니다.')+'</div>';return;}
   box.innerHTML=editorHTML+shown.map(({p,occ})=>{
     const done=isDone(p,occ),rep=p.recur&&p.recur.f,span=p.end&&p.end!==p.date,st=planSt(p,occ);
     const md=x=>{const t=toDate(x);return (t.getMonth()+1)+'/'+t.getDate();};
     const lnk=Object.values(p.links||{}).filter(l=>l&&l.url)[0];
+    const c=planColor(p);
     return `
-    <div class="plan${done?' done':''}${S.planOpen===p.id?' open':''}" data-pid="${esc(p.id)}" style="border-color:${esc(planColor(p))}">
+    <div class="plan${done?' done':''}${S.planOpen===p.id?' open':''}" data-pid="${esc(p.id)}" style="border-color:${esc(c)};background:color-mix(in srgb, ${esc(c)} 20%, var(--bg2))">
       <div class="plan-hd">
         <span class="tk-st s${st}" data-act="plan.stCycle" data-pid="${esc(p.id)}" data-occ="${esc(occ)}" title="눌러서 상태 변경">${ST_LBL[st]}</span>
         <div class="plan-t" data-act="plan.open" data-pid="${esc(p.id)}" data-occ="${esc(occ)}">${esc(p.title)}</div>
         <div class="plan-side">
           ${lnk?'<a class="p-ico" href="'+esc(lnk.url)+'" target="_blank" rel="noopener" aria-label="링크 열기" title="'+esc(lnk.label||lnk.url)+'"><svg class="icn"><use href="#i-ext"></use></svg></a>':''}
-          <button class="p-ico${p.remind?' on':''}" data-act="plan.remind" data-pid="${esc(p.id)}" aria-label="리마인드 전환" title="리마인드"><svg class="icn"><use href="#i-bell"></use></svg></button>
+          <button class="p-ico p-rem${p.remind?' on':''}" data-act="plan.remind" data-pid="${esc(p.id)}" aria-label="리마인드 전환" title="리마인드"><svg class="icn"><use href="#i-bell"></use></svg></button>
           <button class="p-ico p-edit" data-act="plan.edit" data-pid="${esc(p.id)}" data-occ="${esc(occ)}" aria-label="수정" title="수정"><svg class="icn"><use href="#i-pen"></use></svg></button>
         </div>
       </div>
       <div class="plan-main" data-act="plan.open" data-pid="${esc(p.id)}" data-occ="${esc(occ)}">
-        ${p.body?'<div class="plan-body">'+esc(p.body)+'</div>':''}
         <div class="plan-meta">
           <span class="pm-l">${[
             kindLabel(p.kind),
@@ -1523,10 +1561,12 @@ function rDay(){
           <span class="pm-r">${[p.site?siteName(p.site):'',planOwners(p).map(o=>ownName(o)).join(', ')||'팀 공통']
             .filter(Boolean).map(esc).join(' · ')}</span>
         </div>
+        ${planDetHTML(p)}
       </div>
     </div>`;}).join('')
   ;
   if(keep)box.insertBefore(keep,box.firstChild);
+  const cnt=$('#dpCount');if(cnt)cnt.textContent='업무 '+ps.length+'건';
   const rec=$('#peRec');
   if(rec&&!rec.dataset.wired){rec.dataset.wired='1';
     rec.addEventListener('change',()=>{const r=$('#peUntilRow');if(r)r.style.display=rec.value?'':'none';});}
@@ -1583,6 +1623,14 @@ function closePlanEdit(){
   const p=planCollect(S.planEdit.draft);   /* 자동 저장 대기 중인 입력을 확정한다 */
   if(p&&p.title)planCommit(p);
   closeColPop();S.planEdit=null;rDay();
+  lockHover();
+}
+/* 폼을 닫으면 커서가 그대로 카드 위에 있어 hover 가 즉시 켜진다 — 마우스를 움직일 때까지 막는다 */
+function lockHover(){
+  const box=$('#dpList');if(!box)return;
+  box.classList.add('nohov');
+  const off=()=>{box.classList.remove('nohov');document.removeEventListener('mousemove',off,true);};
+  document.addEventListener('mousemove',off,true);
 }
 /* 본문 칸 — 업무 구분이 '일반'이면 진행경과·처리계획 두 칸(업무 목록 폼과 동일), 그 외는 한 칸 */
 function peBodyHTML(d,kind){
@@ -1710,6 +1758,8 @@ function planCommit(p){
 let PE_SAVE=null;
 function planAutosave(now){
   clearTimeout(PE_SAVE);
+  /* 저장(600ms)을 기다리지 않고 달력은 곧바로 갱신한다 — buildEvents 가 draft 를 읽는다 */
+  if(S.planEdit&&S.planEdit.draft&&$('#dpEdit')){planCollect(S.planEdit.draft);refetchCal();}
   const run=()=>{
     const pe=S.planEdit;if(!pe||!$('#dpEdit'))return;
     const p=planCollect(pe.draft);
@@ -1730,6 +1780,7 @@ function savePlanInline(){
   S.planEdit=null;
   selDate(p.date);
   if(!S.live){refetchCal();rDay();}
+  lockHover();
 }
 
 /* ═══════════ 주요업무 현황 — 좌: 대상 선택 · 우: 작성/목록 ═══════════ */
@@ -3146,6 +3197,9 @@ const ACT={
       .catch(e=>{fbErr(e);rOrg();});
   },
   'day.qclear':()=>{const i=$('#dpQ');if(i){i.value='';}S.dayQ='';dpSrchMark();rDay();},
+  'day.fmore':()=>{const c=$('#dpFcard');if(c)c.classList.toggle('adv-on');},
+  /* 펼친 카드 안의 링크 — 클릭이 위임을 타고 올라가 '펼침'을 도로 접지 않게 여기서 멈춘다(이동은 a 기본 동작) */
+  'lnk.open':()=>{},
   'cal.pick':()=>openYMPick(),
   'cal.pickY':el=>{const c=CAL?CAL.view.currentStart:new Date();
     YM_Y=(YM_Y===null?c.getFullYear():YM_Y)+Number(el.dataset.d);
@@ -3284,6 +3338,7 @@ document.addEventListener('change',e=>{
   if(rl){ACT['acct.role'](rl);return;}
   if(e.target.id==='regFilter'){const v=e.target.value;S.filter.reg=v==='*'?'*':[v];rFilter();refetchCal();rDay();rWidget();return;}
   if(e.target.id==='ownFilter'){S.filter.own=e.target.value;rFilter();refetchCal();rDay();rWidget();return;}
+  if(e.target.id==='dpScope'){S.dayScope=e.target.value;rDay();return;}
   if(e.target.id==='kindFilter'||e.target.id==='stFilter'||e.target.id==='siteFilter'){
     S.filter[e.target.id==='kindFilter'?'kind':e.target.id==='stFilter'?'st':'site']=e.target.value;
     refetchCal();rDay();rWidget();return;}
