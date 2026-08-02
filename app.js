@@ -208,9 +208,12 @@ function sitePickHTML(id,cur){
   </select>`;
 }
 /* 업무 색 = 제목 앞 색 원. 누르면 팔레트 팝오버가 열린다(읽기 카드는 pid 를 달아 바로 저장) */
+/* 색 원 — 수정 모드(pid 없이 부를 때)에서만 팔레트를 연다.
+   읽기 카드에서는 표시만 한다(실수로 색이 바뀌던 것을 막는다) */
 function colDotHTML(c,pid){
-  return '<button class="p-col" data-act="plan.color"'+(pid?' data-pid="'+esc(pid)+'"':'')
-    +' aria-label="색 고르기" title="색 고르기" style="background:'+esc(c)+'"></button>';
+  return pid
+    ?'<span class="p-col p-col-ro" style="background:'+esc(c)+'"></span>'
+    :'<button class="p-col" data-act="plan.color" aria-label="색 고르기" title="색 고르기" style="background:'+esc(c)+'"></button>';
 }
 /* 색 선택기 HTML — 기본 팔레트 + 임의 색 추가.
    현재 값이 팔레트에 없으면(직접 고른 색) 맨 뒤에 칩으로 붙여 선택 상태를 유지한다. */
@@ -220,13 +223,13 @@ function colDotStyle(c){
 }
 /* 색 팝오버 — 1행은 기본색(담당자 색 + 빨·파·초·노·회), 2행부터는 직접 추가한 색.
    맨 아래에 색상 팔레트(사각형 + 색상 띠)를 늘 펼쳐 둔다. 추가색은 우클릭으로 지운다. */
-const PAL_BASE=['#DD3B30','#3E71D2','#16A34A','#E0A44A','#6B7280'];
+const PAL_BASE=['#DD3B30','#3E71D2','#16A34A','#FACC15','#EC4899','#6B7280'];
 function palKey(){return 'calapp.pal.'+((S.user&&S.user.uid)||'local');}
 function palCustom(){try{return JSON.parse(localStorage.getItem(palKey())||'[]');}catch(e){return[];}}
 function palAdd(c){
   if(!c||PAL_BASE.includes(c))return;
   const l=palCustom().filter(x=>x!==c);l.unshift(c);
-  try{localStorage.setItem(palKey(),JSON.stringify(l.slice(0,18)));}catch(e){}
+  try{localStorage.setItem(palKey(),JSON.stringify(l.slice(0,7)));}catch(e){}   /* 최근 쓴 7개만 */
 }
 function palDel(c){
   try{localStorage.setItem(palKey(),JSON.stringify(palCustom().filter(x=>x!==c)));}catch(e){}
@@ -1695,14 +1698,8 @@ function openPlanEdit(p,startD,endD,occ){
   setTimeout(()=>{const t=$('#peTitle');if(t)t.focus();},30);
 }
 /* 고른 색 적용 — 읽기 카드에서 골랐으면 바로 저장, 편집 폼이면 draft 에 담고 자동 저장 */
-let COL_PID=null;
+
 function setPlanColor(c){
-  if(COL_PID){
-    const p=findPlan(COL_PID);if(!p)return;
-    p.color=c;p.updatedAt=Date.now();store.putPlan(p);
-    if(!S.live){rDay();rTasks();refetchCal();rWidget();}
-    return;
-  }
   const pe=S.planEdit;if(!pe||!pe.draft)return;
   pe.draft.color=c;
   const btn=$('#dpEdit .p-col');
@@ -1718,7 +1715,7 @@ function colOutside(e){
 function pfClosed(){const mo=$('#mo');if(mo)mo.classList.remove('pf-on');}
 /* 색상 팔레트 사각형 — 가로는 채도, 세로는 밝기. 끌면서 고를 수 있고 고른 색은 추가색으로 쌓인다 */
 let CP_DRAG=false;
-function cpPick(e){
+function cpPick(e,commit){
   const pop=$('#colPop');if(!pop)return;
   const sv=pop.querySelector('.cp-sv');if(!sv)return;
   const r=sv.getBoundingClientRect();
@@ -1727,14 +1724,28 @@ function cpPick(e){
   const h=Number(pop.querySelector('.cp-hue').value)||0;
   const hex=hsvHex(h,x,1-y);
   cpPaint(pop,hex);
-  setPlanColor(hex);palAdd(hex);
+  setPlanColor(hex);
+  /* ⚠ 끄는 동안 목록에 쌓으면 비슷한 색이 수십 개 생긴다 — 손을 뗄 때 한 번만 담는다 */
+  if(commit)palAdd(hex);
+  CP_LAST=hex;
 }
+let CP_LAST='';
 document.addEventListener('mousedown',e=>{
   if(!e.target.closest||!e.target.closest('#colPop .cp-sv'))return;
   CP_DRAG=true;cpPick(e);e.preventDefault();
 });
 document.addEventListener('mousemove',e=>{if(CP_DRAG)cpPick(e);});
-document.addEventListener('mouseup',()=>{CP_DRAG=false;});
+document.addEventListener('mouseup',()=>{
+  if(!CP_DRAG)return;
+  CP_DRAG=false;
+  if(CP_LAST){palAdd(CP_LAST);const pop=$('#colPop');if(pop)cpRefresh(pop,CP_LAST);}
+});
+/* 색 줄만 다시 그린다 — 팔레트 사각형은 그대로 두어야 끌던 자리가 유지된다 */
+function cpRefresh(pop,cur){
+  const row=pop.querySelector('.pal');if(!row)return;
+  const tmp=document.createElement('div');tmp.innerHTML=colPopHTML(cur);
+  row.replaceWith(tmp.querySelector('.pal'));
+}
 function closeColPop(){
   const pop=$('#colPop');if(pop)pop.remove();
   document.removeEventListener('click',colOutside,true);
@@ -2329,7 +2340,7 @@ function tkFilterHTML(){
   let sites=(S.org.sites||[]).filter(x=>x.name);
   if((f.reg||[]).length)sites=sites.filter(x=>(f.reg||[]).includes(x.region));
   const M=(g,all,items)=>mselHTML('tk',g,all,items,f[g]);
-  return `<div class="dp-fcard tkf-card${on?' adv-on':''}" id="tkFcard">
+  return `<div class="card dp-fcard tkf-card${on?' adv-on':''}" id="tkFcard">
     <div class="dp-frow">
       <div class="dp-srch">
         <svg class="icn dp-srch-i" aria-hidden="true"><use href="#i-search"></use></svg>
@@ -2447,7 +2458,7 @@ function rTasks(){
       </div>
     </div>
     <div class="tkcol">
-      <div class="card tkf-card">${tkFilterHTML()}</div>
+      ${tkFilterHTML()}
       <div class="card tkmain">
         <div class="tkm-h"><div class="bar"></div><b>업무 목록</b><span class="tkm-sub">${esc(subject)}</span>
           <span class="tkm-c">${shownCnt}건</span>
@@ -2942,14 +2953,17 @@ const ACT={
   /* 색 원 — 누르면 팔레트 팝오버. 읽기 카드에서 열면 data-pid 로 그 업무에 바로 적용된다 */
   'plan.color':btn=>{
     const old=$('#colPop');
-    if(old){const same=old.parentElement===btn;closeColPop();if(same)return;}
-    COL_PID=btn.dataset.pid||null;
-    const cur=COL_PID?((findPlan(COL_PID)||{}).color||'auto')
-      :((S.planEdit&&S.planEdit.draft&&S.planEdit.draft.color)||'auto');
+    if(old){closeColPop();return;}
+    const cur=(S.planEdit&&S.planEdit.draft&&S.planEdit.draft.color)||'auto';
     const pop=document.createElement('div');
     pop.id='colPop';pop.className='col-pop';
     pop.innerHTML=colPopHTML(cur);
-    btn.appendChild(pop);
+    /* ⚠ 카드·목록에 overflow 가 걸려 있어 그 안에 넣으면 잘린다 — 화면 최상위에 띄우고 좌표만 맞춘다 */
+    document.body.appendChild(pop);
+    const r=btn.getBoundingClientRect(),w=pop.offsetWidth,h=pop.offsetHeight,M=8;
+    let x=Math.min(Math.max(M,r.left),Math.max(M,innerWidth-w-M));
+    let y=r.bottom+6;if(y+h>innerHeight-M)y=Math.max(M,r.top-h-6);
+    pop.style.left=Math.round(x)+'px';pop.style.top=Math.round(y)+'px';
     cpPaint(pop,(cur&&cur!=='auto')?cur:'#3E71D2');
     setTimeout(()=>document.addEventListener('click',colOutside,true),0);},
   /* 카드 클릭은 '펼쳐 보기' — 수정은 연필 버튼으로 (실수로 값이 바뀌지 않게) */
