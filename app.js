@@ -1902,7 +1902,18 @@ function planAutosave(now){
     const p=planCollect(pe.draft);
     if(!p||!p.title)return;                 /* 제목이 없으면 아직 만들지 않는다 */
     planCommit(p);
-    if(!pe.orig)pe.orig={...p};             /* 처음 저장한 뒤부터는 '수정' */
+    if(!pe.orig){
+      pe.orig={...p};                       /* 처음 저장한 뒤부터는 '수정' */
+      /* ⚠ 폼은 다시 그리지 않으므로(입력이 날아간다) 삭제 버튼이 안 생긴다 — 그 자리에 끼워 넣는다 */
+      const side=$('#dpEdit .pe-side');
+      if(side&&!side.querySelector('.pe-del')){
+        const del=document.createElement('button');
+        del.className='pe-ic pe-del';del.setAttribute('aria-label','삭제');del.title='삭제';
+        del.dataset.act='plan.del';del.dataset.pid=p.id;del.dataset.ym=ymOf(p.date);del.dataset.occ=pe.occ||'';
+        del.innerHTML='<svg class="icn"><use href="#i-trash"></use></svg>';
+        side.insertBefore(del,side.querySelector('.pe-rem')||side.lastElementChild);
+      }
+    }
     if(!S.live){refetchCal();rDay();rWidget();}
   };
   if(now)run();else PE_SAVE=setTimeout(run,600);
@@ -2187,23 +2198,21 @@ function taskFormHTML(sid,iid,cur){
       </div>
     </div>
     <div class="pe-body">
-      <div class="frow2">
+      <div class="frow4">
         <div class="frow"><label>시작일</label><input type="date" class="inp inp-sm" id="tnDate" value="${esc(d.date||'')}"></div>
         <div class="frow"><label>종료일</label><input type="date" class="inp inp-sm" id="tnEnd" value="${esc(d.end||'')}"></div>
+        <div class="frow"><label>시간</label><input type="time" class="inp inp-sm" id="tnTime" value="${esc(d.time||'')}"></div>
+        <div class="frow"><label>반복</label><select class="inp inp-sm" id="tnRec">${Object.keys(REC_LBL).map(k=>'<option value="'+k+'"'+(k===rc?' selected':'')+'>'+REC_LBL[k]+'</option>').join('')}</select></div>
       </div>
-      <div class="frow2">
+      <div class="frow" id="tnUntilRow" style="${rc?'':'display:none'}"><label>반복 종료</label><input type="date" class="inp inp-sm" id="tnUntil" value="${esc((d.recur&&d.recur.until)||'')}"></div>
+      <div class="frow-ks">
         <div class="frow"><label>업무 구분</label>
           <select class="inp inp-sm" id="tnKind" data-act="tk.kind">
             ${TK_KIND.map(([v,l])=>'<option value="'+v+'"'+(v===kind?' selected':'')+'>'+esc(l)+'</option>').join('')}
           </select></div>
         <div class="frow"><label>담당자</label>${ownSelHTML('tnAsg',own,people)}</div>
+        <div class="frow"><label>현장</label>${sitePickHTML('tnSite',d.site||'')}</div>
       </div>
-      <div class="frow"><label>현장</label>${sitePickHTML('tnSite',d.site||'')}</div>
-      <div class="frow2">
-        <div class="frow"><label>시간</label><input type="time" class="inp inp-sm" id="tnTime" value="${esc(d.time||'')}"></div>
-        <div class="frow"><label>반복</label><select class="inp inp-sm" id="tnRec">${Object.keys(REC_LBL).map(k=>'<option value="'+k+'"'+(k===rc?' selected':'')+'>'+REC_LBL[k]+'</option>').join('')}</select></div>
-      </div>
-      <div class="frow" id="tnUntilRow" style="${rc?'':'display:none'}"><label>반복 종료</label><input type="date" class="inp inp-sm" id="tnUntil" value="${esc((d.recur&&d.recur.until)||'')}"></div>
       <div class="frow"><label>링크</label><input class="inp inp-sm" id="tnLink" maxlength="500" placeholder="https://…" value="${esc((lnk&&lnk.url)||'')}"></div>
       <div id="tnBodySec">${tkBodyHTML(split,d.prog||d.body||'',d.plan||'',kind)}</div>
     </div>
@@ -2211,8 +2220,10 @@ function taskFormHTML(sid,iid,cur){
 }
 function tkBodyHTML(split,prog,plan,kind){
   return split
-    ? `<div class="frow"><label>진행경과</label><textarea class="inp inp-sm" id="tnProg" maxlength="2000" placeholder="지금까지의 경과">${esc(prog)}</textarea></div>
-       <div class="frow"><label>처리계획</label><textarea class="inp inp-sm" id="tnPlan" maxlength="2000" placeholder="앞으로의 계획">${esc(plan)}</textarea></div>`
+    ? `<div class="frow2">
+        <div class="frow"><label>진행경과</label><textarea class="inp inp-sm" id="tnProg" maxlength="2000" placeholder="지금까지의 경과">${esc(prog)}</textarea></div>
+        <div class="frow"><label>처리계획</label><textarea class="inp inp-sm" id="tnPlan" maxlength="2000" placeholder="앞으로의 계획">${esc(plan)}</textarea></div>
+       </div>`
     : `<div class="frow"><label>내용</label><textarea class="inp inp-sm" id="tnProg" maxlength="2000" placeholder="${esc(kindLabel(kind))} 내용을 적으세요">${esc(prog)}</textarea></div>`;
 }
 /* 업무 구분을 바꾸면 본문 칸 구성이 달라진다 — 그 부분만 다시 그려 다른 입력을 지키지 않게 한다 */

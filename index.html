@@ -159,7 +159,11 @@ textarea.inp{resize:vertical;min-height:64px;line-height:1.55;}
 select.inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath d='M2 3.5l3 3 3-3' fill='none' stroke='%238E8E93' stroke-width='1.4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center;padding-right:28px;}
 .frow{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;}
 .frow>label{font-size:11.5px;font-weight:700;color:var(--lbl2);}
-.frow2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+".frow2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+/* 업무 목록 폼 전용 배치 — 1행 날짜 4칸, 2행 구분·담당자·현장(25/25/50) */
+.frow4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;}
+.frow-ks{display:grid;grid-template-columns:1fr 1fr 2fr;gap:10px;}
+@media(max-width:960px){.frow4{grid-template-columns:1fr 1fr;}.frow-ks{grid-template-columns:1fr;}}
 /* ══════════ 달력 페이지 ══════════ */
 .cal-wrap{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;align-items:stretch;height:calc(100dvh - var(--th) - 29px);min-height:520px;}   /* 29 = 상단 9 + 하단 20 */
 .cal-card{padding:16px 18px;display:flex;flex-direction:column;min-height:0;}
@@ -566,7 +570,7 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 /* 작성·수정 폼 — 업무 일정의 .dp-edit 규격을 그대로 쓴다(118차) */
 .tk-new{margin-bottom:12px;}
 /* 목록 */
-.tk-list{display:flex;flex-direction:column;gap:5px;flex:1;min-height:0;overflow-y:auto;padding:4px 12px 16px 16px;}
+.tk-list{display:flex;flex-direction:column;gap:5px;flex:1;min-height:0;overflow-y:auto;padding:0 12px 16px 16px;}
 .tk-item{border-radius:var(--rmd);background:var(--surf2);border:1px solid var(--sep);transition:background .12s;position:relative;}
 .tk-item:hover{background:var(--surf3);}
 .tk-item.open{background:var(--surf2);border-color:var(--b200);}
@@ -662,7 +666,7 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 .th-f{display:flex;gap:8px;justify-content:flex-end;margin-top:7px;}
 /* 펼침 상태 — 수정 버튼은 우측 상단 */
 /* 집계 보기(팀 전체 · 권역) 구분 헤더 */
-.tk-sub{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:800;color:var(--bt1);letter-spacing:.01em;padding:6px 2px 2px;}
+.tk-sub{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:800;color:var(--bt1);letter-spacing:.01em;padding:2px 2px 2px;}
 .tk-sub .c{margin-left:auto;}
 .tk-sub+*{margin-top:0;}
 /* 분류와 분류 사이에만 얇은 구분선 */
@@ -1096,6 +1100,9 @@ body.wid #wgSet.on{display:block;}
 #wgSet .wgs-btn{padding:5px 12px;border-radius:8px;background:rgba(255,255,255,.12);color:rgba(255,255,255,.9);
   font-size:11.5px;font-weight:700;transition:background var(--tr);}
 #wgSet .wgs-btn:hover{background:rgba(255,255,255,.2);color:#fff;}
+#wgSet .wgs-full{display:block;width:100%;margin-top:10px;padding-top:11px;border-top:1px solid rgba(255,255,255,.16);
+  font-size:12px;font-weight:700;color:rgba(255,255,255,.85);text-align:center;transition:color var(--tr);}
+#wgSet .wgs-full:hover{color:#fff;}
 
 /* 계정 모달 — 참조 앱과 동일 */
 .il{font-size:12px;font-weight:600;color:var(--lbl2);margin-bottom:6px;display:block;}
@@ -1408,10 +1415,9 @@ html.dark #toast{background:#2B313A;}
           <div class="wgs-r"><span>배경 진하기</span><input type="range" id="wgA" min="15" max="100" step="5"></div>
           <div class="wgs-r"><span>글자 크기</span>
             <div class="seg wgs-seg" id="wgFz"><button data-fz="s">작게</button><button data-fz="m" class="act">보통</button><button data-fz="l">크게</button></div></div>
-          <div class="wgs-r"><span>브라우저 앱 열기</span>
-            <button class="wgs-btn" data-act="wid.open">열기</button></div>
           <div class="wgs-r"><span>위치·크기 조정</span>
             <button class="wgs-btn" data-act="wid.moveOn">조정하기</button></div>
+          <button class="wgs-full" data-act="wid.open">브라우저 앱 열기</button>
         </div>
         <div class="dp-col">
           <div class="card dp-filtercard">
@@ -1591,5 +1597,5 @@ html.dark #toast{background:#2B313A;}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=111"></script>
+<script src="./app.js?v=112"></script>
 </body></html>
