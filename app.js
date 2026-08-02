@@ -912,6 +912,8 @@ function pfPlace(){
   else if(m.left-gap-w>=8){left=m.left-gap-w;top=m.top;}
   else if(m.bottom+gap+h<=window.innerHeight-8){left=Math.max(8,m.left);top=m.bottom+gap;}
   else{left=Math.max(8,Math.min(m.left+16,window.innerWidth-w-8));top=Math.max(8,m.top+16);}
+  /* 위젯처럼 창이 좁으면 오른쪽·왼쪽 어디에도 못 붙는다 — 가로도 창 안으로 접는다 */
+  left=Math.max(8,Math.min(left,window.innerWidth-w-8));
   top=Math.max(8,Math.min(top,window.innerHeight-h-8));
   p.style.left=Math.round(left)+'px';
   p.style.top=Math.round(top)+'px';
@@ -1408,7 +1410,7 @@ function selDate(ds,quiet){
   if(S.selEnd&&S.selEnd<=ds)S.selEnd='';
   /* 위젯: 첫 클릭은 날짜 선택까지만, **같은 칸을 한 번 더** 눌러야 업무 팝업이 뜬다.
      quiet 는 '이동만'(오늘·연월 이동·업무 바 클릭 뒤 별도 처리) */
-  if(WIDGET)S.widPop=quiet?false:same;   /* 이미 고른 날짜를 한 번 더 눌렀을 때만 팝업 */
+  if(WIDGET)S.widPop=quiet?false:(same&&!S.widPop);   /* 같은 칸: 안 떠 있으면 열고, 떠 있으면 닫는다 */
   setTimeout(rWidget,0);
   if(CAL&&ymOf(ds)!==CAL.view.currentStart.getFullYear()+'-'+pad(CAL.view.currentStart.getMonth()+1))CAL.gotoDate(ds);
   markSel();
@@ -3610,9 +3612,14 @@ function rWidget(){
   /* 누른 칸 옆에 붙이되 화면 밖으로 나가지 않게 접는다 */
   const td=document.querySelector('#fcal td[data-date="'+ds+'"]');
   const r=td?td.getBoundingClientRect():{left:20,right:20,top:60};
+  /* 창 밖으로 나가면 잘린다(위젯은 창이 곧 화면) — 가로·세로 모두 창 안으로 밀어 넣는다 */
+  const M=8;
+  box.style.maxHeight=Math.max(180,innerHeight-M*2)+'px';
   const w=box.offsetWidth,ht=box.offsetHeight;
-  let x=r.right+8;if(x+w>innerWidth-8)x=Math.max(8,r.left-w-8);
-  let y=r.top;if(y+ht>innerHeight-8)y=Math.max(8,innerHeight-ht-8);
+  let x=r.right+M;if(x+w>innerWidth-M)x=r.left-w-M;
+  x=Math.min(Math.max(M,x),Math.max(M,innerWidth-w-M));
+  let y=r.top;
+  y=Math.min(Math.max(M,y),Math.max(M,innerHeight-ht-M));
   box.style.left=Math.round(x)+'px';box.style.top=Math.round(y)+'px';
 }
 
