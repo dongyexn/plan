@@ -5,7 +5,8 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder --win portable"
+    "dist": "electron-builder --win portable",
+    "dist:zip": "electron-builder --win zip"
   },
   "devDependencies": {
     "electron": "^31.0.0",
@@ -19,6 +20,7 @@
       "desktop-pin.js",
       "package.json",
       "tray.png",
+      "icon.png",
       "node_modules/koffi/**/*",
       "!node_modules/koffi/src/**",
       "!node_modules/koffi/build/koffi/darwin_*",
@@ -30,7 +32,7 @@
     ],
     "win": {
       "target": "portable",
-      "icon": "tray.png"
+      "icon": "icon.png"
     },
     "portable": {
       "artifactName": "HPlanWidget.exe"
