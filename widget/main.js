@@ -1,5 +1,6 @@
-/* H서비스센터 업무 일정 — 데스크톱 위젯 (Electron)
-   배포된 웹앱의 위젯 모드(?w=1)를 테두리 없는 항상 위 창으로 띄운다.
+/* H서비스센터 업무 일정 — 바탕화면 위젯 (Electron)
+   배포된 웹앱의 위젯 모드(?w=1)를 **투명·테두리 없는 창**으로 띄우고, 기본은 바탕화면에 붙인다
+   (Desktopcal 처럼 벽지 위에 달력만 얹혀 있고 다른 창에 가려지는 형태).
    데이터는 웹앱과 같은 Firebase를 보므로 실시간으로 함께 갱신된다.
 
    실행    : npm install → npm start
@@ -25,6 +26,49 @@ function saveState(s) {
 let win = null, tray = null;
 let state = {};
 
+/* 창을 어느 층에 둘지.
+   desktop : 벽지 위에 붙어 다른 창에 가려진다(Desktopcal 과 같은 형태)
+   top     : 항상 위
+   normal  : 보통 창
+   ⚠ 윈도우에서 '바탕화면에 붙이기'는 Electron API 로는 안 되고 Win32 로 벽지 창(WorkerW)에
+   부모를 옮겨야 한다. koffi 가 있으면 그렇게 하고, 없으면 '항상 위 끄기'로 물러난다(창이 완전히
+   가려지지는 않지만 다른 창 아래로 내려간다). koffi 는 선택 의존성이라 없어도 앱은 뜬다. */
+function attachToWallpaper(hwnd) {
+  if (process.platform !== 'win32') return false;
+  let koffi;
+  try { koffi = require('koffi'); } catch { return false; }
+  try {
+    const user32 = koffi.load('user32.dll');
+    const FindWindowExA = user32.func('void* FindWindowExA(void*, void*, str, str)');
+    const SendMessageTimeoutA = user32.func('long SendMessageTimeoutA(void*, uint, void*, void*, uint, uint, void*)');
+    const SetParent = user32.func('void* SetParent(void*, void*)');
+    const progman = FindWindowExA(null, null, 'Progman', null);
+    if (!progman) return false;
+    /* Progman 에 0x052C 를 보내면 벽지 뒤에 WorkerW 가 만들어진다 */
+    SendMessageTimeoutA(progman, 0x052C, null, null, 0, 1000, null);
+    let workerw = null, after = null;
+    for (;;) {
+      const shellView = FindWindowExA(null, after, 'WorkerW', null);
+      if (!shellView) break;
+      const def = FindWindowExA(shellView, null, 'SHELLDLL_DefView', null);
+      if (def) { workerw = FindWindowExA(null, shellView, 'WorkerW', null); break; }
+      after = shellView;
+    }
+    if (!workerw) return false;
+    SetParent(hwnd, workerw);
+    return true;
+  } catch { return false; }
+}
+function applyMode(mode) {
+  state.mode = mode; saveState(state);
+  if (!win) return;
+  if (mode === 'top') { win.setAlwaysOnTop(true, 'floating'); return; }
+  win.setAlwaysOnTop(false);
+  if (mode !== 'desktop') return;
+  const ok = attachToWallpaper(win.getNativeWindowHandle());
+  if (!ok) win.setSkipTaskbar(state.skipTaskbar !== false);   /* 물러난 경우에도 위젯처럼 보이게 */
+}
+
 function createWindow() {
   state = loadState();
   const area = screen.getPrimaryDisplay().workAreaSize;
@@ -38,17 +82,19 @@ function createWindow() {
     ...b,
     minWidth: 300, minHeight: 380,
     frame: false,              // 테두리 없음 — 위젯처럼 보이게
-    transparent: false,
+    transparent: true,         // 벽지가 비치도록 — 창 배경은 웹앱의 유리 모드가 그린다
+    hasShadow: false,
     resizable: true,
-    skipTaskbar: !!state.skipTaskbar,
-    alwaysOnTop: state.onTop !== false,
+    skipTaskbar: state.skipTaskbar !== false,   // 바탕화면 위젯이므로 기본은 작업표시줄에서 숨김
+    alwaysOnTop: state.mode === 'top',
     autoHideMenuBar: true,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: '#00000000',
     webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, webviewTag: false }
   });
 
-  if (state.onTop !== false) win.setAlwaysOnTop(true, 'floating');
-  win.loadURL(APP_URL);
+  applyMode(state.mode || 'desktop');
+  /* 유리 모드로 열어야 벽지가 비친다 — 주소에 &glass=1 을 붙인다 */
+  win.loadURL(APP_URL + (APP_URL.indexOf('glass=') < 0 ? '&glass=1' : ''));
 
   /* 프레임이 없으므로 드래그 영역과 닫기 버튼을 주입한다.
      (웹앱 자체는 손대지 않고 위젯에서만 덧입힌다) */
@@ -116,8 +162,16 @@ function buildTray() {
     { label: '위젯 보이기 / 숨기기', click: toggleWindow },
     { type: 'separator' },
     {
-      label: '항상 위에 표시', type: 'checkbox', checked: state.onTop !== false,
-      click: m => { state.onTop = m.checked; saveState(state); if (win) win.setAlwaysOnTop(m.checked, 'floating'); }
+      label: '바탕화면에 고정', type: 'radio', checked: (state.mode || 'desktop') === 'desktop',
+      click: () => applyMode('desktop')
+    },
+    {
+      label: '항상 위에 표시', type: 'radio', checked: state.mode === 'top',
+      click: () => applyMode('top')
+    },
+    {
+      label: '보통 창', type: 'radio', checked: state.mode === 'normal',
+      click: () => applyMode('normal')
     },
     {
       label: '작업표시줄에 숨기기', type: 'checkbox', checked: !!state.skipTaskbar,

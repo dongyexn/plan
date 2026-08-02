@@ -14,8 +14,20 @@
   "build": {
     "appId": "kr.co.hdec.hservice.calwidget",
     "productName": "업무일정위젯",
-    "files": ["main.js", "package.json", "tray.png"],
-    "win": { "target": "portable", "icon": "tray.png" },
-    "portable": { "artifactName": "업무일정위젯.exe" }
+    "files": [
+      "main.js",
+      "package.json",
+      "tray.png"
+    ],
+    "win": {
+      "target": "portable",
+      "icon": "tray.png"
+    },
+    "portable": {
+      "artifactName": "업무일정위젯.exe"
+    }
+  },
+  "optionalDependencies": {
+    "koffi": "^2.8.0"
   }
 }

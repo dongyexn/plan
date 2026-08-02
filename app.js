@@ -323,6 +323,7 @@ const S={
   planEdit:null,     // 일자 패널 인라인 편집기 상태
   dayQ:'',           // 일자 패널 검색어
   dayScope:'day',    // 찾는 범위: day(이 날짜) · month(이 달) · all(전체)
+  widPop:false,      // 위젯: 날짜를 눌렀을 때 뜨는 업무 팝업
   tkF:{q:'',st:'',due:''},   // 주요업무 검색·필터
   orgTab:'acct',     // 조직/현장 관리 우측 탭 (acct | site)
   cmtRe:'',          // 답글 입력창을 연 코멘트 (sid/iid/cid)
@@ -1391,6 +1392,7 @@ function selDate(ds){
   if(!/^\d{4}-\d{2}-\d{2}$/.test(ds))return;   /* 잘못된 값이 들어오면 무시 — NaN 표시 방지 */
   S.selDate=ds;
   if(S.selEnd&&S.selEnd<=ds)S.selEnd='';
+  if(WIDGET)S.widPop=true;      /* 위젯에서는 날짜를 누르면 그 칸 옆에 업무 팝업이 뜬다 */
   setTimeout(rWidget,0);
   if(CAL&&ymOf(ds)!==CAL.view.currentStart.getFullYear()+'-'+pad(CAL.view.currentStart.getMonth()+1))CAL.gotoDate(ds);
   markSel();
@@ -3243,6 +3245,7 @@ const ACT={
     const u=location.origin+location.pathname+'?w=1';
     window.open(u,'calwidget','width=390,height=640,menubar=no,toolbar=no,location=no,status=no');
   },
+  'wid.popClose':()=>{S.widPop=false;rWidget();},
   'wid.set':()=>{const p=$('#wgSet');if(!p)return;p.classList.toggle('on');p.setAttribute('aria-hidden',p.classList.contains('on')?'false':'true');widApply();}
 };
 /* 필터 = 업무 구분 · 진행 상태 · 권역 · 담당자 · 현장.
@@ -3310,6 +3313,10 @@ function confirmModal(title,msg,cb,okLabel,danger){
   MODAL_CB={type:'confirm',ok:()=>{cb();closeModal();}};
 }
 document.addEventListener('click',e=>{
+  /* 위젯 업무 팝업 — 달력 칸이나 팝업 자신이 아닌 곳을 누르면 닫는다 */
+  if(WIDGET&&S.widPop&&!e.target.closest('#widPop')&&!e.target.closest('#fcal td.fc-daygrid-day')){
+    S.widPop=false;rWidget();
+  }
   /* 팝오버는 색 원 버튼 안에 들어 있다 — 여기서 막지 않으면 안쪽 클릭이 버튼까지 올라가 팝오버가 닫힌다 */
   if(e.target.closest('#colPop'))return;
   const el=e.target.closest('[data-act]');
@@ -3425,7 +3432,6 @@ document.addEventListener('input',e=>{
   if(e.target.id==='wgA'){const c=widCfgLoad();c.a=Number(e.target.value);widCfgSave(c);widApply();}
 });
 document.addEventListener('change',e=>{
-  if(e.target.id==='wgPanelChk'){const c=widCfgLoad();c.panel=e.target.checked;widCfgSave(c);widApply();return;}
   if(e.target.id==='wgDarkChk'){applyTheme(e.target.checked);return;}
 });
 document.addEventListener('click',e=>{
@@ -3544,21 +3550,35 @@ function widApply(){
     'body.wid.glass .cal-head .seg,body.wid.glass .cal-head .cal-nav{background:rgba(16,20,30,'+f(a*.9)+');}'
   ].join('\n'):'';
   const fz=c.fz==='s'?.9:c.fz==='l'?1.14:1;document.body.style.setProperty('--wfz',String(fz));
-  const pn=$('#widPanel');if(pn)pn.style.display=c.panel===false?'none':'';
   const rng=$('#wgA');if(rng)rng.value=Math.round(a*100);
   if($('#wgFz'))$$('#wgFz button').forEach(b=>b.classList.toggle('act',b.dataset.fz===(c.fz||'m')));
-  const pc=$('#wgPanelChk');if(pc)pc.checked=c.panel!==false;
   const dc=$('#wgDarkChk');if(dc)dc.checked=document.documentElement.classList.contains('dark');
 }
+/* 위젯은 달력만 띄운다 — 목록은 늘어놓지 않고, 날짜를 누르면 그 칸 옆에 팝업으로 보여 준다 */
 function rWidget(){
   if(!WIDGET)return;
+  const box=$('#widPop');if(!box)return;
+  if(!S.widPop){box.classList.remove('on');return;}
   const ds=S.selDate,ps=dayPlans(ds),d=toDate(ds),ho=holOf(ds);
-  $('#widPanel').innerHTML='<div class="wid-h">'+(d.getMonth()+1)+'월 '+d.getDate()+'일 · '+DOW[d.getDay()]+(ho?' · '+esc(ho.n):'')+(ds===todayStr()?' · 오늘':'')+'</div>'
-    +(ps.length?ps.map(({p,occ})=>`<div class="plan${isDone(p,occ)?' done':''}">
-        <div class="pc" style="background:${esc(planColor(p))}"></div>
-        <div class="plan-main"><div class="plan-t">${esc(p.title)}</div>
-        ${fmtSpan(p)?'<div class="plan-meta"><span class="pm-chip">'+esc(fmtSpan(p))+'</span></div>':''}</div></div>`).join('')
-      :'<div class="dp-empty" style="padding:10px 0">업무 없음</div>');
+  const head=(d.getMonth()+1)+'월 '+d.getDate()+'일 · '+DOW[d.getDay()]+(ho?' · '+ho.n:'')+(ds===todayStr()?' · 오늘':'');
+  box.innerHTML='<div class="wp-h"><span>'+esc(head)+'</span>'
+    +'<button class="wp-x" data-act="wid.popClose" aria-label="닫기"><svg class="icn"><use href="#i-close"></use></svg></button></div>'
+    +(ps.length?ps.map(({p,occ})=>{
+        const meta=[fmtSpan(p),p.site?siteName(p.site):'',planOwners(p).map(o=>ownName(o)).join(', ')].filter(Boolean).join(' · ');
+        return '<div class="wp-i'+(isDone(p,occ)?' done':'')+'">'
+          +'<span class="wp-c" style="background:'+esc(planColor(p))+'"></span>'
+          +'<div><div class="wp-t">'+esc(p.title)+'</div>'
+          +(meta?'<div class="wp-m">'+esc(meta)+'</div>':'')+'</div></div>';
+      }).join('')
+    :'<div class="wp-none">등록된 업무가 없습니다.</div>');
+  box.classList.add('on');
+  /* 누른 칸 옆에 붙이되 화면 밖으로 나가지 않게 접는다 */
+  const td=document.querySelector('#fcal td[data-date="'+ds+'"]');
+  const r=td?td.getBoundingClientRect():{left:20,right:20,bottom:60,top:60};
+  const w=box.offsetWidth,h=box.offsetHeight;
+  let x=r.right+8;if(x+w>innerWidth-8)x=Math.max(8,r.left-w-8);
+  let y=r.top;if(y+h>innerHeight-8)y=Math.max(8,innerHeight-h-8);
+  box.style.left=Math.round(x)+'px';box.style.top=Math.round(y)+'px';
 }
 
 /* ═══════════ 위젯(앱으로 설치) ═══════════
