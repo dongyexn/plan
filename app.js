@@ -1540,7 +1540,7 @@ function rDay(){
     const lnk=Object.values(p.links||{}).filter(l=>l&&l.url)[0];
     const c=planColor(p);
     return `
-    <div class="plan${done?' done':''}${S.planOpen===p.id?' open':''}" data-pid="${esc(p.id)}" style="border-color:${esc(c)};background:color-mix(in srgb, ${esc(c)} 20%, var(--bg2))">
+    <div class="plan${done?' done':''}${S.planOpen===p.id?' open':''}" data-pid="${esc(p.id)}" style="--pc:${esc(c)}">
       <div class="plan-hd">
         <span class="tk-st s${st}" data-act="plan.stCycle" data-pid="${esc(p.id)}" data-occ="${esc(occ)}" title="눌러서 상태 변경">${ST_LBL[st]}</span>
         <div class="plan-t" data-act="plan.open" data-pid="${esc(p.id)}" data-occ="${esc(occ)}">${esc(p.title)}</div>
@@ -1603,8 +1603,8 @@ function setPlanColor(c){
   box.outerHTML=colRowHTML(c);
   const nb=$('#peCols');
   if(pop&&nb)nb.appendChild(pop);
-  const ed=$('#dpEdit');                     /* 업무 색은 폼 아웃라인 — 새 색으로 다시 칠한다 */
-  if(ed)ed.style.borderColor=planColor({color:c,owners:(S.planEdit&&S.planEdit.draft&&S.planEdit.draft.owners)||{}});
+  const ed=$('#dpEdit');                     /* 업무 색은 왼쪽 색 바 — 새 색으로 다시 칠한다 */
+  if(ed)ed.style.setProperty('--pc',planColor({color:c,owners:(S.planEdit&&S.planEdit.draft&&S.planEdit.draft.owners)||{}}));
   planAutosave();
 }
 function colOutside(e){
@@ -1657,7 +1657,7 @@ function planFormHTML(){
   const kind=kindOf(d.kind);
   const st=stOf(d.st);
   const lnk=Object.values(d.links||{}).filter(l=>l&&l.url)[0];
-  return `<div class="dp-edit" id="dpEdit" style="border-color:${esc(planColor(d))}">
+  return `<div class="dp-edit" id="dpEdit" style="--pc:${esc(planColor(d))}">
     <div class="pe-bar">
       <span class="tk-st s${st}" data-act="plan.stCycle" title="눌러서 상태 변경">${ST_LBL[st]}</span>
       <input class="pe-ttl" id="peTitle" maxlength="80" placeholder="무엇을 하나요?" value="${esc(d.title)}">
