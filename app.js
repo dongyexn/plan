@@ -1535,7 +1535,7 @@ function rDay(){
         ${colDotHTML(planColor(p),p.id)}
         <div class="plan-t"${openAct}>${esc(p.title)}</div>
         <div class="plan-side">
-          <button class="p-ico p-rem${p.remind?' on':''}" data-act="plan.remind" data-pid="${esc(p.id)}" aria-label="리마인드 전환" title="리마인드"><svg class="icn"><use href="#i-bell"></use></svg></button>
+${p.remind?'<button class="p-ico p-rem on" data-act="plan.remind" data-pid="'+esc(p.id)+'" aria-label="리마인드 해제" title="리마인드 켜짐"><svg class="icn"><use href="#i-bell"></use></svg></button>':''}
           ${lnk?'<a class="p-ico" href="'+esc(lnk.url)+'" target="_blank" rel="noopener" aria-label="링크 열기" title="'+esc(lnk.label||lnk.url)+'"><svg class="icn"><use href="#i-ext"></use></svg></a>':''}
           <button class="p-ico p-edit" data-act="plan.edit" data-pid="${esc(p.id)}" data-occ="${esc(occ)}" aria-label="수정" title="수정"><svg class="icn"><use href="#i-pen"></use></svg></button>
         </div>
@@ -1587,7 +1587,7 @@ function setPlanColor(c){
   if(COL_PID){
     const p=findPlan(COL_PID);if(!p)return;
     p.color=c;p.updatedAt=Date.now();store.putPlan(p);
-    if(!S.live){rDay();refetchCal();rWidget();}
+    if(!S.live){rDay();rTasks();refetchCal();rWidget();}
     return;
   }
   const pe=S.planEdit;if(!pe||!pe.draft)return;
@@ -1825,12 +1825,14 @@ function taskItemHTML(sid,iid,it,withSubject,hideOwn){
     .map(id=>roster().find(p=>p.id===id)).filter(Boolean);
   const sn=siteName(it.site);
   const open=S.tkOpen===key;
-  const col=(it.color&&it.color!=='auto')?it.color:'';
+  /* 업무 색·아이콘 규칙은 업무 일정 카드와 같다 — 제목 앞 색 원(=색 변경), 알림은 켜졌을 때만, 링크는 있을 때만 */
+  const p0=taskAsPlan(sid,iid,it);
+  const lnk=Object.values(it.links||{}).filter(l=>l&&l.url)[0];
   return `
   <div class="tk-item s${st}${open?' open':''}" draggable="true" data-sid="${esc(sid)}" data-iid="${esc(iid)}">
-    ${col?'<span class="tkc" style="background:'+esc(col)+'"></span>':''}
     <div class="tk-line">
       <span class="tk-grip" aria-hidden="true">⠿</span>
+      ${colDotHTML(planColor(p0),iid)}
       <div class="tk-body" data-act="tk.open" data-sid="${esc(sid)}" data-iid="${esc(iid)}">
         <div class="tk-row1">
           <span class="tk-ttl">${esc(it.text||'제목 없음')}</span>
@@ -1848,7 +1850,9 @@ function taskItemHTML(sid,iid,it,withSubject,hideOwn){
       <div class="tk-acts">
         ${cn?`<button class="tk-ico on" data-act="tk.open" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="코멘트">
           <svg class="icn"><use href="#i-cmt"></use></svg><span class="cn">${cn}</span></button>`:''}
-        ${open?'<button class="btn bg2 bxs tk-editbtn" data-act="tk.edit" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'">수정</button>':''}
+        ${it.remind?'<button class="tk-ico on" data-act="tk.remind" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" aria-label="리마인드 해제" title="리마인드 켜짐"><svg class="icn"><use href="#i-bell"></use></svg></button>':''}
+        ${lnk?'<a class="tk-ico" href="'+esc(lnk.url)+'" target="_blank" rel="noopener" data-act="lnk.open" aria-label="링크 열기" title="'+esc(lnk.label||lnk.url)+'"><svg class="icn"><use href="#i-ext"></use></svg></a>':''}
+        <button class="tk-ico" data-act="tk.edit" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="수정" title="수정"><svg class="icn"><use href="#i-pen"></use></svg></button>
         <button class="tk-del" data-act="tk.del" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="삭제"><svg class="icn"><use href="#i-close"></use></svg></button>
       </div>
     </div>
@@ -2945,6 +2949,12 @@ const ACT={
   'tk.edit':el=>{S.tkNew=null;S.tkEdit=el.dataset.sid+'/'+el.dataset.iid;rTasks();
     setTimeout(()=>{const t=$('#tnTitle');if(t)t.focus();},30);},
   'tk.pick':el=>{S.tk.m=el.dataset.id;rTasks();},
+  'tk.remind':el=>{
+    const sid=el.dataset.sid,iid=el.dataset.iid;
+    const cur=(S.tasks[sid]||{})[iid];if(!cur)return;
+    store.putTask(sid,iid,{...cur,remind:!cur.remind,updatedAt:Date.now()});
+    if(!S.live){rTasks();rDay();rWidget();}
+    toast(!cur.remind?'당일 아침 리마인드 메일이 발송됩니다':'리마인드를 해제했습니다');},
   'tk.st':el=>{
     const sid=el.dataset.sid,iid=el.dataset.iid;
     const cur=(S.tasks[sid]||{})[iid];if(!cur)return;
