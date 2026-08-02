@@ -133,9 +133,6 @@ svg{display:block;flex-shrink:0;}
 .tk-item.drop-above::before{top:-3px;}
 .tk-item.drop-below::after{bottom:-3px;}
 /* 링크 입력 행 */
-.lnk-row{display:flex;align-items:center;gap:6px;margin-bottom:5px;}
-.lnk-row .lnk-lbl{flex:0 0 34%;}
-.lnk-row .lnk-url{flex:1;min-width:0;}
 
 /* 달력 카드 헤더 컨트롤 */
 .cal-ctl{display:flex;align-items:center;gap:8px;min-width:0;}
@@ -556,7 +553,7 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 .tks-item.tks-reg:first-of-type{margin-top:0;}
 .tks-item.tks-reg .n{font-size:12.5px;color:var(--bt1);letter-spacing:.02em;}
 .tks-item.tks-reg.act .n{color:var(--bt1);}
-.tks-item.sub{padding-left:24px;font-size:13.5px;}
+.tks-item.sub{padding-left:16px;font-size:13.5px;}
 /* 업무 패널 머리 — 아래 분류 구분선보다 굵게 해서 층이 구분되도록 */
 .tkm-h{position:relative;display:flex;align-items:center;gap:9px;padding:15px 16px 13px;flex-shrink:0;}
 .tkm-c{margin-left:auto;margin-right:2px;font-size:12.5px;font-weight:700;color:var(--lbl2);}   /* 아래 분류 건수 배지와 같은 선(패널 우측에서 19px) */
@@ -566,36 +563,10 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 .tkm-h .btn{flex:0 0 auto;}   /* 우측 정렬은 .tkm-c 의 margin-left:auto 가 맡는다 */
 /* 인라인 작성창 */
 .tk-new{border:1px solid var(--b300);border-radius:var(--rlg);padding:0;margin-bottom:12px;background:var(--surf2);flex-shrink:0;overflow:hidden;}
-/* 작성·수정 폼 — 제목 / 본문 / 분류 / 담당자 / 링크를 구분선으로 나눈다 */
-.tkf-top{padding:12px 14px 12px;background:var(--surf2);border-bottom:1px solid var(--sep);}
-/* 수정 중에도 지금 상태를 같은 배지로 보여줘 보는 화면과 이어지게 */
-.tkf-now{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin-top:9px;}
-.tkf-now>*{height:22px;display:inline-flex;align-items:center;gap:4px;padding:0 9px;border-radius:var(--rp);
-  font-size:12px;font-weight:700;white-space:nowrap;border:1px solid transparent;box-sizing:border-box;}
-.tkf-now .asg{background:var(--fill);color:var(--lbl);font-weight:600;}
-.tkf-now .site-on{height:22px;padding:0 9px;background:var(--bg2);border-color:var(--b300);color:var(--bt1);font-size:12px;font-weight:700;}
-.tkf-now .dot-c{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
-.tk-new-t{font-size:15px;font-weight:600;margin-bottom:0;}
-.tkf-sec{padding:12px 14px;border-bottom:1px solid var(--sep);}
-.tkf-h{display:flex;align-items:center;gap:7px;font-size:11.5px;font-weight:700;color:var(--lbl3);
-  letter-spacing:.05em;margin-bottom:8px;}
-.tkf-h .c{font-weight:600;color:var(--lbl3);background:var(--fill);border-radius:99px;padding:1px 8px;font-size:11.5px;letter-spacing:0;}
-.tkf-g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:start;}
-.tkf-g2{grid-template-columns:repeat(2,minmax(0,1fr));}
-.tkf-g4{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.4fr);gap:12px;align-items:start;}
-.tkf-f2{min-width:0;}
-.tkf-f2 .pal{padding-top:2px;}
-.tkf-f{display:flex;flex-direction:column;gap:5px;min-width:0;}
-.tkf-f label{font-size:11.5px;font-weight:600;color:var(--lbl2);}
-.tkf-f .inp-sm{width:100%;}
-.tkf-f select.inp-sm,.tkf-f input.inp-sm{height:36px;}
-.tkf-foot{display:flex;align-items:center;gap:8px;padding:12px 14px;background:var(--surf2);}
-.tkf-foot .tk-new-btns{margin-left:auto;display:flex;gap:8px;}
-@media(max-width:720px){.tkf-g3,.tkf-g4{grid-template-columns:1fr;}}
-.tk-new-g{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:0;}
-.tk-new-a{min-height:78px;font-size:13px;line-height:1.6;resize:vertical;}.tk-new-btns{margin-left:auto;display:flex;gap:8px;}
+/* 작성·수정 폼 — 업무 일정의 .dp-edit 규격을 그대로 쓴다(118차) */
+.tk-new{margin-bottom:12px;}
 /* 목록 */
-.tk-list{display:flex;flex-direction:column;gap:5px;flex:1;min-height:0;overflow-y:auto;padding:12px 12px 16px 16px;}
+.tk-list{display:flex;flex-direction:column;gap:5px;flex:1;min-height:0;overflow-y:auto;padding:4px 12px 16px 16px;}
 .tk-item{border-radius:var(--rmd);background:var(--surf2);border:1px solid var(--sep);transition:background .12s;position:relative;}
 .tk-item:hover{background:var(--surf3);}
 .tk-item.open{background:var(--surf2);border-color:var(--b200);}
@@ -605,10 +576,6 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 .tk-line{display:flex;align-items:center;gap:9px;padding:8px 8px 0;}
 .tk-item .plan-meta{padding:2px 8px 12px 31px;margin-top:0;}   /* 2행 들여쓰기 = 1행 패딩 8 + 색 원 6+8+9, 아래는 업무 일정 카드와 같은 12px */
 .tk-item .tk-detail{padding-left:31px;}
-/* 배지 공통 — 업무 일정 카드의 상태 배지(18px·11.5px)와 같은 규격. 목록 카드는 보조문구로 바뀌어 폼 상단 요약(.tkf-now)에서만 쓴다 */
-.tkf-now>*{height:18px;display:inline-flex;align-items:center;gap:4px;
-  padding:0 7px;border-radius:var(--rp);font-size:11.5px;font-weight:700;white-space:nowrap;
-  border:1px solid transparent;box-sizing:border-box;}
 .tk-st{flex-shrink:0;cursor:pointer;user-select:none;transition:transform .1s;}
 .tk-st:hover{transform:scale(1.06);}
 .tk-st.s0{background:var(--fill2);color:var(--lbl2);}
@@ -671,6 +638,7 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 .th-new.th-always .th-b{display:flex;align-items:flex-start;gap:8px;}
 .th-new.th-always .th-in{min-height:34px;padding:7px 11px;}
 .th-new.th-always .th-f{margin-top:0;flex:0 0 auto;}
+.th-new.th-always .th-f .btn{height:34px;padding:0 14px;}
 .th-av{flex:0 0 auto;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;background:linear-gradient(135deg,var(--b400),var(--b700));}
 .th-av.me{background:linear-gradient(135deg,var(--b600),var(--b900));}
 .th-b{flex:1;min-width:0;}
@@ -694,14 +662,14 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 .th-f{display:flex;gap:8px;justify-content:flex-end;margin-top:7px;}
 /* 펼침 상태 — 수정 버튼은 우측 상단 */
 /* 집계 보기(팀 전체 · 권역) 구분 헤더 */
-.tk-sub{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:800;color:var(--bt1);letter-spacing:.01em;padding:10px 2px 5px;}
+.tk-sub{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:800;color:var(--bt1);letter-spacing:.01em;padding:6px 2px 2px;}
 .tk-sub .c{margin-left:auto;}
 .tk-sub+*{margin-top:0;}
 /* 분류와 분류 사이에만 얇은 구분선 */
 .tk-list>.tk-sub:not(:first-child){margin-top:14px;padding-top:14px;border-top:1px solid var(--sep);}
 .tk-sub .c{font-size:11.5px;color:var(--lbl2);background:var(--fill);border-radius:99px;padding:1px 7px;}
-.tk-sub2{display:flex;align-items:center;gap:7px;font-size:11.5px;font-weight:700;color:var(--lbl2);padding:8px 2px 3px;}
-.tk-sub2::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--b500);flex-shrink:0;}
+.tk-sub2{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;color:var(--lbl);padding:7px 2px 3px;}
+.tk-sub2::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--sepo);flex-shrink:0;}
 /* 인라인 편집 폼 — 작성창(.tk-new)과 같은 골격을 그대로 쓴다 */
 .tk-new .pal{align-items:center;}
 .tk-new .pal-c{width:20px;height:20px;border-radius:7px;}
@@ -735,7 +703,7 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 .pe-body{padding:11px 12px 11px;}
 
 /* 화면 최상위에 뜬다 — 카드·목록의 overflow 에 잘리지 않는다 */
-.col-pop{position:fixed;z-index:900;background:var(--bg2);border:1px solid var(--sep);border-radius:var(--rmd);box-shadow:0 12px 32px rgba(0,0,0,.2);padding:11px;width:222px;}
+.col-pop{position:fixed;z-index:900;background:var(--bg2);border:1px solid var(--sep);border-radius:var(--rmd);box-shadow:0 12px 32px rgba(0,0,0,.2);padding:11px;width:250px;}   /* 기본 6색 + 담당자 색이 한 줄에 들어가는 폭 */
 .col-pop-h{font-size:11.5px;font-weight:700;color:var(--lbl2);margin-bottom:7px;}
 html.dark .col-pop{background:#242426;}
 .col-pop .pal{display:flex;flex-wrap:wrap;gap:6px;}
@@ -750,7 +718,7 @@ html.dark .col-pop{background:#242426;}
 .tk-fold{font-size:12.5px;font-weight:700;color:var(--lbl3);padding:7px 2px;cursor:pointer;text-align:center;}
 .tk-fold:hover{color:var(--bt1);}
 .tk-none{text-align:center;color:var(--lbl2);padding:60px 0;font-size:13.5px;}
-.tk-none .btn{margin-top:14px;}@media(max-width:960px){.tkwrap{grid-template-columns:1fr;height:auto;}.tk-new-g,.tk-secs{grid-template-columns:1fr;}.tk-detail{padding-left:13px;}}
+.tk-none .btn{margin-top:14px;}@media(max-width:960px){.tkwrap{grid-template-columns:1fr;height:auto;}.tk-secs{grid-template-columns:1fr;}.tk-detail{padding-left:13px;}}
 
 /* 팀·현장 관리 보조 · 담당 현장 선택 · 사용 안내 */
 .tm-sub{color:var(--lbl3);font-weight:500;text-transform:none;letter-spacing:0;}
@@ -1008,7 +976,7 @@ body.wid.glass #fcal td.fc-daygrid-day.fc-day-sat,
 body.wid.glass #fcal td.fc-daygrid-day.fc-day-sun{background:rgba(52,56,68,.5)!important;}
 body.wid.glass #fcal td.fc-daygrid-day.fc-day-other{background:rgba(24,28,38,.23)!important;}
 
-body.wid.glass #fcal td.fc-daygrid-day.fc-day-today{background:rgba(62,113,210,.16)!important;}
+/* 위젯에서는 오늘 칸에 색을 씌우지 않는다 — 날짜 숫자의 파란 원 배지로 충분하다 */
 /* ⚠ 위 규칙들이 background 단축이라 sel-day 의 background-image(선택 강조)까지 지운다 — 다시 얹는다 */
 body.wid.glass #fcal td.fc-daygrid-day.sel-day{background-image:linear-gradient(rgba(120,170,255,.30),rgba(120,170,255,.30))!important;}
 /* 2. 공휴일 날짜는 유리 모드에서도 빨갛게 */
@@ -1079,8 +1047,8 @@ body.wid #mb{background:rgba(22,25,33,.95);-webkit-backdrop-filter:blur(16px);ba
 body.wid #mb .inp{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.22);color:#fff;}
 body.wid #mb .btn.bg2,body.wid #mb .btn.bo{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.24);color:#fff;}
 /* 위젯은 창이 좁다 — 모달을 줄여 프로필 팝오버가 옆에 설 자리를 만든다 */
-body.wid #mo.pf-on{justify-content:flex-start;padding-left:12px;}   /* 프로필 팝오버가 열릴 때만 왼쪽으로 비켜 준다 */
-body.wid #mo.pf-on #mb{max-width:320px;}                            /* 그때만 좁혀서 팝오버 자리를 만든다 */
+/* 위젯은 창이 좁아 팝오버를 옆에 세울 수 없다 — 모달을 밀지 않고 그 위에 겹쳐 띄운다 */
+body.wid #pfPop{left:50%!important;transform:translateX(-50%);z-index:1100;}
 body.wid #mb{padding:20px;}
 body.wid #pfPop{width:290px;}
 body.wid #pfPop{background:rgba(22,25,33,.96);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);
@@ -1440,6 +1408,8 @@ html.dark #toast{background:#2B313A;}
           <div class="wgs-r"><span>배경 진하기</span><input type="range" id="wgA" min="15" max="100" step="5"></div>
           <div class="wgs-r"><span>글자 크기</span>
             <div class="seg wgs-seg" id="wgFz"><button data-fz="s">작게</button><button data-fz="m" class="act">보통</button><button data-fz="l">크게</button></div></div>
+          <div class="wgs-r"><span>브라우저 앱 열기</span>
+            <button class="wgs-btn" data-act="wid.open">열기</button></div>
           <div class="wgs-r"><span>위치·크기 조정</span>
             <button class="wgs-btn" data-act="wid.moveOn">조정하기</button></div>
         </div>
@@ -1621,5 +1591,5 @@ html.dark #toast{background:#2B313A;}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=109"></script>
+<script src="./app.js?v=111"></script>
 </body></html>
