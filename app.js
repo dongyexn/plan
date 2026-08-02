@@ -174,13 +174,16 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('input',e=>{
   if(e.target.id==='acctName'){acctAutoSave();return;}
-  if(e.target.classList&&e.target.classList.contains('col-hue')){
-    const c=hueHex(+e.target.value);
-    const btn=e.target.closest('.p-col');if(btn)btn.style.background=c;
-    const ci=e.target.parentElement.querySelector('.pal-inp');if(ci)ci.value=c;
+  /* 색상 띠 — 끌 때는 미리보기만(끌 때마다 저장하면 목록이 다시 그려져 팝오버가 사라진다) */
+  if(e.target.classList&&e.target.classList.contains('cp-hue')){
+    const pop=$('#colPop');if(!pop)return;
+    const d=pop.querySelector('.cp-dot');
+    const [,sa,v]=hexHsv(rgbHex(d?d.style.background:''));
+    const hex=hsvHex(Number(e.target.value)||0,sa||.7,v||.85);
+    cpPaint(pop,hex);
+    const btn=pop.closest('.p-col');if(btn)btn.style.background=hex;
     return;
   }
-  if(e.target.closest('#colPop')){setPlanColor(e.target.value);closeColPop();return;}
   if(e.target.closest('#pfPal')){const v=e.target.value;PF_SEL.color=v;pfPaint(v);acctAutoSave();return;}
   if(e.target.id==='pfSrch'){
     const q=e.target.value.trim();
@@ -212,15 +215,68 @@ function colDotHTML(c,pid){
 /* 색 선택기 HTML — 기본 팔레트 + 임의 색 추가.
    현재 값이 팔레트에 없으면(직접 고른 색) 맨 뒤에 칩으로 붙여 선택 상태를 유지한다. */
 /* 색 점 — 'auto'(담당자 색)는 3색 그라디언트로 표시 */
-/* 색상환 각도 → 팔레트와 어울리는 채도·명도의 hex */
-function hueHex(h){
-  const s=.62,l=.52,a=s*Math.min(l,1-l);
-  const f=n=>{const k=(n+h/30)%12;const v=l-a*Math.max(-1,Math.min(k-3,9-k,1));
-    return Math.round(255*v).toString(16).padStart(2,'0').toUpperCase();};
-  return '#'+f(0)+f(8)+f(4);
-}
 function colDotStyle(c){
   return (!c||c==='auto')?'background:linear-gradient(135deg,#3E71D2,#16A34A,#D97706)':'background:'+esc(c);
+}
+/* 색 팝오버 — 1행은 기본색(담당자 색 + 빨·파·초·노·회), 2행부터는 직접 추가한 색.
+   맨 아래에 색상 팔레트(사각형 + 색상 띠)를 늘 펼쳐 둔다. 추가색은 우클릭으로 지운다. */
+const PAL_BASE=['#DD3B30','#3E71D2','#16A34A','#E0A44A','#6B7280'];
+function palKey(){return 'calapp.pal.'+((S.user&&S.user.uid)||'local');}
+function palCustom(){try{return JSON.parse(localStorage.getItem(palKey())||'[]');}catch(e){return[];}}
+function palAdd(c){
+  if(!c||PAL_BASE.includes(c))return;
+  const l=palCustom().filter(x=>x!==c);l.unshift(c);
+  try{localStorage.setItem(palKey(),JSON.stringify(l.slice(0,18)));}catch(e){}
+}
+function palDel(c){
+  try{localStorage.setItem(palKey(),JSON.stringify(palCustom().filter(x=>x!==c)));}catch(e){}
+}
+function colPopHTML(cur){
+  const c=(!cur||cur==='auto')?'auto':cur;
+  const dot=(v,cls,style,title)=>'<button class="pal-c'+(v===c?' sel':'')+(cls?' '+cls:'')
+    +'" data-c="'+esc(v)+'"'+(style?' style="'+style+'"':'')+(title?' title="'+esc(title)+'"':'')+'></button>';
+  const custom=palCustom().filter(x=>x&&!PAL_BASE.includes(x));
+  if(c!=='auto'&&!PAL_BASE.includes(c)&&!custom.includes(c))custom.unshift(c);
+  return '<div class="col-pop-h">색 고르기</div>'
+    +'<div class="pal">'
+      +'<button class="pal-c pal-auto'+(c==='auto'?' sel':'')+'" data-c="auto" title="담당자 색">'
+        +'<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#av-person"></use></svg></button>'
+      +PAL_BASE.map(x=>dot(x,'','background:'+x)).join('')
+      +(custom.length?'<div class="pal-br"></div>'+custom.map(x=>dot(x,'pal-custom','background:'+esc(x),'우클릭으로 삭제')).join(''):'')
+    +'</div>'
+    +'<div class="cp">'
+      +'<div class="cp-sv"><span class="cp-dot"></span></div>'
+      +'<input type="range" class="cp-hue" min="0" max="359" value="215" aria-label="색상">'
+    +'</div>';
+}
+/* 팔레트 사각형·색상 띠를 지금 색에 맞춰 그린다 */
+function cpPaint(pop,hex){
+  const sv=pop.querySelector('.cp-sv'),hue=pop.querySelector('.cp-hue'),dot=pop.querySelector('.cp-dot');
+  if(!sv||!hue)return;
+  const [h,sa,v]=hexHsv(hex);
+  hue.value=Math.round(h);
+  sv.style.background='linear-gradient(to top,#000,rgba(0,0,0,0)),linear-gradient(to right,#fff,hsl('+Math.round(h)+',100%,50%))';
+  if(dot){dot.style.left=(sa*100)+'%';dot.style.top=((1-v)*100)+'%';dot.style.background=hex;}
+}
+function hsvHex(h,s,v){
+  const f=n=>{const k=(n+h/60)%6,x=v-v*s*Math.max(0,Math.min(k,4-k,1));
+    return Math.round(x*255).toString(16).padStart(2,'0').toUpperCase();};
+  return '#'+f(5)+f(3)+f(1);
+}
+/* style.background 는 rgb(...) 로 되돌아온다 — hex 로 바꿔 준다 */
+function rgbHex(v){
+  const m=/rgba?\((\d+)[,\s]+(\d+)[,\s]+(\d+)/.exec(String(v||''));
+  if(!m)return String(v||'').trim()||'#3E71D2';
+  return '#'+[1,2,3].map(i=>Number(m[i]).toString(16).padStart(2,'0')).join('').toUpperCase();
+}
+function hexHsv(hex){
+  const m=/^#?([\da-f]{6})$/i.exec(String(hex||''));
+  if(!m)return[215,.7,.85];
+  const n=parseInt(m[1],16),r=(n>>16)/255,g=((n>>8)&255)/255,b=(n&255)/255;
+  const mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn;
+  let h=0;
+  if(d){h=mx===r?((g-b)/d+(g<b?6:0)):mx===g?((b-r)/d+2):((r-g)/d+4);h*=60;}
+  return[h,mx?d/mx:0,mx];
 }
 function palHTML(id,cur,extraFirst){
   const c=cur||'';
@@ -455,7 +511,9 @@ const LocalStore={
     normOrg(this._d.org);
     if(moved)lsSave(this._d);   /* 옮긴 결과를 저장하지 않으면 새로고침 때마다 되살아난다 */
     S.org=this._d.org;S.tasks=this._d.tasks;S.cfg=this._d.cfg;S.people=this._d.people;S.prefs=this._d.prefs;S.accounts={};},
-  putPlan(p){const{sid,iid,item}=planToTask(p);this.putTask(sid,iid,item);},
+  putPlan(p){const{sid,iid,item,prevSid}=planToTask(p);
+    if(prevSid&&prevSid!==sid)this.putTask(prevSid,iid,null);   /* 담당자가 바뀌면 옛 소속에서 지운다 */
+    this.putTask(sid,iid,item);},
   delPlan(ym,id){const hit=allTasks().find(x=>x.iid===id);if(hit)this.putTask(hit.sid,hit.iid,null);},
   movePlan(p){this.putPlan(p);},
   putOrg(org){this._d.org=org;S.org=org;lsSave(this._d);},
@@ -499,7 +557,9 @@ const FbStore={
   name:'fb',
   init(){},
   _on(path,cb,onErr){const r=FB.db.ref(path);r.on('value',s=>cb(s.val()),e=>{if(onErr)onErr(e);else console.warn('[FB] read',path,e);});FB._subs.push(r);},
-  putPlan(p){const{sid,iid,item}=planToTask(p);this.putTask(sid,iid,item);},
+  putPlan(p){const{sid,iid,item,prevSid}=planToTask(p);
+    if(prevSid&&prevSid!==sid)this.putTask(prevSid,iid,null);   /* 담당자가 바뀌면 옛 소속에서 지운다 */
+    this.putTask(sid,iid,item);},
   delPlan(ym,id){const hit=allTasks().find(x=>x.iid===id);if(hit)this.putTask(hit.sid,hit.iid,null);},
   movePlan(p){this.putPlan(p);},
   putOrg(org){FB.db.ref('calapp/org').set(cleanOrg(org)).catch(fbErr);},
@@ -1267,7 +1327,9 @@ function allTasks(){
 function planToTask(p){
   const owns=Object.keys(p.owners||p.assignees||{}).filter(k=>(p.owners||p.assignees)[k]);
   const prev=allTasks().find(x=>x.iid===p.id);
-  const sid=prev?prev.sid:(owns[0]||(curTeam()&&curTeam().id)||(S.org.teams&&S.org.teams[0]&&S.org.teams[0].id)||'team');
+  /* ⚠ 담당자가 곧 소속이다 — prev.sid 를 그대로 쓰면 담당자를 바꿔도 만든 사람 밑에 남는다.
+     담당자를 비우면 팀 공통으로 돌아간다. 소속이 바뀌면 putPlan 이 옛 자리를 지운다 */
+  const sid=owns[0]||(curTeam()&&curTeam().id)||(S.org.teams&&S.org.teams[0]&&S.org.teams[0].id)||'team';
   const base=prev?prev.it:{};
   const item={...base,
     text:p.title!==undefined?p.title:base.text,
@@ -1285,7 +1347,7 @@ function planToTask(p){
     createdAt:Number(base.createdAt||p.createdAt)||Date.now(),updatedAt:Date.now()};
   ['doneOn','skipOn','moveOn'].forEach(k=>{if(p[k])item[k]=p[k];else if(base[k])item[k]=base[k];});
   if(!item.recur.f){delete item.doneOn;delete item.skipOn;delete item.moveOn;}
-  return{sid,iid:p.id,item};
+  return{sid,iid:p.id,item,prevSid:prev?prev.sid:null};
 }
 function taskAsPlan(sid,iid,it){
   /* 달력·일자 패널이 쓰던 모양으로 감싼다 — 필드 이름만 맞춰 준다 */
@@ -1619,6 +1681,7 @@ ${p.remind?'<button class="p-ico p-rem on" data-act="plan.remind" data-pid="'+es
 /* ───── 업무 작성·수정 모달 ───── */
 let MODAL_CB=null;
 function openModal(title,bodyHTML,footHTML){
+  pfClosed();                        /* 지난번 프로필 팝오버 때문에 모달이 왼쪽으로 쏠린 채 열리지 않게 */
   $('#mt').textContent=title;$('#mbody').innerHTML=bodyHTML;$('#mf').innerHTML=footHTML||'';
   /* 하단 버튼이 없는 모달(사용 안내 등)은 우상단 X 로 닫는다 — 참조 앱과 동일 */
   $('#mb').classList.toggle('has-x',!footHTML);
@@ -1653,6 +1716,25 @@ function colOutside(e){
   closeColPop();
 }
 function pfClosed(){const mo=$('#mo');if(mo)mo.classList.remove('pf-on');}
+/* 색상 팔레트 사각형 — 가로는 채도, 세로는 밝기. 끌면서 고를 수 있고 고른 색은 추가색으로 쌓인다 */
+let CP_DRAG=false;
+function cpPick(e){
+  const pop=$('#colPop');if(!pop)return;
+  const sv=pop.querySelector('.cp-sv');if(!sv)return;
+  const r=sv.getBoundingClientRect();
+  const x=Math.min(1,Math.max(0,(e.clientX-r.left)/r.width));
+  const y=Math.min(1,Math.max(0,(e.clientY-r.top)/r.height));
+  const h=Number(pop.querySelector('.cp-hue').value)||0;
+  const hex=hsvHex(h,x,1-y);
+  cpPaint(pop,hex);
+  setPlanColor(hex);palAdd(hex);
+}
+document.addEventListener('mousedown',e=>{
+  if(!e.target.closest||!e.target.closest('#colPop .cp-sv'))return;
+  CP_DRAG=true;cpPick(e);e.preventDefault();
+});
+document.addEventListener('mousemove',e=>{if(CP_DRAG)cpPick(e);});
+document.addEventListener('mouseup',()=>{CP_DRAG=false;});
 function closeColPop(){
   const pop=$('#colPop');if(pop)pop.remove();
   document.removeEventListener('click',colOutside,true);
@@ -1711,18 +1793,18 @@ function planFormHTML(){
           <select class="inp inp-sm" id="peKind">${TK_KIND.map(k=>'<option value="'+k[0]+'"'+(k[0]===kind?' selected':'')+'>'+k[1]+'</option>').join('')}</select></div>
         <div class="frow"><label>담당자</label>${ownSelHTML('peOwners',planOwners(d)[0]||'',people)}</div>
       </div>
-      <div class="frow"><label>링크</label><input class="inp inp-sm" id="peLink" maxlength="500" placeholder="https://…" value="${esc((lnk&&lnk.url)||'')}"></div>
+      <div class="frow"><label>현장</label>${sitePickHTML('peSite',d.site||'')}</div>
       <div class="pe-morerow">
         <button class="pe-more" data-act="plan.more" id="peMoreBtn" aria-label="자세히"><svg class="icn"><use href="#i-chevr"></use></svg></button>
         ${pe.orig&&pe.orig.sid?'<button class="pe-ic pe-more-ic" data-act="plan.toTask" data-sid="'+esc(pe.orig.sid)+'" data-iid="'+esc(d.id)+'" aria-label="업무 목록에서 자세히 쓰기" title="업무 목록에서 자세히 쓰기"><svg class="icn"><use href="#i-tasks"></use></svg></button>':''}
       </div>
       <div class="pe-adv" id="peAdv">
-        <div class="frow"><label>현장</label>${sitePickHTML('peSite',d.site||'')}</div>
         <div class="frow2">
           <div class="frow"><label>시간</label><input type="time" class="inp inp-sm" id="peTime" value="${esc(d.time||'')}"></div>
           <div class="frow"><label>반복</label><select class="inp inp-sm" id="peRec">${Object.keys(REC_LBL).map(k=>'<option value="'+k+'"'+(k===rc?' selected':'')+'>'+REC_LBL[k]+'</option>').join('')}</select></div>
         </div>
         <div class="frow" id="peUntilRow" style="${rc?'':'display:none'}"><label>반복 종료</label><input type="date" class="inp inp-sm" id="peUntil" value="${esc((d.recur&&d.recur.until)||'')}"></div>
+        <div class="frow"><label>링크</label><input class="inp inp-sm" id="peLink" maxlength="500" placeholder="https://…" value="${esc((lnk&&lnk.url)||'')}"></div>
         <div id="peBodySec">${peBodyHTML(d,kind)}</div>
 
         ${(pe.orig&&rc&&pe.occ)?`<div class="frow occ-row">
@@ -2221,8 +2303,8 @@ function reorderTask(sid,iid,targetIid,after){
 /* 업무 검색·필터 — 제목·경과·계획·현장·담당자까지 훑고, 상태·기한으로 좁힌다 */
 const TK_ST=[['','전체'],['0','예정'],['1','진행'],['2','완료'],['3','보류']];
 /* 업무 분류 — 일반만 진행경과·처리계획을 나눠 쓰고, 나머지는 내용 한 칸 */
-const TK_KIND=[['gather','공통'],['','일반'],['meet','회의'],['trip','출장'],['etc','기타']];   /* 첫 항목이 새 업무 기본값 — 공통 */
-const KIND_DEF='gather';
+const TK_KIND=[['','일반'],['gather','공통'],['trip','출장'],['meet','회의'],['etc','기타']];   /* 첫 항목이 새 업무 기본값 — 일반 */
+const KIND_DEF='';
 function kindOf(v){return TK_KIND.some(k=>k[0]===v)?v:'';}
 function kindLabel(v){const k=TK_KIND.find(x=>x[0]===kindOf(v));return k?k[1]:'일반';}
 function kindSplit(v){return kindOf(v)==='';}   /* 일반이면 두 칸으로 나눈다 */
@@ -2261,8 +2343,6 @@ function tkFilterHTML(){
       <div class="dp-frow">
         ${M('kind','업무 구분 전체',TK_KIND.map(k=>[k[0]||'_gen',k[1]]))}
         ${M('st','진행 상태 전체',ST_LBL.map((l,i)=>[String(i),l]))}
-      </div>
-      <div class="dp-frow">
         ${M('reg','권역 전체',regs.map(r=>[r.id,r.name]))}
         ${M('site','현장 전체',sites.map(x=>[x.id,x.name]))}
       </div>
@@ -2797,6 +2877,8 @@ const VIEW_TTL={calendar:'업무 일정',mine:'내 업무',tasks:'업무 목록'
 function go(view){
   S.view=view;
   if(S.dpSheet)dpSheet(false);
+  const fc=$('#dpFcard');if(fc)fc.classList.remove('adv-on');   /* 화면을 옮기면 펼쳐 둔 필터는 닫는다 */
+  mselClose();
   $$('.view').forEach(v=>v.classList.toggle('act',v.id==='view-'+view));
   $$('#sidebar .nvi[data-view]').forEach(n=>n.classList.toggle('act',n.dataset.view===view));
   $('#tbt').textContent=VIEW_TTL[view];
@@ -2866,14 +2948,9 @@ const ACT={
       :((S.planEdit&&S.planEdit.draft&&S.planEdit.draft.color)||'auto');
     const pop=document.createElement('div');
     pop.id='colPop';pop.className='col-pop';
-    pop.innerHTML='<div class="col-pop-h">색 고르기</div>'
-      +palHTML('pePal',(!cur||cur==='auto')?'auto':cur,
-      '<div class="pal-c'+((!cur||cur==='auto')?' sel':'')+'" data-c="auto" style="'+colDotStyle('auto')+'" title="담당자 색"></div>')
-      /* 직접 고르기 — 색상환 슬라이더와 정밀 선택기를 같은 팝오버 안에 둔다(별도 창 없음) */
-      +'<div class="col-cus"><input type="range" class="col-hue" min="0" max="359" value="210" aria-label="색상 직접 고르기">'
-      +'<label class="pal-c pal-add" title="정확한 색 지정"><input type="color" class="pal-inp" value="'
-      +esc((cur&&cur!=='auto')?cur:'#3E71D2')+'"><span>+</span></label></div>';
+    pop.innerHTML=colPopHTML(cur);
     btn.appendChild(pop);
+    cpPaint(pop,(cur&&cur!=='auto')?cur:'#3E71D2');
     setTimeout(()=>document.addEventListener('click',colOutside,true),0);},
   /* 카드 클릭은 '펼쳐 보기' — 수정은 연필 버튼으로 (실수로 값이 바뀌지 않게) */
   'plan.open':el=>{
@@ -3363,6 +3440,15 @@ document.addEventListener('click',e=>{
 document.addEventListener('contextmenu',e=>{
   const chip=e.target.closest('.pal-c.pal-custom');
   if(!chip)return;
+  if(chip.closest('#colPop')){        /* 업무 색 팝오버의 추가색 — 저장 목록에서도 지운다 */
+    e.preventDefault();
+    palDel(chip.dataset.c||'');
+    const pop=$('#colPop'),cur=(chip.classList.contains('sel'))?'auto':null;
+    if(cur)setPlanColor('auto');
+    if(pop)pop.innerHTML=colPopHTML(cur||chip.dataset.c);
+    if(pop)cpPaint(pop,'#3E71D2');
+    return;
+  }
   e.preventDefault();
   const box=chip.closest('.pal');
   const wasSel=chip.classList.contains('sel');
@@ -3397,7 +3483,13 @@ document.addEventListener('input',e=>{
 /* 업무 폼은 자동 저장 — 입력이 멎으면 조용히 반영된다(저장 버튼 없음) */
 document.addEventListener('input',e=>{if(e.target.closest&&e.target.closest('#dpEdit'))planAutosave();});
 document.addEventListener('change',e=>{
-  if(e.target.classList&&e.target.classList.contains('col-hue')){setPlanColor(hueHex(+e.target.value));closeColPop();return;}
+  if(e.target.classList&&e.target.classList.contains('cp-hue')){
+    const pop=$('#colPop');if(!pop)return;
+    const d=pop.querySelector('.cp-dot');
+    const [,sa,v]=hexHsv(rgbHex(d?d.style.background:''));
+    const hex=hsvHex(Number(e.target.value)||0,sa||.7,v||.85);
+    setPlanColor(hex);palAdd(hex);return;
+  }
   if(e.target.id==='peKind'){peKindRefresh();return;}
   if(e.target.closest&&e.target.closest('#dpEdit'))planAutosave();
 });

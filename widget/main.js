@@ -77,7 +77,8 @@ function setAutoStart(on) {
   try { app.setLoginItemSettings({ openAtLogin: on, path: process.execPath, args: [] }); } catch { /* 정책상 막히면 무시 */ }
 }
 function isAutoStart() {
-  try { return app.getLoginItemSettings().openAtLogin; } catch { return !!state.autoStart; }
+  /* ⚠ 사내 정책으로 등록이 막히면 API 는 계속 false 를 준다 — 저장해 둔 뜻(state.autoStart)도 함께 본다 */
+  try { return app.getLoginItemSettings().openAtLogin || !!state.autoStart; } catch { return !!state.autoStart; }
 }
 
 function createWindow() {
@@ -107,7 +108,7 @@ function createWindow() {
   /* 예전 실행에서 자식 창으로 바뀐 상태가 남아 있을 수 있다 — 어떤 모드로 가든 먼저 원래 모양으로 되돌린다 */
   pin.unpin(win);
   applyMode(state.mode || 'below');   /* 기본 = 바탕화면 모드: 반투명 · 다른 창 아래 · 입력 가능 */
-  if (state.autoStart === undefined) setAutoStart(true);   /* 첫 실행이면 자동 실행을 켜 둔다 */
+  if (state.autoStart === undefined) setAutoStart(true);   /* 첫 실행이면 자동 실행을 켠 상태로 시작한다 */
   /* 유리 모드로 열어야 벽지가 비친다 — 주소에 &glass=1 을 붙인다 */
   win.loadURL(APP_URL + (APP_URL.indexOf('glass=') < 0 ? '&glass=1' : ''));
 
