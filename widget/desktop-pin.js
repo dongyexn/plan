@@ -18,9 +18,10 @@
    ⚠ GUI 없는 환경에서는 검증이 불가능하다 — 실기에서 diagnose() 로 확인할 것. */
 'use strict';
 
-const GWL_EXSTYLE = -20;
-const WS_EX_NOACTIVATE = 0x08000000;
+const GWL_STYLE = -16, GWL_EXSTYLE = -20;
+const WS_CHILD = 0x40000000, WS_POPUP = 0x80000000;
 const WS_EX_TOOLWINDOW = 0x00000080;
+/* ⚠ WS_EX_NOACTIVATE 는 쓰지 않는다 — 창이 포커스를 못 받아 **로그인 칸에 글자를 못 친다**(실기에서 확인) */
 const SM_XVIRTUALSCREEN = 76, SM_YVIRTUALSCREEN = 77;
 const SWP_NOSIZE = 0x0001, SWP_NOMOVE = 0x0002, SWP_NOZORDER = 0x0004, SWP_NOACTIVATE = 0x0010, SWP_SHOWWINDOW = 0x0040;
 
@@ -102,23 +103,29 @@ function pin(win) {
   const b = win.getBounds();
 
   try {
-    /* 포커스를 빼앗지 않고 Alt+Tab 에도 뜨지 않게 */
+    /* ⚠ Electron 의 프레임 없는 창은 WS_POPUP 이다. WS_POPUP 인 채로 SetParent 하면
+       '소유'만 될 뿐 자식이 되지 않아 벽지 층에 들어가지 않는다(IsChild 가 false).
+       WS_POPUP 을 떼고 WS_CHILD 를 붙인 뒤에 부모를 옮겨야 한다. */
+    const st = N(u.GetWindowLongPtrW(hwnd, GWL_STYLE));
+    u.SetWindowLongPtrW(hwnd, GWL_STYLE, (st & ~WS_POPUP) | WS_CHILD);
     const ex = N(u.GetWindowLongPtrW(hwnd, GWL_EXSTYLE));
-    u.SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW);
+    u.SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex | WS_EX_TOOLWINDOW);   /* Alt+Tab 에서만 뺀다 */
     u.SetParent(hwnd, layer.target);
   } catch (e) {
     return { ok: false, how: layer.how, error: 'SetParent 실패: ' + e.message };
   }
 
-  const vx = u.GetSystemMetrics(SM_XVIRTUALSCREEN);
-  const vy = u.GetSystemMetrics(SM_YVIRTUALSCREEN);
-  try {
-    u.SetWindowPos(hwnd, 0, b.x - vx, b.y - vy, 0, 0,
-      SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW);
-  } catch { /* 위치 보정 실패는 치명적이지 않다 */ }
-
   const ok = !!N(u.IsChild(layer.target, hwnd));
-  return { ok, how: layer.how, error: ok ? '' : '붙였지만 자식으로 확인되지 않았습니다' };
+  /* ⚠ 실패했는데 위치를 다시 잡으면 창이 5초마다 튀어 오른다 — 성공했을 때만 보정한다 */
+  if (ok) {
+    const vx = u.GetSystemMetrics(SM_XVIRTUALSCREEN);
+    const vy = u.GetSystemMetrics(SM_YVIRTUALSCREEN);
+    try {
+      u.SetWindowPos(hwnd, 0, b.x - vx, b.y - vy, 0, 0,
+        SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+    } catch { /* 위치 보정 실패는 치명적이지 않다 */ }
+  }
+  return { ok, how: layer.how, error: ok ? '' : '부모로 옮겼지만 자식으로 확인되지 않았습니다' };
 }
 
 /* 바탕화면 층에서 떼어 낸다(항상 위·보통 창으로 돌아갈 때) */
@@ -126,9 +133,11 @@ function unpin(win) {
   const u = load(); if (!u) return false;
   const hwnd = hwndOf(win);
   try {
-    const ex = N(u.GetWindowLongPtrW(hwnd, GWL_EXSTYLE));
-    u.SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex & ~(WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW));
     u.SetParent(hwnd, 0);
+    const st = N(u.GetWindowLongPtrW(hwnd, GWL_STYLE));
+    u.SetWindowLongPtrW(hwnd, GWL_STYLE, (st & ~WS_CHILD) | WS_POPUP);   /* 원래 모양으로 되돌린다 */
+    const ex = N(u.GetWindowLongPtrW(hwnd, GWL_EXSTYLE));
+    u.SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex & ~WS_EX_TOOLWINDOW);
     return true;
   } catch { return false; }
 }
@@ -168,7 +177,7 @@ function sendToBottom(win) {
   try {
     const hwnd = hwndOf(win);
     const ex = N(u.GetWindowLongPtrW(hwnd, GWL_EXSTYLE));
-    u.SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW);
+    u.SetWindowLongPtrW(hwnd, GWL_EXSTYLE, ex | WS_EX_TOOLWINDOW);
     u.SetWindowPos(hwnd, 1 /*HWND_BOTTOM*/, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);
     return true;
   } catch { return false; }
