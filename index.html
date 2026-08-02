@@ -335,8 +335,8 @@ html.dark #fcal .dhol.dtoday{color:var(--b300);}
    표현 방식(좌측 색 바 등)은 아래 색 표현 규칙에서 정한다 — 레이아웃에는 영향이 없어야 한다 */
 #dpList .plan{display:block;padding:8px;background:var(--surf2);border:1px solid var(--sep);position:relative;}
 /* 업무 색 = 제목 앞 색 원. 누르면 팔레트 팝오버가 열리고, 그 자리가 곧 색 변경 버튼이다.
-   지름 14px. 읽기·편집 모두 같은 자리라 수정으로 바꿔도 제목 x 가 움직이지 않는다 */
-.p-col{position:relative;flex:0 0 auto;width:14px;height:14px;border-radius:50%;
+   지름 11px + 왼쪽 여백 3px(= 카드 안쪽 12px). 원이 작아져도 제목 x 는 그대로다(3+11+9=23). 읽기·편집 동일 */
+.p-col{position:relative;flex:0 0 auto;width:11px;height:11px;margin-left:3px;border-radius:50%;
   box-shadow:inset 0 0 0 1px rgba(0,0,0,.10);transition:transform .12s;}
 .p-col:hover{transform:scale(1.1);}
 .p-col .col-pop{left:0;right:auto;}
@@ -524,13 +524,13 @@ html.dark #ymPop{background:#242426;}
 .tk-new-a{min-height:78px;font-size:13px;line-height:1.6;resize:vertical;}.tk-new-btns{margin-left:auto;display:flex;gap:8px;}
 /* 목록 */
 .tk-list{display:flex;flex-direction:column;gap:12px;flex:1;min-height:0;overflow-y:auto;}
-.tk-item{border-radius:var(--rmd);background:var(--surf2);transition:background .12s;position:relative;}
+.tk-item{border-radius:var(--rmd);background:var(--surf2);border:1px solid var(--sep);transition:background .12s;position:relative;}
 .tk-item:hover{background:var(--surf3);}
-.tk-item.open{background:var(--bg2);border:1px solid var(--b200);}
+.tk-item.open{background:var(--bg2);border-color:var(--b200);}
 .tk-line{display:flex;align-items:flex-start;gap:8px;padding:11px 13px;}
-/* 업무 배지 공통 — 높이 22px, 12px 글자로 통일하고 역할은 색으로만 구분한다 */
-.tk-meta>*,.tk-row1 .due-chip{height:22px;display:inline-flex;align-items:center;gap:4px;
-  padding:0 9px;border-radius:var(--rp);font-size:12px;font-weight:700;white-space:nowrap;
+/* 업무 배지 공통 — 업무 일정 카드의 상태 배지(18px·11.5px)와 같은 규격. 역할은 색으로만 구분한다 */
+.tk-meta>*,.tk-row1 .due-chip{height:18px;display:inline-flex;align-items:center;gap:4px;
+  padding:0 7px;border-radius:var(--rp);font-size:11.5px;font-weight:700;white-space:nowrap;
   border:1px solid transparent;box-sizing:border-box;}
 .tk-st{flex-shrink:0;cursor:pointer;user-select:none;transition:transform .1s;}
 .tk-st:hover{transform:scale(1.06);}
@@ -565,16 +565,13 @@ html.dark #ymPop{background:#242426;}
 .tk-item.drop-above::before,.tk-item.drop-below::after{content:'';position:absolute;left:8px;right:8px;height:2px;background:var(--b500);border-radius:2px;z-index:5;}
 .tk-item.drop-above::before{top:-4px;}
 .tk-item.drop-below::after{bottom:-4px;}
-.tk-ico{flex-shrink:0;height:26px;min-width:26px;padding:0 6px;border-radius:8px;display:flex;align-items:center;justify-content:center;gap:2px;color:var(--lbl3);opacity:0;transition:opacity .12s,background .12s,color .12s;}
-.tk-item:hover .tk-ico,.tk-item.open .tk-ico{opacity:1;}
+.tk-ico{flex-shrink:0;height:26px;min-width:26px;padding:0 6px;border-radius:8px;display:flex;align-items:center;justify-content:center;gap:2px;color:var(--lbl3);transition:background .12s,color .12s;}
 .tk-ico:hover{background:var(--fill2);color:var(--bt1);}
 .tk-ico.on{opacity:1;color:var(--bt1);}
 .tk-ico .icn{width:14px;height:14px;}
 .tk-ico .cn{font-size:11.5px;font-weight:800;}
-.tk-del{flex-shrink:0;width:0;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;
-  color:var(--lbl3);opacity:0;overflow:hidden;margin-left:-2px;
-  transition:width .16s,opacity .16s,margin-left .16s,background .12s,color .12s;}
-.tk-item:hover .tk-del,.tk-item.open .tk-del{width:24px;opacity:1;margin-left:0;}
+.tk-del{flex-shrink:0;width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;
+  color:var(--lbl3);transition:background .12s,color .12s;}
 .tk-del:hover{background:var(--tint-rd);color:var(--rd);}
 .tk-del .icn{width:13px;height:13px;}
 /* 링크 — 진행경과·처리계획과 같은 칸으로 */
@@ -624,9 +621,7 @@ html.dark #ymPop{background:#242426;}
 .th-in:focus{border-color:var(--b400);box-shadow:0 0 0 3px rgba(83,140,222,.14);}
 .th-f{display:flex;gap:8px;justify-content:flex-end;margin-top:7px;}
 /* 업무 색 — 좌측 색 바 (일정 카드 .pc 와 동일한 문법) */
-.tk-item .tkc{position:absolute;left:5px;top:9px;bottom:9px;width:4px;border-radius:99px;}
 /* 펼침 상태 — 수정 버튼은 우측 상단 */
-.tk-editbtn{flex-shrink:0;}
 /* 집계 보기(팀 전체 · 권역) 구분 헤더 */
 .tk-sub{display:flex;align-items:center;gap:7px;font-size:11.5px;font-weight:700;color:var(--bt1);letter-spacing:.05em;padding:10px 2px 3px;}
 .tk-sub::after{content:"";flex:1;height:1px;background:var(--sep);}
@@ -1463,5 +1458,5 @@ html.dark #toast{background:#2B313A;}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=87"></script>
+<script src="./app.js?v=88"></script>
 </body></html>
