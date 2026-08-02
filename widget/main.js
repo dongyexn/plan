@@ -6,7 +6,8 @@
    실행    : npm install → npm start
    exe 생성: npm run dist  → dist/업무일정위젯.exe (설치 불필요 · 포터블) */
 'use strict';
-const { app, BrowserWindow, Tray, Menu, screen, shell, globalShortcut } = require('electron');
+const { app, BrowserWindow, Tray, Menu, screen, shell, globalShortcut, dialog } = require('electron');
+const pin = require('./desktop-pin');
 const path = require('path');
 const fs = require('fs');
 
@@ -14,7 +15,7 @@ const fs = require('fs');
 const APP_URL = process.env.CALWIDGET_URL || 'https://dongyexn.github.io/plan/?w=1';
 
 const STATE_FILE = path.join(app.getPath('userData'), 'widget-state.json');
-const DEFAULT_BOUNDS = { width: 380, height: 560 };
+const DEFAULT_BOUNDS = { width: 620, height: 520 };   /* 바탕화면 달력이므로 넓게 — 크기·위치는 기억된다 */
 
 function loadState() {
   try { return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')); } catch { return {}; }
@@ -27,46 +28,45 @@ let win = null, tray = null;
 let state = {};
 
 /* 창을 어느 층에 둘지.
-   desktop : 벽지 위에 붙어 다른 창에 가려진다(Desktopcal 과 같은 형태)
+   desktop : 벽지 위 · 바탕화면 아이콘 아래에 끼워 넣는다(다른 창에 가려지고 Win+D 에도 남는다)
    top     : 항상 위
    normal  : 보통 창
-   ⚠ 윈도우에서 '바탕화면에 붙이기'는 Electron API 로는 안 되고 Win32 로 벽지 창(WorkerW)에
-   부모를 옮겨야 한다. koffi 가 있으면 그렇게 하고, 없으면 '항상 위 끄기'로 물러난다(창이 완전히
-   가려지지는 않지만 다른 창 아래로 내려간다). koffi 는 선택 의존성이라 없어도 앱은 뜬다. */
-function attachToWallpaper(hwnd) {
-  if (process.platform !== 'win32') return false;
-  let koffi;
-  try { koffi = require('koffi'); } catch { return false; }
-  try {
-    const user32 = koffi.load('user32.dll');
-    const FindWindowExA = user32.func('void* FindWindowExA(void*, void*, str, str)');
-    const SendMessageTimeoutA = user32.func('long SendMessageTimeoutA(void*, uint, void*, void*, uint, uint, void*)');
-    const SetParent = user32.func('void* SetParent(void*, void*)');
-    const progman = FindWindowExA(null, null, 'Progman', null);
-    if (!progman) return false;
-    /* Progman 에 0x052C 를 보내면 벽지 뒤에 WorkerW 가 만들어진다 */
-    SendMessageTimeoutA(progman, 0x052C, null, null, 0, 1000, null);
-    let workerw = null, after = null;
-    for (;;) {
-      const shellView = FindWindowExA(null, after, 'WorkerW', null);
-      if (!shellView) break;
-      const def = FindWindowExA(shellView, null, 'SHELLDLL_DefView', null);
-      if (def) { workerw = FindWindowExA(null, shellView, 'WorkerW', null); break; }
-      after = shellView;
-    }
-    if (!workerw) return false;
-    SetParent(hwnd, workerw);
-    return true;
-  } catch { return false; }
-}
+   실제 끼워 넣기는 desktop-pin.js(user32 호출)가 한다. 실패하면 '항상 위 끄기'로 물러난다. */
+let pinTimer = null, lastPin = null;
 function applyMode(mode) {
   state.mode = mode; saveState(state);
   if (!win) return;
-  if (mode === 'top') { win.setAlwaysOnTop(true, 'floating'); return; }
+  clearInterval(pinTimer); pinTimer = null;
+
+  if (mode === 'top' || mode === 'normal') {
+    pin.unpin(win);
+    win.setAlwaysOnTop(mode === 'top', 'floating');
+    win.setSkipTaskbar(state.skipTaskbar !== false);
+    if (tray) buildTray();
+    return;
+  }
+
   win.setAlwaysOnTop(false);
-  if (mode !== 'desktop') return;
-  const ok = attachToWallpaper(win.getNativeWindowHandle());
-  if (!ok) win.setSkipTaskbar(state.skipTaskbar !== false);   /* 물러난 경우에도 위젯처럼 보이게 */
+  win.setSkipTaskbar(true);
+
+  if (mode === 'below') {          /* 투명 유지 · z-순서만 맨 아래 */
+    pin.unpin(win);
+    lastPin = { ok: pin.sendToBottom(win), how: '맨 아래(투명 유지)', error: '' };
+    pinTimer = setInterval(() => {
+      if (!win || win.isDestroyed() || state.mode !== 'below') return;
+      pin.sendToBottom(win);       /* 다른 창을 쓰면 다시 올라오므로 계속 내린다 */
+    }, 1500);
+    if (tray) buildTray();
+    return;
+  }
+
+  lastPin = pin.pin(win);          /* desktop — 벽지 층에 끼워 넣기(아이콘이 위로 온다) */
+  /* 탐색기가 재시작되면 부모가 사라져 창이 떠 버린다 — 주기적으로 확인해 다시 붙인다 */
+  pinTimer = setInterval(() => {
+    if (!win || win.isDestroyed() || state.mode !== 'desktop') return;
+    if (!pin.isPinned(win)) lastPin = pin.pin(win);
+  }, 5000);
+  if (tray) buildTray();
 }
 
 function createWindow() {
@@ -157,13 +157,19 @@ function toggleWindow() {
 
 function buildTray() {
   const icon = path.join(__dirname, 'tray.png');
-  tray = new Tray(icon);
+  if (!tray) tray = new Tray(icon);
+  const pinned = (state.mode || 'desktop') === 'desktop';
   const menu = Menu.buildFromTemplate([
     { label: '위젯 보이기 / 숨기기', click: toggleWindow },
     { type: 'separator' },
     {
-      label: '바탕화면에 고정', type: 'radio', checked: (state.mode || 'desktop') === 'desktop',
+      label: '바탕화면에 고정' + (pinned && lastPin && !lastPin.ok ? ' (실패 — 진단 참고)' : ''),
+      type: 'radio', checked: (state.mode || 'desktop') === 'desktop',
       click: () => applyMode('desktop')
+    },
+    {
+      label: '바탕화면 위 · 맨 아래(투명 확실)', type: 'radio', checked: state.mode === 'below',
+      click: () => applyMode('below')
     },
     {
       label: '항상 위에 표시', type: 'radio', checked: state.mode === 'top',
@@ -179,11 +185,20 @@ function buildTray() {
     },
     { label: '새로고침', click: () => win && win.reload() },
     { type: 'separator' },
+    {
+      label: '바탕화면 고정 진단',
+      click: () => dialog.showMessageBox({
+        type: 'info', title: '바탕화면 고정 진단',
+        message: pin.diagnose(win),
+        detail: lastPin ? ('마지막 시도: ' + (lastPin.ok ? '성공' : '실패') + (lastPin.how ? ' / ' + lastPin.how : '') + (lastPin.error ? '\n' + lastPin.error : '')) : '아직 시도하지 않았습니다',
+        buttons: ['확인']
+      })
+    },
     { label: '브라우저에서 전체 화면 열기', click: () => shell.openExternal(APP_URL.replace('?w=1', '')) },
     { type: 'separator' },
     { label: '종료', click: () => { app.quit(); } }
   ]);
-  tray.setToolTip('H서비스센터 업무 일정');
+  tray.setToolTip('H · 주요업무현황 위젯');
   tray.setContextMenu(menu);
   tray.on('click', toggleWindow);
 }

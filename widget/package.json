@@ -16,8 +16,10 @@
     "productName": "업무일정위젯",
     "files": [
       "main.js",
+      "desktop-pin.js",
       "package.json",
-      "tray.png"
+      "tray.png",
+      "node_modules/koffi/**/*"
     ],
     "win": {
       "target": "portable",
@@ -25,9 +27,12 @@
     },
     "portable": {
       "artifactName": "업무일정위젯.exe"
-    }
+    },
+    "asarUnpack": [
+      "node_modules/koffi/**/*"
+    ]
   },
-  "optionalDependencies": {
+  "dependencies": {
     "koffi": "^2.8.0"
   }
 }
