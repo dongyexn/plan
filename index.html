@@ -160,10 +160,9 @@ select.inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-ima
 .frow{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;}
 .frow>label{font-size:11.5px;font-weight:700;color:var(--lbl2);}
 .frow2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-/* 업무 목록 폼 전용 배치 — 1행 날짜 4칸, 2행 구분·담당자·현장(25/25/50) */
+/* 업무 목록 폼 전용 배치 — 1행 시작일·종료일·시간·반복, 2행 업무 구분·담당자·현장·링크 (둘 다 4등분) */
 .frow4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;}
-.frow-ks{display:grid;grid-template-columns:1fr 1fr 2fr;gap:10px;}
-@media(max-width:960px){.frow4{grid-template-columns:1fr 1fr;}.frow-ks{grid-template-columns:1fr;}}
+@media(max-width:960px){.frow4{grid-template-columns:1fr 1fr;}}
 /* ══════════ 달력 페이지 ══════════ */
 .cal-wrap{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;align-items:stretch;height:calc(100dvh - var(--th) - 29px);min-height:520px;}   /* 29 = 상단 9 + 하단 20 */
 .cal-card{padding:16px 18px;display:flex;flex-direction:column;min-height:0;}
@@ -1597,5 +1596,5 @@ html.dark #toast{background:#2B313A;}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=113"></script>
+<script src="./app.js?v=114"></script>
 </body></html>
