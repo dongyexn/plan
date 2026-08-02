@@ -337,7 +337,7 @@ body.wid.glass #fcal .fc-daygrid-more-link{color:#fff;background:rgba(255,255,25
    두 상태의 제목 x·아이콘 좌표가 같아야 수정 버튼을 눌러도 화면이 튀지 않는다. 값을 바꿀 땐 .pe-bar 도 함께. */
 /* 업무 카드 — 업무 목록(.tk-item)과 같은 회색 면. 업무 색은 --pc 로만 들어오고
    표현 방식(좌측 색 바 등)은 아래 색 표현 규칙에서 정한다 — 레이아웃에는 영향이 없어야 한다 */
-#dpList .plan{display:block;padding:8px 8px 11px;background:var(--surf2);border:1px solid var(--sep);position:relative;}   /* 위는 아이콘 줄(26px) 때문에 제목까지 10.9px — 아래도 그만큼 */
+#dpList .plan{display:block;padding:8px 8px 12px;background:var(--surf2);border:1px solid var(--sep);position:relative;}   /* 위는 아이콘 줄(26px) 때문에 제목까지 10.9px — 아래도 그만큼 */
 /* 업무 색 = 제목 앞 색 원. 누르면 팔레트 팝오버가 열리고, 그 자리가 곧 색 변경 버튼이다.
    지름 8px + 왼쪽 여백 6px. 원 크기를 바꿀 땐 여백으로 상쇄해 6+8+9=23 을 지킨다(제목 x·2행 들여쓰기 고정) */
 .p-col{position:relative;flex:0 0 auto;width:8px;height:8px;margin-left:6px;border-radius:50%;
@@ -345,7 +345,7 @@ body.wid.glass #fcal .fc-daygrid-more-link{color:#fff;background:rgba(255,255,25
 .p-col:hover{transform:scale(1.1);}
 .p-col .col-pop{left:0;right:auto;}
 .plan-hd{display:flex;align-items:center;gap:9px;min-width:0;}
-#dpList .plan-main{padding-left:23px;padding-right:6px;margin-top:2px;}   /* 좌 6+8+9, 우도 좌측 색 원 여백(6)만큼 */
+#dpList .plan-main{padding-left:23px;padding-right:12px;margin-top:2px;}   /* 우측 담당자가 모서리에 붙지 않게 12px 띄운다 */
 /* 상태 배지 — 보조문구 줄 앞에 붙는 작은 배지(글자 크기는 보조문구와 같은 11.5px). 색 변형은 .tk-st.s0~3 재사용 */
 .plan-meta .tk-st,.pe-side .tk-st{height:18px;flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;
   padding:0 7px;border-radius:var(--rp);font-size:11.5px;font-weight:700;white-space:nowrap;
@@ -388,9 +388,9 @@ body.wid .cal-title{background:rgba(16,20,30,.55);border-radius:999px;padding:0 
 body.wid .cal-title .icn{color:rgba(255,255,255,.72);}   /* 꺾쇠가 배경에 묻히지 않게 */
 body.wid .cal-nav{padding:2px;border-radius:999px;}
 /* ── 위젯 헤더 필터 — 카드 껍데기를 벗겨 헤더 줄에 얹고, 펼침부는 아래로 떨어지는 팝오버로 ── */
-body.wid #widFilterSlot{display:flex;flex:1;min-width:0;justify-content:flex-end;}
-body.wid #dpFcard{position:relative;flex:1;min-width:0;max-width:340px;
-  background:transparent;border:0;box-shadow:none;padding:0;border-radius:0;}
+body.wid #widFilterSlot{display:flex;flex:0 0 auto;}
+body.wid #dpFcard{position:relative;flex:0 0 auto;background:transparent;border:0;box-shadow:none;padding:0;border-radius:0;}
+body.wid #dpFcard .dp-srch,body.wid #dpFcard .dp-scope{display:none;}   /* 위젯 헤더는 좁다 — 필터 버튼만 둔다 */
 body.wid #dpFcard .dp-frow{gap:6px;}
 body.wid #dpFcard .dp-srch .inp{height:34px;background:rgba(16,20,30,.55);border-color:rgba(255,255,255,.18);color:#fff;}
 body.wid #dpFcard .dp-srch .inp::placeholder{color:rgba(255,255,255,.5);}
@@ -507,10 +507,24 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 .ymp-m.now{box-shadow:inset 0 0 0 1.5px var(--b300);color:var(--bt1);}
 .ymp-m.sel{background:linear-gradient(135deg,var(--b500),var(--b800));color:#fff;box-shadow:none;}
 /* 색 팔레트 선택 */
-.pal{display:flex;gap:7px;flex-wrap:wrap;}
-.pal-c{width:24px;height:24px;border-radius:8px;cursor:pointer;border:2px solid transparent;transition:transform .12s,border-color .12s;}
-.pal-c:hover{transform:scale(1.12);}
-.pal-c.sel{border-color:var(--lbl);transform:scale(1.12);}
+.pal{display:flex;gap:7px;flex-wrap:wrap;align-items:center;}
+/* ⚠ 팝오버 안에서는 확대 호버를 쓰지 않는다 — 좁은 격자에서 서로 겹쳐 보인다 */
+.pal-c{width:24px;height:24px;border-radius:8px;cursor:pointer;border:2px solid transparent;transition:border-color .12s,box-shadow .12s;}
+.pal-c:hover{box-shadow:0 0 0 2px var(--fill2);}
+.pal-c.sel{border-color:var(--lbl);}
+.pal-auto{display:inline-flex;align-items:center;justify-content:center;background:var(--fill);color:var(--lbl2);}
+.pal-auto svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;}
+.pal-br{flex:1 0 100%;height:1px;background:var(--sep);margin:3px 0;}
+/* 색상 팔레트 — 사각형(채도·밝기) + 색상 띠. RGB 값은 보여 주지 않는다 */
+.cp{margin-top:10px;padding-top:10px;border-top:1px solid var(--sep);}
+.cp-sv{position:relative;height:104px;border-radius:9px;cursor:crosshair;
+  background:linear-gradient(to top,#000,rgba(0,0,0,0)),linear-gradient(to right,#fff,#3E71D2);}
+.cp-dot{position:absolute;width:13px;height:13px;border-radius:50%;border:2px solid #fff;
+  box-shadow:0 0 0 1px rgba(0,0,0,.4);transform:translate(-50%,-50%);pointer-events:none;}
+.cp-hue{-webkit-appearance:none;appearance:none;width:100%;height:12px;margin-top:9px;border-radius:99px;cursor:pointer;
+  background:linear-gradient(90deg,#f00 0%,#ff0 17%,#0f0 33%,#0ff 50%,#00f 67%,#f0f 83%,#f00 100%);}
+.cp-hue::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;
+  background:#fff;border:2px solid rgba(0,0,0,.5);cursor:pointer;}
 .pal-add{position:relative;display:inline-flex;align-items:center;justify-content:center;border:1px dashed var(--sepo);background:var(--fill);color:var(--lbl3);font-size:15px;font-weight:600;line-height:1;}
 .pal-add:hover{border-color:var(--b400);color:var(--bt1);}
 .pal-add .pal-inp{position:absolute;inset:0;opacity:0;cursor:pointer;padding:0;border:none;}
@@ -541,10 +555,10 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 .tks-item.tks-reg .n{font-size:12.5px;color:var(--bt1);letter-spacing:.02em;}
 .tks-item.tks-reg.act .n{color:var(--bt1);}
 .tks-item.sub{padding-left:24px;font-size:13.5px;}
-/* 업무 패널 머리 — 업무 일정의 .dp-lh 와 같은 규격(구분선은 양옆을 띄운다) */
-.tkm-h{position:relative;display:flex;align-items:center;gap:9px;padding:11px 16px 10px;flex-shrink:0;}
-.tkm-h::after{content:'';position:absolute;left:16px;right:16px;bottom:0;height:1px;background:var(--sep);}
-.tkm-c{margin-left:auto;font-size:12.5px;font-weight:700;color:var(--lbl2);}
+/* 업무 패널 머리 — 아래 분류 구분선보다 굵게 해서 층이 구분되도록 */
+.tkm-h{position:relative;display:flex;align-items:center;gap:9px;padding:15px 16px 13px;flex-shrink:0;}
+.tkm-h::after{content:'';position:absolute;left:16px;right:16px;bottom:0;height:2px;background:var(--sepo);}
+.tkm-c{margin-left:auto;margin-right:2px;font-size:12.5px;font-weight:700;color:var(--lbl2);}   /* 아래 분류 건수 배지와 같은 선(패널 우측에서 19px) */
 .tkm-h .bar{width:4px;height:18px;border-radius:99px;background:linear-gradient(135deg,var(--b500),var(--b800));}
 .tkm-h b{font-size:16px;font-weight:800;color:var(--lbl);letter-spacing:-.01em;}
 .tkm-h .tkm-sub{font-size:12.5px;font-weight:600;color:var(--lbl3);}
@@ -996,7 +1010,7 @@ body.wid.glass #fcal td.fc-daygrid-day.fc-day-sat,
 body.wid.glass #fcal td.fc-daygrid-day.fc-day-sun{background:rgba(52,56,68,.5)!important;}
 body.wid.glass #fcal td.fc-daygrid-day.fc-day-other{background:rgba(24,28,38,.23)!important;}
 
-body.wid.glass #fcal td.fc-daygrid-day.fc-day-today{background:rgba(62,113,210,.26)!important;}
+body.wid.glass #fcal td.fc-daygrid-day.fc-day-today{background:rgba(62,113,210,.16)!important;}
 /* ⚠ 위 규칙들이 background 단축이라 sel-day 의 background-image(선택 강조)까지 지운다 — 다시 얹는다 */
 body.wid.glass #fcal td.fc-daygrid-day.sel-day{background-image:linear-gradient(rgba(120,170,255,.30),rgba(120,170,255,.30))!important;}
 /* 2. 공휴일 날짜는 유리 모드에서도 빨갛게 */
@@ -1067,8 +1081,9 @@ body.wid #mb{background:rgba(22,25,33,.95);-webkit-backdrop-filter:blur(16px);ba
 body.wid #mb .inp{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.22);color:#fff;}
 body.wid #mb .btn.bg2,body.wid #mb .btn.bo{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.24);color:#fff;}
 /* 위젯은 창이 좁다 — 모달을 줄여 프로필 팝오버가 옆에 설 자리를 만든다 */
-body.wid #mo{justify-content:flex-start;padding-left:12px;}   /* 모달을 왼쪽으로 — 팝오버가 오른쪽에 선다 */
-body.wid #mb{padding:20px;max-width:320px;}
+body.wid #mo.pf-on{justify-content:flex-start;padding-left:12px;}   /* 프로필 팝오버가 열릴 때만 왼쪽으로 비켜 준다 */
+body.wid #mo.pf-on #mb{max-width:320px;}                            /* 그때만 좁혀서 팝오버 자리를 만든다 */
+body.wid #mb{padding:20px;}
 body.wid #pfPop{width:290px;}
 body.wid #pfPop{background:rgba(22,25,33,.96);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);
   border-color:rgba(255,255,255,.16);
@@ -1608,5 +1623,5 @@ html.dark #toast{background:#2B313A;}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=106"></script>
+<script src="./app.js?v=108"></script>
 </body></html>
