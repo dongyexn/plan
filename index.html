@@ -109,7 +109,7 @@ svg{display:block;flex-shrink:0;}
 #main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
 #topbar{height:var(--th);flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:var(--glass2);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);border-bottom:1px solid var(--sep);z-index:100;}
 .tbl{display:flex;align-items:center;gap:10px;min-width:0;}
-.tbt{font-size:16px;font-weight:700;color:var(--lbl);}#content{flex:1;overflow-y:auto;padding:20px;}
+.tbt{font-size:16px;font-weight:700;color:var(--lbl);}#content{flex:1;overflow-y:auto;padding:9px 20px 20px;}   /* 상단 여백은 레이아웃 간 세로 간격(9px)과 같게 */
 #content::-webkit-scrollbar{width:5px;}
 #content::-webkit-scrollbar-thumb{background:var(--sepo);border-radius:99px;}
 .view{display:none;}
@@ -159,7 +159,7 @@ select.inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-ima
 .frow>label{font-size:11.5px;font-weight:700;color:var(--lbl2);}
 .frow2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 /* ══════════ 달력 페이지 ══════════ */
-.cal-wrap{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;align-items:stretch;height:calc(100dvh - var(--th) - 40px);min-height:520px;}
+.cal-wrap{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;align-items:stretch;height:calc(100dvh - var(--th) - 29px);min-height:520px;}   /* 29 = 상단 9 + 하단 20 */
 .cal-card{padding:16px 18px;display:flex;flex-direction:column;min-height:0;}
 /* 달력을 감싸던 카드 프레임 제거 — 달력(fc-scrollgrid 테두리)이 곧 외곽 */
 body:not(.wid) .cal-card{border:0;background:transparent;box-shadow:none;border-radius:0;padding:0;}
@@ -248,8 +248,22 @@ html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-other{background-
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sun:not(.fc-day-other),
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sat:not(.fc-day-other){background-image:linear-gradient(rgba(60,60,67,.03),rgba(60,60,67,.03));}
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day.hol:not(.fc-day-other){background-image:linear-gradient(rgba(255,59,48,.08),rgba(255,59,48,.08));}
-#fcal .fc-dayGridMonth-view td.fc-daygrid-day.sel-day:not(.x-none){background-image:linear-gradient(rgba(83,140,222,.15),rgba(83,140,222,.15));box-shadow:inset 0 0 0 2px var(--b500);}
-/* 위 :not(.x-none) 은 데드 클래스가 아니라 명시도 부스터 — 주말·공휴일 배경 규칙과 같은 background-image 를 이기기 위함. 지우면 토·일·공휴일 선택 강조가 사라진다 */html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sun:not(.fc-day-other),
+#fcal .fc-dayGridMonth-view td.fc-daygrid-day.sel-day:not(.x-none){background-image:linear-gradient(rgba(83,140,222,.15),rgba(83,140,222,.15));}
+/* 위 :not(.x-none) 은 데드 클래스가 아니라 명시도 부스터 — 주말·공휴일 배경 규칙과 같은 background-image 를 이기기 위함. 지우면 토·일·공휴일 선택 강조가 사라진다 */
+/* ── 기간 선택 테두리 — 칸마다 박스가 아니라 주(행) 구간을 하나로 둘러친다 ──
+   ::after 를 셀 padding-box 밖 2px(격자 간극)까지 늘려 칸 사이에서 선이 끊기지 않게 하고,
+   좌·우 변은 그 행 구간의 시작(sel-s)·끝(sel-e)에만 그린다. */
+#fcal .fc-dayGridMonth-view td.fc-daygrid-day.sel-day .fc-daygrid-day-frame::after{content:'';display:block;position:absolute;z-index:4;pointer-events:none;
+  top:-2px;right:-2px;bottom:-2px;left:-2px;border-top:2px solid var(--b500);border-bottom:2px solid var(--b500);}
+/* display:block 은 필수 — FullCalendar 가 .fc-daygrid-day-frame::after 를 clearfix(display:table)로 쓰고 있어,
+   그대로 두면 shrink-to-fit 되어 2×4px 짜리 점만 그려진다 */
+#fcal .fc-dayGridMonth-view td.fc-daygrid-day.sel-day.sel-s .fc-daygrid-day-frame::after{border-left:2px solid var(--b500);}
+#fcal .fc-dayGridMonth-view td.fc-daygrid-day.sel-day.sel-e .fc-daygrid-day-frame::after{border-right:2px solid var(--b500);}
+/* 표 가장자리 칸은 바깥에 격자 간극이 없다 — 밖으로 나간 변이 scrollgrid 의 overflow 에 잘리므로 되돌린다 */
+#fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table tr:first-child td.sel-day .fc-daygrid-day-frame::after{top:0;}
+#fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table tr:last-child td.sel-day .fc-daygrid-day-frame::after{bottom:0;}
+#fcal .fc-dayGridMonth-view td.sel-day:first-child .fc-daygrid-day-frame::after{left:0;}
+#fcal .fc-dayGridMonth-view td.sel-day:last-child .fc-daygrid-day-frame::after{right:0;}html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sun:not(.fc-day-other),
 html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sat:not(.fc-day-other){background-image:linear-gradient(rgba(255,255,255,.03),rgba(255,255,255,.03));}
 html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.hol:not(.fc-day-other){background-image:linear-gradient(rgba(255,59,48,.13),rgba(255,59,48,.13));}
 @media(hover:hover){ /* 터치에선 :hover 가 눌린 셀에 고착돼 '선택 표시가 남는' 것처럼 보인다 */
@@ -299,13 +313,22 @@ html.dark #fcal .dhol.dtoday{color:var(--b300);}
 .plan .plan-body{display:none;}
 .plan.open .plan-body{display:block;}
 .plan{border:1px solid var(--sep);border-radius:var(--rlg);padding:11px 13px;display:flex;gap:9px;align-items:flex-start;background:var(--bg2);transition:border-color .15s;position:relative;}
-.plan:hover{border-color:var(--b300);}
-/* 업무 색 — 제목 앞 점(카드·폼 같은 자리) */
-.plan-c{flex:0 0 auto;width:9px;height:9px;border-radius:50%;margin-top:6px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08);}
-.pe-c{flex:0 0 auto;width:9px;height:9px;border-radius:50%;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08);}
-.plan.done .plan-c{opacity:.4;}
+/* ── 일자 패널의 업무 폼(읽기 상태) — 편집 폼(.dp-edit)과 같은 골격 ──
+   [1.5 테두리][8 패딩][26 상태 아이콘][9][제목 …][아이콘 26·간격 2][8 패딩]
+   두 상태의 제목 x·아이콘 좌표가 같아야 수정 버튼을 눌러도 화면이 튀지 않는다. 값을 바꿀 땐 .pe-bar 도 함께. */
+#dpList .plan{display:block;padding:8px;border-width:1.5px;}
+.plan-hd{display:flex;align-items:center;gap:9px;min-width:0;}
+#dpList .plan-main{padding-left:35px;margin-top:2px;}   /* 35 = 상태 아이콘 26 + 간격 9 */
+/* 업무 색은 카드 아웃라인으로 — 색 점(.plan-c/.pe-c)은 폐기 */
+.p-st{flex:0 0 auto;width:26px;height:26px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:var(--lbl3);}
+.p-st .icn,.pe-st .icn{width:16px;height:16px;}
+.p-st.s1,.pe-st.s1{color:var(--bt1);}
+.p-st.s2,.pe-st.s2{color:var(--gn);}
+.p-st.s3,.pe-st.s3{color:var(--am);}
+.plan.done .p-st{opacity:.55;}
 .plan-main{flex:1;min-width:0;cursor:pointer;}
 .plan-t{font-size:13.5px;font-weight:700;color:var(--lbl);word-break:break-all;}
+.plan-hd .plan-t{flex:1;min-width:0;cursor:pointer;}
 .plan.done .plan-t{text-decoration:line-through;color:var(--lbl3);}
 .plan-meta{display:flex;align-items:baseline;gap:8px;margin-top:4px;font-size:11.5px;color:var(--lbl3);line-height:1.45;}
 .pm-l{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -321,13 +344,17 @@ html.dark #fcal .dhol.dtoday{color:var(--b300);}
 .p-ico:hover{background:var(--fill);color:var(--bt1);}
 .p-ico.on{color:var(--am);}
 .p-ico .icn{width:14px;height:14px;}
+/* 수정 버튼은 평소 숨김 — 자리는 남겨 둔다(폭을 줄이면 옆 아이콘이 밀렸다 돌아와 위치가 튄다) */
+#dpList .plan .p-edit{opacity:0;pointer-events:none;transition:opacity var(--tr);}
+#dpList .plan:hover .p-edit,#dpList .plan:focus-within .p-edit{opacity:1;pointer-events:auto;}
+@media(hover:none){#dpList .plan .p-edit{opacity:1;pointer-events:auto;}}
 /* 날짜 헤더 — 좌: 날짜(누르면 연·월 이동), 우: 달 넘기기·오늘 */
 .dp-col{position:relative;}
 body:not(.wid) .cal-card{position:relative;}
 #ymPop{position:absolute;top:56px;left:-8px;z-index:60;width:272px;background:var(--bg2);border:1px solid var(--sep);border-radius:var(--rlg);box-shadow:0 12px 34px rgba(0,0,0,.16);padding:13px 14px;}
 html.dark #ymPop{background:#242426;}
 .dp-dow{margin-left:auto;font-size:12px;font-weight:600;color:rgba(255,255,255,.86);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-/* 필터 카드 — 1행 권역·담당자, 2행 검색·업무 추가 */
+/* 필터 카드 — 1행 업무 구분·진행 상태, 2행 권역·담당자, 3행 현장, 4행 검색·업무 추가 */
 .dp-fcard{padding:11px 12px;display:flex;flex-direction:column;gap:8px;flex:0 0 auto;}
 .dp-fcard .dp-frow{display:flex;gap:8px;align-items:center;}
 .dp-fcard .dp-sel{flex:1 1 0;min-width:0;}
@@ -404,7 +431,7 @@ html.dark #ymPop{background:#242426;}
 .pal-add .pal-inp{position:absolute;inset:0;opacity:0;cursor:pointer;padding:0;border:none;}
 
 /* ══════════ 주요업무 현황 — 좌: 대상 선택 · 우: 작성/목록 ══════════ */
-.tkwrap{display:grid;grid-template-columns:320px minmax(0,1fr);gap:16px;align-items:stretch;height:calc(100dvh - var(--th) - 40px);min-height:460px;}
+.tkwrap{display:grid;grid-template-columns:320px minmax(0,1fr);gap:16px;align-items:stretch;height:calc(100dvh - var(--th) - 29px);min-height:460px;}   /* 29 = 상단 9 + 하단 20 */
 .tkside{display:flex;flex-direction:column;gap:12px;min-height:0;overflow-y:auto;}
 .tks-card{padding:14px 15px;}
 .tkmain{display:flex;flex-direction:column;min-height:0;padding:16px 18px 18px;}
@@ -577,7 +604,10 @@ html.dark #ymPop{background:#242426;}
 /* 일자 패널 인라인 편집기 — 모달 대신 패널 안에서 작성·수정 */
 /* ── 업무 작성 폼 — 제목 고정 바 + 핵심 4줄 + '자세히' 접기 ── */
 .dp-edit{border:1.5px solid var(--b300);border-radius:var(--rlg);background:var(--bg2);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;}
-.pe-bar{display:flex;align-items:center;gap:9px;padding:8px 8px 8px 13px;border-bottom:1px solid var(--sep);background:var(--b50);}
+.pe-bar{display:flex;align-items:center;gap:9px;padding:8px;border-bottom:1px solid var(--sep);}
+.pe-side{display:flex;align-items:center;gap:2px;flex-shrink:0;}   /* 읽기 카드 .plan-side 와 같은 간격 — 좌표 고정 */
+.pe-st{width:26px;height:26px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:var(--lbl3);flex:0 0 auto;transition:background var(--tr),color var(--tr);}
+.pe-st:hover{background:var(--fill);}
 .pe-ttl{flex:1;min-width:0;background:transparent;border:0;font-size:13.5px;font-weight:600;color:var(--lbl);font-family:inherit;}
 .pe-ttl::placeholder{color:var(--lbl3);font-weight:500;}
 .pe-ttl:focus{outline:none;}
@@ -1019,7 +1049,7 @@ html.dark #toast{background:#2B313A;}
   /* grid 의 1fr 은 최소폭이 max-content 라서 내용이 넓으면 화면 밖으로 밀려난다 — 전부 minmax(0,1fr) 로 */
   .cal-wrap{grid-template-columns:minmax(0,1fr);height:auto;min-height:0;}
   /* ── 업무 일정: 달력을 화면 가득(캘린더 앱처럼), 일자 패널은 날짜를 누르면 올라오는 하단 시트 ── */
-  #view-calendar{margin:-14px;}                                   /* content 패딩 상쇄 — 풀블리드 */
+  #view-calendar{margin:-9px -14px -14px;}                        /* content 패딩 상쇄 — 풀블리드 */
   #view-calendar .cal-wrap{height:calc(100dvh - var(--th));}
   #view-calendar .cal-card{height:100%;min-width:0;border:0;border-radius:0;box-shadow:none;padding:10px 8px 4px;}
   .cal-head{margin-bottom:6px;}
@@ -1033,7 +1063,7 @@ html.dark #toast{background:#2B313A;}
   .dp-x{display:inline-flex;}  .tkwrap{grid-template-columns:minmax(0,1fr);}
   .set-grid{grid-template-columns:minmax(0,1fr);}
   .mg-grid{grid-template-columns:minmax(0,1fr);}
-  #content{padding:14px;overflow-x:hidden;}
+  #content{padding:9px 14px 14px;overflow-x:hidden;}
   #content>*{min-width:0;}
   /* 달력 헤더 — 년월(좌) · 넘기기/오늘(우) 한 줄 */
   .cal-head{flex-wrap:nowrap;gap:8px;}
@@ -1079,6 +1109,11 @@ html.dark #toast{background:#2B313A;}
 <!-- 아이콘: Lucide (ISC) — 24 그리드 · stroke 2 -->
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true" focusable="false">
 <symbol id="i-today" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2" fill="currentColor" stroke="none"/></symbol>
+<!-- 진행 상태 4단계 — 원 하나로 묶은 한 가족(예정·진행·완료·보류) -->
+<symbol id="i-st0" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/></symbol>
+<symbol id="i-st1" viewBox="0 0 24 24"><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="8.5"/></symbol>
+<symbol id="i-st2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="m8.2 12.2 2.6 2.6 5-5.6"/></symbol>
+<symbol id="i-st3" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M10.2 9.3v5.4"/><path d="M13.8 9.3v5.4"/></symbol>
 <symbol id="i-cal" viewBox="0 0 24 24"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></symbol>
 <symbol id="i-tasks" viewBox="0 0 24 24"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></symbol>
 <symbol id="i-settings" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
@@ -1235,8 +1270,15 @@ html.dark #toast{background:#2B313A;}
           </div>
           <div class="card dp-fcard">
             <div class="dp-frow">
+              <select class="inp inp-sm dp-sel" id="kindFilter" aria-label="업무 구분 필터"></select>
+              <select class="inp inp-sm dp-sel" id="stFilter" aria-label="진행 상태 필터"></select>
+            </div>
+            <div class="dp-frow">
               <select class="inp inp-sm dp-sel" id="regFilter" aria-label="권역 필터"></select>
               <select class="inp inp-sm dp-sel" id="ownFilter" aria-label="담당자 필터"></select>
+            </div>
+            <div class="dp-frow">
+              <select class="inp inp-sm dp-sel" id="siteFilter" aria-label="현장 필터"></select>
             </div>
             <div class="dp-frow">
               <div class="dp-srch">
@@ -1389,5 +1431,5 @@ html.dark #toast{background:#2B313A;}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=81"></script>
+<script src="./app.js?v=82"></script>
 </body></html>
