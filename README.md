@@ -1,7 +1,8 @@
-# 업무 일정 · 주요업무 현황
+# H · 주요업무현황
 
-팀 업무 일정 달력과 담당자별 주요업무 현황을 실시간으로 공유하는 사내 웹앱.
+팀 업무 일정 달력과 담당자별 업무 목록을 실시간으로 공유하는 사내 웹앱.
 GitHub Pages + Firebase Realtime Database(무료 티어)로 동작한다.
+배포 주소는 `https://dongyexn.github.io/plan/` (하자처리현황은 `/report/`).
 
 ## 구성
 
@@ -16,14 +17,16 @@ scripts/remind.mjs             당일 리마인드 메일
 scripts/weekly.mjs             주간 요약 메일 (요일은 앱 설정에서 지정)
 .github/workflows/*.yml        위 두 메일의 cron — 매시 실행(0 * * * *) 권장
 database.rules.json            RTDB 보안 규칙 전체
-widget/                        데스크톱 위젯 (Electron)
+widget/                        바탕화면 위젯 (Electron)
+  main.js                      창·트레이·표시 모드
+  desktop-pin.js               Win32 창 층 제어 (koffi)
 ```
 
 ## 데이터 (RTDB `calapp/` 네임스페이스)
 
 | 경로 | 내용 |
 |---|---|
-| `calapp/tasks/{subjectId}/{itemId}` | **업무 하나** — 일정과 주요업무가 통합된 단일 엔티티. text(제목)·prog(진행경과)·plan(처리계획)·site(현장)·st(0예정 1진행 2완료 3보류)·due(기한)·order·assignees·links·comments + date·end·time·endTime·recur·remind(달력에 뜨는 일정 성격) |
+| `calapp/tasks/{subjectId}/{itemId}` | **업무 하나** — 일정과 업무 목록이 통합된 단일 엔티티. text(제목)·prog(진행경과)·plan(처리계획)·site(현장)·st(0예정 1진행 2완료 3보류)·kind(업무 구분)·order·assignees·links·color·comments + date·end·time·recur·remind(달력에 뜨는 일정 성격) |
 | `calapp/mentions/{uid}` | 코멘트에서 나를 부른 알림 |
 | `calapp/org` | 팀 · 권역 · 현장 목록 |
 | `calapp/people/{uid}` | 담당자 배정 — name·email·team·region·sites |
@@ -96,19 +99,37 @@ node build-single.mjs      # dist/index.html + dist/vendor/
 index.html과 app.js를 한 파일로 합친다. 인라인 스크립트를 쓰면서도 CSP를 유지하려고
 스크립트 본문의 SHA-256 해시를 계산해 `script-src`에 넣고, 산출물에서 다시 검증한다.
 
-## 데스크톱 위젯
+## 바탕화면 위젯
 
-`widget/` 폴더가 Electron 기반 위젯이다. 테두리 없는 항상 위 창으로 달력과 그날 업무만 띄우고,
-트레이 아이콘 · 전역 단축키(Alt+Shift+C) · 창 위치 기억을 지원한다.
+`widget/` 폴더가 Electron 위젯이다. 반투명·테두리 없는 창으로 **달력만** 띄우고,
+날짜를 누르면 그 칸 옆에 **앱과 똑같은 업무 패널**(카드 · 수정 · 자동 저장)이 뜬다.
 
 ```
 cd widget
 npm install
-npm start          # 실행해 확인
-npm run dist       # dist/업무일정위젯.exe (포터블)
+npm start                       # 실행해 확인
+npm run dist                    # dist/업무일정위젯.exe (포터블)
 ```
 
-`widget/main.js` 상단 `APP_URL`을 배포 주소 + `?w=1`로 바꾼다. 위젯 창에서도 한 번 로그인해야 한다.
+한글 윈도우에서는 `widget/위젯 실행하기.bat` 을 두 번 눌러도 된다
+(Node 가 없으면 설치 안내 → 다시 실행하면 자동으로 npm install → npm start).
+
+### 표시 모드 (트레이 아이콘에서 전환)
+
+| 모드 | 반투명 | 키 입력 | 바탕화면 아이콘 |
+|---|---|---|---|
+| **바탕화면 모드**(기본) | O | O | 달력에 가려짐 |
+| 바탕화면에 박기 | X 될 수 있음 | **X** | 달력 위로 보임 |
+| 항상 위에 표시 / 보통 창 | O | O | — |
+
+⚠ **아이콘이 달력 위에 보이는 것과 키 입력은 동시에 가질 수 없다.**
+아이콘이 위로 오려면 창이 벽지 창의 자식(`WS_CHILD`)이어야 하는데, 자식 창은
+키보드 포커스를 받지 못하고 반투명(레이어드)도 잃는다. 그래서 기본은 입력이 되는 쪽이다.
+'박기' 모드에서 로그인·작성이 필요하면 트레이의 **'입력 모드로'** 를 쓴다.
+
+창 이동·크기 변경은 평소 잠겨 있다. 위젯 설정(톱니) > **위치·크기 조정** 을 켠 동안만 바꾼다.
+`widget/main.js` 상단 `APP_URL` 이 위젯이 여는 주소다(기본 `.../plan/?w=1`).
+`desktop-pin.js` 는 koffi 로 user32 를 호출해 창의 층을 바꾼다 — 트레이의 **'바탕화면 고정 진단'** 으로 상태를 볼 수 있다.
 
 ## 배포 절차
 

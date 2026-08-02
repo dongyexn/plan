@@ -1392,7 +1392,7 @@ function selDate(ds){
   if(!/^\d{4}-\d{2}-\d{2}$/.test(ds))return;   /* 잘못된 값이 들어오면 무시 — NaN 표시 방지 */
   S.selDate=ds;
   if(S.selEnd&&S.selEnd<=ds)S.selEnd='';
-  if(WIDGET)S.widPop=true;      /* 위젯에서는 날짜를 누르면 그 칸 옆에 업무 팝업이 뜬다 */
+  if(WIDGET)S.widPop=true;      /* 위젯에서는 날짜를 누르면 그 칸 옆에 업무 패널이 뜬다 */
   setTimeout(rWidget,0);
   if(CAL&&ymOf(ds)!==CAL.view.currentStart.getFullYear()+'-'+pad(CAL.view.currentStart.getMonth()+1))CAL.gotoDate(ds);
   markSel();
@@ -1400,10 +1400,15 @@ function selDate(ds){
   /* 편집기가 열려 있으면 다른 입력은 지우지 않고 날짜만 따라간다(수정 중인 업무도 같다) */
   if(S.planEdit&&$('#dpEdit')){
     rDayHead();
-    const i=$('#peDate'),e=$('#peEnd');
-    if(i)i.value=ds;
-    if(e)e.value='';            /* 한 칸만 눌렀으니 기간은 해제 */
-    planAutosave();
+    /* ⚠ 이미 있는 업무를 고치는 중이라면 날짜를 따라가지 않는다 —
+       달력을 둘러보려고 다른 날을 눌렀을 뿐인데 업무가 그 날로 옮겨져 버렸다(실사용 지적).
+       새 업무를 쓰는 중일 때만 시작일이 따라가고, 기존 업무의 날짜는 기간 드래그나 입력칸으로만 바꾼다. */
+    if(!S.planEdit.orig){
+      const i=$('#peDate'),e=$('#peEnd');
+      if(i)i.value=ds;
+      if(e)e.value='';          /* 한 칸만 눌렀으니 기간은 해제 */
+      planAutosave();
+    }
     return;
   }
   rDay();
@@ -2626,7 +2631,6 @@ function rOrg(){
 }
 function orgSave(){normOrg(S.org);store.putOrg(S.org);if(!S.live){rOrg();rTasks();}}
 function rCfg(){
-  rWidgetSet();
   const i=$('#setDefectUrl');
   if(i&&document.activeElement!==i)i.value=S.cfg.defectUrl||DEFECT_URL;
   const m=S.cfg.mail||{};
@@ -3229,22 +3233,6 @@ const ACT={
     selDate(y+'-'+pad(m)+'-'+pad(same?t.getDate():1));
     rMonTitle();subVisibleMonths();refetchCal();},
   'mail.preview':el=>mailPreview(el.dataset.kind),
-  /* 설정 → 위젯: 브라우저 설치 대화상자를 바로 띄운다(사용자는 '설치'만 누르면 끝) */
-  'wid.install':async ()=>{
-    if(isInstalled()){toast('이미 설치되어 있습니다');return;}
-    if(!INSTALL_PROMPT){
-      toast('엣지·크롬에서 열어 주세요 — 주소창의 설치 아이콘으로도 만들 수 있습니다');
-      return;
-    }
-    const p=INSTALL_PROMPT;INSTALL_PROMPT=null;rWidgetSet();
-    try{p.prompt();const r=await p.userChoice;if(r&&r.outcome!=='accepted'){INSTALL_PROMPT=p;rWidgetSet();}}
-    catch(e){INSTALL_PROMPT=p;rWidgetSet();}
-  },
-  /* 설치가 막힌 환경(사내 정책 등)을 위한 대안 — 지금 바로 작은 창으로 띄운다 */
-  'wid.open':()=>{
-    const u=location.origin+location.pathname+'?w=1';
-    window.open(u,'calwidget','width=390,height=640,menubar=no,toolbar=no,location=no,status=no');
-  },
   'wid.popClose':()=>{S.widPop=false;rWidget();},
   'wid.set':()=>{const p=$('#wgSet');if(!p)return;p.classList.toggle('on');p.setAttribute('aria-hidden',p.classList.contains('on')?'false':'true');widApply();}
 };
@@ -3432,7 +3420,7 @@ document.addEventListener('input',e=>{
   if(e.target.id==='wgA'){const c=widCfgLoad();c.a=Number(e.target.value);widCfgSave(c);widApply();}
 });
 document.addEventListener('change',e=>{
-  if(e.target.id==='wgDarkChk'){applyTheme(e.target.checked);return;}
+  if(e.target.id==='wgMoveChk'){widMove(e.target.checked);return;}
 });
 document.addEventListener('click',e=>{
   const b=e.target.closest('#wgFz button');
@@ -3552,53 +3540,48 @@ function widApply(){
   const fz=c.fz==='s'?.9:c.fz==='l'?1.14:1;document.body.style.setProperty('--wfz',String(fz));
   const rng=$('#wgA');if(rng)rng.value=Math.round(a*100);
   if($('#wgFz'))$$('#wgFz button').forEach(b=>b.classList.toggle('act',b.dataset.fz===(c.fz||'m')));
-  const dc=$('#wgDarkChk');if(dc)dc.checked=document.documentElement.classList.contains('dark');
 }
-/* 위젯은 달력만 띄운다 — 목록은 늘어놓지 않고, 날짜를 누르면 그 칸 옆에 팝업으로 보여 준다 */
+/* 위치·크기 조정 모드 — 켜면 창 전체가 드래그 영역이 되고, 끄면 그 자리에 고정된다.
+   Electron 쪽 전환은 해시로 신호를 보낸다(preload 없이 쓰던 방식 그대로) */
+function widMove(on){
+  const old=$('#widMove');if(old)old.remove();
+  if(on){
+    const d=document.createElement('div');
+    d.id='widMove';d.className='wid-move';
+    d.innerHTML='<div class="t">아무 데나 끌어 옮기고, 가장자리를 끌어 크기를 바꾸세요 · 끝나면 설정에서 끄세요</div>';
+    document.body.appendChild(d);
+  }
+  location.hash=on?'#move':'#moveoff';
+  setTimeout(()=>{location.hash='';},50);
+}
+/* 위젯은 달력만 띄운다 — 날짜를 누르면 앱과 똑같은 업무 패널이 그 칸 옆에 뜬다.
+   패널을 새로 만들지 않고 **일자 패널(.day-panel) 자체를 팝업 안으로 옮겨** 쓴다.
+   그래야 카드·수정 아이콘·편집 폼·자동 저장이 앱과 완전히 같게 동작한다. */
+function widMount(){
+  const pop=$('#widPop'),panel=document.querySelector('.day-panel');
+  if(!pop||!panel||pop.contains(panel))return;
+  pop.innerHTML='<div class="wp-h"><span id="wpDate"></span>'
+    +'<button class="wp-x" data-act="wid.popClose" aria-label="닫기"><svg class="icn"><use href="#i-close"></use></svg></button></div>';
+  pop.appendChild(panel);
+}
 function rWidget(){
   if(!WIDGET)return;
+  widMount();
   const box=$('#widPop');if(!box)return;
   if(!S.widPop){box.classList.remove('on');return;}
-  const ds=S.selDate,ps=dayPlans(ds),d=toDate(ds),ho=holOf(ds);
-  const head=(d.getMonth()+1)+'월 '+d.getDate()+'일 · '+DOW[d.getDay()]+(ho?' · '+ho.n:'')+(ds===todayStr()?' · 오늘':'');
-  box.innerHTML='<div class="wp-h"><span>'+esc(head)+'</span>'
-    +'<button class="wp-x" data-act="wid.popClose" aria-label="닫기"><svg class="icn"><use href="#i-close"></use></svg></button></div>'
-    +(ps.length?ps.map(({p,occ})=>{
-        const meta=[fmtSpan(p),p.site?siteName(p.site):'',planOwners(p).map(o=>ownName(o)).join(', ')].filter(Boolean).join(' · ');
-        return '<div class="wp-i'+(isDone(p,occ)?' done':'')+'">'
-          +'<span class="wp-c" style="background:'+esc(planColor(p))+'"></span>'
-          +'<div><div class="wp-t">'+esc(p.title)+'</div>'
-          +(meta?'<div class="wp-m">'+esc(meta)+'</div>':'')+'</div></div>';
-      }).join('')
-    :'<div class="wp-none">등록된 업무가 없습니다.</div>');
+  const ds=S.selDate,d=toDate(ds),ho=holOf(ds);
+  const h=$('#wpDate');
+  if(h)h.textContent=(d.getMonth()+1)+'월 '+d.getDate()+'일 · '+DOW[d.getDay()]+(ho?' · '+ho.n:'')+(ds===todayStr()?' · 오늘':'');
   box.classList.add('on');
   /* 누른 칸 옆에 붙이되 화면 밖으로 나가지 않게 접는다 */
   const td=document.querySelector('#fcal td[data-date="'+ds+'"]');
-  const r=td?td.getBoundingClientRect():{left:20,right:20,bottom:60,top:60};
-  const w=box.offsetWidth,h=box.offsetHeight;
+  const r=td?td.getBoundingClientRect():{left:20,right:20,top:60};
+  const w=box.offsetWidth,ht=box.offsetHeight;
   let x=r.right+8;if(x+w>innerWidth-8)x=Math.max(8,r.left-w-8);
-  let y=r.top;if(y+h>innerHeight-8)y=Math.max(8,innerHeight-h-8);
+  let y=r.top;if(y+ht>innerHeight-8)y=Math.max(8,innerHeight-ht-8);
   box.style.left=Math.round(x)+'px';box.style.top=Math.round(y)+'px';
 }
 
-/* ═══════════ 위젯(앱으로 설치) ═══════════
-   브라우저가 설치 가능하다고 판단하면 beforeinstallprompt 를 한 번 보낸다.
-   기본 배너를 막고 들고 있다가 설정의 버튼에서 꺼내 쓴다 — 사용자에겐 '버튼 한 번'이 된다. */
-let INSTALL_PROMPT=null;
-window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();INSTALL_PROMPT=e;rWidgetSet();});
-window.addEventListener('appinstalled',()=>{INSTALL_PROMPT=null;rWidgetSet();toast('바탕화면에 위젯을 만들었습니다');});
-function isInstalled(){
-  return matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: window-controls-overlay)').matches||!!navigator.standalone;
-}
-/* 설정 화면의 위젯 줄 — 상태에 따라 버튼과 안내를 바꾼다 */
-function rWidgetSet(){
-  const b=$('#wgInstall'),h=$('#wgHint');if(!b||!h)return;
-  if(isInstalled()){b.disabled=true;b.textContent='설치됨';h.textContent='이미 이 PC에 설치되어 있습니다.';return;}
-  b.disabled=false;b.textContent='바탕화면에 만들기';
-  h.textContent=INSTALL_PROMPT
-    ? '버튼을 누르면 바탕화면·시작 메뉴에 위젯 아이콘이 생깁니다.'
-    : '엣지·크롬에서만 만들 수 있습니다. 안 되면 아래 \'창으로 열기\'를 쓰세요.';
-}
 /* ═══════════ 부팅 ═══════════ */
 function rAll(){rDay();rTasks();rOrg();rCfg();rFilter();rMention();rMine();rTeamSel();refetchCal();rWidget();}   /* 팀 선택기는 조직 화면 밖(사이드바)이라 rAll 에서도 그린다 */
 (function boot(){
@@ -3622,10 +3605,10 @@ function rAll(){rDay();rTasks();rOrg();rCfg();rFilter();rMention();rMine();rTeam
   }
   /* 이전 버전에서 등록됐을 수 있는 서비스워커·캐시 제거 —
      캐시가 남아 있으면 배포해도 옛 코드가 계속 뜬다. (한동안 유지 후 삭제해도 됨) */
-  /* 서비스워커 — '앱으로 설치'(PWA) 조건을 만족시키려고 최소한만 둔다(sw.js 는 캐시를 두지 않는다).
-     예전 캐시는 계속 지운다 — 캐시 때문에 옛 코드가 돌던 사고가 있었다. 로컬(file/http) 에선 등록하지 않는다 */
+  /* 서비스워커·캐시는 쓰지 않는다 — 예전에 캐시 때문에 옛 코드가 계속 돌던 사고가 있었다.
+     남아 있을 수 있는 등록·캐시를 지운다(PWA 설치용으로 잠시 뒀던 sw.js 도 이 경로로 정리된다) */
   if('serviceWorker' in navigator){
+    navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister())).catch(()=>{});
     if(window.caches&&caches.keys)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k))).catch(()=>{});
-    if(location.protocol==='https:')navigator.serviceWorker.register('./sw.js').catch(()=>{});
   }
 })();
