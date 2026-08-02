@@ -1397,8 +1397,10 @@ function selDate(ds){
   if(CAL&&ymOf(ds)!==CAL.view.currentStart.getFullYear()+'-'+pad(CAL.view.currentStart.getMonth()+1))CAL.gotoDate(ds);
   markSel();
   if(isMob()&&S.view==='calendar')dpSheet(true);
-  /* 편집기가 열려 있으면 다른 입력은 지우지 않고 날짜만 따라간다(수정 중인 업무도 같다) */
+  /* 편집기가 열려 있을 때 — 새 업무면 날짜가 따라가고, 기존 업무를 고치는 중이면 폼을 닫는다.
+     (다른 날을 눌렀는데 그 날 목록 위에 남의 날 업무 폼이 계속 떠 있으면 혼란스럽다) */
   if(S.planEdit&&$('#dpEdit')){
+    if(S.planEdit.orig&&ds!==(S.planEdit.draft||S.planEdit.orig).date){closePlanEdit();rDayHead();rDay();return;}
     rDayHead();
     /* ⚠ 이미 있는 업무를 고치는 중이라면 날짜를 따라가지 않는다 —
        달력을 둘러보려고 다른 날을 눌렀을 뿐인데 업무가 그 날로 옮겨져 버렸다(실사용 지적).
@@ -2633,6 +2635,8 @@ function orgSave(){normOrg(S.org);store.putOrg(S.org);if(!S.live){rOrg();rTasks(
 function rCfg(){
   const i=$('#setDefectUrl');
   if(i&&document.activeElement!==i)i.value=S.cfg.defectUrl||DEFECT_URL;
+  const wu=$('#setWidgetUrl');
+  if(wu&&document.activeElement!==wu)wu.value=S.cfg.widgetUrl||'';
   const m=S.cfg.mail||{};
   const hs=$('#mlHour');
   if(hs&&!hs.options.length){
@@ -3234,6 +3238,13 @@ const ACT={
     rMonTitle();subVisibleMonths();refetchCal();},
   'mail.preview':el=>mailPreview(el.dataset.kind),
   'wid.popClose':()=>{S.widPop=false;rWidget();},
+  /* 위젯 내려받기 — 관리자가 설정에 넣어 둔 exe 주소를 연다(팀원은 받아서 두 번 누르면 끝) */
+  'wid.dl':()=>{
+    const u=String(S.cfg.widgetUrl||'').trim();
+    if(!u){toast('설정에 위젯 파일 주소가 아직 없습니다 — 관리자에게 문의해 주세요');return;}
+    window.open(u,'_blank','noopener');
+  },
+  'wid.moveOff':()=>{const c=$('#wgMoveChk');if(c)c.checked=false;widMove(false);},
   'wid.set':()=>{const p=$('#wgSet');if(!p)return;p.classList.toggle('on');p.setAttribute('aria-hidden',p.classList.contains('on')?'false':'true');widApply();}
 };
 /* 필터 = 업무 구분 · 진행 상태 · 권역 · 담당자 · 현장.
@@ -3379,9 +3390,9 @@ document.addEventListener('change',e=>{
   }
   if(e.target.id==='darkChk'){applyTheme(e.target.checked);return;}
   if(e.target.closest&&e.target.closest('[data-act="set.mail"]')){saveMailCfg();return;}
-  if(e.target.id==='setDefectUrl'){                    /* 연결 주소는 입력을 마치면 자동 저장 */
+  if(e.target.id==='setDefectUrl'||e.target.id==='setWidgetUrl'){   /* 연결 주소는 입력을 마치면 자동 저장 */
     if(!isEditor()){denyEdit();rCfg();return;}
-    store.putCfg('defectUrl',(e.target.value||'').trim(),err=>{
+    store.putCfg(e.target.id==='setDefectUrl'?'defectUrl':'widgetUrl',(e.target.value||'').trim(),err=>{
       toast(err?('저장 실패 · '+((err&&err.message)||err)):'저장했습니다');});
     return;
   }
@@ -3548,7 +3559,8 @@ function widMove(on){
   if(on){
     const d=document.createElement('div');
     d.id='widMove';d.className='wid-move';
-    d.innerHTML='<div class="t">아무 데나 끌어 옮기고, 가장자리를 끌어 크기를 바꾸세요 · 끝나면 설정에서 끄세요</div>';
+    d.innerHTML='<div class="t"><span>아무 데나 끌어 옮기고, 가장자리를 끌어 크기를 바꾸세요</span>'
+      +'<button data-act="wid.moveOff">끝내기</button></div>';
     document.body.appendChild(d);
   }
   location.hash=on?'#move':'#moveoff';

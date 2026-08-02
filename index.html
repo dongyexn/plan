@@ -27,7 +27,7 @@
 --glass:rgba(255,255,255,.88);--glass2:rgba(255,255,255,.75);
 --tint-rd:#FDEAEA;--tint-gn:#E9F6EE;--tint-am:#FBF0DE;
 --rsm:8px;--rmd:12px;--rlg:16px;--rxl:20px;--rp:999px;--sbw:4px;
---sw:240px;--swm:64px;--th:52px;--tr:.22s cubic-bezier(.4,0,.2,1);--ct:#5C5C60;}
+--sw:240px;--swm:64px;--th:46px;--tr:.22s cubic-bezier(.4,0,.2,1);--ct:#5C5C60;}
 html.dark{
   --bg:#191919;--bg2:#212121;--surf2:#2A2A2A;--surf3:#333333;
   --fill:rgba(255,255,255,.09);--fill2:rgba(255,255,255,.15);
@@ -247,6 +247,7 @@ html.dark #fcal .fc-day-today .dnum{color:#fff!important;background:var(--b500);
 /* 여러 날 업무 막대는 옆 칸 위로 넘어가 그려진다 — 뒤에 오는 칸 배경이 덮지 않도록 위로 올린다 */
 #fcal .fc-daygrid-day-frame{position:relative;z-index:1;}
 #fcal .fc-daygrid-event-harness{z-index:2;}
+#fcal .fc-daygrid-event-harness+.fc-daygrid-event-harness{margin-top:2px;}   /* 막대끼리 붙지 않게 */
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-other{background-color:#E7E9EF;}
 html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-other{background-color:#1A1A1C;}
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sun:not(.fc-day-other),
@@ -339,7 +340,7 @@ html.dark #fcal .dhol.dtoday{color:var(--b300);}
 .p-col:hover{transform:scale(1.1);}
 .p-col .col-pop{left:0;right:auto;}
 .plan-hd{display:flex;align-items:center;gap:9px;min-width:0;}
-#dpList .plan-main{padding-left:23px;margin-top:3px;}   /* 색 원 14 + 간격 9 */
+#dpList .plan-main{padding-left:23px;padding-right:3px;margin-top:3px;}   /* 색 원 14 + 간격 9, 우측은 살짝 띄운다 */
 /* 업무 색은 카드 아웃라인으로 — 색 점(.plan-c/.pe-c)은 폐기 */
 /* 상태 배지 — 보조문구 줄 앞에 붙는 작은 배지(글자 크기는 보조문구와 같은 11.5px). 색 변형은 .tk-st.s0~3 재사용 */
 .plan-meta .tk-st,.pe-side .tk-st{height:18px;flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;
@@ -383,7 +384,9 @@ body.wid #ymPop .ymp-m.sel{background:var(--b600);color:#fff;}
 body.wid #ymPop .cal-nb{color:rgba(255,255,255,.75);}
 body.wid #ymPop .cal-nb:hover{background:rgba(255,255,255,.14);color:#fff;}
 /* 4. 년월 제목·설정/프로필도 이동 버튼과 같은 알약 배경 위에 */
-body.wid .cal-title{background:rgba(16,20,30,.55);border-radius:999px;padding:4px 10px;}
+body.wid .cal-title{background:rgba(16,20,30,.55);border-radius:999px;padding:0 12px;height:34px;}
+body.wid .cal-title .icn{color:rgba(255,255,255,.72);}   /* 꺾쇠가 배경에 묻히지 않게 */
+body.wid .cal-nav{padding:2px;border-radius:999px;}
 body.wid.glass .cal-title,body.wid.glass .cal-title .y{color:#fff;}
 .dp-dow{margin-left:auto;font-size:12px;font-weight:600;color:rgba(255,255,255,.86);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 /* 필터 카드 — 1행 업무 구분·진행 상태, 2행 권역·담당자, 3행 현장, 4행 검색·업무 추가 */
@@ -910,13 +913,18 @@ body.wid #sidebar,body.wid #topbar,body.wid .dp-col,body.wid #scrim,body.wid .nq
 body.wid #content{overflow:hidden;scrollbar-gutter:auto;}   /* 위젯엔 스크롤바가 필요 없다 */
 body.wid #content::-webkit-scrollbar{width:0;height:0;}
 /* 위치·크기 조정 모드 — 이때만 창을 끌어 옮기고 크기를 바꾼다. 평소엔 고정 */
-body.wid .wid-move{position:fixed;inset:0;z-index:9998;-webkit-app-region:drag;cursor:move;
-  background:rgba(62,113,210,.12);border:2px dashed rgba(62,113,210,.8);border-radius:12px;}
+body.wid .wid-move{position:fixed;inset:0;z-index:9000;-webkit-app-region:drag;cursor:move;
+  background:rgba(62,113,210,.10);border:2px dashed rgba(62,113,210,.8);border-radius:12px;}
 body.wid .wid-move .t{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);-webkit-app-region:no-drag;
-  background:rgba(22,25,33,.92);color:#fff;font-size:12px;font-weight:700;padding:9px 14px;border-radius:10px;
-  box-shadow:0 8px 24px rgba(0,0,0,.4);white-space:nowrap;}
-body.wid #content{padding:10px 6px 10px 10px;}
-body.wid .cal-wrap{grid-template-columns:1fr;height:calc(100dvh - 20px);}
+  display:flex;align-items:center;gap:12px;
+  background:rgba(22,25,33,.94);color:#fff;font-size:12px;font-weight:700;padding:10px 12px 10px 16px;border-radius:12px;
+  box-shadow:0 8px 24px rgba(0,0,0,.45);white-space:nowrap;}
+/* ⚠ 조정 레이어가 화면을 다 덮으므로 '끝내기' 버튼을 레이어 안에 둔다 — 설정 팝업을 다시 누를 수 없다 */
+body.wid .wid-move .t button{-webkit-app-region:no-drag;background:var(--b600);color:#fff;font:inherit;
+  padding:6px 12px;border-radius:8px;}
+body.wid #wgSet{z-index:9100;}
+body.wid #content{padding:8px;}
+body.wid .cal-wrap{grid-template-columns:minmax(0,1fr);height:calc(100dvh - 16px);}   /* 1fr 의 최소폭은 max-content — 표가 창보다 넓어져 오른쪽이 잘린다 */
 body.wid .card{border-radius:14px;padding:11px 12px;}
 body.wid .cal-title{font-size:15px;}
 body.wid #fcal{font-size:11px;}
@@ -934,7 +942,7 @@ body.wid .wid-only{display:block;}
 body.wid.glass,html:has(body.wid.glass){background:transparent!important;
   /* color-scheme:dark 이면 투명 루트라도 브라우저가 #121212 캔버스를 깐다 — 유리 모드는 normal 로 */
   color-scheme:normal!important;}
-body.wid.glass #content{background:transparent;padding:6px 2px 6px 6px;}
+body.wid.glass #content{background:transparent;padding:6px;}
 /* 셀 밑에 깔리는 불투명층 전부 제거 — 다크 테마 배경·FC 페이지 배경까지 */
 body.wid.glass #app,body.wid.glass .view,body.wid.glass .cal-wrap,
 body.wid.glass #fcal .fc-view-harness,body.wid.glass #fcal .fc-scroller,
@@ -1005,10 +1013,22 @@ body.wid .wid-pop .dp-lh{padding:0 4px 8px;}
 body.wid .wid-pop .dp-lh::after{left:4px;right:4px;}
 body.wid .wid-pop .dp-lh-t{color:rgba(255,255,255,.75);}
 body.wid .wid-pop .dp-body{padding:9px 4px 2px 4px;}
-body.wid .wid-pop .plan{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.16);}
-body.wid .wid-pop .plan-t,body.wid .wid-pop .pe-ttl{color:#fff;}
-body.wid .wid-pop .plan-meta{color:rgba(255,255,255,.66);}
-body.wid .wid-pop .dp-empty{color:rgba(255,255,255,.55);}
+/* ⚠ 카드 규칙이 #dpList(아이디)로 걸려 있어 클래스만으로는 못 이긴다 — 같은 아이디를 끼워 명시도를 맞춘다 */
+body.wid .wid-pop #dpList .plan{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.18);}
+body.wid .wid-pop #dpList .plan-t{color:#fff;}
+body.wid .wid-pop #dpList .plan-meta{color:rgba(255,255,255,.72);}
+body.wid .wid-pop #dpList .pm-r{color:rgba(255,255,255,.6);}
+body.wid .wid-pop #dpList .dp-empty{color:rgba(255,255,255,.55);}
+body.wid .wid-pop #dpList .dp-edit{background:rgba(255,255,255,.08);border-color:var(--b400);}
+body.wid .wid-pop #dpList .pe-ttl,body.wid .wid-pop #dpList .frow>label{color:#fff;}
+body.wid .wid-pop .dp-add{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.28);color:#fff;}
+body.wid .wid-pop .dp-add:hover{background:rgba(255,255,255,.2);}
+/* H. 프로필 등 모달도 위젯 유리 카드로 */
+body.wid #mb{background:rgba(22,25,33,.95);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);
+  border:1px solid rgba(255,255,255,.14);color:rgba(255,255,255,.9);}
+body.wid #mb #mt,body.wid #mb b,body.wid #mb .acct-h{color:#fff;}
+body.wid #mb .inp{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.2);color:#fff;}
+body.wid #mb .btn.bg2{background:rgba(255,255,255,.12);color:#fff;}
 .wid-pop .wp-h{display:flex;align-items:center;justify-content:space-between;gap:8px;
   font-size:12px;font-weight:800;color:#fff;margin-bottom:8px;}
 .wid-pop .wp-x{width:20px;height:20px;border-radius:6px;display:flex;align-items:center;justify-content:center;
@@ -1141,9 +1161,11 @@ html.dark #toast{background:#2B313A;}
   /* grid 의 1fr 은 최소폭이 max-content 라서 내용이 넓으면 화면 밖으로 밀려난다 — 전부 minmax(0,1fr) 로 */
   .cal-wrap{grid-template-columns:minmax(0,1fr);height:auto;min-height:0;}
   /* ── 업무 일정: 달력을 화면 가득(캘린더 앱처럼), 일자 패널은 날짜를 누르면 올라오는 하단 시트 ── */
-  #view-calendar{margin:-9px -14px -14px;}                        /* content 패딩 상쇄 — 풀블리드 */
-  #view-calendar .cal-wrap{height:calc(100dvh - var(--th));}
-  #view-calendar .cal-card{height:100%;min-width:0;border:0;border-radius:0;box-shadow:none;padding:10px 8px 4px;}
+  /* ⚠ 위젯 창은 좁아서 이 모바일 규칙에 걸린다 — 풀블리드·높이 계산이 위젯에 적용되면
+     달력이 창보다 넓어져 오른쪽이 잘린다. 위젯은 전부 예외로 둔다 */
+  body:not(.wid) #view-calendar{margin:-9px -14px -14px;}         /* content 패딩 상쇄 — 풀블리드 */
+  body:not(.wid) #view-calendar .cal-wrap{height:calc(100dvh - var(--th));}
+  body:not(.wid) #view-calendar .cal-card{height:100%;min-width:0;border:0;border-radius:0;box-shadow:none;padding:10px 8px 4px;}
   .cal-head{margin-bottom:6px;}
   .dp-col{position:fixed;left:0;right:0;bottom:0;z-index:320;min-width:0;
     display:flex;flex-direction:column;gap:8px;max-height:78dvh;
@@ -1342,7 +1364,7 @@ html.dark #toast{background:#2B313A;}
         <div class="wid-pop" id="widPop"></div>
         <div id="wgSet" aria-hidden="true">
           <div class="wgs-h">위젯 설정<button class="pop-x" data-act="wid.set" aria-label="닫기"><svg class="icn"><use href="#i-close"></use></svg></button></div>
-          <div class="wgs-r"><span>배경 진하기</span><input type="range" id="wgA" min="20" max="90" step="5"></div>
+          <div class="wgs-r"><span>배경 진하기</span><input type="range" id="wgA" min="15" max="100" step="5"></div>
           <div class="wgs-r"><span>글자 크기</span>
             <div class="seg wgs-seg" id="wgFz"><button data-fz="s">작게</button><button data-fz="m" class="act">보통</button><button data-fz="l">크게</button></div></div>
           <div class="wgs-r"><span>위치·크기 조정</span>
@@ -1500,6 +1522,16 @@ html.dark #toast{background:#2B313A;}
             </div>
           </div>
           <div class="card">
+            <div class="set-h">바탕화면 위젯</div>
+            <div class="share-row">
+              <div class="share-info"><b>위젯 내려받기</b><span>파일 하나만 받아 두 번 누르면 됩니다 · 설치·Node 불필요</span></div>
+              <button class="btn bp bsm" data-act="wid.dl">내려받기</button>
+            </div>
+            <div class="share-sep"></div>
+            <div class="share-info" style="margin-bottom:9px"><b>위젯 파일 주소</b><span>관리자가 올린 exe 주소 · 입력하면 자동 저장됩니다</span></div>
+            <input class="inp" id="setWidgetUrl" placeholder="https://…/업무일정위젯.exe">
+          </div>
+          <div class="card">
             <div class="set-h">연결</div>
             <div class="share-info" style="margin-bottom:9px"><b>하자처리현황 바로가기</b><span>사이드바 바로가기 버튼이 여는 주소 · 입력하면 자동 저장됩니다</span></div>
             <input class="inp" id="setDefectUrl" placeholder="https://…">
@@ -1528,5 +1560,5 @@ html.dark #toast{background:#2B313A;}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=94"></script>
+<script src="./app.js?v=95"></script>
 </body></html>

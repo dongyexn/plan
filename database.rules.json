@@ -353,6 +353,7 @@
       "cfg": {
         ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'",
         "defectUrl": { ".validate": "newData.isString() && newData.val().length <= 300" },
+        "widgetUrl": { ".validate": "newData.isString() && newData.val().length <= 300" },
         "mail": {
           "dailyOn":   { ".validate": "newData.isBoolean()" },
           "weeklyOn":  { ".validate": "newData.isBoolean()" },
