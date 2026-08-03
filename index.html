@@ -953,8 +953,6 @@ body.wid .plan-t{font-size:12.5px;}
 /* ── 위젯 유리 모드 (?w=1&glass=1) — 바탕화면에 스며드는 전면 달력.
      창을 투명하게 띄우고 카드 틀 없이 셀만 앱 컬러의 반투명 틴트로 남긴다.
      진하기는 --ga 하나로 조절(위젯 설정 팝업). 다크 테마 전제. ── */
-/* 투명도 0% 일 때는 창 바탕을 불투명하게 — 그래야 윈도우가 글자를 서브픽셀로 또렷하게 그린다 */
-body.wid.glass.wsolid,html:has(body.wid.glass.wsolid){background:var(--wsolid-bg)!important;}
 body.wid.glass,html:has(body.wid.glass){background:transparent!important;
   /* color-scheme:dark 이면 투명 루트라도 브라우저가 #121212 캔버스를 깐다 — 유리 모드는 normal 로 */
   color-scheme:normal!important;}
@@ -1116,7 +1114,7 @@ body.wid .wid-pop .p-ico:hover,body.wid .wid-pop .pe-ic:hover{background:rgba(25
 .wid-pop .wp-x .icn{width:11px;height:11px;}
 body.wid .plan .plan-t{font-size:calc(12.5px*var(--wfz));}
 /* 설정 팝업 */
-#wgSet{display:none;position:fixed;top:44px;right:10px;z-index:600;width:282px;
+#wgSet{display:none;position:fixed;top:55px;right:10px;z-index:600;width:282px;   /* 필터·연월 팝업과 같은 높이 */
   background:rgba(22,25,33,.92);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
   border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:12px 14px;
   box-shadow:0 10px 30px rgba(0,0,0,.45);color:rgba(255,255,255,.9);}
@@ -1635,5 +1633,5 @@ html.dark #toast{background:#2B313A;}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=125"></script>
+<script src="./app.js?v=126"></script>
 </body></html>

@@ -3770,15 +3770,10 @@ function widApply(){
   const H=light?'205,213,226':'13,16,24';        /* 요일 머리 */
   const C=light?'243,246,251':'13,17,26';        /* 카드 */
   const N=light?'221,227,238':'16,20,30';        /* 버튼 배경 */
-  /* ⚠ 투명한 창에서는 윈도우가 서브픽셀 렌더링(ClearType)을 못 쓴다 — 글자가 회색조로 뭉개진다.
-     투명도를 0% 로 두면 창 바탕을 불투명하게 칠해 브라우저가 다시 또렷하게 그릴 수 있게 한다 */
-  const solid=a>=.99;
-  document.body.style.setProperty('--wsolid-bg','rgb('+B+')');
-  document.body.classList.toggle('wsolid',solid);
   dyn.textContent=GLASS?[
     'body.wid.glass #fcal td.fc-daygrid-day{background:rgba('+B+','+f(a)+')!important;}',
     'body.wid.glass #fcal td.fc-daygrid-day.fc-day-sat,body.wid.glass #fcal td.fc-daygrid-day.fc-day-sun{background:rgba('+W+','+f(a*.92)+')!important;}',
-    'body.wid.glass #fcal td.fc-daygrid-day.fc-day-other{background:rgba('+B+','+f(a*.42)+')!important;}',
+    'body.wid.glass #fcal td.fc-daygrid-day.fc-day-other{background:rgba('+B+','+f(a*.22)+')!important;}',
     'body.wid.glass #fcal .fc-col-header-cell{background:rgba('+H+','+f(a+.12)+')!important;}',
     'body.wid.glass .plan{background:rgba('+C+','+f(a+.05)+');}',
     'body.wid.glass .cal-head .seg,body.wid.glass .cal-head .cal-nav,body.wid.glass .cal-title{background:rgba('+N+','+f(a*.9)+');}'
