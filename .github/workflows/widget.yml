@@ -21,11 +21,11 @@ jobs:
   build:
     runs-on: windows-latest # exe 는 윈도우에서만 만들 수 있다
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 22        # LTS
 
       - name: 버전 읽기
         id: ver
