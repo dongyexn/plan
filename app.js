@@ -1720,7 +1720,7 @@ function rDay(){
         ${colDotHTML(planColor(p),p.id)}
         <div class="plan-t"${openAct}>${esc(p.title)}</div>
         <div class="plan-side">
-          <span class="tk-st s${st}" data-act="plan.stCycle" data-pid="${esc(p.id)}" data-occ="${esc(occ)}" title="눌러서 상태 변경">${ST_LBL[st]}</span>
+          ${stIcon(st,' data-act="plan.stCycle" data-pid="'+esc(p.id)+'" data-occ="'+esc(occ)+'"')}
 ${p.remind?'<button class="p-ico p-rem on" data-act="plan.remind" data-pid="'+esc(p.id)+'" aria-label="리마인드 해제" title="리마인드 켜짐"><svg class="icn"><use href="#i-bell"></use></svg></button>':''}
           ${lnk?'<a class="p-ico" href="'+esc(lnk.url)+'" target="_blank" rel="noopener" aria-label="링크 열기" title="'+esc(lnk.label||lnk.url)+'"><svg class="icn"><use href="#i-ext"></use></svg></a>':''}
           <button class="p-ico p-edit" data-act="plan.edit" data-pid="${esc(p.id)}" data-occ="${esc(occ)}" aria-label="수정" title="수정"><svg class="icn"><use href="#i-pen"></use></svg></button>
@@ -1879,7 +1879,7 @@ function planFormHTML(){
       ${colDotHTML(planColor(d))}
       <input class="pe-ttl" id="peTitle" maxlength="80" placeholder="무엇을 하나요?" value="${esc(d.title)}">
       <div class="pe-side">
-        <span class="tk-st s${st}" data-act="plan.stCycle" title="눌러서 상태 변경">${ST_LBL[st]}</span>
+        ${stIcon(st,' data-act="plan.stCycle"')}
         ${pe.orig?'<button class="pe-ic pe-del" data-act="plan.del" data-pid="'+esc(d.id)+'" data-ym="'+esc(ymOf(d.date))+'" data-occ="'+esc(pe.occ||'')+'" aria-label="삭제" title="삭제"><svg class="icn"><use href="#i-trash"></use></svg></button>':''}
         <button class="pe-ic pe-rem${d.remind?' on':''}" data-act="plan.remindDraft" aria-label="리마인드 전환" title="리마인드"><svg class="icn"><use href="#i-bell"></use></svg></button>
         <button class="pe-ic pe-ok" data-act="plan.cancel" aria-label="저장하고 닫기 (Esc)" title="저장하고 닫기 (Esc)"><svg class="icn"><use href="#i-check"></use></svg></button>
@@ -2032,6 +2032,23 @@ function roster(){
   return Object.values(out).sort((a,b)=>String(a.name).localeCompare(String(b.name),'ko'));
 }
 function stOf(v){return Number(v)===2?2:1;}   /* 저장값이 무엇이든 진행 아니면 완료 */
+/* 아이콘 상태를 바꾸고 눌린 효과를 한 번 준다(다시 그리지 않는 자리에서 쓴다) */
+function stxSet(el,st){
+  const b=el.closest?el.closest('.stx'):null;if(!b)return;
+  b.dataset.on=stOf(st)===2?1:0;
+  b.classList.toggle('on',stOf(st)===2);
+  b.classList.remove('fx');void b.offsetWidth;b.classList.add('fx');
+}
+/* 상태 아이콘. attrs 에 data-act 등을 넣어 누를 수 있게 한다(없으면 표시 전용) */
+function stIcon(st,attrs){
+  const on=stOf(st)===2;
+  return '<button class="stx'+(on?' on':'')+'"'+(attrs||' disabled')+' data-on="'+(on?1:0)+'"'
+    +' aria-label="'+(on?'완료':'진행 중')+'" title="'+(on?'완료 · 눌러서 진행':'진행 중 · 눌러서 완료')+'">'
+    +'<span class="stx-in">'
+      +'<svg class="stx-run" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path class="tri" d="M10.4 8.8v6.4l5.2-3.2z"/></svg>'
+      +'<svg class="stx-done" viewBox="0 0 24 24"><circle class="cf" cx="12" cy="12" r="9"/><path class="ck" d="m8.3 12.2 2.5 2.5 4.9-5.2"/></svg>'
+    +'</span></button>';
+}
 /* 날짜가 지나면 저절로 완료로 본다 — 다만 지난 뒤 손으로 '진행'을 고르면(stKeep) 그대로 둔다 */
 function stEff(it,date){
   if(stOf(it&&it.st)===2)return 2;
@@ -2095,7 +2112,7 @@ function taskItemHTML(sid,iid,it,withSubject,hideOwn){
       ${colDotHTML(planColor(p0),iid)}
       <div class="tk-ttl" data-act="tk.open" data-sid="${esc(sid)}" data-iid="${esc(iid)}">${esc(it.text||'제목 없음')}</div>
       <div class="tk-acts">
-        <span class="tk-st s${st}" data-act="tk.st" data-sid="${esc(sid)}" data-iid="${esc(iid)}" title="눌러서 상태 변경">${ST_LBL[st]}</span>
+        ${stIcon(st,' data-act="tk.st" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"')}
         ${cn?`<button class="tk-ico on" data-act="tk.open" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="코멘트">
           <svg class="icn"><use href="#i-cmt"></use></svg><span class="cn">${cn}</span></button>`:''}
         ${it.remind?'<button class="tk-ico on" data-act="tk.remind" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" aria-label="리마인드 해제" title="리마인드 켜짐"><svg class="icn"><use href="#i-bell"></use></svg></button>':''}
@@ -2279,7 +2296,7 @@ function taskFormHTML(sid,iid,cur){
       <input type="hidden" id="tnColor" value="${esc(d.color||'')}">
       <input class="pe-ttl" id="tnTitle" maxlength="120" placeholder="무엇을 하나요?" value="${esc(d.text||'')}">
       <div class="pe-side">
-        <span class="tk-st s${st}" id="tnSt" data-act="tk.stDraft" data-st="${st}" title="눌러서 상태 변경">${ST_LBL[st]}</span>
+        <span id="tnSt" data-st="${st}" style="display:contents">${stIcon(st,' data-act="tk.stDraft"')}</span>
         ${iid?'<button class="pe-ic pe-del" data-act="tk.del" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" aria-label="삭제" title="삭제"><svg class="icn"><use href="#i-trash"></use></svg></button>':''}
         <button class="pe-ic pe-rem${d.remind?' on':''}" id="tnRemind" data-act="tk.remindDraft" data-on="${d.remind?'1':''}" aria-label="리마인드" title="리마인드"><svg class="icn"><use href="#i-bell"></use></svg></button>
         <button class="pe-ic pe-ok" data-act="tk.formSave" data-sid="${esc(sid)}" data-iid="${esc(iid||'')}" aria-label="저장하고 닫기" title="저장하고 닫기"><svg class="icn"><use href="#i-check"></use></svg></button>
@@ -2679,7 +2696,7 @@ function rMine(){
           return `<div class="mine-row ${di?di.cls:''}" data-act="mine.task" data-sid="${esc(sid)}" data-iid="${esc(iid)}">
             <span class="d">${di?esc(di.txt):'—'}</span>
             <span class="t">${esc(it.text||'제목 없음')}</span>
-            <span class="tk-st s${stEff(it)}" style="cursor:default">${ST_LBL[stEff(it)]}</span>
+            ${stIcon(stEff(it))}
           </div>`;}).join(''):'<div class="mine-empty">내가 담당인 미완료 업무가 없습니다.</div>'}
       </div>`
     +`<div class="card">
@@ -2792,10 +2809,11 @@ function rOrg(){
   const roleOpt=(v,txt,cur)=>'<option value="'+v+'"'+(cur===v?' selected':'')+'>'+txt+'</option>';
   const sitesOf=p=>{
     const list=(S.org.sites||[]).filter(x=>(p.sites||{})[x.id]);
-    const shown=list.slice(0,3).map(x=>'<span class="site-on">'+esc(x.name)+'</span>').join('');
+    /* ⚠ 무조건 3개로 자르면 칸이 넓어도 '+1'이 뜬다 — 넣을 수 있는 만큼 다 넣고 넘칠 때만 접는다(CSS 가 판단) */
+    const shown=list.map(x=>'<span class="site-on">'+esc(x.name)+'</span>').join('');
     return '<div class="site-chk">'
       +'<button class="site-pick" data-act="acct.sitePick" data-id="'+esc(p.id)+'" aria-label="담당 현장 선택" title="담당 현장 선택"><svg class="icn"><use href="#i-plus"></use></svg></button>'
-      +(list.length?shown+(list.length>3?'<span class="site-more">+'+(list.length-3)+'</span>':''):'<span class="site-none">미지정</span>')
+      +(list.length?shown:'<span class="site-none">미지정</span>')
       +'</div>';
   };
   const roleCtl=p=>{
@@ -2811,6 +2829,7 @@ function rOrg(){
     if(!isEditor()||!teams.length)return '<span class="rk-fix">'+esc((teams.find(t=>t.id===p.team)||{}).name||'미배정')+'</span>';
     return '<select class="mg-inp" data-act="acct.set" data-f="team" data-id="'+esc(p.id)+'" aria-label="팀">'
       +teams.map(t=>'<option value="'+esc(t.id)+'"'+(t.id===p.team?' selected':'')+'>'+esc(t.name)+'</option>').join('')
+      +'<option value=""'+(p.team?'':' selected')+'>미배정</option>'   /* 팀에서 빼면 아래 미배정 카드로 내려간다 */
       +'</select>';
   };
   const canRank=canSetRank();
@@ -2832,7 +2851,7 @@ function rOrg(){
       <td class="utbl-r">${roleCtl(p)}</td>
     </tr>`;
   };
-  ar.innerHTML='<table class="utbl"><thead><tr><th style="width:170px">이름</th><th style="width:112px">팀</th><th style="width:96px">직급</th><th style="width:106px">권역</th><th>담당 현장</th><th class="utbl-r" style="width:126px">권한</th></tr></thead><tbody>'
+  ar.innerHTML='<table class="utbl"><thead><tr><th style="width:164px">이름</th><th style="width:142px">팀</th><th style="width:96px">직급</th><th style="width:106px">권역</th><th>담당 현장</th><th class="utbl-r" style="width:120px">권한</th></tr></thead><tbody>'
     +(mine.length?mine.map(row).join('')
       :'<tr><td colspan="6" style="font-size:12px;color:var(--lbl3);padding:10px">이 팀에 배정된 계정이 없습니다.</td></tr>')
     +'</tbody></table>';
@@ -3073,7 +3092,7 @@ const ACT={
       const pe=S.planEdit;if(!pe||!pe.draft)return;
       const n=stEff(pe.draft,pe.draft.end||pe.draft.date)===2?1:2;
       pe.draft.st=n;pe.draft.done=n===2;pe.draft.stKeep=n===1;
-      el.className='tk-st s'+n;el.textContent=ST_LBL[n];
+      stxSet(el,n);
       planAutosave();
       return;
     }
@@ -3084,7 +3103,7 @@ const ACT={
       const k=occSrc(p,occ);
       p.doneOn=p.doneOn||{};
       if(n===2)p.doneOn[k]=1;else{delete p.doneOn[k];p.st=n;p.done=false;}
-    }else{p.st=n;p.done=n===2;}
+    }else{p.st=n;p.done=n===2;p.stKeep=n===1;}   /* 날짜가 지난 뒤 손으로 '진행'을 고르면 그대로 둔다 */
     p.updatedAt=Date.now();store.putPlan(p);
     if(!S.live){rDay();refetchCal();rWidget();}},
   /* 편집 폼의 알림 버튼 — 저장 전에는 draft 만 바꾼다 */
@@ -3197,7 +3216,12 @@ const ACT={
   'tk.formCancel':()=>{S.tkNew=null;S.tkEdit=null;rTasks();},
   'tk.kind':()=>tkKindRefresh(),
   /* 폼 안에서는 draft 만 바꾼다 — 다시 그리면 입력 중인 값이 날아간다 */
-  'tk.stDraft':el=>{const n=Number(el.dataset.st||1)===2?1:2;el.dataset.st=n;el.className='tk-st s'+n;el.textContent=ST_LBL[n];},
+  'tk.stDraft':el=>{
+    const holder=$('#tnSt');
+    const n=Number((holder&&holder.dataset.st)||1)===2?1:2;
+    if(holder)holder.dataset.st=n;
+    stxSet(el,n);
+  },
   'tk.remindDraft':el=>{const on=!el.dataset.on;el.dataset.on=on?'1':'';el.classList.toggle('on',on);},
   'tk.formSave':el=>taskFormSave(el.dataset.sid,el.dataset.iid||null),
   'tk.open':el=>{
