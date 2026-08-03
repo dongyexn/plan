@@ -354,15 +354,17 @@ button.p-col:hover{box-shadow:inset 0 0 0 1px rgba(0,0,0,.10),0 0 0 3px var(--fi
 #dpList .plan-main{padding-left:23px;padding-right:12px;margin-top:2px;}   /* 우측 담당자가 모서리에 붙지 않게 12px 띄운다 */
 /* ── 진행 상태 아이콘 — 진행: 채워진 회색 원 + 흰 삼각형 / 완료: 초록 원 + 흰 체크 ──
    ⚠ 효과는 transform·opacity·선 길이만 움직인다(화면을 다시 계산하지 않아 카드가 많아도 느려지지 않는다) */
-.stx{width:22px;height:22px;flex:0 0 auto;position:relative;display:inline-flex;align-items:center;justify-content:center;
+.stx{width:20px;height:20px;flex:0 0 auto;position:relative;display:inline-flex;align-items:center;justify-content:center;
   border-radius:50%;align-self:center;}
 .stx:disabled{cursor:default;}
-.stx-in{display:block;width:20px;height:20px;position:relative;}
-.stx svg{position:absolute;inset:0;width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;}
-.stx-run{color:var(--lbl3);}
+.stx-in{display:block;width:17px;height:17px;position:relative;}
+.stx svg{position:absolute;inset:0;width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;}
+.stx-run{color:#C2C6CE;}   /* 진행 — 회색을 옅게(진하면 완료보다 눈에 띈다) */
+html.dark .stx-run{color:#4B4F58;}
 .stx-run circle{fill:currentColor;stroke:none;}
 .stx-run .tri{fill:#fff;stroke:none;}
-.stx-done{color:var(--gn);opacity:0;}
+.stx-done{color:#4CC26A;opacity:0;}   /* 완료 — 기본 초록보다 한 톤 옅게 */
+html.dark .stx-done{color:#3BA85C;}
 .stx-done .cf{fill:currentColor;stroke:none;}
 .stx-done .ck{stroke:#fff;stroke-width:2.6;}
 .stx.on .stx-run{opacity:0;}
@@ -689,7 +691,7 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 /* 펼침 상태 — 수정 버튼은 우측 상단 */
 /* 집계 보기(팀 전체 · 권역) 구분 헤더 */
 .tk-sub{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:800;color:var(--bt1);letter-spacing:.01em;padding:2px 2px 2px;}
-.tk-sub .c{margin-left:auto;}
+.tk-sub .c{display:none;}   /* 분류 옆 건수 배지는 표시하지 않는다 */
 .tk-sub+*{margin-top:0;}
 /* 분류와 분류 사이에만 얇은 구분선 */
 .tk-list>.tk-sub:not(:first-child){margin-top:14px;padding-top:14px;border-top:1px solid var(--sep);}
@@ -1667,5 +1669,5 @@ html.dark #toast{background:#2B313A;}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=133"></script>
+<script src="./app.js?v=134"></script>
 </body></html>
