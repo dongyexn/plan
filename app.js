@@ -334,6 +334,9 @@ function avHTML(pid,cls){
 const OWN_PAL=['#3E71D2','#16A34A','#D97706','#DC2626','#7C5CD6','#0EA5E9','#DB2777','#65A30D','#EA580C','#0D9488'];
 function ownColor(pid){
   if(!pid)return PAL[0];
+  /* 프로필에서 고른 색이 있으면 그 색을 쓴다 — 노란 프로필인데 보라 업무로 뜨면 헷갈린다 */
+  const av=(S.accounts&&S.accounts[pid])||{};
+  if(av.avColor)return av.avColor;
   const list=roster();const i=list.findIndex(p=>p.id===pid);
   return i<0?PAL[0]:OWN_PAL[i%OWN_PAL.length];
 }
@@ -2750,7 +2753,7 @@ function siteTable(){
     <th style="width:11%">권역</th><th style="width:21%">현장명</th>
     <th class="cc" style="width:8%">세대수</th><th class="cc" style="width:7%">동수</th>
     <th class="cc" style="width:8%">상가수</th><th class="cc" style="width:12%">준공일</th>
-    <th class="cc mg-disth" style="width:8%">공가세대</th><th class="cc mg-disth" style="width:8%">공가상가</th>
+    <th class="cc" style="width:8%">공가세대</th><th class="cc" style="width:8%">공가상가</th>
     <th class="cc mg-disth" style="width:10%">업데이트일</th><th class="cc" style="width:5%"></th>
   </tr></thead><tbody>${sites.map(x=>`<tr>
     <td><select class="mg-inp" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="region" aria-label="권역 선택">${regOpts(x)}</select></td>
@@ -2759,8 +2762,8 @@ function siteTable(){
     <td><input class="mg-inp n" type="number" value="${x.buildings||0}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="buildings" aria-label="동수" style="text-align:right"></td>
     <td><input class="mg-inp n" type="number" value="${x.commercialUnits||0}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="commercialUnits" aria-label="상가수" style="text-align:right"></td>
     <td class="cc"><input class="mg-inp" type="date" max="9999-12-31" style="width:132px;max-width:100%;text-align:center;display:inline-block" value="${esc(x.completionDate||'')}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="completionDate" aria-label="준공일"></td>
-    <td class="cc mg-dis"><label class="sw"><input type="checkbox" checked disabled aria-label="공가세대 — 하자처리 현황 전용"><span class="sw-t"></span></label></td>
-    <td class="cc mg-dis"><label class="sw"><input type="checkbox" disabled aria-label="공가상가 — 하자처리 현황 전용"><span class="sw-t"></span></label></td>
+    <td class="cc mg-ro"><label class="sw"><input type="checkbox"${x.vacantUnits?' checked':''} disabled aria-label="공가세대 — 하자처리 현황에서 관리"><span class="sw-t"></span></label></td>
+    <td class="cc mg-ro"><label class="sw"><input type="checkbox"${x.vacantCommercial?' checked':''} disabled aria-label="공가상가 — 하자처리 현황에서 관리"><span class="sw-t"></span></label></td>
     <td class="cc mg-dis" style="font-size:11.5px;white-space:nowrap">—</td>
     <td class="cc"><button class="tm-x tm-del" data-act="org.delSite" data-id="${esc(x.id)}" aria-label="삭제">${ICON_TRASH}</button></td>
   </tr>`).join('')}</tbody></table></div>`;
@@ -2851,7 +2854,7 @@ function rOrg(){
       <td class="utbl-r">${roleCtl(p)}</td>
     </tr>`;
   };
-  ar.innerHTML='<table class="utbl"><thead><tr><th style="width:164px">이름</th><th style="width:142px">팀</th><th style="width:96px">직급</th><th style="width:106px">권역</th><th>담당 현장</th><th class="utbl-r" style="width:120px">권한</th></tr></thead><tbody>'
+  ar.innerHTML='<table class="utbl"><thead><tr><th style="width:180px">이름</th><th style="width:142px">팀</th><th style="width:96px">직급</th><th style="width:106px">권역</th><th>담당 현장</th><th class="utbl-r" style="width:120px">권한</th></tr></thead><tbody>'
     +(mine.length?mine.map(row).join('')
       :'<tr><td colspan="6" style="font-size:12px;color:var(--lbl3);padding:10px">이 팀에 배정된 계정이 없습니다.</td></tr>')
     +'</tbody></table>';
@@ -2860,11 +2863,12 @@ function rOrg(){
   if(fc&&fr){
     fc.style.display=(free.length&&(S.orgTab||'acct')==='acct')?'':'none';   /* 현장 탭에선 미배정 카드도 접는다 */
     fr.innerHTML=free.length
-      ?'<table class="utbl"><thead><tr><th style="width:178px">이름</th><th></th><th class="utbl-r" style="width:124px">권한</th></tr></thead><tbody>'
+      ?'<table class="utbl"><thead><tr><th style="width:176px">이름</th><th style="width:142px">팀</th><th></th><th class="utbl-r" style="width:120px">권한</th></tr></thead><tbody>'
         +free.map(p=>`<tr>
           <td><div class="utbl-name">${avHTML(p.id)}
             <div style="min-width:0"><div class="utbl-nick">${esc(p.name)}</div><div class="utbl-mail">${esc(p.email||'')}</div></div></div></td>
-          <td><button class="btn bo bxs" data-act="acct.join" data-id="${esc(p.id)}">이 팀에 추가</button></td>
+          <td>${teamCtl(p)}</td>
+          <td></td>
           <td class="utbl-r">${roleCtl(p)}</td>
         </tr>`).join('')
         +'</tbody></table>'
@@ -3417,7 +3421,10 @@ const ACT={
       sites:sites.map(x=>({id:String(x.id),name:String(x.name||'').slice(0,60),
         team:String(x.teamId||''),region:String(x.region||''),
         units:Number(x.units)||0,buildings:Number(x.buildings)||0,
-        commercialUnits:Number(x.commercialUnits)||0,completionDate:String(x.completionDate||'').slice(0,10)}))
+        commercialUnits:Number(x.commercialUnits)||0,completionDate:String(x.completionDate||'').slice(0,10),
+        /* 공가 여부는 하자처리 현황이 원본 — 여기서는 그대로 받아 보여 주기만 한다 */
+        vacantUnits:!!(x.vacantUnits||x.vacant||x.distUnits),
+        vacantCommercial:!!(x.vacantCommercial||x.distCommercial)}))
     };
     confirmModal('게시본에서 가져오기',
       rm+' 게시본 기준 · 팀 '+next.teams.length+'개, 권역 '+next.regions.length+'개, 현장 '+next.sites.length+'개를 가져옵니다. '
