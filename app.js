@@ -540,6 +540,11 @@ const FB={
     measurementId:"G-YT6MVSE221"
   },
   APPCHECK_KEY:"6Lcl5zctAAAAAPgvPJKKLxBwgENnAmogtVTqf61f",
+  /* 위젯(Electron)에서는 reCAPTCHA 가 토큰을 안 내주는 경우가 있다(403 → 24시간 차단 → 데이터 읽기 거부).
+     여기에 디버그 토큰을 넣고 Firebase 콘솔 > App Check > 앱 > 디버그 토큰 관리에 같은 값을 등록하면
+     위젯만 그 토큰으로 통과한다. 비워 두면 위젯도 브라우저와 똑같이 reCAPTCHA 를 쓴다.
+     ⚠ 이 값은 배포 파일 안에 그대로 들어간다 — 알면 누구나 쓸 수 있으니 App Check 의 보호 효과는 그만큼 약해진다 */
+  APPCHECK_DEBUG:"",
   app:null,db:null,auth:null,_subs:[]
 };
 function fbDomainOk(email){return /@hdec\.co\.kr$/i.test(String(email||'').trim());}
@@ -567,7 +572,13 @@ const FbStore={
   movePlan(p){this.putPlan(p);},
   putOrg(org){FB.db.ref('calapp/org').set(cleanOrg(org)).catch(fbErr);},
   putPerson(id,p){const r=FB.db.ref('calapp/people/'+id);(p?r.set(cleanPerson(p)):r.remove()).catch(fbErr);},
-  putTask(mid,iid,item){const r=FB.db.ref('calapp/tasks/'+mid+'/'+iid);(item?r.set(cleanTask(item)):r.remove()).catch(fbErr);},
+  putTask(mid,iid,item){
+    /* 서버 응답을 기다리면 한 박자 늦게 반영된다 — 화면에 먼저 반영하고 서버 값이 오면 덮어쓴다.
+       실패하면 구독이 원래 값을 되돌려 주므로 화면이 어긋난 채 남지 않는다 */
+    S.tasks[mid]=S.tasks[mid]||{};
+    if(item)S.tasks[mid][iid]=item;else delete S.tasks[mid][iid];
+    rDay();rTasks();refetchCal();rWidget();
+    const r=FB.db.ref('calapp/tasks/'+mid+'/'+iid);(item?r.set(cleanTask(item)):r.remove()).catch(fbErr);},
   putCfg(k,v,cb){FB.db.ref('calapp/cfg/'+k).set(v).then(()=>cb&&cb(null)).catch(e=>{fbErr(e);if(cb)cb(e);});},
   putPref(k,v){const uid=S.user&&S.user.uid;if(!uid)return;
     const r=FB.db.ref('calapp/prefs/'+uid+'/'+k);(v?r.set(v):r.remove()).catch(fbErr);},
@@ -754,12 +765,38 @@ function fbValidCreds(verb){
   if((c.pw||'').length<6){fbMsg('비밀번호는 6자 이상이어야 합니다');return null;}
   return{email,pw:c.pw};
 }
+/* 로그인이 멈추면 어디가 막혔는지 알려 준다 — 사내망은 도메인별로 차단되는 경우가 많다.
+   no-cors 요청은 응답 내용을 못 읽지만 '닿았는지'는 알 수 있다. */
+async function netDiag(){
+  if(S.live)return;
+  fbMsg('연결 상태를 확인하는 중…',true);
+  const T=[
+    ['인증 서버','https://identitytoolkit.googleapis.com/'],
+    ['토큰 서버','https://securetoken.googleapis.com/'],
+    ['데이터베이스','https://report-c29a1-default-rtdb.asia-southeast1.firebasedatabase.app/.json?shallow=true'],
+    ['구글 CDN','https://www.gstatic.com/firebasejs/'],
+    ['보안 확인(reCAPTCHA)','https://www.google.com/recaptcha/api.js']
+  ];
+  const bad=[];
+  await Promise.all(T.map(async ([n,u])=>{
+    try{
+      const ctl=new AbortController();
+      const t=setTimeout(()=>ctl.abort(),6000);
+      await fetch(u,{mode:'no-cors',cache:'no-store',signal:ctl.signal});
+      clearTimeout(t);
+    }catch(e){bad.push(n);}
+  }));
+  if(S.live)return;
+  fbMsg(bad.length
+    ? '사내망에서 '+bad.join(' · ')+' 에 연결할 수 없습니다. 전산 담당자에게 이 주소들의 허용을 요청해 주세요.'
+    : '연결은 되지만 응답이 없습니다. 브라우저에서는 되고 위젯에서만 멈춘다면 보안 확인(reCAPTCHA) 단계에서 걸린 것입니다 — 위젯을 최신 버전으로 다시 만들어 주세요.');
+}
 async function fbDoLogin(){
   const c=fbValidCreds('사용');if(!c)return;
   const email=c.email;
   fbMsg('로그인 중…',true);
   clearTimeout(FB._watch);
-  FB._watch=setTimeout(()=>{if(!S.live)fbMsg('로그인 처리가 지연되고 있습니다 · 새로고침(F5) 후 다시 시도해 주세요.');},9000);
+  FB._watch=setTimeout(()=>{if(!S.live)netDiag();},9000);
   try{
     await FB.auth.signInWithEmailAndPassword(email,c.pw);
     /* 가입 직후엔 이미 같은 계정으로 로그인돼 있어 onAuthStateChanged가 다시 울리지 않는다 —
@@ -823,6 +860,14 @@ async function onAuth(user){
   S.role=role;
   enterLive(user);
   filtLoad();          /* 계정마다 저장해 둔 필터로 바꿔 읽는다 */
+  /* ⚠ 로그인은 됐는데 데이터가 안 오면 App Check(보안 확인) 토큰 문제일 가능성이 크다.
+     토큰이 없으면 데이터베이스가 읽기를 거부하고, 앱은 아무 말 없이 기다리기만 한다 */
+  clearTimeout(FB._dbWatch);
+  FB._dbWatch=setTimeout(()=>{
+    if(S.live)return;
+    showGateForm();
+    fbMsg('로그인은 되었지만 데이터를 읽지 못했습니다 · 보안 확인(App Check) 토큰을 받지 못한 것으로 보입니다. 관리자에게 알려 주세요.');
+  },20000);
   hideCover();
 }
 function acctNick(){
@@ -1119,9 +1164,12 @@ function fbInit(){
   try{
     FB.app=firebase.apps&&firebase.apps.length?firebase.app():firebase.initializeApp(FB.cfg);
     if(FB.APPCHECK_KEY&&firebase.appCheck){
+      /* 위젯에서만 디버그 토큰으로 바꿔 끼운다 — activate 보다 먼저 세워야 적용된다 */
+      if(WIDGET&&FB.APPCHECK_DEBUG)self.FIREBASE_APPCHECK_DEBUG_TOKEN=FB.APPCHECK_DEBUG;
       try{const EP=firebase.appCheck.ReCaptchaEnterpriseProvider;
         firebase.appCheck().activate(EP?new EP(FB.APPCHECK_KEY):FB.APPCHECK_KEY,true);}
       catch(e){console.warn('[FB] appCheck',e);}
+      /* 토큰 발급이 막히면(403·throttled) 콘솔에만 경고가 남는다 — 위 감시가 사용자에게 알린다 */
     }
     FB.auth=firebase.auth();FB.db=firebase.database();
     FB.auth.onAuthStateChanged(onAuth);
@@ -1129,7 +1177,7 @@ function fbInit(){
 }
 function enterLive(u){
   if(S.live)return;
-  clearTimeout(FB._boot);clearTimeout(FB._watch);hideCover();
+  clearTimeout(FB._boot);clearTimeout(FB._watch);clearTimeout(FB._dbWatch);hideCover();
   S.live=true;S.user=u;store=FbStore;
   /* FB 첫 응답 전까지 마지막 캐시로 먼저 그린다 — 매일 여는 도구의 체감 속도.
      구독 값이 도착하면 그대로 덮어써서 캐시가 화면에 남는 일은 없다. */
@@ -1185,13 +1233,15 @@ function rAcct(){
   const nick=acctNick()||'사용자';
   nm.textContent=nick;nm.title=nick;
   if(rb){const role=S.role||'viewer';rb.textContent=roleLabel(role);rb.className='sb-acct-role '+(role==='editor'?'r-editor':'r-viewer');}
-  const av=$('#sbAcctAv');
-  if(av&&S.user){
-    const a=avOf(S.user.uid);
-    av.classList.add('av-cus');
-    av.style.setProperty('--avc',a.color||ownColor(S.user.uid));
-    av.innerHTML=avInner(a.icon);   /* 이모지·기본 아이콘 모두 처리 */
-  }
+  const a=S.user?avOf(S.user.uid):null;
+  const paint=el=>{
+    if(!el||!a)return;
+    el.classList.add('av-cus');
+    el.style.setProperty('--avc',a.color||ownColor(S.user.uid));
+    el.innerHTML=avInner(a.icon);   /* 이모지·기본 아이콘 모두 처리 */
+  };
+  paint($('#sbAcctAv'));
+  paint($('#widAcctAv'));           /* 위젯 헤더 프로필 버튼도 같은 얼굴로 */
 }
 
 /* ═══════════ 달력 (FullCalendar) ═══════════ */
@@ -1225,7 +1275,7 @@ function calInit(){
       if(!p)return;
       const ds=info.event.extendedProps.occ||p.date;
       /* 위젯: 막대를 누르면 바로 그 날 팝업을 열고 그 업무를 펼친다(수정 모드로는 들어가지 않는다) */
-      if(WIDGET){S.planOpen=p.id;selDate(ds,true);S.widPop=true;rDay();rWidget();return;}
+      if(WIDGET){selDate(ds,true);S.planOpen=p.id;S.widPop=true;rDay();rWidget();return;}
       selDate(ds);openPlanEdit(p,null,null,info.event.extendedProps.occ);},
     eventDrop:info=>{const p=findPlan(info.event.extendedProps.pid);if(!p||(p.recur&&p.recur.f)){info.revert();return;}
       const oldYm=ymOf(p.date);const ns=info.event.startStr.slice(0,10);
@@ -1726,6 +1776,18 @@ function colOutside(e){
   closeColPop();
 }
 function pfClosed(){const mo=$('#mo');if(mo)mo.classList.remove('pf-on');}
+/* 겹쳐 뜬 것들을 바깥 클릭으로 닫는다(상용 위젯의 기본 동작).
+   ⚠ click 이 아니라 mousedown 캡처를 쓴다 — FullCalendar 가 달력 칸의 click 을 삼켜
+   달력을 눌렀을 때만 안 닫히던 문제가 있었다 */
+document.addEventListener('mousedown',e=>{
+  const t=e.target;
+  const wg=$('#wgSet');
+  if(wg&&wg.classList.contains('on')&&!t.closest('#wgSet')&&!t.closest('[data-act="wid.set"]')){
+    wg.classList.remove('on');wg.setAttribute('aria-hidden','true');
+  }
+  const fc=$('#dpFcard');
+  if(fc&&fc.classList.contains('adv-on')&&!t.closest('#dpFcard'))fc.classList.remove('adv-on');
+},true);
 /* 색상 팔레트 사각형 — 가로는 채도, 세로는 밝기. 끌면서 고를 수 있고 고른 색은 추가색으로 쌓인다 */
 let CP_DRAG=false;
 function cpPick(e,commit){
@@ -3369,6 +3431,7 @@ const ACT={
     window.open(u,'_blank','noopener');
   },
   'wid.open':()=>{window.open(location.origin+location.pathname,'_blank','noopener');},
+  'wid.reload':()=>location.reload(),
   'wid.moveOn':()=>{const p=$('#wgSet');if(p){p.classList.remove('on');p.setAttribute('aria-hidden','true');}widMove(true);},
   'wid.moveOff':()=>widMove(false),
   'wid.set':()=>{const p=$('#wgSet');if(!p)return;p.classList.toggle('on');p.setAttribute('aria-hidden',p.classList.contains('on')?'false':'true');widApply();}
@@ -3437,6 +3500,7 @@ function confirmModal(title,msg,cb,okLabel,danger){
 document.addEventListener('click',e=>{
   /* 다중 선택 목록은 바깥을 누르면 닫는다 */
   if(!e.target.closest('.msel'))mselClose();
+
   /* 위젯 업무 팝업 — 달력 칸이나 팝업 자신이 아닌 곳을 누르면 닫는다 */
   if(WIDGET&&S.widPop&&!e.target.closest('#widPop')&&!e.target.closest('#fcal td.fc-daygrid-day')){
     S.widPop=false;rWidget();
@@ -3563,20 +3627,17 @@ document.addEventListener('change',e=>{
 });
 /* 위젯 설정 팝업 조작 */
 document.addEventListener('input',e=>{
-  if(e.target.id==='wgA'){const c=widCfgLoad();c.a=Number(e.target.value);widCfgSave(c);widApply();}
+  if(e.target.id==='wgA'){const c=widCfgLoad();c.a=Number(e.target.value);widCfgSave(c);widApply();return;}
+  if(e.target.id==='wgFz'){const c=widCfgLoad();c.fz=Number(e.target.value)/100;widCfgSave(c);widApply();return;}
 });
 document.addEventListener('change',e=>{
 });
 document.addEventListener('click',e=>{
-  const b=e.target.closest('#wgFz button');
-  if(b){const c=widCfgLoad();c.fz=b.dataset.fz;widCfgSave(c);widApply();}
+  const b=e.target.closest('#wgTone button');
+  if(b){const c=widCfgLoad();c.tone=b.dataset.tone;widCfgSave(c);widApply();}
 });
 document.addEventListener('input',e=>{
-  if(e.target.id==='dpQ'){
-    S.dayQ=e.target.value;dpSrchMark();
-    /* 위젯은 결과가 업무 팝업 안에 그려진다 — 글자를 치면 팝업을 열어 준다 */
-    if(WIDGET&&String(e.target.value||'').trim()){S.widPop=true;rWidget();}
-    rDay();return;}
+  if(e.target.id==='dpQ'){S.dayQ=e.target.value;dpSrchMark();rDay();return;}
   if(e.target.id==='tkQ'){
     S.tkF={...S.tkF,q:e.target.value};
     clearTimeout(tkQT);tkQT=setTimeout(tkRefresh,160);   /* 전체 렌더는 포커스를 날린다 */
@@ -3596,7 +3657,22 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Enter'&&(e.target.id==='fbEmail'||e.target.id==='fbPw')){e.preventDefault();fbDoLogin();return;}
   if(e.key==='Enter'&&e.target.id==='peTitle'){e.preventDefault();savePlanInline();return;}
   /* Ctrl/⌘+K 로 찾기 */
-  if((e.ctrlKey||e.metaKey)&&(e.key==='k'||e.key==='K')){e.preventDefault();nqOpen(true);rNq();return;}
+  if(e.key==='Escape'){
+    /* 겹쳐 있는 것부터 하나씩 닫는다 — 한 번에 다 닫히면 되돌리기 번거롭다 */
+    if($('#colPop')){closeColPop();return;}
+    if(document.querySelector('.msel.open')){mselClose();return;}
+    if($('#ymPop')){closeYMPop();return;}
+    const wg=$('#wgSet');
+    if(wg&&wg.classList.contains('on')){wg.classList.remove('on');wg.setAttribute('aria-hidden','true');return;}
+    const fc=$('#dpFcard');
+    if(fc&&fc.classList.contains('adv-on')){fc.classList.remove('adv-on');return;}
+    if(WIDGET&&S.widPop){S.widPop=false;if(S.planEdit)closePlanEdit();rWidget();return;}
+  }
+  /* 위젯에서 ←→ 로 달 넘기기 — 입력 중일 때는 방해하지 않는다 */
+  if(WIDGET&&(e.key==='ArrowLeft'||e.key==='ArrowRight')&&!/INPUT|TEXTAREA|SELECT/.test((e.target.tagName||''))){
+    ACT[e.key==='ArrowLeft'?'cal.prev':'cal.next']();return;
+  }
+  if(!WIDGET&&(e.ctrlKey||e.metaKey)&&(e.key==='k'||e.key==='K')){e.preventDefault();nqOpen(true);rNq();return;}   /* 위젯에는 찾기 패널이 없다 */
   if(e.key==='Escape'&&$('#nqPanel')&&$('#nqPanel').classList.contains('on')&&!$('#mo').classList.contains('open')){nqOpen(false);return;}
   if(e.key==='Escape'){
     if($('#mo').classList.contains('open')){closeModal();return;}
@@ -3675,21 +3751,31 @@ function widApply(){
   /* 진하기 — FullCalendar 셀에서 var() 상속이 갱신되지 않는 엔진 특이 동작이 있어
      변수 대신 리터럴 규칙을 스타일 태그로 주입한다 */
   const a=Number.isFinite(Number(c.a))?Number(c.a)/100:.85;   /* 기본 85% */
+  const light=c.tone==='light';                                /* 바탕화면이 어두운 사람은 밝은 위젯이 잘 보인다 */
+  document.body.classList.toggle('wlight',light);
   let dyn=document.getElementById('wgDyn');
   if(!dyn){dyn=document.createElement('style');dyn.id='wgDyn';document.head.appendChild(dyn);}
   const f=n=>Math.min(1,Math.max(0,n)).toFixed(3);
+  const B=light?'246,248,252':'24,28,38';        /* 칸 */
+  const W=light?'228,232,240':'52,56,68';        /* 주말 */
+  const H=light?'226,231,240':'13,16,24';        /* 요일 머리 */
+  const C=light?'255,255,255':'13,17,26';        /* 카드 */
+  const N=light?'240,243,248':'16,20,30';        /* 버튼 배경 */
   dyn.textContent=GLASS?[
-    'body.wid.glass #fcal td.fc-daygrid-day{background:rgba(24,28,38,'+f(a)+')!important;}',
-    'body.wid.glass #fcal td.fc-daygrid-day.fc-day-sat,body.wid.glass #fcal td.fc-daygrid-day.fc-day-sun{background:rgba(52,56,68,'+f(a*.92)+')!important;}',
-    'body.wid.glass #fcal td.fc-daygrid-day.fc-day-other{background:rgba(24,28,38,'+f(a*.42)+')!important;}',
-    /* 오늘 칸은 색을 씌우지 않는다 — 날짜 숫자의 파란 원 배지로 충분하다(다른 칸과 같은 배경) */
-    'body.wid.glass #fcal .fc-col-header-cell{background:rgba(13,16,24,'+f(a+.12)+')!important;}',
-    'body.wid.glass .plan{background:rgba(13,17,26,'+f(a+.05)+');}',
-    'body.wid.glass .cal-head .seg,body.wid.glass .cal-head .cal-nav{background:rgba(16,20,30,'+f(a*.9)+');}'
+    'body.wid.glass #fcal td.fc-daygrid-day{background:rgba('+B+','+f(a)+')!important;}',
+    'body.wid.glass #fcal td.fc-daygrid-day.fc-day-sat,body.wid.glass #fcal td.fc-daygrid-day.fc-day-sun{background:rgba('+W+','+f(a*.92)+')!important;}',
+    'body.wid.glass #fcal td.fc-daygrid-day.fc-day-other{background:rgba('+B+','+f(a*.42)+')!important;}',
+    'body.wid.glass #fcal .fc-col-header-cell{background:rgba('+H+','+f(a+.12)+')!important;}',
+    'body.wid.glass .plan{background:rgba('+C+','+f(a+.05)+');}',
+    'body.wid.glass .cal-head .seg,body.wid.glass .cal-head .cal-nav,body.wid.glass .cal-title{background:rgba('+N+','+f(a*.9)+');}'
   ].join('\n'):'';
-  const fz=c.fz==='s'?.9:c.fz==='l'?1.14:1;document.body.style.setProperty('--wfz',String(fz));
+  /* 글자 크기 — 85~140% 사이에서 자유롭게. 여백·막대 높이도 이 값에 함께 묶여 있다 */
+  const fz=Math.min(1.4,Math.max(.85,Number(c.fz)||1));
+  document.body.style.setProperty('--wfz',String(fz));
   const rng=$('#wgA');if(rng)rng.value=Math.round(a*100);
-  if($('#wgFz'))$$('#wgFz button').forEach(b=>b.classList.toggle('act',b.dataset.fz===(c.fz||'m')));
+  const fr=$('#wgFz');if(fr)fr.value=Math.round(fz*100);
+  const fl=$('#wgFzV');if(fl)fl.textContent=Math.round(fz*100)+'%';
+  const tn=$('#wgTone');if(tn)$$('#wgTone button').forEach(b=>b.classList.toggle('act',b.dataset.tone===(c.tone||'dark')));
 }
 /* 위치·크기 조정 모드 — 켜면 창 전체가 드래그 영역이 되고, 끄면 그 자리에 고정된다.
    Electron 쪽 전환은 해시로 신호를 보낸다(preload 없이 쓰던 방식 그대로) */
@@ -3710,7 +3796,14 @@ function widMove(on){
    그래야 카드·수정 아이콘·편집 폼·자동 저장이 앱과 완전히 같게 동작한다. */
 function widMount(){
   const slot=$('#widFilterSlot'),fc=$('#dpFcard');
-  if(slot&&fc&&!slot.contains(fc))slot.appendChild(fc);   /* 검색창·필터를 헤더 줄로 옮긴다 */
+  if(slot&&fc&&!slot.contains(fc)){
+    /* 위젯에는 찾기 기능을 두지 않는다 — 검색칸과 범위 선택은 아예 떼어 낸다(숨기면 값이 남아 필터처럼 작동한다) */
+    const q=fc.querySelector('.dp-srch'),sc=fc.querySelector('.dp-scope');
+    if(q)q.remove();
+    if(sc)sc.remove();
+    S.dayQ='';
+    slot.appendChild(fc);                                 /* 필터 버튼만 헤더 줄로 */
+  }
   const pop=$('#widPop'),panel=document.querySelector('.day-panel');
   if(!pop||!panel||pop.contains(panel))return;
   pop.innerHTML='<div class="wp-h"><span class="wp-d" id="wpDate"></span><span class="wp-w" id="wpDow"></span>'
