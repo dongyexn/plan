@@ -261,6 +261,14 @@ function cpPaint(pop,hex){
   sv.style.background='linear-gradient(to top,#000,rgba(0,0,0,0)),linear-gradient(to right,#fff,hsl('+Math.round(h)+',100%,50%))';
   if(dot){dot.style.left=(sa*100)+'%';dot.style.top=((1-v)*100)+'%';dot.style.background=hex;}
 }
+/* 배경색이 밝으면 어두운 글자를 쓴다 — 노랑·연두 위의 흰 글자는 그림자로도 안 읽힌다 */
+function isLightColor(hex){
+  const m=/^#?([\da-f]{6})$/i.exec(String(hex||''));
+  if(!m)return false;
+  const n=parseInt(m[1],16);
+  /* 사람 눈이 느끼는 밝기(녹색에 가중) */
+  return (0.299*(n>>16)+0.587*((n>>8)&255)+0.114*(n&255))>150;   /* 연두(#84CC16≈162)도 어두운 글자로 — 실사용에서 안 읽혔다 */
+}
 function hsvHex(h,s,v){
   const f=n=>{const k=(n+h/60)%6,x=v-v*s*Math.max(0,Math.min(k,4-k,1));
     return Math.round(x*255).toString(16).padStart(2,'0').toUpperCase();};
@@ -1357,11 +1365,12 @@ function planEvent(p,date){
     start:(p.time&&!p.end)?date+'T'+p.time:date,
     end:span>0?addDays(date,span+1):undefined,
     allDay:!p.time||!!p.end,
-    backgroundColor:planColor(p),borderColor:'transparent',textColor:'#fff',
+    backgroundColor:planColor(p),borderColor:'transparent',
+    textColor:isLightColor(planColor(p))?'#1B1B1F':'#fff',
     /* ⚠ display 를 지정하지 않으면 시간이 있는 업무는 FullCalendar 가 '점 형식'으로 그린다 —
        배경 없이 어두운 글자라 유리(어두운) 배경 위에서 거의 보이지 않는다. 전부 색 막대로 통일한다 */
     display:'block',
-    classNames:done?['done']:[],
+    classNames:(done?['done']:[]).concat(isLightColor(planColor(p))?['on-light']:[]),
     extendedProps:{pid:p.id,occ:date,recur:!!(p.recur&&p.recur.f)},
     editable:!(p.recur&&p.recur.f)
   };

@@ -280,7 +280,7 @@ html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day:hover{background-image:l
 /* 오늘 라벨 — 공휴일 이름처럼 숫자 왼쪽에 */
 #fcal .dhol.dtoday{color:var(--b600);}
 html.dark #fcal .dhol.dtoday{color:var(--b300);}
-#fcal .fc-event{border:none;border-radius:5px;padding:0 6px;font-size:11.5px;line-height:1;font-weight:600;letter-spacing:-.005em;cursor:pointer;margin:2px 3px;box-shadow:none;
+#fcal .fc-event{border:none;border-radius:5px;padding:0 6px;font-size:11.5px;line-height:1;font-weight:500;color:#fff;letter-spacing:-.005em;cursor:pointer;margin:2px 3px;box-shadow:none;
   height:18px;display:flex;align-items:center;box-sizing:border-box;}
 /* ⚠ 높이를 못 박지 않으면 시간 있는 막대(점 표시)와 기간 막대의 높이가 달라 칸마다 줄이 어긋난다 */
 /* ⚠ 줄 간격은 막대의 상하 여백으로만 준다 — harness 의 margin-top 은 FullCalendar 가 인라인으로 정하는 줄 맞춤 값이라 건드리면 칸마다 어긋난다 */
@@ -292,6 +292,8 @@ html.dark #fcal .dhol.dtoday{color:var(--b300);}
 #fcal .fc-daygrid-more-link:hover{background:var(--fill2);}
 body.wid.glass #fcal .fc-daygrid-more-link{color:#fff;background:rgba(255,255,255,.18);}
 #fcal .fc-daygrid-event-dot{display:none;}
+#fcal .fc-event-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+#fcal .fc-event-main,#fcal .fc-event-main-frame{min-width:0;overflow:hidden;}
 #fcal .fc-event-time{display:none;}
 #fcal .fc-popover{background:var(--bg2);border-color:var(--sep);border-radius:var(--rmd);box-shadow:0 10px 30px rgba(0,0,0,.14);}
 #fcal .fc-popover-header{background:var(--surf2);font-size:12px;font-weight:700;color:var(--lbl2);}
@@ -1033,10 +1035,15 @@ body.wid #fcal .dhol{font-size:calc(11px*var(--wfz));}
 body.wid #fcal .fc-daygrid-more-link{font-size:calc(11.5px*var(--wfz));}
 body.wid .wid-pop .wp-d{font-size:calc(13px*var(--wfz));}
 body.wid .wid-pop .wp-w{font-size:calc(11.5px*var(--wfz));}
-body.wid #fcal .fc-col-header-cell-cushion{font-size:calc(11.5px*var(--wfz));}
+body.wid #fcal .fc-col-header-cell-cushion{font-size:calc(12.5px*var(--wfz));}
 body.wid #fcal .fc-event-title,body.wid #fcal .fc-event-time{font-size:calc(10.5px*var(--wfz));}
-body.wid #fcal .fc-event{height:calc(18px*var(--wfz));padding:0 calc(5px*var(--wfz));font-weight:600;
-  text-shadow:0 0 3px rgba(0,0,0,.45);-webkit-font-smoothing:antialiased;}   /* 방향 없는 그림자로 배경과 분리 */
+body.wid #fcal .fc-event{height:calc(18px*var(--wfz));padding:0 calc(5px*var(--wfz));font-weight:500;
+  text-shadow:0 0 3px rgba(0,0,0,.40);-webkit-font-smoothing:antialiased;}   /* 방향 없는 그림자로 배경과 분리 */
+/* 노랑·연두처럼 밝은 막대는 글자를 어둡게 쓰고 그림자도 밝은 쪽으로 뒤집는다.
+   ⚠ FullCalendar 의 textColor 옵션은 #fcal 규칙에 가려 먹지 않는다 — 색은 여기서 정한다 */
+#fcal .fc-event.on-light{color:#1B1B1F;font-weight:600;}
+#fcal .fc-event .fc-event-main{color:inherit;}
+body.wid #fcal .fc-event.on-light{text-shadow:0 0 3px rgba(255,255,255,.55);}
 /* ⚠ 글자를 키워도 달력이 창보다 커지면 안 된다 — 표는 창에 맞추고 칸 안에서만 줄인다 */
 body.wid #fcal .fc-daygrid-body,body.wid #fcal table{width:100%!important;}
 body.wid .cal-card{min-height:0;overflow:hidden;}
@@ -1114,7 +1121,7 @@ body.wid #wgSet.on{display:block;}
 #wgSet .wgs-h{display:flex;align-items:center;justify-content:space-between;font-size:12.5px;font-weight:800;margin-bottom:10px;color:#fff;}
 #wgSet .pop-x{color:rgba(255,255,255,.7);}
 #wgSet .wgs-r{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:32px;font-size:12px;}
-#wgSet .wgs-r>span{white-space:nowrap;flex:0 0 auto;}
+#wgSet .wgs-r>span{white-space:nowrap;flex:0 0 116px;}   /* 라벨 폭을 고정해야 슬라이더 시작점이 나란해진다 */
 #wgSet .wgs-r>input[type=range]{flex:1;min-width:0;}
 #wgSet .wgs-v{font-weight:700;color:rgba(255,255,255,.55);margin-left:4px;}
 #wgSet input[type=range]{width:118px;accent-color:var(--b600);}
@@ -1625,5 +1632,5 @@ html.dark #toast{background:#2B313A;}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=122"></script>
+<script src="./app.js?v=123"></script>
 </body></html>
