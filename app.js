@@ -3627,7 +3627,7 @@ document.addEventListener('change',e=>{
 });
 /* 위젯 설정 팝업 조작 */
 document.addEventListener('input',e=>{
-  if(e.target.id==='wgA'){const c=widCfgLoad();c.a=Number(e.target.value);widCfgSave(c);widApply();return;}
+  if(e.target.id==='wgA'){const c=widCfgLoad();c.a=100-Number(e.target.value);widCfgSave(c);widApply();return;}   /* 슬라이더는 '투명도' — 값이 클수록 투명하다 */
   if(e.target.id==='wgFz'){const c=widCfgLoad();c.fz=Number(e.target.value)/100;widCfgSave(c);widApply();return;}
 });
 document.addEventListener('change',e=>{
@@ -3756,11 +3756,11 @@ function widApply(){
   let dyn=document.getElementById('wgDyn');
   if(!dyn){dyn=document.createElement('style');dyn.id='wgDyn';document.head.appendChild(dyn);}
   const f=n=>Math.min(1,Math.max(0,n)).toFixed(3);
-  const B=light?'246,248,252':'24,28,38';        /* 칸 */
-  const W=light?'228,232,240':'52,56,68';        /* 주말 */
-  const H=light?'226,231,240':'13,16,24';        /* 요일 머리 */
-  const C=light?'255,255,255':'13,17,26';        /* 카드 */
-  const N=light?'240,243,248':'16,20,30';        /* 버튼 배경 */
+  const B=light?'231,235,242':'24,28,38';        /* 칸 */
+  const W=light?'214,220,231':'52,56,68';        /* 주말 */
+  const H=light?'205,213,226':'13,16,24';        /* 요일 머리 */
+  const C=light?'243,246,251':'13,17,26';        /* 카드 */
+  const N=light?'221,227,238':'16,20,30';        /* 버튼 배경 */
   dyn.textContent=GLASS?[
     'body.wid.glass #fcal td.fc-daygrid-day{background:rgba('+B+','+f(a)+')!important;}',
     'body.wid.glass #fcal td.fc-daygrid-day.fc-day-sat,body.wid.glass #fcal td.fc-daygrid-day.fc-day-sun{background:rgba('+W+','+f(a*.92)+')!important;}',
@@ -3772,10 +3772,11 @@ function widApply(){
   /* 글자 크기 — 85~140% 사이에서 자유롭게. 여백·막대 높이도 이 값에 함께 묶여 있다 */
   const fz=Math.min(1.4,Math.max(.85,Number(c.fz)||1));
   document.body.style.setProperty('--wfz',String(fz));
-  const rng=$('#wgA');if(rng)rng.value=Math.round(a*100);
+  const rng=$('#wgA');if(rng)rng.value=Math.round(100-a*100);
+  const av=$('#wgAV');if(av)av.textContent=Math.round(100-a*100)+'%';
   const fr=$('#wgFz');if(fr)fr.value=Math.round(fz*100);
   const fl=$('#wgFzV');if(fl)fl.textContent=Math.round(fz*100)+'%';
-  const tn=$('#wgTone');if(tn)$$('#wgTone button').forEach(b=>b.classList.toggle('act',b.dataset.tone===(c.tone||'dark')));
+  if($('#wgTone'))$$('#wgTone button').forEach(b=>b.classList.toggle('act',b.dataset.tone===(c.tone||'dark')));
 }
 /* 위치·크기 조정 모드 — 켜면 창 전체가 드래그 영역이 되고, 끄면 그 자리에 고정된다.
    Electron 쪽 전환은 해시로 신호를 보낸다(preload 없이 쓰던 방식 그대로) */

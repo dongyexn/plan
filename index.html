@@ -397,8 +397,8 @@ body.wid .wid-acct .av .icn{width:14px;height:14px;}
 body.wid #widFilterSlot{display:flex;flex:0 0 auto;}
 body.wid #dpFcard{position:relative;flex:0 0 auto;background:transparent;border:0;box-shadow:none;padding:0;border-radius:0;}
 body.wid #dpFcard .dp-frow{gap:6px;}
-body.wid #dpFcard .dp-fmore{width:34px;height:34px;border-radius:999px;background:rgba(16,20,30,.55);
-  border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.8);}
+body.wid #dpFcard .dp-fmore,body.wid [data-act="wid.reload"]{width:34px;height:34px;border-radius:999px;
+  background:rgba(16,20,30,.55);border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.8);}
 body.wid #dpFcard.adv-on .dp-fmore{background:var(--b600);border-color:var(--b600);color:#fff;}
 body.wid #dpFcard .dp-fadv{position:absolute;z-index:640;top:calc(100% + 8px);right:0;width:306px;
   background:rgba(22,25,33,.96);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
@@ -1003,8 +1003,13 @@ body.wid.wlight.glass #fcal .fc-daygrid-more-link{color:var(--bt1);background:rg
 body.wid.wlight .cal-title,body.wid.wlight.glass .cal-title .y{color:var(--lbl);}
 body.wid.wlight .cal-title .icn,body.wid.wlight .cal-nb{color:var(--lbl2);}
 body.wid.wlight .cal-nb:hover{background:rgba(0,0,0,.06);color:var(--lbl);}
-body.wid.wlight #dpFcard .dp-fmore{
-  background:rgba(255,255,255,.9);border-color:rgba(0,0,0,.12);color:var(--lbl);}
+body.wid.wlight #dpFcard .dp-fmore,body.wid.wlight [data-act="wid.reload"]{
+  background:rgba(221,227,238,.9);border-color:rgba(0,0,0,.10);color:var(--lbl2);}
+body.wid.wlight #dpFcard.adv-on .dp-fmore{background:var(--b600);border-color:var(--b600);color:#fff;}
+/* 라이트 모드에서는 글자 그림자를 쓰지 않는다 — 밝은 배경에서 번져 보인다 */
+body.wid.wlight.glass .cal-title,body.wid.wlight.glass .cal-title .y,
+body.wid.wlight.glass #fcal .dnum,body.wid.wlight.glass #fcal .fc-col-header-cell-cushion{text-shadow:none!important;}
+body.wid.wlight .cal-title{box-shadow:none;}
 body.wid.wlight.glass #fcal td.fc-daygrid-day.fc-day-other .dnum{color:rgba(28,28,30,.38)!important;}
 body.wid.wlight #fcal .fc-event{text-shadow:none;}
 body.wid.glass #fcal .dhol.dtoday{color:#BFD4FF;}   /* '오늘'은 공휴일 빨강이 아니라 파랑 계열 */
@@ -1030,8 +1035,8 @@ body.wid .wid-pop .wp-d{font-size:calc(13px*var(--wfz));}
 body.wid .wid-pop .wp-w{font-size:calc(11.5px*var(--wfz));}
 body.wid #fcal .fc-col-header-cell-cushion{font-size:calc(11.5px*var(--wfz));}
 body.wid #fcal .fc-event-title,body.wid #fcal .fc-event-time{font-size:calc(10.5px*var(--wfz));}
-body.wid #fcal .fc-event{height:calc(18px*var(--wfz));padding:0 calc(5px*var(--wfz));font-weight:700;
-  text-shadow:0 1px 2px rgba(0,0,0,.35);-webkit-font-smoothing:antialiased;}   /* 벽지 위에서도 또렷하게 */
+body.wid #fcal .fc-event{height:calc(18px*var(--wfz));padding:0 calc(5px*var(--wfz));font-weight:600;
+  text-shadow:0 0 3px rgba(0,0,0,.45);-webkit-font-smoothing:antialiased;}   /* 방향 없는 그림자로 배경과 분리 */
 /* ⚠ 글자를 키워도 달력이 창보다 커지면 안 된다 — 표는 창에 맞추고 칸 안에서만 줄인다 */
 body.wid #fcal .fc-daygrid-body,body.wid #fcal table{width:100%!important;}
 body.wid .cal-card{min-height:0;overflow:hidden;}
@@ -1101,7 +1106,7 @@ body.wid .wid-pop .p-ico:hover,body.wid .wid-pop .pe-ic:hover{background:rgba(25
 .wid-pop .wp-x .icn{width:11px;height:11px;}
 body.wid .plan .plan-t{font-size:calc(12.5px*var(--wfz));}
 /* 설정 팝업 */
-#wgSet{display:none;position:fixed;top:44px;right:10px;z-index:600;width:236px;
+#wgSet{display:none;position:fixed;top:44px;right:10px;z-index:600;width:282px;
   background:rgba(22,25,33,.92);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
   border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:12px 14px;
   box-shadow:0 10px 30px rgba(0,0,0,.45);color:rgba(255,255,255,.9);}
@@ -1109,6 +1114,8 @@ body.wid #wgSet.on{display:block;}
 #wgSet .wgs-h{display:flex;align-items:center;justify-content:space-between;font-size:12.5px;font-weight:800;margin-bottom:10px;color:#fff;}
 #wgSet .pop-x{color:rgba(255,255,255,.7);}
 #wgSet .wgs-r{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:32px;font-size:12px;}
+#wgSet .wgs-r>span{white-space:nowrap;flex:0 0 auto;}
+#wgSet .wgs-r>input[type=range]{flex:1;min-width:0;}
 #wgSet .wgs-v{font-weight:700;color:rgba(255,255,255,.55);margin-left:4px;}
 #wgSet input[type=range]{width:118px;accent-color:var(--b600);}
 #wgSet .wgs-seg{padding:2px;background:rgba(255,255,255,.1);}
@@ -1431,11 +1438,11 @@ html.dark #toast{background:#2B313A;}
         <div class="wid-pop" id="widPop"></div>
         <div id="wgSet" aria-hidden="true">
           <div class="wgs-h">위젯 설정<button class="pop-x" data-act="wid.set" aria-label="닫기"><svg class="icn"><use href="#i-close"></use></svg></button></div>
-          <div class="wgs-r"><span>배경 진하기</span><input type="range" id="wgA" min="15" max="100" step="5"></div>
+          <div class="wgs-r"><span>투명도 <b id="wgAV" class="wgs-v">15%</b></span><input type="range" id="wgA" min="0" max="85" step="5"></div>
           <div class="wgs-r"><span>글자 크기 <b id="wgFzV" class="wgs-v">100%</b></span>
             <input type="range" id="wgFz" min="85" max="140" step="5"></div>
-          <div class="wgs-r"><span>밝기</span>
-            <div class="seg wgs-seg" id="wgTone"><button data-tone="dark" class="act">어둡게</button><button data-tone="light">밝게</button></div></div>
+          <div class="wgs-r"><span>모드</span>
+            <div class="seg wgs-seg" id="wgTone"><button data-tone="dark" class="act">다크</button><button data-tone="light">라이트</button></div></div>
           <div class="wgs-r"><span>위치·크기 조정</span>
             <button class="wgs-btn" data-act="wid.moveOn">조정하기</button></div>
           <button class="wgs-full" data-act="wid.open">브라우저 앱 열기</button>
@@ -1618,5 +1625,5 @@ html.dark #toast{background:#2B313A;}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=121"></script>
+<script src="./app.js?v=122"></script>
 </body></html>
