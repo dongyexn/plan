@@ -280,7 +280,7 @@ html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day:hover{background-image:l
 /* 오늘 라벨 — 공휴일 이름처럼 숫자 왼쪽에 */
 #fcal .dhol.dtoday{color:var(--b600);}
 html.dark #fcal .dhol.dtoday{color:var(--b300);}
-#fcal .fc-event{border:none;border-radius:5px;padding:0 6px;font-size:11.5px;line-height:1;font-weight:500;letter-spacing:-.01em;cursor:pointer;margin:2px 3px;box-shadow:none;
+#fcal .fc-event{border:none;border-radius:5px;padding:0 6px;font-size:11.5px;line-height:1;font-weight:600;letter-spacing:-.005em;cursor:pointer;margin:2px 3px;box-shadow:none;
   height:18px;display:flex;align-items:center;box-sizing:border-box;}
 /* ⚠ 높이를 못 박지 않으면 시간 있는 막대(점 표시)와 기간 막대의 높이가 달라 칸마다 줄이 어긋난다 */
 /* ⚠ 줄 간격은 막대의 상하 여백으로만 준다 — harness 의 margin-top 은 FullCalendar 가 인라인으로 정하는 줄 맞춤 값이라 건드리면 칸마다 어긋난다 */
@@ -389,17 +389,14 @@ body.wid #ymPop .cal-nb:hover{background:rgba(255,255,255,.14);color:#fff;}
 body.wid .cal-title{background:rgba(16,20,30,.55);border-radius:999px;padding:0 12px;height:34px;}
 body.wid .cal-title .icn{color:rgba(255,255,255,.72);}   /* 꺾쇠가 배경에 묻히지 않게 */
 body.wid .cal-nav{padding:2px;border-radius:999px;}
+/* 프로필 버튼은 계정 얼굴(이모지·색)로 — 상용 앱처럼 누구로 로그인했는지 한눈에 */
+body.wid .wid-acct{padding:0;}
+body.wid .wid-acct .av{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;}
+body.wid .wid-acct .av .icn{width:14px;height:14px;}
 /* ── 위젯 헤더 필터 — 카드 껍데기를 벗겨 헤더 줄에 얹고, 펼침부는 아래로 떨어지는 팝오버로 ── */
 body.wid #widFilterSlot{display:flex;flex:0 0 auto;}
 body.wid #dpFcard{position:relative;flex:0 0 auto;background:transparent;border:0;box-shadow:none;padding:0;border-radius:0;}
-body.wid #dpFcard .dp-srch,body.wid #dpFcard .dp-scope{display:none;}   /* 위젯 헤더는 좁다 — 필터 버튼만 둔다 */
 body.wid #dpFcard .dp-frow{gap:6px;}
-body.wid #dpFcard .dp-srch .inp{height:34px;background:rgba(16,20,30,.55);border-color:rgba(255,255,255,.18);color:#fff;}
-body.wid #dpFcard .dp-srch .inp::placeholder{color:rgba(255,255,255,.5);}
-body.wid #dpFcard .dp-srch-i{color:rgba(255,255,255,.6);}
-body.wid #dpFcard .dp-scope{width:64px;min-width:0;height:34px;background:rgba(16,20,30,.55);
-  border-color:rgba(255,255,255,.18);color:#fff;color-scheme:dark;}
-body.wid #dpFcard .dp-scope option{background:#22252e;color:#fff;}
 body.wid #dpFcard .dp-fmore{width:34px;height:34px;border-radius:999px;background:rgba(16,20,30,.55);
   border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.8);}
 body.wid #dpFcard.adv-on .dp-fmore{background:var(--b600);border-color:var(--b600);color:#fff;}
@@ -408,7 +405,6 @@ body.wid #dpFcard .dp-fadv{position:absolute;z-index:640;top:calc(100% + 8px);ri
   border:1px solid rgba(255,255,255,.16);border-radius:13px;box-shadow:0 12px 34px rgba(0,0,0,.5);padding:11px;
   --lbl:#fff;--lbl2:rgba(255,255,255,.80);--lbl3:rgba(255,255,255,.62);--sep:rgba(255,255,255,.20);
   --fill:rgba(255,255,255,.12);--b200:rgba(255,255,255,.2);}
-@media(max-width:520px){body.wid #dpFcard .dp-scope{display:none;}}
 body.wid.glass .cal-title,body.wid.glass .cal-title .y{color:#fff;}
 .dp-dow{margin-left:auto;font-size:12px;font-weight:600;color:rgba(255,255,255,.86);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 /* 필터 카드 — 1행 업무 구분·진행 상태, 2행 권역·담당자, 3행 현장, 4행 검색·업무 추가 */
@@ -995,6 +991,22 @@ body.wid.glass #fcal .dnum{color:rgba(255,255,255,.92)!important;}
 body.wid.glass #fcal .fc-day-sun .dnum{color:#FF9C93!important;}
 body.wid.glass #fcal .fc-day-sat .dnum{color:#9DC3FF!important;}
 body.wid.glass #fcal .dhol{color:#FF9C93;}
+/* ── 밝게(라이트) — 어두운 바탕화면에서 잘 보이도록 ── */
+body.wid.wlight.glass #fcal .dnum{color:rgba(28,28,30,.92)!important;text-shadow:none;}
+body.wid.wlight.glass #fcal .fc-day-sun .dnum,body.wid.wlight.glass #fcal .dhol{color:#D92D20!important;}
+body.wid.wlight.glass #fcal .dhol.dtoday{color:var(--b600)!important;}
+body.wid.wlight.glass #fcal .fc-day-sat .dnum{color:#2563EB!important;}
+body.wid.wlight.glass #fcal .fc-col-header-cell-cushion{color:rgba(28,28,30,.75)!important;text-shadow:none;}
+body.wid.wlight.glass #fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-color:rgba(0,0,0,.10)!important;}
+body.wid.wlight.glass #fcal .fc-col-header{border-bottom-color:rgba(0,0,0,.12)!important;}
+body.wid.wlight.glass #fcal .fc-daygrid-more-link{color:var(--bt1);background:rgba(0,0,0,.06);}
+body.wid.wlight .cal-title,body.wid.wlight.glass .cal-title .y{color:var(--lbl);}
+body.wid.wlight .cal-title .icn,body.wid.wlight .cal-nb{color:var(--lbl2);}
+body.wid.wlight .cal-nb:hover{background:rgba(0,0,0,.06);color:var(--lbl);}
+body.wid.wlight #dpFcard .dp-fmore{
+  background:rgba(255,255,255,.9);border-color:rgba(0,0,0,.12);color:var(--lbl);}
+body.wid.wlight.glass #fcal td.fc-daygrid-day.fc-day-other .dnum{color:rgba(28,28,30,.38)!important;}
+body.wid.wlight #fcal .fc-event{text-shadow:none;}
 body.wid.glass #fcal .dhol.dtoday{color:#BFD4FF;}   /* '오늘'은 공휴일 빨강이 아니라 파랑 계열 */
 /* 오늘 목록 — 같은 틴트의 띠 */
 body.wid.glass .plan{background:rgba(13,17,26,.6);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);}
@@ -1012,9 +1024,14 @@ body.wid .cal-title .y{font-size:inherit;}            /* 연도만 18px 로 남�
 body.wid{--wfz:1;}
 body.wid #fcal{font-size:calc(11px*var(--wfz));}
 body.wid #fcal .dnum{font-size:calc(12px*var(--wfz));}
+body.wid #fcal .dhol{font-size:calc(11px*var(--wfz));}
+body.wid #fcal .fc-daygrid-more-link{font-size:calc(11.5px*var(--wfz));}
+body.wid .wid-pop .wp-d{font-size:calc(13px*var(--wfz));}
+body.wid .wid-pop .wp-w{font-size:calc(11.5px*var(--wfz));}
 body.wid #fcal .fc-col-header-cell-cushion{font-size:calc(11.5px*var(--wfz));}
 body.wid #fcal .fc-event-title,body.wid #fcal .fc-event-time{font-size:calc(10.5px*var(--wfz));}
-body.wid #fcal .fc-event{height:calc(18px*var(--wfz));padding:0 calc(5px*var(--wfz));}
+body.wid #fcal .fc-event{height:calc(18px*var(--wfz));padding:0 calc(5px*var(--wfz));font-weight:700;
+  text-shadow:0 1px 2px rgba(0,0,0,.35);-webkit-font-smoothing:antialiased;}   /* 벽지 위에서도 또렷하게 */
 /* ⚠ 글자를 키워도 달력이 창보다 커지면 안 된다 — 표는 창에 맞추고 칸 안에서만 줄인다 */
 body.wid #fcal .fc-daygrid-body,body.wid #fcal table{width:100%!important;}
 body.wid .cal-card{min-height:0;overflow:hidden;}
@@ -1092,6 +1109,7 @@ body.wid #wgSet.on{display:block;}
 #wgSet .wgs-h{display:flex;align-items:center;justify-content:space-between;font-size:12.5px;font-weight:800;margin-bottom:10px;color:#fff;}
 #wgSet .pop-x{color:rgba(255,255,255,.7);}
 #wgSet .wgs-r{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:32px;font-size:12px;}
+#wgSet .wgs-v{font-weight:700;color:rgba(255,255,255,.55);margin-left:4px;}
 #wgSet input[type=range]{width:118px;accent-color:var(--b600);}
 #wgSet .wgs-seg{padding:2px;background:rgba(255,255,255,.1);}
 #wgSet .wgs-seg button{font-size:11px;padding:3px 8px;color:rgba(255,255,255,.75);}
@@ -1268,6 +1286,7 @@ html.dark #toast{background:#2B313A;}
 <body>
 <!-- 아이콘: Lucide (ISC) — 24 그리드 · stroke 2 -->
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true" focusable="false">
+<symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 5v6h-6"/></symbol>
 <symbol id="i-today" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.6V20a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V9.6"/><path d="M9.6 21v-6.2h4.8V21"/></symbol>
 <symbol id="i-cal" viewBox="0 0 24 24"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></symbol>
 <symbol id="i-tasks" viewBox="0 0 24 24"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></symbol>
@@ -1399,9 +1418,10 @@ html.dark #toast{background:#2B313A;}
                 <button class="cal-nb cal-today" data-act="cal.today" aria-label="오늘로" title="오늘로"><svg class="icn" aria-hidden="true"><use href="#i-today"></use></svg></button>
                 <button class="cal-nb" data-act="cal.next" aria-label="다음"><svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg></button>
               </div>
+              <button class="cal-nb wido" data-act="wid.reload" aria-label="새로고침" title="새로고침"><svg class="icn" aria-hidden="true"><use href="#i-refresh"></use></svg></button>
               <div class="wido" id="widFilterSlot"></div>
               <div class="cal-nav wido">
-                <button class="cal-nb" data-act="acct.open" aria-label="내 프로필" title="내 프로필"><svg class="icn" aria-hidden="true"><use href="#i-me"></use></svg></button>
+                <button class="cal-nb wid-acct" data-act="acct.open" aria-label="내 프로필" title="내 프로필"><span class="av sb-acct-av" id="widAcctAv"><svg class="icn" aria-hidden="true"><use href="#i-me"></use></svg></span></button>
                 <button class="cal-nb" data-act="wid.set" aria-label="위젯 설정" title="위젯 설정"><svg class="icn" aria-hidden="true"><use href="#i-settings"></use></svg></button>
               </div>
             </div>
@@ -1412,8 +1432,10 @@ html.dark #toast{background:#2B313A;}
         <div id="wgSet" aria-hidden="true">
           <div class="wgs-h">위젯 설정<button class="pop-x" data-act="wid.set" aria-label="닫기"><svg class="icn"><use href="#i-close"></use></svg></button></div>
           <div class="wgs-r"><span>배경 진하기</span><input type="range" id="wgA" min="15" max="100" step="5"></div>
-          <div class="wgs-r"><span>글자 크기</span>
-            <div class="seg wgs-seg" id="wgFz"><button data-fz="s">작게</button><button data-fz="m" class="act">보통</button><button data-fz="l">크게</button></div></div>
+          <div class="wgs-r"><span>글자 크기 <b id="wgFzV" class="wgs-v">100%</b></span>
+            <input type="range" id="wgFz" min="85" max="140" step="5"></div>
+          <div class="wgs-r"><span>밝기</span>
+            <div class="seg wgs-seg" id="wgTone"><button data-tone="dark" class="act">어둡게</button><button data-tone="light">밝게</button></div></div>
           <div class="wgs-r"><span>위치·크기 조정</span>
             <button class="wgs-btn" data-act="wid.moveOn">조정하기</button></div>
           <button class="wgs-full" data-act="wid.open">브라우저 앱 열기</button>
@@ -1596,5 +1618,5 @@ html.dark #toast{background:#2B313A;}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=114"></script>
+<script src="./app.js?v=121"></script>
 </body></html>

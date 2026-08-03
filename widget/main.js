@@ -6,7 +6,17 @@
    실행    : npm install → npm start
    exe 생성: npm run dist  → dist/업무일정위젯.exe (설치 불필요 · 포터블) */
 'use strict';
-const { app, BrowserWindow, Tray, Menu, screen, shell, globalShortcut } = require('electron');
+const { app, BrowserWindow, Tray, Menu, screen, shell, globalShortcut, dialog, session, clipboard } = require('electron');
+
+/* 실패한 요청을 모아 둔다 — 사내망에서만 안 되는 이유를 추측 대신 이름으로 확인하기 위함.
+   같은 exe 가 집에서는 되고 회사에서만 멈춘다면 원인은 PC 가 아니라 그 망에 있다. */
+const NETERR = [];
+function noteErr(kind, url, detail) {
+  const host = (() => { try { return new URL(url).host; } catch { return url; } })();
+  const line = new Date().toLocaleTimeString('ko-KR') + '  [' + kind + '] ' + host + '  ' + detail;
+  if (NETERR[NETERR.length - 1] !== line) NETERR.push(line);
+  if (NETERR.length > 60) NETERR.shift();
+}
 const pin = require('./desktop-pin');
 const path = require('path');
 const fs = require('fs');
@@ -111,6 +121,16 @@ function createWindow() {
   if (state.autoStart === undefined) setAutoStart(true);   /* 첫 실행이면 자동 실행을 켠 상태로 시작한다 */
   /* 유리 모드로 열어야 벽지가 비친다 — 주소에 &glass=1 을 붙인다 */
   win.loadURL(APP_URL + (APP_URL.indexOf('glass=') < 0 ? '&glass=1' : ''));
+  /* 주소 자체를 못 여는 경우(사내망 차단 등)에는 흰 화면만 남는다 — 무엇이 막혔는지 보여 준다 */
+  win.webContents.on('did-fail-load', (_e, code, desc, url) => {
+    if (code === -3) return;   /* 사용자가 취소한 경우 */
+    win.webContents.executeJavaScript(
+      'document.body.innerHTML=' + JSON.stringify(
+        '<div style="font:14px system-ui;padding:24px;color:#fff;background:#181c26;height:100%">'
+        + '<b>주소를 열지 못했습니다</b><br><br>' + desc + ' (' + code + ')<br>'
+        + '<span style="opacity:.7;font-size:12px">' + url + '</span></div>')
+    ).catch(() => {});
+  });
 
   /* 주입한 버튼은 해시 변경으로 신호를 보낸다 (preload 없이 처리) */
   win.webContents.on('did-navigate-in-page', (_e, url) => {
@@ -176,6 +196,19 @@ function buildTray() {
     },
     { type: 'separator' },
     { label: '새로고침', click: () => win && win.reload() },
+    { label: '개발자 도구 (문제 확인)', click: () => win && win.webContents.openDevTools({ mode: 'detach' }) },
+    {
+      label: '네트워크 오류 보기' + (NETERR.length ? ' (' + NETERR.length + ')' : ''),
+      click: () => {
+        const body = NETERR.length ? NETERR.slice(-20).join('\n') : '기록된 오류가 없습니다.';
+        dialog.showMessageBox({
+          type: NETERR.length ? 'warning' : 'info', title: '네트워크 오류',
+          message: NETERR.length ? '막힌 요청이 있습니다' : '막힌 요청이 없습니다',
+          detail: body + '\n\n[복사]를 누르면 전체 내용이 클립보드에 담깁니다.',
+          buttons: ['복사', '닫기'], defaultId: 0, cancelId: 1
+        }).then(r => { if (r.response === 0) clipboard.writeText(NETERR.join('\n')); });
+      }
+    },
     { label: '브라우저 앱 열기', click: () => shell.openExternal(APP_URL.replace('?w=1', '')) },
     { type: 'separator' },
     { label: '종료', click: () => { app.quit(); } }
@@ -188,11 +221,33 @@ function buildTray() {
 /* 중복 실행 방지 — 이미 떠 있으면 기존 창을 보여준다 */
 if (!app.requestSingleInstanceLock()) app.quit();
 else {
+  /* ⚠ 기본 User-Agent 에는 'Electron/…' 과 앱 이름이 들어 있다.
+     로그인에 쓰이는 보안 확인(reCAPTCHA)이 이걸 보고 막아 '로그인 중…' 에서 멈추는 일이 있다
+     (엣지에서는 되는데 위젯에서만 안 되던 원인). 창을 만들기 전에 브라우저와 같은 모양으로 바꾼다. */
+  app.userAgentFallback = app.userAgentFallback
+    .replace(/ Electron\/[\d.]+/g, '')
+    .replace(/ 업무일정위젯\/[\d.]+/g, '')
+    .replace(/ hservice-calendar-widget\/[\d.]+/g, '');
+
   app.on('second-instance', () => { if (win) { win.show(); win.focus(); } });
+
+  /* 인증서 검사(사내 보안 장비)가 가로막으면 여기로 온다 — 우회하지 않고 기록만 한다 */
+  app.on('certificate-error', (e, wc, url, err) => { noteErr('인증서', url, err); });
+  /* 프록시가 아이디·비밀번호를 요구하면 창이 안 뜨고 조용히 멈춘다 */
+  app.on('login', (e, wc, req, auth) => { noteErr('프록시 인증 요구', req.url, auth.host || ''); });
   app.whenReady().then(() => {
     createWindow();
     buildTray();
+    /* 요청 실패를 통째로 잡는다(차단·시간 초과·인증서 오류 등) */
+    try {
+      session.defaultSession.webRequest.onErrorOccurred({ urls: ['<all_urls>'] }, d => {
+        if (/ERR_ABORTED|ERR_BLOCKED_BY_CLIENT$/.test(d.error || '')) return;
+        noteErr('요청 실패', d.url, d.error);
+      });
+    } catch { /* 무시 */ }
     globalShortcut.register('Alt+Shift+C', toggleWindow);   // 단축키로 즉시 호출
+    /* 문제가 생겼을 때 원인을 볼 수 있게 — 브라우저와 같은 단축키 */
+    globalShortcut.register('CommandOrControl+Shift+I', () => win && win.webContents.openDevTools({ mode: 'detach' }));
   });
   app.on('window-all-closed', e => { /* 트레이에 남는다 — 종료하지 않음 */ });
   app.on('will-quit', () => globalShortcut.unregisterAll());
