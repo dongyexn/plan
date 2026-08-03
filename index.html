@@ -393,6 +393,12 @@ body.wid #ymPop .cal-nb:hover{background:rgba(255,255,255,.14);color:#fff;}
 body.wid .cal-title{background:rgba(16,20,30,.55);border-radius:999px;padding:0 12px;height:34px;}
 body.wid .cal-title .icn{color:rgba(255,255,255,.72);}   /* 꺾쇠가 배경에 묻히지 않게 */
 body.wid .cal-nav{padding:2px;border-radius:999px;}
+/* 시스템 글꼴 — 맑은 고딕은 작은 크기용 힌팅이 있어 투명 창에서 더 또렷하다.
+   ⚠ 굵기는 400/700 만 실제 글꼴이 있다 — 500·600 을 쓰면 브라우저가 억지로 굵혀 뭉개진다 */
+body.wid.wsysfont{font-family:'Malgun Gothic','맑은 고딕','Segoe UI',system-ui,sans-serif;}
+body.wid.wsysfont #fcal .fc-event,body.wid.wsysfont #fcal .dnum,
+body.wid.wsysfont #fcal .dhol,body.wid.wsysfont #fcal .fc-col-header-cell-cushion{font-weight:700;}
+body.wid.wsysfont #fcal .fc-event{letter-spacing:0;}
 /* 프로필 버튼은 계정 얼굴(이모지·색)로 — 상용 앱처럼 누구로 로그인했는지 한눈에 */
 body.wid .wid-acct{padding:0;}
 body.wid .wid-acct .av{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;}
@@ -1449,6 +1455,8 @@ html.dark #toast{background:#2B313A;}
           <div class="wgs-r"><span>투명도 <b id="wgAV" class="wgs-v">15%</b></span><input type="range" id="wgA" min="0" max="85" step="5"></div>
           <div class="wgs-r"><span>글자 크기 <b id="wgFzV" class="wgs-v">100%</b></span>
             <input type="range" id="wgFz" min="85" max="140" step="5"></div>
+          <div class="wgs-r"><span>글꼴</span>
+            <div class="seg wgs-seg" id="wgFont"><button data-font="app" class="act">기본</button><button data-font="sys">시스템</button></div></div>
           <div class="wgs-r"><span>모드</span>
             <div class="seg wgs-seg" id="wgTone"><button data-tone="dark" class="act">다크</button><button data-tone="light">라이트</button></div></div>
           <div class="wgs-r"><span>위치·크기 조정</span>
@@ -1633,5 +1641,5 @@ html.dark #toast{background:#2B313A;}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=126"></script>
+<script src="./app.js?v=127"></script>
 </body></html>
