@@ -353,7 +353,9 @@ function planColor(p){
   const o=planOwners(p);
   return o.length?ownColor(o[0]):PAL[0];
 }
-const ST_LBL=['예정','진행','완료','보류'];
+/* 상태는 진행·완료 둘뿐이다. 옛 데이터의 예정(0)·보류(3)은 진행으로 본다(자리는 그대로 두어 색 규칙 s1·s2 재사용) */
+const ST_LBL=['진행','진행','완료','진행'];
+const ST_PICK=[['1','진행'],['2','완료']];
 const DEFECT_URL='https://dongyexn.github.io/report/';  // 하자처리 현황 배포 주소(기본값)
 /* ── 한국 공휴일(대체공휴일 포함, 2025~2030) — 임시공휴일 지정 등 변동 시 이 표만 수정 ── */
 const HOLI={
@@ -429,7 +431,7 @@ document.addEventListener('focusout',e=>{
 /* DB 규칙이 스키마 외 키를 거부($other:false)하므로, 저장 전에 필드를 정제한다.
    반복이 아닌 일정에 doneOn/skipOn 이 남아 들어가는 것도 여기서 걸러진다. */
 function cleanTask(t){
-  const o={text:String(t.text||'').slice(0,500),st:stOf(t.st),
+  const o={text:String(t.text||'').slice(0,500),st:stOf(t.st),stKeep:!!t.stKeep,
     createdAt:Number(t.createdAt)||Date.now(),updatedAt:Number(t.updatedAt)||Date.now()};
   /* 일정 성격 — 날짜가 있으면 달력에도 뜬다 */
   if(t.date)o.date=String(t.date).slice(0,10);
@@ -1419,7 +1421,7 @@ function planToTask(p){
 function taskAsPlan(sid,iid,it){
   /* 달력·일자 패널이 쓰던 모양으로 감싼다 — 필드 이름만 맞춰 준다 */
   return{...it,id:iid,sid,title:it.text||'',body:it.prog||it.body||'',
-    owners:it.assignees||{},done:stOf(it.st)===2};
+    owners:it.assignees||{},done:stEff(it)===2};
 }
 function buildEvents(){
   const evs=[],[from,to]=visibleRange(),today=todayStr();
@@ -1593,6 +1595,10 @@ function dayPlans(ds,raw){
 }
 /* 카드 상태 — 반복 회차는 doneOn 이 우선(회차별 완료), 그 외는 st(0 예정·1 진행·2 완료·3 보류) */
 function planSt(p,occ){
+  if(p.recur&&p.recur.f)return isDone(p,occ)?2:1;
+  return stEff(p,p.end||p.date);
+}
+function _planStOld(p,occ){
   if(p.recur&&p.recur.f)return isDone(p,occ)?2:stOf(p.st)===2?1:stOf(p.st);
   return stOf(p.st);
 }
@@ -1618,7 +1624,7 @@ function taskFilterOk(sid,it){
   const f=S.filter;
   const K=(f.kind||[]).map(String),ST=(f.st||[]).map(String),SI=(f.site||[]).map(String);
   if(K.length&&!K.includes(kindOf(it.kind)||'_gen'))return false;
-  if(ST.length&&!ST.includes(String(stOf(it.st))))return false;
+  if(ST.length&&!ST.includes(String(stEff(it))))return false;
   if(SI.length&&!SI.includes(String(it.site||'')))return false;
   return true;
 }
@@ -1714,6 +1720,7 @@ function rDay(){
         ${colDotHTML(planColor(p),p.id)}
         <div class="plan-t"${openAct}>${esc(p.title)}</div>
         <div class="plan-side">
+          <span class="tk-st s${st}" data-act="plan.stCycle" data-pid="${esc(p.id)}" data-occ="${esc(occ)}" title="눌러서 상태 변경">${ST_LBL[st]}</span>
 ${p.remind?'<button class="p-ico p-rem on" data-act="plan.remind" data-pid="'+esc(p.id)+'" aria-label="리마인드 해제" title="리마인드 켜짐"><svg class="icn"><use href="#i-bell"></use></svg></button>':''}
           ${lnk?'<a class="p-ico" href="'+esc(lnk.url)+'" target="_blank" rel="noopener" aria-label="링크 열기" title="'+esc(lnk.label||lnk.url)+'"><svg class="icn"><use href="#i-ext"></use></svg></a>':''}
           <button class="p-ico p-edit" data-act="plan.edit" data-pid="${esc(p.id)}" data-occ="${esc(occ)}" aria-label="수정" title="수정"><svg class="icn"><use href="#i-pen"></use></svg></button>
@@ -1721,7 +1728,7 @@ ${p.remind?'<button class="p-ico p-rem on" data-act="plan.remind" data-pid="'+es
       </div>
       <div class="plan-main"${openAct}>
         <div class="plan-meta">
-          <span class="pm-l"><span class="tk-st s${st}" data-act="plan.stCycle" data-pid="${esc(p.id)}" data-occ="${esc(occ)}" title="눌러서 상태 변경">${ST_LBL[st]}</span>${[
+          <span class="pm-l">${[
             kindLabel(p.kind),
             span?md(p.date)+'–'+md(p.end):md(p.date),
             fmtSpan(p),
@@ -1865,7 +1872,7 @@ function planFormHTML(){
   const rc=(d.recur&&d.recur.f)||'';
   const people=roster();
   const kind=kindOf(d.kind);
-  const st=stOf(d.st);
+  const st=stEff(d);
   const lnk=Object.values(d.links||{}).filter(l=>l&&l.url)[0];
   return `<div class="dp-edit" id="dpEdit">
     <div class="pe-bar">
@@ -1941,8 +1948,8 @@ function planCollect(base){
     recur:f?{f,until:(($('#peUntil')&&$('#peUntil').value)||'')}:{f:'',until:''},
     remind:!!d.remind,
     kind:kindOf(($('#peKind')&&$('#peKind').value)||''),
-    st:stOf(d.st),
-    done:stOf(d.st)===2,
+    st:stEff(d),
+    done:stEff(d)===2,
     updatedAt:Date.now()};
   if(base)Object.assign(base,p);   /* draft 를 현재 화면 값으로 최신화 */
   return p;
@@ -2024,7 +2031,14 @@ function roster(){
   });
   return Object.values(out).sort((a,b)=>String(a.name).localeCompare(String(b.name),'ko'));
 }
-function stOf(v){const n=Number(v);return (n===1||n===2||n===3)?n:0;}
+function stOf(v){return Number(v)===2?2:1;}   /* 저장값이 무엇이든 진행 아니면 완료 */
+/* 날짜가 지나면 저절로 완료로 본다 — 다만 지난 뒤 손으로 '진행'을 고르면(stKeep) 그대로 둔다 */
+function stEff(it,date){
+  if(stOf(it&&it.st)===2)return 2;
+  if(it&&it.stKeep)return 1;
+  const d=(date||(it&&(it.end||it.date))||'');
+  return (d&&d<todayStr())?2:1;
+}
 function tkSel(){
   const teams=(S.org.teams||[]).filter(t=>t.name),regions=(S.org.regions||[]).filter(r=>r.name),all=roster();
   const team=teams.find(x=>x.id===S.tk.t)||teams[0]||null;S.tk.t=team?team.id:null;
@@ -2044,7 +2058,7 @@ function taskCount(sid){
   const m=S.tasks[sid]||{};
   const f=S.tkF||{};
   const keepDone=String(f.st)==='2';
-  return Object.keys(m).filter(k=>(keepDone||stOf(m[k].st)!==2)&&tkMatch(sid,k,m[k])).length;
+  return Object.keys(m).filter(k=>(keepDone||stEff(m[k])!==2)&&tkMatch(sid,k,m[k])).length;
 }
 /* 날짜 배지 — 지났는데 미완료면 D+, 오늘이면 D-DAY */
 function dueInfo(due){
@@ -2059,7 +2073,7 @@ function siteName(id){const s=(S.org.sites||[]).find(x=>x.id===id);return s?s.na
 function taskItemHTML(sid,iid,it,withSubject,hideOwn){
   const key=sid+'/'+iid;
   if(S.tkEdit===key)return taskFormHTML(sid,iid,it);   /* 수정 중이면 항목 자리에 폼이 들어간다 */
-  const di=dueInfo(it.date),cn=Object.keys(it.comments||{}).length,st=stOf(it.st);
+  const di=dueInfo(it.date),cn=Object.keys(it.comments||{}).length,st=stEff(it);
   /* 담당자별 묶음 안에서는 소제목이 곧 그 사람 — 본인 배지는 겹말이라 뺀다(공동 담당자만 남긴다) */
   const asg=Object.keys(it.assignees||{}).filter(id=>id!==hideOwn)
     .map(id=>roster().find(p=>p.id===id)).filter(Boolean);
@@ -2081,6 +2095,7 @@ function taskItemHTML(sid,iid,it,withSubject,hideOwn){
       ${colDotHTML(planColor(p0),iid)}
       <div class="tk-ttl" data-act="tk.open" data-sid="${esc(sid)}" data-iid="${esc(iid)}">${esc(it.text||'제목 없음')}</div>
       <div class="tk-acts">
+        <span class="tk-st s${st}" data-act="tk.st" data-sid="${esc(sid)}" data-iid="${esc(iid)}" title="눌러서 상태 변경">${ST_LBL[st]}</span>
         ${cn?`<button class="tk-ico on" data-act="tk.open" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="코멘트">
           <svg class="icn"><use href="#i-cmt"></use></svg><span class="cn">${cn}</span></button>`:''}
         ${it.remind?'<button class="tk-ico on" data-act="tk.remind" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" aria-label="리마인드 해제" title="리마인드 켜짐"><svg class="icn"><use href="#i-bell"></use></svg></button>':''}
@@ -2090,7 +2105,7 @@ function taskItemHTML(sid,iid,it,withSubject,hideOwn){
       </div>
     </div>
     <div class="plan-meta" data-act="tk.open" data-sid="${esc(sid)}" data-iid="${esc(iid)}">
-      <span class="pm-l"><span class="tk-st s${st}" data-act="tk.st" data-sid="${esc(sid)}" data-iid="${esc(iid)}" title="눌러서 상태 변경">${ST_LBL[st]}</span>${left.map(esc).join(' · ')}</span>
+      <span class="pm-l">${left.map(esc).join(' · ')}</span>
       <span class="pm-r">${right.map(esc).join(' · ')}</span>
     </div>
     ${open?taskDetailHTML(sid,iid,it):''}
@@ -2099,7 +2114,8 @@ function taskItemHTML(sid,iid,it,withSubject,hideOwn){
 /* 펼친 업무 — 진행경과·처리계획과 코멘트 스레드 (수정 버튼은 위 tk-line 우측 상단) */
 function taskDetailHTML(sid,iid,it){
   const cs=Object.entries(it.comments||{}).sort((a,b)=>(a[1].at||0)-(b[1].at||0));
-  const box=(lbl,val,field)=>`<div class="tk-sec">
+  /* 비어 있는 칸은 그리지 않는다 — 펼쳐 보기만 할 때 빈 상자가 자리를 먹는다 */
+  const box=(lbl,val,field)=>!String(val||'').trim()?'':`<div class="tk-sec">
       <div class="tk-sec-h">${lbl}</div>
       <div class="tk-sec-b" contenteditable="true" data-act="tk.field" data-f="${field}" data-sid="${esc(sid)}" data-iid="${esc(iid)}"
         data-ph="${lbl}를 입력하세요">${esc(val||'')}</div>
@@ -2191,7 +2207,7 @@ function openItems(sid){
   /* 완료해도 바로 사라지지 않는다 — 7일이 지난 완료만 목록에서 뺀다(담당자 화면과 같은 규칙).
      단 필터·검색이 켜져 있으면 전부 대상 — 상태 '완료'로 지난 완료도 찾아볼 수 있게 */
   const cut=Date.now()-7*86400000;
-  const stale=it=>stOf(it.st)===2&&(it.updatedAt||0)<cut;
+  const stale=it=>stEff(it)===2&&(it.updatedAt||0)<cut;
   const showAll=tkFilterOn();
   return Object.keys(m).filter(iid=>m[iid]&&(showAll||!stale(m[iid]))&&tkMatch(sid,iid,m[iid]))
     .sort((a,b)=>{const ad=m[a].date||'9999',bd=m[b].date||'9999';
@@ -2241,7 +2257,8 @@ function regionSectionsHTML(mems,regions){
       return '<div class="tk-sub2">'+esc(p.name)
         +(rk==='lead'?'<span class="rk">공구장</span>':rk==='head'?'<span class="rk">팀장</span>':'')+'</div>'
         +items.map(({iid,it})=>taskItemHTML(p.id,iid,it,false,p.id)).join('');
-    }).join('')||'<div class="tk-empty" style="padding:8px 2px;text-align:left">미완료 업무가 없습니다.</div>';
+    }).join('');
+    if(!inner)return '';                 /* 업무가 없는 권역은 통째로 감춘다(머리·구분선까지) */
     return '<div class="tk-sub">'+esc(rn)+'<span class="c">'+cnt+'</span></div>'+inner;
   }).join('');
 }
@@ -2252,7 +2269,7 @@ function taskFormHTML(sid,iid,cur){
   const d=cur||{text:'',prog:'',plan:'',site:'',assignees:meOwner(),links:{},color:'',date:'',end:'',time:'',kind:KIND_DEF,recur:{f:'',until:''}};
   const people=tkSel().mems;
   const kind=kindOf(d.kind),split=kindSplit(kind);
-  const st=stOf(d.st);
+  const st=stEff(d);
   const rc=(d.recur&&d.recur.f)||'';
   const lnk=Object.values(d.links||{}).filter(l=>l&&l.url)[0];
   const own=Object.keys(d.assignees||{}).find(k=>(d.assignees||{})[k])||'';
@@ -2328,7 +2345,8 @@ function taskFormSave(sid,iid){
     end:($('#tnEnd')&&$('#tnEnd').value)||'',
     time:($('#tnTime')&&$('#tnTime').value)||'',
     recur:rec?{f:rec,until:(($('#tnUntil')&&$('#tnUntil').value)||'')}:{f:'',until:''},
-    st:stEl?Number(stEl.dataset.st||0):stOf(cur&&cur.st),
+    st:stEl?Number(stEl.dataset.st||1):stOf(cur&&cur.st),
+    stKeep:stEl?Number(stEl.dataset.st||1)===1:!!(cur&&cur.stKeep),
     remind:!!(remEl&&remEl.dataset.on),
     assignees:asg,links,color:($('#tnColor')&&$('#tnColor').value)||'',
     order:(cur&&Number.isFinite(Number(cur.order)))?Number(cur.order):nextOrder(sid),
@@ -2419,7 +2437,7 @@ function tkFilterHTML(){
     <div class="dp-fadv">
       <div class="dp-frow">
         ${M('kind','업무 구분 전체',TK_KIND.map(k=>[k[0]||'_gen',k[1]]))}
-        ${M('st','진행 상태 전체',ST_LBL.map((l,i)=>[String(i),l]))}
+        ${M('st','진행 상태 전체',ST_PICK)}
         ${M('reg','권역 전체',regs.map(r=>[r.id,r.name]))}
         ${M('site','현장 전체',sites.map(x=>[x.id,x.name]))}
       </div>
@@ -2436,7 +2454,7 @@ function tkMatch(sid,iid,it){
     if(hay.indexOf(q)<0)return false;
   }
   const ST=(f.st||[]).map(String),K=(f.kind||[]).map(String),SI=(f.site||[]).map(String),RG=(f.reg||[]).map(String);
-  if(ST.length&&!ST.includes(String(stOf(it.st))))return false;
+  if(ST.length&&!ST.includes(String(stEff(it))))return false;
   if(K.length&&!K.includes(kindOf(it.kind)||'_gen'))return false;
   if(SI.length&&!SI.includes(String(it.site||'')))return false;
   /* 권역 — 그 업무의 대상(담당자)이 속한 권역으로 거른다. 팀 공통 업무는 권역이 없으므로 항상 남긴다 */
@@ -2467,10 +2485,11 @@ function rTasks(){
   if(sel==='teamall'){
     subject=tn+' 전체 업무';
     const ci=team?openItems(team.id):[];
-    listHTML='<div class="tk-sub">공통 업무<span class="c">'+cCommon+'</span></div>'
-      +(ci.length?ci.map(({iid,it})=>taskItemHTML(team.id,iid,it,false)).join('')
-        :'<div class="tk-empty" style="padding:8px 2px;text-align:left">공통 업무가 없습니다.</div>')
-      +regionSectionsHTML(mems,regions);
+    const secs=regionSectionsHTML(mems,regions);
+    listHTML=(ci.length?'<div class="tk-sub">공통 업무<span class="c">'+cCommon+'</span></div>'
+        +ci.map(({iid,it})=>taskItemHTML(team.id,iid,it,false)).join(''):'')
+      +secs;
+    if(!listHTML)listHTML='<div class="tk-empty">표시할 업무가 없습니다.</div>';
   }else if(sel==='team'){
     subject=tn+' 공통 업무';sid=team?team.id:null;
     listHTML=sid?taskListHTML(sid):'<div class="tk-empty">조직/현장 관리에서 팀을 먼저 등록하세요.</div>';
@@ -2615,7 +2634,7 @@ function mineTasks(){
     Object.keys(m).forEach(iid=>{
       const it=m[iid];if(!it)return;
       const mine=(sid===me)||!!(it.assignees&&it.assignees[me]);
-      if(!mine||stOf(it.st)===2)return;
+      if(!mine||stEff(it)===2)return;
       out.push({sid,iid,it});
     });
   });
@@ -2660,7 +2679,7 @@ function rMine(){
           return `<div class="mine-row ${di?di.cls:''}" data-act="mine.task" data-sid="${esc(sid)}" data-iid="${esc(iid)}">
             <span class="d">${di?esc(di.txt):'—'}</span>
             <span class="t">${esc(it.text||'제목 없음')}</span>
-            <span class="tk-st s${stOf(it.st)}" style="cursor:default">${ST_LBL[stOf(it.st)]}</span>
+            <span class="tk-st s${stEff(it)}" style="cursor:default">${ST_LBL[stEff(it)]}</span>
           </div>`;}).join(''):'<div class="mine-empty">내가 담당인 미완료 업무가 없습니다.</div>'}
       </div>`
     +`<div class="card">
@@ -2787,6 +2806,13 @@ function rOrg(){
       : '<select class="fbu-sel" data-act="acct.role" data-id="'+esc(p.id)+'" aria-label="권한">'
         +roleOpt('editor','관리자',role)+roleOpt('viewer','사용자',role)+roleOpt('blocked','차단',role)+'</select>';
   };
+  const teams=(S.org.teams||[]).filter(t=>t.name);
+  const teamCtl=p=>{
+    if(!isEditor()||!teams.length)return '<span class="rk-fix">'+esc((teams.find(t=>t.id===p.team)||{}).name||'미배정')+'</span>';
+    return '<select class="mg-inp" data-act="acct.set" data-f="team" data-id="'+esc(p.id)+'" aria-label="팀">'
+      +teams.map(t=>'<option value="'+esc(t.id)+'"'+(t.id===p.team?' selected':'')+'>'+esc(t.name)+'</option>').join('')
+      +'</select>';
+  };
   const canRank=canSetRank();
   const rankOpt=cur=>RANKS.map(([v,l])=>'<option value="'+v+'"'+(v===rankOf(cur)?' selected':'')+'>'+l+'</option>').join('');
   const rankCtl=p=>canRank
@@ -2797,6 +2823,7 @@ function rOrg(){
     return `<tr>
       <td><div class="utbl-name">${avHTML(p.id)}
         <div style="min-width:0"><div class="utbl-nick">${esc(p.name)}</div><div class="utbl-mail">${esc(p.email||'')}</div></div></div></td>
+      <td>${teamCtl(p)}</td>
       <td>${rankCtl(p)}</td>
       <td>${u.region
         ?'<select class="mg-inp" data-act="acct.set" data-f="region" data-id="'+esc(p.id)+'" aria-label="권역">'+regOpt(p.region)+'</select>'
@@ -2805,9 +2832,9 @@ function rOrg(){
       <td class="utbl-r">${roleCtl(p)}</td>
     </tr>`;
   };
-  ar.innerHTML='<table class="utbl"><thead><tr><th style="width:178px">이름</th><th style="width:106px">직급</th><th style="width:106px">권역</th><th>담당 현장</th><th class="utbl-r" style="width:130px">권한</th></tr></thead><tbody>'
+  ar.innerHTML='<table class="utbl"><thead><tr><th style="width:170px">이름</th><th style="width:112px">팀</th><th style="width:96px">직급</th><th style="width:106px">권역</th><th>담당 현장</th><th class="utbl-r" style="width:126px">권한</th></tr></thead><tbody>'
     +(mine.length?mine.map(row).join('')
-      :'<tr><td colspan="5" style="font-size:12px;color:var(--lbl3);padding:10px">이 팀에 배정된 계정이 없습니다.</td></tr>')
+      :'<tr><td colspan="6" style="font-size:12px;color:var(--lbl3);padding:10px">이 팀에 배정된 계정이 없습니다.</td></tr>')
     +'</tbody></table>';
   /* 팀 미배정 계정 — 섞어 두면 헷갈린다는 지적에 따라 별도 카드로 분리 */
   const fc=$('#freeCard'),fr=$('#freeRoot');
@@ -2885,7 +2912,7 @@ function mailItems(kind){
     dayPlans(d,true).forEach(({p,occ})=>{if(!isDone(p,occ))out.push({kind:'plan',p,date:d});});
   Object.keys(S.tasks||{}).forEach(sid=>Object.keys(S.tasks[sid]||{}).forEach(iid=>{
     const it=S.tasks[sid][iid];
-    if(it&&it.date&&stOf(it.st)!==2&&it.date<=sun)out.push({kind:'task',sid,iid,it,over:it.date<today});
+    if(it&&it.date&&stEff(it)!==2&&it.date<=sun)out.push({kind:'task',sid,iid,it,over:it.date<today});
   }));
   return out;
 }
@@ -3044,15 +3071,15 @@ const ACT={
   'plan.stCycle':el=>{
     if(el.closest('#dpEdit')){
       const pe=S.planEdit;if(!pe||!pe.draft)return;
-      const n=(stOf(pe.draft.st)+1)%4;
-      pe.draft.st=n;pe.draft.done=n===2;
+      const n=stEff(pe.draft,pe.draft.end||pe.draft.date)===2?1:2;
+      pe.draft.st=n;pe.draft.done=n===2;pe.draft.stKeep=n===1;
       el.className='tk-st s'+n;el.textContent=ST_LBL[n];
       planAutosave();
       return;
     }
     const p=findPlan(el.dataset.pid);if(!p)return;
     const occ=el.dataset.occ||p.date;
-    const n=(planSt(p,occ)+1)%4;
+    const n=planSt(p,occ)===2?1:2;
     if(p.recur&&p.recur.f){                 /* 반복은 회차별 완료(doneOn)가 우선한다 */
       const k=occSrc(p,occ);
       p.doneOn=p.doneOn||{};
@@ -3170,7 +3197,7 @@ const ACT={
   'tk.formCancel':()=>{S.tkNew=null;S.tkEdit=null;rTasks();},
   'tk.kind':()=>tkKindRefresh(),
   /* 폼 안에서는 draft 만 바꾼다 — 다시 그리면 입력 중인 값이 날아간다 */
-  'tk.stDraft':el=>{const n=(Number(el.dataset.st||0)+1)%4;el.dataset.st=n;el.className='tk-st s'+n;el.textContent=ST_LBL[n];},
+  'tk.stDraft':el=>{const n=Number(el.dataset.st||1)===2?1:2;el.dataset.st=n;el.className='tk-st s'+n;el.textContent=ST_LBL[n];},
   'tk.remindDraft':el=>{const on=!el.dataset.on;el.dataset.on=on?'1':'';el.classList.toggle('on',on);},
   'tk.formSave':el=>taskFormSave(el.dataset.sid,el.dataset.iid||null),
   'tk.open':el=>{
@@ -3190,7 +3217,8 @@ const ACT={
   'tk.st':el=>{
     const sid=el.dataset.sid,iid=el.dataset.iid;
     const cur=(S.tasks[sid]||{})[iid];if(!cur)return;
-    store.putTask(sid,iid,{...cur,st:(stOf(cur.st)+1)%4,updatedAt:Date.now()});
+    const n=stEff(cur)===2?1:2;
+    store.putTask(sid,iid,{...cur,st:n,stKeep:n===1,updatedAt:Date.now()});
     if(!S.live){rTasks();rDay();rWidget();}
     refetchCal();   /* 완료 처리하면 달력의 기한 표시도 즉시 사라져야 한다 */
   },
@@ -3492,7 +3520,7 @@ function rFilter(){
   box.innerHTML=
     '<div class="dp-frow">'
       +M('kind','업무 구분 전체',TK_KIND.map(k=>[k[0]||'_gen',k[1]]))
-      +M('st','진행 상태 전체',ST_LBL.map((l,i)=>[String(i),l]))
+      +M('st','진행 상태 전체',ST_PICK)
     +'</div><div class="dp-frow">'
       +M('reg','권역 전체',regs.map(r=>[r.id,r.name]))
       +M('own','담당자 전체',inReg.map(p=>[p.id,p.name+(me&&p.id===me.id?' (나)':'')]))
@@ -3616,9 +3644,11 @@ document.addEventListener('change',e=>{
     name:base.name||cur.name||'',
     email:base.email||cur.email||'',
     team:f==='team'?el.value:(cur.team||''),
-    region:uses.region?(f==='region'?el.value:(cur.region||'')):'',
+    /* ⚠ 팀을 옮기면 이전 팀의 권역·현장은 남기지 않는다 — 다른 팀 항목이 붙어 있으면 목록이 어긋난다 */
+    region:(f==='team')?'':(uses.region?(f==='region'?el.value:(cur.region||'')):''),
     rank,
-    sites:uses.sites?(cur.sites||{}):{}});
+    sites:(f==='team')?{}:(uses.sites?(cur.sites||{}):{})});
+  if(f==='team')toast('팀을 옮겼습니다 · 권역과 담당 현장을 다시 지정해 주세요');
   if(!S.live){rOrg();rTasks();}
 });
 document.addEventListener('input',e=>{if(e.target.id==='nqQ')rNq();});
@@ -3644,8 +3674,13 @@ document.addEventListener('change',e=>{
 document.addEventListener('click',e=>{
   const b=e.target.closest('#wgTone button');
   if(b){const c=widCfgLoad();c.tone=b.dataset.tone;widCfgSave(c);widApply();return;}
-  const fb=e.target.closest('#wgFont button');
-  if(fb){const c=widCfgLoad();c.font=fb.dataset.font;widCfgSave(c);widApply();}
+  const fb=e.target.closest('#wgFont [data-fontd]');
+  if(fb){
+    const c=widCfgLoad(),ids=WID_FONTS.map(f=>f[0]);
+    const cur=Math.max(0,ids.indexOf(c.font==='sys'?'malgun':(c.font||'app')));
+    c.font=ids[(cur+Number(fb.dataset.fontd)+ids.length)%ids.length];
+    widCfgSave(c);widApply();
+  }
 });
 document.addEventListener('input',e=>{
   if(e.target.id==='dpQ'){S.dayQ=e.target.value;dpSrchMark();rDay();return;}
@@ -3754,6 +3789,8 @@ const WIDGET=/[?&]w=1\b/.test(location.search);
 const GLASS=/[?&]glass=1\b/.test(location.search);   /* 위젯 유리(반투명) 모드 — 배경을 비운다 */
 /* 위젯 설정 — 진하기·글자 크기·오늘 목록. 위젯 창(PC)별 로컬 저장 */
 const WID_KEY='calapp.wid';
+/* 위젯 글꼴 — 윈도우에 늘 있는 것만. 굴림·돋움은 작은 크기 비트맵이 있어 더 또렷할 수 있다 */
+const WID_FONTS=[['app','기본'],['malgun','맑은 고딕'],['gulim','굴림'],['dotum','돋움']];
 function widCfgLoad(){try{return JSON.parse(localStorage.getItem(WID_KEY))||{};}catch(e){return{};}}
 function widCfgSave(c){try{localStorage.setItem(WID_KEY,JSON.stringify(c));}catch(e){}}
 function widApply(){
@@ -3766,7 +3803,7 @@ function widApply(){
   document.body.classList.toggle('wlight',light);
   /* 글꼴 — 투명 창에서는 가변 폰트가 뭉개져 보인다. 윈도우 글꼴은 작은 크기용 힌팅이 있어 더 또렷할 수 있다.
      어느 쪽이 나은지는 모니터마다 달라 고르게 둔다 */
-  const FONTS=['app','malgun','gulim','dotum'];
+  const FONTS=WID_FONTS.map(f=>f[0]);
   const font=FONTS.includes(c.font)?c.font:(c.font==='sys'?'malgun':'app');   /* 137차의 'sys' 는 맑은 고딕으로 */
   FONTS.forEach(f=>document.body.classList.toggle('wf-'+f,f===font));
   document.body.classList.toggle('wsysfont',font!=='app');
@@ -3794,7 +3831,7 @@ function widApply(){
   const fr=$('#wgFz');if(fr)fr.value=Math.round(fz*100);
   const fl=$('#wgFzV');if(fl)fl.textContent=Math.round(fz*100)+'%';
   if($('#wgTone'))$$('#wgTone button').forEach(b=>b.classList.toggle('act',b.dataset.tone===(c.tone||'dark')));
-  if($('#wgFont'))$$('#wgFont button').forEach(b=>b.classList.toggle('act',b.dataset.font===font));
+  const fv=$('#wgFontV');if(fv)fv.textContent=(WID_FONTS.find(f=>f[0]===font)||WID_FONTS[0])[1];
 }
 /* 위치·크기 조정 모드 — 켜면 창 전체가 드래그 영역이 되고, 끄면 그 자리에 고정된다.
    Electron 쪽 전환은 해시로 신호를 보낸다(preload 없이 쓰던 방식 그대로) */
