@@ -359,10 +359,9 @@ button.p-col:hover{box-shadow:inset 0 0 0 1px rgba(0,0,0,.10),0 0 0 3px var(--fi
 .stx:disabled{cursor:default;}
 .stx-in{display:block;width:17px;height:17px;position:relative;}
 .stx svg{position:absolute;inset:0;width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;}
-.stx-run{color:#C2C6CE;}   /* 진행 — 회색을 옅게(진하면 완료보다 눈에 띈다) */
-html.dark .stx-run{color:#4B4F58;}
-.stx-run circle{fill:currentColor;stroke:none;}
-.stx-run .tri{fill:#fff;stroke:none;}
+.stx-run{color:var(--lbl3);}   /* 진행 — 테두리 원. 색은 옆 수정·삭제 아이콘과 같은 값 */
+.stx-run circle{fill:none;stroke:currentColor;}
+.stx-run .tri{fill:currentColor;stroke:none;}
 .stx-done{color:#4CC26A;opacity:0;}   /* 완료 — 기본 초록보다 한 톤 옅게 */
 html.dark .stx-done{color:#3BA85C;}
 .stx-done .cf{fill:currentColor;stroke:none;}
@@ -380,7 +379,7 @@ html.dark .stx-done{color:#3BA85C;}
 @keyframes stx-draw{from{stroke-dashoffset:14}to{stroke-dashoffset:0}}
 /* 윈도우에서 '애니메이션 효과 끄기'를 켜 둔 사람에게는 움직임을 빼 준다 */
 @media(prefers-reduced-motion:reduce){.stx.fx .stx-in,.stx.fx.on .stx-done .cf,.stx.fx.on .stx-done .ck{animation:none;}.stx-in{transition:none;}}
-.plan-side .stx,.tk-acts .stx,.pe-side .stx{margin-right:4px;}   /* 접힘 상태에서는 아이콘 왼쪽에 붙는다 */
+.plan-side .stx,.tk-acts .stx,.pe-side .stx{margin-right:1px;}   /* 수정 아이콘과 살짝 더 가깝게 */
 .plan-main{flex:1;min-width:0;cursor:pointer;}
 .plan-t{font-size:13.5px;font-weight:700;color:var(--lbl);word-break:break-all;}
 .plan-hd .plan-t{flex:1;min-width:0;cursor:pointer;}
@@ -756,8 +755,8 @@ html.dark .col-pop{background:#242426;}
 .sw .sw-t::before{content:"";position:absolute;width:16px;height:16px;left:2px;top:2px;background:var(--bg2);border-radius:50%;transition:transform .2s;box-shadow:0 1px 2px rgba(0,0,0,.25);}
 .sw input:checked + .sw-t{background:var(--gn);}
 .sw input:checked + .sw-t::before{transform:translateX(14px);}
-.site-chk{display:flex;flex-wrap:wrap;gap:4px;align-items:center;min-width:0;min-height:26px;}
-.site-pick{flex-shrink:0;width:26px;height:26px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:var(--lbl3);border:1px dashed var(--sepo);}
+.site-chk{display:flex;flex-wrap:wrap;gap:4px;align-items:center;min-width:0;min-height:24px;}
+.site-pick{flex-shrink:0;width:24px;height:24px;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;color:var(--lbl3);border:1px dashed var(--sepo);box-sizing:border-box;}   /* 옆 현장 배지와 같은 높이·라운드 */
 .site-pick:hover{background:var(--fill);color:var(--bt1);border-color:var(--b300);}
 .site-pick .icn{width:12px;height:12px;}
 .site-on{display:inline-flex;align-items:center;height:24px;padding:0 8px;border-radius:5px;background:var(--fill);border:1px solid var(--sep);font-size:11.5px;font-weight:600;color:var(--lbl2);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;}   /* 라운드는 업무 막대와 같은 5px */
@@ -793,6 +792,9 @@ html.dark .col-pop{background:#242426;}
 .mgtbl tr:last-child td{border-bottom:none;}
 /* 하자처리현황 전용 항목 — 균형 유지를 위해 표기하되 회색 비활성 */
 .mgtbl .mg-dis{opacity:.4;pointer-events:none;filter:grayscale(1);}
+/* 공가 여부는 하자처리 현황이 원본 — 색은 그대로 보여 주되 여기서는 바꿀 수 없다 */
+.mgtbl .mg-ro{pointer-events:none;}
+.mgtbl .mg-ro .sw{opacity:.9;}
 .mgtbl th.mg-disth{color:var(--lbl3);}
 .set-h{font-size:12px;font-weight:700;color:var(--lbl2);text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;justify-content:space-between;gap:8px;padding-bottom:10px;border-bottom:1px solid var(--sep);margin-bottom:13px;}.share-row{display:flex;align-items:center;justify-content:space-between;gap:12px;}
 .share-row>.share-info{flex:1;}
@@ -1669,5 +1671,5 @@ html.dark #toast{background:#2B313A;}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=134"></script>
+<script src="./app.js?v=135"></script>
 </body></html>
