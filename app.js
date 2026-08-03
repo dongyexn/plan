@@ -2882,6 +2882,8 @@ function rCfg(){
   if(i&&document.activeElement!==i)i.value=S.cfg.defectUrl||DEFECT_URL;
   const wu=$('#setWidgetUrl');
   if(wu&&document.activeElement!==wu)wu.value=S.cfg.widgetUrl||'';
+  const wv=$('#setWidgetVer');
+  if(wv&&document.activeElement!==wv)wv.value=S.cfg.widgetVer||'';
   const m=S.cfg.mail||{};
   const hs=$('#mlHour');
   if(hs&&!hs.options.length){
@@ -3657,9 +3659,10 @@ document.addEventListener('change',e=>{
   }
   if(e.target.id==='darkChk'){applyTheme(e.target.checked);return;}
   if(e.target.closest&&e.target.closest('[data-act="set.mail"]')){saveMailCfg();return;}
-  if(e.target.id==='setDefectUrl'||e.target.id==='setWidgetUrl'){   /* 연결 주소는 입력을 마치면 자동 저장 */
+  if(/^set(DefectUrl|WidgetUrl|WidgetVer)$/.test(e.target.id)){   /* 연결 주소는 입력을 마치면 자동 저장 */
     if(!isEditor()){denyEdit();rCfg();return;}
-    store.putCfg(e.target.id==='setDefectUrl'?'defectUrl':'widgetUrl',(e.target.value||'').trim(),err=>{
+    const key={setDefectUrl:'defectUrl',setWidgetUrl:'widgetUrl',setWidgetVer:'widgetVer'}[e.target.id];
+    store.putCfg(key,(e.target.value||'').trim(),err=>{
       toast(err?('저장 실패 · '+((err&&err.message)||err)):'저장했습니다');});
     return;
   }
@@ -3912,6 +3915,13 @@ function rWidget(){
   /* 폼이 열리고 닫힐 때마다 팝업 높이가 달라진다 — 내용이 바뀌면 자리를 다시 잡는다 */
   if(!box.dataset.ro&&window.ResizeObserver){box.dataset.ro='1';new ResizeObserver(widPlace).observe(box);}
 }
+/* 위젯(Electron)이 최신 버전을 물어보는 훅 — 관리자가 설정에 넣어 둔 값을 그대로 알려 준다.
+   GitHub API 를 쓰지 않으므로 사내망에서도 막히지 않는다 */
+window.widInfo=function(){
+  const ver=String(S.cfg.widgetVer||'').trim();
+  const url=String(S.cfg.widgetUrl||'').trim();
+  return (ver&&url)?{ver,url}:null;
+};
 /* 누른 칸 옆에 붙이되 창 밖으로 나가지 않게 한다 — 위젯은 창이 곧 화면이라 넘치면 잘려서 못 본다 */
 function widPlace(){
   const box=$('#widPop');if(!box||!box.classList.contains('on'))return;

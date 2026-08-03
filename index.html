@@ -288,7 +288,7 @@ html.dark #fcal .dhol.dtoday{color:var(--b300);}
 /* ⚠ 줄 간격은 막대의 상하 여백으로만 준다 — harness 의 margin-top 은 FullCalendar 가 인라인으로 정하는 줄 맞춤 값이라 건드리면 칸마다 어긋난다 */
 #fcal .fc-event .fc-event-title{font-weight:500;}
 #fcal .fc-event.done{opacity:.5;}
-#fcal .fc-event.done .fc-event-title{text-decoration:line-through;}
+#fcal .fc-event.done{opacity:.72;}   /* 완료는 아이콘·흐림으로만 — 취소선은 쓰지 않는다 */
 #fcal .fc-daygrid-more-link{font-size:11.5px;color:var(--bt1);font-weight:700;text-decoration:none;margin-left:6px;
   padding:0 5px;border-radius:var(--rp);background:var(--fill);}
 #fcal .fc-daygrid-more-link:hover{background:var(--fill2);}
@@ -385,7 +385,7 @@ html.dark .stx-done{color:#3BA85C;}
 .plan-hd .plan-t{flex:1;min-width:0;cursor:pointer;}
 /* 펼칠 내용이 없는 카드는 손가락 커서를 띄우지 않는다 — 눌러도 반응이 없는 헛손질 방지 */
 #dpList .plan:not(.has-det) .plan-t,#dpList .plan:not(.has-det) .plan-main{cursor:default;}
-.plan.done .plan-t{text-decoration:line-through;color:var(--lbl3);}
+.plan.done .plan-t{color:var(--lbl3);}
 .plan-meta{display:flex;align-items:center;gap:8px;margin-top:4px;font-size:11.5px;color:var(--lbl2);font-weight:500;line-height:1.45;}
 .pm-l{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .pm-r{margin-left:auto;flex:0 0 auto;color:var(--lbl2);font-weight:600;}
@@ -612,7 +612,7 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 /* 첫 줄 — 제목 뒤에 날짜·시각이 바로 붙는다(넓은 화면에서 벌어지지 않게) */
 .tk-ttl{flex:1;min-width:0;font-size:13.5px;font-weight:700;color:var(--lbl);word-break:break-all;cursor:pointer;}
 /* 둘째 줄 — 상태·현장·담당자를 한 줄에 모은다 */
-.tk-item.s2 .tk-ttl{color:var(--lbl3);text-decoration:line-through;}
+.tk-item.s2 .tk-ttl{color:var(--lbl3);}
 /* 담당자 — 회색 바탕 + 색 점 */
 /* 업무 구분 — 상태와 헷갈리지 않게 테두리만 */
 /* 현장 — 흰 바탕 + 파란 테두리 */
@@ -1640,7 +1640,10 @@ html.dark #toast{background:#2B313A;}
             </div>
             <div class="share-sep"></div>
             <div class="share-info" style="margin-bottom:9px"><b>위젯 파일 주소</b></div>
-            <input class="inp" id="setWidgetUrl" placeholder="https://…/업무일정위젯.exe">
+            <input class="inp" id="setWidgetUrl" placeholder="https://…/HPlanWidget.exe">
+            <div class="share-sep"></div>
+            <div class="share-info" style="margin-bottom:9px"><b>위젯 최신 버전</b><span>이 값을 올리면 팀원 위젯이 스스로 새 파일을 받습니다(예: 1.0.1)</span></div>
+            <input class="inp" id="setWidgetVer" placeholder="1.0.0">
           </div>
           <div class="card">
             <div class="set-h">연결</div>
@@ -1671,5 +1674,5 @@ html.dark #toast{background:#2B313A;}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=135"></script>
+<script src="./app.js?v=136"></script>
 </body></html>
