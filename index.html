@@ -395,7 +395,9 @@ body.wid .cal-title .icn{color:rgba(255,255,255,.72);}   /* 꺾쇠가 배경에 
 body.wid .cal-nav{padding:2px;border-radius:999px;}
 /* 시스템 글꼴 — 맑은 고딕은 작은 크기용 힌팅이 있어 투명 창에서 더 또렷하다.
    ⚠ 굵기는 400/700 만 실제 글꼴이 있다 — 500·600 을 쓰면 브라우저가 억지로 굵혀 뭉개진다 */
-body.wid.wsysfont{font-family:'Malgun Gothic','맑은 고딕','Segoe UI',system-ui,sans-serif;}
+body.wid.wf-malgun{font-family:'Malgun Gothic','맑은 고딕','Segoe UI',system-ui,sans-serif;}
+body.wid.wf-gulim{font-family:'Gulim','굴림','Segoe UI',system-ui,sans-serif;}
+body.wid.wf-dotum{font-family:'Dotum','돋움','Segoe UI',system-ui,sans-serif;}
 body.wid.wsysfont #fcal .fc-event,body.wid.wsysfont #fcal .dnum,
 body.wid.wsysfont #fcal .dhol,body.wid.wsysfont #fcal .fc-col-header-cell-cushion{font-weight:700;}
 body.wid.wsysfont #fcal .fc-event{letter-spacing:0;}
@@ -1129,6 +1131,10 @@ body.wid #wgSet.on{display:block;}
 #wgSet .pop-x{color:rgba(255,255,255,.7);}
 #wgSet .wgs-r{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:32px;font-size:12px;}
 #wgSet .wgs-r>span{white-space:nowrap;flex:0 0 116px;}   /* 라벨 폭을 고정해야 슬라이더 시작점이 나란해진다 */
+/* 항목이 많은 줄은 라벨을 위에 두고 아래를 통째로 쓴다(네 칸이 한 줄에 안 들어간다) */
+#wgSet .wgs-c{display:flex;flex-direction:column;gap:6px;padding:4px 0;font-size:12px;}
+#wgSet .wgs-seg4{width:100%;}
+#wgSet .wgs-seg4 button{flex:1;padding:0 4px;}
 #wgSet .wgs-r>input[type=range]{flex:1;min-width:0;}
 #wgSet .wgs-v{font-weight:700;color:rgba(255,255,255,.55);margin-left:4px;}
 #wgSet input[type=range]{width:118px;accent-color:var(--b600);}
@@ -1455,8 +1461,8 @@ html.dark #toast{background:#2B313A;}
           <div class="wgs-r"><span>투명도 <b id="wgAV" class="wgs-v">15%</b></span><input type="range" id="wgA" min="0" max="85" step="5"></div>
           <div class="wgs-r"><span>글자 크기 <b id="wgFzV" class="wgs-v">100%</b></span>
             <input type="range" id="wgFz" min="85" max="140" step="5"></div>
-          <div class="wgs-r"><span>글꼴</span>
-            <div class="seg wgs-seg" id="wgFont"><button data-font="app" class="act">기본</button><button data-font="sys">시스템</button></div></div>
+          <div class="wgs-c"><span>글꼴</span>
+            <div class="seg wgs-seg wgs-seg4" id="wgFont"><button data-font="app" class="act">기본</button><button data-font="malgun">맑은고딕</button><button data-font="gulim">굴림</button><button data-font="dotum">돋움</button></div></div>
           <div class="wgs-r"><span>모드</span>
             <div class="seg wgs-seg" id="wgTone"><button data-tone="dark" class="act">다크</button><button data-tone="light">라이트</button></div></div>
           <div class="wgs-r"><span>위치·크기 조정</span>
@@ -1641,5 +1647,5 @@ html.dark #toast{background:#2B313A;}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=127"></script>
+<script src="./app.js?v=128"></script>
 </body></html>

@@ -3764,8 +3764,12 @@ function widApply(){
   const a=Number.isFinite(Number(c.a))?Number(c.a)/100:.85;   /* 기본 85% */
   const light=c.tone==='light';                                /* 바탕화면이 어두운 사람은 밝은 위젯이 잘 보인다 */
   document.body.classList.toggle('wlight',light);
-  /* 글꼴 — 투명 창에서는 가변 폰트가 뭉개져 보인다. 윈도우 기본 글꼴은 작은 크기용 힌팅이 있어 더 또렷할 수 있다 */
-  document.body.classList.toggle('wsysfont',c.font==='sys');
+  /* 글꼴 — 투명 창에서는 가변 폰트가 뭉개져 보인다. 윈도우 글꼴은 작은 크기용 힌팅이 있어 더 또렷할 수 있다.
+     어느 쪽이 나은지는 모니터마다 달라 고르게 둔다 */
+  const FONTS=['app','malgun','gulim','dotum'];
+  const font=FONTS.includes(c.font)?c.font:(c.font==='sys'?'malgun':'app');   /* 137차의 'sys' 는 맑은 고딕으로 */
+  FONTS.forEach(f=>document.body.classList.toggle('wf-'+f,f===font));
+  document.body.classList.toggle('wsysfont',font!=='app');
   let dyn=document.getElementById('wgDyn');
   if(!dyn){dyn=document.createElement('style');dyn.id='wgDyn';document.head.appendChild(dyn);}
   const f=n=>Math.min(1,Math.max(0,n)).toFixed(3);
@@ -3790,7 +3794,7 @@ function widApply(){
   const fr=$('#wgFz');if(fr)fr.value=Math.round(fz*100);
   const fl=$('#wgFzV');if(fl)fl.textContent=Math.round(fz*100)+'%';
   if($('#wgTone'))$$('#wgTone button').forEach(b=>b.classList.toggle('act',b.dataset.tone===(c.tone||'dark')));
-  if($('#wgFont'))$$('#wgFont button').forEach(b=>b.classList.toggle('act',b.dataset.font===(c.font||'app')));
+  if($('#wgFont'))$$('#wgFont button').forEach(b=>b.classList.toggle('act',b.dataset.font===font));
 }
 /* 위치·크기 조정 모드 — 켜면 창 전체가 드래그 영역이 되고, 끄면 그 자리에 고정된다.
    Electron 쪽 전환은 해시로 신호를 보낸다(preload 없이 쓰던 방식 그대로) */
