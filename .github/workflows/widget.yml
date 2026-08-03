@@ -1,0 +1,53 @@
+# 위젯 exe 를 깃허브에서 대신 만들어 준다.
+# 회사 PC 에 Node 를 깔 필요도, npm install 이 될 필요도 없다 — 브라우저만 있으면 된다.
+#
+# 쓰는 법
+#   1) widget/package.json 의 "version" 을 올린다(웹에서 연필 아이콘으로 고쳐도 된다).
+#   2) 저장소 > Actions > "위젯 exe 만들기" > Run workflow 를 누른다.
+#   3) 5~10분 뒤 Releases 에 새 exe 가 올라온다.
+#   4) 앱 설정 > 바탕화면 위젯 > 위젯 최신 버전에 같은 값을 적는다. 팀원 위젯이 알아서 따라온다.
+
+name: 위젯 exe 만들기
+
+on:
+  workflow_dispatch:        # Actions 탭에서 버튼으로 실행
+  push:
+    tags: ['widget-v*']     # widget-v1.0.1 같은 태그를 만들어도 실행
+
+permissions:
+  contents: write           # Releases 에 파일을 올리기 위해 필요
+
+jobs:
+  build:
+    runs-on: windows-latest # exe 는 윈도우에서만 만들 수 있다
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 버전 읽기
+        id: ver
+        shell: bash
+        run: echo "v=$(node -p "require('./widget/package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: 필요한 파일 받기
+        working-directory: widget
+        run: npm install
+
+      - name: exe 만들기
+        working-directory: widget
+        run: npm run dist
+
+      - name: 릴리스에 올리기
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: widget-v${{ steps.ver.outputs.v }}
+          name: 위젯 v${{ steps.ver.outputs.v }}
+          body: |
+            바탕화면 위젯 v${{ steps.ver.outputs.v }}
+
+            팀원은 따로 받을 필요가 없습니다 — 다음에 컴퓨터를 켤 때 저절로 새 버전으로 바뀝니다.
+            앱 설정 > 바탕화면 위젯 > 위젯 최신 버전을 ${{ steps.ver.outputs.v }} 로 맞춰 주세요.
+          files: widget/dist/HPlanWidget.exe
