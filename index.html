@@ -42,7 +42,9 @@ html.dark{
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;}
-body{font-family:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,system-ui,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;font-size:14px;color:var(--lbl);background:var(--bg);line-height:1.5;-webkit-font-smoothing:antialiased;}
+body{font-family:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,system-ui,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;font-size:14px;color:var(--lbl);background:var(--bg);line-height:1.5;}
+/* ⚠ `-webkit-font-smoothing:antialiased` 는 쓰지 않는다 — 윈도우의 서브픽셀 렌더링(ClearType)을 꺼
+   글자가 회색조로 뭉개진다. 메모장보다 흐려 보이던 원인. */
 button{font-family:inherit;cursor:pointer;border:none;background:none;outline:none;color:inherit;}
 input,textarea,select{font-family:inherit;outline:none;}
 table{border-collapse:collapse;width:100%;}
@@ -228,7 +230,7 @@ html.dark #fcal .fc-col-header-cell{background:#424245;border-left-color:#0F0F10
 #fcal .fc-dayGridMonth-view .fc-daygrid-day-bottom{display:none;}
 /* 공휴일·기념일 — 날짜 숫자 바로 왼쪽, 한 줄 고정(겹침 없음) */
 #fcal .fc-daygrid-day-number{display:flex;align-items:center;justify-content:flex-end;gap:5px;max-width:100%;flex:1;min-width:0;}
-#fcal .dhol{font-size:12.5px;font-weight:700;line-height:1.2;color:var(--rd);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:104px;margin-right:auto;}
+#fcal .dhol{font-size:12.5px;font-weight:700;line-height:1.2;color:var(--rd);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1;margin-right:auto;}
 #fcal .dhol.anv{color:var(--lbl3);font-weight:600;}
 #fcal .fc-daygrid-day.hol .dnum{color:var(--rd);}
 /* 오늘 — 셀 음영 대신 숫자 배지. padding 팽창분을 음수 마진으로 상쇄해 행 높이에 영향 없음 */
@@ -944,13 +946,15 @@ body.wid .card{border-radius:14px;padding:11px 12px;}
 body.wid .cal-title{font-size:15px;}
 body.wid #fcal{font-size:11px;}
 body.wid #fcal .fc-daygrid-day-number{padding:3px 5px 1px;}
-body.wid #fcal .dhol{max-width:52px;font-size:10px;}
+body.wid #fcal .dhol{max-width:none;min-width:0;flex:1;}   /* 칸 폭에 맞춰 쓰고, 정말 좁을 때만 말줄임 */
 body.wid .plan{padding:8px 10px;border-radius:12px;}
 body.wid .plan-t{font-size:12.5px;}
 
 /* ── 위젯 유리 모드 (?w=1&glass=1) — 바탕화면에 스며드는 전면 달력.
      창을 투명하게 띄우고 카드 틀 없이 셀만 앱 컬러의 반투명 틴트로 남긴다.
      진하기는 --ga 하나로 조절(위젯 설정 팝업). 다크 테마 전제. ── */
+/* 투명도 0% 일 때는 창 바탕을 불투명하게 — 그래야 윈도우가 글자를 서브픽셀로 또렷하게 그린다 */
+body.wid.glass.wsolid,html:has(body.wid.glass.wsolid){background:var(--wsolid-bg)!important;}
 body.wid.glass,html:has(body.wid.glass){background:transparent!important;
   /* color-scheme:dark 이면 투명 루트라도 브라우저가 #121212 캔버스를 깐다 — 유리 모드는 normal 로 */
   color-scheme:normal!important;}
@@ -961,7 +965,7 @@ body.wid.glass #fcal .fc-view-harness,body.wid.glass #fcal .fc-scroller,
 body.wid.glass #fcal .fc-scrollgrid,body.wid.glass #fcal table{background:transparent!important;}
 body.wid.glass #fcal{--fc-page-bg-color:transparent;--fc-neutral-bg-color:transparent;}
 body.wid.glass .card{background:transparent;border:0;box-shadow:none!important;border-radius:0;padding:6px 4px;}
-body.wid.glass .cal-title,body.wid.glass .cal-title .y{color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.55);}
+body.wid.glass .cal-title,body.wid.glass .cal-title .y{color:#fff;}
 body.wid.glass .cal-head .seg,body.wid.glass .cal-head .cal-nav{
   background:rgba(16,20,30,.5);border:1px solid rgba(255,255,255,.14);
   -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);}
@@ -1029,26 +1033,25 @@ body.wid .cal-ctl{flex:0 0 auto;min-width:0;}
 body.wid .cal-title{font-size:15px;}
 body.wid .cal-title .y{font-size:inherit;}            /* 연도만 18px 로 남던 것 — 월과 동일 크기 */
 body.wid{--wfz:1;}
-body.wid #fcal{font-size:calc(11px*var(--wfz));}
-body.wid #fcal .dnum{font-size:calc(12px*var(--wfz));}
-body.wid #fcal .dhol{font-size:calc(11px*var(--wfz));}
+body.wid #fcal{font-size:round(calc(11px*var(--wfz)),1px);}
+body.wid #fcal .dnum{font-size:round(calc(12px*var(--wfz)),1px);}
+body.wid #fcal .dhol{font-size:round(calc(11px*var(--wfz)),1px);}
 body.wid #fcal .fc-daygrid-more-link{font-size:calc(11.5px*var(--wfz));}
 body.wid .wid-pop .wp-d{font-size:calc(13px*var(--wfz));}
 body.wid .wid-pop .wp-w{font-size:calc(11.5px*var(--wfz));}
-body.wid #fcal .fc-col-header-cell-cushion{font-size:calc(12.5px*var(--wfz));}
-body.wid #fcal .fc-event-title,body.wid #fcal .fc-event-time{font-size:calc(10.5px*var(--wfz));}
-body.wid #fcal .fc-event{height:calc(18px*var(--wfz));padding:0 calc(5px*var(--wfz));font-weight:500;
-  text-shadow:0 0 3px rgba(0,0,0,.40);-webkit-font-smoothing:antialiased;}   /* 방향 없는 그림자로 배경과 분리 */
+body.wid #fcal .fc-col-header-cell-cushion{font-size:round(calc(12.5px*var(--wfz)),1px);}
+body.wid #fcal .fc-event-title,body.wid #fcal .fc-event-time{font-size:round(calc(11px*var(--wfz)),1px);}
+body.wid #fcal .fc-event{height:round(calc(18px*var(--wfz)),1px);padding:0 calc(5px*var(--wfz));font-weight:500;}
+/* ⚠ 그림자는 글자를 흐리게 만든다 — 밝은 막대는 글자색을 어둡게 바꾸는 것으로 이미 해결했으므로 쓰지 않는다 */
 /* 노랑·연두처럼 밝은 막대는 글자를 어둡게 쓰고 그림자도 밝은 쪽으로 뒤집는다.
    ⚠ FullCalendar 의 textColor 옵션은 #fcal 규칙에 가려 먹지 않는다 — 색은 여기서 정한다 */
 #fcal .fc-event.on-light{color:#1B1B1F;font-weight:600;}
 #fcal .fc-event .fc-event-main{color:inherit;}
-body.wid #fcal .fc-event.on-light{text-shadow:0 0 3px rgba(255,255,255,.55);}
 /* ⚠ 글자를 키워도 달력이 창보다 커지면 안 된다 — 표는 창에 맞추고 칸 안에서만 줄인다 */
 body.wid #fcal .fc-daygrid-body,body.wid #fcal table{width:100%!important;}
 body.wid .cal-card{min-height:0;overflow:hidden;}
 body.wid #fcal .fc-scroller{overflow:hidden!important;}   /* 글자를 키워도 스크롤바가 생기지 않게 */
-body.wid .cal-title{font-size:calc(15px*var(--wfz));}
+body.wid .cal-title{font-size:round(calc(15px*var(--wfz)),1px);}
 /* 날짜를 누르면 그 칸 옆에 뜨는 업무 팝업 — 위젯은 달력만 보이고 목록은 띄우지 않는다 */
 .wid-pop{display:none;position:fixed;z-index:620;width:360px;max-height:62vh;
   background:rgba(22,25,33,.94);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
@@ -1632,5 +1635,5 @@ html.dark #toast{background:#2B313A;}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=123"></script>
+<script src="./app.js?v=125"></script>
 </body></html>
