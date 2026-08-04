@@ -7,68 +7,63 @@
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
 const APP_VER='1.1.0';   /* 위젯(widget/package.json)과 같은 값으로 맞춘다 */
-/* 사용 안내 — 저장소 README 와 같은 내용·차례로 쓴다.
-   ⚠ 기능을 고치면 이 글도 함께 고칠 것(둘이 어긋나면 안내가 오히려 방해가 된다) */
-const GUIDE_HTML=`<div class="doc">
-<div class="doc-lead">현대건설 H서비스중부팀의 <b>업무 일정</b>과 <b>담당자별 업무</b>를 한곳에서 나눠 보는 도구입니다.
-바탕화면 위젯으로 쓰면 브라우저를 열지 않고도 오늘 할 일을 볼 수 있습니다.</div>
-
-<h3>1. 화면</h3>
-<h4>업무 일정</h4>
-<p>달력에서 날짜를 누르면 오른쪽에 그날 업무가 나옵니다. 날짜를 끌면 기간이 잡히고, 그 상태에서 <b>업무 추가</b>를 누르면 기간이 그대로 들어갑니다.</p>
-<ul>
-<li>카드 왼쪽 <b>색 원</b>은 담당자 색입니다. 수정 화면에서 바꿀 수 있습니다.</li>
-<li>제목 오른쪽 <b>동그란 아이콘</b>을 누르면 진행 ↔ 완료가 바뀝니다. <b>기한이 지나면 저절로 완료</b>로 보이고, 손으로 진행을 고르면 그대로 남습니다.</li>
-<li>업무를 만들면 <b>입력하는 동안 저절로 저장</b>됩니다. 저장 버튼이 따로 없습니다.</li>
-</ul>
-
-<h4>업무 목록</h4>
-<p>왼쪽에서 대상을 고르면 오른쪽에 그 업무가 나옵니다. <b>팀 전체</b>·<b>공통 업무</b>·<b>권역</b>·개별 <b>담당자</b> 중에서 고릅니다.</p>
-<ul>
-<li>카드를 누르면 펼쳐집니다. 진행경과·처리계획을 그 자리에서 고치고, 아래에 코멘트를 남깁니다.</li>
-<li>코멘트에 <code>@이름</code>을 쓰면 그 사람에게 알림이 갑니다.</li>
-<li>완료한 업무는 일주일이 지나면 목록에서 감춰집니다(지워지지는 않습니다).</li>
-</ul>
-
-<h4>내 업무</h4>
-<p>내가 담당인 일정(앞으로 7일)과 미완료 업무, 받은 부름을 한 화면에 모읍니다. 읽은 부름도 <b>흐리게 남아</b> 나중에 되짚을 수 있습니다.</p>
-
-<h4>찾기</h4>
-<p>오른쪽 아래 <b>돋보기</b>(또는 <code>Ctrl</code>+<code>K</code>)로 업무·일정·코멘트를 한 번에 찾습니다.</p>
-
-<h3>2. 바탕화면 위젯</h3>
-<p>설정 &gt; <b>바탕화면 위젯</b>에서 내려받아 실행합니다. 처음 실행하면 <code>문서\\H 주요업무현황</code> 폴더에 자리를 잡고, 다음부터 컴퓨터를 켤 때 저절로 뜹니다.</p>
-<ul>
-<li>날짜를 <b>두 번</b> 누르면 그날 업무 창이 열립니다. 일정 막대는 <b>한 번</b>만 눌러도 열립니다.</li>
-<li>헤더의 <b>종</b>은 받은 부름, <b>목록</b>은 내 업무입니다.</li>
-<li><b>오늘 할 일</b>은 컴퓨터를 켠 뒤 한 번 윈도우 알림으로 알려 줍니다(하루 한 번, 완료된 것은 빼고).</li>
-<li>모양은 설정에서 <b>투명도 · 글자 크기 · 글꼴 · 다크/라이트 · 알림</b>을 고칠 수 있습니다.</li>
-<li>새 버전이 나오면 <b>알아서 받아 두었다가</b> 다음에 컴퓨터를 켤 때 바뀝니다.</li>
-</ul>
-<div class="doc-tip">위젯이 안 보이면 <code>문서\\H 주요업무현황\\HPlanWidget.exe</code> 를 두 번 누르세요. 그래도 안 되면 브라우저로 열어도 모든 기능을 쓸 수 있습니다.</div>
-
-<h3>3. 팀 · 권역 · 현장</h3>
-<p>팀·권역·현장 목록은 <b>하자처리현황</b>이 원본입니다. 그쪽에서 바뀌면 이 앱도 곧바로 따라가므로 여기서는 고치지 않습니다.</p>
-<p>누가 어느 권역·현장을 맡는지는 <b>조직/현장 관리</b>에서 정합니다. 직급에 따라 쓰는 칸이 다릅니다.</p>
-<ul>
-<li><b>팀장 · 안전 · 원가</b> — 팀 전체를 봅니다(권역·현장 비움)</li>
-<li><b>공구장</b> — 권역만 지정합니다</li>
-<li><b>담당자</b> — 권역과 담당 현장을 지정합니다</li>
-</ul>
-
-<h3>4. 권한</h3>
-<ul>
-<li><b>관리자</b> — 조직·설정을 포함해 모두 고칠 수 있습니다</li>
-<li><b>사용자</b> — 업무를 만들고 고칠 수 있습니다</li>
-<li><b>차단</b> — 읽기만 됩니다</li>
-</ul>
-
-<h3>5. 백업</h3>
-<p>위젯이 주 1회 <code>문서\\H 주요업무현황\\backup</code> 에 저장합니다(관리자 계정 기준, 최근 12개 보관). 설정 &gt; <b>백업 · 기록</b>에서 지금 내보내거나 되돌릴 수 있습니다.</p>
-
-<h3>6. 문제가 생기면</h3>
-<p>설정 &gt; <b>백업 · 기록</b> 의 <b>복사</b>를 눌러 관리자에게 전달하면 원인 파악이 빠릅니다. 저장이 안 될 때는 대개 권한 문제이니 관리자에게 계정 권한을 확인해 달라고 하세요.</p>
-</div>`;
+/* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
+   저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
+   ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
+   ⚠ 받은 글은 반드시 DOMPurify 로 살균한 뒤 넣는다. */
+let _mdPromise=null;
+function loadMarked(){
+  if(typeof marked!=='undefined'&&typeof DOMPurify!=='undefined')return Promise.resolve(true);
+  if(_mdPromise)return _mdPromise;
+  const one=src=>new Promise((res,rej)=>{
+    const el=document.createElement('script');el.src=src;
+    el.onload=()=>res(true);el.onerror=()=>rej(new Error(src));
+    document.head.appendChild(el);
+  });
+  _mdPromise=Promise.all([
+    typeof marked!=='undefined'?Promise.resolve(true):one('./vendor/marked.min.js'),
+    typeof DOMPurify!=='undefined'?Promise.resolve(true):one('./vendor/purify.min.js')
+  ]).catch(e=>{_mdPromise=null;throw e;});
+  return _mdPromise;
+}
+async function openReadme(){
+  try{
+    const res=await fetch('README.md',{cache:'no-cache'});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const md=await res.text();
+    await loadMarked();
+    const src=document.createElement('div');
+    src.innerHTML=DOMPurify.sanitize(marked.parse(md));
+    /* 장(h2) 단위로 쪼개 왼쪽 목차 + 본문 한 장씩 — 길어서 스크롤만으로는 찾기 어렵다 */
+    const secs=[];let cur={t:'소개',nodes:[]};
+    Array.from(src.childNodes).forEach(n=>{
+      if(n.nodeType===1&&n.tagName==='H2'){if(cur.nodes.length)secs.push(cur);cur={t:n.textContent.trim(),nodes:[n]};}
+      else cur.nodes.push(n);
+    });
+    if(cur.nodes.length)secs.push(cur);
+    const wrap=document.createElement('div');wrap.className='rd-wrap';
+    const nav=document.createElement('nav');nav.className='rd-nav';nav.setAttribute('aria-label','사용 안내 목차');
+    nav.innerHTML=secs.map((x,i)=>'<button class="rd-navi'+(i===0?' act':'')+'" data-act="readme.tab" data-i="'+i+'">'+esc(x.t)+'</button>').join('');
+    const body=document.createElement('div');body.className='rd-body md-doc';
+    secs.forEach((x,i)=>{
+      const d=document.createElement('div');d.className='rd-sec'+(i===0?' act':'');
+      x.nodes.forEach(n=>d.appendChild(n));
+      d.querySelectorAll('table').forEach(tb=>{      /* 좁은 화면에서 표만 가로 스크롤 */
+        const w=document.createElement('div');w.className='md-tw';
+        tb.parentNode.insertBefore(w,tb);w.appendChild(tb);
+      });
+      body.appendChild(d);
+    });
+    wrap.appendChild(nav);wrap.appendChild(body);
+    openModal('사용 안내','<div class="md-scroll"></div>','');
+    const mb=$('#mb');if(mb)mb.classList.add('rdw');
+    $('#mbody').firstChild.appendChild(wrap);
+  }catch(e){
+    console.warn('[README] 열기 실패',e);
+    /* 단일 파일 빌드에는 README.md 가 없다 — 그때는 저장소 주소로 안내한다 */
+    toast('사용 안내를 읽지 못했습니다 · README.md 가 함께 올라갔는지 확인해 주세요');
+  }
+}
 const ERRLOG=[];
 window.addEventListener('error',e=>{ERRLOG.unshift(new Date().toLocaleString('ko-KR')+' · '+(e.message||'')+' @'+(e.filename||'').split('/').pop()+':'+(e.lineno||0));ERRLOG.length=Math.min(ERRLOG.length,20);});
 window.addEventListener('unhandledrejection',e=>{ERRLOG.unshift(new Date().toLocaleString('ko-KR')+' · 미처리 거부 · '+String((e.reason&&e.reason.message)||e.reason||'').slice(0,120));ERRLOG.length=Math.min(ERRLOG.length,20);});
@@ -398,7 +393,12 @@ const HOLI={
 '2030-01-01':'신정','2030-02-02':'설날 연휴','2030-02-03':'설날','2030-02-04':'설날 연휴','2030-02-05':'대체공휴일','2030-03-01':'삼일절','2030-05-05':'어린이날','2030-05-06':'대체공휴일','2030-05-09':'석가탄신일','2030-06-06':'현충일','2030-08-15':'광복절','2030-09-11':'추석 연휴','2030-09-12':'추석','2030-09-13':'추석 연휴','2030-10-03':'개천절','2030-10-09':'한글날','2030-12-25':'성탄절'};
 /* 매년 반복 기념일(비공휴일 — 회색 표기) */
 const ANNIV={'04-05':'식목일','05-01':'근로자의날','05-08':'어버이날','05-15':'스승의날','07-17':'제헌절','10-01':'국군의날'};
-function holOf(ds){if(HOLI[ds])return{n:HOLI[ds],h:true};const a=ANNIV[ds.slice(5)];return a?{n:a,h:false}:null;}
+function holOf(ds){
+  const off=(S.offdays||{})[ds];                 /* 팀이 정한 휴무일이 공휴일보다 앞선다 */
+  if(off)return{n:String(off).slice(0,12),h:true,off:true};
+  if(HOLI[ds])return{n:HOLI[ds],h:true};
+  const a=ANNIV[ds.slice(5)];return a?{n:a,h:false}:null;
+}
 function toDate(ds){const[a,b,c]=ds.split('-').map(Number);return new Date(a,b-1,c);}
 function addDays(ds,n){const d=toDate(ds);d.setDate(d.getDate()+n);return dstr(d);}
 function addMonths(ds,n){const d=toDate(ds);const day=d.getDate();d.setDate(1);d.setMonth(d.getMonth()+n);
@@ -415,6 +415,7 @@ const S={
   view:'calendar',
   selDate:todayStr(),
   org:{teams:[],regions:[],sites:[]},  // 팀·권역·현장 목록 (모두 {id,name}, 현장은 team·region 포함)
+  offdays:{},        // calapp/offdays/<날짜> = 이름 — 단체연차 등 팀 휴무일(공휴일처럼 칠한다)
   people:{},         // calapp/people/{id}: {name,email,team,region} — id는 로그인 uid
   accounts:{},       // users/{uid}: {email,name,role} — 하자처리 현황과 공용
   tasks:{},          // {memberId:{itemId:{text,st,updatedAt}}}
@@ -551,18 +552,21 @@ function lsSave(d){try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){
 const LocalStore={
   name:'local',
   _d:null,
-  init(){this._d=lsLoad();this._d.plans=this._d.plans||{};this._d.recur=this._d.recur||{};this._d.org=this._d.org||{teams:[],regions:[],sites:[]};this._d.tasks=this._d.tasks||{};this._d.cfg=this._d.cfg||{};this._d.people=this._d.people||{};this._d.prefs=this._d.prefs||{};
+  init(){this._d=lsLoad();this._d.plans=this._d.plans||{};this._d.recur=this._d.recur||{};this._d.org=this._d.org||{teams:[],regions:[],sites:[]};this._d.tasks=this._d.tasks||{};this._d.cfg=this._d.cfg||{};this._d.people=this._d.people||{};this._d.prefs=this._d.prefs||{};this._d.offdays=this._d.offdays||{};
     migrateOrg(this._d);
     const moved=migratePlans(this._d)|migrateDue(this._d);
     normOrg(this._d.org);
     if(moved)lsSave(this._d);   /* 옮긴 결과를 저장하지 않으면 새로고침 때마다 되살아난다 */
-    S.org=this._d.org;S.tasks=this._d.tasks;S.cfg=this._d.cfg;S.people=this._d.people;S.prefs=this._d.prefs;S.accounts={};},
+    S.org=this._d.org;S.tasks=this._d.tasks;S.cfg=this._d.cfg;S.people=this._d.people;S.prefs=this._d.prefs;S.offdays=this._d.offdays;S.accounts={};},
   putPlan(p){const{sid,iid,item,prevSid}=planToTask(p);
     if(prevSid&&prevSid!==sid)this.putTask(prevSid,iid,null);   /* 담당자가 바뀌면 옛 소속에서 지운다 */
     this.putTask(sid,iid,item);},
   delPlan(ym,id){const hit=allTasks().find(x=>x.iid===id);if(hit)this.putTask(hit.sid,hit.iid,null);},
   movePlan(p){this.putPlan(p);},
   putOrg(org){this._d.org=org;S.org=org;lsSave(this._d);},
+  putOffday(ds,name){this._d.offdays=this._d.offdays||{};
+    if(name)this._d.offdays[ds]=name;else delete this._d.offdays[ds];
+    S.offdays=this._d.offdays;lsSave(this._d);calRerender();rDay();rWidget();rOff();},
   putPerson(id,p){if(p)this._d.people[id]=p;else delete this._d.people[id];S.people=this._d.people;lsSave(this._d);},
   putTask(mid,iid,item){this._d.tasks[mid]=this._d.tasks[mid]||{};if(item)this._d.tasks[mid][iid]=item;else delete this._d.tasks[mid][iid];S.tasks=this._d.tasks;lsSave(this._d);},
   putCfg(k,v,cb){this._d.cfg[k]=v;S.cfg=this._d.cfg;lsSave(this._d);if(cb)cb(null);},
@@ -614,6 +618,7 @@ const FbStore={
   delPlan(ym,id){const hit=allTasks().find(x=>x.iid===id);if(hit)this.putTask(hit.sid,hit.iid,null);},
   movePlan(p){this.putPlan(p);},
   putOrg(org){FB.db.ref('calapp/org').set(cleanOrg(org)).catch(fbErr);},
+  putOffday(ds,name){FB.db.ref('calapp/offdays/'+ds)[name?'set':'remove'](name||null).catch(fbErr);},
   putPerson(id,p){const r=FB.db.ref('calapp/people/'+id);(p?r.set(cleanPerson(p)):r.remove()).catch(fbErr);},
   putTask(mid,iid,item){
     /* 서버 응답을 기다리면 한 박자 늦게 반영된다 — 화면에 먼저 반영하고 서버 값이 오면 덮어쓴다.
@@ -738,6 +743,7 @@ const FbStore={
     this._on('calapp/tasks',v=>{S.tasks=v||{};bootCacheSave();
       if(shEditing()){PEND.tasks=true;PEND.day=true;return;}
       rTasks();refetchCal();rDay();rWidget();});   /* 업무가 곧 일정 — 달력도 함께 갱신 */
+    this._on('calapp/offdays',v=>{S.offdays=v||{};bootCacheSave();calRerender();rDay();rWidget();rOff();});
     this._on('calapp/people',v=>{S.people=v||{};bootCacheSave();
       if(shEditing()){PEND.org=true;PEND.tasks=true;return;}
       rOrg();rTasks();});
@@ -1455,7 +1461,8 @@ function calInit(){
     dayCellContent:a=>{
       const ds=dstr(a.date),o=holOf(ds);
       const today=ds===todayStr()?'<span class="dhol dtoday">오늘</span>':'';
-      return{html:today+(o?'<span class="dhol'+(o.h?'':' anv')+'">'+esc(o.n)+'</span>':'')+'<span class="dnum">'+a.date.getDate()+'</span>'};},
+      const cls=o?('dhol'+(o.h?'':' anv')+(o.off?' off':'')):'';
+      return{html:today+(o?'<span class="'+cls+'">'+esc(o.n)+'</span>':'')+'<span class="dnum">'+a.date.getDate()+'</span>'};},
     events:(info,ok)=>ok(buildEvents()),
     dateClick:info=>{S.selEnd='';selDate(String(info.dateStr).slice(0,10));},
     eventClick:info=>{info.jsEvent.preventDefault();
@@ -1903,7 +1910,7 @@ function rDay(){
           ${stIcon(st,' data-act="plan.stCycle" data-pid="'+esc(p.id)+'" data-occ="'+esc(occ)+'"')}
 ${p.remind?'<button class="p-ico p-rem on" data-act="plan.remind" data-pid="'+esc(p.id)+'" aria-label="리마인드 해제" title="리마인드 켜짐"><svg class="icn"><use href="#i-bell"></use></svg></button>':''}
           ${lnk?'<a class="p-ico" href="'+esc(lnk.url)+'" target="_blank" rel="noopener" aria-label="링크 열기" title="'+esc(lnk.label||lnk.url)+'"><svg class="icn"><use href="#i-ext"></use></svg></a>':''}
-          <button class="p-ico p-edit" data-act="plan.edit" data-pid="${esc(p.id)}" data-occ="${esc(occ)}" aria-label="수정" title="수정"><svg class="icn"><use href="#i-pen"></use></svg></button>
+          <button class="p-ico p-edit" data-act="plan.edit" data-pid="${esc(p.id)}" data-occ="${esc(occ)}" aria-label="수정" data-tip="수정"><svg class="icn"><use href="#i-pen"></use></svg></button>
         </div>
       </div>
       <div class="plan-main"${openAct}>
@@ -2232,7 +2239,7 @@ function stxSet(el,st){
 function stIcon(st,attrs){
   const on=stOf(st)===2;
   return '<button class="stx'+(on?' on':'')+'"'+(attrs||' disabled')+' data-on="'+(on?1:0)+'"'
-    +' aria-label="'+(on?'완료':'진행 중')+'" title="'+(on?'완료 · 눌러서 진행':'진행 중 · 눌러서 완료')+'">'
+    +' aria-label="'+(on?'완료':'진행 중')+'" data-tip="'+(on?'완료 · 눌러서 진행으로':'진행 중 · 눌러서 완료로')+'">'
     +'<span class="stx-in">'
       +'<svg class="stx-run" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path class="tri" d="M10.4 8.8v6.4l5.2-3.2z"/></svg>'
       +'<svg class="stx-done" viewBox="0 0 24 24"><circle class="cf" cx="12" cy="12" r="9"/><path class="ck" d="m8.3 12.2 2.5 2.5 4.9-5.2"/></svg>'
@@ -2306,7 +2313,7 @@ function taskItemHTML(sid,iid,it,withSubject,hideOwn){
           <svg class="icn"><use href="#i-cmt"></use></svg><span class="cn">${cn}</span></button>`:''}
         ${it.remind?'<button class="tk-ico on" data-act="tk.remind" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" aria-label="리마인드 해제" title="리마인드 켜짐"><svg class="icn"><use href="#i-bell"></use></svg></button>':''}
         ${lnk?'<a class="tk-ico" href="'+esc(lnk.url)+'" target="_blank" rel="noopener" data-act="lnk.open" aria-label="링크 열기" title="'+esc(lnk.label||lnk.url)+'"><svg class="icn"><use href="#i-ext"></use></svg></a>':''}
-        <button class="tk-ico" data-act="tk.edit" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="수정" title="수정"><svg class="icn"><use href="#i-pen"></use></svg></button>
+        <button class="tk-ico" data-act="tk.edit" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="수정" data-tip="수정"><svg class="icn"><use href="#i-pen"></use></svg></button>
         <button class="tk-del" data-act="tk.del" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="삭제"><svg class="icn"><use href="#i-close"></use></svg></button>
       </div>
     </div>
@@ -3085,7 +3092,7 @@ function orgSave(){
 function rCfg(){
   const i=$('#setDefectUrl');
   if(i&&document.activeElement!==i)i.value=S.cfg.defectUrl||DEFECT_URL;
-  rBk();
+  rBk();rOff();
   const m=S.cfg.mail||{};
   const hs=$('#mlHour');
   if(hs&&!hs.options.length){
@@ -3379,9 +3386,165 @@ function bkDownload(name,text){
   a.download=name;document.body.appendChild(a);a.click();
   setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);
 }
+/* 휴무일 목록 — 해마다 한 번 몰아서 넣는다. 지난 날짜는 흐리게 두고 연도별로 묶는다 */
+function rOff(){
+  const card=$('#offCard');if(card)card.style.display=isEditor()?'':'none';
+  const box=$('#offList');if(!box)return;
+  const list=Object.entries(S.offdays||{}).sort((a,b)=>a[0]<b[0]?-1:1);
+  if(!list.length)return void(box.innerHTML='<div class="off-none">지정된 휴무일이 없습니다</div>');
+  const today=todayStr();
+  let html='',year='';
+  list.forEach(([ds,n])=>{
+    const y=ds.slice(0,4);
+    if(y!==year){year=y;html+='<div class="off-y">'+y+'년</div>';}
+    html+='<div class="off-row"'+(ds<today?' style="opacity:.5"':'')+'>'
+      +'<span class="off-d">'+esc(ds.slice(5).replace('-','/'))+'</span>'
+      +'<span class="off-w">'+DOW[toDate(ds).getDay()]+'</span>'
+      +'<span class="off-n">'+esc(n)+'</span>'
+      +'<button class="off-x" data-act="offday.del" data-ds="'+esc(ds)+'" aria-label="삭제" data-tip="이 휴무일 지우기"><svg class="icn"><use href="#i-trash"></use></svg></button>'
+      +'</div>';
+  });
+  box.innerHTML=html;
+}
 function rBk(){
   const card=$('#bkCard');if(card)card.style.display=isEditor()?'':'none';
 }
+/* ═══════════ 우클릭 메뉴 · 툴팁 ═══════════
+   원칙 ①입력칸·글자를 고르는 중에는 브라우저 기본 메뉴를 그대로 둔다
+        ②필터·설정 팝업과 같은 시각 문법을 쓴다
+        ③데스크톱 위주 — 모바일 길게 누르기는 기기마다 달라 건드리지 않는다 */
+/* ⚠ 달력 '칸'의 내용·클래스는 이벤트만 새로 받아서는 안 바뀐다 — 칸을 다시 그리게 한다 */
+function calRerender(){try{if(CAL){CAL.refetchEvents();CAL.render();}}catch(e){}}
+const mdLabel=ds=>{const t=toDate(ds);return (t.getMonth()+1)+'월 '+t.getDate()+'일';};
+let _ctxEl=null,_ctxEsc=null;
+function closeCtx(){
+  if(!_ctxEl)return;
+  _ctxEl.remove();_ctxEl=null;
+  document.removeEventListener('click',closeCtx);
+  document.removeEventListener('scroll',closeCtx,true);
+  if(_ctxEsc){document.removeEventListener('keydown',_ctxEsc);_ctxEsc=null;}
+}
+function openCtx(x,y,items){
+  closeCtx();
+  const list=items.filter(Boolean);
+  if(!list.length)return;
+  const el=document.createElement('div');
+  el.className='ctxmenu';el.setAttribute('role','menu');
+  el.innerHTML=list.map((it,i)=>it.sep
+    ?'<div class="ctx-sep"></div>'
+    :'<button class="ctx-it'+(it.danger?' dg':'')+'" role="menuitem" data-ci="'+i+'">'+esc(it.label)+'</button>').join('');
+  document.body.appendChild(el);
+  const r=el.getBoundingClientRect();
+  el.style.left=Math.max(6,Math.min(x,innerWidth-r.width-8))+'px';
+  el.style.top=Math.max(6,Math.min(y,innerHeight-r.height-8))+'px';
+  el.addEventListener('click',e=>{
+    const b=e.target.closest('.ctx-it');if(!b)return;
+    e.stopPropagation();
+    const it=list[Number(b.dataset.ci)];closeCtx();
+    if(it&&it.act)it.act();
+  });
+  el.addEventListener('contextmenu',e=>e.preventDefault());
+  _ctxEl=el;
+  setTimeout(()=>{document.addEventListener('click',closeCtx);document.addEventListener('scroll',closeCtx,true);},0);
+  _ctxEsc=e=>{if(e.key==='Escape')closeCtx();};
+  document.addEventListener('keydown',_ctxEsc);
+}
+function copyText(t,msg){
+  const done=()=>toast(msg||'복사했습니다');
+  if(navigator.clipboard&&navigator.clipboard.writeText)
+    navigator.clipboard.writeText(String(t)).then(done).catch(()=>toast('복사 실패'));
+  else{const ta=document.createElement('textarea');ta.value=String(t);document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');done();}catch(e){toast('복사 실패');}ta.remove();}
+}
+/* 우클릭 대상 — 달력 날짜 칸 · 업무 막대 · 업무 카드 */
+document.addEventListener('contextmenu',e=>{
+  const t=e.target;
+  if(t.closest('input,textarea,select'))return;              /* 입력칸은 기본 메뉴 */
+  if(String(getSelection()||'').trim())return;               /* 글자를 고르는 중이면 기본 메뉴 */
+  const items=ctxFor(t);
+  if(!items||!items.length)return;
+  e.preventDefault();
+  openCtx(e.clientX,e.clientY,items);
+});
+function ctxFor(t){
+  /* ① 업무 카드(업무 일정 · 업무 목록 공용) */
+  const plan=t.closest('#dpList .plan');
+  if(plan){
+    const p=findPlan(plan.dataset.pid);
+    if(p){
+      const occ=p.date,done=planSt(p,occ)===2;
+      return[
+        {label:done?'진행으로 되돌리기':'완료로 표시',act:()=>ACT['plan.stCycle']({dataset:{pid:p.id,occ},closest:()=>null})},
+        {label:'수정',act:()=>ACT['plan.edit']({dataset:{pid:p.id,occ}})},
+        {label:'제목 복사',act:()=>copyText(p.title||'','제목을 복사했습니다')},
+        {sep:true},
+        {label:'삭제',danger:true,act:()=>ACT['plan.del']({dataset:{pid:p.id,ym:ymOf(p.date),occ}})}
+      ];
+    }
+  }
+  const tk=t.closest('.tk-item');
+  if(tk&&tk.dataset.sid){
+    const sid=tk.dataset.sid,iid=tk.dataset.iid,it=(S.tasks[sid]||{})[iid];
+    if(it)return[
+      {label:stEff(it)===2?'진행으로 되돌리기':'완료로 표시',act:()=>ACT['tk.st']({dataset:{sid,iid}})},
+      {label:'제목 복사',act:()=>copyText(it.text||'','제목을 복사했습니다')},
+      {sep:true},
+      {label:'삭제',danger:true,act:()=>ACT['tk.del']({dataset:{sid,iid}})}
+    ];
+  }
+  /* ② 달력 날짜 칸 */
+  const cell=t.closest('#fcal td.fc-daygrid-day');
+  if(cell&&cell.dataset.date){
+    const ds=cell.dataset.date,off=(S.offdays||{})[ds];
+    const ed=isEditor();
+    return[
+      {label:'이 날짜에 업무 추가',act:()=>{selDate(ds,true);S.selEnd='';if(WIDGET)S.widPop=true;rDay();rWidget();
+        setTimeout(()=>{const a=$('#dpList')&&$('.dp-add');if(a)a.click();},60);}},
+      {label:'이 날짜로 이동',act:()=>{selDate(ds,true);if(WIDGET){S.widPop=true;rWidget();}rDay();}},
+      ed?{sep:true}:null,
+      ed?(off
+        ?{label:'휴무일 해제 ('+off+')',act:()=>{store.putOffday(ds,'');toast('휴무일을 해제했습니다');}}
+        :{label:'단체연차로 지정',act:()=>{store.putOffday(ds,'단체연차');toast(mdLabel(ds)+' 단체연차');}}):null,
+      ed&&!off?{label:'다른 휴무일로 지정…',act:()=>offdayAsk(ds)}:null
+    ];
+  }
+  return null;
+}
+function offdayAsk(ds){
+  openModal('휴무일 지정',
+    '<div style="font-size:12.5px;color:var(--lbl2);margin-bottom:9px">'+esc(mdLabel(ds))+' 을(를) 쉬는 날로 표시합니다. 달력에서 공휴일과 같은 색으로 칠해집니다.</div>'
+    +'<input class="inp" id="offName" maxlength="12" placeholder="예: 단체연차, 창립기념일" value="단체연차">',
+    '<button class="btn bg2 bsm" data-act="modal.close">취소</button><button class="btn bp bsm" data-act="offday.save" data-ds="'+esc(ds)+'">지정</button>');
+  setTimeout(()=>{const i=$('#offName');if(i){i.focus();i.select();}},60);
+}
+
+/* ── 툴팁 — `data-tip` 이 있는 요소에 잠깐 머무르면 뜬다 ── */
+let _tipT=null;
+function tipHide(){clearTimeout(_tipT);const el=$('#htip');if(el)el.classList.remove('on');}
+function tipShow(target){
+  const el=$('#htip');if(!el)return;
+  const txt=target.dataset.tip;if(!txt)return;
+  el.textContent=txt;
+  el.classList.add('on');
+  const r=target.getBoundingClientRect(),t=el.getBoundingClientRect();
+  let x=r.left+r.width/2-t.width/2;
+  let y=r.top-t.height-8;
+  if(y<6)y=r.bottom+8;                                  /* 위가 좁으면 아래로 */
+  el.style.left=Math.max(6,Math.min(x,innerWidth-t.width-6))+'px';
+  el.style.top=y+'px';
+}
+document.addEventListener('mouseover',e=>{
+  const t=e.target.closest?e.target.closest('[data-tip]'):null;
+  if(!t)return;
+  clearTimeout(_tipT);
+  _tipT=setTimeout(()=>tipShow(t),420);                  /* 지나가다 뜨지 않게 조금 기다린다 */
+});
+document.addEventListener('mouseout',e=>{
+  if(e.target.closest&&e.target.closest('[data-tip]'))tipHide();
+});
+document.addEventListener('scroll',tipHide,true);
+window.addEventListener('blur',tipHide);
+
 /* ═══════════ 화면 전환 · 공통 UI ═══════════ */
 const VIEW_TTL={calendar:'업무 일정',mine:'내 업무',tasks:'업무 목록',org:'조직/현장 관리',settings:'설정'};
 function go(view){
@@ -3774,7 +3937,42 @@ const ACT={
       closeModal();if(!S.live)rOrg();
     }};
   },
-  'set.guide':()=>openModal('사용 안내',GUIDE_HTML,''),
+  'set.guide':()=>openReadme(),
+  'offday.add':()=>{
+    if(!isEditor())return toast('관리자만 지정할 수 있습니다');
+    const f=$('#offFrom'),t=$('#offTo'),l=$('#offLabel');
+    const from=f&&f.value,to=(t&&t.value)||from;
+    const name=String((l&&l.value)||'').trim().slice(0,12)||'단체연차';
+    if(!from)return toast('시작일을 골라 주세요');
+    if(to<from)return toast('종료일이 시작일보다 앞섭니다');
+    if(daysBetween(from,to)>60)return toast('한 번에 60일까지만 지정할 수 있습니다');
+    /* ⚠ 주말·공휴일에 또 칠하면 목록만 지저분해진다 — 건너뛴다 */
+    let n=0,skip=0;
+    for(let d=from;d<=to;d=addDays(d,1)){
+      const w=toDate(d).getDay();
+      if(w===0||w===6||HOLI[d]){skip++;continue;}
+      store.putOffday(d,name);n++;
+    }
+    if(f)f.value='';if(t)t.value='';if(l)l.value='';
+    rOff();
+    toast(n?(n+'일을 '+name+'으로 지정했습니다'+(skip?' · 주말·공휴일 '+skip+'일은 건너뜀':'')):'모두 주말·공휴일이라 지정하지 않았습니다');
+  },
+  'offday.del':el=>{
+    if(!isEditor())return toast('관리자만 지울 수 있습니다');
+    store.putOffday(el.dataset.ds,'');rOff();toast('지웠습니다');
+  },
+  'offday.save':()=>{
+    const i=$('#offName'),ds=$('[data-act="offday.save"]').dataset.ds;
+    const n=String((i&&i.value)||'').trim().slice(0,12);
+    if(!n)return toast('이름을 적어 주세요');
+    store.putOffday(ds,n);closeModal();toast(mdLabel(ds)+' '+n);
+  },
+  'readme.tab':el=>{
+    const i=Number(el.dataset.i)||0;
+    $$('#mbody .rd-navi').forEach((b,k)=>b.classList.toggle('act',k===i));
+    $$('#mbody .rd-sec').forEach((d,k)=>d.classList.toggle('act',k===i));
+    const sc=$('#mbody .md-scroll');if(sc)sc.scrollTop=0;
+  },
   'set.copyErr':()=>{
     const txt='버전 '+APP_VER+' · '+navigator.userAgent+'\n'+(ERRLOG.length?ERRLOG.join('\n'):'기록된 오류 없음');
     if(navigator.clipboard&&navigator.clipboard.writeText)
