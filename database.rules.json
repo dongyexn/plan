@@ -345,6 +345,7 @@
             "sid":  { ".validate": "newData.isString() && newData.val().length <= 60" },
             "iid":  { ".validate": "newData.isString() && newData.val().length <= 60" },
             "at":   { ".validate": "newData.isNumber()" },
+            "read": { ".validate": "newData.isNumber()" },
             "$other": { ".validate": false }
           }
         }

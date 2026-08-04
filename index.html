@@ -120,34 +120,20 @@ svg{display:block;flex-shrink:0;}
 .tb-pop-n{font-size:11.5px;font-weight:700;color:#fff;background:var(--rd);border-radius:999px;padding:1px 6px;min-width:18px;text-align:center;}
 .tb-pop-b{overflow-y:auto;padding:6px;}
 .tbr{position:relative;}
-/* 알림 한 줄 — 아바타 · 이름 · 시각 · 내용 */
-.al-row{display:flex;gap:10px;width:100%;text-align:left;padding:10px;border-radius:12px;transition:background var(--tr);}
-.al-row+.al-row{margin-top:2px;}
-.al-row:hover{background:var(--fill);}
-.al-av{flex:0 0 auto;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-  font-size:13px;background:var(--fill2);color:var(--lbl2);}
-.al-b{min-width:0;flex:1;}
-.al-h{display:flex;align-items:baseline;gap:6px;margin-bottom:2px;}
-.al-h b{font-size:12.5px;font-weight:700;color:var(--lbl);}
-.al-h span{font-size:11px;color:var(--lbl3);margin-left:auto;flex-shrink:0;}
-.al-t{font-size:12.5px;color:var(--lbl2);line-height:1.5;
-  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
-.al-t .mn{color:var(--bt1);font-weight:700;}
-.al-w{font-size:11.5px;color:var(--lbl3);margin-top:3px;}
-.al-none{display:flex;flex-direction:column;align-items:center;gap:8px;padding:30px 12px;color:var(--lbl3);}
-.al-none .icn{width:26px;height:26px;opacity:.5;}
-.al-none span{font-size:12.5px;}
+/* 알림 줄은 위젯 팝오버의 `.wl` 규칙을 그대로 쓴다 — 아래 '위젯 옆 팝오버 목록' 참조 */
 /* 상단바 오른쪽 — 알림·사용 안내 */
-.tbr{margin-left:auto;display:flex;align-items:center;gap:4px;}
-.tb-ic{position:relative;width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--lbl2);transition:background var(--tr),color var(--tr);}
-.tb-ic:hover{background:var(--fill);color:var(--lbl);}
+.tbr{margin-left:auto;display:flex;align-items:center;gap:6px;}
+.tb-ic{position:relative;width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+  color:var(--lbl2);background:var(--fill);border:1px solid var(--sep);
+  transition:background var(--tr),color var(--tr),border-color var(--tr);}
+.tb-ic:hover{background:var(--fill2);color:var(--lbl);border-color:var(--sepo);}
 .tb-ic .icn{width:18px;height:18px;}
 .tb-dot{position:absolute;top:6px;right:6px;width:7px;height:7px;border-radius:50%;background:var(--rd);display:none;}
 .tb-dot.on{display:block;}
 body.wid .tbr{display:none;}   /* 위젯에는 상단바가 없다 */
 #topbar{height:var(--th);flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:var(--glass2);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);border-bottom:1px solid var(--sep);z-index:100;}
 .tbl{display:flex;align-items:center;gap:10px;min-width:0;}
-.tbt{font-size:16px;font-weight:700;color:var(--lbl);}/* -- 스크롤바 공통 규약 --
+.tbt{font-size:14px;font-weight:700;color:var(--lbl);letter-spacing:-.01em;}   /* 사이드바 제목(.sbn)과 같은 크기 *//* -- 스크롤바 공통 규약 --
    크롬은 네이티브 스크롤바를 내용 위에 겹칠 수 없다. 대신 폭(--sbw)을 늘 확보(scrollbar-gutter:stable)하고
    그만큼 오른쪽 패딩에서 빼서, 스크롤 유무와 관계없이 내용 폭이 변하지 않게 한다(여백 위에 겹친 것처럼 보인다).
    새 스크롤 영역도 이 규약을 따를 것 - 요소에 data-sb 를 달고 padding-right = 원하는 여백 - var(--sbw). */
@@ -158,7 +144,7 @@ body.wid .tbr{display:none;}   /* 위젯에는 상단바가 없다 */
 .nq-res::-webkit-scrollbar-thumb,.pf-emg::-webkit-scrollbar-thumb,[data-sb]::-webkit-scrollbar-thumb{background:var(--sepo);border-radius:99px;}
 #content::-webkit-scrollbar-track,.dp-body::-webkit-scrollbar-track,.tk-list::-webkit-scrollbar-track,
 .nq-res::-webkit-scrollbar-track,.pf-emg::-webkit-scrollbar-track,[data-sb]::-webkit-scrollbar-track{background:transparent;}
-#content{flex:1;overflow-y:auto;padding:9px 16px 20px 20px;}   /* 우측 16+스크롤바 4 = 20 */
+#content{flex:1;overflow-y:auto;padding:12px 16px 20px 20px;}   /* 우측 16+스크롤바 4 = 20 */
 .view{display:none;}
 .view.act{display:block;animation:fu .2s ease;}
 @keyframes fu{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
@@ -203,7 +189,7 @@ select.inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-ima
 .frow4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;}
 @media(max-width:960px){.frow4{grid-template-columns:1fr 1fr;}}
 /* ══════════ 달력 페이지 ══════════ */
-.cal-wrap{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;align-items:stretch;height:calc(100dvh - var(--th) - 29px);min-height:520px;}   /* 29 = 상단 9 + 하단 20 */
+.cal-wrap{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;align-items:stretch;height:calc(100dvh - var(--th) - 32px);min-height:520px;}   /* 32 = 상단 12 + 하단 20 */
 .cal-card{padding:16px 18px;display:flex;flex-direction:column;min-height:0;}
 /* 달력을 감싸던 카드 프레임 제거 — 달력(fc-scrollgrid 테두리)이 곧 외곽 */
 body:not(.wid) .cal-card{border:0;background:transparent;box-shadow:none;border-radius:0;padding:0;}
@@ -288,9 +274,13 @@ html.dark #fcal .fc-day-today .dnum{color:#fff!important;background:var(--b500);
 
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-other{background-color:#E7E9EF;}
 html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-other{background-color:#1A1A1C;}
+/* 주말·공휴일은 같은 톤 — 붉은 끼를 아주 옅게만 준다(공휴일이 유난히 진하던 것을 맞췄다) */
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sun:not(.fc-day-other),
-#fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sat:not(.fc-day-other){background-image:linear-gradient(rgba(60,60,67,.03),rgba(60,60,67,.03));}
-#fcal .fc-dayGridMonth-view td.fc-daygrid-day.hol:not(.fc-day-other){background-image:linear-gradient(rgba(255,59,48,.08),rgba(255,59,48,.08));}
+#fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sat:not(.fc-day-other),
+#fcal .fc-dayGridMonth-view td.fc-daygrid-day.hol:not(.fc-day-other){background-image:linear-gradient(rgba(190,60,70,.045),rgba(190,60,70,.045));}
+html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sun:not(.fc-day-other),
+html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-sat:not(.fc-day-other),
+html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day.hol:not(.fc-day-other){background-image:linear-gradient(rgba(255,120,120,.07),rgba(255,120,120,.07));}
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day.sel-day:not(.x-none){background-image:linear-gradient(rgba(83,140,222,.15),rgba(83,140,222,.15));}
 /* 위 :not(.x-none) 은 데드 클래스가 아니라 명시도 부스터 — 주말·공휴일 배경 규칙과 같은 background-image 를 이기기 위함. 지우면 토·일·공휴일 선택 강조가 사라진다 */
 /* ── 기간 선택 테두리 — 칸마다 박스가 아니라 주(행) 구간을 하나로 둘러친다 ──
@@ -478,7 +468,7 @@ body.wid .wid-side .wp-h b{font-size:13px;font-weight:800;color:#fff;}
 body.wid .wid-dot{position:absolute;top:5px;right:5px;width:7px;height:7px;border-radius:50%;background:var(--rd);display:none;}
 body.wid .wid-dot.on{display:block;}
 body.wid [data-act="wid.side"]{position:relative;}
-/* ── 위젯 옆 팝오버 목록 (알림 · 내 업무) ──
+/* ── 팝오버 목록 (위젯 옆 팝오버 · 앱 상단바 알림 공용) ──
    한 줄 = [날짜 알약][제목 + 부제]. 두 목록이 같은 뼈대를 쓰므로 눈에 익는다 */
 .wl{display:flex;align-items:flex-start;gap:9px;width:100%;text-align:left;padding:8px 9px;border-radius:10px;
   transition:background var(--tr);}
@@ -507,6 +497,9 @@ body.wid [data-act="wid.side"]{position:relative;}
 .wl-m .mn{color:var(--bt1);font-weight:700;}
 .wl-av{flex:0 0 auto;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;
   font-size:11.5px;font-weight:700;background:var(--fill2);color:var(--lbl2);}
+/* 읽은 부름 — 지우지 않고 흐리게만 둔다 */
+.wl.rd{opacity:.5;}
+.mine-row.rd{opacity:.5;}
 .wl-clr{display:block;width:100%;height:30px;margin-top:6px;border-radius:8px;background:var(--fill);
   font-size:11.5px;font-weight:700;color:var(--lbl2);transition:background var(--tr);}
 .wl-clr:hover{background:var(--fill2);color:var(--lbl);}
@@ -643,7 +636,7 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 .pal-add .pal-inp{position:absolute;inset:0;opacity:0;cursor:pointer;padding:0;border:none;}
 
 /* ══════════ 주요업무 현황 — 좌: 대상 선택 · 우: 작성/목록 ══════════ */
-.tkwrap{display:grid;grid-template-columns:320px minmax(0,1fr);gap:16px;align-items:stretch;height:calc(100dvh - var(--th) - 29px);min-height:460px;}   /* 29 = 상단 9 + 하단 20 */
+.tkwrap{display:grid;grid-template-columns:320px minmax(0,1fr);gap:16px;align-items:stretch;height:calc(100dvh - var(--th) - 32px);min-height:460px;}   /* 32 = 상단 12 + 하단 20 */
 .tkside{display:flex;flex-direction:column;gap:12px;min-height:0;overflow-y:auto;}
 .tks-card{padding:14px 15px;}
 /* 오른쪽 열 — 업무 일정과 같은 구성: 제목 없는 필터 카드 + 제목이 붙은 업무 패널 */
@@ -854,12 +847,23 @@ html.dark .col-pop{background:#242426;}
 .spk-i:hover{background:var(--fill);}
 .spk-i input{width:16px;height:16px;accent-color:var(--b600);}
 .gd{font-size:13px;line-height:1.75;color:var(--lbl);max-height:62dvh;overflow-y:auto;}
-.gd h4{font-size:13.5px;margin:16px 0 6px;color:var(--bt1);}
-.gd h4:first-child{margin-top:0;}
-.gd p{margin:0 0 8px;color:var(--lbl2);font-size:12.5px;}
-.gd ul{margin:0 0 10px;padding-left:18px;color:var(--lbl2);font-size:12.5px;}
-.gd li{margin:2px 0;}
-.gd code{background:var(--fill2);border-radius:5px;padding:1px 5px;font-size:11.5px;}
+/* 사용 안내 문서 — 하자처리현황 안내와 같은 결(제목 계층 · 여백 · 인용 상자) */
+.doc{max-height:min(66dvh,620px);overflow-y:auto;padding-right:4px;}
+.doc-lead{font-size:13px;line-height:1.7;color:var(--lbl2);background:var(--fill);border-radius:12px;
+  padding:13px 15px;margin-bottom:18px;}
+.doc-lead b{color:var(--lbl);}
+.doc h3{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:800;color:var(--lbl);
+  margin:22px 0 10px;padding-bottom:8px;border-bottom:1px solid var(--sep);}
+.doc h3:first-of-type{margin-top:0;}
+.doc h4{font-size:13px;font-weight:700;color:var(--bt1);margin:15px 0 6px;}
+.doc p{margin:0 0 8px;font-size:12.5px;line-height:1.7;color:var(--lbl2);}
+.doc ul{margin:0 0 10px;padding-left:17px;}
+.doc li{font-size:12.5px;line-height:1.7;color:var(--lbl2);margin-bottom:4px;}
+.doc b{color:var(--lbl);font-weight:700;}
+.doc code{font-size:11.5px;font-family:ui-monospace,Menlo,Consolas,monospace;background:var(--fill);
+  border-radius:5px;padding:1px 5px;color:var(--lbl);}
+.doc-tip{margin:10px 0 4px;padding:11px 13px;border-left:3px solid var(--b500);background:var(--b50);
+  border-radius:0 10px 10px 0;font-size:12.5px;line-height:1.65;color:var(--bt1);}
 
 /* 설정 · 조직 관리 레이아웃 */
 .set-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
@@ -1547,7 +1551,7 @@ html.dark #toast{background:#2B313A;}
   <header id="topbar">
     <div class="tbl">
       <button class="mc" data-act="nav.mob" aria-label="메뉴"><svg class="icn" aria-hidden="true"><use href="#i-menu"></use></svg></button>
-      <div class="tbt" id="tbt" style="font-size:20px">업무 일정</div>
+      <div class="tbt" id="tbt">업무 일정</div>
     </div>
     <div class="tbr">
       <button class="tb-ic" data-act="app.alerts" aria-label="알림" title="알림">
@@ -1608,14 +1612,14 @@ html.dark #toast{background:#2B313A;}
               <b id="wgFontV">기본</b>
               <button class="wgs-cb" data-fontd="1" aria-label="다음 글꼴"><svg class="icn"><use href="#i-chevr"></use></svg></button>
             </div></div>
-          <div class="wgs-r"><span>알림</span>
-            <label class="wgs-sw"><input type="checkbox" id="wgNoti"><span class="sw-t"></span></label></div>
           <div class="wgs-r"><span>모드</span>
             <div class="wgs-cyc" id="wgTone">
               <button class="wgs-cb" data-toned="-1" aria-label="이전 모드"><svg class="icn"><use href="#i-chevl"></use></svg></button>
               <b id="wgToneV">다크</b>
               <button class="wgs-cb" data-toned="1" aria-label="다음 모드"><svg class="icn"><use href="#i-chevr"></use></svg></button>
             </div></div>
+          <div class="wgs-r"><span>알림</span>
+            <label class="wgs-sw"><input type="checkbox" id="wgNoti"><span class="sw-t"></span></label></div>
           <div class="wgs-sep"></div>
           <button class="wgs-full" data-act="wid.reload">새로고침</button>
           <button class="wgs-full" data-act="wid.moveOn">위치·크기 조정</button>
@@ -1790,5 +1794,5 @@ html.dark #toast{background:#2B313A;}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=158"></script>
+<script src="./app.js?v=160"></script>
 </body></html>
