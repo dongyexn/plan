@@ -457,8 +457,15 @@ body.wid .cal-nav{padding:2px;border-radius:999px;}
 body.wid.wf-malgun{font-family:'Malgun Gothic','맑은 고딕','Segoe UI',system-ui,sans-serif;}
 body.wid.wf-gulim{font-family:'Gulim','굴림','Segoe UI',system-ui,sans-serif;}
 body.wid.wf-dotum{font-family:'Dotum','돋움','Segoe UI',system-ui,sans-serif;}
+/* ⚠ 맑은 고딕·굴림·돋움은 400·700 만 실제로 있다 — 그 사이 값을 주면 브라우저가 억지로 굵혀 뭉개진다.
+   그래서 시스템 글꼴에서는 '가늘게=400 / 보통·굵게=700' 두 단계로만 붙인다 */
 body.wid.wsysfont #fcal .fc-event,body.wid.wsysfont #fcal .dnum,
-body.wid.wsysfont #fcal .dhol,body.wid.wsysfont #fcal .fc-col-header-cell-cushion{font-weight:700;}
+body.wid.wsysfont #fcal .dhol,body.wid.wsysfont #fcal .fc-col-header-cell-cushion,
+body.wid.wsysfont .cal-title,body.wid.wsysfont .wid-pop .plan-t,body.wid.wsysfont .wid-pop .wl-t{font-weight:700;}
+body.wid.wsysfont.wfw-l #fcal .fc-event,
+body.wid.wsysfont.wfw-l #fcal .dhol,
+body.wid.wsysfont.wfw-l .wid-pop .plan-t,
+body.wid.wsysfont.wfw-l .wid-pop .wl-t{font-weight:400;}
 body.wid.wsysfont #fcal .fc-event{letter-spacing:0;}
 /* 프로필 버튼은 계정 얼굴(이모지·색)로 — 상용 앱처럼 누구로 로그인했는지 한눈에 */
 body.wid .wid-acct{padding:0;}
@@ -1150,7 +1157,15 @@ body.wid .wid-pop .wp-d{font-size:calc(13px*var(--wfz));}
 body.wid .wid-pop .wp-w{font-size:calc(11.5px*var(--wfz));}
 body.wid #fcal .fc-col-header-cell-cushion{font-size:round(calc(12.5px*var(--wfz)),1px);}
 body.wid #fcal .fc-event-title,body.wid #fcal .fc-event-time{font-size:round(calc(11px*var(--wfz)),1px);}
-body.wid #fcal .fc-event{height:round(calc(18px*var(--wfz)),1px);padding:0 calc(5px*var(--wfz));font-weight:500;}
+body.wid{--wfw:0;}   /* 글자 굵기 조절 — 기준값에 더한다 */
+body.wid #fcal .fc-event{height:round(calc(18px*var(--wfz)),1px);padding:0 calc(5px*var(--wfz));
+  font-weight:calc(500 + var(--wfw));}
+body.wid #fcal .fc-event.on-light{font-weight:calc(600 + var(--wfw));}
+body.wid #fcal .dnum{font-weight:calc(700 + var(--wfw));}
+body.wid #fcal .dhol{font-weight:calc(700 + var(--wfw));}
+body.wid #fcal .fc-col-header-cell-cushion{font-weight:calc(700 + var(--wfw));}
+body.wid .cal-title{font-weight:calc(800 + var(--wfw));}
+body.wid .wid-pop .plan-t,body.wid .wid-pop .wl-t{font-weight:calc(600 + var(--wfw));}
 /* ⚠ 그림자는 글자를 흐리게 만든다 — 밝은 막대는 글자색을 어둡게 바꾸는 것으로 이미 해결했으므로 쓰지 않는다 */
 /* 노랑·연두처럼 밝은 막대는 글자를 어둡게 쓰고 그림자도 밝은 쪽으로 뒤집는다.
    ⚠ FullCalendar 의 textColor 옵션은 #fcal 규칙에 가려 먹지 않는다 — 색은 여기서 정한다 */
@@ -1226,11 +1241,14 @@ body.wid .wid-pop .p-ico:hover,body.wid .wid-pop .pe-ic:hover{background:rgba(25
 body.wid .plan .plan-t{font-size:calc(12.5px*var(--wfz));}
 /* 설정 팝업 */
 #wgSet{display:none;position:fixed;top:55px;right:10px;z-index:600;width:282px;   /* 필터·연월 팝업과 같은 높이 */
-  background:rgba(22,25,33,.92);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
-  border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:12px 14px;
+  background:rgba(22,25,33,.94);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+  border:1px solid rgba(255,255,255,.16);border-radius:13px;padding:0;
+  box-shadow:0 12px 34px rgba(0,0,0,.5);
   box-shadow:0 10px 30px rgba(0,0,0,.45);color:rgba(255,255,255,.9);}
 body.wid #wgSet.on{display:block;}
-#wgSet .wgs-h{display:flex;align-items:center;justify-content:space-between;font-size:12.5px;font-weight:800;margin-bottom:10px;color:#fff;}
+#wgSet .wp-h{display:flex;align-items:center;padding:12px 14px 10px;border-bottom:1px solid rgba(255,255,255,.12);}
+#wgSet .wp-h b{font-size:13px;font-weight:800;color:#fff;}
+#wgSet .wgs-b{padding:6px 14px 12px;}
 #wgSet .pop-x{color:rgba(255,255,255,.7);}
 #wgSet .wgs-r{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:32px;font-size:12px;}
 #wgSet .wgs-r>span{white-space:nowrap;flex:0 0 112px;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:6px;}   /* 라벨 폭 고정 — 값(%)은 오른쪽 끝에 붙어 슬라이더와 맞닿는다 */
@@ -1585,10 +1603,17 @@ html.dark #toast{background:#2B313A;}
           <div id="widSideB" data-sb></div>
         </div>
         <div id="wgSet" aria-hidden="true">
-          <div class="wgs-h">위젯 설정</div>
+          <div class="wp-h"><b>위젯 설정</b></div>
+          <div class="wgs-b">
           <div class="wgs-r"><span>투명도 <b id="wgAV" class="wgs-v">15%</b></span><input type="range" id="wgA" min="0" max="85" step="5"></div>
           <div class="wgs-r"><span>글자 크기 <b id="wgFzV" class="wgs-v">100%</b></span>
             <input type="range" id="wgFz" min="85" max="140" step="5"></div>
+          <div class="wgs-r"><span>글자 굵기</span>
+            <div class="wgs-cyc" id="wgFw">
+              <button class="wgs-cb" data-fwd="-1" aria-label="가늘게"><svg class="icn"><use href="#i-chevl"></use></svg></button>
+              <b id="wgFwV">보통</b>
+              <button class="wgs-cb" data-fwd="1" aria-label="굵게"><svg class="icn"><use href="#i-chevr"></use></svg></button>
+            </div></div>
           <div class="wgs-r"><span>글꼴</span>
             <div class="wgs-cyc" id="wgFont">
               <button class="wgs-cb" data-fontd="-1" aria-label="이전 글꼴"><svg class="icn"><use href="#i-chevl"></use></svg></button>
@@ -1605,6 +1630,7 @@ html.dark #toast{background:#2B313A;}
           <button class="wgs-full" data-act="wid.reload">새로고침</button>
           <button class="wgs-full" data-act="wid.moveOn">위치·크기 조정</button>
           <button class="wgs-full" data-act="wid.open">브라우저 앱 열기</button>
+          </div>
         </div>
         <div class="dp-col">
           <div class="card dp-filtercard">
@@ -1774,5 +1800,5 @@ html.dark #toast{background:#2B313A;}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=155"></script>
+<script src="./app.js?v=156"></script>
 </body></html>

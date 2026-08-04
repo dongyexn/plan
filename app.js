@@ -4025,6 +4025,13 @@ document.addEventListener('change',e=>{
 document.addEventListener('click',e=>{
   const tb=e.target.closest('#wgTone [data-toned]');
   if(tb){const c=widCfgLoad();c.tone=(c.tone==='light')?'dark':'light';widCfgSave(c);widApply();return;}
+  const wb=e.target.closest('#wgFw [data-fwd]');
+  if(wb){
+    const c=widCfgLoad(),vals=WID_FWS.map(w=>w[0]);
+    const cur=Math.max(0,vals.indexOf(Number(c.fw)||0));
+    c.fw=vals[Math.min(vals.length-1,Math.max(0,cur+Number(wb.dataset.fwd)))];
+    widCfgSave(c);widApply();return;
+  }
   const fb=e.target.closest('#wgFont [data-fontd]');
   if(fb){
     const c=widCfgLoad(),ids=WID_FONTS.map(f=>f[0]);
@@ -4144,6 +4151,8 @@ const GLASS=/[?&]glass=1\b/.test(location.search);   /* 위젯 유리(반투명)
 const WID_KEY='calapp.wid';
 /* 위젯 글꼴 — 윈도우에 늘 있는 것만. 굴림·돋움은 작은 크기 비트맵이 있어 더 또렷할 수 있다 */
 const WID_FONTS=[['app','기본'],['malgun','맑은 고딕'],['gulim','굴림'],['dotum','돋움']];
+/* 글자 굵기 — 기준 굵기에 더할 값. 유리 배경에서는 취향이 갈려 고르게 둔다 */
+const WID_FWS=[[-100,'가늘게'],[0,'보통'],[100,'굵게']];
 function widCfgLoad(){try{return JSON.parse(localStorage.getItem(WID_KEY))||{};}catch(e){return{};}}
 function widCfgSave(c){try{localStorage.setItem(WID_KEY,JSON.stringify(c));}catch(e){}}
 function widApply(){
@@ -4185,6 +4194,13 @@ function widApply(){
   const fl=$('#wgFzV');if(fl)fl.textContent=Math.round(fz*100)+'%';
   const tv=$('#wgToneV');if(tv)tv.textContent=light?'라이트':'다크';
   const fv=$('#wgFontV');if(fv)fv.textContent=(WID_FONTS.find(f=>f[0]===font)||WID_FONTS[0])[1];
+  /* 굵기 — 기준값에 더해 쓴다(0 이 보통) */
+  const fw=WID_FWS.some(w=>w[0]===Number(c.fw))?Number(c.fw):0;
+  document.body.style.setProperty('--wfw',String(fw));
+  /* ⚠ 인라인 값은 선택자로 못 고른다(`--wfw: -100` 처럼 공백이 붙는다) — 클래스로도 표시해 둔다 */
+  document.body.classList.toggle('wfw-l',fw<0);
+  document.body.classList.toggle('wfw-b',fw>0);
+  const wv=$('#wgFwV');if(wv)wv.textContent=(WID_FWS.find(w=>w[0]===fw)||WID_FWS[1])[1];
 }
 /* 위치·크기 조정 모드 — 켜면 창 전체가 드래그 영역이 되고, 끄면 그 자리에 고정된다.
    Electron 쪽 전환은 해시로 신호를 보낸다(preload 없이 쓰던 방식 그대로) */
