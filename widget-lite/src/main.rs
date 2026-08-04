@@ -285,6 +285,44 @@ fn restore_bounds(app: AppHandle, want: Bounds) {
     std::thread::spawn(|| { std::thread::sleep(Duration::from_secs(5)); RESTORED.store(true, Ordering::SeqCst); });
 }
 
+/* 저장된(또는 계산된) 자리·크기를 실제 모니터 안으로 끌어들인다.
+   ⚠ 185차: 첫 실행 기본 위치를 논리 크기(620)와 물리 좌표를 섞어 계산해 배율 화면에서 오른쪽이
+   잘렸고, 설정 톱니까지 화면 밖이라 조정 모드 진입 자체가 불가능했다 — 모니터가 바뀌거나 빠져도
+   같은 궁지가 생기므로, 부팅 때는 늘 화면 안으로 보정하고 트레이에 '위치·크기 초기화'를 둔다. */
+fn clamp_to_screens(w: &WebviewWindow, mut b: Bounds) -> Bounds {
+    let mons = w.available_monitors().unwrap_or_default();
+    if mons.is_empty() { return b; }
+    /* 창과 가장 많이 겹치는 모니터(없으면 첫 번째)의 작업 영역 기준 */
+    let mut best = 0usize; let mut best_ov = -1i64;
+    for (i, m) in mons.iter().enumerate() {
+        let wa = m.work_area();
+        let (mx, my) = (wa.position.x as i64, wa.position.y as i64);
+        let (mw, mh) = (wa.size.width as i64, wa.size.height as i64);
+        let ox = (b.x as i64 + b.w as i64).min(mx + mw) - (b.x as i64).max(mx);
+        let oy = (b.y as i64 + b.h as i64).min(my + mh) - (b.y as i64).max(my);
+        let ov = ox.max(0) * oy.max(0);
+        if ov > best_ov { best_ov = ov; best = i; }
+    }
+    let wa = mons[best].work_area();
+    let (mx, my) = (wa.position.x, wa.position.y);
+    let (mw, mh) = (wa.size.width, wa.size.height);
+    b.w = b.w.min(mw); b.h = b.h.min(mh);                       /* 모니터보다 크면 줄인다 */
+    b.x = b.x.min(mx + mw as i32 - b.w as i32).max(mx);
+    b.y = b.y.min(my + mh as i32 - b.h as i32).max(my);
+    b
+}
+/* 첫 실행·초기화 공용 기본 자리 — 주 모니터 작업 영역 오른쪽 위, 전부 물리 픽셀로 계산(단위 혼용 금지) */
+fn default_bounds(w: &WebviewWindow) -> Option<Bounds> {
+    let mon = w.primary_monitor().ok()??;
+    let sf = mon.scale_factor();
+    let (pw, ph) = ((620.0 * sf) as u32, (520.0 * sf) as u32);  /* 논리 620x520 을 물리로 */
+    let wa = mon.work_area();
+    Some(Bounds {
+        x: wa.position.x + (wa.size.width as i32 - pw as i32 - (24.0 * sf) as i32).max(0),
+        y: wa.position.y + (40.0 * sf) as i32,
+        w: pw, h: ph,
+    })
+}
 fn toggle_window(app: &AppHandle) {
     let Some(w) = win_of(app) else { return };
     if w.is_visible().unwrap_or(false) { let _ = w.hide(); return; }
@@ -660,6 +698,7 @@ fn rebuild_tray(app: &AppHandle) {
         .item(&mk("reload", "새로고침"))
         .item(&mk("devtools", "개발자 도구 (문제 확인)"))
         .item(&mk("backup", "지금 백업하기"))
+        .item(&mk("resetpos", "위치·크기 초기화"))
         .item(&mk("diag", "진단 폴더 열기"))
         .item(&mk("autostat", "자동 실행 상태 확인"))
         .item(&mk("openweb", "브라우저 앱 열기"))
@@ -703,6 +742,18 @@ fn on_menu(app: &AppHandle, id: &str) {
                 else { msg_ok("백업", "지금은 백업하지 않았습니다.",
                     "관리자 계정으로 로그인돼 있고 자료를 다 받은 뒤에만 저장합니다.\n(진단 폴더의 widget-lite-log.txt 에 사유가 남습니다)"); }
             });
+        }
+        "resetpos" => {
+            /* 창이 화면 밖으로 나가 설정 톱니를 못 누르는 궁지의 탈출구(185차) */
+            if let Some(w) = win_of(app) {
+                if let Some(b) = default_bounds(&w) {
+                    let _ = w.set_size(tauri::PhysicalSize::new(b.w, b.h));
+                    let _ = w.set_position(tauri::PhysicalPosition::new(b.x, b.y));
+                }
+                let _ = w.show();
+                remember(app, true, "초기화");
+                log("위치·크기 초기화");
+            }
         }
         "diag" => { let _ = open::that(home_dir()); }
         "autostat" => {
@@ -823,12 +874,14 @@ fn main() {
 
             let want = STATE.lock().unwrap().bounds;
             match want {
-                Some(b) => { restore_bounds(handle.clone(), b); }
+                /* ⚠ 지난 실행이 화면 밖 자리를 저장했을 수 있다(185차 실제 사례) — 보정해서 되돌린다 */
+                Some(b) => { restore_bounds(handle.clone(), clamp_to_screens(&w, b)); }
                 None => {
-                    /* 첫 실행 — 아이콘이 몰린 왼쪽을 피해 주 모니터 오른쪽 위(Electron 그대로) */
-                    if let Ok(Some(mon)) = w.primary_monitor() {
-                        let s = mon.size();
-                        let _ = w.set_position(tauri::PhysicalPosition::new(s.width as i32 - 620 - 24, 40));
+                    /* 첫 실행 — 아이콘이 몰린 왼쪽을 피해 주 모니터 오른쪽 위.
+                       ⚠ set_position 은 물리 픽셀을 받는다 — 창 크기(논리 620)도 배율을 곱해 물리로 맞춘다(185차) */
+                    if let Some(b) = default_bounds(&w) {
+                        let _ = w.set_position(tauri::PhysicalPosition::new(b.x, b.y));
+                        let _ = w.set_size(tauri::PhysicalSize::new(b.w, b.h));
                     }
                     RESTORED.store(true, Ordering::SeqCst);
                 }
