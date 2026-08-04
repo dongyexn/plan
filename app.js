@@ -2031,7 +2031,9 @@ function planFormHTML(){
       ${colDotHTML(planColor(d))}
       <input class="pe-ttl" id="peTitle" maxlength="80" placeholder="무엇을 하나요?" value="${esc(d.title)}">
       <div class="pe-side">
-        ${pe.orig?'<button class="pe-ic pe-del" data-act="plan.del" data-pid="'+esc(d.id)+'" data-ym="'+esc(ymOf(d.date))+'" data-occ="'+esc(pe.occ||'')+'" aria-label="삭제" title="삭제"><svg class="icn"><use href="#i-trash"></use></svg></button>':''}
+        ${pe.orig
+          ?'<button class="pe-ic pe-del" data-act="plan.del" data-pid="'+esc(d.id)+'" data-ym="'+esc(ymOf(d.date))+'" data-occ="'+esc(pe.occ||'')+'" aria-label="삭제" title="삭제"><svg class="icn"><use href="#i-trash"></use></svg></button>'
+          :'<button class="pe-ic pe-del" data-act="plan.discard" aria-label="취소" title="저장하지 않고 닫기"><svg class="icn"><use href="#i-close"></use></svg></button>'}
         <button class="pe-ic pe-rem${d.remind?' on':''}" data-act="plan.remindDraft" aria-label="리마인드 전환" title="리마인드"><svg class="icn"><use href="#i-bell"></use></svg></button>
         <button class="pe-ic pe-ok" data-act="plan.cancel" aria-label="저장하고 닫기 (Esc)" title="저장하고 닫기 (Esc)"><svg class="icn"><use href="#i-check"></use></svg></button>
       </div>
@@ -2135,7 +2137,9 @@ function planAutosave(now){
       pe.orig={...p};                       /* 처음 저장한 뒤부터는 '수정' */
       /* ⚠ 폼은 다시 그리지 않으므로(입력이 날아간다) 삭제 버튼이 안 생긴다 — 그 자리에 끼워 넣는다 */
       const side=$('#dpEdit .pe-side');
-      if(side&&!side.querySelector('.pe-del')){
+      const old=side&&side.querySelector('[data-act="plan.discard"]');
+      if(old)old.remove();                 /* 취소 버튼을 삭제 버튼으로 바꾼다 */
+      if(side&&!side.querySelector('[data-act="plan.del"]')){
         const del=document.createElement('button');
         del.className='pe-ic pe-del';del.setAttribute('aria-label','삭제');del.title='삭제';
         del.dataset.act='plan.del';del.dataset.pid=p.id;del.dataset.ym=ymOf(p.date);del.dataset.occ=pe.occ||'';
@@ -3410,6 +3414,16 @@ const ACT={
     planAutosave();},
   'plan.toTask':el=>{closePlanEdit();gotoTask(el.dataset.sid,el.dataset.iid);},
   'plan.remind':el=>{const p=findPlan(el.dataset.pid);if(!p)return;p.remind=!p.remind;p.updatedAt=Date.now();store.putPlan(p);if(!S.live)rDay();toast(p.remind?'당일 아침 리마인드 메일이 발송됩니다':'리마인드를 해제했습니다');},
+  /* 새로 만들다가 그만둘 때 — 자동 저장을 취소하고 아무것도 남기지 않는다 */
+  'plan.discard':()=>{
+    clearTimeout(PE_SAVE);
+    const pe=S.planEdit;
+    if(pe&&pe.orig){                       /* 이미 한 번 저장됐다면 지운다 */
+      const p=findPlan(pe.draft&&pe.draft.id);
+      if(p)store.delPlan(ymOf(p.date),p.id);
+    }
+    S.planEdit=null;rDay();refetchCal();rWidget();
+  },
   'plan.del':el=>{
     const p=findPlan(el.dataset.pid),occ=el.dataset.occ||'';
     if(p&&p.recur&&p.recur.f&&occ){
@@ -4150,7 +4164,7 @@ function widApply(){
   if(!dyn){dyn=document.createElement('style');dyn.id='wgDyn';document.head.appendChild(dyn);}
   const f=n=>Math.min(1,Math.max(0,n)).toFixed(3);
   const B=light?'231,235,242':'24,28,38';        /* 칸 */
-  const W=light?'214,220,231':'52,56,68';        /* 주말 */
+  const W=light?'238,224,226':'62,48,54';        /* 주말 — 붉은 끼를 살짝 준다 */
   const H=light?'205,213,226':'13,16,24';        /* 요일 머리 */
   const C=light?'243,246,251':'13,17,26';        /* 카드 */
   const N=light?'221,227,238':'16,20,30';        /* 버튼 배경 */
