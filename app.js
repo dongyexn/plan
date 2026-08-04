@@ -377,7 +377,7 @@ function planColor(p){
 /* 상태는 진행·완료 둘뿐이다. 옛 데이터의 예정(0)·보류(3)은 진행으로 본다(자리는 그대로 두어 색 규칙 s1·s2 재사용) */
 const ST_LBL=['진행','진행','완료','진행'];
 const ST_PICK=[['1','진행'],['2','완료']];
-const WIDGET_URL='https://github.com/dongyexn/plan/releases/latest/download/HPlanWidget.exe';   /* 늘 최신 릴리스를 가리킨다 — 버전을 적을 필요가 없다 */
+const WIDGET_URL='https://github.com/dongyexn/plan/releases/latest/download/HPlanWidgetLite.exe';   /* 늘 최신 릴리스를 가리킨다 — 버전을 적을 필요가 없다. 186차부터 Lite(WebView2) 판 */
 const DEFECT_URL='https://dongyexn.github.io/report/';  // 하자처리 현황 배포 주소(기본값)
 /* ── 한국 공휴일(대체공휴일 포함, 2025~2030) — 임시공휴일 지정 등 변동 시 이 표만 수정 ── */
 const HOLI={
