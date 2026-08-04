@@ -108,6 +108,15 @@ svg{display:block;flex-shrink:0;}
 #sidebar.mini .sb-th1{display:none;}   /* 접었을 때는 테마 버튼을 감춘다(펼치면 그대로) */
 
 #main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
+/* 상단바 알림 팝오버 — 모달 대신 버튼 아래에 붙는다 */
+.tb-pop{position:absolute;z-index:210;top:calc(100% + 8px);right:0;width:330px;max-height:min(62dvh,520px);
+  display:none;flex-direction:column;background:var(--bg2);border:1px solid var(--sep);border-radius:var(--rxl);
+  box-shadow:0 14px 34px rgba(16,24,40,.16);overflow:hidden;}
+.tb-pop.on{display:flex;}
+.tb-pop-h{display:flex;align-items:center;gap:8px;padding:11px 13px 9px;border-bottom:1px solid var(--sep);}
+.tb-pop-h b{font-size:13px;}
+.tb-pop-b{overflow-y:auto;padding:8px 12px 12px;}
+.tbr{position:relative;}
 /* 상단바 오른쪽 — 알림·사용 안내 */
 .tbr{margin-left:auto;display:flex;align-items:center;gap:4px;}
 .tb-ic{position:relative;width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--lbl2);transition:background var(--tr),color var(--tr);}
@@ -614,6 +623,7 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 /* 업무 패널 머리 — 아래 분류 구분선보다 굵게 해서 층이 구분되도록 */
 .tkm-h{position:relative;display:flex;align-items:center;gap:9px;padding:15px 16px 13px;flex-shrink:0;}
 .tkm-c{display:none;}   /* 패널 머리 건수는 표시하지 않는다(분류별 건수로 충분) */
+.tkm-add{margin-left:auto;}   /* 업무 추가는 머리 오른쪽 끝 */
 .tkm-h .bar{width:4px;height:18px;border-radius:99px;background:linear-gradient(135deg,var(--b500),var(--b800));}
 .tkm-h b{font-size:16px;font-weight:800;color:var(--lbl);letter-spacing:-.01em;}
 .tkm-h .tkm-sub{font-size:12.5px;font-weight:600;color:var(--lbl3);}
@@ -674,6 +684,10 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 .th-f{display:flex;gap:8px;justify-content:flex-end;margin-top:7px;}
 /* 펼친 상세 */
 .tk-detail{padding:0 13px 13px 46px;display:flex;flex-direction:column;gap:12px;}
+/* 펼쳤을 때는 카드 아래 여백이 두 번 겹친다 — 접힘용 여백을 줄인다 */
+.tk-item.open .plan-meta{padding-bottom:4px;}
+.tk-detail:empty{padding:0;}
+.tk-detail>.tk-secs:empty{display:none;}   /* 진행경과·처리계획이 모두 비면 그 줄을 지운다 */
 .tk-secs{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .tk-sec{display:flex;flex-direction:column;min-width:0;}
 .tk-sec-h{font-size:11.5px;font-weight:700;color:var(--lbl3);letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px;}
@@ -1479,6 +1493,12 @@ html.dark #toast{background:#2B313A;}
         <span class="tb-dot" id="appAlertDot"></span></button>
       <button class="tb-ic" data-act="set.guide" aria-label="사용 안내" title="사용 안내">
         <svg class="icn" aria-hidden="true"><use href="#i-help"></use></svg></button>
+      <div class="tb-pop" id="appAlertPop">
+        <div class="tb-pop-h"><b>알림</b>
+          <button class="btn bg2 bxs" style="margin-left:auto" data-act="mention.clear">모두 읽음</button>
+          <button class="tb-ic" style="width:26px;height:26px" data-act="app.alertsClose" aria-label="닫기"><svg class="icn" style="width:14px;height:14px"><use href="#i-close"></use></svg></button></div>
+        <div class="tb-pop-b" id="appAlertBody" data-sb></div>
+      </div>
     </div>
   </header>
   <div id="content">
@@ -1670,7 +1690,7 @@ html.dark #toast{background:#2B313A;}
           <div class="card">
             <div class="set-h">하자처리현황 연동</div>
             <div class="share-row">
-              <div class="share-info"><b>팀 · 권역 · 현장</b><span id="orgSrcInfo">하자처리현황의 게시본을 그대로 읽습니다</span></div>
+              <div class="share-info"><b>팀 · 권역 · 현장</b></div>
               <button class="btn bo bsm" data-act="org.import">다시 읽기</button>
             </div>
             <div class="share-sep"></div>
@@ -1708,5 +1728,5 @@ html.dark #toast{background:#2B313A;}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=149"></script>
+<script src="./app.js?v=150"></script>
 </body></html>
