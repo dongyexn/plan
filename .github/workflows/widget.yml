@@ -2,17 +2,20 @@
 # 회사 PC 에 Node 를 깔 필요도, npm install 이 될 필요도 없다 — 브라우저만 있으면 된다.
 #
 # 쓰는 법
-#   1) widget/package.json 의 "version" 을 올린다(웹에서 연필 아이콘으로 고쳐도 된다).
-#   2) 저장소 > Actions > "위젯 exe 만들기" > Run workflow 를 누른다.
-#   3) 5~10분 뒤 Releases 에 새 exe 가 올라온다.
-#   4) 앱 설정 > 바탕화면 위젯 > 위젯 최신 버전에 같은 값을 적는다. 팀원 위젯이 알아서 따라온다.
+#   1) widget/package.json 의 "version" 이 바뀌어 올라오면 자동으로 실행된다.
+#      (직접 돌리려면 Actions > "위젯 exe 만들기" > Run workflow)
+#   2) 5~10분 뒤 Releases 에 새 exe 가 올라온다.
+#   3) 앱 설정 > 바탕화면 위젯 > 위젯 최신 버전에 같은 값을 적는다. 팀원 위젯이 알아서 따라온다.
+#
+# 같은 버전으로 두 번 실행하면 아무것도 하지 않는다(버전을 올려야 새로 만든다).
 
 name: 위젯 exe 만들기
 
 on:
-  workflow_dispatch:        # Actions 탭에서 버튼으로 실행
+  workflow_dispatch:        # Actions 탭에서 버튼으로 눌러도 실행
   push:
-    tags: ['widget-v*']     # widget-v1.0.1 같은 태그를 만들어도 실행
+    paths: ['widget/package.json']   # 버전이 담긴 파일이 바뀌면 자동 실행
+    tags: ['widget-v*']
 
 permissions:
   contents: write           # Releases 에 파일을 올리기 위해 필요
@@ -32,15 +35,32 @@ jobs:
         shell: bash
         run: echo "v=$(node -p "require('./widget/package.json').version")" >> $GITHUB_OUTPUT
 
+      # 같은 버전으로 이미 올린 적이 있으면 다시 만들지 않는다
+      # (버전을 올리지 않은 채 파일만 고쳤을 때 헛돌지 않도록)
+      - name: 이미 올린 버전인지 확인
+        id: dup
+        shell: bash
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          if gh release view "widget-v${{ steps.ver.outputs.v }}" >/dev/null 2>&1; then
+            echo "skip=1" >> $GITHUB_OUTPUT
+            echo "widget-v${{ steps.ver.outputs.v }} 는 이미 올라가 있습니다 — 버전을 올린 뒤 다시 실행하세요."
+          else
+            echo "skip=0" >> $GITHUB_OUTPUT
+          fi
+
       - name: 필요한 파일 받기
+        if: steps.dup.outputs.skip == '0'
         working-directory: widget
         run: npm install
 
       - name: exe 만들기
+        if: steps.dup.outputs.skip == '0'
         working-directory: widget
         run: npm run dist
 
       - name: 릴리스에 올리기
+        if: steps.dup.outputs.skip == '0'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: widget-v${{ steps.ver.outputs.v }}
