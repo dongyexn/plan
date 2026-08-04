@@ -1862,6 +1862,8 @@ function planDetHTML(p){
   /* 보여 줄 게 없으면 펼침 자체를 만들지 않는다 — 눌러도 아무 일이 없던 헛손질 방지 */
   return (body||links)?'<div class="plan-det">'+body+links+'</div>':'';
 }
+/* 글자 칸이 아니면 커서 위치를 읽을 수 없다(날짜·색 칸은 읽기만 해도 오류) */
+function selOf(el,k){try{return el[k];}catch(e){return null;}}
 function rDay(){
   const ps=rDayHead();
   const box=$('#dpList');
@@ -1870,6 +1872,11 @@ function rDay(){
   /* 이미 떠 있는 폼은 다시 그리지 않고 그대로 떼었다 도로 꽂는다 —
      자동 저장이 목록을 다시 그려도 입력 중인 값·포커스·커서가 살아남는다 */
   const keep=(S.planEdit&&S.planEdit.mounted&&$('#dpEdit'))?$('#dpEdit'):null;
+  /* ⚠ 같은 노드를 도로 꽂아도 **DOM 에서 떼는 순간 포커스는 풀린다** — 값·커서는 남지만
+     글자를 치던 칸에서 초점이 빠진다(자동 저장이 600ms 뒤 이 함수를 부르므로,
+     타이핑을 잠깐 멈출 때마다 끊기는 것처럼 보였다). 어디에 커서가 있었는지 적어 두었다가 되살린다 */
+  const ae=document.activeElement;
+  const kf=(keep&&ae&&keep.contains(ae))?{el:ae,s:selOf(ae,'selectionStart'),e:selOf(ae,'selectionEnd')}:null;
   if(keep)keep.remove();
   /* 처음 여는 순간엔 draft 가 아직 없다(planFormHTML 이 만든다) — orig 로도 찾아야 자리를 지킨다 */
   const editingId=S.planEdit?(((S.planEdit.draft||{}).id)||((S.planEdit.orig||{}).id)||null):null;
@@ -1917,6 +1924,10 @@ ${p.remind?'<button class="p-ico p-rem on" data-act="plan.remind" data-pid="'+es
   if(sl){
     if(keep)sl.replaceWith(keep);
     else sl.outerHTML=planFormHTML();
+  }
+  if(kf&&kf.el.isConnected){
+    kf.el.focus({preventScroll:true});
+    if(kf.s!=null){try{kf.el.setSelectionRange(kf.s,kf.e);}catch(e){}}
   }
   const rec=$('#peRec');
   if(rec&&!rec.dataset.wired){rec.dataset.wired='1';
