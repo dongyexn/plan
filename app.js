@@ -359,6 +359,7 @@ function planColor(p){
 /* 상태는 진행·완료 둘뿐이다. 옛 데이터의 예정(0)·보류(3)은 진행으로 본다(자리는 그대로 두어 색 규칙 s1·s2 재사용) */
 const ST_LBL=['진행','진행','완료','진행'];
 const ST_PICK=[['1','진행'],['2','완료']];
+const WIDGET_URL='https://github.com/dongyexn/plan/releases/latest/download/HPlanWidget.exe';   /* 늘 최신 릴리스를 가리킨다 — 버전을 적을 필요가 없다 */
 const DEFECT_URL='https://dongyexn.github.io/report/';  // 하자처리 현황 배포 주소(기본값)
 /* ── 한국 공휴일(대체공휴일 포함, 2025~2030) — 임시공휴일 지정 등 변동 시 이 표만 수정 ── */
 const HOLI={
@@ -1320,6 +1321,8 @@ function rMention(){
   const n=mentionCount();
   const dot=$('#widAlertDot');
   if(dot)dot.classList.toggle('on',n>0);          /* 위젯 헤더의 빨간 점 */
+  const ad=$('#appAlertDot');
+  if(ad)ad.classList.toggle('on',n>0);            /* 앱 상단바의 빨간 점 */
   if(WIDGET&&S.widSide==='alert')widSideRender();
   const b=$('#mentionBadge');if(!b)return;
   b.textContent=n?String(n):'';
@@ -3002,15 +3005,11 @@ function orgSave(){
 function rCfg(){
   const i=$('#setDefectUrl');
   if(i&&document.activeElement!==i)i.value=S.cfg.defectUrl||DEFECT_URL;
-  const wu=$('#setWidgetUrl');
-  if(wu&&document.activeElement!==wu)wu.value=S.cfg.widgetUrl||'';
   rBk();
   const os=$('#orgSrcInfo');
   if(os)os.textContent=ORG_LIVE
     ?(ORG_RM+' 게시본을 실시간으로 읽고 있습니다 · 저쪽에서 바뀌면 곧바로 반영됩니다')
     :'게시본을 읽지 못해 마지막으로 받아 둔 목록을 쓰고 있습니다';
-  const wb=$('#widgetInfo');
-  if(wb)wb.textContent='위젯은 켜질 때 최신 버전을 스스로 확인해 갱신합니다';
   const m=S.cfg.mail||{};
   const hs=$('#mlHour');
   if(hs&&!hs.options.length){
@@ -3252,11 +3251,6 @@ function bkDownload(name,text){
 }
 function rBk(){
   const card=$('#bkCard');if(card)card.style.display=isEditor()?'':'none';
-  const el=$('#bkInfo');if(!el)return;
-  const b=bkLast();
-  el.textContent=b
-    ?((b.days===0?'오늘':b.days+'일 전')+' 저장 · '+b.name+(b.by?' ('+b.by+')':''))
-    :'아직 저장된 백업이 없습니다 · 위젯을 켜 두면 주 1회 저절로 저장됩니다';
 }
 /* ═══════════ 화면 전환 · 공통 UI ═══════════ */
 const VIEW_TTL={calendar:'업무 일정',mine:'내 업무',tasks:'업무 목록',org:'조직/현장 관리',settings:'설정'};
@@ -3280,8 +3274,6 @@ function go(view){
     const b=$('#buildInfo');
     if(b)b.textContent='버전 '+APP_VER+' · 기록된 오류 '+ERRLOG.length+'건';
     /* 위젯은 별도 파일이라 버전이 따로 논다 — 설정에서 한눈에 보이게 같이 적는다 */
-    const wb=$('#widgetInfo');
-    if(wb)wb.textContent='위젯은 켜질 때 최신 버전을 스스로 확인해 갱신합니다';
   }
   mobClose();
 }
@@ -3721,13 +3713,13 @@ const ACT={
   'wid.popClose':()=>{S.widPop=false;if(S.planEdit)closePlanEdit();rWidget();},
   /* 위젯 내려받기 — 관리자가 설정에 넣어 둔 exe 주소를 연다(팀원은 받아서 두 번 누르면 끝) */
   'wid.dl':()=>{
-    const u=String(S.cfg.widgetUrl||'').trim();
-    if(!u){toast('설정에 위젯 파일 주소가 아직 없습니다 — 관리자에게 문의해 주세요');return;}
-    window.open(u,'_blank','noopener');
+    /* 늘 최신 릴리스를 가리키는 고정 주소 — 버전이 올라가면 저절로 새 파일이 받아진다 */
+    window.open(String(S.cfg.widgetUrl||'').trim()||WIDGET_URL,'_blank','noopener');
   },
   'wid.open':()=>{window.open(location.origin+location.pathname,'_blank','noopener');},
   'wid.reload':()=>location.reload(),
   'wid.side':el=>widSideOpen(el.dataset.tab||'alert'),
+  'app.alerts':()=>openMentionModal(),
   'wid.sideClose':()=>{const el=$('#widSide');if(el)el.classList.remove('on');S.widSide='';},
   'wid.goDate':el=>{
     const d=el.dataset.date;if(!d)return;
@@ -3912,9 +3904,9 @@ document.addEventListener('change',e=>{
   }
   if(e.target.id==='darkChk'){applyTheme(e.target.checked);return;}
   if(e.target.closest&&e.target.closest('[data-act="set.mail"]')){saveMailCfg();return;}
-  if(/^set(DefectUrl|WidgetUrl)$/.test(e.target.id)){   /* 연결 주소는 입력을 마치면 자동 저장 */
+  if(e.target.id==='setDefectUrl'){   /* 연결 주소는 입력을 마치면 자동 저장 */
     if(!isEditor()){denyEdit();rCfg();return;}
-    const key={setDefectUrl:'defectUrl',setWidgetUrl:'widgetUrl'}[e.target.id];
+    const key='defectUrl';
     store.putCfg(key,(e.target.value||'').trim(),err=>{
       toast(err?('저장 실패 · '+((err&&err.message)||err)):'저장했습니다');});
     return;
@@ -4173,8 +4165,8 @@ function rWidget(){
 /* 위젯(Electron)이 최신 버전을 물어보는 훅 — 관리자가 설정에 넣어 둔 값을 그대로 알려 준다.
    GitHub API 를 쓰지 않으므로 사내망에서도 막히지 않는다 */
 window.widInfo=function(){
-  const url=String(S.cfg.widgetUrl||'').trim();
-  return url?{ver:'',url}:null;   /* 버전은 위젯이 릴리스 주소에서 스스로 알아낸다 */
+  /* 주소는 고정이고 버전은 위젯이 그 주소의 넘어가는 곳에서 스스로 읽는다 */
+  return {ver:'',url:String(S.cfg.widgetUrl||'').trim()||WIDGET_URL};
 };
 /* 누른 칸 옆에 붙이되 창 밖으로 나가지 않게 한다 — 위젯은 창이 곧 화면이라 넘치면 잘려서 못 본다 */
 function widPlace(){
