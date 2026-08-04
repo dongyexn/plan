@@ -317,7 +317,7 @@ function palHTML(id,cur,extraFirst){
   return '<div class="pal" id="'+id+'">'+(extraFirst||'')
     +PAL.map(x=>'<div class="pal-c'+(x===c?' sel':'')+'" data-c="'+x+'" style="background:'+x+'"></div>').join('')
     +(custom?'<div class="pal-c sel" data-c="'+esc(custom)+'" style="background:'+esc(custom)+'"></div>':'')
-    +'<label class="pal-c pal-add" data-tip="색 직접 고르기">'
+    +'<label class="pal-c pal-add" data-tip="직접 고르기">'
     +'<input type="color" class="pal-inp" value="'+esc(custom||'#3E71D2')+'"><span>+</span></label>'
     +'</div>';
 }
@@ -1908,7 +1908,7 @@ function rDay(){
         <div class="plan-t"${openAct}>${esc(p.title)}</div>
         <div class="plan-side">
           ${stIcon(st,' data-act="plan.stCycle" data-pid="'+esc(p.id)+'" data-occ="'+esc(occ)+'"')}
-${p.remind?'<button class="p-ico p-rem on" data-act="plan.remind" data-pid="'+esc(p.id)+'" aria-label="리마인드 해제" data-tip="리마인드 켜짐 · 눌러서 끄기"><svg class="icn"><use href="#i-bell"></use></svg></button>':''}
+${p.remind?'<button class="p-ico p-rem on" data-act="plan.remind" data-pid="'+esc(p.id)+'" aria-label="리마인드 해제" data-tip="리마인드 켜짐"><svg class="icn"><use href="#i-bell"></use></svg></button>':''}
           ${lnk?'<a class="p-ico" href="'+esc(lnk.url)+'" target="_blank" rel="noopener" aria-label="링크 열기" data-tip="'+esc(lnk.label||lnk.url)+'"><svg class="icn"><use href="#i-ext"></use></svg></a>':''}
           <button class="p-ico p-edit" data-act="plan.edit" data-pid="${esc(p.id)}" data-occ="${esc(occ)}" aria-label="수정" data-tip="수정"><svg class="icn"><use href="#i-pen"></use></svg></button>
         </div>
@@ -2078,7 +2078,7 @@ function planFormHTML(){
           ?'<button class="pe-ic pe-del" data-act="plan.del" data-pid="'+esc(d.id)+'" data-ym="'+esc(ymOf(d.date))+'" data-occ="'+esc(pe.occ||'')+'" aria-label="삭제" data-tip="삭제"><svg class="icn"><use href="#i-trash"></use></svg></button>'
           :'<button class="pe-ic pe-del" data-act="plan.discard" aria-label="취소" data-tip="저장하지 않고 닫기"><svg class="icn"><use href="#i-close"></use></svg></button>'}
         <button class="pe-ic pe-rem${d.remind?' on':''}" data-act="plan.remindDraft" aria-label="리마인드 전환" data-tip="리마인드"><svg class="icn"><use href="#i-bell"></use></svg></button>
-        <button class="pe-ic pe-ok" data-act="plan.cancel" aria-label="저장하고 닫기 (Esc)" data-tip="저장하고 닫기 (Esc)"><svg class="icn"><use href="#i-check"></use></svg></button>
+        <button class="pe-ic pe-ok" data-act="plan.cancel" aria-label="저장하고 닫기 (Esc)" data-tip="저장하고 닫기"><svg class="icn"><use href="#i-check"></use></svg></button>
       </div>
     </div>
     <div class="pe-body">
@@ -2094,7 +2094,7 @@ function planFormHTML(){
       <div class="frow"><label>현장</label>${sitePickHTML('peSite',d.site||'')}</div>
       <div class="pe-morerow">
         <button class="pe-more" data-act="plan.more" id="peMoreBtn" aria-label="자세히"><svg class="icn"><use href="#i-chevr"></use></svg></button>
-        ${pe.orig&&pe.orig.sid?'<button class="pe-ic pe-more-ic" data-act="plan.toTask" data-sid="'+esc(pe.orig.sid)+'" data-iid="'+esc(d.id)+'" aria-label="업무 목록에서 자세히 쓰기" data-tip="업무 목록에서 자세히 쓰기"><svg class="icn"><use href="#i-tasks"></use></svg></button>':''}
+        ${pe.orig&&pe.orig.sid?'<button class="pe-ic pe-more-ic" data-act="plan.toTask" data-sid="'+esc(pe.orig.sid)+'" data-iid="'+esc(d.id)+'" aria-label="업무 목록에서 자세히 쓰기" data-tip="자세히 쓰기"><svg class="icn"><use href="#i-tasks"></use></svg></button>':''}
       </div>
       <div class="pe-adv" id="peAdv">
         <div class="frow2">
@@ -2241,7 +2241,7 @@ function stxSet(el,st){
 function stIcon(st,attrs){
   const on=stOf(st)===2;
   return '<button class="stx'+(on?' on':'')+'"'+(attrs||' disabled')+' data-on="'+(on?1:0)+'"'
-    +' aria-label="'+(on?'완료':'진행 중')+'" data-tip="'+(on?'완료 · 눌러서 진행으로':'진행 중 · 눌러서 완료로')+'">'
+    +' aria-label="'+(on?'완료':'진행 중')+'" data-tip="'+(on?'완료':'진행 중')+'">'
     +'<span class="stx-in">'
       +'<svg class="stx-run" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path class="tri" d="M10.4 8.8v6.4l5.2-3.2z"/></svg>'
       +'<svg class="stx-done" viewBox="0 0 24 24"><circle class="cf" cx="12" cy="12" r="9"/><path class="ck" d="m8.3 12.2 2.5 2.5 4.9-5.2"/></svg>'
@@ -2313,7 +2313,7 @@ function taskItemHTML(sid,iid,it,withSubject,hideOwn){
         ${stIcon(st,' data-act="tk.st" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"')}
         ${cn?`<button class="tk-ico on" data-act="tk.open" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="코멘트">
           <svg class="icn"><use href="#i-cmt"></use></svg><span class="cn">${cn}</span></button>`:''}
-        ${it.remind?'<button class="tk-ico on" data-act="tk.remind" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" aria-label="리마인드 해제" data-tip="리마인드 켜짐 · 눌러서 끄기"><svg class="icn"><use href="#i-bell"></use></svg></button>':''}
+        ${it.remind?'<button class="tk-ico on" data-act="tk.remind" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" aria-label="리마인드 해제" data-tip="리마인드 켜짐"><svg class="icn"><use href="#i-bell"></use></svg></button>':''}
         ${lnk?'<a class="tk-ico" href="'+esc(lnk.url)+'" target="_blank" rel="noopener" data-act="lnk.open" aria-label="링크 열기" data-tip="'+esc(lnk.label||lnk.url)+'"><svg class="icn"><use href="#i-ext"></use></svg></a>':''}
         <button class="tk-ico" data-act="tk.edit" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="수정" data-tip="수정"><svg class="icn"><use href="#i-pen"></use></svg></button>
         <button class="tk-del" data-act="tk.del" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="삭제"><svg class="icn"><use href="#i-close"></use></svg></button>
@@ -3500,11 +3500,14 @@ function offdayAsk(ds){
 }
 
 /* ── 툴팁 — `data-tip` 이 있는 요소에 잠깐 머무르면 뜬다 ── */
-let _tipT=null;
-function tipHide(){clearTimeout(_tipT);const el=$('#htip');if(el)el.classList.remove('on');}
+let _tipT=null,_tipFor=null;
+function tipHide(){clearTimeout(_tipT);_tipFor=null;const el=$('#htip');if(el)el.classList.remove('on');}
 function tipShow(target){
   const el=$('#htip');if(!el)return;
+  /* ⚠ 기다리는 동안 그 요소가 사라지거나(다시 그려짐) 마우스가 떠났을 수 있다 */
+  if(!target.isConnected||!target.matches(':hover'))return;
   const txt=target.dataset.tip;if(!txt)return;
+  _tipFor=target;
   el.textContent=txt;
   el.classList.add('on');
   const r=target.getBoundingClientRect(),t=el.getBoundingClientRect();
@@ -3516,15 +3519,25 @@ function tipShow(target){
 }
 document.addEventListener('mouseover',e=>{
   const t=e.target.closest?e.target.closest('[data-tip]'):null;
-  if(!t)return;
+  if(!t){if(_tipFor)tipHide();return;}
+  if(t===_tipFor)return;                                 /* 이미 그 요소를 보여 주는 중 */
   clearTimeout(_tipT);
+  const el=$('#htip');if(el)el.classList.remove('on');
   _tipT=setTimeout(()=>tipShow(t),420);                  /* 지나가다 뜨지 않게 조금 기다린다 */
 });
 document.addEventListener('mouseout',e=>{
-  if(e.target.closest&&e.target.closest('[data-tip]'))tipHide();
+  const t=e.target.closest?e.target.closest('[data-tip]'):null;
+  if(!t)return;
+  const to=e.relatedTarget;
+  if(to&&to.closest&&to.closest('[data-tip]')===t)return; /* 같은 요소 안에서 움직인 것 */
+  tipHide();
 });
+/* 누르면 곧바로 감춘다 — 누른 뒤에도 떠 있으면 화면을 가린다 */
+document.addEventListener('mousedown',tipHide,true);
 document.addEventListener('scroll',tipHide,true);
 window.addEventListener('blur',tipHide);
+/* ⚠ 화면을 다시 그리면 툴팁이 가리키던 요소가 사라져 그대로 떠 있는다 — 주기로 확인해 치운다 */
+setInterval(()=>{if(_tipFor&&!_tipFor.isConnected)tipHide();},700);
 
 /* ═══════════ 화면 전환 · 공통 UI ═══════════ */
 const VIEW_TTL={calendar:'업무 일정',mine:'내 업무',tasks:'업무 목록',org:'조직/현장 관리',settings:'설정'};
