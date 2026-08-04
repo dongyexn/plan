@@ -1277,39 +1277,58 @@ function mentionCount(){return Object.keys(S.mentions||{}).length;}
    위젯만 쓰는 사람에게는 사이드바가 없다 — 부름(멘션)과 내 업무를 헤더에서 바로 볼 수 있게 한다 */
 function widSideRender(){
   if(!WIDGET)return;
-  const box=$('#widSideB'),ttl=$('#widSideT');
+  const box=$('#widSideB'),ttl=$('#widSideT'),cnt=$('#widSideN');
   if(!box)return;
+  const dlab=d=>{const n=daysBetween(todayStr(),d);
+    return n===0?'오늘':n===1?'내일':n===-1?'어제':(toDate(d).getMonth()+1)+'/'+toDate(d).getDate();};
+  /* 한 줄 — 왼쪽에 날짜 알약, 오른쪽에 제목·부제. 두 목록이 같은 모양을 쓴다 */
+  const row=(act,attrs,when,tone,title,sub)=>
+    '<button class="wl" data-act="'+act+'"'+attrs+'>'
+      +'<span class="wl-d'+(tone?' '+tone:'')+'">'+esc(when)+'</span>'
+      +'<span class="wl-b"><span class="wl-t">'+esc(title)+'</span>'
+      +(sub?'<span class="wl-s">'+esc(sub)+'</span>':'')+'</span></button>';
+  const empty=(icon,msg)=>'<div class="wl-none"><svg class="icn"><use href="#'+icon+'"></use></svg><span>'+esc(msg)+'</span></div>';
+
   if(S.widSide==='mine'){
     if(ttl)ttl.textContent='내 업무';
     const me=myId();
-    if(!me)return void(box.innerHTML='<div class="ws-none">로그인하면 내 업무를 모아 볼 수 있습니다.</div>');
+    if(!me){box.innerHTML=empty('i-me','로그인하면 내 업무를 모아 볼 수 있습니다');if(cnt)cnt.textContent='';return;}
     const plans=minePlans(7),tasks=mineTasks();
-    const dlab=d=>{const n=daysBetween(todayStr(),d);
-      return n===0?'오늘':n===1?'내일':(toDate(d).getMonth()+1)+'/'+toDate(d).getDate();};
+    if(cnt)cnt.textContent=(plans.length+tasks.length)+'건';
+    const sec=(t,n)=>'<div class="wl-h">'+esc(t)+'<span>'+n+'</span></div>';
     box.innerHTML=
-      '<div class="ws-sec">이번 주 일정 '+plans.length+'</div>'
-      +(plans.length?plans.map(({p,date})=>
-        '<button class="ws-row" data-act="wid.goDate" data-date="'+esc(date)+'">'
-        +'<div class="ws-h"><b>'+esc(dlab(date))+'</b><span>'+esc(kindLabel(p.kind))+'</span></div>'
-        +'<div class="ws-t">'+esc(p.title||'제목 없음')+'</div></button>').join('')
-        :'<div class="ws-none">이번 주 일정이 없습니다.</div>')
-      +'<div class="ws-sec">미완료 업무 '+tasks.length+'</div>'
-      +(tasks.length?tasks.map(({sid,iid,it,over})=>
-        '<button class="ws-row" data-act="wid.goTask" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" data-date="'+esc(it.date||'')+'">'
-        +'<div class="ws-h"><b>'+esc(it.date?dlab(it.date):'기한 없음')+'</b>'+(over?'<span style="color:var(--rd)">지남</span>':'')+'</div>'
-        +'<div class="ws-t">'+esc(it.text||'제목 없음')+'</div></button>').join('')
-        :'<div class="ws-none">미완료 업무가 없습니다.</div>');
+      sec('이번 주 일정',plans.length)
+      +(plans.length?plans.map(({p,date})=>row('wid.goDate',' data-date="'+esc(date)+'"',
+          dlab(date),daysBetween(todayStr(),date)===0?'now':'',p.title||'제목 없음',
+          [kindLabel(p.kind),p.time?fmtTime(p.time):''].filter(Boolean).join(' · '))).join('')
+        :empty('i-cal','이번 주 일정이 없습니다'))
+      +sec('미완료 업무',tasks.length)
+      +(tasks.length?tasks.map(({sid,iid,it,over})=>row('wid.goTask',
+          ' data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" data-date="'+esc(it.date||'')+'"',
+          it.date?dlab(it.date):'기한 없음',over?'over':(it.date&&daysBetween(todayStr(),it.date)===0?'now':''),
+          it.text||'제목 없음',
+          [siteName(it.site),kindLabel(it.kind)].filter(Boolean).join(' · '))).join('')
+        :empty('i-tasks','미완료 업무가 없습니다'));
     return;
   }
+
   if(ttl)ttl.textContent='알림';
   const ms=Object.entries(S.mentions||{}).sort((a,b)=>(b[1].at||0)-(a[1].at||0));
+  if(cnt)cnt.textContent=ms.length?ms.length+'건':'';
   box.innerHTML=ms.length
-    ?ms.map(([id,m])=>
-      '<button class="ws-row" data-act="wid.goMention" data-id="'+esc(id)+'" data-sid="'+esc(m.sid||'')+'" data-iid="'+esc(m.iid||'')+'">'
-      +'<div class="ws-h"><b>'+esc(m.by||'')+'</b><span>'+esc(relTime(m.at))+'</span></div>'
-      +'<div class="ws-t">'+mentionHTML(m.text)+'</div></button>').join('')
-      +'<button class="btn bg2 bsm" style="width:100%;margin-top:4px" data-act="mention.clear">모두 읽음</button>'
-    :'<div class="ws-none">받은 알림이 없습니다.</div>';
+    ?ms.map(([id,m])=>{
+      const it=(S.tasks[m.sid||'']||{})[m.iid||''];
+      const who=String(m.by||'').trim();
+      return '<button class="wl wl-al" data-act="wid.goMention" data-id="'+esc(id)+'" data-sid="'+esc(m.sid||'')+'" data-iid="'+esc(m.iid||'')+'">'
+        +'<span class="wl-av">'+esc(who?who.slice(-2):'—')+'</span>'
+        +'<span class="wl-b">'
+          +'<span class="wl-t"><b>'+esc(who||'알 수 없음')+'</b><i>'+esc(relTime(m.at))+'</i></span>'
+          +'<span class="wl-m">'+mentionHTML(m.text)+'</span>'
+          +(it?'<span class="wl-s">'+esc(it.text||'제목 없음')+'</span>':'')
+        +'</span></button>';
+    }).join('')
+      +'<button class="wl-clr" data-act="mention.clear">모두 읽음</button>'
+    :empty('i-bell','받은 알림이 없습니다');
 }
 function widSideOpen(tab){
   const el=$('#widSide');if(!el)return;

@@ -471,17 +471,44 @@ body.wid .wid-side{position:absolute;z-index:620;top:55px;right:10px;width:330px
   display:none;flex-direction:column;}
 body.wid .wid-side.on{display:flex;}
 body.wid .wid-side #widSideB{overflow-y:auto;padding:0 12px 12px;}
-body.wid .wid-side .wp-h{padding:11px 12px 9px;}
+body.wid .wid-side .wp-h{padding:12px 13px 10px;border-bottom:1px solid rgba(255,255,255,.12);margin-bottom:2px;}
+body.wid .wid-side .wp-h b{font-size:13px;font-weight:800;color:#fff;}
+.wid-pop .wp-n{margin-left:auto;font-size:11.5px;font-weight:700;color:rgba(255,255,255,.55);}
 body.wid .wid-dot{position:absolute;top:5px;right:5px;width:7px;height:7px;border-radius:50%;background:var(--rd);display:none;}
 body.wid .wid-dot.on{display:block;}
 body.wid [data-act="wid.side"]{position:relative;}
-.ws-row{display:block;width:100%;text-align:left;padding:9px 10px;border-radius:10px;background:var(--fill);margin-bottom:6px;}
-.ws-row:hover{background:var(--fill2);}
-.ws-h{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--lbl2);margin-bottom:3px;}
-.ws-h b{font-size:12px;color:var(--lbl);}
-.ws-t{font-size:12.5px;color:var(--lbl);line-height:1.45;}
-.ws-none{font-size:12.5px;color:var(--lbl3);padding:14px 2px;text-align:center;}
-.ws-sec{font-size:11.5px;font-weight:800;color:var(--bt1);padding:8px 2px 5px;}
+/* ── 위젯 옆 팝오버 목록 (알림 · 내 업무) ──
+   한 줄 = [날짜 알약][제목 + 부제]. 두 목록이 같은 뼈대를 쓰므로 눈에 익는다 */
+.wl{display:flex;align-items:flex-start;gap:9px;width:100%;text-align:left;padding:8px 9px;border-radius:10px;
+  transition:background var(--tr);}
+.wl:hover{background:var(--fill);}
+.wl-d{flex:0 0 auto;min-width:44px;height:20px;display:inline-flex;align-items:center;justify-content:center;
+  padding:0 7px;border-radius:6px;font-size:11px;font-weight:700;background:var(--fill2);color:var(--lbl2);}
+.wl-d.now{background:var(--b100);color:var(--bt1);}
+.wl-d.over{background:var(--tint-rd,rgba(221,59,48,.14));color:var(--rd);}
+.wl-b{min-width:0;flex:1;display:flex;flex-direction:column;gap:2px;}
+.wl-t{font-size:12.5px;font-weight:600;color:var(--lbl);line-height:1.4;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.wl-s{font-size:11px;color:var(--lbl3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.wl-h{display:flex;align-items:center;font-size:11px;font-weight:800;color:var(--lbl3);
+  letter-spacing:.04em;padding:10px 4px 5px;}
+.wl-h span{margin-left:auto;font-weight:700;color:var(--lbl3);}
+.wl-h:first-child{padding-top:2px;}
+.wl-none{display:flex;flex-direction:column;align-items:center;gap:7px;padding:18px 10px;color:var(--lbl3);}
+.wl-none .icn{width:22px;height:22px;opacity:.45;}
+.wl-none span{font-size:12px;}
+/* 알림 줄 — 아바타 + 보낸이/시각 + 내용 + 어느 업무인지 */
+.wl-al .wl-t{display:flex;align-items:baseline;gap:6px;font-weight:700;}
+.wl-al .wl-t b{font-size:12.5px;}
+.wl-al .wl-t i{margin-left:auto;font-style:normal;font-size:11px;font-weight:600;color:var(--lbl3);flex-shrink:0;}
+.wl-m{font-size:12px;color:var(--lbl2);line-height:1.45;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.wl-m .mn{color:var(--bt1);font-weight:700;}
+.wl-av{flex:0 0 auto;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:11.5px;font-weight:700;background:var(--fill2);color:var(--lbl2);}
+.wl-clr{display:block;width:100%;height:30px;margin-top:6px;border-radius:8px;background:var(--fill);
+  font-size:11.5px;font-weight:700;color:var(--lbl2);transition:background var(--tr);}
+.wl-clr:hover{background:var(--fill2);color:var(--lbl);}
 body.wid #dpFcard{position:relative;flex:0 0 auto;background:transparent;border:0;box-shadow:none;padding:0;border-radius:0;}
 body.wid #dpFcard .dp-frow{gap:6px;}
 body.wid #dpFcard .dp-fmore,body.wid [data-act="wid.reload"]{width:34px;height:34px;border-radius:999px;
@@ -1222,10 +1249,13 @@ body.wid #wgSet.on{display:block;}
 #wgSet .wgs-btn{padding:5px 12px;border-radius:8px;background:rgba(255,255,255,.12);color:rgba(255,255,255,.9);
   font-size:11.5px;font-weight:700;transition:background var(--tr);}
 #wgSet .wgs-btn:hover{background:rgba(255,255,255,.2);color:#fff;}
-#wgSet .wgs-full{display:block;width:100%;margin-top:10px;padding-top:11px;border-top:1px solid rgba(255,255,255,.16);
-  font-size:12px;font-weight:700;color:rgba(255,255,255,.85);text-align:center;transition:color var(--tr);}
-#wgSet .wgs-full:hover{color:#fff;}
-#wgSet .wgs-full2{margin-top:8px;padding-top:9px;}
+/* 아래쪽 전체폭 버튼 세 개 — 첫 줄 위에만 구분선을 두고 셋의 높이를 같게 */
+#wgSet .wgs-full{display:flex;align-items:center;justify-content:center;width:100%;min-height:32px;
+  margin-top:2px;border-radius:8px;font-size:12px;font-weight:700;color:rgba(255,255,255,.85);
+  transition:background var(--tr),color var(--tr);}   /* ⚠ line-height 로 높이를 맞추면 글자가 잘린다 */
+#wgSet .wgs-full:first-of-type{margin-top:10px;}
+#wgSet .wgs-full:hover{background:rgba(255,255,255,.12);color:#fff;}
+#wgSet .wgs-sep{height:1px;background:rgba(255,255,255,.16);margin:10px 0 2px;}
 
 /* 계정 모달 — 참조 앱과 동일 */
 .il{font-size:12px;font-weight:600;color:var(--lbl2);margin-bottom:6px;display:block;}
@@ -1539,9 +1569,9 @@ html.dark #toast{background:#2B313A;}
                 <button class="cal-nb" data-act="cal.next" aria-label="다음"><svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg></button>
               </div>
               <div class="wido" id="widFilterSlot"></div>
-              <button class="cal-nb wido" data-act="wid.side" data-tab="alert" aria-label="알림" title="알림"><svg class="icn" aria-hidden="true"><use href="#i-bell"></use></svg><span class="wid-dot" id="widAlertDot"></span></button>
-              <button class="cal-nb wido" data-act="wid.side" data-tab="mine" aria-label="내 업무" title="내 업무"><svg class="icn" aria-hidden="true"><use href="#i-tasks"></use></svg></button>
               <div class="cal-nav wido">
+                <button class="cal-nb" data-act="wid.side" data-tab="alert" aria-label="알림" title="알림"><svg class="icn" aria-hidden="true"><use href="#i-bell"></use></svg><span class="wid-dot" id="widAlertDot"></span></button>
+                <button class="cal-nb" data-act="wid.side" data-tab="mine" aria-label="내 업무" title="내 업무"><svg class="icn" aria-hidden="true"><use href="#i-tasks"></use></svg></button>
                 <button class="cal-nb wid-acct" data-act="acct.open" aria-label="내 프로필" title="내 프로필"><span class="av sb-acct-av" id="widAcctAv"><svg class="icn" aria-hidden="true"><use href="#i-me"></use></svg></span></button>
                 <button class="cal-nb" data-act="wid.set" aria-label="위젯 설정" title="위젯 설정"><svg class="icn" aria-hidden="true"><use href="#i-settings"></use></svg></button>
               </div>
@@ -1551,12 +1581,11 @@ html.dark #toast{background:#2B313A;}
         </div>
         <div class="wid-pop" id="widPop"></div>
         <div class="wid-pop wid-side" id="widSide">
-          <div class="wp-h"><b id="widSideT">알림</b>
-            <button class="wp-x" data-act="wid.sideClose" aria-label="닫기"><svg class="icn"><use href="#i-close"></use></svg></button></div>
+          <div class="wp-h"><b id="widSideT">알림</b><span class="wp-n" id="widSideN"></span></div>
           <div id="widSideB" data-sb></div>
         </div>
         <div id="wgSet" aria-hidden="true">
-          <div class="wgs-h">위젯 설정<button class="pop-x" data-act="wid.set" aria-label="닫기"><svg class="icn"><use href="#i-close"></use></svg></button></div>
+          <div class="wgs-h">위젯 설정</div>
           <div class="wgs-r"><span>투명도 <b id="wgAV" class="wgs-v">15%</b></span><input type="range" id="wgA" min="0" max="85" step="5"></div>
           <div class="wgs-r"><span>글자 크기 <b id="wgFzV" class="wgs-v">100%</b></span>
             <input type="range" id="wgFz" min="85" max="140" step="5"></div>
@@ -1572,9 +1601,10 @@ html.dark #toast{background:#2B313A;}
               <b id="wgToneV">다크</b>
               <button class="wgs-cb" data-toned="1" aria-label="다음 모드"><svg class="icn"><use href="#i-chevr"></use></svg></button>
             </div></div>
+          <div class="wgs-sep"></div>
           <button class="wgs-full" data-act="wid.reload">새로고침</button>
-          <button class="wgs-full wgs-full2" data-act="wid.moveOn">위치·크기 조정</button>
-          <button class="wgs-full wgs-full2" data-act="wid.open">브라우저 앱 열기</button>
+          <button class="wgs-full" data-act="wid.moveOn">위치·크기 조정</button>
+          <button class="wgs-full" data-act="wid.open">브라우저 앱 열기</button>
         </div>
         <div class="dp-col">
           <div class="card dp-filtercard">
@@ -1710,11 +1740,6 @@ html.dark #toast{background:#2B313A;}
           </div>
           <div class="card">
             <div class="set-h">하자처리현황 연동</div>
-            <div class="share-row">
-              <div class="share-info"><b>팀 · 권역 · 현장</b></div>
-              <button class="btn bo bsm" data-act="org.import">다시 읽기</button>
-            </div>
-            <div class="share-sep"></div>
             <div class="share-info" style="margin-bottom:9px"><b>하자처리현황 바로가기</b><span>사이드바에서 여는 주소입니다</span></div>
             <input class="inp" id="setDefectUrl" placeholder="https://…">
           </div>
@@ -1749,5 +1774,5 @@ html.dark #toast{background:#2B313A;}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=150"></script>
+<script src="./app.js?v=153"></script>
 </body></html>
