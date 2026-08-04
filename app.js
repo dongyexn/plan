@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='1.1.0';   /* 위젯(widget/package.json)과 같은 값으로 맞춘다 */
+const APP_VER='1.2.0';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -3907,10 +3907,11 @@ const ACT={
     const yp=$('#ymPop');if(yp)yp.innerHTML=ymPickHTML();   /* 고른 달을 팝업에도 표시 */},
   'mail.preview':el=>mailPreview(el.dataset.kind),
   'wid.popClose':()=>{S.widPop=false;if(S.planEdit)closePlanEdit();rWidget();},
-  /* 위젯 내려받기 — 관리자가 설정에 넣어 둔 exe 주소를 연다(팀원은 받아서 두 번 누르면 끝) */
+  /* 위젯 내려받기 — 늘 최신 릴리스를 가리키는 고정 주소(팀원은 받아서 두 번 누르면 끝).
+     ⚠ 예전에는 설정의 `cfg.widgetUrl` 이 이 상수를 이겼다 — 그 입력칸은 165차에 없앴는데
+     저장돼 있던 옛 주소(Electron)가 계속 이겨서 186차 전환이 화면에 안 나타났다. 상수만 쓴다. */
   'wid.dl':()=>{
-    /* 늘 최신 릴리스를 가리키는 고정 주소 — 버전이 올라가면 저절로 새 파일이 받아진다 */
-    window.open(String(S.cfg.widgetUrl||'').trim()||WIDGET_URL,'_blank','noopener');
+    window.open(WIDGET_URL,'_blank','noopener');
   },
   'wid.open':()=>{window.open(location.origin+location.pathname,'_blank','noopener');},
   'wid.reload':()=>location.reload(),
@@ -4365,11 +4366,10 @@ function rWidget(){
   /* 폼이 열리고 닫힐 때마다 팝업 높이가 달라진다 — 내용이 바뀌면 자리를 다시 잡는다 */
   if(!box.dataset.ro&&window.ResizeObserver){box.dataset.ro='1';new ResizeObserver(widPlace).observe(box);}
 }
-/* 위젯(Electron)이 최신 버전을 물어보는 훅 — 관리자가 설정에 넣어 둔 값을 그대로 알려 준다.
-   GitHub API 를 쓰지 않으므로 사내망에서도 막히지 않는다 */
+/* 위젯이 최신 파일 주소를 물어보는 훅 — GitHub API 를 쓰지 않으므로 사내망에서도 막히지 않는다.
+   주소는 고정이고 버전은 위젯이 그 주소의 넘어가는 곳에서 스스로 읽는다 */
 window.widInfo=function(){
-  /* 주소는 고정이고 버전은 위젯이 그 주소의 넘어가는 곳에서 스스로 읽는다 */
-  return {ver:'',url:String(S.cfg.widgetUrl||'').trim()||WIDGET_URL};
+  return {ver:'',url:WIDGET_URL};
 };
 /* 누른 칸 옆에 붙이되 창 밖으로 나가지 않게 한다 — 위젯은 창이 곧 화면이라 넘치면 잘려서 못 본다 */
 function widPlace(){
