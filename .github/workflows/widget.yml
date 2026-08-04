@@ -5,7 +5,7 @@
 #   1) widget/package.json 의 "version" 이 바뀌어 올라오면 자동으로 실행된다.
 #      (직접 돌리려면 Actions > "위젯 exe 만들기" > Run workflow)
 #   2) 5~10분 뒤 Releases 에 새 exe 가 올라온다.
-#   3) 앱 설정 > 바탕화면 위젯 > 위젯 최신 버전에 같은 값을 적는다. 팀원 위젯이 알아서 따라온다.
+#   3) 끝. 앱 설정에 버전을 적을 필요는 없다 — 위젯이 릴리스에서 최신 버전을 스스로 확인한다.
 #
 # 같은 버전으로 두 번 실행하면 아무것도 하지 않는다(버전을 올려야 새로 만든다).
 
@@ -14,8 +14,10 @@ name: 위젯 exe 만들기
 on:
   workflow_dispatch:        # Actions 탭에서 버튼으로 눌러도 실행
   push:
+    # ⚠ 여기에 tags 를 함께 쓰면 '태그를 밀 때만' 도는 것이 되어 브랜치에 올리는 것은 빠진다.
+    #    파일을 올리는 것만으로 돌게 하려면 branches + paths 만 둔다.
+    branches: ['**']
     paths: ['widget/package.json']   # 버전이 담긴 파일이 바뀌면 자동 실행
-    tags: ['widget-v*']
 
 permissions:
   contents: write           # Releases 에 파일을 올리기 위해 필요
