@@ -1,0 +1,74 @@
+# 파일럿 위젯(Lite) exe 를 깃허브가 대신 만든다 — Electron 판(widget.yml)과 같은 방식.
+# 회사 PC 에 Rust 를 깔 필요 없다. widget-lite/Cargo.toml 의 version 이 바뀌어 올라오면 자동 실행.
+#
+# ⚠ 릴리스 상호작용(파일럿 기간 유의):
+#   · 이 워크플로는 태그 widget-lite-vX.Y.Z 로 릴리스를 만든다(파일 HPlanWidgetLite.exe).
+#   · 깃허브의 /releases/latest 는 '가장 최근 릴리스'다 — Lite 릴리스가 최신이 되면
+#     Electron 위젯의 자동 업데이트 확인은 태그가 widget-v 형식이 아니므로 '확인 실패'로
+#     조용히 넘어간다(오동작 없음, 로그만 남음). Lite 쪽도 마찬가지로 태그로 거른다.
+
+name: 파일럿 위젯(Lite) exe 만들기
+
+on:
+  workflow_dispatch:
+  push:
+    # ⚠ tags 를 함께 쓰면 태그 푸시만 대상이 된다(widget.yml 과 같은 함정) — branches + paths 만
+    branches: ['**']
+    paths: ['widget-lite/Cargo.toml']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: 버전 읽기
+        id: ver
+        shell: bash
+        run: |
+          v=$(grep -m1 '^version' widget-lite/Cargo.toml | sed 's/.*"\(.*\)".*/\1/')
+          echo "v=$v" >> $GITHUB_OUTPUT
+
+      - name: 이미 올린 버전인지 확인
+        id: dup
+        shell: bash
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          if gh release view "widget-lite-v${{ steps.ver.outputs.v }}" >/dev/null 2>&1; then
+            echo "skip=1" >> $GITHUB_OUTPUT
+            echo "widget-lite-v${{ steps.ver.outputs.v }} 는 이미 올라가 있습니다 — 버전을 올린 뒤 다시 실행하세요."
+          else
+            echo "skip=0" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 러스트 캐시
+        if: steps.dup.outputs.skip == '0'
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: widget-lite
+
+      - name: exe 만들기
+        if: steps.dup.outputs.skip == '0'
+        working-directory: widget-lite
+        run: cargo build --release
+
+      - name: 파일 이름 정하기
+        if: steps.dup.outputs.skip == '0'
+        shell: bash
+        run: cp widget-lite/target/release/hplan-widget-lite.exe HPlanWidgetLite.exe
+
+      - name: 릴리스에 올리기
+        if: steps.dup.outputs.skip == '0'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: widget-lite-v${{ steps.ver.outputs.v }}
+          name: 위젯 Lite v${{ steps.ver.outputs.v }} (파일럿)
+          body: |
+            바탕화면 위젯 저용량 파일럿 v${{ steps.ver.outputs.v }} — WebView2 기반, 기존 위젯의 기능을 그대로 옮겼습니다.
+
+            ⚠ 파일럿 기간에는 기존 HPlanWidget.exe 와 **둘 중 하나만** 켜 두세요(알림·백업이 겹칩니다).
+            문제가 있으면 트레이 > 진단 폴더 열기 > widget-lite-log.txt 를 관리자에게 보내 주세요.
+          files: HPlanWidgetLite.exe
