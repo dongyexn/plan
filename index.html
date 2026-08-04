@@ -108,6 +108,14 @@ svg{display:block;flex-shrink:0;}
 #sidebar.mini .sb-th1{display:none;}   /* 접었을 때는 테마 버튼을 감춘다(펼치면 그대로) */
 
 #main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
+/* 상단바 오른쪽 — 알림·사용 안내 */
+.tbr{margin-left:auto;display:flex;align-items:center;gap:4px;}
+.tb-ic{position:relative;width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--lbl2);transition:background var(--tr),color var(--tr);}
+.tb-ic:hover{background:var(--fill);color:var(--lbl);}
+.tb-ic .icn{width:18px;height:18px;}
+.tb-dot{position:absolute;top:6px;right:6px;width:7px;height:7px;border-radius:50%;background:var(--rd);display:none;}
+.tb-dot.on{display:block;}
+body.wid .tbr{display:none;}   /* 위젯에는 상단바가 없다 */
 #topbar{height:var(--th);flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:var(--glass2);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);border-bottom:1px solid var(--sep);z-index:100;}
 .tbl{display:flex;align-items:center;gap:10px;min-width:0;}
 .tbt{font-size:16px;font-weight:700;color:var(--lbl);}/* -- 스크롤바 공통 규약 --
@@ -1350,6 +1358,7 @@ html.dark #toast{background:#2B313A;}
 <body>
 <!-- 아이콘: Lucide (ISC) — 24 그리드 · stroke 2 -->
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true" focusable="false">
+<symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.2"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .9-1 1.6v.4"/><path d="M12 17.2h.01"/></symbol>
 <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 5v6h-6"/></symbol>
 <symbol id="i-today" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.6V20a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V9.6"/><path d="M9.6 21v-6.2h4.8V21"/></symbol>
 <symbol id="i-cal" viewBox="0 0 24 24"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></symbol>
@@ -1464,7 +1473,13 @@ html.dark #toast{background:#2B313A;}
       <button class="mc" data-act="nav.mob" aria-label="메뉴"><svg class="icn" aria-hidden="true"><use href="#i-menu"></use></svg></button>
       <div class="tbt" id="tbt" style="font-size:20px">업무 일정</div>
     </div>
-
+    <div class="tbr">
+      <button class="tb-ic" data-act="app.alerts" aria-label="알림" title="알림">
+        <svg class="icn" aria-hidden="true"><use href="#i-bell"></use></svg>
+        <span class="tb-dot" id="appAlertDot"></span></button>
+      <button class="tb-ic" data-act="set.guide" aria-label="사용 안내" title="사용 안내">
+        <svg class="icn" aria-hidden="true"><use href="#i-help"></use></svg></button>
+    </div>
   </header>
   <div id="content">
 
@@ -1635,29 +1650,8 @@ html.dark #toast{background:#2B313A;}
           </div>
         </div>
         <div class="set-col set-col-stack">
-          <div class="card">
-            <div class="set-h">표시</div>
-            <div class="share-row">
-              <div class="share-info"><b>다크 모드</b><span>이 PC에만 저장됩니다</span></div>
-              <label class="sw" aria-label="다크 모드"><input type="checkbox" id="darkChk"><span class="sw-t"></span></label>
-            </div>
-            <div class="share-sep"></div>
-            <div class="share-row">
-              <div class="share-info"><b>사용 안내</b><span>화면 구성 · 기능 · 운영 절차</span></div>
-              <button class="btn bo bsm" data-act="set.guide">열기</button>
-            </div>
-            <div class="share-sep"></div>
-            <div class="share-row">
-              <div class="share-info"><b>버전 · 오류 기록</b><span id="buildInfo">—</span><span id="widgetInfo"></span></div>
-              <button class="btn bg2 bsm" data-act="set.copyErr">복사</button>
-            </div>
-          </div>
           <div class="card" id="bkCard">
-            <div class="set-h">백업</div>
-            <div class="share-row">
-              <div class="share-info"><b>자동 백업</b><span id="bkInfo">—</span></div>
-            </div>
-            <div class="share-sep"></div>
+            <div class="set-h">백업 · 기록</div>
             <div class="share-row">
               <div class="share-info"><b>지금 내보내기</b><span>위젯 없이 이 컴퓨터의 내려받기 폴더에 저장합니다</span></div>
               <button class="btn bo bsm" data-act="bk.now">내보내기</button>
@@ -1667,28 +1661,28 @@ html.dark #toast{background:#2B313A;}
               <div class="share-info"><b>되돌리기</b><span>백업 파일을 골라 그 시점으로 되돌립니다 · 지금 내용은 사라집니다</span></div>
               <button class="btn bo bsm" data-act="bk.restore">불러오기</button>
             </div>
+            <div class="share-sep"></div>
+            <div class="share-row">
+              <div class="share-info"><b>버전 · 오류 기록</b><span id="buildInfo">—</span></div>
+              <button class="btn bg2 bsm" data-act="set.copyErr">복사</button>
+            </div>
           </div>
           <div class="card">
-            <div class="set-h">하자처리 현황 연동</div>
+            <div class="set-h">하자처리현황 연동</div>
             <div class="share-row">
-              <div class="share-info"><b>팀 · 권역 · 현장</b><span id="orgSrcInfo">하자처리 현황의 게시본을 그대로 읽습니다</span></div>
+              <div class="share-info"><b>팀 · 권역 · 현장</b><span id="orgSrcInfo">하자처리현황의 게시본을 그대로 읽습니다</span></div>
               <button class="btn bo bsm" data-act="org.import">다시 읽기</button>
             </div>
+            <div class="share-sep"></div>
+            <div class="share-info" style="margin-bottom:9px"><b>하자처리현황 바로가기</b><span>사이드바에서 여는 주소입니다</span></div>
+            <input class="inp" id="setDefectUrl" placeholder="https://…">
           </div>
           <div class="card">
             <div class="set-h">바탕화면 위젯</div>
             <div class="share-row">
-              <div class="share-info"><b>위젯 내려받기</b><span>받을 때 경고가 뜨면 ⋯ &gt; 유지, 실행할 때 뜨면 추가 정보 &gt; 실행</span></div>
+              <div class="share-info"><b>위젯 내려받기</b><span>다운로드 시 &quot;유지&quot; 선택 후 &quot;삭제 옆 옵션&quot;에서 &quot;그래도 계속&quot; 선택</span></div>
               <button class="btn bp bsm" data-act="wid.dl">내려받기</button>
             </div>
-            <div class="share-sep"></div>
-            <div class="share-info" style="margin-bottom:9px"><b>위젯 파일 주소</b><span>릴리스 파일 주소를 넣으면 최신 버전을 스스로 찾습니다</span></div>
-            <input class="inp" id="setWidgetUrl" placeholder="https://…/HPlanWidget.exe">
-          </div>
-          <div class="card">
-            <div class="set-h">연결</div>
-            <div class="share-info" style="margin-bottom:9px"><b>하자처리현황 바로가기</b></div>
-            <input class="inp" id="setDefectUrl" placeholder="https://…">
           </div>
         </div>
       </div>
@@ -1714,5 +1708,5 @@ html.dark #toast{background:#2B313A;}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=148"></script>
+<script src="./app.js?v=149"></script>
 </body></html>
