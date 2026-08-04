@@ -2,7 +2,7 @@
 # ⚠ 버전 규칙(Electron 판과 동일): widget-lite/ 가 바뀐 회차마다 version 을 올려서 전달한다.
 [package]
 name = "hplan-widget-lite"
-version = "0.9.0"
+version = "0.9.1"
 edition = "2021"
 
 [build-dependencies]
