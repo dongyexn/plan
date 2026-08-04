@@ -122,7 +122,7 @@ svg{display:block;flex-shrink:0;}
 .tbr{position:relative;}
 /* 알림 줄은 위젯 팝오버의 `.wl` 규칙을 그대로 쓴다 — 아래 '위젯 옆 팝오버 목록' 참조 */
 /* 상단바 오른쪽 — 알림·사용 안내 */
-.tbr{margin-left:auto;display:flex;align-items:center;}
+.tbr{margin-left:auto;display:flex;align-items:center;gap:6px;}
 /* 위젯 헤더의 알약(.cal-nav)과 같은 문법 — 한 덩어리 안에 아이콘 버튼을 담는다 */
 .tb-nav{display:flex;align-items:center;gap:1px;padding:2px;border-radius:999px;background:var(--fill);border:1px solid var(--sep);}
 .tb-ic{position:relative;width:27px;height:27px;border-radius:999px;display:flex;align-items:center;justify-content:center;
@@ -866,22 +866,12 @@ html.dark .col-pop{background:#242426;}
   box-shadow:0 8px 22px rgba(0,0,0,.28);pointer-events:none;opacity:0;visibility:hidden;
   transition:opacity .12s;white-space:pre-line;}
 #htip.on{opacity:1;visibility:visible;}
-/* 휴무일 목록 — 연초에 한 번 몰아서 넣는 성격이라 목록으로 훑고 지운다 */
-.off-row{display:flex;align-items:center;gap:9px;padding:7px 2px;border-bottom:1px solid var(--sep);}
-.off-row:last-child{border-bottom:none;}
-.off-d{font-size:12.5px;font-weight:700;color:var(--lbl);flex:0 0 52px;}
-.off-w{font-size:11px;color:var(--lbl3);flex:0 0 auto;}
-.off-n{font-size:12px;color:var(--lbl2);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.off-x{flex:0 0 auto;width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;color:var(--lbl3);}
-.off-x:hover{background:rgba(221,59,48,.1);color:var(--rd);}
-.off-x .icn{width:13px;height:13px;}
-.off-none{font-size:12.5px;color:var(--lbl3);padding:12px 2px;text-align:center;}
-.off-y{font-size:11px;font-weight:800;color:var(--lbl3);padding:10px 2px 4px;letter-spacing:.04em;}
 /* 사용 안내(README) — 왼쪽 목차 탭 + 본문 한 장씩. 하자처리현황과 같은 방식 */
-#mb.rdw{max-width:min(980px,94vw);}
+#mb.rdw{max-width:min(1180px,96vw);}
+#mb.narrow{max-width:min(380px,92vw);}   /* 한 줄 입력만 받는 모달은 좁게 */
 .md-scroll{max-height:min(72dvh,880px);overflow-y:auto;overscroll-behavior:contain;margin:0 -8px;padding:0 8px;}
 .rd-wrap{display:flex;gap:20px;align-items:flex-start;}
-.rd-nav{flex:0 0 190px;max-height:62dvh;overflow-y:auto;border-right:1px solid var(--sep);padding-right:12px;position:sticky;top:0;}
+.rd-nav{flex:0 0 176px;max-height:62dvh;overflow-y:auto;border-right:1px solid var(--sep);padding-right:12px;position:sticky;top:0;}
 .rd-navi{display:block;width:100%;text-align:left;padding:8px 10px;margin-bottom:2px;border-radius:8px;
   font-size:12.5px;line-height:1.45;color:var(--lbl2);}
 .rd-navi:hover{background:var(--fill);}
@@ -1567,7 +1557,7 @@ html.dark #toast{background:#2B313A;}
     <div class="nvi" role="button" tabindex="0" data-view="tasks" data-act="nav.go">
       <div class="nic"><svg class="icn" aria-hidden="true"><use href="#i-tasks"></use></svg></div>
       <span class="nil">업무 목록</span>
-      <span class="nv-badge" id="mentionBadge" data-act="mention.open" style="display:none" title="내 멘션"></span>
+      <span class="nv-badge" id="mentionBadge" data-act="mention.open" style="display:none" data-tip="나를 부른 코멘트"></span>
     </div>
     <div class="sbsl">개인</div>
     <div class="nvi" role="button" tabindex="0" data-view="mine" data-act="nav.go">
@@ -1612,7 +1602,9 @@ html.dark #toast{background:#2B313A;}
         <button class="tb-ic" data-act="app.alerts" aria-label="알림" data-tip="알림 — 나를 부른 코멘트">
           <svg class="icn" aria-hidden="true"><use href="#i-bell"></use></svg>
           <span class="tb-dot" id="appAlertDot"></span></button>
-        <button class="tb-ic" data-act="set.guide" aria-label="사용 안내" data-tip="사용 안내 (README)">
+      </div>
+      <div class="tb-nav">
+        <button class="tb-ic" data-act="set.guide" aria-label="사용 안내" data-tip="사용 안내">
           <svg class="icn" aria-hidden="true"><use href="#i-help"></use></svg></button>
       </div>
       <div class="tb-pop" id="appAlertPop" role="dialog" aria-label="알림">
@@ -1637,14 +1629,14 @@ html.dark #toast{background:#2B313A;}
             <div class="cal-ctl">
                             <div class="cal-nav">
                 <button class="cal-nb" data-act="cal.prev" aria-label="이전"><svg class="icn" aria-hidden="true"><use href="#i-chevl"></use></svg></button>
-                <button class="cal-nb cal-today" data-act="cal.today" aria-label="오늘로" title="오늘로"><svg class="icn" aria-hidden="true"><use href="#i-today"></use></svg></button>
+                <button class="cal-nb cal-today" data-act="cal.today" aria-label="오늘로" data-tip="오늘로"><svg class="icn" aria-hidden="true"><use href="#i-today"></use></svg></button>
                 <button class="cal-nb" data-act="cal.next" aria-label="다음"><svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg></button>
               </div>
               <div class="wido" id="widFilterSlot"></div>
               <div class="cal-nav wido">
                 <button class="cal-nb" data-act="wid.side" data-tab="alert" aria-label="알림" data-tip="알림"><svg class="icn" aria-hidden="true"><use href="#i-bell"></use></svg><span class="wid-dot" id="widAlertDot"></span></button>
                 <button class="cal-nb" data-act="wid.side" data-tab="mine" aria-label="내 업무" data-tip="내 업무 — 이번 주 일정과 미완료"><svg class="icn" aria-hidden="true"><use href="#i-tasks"></use></svg></button>
-                <button class="cal-nb wid-acct" data-act="acct.open" aria-label="내 프로필" title="내 프로필"><span class="av sb-acct-av" id="widAcctAv"><svg class="icn" aria-hidden="true"><use href="#i-me"></use></svg></span></button>
+                <button class="cal-nb wid-acct" data-act="acct.open" aria-label="내 프로필" data-tip="내 프로필"><span class="av sb-acct-av" id="widAcctAv"><svg class="icn" aria-hidden="true"><use href="#i-me"></use></svg></span></button>
                 <button class="cal-nb" data-act="wid.set" aria-label="위젯 설정" data-tip="위젯 설정"><svg class="icn" aria-hidden="true"><use href="#i-settings"></use></svg></button>
               </div>
             </div>
@@ -1700,7 +1692,7 @@ html.dark #toast{background:#2B313A;}
               <select class="inp inp-sm dp-sel dp-scope" id="dpScope" aria-label="찾는 범위">
                 <option value="day">일</option><option value="month">월</option><option value="all">전체</option>
               </select>
-              <button class="dp-fmore" data-act="day.fmore" aria-label="필터 펼치기" title="필터"><svg class="icn"><use href="#i-chevr"></use></svg></button>
+              <button class="dp-fmore" data-act="day.fmore" aria-label="필터 펼치기" data-tip="필터"><svg class="icn"><use href="#i-chevr"></use></svg></button>
             </div>
             <div class="dp-fadv" id="dpFadv"></div>
           </div>
@@ -1814,25 +1806,6 @@ html.dark #toast{background:#2B313A;}
               <button class="btn bg2 bsm" data-act="set.copyErr">복사</button>
             </div>
           </div>
-          <div class="card" id="offCard">
-            <div class="set-h">휴무일</div>
-            <div class="share-row">
-              <div class="share-info"><b>단체연차 · 창립기념일</b><span>공휴일과 같은 색으로 칠해집니다 · 달력에서 우클릭으로도 지정할 수 있습니다</span></div>
-            </div>
-            <div class="frow2" style="margin-top:9px">
-              <div class="frow"><label for="offFrom">시작일</label><input class="inp inp-sm" type="date" id="offFrom" max="9999-12-31"></div>
-              <div class="frow"><label for="offTo">종료일 (선택)</label><input class="inp inp-sm" type="date" id="offTo" max="9999-12-31"></div>
-            </div>
-            <div class="frow"><label for="offLabel">이름</label>
-              <div style="display:flex;gap:8px">
-                <input class="inp inp-sm" id="offLabel" maxlength="12" placeholder="단체연차" style="flex:1">
-                <button class="btn bp bsm" data-act="offday.add" style="flex:0 0 auto">추가</button>
-              </div>
-              <span class="frow-hint">종료일을 넣으면 그 사이 날짜에 한 번에 지정됩니다. <b>주말·공휴일은 건너뜁니다.</b></span>
-            </div>
-            <div class="share-sep"></div>
-            <div id="offList"></div>
-          </div>
           <div class="card">
             <div class="set-h">하자처리현황 연동</div>
             <div class="share-info" style="margin-bottom:9px"><b>하자처리현황 바로가기</b><span>사이드바에서 여는 주소입니다</span></div>
@@ -1870,5 +1843,5 @@ html.dark #toast{background:#2B313A;}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=163"></script>
+<script src="./app.js?v=164"></script>
 </body></html>

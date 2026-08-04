@@ -235,7 +235,7 @@ function sitePickHTML(id,cur){
 function colDotHTML(c,pid){
   return pid
     ?'<span class="p-col p-col-ro" style="background:'+esc(c)+'"></span>'
-    :'<button class="p-col" data-act="plan.color" aria-label="색 고르기" title="색 고르기" style="background:'+esc(c)+'"></button>';
+    :'<button class="p-col" data-act="plan.color" aria-label="색 고르기" data-tip="색 고르기" style="background:'+esc(c)+'"></button>';
 }
 /* 색 선택기 HTML — 기본 팔레트 + 임의 색 추가.
    현재 값이 팔레트에 없으면(직접 고른 색) 맨 뒤에 칩으로 붙여 선택 상태를 유지한다. */
@@ -259,12 +259,12 @@ function palDel(c){
 function colPopHTML(cur){
   const c=(!cur||cur==='auto')?'auto':cur;
   const dot=(v,cls,style,title)=>'<button class="pal-c'+(v===c?' sel':'')+(cls?' '+cls:'')
-    +'" data-c="'+esc(v)+'"'+(style?' style="'+style+'"':'')+(title?' title="'+esc(title)+'"':'')+'></button>';
+    +'" data-c="'+esc(v)+'"'+(style?' style="'+style+'"':'')+(title?' data-tip="'+esc(title)+'"':'')+'></button>';
   const custom=palCustom().filter(x=>x&&!PAL_BASE.includes(x));
   if(c!=='auto'&&!PAL_BASE.includes(c)&&!custom.includes(c))custom.unshift(c);
   return '<div class="col-pop-h">색 고르기</div>'
     +'<div class="pal">'
-      +'<button class="pal-c pal-auto'+(c==='auto'?' sel':'')+'" data-c="auto" title="담당자 색">'
+      +'<button class="pal-c pal-auto'+(c==='auto'?' sel':'')+'" data-c="auto" data-tip="담당자 색">'
         +'<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#av-person"></use></svg></button>'
       +PAL_BASE.map(x=>dot(x,'','background:'+x)).join('')
       +(custom.length?'<div class="pal-br"></div>'+custom.map(x=>dot(x,'pal-custom','background:'+esc(x),'우클릭으로 삭제')).join(''):'')
@@ -317,7 +317,7 @@ function palHTML(id,cur,extraFirst){
   return '<div class="pal" id="'+id+'">'+(extraFirst||'')
     +PAL.map(x=>'<div class="pal-c'+(x===c?' sel':'')+'" data-c="'+x+'" style="background:'+x+'"></div>').join('')
     +(custom?'<div class="pal-c sel" data-c="'+esc(custom)+'" style="background:'+esc(custom)+'"></div>':'')
-    +'<label class="pal-c pal-add" title="색 직접 고르기">'
+    +'<label class="pal-c pal-add" data-tip="색 직접 고르기">'
     +'<input type="color" class="pal-inp" value="'+esc(custom||'#3E71D2')+'"><span>+</span></label>'
     +'</div>';
 }
@@ -566,7 +566,7 @@ const LocalStore={
   putOrg(org){this._d.org=org;S.org=org;lsSave(this._d);},
   putOffday(ds,name){this._d.offdays=this._d.offdays||{};
     if(name)this._d.offdays[ds]=name;else delete this._d.offdays[ds];
-    S.offdays=this._d.offdays;lsSave(this._d);calRerender();rDay();rWidget();rOff();},
+    S.offdays=this._d.offdays;lsSave(this._d);calRerender();rDay();rWidget();},
   putPerson(id,p){if(p)this._d.people[id]=p;else delete this._d.people[id];S.people=this._d.people;lsSave(this._d);},
   putTask(mid,iid,item){this._d.tasks[mid]=this._d.tasks[mid]||{};if(item)this._d.tasks[mid][iid]=item;else delete this._d.tasks[mid][iid];S.tasks=this._d.tasks;lsSave(this._d);},
   putCfg(k,v,cb){this._d.cfg[k]=v;S.cfg=this._d.cfg;lsSave(this._d);if(cb)cb(null);},
@@ -743,7 +743,7 @@ const FbStore={
     this._on('calapp/tasks',v=>{S.tasks=v||{};bootCacheSave();
       if(shEditing()){PEND.tasks=true;PEND.day=true;return;}
       rTasks();refetchCal();rDay();rWidget();});   /* 업무가 곧 일정 — 달력도 함께 갱신 */
-    this._on('calapp/offdays',v=>{S.offdays=v||{};bootCacheSave();calRerender();rDay();rWidget();rOff();});
+    this._on('calapp/offdays',v=>{S.offdays=v||{};bootCacheSave();calRerender();rDay();rWidget();});
     this._on('calapp/people',v=>{S.people=v||{};bootCacheSave();
       if(shEditing()){PEND.org=true;PEND.tasks=true;return;}
       rOrg();rTasks();});
@@ -1061,7 +1061,7 @@ function emojiPickerHTML(av){
     <input class="inp inp-sm pf-srch" id="pfSrch" placeholder="이모지 검색(영문) · 직접 붙여넣기도 됩니다" autocomplete="off">
     <div class="pf-cats" id="pfCats">
       <button class="pf-cat act" data-cat="${rec.length?'recent':'smiley'}" data-act="pf.cat">${rec.length?'🕘':'😀'}</button>
-      ${EMOJI_CATS.map((c,i)=>rec.length||i?'<button class="pf-cat" data-cat="'+c.id+'" data-act="pf.cat" title="'+esc(c.label)+'">'+esc(c.s.slice(0,c.s.indexOf(' ')))+'</button>':'').join('')}
+      ${EMOJI_CATS.map((c,i)=>rec.length||i?'<button class="pf-cat" data-cat="'+c.id+'" data-act="pf.cat" data-tip="'+esc(c.label)+'">'+esc(c.s.slice(0,c.s.indexOf(' ')))+'</button>':'').join('')}
     </div>
     <div class="pf-emg" id="pfEmg"></div>
     <div class="pf-lab">배경색</div>
@@ -1084,7 +1084,7 @@ function pfRenderEmg(cat,q,append){
   const CH=120;
   if(!append){
     PF_MORE={cat,q,list,at:0};
-    box.innerHTML='<button class="pf-em dflt" data-e="" data-act="pf.pick" title="기본 아이콘">'+AV_DFLT+'</button>';
+    box.innerHTML='<button class="pf-em dflt" data-e="" data-act="pf.pick" data-tip="기본 아이콘">'+AV_DFLT+'</button>';
     if(!list.length){box.innerHTML+='<div class="pf-empty">결과가 없습니다. 이모지를 직접 붙여넣어도 됩니다.</div>';return;}
     box.scrollTop=0;
   }
@@ -1908,8 +1908,8 @@ function rDay(){
         <div class="plan-t"${openAct}>${esc(p.title)}</div>
         <div class="plan-side">
           ${stIcon(st,' data-act="plan.stCycle" data-pid="'+esc(p.id)+'" data-occ="'+esc(occ)+'"')}
-${p.remind?'<button class="p-ico p-rem on" data-act="plan.remind" data-pid="'+esc(p.id)+'" aria-label="리마인드 해제" title="리마인드 켜짐"><svg class="icn"><use href="#i-bell"></use></svg></button>':''}
-          ${lnk?'<a class="p-ico" href="'+esc(lnk.url)+'" target="_blank" rel="noopener" aria-label="링크 열기" title="'+esc(lnk.label||lnk.url)+'"><svg class="icn"><use href="#i-ext"></use></svg></a>':''}
+${p.remind?'<button class="p-ico p-rem on" data-act="plan.remind" data-pid="'+esc(p.id)+'" aria-label="리마인드 해제" data-tip="리마인드 켜짐 · 눌러서 끄기"><svg class="icn"><use href="#i-bell"></use></svg></button>':''}
+          ${lnk?'<a class="p-ico" href="'+esc(lnk.url)+'" target="_blank" rel="noopener" aria-label="링크 열기" data-tip="'+esc(lnk.label||lnk.url)+'"><svg class="icn"><use href="#i-ext"></use></svg></a>':''}
           <button class="p-ico p-edit" data-act="plan.edit" data-pid="${esc(p.id)}" data-occ="${esc(occ)}" aria-label="수정" data-tip="수정"><svg class="icn"><use href="#i-pen"></use></svg></button>
         </div>
       </div>
@@ -1945,7 +1945,9 @@ function openModal(title,bodyHTML,footHTML){
   pfClosed();                        /* 지난번 프로필 팝오버 때문에 모달이 왼쪽으로 쏠린 채 열리지 않게 */
   $('#mt').textContent=title;$('#mbody').innerHTML=bodyHTML;$('#mf').innerHTML=footHTML||'';
   /* 하단 버튼이 없는 모달(사용 안내 등)은 우상단 X 로 닫는다 — 참조 앱과 동일 */
-  $('#mb').classList.toggle('has-x',!footHTML);
+  const mb=$('#mb');
+  mb.classList.remove('rdw','narrow');   /* ⚠ 지난번 모달의 폭 설정이 남으면 다음 모달이 엉뚱한 크기로 뜬다 */
+  mb.classList.toggle('has-x',!footHTML);
   $('#mo').classList.add('open');
 }
 function closeModal(){$('#mo').classList.remove('open');MODAL_CB=null;pfDrop();}
@@ -2073,10 +2075,10 @@ function planFormHTML(){
       <input class="pe-ttl" id="peTitle" maxlength="80" placeholder="무엇을 하나요?" value="${esc(d.title)}">
       <div class="pe-side">
         ${pe.orig
-          ?'<button class="pe-ic pe-del" data-act="plan.del" data-pid="'+esc(d.id)+'" data-ym="'+esc(ymOf(d.date))+'" data-occ="'+esc(pe.occ||'')+'" aria-label="삭제" title="삭제"><svg class="icn"><use href="#i-trash"></use></svg></button>'
-          :'<button class="pe-ic pe-del" data-act="plan.discard" aria-label="취소" title="저장하지 않고 닫기"><svg class="icn"><use href="#i-close"></use></svg></button>'}
-        <button class="pe-ic pe-rem${d.remind?' on':''}" data-act="plan.remindDraft" aria-label="리마인드 전환" title="리마인드"><svg class="icn"><use href="#i-bell"></use></svg></button>
-        <button class="pe-ic pe-ok" data-act="plan.cancel" aria-label="저장하고 닫기 (Esc)" title="저장하고 닫기 (Esc)"><svg class="icn"><use href="#i-check"></use></svg></button>
+          ?'<button class="pe-ic pe-del" data-act="plan.del" data-pid="'+esc(d.id)+'" data-ym="'+esc(ymOf(d.date))+'" data-occ="'+esc(pe.occ||'')+'" aria-label="삭제" data-tip="삭제"><svg class="icn"><use href="#i-trash"></use></svg></button>'
+          :'<button class="pe-ic pe-del" data-act="plan.discard" aria-label="취소" data-tip="저장하지 않고 닫기"><svg class="icn"><use href="#i-close"></use></svg></button>'}
+        <button class="pe-ic pe-rem${d.remind?' on':''}" data-act="plan.remindDraft" aria-label="리마인드 전환" data-tip="리마인드"><svg class="icn"><use href="#i-bell"></use></svg></button>
+        <button class="pe-ic pe-ok" data-act="plan.cancel" aria-label="저장하고 닫기 (Esc)" data-tip="저장하고 닫기 (Esc)"><svg class="icn"><use href="#i-check"></use></svg></button>
       </div>
     </div>
     <div class="pe-body">
@@ -2092,7 +2094,7 @@ function planFormHTML(){
       <div class="frow"><label>현장</label>${sitePickHTML('peSite',d.site||'')}</div>
       <div class="pe-morerow">
         <button class="pe-more" data-act="plan.more" id="peMoreBtn" aria-label="자세히"><svg class="icn"><use href="#i-chevr"></use></svg></button>
-        ${pe.orig&&pe.orig.sid?'<button class="pe-ic pe-more-ic" data-act="plan.toTask" data-sid="'+esc(pe.orig.sid)+'" data-iid="'+esc(d.id)+'" aria-label="업무 목록에서 자세히 쓰기" title="업무 목록에서 자세히 쓰기"><svg class="icn"><use href="#i-tasks"></use></svg></button>':''}
+        ${pe.orig&&pe.orig.sid?'<button class="pe-ic pe-more-ic" data-act="plan.toTask" data-sid="'+esc(pe.orig.sid)+'" data-iid="'+esc(d.id)+'" aria-label="업무 목록에서 자세히 쓰기" data-tip="업무 목록에서 자세히 쓰기"><svg class="icn"><use href="#i-tasks"></use></svg></button>':''}
       </div>
       <div class="pe-adv" id="peAdv">
         <div class="frow2">
@@ -2182,7 +2184,7 @@ function planAutosave(now){
       if(old)old.remove();                 /* 취소 버튼을 삭제 버튼으로 바꾼다 */
       if(side&&!side.querySelector('[data-act="plan.del"]')){
         const del=document.createElement('button');
-        del.className='pe-ic pe-del';del.setAttribute('aria-label','삭제');del.title='삭제';
+        del.className='pe-ic pe-del';del.setAttribute('aria-label','삭제');del.setAttribute('data-tip','삭제');
         del.dataset.act='plan.del';del.dataset.pid=p.id;del.dataset.ym=ymOf(p.date);del.dataset.occ=pe.occ||'';
         del.innerHTML='<svg class="icn"><use href="#i-trash"></use></svg>';
         side.insertBefore(del,side.querySelector('.pe-rem')||side.lastElementChild);
@@ -2311,8 +2313,8 @@ function taskItemHTML(sid,iid,it,withSubject,hideOwn){
         ${stIcon(st,' data-act="tk.st" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"')}
         ${cn?`<button class="tk-ico on" data-act="tk.open" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="코멘트">
           <svg class="icn"><use href="#i-cmt"></use></svg><span class="cn">${cn}</span></button>`:''}
-        ${it.remind?'<button class="tk-ico on" data-act="tk.remind" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" aria-label="리마인드 해제" title="리마인드 켜짐"><svg class="icn"><use href="#i-bell"></use></svg></button>':''}
-        ${lnk?'<a class="tk-ico" href="'+esc(lnk.url)+'" target="_blank" rel="noopener" data-act="lnk.open" aria-label="링크 열기" title="'+esc(lnk.label||lnk.url)+'"><svg class="icn"><use href="#i-ext"></use></svg></a>':''}
+        ${it.remind?'<button class="tk-ico on" data-act="tk.remind" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" aria-label="리마인드 해제" data-tip="리마인드 켜짐 · 눌러서 끄기"><svg class="icn"><use href="#i-bell"></use></svg></button>':''}
+        ${lnk?'<a class="tk-ico" href="'+esc(lnk.url)+'" target="_blank" rel="noopener" data-act="lnk.open" aria-label="링크 열기" data-tip="'+esc(lnk.label||lnk.url)+'"><svg class="icn"><use href="#i-ext"></use></svg></a>':''}
         <button class="tk-ico" data-act="tk.edit" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="수정" data-tip="수정"><svg class="icn"><use href="#i-pen"></use></svg></button>
         <button class="tk-del" data-act="tk.del" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="삭제"><svg class="icn"><use href="#i-close"></use></svg></button>
       </div>
@@ -2491,10 +2493,10 @@ function taskFormHTML(sid,iid,cur){
       <div class="pe-side">
         <span id="tnSt" data-st="${st}" hidden></span>
         ${iid
-          ?'<button class="pe-ic pe-del" data-act="tk.del" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" aria-label="삭제" title="삭제"><svg class="icn"><use href="#i-trash"></use></svg></button>'
-          :'<button class="pe-ic pe-del" data-act="tk.formCancel" aria-label="취소" title="저장하지 않고 닫기"><svg class="icn"><use href="#i-close"></use></svg></button>'}
-        <button class="pe-ic pe-rem${d.remind?' on':''}" id="tnRemind" data-act="tk.remindDraft" data-on="${d.remind?'1':''}" aria-label="리마인드" title="리마인드"><svg class="icn"><use href="#i-bell"></use></svg></button>
-        <button class="pe-ic pe-ok" data-act="tk.formSave" data-sid="${esc(sid)}" data-iid="${esc(iid||'')}" aria-label="저장하고 닫기" title="저장하고 닫기"><svg class="icn"><use href="#i-check"></use></svg></button>
+          ?'<button class="pe-ic pe-del" data-act="tk.del" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" aria-label="삭제" data-tip="삭제"><svg class="icn"><use href="#i-trash"></use></svg></button>'
+          :'<button class="pe-ic pe-del" data-act="tk.formCancel" aria-label="취소" data-tip="저장하지 않고 닫기"><svg class="icn"><use href="#i-close"></use></svg></button>'}
+        <button class="pe-ic pe-rem${d.remind?' on':''}" id="tnRemind" data-act="tk.remindDraft" data-on="${d.remind?'1':''}" aria-label="리마인드" data-tip="리마인드"><svg class="icn"><use href="#i-bell"></use></svg></button>
+        <button class="pe-ic pe-ok" data-act="tk.formSave" data-sid="${esc(sid)}" data-iid="${esc(iid||'')}" aria-label="저장하고 닫기" data-tip="저장하고 닫기"><svg class="icn"><use href="#i-check"></use></svg></button>
       </div>
     </div>
     <div class="pe-body">
@@ -2644,7 +2646,7 @@ function tkFilterHTML(){
         ${String(f.q||'').trim()?'<button class="dp-srch-x" data-act="tkf.qclear" aria-label="지우기"><svg class="icn"><use href="#i-close"></use></svg></button>':''}
       </div>
       ${on?'<button class="btn bg2 bxs" data-act="tkf.reset">초기화</button>':''}
-      <button class="dp-fmore" data-act="tkf.more" aria-label="필터 펼치기" title="필터"><svg class="icn"><use href="#i-chevr"></use></svg></button>
+      <button class="dp-fmore" data-act="tkf.more" aria-label="필터 펼치기" data-tip="필터"><svg class="icn"><use href="#i-chevr"></use></svg></button>
     </div>
     <div class="dp-fadv">
       <div class="dp-frow">
@@ -3005,7 +3007,7 @@ function rOrg(){
     /* ⚠ 무조건 3개로 자르면 칸이 넓어도 '+1'이 뜬다 — 넣을 수 있는 만큼 다 넣고 넘칠 때만 접는다(CSS 가 판단) */
     const shown=list.map(x=>'<span class="site-on">'+esc(x.name)+'</span>').join('');
     return '<div class="site-chk">'
-      +'<button class="site-pick" data-act="acct.sitePick" data-id="'+esc(p.id)+'" aria-label="담당 현장 선택" title="담당 현장 선택"><svg class="icn"><use href="#i-plus"></use></svg></button>'
+      +'<button class="site-pick" data-act="acct.sitePick" data-id="'+esc(p.id)+'" aria-label="담당 현장 선택" data-tip="담당 현장 선택"><svg class="icn"><use href="#i-plus"></use></svg></button>'
       +(list.length?shown:'<span class="site-none">미지정</span>')
       +'</div>';
   };
@@ -3092,7 +3094,7 @@ function orgSave(){
 function rCfg(){
   const i=$('#setDefectUrl');
   if(i&&document.activeElement!==i)i.value=S.cfg.defectUrl||DEFECT_URL;
-  rBk();rOff();
+  rBk();
   const m=S.cfg.mail||{};
   const hs=$('#mlHour');
   if(hs&&!hs.options.length){
@@ -3386,26 +3388,6 @@ function bkDownload(name,text){
   a.download=name;document.body.appendChild(a);a.click();
   setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);
 }
-/* 휴무일 목록 — 해마다 한 번 몰아서 넣는다. 지난 날짜는 흐리게 두고 연도별로 묶는다 */
-function rOff(){
-  const card=$('#offCard');if(card)card.style.display=isEditor()?'':'none';
-  const box=$('#offList');if(!box)return;
-  const list=Object.entries(S.offdays||{}).sort((a,b)=>a[0]<b[0]?-1:1);
-  if(!list.length)return void(box.innerHTML='<div class="off-none">지정된 휴무일이 없습니다</div>');
-  const today=todayStr();
-  let html='',year='';
-  list.forEach(([ds,n])=>{
-    const y=ds.slice(0,4);
-    if(y!==year){year=y;html+='<div class="off-y">'+y+'년</div>';}
-    html+='<div class="off-row"'+(ds<today?' style="opacity:.5"':'')+'>'
-      +'<span class="off-d">'+esc(ds.slice(5).replace('-','/'))+'</span>'
-      +'<span class="off-w">'+DOW[toDate(ds).getDay()]+'</span>'
-      +'<span class="off-n">'+esc(n)+'</span>'
-      +'<button class="off-x" data-act="offday.del" data-ds="'+esc(ds)+'" aria-label="삭제" data-tip="이 휴무일 지우기"><svg class="icn"><use href="#i-trash"></use></svg></button>'
-      +'</div>';
-  });
-  box.innerHTML=html;
-}
 function rBk(){
   const card=$('#bkCard');if(card)card.style.display=isEditor()?'':'none';
 }
@@ -3500,21 +3482,20 @@ function ctxFor(t){
     return[
       {label:'이 날짜에 업무 추가',act:()=>{selDate(ds,true);S.selEnd='';if(WIDGET)S.widPop=true;rDay();rWidget();
         setTimeout(()=>{const a=$('#dpList')&&$('.dp-add');if(a)a.click();},60);}},
-      {label:'이 날짜로 이동',act:()=>{selDate(ds,true);if(WIDGET){S.widPop=true;rWidget();}rDay();}},
       ed?{sep:true}:null,
       ed?(off
         ?{label:'휴무일 해제 ('+off+')',act:()=>{store.putOffday(ds,'');toast('휴무일을 해제했습니다');}}
-        :{label:'단체연차로 지정',act:()=>{store.putOffday(ds,'단체연차');toast(mdLabel(ds)+' 단체연차');}}):null,
-      ed&&!off?{label:'다른 휴무일로 지정…',act:()=>offdayAsk(ds)}:null
+        :{label:'휴무일로 지정…',act:()=>offdayAsk(ds)}):null
     ];
   }
   return null;
 }
 function offdayAsk(ds){
   openModal('휴무일 지정',
-    '<div style="font-size:12.5px;color:var(--lbl2);margin-bottom:9px">'+esc(mdLabel(ds))+' 을(를) 쉬는 날로 표시합니다. 달력에서 공휴일과 같은 색으로 칠해집니다.</div>'
+    '<div style="font-size:12.5px;color:var(--lbl2);margin-bottom:9px;line-height:1.6">'+esc(mdLabel(ds))+' 을(를) 쉬는 날로 표시합니다.<br>공휴일과 같은 색으로 칠해집니다.</div>'
     +'<input class="inp" id="offName" maxlength="12" placeholder="예: 단체연차, 창립기념일" value="단체연차">',
     '<button class="btn bg2 bsm" data-act="modal.close">취소</button><button class="btn bp bsm" data-act="offday.save" data-ds="'+esc(ds)+'">지정</button>');
+  const mb=$('#mb');if(mb)mb.classList.add('narrow');
   setTimeout(()=>{const i=$('#offName');if(i){i.focus();i.select();}},60);
 }
 
@@ -3938,29 +3919,6 @@ const ACT={
     }};
   },
   'set.guide':()=>openReadme(),
-  'offday.add':()=>{
-    if(!isEditor())return toast('관리자만 지정할 수 있습니다');
-    const f=$('#offFrom'),t=$('#offTo'),l=$('#offLabel');
-    const from=f&&f.value,to=(t&&t.value)||from;
-    const name=String((l&&l.value)||'').trim().slice(0,12)||'단체연차';
-    if(!from)return toast('시작일을 골라 주세요');
-    if(to<from)return toast('종료일이 시작일보다 앞섭니다');
-    if(daysBetween(from,to)>60)return toast('한 번에 60일까지만 지정할 수 있습니다');
-    /* ⚠ 주말·공휴일에 또 칠하면 목록만 지저분해진다 — 건너뛴다 */
-    let n=0,skip=0;
-    for(let d=from;d<=to;d=addDays(d,1)){
-      const w=toDate(d).getDay();
-      if(w===0||w===6||HOLI[d]){skip++;continue;}
-      store.putOffday(d,name);n++;
-    }
-    if(f)f.value='';if(t)t.value='';if(l)l.value='';
-    rOff();
-    toast(n?(n+'일을 '+name+'으로 지정했습니다'+(skip?' · 주말·공휴일 '+skip+'일은 건너뜀':'')):'모두 주말·공휴일이라 지정하지 않았습니다');
-  },
-  'offday.del':el=>{
-    if(!isEditor())return toast('관리자만 지울 수 있습니다');
-    store.putOffday(el.dataset.ds,'');rOff();toast('지웠습니다');
-  },
   'offday.save':()=>{
     const i=$('#offName'),ds=$('[data-act="offday.save"]').dataset.ds;
     const n=String((i&&i.value)||'').trim().slice(0,12);
