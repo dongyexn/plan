@@ -785,9 +785,12 @@ fn main() {
             let h3 = app.handle().clone();
             handle.listen_any("hpw-drag", move |ev| {
                 if STATE.lock().unwrap().locked.unwrap_or(true) { return; }   /* 잠금 중엔 무시 */
-                /* ⚠ start_resize_dragging 은 WebviewWindow 가 아니라 Window 쪽 API 다(2.11.5 확인) —
-                   같은 라벨의 Window 핸들을 따로 얻는다. ResizeDirection 도 tauri 재수출이 없어 tauri-runtime 에서 온다. */
-                let Some(w) = h3.get_window("main") else { return };
+                /* ⚠ start_resize_dragging 은 WebviewWindow 가 아니라 Window 쪽 API 다(2.11.5 확인).
+                   Manager::get_window 은 unstable 피처 뒤라, 게이트 없는 경로로 얻는다:
+                   WebviewWindow --AsRef--> Webview --window()--> Window (셋 다 소스에서 게이트 없음 확인).
+                   ResizeDirection 은 tauri 재수출이 없어 tauri-runtime 에서 온다. */
+                let Some(ww) = win_of(&h3) else { return };
+                let w: tauri::Window = AsRef::<tauri::Webview>::as_ref(&ww).window();
                 use tauri_runtime::ResizeDirection as D;
                 match ev.payload().trim_matches('"') {
                     "move" => { let _ = w.start_dragging(); }
