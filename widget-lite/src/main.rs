@@ -109,7 +109,6 @@ fn chrono_lite_now() -> String {
     format!("{:04}-{:02}-{:02} {:02}:{:02}:{:02}", y, mo + 1, d + 1, h, m, s2)
 }
 fn today_str() -> String { chrono_lite_now()[..10].to_string() }
-fn stamp_yymmdd() -> String { let t = chrono_lite_now(); format!("{}{}{}", &t[2..4], &t[5..7], &t[8..10]) }
 
 /* ══════════ user32 직접 호출 ══════════
    desktop-pin.js(koffi) 이식 — 창을 최상위로 둔 채 z-순서만 맨 아래로 내린다.
@@ -425,7 +424,8 @@ fn backup_dir() -> PathBuf { home_dir().join("backup") }
 fn run_backup(app: &AppHandle, force: bool) -> bool {
     if !force {
         let last = STATE.lock().unwrap().last_backup.clone();
-        if !last.is_empty() && last[..10.min(last.len())] >= today_minus_days(7) { return false; }
+        let n = 10.min(last.len());
+        if !last.is_empty() && &last[..n] >= today_minus_days(7).as_str() { return false; }
     }
     let Some(d) = ask(app, "window.bkExport ? window.bkExport() : null", 15000) else { return false };
     let (Some(name), Some(text)) = (d.get("name").and_then(|v| v.as_str()), d.get("text").and_then(|v| v.as_str())) else { return false };
@@ -633,7 +633,11 @@ fn msg_ask(title: &str, msg: &str, detail: &str, yes: &str, no: &str) -> bool {
     let r = rfd::MessageDialog::new().set_title(title)
         .set_description(format!("{}\n\n{}", msg, detail))
         .set_buttons(rfd::MessageButtons::OkCancelCustom(yes.to_string(), no.to_string())).show();
-    matches!(r, rfd::MessageDialogResult::Custom(s) if s == yes) || matches!(r, rfd::MessageDialogResult::Ok)
+    match r {
+        rfd::MessageDialogResult::Custom(s) => s == yes,
+        rfd::MessageDialogResult::Ok | rfd::MessageDialogResult::Yes => true,
+        _ => false,
+    }
 }
 
 /* ══════════ 트레이 ══════════ */
@@ -735,7 +739,7 @@ fn spawn_page_watch(app: AppHandle) {
             retries += 1; misses = 0;
             log(&format!("페이지 무응답 — {}번째 재접속", retries));
             if let Some(w) = win_of(&app) {
-                let _ = w.eval(&format!("location.replace({})", serde_json::to_string(&format!("{}&glass=1", app_url())).unwrap()));
+                let _ = w.eval(format!("location.replace({})", serde_json::to_string(&format!("{}&glass=1", app_url())).unwrap()));
             }
         }
     });
@@ -781,8 +785,10 @@ fn main() {
             let h3 = app.handle().clone();
             handle.listen_any("hpw-drag", move |ev| {
                 if STATE.lock().unwrap().locked.unwrap_or(true) { return; }   /* 잠금 중엔 무시 */
-                let Some(w) = win_of(&h3) else { return };
-                use tauri::window::ResizeDirection as D;
+                /* ⚠ start_resize_dragging 은 WebviewWindow 가 아니라 Window 쪽 API 다(2.11.5 확인) —
+                   같은 라벨의 Window 핸들을 따로 얻는다. ResizeDirection 도 tauri 재수출이 없어 tauri-runtime 에서 온다. */
+                let Some(w) = h3.get_window("main") else { return };
+                use tauri_runtime::ResizeDirection as D;
                 match ev.payload().trim_matches('"') {
                     "move" => { let _ = w.start_dragging(); }
                     "n" => { let _ = w.start_resize_dragging(D::North); }
@@ -839,7 +845,7 @@ fn main() {
                 .icon(icon)
                 .tooltip("H · 주요업무현황 위젯 (파일럿)")
                 .show_menu_on_left_click(false)
-                .on_menu_event(move |_app, ev| on_menu(&h4, ev.id().as_ref()))
+                .on_menu_event(move |_app, ev| on_menu(&h4, ev.id().0.as_str()))
                 .on_tray_icon_event(move |_tray, ev| {
                     if let tauri::tray::TrayIconEvent::Click { button: tauri::tray::MouseButton::Left,
                         button_state: tauri::tray::MouseButtonState::Up, .. } = ev { toggle_window(&h5); }
