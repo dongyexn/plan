@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='1.0.5';   /* 위젯(widget/package.json)과 같은 값으로 맞춘다 */
+const APP_VER='1.0.9';   /* 위젯(widget/package.json)과 같은 값으로 맞춘다 */
 const GUIDE_HTML=`<div class="gd">
 <h4>내 업무</h4>
 <p>내가 담당인 일정(앞으로 7일)과 미완료 주요업무, 받은 멘션을 한 화면에 모읍니다. 항목을 누르면 해당 화면으로 바로 이동합니다.</p>
@@ -400,7 +400,8 @@ const S={
   planEdit:null,     // 일자 패널 인라인 편집기 상태
   dayQ:'',           // 일자 패널 검색어
   dayScope:'day',    // 찾는 범위: day(이 날짜) · month(이 달) · all(전체)
-  widPop:false,      // 위젯: 날짜를 눌렀을 때 뜨는 업무 팝업
+  widPop:false,
+  widSide:'',        // 위젯 헤더의 알림·내 업무 팝오버 ('' / alert / mine)
   tkF:{q:'',st:[],kind:[],reg:[],site:[]},   // 업무 목록 검색·필터 — 모두 다중 선택
   orgTab:'acct',     // 조직/현장 관리 우측 탭 (acct | site)
   cmtRe:'',          // 답글 입력창을 연 코멘트 (sid/iid/cid)
@@ -1270,9 +1271,57 @@ function rTeamSel(){
     +'<span class="tsel-ch"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3.5l3 3 3-3"/></svg></span>';
 }
 function mentionCount(){return Object.keys(S.mentions||{}).length;}
+/* ═══════════ 위젯 — 알림 · 내 업무 팝오버 ═══════════
+   위젯만 쓰는 사람에게는 사이드바가 없다 — 부름(멘션)과 내 업무를 헤더에서 바로 볼 수 있게 한다 */
+function widSideRender(){
+  if(!WIDGET)return;
+  const box=$('#widSideB'),ttl=$('#widSideT');
+  if(!box)return;
+  if(S.widSide==='mine'){
+    if(ttl)ttl.textContent='내 업무';
+    const me=myId();
+    if(!me)return void(box.innerHTML='<div class="ws-none">로그인하면 내 업무를 모아 볼 수 있습니다.</div>');
+    const plans=minePlans(7),tasks=mineTasks();
+    const dlab=d=>{const n=daysBetween(todayStr(),d);
+      return n===0?'오늘':n===1?'내일':(toDate(d).getMonth()+1)+'/'+toDate(d).getDate();};
+    box.innerHTML=
+      '<div class="ws-sec">이번 주 일정 '+plans.length+'</div>'
+      +(plans.length?plans.map(({p,date})=>
+        '<button class="ws-row" data-act="wid.goDate" data-date="'+esc(date)+'">'
+        +'<div class="ws-h"><b>'+esc(dlab(date))+'</b><span>'+esc(kindLabel(p.kind))+'</span></div>'
+        +'<div class="ws-t">'+esc(p.title||'제목 없음')+'</div></button>').join('')
+        :'<div class="ws-none">이번 주 일정이 없습니다.</div>')
+      +'<div class="ws-sec">미완료 업무 '+tasks.length+'</div>'
+      +(tasks.length?tasks.map(({sid,iid,it,over})=>
+        '<button class="ws-row" data-act="wid.goTask" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" data-date="'+esc(it.date||'')+'">'
+        +'<div class="ws-h"><b>'+esc(it.date?dlab(it.date):'기한 없음')+'</b>'+(over?'<span style="color:var(--rd)">지남</span>':'')+'</div>'
+        +'<div class="ws-t">'+esc(it.text||'제목 없음')+'</div></button>').join('')
+        :'<div class="ws-none">미완료 업무가 없습니다.</div>');
+    return;
+  }
+  if(ttl)ttl.textContent='알림';
+  const ms=Object.entries(S.mentions||{}).sort((a,b)=>(b[1].at||0)-(a[1].at||0));
+  box.innerHTML=ms.length
+    ?ms.map(([id,m])=>
+      '<button class="ws-row" data-act="wid.goMention" data-id="'+esc(id)+'" data-sid="'+esc(m.sid||'')+'" data-iid="'+esc(m.iid||'')+'">'
+      +'<div class="ws-h"><b>'+esc(m.by||'')+'</b><span>'+esc(relTime(m.at))+'</span></div>'
+      +'<div class="ws-t">'+mentionHTML(m.text)+'</div></button>').join('')
+      +'<button class="btn bg2 bsm" style="width:100%;margin-top:4px" data-act="mention.clear">모두 읽음</button>'
+    :'<div class="ws-none">받은 알림이 없습니다.</div>';
+}
+function widSideOpen(tab){
+  const el=$('#widSide');if(!el)return;
+  const same=el.classList.contains('on')&&S.widSide===tab;
+  S.widSide=same?'':tab;
+  el.classList.toggle('on',!same);
+  if(!same)widSideRender();
+}
 function rMention(){
-  const b=$('#mentionBadge');if(!b)return;
   const n=mentionCount();
+  const dot=$('#widAlertDot');
+  if(dot)dot.classList.toggle('on',n>0);          /* 위젯 헤더의 빨간 점 */
+  if(WIDGET&&S.widSide==='alert')widSideRender();
+  const b=$('#mentionBadge');if(!b)return;
   b.textContent=n?String(n):'';
   b.style.display=n?'':'none';
 }
@@ -1854,6 +1903,10 @@ document.addEventListener('mousedown',e=>{
   }
   const fc=$('#dpFcard');
   if(fc&&fc.classList.contains('adv-on')&&!t.closest('#dpFcard'))fc.classList.remove('adv-on');
+  const sd=$('#widSide');
+  if(sd&&sd.classList.contains('on')&&!t.closest('#widSide')&&!t.closest('[data-act="wid.side"]')){
+    sd.classList.remove('on');S.widSide='';
+  }
 },true);
 /* 색상 팔레트 사각형 — 가로는 채도, 세로는 밝기. 끌면서 고를 수 있고 고른 색은 추가색으로 쌓인다 */
 let CP_DRAG=false;
@@ -2951,6 +3004,7 @@ function rCfg(){
   if(i&&document.activeElement!==i)i.value=S.cfg.defectUrl||DEFECT_URL;
   const wu=$('#setWidgetUrl');
   if(wu&&document.activeElement!==wu)wu.value=S.cfg.widgetUrl||'';
+  rBk();
   const os=$('#orgSrcInfo');
   if(os)os.textContent=ORG_LIVE
     ?(ORG_RM+' 게시본을 실시간으로 읽고 있습니다 · 저쪽에서 바뀌면 곧바로 반영됩니다')
@@ -3155,6 +3209,55 @@ async function orgPull(auto){
 
 }
 
+/* ═══════════ 백업 ═══════════
+   ⚠ 브라우저는 아무 폴더에나 쓸 수 없다 — 그래서 **위젯이 대신 쓴다.**
+   위젯이 주기적으로 `window.bkExport()` 를 불러 받아 간 내용을
+   `문서\H 주요업무현황\backup\hplan_YYMMDD.json` 으로 저장하고, 끝나면 `window.bkNote()` 로 알려 준다.
+   위젯을 쓰지 않는 관리자를 위해 '지금 내보내기'(내려받기)와 '되돌리기'는 그대로 둔다. */
+const BK_LAST='calapp.backup.last';
+function bkKey(){return BK_LAST+'.'+((S.user&&S.user.uid)||'local');}
+function bkStamp(d){
+  const t=d||new Date();
+  return String(t.getFullYear()).slice(2)+pad(t.getMonth()+1)+pad(t.getDate());
+}
+function bkData(){
+  return JSON.stringify({
+    kind:'hplan-backup',ver:APP_VER,savedAt:new Date().toISOString(),
+    org:S.org,people:S.people,tasks:S.tasks,cfg:S.cfg
+  },null,1);
+}
+/* 위젯이 부르는 창구 — 관리자 계정이고 자료가 다 와 있을 때만 내준다 */
+window.bkExport=function(){
+  if(!S.live||!isEditor())return null;
+  if(!S.tasks||!Object.keys(S.tasks).length)return null;   /* 아직 안 받았으면 빈 백업을 만들지 않는다 */
+  return {name:'hplan_'+bkStamp()+'.json',text:bkData()};
+};
+/* 위젯이 저장을 마치면 알려 준다 */
+window.bkNote=function(name){
+  try{localStorage.setItem(bkKey(),JSON.stringify({at:new Date().toISOString(),name:String(name||''),by:'위젯'}));}catch(e){}
+  rBk();
+};
+function bkLast(){
+  try{
+    const v=localStorage.getItem(bkKey());if(!v)return null;
+    const o=JSON.parse(v);
+    return {...o,days:Math.floor((Date.now()-new Date(o.at).getTime())/86400000)};
+  }catch(e){return null;}
+}
+function bkDownload(name,text){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([text],{type:'application/json'}));
+  a.download=name;document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);
+}
+function rBk(){
+  const card=$('#bkCard');if(card)card.style.display=isEditor()?'':'none';
+  const el=$('#bkInfo');if(!el)return;
+  const b=bkLast();
+  el.textContent=b
+    ?((b.days===0?'오늘':b.days+'일 전')+' 저장 · '+b.name+(b.by?' ('+b.by+')':''))
+    :'아직 저장된 백업이 없습니다 · 위젯을 켜 두면 주 1회 저절로 저장됩니다';
+}
 /* ═══════════ 화면 전환 · 공통 UI ═══════════ */
 const VIEW_TTL={calendar:'업무 일정',mine:'내 업무',tasks:'업무 목록',org:'조직/현장 관리',settings:'설정'};
 function go(view){
@@ -3534,6 +3637,39 @@ const ACT={
       navigator.clipboard.writeText(txt).then(()=>toast('복사했습니다')).catch(()=>toast('복사 실패'));
     else toast('복사를 지원하지 않는 브라우저입니다');
   },
+  'bk.now':()=>{
+    if(!isEditor())return toast('관리자만 내보낼 수 있습니다');
+    const d=window.bkExport&&window.bkExport();
+    if(!d)return toast('아직 자료를 다 받지 못했습니다 · 잠시 뒤 다시 눌러 주세요');
+    bkDownload(d.name,d.text);
+    try{localStorage.setItem(bkKey(),JSON.stringify({at:new Date().toISOString(),name:d.name,by:'수동'}));}catch(e){}
+    rBk();toast('내려받기 폴더에 저장했습니다 · '+d.name);
+  },
+  'bk.restore':()=>{
+    if(!isEditor())return toast('관리자만 되돌릴 수 있습니다');
+    const inp=document.createElement('input');
+    inp.type='file';inp.accept='.json,application/json';
+    inp.onchange=()=>{
+      const f=inp.files&&inp.files[0];if(!f)return;
+      const rd=new FileReader();
+      rd.onload=()=>{
+        let d=null;
+        try{d=JSON.parse(rd.result);}catch(e){return toast('읽을 수 없는 파일입니다');}
+        if(!d||d.kind!=='hplan-backup')return toast('이 앱의 백업 파일이 아닙니다');
+        const n=Object.values(d.tasks||{}).reduce((a,m)=>a+Object.keys(m||{}).length,0);
+        confirmModal('백업으로 되돌리기',
+          (d.savedAt||'').slice(0,10)+' 시점으로 되돌립니다 · 업무 '+n+'건, 담당자 '+Object.keys(d.people||{}).length+'명.<br>'
+          +'<b>지금 내용은 모두 사라집니다.</b> 되돌리기 전에 한 번 더 백업해 두세요.',()=>{
+            /* ⚠ 팀·권역·현장은 하자처리 현황이 원본이라 되돌리지 않는다 — 되돌려도 곧 덮어써진다 */
+            if(d.people)Object.keys(d.people).forEach(k=>store.putPerson(k,d.people[k]));   /* 한 명씩 되돌린다 */
+            if(d.tasks)Object.keys(d.tasks).forEach(sid=>Object.keys(d.tasks[sid]||{}).forEach(iid=>store.putTask(sid,iid,d.tasks[sid][iid])));
+            toast('되돌렸습니다 · 화면을 새로고침해 주세요');
+          },'되돌리기',true);
+      };
+      rd.readAsText(f);
+    };
+    inp.click();
+  },
   'org.import':()=>{
     if(ORG_LIVE){toast('이미 하자처리 현황과 실시간으로 연동 중입니다 ('+ORG_RM+' 게시본)');return;}
     orgPull(false);
@@ -3591,6 +3727,34 @@ const ACT={
   },
   'wid.open':()=>{window.open(location.origin+location.pathname,'_blank','noopener');},
   'wid.reload':()=>location.reload(),
+  'wid.side':el=>widSideOpen(el.dataset.tab||'alert'),
+  'wid.sideClose':()=>{const el=$('#widSide');if(el)el.classList.remove('on');S.widSide='';},
+  'wid.goDate':el=>{
+    const d=el.dataset.date;if(!d)return;
+    const el2=$('#widSide');if(el2)el2.classList.remove('on');S.widSide='';
+    if(CAL)CAL.gotoDate(toDate(d));
+    selDate(d,true);S.widPop=true;rMonTitle();refetchCal();rDay();rWidget();
+  },
+  'wid.goTask':el=>{
+    const d=el.dataset.date;
+    const el2=$('#widSide');if(el2)el2.classList.remove('on');S.widSide='';
+    if(d){
+      if(CAL)CAL.gotoDate(toDate(d));
+      selDate(d,true);S.planOpen=el.dataset.iid||'';S.widPop=true;
+      rMonTitle();refetchCal();rDay();rWidget();
+    }else toast('기한이 없는 업무입니다 · 브라우저 앱의 업무 목록에서 볼 수 있습니다');
+  },
+  'wid.goMention':el=>{
+    const sid=el.dataset.sid,iid=el.dataset.iid,id=el.dataset.id;
+    if(id)store.putMention(myId(),id,null);        /* 확인했으면 읽음 처리 */
+    const it=(S.tasks[sid]||{})[iid];
+    const el2=$('#widSide');if(el2)el2.classList.remove('on');S.widSide='';
+    if(it&&it.date){
+      if(CAL)CAL.gotoDate(toDate(it.date));
+      selDate(it.date,true);S.planOpen=iid;S.widPop=true;
+      rMonTitle();refetchCal();rDay();rWidget();
+    }else toast('그 업무는 달력에 없습니다 · 브라우저 앱에서 볼 수 있습니다');
+  },
   'wid.moveOn':()=>{const p=$('#wgSet');if(p){p.classList.remove('on');p.setAttribute('aria-hidden','true');}widMove(true);},
   'wid.moveOff':()=>widMove(false),
   'wid.set':()=>{const p=$('#wgSet');if(!p)return;p.classList.toggle('on');p.setAttribute('aria-hidden',p.classList.contains('on')?'false':'true');widApply();}
@@ -3835,6 +3999,8 @@ document.addEventListener('keydown',e=>{
     if(wg&&wg.classList.contains('on')){wg.classList.remove('on');wg.setAttribute('aria-hidden','true');return;}
     const fc=$('#dpFcard');
     if(fc&&fc.classList.contains('adv-on')){fc.classList.remove('adv-on');return;}
+    const sd=$('#widSide');
+    if(sd&&sd.classList.contains('on')){sd.classList.remove('on');S.widSide='';return;}
     if(WIDGET&&S.widPop){S.widPop=false;if(S.planEdit)closePlanEdit();rWidget();return;}
   }
   /* 위젯에서 ←→ 로 달 넘기기 — 입력 중일 때는 방해하지 않는다 */
