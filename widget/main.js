@@ -45,7 +45,21 @@ function loadState() {
   return s;
 }
 function saveState(s) {
-  try { fs.writeFileSync(stateFile(), JSON.stringify(s)); } catch { /* 저장 실패는 무시 */ }
+  try { fs.writeFileSync(stateFile(), JSON.stringify(s)); }
+  catch (e) { log('저장 실패 ' + (e && e.message)); }
+}
+/* 자리·크기가 왜 안 남는지 추측으로 쫓지 않기 위해, 무슨 일이 있었는지 파일에 적어 둔다.
+   문서\H 주요업무현황\widget-log.txt — 트레이 '진단 폴더 열기'로 바로 갈 수 있다. */
+function log(msg) {
+  try {
+    const f = path.join(homeDir(), 'widget-log.txt');
+    fs.mkdirSync(homeDir(), { recursive: true });
+    let old = '';
+    try { old = fs.readFileSync(f, 'utf8'); } catch { /* 처음이면 없다 */ }
+    const lines = (old ? old.split('\n') : []).slice(-200);
+    lines.push(new Date().toLocaleString('ko-KR') + '  ' + msg);
+    fs.writeFileSync(f, lines.join('\n'));
+  } catch { /* 기록 실패는 무시 — 본 기능에 영향 없다 */ }
 }
 
 let win = null, tray = null;
@@ -62,7 +76,9 @@ let botTimer = null;
 function setLocked(lock) {
   state.locked = lock;
   /* 조정을 끝내는 순간의 자리·크기를 확정해 둔다 */
-  if (lock && win && !win.isDestroyed()) { try { state.bounds = win.getBounds(); } catch { /* 무시 */ } }
+  if (lock && win && !win.isDestroyed()) {
+    try { state.bounds = win.getBounds(); log('조정 종료 · 자리=' + JSON.stringify(state.bounds)); } catch { /* 무시 */ }
+  }
   saveState(state);
   if (!win) return;
   win.setMovable(!lock);
@@ -211,24 +227,37 @@ function createWindow() {
   /* ⚠ 'moved'·'resized' 만으로는 놓치는 경우가 있다(드래그 레이어로 옮길 때 등).
      끄는 동안에도 계속 나오는 'move'·'resize' 를 함께 듣되, 저장은 잠잠해진 뒤 한 번만 한다. */
   let bt = null;
-  const remember = (now) => {
+  let lastSaved = '';
+  const remember = (now, why) => {
     if (!win || win.isDestroyed()) return;
     clearTimeout(bt);
-    const save = () => { try { state.bounds = win.getBounds(); saveState(state); } catch { /* 무시 */ } };
+    const save = () => {
+      try {
+        const nb = win.getBounds(), key = JSON.stringify(nb);
+        if (key === lastSaved) return;                 /* 바뀐 게 없으면 쓰지 않는다 */
+        lastSaved = key; state.bounds = nb; saveState(state);
+        log('자리 저장(' + (why || '') + ') ' + key);
+      } catch (e) { log('자리 저장 실패 ' + (e && e.message)); }
+    };
     if (now) save(); else bt = setTimeout(save, 400);
   };
+  /* ⚠ 이벤트를 놓치는 경우가 있어(드래그 레이어 등) 5초마다 한 번씩 실제 자리를 확인해 둔다 —
+     바뀌었을 때만 쓰므로 부담이 없다 */
+  setInterval(() => remember(true, '주기'), 5000);
+  log('창 생성 · 요청=' + JSON.stringify(b) + ' · 실제=' + JSON.stringify(win.getBounds()));
   /* ⚠ 만들 때 준 좌표를 윈도우가 화면·배율에 맞춰 손보는 경우가 있다 — 뜬 직후 저장해 둔 자리로 한 번 더 맞춘다 */
   if (state.bounds) win.once('ready-to-show', () => {
-    try { win.setBounds(state.bounds); } catch { /* 무시 */ }
+    try { win.setBounds(state.bounds); log('표시 후 재적용 · 결과=' + JSON.stringify(win.getBounds())); }
+    catch (e) { log('재적용 실패 ' + (e && e.message)); }
   });
-  win.on('blur', () => remember(true));      /* 다른 창으로 옮겨 갈 때도 남긴다 */
-  win.on('move', () => remember(false));
-  win.on('resize', () => remember(false));
-  win.on('moved', () => remember(true));
-  win.on('resized', () => remember(true));
-  win.on('close', () => remember(true));          /* 끄기 직전에 한 번 더 — 마지막 자리를 남긴다 */
+  win.on('blur', () => remember(true, 'blur'));      /* 다른 창으로 옮겨 갈 때도 남긴다 */
+  win.on('move', () => remember(false, 'move'));
+  win.on('resize', () => remember(false, 'resize'));
+  win.on('moved', () => remember(true, 'moved'));
+  win.on('resized', () => remember(true, 'resized'));
+  win.on('close', () => remember(true, 'close'));   /* 끄기 직전에 한 번 더 — 마지막 자리를 남긴다 */
   win.on('closed', () => { win = null; });
-  app.on('before-quit', () => remember(true));
+  app.on('before-quit', () => { remember(true, 'quit'); log('종료'); });
 }
 
 function toggleWindow() {
@@ -289,15 +318,56 @@ function download(url, dest) {
     req.end();
   });
 }
+/* 깃허브는 '가장 최신 릴리스'로 넘겨 주는 고정 주소를 준다 —
+   `…/releases/latest/download/HPlanWidget.exe` 를 부르면 `…/releases/download/widget-v1.0.5/…` 로 넘긴다.
+   그 넘어가는 주소에 **버전이 들어 있다.** 그래서 관리자가 버전을 따로 적지 않아도 된다.
+   ⚠ 깃허브 API(api.github.com)는 쓰지 않는다 — 사내망에서 막히는 경우가 있고, 이 주소는 이미 열려 있다. */
+function latestUrlOf(url) {
+  if (/\/releases\/latest\/download\//.test(url)) return url;
+  const m = url.match(/^(https?:\/\/[^/]+\/[^/]+\/[^/]+)\/releases\/download\/[^/]+\/(.+)$/);
+  return m ? m[1] + '/releases/latest/download/' + m[2] : null;
+}
+/* 넘어가는 주소만 받아 본다(파일은 받지 않는다) */
+function resolveLatest(url) {
+  return new Promise(res => {
+    const { net } = require('electron');
+    let done = false;
+    const finish = v => { if (!done) { done = true; res(v); } };
+    try {
+      const req = net.request({ method: 'GET', url, redirect: 'manual' });
+      req.on('redirect', (_st, _m, to) => { try { req.abort(); } catch { /* 무시 */ } finish(to); });
+      req.on('response', r => { r.resume(); finish(null); });      /* 안 넘어가면 알 수 없다 */
+      req.on('error', () => finish(null));
+      req.end();
+      setTimeout(() => finish(null), 8000);
+    } catch { finish(null); }
+  }).then(to => {
+    if (!to) return null;
+    const m = String(to).match(/\/releases\/download\/widget-v([0-9][0-9.]*)\//);
+    return m ? { ver: m[1], url: to } : null;
+  });
+}
 async function checkUpdate(loud) {
   if (!win) return;
   let info = null;
   try {
     info = await win.webContents.executeJavaScript('window.widInfo ? window.widInfo() : null');
   } catch { /* 페이지가 아직 안 떴을 수 있다 */ }
-  if (!info || !info.ver || !info.url) {
+  if (!info || !info.url) {
     if (loud) dialog.showMessageBox({ type: 'info', title: '업데이트', message: '최신 버전 정보를 읽지 못했습니다.',
-      detail: '앱 설정 > 바탕화면 위젯에 위젯 파일 주소와 버전이 입력돼 있어야 합니다.' });
+      detail: '앱 설정 > 바탕화면 위젯에 위젯 파일 주소가 입력돼 있어야 합니다.' });
+    return;
+  }
+  /* 릴리스 주소에서 최신 버전을 스스로 알아낸다. 안 되면 설정에 적어 둔 값을 쓴다 */
+  const latestUrl = latestUrlOf(info.url);
+  if (latestUrl) {
+    const got = await resolveLatest(latestUrl);
+    if (got) info = { ver: got.ver, url: got.url };
+    else log('최신 버전 자동 확인 실패 — 설정에 적힌 값을 쓴다');
+  }
+  if (!info.ver) {
+    if (loud) dialog.showMessageBox({ type: 'info', title: '업데이트', message: '최신 버전을 확인하지 못했습니다.',
+      detail: '릴리스 주소가 맞는지 확인해 주세요.' });
     return;
   }
   if (!isNewer(info.ver, app.getVersion())) {
@@ -401,6 +471,10 @@ function buildTray() {
     { label: '새로고침', click: () => win && win.reload() },
     { label: '개발자 도구 (문제 확인)', click: () => win && win.webContents.openDevTools({ mode: 'detach' }) },
     {
+      label: '진단 폴더 열기',
+      click: () => shell.openPath(homeDir())
+    },
+    {
       label: '자동 실행 상태 확인',
       click: () => {
         let reg = '(확인 실패)';
@@ -458,6 +532,8 @@ else {
   app.on('login', (e, wc, req, auth) => { noteErr('프록시 인증 요구', req.url, auth.host || ''); });
   app.whenReady().then(() => {
     state = loadState();                      /* ⚠ 여기서 읽어야 저장했던 자리·크기·설정이 살아난다 */
+    log('시작 · 설정파일=' + stateFile() + ' · 읽은 자리=' + JSON.stringify(state.bounds || null)
+      + ' · 실행파일=' + exePath() + ' · 버전=' + app.getVersion());
     /* 카톡처럼 — 켜질 때 받아 둔 새 버전이 있으면 먼저 갈아탄다(창은 만들지 않는다) */
     if (takeUpdateOnBoot()) return;
     if (handOverToHome()) return;

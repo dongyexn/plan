@@ -113,10 +113,13 @@ index.html과 app.js를 한 파일로 합친다. 인라인 스크립트를 쓰�
 **회사 PC 에 Node 를 깔 필요도, `npm install` 이 될 필요도 없다.** 브라우저만 있으면 된다.
 (사내망이 개발자 사이트로 가는 통신을 검사해 `npm install` 이 `UNABLE_TO_GET_ISSUER_CERT_LOCALLY` 로 막히는 경우가 있다.)
 
-1. `widget/package.json` 의 `"version"` 을 올린다(깃허브 웹에서 연필 아이콘으로 고쳐도 된다).
-2. 저장소 > **Actions** > **위젯 exe 만들기** > **Run workflow**.
-3. 5~10분 뒤 **Releases** 에 `HPlanWidget.exe` 가 자동으로 올라온다.
-4. 앱 **설정 > 바탕화면 위젯 > 위젯 최신 버전**에 같은 값을 적는다. 팀원 위젯은 알아서 따라온다.
+1. `widget/package.json` 의 `"version"` 을 올려 올린다(깃허브 웹에서 연필 아이콘으로 고쳐도 된다).
+   → **그 파일이 올라오면 빌드가 자동으로 시작된다.** (직접 돌리려면 Actions > Run workflow)
+2. 5~10분 뒤 **Releases** 에 `HPlanWidget.exe` 가 올라온다.
+3. **끝.** 앱 설정에 버전을 적을 필요가 없다 — 위젯이 릴리스 주소에서 최신 버전을 스스로 확인한다.
+
+앱 **설정 > 바탕화면 위젯 > 위젯 파일 주소**만 한 번 넣어 두면 된다.
+`위젯 최신 버전` 칸은 비워 두는 것이 기본이고, 특정 버전으로 묶어 두고 싶을 때만 적는다.
 
 설정 파일은 `.github/workflows/widget.yml` 하나뿐이고, 손댈 일은 없다.
 

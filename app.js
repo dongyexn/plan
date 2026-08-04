@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='1.0.0';
+const APP_VER='1.0.5';   /* 위젯(widget/package.json)과 같은 값으로 맞춘다 */
 const GUIDE_HTML=`<div class="gd">
 <h4>내 업무</h4>
 <p>내가 담당인 일정(앞으로 7일)과 미완료 주요업무, 받은 멘션을 한 화면에 모읍니다. 항목을 누르면 해당 화면으로 바로 이동합니다.</p>
@@ -2883,6 +2883,8 @@ function rCfg(){
   if(wu&&document.activeElement!==wu)wu.value=S.cfg.widgetUrl||'';
   const wv=$('#setWidgetVer');
   if(wv&&document.activeElement!==wv)wv.value=S.cfg.widgetVer||'';
+  const wb=$('#widgetInfo');
+  if(wb)wb.textContent=S.cfg.widgetVer?('최신 위젯 '+S.cfg.widgetVer+' (직접 지정)'):'최신 위젯 버전은 릴리스에서 자동 확인';
   const m=S.cfg.mail||{};
   const hs=$('#mlHour');
   if(hs&&!hs.options.length){
@@ -3021,6 +3023,9 @@ function go(view){
     const d=$('#darkChk');if(d)d.checked=document.documentElement.classList.contains('dark');
     const b=$('#buildInfo');
     if(b)b.textContent='버전 '+APP_VER+' · 기록된 오류 '+ERRLOG.length+'건';
+    /* 위젯은 별도 파일이라 버전이 따로 논다 — 설정에서 한눈에 보이게 같이 적는다 */
+    const wb=$('#widgetInfo');
+    if(wb)wb.textContent=S.cfg.widgetVer?('최신 위젯 '+S.cfg.widgetVer+' (직접 지정)'):'최신 위젯 버전은 릴리스에서 자동 확인';
   }
   mobClose();
 }
@@ -3920,9 +3925,10 @@ function rWidget(){
 /* 위젯(Electron)이 최신 버전을 물어보는 훅 — 관리자가 설정에 넣어 둔 값을 그대로 알려 준다.
    GitHub API 를 쓰지 않으므로 사내망에서도 막히지 않는다 */
 window.widInfo=function(){
-  const ver=String(S.cfg.widgetVer||'').trim();
   const url=String(S.cfg.widgetUrl||'').trim();
-  return (ver&&url)?{ver,url}:null;
+  if(!url)return null;
+  /* 버전을 비워 두면 위젯이 릴리스 주소에서 스스로 알아낸다 */
+  return {ver:String(S.cfg.widgetVer||'').trim(),url};
 };
 /* 누른 칸 옆에 붙이되 창 밖으로 나가지 않게 한다 — 위젯은 창이 곧 화면이라 넘치면 잘려서 못 본다 */
 function widPlace(){
