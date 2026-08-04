@@ -119,6 +119,41 @@ function homeDir() {
 function homeExe() { return path.join(homeDir(), 'HPlanWidget.exe'); }
 /* 다른 곳에서 실행됐으면 전용 폴더로 자기 자신을 복사해 둔다(실행은 그대로 계속한다).
    다음 부팅부터는 복사본이 뜬다 */
+/* ⚠ 업데이트 교체가 절반만 끝난 채 죽으면 `HPlanWidget.exe` 가 없고 `.old` 만 남는다 —
+   그러면 자동 실행도 함께 끊긴다. 켤 때마다 그 상태를 확인해 되돌린다. */
+function selfHeal() {
+  try {
+    const t = homeExe(), old = t + '.old', neu = newExePath();
+    if (fs.existsSync(t)) return;
+    if (fs.existsSync(neu) && verifyExe(neu)) { fs.renameSync(neu, t); log('자기 복구 — 받아 둔 새 파일로 되살림'); return; }
+    if (fs.existsSync(old) && verifyExe(old)) { fs.renameSync(old, t); log('자기 복구 — 이전 파일로 되살림'); }
+  } catch (e) { log('자기 복구 실패 ' + (e && e.message)); }
+}
+/* 위젯이 아예 안 뜰 때 팀원이 스스로 할 수 있는 일을 폴더에 적어 둔다 */
+function writeHelpFile() {
+  try {
+    const f = path.join(homeDir(), '읽어주세요.txt');
+    const body = [
+      '주요업무현황 위젯',
+      '',
+      '■ 위젯이 안 보일 때',
+      '  1) 이 폴더의 HPlanWidget.exe 를 두 번 누르세요.',
+      '  2) 그래도 안 되면 화면 오른쪽 아래 트레이(^)에서 위젯 아이콘을 찾아 우클릭 > 위젯 보이기.',
+      '  3) 그래도 안 되면 아래 주소를 브라우저(엣지)로 여세요. 위젯 없이도 모든 업무를 볼 수 있습니다.',
+      '     ' + APP_URL.split('?')[0],
+      '',
+      '■ 파일을 옮기지 마세요',
+      '  이 폴더의 위치를 기억해 두었다가 컴퓨터를 켤 때 자동으로 실행됩니다.',
+      '  옮겼다면 옮긴 자리에서 한 번 실행해 주세요.',
+      '',
+      '■ 문제를 알릴 때',
+      '  트레이 아이콘 우클릭 > 진단 폴더 열기 > widget-log.txt 를 관리자에게 보내 주세요.',
+      ''
+    ].join('\r\n');
+    fs.mkdirSync(homeDir(), { recursive: true });
+    fs.writeFileSync(f, '\ufeff' + body, 'utf8');   /* 메모장에서 한글이 깨지지 않게 BOM 을 붙인다 */
+  } catch { /* 실패해도 본 기능에 영향 없다 */ }
+}
 function settleHome() {
   try {
     const src = exePath(), dst = homeExe();
@@ -176,13 +211,22 @@ function createWindow() {
   win.loadURL(APP_URL + (APP_URL.indexOf('glass=') < 0 ? '&glass=1' : ''));
   setTimeout(() => {
     try { fs.unlinkSync(homeExe() + '.old'); } catch { /* 지난 버전 찌꺼기 — 없으면 그만 */ }
+    writeHelpFile();
     if (state.autoStart === undefined) setAutoStart(true);      /* 첫 실행이면 자동 실행을 켠 상태로 시작한다 */
     /* exe 를 다른 곳으로 옮겼거나 예전 버전이 임시 경로를 등록해 뒀으면 지금 경로로 다시 등록한다 */
     else if (state.autoStart && state.autoPath !== homeExe()) setAutoStart(true);
   }, 3000);
   /* 주소 자체를 못 여는 경우(사내망 차단 등)에는 흰 화면만 남는다 — 무엇이 막혔는지 보여 준다 */
+  /* ⚠ 사내망·와이파이가 끊기면 흰 화면만 남는다 — 자동으로 다시 시도하고, 그 사이 사정을 알려 준다 */
+  let retry = 0;
+  win.webContents.on('did-finish-load', () => { retry = 0; });
   win.webContents.on('did-fail-load', (_e, code, desc, url) => {
     if (code === -3) return;   /* 사용자가 취소한 경우 */
+    if (retry < 20) {          /* 10초 간격으로 20번(약 3분)까지 스스로 다시 붙어 본다 */
+      retry++;
+      log('불러오기 실패(' + desc + ') — ' + retry + '번째 재시도');
+      setTimeout(() => { if (win && !win.isDestroyed()) win.reload(); }, 10000);
+    }
     win.webContents.executeJavaScript(
       'document.body.innerHTML=' + JSON.stringify(
         '<div style="font:14px system-ui;padding:24px;color:#fff;background:#181c26;height:100%">'
@@ -230,6 +274,7 @@ function createWindow() {
   let lastSaved = '';
   const remember = (now, why) => {
     if (!win || win.isDestroyed()) return;
+    if (!restored) return;                    /* ⚠ 되돌리기가 끝나기 전에는 저장하지 않는다 */
     clearTimeout(bt);
     const save = () => {
       try {
@@ -245,11 +290,29 @@ function createWindow() {
      바뀌었을 때만 쓰므로 부담이 없다 */
   setInterval(() => remember(true, '주기'), 5000);
   log('창 생성 · 요청=' + JSON.stringify(b) + ' · 실제=' + JSON.stringify(win.getBounds()));
-  /* ⚠ 만들 때 준 좌표를 윈도우가 화면·배율에 맞춰 손보는 경우가 있다 — 뜬 직후 저장해 둔 자리로 한 번 더 맞춘다 */
-  if (state.bounds) win.once('ready-to-show', () => {
-    try { win.setBounds(state.bounds); log('표시 후 재적용 · 결과=' + JSON.stringify(win.getBounds())); }
-    catch (e) { log('재적용 실패 ' + (e && e.message)); }
-  });
+  /* ⚠⚠ 여기가 '자리가 매번 줄어들던' 진짜 원인이다.
+     배율이 다른 보조 모니터(예: 125%)에 창이 놓이면, 만들 때 준 크기가 **한 번 더 나뉘어** 0.8배로 작아진다.
+     그 줄어든 값을 그대로 저장해 버리면 **재시작할 때마다 0.8배씩 계속 줄어든다.**
+     → ①저장해 둔 값(want)을 따로 들고 있다가 창이 뜬 뒤 그 값으로 되돌리고,
+       ②되돌리기가 끝나기 전에는 **어떤 저장도 하지 않는다**(blur 저장이 끼어들어 값을 오염시켰다). */
+  const want = state.bounds ? { ...state.bounds } : null;
+  let restored = !want;                       /* 되돌릴 게 없으면 바로 저장 허용 */
+  const restore = (tries) => {
+    if (!win || win.isDestroyed()) return;
+    try {
+      win.setBounds(want);
+      const now = win.getBounds();
+      const ok = Math.abs(now.width - want.width) <= 2 && Math.abs(now.height - want.height) <= 2
+              && Math.abs(now.x - want.x) <= 2 && Math.abs(now.y - want.y) <= 2;
+      log('자리 되돌림' + (ok ? '' : '(어긋남)') + ' · 원함=' + JSON.stringify(want) + ' · 결과=' + JSON.stringify(now));
+      if (!ok && tries > 0) { setTimeout(() => restore(tries - 1), 120); return; }
+    } catch (e) { log('되돌림 실패 ' + (e && e.message)); }
+    restored = true;
+  };
+  if (want) {
+    win.once('ready-to-show', () => restore(3));
+    setTimeout(() => { if (!restored) { log('되돌림 시간 초과 — 지금 자리를 그대로 쓴다'); restored = true; } }, 5000);
+  }
   win.on('blur', () => remember(true, 'blur'));      /* 다른 창으로 옮겨 갈 때도 남긴다 */
   win.on('move', () => remember(false, 'move'));
   win.on('resize', () => remember(false, 'resize'));
@@ -281,6 +344,36 @@ function handOverToHome() {
     app.exit(0);
     return true;
   } catch { return false; }
+}
+
+/* ── 자동 백업 ───────────────────────────────────────────────
+   ⚠ 브라우저는 아무 폴더에나 쓸 수 없어 백업을 사람이 눌러야 했다 — 위젯은 그 제약이 없으므로 **여기서 대신 쓴다.**
+   앱 페이지의 `window.bkExport()` 로 내용을 받아 `문서\H 주요업무현황\backup\hplan_YYMMDD.json` 으로 남긴다. */
+function backupDir() { return path.join(homeDir(), 'backup'); }
+async function runBackup(force) {
+  if (!win || win.isDestroyed()) return false;
+  try {
+    const last = state.lastBackup ? new Date(state.lastBackup).getTime() : 0;
+    if (!force && Date.now() - last < 7 * 24 * 3600 * 1000) return false;   /* 주 1회면 충분하다 */
+    const d = await win.webContents.executeJavaScript('window.bkExport ? window.bkExport() : null');
+    if (!d || !d.name || !d.text) return false;      /* 로그인 전·관리자 아님·자료 미수신 — 조용히 넘어간다 */
+    fs.mkdirSync(backupDir(), { recursive: true });
+    const f = path.join(backupDir(), d.name);
+    fs.writeFileSync(f, d.text);
+    state.lastBackup = new Date().toISOString(); saveState(state);
+    pruneBackups();
+    log('백업 저장 ' + f + ' (' + Math.round(d.text.length / 1024) + 'KB)');
+    try { await win.webContents.executeJavaScript('window.bkNote && window.bkNote(' + JSON.stringify(d.name) + ')'); }
+    catch { /* 알림 실패는 무시 */ }
+    return true;
+  } catch (e) { log('백업 실패 ' + (e && e.message)); return false; }
+}
+/* 오래된 것부터 지워 최근 12개만 남긴다(1년 남짓) */
+function pruneBackups() {
+  try {
+    const fs2 = fs.readdirSync(backupDir()).filter(n => /^hplan_\d{6}\.json$/.test(n)).sort();
+    while (fs2.length > 12) { try { fs.unlinkSync(path.join(backupDir(), fs2.shift())); } catch { /* 무시 */ } }
+  } catch { /* 폴더가 없으면 그만 */ }
 }
 
 /* ── 자동 업데이트 ───────────────────────────────────────────────
@@ -414,19 +507,56 @@ function takeUpdateOnBoot() {
    ⚠ 성공했을 때만 pendingVer 를 비운다(실패하면 다음 기회에 다시 시도해야 한다). */
 function swapAndRestart(src) {
   const target = homeExe(), old = target + '.old';
+  if (!verifyExe(src)) {
+    try { fs.unlinkSync(src); } catch { /* 무시 */ }
+    state.pendingVer = ''; saveState(state);
+    log('교체 취소 — 받아 둔 파일이 온전하지 않다');
+    return false;
+  }
+  /* ① 빠른 길: 지금 바로 바꿔치기.
+     ⚠ 윈도우는 실행 중인 exe 의 '이름 바꾸기'를 허용하지만, **포터블 실행기가 파일을 붙들고 있으면 막힌다**(EPERM/EBUSY). */
   try {
-    if (!verifyExe(src)) { try { fs.unlinkSync(src); } catch { /* 무시 */ } state.pendingVer = ''; saveState(state); return false; }
     try { fs.unlinkSync(old); } catch { /* 없으면 그만 */ }
-    if (fs.existsSync(target)) fs.renameSync(target, old);   /* 실행 중이어도 이름 바꾸기는 된다 */
+    if (fs.existsSync(target)) fs.renameSync(target, old);
     fs.renameSync(src, target);
     state.pendingVer = ''; saveState(state);
+    log('교체 성공(즉시) → 다시 실행');
+    app.relaunch({ execPath: target });
+    app.exit(0);
+    return true;
   } catch (e) {
     try { if (!fs.existsSync(target) && fs.existsSync(old)) fs.renameSync(old, target); } catch { /* 되돌리기 실패는 무시 */ }
-    return false;                                            /* 다음 기회에 다시 시도한다 */
+    log('즉시 교체 실패(' + (e && e.code || e && e.message) + ') — 도우미에게 맡긴다');
   }
-  app.relaunch({ execPath: target });
-  app.exit(0);
-  return true;
+  /* ② 우회로: 우리가 완전히 꺼진 뒤에 대신 바꿔 줄 도우미를 띄운다.
+     ⚠ `cmd` 는 한글 경로가 명령창 인코딩에서 깨질 수 있어 쓰지 않는다 —
+     PowerShell 의 `-EncodedCommand` 는 UTF-16 으로 넘기므로 한글이 안전하다. */
+  if (spawnSwapHelper(src, target)) {
+    state.pendingVer = ''; saveState(state);
+    log('도우미에게 교체를 맡기고 종료한다');
+    app.quit();
+    return true;
+  }
+  log('교체 실패 — 다음 기회에 다시 시도한다');
+  return false;
+}
+/* 우리 프로세스가 끝나기를 기다렸다가 파일을 바꾸고 다시 실행해 주는 작은 도우미 */
+function spawnSwapHelper(src, target) {
+  try {
+    const q = t => "'" + String(t).replace(/'/g, "''") + "'";   /* PowerShell 홑따옴표 escape */
+    const ps = [
+      '$p=' + process.pid + ';',
+      'while(Get-Process -Id $p -ErrorAction SilentlyContinue){Start-Sleep -Milliseconds 300};',
+      'Start-Sleep -Milliseconds 500;',
+      'Move-Item -LiteralPath ' + q(src) + ' -Destination ' + q(target) + ' -Force;',
+      'Start-Process -FilePath ' + q(target) + ';'
+    ].join(' ');
+    const b64 = Buffer.from(ps, 'utf16le').toString('base64');
+    require('child_process').spawn('powershell.exe',
+      ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-EncodedCommand', b64],
+      { detached: true, stdio: 'ignore', windowsHide: true }).unref();
+    return true;
+  } catch (e) { log('도우미 실행 실패 ' + (e && e.message)); return false; }
 }
 /* 받다 만 파일로 바꿔치면 위젯이 아예 안 뜬다 — 크기로 최소한의 확인을 한다 */
 function verifyExe(f) {
@@ -462,7 +592,7 @@ function buildTray() {
               buttons: ['지금 바꾸기', '나중에'], defaultId: 0, cancelId: 1
             }).then(r => { if (r.response === 0 && !applyUpdate()) {
               dialog.showMessageBox({ type: 'warning', title: '업데이트', message: '지금은 바꾸지 못했습니다.',
-                detail: '다음에 컴퓨터를 켤 때 다시 시도합니다.' });
+                detail: '파일이 다른 곳에서 쓰이고 있을 수 있습니다.\n다음에 컴퓨터를 켤 때 다시 시도합니다.\n(트레이 > 진단 폴더 열기 > widget-log.txt 에 사유가 남습니다)' });
             } });
           }
         }
@@ -470,6 +600,15 @@ function buildTray() {
     { label: '버전 ' + app.getVersion(), enabled: false },
     { label: '새로고침', click: () => win && win.reload() },
     { label: '개발자 도구 (문제 확인)', click: () => win && win.webContents.openDevTools({ mode: 'detach' }) },
+    {
+      label: '지금 백업하기',
+      click: () => runBackup(true).then(ok => {
+        dialog.showMessageBox(ok
+          ? { type: 'info', title: '백업', message: '백업했습니다.', detail: backupDir() }
+          : { type: 'info', title: '백업', message: '지금은 백업하지 않았습니다.',
+              detail: '관리자 계정으로 로그인돼 있고 자료를 다 받은 뒤에만 저장합니다.\n(트레이 > 진단 폴더 열기 > widget-log.txt 에 사유가 남습니다)' });
+      })
+    },
     {
       label: '진단 폴더 열기',
       click: () => shell.openPath(homeDir())
@@ -532,6 +671,7 @@ else {
   app.on('login', (e, wc, req, auth) => { noteErr('프록시 인증 요구', req.url, auth.host || ''); });
   app.whenReady().then(() => {
     state = loadState();                      /* ⚠ 여기서 읽어야 저장했던 자리·크기·설정이 살아난다 */
+    selfHeal();
     log('시작 · 설정파일=' + stateFile() + ' · 읽은 자리=' + JSON.stringify(state.bounds || null)
       + ' · 실행파일=' + exePath() + ' · 버전=' + app.getVersion());
     /* 카톡처럼 — 켜질 때 받아 둔 새 버전이 있으면 먼저 갈아탄다(창은 만들지 않는다) */
@@ -550,6 +690,9 @@ else {
     /* 시작 뒤 한 번, 그다음 6시간마다 조용히 확인한다(받아만 두고 알림만 띄운다) */
     setTimeout(() => checkUpdate(false), 90000);   /* 부팅 직후는 붐빈다 — 자리 잡은 뒤에 확인한다 */
     setInterval(() => checkUpdate(false), 6 * 60 * 60 * 1000);
+    /* 백업 — 로그인과 자료 수신이 끝날 시간을 준 뒤 확인하고, 그다음은 6시간마다 */
+    setTimeout(() => runBackup(false), 120000);
+    setInterval(() => runBackup(false), 6 * 60 * 60 * 1000);
     /* 문제가 생겼을 때 원인을 볼 수 있게 — 브라우저와 같은 단축키 */
     globalShortcut.register('CommandOrControl+Shift+I', () => win && win.webContents.openDevTools({ mode: 'detach' }));
   });

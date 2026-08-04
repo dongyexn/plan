@@ -429,6 +429,22 @@ body.wid .wid-acct .av{width:22px;height:22px;border-radius:50%;display:flex;ali
 body.wid .wid-acct .av .icn{width:14px;height:14px;}
 /* ── 위젯 헤더 필터 — 카드 껍데기를 벗겨 헤더 줄에 얹고, 펼침부는 아래로 떨어지는 팝오버로 ── */
 body.wid #widFilterSlot{display:flex;flex:0 0 auto;}
+/* 알림·내 업무 팝오버 — 업무 팝업과 같은 유리 카드, 헤더 아래에 선다 */
+body.wid .wid-side{position:absolute;z-index:620;top:55px;right:10px;width:330px;max-height:calc(100dvh - 76px);
+  display:none;flex-direction:column;}
+body.wid .wid-side.on{display:flex;}
+body.wid .wid-side #widSideB{overflow-y:auto;padding:0 12px 12px;}
+body.wid .wid-side .wp-h{padding:11px 12px 9px;}
+body.wid .wid-dot{position:absolute;top:5px;right:5px;width:7px;height:7px;border-radius:50%;background:var(--rd);display:none;}
+body.wid .wid-dot.on{display:block;}
+body.wid [data-act="wid.side"]{position:relative;}
+.ws-row{display:block;width:100%;text-align:left;padding:9px 10px;border-radius:10px;background:var(--fill);margin-bottom:6px;}
+.ws-row:hover{background:var(--fill2);}
+.ws-h{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--lbl2);margin-bottom:3px;}
+.ws-h b{font-size:12px;color:var(--lbl);}
+.ws-t{font-size:12.5px;color:var(--lbl);line-height:1.45;}
+.ws-none{font-size:12.5px;color:var(--lbl3);padding:14px 2px;text-align:center;}
+.ws-sec{font-size:11.5px;font-weight:800;color:var(--bt1);padding:8px 2px 5px;}
 body.wid #dpFcard{position:relative;flex:0 0 auto;background:transparent;border:0;box-shadow:none;padding:0;border-radius:0;}
 body.wid #dpFcard .dp-frow{gap:6px;}
 body.wid #dpFcard .dp-fmore,body.wid [data-act="wid.reload"]{width:34px;height:34px;border-radius:999px;
@@ -1466,8 +1482,9 @@ html.dark #toast{background:#2B313A;}
                 <button class="cal-nb cal-today" data-act="cal.today" aria-label="오늘로" title="오늘로"><svg class="icn" aria-hidden="true"><use href="#i-today"></use></svg></button>
                 <button class="cal-nb" data-act="cal.next" aria-label="다음"><svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg></button>
               </div>
-              <button class="cal-nb wido" data-act="wid.reload" aria-label="새로고침" title="새로고침"><svg class="icn" aria-hidden="true"><use href="#i-refresh"></use></svg></button>
               <div class="wido" id="widFilterSlot"></div>
+              <button class="cal-nb wido" data-act="wid.side" data-tab="alert" aria-label="알림" title="알림"><svg class="icn" aria-hidden="true"><use href="#i-bell"></use></svg><span class="wid-dot" id="widAlertDot"></span></button>
+              <button class="cal-nb wido" data-act="wid.side" data-tab="mine" aria-label="내 업무" title="내 업무"><svg class="icn" aria-hidden="true"><use href="#i-tasks"></use></svg></button>
               <div class="cal-nav wido">
                 <button class="cal-nb wid-acct" data-act="acct.open" aria-label="내 프로필" title="내 프로필"><span class="av sb-acct-av" id="widAcctAv"><svg class="icn" aria-hidden="true"><use href="#i-me"></use></svg></span></button>
                 <button class="cal-nb" data-act="wid.set" aria-label="위젯 설정" title="위젯 설정"><svg class="icn" aria-hidden="true"><use href="#i-settings"></use></svg></button>
@@ -1477,6 +1494,11 @@ html.dark #toast{background:#2B313A;}
           <div id="fcal"></div>
         </div>
         <div class="wid-pop" id="widPop"></div>
+        <div class="wid-pop wid-side" id="widSide">
+          <div class="wp-h"><b id="widSideT">알림</b>
+            <button class="wp-x" data-act="wid.sideClose" aria-label="닫기"><svg class="icn"><use href="#i-close"></use></svg></button></div>
+          <div id="widSideB" data-sb></div>
+        </div>
         <div id="wgSet" aria-hidden="true">
           <div class="wgs-h">위젯 설정<button class="pop-x" data-act="wid.set" aria-label="닫기"><svg class="icn"><use href="#i-close"></use></svg></button></div>
           <div class="wgs-r"><span>투명도 <b id="wgAV" class="wgs-v">15%</b></span><input type="range" id="wgA" min="0" max="85" step="5"></div>
@@ -1494,7 +1516,8 @@ html.dark #toast{background:#2B313A;}
               <b id="wgToneV">다크</b>
               <button class="wgs-cb" data-toned="1" aria-label="다음 모드"><svg class="icn"><use href="#i-chevr"></use></svg></button>
             </div></div>
-          <button class="wgs-full" data-act="wid.moveOn">위치·크기 조정</button>
+          <button class="wgs-full" data-act="wid.reload">새로고침</button>
+          <button class="wgs-full wgs-full2" data-act="wid.moveOn">위치·크기 조정</button>
           <button class="wgs-full wgs-full2" data-act="wid.open">브라우저 앱 열기</button>
         </div>
         <div class="dp-col">
@@ -1629,6 +1652,22 @@ html.dark #toast{background:#2B313A;}
               <button class="btn bg2 bsm" data-act="set.copyErr">복사</button>
             </div>
           </div>
+          <div class="card" id="bkCard">
+            <div class="set-h">백업</div>
+            <div class="share-row">
+              <div class="share-info"><b>자동 백업</b><span id="bkInfo">—</span></div>
+            </div>
+            <div class="share-sep"></div>
+            <div class="share-row">
+              <div class="share-info"><b>지금 내보내기</b><span>위젯 없이 이 컴퓨터의 내려받기 폴더에 저장합니다</span></div>
+              <button class="btn bo bsm" data-act="bk.now">내보내기</button>
+            </div>
+            <div class="share-sep"></div>
+            <div class="share-row">
+              <div class="share-info"><b>되돌리기</b><span>백업 파일을 골라 그 시점으로 되돌립니다 · 지금 내용은 사라집니다</span></div>
+              <button class="btn bo bsm" data-act="bk.restore">불러오기</button>
+            </div>
+          </div>
           <div class="card">
             <div class="set-h">하자처리 현황 연동</div>
             <div class="share-row">
@@ -1675,5 +1714,5 @@ html.dark #toast{background:#2B313A;}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=142"></script>
+<script src="./app.js?v=148"></script>
 </body></html>
