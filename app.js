@@ -239,10 +239,6 @@ function colDotHTML(c,pid){
 }
 /* 색 선택기 HTML — 기본 팔레트 + 임의 색 추가.
    현재 값이 팔레트에 없으면(직접 고른 색) 맨 뒤에 칩으로 붙여 선택 상태를 유지한다. */
-/* 색 점 — 'auto'(담당자 색)는 3색 그라디언트로 표시 */
-function colDotStyle(c){
-  return (!c||c==='auto')?'background:linear-gradient(135deg,#3E71D2,#16A34A,#D97706)':'background:'+esc(c);
-}
 /* 색 팝오버 — 1행은 기본색(담당자 색 + 빨·파·초·노·회), 2행부터는 직접 추가한 색.
    맨 아래에 색상 팔레트(사각형 + 색상 띠)를 늘 펼쳐 둔다. 추가색은 우클릭으로 지운다. */
 const PAL_BASE=['#DD3B30','#3E71D2','#16A34A','#FACC15','#8B5CF6','#6B7280'];
@@ -434,7 +430,6 @@ const S={
   tkF:{q:'',st:[],kind:[],reg:[],site:[]},   // 업무 목록 검색·필터 — 모두 다중 선택
   orgTab:'acct',     // 조직/현장 관리 우측 탭 (acct | site)
   cmtRe:'',          // 답글 입력창을 연 코멘트 (sid/iid/cid)
-  cmtNew:'',         // 코멘트 입력창을 연 업무 (sid/iid)
   prefs:{},          // calapp/prefs/{uid} — 저장한 필터 등 개인 설정
   mentions:{},       // calapp/mentions/{uid} — 나를 부른 코멘트
   live:false,        // Firebase 실시간 모드 여부
@@ -519,13 +514,6 @@ function canSetRank(){
   if(isEditor())return true;
   const me=S.user&&roster().find(p=>p.id===S.user.uid);
   return !!me&&(rankOf(me.rank)==='head'||rankOf(me.rank)==='lead');
-}
-/* 공구장·팀장이 실제로 맡는 현장 — 화면 표시용 */
-function coverSites(p){
-  const r=rankOf(p.rank);
-  if(r==='lead')return (S.org.sites||[]).filter(x=>(x.region||'')===(p.region||''));
-  if(r!=='member')return (S.org.sites||[]).filter(x=>!x.team||x.team===p.team);   /* 팀장·안전·원가 */
-  return (S.org.sites||[]).filter(x=>(p.sites||{})[x.id]);
 }
 function cleanPerson(p){
   const o={name:String(p.name||'').slice(0,60),email:String(p.email||'').slice(0,200),
@@ -1784,10 +1772,6 @@ function dayPlans(ds,raw){
 function planSt(p,occ){
   if(p.recur&&p.recur.f)return isDone(p,occ)?2:1;
   return stEff(p,p.end||p.date);
-}
-function _planStOld(p,occ){
-  if(p.recur&&p.recur.f)return isDone(p,occ)?2:stOf(p.st)===2?1:stOf(p.st);
-  return stOf(p.st);
 }
 function isDone(p,occ){return (p.recur&&p.recur.f)?!!(p.doneOn&&p.doneOn[occSrc(p,occ)]):!!p.done;}
 function dayQ(){return String((S.dayQ||'')).trim().toLowerCase();}
@@ -3212,87 +3196,6 @@ function saveMailCfg(){
   });
 }
 
-/* 하자처리 현황 게시본에서 팀·권역·현장을 가져온다.
-   auto=true 면 조용히(확인창 없이) 처리하고, 게시월이 바뀌었을 때만 적용한다.
-   ⚠ 두 앱이 같은 파이어베이스를 보지만 저장 자리가 다르다(report/… vs calapp/org) —
-   여기서는 그 값을 그대로 비춰 두는 것이라, 사람이 손댈 필요가 없다. */
-async function orgPull(auto){
-/* 어느 단계에서 막혔는지 화면에 남긴다 — 토스트만으로는 원인을 알 수 없다 */
-  const fail=auto?(()=>{}):(t,m)=>openModal(t,'<div style="font-size:13px;color:var(--lbl2);line-height:1.65">'+m+'</div>',
-    '<button class="btn bg2 bsm" data-act="modal.close">닫기</button>');
-  if(!S.live)return fail('가져오기','로그인 상태에서만 사용할 수 있습니다. 로컬 모드에서는 게시본을 읽을 수 없습니다.');
-  if(!isEditor())return fail('가져오기','관리자만 가져올 수 있습니다.<br>현재 권한은 <b>'+esc(roleLabel(S.role||'viewer'))+'</b>입니다. Firebase 콘솔에서 <code>users/{내 uid}/role</code>을 <code>editor</code>로 지정하세요.');
-  if(!auto)toast('게시본을 확인하는 중…');
-  const read=async p=>{try{return{ok:true,val:(await FB.db.ref(p).once('value')).val()};}
-    catch(e){return{ok:false,err:e};}};
-  /* ① 게시월 목록 — reportIndex 가 없거나 못 읽으면 최근 24개월을 직접 훑는다 */
-  let months=[],idxNote='';
-  const idx=await read('reportIndex');
-  if(idx.ok&&idx.val&&Object.keys(idx.val).length)months=Object.keys(idx.val).sort();
-  else{
-    idxNote=idx.ok?'게시월 인덱스가 비어 있어 최근 월을 직접 확인했습니다.'
-                  :'게시월 인덱스를 읽을 수 없어 최근 월을 직접 확인했습니다.';
-    const d=new Date();
-    for(let i=0;i<24;i++){
-      const y=d.getFullYear(),m=d.getMonth()-i;
-      const dd=new Date(y,m,1);
-      months.push(dd.getFullYear()+'-'+pad(dd.getMonth()+1));
-    }
-    months.reverse();
-  }
-  /* ② 최신 월부터 거슬러 올라가며 팀·현장이 담긴 게시본을 찾는다 */
-  let found=null,permDenied=false;
-  for(let i=months.length-1;i>=0&&!found;i--){
-    const rm=months[i];
-    const [t,s2]=await Promise.all([read('report/'+rm+'/_dash/teams'),read('report/'+rm+'/_dash/sites')]);
-    if(!t.ok||!s2.ok){permDenied=true;continue;}
-    const teams=arr(t.val),sites=arr(s2.val);
-    if(teams.length||sites.length)found={rm,teams,sites};
-  }
-  if(!found){
-    return fail('가져오기',(permDenied
-      ? '게시본을 읽을 권한이 없습니다. 규칙의 <code>report</code> 읽기 조건을 확인하세요.'
-      : '팀·현장 정보가 담긴 게시본을 찾지 못했습니다.<br>하자처리 현황에서 <b>설정 &gt; 사내 게시</b>로 한 번 등록한 뒤 다시 시도하세요.')
-      +(idxNote?'<br><br><span style="font-size:11.5px;color:var(--lbl3)">'+idxNote+'</span>':''));
-  }
-  const {rm,teams,sites}=found;
-  /* 하자처리 현황은 권역을 '이름 문자열'로 다룬다 — 이름을 그대로 id 로 삼아 현장과 연결한다 */
-  const regNames=[...new Set([...teams.flatMap(t=>arr(t.regions)),...sites.map(x=>x.region)]
-    .map(x=>String(x||'').trim()).filter(Boolean))];
-  const next={
-    teams:teams.map(t=>({id:String(t.id),name:String(t.name||'').slice(0,60)})),
-    regions:regNames.map(n=>({id:n,name:n})),
-    sites:sites.map(x=>({id:String(x.id),name:String(x.name||'').slice(0,60),
-      team:String(x.teamId||''),region:String(x.region||''),
-      units:Number(x.units)||0,buildings:Number(x.buildings)||0,
-      commercialUnits:Number(x.commercialUnits)||0,completionDate:String(x.completionDate||'').slice(0,10),
-      /* 공가 여부는 하자처리 현황이 원본 — 여기서는 그대로 받아 보여 주기만 한다 */
-      vacantUnits:!!(x.vacantUnits||x.vacant||x.distUnits),
-      vacantCommercial:!!(x.vacantCommercial||x.distCommercial)}))
-  };
-  confirmModal('게시본에서 가져오기',
-    rm+' 게시본 기준 · 팀 '+next.teams.length+'개, 권역 '+next.regions.length+'개, 현장 '+next.sites.length+'개를 가져옵니다. '
-    +'기존 목록은 대체됩니다. 계정 배정은 이름이 같으면 그대로 이어지고, 없어진 항목은 비워집니다.',()=>{
-    const oldName=(list,id)=>{const x=(list||[]).find(y=>y.id===id);return x?x.name:'';};
-    const byName=(list,name)=>{const x=(list||[]).find(y=>y.name&&y.name===name);return x?x.id:'';};
-    const prev=S.org;
-    Object.keys(S.people||{}).forEach(pid=>{
-      const p=S.people[pid];
-      const t=byName(next.teams,oldName(prev.teams,p.team));
-      const r=byName(next.regions,oldName(prev.regions,p.region));
-      const st={};
-      Object.keys(p.sites||{}).forEach(sid=>{const nid=byName(next.sites,oldName(prev.sites,sid));if(nid)st[nid]=1;});
-      if(t!==(p.team||'')||r!==(p.region||'')||JSON.stringify(st)!==JSON.stringify(p.sites||{}))
-        store.putPerson(pid,{...p,team:t,region:r,sites:st});
-    });
-    S.org=next;orgSave();rOrg();
-    if(!next.teams.some(t=>t.id===S.tk.t))S.tk.t=next.teams.length?next.teams[0].id:null;
-    rTeamSel();rFilter();
-    toast('가져왔습니다 · 조직/현장 관리에서 확인하세요');
-  },'가져오기',false);
-
-}
-
 /* ═══════════ 백업 ═══════════
    ⚠ 브라우저는 아무 폴더에나 쓸 수 없다 — 그래서 **위젯이 대신 쓴다.**
    위젯이 주기적으로 `window.bkExport()` 를 불러 받아 간 내용을
@@ -3375,13 +3278,6 @@ window.bkNote=function(name){
   try{localStorage.setItem(bkKey(),JSON.stringify({at:new Date().toISOString(),name:String(name||''),by:'위젯'}));}catch(e){}
   rBk();
 };
-function bkLast(){
-  try{
-    const v=localStorage.getItem(bkKey());if(!v)return null;
-    const o=JSON.parse(v);
-    return {...o,days:Math.floor((Date.now()-new Date(o.at).getTime())/86400000)};
-  }catch(e){return null;}
-}
 function bkDownload(name,text){
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([text],{type:'application/json'}));
@@ -3786,12 +3682,6 @@ const ACT={
   'tk.formCancel':()=>{S.tkNew=null;S.tkEdit=null;rTasks();},
   'tk.kind':()=>tkKindRefresh(),
   /* 폼 안에서는 draft 만 바꾼다 — 다시 그리면 입력 중인 값이 날아간다 */
-  'tk.stDraft':el=>{
-    const holder=$('#tnSt');
-    const n=Number((holder&&holder.dataset.st)||1)===2?1:2;
-    if(holder)holder.dataset.st=n;
-    stxSet(el,n);
-  },
   'tk.remindDraft':el=>{const on=!el.dataset.on;el.dataset.on=on?'1':'';el.classList.toggle('on',on);},
   'tk.formSave':el=>taskFormSave(el.dataset.sid,el.dataset.iid||null),
   'tk.open':el=>{
@@ -3830,9 +3720,6 @@ const ACT={
         refetchCal();toast('업무를 삭제했습니다');
       });},
   'tk.fold':el=>{const sid=el.dataset.sid;S.foldOpen[sid]=!S.foldOpen[sid];rTasks();},
-  'tk.cmtOpen':el=>{S.cmtNew=el.dataset.sid+'/'+el.dataset.iid;rTasks();
-    setTimeout(()=>{const t=document.querySelector('.th-new:not(.re) .th-in');if(t)t.focus();},40);},
-  'tk.cmtCancel':()=>{S.cmtNew='';rTasks();},
   'tk.cmtRe':el=>{S.cmtRe=el.dataset.sid+'/'+el.dataset.iid+'/'+el.dataset.cid;rTasks();
     setTimeout(()=>{const t=document.querySelector('.th-new.re .th-in');if(t)t.focus();},40);},
   'tk.cmtReCancel':()=>{S.cmtRe='';rTasks();},
@@ -3846,7 +3733,7 @@ const ACT={
     if(S.user&&S.user.uid)rec.uid=S.user.uid;
     if(re)rec.re=re;
     store.putTask(sid,iid,{...cur,comments:{...(cur.comments||{}),[cid]:rec},updatedAt:cur.updatedAt||Date.now()});
-    S.cmtRe='';S.cmtNew='';
+    S.cmtRe='';
     /* @이름 을 찾아 그 사람에게 알림을 남긴다 */
     if(S.live){
       const hit=new Set();
@@ -3898,14 +3785,6 @@ const ACT={
       Object.keys(S.people||{}).forEach(id=>{const p=S.people[id];
         if(p.sites&&p.sites[st.id]){const ns={...p.sites};delete ns[st.id];store.putPerson(id,{...p,sites:ns});}});
       orgSave();});
-  },
-  'acct.join':el=>{
-    
-    const t=curTeam();if(!t){toast('팀을 먼저 등록하세요');return;}
-    const id=el.dataset.id,base=roster().find(p=>p.id===id)||{},cur=(S.people||{})[id]||{};
-    store.putPerson(id,{name:base.name||cur.name||'',email:base.email||cur.email||'',
-      team:t.id,region:cur.region||'',rank:rankOf(cur.rank),sites:cur.sites||{}});
-    if(!S.live)rOrg();
   },
   'acct.sitePick':el=>{
     
@@ -3983,10 +3862,6 @@ const ACT={
     };
     inp.click();
   },
-  'org.import':()=>{
-    if(ORG_LIVE){toast('이미 하자처리 현황과 실시간으로 연동 중입니다 ('+ORG_RM+' 게시본)');return;}
-    orgPull(false);
-  },
   'team.switch':el=>{
     const tid=el.dataset.tid||(el.value||'');
     if(!tid)return;
@@ -4046,8 +3921,6 @@ const ACT={
     el.classList.toggle('on',on);
     if(on)rAppAlerts();
   },
-  'app.alertsClose':()=>{const el=$('#appAlertPop');if(el)el.classList.remove('on');},
-  'wid.sideClose':()=>{const el=$('#widSide');if(el)el.classList.remove('on');S.widSide='';},
   'wid.goDate':el=>{
     const d=el.dataset.date;if(!d)return;
     const el2=$('#widSide');if(el2)el2.classList.remove('on');S.widSide='';
@@ -4087,7 +3960,7 @@ function mselHTML(scope,g,all,items,sel){
   const names=items.filter(([v])=>on.includes(String(v))).map(([,l])=>l);
   const label=!names.length?all:(names.length===1?names[0]:names[0]+' 외 '+(names.length-1));
   return '<div class="msel'+(on.length?' on':'')+'" data-g="'+g+'" data-scope="'+scope+'">'
-    +'<button class="msel-b" data-act="filt.msel" title="'+esc(names.join(', ')||all)+'">'
+    +'<button class="msel-b" data-act="filt.msel" data-tip="'+esc(names.join(', ')||all)+'">'
       +'<span>'+esc(label)+'</span><svg class="icn msel-c"><use href="#i-chevr"></use></svg></button>'
     +'<div class="msel-pop">'
       +'<button class="msel-all" data-act="filt.mall">전체</button>'

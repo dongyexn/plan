@@ -1,0 +1,13 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "HPlanWidgetLite",
+  "version": "0.9.0",
+  "identifier": "kr.co.hdec.hservice.calwidget.lite",
+  "build": { "frontendDist": "assets" },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [],
+    "security": { "csp": null }
+  },
+  "bundle": { "active": false, "icon": ["icons/icon.ico"] }
+}
