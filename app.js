@@ -7,40 +7,67 @@
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
 const APP_VER='1.1.0';   /* 위젯(widget/package.json)과 같은 값으로 맞춘다 */
-const GUIDE_HTML=`<div class="gd">
-<h4>내 업무</h4>
-<p>내가 담당인 일정(앞으로 7일)과 미완료 주요업무, 받은 멘션을 한 화면에 모읍니다. 항목을 누르면 해당 화면으로 바로 이동합니다.</p>
-<h4>찾기</h4>
-<p>오른쪽 아래 <b>돋보기</b> 버튼(또는 <code>Ctrl</code>+<code>K</code>)으로 업무 제목·내용, 일정, 코멘트를 한 번에 찾습니다. 결과를 누르면 그 자리로 이동합니다.</p>
+/* 사용 안내 — 저장소 README 와 같은 내용·차례로 쓴다.
+   ⚠ 기능을 고치면 이 글도 함께 고칠 것(둘이 어긋나면 안내가 오히려 방해가 된다) */
+const GUIDE_HTML=`<div class="doc">
+<div class="doc-lead">현대건설 H서비스중부팀의 <b>업무 일정</b>과 <b>담당자별 업무</b>를 한곳에서 나눠 보는 도구입니다.
+바탕화면 위젯으로 쓰면 브라우저를 열지 않고도 오늘 할 일을 볼 수 있습니다.</div>
+
+<h3>1. 화면</h3>
 <h4>업무 일정</h4>
-<p>달력에서 날짜를 누르면 오른쪽에 그날의 업무가 나옵니다. <b>업무 추가</b>를 누르면 오른쪽 패널 안에서 바로 작성·수정하고(따로 창이 뜨지 않습니다), 날짜를 가로로 끌면 여러 날에 걸친 업무가 됩니다.</p>
+<p>달력에서 날짜를 누르면 오른쪽에 그날 업무가 나옵니다. 날짜를 끌면 기간이 잡히고, 그 상태에서 <b>업무 추가</b>를 누르면 기간이 그대로 들어갑니다.</p>
 <ul>
-<li>반복: 매주 · 격주 · 매월 · 매년. 반복 업무는 회차별로 완료 표시하며, 삭제할 때 이 날짜만 뺄지 전체를 지울지 고릅니다.</li>
-<li>담당자를 한 명 지정하면 그 사람 색으로 표시되고, 권역 칩과 담당자 선택으로 좁혀 볼 수 있습니다.</li>
-<li>종 아이콘을 켜면 그날 아침 팀 전체에 리마인드 메일이 갑니다.</li>
+<li>카드 왼쪽 <b>색 원</b>은 담당자 색입니다. 수정 화면에서 바꿀 수 있습니다.</li>
+<li>제목 오른쪽 <b>동그란 아이콘</b>을 누르면 진행 ↔ 완료가 바뀝니다. <b>기한이 지나면 저절로 완료</b>로 보이고, 손으로 진행을 고르면 그대로 남습니다.</li>
+<li>업무를 만들면 <b>입력하는 동안 저절로 저장</b>됩니다. 저장 버튼이 따로 없습니다.</li>
 </ul>
+
 <h4>업무 목록</h4>
-<p>왼쪽에서 대상을 고르면 오른쪽에 그 업무가 나옵니다. <b>팀 전체 업무</b>(공통 업무와 모든 권역·담당자 업무를 한 화면에), <b>공통 업무</b>, <b>권역</b>, 개별 <b>담당자</b>를 고를 수 있습니다.</p>
+<p>왼쪽에서 대상을 고르면 오른쪽에 그 업무가 나옵니다. <b>팀 전체</b>·<b>공통 업무</b>·<b>권역</b>·개별 <b>담당자</b> 중에서 고릅니다.</p>
 <ul>
-<li><b>업무 추가</b>를 누르면 목록 위에 작성창이 열립니다. 제목과 함께 <b>진행경과</b>·<b>처리계획</b>을 나눠 적고, 현장·날짜·색·담당자·링크를 지정합니다.</li>
-<li>항목을 누르면 스레드처럼 펼쳐집니다. 진행경과·처리계획은 그 자리에서 고치고, 아래 스레드에 코멘트를 남깁니다. 나머지는 오른쪽 위 <b>수정</b>을 누르면 작성창과 같은 폼이 그 자리에 열립니다.</li>
-<li>왼쪽의 ⠿ 를 잡고 끌면 순서가 바뀝니다.</li>
-<li>코멘트에 <code>@이름</code> 을 쓰면 그 사람에게 알림이 가고, 사이드바 배지로 표시됩니다.</li>
-<li>상태 칩을 누르면 예정 → 진행 → 완료 → 보류 순으로 바뀝니다.</li>
-<li>기한을 넣으면 D-표기가 붙고 임박·초과가 색으로 구분됩니다.</li>
-<li>완료된 지 7일이 지난 항목은 자동으로 접힙니다.</li>
+<li>카드를 누르면 펼쳐집니다. 진행경과·처리계획을 그 자리에서 고치고, 아래에 코멘트를 남깁니다.</li>
+<li>코멘트에 <code>@이름</code>을 쓰면 그 사람에게 알림이 갑니다.</li>
+<li>완료한 업무는 일주일이 지나면 목록에서 감춰집니다(지워지지는 않습니다).</li>
 </ul>
-<h4>조직/현장 관리 (관리자)</h4>
-<p>팀 · 권역 · 현장을 등록하고, 가입한 계정에 팀 · 권역 · 담당 현장과 권한을 지정합니다. 이름은 눌러서 바로 고칩니다.</p>
-<h4>권한</h4>
+
+<h4>내 업무</h4>
+<p>내가 담당인 일정(앞으로 7일)과 미완료 업무, 받은 부름을 한 화면에 모읍니다. 읽은 부름도 <b>흐리게 남아</b> 나중에 되짚을 수 있습니다.</p>
+
+<h4>찾기</h4>
+<p>오른쪽 아래 <b>돋보기</b>(또는 <code>Ctrl</code>+<code>K</code>)로 업무·일정·코멘트를 한 번에 찾습니다.</p>
+
+<h3>2. 바탕화면 위젯</h3>
+<p>설정 &gt; <b>바탕화면 위젯</b>에서 내려받아 실행합니다. 처음 실행하면 <code>문서\\H 주요업무현황</code> 폴더에 자리를 잡고, 다음부터 컴퓨터를 켤 때 저절로 뜹니다.</p>
 <ul>
-<li><b>관리자</b> — 조직/현장 관리와 설정 변경까지 가능</li>
-<li><b>사용자</b> — 일정과 업무는 자유롭게 작성, 조직 설정은 보기 전용</li>
+<li>날짜를 <b>두 번</b> 누르면 그날 업무 창이 열립니다. 일정 막대는 <b>한 번</b>만 눌러도 열립니다.</li>
+<li>헤더의 <b>종</b>은 받은 부름, <b>목록</b>은 내 업무입니다.</li>
+<li><b>오늘 할 일</b>은 컴퓨터를 켠 뒤 한 번 윈도우 알림으로 알려 줍니다(하루 한 번, 완료된 것은 빼고).</li>
+<li>모양은 설정에서 <b>투명도 · 글자 크기 · 글꼴 · 다크/라이트 · 알림</b>을 고칠 수 있습니다.</li>
+<li>새 버전이 나오면 <b>알아서 받아 두었다가</b> 다음에 컴퓨터를 켤 때 바뀝니다.</li>
 </ul>
-<h4>메일</h4>
-<p>설정에서 당일 리마인드와 주간 요약을 켜고 끄고, 요일 · 수신 범위 · 제목 앞머리 · 안내 문구를 정합니다. 발송 시각만 저장소의 워크플로에서 정해집니다.</p>
-<h4>문제가 생기면</h4>
-<p>설정 &gt; 버전 · 오류 기록의 <b>복사</b>를 눌러 관리자에게 전달하면 원인 파악이 빠릅니다. 저장이 안 될 때는 대개 권한 문제이니 관리자에게 계정 권한을 확인해 달라고 하세요.</p>
+<div class="doc-tip">위젯이 안 보이면 <code>문서\\H 주요업무현황\\HPlanWidget.exe</code> 를 두 번 누르세요. 그래도 안 되면 브라우저로 열어도 모든 기능을 쓸 수 있습니다.</div>
+
+<h3>3. 팀 · 권역 · 현장</h3>
+<p>팀·권역·현장 목록은 <b>하자처리현황</b>이 원본입니다. 그쪽에서 바뀌면 이 앱도 곧바로 따라가므로 여기서는 고치지 않습니다.</p>
+<p>누가 어느 권역·현장을 맡는지는 <b>조직/현장 관리</b>에서 정합니다. 직급에 따라 쓰는 칸이 다릅니다.</p>
+<ul>
+<li><b>팀장 · 안전 · 원가</b> — 팀 전체를 봅니다(권역·현장 비움)</li>
+<li><b>공구장</b> — 권역만 지정합니다</li>
+<li><b>담당자</b> — 권역과 담당 현장을 지정합니다</li>
+</ul>
+
+<h3>4. 권한</h3>
+<ul>
+<li><b>관리자</b> — 조직·설정을 포함해 모두 고칠 수 있습니다</li>
+<li><b>사용자</b> — 업무를 만들고 고칠 수 있습니다</li>
+<li><b>차단</b> — 읽기만 됩니다</li>
+</ul>
+
+<h3>5. 백업</h3>
+<p>위젯이 주 1회 <code>문서\\H 주요업무현황\\backup</code> 에 저장합니다(관리자 계정 기준, 최근 12개 보관). 설정 &gt; <b>백업 · 기록</b>에서 지금 내보내거나 되돌릴 수 있습니다.</p>
+
+<h3>6. 문제가 생기면</h3>
+<p>설정 &gt; <b>백업 · 기록</b> 의 <b>복사</b>를 눌러 관리자에게 전달하면 원인 파악이 빠릅니다. 저장이 안 될 때는 대개 권한 문제이니 관리자에게 계정 권한을 확인해 달라고 하세요.</p>
 </div>`;
 const ERRLOG=[];
 window.addEventListener('error',e=>{ERRLOG.unshift(new Date().toLocaleString('ko-KR')+' · '+(e.message||'')+' @'+(e.filename||'').split('/').pop()+':'+(e.lineno||0));ERRLOG.length=Math.min(ERRLOG.length,20);});
@@ -1272,7 +1299,14 @@ function rTeamSel(){
   $('#tselWrap').innerHTML='<select id="teamSelEl" aria-label="팀 선택">'+opts+'</select>'
     +'<span class="tsel-ch"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3.5l3 3 3-3"/></svg></span>';
 }
-function mentionCount(){return Object.keys(S.mentions||{}).length;}
+function mentionCount(){return Object.values(S.mentions||{}).filter(m=>m&&!m.read).length;}   /* 안 읽은 것만 센다 */
+function mentionRead(id){
+  const uid2=myId(),m=(S.mentions||{})[id];
+  if(!uid2||!m||m.read)return;
+  m.read=Date.now();                       /* ⚠ 지우지 않는다 — 읽은 뒤에도 목록에 남아야 되짚을 수 있다 */
+  store.putMention(uid2,id,{...m});
+  rMention();
+}
 /* ═══════════ 위젯 — 알림 · 내 업무 팝오버 ═══════════
    위젯만 쓰는 사람에게는 사이드바가 없다 — 부름(멘션)과 내 업무를 헤더에서 바로 볼 수 있게 한다 */
 function widSideRender(){
@@ -1319,7 +1353,7 @@ function widSideRender(){
     ?ms.map(([id,m])=>{
       const it=(S.tasks[m.sid||'']||{})[m.iid||''];
       const who=String(m.by||'').trim();
-      return '<button class="wl wl-al" data-act="wid.goMention" data-id="'+esc(id)+'" data-sid="'+esc(m.sid||'')+'" data-iid="'+esc(m.iid||'')+'">'
+      return '<button class="wl wl-al'+(m.read?' rd':'')+'" data-act="wid.goMention" data-id="'+esc(id)+'" data-sid="'+esc(m.sid||'')+'" data-iid="'+esc(m.iid||'')+'">'
         +'<span class="wl-av">'+esc(who?who.slice(-2):'—')+'</span>'
         +'<span class="wl-b">'
           +'<span class="wl-t"><b>'+esc(who||'알 수 없음')+'</b><i>'+esc(relTime(m.at))+'</i></span>'
@@ -1344,20 +1378,20 @@ function rAppAlerts(){
   const n=$('#appAlertN');
   if(n){n.textContent=String(ms.length);n.hidden=!ms.length;}
   const clr=$('#appAlertPop .btn');if(clr)clr.style.display=ms.length?'':'none';
+  /* ⚠ 위젯 팝오버와 같은 줄 모양(.wl-al)을 쓴다 — 두 화면이 달라 보이면 배우는 데 두 번 든다 */
   box.innerHTML=ms.length
     ?ms.map(([id,m])=>{
-      /* 어떤 업무에 달린 부름인지 함께 보여 준다 — 이름과 문구만으로는 어디를 봐야 할지 모른다 */
       const it=(S.tasks[m.sid||'']||{})[m.iid||''];
       const who=String(m.by||'').trim();
-      return '<button class="al-row" data-act="mention.go" data-id="'+esc(id)+'" data-sid="'+esc(m.sid||'')+'" data-iid="'+esc(m.iid||'')+'">'
-        +'<span class="al-av">'+esc(who?who.slice(-2):'—')+'</span>'
-        +'<span class="al-b">'
-          +'<span class="al-h"><b>'+esc(who||'알 수 없음')+'</b><span>'+esc(relTime(m.at))+'</span></span>'
-          +'<span class="al-t">'+mentionHTML(m.text)+'</span>'
-          +(it?'<span class="al-w">'+esc(it.text||'제목 없음')+'</span>':'')
+      return '<button class="wl wl-al'+(m.read?' rd':'')+'" data-act="mention.go" data-id="'+esc(id)+'" data-sid="'+esc(m.sid||'')+'" data-iid="'+esc(m.iid||'')+'">'
+        +'<span class="wl-av">'+esc(who?who.slice(-2):'—')+'</span>'
+        +'<span class="wl-b">'
+          +'<span class="wl-t"><b>'+esc(who||'알 수 없음')+'</b><i>'+esc(relTime(m.at))+'</i></span>'
+          +'<span class="wl-m">'+mentionHTML(m.text)+'</span>'
+          +(it?'<span class="wl-s">'+esc(it.text||'제목 없음')+'</span>':'')
         +'</span></button>';
     }).join('')
-    :'<div class="al-none"><svg class="icn"><use href="#i-bell"></use></svg><span>받은 알림이 없습니다</span></div>';
+    :'<div class="wl-none"><svg class="icn"><use href="#i-bell"></use></svg><span>받은 알림이 없습니다</span></div>';
 }
 function rMention(){
   const n=mentionCount();
@@ -2852,9 +2886,9 @@ function rMine(){
           </div>`;}).join(''):'<div class="mine-empty">내가 담당인 미완료 업무가 없습니다.</div>'}
       </div>`
     +`<div class="card">
-        <div class="mine-h"><div class="bar"></div><b>내 멘션</b><span class="c">${mentions.length}</span></div>
+        <div class="mine-h"><div class="bar"></div><b>내 멘션</b><span class="c">${mentionCount()||mentions.length}</span></div>
         ${mentions.length?mentions.map(([id,m])=>`
-          <div class="mine-row" data-act="mention.go" data-id="${esc(id)}" data-sid="${esc(m.sid||'')}" data-iid="${esc(m.iid||'')}">
+          <div class="mine-row${m.read?' rd':''}" data-act="mention.go" data-id="${esc(id)}" data-sid="${esc(m.sid||'')}" data-iid="${esc(m.iid||'')}">
             <span class="d">${esc(relTime(m.at))}</span>
             <span class="t">${esc(m.by||'')} · ${esc(m.text||'')}</span>
           </div>`).join(''):'<div class="mine-empty">받은 멘션이 없습니다.</div>'}
@@ -3300,7 +3334,7 @@ window.newMentions=function(seen){
   if(!S.live||!notiOn())return[];
   const done=new Set(Array.isArray(seen)?seen:[]);
   return Object.entries(S.mentions||{})
-    .filter(([id])=>!done.has(id))
+    .filter(([id,m])=>!done.has(id)&&!m.read)
     .sort((a,b)=>(a[1].at||0)-(b[1].at||0))
     .slice(-3)
     .map(([id,m])=>{
@@ -3313,7 +3347,7 @@ window.newMentions=function(seen){
 window.notiGo=function(p){
   try{
     p=p||{};
-    if(p.id)store.putMention(myId(),p.id,null);
+    if(p.id)mentionRead(p.id);
     const d=p.date||todayStr();
     if(CAL)CAL.gotoDate(toDate(d));
     selDate(d,true);
@@ -3537,14 +3571,12 @@ const ACT={
   'mine.plan':el=>{go('calendar');selDate(el.dataset.date);},
   'mine.task':el=>gotoTask(el.dataset.sid,el.dataset.iid),
   'mention.clear':()=>{
-    const uid2=S.user&&S.user.uid;if(!uid2)return;
-    Object.keys(S.mentions||{}).forEach(id=>store.putMention(uid2,id,null));
-    S.mentions={};rMention();closeModal();
+    const uid2=myId();if(!uid2)return;
+    Object.keys(S.mentions||{}).forEach(id=>mentionRead(id));
+    rMention();rAppAlerts();if(WIDGET)widSideRender();
   },
   'mention.go':el=>{
-    const uid2=S.user&&S.user.uid;
-    if(uid2)store.putMention(uid2,el.dataset.id,null);
-    delete S.mentions[el.dataset.id];rMention();
+    mentionRead(el.dataset.id);
     closeModal();
     const ap=$('#appAlertPop');if(ap)ap.classList.remove('on');
     if(el.dataset.sid)gotoTask(el.dataset.sid,el.dataset.iid);
@@ -3864,7 +3896,7 @@ const ACT={
   },
   'wid.goMention':el=>{
     const sid=el.dataset.sid,iid=el.dataset.iid,id=el.dataset.id;
-    if(id)store.putMention(myId(),id,null);        /* 확인했으면 읽음 처리 */
+    if(id)mentionRead(id);                        /* 확인했으면 읽음 표시(지우지는 않는다) */
     const it=(S.tasks[sid]||{})[iid];
     const el2=$('#widSide');if(el2)el2.classList.remove('on');S.widSide='';
     if(it&&it.date){
@@ -4225,7 +4257,8 @@ function widApply(){
   const N=light?'221,227,238':'16,20,30';        /* 버튼 배경 */
   dyn.textContent=GLASS?[
     'body.wid.glass #fcal td.fc-daygrid-day{background:rgba('+B+','+f(a)+')!important;}',
-    'body.wid.glass #fcal td.fc-daygrid-day.fc-day-sat,body.wid.glass #fcal td.fc-daygrid-day.fc-day-sun{background:rgba('+W+','+f(a*.92)+')!important;}',
+    /* 공휴일도 주말과 같은 칸 색으로 — 쉬는 날이라는 뜻이 같다 */
+    'body.wid.glass #fcal td.fc-daygrid-day.fc-day-sat,body.wid.glass #fcal td.fc-daygrid-day.fc-day-sun,body.wid.glass #fcal td.fc-daygrid-day.hol{background:rgba('+W+','+f(a*.92)+')!important;}',
     'body.wid.glass #fcal td.fc-daygrid-day.fc-day-other{background:rgba('+B+','+f(a*.22)+')!important;}',
     'body.wid.glass #fcal .fc-col-header-cell{background:rgba('+H+','+f(a+.12)+')!important;}',
     'body.wid.glass .plan{background:rgba('+C+','+f(a+.05)+');}',
