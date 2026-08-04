@@ -25,12 +25,14 @@ const fs = require('fs');
 /* 위젯이 띄울 주소 — 배포 주소를 여기서 바꾸면 된다 */
 const APP_URL = process.env.CALWIDGET_URL || 'https://dongyexn.github.io/plan/?w=1';
 
-const STATE_FILE = path.join(app.getPath('userData'), 'widget-state.json');
+/* ⚠ `app.getPath('userData')` 를 모듈 로드 시점에 굳히지 않는다 — 준비되기 전에는 다른 폴더를 가리킬 수 있다.
+   그러면 저장은 A 폴더, 읽기는 B 폴더가 되어 '설정이 저장되지 않는' 것처럼 보인다. */
+function stateFile() { return path.join(app.getPath('userData'), 'widget-state.json'); }
 const DEFAULT_BOUNDS = { width: 620, height: 520 };   /* 바탕화면 달력이므로 넓게 — 크기·위치는 기억된다 */
 
 function loadState() {
   let s = {};
-  try { s = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')); } catch { s = {}; }
+  try { s = JSON.parse(fs.readFileSync(stateFile(), 'utf8')); } catch { s = {}; }
   /* ⚠ 표시 모드는 userData 에 저장된다 — 기본값을 바꿔도 예전에 저장된 값이 그대로 이긴다.
      'desktop'(바탕화면에 박기)은 키 입력이 안 되는 보기 전용이라, 예전에 그걸로 저장돼 있으면
      한 번만 '바탕화면 모드'로 옮겨 준다(사용자가 다시 고르면 그 선택은 유지된다). */
@@ -38,18 +40,17 @@ function loadState() {
     /* 'desktop'(벽지 층에 박기)·'normal'(보통 창)은 폐기 — 남아 있으면 바탕화면 모드로 옮긴다 */
     if (s.mode !== 'top') s.mode = 'below';
     s.v = 3;
-    try { fs.writeFileSync(STATE_FILE, JSON.stringify(s)); } catch { /* 무시 */ }
+    try { fs.writeFileSync(stateFile(), JSON.stringify(s)); } catch { /* 무시 */ }
   }
   return s;
 }
 function saveState(s) {
-  try { fs.writeFileSync(STATE_FILE, JSON.stringify(s)); } catch { /* 저장 실패는 무시 */ }
+  try { fs.writeFileSync(stateFile(), JSON.stringify(s)); } catch { /* 저장 실패는 무시 */ }
 }
 
 let win = null, tray = null;
-/* ⚠ 창을 만들기 전에도 state 를 쓴다(부팅 업데이트·자동 실행 경로) — 여기서 미리 읽어야 한다.
-   예전에는 createWindow 안에서야 읽어, 그 전 코드가 빈 설정을 보고 있었다. */
-let state = loadState();
+/* 준비가 끝난 뒤 whenReady 맨 앞에서 한 번 읽는다(경로가 확정된 뒤여야 한다) */
+let state = {};
 
 /* 표시 층은 둘뿐이다.
    below : 바탕화면 모드 — 최상위 창을 유지한 채 z-순서만 맨 아래로. 반투명·입력 가능·다른 창에 가려짐(기본)
@@ -155,12 +156,14 @@ function createWindow() {
   /* 예전 실행에서 자식 창으로 바뀐 상태가 남아 있을 수 있다 — 어떤 모드로 가든 먼저 원래 모양으로 되돌린다 */
   pin.unpin(win);
   applyMode(state.mode || 'below');   /* 기본 = 바탕화면 모드: 반투명 · 다른 창 아래 · 입력 가능 */
-  try { fs.unlinkSync(homeExe() + '.old'); } catch { /* 지난 버전 찌꺼기 — 없으면 그만 */ }
-  if (state.autoStart === undefined) setAutoStart(true);        /* 첫 실행이면 자동 실행을 켠 상태로 시작한다 */
-  /* exe 를 다른 곳으로 옮겼거나 예전 버전이 임시 경로를 등록해 뒀으면 지금 경로로 다시 등록한다 */
-  else if (state.autoStart && state.autoPath !== homeExe()) setAutoStart(true);   /* 옛 임시 경로·옮긴 자리를 지금 자리로 */
-  /* 유리 모드로 열어야 벽지가 비친다 — 주소에 &glass=1 을 붙인다 */
+  /* ⚠ 화면을 부르는 일이 가장 오래 걸린다 — 그것부터 시작하고, 파일 정리·자동 실행 등록은 뒤로 미룬다 */
   win.loadURL(APP_URL + (APP_URL.indexOf('glass=') < 0 ? '&glass=1' : ''));
+  setTimeout(() => {
+    try { fs.unlinkSync(homeExe() + '.old'); } catch { /* 지난 버전 찌꺼기 — 없으면 그만 */ }
+    if (state.autoStart === undefined) setAutoStart(true);      /* 첫 실행이면 자동 실행을 켠 상태로 시작한다 */
+    /* exe 를 다른 곳으로 옮겼거나 예전 버전이 임시 경로를 등록해 뒀으면 지금 경로로 다시 등록한다 */
+    else if (state.autoStart && state.autoPath !== homeExe()) setAutoStart(true);
+  }, 3000);
   /* 주소 자체를 못 여는 경우(사내망 차단 등)에는 흰 화면만 남는다 — 무엇이 막혔는지 보여 준다 */
   win.webContents.on('did-fail-load', (_e, code, desc, url) => {
     if (code === -3) return;   /* 사용자가 취소한 경우 */
@@ -214,6 +217,11 @@ function createWindow() {
     const save = () => { try { state.bounds = win.getBounds(); saveState(state); } catch { /* 무시 */ } };
     if (now) save(); else bt = setTimeout(save, 400);
   };
+  /* ⚠ 만들 때 준 좌표를 윈도우가 화면·배율에 맞춰 손보는 경우가 있다 — 뜬 직후 저장해 둔 자리로 한 번 더 맞춘다 */
+  if (state.bounds) win.once('ready-to-show', () => {
+    try { win.setBounds(state.bounds); } catch { /* 무시 */ }
+  });
+  win.on('blur', () => remember(true));      /* 다른 창으로 옮겨 갈 때도 남긴다 */
   win.on('move', () => remember(false));
   win.on('resize', () => remember(false));
   win.on('moved', () => remember(true));
@@ -401,6 +409,9 @@ function buildTray() {
           type: 'info', title: '자동 실행',
           message: '윈도우 시작 시 자동 실행: ' + reg,
           detail: '등록된 실행 파일\n' + exePath()
+            + '\n\n설정 파일\n' + stateFile()
+            + '\n저장된 자리·크기: ' + (state.bounds ? JSON.stringify(state.bounds) : '(없음)')
+            + '\n버전: ' + app.getVersion()
             + '\n\n⚠ 이 경로에 파일이 그대로 있어야 재부팅 뒤에도 뜹니다.'
             + '\nexe 를 옮기거나 이름을 바꿨다면 위젯을 한 번 실행해 주세요(자동으로 다시 등록합니다).',
           buttons: ['복사', '닫기'], defaultId: 1, cancelId: 1
@@ -446,6 +457,7 @@ else {
   /* 프록시가 아이디·비밀번호를 요구하면 창이 안 뜨고 조용히 멈춘다 */
   app.on('login', (e, wc, req, auth) => { noteErr('프록시 인증 요구', req.url, auth.host || ''); });
   app.whenReady().then(() => {
+    state = loadState();                      /* ⚠ 여기서 읽어야 저장했던 자리·크기·설정이 살아난다 */
     /* 카톡처럼 — 켜질 때 받아 둔 새 버전이 있으면 먼저 갈아탄다(창은 만들지 않는다) */
     if (takeUpdateOnBoot()) return;
     if (handOverToHome()) return;
