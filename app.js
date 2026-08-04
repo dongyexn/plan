@@ -474,11 +474,17 @@ function cleanTask(t){
   }
   return o;
 }
-const RANKS=[['member','담당자'],['lead','공구장'],['head','팀장']];
+/* 선택 목록과 정렬 순서를 같은 차례로 둔다 — 팀장 · 공구장 · 담당자 · 안전 · 원가 */
+const RANKS=[['head','팀장'],['lead','공구장'],['member','담당자'],['safety','안전'],['cost','원가']];
+function rankOrd(v){const i=RANKS.findIndex(r=>r[0]===rankOf(v));return i<0?2:i;}
 function rankOf(v){return RANKS.some(r=>r[0]===v)?v:'member';}
 function rankLabel(v){const r=RANKS.find(x=>x[0]===rankOf(v));return r?r[1]:'담당자';}
 /* 직급별로 쓰는 칸이 다르다 — 팀장은 팀 전체를 보므로 권역·현장을 두지 않는다 */
-function rankUses(v){const r=rankOf(v);return{region:r!=='head',sites:r==='member'};}   /* 공구장은 권역 전체를 맡는다 */
+function rankUses(v){
+  const r=rankOf(v);
+  /* 팀장·안전·원가는 팀 전체를 보므로 권역·현장을 두지 않는다. 공구장은 권역만, 담당자는 둘 다 */
+  return{region:r==='member'||r==='lead',sites:r==='member'};
+}
 /* 팀장·공구장 지정은 아무나 하면 안 된다 — 관리자이거나, 이미 팀장·공구장인 사람만 */
 function canSetRank(){
   if(!S.live)return true;
@@ -488,14 +494,14 @@ function canSetRank(){
 }
 function autoSitesHTML(p){
   const r=rankOf(p.rank),n=coverSites(p).length;
-  return '<span class="rk-all">'+(r==='head'?'팀 전체':'권역 전체')
-    +(n?' · '+n+'개 현장':'')+'</span>';
+  const lbl=(r==='lead')?'권역 전체':'팀 전체';   /* 팀장·안전·원가는 팀 전체를 본다 */
+  return '<span class="rk-all">'+lbl+(n?' · '+n+'개 현장':'')+'</span>';
 }
 /* 공구장·팀장이 실제로 맡는 현장 — 화면 표시용 */
 function coverSites(p){
   const r=rankOf(p.rank);
-  if(r==='head')return (S.org.sites||[]).filter(x=>!x.team||x.team===p.team);
   if(r==='lead')return (S.org.sites||[]).filter(x=>(x.region||'')===(p.region||''));
+  if(r!=='member')return (S.org.sites||[]).filter(x=>!x.team||x.team===p.team);   /* 팀장·안전·원가 */
   return (S.org.sites||[]).filter(x=>(p.sites||{})[x.id]);
 }
 function cleanPerson(p){
@@ -1317,8 +1323,20 @@ function widSideOpen(tab){
   el.classList.toggle('on',!same);
   if(!same)widSideRender();
 }
+/* 상단바 알림 팝오버 — 위젯의 것과 같은 줄 모양을 쓴다 */
+function rAppAlerts(){
+  const box=$('#appAlertBody');if(!box)return;
+  const ms=Object.entries(S.mentions||{}).sort((a,b)=>(b[1].at||0)-(a[1].at||0));
+  box.innerHTML=ms.length
+    ?ms.map(([id,m])=>
+      '<button class="ws-row" data-act="mention.go" data-id="'+esc(id)+'" data-sid="'+esc(m.sid||'')+'" data-iid="'+esc(m.iid||'')+'">'
+      +'<div class="ws-h"><b>'+esc(m.by||'')+'</b><span>'+esc(relTime(m.at))+'</span></div>'
+      +'<div class="ws-t">'+mentionHTML(m.text)+'</div></button>').join('')
+    :'<div class="ws-none">받은 알림이 없습니다.</div>';
+}
 function rMention(){
   const n=mentionCount();
+  if($('#appAlertPop')&&$('#appAlertPop').classList.contains('on'))rAppAlerts();
   const dot=$('#widAlertDot');
   if(dot)dot.classList.toggle('on',n>0);          /* 위젯 헤더의 빨간 점 */
   const ad=$('#appAlertDot');
@@ -1910,6 +1928,8 @@ document.addEventListener('mousedown',e=>{
   if(sd&&sd.classList.contains('on')&&!t.closest('#widSide')&&!t.closest('[data-act="wid.side"]')){
     sd.classList.remove('on');S.widSide='';
   }
+  const ap=$('#appAlertPop');
+  if(ap&&ap.classList.contains('on')&&!t.closest('#appAlertPop')&&!t.closest('[data-act="app.alerts"]'))ap.classList.remove('on');
 },true);
 /* 색상 팔레트 사각형 — 가로는 채도, 세로는 밝기. 끌면서 고를 수 있고 고른 색은 추가색으로 쌓인다 */
 let CP_DRAG=false;
@@ -2344,8 +2364,7 @@ function regionMembers(mems,regions,rid){
 /* 담당자 묶음 — 담당자별 소제목 아래 그 사람의 미완료 업무 */
 function memberGroupHTML(list){
   if(!list.length)return '<div class="tk-empty">배정된 담당자가 없습니다.</div>';
-  list=list.slice().sort((a,b)=>{const w=x=>rankOf(x.rank)==='lead'?0:1;
-    return w(a)-w(b)||String(a.name).localeCompare(String(b.name),'ko');});
+  list=list.slice().sort((a,b)=>rankOrd(a.rank)-rankOrd(b.rank)||String(a.name).localeCompare(String(b.name),'ko'));
   let any=false;
   const html=list.map(p=>{
     const items=openItems(p.id);
@@ -2353,7 +2372,7 @@ function memberGroupHTML(list){
     any=true;
     const rk=rankOf(p.rank);
     return '<div class="tk-sub2">'+esc(p.name)
-      +(rk==='lead'?'<span class="rk">공구장</span>':'')+'</div>'
+      +(rk!=='member'?'<span class="rk">'+esc(rankLabel(rk))+'</span>':'')+'</div>'
       +items.map(({iid,it})=>taskItemHTML(p.id,iid,it,false,p.id)).join('');
   }).join('');
   return any?html:'<div class="tk-empty">미완료 업무가 없습니다.</div>';
@@ -2363,9 +2382,7 @@ function regionSectionsHTML(mems,regions){
   const groups=[];
   const heads=mems.filter(p=>rankOf(p.rank)==='head');
   const rest=mems.filter(p=>rankOf(p.rank)!=='head');
-  const byRank=list=>list.slice().sort((a,b)=>{
-    const w=x=>rankOf(x.rank)==='lead'?0:1;
-    return w(a)-w(b)||String(a.name).localeCompare(String(b.name),'ko');});
+  const byRank=list=>list.slice().sort((a,b)=>rankOrd(a.rank)-rankOrd(b.rank)||String(a.name).localeCompare(String(b.name),'ko'));
   if(heads.length)groups.push(['팀장',byRank(heads)]);   /* 권역보다 위 */
   regions.forEach(r=>{const list=rest.filter(p=>p.region===r.id);if(list.length)groups.push([r.name,byRank(list)]);});
   const none=regionMembers(rest,regions,'');
@@ -2378,7 +2395,7 @@ function regionSectionsHTML(mems,regions){
       if(!items.length)return '';
       const rk=rankOf(p.rank);
       return '<div class="tk-sub2">'+esc(p.name)
-        +(rk==='lead'?'<span class="rk">공구장</span>':rk==='head'?'<span class="rk">팀장</span>':'')+'</div>'
+        +(rk!=='member'?'<span class="rk">'+esc(rankLabel(rk))+'</span>':'')+'</div>'
         +items.map(({iid,it})=>taskItemHTML(p.id,iid,it,false,p.id)).join('');
     }).join('');
     if(!inner)return '';                 /* 업무가 없는 권역은 통째로 감춘다(머리·구분선까지) */
@@ -2630,9 +2647,7 @@ function rTasks(){
   /* 담당자 카드 — 권역 행(선택 가능) 아래에 담당자 */
   const heads=mems.filter(p=>rankOf(p.rank)==='head');          /* 팀장 — 권역에 매이지 않는다 */
   const rest=mems.filter(p=>rankOf(p.rank)!=='head');
-  const byRank=list=>list.slice().sort((a,b)=>{           /* 공구장을 권역 맨 위로 */
-    const w=x=>rankOf(x.rank)==='lead'?0:1;
-    return w(a)-w(b)||String(a.name).localeCompare(String(b.name),'ko');});
+  const byRank=list=>list.slice().sort((a,b)=>rankOrd(a.rank)-rankOrd(b.rank)||String(a.name).localeCompare(String(b.name),'ko'));   /* 공구장 · 담당자 · 안전 · 원가 */
   const regGroups=[];
   regions.forEach(r=>{const list=rest.filter(p=>p.region===r.id);if(list.length)regGroups.push([r.id,r.name,byRank(list)]);});
   const none=regionMembers(rest,regions,'');
@@ -2670,7 +2685,7 @@ function rTasks(){
       <div class="card tkmain">
         <div class="tkm-h"><div class="bar"></div><b>업무 목록</b><span class="tkm-sub">${esc(subject)}</span>
           <span class="tkm-c">${shownCnt}건</span>
-          ${sid?'<button class="btn bo bxs" data-act="tk.newOpen" data-sid="'+esc(sid)+'"><svg class="icn"><use href="#i-plus"></use></svg> 업무 추가</button>':''}
+          <button class="btn bo bxs tkm-add" data-act="tk.newOpen" data-sid="${esc(sid||(tkSel().team&&tkSel().team.id)||'')}"><svg class="icn"><use href="#i-plus"></use></svg> 업무 추가</button>
         </div>
         <div class="tk-list">
           ${sid&&S.tkNew===sid?taskFormHTML(sid,null,null):''}
@@ -3006,10 +3021,6 @@ function rCfg(){
   const i=$('#setDefectUrl');
   if(i&&document.activeElement!==i)i.value=S.cfg.defectUrl||DEFECT_URL;
   rBk();
-  const os=$('#orgSrcInfo');
-  if(os)os.textContent=ORG_LIVE
-    ?(ORG_RM+' 게시본을 실시간으로 읽고 있습니다 · 저쪽에서 바뀌면 곧바로 반영됩니다')
-    :'게시본을 읽지 못해 마지막으로 받아 둔 목록을 쓰고 있습니다';
   const m=S.cfg.mail||{};
   const hs=$('#mlHour');
   if(hs&&!hs.options.length){
@@ -3440,6 +3451,7 @@ const ACT={
     if(uid2)store.putMention(uid2,el.dataset.id,null);
     delete S.mentions[el.dataset.id];rMention();
     closeModal();
+    const ap=$('#appAlertPop');if(ap)ap.classList.remove('on');
     if(el.dataset.sid)gotoTask(el.dataset.sid,el.dataset.iid);
     else go('tasks');
   },
@@ -3719,7 +3731,13 @@ const ACT={
   'wid.open':()=>{window.open(location.origin+location.pathname,'_blank','noopener');},
   'wid.reload':()=>location.reload(),
   'wid.side':el=>widSideOpen(el.dataset.tab||'alert'),
-  'app.alerts':()=>openMentionModal(),
+  'app.alerts':()=>{
+    const el=$('#appAlertPop');if(!el)return;
+    const on=!el.classList.contains('on');
+    el.classList.toggle('on',on);
+    if(on)rAppAlerts();
+  },
+  'app.alertsClose':()=>{const el=$('#appAlertPop');if(el)el.classList.remove('on');},
   'wid.sideClose':()=>{const el=$('#widSide');if(el)el.classList.remove('on');S.widSide='';},
   'wid.goDate':el=>{
     const d=el.dataset.date;if(!d)return;
