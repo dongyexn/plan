@@ -651,12 +651,60 @@ const FbStore={
       toast('예전 일정을 옮기지 못했습니다 · 관리자에게 문의하세요');
     }
   },
+  /* 하자처리 현황의 게시본(report/<게시월>/_dash)을 직접 구독한다.
+     ⚠ 게시월이 나뉘어 있어 `reportIndex` 로 최신 월을 먼저 찾고, 그 달이 바뀌면 다시 붙는다.
+     ⚠ 읽기 권한이 없거나 게시본이 없으면 아무것도 하지 않는다 — 그러면 사본(calapp/org)이 계속 쓰인다. */
+  bindReportOrg(){
+    const attach=rm=>{
+      if(!rm||rm===ORG_RM)return;
+      ORG_RM=rm;
+      if(ORG_OFF){ORG_OFF();ORG_OFF=null;}
+      const ref=FB.db.ref('report/'+rm+'/_dash');
+      const cb=ref.on('value',snap=>{
+        const v=snap.val()||{};
+        const teams=arrOf(v.teams),sites=arrOf(v.sites);
+        if(!teams.length&&!sites.length)return;   /* 빈 게시본이면 사본을 그대로 둔다 */
+        ORG_LIVE=true;
+        S.org=orgFromDash(teams,sites);
+        bootCacheSave();
+        /* 읽지 못하는 계정을 위해 사본도 맞춰 둔다(관리자만 쓸 수 있다) */
+        if(isEditor())FB.db.ref('calapp/org').set(cleanOrg(S.org)).catch(()=>{});
+        if(shEditing()){PEND.org=true;PEND.tasks=true;return;}
+        rOrg();rTasks();rTeamSel();rFilter();
+      },()=>{ /* 권한 없음 — 사본으로 간다 */ });
+      ORG_OFF=()=>{try{ref.off('value',cb);}catch(e){}};
+    };
+    /* 최신 게시월 따라가기 */
+    FB.db.ref('reportIndex').on('value',snap=>{
+      const ks=Object.keys(snap.val()||{}).sort();
+      if(ks.length)attach(ks[ks.length-1]);
+    },()=>{
+      /* 인덱스를 못 읽으면 이번 달부터 거슬러 24개월을 훑어 한 번만 붙인다 */
+      (async()=>{
+        const d=new Date();
+        for(let i=0;i<24;i++){
+          const dd=new Date(d.getFullYear(),d.getMonth()-i,1);
+          const rm=dd.getFullYear()+'-'+pad(dd.getMonth()+1);
+          try{
+            const v=(await FB.db.ref('report/'+rm+'/_dash/sites').once('value')).val();
+            if(v&&Object.keys(v).length){attach(rm);return;}
+          }catch(e){return;}
+        }
+      })();
+    });
+  },
   bindShared(){
     this.migrateRemote();
 
-    this._on('calapp/org',v=>{S.org=v||{teams:[],regions:[],sites:[]};normOrg(S.org);bootCacheSave();
+    /* ⚠ 팀·권역·현장의 원본은 하자처리 현황이다. 복사해 두지 않고 **그 자리를 그대로 구독**한다 —
+       거기서 현장이 바뀌면 이 앱도 즉시 따라간다.
+       `calapp/org` 는 **읽지 못하는 계정·오프라인을 위한 사본**으로만 남긴다(관리자가 접속해 있을 때 갱신). */
+    this._on('calapp/org',v=>{
+      if(ORG_LIVE)return;                       /* 원본을 읽고 있으면 사본은 무시한다 */
+      S.org=v||{teams:[],regions:[],sites:[]};normOrg(S.org);bootCacheSave();
       if(shEditing()){PEND.org=true;PEND.tasks=true;return;}
       rOrg();rTasks();});
+    this.bindReportOrg();
     this._on('calapp/tasks',v=>{S.tasks=v||{};bootCacheSave();
       if(shEditing()){PEND.tasks=true;PEND.day=true;return;}
       rTasks();refetchCal();rDay();rWidget();});   /* 업무가 곧 일정 — 달력도 함께 갱신 */
@@ -2875,16 +2923,40 @@ function rOrg(){
   }
   rFilter();
 }
-function orgSave(){normOrg(S.org);store.putOrg(S.org);if(!S.live){rOrg();rTasks();}}
+/* 하자처리 현황 게시본 → 이 앱의 조직·현장 모양으로 바꾼다(가져오기와 같은 규칙).
+   ⚠ 권역은 저쪽이 '이름 문자열'로 다루므로 이름을 그대로 id 로 삼는다 */
+let ORG_LIVE=false,ORG_RM='',ORG_OFF=null;
+function arrOf(v){return v?(Array.isArray(v)?v.filter(Boolean):Object.values(v).filter(Boolean)):[];}
+function orgFromDash(teams,sites){
+  const regNames=[...new Set([...teams.flatMap(t=>arrOf(t.regions)),...sites.map(x=>x.region)]
+    .map(x=>String(x||'').trim()).filter(Boolean))];
+  return {
+    teams:teams.map(t=>({id:String(t.id),name:String(t.name||'').slice(0,60)})),
+    regions:regNames.map(n=>({id:n,name:n})),
+    sites:sites.map(x=>({id:String(x.id),name:String(x.name||'').slice(0,60),
+      team:String(x.teamId||''),region:String(x.region||''),
+      units:Number(x.units)||0,buildings:Number(x.buildings)||0,
+      commercialUnits:Number(x.commercialUnits)||0,completionDate:String(x.completionDate||'').slice(0,10),
+      vacantUnits:!!(x.vacantUnits||x.vacant||x.distUnits),
+      vacantCommercial:!!(x.vacantCommercial||x.distCommercial)}))
+  };
+}
+function orgSave(){
+  /* ⚠ 원본(하자처리 현황)을 구독 중일 때는 이 앱에서 고쳐도 곧 덮어써진다 — 손대지 않는다 */
+  if(ORG_LIVE){toast('팀·권역·현장은 하자처리 현황에서 관리합니다');rOrg();return;}
+  normOrg(S.org);store.putOrg(S.org);if(!S.live){rOrg();rTasks();}
+}
 function rCfg(){
   const i=$('#setDefectUrl');
   if(i&&document.activeElement!==i)i.value=S.cfg.defectUrl||DEFECT_URL;
   const wu=$('#setWidgetUrl');
   if(wu&&document.activeElement!==wu)wu.value=S.cfg.widgetUrl||'';
-  const wv=$('#setWidgetVer');
-  if(wv&&document.activeElement!==wv)wv.value=S.cfg.widgetVer||'';
+  const os=$('#orgSrcInfo');
+  if(os)os.textContent=ORG_LIVE
+    ?(ORG_RM+' 게시본을 실시간으로 읽고 있습니다 · 저쪽에서 바뀌면 곧바로 반영됩니다')
+    :'게시본을 읽지 못해 마지막으로 받아 둔 목록을 쓰고 있습니다';
   const wb=$('#widgetInfo');
-  if(wb)wb.textContent=S.cfg.widgetVer?('최신 위젯 '+S.cfg.widgetVer+' (직접 지정)'):'최신 위젯 버전은 릴리스에서 자동 확인';
+  if(wb)wb.textContent='위젯은 켜질 때 최신 버전을 스스로 확인해 갱신합니다';
   const m=S.cfg.mail||{};
   const hs=$('#mlHour');
   if(hs&&!hs.options.length){
@@ -3002,6 +3074,87 @@ function saveMailCfg(){
   });
 }
 
+/* 하자처리 현황 게시본에서 팀·권역·현장을 가져온다.
+   auto=true 면 조용히(확인창 없이) 처리하고, 게시월이 바뀌었을 때만 적용한다.
+   ⚠ 두 앱이 같은 파이어베이스를 보지만 저장 자리가 다르다(report/… vs calapp/org) —
+   여기서는 그 값을 그대로 비춰 두는 것이라, 사람이 손댈 필요가 없다. */
+async function orgPull(auto){
+/* 어느 단계에서 막혔는지 화면에 남긴다 — 토스트만으로는 원인을 알 수 없다 */
+  const fail=auto?(()=>{}):(t,m)=>openModal(t,'<div style="font-size:13px;color:var(--lbl2);line-height:1.65">'+m+'</div>',
+    '<button class="btn bg2 bsm" data-act="modal.close">닫기</button>');
+  if(!S.live)return fail('가져오기','로그인 상태에서만 사용할 수 있습니다. 로컬 모드에서는 게시본을 읽을 수 없습니다.');
+  if(!isEditor())return fail('가져오기','관리자만 가져올 수 있습니다.<br>현재 권한은 <b>'+esc(roleLabel(S.role||'viewer'))+'</b>입니다. Firebase 콘솔에서 <code>users/{내 uid}/role</code>을 <code>editor</code>로 지정하세요.');
+  if(!auto)toast('게시본을 확인하는 중…');
+  const read=async p=>{try{return{ok:true,val:(await FB.db.ref(p).once('value')).val()};}
+    catch(e){return{ok:false,err:e};}};
+  /* ① 게시월 목록 — reportIndex 가 없거나 못 읽으면 최근 24개월을 직접 훑는다 */
+  let months=[],idxNote='';
+  const idx=await read('reportIndex');
+  if(idx.ok&&idx.val&&Object.keys(idx.val).length)months=Object.keys(idx.val).sort();
+  else{
+    idxNote=idx.ok?'게시월 인덱스가 비어 있어 최근 월을 직접 확인했습니다.'
+                  :'게시월 인덱스를 읽을 수 없어 최근 월을 직접 확인했습니다.';
+    const d=new Date();
+    for(let i=0;i<24;i++){
+      const y=d.getFullYear(),m=d.getMonth()-i;
+      const dd=new Date(y,m,1);
+      months.push(dd.getFullYear()+'-'+pad(dd.getMonth()+1));
+    }
+    months.reverse();
+  }
+  /* ② 최신 월부터 거슬러 올라가며 팀·현장이 담긴 게시본을 찾는다 */
+  let found=null,permDenied=false;
+  for(let i=months.length-1;i>=0&&!found;i--){
+    const rm=months[i];
+    const [t,s2]=await Promise.all([read('report/'+rm+'/_dash/teams'),read('report/'+rm+'/_dash/sites')]);
+    if(!t.ok||!s2.ok){permDenied=true;continue;}
+    const teams=arr(t.val),sites=arr(s2.val);
+    if(teams.length||sites.length)found={rm,teams,sites};
+  }
+  if(!found){
+    return fail('가져오기',(permDenied
+      ? '게시본을 읽을 권한이 없습니다. 규칙의 <code>report</code> 읽기 조건을 확인하세요.'
+      : '팀·현장 정보가 담긴 게시본을 찾지 못했습니다.<br>하자처리 현황에서 <b>설정 &gt; 사내 게시</b>로 한 번 등록한 뒤 다시 시도하세요.')
+      +(idxNote?'<br><br><span style="font-size:11.5px;color:var(--lbl3)">'+idxNote+'</span>':''));
+  }
+  const {rm,teams,sites}=found;
+  /* 하자처리 현황은 권역을 '이름 문자열'로 다룬다 — 이름을 그대로 id 로 삼아 현장과 연결한다 */
+  const regNames=[...new Set([...teams.flatMap(t=>arr(t.regions)),...sites.map(x=>x.region)]
+    .map(x=>String(x||'').trim()).filter(Boolean))];
+  const next={
+    teams:teams.map(t=>({id:String(t.id),name:String(t.name||'').slice(0,60)})),
+    regions:regNames.map(n=>({id:n,name:n})),
+    sites:sites.map(x=>({id:String(x.id),name:String(x.name||'').slice(0,60),
+      team:String(x.teamId||''),region:String(x.region||''),
+      units:Number(x.units)||0,buildings:Number(x.buildings)||0,
+      commercialUnits:Number(x.commercialUnits)||0,completionDate:String(x.completionDate||'').slice(0,10),
+      /* 공가 여부는 하자처리 현황이 원본 — 여기서는 그대로 받아 보여 주기만 한다 */
+      vacantUnits:!!(x.vacantUnits||x.vacant||x.distUnits),
+      vacantCommercial:!!(x.vacantCommercial||x.distCommercial)}))
+  };
+  confirmModal('게시본에서 가져오기',
+    rm+' 게시본 기준 · 팀 '+next.teams.length+'개, 권역 '+next.regions.length+'개, 현장 '+next.sites.length+'개를 가져옵니다. '
+    +'기존 목록은 대체됩니다. 계정 배정은 이름이 같으면 그대로 이어지고, 없어진 항목은 비워집니다.',()=>{
+    const oldName=(list,id)=>{const x=(list||[]).find(y=>y.id===id);return x?x.name:'';};
+    const byName=(list,name)=>{const x=(list||[]).find(y=>y.name&&y.name===name);return x?x.id:'';};
+    const prev=S.org;
+    Object.keys(S.people||{}).forEach(pid=>{
+      const p=S.people[pid];
+      const t=byName(next.teams,oldName(prev.teams,p.team));
+      const r=byName(next.regions,oldName(prev.regions,p.region));
+      const st={};
+      Object.keys(p.sites||{}).forEach(sid=>{const nid=byName(next.sites,oldName(prev.sites,sid));if(nid)st[nid]=1;});
+      if(t!==(p.team||'')||r!==(p.region||'')||JSON.stringify(st)!==JSON.stringify(p.sites||{}))
+        store.putPerson(pid,{...p,team:t,region:r,sites:st});
+    });
+    S.org=next;orgSave();rOrg();
+    if(!next.teams.some(t=>t.id===S.tk.t))S.tk.t=next.teams.length?next.teams[0].id:null;
+    rTeamSel();rFilter();
+    toast('가져왔습니다 · 조직/현장 관리에서 확인하세요');
+  },'가져오기',false);
+
+}
+
 /* ═══════════ 화면 전환 · 공통 UI ═══════════ */
 const VIEW_TTL={calendar:'업무 일정',mine:'내 업무',tasks:'업무 목록',org:'조직/현장 관리',settings:'설정'};
 function go(view){
@@ -3025,7 +3178,7 @@ function go(view){
     if(b)b.textContent='버전 '+APP_VER+' · 기록된 오류 '+ERRLOG.length+'건';
     /* 위젯은 별도 파일이라 버전이 따로 논다 — 설정에서 한눈에 보이게 같이 적는다 */
     const wb=$('#widgetInfo');
-    if(wb)wb.textContent=S.cfg.widgetVer?('최신 위젯 '+S.cfg.widgetVer+' (직접 지정)'):'최신 위젯 버전은 릴리스에서 자동 확인';
+    if(wb)wb.textContent='위젯은 켜질 때 최신 버전을 스스로 확인해 갱신합니다';
   }
   mobClose();
 }
@@ -3381,80 +3534,9 @@ const ACT={
       navigator.clipboard.writeText(txt).then(()=>toast('복사했습니다')).catch(()=>toast('복사 실패'));
     else toast('복사를 지원하지 않는 브라우저입니다');
   },
-  'org.import':async()=>{
-    /* 어느 단계에서 막혔는지 화면에 남긴다 — 토스트만으로는 원인을 알 수 없다 */
-    const fail=(t,m)=>openModal(t,'<div style="font-size:13px;color:var(--lbl2);line-height:1.65">'+m+'</div>',
-      '<button class="btn bg2 bsm" data-act="modal.close">닫기</button>');
-    if(!S.live)return fail('가져오기','로그인 상태에서만 사용할 수 있습니다. 로컬 모드에서는 게시본을 읽을 수 없습니다.');
-    if(!isEditor())return fail('가져오기','관리자만 가져올 수 있습니다.<br>현재 권한은 <b>'+esc(roleLabel(S.role||'viewer'))+'</b>입니다. Firebase 콘솔에서 <code>users/{내 uid}/role</code>을 <code>editor</code>로 지정하세요.');
-    toast('게시본을 확인하는 중…');
-    const read=async p=>{try{return{ok:true,val:(await FB.db.ref(p).once('value')).val()};}
-      catch(e){return{ok:false,err:e};}};
-    /* ① 게시월 목록 — reportIndex 가 없거나 못 읽으면 최근 24개월을 직접 훑는다 */
-    let months=[],idxNote='';
-    const idx=await read('reportIndex');
-    if(idx.ok&&idx.val&&Object.keys(idx.val).length)months=Object.keys(idx.val).sort();
-    else{
-      idxNote=idx.ok?'게시월 인덱스가 비어 있어 최근 월을 직접 확인했습니다.'
-                    :'게시월 인덱스를 읽을 수 없어 최근 월을 직접 확인했습니다.';
-      const d=new Date();
-      for(let i=0;i<24;i++){
-        const y=d.getFullYear(),m=d.getMonth()-i;
-        const dd=new Date(y,m,1);
-        months.push(dd.getFullYear()+'-'+pad(dd.getMonth()+1));
-      }
-      months.reverse();
-    }
-    /* ② 최신 월부터 거슬러 올라가며 팀·현장이 담긴 게시본을 찾는다 */
-    let found=null,permDenied=false;
-    for(let i=months.length-1;i>=0&&!found;i--){
-      const rm=months[i];
-      const [t,s2]=await Promise.all([read('report/'+rm+'/_dash/teams'),read('report/'+rm+'/_dash/sites')]);
-      if(!t.ok||!s2.ok){permDenied=true;continue;}
-      const teams=arr(t.val),sites=arr(s2.val);
-      if(teams.length||sites.length)found={rm,teams,sites};
-    }
-    if(!found){
-      return fail('가져오기',(permDenied
-        ? '게시본을 읽을 권한이 없습니다. 규칙의 <code>report</code> 읽기 조건을 확인하세요.'
-        : '팀·현장 정보가 담긴 게시본을 찾지 못했습니다.<br>하자처리 현황에서 <b>설정 &gt; 사내 게시</b>로 한 번 등록한 뒤 다시 시도하세요.')
-        +(idxNote?'<br><br><span style="font-size:11.5px;color:var(--lbl3)">'+idxNote+'</span>':''));
-    }
-    const {rm,teams,sites}=found;
-    /* 하자처리 현황은 권역을 '이름 문자열'로 다룬다 — 이름을 그대로 id 로 삼아 현장과 연결한다 */
-    const regNames=[...new Set([...teams.flatMap(t=>arr(t.regions)),...sites.map(x=>x.region)]
-      .map(x=>String(x||'').trim()).filter(Boolean))];
-    const next={
-      teams:teams.map(t=>({id:String(t.id),name:String(t.name||'').slice(0,60)})),
-      regions:regNames.map(n=>({id:n,name:n})),
-      sites:sites.map(x=>({id:String(x.id),name:String(x.name||'').slice(0,60),
-        team:String(x.teamId||''),region:String(x.region||''),
-        units:Number(x.units)||0,buildings:Number(x.buildings)||0,
-        commercialUnits:Number(x.commercialUnits)||0,completionDate:String(x.completionDate||'').slice(0,10),
-        /* 공가 여부는 하자처리 현황이 원본 — 여기서는 그대로 받아 보여 주기만 한다 */
-        vacantUnits:!!(x.vacantUnits||x.vacant||x.distUnits),
-        vacantCommercial:!!(x.vacantCommercial||x.distCommercial)}))
-    };
-    confirmModal('게시본에서 가져오기',
-      rm+' 게시본 기준 · 팀 '+next.teams.length+'개, 권역 '+next.regions.length+'개, 현장 '+next.sites.length+'개를 가져옵니다. '
-      +'기존 목록은 대체됩니다. 계정 배정은 이름이 같으면 그대로 이어지고, 없어진 항목은 비워집니다.',()=>{
-      const oldName=(list,id)=>{const x=(list||[]).find(y=>y.id===id);return x?x.name:'';};
-      const byName=(list,name)=>{const x=(list||[]).find(y=>y.name&&y.name===name);return x?x.id:'';};
-      const prev=S.org;
-      Object.keys(S.people||{}).forEach(pid=>{
-        const p=S.people[pid];
-        const t=byName(next.teams,oldName(prev.teams,p.team));
-        const r=byName(next.regions,oldName(prev.regions,p.region));
-        const st={};
-        Object.keys(p.sites||{}).forEach(sid=>{const nid=byName(next.sites,oldName(prev.sites,sid));if(nid)st[nid]=1;});
-        if(t!==(p.team||'')||r!==(p.region||'')||JSON.stringify(st)!==JSON.stringify(p.sites||{}))
-          store.putPerson(pid,{...p,team:t,region:r,sites:st});
-      });
-      S.org=next;orgSave();rOrg();
-      if(!next.teams.some(t=>t.id===S.tk.t))S.tk.t=next.teams.length?next.teams[0].id:null;
-      rTeamSel();rFilter();
-      toast('가져왔습니다 · 조직/현장 관리에서 확인하세요');
-    },'가져오기',false);
+  'org.import':()=>{
+    if(ORG_LIVE){toast('이미 하자처리 현황과 실시간으로 연동 중입니다 ('+ORG_RM+' 게시본)');return;}
+    orgPull(false);
   },
   'team.switch':el=>{
     const tid=el.dataset.tid||(el.value||'');
@@ -3666,9 +3748,9 @@ document.addEventListener('change',e=>{
   }
   if(e.target.id==='darkChk'){applyTheme(e.target.checked);return;}
   if(e.target.closest&&e.target.closest('[data-act="set.mail"]')){saveMailCfg();return;}
-  if(/^set(DefectUrl|WidgetUrl|WidgetVer)$/.test(e.target.id)){   /* 연결 주소는 입력을 마치면 자동 저장 */
+  if(/^set(DefectUrl|WidgetUrl)$/.test(e.target.id)){   /* 연결 주소는 입력을 마치면 자동 저장 */
     if(!isEditor()){denyEdit();rCfg();return;}
-    const key={setDefectUrl:'defectUrl',setWidgetUrl:'widgetUrl',setWidgetVer:'widgetVer'}[e.target.id];
+    const key={setDefectUrl:'defectUrl',setWidgetUrl:'widgetUrl'}[e.target.id];
     store.putCfg(key,(e.target.value||'').trim(),err=>{
       toast(err?('저장 실패 · '+((err&&err.message)||err)):'저장했습니다');});
     return;
@@ -3926,9 +4008,7 @@ function rWidget(){
    GitHub API 를 쓰지 않으므로 사내망에서도 막히지 않는다 */
 window.widInfo=function(){
   const url=String(S.cfg.widgetUrl||'').trim();
-  if(!url)return null;
-  /* 버전을 비워 두면 위젯이 릴리스 주소에서 스스로 알아낸다 */
-  return {ver:String(S.cfg.widgetVer||'').trim(),url};
+  return url?{ver:'',url}:null;   /* 버전은 위젯이 릴리스 주소에서 스스로 알아낸다 */
 };
 /* 누른 칸 옆에 붙이되 창 밖으로 나가지 않게 한다 — 위젯은 창이 곧 화면이라 넘치면 잘려서 못 본다 */
 function widPlace(){
