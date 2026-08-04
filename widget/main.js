@@ -47,7 +47,9 @@ function saveState(s) {
 }
 
 let win = null, tray = null;
-let state = {};
+/* ⚠ 창을 만들기 전에도 state 를 쓴다(부팅 업데이트·자동 실행 경로) — 여기서 미리 읽어야 한다.
+   예전에는 createWindow 안에서야 읽어, 그 전 코드가 빈 설정을 보고 있었다. */
+let state = loadState();
 
 /* 표시 층은 둘뿐이다.
    below : 바탕화면 모드 — 최상위 창을 유지한 채 z-순서만 맨 아래로. 반투명·입력 가능·다른 창에 가려짐(기본)
@@ -57,7 +59,10 @@ let botTimer = null;
 /* 평소에는 창을 고정해 둔다 — 달력을 누르다가 위젯이 밀려 나가는 일이 없도록.
    위젯 설정의 '위치·크기 조정' 을 켜면 그때만 옮기고 크기를 바꿀 수 있다. */
 function setLocked(lock) {
-  state.locked = lock; saveState(state);
+  state.locked = lock;
+  /* 조정을 끝내는 순간의 자리·크기를 확정해 둔다 */
+  if (lock && win && !win.isDestroyed()) { try { state.bounds = win.getBounds(); } catch { /* 무시 */ } }
+  saveState(state);
   if (!win) return;
   win.setMovable(!lock);
   win.setResizable(!lock);
@@ -125,7 +130,6 @@ function isAutoStart() {
 }
 
 function createWindow() {
-  state = loadState();
   const area = screen.getPrimaryDisplay().workAreaSize;
   /* 바탕화면 모드에서는 달력이 아이콘을 가린다 — 아이콘이 몰려 있는 왼쪽을 피해 오른쪽 위에 놓는다 */
   const b = state.bounds || {
@@ -201,10 +205,22 @@ function createWindow() {
   });
   win.webContents.on('will-attach-webview', e => e.preventDefault());
 
-  const remember = () => { state.bounds = win.getBounds(); saveState(state); };
-  win.on('moved', remember);
-  win.on('resized', remember);
+  /* ⚠ 'moved'·'resized' 만으로는 놓치는 경우가 있다(드래그 레이어로 옮길 때 등).
+     끄는 동안에도 계속 나오는 'move'·'resize' 를 함께 듣되, 저장은 잠잠해진 뒤 한 번만 한다. */
+  let bt = null;
+  const remember = (now) => {
+    if (!win || win.isDestroyed()) return;
+    clearTimeout(bt);
+    const save = () => { try { state.bounds = win.getBounds(); saveState(state); } catch { /* 무시 */ } };
+    if (now) save(); else bt = setTimeout(save, 400);
+  };
+  win.on('move', () => remember(false));
+  win.on('resize', () => remember(false));
+  win.on('moved', () => remember(true));
+  win.on('resized', () => remember(true));
+  win.on('close', () => remember(true));          /* 끄기 직전에 한 번 더 — 마지막 자리를 남긴다 */
   win.on('closed', () => { win = null; });
+  app.on('before-quit', () => remember(true));
 }
 
 function toggleWindow() {
@@ -444,7 +460,7 @@ else {
     } catch { /* 무시 */ }
     globalShortcut.register('Alt+Shift+C', toggleWindow);   // 단축키로 즉시 호출
     /* 시작 뒤 한 번, 그다음 6시간마다 조용히 확인한다(받아만 두고 알림만 띄운다) */
-    setTimeout(() => checkUpdate(false), 20000);
+    setTimeout(() => checkUpdate(false), 90000);   /* 부팅 직후는 붐빈다 — 자리 잡은 뒤에 확인한다 */
     setInterval(() => checkUpdate(false), 6 * 60 * 60 * 1000);
     /* 문제가 생겼을 때 원인을 볼 수 있게 — 브라우저와 같은 단축키 */
     globalShortcut.register('CommandOrControl+Shift+I', () => win && win.webContents.openDevTools({ mode: 'detach' }));

@@ -1882,7 +1882,6 @@ function planFormHTML(){
       ${colDotHTML(planColor(d))}
       <input class="pe-ttl" id="peTitle" maxlength="80" placeholder="무엇을 하나요?" value="${esc(d.title)}">
       <div class="pe-side">
-        ${stIcon(st,' data-act="plan.stCycle"')}
         ${pe.orig?'<button class="pe-ic pe-del" data-act="plan.del" data-pid="'+esc(d.id)+'" data-ym="'+esc(ymOf(d.date))+'" data-occ="'+esc(pe.occ||'')+'" aria-label="삭제" title="삭제"><svg class="icn"><use href="#i-trash"></use></svg></button>':''}
         <button class="pe-ic pe-rem${d.remind?' on':''}" data-act="plan.remindDraft" aria-label="리마인드 전환" title="리마인드"><svg class="icn"><use href="#i-bell"></use></svg></button>
         <button class="pe-ic pe-ok" data-act="plan.cancel" aria-label="저장하고 닫기 (Esc)" title="저장하고 닫기 (Esc)"><svg class="icn"><use href="#i-check"></use></svg></button>
@@ -2299,7 +2298,7 @@ function taskFormHTML(sid,iid,cur){
       <input type="hidden" id="tnColor" value="${esc(d.color||'')}">
       <input class="pe-ttl" id="tnTitle" maxlength="120" placeholder="무엇을 하나요?" value="${esc(d.text||'')}">
       <div class="pe-side">
-        <span id="tnSt" data-st="${st}" style="display:contents">${stIcon(st,' data-act="tk.stDraft"')}</span>
+        <span id="tnSt" data-st="${st}" hidden></span>
         ${iid?'<button class="pe-ic pe-del" data-act="tk.del" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" aria-label="삭제" title="삭제"><svg class="icn"><use href="#i-trash"></use></svg></button>':''}
         <button class="pe-ic pe-rem${d.remind?' on':''}" id="tnRemind" data-act="tk.remindDraft" data-on="${d.remind?'1':''}" aria-label="리마인드" title="리마인드"><svg class="icn"><use href="#i-bell"></use></svg></button>
         <button class="pe-ic pe-ok" data-act="tk.formSave" data-sid="${esc(sid)}" data-iid="${esc(iid||'')}" aria-label="저장하고 닫기" title="저장하고 닫기"><svg class="icn"><use href="#i-check"></use></svg></button>
@@ -3132,8 +3131,11 @@ const ACT={
     }
     const ym=el.dataset.ym,pid=el.dataset.pid,ttl=(p&&p.title)||'제목 없음';
     confirmModal('업무 삭제','"'+ttl+'" 업무를 삭제합니다. 되돌릴 수 없습니다.',()=>{
-      store.delPlan(ym,pid);S.planEdit=null;rDay();
-      if(!S.live){refetchCal();rWidget();}toast('업무를 삭제했습니다');
+      /* ⚠ 폼부터 닫고 지운다 — 순서가 바뀌면 다시 그릴 때 '이미 없는 업무'의 폼이 남아 한 박자 늦게 보인다 */
+      clearTimeout(PE_SAVE);S.planEdit=null;
+      store.delPlan(ym,pid);
+      rDay();refetchCal();rWidget();          /* 라이브에서도 즉시 반영(구독 값이 오면 덮어쓴다) */
+      toast('업무를 삭제했습니다');
     });},
   'plan.moveOcc':el=>{
     const p=findPlan(el.dataset.pid);if(!p)return;
@@ -3259,8 +3261,8 @@ const ACT={
     confirmModal('업무 삭제',
       '"'+(it.text||'제목 없음')+'" 업무를 삭제합니다.'+(cn?' 코멘트 '+cn+'건도 함께 지워집니다.':'')+' 되돌릴 수 없습니다.',
       ()=>{
+        if(S.tkEdit===key)S.tkEdit=null;   /* 폼부터 닫고 지운다 — 순서가 바뀌면 반영이 한 박자 늦다 */
         store.putTask(sid,iid,null);
-        if(S.tkEdit===key)S.tkEdit=null;
         if(S.tkOpen===key)S.tkOpen=null;
         if(!S.live)rTasks();else setTimeout(rTasks,220);
         refetchCal();toast('업무를 삭제했습니다');
@@ -3706,8 +3708,8 @@ document.addEventListener('input',e=>{
 document.addEventListener('change',e=>{
 });
 document.addEventListener('click',e=>{
-  const b=e.target.closest('#wgTone button');
-  if(b){const c=widCfgLoad();c.tone=b.dataset.tone;widCfgSave(c);widApply();return;}
+  const tb=e.target.closest('#wgTone [data-toned]');
+  if(tb){const c=widCfgLoad();c.tone=(c.tone==='light')?'dark':'light';widCfgSave(c);widApply();return;}
   const fb=e.target.closest('#wgFont [data-fontd]');
   if(fb){
     const c=widCfgLoad(),ids=WID_FONTS.map(f=>f[0]);
@@ -3864,7 +3866,7 @@ function widApply(){
   const av=$('#wgAV');if(av)av.textContent=Math.round(100-a*100)+'%';
   const fr=$('#wgFz');if(fr)fr.value=Math.round(fz*100);
   const fl=$('#wgFzV');if(fl)fl.textContent=Math.round(fz*100)+'%';
-  if($('#wgTone'))$$('#wgTone button').forEach(b=>b.classList.toggle('act',b.dataset.tone===(c.tone||'dark')));
+  const tv=$('#wgToneV');if(tv)tv.textContent=light?'라이트':'다크';
   const fv=$('#wgFontV');if(fv)fv.textContent=(WID_FONTS.find(f=>f[0]===font)||WID_FONTS[0])[1];
 }
 /* 위치·크기 조정 모드 — 켜면 창 전체가 드래그 영역이 되고, 끄면 그 자리에 고정된다.
