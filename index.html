@@ -122,13 +122,15 @@ svg{display:block;flex-shrink:0;}
 .tbr{position:relative;}
 /* 알림 줄은 위젯 팝오버의 `.wl` 규칙을 그대로 쓴다 — 아래 '위젯 옆 팝오버 목록' 참조 */
 /* 상단바 오른쪽 — 알림·사용 안내 */
-.tbr{margin-left:auto;display:flex;align-items:center;gap:6px;}
-.tb-ic{position:relative;width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;
-  color:var(--lbl2);background:var(--fill);border:1px solid var(--sep);
-  transition:background var(--tr),color var(--tr),border-color var(--tr);}
-.tb-ic:hover{background:var(--fill2);color:var(--lbl);border-color:var(--sepo);}
-.tb-ic .icn{width:18px;height:18px;}
-.tb-dot{position:absolute;top:6px;right:6px;width:7px;height:7px;border-radius:50%;background:var(--rd);display:none;}
+.tbr{margin-left:auto;display:flex;align-items:center;}
+/* 위젯 헤더의 알약(.cal-nav)과 같은 문법 — 한 덩어리 안에 아이콘 버튼을 담는다 */
+.tb-nav{display:flex;align-items:center;gap:1px;padding:2px;border-radius:999px;background:var(--fill);border:1px solid var(--sep);}
+.tb-ic{position:relative;width:27px;height:27px;border-radius:999px;display:flex;align-items:center;justify-content:center;
+  color:var(--lbl2);transition:background var(--tr),color var(--tr);}
+.tb-ic:hover{background:var(--bg2);color:var(--lbl);}
+.tb-ic .icn{width:15px;height:15px;}
+.tb-dot{position:absolute;top:3px;right:3px;width:6px;height:6px;border-radius:50%;background:var(--rd);display:none;
+  box-shadow:0 0 0 2px var(--fill);}
 .tb-dot.on{display:block;}
 body.wid .tbr{display:none;}   /* 위젯에는 상단바가 없다 */
 #topbar{height:var(--th);flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:var(--glass2);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);border-bottom:1px solid var(--sep);z-index:100;}
@@ -254,6 +256,7 @@ html.dark #fcal .fc-col-header-cell{background:#424245;border-left-color:#0F0F10
 /* 공휴일·기념일 — 날짜 숫자 바로 왼쪽, 한 줄 고정(겹침 없음) */
 #fcal .fc-daygrid-day-number{display:flex;align-items:center;justify-content:flex-end;gap:5px;max-width:100%;flex:1;min-width:0;}
 #fcal .dhol{font-size:12.5px;font-weight:700;line-height:1.2;color:var(--rd);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1;margin-right:auto;}
+#fcal .dhol.off{color:var(--am);}   /* 팀 휴무일 — 칸 색은 공휴일과 같고 글자만 구분 */
 #fcal .dhol.anv{color:var(--lbl3);font-weight:600;}
 #fcal .fc-daygrid-day.hol .dnum{color:var(--rd);}
 /* 오늘 — 셀 음영 대신 숫자 배지. padding 팽창분을 음수 마진으로 상쇄해 행 높이에 영향 없음 */
@@ -847,23 +850,74 @@ html.dark .col-pop{background:#242426;}
 .spk-i:hover{background:var(--fill);}
 .spk-i input{width:16px;height:16px;accent-color:var(--b600);}
 .gd{font-size:13px;line-height:1.75;color:var(--lbl);max-height:62dvh;overflow-y:auto;}
-/* 사용 안내 문서 — 하자처리현황 안내와 같은 결(제목 계층 · 여백 · 인용 상자) */
-.doc{max-height:min(66dvh,620px);overflow-y:auto;padding-right:4px;}
-.doc-lead{font-size:13px;line-height:1.7;color:var(--lbl2);background:var(--fill);border-radius:12px;
-  padding:13px 15px;margin-bottom:18px;}
-.doc-lead b{color:var(--lbl);}
-.doc h3{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:800;color:var(--lbl);
-  margin:22px 0 10px;padding-bottom:8px;border-bottom:1px solid var(--sep);}
-.doc h3:first-of-type{margin-top:0;}
-.doc h4{font-size:13px;font-weight:700;color:var(--bt1);margin:15px 0 6px;}
-.doc p{margin:0 0 8px;font-size:12.5px;line-height:1.7;color:var(--lbl2);}
-.doc ul{margin:0 0 10px;padding-left:17px;}
-.doc li{font-size:12.5px;line-height:1.7;color:var(--lbl2);margin-bottom:4px;}
-.doc b{color:var(--lbl);font-weight:700;}
-.doc code{font-size:11.5px;font-family:ui-monospace,Menlo,Consolas,monospace;background:var(--fill);
-  border-radius:5px;padding:1px 5px;color:var(--lbl);}
-.doc-tip{margin:10px 0 4px;padding:11px 13px;border-left:3px solid var(--b500);background:var(--b50);
-  border-radius:0 10px 10px 0;font-size:12.5px;line-height:1.65;color:var(--bt1);}
+/* ── 우클릭 메뉴 — 필터·설정 팝업과 같은 톤 ── */
+.ctxmenu{position:fixed;z-index:3000;min-width:172px;max-width:280px;background:var(--bg2);
+  border:1px solid var(--sep);border-radius:12px;box-shadow:0 12px 34px rgba(16,24,40,.18);
+  padding:5px;display:flex;flex-direction:column;}
+.ctx-it{display:block;width:100%;text-align:left;font-size:12.5px;font-weight:600;color:var(--lbl);
+  padding:7px 11px;border-radius:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ctx-it:hover{background:var(--b50);color:var(--bt1);}
+.ctx-it.dg{color:var(--rd);}
+.ctx-it.dg:hover{background:rgba(221,59,48,.1);color:var(--rd);}
+.ctx-sep{height:1px;background:var(--sep);margin:4px 6px;}
+/* ── 툴팁 — data-tip 이 있는 요소에 잠깐 머무르면 뜬다 ── */
+#htip{position:fixed;top:-999px;left:-999px;z-index:3200;max-width:280px;padding:6px 10px;border-radius:8px;
+  background:rgba(28,32,42,.96);color:#fff;font-size:11.5px;font-weight:600;line-height:1.45;
+  box-shadow:0 8px 22px rgba(0,0,0,.28);pointer-events:none;opacity:0;visibility:hidden;
+  transition:opacity .12s;white-space:pre-line;}
+#htip.on{opacity:1;visibility:visible;}
+/* 휴무일 목록 — 연초에 한 번 몰아서 넣는 성격이라 목록으로 훑고 지운다 */
+.off-row{display:flex;align-items:center;gap:9px;padding:7px 2px;border-bottom:1px solid var(--sep);}
+.off-row:last-child{border-bottom:none;}
+.off-d{font-size:12.5px;font-weight:700;color:var(--lbl);flex:0 0 52px;}
+.off-w{font-size:11px;color:var(--lbl3);flex:0 0 auto;}
+.off-n{font-size:12px;color:var(--lbl2);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.off-x{flex:0 0 auto;width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;color:var(--lbl3);}
+.off-x:hover{background:rgba(221,59,48,.1);color:var(--rd);}
+.off-x .icn{width:13px;height:13px;}
+.off-none{font-size:12.5px;color:var(--lbl3);padding:12px 2px;text-align:center;}
+.off-y{font-size:11px;font-weight:800;color:var(--lbl3);padding:10px 2px 4px;letter-spacing:.04em;}
+/* 사용 안내(README) — 왼쪽 목차 탭 + 본문 한 장씩. 하자처리현황과 같은 방식 */
+#mb.rdw{max-width:min(980px,94vw);}
+.md-scroll{max-height:min(72dvh,880px);overflow-y:auto;overscroll-behavior:contain;margin:0 -8px;padding:0 8px;}
+.rd-wrap{display:flex;gap:20px;align-items:flex-start;}
+.rd-nav{flex:0 0 190px;max-height:62dvh;overflow-y:auto;border-right:1px solid var(--sep);padding-right:12px;position:sticky;top:0;}
+.rd-navi{display:block;width:100%;text-align:left;padding:8px 10px;margin-bottom:2px;border-radius:8px;
+  font-size:12.5px;line-height:1.45;color:var(--lbl2);}
+.rd-navi:hover{background:var(--fill);}
+.rd-navi.act{background:var(--b50);color:var(--bt1);font-weight:700;}
+.rd-body{flex:1;min-width:0;}
+.rd-sec{display:none;min-width:0;}
+.rd-sec.act{display:block;}
+@media(max-width:820px){
+  .rd-wrap{flex-direction:column;gap:12px;align-items:stretch;}
+  .rd-nav{flex:none;width:100%;position:static;max-height:none;border-right:none;
+    border-bottom:1px solid var(--sep);padding:0 0 8px;display:flex;gap:6px;overflow-x:auto;}
+  .rd-navi{width:auto;white-space:nowrap;margin:0;}
+}
+.md-doc{font-size:13px;line-height:1.75;color:var(--lbl);max-width:1000px;padding:2px 2px 12px;}
+.md-doc h1{font-size:20px;font-weight:800;margin:4px 0 12px;letter-spacing:-.02em;}
+.md-doc h2{font-size:15.5px;font-weight:800;margin:22px 0 10px;padding-bottom:7px;border-bottom:1px solid var(--sep);}
+.md-doc h3{font-size:13.5px;font-weight:700;color:var(--bt1);margin:16px 0 7px;}
+.md-doc p{margin:8px 0;color:var(--lbl2);}
+.md-doc ul,.md-doc ol{margin:8px 0;padding-left:20px;}
+.md-doc li{margin:3px 0;color:var(--lbl2);}
+.md-doc b,.md-doc strong{color:var(--lbl);font-weight:700;}
+.md-doc code{background:var(--fill2);border-radius:5px;padding:1.5px 5px;font-size:12px;
+  font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--lbl);}
+.md-doc pre{background:var(--fill2);border:1px solid var(--sep);border-radius:10px;padding:12px 14px;
+  overflow:auto;font-size:12px;line-height:1.6;}
+.md-doc pre code{background:none;padding:0;}
+.md-doc .md-tw{overflow-x:auto;margin:10px 0;max-width:100%;}
+.md-doc table{border-collapse:collapse;width:100%;margin:0;font-size:12.5px;}
+.md-doc th,.md-doc td{border:1px solid var(--sep);padding:6px 9px;text-align:left;vertical-align:top;}
+.md-doc th{background:var(--fill);font-weight:700;}
+.md-doc hr{border:none;border-top:1px solid var(--sep);margin:20px 0;}
+.md-doc blockquote{margin:10px 0;padding:9px 14px;border-left:3px solid var(--b400);background:var(--b50);
+  border-radius:0 10px 10px 0;color:var(--bt1);}
+.md-doc img{display:block;max-width:100%;height:auto;margin:12px 0;border:1px solid var(--sep);border-radius:10px;}
+/* 첫 장(소개)은 도입부를 조금 더 또렷하게 */
+.rd-sec:first-child h1+p{font-size:14.5px;font-weight:700;color:var(--bt1);margin:0 0 12px;}
 
 /* 설정 · 조직 관리 레이아웃 */
 .set-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
@@ -1554,11 +1608,13 @@ html.dark #toast{background:#2B313A;}
       <div class="tbt" id="tbt">업무 일정</div>
     </div>
     <div class="tbr">
-      <button class="tb-ic" data-act="app.alerts" aria-label="알림" title="알림">
-        <svg class="icn" aria-hidden="true"><use href="#i-bell"></use></svg>
-        <span class="tb-dot" id="appAlertDot"></span></button>
-      <button class="tb-ic" data-act="set.guide" aria-label="사용 안내" title="사용 안내">
-        <svg class="icn" aria-hidden="true"><use href="#i-help"></use></svg></button>
+      <div class="tb-nav">
+        <button class="tb-ic" data-act="app.alerts" aria-label="알림" data-tip="알림 — 나를 부른 코멘트">
+          <svg class="icn" aria-hidden="true"><use href="#i-bell"></use></svg>
+          <span class="tb-dot" id="appAlertDot"></span></button>
+        <button class="tb-ic" data-act="set.guide" aria-label="사용 안내" data-tip="사용 안내 (README)">
+          <svg class="icn" aria-hidden="true"><use href="#i-help"></use></svg></button>
+      </div>
       <div class="tb-pop" id="appAlertPop" role="dialog" aria-label="알림">
         <div class="tb-pop-h">
           <b>알림</b><span class="tb-pop-n" id="appAlertN" hidden>0</span>
@@ -1586,10 +1642,10 @@ html.dark #toast{background:#2B313A;}
               </div>
               <div class="wido" id="widFilterSlot"></div>
               <div class="cal-nav wido">
-                <button class="cal-nb" data-act="wid.side" data-tab="alert" aria-label="알림" title="알림"><svg class="icn" aria-hidden="true"><use href="#i-bell"></use></svg><span class="wid-dot" id="widAlertDot"></span></button>
-                <button class="cal-nb" data-act="wid.side" data-tab="mine" aria-label="내 업무" title="내 업무"><svg class="icn" aria-hidden="true"><use href="#i-tasks"></use></svg></button>
+                <button class="cal-nb" data-act="wid.side" data-tab="alert" aria-label="알림" data-tip="알림"><svg class="icn" aria-hidden="true"><use href="#i-bell"></use></svg><span class="wid-dot" id="widAlertDot"></span></button>
+                <button class="cal-nb" data-act="wid.side" data-tab="mine" aria-label="내 업무" data-tip="내 업무 — 이번 주 일정과 미완료"><svg class="icn" aria-hidden="true"><use href="#i-tasks"></use></svg></button>
                 <button class="cal-nb wid-acct" data-act="acct.open" aria-label="내 프로필" title="내 프로필"><span class="av sb-acct-av" id="widAcctAv"><svg class="icn" aria-hidden="true"><use href="#i-me"></use></svg></span></button>
-                <button class="cal-nb" data-act="wid.set" aria-label="위젯 설정" title="위젯 설정"><svg class="icn" aria-hidden="true"><use href="#i-settings"></use></svg></button>
+                <button class="cal-nb" data-act="wid.set" aria-label="위젯 설정" data-tip="위젯 설정"><svg class="icn" aria-hidden="true"><use href="#i-settings"></use></svg></button>
               </div>
             </div>
           </div>
@@ -1758,6 +1814,25 @@ html.dark #toast{background:#2B313A;}
               <button class="btn bg2 bsm" data-act="set.copyErr">복사</button>
             </div>
           </div>
+          <div class="card" id="offCard">
+            <div class="set-h">휴무일</div>
+            <div class="share-row">
+              <div class="share-info"><b>단체연차 · 창립기념일</b><span>공휴일과 같은 색으로 칠해집니다 · 달력에서 우클릭으로도 지정할 수 있습니다</span></div>
+            </div>
+            <div class="frow2" style="margin-top:9px">
+              <div class="frow"><label for="offFrom">시작일</label><input class="inp inp-sm" type="date" id="offFrom" max="9999-12-31"></div>
+              <div class="frow"><label for="offTo">종료일 (선택)</label><input class="inp inp-sm" type="date" id="offTo" max="9999-12-31"></div>
+            </div>
+            <div class="frow"><label for="offLabel">이름</label>
+              <div style="display:flex;gap:8px">
+                <input class="inp inp-sm" id="offLabel" maxlength="12" placeholder="단체연차" style="flex:1">
+                <button class="btn bp bsm" data-act="offday.add" style="flex:0 0 auto">추가</button>
+              </div>
+              <span class="frow-hint">종료일을 넣으면 그 사이 날짜에 한 번에 지정됩니다. <b>주말·공휴일은 건너뜁니다.</b></span>
+            </div>
+            <div class="share-sep"></div>
+            <div id="offList"></div>
+          </div>
           <div class="card">
             <div class="set-h">하자처리현황 연동</div>
             <div class="share-info" style="margin-bottom:9px"><b>하자처리현황 바로가기</b><span>사이드바에서 여는 주소입니다</span></div>
@@ -1782,6 +1857,7 @@ html.dark #toast{background:#2B313A;}
   <svg class="icn s" aria-hidden="true"><use href="#i-search"></use></svg>
   <svg class="icn x" aria-hidden="true"><use href="#i-close"></use></svg>
 </button>
+<div id="htip" role="tooltip" aria-hidden="true"></div>
 <div class="nq-panel" id="nqPanel" role="dialog" aria-label="찾기" aria-hidden="true">
   <div class="nq-hd">
     <div><div class="nq-tt">무엇이든 찾기</div><div class="nq-sb">업무 · 일정 · 코멘트에서</div></div>
@@ -1794,5 +1870,5 @@ html.dark #toast{background:#2B313A;}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=160"></script>
+<script src="./app.js?v=163"></script>
 </body></html>
