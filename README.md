@@ -202,6 +202,10 @@ widget/                        바탕화면 위젯 (Electron)
 
 ### 배포 절차
 
+0. **배포 전 검증**: `node scripts/test/static-audit.mjs` — 의존성 없이 바로 돈다.
+   죽은 함수 · 짝 잃은 `data-act` · 죽은 CSS · 규칙-저장 필드 불일치 · 외부 CDN 재유입 ·
+   버전 쿼리 태그 훼손 · 단일 빌드 동작을 검사한다(FAIL 있으면 종료 코드 1).
+   브라우저 스모크는 `scripts/test/smoke.mjs`(puppeteer 필요 — 회사망은 npm 이 막히므로 집 PC에서).
 1. 새 저장소에 폴더 전체를 push → Settings > Pages → 배포.
    (단일 파일로 올리려면 `node build-single.mjs` 후 `dist` 내용만 올린다.)
 2. Firebase 콘솔 > Realtime Database > 규칙에 `database.rules.json` **전체를 붙여넣기**.
@@ -220,6 +224,9 @@ index.html과 app.js를 한 파일로 합친다. 인라인 스크립트를 쓰�
 스크립트 본문의 SHA-256 해시를 계산해 `script-src`에 넣고, 산출물에서 다시 검증한다.
 
 #### 배포용 exe 만들기 — 방법 1: 깃허브가 대신 만든다 (권장)
+
+> **저용량 파일럿(Lite)**: `widget-lite/`(Tauri·WebView2, exe 수 MB)가 기존 위젯의 대체 후보로 병행 중이다.
+> 빌드·주의사항·검증 체크리스트는 `widget-lite/README.md` 참조. 파일럿 기간에는 기존 exe 를 지우지 말 것.
 
 **회사 PC 에 Node 를 깔 필요도, `npm install` 이 될 필요도 없다.** 브라우저만 있으면 된다.
 (사내망이 개발자 사이트로 가는 통신을 검사해 `npm install` 이 `UNABLE_TO_GET_ISSUER_CERT_LOCALLY` 로 막히는 경우가 있다.)

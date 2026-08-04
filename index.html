@@ -2,16 +2,16 @@
 <html lang="ko"><head>
 <meta charset="UTF-8">
 <!-- CSP: 개발은 외부 app.js('self'), 단일 파일 배포는 build-single.mjs가 인라인 스크립트 해시를 넣는다 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://www.gstatic.com https://www.google.com; font-src 'self' data:; object-src 'none'; base-uri 'self'; script-src 'self' https://cdn.jsdelivr.net https://www.gstatic.com https://www.google.com https://www.recaptcha.net https://recaptcha.google.com https://apis.google.com https://*.firebasedatabase.app; frame-src https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; connect-src 'self' https://*.googleapis.com https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.firebaseio.com wss://*.firebaseio.com https://www.gstatic.com https://cdn.jsdelivr.net https://www.google.com https://www.recaptcha.net https://recaptcha.google.com">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://www.gstatic.com https://www.google.com; font-src 'self' data:; object-src 'none'; base-uri 'self'; script-src 'self' https://www.gstatic.com https://www.google.com https://www.recaptcha.net https://recaptcha.google.com https://apis.google.com https://*.firebasedatabase.app; frame-src https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; connect-src 'self' https://*.googleapis.com https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.firebaseio.com wss://*.firebaseio.com https://www.gstatic.com https://www.google.com https://www.recaptcha.net https://recaptcha.google.com">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>H · 주요업무현황</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0' y1='0' x2='0.8' y2='1'><stop offset='0' stop-color='%236FB0FF'/><stop offset='1' stop-color='%2316357C'/></linearGradient></defs><rect width='64' height='64' rx='13' fill='url(%23g)'/><g transform='translate(11,16) scale(0.4828)' fill='white'><path d='M50.2456 0L44.4349 9.8333L11.2683 65.9786H11.2736H75.6123H86.8843L50.2456 0Z'/><path d='M38.9747 0L0 65.9786H7.58667L42.6533 6.62664L38.9747 0Z'/></g></svg>">
 <script src="./vendor/fullcalendar.min.js"></script>
-<!-- Firebase SDK — 하자처리 현황과 동일: jsdelivr(npm 미러) + SRI 고정 -->
-<script src="https://cdn.jsdelivr.net/npm/firebase@10.12.5/firebase-app-compat.js" integrity="sha384-mLD+wdwynYnAhgHAkdPP5hroWJXJTNy5C2OhPKM55zuiV2vjzFD1LtBohaHq2Ex8" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/firebase@10.12.5/firebase-auth-compat.js" integrity="sha384-NiuRnBs5Z0OgJ12kYJLSeWxANeJN369zH3+Zn0TGVPaCH/TKmbPFqfOmmLtrj+wg" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/firebase@10.12.5/firebase-database-compat.js" integrity="sha384-fXPb0uemoXlFCqQMtM0MOAv7FM0LsMegbR6x22q7lfnohaCNmTQzgA8BTrR8WqGx" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/firebase@10.12.5/firebase-app-check-compat.js" integrity="sha384-Ybv3lGuy/hHZj1VLzE7e+sawyrFSbMuEQaKRSfC9W4Q8MK+k/zQKNrxNVagHhXAj" crossorigin="anonymous"></script>
+<!-- Firebase SDK — vendor/ 자체 호스팅(181차). 사내망에서 CDN 이 막혀도 앱이 뜨도록 marked/purify 와 같은 방식 -->
+<script src="./vendor/firebase-app-compat.js"></script>
+<script src="./vendor/firebase-auth-compat.js"></script>
+<script src="./vendor/firebase-database-compat.js"></script>
+<script src="./vendor/firebase-app-check-compat.js"></script>
 <style>
 @font-face{font-family:'Pretendard Variable';font-weight:45 920;font-style:normal;font-display:swap;src:url('./vendor/PretendardVariable.woff2') format('woff2-variations');}
 /* ══════════ 디자인 토큰 — 하자처리 현황과 동일 체계 ══════════ */
@@ -572,13 +572,6 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 .dp-x{display:none;margin-left:2px;width:26px;height:26px;border-radius:8px;align-items:center;justify-content:center;color:#fff;background:rgba(255,255,255,.18);}
 .dp-x .icn{width:13px;height:13px;}
 
-/* 담당자 색 점 · 기한 칩 · 반복 표시 */
-.dot-c{width:9px;height:9px;border-radius:50%;flex-shrink:0;display:inline-block;}
-.due-chip{flex-shrink:0;background:var(--fill);color:var(--lbl2);white-space:nowrap;cursor:pointer;}
-.due-chip.soon{background:var(--tint-am);color:var(--am);}
-.due-chip.over{background:var(--tint-rd);color:var(--rd);}
-.due-chip.none{opacity:0;transition:opacity .13s;}
-.tk-item:hover .due-chip.none{opacity:1;}
 .tk-ico:hover{background:var(--fill2);color:var(--bt1);}
 .tk-ico.on{opacity:1;color:var(--bt1);}
 .tk-ico .icn{width:12px;height:12px;}
@@ -694,10 +687,6 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 /* 담당자 — 회색 바탕 + 색 점 */
 /* 업무 구분 — 상태와 헷갈리지 않게 테두리만 */
 /* 현장 — 흰 바탕 + 파란 테두리 */
-.due-chip.soon{background:var(--tint-am);color:var(--am);}
-.due-chip.over{background:var(--tint-rd);color:var(--rd);}
-.due-chip.none{opacity:0;transition:opacity .13s;}
-.tk-item:hover .due-chip.none{opacity:1;}
 /* 우측 조작 묶음 — 첫 줄 높이에 맞춰 붙는다 */
 .tk-acts{flex-shrink:0;display:flex;align-items:center;gap:2px;}
 .tk-item.dragging{opacity:.4;}
@@ -721,10 +710,6 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 .tk-link:hover{border-color:var(--b300);background:var(--b50);}
 .tk-link span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
 .tk-link .icn{width:12px;height:12px;flex-shrink:0;}
-/* 코멘트 입력 — 평소엔 접어 두고 누르면 펼친다 */
-.th-open{display:flex;align-items:center;gap:8px;width:100%;padding:8px 11px;border-radius:var(--rmd);
-  border:1px dashed var(--sepo);background:var(--bg2);color:var(--lbl3);font-size:12.5px;cursor:pointer;text-align:left;}
-.th-open:hover{border-color:var(--b300);color:var(--bt1);background:var(--b50);}
 .th-f{display:flex;gap:8px;justify-content:flex-end;margin-top:7px;}
 /* 펼친 상세 */
 .tk-detail{padding:0 13px 13px 46px;display:flex;flex-direction:column;gap:12px;}
@@ -842,14 +827,12 @@ html.dark .col-pop{background:#242426;}
 .site-pick:hover{background:var(--fill);color:var(--bt1);border-color:var(--b300);}
 .site-pick .icn{width:12px;height:12px;}
 .site-on{display:inline-flex;align-items:center;height:24px;padding:0 8px;border-radius:5px;background:var(--fill);border:1px solid var(--sep);font-size:11.5px;font-weight:600;color:var(--lbl2);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;}   /* 라운드는 업무 막대와 같은 5px */
-.site-more{font-size:11.5px;color:var(--lbl3);font-weight:600;display:inline-flex;align-items:center;height:26px;}
 .site-none{font-size:11.5px;color:var(--lbl3);display:inline-flex;align-items:center;height:26px;}
 .spk{display:flex;flex-direction:column;gap:4px;max-height:48dvh;overflow-y:auto;}
 .spk-g{font-size:11.5px;font-weight:700;color:var(--lbl3);letter-spacing:.06em;text-transform:uppercase;padding:8px 2px 3px;}
 .spk-i{display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:var(--rmd);cursor:pointer;font-size:13px;color:var(--lbl);}
 .spk-i:hover{background:var(--fill);}
 .spk-i input{width:16px;height:16px;accent-color:var(--b600);}
-.gd{font-size:13px;line-height:1.75;color:var(--lbl);max-height:62dvh;overflow-y:auto;}
 /* ── 우클릭 메뉴 — 필터·설정 팝업과 같은 톤 ── */
 .ctxmenu{position:fixed;z-index:3000;min-width:172px;max-width:280px;background:var(--bg2);
   border:1px solid var(--sep);border-radius:12px;box-shadow:0 12px 34px rgba(16,24,40,.18);
@@ -1031,7 +1014,6 @@ select.mg-inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-
 .acct-state.err{color:var(--rd);}
 .acct-state.ok{color:var(--gn);}
 .rk-fix{font-size:12px;font-weight:600;color:var(--lbl2);display:inline-flex;align-items:center;height:26px;}
-.rk-all{font-size:11.5px;color:var(--lbl3);display:inline-flex;align-items:center;height:26px;}
 /* 직급 배지 — 조직상 자리(권한 배지와 구분되게 회색 계열) */
 .rk{display:inline-block;margin-left:6px;font-size:11.5px;font-weight:700;color:var(--lbl2);
   background:var(--fill);border-radius:var(--rp);padding:1px 6px;vertical-align:1px;letter-spacing:0;}
@@ -1180,7 +1162,6 @@ body.wid.glass #fcal .dhol.dtoday{color:#BFD4FF;}   /* '오늘'은 공휴일 빨
 /* 오늘 목록 — 같은 틴트의 띠 */
 body.wid.glass .plan{background:rgba(13,17,26,.6);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);}
 body.wid.glass .plan .plan-t{color:rgba(255,255,255,.94);}
-body.wid.glass .plan .pm-chip{background:rgba(255,255,255,.14);color:rgba(255,255,255,.85);border-color:transparent;}
 body.wid.glass .dp-empty{color:rgba(255,255,255,.6);}
 
 /* ── 위젯 공통(유리 여부 무관) — 헤더 한 줄 유지 · 설정 · 다열 목록 ── */
@@ -1303,12 +1284,6 @@ body.wid #wgSet.on{display:block;}
 #wgSet .wgs-r>input[type=range]{flex:1;min-width:0;}
 #wgSet .wgs-v{font-weight:700;color:rgba(255,255,255,.55);margin-left:4px;}
 #wgSet input[type=range]{width:118px;accent-color:var(--b600);}
-#wgSet .wgs-seg{padding:2px;background:rgba(255,255,255,.1);}
-#wgSet .wgs-seg button{font-size:11px;padding:3px 8px;color:rgba(255,255,255,.75);}
-#wgSet .wgs-seg .act{background:var(--b600);color:#fff;}
-#wgSet .wgs-btn{padding:5px 12px;border-radius:8px;background:rgba(255,255,255,.12);color:rgba(255,255,255,.9);
-  font-size:11.5px;font-weight:700;transition:background var(--tr);}
-#wgSet .wgs-btn:hover{background:rgba(255,255,255,.2);color:#fff;}
 /* 아래쪽 전체폭 버튼 세 개 — 첫 줄 위에만 구분선을 두고 셋의 높이를 같게 */
 #wgSet .wgs-full{display:flex;align-items:center;justify-content:center;width:100%;min-height:32px;
   margin-top:6px;border-radius:8px;font-size:12px;font-weight:700;color:rgba(255,255,255,.85);
@@ -1843,5 +1818,5 @@ html.dark #toast{background:#2B313A;}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=165"></script>
+<script src="./app.js?v=166"></script>
 </body></html>

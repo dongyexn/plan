@@ -1,0 +1,7 @@
+{
+  "identifier": "remote-bridge",
+  "description": "배포된 웹앱(원격 페이지)에 이벤트 브리지만 허용 — executeJavaScript 대체 창구",
+  "windows": ["main"],
+  "remote": { "urls": ["https://dongyexn.github.io", "https://dongyexn.github.io/*"] },
+  "permissions": ["core:event:default"]
+}
