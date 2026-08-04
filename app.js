@@ -4164,7 +4164,7 @@ function widApply(){
   if(!dyn){dyn=document.createElement('style');dyn.id='wgDyn';document.head.appendChild(dyn);}
   const f=n=>Math.min(1,Math.max(0,n)).toFixed(3);
   const B=light?'231,235,242':'24,28,38';        /* 칸 */
-  const W=light?'238,224,226':'62,48,54';        /* 주말 — 붉은 끼를 살짝 준다 */
+  const W=light?'228,222,229':'57,52,61';        /* 주말 — 붉은 끼를 아주 살짝만 */
   const H=light?'205,213,226':'13,16,24';        /* 요일 머리 */
   const C=light?'243,246,251':'13,17,26';        /* 카드 */
   const N=light?'221,227,238':'16,20,30';        /* 버튼 배경 */
