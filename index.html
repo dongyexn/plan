@@ -1148,9 +1148,9 @@ body.wid #wgSet.on{display:block;}
 #wgSet .wgs-h{display:flex;align-items:center;justify-content:space-between;font-size:12.5px;font-weight:800;margin-bottom:10px;color:#fff;}
 #wgSet .pop-x{color:rgba(255,255,255,.7);}
 #wgSet .wgs-r{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:32px;font-size:12px;}
-#wgSet .wgs-r>span{white-space:nowrap;flex:0 0 112px;min-width:0;overflow:hidden;text-overflow:ellipsis;}   /* 라벨 폭을 고정해야 슬라이더 시작점이 나란해진다 */
+#wgSet .wgs-r>span{white-space:nowrap;flex:0 0 112px;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:6px;}   /* 라벨 폭 고정 — 값(%)은 오른쪽 끝에 붙어 슬라이더와 맞닿는다 */
 /* 항목이 많으면 다 펼치지 않고 ◀ 이름 ▶ 로 넘긴다 — 좁은 팝업에서 자리를 덜 먹는다 */
-#wgSet .wgs-cyc{display:flex;align-items:center;gap:2px;background:rgba(255,255,255,.1);border-radius:8px;padding:2px;}
+#wgSet .wgs-cyc{display:flex;align-items:center;gap:2px;border-radius:8px;padding:2px;}   /* 배경 없이 — 값과 화살표만 */
 #wgSet .wgs-cyc b{flex:1;min-width:0;width:74px;text-align:center;font-size:11.5px;font-weight:700;color:#fff;white-space:nowrap;}
 #wgSet .wgs-cb{width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.75);}
 #wgSet .wgs-cb:hover{background:rgba(255,255,255,.16);color:#fff;}
@@ -1167,6 +1167,7 @@ body.wid #wgSet.on{display:block;}
 #wgSet .wgs-full{display:block;width:100%;margin-top:10px;padding-top:11px;border-top:1px solid rgba(255,255,255,.16);
   font-size:12px;font-weight:700;color:rgba(255,255,255,.85);text-align:center;transition:color var(--tr);}
 #wgSet .wgs-full:hover{color:#fff;}
+#wgSet .wgs-full2{margin-top:8px;padding-top:9px;}
 
 /* 계정 모달 — 참조 앱과 동일 */
 .il{font-size:12px;font-weight:600;color:var(--lbl2);margin-bottom:6px;display:block;}
@@ -1488,10 +1489,13 @@ html.dark #toast{background:#2B313A;}
               <button class="wgs-cb" data-fontd="1" aria-label="다음 글꼴"><svg class="icn"><use href="#i-chevr"></use></svg></button>
             </div></div>
           <div class="wgs-r"><span>모드</span>
-            <div class="seg wgs-seg" id="wgTone"><button data-tone="dark" class="act">다크</button><button data-tone="light">라이트</button></div></div>
-          <div class="wgs-r"><span>위치·크기 조정</span>
-            <button class="wgs-btn" data-act="wid.moveOn">조정하기</button></div>
-          <button class="wgs-full" data-act="wid.open">브라우저 앱 열기</button>
+            <div class="wgs-cyc" id="wgTone">
+              <button class="wgs-cb" data-toned="-1" aria-label="이전 모드"><svg class="icn"><use href="#i-chevl"></use></svg></button>
+              <b id="wgToneV">다크</b>
+              <button class="wgs-cb" data-toned="1" aria-label="다음 모드"><svg class="icn"><use href="#i-chevr"></use></svg></button>
+            </div></div>
+          <button class="wgs-full" data-act="wid.moveOn">위치·크기 조정</button>
+          <button class="wgs-full wgs-full2" data-act="wid.open">브라우저 앱 열기</button>
         </div>
         <div class="dp-col">
           <div class="card dp-filtercard">
@@ -1674,5 +1678,5 @@ html.dark #toast{background:#2B313A;}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=136"></script>
+<script src="./app.js?v=138"></script>
 </body></html>
