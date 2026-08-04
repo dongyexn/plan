@@ -492,11 +492,6 @@ function canSetRank(){
   const me=S.user&&roster().find(p=>p.id===S.user.uid);
   return !!me&&(rankOf(me.rank)==='head'||rankOf(me.rank)==='lead');
 }
-function autoSitesHTML(p){
-  const r=rankOf(p.rank),n=coverSites(p).length;
-  const lbl=(r==='lead')?'권역 전체':'팀 전체';   /* 팀장·안전·원가는 팀 전체를 본다 */
-  return '<span class="rk-all">'+lbl+(n?' · '+n+'개 현장':'')+'</span>';
-}
 /* 공구장·팀장이 실제로 맡는 현장 — 화면 표시용 */
 function coverSites(p){
   const r=rankOf(p.rank);
@@ -1007,7 +1002,7 @@ function myOrgHTML(){
         ${uses.region
           ?'<select class="inp inp-sm" id="acctRegion" data-act="pf.org"><option value="">미지정</option>'
             +regions.map(r=>'<option value="'+esc(r.id)+'"'+(r.id===me.region?' selected':'')+'>'+esc(r.name)+'</option>').join('')+'</select>'
-          :'<div class="myorg-fix">팀 전체<span>팀장</span></div>'}
+          :'<div class="myorg-fix">해당 없음<span>'+esc(rankLabel(rk))+'</span></div>'}
       </div>
     </div>
   </div>`;
@@ -1327,12 +1322,23 @@ function widSideOpen(tab){
 function rAppAlerts(){
   const box=$('#appAlertBody');if(!box)return;
   const ms=Object.entries(S.mentions||{}).sort((a,b)=>(b[1].at||0)-(a[1].at||0));
+  const n=$('#appAlertN');
+  if(n){n.textContent=String(ms.length);n.hidden=!ms.length;}
+  const clr=$('#appAlertPop .btn');if(clr)clr.style.display=ms.length?'':'none';
   box.innerHTML=ms.length
-    ?ms.map(([id,m])=>
-      '<button class="ws-row" data-act="mention.go" data-id="'+esc(id)+'" data-sid="'+esc(m.sid||'')+'" data-iid="'+esc(m.iid||'')+'">'
-      +'<div class="ws-h"><b>'+esc(m.by||'')+'</b><span>'+esc(relTime(m.at))+'</span></div>'
-      +'<div class="ws-t">'+mentionHTML(m.text)+'</div></button>').join('')
-    :'<div class="ws-none">받은 알림이 없습니다.</div>';
+    ?ms.map(([id,m])=>{
+      /* 어떤 업무에 달린 부름인지 함께 보여 준다 — 이름과 문구만으로는 어디를 봐야 할지 모른다 */
+      const it=(S.tasks[m.sid||'']||{})[m.iid||''];
+      const who=String(m.by||'').trim();
+      return '<button class="al-row" data-act="mention.go" data-id="'+esc(id)+'" data-sid="'+esc(m.sid||'')+'" data-iid="'+esc(m.iid||'')+'">'
+        +'<span class="al-av">'+esc(who?who.slice(-2):'—')+'</span>'
+        +'<span class="al-b">'
+          +'<span class="al-h"><b>'+esc(who||'알 수 없음')+'</b><span>'+esc(relTime(m.at))+'</span></span>'
+          +'<span class="al-t">'+mentionHTML(m.text)+'</span>'
+          +(it?'<span class="al-w">'+esc(it.text||'제목 없음')+'</span>':'')
+        +'</span></button>';
+    }).join('')
+    :'<div class="al-none"><svg class="icn"><use href="#i-bell"></use></svg><span>받은 알림이 없습니다</span></div>';
 }
 function rMention(){
   const n=mentionCount();
@@ -2420,7 +2426,9 @@ function taskFormHTML(sid,iid,cur){
       <input class="pe-ttl" id="tnTitle" maxlength="120" placeholder="무엇을 하나요?" value="${esc(d.text||'')}">
       <div class="pe-side">
         <span id="tnSt" data-st="${st}" hidden></span>
-        ${iid?'<button class="pe-ic pe-del" data-act="tk.del" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" aria-label="삭제" title="삭제"><svg class="icn"><use href="#i-trash"></use></svg></button>':''}
+        ${iid
+          ?'<button class="pe-ic pe-del" data-act="tk.del" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" aria-label="삭제" title="삭제"><svg class="icn"><use href="#i-trash"></use></svg></button>'
+          :'<button class="pe-ic pe-del" data-act="tk.formCancel" aria-label="취소" title="저장하지 않고 닫기"><svg class="icn"><use href="#i-close"></use></svg></button>'}
         <button class="pe-ic pe-rem${d.remind?' on':''}" id="tnRemind" data-act="tk.remindDraft" data-on="${d.remind?'1':''}" aria-label="리마인드" title="리마인드"><svg class="icn"><use href="#i-bell"></use></svg></button>
         <button class="pe-ic pe-ok" data-act="tk.formSave" data-sid="${esc(sid)}" data-iid="${esc(iid||'')}" aria-label="저장하고 닫기" title="저장하고 닫기"><svg class="icn"><use href="#i-check"></use></svg></button>
       </div>
@@ -2685,7 +2693,7 @@ function rTasks(){
       <div class="card tkmain">
         <div class="tkm-h"><div class="bar"></div><b>업무 목록</b><span class="tkm-sub">${esc(subject)}</span>
           <span class="tkm-c">${shownCnt}건</span>
-          <button class="btn bo bxs tkm-add" data-act="tk.newOpen" data-sid="${esc(sid||(tkSel().team&&tkSel().team.id)||'')}"><svg class="icn"><use href="#i-plus"></use></svg> 업무 추가</button>
+          <button class="btn bo bxs tkm-add" data-act="tk.newOpen"><svg class="icn"><use href="#i-plus"></use></svg> 업무 추가</button>
         </div>
         <div class="tk-list">
           ${sid&&S.tkNew===sid?taskFormHTML(sid,null,null):''}
@@ -2967,8 +2975,8 @@ function rOrg(){
       <td>${rankCtl(p)}</td>
       <td>${u.region
         ?'<select class="mg-inp" data-act="acct.set" data-f="region" data-id="'+esc(p.id)+'" aria-label="권역">'+regOpt(p.region)+'</select>'
-        :'<span class="rk-all">팀 전체</span>'}</td>
-      <td>${u.sites?sitesOf(p):autoSitesHTML(p)}</td>
+        :''}</td>
+      <td>${u.sites?sitesOf(p):''}</td>
       <td class="utbl-r">${roleCtl(p)}</td>
     </tr>`;
   };
@@ -3485,7 +3493,20 @@ const ACT={
   'tkf.qclear':()=>{S.tkF={...S.tkF,q:''};filtSave();rTasks();},
   'tkf.more':()=>{const c=$('#tkFcard');if(c)c.classList.toggle('adv-on');},
   'tkf.reset':()=>{S.tkF={q:'',st:[],kind:[],reg:[],site:[]};filtSave();rTasks();},
-  'tk.newOpen':el=>{S.tkEdit=null;S.tkNew=el.dataset.sid;rTasks();},
+  'tk.newOpen':el=>{
+    /* ⚠ 새 업무는 '지금 보고 있는 자리'에 만든다.
+       담당자를 고른 상태면 그 사람 밑에, 팀 전체·권역처럼 담을 자리가 아니면 팀 공통으로 간다
+       (예전에는 버튼에 박아 둔 값을 써서 엉뚱한 곳에 생겼다) */
+    const sel=tkSel(),m=S.tk.m;
+    const mem=sel.mems.find(p=>p.id===m);
+    const sid=el.dataset.sid||(mem?mem.id:((sel.team&&sel.team.id)||''));
+    if(!sid)return toast('먼저 팀을 만들어 주세요');
+    /* ⚠ 폼은 그 자리가 화면에 보일 때만 그려진다 — 팀 전체·권역을 보고 있었다면 그 자리로 옮겨 준다.
+       그러지 않으면 '눌렀는데 아무 일도 안 일어나는' 것처럼 보인다 */
+    if(!mem&&m!=='team'){S.tk.m='team';toast('팀 공통 업무로 추가합니다 · 담당자는 폼에서 고를 수 있습니다');}
+    S.tkEdit=null;S.tkNew=sid;rTasks();
+    setTimeout(()=>{const t=$('#tnTitle');if(t)t.focus();},S.live?260:20);
+  },
   'tk.formCancel':()=>{S.tkNew=null;S.tkEdit=null;rTasks();},
   'tk.kind':()=>tkKindRefresh(),
   /* 폼 안에서는 draft 만 바꾼다 — 다시 그리면 입력 중인 값이 날아간다 */
