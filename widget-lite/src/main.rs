@@ -121,6 +121,7 @@ mod win32 {
         pub fn SetWindowPos(h: isize, after: isize, x: i32, y: i32, cx: i32, cy: i32, flags: u32) -> i32;
         pub fn GetWindowLongPtrW(h: isize, idx: i32) -> isize;
         pub fn SetWindowLongPtrW(h: isize, idx: i32, v: isize) -> isize;
+        pub fn GetForegroundWindow() -> isize;
     }
     #[link(name = "shell32")]
     extern "system" { pub fn SetCurrentProcessExplicitAppUserModelID(id: *const u16) -> i32; }
@@ -132,10 +133,24 @@ mod win32 {
 fn hwnd_of(w: &WebviewWindow) -> Option<isize> { w.hwnd().ok().map(|h| h.0 as isize) }
 fn send_to_bottom(w: &WebviewWindow) {
     #[cfg(windows)] if let Some(h) = hwnd_of(w) { unsafe {
+        /* ⚠ 확장 스타일은 **바뀔 때만** 쓴다 — 1.5초마다 다시 쓰면 글자를 치는 중에 방해가 된다(187차) */
         let ex = win32::GetWindowLongPtrW(h, win32::GWL_EXSTYLE);
-        win32::SetWindowLongPtrW(h, win32::GWL_EXSTYLE, ex | win32::WS_EX_TOOLWINDOW);
+        if ex & win32::WS_EX_TOOLWINDOW == 0 {
+            win32::SetWindowLongPtrW(h, win32::GWL_EXSTYLE, ex | win32::WS_EX_TOOLWINDOW);
+        }
         win32::SetWindowPos(h, win32::HWND_BOTTOM, 0, 0, 0, 0, win32::SWP_NOSIZE | win32::SWP_NOMOVE | win32::SWP_NOACTIVATE);
     } }
+}
+/* 지금 이 창(또는 그 안의 웹뷰)에서 글자를 치고 있는가.
+   ⚠⚠ 187차 원인: `w.is_focused()` 는 **웹뷰에 글자를 치는 동안 false 를 준다.**
+   WebView2 는 창 안에 자식 창을 만들고 키보드 초점을 그 자식이 가져가는데,
+   tao 의 판정(is_active && is_focused)은 부모 창의 WM_SETFOCUS/WM_KILLFOCUS 만 보기 때문이다
+   (Electron 은 이 값이 참이라 같은 코드가 멀쩡했다).
+   → 자식 창은 전면 창이 될 수 없으므로 **전면 창이 우리 창인지**로 판정한다. */
+fn typing_here(w: &WebviewWindow) -> bool {
+    if w.is_focused().unwrap_or(false) { return true; }
+    #[cfg(windows)] if let Some(h) = hwnd_of(w) { unsafe { return win32::GetForegroundWindow() == h; } }
+    #[allow(unreachable_code)] false
 }
 /* Win+D·최소화로 감춰졌을 때 조용히 되살린다 — show() 는 포커스를 뺏으므로 NOACTIVATE 로 */
 fn show_inactive(w: &WebviewWindow) {
@@ -224,7 +239,8 @@ fn spawn_bottom_keeper(app: AppHandle) {
         if STATE.lock().unwrap().mode == "top" { continue; }
         let Some(w) = win_of(&app) else { continue };
         if !w.is_visible().unwrap_or(true) { show_inactive(&w); }
-        if w.is_focused().unwrap_or(false) { continue; }
+        /* ⚠ 쓰는 중에 창을 다시 맨 아래로 내리면 한글 조합이 끊긴다 — 손대지 않는다(187차) */
+        if typing_here(&w) { continue; }
         send_to_bottom(&w);
     });
 }
