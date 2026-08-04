@@ -6,7 +6,7 @@
    실행    : npm install → npm start
    exe 생성: npm run dist  → dist/업무일정위젯.exe (설치 불필요 · 포터블) */
 'use strict';
-const { app, BrowserWindow, Tray, Menu, screen, shell, globalShortcut, dialog, session, clipboard } = require('electron');
+const { app, BrowserWindow, Tray, Menu, screen, shell, globalShortcut, dialog, session, clipboard, Notification } = require('electron');
 
 /* 실패한 요청을 모아 둔다 — 사내망에서만 안 되는 이유를 추측 대신 이름으로 확인하기 위함.
    같은 exe 가 집에서는 되고 회사에서만 멈춘다면 원인은 PC 가 아니라 그 망에 있다. */
@@ -346,6 +346,50 @@ function handOverToHome() {
   } catch { return false; }
 }
 
+/* ── 윈도우 알림 ───────────────────────────────────────────────
+   ⚠ 트레이에 상주하는 위젯만이 이걸 할 수 있다 — 브라우저 탭은 닫히면 끝이다.
+   ①부팅 직후 오늘 업무를 **하루 한 번** ②새로 받은 부름.
+   앱 페이지가 '무엇을 알릴지'를 정하고(로그인·자료 수신·알림 끄기까지 거기서 판단), 여기서는 띄우기만 한다. */
+function ask(js) {
+  if (!win || win.isDestroyed()) return Promise.resolve(null);
+  return win.webContents.executeJavaScript(js).catch(() => null);
+}
+function toast(title, body, payload) {
+  try {
+    if (!Notification.isSupported()) return;
+    const n = new Notification({ title, body, silent: false });
+    n.on('click', () => {
+      showWindow();
+      if (payload) ask('window.notiGo && window.notiGo(' + JSON.stringify(payload) + ')');
+    });
+    n.show();
+  } catch (e) { log('알림 실패 ' + (e && e.message)); }
+}
+/* ① 오늘 업무 — 하루 한 번만. 재부팅을 여러 번 해도 다시 뜨지 않는다 */
+async function briefOnce() {
+  const d = await ask('window.bootBrief ? window.bootBrief() : null');
+  if (!d || !d.day) return;
+  if (state.briefDay === d.day) return;          /* 오늘 이미 알렸다 */
+  state.briefDay = d.day; saveState(state);
+  const body = d.lines.join('\n') + (d.more ? '\n외 ' + d.more + '건' : '');
+  toast(d.title, body, { date: d.day });
+  log('오늘 업무 알림 · ' + d.title);
+}
+/* ② 부름 — 이미 알린 것은 id 로 기억해 두 번 띄우지 않는다 */
+async function mentionCheck() {
+  const seen = Array.isArray(state.notedMentions) ? state.notedMentions : [];
+  const list = await ask('window.newMentions ? window.newMentions(' + JSON.stringify(seen) + ') : []');
+  if (!Array.isArray(list) || !list.length) return;
+  list.forEach(m => {
+    toast(m.by + '님이 불렀습니다',
+      (m.task ? m.task + '\n' : '') + (m.text || ''),
+      { id: m.id, sid: m.sid, iid: m.iid, date: m.date });
+  });
+  /* 최근 100개만 기억한다 — 오래된 것은 어차피 다시 오지 않는다 */
+  state.notedMentions = seen.concat(list.map(m => m.id)).slice(-100);
+  saveState(state);
+}
+
 /* ── 자동 백업 ───────────────────────────────────────────────
    ⚠ 브라우저는 아무 폴더에나 쓸 수 없어 백업을 사람이 눌러야 했다 — 위젯은 그 제약이 없으므로 **여기서 대신 쓴다.**
    앱 페이지의 `window.bkExport()` 로 내용을 받아 `문서\H 주요업무현황\backup\hplan_YYMMDD.json` 으로 남긴다. */
@@ -658,6 +702,7 @@ else {
   /* ⚠ 기본 User-Agent 에는 'Electron/…' 과 앱 이름이 들어 있다.
      로그인에 쓰이는 보안 확인(reCAPTCHA)이 이걸 보고 막아 '로그인 중…' 에서 멈추는 일이 있다
      (엣지에서는 되는데 위젯에서만 안 되던 원인). 창을 만들기 전에 브라우저와 같은 모양으로 바꾼다. */
+  app.setAppUserModelId('com.hdec.hservice.widget');   /* ⚠ 이게 없으면 윈도우 알림에 'electron.app…' 으로 뜬다 */
   app.userAgentFallback = app.userAgentFallback
     .replace(/ Electron\/[\d.]+/g, '')
     .replace(/ 업무일정위젯\/[\d.]+/g, '')
@@ -693,6 +738,10 @@ else {
     /* 백업 — 로그인과 자료 수신이 끝날 시간을 준 뒤 확인하고, 그다음은 6시간마다 */
     setTimeout(() => runBackup(false), 120000);
     setInterval(() => runBackup(false), 6 * 60 * 60 * 1000);
+    /* 알림 — 오늘 업무는 자료가 다 온 뒤 한 번(못 받았으면 잠시 뒤 다시), 부름은 30초마다 */
+    setTimeout(() => briefOnce(), 45000);
+    setTimeout(() => briefOnce(), 150000);
+    setInterval(() => mentionCheck(), 30000);
     /* 문제가 생겼을 때 원인을 볼 수 있게 — 브라우저와 같은 단축키 */
     globalShortcut.register('CommandOrControl+Shift+I', () => win && win.webContents.openDevTools({ mode: 'detach' }));
   });

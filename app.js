@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='1.0.9';   /* 위젯(widget/package.json)과 같은 값으로 맞춘다 */
+const APP_VER='1.1.0';   /* 위젯(widget/package.json)과 같은 값으로 맞춘다 */
 const GUIDE_HTML=`<div class="gd">
 <h4>내 업무</h4>
 <p>내가 담당인 일정(앞으로 7일)과 미완료 주요업무, 받은 멘션을 한 화면에 모읍니다. 항목을 누르면 해당 화면으로 바로 이동합니다.</p>
@@ -3267,6 +3267,60 @@ function bkData(){
     org:S.org,people:S.people,tasks:S.tasks,cfg:S.cfg
   },null,1);
 }
+/* ═══════════ 위젯 알림 창구 ═══════════
+   위젯(트레이 상주)만이 윈도우 알림을 띄울 수 있다 — 앱은 '무엇을 알릴지'만 넘긴다.
+   ⚠ 로그인 전·자료 수신 전에는 아무것도 내주지 않는다(빈 알림이 뜨면 신뢰를 잃는다) */
+function notiOn(){
+  try{const c=JSON.parse(localStorage.getItem(WID_KEY)||'{}');return c.noti!==false;}catch(e){return true;}
+}
+/* 부팅 직후 한 번 — 오늘 할 일(완료 제외) */
+window.bootBrief=function(){
+  if(!S.live||!notiOn())return null;
+  const me=myId();if(!me)return null;
+  const today=todayStr();
+  const out=[];
+  /* 오늘 날짜에 걸린 내 업무(완료 제외) — `mineTasks()` 와 같은 '내 것' 기준을 쓴다 */
+  mineTasks().forEach(({it})=>{
+    const span=it.end&&it.end>it.date;
+    const hit=span?(it.date<=today&&today<=it.end):(it.date===today);
+    if(!hit)return;
+    out.push({t:it.text||'제목 없음',time:it.time||'',kind:kindLabel(it.kind)});
+  });
+  if(!out.length)return null;
+  out.sort((a,b)=>{const x=a.time||'99:99',y=b.time||'99:99';return x<y?-1:x>y?1:0;});   /* 시각이 있는 것부터, 없는 것은 뒤로 */
+  return{
+    day:today,
+    title:'오늘 업무 '+out.length+'건',
+    lines:out.slice(0,3).map(x=>(x.time?fmtTime(x.time)+'  ':'')+x.t+(x.kind?'  ('+x.kind+')':'')),
+    more:Math.max(0,out.length-3)
+  };
+};
+/* 아직 알리지 않은 부름 — 위젯이 알린 것은 id 로 기억한다 */
+window.newMentions=function(seen){
+  if(!S.live||!notiOn())return[];
+  const done=new Set(Array.isArray(seen)?seen:[]);
+  return Object.entries(S.mentions||{})
+    .filter(([id])=>!done.has(id))
+    .sort((a,b)=>(a[1].at||0)-(b[1].at||0))
+    .slice(-3)
+    .map(([id,m])=>{
+      const it=(S.tasks[m.sid||'']||{})[m.iid||''];
+      return{id,by:String(m.by||'알 수 없음'),text:String(m.text||'').replace(/@\S+\s*/,'').slice(0,60),
+        task:it?(it.text||'제목 없음'):'',sid:m.sid||'',iid:m.iid||'',date:it?(it.date||''):''};
+    });
+};
+/* 알림을 눌렀을 때 — 그 날짜(또는 업무)로 이동한다 */
+window.notiGo=function(p){
+  try{
+    p=p||{};
+    if(p.id)store.putMention(myId(),p.id,null);
+    const d=p.date||todayStr();
+    if(CAL)CAL.gotoDate(toDate(d));
+    selDate(d,true);
+    if(p.iid)S.planOpen=p.iid;
+    S.widPop=true;rMonTitle();refetchCal();rDay();rWidget();
+  }catch(e){}
+};
 /* 위젯이 부르는 창구 — 관리자 계정이고 자료가 다 와 있을 때만 내준다 */
 window.bkExport=function(){
   if(!S.live||!isEditor())return null;
@@ -4019,19 +4073,13 @@ document.addEventListener('change',e=>{
 document.addEventListener('input',e=>{
   if(e.target.id==='wgA'){const c=widCfgLoad();c.a=100-Number(e.target.value);widCfgSave(c);widApply();return;}   /* 슬라이더는 '투명도' — 값이 클수록 투명하다 */
   if(e.target.id==='wgFz'){const c=widCfgLoad();c.fz=Number(e.target.value)/100;widCfgSave(c);widApply();return;}
+  if(e.target.id==='wgNoti'){const c=widCfgLoad();c.noti=e.target.checked;widCfgSave(c);toast(c.noti?'알림을 켰습니다':'알림을 껐습니다');return;}
 });
 document.addEventListener('change',e=>{
 });
 document.addEventListener('click',e=>{
   const tb=e.target.closest('#wgTone [data-toned]');
   if(tb){const c=widCfgLoad();c.tone=(c.tone==='light')?'dark':'light';widCfgSave(c);widApply();return;}
-  const wb=e.target.closest('#wgFw [data-fwd]');
-  if(wb){
-    const c=widCfgLoad(),vals=WID_FWS.map(w=>w[0]);
-    const cur=Math.max(0,vals.indexOf(Number(c.fw)||0));
-    c.fw=vals[Math.min(vals.length-1,Math.max(0,cur+Number(wb.dataset.fwd)))];
-    widCfgSave(c);widApply();return;
-  }
   const fb=e.target.closest('#wgFont [data-fontd]');
   if(fb){
     const c=widCfgLoad(),ids=WID_FONTS.map(f=>f[0]);
@@ -4151,8 +4199,6 @@ const GLASS=/[?&]glass=1\b/.test(location.search);   /* 위젯 유리(반투명)
 const WID_KEY='calapp.wid';
 /* 위젯 글꼴 — 윈도우에 늘 있는 것만. 굴림·돋움은 작은 크기 비트맵이 있어 더 또렷할 수 있다 */
 const WID_FONTS=[['app','기본'],['malgun','맑은 고딕'],['gulim','굴림'],['dotum','돋움']];
-/* 글자 굵기 — 기준 굵기에 더할 값. 유리 배경에서는 취향이 갈려 고르게 둔다 */
-const WID_FWS=[[-100,'가늘게'],[0,'보통'],[100,'굵게']];
 function widCfgLoad(){try{return JSON.parse(localStorage.getItem(WID_KEY))||{};}catch(e){return{};}}
 function widCfgSave(c){try{localStorage.setItem(WID_KEY,JSON.stringify(c));}catch(e){}}
 function widApply(){
@@ -4192,15 +4238,9 @@ function widApply(){
   const av=$('#wgAV');if(av)av.textContent=Math.round(100-a*100)+'%';
   const fr=$('#wgFz');if(fr)fr.value=Math.round(fz*100);
   const fl=$('#wgFzV');if(fl)fl.textContent=Math.round(fz*100)+'%';
+  const nt=$('#wgNoti');if(nt)nt.checked=c.noti!==false;
   const tv=$('#wgToneV');if(tv)tv.textContent=light?'라이트':'다크';
   const fv=$('#wgFontV');if(fv)fv.textContent=(WID_FONTS.find(f=>f[0]===font)||WID_FONTS[0])[1];
-  /* 굵기 — 기준값에 더해 쓴다(0 이 보통) */
-  const fw=WID_FWS.some(w=>w[0]===Number(c.fw))?Number(c.fw):0;
-  document.body.style.setProperty('--wfw',String(fw));
-  /* ⚠ 인라인 값은 선택자로 못 고른다(`--wfw: -100` 처럼 공백이 붙는다) — 클래스로도 표시해 둔다 */
-  document.body.classList.toggle('wfw-l',fw<0);
-  document.body.classList.toggle('wfw-b',fw>0);
-  const wv=$('#wgFwV');if(wv)wv.textContent=(WID_FWS.find(w=>w[0]===fw)||WID_FWS[1])[1];
 }
 /* 위치·크기 조정 모드 — 켜면 창 전체가 드래그 영역이 되고, 끄면 그 자리에 고정된다.
    Electron 쪽 전환은 해시로 신호를 보낸다(preload 없이 쓰던 방식 그대로) */
