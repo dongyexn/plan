@@ -214,6 +214,12 @@ const INIT_JS: &str = r#"
     var a = e.target.closest && e.target.closest('a[target="_blank"]');
     if (a && /^https?:/i.test(a.href)) { e.preventDefault(); ev.emit('hpw-open', a.href); }
   }, true);
+  /* ⚠ 앱은 '브라우저 앱 열기'·'위젯 내려받기'를 window.open 으로 연다 —
+     WebView2 에서는 아무 일도 일어나지 않으므로(팝업을 만들지 않는다) 가로채 기본 브라우저로 넘긴다 */
+  window.open = function(u){
+    try { if (u) ev.emit('hpw-open', new URL(u, location.href).href); } catch (e) {}
+    return null;
+  };
   ev.emit('hpw-ready', location.pathname);
 })();
 "#;
