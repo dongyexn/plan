@@ -3305,12 +3305,13 @@ function rBk(){
 /* ⚠ 달력 '칸'의 내용·클래스는 이벤트만 새로 받아서는 안 바뀐다 — 칸을 다시 그리게 한다 */
 function calRerender(){try{if(CAL){CAL.refetchEvents();CAL.render();}}catch(e){}}
 const mdLabel=ds=>{const t=toDate(ds);return (t.getMonth()+1)+'월 '+t.getDate()+'일';};
-let _ctxEl=null,_ctxEsc=null;
+let _ctxEl=null,_ctxEsc=null,_ctxDown=null;
 function closeCtx(){
   if(!_ctxEl)return;
   _ctxEl.remove();_ctxEl=null;
-  document.removeEventListener('click',closeCtx);
+  if(_ctxDown){document.removeEventListener('mousedown',_ctxDown,true);_ctxDown=null;}
   document.removeEventListener('scroll',closeCtx,true);
+  removeEventListener('blur',closeCtx);
   if(_ctxEsc){document.removeEventListener('keydown',_ctxEsc);_ctxEsc=null;}
 }
 function openCtx(x,y,items){
@@ -3334,7 +3335,12 @@ function openCtx(x,y,items){
   });
   el.addEventListener('contextmenu',e=>e.preventDefault());
   _ctxEl=el;
-  setTimeout(()=>{document.addEventListener('click',closeCtx);document.addEventListener('scroll',closeCtx,true);},0);
+  /* ⚠ 닫기는 click 이 아니라 **mousedown 캡처**로 듣는다 — FullCalendar 가 달력 칸의 click 을 삼켜
+     달력 위를 눌렀을 때 메뉴가 안 닫혔다(129~143차와 같은 함정).
+     ⚠ 위젯은 창이 곧 화면이라, 다른 창으로 옮겨 가면 페이지에 클릭이 오지 않는다 — blur 로도 닫는다 */
+  _ctxDown=e=>{if(!e.target.closest||!e.target.closest('.ctxmenu'))closeCtx();};
+  setTimeout(()=>{document.addEventListener('mousedown',_ctxDown,true);
+    document.addEventListener('scroll',closeCtx,true);addEventListener('blur',closeCtx);},0);
   _ctxEsc=e=>{if(e.key==='Escape')closeCtx();};
   document.addEventListener('keydown',_ctxEsc);
 }
