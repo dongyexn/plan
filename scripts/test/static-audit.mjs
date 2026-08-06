@@ -19,11 +19,11 @@ const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 const rd = f => fs.readFileSync(path.join(root, f), 'utf8');
 const js = rd('app.js');
 const html = rd('index.html');
-const wid = rd('widget/main.js');
+
 const rules = rd('database.rules.json');
 const css = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map(m => m[1]).join('\n');
 const htmlNoStyle = html.replace(/<style[^>]*>[\s\S]*?<\/style>/g, '');
-const hay = htmlNoStyle + js + wid;   /* 클래스·id 사용처를 찾는 건초 더미 */
+const hay = htmlNoStyle + js;   /* 클래스·id 사용처를 찾는 건초 더미 (위젯은 같은 웹앱을 띄우므로 별도 소스 없음) */
 
 let fail = 0, warn = 0;
 const F = m => { fail++; console.log('FAIL  ' + m); };
@@ -31,7 +31,7 @@ const W = m => { warn++; console.log('WARN  ' + m); };
 const OK = m => console.log('ok    ' + m);
 
 /* ── 1. 구문 ─────────────────────────────────────────── */
-for (const f of ['app.js', 'widget/main.js', 'widget/desktop-pin.js', 'build-single.mjs',
+for (const f of ['app.js', 'build-single.mjs',
                  'scripts/mail-common.mjs', 'scripts/remind.mjs', 'scripts/weekly.mjs']) {
   try { execFileSync(process.execPath, ['--check', path.join(root, f)], { stdio: 'pipe' }); }
   catch (e) { F(f + ' 구문 오류\n' + String(e.stderr).slice(0, 400)); }

@@ -905,6 +905,26 @@ async function fbDoResend(){
   try{await FB.auth.currentUser.sendEmailVerification();fbMsg('인증메일을 다시 보냈습니다. 받은 메일의 링크를 클릭하세요.',true);}
   catch(e){fbMsg(fbAuthErr(e));}
 }
+/* 비밀번호 찾기 — 본인이 자기 계정에 재설정 메일을 받는다(관리자·서버 불필요).
+   ⚠ 계정 존재 여부가 새지 않도록 성공·실패 안내를 같게 한다(user-not-found 도 같은 문구).
+   단, 형식·도메인·네트워크·과다요청 같은 '고칠 수 있는' 오류는 그대로 알려 준다. */
+async function fbDoReset(){
+  if(!FB.auth){fbMsg('네트워크에 연결할 수 없습니다.');return;}
+  const email=(fbCreds().email||'').trim().toLowerCase();
+  if(!email){fbMsg('이메일을 먼저 입력한 뒤 [비밀번호를 잊으셨나요?]를 눌러주세요');return;}
+  if(!fbDomainOk(email)){fbMsg('@hdec.co.kr 계정만 재설정할 수 있습니다');return;}
+  const same='가입된 계정이면 재설정 메일을 보냈습니다. 메일의 링크에서 새 비밀번호를 정하세요.';
+  fbMsg('재설정 메일을 보내는 중…',true);
+  try{await FB.auth.sendPasswordResetEmail(email);fbMsg(same,true);}
+  catch(e){
+    const c=e&&e.code;
+    if(c==='auth/user-not-found'){fbMsg(same,true);return;}   /* 존재 여부 은폐 */
+    if(c==='auth/invalid-email'){fbMsg('이메일 형식이 올바르지 않습니다');return;}
+    if(c==='auth/too-many-requests'){fbMsg('시도가 많습니다 · 잠시 후 다시 시도하세요');return;}
+    if(c==='auth/network-request-failed'){fbMsg('네트워크 오류 · 사내망에서 Firebase 접속이 허용되는지 확인하세요');return;}
+    fbMsg(same,true);   /* 그 밖의 오류도 은폐 쪽으로 — 정보 노출보다 안전 */
+  }
+}
 /* 역할 해석 — users/{uid}. 최초 로그인 시 본인을 viewer로 자기 등록(하자처리 현황과 동일 규칙) */
 async function resolveRole(user){
   const uid=user.uid,email=String(user.email||'').toLowerCase();
@@ -3632,6 +3652,7 @@ const ACT={
   'auth.login':fbDoLogin,
   'auth.signup':fbDoSignup,
   'auth.resend':fbDoResend,
+  'auth.reset':fbDoReset,
   'acct.open':openAcctModal,
   'mention.open':openMentionModal,
   'nq.toggle':()=>{const on=!$('#nqPanel').classList.contains('on');nqOpen(on);if(on)rNq();},
@@ -4164,14 +4185,14 @@ document.addEventListener('change',e=>{
 /* 위젯 설정 팝업 조작 */
 document.addEventListener('input',e=>{
   if(e.target.id==='wgA'){const c=widCfgLoad();c.a=100-Number(e.target.value);widCfgSave(c);widApply();return;}   /* 슬라이더는 '투명도' — 값이 클수록 투명하다 */
+  if(e.target.id==='wgT'){const c=widCfgLoad();c.tint=Number(e.target.value);widCfgSave(c);widApply();return;}    /* 유리 톤 — 100%가 기존 색, 낮추면 진하고 올리면 연하다 */
   if(e.target.id==='wgFz'){const c=widCfgLoad();c.fz=Number(e.target.value)/100;widCfgSave(c);widApply();return;}
   if(e.target.id==='wgNoti'){const c=widCfgLoad();c.noti=e.target.checked;widCfgSave(c);toast(c.noti?'알림을 켰습니다':'알림을 껐습니다');return;}
 });
 document.addEventListener('change',e=>{
 });
 document.addEventListener('click',e=>{
-  const tb=e.target.closest('#wgTone [data-toned]');
-  if(tb){const c=widCfgLoad();c.tone=(c.tone==='light')?'dark':'light';widCfgSave(c);widApply();return;}
+
   const fb=e.target.closest('#wgFont [data-fontd]');
   if(fb){
     const c=widCfgLoad(),ids=WID_FONTS.map(f=>f[0]);
@@ -4299,8 +4320,10 @@ function widApply(){
   /* 진하기 — FullCalendar 셀에서 var() 상속이 갱신되지 않는 엔진 특이 동작이 있어
      변수 대신 리터럴 규칙을 스타일 태그로 주입한다 */
   const a=Number.isFinite(Number(c.a))?Number(c.a)/100:.85;   /* 기본 85% */
-  const light=c.tone==='light';                                /* 바탕화면이 어두운 사람은 밝은 위젯이 잘 보인다 */
-  document.body.classList.toggle('wlight',light);
+  /* 유리 톤 — 192차: 라이트 모드는 뺐다(유리 위 밝은 칸은 벽지에 따라 대비가 무너져 다듬을 여지가 좁다).
+     대신 어두운 기준색의 농도를 한 축으로 조절한다. 저장돼 있던 tone 값은 아무도 읽지 않는다(읽는 곳 제거 — 187차 방식) */
+  const tint=Math.min(1.6,Math.max(.5,(Number(c.tint)||100)/100));
+  const sc=rgb=>rgb.split(',').map(x=>Math.min(255,Math.round(Number(x)*tint))).join(',');
   /* 글꼴 — 투명 창에서는 가변 폰트가 뭉개져 보인다. 윈도우 글꼴은 작은 크기용 힌팅이 있어 더 또렷할 수 있다.
      어느 쪽이 나은지는 모니터마다 달라 고르게 둔다 */
   const FONTS=WID_FONTS.map(f=>f[0]);
@@ -4310,11 +4333,11 @@ function widApply(){
   let dyn=document.getElementById('wgDyn');
   if(!dyn){dyn=document.createElement('style');dyn.id='wgDyn';document.head.appendChild(dyn);}
   const f=n=>Math.min(1,Math.max(0,n)).toFixed(3);
-  const B=light?'231,235,242':'24,28,38';        /* 칸 */
-  const W=light?'228,222,229':'57,52,61';        /* 주말 — 붉은 끼를 아주 살짝만 */
-  const H=light?'205,213,226':'13,16,24';        /* 요일 머리 */
-  const C=light?'243,246,251':'13,17,26';        /* 카드 */
-  const N=light?'221,227,238':'16,20,30';        /* 버튼 배경 */
+  const B=sc('24,28,38');        /* 칸 */
+  const W=sc('57,52,61');        /* 주말 — 붉은 끼를 아주 살짝만 */
+  const H=sc('13,16,24');        /* 요일 머리 */
+  const C=sc('13,17,26');        /* 카드 */
+  const N=sc('16,20,30');        /* 버튼 배경 */
   dyn.textContent=GLASS?[
     'body.wid.glass #fcal td.fc-daygrid-day{background:rgba('+B+','+f(a)+')!important;}',
     /* 공휴일도 주말과 같은 칸 색으로 — 쉬는 날이라는 뜻이 같다 */
@@ -4332,7 +4355,8 @@ function widApply(){
   const fr=$('#wgFz');if(fr)fr.value=Math.round(fz*100);
   const fl=$('#wgFzV');if(fl)fl.textContent=Math.round(fz*100)+'%';
   const nt=$('#wgNoti');if(nt)nt.checked=c.noti!==false;
-  const tv=$('#wgToneV');if(tv)tv.textContent=light?'라이트':'다크';
+  const tr=$('#wgT');if(tr)tr.value=Math.round(tint*100);
+  const tl=$('#wgTV');if(tl)tl.textContent=Math.round(tint*100)+'%';
   const fv=$('#wgFontV');if(fv)fv.textContent=(WID_FONTS.find(f=>f[0]===font)||WID_FONTS[0])[1];
 }
 /* 위치·크기 조정 모드 — 켜면 창 전체가 드래그 영역이 되고, 끄면 그 자리에 고정된다.

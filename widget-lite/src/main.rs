@@ -2,11 +2,11 @@
    Electron 위젯(widget/main.js v1.1.0)의 기능·동작·교훈을 그대로 이식한 저용량판이다.
    크로미엄을 내장하지 않고 윈도우에 이미 있는 WebView2(엣지)를 쓰므로 exe 가 수 MB 로 준다.
 
-   ⚠ 병행 파일럿: 기존 HPlanWidget.exe(Electron)와 같은 문서 폴더를 쓰되
-     · exe 이름 HPlanWidgetLite.exe · 설정 %APPDATA%\HPlanWidgetLite · 로그 widget-lite-log.txt
-     · 자동실행 레지스트리 키 HPlanWidgetLite  로 분리한다.
-     둘을 동시에 켜면 알림·백업이 겹치므로 파일럿 기간에는 한쪽만 켠다(README 참조).
-     읽어주세요.txt 는 Electron 위젯 것이므로 여기서는 건드리지 않는다.
+   191차부터 이것이 정식 위젯이다(Electron 판 폐기). 이름은 그대로 둔다:
+     · exe HPlanWidgetLite.exe · 설정 %APPDATA%\HPlanWidgetLite · 로그 widget-lite-log.txt
+     · 자동실행 레지스트리 키 HPlanWidgetLite · 릴리스 태그 widget-lite-vX
+     ⚠ 이름을 바꾸면 배포된 자동 업데이트·자동 실행과 어긋난다 — 바꾸지 말 것.
+     팀원 PC 에 남은 Electron 판은 retire_electron() 이 부팅마다 스스로 걷어낸다.
 
    앱과의 창구는 Electron 의 executeJavaScript 대신 **주입 스크립트 + 이벤트 브리지**로 재현한다
    (app.js 는 한 글자도 바꾸지 않는다 — window.bootBrief()·bkExport() 등을 그대로 부른다).
@@ -522,9 +522,69 @@ fn prune_backups() {
     while names.len() > 12 { let _ = std::fs::remove_file(backup_dir().join(names.remove(0))); }
 }
 
+/* ══════════ Electron 판 정리(정착 조치) ══════════
+   Lite 로 정착하면서 팀원 PC 에 남은 구 위젯을 스스로 걷어낸다. 부팅마다 시도:
+   ①자동 실행 등록 중 값에 HPlanWidget.exe 가 든 것을 지운다(등록 이름이 버전마다 달라
+     이름이 아니라 **값 내용**으로 찾는다. HPlanWidgetLite.exe 에는 'HPlanWidget.exe' 가
+     부분 문자열로 들어 있지 않아 우리 등록은 안전 — 그래도 이름 검사로 이중 방어)
+   ②문서 폴더의 구 exe(.old·.new 포함)를 지운다 — **실행 중이면 삭제가 막히므로 보류**하고
+     다음 부팅에 다시 시도한다(①이 먼저 되면 다음 부팅부터는 안 떠 있으니 결국 지워진다)
+   ③읽어주세요.txt 를 Lite 기준으로 갱신 */
+fn retire_electron() {
+    let dir = home_dir();
+    for n in ["HPlanWidget.exe", "HPlanWidget.exe.old", "HPlanWidget.new.exe", "HPlanWidget.new.exe.part"] {
+        let f = dir.join(n);
+        if !f.exists() { continue; }
+        match std::fs::remove_file(&f) {
+            Ok(()) => log(&format!("구 위젯 파일 삭제 {}", n)),
+            Err(e) => log(&format!("구 위젯 파일 삭제 보류 {} ({}) — 실행 중이면 다음 부팅 때 다시", n, e)),
+        }
+    }
+    #[cfg(windows)] {
+        use winreg::enums::{HKEY_CURRENT_USER, KEY_ALL_ACCESS};
+        use winreg::RegKey;
+        let Ok(run) = RegKey::predef(HKEY_CURRENT_USER)
+            .open_subkey_with_flags("Software\\Microsoft\\Windows\\CurrentVersion\\Run", KEY_ALL_ACCESS) else { return };
+        let hits: Vec<String> = run.enum_values().filter_map(|r| r.ok())
+            .filter(|(name, val)| {
+                if name == RUN_KEY_NAME { return false; }        /* 우리 등록은 손대지 않는다 */
+                /* REG_SZ 값은 UTF-16LE — 문자열로 되살려 내용을 본다 */
+                let u16s: Vec<u16> = val.bytes.chunks_exact(2).map(|c| u16::from_le_bytes([c[0], c[1]])).collect();
+                String::from_utf16_lossy(&u16s).contains("HPlanWidget.exe")
+            })
+            .map(|(name, _)| name).collect();
+        for name in hits {
+            if run.delete_value(&name).is_ok() { log(&format!("구 위젯 자동 실행 해제({})", name)); }
+        }
+    }
+}
+/* 위젯이 안 뜰 때를 위한 안내 파일 — ⚠ 메모장 한글 표시를 위해 UTF-8 BOM 필수(164차) */
+fn write_help_file() {
+    let f = home_dir().join("읽어주세요.txt");
+    let body = "\
+[H 주요업무현황 위젯 안내]
+
+■ 위젯이 안 뜰 때
+  이 폴더의 HPlanWidgetLite.exe 를 두 번 누르세요.
+  그래도 안 되면 앱(브라우저)의 설정 > 바탕화면 위젯 > 내려받기로 새로 받으세요.
+
+■ 자동 백업
+  backup 폴더에 매주 hplan_날짜.json 이 저장됩니다(최근 12개). 지우지 마세요.
+
+■ 문제 신고
+  widget-lite-log.txt 파일을 관리자에게 보내 주세요.
+  (트레이 아이콘 우클릭 > 진단 폴더 열기 로도 이 폴더가 열립니다)
+";
+    let mut data = vec![0xEF, 0xBB, 0xBF];
+    data.extend_from_slice(body.as_bytes());
+    if std::fs::read(&f).map(|old| old == data).unwrap_or(false) { return; }
+    let _ = std::fs::create_dir_all(home_dir());
+    let _ = std::fs::write(&f, data);
+}
+
 /* ══════════ 자동 업데이트 ══════════
    Electron 판(144~161차)의 방식 그대로 — 깃허브 API 는 쓰지 않고(사내망) 릴리스 리디렉트 주소에서 버전을 읽는다.
-   ⚠ 파일럿용 릴리스는 태그 widget-lite-vX.Y.Z + 파일 HPlanWidgetLite.exe.
+   릴리스는 태그 widget-lite-vX.Y.Z + 파일 HPlanWidgetLite.exe.
    ⚠ /releases/latest 는 '가장 최근 릴리스'라 Electron 릴리스가 최신이면 여기 파일이 없다 —
      그때는 확인 실패로 조용히 넘어간다(내려받기 전에 태그 이름으로 거른다). */
 fn new_exe_path() -> PathBuf { home_dir().join("HPlanWidgetLite.new.exe") }
@@ -716,7 +776,7 @@ fn rebuild_tray(app: &AppHandle) {
             Some((v, _)) => mk("applyupd", &format!("지금 업데이트 (v{})", v)),
             None => mk("checkupd", "업데이트 확인"),
         })
-        .item(&MenuItem::with_id(app, "ver", &format!("버전 {} (파일럿)", cur_ver()), false, None::<&str>).unwrap())
+        .item(&MenuItem::with_id(app, "ver", &format!("버전 {}", cur_ver()), false, None::<&str>).unwrap())
         .item(&mk("reload", "새로고침"))
         .item(&mk("devtools", "개발자 도구 (문제 확인)"))
         .item(&mk("backup", "지금 백업하기"))
@@ -782,7 +842,7 @@ fn on_menu(app: &AppHandle, id: &str) {
             let reg = if is_auto_start() { "등록됨" } else { "등록 안 됨" };
             let b = STATE.lock().unwrap().bounds;
             msg_ok("자동 실행", &format!("윈도우 시작 시 자동 실행: {}", reg),
-                &format!("등록된 실행 파일\n{}\n\n설정 파일\n{}\n저장된 자리·크기: {}\n버전: {} (파일럿)\n\n⚠ 이 경로에 파일이 그대로 있어야 재부팅 뒤에도 뜹니다.",
+                &format!("등록된 실행 파일\n{}\n\n설정 파일\n{}\n저장된 자리·크기: {}\n버전: {}\n\n⚠ 이 경로에 파일이 그대로 있어야 재부팅 뒤에도 뜹니다.",
                     exe_path().display(), state_file().display(),
                     b.map(|b| format!("{},{},{},{}", b.x, b.y, b.w, b.h)).unwrap_or_else(|| "(없음)".into()),
                     cur_ver()));
@@ -921,7 +981,7 @@ fn main() {
             let h5 = app.handle().clone();
             TrayIconBuilder::with_id("main")
                 .icon(icon)
-                .tooltip("H · 주요업무현황 위젯 (파일럿)")
+                .tooltip("H · 주요업무현황 위젯")
                 .show_menu_on_left_click(false)
                 .on_menu_event(move |_app, ev| on_menu(&h4, ev.id().0.as_str()))
                 .on_tray_icon_event(move |_tray, ev| {
@@ -947,6 +1007,8 @@ fn main() {
             std::thread::spawn(move || {
                 std::thread::sleep(Duration::from_secs(3));
                 let _ = std::fs::remove_file(with_ext(&home_exe(), "exe.old"));
+                retire_electron();
+                write_help_file();
                 let first = STATE.lock().unwrap().auto_start.is_none();
                 let want_auto = STATE.lock().unwrap().auto_start.unwrap_or(false);
                 let cur_path = STATE.lock().unwrap().auto_path.clone();

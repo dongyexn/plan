@@ -18,7 +18,7 @@ GitHub Pages + Firebase Realtime Database(무료 티어)로 동작한다.
 ### 문제가 생기면
 
 - **저장이 안 될 때** — 대개 권한 문제입니다. 관리자에게 계정 권한을 확인해 달라고 하세요.
-- **위젯이 안 뜰 때** — `문서\H 주요업무현황\HPlanWidget.exe` 를 두 번 누르세요.
+- **위젯이 안 뜰 때** — `문서\H 주요업무현황\HPlanWidgetLite.exe` 를 두 번 누르세요.
   그래도 안 되면 브라우저로 열어도 모든 기능을 쓸 수 있습니다.
 - **원인을 알리고 싶을 때** — 설정 > **백업 · 기록** 의 **복사** 를 눌러 관리자에게 전달하세요.
   위젯 문제라면 트레이 > **진단 폴더 열기** > `widget-log.txt` 를 보내 주세요.
@@ -78,8 +78,10 @@ GitHub Pages + Firebase Realtime Database(무료 티어)로 동작한다.
 
 ## 바탕화면 위젯
 
-`widget/` 폴더가 Electron 위젯이다. 반투명·테두리 없는 창으로 **달력만** 띄우고,
-날짜를 누르면 그 칸 옆에 **앱과 똑같은 업무 패널**(카드 · 수정 · 자동 저장)이 뜬다.
+`widget-lite/` 폴더가 바탕화면 위젯이다(Tauri · 윈도우 내장 WebView2, exe 수 MB).
+반투명·테두리 없는 창으로 **달력만** 띄우고, 날짜를 누르면 그 칸 옆에
+**앱과 똑같은 업무 패널**(카드 · 수정 · 자동 저장)이 뜬다.
+예전 Electron 판(70MB)은 폐기됐다 — 팀원 PC 에 남아 있어도 새 위젯이 알아서 걷어낸다.
 
 > 앱 안의 **사용 안내**(상단바 `?`)는 이 문서와 같은 내용·차례로 되어 있다.
 > ⚠ 기능을 고치면 **둘 다** 고칠 것 — 어긋나면 안내가 오히려 방해가 된다.
@@ -146,7 +148,7 @@ scripts/remind.mjs             당일 리마인드 메일
 scripts/weekly.mjs             주간 요약 메일 (요일은 앱 설정에서 지정)
 .github/workflows/*.yml        위 두 메일의 cron — 매시 실행(0 * * * *) 권장
 database.rules.json            RTDB 보안 규칙 전체
-widget/                        바탕화면 위젯 (Electron)
+widget-lite/                   바탕화면 위젯 (Tauri · WebView2)
   main.js                      창 · 트레이 · 표시 모드 · 자동 실행
   desktop-pin.js               Win32 창 z-순서 제어 (koffi)
   icon.png / tray.png          exe 아이콘 · 트레이 아이콘
@@ -223,97 +225,45 @@ node build-single.mjs      # dist/index.html + dist/vendor/
 index.html과 app.js를 한 파일로 합친다. 인라인 스크립트를 쓰면서도 CSP를 유지하려고
 스크립트 본문의 SHA-256 해시를 계산해 `script-src`에 넣고, 산출물에서 다시 검증한다.
 
-#### 배포용 exe 만들기 — 방법 1: 깃허브가 대신 만든다 (권장)
+#### 배포용 exe 만들기 — 깃허브가 만든다
 
-> **저용량 파일럿(Lite)**: `widget-lite/`(Tauri·WebView2, exe 수 MB)가 기존 위젯의 대체 후보로 병행 중이다.
-> 빌드·주의사항·검증 체크리스트는 `widget-lite/README.md` 참조. 파일럿 기간에는 기존 exe 를 지우지 말 것.
+**회사 PC 에 아무것도 깔 필요 없다.** 브라우저만 있으면 된다.
 
-**회사 PC 에 Node 를 깔 필요도, `npm install` 이 될 필요도 없다.** 브라우저만 있으면 된다.
-(사내망이 개발자 사이트로 가는 통신을 검사해 `npm install` 이 `UNABLE_TO_GET_ISSUER_CERT_LOCALLY` 로 막히는 경우가 있다.)
+1. `widget-lite/Cargo.toml` 의 `version` 을 올려 올린다(깃허브 웹의 연필 아이콘으로 고쳐도 된다).
+   → 그 폴더의 파일이 올라오면 빌드가 자동으로 시작된다. (직접 돌리려면 Actions > Run workflow)
+   ⚠ `tauri.conf.json` 의 `"version"` 도 같은 값으로 맞춘다.
+2. 5~10분 뒤 **Releases** 에 태그 `widget-lite-v버전` 으로 `HPlanWidgetLite.exe` 가 올라온다.
+3. **끝.** 위젯이 릴리스 주소에서 최신 버전을 스스로 확인해 받아 둔다.
 
-1. `widget/package.json` 의 `"version"` 을 올려 올린다(깃허브 웹에서 연필 아이콘으로 고쳐도 된다).
-   → **그 파일이 올라오면 빌드가 자동으로 시작된다.** (직접 돌리려면 Actions > Run workflow)
-2. 5~10분 뒤 **Releases** 에 `HPlanWidget.exe` 가 올라온다.
-3. **끝.** 앱 설정에 버전을 적을 필요가 없다 — 위젯이 릴리스 주소에서 최신 버전을 스스로 확인한다.
+설정 파일은 `.github/workflows/widget-lite.yml` 하나뿐이고, 손댈 일은 없다.
+소스만 고쳐 올려도 빌드는 돌지만, **같은 버전의 릴리스가 이미 있으면 건너뛴다** — 배포하려면 버전을 올린다.
 
-앱 **설정 > 바탕화면 위젯 > 위젯 파일 주소**만 한 번 넣어 두면 된다.
-`위젯 최신 버전` 칸은 비워 두는 것이 기본이고, 특정 버전으로 묶어 두고 싶을 때만 적는다.
-
-설정 파일은 `.github/workflows/widget.yml` 하나뿐이고, 손댈 일은 없다.
-
-#### 배포용 exe 만들기 — 방법 2: 내 PC 에서 직접 (관리자가 한 번만)
-
-팀원 PC 에는 Node 를 깔지 않는다. **관리자 PC 에서 exe 를 한 번 만들어 배포**하면 끝이다.
-
-1. Node.js 설치 — https://nodejs.org/ko/download 에서 **LTS** 를 받아 그대로 다음만 누른다.
-2. `widget` 폴더를 연다 → 주소창에 `cmd` 를 치고 Enter (그 폴더에서 명령창이 열린다).
-3. `npm install` 입력 후 Enter — 필요한 파일을 받는다(몇 분).
-4. `npm run dist` 입력 후 Enter — `widget/dist/HPlanWidget.exe` 가 만들어진다(약 80~100MB).
-   ⚠ `dist/win-unpacked` 는 **중간 산출물**이다(폴더 전체가 있어야 도는 170MB 짜리). 배포용은 `dist` 바로 아래 파일 하나.
-   ⚠ 파일 이름이 `default.exe` 로 나오면 옛 `package.json` 으로 만든 것 — `widget/dist` 를 지우고 다시 만든다.
-
-   ⚠ **`npm install` 이 `UNABLE_TO_GET_ISSUER_CERT_LOCALLY` 로 멈추면** — 사내망이 통신을 검사하고 있다.
-   위의 **방법 1(깃허브 빌드)** 로 가는 편이 빠르다. 굳이 이 PC 에서 만들려면 셋 중 하나:
-   - 전산에서 사내 루트 인증서 파일을 받아 `npm config set cafile "C:\경로\사내인증서.cer"`
-   - `set NODE_OPTIONS=--use-system-ca` 후 다시 `npm install`
-   - 임시로 `npm config set strict-ssl false` (설치 후 반드시 `npm config set strict-ssl true` 로 되돌린다)
-
-   ⚠ **`Cannot create symbolic link` 오류로 멈추면** — electron-builder 가 받는 서명 도구 압축에
-   macOS 심볼릭 링크가 들어 있는데, 윈도우는 기본적으로 일반 사용자가 심볼릭 링크를 못 만든다.
-   둘 중 하나만 하면 된다(한 번만 하면 계속 유효하다).
-   - **개발자 모드 켜기**(권장): 설정 > 개인 정보 및 보안 > 개발자용 > **개발자 모드** 켬 → 명령창을 다시 열고 재실행
-   - **관리자 권한 명령창**: 시작 > `cmd` 검색 > 오른쪽 클릭 > 관리자 권한으로 실행 →
-     `d:` Enter → `cd "D:\...\widget"` Enter → `npm run dist`
-   그래도 막히면 서명·아이콘 삽입을 건너뛰는 `npm run dist:nosign` 을 쓴다
-   (동작은 같고 exe 아이콘만 Electron 기본 아이콘이 된다).
-5. 그 exe 를 **Releases** 에 올린다(아래 절차). 저장소(main)에 그냥 올리지 말 것 —
-   **GitHub 는 50MB 부터 경고, 100MB 는 거부**하고, 한 번 올리면 기록에 영원히 남아 저장소가 무거워진다.
-6. 올라간 파일 이름에 **오른쪽 클릭 > 링크 주소 복사** → 앱 **설정 > 바탕화면 위젯 > 위젯 파일 주소** 에 붙여넣는다.
-   주소 모양은 `https://github.com/<계정>/<저장소>/releases/download/widget-v1/HPlanWidget.exe` 이다.
-   옆에 적힌 `sha256:…` 은 파일이 손상되지 않았는지 확인하는 검증값일 뿐 주소가 아니다.
-
-**Releases 에 올리는 법**
-1. 저장소 첫 화면 오른쪽 목록에서 **Releases** 클릭 (없으면 **Create a new release**).
-2. **Draft a new release** 버튼.
-3. **Choose a tag** → 칸에 `widget-v1` 입력 → 아래 뜨는 **Create new tag** 클릭.
-4. Release title 에 `위젯 v1` 정도로 적는다.
-5. 아래 **Attach binaries by dropping them here** 상자에 `HPlanWidget.exe` 를 끌어다 놓는다(업로드 완료까지 대기).
-6. **Publish release** 클릭.
-
-팀원은 **설정 > 내려받기 → 파일 두 번 클릭**이면 끝이다. 설치도, Node 도, 명령창도 없다.
 앱을 고쳤을 때는 exe 를 다시 만들 필요가 없다 — 위젯은 배포된 웹 주소를 불러오므로 새로고침만으로 반영된다.
-(위젯 자체 코드인 `main.js`·`desktop-pin.js` 를 고쳤을 때만 다시 만든다.)
-
-```
-cd widget
-npm install
-npm start                       # 개발 중 확인
-npm run dist                    # dist/HPlanWidget.exe (포터블)
-npm run dist:nosign             # 서명 도구 없이 (심볼릭 링크 오류 회피용)
-```
+(위젯 자체 코드인 `widget-lite/src/main.rs` 를 고쳤을 때만 다시 만든다.)
 
 #### 트레이 메뉴
 
 | 항목 | 설명 |
 |---|---|
-| 오늘 업무 보기 | 오늘로 옮기고 업무 패널을 띄운다 |
 | 위젯 보이기 / 숨기기 | 트레이 아이콘 클릭도 같은 동작 |
 | 항상 위에 표시 | 끄면 **바탕화면 모드**(기본) — 반투명·입력 가능·다른 창에 가려짐 |
 | 윈도우 시작 시 자동 실행 | 마지막 위치·크기 그대로 다시 뜬다 |
-| 자동 실행 상태 확인 | 등록 여부와 등록된 exe 경로를 보여 준다 |
 | 업데이트 확인 / 지금 업데이트 | 받아 둔 새 버전이 있으면 '지금 업데이트'로 바뀐다 |
-| 새로고침 / 브라우저에서 전체 화면 열기 / 종료 | |
+| 새로고침 / 개발자 도구 | 화면이 이상할 때 |
+| 지금 백업하기 / 진단 폴더 열기 | 백업·오류 기록이 있는 문서 폴더를 연다 |
+| 위치·크기 초기화 | 창이 화면 밖으로 나갔을 때의 탈출구 — 주 모니터 오른쪽 위로 되돌린다 |
+| 자동 실행 상태 확인 / 브라우저 앱 열기 / 종료 | |
 
-위젯은 처음 실행될 때 자기 자신을 **`문서\H 주요업무현황\HPlanWidget.exe`** 로 복사하고,
+위젯은 처음 실행될 때 자기 자신을 **`문서\H 주요업무현황\HPlanWidgetLite.exe`** 로 복사하고,
 자동 실행도 그 자리로 등록한다. 다운로드 폴더에 두고 잊어버려도 다음 부팅부터는 이 자리에서 뜬다.
+부팅마다 **예전 Electron 판의 흔적**(구 exe·구 자동 실행 등록)을 스스로 걷어낸다 —
+팀원 PC 에서 손으로 지울 것이 없다.
 
 #### 위젯 업데이트 (팀원은 아무것도 안 해도 된다)
 
-1. `npm run dist` 로 새 exe 를 만든다(먼저 `widget/package.json` 의 `version` 을 올린다).
-2. GitHub Releases 의 파일을 새 exe 로 교체한다(주소는 그대로 두는 편이 편하다).
-3. 앱 **설정 > 바탕화면 위젯 > 위젯 최신 버전**에 새 버전을 적는다(예: `1.0.1`).
+1. `widget-lite/Cargo.toml`(과 `tauri.conf.json`)의 `version` 을 올려 올린다 — 깃허브가 exe 를 만들어 릴리스에 올린다.
 
-팀원 위젯은 시작 뒤 한 번, 그다음 6시간마다 이 값을 확인해 **새 파일을 미리 받아 둔다.**
+팀원 위젯은 시작 뒤 한 번, 그다음 6시간마다 릴리스를 확인해 **새 파일을 미리 받아 둔다.**
 받아 둔 뒤에는 **다음에 컴퓨터를 켤 때 저절로 갈아탄다**(PC 카카오톡과 같은 방식).
 기다리지 않고 바로 적용하려면 트레이의 **'지금 업데이트 (v…)'** 를 누르면 된다(되묻는 창이 뜬다).
 
@@ -330,8 +280,8 @@ npm run dist:nosign             # 서명 도구 없이 (심볼릭 링크 오류 
 
 창 이동·크기 변경은 평소 잠겨 있다. 위젯 설정(톱니) > **위치·크기 조정** 을 켠 동안만 바꾸고,
 끝내면 그 위치·크기가 저장되어 다음 실행에도 그대로 뜬다.
-`widget/main.js` 상단 `APP_URL` 이 위젯이 여는 주소다(기본 `.../plan/?w=1`).
-`desktop-pin.js` 는 koffi 로 user32 를 호출해 창을 맨 아래 층으로 내린다.
+`widget-lite/src/main.rs` 상단 `app_url()` 이 위젯이 여는 주소다(기본 `.../plan/?w=1`).
+바탕화면 모드는 user32 의 `SetWindowPos(HWND_BOTTOM)` 직접 호출로 창을 맨 아래 층에 유지한다.
 
 ---
 
