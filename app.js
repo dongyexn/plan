@@ -188,7 +188,7 @@ document.addEventListener('click',e=>{
     setPlanColor(ec.dataset.c||'auto');closeColPop();return;
   }
   const pc=e.target.closest('#pfPal .pal-c');
-  if(pc&&!pc.classList.contains('pal-add')){PF_SEL.color=pc.dataset.c||'';setTimeout(()=>pfPaint(pc.dataset.c),0);acctAutoSave();return;}
+  if(pc&&!pc.classList.contains('pal-add')){PF_SEL.color=pc.dataset.c||'';setTimeout(()=>pfPaint(pc.dataset.c||ownColor((S.user||{}).uid)),0);acctAutoSave();return;}
   /* 팝오버 밖을 누르면 닫는다 — 아바타 버튼 자체는 토글이 처리 */
   const p=$('#pfPop');
   if(p&&p.classList.contains('open')&&!e.target.closest('#pfPop')&&!e.target.closest('[data-act="pf.toggle"]'))
@@ -1073,7 +1073,8 @@ function emojiPickerHTML(av){
     </div>
     <div class="pf-emg" id="pfEmg"></div>
     <div class="pf-lab">배경색</div>
-    ${palHTML('pfPal',av.color||ownColor((S.user||{}).uid))}
+    ${palHTML('pfPal',av.color||'',
+      '<div class="pal-c pal-auto'+(av.color?'':' sel')+'" data-c="" data-tip="자동 — 계정 기본 색"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#av-person"></use></svg></div>')}
   </div>`;
 }
 let PF_MORE=null;
@@ -1204,8 +1205,9 @@ async function acctSave(silent){
   const name=nameInp?nameInp.value.trim().slice(0,60):'';
   const cur=avOf((S.user||{}).uid||'');
   const icon=PF_SEL.icon===null?cur.icon:PF_SEL.icon;
-  const selc=$('#pfPal .pal-c.sel');
-  const color=PF_SEL.color!==null?PF_SEL.color:(selc?(selc.dataset.c||''):cur.color);
+  /* ⚠ 팔레트의 .sel 을 fallback 으로 읽으면, 색을 고른 적 없는 계정이 이름만 고쳐도
+     그 순간의 자동 색이 avColor 로 박제된다 — 만진 적 없으면(null) 저장값을 그대로 둔다 */
+  const color=PF_SEL.color!==null?PF_SEL.color:cur.color;
   /* 소속(팀·직급)은 조직 데이터(people)라 계정 저장과 별개로 먼저 반영한다 */
   const myUid=(S.user||{}).uid||'';
   const tSel=$('#acctTeam'),rSel=$('#acctRank');
@@ -1975,9 +1977,12 @@ function openPlanEdit(p,startD,endD,occ){
 /* 고른 색 적용 — 읽기 카드에서 골랐으면 바로 저장, 편집 폼이면 draft 에 담고 자동 저장 */
 
 function setPlanColor(c){
-  /* 업무 목록 폼도 같은 팔레트를 쓴다 — 숨은 값과 색 원만 갱신하고 저장은 폼 저장 때 한다 */
+  /* 업무 목록 폼도 같은 팔레트를 쓴다 — 숨은 값과 색 원만 갱신하고 저장은 폼 저장 때 한다.
+     대상은 팝오버가 기록한 scope 가 정한다(위 plan.color 의 함정 참조) */
+  const pop=$('#colPop');
+  const scope=(pop&&pop.dataset.scope)||($('#tkNew')?'tk':'plan');
   const tn=$('#tnColor');
-  if(tn&&$('#tkNew')){
+  if(scope==='tk'&&tn&&$('#tkNew')){
     tn.value=(c==='auto')?'':c;
     const dot=$('#tkNew .p-col');
     if(dot)dot.style.background=planColor({color:tn.value,assignees:{}});
@@ -3544,10 +3549,14 @@ const ACT={
   'plan.color':btn=>{
     const old=$('#colPop');
     if(old){closeColPop();return;}
-    const cur=$('#tkNew')?((($('#tnColor')&&$('#tnColor').value))||'auto')
+    /* ⚠ 화면을 오가면 안 보이는 화면의 업무 목록 폼(#tkNew)이 DOM 에 남는다 —
+       존재 여부가 아니라 '누른 색 원이 어느 폼 안인가'로 대상을 정한다 */
+    const inTk=!!btn.closest('#tkNew');
+    const cur=inTk?((($('#tnColor')&&$('#tnColor').value))||'auto')
       :((S.planEdit&&S.planEdit.draft&&S.planEdit.draft.color)||'auto');
     const pop=document.createElement('div');
     pop.id='colPop';pop.className='col-pop';
+    pop.dataset.scope=inTk?'tk':'plan';
     pop.innerHTML=colPopHTML(cur);
     /* ⚠ 카드·목록에 overflow 가 걸려 있어 그 안에 넣으면 잘린다 — 화면 최상위에 띄우고 좌표만 맞춘다 */
     document.body.appendChild(pop);
