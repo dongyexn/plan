@@ -143,10 +143,9 @@ app.js                         앱 로직 (로컬 ⇄ Firebase 공용 저장소 
 build-single.mjs               단일 HTML 빌드 (node build-single.mjs → dist/)
 vendor/fullcalendar.min.js     FullCalendar 6.1.21 (MIT)
 vendor/PretendardVariable.woff2
-scripts/mail-common.mjs        메일 수신자 계산 · 발송 시각 게이트 (두 스크립트 공용)
-scripts/remind.mjs             당일 리마인드 메일
-scripts/weekly.mjs             주간 요약 메일 (요일은 앱 설정에서 지정)
-.github/workflows/*.yml        위 두 메일의 cron — 매시 실행(0 * * * *) 권장
+scripts/mail-common.mjs        명부 만들기 · 반복 일정 전개 (앱과 같은 규칙)
+scripts/weekly.mjs             주간 업무 일정 메일
+.github/workflows/mail.yml     주간 메일 cron — 월요일 07:30 KST (UTC 로 30 22 * * 0)
 database.rules.json            RTDB 보안 규칙 전체
 widget-lite/                   바탕화면 위젯 (Tauri · WebView2)
   main.js                      창 · 트레이 · 표시 모드 · 자동 실행
@@ -191,7 +190,7 @@ widget-lite/                   바탕화면 위젯 (Tauri · WebView2)
 | `calapp/mentions/{uid}` | 코멘트에서 나를 부른 알림 |
 | `calapp/org` | 팀 · 권역 · 현장 목록 |
 | `calapp/people/{uid}` | 담당자 배정 — name·email·team·region·sites |
-| `calapp/cfg` | 앱 설정 — 바로가기 주소(defectUrl) · 위젯 exe 주소(widgetUrl) · 메일 발송 형식 |
+| `calapp/cfg` | 앱 설정 — 바로가기 주소(defectUrl) · 주간 메일 켬/끔(mail/weeklyOn) |
 | `calapp/prefs/{uid}` | 개인 설정 — 본인만 쓰기 |
 | `users/{uid}` | 계정·권한·프로필(avColor·avIcon) — 하자처리 대시보드와 **공용** |
 
@@ -289,12 +288,13 @@ index.html과 app.js를 한 파일로 합친다. 인라인 스크립트를 쓰�
 
 ### 메일 자동 발송
 
-**주간 요약** — 매주 월요일 07:10(KST). 이번 주 일정과 기한 임박·초과 업무를 한 통으로.
+**주간 업무 일정** — 매주 월요일 오전 7시 30분(KST), 팀 전체에게 한 통.
+제목은 `[업무 알림] 2026년 8월 3~9일 주간 업무 일정` 형식이고,
+본문은 **이번 주 달력** + **공통 업무** + **담당 업무** 세 부분이다.
 
-**당일 리마인드** — 종 아이콘이 켜진 미완료 업무가 있는 날 아침 07:05(KST) 발송.
+발송 요일·시각·수신 범위는 고정이라 설정에 없다. 설정 화면에서는 **켜고 끄기**와 **미리보기**만 한다
+(`calapp/cfg/mail/weeklyOn`). 발송 시각은 워크플로 cron 이 정한다 — ⚠ cron 은 UTC 기준이라
+KST 월요일 07:30 은 `30 22 * * 0` 이고, 깃허브 예약 실행은 몇 분 늦게 도는 일이 흔하다.
 
-두 메일 모두 설정 화면에서 켜고 끌 수 있고, 주간 요약 요일 · 수신 범위(팀 전체 / 담당자에게만) ·
-제목 앞머리 · 안내 문구를 앱에서 정한다. 설정은 `calapp/cfg/mail`에 저장되고 발송 스크립트가 읽는다.
-발송 시각은 앱 설정(메일 발송 > 발송 시각)에서 정하고, 워크플로 cron은 매시 실행(`0 * * * *`)으로 둔다.
-스크립트가 KST 기준 현재 시각과 설정값을 비교해 맞을 때만 발송한다.
-하루 1회만 도는 cron을 유지하려면 워크플로 env에 `SKIP_HOUR_GATE: '1'` 을 넣어 시각 검사를 건너뛴다.
+당일 리마인드 메일은 195차에 없앴다 — 바탕화면 위젯이 부팅 직후 윈도우 알림으로 그 역할을 한다.
+메일 본문 계산·레이아웃은 앱(`app.js` 의 `mailItems`·`mailHTML`)과 짝이다. **한쪽만 고치지 말 것.**

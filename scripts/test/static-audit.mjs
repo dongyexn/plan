@@ -32,7 +32,7 @@ const OK = m => console.log('ok    ' + m);
 
 /* ── 1. 구문 ─────────────────────────────────────────── */
 for (const f of ['app.js', 'build-single.mjs',
-                 'scripts/mail-common.mjs', 'scripts/remind.mjs', 'scripts/weekly.mjs']) {
+                 'scripts/mail-common.mjs', 'scripts/weekly.mjs']) {
   try { execFileSync(process.execPath, ['--check', path.join(root, f)], { stdio: 'pipe' }); }
   catch (e) { F(f + ' 구문 오류\n' + String(e.stderr).slice(0, 400)); }
 }
@@ -40,7 +40,7 @@ OK('구문 검사 (node --check)');
 
 /* ── 2. 죽은 함수 — 정의 말고는 아무 데서도 안 부르는 이름 ── */
 {
-  const all = hay + rd('scripts/mail-common.mjs') + rd('scripts/remind.mjs') + rd('scripts/weekly.mjs');
+  const all = hay + rd('scripts/mail-common.mjs') + rd('scripts/weekly.mjs');
   const decls = [...js.matchAll(/(?:^|\n)\s*(?:async\s+)?function\s+([A-Za-z_][\w$]*)\s*\(/g)].map(m => m[1]);
   const dead = decls.filter(n => (all.match(new RegExp('\\b' + n + '\\b', 'g')) || []).length <= 1);
   if (dead.length) W('정의뿐인 함수 후보: ' + dead.join(', ') + '  (동적 호출이 아닌지 확인 후 제거)');
