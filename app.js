@@ -369,10 +369,12 @@ function planOwners(p){
   if(o.length)return o;
   return p&&p.owner?[p.owner]:[];   /* 구버전 단일 담당자 호환 */
 }
+/* 팀 공통 업무(담당자 없음)의 기본색 — 기본 팔레트의 파랑 */
+const TEAM_COLOR='#3E71D2';
 function planColor(p){
   if(p.color&&p.color!=='auto')return p.color;
   const o=planOwners(p);
-  return o.length?ownColor(o[0]):PAL[0];
+  return o.length?ownColor(o[0]):TEAM_COLOR;
 }
 /* 상태는 진행·완료 둘뿐이다. 옛 데이터의 예정(0)·보류(3)은 진행으로 본다(자리는 그대로 두어 색 규칙 s1·s2 재사용) */
 const ST_LBL=['진행','진행','완료','진행'];
@@ -743,8 +745,10 @@ const FbStore={
         /* 접속 중 role 이 바뀌면(관리자 지정) 새로고침 없이 반영한다 */
         if(['editor','viewer','blocked'].includes(me.role)&&me.role!==S.role)S.role=me.role;}
       rAcct();                                   /* 사이드바 아바타·이름도 함께 갱신 */
-      if(shEditing()){PEND.org=true;PEND.tasks=true;return;}
-      rOrg();rTasks();rFilter();},
+      /* ⚠ 담당자 색(avColor)이 바뀌면 '담당자 색' 업무의 색도 함께 바뀐다 —
+         카드만 다시 그리고 달력·일자 패널·위젯을 빠뜨려 달력 막대만 옛 색으로 남던 버그 */
+      if(shEditing()){PEND.org=true;PEND.tasks=true;PEND.day=true;return;}
+      rOrg();rTasks();rFilter();rDay();refetchCal();rWidget();},
       e=>{S.accounts={};S.acctDenied=true;console.warn('[FB] users 읽기 권한 없음',e);rOrg();rTasks();});
     this._on('calapp/cfg',v=>{S.cfg=v||{};bootCacheSave();rCfg();});
     const uid=S.user&&S.user.uid;
@@ -1880,9 +1884,18 @@ function planDetHTML(p){
   const body=kindSplit(p.kind)?sec('진행경과',p.body)+sec('처리계획',p.plan):sec('내용',p.body);
   const links=lnk.length?'<div class="pd-sec"><div class="pd-h">링크</div><div>'
       +lnk.map(l=>'<a class="pd-lnk" data-act="lnk.open" href="'+esc(l.url)+'" target="_blank" rel="noopener"><svg class="icn"><use href="#i-ext"></use></svg>'
-        +esc(l.label||l.url.replace(/^https?:\/\//,''))+'</a>').join('')+'</div></div>':'';
+        +esc(linkLabel(l))+'</a>').join('')+'</div></div>':'';
   /* 보여 줄 게 없으면 펼침 자체를 만들지 않는다 — 눌러도 아무 일이 없던 헛손질 방지 */
   return (body||links)?'<div class="plan-det">'+body+links+'</div>':'';
+}
+/* 링크에 보일 이름 — 직접 적은 이름이 있으면 그것을, 없으면 주소에서 뽑는다.
+   원드라이브·쉐어포인트 공유 주소는 무의미하게 길어 '원드라이브'로 줄여 쓴다 */
+function linkLabel(l){
+  if(!l)return '';
+  if(l.label)return l.label;
+  const u=String(l.url||'');
+  if(/(^|\/\/)[^/]*(1drv\.ms|onedrive\.live\.com|\-my\.sharepoint\.com|sharepoint\.com)/i.test(u))return '원드라이브';
+  return u.replace(/^https?:\/\//,'');
 }
 /* 글자 칸이 아니면 커서 위치를 읽을 수 없다(날짜·색 칸은 읽기만 해도 오류) */
 function selOf(el,k){try{return el[k];}catch(e){return null;}}
@@ -1920,9 +1933,9 @@ function rDay(){
         ${colDotHTML(planColor(p),p.id)}
         <div class="plan-t"${openAct}>${esc(p.title)}</div>
         <div class="plan-side">
-          ${stIcon(st,' data-act="plan.stCycle" data-pid="'+esc(p.id)+'" data-occ="'+esc(occ)+'"')}
+          ${lnk?'<a class="p-ico" href="'+esc(lnk.url)+'" target="_blank" rel="noopener" aria-label="링크 열기" data-tip="'+esc(linkLabel(lnk))+'"><svg class="icn"><use href="#i-ext"></use></svg></a>':''}
 ${p.remind?'<button class="p-ico p-rem on" data-act="plan.remind" data-pid="'+esc(p.id)+'" aria-label="리마인드 해제" data-tip="리마인드 켜짐"><svg class="icn"><use href="#i-bell"></use></svg></button>':''}
-          ${lnk?'<a class="p-ico" href="'+esc(lnk.url)+'" target="_blank" rel="noopener" aria-label="링크 열기" data-tip="'+esc(lnk.label||lnk.url)+'"><svg class="icn"><use href="#i-ext"></use></svg></a>':''}
+          ${stIcon(st,' data-act="plan.stCycle" data-pid="'+esc(p.id)+'" data-occ="'+esc(occ)+'"')}
           <button class="p-ico p-edit" data-act="plan.edit" data-pid="${esc(p.id)}" data-occ="${esc(occ)}" aria-label="수정" data-tip="수정"><svg class="icn"><use href="#i-pen"></use></svg></button>
         </div>
       </div>
@@ -2330,11 +2343,11 @@ function taskItemHTML(sid,iid,it,withSubject,hideOwn){
       ${colDotHTML(planColor(p0),iid)}
       <div class="tk-ttl" data-act="tk.open" data-sid="${esc(sid)}" data-iid="${esc(iid)}">${esc(it.text||'제목 없음')}</div>
       <div class="tk-acts">
-        ${stIcon(st,' data-act="tk.st" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"')}
         ${cn?`<button class="tk-ico on" data-act="tk.open" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="코멘트">
           <svg class="icn"><use href="#i-cmt"></use></svg><span class="cn">${cn}</span></button>`:''}
+        ${lnk?'<a class="tk-ico" href="'+esc(lnk.url)+'" target="_blank" rel="noopener" data-act="lnk.open" aria-label="링크 열기" data-tip="'+esc(linkLabel(lnk))+'"><svg class="icn"><use href="#i-ext"></use></svg></a>':''}
         ${it.remind?'<button class="tk-ico on" data-act="tk.remind" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" aria-label="리마인드 해제" data-tip="리마인드 켜짐"><svg class="icn"><use href="#i-bell"></use></svg></button>':''}
-        ${lnk?'<a class="tk-ico" href="'+esc(lnk.url)+'" target="_blank" rel="noopener" data-act="lnk.open" aria-label="링크 열기" data-tip="'+esc(lnk.label||lnk.url)+'"><svg class="icn"><use href="#i-ext"></use></svg></a>':''}
+        ${stIcon(st,' data-act="tk.st" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"')}
         <button class="tk-ico" data-act="tk.edit" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="수정" data-tip="수정"><svg class="icn"><use href="#i-pen"></use></svg></button>
         <button class="tk-del" data-act="tk.del" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="삭제"><svg class="icn"><use href="#i-close"></use></svg></button>
       </div>
@@ -2364,7 +2377,7 @@ function taskDetailHTML(sid,iid,it){
       <div class="tk-sec-h">링크</div>
       <div class="tk-links">${lnk.map(([k,l])=>'<a class="tk-link" href="'+esc(l.url)+'" target="_blank" rel="noopener">'
         +'<svg class="icn"><use href="#i-ext"></use></svg>'
-        +'<span>'+esc(l.label||l.url.replace(/^https?:\/\//,''))+'</span></a>').join('')}</div>
+        +'<span>'+esc(linkLabel(l))+'</span></a>').join('')}</div>
     </div>`:''}
     <div class="tk-thread">
       ${threadHTML(cs,sid,iid)}
@@ -2874,6 +2887,15 @@ function mineTasks(){
     const ad=a.it.date||'9999',bd=b.it.date||'9999';
     return ad<bd?-1:ad>bd?1:(a.it.createdAt||0)-(b.it.createdAt||0);});
 }
+/* 팀 공통 업무 — 담당자 없이 팀에 붙은(sid 가 팀 id) 미완료 업무 */
+function teamTasks(){
+  const t=curTeam();if(!t)return[];
+  const m=S.tasks[t.id]||{};
+  return Object.keys(m).map(iid=>({sid:t.id,iid,it:m[iid]}))
+    .filter(x=>x.it&&stEff(x.it)!==2)
+    .sort((a,b)=>{const ad=a.it.date||'9999',bd=b.it.date||'9999';
+      return ad<bd?-1:ad>bd?1:(a.it.createdAt||0)-(b.it.createdAt||0);});
+}
 function minePlans(days){
   const me=myId(),from=todayStr(),to=addDays(from,days);
   const out=[];
@@ -2891,18 +2913,18 @@ function rMine(){
   const root=$('#mineRoot');if(!root)return;
   const me=myId();
   if(!me){root.innerHTML='<div class="tk-none">로그인하면 내 업무를 모아 볼 수 있습니다.</div>';return;}
-  const plans=minePlans(7),tasks=mineTasks();
+  const commons=teamTasks(),tasks=mineTasks();
   const mentions=Object.entries(S.mentions||{}).sort((a,b)=>(b[1].at||0)-(a[1].at||0));
-  const dlab=d=>{const n=daysBetween(todayStr(),d);
-    return n===0?'오늘':n===1?'내일':(toDate(d).getMonth()+1)+'/'+toDate(d).getDate();};
   root.innerHTML='<div class="mine-grid">'
     +`<div class="card">
-        <div class="mine-h"><div class="bar"></div><b>이번 주 내 일정</b><span class="c">${plans.length}</span></div>
-        ${plans.length?plans.map(({p,date})=>`
-          <div class="mine-row" data-act="mine.plan" data-date="${esc(date)}">
-            <span class="d${dlab(date)==='오늘'?' now':''}">${esc(dlab(date))}</span>
-            <span class="t">${fmtSpan(p)?esc(fmtSpan(p))+' · ':''}${esc(p.title)}</span>
-          </div>`).join(''):'<div class="mine-empty">앞으로 7일 안에 내 담당 일정이 없습니다.</div>'}
+        <div class="mine-h"><div class="bar"></div><b>공통 업무</b><span class="c">${commons.length}</span></div>
+        ${commons.length?commons.map(({sid,iid,it})=>{
+          const di=it.date?dueInfo(it.date):null;
+          return `<div class="mine-row ${di?di.cls:''}" data-act="mine.task" data-sid="${esc(sid)}" data-iid="${esc(iid)}">
+            <span class="d${di&&di.txt==='D-DAY'?' now':''}">${di?esc(di.txt):'—'}</span>
+            <span class="t">${esc(it.text||'제목 없음')}</span>
+            ${stIcon(stEff(it))}
+          </div>`;}).join(''):'<div class="mine-empty">팀 공통 업무가 없습니다.</div>'}
       </div>`
     +`<div class="card">
         <div class="mine-h"><div class="bar"></div><b>내 주요업무</b><span class="c">${tasks.length}</span></div>
@@ -3115,117 +3137,87 @@ function rCfg(){
   const i=$('#setDefectUrl');
   if(i&&document.activeElement!==i)i.value=S.cfg.defectUrl||DEFECT_URL;
   rBk();
+  /* 195차: 발송은 주간 하나뿐이고 요일·시각·수신 범위는 고정이다(월요일 07:30 · 팀 전체) */
   const m=S.cfg.mail||{};
-  const hs=$('#mlHour');
-  if(hs&&!hs.options.length){
-    let o='';
-    for(let h=5;h<=21;h++)o+='<option value="'+h+'">'+(h<12?'오전':'오후')+' '+((h%12)||12)+'시</option>';
-    hs.innerHTML=o;
-  }
-  const set=(id,v,prop)=>{const e=$(id);if(e&&document.activeElement!==e)e[prop||'value']=v;};
-  set('#mlHour',String(m.hour===undefined?7:m.hour));
-  set('#mlDaily',m.dailyOn!==false,'checked');
-  set('#mlWeekly',m.weeklyOn!==false,'checked');
-  set('#mlDow',String(m.weeklyDow===undefined?1:m.weeklyDow));
-  set('#mlScope',m.scope||'all');
-  set('#mlPrefix',m.prefix||'');
-  set('#mlIntro',m.intro||'');
+  const w=$('#mlWeekly');
+  if(w&&document.activeElement!==w)w.checked=m.weeklyOn!==false;
 }
-/* ═══════════ 메일 — 수신자 계산 · 미리보기 ═══════════
-   scope='all'   : 전원에게 같은 내용
-   scope='owner' : 담당자에게만. 단 팀 공통 업무는 그 팀 소속 전원에게 간다. */
+/* ═══════════ 메일 — 주간 업무 일정 ═══════════
+   195차: 발송은 주 1회(월요일 오전 7시 30분)뿐이고 수신인은 팀 전체로 고정한다.
+   당일 리마인드는 바탕화면 위젯의 윈도우 알림이 대신한다.
+   ⚠ 이 아래 계산·레이아웃은 실제 발송 스크립트(scripts/weekly.mjs)와 짝이다 — 한쪽만 고치지 말 것 */
 function teamIds(){return (S.org.teams||[]).filter(t=>t.name).map(t=>t.id);}
 function isTeamSid(sid){return teamIds().indexOf(sid)>=0;}
-function teamMemberIds(tid){return roster().filter(p=>p.team===tid).map(p=>p.id);}
-/* 항목 하나의 수신 대상 id 목록 — 팀 공통 업무면 팀원 전체 */
-function targetsOf(kind,x){
-  if(kind==='task')return isTeamSid(x.sid)?teamMemberIds(x.sid):[x.sid];
-  const own=Object.keys((x.p&&x.p.owners)||{});
-  return own.length?own:null;   /* 담당자 지정이 없으면 전원 */
+function mailRecipients(){return roster().filter(p=>p.email);}
+function weekRange(ds){const mon=addDays(ds,-((toDate(ds).getDay()+6)%7));return{mon,sun:addDays(mon,6)};}
+/* 제목·머리에 쓰는 기간 표기 — 2026년 8월 3~9일 / 달이 걸치면 8월 31~9월 6일 */
+function weekLabel(mon,sun){
+  const a=toDate(mon),b=toDate(sun);
+  const head=a.getFullYear()+'년 '+(a.getMonth()+1)+'월 '+a.getDate();
+  return head+'~'+(a.getMonth()===b.getMonth()?'':(b.getMonth()+1)+'월 ')+b.getDate()+'일';
 }
-function mailRecipients(scope,items){
-  const all=roster().filter(p=>p.email);
-  if(scope!=='owner')return{list:all,note:'수신 범위 · 팀 전체'};
-  const ids=new Set();let anyAll=false;
-  items.forEach(it=>{
-    const t=targetsOf(it.kind,it);
-    if(t===null){anyAll=true;return;}
-    t.forEach(id=>ids.add(id));
-  });
-  if(anyAll)return{list:all,note:'수신 범위 · 담당자 지정이 없는 항목이 있어 전체 발송'};
-  const list=all.filter(p=>ids.has(p.id));
-  return{list,note:'수신 범위 · 담당자에게만 (팀 공통 업무는 팀원 전체)'};
-}
-/* 메일에 담길 항목 수집 */
-function mailItems(kind){
-  const today=todayStr(),out=[];
-  if(kind==='daily'){
-    dayPlans(today,true).forEach(({p,occ})=>{if(p.remind&&!isDone(p,occ))out.push({kind:'plan',p,date:today});});
-    return out;
+/* 메일에 담길 것 — ①이번 주 달력 ②공통 업무 ③담당 업무 */
+function mailItems(){
+  const today=todayStr(),{mon,sun}=weekRange(today);
+  const days=[];
+  for(let d=mon;d<=sun;d=addDays(d,1)){
+    const list=[];
+    dayPlans(d,true).forEach(({p,occ})=>{if(!isDone(p,occ))list.push(p);});
+    days.push({date:d,list});
   }
-  const mon=addDays(today,-((toDate(today).getDay()+6)%7)),sun=addDays(mon,6);
-  for(let d=mon;d<=sun;d=addDays(d,1))
-    dayPlans(d,true).forEach(({p,occ})=>{if(!isDone(p,occ))out.push({kind:'plan',p,date:d});});
+  const commons=[],mines=[];
   Object.keys(S.tasks||{}).forEach(sid=>Object.keys(S.tasks[sid]||{}).forEach(iid=>{
     const it=S.tasks[sid][iid];
-    if(it&&it.date&&stEff(it)!==2&&it.date<=sun)out.push({kind:'task',sid,iid,it,over:it.date<today});
+    if(!it||stEff(it)===2)return;
+    if(it.date&&it.date>sun)return;              /* 다음 주 이후 것은 담지 않는다 */
+    (isTeamSid(sid)?commons:mines).push({sid,iid,it});
   }));
-  return out;
+  const byDate=(a,b)=>{const ad=a.it.date||'9999',bd=b.it.date||'9999';return ad<bd?-1:ad>bd?1:0;};
+  commons.sort(byDate);
+  mines.sort((a,b)=>String(subjName(a.sid)).localeCompare(String(subjName(b.sid)),'ko')||byDate(a,b));
+  return{mon,sun,days,commons,mines};
 }
-/* 발송 메일과 같은 골격의 HTML — 실제 스크립트(scripts/*.mjs)와 레이아웃을 맞춘다 */
-function mailHTML(kind,items,m){
-  const today=todayStr(),d=toDate(today);
-  const head=(sub,ttl)=>`<div style="background:linear-gradient(135deg,#3E71D2,#2C437C);border-radius:14px 14px 0 0;padding:18px 20px;color:#fff;">
-      <div style="font-size:11px;opacity:.8;">H서비스센터 · ${sub}</div>
-      <div style="font-size:19px;font-weight:800;margin-top:2px;">${ttl}</div></div>`;
-  const intro=m.intro?`<div style="background:#fff;border:1px solid #EEE;border-top:none;padding:12px 14px 0;font-size:12.5px;color:#555;">${esc(m.intro)}</div>`:'';
-  let rows='';
-  if(kind==='daily'){
-    rows=items.map(({p})=>`<tr><td style="padding:9px 12px;border-bottom:1px solid #EEE;">
-      <div style="font-size:14px;font-weight:700;color:#1C1C1E;">${fmtSpan(p)?esc(fmtSpan(p))+' · ':''}${esc(p.title)}</div>
-      ${p.body?`<div style="font-size:12px;color:#666;margin-top:3px;">${esc(p.body)}</div>`:''}</td></tr>`).join('')
-      ||'<tr><td style="padding:14px 12px;font-size:12.5px;color:#999;">리마인드를 켠 업무가 없습니다.</td></tr>';
-    return `<div style="max-width:520px;">${head('일정 리마인드',(d.getMonth()+1)+'월 '+d.getDate()+'일 오늘의 업무')}${intro}
-      <table style="width:100%;border-collapse:collapse;background:#fff;border:1px solid #EEE;border-top:none;border-radius:0 0 14px 14px;">${rows}</table></div>`;
-  }
-  const plans=items.filter(x=>x.kind==='plan'),dues=items.filter(x=>x.kind==='task');
-  const sec=(t,inner)=>`<tr><td style="padding:10px 12px 4px;font-size:11px;font-weight:700;color:#8E8E93;letter-spacing:.04em;">${t}</td></tr>${inner}`;
-  rows=sec('이번 주 일정',plans.map(({p,date})=>`<tr><td style="padding:8px 12px;border-bottom:1px solid #EEE;">
-      <div style="font-size:13.5px;font-weight:700;color:#1C1C1E;">${esc(date.slice(5).replace('-','/'))} · ${fmtSpan(p)?esc(fmtSpan(p))+' · ':''}${esc(p.title)}</div></td></tr>`).join('')
-      ||'<tr><td style="padding:10px 12px;font-size:12.5px;color:#999;border-bottom:1px solid #EEE;">등록된 일정이 없습니다.</td></tr>')
-    +sec('기한 임박 · 초과 업무',dues.map(({sid,it,over})=>`<tr><td style="padding:8px 12px;border-bottom:1px solid #EEE;">
-      <div style="font-size:13.5px;font-weight:700;color:${over?'#DC2626':'#1C1C1E'};">${esc(it.text)} <span style="font-weight:600;font-size:11.5px;color:#8E8E93;">${esc(subjName(sid))} · ${esc(it.date)}${over?' 지남':''}</span></div></td></tr>`).join('')
-      ||'<tr><td style="padding:10px 12px;font-size:12.5px;color:#999;">기한이 임박한 업무가 없습니다.</td></tr>');
-  return `<div style="max-width:520px;">${head('주간 요약',(d.getMonth()+1)+'월 ' + d.getDate() + '일 주간 업무 요약')}${intro}
-    <table style="width:100%;border-collapse:collapse;background:#fff;border:1px solid #EEE;border-top:none;border-radius:0 0 14px 14px;">${rows}</table></div>`;
+/* 발송 메일과 같은 골격의 HTML — 실제 스크립트(scripts/weekly.mjs)와 레이아웃을 맞춘다 */
+function mailHTML(dat){
+  const today=todayStr();
+  const cell=d=>{
+    const dw=toDate(d.date).getDay();
+    const col=dw===0?'#DC2626':dw===6?'#3E71D2':'#1C1C1E';
+    return `<td style="width:14.28%;vertical-align:top;border:1px solid #EEE;padding:6px 5px;${d.date===today?'background:#F1F7FD;':''}">
+      <div style="font-size:11px;font-weight:800;color:${col};margin-bottom:4px;">${Number(d.date.slice(8))} (${DOW[dw]})</div>
+      ${d.list.map(p=>`<div style="font-size:11px;line-height:1.4;color:#fff;background:${esc(planColor(p))};border-radius:3px;padding:2px 4px;margin-bottom:2px;">${esc(p.title)}</div>`).join('')}</td>`;
+  };
+  const row=(x)=>`<tr><td style="padding:7px 12px;border-bottom:1px solid #EEE;">
+      <span style="font-size:11px;font-weight:800;color:${x.it.date&&x.it.date<today?'#DC2626':'#8E8E93'};">${x.it.date?esc(x.it.date.slice(5).replace('-','/')):'기한 없음'}</span>
+      <span style="font-size:13px;color:#1C1C1E;margin-left:8px;">${esc(x.it.text||'제목 없음')}</span>
+      ${x.who?`<span style="font-size:11px;color:#8E8E93;margin-left:6px;">${esc(x.who)}</span>`:''}</td></tr>`;
+  const sec=(t,rows,none)=>`<div style="font-size:11px;font-weight:800;color:#8E8E93;padding:14px 12px 6px;">${t}</div>`
+    +(rows?`<table style="width:100%;border-collapse:collapse;">${rows}</table>`
+          :`<div style="font-size:12px;color:#999;padding:2px 12px 8px;">${none}</div>`);
+  return `<div style="font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;max-width:640px;">
+    <div style="background:#3E71D2;border-radius:8px 8px 0 0;padding:14px 16px;color:#fff;font-size:16px;font-weight:800;">
+      ${esc(weekLabel(dat.mon,dat.sun))} 주간 업무 일정</div>
+    <div style="background:#fff;border:1px solid #EEE;border-top:none;border-radius:0 0 8px 8px;padding:10px 0 12px;">
+      <div style="padding:4px 12px 8px;"><table style="width:100%;border-collapse:collapse;table-layout:fixed;"><tr>${dat.days.map(cell).join('')}</tr></table></div>
+      ${sec('공통 업무',dat.commons.map(x=>row({...x,who:''})).join(''),'등록된 공통 업무가 없습니다.')}
+      ${sec('담당 업무',dat.mines.map(x=>row({...x,who:subjName(x.sid)})).join(''),'등록된 담당 업무가 없습니다.')}
+    </div></div>`;
 }
-function mailPreview(kind){
-  const m=S.cfg.mail||{};
-  const items=mailItems(kind);
-  const{list,note}=mailRecipients(m.scope||'all',items);
-  const h=m.hour===undefined?7:m.hour;
-  const d=toDate(todayStr());
-  const subject=(m.prefix||(kind==='daily'?'[일정 리마인드]':'[주간 요약]'))+' '
-    +(d.getMonth()+1)+'월 '+d.getDate()+'일 — '+items.length+'건';
+function mailPreview(){
+  const dat=mailItems();
+  const list=mailRecipients();
   const names=list.map(p=>esc(p.name)).join(', ')||'(수신자 없음)';
-  openModal(kind==='daily'?'당일 리마인드 미리보기':'주간 요약 미리보기',
-    `<div class="mlp-to"><b>받는 사람 ${list.length}명</b> · ${esc(note)}<br>${names}<br>
-       <b>발송 시각</b> ${(h<12?'오전':'오후')+' '+((h%12)||12)}시${kind==='weekly'?' · '+DOW[(m.weeklyDow===undefined?1:m.weeklyDow)]+'요일':''}</div>
-     <div class="mlp-sub">제목 · ${esc(subject)}</div>
-     <div class="mlp-wrap">${mailHTML(kind,items,m)}</div>`,
+  openModal('주간 업무 일정 미리보기',
+    `<div class="mlp-to"><b>받는 사람 ${list.length}명</b> · 팀 전체<br>${names}<br>
+       <b>발송 시각</b> 월요일 오전 7시 30분</div>
+     <div class="mlp-sub">제목 · ${esc('[업무 알림] '+weekLabel(dat.mon,dat.sun)+' 주간 업무 일정')}</div>
+     <div class="mlp-wrap">${mailHTML(dat)}</div>`,
     '<button class="btn bg2 bsm" data-act="modal.close">닫기</button>');
 }
 function saveMailCfg(){
   if(!isEditor())return denyEdit();
-  const m={
-    dailyOn:$('#mlDaily').checked,
-    weeklyOn:$('#mlWeekly').checked,
-    weeklyDow:Number($('#mlDow').value),
-    hour:Number($('#mlHour').value),
-    scope:$('#mlScope').value,
-    prefix:($('#mlPrefix').value||'').trim(),
-    intro:($('#mlIntro').value||'').trim()
-  };
+  /* 켬·끔만 저장한다. 옛 필드(dailyOn·weeklyDow·hour·scope·prefix·intro)는 읽는 곳이 없다 */
+  const m={weeklyOn:$('#mlWeekly').checked};
   store.putCfg('mail',m,err=>{
     if(err){toast('메일 설정 저장 실패 · '+((err&&err.message)||err));return;}
     S.cfg={...S.cfg,mail:m};toast('메일 설정을 저장했습니다');
@@ -3668,7 +3660,6 @@ const ACT={
   'nq.close':()=>nqOpen(false),
   'nq.task':el=>gotoTask(el.dataset.sid,el.dataset.iid),
   'nq.cmt':el=>gotoTask(el.dataset.sid,el.dataset.iid),
-  'mine.plan':el=>{go('calendar');selDate(el.dataset.date);},
   'mine.task':el=>gotoTask(el.dataset.sid,el.dataset.iid),
   'mention.clear':()=>{
     const uid2=myId();if(!uid2)return;
@@ -3952,7 +3943,7 @@ const ACT={
     selDate(y+'-'+pad(m)+'-'+pad(same?t.getDate():1),true);   /* 이동만 — 업무 팝업은 열지 않는다 */
     rMonTitle();subVisibleMonths();refetchCal();
     const yp=$('#ymPop');if(yp)yp.innerHTML=ymPickHTML();   /* 고른 달을 팝업에도 표시 */},
-  'mail.preview':el=>mailPreview(el.dataset.kind),
+  'mail.preview':()=>mailPreview(),
   'wid.popClose':()=>{S.widPop=false;if(S.planEdit)closePlanEdit();rWidget();},
   /* 위젯 내려받기 — 늘 최신 릴리스를 가리키는 고정 주소(팀원은 받아서 두 번 누르면 끝).
      ⚠ 예전에는 설정의 `cfg.widgetUrl` 이 이 상수를 이겼다 — 그 입력칸은 165차에 없앴는데

@@ -1479,8 +1479,23 @@ html.dark .bp{background:var(--b500);}
 .tk-link{max-width:100%;min-width:0;}
 /* 펼침 본문(진행경과·처리계획) 글자색 */
 .pd-b{color:var(--lbl);}
-/* 내 업무 — '오늘' 파란색 */
+/* 내 업무 — 오늘(D-DAY) 파란색 */
 .mine-row .d.now{color:var(--bt1);}
+/* ── 4차 ── */
+/* 편집 폼 아이콘 — 읽기 카드와 같은 간격(0) */
+.pe-side{gap:0;}
+.pe-side .stx{margin-right:0;}
+/* 링크 아이콘 — 도형 무게가 왼쪽 아래에 쏠려 오른쪽이 비어 보인다. 뒤 간격을 좁혀 보정 */
+.tk-link{gap:3px;}
+.pd-lnk .icn{margin-right:2px;}
+/* 오늘 배지 — 지름을 줄여 업무 막대 단차를 없앤다(위젯 포함) */
+#fcal .fc-day-today .dnum{width:18px;height:18px;margin:0 0 0 -5px;}
+/* 계정 모달 — 두 탭 모두 내용 높이에 맞춘다(빈 아래 여백 제거) */
+.acct-pane{min-height:0;}
+/* 사용 안내 — 장을 옮겨도 모달 높이가 일정하도록 본문에 고정 높이 */
+.rd-body{height:62dvh;overflow-y:auto;}
+/* 조직/현장 — 탭을 옮겨도 머리 높이가 같도록(현장 탭에만 있는 추가 버튼 때문) */
+.tm-h{min-height:30px;}
 </style>
 </head>
 <body>
@@ -1757,35 +1772,12 @@ html.dark .bp{background:var(--b500);}
           <div class="card">
             <div class="set-h">메일 발송</div>
             <div class="share-row">
-              <div class="share-info"><b>당일 리마인드</b><span>종을 켠 업무가 있는 날 아침 발송</span></div>
-              <button class="btn bo bxs ml-pv" data-act="mail.preview" data-kind="daily">미리보기</button>
-              <label class="sw"><input type="checkbox" id="mlDaily" data-act="set.mail"><span class="sw-t"></span></label>
-            </div>
-            <div class="share-sep"></div>
-            <div class="share-row">
-              <div class="share-info"><b>주간 요약</b><span>한 주 일정과 기한 임박 업무를 한 통으로</span></div>
-              <button class="btn bo bxs ml-pv" data-act="mail.preview" data-kind="weekly">미리보기</button>
+              <div class="share-info"><b>주간 업무 일정</b><span>월요일 오전 7시 30분 · 팀 전체에게 한 통</span></div>
+              <button class="btn bo bxs ml-pv" data-act="mail.preview">미리보기</button>
               <label class="sw"><input type="checkbox" id="mlWeekly" data-act="set.mail"><span class="sw-t"></span></label>
             </div>
             <div class="share-sep"></div>
-            <div class="frow2">
-              <div class="frow"><label>주간 요약 요일</label>
-                <select class="inp inp-sm" id="mlDow" data-act="set.mail">
-                  <option value="1">월요일</option><option value="2">화요일</option><option value="3">수요일</option>
-                  <option value="4">목요일</option><option value="5">금요일</option><option value="0">일요일</option>
-                </select></div>
-              <div class="frow"><label>발송 시각</label>
-                <select class="inp inp-sm" id="mlHour" data-act="set.mail"></select></div>
-            </div>
-            <div class="frow"><label>수신 범위</label>
-              <select class="inp inp-sm" id="mlScope" data-act="set.mail">
-                <option value="all">팀 전체 — 모두에게 같은 메일</option>
-                <option value="owner">담당자에게만 — 내 업무만 골라서</option>
-              </select>
-              <span class="frow-hint">담당자에게만으로 두어도 <b>팀 공통 업무</b>는 팀원 전체에게 갑니다.</span>
-            </div>
-            <div class="frow"><label>제목 앞머리</label><input class="inp inp-sm" id="mlPrefix" maxlength="30" placeholder="예: [업무알림]" data-act="set.mail"></div>
-            <div class="frow"><label>안내 문구 (선택)</label><textarea class="inp inp-sm" id="mlIntro" maxlength="300" placeholder="메일 상단에 넣을 한 줄 안내" data-act="set.mail"></textarea></div>
+            <div class="frow-hint" style="padding:2px 2px 0">이번 주 달력과 공통 업무 · 담당 업무를 담아 보냅니다. 당일 리마인드는 바탕화면 위젯의 윈도우 알림이 대신합니다.</div>
 
           </div>
         </div>
@@ -1793,7 +1785,7 @@ html.dark .bp{background:var(--b500);}
           <div class="card" id="bkCard">
             <div class="set-h">백업 · 기록</div>
             <div class="share-row">
-              <div class="share-info"><b>지금 내보내기</b><span>위젯 없이 이 컴퓨터의 내려받기 폴더에 저장합니다</span></div>
+              <div class="share-info"><b>지금 내보내기</b><span>위젯 없이 이 컴퓨터의 다운로드 폴더에 저장합니다</span></div>
               <button class="btn bo bsm" data-act="bk.now">내보내기</button>
             </div>
             <div class="share-sep"></div>
@@ -1815,8 +1807,8 @@ html.dark .bp{background:var(--b500);}
           <div class="card">
             <div class="set-h">바탕화면 위젯</div>
             <div class="share-row">
-              <div class="share-info"><b>위젯 내려받기</b><span>다운로드 시 &quot;유지&quot; 선택 후 &quot;삭제 옆 옵션&quot;에서 &quot;그래도 계속&quot; 선택</span></div>
-              <button class="btn bp bsm" data-act="wid.dl">내려받기</button>
+              <div class="share-info"><b>위젯 다운로드</b><span>다운로드 시 &quot;유지&quot; 선택 후 &quot;삭제 옆 옵션&quot;에서 &quot;그래도 계속&quot; 선택</span></div>
+              <button class="btn bp bsm" data-act="wid.dl">다운로드</button>
             </div>
           </div>
         </div>
