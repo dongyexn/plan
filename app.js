@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='1.2.0';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='1.3.0';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -2900,7 +2900,7 @@ function rMine(){
         <div class="mine-h"><div class="bar"></div><b>이번 주 내 일정</b><span class="c">${plans.length}</span></div>
         ${plans.length?plans.map(({p,date})=>`
           <div class="mine-row" data-act="mine.plan" data-date="${esc(date)}">
-            <span class="d">${esc(dlab(date))}</span>
+            <span class="d${dlab(date)==='오늘'?' now':''}">${esc(dlab(date))}</span>
             <span class="t">${fmtSpan(p)?esc(fmtSpan(p))+' · ':''}${esc(p.title)}</span>
           </div>`).join(''):'<div class="mine-empty">앞으로 7일 안에 내 담당 일정이 없습니다.</div>'}
       </div>`
