@@ -1057,7 +1057,6 @@ select.mg-inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-
 .mgtbl{width:100%;border-collapse:collapse;}
 .mgtbl td{padding:4px 6px;vertical-align:middle;}
 .mgtbl tbody tr:hover{background:var(--fill);}
-.frow-hint{font-size:12px;color:var(--lbl3);margin-top:4px;line-height:1.5;}
 /* 미리보기는 토글 바로 왼쪽에 — 오터치를 피해 간격만 둔다 */
 .ml-pv{flex:0 0 auto;margin-right:2px;}
 /* 메일 미리보기 */
@@ -1496,6 +1495,39 @@ html.dark .bp{background:var(--b500);}
 .rd-body{height:62dvh;overflow-y:auto;}
 /* 조직/현장 — 탭을 옮겨도 머리 높이가 같도록(현장 탭에만 있는 추가 버튼 때문) */
 .tm-h{min-height:30px;}
+/* ── 5차 ── */
+/* 수정 폼을 읽기 카드와 같은 자리·같은 크기로 —
+   제목 줄 여백(8/8)과 본문 좌우 여백(8)을 카드에 맞춰 전환 시 글이 움직이지 않게 한다 */
+.pe-bar{padding:8px 8px 10px;}
+.pe-bar::after{left:0;right:0;}
+.pe-body{padding:10px 8px 12px;}
+.dp-edit .frow{margin-bottom:8px;}
+.pe-ttl{font-size:14px;line-height:1.5;}
+/* 위젯 — 읽기 카드 제목만 줄여 두어 수정하면 글자가 커지던 것. 폼도 같은 배율을 따른다 */
+body.wid .pe-ttl{font-size:calc(12.5px*var(--wfz));}
+body.wid .dp-edit .frow>label{font-size:calc(11px*var(--wfz));}
+body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
+/* ── 6차 ── */
+/* 팀 선택 줄 — 본문 첫 카드와 같은 선에서 시작하도록 위 여백을 4px 로 */
+.teamsel{padding-top:4px;}
+/* 접었을 때도 같은 높이를 차지하게 — 고정 높이 대신 내용을 숨기기만 한다(아이콘이 어긋나던 것) */
+#sidebar.mini .teamsel{padding:4px 0 10px;height:auto;}
+#sidebar.mini .teamsel>*{display:block;visibility:hidden;}
+/* 조직/현장 좌측 열을 업무 목록 좌측(320px)과 같은 너비로 */
+.mg-grid{grid-template-columns:320px minmax(0,1fr);}
+/* 메일 미리보기 — 실제 메일 폭(640px)이 잘리지 않게 */
+#mb.mlw{max-width:min(760px,94vw);}
+/* 사용 안내 — 각 장 첫 제목 위 빈 줄 제거(소개 장은 h1 이라 해당 없음) */
+.rd-sec>h2:first-child{margin-top:0;}
+/* 담당자별 현황 카드(주요 업무 현황 머리) */
+.ts-card{margin-bottom:12px;}
+.ts-body{display:flex;flex-direction:column;gap:4px;}
+.ts-row{display:flex;align-items:center;gap:10px;padding:5px 2px;}
+.ts-n{flex:0 0 150px;min-width:0;font-size:13px;font-weight:600;color:var(--lbl);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ts-bar{flex:1;min-width:0;height:6px;border-radius:8px;background:var(--fill);overflow:hidden;}
+.ts-bar>span{display:block;height:100%;background:var(--b600);border-radius:8px;}
+.ts-v{flex:0 0 auto;font-size:12px;color:var(--lbl2);font-variant-numeric:tabular-nums;}
+.ts-v b{color:var(--lbl);font-weight:700;}
 </style>
 </head>
 <body>
@@ -1569,14 +1601,15 @@ html.dark .bp{background:var(--b500);}
     <div class="teamsel" id="teamsel">
       <div class="tsel-wrap" id="tselWrap"></div>
     </div>
-    <div class="sbsl">메인</div>
+    <div class="sbsl">업무 일정</div>
     <div class="nvi act" role="button" tabindex="0" data-view="calendar" data-act="nav.go">
       <div class="nic"><svg class="icn" aria-hidden="true"><use href="#i-cal"></use></svg></div>
-      <span class="nil">업무 일정</span>
+      <span class="nil">캘린더</span>
     </div>
+    <div class="sbsl">업무 현황</div>
     <div class="nvi" role="button" tabindex="0" data-view="tasks" data-act="nav.go">
       <div class="nic"><svg class="icn" aria-hidden="true"><use href="#i-tasks"></use></svg></div>
-      <span class="nil">업무 목록</span>
+      <span class="nil">주요 업무 현황</span>
       <span class="nv-badge" id="mentionBadge" data-act="mention.open" style="display:none" data-tip="알림"></span>
     </div>
     <div class="sbsl">개인</div>
@@ -1772,12 +1805,11 @@ html.dark .bp{background:var(--b500);}
           <div class="card">
             <div class="set-h">메일 발송</div>
             <div class="share-row">
-              <div class="share-info"><b>주간 업무 일정</b><span>월요일 오전 7시 30분 · 팀 전체에게 한 통</span></div>
+              <div class="share-info"><b>주간 업무 일정</b><span>매주 월요일 · 오전 7시 30분 · 수신대상 팀 전체</span></div>
               <button class="btn bo bxs ml-pv" data-act="mail.preview">미리보기</button>
               <label class="sw"><input type="checkbox" id="mlWeekly" data-act="set.mail"><span class="sw-t"></span></label>
             </div>
-            <div class="share-sep"></div>
-            <div class="frow-hint" style="padding:2px 2px 0">이번 주 달력과 공통 업무 · 담당 업무를 담아 보냅니다. 당일 리마인드는 바탕화면 위젯의 윈도우 알림이 대신합니다.</div>
+
 
           </div>
         </div>
@@ -1785,12 +1817,12 @@ html.dark .bp{background:var(--b500);}
           <div class="card" id="bkCard">
             <div class="set-h">백업 · 기록</div>
             <div class="share-row">
-              <div class="share-info"><b>지금 내보내기</b><span>위젯 없이 이 컴퓨터의 다운로드 폴더에 저장합니다</span></div>
+              <div class="share-info"><b>지금 내보내기</b></div>
               <button class="btn bo bsm" data-act="bk.now">내보내기</button>
             </div>
             <div class="share-sep"></div>
             <div class="share-row">
-              <div class="share-info"><b>되돌리기</b><span>백업 파일을 골라 그 시점으로 되돌립니다 · 지금 내용은 사라집니다</span></div>
+              <div class="share-info"><b>되돌리기</b></div>
               <button class="btn bo bsm" data-act="bk.restore">불러오기</button>
             </div>
             <div class="share-sep"></div>

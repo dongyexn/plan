@@ -33,7 +33,7 @@ async function openReadme(){
     const md=await res.text();
     await loadMarked();
     const src=document.createElement('div');
-    src.innerHTML=DOMPurify.sanitize(marked.parse(md));
+    src.innerHTML=DOMPurify.sanitize(marked.parse(md,{breaks:true}));   /* 원문의 줄바꿈을 그대로 살린다 */
     /* 장(h2) 단위로 쪼개 왼쪽 목차 + 본문 한 장씩 — 길어서 스크롤만으로는 찾기 어렵다 */
     const secs=[];let cur={t:'소개',nodes:[]};
     Array.from(src.childNodes).forEach(n=>{
@@ -312,7 +312,7 @@ function palHTML(id,cur,extraFirst){
   const custom=c&&c!=='auto'&&PAL.indexOf(c)<0?c:'';
   return '<div class="pal" id="'+id+'">'+(extraFirst||'')
     +PAL.map(x=>'<div class="pal-c'+(x===c?' sel':'')+'" data-c="'+x+'" style="background:'+x+'"></div>').join('')
-    +(custom?'<div class="pal-c sel" data-c="'+esc(custom)+'" style="background:'+esc(custom)+'"></div>':'')
+    +(custom?'<div class="pal-c pal-custom sel" data-c="'+esc(custom)+'" style="background:'+esc(custom)+'" data-tip="우클릭으로 삭제"></div>':'')
     +'<label class="pal-c pal-add" data-tip="직접 고르기">'
     +'<input type="color" class="pal-inp" value="'+esc(custom||'#3E71D2')+'"><span>+</span></label>'
     +'</div>';
@@ -1157,8 +1157,22 @@ function renderAcctModal(tab){
       <button class="acct-tab${t==='pw'?' act':''}" data-act="acct.tab" data-tab="pw">비밀번호</button>
     </div>
     <div class="acct-pane">${acctTabBody(t)}</div>`;
+  acctPaneFix(t);
   MODAL_CB={type:'acct',tab:t};
   PF_MORE=null;   /* 이모지는 팝업을 열 때 그린다 — 모달 여는 속도를 늦추지 않게 */
+}
+/* 탭을 옮길 때 모달 높이가 출렁이지 않도록, 안 보이는 탭도 한 번 재어 큰 쪽으로 고정한다.
+   ⚠ 이모지 팝오버는 절대 위치라 높이에 들어가지 않는다 */
+function acctPaneFix(tab){
+  const pane=$('.acct-pane');if(!pane)return;
+  const ghost=document.createElement('div');
+  ghost.className='acct-pane';
+  ghost.style.cssText='position:absolute;visibility:hidden;pointer-events:none;left:0;right:0;min-height:0;';
+  ghost.innerHTML=acctTabBody(tab==='pw'?'profile':'pw');
+  pane.parentNode.appendChild(ghost);
+  const h=Math.max(pane.scrollHeight,ghost.scrollHeight);
+  ghost.remove();
+  if(h)pane.style.minHeight=h+'px';
 }
 function openAcctModal(){
   const u=S.user;if(!u){toast('로그인이 필요합니다');return;}
@@ -1347,15 +1361,18 @@ function widSideRender(){
     if(ttl)ttl.textContent='내 업무';
     const me=myId();
     if(!me){box.innerHTML=empty('i-me','로그인하면 내 업무를 모아 볼 수 있습니다');if(cnt)cnt.textContent='';return;}
-    const plans=minePlans(7),tasks=mineTasks();
-    if(cnt)cnt.textContent=(plans.length+tasks.length)+'건';
+    const commons=teamTasks(),tasks=mineTasks();
+    if(cnt)cnt.textContent=(commons.length+tasks.length)+'건';
     const sec=(t,n)=>'<div class="wl-h">'+esc(t)+'<span>'+n+'</span></div>';
     box.innerHTML=
-      sec('이번 주 일정',plans.length)
-      +(plans.length?plans.map(({p,date})=>row('wid.goDate',' data-date="'+esc(date)+'"',
-          dlab(date),daysBetween(todayStr(),date)===0?'now':'',p.title||'제목 없음',
-          [kindLabel(p.kind),p.time?fmtTime(p.time):''].filter(Boolean).join(' · '))).join('')
-        :empty('i-cal','이번 주 일정이 없습니다'))
+      sec('공통 업무',commons.length)
+      +(commons.length?commons.map(({sid,iid,it})=>row('wid.goTask',
+          ' data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" data-date="'+esc(it.date||'')+'"',
+          it.date?dlab(it.date):'기한 없음',
+          (it.date&&daysBetween(todayStr(),it.date)<0)?'over':(it.date&&daysBetween(todayStr(),it.date)===0?'now':''),
+          it.text||'제목 없음',
+          [kindLabel(it.kind),siteName(it.site)].filter(Boolean).join(' · '))).join('')
+        :empty('i-tasks','팀 공통 업무가 없습니다'))
       +sec('미완료 업무',tasks.length)
       +(tasks.length?tasks.map(({sid,iid,it,over})=>row('wid.goTask',
           ' data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" data-date="'+esc(it.date||'')+'"',
@@ -1976,7 +1993,7 @@ function openModal(title,bodyHTML,footHTML){
   $('#mt').textContent=title;$('#mbody').innerHTML=bodyHTML;$('#mf').innerHTML=footHTML||'';
   /* 하단 버튼이 없는 모달(사용 안내 등)은 우상단 X 로 닫는다 — 참조 앱과 동일 */
   const mb=$('#mb');
-  mb.classList.remove('rdw','narrow');   /* ⚠ 지난번 모달의 폭 설정이 남으면 다음 모달이 엉뚱한 크기로 뜬다 */
+  mb.classList.remove('rdw','narrow','mlw');   /* ⚠ 지난번 모달의 폭 설정이 남으면 다음 모달이 엉뚱한 크기로 뜬다 */
   mb.classList.toggle('has-x',!footHTML);
   $('#mo').classList.add('open');
 }
@@ -2715,6 +2732,32 @@ function tkMatch(sid,iid,it){
   return true;
 }
 function tkFilterOn(){const f=S.tkF||{};return !!(String(f.q||'').trim()||f.st||f.due);}
+/* 담당자별 진행·완료 집계 — '주요 업무 현황' 화면 머리에 얹는 요약.
+   ⚠ 목록 카운트(taskCount)는 필터를 타지만 현황은 팀 전체를 그대로 본다 */
+function tkStat(sid){
+  const m=S.tasks[sid]||{};
+  let run=0,done=0;
+  Object.keys(m).forEach(k=>{const it=m[k];if(!it)return;stEff(it)===2?done++:run++;});
+  return{run,done,all:run+done};
+}
+function tkStatHTML(team,mems){
+  const rows=[];
+  if(team)rows.push({name:'공통 업무',rank:'',...tkStat(team.id)});
+  mems.forEach(p=>rows.push({name:p.name,rank:rankLabel(rankOf(p.rank)),...tkStat(p.id)}));
+  const tot=rows.reduce((a,r)=>({run:a.run+r.run,done:a.done+r.done,all:a.all+r.all}),{run:0,done:0,all:0});
+  const pct=r=>r.all?Math.round(r.done/r.all*100):0;
+  const cell=r=>`<div class="ts-row">
+      <div class="ts-n">${esc(r.name)}${r.rank?'<span class="rk">'+esc(r.rank)+'</span>':''}</div>
+      <div class="ts-bar"><span style="width:${pct(r)}%"></span></div>
+      <div class="ts-v"><b>${r.run}</b> 진행 · ${r.done} 완료</div>
+    </div>`;
+  return `<div class="card ts-card">
+    <div class="tkm-h"><div class="bar"></div><b>담당자별 현황</b>
+      <span class="tkm-sub">진행 ${tot.run} · 완료 ${tot.done}</span>
+      <span class="tkm-c">완료율 ${pct(tot)}%</span></div>
+    <div class="ts-body">${rows.length?rows.map(cell).join(''):'<div class="tk-empty">배정된 담당자가 없습니다.</div>'}</div>
+  </div>`;
+}
 function rTasks(){
   const root=$('#tkRoot');
   const{teams,team,regions,mems}=tkSel();
@@ -2788,6 +2831,7 @@ function rTasks(){
       </div>
     </div>
     <div class="tkcol">
+      ${tkStatHTML(team,mems)}
       ${tkFilterHTML()}
       <div class="card tkmain">
         <div class="tkm-h"><div class="bar"></div><b>업무 목록</b><span class="tkm-sub">${esc(subject)}</span>
@@ -2895,19 +2939,6 @@ function teamTasks(){
     .filter(x=>x.it&&stEff(x.it)!==2)
     .sort((a,b)=>{const ad=a.it.date||'9999',bd=b.it.date||'9999';
       return ad<bd?-1:ad>bd?1:(a.it.createdAt||0)-(b.it.createdAt||0);});
-}
-function minePlans(days){
-  const me=myId(),from=todayStr(),to=addDays(from,days);
-  const out=[];
-  const push=(p,d)=>{if(planOwners(p).includes(me))out.push({p,date:d});};
-  allTasks().forEach(({sid,iid,it})=>{
-    if(!it.date)return;
-    const p=taskAsPlan(sid,iid,it);
-    if(it.recur&&it.recur.f){recurDates(p,from,to).forEach(d=>push(p,d));return;}
-    const last=it.end||it.date;
-    if(last<from||it.date>to)return;
-    push(p,it.date<from?from:it.date);});
-  return out.sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:((a.p.time||'99')<(b.p.time||'99')?-1:1));
 }
 function rMine(){
   const root=$('#mineRoot');if(!root)return;
@@ -3213,6 +3244,7 @@ function mailPreview(){
      <div class="mlp-sub">제목 · ${esc('[업무 알림] '+weekLabel(dat.mon,dat.sun)+' 주간 업무 일정')}</div>
      <div class="mlp-wrap">${mailHTML(dat)}</div>`,
     '<button class="btn bg2 bsm" data-act="modal.close">닫기</button>');
+  const mb=$('#mb');if(mb)mb.classList.add('mlw');
 }
 function saveMailCfg(){
   if(!isEditor())return denyEdit();
@@ -3470,7 +3502,7 @@ window.addEventListener('blur',tipHide);
 setInterval(()=>{if(_tipFor&&!_tipFor.isConnected)tipHide();},700);
 
 /* ═══════════ 화면 전환 · 공통 UI ═══════════ */
-const VIEW_TTL={calendar:'업무 일정',mine:'내 업무',tasks:'업무 목록',org:'조직/현장 관리',settings:'설정'};
+const VIEW_TTL={calendar:'캘린더',mine:'내 업무',tasks:'주요 업무 현황',org:'조직/현장 관리',settings:'설정'};
 function go(view){
   S.view=view;
   if(S.dpSheet)dpSheet(false);
@@ -3959,12 +3991,6 @@ const ACT={
     const on=!el.classList.contains('on');
     el.classList.toggle('on',on);
     if(on)rAppAlerts();
-  },
-  'wid.goDate':el=>{
-    const d=el.dataset.date;if(!d)return;
-    const el2=$('#widSide');if(el2)el2.classList.remove('on');S.widSide='';
-    if(CAL)CAL.gotoDate(toDate(d));
-    selDate(d,true);S.widPop=true;rMonTitle();refetchCal();rDay();rWidget();
   },
   'wid.goTask':el=>{
     const d=el.dataset.date;
