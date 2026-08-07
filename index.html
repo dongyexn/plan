@@ -1502,7 +1502,9 @@ html.dark .bp{background:var(--b500);}
 .pe-bar::after{left:0;right:0;}
 .pe-body{padding:10px 8px 12px;}
 .dp-edit .frow{margin-bottom:8px;}
-.pe-ttl{font-size:14px;line-height:1.5;}
+/* 제목 칸은 input 이라 같은 글꼴·크기여도 읽기 카드의 div 와 세로 정렬이 어긋난다 —
+   박스 높이와 행간을 카드 제목(14px x 1.5 = 21px)과 똑같이 못 박는다 */
+.pe-ttl{font-size:14px;height:21px;line-height:21px;padding:0;}
 /* 위젯 — 읽기 카드 제목만 줄여 두어 수정하면 글자가 커지던 것. 폼도 같은 배율을 따른다 */
 body.wid .pe-ttl{font-size:calc(12.5px*var(--wfz));}
 body.wid .dp-edit .frow>label{font-size:calc(11px*var(--wfz));}
@@ -1519,15 +1521,31 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 #mb.mlw{max-width:min(760px,94vw);}
 /* 사용 안내 — 각 장 첫 제목 위 빈 줄 제거(소개 장은 h1 이라 해당 없음) */
 .rd-sec>h2:first-child{margin-top:0;}
-/* 담당자별 현황 카드(주요 업무 현황 머리) */
-.ts-card{margin-bottom:12px;}
-.ts-body{display:flex;flex-direction:column;gap:4px;}
-.ts-row{display:flex;align-items:center;gap:10px;padding:5px 2px;}
-.ts-n{flex:0 0 150px;min-width:0;font-size:13px;font-weight:600;color:var(--lbl);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.ts-bar{flex:1;min-width:0;height:6px;border-radius:8px;background:var(--fill);overflow:hidden;}
-.ts-bar>span{display:block;height:100%;background:var(--b600);border-radius:8px;}
-.ts-v{flex:0 0 auto;font-size:12px;color:var(--lbl2);font-variant-numeric:tabular-nums;}
-.ts-v b{color:var(--lbl);font-weight:700;}
+/* ── 7차 ── */
+/* 주요 업무 — 주 단위 업무보고 표 */
+.rp-head{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
+.rp-week{font-size:16px;font-weight:800;color:var(--lbl);}
+.rp-head .btn{margin-left:auto;}
+.rp-card{margin-bottom:12px;}
+.rp-wrap{overflow-x:auto;}
+.rp-tbl{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;}
+.rp-tbl th{font-size:12px;font-weight:700;color:var(--lbl3);text-align:left;padding:0 8px 8px;border-bottom:1px solid var(--sep);white-space:nowrap;}
+.rp-tbl td{padding:6px 8px;border-bottom:1px solid var(--sep);vertical-align:top;line-height:1.5;word-break:break-all;}
+.rp-tbl th.cc,.rp-tbl td.cc{text-align:center;}
+.rp-tbl .rp-reg,.rp-tbl .rp-own{font-weight:700;color:var(--lbl);border-right:1px solid var(--sep);white-space:nowrap;}
+.rp-tbl .rp-reg{background:var(--surf2);}
+.rp-tbl .rp-t{color:var(--lbl);}
+.rp-tbl .rp-memo{color:var(--lbl2);}
+.rp-tbl .rp-none{text-align:center;color:var(--lbl3);padding:18px 0;}
+.rp-st{display:inline-block;padding:1px 7px;border-radius:8px;font-size:12px;font-weight:700;}
+.rp-st.s2{background:var(--tint-gn);color:var(--gn);}
+.rp-st.s1,.rp-st.s0,.rp-st.s3{background:var(--fill);color:var(--lbl2);}
+@media print{
+  #sidebar,#topbar,.rp-head,.nq-fab{display:none!important;}
+  #content{padding:0;overflow:visible;}
+  .rp-card{border:0;box-shadow:none;break-inside:auto;}
+  .rp-tbl{font-size:10.5px;}
+}
 </style>
 </head>
 <body>
@@ -1606,11 +1624,15 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
       <div class="nic"><svg class="icn" aria-hidden="true"><use href="#i-cal"></use></svg></div>
       <span class="nil">캘린더</span>
     </div>
-    <div class="sbsl">업무 현황</div>
     <div class="nvi" role="button" tabindex="0" data-view="tasks" data-act="nav.go">
       <div class="nic"><svg class="icn" aria-hidden="true"><use href="#i-tasks"></use></svg></div>
-      <span class="nil">주요 업무 현황</span>
+      <span class="nil">업무 목록</span>
       <span class="nv-badge" id="mentionBadge" data-act="mention.open" style="display:none" data-tip="알림"></span>
+    </div>
+    <div class="sbsl">업무 현황</div>
+    <div class="nvi" role="button" tabindex="0" data-view="report" data-act="nav.go">
+      <div class="nic"><svg class="icn" aria-hidden="true"><use href="#i-dash"></use></svg></div>
+      <span class="nil">주요 업무</span>
     </div>
     <div class="sbsl">개인</div>
     <div class="nvi" role="button" tabindex="0" data-view="mine" data-act="nav.go">
@@ -1762,6 +1784,7 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
       <div id="tkRoot"></div>
     </div>
 
+    <div id="view-report" class="view"><div id="reportRoot"></div></div>
     <div id="view-mine" class="view">
       <div id="mineRoot"></div>
     </div>

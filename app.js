@@ -421,6 +421,7 @@ const S={
   tk:{t:null,m:null},       // 주요업무 현황 탭 선택(팀/권역/담당자)
   filter:{kind:[],st:[],reg:[],own:[],site:[]},  // 달력 필터 — 모두 다중 선택(빈 배열이 '전체')
   foldOpen:{},       // 완료 항목 접힘 해제(subjectId별)
+  rptWeek:'',        // 주요 업무 화면이 보고 있는 주(빈 값이면 이번 주)
   tkNew:null,        // 인라인 작성창이 열린 대상
   tkEdit:null,       // 인라인 수정 중인 업무 'sid/iid'
   tkOpen:null,       // 펼쳐 놓은 업무 'sid/iid'
@@ -2732,32 +2733,6 @@ function tkMatch(sid,iid,it){
   return true;
 }
 function tkFilterOn(){const f=S.tkF||{};return !!(String(f.q||'').trim()||f.st||f.due);}
-/* 담당자별 진행·완료 집계 — '주요 업무 현황' 화면 머리에 얹는 요약.
-   ⚠ 목록 카운트(taskCount)는 필터를 타지만 현황은 팀 전체를 그대로 본다 */
-function tkStat(sid){
-  const m=S.tasks[sid]||{};
-  let run=0,done=0;
-  Object.keys(m).forEach(k=>{const it=m[k];if(!it)return;stEff(it)===2?done++:run++;});
-  return{run,done,all:run+done};
-}
-function tkStatHTML(team,mems){
-  const rows=[];
-  if(team)rows.push({name:'공통 업무',rank:'',...tkStat(team.id)});
-  mems.forEach(p=>rows.push({name:p.name,rank:rankLabel(rankOf(p.rank)),...tkStat(p.id)}));
-  const tot=rows.reduce((a,r)=>({run:a.run+r.run,done:a.done+r.done,all:a.all+r.all}),{run:0,done:0,all:0});
-  const pct=r=>r.all?Math.round(r.done/r.all*100):0;
-  const cell=r=>`<div class="ts-row">
-      <div class="ts-n">${esc(r.name)}${r.rank?'<span class="rk">'+esc(r.rank)+'</span>':''}</div>
-      <div class="ts-bar"><span style="width:${pct(r)}%"></span></div>
-      <div class="ts-v"><b>${r.run}</b> 진행 · ${r.done} 완료</div>
-    </div>`;
-  return `<div class="card ts-card">
-    <div class="tkm-h"><div class="bar"></div><b>담당자별 현황</b>
-      <span class="tkm-sub">진행 ${tot.run} · 완료 ${tot.done}</span>
-      <span class="tkm-c">완료율 ${pct(tot)}%</span></div>
-    <div class="ts-body">${rows.length?rows.map(cell).join(''):'<div class="tk-empty">배정된 담당자가 없습니다.</div>'}</div>
-  </div>`;
-}
 function rTasks(){
   const root=$('#tkRoot');
   const{teams,team,regions,mems}=tkSel();
@@ -2831,7 +2806,6 @@ function rTasks(){
       </div>
     </div>
     <div class="tkcol">
-      ${tkStatHTML(team,mems)}
       ${tkFilterHTML()}
       <div class="card tkmain">
         <div class="tkm-h"><div class="bar"></div><b>업무 목록</b><span class="tkm-sub">${esc(subject)}</span>
@@ -2848,6 +2822,91 @@ function rTasks(){
   wireTaskDnD();
   if((sid&&S.tkNew===sid)||S.tkEdit){const t=$('#tnTitle');if(t&&document.activeElement!==t)t.focus();}
 }
+/* ═══════════ 주요 업무 — 주 단위 업무보고 표 ═══════════
+   완료(이번 주에 끝난 것) · 진행(아직 안 끝난 것) 두 덩어리를 권역 → 담당자 → 업무 순으로 늘어놓는다.
+   ⚠ 업무가 없는 권역·담당자도 줄을 남긴다(보고서라 빈칸도 정보다).
+   ⚠ 완료일 전용 필드는 없다 — 종료일(end 또는 date)을 완료일로 본다. */
+function rptRegions(){
+  /* 미인수 현장 권역은 보고 대상이 아니다 */
+  return (S.org.regions||[]).filter(r=>r.name&&!/미인수/.test(r.name));
+}
+function rptRows(sid,mon,sun,done){
+  const m=S.tasks[sid]||{};
+  return Object.keys(m).map(iid=>({iid,it:m[iid]})).filter(({it})=>{
+    if(!it)return false;
+    const fin=stEff(it)===2;
+    if(done!==fin)return false;
+    if(!done)return !it.date||it.date<=sun;      /* 진행 — 이번 주까지 걸치는 것(기한 없는 것 포함) */
+    const d=it.end||it.date||'';                  /* 완료 — 이번 주에 끝난 것 */
+    return d>=mon&&d<=sun;
+  }).sort((a,b)=>String(a.it.end||a.it.date||'9999').localeCompare(String(b.it.end||b.it.date||'9999')));
+}
+function rReport(){
+  const root=$('#reportRoot');if(!root)return;
+  const{team,mems}=tkSel();
+  const{mon,sun}=weekRange(S.rptWeek||todayStr());
+  const regions=rptRegions();
+  /* 묶음: 팀 공통 → 권역별 담당자 → 권역 없는 담당자(팀장 등) */
+  const groups=[];
+  if(team)groups.push({reg:'팀 공통',people:[{id:team.id,name:'공통 업무',rank:''}]});
+  const byRank=l=>l.slice().sort((a,b)=>rankOrd(a.rank)-rankOrd(b.rank)||String(a.name).localeCompare(String(b.name),'ko'));
+  regions.forEach(r=>groups.push({reg:r.name,people:byRank(mems.filter(p=>p.region===r.id))}));
+  const noReg=mems.filter(p=>!p.region||!regions.some(r=>r.id===p.region));
+  if(noReg.length)groups.push({reg:'권역 미지정',people:byRank(noReg)});
+
+  const body=done=>{
+    const out=[];
+    groups.forEach(g=>{
+      /* 권역 아래 담당자별 줄을 먼저 만들고, 권역 칸은 그 합계만큼 병합한다 */
+      /* ⚠ 담당자가 아직 없는 권역도 한 줄은 남긴다 — 보고서라 빈칸도 정보다 */
+      const people=g.people.length?g.people:[{id:'',name:'',rank:''}];
+      const blocks=people.map(p=>{
+        const rows=p.id?rptRows(p.id,mon,sun,done):[];
+        return{p,rows:rows.length?rows:[null]};
+      });
+      const regSpan=blocks.reduce((a,b)=>a+b.rows.length,0)||1;
+      let first=true;
+      blocks.forEach(({p,rows})=>{
+        rows.forEach((r,i)=>{
+          const it=r&&r.it;
+          out.push('<tr>'
+            +(first?'<td class="rp-reg" rowspan="'+regSpan+'">'+esc(g.reg)+'</td>':'')
+            +(i===0?'<td class="rp-own" rowspan="'+rows.length+'">'+esc(p.name)
+                +(p.rank&&rankOf(p.rank)!=='member'?'<span class="rk">'+esc(rankLabel(rankOf(p.rank)))+'</span>':'')+'</td>':'')
+            +'<td>'+esc(it?siteName(it.site):'')+'</td>'
+            +'<td class="rp-t">'+esc(it?(it.text||''):'')+'</td>'
+            +'<td class="cc">'+(it?'<span class="rp-st s'+stEff(it)+'">'+esc(ST_LBL[stEff(it)])+'</span>':'')+'</td>'
+            +'<td class="cc">'+esc(it&&stEff(it)===2?(it.end||it.date||''):'')+'</td>'
+            +'<td class="rp-memo">'+esc(it?(it.plan||it.prog||it.body||''):'')+'</td>'
+            +'</tr>');
+          first=false;
+        });
+      });
+    });
+    return out.join('')||'<tr><td colspan="7" class="rp-none">표시할 업무가 없습니다.</td></tr>';
+  };
+  const table=(t,done)=>`<div class="card rp-card">
+      <div class="tkm-h"><div class="bar"></div><b>${t}</b>
+        <span class="tkm-sub">${esc(weekLabel(mon,sun))}</span></div>
+      <div class="rp-wrap"><table class="rp-tbl">
+        <thead><tr><th style="width:10%">권역</th><th style="width:11%">담당자</th><th style="width:14%">현장</th>
+          <th style="width:27%">업무</th><th class="cc" style="width:8%">진행상태</th>
+          <th class="cc" style="width:10%">완료일</th><th style="width:20%">비고</th></tr></thead>
+        <tbody>${body(done)}</tbody></table></div>
+    </div>`;
+  root.innerHTML=`<div class="rp-head">
+      <div class="cal-nav">
+        <button class="cal-nb" data-act="rpt.week" data-d="-7" data-tip="지난 주"><svg class="icn"><use href="#i-chevl"></use></svg></button>
+        <button class="cal-nb cal-today" data-act="rpt.week" data-d="0" data-tip="이번 주"><svg class="icn"><use href="#i-today"></use></svg></button>
+        <button class="cal-nb" data-act="rpt.week" data-d="7" data-tip="다음 주"><svg class="icn"><use href="#i-chevr"></use></svg></button>
+      </div>
+      <div class="rp-week">${esc(weekLabel(mon,sun))}</div>
+      <button class="btn bo bsm" data-act="rpt.print">인쇄 · PDF</button>
+    </div>
+    ${table('완료',true)}
+    ${table('진행',false)}`;
+}
+
 /* 업무로 이동 — 검색·내 업무·멘션·달력에서 공통으로 쓰고, 모달 없이 인라인으로 펼친다 */
 function gotoTask(sid,iid){
   nqOpen(false);closeModal();
@@ -3502,7 +3561,7 @@ window.addEventListener('blur',tipHide);
 setInterval(()=>{if(_tipFor&&!_tipFor.isConnected)tipHide();},700);
 
 /* ═══════════ 화면 전환 · 공통 UI ═══════════ */
-const VIEW_TTL={calendar:'캘린더',mine:'내 업무',tasks:'주요 업무 현황',org:'조직/현장 관리',settings:'설정'};
+const VIEW_TTL={calendar:'캘린더',mine:'내 업무',tasks:'업무 목록',report:'주요 업무',org:'조직/현장 관리',settings:'설정'};
 function go(view){
   S.view=view;
   if(S.dpSheet)dpSheet(false);
@@ -3514,6 +3573,7 @@ function go(view){
   if(view==='calendar'&&CAL)setTimeout(()=>CAL.updateSize(),30);
   if(view==='tasks')rTasks();
   if(view==='mine')rMine();
+  if(view==='report')rReport();
   if(view==='org'){
     rOrg();
   }
@@ -3693,6 +3753,9 @@ const ACT={
   'nq.task':el=>gotoTask(el.dataset.sid,el.dataset.iid),
   'nq.cmt':el=>gotoTask(el.dataset.sid,el.dataset.iid),
   'mine.task':el=>gotoTask(el.dataset.sid,el.dataset.iid),
+  'rpt.week':el=>{const d=Number(el.dataset.d)||0;
+    S.rptWeek=d?addDays(S.rptWeek||todayStr(),d):'';rReport();},
+  'rpt.print':()=>window.print(),
   'mention.clear':()=>{
     const uid2=myId();if(!uid2)return;
     Object.keys(S.mentions||{}).forEach(id=>mentionRead(id));
