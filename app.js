@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='1.7.1';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='1.7.2';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -434,6 +434,7 @@ const S={
   holdMine:false,    // 보류함을 내 업무만 보기로 좁혔는지
   dfSid:'',          // 하자 관리에서 보고 있는 현장(비면 대시보드)
   dfFold:{},         // 하자 관리 사이드바에서 접어 둔 권역
+  dfTab:'sum',       // 하자 현장 화면의 탭
   dfRep:null,        // 읽어 온 게시본(report/{rm}) — 없으면 미게시
   dfRm:'',           // 하자 게시본 기준월(YYYY-MM)
   widSide:'',        // 위젯 헤더의 알림·내 업무 팝오버 ('' / alert / mine)
@@ -3048,7 +3049,38 @@ function rNq(){
    집계·게시는 하자처리 현황 앱이 한다. 관리자라도 여기서는 게시본을 본다.
    숫자는 주차 누계(siteWks)의 마지막 줄 = 기준월 말일 기준이다.
    ⚠ 현장별 kpi 노드에는 목록(ul·ulz)이 함께 있어 무겁다 — 표에 필요한 주차 누계만 읽는다. */
-const DF={cache:{},busy:false};
+const DF={cache:{},kpi:{},plans:{},busy:false};
+/* 현장 하나를 열 때만 kpi 를 읽는다 — 목록(ul·ulz)이 붙어 있어 무겁다(대시보드에서는 절대 읽지 않는다) */
+async function dfSiteKpi(sid){
+  const rm=ORG_RM;if(!S.live||!FB.db||!rm||!sid)return null;
+  const k=rm+'/'+sid;
+  if(DF.kpi[k]!==undefined)return DF.kpi[k];
+  try{
+    const v=(await FB.db.ref('report/'+rm+'/'+sid+'/kpi').once('value')).val();
+    DF.kpi[k]=v||null;return DF.kpi[k];
+  }catch(e){console.warn('[하자] kpi 읽기 실패',e);DF.kpi[k]=null;return null;}
+}
+/* 처리계획 — 하자처리 현황과 같은 자리(plans/{현장}/processingPlan/{기준월@공종})를 함께 쓴다.
+   ⚠ 키는 encodeURIComponent 로 인코딩해 저장한다(Firebase 키에 . $ # / [ ] 를 못 쓴다). */
+function dfPlanKey(rm,trade){return encodeURIComponent(rm+'@'+trade).replace(/\./g,'%2E');}
+async function dfLoadPlans(sid){
+  if(!S.live||!FB.db||!sid)return {};
+  if(DF.plans[sid])return DF.plans[sid];
+  try{DF.plans[sid]=(await FB.db.ref('plans/'+sid).once('value')).val()||{};}
+  catch(e){DF.plans[sid]={};}
+  return DF.plans[sid];
+}
+function dfPlanGet(sid,field,rm,trade){
+  const m=(DF.plans[sid]||{})[field]||{};
+  return m[dfPlanKey(rm,trade)]||'';
+}
+function dfPlanSet(sid,field,rm,trade,val){
+  const key=dfPlanKey(rm,trade),v=String(val||'').slice(0,5000);
+  if(!DF.plans[sid])DF.plans[sid]={};
+  if(!DF.plans[sid][field])DF.plans[sid][field]={};
+  DF.plans[sid][field][key]=v;
+  if(S.live&&FB.db)FB.db.ref('plans/'+sid+'/'+field+'/'+key).set(v).catch(()=>toast('처리계획 저장 실패'));
+}
 function dfRows(w){                      /* 주차 누계 한 줄 → 화면에 쓰는 값 */
   if(!w)return null;
   const r=Number(w.r)||0,res=Number(w.res)||0;
@@ -3092,6 +3124,7 @@ function dfNoneHTML(msg){
     <svg class="icn" aria-hidden="true"><use href="#i-defect"></use></svg>
     <b>하자처리 현황</b><span>${esc(msg)}</span></div>`;
 }
+const DF_TABS=[['sum','종합'],['lt','장기미처리'],['vac','공가'],['det','상세 현황']];
 function rDefect(){
   const root=$('#defectRoot');if(!root)return;
   const site=S.dfSid?(S.org.sites||[]).find(x=>x.id===S.dfSid):null;
@@ -3099,20 +3132,91 @@ function rDefect(){
   const rm=ORG_RM,d=rm&&DF.cache[rm];
   if(!d){
     root.innerHTML=dfNoneHTML('게시본을 불러오는 중입니다…');
-    dfLoad().then(r=>{if(r&&S.view==='defect')rDefect();
-      else if(!r&&S.view==='defect')$('#defectRoot').innerHTML=dfNoneHTML('아직 게시된 집계가 없습니다.');});
+    dfLoad().then(r=>{if(S.view!=='defect')return;
+      if(r)rDefect();else $('#defectRoot').innerHTML=dfNoneHTML('아직 게시된 집계가 없습니다.');});
     dfTopbar();return;
   }
   S.dfRm=d.rm;
-  if(site){
-    const v=dfRows(dfLast(d.per[site.id]));
-    root.innerHTML=v
-      ?dfKpiHTML(v)+dfWeekHTML(d.per[site.id],site.name)
-      :dfNoneHTML(site.name+' — 이 현장의 게시 자료가 없습니다.');
-  }else{
+  if(!site){
     root.innerHTML=(d.tot?dfKpiHTML(d.tot,(S.org.sites||[]).length):'')+dfSiteTableHTML(d);
+    dfTopbar();return;
   }
+  /* 현장 화면 — 집계(kpi)와 처리계획은 그 현장을 열 때 읽는다 */
+  const key=d.rm+'/'+site.id;
+  if(DF.kpi[key]===undefined){
+    root.innerHTML=dfNoneHTML(site.name+' 자료를 불러오는 중입니다…');
+    Promise.all([dfSiteKpi(site.id),dfLoadPlans(site.id)])
+      .then(()=>{if(S.view==='defect'&&S.dfSid===site.id)rDefect();});
+    dfTopbar();return;
+  }
+  const k=DF.kpi[key];
+  const v=dfRows(dfLast(d.per[site.id]));
+  const tab=S.dfTab||'sum';
+  const tabs='<div class="df-tabs">'+DF_TABS.map(([id,nm])=>
+    '<button class="df-tab'+(tab===id?' on':'')+'" data-act="df.tab" data-t="'+id+'">'+esc(nm)+'</button>').join('')+'</div>';
+  let body='';
+  if(!k&&tab!=='sum')body=dfNoneHTML('이 현장의 게시 자료가 없습니다.');
+  else if(tab==='sum')body=(v?dfKpiHTML(v):'')+(k?dfTopHTML(k.top,'공종별 현황','미처리'):'')
+    +dfWeekHTML(d.per[site.id],site.name);
+  else if(tab==='lt')body=dfPlanTableHTML(site,k);
+  else if(tab==='vac')body=dfVacHTML(site,k);
+  else body=dfMonthHTML(k)+dfWeekHTML(d.per[site.id],site.name);
+  root.innerHTML=tabs+body;
   dfTopbar();
+}
+/* 공종별 표 — 게시본의 top/topLt 는 [{t:공종, c:건수}] 꼴이다 */
+function dfTopHTML(list,title,unitLbl){
+  const rows=(Array.isArray(list)?list:[]).filter(x=>x&&!x.isT).slice(0,15);
+  if(!rows.length)return '';
+  return `<div class="card df-card">
+    <div class="df-h"><b>${esc(title)}</b><span class="df-sub">${esc(S.dfRm)} 말일 기준</span></div>
+    <table class="mgtbl df-tbl"><thead><tr><th>공종</th><th class="cc">${esc(unitLbl)}</th></tr></thead>
+    <tbody>${rows.map(x=>'<tr><td>'+esc(x.t||'')+'</td><td class="cc">'+(Number(x.c)||0).toLocaleString()+'</td></tr>').join('')}
+    </tbody></table></div>`;
+}
+/* 장기미처리 — 상위 공종과 처리계획(하자처리 현황과 같은 자리에 저장) */
+function dfPlanTableHTML(site,k){
+  const rows=(Array.isArray(k&&k.topLt)?k.topLt:[]).filter(x=>x&&!x.isT).slice(0,5);
+  if(!rows.length)return dfNoneHTML('장기미처리 건이 없습니다.');
+  const rm=S.dfRm,pm=dfPrevMonth(rm);
+  return `<div class="card df-card">
+    <div class="df-h"><b>장기미처리 처리계획</b><span class="df-sub">30일 이상 · 상위 ${rows.length}개 공종</span></div>
+    <table class="mgtbl df-tbl"><thead><tr>
+      <th>공종</th><th class="cc">건수</th><th style="width:52%">처리계획</th></tr></thead><tbody>
+      ${rows.map(x=>{const t=String(x.t||'');
+        const prev=dfPlanGet(site.id,'processingPlan',pm,t);
+        const cur=dfPlanGet(site.id,'processingPlan',rm,t);
+        return '<tr><td><b>'+esc(t)+'</b></td><td class="cc df-lt">'+(Number(x.c)||0).toLocaleString()+'</td>'
+          +'<td><div class="df-prev"><span class="df-lab">지난달</span>'+(prev?esc(prev):'-')+'</div>'
+          +'<span class="df-lab">이번 달</span>'
+          +'<textarea class="df-ta" data-act="df.plan" data-sid="'+esc(site.id)+'" data-f="processingPlan"'
+          +' data-t="'+esc(t)+'" maxlength="5000" aria-label="처리계획">'+esc(cur)+'</textarea></td></tr>';}).join('')}
+    </tbody></table></div>`;
+}
+function dfPrevMonth(rm){
+  const m=/^(\d{4})-(\d{2})$/.exec(String(rm||''));if(!m)return '';
+  const d=new Date(Number(m[1]),Number(m[2])-1,1);d.setMonth(d.getMonth()-1);
+  return d.getFullYear()+'-'+pad(d.getMonth()+1);
+}
+/* 공가 — 게시본의 v* 집계 */
+function dfVacHTML(site,k){
+  if(!k||!Number(k.vT))return dfNoneHTML('공가 집계가 없습니다.');
+  const v={recv:Number(k.vT)||0,done:Number(k.vRes)||0,open:Number(k.vUnr)||0,
+    lt:Number(k.vLt)||0,rate:Number(k.vRate)||0};
+  return dfKpiHTML(v)+dfTopHTML(k.vTop,'공가 공종별 현황','미처리');
+}
+/* 월별 현황 — 게시본의 monthly */
+function dfMonthHTML(k){
+  const rows=(Array.isArray(k&&k.monthly)?k.monthly:[]).slice(-12);
+  if(!rows.length)return '';
+  return `<div class="card df-card">
+    <div class="df-h"><b>월별 현황</b><span class="df-sub">최근 ${rows.length}개월 · 접수월 기준</span></div>
+    <table class="mgtbl df-tbl"><thead><tr>
+      <th>월</th><th class="cc">접수</th><th class="cc">처리</th><th class="cc">미처리</th></tr></thead><tbody>
+      ${rows.map(m=>'<tr><td>'+esc(m.month||'')+'</td><td class="cc">'+(Number(m.r)||0).toLocaleString()
+        +'</td><td class="cc">'+(Number(m.res)||0).toLocaleString()
+        +'</td><td class="cc">'+(Number(m.u)||0).toLocaleString()+'</td></tr>').join('')}
+    </tbody></table></div>`;
 }
 /* 현장별 현황 — 권역으로 묶어 한 표에 */
 function dfSiteTableHTML(d){
@@ -4132,7 +4236,8 @@ const ACT={
   'auth.reset':fbDoReset,
   'acct.open':openAcctModal,
   'mention.open':openMentionModal,
-  'df.site':el=>{S.dfSid=el.dataset.sid;go('defect');},
+  'df.site':el=>{S.dfSid=el.dataset.sid;S.dfTab='sum';go('defect');},
+  'df.tab':el=>{S.dfTab=el.dataset.t;rDefect();},
   'df.fold':el=>{const k=el.dataset.rid;S.dfFold[k]=(S.dfFold[k]===false);rDefectNav();},
   'df.print':()=>window.print(),
   'hold.go':el=>gotoTask(el.dataset.sid,el.dataset.iid),
@@ -4644,6 +4749,13 @@ document.addEventListener('change',e=>{
   if(!S.live){rOrg();rTasks();}
 });
 document.addEventListener('input',e=>{if(e.target.id==='nqQ')rNq();});
+/* 처리계획 — 입력을 멈추면 저장한다(하자처리 현황과 같은 노드를 쓰므로 그쪽 화면에도 바로 반영된다) */
+let DF_PT=null;
+document.addEventListener('input',e=>{
+  const el=e.target;if(!el||el.dataset.act!=='df.plan')return;
+  clearTimeout(DF_PT);
+  DF_PT=setTimeout(()=>dfPlanSet(el.dataset.sid,el.dataset.f,S.dfRm,el.dataset.t,el.value),700);
+});
 /* 현장 표 인라인 저장 — 하자처리현황과 같은 즉시 반영 */
 document.addEventListener('change',e=>{
   const el=e.target.closest('[data-act="org.siteUpd"]');
