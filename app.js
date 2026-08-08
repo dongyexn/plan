@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='1.6.9';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='1.7.0';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -432,6 +432,8 @@ const S={
   widPop:false,
   widMore:{com:false,mine:false,hold:false},   // 위젯 내 업무 팝업에서 목록을 펼쳤는지
   holdMine:false,    // 보류함을 내 업무만 보기로 좁혔는지
+  dfSid:'',          // 하자 관리에서 보고 있는 현장(비면 대시보드)
+  dfRm:'',           // 하자 게시본 기준월(YYYY-MM)
   widSide:'',        // 위젯 헤더의 알림·내 업무 팝오버 ('' / alert / mine)
   tkF:{q:'',st:[],kind:[],reg:[],site:[]},   // 업무 목록 검색·필터 — 모두 다중 선택
   orgTab:'acct',     // 조직/현장 관리 우측 탭 (acct | site)
@@ -753,7 +755,7 @@ const FbStore={
       /* ⚠ 담당자 색(avColor)이 바뀌면 '담당자 색' 업무의 색도 함께 바뀐다 —
          카드만 다시 그리고 달력·일자 패널·위젯을 빠뜨려 달력 막대만 옛 색으로 남던 버그 */
       if(shEditing()){PEND.org=true;PEND.tasks=true;PEND.day=true;return;}
-      rOrg();rTasks();rFilter();rDay();refetchCal();rWidget();},
+      rOrg();rTasks();rFilter();rDay();refetchCal();rWidget();rDefectNav();},
       e=>{S.accounts={};S.acctDenied=true;console.warn('[FB] users 읽기 권한 없음',e);rOrg();rTasks();});
     this._on('calapp/cfg',v=>{S.cfg=v||{};bootCacheSave();rCfg();});
     const uid=S.user&&S.user.uid;
@@ -3041,11 +3043,39 @@ function rNq(){
    지금은 무엇을 어떻게 붙일지 정하지 않았으므로 안내만 띄운다. */
 function rDefect(){
   const root=$('#defectRoot');if(!root)return;
+  const site=S.dfSid?(S.org.sites||[]).find(x=>x.id===S.dfSid):null;
+  const ttl=site?site.name:'하자 현황';
+  const sub=site?'이 현장의 접수·처리 현황이 이곳에 표시됩니다.'
+                :'팀 전체 하자 접수·처리 현황(대시보드)이 이곳에 표시됩니다.';
   root.innerHTML=`<div class="card dfc-none">
     <svg class="icn" aria-hidden="true"><use href="#i-defect"></use></svg>
-    <b>하자 현황</b>
-    <span>현장별 하자 접수·처리 현황을 이곳에 붙일 예정입니다.</span>
+    <b>${esc(ttl)}</b>
+    <span>${esc(sub)}<br>하자처리현황 게시본을 읽어 붙일 예정입니다.</span>
   </div>`;
+}
+/* 사이드바 — 하자 관리 아래에 권역(소분류)과 그 권역의 현장을 편다.
+   ⚠ 지금은 조직/현장 관리의 현장 목록을 쓴다. 게시본을 읽기 시작하면 게시된 현장 목록과 합쳐야 한다. */
+function rDefectNav(){
+  const box=$('#dfNav');if(!box)return;
+  const{team,regions}=tkSel();
+  const sites=(S.org.sites||[]).filter(x=>x.name&&(!team||!x.team||x.team===team.id));
+  const groups=[];
+  regions.forEach(r=>{const l=sites.filter(x=>x.region===r.id);if(l.length)groups.push([r.name,l]);});
+  const none=sites.filter(x=>!x.region||!regions.some(r=>r.id===x.region));
+  if(none.length)groups.push(['권역 미지정',none]);
+  box.innerHTML=groups.map(([rn,list])=>
+    '<div class="df-reg">'+esc(rn)+'</div>'
+    +list.map(x=>'<div class="nvi df-site'+(S.view==='defect'&&S.dfSid===x.id?' act':'')+'" role="button" tabindex="0"'
+      +' data-act="df.site" data-sid="'+esc(x.id)+'" data-tip="'+esc(x.name)+'">'
+      +'<div class="nic"><svg class="icn" aria-hidden="true"><use href="#i-defect"></use></svg></div>'
+      +'<span class="nil">'+esc(x.name)+'</span></div>').join('')).join('');
+}
+/* 기준월·인쇄는 하자 관리 화면에서만 상단바에 나온다 */
+function dfTopbar(){
+  const on=S.view==='defect';
+  const rm=$('#tbRm'),pw=$('#tbPrintWrap');
+  if(rm){rm.hidden=!on;rm.textContent=S.dfRm||'기준월 없음';}
+  if(pw)pw.hidden=!on;
 }
 
 /* ═══════════ 보류함 — 일자 패널 아래. 달력 날짜로 끌어다 놓으면 그 날짜로 되살아난다 ═══════════ */
@@ -3835,6 +3865,7 @@ function go(view){
   if(view==='tasks')rTasks();
   if(view==='report')rReport();
   if(view==='defect')rDefect();
+  dfTopbar();rDefectNav();
   if(view==='org'){
     rOrg();
   }
@@ -3866,7 +3897,7 @@ function applyTheme(dark){
 
 /* ═══════════ 액션 위임 ═══════════ */
 const ACT={
-  'nav.go':el=>go(el.dataset.view),
+  'nav.go':el=>{if(el.dataset.view==='defect')S.dfSid='';go(el.dataset.view);},
   'nav.toggle':()=>$('#sidebar').classList.toggle('mini'),
   'nav.mob':()=>{$('#sidebar').classList.add('mob-open');$('#scrim').classList.add('on');},
   'nav.mobClose':mobClose,
@@ -3997,6 +4028,8 @@ const ACT={
   'auth.reset':fbDoReset,
   'acct.open':openAcctModal,
   'mention.open':openMentionModal,
+  'df.site':el=>{S.dfSid=el.dataset.sid;go('defect');},
+  'df.print':()=>window.print(),
   'hold.go':el=>gotoTask(el.dataset.sid,el.dataset.iid),
   'hold.mine':()=>{S.holdMine=!S.holdMine;rHold();},
   /* 아침 확인 — 누르는 즉시 저장하고 그 줄만 사라진다 */
@@ -4812,7 +4845,7 @@ function rAll(){rDay();rTasks();rOrg();rCfg();rFilter();rMention();rTeamSel();re
   bindCalResize();
   subVisibleMonths();
   rDay();rAcct();rFilter();rTeamSel();rWidget();   /* 팀 선택기는 사이드바 상시 요소 — 부팅 때부터 그린다 */
-  if(DEV_LOCAL){hideCover();setTimeout(morningReview,600);}
+  if(DEV_LOCAL){hideCover();rDefectNav();setTimeout(morningReview,600);}
   else{
     fbInit();
     /* SDK가 아예 안 뜨거나(사내망 차단 등) 응답이 없으면 안내와 함께 로그인 폼을 연다 */
