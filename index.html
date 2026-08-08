@@ -73,7 +73,7 @@ svg{display:block;flex-shrink:0;}
 .sb-bottom{flex:0 0 auto;padding:0 8px 8px;}   /* 스크롤 영역 밖 — 목록이 길어도 관리·프로필은 늘 아래에 남는다 */
 /* 하자 관리 소분류(권역) — 꺾쇠로 접었다 편다 */
 .df-reg{display:flex;align-items:center;gap:6px;width:100%;padding:8px 8px 4px 14px;background:none;border:0;
-  font:inherit;font-size:11.5px;font-weight:700;color:var(--lbl3);letter-spacing:.02em;cursor:pointer;white-space:nowrap;}
+  font:inherit;font-size:12px;font-weight:700;color:var(--lbl3);letter-spacing:.02em;cursor:pointer;white-space:nowrap;}
 .df-reg:hover{color:var(--lbl2);}
 .df-reg .icn{width:12px;height:12px;flex:0 0 auto;transition:transform var(--tr);}
 .df-reg.open .icn{transform:rotate(90deg);}
@@ -407,8 +407,8 @@ html.dark .stx-done{color:#3BA85C;}
 .hold-card{padding:0;overflow:hidden;display:flex;flex-direction:column;flex:0 0 auto;}
 .hold-card[hidden]{display:none;}
 /* 하자 관리 — 사이드바 소분류(권역)와 그 아래 현장 */
-.nvi.df-site{padding:4px 8px 4px 22px;gap:8px;margin-bottom:0;font-size:11.5px;}
-.nvi.df-site .nil{font-size:11.5px;}
+.nvi.df-site{padding:4px 8px 4px 22px;gap:8px;margin-bottom:0;font-size:12px;}
+.nvi.df-site .nil{font-size:12px;}
 .nvi.df-site .dot{width:6px;height:6px;border-radius:50%;background:var(--sepo);flex:0 0 auto;margin:0 8px 0 5px;transition:background var(--tr);}
 .nvi.df-site:hover .dot,.nvi.df-site.act .dot{background:var(--b500);}
 #sidebar.mini .df-reg,#sidebar.mini .nvi.df-site{display:none;}
@@ -435,6 +435,17 @@ html.dark .stx-done{color:#3BA85C;}
 .df-tbl .df-r{cursor:pointer;}
 .df-tbl .df-r:hover{background:var(--fill);}
 .df-tbl .df-lt{color:var(--rd);font-weight:700;}
+/* 현장 화면 탭 — 조직/현장 관리의 세그먼트(.orgseg)와 같은 문법 */
+.df-tabs{display:inline-flex;gap:2px;background:var(--fill);border-radius:8px;padding:3px;margin-bottom:12px;}
+.df-tab{height:30px;padding:0 14px;border:0;background:transparent;border-radius:6px;font:inherit;font-size:13px;
+  font-weight:700;color:var(--lbl2);cursor:pointer;transition:background var(--tr),color var(--tr);}
+.df-tab:hover{color:var(--lbl);}
+.df-tab.on{background:var(--bg2);color:var(--bt1);box-shadow:0 1px 2px rgba(16,24,40,.06);}
+.df-ta{width:100%;min-height:34px;border:1.5px solid var(--sepo);border-radius:var(--rmd);padding:6px 10px;
+  font:inherit;font-size:12.5px;color:var(--lbl);background:var(--bg2);resize:vertical;}
+.df-ta:focus{border-color:var(--b400);outline:none;box-shadow:0 0 0 3px rgba(83,140,222,.14);}
+.df-prev{font-size:11.5px;color:var(--lbl3);margin-bottom:4px;white-space:pre-wrap;}
+.df-lab{font-size:11px;font-weight:700;color:var(--lbl3);display:block;margin-bottom:3px;}
 /* 하자 현황 — 자리만 잡아 둔 화면 */
 .dfc-none{display:flex;flex-direction:column;align-items:center;gap:8px;padding:48px 24px;text-align:center;}
 .dfc-none .icn{width:26px;height:26px;color:var(--lbl3);}
@@ -1713,7 +1724,7 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 <symbol id="i-me" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
 <symbol id="i-cmt" viewBox="0 0 24 24"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></symbol>
 <symbol id="i-print" viewBox="0 0 24 24"><path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7" rx="1"/></symbol>
-<symbol id="i-defect" viewBox="0 0 24 24"><path d="M14.6 6.1a3.9 3.9 0 0 0 5 5l-8.2 8.2a2.5 2.5 0 0 1-3.6-3.6z"/><path d="M14.6 6.1 17.9 3l3.1 3.1L17.9 9.2"/></symbol>
+<symbol id="i-defect" viewBox="0 0 24 24"><path d="M3 3v16.5a1.5 1.5 0 0 0 1.5 1.5H21"/><rect x="7.5" y="12" width="3" height="5.5" rx="1"/><rect x="13" y="8" width="3" height="9.5" rx="1"/><rect x="18.5" y="4.5" width="3" height="13" rx="1" transform="translate(-1 0)"/></symbol>
 <symbol id="i-org" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="8.5" y="14" width="7" height="7" rx="1.5"/><path d="M6.5 10v2h11v-2"/><path d="M12 12v2"/></symbol>
 
 
@@ -2046,5 +2057,5 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=196"></script>
+<script src="./app.js?v=197"></script>
 </body></html>
