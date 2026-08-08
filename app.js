@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='1.6.7';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='1.6.9';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -3036,6 +3036,18 @@ function rNq(){
         'data-act="nq.cmt" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"')).join(''):'');
 }
 
+/* ═══════════ 하자 현황 — 아직 자리만 잡아 둔 화면 ═══════════
+   하자처리현황(별도 업로드 포털)에서 게시한 자료를 읽어 대시보드로 보여 줄 자리다.
+   지금은 무엇을 어떻게 붙일지 정하지 않았으므로 안내만 띄운다. */
+function rDefect(){
+  const root=$('#defectRoot');if(!root)return;
+  root.innerHTML=`<div class="card dfc-none">
+    <svg class="icn" aria-hidden="true"><use href="#i-defect"></use></svg>
+    <b>하자 현황</b>
+    <span>현장별 하자 접수·처리 현황을 이곳에 붙일 예정입니다.</span>
+  </div>`;
+}
+
 /* ═══════════ 보류함 — 일자 패널 아래. 달력 날짜로 끌어다 놓으면 그 날짜로 되살아난다 ═══════════ */
 function rHold(){
   const card=$('#holdCard'),box=$('#holdList'),ttl=$('#holdTtl'),mn=$('#holdMine');
@@ -3809,7 +3821,7 @@ window.addEventListener('blur',tipHide);
 setInterval(()=>{if(_tipFor&&!_tipFor.isConnected)tipHide();},700);
 
 /* ═══════════ 화면 전환 · 공통 UI ═══════════ */
-const VIEW_TTL={calendar:'캘린더',tasks:'업무 목록',report:'주요 업무',org:'조직/현장 관리',settings:'설정'};
+const VIEW_TTL={calendar:'캘린더',tasks:'업무 목록',report:'주요 업무',defect:'하자 현황',org:'조직/현장 관리',settings:'설정'};
 function go(view){
   S.view=view;
   S.planOpen='';S.tkOpen=null;   /* 펼쳐 둔 카드는 화면을 옮기면 접는다(일정·업무 목록 모두) */
@@ -3822,6 +3834,7 @@ function go(view){
   if(view==='calendar'&&CAL)setTimeout(()=>CAL.updateSize(),30);
   if(view==='tasks')rTasks();
   if(view==='report')rReport();
+  if(view==='defect')rDefect();
   if(view==='org'){
     rOrg();
   }
@@ -4554,12 +4567,9 @@ if(window.MutationObserver){
 }
 window.addEventListener('resize',fadeSoon);
 window.addEventListener('resize',()=>holdFit());   /* 보류함 높이는 달력 줄에 맞춘다 */
-/* 스크롤 막대는 스크롤하는 동안만 보인다 — 멈추면 잠시 뒤 서서히 사라진다 */
+/* 스크롤바는 그리지 않는다(규약) — 스크롤할 때마다 위·아래 페이드만 다시 잰다 */
 document.addEventListener('scroll',e=>{
   const el=e.target;if(!el||!el.classList)return;
-  el.classList.add('sb-on');
-  clearTimeout(el._sbT);
-  el._sbT=setTimeout(()=>el.classList.remove('sb-on'),900);
   fadeOne(el);
 },true);
 let tkQT=null;
