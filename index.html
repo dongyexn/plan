@@ -1522,24 +1522,69 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 /* 사용 안내 — 각 장 첫 제목 위 빈 줄 제거(소개 장은 h1 이라 해당 없음) */
 .rd-sec>h2:first-child{margin-top:0;}
 /* ── 7차 ── */
-/* 주요 업무 — 주 단위 업무보고 표 */
+/* 주요 업무 — 주 단위 업무보고 표(권역마다 완료·예정 두 열) */
 .rp-head{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
-.rp-week{font-size:16px;font-weight:800;color:var(--lbl);}
+.rp-week{font-size:14px;font-weight:700;color:var(--lbl2);display:flex;align-items:center;gap:8px;}
+.rp-week span{color:var(--lbl3);}
 .rp-head .btn{margin-left:auto;}
-.rp-card{margin-bottom:12px;}
-.rp-wrap{overflow-x:auto;}
+.rp-card{margin-bottom:12px;padding:12px 14px 14px;}
+.rp-rh{font-size:14px;font-weight:800;color:var(--lbl);padding-bottom:9px;margin-bottom:10px;border-bottom:1px solid var(--sep);}
+.rp-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start;}
+.rp-col{min-width:0;}
+.rp-ch{display:flex;align-items:baseline;gap:8px;margin-bottom:6px;}
+.rp-ch b{font-size:13px;font-weight:700;color:var(--lbl);}
+.rp-ch span{font-size:12px;color:var(--lbl3);}
 .rp-tbl{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;}
-.rp-tbl th{font-size:12px;font-weight:700;color:var(--lbl3);text-align:left;padding:0 8px 8px;border-bottom:1px solid var(--sep);white-space:nowrap;}
-.rp-tbl td{padding:6px 8px;border-bottom:1px solid var(--sep);vertical-align:top;line-height:1.5;word-break:break-all;}
+.rp-tbl th{font-size:12px;font-weight:700;color:var(--lbl3);text-align:left;padding:0 7px 7px;border-bottom:1px solid var(--sep);white-space:nowrap;}
+.rp-tbl td{padding:6px 7px;border-bottom:1px solid var(--sep);vertical-align:top;line-height:1.5;word-break:break-word;}
 .rp-tbl th.cc,.rp-tbl td.cc{text-align:center;}
-.rp-tbl .rp-reg,.rp-tbl .rp-own{font-weight:700;color:var(--lbl);border-right:1px solid var(--sep);white-space:nowrap;}
-.rp-tbl .rp-reg{background:var(--surf2);}
+.rp-tbl .rp-own{font-weight:700;color:var(--lbl);border-right:1px solid var(--sep);white-space:nowrap;background:var(--surf2);}
+.rp-tbl .rp-site{color:var(--lbl2);}
 .rp-tbl .rp-t{color:var(--lbl);}
-.rp-tbl .rp-memo{color:var(--lbl2);}
-.rp-tbl .rp-none{text-align:center;color:var(--lbl3);padding:18px 0;}
-.rp-st{display:inline-block;padding:1px 7px;border-radius:8px;font-size:12px;font-weight:700;}
-.rp-st.s2{background:var(--tint-gn);color:var(--gn);}
-.rp-st.s1,.rp-st.s0,.rp-st.s3{background:var(--fill);color:var(--lbl2);}
+.rp-tbl .rp-d{color:var(--lbl2);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.rp-tbl .rp-memo{color:var(--lbl3);}
+.rp-tbl .rp-none{text-align:center;color:var(--lbl3);padding:14px 0;}
+@media (max-width:1100px){.rp-grid{grid-template-columns:minmax(0,1fr);gap:14px;}}
+/* ── 8차 ── */
+/* 진행 상태 아이콘 — 체크를 구멍으로 뚫어 카드 배경이 비쳐 보이게(유리 배경에서 흰 체크가 묻히던 것) */
+.stx:not(.on) .stx-done .cf{mask:url(#stx-ck);-webkit-mask:url(#stx-ck);}
+.stx:not(.on) .stx-done .ck{display:none;}
+/* 업무 목록 — 팀 전체일 때 목록을 두 열로 */
+.tk-list.wide{padding-right:6px;}
+.tk-2col{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 18px;align-items:start;}
+.tk-2col .tk-c{min-width:0;}
+.tk-2col .tk-c>.tk-sub:first-child{padding-top:0;}
+@media (max-width:1200px){.tk-2col{grid-template-columns:minmax(0,1fr);}}
+/* 내 업무 — 1열(작은 달력·멘션) + 2열 카드 */
+.mine-grid{grid-template-columns:320px minmax(0,1fr) minmax(0,1fr);}
+.mine-side{display:flex;flex-direction:column;gap:12px;min-width:0;}
+.mini-cal{padding:12px 12px 14px;}
+.mc-h{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.mc-h b{font-size:14px;font-weight:800;color:var(--lbl);}
+.mc-h .cal-nav{margin-left:auto;}
+.mc-w{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:2px;}
+.mc-w span{text-align:center;font-size:12px;font-weight:700;color:var(--lbl3);padding:4px 0;}
+.mc-w .sun{color:var(--rd);}
+.mc-w .sat{color:var(--b600);}
+.mc-g{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
+.mc-d{position:relative;height:34px;border-radius:8px;background:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--lbl);}
+.mc-d.out{visibility:hidden;}
+.mc-d .n{font-size:12px;line-height:1;font-variant-numeric:tabular-nums;}
+.mc-d .dot{width:4px;height:4px;border-radius:50%;background:var(--b600);}
+.mc-d:not(.out):hover{background:var(--fill);}
+.mc-d.sun .n{color:var(--rd);}
+.mc-d.sat .n{color:var(--b600);}
+.mc-d.today .n{font-weight:800;color:var(--b600);}
+.mc-d.today{background:var(--tint-b,var(--b50));}
+.mc-d.sel{box-shadow:inset 0 0 0 1.5px var(--b600);}
+.mc-d.sel .dot,.mc-d.today .dot{background:var(--b700);}
+@media (max-width:1200px){.mine-grid{grid-template-columns:280px minmax(0,1fr);}}
+@media (max-width:960px){.mine-grid{grid-template-columns:minmax(0,1fr);}}
+/* 위젯 내 업무 팝오버 — 건수 대신 더보기 꺾쇠(배경 없음) */
+.wl-more{margin-left:auto;display:flex;align-items:center;justify-content:center;width:20px;height:20px;color:var(--lbl3);background:none;}
+.wl-more .icn{width:14px;height:14px;transform:rotate(90deg);transition:transform .18s;}
+.wl-more.on .icn{transform:rotate(-90deg);}
+.wl-more:hover{color:var(--lbl);}
 @media print{
   #sidebar,#topbar,.rp-head,.nq-fab{display:none!important;}
   #content{padding:0;overflow:visible;}
@@ -1577,6 +1622,11 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 
 <symbol id="av-person" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4"/><path d="M5.4 20a6.6 6.6 0 0 1 13.2 0"/></symbol>
 <symbol id="i-menu" viewBox="0 0 24 24"><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="18" y2="18"/></symbol>
+<!-- 진행 상태 아이콘의 체크를 구멍으로 뚫는 마스크 — 모든 stx-done 이 공용한다(viewBox 가 같다) -->
+<mask id="stx-ck" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24">
+  <rect x="0" y="0" width="24" height="24" fill="#fff"/>
+  <path d="m8.3 12.2 2.5 2.5 4.9-5.2" fill="none" stroke="#000" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+</mask>
 </svg>
 
 <div id="coverGate" style="position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:#191919;font-family:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,sans-serif;">
@@ -1737,12 +1787,13 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
               <b id="wgFontV">기본</b>
               <button class="wgs-cb" data-fontd="1" aria-label="다음 글꼴"><svg class="icn"><use href="#i-chevr"></use></svg></button>
             </div></div>
-          <div class="wgs-r"><span>알림</span>
+          <div class="wgs-r"><span>부팅 시 업무알림</span>
             <label class="wgs-sw"><input type="checkbox" id="wgNoti"><span class="sw-t"></span></label></div>
           <div class="wgs-sep"></div>
           <button class="wgs-full" data-act="wid.reload">새로고침</button>
           <button class="wgs-full" data-act="wid.moveOn">위치·크기 조정</button>
           <button class="wgs-full" data-act="wid.open">브라우저 앱 열기</button>
+          <button class="wgs-full" data-act="link.defect">하자처리현황 앱 열기</button>
           </div>
         </div>
         <div class="dp-col">
@@ -1891,5 +1942,5 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=173"></script>
+<script src="./app.js?v=176"></script>
 </body></html>
