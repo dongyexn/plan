@@ -167,9 +167,7 @@ widget-lite/                   바탕화면 위젯 (Tauri · WebView2)
 계정은 선택한 팀 소속과 팀 미배정만 보이고, 미배정 계정은 "이 팀에 추가"로 편입한다.
 담당 현장은 + 버튼을 눌러 권역별 목록에서 고른다.
 
-**설정** — 메일 발송, 다크 모드, 사용 안내, 버전 · 오류 기록 복사,
-**바탕화면 위젯**(내려받기 · 위젯 파일 주소), 하자처리현황 게시본 **가져오기**,
-하자처리현황 바로가기 주소. 주소 칸은 입력을 마치면 자동 저장된다.
+**설정** — 메일 발송, 다크 모드, 사용 안내, 버전 · 오류 기록 복사, 백업, **바탕화면 위젯** 다운로드.
 
 ### 데이터 (RTDB `calapp/`)
 
@@ -179,7 +177,7 @@ widget-lite/                   바탕화면 위젯 (Tauri · WebView2)
 | `calapp/mentions/{uid}` | 코멘트에서 나를 부른 알림 |
 | `calapp/org` | 팀 · 권역 · 현장 목록 |
 | `calapp/people/{uid}` | 담당자 배정 — name·email·team·region·sites |
-| `calapp/cfg` | 앱 설정 — 바로가기 주소(defectUrl) · 주간 메일 켬/끔(mail/weeklyOn) |
+| `calapp/cfg` | 앱 설정 — 주간 메일 켬/끔(mail/weeklyOn) |
 | `calapp/prefs/{uid}` | 개인 설정 — 본인만 쓰기 |
 | `users/{uid}` | 계정·권한·프로필(avColor·avIcon) — 하자처리 대시보드와 **공용** |
 
@@ -203,7 +201,6 @@ widget-lite/                   바탕화면 위젯 (Tauri · WebView2)
    - `FIREBASE_SERVICE_ACCOUNT` — Firebase 콘솔 > 프로젝트 설정 > 서비스 계정 > 새 비공개 키(JSON 전체)
    - `BREVO_API_KEY` — brevo.com(무료 300통/일) > SMTP & API > API Keys
    - `MAIL_FROM` — Brevo에서 인증한 발신 주소
-4. 설정 화면에서 하자처리 대시보드 주소를 입력(사이드바 바로가기용).
 5. 메일 테스트: Actions 탭 > 워크플로 > Run workflow(수동 실행).
 
 ```

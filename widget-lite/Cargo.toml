@@ -27,7 +27,7 @@ tauri-winrt-notification = "0.7"
 [target.'cfg(windows)'.dependencies]
 winreg = "0.52"
 
-# exe 를 작게 — 크기가 이 파일럿의 존재 이유다
+# exe 를 작게 — 크기가 이 판의 존재 이유다
 [profile.release]
 opt-level = "s"
 lto = true

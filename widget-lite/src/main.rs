@@ -641,8 +641,8 @@ fn check_update(app: &AppHandle, loud: bool) {
     };
     let Some((ver, url)) = resolve_latest(&latest) else {
         if loud { msg_ok("업데이트", "최신 버전을 확인하지 못했습니다.",
-            "릴리스에 파일럿(HPlanWidgetLite) 판이 아직 없거나, 최신 릴리스가 Electron 판입니다."); }
-        log("최신 버전 확인 실패(파일럿 릴리스 없음 또는 망)"); return;
+            "릴리스에 위젯(HPlanWidgetLite) 판이 아직 없거나, 최신 릴리스가 옛 판입니다."); }
+        log("최신 버전 확인 실패(위젯 릴리스 없음 또는 망)"); return;
     };
     if !is_newer(&ver, &cur_ver()) {
         if loud { msg_ok("업데이트", "최신 버전입니다.", &format!("지금 버전 {}", cur_ver())); }

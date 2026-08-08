@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='1.6.1';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='1.6.2';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -380,7 +380,6 @@ function planColor(p){
 const ST_LBL=['진행','진행','완료','진행'];
 const ST_PICK=[['1','진행'],['2','완료']];
 const WIDGET_URL='https://github.com/dongyexn/plan/releases/latest/download/HPlanWidgetLite.exe';   /* 늘 최신 릴리스를 가리킨다 — 버전을 적을 필요가 없다. 186차부터 Lite(WebView2) 판 */
-const DEFECT_URL='https://dongyexn.github.io/report/';  // 하자처리 현황 배포 주소(기본값)
 /* ── 한국 공휴일(대체공휴일 포함, 2025~2030) — 임시공휴일 지정 등 변동 시 이 표만 수정 ── */
 const HOLI={
 '2025-01-01':'신정','2025-01-27':'임시공휴일','2025-01-28':'설날 연휴','2025-01-29':'설날','2025-01-30':'설날 연휴','2025-03-01':'삼일절','2025-03-03':'대체공휴일','2025-05-05':'어린이날·석가탄신일','2025-05-06':'대체공휴일','2025-06-03':'임시공휴일','2025-06-06':'현충일','2025-08-15':'광복절','2025-10-03':'개천절','2025-10-05':'추석 연휴','2025-10-06':'추석','2025-10-07':'추석 연휴','2025-10-08':'대체공휴일','2025-10-09':'한글날','2025-12-25':'성탄절',
@@ -417,7 +416,7 @@ const S={
   people:{},         // calapp/people/{id}: {name,email,team,region} — id는 로그인 uid
   accounts:{},       // users/{uid}: {email,name,role} — 하자처리 현황과 공용
   tasks:{},          // {memberId:{itemId:{text,st,updatedAt}}}
-  cfg:{},            // {defectUrl}
+  cfg:{},            // 앱 설정(주간 메일 켬/끔 등)
   tk:{t:null,m:null},       // 주요업무 현황 탭 선택(팀/권역/담당자)
   filter:{kind:[],st:[],reg:[],own:[],site:[]},  // 달력 필터 — 모두 다중 선택(빈 배열이 '전체')
   foldOpen:{},       // 완료 항목 접힘 해제(subjectId별)
@@ -3055,8 +3054,10 @@ function miniCalHTML(){
   for(let i=0;i<lead;i++)cells+='<div class="mc-d out"><span class="n">'+(prevDays-lead+1+i)+'</span></div>';
   for(let d=1;d<=days;d++){
     const ds=y+'-'+pad(m+1)+'-'+pad(d),dw=(lead+d-1)%7;
+    const ho=holOf(ds);   /* 공휴일·지정휴무일은 일요일과 같은 빨강 */
     cells+='<button class="mc-d'+(ds===today?' today':'')+(ds===S.mineSel?' sel':'')
-      +(dw===0?' sun':'')+(dw===6?' sat':'')+'" data-act="mine.day" data-date="'+ds+'">'
+      +((dw===0||(ho&&ho.h))?' sun':'')+(dw===6?' sat':'')+'" data-act="mine.day" data-date="'+ds+'"'
+      +(ho?' data-tip="'+esc(ho.n)+'"':'')+'>'
       +'<span class="n">'+d+'</span>'
       +(dots[ds]&&dots[ds].length
         ?'<span class="dots">'+dots[ds].slice(0,3).map(c=>'<i style="background:'+esc(c)+'"></i>').join('')+'</span>'
@@ -3267,8 +3268,6 @@ function orgSave(){
   normOrg(S.org);store.putOrg(S.org);if(!S.live){rOrg();rTasks();}
 }
 function rCfg(){
-  const i=$('#setDefectUrl');
-  if(i&&document.activeElement!==i)i.value=S.cfg.defectUrl||DEFECT_URL;
   rBk();
   /* 195차: 발송은 주간 하나뿐이고 요일·시각·수신 범위는 고정이다(월요일 07:30 · 팀 전체) */
   const m=S.cfg.mail||{};
@@ -3654,11 +3653,6 @@ const ACT={
   'nav.mobClose':mobClose,
   'day.sheetClose':()=>dpSheet(false),
   'theme.toggle':()=>applyTheme(!document.documentElement.classList.contains('dark')),
-  'link.defect':()=>{
-    const u=(S.cfg.defectUrl||DEFECT_URL).trim();
-    if(!u){toast('설정에서 하자처리 현황 주소를 먼저 입력하세요');go('settings');return;}
-    window.open(u,'_blank','noopener');
-  },
   /* 달 이동은 보기만 바꾼다 — 선택일(날짜 헤더)은 그대로 둔다 */
   'cal.prev':()=>CAL&&CAL.prev(),
   'cal.next':()=>CAL&&CAL.next(),
@@ -4283,13 +4277,6 @@ document.addEventListener('change',e=>{
   }
   if(e.target.id==='darkChk'){applyTheme(e.target.checked);return;}
   if(e.target.closest&&e.target.closest('[data-act="set.mail"]')){saveMailCfg();return;}
-  if(e.target.id==='setDefectUrl'){   /* 연결 주소는 입력을 마치면 자동 저장 */
-    if(!isEditor()){denyEdit();rCfg();return;}
-    const key='defectUrl';
-    store.putCfg(key,(e.target.value||'').trim(),err=>{
-      toast(err?('저장 실패 · '+((err&&err.message)||err)):'저장했습니다');});
-    return;
-  }
   const el=e.target.closest('[data-act="acct.set"]');
   if(!el)return;
   const id=el.dataset.id,f=el.dataset.f;
