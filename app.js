@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='1.5.6';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='1.5.7';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -4391,8 +4391,10 @@ document.addEventListener('input',e=>{
 const SB_SEL='#content,.dp-body,.tk-list,.nq-res,.pf-emg,.rd-body,[data-sb]';
 function fadeOne(el){
   if(!el||!el.classList)return;
+  const over=el.scrollHeight>el.clientHeight+2;
   const more=el.scrollHeight-el.clientHeight-el.scrollTop;
-  el.classList.toggle('sb-fade',el.scrollHeight>el.clientHeight+2&&more>4);
+  el.classList.toggle('sb-fade-t',over&&el.scrollTop>4);      /* 위로 더 있음 */
+  el.classList.toggle('sb-fade-b',over&&more>4);              /* 아래로 더 있음 */
 }
 function fadeScan(){$$(SB_SEL).forEach(fadeOne);}
 let fadeT=null;
