@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='1.7.0';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='1.7.1';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -433,6 +433,8 @@ const S={
   widMore:{com:false,mine:false,hold:false},   // 위젯 내 업무 팝업에서 목록을 펼쳤는지
   holdMine:false,    // 보류함을 내 업무만 보기로 좁혔는지
   dfSid:'',          // 하자 관리에서 보고 있는 현장(비면 대시보드)
+  dfFold:{},         // 하자 관리 사이드바에서 접어 둔 권역
+  dfRep:null,        // 읽어 온 게시본(report/{rm}) — 없으면 미게시
   dfRm:'',           // 하자 게시본 기준월(YYYY-MM)
   widSide:'',        // 위젯 헤더의 알림·내 업무 팝오버 ('' / alert / mine)
   tkF:{q:'',st:[],kind:[],reg:[],site:[]},   // 업무 목록 검색·필터 — 모두 다중 선택
@@ -3041,17 +3043,115 @@ function rNq(){
 /* ═══════════ 하자 현황 — 아직 자리만 잡아 둔 화면 ═══════════
    하자처리현황(별도 업로드 포털)에서 게시한 자료를 읽어 대시보드로 보여 줄 자리다.
    지금은 무엇을 어떻게 붙일지 정하지 않았으므로 안내만 띄운다. */
+/* ── 하자처리 현황 — 게시본 읽기 ──
+   ⚠ 이 앱은 **읽기 전용**이다(처리계획 제외). 원본 하자 행은 업로드한 PC에만 있고,
+   집계·게시는 하자처리 현황 앱이 한다. 관리자라도 여기서는 게시본을 본다.
+   숫자는 주차 누계(siteWks)의 마지막 줄 = 기준월 말일 기준이다.
+   ⚠ 현장별 kpi 노드에는 목록(ul·ulz)이 함께 있어 무겁다 — 표에 필요한 주차 누계만 읽는다. */
+const DF={cache:{},busy:false};
+function dfRows(w){                      /* 주차 누계 한 줄 → 화면에 쓰는 값 */
+  if(!w)return null;
+  const r=Number(w.r)||0,res=Number(w.res)||0;
+  return{recv:r,done:res,open:Math.max(0,r-res),lt:(Number(w.d30)||0)+(Number(w.d60)||0),
+    rate:r?Math.round(res/r*1000)/10:0};
+}
+function dfLast(list){return (Array.isArray(list)&&list.length)?list[list.length-1]:null;}
+async function dfLoad(){
+  const rm=ORG_RM;
+  if(!S.live||!FB.db||!rm){S.dfRm='';return null;}
+  S.dfRm=rm;
+  if(DF.cache[rm])return DF.cache[rm];
+  if(DF.busy)return null;
+  DF.busy=true;
+  try{
+    const sites=(S.org.sites||[]).filter(x=>x.name);
+    const dash=(await FB.db.ref('report/'+rm+'/_dash/wks').once('value')).val();
+    const per={};
+    await Promise.all(sites.map(async s=>{
+      try{per[s.id]=(await FB.db.ref('report/'+rm+'/'+s.id+'/siteWks').once('value')).val()||[];}
+      catch(e){per[s.id]=[];}
+    }));
+    DF.cache[rm]={rm,tot:dfRows(dfLast(dash)),per};
+    return DF.cache[rm];
+  }catch(e){console.warn('[하자] 게시본 읽기 실패',e);return null;}
+  finally{DF.busy=false;}
+}
+function dfKpiHTML(v,siteCnt){
+  const cell=(lb,val,unit,tone)=>`<div class="df-k${tone?' '+tone:''}"><span class="l">${esc(lb)}</span>`
+    +`<b>${val}</b><span class="u">${esc(unit||'')}</span></div>`;
+  return '<div class="df-kpi">'
+    +(siteCnt!=null?cell('관리대상현장',siteCnt,'개'):'')
+    +cell('전체 접수',v.recv.toLocaleString(),'건')
+    +cell('처리 완료',v.done.toLocaleString(),'건','ok')
+    +cell('미처리',v.open.toLocaleString(),'건','warn')
+    +cell('장기미처리',v.lt.toLocaleString(),'건','bad')
+    +'</div>';
+}
+function dfNoneHTML(msg){
+  return `<div class="card dfc-none">
+    <svg class="icn" aria-hidden="true"><use href="#i-defect"></use></svg>
+    <b>하자처리 현황</b><span>${esc(msg)}</span></div>`;
+}
 function rDefect(){
   const root=$('#defectRoot');if(!root)return;
   const site=S.dfSid?(S.org.sites||[]).find(x=>x.id===S.dfSid):null;
-  const ttl=site?site.name:'하자 현황';
-  const sub=site?'이 현장의 접수·처리 현황이 이곳에 표시됩니다.'
-                :'팀 전체 하자 접수·처리 현황(대시보드)이 이곳에 표시됩니다.';
-  root.innerHTML=`<div class="card dfc-none">
-    <svg class="icn" aria-hidden="true"><use href="#i-defect"></use></svg>
-    <b>${esc(ttl)}</b>
-    <span>${esc(sub)}<br>하자처리현황 게시본을 읽어 붙일 예정입니다.</span>
-  </div>`;
+  if(!S.live){root.innerHTML=dfNoneHTML('로그인하면 게시본을 읽어 옵니다.');dfTopbar();return;}
+  const rm=ORG_RM,d=rm&&DF.cache[rm];
+  if(!d){
+    root.innerHTML=dfNoneHTML('게시본을 불러오는 중입니다…');
+    dfLoad().then(r=>{if(r&&S.view==='defect')rDefect();
+      else if(!r&&S.view==='defect')$('#defectRoot').innerHTML=dfNoneHTML('아직 게시된 집계가 없습니다.');});
+    dfTopbar();return;
+  }
+  S.dfRm=d.rm;
+  if(site){
+    const v=dfRows(dfLast(d.per[site.id]));
+    root.innerHTML=v
+      ?dfKpiHTML(v)+dfWeekHTML(d.per[site.id],site.name)
+      :dfNoneHTML(site.name+' — 이 현장의 게시 자료가 없습니다.');
+  }else{
+    root.innerHTML=(d.tot?dfKpiHTML(d.tot,(S.org.sites||[]).length):'')+dfSiteTableHTML(d);
+  }
+  dfTopbar();
+}
+/* 현장별 현황 — 권역으로 묶어 한 표에 */
+function dfSiteTableHTML(d){
+  const{team,regions}=tkSel();
+  const sites=(S.org.sites||[]).filter(x=>x.name&&(!team||!x.team||x.team===team.id));
+  const groups=[];
+  regions.forEach(r=>{const l=sites.filter(x=>x.region===r.id);if(l.length)groups.push([r.name,l]);});
+  const none=sites.filter(x=>!x.region||!regions.some(r=>r.id===x.region));
+  if(none.length)groups.push(['권역 미지정',none]);
+  if(!groups.length)return dfNoneHTML('표시할 현장이 없습니다.');
+  const row=(nm,v,sid)=>`<tr${sid?' class="df-r" data-act="df.site" data-sid="'+esc(sid)+'"':''}>
+    <td>${esc(nm)}</td><td class="cc">${v?v.recv.toLocaleString():'—'}</td>
+    <td class="cc">${v?v.done.toLocaleString():'—'}</td>
+    <td class="cc">${v?v.open.toLocaleString():'—'}</td>
+    <td class="cc df-lt">${v?v.lt.toLocaleString():'—'}</td>
+    <td class="cc">${v?v.rate+'%':'—'}</td></tr>`;
+  return `<div class="card df-card">
+    <div class="df-h"><b>현장별 현황</b><span class="df-sub">${esc(S.dfRm)} 말일 기준</span></div>
+    <table class="mgtbl df-tbl"><thead><tr>
+      <th>현장</th><th class="cc">접수</th><th class="cc">처리</th><th class="cc">미처리</th>
+      <th class="cc">장기미처리</th><th class="cc">처리율</th></tr></thead><tbody>
+      ${groups.map(([rn,list])=>'<tr class="df-g"><td colspan="6">'+esc(rn)+'</td></tr>'
+        +list.map(s=>row(s.name,dfRows(dfLast(d.per[s.id])),s.id)).join('')).join('')}
+    </tbody></table></div>`;
+}
+/* 주차별 추이 — 최근 10주 */
+function dfWeekHTML(list,nm){
+  const rows=(Array.isArray(list)?list:[]).filter(w=>w&&w.sun!==false).slice(-10);
+  if(!rows.length)return '';
+  return `<div class="card df-card">
+    <div class="df-h"><b>주차별 현황</b><span class="df-sub">${esc(nm)} · 최근 ${rows.length}주</span></div>
+    <table class="mgtbl df-tbl"><thead><tr>
+      <th>주차</th><th class="cc">접수</th><th class="cc">처리</th><th class="cc">미처리</th>
+      <th class="cc">장기미처리</th></tr></thead><tbody>
+      ${rows.map(w=>{const v=dfRows(w);
+        return '<tr><td>'+esc(w.label||w.week||'')+'</td><td class="cc">'+v.recv.toLocaleString()
+          +'</td><td class="cc">'+v.done.toLocaleString()+'</td><td class="cc">'+v.open.toLocaleString()
+          +'</td><td class="cc df-lt">'+v.lt.toLocaleString()+'</td></tr>';}).join('')}
+    </tbody></table></div>`;
 }
 /* 사이드바 — 하자 관리 아래에 권역(소분류)과 그 권역의 현장을 편다.
    ⚠ 지금은 조직/현장 관리의 현장 목록을 쓴다. 게시본을 읽기 시작하면 게시된 현장 목록과 합쳐야 한다. */
@@ -3060,15 +3160,19 @@ function rDefectNav(){
   const{team,regions}=tkSel();
   const sites=(S.org.sites||[]).filter(x=>x.name&&(!team||!x.team||x.team===team.id));
   const groups=[];
-  regions.forEach(r=>{const l=sites.filter(x=>x.region===r.id);if(l.length)groups.push([r.name,l]);});
+  regions.forEach(r=>{const l=sites.filter(x=>x.region===r.id);if(l.length)groups.push([r.id,r.name,l]);});
   const none=sites.filter(x=>!x.region||!regions.some(r=>r.id===x.region));
-  if(none.length)groups.push(['권역 미지정',none]);
-  box.innerHTML=groups.map(([rn,list])=>
-    '<div class="df-reg">'+esc(rn)+'</div>'
-    +list.map(x=>'<div class="nvi df-site'+(S.view==='defect'&&S.dfSid===x.id?' act':'')+'" role="button" tabindex="0"'
-      +' data-act="df.site" data-sid="'+esc(x.id)+'" data-tip="'+esc(x.name)+'">'
-      +'<div class="nic"><svg class="icn" aria-hidden="true"><use href="#i-defect"></use></svg></div>'
-      +'<span class="nil">'+esc(x.name)+'</span></div>').join('')).join('');
+  if(none.length)groups.push(['','권역 미지정',none]);
+  box.innerHTML=groups.map(([rid,rn,list])=>{
+    const open=S.dfFold[rid]!==false;   /* 기본은 펼침 */
+    return '<button class="df-reg'+(open?' open':'')+'" data-act="df.fold" data-rid="'+esc(rid)+'"'
+      +' aria-expanded="'+(open?'true':'false')+'">'
+      +'<svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg>'
+      +'<span class="n">'+esc(rn)+'</span></button>'
+      +(open?list.map(x=>'<div class="nvi df-site'+(S.view==='defect'&&S.dfSid===x.id?' act':'')+'" role="button" tabindex="0"'
+        +' data-act="df.site" data-sid="'+esc(x.id)+'" data-tip="'+esc(x.name)+'">'
+        +'<span class="dot"></span><span class="nil">'+esc(x.name)+'</span></div>').join(''):'');
+  }).join('');
 }
 /* 기준월·인쇄는 하자 관리 화면에서만 상단바에 나온다 */
 function dfTopbar(){
@@ -3851,7 +3955,7 @@ window.addEventListener('blur',tipHide);
 setInterval(()=>{if(_tipFor&&!_tipFor.isConnected)tipHide();},700);
 
 /* ═══════════ 화면 전환 · 공통 UI ═══════════ */
-const VIEW_TTL={calendar:'캘린더',tasks:'업무 목록',report:'주요 업무',defect:'하자 현황',org:'조직/현장 관리',settings:'설정'};
+const VIEW_TTL={calendar:'캘린더',tasks:'업무 목록',report:'주요 업무',defect:'하자처리 현황',org:'조직/현장 관리',settings:'설정'};
 function go(view){
   S.view=view;
   S.planOpen='';S.tkOpen=null;   /* 펼쳐 둔 카드는 화면을 옮기면 접는다(일정·업무 목록 모두) */
@@ -4029,6 +4133,7 @@ const ACT={
   'acct.open':openAcctModal,
   'mention.open':openMentionModal,
   'df.site':el=>{S.dfSid=el.dataset.sid;go('defect');},
+  'df.fold':el=>{const k=el.dataset.rid;S.dfFold[k]=(S.dfFold[k]===false);rDefectNav();},
   'df.print':()=>window.print(),
   'hold.go':el=>gotoTask(el.dataset.sid,el.dataset.iid),
   'hold.mine':()=>{S.holdMine=!S.holdMine;rHold();},

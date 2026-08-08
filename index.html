@@ -70,7 +70,14 @@ svg{display:block;flex-shrink:0;}
 .sbsc{flex:1;overflow-y:auto;overflow-x:hidden;padding:8px;display:flex;flex-direction:column;}
 #sidebar.mini .sbsc{overflow-x:visible;overflow-y:auto;}
 .sbsc>*{flex-shrink:0;}
-.sbsc .sb-bottom{margin-top:auto;padding-top:8px;}
+.sb-bottom{flex:0 0 auto;padding:0 8px 8px;}   /* 스크롤 영역 밖 — 목록이 길어도 관리·프로필은 늘 아래에 남는다 */
+/* 하자 관리 소분류(권역) — 꺾쇠로 접었다 편다 */
+.df-reg{display:flex;align-items:center;gap:6px;width:100%;padding:8px 8px 4px 14px;background:none;border:0;
+  font:inherit;font-size:11.5px;font-weight:700;color:var(--lbl3);letter-spacing:.02em;cursor:pointer;white-space:nowrap;}
+.df-reg:hover{color:var(--lbl2);}
+.df-reg .icn{width:12px;height:12px;flex:0 0 auto;transition:transform var(--tr);}
+.df-reg.open .icn{transform:rotate(90deg);}
+.df-reg .n{flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;}
 .sbsl{font-size:12px;font-weight:700;color:var(--lbl3);letter-spacing:.07em;text-transform:uppercase;padding:10px 8px 4px;white-space:nowrap;transition:opacity var(--tr);}
 /* 접으면 분류 라벨은 글자만 감춘다 — 자리(29px)는 그대로라 아이콘 위치가 안 밀린다 */
 #sidebar.mini .sbsl{visibility:hidden;transition:none;}   /* 높이를 고정하면 글자 크기를 바꿀 때 접힘 전후로 어긋난다 — 자리만 그대로 둔다 */
@@ -400,13 +407,34 @@ html.dark .stx-done{color:#3BA85C;}
 .hold-card{padding:0;overflow:hidden;display:flex;flex-direction:column;flex:0 0 auto;}
 .hold-card[hidden]{display:none;}
 /* 하자 관리 — 사이드바 소분류(권역)와 그 아래 현장 */
-.df-reg{font-size:11.5px;font-weight:700;color:var(--lbl3);letter-spacing:.02em;padding:9px 14px 3px 26px;}
-.nvi.df-site{padding-left:34px;}
-.nvi.df-site .nil{font-size:13px;}
-#sidebar.mini .df-reg{display:none;}
-#sidebar.mini .nvi.df-site{padding-left:0;}
+.nvi.df-site{padding:4px 8px 4px 22px;gap:8px;margin-bottom:0;font-size:11.5px;}
+.nvi.df-site .nil{font-size:11.5px;}
+.nvi.df-site .dot{width:6px;height:6px;border-radius:50%;background:var(--sepo);flex:0 0 auto;margin:0 8px 0 5px;transition:background var(--tr);}
+.nvi.df-site:hover .dot,.nvi.df-site.act .dot{background:var(--b500);}
+#sidebar.mini .df-reg,#sidebar.mini .nvi.df-site{display:none;}
 /* 상단바 기준월 칩 */
 .tb-rm{font-size:12px;font-weight:700;color:var(--lbl2);background:var(--fill);border-radius:8px;padding:4px 9px;}
+/* 하자처리 현황 — KPI 카드와 표. 색·모서리·글자 크기는 앱의 다른 화면과 같은 값을 쓴다 */
+.df-kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:12px;}
+.df-k{background:var(--bg2);border:1px solid var(--sep);border-radius:var(--rlg);padding:14px 16px;
+  display:flex;flex-direction:column;gap:2px;box-shadow:0 1px 2px rgba(16,24,40,.05),0 1px 3px rgba(16,24,40,.04);}
+.df-k .l{font-size:12px;font-weight:700;color:var(--lbl3);}
+.df-k b{font-size:22px;font-weight:800;letter-spacing:-.02em;line-height:1.2;}
+.df-k .u{font-size:11.5px;color:var(--lbl3);}
+.df-k.ok b{color:var(--gn);} .df-k.warn b{color:var(--am);} .df-k.bad b{color:var(--rd);}
+.df-card{padding:0;overflow:hidden;margin-bottom:12px;}
+.df-h{display:flex;align-items:center;gap:8px;padding:12px 16px 10px;border-bottom:1px solid var(--sep);}
+.df-h b{font-size:14px;}
+.df-sub{font-size:12px;color:var(--lbl3);}
+.df-tbl{margin:0;}
+.df-tbl th{padding:11px 12px 9px;}
+.df-tbl td{padding:9px 12px;}
+.df-tbl .df-g td{padding:7px 12px;}
+.df-tbl td,.df-tbl th{font-size:13px;}
+.df-tbl .df-g td{font-size:12px;font-weight:700;color:var(--bt1);background:var(--surf2);}
+.df-tbl .df-r{cursor:pointer;}
+.df-tbl .df-r:hover{background:var(--fill);}
+.df-tbl .df-lt{color:var(--rd);font-weight:700;}
 /* 하자 현황 — 자리만 잡아 둔 화면 */
 .dfc-none{display:flex;flex-direction:column;align-items:center;gap:8px;padding:48px 24px;text-align:center;}
 .dfc-none .icn{width:26px;height:26px;color:var(--lbl3);}
@@ -1685,7 +1713,7 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 <symbol id="i-me" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
 <symbol id="i-cmt" viewBox="0 0 24 24"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></symbol>
 <symbol id="i-print" viewBox="0 0 24 24"><path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7" rx="1"/></symbol>
-<symbol id="i-defect" viewBox="0 0 24 24"><path d="M3.5 10.5 12 4l8.5 6.5"/><path d="M5.5 9.6V20h13V9.6"/><path d="M10 14.6h4"/><path d="M12 12.6v4"/></symbol>
+<symbol id="i-defect" viewBox="0 0 24 24"><path d="M14.6 6.1a3.9 3.9 0 0 0 5 5l-8.2 8.2a2.5 2.5 0 0 1-3.6-3.6z"/><path d="M14.6 6.1 17.9 3l3.1 3.1L17.9 9.2"/></symbol>
 <symbol id="i-org" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="8.5" y="14" width="7" height="7" rx="1.5"/><path d="M6.5 10v2h11v-2"/><path d="M12 12v2"/></symbol>
 
 
@@ -1761,9 +1789,10 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
     <div class="sbsl">하자 관리</div>
     <div class="nvi" role="button" tabindex="0" data-view="defect" data-act="nav.go">
       <div class="nic"><svg class="icn" aria-hidden="true"><use href="#i-defect"></use></svg></div>
-      <span class="nil">하자 현황</span>
+      <span class="nil">하자처리 현황</span>
     </div>
     <div id="dfNav"></div>
+  </div>
     <div class="sb-bottom">
         <div class="sbsl">관리</div>
       <div class="nvi" role="button" tabindex="0" data-view="org" data-act="nav.go">
@@ -1783,7 +1812,6 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
         <button class="sb-th1" data-act="theme.toggle" aria-label="테마 전환"><svg class="icn" aria-hidden="true"><use href="#i-sun" id="thIcon"></use></svg></button>
       </div>
     </div>
-  </div>
 </aside>
 
 <main id="main">
@@ -2018,5 +2046,5 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=195"></script>
+<script src="./app.js?v=196"></script>
 </body></html>
