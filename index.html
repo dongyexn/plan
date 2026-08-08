@@ -1546,18 +1546,28 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 .rp-tbl .rp-none{text-align:center;color:var(--lbl3);padding:14px 0;}
 @media (max-width:1100px){.rp-grid{grid-template-columns:minmax(0,1fr);gap:14px;}}
 /* ── 8차 ── */
-/* 진행 상태 아이콘 — 체크를 구멍으로 뚫어 카드 배경이 비쳐 보이게(유리 배경에서 흰 체크가 묻히던 것) */
-.stx:not(.on) .stx-done .cf{mask:url(#stx-ck);-webkit-mask:url(#stx-ck);}
+/* 진행 상태 아이콘 — 체크를 구멍으로 뚫어 카드 배경이 비쳐 보이게(유리 배경에서 흰 체크가 묻히던 것).
+   ⚠ 마스크는 마크업의 mask 속성으로 걸고, 완료일 때만 CSS 로 끈다(CSS mask 로는 참조가 안 먹었다) */
+.stx.on .stx-done .cf{mask:none;}
 .stx:not(.on) .stx-done .ck{display:none;}
-/* 업무 목록 — 팀 전체일 때 목록을 두 열로 */
-.tk-list.wide{padding-right:6px;}
-.tk-2col{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 18px;align-items:start;}
-.tk-2col .tk-c{min-width:0;}
-.tk-2col .tk-c>.tk-sub:first-child{padding-top:0;}
-@media (max-width:1200px){.tk-2col{grid-template-columns:minmax(0,1fr);}}
+/* 업무 목록 — 팀 전체일 때 카드를 둘로 나눈다(공통·팀장 / 권역 담당자) */
+.tk-split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:start;}
+.tk-split .tkmain{margin:0;}
+@media (max-width:1200px){.tk-split{grid-template-columns:minmax(0,1fr);}}
+/* 분류 사이는 넉넉히, 업무 카드 사이는 촘촘히 */
+.tk-list .tk-sub{margin-top:16px;padding-top:8px;border-top:1px solid var(--sep);}
+.tk-list .tk-sub:first-child{margin-top:0;padding-top:0;border-top:0;}
+.tk-list .tk-sub2{margin-top:10px;}
+.tk-list .tk-sub+.tk-sub2{margin-top:4px;}
+.tk-list .tk-item{margin-bottom:4px;}
+/* 팀 공통 업무 막대 — 제목 앞 흰 점 */
+#fcal .fc-event.team .fc-event-title::before{content:'';display:inline-block;width:5px;height:5px;border-radius:50%;
+  background:currentColor;margin:0 5px 0 -3px;vertical-align:middle;flex:none;}
 /* 내 업무 — 1열(작은 달력·멘션) + 2열 카드 */
 .mine-grid{grid-template-columns:320px minmax(0,1fr) minmax(0,1fr);}
-.mine-side{display:flex;flex-direction:column;gap:12px;min-width:0;}
+.mine-side{display:flex;flex-direction:column;gap:12px;min-width:0;grid-row:1/span 2;}
+.mine-ftop{grid-column:2/-1;min-width:0;}
+.mine-ftop .tkf-card{margin:0;}
 .mini-cal{padding:12px 12px 14px;}
 .mc-h{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
 .mc-h b{font-size:14px;font-weight:800;color:var(--lbl);}
@@ -1570,14 +1580,15 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 .mc-d{position:relative;height:34px;border-radius:8px;background:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--lbl);}
 .mc-d.out{visibility:hidden;}
 .mc-d .n{font-size:12px;line-height:1;font-variant-numeric:tabular-nums;}
-.mc-d .dot{width:4px;height:4px;border-radius:50%;background:var(--b600);}
+.mc-d .dots{display:flex;justify-content:center;gap:2px;height:5px;}
+.mc-d .dots i{width:5px;height:5px;border-radius:50%;background:var(--b600);}
 .mc-d:not(.out):hover{background:var(--fill);}
 .mc-d.sun .n{color:var(--rd);}
 .mc-d.sat .n{color:var(--b600);}
 .mc-d.today .n{font-weight:800;color:var(--b600);}
 .mc-d.today{background:var(--tint-b,var(--b50));}
 .mc-d.sel{box-shadow:inset 0 0 0 1.5px var(--b600);}
-.mc-d.sel .dot,.mc-d.today .dot{background:var(--b700);}
+.mc-d.sel .dots i,.mc-d.today .dots i{background:var(--b700);}
 @media (max-width:1200px){.mine-grid{grid-template-columns:280px minmax(0,1fr);}}
 @media (max-width:960px){.mine-grid{grid-template-columns:minmax(0,1fr);}}
 /* 위젯 내 업무 팝오버 — 건수 대신 더보기 꺾쇠(배경 없음) */
@@ -1942,5 +1953,5 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=176"></script>
+<script src="./app.js?v=177"></script>
 </body></html>

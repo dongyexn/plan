@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='1.5.0';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='1.5.1';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -1590,11 +1590,11 @@ function planEvent(p,date){
   const span=p.end?daysBetween(p.date,p.end):0;
   const done=p.recur&&p.recur.f?!!(p.doneOn&&p.doneOn[date]):!!p.done;
   const own=p.owner?ownName(p.owner):'';
-  /* 담당자 없는 팀 공통 업무는 제목 앞에 별을 붙여 한눈에 가른다(색은 그대로) */
-  const star=planOwners(p).length?'':'★ ';
+  /* 담당자 없는 팀 공통 업무는 제목 앞에 작은 흰 점을 찍어 가른다(점은 CSS 로 그린다) */
+  const team=!planOwners(p).length;
   return{
     id:p.id+'@'+date,
-    title:star+(fmtSpan(p)?fmtSpan(p)+' ':'')+p.title+(own?' · '+own:''),
+    title:(fmtSpan(p)?fmtSpan(p)+' ':'')+p.title+(own?' · '+own:''),
     start:(p.time&&!p.end)?date+'T'+p.time:date,
     end:span>0?addDays(date,span+1):undefined,
     allDay:!p.time||!!p.end,
@@ -1603,7 +1603,7 @@ function planEvent(p,date){
     /* ⚠ display 를 지정하지 않으면 시간이 있는 업무는 FullCalendar 가 '점 형식'으로 그린다 —
        배경 없이 어두운 글자라 유리(어두운) 배경 위에서 거의 보이지 않는다. 전부 색 막대로 통일한다 */
     display:'block',
-    classNames:(done?['done']:[]).concat(isLightColor(planColor(p))?['on-light']:[]),
+    classNames:(done?['done']:[]).concat(isLightColor(planColor(p))?['on-light']:[]).concat(team?['team']:[]),
     extendedProps:{pid:p.id,occ:date,recur:!!(p.recur&&p.recur.f)},
     editable:!(p.recur&&p.recur.f)
   };
@@ -2311,7 +2311,7 @@ function stIcon(st,attrs){
     +' aria-label="'+(on?'완료':'진행 중')+'" data-tip="'+(on?'완료':'진행 중')+'">'
     +'<span class="stx-in">'
       +'<svg class="stx-run" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path class="tri" d="M10.4 8.8v6.4l5.2-3.2z"/></svg>'
-      +'<svg class="stx-done" viewBox="0 0 24 24"><circle class="cf" cx="12" cy="12" r="9"/><path class="ck" d="m8.3 12.2 2.5 2.5 4.9-5.2"/></svg>'
+      +'<svg class="stx-done" viewBox="0 0 24 24"><circle class="cf" mask="url(#stx-ck)" cx="12" cy="12" r="9"/><path class="ck" d="m8.3 12.2 2.5 2.5 4.9-5.2"/></svg>'
     +'</span></button>';
 }
 /* 날짜가 지나면 저절로 완료로 본다 — 다만 지난 뒤 손으로 '진행'을 고르면(stKeep) 그대로 둔다 */
@@ -2765,18 +2765,17 @@ function rTasks(){
   const cCommon=team?taskCount(team.id):0;
   const cMems=mems.reduce((a,p)=>a+taskCount(p.id),0);
   /* 대상별 제목 · 작성 대상(sid) · 목록 */
-  let subject='',sid=null,listHTML='',twoCol=false;
+  let subject='',sid=null,listHTML='',split=null;
   if(sel==='teamall'){
     subject=tn+' 전체 업무';
     const ci=team?openItems(team.id):[];
-    /* 왼쪽 = 공통 업무 + 팀장 / 오른쪽 = 권역 담당자 — 한 줄로 길게 늘어놓지 않는다 */
-    const colA=(ci.length?'<div class="tk-sub">공통 업무<span class="c">'+cCommon+'</span></div>'
-        +ci.map(({iid,it})=>taskItemHTML(team.id,iid,it,false)).join(''):'')
-      +regionSectionsHTML(mems,regions,'head');
-    const colB=regionSectionsHTML(mems,regions,'reg');
-    twoCol=true;
-    listHTML='<div class="tk-2col"><div class="tk-c">'+(colA||'<div class="tk-empty">공통 업무가 없습니다.</div>')
-      +'</div><div class="tk-c">'+(colB||'<div class="tk-empty">담당자 업무가 없습니다.</div>')+'</div></div>';
+    /* 팀 전체 화면은 카드를 둘로 나눈다 — 공통·팀장 / 권역 담당자 */
+    split={
+      a:(ci.length?'<div class="tk-sub">공통 업무<span class="c">'+cCommon+'</span></div>'
+          +ci.map(({iid,it})=>taskItemHTML(team.id,iid,it,false)).join(''):'')
+        +regionSectionsHTML(mems,regions,'head'),
+      b:regionSectionsHTML(mems,regions,'reg')
+    };
   }else if(sel==='team'){
     subject=tn+' 공통 업무';sid=team?team.id:null;
     listHTML=sid?taskListHTML(sid):'<div class="tk-empty">조직/현장 관리에서 팀을 먼저 등록하세요.</div>';
@@ -2829,16 +2828,30 @@ function rTasks(){
     </div>
     <div class="tkcol">
       ${tkFilterHTML()}
-      <div class="card tkmain">
+      ${split?`<div class="tk-split">
+        <div class="card tkmain">
+          <div class="tkm-h"><div class="bar"></div><b>공통 · 팀장</b>
+            <span class="tkm-c">${(split.a.match(/class="tk-item /g)||[]).length}건</span>
+            <button class="btn bo bxs tkm-add" data-act="tk.newOpen"><svg class="icn"><use href="#i-plus"></use></svg> 업무 추가</button>
+          </div>
+          <div class="tk-list">${split.a||'<div class="tk-empty">표시할 업무가 없습니다.</div>'}</div>
+        </div>
+        <div class="card tkmain">
+          <div class="tkm-h"><div class="bar"></div><b>권역 담당자</b>
+            <span class="tkm-c">${(split.b.match(/class="tk-item /g)||[]).length}건</span>
+          </div>
+          <div class="tk-list">${split.b||'<div class="tk-empty">표시할 업무가 없습니다.</div>'}</div>
+        </div>
+      </div>`:`<div class="card tkmain">
         <div class="tkm-h"><div class="bar"></div><b>업무 목록</b><span class="tkm-sub">${esc(subject)}</span>
           <span class="tkm-c">${shownCnt}건</span>
           <button class="btn bo bxs tkm-add" data-act="tk.newOpen"><svg class="icn"><use href="#i-plus"></use></svg> 업무 추가</button>
         </div>
-        <div class="tk-list${twoCol?' wide':''}">
+        <div class="tk-list">
           ${sid&&S.tkNew===sid?taskFormHTML(sid,null,null):''}
           ${listHTML}
         </div>
-      </div>
+      </div>`}
     </div>
   </div>`;
   wireTaskDnD();
@@ -3001,6 +3014,7 @@ function mineTasks(){
       const it=m[iid];if(!it)return;
       const mine=(sid===me)||!!(it.assignees&&it.assignees[me]);
       if(!mine||stEff(it)===2)return;
+      if(!tkMatch(sid,iid,it))return;   /* 내 업무 화면의 필터·검색(업무 목록과 같은 것)을 탄다 */
       out.push({sid,iid,it});
     });
   });
@@ -3013,13 +3027,13 @@ function teamTasks(){
   const t=curTeam();if(!t)return[];
   const m=S.tasks[t.id]||{};
   return Object.keys(m).map(iid=>({sid:t.id,iid,it:m[iid]}))
-    .filter(x=>x.it&&stEff(x.it)!==2)
+    .filter(x=>x.it&&stEff(x.it)!==2&&tkMatch(x.sid,x.iid,x.it))
     .sort((a,b)=>{const ad=a.it.date||'9999',bd=b.it.date||'9999';
       return ad<bd?-1:ad>bd?1:(a.it.createdAt||0)-(b.it.createdAt||0);});
 }
 /* 내 업무 화면의 작은 달력 — 업무가 있는 날 아래에 점을 찍는다.
    ⚠ 달력 화면(FullCalendar)과 달리 직접 그린다(칸이 작아 막대를 넣을 자리가 없다) */
-function miniDots(y,m){
+function miniDots(y,m){   /* 날짜별 업무 건수(점 개수는 최대 3) */
   /* 그 달에 업무가 걸치는 날짜 모음 — 내 담당과 팀 공통을 함께 본다 */
   const me=myId(),first=y+'-'+pad(m+1)+'-01',last=y+'-'+pad(m+1)+'-'+pad(new Date(y,m+1,0).getDate());
   const set={};
@@ -3028,9 +3042,9 @@ function miniDots(y,m){
     const own=Object.keys(it.assignees||{});
     if(own.length&&own.indexOf(me)<0)return;      /* 남의 업무는 뺀다(팀 공통은 담당자가 없다) */
     const p=taskAsPlan(sid,iid,it);
-    if(it.recur&&it.recur.f){recurDates(p,first,last).forEach(d=>set[d]=1);return;}
+    if(it.recur&&it.recur.f){recurDates(p,first,last).forEach(d=>set[d]=(set[d]||0)+1);return;}
     const end=it.end||it.date;
-    for(let d=(it.date<first?first:it.date);d<=(end>last?last:end);d=addDays(d,1))set[d]=1;
+    for(let d=(it.date<first?first:it.date);d<=(end>last?last:end);d=addDays(d,1))set[d]=(set[d]||0)+1;
   });
   return set;
 }
@@ -3045,7 +3059,8 @@ function miniCalHTML(){
     const ds=y+'-'+pad(m+1)+'-'+pad(d),dw=(lead+d-1)%7;
     cells+='<button class="mc-d'+(ds===today?' today':'')+(ds===S.selDate?' sel':'')
       +(dw===0?' sun':'')+(dw===6?' sat':'')+'" data-act="mine.day" data-date="'+ds+'">'
-      +'<span class="n">'+d+'</span>'+(dots[ds]?'<span class="dot"></span>':'')+'</button>';
+      +'<span class="n">'+d+'</span>'
+      +(dots[ds]?'<span class="dots">'+'<i></i>'.repeat(Math.min(3,dots[ds]))+'</span>':'')+'</button>';
   }
   return `<div class="card mini-cal">
     <div class="mc-h">
@@ -3084,6 +3099,8 @@ function rMine(){
   root.innerHTML='<div class="mine-grid">'
     /* 1열 — 작은 달력과 멘션. 폭은 다른 화면의 첫 열(320px)과 같다 */
     +'<div class="mine-side">'+miniCalHTML()+mentionCard+'</div>'
+    /* 업무 목록과 같은 필터 카드 — 상태(S.tkF)도 그대로 공유한다 */
+    +'<div class="mine-ftop">'+tkFilterHTML()+'</div>'
     +`<div class="card">
         <div class="mine-h"><div class="bar"></div><b>공통 업무</b><span class="c">${commons.length}</span></div>
         ${commons.length?commons.map(({sid,iid,it})=>row(sid,iid,it,true)).join('')
@@ -3863,9 +3880,9 @@ const ACT={
   'modal.close':closeModal,
   'modal.stop':()=>{},
   'modal.ok':()=>{if(MODAL_CB&&MODAL_CB.ok)MODAL_CB.ok();},
-  'tkf.qclear':()=>{S.tkF={...S.tkF,q:''};filtSave();rTasks();},
+  'tkf.qclear':()=>{S.tkF={...S.tkF,q:''};filtSave();rTkViews();},
   'tkf.more':()=>{const c=$('#tkFcard');if(c)c.classList.toggle('adv-on');},
-  'tkf.reset':()=>{S.tkF={q:'',st:[],kind:[],reg:[],site:[]};filtSave();rTasks();},
+  'tkf.reset':()=>{S.tkF={q:'',st:[],kind:[],reg:[],site:[]};filtSave();rTkViews();},
   'tk.newOpen':el=>{
     /* ⚠ 새 업무는 '지금 보고 있는 자리'에 만든다.
        담당자를 고른 상태면 그 사람 밑에, 팀 전체·권역처럼 담을 자리가 아니면 팀 공통으로 간다
@@ -4167,7 +4184,7 @@ function mselHTML(scope,g,all,items,sel){
 }
 function mselStore(el){return el.dataset.scope==='tk'?(S.tkF=S.tkF||{}):(S.filter=S.filter||{});}
 function mselApply(el){
-  if(el.dataset.scope==='tk'){filtSave();rTasks();}
+  if(el.dataset.scope==='tk'){filtSave();rTkViews();}
   else{filtSave();rFilter();refetchCal();rDay();rWidget();}
 }
 function mselClose(){document.querySelectorAll('.msel.open').forEach(x=>x.classList.remove('open'));}
@@ -4367,11 +4384,12 @@ document.addEventListener('input',e=>{
   }
 });
 let tkQT=null;
-/* 목록·좌측 카운트만 다시 그려 입력 포커스를 유지 */
+/* 업무 목록과 내 업무는 같은 필터(S.tkF)를 쓴다 — 보고 있는 화면을 다시 그린다 */
+function rTkViews(){S.view==='mine'?rMine():rTasks();}
+/* 목록만 다시 그려 입력 포커스를 유지 */
 function tkRefresh(){
-  const root=$('#tkRoot');if(!root)return;
   const q=$('#tkQ'),pos=q?q.selectionStart:null;
-  rTasks();
+  rTkViews();
   const q2=$('#tkQ');
   if(q2&&q){q2.focus();try{q2.setSelectionRange(pos,pos);}catch(_){}}
 }
