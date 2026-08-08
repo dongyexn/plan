@@ -1576,12 +1576,14 @@ html.dark #content:hover::-webkit-scrollbar-thumb ,html.dark .dp-body:hover::-we
 #fcal .fc-event.team .fc-event-title::before{content:'';flex:none;width:0;height:0;margin-right:4px;
   border-left:4px solid currentColor;border-top:2.5px solid transparent;border-bottom:2.5px solid transparent;}
 /* 내 업무 — 1열(작은 달력·멘션) + 2열 카드 */
-/* 작은 달력에서 고른 날에 걸치는 업무 강조 — 한눈에 들어오게 진하게 */
-.tk-item.hl{box-shadow:inset 0 0 0 2px var(--b600);background:var(--b50);}
-html.dark .tk-item.hl{background:var(--b100);}
-/* 좌측 대상 목록 — 담당자 줄 간격을 조금 좁힌다 */
-.tks-item{padding:7px 11px;}
-.tks-item.sub{padding-top:6px;padding-bottom:6px;}
+/* 작은 달력에서 고른 날에 걸치는 업무 강조 — 테두리만, 배경은 두지 않는다 */
+.tk-item.hl{box-shadow:inset 0 0 0 1.5px var(--b500);}
+/* 좌측 대상 목록 — 줄 간격을 조금 좁히고 글자 크기를 하나로 맞춘다(팀·권역·담당자 13px) */
+.tks-item{padding:7px 11px;font-size:13px;}
+.tks-item.sub{padding-top:6px;padding-bottom:6px;font-size:13px;}
+.tks-item .rk{font-size:12px;}
+/* 분류 사이 간격 — 원본 규칙(:not(:first-child))이 명시도로 이겨 14px 로 남던 것을 카드 간격과 맞춘다 */
+.tk-list>.tk-sub:not(:first-child){margin-top:8px;padding-top:8px;}
 /* 왼쪽 열 — 달력은 고정, 대상 목록만 그 안에서 스크롤한다(화면 밖으로 밀리지 않게) */
 .tkside{display:flex;flex-direction:column;gap:12px;min-height:0;}
 .tkside .mini-cal{flex:0 0 auto;}
@@ -1960,5 +1962,5 @@ html.dark .tk-item.hl{background:var(--b100);}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=187"></script>
+<script src="./app.js?v=188"></script>
 </body></html>
