@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='1.5.3';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='1.5.4';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -3064,12 +3064,13 @@ function miniCalHTML(){
       +'<span class="n">'+d+'</span>'
       +(dots[ds]?'<span class="dots">'+'<i></i>'.repeat(Math.min(3,dots[ds]))+'</span>':'')+'</button>';
   }
+  /* 달마다 주 수가 달라 옆 패널 높이가 흔들리지 않도록 6주(42칸)로 채운다 */
+  for(let i=lead+days;i<42;i++)cells+='<div class="mc-d out"></div>';
   return `<div class="card mini-cal">
     <div class="mc-h">
       <b>${y}년 ${m+1}월</b>
       <div class="cal-nav">
         <button class="cal-nb" data-act="mine.mon" data-d="-1" aria-label="지난 달"><svg class="icn"><use href="#i-chevl"></use></svg></button>
-        <button class="cal-nb cal-today" data-act="mine.mon" data-d="0" aria-label="이번 달"><svg class="icn"><use href="#i-today"></use></svg></button>
         <button class="cal-nb" data-act="mine.mon" data-d="1" aria-label="다음 달"><svg class="icn"><use href="#i-chevr"></use></svg></button>
       </div>
     </div>
@@ -3108,7 +3109,7 @@ function rMine(){
     /* 1열 — 작은 달력과 멘션. 폭은 다른 화면의 첫 열(320px)과 같다 */
     +'<div class="mine-side">'+miniCalHTML()+mentionCard+'</div>'
     /* 업무 목록과 같은 필터 카드 — 상태(S.tkF)도 그대로 공유한다 */
-    +'<div class="mine-ftop">'+tkFilterHTML()+'</div>'
+    +'<div class="mine-main">'+tkFilterHTML()+'<div class="mine-cards">'
     +`<div class="card">
         <div class="mine-h"><div class="bar"></div><b>공통 업무</b><span class="c">${commons.length}</span></div>
         ${commons.length?commons.map(({sid,iid,it})=>row(sid,iid,it,true)).join('')
@@ -3119,6 +3120,7 @@ function rMine(){
         ${tasks.length?tasks.map(({sid,iid,it})=>row(sid,iid,it,false)).join('')
           :'<div class="mine-empty">내가 담당인 미완료 업무가 없습니다.</div>'}
       </div>`
+    +'</div></div>'
     +'</div>';
 }
 
@@ -4394,12 +4396,18 @@ document.addEventListener('input',e=>{
 let tkQT=null;
 /* 업무 목록과 내 업무는 같은 필터(S.tkF)를 쓴다 — 보고 있는 화면을 다시 그린다 */
 function rTkViews(){S.view==='mine'?rMine():rTasks();}
-/* 목록만 다시 그려 입력 포커스를 유지 */
+/* ⚠ 화면을 통째로 다시 그리면 검색 칸이 새 노드가 되어 한글 조합이 끊긴다.
+   그리기 직전에 기존 필터 카드를 떼어 뒀다가, 새로 그려진 자리에 그 노드를 도로 끼운다. */
 function tkRefresh(){
-  const q=$('#tkQ'),pos=q?q.selectionStart:null;
+  const old=$('#tkFcard');
+  const focus=old&&old.contains(document.activeElement);
+  if(old)old.remove();
   rTkViews();
-  const q2=$('#tkQ');
-  if(q2&&q){q2.focus();try{q2.setSelectionRange(pos,pos);}catch(_){}}
+  const fresh=$('#tkFcard');
+  if(old&&fresh){
+    fresh.replaceWith(old);
+    if(focus){const q=old.querySelector('#tkQ');if(q){const n=q.value.length;q.focus();try{q.setSelectionRange(n,n);}catch(_){}}}
+  }
 }
 function dpSrchMark(){const w=document.querySelector('.dp-srch');if(w)w.classList.toggle('has',!!String(S.dayQ||'').trim());}
 document.addEventListener('keydown',e=>{

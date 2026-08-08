@@ -1450,7 +1450,7 @@ html.dark .stx .stx-done{color:#454D5C;}
 .nvi:not(.act) .nic{background:none;}
 .nvi.act .nic{background:none;}
 .nvi.act .nic svg{color:var(--bt1);}
-.nvi{padding:5px 8px;gap:8px;margin-bottom:0;}
+.nvi{padding:5px 8px 5px 12px;gap:8px;margin-bottom:0;}
 .nic{width:22px;height:22px;border-radius:0;}
 /* 달력 — 카드·격자 4px, 업무 막대 3px 로 더 각지게 */
 .cal-card{border-radius:4px;}
@@ -1557,24 +1557,27 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 .tk-split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:start;}
 .tk-split .tkmain{margin:0;}
 @media (max-width:1200px){.tk-split{grid-template-columns:minmax(0,1fr);}}
-/* 카드 사이는 일자 패널과 같은 8px, 분류 앞뒤는 넉넉히 */
+/* 카드 사이·구분선 앞뒤 모두 일자 패널과 같은 8px */
 .tk-list{gap:8px;}
-.tk-list .tk-sub{margin-top:10px;padding-top:12px;border-top:1px solid var(--sep);}
+.tk-list .tk-sub{margin-top:8px;padding:8px 2px 0;border-top:1px solid var(--sep);}
 .tk-list .tk-sub:first-child{margin-top:0;padding-top:0;border-top:0;}
-.tk-list .tk-sub2{margin-top:4px;}
-.tk-list .tk-sub+.tk-sub2{margin-top:0;}
+.tk-list .tk-sub2{padding:0 2px;}
+/* 목록이 길어져도 패널 안에서만 스크롤한다(화면 밖으로 밀리지 않게) */
+.tk-split{flex:1;min-height:0;}
+.tk-split .tkmain{height:100%;min-height:0;}
 /* 팀 공통 업무 막대 — 제목 앞 작은 삼각형(▶). 글자와 세로 중앙을 맞춘다 */
 #fcal .fc-event.team .fc-event-title{display:flex;align-items:center;}
 #fcal .fc-event.team .fc-event-title::before{content:'';flex:none;width:0;height:0;margin-right:4px;
   border-left:4px solid currentColor;border-top:2.5px solid transparent;border-bottom:2.5px solid transparent;}
 /* 내 업무 — 1열(작은 달력·멘션) + 2열 카드 */
-.mine-grid{grid-template-columns:320px minmax(0,1fr) minmax(0,1fr);}
-.mine-side{display:flex;flex-direction:column;gap:12px;min-width:0;grid-row:1/span 2;}
-.mine-ftop{grid-column:2/-1;min-width:0;}
-.mine-ftop .tkf-card{margin:0;}
+.mine-grid{grid-template-columns:320px minmax(0,1fr);}
+.mine-side{display:flex;flex-direction:column;gap:12px;min-width:0;}
+.mine-main{display:flex;flex-direction:column;gap:12px;min-width:0;}
+.mine-cards{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:start;}
 .mine-row.hl{background:var(--b50);box-shadow:inset 0 0 0 1.5px var(--b300);}
+@media (max-width:1100px){.mine-cards{grid-template-columns:minmax(0,1fr);}}
 .mini-cal{padding:12px 12px 14px;}
-.mc-h{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.mc-h{display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-left:6px;}
 .mc-h b{font-size:14px;font-weight:800;color:var(--lbl);}
 .mc-h .cal-nav{margin-left:auto;}
 .mc-w{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:2px;}
@@ -1595,7 +1598,6 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 .mc-d.today{background:var(--tint-b,var(--b50));}
 .mc-d.sel{box-shadow:inset 0 0 0 1.5px var(--b600);}
 .mc-d.sel .dots i,.mc-d.today .dots i{background:var(--b700);}
-@media (max-width:1200px){.mine-grid{grid-template-columns:280px minmax(0,1fr);}}
 @media (max-width:960px){.mine-grid{grid-template-columns:minmax(0,1fr);}}
 /* 위젯 내 업무 팝오버 — 건수 대신 더보기 꺾쇠(배경 없음) */
 .wl-more{margin-left:auto;display:flex;align-items:center;justify-content:center;width:20px;height:20px;color:var(--lbl3);background:none;}
@@ -1960,5 +1962,5 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=179"></script>
+<script src="./app.js?v=180"></script>
 </body></html>
