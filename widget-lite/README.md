@@ -1,6 +1,6 @@
-# 바탕화면 위젯 Lite (파일럿)
+# 바탕화면 위젯 Lite
 
-기존 Electron 위젯(`widget/`, `HPlanWidget.exe` ≈ 70MB)의 저용량 대체 후보다.
+기존 Electron 위젯(`widget/`, `HPlanWidget.exe` ≈ 70MB)을 대체한 정식 위젯이다.
 크로미엄을 내장하지 않고 윈도우에 이미 있는 **WebView2(엣지)** 를 쓰는 Tauri v2 앱이라
 exe 가 수 MB 로 준다. 기능·동작·화면(같은 웹앱 `?w=1&glass=1`)은 기존 위젯과 같게 이식했다.
 
@@ -10,7 +10,7 @@ exe 가 수 MB 로 준다. 기능·동작·화면(같은 웹앱 `?w=1&glass=1`)�
 
 ## 정착 (191차 — Electron 판 폐기)
 
-파일럿·실사용 검증을 거쳐 **이것이 정식 위젯**이 됐다(v1.0.0). Electron 판(`widget/`·`widget.yml`)은
+실사용 검증을 거쳐 **이것이 정식 위젯**이 됐다(v1.0.0). Electron 판(`widget/`·`widget.yml`)은
 저장소에서 제거했다(깃 히스토리와 과거 zip 에 남아 있다).
 부팅마다 `retire_electron()` 이 팀원 PC 의 흔적을 스스로 걷어낸다:
 구 exe(.old·.new 포함) 삭제(실행 중이면 다음 부팅에 재시도), 자동 실행 등록 중
