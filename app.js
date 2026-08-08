@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='1.5.1';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='1.5.2';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -422,6 +422,7 @@ const S={
   filter:{kind:[],st:[],reg:[],own:[],site:[]},  // 달력 필터 — 모두 다중 선택(빈 배열이 '전체')
   foldOpen:{},       // 완료 항목 접힘 해제(subjectId별)
   mineYm:'',         // 내 업무 화면의 작은 달력이 보고 있는 달
+  mineSel:'',        // 작은 달력에서 고른 날 — 그 날 업무를 목록에서 강조한다
   rptWeek:'',        // 주요 업무 화면이 보고 있는 주(빈 값이면 이번 주)
   tkNew:null,        // 인라인 작성창이 열린 대상
   tkEdit:null,       // 인라인 수정 중인 업무 'sid/iid'
@@ -3057,7 +3058,7 @@ function miniCalHTML(){
   for(let i=0;i<lead;i++)cells+='<div class="mc-d out"></div>';
   for(let d=1;d<=days;d++){
     const ds=y+'-'+pad(m+1)+'-'+pad(d),dw=(lead+d-1)%7;
-    cells+='<button class="mc-d'+(ds===today?' today':'')+(ds===S.selDate?' sel':'')
+    cells+='<button class="mc-d'+(ds===today?' today':'')+(ds===S.mineSel?' sel':'')
       +(dw===0?' sun':'')+(dw===6?' sat':'')+'" data-act="mine.day" data-date="'+ds+'">'
       +'<span class="n">'+d+'</span>'
       +(dots[ds]?'<span class="dots">'+'<i></i>'.repeat(Math.min(3,dots[ds]))+'</span>':'')+'</button>';
@@ -3089,9 +3090,15 @@ function rMine(){
             <span class="t">${esc(m.by||'')} · ${esc(m.text||'')}</span>
           </div>`).join(''):'<div class="mine-empty">받은 멘션이 없습니다.</div>'}
       </div>`;
+  /* 작은 달력에서 고른 날에 걸치는 업무를 강조한다 */
+  const onSel=(sid,iid,it)=>{
+    const d=S.mineSel;if(!d||!it.date)return false;
+    if(it.recur&&it.recur.f)return recurDates(taskAsPlan(sid,iid,it),d,d).length>0;
+    return d>=it.date&&d<=(it.end||it.date);
+  };
   const row=(sid,iid,it,nowLabel)=>{
     const di=it.date?dueInfo(it.date):null;
-    return `<div class="mine-row ${di?di.cls:''}" data-act="mine.task" data-sid="${esc(sid)}" data-iid="${esc(iid)}">
+    return `<div class="mine-row ${di?di.cls:''}${onSel(sid,iid,it)?' hl':''}" data-act="mine.task" data-sid="${esc(sid)}" data-iid="${esc(iid)}">
       <span class="d${nowLabel&&di&&di.txt==='D-DAY'?' now':''}">${di?esc(di.txt):'—'}</span>
       <span class="t">${esc(it.text||'제목 없음')}</span>
       ${stIcon(stEff(it))}
@@ -3831,7 +3838,7 @@ const ACT={
   'nq.task':el=>gotoTask(el.dataset.sid,el.dataset.iid),
   'nq.cmt':el=>gotoTask(el.dataset.sid,el.dataset.iid),
   'mine.task':el=>gotoTask(el.dataset.sid,el.dataset.iid),
-  'mine.day':el=>{const d=el.dataset.date;if(!d)return;go('calendar');selDate(d);},
+  'mine.day':el=>{const d=el.dataset.date;if(!d)return;S.mineSel=(S.mineSel===d?'':d);rMine();},
   'mine.mon':el=>{
     const d=Number(el.dataset.d)||0;
     const base=S.mineYm||todayStr().slice(0,7)+'-01';
