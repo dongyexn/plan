@@ -405,6 +405,7 @@ html.dark .stx-done{color:#3BA85C;}
 .stx.hold .stx-hold{opacity:1;}
 /* 보류함 — 일자 패널 아래. 머리 글자·간격은 위 카드와 같고, 배지는 업무 목록 트리와 같은 알약 */
 .hold-card{padding:0;overflow:hidden;display:flex;flex-direction:column;flex:0 0 auto;}
+.hold-card[hidden]{display:none;}   /* ⚠ .card 의 display 가 [hidden] 을 덮어 0건에도 카드가 보였다 */
 .day-panel{min-height:0;}
 .hold-empty{font-size:12.5px;color:var(--lbl3);text-align:center;padding:16px 0;}
 .hold-mine.on{background:var(--b50);border-color:var(--b300);color:var(--bt1);}
@@ -665,7 +666,7 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 .tkwrap{display:grid;grid-template-columns:320px minmax(0,1fr);gap:16px;align-items:stretch;height:calc(100dvh - var(--th) - 32px);min-height:460px;}   /* 32 = 상단 12 + 하단 20 */
 .tkside{display:flex;flex-direction:column;gap:12px;min-height:0;overflow-y:auto;}
 .tks-card{padding:9px 10px;}
-.tks-hold{flex:0 0 auto;padding:9px 10px;}
+.tks-hold{flex:0 0 auto;padding:9px 14px 9px 10px;}   /* 오른쪽 10 + 트리 목록의 스크롤바 자리 4 = 배지 위치가 아래 트리와 맞는다 */
 .tks-hold .tks-item{margin-top:0;}
 /* 오른쪽 열 — 업무 일정과 같은 구성: 제목 없는 필터 카드 + 제목이 붙은 업무 패널 */
 .tkcol{display:flex;flex-direction:column;gap:9px;min-height:0;min-width:0;}
@@ -1041,10 +1042,10 @@ select.mg-inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-
 .acct-state.ok{color:var(--gn);}
 .rk-fix{font-size:12px;font-weight:600;color:var(--lbl2);display:inline-flex;align-items:center;height:26px;}
 /* 직급 배지 — 조직상 자리(권한 배지와 구분되게 회색 계열) */
-.rk{display:inline-block;margin-left:6px;font-size:12px;font-weight:700;color:var(--lbl2);
-  background:var(--fill);border-radius:var(--rp);padding:1px 6px;vertical-align:1px;letter-spacing:0;}
-.tks-item .rk{font-weight:700;font-size:12px;padding:0 5px;vertical-align:0;}
-.tk-sub2 .rk{margin-left:5px;font-size:12px;padding:0 5px;vertical-align:0;}
+.rk{display:inline-block;margin-left:6px;font-size:11px;font-weight:700;color:var(--lbl2);
+  background:var(--fill);border-radius:var(--rp);padding:0 5px;vertical-align:1px;letter-spacing:0;}
+.tks-item .rk{font-weight:700;font-size:11px;padding:0 5px;vertical-align:0;}
+.tk-sub2 .rk{margin-left:5px;font-size:11px;padding:0 5px;vertical-align:0;}
 /* 계정 모달 탭 */
 .acct-tabs{display:flex;gap:4px;background:var(--fill);border-radius:var(--rmd);padding:3px;margin:0 0 18px;}
 .acct-tab{flex:1;padding:7px 10px;border-radius:calc(var(--rmd) - 3px);font-size:13px;font-weight:700;
@@ -1608,7 +1609,7 @@ html.dark #content:hover::-webkit-scrollbar-thumb ,html.dark .dp-body:hover::-we
 /* 좌측 대상 목록 — 줄 간격을 조금 좁히고 글자 크기를 하나로 맞춘다(팀·권역·담당자 13px) */
 .tks-item{padding:7px 11px;font-size:13px;}
 .tks-item.sub{padding-top:6px;padding-bottom:6px;font-size:13px;}
-.tks-item .rk{font-size:12px;}
+.tks-item .rk{font-size:11px;}
 /* 분류 사이 간격 — 원본 규칙(:not(:first-child))이 명시도로 이겨 14px 로 남던 것을 카드 간격과 맞춘다 */
 .tk-list>.tk-sub:not(:first-child){margin-top:8px;padding-top:8px;}
 /* 왼쪽 열 — 달력은 고정, 대상 목록만 그 안에서 스크롤한다(화면 밖으로 밀리지 않게) */
@@ -2000,5 +2001,5 @@ html.dark #content:hover::-webkit-scrollbar-thumb ,html.dark .dp-body:hover::-we
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=191"></script>
+<script src="./app.js?v=192"></script>
 </body></html>

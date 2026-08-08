@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='1.6.6';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='1.6.7';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -1382,7 +1382,7 @@ function widSideRender(){
           [siteName(it.site),kindLabel(it.kind)].filter(Boolean).join(' · '))).join('')
         :empty('i-tasks','미완료 업무가 없습니다'))
       /* 보류함 — 아침 확인에서 넘긴 업무. 비어 있으면 머리째 넣지 않는다 */
-      +(holds.length?sec('보류함','hold',holds.length)
+      +(holds.length?sec('보류한 업무','hold',holds.length)
         +cut(holds,'hold').map(({sid,iid,it})=>row('wid.goTask',
           ' data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" data-date="'+esc(it.date||'')+'"',
           it.date?dlab(it.date):'기한 없음','hold',
@@ -2559,8 +2559,9 @@ function regionSectionsHTML(mems,regions,which){
       const items=openItems(p.id);
       if(!items.length)return '';
       const rk=rankOf(p.rank);
-      return '<div class="tk-sub2">'+esc(p.name)
-        +(rk!=='member'?'<span class="rk">'+esc(rankLabel(rk))+'</span>':'')+'</div>'
+      /* 묶음 이름이 곧 직급이면(팀장 묶음) 이름 옆 배지는 같은 말을 두 번 하는 셈이다 */
+      const badge=(rk!=='member'&&rn!==rankLabel(rk))?'<span class="rk">'+esc(rankLabel(rk))+'</span>':'';
+      return '<div class="tk-sub2">'+esc(p.name)+badge+'</div>'
         +items.map(({iid,it})=>taskItemHTML(p.id,iid,it,false,p.id)).join('');
     }).join('');
     if(!inner)return '';                 /* 업무가 없는 권역은 통째로 감춘다(머리·구분선까지) */
@@ -2804,7 +2805,7 @@ function rTasks(){
     subject=(rid===''?'권역 미지정':(((regions.find(r=>r.id===rid)||{}).name)||'권역'))+' 업무';
     listHTML=memberGroupHTML(regionMembers(mems,regions,rid));
   }else if(sel==='hold'){
-    subject='보류함';
+    subject='보류한 업무';
     const hs=holdItems();
     listHTML=hs.length?hs.map(({sid,iid,it})=>taskItemHTML(sid,iid,it,false)).join('')
       :'<div class="tk-empty">보류 중인 업무가 없습니다.</div>';
@@ -2829,7 +2830,7 @@ function rTasks(){
       ${miniCalHTML()}
       <div class="card tks-card tks-hold">
         <div class="tks-item tks-reg${sel==='hold'?' act':''}" data-act="tk.pick" data-id="hold">
-          <span class="n">보류함</span><span class="c">${holdItems().length}</span>
+          <span class="n">보류한 업무</span><span class="c">${holdItems().length}</span>
         </div>
       </div>
       <div class="card tks-card">
@@ -3044,7 +3045,7 @@ function rHold(){
   const any=list.length||(S.holdMine&&holdItems().length);
   card.hidden=!any;
   if(mn)mn.classList.toggle('on',!!S.holdMine);
-  if(ttl)ttl.textContent='보류된 업무 '+list.length+'건';
+  if(ttl)ttl.textContent='보류한 업무 '+list.length+'건';
   holdFit();
   if(!any){box.innerHTML='';return;}
   if(!list.length){box.innerHTML='<div class="hold-empty">내 보류 업무가 없습니다.</div>';return;}
