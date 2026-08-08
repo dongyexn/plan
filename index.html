@@ -405,8 +405,10 @@ html.dark .stx-done{color:#3BA85C;}
 .stx.hold .stx-hold{opacity:1;}
 /* 보류함 — 일자 패널 아래. 머리 글자·간격은 위 카드와 같고, 배지는 업무 목록 트리와 같은 알약 */
 .hold-card{padding:0;overflow:hidden;display:flex;flex-direction:column;flex:0 0 auto;}
-.hold-c{font-size:12px;font-weight:700;color:var(--lbl2);background:var(--fill);border-radius:8px;padding:1px 8px;}
-.hold-body{padding:8px 12px 12px 16px;display:flex;flex-direction:column;gap:5px;max-height:172px;overflow-y:auto;}
+.day-panel{min-height:0;}
+.hold-empty{font-size:12.5px;color:var(--lbl3);text-align:center;padding:16px 0;}
+.hold-mine.on{background:var(--b50);border-color:var(--b300);color:var(--bt1);}
+.hold-body{padding:8px 12px 12px 16px;display:flex;flex-direction:column;gap:5px;flex:1;min-height:0;overflow-y:auto;}
 .hold-i{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--rmd);
   background:var(--surf2);border:1px solid var(--sep);cursor:grab;transition:background var(--tr),border-color var(--tr);}
 .hold-i:hover{background:var(--bg2);border-color:var(--b300);}
@@ -662,7 +664,7 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 /* ══════════ 주요업무 현황 — 좌: 대상 선택 · 우: 작성/목록 ══════════ */
 .tkwrap{display:grid;grid-template-columns:320px minmax(0,1fr);gap:16px;align-items:stretch;height:calc(100dvh - var(--th) - 32px);min-height:460px;}   /* 32 = 상단 12 + 하단 20 */
 .tkside{display:flex;flex-direction:column;gap:12px;min-height:0;overflow-y:auto;}
-.tks-card{padding:14px 15px;}
+.tks-card{padding:9px 10px;}
 .tks-hold{flex:0 0 auto;padding:9px 10px;}
 .tks-hold .tks-item{margin-top:0;}
 /* 오른쪽 열 — 업무 일정과 같은 구성: 제목 없는 필터 카드 + 제목이 붙은 업무 패널 */
@@ -727,10 +729,6 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 .tk-ico.on{opacity:1;color:var(--bt1);}
 .tk-ico .icn{width:14px;height:14px;}
 .tk-ico .cn{font-size:12px;font-weight:800;}
-.tk-del{flex-shrink:0;width:24px;height:24px;border-radius:8px;display:flex;align-items:center;justify-content:center;
-  color:var(--lbl3);transition:background .12s,color .12s;}
-.tk-del:hover{background:var(--tint-rd);color:var(--rd);}
-.tk-del .icn{width:13px;height:13px;}
 /* 링크 — 진행경과·처리계획과 같은 칸으로 */
 .tk-links{display:flex;flex-wrap:wrap;gap:6px;}
 .tk-link{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 10px;border-radius:var(--rmd);
@@ -809,7 +807,6 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 .pe-ic{width:26px;height:26px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;color:var(--lbl2);flex:0 0 auto;transition:background var(--tr),color var(--tr);}
 .pe-ic:hover{background:var(--fill);color:var(--lbl);}
 .pe-ic .icn{width:14px;height:14px;}
-.pe-ic.pe-rem.on{color:var(--am);}
 /* 저장하고 닫기 — 아이콘만 파랑 + hover 배경 */
 .pe-ic.pe-ok{color:var(--b600);}
 .pe-ic.pe-ok:hover{background:var(--b100);color:var(--b800,#2F5CB5);}
@@ -1320,7 +1317,7 @@ body.wid #wgSet.on{display:block;}
 #cvBtn:hover{transform:translateY(-1px);box-shadow:0 8px 22px rgba(0,0,0,.3);}
 
 /* 찾기 — 상단바 검색창 버튼과 패널. 패널은 버튼 바로 아래(헤더 밑 우측)에 뜬다 */
-.tb-srch{display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 10px 0 9px;margin-right:8px;
+.tb-srch{display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 10px 0 9px;
   border:1px solid var(--sep);border-radius:8px;background:var(--fill);color:var(--lbl3);cursor:pointer;
   font:inherit;font-size:12.5px;transition:background var(--tr),color var(--tr),border-color var(--tr);}
 .tb-srch:hover,.tb-srch.on{background:var(--bg2);color:var(--lbl2);border-color:var(--b400);}
@@ -1350,7 +1347,7 @@ body.wid #wgSet.on{display:block;}
 .nq-item .sb{font-size:12px;color:var(--lbl3);margin-top:1px;}
 .nq-item mark{background:rgba(83,140,222,.22);color:inherit;border-radius:3px;padding:0 1px;}
 .nq-empty{font-size:13px;color:var(--lbl3);text-align:center;padding:26px 0;}
-@media(max-width:960px){.nq-panel{right:12px;left:12px;width:auto;}.tb-srch-t{display:none;}.tb-srch{padding:0;width:30px;justify-content:center;margin-right:6px;}}
+@media(max-width:960px){.nq-panel{right:12px;left:12px;width:auto;}.tb-srch-t{display:none;}.tb-srch{padding:0;width:30px;justify-content:center;}}
 /* 내 업무 */
 
 /* ══════════ 모달 · 토스트 · 툴팁 ══════════ */
@@ -1450,7 +1447,7 @@ html.dark #toast{background:#2B313A;}
 /* ══════════ 195차 통합 시안 — 검토 확정 후 각 규칙에 인라인 반영 예정 ══════════ */
 /* 버튼 높이 30px 통일 — 표 안 컨트롤(tm-x·tm-pick·site-pick)과 상태 아이콘(stx 20px)은 제외 */
 .btn{height:30px;padding-top:0;padding-bottom:0;}
-.tb-ic,.cal-nb,.pe-ic,.p-ico,.tk-ico,.tk-del,.dp-fmore,.dp-x,.sbtg,.mc,.mo-x,.nq-cl{width:30px;height:30px;}
+.tb-ic,.cal-nb,.pe-ic,.p-ico,.tk-ico,.dp-fmore,.dp-x,.sbtg,.mc,.mo-x,.nq-cl{width:30px;height:30px;}
 .acct-btn{height:30px;padding-top:0;padding-bottom:0;}
 /* 입력 높이 30px 통일 — 표 안(mg-inp)·여러 줄(textarea)은 제외, 로그인은 인라인이라 자동 예외 */
 .inp{height:30px;padding-top:0;padding-bottom:0;}
@@ -1477,7 +1474,7 @@ html.dark .stx .stx-done{color:#454D5C;}
 html.dark .bp{background:var(--b500);}
 /* ── 3차 ── */
 /* 업무 카드 아이콘 — 26px 균일 · 간격 0 */
-.plan-side .p-ico,.plan-side a.p-ico,.tk-acts .tk-ico,.tk-acts .tk-del{width:26px;height:26px;}
+.plan-side .p-ico,.plan-side a.p-ico,.tk-acts .tk-ico{width:26px;height:26px;}
 .plan-side{gap:0;}
 .tk-acts{gap:0;}
 .plan-side .stx,.tk-acts .stx{margin-right:0;}
@@ -1893,8 +1890,8 @@ html.dark #content:hover::-webkit-scrollbar-thumb ,html.dark .dp-body:hover::-we
           </div>
           <div class="card hold-card" id="holdCard" hidden>
             <div class="dp-lh">
-              <span class="dp-lh-t">보류함</span>
-              <span class="hold-c" id="holdCnt">0</span>
+              <span class="dp-lh-t" id="holdTtl">보류된 업무 0건</span>
+              <button class="btn bo bxs hold-mine" id="holdMine" data-act="hold.mine">내 업무만 보기</button>
             </div>
             <div class="hold-body" id="holdList" data-sb></div>
           </div>
@@ -2003,5 +2000,5 @@ html.dark #content:hover::-webkit-scrollbar-thumb ,html.dark .dp-body:hover::-we
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=190"></script>
+<script src="./app.js?v=191"></script>
 </body></html>

@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='1.6.5';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='1.6.6';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -431,6 +431,7 @@ const S={
   dayScope:'day',    // 찾는 범위: day(이 날짜) · month(이 달) · all(전체)
   widPop:false,
   widMore:{com:false,mine:false,hold:false},   // 위젯 내 업무 팝업에서 목록을 펼쳤는지
+  holdMine:false,    // 보류함을 내 업무만 보기로 좁혔는지
   widSide:'',        // 위젯 헤더의 알림·내 업무 팝오버 ('' / alert / mine)
   tkF:{q:'',st:[],kind:[],reg:[],site:[]},   // 업무 목록 검색·필터 — 모두 다중 선택
   orgTab:'acct',     // 조직/현장 관리 우측 탭 (acct | site)
@@ -470,7 +471,6 @@ function cleanTask(t){
   if(t.date)o.date=String(t.date).slice(0,10);
   if(t.end)o.end=String(t.end).slice(0,10);
   if(t.time)o.time=String(t.time).slice(0,5);
-  if(t.remind)o.remind=true;
   const rf=t.recur&&t.recur.f?String(t.recur.f):'';
   if(rf){
     o.recur={f:rf,until:String((t.recur&&t.recur.until)||'')};
@@ -660,7 +660,7 @@ const FbStore={
       const sid=owns[0]||teamId;
       const it={text:String(p.title||''),prog:String(p.body||''),
         date:String(p.date||''),end:String(p.end||''),time:String(p.time||''),
-        site:String(p.site||''),color:String(p.color||''),remind:!!p.remind,
+        site:String(p.site||''),color:String(p.color||''),
         st:p.done?2:0,assignees:(()=>{const o={};owns.forEach(k=>{o[k]=1;});return o;})(),
         createdAt:Number(p.createdAt)||Date.now(),updatedAt:Date.now()};
       if(p.recur&&p.recur.f){
@@ -800,7 +800,7 @@ function migratePlans(d){
     if(d.tasks[sid][p.id])return;                 /* 이미 옮겨졌으면 건너뛴다 */
     const it={text:String(p.title||''),prog:String(p.body||''),
       date:String(p.date||''),end:String(p.end||''),time:String(p.time||''),
-      site:String(p.site||''),color:String(p.color||''),remind:!!p.remind,
+      site:String(p.site||''),color:String(p.color||''),
       st:p.done?2:0,assignees:(()=>{const o={};owns.forEach(k=>{o[k]=1;});return o;})(),
       createdAt:Number(p.createdAt)||Date.now(),updatedAt:Date.now()};
     if(p.recur&&p.recur.f){
@@ -1637,7 +1637,6 @@ function planToTask(p){
     plan:p.plan!==undefined?String(p.plan||''):(base.plan||''),
     links:p.links!==undefined?(p.links||{}):(base.links||{}),
     color:p.color||base.color||'',
-    remind:!!p.remind,
     assignees:(()=>{const o={};owns.forEach(k=>{o[k]=1;});return o;})(),
     recur:(p.recur&&p.recur.f)?{f:p.recur.f,until:String(p.recur.until||'')}:{f:'',until:''},
     st:(p.st!==undefined?stOf(p.st):(p.done?2:stOf(base.st))),
@@ -1966,7 +1965,6 @@ function rDay(){
         <div class="plan-t"${openAct}>${esc(p.title)}</div>
         <div class="plan-side">
           ${lnk?'<a class="p-ico" href="'+esc(lnk.url)+'" target="_blank" rel="noopener" aria-label="링크 열기" data-tip="'+esc(linkLabel(lnk))+'"><svg class="icn"><use href="#i-ext"></use></svg></a>':''}
-${p.remind?'<button class="p-ico p-rem on" data-act="plan.remind" data-pid="'+esc(p.id)+'" aria-label="리마인드 해제" data-tip="리마인드 켜짐"><svg class="icn"><use href="#i-bell"></use></svg></button>':''}
           ${stIcon(st,' data-act="plan.stCycle" data-pid="'+esc(p.id)+'" data-occ="'+esc(occ)+'"')}
           <button class="p-ico p-edit" data-act="plan.edit" data-pid="${esc(p.id)}" data-occ="${esc(occ)}" aria-label="수정" data-tip="수정"><svg class="icn"><use href="#i-pen"></use></svg></button>
         </div>
@@ -2013,7 +2011,7 @@ function openModal(title,bodyHTML,footHTML){
   mb.classList.toggle('has-x',!footHTML);
   $('#mo').classList.add('open');
 }
-function closeModal(){$('#mo').classList.remove('open');MODAL_CB=null;pfDrop();}
+function closeModal(){mrvHoldRest();$('#mo').classList.remove('open');MODAL_CB=null;pfDrop();}
 /* 인라인 편집기 — 모달 대신 우측 일자 패널 안에서 작성·수정한다 */
 function openPlanEdit(p,startD,endD,occ){
   S.planEdit={orig:p?{...p}:null,occ:occ||'',start:startD||S.selDate,end:endD||''};
@@ -2128,7 +2126,7 @@ function planFormHTML(){
   const pe=S.planEdit;if(!pe)return'';
   /* 새 업무의 담당자는 로그인한 본인이 기본 — 대부분 자기 일을 쓴다(앱·위젯 공통) */
   const d=pe.orig||{id:uid(),date:pe.start,end:pe.end,title:'',time:'',body:'',plan:'',links:{},color:'auto',
-    remind:false,done:false,kind:KIND_DEF,recur:{f:'',until:''},owners:meOwner(),createdAt:Date.now()};
+    done:false,kind:KIND_DEF,recur:{f:'',until:''},owners:meOwner(),createdAt:Date.now()};
   pe.draft=d;pe.mounted=true;
   const rc=(d.recur&&d.recur.f)||'';
   const people=roster();
@@ -2143,7 +2141,6 @@ function planFormHTML(){
         ${pe.orig
           ?'<button class="pe-ic pe-del" data-act="plan.del" data-pid="'+esc(d.id)+'" data-ym="'+esc(ymOf(d.date))+'" data-occ="'+esc(pe.occ||'')+'" aria-label="삭제" data-tip="삭제"><svg class="icn"><use href="#i-trash"></use></svg></button>'
           :'<button class="pe-ic pe-del" data-act="plan.discard" aria-label="취소" data-tip="저장하지 않고 닫기"><svg class="icn"><use href="#i-close"></use></svg></button>'}
-        <button class="pe-ic pe-rem${d.remind?' on':''}" data-act="plan.remindDraft" aria-label="리마인드 전환" data-tip="리마인드"><svg class="icn"><use href="#i-bell"></use></svg></button>
         <button class="pe-ic pe-ok" data-act="plan.cancel" aria-label="저장하고 닫기 (Esc)" data-tip="저장하고 닫기"><svg class="icn"><use href="#i-check"></use></svg></button>
       </div>
     </div>
@@ -2208,7 +2205,6 @@ function planCollect(base){
     links,
     color:(d&&d.color)||'auto',
     recur:f?{f,until:(($('#peUntil')&&$('#peUntil').value)||'')}:{f:'',until:''},
-    remind:!!d.remind,
     kind:kindOf(($('#peKind')&&$('#peKind').value)||''),
     /* ⚠ stEff(표시용 자동 완료)가 아니라 저장된 상태만 넘긴다 — stEff 를 쓰면 지난 업무의 폼을
        열었다 닫기만 해도 st:2 가 기록되고, 시작일을 미래로 미루면 '완료'로 저장되던 버그 */
@@ -2398,10 +2394,8 @@ function taskItemHTML(sid,iid,it,withSubject,hideOwn){
         ${cn?`<button class="tk-ico on" data-act="tk.open" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="코멘트">
           <svg class="icn"><use href="#i-cmt"></use></svg><span class="cn">${cn}</span></button>`:''}
         ${lnk?'<a class="tk-ico" href="'+esc(lnk.url)+'" target="_blank" rel="noopener" data-act="lnk.open" aria-label="링크 열기" data-tip="'+esc(linkLabel(lnk))+'"><svg class="icn"><use href="#i-ext"></use></svg></a>':''}
-        ${it.remind?'<button class="tk-ico on" data-act="tk.remind" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" aria-label="리마인드 해제" data-tip="리마인드 켜짐"><svg class="icn"><use href="#i-bell"></use></svg></button>':''}
         ${stIcon(st,' data-act="tk.st" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"')}
         <button class="tk-ico" data-act="tk.edit" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="수정" data-tip="수정"><svg class="icn"><use href="#i-pen"></use></svg></button>
-        <button class="tk-del" data-act="tk.del" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="삭제"><svg class="icn"><use href="#i-close"></use></svg></button>
       </div>
     </div>
     <div class="plan-meta" data-act="tk.open" data-sid="${esc(sid)}" data-iid="${esc(iid)}">
@@ -2593,7 +2587,6 @@ function taskFormHTML(sid,iid,cur){
         ${iid
           ?'<button class="pe-ic pe-del" data-act="tk.del" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" aria-label="삭제" data-tip="삭제"><svg class="icn"><use href="#i-trash"></use></svg></button>'
           :'<button class="pe-ic pe-del" data-act="tk.formCancel" aria-label="취소" data-tip="저장하지 않고 닫기"><svg class="icn"><use href="#i-close"></use></svg></button>'}
-        <button class="pe-ic pe-rem${d.remind?' on':''}" id="tnRemind" data-act="tk.remindDraft" data-on="${d.remind?'1':''}" aria-label="리마인드" data-tip="리마인드"><svg class="icn"><use href="#i-bell"></use></svg></button>
         <button class="pe-ic pe-ok" data-act="tk.formSave" data-sid="${esc(sid)}" data-iid="${esc(iid||'')}" aria-label="저장하고 닫기" data-tip="저장하고 닫기"><svg class="icn"><use href="#i-check"></use></svg></button>
       </div>
     </div>
@@ -2647,7 +2640,6 @@ function taskFormSave(sid,iid){
   if(lu){const k=lk0||uid();links[k]={...(links[k]||{}),url:/^https?:\/\//i.test(lu)?lu:'https://'+lu};}
   else if(lk0)delete links[lk0];
   const rec=($('#tnRec')&&$('#tnRec').value)||'';
-  const remEl=$('#tnRemind');
   store.putTask(sid,id,{...(cur||{createdAt:Date.now()}),
     text:t,kind:kindOf(($('#tnKind')&&$('#tnKind').value)||''),
     prog:(($('#tnProg')&&$('#tnProg').value)||'').trim(),
@@ -2660,7 +2652,6 @@ function taskFormSave(sid,iid){
     /* ⚠ 표시 상태(stEff)를 저장하면 지난 팀 업무를 고치기만 해도 완료로 굳는다 — 저장된 상태만 유지 */
     st:stOf(cur&&cur.st),
     stKeep:!!(cur&&cur.stKeep),
-    remind:!!(remEl&&remEl.dataset.on),
     assignees:asg,links,color:($('#tnColor')&&$('#tnColor').value)||'',
     order:(cur&&Number.isFinite(Number(cur.order)))?Number(cur.order):nextOrder(sid),
     updatedAt:Date.now()});
@@ -3046,18 +3037,33 @@ function rNq(){
 
 /* ═══════════ 보류함 — 일자 패널 아래. 달력 날짜로 끌어다 놓으면 그 날짜로 되살아난다 ═══════════ */
 function rHold(){
-  const card=$('#holdCard'),box=$('#holdList'),cnt=$('#holdCnt');
+  const card=$('#holdCard'),box=$('#holdList'),ttl=$('#holdTtl'),mn=$('#holdMine');
   if(!card||!box)return;
-  const list=holdItems();
-  card.hidden=!list.length;                       /* 비면 카드째 감춘다 — 빈 칸이 자리를 차지하지 않게 */
-  if(!list.length){box.innerHTML='';return;}
-  if(cnt)cnt.textContent=list.length;
+  const list=S.holdMine?mineHolds():holdItems();
+  /* '내 업무만' 을 켜 둔 채 내 보류가 없으면 카드가 사라져 다시 끌 수 없다 — 팀에 보류가 있으면 카드는 남긴다 */
+  const any=list.length||(S.holdMine&&holdItems().length);
+  card.hidden=!any;
+  if(mn)mn.classList.toggle('on',!!S.holdMine);
+  if(ttl)ttl.textContent='보류된 업무 '+list.length+'건';
+  holdFit();
+  if(!any){box.innerHTML='';return;}
+  if(!list.length){box.innerHTML='<div class="hold-empty">내 보류 업무가 없습니다.</div>';return;}
   const md=x=>{if(!x)return '기한 없음';const t=toDate(x);return (t.getMonth()+1)+'/'+t.getDate();};
   box.innerHTML=list.map(({sid,iid,it})=>
     '<div class="hold-i" draggable="true" data-act="hold.go" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"'
     +' data-tip="누르면 업무로 이동 · 달력 날짜로 끌어 놓으면 그 날짜로">'
     +'<span class="t">'+esc(it.text||'제목 없음')+'</span>'
     +'<span class="d">'+esc(md(it.date))+'</span></div>').join('');
+}
+/* 보류함 높이 — 옆 달력의 4주차 줄에서 시작하도록 맞춘다(넓은 화면에서만) */
+function holdFit(){
+  const card=$('#holdCard');if(!card)return;
+  const rows=$$('#fcal .fc-daygrid-body tr');
+  if(WIDGET||card.hidden||window.innerWidth<=960||rows.length<4){card.style.height='';return;}
+  const col=$('.cal-wrap .dp-col');if(!col)return;
+  const top=rows[3].getBoundingClientRect().top, bot=col.getBoundingClientRect().bottom;
+  const h=Math.round(bot-top);
+  card.style.height=(h>120?h:120)+'px';
 }
 /* 끌어 놓기 — 달력 날짜 칸에 떨어뜨리면 날짜를 그날로 바꾸고 보류를 푼다 */
 let HOLD_DRAG=null;
@@ -3111,6 +3117,7 @@ function wireHoldDnD(){
    보류는 목록·내 업무에 회색 − 아이콘으로 남아 언제든 완료·진행으로 되돌릴 수 있다.
    '나중에'로 닫으면 아무것도 바꾸지 않고 다음에 열 때 다시 묻는다. */
 const MRV_KEY='calapp.mrv';
+let MRV_ON=false;
 function mrvKey(){return MRV_KEY+'.'+((S.user&&S.user.uid)||'local');}
 function mrvList(){
   const me=myId(),today=todayStr(),out=[];
@@ -3144,14 +3151,29 @@ function morningReview(){
       +stIcon(1,' data-act="mrv.done"')
       +'<div class="mrv-b"><div class="t">'+esc(it.text||'제목 없음')+'</div>'
       +'<div class="s">'+esc(sub)+'</div></div>'
-      +'<div class="mrv-act"><button class="btn bg2 bxs" data-act="mrv.today">오늘로 이동</button>'
-      +'<button class="btn bg2 bxs" data-act="mrv.hold">보류</button></div></div>';
+      +'<div class="mrv-act"><button class="btn bg2 bxs" data-act="mrv.today">오늘로 이동</button></div></div>';
   }).join('');
   openModal('놓친 업무 확인',
     '<div class="mrv-h">날짜가 지난 미완료 업무 <b id="mrvN">'+list.length+'</b>건입니다.<br>'
-    +'끝낸 업무는 왼쪽 아이콘, 나머지는 오른쪽 버튼으로 고르세요.</div>'
+    +'끝낸 업무는 왼쪽 아이콘, 남는 업무는 <b>보류함</b>으로 넘어갑니다.</div>'
     +'<div class="mrv-l">'+rows+'</div>');
+  MRV_ON=true;                                                /* 창을 닫을 때 남은 줄을 보류로 넘긴다 */
   try{localStorage.setItem(mrvKey(),todayStr());}catch(e){}   /* 열었으면 오늘은 다시 묻지 않는다 */
+}
+/* 창을 닫을 때 — 손대지 않고 남은 업무는 모두 보류로 넘긴다(하나씩 누르는 수고를 덜기 위함) */
+function mrvHoldRest(){
+  if(!MRV_ON)return;
+  MRV_ON=false;
+  let n=0;
+  $$('#mbody .mrv-i').forEach(row=>{
+    const cur=(S.tasks[row.dataset.sid]||{})[row.dataset.iid];
+    if(!cur||stOf(cur.st)!==1)return;
+    store.putTask(row.dataset.sid,row.dataset.iid,{...cur,st:3,done:false,updatedAt:Date.now()});n++;
+  });
+  if(!n)return;
+  if(!S.live){rTasks();rDay();rWidget();}
+  refetchCal();
+  toast(n+'건을 보류함으로 넘겼습니다');
 }
 /* 한 건 처리 — 저장하고 그 줄만 지운다. 다 비면 모달을 닫는다 */
 function mrvApply(el,patch,msg){
@@ -3163,7 +3185,7 @@ function mrvApply(el,patch,msg){
   const n=$('#mrvN');if(n)n.textContent=left;
   if(!S.live){rTasks();rDay();rWidget();}
   refetchCal();
-  if(!left){closeModal();toast('놓친 업무를 모두 정리했습니다');}
+  if(!left){MRV_ON=false;closeModal();toast('놓친 업무를 모두 정리했습니다');}
   else if(msg)toast(msg);
 }
 
@@ -3897,14 +3919,7 @@ const ACT={
     }else{p.st=n;p.done=n===2;p.stKeep=n===1;}   /* 날짜가 지난 뒤 손으로 '진행'을 고르면 그대로 둔다 */
     p.updatedAt=Date.now();store.putPlan(p);
     if(!S.live){rDay();refetchCal();rWidget();}},
-  /* 편집 폼의 알림 버튼 — 저장 전에는 draft 만 바꾼다 */
-  'plan.remindDraft':el=>{
-    const pe=S.planEdit;if(!pe||!pe.draft)return;
-    pe.draft.remind=!pe.draft.remind;
-    el.classList.toggle('on',!!pe.draft.remind);
-    planAutosave();},
   'plan.toTask':el=>{closePlanEdit();gotoTask(el.dataset.sid,el.dataset.iid);},
-  'plan.remind':el=>{const p=findPlan(el.dataset.pid);if(!p)return;p.remind=!p.remind;p.updatedAt=Date.now();store.putPlan(p);if(!S.live)rDay();toast(p.remind?'당일 아침 리마인드 메일이 발송됩니다':'리마인드를 해제했습니다');},
   /* 새로 만들다가 그만둘 때 — 자동 저장을 취소하고 아무것도 남기지 않는다 */
   'plan.discard':()=>{
     clearTimeout(PE_SAVE);
@@ -3969,10 +3984,10 @@ const ACT={
   'acct.open':openAcctModal,
   'mention.open':openMentionModal,
   'hold.go':el=>gotoTask(el.dataset.sid,el.dataset.iid),
+  'hold.mine':()=>{S.holdMine=!S.holdMine;rHold();},
   /* 아침 확인 — 누르는 즉시 저장하고 그 줄만 사라진다 */
   'mrv.done':el=>{stxSet(el,2);setTimeout(()=>mrvApply(el,{st:2,done:true},'완료로 바꿨습니다'),160);},
   'mrv.today':el=>mrvApply(el,{st:1,done:false,stKeep:true,date:todayStr(),end:''},'오늘로 옮겼습니다'),
-  'mrv.hold':el=>mrvApply(el,{st:3,done:false},'보류함으로 보냈습니다'),
   'nq.toggle':()=>{const on=!$('#nqPanel').classList.contains('on');nqOpen(on);if(on)rNq();},
   'nq.close':()=>nqOpen(false),
   'nq.task':el=>gotoTask(el.dataset.sid,el.dataset.iid),
@@ -4046,8 +4061,6 @@ const ACT={
   },
   'tk.formCancel':()=>{S.tkNew=null;S.tkEdit=null;rTasks();},
   'tk.kind':()=>tkKindRefresh(),
-  /* 폼 안에서는 draft 만 바꾼다 — 다시 그리면 입력 중인 값이 날아간다 */
-  'tk.remindDraft':el=>{const on=!el.dataset.on;el.dataset.on=on?'1':'';el.classList.toggle('on',on);},
   'tk.formSave':el=>taskFormSave(el.dataset.sid,el.dataset.iid||null),
   'tk.open':el=>{
     const key=el.dataset.sid+'/'+el.dataset.iid;
@@ -4057,12 +4070,6 @@ const ACT={
   'tk.edit':el=>{S.tkNew=null;S.tkEdit=el.dataset.sid+'/'+el.dataset.iid;rTasks();
     setTimeout(()=>{const t=$('#tnTitle');if(t)t.focus();},30);},
   'tk.pick':el=>{S.tk.m=el.dataset.id;rTasks();},
-  'tk.remind':el=>{
-    const sid=el.dataset.sid,iid=el.dataset.iid;
-    const cur=(S.tasks[sid]||{})[iid];if(!cur)return;
-    store.putTask(sid,iid,{...cur,remind:!cur.remind,updatedAt:Date.now()});
-    if(!S.live){rTasks();rDay();rWidget();}
-    toast(!cur.remind?'당일 아침 리마인드 메일이 발송됩니다':'리마인드를 해제했습니다');},
   'tk.st':el=>{
     const sid=el.dataset.sid,iid=el.dataset.iid;
     const cur=(S.tasks[sid]||{})[iid];if(!cur)return;
@@ -4545,6 +4552,7 @@ if(window.MutationObserver){
   else start();
 }
 window.addEventListener('resize',fadeSoon);
+window.addEventListener('resize',()=>holdFit());   /* 보류함 높이는 달력 줄에 맞춘다 */
 /* 스크롤 막대는 스크롤하는 동안만 보인다 — 멈추면 잠시 뒤 서서히 사라진다 */
 document.addEventListener('scroll',e=>{
   const el=e.target;if(!el||!el.classList)return;
