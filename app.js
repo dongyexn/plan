@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='1.6.0';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='1.6.1';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -2797,30 +2797,29 @@ function rTasks(){
     <div class="tkside">
       ${miniCalHTML()}
       <div class="card tks-card">
-        <div class="tks-h">팀</div>
-        <div class="tks-item tks-reg${sel==='teamall'?' act':''}" data-act="tk.pick" data-id="teamall">
-          <span class="n">${esc(tn)}</span>
-          <span class="c">${cCommon+cMems}</span>
-        </div>
-        <div class="tks-item sub${sel==='team'?' act':''}" data-act="tk.pick" data-id="team"><span class="std"></span>
-          <span class="n">공통 업무</span>
-          ${team?'<span class="c">'+cCommon+'</span>':''}
-        </div>
-        ${heads.map(p=>`<div class="tks-item sub${sel===p.id?' act':''}" data-act="tk.pick" data-id="${esc(p.id)}"><span class="std"></span>
-          <span class="n">${esc(p.name)}<span class="rk">팀장</span></span>
-          <span class="c">${taskCount(p.id)}</span></div>`).join('')}
-      </div>
-      <div class="card tks-card">
-        <div class="tks-h">권역 · 담당자</div>
-        ${regGroups.map(([rid,rn,list])=>`
-          <div class="tks-item tks-reg${sel==='reg:'+rid?' act':''}" data-act="tk.pick" data-id="reg:${esc(rid)}">
-            <span class="n">${esc(rn)}</span><span class="c">${list.reduce((a,p)=>a+taskCount(p.id),0)}</span></div>
-          ${list.map(p=>`<div class="tks-item sub${sel===p.id?' act':''}" data-act="tk.pick" data-id="${esc(p.id)}"><span class="std"></span>
-            <span class="n">${esc(p.name)}${rankOf(p.rank)==='lead'?'<span class="rk">공구장</span>':''}</span>
+        <div class="tks-list" data-sb>
+          <div class="tks-item tks-reg${sel==='teamall'?' act':''}" data-act="tk.pick" data-id="teamall">
+            <span class="n">${esc(tn)}</span>
+            <span class="c">${cCommon+cMems}</span>
+          </div>
+          <div class="tks-item sub${sel==='team'?' act':''}" data-act="tk.pick" data-id="team"><span class="std"></span>
+            <span class="n">공통 업무</span>
+            ${team?'<span class="c">'+cCommon+'</span>':''}
+          </div>
+          ${heads.map(p=>`<div class="tks-item sub${sel===p.id?' act':''}" data-act="tk.pick" data-id="${esc(p.id)}"><span class="std"></span>
+            <span class="n">${esc(p.name)}<span class="rk">팀장</span></span>
             <span class="c">${taskCount(p.id)}</span></div>`).join('')}
-        `).join('')||'<div class="tk-empty" style="text-align:left;padding:6px 2px">배정된 담당자가 없습니다.</div>'}
+          ${regGroups.map(([rid,rn,list])=>`
+            <div class="tks-item tks-reg${sel==='reg:'+rid?' act':''}" data-act="tk.pick" data-id="reg:${esc(rid)}">
+              <span class="n">${esc(rn)}</span><span class="c">${list.reduce((a,p)=>a+taskCount(p.id),0)}</span></div>
+            ${list.map(p=>`<div class="tks-item sub${sel===p.id?' act':''}" data-act="tk.pick" data-id="${esc(p.id)}"><span class="std"></span>
+              <span class="n">${esc(p.name)}${rankOf(p.rank)==='lead'?'<span class="rk">공구장</span>':''}</span>
+              <span class="c">${taskCount(p.id)}</span></div>`).join('')}
+          `).join('')}
+        </div>
       </div>
     </div>
+
     <div class="tkcol">
       ${tkFilterHTML()}
       ${split?`<div class="tk-split">
@@ -3029,20 +3028,22 @@ function teamTasks(){
 }
 /* 내 업무 화면의 작은 달력 — 업무가 있는 날 아래에 점을 찍는다.
    ⚠ 달력 화면(FullCalendar)과 달리 직접 그린다(칸이 작아 막대를 넣을 자리가 없다) */
-function miniDots(y,m){   /* 날짜별 업무 건수(점 개수는 최대 3) */
-  /* 그 달에 업무가 걸치는 날짜 모음 — 내 담당과 팀 공통을 함께 본다 */
-  const me=myId(),first=y+'-'+pad(m+1)+'-01',last=y+'-'+pad(m+1)+'-'+pad(new Date(y,m+1,0).getDate());
-  const set={};
+/* 날짜별 점 — 업무 목록과 같은 필터(S.tkF)를 탄 모든 업무. 색은 그 업무의 지정색을 그대로 쓴다 */
+function miniDots(y,m){
+  const first=y+'-'+pad(m+1)+'-01',last=y+'-'+pad(m+1)+'-'+pad(new Date(y,m+1,0).getDate());
+  const map={};
+  const add=(d,c)=>{(map[d]=map[d]||[]).push(c);};
+  const showAll=tkFilterOn();
   allTasks().forEach(({sid,iid,it})=>{
-    if(!it.date||stEff(it)===2)return;
-    const own=Object.keys(it.assignees||{});
-    if(own.length&&own.indexOf(me)<0)return;      /* 남의 업무는 뺀다(팀 공통은 담당자가 없다) */
-    const p=taskAsPlan(sid,iid,it);
-    if(it.recur&&it.recur.f){recurDates(p,first,last).forEach(d=>set[d]=(set[d]||0)+1);return;}
+    if(!it.date)return;
+    if(!showAll&&stEff(it)===2)return;            /* 필터가 없으면 미완료만 */
+    if(!tkMatch(sid,iid,it))return;
+    const p=taskAsPlan(sid,iid,it),col=planColor(p);
+    if(it.recur&&it.recur.f){recurDates(p,first,last).forEach(d=>add(d,col));return;}
     const end=it.end||it.date;
-    for(let d=(it.date<first?first:it.date);d<=(end>last?last:end);d=addDays(d,1))set[d]=(set[d]||0)+1;
+    for(let d=(it.date<first?first:it.date);d<=(end>last?last:end);d=addDays(d,1))add(d,col);
   });
-  return set;
+  return map;
 }
 function miniCalHTML(){
   const base=S.mineYm||todayStr().slice(0,7)+'-01';
@@ -3057,7 +3058,9 @@ function miniCalHTML(){
     cells+='<button class="mc-d'+(ds===today?' today':'')+(ds===S.mineSel?' sel':'')
       +(dw===0?' sun':'')+(dw===6?' sat':'')+'" data-act="mine.day" data-date="'+ds+'">'
       +'<span class="n">'+d+'</span>'
-      +(dots[ds]?'<span class="dots">'+'<i></i>'.repeat(Math.min(3,dots[ds]))+'</span>':'')+'</button>';
+      +(dots[ds]&&dots[ds].length
+        ?'<span class="dots">'+dots[ds].slice(0,3).map(c=>'<i style="background:'+esc(c)+'"></i>').join('')+'</span>'
+        :'')+'</button>';
   }
   /* 달마다 주 수가 달라 옆 패널 높이가 흔들리지 않도록 6주(42칸)로 채운다 */
   for(let i=lead+days;i<42;i++)cells+='<div class="mc-d out"><span class="n">'+(i-lead-days+1)+'</span></div>';
