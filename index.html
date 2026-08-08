@@ -502,7 +502,6 @@ body.wid [data-act="wid.side"]{position:relative;}
   font-size:12px;font-weight:700;background:var(--fill2);color:var(--lbl2);}
 /* 읽은 부름 — 지우지 않고 흐리게만 둔다 */
 .wl.rd{opacity:.5;}
-.mine-row.rd{opacity:.5;}
 .wl-clr{display:block;width:100%;height:30px;margin-top:6px;border-radius:8px;background:var(--fill);
   font-size:12px;font-weight:700;color:var(--lbl2);transition:background var(--tr);}
 .wl-clr:hover{background:var(--fill2);color:var(--lbl);}
@@ -1324,18 +1323,6 @@ body.wid #wgSet.on{display:block;}
 .nq-empty{font-size:13px;color:var(--lbl3);text-align:center;padding:26px 0;}
 @media(max-width:960px){.nq-panel{right:12px;left:12px;width:auto;bottom:80px;}.nq-fab{right:16px;bottom:16px;}}
 /* 내 업무 */
-.mine-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;align-items:start;}
-.mine-h{display:flex;align-items:center;gap:9px;margin-bottom:12px;}
-.mine-h .bar{width:4px;height:16px;border-radius:8px;background:linear-gradient(135deg,var(--b500),var(--b800));}
-.mine-h b{font-size:14px;font-weight:800;color:var(--lbl);}
-.mine-h .c{margin-left:auto;font-size:12px;font-weight:700;color:var(--lbl2);background:var(--fill);border-radius:8px;padding:2px 8px;}
-.mine-row{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:var(--rmd);background:var(--surf2);margin-bottom:5px;cursor:pointer;}
-.mine-row:hover{background:var(--surf3);}
-.mine-row .d{flex-shrink:0;font-size:12px;font-weight:700;color:var(--lbl2);min-width:52px;}
-.mine-row .t{flex:1;min-width:0;font-size:13px;color:var(--lbl);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.mine-row.over .d{color:var(--rd);}
-.mine-row.soon .d{color:var(--am);}
-.mine-empty{font-size:13px;color:var(--lbl3);padding:14px 2px;text-align:center;}
 
 /* ══════════ 모달 · 토스트 · 툴팁 ══════════ */
 #mo{position:fixed;inset:0;background:rgba(0,0,0,.34);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);z-index:1000;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;}
@@ -1479,7 +1466,6 @@ html.dark .bp{background:var(--b500);}
 /* 펼침 본문(진행경과·처리계획) 글자색 */
 .pd-b{color:var(--lbl);}
 /* 내 업무 — 오늘(D-DAY) 파란색 */
-.mine-row .d.now{color:var(--bt1);}
 /* ── 4차 ── */
 /* 편집 폼 아이콘 — 읽기 카드와 같은 간격(0) */
 .pe-side{gap:0;}
@@ -1591,12 +1577,8 @@ html.dark #content:hover::-webkit-scrollbar-thumb ,html.dark .dp-body:hover::-we
 #fcal .fc-event.team .fc-event-title::before{content:'';flex:none;width:0;height:0;margin-right:4px;
   border-left:4px solid currentColor;border-top:2.5px solid transparent;border-bottom:2.5px solid transparent;}
 /* 내 업무 — 1열(작은 달력·멘션) + 2열 카드 */
-.mine-grid{grid-template-columns:320px minmax(0,1fr);}
-.mine-side{display:flex;flex-direction:column;gap:12px;min-width:0;}
-.mine-main{display:flex;flex-direction:column;gap:12px;min-width:0;}
-.mine-cards{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:start;}
-.mine-row.hl{background:var(--b50);box-shadow:inset 0 0 0 1.5px var(--b300);}
-@media (max-width:1100px){.mine-cards{grid-template-columns:minmax(0,1fr);}}
+/* 작은 달력에서 고른 날에 걸치는 업무 강조 */
+.tk-item.hl{box-shadow:inset 0 0 0 1.5px var(--b300);}
 .mini-cal{padding:12px 12px 14px;}
 .mc-h{display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-left:6px;}
 .mc-h b{font-size:14px;font-weight:800;color:var(--lbl);}
@@ -1620,7 +1602,7 @@ html.dark #content:hover::-webkit-scrollbar-thumb ,html.dark .dp-body:hover::-we
 .mc-d.today{background:var(--tint-b,var(--b50));}
 .mc-d.sel{box-shadow:inset 0 0 0 1.5px var(--b600);}
 .mc-d.sel .dots i,.mc-d.today .dots i{background:var(--b700);}
-@media (max-width:960px){.mine-grid{grid-template-columns:minmax(0,1fr);}}
+
 /* 위젯 내 업무 팝오버 — 건수 대신 더보기 꺾쇠(배경 없음) */
 .wl-more{margin-left:auto;display:flex;align-items:center;justify-content:center;width:20px;height:20px;color:var(--lbl3);background:none;}
 .wl-more .icn{width:14px;height:14px;transform:rotate(90deg);transition:transform .18s;}
@@ -1725,11 +1707,6 @@ html.dark #content:hover::-webkit-scrollbar-thumb ,html.dark .dp-body:hover::-we
     <div class="nvi" role="button" tabindex="0" data-view="report" data-act="nav.go">
       <div class="nic"><svg class="icn" aria-hidden="true"><use href="#i-dash"></use></svg></div>
       <span class="nil">주요 업무</span>
-    </div>
-    <div class="sbsl">개인</div>
-    <div class="nvi" role="button" tabindex="0" data-view="mine" data-act="nav.go">
-      <div class="nic"><svg class="icn" aria-hidden="true"><use href="#i-me"></use></svg></div>
-      <span class="nil">내 업무</span>
     </div>
     <div class="sb-bottom">
       <div class="sbsl">바로가기</div>
@@ -1873,14 +1850,12 @@ html.dark #content:hover::-webkit-scrollbar-thumb ,html.dark .dp-body:hover::-we
       </div>
     </div>
 
+    <div id="view-report" class="view"><div id="reportRoot"></div></div>
     <div id="view-tasks" class="view">
       <div id="tkRoot"></div>
     </div>
 
-    <div id="view-report" class="view"><div id="reportRoot"></div></div>
-    <div id="view-mine" class="view">
-      <div id="mineRoot"></div>
-    </div>
+
 
     <div id="view-org" class="view">
       <div class="mg-grid">
@@ -1984,5 +1959,5 @@ html.dark #content:hover::-webkit-scrollbar-thumb ,html.dark .dp-body:hover::-we
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=183"></script>
+<script src="./app.js?v=184"></script>
 </body></html>

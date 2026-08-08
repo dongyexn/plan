@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='1.5.7';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='1.6.0';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -757,7 +757,7 @@ const FbStore={
     this._on('calapp/cfg',v=>{S.cfg=v||{};bootCacheSave();rCfg();});
     const uid=S.user&&S.user.uid;
     if(uid){
-        this._on('calapp/mentions/'+uid,v=>{S.mentions=v||{};rMention();if(S.view==='mine')rMine();});
+        this._on('calapp/mentions/'+uid,v=>{S.mentions=v||{};rMention();});
         this._on('calapp/prefs/'+uid,v=>{S.prefs=v||{};});   /* 최근 이모지 등 개인 설정 */
     }
   }
@@ -2340,6 +2340,12 @@ function dueInfo(due){
   return{cls:'',txt:'D-'+n};
 }
 function siteName(id){const s=(S.org.sites||[]).find(x=>x.id===id);return s?s.name:'';}
+/* 작은 달력에서 고른 날에 걸치는 업무인지 — 목록에서 강조하는 데 쓴다 */
+function onSelDay(sid,iid,it){
+  const d=S.mineSel;if(!d||!it||!it.date)return false;
+  if(it.recur&&it.recur.f)return recurDates(taskAsPlan(sid,iid,it),d,d).length>0;
+  return d>=it.date&&d<=(it.end||it.date);
+}
 function taskItemHTML(sid,iid,it,withSubject,hideOwn){
   const key=sid+'/'+iid;
   if(S.tkEdit===key)return taskFormHTML(sid,iid,it);   /* 수정 중이면 항목 자리에 폼이 들어간다 */
@@ -2360,7 +2366,7 @@ function taskItemHTML(sid,iid,it,withSubject,hideOwn){
     (it.recur&&it.recur.f)?REC_LBL[it.recur.f]:''].filter(Boolean);
   const right=[sn,withSubject?subjName(sid):'',asg.map(x=>x.name).join(', ')].filter(Boolean);
   return `
-  <div class="tk-item s${st}${open?' open':''}" draggable="true" data-sid="${esc(sid)}" data-iid="${esc(iid)}">
+  <div class="tk-item s${st}${open?' open':''}${onSelDay(sid,iid,it)?' hl':''}" draggable="true" data-sid="${esc(sid)}" data-iid="${esc(iid)}">
     <div class="tk-line">
       ${colDotHTML(planColor(p0),iid)}
       <div class="tk-ttl" data-act="tk.open" data-sid="${esc(sid)}" data-iid="${esc(iid)}">${esc(it.text||'제목 없음')}</div>
@@ -2789,6 +2795,7 @@ function rTasks(){
 
   root.innerHTML=`<div class="tkwrap">
     <div class="tkside">
+      ${miniCalHTML()}
       <div class="card tks-card">
         <div class="tks-h">팀</div>
         <div class="tks-item tks-reg${sel==='teamall'?' act':''}" data-act="tk.pick" data-id="teamall">
@@ -3066,52 +3073,6 @@ function miniCalHTML(){
     <div class="mc-g">${cells}</div>
   </div>`;
 }
-function rMine(){
-  const root=$('#mineRoot');if(!root)return;
-  const me=myId();
-  if(!me){root.innerHTML='<div class="tk-none">로그인하면 내 업무를 모아 볼 수 있습니다.</div>';return;}
-  const commons=teamTasks(),tasks=mineTasks();
-  const mentions=Object.entries(S.mentions||{}).sort((a,b)=>(b[1].at||0)-(a[1].at||0));
-  const mentionCard=`<div class="card">
-        <div class="mine-h"><div class="bar"></div><b>내 멘션</b><span class="c">${mentionCount()||mentions.length}</span></div>
-        ${mentions.length?mentions.map(([id,m])=>`
-          <div class="mine-row${m.read?' rd':''}" data-act="mention.go" data-id="${esc(id)}" data-sid="${esc(m.sid||'')}" data-iid="${esc(m.iid||'')}">
-            <span class="d">${esc(relTime(m.at))}</span>
-            <span class="t">${esc(m.by||'')} · ${esc(m.text||'')}</span>
-          </div>`).join(''):'<div class="mine-empty">받은 멘션이 없습니다.</div>'}
-      </div>`;
-  /* 작은 달력에서 고른 날에 걸치는 업무를 강조한다 */
-  const onSel=(sid,iid,it)=>{
-    const d=S.mineSel;if(!d||!it.date)return false;
-    if(it.recur&&it.recur.f)return recurDates(taskAsPlan(sid,iid,it),d,d).length>0;
-    return d>=it.date&&d<=(it.end||it.date);
-  };
-  const row=(sid,iid,it,nowLabel)=>{
-    const di=it.date?dueInfo(it.date):null;
-    return `<div class="mine-row ${di?di.cls:''}${onSel(sid,iid,it)?' hl':''}" data-act="mine.task" data-sid="${esc(sid)}" data-iid="${esc(iid)}">
-      <span class="d${nowLabel&&di&&di.txt==='D-DAY'?' now':''}">${di?esc(di.txt):'—'}</span>
-      <span class="t">${esc(it.text||'제목 없음')}</span>
-      ${stIcon(stEff(it))}
-    </div>`;};
-  root.innerHTML='<div class="mine-grid">'
-    /* 1열 — 작은 달력과 멘션. 폭은 다른 화면의 첫 열(320px)과 같다 */
-    +'<div class="mine-side">'+miniCalHTML()+mentionCard+'</div>'
-    /* 업무 목록과 같은 필터 카드 — 상태(S.tkF)도 그대로 공유한다 */
-    +'<div class="mine-main">'+tkFilterHTML()+'<div class="mine-cards">'
-    +`<div class="card">
-        <div class="mine-h"><div class="bar"></div><b>공통 업무</b><span class="c">${commons.length}</span></div>
-        ${commons.length?commons.map(({sid,iid,it})=>row(sid,iid,it,true)).join('')
-          :'<div class="mine-empty">팀 공통 업무가 없습니다.</div>'}
-      </div>`
-    +`<div class="card">
-        <div class="mine-h"><div class="bar"></div><b>내 주요업무</b><span class="c">${tasks.length}</span></div>
-        ${tasks.length?tasks.map(({sid,iid,it})=>row(sid,iid,it,false)).join('')
-          :'<div class="mine-empty">내가 담당인 미완료 업무가 없습니다.</div>'}
-      </div>`
-    +'</div></div>'
-    +'</div>';
-}
-
 /* ═══════════ 설정 — 팀 · 권역 · 계정 배정 ═══════════ */
 const ICON_TRASH='<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M10 11v6M14 11v6"/></svg>';
 const ICON_RADIO_ON='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.6" fill="currentColor" stroke="none"/></svg>';
@@ -3640,7 +3601,7 @@ window.addEventListener('blur',tipHide);
 setInterval(()=>{if(_tipFor&&!_tipFor.isConnected)tipHide();},700);
 
 /* ═══════════ 화면 전환 · 공통 UI ═══════════ */
-const VIEW_TTL={calendar:'캘린더',mine:'내 업무',tasks:'업무 목록',report:'주요 업무',org:'조직/현장 관리',settings:'설정'};
+const VIEW_TTL={calendar:'캘린더',tasks:'업무 목록',report:'주요 업무',org:'조직/현장 관리',settings:'설정'};
 function go(view){
   S.view=view;
   S.planOpen='';S.tkOpen=null;   /* 펼쳐 둔 카드는 화면을 옮기면 접는다(일정·업무 목록 모두) */
@@ -3652,7 +3613,6 @@ function go(view){
   $('#tbt').textContent=VIEW_TTL[view];
   if(view==='calendar'&&CAL)setTimeout(()=>CAL.updateSize(),30);
   if(view==='tasks')rTasks();
-  if(view==='mine')rMine();
   if(view==='report')rReport();
   if(view==='org'){
     rOrg();
@@ -3832,14 +3792,13 @@ const ACT={
   'nq.close':()=>nqOpen(false),
   'nq.task':el=>gotoTask(el.dataset.sid,el.dataset.iid),
   'nq.cmt':el=>gotoTask(el.dataset.sid,el.dataset.iid),
-  'mine.task':el=>gotoTask(el.dataset.sid,el.dataset.iid),
-  'mine.day':el=>{const d=el.dataset.date;if(!d)return;S.mineSel=(S.mineSel===d?'':d);rMine();},
+  'mine.day':el=>{const d=el.dataset.date;if(!d)return;S.mineSel=(S.mineSel===d?'':d);rTasks();},
   'mine.mon':el=>{
     const d=Number(el.dataset.d)||0;
     const base=S.mineYm||todayStr().slice(0,7)+'-01';
     if(!d){S.mineYm='';}
     else{const t=toDate(base);t.setMonth(t.getMonth()+d);S.mineYm=dstr(t).slice(0,7)+'-01';}
-    rMine();},
+    rTasks();},
   'rpt.week':el=>{const d=Number(el.dataset.d)||0;
     S.rptWeek=d?addDays(S.rptWeek||todayStr(),d):'';rReport();},
   'rpt.print':()=>window.print(),
@@ -4417,7 +4376,7 @@ document.addEventListener('scroll',e=>{
 },true);
 let tkQT=null;
 /* 업무 목록과 내 업무는 같은 필터(S.tkF)를 쓴다 — 보고 있는 화면을 다시 그린다 */
-function rTkViews(){S.view==='mine'?rMine():rTasks();}
+function rTkViews(){rTasks();}
 /* ⚠ 화면을 통째로 다시 그리면 검색 칸이 새 노드가 되어 한글 조합이 끊긴다.
    그리기 직전에 기존 필터 카드를 떼어 뒀다가, 새로 그려진 자리에 그 노드를 도로 끼운다. */
 function tkRefresh(){
@@ -4641,7 +4600,7 @@ function widPlace(){
 }
 
 /* ═══════════ 부팅 ═══════════ */
-function rAll(){rDay();rTasks();rOrg();rCfg();rFilter();rMention();rMine();rTeamSel();refetchCal();rWidget();}   /* 팀 선택기는 조직 화면 밖(사이드바)이라 rAll 에서도 그린다 */
+function rAll(){rDay();rTasks();rOrg();rCfg();rFilter();rMention();rTeamSel();refetchCal();rWidget();}   /* 팀 선택기는 조직 화면 밖(사이드바)이라 rAll 에서도 그린다 */
 (function boot(){
   let dark=false;
   try{dark=localStorage.getItem('calapp.theme')==='dark';}catch(e){}
