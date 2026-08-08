@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='1.5.4';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='1.5.6';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -1160,25 +1160,12 @@ function renderAcctModal(tab){
       <button class="acct-tab${t==='profile'?' act':''}" data-act="acct.tab" data-tab="profile">프로필</button>
       <button class="acct-tab${t==='pw'?' act':''}" data-act="acct.tab" data-tab="pw">비밀번호</button>
     </div>
-    <div class="acct-pane">${acctTabBody(t)}</div>`;
-  acctPaneFix(t);
+    <div class="acct-pane">
+      <div class="acct-real">${acctTabBody(t)}</div>
+      <div class="acct-ghost" aria-hidden="true">${acctTabBody(t==='pw'?'profile':'pw').replace(/\sid="[^"]*"/g,'')}</div>
+    </div>`;
   MODAL_CB={type:'acct',tab:t};
   PF_MORE=null;   /* 이모지는 팝업을 열 때 그린다 — 모달 여는 속도를 늦추지 않게 */
-}
-/* 탭을 옮길 때 모달 높이가 출렁이지 않도록, 안 보이는 탭도 한 번 재어 큰 쪽으로 고정한다.
-   ⚠ 이모지 팝오버는 절대 위치라 높이에 들어가지 않는다 */
-function acctPaneFix(tab){
-  const pane=$('.acct-pane');if(!pane)return;
-  /* ⚠ 폭을 물려받지 못하면 줄바꿈이 달라져 높이를 잘못 잰다 — 실제 폭을 그대로 준다 */
-  const w=pane.getBoundingClientRect().width;
-  const ghost=document.createElement('div');
-  ghost.className='acct-pane';
-  ghost.style.cssText='position:fixed;left:-99999px;top:0;visibility:hidden;pointer-events:none;min-height:0;width:'+w+'px;';
-  ghost.innerHTML=acctTabBody(tab==='pw'?'profile':'pw');
-  document.body.appendChild(ghost);
-  const h=Math.max(pane.scrollHeight,ghost.scrollHeight);
-  ghost.remove();
-  if(h)pane.style.minHeight=h+'px';
 }
 function openAcctModal(){
   const u=S.user;if(!u){toast('로그인이 필요합니다');return;}
@@ -3055,8 +3042,9 @@ function miniCalHTML(){
   const y=Number(base.slice(0,4)),m=Number(base.slice(5,7))-1;
   const first=new Date(y,m,1),days=new Date(y,m+1,0).getDate(),lead=first.getDay();
   const dots=miniDots(y,m),today=todayStr();
+  const prevDays=new Date(y,m,0).getDate();
   let cells='';
-  for(let i=0;i<lead;i++)cells+='<div class="mc-d out"></div>';
+  for(let i=0;i<lead;i++)cells+='<div class="mc-d out"><span class="n">'+(prevDays-lead+1+i)+'</span></div>';
   for(let d=1;d<=days;d++){
     const ds=y+'-'+pad(m+1)+'-'+pad(d),dw=(lead+d-1)%7;
     cells+='<button class="mc-d'+(ds===today?' today':'')+(ds===S.mineSel?' sel':'')
@@ -3065,7 +3053,7 @@ function miniCalHTML(){
       +(dots[ds]?'<span class="dots">'+'<i></i>'.repeat(Math.min(3,dots[ds]))+'</span>':'')+'</button>';
   }
   /* 달마다 주 수가 달라 옆 패널 높이가 흔들리지 않도록 6주(42칸)로 채운다 */
-  for(let i=lead+days;i<42;i++)cells+='<div class="mc-d out"></div>';
+  for(let i=lead+days;i<42;i++)cells+='<div class="mc-d out"><span class="n">'+(i-lead-days+1)+'</span></div>';
   return `<div class="card mini-cal">
     <div class="mc-h">
       <b>${y}년 ${m+1}월</b>
@@ -3132,7 +3120,9 @@ function teamRows(){
   const list=S.org.teams||[];
   if(!list.length)return '<div class="tm-empty">등록된 팀이 없습니다. + 추가를 누르세요.</div>';
   return list.map(t=>{
-    const act=t.id===S.tk.t,cnt=roster().filter(p=>p.team===t.id).length;
+    const site=(S.orgTab||'acct')==='site';
+    const act=t.id===S.tk.t;
+    const cnt=site?(S.org.sites||[]).length:roster().filter(p=>p.team===t.id).length;
     return `<div class="tm-row${act?' act':''}">
       <button class="tm-pick" data-act="team.switch" data-tid="${esc(t.id)}" aria-label="이 팀 선택">${act?ICON_RADIO_ON:ICON_RADIO_OFF}</button>
       <input class="mg-inp tm-nameinp" value="${esc(t.name)}" data-act="org.ren" data-kind="Team" data-id="${esc(t.id)}" placeholder="팀 이름" aria-label="팀 이름">
@@ -3143,8 +3133,10 @@ function teamRows(){
 function regRows(){
   const list=S.org.regions||[];
   if(!list.length)return '<div class="tm-empty">등록된 권역이 없습니다. + 추가를 누르세요.</div>';
+  const site=(S.orgTab||'acct')==='site';   /* 현장 탭이면 계정 수가 아니라 현장 수를 보여 준다 */
   return list.map(r=>{
-    const used=roster().filter(p=>p.region===r.id).length;
+    const used=site?(S.org.sites||[]).filter(x=>x.region===r.id).length
+                   :roster().filter(p=>p.region===r.id).length;
     return `<div class="tm-row">
       <input class="mg-inp tm-nameinp" value="${esc(r.name)}" data-act="org.ren" data-kind="Reg" data-id="${esc(r.id)}" placeholder="권역 이름" aria-label="권역 이름">
       <span class="tm-cnt">${used}</span>
@@ -3891,7 +3883,8 @@ const ACT={
   'modal.stop':()=>{},
   'modal.ok':()=>{if(MODAL_CB&&MODAL_CB.ok)MODAL_CB.ok();},
   'tkf.qclear':()=>{S.tkF={...S.tkF,q:''};filtSave();rTkViews();},
-  'tkf.more':()=>{const c=$('#tkFcard');if(c)c.classList.toggle('adv-on');},
+  /* ⚠ id 로 찾으면 숨어 있는 다른 화면의 필터 카드를 잡는다 — 누른 버튼이 속한 카드를 토글한다 */
+  'tkf.more':el=>{const c=el.closest('.dp-fcard');if(c)c.classList.toggle('adv-on');},
   'tkf.reset':()=>{S.tkF={q:'',st:[],kind:[],reg:[],site:[]};filtSave();rTkViews();},
   'tk.newOpen':el=>{
     /* ⚠ 새 업무는 '지금 보고 있는 자리'에 만든다.
@@ -4393,6 +4386,33 @@ document.addEventListener('input',e=>{
     clearTimeout(tkQT);tkQT=setTimeout(tkRefresh,160);   /* 전체 렌더는 포커스를 날린다 */
   }
 });
+/* 아래에 더 있다는 표시 — 스크롤이 남아 있으면 칸 아래쪽을 서서히 지운다(끝에 닿으면 없앤다).
+   ⚠ 덧칠이 아니라 mask 라서 카드 배경색이 무엇이든 그대로 어울린다 */
+const SB_SEL='#content,.dp-body,.tk-list,.nq-res,.pf-emg,.rd-body,[data-sb]';
+function fadeOne(el){
+  if(!el||!el.classList)return;
+  const more=el.scrollHeight-el.clientHeight-el.scrollTop;
+  el.classList.toggle('sb-fade',el.scrollHeight>el.clientHeight+2&&more>4);
+}
+function fadeScan(){$$(SB_SEL).forEach(fadeOne);}
+let fadeT=null;
+function fadeSoon(){clearTimeout(fadeT);fadeT=setTimeout(fadeScan,80);}
+/* 화면을 다시 그릴 때마다 다시 재야 한다 — 렌더 함수마다 부르지 않고 한곳에서 지켜본다 */
+if(window.MutationObserver){
+  const mo=new MutationObserver(fadeSoon);
+  const start=()=>{const app=$('#app');if(app)mo.observe(app,{childList:true,subtree:true});fadeScan();};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);
+  else start();
+}
+window.addEventListener('resize',fadeSoon);
+/* 스크롤 막대는 스크롤하는 동안만 보인다 — 멈추면 잠시 뒤 서서히 사라진다 */
+document.addEventListener('scroll',e=>{
+  const el=e.target;if(!el||!el.classList)return;
+  el.classList.add('sb-on');
+  clearTimeout(el._sbT);
+  el._sbT=setTimeout(()=>el.classList.remove('sb-on'),900);
+  fadeOne(el);
+},true);
 let tkQT=null;
 /* 업무 목록과 내 업무는 같은 필터(S.tkF)를 쓴다 — 보고 있는 화면을 다시 그린다 */
 function rTkViews(){S.view==='mine'?rMine():rTasks();}
