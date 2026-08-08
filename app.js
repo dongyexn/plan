@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='1.7.2';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='1.7.3';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -3103,7 +3103,7 @@ async function dfLoad(){
       try{per[s.id]=(await FB.db.ref('report/'+rm+'/'+s.id+'/siteWks').once('value')).val()||[];}
       catch(e){per[s.id]=[];}
     }));
-    DF.cache[rm]={rm,tot:dfRows(dfLast(dash)),per};
+    DF.cache[rm]={rm,tot:dfRows(dfLast(dash)),wks:Array.isArray(dash)?dash:[],per};
     return DF.cache[rm];
   }catch(e){console.warn('[하자] 게시본 읽기 실패',e);return null;}
   finally{DF.busy=false;}
@@ -3138,7 +3138,8 @@ function rDefect(){
   }
   S.dfRm=d.rm;
   if(!site){
-    root.innerHTML=(d.tot?dfKpiHTML(d.tot,(S.org.sites||[]).length):'')+dfSiteTableHTML(d);
+    root.innerHTML=(d.tot?dfKpiHTML(d.tot,(S.org.sites||[]).length):'')
+      +dfTrendHTML(d.wks)+dfSiteTableHTML(d);
     dfTopbar();return;
   }
   /* 현장 화면 — 집계(kpi)와 처리계획은 그 현장을 열 때 읽는다 */
@@ -3217,6 +3218,34 @@ function dfMonthHTML(k){
         +'</td><td class="cc">'+(Number(m.res)||0).toLocaleString()
         +'</td><td class="cc">'+(Number(m.u)||0).toLocaleString()+'</td></tr>').join('')}
     </tbody></table></div>`;
+}
+/* 주차별 추이 — 외부 차트 라이브러리를 쓰지 않고 SVG 로 직접 그린다.
+   ⚠ 라이브러리를 더하지 않는 것이 이 앱의 방침이다(FullCalendar·Firebase 외에는 없다).
+   막대=미처리, 선=장기미처리. 색·모서리는 앱 토큰을 따른다. */
+function dfTrendHTML(wks){
+  const rows=(Array.isArray(wks)?wks:[]).filter(w=>w&&w.sun!==false).slice(-12);
+  if(rows.length<2)return '';
+  const v=rows.map(w=>({lb:w.label||String(w.week||'').slice(5),
+    open:Math.max(0,(Number(w.r)||0)-(Number(w.res)||0)),
+    lt:(Number(w.d30)||0)+(Number(w.d60)||0)}));
+  const W=760,H=180,PL=44,PR=12,PT=14,PB=26;
+  const max=Math.max(10,...v.map(x=>x.open));
+  const iw=(W-PL-PR)/v.length, bw=Math.min(26,iw*0.52);
+  const y=n=>PT+(H-PT-PB)*(1-n/max);
+  const bars=v.map((x,i)=>{const cx=PL+iw*(i+0.5);
+    return '<rect x="'+(cx-bw/2).toFixed(1)+'" y="'+y(x.open).toFixed(1)+'" width="'+bw.toFixed(1)
+      +'" height="'+Math.max(1,(H-PB-y(x.open))).toFixed(1)+'" rx="3" class="tr-b"></rect>';}).join('');
+  const line=v.map((x,i)=>(PL+iw*(i+0.5)).toFixed(1)+','+y(x.lt).toFixed(1)).join(' ');
+  const dots=v.map((x,i)=>'<circle cx="'+(PL+iw*(i+0.5)).toFixed(1)+'" cy="'+y(x.lt).toFixed(1)+'" r="2.6" class="tr-d"></circle>').join('');
+  const gy=[0,0.5,1].map(t=>{const n=max*t;
+    return '<line x1="'+PL+'" x2="'+(W-PR)+'" y1="'+y(n).toFixed(1)+'" y2="'+y(n).toFixed(1)+'" class="tr-g"></line>'
+      +'<text x="'+(PL-8)+'" y="'+(y(n)+4).toFixed(1)+'" class="tr-yl">'+Math.round(n).toLocaleString()+'</text>';}).join('');
+  const xl=v.map((x,i)=>((i%2===0||v.length<=6)?'<text x="'+(PL+iw*(i+0.5)).toFixed(1)+'" y="'+(H-8)+'" class="tr-xl">'+esc(x.lb)+'</text>':'')).join('');
+  return `<div class="card df-card">
+    <div class="df-h"><b>주차별 추이</b><span class="df-sub">최근 ${v.length}주 · 막대=미처리 · 선=장기미처리</span></div>
+    <div class="df-tr"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="주차별 미처리·장기미처리 추이">
+      ${gy}${bars}<polyline points="${line}" class="tr-l"></polyline>${dots}${xl}
+    </svg></div></div>`;
 }
 /* 현장별 현황 — 권역으로 묶어 한 표에 */
 function dfSiteTableHTML(d){
