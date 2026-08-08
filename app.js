@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='1.5.2';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='1.5.3';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -2831,15 +2831,16 @@ function rTasks(){
       ${tkFilterHTML()}
       ${split?`<div class="tk-split">
         <div class="card tkmain">
-          <div class="tkm-h"><div class="bar"></div><b>공통 · 팀장</b>
+          <div class="tkm-h"><div class="bar"></div><b>팀 업무</b>
             <span class="tkm-c">${(split.a.match(/class="tk-item /g)||[]).length}건</span>
             <button class="btn bo bxs tkm-add" data-act="tk.newOpen"><svg class="icn"><use href="#i-plus"></use></svg> 업무 추가</button>
           </div>
           <div class="tk-list">${split.a||'<div class="tk-empty">표시할 업무가 없습니다.</div>'}</div>
         </div>
         <div class="card tkmain">
-          <div class="tkm-h"><div class="bar"></div><b>권역 담당자</b>
+          <div class="tkm-h"><div class="bar"></div><b>담당 업무</b>
             <span class="tkm-c">${(split.b.match(/class="tk-item /g)||[]).length}건</span>
+            <button class="btn bo bxs tkm-add" data-act="tk.newOpen"><svg class="icn"><use href="#i-plus"></use></svg> 업무 추가</button>
           </div>
           <div class="tk-list">${split.b||'<div class="tk-empty">표시할 업무가 없습니다.</div>'}</div>
         </div>
@@ -3648,7 +3649,7 @@ setInterval(()=>{if(_tipFor&&!_tipFor.isConnected)tipHide();},700);
 const VIEW_TTL={calendar:'캘린더',mine:'내 업무',tasks:'업무 목록',report:'주요 업무',org:'조직/현장 관리',settings:'설정'};
 function go(view){
   S.view=view;
-  S.planOpen='';   /* 펼쳐 둔 카드는 화면을 옮기면 접는다 — 돌아왔을 때 열린 채로 남지 않게 */
+  S.planOpen='';S.tkOpen=null;   /* 펼쳐 둔 카드는 화면을 옮기면 접는다(일정·업무 목록 모두) */
   if(S.dpSheet)dpSheet(false);
   const fc=$('#dpFcard');if(fc)fc.classList.remove('adv-on');   /* 화면을 옮기면 펼쳐 둔 필터는 닫는다 */
   mselClose();
