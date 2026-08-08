@@ -26,6 +26,7 @@
 --bt1:#3E71D2;--bt2:#1F2B4C;
 --glass:rgba(255,255,255,.88);--glass2:rgba(255,255,255,.75);
 --tint-rd:#FDEAEA;--tint-gn:#E9F6EE;--tint-am:#FBF0DE;
+--ch-d60:#DA6A60;--ch-d30:#E89C9A;--ch-d0:#B3C7DD;--ch-recv:#3E71D2;--ch-done:#F0B144;
 --rsm:8px;--rmd:8px;--rlg:8px;--rxl:8px;--rp:8px;--sbw:4px;
 --sw:240px;--swm:64px;--th:46px;--tr:.22s cubic-bezier(.4,0,.2,1);--ct:rgba(60,60,67,.70);}
 html.dark{
@@ -428,13 +429,9 @@ html.dark .stx-done{color:#3BA85C;}
 .df-h b{font-size:14px;}
 .df-sub{font-size:12px;color:var(--lbl3);}
 .df-tr{padding:14px 16px 6px;}
-.df-tr svg{width:100%;height:190px;display:block;overflow:visible;}
-.tr-b{fill:var(--b400);opacity:.85;}
-.tr-l{fill:none;stroke:var(--rd);stroke-width:2;stroke-linejoin:round;}
-.tr-d{fill:var(--rd);}
-.tr-g{stroke:var(--sep);stroke-width:1;}
-.tr-yl,.tr-xl{fill:var(--lbl3);font-size:11px;font-weight:600;}
-.tr-yl{text-anchor:end;} .tr-xl{text-anchor:middle;}
+.df-tr{position:relative;height:300px;}
+.df-do{height:260px;}
+.df-tr canvas{width:100%!important;height:100%!important;}
 .df-tbl{margin:0;}
 .df-tbl th{padding:11px 12px 9px;}
 .df-tbl td{padding:9px 12px;}
@@ -455,6 +452,46 @@ html.dark .stx-done{color:#3BA85C;}
 .df-ta:focus{border-color:var(--b400);outline:none;box-shadow:0 0 0 3px rgba(83,140,222,.14);}
 .df-prev{font-size:11.5px;color:var(--lbl3);margin-bottom:4px;white-space:pre-wrap;}
 .df-lab{font-size:11px;font-weight:700;color:var(--lbl3);display:block;margin-bottom:3px;}
+.df-ins{padding:14px 16px 16px;font-size:13px;line-height:1.65;color:var(--lbl);}
+.df-ins h1,.df-ins h2,.df-ins h3,.df-ins h4{font-size:13.5px;font-weight:700;margin:10px 0 4px;}
+.df-ins ul,.df-ins ol{margin:4px 0 4px 18px;}
+.df-ins li{margin:2px 0;}
+.df-ins b,.df-ins strong{font-weight:700;color:var(--bt1);}
+.df-ins p{margin:4px 0;}
+.df-anab{padding:12px 16px 16px;}
+.df-tbl .up-good{color:var(--gn);font-weight:700;}
+.df-tbl .up-bad{color:var(--rd);font-weight:700;}
+/* 하자 목록 모달 — 표는 mgtbl 규격을 따르되 가로·세로 스크롤을 쓴다 */
+#mb.dfwide{max-width:min(1180px,96vw);}
+.rec-top{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+.rec-top .inp{flex:1;min-width:160px;height:34px;padding:0 12px;font-size:13px;}
+.rec-chips{display:inline-flex;gap:2px;background:var(--fill);border-radius:8px;padding:3px;}
+.rec-chip{height:28px;padding:0 11px;border:0;background:transparent;border-radius:6px;font:inherit;font-size:12px;
+  font-weight:700;color:var(--lbl2);cursor:pointer;}
+.rec-chip.on{background:var(--bg2);color:var(--bt1);}
+.rec-n{font-size:12px;color:var(--lbl3);margin-left:auto;}
+.rec-wrap{max-height:60vh;overflow:auto;border:1px solid var(--sep);border-radius:var(--rmd);}
+.rec-tbl{width:100%;border-collapse:collapse;font-size:12.5px;white-space:nowrap;}
+.rec-tbl th{position:sticky;top:0;z-index:1;background:var(--surf2);font-size:11.5px;font-weight:700;color:var(--lbl2);
+  text-align:left;padding:8px 10px;border-bottom:1px solid var(--sep);cursor:pointer;}
+.rec-tbl th:hover{color:var(--bt1);}
+.rec-tbl th{position:sticky;user-select:none;}
+.rec-tbl th .fl{font-style:normal;font-size:10.5px;font-weight:700;color:var(--bt1);background:var(--b50);border-radius:5px;padding:0 4px;margin-left:3px;}
+.rec-tbl th .rz{position:absolute;top:0;right:0;width:7px;height:100%;cursor:col-resize;}
+.rec-tbl th .rz:hover{background:var(--b300);}
+.rec-tbl td{padding:7px 10px;border-bottom:1px solid var(--sep);color:var(--lbl);}
+.rec-tbl td.wide{white-space:normal;min-width:220px;}
+.rec-tbl tr:hover td{background:var(--fill);}
+.rec-tbl .n{text-align:right;}
+.rec-none{padding:26px 0;text-align:center;font-size:13px;color:var(--lbl3);}
+.rec-piv{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.rec-piv .l{font-size:12px;font-weight:700;color:var(--lbl3);}
+.rec-piv .inp{height:30px;width:120px;font-size:12.5px;padding:0 8px;}
+.rec-tbl.piv td.n,.rec-tbl.piv th.n{text-align:right;}
+.rec-tbl.piv tr:last-child td{background:var(--surf2);}
+.btn.bo.on{background:var(--b50);border-color:var(--b300);color:var(--bt1);}
+/* KPI 카드의 목록 보기 */
+.df-k .go{margin-top:6px;align-self:flex-start;}
 /* 하자 현황 — 자리만 잡아 둔 화면 */
 .dfc-none{display:flex;flex-direction:column;align-items:center;gap:8px;padding:48px 24px;text-align:center;}
 .dfc-none .icn{width:26px;height:26px;color:var(--lbl3);}
@@ -1705,6 +1742,15 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
   #content{padding:0;overflow:visible;}
   .rp-card{border:0;box-shadow:none;break-inside:auto;}
   .rp-tbl{font-size:10.5px;}
+  /* 하자 화면 — 카드 테두리를 지우고 표는 쪽이 넘어가도 이어지게. 차트는 그대로 인쇄된다 */
+  .df-card,.df-k{border:0;box-shadow:none;break-inside:avoid;}
+  .df-kpi{grid-template-columns:repeat(5,1fr);gap:8px;}
+  .df-k b{font-size:18px;}
+  .df-tbl{font-size:10.5px;}
+  .df-tbl th,.df-tbl td{padding:5px 8px;}
+  .df-tr{height:230px;}
+  .df-tabs,.df-k .go,.df-anab textarea{display:none!important;}
+  .df-ins{padding:8px 0;}
 }
 </style>
 </head>
@@ -1733,7 +1779,7 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 <symbol id="i-me" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
 <symbol id="i-cmt" viewBox="0 0 24 24"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></symbol>
 <symbol id="i-print" viewBox="0 0 24 24"><path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7" rx="1"/></symbol>
-<symbol id="i-defect" viewBox="0 0 24 24"><path d="M3 3v16.5a1.5 1.5 0 0 0 1.5 1.5H21"/><rect x="7.5" y="12" width="3" height="5.5" rx="1"/><rect x="13" y="8" width="3" height="9.5" rx="1"/><rect x="18.5" y="4.5" width="3" height="13" rx="1" transform="translate(-1 0)"/></symbol>
+<symbol id="i-defect" viewBox="0 0 24 24"><path d="M3 3v16.5a1.5 1.5 0 0 0 1.5 1.5H21"/><path d="m7 15.5 3.6-4 3 2.6L20 7"/><circle cx="20" cy="7" r="1.5"/></symbol>
 <symbol id="i-org" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="8.5" y="14" width="7" height="7" rx="1.5"/><path d="M6.5 10v2h11v-2"/><path d="M12 12v2"/></symbol>
 
 
@@ -2065,5 +2111,10 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=198"></script>
+<script src="./vendor/purify.min.js"></script>
+<script src="./vendor/lz-string.min.js"></script>
+<script src="./vendor/xlsx.full.min.js" defer></script>
+<script src="./vendor/chart.umd.min.js"></script>
+<script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
+<script src="./app.js?v=203"></script>
 </body></html>
