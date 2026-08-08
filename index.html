@@ -638,7 +638,6 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 .tkcol{display:flex;flex-direction:column;gap:9px;min-height:0;min-width:0;}
 .tkf-card{flex:0 0 auto;}   /* .dp-fcard 가 이미 카드 껍데기다 — 여기서 또 씌우면 테두리가 두 겹으로 보인다 */
 .tkmain{display:flex;flex-direction:column;min-height:0;padding:0;flex:1;overflow:hidden;}
-.tks-h{font-size:12px;font-weight:700;color:var(--lbl3);letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px;}
 /* 하위 항목 앞 동그라미 — 하자처리현황 사이드바 현장 점(.std)과 동일 */
 .tks-item .std{width:6px;height:6px;border-radius:50%;flex-shrink:0;background:var(--sepo);transition:background var(--tr);margin-right:2px;}
 .tks-item:hover .std{background:var(--b500);}
@@ -1579,6 +1578,14 @@ html.dark #content:hover::-webkit-scrollbar-thumb ,html.dark .dp-body:hover::-we
 /* 내 업무 — 1열(작은 달력·멘션) + 2열 카드 */
 /* 작은 달력에서 고른 날에 걸치는 업무 강조 */
 .tk-item.hl{box-shadow:inset 0 0 0 1.5px var(--b300);}
+/* 왼쪽 열 — 달력은 고정, 대상 목록만 그 안에서 스크롤한다(화면 밖으로 밀리지 않게) */
+.tkside{display:flex;flex-direction:column;gap:12px;min-height:0;}
+.tkside .mini-cal{flex:0 0 auto;}
+.tkside .tks-card{flex:0 1 auto;min-height:0;display:flex;flex-direction:column;overflow:hidden;}
+.tks-list{overflow-y:auto;min-height:0;margin:-2px;padding:2px;}
+/* 점 색은 업무 지정색을 그대로 쓴다 — 기본색 지정은 지운다 */
+.mc-d .dots i{background:var(--lbl3);}
+.mc-d.sel .dots i,.mc-d.today .dots i{background:inherit;}
 .mini-cal{padding:12px 12px 14px;}
 .mc-h{display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-left:6px;}
 .mc-h b{font-size:14px;font-weight:800;color:var(--lbl);}
@@ -1959,5 +1966,5 @@ html.dark #content:hover::-webkit-scrollbar-thumb ,html.dark .dp-body:hover::-we
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=184"></script>
+<script src="./app.js?v=185"></script>
 </body></html>
