@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='1.6.4';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='1.6.5';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -430,7 +430,7 @@ const S={
   dayQ:'',           // 일자 패널 검색어
   dayScope:'day',    // 찾는 범위: day(이 날짜) · month(이 달) · all(전체)
   widPop:false,
-  widMore:{com:false,mine:false},   // 위젯 내 업무 팝업에서 목록을 펼쳤는지
+  widMore:{com:false,mine:false,hold:false},   // 위젯 내 업무 팝업에서 목록을 펼쳤는지
   widSide:'',        // 위젯 헤더의 알림·내 업무 팝오버 ('' / alert / mine)
   tkF:{q:'',st:[],kind:[],reg:[],site:[]},   // 업무 목록 검색·필터 — 모두 다중 선택
   orgTab:'acct',     // 조직/현장 관리 우측 탭 (acct | site)
@@ -1356,6 +1356,7 @@ function widSideRender(){
     const me=myId();
     if(!me){box.innerHTML=empty('i-me','로그인하면 내 업무를 모아 볼 수 있습니다');if(cnt)cnt.textContent='';return;}
     const commons=teamTasks(),tasks=mineTasks();
+    const holds=mineHolds();
     if(cnt)cnt.textContent='';
     /* 좁은 팝업이라 기본 3건만 보이고, 머리의 꺾쇠로 나머지를 펼친다(건수 표시 대신) */
     const MIN=3;
@@ -1379,7 +1380,14 @@ function widSideRender(){
           it.date?dlab(it.date):'기한 없음',over?'over':(it.date&&daysBetween(todayStr(),it.date)===0?'now':''),
           it.text||'제목 없음',
           [siteName(it.site),kindLabel(it.kind)].filter(Boolean).join(' · '))).join('')
-        :empty('i-tasks','미완료 업무가 없습니다'));
+        :empty('i-tasks','미완료 업무가 없습니다'))
+      /* 보류함 — 아침 확인에서 넘긴 업무. 비어 있으면 머리째 넣지 않는다 */
+      +(holds.length?sec('보류함','hold',holds.length)
+        +cut(holds,'hold').map(({sid,iid,it})=>row('wid.goTask',
+          ' data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" data-date="'+esc(it.date||'')+'"',
+          it.date?dlab(it.date):'기한 없음','hold',
+          it.text||'제목 없음',
+          [siteName(it.site),kindLabel(it.kind)].filter(Boolean).join(' · '))).join(''):'');
     return;
   }
 
@@ -1940,7 +1948,8 @@ function rDay(){
   const editingId=S.planEdit?(((S.planEdit.draft||{}).id)||((S.planEdit.orig||{}).id)||null):null;
   const cnt=$('#dpCount');if(cnt)cnt.textContent='업무 '+ps.length+'건';
   if(!ps.length&&!S.planEdit){
-    box.innerHTML='<div class="dp-empty">'+(dayQ()?'검색 결과가 없습니다.':'이 날짜에 등록된 업무가 없습니다.')+'</div>';return;}
+    box.innerHTML='<div class="dp-empty">'+(dayQ()?'검색 결과가 없습니다.':'이 날짜에 등록된 업무가 없습니다.')+'</div>';
+    rHold();wireHoldDnD();return;}
   /* 폼은 원래 카드가 있던 자리에 그대로 들어간다 — 수정을 눌러도 목록이 위로 튀지 않는다 */
   let slot=false;
   const parts=ps.map(({p,occ})=>{
@@ -1990,6 +1999,7 @@ ${p.remind?'<button class="p-ico p-rem on" data-act="plan.remind" data-pid="'+es
   const rec=$('#peRec');
   if(rec&&!rec.dataset.wired){rec.dataset.wired='1';
     rec.addEventListener('change',()=>{const r=$('#peUntilRow');if(r)r.style.display=rec.value?'':'none';});}
+  rHold();wireHoldDnD();   /* 일자 패널 아래 보류함 — 목록이 바뀔 때마다 함께 다시 그린다 */
 }
 
 /* ───── 업무 작성·수정 모달 ───── */
@@ -2305,7 +2315,7 @@ function stIcon(st,attrs){
     +'<span class="stx-in">'
       +'<svg class="stx-run" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path class="tri" d="M10.4 8.8v6.4l5.2-3.2z"/></svg>'
       +'<svg class="stx-done" viewBox="0 0 24 24"><circle class="cf" mask="url(#stx-ck)" cx="12" cy="12" r="9"/><path class="ck" d="m8.3 12.2 2.5 2.5 4.9-5.2"/></svg>'
-      +'<svg class="stx-hold" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.6 12h6.8"/></svg>'
+      +'<svg class="stx-hold" viewBox="0 0 24 24"><circle class="cf" mask="url(#stx-mn)" cx="12" cy="12" r="9"/></svg>'
     +'</span></button>';
 }
 /* 유효 상태 — 저장된 완료(2)·보류(3)는 그대로, 자동 완료('날짜가 지나면 완료로 본다')는
@@ -2331,7 +2341,7 @@ function tkSel(){
   /* 선택값: teamall(팀 전체) · team(공통 업무) · reg:<권역id>(권역) · 담당자 id */
   const m=S.tk.m;
   const regOk=rid=>rid===''?mems.some(p=>!p.region||!regions.some(r=>r.id===p.region)):regions.some(r=>r.id===rid);
-  const valid=m==='teamall'||m==='team'
+  const valid=m==='teamall'||m==='team'||m==='hold'
     ||(typeof m==='string'&&m.indexOf('reg:')===0&&regOk(m.slice(4)))
     ||mems.some(p=>p.id===m);
   if(!valid)S.tk.m='teamall';
@@ -2490,6 +2500,17 @@ function taskListHTML(sid){
   const hideOwn=isTeamSid(sid)?'':sid;   /* 개인 목록이면 본인 배지는 겹말 */
   return shown.map(iid=>taskItemHTML(sid,iid,items[iid],false,hideOwn)).join('')
     +(old.length?`<div class="tk-fold" data-act="tk.fold" data-sid="${esc(sid)}">${open?'▲ 지난 완료 '+old.length+'건 접기':'▼ 지난 완료 '+old.length+'건 보기'}</div>`:'');
+}
+/* 보류함 — 아침 확인에서 넘긴 업무(st=3). 고른 팀의 공통·담당자 것을 모아 기한 오래된 순으로 */
+function holdItems(){
+  const{team,mems}=tkSel();
+  const sids=(team?[team.id]:[]).concat(mems.map(p=>p.id));
+  const out=[];
+  sids.forEach(sid=>{
+    const m=S.tasks[sid]||{};
+    Object.keys(m).forEach(iid=>{if(m[iid]&&stOf(m[iid].st)===3)out.push({sid,iid,it:m[iid]});});
+  });
+  return out.sort((a,b)=>String(a.it.date||'9999').localeCompare(String(b.it.date||'9999')));
 }
 /* ── 집계 보기 보조 — 미완료만, 기한순 ── */
 function openItems(sid){
@@ -2791,6 +2812,11 @@ function rTasks(){
     const rid=sel.slice(4);
     subject=(rid===''?'권역 미지정':(((regions.find(r=>r.id===rid)||{}).name)||'권역'))+' 업무';
     listHTML=memberGroupHTML(regionMembers(mems,regions,rid));
+  }else if(sel==='hold'){
+    subject='보류함';
+    const hs=holdItems();
+    listHTML=hs.length?hs.map(({sid,iid,it})=>taskItemHTML(sid,iid,it,false)).join('')
+      :'<div class="tk-empty">보류 중인 업무가 없습니다.</div>';
   }else{
     const p=mems.find(x=>x.id===sel);
     subject=p?p.name:'담당자';sid=sel;
@@ -2810,6 +2836,11 @@ function rTasks(){
   root.innerHTML=`<div class="tkwrap">
     <div class="tkside">
       ${miniCalHTML()}
+      <div class="card tks-card tks-hold">
+        <div class="tks-item tks-reg${sel==='hold'?' act':''}" data-act="tk.pick" data-id="hold">
+          <span class="n">보류함</span><span class="c">${holdItems().length}</span>
+        </div>
+      </div>
       <div class="card tks-card">
         <div class="tks-list" data-sb>
           <div class="tks-item tks-reg${sel==='teamall'?' act':''}" data-act="tk.pick" data-id="teamall">
@@ -2854,7 +2885,7 @@ function rTasks(){
       </div>`:`<div class="card tkmain">
         <div class="tkm-h"><div class="bar"></div><b>업무 목록</b><span class="tkm-sub">${esc(subject)}</span>
           <span class="tkm-c">${shownCnt}건</span>
-          <button class="btn bo bxs tkm-add" data-act="tk.newOpen"><svg class="icn"><use href="#i-plus"></use></svg> 업무 추가</button>
+          ${sel==='hold'?'':'<button class="btn bo bxs tkm-add" data-act="tk.newOpen"><svg class="icn"><use href="#i-plus"></use></svg> 업무 추가</button>'}
         </div>
         <div class="tk-list">
           ${sid&&S.tkNew===sid?taskFormHTML(sid,null,null):''}
@@ -3013,6 +3044,67 @@ function rNq(){
         'data-act="nq.cmt" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"')).join(''):'');
 }
 
+/* ═══════════ 보류함 — 일자 패널 아래. 달력 날짜로 끌어다 놓으면 그 날짜로 되살아난다 ═══════════ */
+function rHold(){
+  const card=$('#holdCard'),box=$('#holdList'),cnt=$('#holdCnt');
+  if(!card||!box)return;
+  const list=holdItems();
+  card.hidden=!list.length;                       /* 비면 카드째 감춘다 — 빈 칸이 자리를 차지하지 않게 */
+  if(!list.length){box.innerHTML='';return;}
+  if(cnt)cnt.textContent=list.length;
+  const md=x=>{if(!x)return '기한 없음';const t=toDate(x);return (t.getMonth()+1)+'/'+t.getDate();};
+  box.innerHTML=list.map(({sid,iid,it})=>
+    '<div class="hold-i" draggable="true" data-act="hold.go" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"'
+    +' data-tip="누르면 업무로 이동 · 달력 날짜로 끌어 놓으면 그 날짜로">'
+    +'<span class="t">'+esc(it.text||'제목 없음')+'</span>'
+    +'<span class="d">'+esc(md(it.date))+'</span></div>').join('');
+}
+/* 끌어 놓기 — 달력 날짜 칸에 떨어뜨리면 날짜를 그날로 바꾸고 보류를 푼다 */
+let HOLD_DRAG=null;
+function holdDrop(ds){
+  if(!HOLD_DRAG||!ds)return;
+  const{sid,iid}=HOLD_DRAG;HOLD_DRAG=null;
+  const cur=(S.tasks[sid]||{})[iid];if(!cur)return;
+  const span=(cur.end&&cur.date)?daysBetween(cur.date,cur.end):0;
+  store.putTask(sid,iid,{...cur,st:1,done:false,stKeep:true,date:ds,
+    end:span>0?addDays(ds,span):'',updatedAt:Date.now()});
+  if(!S.live){rTasks();rDay();rWidget();}
+  rHold();refetchCal();
+  const t=toDate(ds);toast((t.getMonth()+1)+'월 '+t.getDate()+'일로 옮겼습니다');
+}
+function wireHoldDnD(){
+  const box=$('#holdList');if(!box||box.dataset.wired)return;
+  box.dataset.wired='1';
+  box.addEventListener('dragstart',e=>{
+    const row=e.target.closest&&e.target.closest('.hold-i');if(!row)return;
+    HOLD_DRAG={sid:row.dataset.sid,iid:row.dataset.iid};
+    row.classList.add('drag');
+    try{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',row.dataset.iid);}catch(_){}
+  });
+  box.addEventListener('dragend',()=>{HOLD_DRAG=null;
+    $$('.hold-i.drag').forEach(x=>x.classList.remove('drag'));
+    $$('.fc-daygrid-day.hold-over').forEach(x=>x.classList.remove('hold-over'));});
+  const cal=$('#fcal');if(!cal||cal.dataset.holdWired)return;
+  cal.dataset.holdWired='1';
+  const cellOf=t=>(t&&t.closest)?t.closest('.fc-daygrid-day[data-date]'):null;
+  cal.addEventListener('dragover',e=>{
+    if(!HOLD_DRAG)return;
+    const c=cellOf(e.target);if(!c)return;
+    e.preventDefault();try{e.dataTransfer.dropEffect='move';}catch(_){}
+    if(!c.classList.contains('hold-over')){
+      $$('.fc-daygrid-day.hold-over').forEach(x=>x.classList.remove('hold-over'));
+      c.classList.add('hold-over');}
+  });
+  cal.addEventListener('drop',e=>{
+    if(!HOLD_DRAG)return;
+    const c=cellOf(e.target);if(!c)return;
+    e.preventDefault();
+    const ds=c.dataset.date;
+    $$('.fc-daygrid-day.hold-over').forEach(x=>x.classList.remove('hold-over'));
+    holdDrop(ds);
+  });
+}
+
 /* ═══════════ 아침 확인 — 놓친 담당자 업무를 하루 한 번 묻는다 ═══════════
    담당자 업무는 자동 완료하지 않는다(stEff). 대신 그날 처음 열 때 지난 미완료 업무를
    모달로 띄워 끝낸 것은 체크하게 하고, 체크하지 않은 것은 보류(st=3)로 넘긴다.
@@ -3048,18 +3140,31 @@ function morningReview(){
   const md=x=>{const t=toDate(x);return (t.getMonth()+1)+'/'+t.getDate();};
   const rows=list.map(({sid,iid,it})=>{
     const sub=[it.end&&it.end!==it.date?md(it.date)+'–'+md(it.end):md(it.date),siteName(it.site),kindLabel(it.kind)].filter(Boolean).join(' · ');
-    return '<div class="mrv-i">'
-      +stIcon(1,' data-act="mrv.toggle"')
-      +'<div class="mrv-b" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"><div class="t">'+esc(it.text||'제목 없음')+'</div>'
-      +'<div class="s">'+esc(sub)+'</div></div></div>';
+    return '<div class="mrv-i" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'">'
+      +stIcon(1,' data-act="mrv.done"')
+      +'<div class="mrv-b"><div class="t">'+esc(it.text||'제목 없음')+'</div>'
+      +'<div class="s">'+esc(sub)+'</div></div>'
+      +'<div class="mrv-act"><button class="btn bg2 bxs" data-act="mrv.today">오늘로 이동</button>'
+      +'<button class="btn bg2 bxs" data-act="mrv.hold">보류</button></div></div>';
   }).join('');
   openModal('놓친 업무 확인',
-    '<div class="mrv-h">날짜가 지난 미완료 업무 '+list.length+'건입니다.<br>'
-    +'끝낸 업무는 체크하세요 — 체크하지 않은 업무는 <b>보류</b>로 남겨 둡니다.</div>'
-    +'<div class="mrv-l">'+rows+'</div>',
-    '<button class="btn bg2 bsm" data-act="modal.close">나중에</button>'
-    +'<button class="btn bp bsm" data-act="mrv.ok">확인</button>');
-  const mb=$('#mb');if(mb)mb.classList.add('narrow');
+    '<div class="mrv-h">날짜가 지난 미완료 업무 <b id="mrvN">'+list.length+'</b>건입니다.<br>'
+    +'끝낸 업무는 왼쪽 아이콘, 나머지는 오른쪽 버튼으로 고르세요.</div>'
+    +'<div class="mrv-l">'+rows+'</div>');
+  try{localStorage.setItem(mrvKey(),todayStr());}catch(e){}   /* 열었으면 오늘은 다시 묻지 않는다 */
+}
+/* 한 건 처리 — 저장하고 그 줄만 지운다. 다 비면 모달을 닫는다 */
+function mrvApply(el,patch,msg){
+  const row=el.closest('.mrv-i');if(!row)return;
+  const sid=row.dataset.sid,iid=row.dataset.iid,cur=(S.tasks[sid]||{})[iid];
+  if(cur)store.putTask(sid,iid,{...cur,...patch,updatedAt:Date.now()});
+  row.remove();
+  const left=$$('#mbody .mrv-i').length;
+  const n=$('#mrvN');if(n)n.textContent=left;
+  if(!S.live){rTasks();rDay();rWidget();}
+  refetchCal();
+  if(!left){closeModal();toast('놓친 업무를 모두 정리했습니다');}
+  else if(msg)toast(msg);
 }
 
 /* ═══════════ 내 업무 — 달력·주요업무를 한 화면에 모은다 ═══════════ */
@@ -3071,7 +3176,7 @@ function mineTasks(){
     Object.keys(m).forEach(iid=>{
       const it=m[iid];if(!it)return;
       const mine=(sid===me)||!!(it.assignees&&it.assignees[me]);
-      if(!mine||stEff(it)===2)return;
+      if(!mine||stEff(it)===2||stEff(it)===3)return;   /* 보류는 따로 모은다(mineHolds) */
       if(!tkMatch(sid,iid,it))return;   /* 내 업무 화면의 필터·검색(업무 목록과 같은 것)을 탄다 */
       out.push({sid,iid,it});
     });
@@ -3079,6 +3184,20 @@ function mineTasks(){
   return out.sort((a,b)=>{
     const ad=a.it.date||'9999',bd=b.it.date||'9999';
     return ad<bd?-1:ad>bd?1:(a.it.createdAt||0)-(b.it.createdAt||0);});
+}
+/* 내 보류 업무 — 아침 확인에서 넘긴 것. `mineTasks()` 와 같은 '내 것' 기준을 쓴다 */
+function mineHolds(){
+  const me=myId(),out=[];
+  if(!me)return out;
+  Object.keys(S.tasks||{}).forEach(sid=>{
+    const m=S.tasks[sid]||{};
+    Object.keys(m).forEach(iid=>{
+      const it=m[iid];if(!it||stOf(it.st)!==3)return;
+      if(!((sid===me)||(it.assignees&&it.assignees[me])))return;
+      out.push({sid,iid,it});
+    });
+  });
+  return out.sort((a,b)=>String(a.it.date||'9999').localeCompare(String(b.it.date||'9999')));
 }
 /* 팀 공통 업무 — 담당자 없이 팀에 붙은(sid 가 팀 id) 미완료 업무 */
 function teamTasks(){
@@ -3849,25 +3968,11 @@ const ACT={
   'auth.reset':fbDoReset,
   'acct.open':openAcctModal,
   'mention.open':openMentionModal,
-  /* 아침 확인 — 체크는 화면에서만 바꾸고, '확인'을 눌러야 한 번에 저장한다 */
-  'mrv.toggle':el=>{const b=el.closest('.stx');if(!b)return;stxSet(b,b.dataset.on==='1'?1:2);},
-  'mrv.ok':()=>{
-    let done=0,hold=0;
-    $$('#mbody .mrv-i').forEach(row=>{
-      const b=row.querySelector('.mrv-b'),chk=row.querySelector('.stx');
-      if(!b)return;
-      const sid=b.dataset.sid,iid=b.dataset.iid,cur=(S.tasks[sid]||{})[iid];
-      if(!cur||stOf(cur.st)!==1)return;   /* 모달이 떠 있는 사이 다른 곳에서 바뀌었으면 건너뛴다 */
-      const ok=chk&&chk.dataset.on==='1';
-      store.putTask(sid,iid,{...cur,st:ok?2:3,updatedAt:Date.now()});
-      if(ok)done++;else hold++;
-    });
-    try{localStorage.setItem(mrvKey(),todayStr());}catch(e){}
-    closeModal();
-    if(!S.live){rTasks();rDay();rWidget();}
-    refetchCal();
-    toast('완료 '+done+'건'+(hold?' · 보류 '+hold+'건':''));
-  },
+  'hold.go':el=>gotoTask(el.dataset.sid,el.dataset.iid),
+  /* 아침 확인 — 누르는 즉시 저장하고 그 줄만 사라진다 */
+  'mrv.done':el=>{stxSet(el,2);setTimeout(()=>mrvApply(el,{st:2,done:true},'완료로 바꿨습니다'),160);},
+  'mrv.today':el=>mrvApply(el,{st:1,done:false,stKeep:true,date:todayStr(),end:''},'오늘로 옮겼습니다'),
+  'mrv.hold':el=>mrvApply(el,{st:3,done:false},'보류함으로 보냈습니다'),
   'nq.toggle':()=>{const on=!$('#nqPanel').classList.contains('on');nqOpen(on);if(on)rNq();},
   'nq.close':()=>nqOpen(false),
   'nq.task':el=>gotoTask(el.dataset.sid,el.dataset.iid),
