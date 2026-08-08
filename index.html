@@ -398,20 +398,34 @@ html.dark .stx-done{color:#3BA85C;}
 .stx-done .ck{stroke:#fff;stroke-width:2.6;}
 .stx.on .stx-run{opacity:0;}
 .stx.on .stx-done{opacity:1;}
-/* 보류 — 회색 원 안 가로줄. 아침 확인에서 넘긴 담당자 업무 표시 */
+/* 보류 — 완료와 같은 채워진 원, 색만 회색이고 파낸 모양이 가로줄 */
 .stx-hold{color:var(--lbl3);opacity:0;}
-.stx-hold circle,.stx-hold path{stroke:currentColor;fill:none;}
+.stx-hold .cf{fill:currentColor;stroke:none;}
 .stx.hold .stx-run{opacity:0;}
 .stx.hold .stx-hold{opacity:1;}
+/* 보류함 — 일자 패널 아래. 머리 글자·간격은 위 카드와 같고, 배지는 업무 목록 트리와 같은 알약 */
+.hold-card{padding:0;overflow:hidden;display:flex;flex-direction:column;flex:0 0 auto;}
+.hold-c{font-size:12px;font-weight:700;color:var(--lbl2);background:var(--fill);border-radius:8px;padding:1px 8px;}
+.hold-body{padding:8px 12px 12px 16px;display:flex;flex-direction:column;gap:5px;max-height:172px;overflow-y:auto;}
+.hold-i{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--rmd);
+  background:var(--surf2);border:1px solid var(--sep);cursor:grab;transition:background var(--tr),border-color var(--tr);}
+.hold-i:hover{background:var(--bg2);border-color:var(--b300);}
+.hold-i.drag{opacity:.45;}
+.hold-i .t{flex:1;min-width:0;font-size:13px;font-weight:600;color:var(--lbl);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hold-i .d{flex:0 0 auto;font-size:11.5px;font-weight:700;color:var(--lbl3);}
+/* 끌어다 놓는 동안 날짜 칸을 표시한다 */
+.fc-daygrid-day.hold-over .fc-daygrid-day-frame{box-shadow:inset 0 0 0 2px var(--b500);background:var(--b50)!important;}
+html.dark .fc-daygrid-day.hold-over .fc-daygrid-day-frame{background:rgba(83,140,222,.16)!important;}
 /* 아침 확인(놓친 업무) 모달 목록 */
-.mrv-h{font-size:12.5px;color:var(--lbl2);line-height:1.6;margin-bottom:12px;}
+.mrv-h{font-size:12.5px;color:var(--lbl2);line-height:1.65;margin-bottom:12px;white-space:nowrap;}
 .mrv-l{display:flex;flex-direction:column;gap:2px;max-height:46vh;overflow-y:auto;margin:0 -6px;}
 .mrv-i{display:flex;align-items:center;gap:10px;padding:8px 6px;border-radius:var(--rmd);}
 .mrv-i:hover{background:var(--fill);}
 .mrv-i .stx{cursor:pointer;}
-.mrv-b{min-width:0;}
+.mrv-b{flex:1;min-width:0;}
 .mrv-b .t{font-size:13px;font-weight:600;color:var(--lbl);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .mrv-b .s{font-size:11.5px;color:var(--lbl2);margin-top:1px;}
+.mrv-act{display:flex;gap:5px;flex-shrink:0;}
 .stx:not(:disabled):hover .stx-in{transform:scale(1.08);}
 .stx-in{transition:transform .12s;}
 /* 눌렀을 때 — 튀어오름 + 체크 그리기 */
@@ -494,6 +508,7 @@ body.wid [data-act="wid.side"]{position:relative;}
   padding:0 7px;border-radius:8px;font-size:12px;font-weight:700;background:var(--fill2);color:var(--lbl2);}
 .wl-d.now{background:var(--b100);color:var(--bt1);}
 .wl-d.over{background:var(--tint-rd,rgba(221,59,48,.14));color:var(--rd);}
+.wl-d.hold{background:rgba(224,164,74,.18);color:#B8791F;}
 .wl-b{min-width:0;flex:1;display:flex;flex-direction:column;gap:2px;}
 .wl-t{font-size:13px;font-weight:600;color:var(--lbl);line-height:1.4;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
@@ -648,6 +663,8 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 .tkwrap{display:grid;grid-template-columns:320px minmax(0,1fr);gap:16px;align-items:stretch;height:calc(100dvh - var(--th) - 32px);min-height:460px;}   /* 32 = 상단 12 + 하단 20 */
 .tkside{display:flex;flex-direction:column;gap:12px;min-height:0;overflow-y:auto;}
 .tks-card{padding:14px 15px;}
+.tks-hold{flex:0 0 auto;padding:9px 10px;}
+.tks-hold .tks-item{margin-top:0;}
 /* 오른쪽 열 — 업무 일정과 같은 구성: 제목 없는 필터 카드 + 제목이 붙은 업무 패널 */
 .tkcol{display:flex;flex-direction:column;gap:9px;min-height:0;min-width:0;}
 .tkf-card{flex:0 0 auto;}   /* .dp-fcard 가 이미 카드 껍데기다 — 여기서 또 씌우면 테두리가 두 겹으로 보인다 */
@@ -1309,7 +1326,6 @@ body.wid #wgSet.on{display:block;}
 .tb-srch:hover,.tb-srch.on{background:var(--bg2);color:var(--lbl2);border-color:var(--b400);}
 .tb-srch .icn{width:14px;height:14px;}
 .tb-srch-t{font-weight:500;}
-.tb-srch-k{font:inherit;font-size:10.5px;color:var(--lbl3);border:1px solid var(--sep);border-radius:5px;padding:1px 5px;background:var(--bg2);}
 .nq-panel{position:fixed;right:16px;top:calc(var(--th) + 8px);width:392px;max-height:min(600px,calc(100vh - var(--th) - 24px));z-index:61;
   background:var(--bg2);border:1px solid var(--sep);border-radius:8px;overflow:hidden;
   box-shadow:0 18px 50px rgba(20,26,40,.18),0 4px 14px rgba(0,0,0,.08);
@@ -1334,7 +1350,7 @@ body.wid #wgSet.on{display:block;}
 .nq-item .sb{font-size:12px;color:var(--lbl3);margin-top:1px;}
 .nq-item mark{background:rgba(83,140,222,.22);color:inherit;border-radius:3px;padding:0 1px;}
 .nq-empty{font-size:13px;color:var(--lbl3);text-align:center;padding:26px 0;}
-@media(max-width:960px){.nq-panel{right:12px;left:12px;width:auto;}.tb-srch-t,.tb-srch-k{display:none;}.tb-srch{padding:0;width:30px;justify-content:center;margin-right:6px;}}
+@media(max-width:960px){.nq-panel{right:12px;left:12px;width:auto;}.tb-srch-t{display:none;}.tb-srch{padding:0;width:30px;justify-content:center;margin-right:6px;}}
 /* 내 업무 */
 
 /* ══════════ 모달 · 토스트 · 툴팁 ══════════ */
@@ -1704,6 +1720,10 @@ html.dark #content:hover::-webkit-scrollbar-thumb ,html.dark .dp-body:hover::-we
     <rect x="0" y="0" width="24" height="24" fill="#fff"/>
     <path d="m8.3 12.2 2.5 2.5 4.9-5.2" fill="none" stroke="#000" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
   </mask>
+  <mask id="stx-mn" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24">
+    <rect x="0" y="0" width="24" height="24" fill="#fff"/>
+    <path d="M8.4 12h7.2" fill="none" stroke="#000" stroke-width="2.6" stroke-linecap="round"/>
+  </mask>
 </svg>
 <div id="app">
 <aside id="sidebar">
@@ -1767,7 +1787,6 @@ html.dark #content:hover::-webkit-scrollbar-thumb ,html.dark .dp-body:hover::-we
       <button class="tb-srch" id="tbSrch" data-act="nq.toggle" aria-label="찾기" aria-expanded="false">
         <svg class="icn" aria-hidden="true"><use href="#i-search"></use></svg>
         <span class="tb-srch-t">찾기</span>
-        <kbd class="tb-srch-k">Ctrl K</kbd>
       </button>
       <div class="tb-nav">
         <button class="tb-ic" data-act="app.alerts" aria-label="알림" data-tip="알림">
@@ -1871,6 +1890,13 @@ html.dark #content:hover::-webkit-scrollbar-thumb ,html.dark .dp-body:hover::-we
             <div class="dp-body">
               <div id="dpList"></div>
             </div>
+          </div>
+          <div class="card hold-card" id="holdCard" hidden>
+            <div class="dp-lh">
+              <span class="dp-lh-t">보류함</span>
+              <span class="hold-c" id="holdCnt">0</span>
+            </div>
+            <div class="hold-body" id="holdList" data-sb></div>
           </div>
         </div>
       </div>
@@ -1977,5 +2003,5 @@ html.dark #content:hover::-webkit-scrollbar-thumb ,html.dark .dp-body:hover::-we
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=189"></script>
+<script src="./app.js?v=190"></script>
 </body></html>
