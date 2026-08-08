@@ -376,9 +376,9 @@ function planColor(p){
   const o=planOwners(p);
   return o.length?ownColor(o[0]):TEAM_COLOR;
 }
-/* 상태는 진행·완료 둘뿐이다. 옛 데이터의 예정(0)·보류(3)은 진행으로 본다(자리는 그대로 두어 색 규칙 s1·s2 재사용) */
-const ST_LBL=['진행','진행','완료','진행'];
-const ST_PICK=[['1','진행'],['2','완료']];
+/* 상태는 진행·완료에 보류(3)를 더한 셋. 보류는 아침 확인에서 넘긴 업무 — 옛 데이터의 예정(0)은 진행으로 본다 */
+const ST_LBL=['진행','진행','완료','보류'];
+const ST_PICK=[['1','진행'],['2','완료'],['3','보류']];
 const WIDGET_URL='https://github.com/dongyexn/plan/releases/latest/download/HPlanWidgetLite.exe';   /* 늘 최신 릴리스를 가리킨다 — 버전을 적을 필요가 없다. 186차부터 Lite(WebView2) 판 */
 /* ── 한국 공휴일(대체공휴일 포함, 2025~2030) — 임시공휴일 지정 등 변동 시 이 표만 수정 ── */
 const HOLI={
@@ -734,6 +734,8 @@ const FbStore={
       rOrg();rTasks();});
     this.bindReportOrg();
     this._on('calapp/tasks',v=>{S.tasks=v||{};bootCacheSave();
+      /* 첫 스냅샷이 온 뒤 한 번 — 놓친 담당자 업무를 아침 확인으로 묻는다 */
+      if(!FB._mrv){FB._mrv=true;setTimeout(morningReview,800);}
       if(shEditing()){PEND.tasks=true;PEND.day=true;return;}
       rTasks();refetchCal();rDay();rWidget();});   /* 업무가 곧 일정 — 달력도 함께 갱신 */
     this._on('calapp/offdays',v=>{S.offdays=v||{};bootCacheSave();calRerender();rDay();rWidget();});
@@ -1575,7 +1577,7 @@ function occSrc(p,date){
 }
 function planEvent(p,date){
   const span=p.end?daysBetween(p.date,p.end):0;
-  const done=p.recur&&p.recur.f?!!(p.doneOn&&p.doneOn[date]):!!p.done;
+  const done=isDone(p,date);   /* 반복은 occSrc 로 원 회차일의 doneOn 을 본다 — 옮긴 회차의 완료 표시가 칩에서 빠지던 버그 */
   const own=p.owner?ownName(p.owner):'';
   /* 담당자 없는 팀 공통 업무는 제목 앞에 작은 흰 점을 찍어 가른다(점은 CSS 로 그린다) */
   const team=!planOwners(p).length;
@@ -2121,7 +2123,7 @@ function planFormHTML(){
   const rc=(d.recur&&d.recur.f)||'';
   const people=roster();
   const kind=kindOf(d.kind);
-  const st=stEff(d);
+  /* (상태는 폼에서 바꾸지 않는다 — 카드의 상태 아이콘·아침 확인이 담당) */
   const lnk=Object.values(d.links||{}).filter(l=>l&&l.url)[0];
   return `<div class="dp-edit" id="dpEdit">
     <div class="pe-bar">
@@ -2198,8 +2200,10 @@ function planCollect(base){
     recur:f?{f,until:(($('#peUntil')&&$('#peUntil').value)||'')}:{f:'',until:''},
     remind:!!d.remind,
     kind:kindOf(($('#peKind')&&$('#peKind').value)||''),
-    st:stEff(d),
-    done:stEff(d)===2,
+    /* ⚠ stEff(표시용 자동 완료)가 아니라 저장된 상태만 넘긴다 — stEff 를 쓰면 지난 업무의 폼을
+       열었다 닫기만 해도 st:2 가 기록되고, 시작일을 미래로 미루면 '완료'로 저장되던 버그 */
+    st:stOf(d.st),
+    done:stOf(d.st)===2,
     updatedAt:Date.now()};
   if(base)Object.assign(base,p);   /* draft 를 현재 화면 값으로 최신화 */
   return p;
@@ -2283,27 +2287,38 @@ function roster(){
   });
   return Object.values(out).sort((a,b)=>String(a.name).localeCompare(String(b.name),'ko'));
 }
-function stOf(v){return Number(v)===2?2:1;}   /* 저장값이 무엇이든 진행 아니면 완료 */
+function stOf(v){const n=Number(v);return n===2?2:n===3?3:1;}   /* 진행(1) · 완료(2) · 보류(3) — 그 외 값은 진행으로 */
 /* 아이콘 상태를 바꾸고 눌린 효과를 한 번 준다(다시 그리지 않는 자리에서 쓴다) */
 function stxSet(el,st){
   const b=el.closest?el.closest('.stx'):null;if(!b)return;
   b.dataset.on=stOf(st)===2?1:0;
   b.classList.toggle('on',stOf(st)===2);
+  b.classList.remove('hold');   /* 보류는 아침 확인에서만 붙는다 — 눌러서 바꾸면 진행·완료 둘 중 하나 */
   b.classList.remove('fx');void b.offsetWidth;b.classList.add('fx');
 }
 /* 상태 아이콘. attrs 에 data-act 등을 넣어 누를 수 있게 한다(없으면 표시 전용) */
 function stIcon(st,attrs){
-  const on=stOf(st)===2;
-  return '<button class="stx'+(on?' on':'')+'"'+(attrs||' disabled')+' data-on="'+(on?1:0)+'"'
-    +' aria-label="'+(on?'완료':'진행 중')+'" data-tip="'+(on?'완료':'진행 중')+'">'
+  const on=stOf(st)===2,hold=stOf(st)===3;
+  const lbl=on?'완료':hold?'보류':'진행 중';
+  return '<button class="stx'+(on?' on':'')+(hold?' hold':'')+'"'+(attrs||' disabled')+' data-on="'+(on?1:0)+'"'
+    +' aria-label="'+lbl+'" data-tip="'+lbl+'">'
     +'<span class="stx-in">'
       +'<svg class="stx-run" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path class="tri" d="M10.4 8.8v6.4l5.2-3.2z"/></svg>'
       +'<svg class="stx-done" viewBox="0 0 24 24"><circle class="cf" mask="url(#stx-ck)" cx="12" cy="12" r="9"/><path class="ck" d="m8.3 12.2 2.5 2.5 4.9-5.2"/></svg>'
+      +'<svg class="stx-hold" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.6 12h6.8"/></svg>'
     +'</span></button>';
 }
-/* 날짜가 지나면 저절로 완료로 본다 — 다만 지난 뒤 손으로 '진행'을 고르면(stKeep) 그대로 둔다 */
+/* 유효 상태 — 저장된 완료(2)·보류(3)는 그대로, 자동 완료('날짜가 지나면 완료로 본다')는
+   **팀 공통 단발 업무에만** 적용한다. 반복 업무는 회차별 doneOn 이 완료를 담당하고(원 시작일이
+   지났다고 전체가 완료되면 다음 회차가 목록·집계·미니 달력에서 통째로 사라지던 버그),
+   담당자 업무는 아침 확인(morningReview)에서 완료·보류를 직접 고른다.
+   팀 공통도 지난 뒤 손으로 '진행'을 고르면(stKeep) 자동 완료를 덮지 않는다. */
 function stEff(it,date){
-  if(stOf(it&&it.st)===2)return 2;
+  const s=stOf(it&&it.st);
+  if(s===2)return 2;
+  if(s===3)return 3;
+  if(it&&it.recur&&it.recur.f)return 1;
+  if(it&&it.assignees&&Object.keys(it.assignees).some(k=>it.assignees[k]))return 1;
   if(it&&it.stKeep)return 1;
   const d=(date||(it&&(it.end||it.date))||'');
   return (d&&d<todayStr())?2:1;
@@ -2544,7 +2559,7 @@ function taskFormHTML(sid,iid,cur){
   const d=cur||{text:'',prog:'',plan:'',site:'',assignees:meOwner(),links:{},color:'',date:'',end:'',time:'',kind:KIND_DEF,recur:{f:'',until:''}};
   const people=tkSel().mems;
   const kind=kindOf(d.kind),split=kindSplit(kind);
-  const st=stEff(d);
+  /* (상태는 폼에서 바꾸지 않는다 — 목록의 상태 아이콘이 담당) */
   const rc=(d.recur&&d.recur.f)||'';
   const lnk=Object.values(d.links||{}).filter(l=>l&&l.url)[0];
   const own=Object.keys(d.assignees||{}).find(k=>(d.assignees||{})[k])||'';
@@ -2554,7 +2569,6 @@ function taskFormHTML(sid,iid,cur){
       <input type="hidden" id="tnColor" value="${esc(d.color||'')}">
       <input class="pe-ttl" id="tnTitle" maxlength="120" placeholder="무엇을 하나요?" value="${esc(d.text||'')}">
       <div class="pe-side">
-        <span id="tnSt" data-st="${st}" hidden></span>
         ${iid
           ?'<button class="pe-ic pe-del" data-act="tk.del" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" aria-label="삭제" data-tip="삭제"><svg class="icn"><use href="#i-trash"></use></svg></button>'
           :'<button class="pe-ic pe-del" data-act="tk.formCancel" aria-label="취소" data-tip="저장하지 않고 닫기"><svg class="icn"><use href="#i-close"></use></svg></button>'}
@@ -2612,7 +2626,7 @@ function taskFormSave(sid,iid){
   if(lu){const k=lk0||uid();links[k]={...(links[k]||{}),url:/^https?:\/\//i.test(lu)?lu:'https://'+lu};}
   else if(lk0)delete links[lk0];
   const rec=($('#tnRec')&&$('#tnRec').value)||'';
-  const stEl=$('#tnSt'),remEl=$('#tnRemind');
+  const remEl=$('#tnRemind');
   store.putTask(sid,id,{...(cur||{createdAt:Date.now()}),
     text:t,kind:kindOf(($('#tnKind')&&$('#tnKind').value)||''),
     prog:(($('#tnProg')&&$('#tnProg').value)||'').trim(),
@@ -2622,8 +2636,9 @@ function taskFormSave(sid,iid){
     end:($('#tnEnd')&&$('#tnEnd').value)||'',
     time:($('#tnTime')&&$('#tnTime').value)||'',
     recur:rec?{f:rec,until:(($('#tnUntil')&&$('#tnUntil').value)||'')}:{f:'',until:''},
-    st:stEl?Number(stEl.dataset.st||1):stOf(cur&&cur.st),
-    stKeep:stEl?Number(stEl.dataset.st||1)===1:!!(cur&&cur.stKeep),
+    /* ⚠ 표시 상태(stEff)를 저장하면 지난 팀 업무를 고치기만 해도 완료로 굳는다 — 저장된 상태만 유지 */
+    st:stOf(cur&&cur.st),
+    stKeep:!!(cur&&cur.stKeep),
     remind:!!(remEl&&remEl.dataset.on),
     assignees:asg,links,color:($('#tnColor')&&$('#tnColor').value)||'',
     order:(cur&&Number.isFinite(Number(cur.order)))?Number(cur.order):nextOrder(sid),
@@ -2946,10 +2961,10 @@ function gotoTask(sid,iid){
 
 /* ═══════════ 찾기 — 업무·일정·코멘트를 한 번에 ═══════════ */
 function nqOpen(on){
-  const p=$('#nqPanel'),f=$('#nqFab');if(!p||!f)return;
-  p.classList.toggle('on',!!on);f.classList.toggle('on',!!on);
+  const p=$('#nqPanel'),f=$('#tbSrch');if(!p)return;
+  p.classList.toggle('on',!!on);
   p.setAttribute('aria-hidden',on?'false':'true');
-  f.setAttribute('aria-expanded',on?'true':'false');
+  if(f){f.classList.toggle('on',!!on);f.setAttribute('aria-expanded',on?'true':'false');}
   if(on)setTimeout(()=>{const q=$('#nqQ');if(q){q.focus();q.select();}},60);
 }
 function nqMark(text,q){
@@ -2996,6 +3011,55 @@ function rNq(){
     +(r.cmts.length?'<div class="nq-g">코멘트 '+r.cmts.length+'</div>'+r.cmts.slice(0,20).map(({sid,iid,it,c})=>
       item('i-cmt',nqMark(c.text,q),(c.by||'')+' · '+(it.text||''),
         'data-act="nq.cmt" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"')).join(''):'');
+}
+
+/* ═══════════ 아침 확인 — 놓친 담당자 업무를 하루 한 번 묻는다 ═══════════
+   담당자 업무는 자동 완료하지 않는다(stEff). 대신 그날 처음 열 때 지난 미완료 업무를
+   모달로 띄워 끝낸 것은 체크하게 하고, 체크하지 않은 것은 보류(st=3)로 넘긴다.
+   보류는 목록·내 업무에 회색 − 아이콘으로 남아 언제든 완료·진행으로 되돌릴 수 있다.
+   '나중에'로 닫으면 아무것도 바꾸지 않고 다음에 열 때 다시 묻는다. */
+const MRV_KEY='calapp.mrv';
+function mrvKey(){return MRV_KEY+'.'+((S.user&&S.user.uid)||'local');}
+function mrvList(){
+  const me=myId(),today=todayStr(),out=[];
+  if(!me)return out;
+  Object.keys(S.tasks||{}).forEach(sid=>{
+    const m=S.tasks[sid]||{};
+    Object.keys(m).forEach(iid=>{
+      const it=m[iid];if(!it)return;
+      if(!(it.assignees&&Object.keys(it.assignees).some(k=>it.assignees[k])))return;   /* 팀 공통은 자동 완료 대상 */
+      if(!((sid===me)||it.assignees[me]))return;                                        /* 내 업무만 */
+      if(it.recur&&it.recur.f)return;                                                   /* 반복은 회차별 doneOn */
+      if(stOf(it.st)!==1)return;                                                        /* 완료·이미 보류는 제외 */
+      const end=it.end||it.date;
+      if(!end||end>=today)return;
+      out.push({sid,iid,it});
+    });
+  });
+  return out.sort((a,b)=>String(a.it.end||a.it.date).localeCompare(String(b.it.end||b.it.date)));
+}
+function morningReview(){
+  if(WIDGET)return;                                       /* 위젯 창은 작다 — 앱에서만 묻는다 */
+  if($('#mo')&&$('#mo').classList.contains('open'))return;
+  let last='';try{last=localStorage.getItem(mrvKey())||'';}catch(e){}
+  if(last===todayStr())return;                            /* 하루 한 번 */
+  const list=mrvList();
+  if(!list.length){try{localStorage.setItem(mrvKey(),todayStr());}catch(e){}return;}
+  const md=x=>{const t=toDate(x);return (t.getMonth()+1)+'/'+t.getDate();};
+  const rows=list.map(({sid,iid,it})=>{
+    const sub=[it.end&&it.end!==it.date?md(it.date)+'–'+md(it.end):md(it.date),siteName(it.site),kindLabel(it.kind)].filter(Boolean).join(' · ');
+    return '<div class="mrv-i">'
+      +stIcon(1,' data-act="mrv.toggle"')
+      +'<div class="mrv-b" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"><div class="t">'+esc(it.text||'제목 없음')+'</div>'
+      +'<div class="s">'+esc(sub)+'</div></div></div>';
+  }).join('');
+  openModal('놓친 업무 확인',
+    '<div class="mrv-h">날짜가 지난 미완료 업무 '+list.length+'건입니다.<br>'
+    +'끝낸 업무는 체크하세요 — 체크하지 않은 업무는 <b>보류</b>로 남겨 둡니다.</div>'
+    +'<div class="mrv-l">'+rows+'</div>',
+    '<button class="btn bg2 bsm" data-act="modal.close">나중에</button>'
+    +'<button class="btn bp bsm" data-act="mrv.ok">확인</button>');
+  const mb=$('#mb');if(mb)mb.classList.add('narrow');
 }
 
 /* ═══════════ 내 업무 — 달력·주요업무를 한 화면에 모은다 ═══════════ */
@@ -3118,18 +3182,18 @@ function siteTable(){
   sites.sort((a,b)=>(ord[a.region]??99)-(ord[b.region]??99)||String(a.name).localeCompare(String(b.name),'ko'));
   const regOpts=x=>'<option value="">권역 —</option>'+regs.map(r=>'<option value="'+esc(r.id)+'"'+(r.id===x.region?' selected':'')+'>'+esc(r.name)+'</option>').join('');
   return `<div style="overflow-x:auto"><table class="mgtbl"><thead><tr>
-    <th style="width:11%">권역</th><th style="width:21%">현장명</th>
-    <th class="cc" style="width:8%">세대수</th><th class="cc" style="width:7%">동수</th>
-    <th class="cc" style="width:8%">상가수</th><th class="cc" style="width:12%">준공일</th>
+    <th style="width:11%">권역</th><th style="width:19%">현장명</th>
+    <th class="cc" style="width:9%">세대수</th><th class="cc" style="width:8%">동수</th>
+    <th class="cc" style="width:9%">상가수</th><th class="cc" style="width:12%">준공일</th>
     <th class="cc" style="width:8%">공가세대</th><th class="cc" style="width:8%">공가상가</th>
     <th class="cc mg-disth" style="width:10%">업데이트일</th><th class="cc" style="width:5%"></th>
   </tr></thead><tbody>${sites.map(x=>`<tr>
     <td><select class="mg-inp" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="region" aria-label="권역 선택">${regOpts(x)}</select></td>
     <td><input class="mg-inp" value="${esc(x.name)}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="name" aria-label="현장명"></td>
-    <td><input class="mg-inp n" type="number" value="${x.units||0}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="units" aria-label="세대수" style="text-align:right"></td>
-    <td><input class="mg-inp n" type="number" value="${x.buildings||0}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="buildings" aria-label="동수" style="text-align:right"></td>
-    <td><input class="mg-inp n" type="number" value="${x.commercialUnits||0}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="commercialUnits" aria-label="상가수" style="text-align:right"></td>
-    <td class="cc"><input class="mg-inp" type="date" max="9999-12-31" style="width:132px;max-width:100%;text-align:center;display:inline-block" value="${esc(x.completionDate||'')}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="completionDate" aria-label="준공일"></td>
+    <td><input class="mg-inp n" type="number" value="${x.units||0}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="units" aria-label="세대수" style="text-align:right;min-width:56px"></td>
+    <td><input class="mg-inp n" type="number" value="${x.buildings||0}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="buildings" aria-label="동수" style="text-align:right;min-width:48px"></td>
+    <td><input class="mg-inp n" type="number" value="${x.commercialUnits||0}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="commercialUnits" aria-label="상가수" style="text-align:right;min-width:52px"></td>
+    <td class="cc"><input class="mg-inp" type="date" max="9999-12-31" style="width:120px;max-width:100%;text-align:center;display:inline-block" value="${esc(x.completionDate||'')}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="completionDate" aria-label="준공일"></td>
     <td class="cc mg-ro"><label class="sw"><input type="checkbox"${x.vacantUnits?' checked':''} disabled aria-label="공가세대 — 하자처리 현황에서 관리"><span class="sw-t"></span></label></td>
     <td class="cc mg-ro"><label class="sw"><input type="checkbox"${x.vacantCommercial?' checked':''} disabled aria-label="공가상가 — 하자처리 현황에서 관리"><span class="sw-t"></span></label></td>
     <td class="cc mg-dis" style="font-size:11.5px;white-space:nowrap">—</td>
@@ -3785,6 +3849,25 @@ const ACT={
   'auth.reset':fbDoReset,
   'acct.open':openAcctModal,
   'mention.open':openMentionModal,
+  /* 아침 확인 — 체크는 화면에서만 바꾸고, '확인'을 눌러야 한 번에 저장한다 */
+  'mrv.toggle':el=>{const b=el.closest('.stx');if(!b)return;stxSet(b,b.dataset.on==='1'?1:2);},
+  'mrv.ok':()=>{
+    let done=0,hold=0;
+    $$('#mbody .mrv-i').forEach(row=>{
+      const b=row.querySelector('.mrv-b'),chk=row.querySelector('.stx');
+      if(!b)return;
+      const sid=b.dataset.sid,iid=b.dataset.iid,cur=(S.tasks[sid]||{})[iid];
+      if(!cur||stOf(cur.st)!==1)return;   /* 모달이 떠 있는 사이 다른 곳에서 바뀌었으면 건너뛴다 */
+      const ok=chk&&chk.dataset.on==='1';
+      store.putTask(sid,iid,{...cur,st:ok?2:3,updatedAt:Date.now()});
+      if(ok)done++;else hold++;
+    });
+    try{localStorage.setItem(mrvKey(),todayStr());}catch(e){}
+    closeModal();
+    if(!S.live){rTasks();rDay();rWidget();}
+    refetchCal();
+    toast('완료 '+done+'건'+(hold?' · 보류 '+hold+'건':''));
+  },
   'nq.toggle':()=>{const on=!$('#nqPanel').classList.contains('on');nqOpen(on);if(on)rNq();},
   'nq.close':()=>nqOpen(false),
   'nq.task':el=>gotoTask(el.dataset.sid,el.dataset.iid),
@@ -4605,7 +4688,7 @@ function rAll(){rDay();rTasks();rOrg();rCfg();rFilter();rMention();rTeamSel();re
   bindCalResize();
   subVisibleMonths();
   rDay();rAcct();rFilter();rTeamSel();rWidget();   /* 팀 선택기는 사이드바 상시 요소 — 부팅 때부터 그린다 */
-  if(DEV_LOCAL){hideCover();}
+  if(DEV_LOCAL){hideCover();setTimeout(morningReview,600);}
   else{
     fbInit();
     /* SDK가 아예 안 뜨거나(사내망 차단 등) 응답이 없으면 안내와 함께 로그인 폼을 연다 */

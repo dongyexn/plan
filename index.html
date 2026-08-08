@@ -398,6 +398,20 @@ html.dark .stx-done{color:#3BA85C;}
 .stx-done .ck{stroke:#fff;stroke-width:2.6;}
 .stx.on .stx-run{opacity:0;}
 .stx.on .stx-done{opacity:1;}
+/* 보류 — 회색 원 안 가로줄. 아침 확인에서 넘긴 담당자 업무 표시 */
+.stx-hold{color:var(--lbl3);opacity:0;}
+.stx-hold circle,.stx-hold path{stroke:currentColor;fill:none;}
+.stx.hold .stx-run{opacity:0;}
+.stx.hold .stx-hold{opacity:1;}
+/* 아침 확인(놓친 업무) 모달 목록 */
+.mrv-h{font-size:12.5px;color:var(--lbl2);line-height:1.6;margin-bottom:12px;}
+.mrv-l{display:flex;flex-direction:column;gap:2px;max-height:46vh;overflow-y:auto;margin:0 -6px;}
+.mrv-i{display:flex;align-items:center;gap:10px;padding:8px 6px;border-radius:var(--rmd);}
+.mrv-i:hover{background:var(--fill);}
+.mrv-i .stx{cursor:pointer;}
+.mrv-b{min-width:0;}
+.mrv-b .t{font-size:13px;font-weight:600;color:var(--lbl);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mrv-b .s{font-size:11.5px;color:var(--lbl2);margin-top:1px;}
 .stx:not(:disabled):hover .stx-in{transform:scale(1.08);}
 .stx-in{transition:transform .12s;}
 /* 눌렀을 때 — 튀어오름 + 체크 그리기 */
@@ -1065,7 +1079,7 @@ select.mg-inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-
 .set-empty{font-size:13px;color:var(--lbl3);padding:16px 4px;line-height:1.6;text-align:center;}
 
 /* ══════════ 위젯 모드 (?w=1 — 데스크톱 PWA 창) ══════════ */
-body.wid #sidebar,body.wid #topbar,body.wid .dp-col,body.wid #scrim,body.wid .nq-fab{display:none!important;}
+body.wid #sidebar,body.wid #topbar,body.wid .dp-col,body.wid #scrim{display:none!important;}
 body.wid #content{overflow:hidden;scrollbar-gutter:auto;}   /* 위젯엔 스크롤바가 필요 없다 */
 body.wid #content::-webkit-scrollbar{width:0;height:0;}
 /* 위치·크기 조정 모드 — 이때만 창을 끌어 옮기고 크기를 바꾼다. 평소엔 고정 */
@@ -1288,18 +1302,18 @@ body.wid #wgSet.on{display:block;}
 @keyframes cvspin{to{transform:rotate(360deg);}}
 #cvBtn:hover{transform:translateY(-1px);box-shadow:0 8px 22px rgba(0,0,0,.3);}
 
-/* 찾기 — 플로팅 버튼과 패널 (참조 앱 이식) */
-.nq-fab{position:fixed;right:24px;bottom:24px;width:52px;height:52px;border:0;border-radius:50%;z-index:60;
-  background:linear-gradient(140deg,var(--b600),var(--b700));color:#fff;cursor:pointer;
-  box-shadow:0 6px 20px rgba(50,89,182,.34),0 2px 6px rgba(0,0,0,.12);
-  display:flex;align-items:center;justify-content:center;transition:transform var(--tr),box-shadow var(--tr);}
-.nq-fab:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(50,89,182,.42),0 3px 8px rgba(0,0,0,.14);}
-.nq-fab .icn{width:22px;height:22px;}
-.nq-fab .x{display:none;} .nq-fab.on .x{display:block;} .nq-fab.on .s{display:none;}
-.nq-panel{position:fixed;right:24px;bottom:88px;width:392px;max-height:min(600px,calc(100vh - 128px));z-index:61;
+/* 찾기 — 상단바 검색창 버튼과 패널. 패널은 버튼 바로 아래(헤더 밑 우측)에 뜬다 */
+.tb-srch{display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 10px 0 9px;margin-right:8px;
+  border:1px solid var(--sep);border-radius:8px;background:var(--fill);color:var(--lbl3);cursor:pointer;
+  font:inherit;font-size:12.5px;transition:background var(--tr),color var(--tr),border-color var(--tr);}
+.tb-srch:hover,.tb-srch.on{background:var(--bg2);color:var(--lbl2);border-color:var(--b400);}
+.tb-srch .icn{width:14px;height:14px;}
+.tb-srch-t{font-weight:500;}
+.tb-srch-k{font:inherit;font-size:10.5px;color:var(--lbl3);border:1px solid var(--sep);border-radius:5px;padding:1px 5px;background:var(--bg2);}
+.nq-panel{position:fixed;right:16px;top:calc(var(--th) + 8px);width:392px;max-height:min(600px,calc(100vh - var(--th) - 24px));z-index:61;
   background:var(--bg2);border:1px solid var(--sep);border-radius:8px;overflow:hidden;
   box-shadow:0 18px 50px rgba(20,26,40,.18),0 4px 14px rgba(0,0,0,.08);
-  display:flex;flex-direction:column;opacity:0;transform:translateY(10px) scale(.98);pointer-events:none;
+  display:flex;flex-direction:column;opacity:0;transform:translateY(-8px) scale(.98);pointer-events:none;
   transition:opacity var(--tr),transform var(--tr);}
 .nq-panel.on{opacity:1;transform:none;pointer-events:auto;}
 .nq-hd{display:flex;align-items:flex-start;gap:8px;padding:14px 14px 12px;border-bottom:1px solid var(--sep);}
@@ -1320,7 +1334,7 @@ body.wid #wgSet.on{display:block;}
 .nq-item .sb{font-size:12px;color:var(--lbl3);margin-top:1px;}
 .nq-item mark{background:rgba(83,140,222,.22);color:inherit;border-radius:3px;padding:0 1px;}
 .nq-empty{font-size:13px;color:var(--lbl3);text-align:center;padding:26px 0;}
-@media(max-width:960px){.nq-panel{right:12px;left:12px;width:auto;bottom:80px;}.nq-fab{right:16px;bottom:16px;}}
+@media(max-width:960px){.nq-panel{right:12px;left:12px;width:auto;}.tb-srch-t,.tb-srch-k{display:none;}.tb-srch{padding:0;width:30px;justify-content:center;margin-right:6px;}}
 /* 내 업무 */
 
 /* ══════════ 모달 · 토스트 · 툴팁 ══════════ */
@@ -1442,7 +1456,7 @@ html.dark .stx .stx-done{color:#454D5C;}
 .cal-card{border-radius:4px;}
 #fcal .fc-scrollgrid{border-radius:4px;}
 #fcal .fc-event{border-radius:3px;}
-/* 버튼 그라데이션 폐지 — 주 버튼은 단색, 그라데이션은 찾기(nq-fab)만 유지 */
+/* 버튼 그라데이션 폐지 — 주 버튼은 단색 */
 .bp{background:var(--b600);}
 html.dark .bp{background:var(--b500);}
 /* ── 3차 ── */
@@ -1622,7 +1636,7 @@ html.dark #content:hover::-webkit-scrollbar-thumb ,html.dark .dp-body:hover::-we
 .wl-more.on .icn{transform:rotate(-90deg);}
 .wl-more:hover{color:var(--lbl);}
 @media print{
-  #sidebar,#topbar,.rp-head,.nq-fab{display:none!important;}
+  #sidebar,#topbar,.rp-head{display:none!important;}
   #content{padding:0;overflow:visible;}
   .rp-card{border:0;box-shadow:none;break-inside:auto;}
   .rp-tbl{font-size:10.5px;}
@@ -1750,6 +1764,11 @@ html.dark #content:hover::-webkit-scrollbar-thumb ,html.dark .dp-body:hover::-we
       <div class="tbt" id="tbt">업무 일정</div>
     </div>
     <div class="tbr">
+      <button class="tb-srch" id="tbSrch" data-act="nq.toggle" aria-label="찾기" aria-expanded="false">
+        <svg class="icn" aria-hidden="true"><use href="#i-search"></use></svg>
+        <span class="tb-srch-t">찾기</span>
+        <kbd class="tb-srch-k">Ctrl K</kbd>
+      </button>
       <div class="tb-nav">
         <button class="tb-ic" data-act="app.alerts" aria-label="알림" data-tip="알림">
           <svg class="icn" aria-hidden="true"><use href="#i-bell"></use></svg>
@@ -1945,10 +1964,6 @@ html.dark #content:hover::-webkit-scrollbar-thumb ,html.dark .dp-body:hover::-we
 </main>
 </div>
 
-<button class="nq-fab" id="nqFab" data-act="nq.toggle" aria-label="찾기" aria-expanded="false">
-  <svg class="icn s" aria-hidden="true"><use href="#i-search"></use></svg>
-  <svg class="icn x" aria-hidden="true"><use href="#i-close"></use></svg>
-</button>
 <div id="htip" role="tooltip" aria-hidden="true"></div>
 <div class="nq-panel" id="nqPanel" role="dialog" aria-label="찾기" aria-hidden="true">
   <div class="nq-hd">
@@ -1962,5 +1977,5 @@ html.dark #content:hover::-webkit-scrollbar-thumb ,html.dark .dp-body:hover::-we
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=188"></script>
+<script src="./app.js?v=189"></script>
 </body></html>
