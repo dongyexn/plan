@@ -1489,8 +1489,10 @@ html.dark .bp{background:var(--b500);}
 .pd-lnk .icn{margin-right:2px;}
 /* 오늘 배지 — 지름을 줄여 업무 막대 단차를 없앤다(위젯 포함) */
 #fcal .fc-day-today .dnum{width:18px;height:18px;margin:0 0 0 -5px;}
-/* 계정 모달 — 두 탭 모두 내용 높이에 맞춘다(빈 아래 여백 제거) */
-.acct-pane{min-height:0;}
+/* 계정 모달 — 두 탭을 같은 칸에 겹쳐 두어 높이가 늘 큰 쪽에 맞는다(탭을 옮겨도 안 흔들림) */
+.acct-pane{min-height:0;display:grid;}
+.acct-pane>.acct-real,.acct-pane>.acct-ghost{grid-area:1/1;min-width:0;}
+.acct-ghost{visibility:hidden;pointer-events:none;}
 /* 사용 안내 — 장을 옮겨도 모달 높이가 일정하도록 본문에 고정 높이 */
 .rd-body{height:62dvh;overflow-y:auto;}
 /* 조직/현장 — 탭을 옮겨도 머리 높이가 같도록(현장 탭에만 있는 추가 버튼 때문) */
@@ -1553,6 +1555,9 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
    ⚠ 마스크는 마크업의 mask 속성으로 걸고, 완료일 때만 CSS 로 끈다(CSS mask 로는 참조가 안 먹었다) */
 .stx.on .stx-done .cf{mask:none;}
 .stx:not(.on) .stx-done .ck{display:none;}
+/* 카드 머리 글자 크기는 다른 화면(내 업무·주요 업무)과 같은 14px */
+.tkm-h b{font-size:14px;}
+.tkm-h{padding:13px 16px 11px;}
 /* 업무 목록 — 팀 전체일 때 카드를 둘로 나눈다(공통·팀장 / 권역 담당자) */
 .tk-split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:start;}
 .tk-split .tkmain{margin:0;}
@@ -1562,9 +1567,16 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 .tk-list .tk-sub{margin-top:8px;padding:8px 2px 0;border-top:1px solid var(--sep);}
 .tk-list .tk-sub:first-child{margin-top:0;padding-top:0;border-top:0;}
 .tk-list .tk-sub2{padding:0 2px;}
-/* 목록이 길어져도 패널 안에서만 스크롤한다(화면 밖으로 밀리지 않게) */
-.tk-split{flex:1;min-height:0;}
-.tk-split .tkmain{height:100%;min-height:0;}
+/* 업무가 적으면 카드도 짧게, 많으면 패널 안에서만 스크롤한다(화면 밖으로 밀리지 않게) */
+.tkmain{flex:0 1 auto;max-height:100%;}
+.tk-split{flex:0 1 auto;min-height:0;}
+.tk-split .tkmain{max-height:100%;}
+/* 아래에 내용이 더 있으면 칸 아래쪽을 서서히 지워 '이어진다'를 알린다(끝에 닿으면 사라진다) */
+.sb-fade{-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 26px),transparent);
+  mask-image:linear-gradient(to bottom,#000 calc(100% - 26px),transparent);}
+/* 스크롤 막대 — 평소엔 숨기고, 스크롤 중이거나 마우스를 올렸을 때만 보인다(사라질 땐 서서히) */
+#content::-webkit-scrollbar-thumb,.dp-body::-webkit-scrollbar-thumb,.tk-list::-webkit-scrollbar-thumb,.nq-res::-webkit-scrollbar-thumb,.pf-emg::-webkit-scrollbar-thumb,[data-sb]::-webkit-scrollbar-thumb{background:transparent;transition:background .5s ease;}
+#content:hover::-webkit-scrollbar-thumb,.dp-body:hover::-webkit-scrollbar-thumb,.tk-list:hover::-webkit-scrollbar-thumb,.nq-res:hover::-webkit-scrollbar-thumb,.pf-emg:hover::-webkit-scrollbar-thumb,[data-sb]:hover::-webkit-scrollbar-thumb,#content.sb-on::-webkit-scrollbar-thumb,.dp-body.sb-on::-webkit-scrollbar-thumb,.tk-list.sb-on::-webkit-scrollbar-thumb,.nq-res.sb-on::-webkit-scrollbar-thumb,.pf-emg.sb-on::-webkit-scrollbar-thumb,[data-sb].sb-on::-webkit-scrollbar-thumb{background:var(--sepo);transition:background .1s ease;}
 /* 팀 공통 업무 막대 — 제목 앞 작은 삼각형(▶). 글자와 세로 중앙을 맞춘다 */
 #fcal .fc-event.team .fc-event-title{display:flex;align-items:center;}
 #fcal .fc-event.team .fc-event-title::before{content:'';flex:none;width:0;height:0;margin-right:4px;
@@ -1586,7 +1598,8 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 .mc-w .sat{color:var(--b600);}
 .mc-g{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
 .mc-d{position:relative;height:36px;border-radius:8px;background:none;display:flex;align-items:center;justify-content:center;color:var(--lbl);}
-.mc-d.out{visibility:hidden;}
+.mc-d.out{pointer-events:none;}
+.mc-d.out .n{color:var(--lbl3);opacity:.45;}
 .mc-d .n{font-size:12px;line-height:1;font-variant-numeric:tabular-nums;margin-bottom:5px;}
 /* 점은 칸 아래에 겹쳐 둔다 — 숫자 위치가 점 유무에 따라 흔들리지 않게 */
 .mc-d .dots{position:absolute;left:0;right:0;bottom:4px;display:flex;justify-content:center;gap:2px;pointer-events:none;}
@@ -1962,5 +1975,5 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="toast"></div>
 
-<script src="./app.js?v=180"></script>
+<script src="./app.js?v=182"></script>
 </body></html>
