@@ -262,16 +262,16 @@ body:not(.wid) .cal-card{min-height:0;overflow:hidden;border:0;background:transp
 .cal-nav .cal-today .icn{width:15px;height:15px;}
 .cal-nb .icn{width:16px;height:16px;}
 /* FullCalendar 테마 이식 */
-#fcal{height:100%;--fc-border-color:var(--sep);--fc-today-bg-color:transparent;--fc-page-bg-color:var(--bg2);--fc-neutral-bg-color:var(--surf2);font-size:13px;}
+#fcal{height:100%;--fc-border-color:var(--sep);--fc-today-bg-color:transparent;--fc-page-bg-color:var(--bg2);--fc-neutral-bg-color:var(--surf2);font-size:13px;background:var(--bg2);border-radius:var(--rmd);overflow:hidden;}
 #fcal .fc-theme-standard td,#fcal .fc-theme-standard th{border-color:transparent;}
 /* scrollgrid 래퍼 td 의 1px 보더(--fc-border-color)가 우·하단에 선으로 남는다 */
 #fcal .fc-scrollgrid-section>td,#fcal .fc-scrollgrid-section>th{border:0;}
 /* 가로줄(주 구분)을 세로줄보다 한 단계 진하게 — 주 단위가 먼저 읽힌다 */
-#fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-top:2px solid transparent;background-clip:padding-box;}
+#fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-top:1px solid rgba(60,60,67,.12);}
 
-#fcal .fc-dayGridMonth-view .fc-col-header{border-bottom:2px solid transparent;}
+#fcal .fc-dayGridMonth-view .fc-col-header{border-bottom:0;}
 /* 세로줄은 반대로 더 옅게 — 가로가 먼저 읽히도록 대비를 벌린다 */
-#fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-left:2px solid transparent;border-right:0;}
+#fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-left:1px solid rgba(60,60,67,.10);border-right:0;}
 
 #fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td:first-child{border-left:0;}
 #fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table tr:first-child td{border-top:0;}
@@ -283,8 +283,8 @@ html.dark #fcal .fc-scrollgrid{box-shadow:0 0 0 1px rgba(255,255,255,.14);}
    행 높이 반올림 잔여만큼 하단에 띠로 노출된다 */
 
 
-#fcal .fc-col-header-cell{background:#C4CCDA;padding:9px 0;background-clip:padding-box;border-left:2px solid transparent;border-right:0;}
-#fcal .fc-col-header-cell:first-child{border-left:0;}
+#fcal .fc-col-header-cell{background:#C4CCDA;padding:9px 0;border:0;}
+
 html.dark #fcal .fc-col-header-cell{background:#2A2A2A;}
 /* 주간 헤더 — 공휴일 줄이 항상 자리를 차지해 높이가 변하지 않는다 */
 #fcal .fc-col-header-cell-cushion{font-size:13px;font-weight:800;color:var(--lbl);text-decoration:none;letter-spacing:.02em;}
@@ -636,16 +636,15 @@ body.hasbg #view-defect,body.hasbg #mb,body.hasbg .btn,body.hasbg .rec-tbl,body.
 body.hasbg .cal-nb,body.hasbg .cal-title,body.hasbg .tb-ic,body.hasbg .tb-srch,body.hasbg .sb-more,
 body.hasbg .ctxmenu,body.hasbg .tb-pop,body.hasbg .nq-panel,body.hasbg .popbox{
   --bg2:#fff;--surf2:#F5F7FA;--surf3:#E9EDF2;--glass3:#fff;}
-/* 달력은 위젯 유리와 같은 톤 — 한 장의 판 위에 옅은 격자선 */
-body.hasbg #fcal{background:var(--bg2);border-radius:var(--rmd);--fc-page-bg-color:transparent;}
+/* 배경을 켜면 달력도 같은 유리 판 — 셀은 판 색을 그대로 쓴다 */
+body.hasbg #fcal{--fc-page-bg-color:transparent;}
 body.hasbg #fcal .fc-daygrid-day{background:transparent;}
-body.hasbg #fcal .fc-col-header-cell{background:rgba(120,130,150,.14);}
-body.hasbg #fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-color:rgba(60,60,67,.14)!important;}
 html.dark body.hasbg #view-defect,html.dark body.hasbg #mb,html.dark body.hasbg .btn,
 html.dark body.hasbg .rec-tbl,html.dark body.hasbg .pv-table,html.dark body.hasbg .cal-nb,
 html.dark body.hasbg .cal-title,html.dark body.hasbg .tb-ic,html.dark body.hasbg .tb-srch,
 html.dark body.hasbg .sb-more,html.dark body.hasbg .ctxmenu,html.dark body.hasbg .tb-pop,
 html.dark body.hasbg .nq-panel,html.dark body.hasbg .popbox{--bg2:#1C1C1E;--surf2:#26262A;--surf3:#303036;--glass3:#1C1C1E;}
+body.hasbg #sidebar{background:var(--bg);border-radius:0;}
 body.hasbg #sidebar>*{background:var(--bg2);}
 /* ⚠ 카드마다 blur 를 걸면 표·차트가 많은 하자 화면이 눈에 띄게 느려진다 — 반투명 색만 쓴다 */
 body.hasbg #sidebar{background:var(--glass3);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);}
@@ -2682,5 +2681,5 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=220"></script>
+<script src="./app.js?v=221"></script>
 </body></html>
