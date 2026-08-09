@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='2.3.5';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='2.3.6';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -5781,19 +5781,76 @@ function applyBg(){
      이상해진다(218차 위젯 회귀의 원인). 위젯에서는 배경 기능 전체를 무시한다.
      (WIDGET 상수는 아래쪽 선언이라 TDZ — location 으로 직접 검사) */
   if(/[?&]w=1\b/.test(location.search)){document.body.classList.remove('hasbg');return;}
-  let url='',al='80',lum='100';
-  try{url=localStorage.getItem('calapp.bg')||'';al=localStorage.getItem('calapp.bgAlpha')||'90';
-    lum=localStorage.getItem('calapp.bgLum')||'100';}catch(e){}
+  let url='',al='80';
+  try{url=localStorage.getItem('calapp.bg')||'';al=localStorage.getItem('calapp.bgAlpha')||'90';}catch(e){}
   const root=document.documentElement;
   root.style.setProperty('--app-bg-img',url?`url("${url}")`:'none');
-  /* ⚠ 배경 대비(밑칠)와 그레인은 조절 대상이 아니다 — 고정값을 CSS 가 그대로 쓴다(219차에 넣은
-     슬라이더는 사용자 지시로 철회). 여기서 인라인 변수를 세우면 CSS 기본값을 덮으므로 건드리지 않는다. */
   root.style.setProperty('--app-card-alpha',(Number(al)||90)/100);
-  root.style.setProperty('--app-card-lum',(Number(lum)||100)/100);   /* 레이아웃 톤 밝기 */
   document.body.classList.toggle('hasbg',!!url);
   const btn=$('#bgClearBtn');if(btn)btn.hidden=!url;
   const dl=$('#bgAlpha');if(dl)dl.value=al;
-  const lm=$('#bgLum');if(lm)lm.value=lum;
+  if(url)bgGrainPaint();      /* 필름 그레인은 배경이 있을 때만 그린다 */
+  calGlassApply();
+}
+/* 배경 위 정적 필름 그레인 — 디뉴어 로그인 배경과 같은 방식(타일 노이즈 + 먼지 입자, 애니메이션 없음).
+   ⚠ 한 번만 그린다. 매 프레임 그리면 위젯·저사양 PC 에서 그대로 부담이 된다. */
+let _grainDone=false;
+function bgGrainPaint(){
+  const cv=$('#bgGrain');if(!cv||!cv.getContext)return;
+  const ctx=cv.getContext('2d',{alpha:true});if(!ctx)return;
+  const DPR=Math.min(devicePixelRatio||1,1.5);
+  const W=Math.floor(innerWidth*DPR),H=Math.floor(innerHeight*DPR);
+  if(_grainDone&&cv.width===W&&cv.height===H)return;
+  cv.width=W;cv.height=H;cv.style.width=innerWidth+'px';cv.style.height=innerHeight+'px';
+  const TILE=180,SPREAD=92;
+  const t=document.createElement('canvas');t.width=t.height=TILE;
+  const tc=t.getContext('2d');const img=tc.createImageData(TILE,TILE);
+  for(let i=3;i<img.data.length;i+=4)img.data[i]=255;
+  for(let i=0;i<img.data.length;i+=4){const v=128+(Math.random()*2-1)*SPREAD;img.data[i]=img.data[i+1]=img.data[i+2]=v;}
+  tc.putImageData(img,0,0);
+  ctx.clearRect(0,0,W,H);
+  ctx.globalAlpha=1;ctx.fillStyle=ctx.createPattern(t,'repeat');ctx.fillRect(0,0,W,H);
+  const n=Math.round((W*H)/(DPR*DPR)/13000);   /* 정적인 먼지 입자 */
+  for(let i=0;i<n;i++){const big=Math.random()<0.10;const s=(big?2.2+Math.random()*3.4:1+Math.random()*1.3)*DPR;
+    ctx.globalAlpha=big?0.12:0.07;ctx.fillStyle=Math.random()<0.5?'#000':'#fff';
+    ctx.fillRect(Math.random()*W,Math.random()*H,s,s);}
+  ctx.globalAlpha=1;_grainDone=true;
+}
+let _grainT=null;
+addEventListener('resize',()=>{clearTimeout(_grainT);
+  _grainT=setTimeout(()=>{if(document.body.classList.contains('hasbg'))bgGrainPaint();},150);},{passive:true});
+/* ── 달력 유리(앱) — 위젯 설정과 같은 두 축: 투명도(a)·유리 톤(tint) ──
+   ⚠ 위젯과 같은 이유로 변수 상속이 아니라 **리터럴 규칙을 스타일 태그로 주입**한다
+   (FullCalendar 셀에서 var() 상속이 갱신되지 않는 엔진 특이 동작 — widApply 주석 참조). */
+const CAL_GLASS_KEY='calapp.calGlass';
+function calGlassLoad(){try{return JSON.parse(localStorage.getItem(CAL_GLASS_KEY))||{};}catch(e){return{};}}
+function calGlassSave(c){try{localStorage.setItem(CAL_GLASS_KEY,JSON.stringify(c));}catch(e){}}
+function calGlassApply(){
+  if(WIDGET)return;                       /* 위젯은 자체 설정(widApply)이 맡는다 */
+  const c=calGlassLoad();
+  const a=Number.isFinite(Number(c.a))?Number(c.a)/100:.85;               /* 기본 85% (투명도 15%) */
+  const tint=Math.min(1.6,Math.max(.5,(Number(c.tint)||100)/100));
+  const sc=rgb=>rgb.split(',').map(x=>Math.min(255,Math.round(Number(x)*tint))).join(',');
+  const f=n=>Math.min(1,Math.max(0,n)).toFixed(3);
+  const B=sc('24,28,38'),W=sc('57,52,61'),H=sc('13,16,24'),N=sc('16,20,30');
+  let dyn=document.getElementById('calDyn');
+  if(!dyn){dyn=document.createElement('style');dyn.id='calDyn';document.head.appendChild(dyn);}
+  dyn.textContent=[
+    'body.hasbg #fcal td.fc-daygrid-day{background:rgba('+B+','+f(a)+');}',
+    /* 공휴일도 주말과 같은 칸 색 — 쉬는 날이라는 뜻이 같다(위젯과 동일) */
+    'body.hasbg #fcal td.fc-daygrid-day.fc-day-sat,body.hasbg #fcal td.fc-daygrid-day.fc-day-sun,body.hasbg #fcal td.fc-daygrid-day.hol{background:rgba('+W+','+f(a*.92)+');}',
+    /* ⚠ 이웃(다른) 달 칸은 테마와 무관하게 같은 값 — 다크에서 --surf2 등이 끼어들어 색이 달라지던 것을 막는다 */
+    'body.hasbg #fcal td.fc-daygrid-day.fc-day-other,html.dark body.hasbg #fcal td.fc-daygrid-day.fc-day-other{background:rgba('+B+','+f(a*.22)+');}',
+    'body.hasbg #fcal .fc-col-header-cell{background:rgba('+H+','+f(a+.12)+');}',
+    /* 년월·월넘김 버튼도 위젯과 같은 채움 */
+    'body.hasbg:not(.wid) #view-calendar .cal-title,body.hasbg:not(.wid) #view-calendar .cal-head>.cal-ctl>.cal-nav:first-child{background:rgba('+N+','+f(a*.9)+');}',
+    'body.hasbg #view-calendar .cal-title,body.hasbg #view-calendar .cal-title .y{color:#fff;}',
+    'body.hasbg #view-calendar .cal-nb{color:rgba(255,255,255,.82);}'
+  ].join('\n');
+  const ra=$('#bgCalA');if(ra)ra.value=Math.round(100-a*100);
+  const va=$('#bgCalAV');if(va)va.textContent=Math.round(100-a*100)+'%';
+  const rt=$('#bgCalT');if(rt)rt.value=Math.round(tint*100);
+  const vt=$('#bgCalTV');if(vt)vt.textContent=Math.round(tint*100)+'%';
 }
 function applyTheme(dark){
   document.documentElement.classList.toggle('dark',dark);
@@ -6038,7 +6095,8 @@ const ACT={
     f.click();},
   'set.bgClear':()=>{try{localStorage.removeItem('calapp.bg');}catch(e){}applyBg();toast('배경을 없앴습니다');},
   'set.bgAlpha':el=>{const v=String(el.value||'80');try{localStorage.setItem('calapp.bgAlpha',v);}catch(e){}applyBg();},
-  'set.bgLum':el=>{const v=String(el.value||'100');try{localStorage.setItem('calapp.bgLum',v);}catch(e){}applyBg();},
+  'set.calA':el=>{const c=calGlassLoad();c.a=100-Number(el.value);calGlassSave(c);calGlassApply();},   /* 슬라이더는 '투명도' — 클수록 투명 */
+  'set.calT':el=>{const c=calGlassLoad();c.tint=Number(el.value);calGlassSave(c);calGlassApply();},
   'df.rm':async el=>{
     if(document.querySelector('.ctxmenu')){closeCtx();return;}   /* 열려 있으면 닫기(토글) */
     if(!S.live||!FB.db)return;

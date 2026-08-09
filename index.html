@@ -158,7 +158,9 @@ svg{display:block;flex-shrink:0;}
 #sidebar.mini .sb-acct{flex:none;margin:0 auto;}
 #sidebar.mini .sb-acct-info,#sidebar.mini .sb-acct-role{display:none;}
 .sb-th1{flex:0 0 auto;position:relative;width:48px;align-self:stretch;min-height:38px;margin-left:6px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--rmd);color:var(--lbl3);background:transparent;cursor:pointer;transition:background var(--tr),color var(--tr);}
-.sb-th1::before{content:"";position:absolute;left:0;top:5px;bottom:5px;width:1px;background:var(--sep);}
+/* 구분선은 프로필 버튼과 테마 버튼의 **중간**에 온다 — margin-left:6px 이므로 left:-3px 이 정확히 가운데.
+   높이는 위아래 7px 씩 물려 살짝 짧게(전 5px). */
+.sb-th1::before{content:"";position:absolute;left:-3px;top:7px;bottom:7px;width:1px;background:var(--sep);}
 .sb-th1:hover{background:var(--fill);color:var(--bt1);}
 .sb-th1 .icn{width:17px;height:17px;}
 #sidebar.mini .sb-th1{display:none;}   /* 접었을 때는 테마 버튼을 감춘다(펼치면 그대로) */
@@ -630,44 +632,41 @@ html.dark .stx-done{color:#3BA85C;}
 .rpk-seg button.on{background:var(--bg);color:var(--lbl);box-shadow:0 1px 2px rgba(0,0,0,.08);}
 @media (max-width:560px){.rpk{grid-template-columns:1fr;}}
 
-/* 앱 배경화면(로컬 전용) — 본문 뒤에 깔고 그 위를 배경색으로 덮어 글자 대비를 지킨다 */
+/* 앱 배경화면(로컬 전용) — 처리 방식은 디뉴어 앱의 로그인 배경과 같다:
+   ① 사진 위에 위→아래 어두운 그라디언트 ② 가장자리를 어둡게 눌러 주는 비네트(radial)
+   ③ 정적 필름 그레인 캔버스(#bgGrain, overlay). 사진 자체는 눕히지 않고 레이어로만 다스린다. */
 body::before{content:'';position:fixed;inset:0;z-index:-2;background-image:var(--app-bg-img,none);background-size:cover;background-position:center;opacity:0;transition:opacity .45s ease;}
 body.hasbg::before{opacity:1;}
-body::before{filter:saturate(.88) contrast(.92) brightness(1.02);}   /* 배경은 살짝 눕혀 글자와 다투지 않게 */
-body.hasbg::after{content:'';position:fixed;inset:0;z-index:-1;
-  background:linear-gradient(var(--bg),var(--bg)),url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/><feColorMatrix type='saturate' values='0'/></filter><rect width='140' height='140' filter='url(%23n)' opacity='.5'/></svg>");
-  background-blend-mode:normal;opacity:var(--app-bg-dim,.18);}   /* 배경 위 밑칠 — 고정값 .18(조절 대상 아님) */
+/* 그라디언트 + 비네트 한 겹(디뉴어 #gate 와 같은 구성) — 밑칠(단색 덮개) 방식은 대체됐다 */
+body.hasbg::after{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:radial-gradient(125% 125% at 50% 42%, transparent 52%, rgba(0,0,0,.42) 100%),
+             linear-gradient(180deg, rgba(8,8,12,.40) 0%, rgba(8,8,12,.62) 100%);}
+/* 안쪽 비네트 한 겹 더 — 가운데는 그대로 두고 가장자리만 눌러 화면이 붕 뜨지 않게(디뉴어 #gate::after) */
 body.hasbg #app::after{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
-  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/><feColorMatrix type='saturate' values='0'/></filter><rect width='140' height='140' filter='url(%23g)'/></svg>");
-  opacity:.055;mix-blend-mode:overlay;}   /* 은은한 그레인 — 고정값(조절 대상 아님) */
+  background:radial-gradient(118% 96% at 50% 44%, transparent 42%, rgba(0,0,0,.5) 100%);}
+/* 정적 필름 그레인 — 캔버스(#bgGrain)를 한 번만 그린다. 디뉴어와 같은 opacity .17 · overlay */
+#bgGrain{position:fixed;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none;
+  opacity:.17;mix-blend-mode:overlay;display:none;}
+body.hasbg #bgGrain{display:block;}
+@media print{#bgGrain{display:none!important;}}
 body.hasbg #app,body.hasbg #main,body.hasbg #content{background:transparent!important;}
 /* 배경을 켜면 카드가 유리가 된다 — 토큰만 바꿔 앱 전체에 한 번에 먹인다.
-   --cl(레이아웃 톤 밝기)은 각 채널에 곱한다: 1 미만이면 카드가 가라앉고, 넘으면 밝아진다(rgb 가 자동 클램프). */
-body.hasbg{--ca:var(--app-card-alpha,.90);--cl:var(--app-card-lum,1);
-  --bg2:rgba(calc(255*var(--cl)),calc(255*var(--cl)),calc(255*var(--cl)),var(--ca));
-  --surf2:rgba(calc(245*var(--cl)),calc(247*var(--cl)),calc(250*var(--cl)),calc(var(--ca) - .08));
-  --surf3:rgba(calc(233*var(--cl)),calc(237*var(--cl)),calc(242*var(--cl)),calc(var(--ca) - .08));
-  --glass3:rgba(calc(255*var(--cl)),calc(255*var(--cl)),calc(255*var(--cl)),calc(var(--ca) - .02));}
-html.dark body.hasbg{
-  --bg2:rgba(calc(28*var(--cl)),calc(28*var(--cl)),calc(30*var(--cl)),var(--ca));
-  --surf2:rgba(calc(38*var(--cl)),calc(38*var(--cl)),calc(42*var(--cl)),calc(var(--ca) - .06));
-  --surf3:rgba(calc(48*var(--cl)),calc(48*var(--cl)),calc(54*var(--cl)),calc(var(--ca) - .06));
-  --glass3:rgba(calc(28*var(--cl)),calc(28*var(--cl)),calc(30*var(--cl)),var(--ca));}
+   (220차의 톤 밝기 --cl 은 사용자 지시로 철회 — 달력 유리는 아래 달력 전용 설정이 맡는다) */
+body.hasbg{--ca:var(--app-card-alpha,.90);
+  --bg2:rgba(255,255,255,calc(var(--ca)));--surf2:rgba(245,247,250,calc(var(--ca) - .08));
+  --surf3:rgba(233,237,242,calc(var(--ca) - .08));--glass3:rgba(255,255,255,calc(var(--ca) - .02));}
+html.dark body.hasbg{--bg2:rgba(28,28,30,calc(var(--ca)));--surf2:rgba(38,38,42,calc(var(--ca) - .06));
+  --surf3:rgba(48,48,54,calc(var(--ca) - .06));--glass3:rgba(28,28,30,calc(var(--ca)));}
 body.hasbg #view-defect,body.hasbg #mb,body.hasbg .btn,body.hasbg .rec-tbl,body.hasbg .pv-table,
 body.hasbg .cal-nb,body.hasbg .cal-title,body.hasbg .tb-ic,body.hasbg .tb-srch,body.hasbg .sb-more,
 body.hasbg .ctxmenu,body.hasbg .tb-pop,body.hasbg .nq-panel,body.hasbg .popbox{
   --bg2:#fff;--surf2:#F5F7FA;--surf3:#E9EDF2;--glass3:#fff;}
-/* 배경을 켜면 달력 칸을 **위젯(유리) 달력과 같은 톤**으로 맞춘다 — 사용자 지시(220차).
-   값은 body.wid.glass 의 셀 규칙과 동일: 평일 rgba(24,28,38,.55) · 주말 rgba(52,56,68,.5) ·
-   다른 달 rgba(24,28,38,.23) · 요일머리 rgba(13,16,24,.67). 톤 밝기(--cl)도 함께 먹인다.
-   ⚠ 판(#fcal)은 투명이어야 칸 색이 그대로 보인다 — 여기서 --bg2 를 흰색으로 되돌리면 안 된다. */
+/* 배경을 켜면 달력 칸을 위젯(유리) 달력과 같은 톤으로 맞춘다.
+   ⚠ 칸·요일머리·년월/넘김 버튼의 **색 값은 calGlassApply() 가 주입하는 #calDyn 규칙이 단일 출처**다
+   (설정의 달력 투명도·유리 톤이 그 값을 만든다). 여기에 같은 값을 또 적으면 두 곳이 갈라진다.
+   판(#fcal·cal-card)만 투명하게 두어 칸 색이 그대로 보이게 한다. */
 body.hasbg #fcal{background:transparent;}
 body.hasbg .cal-card{background:transparent;}
-body.hasbg #fcal td.fc-daygrid-day{background:rgba(calc(24*var(--cl,1)),calc(28*var(--cl,1)),calc(38*var(--cl,1)),.55);}
-body.hasbg #fcal td.fc-daygrid-day.fc-day-sat,
-body.hasbg #fcal td.fc-daygrid-day.fc-day-sun{background:rgba(calc(52*var(--cl,1)),calc(56*var(--cl,1)),calc(68*var(--cl,1)),.5);}
-body.hasbg #fcal td.fc-daygrid-day.fc-day-other{background:rgba(calc(24*var(--cl,1)),calc(28*var(--cl,1)),calc(38*var(--cl,1)),.23);}
-body.hasbg #fcal .fc-col-header-cell{background:rgba(13,16,24,.67);}
 /* 어두운 칸 위에서는 글자·격자선을 밝게 — 위젯 유리 모드와 같은 세트.
    ⚠ 날짜 숫자는 `.fc-daygrid-day-number` 가 아니라 그 안의 `.dnum` 이 색을 갖는다(311~312행) —
    컨테이너에만 색을 주면 기존 --rd/--bt1 이 그대로 남아 어두운 칸에서 읽히지 않는다. */
@@ -693,6 +692,12 @@ html.dark body.hasbg .nq-panel,html.dark body.hasbg .popbox{--bg2:#1C1C1E;--surf
    유리(반투명+blur)는 각 블록에만. 블록 6개 수준의 blur 는 하자 화면과 달리 체감 부담이 없다. */
 body.hasbg #sidebar>*{background:var(--glass3);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);}
 body.hasbg .card,body.hasbg #sidebar>*{box-shadow:0 2px 14px rgba(16,24,40,.12);}
+/* ⚠ 달력을 감싸는 카드(.cal-card)에는 그림자를 주지 않는다 — 판이 투명이라 그림자만 네모로 떠서
+   달력과 위 버튼을 한 덩어리로 감싼 것처럼 보였다. 그림자는 격자와 버튼에 각각 건다. */
+body.hasbg .cal-card{box-shadow:none;}
+body.hasbg #fcal{box-shadow:0 2px 14px rgba(16,24,40,.12);}
+body.hasbg:not(.wid) #view-calendar .cal-title,
+body.hasbg:not(.wid) #view-calendar .cal-head>.cal-ctl>.cal-nav:first-child{box-shadow:0 2px 10px rgba(16,24,40,.16);}
 @media print{body.hasbg::before,body.hasbg::after{display:none!important;}}
 /* 기준월 칩 — 하자 관리에서는 눌러서 게시월을 고른다 */
 #tbRm[data-act]{cursor:pointer;}
@@ -2364,6 +2369,8 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 </style>
 </head>
 <body>
+<!-- 배경화면 위 정적 필름 그레인(디뉴어 로그인 배경과 같은 방식) — 배경을 켤 때만 보인다 -->
+<canvas id="bgGrain" aria-hidden="true"></canvas>
 <!-- 아이콘: Lucide (ISC) — 24 그리드 · stroke 2 -->
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true" focusable="false">
 <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></symbol>
@@ -2709,8 +2716,10 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
               <span style="display:inline-flex;gap:6px;align-items:center"><button class="btn bo bsm" data-act="set.bgPick">이미지 선택</button><button class="btn bg2 bsm" id="bgClearBtn" data-act="set.bgClear" hidden>없애기</button></span></div>
             <div class="share-row" style="margin-top:10px"><div><b style="font-size:13px">레이아웃 투명도</b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">카드가 배경을 얼마나 비칠지 · 하자 관리 화면은 항상 불투명</div></div>
               <input type="range" id="bgAlpha" min="60" max="100" step="5" value="90" data-act="set.bgAlpha" style="width:160px"></div>
-            <div class="share-row" style="margin-top:10px"><div><b style="font-size:13px">레이아웃 톤 밝기</b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">카드·패널 색을 밝게 또는 가라앉게 · 배경화면을 켰을 때만 적용</div></div>
-              <input type="range" id="bgLum" min="70" max="130" step="5" value="100" data-act="set.bgLum" style="width:160px"></div>
+            <div class="share-row" style="margin-top:10px"><div><b style="font-size:13px">달력 투명도 <b id="bgCalAV" style="color:var(--bt1)">15%</b></b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">달력 칸이 배경을 얼마나 비칠지 · 위젯 설정과 같은 방식</div></div>
+              <input type="range" id="bgCalA" min="0" max="85" step="5" value="15" data-act="set.calA" style="width:160px"></div>
+            <div class="share-row" style="margin-top:10px"><div><b style="font-size:13px">달력 유리 톤 <b id="bgCalTV" style="color:var(--bt1)">100%</b></b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">칸의 어두운 유리색 농도 · 낮추면 진해지고 올리면 연해집니다</div></div>
+              <input type="range" id="bgCalT" min="50" max="160" step="5" value="100" data-act="set.calT" style="width:160px"></div>
           </div>
           <div class="set-card card">
             <div class="set-h">하자 관리 스냅샷</div>
@@ -2749,5 +2758,5 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=249"></script>
+<script src="./app.js?v=250"></script>
 </body></html>
