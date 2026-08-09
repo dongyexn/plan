@@ -35,8 +35,8 @@ let fail = 0;
 const chk = (name, ok, detail) => { console.log((ok ? 'ok    ' : 'FAIL  ') + name + (detail ? '  ' + detail : '')); if (!ok) fail++; };
 
 chk('달력 42칸(fixedWeekCount 6주)', await pg.$$eval('.fc-daygrid-day', els => els.length) === 42);
-for (const v of ['tasks', 'mine', 'org', 'settings', 'cal']) {
-  await pg.evaluate(vv => { const b = document.querySelector(`[data-act="nav"][data-view="${vv}"]`); if (b) b.click(); }, v);
+for (const v of ['tasks', 'report', 'org', 'settings', 'defect', 'calendar']) {
+  await pg.evaluate(vv => { const b = document.querySelector(`[data-act="nav.go"][data-view="${vv}"]`); if (b) b.click(); }, v);
   await new Promise(r => setTimeout(r, 500));
   chk('화면 전환 ' + v, await pg.$eval('#view-' + v, el => el.classList.contains('act')).catch(() => false));
 }

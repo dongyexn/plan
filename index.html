@@ -27,6 +27,8 @@
 --glass:rgba(255,255,255,.88);--glass2:rgba(255,255,255,.75);
 --tint-rd:#FDEAEA;--tint-gn:#E9F6EE;--tint-am:#FBF0DE;
 --ch-d60:#DA6A60;--ch-d30:#E89C9A;--ch-d0:#B3C7DD;--ch-recv:#3E71D2;--ch-done:#F0B144;
+--ch-d60h:#C65A50;--ch-d30h:#C76F6D;--ch-d0h:#7E9BBC;--ch-lbl:#1F2B4C;--ch-lbl2:#7A3434;
+--ch-grid:rgba(0,0,0,.05);--ch-axis:rgba(60,60,67,.42);--ch-dlr:#2C437C;--ch-dld:#A0590A;--seg-lbl0:#2C437C;
 --rsm:8px;--rmd:8px;--rlg:8px;--rxl:8px;--rp:8px;--sbw:4px;
 --sw:240px;--swm:64px;--th:46px;--tr:.22s cubic-bezier(.4,0,.2,1);--ct:rgba(60,60,67,.70);}
 html.dark{
@@ -38,6 +40,9 @@ html.dark{
   --bt1:#9DBDEA;--bt2:#C6DAF5;--ct:rgba(236,236,236,.88);
   --gn:#4ADE80;--rd:#F87171;--am:#FBBF24;
   --tint-rd:rgba(248,113,113,.16);--tint-gn:rgba(74,222,128,.16);--tint-am:rgba(251,191,36,.16);
+  --ch-d60:#B4544B;--ch-d60h:#CB6B62;--ch-d30:#C98C86;--ch-d30h:#DCA5A0;--ch-d0:#6E9BD6;--ch-d0h:#87ACE0;--ch-done:#E8BE62;
+  --ch-lbl:#E8EEF8;--ch-lbl2:#F2C9C7;--ch-grid:rgba(255,255,255,.09);--ch-axis:rgba(236,236,236,.42);
+  --seg-lbl0:#15233C;--ch-dlr:#A9C7EE;--ch-dld:#EFC873;
   --glass:rgba(33,33,33,.88);--glass2:rgba(25,25,25,.80);
   color-scheme:dark;
 }
@@ -416,59 +421,233 @@ html.dark .stx-done{color:#3BA85C;}
 /* 상단바 기준월 칩 */
 .tb-rm{display:inline-flex;align-items:center;height:30px;padding:0 10px;margin:0;font-size:12.5px;font-weight:600;
   color:var(--lbl3);background:var(--fill);border:1px solid var(--sep);border-radius:8px;}
-/* 하자처리 현황 — KPI 카드와 표. 색·모서리·글자 크기는 앱의 다른 화면과 같은 값을 쓴다 */
-.df-kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:12px;}
-.df-k{background:var(--bg2);border:1px solid var(--sep);border-radius:var(--rlg);padding:14px 16px;
-  display:flex;flex-direction:column;gap:2px;box-shadow:0 1px 2px rgba(16,24,40,.05),0 1px 3px rgba(16,24,40,.04);}
-.df-k .l{font-size:12px;font-weight:700;color:var(--lbl3);}
-.df-k b{font-size:22px;font-weight:800;letter-spacing:-.02em;line-height:1.2;}
-.df-k .u{font-size:11.5px;color:var(--lbl3);}
-.df-k.ok b{color:var(--gn);} .df-k.warn b{color:var(--am);} .df-k.bad b{color:var(--rd);}
-.df-card{padding:0;overflow:hidden;margin-bottom:12px;}
-.df-h{display:flex;align-items:center;gap:8px;padding:12px 16px 10px;border-bottom:1px solid var(--sep);}
-.df-h b{font-size:14px;}
-.df-sub{font-size:12px;color:var(--lbl3);}
-.df-tr{padding:14px 16px 6px;}
-.df-tr{position:relative;height:300px;}
-.df-do{height:260px;}
-.df-tr canvas{width:100%!important;height:100%!important;}
-.df-tbl{margin:0;}
-.df-tbl th{padding:11px 12px 9px;}
-.df-tbl td{padding:9px 12px;}
-.df-tbl .df-g td{padding:7px 12px;}
-.df-tbl td,.df-tbl th{font-size:13px;}
-.df-tbl .df-g td{font-size:12px;font-weight:700;color:var(--bt1);background:var(--surf2);}
-.df-tbl .df-r{cursor:pointer;}
-.df-tbl .df-r:hover{background:var(--fill);}
-.df-tbl .df-lt{color:var(--rd);font-weight:700;}
-/* 현장 화면 탭 — 조직/현장 관리의 세그먼트(.orgseg)와 같은 문법 */
-.df-tabs{display:inline-flex;gap:2px;background:var(--fill);border-radius:8px;padding:3px;margin-bottom:12px;}
-.df-tab{height:30px;padding:0 14px;border:0;background:transparent;border-radius:6px;font:inherit;font-size:13px;
-  font-weight:700;color:var(--lbl2);cursor:pointer;transition:background var(--tr),color var(--tr);}
-.df-tab:hover{color:var(--lbl);}
-.df-tab.on{background:var(--bg2);color:var(--bt1);box-shadow:0 1px 2px rgba(16,24,40,.06);}
-.df-ta{width:100%;min-height:34px;border:1.5px solid var(--sepo);border-radius:var(--rmd);padding:6px 10px;
-  font:inherit;font-size:12.5px;color:var(--lbl);background:var(--bg2);resize:vertical;}
-.df-ta:focus{border-color:var(--b400);outline:none;box-shadow:0 0 0 3px rgba(83,140,222,.14);}
-.df-prev{font-size:11.5px;color:var(--lbl3);margin-bottom:4px;white-space:pre-wrap;}
-.df-lab{font-size:11px;font-weight:700;color:var(--lbl3);display:block;margin-bottom:3px;}
-.df-ins{padding:14px 16px 16px;font-size:13px;line-height:1.65;color:var(--lbl);}
-.df-ins h1,.df-ins h2,.df-ins h3,.df-ins h4{font-size:13.5px;font-weight:700;margin:10px 0 4px;}
-.df-ins ul,.df-ins ol{margin:4px 0 4px 18px;}
-.df-ins li{margin:2px 0;}
-.df-ins b,.df-ins strong{font-weight:700;color:var(--bt1);}
-.df-ins p{margin:4px 0;}
-.df-anab{padding:12px 16px 16px;}
-.df-tbl .up-good{color:var(--gn);font-weight:700;}
-.df-tbl .up-bad{color:var(--rd);font-weight:700;}
+/* ══════════ 하자처리 현황 — 원본 화면 이식 CSS ══════════
+   클래스 이름은 원본(하자처리 현황)을 그대로 쓰되 #view-defect 범위로 가둔다.
+   모서리·글자 크기·색은 이 앱의 토큰이 정한다(--r* 가 전부 8px 라 각지게 나온다). */
+#view-defect .card{background:var(--bg2);border-radius:var(--rxl);padding:18px 20px;border:1px solid var(--sep);}
+#view-defect .mb12{margin-bottom:12px;}
+#view-defect .sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px;}
+#view-defect .ct{font-size:14px;font-weight:700;color:var(--ct);}
+#view-defect .st{font-size:14px;font-weight:700;color:var(--lbl);display:flex;align-items:center;gap:8px;}
+#view-defect .as{display:flex;flex-direction:column;gap:12px;}
+#view-defect .df-sub{font-size:12px;color:var(--lbl3);}
+#view-defect .yr-lbl{font-size:12.5px;font-weight:600;color:var(--lbl2);}
+#view-defect .yr-sel{-webkit-appearance:none;appearance:none;background:var(--bg2);border:1px solid var(--sepo);border-radius:var(--rsm);padding:5px 28px 5px 11px;font-size:12.5px;font-weight:600;color:var(--lbl);cursor:pointer;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%233E71D2' stroke-width='2.4' stroke-linecap='round'><path d='M6 9l6 6-6 6'/></svg>");background-repeat:no-repeat;background-position:right 9px center;transition:border-color .15s;}
+#view-defect .yr-sel:hover{border-color:var(--b400);}
+/* ── KPI 카드(kc) — 원본 톤(bl/sk/ms/wh) + 우상단 '목록 보기' ── */
+#view-defect .akpi{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px;}
+#view-defect .kc{border-radius:var(--rxl);padding:14px 16px;min-height:84px;position:relative;overflow:hidden;border:1px solid transparent;transition:transform .18s ease,box-shadow .18s ease;}
+@media(hover:hover){#view-defect .kc:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(31,43,76,.14),0 2px 6px rgba(31,43,76,.08);z-index:1;}}
+#view-defect .kc.bl{background:var(--b700);color:#fff;}
+#view-defect .kc.sk{background:var(--b500);color:#fff;}
+#view-defect .kc.ms{background:var(--b100);border-color:var(--b200);color:var(--bt2);}
+#view-defect .kc.wh{background:var(--bg2);border-color:var(--sep);color:var(--lbl);}
+#view-defect .kl{font-size:14px;font-weight:500;opacity:.72;margin-bottom:4px;}
+#view-defect .kv{font-size:22px;font-weight:700;line-height:1;margin-bottom:4px;}
+#view-defect .kv .u{font-size:11px;font-weight:400;opacity:.72;margin-left:2px;}
+#view-defect .km{font-size:10.5px;opacity:.68;margin-top:3px;}
+#view-defect .kc-click{cursor:pointer;}
+#view-defect .kc-cta{position:absolute;right:12px;top:12px;display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:var(--rp);background:transparent;color:var(--bt1);border:1.5px solid var(--b200);font-size:11px;font-weight:600;line-height:1.2;transition:background .15s;pointer-events:none;}
+#view-defect .kc-click:hover .kc-cta{background:var(--b50);}
+#view-defect .kc-cta svg{width:13px;height:13px;}
+#view-defect .kc.kc-site .kl{font-size:12px;font-weight:600;opacity:.78;margin-bottom:4px;}
+#view-defect .kc.kc-site .kv{font-size:20px;line-height:1.25;letter-spacing:-.01em;}
+#view-defect .kc.kc-site .kc-site-nm{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#view-defect .kc.kc-site .km{opacity:.85;line-height:1.45;}
+/* ── 현장 탭(tnav) — 원본과 같은 큰 탭. 각진 8px 모서리 ── */
+#view-defect .tnav{display:flex;gap:6px;background:var(--glass);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);padding:6px;border-radius:var(--rxl);border:1px solid var(--sep);margin-bottom:14px;position:sticky;top:0;z-index:50;}
+#view-defect .tnav-i{flex:1;padding:9px 14px;font-size:13px;font-weight:600;color:var(--lbl2);border-radius:var(--rmd);cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;border:none;background:transparent;}
+#view-defect .tnav-i:hover{background:var(--fill);color:var(--lbl);}
+#view-defect .tnav-i.act{background:var(--b600);color:#fff;box-shadow:0 2px 8px rgba(50,89,182,.24);}
+#view-defect .tnav-i .icn-sm{width:15px;height:15px;}
+/* ── 추이 차트 카드 ── */
+#view-defect .main-chart-card{aspect-ratio:16/4;min-height:256px;display:flex;flex-direction:column;}
+#view-defect .cw{position:relative;width:100%;}
+#view-defect .chart-lg{display:flex;align-items:center;gap:18px;padding:8px 0 0 48px;font-size:11px;color:var(--ct);flex-wrap:wrap;flex-shrink:0;}
+#view-defect .chart-lg .li,#view-defect .ltrmom-lg .li{display:flex;align-items:center;gap:6px;}
+#view-defect .chart-lg .mk-bar{width:18px;height:11px;border-radius:3px;flex-shrink:0;}
+#view-defect .chart-lg .mk-ln{width:13px;height:13px;border-radius:50%;background:var(--bg2);border:2.5px solid;flex-shrink:0;}
+#view-defect .ck-d60{background:var(--ch-d60)!important;}
+#view-defect .ck-d30{background:var(--ch-d30)!important;}
+#view-defect .ck-d0{background:var(--ch-d0)!important;}
+#view-defect .ck-recv{border-color:var(--ch-recv)!important;}
+#view-defect .ck-done{border-color:var(--ch-done)!important;}
+/* ── 도넛 + 전월대비 카드 2열(opsr) ── */
+#view-defect .opsr{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;min-height:260px;}
+#view-defect .opsr>.card{min-height:0;display:flex;flex-direction:column;}
+#view-defect .opsr>.card>.ct{flex-shrink:0;margin-bottom:12px;}
+#view-defect .opsr>.card>.mom-wrap,#view-defect .opsr>.card>.dn-side{flex:1;min-height:0;}
+#view-defect .dn-side{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:6px 4px;height:100%;}
+#view-defect .dn-side .canv{flex:0 0 210px;width:210px;height:210px;max-width:210px;max-height:210px;position:relative;align-self:center;}
+#view-defect .dn-side .lg{min-width:0;flex:1;display:grid;grid-template-columns:1fr 1fr;column-gap:14px;row-gap:5px;font-size:12px;grid-auto-flow:column;grid-template-rows:repeat(var(--lgr,6),auto);}
+#view-defect .dn-side .lg .it{display:grid;grid-template-columns:9px minmax(60px,1fr) auto auto;align-items:center;min-width:0;height:22px;font-variant-numeric:tabular-nums;cursor:pointer;border-radius:4px;transition:background .15s;padding:0 2px;}
+#view-defect .dn-side .lg .it:hover{background:var(--bg);}
+#view-defect .dn-side .lg .dt{width:9px;height:9px;border-radius:50%;}
+#view-defect .dn-side .lg .nm{color:var(--ct);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;font-size:12.5px;min-width:0;padding-left:6px;}
+#view-defect .dn-side .lg .cnt{color:var(--ct);font-weight:600;font-size:12.5px;white-space:nowrap;padding:0 4px 0 6px;text-align:right;}
+#view-defect .dn-side .lg .pct{color:var(--lbl);font-weight:700;font-size:12.5px;white-space:nowrap;text-align:right;min-width:36px;}
+#view-defect .dn-empty{color:var(--lbl3);font-size:12.5px;}
+/* ── 전월대비 실적 현황(mom) ── */
+#view-defect .mom-wrap{display:flex;flex-direction:column;justify-content:space-between;gap:6px;padding-top:4px;height:100%;}
+#view-defect .mom-row{display:grid;grid-template-columns:80px 1fr 78px;align-items:center;gap:14px;padding:7px 4px;border-bottom:1px solid var(--sep);}
+#view-defect .mom-row:last-child{border-bottom:none;}
+#view-defect .mom-row .label{font-size:13px;font-weight:700;color:var(--lbl);}
+#view-defect .mom-row .bars{display:flex;flex-direction:column;}
+#view-defect .mom-row .bar{display:grid;grid-template-columns:32px 1fr 50px;align-items:center;gap:6px;font-size:10.5px;font-variant-numeric:tabular-nums;padding:4px;margin:0 -4px;border-radius:4px;transition:background .15s ease;}
+#view-defect .mom-row .bar:hover{background:var(--bg);}
+#view-defect .mom-row .bar .lb{color:var(--lbl3);font-weight:600;}
+#view-defect .mom-row .bar.curr .lb{color:var(--lbl2);font-weight:700;}
+#view-defect .mom-row .bar .tr{height:8px;background:var(--fill);border-radius:var(--rp);overflow:hidden;}
+#view-defect .mom-row .bar .fl{height:100%;border-radius:var(--rp);width:0;transition:width .8s cubic-bezier(.4,0,.2,1);}
+#view-defect .mom-row .bar.prev .fl{background:var(--b200);}
+#view-defect .mom-row .bar.curr .fl{background:var(--b700);}
+#view-defect .mom-row .bar .vl{font-weight:700;color:var(--lbl);text-align:right;}
+#view-defect .mom-row .bar.curr .vl{color:var(--bt2);font-weight:800;}
+#view-defect .mom-row .delta{display:flex;justify-content:flex-end;font-variant-numeric:tabular-nums;min-width:64px;}
+#view-defect .mom-row .delta .d{font-size:11px;font-weight:700;padding:2px 8px;border-radius:var(--rp);display:inline-flex;align-items:center;}
+#view-defect .mom-row .delta .d.up{background:var(--tint-gn);color:var(--gn);}
+#view-defect .mom-row .delta .d.dn{background:var(--tint-rd);color:var(--rd);}
+#view-defect .mom-row .delta .d.eq{background:var(--fill);color:var(--lbl3);}
+/* ── 주요 이슈 카드(ic) — 게시본 insightsHTML 이 그대로 들어온다 ── */
+#view-defect .ins-grid{display:flex;flex-direction:column;gap:10px;}
+#view-defect .ic{display:flex;gap:14px;padding:14px 16px;border-radius:var(--rlg);border:1.5px solid;align-items:flex-start;}
+#view-defect .ic-i{width:28px;height:28px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+#view-defect .ic-i svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+#view-defect .ic-t{flex:1;min-width:0;}
+#view-defect .ic-ttl{font-size:13px;font-weight:700;color:var(--lbl);margin-bottom:4px;letter-spacing:-.01em;}
+#view-defect .ic-sub{font-size:12px;line-height:1.55;color:var(--lbl2);}
+#view-defect .ic-sub b{font-weight:700;color:var(--lbl);}
+#view-defect .ic.ok{background:rgba(52,199,89,.08);border-color:rgba(52,199,89,.32);}
+#view-defect .ic.ok .ic-i{background:var(--gn);color:#fff;}
+#view-defect .ic.warn{background:rgba(255,149,0,.07);border-color:rgba(255,149,0,.3);}
+#view-defect .ic.warn .ic-i{background:var(--am);color:#fff;}
+#view-defect .ic.bad{background:rgba(255,59,48,.06);border-color:rgba(255,59,48,.3);}
+#view-defect .ic.bad .ic-i{background:var(--rd);color:#fff;}
+/* ── 표(dt) — 원본 표 규격 그대로 ── */
+#view-defect .dt{width:100%;font-size:12.5px;}
+#view-defect .dt thead tr{border-bottom:1px solid var(--sep);}
+#view-defect .dt th{padding:9px 12px;text-align:left;font-size:12.5px;font-weight:700;color:var(--lbl2);white-space:nowrap;}
+#view-defect .dt td{padding:10px 12px;border-bottom:1px solid var(--sep);vertical-align:middle;}
+#view-defect .dt tr:last-child td{border-bottom:none;}
+#view-defect .dt tbody tr:hover td{background:var(--b50);}
+#view-defect .dt th.cc,#view-defect .dt td.cc{text-align:center;}
+#view-defect .dt th.n,#view-defect .dt td.n{text-align:right;}
+#view-defect .dt .tot td{background:transparent;border-top:1px solid var(--sep);font-weight:700;color:var(--lbl);}
+#view-defect .dt tfoot .tot td{border-bottom:none;}
+#view-defect .dt .mcell{font-weight:700;color:var(--bt2);}
+#view-defect .dt tbody tr.mend td{border-bottom:1.5px solid var(--b300);}
+#view-defect .dt .na{color:var(--lbl3);}
+#view-defect .dt th.tl-grp,#view-defect .dt td.tl-grp{border-left:1px dashed rgba(60,60,67,.11)!important;padding-left:14px!important;}
+#view-defect .dt th.tl-grp-ltr,#view-defect .dt td.tl-grp-ltr{border-left:none!important;}
+#view-defect .dt th.recv-sub{color:var(--lbl2)!important;}
+#view-defect .dt td.recv-total,#view-defect .dt td.recv-weekly{color:var(--lbl)!important;text-align:center!important;}
+#view-defect .dt td.proc-blue{color:var(--bt1)!important;text-align:center!important;font-weight:600!important;}
+#view-defect .dt td.unr-red,#view-defect .dt td.ltr-red{color:var(--rd)!important;font-weight:600!important;text-align:center!important;}
+#view-defect .dt th.rate-col,#view-defect .dt td.rate-col{text-align:center!important;}
+#view-defect .dt td.rate-col{font-weight:600!important;}
+#view-defect table.dt-detail th,#view-defect table.dt-detail td{text-align:center!important;}
+#view-defect .dt th[data-act]{cursor:pointer;-webkit-user-select:none;user-select:none;transition:color .15s;}
+#view-defect .dt th[data-act]:hover,#view-defect .dt th.act{color:var(--bt1);}
+#view-defect .sortmk{font-size:10px;opacity:.7;}
+#view-defect .rl-link{cursor:pointer;}
+#view-defect .rl-link:hover b{text-decoration:underline;}
+#view-defect .rl-link b{color:var(--bt1);}
+#view-defect tr.axfold{cursor:pointer;}
+#view-defect tr.axfold:hover td{background:var(--surf2);}
+#view-defect tr.axfold td[colspan]{text-align:center;color:var(--lbl3);font-size:12px;font-weight:700;padding:9px;}
+#view-defect .axfold-k{color:var(--lbl3)!important;font-style:italic;}
+#view-defect .axfold-h{font-style:normal;font-weight:700;font-size:11px;color:var(--bt1);}
+/* 증감 배지(ba)·권역 배지 */
+#view-defect .ba{display:inline-flex;align-items:center;font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:var(--rp);white-space:nowrap;font-variant-numeric:tabular-nums;}
+#view-defect .bbl{background:var(--b100);color:var(--bt1);}
+#view-defect .bgn{background:var(--tint-gn);color:var(--gn);}
+#view-defect .brd{background:var(--tint-rd);color:var(--rd);}
+#view-defect .bgr{background:var(--fill);color:var(--lbl3);}
+/* 장기미처리 비율 누적 바(표 셀) */
+#view-defect .ltrbar-wrap{display:flex;align-items:center;gap:8px;padding:0 4px;}
+#view-defect .ltrbar{flex:1;display:flex;height:8px;background:var(--fill2);border-radius:var(--rp);overflow:hidden;transition:height .15s ease;}
+#view-defect .ltrbar:hover{height:11px;}
+#view-defect .ltrbar .seg{height:100%;display:block;padding:0;background:transparent;border-radius:0;}
+#view-defect .ltrbar .seg.s60{background:var(--ch-d60);}
+#view-defect .ltrbar .seg.s30{background:var(--ch-d30);}
+#view-defect .ltrbar .seg.s0{background:var(--ch-d0);}
+#view-defect .ltrbar-pct{font-size:11.5px;font-weight:600;color:var(--bt1);font-variant-numeric:tabular-nums;min-width:42px;text-align:right;}
+/* 장기미처리 비율 현황(전월/금월 누적 바) */
+#view-defect .ltrmom-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+#view-defect .ltrmom-head .lm-ttl{font-size:14px;color:var(--lbl);font-weight:700;}
+#view-defect .ltrmom-lg{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--lbl2);}
+#view-defect .ltrmom-lg .mk{width:11px;height:11px;border-radius:3px;flex-shrink:0;}
+#view-defect .ltrmom-body{display:flex;align-items:center;gap:16px;}
+#view-defect .ltrmom-rows{flex:1;min-width:0;display:flex;flex-direction:column;gap:9px;}
+#view-defect .ltrmom-row{display:grid;grid-template-columns:40px 132px 1fr;align-items:center;column-gap:7px;}
+#view-defect .ltrmom-row .lm-mo{font-size:14px;font-weight:700;color:var(--lbl2);}
+#view-defect .ltrmom-row.cur .lm-mo{color:var(--lbl);}
+#view-defect .ltrmom-row .lm-stat{font-size:14px;font-weight:700;color:var(--lbl3);font-variant-numeric:tabular-nums;white-space:nowrap;margin-right:8px;}
+#view-defect .ltrmom-row.cur .lm-stat{color:var(--bt1);}
+#view-defect .ltrmom-bar{display:flex;height:15px;background:var(--fill2);border-radius:6px;overflow:hidden;}
+#view-defect .ltrmom-bar .lm-fill{height:100%;display:flex;overflow:hidden;}
+#view-defect .ltrmom-bar .seg{height:100%;display:flex;align-items:center;justify-content:center;white-space:nowrap;padding:0;border-radius:0;background:transparent;}
+#view-defect .ltrmom-bar .seg.s0{background:var(--ch-d0);}
+#view-defect .ltrmom-bar .seg.s0 .seg-v{color:var(--seg-lbl0);}
+#view-defect .ltrmom-bar .seg.s30{background:var(--ch-d30);}
+#view-defect .ltrmom-bar .seg.s60{background:var(--ch-d60);}
+#view-defect .ltrmom-bar .seg .seg-v{font-size:10.5px;font-weight:600;color:#fff;}
+#view-defect .ltrmom-row.cur .ltrmom-bar .seg .seg-v{font-weight:700;}
+#view-defect .ltrmom-delta{flex-shrink:0;display:flex;align-items:center;justify-content:flex-end;min-width:64px;}
+#view-defect .lm-delta{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:700;padding:4px 10px;border-radius:var(--rp);white-space:nowrap;font-variant-numeric:tabular-nums;}
+#view-defect .lm-delta.up{background:var(--tint-rd);color:var(--rd);}
+#view-defect .lm-delta.dn{background:var(--tint-gn);color:var(--gn);}
+#view-defect .lm-delta.eq{background:var(--fill);color:var(--lbl2);}
+/* 축 전환 세그먼트(공종별/업체별·현장별/업체별) */
+#view-defect .axseg{margin-left:auto;display:inline-flex;background:var(--fill);border-radius:var(--rp);padding:3px;gap:2px;}
+#view-defect .axseg button{border:0;background:transparent;color:var(--lbl2);border-radius:6px;padding:5px 13px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:background .12s,color .12s;}
+#view-defect .axseg button:hover{color:var(--lbl);}
+#view-defect .axseg button.on{background:var(--bg2);color:var(--bt1);box-shadow:0 1px 2px rgba(0,0,0,.10);}
+/* 처리계획 칸 — 지난달(읽기) 위 · 이번 달(입력) 아래 */
+#view-defect td.pp-cell{padding:8px 9px 8px 30px;text-align:left;vertical-align:top;}
+#view-defect .pp-stack{display:flex;gap:8px;align-items:flex-start;}
+#view-defect .pp-stack+.pp-stack{margin-top:7px;padding-top:7px;border-top:1px dashed var(--sep);}
+#view-defect .pp-lab{flex:0 0 34px;font-size:10.5px;font-weight:800;color:var(--lbl3);letter-spacing:.02em;padding-top:3px;}
+#view-defect .pp-box{flex:1;min-width:0;font-size:11.5px;line-height:1.55;color:var(--lbl2);white-space:pre-wrap;}
+#view-defect .pp-none{flex:1;color:var(--lbl3);font-size:11.5px;padding-top:1px;}
+#view-defect .plan-ta{flex:1;min-width:0;width:100%;padding:5px 9px;font:inherit;font-size:11.5px;min-height:32px;resize:none;overflow:hidden;border:1.5px solid var(--sepo);border-radius:var(--rsm);background:var(--bg2);color:var(--lbl);}
+#view-defect .plan-ta:focus{border-color:var(--b400);outline:none;box-shadow:0 0 0 3px rgba(83,140,222,.14);}
+#view-defect .ana-ta{min-height:84px;resize:vertical;overflow:auto;font-size:13px;line-height:1.6;}
+/* 종합 분석 의견 상자 */
+#view-defect .aib{background:var(--b50);border:1.5px solid var(--b200);border-radius:var(--rlg);padding:14px 16px;}
+#view-defect .ail{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;color:var(--bt1);letter-spacing:.04em;margin-bottom:8px;}
+#view-defect .ail::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--b500);}
+/* 공가 현황 스트립(vrow) */
+#view-defect .vrow{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:0 -20px;}
+#view-defect .vseg{padding:4px 18px;display:flex;flex-direction:column;justify-content:center;position:relative;}
+#view-defect .vseg+.vseg::before{content:"";position:absolute;left:-5px;top:8px;bottom:8px;width:1px;background:var(--sep);}
+#view-defect .vseg-l{font-size:14px;font-weight:500;color:var(--lbl2);margin-bottom:4px;}
+#view-defect .vseg-v{font-size:26px;font-weight:700;line-height:1;color:var(--lbl);font-variant-numeric:tabular-nums;}
+#view-defect .vseg-v .vseg-u{font-size:12px;font-weight:400;color:var(--lbl2);margin-left:2px;}
+#view-defect .vseg-m{font-size:11px;color:var(--lbl2);margin-top:4px;}
+#view-defect .vseg .vph{color:var(--lbl3);font-weight:500;font-size:18px;}
+/* ── 목록 모달 추가분 — 지연구간 칩(건수)·공가 칩·표시 건수 ── */
+.rl-band-bar{display:flex;align-items:center;gap:6px;flex:none;flex-wrap:wrap;margin-bottom:10px;}
+.rl-band{display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 11px;background:var(--bg2);color:var(--lbl2);border:1px solid var(--sep);border-radius:var(--rp);font:inherit;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .12s,border-color .12s,color .12s;}
+.rl-band b{font-weight:700;color:var(--lbl);font-variant-numeric:tabular-nums;}
+@media(hover:hover){.rl-band:hover{border-color:var(--b300);}}
+.rl-band.on{background:var(--b600);border-color:var(--bt1);color:#fff;}
+.rl-band.on b{color:#fff;}
+.rl-band.d60.on{background:var(--ch-d60);border-color:var(--ch-d60);}
+.rl-band.d30.on{background:var(--ch-d30);border-color:var(--ch-d30);color:var(--rd);}
+.rl-band.d30.on b{color:var(--rd);}
+.rl-band.d0.on{background:var(--ch-d0);border-color:var(--ch-d0);color:var(--bt2);}
+.rl-band.d0.on b{color:var(--bt2);}
+.rl-vsep{width:1px;height:16px;background:var(--sepo);margin:0 3px;flex:none;}
+.rl-lim{display:inline-flex;align-items:center;margin-left:auto;background:var(--fill);border-radius:var(--rp);padding:2px;gap:2px;}
+.rl-lim button{border:none;background:transparent;padding:4px 10px;border-radius:6px;font:inherit;font-size:11px;font-weight:600;color:var(--lbl2);cursor:pointer;white-space:nowrap;transition:background .12s,color .12s;}
+.rl-lim button.on{background:var(--bg2);color:var(--lbl);box-shadow:0 1px 2px rgba(0,0,0,.08);}
+.rl-lim-lbl{font-size:11px;font-weight:600;color:var(--lbl3);margin:0 2px 0 8px;}
+.rec-more{padding:8px 2px 0;font-size:11.5px;color:var(--lbl3);}
 /* 하자 목록 모달 — 표는 mgtbl 규격을 따르되 가로·세로 스크롤을 쓴다 */
 #mb.dfwide{max-width:min(1180px,96vw);}
 .rec-top{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
 .rec-top .inp{flex:1;min-width:160px;height:34px;padding:0 12px;font-size:13px;}
-.rec-chips{display:inline-flex;gap:2px;background:var(--fill);border-radius:8px;padding:3px;}
-.rec-chip{height:28px;padding:0 11px;border:0;background:transparent;border-radius:6px;font:inherit;font-size:12px;
-  font-weight:700;color:var(--lbl2);cursor:pointer;}
-.rec-chip.on{background:var(--bg2);color:var(--bt1);}
 .rec-n{font-size:12px;color:var(--lbl3);margin-left:auto;}
 .rec-wrap{max-height:60vh;overflow:auto;border:1px solid var(--sep);border-radius:var(--rmd);}
 .rec-tbl{width:100%;border-collapse:collapse;font-size:12.5px;white-space:nowrap;}
@@ -490,8 +669,6 @@ html.dark .stx-done{color:#3BA85C;}
 .rec-tbl.piv td.n,.rec-tbl.piv th.n{text-align:right;}
 .rec-tbl.piv tr:last-child td{background:var(--surf2);}
 .btn.bo.on{background:var(--b50);border-color:var(--b300);color:var(--bt1);}
-/* KPI 카드의 목록 보기 */
-.df-k .go{margin-top:6px;align-self:flex-start;}
 /* 하자 현황 — 자리만 잡아 둔 화면 */
 .dfc-none{display:flex;flex-direction:column;align-items:center;gap:8px;padding:48px 24px;text-align:center;}
 .dfc-none .icn{width:26px;height:26px;color:var(--lbl3);}
@@ -1743,14 +1920,12 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
   .rp-card{border:0;box-shadow:none;break-inside:auto;}
   .rp-tbl{font-size:10.5px;}
   /* 하자 화면 — 카드 테두리를 지우고 표는 쪽이 넘어가도 이어지게. 차트는 그대로 인쇄된다 */
-  .df-card,.df-k{border:0;box-shadow:none;break-inside:avoid;}
-  .df-kpi{grid-template-columns:repeat(5,1fr);gap:8px;}
-  .df-k b{font-size:18px;}
-  .df-tbl{font-size:10.5px;}
-  .df-tbl th,.df-tbl td{padding:5px 8px;}
-  .df-tr{height:230px;}
-  .df-tabs,.df-k .go,.df-anab textarea{display:none!important;}
-  .df-ins{padding:8px 0;}
+  #view-defect .card,#view-defect .kc,#view-defect .ic,#view-defect .mom-row{border:0;box-shadow:none;break-inside:avoid;page-break-inside:avoid;}
+  #view-defect .akpi{gap:8px;}
+  #view-defect .dt{font-size:10.5px;}
+  #view-defect .dt th,#view-defect .dt td{padding:5px 8px;}
+  #view-defect .main-chart-card{aspect-ratio:auto;height:230px;min-height:0;}
+  #view-defect .tnav,#view-defect .kc-cta,#view-defect .axseg,#view-defect .yr-sel,#view-defect .plan-ta{display:none!important;}
 }
 </style>
 </head>
@@ -1758,6 +1933,11 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 <!-- 아이콘: Lucide (ISC) — 24 그리드 · stroke 2 -->
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true" focusable="false">
 <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.2"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .9-1 1.6v.4"/><path d="M12 17.2h.01"/></symbol>
+<symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></symbol>
+<symbol id="i-warn" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+<symbol id="i-build" viewBox="0 0 24 24"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></symbol>
+<symbol id="i-trend" viewBox="0 0 24 24"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></symbol>
 <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 5v6h-6"/></symbol>
 <symbol id="i-today" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.6V20a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V9.6"/><path d="M9.6 21v-6.2h4.8V21"/></symbol>
 <symbol id="i-cal" viewBox="0 0 24 24"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></symbol>
@@ -2116,5 +2296,5 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=203"></script>
+<script src="./app.js?v=204"></script>
 </body></html>
