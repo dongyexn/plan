@@ -3,6 +3,9 @@
 <meta charset="UTF-8">
 <!-- CSP: 개발은 외부 app.js('self'), 단일 파일 배포는 build-single.mjs가 인라인 스크립트 해시를 넣는다 -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://www.gstatic.com https://www.google.com; font-src 'self' data:; object-src 'none'; base-uri 'self'; script-src 'self' https://www.gstatic.com https://www.google.com https://www.recaptcha.net https://recaptcha.google.com https://apis.google.com https://*.firebasedatabase.app; frame-src https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; connect-src 'self' https://*.googleapis.com https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.firebaseio.com wss://*.firebaseio.com https://www.gstatic.com https://www.google.com https://www.recaptcha.net https://recaptcha.google.com">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>H · 주요업무현황</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0' y1='0' x2='0.8' y2='1'><stop offset='0' stop-color='%236FB0FF'/><stop offset='1' stop-color='%2316357C'/></linearGradient></defs><rect width='64' height='64' rx='13' fill='url(%23g)'/><g transform='translate(11,16) scale(0.4828)' fill='white'><path d='M50.2456 0L44.4349 9.8333L11.2683 65.9786H11.2736H75.6123H86.8843L50.2456 0Z'/><path d='M38.9747 0L0 65.9786H7.58667L42.6533 6.62664L38.9747 0Z'/></g></svg>">
@@ -636,9 +639,9 @@ body.hasbg #view-defect,body.hasbg #mb,body.hasbg .btn,body.hasbg .rec-tbl,body.
 body.hasbg .cal-nb,body.hasbg .cal-title,body.hasbg .tb-ic,body.hasbg .tb-srch,body.hasbg .sb-more,
 body.hasbg .ctxmenu,body.hasbg .tb-pop,body.hasbg .nq-panel,body.hasbg .popbox{
   --bg2:#fff;--surf2:#F5F7FA;--surf3:#E9EDF2;--glass3:#fff;}
-/* 배경을 켜면 달력도 같은 유리 판 — 셀은 판 색을 그대로 쓴다 */
-body.hasbg #fcal{--fc-page-bg-color:transparent;}
-body.hasbg #fcal .fc-daygrid-day{background:transparent;}
+/* 달력은 배경 투명도의 영향을 받지 않는다 — 위젯처럼 제 색을 유지한다 */
+body.hasbg #fcal,body.hasbg .cal-card{--bg2:#fff;--surf2:#F5F7FA;--surf3:#E9EDF2;}
+html.dark body.hasbg #fcal,html.dark body.hasbg .cal-card{--bg2:#1C1C1E;--surf2:#26262A;--surf3:#303036;}
 html.dark body.hasbg #view-defect,html.dark body.hasbg #mb,html.dark body.hasbg .btn,
 html.dark body.hasbg .rec-tbl,html.dark body.hasbg .pv-table,html.dark body.hasbg .cal-nb,
 html.dark body.hasbg .cal-title,html.dark body.hasbg .tb-ic,html.dark body.hasbg .tb-srch,
@@ -2681,5 +2684,5 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=221"></script>
+<script src="./app.js?v=222"></script>
 </body></html>
