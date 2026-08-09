@@ -630,7 +630,7 @@ body.hasbg #app::after{content:'';position:fixed;inset:0;z-index:-1;pointer-even
   opacity:.055;mix-blend-mode:overlay;}   /* 은은한 그레인 */
 body.hasbg #app,body.hasbg #main,body.hasbg #content{background:transparent!important;}
 /* 배경을 켜면 카드가 유리가 된다 — 토큰만 바꿔 앱 전체에 한 번에 먹인다 */
-body.hasbg{--ca:var(--app-card-alpha,.80);
+body.hasbg{--ca:var(--app-card-alpha,.90);
   --bg2:rgba(255,255,255,calc(var(--ca)));--surf2:rgba(245,247,250,calc(var(--ca) - .08));
   --surf3:rgba(233,237,242,calc(var(--ca) - .08));--glass3:rgba(255,255,255,calc(var(--ca) - .02));}
 html.dark body.hasbg{--bg2:rgba(28,28,30,calc(var(--ca)));--surf2:rgba(38,38,42,calc(var(--ca) - .06));
@@ -649,6 +649,8 @@ html.dark body.hasbg .sb-more,html.dark body.hasbg .ctxmenu,html.dark body.hasbg
 html.dark body.hasbg .nq-panel,html.dark body.hasbg .popbox{--bg2:#1C1C1E;--surf2:#26262A;--surf3:#303036;--glass3:#1C1C1E;}
 body.hasbg #sidebar{background:var(--bg);border-radius:0;}
 body.hasbg #sidebar>*{background:var(--bg2);}
+/* 배경 위에서는 카드 경계가 흐려진다 — 밝은 테두리와 그림자로 또렷하게 */
+body.hasbg .card,body.hasbg #sidebar>*{border-color:rgba(255,255,255,.6);box-shadow:0 2px 14px rgba(16,24,40,.12);}
 /* ⚠ 카드마다 blur 를 걸면 표·차트가 많은 하자 화면이 눈에 띄게 느려진다 — 반투명 색만 쓴다 */
 body.hasbg #sidebar{background:var(--glass3);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);}
 @media print{body.hasbg::before,body.hasbg::after{display:none!important;}}
@@ -2620,6 +2622,13 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 
 
           </div>
+          <div class="card">
+            <div class="set-h">앱 배경화면</div>
+            <div class="share-row"><div><b style="font-size:13px">배경 이미지</b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">이 기기에만 저장됩니다</div></div>
+              <span style="display:inline-flex;gap:6px;align-items:center"><button class="btn bo bsm" data-act="set.bgPick">이미지 선택</button><button class="btn bg2 bsm" id="bgClearBtn" data-act="set.bgClear" hidden>없애기</button></span></div>
+            <div class="share-row" style="margin-top:10px"><div><b style="font-size:13px">레이아웃 투명도</b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">카드가 배경을 얼마나 비칠지 · 하자 관리 화면은 항상 불투명</div></div>
+              <input type="range" id="bgAlpha" min="60" max="100" step="5" value="90" data-act="set.bgAlpha" style="width:160px"></div>
+          </div>
         </div>
         <div class="set-col set-col-stack">
           <div class="card" id="bkCard">
@@ -2640,13 +2649,6 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
             </div>
           </div>
 
-          <div class="card">
-            <div class="set-h">앱 배경화면</div>
-            <div class="share-row"><div><b style="font-size:13px">배경 이미지</b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">이 기기에만 저장됩니다</div></div>
-              <span style="display:inline-flex;gap:6px;align-items:center"><button class="btn bo bsm" data-act="set.bgPick">이미지 선택</button><button class="btn bg2 bsm" id="bgClearBtn" data-act="set.bgClear" hidden>없애기</button></span></div>
-            <div class="share-row" style="margin-top:10px"><div><b style="font-size:13px">레이아웃 투명도</b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">카드가 배경을 얼마나 비칠지 · 하자 관리 화면은 항상 불투명</div></div>
-              <input type="range" id="bgAlpha" min="40" max="100" step="5" value="80" data-act="set.bgAlpha" style="width:160px"></div>
-          </div>
           <div class="set-card card">
             <div class="set-h">하자 관리 스냅샷</div>
             <div class="share-row"><div><b style="font-size:13px">현재 게시월 기준으로 스냅샷 추출</b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">대시보드·전 현장·목록·처리계획·분석을 담은 단일 HTML — 로그인 없이 열립니다</div></div><button class="btn bo bsm" data-act="set.dfsnap">내보내기</button></div>
@@ -2684,5 +2686,5 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=222"></script>
+<script src="./app.js?v=223"></script>
 </body></html>

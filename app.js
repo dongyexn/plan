@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='2.2.9';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='2.3.0';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -5765,11 +5765,11 @@ function mobClose(){
 /* 앱 배경화면 — 이 기기(localStorage)에만 두므로 팀원 화면·데이터베이스에는 영향이 없다 */
 function applyBg(){
   let url='',al='80';
-  try{url=localStorage.getItem('calapp.bg')||'';al=localStorage.getItem('calapp.bgAlpha')||'80';}catch(e){}
+  try{url=localStorage.getItem('calapp.bg')||'';al=localStorage.getItem('calapp.bgAlpha')||'90';}catch(e){}
   const root=document.documentElement;
   root.style.setProperty('--app-bg-img',url?`url("${url}")`:'none');
   root.style.setProperty('--app-bg-dim',0.18);            /* 배경 위 밑칠 — 글자 대비만 지킬 만큼 */
-  root.style.setProperty('--app-card-alpha',(Number(al)||80)/100);
+  root.style.setProperty('--app-card-alpha',(Number(al)||90)/100);
   document.body.classList.toggle('hasbg',!!url);
   const btn=$('#bgClearBtn');if(btn)btn.hidden=!url;
   const dl=$('#bgAlpha');if(dl)dl.value=al;
