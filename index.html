@@ -130,6 +130,10 @@ svg{display:block;flex-shrink:0;}
 .sb-tools-in .tbr>#tbPrintWrap{order:9;}   /* 하자 관리에서만 생기는 버튼은 기존 버튼 오른쪽에 붙는다 */
 .sb-tools .tb-srch{width:32px;padding:0;justify-content:center;}
 .sb-tools .tb-srch-t{display:none;}                 /* 기능 버튼은 아이콘만 */
+/* 하자 관리 밖(.df-on 아님)에서는 기준월·인쇄가 빠져 자리가 남는다 — 검색 버튼이 그 폭을 채운다.
+   접힘 팝업(#sidebar.mini)은 폭 개념이 달라 아이콘형 그대로. */
+#sidebar:not(.mini) .sb-tools:not(.df-on) .tb-srch{flex:1;width:auto;justify-content:flex-start;padding:0 10px 0 9px;}
+#sidebar:not(.mini) .sb-tools:not(.df-on) .tb-srch-t{display:inline;}
 .sb-tools .tb-rm{margin-right:2px;}
 .sb-more{display:none;width:32px;height:32px;border-radius:var(--rmd);align-items:center;justify-content:center;color:var(--lbl2);background:transparent;border:0;cursor:pointer;}
 .sb-more:hover{background:var(--fill);color:var(--bt1);}
@@ -247,9 +251,10 @@ select.inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-ima
 .cal-wrap{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:12px;align-items:stretch;flex:1;min-height:0;overflow:hidden;}   /* 페이지 헤더가 없어져 남는 높이를 그대로 쓴다 */
 .cal-card{padding:16px 18px;display:flex;flex-direction:column;min-height:0;}
 /* 달력은 위젯과 같은 배치를 쓰되 카드 프레임은 두르지 않는다 */
-/* 달력은 위젯과 같은 카드 프레임(body.wid .card 규격: 라운드 8 · 패딩 11px 12px · 테두리·배경·그림자).
-   210차에 프레임을 벗긴 것이 '위젯과 동일하게'가 계속 안 되던 원인 — 위젯 값을 그대로 쓴다 */
-body:not(.wid) .cal-card{min-height:0;overflow:hidden;border-radius:8px;padding:11px 12px;}
+/* ⚠ 달력에 카드 프레임을 씌우지 않는다(217차에 '위젯과 동일'을 프레임 복원으로 잘못 해석해 씌웠다 —
+   사용자가 명시적으로 제거 지시). 판은 #fcal 자체(배경·라운드)가 담당한다. 위젯과 맞춘 값은
+   글자 크기·숫자 패딩(아래 두 줄)뿐. */
+body:not(.wid) .cal-card{min-height:0;overflow:hidden;border:0;background:transparent;box-shadow:none;border-radius:0;padding:0;}
 body:not(.wid) #fcal{font-size:12px;}                                 /* 위젯과 같은 글자 크기 */
 body:not(.wid) #fcal .fc-daygrid-day-number{padding:3px 5px 1px;}     /* 위젯과 같은 숫자 패딩 */
 #fcal{flex:1;min-height:0;}
@@ -652,10 +657,10 @@ html.dark body.hasbg .rec-tbl,html.dark body.hasbg .pv-table,html.dark body.hasb
 html.dark body.hasbg .cal-title,html.dark body.hasbg .tb-ic,html.dark body.hasbg .tb-srch,
 html.dark body.hasbg .sb-more,html.dark body.hasbg .ctxmenu,html.dark body.hasbg .tb-pop,
 html.dark body.hasbg .nq-panel,html.dark body.hasbg .popbox{--bg2:#1C1C1E;--surf2:#26262A;--surf3:#303036;--glass3:#1C1C1E;}
-body.hasbg #sidebar>*{background:var(--bg2);}
+/* 블록 사이는 배경 사진이 그대로 비친다 — 사이드바 자체에는 판을 깔지 않는다(깔면 '한 장'이 돼 버린다).
+   유리(반투명+blur)는 각 블록에만. 블록 6개 수준의 blur 는 하자 화면과 달리 체감 부담이 없다. */
+body.hasbg #sidebar>*{background:var(--glass3);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);}
 body.hasbg .card,body.hasbg #sidebar>*{box-shadow:0 2px 14px rgba(16,24,40,.12);}
-/* ⚠ 카드마다 blur 를 걸면 표·차트가 많은 하자 화면이 눈에 띄게 느려진다 — 반투명 색만 쓴다 */
-body.hasbg #sidebar{background:var(--glass3);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);}
 @media print{body.hasbg::before,body.hasbg::after{display:none!important;}}
 /* 기준월 칩 — 하자 관리에서는 눌러서 게시월을 고른다 */
 #tbRm[data-act]{cursor:pointer;}
@@ -756,6 +761,9 @@ body.snap .sbsl:first-of-type{display:none;}
 #view-defect .ct{font-size:15px;font-weight:700;color:var(--lbl);}
 #view-defect .st{font-size:15px;font-weight:700;color:var(--lbl);display:flex;align-items:center;gap:8px;}
 #view-defect .as{display:flex;flex-direction:column;gap:12px;}
+/* .as 안에서는 gap 이 간격을 맡는다 — 공용 카드(추이 등)의 mb12 가 겹치면 24px 이중 간격이 된다
+   (opsr 는 인라인 margin-bottom:0 으로 이미 상쇄돼 있었고 추이 카드만 누락 — 현장 요약 탭이 넓어 보이던 원인) */
+#view-defect .as>.mb12{margin-bottom:0;}
 /* ⚠ 간격 통일 값은 아래의 각 개별 정의(뒤쪽)에 직접 넣는다 — 여기에 공통 규칙을 앞서 두면
    같은 명시도의 뒤 규칙에 전부 밀린다(216차 통일이 무효였던 원인) */
 #view-defect .df-sub{font-size:12px;color:var(--lbl3);}
@@ -991,6 +999,14 @@ body.snap .sbsl:first-of-type{display:none;}
 .pv-pct-tg{width:26px;justify-content:center;padding:0;background:var(--bg2);color:var(--lbl2);border:1px solid var(--sep);}
 .pv-pct-tg.on{background:var(--b600);border-color:var(--bt1);color:#fff;}
 .pv-scroll{max-height:60vh;overflow:auto;border:1px solid var(--sep);border-radius:var(--rmd);background:var(--bg2);}
+/* ⚠ 스크롤바 전역 숨김(규약) 때문에 가로로 넘친 표를 넘길 수단이 없었다 — 가로 스크롤이 있는 표 래퍼
+   (피벗·미처리 목록)만 얇은 가로 막대를 예외로 보인다. scrollbar-width 는 축 분리가 안 되고
+   auto 가 아니면 크롬이 ::-webkit-scrollbar 를 무시하므로, 표준 속성을 풀고 webkit 으로
+   세로 0 · 가로 8px 를 지정한다(세로는 규약대로 숨김 유지). */
+.pv-scroll,.rec-wrap{scrollbar-width:auto;}
+.pv-scroll::-webkit-scrollbar,.rec-wrap::-webkit-scrollbar{width:0;height:8px;}
+.pv-scroll::-webkit-scrollbar-thumb,.rec-wrap::-webkit-scrollbar-thumb{background:var(--sepo);border-radius:4px;}
+.pv-scroll::-webkit-scrollbar-track,.rec-wrap::-webkit-scrollbar-track{background:transparent;}
 #mb.dfwide .pv-scroll{flex:1;min-height:0;max-height:none;}
 .pv-table{border-collapse:separate;border-spacing:0;font-size:12.5px;width:max-content;min-width:100%;}
 .pv-table th,.pv-table td{border-right:1px solid var(--sep);border-bottom:1px solid var(--sep);padding:7px 14px;text-align:right;white-space:nowrap;background:var(--bg2);}
@@ -2697,5 +2713,5 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=246"></script>
+<script src="./app.js?v=247"></script>
 </body></html>
