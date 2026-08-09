@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='2.0.2';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='2.0.3';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -3275,7 +3275,11 @@ function dfChartInit(){
 function dfMoDLCfg(ctx){
   const ca=ctx.chart.chartArea,n=(ctx.chart.data.labels||[]).length||1;
   const catW=(ca&&ca.width)?ca.width/n:60;
-  const size=catW>=50?11:catW>=42?10:catW>=34?9:catW>=27?8:7;
+  let size=catW>=50?11:catW>=42?10:catW>=34?9:catW>=27?8:7;
+  /* 값이 길면(천 단위 구분 포함) 칸을 넘는다 — 자릿수로 한 번 더 줄인다 */
+  const rows=(ctx.chart.data.datasets[3]&&ctx.chart.data.datasets[3].data)||[];
+  const maxLen=rows.length?Math.max(...rows.map(v=>Number(v||0).toLocaleString().length)):5;
+  while(size>5&&maxLen*size*0.62>catW-2)size-=0.5;
   return{size,catW,showInner:catW>=46,totalEvery:catW>=26?1:2};
 }
 function dfNiceFit(lo,hi){
@@ -4149,12 +4153,13 @@ function rptSite(sid){
     if(r.length)t.push({n:`그 외 ${r.length}${lbl}`,v:r.reduce((a,x)=>a+x.v,0)});return t;};
   const byTr=tops.map(t=>({n:t.t,v:t.u||0}));
   const tyMap={};
-  (c.ul||[]).forEach(i=>{const k=(i.trade||'기타')+'-'+(i.defectType||i.type||'기타');tyMap[k]=(tyMap[k]||0)+1;});
+  /* ⚠ kpi.ul 은 게시본 폴백(상위 300건 캡)이다 — 전체 목록은 ulz(dfList)로 받는다 */
+  const ulFull=DF.list[dfRm()+'/'+sid]||c.ul||[];
+  ulFull.forEach(i=>{const k=(i.trade||'기타')+'-'+(i.defectType||i.type||'기타');tyMap[k]=(tyMap[k]||0)+1;});
   const byTy=Object.entries(tyMap).map(([n,v])=>({n,v})).sort((a,b)=>b.v-a.v);
   /* ⚠ 게시본 ul 은 상위 300건까지만 실린다 — 유형별 분모는 실린 표본 수로 잡아야 도넛이 채워진다 */
-  const tySum=byTy.reduce((a,x)=>a+x.v,0);
-  const tyCap=tySum<(c.unr||0);
-  const dist=`<div class="two">${rpDonut(cut(byTr,'개 공종'),c.unr,'공종별')}${rpDonut(cut(byTy,'개'),tySum,'공종 · 유형별'+(tyCap?` · 최근 ${rpN(tySum)}건`:''))}</div>`;
+  const tySum=byTy.reduce((a,x)=>a+x.v,0)||(c.unr||0);
+  const dist=`<div class="two">${rpDonut(cut(byTr,'개 공종'),c.unr,'공종별')}${rpDonut(cut(byTy,'개'),tySum,'공종 · 유형별')}</div>`;
 
   const planTbl=(rows,prevMap,field,num)=>{
     const body=rows.map((x,i)=>{
@@ -4314,6 +4319,7 @@ async function dfPrintReport(){
   if(S.dfSid){
     if(DF.kpi[rm+'/'+S.dfSid]===undefined){toast('자료를 불러온 뒤 인쇄할 수 있습니다');return;}
     await dfLoadPlans(S.dfSid);await dfLoadAna(S.dfSid);
+    await dfList(S.dfSid);   /* 공종·유형별 분포는 전체 미처리 목록 기준 */
   }else{
     if(!DF.cache[rm]){toast('자료를 불러온 뒤 인쇄할 수 있습니다');return;}
     toast('현장 자료 수집 중…');
@@ -4636,6 +4642,8 @@ async function recOpen(sid,scope,opts){
   if(scope==='lul')rows=rows.filter(r=>(Number(r.delayDays)||0)>=30);
   if(opts.trade)rows=rows.filter(r=>String(r.trade||'')===opts.trade);
   if(opts.co)rows=rows.filter(r=>String(r.contractor||'')===opts.co);
+  /* 기본 정렬은 접수일 최신순 — 팀 전체는 현장별로 받아 오므로 그대로 두면 현장 순으로 묶인다 */
+  rows.sort((a,b)=>String(b.receiptDate||'').localeCompare(String(a.receiptDate||'')));
   REC.rows=rows;REC.q='';REC.band='';REC.sort='';REC.desc=false;REC.limit=500;
   REC.vac=opts.vac==='unit'||opts.vac==='store'?opts.vac:'';
   REC.withSite=all;REC.vals={};REC.hidden={};

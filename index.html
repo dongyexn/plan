@@ -636,10 +636,12 @@ body.snap .sbsl:first-of-type{display:none;}
   #dfPrintPages .chart-lg{padding-left:24px!important;font-size:6.5pt!important;}
   #dfPrintPages .dn-side .canv{flex:0 0 130px!important;width:130px!important;height:130px!important;max-width:130px!important;max-height:130px!important;}
   #dfPrintPages .dn-side{gap:10px;}
-  #dfPrintPages .dn-side .lg{font-size:7.5pt!important;grid-template-columns:1fr!important;grid-auto-flow:row!important;grid-template-rows:none!important;row-gap:2px!important;}   /* 화면 규칙이 뒤에 있어 !important 없이는 2열이 남는다 */
+  /* 인쇄 폭에서는 2열이 서로 겹친다 — 한 열로 펴고 글자를 줄여 카드 높이를 맞춘다 */
+  #dfPrintPages .dn-side .lg{font-size:6.5pt!important;grid-template-columns:1fr!important;grid-auto-flow:row!important;grid-template-rows:none!important;row-gap:0!important;}
+  #dfPrintPages .dn-side .lg .it{height:11px!important;}   /* 화면 규칙이 뒤에 있어 !important 없이는 2열이 남는다 */
   #dfPrintPages .dn-side .lg .it{height:auto;}
-  #dfPrintPages .dn-side .lg .nm{font-size:7.5pt;}
-  #dfPrintPages .dn-side .lg .cnt,#dfPrintPages .dn-side .lg .pct{font-size:7.5pt;}
+  #dfPrintPages .dn-side .lg .nm{font-size:6.5pt;padding-left:4px;}
+  #dfPrintPages .dn-side .lg .cnt,#dfPrintPages .dn-side .lg .pct{font-size:6.5pt;}
   #dfPrintPages .mom-wrap{padding-top:0;}
   #dfPrintPages .vseg-v{font-size:18px;}
   #dfPrintPages .plan-ta{display:none!important;}
@@ -882,21 +884,23 @@ body.snap .sbsl:first-of-type{display:none;}
 .rl-lim button.on{background:var(--bg2);color:var(--lbl);box-shadow:0 1px 2px rgba(0,0,0,.08);}
 .rl-lim-lbl{font-size:11px;font-weight:600;color:var(--lbl3);margin:0 2px 0 8px;}
 /* 피벗 — 원본(pv-*)과 같은 구성: 행(≤3)·열·값 칩 + 트리 표 */
-.pv-bar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:10px;}
-.pv-zone{display:inline-flex;align-items:center;gap:6px;}
-.pv-zlbl{font-size:11px;font-weight:700;color:var(--lbl3);}
-.pv-chip{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 10px;background:var(--b100);color:var(--bt1);border:1px solid var(--b200);border-radius:var(--rp);font:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;}
+.pv-bar{display:flex;align-items:center;gap:10px;flex:none;flex-wrap:wrap;margin-bottom:12px;padding:10px 12px;background:var(--bg);border:1px solid var(--sep);border-radius:var(--rmd);}
+.pv-zone{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:30px;}
+.pv-zlbl{font-size:11.5px;color:var(--lbl2);font-weight:700;margin-right:4px;}
+.pv-chip{display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 7px 0 10px;background:var(--bg2);color:var(--lbl);border:1px solid var(--sep);border-radius:var(--rmd);font:inherit;font-size:12.5px;font-weight:600;white-space:nowrap;box-shadow:0 1px 1.5px rgba(0,0,0,.05);transition:border-color .12s,box-shadow .12s;}
+.pv-chip:hover{border-color:var(--b300);box-shadow:0 1px 4px rgba(0,0,0,.09);}
 .pv-chip.pv-drag{cursor:grab;}
 .pv-chip.pv-dragging{opacity:.35;cursor:grabbing;}
-.pv-chip-x{border:0;background:transparent;color:inherit;opacity:.65;font:inherit;font-size:13px;line-height:1;padding:0;margin-left:2px;cursor:pointer;}
-.pv-chip-x:hover{opacity:1;}
-.pv-add{display:inline-flex;align-items:center;justify-content:center;height:26px;min-width:26px;padding:0 8px;border:1px dashed var(--sepo);border-radius:var(--rp);background:var(--bg2);color:var(--lbl2);font:inherit;font-size:13px;font-weight:700;line-height:1;cursor:pointer;}
+.pv-chip-x{flex:none;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border:none;border-radius:5px;background:transparent;color:var(--lbl3);font:inherit;font-size:14px;line-height:1;cursor:pointer;transition:background .12s,color .12s;}
+.pv-chip-x:hover{background:var(--tint-rd);color:var(--rd);}
+.pv-add{flex:none;display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border:1px dashed var(--sepo);border-radius:var(--rmd);background:var(--bg2);color:var(--lbl2);font:inherit;font-size:17px;line-height:1;cursor:pointer;transition:all .12s;}
 .pv-add:hover{border-color:var(--b400);color:var(--bt1);}
-.pv-val{background:var(--fill);color:var(--lbl);border-color:var(--sep);}
+.pv-val{cursor:pointer;}
+.pv-pct-tg{cursor:pointer;}
 .pv-caret{font-size:9px;opacity:.6;}
 .pv-pct-tg{width:26px;justify-content:center;padding:0;background:var(--bg2);color:var(--lbl2);border:1px solid var(--sep);}
 .pv-pct-tg.on{background:var(--b600);border-color:var(--bt1);color:#fff;}
-.pv-scroll{max-height:60vh;overflow:auto;border:1px solid var(--sep);border-radius:var(--rmd);}
+.pv-scroll{max-height:60vh;overflow:auto;border:1px solid var(--sep);border-radius:var(--rmd);background:var(--bg2);}
 #mb.dfwide .pv-scroll{flex:1;min-height:0;max-height:none;}
 .pv-table{width:100%;border-collapse:collapse;font-size:12.5px;white-space:nowrap;}
 .pv-table th{position:sticky;top:0;z-index:1;background:var(--surf2);font-size:11.5px;font-weight:700;color:var(--lbl2);text-align:right;padding:8px 10px;border-bottom:1px solid var(--sep);cursor:pointer;-webkit-user-select:none;user-select:none;}
@@ -905,7 +909,12 @@ body.snap .sbsl:first-of-type{display:none;}
 .pv-table td.pv-rh{text-align:left;color:var(--lbl);}
 .pv-table tr.pv-grp td{font-weight:700;background:var(--pv-grp,var(--fill));}
 .pv-table .pv-tot{font-weight:700;color:var(--lbl);}
-.pv-table tr.pv-totrow td{border-top:1px solid var(--sepo);border-bottom:none;font-weight:700;background:var(--surf2);}
+.pv-table tr.pv-totrow td{border-top:2px solid var(--sepo);border-bottom:none;font-weight:800;background:var(--surf3);position:sticky;bottom:0;z-index:1;}
+.pv-table td.pv-rh,.pv-table th.pv-rh{position:sticky;left:0;z-index:2;background:var(--bg2);box-shadow:1px 0 0 var(--sep);}
+.pv-table td.pv-tot,.pv-table th.pv-tot{position:sticky;right:0;z-index:2;background:var(--bg2);box-shadow:-1px 0 0 var(--sep);}
+.pv-table thead th.pv-rh,.pv-table thead th.pv-tot{z-index:4;background:var(--surf2);}
+.pv-table tr.pv-grp td.pv-rh{background:var(--fill);}
+.pv-table tr.pv-totrow td.pv-rh,.pv-table tr.pv-totrow td.pv-tot{z-index:3;background:var(--surf3);}
 .pv-pct{margin-left:4px;font-size:10.5px;color:var(--lbl3);font-weight:400;}
 .pv-empty{padding:26px;text-align:center;color:var(--lbl3);font-size:12.5px;}
 /* 하자 목록 모달 — 표는 mgtbl 규격을 따르되 가로·세로 스크롤을 쓴다 */
@@ -920,6 +929,7 @@ body.snap .sbsl:first-of-type{display:none;}
 .rl-q-wrap .icn-sm{position:absolute;left:9px;width:14px;height:14px;color:var(--lbl3);pointer-events:none;}
 .rl-q{height:30px;width:230px;padding:0 11px 0 28px;border:1px solid var(--sepo);border-radius:var(--rp);background:var(--bg2);color:var(--lbl);font:inherit;font-size:12.5px;outline:none;}
 .rl-q:focus{border-color:var(--b400);box-shadow:0 0 0 3px rgba(83,140,222,.14);}
+.rl-q::placeholder{color:var(--lbl3);font-weight:400;}
 #mb.dfwide .mo-x{display:none!important;}   /* 머리에 닫기 버튼이 있다 */
 .rec-n{font-size:12px;color:var(--lbl3);white-space:nowrap;}
 .rec-wrap{max-height:60vh;overflow:auto;border:1px solid var(--sep);border-radius:var(--rmd);}
@@ -2568,5 +2578,5 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=210"></script>
+<script src="./app.js?v=211"></script>
 </body></html>
