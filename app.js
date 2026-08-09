@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='2.3.4';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='2.3.5';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -5781,19 +5781,19 @@ function applyBg(){
      이상해진다(218차 위젯 회귀의 원인). 위젯에서는 배경 기능 전체를 무시한다.
      (WIDGET 상수는 아래쪽 선언이라 TDZ — location 으로 직접 검사) */
   if(/[?&]w=1\b/.test(location.search)){document.body.classList.remove('hasbg');return;}
-  let url='',al='80',dim='18',gr='5.5';
+  let url='',al='80',lum='100';
   try{url=localStorage.getItem('calapp.bg')||'';al=localStorage.getItem('calapp.bgAlpha')||'90';
-    dim=localStorage.getItem('calapp.bgDim')||'18';gr=localStorage.getItem('calapp.bgGrain')||'5.5';}catch(e){}
+    lum=localStorage.getItem('calapp.bgLum')||'100';}catch(e){}
   const root=document.documentElement;
   root.style.setProperty('--app-bg-img',url?`url("${url}")`:'none');
-  root.style.setProperty('--app-bg-dim',String((Number(dim)||0)/100));   /* 배경 위 밑칠 — 올릴수록 배경이 죽고 글자 대비가 오른다 */
-  root.style.setProperty('--app-grain',String((Number(gr)||0)/100));
+  /* ⚠ 배경 대비(밑칠)와 그레인은 조절 대상이 아니다 — 고정값을 CSS 가 그대로 쓴다(219차에 넣은
+     슬라이더는 사용자 지시로 철회). 여기서 인라인 변수를 세우면 CSS 기본값을 덮으므로 건드리지 않는다. */
   root.style.setProperty('--app-card-alpha',(Number(al)||90)/100);
+  root.style.setProperty('--app-card-lum',(Number(lum)||100)/100);   /* 레이아웃 톤 밝기 */
   document.body.classList.toggle('hasbg',!!url);
   const btn=$('#bgClearBtn');if(btn)btn.hidden=!url;
   const dl=$('#bgAlpha');if(dl)dl.value=al;
-  const dd=$('#bgDim');if(dd)dd.value=dim;
-  const dg=$('#bgGrain');if(dg)dg.value=gr;
+  const lm=$('#bgLum');if(lm)lm.value=lum;
 }
 function applyTheme(dark){
   document.documentElement.classList.toggle('dark',dark);
@@ -6038,8 +6038,7 @@ const ACT={
     f.click();},
   'set.bgClear':()=>{try{localStorage.removeItem('calapp.bg');}catch(e){}applyBg();toast('배경을 없앴습니다');},
   'set.bgAlpha':el=>{const v=String(el.value||'80');try{localStorage.setItem('calapp.bgAlpha',v);}catch(e){}applyBg();},
-  'set.bgDim':el=>{const v=String(el.value||'18');try{localStorage.setItem('calapp.bgDim',v);}catch(e){}applyBg();},
-  'set.bgGrain':el=>{const v=String(el.value||'5.5');try{localStorage.setItem('calapp.bgGrain',v);}catch(e){}applyBg();},
+  'set.bgLum':el=>{const v=String(el.value||'100');try{localStorage.setItem('calapp.bgLum',v);}catch(e){}applyBg();},
   'df.rm':async el=>{
     if(document.querySelector('.ctxmenu')){closeCtx();return;}   /* 열려 있으면 닫기(토글) */
     if(!S.live||!FB.db)return;

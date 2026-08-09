@@ -636,24 +636,54 @@ body.hasbg::before{opacity:1;}
 body::before{filter:saturate(.88) contrast(.92) brightness(1.02);}   /* 배경은 살짝 눕혀 글자와 다투지 않게 */
 body.hasbg::after{content:'';position:fixed;inset:0;z-index:-1;
   background:linear-gradient(var(--bg),var(--bg)),url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/><feColorMatrix type='saturate' values='0'/></filter><rect width='140' height='140' filter='url(%23n)' opacity='.5'/></svg>");
-  background-blend-mode:normal;opacity:var(--app-bg-dim,.35);}
+  background-blend-mode:normal;opacity:var(--app-bg-dim,.18);}   /* 배경 위 밑칠 — 고정값 .18(조절 대상 아님) */
 body.hasbg #app::after{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
   background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/><feColorMatrix type='saturate' values='0'/></filter><rect width='140' height='140' filter='url(%23g)'/></svg>");
-  opacity:var(--app-grain,.055);mix-blend-mode:overlay;}   /* 은은한 그레인 — 설정 슬라이더(--app-grain)로 조절 */
+  opacity:.055;mix-blend-mode:overlay;}   /* 은은한 그레인 — 고정값(조절 대상 아님) */
 body.hasbg #app,body.hasbg #main,body.hasbg #content{background:transparent!important;}
-/* 배경을 켜면 카드가 유리가 된다 — 토큰만 바꿔 앱 전체에 한 번에 먹인다 */
-body.hasbg{--ca:var(--app-card-alpha,.90);
-  --bg2:rgba(255,255,255,calc(var(--ca)));--surf2:rgba(245,247,250,calc(var(--ca) - .08));
-  --surf3:rgba(233,237,242,calc(var(--ca) - .08));--glass3:rgba(255,255,255,calc(var(--ca) - .02));}
-html.dark body.hasbg{--bg2:rgba(28,28,30,calc(var(--ca)));--surf2:rgba(38,38,42,calc(var(--ca) - .06));
-  --surf3:rgba(48,48,54,calc(var(--ca) - .06));--glass3:rgba(28,28,30,calc(var(--ca)));}
+/* 배경을 켜면 카드가 유리가 된다 — 토큰만 바꿔 앱 전체에 한 번에 먹인다.
+   --cl(레이아웃 톤 밝기)은 각 채널에 곱한다: 1 미만이면 카드가 가라앉고, 넘으면 밝아진다(rgb 가 자동 클램프). */
+body.hasbg{--ca:var(--app-card-alpha,.90);--cl:var(--app-card-lum,1);
+  --bg2:rgba(calc(255*var(--cl)),calc(255*var(--cl)),calc(255*var(--cl)),var(--ca));
+  --surf2:rgba(calc(245*var(--cl)),calc(247*var(--cl)),calc(250*var(--cl)),calc(var(--ca) - .08));
+  --surf3:rgba(calc(233*var(--cl)),calc(237*var(--cl)),calc(242*var(--cl)),calc(var(--ca) - .08));
+  --glass3:rgba(calc(255*var(--cl)),calc(255*var(--cl)),calc(255*var(--cl)),calc(var(--ca) - .02));}
+html.dark body.hasbg{
+  --bg2:rgba(calc(28*var(--cl)),calc(28*var(--cl)),calc(30*var(--cl)),var(--ca));
+  --surf2:rgba(calc(38*var(--cl)),calc(38*var(--cl)),calc(42*var(--cl)),calc(var(--ca) - .06));
+  --surf3:rgba(calc(48*var(--cl)),calc(48*var(--cl)),calc(54*var(--cl)),calc(var(--ca) - .06));
+  --glass3:rgba(calc(28*var(--cl)),calc(28*var(--cl)),calc(30*var(--cl)),var(--ca));}
 body.hasbg #view-defect,body.hasbg #mb,body.hasbg .btn,body.hasbg .rec-tbl,body.hasbg .pv-table,
 body.hasbg .cal-nb,body.hasbg .cal-title,body.hasbg .tb-ic,body.hasbg .tb-srch,body.hasbg .sb-more,
 body.hasbg .ctxmenu,body.hasbg .tb-pop,body.hasbg .nq-panel,body.hasbg .popbox{
   --bg2:#fff;--surf2:#F5F7FA;--surf3:#E9EDF2;--glass3:#fff;}
-/* 달력은 배경 투명도의 영향을 받지 않는다 — 위젯처럼 제 색을 유지한다 */
-body.hasbg #fcal,body.hasbg .cal-card{--bg2:#fff;--surf2:#F5F7FA;--surf3:#E9EDF2;}
-html.dark body.hasbg #fcal,html.dark body.hasbg .cal-card{--bg2:#1C1C1E;--surf2:#26262A;--surf3:#303036;}
+/* 배경을 켜면 달력 칸을 **위젯(유리) 달력과 같은 톤**으로 맞춘다 — 사용자 지시(220차).
+   값은 body.wid.glass 의 셀 규칙과 동일: 평일 rgba(24,28,38,.55) · 주말 rgba(52,56,68,.5) ·
+   다른 달 rgba(24,28,38,.23) · 요일머리 rgba(13,16,24,.67). 톤 밝기(--cl)도 함께 먹인다.
+   ⚠ 판(#fcal)은 투명이어야 칸 색이 그대로 보인다 — 여기서 --bg2 를 흰색으로 되돌리면 안 된다. */
+body.hasbg #fcal{background:transparent;}
+body.hasbg .cal-card{background:transparent;}
+body.hasbg #fcal td.fc-daygrid-day{background:rgba(calc(24*var(--cl,1)),calc(28*var(--cl,1)),calc(38*var(--cl,1)),.55);}
+body.hasbg #fcal td.fc-daygrid-day.fc-day-sat,
+body.hasbg #fcal td.fc-daygrid-day.fc-day-sun{background:rgba(calc(52*var(--cl,1)),calc(56*var(--cl,1)),calc(68*var(--cl,1)),.5);}
+body.hasbg #fcal td.fc-daygrid-day.fc-day-other{background:rgba(calc(24*var(--cl,1)),calc(28*var(--cl,1)),calc(38*var(--cl,1)),.23);}
+body.hasbg #fcal .fc-col-header-cell{background:rgba(13,16,24,.67);}
+/* 어두운 칸 위에서는 글자·격자선을 밝게 — 위젯 유리 모드와 같은 세트.
+   ⚠ 날짜 숫자는 `.fc-daygrid-day-number` 가 아니라 그 안의 `.dnum` 이 색을 갖는다(311~312행) —
+   컨테이너에만 색을 주면 기존 --rd/--bt1 이 그대로 남아 어두운 칸에서 읽히지 않는다. */
+body.hasbg #fcal .fc-col-header-cell-cushion{color:rgba(255,255,255,.85);}
+body.hasbg #fcal .fc-day-sun .fc-col-header-cell-cushion{color:#FF9C93;}
+body.hasbg #fcal .fc-day-sat .fc-col-header-cell-cushion{color:#9DC3FF;}
+body.hasbg #fcal .dnum{color:rgba(255,255,255,.92);}
+body.hasbg #fcal .fc-day-sun .dnum{color:#FF9C93;}
+body.hasbg #fcal .fc-day-sat .dnum{color:#9DC3FF;}
+body.hasbg #fcal td.fc-daygrid-day.hol .dnum{color:#FF9C93;}
+body.hasbg #fcal .fc-day-other .dnum{color:rgba(255,255,255,.42);}
+body.hasbg #fcal .dhol{color:#FF9C93;}
+body.hasbg #fcal .dhol.dtoday{color:#BFD4FF;}
+body.hasbg #fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-color:rgba(255,255,255,.10);}
+body.hasbg #fcal .fc-col-header{border-bottom-color:rgba(255,255,255,.2);}
+/* 오늘 숫자 배지는 원래 파란 원 그대로(332행) — 여기서 건드리지 않는다 */
 html.dark body.hasbg #view-defect,html.dark body.hasbg #mb,html.dark body.hasbg .btn,
 html.dark body.hasbg .rec-tbl,html.dark body.hasbg .pv-table,html.dark body.hasbg .cal-nb,
 html.dark body.hasbg .cal-title,html.dark body.hasbg .tb-ic,html.dark body.hasbg .tb-srch,
@@ -1788,8 +1818,10 @@ body.wid.glass,html:has(body.wid.glass){background:transparent!important;
   /* color-scheme:dark 이면 투명 루트라도 브라우저가 #121212 캔버스를 깐다 — 유리 모드는 normal 로 */
   color-scheme:normal!important;}
 body.wid.glass #content{background:transparent;padding:6px;}
-/* 셀 밑에 깔리는 불투명층 전부 제거 — 다크 테마 배경·FC 페이지 배경까지 */
-body.wid.glass #app,body.wid.glass .view,body.wid.glass .cal-wrap,
+/* 셀 밑에 깔리는 불투명층 전부 제거 — 다크 테마 배경·FC 페이지 배경까지.
+   ⚠ #fcal 자신도 반드시 포함할 것 — 213차에 `#fcal{background:var(--bg2)}` 를 상시 부여하면서
+   이 목록에 넣지 않아, 유리 모드인데도 흰색/다크 판이 셀 뒤에 깔려 '달력에만 배경이 생긴' 것처럼 보였다. */
+body.wid.glass #app,body.wid.glass .view,body.wid.glass .cal-wrap,body.wid.glass #fcal,
 body.wid.glass #fcal .fc-view-harness,body.wid.glass #fcal .fc-scroller,
 body.wid.glass #fcal .fc-scrollgrid,body.wid.glass #fcal table{background:transparent!important;}
 body.wid.glass #fcal{--fc-page-bg-color:transparent;--fc-neutral-bg-color:transparent;}
@@ -2677,10 +2709,8 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
               <span style="display:inline-flex;gap:6px;align-items:center"><button class="btn bo bsm" data-act="set.bgPick">이미지 선택</button><button class="btn bg2 bsm" id="bgClearBtn" data-act="set.bgClear" hidden>없애기</button></span></div>
             <div class="share-row" style="margin-top:10px"><div><b style="font-size:13px">레이아웃 투명도</b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">카드가 배경을 얼마나 비칠지 · 하자 관리 화면은 항상 불투명</div></div>
               <input type="range" id="bgAlpha" min="60" max="100" step="5" value="90" data-act="set.bgAlpha" style="width:160px"></div>
-            <div class="share-row" style="margin-top:10px"><div><b style="font-size:13px">배경 대비</b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">올릴수록 배경이 가라앉고 글자가 또렷해집니다</div></div>
-              <input type="range" id="bgDim" min="0" max="60" step="2" value="18" data-act="set.bgDim" style="width:160px"></div>
-            <div class="share-row" style="margin-top:10px"><div><b style="font-size:13px">그레인</b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">배경 위 필름 입자 질감 · 0이면 없음</div></div>
-              <input type="range" id="bgGrain" min="0" max="15" step="0.5" value="5.5" data-act="set.bgGrain" style="width:160px"></div>
+            <div class="share-row" style="margin-top:10px"><div><b style="font-size:13px">레이아웃 톤 밝기</b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">카드·패널 색을 밝게 또는 가라앉게 · 배경화면을 켰을 때만 적용</div></div>
+              <input type="range" id="bgLum" min="70" max="130" step="5" value="100" data-act="set.bgLum" style="width:160px"></div>
           </div>
           <div class="set-card card">
             <div class="set-h">하자 관리 스냅샷</div>
@@ -2719,5 +2749,5 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=248"></script>
+<script src="./app.js?v=249"></script>
 </body></html>
