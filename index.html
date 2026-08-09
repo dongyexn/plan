@@ -107,9 +107,12 @@ svg{display:block;flex-shrink:0;}
 .nvi:not(.act) .nic svg{color:var(--lbl2);}
 .nil{flex:1;text-align:left;}
 #sidebar.mini .nil{display:none;}
-#sidebar.mini .nvi{justify-content:center;padding:5px 0;gap:0;}
-#sidebar.mini .sbsc,#sidebar.mini .sb-bottom{padding-left:4px;padding-right:4px;}
-#sidebar.mini .sb-foot{justify-content:center;padding:6px 0;}
+/* 접어도 아이콘 x 좌표는 그대로(블록 8 + 항목 8 = 16px) — 폭 64px 안에서 자연히 가운데가 된다 */
+#sidebar.mini .nvi{justify-content:flex-start;padding:7px 8px;gap:0;}
+#sidebar.mini .sbsc,#sidebar.mini .sb-bottom{padding-left:8px;padding-right:8px;}
+#sidebar.mini .sb-foot{justify-content:flex-start;padding:7px 8px;}
+#sidebar.mini .sb-tools{padding:7px 8px;justify-content:flex-start;}
+#sidebar.mini .sb-more{width:32px;height:32px;}
 /* 프로필 블록 — 구분선 대신 블록 간격으로 나뉜다 */
 .sb-foot{position:relative;margin:0;padding:7px 8px;display:flex;align-items:center;gap:8px;}
 /* 기능 버튼 블록 — 페이지 헤더에서 옮겨 온 아이콘들 */
@@ -122,7 +125,7 @@ svg{display:block;flex-shrink:0;}
 .sb-tools .tb-rm{margin-right:2px;}
 .sb-more{display:none;width:32px;height:32px;border-radius:var(--rmd);align-items:center;justify-content:center;color:var(--lbl2);background:transparent;border:0;cursor:pointer;}
 .sb-more:hover{background:var(--fill);color:var(--bt1);}
-#sidebar.mini .sb-tools{padding:6px;display:flex;justify-content:center;}
+#sidebar.mini .sb-tools{display:flex;}
 #sidebar.mini .sb-more{display:inline-flex;}
 #sidebar.mini .sb-tools-in{position:absolute;left:calc(100% + 8px);top:0;z-index:400;display:none;
   background:var(--bg2);border:1px solid var(--sep);border-radius:var(--rxl);box-shadow:0 12px 34px rgba(0,0,0,.16);padding:7px;}
@@ -232,10 +235,11 @@ select.inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-ima
 .frow4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;}
 @media(max-width:960px){.frow4{grid-template-columns:1fr 1fr;}}
 /* ══════════ 달력 페이지 ══════════ */
-.cal-wrap{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:12px;align-items:stretch;flex:1;min-height:520px;}   /* 페이지 헤더가 없어져 남는 높이를 그대로 쓴다 */
+.cal-wrap{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:12px;align-items:stretch;flex:1;min-height:0;overflow:hidden;}   /* 페이지 헤더가 없어져 남는 높이를 그대로 쓴다 */
 .cal-card{padding:16px 18px;display:flex;flex-direction:column;min-height:0;}
-/* 본문 카드를 없앤 뒤로는 달력 카드가 곧 외곽이다 — 테두리를 되살린다 */
-body:not(.wid) .cal-card{border:1px solid var(--sep);background:var(--bg2);border-radius:var(--rxl);padding:14px 16px;}
+/* 달력은 카드로 감싸지 않는다 — 격자 자체에만 테두리를 줘 배경과 구분한다 */
+body:not(.wid) .cal-card{border:0;background:transparent;box-shadow:none;border-radius:0;padding:0;}
+body:not(.wid) #fcal{border:1px solid var(--sepo);border-radius:var(--rlg);overflow:hidden;background:var(--bg2);}
 #fcal{flex:1;min-height:0;}
 .cal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:nowrap;margin-bottom:12px;}
 .cal-title{flex:0 0 auto;}
@@ -451,7 +455,7 @@ html.dark .stx-done{color:#3BA85C;}
 /* 하자 관리 — 사이드바 소분류(권역)와 그 아래 현장 */
 .nvi.df-site{padding:4px 8px 4px 22px;gap:8px;margin-bottom:0;font-size:12px;}
 .nvi.df-site .nil{font-size:12px;}
-.nvi.df-site .dot{width:5px;height:5px;border-radius:50%;background:var(--sepo);flex:0 0 auto;margin:0 0 0 5px;transition:background var(--tr);}   /* 점-이름 사이는 gap(8px)만 */
+.nvi.df-site .dot{width:4px;height:4px;border-radius:50%;background:var(--sepo);flex:0 0 auto;margin:0 0 0 5px;transition:background var(--tr);}   /* 점-이름 사이는 gap(8px)만 */
 .nvi.df-site:hover .dot,.nvi.df-site.act .dot{background:var(--b500);}
 #sidebar.mini .df-reg,#sidebar.mini .nvi.df-site{display:none;}
 /* 상단바 기준월 칩 */
@@ -607,8 +611,9 @@ html.dark .stx-done{color:#3BA85C;}
 @media (max-width:560px){.rpk{grid-template-columns:1fr;}}
 
 /* 앱 배경화면(로컬 전용) — 본문 뒤에 깔고 그 위를 배경색으로 덮어 글자 대비를 지킨다 */
-body.hasbg::before{content:'';position:fixed;inset:0;z-index:-2;background-image:var(--app-bg-img);background-size:cover;background-position:center;}
-body.hasbg::before{filter:saturate(.88) contrast(.92) brightness(1.02);}   /* 배경은 살짝 눕혀 글자와 다투지 않게 */
+body::before{content:'';position:fixed;inset:0;z-index:-2;background-image:var(--app-bg-img,none);background-size:cover;background-position:center;opacity:0;transition:opacity .45s ease;}
+body.hasbg::before{opacity:1;}
+body::before{filter:saturate(.88) contrast(.92) brightness(1.02);}   /* 배경은 살짝 눕혀 글자와 다투지 않게 */
 body.hasbg::after{content:'';position:fixed;inset:0;z-index:-1;
   background:linear-gradient(var(--bg),var(--bg)),url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/><feColorMatrix type='saturate' values='0'/></filter><rect width='140' height='140' filter='url(%23n)' opacity='.5'/></svg>");
   background-blend-mode:normal;opacity:var(--app-bg-dim,.35);}
@@ -617,10 +622,18 @@ body.hasbg #app::after{content:'';position:fixed;inset:0;z-index:-1;pointer-even
   opacity:.055;mix-blend-mode:overlay;}   /* 은은한 그레인 */
 body.hasbg #app,body.hasbg #main,body.hasbg #content{background:transparent!important;}
 /* 배경을 켜면 카드가 유리가 된다 — 토큰만 바꿔 앱 전체에 한 번에 먹인다 */
-body.hasbg{--bg2:rgba(255,255,255,.80);--surf2:rgba(245,247,250,.72);--surf3:rgba(233,237,242,.72);--glass3:rgba(255,255,255,.78);}
-html.dark body.hasbg{--bg2:rgba(28,28,30,.72);--surf2:rgba(38,38,42,.66);--surf3:rgba(48,48,54,.66);--glass3:rgba(28,28,30,.72);}
-body.hasbg .card,body.hasbg .cal-card,body.hasbg #sidebar>*,body.hasbg .set-card{
-  -webkit-backdrop-filter:blur(14px) saturate(150%);backdrop-filter:blur(14px) saturate(150%);}
+body.hasbg{--ca:var(--app-card-alpha,.80);
+  --bg2:rgba(255,255,255,calc(var(--ca)));--surf2:rgba(245,247,250,calc(var(--ca) - .08));
+  --surf3:rgba(233,237,242,calc(var(--ca) - .08));--glass3:rgba(255,255,255,calc(var(--ca) - .02));}
+html.dark body.hasbg{--bg2:rgba(28,28,30,calc(var(--ca)));--surf2:rgba(38,38,42,calc(var(--ca) - .06));
+  --surf3:rgba(48,48,54,calc(var(--ca) - .06));--glass3:rgba(28,28,30,calc(var(--ca)));}
+body.hasbg #view-defect{--bg2:#fff;--surf2:#F5F7FA;--surf3:#E9EDF2;}
+html.dark body.hasbg #view-defect{--bg2:#1C1C1E;--surf2:#26262A;--surf3:#303036;}
+body.hasbg #sidebar{background:var(--glass3);border:1px solid var(--sep);border-radius:var(--rxl);gap:0;
+  -webkit-backdrop-filter:blur(16px) saturate(160%);backdrop-filter:blur(16px) saturate(160%);}
+body.hasbg #sidebar>*{background:transparent!important;border:0;box-shadow:none;border-radius:0;-webkit-backdrop-filter:none;backdrop-filter:none;}
+body.hasbg #sidebar>.sb-tools,body.hasbg #sidebar>.teamsel,body.hasbg #sidebar>.sb-bottom,body.hasbg #sidebar>.sb-foot{border-top:1px solid var(--sep);}
+/* ⚠ 카드마다 blur 를 걸면 표·차트가 많은 하자 화면이 눈에 띄게 느려진다 — 반투명 색만 쓴다 */
 body.hasbg #sidebar{background:var(--glass3);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);}
 @media print{body.hasbg::before,body.hasbg::after{display:none!important;}}
 /* 기준월 칩 — 하자 관리에서는 눌러서 게시월을 고른다 */
@@ -1264,15 +1277,15 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 .pal-add .pal-inp{position:absolute;inset:0;opacity:0;cursor:pointer;padding:0;border:none;}
 
 /* ══════════ 주요업무 현황 — 좌: 대상 선택 · 우: 작성/목록 ══════════ */
-.tkwrap{display:grid;grid-template-columns:320px minmax(0,1fr);gap:12px;align-items:stretch;flex:1;min-height:460px;}
-.tkside{display:flex;flex-direction:column;gap:12px;min-height:0;overflow-y:auto;}
+.tkwrap{display:grid;grid-template-columns:320px minmax(0,1fr);gap:12px;align-items:stretch;flex:1;min-height:0;overflow:hidden;}
+.tkside{display:flex;flex-direction:column;gap:12px;min-height:0;height:100%;overflow-y:auto;}
 .tks-card{padding:9px 10px;}
 .tks-hold{flex:0 0 auto;padding:9px 10px;}
 .tks-hold .tks-item{margin-top:0;}
 /* 오른쪽 열 — 업무 일정과 같은 구성: 제목 없는 필터 카드 + 제목이 붙은 업무 패널 */
 .tkcol{display:flex;flex-direction:column;gap:9px;min-height:0;min-width:0;}
 .tkf-card{flex:0 0 auto;}   /* .dp-fcard 가 이미 카드 껍데기다 — 여기서 또 씌우면 테두리가 두 겹으로 보인다 */
-.tkmain{display:flex;flex-direction:column;min-height:0;padding:0;flex:1;overflow:hidden;}
+.tkmain{display:flex;flex-direction:column;min-height:0;height:100%;padding:0;flex:1;overflow:hidden;}
 /* 하위 항목 앞 동그라미 — 하자처리현황 사이드바 현장 점(.std)과 동일 */
 .tks-item .std{width:6px;height:6px;border-radius:50%;flex-shrink:0;background:var(--sepo);transition:background var(--tr);margin-right:2px;}
 .tks-item:hover .std{background:var(--b500);}
@@ -1555,6 +1568,11 @@ html.dark .col-pop{background:#242426;}
    높이 50px + margin-bottom 2px(펼침과 동일), 구분선만 투명으로 감춘다 */
 #sidebar.mini .teamsel{padding:7px 4px;height:44px;}
 #sidebar.mini .teamsel>*{display:none;}
+#sidebar.mini .teamsel{padding:7px 8px;display:flex;justify-content:flex-start;align-items:center;}
+#sidebar.mini .teamsel .tsel-wrap{display:block;}
+#sidebar.mini .teamsel select,#sidebar.mini .teamsel .tsel-ch{display:none;}
+#sidebar.mini .tsel-mini{display:inline-flex;align-items:center;justify-content:center;width:32px;height:26px;border-radius:var(--rsm);background:var(--fill);font-size:11px;font-weight:700;color:var(--lbl);}
+.tsel-mini{display:none;}
 .teamsel .tsel-wrap{position:relative;flex:1;min-width:0;}
 .teamsel select{width:100%;-webkit-appearance:none;appearance:none;background:var(--fill);border:1px solid var(--sep);border-radius:var(--rsm);padding:7px 26px 7px 10px;font-size:13px;font-weight:600;color:var(--lbl);cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .teamsel select:hover{background:var(--fill2);}
@@ -2608,14 +2626,14 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 
           <div class="card">
             <div class="set-h">앱 배경화면</div>
-            <div class="share-row"><div><b style="font-size:13px">배경 이미지</b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">이 기기에만 저장됩니다 · 팀원 화면·데이터에는 영향 없음</div></div>
+            <div class="share-row"><div><b style="font-size:13px">배경 이미지</b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">이 기기에만 저장됩니다</div></div>
               <span style="display:inline-flex;gap:6px;align-items:center"><button class="btn bo bsm" data-act="set.bgPick">이미지 선택</button><button class="btn bg2 bsm" id="bgClearBtn" data-act="set.bgClear" hidden>없애기</button></span></div>
-            <div class="share-row" style="margin-top:10px"><div><b style="font-size:13px">배경 흐리기</b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">글자가 잘 보이도록 배경 위에 덮는 정도</div></div>
-              <input type="range" id="bgDim" min="0" max="80" step="5" value="35" data-act="set.bgDim" style="width:160px"></div>
+            <div class="share-row" style="margin-top:10px"><div><b style="font-size:13px">레이아웃 투명도</b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">카드가 배경을 얼마나 비칠지 · 하자 관리 화면은 항상 불투명</div></div>
+              <input type="range" id="bgAlpha" min="40" max="100" step="5" value="80" data-act="set.bgAlpha" style="width:160px"></div>
           </div>
           <div class="set-card card">
             <div class="set-h">하자 관리 스냅샷</div>
-            <div class="share-row"><div><b style="font-size:13px">지금 게시월을 문서로 굳히기</b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">대시보드·전 현장·목록·처리계획·분석을 담은 단일 HTML — 로그인 없이 열립니다</div></div><button class="btn bo bsm" data-act="set.dfsnap">내보내기</button></div>
+            <div class="share-row"><div><b style="font-size:13px">현재 게시월 기준으로 스냅샷 추출</b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">대시보드·전 현장·목록·처리계획·분석을 담은 단일 HTML — 로그인 없이 열립니다</div></div><button class="btn bo bsm" data-act="set.dfsnap">내보내기</button></div>
           </div>
           <div class="set-card card">
             <div class="set-h">바탕화면 위젯</div>
@@ -2650,5 +2668,5 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=215"></script>
+<script src="./app.js?v=216"></script>
 </body></html>
