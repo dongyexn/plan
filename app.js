@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='1.8.0';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='1.8.1';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -3144,6 +3144,22 @@ function dfMoSnapsDash(wkBySite){
 }
 /* ── 게시본 읽기 ── */
 async function dfRef(path){return dfDec((await FB.db.ref(path).once('value')).val());}
+/* 현장 토글(공가세대 표시·공가상가 포함) — 원본이 siteConfig/{sid} 리프에 실시간으로 쓴다.
+   게시본 _dash/sites 는 게시 시점의 스냅샷이라 이 리프가 항상 우선이다(fb2SubSiteConfig 와 동일 규칙). */
+function dfSubSiteCfg(){
+  if(DF._cfgBound||!S.live||!FB.db)return;DF._cfgBound=true;
+  FB.db.ref('siteConfig').on('value',snap=>{
+    const cfg=snap.val()||{};let changed=false;
+    for(const sid in cfg){
+      const c=cfg[sid]||{},x=(S.org.sites||[]).find(y=>y.id===sid);if(!x)continue;
+      if(typeof c.hasCommercial==='boolean'&&x.hasCommercial!==c.hasCommercial){x.hasCommercial=c.hasCommercial;changed=true;}
+      if(typeof c.showVacant==='boolean'&&(x.showVacant!==false)!==c.showVacant){x.showVacant=c.showVacant;changed=true;}
+    }
+    if(!changed)return;   /* 값이 같은 에코는 다시 그리지 않는다(깜빡임 방지) */
+    if(S.view==='defect')rDefect();
+    if(S.view==='org')rOrg();
+  });
+}
 async function dfLoad(){
   const rm=ORG_RM;
   if(!S.live||!FB.db||!rm){S.dfRm='';return null;}
@@ -3214,12 +3230,36 @@ async function dfLoadAna(sid){
   catch(e){DF.ana[sid]={};}
   return DF.ana[sid];
 }
-function dfAnaSet(sid,val){
-  const v=String(val||'').slice(0,20000);
-  if(!DF.ana[sid])DF.ana[sid]={};
-  DF.ana[sid][S.dfRm]=v;
-  if(S.live&&FB.db&&/^\d{4}-\d{2}$/.test(S.dfRm))
-    FB.db.ref('analysis/'+sid+'/'+S.dfRm).set(v).catch(()=>toast('분석 의견 저장 실패'));
+/* 분석 의견 HTML — 원본과 같이 AI 산출 HTML 을 씻어서 그대로 렌더한다(레거시 문자열 값도 수용) */
+function dfAitHTML(sid){
+  const m=DF.ana[sid];
+  const v=(typeof m==='string')?m:((m||{})[S.dfRm]||'');
+  if(!v)return '<p style="color:var(--lbl3)">이 달의 AI 분석이 없습니다 · 하자처리 현황에서 생성하면 여기에 보입니다.</p>';
+  return (typeof DOMPurify!=='undefined')?DOMPurify.sanitize(v):esc(v);
+}
+/* 현재 열어 둔 현장의 처리계획·분석 의견 실시간 구독 — 원본(fb2SubSite)과 같은 동작.
+   내가 입력 중인 칸은 건드리지 않는다(타이핑을 실시간 수신이 덮어쓰는 사고 방지). */
+function dfSubSite(sid){
+  if(DF._sub&&DF._sub.sid===sid)return;
+  if(DF._sub)DF._sub.offs.forEach(f=>{try{f();}catch(e){}});
+  DF._sub={sid,offs:[]};
+  if(!S.live||!FB.db||!sid)return;
+  const pref=FB.db.ref('plans/'+sid);
+  const ph=pref.on('value',snap=>{
+    DF.plans[sid]=snap.val()||{};
+    $$('#view-defect .plan-ta').forEach(ta=>{
+      if(ta===document.activeElement||ta.dataset.act!=='df.plan')return;
+      const v=dfPlanGet(sid,ta.dataset.f,S.dfRm,ta.dataset.t);
+      if(ta.value!==v)ta.value=v;
+    });
+  });
+  DF._sub.offs.push(()=>pref.off('value',ph));
+  const aref=FB.db.ref('analysis/'+sid);
+  const ah=aref.on('value',snap=>{
+    DF.ana[sid]=snap.val()||{};
+    const el=$('#dfAit');if(el)el.innerHTML=dfAitHTML(sid);
+  });
+  DF._sub.offs.push(()=>aref.off('value',ah));
 }
 /* ── 차트 공통 — 원본과 같은 구성, 색은 토큰에서 읽는다 ── */
 function cvar(n,f){try{const v=getComputedStyle(document.documentElement).getPropertyValue(n).trim();return v||f;}catch(e){return f;}}
@@ -3631,12 +3671,13 @@ function dfVacPane(sid,stat,vacSv,kind){
 function rDefectSite(root,site){
   const key=ORG_RM+'/'+site.id;
   const k=DF.kpi[key];
-  if(k===undefined){
+  if(k===undefined||DF.plans[site.id]===undefined||DF.ana[site.id]===undefined){
     root.innerHTML=dfNoneHTML(site.name+' 자료를 불러오는 중입니다…');
     Promise.all([dfSiteData(site.id),dfLoadPlans(site.id),dfLoadAna(site.id)])
       .then(()=>{if(S.view==='defect'&&S.dfSid===site.id)rDefect();});
     return;
   }
+  dfSubSite(site.id);   /* 처리계획·분석 의견 실시간 반영 */
   if(!k){root.innerHTML=dfNoneHTML('이 현장의 게시 자료가 없습니다.');return;}
   const st=k;
   const units=site.units||0;
@@ -3662,11 +3703,10 @@ function rDefectSite(root,site){
   </div>`;
   let body='';
   if(tab==='sum'){
-    const ana=(DF.ana[site.id]||{})[S.dfRm];
     body=`<div class="as">
       ${dfTrendCardHTML('dfSiteTrend')}
       <div class="opsr" style="margin-bottom:0"><div class="card"><div class="ct cardttl">전월대비 실적 현황</div><div id="dfSiteMom" class="mom-wrap"></div></div>${dfDonutCardHTML('공종별 미처리 분포','dfSiteMx','dfSiteMxLg')}</div>
-      <div class="card"><div class="sh"><div class="st cardttl">종합 분석 의견</div><span class="df-sub">${esc(S.dfRm)} · 팀 전체 공유</span></div><div class="aib"><div class="ail">분석 의견</div><textarea class="inp plan-ta ana-ta" rows="4" maxlength="20000" data-act="df.ana" data-sid="${esc(site.id)}" placeholder="이번 달 현황에 대한 의견을 적으세요">${esc(typeof ana==='string'?ana:'')}</textarea></div></div>
+      <div class="card"><div class="sh"><div class="st cardttl">종합 분석 의견</div><span class="df-sub">${esc(S.dfRm)} · AI 분석은 하자처리 현황에서 생성</span></div><div class="aib"><div class="ail">AI 분석</div><div class="ait" id="dfAit">${dfAitHTML(site.id)}</div></div></div>
     </div>`;
   }else if(tab==='lt'){
     /* 장기미처리 비율 현황 — 전월/금월 누적 가로 바 + 증감 배지 */
@@ -3735,6 +3775,7 @@ function rDefect(){
   const root=$('#defectRoot');if(!root)return;
   const site=S.dfSid?(S.org.sites||[]).find(x=>x.id===S.dfSid):null;
   if(!S.live){root.innerHTML=dfNoneHTML('로그인하면 게시본을 읽어 옵니다.');dfTopbar();return;}
+  dfSubSiteCfg();
   const rm=ORG_RM,d=rm&&DF.cache[rm];
   if(!d){
     root.innerHTML=dfNoneHTML('게시본을 불러오는 중입니다…');
@@ -3844,7 +3885,6 @@ function recBodyHTML(){
     +'</div>'
     +(PIV.on?pivHTML()
       :(v.length?'<div class="rec-wrap"><table class="rec-tbl"><thead>'+head+'</thead><tbody>'+body+'</tbody></table></div>'
-        +(v.length>lim?'<div class="rec-more">'+lim.toLocaleString()+'건까지 표시 — 표시 건수를 늘리거나 조건을 좁히세요</div>':'')
         :'<div class="rec-none">조건에 맞는 건이 없습니다.</div>'));
 }
 function recRender(){const b=$('#mbody');if(b)b.innerHTML=recBodyHTML();}
@@ -3954,7 +3994,9 @@ function rDefectNav(){
   const none=sites.filter(x=>!x.region||!regions.some(r=>r.id===x.region));
   if(none.length)groups.push(['','권역 미지정',none]);
   box.innerHTML=groups.map(([rid,rn,list])=>{
-    const open=S.dfFold[rid]!==false;   /* 기본은 펼침 */
+    /* 기본은 접힘 — 열어 둔 현장이 속한 권역만 자동으로 편다. 사용자가 누르면 그 선택이 우선 */
+    const open=S.dfFold[rid]!==undefined?S.dfFold[rid]===false
+      :(S.view==='defect'&&!!S.dfSid&&list.some(x=>x.id===S.dfSid));
     return '<button class="df-reg'+(open?' open':'')+'" data-act="df.fold" data-rid="'+esc(rid)+'"'
       +' aria-expanded="'+(open?'true':'false')+'">'
       +'<svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg>'
@@ -4268,12 +4310,12 @@ function siteTable(){
   </tr></thead><tbody>${sites.map(x=>`<tr>
     <td><select class="mg-inp" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="region" aria-label="권역 선택">${regOpts(x)}</select></td>
     <td><input class="mg-inp" value="${esc(x.name)}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="name" aria-label="현장명"></td>
-    <td><input class="mg-inp n" type="number" value="${x.units||0}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="units" aria-label="세대수" style="text-align:right;min-width:56px"></td>
-    <td><input class="mg-inp n" type="number" value="${x.buildings||0}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="buildings" aria-label="동수" style="text-align:right;min-width:48px"></td>
-    <td><input class="mg-inp n" type="number" value="${x.commercialUnits||0}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="commercialUnits" aria-label="상가수" style="text-align:right;min-width:52px"></td>
+    <td><input class="mg-inp n" type="text" inputmode="numeric" value="${(x.units||0).toLocaleString()}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="units" aria-label="세대수" style="text-align:right;min-width:56px"></td>
+    <td><input class="mg-inp n" type="text" inputmode="numeric" value="${(x.buildings||0).toLocaleString()}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="buildings" aria-label="동수" style="text-align:right;min-width:48px"></td>
+    <td><input class="mg-inp n" type="text" inputmode="numeric" value="${(x.commercialUnits||0).toLocaleString()}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="commercialUnits" aria-label="상가수" style="text-align:right;min-width:52px"></td>
     <td class="cc"><input class="mg-inp" type="date" max="9999-12-31" style="width:120px;max-width:100%;text-align:center;display:inline-block" value="${esc(x.completionDate||'')}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="completionDate" aria-label="준공일"></td>
-    <td class="cc mg-ro"><label class="sw"><input type="checkbox"${x.vacantUnits?' checked':''} disabled aria-label="공가세대 — 하자처리 현황에서 관리"><span class="sw-t"></span></label></td>
-    <td class="cc mg-ro"><label class="sw"><input type="checkbox"${x.vacantCommercial?' checked':''} disabled aria-label="공가상가 — 하자처리 현황에서 관리"><span class="sw-t"></span></label></td>
+    <td class="cc mg-ro"><label class="sw"><input type="checkbox"${x.showVacant!==false?' checked':''} disabled aria-label="공가세대 — 하자처리 현황에서 관리"><span class="sw-t"></span></label></td>
+    <td class="cc mg-ro"><label class="sw"><input type="checkbox"${x.hasCommercial?' checked':''} disabled aria-label="공가상가 — 하자처리 현황에서 관리"><span class="sw-t"></span></label></td>
     <td class="cc mg-dis" style="font-size:11.5px;white-space:nowrap">—</td>
     <td class="cc"><button class="tm-x tm-del" data-act="org.delSite" data-id="${esc(x.id)}" aria-label="삭제">${ICON_TRASH}</button></td>
   </tr>`).join('')}</tbody></table></div>`;
@@ -4825,6 +4867,8 @@ function applyTheme(dark){
   const c=$('#darkChk');if(c)c.checked=dark;
   const u=$('#thIcon');if(u)u.setAttribute('href',dark?'#i-moon':'#i-sun');
   try{localStorage.setItem('calapp.theme',dark?'dark':'light');}catch(e){}
+  /* 차트는 그릴 때의 토큰 색을 굽는다 — 테마가 바뀌면 하자 화면을 다시 그려야 색이 따라온다 */
+  if(S.view==='defect'){try{rDefect();}catch(e){}}
 }
 
 /* ═══════════ 액션 위임 ═══════════ */
@@ -4972,7 +5016,10 @@ const ACT={
   'rec.pivot':()=>{PIV.on=!PIV.on;recRender();},
   'rec.showAll':()=>{REC.hidden={};recRender();},
   'rec.piv':el=>{PIV[el.dataset.p]=el.value;recRender();},
-  'df.fold':el=>{const k=el.dataset.rid;S.dfFold[k]=(S.dfFold[k]===false);rDefectNav();},
+  'df.fold':el=>{const k=el.dataset.rid;
+    const btn=el.closest('.df-reg'),wasOpen=btn&&btn.classList.contains('open');
+    S.dfFold[k]=wasOpen?true:false;   /* true=접힘 · false=펼침 (기존 저장값과 호환) */
+    rDefectNav();},
   'df.ax.site':el=>{S.dfAxSite=el.dataset.ax;S.dfAxSiteAll=false;window._dfSort={};dfSiteAxisOnly(S.dfSid);},
   'df.ax.siteAll':()=>{S.dfAxSiteAll=!S.dfAxSiteAll;dfSiteAxisOnly(S.dfSid);},
   'df.ax.dash':el=>{S.dfAxDash=el.dataset.ax;if(DF.lastDash)dfDashTableFill(DF.lastDash);},
@@ -5506,11 +5553,6 @@ document.addEventListener('input',e=>{
   clearTimeout(DF_PT);
   DF_PT=setTimeout(()=>dfPlanSet(el.dataset.sid,el.dataset.f,S.dfRm,el.dataset.t,el.value),700);
 });
-let DF_AT=null;
-document.addEventListener('input',e=>{
-  const el=e.target;if(!el||el.dataset.act!=='df.ana')return;
-  clearTimeout(DF_AT);DF_AT=setTimeout(()=>dfAnaSet(el.dataset.sid,el.value),700);
-});
 /* 현장 표 인라인 저장 — 하자처리현황과 같은 즉시 반영 */
 document.addEventListener('change',e=>{
   const el=e.target.closest('[data-act="org.siteUpd"]');
@@ -5518,8 +5560,10 @@ document.addEventListener('change',e=>{
   if(!isEditor()){denyEdit();rOrg();return;}
   const st=(S.org.sites||[]).find(x=>x.id===el.dataset.id);if(!st)return;
   const f=el.dataset.f,v=el.value;
-  if(f==='units'||f==='buildings'||f==='commercialUnits')st[f]=Number(v)||0;
-  else st[f]=String(v||'');
+  if(f==='units'||f==='buildings'||f==='commercialUnits'){
+    st[f]=Number(String(v).replace(/[^0-9]/g,''))||0;   /* #,##0 표기의 콤마를 걷어내고 저장 */
+    el.value=st[f].toLocaleString();                    /* 칸에도 서식을 되입힌다 */
+  }else st[f]=String(v||'');
   orgSave();
   if(f==='region'&&!S.live)rOrg();   /* 권역이 바뀌면 정렬 위치가 달라진다 */
 });
