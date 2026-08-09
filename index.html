@@ -107,12 +107,13 @@ svg{display:block;flex-shrink:0;}
 .nvi:not(.act) .nic svg{color:var(--lbl2);}
 .nil{flex:1;text-align:left;}
 #sidebar.mini .nil{display:none;}
-/* 접어도 아이콘 x 좌표는 그대로(블록 8 + 항목 8 = 16px) — 폭 64px 안에서 자연히 가운데가 된다 */
-#sidebar.mini .nvi{justify-content:flex-start;padding:7px 8px;gap:0;}
+/* 접으면 모든 블록의 내용물을 가운데로 모은다(폭 64px = 16+32+16 이라 아이콘 x 는 펼침과 같다) */
+#sidebar.mini .nvi{justify-content:center;padding:7px 8px;gap:0;}
 #sidebar.mini .sbsc,#sidebar.mini .sb-bottom{padding-left:8px;padding-right:8px;}
-#sidebar.mini .sb-foot{justify-content:flex-start;padding:7px 8px;}
-#sidebar.mini .sb-tools{padding:7px 8px;justify-content:flex-start;}
+#sidebar.mini .sb-foot,#sidebar.mini .sb-tools,#sidebar.mini .sbh,#sidebar.mini .teamsel{justify-content:center;padding:7px 8px;}
 #sidebar.mini .sb-more{width:32px;height:32px;}
+#sidebar.mini .sbh{padding:0;}
+#sidebar.mini .sbtg{margin:0 auto;}
 /* 프로필 블록 — 구분선 대신 블록 간격으로 나뉜다 */
 .sb-foot{position:relative;margin:0;padding:7px 8px;display:flex;align-items:center;gap:8px;}
 /* 기능 버튼 블록 — 페이지 헤더에서 옮겨 온 아이콘들 */
@@ -143,7 +144,7 @@ svg{display:block;flex-shrink:0;}
 .sb-acct-name{font-size:13px;font-weight:600;color:var(--lbl);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;}
 
 /* 접었을 때: 프로필은 아바타만, 테마 버튼은 아래로 — 둘 다 사라지지 않는다 */
-#sidebar.mini .sb-acct{flex:1;}
+#sidebar.mini .sb-acct{flex:none;margin:0 auto;}
 #sidebar.mini .sb-acct-info,#sidebar.mini .sb-acct-role{display:none;}
 .sb-th1{flex:0 0 auto;position:relative;width:48px;align-self:stretch;min-height:38px;margin-left:6px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--rmd);color:var(--lbl3);background:transparent;cursor:pointer;transition:background var(--tr),color var(--tr);}
 .sb-th1::before{content:"";position:absolute;left:0;top:5px;bottom:5px;width:1px;background:var(--sep);}
@@ -262,25 +263,25 @@ body:not(.wid) .cal-card{min-height:0;overflow:hidden;border:0;background:transp
 /* scrollgrid 래퍼 td 의 1px 보더(--fc-border-color)가 우·하단에 선으로 남는다 */
 #fcal .fc-scrollgrid-section>td,#fcal .fc-scrollgrid-section>th{border:0;}
 /* 가로줄(주 구분)을 세로줄보다 한 단계 진하게 — 주 단위가 먼저 읽힌다 */
-#fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-top:2px solid #DCDFE6;}
-html.dark #fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-top-color:#0F0F10;}
-#fcal .fc-dayGridMonth-view .fc-col-header{border-bottom:2px solid #DCDFE6;}
+#fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-top:2px solid transparent;background-clip:padding-box;}
+
+#fcal .fc-dayGridMonth-view .fc-col-header{border-bottom:2px solid transparent;}
 /* 세로줄은 반대로 더 옅게 — 가로가 먼저 읽히도록 대비를 벌린다 */
-#fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-left:2px solid #DCDFE6;border-right:0;}
-html.dark #fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-left-color:#0F0F10;}
+#fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-left:2px solid transparent;border-right:0;}
+
 #fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td:first-child{border-left:0;}
 #fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table tr:first-child td{border-top:0;}
 
-html.dark #fcal .fc-dayGridMonth-view .fc-col-header{border-bottom-color:rgba(255,255,255,.15);}
+
 #fcal .fc-scrollgrid{border:0;background:transparent;border-radius:var(--rmd);overflow:hidden;box-shadow:0 0 0 1px rgba(60,60,67,.18);}
 html.dark #fcal .fc-scrollgrid{box-shadow:0 0 0 1px rgba(255,255,255,.14);}
 /* 뒤판은 셀이 실제로 차지하는 영역(요일띠·본문 테이블)에만 — scrollgrid 에 칠하면
    행 높이 반올림 잔여만큼 하단에 띠로 노출된다 */
 
 
-#fcal .fc-col-header-cell{background:#C4CCDA;padding:9px 0;background-clip:padding-box;border-left:2px solid #DCDFE6;border-right:0;}
+#fcal .fc-col-header-cell{background:#C4CCDA;padding:9px 0;background-clip:padding-box;border-left:2px solid transparent;border-right:0;}
 #fcal .fc-col-header-cell:first-child{border-left:0;}
-html.dark #fcal .fc-col-header-cell{background:#2A2A2A;border-left-color:#0F0F10;}
+html.dark #fcal .fc-col-header-cell{background:#2A2A2A;}
 /* 주간 헤더 — 공휴일 줄이 항상 자리를 차지해 높이가 변하지 않는다 */
 #fcal .fc-col-header-cell-cushion{font-size:13px;font-weight:800;color:var(--lbl);text-decoration:none;letter-spacing:.02em;}
 #fcal .fc-day-sun .fc-col-header-cell-cushion{color:var(--rd);}
@@ -629,9 +630,8 @@ html.dark body.hasbg{--bg2:rgba(28,28,30,calc(var(--ca)));--surf2:rgba(38,38,42,
   --surf3:rgba(48,48,54,calc(var(--ca) - .06));--glass3:rgba(28,28,30,calc(var(--ca)));}
 body.hasbg #view-defect{--bg2:#fff;--surf2:#F5F7FA;--surf3:#E9EDF2;}
 html.dark body.hasbg #view-defect{--bg2:#1C1C1E;--surf2:#26262A;--surf3:#303036;}
-/* 사이드바 뒤에는 앱 배경색 판을 깔아 사진이 비치지 않게 한다 — 블록 분리는 그대로 */
-body.hasbg #sidebar{position:relative;}
-body.hasbg #sidebar::before{content:'';position:absolute;inset:-6px;background:var(--bg);border-radius:calc(var(--rxl) + 6px);z-index:-1;}
+/* 사이드바는 배경 사진이 비치지 않는다 — 사이드바 자체가 불투명 판, 그 위에 블록이 얹힌다 */
+body.hasbg #sidebar{background:var(--bg);border-radius:var(--rxl);padding:6px;}
 body.hasbg #sidebar>*{background:var(--bg2);}
 /* ⚠ 카드마다 blur 를 걸면 표·차트가 많은 하자 화면이 눈에 띄게 느려진다 — 반투명 색만 쓴다 */
 body.hasbg #sidebar{background:var(--glass3);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);}
@@ -1567,7 +1567,7 @@ html.dark .col-pop{background:#242426;}
 /* 접으면 팀 선택기는 감추되 자리 높이는 그대로 — 아래 메뉴 아이콘이 올라가지 않는다 */
 /* 펼침과 정확히 같은 자리를 차지해야 아래 아이콘이 안 움직인다:
    높이 50px + margin-bottom 2px(펼침과 동일), 구분선만 투명으로 감춘다 */
-#sidebar.mini .teamsel{padding:7px 8px;height:auto;display:flex;justify-content:flex-start;align-items:center;}
+#sidebar.mini .teamsel{padding:7px 8px;height:auto;display:flex;justify-content:center;align-items:center;}
 #sidebar.mini .teamsel .tsel-wrap{display:block;}
 #sidebar.mini .teamsel select,#sidebar.mini .teamsel .tsel-ch{display:none;}
 #sidebar.mini .tsel-mini{display:inline-flex;align-items:center;justify-content:center;width:32px;height:26px;border-radius:var(--rsm);background:var(--fill);font-size:11px;font-weight:700;color:var(--lbl);}
@@ -2156,7 +2156,7 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 /* 팀 선택 줄 — 본문 첫 카드와 같은 선에서 시작하도록 위 여백을 4px 로 */
 .teamsel{padding-top:7px;}
 /* 접었을 때도 같은 높이를 차지하게 — 고정 높이 대신 내용을 숨기기만 한다(아이콘이 어긋나던 것) */
-#sidebar.mini .teamsel{padding:7px 8px;height:auto;}
+#sidebar.mini .teamsel{padding:7px 8px;height:auto;justify-content:center;}
 /* 조직/현장 좌측 열을 업무 목록 좌측(320px)과 같은 너비로 */
 .mg-grid{grid-template-columns:320px minmax(0,1fr);}
 /* 메일 미리보기 — 실제 메일 폭(640px)이 잘리지 않게 */
@@ -2668,5 +2668,5 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=218"></script>
+<script src="./app.js?v=219"></script>
 </body></html>
