@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='2.2.0';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='2.2.1';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -1321,13 +1321,19 @@ function exitLive(){
   store=LocalStore;LocalStore.init();
   subVisibleMonths();rAll();rAcct();
 }
+/* 팀 이름 줄이기 — 'H서비스중부팀' → '중부'. 앞의 회사·조직 접두와 끝의 '팀'만 떼고 가운데만 쓴다 */
+function teamShort(nm){
+  const s2=String(nm||'').trim();
+  const m=s2.match(/^[A-Za-z가-힣]*?서비스(.+?)팀$/);
+  return (m&&m[1])?m[1]:s2;
+}
 function rTeamSel(){
   const el=$('#teamsel');if(!el)return;
   const teams=(S.org.teams||[]).filter(t=>t.name);
   if(!teams.length){$('#tselWrap').innerHTML='';el.style.display='none';return;}
   el.style.display='';
   if(!teams.some(t=>t.id===S.tk.t))S.tk.t=teams[0].id;
-  const opts=teams.map(t=>'<option value="'+esc(t.id)+'"'+(t.id===S.tk.t?' selected':'')+'>'+esc(t.name)+'</option>').join('');
+  const opts=teams.map(t=>'<option value="'+esc(t.id)+'"'+(t.id===S.tk.t?' selected':'')+'>'+esc(teamShort(t.name))+'</option>').join('');
   /* 선택창은 정적 마크업 — 내용만 채운다 */
   $('#tselWrap').innerHTML='<select id="teamSelEl" aria-label="팀 선택">'+opts+'</select>'
     +'<span class="tsel-ch"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3.5l3 3 3-3"/></svg></span>';
@@ -5974,10 +5980,23 @@ const ACT={
   'set.bgPick':()=>{
     const f=document.createElement('input');f.type='file';f.accept='image/*';
     f.onchange=()=>{const file=f.files&&f.files[0];if(!file)return;
-      if(file.size>4*1024*1024){toast('4MB 이하 이미지를 골라 주세요');return;}
+      /* 크기 제한 대신 자동 축소 — 브라우저 로컬 저장은 보통 5MB 남짓이고 dataURL 은 원본보다 약 33% 커진다.
+         긴 변 2560px·JPEG 로 줄이면 큰 사진도 대개 1MB 안쪽이 된다. */
       const r=new FileReader();
-      r.onload=()=>{try{localStorage.setItem('calapp.bg',String(r.result));applyBg();toast('배경을 바꿨습니다 · 이 기기에만 저장됩니다');}
-        catch(e){toast('저장 공간이 부족합니다 · 더 작은 이미지를 골라 주세요');}};
+      r.onload=()=>{
+        const img=new Image();
+        img.onload=()=>{
+          const max=2560,sc=Math.min(1,max/Math.max(img.width,img.height));
+          const cv=document.createElement('canvas');
+          cv.width=Math.round(img.width*sc);cv.height=Math.round(img.height*sc);
+          cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+          let out=cv.toDataURL('image/jpeg',0.86);
+          if(out.length>3.6e6)out=cv.toDataURL('image/jpeg',0.7);
+          try{localStorage.setItem('calapp.bg',out);applyBg();toast('배경을 바꿨습니다 · 이 기기에만 저장됩니다');}
+          catch(e){toast('이 브라우저의 로컬 저장 공간이 부족합니다 · 더 작은 이미지를 골라 주세요');}
+        };
+        img.onerror=()=>toast('이미지를 읽지 못했습니다');
+        img.src=String(r.result);};
       r.readAsDataURL(file);};
     f.click();},
   'set.bgClear':()=>{try{localStorage.removeItem('calapp.bg');}catch(e){}applyBg();toast('배경을 없앴습니다');},
