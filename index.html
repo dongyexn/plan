@@ -262,9 +262,11 @@ body:not(.wid) #fcal .fc-daygrid-day-number{padding:3px 5px 1px;}     /* 위젯�
 .cal-title{flex:0 0 auto;}
 .cal-title{font-size:16px;font-weight:800;color:var(--lbl);letter-spacing:-.01em;display:flex;align-items:center;gap:5px;
   border:none;background:transparent;cursor:pointer;padding:2px 6px 2px 2px;border-radius:8px;transition:background var(--tr);}
-#view-calendar .cal-title{background:var(--fill);padding:0 12px;height:34px;}
-#view-calendar .cal-title:hover{background:var(--fill2);}
-#view-calendar .cal-head>.cal-ctl>.cal-nav:first-child{background:var(--fill);border-radius:var(--rmd);padding:2px;}
+/* ⚠ body:not(.wid) 한정 필수 — #view-calendar 는 위젯도 같이 쓰는데, ID 명시도가 위젯 전용 채움
+   (body.wid .cal-title 의 진한 rgba)을 덮어 어두운 바탕 위에서 년월·넘김 버튼이 '투명'해 보였다(219차). */
+body:not(.wid) #view-calendar .cal-title{background:var(--fill);padding:0 12px;height:34px;}
+body:not(.wid) #view-calendar .cal-title:hover{background:var(--fill2);}
+body:not(.wid) #view-calendar .cal-head>.cal-ctl>.cal-nav:first-child{background:var(--fill);border-radius:var(--rmd);padding:2px;}
 .cal-title:hover{background:var(--fill);}
 .cal-title-c{width:13px;height:13px;align-self:center;color:var(--lbl3);transform:rotate(90deg);}
 .cal-title .y{font-size:16px;font-weight:800;color:var(--lbl);}
@@ -637,7 +639,7 @@ body.hasbg::after{content:'';position:fixed;inset:0;z-index:-1;
   background-blend-mode:normal;opacity:var(--app-bg-dim,.35);}
 body.hasbg #app::after{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
   background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/><feColorMatrix type='saturate' values='0'/></filter><rect width='140' height='140' filter='url(%23g)'/></svg>");
-  opacity:.055;mix-blend-mode:overlay;}   /* 은은한 그레인 */
+  opacity:var(--app-grain,.055);mix-blend-mode:overlay;}   /* 은은한 그레인 — 설정 슬라이더(--app-grain)로 조절 */
 body.hasbg #app,body.hasbg #main,body.hasbg #content{background:transparent!important;}
 /* 배경을 켜면 카드가 유리가 된다 — 토큰만 바꿔 앱 전체에 한 번에 먹인다 */
 body.hasbg{--ca:var(--app-card-alpha,.90);
@@ -2675,6 +2677,10 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
               <span style="display:inline-flex;gap:6px;align-items:center"><button class="btn bo bsm" data-act="set.bgPick">이미지 선택</button><button class="btn bg2 bsm" id="bgClearBtn" data-act="set.bgClear" hidden>없애기</button></span></div>
             <div class="share-row" style="margin-top:10px"><div><b style="font-size:13px">레이아웃 투명도</b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">카드가 배경을 얼마나 비칠지 · 하자 관리 화면은 항상 불투명</div></div>
               <input type="range" id="bgAlpha" min="60" max="100" step="5" value="90" data-act="set.bgAlpha" style="width:160px"></div>
+            <div class="share-row" style="margin-top:10px"><div><b style="font-size:13px">배경 대비</b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">올릴수록 배경이 가라앉고 글자가 또렷해집니다</div></div>
+              <input type="range" id="bgDim" min="0" max="60" step="2" value="18" data-act="set.bgDim" style="width:160px"></div>
+            <div class="share-row" style="margin-top:10px"><div><b style="font-size:13px">그레인</b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">배경 위 필름 입자 질감 · 0이면 없음</div></div>
+              <input type="range" id="bgGrain" min="0" max="15" step="0.5" value="5.5" data-act="set.bgGrain" style="width:160px"></div>
           </div>
           <div class="set-card card">
             <div class="set-h">하자 관리 스냅샷</div>
@@ -2713,5 +2719,5 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=247"></script>
+<script src="./app.js?v=248"></script>
 </body></html>

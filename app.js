@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='2.3.3';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='2.3.4';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -5776,15 +5776,24 @@ function mobClose(){
 /* 테마 */
 /* 앱 배경화면 — 이 기기(localStorage)에만 두므로 팀원 화면·데이터베이스에는 영향이 없다 */
 function applyBg(){
-  let url='',al='80';
-  try{url=localStorage.getItem('calapp.bg')||'';al=localStorage.getItem('calapp.bgAlpha')||'90';}catch(e){}
+  /* ⚠ 위젯 창은 자체 배경 체계(불투명/글라스)를 쓴다 — 같은 localStorage 를 읽는 탓에 hasbg 가 붙으면
+     hasbg 토큰(--surf2 밝은 반투명 등)이 위젯을 덮쳐 다른달 셀에 밝은 판이 깔리고 년월·넘김 버튼이
+     이상해진다(218차 위젯 회귀의 원인). 위젯에서는 배경 기능 전체를 무시한다.
+     (WIDGET 상수는 아래쪽 선언이라 TDZ — location 으로 직접 검사) */
+  if(/[?&]w=1\b/.test(location.search)){document.body.classList.remove('hasbg');return;}
+  let url='',al='80',dim='18',gr='5.5';
+  try{url=localStorage.getItem('calapp.bg')||'';al=localStorage.getItem('calapp.bgAlpha')||'90';
+    dim=localStorage.getItem('calapp.bgDim')||'18';gr=localStorage.getItem('calapp.bgGrain')||'5.5';}catch(e){}
   const root=document.documentElement;
   root.style.setProperty('--app-bg-img',url?`url("${url}")`:'none');
-  root.style.setProperty('--app-bg-dim',0.18);            /* 배경 위 밑칠 — 글자 대비만 지킬 만큼 */
+  root.style.setProperty('--app-bg-dim',String((Number(dim)||0)/100));   /* 배경 위 밑칠 — 올릴수록 배경이 죽고 글자 대비가 오른다 */
+  root.style.setProperty('--app-grain',String((Number(gr)||0)/100));
   root.style.setProperty('--app-card-alpha',(Number(al)||90)/100);
   document.body.classList.toggle('hasbg',!!url);
   const btn=$('#bgClearBtn');if(btn)btn.hidden=!url;
   const dl=$('#bgAlpha');if(dl)dl.value=al;
+  const dd=$('#bgDim');if(dd)dd.value=dim;
+  const dg=$('#bgGrain');if(dg)dg.value=gr;
 }
 function applyTheme(dark){
   document.documentElement.classList.toggle('dark',dark);
@@ -6029,6 +6038,8 @@ const ACT={
     f.click();},
   'set.bgClear':()=>{try{localStorage.removeItem('calapp.bg');}catch(e){}applyBg();toast('배경을 없앴습니다');},
   'set.bgAlpha':el=>{const v=String(el.value||'80');try{localStorage.setItem('calapp.bgAlpha',v);}catch(e){}applyBg();},
+  'set.bgDim':el=>{const v=String(el.value||'18');try{localStorage.setItem('calapp.bgDim',v);}catch(e){}applyBg();},
+  'set.bgGrain':el=>{const v=String(el.value||'5.5');try{localStorage.setItem('calapp.bgGrain',v);}catch(e){}applyBg();},
   'df.rm':async el=>{
     if(document.querySelector('.ctxmenu')){closeCtx();return;}   /* 열려 있으면 닫기(토글) */
     if(!S.live||!FB.db)return;
