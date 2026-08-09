@@ -147,7 +147,7 @@ svg{display:block;flex-shrink:0;}
 body.wid .tbr{display:none;}   /* 위젯에는 상단바가 없다 */
 #topbar{height:var(--th);flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:var(--glass2);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);border-bottom:1px solid var(--sep);z-index:100;}
 .tbl{display:flex;align-items:center;gap:10px;min-width:0;}
-.tbt{font-size:14px;font-weight:700;color:var(--lbl);letter-spacing:-.01em;}   /* 사이드바 제목(.sbn)과 같은 크기 *//* -- 스크롤바 공통 규약 (⚠ 이 규약은 앞으로도 지킬 것) --
+.tbt{font-size:15px;font-weight:700;color:var(--lbl);letter-spacing:-.01em;}   /* 레이아웃 제목 15px — 앱 전체 규칙 *//* -- 스크롤바 공통 규약 (⚠ 이 규약은 앞으로도 지킬 것) --
    **모든 스크롤바는 자리를 차지하지 않는다.** 네이티브 스크롤바를 전부 감추고(폭 0), 스크롤 위치는
    위·아래 페이드(.sb-fade-t / .sb-fade-b, fadeOne 이 붙인다)로만 알린다.
    덕분에 스크롤 유무·스크롤바 굵기와 관계없이 본문 폭이 절대 변하지 않는다.
@@ -419,8 +419,82 @@ html.dark .stx-done{color:#3BA85C;}
 .nvi.df-site:hover .dot,.nvi.df-site.act .dot{background:var(--b500);}
 #sidebar.mini .df-reg,#sidebar.mini .nvi.df-site{display:none;}
 /* 상단바 기준월 칩 */
+#tbRm[hidden],#tbPrintWrap[hidden]{display:none!important;}   /* display 지정이 hidden 을 이기던 버그 — 하자 관리 밖에선 숨는다 */
 .tb-rm{display:inline-flex;align-items:center;height:30px;padding:0 10px;margin:0;font-size:12.5px;font-weight:600;
   color:var(--lbl3);background:var(--fill);border:1px solid var(--sep);border-radius:8px;}
+/* 기준월 칩 — 하자 관리에서는 눌러서 게시월을 고른다 */
+#tbRm[data-act]{cursor:pointer;}
+#tbRm[data-act]:hover{border-color:var(--b400);color:var(--lbl);}
+/* AI 분석 본문 — 원본 .ait 규격(섹션 제목·목록 들여쓰기) */
+#view-defect .ait ul,#view-defect .ait ol{margin:6px 0 14px;padding-left:20px;}
+#view-defect .ait li{margin:3px 0;}
+#view-defect .ait h1,#view-defect .ait h2,#view-defect .ait h3,#view-defect .ait>div{font-size:15px;font-weight:800;color:var(--lbl);margin:16px 0 7px;}
+#view-defect .ait>*:first-child{margin-top:0;}
+/* 스냅샷 문서 — 하자 화면만 남긴다 */
+body.snap .nvi[data-view]:not([data-view="defect"]),body.snap .sb-bottom .sbsl,body.snap [data-view="org"],body.snap [data-view="settings"],body.snap #tbSrch,body.snap #tbBell,body.snap #tbHelp,body.snap .sb-foot{display:none!important;}
+body.snap .sbsl:first-of-type{display:none;}
+/* 인쇄 페이지(dfPrint) — 화면에서는 밖에 숨겨 두고 차트만 그린다 */
+#dfPrintPages{position:fixed;left:-12000px;top:0;width:740px;background:#fff;z-index:-1;}
+#dfPrintPages .main-chart-card{height:230px;aspect-ratio:auto;min-height:0;}
+.sp-page-hdr{display:flex;justify-content:space-between;align-items:flex-end;padding-bottom:8pt;border-bottom:2pt solid var(--bt2);margin-bottom:10pt;}
+.sp-page-hdr .ph-l{display:flex;flex-direction:column;gap:2pt;}
+.sp-page-hdr .ph-team{font-size:8pt;color:var(--lbl2);letter-spacing:.04em;font-weight:600;}
+.sp-page-hdr .ph-title{font-size:14pt;font-weight:800;color:var(--lbl);}
+.sp-page-hdr .ph-r{text-align:right;}
+.sp-page-hdr .ph-label{font-size:7pt;color:var(--lbl3);}
+.sp-page-hdr .ph-date{font-size:10pt;font-weight:700;color:var(--lbl);font-variant-numeric:tabular-nums;}
+.plan-print{display:none;}
+@media print{
+  /* 인쇄는 항상 밝은 색 — 원본과 동일 토큰 강제 */
+  html.dark{--bg:#F2F2F7;--bg2:#fff;--surf2:#F5F7FA;--surf3:#E9EDF2;--fill:rgba(120,120,128,.12);--fill2:rgba(120,120,128,.18);
+    --sep:rgba(60,60,67,.13);--sepo:#C6C6C8;--lbl:#1C1C1E;--lbl2:rgba(60,60,67,.58);--lbl3:rgba(60,60,67,.45);color-scheme:light;}
+  *,*::before,*::after{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+  @page{size:A4 portrait;margin:8mm 9mm;}
+  /* dfPrint 가 만든 페이지만 인쇄한다 */
+  body.df-printing #sidebar,body.df-printing #topbar,body.df-printing #scrim,body.df-printing #toast,body.df-printing #htip,body.df-printing #mo{display:none!important;}
+  body.df-printing #app,body.df-printing #main,body.df-printing #content{display:block!important;height:auto!important;overflow:visible!important;background:#fff!important;padding:0!important;}
+  body.df-printing .view{display:none!important;}
+  body.df-printing #view-defect{display:block!important;}
+  body.df-printing #view-defect>*:not(#dfPrintPages){display:none!important;}
+  #dfPrintPages{position:static!important;left:auto!important;width:auto!important;z-index:auto!important;}
+  .sp-print-page{display:block;}
+  .sp-page-break-before{break-before:page;page-break-before:always;}
+  #dfPrintPages .card,#dfPrintPages .kc,#dfPrintPages .ic,#dfPrintPages .mom-row{break-inside:avoid;page-break-inside:avoid;}
+  #dfPrintPages .card{padding:9px 11px!important;margin-bottom:7px!important;border-radius:6px!important;box-shadow:none!important;border:.5pt solid #E5E5EA!important;overflow:hidden!important;}
+  #dfPrintPages .ct,#dfPrintPages .st{font-size:10pt!important;margin-bottom:7px!important;}
+  #dfPrintPages .akpi{gap:6px!important;margin-bottom:10pt!important;grid-template-columns:repeat(5,1fr)!important;}
+  #dfPrintPages .kc{padding:9px 11px!important;min-height:0!important;}
+  #dfPrintPages .kl{font-size:8pt!important;margin-bottom:2px!important;}
+  #dfPrintPages .kv{font-size:16pt!important;line-height:1!important;}
+  #dfPrintPages .kv .u{font-size:8pt!important;}
+  #dfPrintPages .km{font-size:7.5pt!important;margin-top:2px!important;}
+  #dfPrintPages .kc-cta,#dfPrintPages .axseg,#dfPrintPages .yr-sel,#dfPrintPages .sortmk{display:none!important;}
+  #dfPrintPages .opsr{display:grid!important;grid-template-columns:1fr 1fr!important;gap:7px!important;min-height:0!important;margin-bottom:7px!important;}
+  #dfPrintPages .opsr>.card{margin-bottom:0!important;}
+  #dfPrintPages .dt{font-size:6.5pt!important;table-layout:fixed!important;}
+  #dfPrintPages .dt th{padding:4px 4px!important;font-size:6pt!important;}
+  #dfPrintPages .dt td{padding:4px 4px!important;}
+  #dfPrintPages .ba{font-size:5.5pt!important;padding:1px 4px!important;}
+  #dfPrintPages .main-chart-card{height:210px!important;padding:10px 12px 12px!important;}
+  #dfPrintPages .chart-lg{padding-left:24px!important;font-size:6.5pt!important;}
+  #dfPrintPages .dn-side .canv{flex-basis:150px;width:150px;height:150px;}
+  #dfPrintPages .dn-side .lg{font-size:8pt;}
+  #dfPrintPages .mom-wrap{padding-top:0;}
+  #dfPrintPages .vseg-v{font-size:18px;}
+  #dfPrintPages .plan-ta{display:none!important;}
+  #dfPrintPages .plan-print{display:block;flex:1;min-width:0;font-size:7pt;line-height:1.5;color:var(--lbl);white-space:pre-wrap;}
+  #dfPrintPages .pp-stack.pp-empty{display:none!important;}
+  #dfPrintPages td.pp-cell{padding:4px 4px 4px 10px!important;}
+  #dfPrintPages .pp-lab{flex-basis:26px;font-size:6pt;}
+  #dfPrintPages .pp-box{font-size:7pt;}
+  #dfPrintPages .ltrmom-bar .seg .seg-v{font-size:7pt;}
+  #dfPrintPages .ins-grid{gap:5px!important;}
+  #dfPrintPages .ic{padding:8px 10px;}
+  #dfPrintPages .ic-ttl{font-size:8.5pt;}
+  #dfPrintPages .ic-sub{font-size:7.5pt;}
+  #dfPrintPages .ait{font-size:9pt!important;line-height:1.6!important;}
+  #dfPrintPages .ait h1,#dfPrintPages .ait h2,#dfPrintPages .ait h3,#dfPrintPages .ait>div{font-size:10pt!important;}
+}
 /* ══════════ 하자처리 현황 — 원본 화면 이식 CSS ══════════
    클래스 이름은 원본(하자처리 현황)을 그대로 쓰되 #view-defect 범위로 가둔다.
    모서리·글자 크기·색은 이 앱의 토큰이 정한다(--r* 가 전부 8px 라 각지게 나온다). */
@@ -432,7 +506,6 @@ html.dark .stx-done{color:#3BA85C;}
 #view-defect .st{font-size:15px;font-weight:700;color:var(--lbl);display:flex;align-items:center;gap:8px;}
 #view-defect .as{display:flex;flex-direction:column;gap:12px;}
 #view-defect .df-sub{font-size:12px;color:var(--lbl3);}
-#view-defect .yr-lbl{font-size:12.5px;font-weight:600;color:var(--lbl2);}
 #view-defect .yr-sel{-webkit-appearance:none;appearance:none;background:var(--bg2);border:1px solid var(--sepo);border-radius:var(--rsm);padding:5px 28px 5px 11px;font-size:12.5px;font-weight:600;color:var(--lbl);cursor:pointer;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%233E71D2' stroke-width='2.4' stroke-linecap='round'><path d='M6 9l6 6-6 6'/></svg>");background-repeat:no-repeat;background-position:right 9px center;transition:border-color .15s;}
 #view-defect .yr-sel:hover{border-color:var(--b400);}
 /* ── KPI 카드(kc) — 원본 톤(bl/sk/ms/wh) + 우상단 '목록 보기' ── */
@@ -611,7 +684,7 @@ html.dark .stx-done{color:#3BA85C;}
 #view-defect .pp-lab{flex:0 0 34px;font-size:10.5px;font-weight:800;color:var(--lbl3);letter-spacing:.02em;padding-top:3px;}
 #view-defect .pp-box{flex:1;min-width:0;font-size:11.5px;line-height:1.55;color:var(--lbl2);white-space:pre-wrap;}
 #view-defect .pp-none{flex:1;color:var(--lbl3);font-size:11.5px;padding-top:1px;}
-#view-defect .plan-ta{flex:1;min-width:0;width:100%;padding:5px 9px;font:inherit;font-size:11.5px;min-height:32px;resize:none;overflow:hidden;border:1.5px solid var(--sepo);border-radius:var(--rsm);background:var(--bg2);color:var(--lbl);}
+#view-defect .plan-ta{flex:1;min-width:0;width:100%;padding:5px 9px;font:inherit;font-size:11.5px;min-height:32px;resize:none;overflow:hidden;transition:height .1s ease;border:1.5px solid var(--sepo);border-radius:var(--rsm);background:var(--bg2);color:var(--lbl);}
 #view-defect .plan-ta:focus{border-color:var(--b400);outline:none;box-shadow:0 0 0 3px rgba(83,140,222,.14);}
 /* 종합 분석 의견 상자 */
 #view-defect .aib{background:var(--b50);border:1.5px solid var(--b200);border-radius:var(--rlg);padding:14px 16px;}
@@ -645,6 +718,31 @@ html.dark .stx-done{color:#3BA85C;}
 .rl-lim button{border:none;background:transparent;padding:4px 10px;border-radius:6px;font:inherit;font-size:11px;font-weight:600;color:var(--lbl2);cursor:pointer;white-space:nowrap;transition:background .12s,color .12s;}
 .rl-lim button.on{background:var(--bg2);color:var(--lbl);box-shadow:0 1px 2px rgba(0,0,0,.08);}
 .rl-lim-lbl{font-size:11px;font-weight:600;color:var(--lbl3);margin:0 2px 0 8px;}
+/* 피벗 — 원본(pv-*)과 같은 구성: 행(≤3)·열·값 칩 + 트리 표 */
+.pv-bar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:10px;}
+.pv-zone{display:inline-flex;align-items:center;gap:6px;}
+.pv-zlbl{font-size:11px;font-weight:700;color:var(--lbl3);}
+.pv-chip{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 10px;background:var(--b100);color:var(--bt1);border:1px solid var(--b200);border-radius:var(--rp);font:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;}
+.pv-chip .x{font-weight:400;opacity:.7;}
+.pv-chip:hover .x{opacity:1;}
+.pv-add{background:var(--bg2);color:var(--lbl2);border:1px dashed var(--sepo);}
+.pv-add:hover{border-color:var(--b400);color:var(--bt1);}
+.pv-val{background:var(--fill);color:var(--lbl);border-color:var(--sep);}
+.pv-caret{font-size:9px;opacity:.6;}
+.pv-pct-tg{width:26px;justify-content:center;padding:0;background:var(--bg2);color:var(--lbl2);border:1px solid var(--sep);}
+.pv-pct-tg.on{background:var(--b600);border-color:var(--bt1);color:#fff;}
+.pv-scroll{max-height:60vh;overflow:auto;border:1px solid var(--sep);border-radius:var(--rmd);}
+#mb.dfwide .pv-scroll{flex:1;min-height:0;max-height:none;}
+.pv-table{width:100%;border-collapse:collapse;font-size:12.5px;white-space:nowrap;}
+.pv-table th{position:sticky;top:0;z-index:1;background:var(--surf2);font-size:11.5px;font-weight:700;color:var(--lbl2);text-align:right;padding:8px 10px;border-bottom:1px solid var(--sep);cursor:pointer;-webkit-user-select:none;user-select:none;}
+.pv-table th.pv-rh{text-align:left;}
+.pv-table td{padding:7px 10px;border-bottom:1px solid var(--sep);text-align:right;font-variant-numeric:tabular-nums;}
+.pv-table td.pv-rh{text-align:left;color:var(--lbl);}
+.pv-table tr.pv-grp td{font-weight:700;background:var(--pv-grp,var(--fill));}
+.pv-table .pv-tot{font-weight:700;color:var(--lbl);}
+.pv-table tr.pv-totrow td{border-top:1px solid var(--sepo);border-bottom:none;font-weight:700;background:var(--surf2);}
+.pv-pct{margin-left:4px;font-size:10.5px;color:var(--lbl3);font-weight:400;}
+.pv-empty{padding:26px;text-align:center;color:var(--lbl3);font-size:12.5px;}
 /* 하자 목록 모달 — 표는 mgtbl 규격을 따르되 가로·세로 스크롤을 쓴다 */
 #mb.dfwide{width:88vw;max-width:88vw;height:88dvh;display:flex;flex-direction:column;}   /* 하자처리 현황의 목록 모달과 동일 */
 #mb.dfwide #mbody{flex:1;min-height:0;display:flex;flex-direction:column;}
@@ -666,11 +764,6 @@ html.dark .stx-done{color:#3BA85C;}
 .rec-tbl tr:hover td{background:var(--fill);}
 .rec-tbl .n{text-align:right;}
 .rec-none{padding:26px 0;text-align:center;font-size:13px;color:var(--lbl3);}
-.rec-piv{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
-.rec-piv .l{font-size:12px;font-weight:700;color:var(--lbl3);}
-.rec-piv .inp{height:30px;width:120px;font-size:12.5px;padding:0 8px;}
-.rec-tbl.piv td.n,.rec-tbl.piv th.n{text-align:right;}
-.rec-tbl.piv tr:last-child td{background:var(--surf2);}
 .btn.bo.on{background:var(--b50);border-color:var(--b300);color:var(--bt1);}
 /* 하자 현황 — 자리만 잡아 둔 화면 */
 .dfc-none{display:flex;flex-direction:column;align-items:center;gap:8px;padding:48px 24px;text-align:center;}
@@ -868,7 +961,7 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 .dp-lh{position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;
   padding:11px 16px 10px;flex:0 0 auto;}
 .dp-lh::after{content:'';position:absolute;left:16px;right:16px;bottom:0;height:1px;background:var(--sep);}
-.dp-lh-t{font-size:13px;font-weight:700;color:var(--lbl2);}
+.dp-lh-t{font-size:15px;font-weight:700;color:var(--lbl);}
 .dp-add{flex:0 0 auto;}
 .dp-add.on{background:var(--b50);border-color:var(--b300);color:var(--bt1);}
 .dp-x{display:none;margin-left:2px;width:26px;height:26px;border-radius:8px;align-items:center;justify-content:center;color:#fff;background:rgba(255,255,255,.18);}
@@ -1211,7 +1304,7 @@ html.dark .col-pop{background:#242426;}
 .mgtbl .mg-ro{pointer-events:none;}
 .mgtbl .mg-ro .sw{opacity:.9;}
 .mgtbl th.mg-disth{color:var(--lbl3);}
-.set-h{font-size:12px;font-weight:700;color:var(--lbl2);text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;justify-content:space-between;gap:8px;padding-bottom:10px;border-bottom:1px solid var(--sep);margin-bottom:13px;}.share-row{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.set-h{font-size:15px;font-weight:700;color:var(--lbl);display:flex;align-items:center;justify-content:space-between;gap:8px;padding-bottom:10px;border-bottom:1px solid var(--sep);margin-bottom:13px;}.share-row{display:flex;align-items:center;justify-content:space-between;gap:12px;}
 .share-row>.share-info{flex:1;}
 .share-info{min-width:0;display:flex;flex-direction:column;gap:2px;}
 .share-info>b{font-size:13px;color:var(--lbl);font-weight:700;}
@@ -1230,7 +1323,7 @@ html.dark .col-pop{background:#242426;}
 .teamsel select:hover{background:var(--fill2);}
 .teamsel .tsel-ch{position:absolute;right:8px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--lbl2);}
 /* 팀·권역 관리 */
-.tm-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font-size:12px;font-weight:700;color:var(--lbl2);text-transform:uppercase;letter-spacing:.05em;}
+.tm-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font-size:15px;font-weight:700;color:var(--lbl);}
 .tm-add{padding:4px 10px;font-size:12px;}
 .tm-list{display:flex;flex-direction:column;gap:4px;}
 .tm-row{display:flex;align-items:center;gap:6px;padding:4px 7px;border:1px solid var(--sep);border-radius:var(--rsm);background:var(--bg2);}
@@ -1814,7 +1907,7 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 /* ── 7차 ── */
 /* 주요 업무 — 주 단위 업무보고 표(권역마다 완료·예정 두 열) */
 .rp-head{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
-.rp-week{font-size:14px;font-weight:700;color:var(--lbl2);display:flex;align-items:center;gap:8px;}
+.rp-week{font-size:15px;font-weight:700;color:var(--lbl);display:flex;align-items:center;gap:8px;}
 .rp-week span{color:var(--lbl3);}
 .rp-head .btn{margin-left:auto;}
 .rp-card{margin-bottom:12px;padding:12px 14px 14px;}
@@ -2069,7 +2162,7 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
       <div class="tbt" id="tbt">업무 일정</div>
     </div>
     <div class="tbr">
-      <span class="tb-rm" id="tbRm" hidden></span>
+      <span class="tb-rm" id="tbRm" data-act="df.rm" role="button" tabindex="0" data-tip="기준월 변경 — 게시된 달을 고릅니다" hidden></span>
       <div class="tb-nav" id="tbPrintWrap" hidden>
         <button class="tb-ic" data-act="df.print" aria-label="인쇄" data-tip="인쇄 · PDF">
           <svg class="icn" aria-hidden="true"><use href="#i-print"></use></svg></button>
@@ -2267,6 +2360,10 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
           </div>
 
           <div class="card">
+            <div class="set-h">하자 관리 스냅샷</div>
+            <div class="share-row"><div><b style="font-size:13px">지금 게시월을 문서로 굳히기</b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">대시보드·전 현장·목록·처리계획·분석을 담은 단일 HTML — 로그인 없이 열립니다</div></div><button class="btn bo bsm" data-act="set.dfsnap">내보내기</button></div>
+          </div>
+          <div class="set-card card">
             <div class="set-h">바탕화면 위젯</div>
             <div class="share-row">
               <div class="share-info"><b>위젯 다운로드</b><span>다운로드 시 &quot;유지&quot; 선택 후 &quot;삭제 옆 옵션&quot;에서 &quot;그래도 계속&quot; 선택</span></div>
@@ -2299,5 +2396,5 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=205"></script>
+<script src="./app.js?v=207"></script>
 </body></html>
