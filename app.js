@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='2.2.4';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='2.2.5';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -3075,7 +3075,7 @@ function rNq(){
    - report/{rm}/_dash : wks(주차 누계)·am(공종별 미처리)·insightsHTML·sites·teams
    - report/{rm}/{sid} : kpi(calc 전체 — weekly·monthly·trAgg·coAgg·top·topLt·prev·vacU·vacS…)
                           ·siteWks(추이차트용)·siteAm(도넛용)·vac(공가 입력값)·ulz(미처리 목록 압축) */
-const DF={cache:{},kpi:{},sw:{},sam:{},vac:{},plans:{},ana:{},list:{},ch:{},busy:false,lastDash:null};
+const DF={cache:{},kpi:{},sw:{},sam:{},vac:{},plans:{},ana:{},list:{},ch:{},busy:false,lastDash:null,warm:false};
 /* 도넛 팔레트 — 원본과 동일 고정값(같은 현장·공종이 어디서나 같은 색) */
 const DF_PAL=['#1F2B4C','#2C437C','#304D9D','#3259B6','#3E71D2','#538CDE','#74ABE6','#A0C8F0','#C7DDF6','#DFEBFA','#EAF2FC','#B3C7DD'];
 /* 게시본 키 복원 — 게시 때 deepEncKeys 로 인코딩된 중첩 맵 키(공종·하자유형 등)를 되돌린다 */
@@ -3300,6 +3300,7 @@ function dfNiceFit(lo,hi){
   return{min,max:Math.ceil(rawMax/step)*step};
 }
 /* 주차별 추이 — 원본과 같은 복합 차트(누적막대 3단 + 누계 라인 2개 + 데이터라벨·페이드) */
+let DF_ANIM_T=null;
 function dfTrendDraw(key,cid,wks){
   if(!dfChartInit())return;
   const el=document.getElementById(cid);if(!el)return;
@@ -3311,7 +3312,9 @@ function dfTrendDraw(key,cid,wks){
   const cumR=rows.map(x=>Number(x.cumR)||0),cumRes=rows.map(x=>Number(x.cumRes)||0);
   const y1v=[...cumR,...cumRes].filter(v=>v>0);let y1min=0,y1max;
   if(y1v.length){const r=dfNiceFit(Math.min(...y1v),Math.max(...y1v));y1min=r.min;y1max=r.max;}
-  const DUR=520;
+  /* 첫 진입에는 여러 차트(추이 1 + 도넛 2)가 동시에 움직여 프레임이 끊긴다 —
+     기본을 짧게 잡고, 화면을 이미 본 뒤(재렌더)에는 애니메이션을 아예 끈다. */
+  const DUR=DF.warm?0:280;
   const baseY=ctx=>{if(ctx.type!=='data')return;const ds=ctx.chart.data.datasets[ctx.datasetIndex];const sc=ctx.chart.scales[(ds&&ds.yAxisID)||'y'];if(!sc)return 0;return sc.getPixelForValue(sc.min!=null?sc.min:0);};
   const barAnim={y:{duration:DUR,easing:'easeOutQuart',from:baseY},base:{duration:DUR,easing:'easeOutQuart',from:baseY}};
   const lineAnim={y:{duration:DUR,easing:'easeOutCubic',from:baseY}};
@@ -3384,7 +3387,7 @@ function dfDonutDraw(key,cid,lgid,items){
   const tot=data.reduce((a,x)=>a+Number(x.c),0);
   const border=cvar('--bg2',document.documentElement.classList.contains('dark')?'#212121':'#fff');
   DF.ch[key]=new Chart(el,{type:'doughnut',data:{labels:data.map(d=>d.t),datasets:[{data:data.map(d=>Number(d.c)),backgroundColor:data.map((d,i)=>DF_PAL[i%DF_PAL.length]),borderWidth:3,borderColor:border,hoverOffset:12,hoverBorderWidth:3}]},
-    options:{responsive:true,maintainAspectRatio:false,layout:{padding:14},cutout:'58%',
+    options:{animation:{duration:DF.warm?0:260},responsive:true,maintainAspectRatio:false,layout:{padding:14},cutout:'58%',
       plugins:{centerText:{display:true,value:tot.toLocaleString()+'건',label:'미처리'},legend:{display:false},
         tooltip:{padding:12,usePointStyle:true,boxWidth:10,boxHeight:10,boxPadding:6,callbacks:{labelPointStyle:()=>({pointStyle:'circle',rotation:0}),label:ctx=>`${ctx.label}: ${ctx.parsed.toLocaleString()}건 (${tot>0?(ctx.parsed/tot*100).toFixed(1):0}%)`}},datalabels:{display:false}}}});
   if(lg){
@@ -4474,6 +4477,7 @@ async function dfPrint(){
 }
 function rDefect(){
   const root=$('#defectRoot');if(!root)return;
+  clearTimeout(DF_ANIM_T);DF_ANIM_T=setTimeout(()=>{DF.warm=true;},900);   /* 첫 그림만 움직이고 그 뒤는 정지 */
   const site=S.dfSid?(S.org.sites||[]).find(x=>x.id===S.dfSid):null;
   if(!S.live){root.innerHTML=dfNoneHTML('로그인하면 게시본을 읽어 옵니다.');dfTopbar();return;}
   dfSubSiteCfg();
