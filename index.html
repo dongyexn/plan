@@ -189,8 +189,9 @@ body.wid .tbr{display:none;}   /* 위젯에는 상단바가 없다 */
    새 스크롤 영역도 이 규약을 따를 것 - 좌우 패딩은 원하는 값 그대로 쓰고 스크롤바 몫을 빼지 말 것. */
 *{scrollbar-width:none;-ms-overflow-style:none;}
 *::-webkit-scrollbar{width:0;height:0;display:none;}
-#content{flex:1;min-height:0;overflow-y:auto;padding:0;display:flex;flex-direction:column;}   /* 본문은 카드 없이 화면을 꽉 채운다 — 여백은 #app 의 10px 뿐 */
+#content{flex:1;min-height:0;overflow:hidden;padding:0;display:flex;flex-direction:column;}   /* 페이지는 스크롤하지 않는다 — 각 레이아웃(카드) 안에서만 스크롤 */
 #content>.view.act{flex:1;min-height:0;display:flex;flex-direction:column;}
+#content>#view-defect.act,#content>#view-org.act,#content>#view-settings.act,#content>#view-report.act{overflow-y:auto;}   /* 세로로 긴 화면만 자체 스크롤 */
 .view{display:none;}
 .view.act{display:block;animation:fu .2s ease;}
 @keyframes fu{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
@@ -237,9 +238,8 @@ select.inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-ima
 /* ══════════ 달력 페이지 ══════════ */
 .cal-wrap{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:12px;align-items:stretch;flex:1;min-height:0;overflow:hidden;}   /* 페이지 헤더가 없어져 남는 높이를 그대로 쓴다 */
 .cal-card{padding:16px 18px;display:flex;flex-direction:column;min-height:0;}
-/* 달력은 카드로 감싸지 않는다 — 격자 자체에만 테두리를 줘 배경과 구분한다 */
-body:not(.wid) .cal-card{border:0;background:transparent;box-shadow:none;border-radius:0;padding:0;}
-body:not(.wid) #fcal{border:1px solid var(--sepo);border-radius:var(--rlg);overflow:hidden;background:var(--bg2);}
+/* 달력은 위젯과 같은 카드 프레임을 쓴다(.card 규격) */
+body:not(.wid) .cal-card{min-height:0;overflow:hidden;}
 #fcal{flex:1;min-height:0;}
 .cal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:nowrap;margin-bottom:12px;}
 .cal-title{flex:0 0 auto;}
@@ -264,7 +264,7 @@ body:not(.wid) #fcal{border:1px solid var(--sepo);border-radius:var(--rlg);overf
 /* 가로줄(주 구분)을 세로줄보다 한 단계 진하게 — 주 단위가 먼저 읽힌다 */
 #fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-top:2px solid #DCDFE6;}
 html.dark #fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-top-color:#0F0F10;}
-#fcal .fc-dayGridMonth-view .fc-col-header{border-bottom:2px solid transparent;}
+#fcal .fc-dayGridMonth-view .fc-col-header{border-bottom:2px solid #DCDFE6;}
 /* 세로줄은 반대로 더 옅게 — 가로가 먼저 읽히도록 대비를 벌린다 */
 #fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-left:2px solid #DCDFE6;border-right:0;}
 html.dark #fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-left-color:#0F0F10;}
@@ -278,7 +278,7 @@ html.dark #fcal .fc-scrollgrid{box-shadow:0 0 0 1px rgba(255,255,255,.14);}
    행 높이 반올림 잔여만큼 하단에 띠로 노출된다 */
 
 
-#fcal .fc-col-header-cell{background:#C4CCDA;padding:9px 0;background-clip:padding-box;border-left:2px solid transparent;border-right:0;}
+#fcal .fc-col-header-cell{background:#C4CCDA;padding:9px 0;background-clip:padding-box;border-left:2px solid #DCDFE6;border-right:0;}
 #fcal .fc-col-header-cell:first-child{border-left:0;}
 html.dark #fcal .fc-col-header-cell{background:#2A2A2A;border-left-color:#0F0F10;}
 /* 주간 헤더 — 공휴일 줄이 항상 자리를 차지해 높이가 변하지 않는다 */
@@ -629,10 +629,9 @@ html.dark body.hasbg{--bg2:rgba(28,28,30,calc(var(--ca)));--surf2:rgba(38,38,42,
   --surf3:rgba(48,48,54,calc(var(--ca) - .06));--glass3:rgba(28,28,30,calc(var(--ca)));}
 body.hasbg #view-defect{--bg2:#fff;--surf2:#F5F7FA;--surf3:#E9EDF2;}
 html.dark body.hasbg #view-defect{--bg2:#1C1C1E;--surf2:#26262A;--surf3:#303036;}
-body.hasbg #sidebar{background:var(--glass3);border:1px solid var(--sep);border-radius:var(--rxl);gap:0;
+body.hasbg #sidebar>.sbh,body.hasbg #sidebar>.sb-tools,body.hasbg #sidebar>.teamsel,
+body.hasbg #sidebar>.sbsc,body.hasbg #sidebar>.sb-bottom,body.hasbg #sidebar>.sb-foot{
   -webkit-backdrop-filter:blur(16px) saturate(160%);backdrop-filter:blur(16px) saturate(160%);}
-body.hasbg #sidebar>*{background:transparent!important;border:0;box-shadow:none;border-radius:0;-webkit-backdrop-filter:none;backdrop-filter:none;}
-body.hasbg #sidebar>.sb-tools,body.hasbg #sidebar>.teamsel,body.hasbg #sidebar>.sb-bottom,body.hasbg #sidebar>.sb-foot{border-top:1px solid var(--sep);}
 /* ⚠ 카드마다 blur 를 걸면 표·차트가 많은 하자 화면이 눈에 띄게 느려진다 — 반투명 색만 쓴다 */
 body.hasbg #sidebar{background:var(--glass3);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);}
 @media print{body.hasbg::before,body.hasbg::after{display:none!important;}}
@@ -1278,7 +1277,7 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 
 /* ══════════ 주요업무 현황 — 좌: 대상 선택 · 우: 작성/목록 ══════════ */
 .tkwrap{display:grid;grid-template-columns:320px minmax(0,1fr);gap:12px;align-items:stretch;flex:1;min-height:0;overflow:hidden;}
-.tkside{display:flex;flex-direction:column;gap:12px;min-height:0;height:100%;overflow-y:auto;}
+.tkside{display:flex;flex-direction:column;gap:12px;min-height:0;height:100%;overflow:hidden;}
 .tks-card{padding:9px 10px;}
 .tks-hold{flex:0 0 auto;padding:9px 10px;}
 .tks-hold .tks-item{margin-top:0;}
@@ -1566,13 +1565,12 @@ html.dark .col-pop{background:#242426;}
 /* 접으면 팀 선택기는 감추되 자리 높이는 그대로 — 아래 메뉴 아이콘이 올라가지 않는다 */
 /* 펼침과 정확히 같은 자리를 차지해야 아래 아이콘이 안 움직인다:
    높이 50px + margin-bottom 2px(펼침과 동일), 구분선만 투명으로 감춘다 */
-#sidebar.mini .teamsel{padding:7px 4px;height:44px;}
-#sidebar.mini .teamsel>*{display:none;}
-#sidebar.mini .teamsel{padding:7px 8px;display:flex;justify-content:flex-start;align-items:center;}
+#sidebar.mini .teamsel{padding:7px 8px;height:auto;display:flex;justify-content:flex-start;align-items:center;}
 #sidebar.mini .teamsel .tsel-wrap{display:block;}
 #sidebar.mini .teamsel select,#sidebar.mini .teamsel .tsel-ch{display:none;}
 #sidebar.mini .tsel-mini{display:inline-flex;align-items:center;justify-content:center;width:32px;height:26px;border-radius:var(--rsm);background:var(--fill);font-size:11px;font-weight:700;color:var(--lbl);}
 .tsel-mini{display:none;}
+#sidebar.mini .tsel-wrap{flex:none;}
 .teamsel .tsel-wrap{position:relative;flex:1;min-width:0;}
 .teamsel select{width:100%;-webkit-appearance:none;appearance:none;background:var(--fill);border:1px solid var(--sep);border-radius:var(--rsm);padding:7px 26px 7px 10px;font-size:13px;font-weight:600;color:var(--lbl);cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .teamsel select:hover{background:var(--fill2);}
@@ -1944,7 +1942,7 @@ body.wid #wgSet.on{display:block;}
 .tb-srch:hover,.tb-srch.on{background:var(--bg2);color:var(--lbl2);border-color:var(--b400);}
 .tb-srch .icn{width:14px;height:14px;}
 .tb-srch-t{font-weight:500;}
-.nq-panel{position:fixed;right:16px;top:calc(var(--th) + 8px);width:392px;max-height:min(600px,calc(100vh - var(--th) - 24px));z-index:61;
+.nq-panel{position:fixed;left:calc(var(--sw) + 18px);top:64px;right:auto;width:392px;max-height:min(600px,calc(100dvh - 96px));z-index:61;
   background:var(--bg2);border:1px solid var(--sep);border-radius:8px;overflow:hidden;
   box-shadow:0 18px 50px rgba(20,26,40,.18),0 4px 14px rgba(0,0,0,.08);
   display:flex;flex-direction:column;opacity:0;transform:translateY(-8px) scale(.98);pointer-events:none;
@@ -1968,6 +1966,7 @@ body.wid #wgSet.on{display:block;}
 .nq-item .sb{font-size:12px;color:var(--lbl3);margin-top:1px;}
 .nq-item mark{background:rgba(83,140,222,.22);color:inherit;border-radius:3px;padding:0 1px;}
 .nq-empty{font-size:13px;color:var(--lbl3);text-align:center;padding:26px 0;}
+#sidebar.mini~#main .nq-panel,body:has(#sidebar.mini) .nq-panel{left:calc(var(--swm) + 18px);}
 @media(max-width:960px){.nq-panel{right:12px;left:12px;width:auto;}.tb-srch-t{display:none;}.tb-srch{padding:0;width:30px;justify-content:center;}}
 /* 내 업무 */
 
@@ -2155,8 +2154,7 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 /* 팀 선택 줄 — 본문 첫 카드와 같은 선에서 시작하도록 위 여백을 4px 로 */
 .teamsel{padding-top:7px;}
 /* 접었을 때도 같은 높이를 차지하게 — 고정 높이 대신 내용을 숨기기만 한다(아이콘이 어긋나던 것) */
-#sidebar.mini .teamsel{padding:7px 4px;height:auto;}
-#sidebar.mini .teamsel>*{display:block;visibility:hidden;}
+#sidebar.mini .teamsel{padding:7px 8px;height:auto;}
 /* 조직/현장 좌측 열을 업무 목록 좌측(320px)과 같은 너비로 */
 .mg-grid{grid-template-columns:320px minmax(0,1fr);}
 /* 메일 미리보기 — 실제 메일 폭(640px)이 잘리지 않게 */
@@ -2668,5 +2666,5 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=216"></script>
+<script src="./app.js?v=217"></script>
 </body></html>
