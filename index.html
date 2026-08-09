@@ -247,7 +247,11 @@ select.inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-ima
 .cal-wrap{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:12px;align-items:stretch;flex:1;min-height:0;overflow:hidden;}   /* 페이지 헤더가 없어져 남는 높이를 그대로 쓴다 */
 .cal-card{padding:16px 18px;display:flex;flex-direction:column;min-height:0;}
 /* 달력은 위젯과 같은 배치를 쓰되 카드 프레임은 두르지 않는다 */
-body:not(.wid) .cal-card{min-height:0;overflow:hidden;border:0;background:transparent;box-shadow:none;border-radius:0;padding:0;}
+/* 달력은 위젯과 같은 카드 프레임(body.wid .card 규격: 라운드 8 · 패딩 11px 12px · 테두리·배경·그림자).
+   210차에 프레임을 벗긴 것이 '위젯과 동일하게'가 계속 안 되던 원인 — 위젯 값을 그대로 쓴다 */
+body:not(.wid) .cal-card{min-height:0;overflow:hidden;border-radius:8px;padding:11px 12px;}
+body:not(.wid) #fcal{font-size:12px;}                                 /* 위젯과 같은 글자 크기 */
+body:not(.wid) #fcal .fc-daygrid-day-number{padding:3px 5px 1px;}     /* 위젯과 같은 숫자 패딩 */
 #fcal{flex:1;min-height:0;}
 .cal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:nowrap;margin-bottom:12px;}
 .cal-title{flex:0 0 auto;}
@@ -387,7 +391,10 @@ body.wid.glass #fcal .fc-daygrid-more-link{color:#fff;background:rgba(255,255,25
 
 /* 우측 열 — 필터 카드 + 목록 카드 */
 .dp-col{display:flex;flex-direction:column;gap:9px;min-height:0;min-width:0;}
-.dp-filtercard{padding:0;flex:0 0 auto;overflow:hidden;}
+/* 파란 날짜 헤더 카드 — 카드의 회색 테두리·흰 배경이 그라디언트 둘레에 밝은 선으로 비쳤다(216차에 흰 테두리만
+   되돌리고 이 구조를 남긴 것이 잔존 원인). 테두리를 없애고 그라디언트를 카드 배경으로 올린다 */
+.dp-filtercard{padding:0;flex:0 0 auto;overflow:hidden;border:none;
+  background:linear-gradient(135deg,var(--b500),var(--b800));}
 .day-panel{padding:0;overflow:hidden;display:flex;flex-direction:column;min-height:0;flex:1;}
 .dp-frow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:8px;}
 .dp-sel{width:100%;padding:7px 24px 7px 10px;font-size:13px;border-radius:var(--rp);border-width:1px;}
@@ -401,9 +408,7 @@ body.wid.glass #fcal .fc-daygrid-more-link{color:#fff;background:rgba(255,255,25
 .dp-srch-x .icn{width:10px;height:10px;}
 .dp-srch.has .dp-srch-x{display:flex;}
 /* 날짜 머리 — 목록 카드 안에 한 줄로 */
-.dp-top{display:flex;align-items:center;gap:14px;padding:12px 17px 11px 15px;flex:0 0 auto;
-  background:linear-gradient(135deg,var(--b500),var(--b800));
-  border-radius:var(--rlg) var(--rlg) 0 0;}
+.dp-top{display:flex;align-items:center;gap:14px;padding:12px 17px 11px 15px;flex:0 0 auto;}
 .dp-top .dp-date{color:#fff;font-size:16px;}
 .dp-date{font-size:16px;font-weight:800;line-height:1.2;margin-top:1px;display:inline-block;min-width:108px;font-variant-numeric:tabular-nums;text-align:left;}
 .dp-body{padding:12px 16px 16px 16px;display:flex;flex-direction:column;gap:8px;flex:1;min-height:0;overflow-y:auto;}
@@ -744,23 +749,20 @@ body.snap .sbsl:first-of-type{display:none;}
 /* ══════════ 하자처리 현황 — 원본 화면 이식 CSS ══════════
    클래스 이름은 원본(하자처리 현황)을 그대로 쓰되 #view-defect 범위로 가둔다.
    모서리·글자 크기·색은 이 앱의 토큰이 정한다(--r* 가 전부 8px 라 각지게 나온다). */
-#view-defect .card{background:var(--bg2);border-radius:var(--rxl);padding:18px 20px;border:1px solid var(--sep);}
+#view-defect .card{background:var(--bg2);border-radius:var(--rxl);padding:16px 18px;border:1px solid var(--sep);}
 #view-defect .mb12{margin-bottom:12px;}
-#view-defect .sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px;}
+#view-defect .sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:10px;}
 /* 카드 제목 — 원본은 .ct(회색)/.st(검정)를 섞어 썼으나 의미 구분이 없어 검정으로 통일, 크기 한 단계 위 */
 #view-defect .ct{font-size:15px;font-weight:700;color:var(--lbl);}
 #view-defect .st{font-size:15px;font-weight:700;color:var(--lbl);display:flex;align-items:center;gap:8px;}
 #view-defect .as{display:flex;flex-direction:column;gap:12px;}
-#view-defect .card{padding:16px 18px;}
-#view-defect .mb12{margin-bottom:12px;}
-#view-defect .akpi{gap:12px;margin-bottom:12px;}
-#view-defect .tnav{margin-bottom:12px;}
-#view-defect .opsr{gap:12px;margin-bottom:12px;}
+/* ⚠ 간격 통일 값은 아래의 각 개별 정의(뒤쪽)에 직접 넣는다 — 여기에 공통 규칙을 앞서 두면
+   같은 명시도의 뒤 규칙에 전부 밀린다(216차 통일이 무효였던 원인) */
 #view-defect .df-sub{font-size:12px;color:var(--lbl3);}
 #view-defect .yr-sel{-webkit-appearance:none;appearance:none;background:var(--bg2);border:1px solid var(--sepo);border-radius:var(--rsm);padding:5px 28px 5px 11px;font-size:12.5px;font-weight:600;color:var(--lbl);cursor:pointer;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%233E71D2' stroke-width='2.4' stroke-linecap='round'><path d='M6 9l6 6-6 6'/></svg>");background-repeat:no-repeat;background-position:right 9px center;transition:border-color .15s;}
 #view-defect .yr-sel:hover{border-color:var(--b400);}
 /* ── KPI 카드(kc) — 원본 톤(bl/sk/ms/wh) + 우상단 '목록 보기' ── */
-#view-defect .akpi{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px;}
+#view-defect .akpi{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:12px;}
 #view-defect .kc{border-radius:var(--rxl);padding:14px 16px;min-height:84px;position:relative;overflow:hidden;border:1px solid transparent;transition:transform .18s ease,box-shadow .18s ease;}
 @media(hover:hover){#view-defect .kc:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(31,43,76,.14),0 2px 6px rgba(31,43,76,.08);z-index:1;}}
 #view-defect .kc.bl{background:var(--b700);color:#fff;}
@@ -780,7 +782,7 @@ body.snap .sbsl:first-of-type{display:none;}
 #view-defect .kc.kc-site .kc-site-nm{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 #view-defect .kc.kc-site .km{opacity:.85;line-height:1.45;}
 /* ── 현장 탭(tnav) — 원본과 같은 큰 탭. 각진 8px 모서리 ── */
-#view-defect .tnav{display:flex;gap:6px;background:var(--glass);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);padding:6px;border-radius:var(--rxl);border:1px solid var(--sep);margin-bottom:14px;position:sticky;top:0;z-index:50;}
+#view-defect .tnav{display:flex;gap:6px;background:var(--glass);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);padding:6px;border-radius:var(--rxl);border:1px solid var(--sep);margin-bottom:12px;position:sticky;top:0;z-index:50;}
 #view-defect .tnav-i{flex:1;padding:9px 14px;font-size:13px;font-weight:600;color:var(--lbl2);border-radius:var(--rmd);cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;border:none;background:transparent;}
 #view-defect .tnav-i:hover{background:var(--fill);color:var(--lbl);}
 #view-defect .tnav-i.act{background:var(--b600);color:#fff;box-shadow:0 2px 8px rgba(50,89,182,.24);}
@@ -900,7 +902,7 @@ body.snap .sbsl:first-of-type{display:none;}
 #view-defect .ltrbar .seg.s0{background:var(--ch-d0);}
 #view-defect .ltrbar-pct{font-size:11.5px;font-weight:600;color:var(--bt1);font-variant-numeric:tabular-nums;min-width:42px;text-align:right;}
 /* 장기미처리 비율 현황(전월/금월 누적 바) */
-#view-defect .ltrmom-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+#view-defect .ltrmom-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
 #view-defect .ltrmom-head .lm-ttl{font-size:15px;color:var(--lbl);font-weight:700;}
 #view-defect .ltrmom-lg{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--lbl2);}
 #view-defect .ltrmom-lg .mk{width:11px;height:11px;border-radius:3px;flex-shrink:0;}
@@ -1001,6 +1003,12 @@ body.snap .sbsl:first-of-type{display:none;}
 .pv-table tr.pv-totrow td{font-weight:800;background:var(--surf3);border-top:1px solid var(--sepo);position:sticky;bottom:0;z-index:1;}
 .pv-table td.pv-rh,.pv-table th.pv-rh{position:sticky;left:0;z-index:2;}
 .pv-table thead th.pv-rh{z-index:4;}
+/* 합계 열은 우측 고정(원본과 동일) — 가로 스크롤 시 스치는 셀과 구분되도록 좌측 경계선을 얹는다.
+   교차 지점 z: 머리+합계(top·right)=4, 본문 합계(right)=2, 합계행 끝(bottom·right)=3 */
+.pv-table td.pv-tot,.pv-table th.pv-tot{position:sticky;right:0;z-index:2;border-left:1px solid var(--sepo);}
+.pv-table thead th.pv-tot{z-index:4;}
+.pv-table tr.pv-totrow td.pv-tot{z-index:3;}
+.pv-table tr.pv-totrow td.pv-rh{z-index:3;}
 .pv-pct{font-size:10px;color:var(--lbl3);margin-left:4px;font-weight:400;}
 .pv-empty{padding:26px;text-align:center;color:var(--lbl3);font-size:12.5px;}
 /* 하자 목록 모달 — 표는 mgtbl 규격을 따르되 가로·세로 스크롤을 쓴다 */
@@ -2228,12 +2236,14 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 .tk-split{flex:1 1 auto;min-height:0;}
 .tk-split .tkmain{max-height:100%;height:100%;min-height:0;}
 /* 이어지는 쪽 끝을 서서히 지워 '더 있다'를 알린다(그 끝에 닿으면 사라진다) */
-.sb-fade-b{-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 26px),transparent);
-  mask-image:linear-gradient(to bottom,#000 calc(100% - 26px),transparent);}
-.sb-fade-t{-webkit-mask-image:linear-gradient(to bottom,transparent,#000 26px);
-  mask-image:linear-gradient(to bottom,transparent,#000 26px);}
-.sb-fade-t.sb-fade-b{-webkit-mask-image:linear-gradient(to bottom,transparent,#000 26px,#000 calc(100% - 26px),transparent);
-  mask-image:linear-gradient(to bottom,transparent,#000 26px,#000 calc(100% - 26px),transparent);}
+/* sticky 머리(thead)·합계 행이 있는 표 스크롤 칸은 페이드가 머리를 흐리게 만들면 안 된다 —
+   fadeOne 이 sticky 높이를 재서 --sbft(위)·--sbfb(아래)에 넣고, 그 안쪽부터 페이드가 시작된다(기본 0) */
+.sb-fade-b{-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - var(--sbfb,0px) - 26px),transparent calc(100% - var(--sbfb,0px)),#000 calc(100% - var(--sbfb,0px)));
+  mask-image:linear-gradient(to bottom,#000 calc(100% - var(--sbfb,0px) - 26px),transparent calc(100% - var(--sbfb,0px)),#000 calc(100% - var(--sbfb,0px)));}
+.sb-fade-t{-webkit-mask-image:linear-gradient(to bottom,#000 var(--sbft,0px),transparent var(--sbft,0px),#000 calc(var(--sbft,0px) + 26px));
+  mask-image:linear-gradient(to bottom,#000 var(--sbft,0px),transparent var(--sbft,0px),#000 calc(var(--sbft,0px) + 26px));}
+.sb-fade-t.sb-fade-b{-webkit-mask-image:linear-gradient(to bottom,#000 var(--sbft,0px),transparent var(--sbft,0px),#000 calc(var(--sbft,0px) + 26px),#000 calc(100% - var(--sbfb,0px) - 26px),transparent calc(100% - var(--sbfb,0px)),#000 calc(100% - var(--sbfb,0px)));
+  mask-image:linear-gradient(to bottom,#000 var(--sbft,0px),transparent var(--sbft,0px),#000 calc(var(--sbft,0px) + 26px),#000 calc(100% - var(--sbfb,0px) - 26px),transparent calc(100% - var(--sbfb,0px)),#000 calc(100% - var(--sbfb,0px)));}
 /* 스크롤 막대는 아예 그리지 않는다(규약: 스크롤바는 자리를 차지하지 않는다).
    더 볼 내용이 있다는 신호는 위·아래 페이드(.sb-fade-t/.sb-fade-b)가 맡는다 */
 /* 스크립트가 옮기는 스크롤은 부드럽게(휠·손가락 스크롤은 운영체제가 맡는다) */
@@ -2687,5 +2697,5 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=224"></script>
+<script src="./app.js?v=246"></script>
 </body></html>
