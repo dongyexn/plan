@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='2.3.6';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='2.3.9';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -3140,7 +3140,10 @@ function dfStFromWeekly(weekly,rm){
   return{tR:c.total,res:c.res,unr:c.unr,rate:c.rate,lt:c.lt,ltr:c.ltr,dd:c.dd,prev:p};
 }
 /* 월말 스냅샷 — 원본 moSnapsSite/moSnapsDash 포트(월별 표 단일 출처) */
-function dfMoSnapsSite(weekly){const map={};(weekly||[]).forEach(w=>{map[String(w.week||'').slice(0,7)]=w;});
+function dfMoSnapsSite(weekly){const map={};(weekly||[]).forEach(w=>{const mk=String(w.week||'').slice(0,7);
+    /* ⚠ dash 쪽(dfMoSnapsDash)처럼 월 숫자(m)를 월키에서 파생시켜 둔다 — 주간 레코드에 m 이 없으면
+       월별 표 라벨이 'undefined월'로 찍힌다(223차 인쇄 점검에서 확인). 레코드에 m 이 있으면 그 값이 이긴다. */
+    map[mk]={m:Number(mk.slice(5,7)),...w};});
   return{keys:Object.keys(map).filter(k=>k&&k<=S.dfRm).sort(),map};}
 function dfMoSnapsDash(wkBySite){
   const arrs=Object.values(wkBySite||{}).map(a=>(a||[]).slice().sort((x,y)=>x.week<y.week?-1:1)).filter(a=>a.length);
@@ -4333,12 +4336,15 @@ async function dfPrintReport(){
   const rm=dfRm();
   if(S.dfSid){
     if(DF.kpi[rm+'/'+S.dfSid]===undefined){toast('자료를 불러온 뒤 인쇄할 수 있습니다');return;}
-    await dfLoadPlans(S.dfSid);await dfLoadAna(S.dfSid);
-    await dfList(S.dfSid);   /* 공종·유형별 분포는 전체 미처리 목록 기준 */
+    /* ⚠ 사전 로드가 하나라도 reject 되면 async 가 조용히 중단돼 보고서가 아예 안 뜬다(223차 점검에서 확인)
+       — 네트워크 실패여도 이미 받아 둔 자료로 조립한다 */
+    try{await dfLoadPlans(S.dfSid);}catch(e){console.warn('[하자] 인쇄 사전 로드(plans)',e);}
+    try{await dfLoadAna(S.dfSid);}catch(e){console.warn('[하자] 인쇄 사전 로드(ana)',e);}
+    try{await dfList(S.dfSid);}catch(e){console.warn('[하자] 인쇄 사전 로드(list)',e);}   /* 공종·유형별 분포는 전체 미처리 목록 기준 */
   }else{
     if(!DF.cache[rm]){toast('자료를 불러온 뒤 인쇄할 수 있습니다');return;}
     toast('현장 자료 수집 중…');
-    await dfAllKpi();
+    try{await dfAllKpi();}catch(e){console.warn('[하자] 인쇄 사전 로드(kpi)',e);}
   }
   const old=document.getElementById('rptRoot');if(old)old.remove();
   /* 보고서는 A4 전면을 직접 쓴다 — 기존 @page(여백·쪽번호)를 인쇄 동안만 덮는다 */
@@ -4381,6 +4387,7 @@ async function dfPrint(){
   if(!site&&!d){toast('자료를 불러온 뒤 인쇄할 수 있습니다');return;}
   const wasDark=document.documentElement.classList.contains('dark');
   if(wasDark)document.documentElement.classList.remove('dark');   /* 인쇄는 항상 밝은 색(원본 printThemeSwap) */
+  DF.noAnim=true;   /* 인쇄용 차트는 즉시 완성 상태로 — 인쇄 미디어 전환 때 리사이즈가 나도 애니메이션 없이 붙는다 */
   const box=document.createElement('div');
   box.id='dfPrintPages';
   const pg=(cls,html)=>`<div class="sp-print-page${cls?' '+cls:''}">${html}</div>`;
@@ -4430,6 +4437,10 @@ async function dfPrint(){
       +`<div class="card"><div class="sh"><div class="st cardttl">현장별 하자처리현황</div></div><table class="dt" id="dfPrDashTbl" style="table-layout:fixed"></table></div>`);
   }
   box.innerHTML=html;
+  /* 쪽번호 n / N — @page 카운터가 크롬에서 죽어 있어 DOM 으로 넣는다(224차) */
+  {const pgs=box.querySelectorAll('.sp-print-page');
+   pgs.forEach((el,i)=>{const n=document.createElement('div');n.className='sp-pgn';
+     n.textContent=(i+1)+' / '+pgs.length;el.appendChild(n);});}
   $('#view-defect').appendChild(box);
   document.body.classList.add('df-printing');
   /* 처리계획 textarea → 인쇄용 텍스트(plan-print). 빈 단은 통째로 숨긴다 — 원본 규칙 */
@@ -4466,11 +4477,12 @@ async function dfPrint(){
         tb.id='dfPrDashTbl';if(keep)keep.id='dfDashTbl';}
     }
   }catch(e){console.warn('[하자] 인쇄 차트 준비 실패',e);}
-  await new Promise(r=>setTimeout(r,700));   /* 차트 애니메이션·라벨 페이드가 앉을 시간 */
+  await new Promise(r=>setTimeout(r,260));   /* noAnim 이라 차트는 즉시 앉는다 — 라벨 플러그인 여유만 */
   const done=()=>{window.removeEventListener('afterprint',done);
     document.body.classList.remove('df-printing');
     if(box.parentNode)box.parentNode.removeChild(box);
     ['prTrend','prMx','prSx','prMom'].forEach(dfC);
+    DF.noAnim=false;
     if(wasDark)document.documentElement.classList.add('dark');};
   window.addEventListener('afterprint',done);
   window.print();
@@ -5843,9 +5855,12 @@ function calGlassApply(){
     'body.hasbg #fcal td.fc-daygrid-day.fc-day-other,html.dark body.hasbg #fcal td.fc-daygrid-day.fc-day-other{background:rgba('+B+','+f(a*.22)+');}',
     'body.hasbg #fcal .fc-col-header-cell{background:rgba('+H+','+f(a+.12)+');}',
     /* 년월·월넘김 버튼도 위젯과 같은 채움 */
-    'body.hasbg:not(.wid) #view-calendar .cal-title,body.hasbg:not(.wid) #view-calendar .cal-head>.cal-ctl>.cal-nav:first-child{background:rgba('+N+','+f(a*.9)+');}',
+    'body.hasbg:not(.wid) #view-calendar .cal-title,body.hasbg:not(.wid) #view-calendar .cal-head>.cal-ctl>.cal-nav{background:rgba('+N+','+f(a*.9)+');}',
     'body.hasbg #view-calendar .cal-title,body.hasbg #view-calendar .cal-title .y{color:#fff;}',
-    'body.hasbg #view-calendar .cal-nb{color:rgba(255,255,255,.82);}'
+    /* 꺽쇠는 .cal-title-c 가 따로 색(--lbl3)을 갖는다 — 버튼 색만 바꾸면 어두운 채움 위에서 안 보인다 */
+    'body.hasbg #view-calendar .cal-title-c{color:rgba(255,255,255,.72);}',
+    'body.hasbg #view-calendar .cal-nb{color:rgba(255,255,255,.82);}',
+    'body.hasbg #view-calendar .cal-nb:hover{background:rgba(255,255,255,.14);color:#fff;}'
   ].join('\n');
   const ra=$('#bgCalA');if(ra)ra.value=Math.round(100-a*100);
   const va=$('#bgCalAV');if(va)va.textContent=Math.round(100-a*100)+'%';
@@ -6095,6 +6110,13 @@ const ACT={
     f.click();},
   'set.bgClear':()=>{try{localStorage.removeItem('calapp.bg');}catch(e){}applyBg();toast('배경을 없앴습니다');},
   'set.bgAlpha':el=>{const v=String(el.value||'80');try{localStorage.setItem('calapp.bgAlpha',v);}catch(e){}applyBg();},
+  'cal.set':el=>{
+    const p=$('#calSet');if(!p)return;
+    const on=!p.classList.contains('on');
+    p.classList.toggle('on',on);
+    el.setAttribute('aria-expanded',on?'true':'false');
+    if(on)calGlassApply();   /* 열 때 현재 값으로 맞춘다 */
+  },
   'set.calA':el=>{const c=calGlassLoad();c.a=100-Number(el.value);calGlassSave(c);calGlassApply();},   /* 슬라이더는 '투명도' — 클수록 투명 */
   'set.calT':el=>{const c=calGlassLoad();c.tint=Number(el.value);calGlassSave(c);calGlassApply();},
   'df.rm':async el=>{
@@ -6520,6 +6542,20 @@ document.addEventListener('click',e=>{
   const fn=ACT[el.dataset.act];
   if(fn){if(el.dataset.act!=='modal.stop')e.stopPropagation();fn(el);}
 });
+/* 달력 설정 팝업 닫기 — ⚠ click 이 아니라 **mousedown 캡처**로 듣는다.
+   FullCalendar 가 달력 칸의 click 을 삼켜, click 위임으로는 달력 위를 눌렀을 때 안 닫힌다(openCtx 와 같은 함정).
+   여는 버튼(#calSetWrap 안)은 제외 — 그래야 click 의 토글이 정상 동작한다(219차 게시월 토글과 같은 이유). */
+function calSetClose(){
+  const cs=$('#calSet');if(!cs||!cs.classList.contains('on'))return;
+  cs.classList.remove('on');
+  const b=document.querySelector('[data-act="cal.set"]');if(b)b.setAttribute('aria-expanded','false');
+}
+document.addEventListener('mousedown',e=>{
+  if(e.target.closest&&e.target.closest('#calSetWrap'))return;
+  calSetClose();
+},true);
+document.addEventListener('keydown',e=>{if(e.key==='Escape')calSetClose();});
+
 /* 임의로 추가한 색 칩은 우클릭으로 지운다 — 지우면 첫 칩(자동)으로 되돌린다 */
 document.addEventListener('contextmenu',e=>{
   const chip=e.target.closest('.pal-c.pal-custom');
@@ -6688,18 +6724,8 @@ function fadeOne(el){
   }
   const over=el.scrollHeight>el.clientHeight+2;
   const more=el.scrollHeight-el.clientHeight-el.scrollTop;
-  const ft=over&&el.scrollTop>4,fb=over&&more>4;
-  /* sticky 표 머리·합계 행은 페이드가 덮으면 안 된다 — 높이를 재서 그 안쪽부터 지운다.
-     (미처리 목록 rec-tbl 의 thead, 피벗 pv-table 의 thead·pv-totrow) */
-  if(ft||fb){
-    /* 직계 표만 잰다 — #content 같은 큰 스크롤 칸이 안쪽 일반 표의 thead(비 sticky)를 잡으면 안 된다 */
-    const th=el.querySelector(':scope > table > thead');
-    el.style.setProperty('--sbft',(th?th.offsetHeight:0)+'px');
-    const tr=el.querySelector(':scope > table tr.pv-totrow');
-    el.style.setProperty('--sbfb',(tr?tr.offsetHeight:0)+'px');
-  }
-  el.classList.toggle('sb-fade-t',ft);      /* 위로 더 있음 */
-  el.classList.toggle('sb-fade-b',fb);      /* 아래로 더 있음 */
+  el.classList.toggle('sb-fade-t',over&&el.scrollTop>4);      /* 위로 더 있음 */
+  el.classList.toggle('sb-fade-b',over&&more>4);              /* 아래로 더 있음 */
 }
 function fadeScan(){$$(SB_SEL).forEach(fadeOne);}
 /* ⚠ 지연을 두면 화면을 다시 그리는 사이 페이드가 잠깐 풀려 깜빡인다 — 다음 프레임에 바로 다시 잰다 */
