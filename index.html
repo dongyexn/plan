@@ -422,6 +422,154 @@ html.dark .stx-done{color:#3BA85C;}
 #tbRm[hidden],#tbPrintWrap[hidden]{display:none!important;}   /* display 지정이 hidden 을 이기던 버그 — 하자 관리 밖에선 숨는다 */
 .tb-rm{display:inline-flex;align-items:center;height:30px;padding:0 10px;margin:0;font-size:12.5px;font-weight:600;
   color:var(--lbl3);background:var(--fill);border:1px solid var(--sep);border-radius:8px;}
+/* ══════════ 보고서 양식(rpt) — 원본 CSS 이식(문서 전용 고정 색·토큰 무관) ══════════ */
+#rptRoot{position:fixed;left:-10000px;top:0;}   /* 화면 밖에서 조립·실측하고 인쇄 때만 본문이 된다 */
+.rpt{--rp-navy:#08213f; --rp-n2:#14395f; --rp-n3:#22537f; --rp-n4:#3a6f9f; --rp-n5:#6b96bd; --rp-n6:#b9c9d8;  --rp-text:#1a202c; --rp-gray:#4a5568; --rp-label:#6b7280;  --rp-line:#c8cdd4; --rp-lines:#e4e7eb; --rp-bg:#f7f8fa;}
+.rpt *{box-sizing:border-box;margin:0;padding:0;}
+.rpt{font-family:'HDharmony','Pretendard Variable','Pretendard',-apple-system,BlinkMacSystemFont,sans-serif;color:var(--rp-text);-webkit-font-smoothing:antialiased;}
+/* ↑ 'Pretendard'만 있으면 @font-face 이름('Pretendard Variable')과 달라 번들 글꼴을 못 잡고 OS 기본으로 떨어졌다 — 기본 글꼴을 앱 화면과 같게 고정 */
+/* 보고서 글꼴 — 인쇄 모달에서 고른다. 시스템 글꼴은 앱 UI와 달리 문서 인쇄물에 가까운 인상을 준다.
+   글꼴마다 자·행 폭이 달라 표 높이가 바뀌므로, 넘침은 rptFit()이 인쇄 직전 실측해 밀도로 흡수한다. */
+.rpt.f-sys{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto Sans KR','Noto Sans CJK KR',system-ui,sans-serif;}
+.rpt.f-serif{font-family:'Batang','바탕','AppleMyungjo','Noto Serif KR','Noto Serif CJK KR',serif;}
+.rpt .page{width:794px;min-height:1123px;background:#fff;margin:0 auto 22px;position:relative;box-shadow:0 2px 16px rgba(0,0,0,.28);}
+.rpt .sheet{width:595px;min-height:842px;padding:0 36px;position:relative;zoom:1.333333;}
+.rpt .page{break-after:page;box-shadow:none;margin:0;min-height:1123px}
+.rpt .page:last-child{break-after:auto}
+.rpt .page{box-shadow:none;margin:0;page-break-after:always}
+.rpt .page:last-child{page-break-after:auto}
+.rpt .brand{font-size:10px;font-weight:700;letter-spacing:.16em;color:var(--rp-navy);}
+.rpt .brand small{display:block;font-size:7.5px;font-weight:400;letter-spacing:.06em;color:var(--rp-label);margin-top:3px;}
+.rpt .thead-row{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;}
+.rpt .asof{text-align:right;font-size:8px;color:var(--rp-label);line-height:1.5;white-space:nowrap;}
+.rpt .asof b{display:block;font-size:10px;font-weight:700;color:var(--rp-navy);letter-spacing:-.01em;}
+.rpt .titlewrap{padding:32px 0 4px;border-bottom:1px solid var(--rp-line);}
+.rpt h1{font-size:18px;font-weight:700;letter-spacing:-.02em;color:var(--rp-navy);line-height:1.25;}
+.rpt .subject{display:flex;gap:22px;margin-top:8px;font-size:8.5px;color:var(--rp-gray);}
+.rpt .subject b{color:var(--rp-navy);font-weight:600;}
+.rpt .sec{margin-top:16px;}
+.rpt .page:first-of-type .sec{margin-top:7px;}
+.rpt .page:first-of-type .sheet>.sec:nth-child(2){margin-top:18px;}
+.rpt .page:first-of-type .sheet>.sec:nth-child(3){margin-top:13px;}
+.rpt .page:first-of-type .sheet>.sec:nth-child(4),.rpt .page:first-of-type .sheet>.sec:nth-child(5){margin-top:12px;}
+.rpt .sec-h{display:flex;align-items:baseline;gap:8px;padding-bottom:3px;
+  border-bottom:1px solid var(--rp-navy);margin-bottom:5px;}
+.rpt .sec-n{font-size:11.5px;font-weight:700;color:var(--rp-navy);letter-spacing:.02em;}
+.rpt .sec-t{font-size:12px;font-weight:700;color:var(--rp-navy);letter-spacing:-.01em;}
+.rpt .sec-note{margin-left:auto;font-size:7.5px;color:var(--rp-label);}
+.rpt .kpis{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--rp-lines);}
+.rpt .kpi{padding:9px 11px 8px;border-bottom:1px solid var(--rp-lines);border-right:1px solid var(--rp-lines);}
+.rpt .kpi:last-child{border-right:0}
+.rpt .kpi .k{font-size:7.5px;color:var(--rp-label);}
+.rpt .kpi .v{font-size:18px;font-weight:700;color:var(--rp-navy);letter-spacing:-.03em;line-height:1.1;margin-top:4px;
+  font-variant-numeric:tabular-nums;}
+.rpt .kpi .v span{font-size:8.5px;font-weight:500;color:var(--rp-gray);margin-left:2px;}
+.rpt .kpi .d{font-size:7.5px;color:var(--rp-gray);margin-top:3px;font-variant-numeric:tabular-nums;}
+.rpt .kpi .d b{font-weight:700;color:var(--rp-navy);}
+.rpt table{width:100%;border-collapse:collapse;font-size:8.5px;font-variant-numeric:tabular-nums;table-layout:fixed;}
+.rpt th{font-size:7.5px;font-weight:600;color:var(--rp-label);text-align:center;padding:5px 4px;
+  border-bottom:1px solid var(--rp-line);white-space:nowrap;}
+.rpt th.l,.rpt td.l{text-align:left}
+.rpt td{padding:2.75px 4px;text-align:center;border-bottom:1px solid var(--rp-lines);}
+.rpt tbody tr:last-child td{border-bottom:1px solid var(--rp-line);}
+.rpt tfoot td{padding:5.5px 4px;font-weight:700;color:var(--rp-navy);background:var(--rp-bg);border-bottom:0;}
+.rpt .dim{color:var(--rp-label)}
+.rpt .dn{font-weight:600}
+.rpt /* 차트 공통 */
+.cap{font-size:7.5px;font-weight:700;color:var(--rp-navy);margin-bottom:1px;}
+.rpt .lg{display:flex;gap:13px;flex-wrap:wrap;font-size:7.5px;color:var(--rp-gray);margin-top:1px;}
+.rpt .lg span{display:inline-flex;align-items:center;gap:4px}
+.rpt .lg i{width:8px;height:8px;display:inline-block}
+.rpt .lg i.ln{height:2px;width:12px}
+.rpt .two{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+.rpt /* 도넛 범례 */
+.dl{font-size:7.5px;color:var(--rp-gray);}
+.rpt .dl .r{display:flex;align-items:center;gap:5px;padding:2px 0;border-bottom:1px solid var(--rp-lines);}
+.rpt .dl .r:last-child{border-bottom:0}
+.rpt .dl i{width:7px;height:7px;flex:0 0 auto}
+.rpt .dl .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rpt .dl .vl{font-variant-numeric:tabular-nums;font-weight:600;color:var(--rp-text)}
+.rpt .dl .pc{width:34px;text-align:right;color:var(--rp-label);font-variant-numeric:tabular-nums}
+/* 처리계획 칸 — 지난달(기록)과 이번 달(기입란)을 라벨+본문 2단으로 분리.
+   규칙이 없으면 td 기본 가운데정렬로 '지난달- 내용 / 이번 달-'이 한 덩어리로 뭉쳐 읽힌다.
+   본문은 표 기본(8.5px)보다 한 단 작게 — 줄 수가 많은 칸이라 같은 크기면 표 안에서 혼자 커 보인다. */
+.rpt td.plan{text-align:left;padding:0;vertical-align:top;}
+.rpt .plan>div{display:flex;align-items:flex-start;gap:6px;padding:2.5px 6px;}
+.rpt .plan .prev{border-bottom:.5px dotted #d9dde2;}
+.rpt .plan .lb{flex:0 0 24px;font-size:6px;font-weight:700;color:var(--rp-label);
+  line-height:1.6;letter-spacing:-.02em;white-space:nowrap;}
+.rpt .plan .tx{flex:1;min-width:0;font-size:7.5px;line-height:1.5;white-space:pre-wrap;word-break:break-word;}
+.rpt /* 이슈 */
+.iss{border-left:3px solid var(--rp-navy);background:var(--rp-bg);padding:5px 10px;margin-bottom:3px;}
+.rpt .iss:last-child{margin-bottom:0}
+.rpt .iss .t{font-size:7.5px;font-weight:700;color:var(--rp-navy);margin-bottom:2px;}
+.rpt .iss .m{font-size:7.5px;line-height:1.5;color:var(--rp-gray);}
+.rpt .iss .m b{color:var(--rp-navy);font-weight:600;}
+.rpt .pg{font-variant-numeric:tabular-nums;}
+
+.rpt .up{color:#C0392B;} .rpt .dn2{color:#1E8449;}
+.rpt .dl{overflow:hidden;flex:1 1 auto;min-width:0;}
+/* 종합 분석 의견 — rptAI가 원문 서식을 걷어내고 넘기므로 보고서 본문 크기를 여기서 입힌다.
+   (규칙이 없으면 브라우저 기본 16px + .sheet zoom 1.333이 겹쳐 다른 항목의 2배로 출력됨) */
+.rpt .ai{--aifs:8.5px;font-size:var(--aifs);color:var(--rp-gray);}
+.rpt .ai .ai-h{font-size:calc(var(--aifs) + 1px);font-weight:700;color:var(--rp-navy);
+  margin:calc(var(--aifs) * 1.15) 0 3px;padding-bottom:2px;border-bottom:1px solid var(--rp-lines);}
+.rpt .ai .ai-h:first-child{margin-top:3px;}
+.rpt .ai ul{margin:0;padding-left:11px;list-style:disc;}
+.rpt .ai li{font-size:var(--aifs);line-height:1.55;margin-bottom:2.5px;}
+.rpt .ai li:last-child{margin-bottom:0;}
+.rpt .ai b,.rpt .ai strong{font-weight:700;color:var(--rp-navy);}
+/* 표 밀도 — 행이 많아 한 쪽을 넘길 때 rptDashboard가 .page에 부여 */
+.rpt .dense th{padding:4px 4px;}
+.rpt .dense td{padding:1.5px 4px;}
+.rpt .dense tfoot td{padding:4px 4px;}
+.rpt .dense2 table{font-size:7.5px;}
+.rpt .dense2 th{font-size:6.8px;padding:3px 3px;}
+.rpt .dense2 td{padding:0.5px 3px;}
+.rpt .dense2 tfoot td{padding:3px 3px;}
+.rpt .dwrap{display:flex;align-items:center;gap:9px;}
+.rpt .dnut{flex:0 0 auto;}
+.rpt .pgn{position:absolute;right:36px;bottom:14px;font-size:7pt;color:var(--rp-label);}
+@media print{
+  body.rpt-on>*:not(#rptRoot){display:none!important;}
+  body.rpt-on{background:#fff!important;}
+  #rptRoot{position:static!important;left:auto!important;}
+  .rpt .page{break-after:page;box-shadow:none;margin:0;}
+  .rpt .page:last-child{break-after:auto;}
+}
+
+/* rpt 인쇄 — 문서 본문만 남긴다(원본과 동일) */
+@media print{
+  body.rpt-on>*:not(#rptRoot){display:none!important;}
+  body.rpt-on{background:#fff!important;}
+  #rptRoot{position:static!important;left:auto!important;}
+  .rpt .page{break-after:page;box-shadow:none;margin:0;}
+  .rpt .page:last-child{break-after:auto;}
+}
+/* 인쇄 방식 선택 모달 */
+#mb.wide-pick{max-width:620px;}
+.rpk-sub{font-size:12.5px;color:var(--lbl2);margin:-12px 0 18px;line-height:1.6;}
+.rpk{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.rpk-opt{border:1.5px solid var(--sep);border-radius:var(--rlg);padding:12px;cursor:pointer;
+  transition:border-color .15s,background .15s;background:var(--bg2);}
+.rpk-opt:hover{border-color:var(--b300);background:var(--b50);}
+.rpk-opt.on{border-color:var(--b600);background:var(--b50);box-shadow:0 0 0 3px rgba(62,113,210,.14);}
+.rpk-th{background:#fff;border:1px solid var(--sep);border-radius:6px;display:block;width:100%;margin-bottom:10px;}
+.rpk-nm{display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:700;color:var(--lbl);}
+.rpk-rd{width:14px;height:14px;border-radius:50%;border:1.5px solid var(--lbl3);flex:0 0 auto;position:relative;}
+.rpk-opt.on .rpk-rd{border-color:var(--b600);}
+.rpk-opt.on .rpk-rd::after{content:'';position:absolute;inset:3px;border-radius:50%;background:var(--b600);}
+.rpk-ds{font-size:11.5px;color:var(--lbl2);line-height:1.55;margin-top:5px;}
+.rpk-mt{font-size:11px;color:var(--lbl3);margin-top:6px;}
+/* 보고서 글꼴 선택 — '화면 그대로'를 고르면 뜻이 없어 흐리게 잠근다 */
+.rpk-fnt{display:flex;align-items:center;gap:10px;margin-top:16px;transition:opacity .15s;}
+.rpk-fnt.off{opacity:.35;pointer-events:none;}
+.rpk-fnt-l{font-size:12.5px;font-weight:600;color:var(--lbl2);}
+.rpk-seg{display:inline-flex;gap:2px;padding:2px;background:var(--fill2);border-radius:var(--rmd);}
+.rpk-seg button{padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;color:var(--lbl2);border:0;background:transparent;cursor:pointer;}
+.rpk-seg button.on{background:var(--bg);color:var(--lbl);box-shadow:0 1px 2px rgba(0,0,0,.08);}
+@media (max-width:560px){.rpk{grid-template-columns:1fr;}}
+
 /* 기준월 칩 — 하자 관리에서는 눌러서 게시월을 고른다 */
 #tbRm[data-act]{cursor:pointer;}
 #tbRm[data-act]:hover{border-color:var(--b400);color:var(--lbl);}
@@ -724,6 +872,8 @@ body.snap .sbsl:first-of-type{display:none;}
 .pv-zlbl{font-size:11px;font-weight:700;color:var(--lbl3);}
 .pv-chip{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 10px;background:var(--b100);color:var(--bt1);border:1px solid var(--b200);border-radius:var(--rp);font:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;}
 .pv-chip .x{font-weight:400;opacity:.7;}
+.pv-chip.pv-drag{cursor:grab;}
+.pv-chip.pv-dragging{opacity:.35;cursor:grabbing;}
 .pv-chip:hover .x{opacity:1;}
 .pv-add{background:var(--bg2);color:var(--lbl2);border:1px dashed var(--sepo);}
 .pv-add:hover{border-color:var(--b400);color:var(--bt1);}
@@ -2055,7 +2205,7 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 <symbol id="i-me" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
 <symbol id="i-cmt" viewBox="0 0 24 24"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></symbol>
 <symbol id="i-print" viewBox="0 0 24 24"><path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7" rx="1"/></symbol>
-<symbol id="i-defect" viewBox="0 0 24 24"><path d="M3 3v16.5a1.5 1.5 0 0 0 1.5 1.5H21"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></symbol>
+<symbol id="i-defect" viewBox="0 0 24 24"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><rect x="7" y="13.5" width="3" height="4.5" rx=".7" fill="currentColor" stroke="none"/><rect x="11.6" y="11" width="3" height="7" rx=".7" fill="currentColor" stroke="none"/><rect x="16.2" y="12.5" width="3" height="5.5" rx=".7" fill="currentColor" stroke="none"/><path d="M7.5 9.5 11 6l3 2.5L18.5 4"/><path d="M15.5 3.5h3.2v3.2"/></symbol>
 <symbol id="i-org" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="8.5" y="14" width="7" height="7" rx="1.5"/><path d="M6.5 10v2h11v-2"/><path d="M12 12v2"/></symbol>
 
 
@@ -2396,5 +2546,5 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=207"></script>
+<script src="./app.js?v=208"></script>
 </body></html>
