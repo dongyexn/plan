@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='2.2.2';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='2.2.3';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -1333,10 +1333,12 @@ function rTeamSel(){
   if(!teams.length){$('#tselWrap').innerHTML='';el.style.display='none';return;}
   el.style.display='';
   if(!teams.some(t=>t.id===S.tk.t))S.tk.t=teams[0].id;
-  const opts=teams.map(t=>'<option value="'+esc(t.id)+'"'+(t.id===S.tk.t?' selected':'')+'>'+esc(teamShort(t.name))+'</option>').join('');
+  const opts=teams.map(t=>'<option value="'+esc(t.id)+'"'+(t.id===S.tk.t?' selected':'')+'>'+esc(t.name)+'</option>').join('');
   /* 선택창은 정적 마크업 — 내용만 채운다 */
+  const cur=teams.find(t=>t.id===S.tk.t)||teams[0];
   $('#tselWrap').innerHTML='<select id="teamSelEl" aria-label="팀 선택">'+opts+'</select>'
-    +'<span class="tsel-ch"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3.5l3 3 3-3"/></svg></span>';
+    +'<span class="tsel-ch"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3.5l3 3 3-3"/></svg></span>'
+    +'<span class="tsel-mini">'+esc(teamShort(cur?cur.name:''))+'</span>';   /* 접었을 때 보이는 줄인 이름 */
 }
 function mentionCount(){return Object.values(S.mentions||{}).filter(m=>m&&!m.read).length;}   /* 안 읽은 것만 센다 */
 function mentionRead(id){
@@ -5758,14 +5760,15 @@ function mobClose(){
 /* 테마 */
 /* 앱 배경화면 — 이 기기(localStorage)에만 두므로 팀원 화면·데이터베이스에는 영향이 없다 */
 function applyBg(){
-  let url='',dim='35';
-  try{url=localStorage.getItem('calapp.bg')||'';dim=localStorage.getItem('calapp.bgDim')||'35';}catch(e){}
+  let url='',al='80';
+  try{url=localStorage.getItem('calapp.bg')||'';al=localStorage.getItem('calapp.bgAlpha')||'80';}catch(e){}
   const root=document.documentElement;
   root.style.setProperty('--app-bg-img',url?`url("${url}")`:'none');
-  root.style.setProperty('--app-bg-dim',(Number(dim)||0)/100);
+  root.style.setProperty('--app-bg-dim',0.18);            /* 배경 위 밑칠 — 글자 대비만 지킬 만큼 */
+  root.style.setProperty('--app-card-alpha',(Number(al)||80)/100);
   document.body.classList.toggle('hasbg',!!url);
   const btn=$('#bgClearBtn');if(btn)btn.hidden=!url;
-  const dl=$('#bgDim');if(dl)dl.value=dim;
+  const dl=$('#bgAlpha');if(dl)dl.value=al;
 }
 function applyTheme(dark){
   document.documentElement.classList.toggle('dark',dark);
@@ -6000,7 +6003,7 @@ const ACT={
       r.readAsDataURL(file);};
     f.click();},
   'set.bgClear':()=>{try{localStorage.removeItem('calapp.bg');}catch(e){}applyBg();toast('배경을 없앴습니다');},
-  'set.bgDim':el=>{const v=String(el.value||'0');try{localStorage.setItem('calapp.bgDim',v);}catch(e){}applyBg();},
+  'set.bgAlpha':el=>{const v=String(el.value||'80');try{localStorage.setItem('calapp.bgAlpha',v);}catch(e){}applyBg();},
   'df.rm':async el=>{
     if(!S.live||!FB.db)return;
     if(!DF.rmIdx){try{DF.rmIdx=(await FB.db.ref('reportIndex').once('value')).val()||{};}catch(e){DF.rmIdx={};}}
