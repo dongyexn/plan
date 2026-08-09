@@ -431,7 +431,7 @@ html.dark .stx-done{color:#3BA85C;}
 /* 보고서 글꼴 — 인쇄 모달에서 고른다. 시스템 글꼴은 앱 UI와 달리 문서 인쇄물에 가까운 인상을 준다.
    글꼴마다 자·행 폭이 달라 표 높이가 바뀌므로, 넘침은 rptFit()이 인쇄 직전 실측해 밀도로 흡수한다. */
 .rpt.f-sys{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto Sans KR','Noto Sans CJK KR',system-ui,sans-serif;}
-.rpt.f-serif{font-family:'Batang','바탕','AppleMyungjo','Noto Serif KR','Noto Serif CJK KR',serif;}
+.rpt.f-dotum{font-family:'Dotum','돋움','Apple SD Gothic Neo','Noto Sans KR',sans-serif;}
 .rpt .page{width:794px;min-height:1123px;background:#fff;margin:0 auto 22px;position:relative;box-shadow:0 2px 16px rgba(0,0,0,.28);}
 .rpt .sheet{width:595px;min-height:842px;padding:0 36px;position:relative;zoom:1.333333;}
 .rpt .page{break-after:page;box-shadow:none;margin:0;min-height:1123px}
@@ -493,7 +493,7 @@ html.dark .stx-done{color:#3BA85C;}
 /* 처리계획 칸 — 지난달(기록)과 이번 달(기입란)을 라벨+본문 2단으로 분리.
    규칙이 없으면 td 기본 가운데정렬로 '지난달- 내용 / 이번 달-'이 한 덩어리로 뭉쳐 읽힌다.
    본문은 표 기본(8.5px)보다 한 단 작게 — 줄 수가 많은 칸이라 같은 크기면 표 안에서 혼자 커 보인다. */
-.rpt td.plan{text-align:left;padding:0;vertical-align:top;}
+.rpt td.plan{text-align:left;padding:0;vertical-align:top;display:table-cell;border:0;border-radius:0;background:transparent;gap:0;align-items:normal;position:static;transition:none;}   /* ⚠ 앱의 전역 .plan(일정 카드)이 새어 들어오면 좌우로 깨진다 */
 .rpt .plan>div{display:flex;align-items:flex-start;gap:6px;padding:2.5px 6px;}
 .rpt .plan .prev{border-bottom:.5px dotted #d9dde2;}
 .rpt .plan .lb{flex:0 0 24px;font-size:6px;font-weight:700;color:var(--rp-label);
@@ -574,16 +574,21 @@ html.dark .stx-done{color:#3BA85C;}
 #tbRm[data-act]{cursor:pointer;}
 #tbRm[data-act]:hover{border-color:var(--b400);color:var(--lbl);}
 /* AI 분석 본문 — 원본 .ait 규격(섹션 제목·목록 들여쓰기) */
-#view-defect .ait ul,#view-defect .ait ol{margin:6px 0 14px;padding-left:20px;}
-#view-defect .ait li{margin:3px 0;}
-#view-defect .ait h1,#view-defect .ait h2,#view-defect .ait h3,#view-defect .ait>div{font-size:15px;font-weight:800;color:var(--lbl);margin:16px 0 7px;}
+#view-defect .ait ul{list-style:disc;margin:6px 0 16px;padding-left:24px;}
+#view-defect .ait li{margin-bottom:8px;padding-left:6px;line-height:1.7;}
+#view-defect .ait li::marker{color:var(--b500);}
+#view-defect .ait li:last-child{margin-bottom:0;}
+#view-defect .ait>div{margin-top:20px;margin-bottom:10px;}
+#view-defect .ait>div:first-child{margin-top:0;}
+#view-defect .ait strong{font-weight:700;}
 #view-defect .ait>*:first-child{margin-top:0;}
 /* 스냅샷 문서 — 하자 화면만 남긴다 */
 body.snap .nvi[data-view]:not([data-view="defect"]),body.snap .sb-bottom .sbsl,body.snap [data-view="org"],body.snap [data-view="settings"],body.snap #tbSrch,body.snap #tbBell,body.snap #tbHelp,body.snap .sb-foot{display:none!important;}
 body.snap .sbsl:first-of-type{display:none;}
 /* 인쇄 페이지(dfPrint) — 화면에서는 밖에 숨겨 두고 차트만 그린다 */
-#dfPrintPages{position:fixed;left:-12000px;top:0;width:740px;background:#fff;z-index:-1;}
+#dfPrintPages{position:fixed;left:-12000px;top:0;width:720px;background:#fff;z-index:-1;}
 #dfPrintPages .main-chart-card{height:230px;aspect-ratio:auto;min-height:0;}
+
 .sp-page-hdr{display:flex;justify-content:space-between;align-items:flex-end;padding-bottom:8pt;border-bottom:2pt solid var(--bt2);margin-bottom:10pt;}
 .sp-page-hdr .ph-l{display:flex;flex-direction:column;gap:2pt;}
 .sp-page-hdr .ph-team{font-size:8pt;color:var(--lbl2);letter-spacing:.04em;font-weight:600;}
@@ -604,7 +609,7 @@ body.snap .sbsl:first-of-type{display:none;}
   body.df-printing .view{display:none!important;}
   body.df-printing #view-defect{display:block!important;}
   body.df-printing #view-defect>*:not(#dfPrintPages){display:none!important;}
-  #dfPrintPages{position:static!important;left:auto!important;width:auto!important;z-index:auto!important;}
+  #dfPrintPages{position:static!important;left:auto!important;width:720px!important;margin:0 auto!important;z-index:auto!important;}
   .sp-print-page{display:block;}
   .sp-page-break-before{break-before:page;page-break-before:always;}
   #dfPrintPages .card,#dfPrintPages .kc,#dfPrintPages .ic,#dfPrintPages .mom-row{break-inside:avoid;page-break-inside:avoid;}
@@ -623,10 +628,18 @@ body.snap .sbsl:first-of-type{display:none;}
   #dfPrintPages .dt th{padding:4px 4px!important;font-size:6pt!important;}
   #dfPrintPages .dt td{padding:4px 4px!important;}
   #dfPrintPages .ba{font-size:5.5pt!important;padding:1px 4px!important;}
-  #dfPrintPages .main-chart-card{height:210px!important;padding:10px 12px 12px!important;}
+  #dfPrintPages .main-chart-card{height:196px!important;padding:8px 11px 10px!important;}
+  #dfPrintPages .mom-row{padding:3px 4px!important;}
+  #dfPrintPages .mom-row .bar{padding:2px 4px!important;}
+  #dfPrintPages .mom-wrap{gap:2px!important;}
+  #dfPrintPages .dn-side{padding:2px!important;}
   #dfPrintPages .chart-lg{padding-left:24px!important;font-size:6.5pt!important;}
-  #dfPrintPages .dn-side .canv{flex-basis:150px;width:150px;height:150px;}
-  #dfPrintPages .dn-side .lg{font-size:8pt;}
+  #dfPrintPages .dn-side .canv{flex:0 0 130px!important;width:130px!important;height:130px!important;max-width:130px!important;max-height:130px!important;}
+  #dfPrintPages .dn-side{gap:10px;}
+  #dfPrintPages .dn-side .lg{font-size:7.5pt!important;grid-template-columns:1fr!important;grid-auto-flow:row!important;grid-template-rows:none!important;row-gap:2px!important;}   /* 화면 규칙이 뒤에 있어 !important 없이는 2열이 남는다 */
+  #dfPrintPages .dn-side .lg .it{height:auto;}
+  #dfPrintPages .dn-side .lg .nm{font-size:7.5pt;}
+  #dfPrintPages .dn-side .lg .cnt,#dfPrintPages .dn-side .lg .pct{font-size:7.5pt;}
   #dfPrintPages .mom-wrap{padding-top:0;}
   #dfPrintPages .vseg-v{font-size:18px;}
   #dfPrintPages .plan-ta{display:none!important;}
@@ -641,7 +654,8 @@ body.snap .sbsl:first-of-type{display:none;}
   #dfPrintPages .ic-ttl{font-size:8.5pt;}
   #dfPrintPages .ic-sub{font-size:7.5pt;}
   #dfPrintPages .ait{font-size:9pt!important;line-height:1.6!important;}
-  #dfPrintPages .ait h1,#dfPrintPages .ait h2,#dfPrintPages .ait h3,#dfPrintPages .ait>div{font-size:10pt!important;}
+  #dfPrintPages .ait>div{font-size:10pt!important;}
+  #dfPrintPages .ait li{margin-bottom:5px!important;}
 }
 /* ══════════ 하자처리 현황 — 원본 화면 이식 CSS ══════════
    클래스 이름은 원본(하자처리 현황)을 그대로 쓰되 #view-defect 범위로 가둔다.
@@ -778,7 +792,8 @@ body.snap .sbsl:first-of-type{display:none;}
 #view-defect tr.axfold:hover td{background:var(--surf2);}
 #view-defect tr.axfold td[colspan]{text-align:center;color:var(--lbl3);font-size:12px;font-weight:700;padding:9px;}
 #view-defect .axfold-k{color:var(--lbl3)!important;font-style:italic;}
-#view-defect .axfold-h{font-style:normal;font-weight:700;font-size:11px;color:var(--bt1);}
+#view-defect .axfold-h{font-style:normal;font-weight:700;font-size:10.5px;color:var(--bt1);background:var(--b100);border:1px solid var(--b200);border-radius:var(--rp);padding:2px 8px;margin-left:6px;display:inline-block;line-height:1.5;}
+#view-defect tr.axfold:hover .axfold-h{background:var(--b200);}
 /* 증감 배지(ba)·권역 배지 */
 #view-defect .ba{display:inline-flex;align-items:center;font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:var(--rp);white-space:nowrap;font-variant-numeric:tabular-nums;}
 #view-defect .bbl{background:var(--b100);color:var(--bt1);}
@@ -839,7 +854,7 @@ body.snap .sbsl:first-of-type{display:none;}
 #view-defect .ail{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;color:var(--bt1);letter-spacing:.04em;margin-bottom:8px;}
 #view-defect .ail::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--b500);}
 #view-defect .ait{font-size:14px;line-height:1.7;color:var(--lbl);word-break:keep-all;overflow-wrap:anywhere;}
-#view-defect .ait p{margin:0 0 8px;}#view-defect .ait p:last-child{margin-bottom:0;}
+#view-defect .ait p{margin:0 0 8px;line-height:1.7;}#view-defect .ait p:last-child{margin-bottom:0;}
 /* 공가 현황 스트립(vrow) */
 #view-defect .vrow{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:0 -20px;}
 #view-defect .vseg{padding:4px 18px;display:flex;flex-direction:column;justify-content:center;position:relative;}
@@ -894,12 +909,19 @@ body.snap .sbsl:first-of-type{display:none;}
 .pv-pct{margin-left:4px;font-size:10.5px;color:var(--lbl3);font-weight:400;}
 .pv-empty{padding:26px;text-align:center;color:var(--lbl3);font-size:12.5px;}
 /* 하자 목록 모달 — 표는 mgtbl 규격을 따르되 가로·세로 스크롤을 쓴다 */
-#mb.dfwide{width:88vw;max-width:88vw;height:88dvh;display:flex;flex-direction:column;}   /* 하자처리 현황의 목록 모달과 동일 */
+#mb.dfwide{width:88vw;max-width:88vw;height:88dvh;display:flex;flex-direction:column;}
+#mb.dfwide .mt2{margin-bottom:14px;}   /* 하자처리 현황의 목록 모달과 동일 */
 #mb.dfwide #mbody{flex:1;min-height:0;display:flex;flex-direction:column;}
 #mb.dfwide .rec-wrap{flex:1;min-height:0;max-height:none;}
-.rec-top{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
-.rec-top .inp{flex:1;min-width:160px;height:34px;padding:0 12px;font-size:13px;}
-.rec-n{font-size:12px;color:var(--lbl3);margin-left:auto;}
+.rl-head{display:flex;align-items:center;gap:14px;}
+.rl-ttl{font-size:15px;font-weight:700;color:var(--lbl);white-space:nowrap;}
+.rl-acts{margin-left:auto;display:flex;align-items:center;gap:8px;}
+.rl-q-wrap{position:relative;display:inline-flex;align-items:center;}
+.rl-q-wrap .icn-sm{position:absolute;left:9px;width:14px;height:14px;color:var(--lbl3);pointer-events:none;}
+.rl-q{height:30px;width:230px;padding:0 11px 0 28px;border:1px solid var(--sepo);border-radius:var(--rp);background:var(--bg2);color:var(--lbl);font:inherit;font-size:12.5px;outline:none;}
+.rl-q:focus{border-color:var(--b400);box-shadow:0 0 0 3px rgba(83,140,222,.14);}
+#mb.dfwide .mo-x{display:none!important;}   /* 머리에 닫기 버튼이 있다 */
+.rec-n{font-size:12px;color:var(--lbl3);white-space:nowrap;}
 .rec-wrap{max-height:60vh;overflow:auto;border:1px solid var(--sep);border-radius:var(--rmd);}
 .rec-tbl{width:100%;border-collapse:collapse;font-size:12.5px;white-space:nowrap;}
 .rec-tbl th{position:sticky;top:0;z-index:1;background:var(--surf2);font-size:11.5px;font-weight:700;color:var(--lbl2);
@@ -2546,5 +2568,5 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=208"></script>
+<script src="./app.js?v=209"></script>
 </body></html>

@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='2.0.0';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='2.0.1';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -3319,7 +3319,10 @@ function dfTrendDraw(key,cid,wks){
     options:{responsive:true,maintainAspectRatio:false,
       animation:{duration:DUR,easing:'easeOutQuart',onComplete(ac){if(!ac.initial||ac.chart.$dlShown)return;ac.chart.$dlShown=true;const ch=ac.chart,t0=performance.now(),fd=350;const tick=()=>{if(!ch||ch.$destroyed||!ch.ctx)return;try{const p=Math.min(1,(performance.now()-t0)/fd);ch.$la=p*p*(3-2*p);ch.update('none');if(p<1)requestAnimationFrame(tick);}catch(e){}};requestAnimationFrame(tick);}},
       plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,padding:12,usePointStyle:true,boxWidth:10,boxHeight:10,boxPadding:6,callbacks:{label:ctx=>`${ctx.dataset.label}: ${(ctx.parsed.y??0).toLocaleString()}건`}}},
-      scales:{x:{grid:{display:false},ticks:{font:{size:10},color:ink,callback:function(v){return this.getLabelForValue(v).split('\n');}}},
+      scales:{x:{grid:{display:false},ticks:{autoSkip:true,autoSkipPadding:2,maxRotation:0,minRotation:0,
+        font:ctx=>{const ca=ctx.chart.chartArea,n=(ctx.chart.data.labels||[]).length||1;
+          const w=(ca&&ca.width)?ca.width/n:40;return{size:w>=34?10:w>=27?9:w>=21?8:7};},
+        color:ink,callback:function(v){return this.getLabelForValue(v).split('\n');}}},
         y:{beginAtZero:true,position:'left',grace:'25%',grid:{color:grid},ticks:{font:{size:12}},title:{display:true,text:'미처리(건)',font:{size:13,weight:600},color:axisT}},
         y1:{beginAtZero:false,min:y1min,max:y1max,position:'right',grid:{display:false},ticks:{font:{size:12}},title:{display:true,text:'접수·처리(건)',font:{size:13,weight:600},color:axisT}}}}});
 }
@@ -3656,7 +3659,7 @@ function dfPrevPlanTop(sid,field,trade){
     +(txt?'<div class="pp-box">'+esc(txt)+'</div>':'<span class="pp-none">-</span>')+'</div>';
 }
 function dfPlanCell(sid,field,trade){
-  return`<td class="pp-cell">${dfPrevPlanTop(sid,field,trade)}<div class="pp-stack"><span class="pp-lab">이번 달</span><textarea class="inp plan-ta" maxlength="5000" aria-label="처리계획" data-act="df.plan" data-sid="${esc(sid)}" data-f="${esc(field)}" data-t="${esc(trade)}">${esc(dfPlanGet(sid,field,S.dfRm,trade))}</textarea></div></td>`;
+  return`<td class="pp-cell">${dfPrevPlanTop(sid,field,trade)}<div class="pp-stack"><span class="pp-lab">이번 달</span><textarea class="inp plan-ta" rows="1" maxlength="5000" aria-label="처리계획" data-act="df.plan" data-sid="${esc(sid)}" data-f="${esc(field)}" data-t="${esc(trade)}">${esc(dfPlanGet(sid,field,S.dfRm,trade))}</textarea></div></td>`;
 }
 /* 상위 5개 공종 표 — 장기미처리·공가 공용(원본 trRowFn/vacRowsHTML) */
 function dfTop5Rows(sid,topList,prevMap,denom,field,vac){
@@ -4141,7 +4144,10 @@ function rptSite(sid){
   const tyMap={};
   (c.ul||[]).forEach(i=>{const k=(i.trade||'기타')+'-'+(i.defectType||i.type||'기타');tyMap[k]=(tyMap[k]||0)+1;});
   const byTy=Object.entries(tyMap).map(([n,v])=>({n,v})).sort((a,b)=>b.v-a.v);
-  const dist=`<div class="two">${rpDonut(cut(byTr,'개 공종'),c.unr,'공종별')}${rpDonut(cut(byTy,'개'),c.unr,'공종 · 유형별')}</div>`;
+  /* ⚠ 게시본 ul 은 상위 300건까지만 실린다 — 유형별 분모는 실린 표본 수로 잡아야 도넛이 채워진다 */
+  const tySum=byTy.reduce((a,x)=>a+x.v,0);
+  const tyCap=tySum<(c.unr||0);
+  const dist=`<div class="two">${rpDonut(cut(byTr,'개 공종'),c.unr,'공종별')}${rpDonut(cut(byTy,'개'),tySum,'공종 · 유형별'+(tyCap?` (표본 ${rpN(tySum)}건)`:''))}</div>`;
 
   const planTbl=(rows,prevMap,field,num)=>{
     const body=rows.map((x,i)=>{
@@ -4257,7 +4263,7 @@ function rptThumb(kind){
     <g stroke="#C8CDD4"><line x1="14" y1="99" x2="146" y2="99"/><line x1="14" y1="104" x2="146" y2="104"/>
       <line x1="14" y1="109" x2="146" y2="109"/></g></svg>`;
 }
-function rptFont(){const v=localStorage.getItem('calapp.rptFont');return v==='sys'||v==='serif'?v:'brand';}
+function rptFont(){const v=localStorage.getItem('calapp.rptFont');return v==='sys'||v==='dotum'?v:'brand';}
 function openPrintPick(){
   const fSaved=rptFont();
   const opt=(v,nm,ds,mt)=>`<div class="rpk-opt${v==='report'?' on':''}" data-act="print.pick" data-v="${v}">
@@ -4271,7 +4277,7 @@ function openPrintPick(){
       ${opt('report','보고서 양식','A4 문서 형태로 재구성해 인쇄합니다.',S.dfSid?'현황 · 추이 · 이슈 · 표 순 · 3쪽':'현황 · 추이 · 이슈 · 표 순 · 2쪽')}
     </div>
     <div class="rpk-fnt" id="rpkFont"><span class="rpk-fnt-l">보고서 글꼴</span><div class="rpk-seg">
-      ${[['brand','기본'],['sys','맑은 고딕'],['serif','바탕']].map(([f,nm])=>
+      ${[['brand','기본'],['sys','맑은 고딕'],['dotum','돋움']].map(([f,nm])=>
         `<button class="${f===fSaved?'on':''}" data-act="print.font" data-f="${f}">${nm}</button>`).join('')}
     </div></div>`,
     `<button class="btn bg2 bsm" data-act="modal.close">취소</button>
@@ -4315,7 +4321,7 @@ async function dfPrintReport(){
   try{d.innerHTML=S.dfSid?rptSite(S.dfSid):rptDashboard();}
   catch(e){toast('보고서를 만들지 못했습니다');console.error(e);return;}
   const _rp=d.querySelector('.rpt');
-  if(_rp)_rp.classList.add(rptFont()==='sys'?'f-sys':rptFont()==='serif'?'f-serif':'f-brand');
+  if(_rp)_rp.classList.add(rptFont()==='sys'?'f-sys':rptFont()==='dotum'?'f-dotum':'f-brand');
   document.body.appendChild(d);
   document.body.classList.add('rpt-on');
   try{rptFit(d);}catch(e){console.warn('rptFit',e);}
@@ -4327,6 +4333,11 @@ async function dfPrintReport(){
   setTimeout(()=>{window.print();setTimeout(done,1500);},60);
 }
 
+/* 인쇄용 추이 카드 — 캔버스를 2배 폭으로 그린 뒤 절반으로 줄여 넣는다(라벨 겹침 방지) */
+function dfPrTrendCard(){
+  return `<div class="card mb12 main-chart-card" data-print="ov-chart"><div class="sh" style="margin-bottom:6px;flex-shrink:0"><div class="ct cardttl">하자접수 · 처리 주차별 추이</div></div>
+    <div class="cw" style="flex:1;min-height:0"><canvas id="dfPrTrend"></canvas></div>${dfTrendLegend}</div>`;
+}
 function dfPrintHdrHTML(title){
   const{team}=tkSel();
   const ym=S.dfRm||new Date().toISOString().slice(0,7),[y,m]=ym.split('-');
@@ -4357,7 +4368,7 @@ async function dfPrint(){
       {cls:'ms',label:'처리 완료',val:st.res||0,unit:'건',meta:`처리율 ${(Number(st.rate)||0).toFixed(1)}%`},
       {cls:'wh',label:'미처리',val:st.unr||0,unit:'건',meta:`세대당 ${units>0?((st.unr||0)/units).toFixed(1):'0.0'}건`},
       {cls:'wh',label:'장기미처리(30일+)',val:st.lt||0,unit:'건',meta:`미처리의 ${(Number(st.ltr)||0).toFixed(1)}%`}]);
-    const trend=`<div class="card mb12 main-chart-card" data-print="ov-chart"><div class="sh" style="margin-bottom:6px;flex-shrink:0"><div class="ct cardttl">하자접수 · 처리 주차별 추이</div></div><div class="cw" style="flex:1;min-height:0"><canvas id="dfPrTrend"></canvas></div>${dfTrendLegend}</div>`;
+    const trend=dfPrTrendCard();
     const opsr=`<div class="opsr"><div class="card"><div class="ct cardttl">전월대비 실적 현황</div><div id="dfPrMom" class="mom-wrap"></div></div>${dfDonutCardHTML('공종별 미처리 분포','dfPrMx','dfPrMxLg')}</div>`;
     const P=dfAxParts(site.id,st);
     const tradeAll=`<div class="card"><div class="sh"><div class="st cardttl">${P.ax==='co'?'업체별':'공종별'} 하자처리현황</div></div><table class="dt" style="table-layout:fixed"><thead><tr><th class="cc" style="width:6%">NO</th><th style="width:11%">${P.ax==='co'?'시공업체':'공종'}</th><th style="width:11%">${P.ax==='co'?'주요 공종':'시공업체'}</th><th class="n" style="width:7%">전체 접수</th><th class="n" style="width:7%">처리</th><th class="cc" style="width:7%">처리율</th><th class="cc" style="width:7%">미처리</th><th class="cc" style="width:6%">전월대비</th><th class="n" style="width:7%">장기미처리</th><th class="cc" style="width:25%">장기미처리 비율</th><th class="cc" style="width:6%">전월대비</th></tr></thead><tbody>${P.rows||P.emptyRow}</tbody></table></div>`;
@@ -4382,13 +4393,13 @@ async function dfPrint(){
       {cls:'ms',label:'처리 완료',val:tRes,unit:'건',meta:`처리율 ${rate.toFixed(1)}%`},
       {cls:'wh',label:'미처리',val:tU,unit:'건',meta:`세대당 ${units>0?(tU/units).toFixed(1):'0.0'}건`},
       {cls:'wh',label:'장기미처리(30일+)',val:tLt,unit:'건',meta:`미처리의 ${tU>0?(tLt/tU*100).toFixed(1):0}%`}]);
-    const trend=`<div class="card mb12 main-chart-card"><div class="sh" style="margin-bottom:6px;flex-shrink:0"><div class="ct cardttl">하자접수 · 처리 주차별 추이</div></div><div class="cw" style="flex:1;min-height:0"><canvas id="dfPrTrend"></canvas></div>${dfTrendLegend}</div>`;
-    html+=pg('',hdr()+kpis+trend);
-    html+=pg('sp-page-break-before',hdr()
+    const trend=dfPrTrendCard();
+    html+=pg('',hdr()+kpis+trend
       +`<div class="opsr"><div class="card"><div class="ct cardttl">전월대비 실적 현황</div><div id="dfPrMom" class="mom-wrap"></div></div>${dfDonutCardHTML('현장별 미처리 분포','dfPrSx','dfPrSxLg')}</div>`
       +`<div class="opsr">${dfInsightHTML(d.ins)}${dfDonutCardHTML('공종별 미처리 분포','dfPrMx','dfPrMxLg')}</div>`);
-    html+=pg('sp-page-break-before',hdr()+`<div class="card"><div class="sh"><div class="ct cardttl">월별 하자처리현황</div></div><div><table class="dt dt-detail" style="table-layout:fixed" id="dfPrDashMo"></table></div></div>`);
-    html+=pg('sp-page-break-before',hdr()+`<div class="card"><div class="sh"><div class="st cardttl">현장별 하자처리현황</div></div><table class="dt" id="dfPrDashTbl" style="table-layout:fixed"></table></div>`);
+    html+=pg('sp-page-break-before',hdr()
+      +`<div class="card"><div class="sh"><div class="ct cardttl">월별 하자처리현황</div></div><div><table class="dt dt-detail" style="table-layout:fixed" id="dfPrDashMo"></table></div></div>`
+      +`<div class="card"><div class="sh"><div class="st cardttl">현장별 하자처리현황</div></div><table class="dt" id="dfPrDashTbl" style="table-layout:fixed"></table></div>`);
   }
   box.innerHTML=html;
   $('#view-defect').appendChild(box);
@@ -4537,24 +4548,42 @@ function recBodyHTML(){
   const nh=Object.keys(REC.hidden).filter(k=>REC.hidden[k]).length;
   const band=(id,nm,n)=>'<button class="rl-band '+id+(REC.band===id?' on':'')+'" data-act="rec.band" data-b="'+id+'">'+nm+' <b>'+n.toLocaleString()+'</b></button>';
   const limBtn=n=>'<button class="'+(REC.limit===n?'on':'')+'" data-act="rec.limit" data-n="'+n+'">'+(n>0?n.toLocaleString()+'건':'전체')+'</button>';
-  return '<div class="rec-top">'
-    +'<input class="inp" id="recQ" placeholder="동·호·공종·접수내용에서 찾기" value="'+esc(REC.q)+'" autocomplete="off">'
-    +'<span class="rec-n">결과 <b>'+v.length.toLocaleString()+'</b> / 전체 <b>'+REC.rows.length.toLocaleString()+'</b></span>'
-    +'<button class="btn bo bsm" data-act="rec.copy">표 복사</button>'
-    +'<button class="btn bo bsm" data-act="rec.xlsx">엑셀</button>'
-    +'<button class="btn bo bsm'+(PIV.on?' on':'')+'" data-act="rec.pivot">피벗</button>'
-    +(nh?'<button class="btn bo bsm" data-act="rec.showAll">숨긴 열 '+nh+'개</button>':'')
-    +'</div>'
-    +'<div class="rl-band-bar">'
+  const storeCnt=REC.rows.filter(recIsStore).length;
+  return '<div class="rl-band-bar">'
     +band('','전체',bandCnt(''))+band('d60','60일 이상',bandCnt('d60'))+band('d30','30~59일',bandCnt('d30'))+band('d0','30일 미만',bandCnt('d0'))
-    +(vacCnt?'<span class="rl-vsep"></span><button class="rl-band'+(REC.vac==='unit'?' on':'')+'" data-act="rec.vac" data-v="unit">공가세대 <b>'+vacCnt.toLocaleString()+'</b></button>':'')
+    +((vacCnt||storeCnt)?'<span class="rl-vsep"></span>':'')
+    +(vacCnt?'<button class="rl-band'+(REC.vac==='unit'?' on':'')+'" data-act="rec.vac" data-v="unit">공가세대 <b>'+vacCnt.toLocaleString()+'</b></button>':'')
+    +(storeCnt?'<button class="rl-band'+(REC.vac==='store'?' on':'')+'" data-act="rec.vac" data-v="store">공가상가 <b>'+storeCnt.toLocaleString()+'</b></button>':'')
+    +(nh?'<button class="rl-band" data-act="rec.showAll">숨긴 열 '+nh+'개</button>':'')
     +'<span class="rl-lim"><span class="rl-lim-lbl">표시</span>'+limBtn(500)+limBtn(1000)+limBtn(5000)+limBtn(0)+'</span>'
     +'</div>'
     +(PIV.on?pivHTML()
       :(v.length?'<div class="rec-wrap"><table class="rec-tbl"><thead>'+head+'</thead><tbody>'+body+'</tbody></table></div>'
         :'<div class="rec-none">조건에 맞는 건이 없습니다.</div>'));
 }
-function recRender(){const b=$('#mbody');if(b)b.innerHTML=recBodyHTML();}
+/* 모달 머리 — 원본과 같은 한 줄: 제목 · 검색 · 결과 수 · 표 복사/엑셀/피벗(목록)/닫기 */
+function recHeadHTML(){
+  return '<div class="rl-head"><span class="rl-ttl">'+esc(REC.title||'미처리')+'</span>'
+    +'<div class="rl-acts">'
+    +'<span class="rl-q-wrap"><svg class="icn icn-sm" aria-hidden="true"><use href="#i-search"></use></svg>'
+    +'<input id="recQ" class="rl-q" placeholder="동·호·공종·내용 검색" value="'+esc(REC.q)+'" autocomplete="off"></span>'
+    +'<span class="rec-n" id="recN"></span>'
+    +'<button class="btn bo bsm" data-act="rec.copy">표 복사</button>'
+    +'<button class="btn bo bsm" data-act="rec.xlsx">엑셀</button>'
+    +'<button class="btn bo bsm" data-act="rec.pivot" id="recPivBtn">피벗</button>'
+    +'<button class="btn bg2 bsm" data-act="modal.close">닫기</button>'
+    +'</div></div>';
+}
+function recHeadSync(n,total){
+  const el=$('#recN');
+  if(el)el.innerHTML=PIV.on?'':('결과 <b>'+n.toLocaleString()+'</b> / 전체 <b>'+total.toLocaleString()+'</b>');
+  const pb=$('#recPivBtn');if(pb)pb.textContent=PIV.on?'목록':'피벗';
+}
+function recRender(){
+  const t=$('#mt');if(t&&!$('#recQ'))t.innerHTML=recHeadHTML();
+  const b=$('#mbody');if(b)b.innerHTML=recBodyHTML();
+  recHeadSync(REC.view.length,REC.rows.length);
+}
 /* 표 복사 — 화면에 보이는 열·행을 탭 구분 텍스트로 클립보드에 */
 function recCopy(){
   const v=recCompute(),cols=recVisCols();
@@ -4580,9 +4609,10 @@ async function recOpen(sid,scope,opts){
   const all=!sid;
   const scopeLbl=scope==='lul'?'장기미처리':'미처리';
   const filtLbl=opts.trade?' · '+opts.trade:opts.co?' · '+opts.co:'';
-  openModal((site?site.name:'팀 전체')+' · '+scopeLbl+filtLbl,
-    '<div class="rec-none">불러오는 중…</div>');
+  openModal('',  '<div class="rec-none">불러오는 중…</div>');
   const mb=$('#mb');if(mb)mb.classList.add('dfwide');
+  REC.title=(site?site.name:'팀 전체')+' · '+scopeLbl+filtLbl;
+  const mt0=$('#mt');if(mt0)mt0.innerHTML=recHeadHTML();
   let rows;
   if(all){
     /* ⚠ 전 현장 목록은 현장 수만큼 통신한다 — 진행 상황을 알리고 차례로 받는다.
@@ -4602,7 +4632,7 @@ async function recOpen(sid,scope,opts){
   REC.rows=rows;REC.q='';REC.band='';REC.sort='';REC.desc=false;REC.limit=500;
   REC.vac=opts.vac==='unit'||opts.vac==='store'?opts.vac:'';
   REC.withSite=all;REC.vals={};REC.hidden={};
-  REC.title=((site&&site.name)||'팀 전체')+' · '+scopeLbl+filtLbl;   /* 엑셀 파일명에도 쓴다 */
+  REC.title=((site&&site.name)||'팀 전체')+' · '+scopeLbl+filtLbl;   /* 머리·엑셀 파일명 공용 */
   PIV.on=false;
   recRender();
 }
@@ -6432,8 +6462,7 @@ document.addEventListener('change',e=>{const el=e.target;if(!el||!el.dataset)ret
     else{S.dfTrendYearSite=el.value;const key=dfRm()+'/'+S.dfSid,k=DF.kpi[key];if(!k)return;
       const rmY=S.dfRm.slice(0,4);dfTrendDraw('strend','dfSiteTrend',el.value===rmY?DF.sw[key]:dfWksOfYear(k.weekly,el.value));}}});
 document.addEventListener('input',e=>{if(e.target.id==='recQ'){REC.q=e.target.value;
-  const b=$('#mbody');if(!b)return;const s=e.target.selectionStart;b.innerHTML=recBodyHTML();
-  const q=$('#recQ');if(q){q.focus();try{q.setSelectionRange(s,s);}catch(_){}}}});
+  const b=$('#mbody');if(!b)return;b.innerHTML=recBodyHTML();recHeadSync(REC.view.length,REC.rows.length);}});
 /* 처리계획 — 입력을 멈추면 저장한다(하자처리 현황과 같은 노드를 쓰므로 그쪽 화면에도 바로 반영된다) */
 function dfPlanFit(el){if(!el||el.offsetParent===null)return;el.style.height='auto';el.style.height=el.scrollHeight+'px';}
 function dfPlanFitAll(){$$('#view-defect .plan-ta').forEach(dfPlanFit);}
