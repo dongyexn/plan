@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='2.3.2';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='2.3.3';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -4886,6 +4886,8 @@ function dfTopbar(){
   const rm=$('#tbRm'),pw=$('#tbPrintWrap');
   if(rm){rm.hidden=!on;rm.textContent=S.dfRm||'기준월 없음';}
   if(pw)pw.hidden=!on;
+  /* 하자 밖에선 기준월·인쇄가 빠져 자리가 남는다 — 검색 버튼이 그 폭을 채우는 넓은 형태가 되도록 상태를 노출 */
+  const tools=$('.sb-tools');if(tools)tools.classList.toggle('df-on',on);
 }
 
 /* ═══════════ 보류함 — 일자 패널 아래. 달력 날짜로 끌어다 놓으면 그 날짜로 되살아난다 ═══════════ */
@@ -6612,6 +6614,10 @@ document.addEventListener('input',e=>{
 const SB_SEL='#content,.dp-body,.tk-list,.nq-res,.pf-emg,.rd-body,[data-sb]';
 function fadeOne(el){
   if(!el||!el.classList)return;
+  /* 미처리 보기(목록 rec-wrap·피벗 pv-scroll)에는 페이드를 걸지 않는다 — 사용자 지시(218차) */
+  if(el.classList.contains('rec-wrap')||el.classList.contains('pv-scroll')){
+    el.classList.remove('sb-fade-t','sb-fade-b');return;
+  }
   const over=el.scrollHeight>el.clientHeight+2;
   const more=el.scrollHeight-el.clientHeight-el.scrollTop;
   const ft=over&&el.scrollTop>4,fb=over&&more>4;
@@ -6645,6 +6651,14 @@ document.addEventListener('scroll',e=>{
   const el=e.target;if(!el||!el.classList)return;
   fadeOne(el);
 },true);
+/* 가로로만 넘친 표(피벗 등)는 휠만으로 넘겨진다 — 세로 여지가 있으면 기본 동작(세로),
+   Shift+휠·트랙패드 가로 입력도 기본 동작 그대로. 스크롤바 표시는 환경에 따라 다르므로 이 경로가 보험이다. */
+document.addEventListener('wheel',e=>{
+  const el=e.target.closest&&e.target.closest('.pv-scroll,.rec-wrap');
+  if(!el||e.shiftKey||e.deltaX)return;
+  const canX=el.scrollWidth>el.clientWidth+1,canY=el.scrollHeight>el.clientHeight+1;
+  if(canX&&!canY){el.scrollLeft+=e.deltaY;e.preventDefault();}
+},{passive:false});
 let tkQT=null;
 /* 업무 목록과 내 업무는 같은 필터(S.tkF)를 쓴다 — 보고 있는 화면을 다시 그린다 */
 function rTkViews(){rTasks();}
