@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='2.0.3';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='2.2.0';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -3380,7 +3380,10 @@ function dfDonutDraw(key,cid,lgid,items){
       plugins:{centerText:{display:true,value:tot.toLocaleString()+'건',label:'미처리'},legend:{display:false},
         tooltip:{padding:12,usePointStyle:true,boxWidth:10,boxHeight:10,boxPadding:6,callbacks:{labelPointStyle:()=>({pointStyle:'circle',rotation:0}),label:ctx=>`${ctx.label}: ${ctx.parsed.toLocaleString()}건 (${tot>0?(ctx.parsed/tot*100).toFixed(1):0}%)`}},datalabels:{display:false}}}});
   if(lg){
-    lg.style.setProperty('--lgr',String(Math.max(1,Math.ceil(data.length/2))));
+    /* 2열은 자리가 있을 때만 — 좁은 화면에서 2열을 강행하면 도넛 위로 겹친다(원본 lg-2col 규칙) */
+    const side=lg.closest('.dn-side');
+    const w=side?side.getBoundingClientRect().width:0;
+    lg.classList.toggle('lg-2col',data.length>=8&&w>=620);   /* 도넛(210)+2열(360)+여백이 들어갈 때만 */
     lg.innerHTML=data.map((d,i)=>`<div class="it" data-idx="${i}" data-tip="${esc(d.full||d.t)}"><span class="dt" style="background:${DF_PAL[i%DF_PAL.length]}"></span><span class="nm">${esc(d.t)}</span><span class="cnt">${Number(d.c).toLocaleString()}건</span><span class="pct">${tot>0?(Number(d.c)/tot*100).toFixed(1):0}%</span></div>`).join('');
     lg.querySelectorAll('.it').forEach(it=>{
       it.addEventListener('mouseenter',()=>{const ch=DF.ch[key];if(!ch)return;const idx=Number(it.dataset.idx);ch.setActiveElements([{datasetIndex:0,index:idx}]);if(ch.tooltip)ch.tooltip.setActiveElements([{datasetIndex:0,index:idx}],{x:0,y:0});ch.update();});
@@ -5181,8 +5184,9 @@ function siteTable(){
 }
 function curTeam(){const ts=(S.org.teams||[]).filter(t=>t.name);return ts.find(t=>t.id===S.tk.t)||ts[0]||null;}
 function rOrg(){
-  const t=curTeam(),lbl=t?'· '+t.name:'';
-  ['#regTeamLbl','#siteTeamLbl','#acctTeamLbl'].forEach(id=>{const e=$(id);if(e)e.textContent=lbl;});
+  const t=curTeam();
+  /* 제목 옆 팀명은 사이드바 팀 선택기와 겹쳐 지웠다 — 라벨은 비우되 t 는 아래에서 계속 쓴다 */
+  ['#regTeamLbl','#siteTeamLbl','#acctTeamLbl'].forEach(id=>{const e=$(id);if(e)e.textContent='';});
   const tr=$('#teamRoot'),rr=$('#regRoot'),sr=$('#siteRoot');
   if(tr)tr.innerHTML=teamRows();
   if(rr)rr.innerHTML=regRows();
@@ -5706,6 +5710,10 @@ setInterval(()=>{if(_tipFor&&!_tipFor.isConnected)tipHide();},700);
 
 /* ═══════════ 화면 전환 · 공통 UI ═══════════ */
 const VIEW_TTL={calendar:'캘린더',tasks:'업무 목록',report:'주요 업무',defect:'하자처리 현황',org:'조직/현장 관리',settings:'설정'};
+document.addEventListener('click',e=>{
+  const t=$('#sbTools');if(!t||!t.classList.contains('open'))return;
+  if(!t.contains(e.target))t.classList.remove('open');   /* 접힌 사이드바의 기능 팝업 — 바깥 클릭이면 닫는다 */
+},true);
 function go(view){
   S.view=view;
   S.planOpen='';S.tkOpen=null;   /* 펼쳐 둔 카드는 화면을 옮기면 접는다(일정·업무 목록 모두) */
@@ -5742,6 +5750,17 @@ function mobClose(){
   $('#sidebar').classList.remove('mob-open');$('#scrim').classList.remove('on');}
 
 /* 테마 */
+/* 앱 배경화면 — 이 기기(localStorage)에만 두므로 팀원 화면·데이터베이스에는 영향이 없다 */
+function applyBg(){
+  let url='',dim='35';
+  try{url=localStorage.getItem('calapp.bg')||'';dim=localStorage.getItem('calapp.bgDim')||'35';}catch(e){}
+  const root=document.documentElement;
+  root.style.setProperty('--app-bg-img',url?`url("${url}")`:'none');
+  root.style.setProperty('--app-bg-dim',(Number(dim)||0)/100);
+  document.body.classList.toggle('hasbg',!!url);
+  const btn=$('#bgClearBtn');if(btn)btn.hidden=!url;
+  const dl=$('#bgDim');if(dl)dl.value=dim;
+}
 function applyTheme(dark){
   document.documentElement.classList.toggle('dark',dark);
   const c=$('#darkChk');if(c)c.checked=dark;
@@ -5759,6 +5778,7 @@ const ACT={
   'nav.mobClose':mobClose,
   'day.sheetClose':()=>dpSheet(false),
   'theme.toggle':()=>applyTheme(!document.documentElement.classList.contains('dark')),
+  'nav.tools':()=>{const t=$('#sbTools');if(t)t.classList.toggle('open');},
   /* 달 이동은 보기만 바꾼다 — 선택일(날짜 헤더)은 그대로 둔다 */
   'cal.prev':()=>CAL&&CAL.prev(),
   'cal.next':()=>CAL&&CAL.next(),
@@ -5951,6 +5971,17 @@ const ACT={
   'print.font':el=>rptPickFont(el),
   'print.go':()=>rptPickGo(),
   'set.dfsnap':()=>dfSnapshot(),
+  'set.bgPick':()=>{
+    const f=document.createElement('input');f.type='file';f.accept='image/*';
+    f.onchange=()=>{const file=f.files&&f.files[0];if(!file)return;
+      if(file.size>4*1024*1024){toast('4MB 이하 이미지를 골라 주세요');return;}
+      const r=new FileReader();
+      r.onload=()=>{try{localStorage.setItem('calapp.bg',String(r.result));applyBg();toast('배경을 바꿨습니다 · 이 기기에만 저장됩니다');}
+        catch(e){toast('저장 공간이 부족합니다 · 더 작은 이미지를 골라 주세요');}};
+      r.readAsDataURL(file);};
+    f.click();},
+  'set.bgClear':()=>{try{localStorage.removeItem('calapp.bg');}catch(e){}applyBg();toast('배경을 없앴습니다');},
+  'set.bgDim':el=>{const v=String(el.value||'0');try{localStorage.setItem('calapp.bgDim',v);}catch(e){}applyBg();},
   'df.rm':async el=>{
     if(!S.live||!FB.db)return;
     if(!DF.rmIdx){try{DF.rmIdx=(await FB.db.ref('reportIndex').once('value')).val()||{};}catch(e){DF.rmIdx={};}}
@@ -6798,6 +6829,7 @@ function rAll(){rDay();rTasks();rOrg();rCfg();rFilter();rMention();rTeamSel();re
   bindCalResize();
   subVisibleMonths();
   rDay();rAcct();rFilter();rTeamSel();rWidget();   /* 팀 선택기는 사이드바 상시 요소 — 부팅 때부터 그린다 */
+  applyBg();
   if(window.__SNAP_Z__&&dfSnapBoot()){/* 스냅샷 문서 — 하자 화면만 */}
   else if(DEV_LOCAL){hideCover();rDefectNav();setTimeout(morningReview,600);}
   else{
