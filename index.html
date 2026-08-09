@@ -268,7 +268,9 @@ body:not(.wid) #fcal .fc-daygrid-day-number{padding:3px 5px 1px;}     /* 위젯�
    (body.wid .cal-title 의 진한 rgba)을 덮어 어두운 바탕 위에서 년월·넘김 버튼이 '투명'해 보였다(219차). */
 body:not(.wid) #view-calendar .cal-title{background:var(--fill);padding:0 12px;height:34px;}
 body:not(.wid) #view-calendar .cal-title:hover{background:var(--fill2);}
-body:not(.wid) #view-calendar .cal-head>.cal-ctl>.cal-nav:first-child{background:var(--fill);border-radius:var(--rmd);padding:2px;}
+/* 넘김 캡슐과 달력 설정(⚙) 캡슐 — 둘 다 같은 채움. :first-child 로 한정하면 뒤에 붙은 설정 버튼만
+   맨몸으로 떠 보인다(222차에 버튼을 추가하며 확인) */
+body:not(.wid) #view-calendar .cal-head>.cal-ctl>.cal-nav{background:var(--fill);border-radius:var(--rmd);padding:2px;}
 .cal-title:hover{background:var(--fill);}
 .cal-title-c{width:13px;height:13px;align-self:center;color:var(--lbl3);transform:rotate(90deg);}
 .cal-title .y{font-size:16px;font-weight:800;color:var(--lbl);}
@@ -278,7 +280,9 @@ body:not(.wid) #view-calendar .cal-head>.cal-ctl>.cal-nav:first-child{background
 .cal-nav .cal-today .icn{width:15px;height:15px;}
 .cal-nb .icn{width:16px;height:16px;}
 /* FullCalendar 테마 이식 */
-#fcal{height:100%;--fc-border-color:var(--sep);--fc-today-bg-color:transparent;--fc-page-bg-color:var(--bg2);--fc-neutral-bg-color:var(--surf2);font-size:13px;background:var(--bg2);border-radius:var(--rmd);overflow:hidden;}
+/* 달력 격자 자체에 아웃라인 — 카드로 감싸는 게 아니라 #fcal 의 테두리다(배경 위에서 경계가 보이게).
+   배경을 켜면 어두운 칸 위이므로 밝은 선으로 바꾼다(아래 hasbg 규칙). */
+#fcal{height:100%;--fc-border-color:var(--sep);--fc-today-bg-color:transparent;--fc-page-bg-color:var(--bg2);--fc-neutral-bg-color:var(--surf2);font-size:13px;background:var(--bg2);border:1px solid var(--sep);border-radius:var(--rmd);overflow:hidden;}
 #fcal .fc-theme-standard td,#fcal .fc-theme-standard th{border-color:transparent;}
 /* scrollgrid 래퍼 td 의 1px 보더(--fc-border-color)가 우·하단에 선으로 남는다 */
 #fcal .fc-scrollgrid-section>td,#fcal .fc-scrollgrid-section>th{border:0;}
@@ -592,13 +596,6 @@ html.dark .stx-done{color:#3BA85C;}
 .rpt .dwrap{display:flex;align-items:center;gap:9px;}
 .rpt .dnut{flex:0 0 auto;}
 .rpt .pgn{position:absolute;right:36px;bottom:14px;font-size:7pt;color:var(--rp-label);}
-@media print{
-  body.rpt-on>*:not(#rptRoot){display:none!important;}
-  body.rpt-on{background:#fff!important;}
-  #rptRoot{position:static!important;left:auto!important;}
-  .rpt .page{break-after:page;box-shadow:none;margin:0;}
-  .rpt .page:last-child{break-after:auto;}
-}
 
 /* rpt 인쇄 — 문서 본문만 남긴다(원본과 동일) */
 @media print{
@@ -665,7 +662,7 @@ body.hasbg .ctxmenu,body.hasbg .tb-pop,body.hasbg .nq-panel,body.hasbg .popbox{
    ⚠ 칸·요일머리·년월/넘김 버튼의 **색 값은 calGlassApply() 가 주입하는 #calDyn 규칙이 단일 출처**다
    (설정의 달력 투명도·유리 톤이 그 값을 만든다). 여기에 같은 값을 또 적으면 두 곳이 갈라진다.
    판(#fcal·cal-card)만 투명하게 두어 칸 색이 그대로 보이게 한다. */
-body.hasbg #fcal{background:transparent;}
+body.hasbg #fcal{background:transparent;border-color:rgba(255,255,255,.26);}
 body.hasbg .cal-card{background:transparent;}
 /* 어두운 칸 위에서는 글자·격자선을 밝게 — 위젯 유리 모드와 같은 세트.
    ⚠ 날짜 숫자는 `.fc-daygrid-day-number` 가 아니라 그 안의 `.dnum` 이 색을 갖는다(311~312행) —
@@ -697,8 +694,10 @@ body.hasbg .card,body.hasbg #sidebar>*{box-shadow:0 2px 14px rgba(16,24,40,.12);
 body.hasbg .cal-card{box-shadow:none;}
 body.hasbg #fcal{box-shadow:0 2px 14px rgba(16,24,40,.12);}
 body.hasbg:not(.wid) #view-calendar .cal-title,
-body.hasbg:not(.wid) #view-calendar .cal-head>.cal-ctl>.cal-nav:first-child{box-shadow:0 2px 10px rgba(16,24,40,.16);}
-@media print{body.hasbg::before,body.hasbg::after{display:none!important;}}
+body.hasbg:not(.wid) #view-calendar .cal-head>.cal-ctl>.cal-nav{box-shadow:0 2px 10px rgba(16,24,40,.16);}
+/* ⚠ 배경 레이어는 인쇄에서 전부 숨긴다 — 221차에 추가한 안쪽 비네트(#app::after)가 빠져 있어
+   인쇄물 가장자리에 어두운 그림자가 찍혔다(223차 점검에서 확인) */
+@media print{body.hasbg::before,body.hasbg::after,body.hasbg #app::after{display:none!important;}}
 /* 기준월 칩 — 하자 관리에서는 눌러서 게시월을 고른다 */
 #tbRm[data-act]{cursor:pointer;}
 #tbRm[data-act]:hover{border-color:var(--b400);color:var(--lbl);}
@@ -716,7 +715,17 @@ body.snap .nvi[data-view]:not([data-view="defect"]),body.snap .sb-bottom .sbsl,b
 body.snap .sbsl:first-of-type{display:none;}
 /* 인쇄 페이지(dfPrint) — 화면에서는 밖에 숨겨 두고 차트만 그린다 */
 #dfPrintPages{position:fixed;left:-12000px;top:0;width:720px;background:#fff;z-index:-1;}
-#dfPrintPages .main-chart-card{height:230px;aspect-ratio:auto;min-height:0;}
+/* ⚠ 이 규칙은 `#view-defect .main-chart-card{aspect-ratio:16/4;min-height:256px}`(뒤쪽 선언)에 밀려
+   **무효였다** — 같은 명시도면 뒤가 이긴다(216차와 같은 함정). 그래서 인쇄 상자 안에서도 카드가
+   aspect-ratio 로 폭을 역산해 **720px 상자를 넘어 1024px** 로 그려졌고, 인쇄 미디어로 넘어가는 순간
+   696px 로 줄며 차트가 다시 그려져 **추이 차트가 빈 채로 인쇄**됐다.
+   #view-defect 를 앞에 붙여 명시도를 올리고, 높이는 인쇄 규칙(196px)과 같은 값으로 맞춰 리사이즈 자체를 없앤다. */
+#view-defect #dfPrintPages .main-chart-card{height:196px;aspect-ratio:auto;min-height:0;}
+/* 쪽번호용 페이지 박스 — ⚠ 반드시 **상시** 규칙이어야 한다. @media print 안에만 두면 인쇄 순간
+   박스가 늘어나며 레이아웃이 변한다(224차에서 그 실수로 마지막 쪽에 유령 띠가 생겼다).
+   1050px < A4 내용높이(1123-상하 8mm=1063px) — 논리 한 쪽 = 물리 한 쪽. */
+#dfPrintPages .sp-print-page{position:relative;min-height:1050px;}
+#dfPrintPages .sp-pgn{position:absolute;right:2px;bottom:0;font-size:7pt;color:#8a8a8e;font-variant-numeric:tabular-nums;}
 
 .sp-page-hdr{display:flex;justify-content:space-between;align-items:flex-end;padding-bottom:8pt;border-bottom:2pt solid var(--bt2);margin-bottom:10pt;}
 .sp-page-hdr .ph-l{display:flex;flex-direction:column;gap:2pt;}
@@ -731,9 +740,16 @@ body.snap .sbsl:first-of-type{display:none;}
   html.dark{--bg:#F2F2F7;--bg2:#fff;--surf2:#F5F7FA;--surf3:#E9EDF2;--fill:rgba(120,120,128,.12);--fill2:rgba(120,120,128,.18);
     --sep:rgba(60,60,67,.13);--sepo:#C6C6C8;--lbl:#1C1C1E;--lbl2:rgba(60,60,67,.58);--lbl3:rgba(60,60,67,.45);color-scheme:light;}
   *,*::before,*::after{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
-  @page{size:A4 portrait;margin:8mm 9mm;@bottom-right{content:counter(page) " / " counter(pages);font-size:7pt;color:#8a8a8e;}}
+  /* ⚠ @page 의 @bottom-right 쪽번호(counter)는 **크롬이 지원하지 않아 한 번도 찍힌 적이 없다**
+     (224차 실측으로 확인 — 설정만 있고 출력엔 없었다). 쪽번호는 DOM(.sp-pgn)으로 넣는다.
+     각 페이지를 A4 내용높이로 고정해(min-height 1050px < 281mm=1062px, 반올림 여유 12px)
+     쪽번호가 항상 우하단에 앉는다. */
+  @page{size:A4 portrait;margin:8mm 9mm;}
   /* dfPrint 가 만든 페이지만 인쇄한다 */
   body.df-printing #sidebar,body.df-printing #topbar,body.df-printing #scrim,body.df-printing #toast,body.df-printing #htip,body.df-printing #mo{display:none!important;}
+  /* ⚠ body·html 배경도 흰색으로 — #app/#content 만 강제하면 문서 끝과 물리쪽 경계 사이 잔여(±13px)에
+     --bg(연회색)가 띠로 찍힌다(224차 실측: 마지막 쪽 하단 y1081~1093, 색 #EAECF1) */
+  body.df-printing,html:has(body.df-printing){background:#fff!important;}
   body.df-printing #app,body.df-printing #main,body.df-printing #content{display:block!important;height:auto!important;overflow:visible!important;background:#fff!important;padding:0!important;}
   body.df-printing .view{display:none!important;}
   body.df-printing #view-defect{display:block!important;}
@@ -757,7 +773,7 @@ body.snap .sbsl:first-of-type{display:none;}
   #dfPrintPages .dt th{padding:4px 4px!important;font-size:6pt!important;}
   #dfPrintPages .dt td{padding:4px 4px!important;}
   #dfPrintPages .ba{font-size:5.5pt!important;padding:1px 4px!important;}
-  #dfPrintPages .main-chart-card{height:196px!important;padding:8px 11px 10px!important;}
+  #view-defect #dfPrintPages .main-chart-card{height:196px!important;padding:8px 11px 10px!important;}
   #dfPrintPages .mom-row{padding:3px 4px!important;}
   #dfPrintPages .mom-row .bar{padding:2px 4px!important;}
   #dfPrintPages .mom-wrap{gap:2px!important;}
@@ -1810,7 +1826,7 @@ body.wid #content{padding:8px;}
 body.wid .cal-wrap{grid-template-columns:minmax(0,1fr);height:calc(100dvh - 16px);}   /* 1fr 의 최소폭은 max-content — 표가 창보다 넓어져 오른쪽이 잘린다 */
 body.wid .card{border-radius:8px;padding:11px 12px;}
 body.wid .cal-title{font-size:14px;}
-body.wid #fcal{font-size:12px;}
+body.wid #fcal{font-size:12px;border:0;}   /* 아웃라인은 앱 달력에만 — 위젯은 창 자체가 경계다 */
 body.wid #fcal .fc-daygrid-day-number{padding:3px 5px 1px;}
 body.wid #fcal .dhol{max-width:none;min-width:0;flex:1;}   /* 칸 폭에 맞춰 쓰고, 정말 좁을 때만 말줄임 */
 body.wid .plan{padding:8px 10px;border-radius:8px;}
@@ -1874,6 +1890,20 @@ body.wid.glass .dp-empty{color:rgba(255,255,255,.6);}
 /* ── 위젯 공통(유리 여부 무관) — 헤더 한 줄 유지 · 설정 · 다열 목록 ── */
 .wido{display:none;}
 body.wid .wido{display:flex;}
+/* 앱 전용(위젯에서는 숨김) — 위젯은 자체 설정 버튼(wid.set)을 쓴다 */
+.appo{display:none;}
+body:not(.wid) .appo{display:flex;}
+/* 달력 설정 팝업 — 앱 팝업(.tb-pop) 문법 그대로, 기어 버튼 기준으로 아래에 뜬다 */
+#calSetWrap{position:relative;}
+.cal-set-pop{width:262px;top:calc(100% + 8px);right:0;}
+.cal-set-pop::before{right:12px;}
+.cal-set-b{padding:10px 14px 12px;display:flex;flex-direction:column;gap:2px;}
+.cal-set-r{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:32px;font-size:12px;color:var(--lbl2);}
+.cal-set-r>span{white-space:nowrap;flex:0 0 96px;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:6px;}
+.cal-set-v{font-weight:700;color:var(--bt1);}
+.cal-set-r>input[type=range]{flex:1;min-width:0;accent-color:var(--b600);}
+.cal-set-n{font-size:11px;color:var(--lbl3);line-height:1.5;margin-top:6px;padding-top:8px;border-top:1px solid var(--sep);}
+body.hasbg .cal-set-n{display:none;}   /* 배경을 켠 상태에선 안내가 필요 없다 */
 body.wid .cal-head{flex-wrap:nowrap;gap:8px;}         /* 좁아도 년월(좌)–컨트롤(우) 한 줄 */
 body.wid .cal-ctl{flex:0 0 auto;min-width:0;}
 body.wid .cal-title{font-size:14px;}
@@ -2291,14 +2321,14 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 .tk-split{flex:1 1 auto;min-height:0;}
 .tk-split .tkmain{max-height:100%;height:100%;min-height:0;}
 /* 이어지는 쪽 끝을 서서히 지워 '더 있다'를 알린다(그 끝에 닿으면 사라진다) */
-/* sticky 머리(thead)·합계 행이 있는 표 스크롤 칸은 페이드가 머리를 흐리게 만들면 안 된다 —
-   fadeOne 이 sticky 높이를 재서 --sbft(위)·--sbfb(아래)에 넣고, 그 안쪽부터 페이드가 시작된다(기본 0) */
-.sb-fade-b{-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - var(--sbfb,0px) - 26px),transparent calc(100% - var(--sbfb,0px)),#000 calc(100% - var(--sbfb,0px)));
-  mask-image:linear-gradient(to bottom,#000 calc(100% - var(--sbfb,0px) - 26px),transparent calc(100% - var(--sbfb,0px)),#000 calc(100% - var(--sbfb,0px)));}
-.sb-fade-t{-webkit-mask-image:linear-gradient(to bottom,#000 var(--sbft,0px),transparent var(--sbft,0px),#000 calc(var(--sbft,0px) + 26px));
-  mask-image:linear-gradient(to bottom,#000 var(--sbft,0px),transparent var(--sbft,0px),#000 calc(var(--sbft,0px) + 26px));}
-.sb-fade-t.sb-fade-b{-webkit-mask-image:linear-gradient(to bottom,#000 var(--sbft,0px),transparent var(--sbft,0px),#000 calc(var(--sbft,0px) + 26px),#000 calc(100% - var(--sbfb,0px) - 26px),transparent calc(100% - var(--sbfb,0px)),#000 calc(100% - var(--sbfb,0px)));
-  mask-image:linear-gradient(to bottom,#000 var(--sbft,0px),transparent var(--sbft,0px),#000 calc(var(--sbft,0px) + 26px),#000 calc(100% - var(--sbfb,0px) - 26px),transparent calc(100% - var(--sbfb,0px)),#000 calc(100% - var(--sbfb,0px)));}
+/* ⚠ 217차의 sticky 오프셋(--sbft/--sbfb)은 218차에 목록·피벗을 페이드에서 제외하면서 대상이 사라져
+   완전한 데드코드가 됐다(222차 점검에서 확인 — 전 화면에 직계 sticky thead 보유 컨테이너 0개). 원래 형태로 되돌린다. */
+.sb-fade-b{-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 26px),transparent);
+  mask-image:linear-gradient(to bottom,#000 calc(100% - 26px),transparent);}
+.sb-fade-t{-webkit-mask-image:linear-gradient(to bottom,transparent,#000 26px);
+  mask-image:linear-gradient(to bottom,transparent,#000 26px);}
+.sb-fade-t.sb-fade-b{-webkit-mask-image:linear-gradient(to bottom,transparent,#000 26px,#000 calc(100% - 26px),transparent);
+  mask-image:linear-gradient(to bottom,transparent,#000 26px,#000 calc(100% - 26px),transparent);}
 /* 스크롤 막대는 아예 그리지 않는다(규약: 스크롤바는 자리를 차지하지 않는다).
    더 볼 내용이 있다는 신호는 위·아래 페이드(.sb-fade-t/.sb-fade-b)가 맡는다 */
 /* 스크립트가 옮기는 스크롤은 부드럽게(휠·손가락 스크롤은 운영체제가 맡는다) */
@@ -2373,14 +2403,12 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 <canvas id="bgGrain" aria-hidden="true"></canvas>
 <!-- 아이콘: Lucide (ISC) — 24 그리드 · stroke 2 -->
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true" focusable="false">
-<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></symbol>
 <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.2"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .9-1 1.6v.4"/><path d="M12 17.2h.01"/></symbol>
 <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></symbol>
 <symbol id="i-warn" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
 <symbol id="i-home" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
 <symbol id="i-build" viewBox="0 0 24 24"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></symbol>
 <symbol id="i-trend" viewBox="0 0 24 24"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></symbol>
-<symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 5v6h-6"/></symbol>
 <symbol id="i-today" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.6V20a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V9.6"/><path d="M9.6 21v-6.2h4.8V21"/></symbol>
 <symbol id="i-cal" viewBox="0 0 24 24"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></symbol>
 <symbol id="i-tasks" viewBox="0 0 24 24"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></symbol>
@@ -2457,7 +2485,7 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
   </div>
   <div class="sb-tools" id="sbTools">
     <button class="sb-more" data-act="nav.tools" aria-label="기능 버튼 열기"><svg class="icn" aria-hidden="true"><use href="#i-plus"></use></svg></button>
-    <div class="sb-tools-in" id="sbToolsIn">
+    <div class="sb-tools-in">
     <div class="tbr">
       <span class="tb-rm" id="tbRm" data-act="df.rm" role="button" tabindex="0" data-tip="기준월 변경 — 게시된 달을 고릅니다" hidden></span>
       <div class="tb-nav" id="tbPrintWrap" hidden>
@@ -2555,6 +2583,19 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
                 <button class="cal-nb" data-act="cal.prev" aria-label="이전"><svg class="icn" aria-hidden="true"><use href="#i-chevl"></use></svg></button>
                 <button class="cal-nb cal-today" data-act="cal.today" aria-label="오늘로" data-tip="오늘로"><svg class="icn" aria-hidden="true"><use href="#i-today"></use></svg></button>
                 <button class="cal-nb" data-act="cal.next" aria-label="다음"><svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg></button>
+              </div>
+              <div class="cal-nav appo" id="calSetWrap">
+                <button class="cal-nb" data-act="cal.set" aria-label="달력 설정" data-tip="달력 설정" aria-expanded="false"><svg class="icn" aria-hidden="true"><use href="#i-settings"></use></svg></button>
+                <div class="tb-pop cal-set-pop" id="calSet">
+                  <div class="tb-pop-h"><b>달력 설정</b></div>
+                  <div class="cal-set-b">
+                    <div class="cal-set-r"><span>투명도 <b id="bgCalAV" class="cal-set-v">15%</b></span>
+                      <input type="range" id="bgCalA" min="0" max="85" step="5" value="15" data-act="set.calA"></div>
+                    <div class="cal-set-r"><span>유리 톤 <b id="bgCalTV" class="cal-set-v">100%</b></span>
+                      <input type="range" id="bgCalT" min="50" max="160" step="5" value="100" data-act="set.calT"></div>
+                    <div class="cal-set-n">배경화면을 켜면 적용됩니다 · 설정 &gt; 앱 배경화면</div>
+                  </div>
+                </div>
               </div>
               <div class="wido" id="widFilterSlot"></div>
               <div class="cal-nav wido">
@@ -2716,10 +2757,7 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
               <span style="display:inline-flex;gap:6px;align-items:center"><button class="btn bo bsm" data-act="set.bgPick">이미지 선택</button><button class="btn bg2 bsm" id="bgClearBtn" data-act="set.bgClear" hidden>없애기</button></span></div>
             <div class="share-row" style="margin-top:10px"><div><b style="font-size:13px">레이아웃 투명도</b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">카드가 배경을 얼마나 비칠지 · 하자 관리 화면은 항상 불투명</div></div>
               <input type="range" id="bgAlpha" min="60" max="100" step="5" value="90" data-act="set.bgAlpha" style="width:160px"></div>
-            <div class="share-row" style="margin-top:10px"><div><b style="font-size:13px">달력 투명도 <b id="bgCalAV" style="color:var(--bt1)">15%</b></b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">달력 칸이 배경을 얼마나 비칠지 · 위젯 설정과 같은 방식</div></div>
-              <input type="range" id="bgCalA" min="0" max="85" step="5" value="15" data-act="set.calA" style="width:160px"></div>
-            <div class="share-row" style="margin-top:10px"><div><b style="font-size:13px">달력 유리 톤 <b id="bgCalTV" style="color:var(--bt1)">100%</b></b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">칸의 어두운 유리색 농도 · 낮추면 진해지고 올리면 연해집니다</div></div>
-              <input type="range" id="bgCalT" min="50" max="160" step="5" value="100" data-act="set.calT" style="width:160px"></div>
+            <div class="share-row" style="margin-top:10px"><div><b style="font-size:13px">달력 투명도 · 유리 톤</b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">업무 일정 화면의 달력 설정(⚙) 버튼에서 바로 조절합니다</div></div></div>
           </div>
           <div class="set-card card">
             <div class="set-h">하자 관리 스냅샷</div>
@@ -2758,5 +2796,5 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=250"></script>
+<script src="./app.js?v=253"></script>
 </body></html>
