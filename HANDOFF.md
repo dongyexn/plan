@@ -2473,6 +2473,30 @@ App Check 는 **해제 상태로 잠정 보류**(128차 판단).
   (defect 전용·차트·현장 진입·분석 렌더, 오류 0)·A4 PDF 416KB. audit FAIL 0 WARN 0.
   app.js?v=207 · APP_VER 1.9.0.
 
+### 200차 — 아이콘·보고서 양식 인쇄 픽커·피벗 드래그/드릴다운 (원본 파리티 완성)
+- **사이드바 아이콘**: 사용자 참조 이미지 스타일 — L자 축 + 채운 막대 3개 + 상승 지그재그 화살표.
+  시안 8종(A~H)을 실측 크기로 비교해 G안 채택, i-defect 심볼 교체(막대 fill 은 currentColor).
+- **인쇄 픽커(원본 openPrintPick 이식)**: 인쇄 버튼 → '화면 그대로 / 보고서 양식' 선택 모달
+  (#mb.wide-pick 620px · 썸네일 · 보고서 글꼴 기본/맑은 고딕/바탕, localStorage 'calapp.rptFont').
+  화면 그대로 = dfPrint(199차), 보고서 양식 = **dfPrintReport**.
+- **보고서 양식(rpt) 전체 이식**: 원본 rptDashboard/rptSite 를 게시본 데이터로 포트 —
+  calc→DF.kpi(=calc 전체), dashSites→dfDashSites, moSnaps→dfMoSnaps*, tblMetrics→dfMetrics,
+  S.cmt 계획→dfPlanGet(지난달=dfPrevMonth), S.ana→DF.ana, dashCoAgg→dfDashCoAgg(대시 표와 공용 추출).
+  구성 동일: 대시보드 2쪽(종합/추이 SVG/이슈/월별 + 분포 도넛/현장별/업체별, 밀도 dense·dense2 자동),
+  현장 3쪽(+장기미처리·공가세대 처리계획 표·AI 분석 재서식 rptAI). rpTrend/rpDonut SVG·rptFit 실측 축소·
+  rpt CSS(고정 문서색·f-sys/f-serif)·@page 덮기(rptPageCSS)·#rptRoot 화면 밖 조립 전부 원본 그대로.
+  ⚠ #rptRoot{position:fixed;left:-10000px} 줄이 .rpt 블록 밖에 있어 추출에서 빠졌던 것 복원.
+- **피벗 칩 드래그 재정렬**: 원본 pvFlip(FLIP 보간)·pvCommitOrder 이식 — 행 칩 draggable,
+  드래그로 끝난 제스처는 클릭 제거로 치지 않게 pvDragMoved 가드.
+- **피벗 우클릭 드릴다운**: 행경로(data-rp)+열값(data-cv) → '해당 목록 보기'가 REC.vals 로 필터를 걸고
+  목록 모드로 전환('(빈값)'→'(미기재)' 매핑). '__month' 같은 피벗 전용 키는 recCompute 값 필터가
+  pivCell 로 값을 뽑아 처리. '값 복사' 병행.
+- 검증: 픽커 2옵션/글꼴 3종/wide-pick · 대시 보고서 2쪽 7섹션 SVG(PDF 472KB) · 현장 보고서 3쪽
+  (처리계획 텍스트·AI 재서식, PDF 497KB) · 1쪽 렌더 육안 대조(원본 규격 일치) · 드래그 커밋
+  (rows 순서·표 머리 갱신) · 드릴다운(2조건 필터 69/87건) · 콘솔 오류 0 · audit FAIL 0 WARN 0.
+- **이로써 원본과 남은 의도적 차이는 업로드·게시·AI 분석 생성(관리자 앱 전용) 뿐이다.**
+  app.js?v=208 · APP_VER 2.0.0.
+
 ## 8. 보류하기로 한 것
 
 - 업무 이력(변경 기록) — 과도하다고 판단
