@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='2.0.1';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='2.0.2';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -3409,7 +3409,9 @@ function dfKcHTML(list){
 /* 주요 이슈 — 게시본 HTML 그대로(원본 .ic 카드). 남이 만든 HTML 이므로 반드시 DOMPurify 로 씻는다 */
 function dfInsightHTML(html){
   const raw=String(html||'').trim();
-  const inner=raw?((typeof DOMPurify!=='undefined')?DOMPurify.sanitize(raw):esc(raw))
+  /* 게시본 이슈는 정적 HTML 이다 — 원본이 붙여 둔 '펼치기' 툴팁만 떼어 오해를 없앤다
+     (상세 집계는 게시본에 실리지 않아 이 앱에서는 펼칠 수 없다) */
+  const inner=raw?String((typeof DOMPurify!=='undefined')?DOMPurify.sanitize(raw):esc(raw)).replace(/\sdata-tt="펼치기"/g,'')
     :'<div class="ic warn"><div class="ic-i"><svg viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/></svg></div><div class="ic-t"><div class="ic-ttl">주요 이슈 없음</div><div class="ic-sub">이 게시본에는 주요 이슈가 포함되지 않았습니다 · 재게시하면 표시됩니다.</div></div></div>';
   return `<div class="card"><div class="sh"><div class="ct cardttl">주요 이슈 및 분석 의견</div><span class="df-sub">${esc(S.dfRm)} 게시본</span></div><div class="ins-grid">${inner}</div></div>`;
 }
@@ -3468,6 +3470,11 @@ function dfDashTableFill(d){
 }
 /* 대시보드 업체별 축 — 현장별 coAgg 를 업체 기준으로 합친다(원본 dashCoAgg). 상위 10 + 나머지 한 줄 */
 /* 업체별 하자처리현황 집계 — 대시보드 표·보고서 양식 공용 */
+/* 범례·보고서용 짧은 현장명 — '힐스테이트'는 어디에 붙어 있든 뗀다(갑천1 트리풀시티 힐스테이트 등) */
+function dfShortSite(nm){
+  const s2=String(nm||'').replace(/힐스테이트/g,'').replace(/\s{2,}/g,' ').trim().replace(/^[·\-\s]+|[·\-\s]+$/g,'');
+  return s2||String(nm||'');
+}
 function dfDashCoAgg(rm,list){
   const m=new Map();
   list.forEach(s=>{const k=DF.kpi[rm+'/'+s.id];((k&&k.coAgg)||[]).forEach(x=>{
@@ -3561,7 +3568,7 @@ function rDefectDash(root,d){
     dfTrendDraw('trend','dfTrend',dashWks);
     dfMomRender('dfMom',{tR,res:tRes,unr:tU,lt:tLt,prev:{total:pT,res:pRes,unr:pU,lt:pLt}});
     /* 범례는 '힐스테이트'를 떼고 보여 준다 — 전체 이름은 툴팁으로 */
-    dfDonutDraw('sx','dfSx','dfSxLg',all.filter(x=>x.st.unr>0).map(x=>({t:String(x.s.name).replace(/^힐스테이트\s*/,'')||x.s.name,full:x.s.name,c:x.st.unr})).sort((a,b)=>b.c-a.c));
+    dfDonutDraw('sx','dfSx','dfSxLg',all.filter(x=>x.st.unr>0).map(x=>({t:dfShortSite(x.s.name),full:x.s.name,c:x.st.unr})).sort((a,b)=>b.c-a.c));
     dfDonutDraw('mx','dfMx','dfMxLg',dfDonutData(d.am));
     dfDashMonthTable(d);
     dfDashTableFill(d);
@@ -4051,7 +4058,7 @@ function rptDashboard(){
     <th style="width:10%">전체 미처리</th><th style="width:10%">전월 대비</th><th style="width:10%">장기미처리</th>
     <th style="width:10%">전월 대비</th></tr></thead><tbody>${rpMoRows(dfMoSnapsDash(wkDash))}</tbody></table>`;
 
-  const bySite=st.map(x=>({n:String(x.s.name).replace(/^힐스테이트\s*/,'')||x.s.name,v:x.c.unr||0})).sort((a,b)=>b.v-a.v);
+  const bySite=st.map(x=>({n:dfShortSite(x.s.name),v:x.c.unr||0})).sort((a,b)=>b.v-a.v);
   const trMap={};
   st.forEach(x=>((x.c.trAgg)||[]).forEach(t=>{trMap[t.t]=(trMap[t.t]||0)+(t.u||0);}));
   const byTr=Object.entries(trMap).map(([n,v])=>({n,v})).sort((a,b)=>b.v-a.v);
@@ -4147,7 +4154,7 @@ function rptSite(sid){
   /* ⚠ 게시본 ul 은 상위 300건까지만 실린다 — 유형별 분모는 실린 표본 수로 잡아야 도넛이 채워진다 */
   const tySum=byTy.reduce((a,x)=>a+x.v,0);
   const tyCap=tySum<(c.unr||0);
-  const dist=`<div class="two">${rpDonut(cut(byTr,'개 공종'),c.unr,'공종별')}${rpDonut(cut(byTy,'개'),tySum,'공종 · 유형별'+(tyCap?` (표본 ${rpN(tySum)}건)`:''))}</div>`;
+  const dist=`<div class="two">${rpDonut(cut(byTr,'개 공종'),c.unr,'공종별')}${rpDonut(cut(byTy,'개'),tySum,'공종 · 유형별'+(tyCap?` · 최근 ${rpN(tySum)}건`:''))}</div>`;
 
   const planTbl=(rows,prevMap,field,num)=>{
     const body=rows.map((x,i)=>{
@@ -4159,7 +4166,7 @@ function rptSite(sid){
         `<td>${num?rpPct(x.c,num):'-'}</td><td class="plan">`+
         `<div class="prev"><span class="lb">지난달</span><span class="tx">${cell(prev)}</span></div>`+
         `<div class="cur"><span class="lb">이번 달</span><span class="tx">${cell(cur)}</span></div></td></tr>`;}).join('');
-    return `<table><thead><tr>
+    return `<table class="plan-tbl"><thead><tr>
       <th style="width:4%">순위</th><th class="l" style="width:9%">공종</th><th class="l" style="width:14%">시공업체</th>
       <th style="width:6.5%">전월</th><th style="width:6.5%">금월</th><th style="width:7%">전월 대비</th><th style="width:7%">비율</th>
       <th class="l" style="width:46%">처리계획</th></tr></thead><tbody>${body}</tbody></table>`;};
@@ -4263,7 +4270,7 @@ function rptThumb(kind){
     <g stroke="#C8CDD4"><line x1="14" y1="99" x2="146" y2="99"/><line x1="14" y1="104" x2="146" y2="104"/>
       <line x1="14" y1="109" x2="146" y2="109"/></g></svg>`;
 }
-function rptFont(){const v=localStorage.getItem('calapp.rptFont');return v==='sys'||v==='dotum'?v:'brand';}
+function rptFont(){return localStorage.getItem('calapp.rptFont')==='sys'?'sys':'brand';}
 function openPrintPick(){
   const fSaved=rptFont();
   const opt=(v,nm,ds,mt)=>`<div class="rpk-opt${v==='report'?' on':''}" data-act="print.pick" data-v="${v}">
@@ -4277,7 +4284,7 @@ function openPrintPick(){
       ${opt('report','보고서 양식','A4 문서 형태로 재구성해 인쇄합니다.',S.dfSid?'현황 · 추이 · 이슈 · 표 순 · 3쪽':'현황 · 추이 · 이슈 · 표 순 · 2쪽')}
     </div>
     <div class="rpk-fnt" id="rpkFont"><span class="rpk-fnt-l">보고서 글꼴</span><div class="rpk-seg">
-      ${[['brand','기본'],['sys','맑은 고딕'],['dotum','돋움']].map(([f,nm])=>
+      ${[['brand','기본'],['sys','맑은 고딕']].map(([f,nm])=>
         `<button class="${f===fSaved?'on':''}" data-act="print.font" data-f="${f}">${nm}</button>`).join('')}
     </div></div>`,
     `<button class="btn bg2 bsm" data-act="modal.close">취소</button>
@@ -4321,7 +4328,7 @@ async function dfPrintReport(){
   try{d.innerHTML=S.dfSid?rptSite(S.dfSid):rptDashboard();}
   catch(e){toast('보고서를 만들지 못했습니다');console.error(e);return;}
   const _rp=d.querySelector('.rpt');
-  if(_rp)_rp.classList.add(rptFont()==='sys'?'f-sys':rptFont()==='dotum'?'f-dotum':'f-brand');
+  if(_rp)_rp.classList.add(rptFont()==='sys'?'f-sys':'f-brand');
   document.body.appendChild(d);
   document.body.classList.add('rpt-on');
   try{rptFit(d);}catch(e){console.warn('rptFit',e);}
@@ -4363,7 +4370,7 @@ async function dfPrint(){
     const st=k;
     const units=site.units||0,compDate=site.completionDate?` · ${site.completionDate}`:'';
     const kpis=dfKcHTML([
-      {cls:'bl kc-site',label:esc(site.region||'-'),valHTML:`<span class="kc-site-nm">${esc(site.name||'-')}</span>`,meta:`${units.toLocaleString()}세대 · ${site.buildings||0}개동${compDate}`},
+      {cls:'bl',label:'현장규모',valHTML:`${units.toLocaleString()}<span class="u">세대</span>`,meta:`${site.buildings||0}개동${compDate}`},
       {cls:'sk',label:'전체 접수',val:st.tR||0,unit:'건',meta:`세대당 ${units>0?((st.tR||0)/units).toFixed(1):'0.0'}건`},
       {cls:'ms',label:'처리 완료',val:st.res||0,unit:'건',meta:`처리율 ${(Number(st.rate)||0).toFixed(1)}%`},
       {cls:'wh',label:'미처리',val:st.unr||0,unit:'건',meta:`세대당 ${units>0?((st.unr||0)/units).toFixed(1):'0.0'}건`},
@@ -4424,7 +4431,7 @@ async function dfPrint(){
       let tR=0,tRes=0,tU=0,tLt=0,pT=0,pRes=0,pU=0,pLt=0;
       all.forEach(({st})=>{tR+=st.tR;tRes+=st.res;tU+=st.unr;tLt+=st.lt;pT+=st.prev.total;pRes+=st.prev.res;pU+=st.prev.unr;pLt+=st.prev.lt;});
       dfMomRender('dfPrMom',{tR,res:tRes,unr:tU,lt:tLt,prev:{total:pT,res:pRes,unr:pU,lt:pLt}});
-      dfDonutDraw('prSx','dfPrSx','dfPrSxLg',all.filter(x=>x.st.unr>0).map(x=>({t:String(x.s.name).replace(/^힐스테이트\s*/,'')||x.s.name,full:x.s.name,c:x.st.unr})).sort((a,b)=>b.c-a.c));
+      dfDonutDraw('prSx','dfPrSx','dfPrSxLg',all.filter(x=>x.st.unr>0).map(x=>({t:dfShortSite(x.s.name),full:x.s.name,c:x.st.unr})).sort((a,b)=>b.c-a.c));
       dfDonutDraw('prMx','dfPrMx','dfPrMxLg',dfDonutData(d.am));
       const moTbl=box.querySelector('#dfPrDashMo');
       if(moTbl){const keep=$('#dfDashMo');const tmp=keep;   /* 월별 표 채우기 — 화면 채움 함수를 인쇄 표에 재사용 */
@@ -4537,25 +4544,26 @@ function recBodyHTML(){
   const vacCnt=REC.rows.filter(recIsVac).length;
   const v=recCompute();
   const cols=recVisCols();
-  const head='<tr><th class="n">No</th>'+cols.map(c=>
+  const head='<tr><th>No</th>'+cols.map(c=>
     '<th data-act="rec.sort" data-k="'+c.k+'"'+(REC.w[c.k]?' style="width:'+REC.w[c.k]+'px"':'')+'>'
     +esc(c.t)+(REC.vals[c.k]&&Object.keys(REC.vals[c.k]).length?' <i class="fl">필터</i>':'')
     +(REC.sort===c.k?(REC.desc?' ▾':' ▴'):'')
     +'<span class="rz" data-act="rec.rz" data-k="'+c.k+'"></span></th>').join('')+'</tr>';
   const lim=REC.limit>0?REC.limit:v.length;
-  const body=v.slice(0,lim).map((r,i)=>'<tr><td class="n">'+(i+1)+'</td>'
-    +cols.map(c=>'<td class="'+(c.wide?'wide':(c.num?'n':''))+'">'+esc(r[c.k]==null?'':String(r[c.k]))+'</td>').join('')+'</tr>').join('');
+  const body=v.slice(0,lim).map((r,i)=>'<tr><td>'+(i+1)+'</td>'
+    +cols.map(c=>'<td'+(c.wide?' class="wide"':'')+'>'+esc(r[c.k]==null?'':String(r[c.k]))+'</td>').join('')+'</tr>').join('');
   const nh=Object.keys(REC.hidden).filter(k=>REC.hidden[k]).length;
   const band=(id,nm,n)=>'<button class="rl-band '+id+(REC.band===id?' on':'')+'" data-act="rec.band" data-b="'+id+'">'+nm+' <b>'+n.toLocaleString()+'</b></button>';
   const limBtn=n=>'<button class="'+(REC.limit===n?'on':'')+'" data-act="rec.limit" data-n="'+n+'">'+(n>0?n.toLocaleString()+'건':'전체')+'</button>';
   const storeCnt=REC.rows.filter(recIsStore).length;
   return '<div class="rl-band-bar">'
-    +band('','전체',bandCnt(''))+band('d60','60일 이상',bandCnt('d60'))+band('d30','30~59일',bandCnt('d30'))+band('d0','30일 미만',bandCnt('d0'))
+    +band('','전체',bandCnt(''))+band('d60','60일 이상',bandCnt('d60'))+band('d30','30~59일',bandCnt('d30'))
+    +(REC.scope==='lul'?'':band('d0','30일 미만',bandCnt('d0')))
     +((vacCnt||storeCnt)?'<span class="rl-vsep"></span>':'')
     +(vacCnt?'<button class="rl-band'+(REC.vac==='unit'?' on':'')+'" data-act="rec.vac" data-v="unit">공가세대 <b>'+vacCnt.toLocaleString()+'</b></button>':'')
     +(storeCnt?'<button class="rl-band'+(REC.vac==='store'?' on':'')+'" data-act="rec.vac" data-v="store">공가상가 <b>'+storeCnt.toLocaleString()+'</b></button>':'')
     +(nh?'<button class="rl-band" data-act="rec.showAll">숨긴 열 '+nh+'개</button>':'')
-    +'<span class="rl-lim"><span class="rl-lim-lbl">표시</span>'+limBtn(500)+limBtn(1000)+limBtn(5000)+limBtn(0)+'</span>'
+    +(PIV.on?'':'<span class="rl-lim"><span class="rl-lim-lbl">표시</span>'+limBtn(500)+limBtn(1000)+limBtn(5000)+limBtn(0)+'</span>')
     +'</div>'
     +(PIV.on?pivHTML()
       :(v.length?'<div class="rec-wrap"><table class="rec-tbl"><thead>'+head+'</thead><tbody>'+body+'</tbody></table></div>'
@@ -4568,7 +4576,6 @@ function recHeadHTML(){
     +'<span class="rl-q-wrap"><svg class="icn icn-sm" aria-hidden="true"><use href="#i-search"></use></svg>'
     +'<input id="recQ" class="rl-q" placeholder="동·호·공종·내용 검색" value="'+esc(REC.q)+'" autocomplete="off"></span>'
     +'<span class="rec-n" id="recN"></span>'
-    +'<button class="btn bo bsm" data-act="rec.copy">표 복사</button>'
     +'<button class="btn bo bsm" data-act="rec.xlsx">엑셀</button>'
     +'<button class="btn bo bsm" data-act="rec.pivot" id="recPivBtn">피벗</button>'
     +'<button class="btn bg2 bsm" data-act="modal.close">닫기</button>'
@@ -4633,7 +4640,10 @@ async function recOpen(sid,scope,opts){
   REC.vac=opts.vac==='unit'||opts.vac==='store'?opts.vac:'';
   REC.withSite=all;REC.vals={};REC.hidden={};
   REC.title=((site&&site.name)||'팀 전체')+' · '+scopeLbl+filtLbl;   /* 머리·엑셀 파일명 공용 */
-  PIV.on=false;
+  REC.scope=scope;
+  /* 피벗 기본 조합 — 원본과 동일: 팀 전체는 현장×공종, 한 현장은 시공업체›공종 */
+  PIV.on=false;PIV.pct=false;PIV.val='count';PIV.sort={key:'__total',dir:-1};
+  PIV.rows=all?['siteName']:['contractor','trade'];PIV.col=all?'trade':null;
   recRender();
 }
 /* 피벗 — 원본과 같은 구성: 행(최대 3개, 계층)·열 1개·값(건수/평균 지연일)·% 병기·정렬·합계.
@@ -4727,12 +4737,12 @@ function pivTableHTML(){
 }
 function pivHTML(){
   /* 행 칩은 드래그로 순서를 바꾼다(원본 pv-drag) — 클릭은 제거, 끌면 재정렬 */
-  const chipR=(k,i)=>'<button class="pv-chip pv-drag" draggable="true" data-key="'+esc(k)+'" data-act="rec.pvRm" data-zone="rows" data-i="'+i+'">'+esc(pivFieldLabel(k))+' <span class="x">×</span></button>';
-  const rowsZ=PIV.rows.map(chipR).join('')
-    +(PIV.rows.length<3?'<button class="pv-chip pv-add" data-act="rec.pvAdd" data-zone="rows">+ 추가</button>':'');
-  const colZ=PIV.col
-    ?'<button class="pv-chip" data-act="rec.pvRm" data-zone="col">'+esc(pivFieldLabel(PIV.col))+' <span class="x">×</span></button>'
-    :'<button class="pv-chip pv-add" data-act="rec.pvAdd" data-zone="col">+ 추가</button>';
+  const drag=PIV.rows.length>1;   /* 하나뿐이면 끌 이유가 없다(원본과 동일) */
+  const chip=(k,zone,i)=>'<span class="pv-chip'+(zone==='rows'&&drag?' pv-drag" draggable="true':'')+'" data-key="'+esc(k)+'" data-zone="'+zone+'" data-i="'+i+'">'+esc(pivFieldLabel(k))
+    +'<button class="pv-chip-x" data-act="rec.pvRm" data-zone="'+zone+'" data-i="'+i+'" aria-label="제거">×</button></span>';
+  const add=zone=>'<button class="pv-add" data-act="rec.pvAdd" data-zone="'+zone+'" aria-label="필드 추가">+</button>';
+  const rowsZ=PIV.rows.map((k,i)=>chip(k,'rows',i)).join('')+(PIV.rows.length<3?add('rows'):'');
+  const colZ=PIV.col?chip(PIV.col,'col',0):add('col');
   return '<div class="pv-bar">'
     +'<div class="pv-zone"><span class="pv-zlbl">행</span>'+rowsZ+'</div>'
     +'<div class="pv-zone"><span class="pv-zlbl">열</span>'+colZ+'</div>'
@@ -5590,7 +5600,7 @@ function ctxFor(t){
     const trade=(dfTr.querySelector('td')||{}).textContent;
     const sid=S.dfSid;
     return[
-      {label:'표 전체 복사',act:()=>copyText(tblText(tbl),'표를 복사했습니다')},
+      {label:'표 전체 복사',act:()=>{if(tbl&&tbl.classList.contains('rec-tbl'))recCopy();else copyText(tblText(tbl),'표를 복사했습니다');}},
       (sid&&trade&&tbl&&tbl.classList.contains('dt'))
         ?{label:'"'+String(trade).trim()+'" 미처리 목록',act:()=>{recOpen(sid,'ul').then(()=>{REC.q=String(trade).trim();recRender();});}}
         :null
@@ -5869,7 +5879,6 @@ const ACT={
   'df.site':el=>{S.dfSid=el.dataset.sid;S.dfTab='sum';go('defect');},
   'df.tab':el=>{S.dfTab=el.dataset.t;rDefect();},
   'rec.list':el=>recOpen(el.dataset.sid||'',el.dataset.scope||el.dataset.sc||'ul',{trade:el.dataset.trade,co:el.dataset.co,vac:el.dataset.vac}),
-  'rec.copy':()=>recCopy(),
   'rec.limit':el=>{REC.limit=Number(el.dataset.n)||0;recRender();},
   'rec.vac':el=>{REC.vac=(REC.vac===el.dataset.v?'':el.dataset.v);recRender();},
   'rec.pvAdd':el=>{const zone=el.dataset.zone,r=el.getBoundingClientRect();
