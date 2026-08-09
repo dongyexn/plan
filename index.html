@@ -78,6 +78,7 @@ svg{display:block;flex-shrink:0;}
 .sbtg svg{width:16px;height:16px;transition:transform var(--tr);}
 #sidebar.mini .sbtg svg{transform:scaleX(-1);}
 .sbsc{flex:1;overflow-y:auto;overflow-x:hidden;padding:8px;display:flex;flex-direction:column;}
+.sbsc>.sbsl:first-child{padding-top:2px;}
 #sidebar.mini .sbsc{overflow-x:visible;overflow-y:auto;}
 .sbsc>*{flex-shrink:0;}
 .sb-bottom{flex:0 0 auto;padding:6px 8px 8px;}   /* 스크롤 영역 밖 — 목록이 길어도 관리·프로필은 늘 아래에 남는다 */
@@ -95,7 +96,10 @@ svg{display:block;flex-shrink:0;}
 .sbsl+*{margin-top:0;}
 .sbsl:not(:first-child){margin-top:8px;padding-top:12px;}
 .sbsl:not(:first-child)::before{content:'';position:absolute;left:6px;right:6px;top:0;height:1px;background:var(--sep);}
-#sidebar.mini .sbsl{visibility:visible;text-align:center;padding-left:0;padding-right:0;font-size:10.5px;letter-spacing:0;white-space:normal;line-height:1.25;transition:none;}
+#sidebar.mini .sbsl{visibility:visible;text-align:center;padding-left:0;padding-right:0;font-size:10.5px;letter-spacing:0;white-space:nowrap;transition:none;}
+#sidebar.mini .sbsl>.sbsl-long{display:none;}
+#sidebar.mini .sbsl>.sbsl-short{display:inline;}
+.sbsl>.sbsl-short{display:none;}
 #sidebar.mini .sbsl:not(:first-child)::before{left:4px;right:4px;}
 .nvi{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:var(--rmd);cursor:pointer;font-size:13px;font-weight:500;color:var(--lbl2);transition:background .12s,color .12s;white-space:nowrap;overflow:hidden;margin-bottom:2px;}
 .nvi:hover{background:var(--fill);color:var(--lbl);}
@@ -628,10 +632,20 @@ body.hasbg{--ca:var(--app-card-alpha,.80);
   --surf3:rgba(233,237,242,calc(var(--ca) - .08));--glass3:rgba(255,255,255,calc(var(--ca) - .02));}
 html.dark body.hasbg{--bg2:rgba(28,28,30,calc(var(--ca)));--surf2:rgba(38,38,42,calc(var(--ca) - .06));
   --surf3:rgba(48,48,54,calc(var(--ca) - .06));--glass3:rgba(28,28,30,calc(var(--ca)));}
-body.hasbg #view-defect{--bg2:#fff;--surf2:#F5F7FA;--surf3:#E9EDF2;}
-html.dark body.hasbg #view-defect{--bg2:#1C1C1E;--surf2:#26262A;--surf3:#303036;}
-/* 사이드바는 배경 사진이 비치지 않는다 — 사이드바 자체가 불투명 판, 그 위에 블록이 얹힌다 */
-body.hasbg #sidebar{background:var(--bg);border-radius:var(--rxl);padding:6px;}
+body.hasbg #view-defect,body.hasbg #mb,body.hasbg .btn,body.hasbg .rec-tbl,body.hasbg .pv-table,
+body.hasbg .cal-nb,body.hasbg .cal-title,body.hasbg .tb-ic,body.hasbg .tb-srch,body.hasbg .sb-more,
+body.hasbg .ctxmenu,body.hasbg .tb-pop,body.hasbg .nq-panel,body.hasbg .popbox{
+  --bg2:#fff;--surf2:#F5F7FA;--surf3:#E9EDF2;--glass3:#fff;}
+/* 달력은 위젯 유리와 같은 톤 — 한 장의 판 위에 옅은 격자선 */
+body.hasbg #fcal{background:var(--bg2);border-radius:var(--rmd);--fc-page-bg-color:transparent;}
+body.hasbg #fcal .fc-daygrid-day{background:transparent;}
+body.hasbg #fcal .fc-col-header-cell{background:rgba(120,130,150,.14);}
+body.hasbg #fcal .fc-dayGridMonth-view .fc-scrollgrid-sync-table td{border-color:rgba(60,60,67,.14)!important;}
+html.dark body.hasbg #view-defect,html.dark body.hasbg #mb,html.dark body.hasbg .btn,
+html.dark body.hasbg .rec-tbl,html.dark body.hasbg .pv-table,html.dark body.hasbg .cal-nb,
+html.dark body.hasbg .cal-title,html.dark body.hasbg .tb-ic,html.dark body.hasbg .tb-srch,
+html.dark body.hasbg .sb-more,html.dark body.hasbg .ctxmenu,html.dark body.hasbg .tb-pop,
+html.dark body.hasbg .nq-panel,html.dark body.hasbg .popbox{--bg2:#1C1C1E;--surf2:#26262A;--surf3:#303036;--glass3:#1C1C1E;}
 body.hasbg #sidebar>*{background:var(--bg2);}
 /* ⚠ 카드마다 blur 를 걸면 표·차트가 많은 하자 화면이 눈에 띄게 느려진다 — 반투명 색만 쓴다 */
 body.hasbg #sidebar{background:var(--glass3);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);}
@@ -2405,7 +2419,7 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
     <div class="tsel-wrap" id="tselWrap"></div>
   </div>
   <div class="sbsc">
-    <div class="sbsl">업무 관리</div>
+    <div class="sbsl"><span class="sbsl-long">업무 관리</span><span class="sbsl-short">업무</span></div>
     <div class="nvi act" role="button" tabindex="0" data-view="calendar" data-act="nav.go">
       <div class="nic"><svg class="icn" aria-hidden="true"><use href="#i-cal"></use></svg></div>
       <span class="nil">캘린더</span>
@@ -2419,7 +2433,7 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
       <div class="nic"><svg class="icn" aria-hidden="true"><use href="#i-dash"></use></svg></div>
       <span class="nil">주요 업무</span>
     </div>
-    <div class="sbsl">하자 관리</div>
+    <div class="sbsl"><span class="sbsl-long">하자 관리</span><span class="sbsl-short">하자</span></div>
     <div class="nvi" role="button" tabindex="0" data-view="defect" data-act="nav.go">
       <div class="nic"><svg class="icn" aria-hidden="true"><use href="#i-defect"></use></svg></div>
       <span class="nil">하자처리 현황</span>
@@ -2427,7 +2441,7 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
     <div id="dfNav"></div>
   </div>
     <div class="sb-bottom">
-        <div class="sbsl">관리</div>
+        <div class="sbsl"><span class="sbsl-long">관리</span><span class="sbsl-short">관리</span></div>
       <div class="nvi" role="button" tabindex="0" data-view="org" data-act="nav.go">
         <div class="nic"><svg class="icn" aria-hidden="true"><use href="#i-org"></use></svg></div>
         <span class="nil">조직/현장 관리</span>
@@ -2668,5 +2682,5 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=219"></script>
+<script src="./app.js?v=220"></script>
 </body></html>
