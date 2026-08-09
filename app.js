@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='2.2.8';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='2.2.9';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -5743,7 +5743,11 @@ function go(view){
     rCfg();
     const d=$('#darkChk');if(d)d.checked=document.documentElement.classList.contains('dark');
     const b=$('#buildInfo');
-    if(b)b.textContent='버전 '+APP_VER+' · 기록된 오류 '+ERRLOG.length+'건';
+    if(b){
+      const sc=[...document.scripts].map(x=>x.src).find(x=>/app\.js\?v=/.test(x))||'';
+      const cv=(sc.match(/v=(\d+)/)||[])[1]||'?';
+      b.textContent='버전 '+APP_VER+' · 화면 v'+cv+' · 기록된 오류 '+ERRLOG.length+'건';
+    }
     /* 위젯은 별도 파일이라 버전이 따로 논다 — 설정에서 한눈에 보이게 같이 적는다 */
   }
   mobClose();
