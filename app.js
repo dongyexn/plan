@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='2.3.0';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='2.3.1';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -5786,7 +5786,17 @@ function applyTheme(dark){
 /* ═══════════ 액션 위임 ═══════════ */
 const ACT={
   'nav.go':el=>{if(el.dataset.view==='defect')S.dfSid='';go(el.dataset.view);},
-  'nav.toggle':()=>$('#sidebar').classList.toggle('mini'),
+  'nav.toggle':()=>{
+    /* 폭이 0.22초 동안 계속 바뀌면 차트가 매 프레임 다시 그려져 하자 화면이 멈칫한다 —
+       움직이는 동안에는 차트 리사이즈를 끄고, 끝난 뒤 한 번만 맞춘다 */
+    const chs=Object.values(DF.ch||{}).filter(Boolean);
+    chs.forEach(c=>{try{c.options.responsive=false;}catch(e){}});
+    $('#sidebar').classList.toggle('mini');
+    clearTimeout(window.__navT);
+    window.__navT=setTimeout(()=>{
+      chs.forEach(c=>{try{c.options.responsive=true;c.resize();}catch(e){}});
+    },260);
+  },
   'nav.mob':()=>{$('#sidebar').classList.add('mob-open');$('#scrim').classList.add('on');},
   'nav.mobClose':mobClose,
   'day.sheetClose':()=>dpSheet(false),
@@ -6009,6 +6019,7 @@ const ACT={
   'set.bgClear':()=>{try{localStorage.removeItem('calapp.bg');}catch(e){}applyBg();toast('배경을 없앴습니다');},
   'set.bgAlpha':el=>{const v=String(el.value||'80');try{localStorage.setItem('calapp.bgAlpha',v);}catch(e){}applyBg();},
   'df.rm':async el=>{
+    if(document.querySelector('.ctxmenu')){closeCtx();return;}   /* 열려 있으면 닫기(토글) */
     if(!S.live||!FB.db)return;
     if(!DF.rmIdx){try{DF.rmIdx=(await FB.db.ref('reportIndex').once('value')).val()||{};}catch(e){DF.rmIdx={};}}
     const months=Object.keys(DF.rmIdx).filter(m=>/^\d{4}-\d{2}$/.test(m)).sort().reverse();

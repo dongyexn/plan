@@ -647,10 +647,8 @@ html.dark body.hasbg .rec-tbl,html.dark body.hasbg .pv-table,html.dark body.hasb
 html.dark body.hasbg .cal-title,html.dark body.hasbg .tb-ic,html.dark body.hasbg .tb-srch,
 html.dark body.hasbg .sb-more,html.dark body.hasbg .ctxmenu,html.dark body.hasbg .tb-pop,
 html.dark body.hasbg .nq-panel,html.dark body.hasbg .popbox{--bg2:#1C1C1E;--surf2:#26262A;--surf3:#303036;--glass3:#1C1C1E;}
-body.hasbg #sidebar{background:var(--bg);border-radius:0;}
 body.hasbg #sidebar>*{background:var(--bg2);}
-/* 배경 위에서는 카드 경계가 흐려진다 — 밝은 테두리와 그림자로 또렷하게 */
-body.hasbg .card,body.hasbg #sidebar>*{border-color:rgba(255,255,255,.6);box-shadow:0 2px 14px rgba(16,24,40,.12);}
+body.hasbg .card,body.hasbg #sidebar>*{box-shadow:0 2px 14px rgba(16,24,40,.12);}
 /* ⚠ 카드마다 blur 를 걸면 표·차트가 많은 하자 화면이 눈에 띄게 느려진다 — 반투명 색만 쓴다 */
 body.hasbg #sidebar{background:var(--glass3);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);}
 @media print{body.hasbg::before,body.hasbg::after{display:none!important;}}
@@ -753,6 +751,11 @@ body.snap .sbsl:first-of-type{display:none;}
 #view-defect .ct{font-size:15px;font-weight:700;color:var(--lbl);}
 #view-defect .st{font-size:15px;font-weight:700;color:var(--lbl);display:flex;align-items:center;gap:8px;}
 #view-defect .as{display:flex;flex-direction:column;gap:12px;}
+#view-defect .card{padding:16px 18px;}
+#view-defect .mb12{margin-bottom:12px;}
+#view-defect .akpi{gap:12px;margin-bottom:12px;}
+#view-defect .tnav{margin-bottom:12px;}
+#view-defect .opsr{gap:12px;margin-bottom:12px;}
 #view-defect .df-sub{font-size:12px;color:var(--lbl3);}
 #view-defect .yr-sel{-webkit-appearance:none;appearance:none;background:var(--bg2);border:1px solid var(--sepo);border-radius:var(--rsm);padding:5px 28px 5px 11px;font-size:12.5px;font-weight:600;color:var(--lbl);cursor:pointer;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%233E71D2' stroke-width='2.4' stroke-linecap='round'><path d='M6 9l6 6-6 6'/></svg>");background-repeat:no-repeat;background-position:right 9px center;transition:border-color .15s;}
 #view-defect .yr-sel:hover{border-color:var(--b400);}
@@ -987,20 +990,18 @@ body.snap .sbsl:first-of-type{display:none;}
 .pv-pct-tg.on{background:var(--b600);border-color:var(--bt1);color:#fff;}
 .pv-scroll{max-height:60vh;overflow:auto;border:1px solid var(--sep);border-radius:var(--rmd);background:var(--bg2);}
 #mb.dfwide .pv-scroll{flex:1;min-height:0;max-height:none;}
-.pv-table{width:max-content;min-width:100%;border-collapse:collapse;font-size:12.5px;white-space:nowrap;}   /* 열이 많으면 좁히지 말고 가로로 스크롤 */
-.pv-table th{position:sticky;top:0;z-index:1;background:var(--surf2);font-size:11.5px;font-weight:800;color:var(--lbl);text-align:right;padding:9px 12px;border-bottom:1.5px solid var(--sepo);cursor:pointer;-webkit-user-select:none;user-select:none;min-width:78px;}
-.pv-table th.pv-rh{text-align:left;}
-.pv-table td{padding:7px 12px;border-bottom:1px solid var(--sep);text-align:right;font-variant-numeric:tabular-nums;min-width:78px;}
-.pv-table td.pv-rh{text-align:left;color:var(--lbl);min-width:180px;}
-.pv-table tr.pv-grp td{font-weight:700;background:var(--pv-grp,var(--fill));}
-.pv-table .pv-tot{font-weight:700;color:var(--lbl);}
-.pv-table tr.pv-totrow td{border-top:2px solid var(--sepo);border-bottom:none;font-weight:800;background:var(--surf3);position:sticky;bottom:0;z-index:1;}
-.pv-table td.pv-rh,.pv-table th.pv-rh{position:sticky;left:0;z-index:2;background:var(--bg2);box-shadow:1px 0 0 var(--sep);}
-.pv-table td.pv-tot,.pv-table th.pv-tot{position:sticky;right:0;z-index:2;background:var(--bg2);box-shadow:-1px 0 0 var(--sep);}
-.pv-table thead th.pv-rh,.pv-table thead th.pv-tot{z-index:4;background:var(--surf2);}
-.pv-table tr.pv-grp td.pv-rh{background:var(--fill);}
-.pv-table tr.pv-totrow td.pv-rh,.pv-table tr.pv-totrow td.pv-tot{z-index:3;background:var(--surf3);}
-.pv-pct{margin-left:4px;font-size:10.5px;color:var(--lbl3);font-weight:400;}
+.pv-table{border-collapse:separate;border-spacing:0;font-size:12.5px;width:max-content;min-width:100%;}
+.pv-table th,.pv-table td{border-right:1px solid var(--sep);border-bottom:1px solid var(--sep);padding:7px 14px;text-align:right;white-space:nowrap;background:var(--bg2);}
+.pv-table th:last-child,.pv-table td:last-child{border-right:none;}
+.pv-table thead th{position:sticky;top:0;z-index:2;background:var(--surf2);font-weight:700;color:var(--lbl);text-align:center;border-bottom:1px solid var(--sepo);cursor:pointer;-webkit-user-select:none;user-select:none;transition:background .1s;}
+.pv-table thead th:hover{background:var(--surf3);}
+.pv-table td.pv-rh,.pv-table thead th.pv-rh{text-align:left;color:var(--lbl);}
+.pv-table td.pv-tot{font-weight:700;color:var(--bt1);background:var(--surf2);}
+.pv-table tr.pv-grp>td{font-weight:700;background:var(--surf2);}
+.pv-table tr.pv-totrow td{font-weight:800;background:var(--surf3);border-top:1px solid var(--sepo);position:sticky;bottom:0;z-index:1;}
+.pv-table td.pv-rh,.pv-table th.pv-rh{position:sticky;left:0;z-index:2;}
+.pv-table thead th.pv-rh{z-index:4;}
+.pv-pct{font-size:10px;color:var(--lbl3);margin-left:4px;font-weight:400;}
 .pv-empty{padding:26px;text-align:center;color:var(--lbl3);font-size:12.5px;}
 /* 하자 목록 모달 — 표는 mgtbl 규격을 따르되 가로·세로 스크롤을 쓴다 */
 #mb.dfwide{width:88vw;max-width:88vw;height:88dvh;display:flex;flex-direction:column;}
@@ -2622,14 +2623,7 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 
 
           </div>
-          <div class="card">
-            <div class="set-h">앱 배경화면</div>
-            <div class="share-row"><div><b style="font-size:13px">배경 이미지</b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">이 기기에만 저장됩니다</div></div>
-              <span style="display:inline-flex;gap:6px;align-items:center"><button class="btn bo bsm" data-act="set.bgPick">이미지 선택</button><button class="btn bg2 bsm" id="bgClearBtn" data-act="set.bgClear" hidden>없애기</button></span></div>
-            <div class="share-row" style="margin-top:10px"><div><b style="font-size:13px">레이아웃 투명도</b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">카드가 배경을 얼마나 비칠지 · 하자 관리 화면은 항상 불투명</div></div>
-              <input type="range" id="bgAlpha" min="60" max="100" step="5" value="90" data-act="set.bgAlpha" style="width:160px"></div>
-          </div>
-        </div>
+                  </div>
         <div class="set-col set-col-stack">
           <div class="card" id="bkCard">
             <div class="set-h">백업 · 기록</div>
@@ -2649,6 +2643,13 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
             </div>
           </div>
 
+          <div class="card">
+            <div class="set-h">앱 배경화면</div>
+            <div class="share-row"><div><b style="font-size:13px">배경 이미지</b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">이 기기에만 저장됩니다</div></div>
+              <span style="display:inline-flex;gap:6px;align-items:center"><button class="btn bo bsm" data-act="set.bgPick">이미지 선택</button><button class="btn bg2 bsm" id="bgClearBtn" data-act="set.bgClear" hidden>없애기</button></span></div>
+            <div class="share-row" style="margin-top:10px"><div><b style="font-size:13px">레이아웃 투명도</b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">카드가 배경을 얼마나 비칠지 · 하자 관리 화면은 항상 불투명</div></div>
+              <input type="range" id="bgAlpha" min="60" max="100" step="5" value="90" data-act="set.bgAlpha" style="width:160px"></div>
+          </div>
           <div class="set-card card">
             <div class="set-h">하자 관리 스냅샷</div>
             <div class="share-row"><div><b style="font-size:13px">현재 게시월 기준으로 스냅샷 추출</b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">대시보드·전 현장·목록·처리계획·분석을 담은 단일 HTML — 로그인 없이 열립니다</div></div><button class="btn bo bsm" data-act="set.dfsnap">내보내기</button></div>
@@ -2686,5 +2687,5 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=223"></script>
+<script src="./app.js?v=224"></script>
 </body></html>
