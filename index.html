@@ -238,8 +238,8 @@ select.inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-ima
 /* ══════════ 달력 페이지 ══════════ */
 .cal-wrap{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:12px;align-items:stretch;flex:1;min-height:0;overflow:hidden;}   /* 페이지 헤더가 없어져 남는 높이를 그대로 쓴다 */
 .cal-card{padding:16px 18px;display:flex;flex-direction:column;min-height:0;}
-/* 달력은 위젯과 같은 카드 프레임을 쓴다(.card 규격) */
-body:not(.wid) .cal-card{min-height:0;overflow:hidden;}
+/* 달력은 위젯과 같은 배치를 쓰되 카드 프레임은 두르지 않는다 */
+body:not(.wid) .cal-card{min-height:0;overflow:hidden;border:0;background:transparent;box-shadow:none;border-radius:0;padding:0;}
 #fcal{flex:1;min-height:0;}
 .cal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:nowrap;margin-bottom:12px;}
 .cal-title{flex:0 0 auto;}
@@ -629,9 +629,10 @@ html.dark body.hasbg{--bg2:rgba(28,28,30,calc(var(--ca)));--surf2:rgba(38,38,42,
   --surf3:rgba(48,48,54,calc(var(--ca) - .06));--glass3:rgba(28,28,30,calc(var(--ca)));}
 body.hasbg #view-defect{--bg2:#fff;--surf2:#F5F7FA;--surf3:#E9EDF2;}
 html.dark body.hasbg #view-defect{--bg2:#1C1C1E;--surf2:#26262A;--surf3:#303036;}
-body.hasbg #sidebar>.sbh,body.hasbg #sidebar>.sb-tools,body.hasbg #sidebar>.teamsel,
-body.hasbg #sidebar>.sbsc,body.hasbg #sidebar>.sb-bottom,body.hasbg #sidebar>.sb-foot{
-  -webkit-backdrop-filter:blur(16px) saturate(160%);backdrop-filter:blur(16px) saturate(160%);}
+/* 사이드바 뒤에는 앱 배경색 판을 깔아 사진이 비치지 않게 한다 — 블록 분리는 그대로 */
+body.hasbg #sidebar{position:relative;}
+body.hasbg #sidebar::before{content:'';position:absolute;inset:-6px;background:var(--bg);border-radius:calc(var(--rxl) + 6px);z-index:-1;}
+body.hasbg #sidebar>*{background:var(--bg2);}
 /* ⚠ 카드마다 blur 를 걸면 표·차트가 많은 하자 화면이 눈에 띄게 느려진다 — 반투명 색만 쓴다 */
 body.hasbg #sidebar{background:var(--glass3);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);}
 @media print{body.hasbg::before,body.hasbg::after{display:none!important;}}
@@ -1282,7 +1283,8 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 .tks-hold{flex:0 0 auto;padding:9px 10px;}
 .tks-hold .tks-item{margin-top:0;}
 /* 오른쪽 열 — 업무 일정과 같은 구성: 제목 없는 필터 카드 + 제목이 붙은 업무 패널 */
-.tkcol{display:flex;flex-direction:column;gap:9px;min-height:0;min-width:0;}
+#tkRoot{flex:1;min-height:0;display:flex;flex-direction:column;}
+.tkcol{display:flex;flex-direction:column;gap:9px;min-height:0;min-width:0;height:100%;overflow:hidden;}
 .tkf-card{flex:0 0 auto;}   /* .dp-fcard 가 이미 카드 껍데기다 — 여기서 또 씌우면 테두리가 두 겹으로 보인다 */
 .tkmain{display:flex;flex-direction:column;min-height:0;height:100%;padding:0;flex:1;overflow:hidden;}
 /* 하위 항목 앞 동그라미 — 하자처리현황 사이드바 현장 점(.std)과 동일 */
@@ -2194,7 +2196,7 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 .tkm-h b{font-size:14px;}
 .tkm-h{padding:13px 16px 11px;}
 /* 업무 목록 — 팀 전체일 때 카드를 둘로 나눈다(공통·팀장 / 권역 담당자) */
-.tk-split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:start;}
+.tk-split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:stretch;min-height:0;overflow:hidden;}
 .tk-split .tkmain{margin:0;}
 @media (max-width:1200px){.tk-split{grid-template-columns:minmax(0,1fr);}}
 /* 카드 사이·구분선 앞뒤 모두 일자 패널과 같은 8px */
@@ -2203,9 +2205,9 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 .tk-list .tk-sub:first-child{margin-top:0;padding-top:0;border-top:0;}
 .tk-list .tk-sub2{padding:0 2px;}
 /* 업무가 적으면 카드도 짧게, 많으면 패널 안에서만 스크롤한다(화면 밖으로 밀리지 않게) */
-.tkmain{flex:0 1 auto;max-height:100%;}
-.tk-split{flex:0 1 auto;min-height:0;}
-.tk-split .tkmain{max-height:100%;}
+.tkmain{flex:1 1 auto;min-height:0;max-height:100%;}
+.tk-split{flex:1 1 auto;min-height:0;}
+.tk-split .tkmain{max-height:100%;height:100%;min-height:0;}
 /* 이어지는 쪽 끝을 서서히 지워 '더 있다'를 알린다(그 끝에 닿으면 사라진다) */
 .sb-fade-b{-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 26px),transparent);
   mask-image:linear-gradient(to bottom,#000 calc(100% - 26px),transparent);}
@@ -2666,5 +2668,5 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=217"></script>
+<script src="./app.js?v=218"></script>
 </body></html>
