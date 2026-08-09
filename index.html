@@ -415,7 +415,7 @@ html.dark .stx-done{color:#3BA85C;}
 /* 하자 관리 — 사이드바 소분류(권역)와 그 아래 현장 */
 .nvi.df-site{padding:4px 8px 4px 22px;gap:8px;margin-bottom:0;font-size:12px;}
 .nvi.df-site .nil{font-size:12px;}
-.nvi.df-site .dot{width:6px;height:6px;border-radius:50%;background:var(--sepo);flex:0 0 auto;margin:0 8px 0 5px;transition:background var(--tr);}
+.nvi.df-site .dot{width:6px;height:6px;border-radius:50%;background:var(--sepo);flex:0 0 auto;margin:0 0 0 5px;transition:background var(--tr);}   /* 점-이름 사이는 gap(8px)만 */
 .nvi.df-site:hover .dot,.nvi.df-site.act .dot{background:var(--b500);}
 #sidebar.mini .df-reg,#sidebar.mini .nvi.df-site{display:none;}
 /* 상단바 기준월 칩 */
@@ -427,8 +427,9 @@ html.dark .stx-done{color:#3BA85C;}
 #view-defect .card{background:var(--bg2);border-radius:var(--rxl);padding:18px 20px;border:1px solid var(--sep);}
 #view-defect .mb12{margin-bottom:12px;}
 #view-defect .sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px;}
-#view-defect .ct{font-size:14px;font-weight:700;color:var(--ct);}
-#view-defect .st{font-size:14px;font-weight:700;color:var(--lbl);display:flex;align-items:center;gap:8px;}
+/* 카드 제목 — 원본은 .ct(회색)/.st(검정)를 섞어 썼으나 의미 구분이 없어 검정으로 통일, 크기 한 단계 위 */
+#view-defect .ct{font-size:15px;font-weight:700;color:var(--lbl);}
+#view-defect .st{font-size:15px;font-weight:700;color:var(--lbl);display:flex;align-items:center;gap:8px;}
 #view-defect .as{display:flex;flex-direction:column;gap:12px;}
 #view-defect .df-sub{font-size:12px;color:var(--lbl3);}
 #view-defect .yr-lbl{font-size:12.5px;font-weight:600;color:var(--lbl2);}
@@ -574,7 +575,7 @@ html.dark .stx-done{color:#3BA85C;}
 #view-defect .ltrbar-pct{font-size:11.5px;font-weight:600;color:var(--bt1);font-variant-numeric:tabular-nums;min-width:42px;text-align:right;}
 /* 장기미처리 비율 현황(전월/금월 누적 바) */
 #view-defect .ltrmom-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
-#view-defect .ltrmom-head .lm-ttl{font-size:14px;color:var(--lbl);font-weight:700;}
+#view-defect .ltrmom-head .lm-ttl{font-size:15px;color:var(--lbl);font-weight:700;}
 #view-defect .ltrmom-lg{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--lbl2);}
 #view-defect .ltrmom-lg .mk{width:11px;height:11px;border-radius:3px;flex-shrink:0;}
 #view-defect .ltrmom-body{display:flex;align-items:center;gap:16px;}
@@ -612,11 +613,12 @@ html.dark .stx-done{color:#3BA85C;}
 #view-defect .pp-none{flex:1;color:var(--lbl3);font-size:11.5px;padding-top:1px;}
 #view-defect .plan-ta{flex:1;min-width:0;width:100%;padding:5px 9px;font:inherit;font-size:11.5px;min-height:32px;resize:none;overflow:hidden;border:1.5px solid var(--sepo);border-radius:var(--rsm);background:var(--bg2);color:var(--lbl);}
 #view-defect .plan-ta:focus{border-color:var(--b400);outline:none;box-shadow:0 0 0 3px rgba(83,140,222,.14);}
-#view-defect .ana-ta{min-height:84px;resize:vertical;overflow:auto;font-size:13px;line-height:1.6;}
 /* 종합 분석 의견 상자 */
 #view-defect .aib{background:var(--b50);border:1.5px solid var(--b200);border-radius:var(--rlg);padding:14px 16px;}
 #view-defect .ail{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;color:var(--bt1);letter-spacing:.04em;margin-bottom:8px;}
 #view-defect .ail::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--b500);}
+#view-defect .ait{font-size:14px;line-height:1.7;color:var(--lbl);word-break:keep-all;overflow-wrap:anywhere;}
+#view-defect .ait p{margin:0 0 8px;}#view-defect .ait p:last-child{margin-bottom:0;}
 /* 공가 현황 스트립(vrow) */
 #view-defect .vrow{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:0 -20px;}
 #view-defect .vseg{padding:4px 18px;display:flex;flex-direction:column;justify-content:center;position:relative;}
@@ -643,9 +645,10 @@ html.dark .stx-done{color:#3BA85C;}
 .rl-lim button{border:none;background:transparent;padding:4px 10px;border-radius:6px;font:inherit;font-size:11px;font-weight:600;color:var(--lbl2);cursor:pointer;white-space:nowrap;transition:background .12s,color .12s;}
 .rl-lim button.on{background:var(--bg2);color:var(--lbl);box-shadow:0 1px 2px rgba(0,0,0,.08);}
 .rl-lim-lbl{font-size:11px;font-weight:600;color:var(--lbl3);margin:0 2px 0 8px;}
-.rec-more{padding:8px 2px 0;font-size:11.5px;color:var(--lbl3);}
 /* 하자 목록 모달 — 표는 mgtbl 규격을 따르되 가로·세로 스크롤을 쓴다 */
-#mb.dfwide{max-width:min(1180px,96vw);}
+#mb.dfwide{width:88vw;max-width:88vw;height:88dvh;display:flex;flex-direction:column;}   /* 하자처리 현황의 목록 모달과 동일 */
+#mb.dfwide #mbody{flex:1;min-height:0;display:flex;flex-direction:column;}
+#mb.dfwide .rec-wrap{flex:1;min-height:0;max-height:none;}
 .rec-top{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
 .rec-top .inp{flex:1;min-width:160px;height:34px;padding:0 12px;font-size:13px;}
 .rec-n{font-size:12px;color:var(--lbl3);margin-left:auto;}
@@ -1959,7 +1962,7 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 <symbol id="i-me" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
 <symbol id="i-cmt" viewBox="0 0 24 24"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></symbol>
 <symbol id="i-print" viewBox="0 0 24 24"><path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7" rx="1"/></symbol>
-<symbol id="i-defect" viewBox="0 0 24 24"><path d="M3 3v16.5a1.5 1.5 0 0 0 1.5 1.5H21"/><path d="m7 15.5 3.6-4 3 2.6L20 7"/><circle cx="20" cy="7" r="1.5"/></symbol>
+<symbol id="i-defect" viewBox="0 0 24 24"><path d="M3 3v16.5a1.5 1.5 0 0 0 1.5 1.5H21"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></symbol>
 <symbol id="i-org" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="8.5" y="14" width="7" height="7" rx="1.5"/><path d="M6.5 10v2h11v-2"/><path d="M12 12v2"/></symbol>
 
 
@@ -2296,5 +2299,5 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=204"></script>
+<script src="./app.js?v=205"></script>
 </body></html>
