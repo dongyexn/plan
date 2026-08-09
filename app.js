@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='2.3.1';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='2.3.2';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -3311,7 +3311,10 @@ function dfTrendDraw(key,cid,wks){
   const cumR=rows.map(x=>Number(x.cumR)||0),cumRes=rows.map(x=>Number(x.cumRes)||0);
   const y1v=[...cumR,...cumRes].filter(v=>v>0);let y1min=0,y1max;
   if(y1v.length){const r=dfNiceFit(Math.min(...y1v),Math.max(...y1v));y1min=r.min;y1max=r.max;}
-  const DUR=520;
+  /* ⚠ duration 은 함수로 둔다 — Chart.js 옵션은 그릴 때마다 다시 읽으므로(lazy),
+     사이드바 토글 동안 DF.noAnim 을 세우면 ResizeObserver 가 몇 번을 발화하든 즉시 상태로만 그린다.
+     (responsive=false 저글링은 이미 붙은 옵저버를 막지 못해 무효였다 — 216차 방식의 실패 원인) */
+  const DUR=()=>DF.noAnim?0:520;
   const baseY=ctx=>{if(ctx.type!=='data')return;const ds=ctx.chart.data.datasets[ctx.datasetIndex];const sc=ctx.chart.scales[(ds&&ds.yAxisID)||'y'];if(!sc)return 0;return sc.getPixelForValue(sc.min!=null?sc.min:0);};
   const barAnim={y:{duration:DUR,easing:'easeOutQuart',from:baseY},base:{duration:DUR,easing:'easeOutQuart',from:baseY}};
   const lineAnim={y:{duration:DUR,easing:'easeOutCubic',from:baseY}};
@@ -3385,6 +3388,7 @@ function dfDonutDraw(key,cid,lgid,items){
   const border=cvar('--bg2',document.documentElement.classList.contains('dark')?'#212121':'#fff');
   DF.ch[key]=new Chart(el,{type:'doughnut',data:{labels:data.map(d=>d.t),datasets:[{data:data.map(d=>Number(d.c)),backgroundColor:data.map((d,i)=>DF_PAL[i%DF_PAL.length]),borderWidth:3,borderColor:border,hoverOffset:12,hoverBorderWidth:3}]},
     options:{responsive:true,maintainAspectRatio:false,layout:{padding:14},cutout:'58%',
+      animation:{duration:()=>DF.noAnim?0:1000},   /* 사이드바 토글 리사이즈 동안은 즉시 상태(기본 1000ms 유지) */
       plugins:{centerText:{display:true,value:tot.toLocaleString()+'건',label:'미처리'},legend:{display:false},
         tooltip:{padding:12,usePointStyle:true,boxWidth:10,boxHeight:10,boxPadding:6,callbacks:{labelPointStyle:()=>({pointStyle:'circle',rotation:0}),label:ctx=>`${ctx.label}: ${ctx.parsed.toLocaleString()}건 (${tot>0?(ctx.parsed/tot*100).toFixed(1):0}%)`}},datalabels:{display:false}}}});
   if(lg){
@@ -5527,7 +5531,10 @@ function tblText(tbl){
   return [...tbl.querySelectorAll('tr')].map(tr=>
     [...tr.querySelectorAll('th,td')].map(td=>String(td.textContent||'').trim()).join('\t')).join('\n');
 }
-function openCtx(x,y,items){
+function openCtx(x,y,items,anchor){
+  /* anchor: 메뉴를 연 버튼. mousedown 닫기가 이 버튼 위에서 먼저 발동하면 click 의 토글 분기가
+     '이미 닫힘'을 보고 다시 열어 — 아무리 눌러도 계속 열려 있게 된다(게시월 토글이 안 되던 원인).
+     anchor 위 mousedown 은 닫지 않고, click 쪽 토글이 닫는다. */
   closeCtx();
   const list=items.filter(Boolean);
   if(!list.length)return;
@@ -5551,7 +5558,10 @@ function openCtx(x,y,items){
   /* ⚠ 닫기는 click 이 아니라 **mousedown 캡처**로 듣는다 — FullCalendar 가 달력 칸의 click 을 삼켜
      달력 위를 눌렀을 때 메뉴가 안 닫혔다(129~143차와 같은 함정).
      ⚠ 위젯은 창이 곧 화면이라, 다른 창으로 옮겨 가면 페이지에 클릭이 오지 않는다 — blur 로도 닫는다 */
-  _ctxDown=e=>{if(!e.target.closest||!e.target.closest('.ctxmenu'))closeCtx();};
+  _ctxDown=e=>{if(!e.target.closest)return;
+    if(e.target.closest('.ctxmenu'))return;
+    if(anchor&&(e.target===anchor||anchor.contains(e.target)))return;   /* 토글은 click 이 맡는다 */
+    closeCtx();};
   setTimeout(()=>{document.addEventListener('mousedown',_ctxDown,true);
     document.addEventListener('scroll',closeCtx,true);addEventListener('blur',closeCtx);},0);
   _ctxEsc=e=>{if(e.key==='Escape')closeCtx();};
@@ -5787,15 +5797,14 @@ function applyTheme(dark){
 const ACT={
   'nav.go':el=>{if(el.dataset.view==='defect')S.dfSid='';go(el.dataset.view);},
   'nav.toggle':()=>{
-    /* 폭이 0.22초 동안 계속 바뀌면 차트가 매 프레임 다시 그려져 하자 화면이 멈칫한다 —
-       움직이는 동안에는 차트 리사이즈를 끄고, 끝난 뒤 한 번만 맞춘다 */
-    const chs=Object.values(DF.ch||{}).filter(Boolean);
-    chs.forEach(c=>{try{c.options.responsive=false;}catch(e){}});
+    /* 접기/펼치기 동안 차트를 '다시 그리는' 모션(막대가 바닥에서 솟는 520ms)이 보이면 안 된다.
+       responsive=false 저글링은 이미 붙은 ResizeObserver 를 막지 못해 무효였다(216차 실패 원인) —
+       대신 duration 이 DF.noAnim 을 읽는 함수라서, 플래그를 세우면 옵저버가 몇 번을 발화하든
+       즉시 상태로만 그려져 정지 화면처럼 크기만 따라온다. 폭 전환(0.22s)이 끝난 뒤 되돌린다. */
+    DF.noAnim=true;
     $('#sidebar').classList.toggle('mini');
     clearTimeout(window.__navT);
-    window.__navT=setTimeout(()=>{
-      chs.forEach(c=>{try{c.options.responsive=true;c.resize();}catch(e){}});
-    },260);
+    window.__navT=setTimeout(()=>{DF.noAnim=false;},700);
   },
   'nav.mob':()=>{$('#sidebar').classList.add('mob-open');$('#scrim').classList.add('on');},
   'nav.mobClose':mobClose,
@@ -6026,7 +6035,7 @@ const ACT={
     if(!months.length){toast('게시된 달이 없습니다');return;}
     const cur=dfRm(),r=el.getBoundingClientRect();
     openCtx(r.left,r.bottom+6,months.map(m=>({label:(m===cur?'✓ ':'')+m+(m===ORG_RM?' · 최신':''),
-      act:()=>{S.dfRmSel=(m===ORG_RM?'':m);rDefect();}})));},
+      act:()=>{S.dfRmSel=(m===ORG_RM?'':m);rDefect();}})),el);},
   'hold.go':el=>gotoTask(el.dataset.sid,el.dataset.iid),
   'hold.mine':()=>{S.holdMine=!S.holdMine;rHold();},
   /* 아침 확인 — 누르는 즉시 저장하고 그 줄만 사라진다 */
@@ -6605,8 +6614,18 @@ function fadeOne(el){
   if(!el||!el.classList)return;
   const over=el.scrollHeight>el.clientHeight+2;
   const more=el.scrollHeight-el.clientHeight-el.scrollTop;
-  el.classList.toggle('sb-fade-t',over&&el.scrollTop>4);      /* 위로 더 있음 */
-  el.classList.toggle('sb-fade-b',over&&more>4);              /* 아래로 더 있음 */
+  const ft=over&&el.scrollTop>4,fb=over&&more>4;
+  /* sticky 표 머리·합계 행은 페이드가 덮으면 안 된다 — 높이를 재서 그 안쪽부터 지운다.
+     (미처리 목록 rec-tbl 의 thead, 피벗 pv-table 의 thead·pv-totrow) */
+  if(ft||fb){
+    /* 직계 표만 잰다 — #content 같은 큰 스크롤 칸이 안쪽 일반 표의 thead(비 sticky)를 잡으면 안 된다 */
+    const th=el.querySelector(':scope > table > thead');
+    el.style.setProperty('--sbft',(th?th.offsetHeight:0)+'px');
+    const tr=el.querySelector(':scope > table tr.pv-totrow');
+    el.style.setProperty('--sbfb',(tr?tr.offsetHeight:0)+'px');
+  }
+  el.classList.toggle('sb-fade-t',ft);      /* 위로 더 있음 */
+  el.classList.toggle('sb-fade-b',fb);      /* 아래로 더 있음 */
 }
 function fadeScan(){$$(SB_SEL).forEach(fadeOne);}
 /* ⚠ 지연을 두면 화면을 다시 그리는 사이 페이드가 잠깐 풀려 깜빡인다 — 다음 프레임에 바로 다시 잰다 */
