@@ -605,6 +605,84 @@ html.dark .stx-done{color:#3BA85C;}
   .rpt .page{break-after:page;box-shadow:none;margin:0;}
   .rpt .page:last-child{break-after:auto;}
 }
+/* ═══ 브라우저 인쇄(Ctrl+P) — **화면 DOM 그대로**를 A4 에 맞추는 스타일. 원본 index.html 882~1010 이식.
+   ⚠ 227차 교훈: 그동안 전용 인쇄 상자(#dfPrintPages)만 고치고 이 경로가 통째로 빠져 있었다 —
+   사용자가 Ctrl+P 를 쓰면 화면 레이아웃(도넛 210px·2열 범례)이 그대로 눌려 들어가 계속 겹쳐 보였다.
+   #dfPrintPages 가 붙어 있으면(전용 인쇄 진행 중) df-printing 규칙이 우선하므로 여긴 손대지 않는다. ═══ */
+@media print{
+@page{size:A4 portrait;margin:8mm 9mm;}
+*,*::before,*::after{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+body:not(.df-printing):not(.rpt-on) #sidebar,body:not(.df-printing):not(.rpt-on) #topbar,
+body:not(.df-printing) #scrim,body:not(.df-printing) #toast,body:not(.df-printing) #htip,
+body:not(.df-printing) #mo,body:not(.df-printing) .tnav,.no-print{display:none!important;}
+body:not(.df-printing):not(.rpt-on),body:not(.df-printing):not(.rpt-on) #app,
+body:not(.df-printing):not(.rpt-on) #main,body:not(.df-printing):not(.rpt-on) #content{
+  display:block!important;height:auto!important;overflow:visible!important;background:#fff!important;}
+body:not(.df-printing):not(.rpt-on) #content{padding:0!important;}
+body:not(.df-printing) .view{display:none!important;}
+body:not(.df-printing) .view.act{display:block!important;}
+body:not(.df-printing):not(.rpt-on) .df-printhdr{display:flex!important;}   /* 전용 인쇄·보고서 인쇄엔 자체 머리가 있다(원본 1038행 대응) */
+.card,.kc,.ic,.mom-row{break-inside:avoid;page-break-inside:avoid;}
+/* 카드 */
+#view-defect .card{padding:9px 11px!important;margin-bottom:7px!important;border-radius:6px!important;box-shadow:none!important;border:0.5pt solid #E5E5EA!important;overflow:hidden!important;}
+#view-defect .ct{font-size:10pt!important;margin-bottom:7px!important;font-weight:700!important;}
+/* KPI — 웹과 동일 5열, 폰트 조금만 축소 */
+#view-defect .akpi{gap:6px!important;margin-bottom:10pt!important;grid-template-columns:repeat(5,1fr)!important;}
+#view-defect .akpi .kc{padding:9px 11px!important;min-height:0!important;transform:none!important;box-shadow:none!important;}
+#view-defect .akpi .kl{font-size:8pt!important;margin-bottom:2px!important;}
+#view-defect .akpi .kv{font-size:16pt!important;line-height:1!important;}
+#view-defect .akpi .kv .u{font-size:8pt!important;}
+#view-defect .akpi .km{font-size:7.5pt!important;margin-top:2px!important;}
+/* 2열 그리드(전월대비+도넛 등) — 웹과 동일 */
+#view-defect .opsr{display:grid!important;grid-template-columns:1fr 1fr!important;gap:7px!important;min-height:0!important;margin-bottom:7px!important;}
+#view-defect .opsr>.card{margin-bottom:0!important;display:flex!important;flex-direction:column!important;overflow:hidden!important;}
+/* 표 — 가독성 확보(열 폭은 인라인 % 유지) */
+#view-defect .dt{font-size:6.5pt!important;table-layout:fixed!important;}
+#view-defect .dt th{padding:4px 4px!important;font-size:6pt!important;}
+#view-defect .dt td{padding:4px 4px!important;}
+#view-defect #dfDashTbl td{padding:8px 4px!important;}
+#view-defect #dfDashTbl td:nth-child(2){white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}
+#view-defect .ba{font-size:5.5pt!important;padding:1px 4px!important;}
+/* 메인 추이 차트 — X축 라벨까지 카드 안에 */
+#view-defect .main-chart-card{aspect-ratio:auto!important;min-height:0!important;height:210px!important;padding:10px 12px 12px!important;overflow:hidden!important;}
+#view-defect .main-chart-card .cw{flex:1!important;min-height:0!important;width:100%!important;}
+#view-defect .chart-lg{flex-shrink:0!important;font-size:6.5pt!important;}
+#view-defect .chart-lg .li{gap:5px!important;}
+#view-defect .chart-lg .mk-bar,#view-defect .chart-lg .mk-ln{transform:scale(.75);}
+#view-defect .cw{height:140px!important;min-height:0!important;}
+canvas{max-width:100%!important;height:auto!important;}
+/* 도넛 + 사이드 범례 — 카드 탈출 방지·범례 1열·도넛 축소(원본 961~972 그대로) */
+#view-defect .dn-side{height:auto!important;min-height:0!important;max-height:none!important;gap:12px!important;overflow:hidden!important;align-items:center!important;justify-content:center!important;}
+#view-defect .dn-side .canv{flex:0 0 155px!important;height:155px!important;width:155px!important;max-width:155px!important;align-self:center!important;}
+#view-defect .dn-side .lg{flex:1!important;min-width:0!important;font-size:7.5pt!important;overflow:hidden!important;align-self:center!important;margin-left:0!important;}
+#view-defect .dn-side .lg.lg-2col{display:grid!important;grid-template-columns:1fr!important;grid-template-rows:none!important;grid-auto-flow:row!important;column-gap:0!important;row-gap:2px!important;min-width:0!important;}
+#view-defect .dn-side .lg .it{height:auto!important;line-height:1.45!important;grid-template-columns:8px minmax(0,1fr) 42px 36px!important;gap:5px!important;padding:0!important;}
+#view-defect .dn-side .lg .nm{font-size:7.5pt!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;padding-left:0!important;}
+#view-defect .dn-side .lg .cnt{font-size:7.5pt!important;padding:0!important;text-align:right!important;white-space:nowrap!important;}
+#view-defect .dn-side .lg .pct{font-size:7.5pt!important;padding:0 0 0 8px!important;min-width:0!important;text-align:right!important;white-space:nowrap!important;}
+/* 전월대비 실적 — 원본 975~991 */
+#view-defect .mom-row{grid-template-columns:52px 1fr 52px!important;gap:8px!important;padding:5px 0!important;}
+#view-defect .mom-row .label{font-size:8pt!important;}
+#view-defect .mom-row .bars{gap:1px!important;}
+#view-defect .mom-row .bar{grid-template-columns:26px 1fr 34px!important;gap:5px!important;font-size:7.5pt!important;}
+#view-defect .mom-row .bar .vl{padding-left:7px!important;}
+#view-defect .mom-row .delta{min-width:42px!important;padding-left:8px!important;}
+#view-defect .mom-row .delta .d{font-size:5.5pt!important;padding:1px 3px!important;}
+/* 주요 이슈 */
+#view-defect .ic{padding:8px 10px!important;gap:10px!important;}
+#view-defect .ic-ttl{font-size:8.5pt!important;}
+#view-defect .ic-sub{font-size:8pt!important;line-height:1.5!important;display:block!important;overflow:visible!important;}
+#view-defect .ic-i{width:20px!important;height:20px!important;}
+#view-defect .ic-i svg{width:11px!important;height:11px!important;}
+/* LTR 게이지 */
+#view-defect .ltrbar-wrap{gap:2px!important;padding:0 1px!important;}
+#view-defect .ltrbar{height:5px!important;}
+#view-defect .ltrbar-pct{font-size:6pt!important;min-width:0!important;}
+/* 인터랙티브 요소 숨김 */
+body:not(.df-printing):not(.rpt-on) input,body:not(.df-printing):not(.rpt-on) select,
+body:not(.df-printing):not(.rpt-on) textarea,body:not(.df-printing):not(.rpt-on) button{display:none!important;}
+#view-defect .sortmk,#view-defect .kc-cta,#view-defect .axseg,#view-defect .yr-sel,#view-defect .btn{display:none!important;}
+}
 /* 인쇄 방식 선택 모달 */
 #mb.wide-pick{max-width:620px;}
 .rpk-sub{font-size:12.5px;color:var(--lbl2);margin:-12px 0 18px;line-height:1.6;}
@@ -632,15 +710,17 @@ html.dark .stx-done{color:#3BA85C;}
 /* 앱 배경화면(로컬 전용) — 처리 방식은 디뉴어 앱의 로그인 배경과 같다:
    ① 사진 위에 위→아래 어두운 그라디언트 ② 가장자리를 어둡게 눌러 주는 비네트(radial)
    ③ 정적 필름 그레인 캔버스(#bgGrain, overlay). 사진 자체는 눕히지 않고 레이어로만 다스린다. */
-body::before{content:'';position:fixed;inset:0;z-index:-2;background-image:var(--app-bg-img,none);background-size:cover;background-position:center;opacity:0;transition:opacity .45s ease;}
+body::before{content:'';position:fixed;inset:0;z-index:-2;background-image:var(--app-bg-img,none);background-size:cover;background-position:center;opacity:0;transition:opacity .45s ease;filter:brightness(var(--app-bg-bri,1));}
 body.hasbg::before{opacity:1;}
 /* 그라디언트 + 비네트 한 겹(디뉴어 #gate 와 같은 구성) — 밑칠(단색 덮개) 방식은 대체됐다 */
+/* 226차: '넣을 때 너무 어둡다' 지시로 강도 완화 — 그라디언트 .40/.62 → .16/.30, 비네트 .42 → .26.
+   사진 자체 밝기는 --app-bg-bri(설정 슬라이더)로 조절한다. */
 body.hasbg::after{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
-  background:radial-gradient(125% 125% at 50% 42%, transparent 52%, rgba(0,0,0,.42) 100%),
-             linear-gradient(180deg, rgba(8,8,12,.40) 0%, rgba(8,8,12,.62) 100%);}
+  background:radial-gradient(125% 125% at 50% 42%, transparent 52%, rgba(0,0,0,.26) 100%),
+             linear-gradient(180deg, rgba(8,8,12,.16) 0%, rgba(8,8,12,.30) 100%);}
 /* 안쪽 비네트 한 겹 더 — 가운데는 그대로 두고 가장자리만 눌러 화면이 붕 뜨지 않게(디뉴어 #gate::after) */
 body.hasbg #app::after{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
-  background:radial-gradient(118% 96% at 50% 44%, transparent 42%, rgba(0,0,0,.5) 100%);}
+  background:radial-gradient(118% 96% at 50% 44%, transparent 46%, rgba(0,0,0,.28) 100%);}
 /* 정적 필름 그레인 — 캔버스(#bgGrain)를 한 번만 그린다. 디뉴어와 같은 opacity .17 · overlay */
 #bgGrain{position:fixed;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none;
   opacity:.17;mix-blend-mode:overlay;display:none;}
@@ -687,6 +767,7 @@ html.dark body.hasbg .sb-more,html.dark body.hasbg .ctxmenu,html.dark body.hasbg
 html.dark body.hasbg .nq-panel,html.dark body.hasbg .popbox{--bg2:#1C1C1E;--surf2:#26262A;--surf3:#303036;--glass3:#1C1C1E;}
 /* 블록 사이는 배경 사진이 그대로 비친다 — 사이드바 자체에는 판을 깔지 않는다(깔면 '한 장'이 돼 버린다).
    유리(반투명+blur)는 각 블록에만. 블록 6개 수준의 blur 는 하자 화면과 달리 체감 부담이 없다. */
+/* 227차: 226차의 '흰색 고정'을 사용자 지시로 **취소** — 배경 시 유리+블러(225차 이전 상태)로 복귀 */
 body.hasbg #sidebar>*{background:var(--glass3);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);}
 body.hasbg .card,body.hasbg #sidebar>*{box-shadow:0 2px 14px rgba(16,24,40,.12);}
 /* ⚠ 달력을 감싸는 카드(.cal-card)에는 그림자를 주지 않는다 — 판이 투명이라 그림자만 네모로 떠서
@@ -721,6 +802,19 @@ body.snap .sbsl:first-of-type{display:none;}
    696px 로 줄며 차트가 다시 그려져 **추이 차트가 빈 채로 인쇄**됐다.
    #view-defect 를 앞에 붙여 명시도를 올리고, 높이는 인쇄 규칙(196px)과 같은 값으로 맞춰 리사이즈 자체를 없앤다. */
 #view-defect #dfPrintPages .main-chart-card{height:196px;aspect-ratio:auto;min-height:0;}
+/* ═ 인쇄 상자의 도넛+범례 — 원본 @media print 882~890 이식. ⚠ 반드시 **상시**(#dfPrintPages 스코프)로:
+   화면식 인쇄의 미리 렌더는 화면 미디어에서 그려지므로 print 한정이면 도넛이 210px·2열로 그려졌다가
+   인쇄 순간 리사이즈되고(223차 함정), 이번 227차 지적처럼 좁은 카드(≈350px)에서 범례가 도넛을 덮는다.
+   ID 2개 스코프라 화면 규칙(#view-defect …)을 명시도로 이긴다. */
+#view-defect #dfPrintPages .opsr>.card{overflow:hidden;display:flex;flex-direction:column;}
+#view-defect #dfPrintPages .dn-side{height:auto;min-height:0;max-height:none;gap:12px;overflow:hidden;align-items:center;justify-content:center;padding:4px 2px;}
+#view-defect #dfPrintPages .dn-side .canv{flex:0 0 155px;height:155px;width:155px;max-width:155px;max-height:155px;align-self:center;}
+#view-defect #dfPrintPages .dn-side .lg{flex:1;min-width:0;font-size:7.5pt;overflow:hidden;align-self:center;margin-left:0;gap:2px;}
+#view-defect #dfPrintPages .dn-side .lg.lg-2col{display:grid;grid-template-columns:1fr;grid-template-rows:none;grid-auto-flow:row;column-gap:0;row-gap:2px;min-width:0;}
+#view-defect #dfPrintPages .dn-side .lg .it{height:auto;line-height:1.45;grid-template-columns:8px minmax(0,1fr) 42px 36px;gap:5px;padding:0;}
+#view-defect #dfPrintPages .dn-side .lg .nm{font-size:7.5pt;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;padding-left:0;}
+#view-defect #dfPrintPages .dn-side .lg .cnt{font-size:7.5pt;padding:0;text-align:right;white-space:nowrap;}
+#view-defect #dfPrintPages .dn-side .lg .pct{font-size:7.5pt;padding:0 0 0 8px;min-width:0;text-align:right;white-space:nowrap;}
 /* 쪽번호용 페이지 박스 — ⚠ 반드시 **상시** 규칙이어야 한다. @media print 안에만 두면 인쇄 순간
    박스가 늘어나며 레이아웃이 변한다(224차에서 그 실수로 마지막 쪽에 유령 띠가 생겼다).
    1050px < A4 내용높이(1123-상하 8mm=1063px) — 논리 한 쪽 = 물리 한 쪽. */
@@ -735,6 +829,7 @@ body.snap .sbsl:first-of-type{display:none;}
 .sp-page-hdr .ph-label{font-size:7pt;color:var(--lbl3);}
 .sp-page-hdr .ph-date{font-size:10pt;font-weight:700;color:var(--lbl);font-variant-numeric:tabular-nums;}
 .plan-print{display:none;}
+.df-printhdr{display:none;}   /* Ctrl+P(화면 인쇄)에서만 보이는 머리 — 위 @media print 가 켠다 */
 @media print{
   /* 인쇄는 항상 밝은 색 — 원본과 동일 토큰 강제 */
   html.dark{--bg:#F2F2F7;--bg2:#fff;--surf2:#F5F7FA;--surf3:#E9EDF2;--fill:rgba(120,120,128,.12);--fill2:rgba(120,120,128,.18);
@@ -758,51 +853,6 @@ body.snap .sbsl:first-of-type{display:none;}
   .sp-print-page{display:block;}
   .sp-page-break-before{break-before:page;page-break-before:always;}
   #dfPrintPages .card,#dfPrintPages .kc,#dfPrintPages .ic,#dfPrintPages .mom-row{break-inside:avoid;page-break-inside:avoid;}
-  #dfPrintPages .card{padding:9px 11px!important;margin-bottom:7px!important;border-radius:6px!important;box-shadow:none!important;border:.5pt solid #E5E5EA!important;overflow:hidden!important;}
-  #dfPrintPages .ct,#dfPrintPages .st{font-size:10pt!important;margin-bottom:7px!important;}
-  #dfPrintPages .akpi{gap:6px!important;margin-bottom:10pt!important;grid-template-columns:repeat(5,1fr)!important;}
-  #dfPrintPages .kc{padding:9px 11px!important;min-height:0!important;}
-  #dfPrintPages .kl{font-size:8pt!important;margin-bottom:2px!important;}
-  #dfPrintPages .kv{font-size:16pt!important;line-height:1!important;}
-  #dfPrintPages .kv .u{font-size:8pt!important;}
-  #dfPrintPages .km{font-size:7.5pt!important;margin-top:2px!important;}
-  #dfPrintPages .kc-cta,#dfPrintPages .axseg,#dfPrintPages .yr-sel,#dfPrintPages .sortmk{display:none!important;}
-  #dfPrintPages .opsr{display:grid!important;grid-template-columns:1fr 1fr!important;gap:7px!important;min-height:0!important;margin-bottom:7px!important;}
-  #dfPrintPages .opsr>.card{margin-bottom:0!important;}
-  #dfPrintPages .dt{font-size:6.5pt!important;table-layout:fixed!important;}
-  #dfPrintPages .dt th{padding:4px 4px!important;font-size:6pt!important;}
-  #dfPrintPages .dt td{padding:4px 4px!important;}
-  #dfPrintPages .ba{font-size:5.5pt!important;padding:1px 4px!important;}
-  #view-defect #dfPrintPages .main-chart-card{height:196px!important;padding:8px 11px 10px!important;}
-  #dfPrintPages .mom-row{padding:3px 4px!important;}
-  #dfPrintPages .mom-row .bar{padding:2px 4px!important;}
-  #dfPrintPages .mom-wrap{gap:2px!important;}
-  #dfPrintPages .dn-side{padding:2px!important;}
-  #dfPrintPages .chart-lg{padding-left:24px!important;font-size:6.5pt!important;}
-  #dfPrintPages .dn-side .canv{flex:0 0 130px!important;width:130px!important;height:130px!important;max-width:130px!important;max-height:130px!important;}
-  #dfPrintPages .dn-side{gap:10px;}
-  /* 인쇄 폭에서는 2열이 서로 겹친다 — 한 열로 펴고 글자를 줄여 카드 높이를 맞춘다 */
-  #dfPrintPages .dn-side .lg,#dfPrintPages .dn-side .lg.lg-2col{display:flex!important;flex-direction:column!important;gap:0!important;min-width:0!important;font-size:6.5pt!important;}
-  #dfPrintPages .dn-side .lg .it{height:11px!important;}   /* 화면 규칙이 뒤에 있어 !important 없이는 2열이 남는다 */
-  #dfPrintPages .dn-side .lg .it{height:auto;}
-  #dfPrintPages .dn-side .lg .nm{font-size:6.5pt;padding-left:4px;}
-  #dfPrintPages .dn-side .lg .cnt,#dfPrintPages .dn-side .lg .pct{font-size:6.5pt;}
-  #dfPrintPages .mom-wrap{padding-top:0;}
-  #dfPrintPages .vseg-v{font-size:18px;}
-  #dfPrintPages .plan-ta{display:none!important;}
-  #dfPrintPages .plan-print{display:block;flex:1;min-width:0;font-size:7pt;line-height:1.5;color:var(--lbl);white-space:pre-wrap;}
-  #dfPrintPages .pp-stack.pp-empty{display:none!important;}
-  #dfPrintPages td.pp-cell{padding:4px 4px 4px 10px!important;}
-  #dfPrintPages .pp-lab{flex-basis:26px;font-size:6pt;}
-  #dfPrintPages .pp-box{font-size:7pt;}
-  #dfPrintPages .ltrmom-bar .seg .seg-v{font-size:7pt;}
-  #dfPrintPages .ins-grid{gap:5px!important;}
-  #dfPrintPages .ic{padding:8px 10px;}
-  #dfPrintPages .ic-ttl{font-size:8.5pt;}
-  #dfPrintPages .ic-sub{font-size:7.5pt;}
-  #dfPrintPages .ait{font-size:9pt!important;line-height:1.6!important;}
-  #dfPrintPages .ait>div{font-size:10pt!important;}
-  #dfPrintPages .ait li{margin-bottom:5px!important;}
 }
 /* ══════════ 하자처리 현황 — 원본 화면 이식 CSS ══════════
    클래스 이름은 원본(하자처리 현황)을 그대로 쓰되 #view-defect 범위로 가둔다.
@@ -1122,15 +1172,50 @@ body.snap .sbsl:first-of-type{display:none;}
 #mb.dfwide .mo-x{display:none!important;}   /* 머리에 닫기 버튼이 있다 */
 .rec-n{font-size:12px;color:var(--lbl3);white-space:nowrap;}
 .rec-wrap{max-height:60vh;overflow:auto;border:1px solid var(--sep);border-radius:var(--rmd);}
-.rec-tbl{width:100%;border-collapse:collapse;font-size:12.5px;white-space:nowrap;}
+/* table-layout:fixed — 열 폭이 머리(th width)에서 확정돼 필터행이 열려도 출렁이지 않는다(원본 683행) */
+.rec-tbl{width:100%;min-width:1180px;table-layout:fixed;border-collapse:collapse;font-size:12.5px;white-space:nowrap;}
 .rec-tbl th{position:sticky;top:0;z-index:2;background:var(--surf2);font-size:11.5px;font-weight:700;color:var(--lbl);
   text-align:center;padding:9px;border-bottom:1.5px solid var(--sepo);cursor:pointer;height:34px;box-sizing:border-box;}
 .rec-tbl th:hover{background:var(--surf3);}
 .rec-tbl th{position:sticky;user-select:none;}
+/* ══ 필터행 + 열 머리 우클릭 메뉴 — 원본(하자처리현황) index.html 690~718 이식 ══
+   필터행은 머리(34px) 바로 아래에 sticky 로 붙는다. 인쇄에는 넣지 않는다(아래 print 규칙). */
+.rl-frow{display:none;}
+.rl-frow.open{display:table-row;}
+.rl-frow td.rl-fc{position:sticky;top:34px;z-index:1;background:var(--surf2);padding:4px 6px;border-bottom:1.5px solid var(--sepo);}
+.rl-fin{width:100%;min-width:0;box-sizing:border-box;font-size:11px;padding:4px 6px;border:1px solid var(--sep);border-radius:6px;background:var(--bg2);}
+.rl-fin:focus{outline:none;border-color:var(--b400);}
+.rl-menu{position:fixed;z-index:2000;width:244px;background:var(--bg2);border:1px solid var(--sep);border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,.18);padding:8px;display:none;}
+.rl-menu-hd{font-size:11px;font-weight:700;color:var(--lbl2);padding:2px 4px 6px;}
+.rl-menu-row{display:block;width:100%;text-align:center;padding:7px 8px;border:1px solid var(--sep);border-radius:7px;background:var(--fill);font-size:12px;color:var(--lbl);cursor:pointer;margin-bottom:4px;}
+.rl-menu-row:hover{background:var(--b50);}
+.rl-menu-sep{height:1px;background:var(--sep);margin:8px 0 6px;}
+.rl-menu-q{width:100%;box-sizing:border-box;font-size:12px;padding:6px 8px;border:1px solid var(--sep);border-radius:7px;margin-bottom:6px;}
+.rl-menu-q:focus{outline:none;border-color:var(--b400);}
+.rl-menu-list{max-height:236px;overflow:auto;border:1px solid var(--sep);border-radius:7px;padding:4px;}
+.rl-menu-item{display:flex;align-items:center;gap:7px;padding:4px 5px;border-radius:5px;cursor:pointer;font-size:12px;color:var(--lbl);}
+.rl-menu-item:hover{background:var(--b50);}
+.rl-menu-item span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.rl-menu-item input{flex:none;}
+.rl-menu-all{font-weight:600;border-bottom:1px solid var(--sep);border-radius:0;margin-bottom:2px;padding-bottom:6px;}
+.rl-menu-note{font-size:10.5px;color:var(--lbl3);padding:5px;}
+.rl-menu-foot{display:flex;gap:6px;margin-top:8px;}
+.rl-menu-foot .btn{flex:1;}
+.rl-tree-row{display:flex;align-items:center;gap:5px;padding:2px 4px;border-radius:5px;font-size:12px;color:var(--lbl);}
+.rl-tree-row:hover{background:var(--b50);}
+.rl-tree-all{font-weight:600;border-bottom:1px solid var(--sep);border-radius:0;margin-bottom:2px;padding-bottom:5px;}
+.rl-tree-tog{flex:none;width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--sep);background:var(--bg2);color:var(--lbl2);font-size:12px;line-height:1;cursor:pointer;border-radius:4px;padding:0;font-weight:700;}
+.rl-tree-tog:hover{background:var(--b50);border-color:var(--b300);color:var(--bt1);}
+.rl-tree-spacer{visibility:hidden;border:none;background:none;cursor:default;}
+.rl-tree-cl{display:flex;align-items:center;gap:6px;flex:1;min-width:0;cursor:pointer;}
+.rl-tree-cl input{flex:none;margin:0;}
+.rl-tree-lbl{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.rec-none-td{text-align:center;padding:20px;color:var(--lbl3);}
+@media print{.rl-frow,.rl-menu{display:none!important;}}
 .rec-tbl th .fl{font-style:normal;font-size:10.5px;font-weight:700;color:var(--bt1);background:var(--b50);border-radius:5px;padding:0 4px;margin-left:3px;}
 .rec-tbl th .rz{position:absolute;top:0;right:0;width:7px;height:100%;cursor:col-resize;}
 .rec-tbl th .rz:hover{background:var(--b300);}
-.rec-tbl td{padding:7px 9px;border-bottom:1px solid var(--sep);color:var(--lbl);text-align:center;vertical-align:top;}
+.rec-tbl td{padding:7px 9px;border-bottom:1px solid var(--sep);color:var(--lbl);text-align:center;vertical-align:top;overflow:hidden;text-overflow:ellipsis;}
 .rec-tbl td.wide{text-align:left;white-space:normal;word-break:break-word;line-height:1.45;min-width:260px;max-width:440px;}
 .rec-tbl td.wide{white-space:normal;min-width:220px;}
 .rec-tbl tr:hover td{background:var(--fill);}
@@ -2422,6 +2507,59 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
   #view-defect .main-chart-card{aspect-ratio:auto;height:230px;min-height:0;}
   #view-defect .tnav,#view-defect .kc-cta,#view-defect .axseg,#view-defect .yr-sel,#view-defect .plan-ta{display:none!important;}
 }
+
+/* ══ 화면식 인쇄 페이지(#dfPrintPages) — **상시** 레이아웃 규칙 ══
+   ⚠ 227차 원칙: 인쇄 레이아웃은 @media print 에 두지 않는다. 실브라우저의 window.print()는 JS 를
+   블록하므로, 미디어 전환으로 크기가 바뀌면 Chart.js 가 리사이즈할 틈이 없어 캔버스가 화면 크기
+   그대로 박스를 넘친다(도넛이 범례를 덮던 사진의 원인 — 5회에 걸친 인쇄 수정에도 남았던 이유는
+   헤드리스 검증이 print 를 무력화한 비블록 환경이라 리사이즈가 '되는' 상태만 봤기 때문).
+   해법: 대기 상자(-12000px)에서부터 인쇄 크기로 그린다 → 인쇄 순간 재계산 값이 동일 = 변형 0.
+   @media print 에는 환경 전환(숨김·배경·break·@page)만 남긴다. */
+#view-defect #dfPrintPages .card{padding:9px 11px!important;margin-bottom:7px!important;border-radius:6px!important;box-shadow:none!important;border:.5pt solid #E5E5EA!important;overflow:hidden!important;}
+#view-defect #dfPrintPages .ct,#view-defect #dfPrintPages .st{font-size:10pt!important;margin-bottom:7px!important;}
+#view-defect #dfPrintPages .akpi{gap:6px!important;margin-bottom:10pt!important;grid-template-columns:repeat(5,1fr)!important;}
+#view-defect #dfPrintPages .kc{padding:9px 11px!important;min-height:0!important;}
+#view-defect #dfPrintPages .kl{font-size:8pt!important;margin-bottom:2px!important;}
+#view-defect #dfPrintPages .kv{font-size:16pt!important;line-height:1!important;}
+#view-defect #dfPrintPages .kv .u{font-size:8pt!important;}
+#view-defect #dfPrintPages .km{font-size:7.5pt!important;margin-top:2px!important;}
+#view-defect #dfPrintPages .kc-cta,#view-defect #dfPrintPages .axseg,#view-defect #dfPrintPages .yr-sel,#view-defect #dfPrintPages .sortmk{display:none!important;}
+#view-defect #dfPrintPages .opsr{display:grid!important;grid-template-columns:1fr 1fr!important;gap:7px!important;min-height:0!important;margin-bottom:7px!important;}
+#view-defect #dfPrintPages .opsr>.card{margin-bottom:0!important;}
+#view-defect #dfPrintPages .dt{font-size:6.5pt!important;table-layout:fixed!important;}
+#view-defect #dfPrintPages .dt th{padding:4px 4px!important;font-size:6pt!important;}
+#view-defect #dfPrintPages .dt td{padding:4px 4px!important;}
+#view-defect #dfPrintPages .ba{font-size:5.5pt!important;padding:1px 4px!important;}
+#view-defect #dfPrintPages .main-chart-card{height:196px!important;padding:8px 11px 10px!important;aspect-ratio:auto!important;min-height:0!important;}
+#view-defect #dfPrintPages .mom-row{padding:3px 4px!important;}
+#view-defect #dfPrintPages .mom-row .bar{padding:2px 4px!important;}
+#view-defect #dfPrintPages .mom-wrap{gap:2px!important;padding-top:0!important;}
+#view-defect #dfPrintPages .chart-lg{padding-left:24px!important;font-size:6.5pt!important;}
+#view-defect #dfPrintPages .dn-side{padding:2px!important;gap:10px!important;}
+#view-defect #dfPrintPages .dn-side .canv{flex:0 0 130px!important;width:130px!important;height:130px!important;max-width:130px!important;max-height:130px!important;}
+/* 인쇄 폭에서 2열은 겹친다 — 한 열로 펴고 글자를 줄여 카드 높이를 맞춘다(원본 인쇄 963~971 취지) */
+#view-defect #dfPrintPages .dn-side .lg,#view-defect #dfPrintPages .dn-side .lg.lg-2col{display:flex!important;flex-direction:column!important;gap:0!important;min-width:0!important;flex:1!important;font-size:6.5pt!important;}
+#view-defect #dfPrintPages .dn-side .lg .it{height:auto!important;line-height:1.35!important;padding:0 2px!important;}
+#view-defect #dfPrintPages .dn-side .lg .nm{font-size:6.5pt!important;padding-left:4px!important;}
+#view-defect #dfPrintPages .dn-side .lg .cnt,#view-defect #dfPrintPages .dn-side .lg .pct{font-size:6.5pt!important;padding:0 0 0 6px!important;min-width:0!important;}
+/* ⚠ 원본 972행의 canvas{max-width:100%} 보험은 넣지 않는다 — Chart.js 가 부모 크기를 읽기 전에
+   캔버스 CSS 가 부모를 제약해 300×150(측정 실패 기본값)으로 굳는다(227차 실측).
+   상시화로 attr=박스가 보장되므로 보험 없이 실측 게이트(변형 0·겹침 0)가 지킨다. */
+#view-defect #dfPrintPages .vseg-v{font-size:18px!important;}
+#view-defect #dfPrintPages .plan-ta{display:none!important;}
+#view-defect #dfPrintPages .plan-print{display:block!important;flex:1;min-width:0;font-size:7pt;line-height:1.5;color:var(--lbl);white-space:pre-wrap;}
+#view-defect #dfPrintPages .pp-stack.pp-empty{display:none!important;}
+#view-defect #dfPrintPages td.pp-cell{padding:4px 4px 4px 10px!important;}
+#view-defect #dfPrintPages .pp-lab{flex-basis:26px!important;font-size:6pt!important;}
+#view-defect #dfPrintPages .pp-box{font-size:7pt!important;}
+#view-defect #dfPrintPages .ltrmom-bar .seg .seg-v{font-size:7pt!important;}
+#view-defect #dfPrintPages .ins-grid{gap:5px!important;}
+#view-defect #dfPrintPages .ic{padding:8px 10px!important;}
+#view-defect #dfPrintPages .ic-ttl{font-size:8.5pt!important;}
+#view-defect #dfPrintPages .ic-sub{font-size:7.5pt!important;}
+#view-defect #dfPrintPages .ait{font-size:9pt!important;line-height:1.6!important;}
+#view-defect #dfPrintPages .ait>div{font-size:10pt!important;}
+#view-defect #dfPrintPages .ait li{margin-bottom:5px!important;}
 </style>
 </head>
 <body>
@@ -2704,7 +2842,11 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
     </div>
 
     <div id="view-report" class="view"><div id="reportRoot"></div></div>
-    <div id="view-defect" class="view"><div id="defectRoot"></div></div>
+    <div id="view-defect" class="view">
+      <!-- Ctrl+P(브라우저 인쇄) 전용 머리 — 전용 인쇄(#dfPrintPages)는 자체 머리가 있어 이건 숨는다.
+           내용(팀명·제목·기준일)은 dfUpdatePrintHdr 가 beforeprint 에서 채운다(원본 updatePrintHeader). -->
+      <div class="df-printhdr sp-page-hdr"><div class="ph-l"><div class="ph-team" id="dfPhTeam">H서비스센터 하자처리현황</div><div class="ph-title" id="dfPhTitle">전체 현황 대시보드</div></div><div class="ph-r"><div class="ph-label">기준일</div><div class="ph-date" id="dfPhDate"></div></div></div>
+      <div id="defectRoot"></div></div>
     <div id="view-tasks" class="view">
       <div id="tkRoot"></div>
     </div>
@@ -2783,7 +2925,9 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
               <span style="display:inline-flex;gap:6px;align-items:center"><button class="btn bo bsm" data-act="set.bgPick">이미지 선택</button><button class="btn bg2 bsm" id="bgClearBtn" data-act="set.bgClear" hidden>없애기</button></span></div>
             <div class="share-row" style="margin-top:10px"><div><b style="font-size:13px">레이아웃 투명도</b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">카드가 배경을 얼마나 비칠지 · 하자 관리 화면은 항상 불투명</div></div>
               <input type="range" id="bgAlpha" min="60" max="100" step="5" value="90" data-act="set.bgAlpha" style="width:160px"></div>
-            <div class="share-row" style="margin-top:10px"><div><b style="font-size:13px">달력 투명도 · 유리 톤</b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">업무 일정 화면의 달력 설정(⚙) 버튼에서 바로 조절합니다</div></div></div>
+            <div class="share-row" style="margin-top:10px"><div><b style="font-size:13px">배경 밝기 <b id="bgBriV" style="color:var(--bt1)">100%</b></b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">사진 자체를 밝게 또는 어둡게</div></div>
+              <input type="range" id="bgBri" min="55" max="140" step="5" value="100" data-act="set.bgBri" style="width:160px"></div>
+
           </div>
           <div class="set-card card">
             <div class="set-h">하자 관리 스냅샷</div>
@@ -2822,5 +2966,5 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=254"></script>
+<script src="./app.js?v=256"></script>
 </body></html>

@@ -1,6 +1,6 @@
 # 인수인계 — 일정공유 달력 앱 (calapp)
 
-새 대화를 시작할 때 이 파일을 먼저 읽으면 됩니다. 225차 작업까지 반영된 상태입니다.
+새 대화를 시작할 때 이 파일을 먼저 읽으면 됩니다. 227차 작업까지 반영된 상태입니다.
 (⚠ 이 줄의 차수는 배포마다 갱신할 것 — 한동안 81차로 방치돼 인수인계 문서 구실을 못 했다.)
 
 ## 1. 이 앱이 무엇인가
@@ -2952,6 +2952,82 @@ calapp 에 이식된 A4 설정값들을 96dpi 로 전 쪽 실측해 검토했다
 - 게이트: 정적 감사 FAIL 0 · WARN 0(원본 정렬 9항목·재유입 금지 2항목), 스모크·verify-r9·sweep·
   print-full×3·a4-audit 전부 통과.
 - app.js?v=254 · APP_VER 2.4.0.
+
+### 226차 — 원본 우클릭·필터행 전면 이식 · 공가 실시간 연동 · 배경/사이드바 사용자 지시
+지시 6건: ①미처리 목록 필터행 ②원본 우클릭 전부 이식 ③공가 모달 DB 연동 ④설정 달력 잔재 삭제
+⑤배경 밝기 슬라이더+기본 어둡기 완화 ⑥사이드바 블록 흰색 고정.
+
+**①② 목록 필터행·엑셀식 열 메뉴(rlMenu) — 원본 app-data.js 944~1010·app-boot 1214~1243 이식**
+- REC 에 filterRow/filters 신설(초기 선언에도 포함). recBase 파이프라인에 열별 텍스트 필터 결합.
+- recBodyHTML 머리 아래 .rl-frow(필터행) — **타이핑 중엔 recRowsOnly 로 tbody 만 교체**(전체 재렌더는
+  입력 포커스가 죽는다). rec.filter/rec.menuSearch 는 input 위임(클릭 위임으로는 못 받는다).
+- 열 머리 우클릭 → rlMenu: 필터행 표시/숨기기(끄면 filters 초기화)·이 열 숨기기·숨긴 열 모두 표시(n)·
+  검색·값 체크리스트(CAP 400)·**날짜 트리**(값의 70%↑ 이 날짜면 연/월/일 3단, 삼상 체크)·해제/적용.
+  적용은 Set→REC.vals 객체 변환, 전체 선택이면 필터 삭제. 닫기: 바깥 mousedown + Esc(캡처).
+- 본문 셀 우클릭: "값으로 필터 / 제외 / 셀 값 복사 / 표 전체 복사"(REC.vals + filterRow=true).
+  피벗 드릴다운에도 filterRow=true(원본 동일). 기존 간이 th 메뉴(값 20개)와 recVals 는 제거.
+- **0건이어도 표(머리·필터행)는 유지** — 표째 없애면 열 머리 우클릭으로 필터를 해제할 길이 사라진다.
+- 원본 ③⑤⑥ 대응: 대시 현장행·**사이드바 현장 항목(.df-site[data-sid] — 컨테이너 무관 클래스 매칭)**
+  → 현장 열기·미처리/장기 목록·셀/표 복사, AI(.ait) → 분석 의견 복사.
+  ⚠ openCtx 는 null 항목을 거르지 않는다 — 조건부 항목은 .filter(Boolean) 필수(안 하면 메뉴 통째 죽음).
+- **열 리사이즈 핸들(rl-rz)은 이식 범위에서 제외** — 우클릭·필터행 지시 밖의 별도 대형 기능.
+- CSS: 원본 690~718(.rl-frow sticky top:34px·.rl-menu 244px·rl-tree) 이식 + @media print 숨김.
+
+**③ 공가 연동 — '연동 안 됨'의 원인 2가지**
+- dfSubSite 가 plans/ana 만 구독하고 **vac 은 1회 캐시** → 하자처리 현황에서 수정해도 calapp 미반영.
+  → 구독 키를 rm+'/'+sid 로 바꾸고 `report/{rm}/{sid}/vac` on('value') 실시간 구독(dfDec 로 디코딩,
+  공가/상가 탭이면 즉시 rDefect).
+- calapp 저장이 **평문 키**('미분양') — 게시본은 fbEncKey 인코딩 키라 같은 노드에 두 형태가 섞였다.
+  → dfEncKey(원본 fbEncKey 동일) 추가, vacSave 가 인코딩 키로 update(검증: %EB%AF%B8%EB%B6%84%EC%96%91 실측).
+
+**④⑤⑥** 설정 달력 잔재 행 삭제. 배경 어둡게 레이어 완화(그라디언트 .40/.62→**.16/.30**, 비네트
+.42→.26, 안쪽 .5→.28) + body::before 에 brightness(--app-bg-bri) — 설정 슬라이더 #bgBri(55~140%,
+calapp.bgBri). 사이드바 블록은 hasbg 에서 **#fff 불투명 고정 + 블러 해제**(기본 규칙의 blur 20px 까지
+꺼야 GPU 낭비가 없다), 다크+배경에서도 흰 블록(블록 내부 토큰을 라이트로 강제).
+
+**검증 함정(재발 방지)**
+- 목록 검증 시드는 `S.live=true; FB.db={…스텁}` 필수 — dfList 는 live 가드가 캐시보다 앞.
+  **window.FB 새 객체 대입은 무효**(모듈 스코프) — 반드시 FB.db 프로퍼티 대입.
+- **필터행이 열리면 열 폭이 재배치** — th 좌표는 매번 재조회(고정 좌표 재사용 시 다른 열 메뉴가 열린다).
+- 대시 표·AI 카드는 스크롤 아래 — 우클릭 검증 전 scrollIntoView({block:'center'}) 필수.
+- 사이드바 트리는 권역 접힘이 기본 — 검증은 S.dfFold[rid]=false 로 펼친 뒤(로컬 시드는 rid='').
+- verify-r2 기대치를 새 사양(#fff·블러 없음)으로 갱신, verify-r10(28항목) 신설.
+- 감사: 신규 필수 17·금지 3 추가, rec.filter 는 클래스 매칭 위임이라 감사기 수집 라인도 추가.
+- 게이트: 감사 FAIL 0·WARN 0, 스모크·r2·r5·r7·r9·r10·sweep·print-full×3·a4-audit 전부 통과.
+- app.js?v=255 · APP_VER 2.4.1.
+
+### 227차 — 사이드바 흰색 취소 · Ctrl+P 브라우저 인쇄 이식 · 목록 열 폭 고정
+- **⑥ 취소**: 226차 '사이드바 블록 흰색 고정'을 사용자 지시로 철회 — 원래 유리
+  (`var(--glass3)` + blur 18px)로 복원, html.dark 라이트 토큰 강제 규칙도 제거.
+  verify-r2·r10 기대치와 감사 필수 항목을 유리 기준으로 되돌림.
+- **Ctrl+P(브라우저 인쇄) 경로 이식** — 원본 index.html 882~1010: 그동안 전용 인쇄 상자
+  (#dfPrintPages)만 다듬고 이 경로가 통째로 빠져 있어, 사용자가 Ctrl+P 를 누르면 화면 레이아웃
+  (도넛 210·2열 범례)이 그대로 눌려 들어갔다. `body:not(.df-printing):not(.rpt-on)` 스코프로
+  사이드바/상단바 숨김·카드/KPI/표(6.5pt)/추이(카드 210px·cw 140px)/도넛 155px·범례 1열/mom 축소.
+- **Ctrl+P 머리(.df-printhdr)**: #view-defect 안·#defectRoot **앞** 정적 마크업(재렌더에도 생존)
+  + dfUpdatePrintHdr(팀명·제목(대시/현장)·기준월 말일) + **beforeprint 에서 머리 채움 +
+  DF.noAnim=true + 전 차트 resize/update('none')**(인쇄 순간 리사이즈 애니메이션 중간 프레임 방지,
+  afterprint 에서 해제). 표시 규칙은 df-printing·rpt-on 제외 스코프 — 전용 인쇄·보고서는 자체 머리.
+  ⚠ 원본 doPrint 는 차트 재그리기 없이 print() 직행 — 실브라우저는 인쇄 레이아웃을 먼저 계산해
+  대개 무사하지만, calapp 은 beforeprint 재그리기로 결정성을 확보했다.
+- **전용 인쇄 도넛 축소 상시화**: `#view-defect #dfPrintPages .dn-side …`(155px·범례 1열)를
+  @media print 밖 상시 규칙로 — print 한정이면 미리 렌더가 210px·2열로 그려졌다가 인쇄 순간
+  리사이즈되고(223차 함정), 좁은 카드(≈350px)에서 범례가 도넛을 덮었다.
+- **목록 열 폭 고정**: REC_COLS 에 원본 기본 폭 w(동/호 62·접수일 132·공종 96·업체 120·지연일 78,
+  접수내용 w:null=잔여) + REC_SITE_COL 152 + No 46px, head th 는 `REC.w[c.k]||c.w`,
+  `.rec-tbl{min-width:1180px;table-layout:fixed}` — **필터행이 열려도 열 폭·위치가 불변**
+  (fixed 없이는 auto 레이아웃이 재계산해 표가 출렁였다).
+- 검증 함정: ① getComputedStyle 은 조상 display:none 이어도 자신 값(flex)을 반환 —
+  가시성은 getBoundingClientRect 크기로 판정 ② 대시 추이는 **d.wks**(팀 주간
+  {m,w,u,lt,lt60,cumR,cumRes}), KPI·도넛·현장표는 **d.wk[sid]** 에서 dfStFromWeekly —
+  합성 시드는 둘 다 채울 것(wks 비우면 추이 차트 자체가 안 생긴다) ③ 컴팩션·중단(aborted) 이후엔
+  zip 이 아니라 **작업 사본이 최신 의도**일 수 있다 — diff 로 판정하고 덮어쓰지 말 것
+  (이번 회차에서 사본에만 있던 Ctrl+P·열 폭 작업을 zip 재수화로 날릴 뻔했다).
+- verify-r11(13항목: Ctrl+P 머리·숨김·도넛155·범례1열·잉크·현장 제목·달력/전용 인쇄 배제·
+  fixed·폭 96·필터행 토글 후 불변) 신설, 감사 필수 9항목 추가.
+- 게이트: 감사 FAIL 0·WARN 0, 스모크·r2·r5·r7·r9·r10·r11·sweep·print-full×3·a4-audit 통과.
+  Ctrl+P PDF 2쪽·전용 인쇄 PDF 1쪽 시각 확인.
+- app.js?v=256 · APP_VER 2.4.2.
 
 ## 8. 보류하기로 한 것
 

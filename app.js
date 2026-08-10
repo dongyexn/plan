@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='2.4.0';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='2.4.2';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -3080,6 +3080,7 @@ const DF={cache:{},kpi:{},sw:{},sam:{},vac:{},plans:{},ana:{},list:{},ch:{},busy
 const DF_PAL=['#1F2B4C','#2C437C','#304D9D','#3259B6','#3E71D2','#538CDE','#74ABE6','#A0C8F0','#C7DDF6','#DFEBFA','#EAF2FC','#B3C7DD'];
 /* 게시본 키 복원 — 게시 때 deepEncKeys 로 인코딩된 중첩 맵 키(공종·하자유형 등)를 되돌린다 */
 function dfDecKey(k){try{return decodeURIComponent(String(k));}catch(e){return String(k);}}
+function dfEncKey(k){return encodeURIComponent(String(k==null?'':k)).replace(/\./g,'%2E');}   /* 원본 fbEncKey 와 동일 — 쓰기 키 규칙 통일 */
 function dfDec(v){if(Array.isArray(v))return v.map(dfDec);if(v&&typeof v==='object'){const o={};Object.keys(v).forEach(k=>{o[dfDecKey(k)]=dfDec(v[k]);});return o;}return v;}
 function dfPrevMonth(rm){
   const m=/^(\d{4})-(\d{2})$/.exec(String(rm||''));if(!m)return '';
@@ -3253,10 +3254,18 @@ function dfAitHTML(sid){
 /* 현재 열어 둔 현장의 처리계획·분석 의견 실시간 구독 — 원본(fb2SubSite)과 같은 동작.
    내가 입력 중인 칸은 건드리지 않는다(타이핑을 실시간 수신이 덮어쓰는 사고 방지). */
 function dfSubSite(sid){
-  if(DF._sub&&DF._sub.sid===sid)return;
+  const skey=dfRm()+'/'+sid;   /* 기준월이 바뀌면 vac 경로도 바뀐다 — rm 포함 키로 재구독 */
+  if(DF._sub&&DF._sub.sid===skey)return;
   if(DF._sub)DF._sub.offs.forEach(f=>{try{f();}catch(e){}});
-  DF._sub={sid,offs:[]};
+  DF._sub={sid:skey,offs:[]};
   if(!S.live||!FB.db||!sid)return;
+  /* 공가 수(미분양·미키불출)는 하자처리 현황이 원 소스 — 그쪽에서 수정하면 즉시 따라간다(226차: '연동 안 됨' 지적의 원인) */
+  {const vref=FB.db.ref('report/'+dfRm()+'/'+sid+'/vac');
+   const vh=vref.on('value',snap=>{
+     DF.vac[skey]=dfDec(snap.val())||{};
+     if(S.view==='defect'&&S.dfSid===sid&&(S.dfTab==='vac'||S.dfTab==='store'))rDefect();
+   });
+   DF._sub.offs.push(()=>vref.off('value',vh));}
   const pref=FB.db.ref('plans/'+sid);
   const ph=pref.on('value',snap=>{
     DF.plans[sid]=snap.val()||{};
@@ -4514,24 +4523,21 @@ function rDefect(){
 }
 /* ═══════════ 하자 목록 — 게시본의 미처리 목록(ulz, LZ 압축·PII 마스킹) ═══════════
    ⚠ 열 구성은 하자처리 현황의 REC_COLS 와 같게 맞춘다(엑셀로 내보낸 파일이 양쪽에서 같아야 한다). */
+/* 열 기본 폭(w)은 원본 REC_COLS(app-data.js 865~) 그대로 — table-layout:fixed 와 짝이다.
+   fixed 가 아니면 필터행(input)이 열리는 순간 auto 레이아웃이 열 폭을 재계산해 표가 출렁인다(227차 지시). */
 const REC_COLS=[
-  {k:'building',t:'동'},{k:'unit',t:'호'},{k:'receiptDate',t:'접수일'},{k:'defectClass',t:'하자구분'},
-  {k:'space',t:'공간'},{k:'trade',t:'공종'},{k:'defectType',t:'하자유형'},
-  {k:'receiptContent',t:'접수내용',wide:true},{k:'repairParty',t:'보수주체'},
-  {k:'contractor',t:'시공업체'},{k:'repairContractor',t:'보수업체'},{k:'delayDays',t:'지연일',num:true}
+  {k:'building',t:'동',w:62},{k:'unit',t:'호',w:62},{k:'receiptDate',t:'접수일',w:132},{k:'defectClass',t:'하자구분',w:84},
+  {k:'space',t:'공간',w:84},{k:'trade',t:'공종',w:96},{k:'defectType',t:'하자유형',w:96},
+  {k:'receiptContent',t:'접수내용',wide:true,w:null},{k:'repairParty',t:'보수주체',w:92},
+  {k:'contractor',t:'시공업체',w:120},{k:'repairContractor',t:'보수업체',w:120},{k:'delayDays',t:'지연일',num:true,w:78}
 ];
-const REC={rows:[],view:[],q:'',band:'',vac:'',limit:500,sort:'',desc:false,title:'',withSite:false,
+const REC={rows:[],view:[],q:'',band:'',vac:'',limit:500,sort:'',desc:false,title:'',withSite:false,filterRow:false,filters:{},
   hidden:{},   /* 숨긴 열 */
   vals:{},     /* 열별 값 필터 — {열키:{값:1}} 이 있으면 그 값만 남긴다 */
   w:{}};       /* 열 너비(px) — 머리 경계를 끌어 조절 */
-const REC_SITE_COL={k:'siteName',t:'현장'};
+const REC_SITE_COL={k:'siteName',t:'현장',w:152};
 function recCols(){return REC.withSite?[REC_SITE_COL].concat(REC_COLS):REC_COLS;}
 function recVisCols(){return recCols().filter(c=>!REC.hidden[c.k]);}
-function recVals(k){
-  const s=new Set();
-  REC.rows.forEach(r=>{const v=r[k];s.add(v==null||v===''?'(미기재)':String(v));});
-  return [...s].sort((a,b)=>String(a).localeCompare(String(b),'ko')).slice(0,60);
-}
 /* 공가세대 판정 — 원본 isVacUnit 과 동일(하자구분='세대' AND 입주상태∈{미분양,미납}) */
 function recIsVac(r){return r.defectClass==='세대'&&(r.saleStatus==='미분양'||r.saleStatus==='미납');}
 function recIsStore(r){return r.defectClass==='공용'&&/[강산살상성싱][가거기]/.test(String(r.building||'')+String(r.unit||''));}
@@ -4562,6 +4568,11 @@ function recBase(){
     for(const k of vf){const x=k.startsWith('__')?pivCell(r,k):r[k];
       const s=(x==null||x==='')?'(미기재)':String(x);
       if(!REC.vals[k][s])return false;}
+    /* 필터행(각 열 아래 입력) — 원본 R.filters 와 동일한 부분 일치 */
+    for(const k in REC.filters){const fq=String(REC.filters[k]||'').trim().toLowerCase();if(!fq)continue;
+      const x=k.startsWith('__')?pivCell(r,k):r[k];
+      const s2=((x==null||x==='')?'(미기재)':String(x)).toLowerCase();
+      if(!s2.includes(fq))return false;}
     if(!q)return true;
     return recCols().some(c=>String(r[c.k]||'').toLowerCase().includes(q));
   });
@@ -4584,11 +4595,15 @@ function recBodyHTML(){
   const vacCnt=REC.rows.filter(recIsVac).length;
   const v=recCompute();
   const cols=recVisCols();
-  const head='<tr><th>No</th>'+cols.map(c=>
-    '<th data-act="rec.sort" data-k="'+c.k+'"'+(REC.w[c.k]?' style="width:'+REC.w[c.k]+'px"':'')+'>'
+  const head='<tr><th style="width:46px">No</th>'+cols.map(c=>{
+    const w=REC.w[c.k]||c.w;   /* 사용자 드래그 폭 > 원본 기본 폭. 접수내용(w:null)은 잔여 전부 */
+    return '<th data-act="rec.sort" data-k="'+c.k+'"'+(w?' style="width:'+w+'px"':'')+'>'
     +esc(c.t)+(REC.vals[c.k]&&Object.keys(REC.vals[c.k]).length?' <i class="fl">필터</i>':'')
     +(REC.sort===c.k?(REC.desc?' ▾':' ▴'):'')
-    +'<span class="rz" data-act="rec.rz" data-k="'+c.k+'"></span></th>').join('')+'</tr>';
+    +'<span class="rz" data-act="rec.rz" data-k="'+c.k+'"></span></th>';}).join('')+'</tr>'
+    /* 필터행 — 원본 recHeadHTML 의 rl-frow. 열 머리 우클릭 메뉴의 '필터행 표시'로 토글한다 */
+    +'<tr class="rl-frow'+(REC.filterRow?' open':'')+'"><td class="rl-fc"></td>'
+    +cols.map(c=>'<td class="rl-fc"><input class="rl-fin" data-key="'+c.k+'" data-act="rec.filter" value="'+esc(REC.filters[c.k]||'')+'" autocomplete="off" aria-label="'+esc(c.t)+' 필터"></td>').join('')+'</tr>';
   const lim=REC.limit>0?REC.limit:v.length;
   const body=v.slice(0,lim).map((r,i)=>'<tr><td>'+(i+1)+'</td>'
     +cols.map(c=>'<td'+(c.wide?' class="wide"':'')+'>'+esc(r[c.k]==null?'':String(r[c.k]))+'</td>').join('')+'</tr>').join('');
@@ -4606,8 +4621,11 @@ function recBodyHTML(){
     +(PIV.on?'':'<span class="rl-lim"><span class="rl-lim-lbl">표시</span>'+limBtn(500)+limBtn(1000)+limBtn(5000)+limBtn(0)+'</span>')
     +'</div>'
     +(PIV.on?pivHTML()
-      :(v.length?'<div class="rec-wrap"><table class="rec-tbl"><thead>'+head+'</thead><tbody>'+body+'</tbody></table></div>'
-        :'<div class="rec-none">조건에 맞는 건이 없습니다.</div>'));
+      /* 0건이어도 표(머리·필터행)는 유지한다 — 원본과 동일. 표째 없애면 열 머리 우클릭으로
+         필터를 해제할 길이 사라진다(226차 검증에서 확인) */
+      :'<div class="rec-wrap"><table class="rec-tbl"><thead>'+head+'</thead><tbody>'
+        +(v.length?body:'<tr><td colspan="'+(cols.length+1)+'" class="rec-none-td">조건에 맞는 건이 없습니다.</td></tr>')
+        +'</tbody></table></div>');
 }
 /* 모달 머리 — 원본과 같은 한 줄: 제목 · 검색 · 결과 수 · 표 복사/엑셀/피벗(목록)/닫기 */
 function recHeadHTML(){
@@ -4625,6 +4643,103 @@ function recHeadSync(n,total){
   const el=$('#recN');
   if(el)el.innerHTML=PIV.on?'':('결과 <b>'+n.toLocaleString()+'</b> / 전체 <b>'+total.toLocaleString()+'</b>');
   const pb=$('#recPivBtn');if(pb)pb.textContent=PIV.on?'목록':'피벗';
+}
+/* ══ 열 머리 우클릭 필터 메뉴(rlMenu) — 원본 app-data.js 944~1010 을 REC 구조로 이식 ══
+   원본과 다른 점: 값 필터 저장소가 Set(valueFilters)이 아니라 객체(REC.vals{값:1})이고,
+   빈값 표기가 '(미기재)'(calapp 목록·피벗 공통 컨벤션 — '(빈값)' 아님)라는 것뿐이다. */
+function recCellS(r,k){const x=k.startsWith('__')?pivCell(r,k):r[k];return (x==null||x==='')?'(미기재)':String(x);}
+function recDistinct(k){
+  const col=recCols().find(c=>c.k===k);
+  const arr=[...new Set(REC.rows.map(r=>recCellS(r,k)))];
+  if(col&&col.num)arr.sort((a,b)=>(+a||0)-(+b||0));else arr.sort((a,b)=>String(a).localeCompare(String(b),'ko'));
+  return arr;
+}
+function recDateTree(vals){
+  const years={},other=[];
+  vals.forEach(v=>{const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(v);if(!m){other.push(v);return;}const y=m[1],mo=m[2];(years[y]=years[y]||{});(years[y][mo]=years[y][mo]||[]);years[y][mo].push(v);});
+  return {years,other};
+}
+function recDateLeaves(T,node){
+  if(node[0]==='y')return Object.values(T.years[node.slice(2)]||{}).flat();
+  const m=/^m:(\d{4})-(\d{2})/.exec(node);return m?((T.years[m[1]]||{})[m[2]]||[]):[];
+}
+function recTri(leaves,sel){let c=0;for(const v of leaves)if(sel.has(v))c++;return c===0?'none':(c===leaves.length?'all':'partial');}
+function recMenuDateTreeHTML(){
+  const M=REC._menu,T=M.dateTree,q=(M.q||'').trim().toLowerCase();
+  const hit=v=>!q||String(v).toLowerCase().includes(q);
+  const cb=st=>st==='all'?'checked':'',tri=st=>st==='partial'?' data-tri="1"':'';
+  const tog=(node,exp)=>'<button class="rl-tree-tog" data-act="rec.menuTreeToggle" data-node="'+node+'">'+(exp?'−':'+')+'</button>';
+  const spacer='<span class="rl-tree-tog rl-tree-spacer">·</span>';
+  const row=(pad,head,chk,label,triS)=>'<div class="rl-tree-row" style="padding-left:'+pad+'px">'+head+'<label class="rl-tree-cl"><input type="checkbox" '+chk+tri(triS||'none')+'><span class="rl-tree-lbl">'+label+'</span></label></div>';
+  let out='<div class="rl-tree-row rl-tree-all"><span class="rl-tree-tog rl-tree-spacer">·</span><label class="rl-tree-cl"><input type="checkbox" data-act="rec.menuAll"><span class="rl-tree-lbl">(모두 선택)</span></label></div>';
+  Object.keys(T.years).sort((a,b)=>b.localeCompare(a)).forEach(y=>{
+    const yl=Object.values(T.years[y]).flat();if(!yl.some(hit))return;
+    const yExp=M.expand.has('y:'+y)||!!q,yState=recTri(yl,M.sel);
+    out+=row(4,tog('y:'+y,yExp),'data-act="rec.menuTreeCheck" data-node="y:'+y+'" '+cb(yState),y+'년',yState);
+    if(!yExp)return;
+    Object.keys(T.years[y]).sort((a,b)=>b.localeCompare(a)).forEach(mo=>{
+      const ml=T.years[y][mo];if(!ml.some(hit))return;
+      const node='m:'+y+'-'+mo,mExp=M.expand.has(node)||!!q,mState=recTri(ml,M.sel);
+      out+=row(22,tog(node,mExp),'data-act="rec.menuTreeCheck" data-node="'+node+'" '+cb(mState),Number(mo)+'월',mState);
+      if(!mExp)return;
+      ml.filter(hit).forEach(v=>{out+=row(44,spacer,'data-act="rec.menuVal" data-val="'+esc(v)+'" '+(M.sel.has(v)?'checked':''),esc(v));});
+    });
+  });
+  T.other.forEach(v=>{if(!hit(v))return;out+=row(4,spacer,'data-act="rec.menuVal" data-val="'+esc(v)+'" '+(M.sel.has(v)?'checked':''),esc(v));});
+  return out;
+}
+function recMenuListHTML(){
+  const M=REC._menu;if(M.dateTree)return recMenuDateTreeHTML();
+  const q=(M.q||'').trim().toLowerCase();
+  let list=q?M.all.filter(v=>v.toLowerCase().includes(q)):M.all;
+  const CAP=400,more=list.length>CAP;if(more)list=list.slice(0,CAP);
+  const allc=M.sel.size===M.all.length&&M.all.length>0;
+  const head='<label class="rl-menu-item rl-menu-all"><input type="checkbox" data-act="rec.menuAll" '+(allc?'checked':'')+'><span>(모두 선택)</span></label>';
+  const items=list.map(v=>'<label class="rl-menu-item"><input type="checkbox" data-act="rec.menuVal" data-val="'+esc(v)+'" '+(M.sel.has(v)?'checked':'')+'><span>'+esc(v)+'</span></label>').join('');
+  return head+items+(more?'<div class="rl-menu-note">상위 '+CAP+'개 표시 · 검색으로 좁히세요</div>':'');
+}
+function recMenuHTML(){
+  const M=REC._menu,col=recCols().find(c=>c.k===M.key);
+  const nh=Object.keys(REC.hidden).filter(k=>REC.hidden[k]).length;
+  return '<div class="rl-menu-hd">'+esc(col?col.t:'')+' 필터</div>'
+    +'<button class="rl-menu-row" data-act="rec.menuToggleRow">'+(REC.filterRow?'필터행 숨기기':'필터행 표시')+'</button>'
+    +'<button class="rl-menu-row" data-act="rec.menuHideCol">이 열 숨기기</button>'
+    +(nh?'<button class="rl-menu-row" data-act="rec.menuShowCols">숨긴 열 모두 표시 ('+nh+')</button>':'')
+    +'<div class="rl-menu-sep"></div>'
+    +'<input class="rl-menu-q" placeholder="검색" data-act="rec.menuSearch" value="'+esc(M.q||'')+'" autocomplete="off">'
+    +'<div class="rl-menu-list" id="rlMenuList">'+recMenuListHTML()+'</div>'
+    +'<div class="rl-menu-foot"><button class="btn bg2 bsm" data-act="rec.menuClear">필터 해제</button><button class="btn bo bsm" data-act="rec.menuApply">적용</button></div>';
+}
+function recMenuSyncAll(){
+  const M=REC._menu;if(!M)return;
+  const a=document.querySelector('#rlMenu [data-act="rec.menuAll"]');
+  if(a){const allc=M.sel.size===M.all.length&&M.all.length>0;a.checked=allc;a.indeterminate=M.sel.size>0&&!allc;}
+}
+function recMenuRenderList(){const l=document.getElementById('rlMenuList');if(l){l.innerHTML=recMenuListHTML();l.querySelectorAll('input[data-tri]').forEach(c=>{c.indeterminate=true;});}recMenuSyncAll();}
+function recOpenMenu(key,x,y){
+  const cur=REC.vals[key],all=recDistinct(key);
+  const dv=all.filter(v=>/^\d{4}-\d{2}-\d{2}/.test(v)),nonEmpty=all.filter(v=>v!=='(미기재)').length;
+  const isDate=dv.length>1&&dv.length>=nonEmpty*0.7;
+  REC._menu={key,all,sel:(cur&&Object.keys(cur).length)?new Set(Object.keys(cur)):new Set(all),q:'',dateTree:isDate?recDateTree(all):null,expand:new Set()};
+  let m=document.getElementById('rlMenu');
+  if(!m){m=document.createElement('div');m.id='rlMenu';m.className='rl-menu';document.body.appendChild(m);}
+  m.innerHTML=recMenuHTML();m.style.display='block';
+  const mw=244,mh=Math.min(400,innerHeight*0.7);
+  m.style.left=Math.max(8,Math.min(x,innerWidth-mw-8))+'px';
+  m.style.top=Math.max(8,Math.min(y,innerHeight-mh-8))+'px';
+  const l=document.getElementById('rlMenuList');if(l)l.querySelectorAll('input[data-tri]').forEach(c=>{c.indeterminate=true;});
+  recMenuSyncAll();
+}
+function recCloseMenu(){const m=document.getElementById('rlMenu');if(m)m.style.display='none';REC._menu=null;}
+/* 필터행 타이핑 중에는 본문(tbody)만 갈아 끼운다 — recRender 전체를 돌리면 입력 포커스가 죽는다 */
+function recRowsOnly(){
+  const v=recCompute(),cols=recVisCols(),lim=REC.limit>0?REC.limit:v.length;
+  const tb=document.querySelector('#mbody .rec-tbl tbody');
+  if(!tb){recRender();return;}
+  tb.innerHTML=v.slice(0,lim).map((r,i)=>'<tr><td>'+(i+1)+'</td>'
+    +cols.map(c=>'<td'+(c.wide?' class="wide"':'')+'>'+esc(r[c.k]==null?'':String(r[c.k]))+'</td>').join('')+'</tr>').join('')
+    ||'<tr><td colspan="'+(cols.length+1)+'" class="rec-none-td">조건에 맞는 건이 없습니다.</td></tr>';
+  recHeadSync(v.length,REC.rows.length);
 }
 function recRender(){
   const t=$('#mt');if(t&&!$('#recQ'))t.innerHTML=recHeadHTML();
@@ -4680,7 +4795,7 @@ async function recOpen(sid,scope,opts){
   rows.sort((a,b)=>String(b.receiptDate||'').localeCompare(String(a.receiptDate||'')));
   REC.rows=rows;REC.q='';REC.band='';REC.sort='';REC.desc=false;REC.limit=500;
   REC.vac=opts.vac==='unit'||opts.vac==='store'?opts.vac:'';
-  REC.withSite=all;REC.vals={};REC.hidden={};
+  REC.withSite=all;REC.vals={};REC.hidden={};REC.filterRow=false;REC.filters={};
   REC.title=((site&&site.name)||'팀 전체')+' · '+scopeLbl+filtLbl;   /* 머리·엑셀 파일명 공용 */
   REC.scope=scope;
   /* 피벗 기본 조합 — 원본과 동일: 팀 전체는 현장×공종, 한 현장은 시공업체›공종 */
@@ -4899,6 +5014,32 @@ function rDefectNav(){
         +'<span class="dot"></span><span class="nil">'+esc(x.name)+'</span></div>').join(''):'');
   }).join('');
 }
+/* Ctrl+P 머리(팀명·제목·기준일) — 원본 updatePrintHeader(app-boot.js 359) 이식.
+   전용 인쇄 버튼과 무관하게 브라우저 인쇄에서도 머리가 나오도록 beforeprint 에서 채운다. */
+function dfUpdatePrintHdr(){
+  const tm=(typeof tkSel==='function'?tkSel().team:null);
+  const a=$('#dfPhTeam');if(a)a.textContent=(tm&&tm.name?tm.name:'H서비스센터')+' 하자처리현황';
+  const site=S.dfSid?(S.org.sites||[]).find(x=>x.id===S.dfSid):null;
+  const t=$('#dfPhTitle');if(t)t.textContent=site?`${site.region||''} · ${site.name}`.replace(/^ · /,''):'전체 현황 대시보드';
+  const d=$('#dfPhDate');if(d){const ym=dfRm()||new Date().toISOString().slice(0,7);
+    const[y,m]=ym.split('-'),last=new Date(Number(y),Number(m),0).getDate();
+    d.textContent=`${y}.${m}.${String(last).padStart(2,'0')}`;}
+}
+window.addEventListener('beforeprint',()=>{
+  dfUpdatePrintHdr();
+  /* Ctrl+P 는 인쇄 미디어로 넘어가며 차트 카드가 줄어든다(.cw 140px) — 리사이즈 애니메이션 중간에
+     찍히면 추이가 빈 채로 나온다(223차와 같은 원리). 즉시 완성 상태로 다시 그린다. */
+  if(S.view==='defect'&&!document.body.classList.contains('df-printing')){
+    DF.noAnim=true;
+    try{Object.values(DF.ch||{}).forEach(c=>{if(c&&c.resize){c.resize();c.update('none');}});}catch(e){}
+  }
+});
+window.addEventListener('afterprint',()=>{
+  if(DF.noAnim&&!document.body.classList.contains('df-printing')){
+    DF.noAnim=false;
+    try{Object.values(DF.ch||{}).forEach(c=>{if(c&&c.resize){c.resize();c.update('none');}});}catch(e){}
+  }
+});
 /* 기준월·인쇄는 하자 관리 화면에서만 상단바에 나온다 */
 function dfTopbar(){
   const on=S.view==='defect';
@@ -5595,16 +5736,23 @@ function copyText(t,msg){
   else{const ta=document.createElement('textarea');ta.value=String(t);document.body.appendChild(ta);ta.select();
     try{document.execCommand('copy');done();}catch(e){toast('복사 실패');}ta.remove();}
 }
-/* 우클릭 대상 — 달력 날짜 칸 · 업무 막대 · 업무 카드 */
+/* 우클릭 대상 — 달력 날짜 칸 · 업무 막대 · 업무 카드 · 미처리 목록(엑셀식 열 메뉴) */
 document.addEventListener('contextmenu',e=>{
   const t=e.target;
   if(t.closest('input,textarea,select'))return;              /* 입력칸은 기본 메뉴 */
   if(String(getSelection()||'').trim())return;               /* 글자를 고르는 중이면 기본 메뉴 */
+  /* 목록 열 머리 — 원본과 같은 엑셀식 값 선택 메뉴(rlMenu). ctx 메뉴가 아니라 자체 팝업이라 앞단에서 연다 */
+  const th=t.closest('.rec-tbl thead th[data-k]');
+  if(th&&!PIV.on){e.preventDefault();closeCtx();recOpenMenu(th.dataset.k,e.clientX,e.clientY);return;}
   const items=ctxFor(t);
   if(!items||!items.length)return;
   e.preventDefault();
+  recCloseMenu();
   openCtx(e.clientX,e.clientY,items);
 });
+/* rlMenu 닫기 — 원본 app-boot 942·946 과 동일: 바깥 mousedown · Esc */
+document.addEventListener('mousedown',e=>{if(REC._menu&&!e.target.closest('#rlMenu'))recCloseMenu();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&REC._menu){e.stopImmediatePropagation();e.preventDefault();recCloseMenu();}},true);
 function ctxFor(t){
   /* ⓪-0 피벗 셀 — 드릴다운(해당 조합의 원본 목록) + 값 복사 */
   const ptd=t.closest('.pv-table td');
@@ -5619,7 +5767,7 @@ function ctxFor(t){
         const put=(k,v)=>{REC.vals[k]={[v==='(빈값)'?'(미기재)':String(v)]:true};};
         if(rp)rp.forEach((v,i)=>{const k=PIV.rows[i];if(k)put(k,v);});
         if(cvv!=null)put(PIV.col,cvv);
-        PIV.on=false;recRender();
+        PIV.on=false;REC.filterRow=true;recRender();   /* 원본과 동일 — 필터행을 함께 펼쳐 조건이 보이게 */
         toast('피벗 조건으로 필터됨 · 열 머리 우클릭으로 해제');
       }});
       items.push({sep:true});
@@ -5627,22 +5775,46 @@ function ctxFor(t){
     items.push({label:'값 복사',act:()=>copyText(ptd.textContent.trim())});
     return items;
   }
-  /* ⓪-1 목록 열 머리 — 값 선택 필터·열 숨기기 */
-  const th=t.closest('.rec-tbl th[data-k]');
-  if(th){
-    const k=th.dataset.k,cur=REC.vals[k]||{};
-    const on=Object.keys(cur).length;
-    return [
-      {label:'이 열 숨기기',act:()=>{REC.hidden[k]=1;recRender();}},
-      on?{label:'이 열 필터 해제',act:()=>{delete REC.vals[k];recRender();}}:null,
-      {sep:true}
-    ].concat(recVals(k).slice(0,20).map(val=>({
-      label:(cur[val]?'✓ ':'')+val,
-      act:()=>{const m=REC.vals[k]||(REC.vals[k]={});
-        if(m[val])delete m[val];else m[val]=1;
-        if(!Object.keys(m).length)delete REC.vals[k];
-        recRender();}
-    })));
+  /* ⓪-1 목록 본문 셀 — 원본 ② '이 값으로 필터 / 제외 / 복사'(app-data 1383~) */
+  const rtd=t.closest('#mbody .rec-tbl tbody td');
+  if(rtd&&!PIV.on){
+    const cols=recVisCols(),ci=rtd.cellIndex;          /* 0번은 No 열 */
+    const col=ci>0?cols[ci-1]:null;
+    const v=rtd.textContent;
+    const short=v.length>14?v.slice(0,14)+'…':(v||'(미기재)');
+    const items=[];
+    if(col){
+      items.push({label:'"'+short+'" 값으로 필터',act:()=>{REC.vals[col.k]={[v||'(미기재)']:1};REC.filterRow=true;recRender();}});
+      items.push({label:'"'+short+'" 제외',act:()=>{
+        const cur=REC.vals[col.k];const o={};
+        (cur&&Object.keys(cur).length?Object.keys(cur):recDistinct(col.k)).forEach(x=>o[x]=1);
+        delete o[v||'(미기재)'];REC.vals[col.k]=o;REC.filterRow=true;recRender();}});
+      items.push({sep:true});
+    }
+    items.push({label:'셀 값 복사',act:()=>copyText(v)});
+    items.push({label:'표 전체 복사',act:()=>recCopy()});
+    return items;
+  }
+  /* ⓪-2 대시보드 '현장별 하자처리현황' 행 · 사이드바 현장 항목 — 원본 ③⑤: 현장 열기·목록 바로가기.
+     사이드바 트리 항목은 .nvi.df-site — 컨테이너가 회차마다 바뀔 수 있어 클래스로 직접 잡는다 */
+  const siteEl=t.closest('#dfDashTbl [data-act="df.site"][data-sid], .df-site[data-sid]');
+  if(siteEl){
+    const sid=siteEl.dataset.sid;
+    const row=t.closest('tr');
+    return[
+      {label:'현장 열기',act:()=>{S.dfSid=sid;S.dfTab='sum';go('defect');}},
+      {sep:true},
+      {label:'미처리 목록',act:()=>recOpen(sid,'ul')},
+      {label:'장기미처리 목록',act:()=>recOpen(sid,'lul')},
+      {sep:true},
+      row?{label:'셀 값 복사',act:()=>copyText((t.closest('td')||row).textContent.trim())}:null,
+      row?{label:'표 복사',act:()=>copyText(tblText(row.closest('table')),'표를 복사했습니다')}:null
+    ].filter(Boolean);   /* openCtx 는 null 항목을 거르지 않는다 — 넣으면 메뉴가 통째로 죽는다 */
+  }
+  /* ⓪-3 종합 분석(AI) 영역 — 원본 ⑥(뷰어라 재생성은 없음) */
+  const ait=t.closest('.ait');
+  if(ait&&t.closest('#view-defect')){
+    return[{label:'분석 의견 복사',act:()=>copyText(ait.innerText.trim(),'분석 의견을 복사했습니다')}];
   }
   /* ⓪ 하자 표 — 표 복사 · 공종 행이면 그 공종 목록 */
   const dfTr=t.closest('#view-defect .dt tr, .rec-tbl tr');
@@ -5800,14 +5972,18 @@ function applyBg(){
      이상해진다(218차 위젯 회귀의 원인). 위젯에서는 배경 기능 전체를 무시한다.
      (WIDGET 상수는 아래쪽 선언이라 TDZ — location 으로 직접 검사) */
   if(/[?&]w=1\b/.test(location.search)){document.body.classList.remove('hasbg');return;}
-  let url='',al='80';
-  try{url=localStorage.getItem('calapp.bg')||'';al=localStorage.getItem('calapp.bgAlpha')||'90';}catch(e){}
+  let url='',al='80',bri='100';
+  try{url=localStorage.getItem('calapp.bg')||'';al=localStorage.getItem('calapp.bgAlpha')||'90';
+    bri=localStorage.getItem('calapp.bgBri')||'100';}catch(e){}
   const root=document.documentElement;
   root.style.setProperty('--app-bg-img',url?`url("${url}")`:'none');
   root.style.setProperty('--app-card-alpha',(Number(al)||90)/100);
+  root.style.setProperty('--app-bg-bri',String((Number(bri)||100)/100));   /* 사진 자체 밝기 */
   document.body.classList.toggle('hasbg',!!url);
   const btn=$('#bgClearBtn');if(btn)btn.hidden=!url;
   const dl=$('#bgAlpha');if(dl)dl.value=al;
+  const db=$('#bgBri');if(db)db.value=bri;
+  const dbv=$('#bgBriV');if(dbv)dbv.textContent=bri+'%';
   if(url)bgGrainPaint();      /* 필름 그레인은 배경이 있을 때만 그린다 */
   calGlassApply();
 }
@@ -6053,6 +6229,22 @@ const ACT={
   'rec.xlsx':()=>recXlsx(),
   'rec.pivot':()=>{PIV.on=!PIV.on;recRender();},
   'rec.showAll':()=>{REC.hidden={};recRender();},
+  /* ── 열 머리 우클릭 메뉴 액션 — 원본 app-boot.js 1214~1243 이식(저장소만 REC.vals 객체) ── */
+  'rec.menuToggleRow':()=>{REC.filterRow=!REC.filterRow;
+    const fr=document.querySelector('#mbody .rl-frow');if(fr)fr.classList.toggle('open',REC.filterRow);
+    if(!REC.filterRow){REC.filters={};document.querySelectorAll('#mbody .rl-fin').forEach(i=>{i.value='';});recRowsOnly();}
+    recCloseMenu();},
+  'rec.menuAll':el=>{const M=REC._menu;if(!M)return;M.sel=el.checked?new Set(M.all):new Set();recMenuRenderList();},
+  'rec.menuVal':el=>{const M=REC._menu;if(!M)return;const v=el.dataset.val;if(M.sel.has(v))M.sel.delete(v);else M.sel.add(v);recMenuSyncAll();},
+  'rec.menuTreeToggle':el=>{const M=REC._menu;if(!M)return;const n=el.dataset.node;if(M.expand.has(n))M.expand.delete(n);else M.expand.add(n);recMenuRenderList();},
+  'rec.menuTreeCheck':el=>{const M=REC._menu;if(!M||!M.dateTree)return;const leaves=recDateLeaves(M.dateTree,el.dataset.node);const st=recTri(leaves,M.sel);if(st==='all')leaves.forEach(v=>M.sel.delete(v));else leaves.forEach(v=>M.sel.add(v));recMenuRenderList();},
+  'rec.menuApply':()=>{const M=REC._menu;if(!M)return;
+    if(M.sel.size>=M.all.length)delete REC.vals[M.key];
+    else{const o={};M.sel.forEach(v=>o[v]=1);REC.vals[M.key]=o;}
+    recCloseMenu();recRender();},
+  'rec.menuClear':()=>{const M=REC._menu;if(!M)return;delete REC.vals[M.key];recCloseMenu();recRender();},
+  'rec.menuHideCol':()=>{const M=REC._menu;if(!M)return;const col=recCols().find(c=>c.k===M.key);REC.hidden[M.key]=1;recCloseMenu();recRender();toast('「'+(col?col.t:M.key)+'」 열을 숨겼습니다 · 아무 열 머리 우클릭으로 복원');},
+  'rec.menuShowCols':()=>{REC.hidden={};recCloseMenu();recRender();},
   'df.fold':el=>{const k=el.dataset.rid;
     const btn=el.closest('.df-reg'),wasOpen=btn&&btn.classList.contains('open');
     S.dfFold[k]=wasOpen?true:false;   /* true=접힘 · false=펼침 (기존 저장값과 호환) */
@@ -6078,7 +6270,8 @@ const ACT={
     const mb=String($('#vmMb').value||'').trim(),mk=String($('#vmMk').value||'').trim();
     if(!DF.vac[key])DF.vac[key]={};if(!DF.vac[key][field])DF.vac[key][field]={};
     DF.vac[key][field]['미분양']=mb;DF.vac[key][field]['미키불출']=mk;
-    if(S.live&&FB.db)FB.db.ref('report/'+rm+'/'+sid+'/vac/'+field).update({'미분양':mb,'미키불출':mk})
+    /* 게시본은 한글 키를 fbEncKey 로 인코딩해 저장한다 — 평문으로 쓰면 같은 노드에 두 형태가 섞인다 */
+    if(S.live&&FB.db)FB.db.ref('report/'+rm+'/'+sid+'/vac/'+field).update({[dfEncKey('미분양')]:mb,[dfEncKey('미키불출')]:mk})
       .catch(()=>toast('저장 실패 · 권한을 확인하세요'));
     closeModal();rDefect();},
   'df.ax.site':el=>{S.dfAxSite=el.dataset.ax;S.dfAxSiteAll=false;window._dfSort={};dfSiteAxisOnly(S.dfSid);},
@@ -6117,6 +6310,7 @@ const ACT={
     f.click();},
   'set.bgClear':()=>{try{localStorage.removeItem('calapp.bg');}catch(e){}applyBg();toast('배경을 없앴습니다');},
   'set.bgAlpha':el=>{const v=String(el.value||'80');try{localStorage.setItem('calapp.bgAlpha',v);}catch(e){}applyBg();},
+  'set.bgBri':el=>{const v=String(el.value||'100');try{localStorage.setItem('calapp.bgBri',v);}catch(e){}applyBg();},
   'cal.set':el=>{
     const p=$('#calSet');if(!p)return;
     const on=!p.classList.contains('on');
@@ -6606,6 +6800,21 @@ document.addEventListener('input',e=>{
     box.insertBefore(chip,inp.closest('.pal-add'));
   }
   chip.dataset.c=v;chip.style.background=v;chip.classList.add('sel');
+});
+/* 미처리 목록 — 필터행 입력·메뉴 검색은 input 이벤트로 듣는다(click 위임으로는 못 받는다) */
+document.addEventListener('input',e=>{
+  const t=e.target;
+  if(t.classList&&t.classList.contains('rl-fin')){
+    REC.filters[t.dataset.key]=t.value;
+    if(!String(t.value||'').trim())delete REC.filters[t.dataset.key];
+    recRowsOnly();return;
+  }
+  if(t.dataset&&t.dataset.act==='rec.menuSearch'){
+    const M=REC._menu;if(!M)return;
+    M.q=t.value;const q=M.q.trim().toLowerCase();
+    if(q)M.sel=new Set(M.all.filter(v=>String(v).toLowerCase().includes(q)));
+    recMenuRenderList();return;
+  }
 });
 /* 업무 폼은 자동 저장 — 입력이 멎으면 조용히 반영된다(저장 버튼 없음) */
 document.addEventListener('input',e=>{if(e.target.closest&&e.target.closest('#dpEdit'))planAutosave();});
