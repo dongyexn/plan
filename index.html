@@ -632,17 +632,15 @@ html.dark .stx-done{color:#3BA85C;}
 /* 앱 배경화면(로컬 전용) — 처리 방식은 디뉴어 앱의 로그인 배경과 같다:
    ① 사진 위에 위→아래 어두운 그라디언트 ② 가장자리를 어둡게 눌러 주는 비네트(radial)
    ③ 정적 필름 그레인 캔버스(#bgGrain, overlay). 사진 자체는 눕히지 않고 레이어로만 다스린다. */
-body::before{content:'';position:fixed;inset:0;z-index:-2;background-image:var(--app-bg-img,none);background-size:cover;background-position:center;opacity:0;transition:opacity .45s ease;filter:brightness(var(--app-bg-bri,1));}
+body::before{content:'';position:fixed;inset:0;z-index:-2;background-image:var(--app-bg-img,none);background-size:cover;background-position:center;opacity:0;transition:opacity .45s ease;}
 body.hasbg::before{opacity:1;}
 /* 그라디언트 + 비네트 한 겹(디뉴어 #gate 와 같은 구성) — 밑칠(단색 덮개) 방식은 대체됐다 */
-/* 226차: '넣을 때 너무 어둡다' 지시로 강도 완화 — 그라디언트 .40/.62 → .16/.30, 비네트 .42 → .26.
-   사진 자체 밝기는 --app-bg-bri(설정 슬라이더)로 조절한다. */
 body.hasbg::after{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
-  background:radial-gradient(125% 125% at 50% 42%, transparent 52%, rgba(0,0,0,.26) 100%),
-             linear-gradient(180deg, rgba(8,8,12,.16) 0%, rgba(8,8,12,.30) 100%);}
+  background:radial-gradient(125% 125% at 50% 42%, transparent 52%, rgba(0,0,0,.42) 100%),
+             linear-gradient(180deg, rgba(8,8,12,.40) 0%, rgba(8,8,12,.62) 100%);}
 /* 안쪽 비네트 한 겹 더 — 가운데는 그대로 두고 가장자리만 눌러 화면이 붕 뜨지 않게(디뉴어 #gate::after) */
 body.hasbg #app::after{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
-  background:radial-gradient(118% 96% at 50% 44%, transparent 46%, rgba(0,0,0,.28) 100%);}
+  background:radial-gradient(118% 96% at 50% 44%, transparent 42%, rgba(0,0,0,.5) 100%);}
 /* 정적 필름 그레인 — 캔버스(#bgGrain)를 한 번만 그린다. 디뉴어와 같은 opacity .17 · overlay */
 #bgGrain{position:fixed;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none;
   opacity:.17;mix-blend-mode:overlay;display:none;}
@@ -689,10 +687,7 @@ html.dark body.hasbg .sb-more,html.dark body.hasbg .ctxmenu,html.dark body.hasbg
 html.dark body.hasbg .nq-panel,html.dark body.hasbg .popbox{--bg2:#1C1C1E;--surf2:#26262A;--surf3:#303036;--glass3:#1C1C1E;}
 /* 블록 사이는 배경 사진이 그대로 비친다 — 사이드바 자체에는 판을 깔지 않는다(깔면 '한 장'이 돼 버린다).
    유리(반투명+blur)는 각 블록에만. 블록 6개 수준의 blur 는 하자 화면과 달리 체감 부담이 없다. */
-/* 226차 지시: 사이드바 블록은 배경과 무관하게 **흰색 불투명 고정** — 유리·블러 제거.
-   다크+배경 조합에서도 흰 블록(글자는 아래 보정으로 라이트 톤 강제). */
-body.hasbg #sidebar>*{background:#fff;-webkit-backdrop-filter:none;backdrop-filter:none;}   /* 기본 블록 규칙의 blur(20px)까지 끈다 — 흰 불투명이라 시각 효과가 없고 GPU 만 쓴다 */
-html.dark body.hasbg #sidebar>*{background:#fff;--lbl:#1C1C1E;--lbl2:rgba(60,60,67,.7);--lbl3:rgba(60,60,67,.5);--fill:rgba(120,120,128,.15);--sep:rgba(60,60,67,.15);color:var(--lbl);}
+body.hasbg #sidebar>*{background:var(--glass3);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);}
 body.hasbg .card,body.hasbg #sidebar>*{box-shadow:0 2px 14px rgba(16,24,40,.12);}
 /* ⚠ 달력을 감싸는 카드(.cal-card)에는 그림자를 주지 않는다 — 판이 투명이라 그림자만 네모로 떠서
    달력과 위 버튼을 한 덩어리로 감싼 것처럼 보였다. 그림자는 격자와 버튼에 각각 건다. */
@@ -1132,40 +1127,6 @@ body.snap .sbsl:first-of-type{display:none;}
   text-align:center;padding:9px;border-bottom:1.5px solid var(--sepo);cursor:pointer;height:34px;box-sizing:border-box;}
 .rec-tbl th:hover{background:var(--surf3);}
 .rec-tbl th{position:sticky;user-select:none;}
-/* ══ 필터행 + 열 머리 우클릭 메뉴 — 원본(하자처리현황) index.html 690~718 이식 ══
-   필터행은 머리(34px) 바로 아래에 sticky 로 붙는다. 인쇄에는 넣지 않는다(아래 print 규칙). */
-.rl-frow{display:none;}
-.rl-frow.open{display:table-row;}
-.rl-frow td.rl-fc{position:sticky;top:34px;z-index:1;background:var(--surf2);padding:4px 6px;border-bottom:1.5px solid var(--sepo);}
-.rl-fin{width:100%;box-sizing:border-box;font-size:11px;padding:4px 6px;border:1px solid var(--sep);border-radius:6px;background:var(--bg2);}
-.rl-fin:focus{outline:none;border-color:var(--b400);}
-.rl-menu{position:fixed;z-index:2000;width:244px;background:var(--bg2);border:1px solid var(--sep);border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,.18);padding:8px;display:none;}
-.rl-menu-hd{font-size:11px;font-weight:700;color:var(--lbl2);padding:2px 4px 6px;}
-.rl-menu-row{display:block;width:100%;text-align:center;padding:7px 8px;border:1px solid var(--sep);border-radius:7px;background:var(--fill);font-size:12px;color:var(--lbl);cursor:pointer;margin-bottom:4px;}
-.rl-menu-row:hover{background:var(--b50);}
-.rl-menu-sep{height:1px;background:var(--sep);margin:8px 0 6px;}
-.rl-menu-q{width:100%;box-sizing:border-box;font-size:12px;padding:6px 8px;border:1px solid var(--sep);border-radius:7px;margin-bottom:6px;}
-.rl-menu-q:focus{outline:none;border-color:var(--b400);}
-.rl-menu-list{max-height:236px;overflow:auto;border:1px solid var(--sep);border-radius:7px;padding:4px;}
-.rl-menu-item{display:flex;align-items:center;gap:7px;padding:4px 5px;border-radius:5px;cursor:pointer;font-size:12px;color:var(--lbl);}
-.rl-menu-item:hover{background:var(--b50);}
-.rl-menu-item span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.rl-menu-item input{flex:none;}
-.rl-menu-all{font-weight:600;border-bottom:1px solid var(--sep);border-radius:0;margin-bottom:2px;padding-bottom:6px;}
-.rl-menu-note{font-size:10.5px;color:var(--lbl3);padding:5px;}
-.rl-menu-foot{display:flex;gap:6px;margin-top:8px;}
-.rl-menu-foot .btn{flex:1;}
-.rl-tree-row{display:flex;align-items:center;gap:5px;padding:2px 4px;border-radius:5px;font-size:12px;color:var(--lbl);}
-.rl-tree-row:hover{background:var(--b50);}
-.rl-tree-all{font-weight:600;border-bottom:1px solid var(--sep);border-radius:0;margin-bottom:2px;padding-bottom:5px;}
-.rl-tree-tog{flex:none;width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--sep);background:var(--bg2);color:var(--lbl2);font-size:12px;line-height:1;cursor:pointer;border-radius:4px;padding:0;font-weight:700;}
-.rl-tree-tog:hover{background:var(--b50);border-color:var(--b300);color:var(--bt1);}
-.rl-tree-spacer{visibility:hidden;border:none;background:none;cursor:default;}
-.rl-tree-cl{display:flex;align-items:center;gap:6px;flex:1;min-width:0;cursor:pointer;}
-.rl-tree-cl input{flex:none;margin:0;}
-.rl-tree-lbl{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.rec-none-td{text-align:center;padding:20px;color:var(--lbl3);}
-@media print{.rl-frow,.rl-menu{display:none!important;}}
 .rec-tbl th .fl{font-style:normal;font-size:10.5px;font-weight:700;color:var(--bt1);background:var(--b50);border-radius:5px;padding:0 4px;margin-left:3px;}
 .rec-tbl th .rz{position:absolute;top:0;right:0;width:7px;height:100%;cursor:col-resize;}
 .rec-tbl th .rz:hover{background:var(--b300);}
@@ -2822,9 +2783,7 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
               <span style="display:inline-flex;gap:6px;align-items:center"><button class="btn bo bsm" data-act="set.bgPick">이미지 선택</button><button class="btn bg2 bsm" id="bgClearBtn" data-act="set.bgClear" hidden>없애기</button></span></div>
             <div class="share-row" style="margin-top:10px"><div><b style="font-size:13px">레이아웃 투명도</b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">카드가 배경을 얼마나 비칠지 · 하자 관리 화면은 항상 불투명</div></div>
               <input type="range" id="bgAlpha" min="60" max="100" step="5" value="90" data-act="set.bgAlpha" style="width:160px"></div>
-            <div class="share-row" style="margin-top:10px"><div><b style="font-size:13px">배경 밝기 <b id="bgBriV" style="color:var(--bt1)">100%</b></b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">사진 자체를 밝게 또는 어둡게</div></div>
-              <input type="range" id="bgBri" min="55" max="140" step="5" value="100" data-act="set.bgBri" style="width:160px"></div>
-
+            <div class="share-row" style="margin-top:10px"><div><b style="font-size:13px">달력 투명도 · 유리 톤</b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">업무 일정 화면의 달력 설정(⚙) 버튼에서 바로 조절합니다</div></div></div>
           </div>
           <div class="set-card card">
             <div class="set-h">하자 관리 스냅샷</div>
@@ -2863,5 +2822,5 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=255"></script>
+<script src="./app.js?v=254"></script>
 </body></html>
