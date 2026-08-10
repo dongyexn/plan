@@ -1,6 +1,6 @@
 # 인수인계 — 일정공유 달력 앱 (calapp)
 
-새 대화를 시작할 때 이 파일을 먼저 읽으면 됩니다. 224차 작업까지 반영된 상태입니다.
+새 대화를 시작할 때 이 파일을 먼저 읽으면 됩니다. 225차 작업까지 반영된 상태입니다.
 (⚠ 이 줄의 차수는 배포마다 갱신할 것 — 한동안 81차로 방치돼 인수인계 문서 구실을 못 했다.)
 
 ## 1. 이 앱이 무엇인가
@@ -2924,6 +2924,34 @@ calapp 에 이식된 A4 설정값들을 96dpi 로 전 쪽 실측해 검토했다
   헤드리스에서 print 폴백이 PDF 캡처 중 정리를 실행할 수 있다(§223) — 캡처 전 타이머 무력화.
 - a4-audit.mjs(전 쪽 여백·경계 침범 자동 실측)를 검증 스위트에 추가. 4경로 PDF · 여백 플래그 0.
 - app.js?v=253 · APP_VER 2.3.9.
+
+### 225차 — 원본(하자처리현황) 소스 확보 · 대시보드 픽셀 정렬
+원본 zip(report-v2026-08-04.2, /home/claude/work/orig)이 확보돼 소스 단위 대조가 가능해졌다.
+사용자 스샷 규모(현장 12·주 31·접수 78만)로 calapp 을 렌더해 원본 스샷과 나란히 맞췄다.
+- **'도넛·범례·바·숫자가 다 크다'의 근본 원인 — 범례 2열 조건을 내가 임의로 넣은 것**:
+  원본은 범례가 **항상 lg-2col**(lgRows 가 --lgr=ceil(n/2) 주입, CSS grid-auto-flow:column 이 좌열부터
+  세로 채움 — 12현장이면 6행×2열). 220~222차에 '폭 620 이상일 때만 2열' 토글을 넣어 1열 12행이 되며
+  ① 도넛 카드가 세로 팽창 ② opsr 행높이 동반 팽창 ③ mom(justify:space-between)의 행간까지 벌어져
+  전부 커 보였다. 원본 CSS(1184~1201행)와 값 일치로 복원(1col 기본 패딩 16/24·pct48, 2col 축소 예외,
+  .canv flex:0 0 210px, .l display:contents 래퍼) + 원본 768px 모바일 분기 이식.
+  실측: opsr 카드 260px(원본 min-height 그대로)·범례 2열·행 22px·도넛 210px·mom행 63px.
+- **추이 차트 원본 동일화 7건**: x축 tick font 10 고정(가변 7~10 제거), tooltip
+  `position:'aboveAll'+yAlign:'top'+caretPadding:6`(+aboveAll positioner 를 dfChartInit 에 등록 —
+  원본 app-core.js 774), 라인 hover 세트(pointHoverBorderWidth 3·흰 테두리·hoverBorderWidth 3.5),
+  막대 pointStyle:'rectRounded'(툴팁 마커), 라벨 textShadow, 라벨 display 에 innerWidth>768 조건 3곳.
+- **mom 사소 정렬**: prev 바 #C7DDF6 고정색·트랙 --bg·radius 99px·hover filter·delta column+gap3.
+- **⚠ 원본 스샷과 코드의 알려진 불일치(사용자 확인 대기)**: 원본 화면 스샷엔 추이 막대 위 총합·라인
+  끝 라벨이 **안 보이지만 원본 소스에는 있다** — 원본의 라벨 페이드($la)가 initial 애니메이션에서만
+  시작되므로 연도 변경 등 재렌더 후엔 라벨이 영영 0 로 남는 특성 때문으로 판단. calapp 은 소스대로
+  라벨을 표시한다(첫 렌더 기준). 지우려면 total 라벨 제거가 아니라 표시 임계 조정으로.
+- 검증 함정: ① headless 의 큰 clip screenshot 은 재합성 중 가속 캔버스를 비운다 —
+  **captureBeyondViewport:false** 필수(도넛·추이가 빈 캡처로 나왔던 원인) ② rDefectDash 는 DF.kpi 가
+  아니라 **d.wk[sid] 주간 원본**에서 dfStFromWeekly 로 직접 계산 — 합성 시드는 wk 를 채워야 한다
+  ③ print-full 의 C→D 는 print no-op 폴백(1500ms)이 D 렌더를 걷어가는 경합이 있어 C 정리 후 타이머
+  전부 클리어(3회 반복 결정성 확인).
+- 게이트: 정적 감사 FAIL 0 · WARN 0(원본 정렬 9항목·재유입 금지 2항목), 스모크·verify-r9·sweep·
+  print-full×3·a4-audit 전부 통과.
+- app.js?v=254 · APP_VER 2.4.0.
 
 ## 8. 보류하기로 한 것
 
