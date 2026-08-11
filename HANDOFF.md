@@ -1,6 +1,6 @@
 # 인수인계 — 일정공유 달력 앱 (calapp)
 
-새 대화를 시작할 때 이 파일을 먼저 읽으면 됩니다. 227차 작업까지 반영된 상태입니다.
+새 대화를 시작할 때 이 파일을 먼저 읽으면 됩니다. 229차 작업까지 반영된 상태입니다.
 (⚠ 이 줄의 차수는 배포마다 갱신할 것 — 한동안 81차로 방치돼 인수인계 문서 구실을 못 했다.)
 
 ## 1. 이 앱이 무엇인가
@@ -3028,6 +3028,51 @@ calapp.bgBri). 사이드바 블록은 hasbg 에서 **#fff 불투명 고정 + 블
 - 게이트: 감사 FAIL 0·WARN 0, 스모크·r2·r5·r7·r9·r10·r11·sweep·print-full×3·a4-audit 통과.
   Ctrl+P PDF 2쪽·전용 인쇄 PDF 1쪽 시각 확인.
 - app.js?v=256 · APP_VER 2.4.2.
+
+### 228차 — 추이·도넛을 원본과 diff-0 으로 ("코드를 그대로 갖다붙여라")
+사용자 지적: 추이·도넛 요소가 여전히 원본과 다르다. 원인은 **원본에 없는 임의 '개선'**들이었다 —
+옵션을 골라 맞추는 접근 자체가 잔차를 남긴다. 이번부터 차트 코드는 **원본 문자 그대로 + 명시된
+어댑터 최소**가 원칙이고, 편차는 주석으로 전부 명기한다.
+- 걷어낸 임의 추가: ① dfMoDLCfg 의 자릿수 축소 while 루프(큰 수에서 라벨이 원본보다 작아짐)
+  ② 추이 tick/축제목 12·13 고정(원본은 모바일 9·10 반응형 _tkSize/_atSize)
+  ③ 도넛 `animation:{duration:fn}` 커스텀(원본은 **미지정** — 기본 회전·원호 이징까지 달라진다)
+  ④ 도넛 데이터셋 pointStyle:'circle' 누락 ⑤ 도넛 툴팁 caretPadding:32 누락
+  ⑥ 추이 툴팁 콜백 `(ctx.parsed.y??ctx.parsed??0)` 원본식 ⑦ onComplete 의 console.warn.
+- 남긴 어댑터(각 1곳·주석 명기): 추이 DUR 함수형(DF.noAnim — 216차 사이드바 토글 근거),
+  도넛 `...(DF.noAnim?{animation:{duration:0}}:{})`, 범례 data-tip 병기(calapp 툴팁),
+  dfDonutDraw 의 방어(빈 데이터·Number 캐스팅).
+- **검증 방식 전환**: 눈대조가 아니라 **런타임 옵션 전수 대조**(verify-r12, 23항목) —
+  차트 인스턴스에서 데이터셋 시그니처(rectRounded·stack·order·hover 세트·라벨 offset/stroke/shadow),
+  스케일(grace 25%·niceFitRange·tick 크기), 툴팁(aboveAll·caret 6/32·pointStyle),
+  moDLCfg 산식 표, 도넛(cutout 58%·padding 14·centerText·datalabels off·기본 애니),
+  범례(--lgr·.l 구조·data-tt·hover↔조각 활성 연동)를 원본 기대값과 직접 비교.
+- 감사: 필수 5(circle·caret32·_atSize·moDLCfg 원본식·툴팁 콜백) + 금지 2(자릿수 루프·
+  커스텀 duration 재유입), 구 'DF.noAnim?0:1000' 필수 항목은 spread 어댑터 검사로 교체.
+- 게이트: 감사 FAIL 0·WARN 0, 스모크·r10·r11·r12·sweep·print-full×3·a4-audit 통과.
+- app.js?v=257 · APP_VER 2.4.3.
+
+### 229차 — 사용자 지시 10건(공통 동기화·문구·간격 미세 조정) + 위젯 팝업 조사
+- **① 업무구분 '공통' → 담당자 자동 '공통'**: kindOwnerSync(kindId,ownId) — change 위임에서
+  tnKind→tnAsg, peKind→peOwners 배선(value 'gather'면 담당자 ''). ② 노출 문구 '팀 공통'→'공통'
+  (담당자 옵션·빈 목록 문구 — 주석은 유지). ③ 처리계획 라벨 '지난달/이번 달'→'전월/금월'
+  (dfPrevPlanTop·dfPlanCell·비교 셀). ⑤ 피벗 항목에 '공간'(space).
+- **④ 달력 테두리 반투명**: calGlassApply 의 #calDyn 에 hasbg 규칙 —
+  `#fcal{border-color:rgba(255,255,255,.28*tint)}` + `.fc-scrollgrid` 링 .22*tint.
+- **⑥⑦ 공가 카드**: 수치 .vseg-v 26→**22px**(상단 KPI .kv 와 동일), 카드에 vac-stat 클래스 부여
+  후 `.vac-stat .sh{margin-bottom:8px}`(기본 12).
+- **⑧⑨⑩ 사이드바**: 접기버튼 `.sbtg{margin-right:-3px}`(우간격 15→12px).
+  분류 라벨 위 간격 동일화 — `.sbsc` padding-top 8→**7**, `.sb-bottom` padding-top 6→**7**.
+  ⚠ 사용자 문면은 "관리 줄이고 업무 늘려"였지만 실측·스샷은 반대(업무 8 > 관리 6) —
+  체감상 라벨 이름이 뒤바뀐 표현으로 판단, 의도(둘을 살짝만 움직여 동일)에 맞춰 7/7 로.
+  알림 팝업 `.sb-tools .tb-pop` left +8→**+18px**(검색 nq-panel 과 동일 간격).
+- **⑪ 위젯 알림/내업무/설정 팝업 '높아짐'** — v254 zip 과 픽셀 실측 비교(alert 142 · mine 290 ·
+  set 352px)로 **웹 코드 동일 확인 = 회귀 아님**. wfz 배율 규칙 수도 동일. 실데이터 건수·위젯 창
+  높이(max-height:calc(100dvh-76px) 비례)·exe 쪽 요인 후보 — 재현 조건 요청으로 보고.
+- 검증 함정: 처리계획 셀(pp-cell)은 별도 'plan' 탭이 아니라 **lt 탭 상위5 표·vac 탭 공가 표 안**
+  — 시드는 S.dfTab='lt' + kpi.topLt/topLtPrev + DF.sw/DF.sam 까지.
+- verify-r13(11항목) 신설, 감사 필수 11·금지 2 추가.
+- 게이트: 감사 FAIL 0·WARN 0, 스모크·r2·r10·r11·r12·r13·sweep·print-full×3·a4-audit 통과.
+- app.js?v=258 · APP_VER 2.4.4.
 
 ## 8. 보류하기로 한 것
 
