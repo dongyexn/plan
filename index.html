@@ -76,15 +76,15 @@ svg{display:block;flex-shrink:0;}
 .sblogo{flex-shrink:0;display:flex;align-items:center;justify-content:center;}
 .sbtext{display:flex;flex-direction:column;justify-content:center;min-width:0;}
 .sbn{font-size:14px;font-weight:700;color:var(--lbl);line-height:1.15;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;}
-.sbtg{width:30px;height:30px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--lbl2);transition:background var(--tr),color var(--tr);}
+.sbtg{margin-right:-3px;width:30px;height:30px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--lbl2);transition:background var(--tr),color var(--tr);}
 .sbtg:hover{background:var(--fill);color:var(--bt1);}
 .sbtg svg{width:16px;height:16px;transition:transform var(--tr);}
 #sidebar.mini .sbtg svg{transform:scaleX(-1);}
-.sbsc{flex:1;overflow-y:auto;overflow-x:hidden;padding:8px;display:flex;flex-direction:column;}
+.sbsc{flex:1;overflow-y:auto;overflow-x:hidden;padding:7px 8px 8px;display:flex;flex-direction:column;}
 .sbsc>.sbsl:first-child{padding-top:2px;}
 #sidebar.mini .sbsc{overflow-x:visible;overflow-y:auto;}
 .sbsc>*{flex-shrink:0;}
-.sb-bottom{flex:0 0 auto;padding:6px 8px 8px;}   /* 스크롤 영역 밖 — 목록이 길어도 관리·프로필은 늘 아래에 남는다 */
+.sb-bottom{flex:0 0 auto;padding:7px 8px 8px;}   /* '업무 관리'(7px)와 위 간격 동일 */   /* 스크롤 영역 밖 — 목록이 길어도 관리·프로필은 늘 아래에 남는다 */
 /* 하자 관리 소분류(권역) — 꺾쇠로 접었다 편다 */
 .df-reg{display:flex;align-items:center;gap:6px;width:100%;padding:8px 8px 4px 14px;background:none;border:0;
   font:inherit;font-size:12px;font-weight:700;color:var(--lbl3);letter-spacing:.02em;cursor:pointer;white-space:nowrap;}
@@ -167,7 +167,7 @@ svg{display:block;flex-shrink:0;}
 
 #main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;background:transparent;}
 /* 상단바 알림 팝오버 — 모달 대신 버튼 아래에 붙는다 */
-.sb-tools .tb-pop{left:calc(100% + 8px);right:auto;top:0;}
+.sb-tools .tb-pop{left:calc(100% + 18px);right:auto;top:0;}   /* 검색 패널(+18px)과 같은 간격 */
 .tb-pop{position:absolute;z-index:210;top:calc(100% + 10px);right:0;width:352px;max-height:min(64dvh,540px);
   display:none;flex-direction:column;background:var(--bg2);border:1px solid var(--sep);border-radius:var(--rxl);
   box-shadow:0 18px 44px rgba(16,24,40,.18),0 2px 8px rgba(16,24,40,.06);overflow:hidden;}
@@ -1085,11 +1085,12 @@ body.snap .sbsl:first-of-type{display:none;}
 #view-defect .ait{font-size:14px;line-height:1.7;color:var(--lbl);word-break:keep-all;overflow-wrap:anywhere;}
 #view-defect .ait p{margin:0 0 8px;line-height:1.7;}#view-defect .ait p:last-child{margin-bottom:0;}
 /* 공가 현황 스트립(vrow) */
+#view-defect .vac-stat .sh{margin-bottom:8px;}   /* 229차: 제목~수치 간격 살짝 축소 */
 #view-defect .vrow{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:0 -20px;}
 #view-defect .vseg{padding:4px 18px;display:flex;flex-direction:column;justify-content:center;position:relative;}
 #view-defect .vseg+.vseg::before{content:"";position:absolute;left:-5px;top:8px;bottom:8px;width:1px;background:var(--sep);}
 #view-defect .vseg-l{font-size:14px;font-weight:500;color:var(--lbl2);margin-bottom:4px;}
-#view-defect .vseg-v{font-size:26px;font-weight:700;line-height:1;color:var(--lbl);font-variant-numeric:tabular-nums;}
+#view-defect .vseg-v{font-size:22px;font-weight:700;line-height:1;color:var(--lbl);font-variant-numeric:tabular-nums;}
 #view-defect .vseg-v .vseg-u{font-size:12px;font-weight:400;color:var(--lbl2);margin-left:2px;}
 #view-defect .vseg-m{font-size:11px;color:var(--lbl2);margin-top:4px;}
 #view-defect .vseg .vph{color:var(--lbl3);font-weight:500;font-size:18px;}
@@ -2966,5 +2967,5 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=256"></script>
+<script src="./app.js?v=258"></script>
 </body></html>

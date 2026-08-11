@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='2.4.2';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='2.4.4';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -218,7 +218,7 @@ document.addEventListener('input',e=>{
 /* 담당자 단일 지정 select — 53차에 다중 칩(ownPickHTML)에서 단순화 */
 function ownSelHTML(id,cur,people){
   return `<select class="inp inp-sm" id="${id}" aria-label="담당자">
-    <option value="">팀 공통</option>
+    <option value="">공통</option>
     ${people.map(p=>'<option value="'+esc(p.id)+'"'+(p.id===cur?' selected':'')+'>'+esc(p.name)+'</option>').join('')}
   </select>`;
 }
@@ -1386,7 +1386,7 @@ function widSideRender(){
           (it.date&&daysBetween(todayStr(),it.date)<0)?'over':(it.date&&daysBetween(todayStr(),it.date)===0?'now':''),
           it.text||'제목 없음',
           [kindLabel(it.kind),siteName(it.site)].filter(Boolean).join(' · '))).join('')
-        :empty('i-tasks','팀 공통 업무가 없습니다'))
+        :empty('i-tasks','공통 업무가 없습니다'))
       +sec('미완료 업무','mine',tasks.length)
       +(tasks.length?cut(tasks,'mine').map(({sid,iid,it,over})=>row('wid.goTask',
           ' data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" data-date="'+esc(it.date||'')+'"',
@@ -2634,6 +2634,11 @@ function tkBodyHTML(split,prog,plan,kind){
     : `<div class="frow"><label>내용</label><textarea class="inp inp-sm" id="tnProg" maxlength="2000" placeholder="${esc(kindLabel(kind))} 내용을 적으세요">${esc(prog)}</textarea></div>`;
 }
 /* 업무 구분을 바꾸면 본문 칸 구성이 달라진다 — 그 부분만 다시 그려 다른 입력을 지키지 않게 한다 */
+/* 업무 구분을 '공통'으로 고르면 담당자도 공통(빈 값)으로 — 공통 업무는 특정 담당자에게 걸지 않는다 */
+function kindOwnerSync(kindId,ownId){
+  const k=$('#'+kindId),o=$('#'+ownId);
+  if(k&&o&&k.value==='gather')o.value='';
+}
 function tkKindRefresh(){
   const sec=$('#tnBodySec');if(!sec)return;
   const kind=kindOf(($('#tnKind')&&$('#tnKind').value)||'');
@@ -3303,15 +3308,13 @@ function dfChartInit(){
   if(!Chart.__ctReg){Chart.register({id:'centerText',afterDraw(chart,_,opts){if(!opts||!opts.display)return;const{ctx,chartArea:{left,right,top,bottom}}=chart;const cx=(left+right)/2,cy=(top+bottom)/2;ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle=opts.valueColor||cvar('--lbl','#1C1C1E');ctx.font=`700 ${opts.valueSize||16}px 'Pretendard Variable',Pretendard,sans-serif`;ctx.fillText(opts.value||'',cx,cy-2);ctx.fillStyle=opts.labelColor||cvar('--ch-axis','rgba(60,60,67,.58)');ctx.font=`600 ${opts.labelSize||11}px 'Pretendard Variable',Pretendard,sans-serif`;ctx.fillText(opts.label||'',cx,cy+14);ctx.restore();}});Chart.__ctReg=true;}
   return true;
 }
+/* 원본 moDLCfg(app-core.js 691) 문자 그대로 — 228차: 자릿수 축소 루프(임의 추가)를 걷어냈다.
+   원본에 없는 '개선'이 화면 차이를 만든다 — 이 파일의 차트 코드는 원본과 diff 0 이 원칙이다. */
 function dfMoDLCfg(ctx){
   const ca=ctx.chart.chartArea,n=(ctx.chart.data.labels||[]).length||1;
   const catW=(ca&&ca.width)?ca.width/n:60;
-  let size=catW>=50?11:catW>=42?10:catW>=34?9:catW>=27?8:7;
-  /* 값이 길면(천 단위 구분 포함) 칸을 넘는다 — 자릿수로 한 번 더 줄인다 */
-  const rows=(ctx.chart.data.datasets[3]&&ctx.chart.data.datasets[3].data)||[];
-  const maxLen=rows.length?Math.max(...rows.map(v=>Number(v||0).toLocaleString().length)):5;
-  while(size>5&&maxLen*size*0.62>catW-2)size-=0.5;
-  return{size,catW,showInner:catW>=46,totalEvery:catW>=26?1:2};
+  const size=catW>=50?11:catW>=42?10:catW>=34?9:catW>=27?8:7;
+  return {size,catW,showInner:catW>=46,totalEvery:catW>=26?1:2};
 }
 function dfNiceFit(lo,hi){
   const span=Math.max(hi-lo,1),padv=Math.max(span*0.12,1);
@@ -3342,6 +3345,7 @@ function dfTrendDraw(key,cid,wks){
   const barAnim={y:{duration:DUR,easing:'easeOutQuart',from:baseY},base:{duration:DUR,easing:'easeOutQuart',from:baseY}};
   const lineAnim={y:{duration:DUR,easing:'easeOutCubic',from:baseY}};
   const op=ctx=>ctx.chart.$la??0,opIn=ctx=>(ctx.chart.$la??0)*0.55;
+  const _atSize=(typeof window!=='undefined'&&window.innerWidth<=768)?10:13;const _tkSize=(typeof window!=='undefined'&&window.innerWidth<=768)?9:12;
   const innerDl=(color)=>({display:ctx=>window.innerWidth>768&&dfMoDLCfg(ctx).showInner&&ctx.dataset.data[ctx.dataIndex]>0,opacity:opIn,anchor:'center',align:'center',color,font:ctx=>({size:dfMoDLCfg(ctx).size,weight:600}),formatter:v=>v.toLocaleString()});
   const ds=[
     {type:'bar',label:'60일 이상',data:rows.map(x=>Number(x.lt60)||0),backgroundColor:cvar('--ch-d60','#DA6A60'),hoverBackgroundColor:cvar('--ch-d60h','#C65A50'),pointStyle:'rectRounded',stack:'u',borderRadius:0,borderSkipped:false,yAxisID:'y',order:3,animations:barAnim,datalabels:innerDl('#fff')},
@@ -3355,11 +3359,11 @@ function dfTrendDraw(key,cid,wks){
       datalabels:{display:ctx=>window.innerWidth>768&&(ctx.dataIndex===0||ctx.dataIndex===ctx.dataset.data.length-1),opacity:op,anchor:'center',align:ctx=>ctx.dataIndex===0?'right':'left',offset:8,clip:false,color:cvar('--ch-dld','#A0590A'),font:{size:11,weight:700},textStrokeColor:stroke,textStrokeWidth:4,textShadowColor:'rgba(0,0,0,.2)',textShadowBlur:3,formatter:v=>v.toLocaleString()}}];
   DF.ch[key]=new Chart(el,{data:{labels:rows.map(x=>`${Number(x.m)||0}월\n${Number(x.w)||0}주`),datasets:ds},
     options:{responsive:true,maintainAspectRatio:false,
-      animation:{duration:DUR,easing:'easeOutQuart',onComplete(ac){if(!ac.initial||ac.chart.$dlShown)return;ac.chart.$dlShown=true;const ch=ac.chart,t0=performance.now(),fd=350;const tick=()=>{if(!ch||ch.$destroyed||!ch.ctx)return;try{const p=Math.min(1,(performance.now()-t0)/fd);ch.$la=p*p*(3-2*p);ch.update('none');if(p<1)requestAnimationFrame(tick);}catch(e){}};requestAnimationFrame(tick);}},
-      plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,position:'aboveAll',yAlign:'top',caretPadding:6,padding:12,usePointStyle:true,boxWidth:10,boxHeight:10,boxPadding:6,callbacks:{label:ctx=>`${ctx.dataset.label}: ${(ctx.parsed.y??0).toLocaleString()}건`}}},
+      animation:{duration:DUR,easing:'easeOutQuart',onComplete(ac){if(!ac.initial||ac.chart.$dlShown)return;ac.chart.$dlShown=true;const ch=ac.chart,t0=performance.now(),fd=350;const tick=()=>{if(!ch||ch.$destroyed||!ch.ctx)return;try{const p=Math.min(1,(performance.now()-t0)/fd);ch.$la=p*p*(3-2*p);ch.update('none');if(p<1)requestAnimationFrame(tick);}catch(e){console.warn('label fade tick aborted',e);}};requestAnimationFrame(tick);}},
+      plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,position:'aboveAll',yAlign:'top',caretPadding:6,padding:12,usePointStyle:true,boxWidth:10,boxHeight:10,boxPadding:6,callbacks:{label:ctx=>`${ctx.dataset.label}: ${(ctx.parsed.y??ctx.parsed??0).toLocaleString()}건`}}},
       scales:{x:{grid:{display:false},ticks:{font:{size:10},color:ink,callback:function(v){return this.getLabelForValue(v).split('\n');}}},
-        y:{beginAtZero:true,position:'left',grace:'25%',grid:{color:grid},ticks:{font:{size:12}},title:{display:true,text:'미처리(건)',font:{size:13,weight:600},color:axisT}},
-        y1:{beginAtZero:false,min:y1min,max:y1max,position:'right',grid:{display:false},ticks:{font:{size:12}},title:{display:true,text:'접수·처리(건)',font:{size:13,weight:600},color:axisT}}}}});
+        y:{beginAtZero:true,position:'left',grace:'25%',grid:{color:grid},ticks:{font:{size:_tkSize}},title:{display:true,text:'미처리(건)',font:{size:_atSize,weight:600},color:axisT}},
+        y1:{beginAtZero:false,min:y1min,max:y1max,position:'right',grid:{display:false},ticks:{font:{size:_tkSize}},title:{display:true,text:'접수·처리(건)',font:{size:_atSize,weight:600},color:axisT}}}}});
 }
 function dfWkToTrend(w){return{m:Number(w.m)||Number(String(w.week).slice(5,7)),w:Number(w.wn)||0,
   cumR:Number(w.r)||0,cumRes:Number(w.res)||0,u:Number(w.u)||0,lt:(Number(w.d30)||0)+(Number(w.d60)||0),lt60:Number(w.d60)||0};}
@@ -3406,16 +3410,19 @@ function dfDonutDraw(key,cid,lgid,items){
   if(!data.length){if(lg)lg.innerHTML='<div class="dn-empty">자료 없음</div>';return;}
   const tot=data.reduce((a,x)=>a+Number(x.c),0);
   const border=cvar('--bg2',document.documentElement.classList.contains('dark')?'#212121':'#fff');
-  DF.ch[key]=new Chart(el,{type:'doughnut',data:{labels:data.map(d=>d.t),datasets:[{data:data.map(d=>Number(d.c)),backgroundColor:data.map((d,i)=>DF_PAL[i%DF_PAL.length]),borderWidth:3,borderColor:border,hoverOffset:12,hoverBorderWidth:3}]},
+  /* 원본 app-view.js 911·919행 문자 그대로 — pointStyle:'circle'·caretPadding:32 포함,
+     animation 옵션은 원본처럼 지정하지 않는다(도넛 기본 회전·원호 이징까지 동일해야 한다).
+     유일 편차: DF.noAnim(전용 인쇄·사이드바 토글) 때만 duration 0 을 덧씌우는 어댑터 한 줄. */
+  DF.ch[key]=new Chart(el,{type:'doughnut',data:{labels:data.map(d=>d.t),datasets:[{data:data.map(d=>Number(d.c)),backgroundColor:data.map((d,i)=>DF_PAL[i%DF_PAL.length]),borderWidth:3,borderColor:border,pointStyle:'circle',hoverOffset:12,hoverBorderWidth:3}]},
     options:{responsive:true,maintainAspectRatio:false,layout:{padding:14},cutout:'58%',
-      animation:{duration:()=>DF.noAnim?0:1000},   /* 사이드바 토글 리사이즈 동안은 즉시 상태(기본 1000ms 유지) */
+      ...(DF.noAnim?{animation:{duration:0}}:{}),
       plugins:{centerText:{display:true,value:tot.toLocaleString()+'건',label:'미처리'},legend:{display:false},
-        tooltip:{padding:12,usePointStyle:true,boxWidth:10,boxHeight:10,boxPadding:6,callbacks:{labelPointStyle:()=>({pointStyle:'circle',rotation:0}),label:ctx=>`${ctx.label}: ${ctx.parsed.toLocaleString()}건 (${tot>0?(ctx.parsed/tot*100).toFixed(1):0}%)`}},datalabels:{display:false}}}});
+        tooltip:{caretPadding:32,padding:12,usePointStyle:true,boxWidth:10,boxHeight:10,boxPadding:6,callbacks:{labelPointStyle:()=>({pointStyle:'circle',rotation:0}),label:ctx=>`${ctx.label}: ${ctx.parsed.toLocaleString()}건 (${tot>0?(ctx.parsed/tot*100).toFixed(1):0}%)`}},datalabels:{display:false}}}});
   if(lg){
     /* 원본과 동일: 범례는 항상 2열 — --lgr(행수)로 좌열부터 세로 채움. 폭 조건 토글은 원본에 없다(225차 철회). */
     lg.classList.add('lg-2col');
     lg.style.setProperty('--lgr',String(Math.max(1,Math.ceil(data.length/2))));
-    lg.innerHTML=data.map((d,i)=>`<div class="it" data-idx="${i}" data-tip="${esc(d.full||d.t)}"><span class="l"><span class="dt" style="background:${DF_PAL[i%DF_PAL.length]}"></span><span class="nm">${esc(d.t)}</span></span><span class="cnt">${Number(d.c).toLocaleString()}건</span><span class="pct">${tot>0?(Number(d.c)/tot*100).toFixed(1):0}%</span></div>`).join('');
+    lg.innerHTML=data.map((d,i)=>`<div class="it" data-idx="${i}"${d.full?` data-tt="${esc(d.full)}" aria-label="${esc(d.full)}"`:''} data-tip="${esc(d.full||d.t)}"><span class="l"><span class="dt" style="background:${DF_PAL[i%DF_PAL.length]}"></span><span class="nm">${esc(d.t)}</span></span><span class="cnt">${Number(d.c).toLocaleString()}건</span><span class="pct">${tot>0?(Number(d.c)/tot*100).toFixed(1):0}%</span></div>`).join('');
     lg.querySelectorAll('.it').forEach(it=>{
       it.addEventListener('mouseenter',()=>{const ch=DF.ch[key];if(!ch)return;const idx=Number(it.dataset.idx);ch.setActiveElements([{datasetIndex:0,index:idx}]);if(ch.tooltip)ch.tooltip.setActiveElements([{datasetIndex:0,index:idx}],{x:0,y:0});ch.update();});
       it.addEventListener('mouseleave',()=>{const ch=DF.ch[key];if(!ch)return;ch.setActiveElements([]);if(ch.tooltip)ch.tooltip.setActiveElements([],{x:0,y:0});ch.update();});
@@ -3700,11 +3707,11 @@ function dfSiteAxisOnly(sid){
 /* 지난달 계획 — 원본 prevPlanTop: 이번 달 입력 칸 바로 위에 쌓는다 */
 function dfPrevPlanTop(sid,field,trade){
   const txt=dfPlanGet(sid,field,dfPrevMonth(S.dfRm),trade);
-  return'<div class="pp-stack'+(txt?'':' pp-empty')+'"><span class="pp-lab">지난달</span>'
+  return'<div class="pp-stack'+(txt?'':' pp-empty')+'"><span class="pp-lab">전월</span>'
     +(txt?'<div class="pp-box">'+esc(txt)+'</div>':'<span class="pp-none">-</span>')+'</div>';
 }
 function dfPlanCell(sid,field,trade){
-  return`<td class="pp-cell">${dfPrevPlanTop(sid,field,trade)}<div class="pp-stack"><span class="pp-lab">이번 달</span><textarea class="inp plan-ta" rows="1" maxlength="5000" aria-label="처리계획" data-act="df.plan" data-sid="${esc(sid)}" data-f="${esc(field)}" data-t="${esc(trade)}">${esc(dfPlanGet(sid,field,S.dfRm,trade))}</textarea></div></td>`;
+  return`<td class="pp-cell">${dfPrevPlanTop(sid,field,trade)}<div class="pp-stack"><span class="pp-lab">금월</span><textarea class="inp plan-ta" rows="1" maxlength="5000" aria-label="처리계획" data-act="df.plan" data-sid="${esc(sid)}" data-f="${esc(field)}" data-t="${esc(trade)}">${esc(dfPlanGet(sid,field,S.dfRm,trade))}</textarea></div></td>`;
 }
 /* 상위 5개 공종 표 — 장기미처리·공가 공용(원본 trRowFn/vacRowsHTML) */
 function dfTop5Rows(sid,topList,prevMap,denom,field,vac){
@@ -3770,7 +3777,7 @@ function dfVacPane(sid,stat,vacSv,kind){
   const st=stat||{T:0,Res:0,Unr:0,Rate:0,Lt:0,Units:0,Top:[],TopPrev:{}};
   const perRecv=st.Units>0?(st.T/st.Units).toFixed(1):'-',perUnr=st.Units>0?(st.Unr/st.Units).toFixed(1):'-';
   return`<div class="as">
-    <div class="card"><div class="sh"><div class="st cardttl">${vl} 현황</div></div><div class="vrow">
+    <div class="card vac-stat"><div class="sh"><div class="st cardttl">${vl} 현황</div></div><div class="vrow">
       <div class="vseg vseg-edit" ${edit}><div class="vseg-l">${vl}</div><div class="vseg-v">${hasV?(mb+mk).toLocaleString():'<span class="vph">입력</span>'}<span class="vseg-u">${_u}</span></div><div class="vseg-m">미분양 ${mb.toLocaleString()} · 미키불출 ${mk.toLocaleString()}</div></div>
       <div class="vseg"><div class="vseg-l">전체 접수</div><div class="vseg-v">${st.T.toLocaleString()}<span class="vseg-u">건</span></div><div class="vseg-m">${_u}당 ${perRecv}건</div></div>
       <div class="vseg"><div class="vseg-l">처리 완료</div><div class="vseg-v">${st.Res.toLocaleString()}<span class="vseg-u">건</span></div><div class="vseg-m">처리율 ${(Number(st.Rate)||0).toFixed(1)}%</div></div>
@@ -4203,8 +4210,8 @@ function rptSite(sid){
       return `<tr><td>${i+1}</td><td class="l">${esc(x.t)}</td><td class="l">${esc(x.co||'-')}</td>`+
         `<td>${rpN(pc)}</td><td class="dn">${rpN(x.c)}</td><td>${rpDelta(d)}</td>`+
         `<td>${num?rpPct(x.c,num):'-'}</td><td class="plan">`+
-        `<div class="prev"><span class="lb">지난달</span><span class="tx">${cell(prev)}</span></div>`+
-        `<div class="cur"><span class="lb">이번 달</span><span class="tx">${cell(cur)}</span></div></td></tr>`;}).join('');
+        `<div class="prev"><span class="lb">전월</span><span class="tx">${cell(prev)}</span></div>`+
+        `<div class="cur"><span class="lb">금월</span><span class="tx">${cell(cur)}</span></div></td></tr>`;}).join('');
     return `<table class="plan-tbl"><thead><tr>
       <th style="width:4%">순위</th><th class="l" style="width:9%">공종</th><th class="l" style="width:14%">시공업체</th>
       <th style="width:6.5%">전월</th><th style="width:6.5%">금월</th><th style="width:7%">전월 대비</th><th style="width:7%">비율</th>
@@ -4810,6 +4817,7 @@ const PIVOT_FIELDS=[
   {key:'__month',label:'접수월'},
   {key:'trade',label:'공종'},
   {key:'defectClass',label:'하자구분'},
+  {key:'space',label:'공간'},
   {key:'defectType',label:'하자유형'},
   {key:'repairParty',label:'보수주체'},
   {key:'contractor',label:'시공업체'},
@@ -6031,6 +6039,9 @@ function calGlassApply(){
   let dyn=document.getElementById('calDyn');
   if(!dyn){dyn=document.createElement('style');dyn.id='calDyn';document.head.appendChild(dyn);}
   dyn.textContent=[
+    /* 229차: 달력을 두르는 선도 유리와 같은 반투명 — 불투명 실선(--sep)이 유리 위에 남아 있었다 */
+    'body.hasbg #fcal{border-color:rgba(255,255,255,'+f(.28*tint)+');}',
+    'body.hasbg #fcal .fc-scrollgrid{box-shadow:0 0 0 1px rgba(255,255,255,'+f(.22*tint)+');}',
     'body.hasbg #fcal td.fc-daygrid-day{background:rgba('+B+','+f(a)+');}',
     /* 공휴일도 주말과 같은 칸 색 — 쉬는 날이라는 뜻이 같다(위젯과 동일) */
     'body.hasbg #fcal td.fc-daygrid-day.fc-day-sat,body.hasbg #fcal td.fc-daygrid-day.fc-day-sun,body.hasbg #fcal td.fc-daygrid-day.hol{background:rgba('+W+','+f(a*.92)+');}',
@@ -6833,7 +6844,8 @@ document.addEventListener('change',e=>{
   if(e.target.id==='teamSelEl'){ACT['team.switch'](e.target);return;}
   if(e.target.closest('[data-act="pf.org"]')){ACT['pf.org']();return;}
   if(e.target.id==='tnRec'){const r=$('#tnUntilRow');if(r)r.style.display=e.target.value?'':'none';return;}
-  if(e.target.id==='tnKind'){tkKindRefresh();return;}   /* 구분에 따라 내용 칸 구성이 달라진다 */
+  if(e.target.id==='tnKind'){kindOwnerSync('tnKind','tnAsg');tkKindRefresh();return;}   /* 구분에 따라 내용 칸 구성이 달라진다 */
+  if(e.target.id==='peKind'){kindOwnerSync('peKind','peOwners');return;}   /* 팝업 편집기도 동일 규칙 */
   if(e.target.id==='peKind'){peKindRefresh();return;}
   const rl=e.target.closest('[data-act="acct.role"]');
   if(rl){ACT['acct.role'](rl);return;}
