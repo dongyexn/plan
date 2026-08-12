@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='2.4.8';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='2.5.0';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -232,10 +232,13 @@ function sitePickHTML(id,cur){
 /* 업무 색 = 제목 앞 색 원. 누르면 팔레트 팝오버가 열린다(읽기 카드는 pid 를 달아 바로 저장) */
 /* 색 원 — 수정 모드(pid 없이 부를 때)에서만 팔레트를 연다.
    읽기 카드에서는 표시만 한다(실수로 색이 바뀌던 것을 막는다) */
-function colDotHTML(c,pid){
+/* 색 원 — 공통 업무(담당자 없음)는 달력 막대와 같은 '속 빈' 표시로 그린다(테두리만 업무색).
+   team 은 호출부에서 넘긴다(미지정이면 기존처럼 꽉 찬 원). */
+function colDotHTML(c,pid,team){
+  const st=team?'background:transparent;box-shadow:inset 0 0 0 1.5px '+esc(c):'background:'+esc(c);
   return pid
-    ?'<span class="p-col p-col-ro" style="background:'+esc(c)+'"></span>'
-    :'<button class="p-col" data-act="plan.color" aria-label="색 고르기" data-tip="색 고르기" style="background:'+esc(c)+'"></button>';
+    ?'<span class="p-col p-col-ro'+(team?' p-col-team':'')+'" style="'+st+'"></span>'
+    :'<button class="p-col'+(team?' p-col-team':'')+'" data-act="plan.color" aria-label="색 고르기" data-tip="색 고르기" style="'+st+'"></button>';
 }
 /* 색 선택기 HTML — 기본 팔레트 + 임의 색 추가.
    현재 값이 팔레트에 없으면(직접 고른 색) 맨 뒤에 칩으로 붙여 선택 상태를 유지한다. */
@@ -452,6 +455,11 @@ const S={
 
 /* 입력 중이면 실시간 수신이 타이핑을 덮어쓰지 않도록 렌더 보류 (하자처리 현황 패턴) */
 function shEditing(){const a=document.activeElement;return !!(a&&(a.tagName==='TEXTAREA'||a.tagName==='INPUT'||a.isContentEditable));}
+/* 233차: 업무 수정/추가 폼이 열려 있는 동안에는 목록을 다시 그리지 않는다.
+   포커스가 잠깐 폼 밖으로 나간 사이 실시간 수신이 들어오면 목록이 재정렬되며
+   **수정 중인 폼이 다른 자리로 튀어** 사용자가 위치를 잃었다(사용자 지적). */
+function tkFormOpen(){return !!(S.tkEdit||S.tkNew||S.planEdit);}
+function tkHold(){return shEditing()||tkFormOpen();}
 const PEND={day:false,tasks:false,org:false};
 document.addEventListener('focusout',e=>{
   const f=e.target&&e.target.closest&&e.target.closest('[data-act="tk.field"]');
@@ -462,7 +470,7 @@ document.addEventListener('focusout',e=>{
       if((cur[f.dataset.f]||'')!==v)store.putTask(sid,iid,{...cur,[f.dataset.f]:v,updatedAt:Date.now()});
     }
   }
-  setTimeout(()=>{if(shEditing())return;
+  setTimeout(()=>{if(tkHold())return;
   if(PEND.day){PEND.day=false;if(!S.planEdit)rDay();refetchCal();}
   if(PEND.tasks){PEND.tasks=false;if(!S.tkNew&&!S.tkEdit)rTasks();}
   if(PEND.org){PEND.org=false;rOrg();}
@@ -705,7 +713,7 @@ const FbStore={
         bootCacheSave();
         /* 읽지 못하는 계정을 위해 사본도 맞춰 둔다(관리자만 쓸 수 있다) */
         if(isEditor())FB.db.ref('calapp/org').set(cleanOrg(S.org)).catch(()=>{});
-        if(shEditing()){PEND.org=true;PEND.tasks=true;return;}
+        if(tkHold()){PEND.org=true;PEND.tasks=true;return;}
         rOrg();rTasks();rTeamSel();rFilter();
       },()=>{ /* 권한 없음 — 사본으로 간다 */ });
       ORG_OFF=()=>{try{ref.off('value',cb);}catch(e){}};
@@ -738,17 +746,17 @@ const FbStore={
     this._on('calapp/org',v=>{
       if(ORG_LIVE)return;                       /* 원본을 읽고 있으면 사본은 무시한다 */
       S.org=v||{teams:[],regions:[],sites:[]};normOrg(S.org);bootCacheSave();
-      if(shEditing()){PEND.org=true;PEND.tasks=true;return;}
+      if(tkHold()){PEND.org=true;PEND.tasks=true;return;}
       rOrg();rTasks();});
     this.bindReportOrg();
     this._on('calapp/tasks',v=>{S.tasks=v||{};bootCacheSave();
       /* 첫 스냅샷이 온 뒤 한 번 — 놓친 담당자 업무를 아침 확인으로 묻는다 */
       if(!FB._mrv){FB._mrv=true;setTimeout(morningReview,WIDGET?1400:800);}   /* 위젯은 첫 렌더가 조금 늦다 */
-      if(shEditing()){PEND.tasks=true;PEND.day=true;return;}
+      if(tkHold()){PEND.tasks=true;PEND.day=true;return;}
       rTasks();refetchCal();rDay();rWidget();});   /* 업무가 곧 일정 — 달력도 함께 갱신 */
     this._on('calapp/offdays',v=>{S.offdays=v||{};bootCacheSave();calRerender();rDay();rWidget();});
     this._on('calapp/people',v=>{S.people=v||{};bootCacheSave();
-      if(shEditing()){PEND.org=true;PEND.tasks=true;return;}
+      if(tkHold()){PEND.org=true;PEND.tasks=true;return;}
       rOrg();rTasks();});
     /* 하자처리 현황과 공용인 users 노드 — 계정 목록을 그대로 가져온다.
        규칙상 읽기가 막히면(관리자 전용 등) 조용히 수동 명부로 대체한다. */
@@ -760,7 +768,7 @@ const FbStore={
       rAcct();                                   /* 사이드바 아바타·이름도 함께 갱신 */
       /* ⚠ 담당자 색(avColor)이 바뀌면 '담당자 색' 업무의 색도 함께 바뀐다 —
          카드만 다시 그리고 달력·일자 패널·위젯을 빠뜨려 달력 막대만 옛 색으로 남던 버그 */
-      if(shEditing()){PEND.org=true;PEND.tasks=true;PEND.day=true;return;}
+      if(tkHold()){PEND.org=true;PEND.tasks=true;PEND.day=true;return;}
       rOrg();rTasks();rFilter();rDay();refetchCal();rWidget();rDefectNav();},
       e=>{S.accounts={};S.acctDenied=true;console.warn('[FB] users 읽기 권한 없음',e);rOrg();rTasks();});
     this._on('calapp/cfg',v=>{S.cfg=v||{};bootCacheSave();rCfg();});
@@ -1513,7 +1521,7 @@ function calInit(){
     /* 시간은 제목 안의 fmtSpan 이 담당 — FC 기본 표기("10a")를 켜 두면 이중으로 찍힌다 */
     displayEventTime:false,
     headerToolbar:false,height:'100%',dayMaxEvents:maxEvOf(),
-    moreLinkContent:a=>'+'+a.num+'건',
+    moreLinkContent:a=>'외 '+a.num+'건 ›',   /* 234차: 5안(우측 정렬 미니) — 조용하게 오른쪽 끝에 */
     /* 기본 더보기 팝오버 대신 그 날짜를 골라 업무 패널(위젯은 팝업)에서 전부 보게 한다 */
     moreLinkClick:a=>{const ds=dstr(a.date);selDate(ds,true);
       if(WIDGET){S.widPop=true;rWidget();}
@@ -1987,7 +1995,7 @@ function rDay(){
     return `
     <div class="plan${done?' done':''}${det?' has-det':''}${det&&S.planOpen===p.id?' open':''}" data-pid="${esc(p.id)}">
       <div class="plan-hd">
-        ${colDotHTML(planColor(p),p.id)}
+        ${colDotHTML(planColor(p),p.id,!planOwners(p).length)}
         <div class="plan-t"${openAct}>${esc(p.title)}</div>
         <div class="plan-side">
           ${lnk?'<a class="p-ico" href="'+esc(lnk.url)+'" target="_blank" rel="noopener" aria-label="링크 열기" data-tip="'+esc(linkLabel(lnk))+'"><svg class="icn"><use href="#i-ext"></use></svg></a>':''}
@@ -2003,7 +2011,7 @@ function rDay(){
             fmtSpan(p),
             rep?REC_LBL[p.recur.f]:''
           ].filter(Boolean).map(esc).join(' · ')}</span>
-          <span class="pm-r">${[p.site?siteName(p.site):'',planOwners(p).map(o=>ownName(o)).join(', ')||'팀 공통']
+          <span class="pm-r">${[p.site?siteName(p.site):'',planOwners(p).map(o=>ownName(o)).join(', ')||'공통']
             .filter(Boolean).map(esc).join(' · ')}</span>
         </div>
         ${det}
@@ -2161,7 +2169,7 @@ function planFormHTML(){
   const lnk=Object.values(d.links||{}).filter(l=>l&&l.url)[0];
   return `<div class="dp-edit" id="dpEdit">
     <div class="pe-bar">
-      ${colDotHTML(planColor(d))}
+      ${colDotHTML(planColor(d),null,!planOwners(d).length)}
       <input class="pe-ttl" id="peTitle" maxlength="80" placeholder="무엇을 하나요?" value="${esc(d.title)}">
       <div class="pe-side">
         ${pe.orig
@@ -2414,7 +2422,7 @@ function taskItemHTML(sid,iid,it,withSubject,hideOwn){
   return `
   <div class="tk-item s${st}${open?' open':''}${onSelDay(sid,iid,it)?' hl':''}" draggable="true" data-sid="${esc(sid)}" data-iid="${esc(iid)}">
     <div class="tk-line">
-      ${colDotHTML(planColor(p0),iid)}
+      ${colDotHTML(planColor(p0),iid,!planOwners(p0).length)}
       <div class="tk-ttl" data-act="tk.open" data-sid="${esc(sid)}" data-iid="${esc(iid)}">${esc(it.text||'제목 없음')}</div>
       <div class="tk-acts">
         ${cn?`<button class="tk-ico on" data-act="tk.open" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="코멘트">
@@ -4122,8 +4130,8 @@ function rptDashboard(){
   const moTbl=`<table><thead><tr>
     <th class="cc" style="width:10%">월</th><th style="width:10%">전체 접수</th><th style="width:10%">월간 접수</th>
     <th style="width:10%">전체 처리</th><th style="width:10%">처리율</th><th style="width:10%">월간 처리</th>
-    <th style="width:10%">전체 미처리</th><th style="width:10%">전월 대비</th><th style="width:10%">장기미처리</th>
-    <th style="width:10%">전월 대비</th></tr></thead><tbody>${rpMoRows(dfMoSnapsDash(wkDash))}</tbody></table>`;
+    <th style="width:10%">전체 미처리</th><th style="width:10%">전월대비</th><th style="width:10%">장기미처리</th>
+    <th style="width:10%">전월대비</th></tr></thead><tbody>${rpMoRows(dfMoSnapsDash(wkDash))}</tbody></table>`;
 
   const bySite=st.map(x=>({n:dfShortSite(x.s.name),v:x.c.unr||0})).sort((a,b)=>b.v-a.v);
   const trMap={};
@@ -4141,8 +4149,8 @@ function rptDashboard(){
   const siteTbl=`<table><thead><tr>
     <th class="l" style="width:8%">권역</th><th class="l" style="width:24.9%">현장명</th>
     <th style="width:8.39%">세대수</th><th style="width:8.39%">전체 접수</th><th style="width:8.39%">처리</th>
-    <th style="width:8.39%">처리율</th><th style="width:8.39%">미처리</th><th style="width:8.39%">전월 대비</th>
-    <th style="width:8.39%">장기미처리</th><th style="width:8.39%">전월 대비</th></tr></thead>
+    <th style="width:8.39%">처리율</th><th style="width:8.39%">미처리</th><th style="width:8.39%">전월대비</th>
+    <th style="width:8.39%">장기미처리</th><th style="width:8.39%">전월대비</th></tr></thead>
     <tbody>${siteRows}</tbody>
     <tfoot><tr><td class="l"></td><td class="l">합계</td><td>${rpN(units)}</td><td>${rpN(tR)}</td><td>${rpN(res)}</td>
       <td>${rpPct(res,tR)}</td><td>${rpN(unr)}</td><td>${rpDelta(unr-pUnr)}</td><td>${rpN(lt)}</td><td>${rpDelta(lt-pLt)}</td></tr></tfoot></table>`;
@@ -4162,8 +4170,8 @@ function rptDashboard(){
   const coTbl=`<table><thead><tr>
     <th class="cc" style="width:5%">NO</th><th class="l" style="width:22%">시공업체</th><th class="l" style="width:9%">주요 공종</th>
     <th style="width:9.6%">전체 접수</th><th style="width:9.6%">처리</th><th style="width:8.6%">처리율</th>
-    <th style="width:9.6%">미처리</th><th style="width:8.6%">전월 대비</th><th style="width:9.6%">장기미처리</th>
-    <th style="width:8.4%">전월 대비</th></tr></thead><tbody>${coRows}</tbody>
+    <th style="width:9.6%">미처리</th><th style="width:8.6%">전월대비</th><th style="width:9.6%">장기미처리</th>
+    <th style="width:8.4%">전월대비</th></tr></thead><tbody>${coRows}</tbody>
     <tfoot><tr><td></td><td class="l">합계</td><td></td><td>${rpN(tR)}</td><td>${rpN(res)}</td><td>${rpPct(res,tR)}</td>
       <td>${rpN(unr)}</td><td>${rpDelta(unr-pUnr)}</td><td>${rpN(lt)}</td><td>${rpDelta(lt-pLt)}</td></tr></tfoot></table>`;
 
@@ -4209,8 +4217,8 @@ function rptSite(sid){
   const moTbl=`<table><thead><tr>
     <th class="cc" style="width:10%">월</th><th style="width:10%">전체 접수</th><th style="width:10%">월간 접수</th>
     <th style="width:10%">전체 처리</th><th style="width:10%">처리율</th><th style="width:10%">월간 처리</th>
-    <th style="width:10%">전체 미처리</th><th style="width:10%">전월 대비</th><th style="width:10%">장기미처리</th>
-    <th style="width:10%">전월 대비</th></tr></thead><tbody>${rpMoRows({keys:dfMoSnapsSite(c.weekly).keys,map:dfMoSnapsSite(c.weekly).map})}</tbody></table>`;
+    <th style="width:10%">전체 미처리</th><th style="width:10%">전월대비</th><th style="width:10%">장기미처리</th>
+    <th style="width:10%">전월대비</th></tr></thead><tbody>${rpMoRows({keys:dfMoSnapsSite(c.weekly).keys,map:dfMoSnapsSite(c.weekly).map})}</tbody></table>`;
 
   const cut=(arr,lbl)=>{const t=arr.slice(0,5),r=arr.slice(5);
     if(r.length)t.push({n:`그 외 ${r.length}${lbl}`,v:r.reduce((a,x)=>a+x.v,0)});return t;};
@@ -4236,7 +4244,7 @@ function rptSite(sid){
         `<div class="cur"><span class="lb">금월</span><span class="tx">${cell(cur)}</span></div></td></tr>`;}).join('');
     return `<table class="plan-tbl"><thead><tr>
       <th style="width:4%">순위</th><th class="l" style="width:9%">공종</th><th class="l" style="width:14%">시공업체</th>
-      <th style="width:6.5%">전월</th><th style="width:6.5%">금월</th><th style="width:7%">전월 대비</th><th style="width:7%">비율</th>
+      <th style="width:6.5%">전월</th><th style="width:6.5%">금월</th><th style="width:7%">전월대비</th><th style="width:7%">비율</th>
       <th class="l" style="width:46%">처리계획</th></tr></thead><tbody>${body}</tbody></table>`;};
   const ltTop=((c.topLt)||[]).filter(x=>!x.isT&&!x.isO).slice(0,5);
   const vacTop=((c.vTop)||[]).filter(x=>!x.isT&&!x.isO).slice(0,5);
@@ -6453,7 +6461,7 @@ const ACT={
     if(!sid)return toast('먼저 팀을 만들어 주세요');
     /* ⚠ 폼은 그 자리가 화면에 보일 때만 그려진다 — 팀 전체·권역을 보고 있었다면 그 자리로 옮겨 준다.
        그러지 않으면 '눌렀는데 아무 일도 안 일어나는' 것처럼 보인다 */
-    if(!mem&&m!=='team'){S.tk.m='team';toast('팀 공통 업무로 추가합니다 · 담당자는 폼에서 고를 수 있습니다');}
+    if(!mem&&m!=='team'){S.tk.m='team';toast('공통 업무로 추가합니다 · 담당자는 폼에서 고를 수 있습니다');}
     S.tkEdit=null;S.tkNew=sid;rTasks();
     setTimeout(()=>{const t=$('#tnTitle');if(t)t.focus();},S.live?260:20);
   },
