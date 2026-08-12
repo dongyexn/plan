@@ -1,6 +1,6 @@
 # 인수인계 — 일정공유 달력 앱 (calapp)
 
-새 대화를 시작할 때 이 파일을 먼저 읽으면 됩니다. 231차 작업까지 반영된 상태입니다.
+새 대화를 시작할 때 이 파일을 먼저 읽으면 됩니다. 233차 작업까지 반영된 상태입니다.
 (⚠ 이 줄의 차수는 배포마다 갱신할 것 — 한동안 81차로 방치돼 인수인계 문서 구실을 못 했다.)
 
 ## 1. 이 앱이 무엇인가
@@ -3148,6 +3148,29 @@ calapp.bgBri). 사이드바 블록은 hasbg 에서 **#fff 불투명 고정 + 블
 - verify-wid.mjs(7항목) 신설, 감사 필수 11·금지 4 추가.
 - 게이트: 감사 FAIL 0·WARN 0, 스모크·r2·r10·r11·r12·r13·wid·sweep·print-full×3·a4-audit 전부 통과.
 - app.js?v=260 · APP_VER 2.4.6.
+
+### 232차 — 공통 업무 2안 완결 · 인쇄 잔여 조정
+- **공통 업무 표시 = 2안(윤곽선형) 확정**. 230차에 색(#64748B)만 바꿨더니 **예전에 색을 지정해 둔
+  공통 업무는 여전히 파란 꽉 찬 막대**로 남아 구분이 안 됐다(사용자 지적).
+  이벤트 생성부에서 `team`이면 `backgroundColor:'transparent'` + `borderColor:planColor(p)`,
+  `on-light` 클래스는 계정 업무에만. CSS `#fcal .fc-event.team{background:#fff;box-shadow:inset 0 0 0 1.5px currentColor}`
+  (다크·배경 모드 대응 포함). **색 지정 여부와 무관하게 공통은 전부 속 빈 막대**가 된다.
+- **공가 인쇄 페이지 누락 방어**: 페이지 조립이 한 번 실패하면 그 뒤 페이지까지 통째로 날아갔다.
+  공가세대·공가상가 페이지를 각각 try/catch 로 감싸고 vacU·DF.vac 널 기본값 보강, 실패 시 콘솔 경고.
+- 인쇄 추가 축소(사용자 지시): 종합 분석 의견 `.aib` 패딩 9/11 · `.ail` 6.5pt · `.ait` 7.5pt/1.5 ·
+  제목 8pt · 문단/리스트 여백 축소. 추이 라인 **점 반지름 4→2.2, 테두리 2→1.2(인쇄만, `_pr` 분기)**.
+- 게이트: 감사 FAIL 0·WARN 0, 스모크·r2·r10·r11·r12·r13·wid·sweep·print-full×3·a4-audit 통과.
+- app.js?v=261 · APP_VER 2.4.7.
+
+### 233차 — 공통 막대 테두리색 · 달력 띠 색 통일
+- 공통 업무 테두리를 **기존 파랑(#3E71D2)** 으로 되돌림(TEAM_COLOR). 구분은 '속 빈 막대'가 하므로
+  색이 계정과 같아도 겹치지 않는다. ⚠ CSS 함정: `border:1.5px solid!important` 처럼 shorthand 로 쓰면
+  **색이 currentColor(흰색)로 리셋**돼 테두리가 사라진다 — `border-style/border-width` 만 지정해
+  FullCalendar 가 인라인으로 준 업무색이 살아나게 할 것.
+- 달력을 두르는 띠 = **년·월 버튼 배경색**과 동일하게. 기본 화면 `#fcal{border:1px solid var(--fill)}`,
+  배경 켠 상태는 calGlassApply 에서 버튼과 같은 `rgba(N, a*.9)`.
+- verify-r13 기대치 2건 갱신(공통색·달력 띠), 감사 3건 갱신.
+- app.js?v=262 · APP_VER 2.4.8.
 
 ## 8. 보류하기로 한 것
 

@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='2.4.6';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='2.4.8';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -369,9 +369,9 @@ function planOwners(p){
   if(o.length)return o;
   return p&&p.owner?[p.owner]:[];   /* 구버전 단일 담당자 호환 */
 }
-/* 공통 업무(담당자 없음)의 기본색 — 230차: 파랑은 계정 자동색(OWN_PAL[0])과 겹쳐 구분이 안 됐다.
-   계정 자동색 10종이 유채색을 전부 쓰므로, '누구의 것도 아닌' 공통은 무채 슬레이트로 가른다(흰 점 표시와 병행). */
-const TEAM_COLOR='#64748B';
+/* 공통 업무(담당자 없음)의 기본색 — 232차: 구분은 **속 빈 막대(2안)** 가 담당하므로 색은 파랑으로 되돌린다.
+   계정 업무는 전부 꽉 찬 막대라 같은 파랑이어도 채움 여부로 갈린다(사용자 지시). */
+const TEAM_COLOR='#3E71D2';
 function planColor(p){
   if(p.color&&p.color!=='auto')return p.color;
   const o=planOwners(p);
@@ -1618,12 +1618,15 @@ function planEvent(p,date){
     start:(p.time&&!p.end)?date+'T'+p.time:date,
     end:span>0?addDays(date,span+1):undefined,
     allDay:!p.time||!!p.end,
-    backgroundColor:planColor(p),borderColor:'transparent',
-    textColor:isLightColor(planColor(p))?'#1B1B1F':'#fff',
+    /* 231차: 공통 업무는 **속 빈 막대(2안)** — 계정 업무는 전부 꽉 찬 막대라 색과 무관하게 갈린다.
+       예전에 파랑으로 저장된 공통 업무도 여기서 함께 윤곽선형이 된다(색 지정 여부와 무관). */
+    backgroundColor:team?'transparent':planColor(p),
+    borderColor:team?planColor(p):'transparent',
+    textColor:team?'':(isLightColor(planColor(p))?'#1B1B1F':'#fff'),
     /* ⚠ display 를 지정하지 않으면 시간이 있는 업무는 FullCalendar 가 '점 형식'으로 그린다 —
        배경 없이 어두운 글자라 유리(어두운) 배경 위에서 거의 보이지 않는다. 전부 색 막대로 통일한다 */
     display:'block',
-    classNames:(done?['done']:[]).concat(isLightColor(planColor(p))?['on-light']:[]).concat(team?['team']:[]),
+    classNames:(done?['done']:[]).concat((!team&&isLightColor(planColor(p)))?['on-light']:[]).concat(team?['team']:[]),
     extendedProps:{pid:p.id,occ:date,recur:!!(p.recur&&p.recur.f)},
     editable:!(p.recur&&p.recur.f)
   };
@@ -3355,7 +3358,7 @@ function dfTrendDraw(key,cid,wks){
   const barAnim={y:{duration:DUR,easing:'easeOutQuart',from:baseY},base:{duration:DUR,easing:'easeOutQuart',from:baseY}};
   const lineAnim={y:{duration:DUR,easing:'easeOutCubic',from:baseY}};
   const op=ctx=>ctx.chart.$la??0,opIn=ctx=>(ctx.chart.$la??0)*0.55;
-  const _pr=/^pr/.test(key);   /* 인쇄용 캔버스 — 231차 지시로 축 제목·눈금만 한 단계 축소 */
+  const _pr=/^pr/.test(key);   /* 인쇄용 캔버스 — 231차 지시로 축 제목·눈금·점 크기 축소 */
   const _atSize=_pr?9:((typeof window!=='undefined'&&window.innerWidth<=768)?10:13);
   const _tkSize=_pr?8:((typeof window!=='undefined'&&window.innerWidth<=768)?9:12);   /* 231차: 인쇄 축 수치도 축소 */
   const innerDl=(color)=>({display:ctx=>window.innerWidth>768&&dfMoDLCfg(ctx).showInner&&ctx.dataset.data[ctx.dataIndex]>0,opacity:opIn,anchor:'center',align:'center',color,font:ctx=>({size:dfMoDLCfg(ctx).size,weight:600}),formatter:v=>v.toLocaleString()});
@@ -3365,9 +3368,9 @@ function dfTrendDraw(key,cid,wks){
     {type:'bar',label:'30일 미만',data:rows.map(x=>(Number(x.u)||0)-(Number(x.lt)||0)),backgroundColor:cvar('--ch-d0','#B3C7DD'),hoverBackgroundColor:cvar('--ch-d0h','#7E9BBC'),pointStyle:'rectRounded',stack:'u',borderRadius:0,borderSkipped:false,yAxisID:'y',order:3,animations:barAnim,
       datalabels:{labels:{value:innerDl(cvar('--ch-lbl','#1F2B4C')),
         total:{display:ctx=>{if(window.innerWidth<=768)return false;const t=rows[ctx.dataIndex]?Number(rows[ctx.dataIndex].u)||0:0;if(t<=0)return false;const c=dfMoDLCfg(ctx),n=ctx.chart.data.labels.length;return c.totalEvery===1||ctx.dataIndex%c.totalEvery===0||ctx.dataIndex===n-1;},opacity:op,anchor:'end',align:'end',offset:2,clip:false,color:ink,font:ctx=>({size:dfMoDLCfg(ctx).size,weight:700}),textStrokeColor:stroke,textStrokeWidth:4,formatter:(v,ctx)=>{const t=Number(rows[ctx.dataIndex].u)||0;return t>0?t.toLocaleString():'';}}}}},
-    {type:'line',label:'전체 접수',data:cumR,borderColor:cvar('--ch-recv','#3E71D2'),backgroundColor:stroke,pointBackgroundColor:stroke,pointBorderColor:cvar('--ch-recv','#3E71D2'),pointBorderWidth:2,tension:.4,pointRadius:4,pointHoverRadius:8,pointHoverBorderWidth:3,pointHoverBackgroundColor:cvar('--ch-recv','#3E71D2'),pointHoverBorderColor:'#fff',hoverBorderWidth:3.5,borderWidth:2.5,fill:false,yAxisID:'y1',order:1,animations:lineAnim,
+    {type:'line',label:'전체 접수',data:cumR,borderColor:cvar('--ch-recv','#3E71D2'),backgroundColor:stroke,pointBackgroundColor:stroke,pointBorderColor:cvar('--ch-recv','#3E71D2'),pointBorderWidth:_pr?1.2:2,tension:.4,pointRadius:_pr?2.2:4,pointHoverRadius:8,pointHoverBorderWidth:3,pointHoverBackgroundColor:cvar('--ch-recv','#3E71D2'),pointHoverBorderColor:'#fff',hoverBorderWidth:3.5,borderWidth:2.5,fill:false,yAxisID:'y1',order:1,animations:lineAnim,
       datalabels:{display:ctx=>window.innerWidth>768&&(ctx.dataIndex===0||ctx.dataIndex===ctx.dataset.data.length-1),opacity:op,anchor:'center',align:ctx=>ctx.dataIndex===0?'right':'left',offset:8,clip:false,color:cvar('--ch-dlr','#2C437C'),font:{size:11,weight:700},textStrokeColor:stroke,textStrokeWidth:4,textShadowColor:'rgba(0,0,0,.2)',textShadowBlur:3,formatter:v=>v.toLocaleString()}},
-    {type:'line',label:'처리 완료',data:cumRes,borderColor:cvar('--ch-done','#F0B144'),backgroundColor:stroke,pointBackgroundColor:stroke,pointBorderColor:cvar('--ch-done','#F0B144'),pointBorderWidth:2,tension:.4,pointRadius:4,pointHoverRadius:8,pointHoverBorderWidth:3,pointHoverBackgroundColor:cvar('--ch-done','#F0B144'),pointHoverBorderColor:'#fff',hoverBorderWidth:3.5,borderWidth:2.5,fill:false,yAxisID:'y1',order:0,animations:lineAnim,
+    {type:'line',label:'처리 완료',data:cumRes,borderColor:cvar('--ch-done','#F0B144'),backgroundColor:stroke,pointBackgroundColor:stroke,pointBorderColor:cvar('--ch-done','#F0B144'),pointBorderWidth:_pr?1.2:2,tension:.4,pointRadius:_pr?2.2:4,pointHoverRadius:8,pointHoverBorderWidth:3,pointHoverBackgroundColor:cvar('--ch-done','#F0B144'),pointHoverBorderColor:'#fff',hoverBorderWidth:3.5,borderWidth:2.5,fill:false,yAxisID:'y1',order:0,animations:lineAnim,
       datalabels:{display:ctx=>window.innerWidth>768&&(ctx.dataIndex===0||ctx.dataIndex===ctx.dataset.data.length-1),opacity:op,anchor:'center',align:ctx=>ctx.dataIndex===0?'right':'left',offset:8,clip:false,color:cvar('--ch-dld','#A0590A'),font:{size:11,weight:700},textStrokeColor:stroke,textStrokeWidth:4,textShadowColor:'rgba(0,0,0,.2)',textShadowBlur:3,formatter:v=>v.toLocaleString()}}];
   DF.ch[key]=new Chart(el,{data:{labels:rows.map(x=>`${Number(x.m)||0}월\n${Number(x.w)||0}주`),datasets:ds},
     options:{responsive:true,maintainAspectRatio:false,
@@ -4455,10 +4458,18 @@ async function dfPrint(){
     const tradeAll=`<div class="card"><div class="sh"><div class="st cardttl">${P.ax==='co'?'업체별':'공종별'} 하자처리현황</div></div><table class="dt" style="table-layout:fixed"><thead><tr><th class="cc" style="width:6%">NO</th><th style="width:11%">${P.ax==='co'?'시공업체':'공종'}</th><th style="width:11%">${P.ax==='co'?'주요 공종':'시공업체'}</th><th class="n" style="width:7%">전체 접수</th><th class="n" style="width:7%">처리</th><th class="cc" style="width:7%">처리율</th><th class="cc" style="width:7%">미처리</th><th class="cc" style="width:6%">전월대비</th><th class="n" style="width:7%">장기미처리</th><th class="cc" style="width:25%">장기미처리 비율</th><th class="cc" style="width:6%">전월대비</th></tr></thead><tbody>${P.rows||P.emptyRow}</tbody></table></div>`;
     html+=pg('',hdr()+kpis+trend+opsr+dfMonthCardHTML(st,S.dfRm.slice(0,4),''));
     html+=pg('sp-page-break-before sp-p2',hdr()+dfLtrMomHTML(st)+`<div class="card"><div class="sh"><div class="st cardttl">장기미처리 상위 5개 공종 처리 현황</div></div><table class="dt" style="table-layout:fixed">${DF_TOP5_THEAD}<tbody>${dfTop5Rows(site.id,st.topLt,st.topLtPrev,st.lt||0,'processingPlan','')}</tbody></table></div>`);
-    if(site.showVacant!==false)
-      html+=pg('sp-page-break-before sp-p2',hdr()+dfVacPane(site.id,st.vacU||{T:st.vT,Res:st.vRes,Unr:st.vUnr,Rate:st.vRate,Lt:st.vLt,Units:st.vUnits,Top:st.vTop,TopPrev:st.vTopPrev},DF.vac[dfRm()+'/'+site.id],'sedae'));
-    if(site.hasCommercial)
-      html+=pg('sp-page-break-before sp-p2',hdr()+dfVacPane(site.id,st.vacS,DF.vac[dfRm()+'/'+site.id],'sangga'));
+    /* 231차: 공가 페이지가 통째로 빠지는 사례 — 한 페이지 조립이 실패하면 그 뒤 페이지까지 날아갔다.
+       페이지마다 따로 감싸서 하나가 실패해도 나머지는 인쇄되게 하고, 사유는 콘솔에 남긴다. */
+    if(site.showVacant!==false){
+      try{
+        const vu=st.vacU||{T:st.vT,Res:st.vRes,Unr:st.vUnr,Rate:st.vRate,Lt:st.vLt,Units:st.vUnits,Top:st.vTop||[],TopPrev:st.vTopPrev||{}};
+        html+=pg('sp-page-break-before sp-p2',hdr()+dfVacPane(site.id,vu,DF.vac[dfRm()+'/'+site.id]||{},'sedae'));
+      }catch(e){console.warn('[print] 공가세대 페이지 조립 실패',e);}
+    }
+    if(site.hasCommercial){
+      try{html+=pg('sp-page-break-before sp-p2',hdr()+dfVacPane(site.id,st.vacS||{},DF.vac[dfRm()+'/'+site.id]||{},'sangga'));}
+      catch(e){console.warn('[print] 공가상가 페이지 조립 실패',e);}
+    }
     html+=pg('sp-page-break-before',hdr()+tradeAll);
     html+=pg('sp-page-break-before',hdr()+`<div class="card"><div class="sh"><div class="st cardttl">종합 분석 의견</div></div><div class="aib"><div class="ail">AI 분석</div><div class="ait">${dfAitHTML(site.id)}</div></div></div>`);
   }else{
@@ -6067,8 +6078,9 @@ function calGlassApply(){
   let dyn=document.getElementById('calDyn');
   if(!dyn){dyn=document.createElement('style');dyn.id='calDyn';document.head.appendChild(dyn);}
   dyn.textContent=[
-    /* 229차: 달력을 두르는 선도 유리와 같은 반투명 — 불투명 실선(--sep)이 유리 위에 남아 있었다 */
-    'body.hasbg #fcal{border-color:rgba(255,255,255,'+f(.28*tint)+');}',
+    /* 232차: 달력을 두르는 띠는 **년·월 버튼 배경과 같은 색**으로(사용자 지시).
+       버튼은 아래 6091행에서 rgba(N, a*.9) 를 쓴다 — 같은 값을 테두리에도 준다. */
+    'body.hasbg #fcal{border-color:rgba('+N+','+f(a*.9)+');}',
     'body.hasbg #fcal .fc-scrollgrid{box-shadow:0 0 0 1px rgba(255,255,255,'+f(.22*tint)+');}',
     'body.hasbg #fcal td.fc-daygrid-day{background:rgba('+B+','+f(a)+');}',
     /* 공휴일도 주말과 같은 칸 색 — 쉬는 날이라는 뜻이 같다(위젯과 동일) */
