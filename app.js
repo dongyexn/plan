@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='2.4.4';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='2.4.6';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -369,8 +369,9 @@ function planOwners(p){
   if(o.length)return o;
   return p&&p.owner?[p.owner]:[];   /* 구버전 단일 담당자 호환 */
 }
-/* 팀 공통 업무(담당자 없음)의 기본색 — 기본 팔레트의 파랑 */
-const TEAM_COLOR='#3E71D2';
+/* 공통 업무(담당자 없음)의 기본색 — 230차: 파랑은 계정 자동색(OWN_PAL[0])과 겹쳐 구분이 안 됐다.
+   계정 자동색 10종이 유채색을 전부 쓰므로, '누구의 것도 아닌' 공통은 무채 슬레이트로 가른다(흰 점 표시와 병행). */
+const TEAM_COLOR='#64748B';
 function planColor(p){
   if(p.color&&p.color!=='auto')return p.color;
   const o=planOwners(p);
@@ -602,7 +603,9 @@ function bootCacheLoad(){try{return JSON.parse(localStorage.getItem(BOOT_KEY))||
 function bootCacheSave(){
   clearTimeout(bootT);
   bootT=setTimeout(()=>{try{
-    localStorage.setItem(BOOT_KEY,JSON.stringify({org:S.org,people:S.people,tasks:S.tasks,cfg:S.cfg,at:Date.now()}));
+    /* 230차: accounts(계정 지정색)도 캐시 — 빠지면 첫 렌더가 인덱스색으로 나갔다가
+       users 도착 후 지정색으로 덮여 부팅 때 1초쯤 색이 깜빡였다 */
+    localStorage.setItem(BOOT_KEY,JSON.stringify({org:S.org,people:S.people,tasks:S.tasks,cfg:S.cfg,accounts:S.accounts,at:Date.now()}));
   }catch(e){}},500);
 }
 function bootCacheClear(){try{localStorage.removeItem(BOOT_KEY);}catch(e){}}
@@ -740,7 +743,7 @@ const FbStore={
     this.bindReportOrg();
     this._on('calapp/tasks',v=>{S.tasks=v||{};bootCacheSave();
       /* 첫 스냅샷이 온 뒤 한 번 — 놓친 담당자 업무를 아침 확인으로 묻는다 */
-      if(!FB._mrv){FB._mrv=true;setTimeout(morningReview,800);}
+      if(!FB._mrv){FB._mrv=true;setTimeout(morningReview,WIDGET?1400:800);}   /* 위젯은 첫 렌더가 조금 늦다 */
       if(shEditing()){PEND.tasks=true;PEND.day=true;return;}
       rTasks();refetchCal();rDay();rWidget();});   /* 업무가 곧 일정 — 달력도 함께 갱신 */
     this._on('calapp/offdays',v=>{S.offdays=v||{};bootCacheSave();calRerender();rDay();rWidget();});
@@ -749,7 +752,7 @@ const FbStore={
       rOrg();rTasks();});
     /* 하자처리 현황과 공용인 users 노드 — 계정 목록을 그대로 가져온다.
        규칙상 읽기가 막히면(관리자 전용 등) 조용히 수동 명부로 대체한다. */
-    this._on('users',v=>{S.accounts=v||{};S.acctDenied=false;
+    this._on('users',v=>{S.accounts=v||{};S.acctDenied=false;bootCacheSave();
       const me=S.user&&S.accounts[S.user.uid];
       if(me){FB.userRec={...(FB.userRec||{}),...me};
         /* 접속 중 role 이 바뀌면(관리자 지정) 새로고침 없이 반영한다 */
@@ -1309,6 +1312,7 @@ function enterLive(u){
   if(c){
     S.org=c.org||S.org;normOrg(S.org);
     S.people=c.people||{};S.tasks=c.tasks||{};S.cfg=c.cfg||{};
+    S.accounts=c.accounts||{};   /* 마지막으로 알던 지정색으로 즉시 그린다 — 깜빡임 방지 */
     rAll();
   }
   FbStore.bindShared();
@@ -1388,11 +1392,17 @@ function widSideRender(){
           [kindLabel(it.kind),siteName(it.site)].filter(Boolean).join(' · '))).join('')
         :empty('i-tasks','공통 업무가 없습니다'))
       +sec('미완료 업무','mine',tasks.length)
-      +(tasks.length?cut(tasks,'mine').map(({sid,iid,it,over})=>row('wid.goTask',
-          ' data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" data-date="'+esc(it.date||'')+'"',
-          it.date?dlab(it.date):'기한 없음',over?'over':(it.date&&daysBetween(todayStr(),it.date)===0?'now':''),
-          it.text||'제목 없음',
-          [siteName(it.site),kindLabel(it.kind)].filter(Boolean).join(' · '))).join('')
+      /* 231차: 미완료 줄은 여기서 바로 완료 처리할 수 있게 왼쪽에 진행 아이콘을 붙인다.
+         아이콘은 줄 클릭(이동)과 겹치면 안 되므로 버튼을 줄 밖에 두고 한 칸으로 감싼다. */
+      +(tasks.length?cut(tasks,'mine').map(({sid,iid,it,over})=>
+          '<div class="wl-row">'
+          +row('wid.goTask',
+            ' data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" data-date="'+esc(it.date||'')+'"',
+            it.date?dlab(it.date):'기한 없음',over?'over':(it.date&&daysBetween(todayStr(),it.date)===0?'now':''),
+            it.text||'제목 없음',
+            [siteName(it.site),kindLabel(it.kind)].filter(Boolean).join(' · '))
+          +stIcon(stEff(it),' data-act="wid.st" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"')
+          +'</div>').join('')
         :empty('i-tasks','미완료 업무가 없습니다'))
       /* 보류함 — 아침 확인에서 넘긴 업무. 비어 있으면 머리째 넣지 않는다 */
       +(holds.length?sec('보류한 업무','hold',holds.length)
@@ -3345,7 +3355,9 @@ function dfTrendDraw(key,cid,wks){
   const barAnim={y:{duration:DUR,easing:'easeOutQuart',from:baseY},base:{duration:DUR,easing:'easeOutQuart',from:baseY}};
   const lineAnim={y:{duration:DUR,easing:'easeOutCubic',from:baseY}};
   const op=ctx=>ctx.chart.$la??0,opIn=ctx=>(ctx.chart.$la??0)*0.55;
-  const _atSize=(typeof window!=='undefined'&&window.innerWidth<=768)?10:13;const _tkSize=(typeof window!=='undefined'&&window.innerWidth<=768)?9:12;
+  const _pr=/^pr/.test(key);   /* 인쇄용 캔버스 — 231차 지시로 축 제목·눈금만 한 단계 축소 */
+  const _atSize=_pr?9:((typeof window!=='undefined'&&window.innerWidth<=768)?10:13);
+  const _tkSize=_pr?8:((typeof window!=='undefined'&&window.innerWidth<=768)?9:12);   /* 231차: 인쇄 축 수치도 축소 */
   const innerDl=(color)=>({display:ctx=>window.innerWidth>768&&dfMoDLCfg(ctx).showInner&&ctx.dataset.data[ctx.dataIndex]>0,opacity:opIn,anchor:'center',align:'center',color,font:ctx=>({size:dfMoDLCfg(ctx).size,weight:600}),formatter:v=>v.toLocaleString()});
   const ds=[
     {type:'bar',label:'60일 이상',data:rows.map(x=>Number(x.lt60)||0),backgroundColor:cvar('--ch-d60','#DA6A60'),hoverBackgroundColor:cvar('--ch-d60h','#C65A50'),pointStyle:'rectRounded',stack:'u',borderRadius:0,borderSkipped:false,yAxisID:'y',order:3,animations:barAnim,datalabels:innerDl('#fff')},
@@ -3361,7 +3373,11 @@ function dfTrendDraw(key,cid,wks){
     options:{responsive:true,maintainAspectRatio:false,
       animation:{duration:DUR,easing:'easeOutQuart',onComplete(ac){if(!ac.initial||ac.chart.$dlShown)return;ac.chart.$dlShown=true;const ch=ac.chart,t0=performance.now(),fd=350;const tick=()=>{if(!ch||ch.$destroyed||!ch.ctx)return;try{const p=Math.min(1,(performance.now()-t0)/fd);ch.$la=p*p*(3-2*p);ch.update('none');if(p<1)requestAnimationFrame(tick);}catch(e){console.warn('label fade tick aborted',e);}};requestAnimationFrame(tick);}},
       plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,position:'aboveAll',yAlign:'top',caretPadding:6,padding:12,usePointStyle:true,boxWidth:10,boxHeight:10,boxPadding:6,callbacks:{label:ctx=>`${ctx.dataset.label}: ${(ctx.parsed.y??ctx.parsed??0).toLocaleString()}건`}}},
-      scales:{x:{grid:{display:false},ticks:{font:{size:10},color:ink,callback:function(v){return this.getLabelForValue(v).split('\n');}}},
+      /* 인쇄 상자는 720px 폭이라 주차 라벨이 자동 회전한다(원본은 화면 폭 그대로 인쇄해 수평).
+         인쇄용만 회전을 막고 촘촘하면 건너뛰게 한다 — 화면은 원본 그대로. */
+      scales:{x:{grid:{display:false},ticks:{font:{size:_pr?9:10},color:ink,
+        ...(_pr?{maxRotation:0,minRotation:0,autoSkip:true,autoSkipPadding:4}:{}),
+        callback:function(v){return this.getLabelForValue(v).split('\n');}}},
         y:{beginAtZero:true,position:'left',grace:'25%',grid:{color:grid},ticks:{font:{size:_tkSize}},title:{display:true,text:'미처리(건)',font:{size:_atSize,weight:600},color:axisT}},
         y1:{beginAtZero:false,min:y1min,max:y1max,position:'right',grid:{display:false},ticks:{font:{size:_tkSize}},title:{display:true,text:'접수·처리(건)',font:{size:_atSize,weight:600},color:axisT}}}}});
 }
@@ -3416,7 +3432,10 @@ function dfDonutDraw(key,cid,lgid,items){
   DF.ch[key]=new Chart(el,{type:'doughnut',data:{labels:data.map(d=>d.t),datasets:[{data:data.map(d=>Number(d.c)),backgroundColor:data.map((d,i)=>DF_PAL[i%DF_PAL.length]),borderWidth:3,borderColor:border,pointStyle:'circle',hoverOffset:12,hoverBorderWidth:3}]},
     options:{responsive:true,maintainAspectRatio:false,layout:{padding:14},cutout:'58%',
       ...(DF.noAnim?{animation:{duration:0}}:{}),
-      plugins:{centerText:{display:true,value:tot.toLocaleString()+'건',label:'미처리'},legend:{display:false},
+      /* 231차 지시: 인쇄본에서 도넛 안 글자가 커 보인다 — 인쇄용 캔버스(prSx/prMx)만 축소.
+         화면은 원본과 동일한 기본값(16/11)을 그대로 둔다. */
+      plugins:{centerText:{display:true,value:tot.toLocaleString()+'건',label:'미처리',
+        ...(/^pr/.test(key)?{valueSize:13,labelSize:8}:{})},legend:{display:false},
         tooltip:{caretPadding:32,padding:12,usePointStyle:true,boxWidth:10,boxHeight:10,boxPadding:6,callbacks:{labelPointStyle:()=>({pointStyle:'circle',rotation:0}),label:ctx=>`${ctx.label}: ${ctx.parsed.toLocaleString()}건 (${tot>0?(ctx.parsed/tot*100).toFixed(1):0}%)`}},datalabels:{display:false}}}});
   if(lg){
     /* 원본과 동일: 범례는 항상 2열 — --lgr(행수)로 좌열부터 세로 채움. 폭 조건 토글은 원본에 없다(225차 철회). */
@@ -4382,12 +4401,16 @@ async function dfPrintReport(){
   document.body.appendChild(d);
   document.body.classList.add('rpt-on');
   try{rptFit(d);}catch(e){console.warn('rptFit',e);}
-  const done=()=>{document.body.classList.remove('rpt-on');
+  let _rdone=false;
+  const done=()=>{if(_rdone)return;_rdone=true;
+    document.body.classList.remove('rpt-on');
     const r=document.getElementById('rptRoot');if(r)r.remove();
     const st=document.getElementById('rptPageCSS');if(st)st.remove();
     window.removeEventListener('afterprint',done);};
   window.addEventListener('afterprint',done);
-  setTimeout(()=>{window.print();setTimeout(done,1500);},60);
+  /* 보고서 경로도 같은 함정 — 1.5초 폴백이 인쇄 대화상자보다 먼저 터지면 2쪽부터 사라진다 */
+  setTimeout(()=>{window.print();
+    setTimeout(()=>{if(document.body.classList.contains('rpt-on'))done();},60000);},60);
 }
 
 /* 인쇄용 추이 카드 — 캔버스를 2배 폭으로 그린 뒤 절반으로 줄여 넣는다(라벨 겹침 방지) */
@@ -4501,7 +4524,8 @@ async function dfPrint(){
     }
   }catch(e){console.warn('[하자] 인쇄 차트 준비 실패',e);}
   await new Promise(r=>setTimeout(r,260));   /* noAnim 이라 차트는 즉시 앉는다 — 라벨 플러그인 여유만 */
-  const done=()=>{window.removeEventListener('afterprint',done);
+  let _done=false;
+  const done=()=>{if(_done)return;_done=true;window.removeEventListener('afterprint',done);
     document.body.classList.remove('df-printing');
     if(box.parentNode)box.parentNode.removeChild(box);
     ['prTrend','prMx','prSx','prMom'].forEach(dfC);
@@ -4509,7 +4533,9 @@ async function dfPrint(){
     if(wasDark)document.documentElement.classList.add('dark');};
   window.addEventListener('afterprint',done);
   window.print();
-  setTimeout(done,1500);   /* afterprint 미발화 브라우저 대비 */
+  /* ⚠ 231차: 1.5초 폴백이 인쇄 대화상자보다 먼저 터져 2쪽 이후가 통째로 사라졌다(원본 인쇄본 대조로 확인).
+     afterprint 가 오면 done 이 즉시 정리하므로, 폴백은 넉넉히 두고 이미 정리됐으면 아무 일도 하지 않는다. */
+  setTimeout(()=>{if(document.body.classList.contains('df-printing'))done();},60000);
 }
 function rDefect(){
   const root=$('#defectRoot');if(!root)return;
@@ -5161,7 +5187,8 @@ function mrvList(){
   return out.sort((a,b)=>String(a.it.end||a.it.date).localeCompare(String(b.it.end||b.it.date)));
 }
 function morningReview(){
-  if(WIDGET)return;                                       /* 위젯 창은 작다 — 앱에서만 묻는다 */
+  /* 231차: 위젯만 쓰는 사람은 이 확인을 아예 못 받았다 — 위젯에서도 띄우되 창이 좁으니
+     모달에 wid 전용 클래스를 붙여 폭·글자만 줄인다(로직은 동일). */
   if($('#mo')&&$('#mo').classList.contains('open'))return;
   let last='';try{last=localStorage.getItem(mrvKey())||'';}catch(e){}
   if(last===todayStr())return;                            /* 하루 한 번 */
@@ -5176,6 +5203,7 @@ function morningReview(){
       +'<div class="s">'+esc(sub)+'</div></div>'
       +'<div class="mrv-act"><button class="btn bg2 bxs" data-act="mrv.today">오늘로 이동</button></div></div>';
   }).join('');
+  if(WIDGET){const mb=$('#mb');if(mb)mb.classList.add('mrv-wid');}
   openModal('놓친 업무 확인',
     '<div class="mrv-h">날짜가 지난 미완료 업무 <b id="mrvN">'+list.length+'</b>건입니다.<br>'
     +'끝낸 업무는 왼쪽 아이콘, 남는 업무는 <b>보류함</b>으로 넘어갑니다.</div>'
@@ -6646,6 +6674,16 @@ const ACT={
   'wid.open':()=>{window.open(location.origin+location.pathname,'_blank','noopener');},
   'wid.reload':()=>location.reload(),
   'wid.side':el=>widSideOpen(el.dataset.tab||'alert'),
+  /* 위젯 내 업무에서 바로 완료/진행 전환 — 애니메이션을 보여 주고 목록을 다시 그린다 */
+  'wid.st':el=>{
+    const sid=el.dataset.sid,iid=el.dataset.iid;
+    const cur=(S.tasks[sid]||{})[iid];if(!cur)return;
+    const n=stEff(cur)===2?1:2;
+    stxSet(el,n);
+    store.putTask(sid,iid,{...cur,st:n,stKeep:n===1,updatedAt:Date.now()});
+    toast(n===2?'완료로 바꿨습니다':'진행으로 되돌렸습니다');
+    setTimeout(()=>{if(!S.live){rTasks();rDay();rWidget();}widSideRender();refetchCal();},220);
+  },
   'app.alerts':()=>{
     const el=$('#appAlertPop');if(!el)return;
     const on=!el.classList.contains('on');
