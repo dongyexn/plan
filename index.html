@@ -282,7 +282,7 @@ body:not(.wid) #view-calendar .cal-head>.cal-ctl>.cal-nav{background:var(--fill)
 /* FullCalendar 테마 이식 */
 /* 달력 격자 자체에 아웃라인 — 카드로 감싸는 게 아니라 #fcal 의 테두리다(배경 위에서 경계가 보이게).
    배경을 켜면 어두운 칸 위이므로 밝은 선으로 바꾼다(아래 hasbg 규칙). */
-#fcal{height:100%;--fc-border-color:var(--sep);--fc-today-bg-color:transparent;--fc-page-bg-color:var(--bg2);--fc-neutral-bg-color:var(--surf2);font-size:13px;background:var(--bg2);border:1px solid var(--sep);border-radius:var(--rmd);overflow:hidden;}
+#fcal{height:100%;--fc-border-color:var(--sep);--fc-today-bg-color:transparent;--fc-page-bg-color:var(--bg2);--fc-neutral-bg-color:var(--surf2);font-size:13px;background:var(--bg2);border:1px solid var(--fill);border-radius:var(--rmd);overflow:hidden;}   /* 232차: 두르는 띠 = 년·월 버튼 배경(--fill)과 동일 */
 #fcal .fc-theme-standard td,#fcal .fc-theme-standard th{border-color:transparent;}
 /* scrollgrid 래퍼 td 의 1px 보더(--fc-border-color)가 우·하단에 선으로 남는다 */
 #fcal .fc-scrollgrid-section>td,#fcal .fc-scrollgrid-section>th{border:0;}
@@ -2458,6 +2458,16 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 /* 스크립트가 옮기는 스크롤은 부드럽게(휠·손가락 스크롤은 운영체제가 맡는다) */
 #content,.dp-body,.tk-list,.nq-res,.pf-emg,.rd-body,[data-sb]{scroll-behavior:smooth;}
 /* 팀 공통 업무 막대 — 제목 앞 작은 삼각형(▶). 글자와 세로 중앙을 맞춘다 */
+/* 231차: 공통 업무 = 속 빈 막대(2안). 배경 없이 테두리만 — 계정 업무(꽉 찬 막대)와 색과 무관하게 갈린다 */
+/* 테두리는 업무 색(기본 파랑)을 그대로 쓴다 — FullCalendar 가 border-color 를 인라인으로 준다.
+   box-shadow+currentColor 로 그리면 글자색에 끌려가 회색이 됐다(232차 수정). */
+/* ⚠ border shorthand 로 쓰면 색이 currentColor(흰색)로 리셋돼 테두리가 사라진다.
+   style·width 만 지정해 FullCalendar 가 인라인으로 준 업무색(borderColor)이 살아나게 한다. */
+#fcal .fc-event.team{background:#fff!important;border-style:solid!important;border-width:1.5px!important;font-weight:700;}
+#fcal .fc-event.team .fc-event-title,#fcal .fc-event.team .fc-event-main{color:#1F3A6B!important;}
+html.dark #fcal .fc-event.team{background:#2C2F36!important;}
+html.dark #fcal .fc-event.team .fc-event-title,html.dark #fcal .fc-event.team .fc-event-main{color:#BBD0F2!important;}
+body.hasbg #fcal .fc-event.team{background:rgba(255,255,255,.92)!important;}
 #fcal .fc-event.team .fc-event-title{display:flex;align-items:center;}
 #fcal .fc-event.team .fc-event-title::before{content:'';flex:none;width:0;height:0;margin-right:4px;
   border-left:4px solid currentColor;border-top:2.5px solid transparent;border-bottom:2.5px solid transparent;}
@@ -2558,6 +2568,14 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 #view-defect #dfPrintPages .mom-row .delta .d{font-size:4.6pt!important;padding:1px 2px!important;white-space:nowrap!important;letter-spacing:-.02em!important;line-height:1.15!important;}
 #view-defect #dfPrintPages .mom-row .bar{padding:1px 3px!important;}
 #view-defect #dfPrintPages .mom-wrap{gap:2px!important;padding-top:0!important;}
+/* 231차 지시: 현장 인쇄 '종합 분석 의견' 글자 전체 축소 */
+#view-defect #dfPrintPages .aib{padding:9px 11px!important;}
+#view-defect #dfPrintPages .ail{font-size:6.5pt!important;margin-bottom:4px!important;}
+#view-defect #dfPrintPages .ait{font-size:7.5pt!important;line-height:1.5!important;}
+#view-defect #dfPrintPages .ait h1,#view-defect #dfPrintPages .ait h2,#view-defect #dfPrintPages .ait h3{font-size:8pt!important;margin:6px 0 3px!important;}
+#view-defect #dfPrintPages .ait li{margin:1px 0!important;}
+#view-defect #dfPrintPages .ait p{margin:3px 0!important;}
+#view-defect #dfPrintPages .ait strong,#view-defect #dfPrintPages .ait b{font-size:7.5pt!important;}
 #view-defect #dfPrintPages .chart-lg{padding-left:14px!important;font-size:5.8pt!important;gap:8px!important;}   /* 231차: 크기·항목 간격(18→8) 축소 */
 #view-defect #dfPrintPages .chart-lg .li{gap:3px!important;}
 #view-defect #dfPrintPages .chart-lg .mk-bar,#view-defect #dfPrintPages .chart-lg .mk-ln{transform:scale(.62);}
@@ -3019,5 +3037,5 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=260"></script>
+<script src="./app.js?v=262"></script>
 </body></html>
