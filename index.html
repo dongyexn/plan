@@ -65,6 +65,9 @@ svg{display:block;flex-shrink:0;}
 /* ══════════ 레이아웃 ══════════ */
 #app{display:flex;height:100vh;height:100dvh;overflow:hidden;gap:10px;padding:10px;background:var(--bg);}
 /* 플로팅 사이드바 — 화면에 붙은 판이 아니라 블록 묶음. 블록 사이 간격이 구분선을 대신한다 */
+/* 236차: 접을 때는 자연스러운데 펼칠 때 글자가 갑자기 나타나던 문제 — 내용물 opacity 에 전환을 건다.
+   .sbsc/.sb-bottom 은 overflow-x:hidden 이라 폭이 좁을 때 내용이 잘리고, 넓어지면 한 번에 뿅 보인다.
+   mini 에서 내용물 opacity 를 0 으로 감추고 펼칠 때 .22s 뒤에 1 로 페이드하면 자연스럽다. */
 #sidebar{width:var(--sw);min-width:var(--sw);height:100%;display:flex;flex-direction:column;gap:8px;background:transparent;border:0;transition:width var(--tr),min-width var(--tr);overflow:visible;z-index:200;}
 #sidebar>.sbh,#sidebar>.sb-tools,#sidebar>.teamsel,#sidebar>.sbsc,#sidebar>.sb-bottom,#sidebar>.sb-foot{
   background:var(--glass3);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);
@@ -83,6 +86,9 @@ svg{display:block;flex-shrink:0;}
 .sbsc{flex:1;overflow-y:auto;overflow-x:hidden;padding:8px;display:flex;flex-direction:column;}
 .sbsc>.sbsl:first-child,.sb-bottom>.sbsl:first-child{padding-top:2px;}   /* 230차: '관리' 위가 8px 더 넓던 원인 — 첫 라벨 축소가 .sbsc 에만 걸려 있었다 */
 #sidebar.mini .sbsc{overflow-x:visible;overflow-y:auto;}
+/* 펼칠 때 내용 페이드 */
+#sidebar .nvi .nil,#sidebar .sbsl .sbsl-long{transition:opacity .18s .08s;}
+#sidebar.mini .nvi .nil,#sidebar.mini .sbsl .sbsl-long{opacity:0;transition:opacity .06s;}
 .sbsc>*{flex-shrink:0;}
 .sb-bottom{flex:0 0 auto;padding:8px 8px 8px;}   /* 스크롤 영역 밖 — 목록이 길어도 관리·프로필은 늘 아래에 남는다 */
 /* 하자 관리 소분류(권역) — 꺾쇠로 접었다 편다 */
@@ -2338,6 +2344,8 @@ textarea.inp{height:auto;min-height:64px;padding-top:7px;padding-bottom:7px;}
 .stx .stx-done{opacity:1;color:#BFC6D1;}
 html.dark .stx .stx-done{color:#454D5C;}
 .stx.on .stx-done{color:#4CC26A;}
+/* 236차: 다크 모드에서 완료(.on) 아이콘이 초록이 아닌 회색이었다 — html.dark 명시도가 이기고 있었다 */
+html.dark .stx.on .stx-done{color:#3BA85C;}
 /* 사이드바 아이콘 — 배경 타일 전면 제거(활성·비활성), 간격 축소 */
 .nvi:not(.act) .nic{background:none;}
 .nvi.act .nic{background:none;}
@@ -2417,29 +2425,51 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 /* 사용 안내 — 각 장 첫 제목 위 빈 줄 제거(소개 장은 h1 이라 해당 없음) */
 .rd-sec>h2:first-child{margin-top:0;}
 /* ── 7차 ── */
-/* 주요 업무 — 주 단위 업무보고 표(권역마다 완료·예정 두 열) */
-.rp-head{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
-.rp-week{font-size:14px;font-weight:700;color:var(--lbl);display:flex;align-items:center;gap:8px;}
-.rp-week span{color:var(--lbl3);}
-.rp-head .btn{margin-left:auto;}
-.rp-card{margin-bottom:12px;padding:12px 14px 14px;}
-.rp-rh{font-size:14px;font-weight:800;color:var(--lbl);padding-bottom:9px;margin-bottom:10px;border-bottom:1px solid var(--sep);}
-.rp-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start;}
-.rp-col{min-width:0;}
-.rp-ch{display:flex;align-items:baseline;gap:8px;margin-bottom:6px;}
-.rp-ch b{font-size:13px;font-weight:700;color:var(--lbl);}
-.rp-ch span{font-size:12px;color:var(--lbl3);}
-.rp-tbl{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;}
-.rp-tbl th{font-size:12px;font-weight:700;color:var(--lbl3);text-align:left;padding:0 7px 7px;border-bottom:1px solid var(--sep);white-space:nowrap;}
-.rp-tbl td{padding:6px 7px;border-bottom:1px solid var(--sep);vertical-align:top;line-height:1.5;word-break:break-word;}
+/* ── 주요 업무 — 236차 4안(완료/예정 독립 카드 + 권역 탭) ── */
+.rp-head{display:flex;align-items:center;gap:14px;margin-bottom:16px;}
+.rp-week{display:flex;align-items:baseline;gap:6px;font-size:14px;color:var(--lbl2);font-weight:500;}
+.rp-week b{color:var(--lbl);font-weight:700;}
+.rp-wk-done{color:#065F46;}.rp-wk-plan{color:#1E40AF;}
+.rp-wk-sep{color:var(--lbl3);font-size:12px;}
+/* 권역 탭 */
+.rp-tabs{display:flex;gap:0;border-bottom:1.5px solid var(--sep);margin-bottom:18px;}
+.rp-tab{border:none;background:transparent;padding:9px 20px;font-size:13px;font-weight:600;color:var(--lbl3);cursor:pointer;position:relative;transition:color .15s;}
+.rp-tab::after{content:'';position:absolute;left:0;right:0;bottom:-1.5px;height:2px;border-radius:1px;background:transparent;transition:background .15s;}
+.rp-tab.on{color:var(--lbl);}
+.rp-tab.on::after{background:var(--b600);}
+.rp-tab:hover:not(.on){color:var(--lbl2);}
+.rp-tcnt{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;border-radius:9px;background:var(--fill);font-size:10px;font-weight:700;margin-left:5px;padding:0 4px;color:var(--lbl3);}
+.rp-tab.on .rp-tcnt{background:rgba(59,130,246,.10);color:var(--b600);}
+/* 2열 분리 */
+.rp-split{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;}
+@media(max-width:1100px){.rp-split{grid-template-columns:1fr;gap:16px;}}
+/* 섹션 카드 */
+.rp-sec{background:var(--bg2);border:1px solid var(--sep);border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden;}
+.rp-sec.rp-done .rp-sec-h{border-top:3px solid #10B981;}
+.rp-sec.rp-plan .rp-sec-h{border-top:3px solid var(--b600);}
+.rp-sec-h{padding:12px 16px 10px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(60,60,67,.06);}
+.rp-badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;padding:3px 10px;border-radius:5px;}
+.rp-badge.done{background:#ECFDF5;color:#065F46;}
+.rp-badge.plan{background:#EFF6FF;color:#1E40AF;}
+.rp-bic{width:13px;height:13px;fill:currentColor;}
+.rp-period{font-size:12px;color:var(--lbl3);margin-left:auto;}
+/* 테이블 */
+.rp-tbl{width:100%;border-collapse:collapse;font-size:12.5px;table-layout:fixed;}
+.rp-tbl th{font-size:11px;font-weight:700;color:var(--lbl3);text-transform:uppercase;letter-spacing:.03em;text-align:left;padding:8px 12px;background:rgba(249,250,251,.8);border-bottom:1px solid var(--sep);white-space:nowrap;}
+.rp-tbl td{padding:8px 12px;border-bottom:1px solid rgba(60,60,67,.06);vertical-align:top;line-height:1.55;word-break:break-word;}
+.rp-tbl tbody tr:last-child td{border-bottom:none;}
+.rp-tbl tbody tr:hover{background:rgba(59,130,246,.03);}
 .rp-tbl th.cc,.rp-tbl td.cc{text-align:center;}
-.rp-tbl .rp-own{font-weight:700;color:var(--lbl);border-right:1px solid var(--sep);white-space:nowrap;background:var(--surf2);}
+.rp-tbl .rp-own{font-weight:700;color:var(--lbl);white-space:nowrap;position:relative;}
+.rp-tbl .rp-own::after{content:'';position:absolute;right:0;top:8px;bottom:8px;width:1px;background:var(--sep);}
 .rp-tbl .rp-site{color:var(--lbl2);}
 .rp-tbl .rp-t{color:var(--lbl);}
 .rp-tbl .rp-d{color:var(--lbl2);font-variant-numeric:tabular-nums;white-space:nowrap;}
-.rp-tbl .rp-memo{color:var(--lbl3);}
-.rp-tbl .rp-none{text-align:center;color:var(--lbl3);padding:14px 0;}
-@media (max-width:1100px){.rp-grid{grid-template-columns:minmax(0,1fr);gap:14px;}}
+.rp-tbl .rp-memo{color:var(--lbl3);font-size:11.5px;}
+.rp-tbl .rp-none{text-align:center;color:var(--lbl3);padding:24px 12px;}
+.rp-empty{text-align:center;color:var(--lbl3);padding:28px 0;font-size:13px;}
+/* 인쇄 — 탭을 숨기고 전 권역을 펼쳐 넣는다 */
+@media print{.rp-tabs{display:none;}.rp-split{grid-template-columns:1fr 1fr;}}
 /* ── 8차 ── */
 /* 진행 상태 아이콘 — 체크를 구멍으로 뚫어 카드 배경이 비쳐 보이게(유리 배경에서 흰 체크가 묻히던 것).
    ⚠ 마스크는 마크업의 mask 속성으로 걸고, 완료일 때만 CSS 로 끈다(CSS mask 로는 참조가 안 먹었다) */
@@ -2744,6 +2774,10 @@ body.hasbg #fcal .fc-event.team{background:rgba(255,255,255,.92)!important;}
         <button class="tb-ic" data-act="df.print" aria-label="인쇄" data-tip="인쇄 · PDF">
           <svg class="icn" aria-hidden="true"><use href="#i-print"></use></svg></button>
       </div>
+      <div class="tb-nav" id="sbPrintWrap" hidden>
+        <button class="tb-ic" data-act="sb.print" aria-label="인쇄" data-tip="인쇄 · PDF">
+          <svg class="icn" aria-hidden="true"><use href="#i-print"></use></svg></button>
+      </div>
       <button class="tb-srch" id="tbSrch" data-act="nq.toggle" aria-label="찾기" aria-expanded="false">
         <svg class="icn" aria-hidden="true"><use href="#i-search"></use></svg>
         <span class="tb-srch-t">찾기</span>
@@ -2753,10 +2787,7 @@ body.hasbg #fcal .fc-event.team{background:rgba(255,255,255,.92)!important;}
           <svg class="icn" aria-hidden="true"><use href="#i-bell"></use></svg>
           <span class="tb-dot" id="appAlertDot"></span></button>
       </div>
-      <div class="tb-nav">
-        <button class="tb-ic" data-act="set.guide" aria-label="사용 안내" data-tip="사용 안내">
-          <svg class="icn" aria-hidden="true"><use href="#i-help"></use></svg></button>
-      </div>
+      <!-- 236차: 사용 안내 버튼 제거(사용자 지시) -->
       <div class="tb-pop" id="appAlertPop" role="dialog" aria-label="알림">
         <div class="tb-pop-h">
           <b>알림</b><span class="tb-pop-n" id="appAlertN" hidden>0</span>
@@ -3054,5 +3085,5 @@ body.hasbg #fcal .fc-event.team{background:rgba(255,255,255,.92)!important;}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=264"></script>
+<script src="./app.js?v=266"></script>
 </body></html>

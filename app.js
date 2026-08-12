@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='2.5.0';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='2.5.2';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -427,6 +427,7 @@ const S={
   mineYm:'',         // 내 업무 화면의 작은 달력이 보고 있는 달
   mineSel:'',        // 작은 달력에서 고른 날 — 그 날 업무를 목록에서 강조한다
   rptWeek:'',        // 주요 업무 화면이 보고 있는 주(빈 값이면 이번 주)
+  rptReg:'',          // 주요 업무에서 선택된 권역 탭(빈 값이면 첫 번째)
   tkNew:null,        // 인라인 작성창이 열린 대상
   tkEdit:null,       // 인라인 수정 중인 업무 'sid/iid'
   tkOpen:null,       // 펼쳐 놓은 업무 'sid/iid'
@@ -2944,9 +2945,15 @@ function rptLabel(a,b){
     +(A.getMonth()===B.getMonth()?'':(B.getMonth()+1)+'월 ')+B.getDate()+'일';
 }
 const rptMd=d=>d?(Number(d.slice(5,7))+'/'+Number(d.slice(8))):'';
-function rptRows(sid,from,to,done){
-  const m=S.tasks[sid]||{};
+function rptRows(pid,from,to,done){
+  /* pid = 담당자 id. 그 사람이 속한 팀의 tasks 에서 assignees 에 pid 가 있는 것만 필터한다.
+     (원래 코드는 sid 로 S.tasks[sid] 를 탐색했는데, 업무가 팀 id 아래 저장돼 있어 담당자 id 로는 안 찾아졌다) */
+  const teamId=(S.org.teams||[]).find(t=>t.id===pid)?pid:Object.keys(S.tasks||{}).find(tid=>{
+    const bag=S.tasks[tid]||{};return Object.values(bag).some(it=>it&&it.assignees&&it.assignees[pid]);
+  })||'';
+  const m=S.tasks[teamId]||{};
   return Object.keys(m).map(iid=>({iid,it:m[iid]})).filter(({it})=>{
+    if(!it||!it.assignees||!it.assignees[pid])return false;
     if(!it)return false;
     if(done!==(stEff(it)===2))return false;
     const s=it.date||'',e=it.end||it.date||'';
@@ -2960,11 +2967,16 @@ function rReport(){
   const{mems,regions}=tkSel();
   const cur=rptCycle(S.rptWeek||todayStr());
   const nxt=rptCycle(addDays(cur.start,7));
-  /* 인수 전 현장 권역은 뺀다 */
   const regs=regions.filter(r=>!/미인수|인수\s*전/.test(r.name));
   const byRank=l=>l.slice().sort((a,b)=>rankOrd(a.rank)-rankOrd(b.rank)||String(a.name).localeCompare(String(b.name),'ko'));
+  if(!S.rptReg&&regs.length)S.rptReg=regs[0].id;
 
-  const table=(people,from,to,done)=>{
+  const rptShort=(a,b)=>{
+    const A=toDate(a),B=toDate(b);
+    return (A.getMonth()+1)+'/'+A.getDate()+' ~ '+(A.getMonth()===B.getMonth()?'':(B.getMonth()+1)+'/')+B.getDate();
+  };
+
+  const tblHTML=(people,from,to,done)=>{
     const rows=[];
     people.forEach(p=>{
       const list=rptRows(p.id,from,to,done);
@@ -2979,23 +2991,33 @@ function rReport(){
           +'</tr>');
       });
     });
-    return `<div class="rp-col">
-      <div class="rp-ch"><b>${done?'완료':'예정'}</b><span>${esc(rptLabel(from,to))}</span></div>
-      <table class="rp-tbl"><colgroup><col style="width:19%"><col style="width:22%"><col style="width:33%"><col style="width:11%"><col style="width:15%"></colgroup>
+    const icon=done
+      ?'<svg viewBox="0 0 16 16" class="rp-bic"><path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"/></svg>'
+      :'<svg viewBox="0 0 16 16" class="rp-bic"><path d="M8 3.5a.5.5 0 01.5.5v4.25a.5.5 0 01-.146.354l-2 2a.5.5 0 01-.708-.708L7.5 8.043V4a.5.5 0 01.5-.5z"/><path d="M8 16A8 8 0 108 0a8 8 0 000 16zm7-8A7 7 0 111 8a7 7 0 0114 0z"/></svg>';
+    return `<div class="rp-sec${done?' rp-done':' rp-plan'}">
+      <div class="rp-sec-h"><span class="rp-badge${done?' done':' plan'}">${icon}${done?'완료':'예정'}</span>
+        <span class="rp-period">${esc(rptLabel(from,to))}</span></div>
+      <table class="rp-tbl"><colgroup><col style="width:16%"><col style="width:18%"><col style="width:38%"><col style="width:11%"><col style="width:17%"></colgroup>
         <thead><tr><th>담당자</th><th>현장</th><th>업무</th><th class="cc">${done?'완료일':'예정일'}</th><th>비고</th></tr></thead>
         <tbody>${rows.join('')||'<tr><td colspan="5" class="rp-none">해당 업무가 없습니다.</td></tr>'}</tbody></table>
     </div>`;
   };
 
-  const blocks=regs.map(r=>{
-    const people=byRank(mems.filter(p=>p.region===r.id));
-    if(!people.length)return `<div class="card rp-card"><div class="rp-rh">${esc(r.name)}</div>
-      <div class="rp-none" style="padding:14px 0">배정된 담당자가 없습니다.</div></div>`;
-    return `<div class="card rp-card">
-      <div class="rp-rh">${esc(r.name)}</div>
-      <div class="rp-grid">${table(people,cur.start,cur.end,true)}${table(people,nxt.start,nxt.end,false)}</div>
-    </div>`;
-  }).join('');
+  /* 권역별 건수 */
+  const regCnt=r=>{
+    const pp=mems.filter(p=>p.region===r.id);
+    return pp.reduce((n,p)=>n+rptRows(p.id,cur.start,cur.end,true).length+rptRows(p.id,nxt.start,nxt.end,false).length,0);
+  };
+
+  const tabs=regs.map(r=>`<button class="rp-tab${r.id===S.rptReg?' on':''}" data-act="rpt.tab" data-reg="${esc(r.id)}">${esc(r.name)} <span class="rp-tcnt">${regCnt(r)}</span></button>`).join('');
+
+  const activeReg=regs.find(r=>r.id===S.rptReg)||regs[0];
+  let body='';
+  if(activeReg){
+    const people=byRank(mems.filter(p=>p.region===activeReg.id));
+    if(!people.length)body='<div class="rp-empty">배정된 담당자가 없습니다.</div>';
+    else body=`<div class="rp-split">${tblHTML(people,cur.start,cur.end,true)}${tblHTML(people,nxt.start,nxt.end,false)}</div>`;
+  }
 
   root.innerHTML=`<div class="rp-head">
       <div class="cal-nav">
@@ -3003,10 +3025,10 @@ function rReport(){
         <button class="cal-nb cal-today" data-act="rpt.week" data-d="0" data-tip="이번 주기"><svg class="icn"><use href="#i-today"></use></svg></button>
         <button class="cal-nb" data-act="rpt.week" data-d="7" data-tip="다음 주기"><svg class="icn"><use href="#i-chevr"></use></svg></button>
       </div>
-      <div class="rp-week">완료 ${esc(rptLabel(cur.start,cur.end))}<span>·</span>예정 ${esc(rptLabel(nxt.start,nxt.end))}</div>
-      <button class="btn bo bsm" data-act="rpt.print">인쇄 · PDF</button>
+      <div class="rp-week"><span class="rp-wk-done">완료 <b>${esc(rptShort(cur.start,cur.end))}</b></span><span class="rp-wk-sep">·</span><span class="rp-wk-plan">예정 <b>${esc(rptShort(nxt.start,nxt.end))}</b></span></div>
     </div>
-    ${blocks||'<div class="card"><div class="rp-none" style="padding:22px 0">보고 대상 권역이 없습니다.</div></div>'}`;
+    <div class="rp-tabs">${tabs}</div>
+    ${body||'<div class="rp-empty">보고 대상 권역이 없습니다.</div>'}`;
 }
 
 /* 업무로 이동 — 검색·내 업무·멘션·달력에서 공통으로 쓰고, 모달 없이 인라인으로 펼친다 */
@@ -5976,6 +5998,8 @@ setInterval(()=>{if(_tipFor&&!_tipFor.isConnected)tipHide();},700);
 
 /* ═══════════ 화면 전환 · 공통 UI ═══════════ */
 const VIEW_TTL={calendar:'캘린더',tasks:'업무 목록',report:'주요 업무',defect:'하자처리 현황',org:'조직/현장 관리',settings:'설정'};
+/* 236차: 사이드바 인쇄 버튼 — report·defect 에서만 노출 */
+function sbPrintSync(){const w=$('#sbPrintWrap');if(w)w.hidden=(S.view!=='report'&&S.view!=='defect');}
 document.addEventListener('click',e=>{
   const t=$('#sbTools');if(!t||!t.classList.contains('open'))return;
   if(!t.contains(e.target))t.classList.remove('open');   /* 접힌 사이드바의 기능 팝업 — 바깥 클릭이면 닫는다 */
@@ -5993,7 +6017,7 @@ function go(view){
   if(view==='tasks')rTasks();
   if(view==='report')rReport();
   if(view==='defect')rDefect();
-  dfTopbar();rDefectNav();
+  dfTopbar();rDefectNav();sbPrintSync();
   if(view==='org'){
     rOrg();
   }
@@ -6407,7 +6431,9 @@ const ACT={
     rTasks();},
   'rpt.week':el=>{const d=Number(el.dataset.d)||0;
     S.rptWeek=d?addDays(S.rptWeek||todayStr(),d):'';rReport();},
+  'rpt.tab':el=>{S.rptReg=el.dataset.reg;rReport();},
   'rpt.print':()=>window.print(),
+  'sb.print':()=>{if(S.view==='report')window.print();else if(S.view==='defect'&&typeof dfPrintOpen==='function')dfPrintOpen();},
   'mention.clear':()=>{
     const uid2=myId();if(!uid2)return;
     Object.keys(S.mentions||{}).forEach(id=>mentionRead(id));
