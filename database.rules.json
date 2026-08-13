@@ -363,6 +363,9 @@
         "defectUrl": { ".validate": "newData.isString() && newData.val().length <= 300" },
         "widgetUrl": { ".validate": "newData.isString() && newData.val().length <= 300" },
         "orgSrc":    { ".validate": "newData.isString() && newData.val().length <= 20" },
+        "dfHide": {
+          "$sid": { ".validate": "newData.isBoolean()" }
+        },
         "mail": {
           "dailyOn":   { ".validate": "newData.isBoolean()" },
           "weeklyOn":  { ".validate": "newData.isBoolean()" },

@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='2.5.6';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='2.5.8';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -787,7 +787,8 @@ const FbStore={
       if(tkHold()){PEND.org=true;PEND.tasks=true;PEND.day=true;return;}
       rOrg();rTasks();rFilter();rDay();refetchCal();rWidget();rDefectNav();},
       e=>{S.accounts={};S.acctDenied=true;console.warn('[FB] users 읽기 권한 없음',e);rOrg();rTasks();});
-    this._on('calapp/cfg',v=>{S.cfg=v||{};bootCacheSave();rCfg();});
+    /* cfg 에는 하자 관리에서 감춘 현장(dfHide)도 들어 있다 — 목록·현장 표도 함께 다시 그린다 */
+    this._on('calapp/cfg',v=>{S.cfg=v||{};bootCacheSave();rCfg();rDefectNav();if(S.view==='org')rOrg();});
     const uid=S.user&&S.user.uid;
     if(uid){
         this._on('calapp/mentions/'+uid,v=>{S.mentions=v||{};rMention();});
@@ -2716,6 +2717,27 @@ function taskFormSave(sid,iid){
   refetchCal();
 }
 
+/* ── 업무 폼 닫기 보호 ──
+   폼에는 진행경과·처리계획이 각 2000자까지 들어간다. Escape 한 번에 말없이 버리면 손해가 크다.
+   ⚠ 저장된 값과 비교해 **정말 바뀐 것이 있을 때만** 묻는다 — 열자마자 닫는 경우까지 물으면 성가시다 */
+function tkFormDirty(){
+  if(!S.tkNew&&!S.tkEdit)return false;
+  if(!$('#tnTitle'))return false;
+  const key=S.tkEdit||'';
+  const sid=key?key.split('/')[0]:S.tkNew,iid=key?key.split('/')[1]:'';
+  const cur=(key&&(S.tasks[sid]||{})[iid])||{};
+  const v=id=>{const el=$('#'+id);return el?String(el.value||'').trim():'';};
+  const was=x=>String(x||'').trim();
+  return v('tnTitle')!==was(cur.text)
+    ||v('tnProg')!==was(cur.prog||cur.body)
+    ||v('tnPlan')!==was(cur.plan);
+}
+/* 폼을 닫는 유일한 통로 — 취소 버튼과 Escape 가 함께 쓴다 */
+function tkFormClose(){
+  if(!tkFormDirty()){S.tkNew=null;S.tkEdit=null;rTasks();return;}
+  confirmModal('작성 중인 내용 버리기','적은 내용이 저장되지 않았습니다. 그대로 닫으면 사라집니다.',
+    ()=>{S.tkNew=null;S.tkEdit=null;rTasks();},'버리고 닫기',true);
+}
 /* ── 목록 보조 ── */
 function nextOrder(sid){
   const m=S.tasks[sid]||{};
@@ -2828,8 +2850,21 @@ function tkMatch(sid,iid,it){
   return true;
 }
 function tkFilterOn(){const f=S.tkF||{};return !!(String(f.q||'').trim()||f.st||f.due);}
+/* 다시 그리기 전후로 스크롤 위치를 기억한다 — rTasks 는 #tkRoot 를 통째로 갈아끼우므로
+   그냥 두면 완료 체크·펼치기·코멘트마다 목록이 맨 위로 튄다.
+   ⚠ 대상(팀/담당자)을 바꿨을 때는 되돌리지 않는다 — 새 목록이 아래로 내려간 채 열린다 */
+let _tkScKey='';
 function rTasks(){
   const root=$('#tkRoot');
+  const scKey=String(S.tk.t||'')+'|'+String(S.tk.m||'');
+  const scSame=_tkScKey===scKey;
+  const scList=[...root.querySelectorAll('.tk-list')].map(el=>el.scrollTop);
+  const scSide=(root.querySelector('.tks-list')||{}).scrollTop||0;
+  _tkScKey=scKey;
+  const restoreScroll=()=>{
+    if(scSame)root.querySelectorAll('.tk-list').forEach((el,i)=>{if(scList[i])el.scrollTop=scList[i];});
+    const sl=root.querySelector('.tks-list');if(sl&&scSide)sl.scrollTop=scSide;   /* 사이드바는 내용이 같으니 늘 되돌린다 */
+  };
   const{teams,team,regions,mems}=tkSel();
   if(!teams.length){
     root.innerHTML='<div class="tk-none">아직 등록된 팀이 없습니다.<br>조직/현장 관리에서 팀·권역을 만들고 계정에 배정하세요.<br><button class="btn bp bsm" data-act="nav.go" data-view="org">조직/현장 관리로 이동</button></div>';
@@ -2943,6 +2978,7 @@ function rTasks(){
     </div>
   </div>`;
   wireTaskDnD();
+  restoreScroll();
   if((sid&&S.tkNew===sid)||S.tkEdit){const t=$('#tnTitle');if(t&&document.activeElement!==t)t.focus();}
 }
 /* ═══════════ 주요 업무 — 주 단위 업무보고 표 ═══════════
@@ -3161,7 +3197,14 @@ function dfEnds(rm){
 /* 현장 목록 — 사이드바와 동일한 팀 필터. 대시보드 집계는 원본과 같이 '인수 전 현장' 권역 제외 */
 /* 보고 있는 기준월 — 기본은 최신 게시월(ORG_RM), 상단바에서 지난 게시월을 골라 볼 수 있다 */
 function dfRm(){return S.dfRmSel||ORG_RM;}
-function dfSites(){const{team}=tkSel();return (S.org.sites||[]).filter(x=>x.name&&(!team||!x.team||x.team===team.id));}
+/* 하자 관리 화면에서 감춘 현장 — ⚠ 현장 레코드에 두면 안 된다.
+   게시본을 구독 중일 때(ORG_LIVE) orgFromDash 가 S.org.sites 를 통째로 갈아끼워 지워지고,
+   orgSave 도 거부한다. 그래서 게시본과 무관한 calapp/cfg 에 현장 id 만 모아 둔다(팀 전체 공유) */
+function dfHidden(){return (S.cfg&&S.cfg.dfHide)||{};}
+function dfIsHidden(id){return !!dfHidden()[id];}
+/* 하자 관리가 다루는 현장 — 대시보드·집계·사이드바가 모두 이 목록을 쓴다.
+   dfHide 는 현장 관리에서 끈 마이너 현장(현장 자체와 업무는 그대로 남고 하자 화면에서만 빠진다) */
+function dfSites(){const{team}=tkSel();return (S.org.sites||[]).filter(x=>x.name&&!dfIsHidden(x.id)&&(!team||!x.team||x.team===team.id));}
 function dfDashSites(){return dfSites().filter(x=>x.region!=='인수 전 현장');}
 /* ── 표 공유 헬퍼 — 원본 tblNF/tblDlt/tblLtrCells/tblMetrics 포트(월별·주차별·대시보드 월별표 단일 출처) ── */
 const dfNF=n=>(n||0).toLocaleString();
@@ -3955,7 +3998,9 @@ async function dfSnapshot(){
   const d=await dfLoad();if(!d){toast('게시본이 없습니다');return;}
   await dfAllKpi();
   const sites=dfSites();
-  const snap={rm,org:S.org,dash:{wks:d.wks,am:d.am,ins:d.ins,wk:d.wk},site:{},plans:{},ana:{}};
+  /* ⚠ org 에 전체 현장을 담으면 뷰어에서 감춘 현장이 자료 없이 뜬다 — 자료를 담은 현장만 넣는다
+     (스냅샷은 cfg 를 싣지 않으므로 dfHide 를 뷰어에서 다시 읽을 수 없다) */
+  const snap={rm,org:{...S.org,sites},dash:{wks:d.wks,am:d.am,ins:d.ins,wk:d.wk},site:{},plans:{},ana:{}};
   for(const st of sites){
     const key=rm+'/'+st.id;
     if(DF.kpi[key]===undefined)await dfSiteData(st.id);
@@ -5087,7 +5132,7 @@ function recXlsx(){
 function rDefectNav(){
   const box=$('#dfNav');if(!box)return;
   const{team,regions}=tkSel();
-  const sites=(S.org.sites||[]).filter(x=>x.name&&(!team||!x.team||x.team===team.id));
+  const sites=dfSites();   /* dfHide(현장 관리 토글)는 dfSites 가 걸러 준다 — 대시보드와 같은 목록 */
   const groups=[];
   regions.forEach(r=>{const l=sites.filter(x=>x.region===r.id);if(l.length)groups.push([r.id,r.name,l]);});
   const none=sites.filter(x=>!x.region||!regions.some(r=>r.id===x.region));
@@ -5382,6 +5427,8 @@ function miniCalHTML(){
     <div class="mc-h">
       <b>${y}년 ${m+1}월</b>
       <div class="cal-nav">
+        ${(y+'-'+pad(m+1))!==todayStr().slice(0,7)
+          ?'<button class="mc-today" data-act="mine.mon" data-d="0">오늘</button>':''}
         <button class="cal-nb" data-act="mine.mon" data-d="-1" aria-label="지난 달"><svg class="icn"><use href="#i-chevl"></use></svg></button>
         <button class="cal-nb" data-act="mine.mon" data-d="1" aria-label="다음 달"><svg class="icn"><use href="#i-chevr"></use></svg></button>
       </div>
@@ -5431,11 +5478,12 @@ function siteTable(){
   sites.sort((a,b)=>(ord[a.region]??99)-(ord[b.region]??99)||String(a.name).localeCompare(String(b.name),'ko'));
   const regOpts=x=>'<option value="">권역 —</option>'+regs.map(r=>'<option value="'+esc(r.id)+'"'+(r.id===x.region?' selected':'')+'>'+esc(r.name)+'</option>').join('');
   return `<div style="overflow-x:auto"><table class="mgtbl"><thead><tr>
-    <th style="width:11%">권역</th><th style="width:19%">현장명</th>
-    <th class="cc" style="width:9%">세대수</th><th class="cc" style="width:8%">동수</th>
-    <th class="cc" style="width:9%">상가수</th><th class="cc" style="width:12%">준공일</th>
-    <th class="cc" style="width:8%">공가세대</th><th class="cc" style="width:8%">공가상가</th>
-    <th class="cc mg-disth" style="width:10%">업데이트일</th><th class="cc" style="width:5%"></th>
+    <th style="width:10%">권역</th><th style="width:17%">현장명</th>
+    <th class="cc" style="width:8%">세대수</th><th class="cc" style="width:7%">동수</th>
+    <th class="cc" style="width:8%">상가수</th><th class="cc" style="width:11%">준공일</th>
+    <th class="cc" style="width:8%" data-tip="끄면 하자 관리 화면의 현장 목록에서 숨깁니다">하자현황</th>
+    <th class="cc" style="width:7%">공가세대</th><th class="cc" style="width:7%">공가상가</th>
+    <th class="cc mg-disth" style="width:9%">업데이트일</th><th class="cc" style="width:5%"></th>
   </tr></thead><tbody>${sites.map(x=>`<tr>
     <td><select class="mg-inp" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="region" aria-label="권역 선택">${regOpts(x)}</select></td>
     <td><input class="mg-inp" value="${esc(x.name)}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="name" aria-label="현장명"></td>
@@ -5443,6 +5491,7 @@ function siteTable(){
     <td><input class="mg-inp n" type="text" inputmode="numeric" value="${(x.buildings||0).toLocaleString()}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="buildings" aria-label="동수" style="text-align:right;min-width:48px"></td>
     <td><input class="mg-inp n" type="text" inputmode="numeric" value="${(x.commercialUnits||0).toLocaleString()}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="commercialUnits" aria-label="상가수" style="text-align:right;min-width:52px"></td>
     <td class="cc"><input class="mg-inp" type="date" max="9999-12-31" style="width:120px;max-width:100%;text-align:center;display:inline-block" value="${esc(x.completionDate||'')}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="completionDate" aria-label="준공일"></td>
+    <td class="cc"><label class="sw"><input type="checkbox"${dfIsHidden(x.id)?'':' checked'} data-act="org.siteShow" data-id="${esc(x.id)}" aria-label="하자 관리 화면에 표시"><span class="sw-t"></span></label></td>
     <td class="cc mg-ro"><label class="sw"><input type="checkbox"${x.showVacant!==false?' checked':''} disabled aria-label="공가세대 — 하자처리 현황에서 관리"><span class="sw-t"></span></label></td>
     <td class="cc mg-ro"><label class="sw"><input type="checkbox"${x.hasCommercial?' checked':''} disabled aria-label="공가상가 — 하자처리 현황에서 관리"><span class="sw-t"></span></label></td>
     <td class="cc mg-dis" style="font-size:11.5px;white-space:nowrap">—</td>
@@ -6506,7 +6555,7 @@ const ACT={
     S.tkEdit=null;S.tkNew=sid;rTasks();
     setTimeout(()=>{const t=$('#tnTitle');if(t)t.focus();},S.live?260:20);
   },
-  'tk.formCancel':()=>{S.tkNew=null;S.tkEdit=null;rTasks();},
+  'tk.formCancel':()=>tkFormClose(),
   'tk.kind':()=>tkKindRefresh(),
   'tk.formSave':el=>taskFormSave(el.dataset.sid,el.dataset.iid||null),
   'tk.open':el=>{
@@ -7000,6 +7049,24 @@ document.addEventListener('input',e=>{
   clearTimeout(DF_PT);
   DF_PT=setTimeout(()=>dfPlanSet(el.dataset.sid,el.dataset.f,S.dfRm,el.dataset.t,el.value),700);
 });
+/* 현장 표 — 하자 관리 화면 표시 여부 토글. 마이너 현장은 목록에서 빼 둘 수 있다.
+   ⚠ 업무·현장 자체는 그대로 남는다. 감추는 것은 하자 관리 화면의 현장 목록뿐이다.
+   ⚠ 저장은 org 가 아니라 cfg — 게시본이 갱신돼도 살아남아야 한다(dfHidden 주석 참조) */
+document.addEventListener('change',e=>{
+  const el=e.target.closest('[data-act="org.siteShow"]');
+  if(!el)return;
+  if(!isEditor()){denyEdit();rOrg();return;}
+  const id=el.dataset.id;
+  const st=(S.org.sites||[]).find(x=>x.id===id)||{};
+  const hide=!el.checked;
+  const m={...dfHidden()};
+  if(hide)m[id]=true;else delete m[id];   /* 기본값(표시)은 키를 두지 않는다 */
+  store.putCfg('dfHide',m);
+  S.cfg={...S.cfg,dfHide:m};
+  if(S.dfSid===id&&hide)S.dfSid='';       /* 열어 둔 현장을 감추면 선택도 푼다 */
+  rDefectNav();
+  toast('"'+(st.name||'이름 없음')+'" 을 하자 관리에서 '+(hide?'숨깁니다':'표시합니다'));
+});
 /* 현장 표 인라인 저장 — 하자처리현황과 같은 즉시 반영 */
 document.addEventListener('change',e=>{
   const el=e.target.closest('[data-act="org.siteUpd"]');
@@ -7123,7 +7190,7 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'&&$('#nqPanel')&&$('#nqPanel').classList.contains('on')&&!$('#mo').classList.contains('open')){nqOpen(false);return;}
   if(e.key==='Escape'){
     if($('#mo').classList.contains('open')){closeModal();return;}
-    if(S.tkNew||S.tkEdit){S.tkNew=null;S.tkEdit=null;rTasks();return;}
+    if(S.tkNew||S.tkEdit){tkFormClose();return;}
     if($('#colPop')){closeColPop();return;}
     if(S.planEdit){closePlanEdit();return;}
     mobClose();
