@@ -31,7 +31,7 @@ fn app_url() -> String {
     std::env::var("CALWIDGET_URL").unwrap_or_else(|_| "https://dongyexn.github.io/plan/?w=1".into())
 }
 const EXE_NAME: &str = "HPlanWidgetLite.exe";
-const AUMID: &str = "com.hdec.hservice.widget.lite"; /* ⚠ 이게 없으면 윈도우 알림 표기가 이상해진다(Electron 174차와 동일) */
+const AUMID: &str = "com.hdec.hservice.widget.lite"; /* 작업 표시줄·창 식별자. 알림은 252차에 걷어냈지만 이 값은 그대로 둔다 */
 const RUN_KEY_NAME: &str = "HPlanWidgetLite"; /* 자동 실행 레지스트리 값 이름 — Electron 것과 분리 */
 
 /* ══════════ 저장 상태 ══════════
@@ -45,7 +45,9 @@ struct St {
     #[serde(default)] bounds: Option<Bounds>,/* 물리 픽셀 — 모니터 배율과 무관하게 저장 */
     #[serde(default)] auto_start: Option<bool>,
     #[serde(default)] auto_path: String,
-    #[serde(default)] brief_day: String,     /* 오늘 업무 알림을 이미 띄운 날짜 */
+    /* ⚠ 252차에 윈도우 알림을 걷어내며 쓰지 않게 됐다. 필드는 남긴다 —
+       지우면 옛 widget-state.json 을 읽을 때 알 수 없는 키로 걸린다(96차 교훈) */
+    #[serde(default)] brief_day: String,
     #[serde(default)] noted_mentions: Vec<String>,
     #[serde(default)] last_backup: String,
     #[serde(default)] pending_ver: String,   /* 받아 둔 새 버전 — 다음 부팅 때 갈아탄다 */
@@ -424,58 +426,11 @@ fn is_auto_start() -> bool {
     STATE.lock().unwrap().auto_start.unwrap_or(false)
 }
 
-/* ══════════ 윈도우 알림 ══════════
-   앱 페이지가 '무엇을 알릴지' 판단하고(로그인·자료 수신·알림 끄기까지 거기서), 여기서는 띄우기만 한다(174차 역할 분리). */
-fn toast(app: &AppHandle, title: &str, body: &str, payload: Option<Value>) {
-    use tauri_winrt_notification::Toast;
-    let app2 = app.clone();
-    let t = Toast::new(AUMID).title(title).text1(body);
-    let r = t.on_activated(move |_arg| {
-        if let Some(w) = win_of(&app2) { let _ = w.show(); let _ = w.set_focus(); }
-        if let Some(p) = payload.clone() {
-            let _ = ask(&app2, &format!("window.notiGo && window.notiGo({})", p), 3000);
-        }
-        Ok(())
-    }).show();
-    if let Err(e) = r { log(&format!("알림 실패 {}", e)); }
-}
-/* ① 오늘 업무 — 하루 한 번만. 재부팅을 여러 번 해도 다시 뜨지 않는다 */
-fn brief_once(app: &AppHandle) {
-    let Some(d) = ask(app, "window.bootBrief ? window.bootBrief() : null", 8000) else { return };
-    let day = d.get("day").and_then(|v| v.as_str()).unwrap_or("").to_string();
-    if day.is_empty() { return; }
-    if STATE.lock().unwrap().brief_day == day { return; }
-    { STATE.lock().unwrap().brief_day = day.clone(); } save_state();
-    let lines: Vec<String> = d.get("lines").and_then(|v| v.as_array())
-        .map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).collect()).unwrap_or_default();
-    let more = d.get("more").and_then(|v| v.as_i64()).unwrap_or(0);
-    let title = d.get("title").and_then(|v| v.as_str()).unwrap_or("오늘 업무").to_string();
-    let mut body = lines.join("\n");
-    if more > 0 { body.push_str(&format!("\n외 {}건", more)); }
-    toast(app, &title, &body, Some(json!({ "date": day })));
-    log(&format!("오늘 업무 알림 · {}", title));
-}
-/* ② 부름 — 이미 알린 것은 id 로 기억해 두 번 띄우지 않는다(최근 100개) */
-fn mention_check(app: &AppHandle) {
-    let seen = STATE.lock().unwrap().noted_mentions.clone();
-    let code = format!("window.newMentions ? window.newMentions({}) : []", serde_json::to_string(&seen).unwrap_or_else(|_| "[]".into()));
-    let Some(list) = ask(app, &code, 8000) else { return };
-    let Some(arr) = list.as_array() else { return };
-    if arr.is_empty() { return; }
-    let mut ids = seen;
-    for m in arr {
-        let by = m.get("by").and_then(|v| v.as_str()).unwrap_or("");
-        let task = m.get("task").and_then(|v| v.as_str()).unwrap_or("");
-        let text = m.get("text").and_then(|v| v.as_str()).unwrap_or("");
-        let body = if task.is_empty() { text.to_string() } else { format!("{}\n{}", task, text) };
-        toast(app, &format!("{}님이 불렀습니다", by), &body, Some(m.clone()));
-        if let Some(id) = m.get("id").and_then(|v| v.as_str()) { ids.push(id.to_string()); }
-    }
-    let keep = ids.len().saturating_sub(100);
-    ids.drain(..keep);
-    STATE.lock().unwrap().noted_mentions = ids;
-    save_state();
-}
+/* ══════════ 윈도우 알림 폐지(252차) ══════════
+   예전에는 ①부팅 직후 '오늘 업무' ②부름(멘션) 두 가지 토스트를 띄웠다.
+   ②는 부름 기능이 사라지며, ①은 필요 없다는 판단으로 걷어냈다 —
+   업무 알림은 앱 알림창(오후 점검)이 맡는다. 창구(window.bootBrief·newMentions)는
+   웹 쪽에 껍데기로 남아 있어, 옛 위젯이 계속 불러도 조용히 넘어간다. */
 
 /* ══════════ 자동 백업 ══════════
    앱의 window.bkExport() 로 내용을 받아 문서\H 주요업무현황\backup\hplan_YYMMDD.json 으로 남긴다(163차).
@@ -1032,17 +987,6 @@ fn main() {
                 loop { run_backup(&hb, false);
                     if QUITTING.load(Ordering::SeqCst) { return; }
                     std::thread::sleep(Duration::from_secs(6 * 3600)); }
-            });
-            let hn = handle.clone();
-            std::thread::spawn(move || {
-                std::thread::sleep(Duration::from_secs(45)); brief_once(&hn);
-                std::thread::sleep(Duration::from_secs(105)); brief_once(&hn);   /* 자료 지연 대비 두 번(174차) */
-            });
-            let hm = handle.clone();
-            std::thread::spawn(move || loop {
-                std::thread::sleep(Duration::from_secs(30));
-                if QUITTING.load(Ordering::SeqCst) { return; }
-                mention_check(&hm);
             });
             /* 자리·크기 — 이벤트를 놓치는 경우가 있어 5초마다 확인(바뀌었을 때만 쓴다) */
             let hp = handle.clone();

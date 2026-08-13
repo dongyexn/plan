@@ -244,7 +244,7 @@
             "assignees": { "$pid": { ".validate": "newData.isNumber()" } },
             "links": {
               "$lid": {
-                "url":   { ".validate": "newData.isString() && newData.val().length <= 500 && newData.val().matches(/^https?:[/][/]/)" },
+                "url":   { ".validate": "newData.isString() && newData.val().length <= 2000 && newData.val().matches(/^https?:[/][/]/)" },
                 "label": { ".validate": "newData.isString() && newData.val().length <= 80" },
                 "$other": { ".validate": false }
               }
