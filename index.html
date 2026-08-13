@@ -331,7 +331,7 @@ html.dark #fcal .fc-col-header-cell{background:#2A2A2A;}
 /* overflow-y:auto 를 두면 x 는 자동으로 auto 가 되어(스펙) 여러 날 막대가 옆 칸에서 잘린다.
    칸 넘침은 dayMaxEvents(+N 더보기)가 이미 처리하므로 스크롤을 두지 않는다 */
 #fcal .fc-dayGridMonth-view .fc-daygrid-day-events{position:relative;flex:1;min-height:0;overflow:visible;margin:0;padding-bottom:2px;}
-#fcal .fc-dayGridMonth-view .fc-daygrid-day-bottom{display:none;}
+/* day-bottom 은 234차 5안의 "외 n건 ›" 링크를 담는다 — 숨기지 않는다(402행 display:flex 참조) */
 /* 공휴일·기념일 — 날짜 숫자 바로 왼쪽, 한 줄 고정(겹침 없음) */
 #fcal .fc-daygrid-day-number{display:flex;align-items:center;justify-content:flex-end;gap:5px;max-width:100%;flex:1;min-width:0;}
 #fcal .dhol{font-size:13px;font-weight:700;line-height:1.2;color:var(--rd);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1;margin-right:auto;}
@@ -723,8 +723,8 @@ body:not(.df-printing):not(.rpt-on) textarea,body:not(.df-printing):not(.rpt-on)
 /* 앱 배경화면(로컬 전용) — 처리 방식은 디뉴어 앱의 로그인 배경과 같다:
    ① 사진 위에 위→아래 어두운 그라디언트 ② 가장자리를 어둡게 눌러 주는 비네트(radial)
    ③ 정적 필름 그레인 캔버스(#bgGrain, overlay). 사진 자체는 눕히지 않고 레이어로만 다스린다. */
-body::before{content:'';position:fixed;inset:0;z-index:-2;background-image:var(--app-bg-img,none);background-size:cover;background-position:center;opacity:0;transition:opacity .45s ease;filter:brightness(var(--app-bg-bri,1));}
-body.hasbg::before{opacity:1;}
+body::before{content:'';position:fixed;inset:0;z-index:-2;background-color:var(--bg);background-image:var(--app-bg-img,none);background-size:cover;background-position:center;transition:opacity .45s ease;filter:brightness(var(--app-bg-bri,1));}
+/* body.hasbg::before — 별도 규칙 불필요: body::before 가 항상 보이므로(밝기가 기본 배경에도 적용된다) */
 /* 그라디언트 + 비네트 한 겹(디뉴어 #gate 와 같은 구성) — 밑칠(단색 덮개) 방식은 대체됐다 */
 /* 226차: '넣을 때 너무 어둡다' 지시로 강도 완화 — 그라디언트 .40/.62 → .16/.30, 비네트 .42 → .26.
    사진 자체 밝기는 --app-bg-bri(설정 슬라이더)로 조절한다. */
@@ -2912,6 +2912,8 @@ body.hasbg #fcal .fc-event.team{background:rgba(255,255,255,.92)!important;}
             </div></div>
           <div class="wgs-r"><span>부팅 시 업무알림</span>
             <label class="wgs-sw"><input type="checkbox" id="wgNoti"><span class="sw-t"></span></label></div>
+          <div class="wgs-r"><span>두 번 눌러 선택</span>
+            <label class="wgs-sw"><input type="checkbox" id="wgDbl"><span class="sw-t"></span></label></div>
           <div class="wgs-sep"></div>
           <button class="wgs-full" data-act="wid.reload">새로고침</button>
           <button class="wgs-full" data-act="wid.moveOn">위치·크기 조정</button>
@@ -3043,9 +3045,9 @@ body.hasbg #fcal .fc-event.team{background:rgba(255,255,255,.92)!important;}
             <div class="share-row"><div><b style="font-size:13px">배경 이미지</b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">이 기기에만 저장됩니다</div></div>
               <span style="display:inline-flex;gap:6px;align-items:center"><button class="btn bo bsm" data-act="set.bgPick">이미지 선택</button><button class="btn bg2 bsm" id="bgClearBtn" data-act="set.bgClear" hidden>없애기</button></span></div>
             <div class="share-row" style="margin-top:10px"><div><b style="font-size:13px">레이아웃 투명도</b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">카드가 배경을 얼마나 비칠지 · 하자 관리 화면은 항상 불투명</div></div>
-              <input type="range" id="bgAlpha" min="60" max="100" step="5" value="90" data-act="set.bgAlpha" style="width:160px"></div>
-            <div class="share-row" style="margin-top:10px"><div><b style="font-size:13px">배경 밝기 <b id="bgBriV" style="color:var(--bt1)">100%</b></b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">사진 자체를 밝게 또는 어둡게</div></div>
-              <input type="range" id="bgBri" min="55" max="140" step="5" value="100" data-act="set.bgBri" style="width:160px"></div>
+              <span style="display:inline-flex;align-items:center;gap:6px"><b id="bgAlphaV" style="font-size:12px;color:var(--bt1);min-width:32px;text-align:right">90%</b><input type="range" id="bgAlpha" min="60" max="100" step="5" value="90" data-act="set.bgAlpha" style="width:130px"></span></div>
+            <div class="share-row" style="margin-top:10px"><div><b style="font-size:13px">배경 밝기</b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">배경을 밝게 또는 어둡게</div></div>
+              <span style="display:inline-flex;align-items:center;gap:6px"><b id="bgBriV" style="font-size:12px;color:var(--bt1);min-width:32px;text-align:right">100%</b><input type="range" id="bgBri" min="55" max="140" step="5" value="100" data-act="set.bgBri" style="width:130px"></span></div>
 
           </div>
           <div class="set-card card">

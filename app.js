@@ -6057,10 +6057,11 @@ function applyBg(){
   const root=document.documentElement;
   root.style.setProperty('--app-bg-img',url?`url("${url}")`:'none');
   root.style.setProperty('--app-card-alpha',(Number(al)||90)/100);
-  root.style.setProperty('--app-bg-bri',String((Number(bri)||100)/100));   /* 사진 자체 밝기 */
+  root.style.setProperty('--app-bg-bri',String((Number(bri)||100)/100));   /* 배경 밝기 — 이미지·기본 배경 모두 적용 */
   document.body.classList.toggle('hasbg',!!url);
   const btn=$('#bgClearBtn');if(btn)btn.hidden=!url;
   const dl=$('#bgAlpha');if(dl)dl.value=al;
+  const alv=$('#bgAlphaV');if(alv)alv.textContent=al+'%';
   const db=$('#bgBri');if(db)db.value=bri;
   const dbv=$('#bgBriV');if(dbv)dbv.textContent=bri+'%';
   if(url)bgGrainPaint();      /* 필름 그레인은 배경이 있을 때만 그린다 */
@@ -7005,6 +7006,7 @@ document.addEventListener('input',e=>{
   if(e.target.id==='wgT'){const c=widCfgLoad();c.tint=Number(e.target.value);widCfgSave(c);widApply();return;}    /* 유리 톤 — 100%가 기존 색, 낮추면 진하고 올리면 연하다 */
   if(e.target.id==='wgFz'){const c=widCfgLoad();c.fz=Number(e.target.value)/100;widCfgSave(c);widApply();return;}
   if(e.target.id==='wgNoti'){const c=widCfgLoad();c.noti=e.target.checked;widCfgSave(c);toast(c.noti?'알림을 켰습니다':'알림을 껐습니다');return;}
+  if(e.target.id==='wgDbl'){const c=widCfgLoad();c.dbl=e.target.checked;widCfgSave(c);widApplyDbl();toast(c.dbl?'두 번 눌러 선택을 켰습니다':'두 번 눌러 선택을 껐습니다');return;}
 });
 document.addEventListener('change',e=>{
 });
@@ -7222,6 +7224,42 @@ function widApply(){
   const tr=$('#wgT');if(tr)tr.value=Math.round(tint*100);
   const tl=$('#wgTV');if(tl)tl.textContent=Math.round(tint*100)+'%';
   const fv=$('#wgFontV');if(fv)fv.textContent=(WID_FONTS.find(f=>f[0]===font)||WID_FONTS[0])[1];
+  const db=$('#wgDbl');if(db)db.checked=!!c.dbl;
+  widApplyDbl();
+}
+/* 두 번 눌러 선택 — 위젯 창이 비활성 상태에서 클릭하면 첫 클릭은 활성화만 하고
+   내부 이벤트(dateClick·eventClick 등)를 먹는다. 특정 사용자를 위한 선택 기능.
+   ⚠ 윈도우에서 WM_ACTIVATE → WM_SETFOCUS → WM_MOUSEDOWN 순서가 보장되므로
+   focus 시점에 플래그를 세우고 바로 다음 mousedown(capture)에서 잡는다. */
+let _dblActive=false,_dblJust=false,_dblTm=0;
+function widApplyDbl(){
+  if(!WIDGET)return;
+  const want=!!widCfgLoad().dbl;
+  if(want===_dblActive)return;
+  _dblActive=want;
+  if(want){
+    window.addEventListener('blur',_dblOnBlur);
+    window.addEventListener('focus',_dblOnFocus);
+    document.addEventListener('mousedown',_dblOnDown,true);
+  }else{
+    window.removeEventListener('blur',_dblOnBlur);
+    window.removeEventListener('focus',_dblOnFocus);
+    document.removeEventListener('mousedown',_dblOnDown,true);
+    _dblJust=false;
+  }
+}
+function _dblOnBlur(){_dblJust=false;}
+function _dblOnFocus(){
+  _dblJust=true;
+  clearTimeout(_dblTm);
+  _dblTm=setTimeout(()=>{_dblJust=false;},500);   /* 키보드·Alt+Tab 등 비마우스 포커스 복귀 안전망 */
+}
+function _dblOnDown(e){
+  if(!_dblJust)return;
+  /* 설정 팝업(#wgSet)·트레이 영역은 흡수하지 않는다 */
+  if(e.target.closest&&e.target.closest('#wgSet'))return;
+  _dblJust=false;clearTimeout(_dblTm);
+  e.stopPropagation();e.preventDefault();
 }
 /* 위치·크기 조정 모드 — 켜면 창 전체가 드래그 영역이 되고, 끄면 그 자리에 고정된다.
    Electron 쪽 전환은 해시로 신호를 보낸다(preload 없이 쓰던 방식 그대로) */
