@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='2.8.5';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='2.8.6';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -1545,13 +1545,18 @@ function occSrc(p,date){
   const hit=Object.keys(mv).find(k=>mv[k]===date);
   return hit||date;
 }
-/* 정렬 등급 — 공통 업무가 맨 위, 그다음 내가 담당인 것, 나머지는 아래.
-   달력 막대(planEvent)와 일자 패널 목록(sortPlans)이 같은 기준을 쓴다 */
+/* 정렬 등급 — 공통 → 내 업무 → 팀장 → 그 밖의 담당자.
+   달력 막대(planEvent)와 일자 패널 목록(sortPlans)이 같은 기준을 쓴다.
+   ⚠ 달력은 기간 업무를 이보다 앞에 둔다(-duration) — 여러 날 막대는 모든 날에서 같은 줄이어야
+   하나로 이어지는데, 등급으로 밀리면 빈 줄이 생긴다 */
 function evOrd(p,team){
   if(team===undefined)team=!planOwners(p).length;
-  if(team)return 0;
-  const me=myId();
-  return (me&&planOwners(p).includes(me))?1:2;
+  if(team)return 0;                                   /* 공통 업무 */
+  const own=planOwners(p),me=myId();
+  if(me&&own.includes(me))return 1;                   /* 내 업무 */
+  const R=roster();
+  if(own.some(id=>{const q=R.find(x=>x.id===id);return q&&rankOf(q.rank)==='head';}))return 2;   /* 팀장 */
+  return 3;                                           /* 그 밖의 담당자 */
 }
 function planEvent(p,date){
   const span=p.end?daysBetween(p.date,p.end):0;
@@ -1574,7 +1579,7 @@ function planEvent(p,date){
        배경 없이 어두운 글자라 유리(어두운) 배경 위에서 거의 보이지 않는다. 전부 색 막대로 통일한다 */
     display:'block',
     classNames:(done?['done']:[]).concat((!team&&isLightColor(planColor(p)))?['on-light']:[]).concat(team?['team']:[]),
-    /* 칸 안 차례 — 공통(0) · 내 업무(1) · 나머지(2).
+    /* 칸 안 차례 — 공통(0) · 내 업무(1) · 팀장(2) · 나머지(3).
        칸이 넘쳐 '외 N건' 으로 접힐 때 나와 상관 있는 것이 먼저 남는다(eventOrder 참조) */
     extendedProps:{pid:p.id,occ:date,recur:!!(p.recur&&p.recur.f),ord:evOrd(p,team)},
     editable:!(p.recur&&p.recur.f)
@@ -2043,6 +2048,9 @@ document.addEventListener('mousedown',e=>{
   if(sd&&sd.classList.contains('on')&&!t.closest('#widSide')&&!t.closest('[data-act="wid.side"]')){
     sd.classList.remove('on');S.widSide='';
   }
+  /* 찾기 패널 — 앱(사이드바 버튼)·위젯(헤더 버튼) 둘 다 같은 규칙으로 닫는다 */
+  const nq=$('#nqPanel');
+  if(nq&&nq.classList.contains('on')&&!t.closest('#nqPanel')&&!t.closest('[data-act="nq.toggle"]'))nqOpen(false);
 },true);
 /* 색상 팔레트 사각형 — 가로는 채도, 세로는 밝기. 끌면서 고를 수 있고 고른 색은 추가색으로 쌓인다 */
 let CP_DRAG=false;
