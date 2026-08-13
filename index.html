@@ -88,9 +88,12 @@ svg{display:block;flex-shrink:0;}
 .sbsc{flex:1;overflow-y:auto;overflow-x:hidden;padding:8px;display:flex;flex-direction:column;}
 .sbsc>.sbsl:first-child,.sb-bottom>.sbsl:first-child{padding-top:2px;}   /* 230차: '관리' 위가 8px 더 넓던 원인 — 첫 라벨 축소가 .sbsc 에만 걸려 있었다 */
 #sidebar.mini .sbsc{overflow-x:visible;overflow-y:auto;}
-/* 펼칠 때 내용 페이드 */
-#sidebar .nvi .nil,#sidebar .sbsl .sbsl-long{transition:opacity .18s .08s;}
+/* 펼칠 때 내용 페이드 — 폭이 늘어나는 .22s 동안 글자가 튀어나오지 않고 뒤따라 떠오른다.
+   ⚠ 여기 열거된 것들은 전부 display 가 아니라 width:0 으로 접혀 있어야 한다(display:none 이면 전환이 안 돈다) */
+#sidebar .nvi .nil,#sidebar .sbsl .sbsl-long,
+#sidebar .tb-srch-t,#sidebar .sb-acct-info,#sidebar .sb-acct-role{transition:opacity .18s .10s;}
 #sidebar.mini .nvi .nil,#sidebar.mini .sbsl .sbsl-long{opacity:0;transition:opacity .06s;}
+#sidebar.mini .tb-srch-t,#sidebar.mini .sb-acct-info,#sidebar.mini .sb-acct-role{transition:opacity .06s;}
 .sbsc>*{flex-shrink:0;}
 .sb-bottom{flex:0 0 auto;padding:8px 8px 8px;}   /* 스크롤 영역 밖 — 목록이 길어도 관리·프로필은 늘 아래에 남는다 */
 /* 하자 관리 소분류(권역) — 꺾쇠로 접었다 편다 */
@@ -108,7 +111,7 @@ svg{display:block;flex-shrink:0;}
 .sbsl:not(:first-child){margin-top:8px;padding-top:12px;}
 .sbsl:not(:first-child)::before{content:'';position:absolute;left:6px;right:6px;top:0;height:1px;background:var(--sep);}
 #sidebar.mini .sbsl{visibility:visible;text-align:center;padding-left:0;padding-right:0;font-size:10.5px;letter-spacing:0;white-space:nowrap;transition:none;}
-#sidebar.mini .sbsl>.sbsl-long{display:none;}
+#sidebar.mini .sbsl>.sbsl-long{display:inline-block;width:0;overflow:hidden;}
 #sidebar.mini .sbsl>.sbsl-short{display:inline;}
 .sbsl>.sbsl-short{display:none;}
 #sidebar.mini .sbsl:not(:first-child)::before{left:4px;right:4px;}
@@ -138,12 +141,12 @@ svg{display:block;flex-shrink:0;}
 .sb-tools-in .tbr{display:flex;align-items:center;gap:4px;flex-wrap:wrap;justify-content:center;}
 .sb-tools-in .tbr>#tbRm{order:8;}
 .sb-tools-in .tbr>#tbPrintWrap{order:9;}   /* 하자 관리에서만 생기는 버튼은 기존 버튼 오른쪽에 붙는다 */
-.sb-tools .tb-srch{width:32px;padding:0;justify-content:center;}
-.sb-tools .tb-srch-t{display:none;}                 /* 기능 버튼은 아이콘만 */
+.sb-tools .tb-srch{width:32px;padding:0;justify-content:center;white-space:nowrap;overflow:hidden;}
+.sb-tools .tb-srch-t{display:inline-block;width:0;overflow:hidden;opacity:0;}   /* 기능 버튼은 아이콘만 */
 /* 하자 관리 밖(.df-on 아님)에서는 기준월·인쇄가 빠져 자리가 남는다 — 검색 버튼이 그 폭을 채운다.
    접힘 팝업(#sidebar.mini)은 폭 개념이 달라 아이콘형 그대로. */
 #sidebar:not(.mini) .sb-tools:not(.df-on) .tb-srch{flex:1;width:auto;justify-content:flex-start;padding:0 10px 0 9px;}
-#sidebar:not(.mini) .sb-tools:not(.df-on) .tb-srch-t{display:inline;}
+#sidebar:not(.mini) .sb-tools:not(.df-on) .tb-srch-t{width:auto;opacity:1;}
 .sb-tools .tb-rm{margin-right:2px;}
 .sb-more{display:none;width:32px;height:32px;border-radius:var(--rmd);align-items:center;justify-content:center;color:var(--lbl2);background:transparent;border:0;cursor:pointer;}
 .sb-more:hover{background:var(--fill);color:var(--bt1);}
@@ -166,7 +169,7 @@ svg{display:block;flex-shrink:0;}
 
 /* 접었을 때: 프로필은 아바타만, 테마 버튼은 아래로 — 둘 다 사라지지 않는다 */
 #sidebar.mini .sb-acct{flex:none;margin:0 auto;}
-#sidebar.mini .sb-acct-info,#sidebar.mini .sb-acct-role{display:none;}
+#sidebar.mini .sb-acct-info,#sidebar.mini .sb-acct-role{flex:0 0 0;width:0;padding-left:0;padding-right:0;overflow:hidden;opacity:0;}
 .sb-th1{flex:0 0 auto;position:relative;width:48px;align-self:stretch;min-height:38px;margin-left:6px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--rmd);color:var(--lbl3);background:transparent;cursor:pointer;transition:background var(--tr),color var(--tr);}
 /* 구분선은 프로필 버튼과 테마 버튼의 **중간**에 온다 — margin-left:6px 이므로 left:-3px 이 정확히 가운데.
    높이는 위아래 7px 씩 물려 살짝 짧게(전 5px). */
@@ -500,7 +503,11 @@ html.dark .stx-done{color:#3BA85C;}
 .nvi.df-site .nil{font-size:12px;}
 .nvi.df-site .dot{width:4px;height:4px;border-radius:50%;background:var(--sepo);flex:0 0 auto;margin:0 0 0 5px;transition:background var(--tr);}   /* 점-이름 사이는 gap(8px)만 */
 .nvi.df-site:hover .dot,.nvi.df-site.act .dot{background:var(--b500);}
-#sidebar.mini .df-reg,#sidebar.mini .nvi.df-site{display:none;}
+/* 접힘 — display:none 이면 펼치는 순간 목록이 통째로 튀어나온다. 높이를 0 으로 접어 두면
+   ⚠ 높이 자체는 auto 라 전환되지 않지만(스냅), 글자는 위 페이드 규칙을 타고 뒤따라 떠오른다 */
+#sidebar.mini .df-reg,#sidebar.mini .nvi.df-site{
+  height:0;min-height:0;padding-top:0;padding-bottom:0;margin-top:0;margin-bottom:0;
+  overflow:hidden;opacity:0;pointer-events:none;}
 /* 상단바 기준월 칩 */
 #tbRm[hidden],#tbPrintWrap[hidden]{display:none!important;}   /* display 지정이 hidden 을 이기던 버그 — 하자 관리 밖에선 숨는다 */
 .tb-rm{display:inline-flex;align-items:center;height:30px;padding:0 10px;margin:0;font-size:12.5px;font-weight:600;
@@ -2247,6 +2254,10 @@ html.dark #toast{background:#2B313A;}
    달력 상단선이 우측 필터 카드 시작선과 정확히 맞는다 */
 @media(min-width:961px){
   body:not(.wid) .cal-head{height:46px;margin-bottom:9px;padding:0 2px;flex:0 0 auto;}
+  /* 펼치는 .22s 동안 도구 버튼이 좁은 폭에 맞춰 세로로 쌓였다가 한 줄로 돌아오던 문제 —
+     내용칸 폭을 펼침 기준(--sw 에서 .sb-tools 좌우 여백 7px 씩)으로 고정해 되접히지 않게 한다.
+     ⚠ flex-wrap:wrap 은 그대로 둔다 — 하자 관리에서 버튼이 실제로 넘칠 때는 줄바꿈이 필요하다 */
+  #sidebar:not(.mini) .sb-tools-in{min-width:calc(var(--sw) - 14px);}
 }
 /* ══════════ 모바일 ══════════ */
 #scrim{position:fixed;inset:0;background:rgba(0,0,0,.32);z-index:250;opacity:0;pointer-events:none;transition:opacity .25s;}
@@ -2781,10 +2792,6 @@ body.hasbg #fcal .fc-event.team{background:rgba(255,255,255,.92)!important;}
     <div class="tbr">
       <span class="tb-rm" id="tbRm" data-act="df.rm" role="button" tabindex="0" data-tip="기준월 변경 — 게시된 달을 고릅니다" hidden></span>
       <div class="tb-nav" id="tbPrintWrap" hidden>
-        <button class="tb-ic" data-act="df.print" aria-label="인쇄" data-tip="인쇄 · PDF">
-          <svg class="icn" aria-hidden="true"><use href="#i-print"></use></svg></button>
-      </div>
-      <div class="tb-nav" id="sbPrintWrap" hidden>
         <button class="tb-ic" data-act="sb.print" aria-label="인쇄" data-tip="인쇄 · PDF">
           <svg class="icn" aria-hidden="true"><use href="#i-print"></use></svg></button>
       </div>
@@ -3097,5 +3104,5 @@ body.hasbg #fcal .fc-event.team{background:rgba(255,255,255,.92)!important;}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=267"></script>
+<script src="./app.js?v=268"></script>
 </body></html>
