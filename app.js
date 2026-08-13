@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='2.7.3';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='2.7.4';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -7147,6 +7147,7 @@ function widApplyDbl(){
     window.addEventListener('blur',_dblOnBlur);
     window.addEventListener('focus',_dblOnFocus);
     _DBL_EV.forEach(t=>document.addEventListener(t,_dblOnMouse,true));
+    if(!document.hasFocus())document.body.classList.add('wid-await');   /* 켤 때 이미 비활성일 수 있다 */
   }else{
     window.removeEventListener('blur',_dblOnBlur);
     window.removeEventListener('focus',_dblOnFocus);
@@ -7159,10 +7160,14 @@ function _dblClear(){
   clearTimeout(_dblTm);clearTimeout(_dblEatTm);
   document.body.classList.remove('wid-await');
 }
-function _dblOnBlur(){_dblClear();}
+/* ⚠ 손 모양 커서는 **누르기 전**에 이미 떠 있다 — 예전에는 focus(=이미 클릭한 뒤)에 클래스를 붙여
+   정작 필요한 순간에는 없었다. 창이 비활성인 동안 내내 붙여 두고, 활성화 클릭에서 뗀다 */
+function _dblOnBlur(){
+  _dblClear();
+  document.body.classList.add('wid-await');   /* 비활성 상태 — 눌러도 활성화만 되니 손 모양을 숨긴다 */
+}
 function _dblOnFocus(){
   _dblJust=true;
-  document.body.classList.add('wid-await');   /* 커서를 기본(화살표)으로 — 아직 활성화 전 */
   clearTimeout(_dblTm);
   _dblTm=setTimeout(()=>{_dblJust=false;document.body.classList.remove('wid-await');},500);   /* 키보드·Alt+Tab 등 비마우스 포커스 복귀 안전망 */
 }

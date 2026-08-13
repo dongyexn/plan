@@ -2275,6 +2275,8 @@ html.dark #toast{background:#2B313A;}
   #fcal .fc-event.team .fc-event-title::before{margin-right:2px;border-left-width:3px;border-top-width:2px;border-bottom-width:2px;}
   #fcal .fc-daygrid-day-number{font-size:11.5px;padding:2px 4px 1px;}
   #fcal .fc-day-today .dnum{min-width:18px!important;height:15px!important;font-size:10.5px!important;padding:0 4px!important;margin:0 0 0 -4px!important;}   /* 뒤쪽 위젯 규칙(2380행대)보다 우선 */
+  /* 칩을 15px 로 못박는 구간 — 다른 날의 숫자 줄 높이(--dnh)도 같은 값으로 맞춘다 */
+  #fcal,body.wid #fcal{--dnh:15px;}
   #fcal .fc-daygrid-more-link{font-size:9.5px;margin:0;}
   #fcal .fc-daygrid-day-bottom{padding:0 4px 0 2px;}
 }
@@ -2356,11 +2358,14 @@ html.dark .bp{background:var(--b500);}
 .pd-lnk .icn{margin-right:2px;}
 /* 오늘 배지 — 지름을 줄여 업무 막대 단차를 없앤다(위젯 포함) */
 #fcal .fc-day-today .dnum{min-width:20px;width:auto;height:17px;padding:0 5px;margin:0 0 0 -5px;}
-/* ⚠ 칩은 height 고정, 다른 날은 평문(줄높이 = 글자×1.5) 이라 두 줄의 높이가 어긋난다 —
-   오늘 칸만 막대가 1px 올라가 보이던 원인. 칩 크기를 맞추는 대신 줄 높이를 못박아 구조적으로 같게 한다.
-   min-height 이므로 글자가 커져도 잘리지 않는다(위젯은 --wfz 를 따라 함께 커진다) */
-#fcal .fc-daygrid-day-number{min-height:20px;}
-body.wid #fcal .fc-daygrid-day-number{min-height:round(calc(20px*var(--wfz)),1px);}
+/* ⚠ 오늘 칸만 막대가 1px 올라가 보이던 원인 — 칩은 height 고정(17px), 다른 날은 평문이라
+   줄 높이가 글자×1.5 로 잡힌다(위젯 12px → 18px). 바깥에서 min-height 로 누르려 했더니
+   숫자 줄에 세로 padding 4px 이 더해져 21 vs 22 가 되어 소용이 없었다.
+   숫자 칸(.dnum) 자체의 높이를 양쪽 같은 값으로 못박아 구조적으로 맞춘다 */
+#fcal{--dnh:18px;}
+body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
+#fcal .dnum{line-height:var(--dnh);}
+#fcal .fc-day-today .dnum{height:var(--dnh);}
 /* 계정 모달 — 두 탭을 같은 칸에 겹쳐 두어 높이가 늘 큰 쪽에 맞는다(탭을 옮겨도 안 흔들림) */
 .acct-pane{min-height:0;display:grid;}
 .acct-pane>.acct-real,.acct-pane>.acct-ghost{grid-area:1/1;min-width:0;}
@@ -3047,5 +3052,5 @@ html.dark body.hasbg #fcal .fc-event.team{background:rgba(44,47,54,.92)!importan
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=284"></script>
+<script src="./app.js?v=285"></script>
 </body></html>
