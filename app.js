@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='2.7.4';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='2.8.0';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -2725,7 +2725,7 @@ function tkMatch(sid,iid,it){
 }
 function tkFilterOn(){const f=S.tkF||{};return !!(String(f.q||'').trim()||f.st||f.due);}
 /* 다시 그리기 전후로 스크롤 위치를 기억한다 — rTasks 는 #tkRoot 를 통째로 갈아끼우므로
-   그냥 두면 완료 체크·펼치기·코멘트마다 목록이 맨 위로 튄다.
+   그냥 두면 완료 체크·펼치기마다 목록이 맨 위로 튄다.
    ⚠ 대상(팀/담당자)을 바꿨을 때는 되돌리지 않는다 — 새 목록이 아래로 내려간 채 열린다 */
 let _tkScKey='';
 function rTasks(){
@@ -2957,7 +2957,7 @@ function rReport(){
     ${body||'<div class="rp-empty">보고 대상 권역이 없습니다.</div>'}`;
 }
 
-/* 업무로 이동 — 검색·내 업무·멘션·달력에서 공통으로 쓰고, 모달 없이 인라인으로 펼친다 */
+/* 업무로 이동 — 검색·내 업무·달력에서 공통으로 쓰고, 모달 없이 인라인으로 펼친다 */
 function gotoTask(sid,iid){
   nqOpen(false);closeModal();
   const isTeam=(S.org.teams||[]).some(t=>t.id===sid);
@@ -2969,12 +2969,15 @@ function gotoTask(sid,iid){
     if(el)el.scrollIntoView({block:'center',behavior:'smooth'});},80);
 }
 
-/* ═══════════ 찾기 — 업무·일정·코멘트를 한 번에 ═══════════ */
+/* ═══════════ 찾기 — 업무·현장·하자를 한 번에 ═══════════ */
 function nqOpen(on){
-  const p=$('#nqPanel'),f=$('#tbSrch');if(!p)return;
+  const p=$('#nqPanel');if(!p)return;
   p.classList.toggle('on',!!on);
   p.setAttribute('aria-hidden',on?'false':'true');
-  if(f){f.classList.toggle('on',!!on);f.setAttribute('aria-expanded',on?'true':'false');}
+  /* 여는 버튼이 둘 — 앱은 사이드바(#tbSrch), 위젯은 헤더(#widSrch). 있는 쪽만 눌린 표시를 준다 */
+  [$('#tbSrch'),$('#widSrch')].forEach(f=>{
+    if(!f)return;
+    f.classList.toggle('on',!!on);f.setAttribute('aria-expanded',on?'true':'false');});
   if(on)setTimeout(()=>{const q=$('#nqQ');if(q){q.focus();q.select();}},60);
 }
 function nqMark(text,q){
@@ -3016,7 +3019,7 @@ function subjName(sid){
 function rNq(){
   const box=$('#nqRes'),q=($('#nqQ')&&$('#nqQ').value||'').trim();
   if(!box)return;
-  if(!q){box.innerHTML='<div class="nq-empty">업무 제목·내용, 일정, 코멘트에서 찾습니다.</div>';return;}
+  if(!q){box.innerHTML='<div class="nq-empty">업무 제목·진행경과·처리계획, 현장, 하자에서 찾습니다.</div>';return;}
   const r=nqSearch(q);
   const total=r.tasks.length+r.sites.length+r.defects.length;
   if(!total){box.innerHTML='<div class="nq-empty">"'+esc(q)+'" 에 해당하는 결과가 없습니다.</div>';return;}
@@ -3027,7 +3030,7 @@ function rNq(){
     (r.tasks.length?'<div class="nq-g">업무 '+r.tasks.length+'</div>'+r.tasks.slice(0,20).map(({sid,iid,it})=>
       item('i-tasks',nqMark(it.text,q),
         subjName(sid)+(it.date?' · '+it.date+(it.end&&it.end!==it.date?'~'+it.end:''):''),
-        'data-act="nq.task" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"')).join(''):'')
+        'data-act="nq.task" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" data-date="'+esc(it.date||'')+'"')).join(''):'')
     +(r.sites.length?'<div class="nq-g">하자처리 현황 · 현장 '+r.sites.length+'</div>'+r.sites.slice(0,10).map(s=>
       item('i-defect',nqMark(s.name,q),'하자 현황 보기',
         'data-act="nq.site" data-sid="'+esc(s.id)+'"')).join(''):'')
@@ -6326,8 +6329,21 @@ const ACT={
   'mrv.today':el=>mrvApply(el,{st:1,done:false,stKeep:true,date:todayStr(),end:''},'오늘로 옮겼습니다'),
   'nq.toggle':()=>{const on=!$('#nqPanel').classList.contains('on');nqOpen(on);if(on)rNq();},
   'nq.close':()=>nqOpen(false),
-  'nq.task':el=>gotoTask(el.dataset.sid,el.dataset.iid),
-  'nq.site':el=>{nqOpen(false);S.dfSid=el.dataset.sid;S.dfTab='sum';go('defect');},
+  /* ⚠ 위젯에는 업무 목록·하자 관리 화면이 없다 — 그쪽으로 보내면 빈 화면이 된다.
+     위젯에서는 그 업무의 날짜로 달력을 옮기고 팝업을 펼친다(내 업무 팝오버와 같은 방식) */
+  'nq.task':el=>{
+    if(!WIDGET){gotoTask(el.dataset.sid,el.dataset.iid);return;}
+    nqOpen(false);
+    const d=el.dataset.date;
+    if(!d){toast('기한이 없는 업무입니다 · 브라우저 앱의 업무 목록에서 볼 수 있습니다');return;}
+    if(CAL)CAL.gotoDate(toDate(d));
+    selDate(d,true);S.planOpen=el.dataset.iid||'';S.widPop=true;
+    rMonTitle();refetchCal();rDay();rWidget();
+  },
+  'nq.site':el=>{
+    nqOpen(false);
+    if(WIDGET){toast('하자처리 현황은 브라우저 앱에서 볼 수 있습니다');return;}
+    S.dfSid=el.dataset.sid;S.dfTab='sum';go('defect');},
   'mine.day':el=>{const d=el.dataset.date;if(!d)return;S.mineSel=(S.mineSel===d?'':d);rTasks();},
   'mine.mon':el=>{
     const d=Number(el.dataset.d)||0;
@@ -6976,7 +6992,7 @@ document.addEventListener('keydown',e=>{
   if(WIDGET&&(e.key==='ArrowLeft'||e.key==='ArrowRight')&&!/INPUT|TEXTAREA|SELECT/.test((e.target.tagName||''))){
     ACT[e.key==='ArrowLeft'?'cal.prev':'cal.next']();return;
   }
-  if(!WIDGET&&(e.ctrlKey||e.metaKey)&&(e.key==='k'||e.key==='K')){e.preventDefault();nqOpen(true);rNq();return;}   /* 위젯에는 찾기 패널이 없다 */
+  if((e.ctrlKey||e.metaKey)&&(e.key==='k'||e.key==='K')){e.preventDefault();nqOpen(true);rNq();return;}
   if(e.key==='Escape'&&$('#nqPanel')&&$('#nqPanel').classList.contains('on')&&!$('#mo').classList.contains('open')){nqOpen(false);return;}
   if(e.key==='Escape'){
     if($('#mo').classList.contains('open')){closeModal();return;}

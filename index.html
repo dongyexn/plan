@@ -138,7 +138,11 @@ svg{display:block;flex-shrink:0;}
 .sb-foot{position:relative;margin:0;padding:7px 8px;display:flex;align-items:center;gap:8px;}
 /* 기능 버튼 블록 — 페이지 헤더에서 옮겨 온 아이콘들 */
 .sb-tools{position:relative;padding:7px;}
-.sb-tools-in .tbr{display:flex;align-items:center;gap:4px;flex-wrap:wrap;justify-content:center;}
+/* ⚠ 줄 높이를 못박는다 — 화면마다 들어가는 버튼이 다르다(하자 관리는 기준월·인쇄, 주요 업무는 인쇄,
+   캘린더·업무 목록은 검색만). 테두리·안여백이 붙는 .tb-nav 는 32px, 검색 버튼은 30px 이라
+   인쇄가 빠지는 화면에서만 블록이 2px 낮아져 사이드바 전체가 어긋나 보였다(알림 버튼이 늘 자리를
+   채우고 있어서 예전에는 드러나지 않았다) */
+.sb-tools-in .tbr{display:flex;align-items:center;gap:4px;flex-wrap:wrap;justify-content:center;min-height:32px;}
 .sb-tools-in .tbr>#tbRm{order:8;}
 .sb-tools-in .tbr>#tbPrintWrap{order:9;}   /* 하자 관리에서만 생기는 버튼은 기존 버튼 오른쪽에 붙는다 */
 .sb-tools .tb-srch{width:32px;padding:0;justify-content:center;white-space:nowrap;overflow:hidden;}
@@ -1913,6 +1917,15 @@ body.wid .wid-move .t{position:absolute;left:50%;top:50%;transform:translate(-50
 body.wid .wid-move .t button{-webkit-app-region:no-drag;background:var(--b600);color:#fff;font:inherit;
   padding:6px 12px;border-radius:8px;}
 body.wid #wgSet{z-index:9100;}
+/* 찾기 패널 — 위젯에서는 '내 업무' 팝오버(.wid-side)와 같은 자리·같은 층에 세운다.
+   ⚠ 기본 배치(left:var(--sw)+18px)는 사이드바가 있는 앱 기준이라 위젯에서는 화면 밖으로 나간다.
+   창이 곧 화면이므로 좌우 10px 만 남기고 폭을 채운다(연월 팝업과 같은 62px 아래) */
+body.wid .nq-panel{position:fixed;left:10px;right:10px;width:auto;top:62px;
+  max-height:calc(100dvh - 83px);z-index:620;border-radius:var(--rxl);}
+body.wid .nq-hd{padding:11px 12px 9px;}
+body.wid .nq-in{padding:9px 12px 0;}
+body.wid .nq-in input{height:36px;font-size:13px;}
+body.wid .nq-res{padding:8px 8px 12px;}
 /* 두 번 눌러 선택 — 활성화 전 첫 클릭 대기 상태에서 pointer 커서를 숨긴다 */
 body.wid-await,body.wid-await *{cursor:default!important;}
 body.wid #content{padding:8px;}
@@ -2848,6 +2861,7 @@ html.dark body.hasbg #fcal .fc-event.team{background:rgba(44,47,54,.92)!importan
               </div>
               <div class="wido" id="widFilterSlot"></div>
               <div class="cal-nav wido">
+                <button class="cal-nb" id="widSrch" data-act="nq.toggle" aria-label="찾기" data-tip="찾기" aria-expanded="false"><svg class="icn" aria-hidden="true"><use href="#i-search"></use></svg></button>
                 <button class="cal-nb" data-act="wid.side" data-tab="mine" aria-label="내 업무" data-tip="내 업무"><svg class="icn" aria-hidden="true"><use href="#i-tasks"></use></svg></button>
                 <button class="cal-nb wid-acct" data-act="acct.open" aria-label="내 프로필" data-tip="내 프로필"><span class="av sb-acct-av" id="widAcctAv"><svg class="icn" aria-hidden="true"><use href="#i-me"></use></svg></span></button>
                 <button class="cal-nb" data-act="wid.set" aria-label="위젯 설정" data-tip="위젯 설정"><svg class="icn" aria-hidden="true"><use href="#i-settings"></use></svg></button>
@@ -3037,7 +3051,7 @@ html.dark body.hasbg #fcal .fc-event.team{background:rgba(44,47,54,.92)!importan
 <div id="htip" role="tooltip" aria-hidden="true"></div>
 <div class="nq-panel" id="nqPanel" role="dialog" aria-label="찾기" aria-hidden="true">
   <div class="nq-hd">
-    <div><div class="nq-tt">무엇이든 찾기</div><div class="nq-sb">업무 · 일정 · 코멘트에서</div></div>
+    <div><div class="nq-tt">무엇이든 찾기</div><div class="nq-sb">업무 · 현장 · 하자에서</div></div>
     <button class="nq-cl" data-act="nq.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button>
   </div>
   <div class="nq-in"><input id="nqQ" autocomplete="off" placeholder="예: 두정역, 점검, @김담당" aria-label="찾을 내용"></div>
@@ -3052,5 +3066,5 @@ html.dark body.hasbg #fcal .fc-event.team{background:rgba(44,47,54,.92)!importan
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=285"></script>
+<script src="./app.js?v=287"></script>
 </body></html>
