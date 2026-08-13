@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='2.8.2';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='2.8.5';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -2972,6 +2972,9 @@ function gotoTask(sid,iid){
 /* ═══════════ 찾기 — 업무·현장·하자를 한 번에 ═══════════ */
 function nqOpen(on){
   const p=$('#nqPanel');if(!p)return;
+  /* 접힌 사이드바에서 기능 팝오버(#sbTools.open)와 자리가 겹친다 — 열 때 그쪽을 먼저 닫는다.
+     팝오버가 z-index 400, 찾기 패널이 61 이라 그대로 두면 패널이 아래로 깔려 잘려 보인다 */
+  if(on){const t=$('#sbTools');if(t)t.classList.remove('open');}
   p.classList.toggle('on',!!on);
   p.setAttribute('aria-hidden',on?'false':'true');
   /* 여는 버튼이 둘 — 앱은 사이드바(#tbSrch), 위젯은 헤더(#widSrch). 있는 쪽만 눌린 표시를 준다 */
@@ -5934,7 +5937,6 @@ function go(view){
   }
   if(view==='settings'){
     rCfg();
-    const d=$('#darkChk');if(d)d.checked=document.documentElement.classList.contains('dark');
     const b=$('#buildInfo');
     if(b){
       const sc=[...document.scripts].map(x=>x.src).find(x=>/app\.js\?v=/.test(x))||'';
@@ -6047,7 +6049,6 @@ function calGlassApply(){
 }
 function applyTheme(dark){
   document.documentElement.classList.toggle('dark',dark);
-  const c=$('#darkChk');if(c)c.checked=dark;
   const u=$('#thIcon');if(u)u.setAttribute('href',dark?'#i-moon':'#i-sun');
   try{localStorage.setItem('calapp.theme',dark?'dark':'light');}catch(e){}
   /* 차트는 그릴 때의 토큰 색을 굽는다 — 테마가 바뀌면 하자 화면을 다시 그려야 색이 따라온다 */
@@ -6812,7 +6813,6 @@ document.addEventListener('change',e=>{
     if(it){it.name=(ren.value||'').trim();orgSave();if(S.view==='tasks')rTasks();}
     return;
   }
-  if(e.target.id==='darkChk'){applyTheme(e.target.checked);return;}
   if(e.target.closest&&e.target.closest('[data-act="set.mail"]')){saveMailCfg();return;}
   const el=e.target.closest('[data-act="acct.set"]');
   if(!el)return;
