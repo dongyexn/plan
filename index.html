@@ -295,7 +295,7 @@ body:not(.wid) #view-calendar .cal-head>.cal-ctl>.cal-nav{background:var(--fill)
 .cal-nb{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--lbl2);transition:background var(--tr),color var(--tr);}
 .cal-nb:hover{background:var(--fill);color:var(--bt1);}
 .cal-nav .cal-today .icn{width:15px;height:15px;}
-.cal-nb .icn{width:16px;height:16px;}
+.cal-nb .icn{width:16px;height:16px;vertical-align:0;}   /* ⚠ .icn 기본 vertical-align:-.15em 이 남으면 아이콘이 아래로 쏠린다 */
 /* FullCalendar 테마 이식 */
 /* 달력 격자 자체에 아웃라인 — 카드로 감싸는 게 아니라 #fcal 의 테두리다(배경 위에서 경계가 보이게).
    배경을 켜면 어두운 칸 위이므로 밝은 선으로 바꾼다(아래 hasbg 규칙). */
@@ -1932,13 +1932,15 @@ body.wid .nq-panel{position:fixed;top:62px;right:10px;left:auto;width:min(330px,
   border:1px solid rgba(255,255,255,.16);box-shadow:0 10px 30px rgba(0,0,0,.45);
   --lbl:#fff;--lbl2:rgba(255,255,255,.80);--lbl3:rgba(255,255,255,.62);
   --sep:rgba(255,255,255,.20);--bg2:rgba(255,255,255,.08);--fill:rgba(255,255,255,.12);}
-body.wid .nq-hd{padding:9px 12px 7px;}
+/* ⚠ 머리에는 아래 구분선이 있다 — 입력칸 위 여백을 없애면 선에 딱 붙는다(앱은 12px) */
+body.wid .nq-hd{padding:10px 12px 8px;align-items:center;}
 body.wid .nq-tt{font-size:13px;}
-body.wid .nq-sb{display:none;}          /* 좁은 창에서는 부제까지 둘 자리가 없다 */
-body.wid .nq-in{padding:0 12px 2px;}
+body.wid .nq-sb{font-size:11px;margin-top:1px;}
+body.wid .nq-cl{width:24px;height:24px;}
+body.wid .nq-in{padding:10px 12px 0;}
 body.wid .nq-in input{height:34px;font-size:13px;color:#fff;border-color:rgba(255,255,255,.22);}
 body.wid .nq-in input::placeholder{color:rgba(255,255,255,.42);}
-body.wid .nq-res{padding:4px 6px 8px;}
+body.wid .nq-res{padding:6px 6px 10px;}
 body.wid .nq-g{padding:6px 6px 2px;font-size:11px;}
 body.wid .nq-item{padding:6px 8px;gap:7px;}
 body.wid .nq-item .tt{font-size:12.5px;}
@@ -2180,7 +2182,7 @@ body.wid #wgSet.on{display:block;}
 .tb-srch:hover,.tb-srch.on{background:var(--bg2);color:var(--lbl2);border-color:var(--b400);}
 .tb-srch .icn{width:14px;height:14px;}
 .tb-srch-t{font-weight:500;}
-.nq-panel{position:fixed;left:calc(var(--sw) + 18px);top:64px;right:auto;width:392px;max-height:min(600px,calc(100dvh - 96px));z-index:61;
+.nq-panel{position:fixed;left:calc(var(--sw) + 18px);top:64px;right:auto;width:392px;max-height:min(600px,calc(100dvh - 96px));z-index:420;
   background:var(--bg2);border:1px solid var(--sep);border-radius:8px;overflow:hidden;
   box-shadow:0 18px 50px rgba(20,26,40,.18),0 4px 14px rgba(0,0,0,.08);
   display:flex;flex-direction:column;opacity:0;transform:translateY(-8px) scale(.98);pointer-events:none;
@@ -3072,7 +3074,7 @@ html.dark body.hasbg #fcal .fc-event.team{background:rgba(44,47,54,.92)!importan
     <div><div class="nq-tt">무엇이든 찾기</div><div class="nq-sb">업무 · 현장 · 하자에서</div></div>
     <button class="nq-cl" data-act="nq.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button>
   </div>
-  <div class="nq-in"><input id="nqQ" autocomplete="off" placeholder="예: 두정역, 점검, @김담당" aria-label="찾을 내용"></div>
+  <div class="nq-in"><input id="nqQ" autocomplete="off" placeholder="예: 두정역, 점검, 누수" aria-label="찾을 내용"></div>
   <div class="nq-res" id="nqRes"></div>
 </div>
 <div id="scrim" data-act="nav.mobClose"></div>
@@ -3084,5 +3086,5 @@ html.dark body.hasbg #fcal .fc-event.team{background:rgba(44,47,54,.92)!importan
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=289"></script>
+<script src="./app.js?v=292"></script>
 </body></html>
