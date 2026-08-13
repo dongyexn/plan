@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='2.5.2';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='2.5.3';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -6058,16 +6058,22 @@ function applyBg(){
   const briF=(Number(bri)||100)/100;
   root.style.setProperty('--app-bg-img',url?`url("${url}")`:'none');
   root.style.setProperty('--app-card-alpha',(Number(al)||90)/100);
-  root.style.setProperty('--app-bg-bri',String(briF));   /* 이미지 모드: pseudo-element 에 적용 */
-  /* 이미지가 없을 때는 body 배경색을 직접 밝기 보정 — pseudo-element 는 opacity:0 이라 filter 가 안 먹는다 */
-  if(!url&&briF!==1){
-    const raw=getComputedStyle(root).getPropertyValue('--bg').trim();
-    const m=raw.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+  root.style.setProperty('--app-bg-bri',String(briF));   /* 이미지 모드: body::before 의 filter 가 쓴다 */
+  /* 이미지가 없을 때 — ⚠ #app 이 var(--bg) 로 뷰포트를 덮으므로 body::before 는 보이지 않는다.
+     실제로 눈에 보이는 판(#app)의 배경색을 직접 계산해 넣는다.
+     ⚠ 라이트 테마 --bg(#EAECF1)는 흰색에 가까워 곱셈으로는 108% 부터 전부 흰색으로 잘린다 —
+     100% 위쪽은 흰색 쪽으로 섞고(슬라이더 끝 140% 에서 흰색), 아래쪽만 곱셈으로 어둡게 한다. */
+  const app=$('#app');
+  if(!url&&briF!==1&&app){
+    const m=getComputedStyle(root).getPropertyValue('--bg').trim()
+      .match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
     if(m){
-      const cl=v=>Math.min(255,Math.max(0,Math.round(parseInt(v,16)*briF)));
-      document.body.style.backgroundColor='rgb('+cl(m[1])+','+cl(m[2])+','+cl(m[3])+')';
+      const t=briF>1?Math.min(1,(briF-1)/0.4):0;
+      const cl=h=>{const c=parseInt(h,16);
+        return Math.round(briF>1?c+(255-c)*t:c*briF);};
+      app.style.backgroundColor='rgb('+cl(m[1])+','+cl(m[2])+','+cl(m[3])+')';
     }
-  }else{document.body.style.backgroundColor='';}   /* 이미지 있거나 100%면 CSS 기본으로 복원 */
+  }else if(app){app.style.backgroundColor='';}   /* 이미지 있거나 100%면 CSS 기본으로 복원 */
   document.body.classList.toggle('hasbg',!!url);
   const btn=$('#bgClearBtn');if(btn)btn.hidden=!url;
   const dl=$('#bgAlpha');if(dl)dl.value=al;
@@ -6149,6 +6155,8 @@ function applyTheme(dark){
   const c=$('#darkChk');if(c)c.checked=dark;
   const u=$('#thIcon');if(u)u.setAttribute('href',dark?'#i-moon':'#i-sun');
   try{localStorage.setItem('calapp.theme',dark?'dark':'light');}catch(e){}
+  /* 배경 밝기는 그 때의 --bg 색에서 계산한 값이라 테마가 바뀌면 다시 계산해야 한다 */
+  try{applyBg();}catch(e){}
   /* 차트는 그릴 때의 토큰 색을 굽는다 — 테마가 바뀌면 하자 화면을 다시 그려야 색이 따라온다 */
   if(S.view==='defect'){try{rDefect();}catch(e){}}
 }
@@ -7240,8 +7248,12 @@ function widApply(){
 /* 두 번 눌러 선택 — 위젯 창이 비활성 상태에서 클릭하면 첫 클릭은 활성화만 하고
    내부 이벤트(dateClick·eventClick 등)를 먹는다. 특정 사용자를 위한 선택 기능.
    ⚠ 윈도우에서 WM_ACTIVATE → WM_SETFOCUS → WM_MOUSEDOWN 순서가 보장되므로
-   focus 시점에 플래그를 세우고 바로 다음 mousedown(capture)에서 잡는다. */
-let _dblActive=false,_dblJust=false,_dblTm=0;
+   focus 시점에 플래그를 세우고 바로 다음 mousedown(capture)에서 잡는다.
+   ⚠⚠ mousedown 의 preventDefault 는 뒤따르는 **click 을 막지 못한다** — FullCalendar 의
+   dateClick·eventClick 은 click 에서 돈다. mousedown 을 먹은 뒤 mouseup·click·dblclick 까지
+   한 벌로 함께 삼켜야 첫 클릭이 정말로 아무 일도 하지 않는다. */
+let _dblActive=false,_dblJust=false,_dblEat=false,_dblTm=0,_dblEatTm=0;
+const _DBL_EV=['mousedown','mouseup','click','dblclick'];
 function widApplyDbl(){
   if(!WIDGET)return;
   const want=!!widCfgLoad().dbl;
@@ -7250,28 +7262,42 @@ function widApplyDbl(){
   if(want){
     window.addEventListener('blur',_dblOnBlur);
     window.addEventListener('focus',_dblOnFocus);
-    document.addEventListener('mousedown',_dblOnDown,true);
+    _DBL_EV.forEach(t=>document.addEventListener(t,_dblOnMouse,true));
   }else{
     window.removeEventListener('blur',_dblOnBlur);
     window.removeEventListener('focus',_dblOnFocus);
-    document.removeEventListener('mousedown',_dblOnDown,true);
-    _dblJust=false;
+    _DBL_EV.forEach(t=>document.removeEventListener(t,_dblOnMouse,true));
+    _dblClear();
   }
 }
-function _dblOnBlur(){_dblJust=false;document.body.classList.remove('wid-await');}
+function _dblClear(){
+  _dblJust=false;_dblEat=false;
+  clearTimeout(_dblTm);clearTimeout(_dblEatTm);
+  document.body.classList.remove('wid-await');
+}
+function _dblOnBlur(){_dblClear();}
 function _dblOnFocus(){
   _dblJust=true;
   document.body.classList.add('wid-await');   /* 커서를 기본(화살표)으로 — 아직 활성화 전 */
   clearTimeout(_dblTm);
   _dblTm=setTimeout(()=>{_dblJust=false;document.body.classList.remove('wid-await');},500);   /* 키보드·Alt+Tab 등 비마우스 포커스 복귀 안전망 */
 }
-function _dblOnDown(e){
-  if(!_dblJust)return;
-  /* 설정 팝업(#wgSet)·트레이 영역은 흡수하지 않는다 */
-  if(e.target.closest&&e.target.closest('#wgSet'))return;
-  _dblJust=false;clearTimeout(_dblTm);
-  document.body.classList.remove('wid-await');
-  e.stopPropagation();e.preventDefault();
+function _dblOnMouse(e){
+  /* 설정 팝업(#wgSet)은 흡수하지 않는다 — 톱니를 눌러 연 뒤 바로 조작할 수 있어야 한다 */
+  if(e.target&&e.target.closest&&e.target.closest('#wgSet'))return;
+  if(e.type==='mousedown'){
+    if(!_dblJust)return;
+    _dblJust=false;clearTimeout(_dblTm);
+    document.body.classList.remove('wid-await');
+    _dblEat=true;                       /* 이 한 벌(mouseup·click·dblclick)까지 삼킨다 */
+    clearTimeout(_dblEatTm);
+    _dblEatTm=setTimeout(()=>{_dblEat=false;},700);   /* 끌기 등으로 click 이 안 오면 스스로 푼다 */
+  }else{
+    if(!_dblEat)return;
+    if(e.type==='click')             {clearTimeout(_dblEatTm);_dblEatTm=setTimeout(()=>{_dblEat=false;},260);}
+    if(e.type==='dblclick')          {_dblEat=false;clearTimeout(_dblEatTm);}
+  }
+  e.stopImmediatePropagation();e.preventDefault();
 }
 /* 위치·크기 조정 모드 — 켜면 창 전체가 드래그 영역이 되고, 끄면 그 자리에 고정된다.
    Electron 쪽 전환은 해시로 신호를 보낸다(preload 없이 쓰던 방식 그대로) */
