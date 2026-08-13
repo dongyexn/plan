@@ -2,7 +2,7 @@
 # ⚠ 버전 규칙(Electron 판과 동일): widget-lite/ 가 바뀐 회차마다 version 을 올려서 전달한다.
 [package]
 name = "hplan-widget-lite"
-version = "1.0.0"
+version = "1.1.0"
 edition = "2021"
 
 [build-dependencies]
@@ -22,7 +22,6 @@ open = "5"
 rfd = "0.14"
 # native-tls(schannel) 기본 — 사내 보안장비의 사설 루트 인증서가 윈도우 저장소에 있으면 그대로 통한다
 reqwest = { version = "0.12", features = ["blocking"] }
-tauri-winrt-notification = "0.7"
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.52"

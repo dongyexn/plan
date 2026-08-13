@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='2.5.9';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='2.7.3';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -80,100 +80,6 @@ function todayStr(){return dstr(new Date());}
 const DOW=['일','월','화','수','목','금','토'];
 const PAL=['#6B7280','#3E71D2','#0EA5E9','#0D9488','#16A34A','#65A30D',
            '#D97706','#EA580C','#DC2626','#DB2777','#7C5CD6','#4B5563'];
-/* 코멘트 본문 렌더 — 명부에 있는 @이름만 파란색으로 강조한다.
-   esc() 로 이스케이프한 뒤 치환하므로 원문에 태그가 있어도 안전하다. */
-function mentionHTML(txt){
-  const h=esc(txt||'');
-  const names=roster().map(p=>p.name).filter(Boolean)
-    .sort((a,b)=>b.length-a.length);   /* 긴 이름 먼저 — '김동'이 '김동연'을 잘라먹지 않게 */
-  if(!names.length)return h;
-  const alt=names.map(n=>esc(n).replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|');
-  /* 한 번만 훑는다 — 여러 번 replace 하면 방금 넣은 태그 안을 다시 치환해 중첩된다 */
-  return h.replace(new RegExp('@('+alt+')','g'),(m,n)=>'<span class="mn">@'+n+'</span>');
-}
-/* ───── @ 자동완성 ─────
-   코멘트 입력창에서 @ 를 치면 커서 바로 아래에 명부를 띄우고,
-   ↑↓ 로 옮겨 Enter·Tab·클릭으로 넣는다. */
-const MN={box:null,ta:null,list:[],idx:0,start:-1};
-function mnClose(){if(MN.box){MN.box.remove();MN.box=null;}MN.ta=null;MN.list=[];MN.start=-1;}
-/* textarea 안 커서 위치의 화면 좌표 — 거울 div 로 계산한다 */
-function caretXY(ta,pos){
-  const cs=getComputedStyle(ta),m=document.createElement('div');
-  ['fontFamily','fontSize','fontWeight','lineHeight','letterSpacing','padding','border','width','boxSizing','whiteSpace','wordBreak']
-    .forEach(k=>{m.style[k]=cs[k];});
-  m.style.cssText+=';position:absolute;visibility:hidden;white-space:pre-wrap;word-wrap:break-word;top:0;left:0;';
-  m.textContent=ta.value.slice(0,pos);
-  const mk=document.createElement('span');mk.textContent='\u200b';m.appendChild(mk);
-  document.body.appendChild(m);
-  const r=ta.getBoundingClientRect(),mr=mk.getBoundingClientRect(),br=m.getBoundingClientRect();
-  m.remove();
-  return{x:r.left+(mr.left-br.left)-ta.scrollLeft,y:r.top+(mr.top-br.top)-ta.scrollTop+(parseFloat(cs.lineHeight)||18)};
-}
-function mnRender(){
-  if(!MN.box)return;
-  MN.box.innerHTML=MN.list.map((p,i)=>
-    '<div class="mn-i'+(i===MN.idx?' act':'')+'" data-i="'+i+'">'
-    +'<span class="mn-av" style="background:'+esc(ownColor(p.id))+'">'+esc(String(p.name||'?').slice(0,1))+'</span>'
-    +'<span class="mn-n">'+esc(p.name)+'</span>'
-    +(p.email?'<span class="mn-e">'+esc(p.email)+'</span>':'')+'</div>').join('');
-  const a=MN.box.querySelector('.mn-i.act');if(a&&a.scrollIntoView)a.scrollIntoView({block:'nearest'});
-}
-function mnOpen(ta,start,q){
-  const me=S.user&&S.user.uid;
-  const list=roster().filter(p=>p.id!==me&&p.name
-    &&(!q||p.name.toLowerCase().indexOf(q.toLowerCase())>=0
-        ||String(p.email||'').toLowerCase().indexOf(q.toLowerCase())>=0)).slice(0,8);
-  if(!list.length){mnClose();return;}
-  if(!MN.box){
-    MN.box=document.createElement('div');MN.box.className='mn-pop';
-    document.body.appendChild(MN.box);
-  }
-  MN.ta=ta;MN.list=list;MN.start=start;
-  if(MN.idx>=list.length)MN.idx=0;
-  mnRender();
-  const xy=caretXY(ta,start);
-  const w=Math.min(260,window.innerWidth-16);
-  MN.box.style.width=w+'px';
-  MN.box.style.left=Math.max(8,Math.min(xy.x,window.innerWidth-w-8))+'px';
-  const h=MN.box.offsetHeight||160;
-  /* 아래로 넘치면 커서 위로 띄운다 */
-  MN.box.style.top=(xy.y+h>window.innerHeight-8?Math.max(8,xy.y-h-22):xy.y)+'px';
-}
-function mnPick(i){
-  const p=MN.list[i];if(!p||!MN.ta)return;
-  const ta=MN.ta,pos=ta.selectionStart;
-  ta.value=ta.value.slice(0,MN.start)+'@'+p.name+' '+ta.value.slice(pos);
-  const c=MN.start+p.name.length+2;
-  mnClose();ta.focus();ta.setSelectionRange(c,c);
-}
-/* 커서 앞의 @토큰을 찾는다 — 단어 중간의 @(이메일 등)은 무시 */
-function mnScan(ta){
-  const pos=ta.selectionStart,v=ta.value.slice(0,pos);
-  const at=v.lastIndexOf('@');
-  if(at<0)return null;
-  if(at>0&&!/[\s(\[]/.test(v[at-1]))return null;
-  const q=v.slice(at+1);
-  if(/[\s@]/.test(q)||q.length>20)return null;
-  return{start:at,q};
-}
-document.addEventListener('input',e=>{
-  const ta=e.target.closest('.th-in');if(!ta)return;
-  const hit=mnScan(ta);
-  if(hit)mnOpen(ta,hit.start,hit.q);else mnClose();
-});
-document.addEventListener('keydown',e=>{
-  if(!MN.box||!MN.ta||e.target!==MN.ta)return;
-  if(e.key==='ArrowDown'){e.preventDefault();MN.idx=(MN.idx+1)%MN.list.length;mnRender();return;}
-  if(e.key==='ArrowUp'){e.preventDefault();MN.idx=(MN.idx-1+MN.list.length)%MN.list.length;mnRender();return;}
-  if(e.key==='Enter'||e.key==='Tab'){e.preventDefault();mnPick(MN.idx);return;}
-  if(e.key==='Escape'){e.preventDefault();e.stopPropagation();mnClose();}
-},true);
-document.addEventListener('mousedown',e=>{
-  const it=e.target.closest('.mn-i');
-  if(it){e.preventDefault();mnPick(Number(it.dataset.i));return;}
-  if(!e.target.closest('.mn-pop'))mnClose();
-});
-document.addEventListener('scroll',()=>{if(MN.box)mnClose();},true);
 
 /* 아바타 배경색 즉시 반영 · 이모지 검색 */
 function pfPaint(c){
@@ -392,6 +298,9 @@ function planColor(p){
 /* 상태는 진행·완료에 보류(3)를 더한 셋. 보류는 아침 확인에서 넘긴 업무 — 옛 데이터의 예정(0)은 진행으로 본다 */
 const ST_LBL=['진행','진행','완료','보류'];
 const ST_PICK=[['1','진행'],['2','완료'],['3','보류']];
+/* 링크 최대 길이 — 원드라이브·쉐어포인트 공유 링크는 한글 경로가 퍼센트 인코딩되어 길다.
+   ⚠ 이 값을 바꾸면 database.rules.json 의 links/url 한도(<=2000)도 같이 바꿔야 한다 */
+const LINK_MAX=2000;
 /* 완료 업무를 목록에 남겨 두는 기간(일) — 지나면 '지난 완료 N건' 접기 안으로 들어간다.
    ⚠ 미니달력(miniDots)은 이 값과 무관하다 — 거기서는 완료도 계속 점으로 남는다 */
 const DONE_KEEP_D=3;
@@ -421,7 +330,6 @@ const REC_LBL={'':'반복 없음',w:'매주','2w':'격주',m:'매월',y:'매년'
 /* 53차: 시각은 시작 하나만 쓴다 — endTime 은 폐기(옛 데이터는 무시) */
 function fmtSpan(p){return p&&p.time?fmtTime(p.time):'';}
 function fmtTime(t){if(!t)return'';const[h,m]=t.split(':').map(Number);const ap=h<12?'오전':'오후';const hh=h%12===0?12:h%12;return ap+' '+hh+':'+pad(m);}
-function relTime(ts){if(!ts)return'';const d=Date.now()-ts;const m=Math.floor(d/6e4);if(m<1)return'방금';if(m<60)return m+'분 전';const h=Math.floor(m/60);if(h<24)return h+'시간 전';return Math.floor(h/24)+'일 전';}
 
 /* ───── 상태 ───── */
 const S={
@@ -454,12 +362,10 @@ const S={
   dfTab:'sum',       // 하자 현장 화면의 탭
   dfRep:null,        // 읽어 온 게시본(report/{rm}) — 없으면 미게시
   dfRm:'',           // 하자 게시본 기준월(YYYY-MM)
-  widSide:'',        // 위젯 헤더의 알림·내 업무 팝오버 ('' / alert / mine)
+  widSide:'',        // 위젯 헤더의 '내 업무' 팝오버 ('' / mine)
   tkF:{q:'',st:[],kind:[],reg:[],site:[]},   // 업무 목록 검색·필터 — 모두 다중 선택
   orgTab:'acct',     // 조직/현장 관리 우측 탭 (acct | site)
-  cmtRe:'',          // 답글 입력창을 연 코멘트 (sid/iid/cid)
   prefs:{},          // calapp/prefs/{uid} — 저장한 필터 등 개인 설정
-  mentions:{},       // calapp/mentions/{uid} — 나를 부른 코멘트
   live:false,        // Firebase 실시간 모드 여부
   role:null,         // editor · viewer (users/{uid})
   acctDenied:false,  // users 노드 읽기 권한 없음
@@ -517,15 +423,11 @@ function cleanTask(t){
     o.links={};
     Object.keys(t.links).forEach(k=>{const l=t.links[k]||{};
       const u=String(l.url||'').trim();
-      if(/^https?:\/\//i.test(u))o.links[k]={url:u.slice(0,500),label:String(l.label||'').slice(0,80)};});
+      /* ⚠ 한도 500 자는 짧았다 — 원드라이브 공유 링크가 한글 경로를 퍼센트 인코딩하면 500 자를 쉽게 넘고,
+         끝에 붙는 ?d=…&csf=1&web=1&e=<공유토큰> 이 잘려 나가 열면 루트로 튕겼다(실사용 520 자 확인).
+         ⚠ 입력칸 maxlength · 여기 slice · DB 규칙(links/url) 세 곳이 늘 같아야 한다 */
+      if(/^https?:\/\//i.test(u))o.links[k]={url:u.slice(0,LINK_MAX),label:String(l.label||'').slice(0,80)};});
     if(!Object.keys(o.links).length)delete o.links;
-  }
-  if(t.comments&&Object.keys(t.comments).length){
-    o.comments={};
-    Object.keys(t.comments).forEach(k=>{const c=t.comments[k]||{};
-      o.comments[k]={by:String(c.by||'').slice(0,60),text:String(c.text||'').slice(0,500),at:Number(c.at)||Date.now()};
-      if(c.uid)o.comments[k].uid=String(c.uid).slice(0,60);
-      if(c.re)o.comments[k].re=String(c.re).slice(0,40);});
   }
   return o;
 }
@@ -594,7 +496,6 @@ const LocalStore={
   putTask(mid,iid,item){this._d.tasks[mid]=this._d.tasks[mid]||{};if(item)this._d.tasks[mid][iid]=item;else delete this._d.tasks[mid][iid];S.tasks=this._d.tasks;lsSave(this._d);},
   putCfg(k,v,cb){this._d.cfg[k]=v;S.cfg=this._d.cfg;lsSave(this._d);if(cb)cb(null);},
   putPref(k,v){this._d.prefs=this._d.prefs||{};if(v)this._d.prefs[k]=v;else delete this._d.prefs[k];S.prefs=this._d.prefs;lsSave(this._d);},
-  putMention(){}
 };
 
 /* Firebase — 하자처리 현황과 같은 프로젝트(report-c29a1), calapp/ 네임스페이스 */
@@ -655,7 +556,6 @@ const FbStore={
   putCfg(k,v,cb){FB.db.ref('calapp/cfg/'+k).set(v).then(()=>cb&&cb(null)).catch(e=>{fbErr(e);if(cb)cb(e);});},
   putPref(k,v){const uid=S.user&&S.user.uid;if(!uid)return;
     const r=FB.db.ref('calapp/prefs/'+uid+'/'+k);(v?r.set(v):r.remove()).catch(fbErr);},
-  putMention(uid,id,m){FB.db.ref('calapp/mentions/'+uid+'/'+id)[m?'set':'remove'](m).catch(()=>{});},
   /* 서버에 남은 예전 구조(plans·recur)를 업무로 한 번 옮긴다.
      관리자·사용자 누구나 실행 가능하지만, 이미 옮겨졌으면 아무 것도 하지 않는다. */
   async migrateRemote(){
@@ -767,7 +667,9 @@ const FbStore={
     this.bindReportOrg();
     this._on('calapp/tasks',v=>{S.tasks=v||{};bootCacheSave();
       /* 첫 스냅샷이 온 뒤 한 번 — 놓친 담당자 업무를 아침 확인으로 묻는다 */
-      if(!FB._mrv){FB._mrv=true;setTimeout(morningReview,WIDGET?1400:800);}   /* 위젯은 첫 렌더가 조금 늦다 */
+      if(!FB._mrv){FB._mrv=true;setTimeout(morningReview,WIDGET?1400:800);   /* 위젯은 첫 렌더가 조금 늦다 */
+        /* 5시가 지난 뒤 PC 를 켠 경우 — 놓친 업무 확인 모달이 지나간 뒤에 띄운다(겹치면 가린다) */
+        setTimeout(()=>{if(!$('#mo')||!$('#mo').classList.contains('open'))evePopShow();},WIDGET?4200:3600);}
       if(tkHold()){PEND.tasks=true;PEND.day=true;return;}
       rTasks();refetchCal();rDay();rWidget();});   /* 업무가 곧 일정 — 달력도 함께 갱신 */
     this._on('calapp/offdays',v=>{S.offdays=v||{};bootCacheSave();calRerender();rDay();rWidget();});
@@ -791,7 +693,6 @@ const FbStore={
     this._on('calapp/cfg',v=>{S.cfg=v||{};bootCacheSave();rCfg();rDefectNav();if(S.view==='org')rOrg();});
     const uid=S.user&&S.user.uid;
     if(uid){
-        this._on('calapp/mentions/'+uid,v=>{S.mentions=v||{};rMention();});
         this._on('calapp/prefs/'+uid,v=>{S.prefs=v||{};});   /* 최근 이모지 등 개인 설정 */
     }
   }
@@ -1369,16 +1270,86 @@ function rTeamSel(){
     +'<span class="tsel-ch"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3.5l3 3 3-3"/></svg></span>'
     +'<span class="tsel-mini">'+esc(teamShort(cur?cur.name:''))+'</span>';   /* 접었을 때 보이는 줄인 이름 */
 }
-function mentionCount(){return Object.values(S.mentions||{}).filter(m=>m&&!m.read).length;}   /* 안 읽은 것만 센다 */
-function mentionRead(id){
-  const uid2=myId(),m=(S.mentions||{})[id];
-  if(!uid2||!m||m.read)return;
-  m.read=Date.now();                       /* ⚠ 지우지 않는다 — 읽은 뒤에도 목록에 남아야 되짚을 수 있다 */
-  store.putMention(uid2,id,{...m});
-  rMention();
+/* ═══════════ 오후 점검 알림 — 그날 아직 안 끝낸 업무를 알림창에 띄운다 ═══════════
+   ⚠ 어디에도 저장하지 않는다. 조건이 맞을 때만 알림창에 끼워 그리는 '가상 줄'이다 —
+   업무를 끝내면 저절로 사라지고, 닫으면 그날은 다시 뜨지 않는다. */
+const EVE_HOUR=17;                       /* 오후 5시 */
+
+/* ── 종 아이콘 옆 미니 말풍선 ──
+   빨간 점(7px)만으로는 바탕화면에 깔린 위젯에서 눈에 안 들어온다는 지적. 윈도우 토스트만큼
+   방해하지 않으면서 한 번은 눈에 띄게 한다. 하루 한 번만 스스로 뜨고 10초 뒤 저절로 접힌다
+   — 빨간 점은 그대로 남으므로 놓쳐도 되짚을 수 있다 */
+const EVE_POP_KEY='calapp.evePop';
+function evePopKey(){return EVE_POP_KEY+'.'+((S.user&&S.user.uid)||'local');}
+function evePopDone(){try{return localStorage.getItem(evePopKey())===todayStr();}catch(e){return false;}}
+function evePopHide(){const el=$('#evePop');if(el)el.remove();}
+/* 말풍선을 누르면 '내 업무' 를 연다 — 남은 업무를 실제로 보여 주는 화면은 거기 하나뿐이다.
+   ⚠ 252차에 알림창을 따로 만들었다가 걷어냈다. 같은 데이터(mineTasks+teamTasks)를 두 곳에서
+   보여 주는 셈이라 겹쳤다 — 말풍선은 '알리는 일'만, 내 업무는 '보여 주는 일'만 맡는다 */
+function eveOpenPanel(){
+  if(WIDGET){widSideOpen('mine');return;}
+  go('tasks');   /* 말풍선이 붙은 사이드바 항목과 같은 곳으로 */
+}
+/* 말풍선이 붙는 곳 — 위젯은 '내 업무' 아이콘, 앱은 사이드바의 업무 목록 항목 */
+function eveBell(){
+  return WIDGET?document.querySelector('[data-act="wid.side"][data-tab="mine"]')
+              :document.querySelector('#sidebar .nvi[data-view="tasks"]');
+}
+function evePopShow(force){
+  if(!eveOn())return;
+  if(!force&&evePopDone())return;
+  const bell=eveBell();if(!bell||!bell.isConnected)return;
+  /* 알림창이 이미 열려 있으면 굳이 겹쳐 띄우지 않는다 */
+  const side=$('#widSide');
+  if(side&&side.classList.contains('on'))return;   /* 이미 열려 있으면 굳이 겹쳐 띄우지 않는다 */
+  evePopHide();
+  try{localStorage.setItem(evePopKey(),todayStr());}catch(e){}
+  const n=eveList().length;
+  const el=document.createElement('div');
+  el.id='evePop';
+  el.innerHTML='<b>오늘 남은 업무 '+n+'건</b>';
+  document.body.appendChild(el);
+  const r=bell.getBoundingClientRect(),b=el.getBoundingClientRect();
+  let x=r.left+r.width/2-b.width/2;
+  x=Math.max(6,Math.min(x,innerWidth-b.width-6));       /* 위젯은 창이 곧 화면 — 넘치면 잘린다 */
+  el.style.left=Math.round(x)+'px';
+  el.style.top=Math.round(r.bottom+8)+'px';
+  /* 꼬리는 종 한가운데를 가리키되, 둥근 모서리(10px) 밖으로 나가지 않게 안쪽으로 물린다 */
+  const ax=Math.max(14,Math.min(r.left+r.width/2-x,b.width-14));
+  el.style.setProperty('--ax',Math.round(ax)+'px');
+  requestAnimationFrame(()=>el.classList.add('on'));
+  /* 말풍선을 눌러도 알림창이 열린다 — 종을 겨냥하지 않아도 되게 */
+  el.addEventListener('click',()=>{evePopHide();eveOpenPanel();});
+}
+/* 오늘 걸린 '내 업무 + 공통 업무' 중 아직 안 끝난 것.
+   ⚠ mineTasks 는 완료·보류를 이미 뺀다. teamTasks 는 완료만 빼므로 보류(3)를 여기서 한 번 더 거른다
+      — 일부러 미뤄 둔 것을 오후에 다시 찌르면 보류함의 뜻이 없어진다.
+   ⚠ 공통 업무에 내가 담당자로도 들어 있으면 두 목록에 겹쳐 나온다 — sid/iid 로 한 번만 센다 */
+function eveList(){
+  const today=todayStr();
+  const onToday=({it})=>{
+    if(!it||!it.date)return false;
+    const span=it.end&&it.end>it.date;
+    return span?(it.date<=today&&today<=it.end):(it.date===today);
+  };
+  const seen=new Set(),out=[];
+  mineTasks().concat(teamTasks().filter(({it})=>stEff(it)!==3))
+    .filter(onToday)
+    .forEach(x=>{const k=x.sid+'/'+x.iid;if(seen.has(k))return;seen.add(k);out.push(x);});
+  return out;
+}
+function eveOn(){
+  if(!S.live||!notiOn()||!myId())return false;
+  const today=todayStr();
+  const d=toDate(today).getDay();
+  if(d===0||d===6)return false;                    /* 주말에는 띄우지 않는다 */
+  const ho=holOf(today);
+  if(ho&&ho.h)return false;                        /* 공휴일·팀 휴무일도 제외 */
+  if(new Date().getHours()<EVE_HOUR)return false;  /* 5시 전에는 조용히 */
+  return eveList().length>0;
 }
 /* ═══════════ 위젯 — 알림 · 내 업무 팝오버 ═══════════
-   위젯만 쓰는 사람에게는 사이드바가 없다 — 부름(멘션)과 내 업무를 헤더에서 바로 볼 수 있게 한다 */
+   위젯만 쓰는 사람에게는 사이드바가 없다 — 알림과 내 업무를 헤더에서 바로 볼 수 있게 한다 */
 function widSideRender(){
   if(!WIDGET)return;
   const box=$('#widSideB'),ttl=$('#widSideT'),cnt=$('#widSideN');
@@ -1439,23 +1410,6 @@ function widSideRender(){
     return;
   }
 
-  if(ttl)ttl.textContent='알림';
-  const ms=Object.entries(S.mentions||{}).sort((a,b)=>(b[1].at||0)-(a[1].at||0));
-  if(cnt)cnt.textContent=ms.length?ms.length+'건':'';
-  box.innerHTML=ms.length
-    ?ms.map(([id,m])=>{
-      const it=(S.tasks[m.sid||'']||{})[m.iid||''];
-      const who=String(m.by||'').trim();
-      return '<button class="wl wl-al'+(m.read?' rd':'')+'" data-act="wid.goMention" data-id="'+esc(id)+'" data-sid="'+esc(m.sid||'')+'" data-iid="'+esc(m.iid||'')+'">'
-        +'<span class="wl-av">'+esc(who?who.slice(-2):'—')+'</span>'
-        +'<span class="wl-b">'
-          +'<span class="wl-t"><b>'+esc(who||'알 수 없음')+'</b><i>'+esc(relTime(m.at))+'</i></span>'
-          +'<span class="wl-m">'+mentionHTML(m.text)+'</span>'
-          +(it?'<span class="wl-s">'+esc(it.text||'제목 없음')+'</span>':'')
-        +'</span></button>';
-    }).join('')
-      +'<button class="wl-clr" data-act="mention.clear">모두 읽음</button>'
-    :empty('i-bell','받은 알림이 없습니다');
 }
 function widSideOpen(tab){
   const el=$('#widSide');if(!el)return;
@@ -1463,51 +1417,6 @@ function widSideOpen(tab){
   S.widSide=same?'':tab;
   el.classList.toggle('on',!same);
   if(!same)widSideRender();
-}
-/* 상단바 알림 팝오버 — 위젯의 것과 같은 줄 모양을 쓴다 */
-function rAppAlerts(){
-  const box=$('#appAlertBody');if(!box)return;
-  const ms=Object.entries(S.mentions||{}).sort((a,b)=>(b[1].at||0)-(a[1].at||0));
-  const n=$('#appAlertN');
-  if(n){n.textContent=String(ms.length);n.hidden=!ms.length;}
-  const clr=$('#appAlertPop .btn');if(clr)clr.style.display=ms.length?'':'none';
-  /* ⚠ 위젯 팝오버와 같은 줄 모양(.wl-al)을 쓴다 — 두 화면이 달라 보이면 배우는 데 두 번 든다 */
-  box.innerHTML=ms.length
-    ?ms.map(([id,m])=>{
-      const it=(S.tasks[m.sid||'']||{})[m.iid||''];
-      const who=String(m.by||'').trim();
-      return '<button class="wl wl-al'+(m.read?' rd':'')+'" data-act="mention.go" data-id="'+esc(id)+'" data-sid="'+esc(m.sid||'')+'" data-iid="'+esc(m.iid||'')+'">'
-        +'<span class="wl-av">'+esc(who?who.slice(-2):'—')+'</span>'
-        +'<span class="wl-b">'
-          +'<span class="wl-t"><b>'+esc(who||'알 수 없음')+'</b><i>'+esc(relTime(m.at))+'</i></span>'
-          +'<span class="wl-m">'+mentionHTML(m.text)+'</span>'
-          +(it?'<span class="wl-s">'+esc(it.text||'제목 없음')+'</span>':'')
-        +'</span></button>';
-    }).join('')
-    :'<div class="wl-none"><svg class="icn"><use href="#i-bell"></use></svg><span>받은 알림이 없습니다</span></div>';
-}
-function rMention(){
-  const n=mentionCount();
-  if($('#appAlertPop')&&$('#appAlertPop').classList.contains('on'))rAppAlerts();
-  const dot=$('#widAlertDot');
-  if(dot)dot.classList.toggle('on',n>0);          /* 위젯 헤더의 빨간 점 */
-  const ad=$('#appAlertDot');
-  if(ad)ad.classList.toggle('on',n>0);            /* 앱 상단바의 빨간 점 */
-  if(WIDGET&&S.widSide==='alert')widSideRender();
-  const b=$('#mentionBadge');if(!b)return;
-  b.textContent=n?String(n):'';
-  b.style.display=n?'':'none';
-}
-function openMentionModal(){
-  const ms=Object.entries(S.mentions||{}).sort((a,b)=>(b[1].at||0)-(a[1].at||0));
-  openModal('내 멘션',
-    ms.length?'<div class="cmt">'+ms.map(([id,m])=>`
-      <div class="cmt-i" data-act="mention.go" data-id="${esc(id)}" data-sid="${esc(m.sid||'')}" data-iid="${esc(m.iid||'')}" style="cursor:pointer">
-        <div class="cmt-h"><b>${esc(m.by||'')}</b><span>${esc(relTime(m.at))}</span></div>
-        <div class="cmt-t">${mentionHTML(m.text)}</div>
-      </div>`).join('')+'</div>'
-      :'<div class="cmt-empty">받은 멘션이 없습니다.</div>',
-    ms.length?'<button class="btn bg2 bsm" data-act="mention.clear">모두 읽음</button><button class="btn bp bsm" data-act="modal.close">닫기</button>':'');
 }
 function rAcct(){
   const nm=$('#sbAcctName'),rb=$('#sbAcctRole');
@@ -1537,6 +1446,11 @@ function calInit(){
     firstDay:0,fixedWeekCount:true,showNonCurrentDates:true,   /* 항상 6주 — 달마다 칸 높이가 달라지지 않게 */
     /* 시간은 제목 안의 fmtSpan 이 담당 — FC 기본 표기("10a")를 켜 두면 이중으로 찍힌다 */
     displayEventTime:false,
+    /* 공통·내 업무를 위로 올린다(ord). ⚠ 기간 업무(-duration)를 ord 보다 앞에 둔다 —
+       여러 날에 걸친 막대는 모든 날에서 같은 줄이어야 하나로 이어지는데, 등급 때문에 날마다
+       줄이 달라지면 FullCalendar 가 가장 아래 줄로 통일해 그 위 칸들이 비어 버린다.
+       기간 막대는 예전처럼 맨 위에 두고, 하루짜리 막대들만 등급으로 세운다 */
+    eventOrder:'-duration,ord,start,allDay,title',
     headerToolbar:false,height:'100%',dayMaxEvents:maxEvOf(),
     moreLinkContent:a=>'외 '+a.num+'건 ›',   /* 234차: 5안(우측 정렬 미니) — 조용하게 오른쪽 끝에 */
     /* 기본 더보기 팝오버 대신 그 날짜를 골라 업무 패널(위젯은 팝업)에서 전부 보게 한다 */
@@ -1631,6 +1545,14 @@ function occSrc(p,date){
   const hit=Object.keys(mv).find(k=>mv[k]===date);
   return hit||date;
 }
+/* 정렬 등급 — 공통 업무가 맨 위, 그다음 내가 담당인 것, 나머지는 아래.
+   달력 막대(planEvent)와 일자 패널 목록(sortPlans)이 같은 기준을 쓴다 */
+function evOrd(p,team){
+  if(team===undefined)team=!planOwners(p).length;
+  if(team)return 0;
+  const me=myId();
+  return (me&&planOwners(p).includes(me))?1:2;
+}
 function planEvent(p,date){
   const span=p.end?daysBetween(p.date,p.end):0;
   const done=isDone(p,date);   /* 반복은 occSrc 로 원 회차일의 doneOn 을 본다 — 옮긴 회차의 완료 표시가 칩에서 빠지던 버그 */
@@ -1652,7 +1574,9 @@ function planEvent(p,date){
        배경 없이 어두운 글자라 유리(어두운) 배경 위에서 거의 보이지 않는다. 전부 색 막대로 통일한다 */
     display:'block',
     classNames:(done?['done']:[]).concat((!team&&isLightColor(planColor(p)))?['on-light']:[]).concat(team?['team']:[]),
-    extendedProps:{pid:p.id,occ:date,recur:!!(p.recur&&p.recur.f)},
+    /* 칸 안 차례 — 공통(0) · 내 업무(1) · 나머지(2).
+       칸이 넘쳐 '외 N건' 으로 접힐 때 나와 상관 있는 것이 먼저 남는다(eventOrder 참조) */
+    extendedProps:{pid:p.id,occ:date,recur:!!(p.recur&&p.recur.f),ord:evOrd(p,team)},
     editable:!(p.recur&&p.recur.f)
   };
 }
@@ -1720,7 +1644,12 @@ function buildEvents(){
   }
   return evs;
 }
-function refetchCal(){if(CAL)CAL.refetchEvents();}
+function refetchCal(){
+  if(!CAL)return;
+  CAL.refetchEvents();
+  /* 막대가 그려진 뒤라야 칸을 잴 수 있다 — 한 박자 뒤에 맞춘다 */
+  requestAnimationFrame(()=>requestAnimationFrame(calFitApply));
+}
 function findPlan(id){
   const hit=allTasks().find(x=>x.iid===id);
   return hit?taskAsPlan(hit.sid,hit.iid,hit.it):null;
@@ -1921,11 +1850,14 @@ function rDayHead(){
   return rangePlans();
 }
 /* 선택 기간(하루면 그날)에 걸친 업무 — 날짜순 */
-/* 목록 정렬 — 완료는 아래로, 그 안에서 시간 있는 업무가 먼저(시간순), 나머지는 날짜순 */
+/* 목록 정렬 — 완료는 아래로, 그다음 공통·내 업무 순(달력 막대와 같은 등급),
+   그 안에서 시간 있는 업무가 먼저(시간순), 나머지는 날짜순 */
 function sortPlans(list){
   return list.slice().sort((x,y)=>{
     const dx=isDone(x.p,x.occ)?1:0, dy=isDone(y.p,y.occ)?1:0;
     if(dx!==dy)return dx-dy;
+    const ox=evOrd(x.p), oy=evOrd(y.p);
+    if(ox!==oy)return ox-oy;
     const tx=x.p.time||'', ty=y.p.time||'';
     if(!!tx!==!!ty)return tx?-1:1;
     if(tx&&ty&&tx!==ty)return tx<ty?-1:1;
@@ -2111,8 +2043,6 @@ document.addEventListener('mousedown',e=>{
   if(sd&&sd.classList.contains('on')&&!t.closest('#widSide')&&!t.closest('[data-act="wid.side"]')){
     sd.classList.remove('on');S.widSide='';
   }
-  const ap=$('#appAlertPop');
-  if(ap&&ap.classList.contains('on')&&!t.closest('#appAlertPop')&&!t.closest('[data-act="app.alerts"]'))ap.classList.remove('on');
 },true);
 /* 색상 팔레트 사각형 — 가로는 채도, 세로는 밝기. 끌면서 고를 수 있고 고른 색은 추가색으로 쌓인다 */
 let CP_DRAG=false;
@@ -2216,7 +2146,7 @@ function planFormHTML(){
           <div class="frow"><label>반복</label><select class="inp inp-sm" id="peRec">${Object.keys(REC_LBL).map(k=>'<option value="'+k+'"'+(k===rc?' selected':'')+'>'+REC_LBL[k]+'</option>').join('')}</select></div>
         </div>
         <div class="frow" id="peUntilRow" style="${rc?'':'display:none'}"><label>반복 종료</label><input type="date" class="inp inp-sm" id="peUntil" value="${esc((d.recur&&d.recur.until)||'')}"></div>
-        <div class="frow"><label>링크</label><input class="inp inp-sm" id="peLink" maxlength="500" placeholder="https://…" value="${esc((lnk&&lnk.url)||'')}"></div>
+        <div class="frow"><label>링크</label><input class="inp inp-sm" id="peLink" maxlength="${LINK_MAX}" placeholder="https://…" value="${esc((lnk&&lnk.url)||'')}"></div>
         <div id="peBodySec">${peBodyHTML(d,kind)}</div>
 
         ${(pe.orig&&rc&&pe.occ)?`<div class="frow occ-row">
@@ -2420,7 +2350,7 @@ function onSelDay(sid,iid,it){
 function taskItemHTML(sid,iid,it,withSubject,hideOwn){
   const key=sid+'/'+iid;
   if(S.tkEdit===key)return taskFormHTML(sid,iid,it);   /* 수정 중이면 항목 자리에 폼이 들어간다 */
-  const di=dueInfo(it.date),cn=Object.keys(it.comments||{}).length,st=stEff(it);
+  const di=dueInfo(it.date),st=stEff(it);
   /* 담당자별 묶음 안에서는 소제목이 곧 그 사람 — 본인 배지는 겹말이라 뺀다(공동 담당자만 남긴다) */
   const asg=Object.keys(it.assignees||{}).filter(id=>id!==hideOwn)
     .map(id=>roster().find(p=>p.id===id)).filter(Boolean);
@@ -2442,8 +2372,6 @@ function taskItemHTML(sid,iid,it,withSubject,hideOwn){
       ${colDotHTML(planColor(p0),iid,!planOwners(p0).length)}
       <div class="tk-ttl" data-act="tk.open" data-sid="${esc(sid)}" data-iid="${esc(iid)}">${esc(it.text||'제목 없음')}</div>
       <div class="tk-acts">
-        ${cn?`<button class="tk-ico on" data-act="tk.open" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="코멘트">
-          <svg class="icn"><use href="#i-cmt"></use></svg><span class="cn">${cn}</span></button>`:''}
         ${lnk?'<a class="tk-ico" href="'+esc(lnk.url)+'" target="_blank" rel="noopener" data-act="lnk.open" aria-label="링크 열기" data-tip="'+esc(linkLabel(lnk))+'"><svg class="icn"><use href="#i-ext"></use></svg></a>':''}
         ${stIcon(st,' data-act="tk.st" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"')}
         <button class="tk-ico" data-act="tk.edit" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="수정" data-tip="수정"><svg class="icn"><use href="#i-pen"></use></svg></button>
@@ -2456,9 +2384,8 @@ function taskItemHTML(sid,iid,it,withSubject,hideOwn){
     ${open?taskDetailHTML(sid,iid,it):''}
   </div>`;
 }
-/* 펼친 업무 — 진행경과·처리계획과 코멘트 스레드 (수정 버튼은 위 tk-line 우측 상단) */
+/* 펼친 업무 — 진행경과·처리계획·링크 (수정 버튼은 위 tk-line 우측 상단) */
 function taskDetailHTML(sid,iid,it){
-  const cs=Object.entries(it.comments||{}).sort((a,b)=>(a[1].at||0)-(b[1].at||0));
   /* 비어 있는 칸은 그리지 않는다 — 펼쳐 보기만 할 때 빈 상자가 자리를 먹는다 */
   const box=(lbl,val,field)=>!String(val||'').trim()?'':`<div class="tk-sec">
       <div class="tk-sec-h">${lbl}</div>
@@ -2476,59 +2403,6 @@ function taskDetailHTML(sid,iid,it){
         +'<svg class="icn"><use href="#i-ext"></use></svg>'
         +'<span>'+esc(linkLabel(l))+'</span></a>').join('')}</div>
     </div>`:''}
-    <div class="tk-thread">
-      ${threadHTML(cs,sid,iid)}
-      ${`
-      <div class="th-new th-always">
-        <div class="th-av me av-cus" style="--avc:${esc((S.user&&(avOf(S.user.uid).color||ownColor(S.user.uid)))||'var(--b600)')}">
-          ${S.user?avInner(avOf(S.user.uid).icon):'나'}</div>
-        <div class="th-b">
-          <textarea class="th-in" data-sid="${esc(sid)}" data-iid="${esc(iid)}" rows="1" placeholder="진행 상황을 남기세요 · @이름으로 부르기"></textarea>
-          <div class="th-f">
-            <button class="btn bg2 bxs" data-act="tk.cmtSend" data-sid="${esc(sid)}" data-iid="${esc(iid)}">작성</button>
-          </div>
-        </div>
-      </div>`}
-    </div>
-  </div>`;
-}
-/* 코멘트 한 줄 — 작성자 프로필은 저장된 이름이 아니라 지금의 계정 정보를 따른다 */
-function cmtHTML(cid,c,sid,iid,depth){
-  const who=roster().find(p=>p.id===c.uid);
-  const nm=who?who.name:(c.by||'');
-  const av=c.uid?avOf(c.uid):{color:'',icon:''};
-  const col=c.uid?(av.color||ownColor(c.uid)):'var(--fill2)';
-  return `<div class="th-i${depth?' re':''}" data-cid="${esc(cid)}">
-    <div class="th-av av-cus" style="--avc:${esc(col)}">${c.uid?avInner(av.icon):esc(String(nm||'?').slice(0,1))}</div>
-    <div class="th-b">
-      <div class="th-h"><b>${esc(nm)}</b><span>${esc(relTime(c.at))}</span>
-        ${depth?'':'<button class="th-re" data-act="tk.cmtRe" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" data-cid="'+esc(cid)+'">답글</button>'}
-      </div>
-      <div class="th-t">${mentionHTML(c.text)}</div>
-    </div>
-  </div>`;
-}
-function threadHTML(cs,sid,iid){
-  const top=cs.filter(([,c])=>!c.re);
-  const kids=cid=>cs.filter(([,c])=>c.re===cid);
-  return top.map(([cid,c])=>{
-    const rs=kids(cid);
-    return cmtHTML(cid,c,sid,iid,0)
-      +rs.map(([rid,rc])=>cmtHTML(rid,rc,sid,iid,1)).join('')
-      +(S.cmtRe===sid+'/'+iid+'/'+cid?reBoxHTML(sid,iid,cid):'');
-  }).join('');
-}
-function reBoxHTML(sid,iid,cid){
-  return `<div class="th-new re">
-    <div class="th-av me av-cus" style="--avc:${esc((S.user&&(avOf(S.user.uid).color||ownColor(S.user.uid)))||'var(--b600)')}">
-      ${S.user?avInner(avOf(S.user.uid).icon):'나'}</div>
-    <div class="th-b">
-      <textarea class="th-in" data-sid="${esc(sid)}" data-iid="${esc(iid)}" data-re="${esc(cid)}" rows="1" placeholder="답글 · @이름으로 부르기"></textarea>
-      <div class="th-f">
-        <button class="btn bg2 bxs" data-act="tk.cmtReCancel">취소</button>
-        <button class="btn bp bxs" data-act="tk.cmtSend" data-sid="${esc(sid)}" data-iid="${esc(iid)}" data-re="${esc(cid)}">답글 남기기</button>
-      </div>
-    </div>
   </div>`;
 }
 function taskListHTML(sid){
@@ -2657,7 +2531,7 @@ function taskFormHTML(sid,iid,cur){
           </select></div>
         <div class="frow"><label>담당자</label>${ownSelHTML('tnAsg',own,people)}</div>
         <div class="frow"><label>현장</label>${sitePickHTML('tnSite',d.site||'')}</div>
-        <div class="frow"><label>링크</label><input class="inp inp-sm" id="tnLink" maxlength="500" placeholder="https://…" value="${esc((lnk&&lnk.url)||'')}"></div>
+        <div class="frow"><label>링크</label><input class="inp inp-sm" id="tnLink" maxlength="${LINK_MAX}" placeholder="https://…" value="${esc((lnk&&lnk.url)||'')}"></div>
       </div>
       <div id="tnBodySec">${tkBodyHTML(split,d.prog||d.body||'',d.plan||'',kind)}</div>
     </div>
@@ -2832,7 +2706,7 @@ function tkMatch(sid,iid,it){
   if(q){
     const asg=Object.keys(it.assignees||{}).map(id=>ownName(id)).join(' ');
     const hay=[it.text,it.prog,it.body,it.plan,siteName(it.site),subjName(sid),asg,
-      Object.values(it.comments||{}).map(c=>c&&c.text).join(' ')].join(' ').toLowerCase();
+      ].join(' ').toLowerCase();
     if(hay.indexOf(q)<0)return false;
   }
   const ST=(f.st||[]).map(String),K=(f.kind||[]).map(String),SI=(f.site||[]).map(String),RG=(f.reg||[]).map(String);
@@ -3110,7 +2984,7 @@ function nqMark(text,q){
   return esc(t.slice(Math.max(0,i-24),i))+'<mark>'+esc(t.substr(i,q.length))+'</mark>'+esc(t.substr(i+q.length,50));
 }
 function nqSearch(q){
-  const out={tasks:[],cmts:[],sites:[],defects:[]};
+  const out={tasks:[],sites:[],defects:[]};
   if(q.length<1)return out;
   const lo=q.toLowerCase(),hit=v=>String(v||'').toLowerCase().includes(lo);
   Object.keys(S.tasks||{}).forEach(sid=>{
@@ -3118,7 +2992,6 @@ function nqSearch(q){
     Object.keys(m).forEach(iid=>{
       const it=m[iid];if(!it)return;
       if(hit(it.text)||hit(it.body)||hit(it.prog)||hit(it.plan)||hit(siteName(it.site)))out.tasks.push({sid,iid,it});
-      Object.values(it.comments||{}).forEach(c=>{if(hit(c.text))out.cmts.push({sid,iid,it,c});});
     });
   });
   /* 하자처리 현황도 함께 찾는다 — 현장 이름과, 이미 불러온 하자 목록의 건.
@@ -3145,7 +3018,7 @@ function rNq(){
   if(!box)return;
   if(!q){box.innerHTML='<div class="nq-empty">업무 제목·내용, 일정, 코멘트에서 찾습니다.</div>';return;}
   const r=nqSearch(q);
-  const total=r.tasks.length+r.cmts.length+r.sites.length+r.defects.length;
+  const total=r.tasks.length+r.sites.length+r.defects.length;
   if(!total){box.innerHTML='<div class="nq-empty">"'+esc(q)+'" 에 해당하는 결과가 없습니다.</div>';return;}
   const item=(icon,tt,sb,attrs)=>`<div class="nq-item" ${attrs}>
     <span class="ic"><svg class="icn"><use href="#${icon}"></use></svg></span>
@@ -3161,10 +3034,7 @@ function rNq(){
     +(r.defects.length?'<div class="nq-g">하자 '+r.defects.length+'</div>'+r.defects.slice(0,20).map(({sid,r:x})=>
       item('i-defect',nqMark([x.trade,x.defectType,x.receiptContent].filter(Boolean).join(' · '),q),
         (siteName(sid)||'')+' · '+[x.building,x.unit].filter(Boolean).join('-')+' · 지연 '+(Number(x.delayDays)||0)+'일',
-        'data-act="nq.site" data-sid="'+esc(sid)+'"')).join(''):'')
-    +(r.cmts.length?'<div class="nq-g">코멘트 '+r.cmts.length+'</div>'+r.cmts.slice(0,20).map(({sid,iid,it,c})=>
-      item('i-cmt',nqMark(c.text,q),(c.by||'')+' · '+(it.text||''),
-        'data-act="nq.cmt" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"')).join(''):'');
+        'data-act="nq.site" data-sid="'+esc(sid)+'"')).join(''):'');
 }
 
 /* ═══════════ 하자처리 현황 — 원본(하자처리 현황 앱) 화면 이식 ═══════════
@@ -5745,57 +5615,20 @@ function bkData(){
 /* ═══════════ 위젯 알림 창구 ═══════════
    위젯(트레이 상주)만이 윈도우 알림을 띄울 수 있다 — 앱은 '무엇을 알릴지'만 넘긴다.
    ⚠ 로그인 전·자료 수신 전에는 아무것도 내주지 않는다(빈 알림이 뜨면 신뢰를 잃는다) */
+/* 알림 켜짐 여부 — 윈도우 알림을 폐지한 뒤로는 앱 알림창의 오후 점검 하나만 제어한다.
+   ⚠ 저장 키(c.noti)는 그대로 둔다 — 이미 꺼 둔 사람의 설정이 살아 있어야 한다 */
 function notiOn(){
   try{const c=JSON.parse(localStorage.getItem(WID_KEY)||'{}');return c.noti!==false;}catch(e){return true;}
 }
-/* 부팅 직후 한 번 — 오늘 할 일(완료 제외) */
-window.bootBrief=function(){
-  if(!S.live||!notiOn())return null;
-  const me=myId();if(!me)return null;
-  const today=todayStr();
-  const out=[];
-  /* 오늘 날짜에 걸린 내 업무(완료 제외) — `mineTasks()` 와 같은 '내 것' 기준을 쓴다 */
-  mineTasks().forEach(({it})=>{
-    const span=it.end&&it.end>it.date;
-    const hit=span?(it.date<=today&&today<=it.end):(it.date===today);
-    if(!hit)return;
-    out.push({t:it.text||'제목 없음',time:it.time||'',kind:kindLabel(it.kind)});
-  });
-  if(!out.length)return null;
-  out.sort((a,b)=>{const x=a.time||'99:99',y=b.time||'99:99';return x<y?-1:x>y?1:0;});   /* 시각이 있는 것부터, 없는 것은 뒤로 */
-  return{
-    day:today,
-    title:'오늘 업무 '+out.length+'건',
-    lines:out.slice(0,3).map(x=>(x.time?fmtTime(x.time)+'  ':'')+x.t+(x.kind?'  ('+x.kind+')':'')),
-    more:Math.max(0,out.length-3)
-  };
-};
-/* 아직 알리지 않은 부름 — 위젯이 알린 것은 id 로 기억한다 */
-window.newMentions=function(seen){
-  if(!S.live||!notiOn())return[];
-  const done=new Set(Array.isArray(seen)?seen:[]);
-  return Object.entries(S.mentions||{})
-    .filter(([id,m])=>!done.has(id)&&!m.read)
-    .sort((a,b)=>(a[1].at||0)-(b[1].at||0))
-    .slice(-3)
-    .map(([id,m])=>{
-      const it=(S.tasks[m.sid||'']||{})[m.iid||''];
-      return{id,by:String(m.by||'알 수 없음'),text:String(m.text||'').replace(/@\S+\s*/,'').slice(0,60),
-        task:it?(it.text||'제목 없음'):'',sid:m.sid||'',iid:m.iid||'',date:it?(it.date||''):''};
-    });
-};
-/* 알림을 눌렀을 때 — 그 날짜(또는 업무)로 이동한다 */
-window.notiGo=function(p){
-  try{
-    p=p||{};
-    if(p.id)mentionRead(p.id);
-    const d=p.date||todayStr();
-    if(CAL)CAL.gotoDate(toDate(d));
-    selDate(d,true);
-    if(p.iid)S.planOpen=p.iid;
-    S.widPop=true;rMonTitle();refetchCal();rDay();rWidget();
-  }catch(e){}
-};
+/* ═══════════ 윈도우 알림 폐지(252차) ═══════════
+   위젯이 띄우던 토스트는 둘뿐이었다 — ①부팅 직후 '오늘 업무' ②부름(멘션).
+   ②는 부름 기능과 함께 사라졌고, ①도 필요 없다는 판단으로 껐다.
+   업무 알림은 이제 앱 알림창(오후 점검)이 맡는다.
+   ⚠ 아래 두 껍데기는 지우면 안 된다 — 팀원 PC 에 이미 깔린 위젯(Rust)이
+   부팅 뒤 45·150초에 bootBrief 를, 30초마다 newMentions 를 계속 부른다.
+   null / 빈 배열을 돌려주면 위젯은 조용히 넘어간다. Rust 쪽은 다음 위젯 빌드 때 함께 걷힌다 */
+window.bootBrief=function(){return null;};
+window.newMentions=function(){return[];};
 /* 위젯이 부르는 창구 — 관리자 계정이고 자료가 다 와 있을 때만 내준다 */
 window.bkExport=function(){
   if(!S.live||!isEditor())return null;
@@ -6063,6 +5896,15 @@ document.addEventListener('scroll',tipHide,true);
 window.addEventListener('blur',tipHide);
 /* ⚠ 화면을 다시 그리면 툴팁이 가리키던 요소가 사라져 그대로 떠 있는다 — 주기로 확인해 치운다 */
 setInterval(()=>{if(_tipFor&&!_tipFor.isConnected)tipHide();},700);
+/* 오후 점검 알림 — 창을 켜 둔 채 5시를 넘기는 일이 흔하므로 1분마다 조건을 다시 본다.
+   ⚠ 상태가 바뀔 때만 다시 그린다 — 1분마다 알림창을 새로 그리면 스크롤·포커스가 튄다 */
+let _eveWas=null;
+setInterval(()=>{
+  const now=eveOn();
+  if(now===_eveWas)return;
+  _eveWas=now;
+  if(now)evePopShow();else evePopHide();   /* 5시를 넘기는 순간 말풍선을 한 번 띄운다 */
+},60000);
 
 /* ═══════════ 화면 전환 · 공통 UI ═══════════ */
 const VIEW_TTL={calendar:'캘린더',tasks:'업무 목록',report:'주요 업무',defect:'하자처리 현황',org:'조직/현장 관리',settings:'설정'};
@@ -6351,7 +6193,6 @@ const ACT={
   'auth.resend':fbDoResend,
   'auth.reset':fbDoReset,
   'acct.open':openAcctModal,
-  'mention.open':openMentionModal,
   'df.site':el=>{S.dfSid=el.dataset.sid;S.dfTab='sum';go('defect');},
   'df.tab':el=>{S.dfTab=el.dataset.t;rDefect();},
   'rec.list':el=>recOpen(el.dataset.sid||'',el.dataset.scope||el.dataset.sc||'ul',{trade:el.dataset.trade,co:el.dataset.co,vac:el.dataset.vac}),
@@ -6487,7 +6328,6 @@ const ACT={
   'nq.close':()=>nqOpen(false),
   'nq.task':el=>gotoTask(el.dataset.sid,el.dataset.iid),
   'nq.site':el=>{nqOpen(false);S.dfSid=el.dataset.sid;S.dfTab='sum';go('defect');},
-  'nq.cmt':el=>gotoTask(el.dataset.sid,el.dataset.iid),
   'mine.day':el=>{const d=el.dataset.date;if(!d)return;S.mineSel=(S.mineSel===d?'':d);rTasks();},
   'mine.mon':el=>{
     const d=Number(el.dataset.d)||0;
@@ -6501,18 +6341,7 @@ const ACT={
   /* 인쇄 — 상단바 버튼(#tbPrintWrap) 하나가 두 화면을 맡는다.
      ⚠ 예전엔 없는 함수(dfPrintOpen)를 typeof 로 감싸 불러 하자 관리에서 조용히 아무 일도 안 했다 */
   'sb.print':()=>{if(S.view==='report')window.print();else if(S.view==='defect')openPrintPick();},
-  'mention.clear':()=>{
-    const uid2=myId();if(!uid2)return;
-    Object.keys(S.mentions||{}).forEach(id=>mentionRead(id));
-    rMention();rAppAlerts();if(WIDGET)widSideRender();
-  },
-  'mention.go':el=>{
-    mentionRead(el.dataset.id);
-    closeModal();
-    const ap=$('#appAlertPop');if(ap)ap.classList.remove('on');
-    if(el.dataset.sid)gotoTask(el.dataset.sid,el.dataset.iid);
-    else go('tasks');
-  },
+  /* 오후 점검 알림 — 누르면 오늘로 이동해 남은 업무를 펼친다. x 는 그날만 닫는다 */
 
   'pf.org':()=>acctAutoSave(),
   'pf.toggle':()=>{const p=$('#pfPop');if(!p)return;
@@ -6580,9 +6409,8 @@ const ACT={
   'tk.del':el=>{
     const sid=el.dataset.sid,iid=el.dataset.iid,key=sid+'/'+iid;
     const it=(S.tasks[sid]||{})[iid]||{};
-    const cn=Object.keys(it.comments||{}).length;
     confirmModal('업무 삭제',
-      '"'+(it.text||'제목 없음')+'" 업무를 삭제합니다.'+(cn?' 코멘트 '+cn+'건도 함께 지워집니다.':'')+' 되돌릴 수 없습니다.',
+      '"'+(it.text||'제목 없음')+'" 업무를 삭제합니다. 되돌릴 수 없습니다.',
       ()=>{
         if(S.tkEdit===key)S.tkEdit=null;   /* 폼부터 닫고 지운다 — 순서가 바뀌면 반영이 한 박자 늦다 */
         store.putTask(sid,iid,null);
@@ -6591,30 +6419,6 @@ const ACT={
         refetchCal();toast('업무를 삭제했습니다');
       });},
   'tk.fold':el=>{const sid=el.dataset.sid;S.foldOpen[sid]=!S.foldOpen[sid];rTasks();},
-  'tk.cmtRe':el=>{S.cmtRe=el.dataset.sid+'/'+el.dataset.iid+'/'+el.dataset.cid;rTasks();
-    setTimeout(()=>{const t=document.querySelector('.th-new.re .th-in');if(t)t.focus();},40);},
-  'tk.cmtReCancel':()=>{S.cmtRe='';rTasks();},
-  'tk.cmtSend':el=>{
-    const sid=el.dataset.sid,iid=el.dataset.iid,cur=(S.tasks[sid]||{})[iid];if(!cur)return;
-    const re=el.dataset.re||'';
-    const box=document.querySelector('.th-in[data-sid="'+sid+'"][data-iid="'+iid+'"]'+(re?'[data-re="'+re+'"]':':not([data-re])'));
-    const t=((box&&box.value)||'').trim();if(!t){if(box)box.focus();return;}
-    const cid=uid(),who=(S.user&&acctNick())||'나';
-    const rec={by:who,text:t,at:Date.now()};
-    if(S.user&&S.user.uid)rec.uid=S.user.uid;
-    if(re)rec.re=re;
-    store.putTask(sid,iid,{...cur,comments:{...(cur.comments||{}),[cid]:rec},updatedAt:cur.updatedAt||Date.now()});
-    S.cmtRe='';
-    /* @이름 을 찾아 그 사람에게 알림을 남긴다 */
-    if(S.live){
-      const hit=new Set();
-      roster().forEach(p=>{if(p.id!==(S.user&&S.user.uid)&&t.includes('@'+p.name))hit.add(p.id);});
-      hit.forEach(pid=>store.putMention(pid,uid(),{by:who,text:t.slice(0,300),sid,iid,at:Date.now()}));
-      if(hit.size)toast(hit.size+'명에게 멘션 알림을 보냈습니다');
-    }
-    if(box)box.value='';
-    setTimeout(rTasks,S.live?250:20);
-  },
   'org.addTeam':()=>{
     
     const id=uid();S.org.teams=(S.org.teams||[]).concat([{id,name:''}]);orgSave();
@@ -6786,7 +6590,7 @@ const ACT={
   },
   'wid.open':()=>{window.open(location.origin+location.pathname,'_blank','noopener');},
   'wid.reload':()=>location.reload(),
-  'wid.side':el=>widSideOpen(el.dataset.tab||'alert'),
+  'wid.side':el=>{evePopHide();widSideOpen(el.dataset.tab||'mine');},   /* 누르면 말풍선은 할 일을 다했다 */
   /* 위젯 내 업무에서 바로 완료/진행 전환 — 애니메이션을 보여 주고 목록을 다시 그린다 */
   'wid.st':el=>{
     const sid=el.dataset.sid,iid=el.dataset.iid;
@@ -6797,12 +6601,6 @@ const ACT={
     toast(n===2?'완료로 바꿨습니다':'진행으로 되돌렸습니다');
     setTimeout(()=>{if(!S.live){rTasks();rDay();rWidget();}widSideRender();refetchCal();},220);
   },
-  'app.alerts':()=>{
-    const el=$('#appAlertPop');if(!el)return;
-    const on=!el.classList.contains('on');
-    el.classList.toggle('on',on);
-    if(on)rAppAlerts();
-  },
   'wid.more':el=>{const k=el.dataset.k;S.widMore[k]=!S.widMore[k];widSideRender();},
   'wid.goTask':el=>{
     const d=el.dataset.date;
@@ -6812,17 +6610,6 @@ const ACT={
       selDate(d,true);S.planOpen=el.dataset.iid||'';S.widPop=true;
       rMonTitle();refetchCal();rDay();rWidget();
     }else toast('기한이 없는 업무입니다 · 브라우저 앱의 업무 목록에서 볼 수 있습니다');
-  },
-  'wid.goMention':el=>{
-    const sid=el.dataset.sid,iid=el.dataset.iid,id=el.dataset.id;
-    if(id)mentionRead(id);                        /* 확인했으면 읽음 표시(지우지는 않는다) */
-    const it=(S.tasks[sid]||{})[iid];
-    const el2=$('#widSide');if(el2)el2.classList.remove('on');S.widSide='';
-    if(it&&it.date){
-      if(CAL)CAL.gotoDate(toDate(it.date));
-      selDate(it.date,true);S.planOpen=iid;S.widPop=true;
-      rMonTitle();refetchCal();rDay();rWidget();
-    }else toast('그 업무는 달력에 없습니다 · 브라우저 앱에서 볼 수 있습니다');
   },
   'wid.moveOn':()=>{const p=$('#wgSet');if(p){p.classList.remove('on');p.setAttribute('aria-hidden','true');}widMove(true);},
   'wid.moveOff':()=>widMove(false),
@@ -7089,7 +6876,7 @@ document.addEventListener('input',e=>{
   if(e.target.id==='wgA'){const c=widCfgLoad();c.a=100-Number(e.target.value);widCfgSave(c);widApply();return;}   /* 슬라이더는 '투명도' — 값이 클수록 투명하다 */
   if(e.target.id==='wgT'){const c=widCfgLoad();c.tint=Number(e.target.value);widCfgSave(c);widApply();return;}    /* 유리 톤 — 100%가 기존 색, 낮추면 진하고 올리면 연하다 */
   if(e.target.id==='wgFz'){const c=widCfgLoad();c.fz=Number(e.target.value)/100;widCfgSave(c);widApply();return;}
-  if(e.target.id==='wgNoti'){const c=widCfgLoad();c.noti=e.target.checked;widCfgSave(c);toast(c.noti?'알림을 켰습니다':'알림을 껐습니다');return;}
+  if(e.target.id==='wgNoti'){const c=widCfgLoad();c.noti=e.target.checked;widCfgSave(c);evePopHide();toast(c.noti?'오후 점검 알림을 켰습니다':'오후 점검 알림을 껐습니다');return;}
   if(e.target.id==='wgDbl'){const c=widCfgLoad();c.dbl=e.target.checked;widCfgSave(c);widApplyDbl();toast(c.dbl?'두 번 눌러 선택을 켰습니다':'두 번 눌러 선택을 껐습니다');return;}
 });
 document.addEventListener('change',e=>{
@@ -7211,7 +6998,37 @@ document.addEventListener('keydown',e=>{
    데스크톱은 기존대로 셀 안에서 스크롤해 전부 본다. */
 function isNarrow(){return window.matchMedia('(max-width:960px)').matches;}
 /* false(무제한)면 칸 밖으로 넘쳐 잘린다 — true 는 칸 높이에 맞춰 넣고 나머지를 '+N건' 으로 알린다 */
-function maxEvOf(){return isNarrow()?2:true;}
+/* 한 칸에 담을 막대 수 — 칸을 실제로 재서 정한다.
+   ⚠ dayMaxEvents:true(자동)는 더보기 줄 자리를 한 번 더 빼는지, 실측상 한 개를 덜 담았다
+      (칸 178px · 막대 피치 29px · 더보기 20px → 5개+더보기=165px 가 들어가는데 4개만 썼다).
+      그래서 자동에 맡기지 않고 숫자로 넘긴다. 잴 수 없으면(첫 렌더 전) 예전처럼 자동으로 둔다 */
+function calFitRows(){
+  const frame=document.querySelector('#fcal .fc-dayGridMonth-view .fc-daygrid-day-frame');
+  if(!frame)return null;
+  const num=frame.querySelector('.fc-daygrid-day-number');
+  const ev=document.querySelector('#fcal .fc-daygrid-event-harness');
+  if(!num||!ev)return null;
+  const avail=frame.clientHeight-num.offsetHeight-2;          /* -2 는 day-events 의 padding-bottom */
+  const pitch=ev.offsetHeight;                                /* harness 에 여백이 포함돼 있다 */
+  const link=document.querySelector('#fcal .fc-daygrid-day-bottom');
+  const lh=(link&&link.offsetHeight)||18;
+  if(!(pitch>6)||avail<pitch)return null;
+  const n=Math.floor((avail-lh)/pitch);
+  return n<1?null:n;   /* 더보기 줄까지 넣을 자리도 없을 만큼 낮으면 자동에 맡긴다 */
+}
+function maxEvOf(){
+  if(isNarrow())return 2;
+  const n=calFitRows();
+  return n===null?true:n;
+}
+/* 첫 렌더·달 이동 뒤에 다시 재서 맞춘다 — 값이 그대로면 건드리지 않는다(무한 재렌더 방지) */
+let _maxEv=null;
+function calFitApply(){
+  if(!CAL||isNarrow())return;
+  const n=calFitRows();
+  if(n===null||n===_maxEv)return;
+  _maxEv=n;CAL.setOption('dayMaxEvents',n);
+}
 
 function bindCalResize(){
   const sb=$('#sidebar');
@@ -7241,8 +7058,9 @@ function bindCalResize(){
   const redraw=()=>{clearTimeout(rt);rt=setTimeout(()=>{
     if(!CAL)return;
     const nar=isNarrow();
-    if(nar!==MOBILE_CAL){MOBILE_CAL=nar;CAL.setOption('dayMaxEvents',maxEvOf());}
+    if(nar!==MOBILE_CAL){MOBILE_CAL=nar;_maxEv=null;CAL.setOption('dayMaxEvents',maxEvOf());}
     CAL.updateSize();
+    calFitApply();               /* 창 크기가 바뀌면 칸 높이도 바뀐다 — 다시 재서 맞춘다 */
   },120);};
   window.addEventListener('resize',redraw);
   /* iOS 는 회전·주소창 접힘 때 resize 가 늦거나 빠져서 칸 폭이 어긋난 채 남는다 */
@@ -7433,7 +7251,7 @@ function widPlace(){
 }
 
 /* ═══════════ 부팅 ═══════════ */
-function rAll(){rDay();rTasks();rOrg();rCfg();rFilter();rMention();rTeamSel();refetchCal();rWidget();}   /* 팀 선택기는 조직 화면 밖(사이드바)이라 rAll 에서도 그린다 */
+function rAll(){rDay();rTasks();rOrg();rCfg();rFilter();rTeamSel();refetchCal();rWidget();}   /* 팀 선택기는 조직 화면 밖(사이드바)이라 rAll 에서도 그린다 */
 (function boot(){
   let dark=false;
   try{dark=localStorage.getItem('calapp.theme')==='dark';}catch(e){}
