@@ -75,7 +75,9 @@ svg{display:block;flex-shrink:0;}
 #sidebar.mini{width:var(--swm);min-width:var(--swm);overflow:visible;}
 .sbh{height:var(--th);display:flex;align-items:center;justify-content:space-between;padding:0 14px;border-bottom:1px solid var(--sep);flex-shrink:0;overflow:hidden;}
 .sbb{display:flex;align-items:center;gap:10px;white-space:nowrap;overflow:hidden;transition:opacity var(--tr);}
-#sidebar.mini .sbb{display:none;}
+/* ⚠ display:none 을 쓰면 다시 나타날 때 전환이 시작되지 않는다(시작 스타일이 없다) —
+   위 .sbb 의 opacity 전환이 236차 이후로 한 번도 돌지 않던 원인. 폭만 0 으로 접는다. */
+#sidebar.mini .sbb{opacity:0;width:0;}
 .sblogo{flex-shrink:0;display:flex;align-items:center;justify-content:center;}
 .sbtext{display:flex;flex-direction:column;justify-content:center;min-width:0;}
 .sbn{font-size:14px;font-weight:700;color:var(--lbl);line-height:1.15;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;}
@@ -119,7 +121,9 @@ svg{display:block;flex-shrink:0;}
 .nvi.act .nic svg{color:#fff;}
 .nvi:not(.act) .nic svg{color:var(--lbl2);}
 .nil{flex:1;text-align:left;}
-#sidebar.mini .nil{display:none;}
+/* ⚠ display:none 이면 펼칠 때 opacity 전환(90행)이 시작되지 않아 글자가 그냥 튀어나온다 —
+   폭만 0 으로 접어 요소를 늘 살려 둔다(아이콘 위치는 그대로: 접힘 폭 64px 에서 내용칸이 정확히 32px). */
+#sidebar.mini .nil{flex:0 0 0;width:0;overflow:hidden;}
 /* 접으면 모든 블록의 내용물을 가운데로 모은다(폭 64px = 16+32+16 이라 아이콘 x 는 펼침과 같다) */
 #sidebar.mini .nvi{justify-content:center;padding:7px 8px;gap:0;}
 #sidebar.mini .sbsc,#sidebar.mini .sb-bottom{padding-left:8px;padding-right:8px;}
@@ -2256,7 +2260,11 @@ html.dark #toast{background:#2B313A;}
   #sidebar.mini .sb-tools-in{position:static;display:block;background:transparent;border:0;box-shadow:none;padding:0;}
   #sidebar.mini .sb-more{display:none;}
   #sidebar.mob-open{transform:translateX(0);}
+  /* 드로어는 늘 펼친 폭이라 mini 접힘 스타일을 전부 무효화한다.
+     ⚠ display 뿐 아니라 폭도 되돌려야 한다 — 접힘은 display:none 이 아니라 width:0 로 구현돼 있다 */
   #sidebar.mini .sbb,#sidebar.mini .nil,#sidebar.mini .sbsl{opacity:1!important;display:initial!important;pointer-events:auto!important;}
+  #sidebar.mini .sbb,#sidebar.mini .nil{width:auto!important;}
+  #sidebar.mini .nil{flex:1!important;}
   #sidebar.mini .sb-acct{display:flex;}
   .mc{display:flex;}
   /* 접기 버튼은 드로어에선 무의미 — mini 상태만 만들고 혼란을 준다 */
@@ -3048,7 +3056,7 @@ body.hasbg #fcal .fc-event.team{background:rgba(255,255,255,.92)!important;}
               <span style="display:inline-flex;gap:6px;align-items:center"><button class="btn bo bsm" data-act="set.bgPick">이미지 선택</button><button class="btn bg2 bsm" id="bgClearBtn" data-act="set.bgClear" hidden>없애기</button></span></div>
             <div class="share-row" style="margin-top:10px"><div><b style="font-size:13px">레이아웃 투명도</b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">카드가 배경을 얼마나 비칠지 · 하자 관리 화면은 항상 불투명</div></div>
               <span style="display:inline-flex;align-items:center;gap:6px"><b id="bgAlphaV" style="font-size:12px;color:var(--bt1);min-width:32px;text-align:right">90%</b><input type="range" id="bgAlpha" min="60" max="100" step="5" value="90" data-act="set.bgAlpha" style="width:130px"></span></div>
-            <div class="share-row" style="margin-top:10px"><div><b style="font-size:13px">배경 밝기</b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">배경을 밝게 또는 어둡게</div></div>
+            <div class="share-row" style="margin-top:10px"><div><b style="font-size:13px">배경 밝기</b><div style="font-size:11.5px;color:var(--lbl3);margin-top:3px">사진 자체를 밝게 또는 어둡게</div></div>
               <span style="display:inline-flex;align-items:center;gap:6px"><b id="bgBriV" style="font-size:12px;color:var(--bt1);min-width:32px;text-align:right">100%</b><input type="range" id="bgBri" min="55" max="140" step="5" value="100" data-act="set.bgBri" style="width:130px"></span></div>
 
           </div>
