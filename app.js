@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='2.5.8';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='2.5.9';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -5204,15 +5204,19 @@ function rHold(){
     +'<span class="t">'+esc(it.text||'제목 없음')+'</span>'
     +'<span class="d">'+esc(md(it.date))+'</span></div>').join('');
 }
-/* 보류함 높이 — 옆 달력의 4주차 줄에서 시작하도록 맞춘다(넓은 화면에서만) */
+/* 보류함 높이 — 옆 달력의 4주차 줄에 맞춰 **최대 높이**만 준다.
+   ⚠ 예전에는 height 로 못박아 보류가 2~3건뿐이어도 열 바닥까지 빈 칸이 남았다(실사용 지적).
+   max-height 로 두면 적을 땐 내용만큼만 차지하고, 많을 땐 예전처럼 4주차 줄에 맞춰 안에서 스크롤한다 */
 function holdFit(){
   const card=$('#holdCard');if(!card)return;
   const rows=$$('#fcal .fc-daygrid-body tr');
-  if(WIDGET||card.hidden||window.innerWidth<=960||rows.length<4){card.style.height='';return;}
-  const col=$('.cal-wrap .dp-col');if(!col)return;
+  const clear=()=>{card.style.height='';card.style.maxHeight='';};
+  if(WIDGET||card.hidden||window.innerWidth<=960||rows.length<4){clear();return;}
+  const col=$('.cal-wrap .dp-col');if(!col){clear();return;}
   const top=rows[3].getBoundingClientRect().top, bot=col.getBoundingClientRect().bottom;
   const h=Math.round(bot-top);
-  card.style.height=(h>120?h:120)+'px';
+  card.style.height='';
+  card.style.maxHeight=(h>120?h:120)+'px';
 }
 /* 끌어 놓기 — 달력 날짜 칸에 떨어뜨리면 날짜를 그날로 바꾸고 보류를 푼다 */
 let HOLD_DRAG=null;
@@ -5427,10 +5431,9 @@ function miniCalHTML(){
     <div class="mc-h">
       <b>${y}년 ${m+1}월</b>
       <div class="cal-nav">
-        ${(y+'-'+pad(m+1))!==todayStr().slice(0,7)
-          ?'<button class="mc-today" data-act="mine.mon" data-d="0">오늘</button>':''}
-        <button class="cal-nb" data-act="mine.mon" data-d="-1" aria-label="지난 달"><svg class="icn"><use href="#i-chevl"></use></svg></button>
-        <button class="cal-nb" data-act="mine.mon" data-d="1" aria-label="다음 달"><svg class="icn"><use href="#i-chevr"></use></svg></button>
+        <button class="cal-nb" data-act="mine.mon" data-d="-1" aria-label="지난 달" data-tip="지난 달"><svg class="icn"><use href="#i-chevl"></use></svg></button>
+        <button class="cal-nb cal-today" data-act="mine.mon" data-d="0" aria-label="이번 달로" data-tip="이번 달로"><svg class="icn"><use href="#i-today"></use></svg></button>
+        <button class="cal-nb" data-act="mine.mon" data-d="1" aria-label="다음 달" data-tip="다음 달"><svg class="icn"><use href="#i-chevr"></use></svg></button>
       </div>
     </div>
     <div class="mc-w">${DOW.map((w,i)=>'<span'+(i===0?' class="sun"':i===6?' class="sat"':'')+'>'+w+'</span>').join('')}</div>
