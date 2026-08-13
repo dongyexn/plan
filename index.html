@@ -723,8 +723,8 @@ body:not(.df-printing):not(.rpt-on) textarea,body:not(.df-printing):not(.rpt-on)
 /* 앱 배경화면(로컬 전용) — 처리 방식은 디뉴어 앱의 로그인 배경과 같다:
    ① 사진 위에 위→아래 어두운 그라디언트 ② 가장자리를 어둡게 눌러 주는 비네트(radial)
    ③ 정적 필름 그레인 캔버스(#bgGrain, overlay). 사진 자체는 눕히지 않고 레이어로만 다스린다. */
-body::before{content:'';position:fixed;inset:0;z-index:-2;background-color:var(--bg);background-image:var(--app-bg-img,none);background-size:cover;background-position:center;transition:opacity .45s ease;filter:brightness(var(--app-bg-bri,1));}
-/* body.hasbg::before — 별도 규칙 불필요: body::before 가 항상 보이므로(밝기가 기본 배경에도 적용된다) */
+body::before{content:'';position:fixed;inset:0;z-index:-2;background-image:var(--app-bg-img,none);background-size:cover;background-position:center;opacity:0;transition:opacity .45s ease;filter:brightness(var(--app-bg-bri,1));}
+body.hasbg::before{opacity:1;}
 /* 그라디언트 + 비네트 한 겹(디뉴어 #gate 와 같은 구성) — 밑칠(단색 덮개) 방식은 대체됐다 */
 /* 226차: '넣을 때 너무 어둡다' 지시로 강도 완화 — 그라디언트 .40/.62 → .16/.30, 비네트 .42 → .26.
    사진 자체 밝기는 --app-bg-bri(설정 슬라이더)로 조절한다. */
@@ -1959,6 +1959,8 @@ body.wid .wid-move .t{position:absolute;left:50%;top:50%;transform:translate(-50
 body.wid .wid-move .t button{-webkit-app-region:no-drag;background:var(--b600);color:#fff;font:inherit;
   padding:6px 12px;border-radius:8px;}
 body.wid #wgSet{z-index:9100;}
+/* 두 번 눌러 선택 — 활성화 전 첫 클릭 대기 상태에서 pointer 커서를 숨긴다 */
+body.wid-await,body.wid-await *{cursor:default!important;}
 body.wid #content{padding:8px;}
 body.wid .cal-wrap{grid-template-columns:minmax(0,1fr);height:calc(100dvh - 16px);}   /* 1fr 의 최소폭은 max-content — 표가 창보다 넓어져 오른쪽이 잘린다 */
 body.wid .card{border-radius:8px;padding:11px 12px;}

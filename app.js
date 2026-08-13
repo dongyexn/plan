@@ -6055,9 +6055,19 @@ function applyBg(){
   try{url=localStorage.getItem('calapp.bg')||'';al=localStorage.getItem('calapp.bgAlpha')||'90';
     bri=localStorage.getItem('calapp.bgBri')||'100';}catch(e){}
   const root=document.documentElement;
+  const briF=(Number(bri)||100)/100;
   root.style.setProperty('--app-bg-img',url?`url("${url}")`:'none');
   root.style.setProperty('--app-card-alpha',(Number(al)||90)/100);
-  root.style.setProperty('--app-bg-bri',String((Number(bri)||100)/100));   /* 배경 밝기 — 이미지·기본 배경 모두 적용 */
+  root.style.setProperty('--app-bg-bri',String(briF));   /* 이미지 모드: pseudo-element 에 적용 */
+  /* 이미지가 없을 때는 body 배경색을 직접 밝기 보정 — pseudo-element 는 opacity:0 이라 filter 가 안 먹는다 */
+  if(!url&&briF!==1){
+    const raw=getComputedStyle(root).getPropertyValue('--bg').trim();
+    const m=raw.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+    if(m){
+      const cl=v=>Math.min(255,Math.max(0,Math.round(parseInt(v,16)*briF)));
+      document.body.style.backgroundColor='rgb('+cl(m[1])+','+cl(m[2])+','+cl(m[3])+')';
+    }
+  }else{document.body.style.backgroundColor='';}   /* 이미지 있거나 100%면 CSS 기본으로 복원 */
   document.body.classList.toggle('hasbg',!!url);
   const btn=$('#bgClearBtn');if(btn)btn.hidden=!url;
   const dl=$('#bgAlpha');if(dl)dl.value=al;
@@ -7248,17 +7258,19 @@ function widApplyDbl(){
     _dblJust=false;
   }
 }
-function _dblOnBlur(){_dblJust=false;}
+function _dblOnBlur(){_dblJust=false;document.body.classList.remove('wid-await');}
 function _dblOnFocus(){
   _dblJust=true;
+  document.body.classList.add('wid-await');   /* 커서를 기본(화살표)으로 — 아직 활성화 전 */
   clearTimeout(_dblTm);
-  _dblTm=setTimeout(()=>{_dblJust=false;},500);   /* 키보드·Alt+Tab 등 비마우스 포커스 복귀 안전망 */
+  _dblTm=setTimeout(()=>{_dblJust=false;document.body.classList.remove('wid-await');},500);   /* 키보드·Alt+Tab 등 비마우스 포커스 복귀 안전망 */
 }
 function _dblOnDown(e){
   if(!_dblJust)return;
   /* 설정 팝업(#wgSet)·트레이 영역은 흡수하지 않는다 */
   if(e.target.closest&&e.target.closest('#wgSet'))return;
   _dblJust=false;clearTimeout(_dblTm);
+  document.body.classList.remove('wid-await');
   e.stopPropagation();e.preventDefault();
 }
 /* 위치·크기 조정 모드 — 켜면 창 전체가 드래그 영역이 되고, 끄면 그 자리에 고정된다.
