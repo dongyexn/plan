@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='2.5.3';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='2.5.4';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -5115,12 +5115,12 @@ window.addEventListener('afterprint',()=>{
     try{Object.values(DF.ch||{}).forEach(c=>{if(c&&c.resize){c.resize();c.update('none');}});}catch(e){}
   }
 });
-/* 기준월·인쇄는 하자 관리 화면에서만 상단바에 나온다 */
+/* 기준월은 하자 관리에서만, 인쇄는 하자 관리·주요 업무에서만 상단바에 나온다 */
 function dfTopbar(){
   const on=S.view==='defect';
   const rm=$('#tbRm'),pw=$('#tbPrintWrap');
   if(rm){rm.hidden=!on;rm.textContent=S.dfRm||'기준월 없음';}
-  if(pw)pw.hidden=!on;
+  if(pw)pw.hidden=!(on||S.view==='report');   /* 인쇄가 필요한 화면은 이 둘뿐 — 달력·업무 목록에는 없다 */
   /* 하자 밖에선 기준월·인쇄가 빠져 자리가 남는다 — 검색 버튼이 그 폭을 채우는 넓은 형태가 되도록 상태를 노출 */
   const tools=$('.sb-tools');if(tools)tools.classList.toggle('df-on',on);
 }
@@ -5998,8 +5998,6 @@ setInterval(()=>{if(_tipFor&&!_tipFor.isConnected)tipHide();},700);
 
 /* ═══════════ 화면 전환 · 공통 UI ═══════════ */
 const VIEW_TTL={calendar:'캘린더',tasks:'업무 목록',report:'주요 업무',defect:'하자처리 현황',org:'조직/현장 관리',settings:'설정'};
-/* 236차: 사이드바 인쇄 버튼 — report·defect 에서만 노출 */
-function sbPrintSync(){const w=$('#sbPrintWrap');if(w)w.hidden=(S.view!=='report'&&S.view!=='defect');}
 document.addEventListener('click',e=>{
   const t=$('#sbTools');if(!t||!t.classList.contains('open'))return;
   if(!t.contains(e.target))t.classList.remove('open');   /* 접힌 사이드바의 기능 팝업 — 바깥 클릭이면 닫는다 */
@@ -6017,7 +6015,7 @@ function go(view){
   if(view==='tasks')rTasks();
   if(view==='report')rReport();
   if(view==='defect')rDefect();
-  dfTopbar();rDefectNav();sbPrintSync();
+  dfTopbar();rDefectNav();
   if(view==='org'){
     rOrg();
   }
@@ -6365,7 +6363,6 @@ const ACT={
     if(so.col===k){if(so.dir===-1)so.dir=1;else{so.col=null;so.dir=-1;}}else{so.col=k;so.dir=-1;}
     S.dfSort=so;if(DF.lastDash)dfDashTableFill(DF.lastDash);},
   'df.sort.tbl':el=>dfSortPanel(el.dataset.tbl,el),
-  'df.print':()=>openPrintPick(),
   'print.pick':el=>rptPickSel(el),
   'print.font':el=>rptPickFont(el),
   'print.go':()=>rptPickGo(),
@@ -6433,8 +6430,9 @@ const ACT={
   'rpt.week':el=>{const d=Number(el.dataset.d)||0;
     S.rptWeek=d?addDays(S.rptWeek||todayStr(),d):'';rReport();},
   'rpt.tab':el=>{S.rptReg=el.dataset.reg;rReport();},
-  'rpt.print':()=>window.print(),
-  'sb.print':()=>{if(S.view==='report')window.print();else if(S.view==='defect'&&typeof dfPrintOpen==='function')dfPrintOpen();},
+  /* 인쇄 — 상단바 버튼(#tbPrintWrap) 하나가 두 화면을 맡는다.
+     ⚠ 예전엔 없는 함수(dfPrintOpen)를 typeof 로 감싸 불러 하자 관리에서 조용히 아무 일도 안 했다 */
+  'sb.print':()=>{if(S.view==='report')window.print();else if(S.view==='defect')openPrintPick();},
   'mention.clear':()=>{
     const uid2=myId();if(!uid2)return;
     Object.keys(S.mentions||{}).forEach(id=>mentionRead(id));
