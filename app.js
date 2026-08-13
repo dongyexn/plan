@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='2.8.6';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='2.8.8';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -630,7 +630,7 @@ const FbStore={
         /* 읽지 못하는 계정을 위해 사본도 맞춰 둔다(관리자만 쓸 수 있다) */
         if(isEditor())FB.db.ref('calapp/org').set(cleanOrg(S.org)).catch(()=>{});
         if(tkHold()){PEND.org=true;PEND.tasks=true;return;}
-        rOrg();rTasks();rTeamSel();rFilter();
+        rOrg();rTasks();rTeamSel();rFilter();dfLinkOpen();
       },()=>{ /* 권한 없음 — 사본으로 간다 */ });
       ORG_OFF=()=>{try{ref.off('value',cb);}catch(e){}};
     };
@@ -663,7 +663,7 @@ const FbStore={
       if(ORG_LIVE)return;                       /* 원본을 읽고 있으면 사본은 무시한다 */
       S.org=v||{teams:[],regions:[],sites:[]};normOrg(S.org);bootCacheSave();
       if(tkHold()){PEND.org=true;PEND.tasks=true;return;}
-      rOrg();rTasks();});
+      rOrg();rTasks();dfLinkOpen();});
     this.bindReportOrg();
     this._on('calapp/tasks',v=>{S.tasks=v||{};bootCacheSave();
       /* 첫 스냅샷이 온 뒤 한 번 — 놓친 담당자 업무를 아침 확인으로 묻는다 */
@@ -1450,7 +1450,7 @@ function calInit(){
        여러 날에 걸친 막대는 모든 날에서 같은 줄이어야 하나로 이어지는데, 등급 때문에 날마다
        줄이 달라지면 FullCalendar 가 가장 아래 줄로 통일해 그 위 칸들이 비어 버린다.
        기간 막대는 예전처럼 맨 위에 두고, 하루짜리 막대들만 등급으로 세운다 */
-    eventOrder:'-duration,ord,start,allDay,title',
+    eventOrder:'-duration,ord,oky,start,allDay,title',
     headerToolbar:false,height:'100%',dayMaxEvents:maxEvOf(),
     moreLinkContent:a=>'외 '+a.num+'건 ›',   /* 234차: 5안(우측 정렬 미니) — 조용하게 오른쪽 끝에 */
     /* 기본 더보기 팝오버 대신 그 날짜를 골라 업무 패널(위젯은 팝업)에서 전부 보게 한다 */
@@ -1558,6 +1558,14 @@ function evOrd(p,team){
   if(own.some(id=>{const q=R.find(x=>x.id===id);return q&&rankOf(q.rank)==='head';}))return 2;   /* 팀장 */
   return 3;                                           /* 그 밖의 담당자 */
 }
+/* 같은 등급 안에서 담당자끼리 묶는 키 — A업무1 · B업무1 · A업무2 처럼 섞이지 않게 한다.
+   ⚠ 이름으로 묶는다(id 로 묶으면 순서가 사람 눈에 무의미하다). 공동 담당은 이름을 정렬해 이어 붙여
+   같은 조합끼리 모인다. 담당자가 없으면 빈 문자열 — 공통 업무는 어차피 한 등급 안에 있다 */
+function evOwnKey(p){
+  const own=planOwners(p);
+  if(!own.length)return '';
+  return own.map(id=>ownName(id)||id).sort((a,b)=>String(a).localeCompare(String(b),'ko')).join(',');
+}
 function planEvent(p,date){
   const span=p.end?daysBetween(p.date,p.end):0;
   const done=isDone(p,date);   /* 반복은 occSrc 로 원 회차일의 doneOn 을 본다 — 옮긴 회차의 완료 표시가 칩에서 빠지던 버그 */
@@ -1581,7 +1589,7 @@ function planEvent(p,date){
     classNames:(done?['done']:[]).concat((!team&&isLightColor(planColor(p)))?['on-light']:[]).concat(team?['team']:[]),
     /* 칸 안 차례 — 공통(0) · 내 업무(1) · 팀장(2) · 나머지(3).
        칸이 넘쳐 '외 N건' 으로 접힐 때 나와 상관 있는 것이 먼저 남는다(eventOrder 참조) */
-    extendedProps:{pid:p.id,occ:date,recur:!!(p.recur&&p.recur.f),ord:evOrd(p,team)},
+    extendedProps:{pid:p.id,occ:date,recur:!!(p.recur&&p.recur.f),ord:evOrd(p,team),oky:evOwnKey(p)},
     editable:!(p.recur&&p.recur.f)
   };
 }
@@ -1863,6 +1871,8 @@ function sortPlans(list){
     if(dx!==dy)return dx-dy;
     const ox=evOrd(x.p), oy=evOrd(y.p);
     if(ox!==oy)return ox-oy;
+    const kx=evOwnKey(x.p), ky=evOwnKey(y.p);        /* 같은 등급 안에서는 담당자끼리 묶는다 */
+    if(kx!==ky)return kx.localeCompare(ky,'ko');
     const tx=x.p.time||'', ty=y.p.time||'';
     if(!!tx!==!!ty)return tx?-1:1;
     if(tx&&ty&&tx!==ty)return tx<ty?-1:1;
@@ -6349,10 +6359,18 @@ const ACT={
     selDate(d,true);S.planOpen=el.dataset.iid||'';S.widPop=true;
     rMonTitle();refetchCal();rDay();rWidget();
   },
+  /* 하자 현황 — 위젯에는 그 화면이 없다. 안내만 띄우고 마는 대신 브라우저를 그 현장으로 바로 연다.
+     ⚠ window.open 은 위젯(WebView2)이 가로채 기본 브라우저로 넘긴다(INIT_JS) */
   'nq.site':el=>{
     nqOpen(false);
-    if(WIDGET){toast('하자처리 현황은 브라우저 앱에서 볼 수 있습니다');return;}
-    S.dfSid=el.dataset.sid;S.dfTab='sum';go('defect');},
+    const sid=el.dataset.sid;
+    if(WIDGET){
+      const u=location.origin+location.pathname+'?df='+encodeURIComponent(sid);
+      window.open(u,'_blank','noopener');
+      toast('브라우저에서 하자 현황을 엽니다');
+      return;
+    }
+    S.dfSid=sid;S.dfTab='sum';go('defect');},
   'mine.day':el=>{const d=el.dataset.date;if(!d)return;S.mineSel=(S.mineSel===d?'':d);rTasks();},
   'mine.mon':el=>{
     const d=Number(el.dataset.d)||0;
@@ -7098,6 +7116,19 @@ function bindCalResize(){
 }
 
 /* ═══════════ 위젯 모드 (?w=1) — 데스크톱 PWA 창용 컴팩트 화면 ═══════════ */
+/* ── 딥링크 ?df=<현장id> — 위젯의 찾기에서 하자 현황을 브라우저로 넘길 때 쓴다.
+   ⚠ 현장 목록이 온 뒤라야 열 수 있다(게시본 구독이 S.org 를 채운다) — 한 번만 처리하고 버린다 */
+const DF_LINK=(location.search.match(/[?&]df=([\w-]{1,40})/)||[])[1]||'';
+let _dfLinkDone=false;
+function dfLinkOpen(){
+  if(_dfLinkDone||!DF_LINK||WIDGET)return;
+  const st=(S.org.sites||[]).find(x=>x.id===DF_LINK);
+  if(!st)return;                       /* 아직 목록이 안 왔다 — 다음 갱신 때 다시 본다 */
+  _dfLinkDone=true;
+  S.dfSid=DF_LINK;S.dfTab='sum';go('defect');
+  /* 주소창을 정리한다 — 새로고침해도 같은 현장으로 튀지 않게 */
+  try{history.replaceState(null,'',location.pathname+location.search.replace(/([?&])df=[\w-]+&?/,'$1').replace(/[?&]$/,''));}catch(e){}
+}
 const WIDGET=/[?&]w=1\b/.test(location.search);
 const GLASS=/[?&]glass=1\b/.test(location.search);   /* 위젯 유리(반투명) 모드 — 배경을 비운다 */
 /* 위젯 설정 — 진하기·글자 크기·오늘 목록. 위젯 창(PC)별 로컬 저장 */
