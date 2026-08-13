@@ -6055,25 +6055,9 @@ function applyBg(){
   try{url=localStorage.getItem('calapp.bg')||'';al=localStorage.getItem('calapp.bgAlpha')||'90';
     bri=localStorage.getItem('calapp.bgBri')||'100';}catch(e){}
   const root=document.documentElement;
-  const briF=(Number(bri)||100)/100;
   root.style.setProperty('--app-bg-img',url?`url("${url}")`:'none');
   root.style.setProperty('--app-card-alpha',(Number(al)||90)/100);
-  root.style.setProperty('--app-bg-bri',String(briF));   /* 이미지 모드: body::before 의 filter 가 쓴다 */
-  /* 이미지가 없을 때 — ⚠ #app 이 var(--bg) 로 뷰포트를 덮으므로 body::before 는 보이지 않는다.
-     실제로 눈에 보이는 판(#app)의 배경색을 직접 계산해 넣는다.
-     ⚠ 라이트 테마 --bg(#EAECF1)는 흰색에 가까워 곱셈으로는 108% 부터 전부 흰색으로 잘린다 —
-     100% 위쪽은 흰색 쪽으로 섞고(슬라이더 끝 140% 에서 흰색), 아래쪽만 곱셈으로 어둡게 한다. */
-  const app=$('#app');
-  if(!url&&briF!==1&&app){
-    const m=getComputedStyle(root).getPropertyValue('--bg').trim()
-      .match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
-    if(m){
-      const t=briF>1?Math.min(1,(briF-1)/0.4):0;
-      const cl=h=>{const c=parseInt(h,16);
-        return Math.round(briF>1?c+(255-c)*t:c*briF);};
-      app.style.backgroundColor='rgb('+cl(m[1])+','+cl(m[2])+','+cl(m[3])+')';
-    }
-  }else if(app){app.style.backgroundColor='';}   /* 이미지 있거나 100%면 CSS 기본으로 복원 */
+  root.style.setProperty('--app-bg-bri',String((Number(bri)||100)/100));   /* 사진 자체 밝기 */
   document.body.classList.toggle('hasbg',!!url);
   const btn=$('#bgClearBtn');if(btn)btn.hidden=!url;
   const dl=$('#bgAlpha');if(dl)dl.value=al;
@@ -6155,8 +6139,6 @@ function applyTheme(dark){
   const c=$('#darkChk');if(c)c.checked=dark;
   const u=$('#thIcon');if(u)u.setAttribute('href',dark?'#i-moon':'#i-sun');
   try{localStorage.setItem('calapp.theme',dark?'dark':'light');}catch(e){}
-  /* 배경 밝기는 그 때의 --bg 색에서 계산한 값이라 테마가 바뀌면 다시 계산해야 한다 */
-  try{applyBg();}catch(e){}
   /* 차트는 그릴 때의 토큰 색을 굽는다 — 테마가 바뀌면 하자 화면을 다시 그려야 색이 따라온다 */
   if(S.view==='defect'){try{rDefect();}catch(e){}}
 }
