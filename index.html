@@ -413,7 +413,7 @@ html.dark #fcal .dhol.dtoday{color:var(--b300);}
 /* 넘침 표시 — 234차 5안(우측 정렬 미니): 알약을 없애고 오른쪽 끝에 조용한 회색 글씨로.
    막대와 색·형태로 경쟁하지 않고, 줄이 끊겨 보이던 문제도 사라진다. */
 #fcal .fc-daygrid-day-bottom{display:flex;justify-content:flex-end;padding:1px 5px 0;}
-#fcal .fc-daygrid-more-link{font-size:12px;color:var(--lbl2);font-weight:700;text-decoration:none;
+#fcal .fc-daygrid-more-link{font-size:12px;color:var(--lbl2);font-weight:500;text-decoration:none;
   margin:0;padding:0;border-radius:6px;background:transparent;letter-spacing:-.01em;}
 #fcal .fc-daygrid-more-link:hover{background:transparent;color:var(--bt1);}
 body.wid.glass #fcal .fc-daygrid-more-link{color:rgba(255,255,255,.85);background:transparent;}
@@ -2290,7 +2290,7 @@ html.dark #toast{background:#2B313A;}
   body:not(.wid) #fcal .fc-dayGridMonth-view .fc-daygrid-day-frame{overflow:hidden;}   /* 위젯은 좁아도 여러 날 막대를 자르지 않는다 */
   #fcal .fc-dayGridMonth-view .fc-daygrid-day-events{overflow:visible;}
   #fcal .fc-dayGridMonth-view .fc-daygrid-day-bottom{display:block;margin:1px 0 0;padding:0 2px;}
-  #fcal .fc-daygrid-more-link{font-size:12px;font-weight:700;color:var(--lbl2);}
+  #fcal .fc-daygrid-more-link{font-size:12px;font-weight:500;color:var(--lbl2);}
   #fcal .fc-daygrid-more-link:hover{color:var(--bt1);}
   /* iOS 사파리는 글자가 16px 보다 작은 입력칸을 누르면 화면을 저절로 확대하고, 손을 떼도 돌아오지 않는다.
      모바일에서만 16px 로 올린다 — 칸 높이(30px 등)는 그대로라 배치는 바뀌지 않는다.
@@ -2562,18 +2562,23 @@ html.dark body.hasbg #fcal .fc-event.team{background:rgba(44,47,54,.92)!importan
 #fcal .fc-event.team .fc-event-title{display:flex;align-items:center;}
 #fcal .fc-event.team .fc-event-title::before{content:'';flex:none;width:0;height:0;margin-right:4px;
   border-left:4px solid currentColor;border-top:2.5px solid transparent;border-bottom:2.5px solid transparent;}
-/* ── 고위험 업무 — 제목 앞 느낌표. 공통 업무의 삼각형보다 우선한다(공통 여부는 속 빈 막대로 이미 드러난다) ── */
+/* ── 고위험 업무 — 제목 앞 윤곽 원 안의 느낌표(2-C안) ──
+   ⚠ 글자 '!' 로 그리면 글리프가 baseline 에 맞춰져 원 안에서 위로 뜬다 — **아이콘(SVG)을 마스크로 깔고**
+   색은 background-color 로 준다. 그래야 느낌표가 원의 정중앙에 온다.
+   ⚠ 색은 `currentColor` — 막대 글자색을 그대로 따라간다. 담당자가 노랑·연두 같은 밝은 색을 골라
+   글자색이 어둡게 뒤집혀도(on-light) 표식이 함께 뒤집혀 대비가 무너지지 않는다.
+   ⚠ 공통 업무(.team)의 삼각형보다 우선한다 — 공통 여부는 속 빈 막대로 이미 드러난다. */
+:root{--risk-ic:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.1'%3E%3Ccircle cx='12' cy='12' r='9.5'/%3E%3Cpath d='M12 6.9v6.4' stroke-linecap='round'/%3E%3Ccircle cx='12' cy='17.2' r='1.25' fill='%23000' stroke='none'/%3E%3C/svg%3E");}
 #fcal .fc-event.risk .fc-event-title{display:flex;align-items:center;}
 #fcal .fc-event.risk .fc-event-title::before,#fcal .fc-event.team.risk .fc-event-title::before{
-  content:'!';flex:none;width:auto;height:auto;margin-right:4px;border:0;
-  font-weight:900;font-size:.92em;line-height:1;color:#DC2626;}
-#fcal .fc-event.risk:not(.team) .fc-event-title::before{color:#fff;opacity:.95;}   /* 색 막대 위에서는 흰 느낌표 */
-html.dark #fcal .fc-event.team.risk .fc-event-title::before{color:#F87171;}
-/* 목록·일자 패널 카드의 제목 앞 배지 */
-.risk-b{display:inline-flex;align-items:center;justify-content:center;flex:none;
-  width:14px;height:14px;margin-right:5px;border-radius:4px;vertical-align:-2px;
-  background:rgba(220,38,38,.12);color:#DC2626;font-size:10.5px;font-weight:900;line-height:1;}
-html.dark .risk-b{background:rgba(248,113,113,.16);color:#F87171;}
+  content:'';flex:none;width:11px;height:11px;margin-right:4px;border:0;border-radius:0;
+  background-color:currentColor;
+  -webkit-mask:var(--risk-ic) center/contain no-repeat;mask:var(--risk-ic) center/contain no-repeat;}
+/* 목록·일자 패널·월별 현장 카드의 제목 앞 표식 — 배경이 늘 카드(흰·다크)라 색을 고정한다 */
+.risk-b{display:inline-block;flex:none;width:13px;height:13px;margin-right:5px;vertical-align:-2px;
+  background-color:#DC2626;
+  -webkit-mask:var(--risk-ic) center/contain no-repeat;mask:var(--risk-ic) center/contain no-repeat;}
+html.dark .risk-b{background-color:#F87171;}
 .rpm-t .risk-b{vertical-align:-1px;}
 /* 내 업무 — 1열(작은 달력·멘션) + 2열 카드 */
 /* 작은 달력에서 고른 날에 걸치는 업무 강조 — 테두리만, 배경은 두지 않는다 */
@@ -3134,5 +3139,5 @@ html.dark .risk-b{background:rgba(248,113,113,.16);color:#F87171;}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=297"></script>
+<script src="./app.js?v=298"></script>
 </body></html>
