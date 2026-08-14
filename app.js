@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='2.8.8';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='2.9.1';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -296,7 +296,6 @@ function planColor(p){
   return o.length?ownColor(o[0]):TEAM_COLOR;
 }
 /* 상태는 진행·완료에 보류(3)를 더한 셋. 보류는 아침 확인에서 넘긴 업무 — 옛 데이터의 예정(0)은 진행으로 본다 */
-const ST_LBL=['진행','진행','완료','보류'];
 const ST_PICK=[['1','진행'],['2','완료'],['3','보류']];
 /* 링크 최대 길이 — 원드라이브·쉐어포인트 공유 링크는 한글 경로가 퍼센트 인코딩되어 길다.
    ⚠ 이 값을 바꾸면 database.rules.json 의 links/url 한도(<=2000)도 같이 바꿔야 한다 */
@@ -348,6 +347,8 @@ const S={
   mineSel:'',        // 작은 달력에서 고른 날 — 그 날 업무를 목록에서 강조한다
   rptWeek:'',        // 주요 업무 화면이 보고 있는 주(빈 값이면 이번 주)
   rptReg:'',          // 주요 업무에서 선택된 권역 탭(빈 값이면 첫 번째)
+  rptMode:'week',    // 주요 업무 보기 — week(주간 보고) · month(월별 현장)
+  rptYm:'',          // 월별 현장 보기가 보고 있는 달(YYYY-MM, 빈 값이면 이번 달)
   tkNew:null,        // 인라인 작성창이 열린 대상
   tkEdit:null,       // 인라인 수정 중인 업무 'sid/iid'
   tkOpen:null,       // 펼쳐 놓은 업무 'sid/iid'
@@ -1586,7 +1587,7 @@ function planEvent(p,date){
     /* ⚠ display 를 지정하지 않으면 시간이 있는 업무는 FullCalendar 가 '점 형식'으로 그린다 —
        배경 없이 어두운 글자라 유리(어두운) 배경 위에서 거의 보이지 않는다. 전부 색 막대로 통일한다 */
     display:'block',
-    classNames:(done?['done']:[]).concat((!team&&isLightColor(planColor(p)))?['on-light']:[]).concat(team?['team']:[]),
+    classNames:(done?['done']:[]).concat((!team&&isLightColor(planColor(p)))?['on-light']:[]).concat(team?['team']:[]).concat(isRisk(p.kind)?['risk']:[]),
     /* 칸 안 차례 — 공통(0) · 내 업무(1) · 팀장(2) · 나머지(3).
        칸이 넘쳐 '외 N건' 으로 접힐 때 나와 상관 있는 것이 먼저 남는다(eventOrder 참조) */
     extendedProps:{pid:p.id,occ:date,recur:!!(p.recur&&p.recur.f),ord:evOrd(p,team),oky:evOwnKey(p)},
@@ -1960,7 +1961,7 @@ function rDay(){
     <div class="plan${done?' done':''}${det?' has-det':''}${det&&S.planOpen===p.id?' open':''}" data-pid="${esc(p.id)}">
       <div class="plan-hd">
         ${colDotHTML(planColor(p),p.id,!planOwners(p).length)}
-        <div class="plan-t"${openAct}>${esc(p.title)}</div>
+        <div class="plan-t"${openAct}>${riskMark(p.kind)}${esc(p.title)}</div>
         <div class="plan-side">
           ${lnk?'<a class="p-ico" href="'+esc(lnk.url)+'" target="_blank" rel="noopener" aria-label="링크 열기" data-tip="'+esc(linkLabel(lnk))+'"><svg class="icn"><use href="#i-ext"></use></svg></a>':''}
           ${stIcon(st,' data-act="plan.stCycle" data-pid="'+esc(p.id)+'" data-occ="'+esc(occ)+'"')}
@@ -2388,7 +2389,7 @@ function taskItemHTML(sid,iid,it,withSubject,hideOwn){
   <div class="tk-item s${st}${open?' open':''}${onSelDay(sid,iid,it)?' hl':''}" draggable="true" data-sid="${esc(sid)}" data-iid="${esc(iid)}">
     <div class="tk-line">
       ${colDotHTML(planColor(p0),iid,!planOwners(p0).length)}
-      <div class="tk-ttl" data-act="tk.open" data-sid="${esc(sid)}" data-iid="${esc(iid)}">${esc(it.text||'제목 없음')}</div>
+      <div class="tk-ttl" data-act="tk.open" data-sid="${esc(sid)}" data-iid="${esc(iid)}">${riskMark(it.kind)}${esc(it.text||'제목 없음')}</div>
       <div class="tk-acts">
         ${lnk?'<a class="tk-ico" href="'+esc(lnk.url)+'" target="_blank" rel="noopener" data-act="lnk.open" aria-label="링크 열기" data-tip="'+esc(linkLabel(lnk))+'"><svg class="icn"><use href="#i-ext"></use></svg></a>':''}
         ${stIcon(st,' data-act="tk.st" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"')}
@@ -2670,13 +2671,15 @@ function reorderTask(sid,iid,targetIid,after){
   if(!S.live)rTasks();
 }
 /* 업무 검색·필터 — 제목·경과·계획·현장·담당자까지 훑고, 상태·기한으로 좁힌다 */
-const TK_ST=[['','전체'],['0','예정'],['1','진행'],['2','완료'],['3','보류']];
 /* 업무 분류 — 일반만 진행경과·처리계획을 나눠 쓰고, 나머지는 내용 한 칸 */
-const TK_KIND=[['','일반'],['gather','공통'],['trip','출장'],['meet','회의'],['etc','기타']];   /* 첫 항목이 새 업무 기본값 — 일반 */
+const TK_KIND=[['','일반'],['risk','고위험'],['gather','공통'],['trip','출장'],['meet','회의'],['etc','기타']];   /* 첫 항목이 새 업무 기본값 — 일반 */
 const KIND_DEF='';
 function kindOf(v){return TK_KIND.some(k=>k[0]===v)?v:'';}
 function kindLabel(v){const k=TK_KIND.find(x=>x[0]===kindOf(v));return k?k[1]:'일반';}
 function kindSplit(v){return kindOf(v)==='';}   /* 일반이면 두 칸으로 나눈다 */
+function isRisk(v){return kindOf(v)==='risk';}   /* 고위험 — 달력 막대·목록에서 느낌표로 표시 */
+/* 제목 앞 느낌표 배지 — 달력 막대는 CSS(.fc-event.risk)가 같은 표식을 그린다 */
+function riskMark(kind){return isRisk(kind)?'<span class="risk-b" aria-label="고위험" data-tip="고위험 업무">!</span>':'';}
 /* 필터는 매번 다시 고르기 번거롭다 — 계정별로 이 브라우저에 저장해 다음에 그대로 연다 */
 function filtKey(){return 'calapp.filt.'+((S.user&&S.user.uid)||'local');}
 function filtSave(){
@@ -2890,28 +2893,41 @@ function rptLabel(a,b){
 }
 const rptMd=d=>d?(Number(d.slice(5,7))+'/'+Number(d.slice(8))):'';
 function rptRows(pid,from,to,done){
-  /* pid = 담당자 id. 그 사람이 속한 팀의 tasks 에서 assignees 에 pid 가 있는 것만 필터한다.
-     (원래 코드는 sid 로 S.tasks[sid] 를 탐색했는데, 업무가 팀 id 아래 저장돼 있어 담당자 id 로는 안 찾아졌다) */
-  const teamId=(S.org.teams||[]).find(t=>t.id===pid)?pid:Object.keys(S.tasks||{}).find(tid=>{
-    const bag=S.tasks[tid]||{};return Object.values(bag).some(it=>it&&it.assignees&&it.assignees[pid]);
-  })||'';
-  const m=S.tasks[teamId]||{};
-  return Object.keys(m).map(iid=>({iid,it:m[iid]})).filter(({it})=>{
-    if(!it||!it.assignees||!it.assignees[pid])return false;
-    if(!it)return false;
-    if(done!==(stEff(it)===2))return false;
-    const s=it.date||'',e=it.end||it.date||'';
-    if(done)return e>=from&&e<=to;        /* 완료 — 그 주기에 끝난 것 */
-    if(!s)return true;                    /* 예정 — 기한 없는 미완료도 빠뜨리지 않는다 */
-    return s<=to&&e>=from;                /* 주기에 걸치는 것 */
-  }).sort((a,b)=>String(a.it.end||a.it.date||'9999').localeCompare(String(b.it.end||b.it.date||'9999')));
+  /* pid = 담당자 id. assignees 에 pid 가 있는 업무를 **모든 가방**에서 모은다.
+     업무는 팀 id 아래에도, 첫 담당자 uid 아래에도 저장된다(planToTask 참조) —
+     예전처럼 pid 가 든 첫 가방 하나만 훑으면 다른 가방의 업무가 보고에서 빠졌다. */
+  const out=[];
+  Object.keys(S.tasks||{}).forEach(tid=>{
+    const m=S.tasks[tid]||{};
+    Object.keys(m).forEach(iid=>{
+      const it=m[iid];
+      if(!it||!it.assignees||!it.assignees[pid])return;
+      if(done!==(stEff(it)===2))return;
+      const s=it.date||'',e=it.end||it.date||'';
+      if(done){if(e>=from&&e<=to)out.push({iid,it});return;}   /* 완료 — 그 주기에 끝난 것 */
+      if(!s){out.push({iid,it});return;}                       /* 예정 — 기한 없는 미완료도 빠뜨리지 않는다 */
+      if(s<=to&&e>=from)out.push({iid,it});                    /* 주기에 걸치는 것 */
+    });
+  });
+  return out.sort((a,b)=>String(a.it.end||a.it.date||'9999').localeCompare(String(b.it.end||b.it.date||'9999')));
 }
+/* 보기 모드 전환 — 주간 보고(기존) · 월별 현장(월 단위, 현장별 묶음) */
+function rptModeSeg(){
+  const m=S.rptMode||'week';
+  return '<div class="seg rp-seg">'
+    +'<button class="'+(m==='week'?'act':'')+'" data-act="rpt.mode" data-m="week">주간 보고</button>'
+    +'<button class="'+(m==='month'?'act':'')+'" data-act="rpt.mode" data-m="month">월별 현장</button>'
+    +'</div>';
+}
+/* 보고 대상 권역 탭 — 두 보기가 같은 선택(S.rptReg)을 쓴다 */
+function rptRegs(regions){return regions.filter(r=>!/미인수|인수\s*전/.test(r.name));}
 function rReport(){
   const root=$('#reportRoot');if(!root)return;
+  if((S.rptMode||'week')==='month')return rReportMonth(root);
   const{mems,regions}=tkSel();
   const cur=rptCycle(S.rptWeek||todayStr());
   const nxt=rptCycle(addDays(cur.start,7));
-  const regs=regions.filter(r=>!/미인수|인수\s*전/.test(r.name));
+  const regs=rptRegs(regions);
   const byRank=l=>l.slice().sort((a,b)=>rankOrd(a.rank)-rankOrd(b.rank)||String(a.name).localeCompare(String(b.name),'ko'));
   if(!S.rptReg&&regs.length)S.rptReg=regs[0].id;
 
@@ -2964,6 +2980,7 @@ function rReport(){
   }
 
   root.innerHTML=`<div class="rp-head">
+      ${rptModeSeg()}
       <div class="cal-nav">
         <button class="cal-nb" data-act="rpt.week" data-d="-7" data-tip="이전 주기"><svg class="icn"><use href="#i-chevl"></use></svg></button>
         <button class="cal-nb cal-today" data-act="rpt.week" data-d="0" data-tip="이번 주기"><svg class="icn"><use href="#i-today"></use></svg></button>
@@ -2975,14 +2992,102 @@ function rReport(){
     ${body||'<div class="rp-empty">보고 대상 권역이 없습니다.</div>'}`;
 }
 
+/* ── 월별 현장 보기 — 고른 달에 걸친 업무를 현장별로 묶어 보여준다 ──
+   ⚠ 날짜가 있는 업무만 대상 — 월 단위 화면이라 기한 없는 업무는 업무 목록에서 본다.
+   반복 업무는 그 달의 회차만 전개하고, 완료 여부는 회차별(doneOn)로 본다. */
+function rptYmSel(){return /^\d{4}-\d{2}$/.test(S.rptYm)?S.rptYm:todayStr().slice(0,7);}
+function rptMonthItems(ym){
+  const from=ym+'-01';
+  const to=ym+'-'+pad(new Date(Number(ym.slice(0,4)),Number(ym.slice(5,7)),0).getDate());
+  const out=[];   /* {sid,iid,it,d(표시일·기간이면 시작일),done} */
+  const seen=new Set();   /* 같은 업무가 팀·담당자 두 가방에 있어도 iid 는 하나 — 한 번만 센다 */
+  Object.keys(S.tasks||{}).forEach(sid=>{
+    const m=S.tasks[sid]||{};
+    Object.keys(m).forEach(iid=>{
+      const it=m[iid];if(!it||!it.date||seen.has(iid))return;
+      if(it.recur&&it.recur.f){
+        const p=taskAsPlan(sid,iid,it);
+        recurDates(p,from,to).forEach(d=>{
+          out.push({sid,iid,it,d,done:!!(it.doneOn&&it.doneOn[occSrc(p,d)])});
+        });
+        seen.add(iid);return;
+      }
+      const s=it.date,e=it.end||it.date;
+      if(s<=to&&e>=from){out.push({sid,iid,it,d:s,done:stEff(it)===2});seen.add(iid);}
+    });
+  });
+  return{from,to,items:out};
+}
+function rReportMonth(root){
+  const{regions}=tkSel();
+  const regs=rptRegs(regions);
+  if(!S.rptReg&&regs.length)S.rptReg=regs[0].id;
+  if(S.rptReg&&regs.length&&!regs.some(r=>r.id===S.rptReg))S.rptReg=regs[0].id;
+  const ym=rptYmSel();
+  const{items}=rptMonthItems(ym);
+  const sitesAll=S.org.sites||[];
+  const regOfSite=sid=>{const s=sitesAll.find(x=>x.id===sid);return s?(s.region||''):null;};   /* null=목록에 없는 현장 */
+  /* 현장 미지정 — site 가 비었거나 목록에서 지워진 현장. 권역과 무관하게 늘 아래에 붙인다 */
+  const noSite=items.filter(x=>!x.it.site||regOfSite(x.it.site)===null);
+  const cntOf=r=>items.filter(x=>x.it.site&&regOfSite(x.it.site)===r.id).length;
+  const tabs=regs.map(r=>`<button class="rp-tab${r.id===S.rptReg?' on':''}" data-act="rpt.tab" data-reg="${esc(r.id)}">${esc(r.name)} <span class="rp-tcnt">${cntOf(r)}</span></button>`).join('');
+  const activeReg=regs.find(r=>r.id===S.rptReg)||regs[0];
+  const sites=activeReg?sitesAll.filter(s=>s.region===activeReg.id):[];
+  const bySite={};items.forEach(x=>{if(x.it.site)(bySite[x.it.site]=bySite[x.it.site]||[]).push(x);});
+
+  const rowHTML=x=>{
+    const asg=Object.keys(x.it.assignees||{}).map(id=>ownName(id)).filter(Boolean).join(', ');
+    const span=x.it.end&&x.it.end!==x.it.date&&!(x.it.recur&&x.it.recur.f);
+    const memo=x.it.plan||x.it.prog||x.it.body||'';
+    return `<div class="rpm-row${x.done?' done':''}" data-act="rpt.go" data-sid="${esc(x.sid)}" data-iid="${esc(x.iid)}" role="button" tabindex="0">
+      ${stIcon(x.done?2:1)}
+      <span class="rpm-t">${riskMark(x.it.kind)}${esc(x.it.text||'제목 없음')}${memo?'<span class="rpm-memo">'+esc(memo)+'</span>':''}</span>
+      <span class="rpm-own${asg?'':' team'}">${esc(asg||'공통')}</span>
+      <span class="rpm-d">${esc(span?rptMd(x.it.date)+'–'+rptMd(x.it.end):rptMd(x.d))}</span>
+    </div>`;
+  };
+  const groupHTML=(name,list)=>{
+    const done=list.filter(x=>x.done).length;
+    const rows=list.slice().sort((a,b)=>a.d.localeCompare(b.d)||String(a.it.text||'').localeCompare(String(b.it.text||''),'ko'));
+    return `<div class="rpm-card${list.length?'':' empty'}">
+      <div class="rpm-h"><span class="rpm-site">${esc(name)}</span>
+        ${list.length
+          ?`<span class="rpm-cnt"><b class="c-done">완료 ${done}</b><i>·</i><b class="c-run">진행 ${list.length-done}</b></span>`
+          :'<span class="rpm-noneb">업무 없음</span>'}
+      </div>
+      ${list.length?'<div class="rpm-rows">'+rows.map(rowHTML).join('')+'</div>':''}
+    </div>`;
+  };
+  const cards=sites.map(s=>groupHTML(s.name||'이름 없음',bySite[s.id]||[])).join('');
+  const total=sites.reduce((n,s)=>n+((bySite[s.id]||[]).length),0);
+  const doneN=sites.reduce((n,s)=>n+((bySite[s.id]||[]).filter(x=>x.done).length),0);
+  const y=Number(ym.slice(0,4)),mo=Number(ym.slice(5,7));
+
+  root.innerHTML=`<div class="rp-head">
+      ${rptModeSeg()}
+      <div class="cal-nav">
+        <button class="cal-nb" data-act="rpt.mon" data-d="-1" data-tip="이전 달"><svg class="icn"><use href="#i-chevl"></use></svg></button>
+        <button class="cal-nb cal-today" data-act="rpt.mon" data-d="0" data-tip="이번 달"><svg class="icn"><use href="#i-today"></use></svg></button>
+        <button class="cal-nb" data-act="rpt.mon" data-d="1" data-tip="다음 달"><svg class="icn"><use href="#i-chevr"></use></svg></button>
+      </div>
+      <div class="rp-week"><b>${y}년 ${mo}월</b><span class="rpm-sum">현장 ${sites.length} · 업무 ${total}건${total?' · 완료 '+doneN:''}</span></div>
+    </div>
+    <div class="rp-tabs">${tabs||''}</div>
+    ${activeReg?'<div class="rpm-grid">'+(cards||'<div class="rp-empty">이 권역에 등록된 현장이 없습니다.</div>')+'</div>'
+      :'<div class="rp-empty">보고 대상 권역이 없습니다.</div>'}
+    ${noSite.length?'<div class="rpm-grid rpm-nosite">'+groupHTML('현장 미지정 · 공통',noSite)+'</div>':''}`;
+}
+
 /* 업무로 이동 — 검색·내 업무·달력에서 공통으로 쓰고, 모달 없이 인라인으로 펼친다 */
 function gotoTask(sid,iid){
   nqOpen(false);closeModal();
   const isTeam=(S.org.teams||[]).some(t=>t.id===sid);
   if(isTeam){S.tk.t=sid;S.tk.m='team';}
   else{const p=roster().find(x=>x.id===sid);if(p&&p.team)S.tk.t=p.team;S.tk.m=sid;}
-  S.tkNew=null;S.tkEdit=null;S.tkOpen=sid+'/'+iid;
-  go('tasks');rTasks();
+  S.tkNew=null;S.tkEdit=null;
+  go('tasks');
+  /* ⚠ go() 가 화면 전환 때 tkOpen 을 접는다 — 펼침 지정은 반드시 그 뒤에 */
+  S.tkOpen=sid+'/'+iid;rTasks();
   setTimeout(()=>{const el=document.querySelector('.tk-item[data-iid="'+iid+'"]');
     if(el)el.scrollIntoView({block:'center',behavior:'smooth'});},80);
 }
@@ -5415,6 +5520,17 @@ function rOrg(){
 
   const ar=$('#acctRoot');if(!ar)return;
   const all=roster();
+  /* 차단 계정도 이 표에는 남긴다 — roster() 는 담당자 선택·배정용이라 차단을 빼는데,
+     여기서까지 빠지면 차단을 UI 에서 되돌릴 길이 없다(Firebase 콘솔로 가야 했다).
+     관리자에게만 보인다 — 사용자 화면에서는 굳이 노출하지 않는다 */
+  if(isEditor())Object.keys(S.accounts||{}).forEach(bid=>{
+    const a=S.accounts[bid]||{};
+    if(a.role!=='blocked'||all.some(p=>p.id===bid))return;
+    const bp=(S.people||{})[bid]||{};
+    all.push({id:bid,name:a.name||bp.name||String(a.email||'').split('@')[0]||'이름없음',
+      email:a.email||bp.email||'',team:bp.team||'',region:bp.region||'',sites:bp.sites||{},
+      rank:rankOf(bp.rank),role:'blocked',acct:true});
+  });
   if(!all.length){
     ar.innerHTML='<div class="set-empty">'+(!S.live
       ? '로컬 모드에서는 계정 목록이 없습니다.'
@@ -6381,6 +6497,10 @@ const ACT={
   'rpt.week':el=>{const d=Number(el.dataset.d)||0;
     S.rptWeek=d?addDays(S.rptWeek||todayStr(),d):'';rReport();},
   'rpt.tab':el=>{S.rptReg=el.dataset.reg;rReport();},
+  'rpt.mode':el=>{S.rptMode=el.dataset.m==='month'?'month':'week';rReport();},
+  'rpt.mon':el=>{const d=Number(el.dataset.d)||0;
+    S.rptYm=d?addMonths(rptYmSel()+'-01',d).slice(0,7):'';rReport();},
+  'rpt.go':el=>gotoTask(el.dataset.sid,el.dataset.iid),
   /* 인쇄 — 상단바 버튼(#tbPrintWrap) 하나가 두 화면을 맡는다.
      ⚠ 예전엔 없는 함수(dfPrintOpen)를 typeof 로 감싸 불러 하자 관리에서 조용히 아무 일도 안 했다 */
   'sb.print':()=>{if(S.view==='report')window.print();else if(S.view==='defect')openPrintPick();},
