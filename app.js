@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='2.9.1';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='2.9.2';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -2678,8 +2678,9 @@ function kindOf(v){return TK_KIND.some(k=>k[0]===v)?v:'';}
 function kindLabel(v){const k=TK_KIND.find(x=>x[0]===kindOf(v));return k?k[1]:'일반';}
 function kindSplit(v){return kindOf(v)==='';}   /* 일반이면 두 칸으로 나눈다 */
 function isRisk(v){return kindOf(v)==='risk';}   /* 고위험 — 달력 막대·목록에서 느낌표로 표시 */
-/* 제목 앞 느낌표 배지 — 달력 막대는 CSS(.fc-event.risk)가 같은 표식을 그린다 */
-function riskMark(kind){return isRisk(kind)?'<span class="risk-b" aria-label="고위험" data-tip="고위험 업무">!</span>':'';}
+/* 제목 앞 고위험 표식 — 달력 막대는 CSS(.fc-event.risk)가 같은 아이콘을 그린다.
+   ⚠ 모양은 CSS 마스크가 그린다 — 안에 글자를 넣지 않는다(넣으면 원 안에서 위로 뜬다) */
+function riskMark(kind){return isRisk(kind)?'<span class="risk-b" role="img" aria-label="고위험" data-tip="고위험 업무"></span>':'';}
 /* 필터는 매번 다시 고르기 번거롭다 — 계정별로 이 브라우저에 저장해 다음에 그대로 연다 */
 function filtKey(){return 'calapp.filt.'+((S.user&&S.user.uid)||'local');}
 function filtSave(){
