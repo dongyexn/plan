@@ -126,13 +126,36 @@ mod win32 {
         pub fn GetForegroundWindow() -> isize;
     }
     #[link(name = "shell32")]
-    extern "system" { pub fn SetCurrentProcessExplicitAppUserModelID(id: *const u16) -> i32; }
+    extern "system" {
+        pub fn SetCurrentProcessExplicitAppUserModelID(id: *const u16) -> i32;
+        pub fn ShellExecuteW(hwnd: isize, op: *const u16, file: *const u16,
+                             params: *const u16, dir: *const u16, show: i32) -> isize;
+    }
     pub const HWND_BOTTOM: isize = 1;
     pub const SWP_NOSIZE: u32 = 0x0001; pub const SWP_NOMOVE: u32 = 0x0002;
     pub const SWP_NOACTIVATE: u32 = 0x0010; pub const SWP_SHOWWINDOW: u32 = 0x0040;
     pub const GWL_EXSTYLE: i32 = -20; pub const WS_EX_TOOLWINDOW: isize = 0x0000_0080;
 }
 fn hwnd_of(w: &WebviewWindow) -> Option<isize> { w.hwnd().ok().map(|h| h.0 as isize) }
+/* ── 주소(URL)를 기본 브라우저로 ──
+   ⚠ open::that 은 윈도우에서 `cmd /c start "" "<주소>"` 를 쓴다. cmd 는 따옴표 안에서도 `%…%` 를
+   환경변수로 치환하므로, 한글 경로가 퍼센트 인코딩된 원드라이브·쉐어포인트 링크(%ED%9E%90 …)는
+   그 자리가 통째로 지워져 주소가 깨진다. 깨진 문자열은 주소로 인식되지 않아 **윈도우 탐색기가 열렸다**.
+   ShellExecuteW 로 문자열을 그대로 셸에 넘기면 치환이 일어나지 않는다.
+   ⚠ 폴더를 열 때는 그대로 open::that 을 쓴다(탐색기가 여는 것이 맞다). */
+fn open_url(u: &str) {
+    #[cfg(windows)]
+    {
+        let wide = |s: &str| s.encode_utf16().chain(std::iter::once(0)).collect::<Vec<u16>>();
+        let file = wide(u);
+        let rc = unsafe {
+            win32::ShellExecuteW(0, std::ptr::null(), file.as_ptr(),
+                                 std::ptr::null(), std::ptr::null(), 1 /* SW_SHOWNORMAL */)
+        };
+        if rc > 32 { return; }          /* 32 이하는 실패 — 아래 예전 방식으로 한 번 더 시도한다 */
+    }
+    let _ = open::that(u);
+}
 fn send_to_bottom(w: &WebviewWindow) {
     #[cfg(windows)] if let Some(h) = hwnd_of(w) { unsafe {
         /* ⚠ 확장 스타일은 **바뀔 때만** 쓴다 — 1.5초마다 다시 쓰면 글자를 치는 중에 방해가 된다(187차) */
@@ -802,7 +825,7 @@ fn on_menu(app: &AppHandle, id: &str) {
                     b.map(|b| format!("{},{},{},{}", b.x, b.y, b.w, b.h)).unwrap_or_else(|| "(없음)".into()),
                     cur_ver()));
         }
-        "openweb" => { let _ = open::that(app_url().replace("?w=1", "")); }
+        "openweb" => { open_url(&app_url().replace("?w=1", "")); }
         "quit" => {
             QUITTING.store(true, Ordering::SeqCst);
             remember(app, true, "quit"); log("종료");
@@ -895,7 +918,7 @@ fn main() {
             });
             handle.listen_any("hpw-open", move |ev| {
                 let u = ev.payload().trim_matches('"').to_string();
-                if u.starts_with("http") { let _ = open::that(u); }
+                if u.starts_with("http") { open_url(&u); }
             });
 
             /* 창 — 저장된 자리(물리 픽셀)로 되돌리기 전까지 숨겨 두어 깜빡임을 없앤다 */

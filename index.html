@@ -413,7 +413,7 @@ html.dark #fcal .dhol.dtoday{color:var(--b300);}
 /* 넘침 표시 — 234차 5안(우측 정렬 미니): 알약을 없애고 오른쪽 끝에 조용한 회색 글씨로.
    막대와 색·형태로 경쟁하지 않고, 줄이 끊겨 보이던 문제도 사라진다. */
 #fcal .fc-daygrid-day-bottom{display:flex;justify-content:flex-end;padding:1px 5px 0;}
-#fcal .fc-daygrid-more-link{font-size:11px;color:var(--lbl2);font-weight:700;text-decoration:none;
+#fcal .fc-daygrid-more-link{font-size:12px;color:var(--lbl2);font-weight:700;text-decoration:none;
   margin:0;padding:0;border-radius:6px;background:transparent;letter-spacing:-.01em;}
 #fcal .fc-daygrid-more-link:hover{background:transparent;color:var(--bt1);}
 body.wid.glass #fcal .fc-daygrid-more-link{color:rgba(255,255,255,.85);background:transparent;}
@@ -2041,7 +2041,7 @@ body.wid{--wfz:1;}
 body.wid #fcal{font-size:round(calc(11px*var(--wfz)),1px);}
 body.wid #fcal .dnum{font-size:round(calc(12px*var(--wfz)),1px);}
 body.wid #fcal .dhol{font-size:round(calc(11px*var(--wfz)),1px);}
-body.wid #fcal .fc-daygrid-more-link{font-size:calc(11.5px*var(--wfz));}
+body.wid #fcal .fc-daygrid-more-link{font-size:round(calc(11px*var(--wfz)),1px);}   /* 막대 글자(fc-event-title)와 같은 값 */
 body.wid .wid-pop .wp-d{font-size:calc(13px*var(--wfz));}
 body.wid .wid-pop .wp-w{font-size:calc(11.5px*var(--wfz));}
 body.wid #fcal .fc-col-header-cell-cushion{font-size:round(calc(12.5px*var(--wfz)),1px);}
@@ -2313,7 +2313,7 @@ html.dark #toast{background:#2B313A;}
   #fcal .fc-day-today .dnum{min-width:18px!important;height:15px!important;font-size:10.5px!important;padding:0 4px!important;margin:0 0 0 -4px!important;}   /* 뒤쪽 위젯 규칙(2380행대)보다 우선 */
   /* 칩을 15px 로 못박는 구간 — 다른 날의 숫자 줄 높이(--dnh)도 같은 값으로 맞춘다 */
   #fcal,body.wid #fcal{--dnh:15px;}
-  #fcal .fc-daygrid-more-link{font-size:9.5px;margin:0;}
+  #fcal .fc-daygrid-more-link{font-size:10.5px;margin:0;}   /* 막대와 같은 값 */
   #fcal .fc-daygrid-day-bottom{padding:0 4px 0 2px;}
 }
 @media(max-width:720px){
@@ -2482,8 +2482,34 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 .rp-tbl .rp-memo{color:var(--lbl3);font-size:11.5px;}
 .rp-tbl .rp-none{text-align:center;color:var(--lbl3);padding:24px 12px;}
 .rp-empty{text-align:center;color:var(--lbl3);padding:28px 0;font-size:13px;}
+/* ── 월별 현장 보기 — 고른 달의 업무를 현장별 카드로 ── */
+.rp-seg{margin-right:2px;}
+.rpm-sum{font-size:12px;color:var(--lbl3);margin-left:8px;font-weight:500;}
+.rpm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:14px;align-items:start;}
+.rpm-grid.rpm-nosite{margin-top:14px;}
+.rpm-card{background:var(--bg2);border:1px solid var(--sep);border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden;break-inside:avoid;}
+.rpm-card.empty{opacity:.62;}
+.rpm-h{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid rgba(60,60,67,.06);}
+.rpm-card.empty .rpm-h{border-bottom:none;}
+.rpm-site{font-size:13px;font-weight:700;color:var(--lbl);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.rpm-cnt{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;flex-shrink:0;}
+.rpm-cnt .c-done{color:#065F46;}.rpm-cnt .c-run{color:#1E40AF;}
+.rpm-cnt i{color:var(--lbl3);font-style:normal;font-weight:400;}
+html.dark .rpm-cnt .c-done{color:#34D399;}html.dark .rpm-cnt .c-run{color:#93B4F5;}
+.rpm-noneb{margin-left:auto;font-size:11.5px;color:var(--lbl3);flex-shrink:0;}
+.rpm-rows{padding:4px 0;}
+.rpm-row{display:flex;align-items:center;gap:8px;padding:6px 14px;cursor:pointer;transition:background .12s;}
+.rpm-row:hover{background:rgba(59,130,246,.05);}
+.rpm-row .stx{width:20px;height:20px;flex-shrink:0;pointer-events:none;}   /* 표시 전용 — 이동은 줄 전체가 담당 */
+.rpm-t{flex:1;min-width:0;font-size:12.5px;color:var(--lbl);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.rpm-row.done .rpm-t{color:var(--lbl3);}
+.rpm-memo{margin-left:6px;font-size:11px;color:var(--lbl3);}
+.rpm-own{flex-shrink:0;font-size:11px;font-weight:600;color:var(--lbl2);}
+.rpm-own.team{color:var(--b600);}
+.rpm-d{flex-shrink:0;min-width:44px;text-align:right;font-size:11.5px;color:var(--lbl2);font-variant-numeric:tabular-nums;white-space:nowrap;}
 /* 인쇄 — 탭을 숨기고 전 권역을 펼쳐 넣는다 */
-@media print{.rp-tabs{display:none;}.rp-split{grid-template-columns:1fr 1fr;}}
+@media print{.rp-tabs{display:none;}.rp-split{grid-template-columns:1fr 1fr;}
+  .rpm-grid{grid-template-columns:1fr 1fr;}}
 /* ── 8차 ── */
 /* 진행 상태 아이콘 — 체크를 구멍으로 뚫어 카드 배경이 비쳐 보이게(유리 배경에서 흰 체크가 묻히던 것).
    ⚠ 마스크는 마크업의 mask 속성으로 걸고, 완료일 때만 CSS 로 끈다(CSS mask 로는 참조가 안 먹었다) */
@@ -2536,6 +2562,19 @@ html.dark body.hasbg #fcal .fc-event.team{background:rgba(44,47,54,.92)!importan
 #fcal .fc-event.team .fc-event-title{display:flex;align-items:center;}
 #fcal .fc-event.team .fc-event-title::before{content:'';flex:none;width:0;height:0;margin-right:4px;
   border-left:4px solid currentColor;border-top:2.5px solid transparent;border-bottom:2.5px solid transparent;}
+/* ── 고위험 업무 — 제목 앞 느낌표. 공통 업무의 삼각형보다 우선한다(공통 여부는 속 빈 막대로 이미 드러난다) ── */
+#fcal .fc-event.risk .fc-event-title{display:flex;align-items:center;}
+#fcal .fc-event.risk .fc-event-title::before,#fcal .fc-event.team.risk .fc-event-title::before{
+  content:'!';flex:none;width:auto;height:auto;margin-right:4px;border:0;
+  font-weight:900;font-size:.92em;line-height:1;color:#DC2626;}
+#fcal .fc-event.risk:not(.team) .fc-event-title::before{color:#fff;opacity:.95;}   /* 색 막대 위에서는 흰 느낌표 */
+html.dark #fcal .fc-event.team.risk .fc-event-title::before{color:#F87171;}
+/* 목록·일자 패널 카드의 제목 앞 배지 */
+.risk-b{display:inline-flex;align-items:center;justify-content:center;flex:none;
+  width:14px;height:14px;margin-right:5px;border-radius:4px;vertical-align:-2px;
+  background:rgba(220,38,38,.12);color:#DC2626;font-size:10.5px;font-weight:900;line-height:1;}
+html.dark .risk-b{background:rgba(248,113,113,.16);color:#F87171;}
+.rpm-t .risk-b{vertical-align:-1px;}
 /* 내 업무 — 1열(작은 달력·멘션) + 2열 카드 */
 /* 작은 달력에서 고른 날에 걸치는 업무 강조 — 테두리만, 배경은 두지 않는다 */
 .tk-item.hl{box-shadow:inset 0 0 0 1.5px var(--b500);}
@@ -2588,7 +2627,6 @@ html.dark body.hasbg #fcal .fc-event.team{background:rgba(44,47,54,.92)!importan
 @media print{
   #sidebar,#topbar,.rp-head{display:none!important;}
   #content{padding:0;overflow:visible;}
-  .rp-card{border:0;box-shadow:none;break-inside:auto;}
   .rp-tbl{font-size:10.5px;}
   /* 하자 화면 — 카드 테두리를 지우고 표는 쪽이 넘어가도 이어지게. 차트는 그대로 인쇄된다 */
   #view-defect .card,#view-defect .kc,#view-defect .ic,#view-defect .mom-row{border:0;box-shadow:none;break-inside:avoid;page-break-inside:avoid;}
@@ -3022,6 +3060,13 @@ html.dark body.hasbg #fcal .fc-event.team{background:rgba(44,47,54,.92)!importan
 
 
           </div>
+          <div class="card" style="margin-top:12px">
+            <div class="set-h">도움말</div>
+            <div class="share-row">
+              <div class="share-info"><b>사용 안내</b><span>화면별 사용 방법 — 저장소의 README 를 그대로 보여줍니다</span></div>
+              <button class="btn bo bsm" data-act="set.guide"><svg class="icn" style="width:14px;height:14px"><use href="#i-help"></use></svg>열기</button>
+            </div>
+          </div>
                   </div>
         <div class="set-col set-col-stack">
           <div class="card" id="bkCard">
@@ -3089,5 +3134,5 @@ html.dark body.hasbg #fcal .fc-event.team{background:rgba(44,47,54,.92)!importan
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=295"></script>
+<script src="./app.js?v=297"></script>
 </body></html>
