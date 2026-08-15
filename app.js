@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='2.9.2';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='2.9.5';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -1397,7 +1397,7 @@ function widSideRender(){
             ' data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" data-date="'+esc(it.date||'')+'"',
             it.date?dlab(it.date):'기한 없음',over?'over':(it.date&&daysBetween(todayStr(),it.date)===0?'now':''),
             it.text||'제목 없음',
-            [siteName(it.site),kindLabel(it.kind)].filter(Boolean).join(' · '))
+            [kindLabel(it.kind),siteName(it.site)].filter(Boolean).join(' · '))   /* ⚠ 순서는 공통 줄·업무 목록과 같게 — 구분 → 현장 */
           +stIcon(stEff(it),' data-act="wid.st" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"')
           +'</div>').join('')
         :empty('i-tasks','미완료 업무가 없습니다'))
@@ -1407,7 +1407,7 @@ function widSideRender(){
           ' data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" data-date="'+esc(it.date||'')+'"',
           it.date?dlab(it.date):'기한 없음','hold',
           it.text||'제목 없음',
-          [siteName(it.site),kindLabel(it.kind)].filter(Boolean).join(' · '))).join(''):'');
+          [kindLabel(it.kind),siteName(it.site)].filter(Boolean).join(' · '))).join(''):'');
     return;
   }
 
@@ -2946,7 +2946,7 @@ function rReport(){
         rows.push('<tr>'
           +(i===0?'<td class="rp-own" rowspan="'+(list.length||1)+'">'+esc(p.name)+'</td>':'')
           +'<td class="rp-site">'+esc(it?siteName(it.site):'')+'</td>'
-          +'<td class="rp-t">'+esc(it?(it.text||''):'')+'</td>'
+          +'<td class="rp-t">'+(it?riskMark(it.kind):'')+esc(it?(it.text||''):'')+'</td>'
           +'<td class="cc rp-d">'+esc(it?rptMd(done?(it.end||it.date):(it.date||it.end)):'')+'</td>'
           +'<td class="rp-memo">'+esc(it?(it.plan||it.prog||it.body||''):'')+'</td>'
           +'</tr>');
@@ -5300,7 +5300,7 @@ function morningReview(){
   if(!list.length){try{localStorage.setItem(mrvKey(),todayStr());}catch(e){}return;}
   const md=x=>{const t=toDate(x);return (t.getMonth()+1)+'/'+t.getDate();};
   const rows=list.map(({sid,iid,it})=>{
-    const sub=[it.end&&it.end!==it.date?md(it.date)+'–'+md(it.end):md(it.date),siteName(it.site),kindLabel(it.kind)].filter(Boolean).join(' · ');
+    const sub=[it.end&&it.end!==it.date?md(it.date)+'–'+md(it.end):md(it.date),kindLabel(it.kind),siteName(it.site)].filter(Boolean).join(' · ');
     return '<div class="mrv-i" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'">'
       +stIcon(1,' data-act="mrv.done"')
       +'<div class="mrv-b"><div class="t">'+esc(it.text||'제목 없음')+'</div>'
@@ -5380,8 +5380,12 @@ function mineHolds(){
 function teamTasks(){
   const t=curTeam();if(!t)return[];
   const m=S.tasks[t.id]||{};
+  /* ⚠ 공통 = **담당자가 없는 업무**. 예전엔 "팀 가방(sid)에 들어 있으면 공통"으로 봤는데,
+     업무 목록 화면에서 담당자를 지정해 만든 업무도 팀 가방에 남기 때문에
+     같은 업무가 여기(공통)와 아래(미완료 = assignees 기준)에 **두 번** 나왔다.
+     달력 막대의 공통 판정(속 빈 막대)도 assignees 기준이라 이제 셋이 같은 규칙을 쓴다. */
   return Object.keys(m).map(iid=>({sid:t.id,iid,it:m[iid]}))
-    .filter(x=>x.it&&stEff(x.it)!==2&&tkMatch(x.sid,x.iid,x.it))
+    .filter(x=>x.it&&!Object.keys(x.it.assignees||{}).length&&stEff(x.it)!==2&&tkMatch(x.sid,x.iid,x.it))
     .sort((a,b)=>{const ad=a.it.date||'9999',bd=b.it.date||'9999';
       return ad<bd?-1:ad>bd?1:(a.it.createdAt||0)-(b.it.createdAt||0);});
 }
