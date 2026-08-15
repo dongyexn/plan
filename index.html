@@ -402,6 +402,8 @@ html.dark #fcal .fc-dayGridMonth-view td.fc-daygrid-day:hover{background-image:l
 }
 /* 오늘 라벨 — 공휴일 이름처럼 숫자 왼쪽에 */
 #fcal .dhol.dtoday{color:var(--b600);}
+/* 오늘 + 공휴일이 겹친 칸 — '오늘' 은 제 폭만 쓰고, 남은 자리는 공휴일 문구가 가져간다(왼쪽에 나란히) */
+#fcal .dhol.dtoday.wnm{flex:none;margin-right:0;}
 html.dark #fcal .dhol.dtoday{color:var(--b300);}
 #fcal .fc-event{border:none;border-radius:8px;padding:0 6px;font-size:12px;line-height:1;font-weight:500;color:#fff;letter-spacing:-.005em;cursor:pointer;margin:2px 3px;box-shadow:none;
   height:18px;display:flex;align-items:center;box-sizing:border-box;}
@@ -531,10 +533,9 @@ html.dark .stx-done{color:#3BA85C;}
 .rpt.f-sys{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto Sans KR','Noto Sans CJK KR',system-ui,sans-serif;}
 .rpt .page{width:794px;min-height:1123px;background:#fff;margin:0 auto 22px;position:relative;box-shadow:0 2px 16px rgba(0,0,0,.28);}
 .rpt .sheet{width:595px;min-height:842px;padding:0 36px;position:relative;zoom:1.333333;}
-.rpt .page{break-after:page;box-shadow:none;margin:0;min-height:1123px}
-.rpt .page:last-child{break-after:auto}
-.rpt .page{box-shadow:none;margin:0;page-break-after:always}
-.rpt .page:last-child{page-break-after:auto}
+/* 인쇄 — break-after 와 옛 이름(page-break-after)을 한 규칙에 함께 둔다(엔진별 지원 차이) */
+.rpt .page{break-after:page;page-break-after:always;box-shadow:none;margin:0;min-height:1123px}
+.rpt .page:last-child{break-after:auto;page-break-after:auto}
 .rpt .brand{font-size:10px;font-weight:700;letter-spacing:.16em;color:var(--rp-navy);}
 .rpt .brand small{display:block;font-size:7.5px;font-weight:400;letter-spacing:.06em;color:var(--rp-label);margin-top:3px;}
 .rpt .thead-row{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;}
@@ -824,7 +825,7 @@ body.hasbg:not(.wid) #view-calendar .cal-head>.cal-ctl>.cal-nav{box-shadow:0 2px
 #view-defect .ait strong{font-weight:700;}
 #view-defect .ait>*:first-child{margin-top:0;}
 /* 스냅샷 문서 — 하자 화면만 남긴다 */
-body.snap .nvi[data-view]:not([data-view="defect"]),body.snap .sb-bottom .sbsl,body.snap [data-view="org"],body.snap [data-view="settings"],body.snap #tbSrch,body.snap #tbBell,body.snap #tbHelp,body.snap .sb-foot{display:none!important;}
+body.snap .nvi[data-view]:not([data-view="defect"]),body.snap .sb-bottom .sbsl,body.snap [data-view="org"],body.snap [data-view="settings"],body.snap #tbSrch,body.snap .sb-foot{display:none!important;}
 body.snap .sbsl:first-of-type{display:none;}
 /* 인쇄 페이지(dfPrint) — 화면에서는 밖에 숨겨 두고 차트만 그린다 */
 #dfPrintPages{position:fixed;left:-12000px;top:0;width:720px;background:#fff;z-index:-1;}
@@ -1210,7 +1211,7 @@ body.snap .sbsl:first-of-type{display:none;}
 .rec-tbl th{position:sticky;top:0;z-index:2;background:var(--surf2);font-size:11.5px;font-weight:700;color:var(--lbl);
   text-align:center;padding:9px;border-bottom:1.5px solid var(--sepo);cursor:pointer;height:34px;box-sizing:border-box;}
 .rec-tbl th:hover{background:var(--surf3);}
-.rec-tbl th{position:sticky;user-select:none;}
+.rec-tbl th{user-select:none;}
 /* ══ 필터행 + 열 머리 우클릭 메뉴 — 원본(하자처리현황) index.html 690~718 이식 ══
    필터행은 머리(34px) 바로 아래에 sticky 로 붙는다. 인쇄에는 넣지 않는다(아래 print 규칙). */
 .rl-frow{display:none;}
@@ -1249,8 +1250,7 @@ body.snap .sbsl:first-of-type{display:none;}
 .rec-tbl th .rz{position:absolute;top:0;right:0;width:7px;height:100%;cursor:col-resize;}
 .rec-tbl th .rz:hover{background:var(--b300);}
 .rec-tbl td{padding:7px 9px;border-bottom:1px solid var(--sep);color:var(--lbl);text-align:center;vertical-align:top;overflow:hidden;text-overflow:ellipsis;}
-.rec-tbl td.wide{text-align:left;white-space:normal;word-break:break-word;line-height:1.45;min-width:260px;max-width:440px;}
-.rec-tbl td.wide{white-space:normal;min-width:220px;}
+.rec-tbl td.wide{text-align:left;white-space:normal;word-break:break-word;line-height:1.45;min-width:220px;max-width:440px;}
 .rec-tbl tr:hover td{background:var(--fill);}
 .rec-tbl .n{text-align:right;}
 .rec-none{padding:26px 0;text-align:center;font-size:13px;color:var(--lbl3);}
@@ -1536,7 +1536,6 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 /* 인라인 작성창 */
 .tk-new{border:1px solid var(--b300);border-radius:var(--rlg);padding:0;margin-bottom:12px;background:var(--surf2);flex-shrink:0;overflow:hidden;}
 /* 작성·수정 폼 — 업무 일정의 .dp-edit 규격을 그대로 쓴다(118차) */
-.tk-new{margin-bottom:12px;}
 /* 목록 */
 .tk-list{display:flex;flex-direction:column;gap:5px;flex:1;min-height:0;overflow-y:auto;padding:0 16px 16px 16px;}
 .tk-item{border-radius:var(--rmd);background:var(--surf2);border:1px solid var(--sep);transition:background .12s;position:relative;}
@@ -1903,13 +1902,6 @@ select.mg-inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-
 .mgtbl{width:100%;border-collapse:collapse;}
 .mgtbl td{padding:4px 6px;vertical-align:middle;}
 .mgtbl tbody tr:hover{background:var(--fill);}
-/* 미리보기는 토글 바로 왼쪽에 — 오터치를 피해 간격만 둔다 */
-.ml-pv{flex:0 0 auto;margin-right:2px;}
-/* 메일 미리보기 */
-.mlp-wrap{background:var(--surf2);border:1px solid var(--sep);border-radius:var(--rmd);padding:14px;max-height:56dvh;overflow-y:auto;}
-.mlp-to{font-size:12px;color:var(--lbl2);margin-bottom:8px;line-height:1.6;}
-.mlp-to b{color:var(--lbl);}
-.mlp-sub{font-size:14px;font-weight:700;color:var(--lbl);margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--sep);word-break:break-all;}
 .set-empty{font-size:13px;color:var(--lbl3);padding:16px 4px;line-height:1.6;text-align:center;}
 
 /* ══════════ 위젯 모드 (?w=1 — 데스크톱 PWA 창) ══════════ */
@@ -2440,7 +2432,6 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 /* 조직/현장 좌측 열을 업무 목록 좌측(320px)과 같은 너비로 */
 .mg-grid{grid-template-columns:320px minmax(0,1fr);}
 /* 메일 미리보기 — 실제 메일 폭(640px)이 잘리지 않게 */
-#mb.mlw{max-width:min(760px,94vw);}
 /* 사용 안내 — 각 장 첫 제목 위 빈 줄 제거(소개 장은 h1 이라 해당 없음) */
 .rd-sec>h2:first-child{margin-top:0;}
 /* ── 7차 ── */
@@ -3063,16 +3054,6 @@ html.dark .risk-b{background-color:#F87171;}
       <div class="set-grid">
         <div class="set-col">
           <div class="card">
-            <div class="set-h">메일 발송</div>
-            <div class="share-row">
-              <div class="share-info"><b>주간 업무 일정</b><span>매주 월요일 · 오전 7시 30분 · 수신대상 팀 전체</span></div>
-              <button class="btn bo bxs ml-pv" data-act="mail.preview">미리보기</button>
-              <label class="sw"><input type="checkbox" id="mlWeekly" data-act="set.mail"><span class="sw-t"></span></label>
-            </div>
-
-
-          </div>
-          <div class="card" style="margin-top:12px">
             <div class="set-h">도움말</div>
             <div class="share-row">
               <div class="share-info"><b>사용 안내</b><span>화면별 사용 방법 — 저장소의 README 를 그대로 보여줍니다</span></div>
@@ -3146,5 +3127,5 @@ html.dark .risk-b{background-color:#F87171;}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=301"></script>
+<script src="./app.js?v=306"></script>
 </body></html>

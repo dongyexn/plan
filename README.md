@@ -41,6 +41,9 @@ GitHub Pages + Firebase Realtime Database(무료 티어)로 동작한다.
 - **보류한 업무**는 넘긴 업무가 모이는 곳입니다(회색 원 안 − 아이콘). 일자 패널 아래에 있고 **내 업무만 보기**로 좁힐 수 있으며,
   **업무를 달력 날짜로 끌어다 놓으면 그 날짜로 되살아납니다.** 업무 목록 화면에서는 왼쪽 **보류한 업무**로 전체를 모아 봅니다.
 - 반복 업무(매주·격주·매월·매년)는 회차별로 완료를 표시하고, 회차 하나만 다른 날로 옮기거나 빼는 것도 됩니다.
+  매월 반복은 시작일의 날짜를 따르므로, 매월 14일·28일처럼 한 달에 두 번이면 업무를 두 개로 만듭니다.
+  ⚠ 업무 목록·내 업무에 보이는 날짜는 **지금 볼 회차**입니다 — 지난 회차가 아직 안 끝났으면 그 날짜(지연),
+  다음 회차가 더 가까우면 다음 날짜입니다. 맨 처음 회차가 아닙니다.
 - 업무를 만들면 **입력하는 동안 저절로 저장**됩니다. 저장 버튼이 없습니다.
   저장하지 않고 그만두려면 폼 오른쪽 위의 **X** 를 누릅니다.
 - 오후 5시가 지나 접속하면 사이드바의 업무 목록 옆에 **「오늘 남은 업무 N건」 말풍선**이 하루 한 번 뜹니다.
@@ -141,7 +144,6 @@ GitHub Pages + Firebase Realtime Database(무료 티어)로 동작한다.
 
 | 항목 | 설명 |
 |---|---|
-| 메일 발송 | 주간 업무 일정 메일 켬/끔 · 미리보기 (관리자) |
 | 도움말 | **사용 안내** — 이 README 를 장별로 보여준다 |
 | 백업 · 기록 | 지금 내보내기 · 되돌리기 · 버전과 오류 기록 복사 |
 | 앱 배경화면 | 배경 이미지 · 레이아웃 투명도 · 배경 밝기 (이 기기에만 저장) |
@@ -213,11 +215,7 @@ app.js                         앱 로직 (로컬 ⇄ Firebase 공용 저장소 
 build-single.mjs               단일 HTML 빌드 (node build-single.mjs → dist/)
 vendor/                        FullCalendar 6.1.21 · Chart.js · xlsx · lz-string ·
                                marked · DOMPurify · Firebase compat SDK · Pretendard (전부 자체 호스팅)
-scripts/mail-common.mjs        명부 만들기 · 반복 일정 전개 (앱과 같은 규칙)
-scripts/weekly.mjs             주간 업무 일정 메일
 scripts/test/static-audit.mjs  배포 전 정적 검사 (FAIL 0 · WARN 0 이 기준)
-scripts/test/smoke.mjs         브라우저 스모크 (puppeteer 필요)
-.github/workflows/mail.yml     주간 메일 cron — 월요일 07:30 KST (UTC 로 30 22 * * 0)
 database.rules.json            RTDB 보안 규칙 전체
 widget-lite/                   바탕화면 위젯 (Tauri · WebView2)
 ```
@@ -230,7 +228,7 @@ widget-lite/                   바탕화면 위젯 (Tauri · WebView2)
 | `calapp/org` | 팀 · 권역 · 현장 목록 — 하자처리현황 게시본의 사본(읽기 폴백용) |
 | `calapp/people/{uid}` | 담당자 배정 — name·email·team·region·rank·sites |
 | `calapp/offdays/{날짜}` | 팀 휴무일 이름 |
-| `calapp/cfg` | 앱 설정 — 주간 메일 켬/끔(mail/weeklyOn) · 하자 감춘 현장(dfHide) |
+| `calapp/cfg` | 앱 설정 — 하자 감춘 현장(dfHide) · 바로가기 주소 |
 | `calapp/prefs/{uid}` | 개인 설정 — 본인만 쓰기 |
 | `users/{uid}` | 계정·권한·프로필(avColor·avIcon) — 하자처리 대시보드와 **공용** |
 
@@ -255,22 +253,9 @@ widget-lite/                   바탕화면 위젯 (Tauri · WebView2)
    Realtime Database > 규칙에 `database.rules.json` 전체를 붙여넣는다.
 3. 브라우저에서 강력 새로고침(`Ctrl+Shift+R`)으로 확인한다.
 
-메일 발송용 저장소 Secrets(최초 1회): `FIREBASE_SERVICE_ACCOUNT`(서비스 계정 JSON 전체) ·
-`BREVO_API_KEY` · `MAIL_FROM`. 테스트는 Actions 탭 > Run workflow.
-
 ```
 node build-single.mjs      # dist/index.html + dist/vendor/ — 단일 파일 배포용
 ```
-
-### 메일 자동 발송
-
-**주간 업무 일정** — 매주 월요일 오전 7시 30분(KST), 팀 전체에게 한 통.
-본문은 **이번 주 달력** + **공통 업무** + **담당 업무** 세 부분이다.
-설정 화면에서는 **켜고 끄기**와 **미리보기**만 한다(`calapp/cfg/mail/weeklyOn`).
-발송 시각은 워크플로 cron 이 정한다 — ⚠ cron 은 UTC 기준이라 KST 월요일 07:30 은 `30 22 * * 0` 이고,
-깃허브 예약 실행은 몇 분 늦게 도는 일이 흔하다.
-메일 본문 계산은 앱(`app.js` 의 mailItems·mailHTML)과 `scripts/` 가 짝이다. **한쪽만 고치지 말 것** —
-특히 반복 전개(`recurDates` ↔ `expandRecur`)는 같은 규칙이어야 한다.
 
 ### 위젯 배포 — 깃허브가 만든다
 

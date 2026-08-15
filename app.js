@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='2.9.5';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='3.0.3';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -339,7 +339,7 @@ const S={
   people:{},         // calapp/people/{id}: {name,email,team,region} — id는 로그인 uid
   accounts:{},       // users/{uid}: {email,name,role} — 하자처리 현황과 공용
   tasks:{},          // {memberId:{itemId:{text,st,updatedAt}}}
-  cfg:{},            // 앱 설정(주간 메일 켬/끔 등)
+  cfg:{},            // 앱 설정(하자 감춘 현장 등)
   tk:{t:null,m:null},       // 주요업무 현황 탭 선택(팀/권역/담당자)
   filter:{kind:[],st:[],reg:[],own:[],site:[]},  // 달력 필터 — 모두 다중 선택(빈 배열이 '전체')
   foldOpen:{},       // 완료 항목 접힘 해제(subjectId별)
@@ -361,7 +361,6 @@ const S={
   dfSid:'',          // 하자 관리에서 보고 있는 현장(비면 대시보드)
   dfFold:{},         // 하자 관리 사이드바에서 접어 둔 권역
   dfTab:'sum',       // 하자 현장 화면의 탭
-  dfRep:null,        // 읽어 온 게시본(report/{rm}) — 없으면 미게시
   dfRm:'',           // 하자 게시본 기준월(YYYY-MM)
   widSide:'',        // 위젯 헤더의 '내 업무' 팝오버 ('' / mine)
   tkF:{q:'',st:[],kind:[],reg:[],site:[]},   // 업무 목록 검색·필터 — 모두 다중 선택
@@ -1381,33 +1380,34 @@ function widSideRender(){
     const cut=(list,key)=>S.widMore[key]?list:list.slice(0,MIN);
     box.innerHTML=
       sec('공통 업무','com',commons.length)
-      +(commons.length?cut(commons,'com').map(({sid,iid,it})=>row('wid.goTask',
-          ' data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" data-date="'+esc(it.date||'')+'"',
-          it.date?dlab(it.date):'기한 없음',
-          (it.date&&daysBetween(todayStr(),it.date)<0)?'over':(it.date&&daysBetween(todayStr(),it.date)===0?'now':''),
+      +(commons.length?cut(commons,'com').map(({sid,iid,it})=>{const wd=taskDate(sid,iid,it);return row('wid.goTask',
+          ' data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" data-date="'+esc(wd||'')+'"',
+          wd?dlab(wd):'기한 없음',
+          (wd&&daysBetween(todayStr(),wd)<0)?'over':(wd&&daysBetween(todayStr(),wd)===0?'now':''),
           it.text||'제목 없음',
-          [kindLabel(it.kind),siteName(it.site)].filter(Boolean).join(' · '))).join('')
+          [kindLabel(it.kind),siteName(it.site)].filter(Boolean).join(' · '));}).join('')
         :empty('i-tasks','공통 업무가 없습니다'))
       +sec('미완료 업무','mine',tasks.length)
       /* 231차: 미완료 줄은 여기서 바로 완료 처리할 수 있게 왼쪽에 진행 아이콘을 붙인다.
          아이콘은 줄 클릭(이동)과 겹치면 안 되므로 버튼을 줄 밖에 두고 한 칸으로 감싼다. */
-      +(tasks.length?cut(tasks,'mine').map(({sid,iid,it,over})=>
-          '<div class="wl-row">'
+      +(tasks.length?cut(tasks,'mine').map(({sid,iid,it})=>{const wd=taskDate(sid,iid,it);
+        const late=wd&&daysBetween(todayStr(),wd)<0;
+        return '<div class="wl-row">'
           +row('wid.goTask',
-            ' data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" data-date="'+esc(it.date||'')+'"',
-            it.date?dlab(it.date):'기한 없음',over?'over':(it.date&&daysBetween(todayStr(),it.date)===0?'now':''),
+            ' data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" data-date="'+esc(wd||'')+'"',
+            wd?dlab(wd):'기한 없음',late?'over':(wd&&daysBetween(todayStr(),wd)===0?'now':''),
             it.text||'제목 없음',
             [kindLabel(it.kind),siteName(it.site)].filter(Boolean).join(' · '))   /* ⚠ 순서는 공통 줄·업무 목록과 같게 — 구분 → 현장 */
           +stIcon(stEff(it),' data-act="wid.st" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"')
-          +'</div>').join('')
+          +'</div>';}).join('')
         :empty('i-tasks','미완료 업무가 없습니다'))
       /* 보류함 — 아침 확인에서 넘긴 업무. 비어 있으면 머리째 넣지 않는다 */
       +(holds.length?sec('보류한 업무','hold',holds.length)
-        +cut(holds,'hold').map(({sid,iid,it})=>row('wid.goTask',
-          ' data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" data-date="'+esc(it.date||'')+'"',
-          it.date?dlab(it.date):'기한 없음','hold',
+        +cut(holds,'hold').map(({sid,iid,it})=>{const wd=taskDate(sid,iid,it);return row('wid.goTask',
+          ' data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" data-date="'+esc(wd||'')+'"',
+          wd?dlab(wd):'기한 없음','hold',
           it.text||'제목 없음',
-          [kindLabel(it.kind),siteName(it.site)].filter(Boolean).join(' · '))).join(''):'');
+          [kindLabel(it.kind),siteName(it.site)].filter(Boolean).join(' · '));}).join(''):'');
     return;
   }
 
@@ -1462,10 +1462,15 @@ function calInit(){
     dayCellClassNames:a=>{const o=holOf(dstr(a.date));return o&&o.h?['hol']:[];},
     dayCellContent:a=>{
       const ds=dstr(a.date),o=holOf(ds);
-      const today=ds===todayStr()?'<span class="dhol dtoday">오늘</span>':'';
+      /* ⚠ 오늘이면서 공휴일인 날은 배지가 둘이다 — '오늘' 에 wnm 을 붙여 자리를 양보시킨다.
+         안 그러면 둘 다 flex:1·margin-right:auto 라 공간을 나눠 갖고 **공휴일 문구가 칸 가운데로 밀린다** */
+      const today=ds===todayStr()?'<span class="dhol dtoday'+(o?' wnm':'')+'">오늘</span>':'';
       const cls=o?('dhol'+(o.h?'':' anv')+(o.off?' off':'')):'';
       return{html:today+(o?'<span class="'+cls+'">'+esc(o.n)+'</span>':'')+'<span class="dnum">'+a.date.getDate()+'</span>'};},
-    events:(info,ok)=>ok(buildEvents()),
+    events:(info,ok)=>{
+      const end=new Date(info.end);end.setDate(end.getDate()-1);   /* FullCalendar 의 end 는 다음 날(배타적) */
+      ok(buildEvents(dstr(info.start),dstr(end)));
+    },
     dateClick:info=>{S.selEnd='';selDate(String(info.dateStr).slice(0,10));},
     eventClick:info=>{info.jsEvent.preventDefault();
       const t=info.event.extendedProps.task;
@@ -1545,6 +1550,23 @@ function occSrc(p,date){
   const mv=(p&&p.moveOn)||{};
   const hit=Object.keys(mv).find(k=>mv[k]===date);
   return hit||date;
+}
+/* ── 반복 업무가 목록에서 보여야 할 날짜 ──
+   ⚠ it.date 는 **맨 처음 회차**다. 그대로 쓰면 매월 14일 같은 업무가 목록에서 늘 몇 달 전 날짜로,
+   따라서 영원히 '지연' 으로 보인다(달력은 회차를 펼치므로 멀쩡했다 — 두 화면이 어긋났다).
+   규칙: 아직 안 끝난 회차 중 **오늘에서 가장 가까운 것**. 지난 회차가 남아 있어도 다음 회차가 더
+   가까우면(주기의 절반을 넘겼으면) 다음 회차를 본다 — 완료 체크를 건너뛰는 업무가 영영 지난 날짜에
+   묶이지 않게. ⚠ 반복이 아니면 it.date 를 그대로 돌려준다 — 부르는 쪽에서 분기하지 않게. */
+function taskDate(sid,iid,it){
+  if(!it)return '';
+  if(!(it.recur&&it.recur.f)||!it.date)return it.date||'';
+  const p=taskAsPlan(sid,iid,it),t=todayStr();
+  const undone=d=>!(it.doneOn&&it.doneOn[occSrc(p,d)]);
+  const past=recurDates(p,addDays(t,-400),addDays(t,-1)).filter(undone);
+  const prev=past.length?past[past.length-1]:'';
+  const next=recurDates(p,t,addDays(t,400)).find(undone)||'';
+  if(prev&&next)return (daysBetween(prev,t)<=daysBetween(t,next))?prev:next;
+  return prev||next||it.date;
 }
 /* 정렬 등급 — 공통 → 내 업무 → 팀장 → 그 밖의 담당자.
    달력 막대(planEvent)와 일자 패널 목록(sortPlans)이 같은 기준을 쓴다.
@@ -1639,8 +1661,13 @@ function taskAsPlan(sid,iid,it){
   return{...it,id:iid,sid,title:it.text||'',body:it.prog||it.body||'',
     owners:it.assignees||{},done:stEff(it)===2};
 }
-function buildEvents(){
-  const evs=[],[from,to]=visibleRange(),today=todayStr();
+/* ⚠ 범위는 **FullCalendar 가 넘겨주는 것**을 먼저 쓴다 — CAL.view 를 읽으면 달을 넘길 때
+   뷰 상태가 갱신되기 전에 계산될 수 있고, 그러면 그 달의 반복 회차가 통째로 빠진다.
+   인자가 없으면(직접 호출) 지금 보이는 범위로 떨어진다. */
+function buildEvents(rFrom,rTo){
+  const vr=visibleRange();
+  const from=rFrom||vr[0],to=rTo||vr[1];
+  const evs=[],today=todayStr();
   /* 수정 중인 업무는 저장 전이라도 draft 로 그린다 — 입력하는 대로 달력에 바로 반영된다 */
   const pe=S.planEdit,dr=(pe&&pe.draft&&pe.draft.title)?pe.draft:null;
   allTasks().forEach(({sid,iid,it})=>{
@@ -1800,7 +1827,7 @@ function selDate(ds,quiet){
 
 /* ───── 우측 일자 패널 ───── */
 function dayPlans(ds,raw){
-  /* raw=true 면 화면 필터·검색을 무시한다(메일 미리보기 등) */
+  /* raw=true 면 화면 필터·검색을 무시한다 */
   const out=[];
   allTasks().forEach(({sid,iid,it})=>{
     if(!it.date)return;
@@ -2369,7 +2396,8 @@ function onSelDay(sid,iid,it){
 function taskItemHTML(sid,iid,it,withSubject,hideOwn){
   const key=sid+'/'+iid;
   if(S.tkEdit===key)return taskFormHTML(sid,iid,it);   /* 수정 중이면 항목 자리에 폼이 들어간다 */
-  const di=dueInfo(it.date),st=stEff(it);
+  const dsp=taskDate(sid,iid,it);            /* 반복이면 '지금 볼 회차', 아니면 it.date */
+  const di=dueInfo(dsp),st=stEff(it);
   /* 담당자별 묶음 안에서는 소제목이 곧 그 사람 — 본인 배지는 겹말이라 뺀다(공동 담당자만 남긴다) */
   const asg=Object.keys(it.assignees||{}).filter(id=>id!==hideOwn)
     .map(id=>roster().find(p=>p.id===id)).filter(Boolean);
@@ -2379,9 +2407,9 @@ function taskItemHTML(sid,iid,it,withSubject,hideOwn){
   const p0=taskAsPlan(sid,iid,it);
   const lnk=Object.values(it.links||{}).filter(l=>l&&l.url)[0];
   const md=x=>{const t=toDate(x);return (t.getMonth()+1)+'/'+t.getDate();};
-  const span=it.end&&it.end!==it.date;
+  const span=it.end&&it.end!==it.date&&!(it.recur&&it.recur.f);   /* 반복은 회차 하루로 본다 */
   const left=[kindLabel(it.kind),
-    it.date?(span?md(it.date)+'–'+md(it.end):md(it.date)):'',
+    dsp?(span?md(dsp)+'–'+md(it.end):md(dsp)):'',
     fmtSpan(it),
     (it.recur&&it.recur.f)?REC_LBL[it.recur.f]:''].filter(Boolean);
   const right=[sn,withSubject?subjName(sid):'',asg.map(x=>x.name).join(', ')].filter(Boolean);
@@ -2448,7 +2476,7 @@ function holdItems(){
     const m=S.tasks[sid]||{};
     Object.keys(m).forEach(iid=>{if(m[iid]&&stOf(m[iid].st)===3)out.push({sid,iid,it:m[iid]});});
   });
-  return out.sort((a,b)=>String(a.it.date||'9999').localeCompare(String(b.it.date||'9999')));
+  return out.sort((a,b)=>String(taskDate(a.sid,a.iid,a.it)||'9999').localeCompare(String(taskDate(b.sid,b.iid,b.it)||'9999')));   /* 반복은 회차 기준 */
 }
 /* ── 집계 보기 보조 — 미완료만, 기한순 ── */
 function openItems(sid){
@@ -2903,14 +2931,24 @@ function rptRows(pid,from,to,done){
     Object.keys(m).forEach(iid=>{
       const it=m[iid];
       if(!it||!it.assignees||!it.assignees[pid])return;
+      /* ⚠ 반복 업무는 회차를 펼쳐서 본다 — 안 그러면 시작일(과거) 하나만 보고 주기에 안 걸려
+         **주간 보고에서 통째로 빠졌다**(달력·월별 현장에는 나오는데 여기만 없었다).
+         완료 여부도 회차별(doneOn)로 따진다. */
+      if(it.recur&&it.recur.f){
+        const p=taskAsPlan(tid,iid,it);
+        recurDates(p,from,to).forEach(d=>{
+          if(done===!!(it.doneOn&&it.doneOn[occSrc(p,d)]))out.push({iid,it,d});
+        });
+        return;
+      }
       if(done!==(stEff(it)===2))return;
       const s=it.date||'',e=it.end||it.date||'';
-      if(done){if(e>=from&&e<=to)out.push({iid,it});return;}   /* 완료 — 그 주기에 끝난 것 */
-      if(!s){out.push({iid,it});return;}                       /* 예정 — 기한 없는 미완료도 빠뜨리지 않는다 */
-      if(s<=to&&e>=from)out.push({iid,it});                    /* 주기에 걸치는 것 */
+      if(done){if(e>=from&&e<=to)out.push({iid,it,d:e});return;}   /* 완료 — 그 주기에 끝난 것 */
+      if(!s){out.push({iid,it,d:''});return;}                      /* 예정 — 기한 없는 미완료도 빠뜨리지 않는다 */
+      if(s<=to&&e>=from)out.push({iid,it,d:s});                    /* 주기에 걸치는 것 */
     });
   });
-  return out.sort((a,b)=>String(a.it.end||a.it.date||'9999').localeCompare(String(b.it.end||b.it.date||'9999')));
+  return out.sort((a,b)=>String(a.d||'9999').localeCompare(String(b.d||'9999')));
 }
 /* 보기 모드 전환 — 주간 보고(기존) · 월별 현장(월 단위, 현장별 묶음) */
 function rptModeSeg(){
@@ -2947,7 +2985,7 @@ function rReport(){
           +(i===0?'<td class="rp-own" rowspan="'+(list.length||1)+'">'+esc(p.name)+'</td>':'')
           +'<td class="rp-site">'+esc(it?siteName(it.site):'')+'</td>'
           +'<td class="rp-t">'+(it?riskMark(it.kind):'')+esc(it?(it.text||''):'')+'</td>'
-          +'<td class="cc rp-d">'+esc(it?rptMd(done?(it.end||it.date):(it.date||it.end)):'')+'</td>'
+          +'<td class="cc rp-d">'+esc(r&&r.d?rptMd(r.d):'')+'</td>'   /* 반복은 그 회차 날짜 */
           +'<td class="rp-memo">'+esc(it?(it.plan||it.prog||it.body||''):'')+'</td>'
           +'</tr>');
       });
@@ -5374,7 +5412,7 @@ function mineHolds(){
       out.push({sid,iid,it});
     });
   });
-  return out.sort((a,b)=>String(a.it.date||'9999').localeCompare(String(b.it.date||'9999')));
+  return out.sort((a,b)=>String(taskDate(a.sid,a.iid,a.it)||'9999').localeCompare(String(taskDate(b.sid,b.iid,b.it)||'9999')));   /* 반복은 회차 기준 */
 }
 /* 팀 공통 업무 — 담당자 없이 팀에 붙은(sid 가 팀 id) 미완료 업무 */
 function teamTasks(){
@@ -5650,95 +5688,11 @@ function orgSave(){
   if(ORG_LIVE){toast('팀·권역·현장은 하자처리 현황에서 관리합니다');rOrg();return;}
   normOrg(S.org);store.putOrg(S.org);if(!S.live){rOrg();rTasks();}
 }
-function rCfg(){
-  rBk();
-  /* 195차: 발송은 주간 하나뿐이고 요일·시각·수신 범위는 고정이다(월요일 07:30 · 팀 전체) */
-  const m=S.cfg.mail||{};
-  const w=$('#mlWeekly');
-  if(w&&document.activeElement!==w)w.checked=m.weeklyOn!==false;
-}
-/* ═══════════ 메일 — 주간 업무 일정 ═══════════
-   195차: 발송은 주 1회(월요일 오전 7시 30분)뿐이고 수신인은 팀 전체로 고정한다.
-   당일 리마인드는 바탕화면 위젯의 윈도우 알림이 대신한다.
-   ⚠ 이 아래 계산·레이아웃은 실제 발송 스크립트(scripts/weekly.mjs)와 짝이다 — 한쪽만 고치지 말 것 */
+function rCfg(){rBk();}
+/* 팀 가방 판별 — 업무 목록에서 '개인 묶음인지'를 가릴 때 쓴다.
+   ⚠ 공통 업무 판정에는 쓰지 않는다(그건 assignees 가 비었는지로 본다 — teamTasks 참조) */
 function teamIds(){return (S.org.teams||[]).filter(t=>t.name).map(t=>t.id);}
 function isTeamSid(sid){return teamIds().indexOf(sid)>=0;}
-function mailRecipients(){return roster().filter(p=>p.email);}
-function weekRange(ds){const mon=addDays(ds,-((toDate(ds).getDay()+6)%7));return{mon,sun:addDays(mon,6)};}
-/* 제목·머리에 쓰는 기간 표기 — 2026년 8월 3~9일 / 달이 걸치면 8월 31~9월 6일 */
-function weekLabel(mon,sun){
-  const a=toDate(mon),b=toDate(sun);
-  const head=a.getFullYear()+'년 '+(a.getMonth()+1)+'월 '+a.getDate();
-  return head+'~'+(a.getMonth()===b.getMonth()?'':(b.getMonth()+1)+'월 ')+b.getDate()+'일';
-}
-/* 메일에 담길 것 — ①이번 주 달력 ②공통 업무 ③담당 업무 */
-function mailItems(){
-  const today=todayStr(),{mon,sun}=weekRange(today);
-  const days=[];
-  for(let d=mon;d<=sun;d=addDays(d,1)){
-    const list=[];
-    dayPlans(d,true).forEach(({p,occ})=>{if(!isDone(p,occ))list.push(p);});
-    days.push({date:d,list});
-  }
-  const commons=[],mines=[];
-  Object.keys(S.tasks||{}).forEach(sid=>Object.keys(S.tasks[sid]||{}).forEach(iid=>{
-    const it=S.tasks[sid][iid];
-    if(!it||stEff(it)===2)return;
-    if(it.date&&it.date>sun)return;              /* 다음 주 이후 것은 담지 않는다 */
-    (isTeamSid(sid)?commons:mines).push({sid,iid,it});
-  }));
-  const byDate=(a,b)=>{const ad=a.it.date||'9999',bd=b.it.date||'9999';return ad<bd?-1:ad>bd?1:0;};
-  commons.sort(byDate);
-  mines.sort((a,b)=>String(subjName(a.sid)).localeCompare(String(subjName(b.sid)),'ko')||byDate(a,b));
-  return{mon,sun,days,commons,mines};
-}
-/* 발송 메일과 같은 골격의 HTML — 실제 스크립트(scripts/weekly.mjs)와 레이아웃을 맞춘다 */
-function mailHTML(dat){
-  const today=todayStr();
-  const cell=d=>{
-    const dw=toDate(d.date).getDay();
-    const col=dw===0?'#DC2626':dw===6?'#3E71D2':'#1C1C1E';
-    return `<td style="width:14.28%;vertical-align:top;border:1px solid #EEE;padding:6px 5px;${d.date===today?'background:#F1F7FD;':''}">
-      <div style="font-size:11px;font-weight:800;color:${col};margin-bottom:4px;">${Number(d.date.slice(8))} (${DOW[dw]})</div>
-      ${d.list.map(p=>`<div style="font-size:11px;line-height:1.4;color:#fff;background:${esc(planColor(p))};border-radius:3px;padding:2px 4px;margin-bottom:2px;">${esc(p.title)}</div>`).join('')}</td>`;
-  };
-  const row=(x)=>`<tr><td style="padding:7px 12px;border-bottom:1px solid #EEE;">
-      <span style="font-size:11px;font-weight:800;color:${x.it.date&&x.it.date<today?'#DC2626':'#8E8E93'};">${x.it.date?esc(x.it.date.slice(5).replace('-','/')):'기한 없음'}</span>
-      <span style="font-size:13px;color:#1C1C1E;margin-left:8px;">${esc(x.it.text||'제목 없음')}</span>
-      ${x.who?`<span style="font-size:11px;color:#8E8E93;margin-left:6px;">${esc(x.who)}</span>`:''}</td></tr>`;
-  const sec=(t,rows,none)=>`<div style="font-size:11px;font-weight:800;color:#8E8E93;padding:14px 12px 6px;">${t}</div>`
-    +(rows?`<table style="width:100%;border-collapse:collapse;">${rows}</table>`
-          :`<div style="font-size:12px;color:#999;padding:2px 12px 8px;">${none}</div>`);
-  return `<div style="font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;max-width:640px;">
-    <div style="background:#3E71D2;border-radius:8px 8px 0 0;padding:14px 16px;color:#fff;font-size:16px;font-weight:800;">
-      ${esc(weekLabel(dat.mon,dat.sun))} 주간 업무 일정</div>
-    <div style="background:#fff;border:1px solid #EEE;border-top:none;border-radius:0 0 8px 8px;padding:10px 0 12px;">
-      <div style="padding:4px 12px 8px;"><table style="width:100%;border-collapse:collapse;table-layout:fixed;"><tr>${dat.days.map(cell).join('')}</tr></table></div>
-      ${sec('공통 업무',dat.commons.map(x=>row({...x,who:''})).join(''),'등록된 공통 업무가 없습니다.')}
-      ${sec('담당 업무',dat.mines.map(x=>row({...x,who:subjName(x.sid)})).join(''),'등록된 담당 업무가 없습니다.')}
-    </div></div>`;
-}
-function mailPreview(){
-  const dat=mailItems();
-  const list=mailRecipients();
-  const names=list.map(p=>esc(p.name)).join(', ')||'(수신자 없음)';
-  openModal('주간 업무 일정 미리보기',
-    `<div class="mlp-to"><b>받는 사람 ${list.length}명</b> · 팀 전체<br>${names}<br>
-       <b>발송 시각</b> 월요일 오전 7시 30분</div>
-     <div class="mlp-sub">제목 · ${esc('[업무 알림] '+weekLabel(dat.mon,dat.sun)+' 주간 업무 일정')}</div>
-     <div class="mlp-wrap">${mailHTML(dat)}</div>`,
-    '<button class="btn bg2 bsm" data-act="modal.close">닫기</button>');
-  const mb=$('#mb');if(mb)mb.classList.add('mlw');
-}
-function saveMailCfg(){
-  if(!isEditor())return denyEdit();
-  /* 켬·끔만 저장한다. 옛 필드(dailyOn·weeklyDow·hour·scope·prefix·intro)는 읽는 곳이 없다 */
-  const m={weeklyOn:$('#mlWeekly').checked};
-  store.putCfg('mail',m,err=>{
-    if(err){toast('메일 설정 저장 실패 · '+((err&&err.message)||err));return;}
-    S.cfg={...S.cfg,mail:m};toast('메일 설정을 저장했습니다');
-  });
-}
 
 /* ═══════════ 백업 ═══════════
    ⚠ 브라우저는 아무 폴더에나 쓸 수 없다 — 그래서 **위젯이 대신 쓴다.**
@@ -6748,7 +6702,6 @@ const ACT={
     selDate(y+'-'+pad(m)+'-'+pad(same?t.getDate():1),true);   /* 이동만 — 업무 팝업은 열지 않는다 */
     rMonTitle();subVisibleMonths();refetchCal();
     const yp=$('#ymPop');if(yp)yp.innerHTML=ymPickHTML();   /* 고른 달을 팝업에도 표시 */},
-  'mail.preview':()=>mailPreview(),
   'wid.popClose':()=>{S.widPop=false;if(S.planEdit)closePlanEdit();rWidget();},
   /* 위젯 내려받기 — 늘 최신 릴리스를 가리키는 고정 주소(팀원은 받아서 두 번 누르면 끝).
      ⚠ 예전에는 설정의 `cfg.widgetUrl` 이 이 상수를 이겼다 — 그 입력칸은 165차에 없앴는데
@@ -6964,7 +6917,6 @@ document.addEventListener('change',e=>{
     if(it){it.name=(ren.value||'').trim();orgSave();if(S.view==='tasks')rTasks();}
     return;
   }
-  if(e.target.closest&&e.target.closest('[data-act="set.mail"]')){saveMailCfg();return;}
   const el=e.target.closest('[data-act="acct.set"]');
   if(!el)return;
   const id=el.dataset.id,f=el.dataset.f;

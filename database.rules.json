@@ -357,7 +357,7 @@
         }
       },
 
-      // 앱 설정(바로가기 주소 · 메일 형식) — 관리자만 변경
+      // 앱 설정(바로가기 주소 등) — 관리자만 변경
       "cfg": {
         ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'",
         "defectUrl": { ".validate": "newData.isString() && newData.val().length <= 300" },
@@ -365,16 +365,6 @@
         "orgSrc":    { ".validate": "newData.isString() && newData.val().length <= 20" },
         "dfHide": {
           "$sid": { ".validate": "newData.isBoolean()" }
-        },
-        "mail": {
-          "dailyOn":   { ".validate": "newData.isBoolean()" },
-          "weeklyOn":  { ".validate": "newData.isBoolean()" },
-          "weeklyDow": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 6" },
-          "hour":      { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 23" },
-          "prefix":    { ".validate": "newData.isString() && newData.val().length <= 30" },
-          "intro":     { ".validate": "newData.isString() && newData.val().length <= 300" },
-          "scope":     { ".validate": "newData.isString() && (newData.val() == 'all' || newData.val() == 'owner')" },
-          "$other":    { ".validate": false }
         },
         "$other":    { ".validate": false }
       },
