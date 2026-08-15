@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='3.2.0';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='3.2.1';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -2428,7 +2428,7 @@ function taskItemHTML(sid,iid,it,withSubject,hideOwn){
       ${colDotHTML(planColor(p0),iid,!planOwners(p0).length)}
       <span class="tk-ttl"${go}>${riskMark(it.kind)}${esc(it.text||'제목 없음')}${sub?'<i class="tk-sub-i">'+esc(sub)+'</i>':''}</span>
       <span class="tkc tkc-s"${go}>${esc(sn)}</span>
-      <span class="tkc tkc-d ${esc(di.cls)}"${go}>${esc(dcell)}</span>
+      <span class="tkc tkc-d${di.cls==='over'?' over':''}"${go}>${esc(dcell)}</span>
       <span class="tk-acts">
         ${lnk?'<a class="tk-ico" href="'+esc(lnk.url)+'" target="_blank" rel="noopener" data-act="lnk.open" aria-label="링크 열기" data-tip="'+esc(linkLabel(lnk))+'"><svg class="icn"><use href="#i-ext"></use></svg></a>':''}
         ${stIcon(st,' data-act="tk.st" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"')}
@@ -2438,11 +2438,7 @@ function taskItemHTML(sid,iid,it,withSubject,hideOwn){
     ${open?taskDetailHTML(sid,iid,it):''}
   </div>`;
 }
-/* 목록 맨 위 열 이름 — 어느 열이 무엇인지 한 번만 알려 준다 */
-function tkHeadRowHTML(){
-  return '<div class="tk-row tk-hrow"><span></span><span class="tk-ttl">업무</span>'
-    +'<span class="tkc tkc-s">현장</span><span class="tkc tkc-d">날짜</span><span class="tk-acts"></span></div>';
-}
+
 /* 펼친 업무 — 진행경과·처리계획·링크 (수정 버튼은 위 tk-line 우측 상단) */
 function taskDetailHTML(sid,iid,it){
   /* 비어 있는 칸은 그리지 않는다 — 펼쳐 보기만 할 때 빈 상자가 자리를 먹는다 */
@@ -2868,7 +2864,7 @@ function rTasks(){
           </div>
           <div class="tk-list">
             ${split.sidA&&S.tkNew===split.sidA&&S.tkNewSide!=='b'?taskFormHTML(split.sidA,null,null):''}
-            ${split.a?tkHeadRowHTML()+split.a:'<div class="tk-empty">표시할 업무가 없습니다.</div>'}</div>
+            ${split.a||'<div class="tk-empty">표시할 업무가 없습니다.</div>'}</div>
         </div>
         <div class="card tkmain">
           <div class="tkm-h tkm-tabh">${split.tabsB}
@@ -2876,7 +2872,7 @@ function rTasks(){
           </div>
           <div class="tk-list">
             ${split.sidB&&S.tkNew===split.sidB&&S.tkNewSide==='b'?taskFormHTML(split.sidB,null,null):''}
-            ${split.b?tkHeadRowHTML()+split.b:'<div class="tk-empty">표시할 업무가 없습니다.</div>'}</div>
+            ${split.b||'<div class="tk-empty">표시할 업무가 없습니다.</div>'}</div>
         </div>
       </div>`:`<div class="card tkmain">
         <div class="tkm-h"><b>업무 목록</b><span class="tkm-sub">${esc(subject)}</span>
@@ -2885,7 +2881,7 @@ function rTasks(){
         </div>
         <div class="tk-list">
           ${sid&&S.tkNew===sid?taskFormHTML(sid,null,null):''}
-          ${listHTML.includes('tk-item')?tkHeadRowHTML():''}${listHTML}
+          ${listHTML}
         </div>
       </div>`}
     </div>
@@ -7078,7 +7074,8 @@ const SB_SEL='#content,.dp-body,.tk-list,.nq-res,.pf-emg,.rd-body,[data-sb]';
 function fadeOne(el){
   if(!el||!el.classList)return;
   /* 미처리 보기(목록 rec-wrap·피벗 pv-scroll)에는 페이드를 걸지 않는다 — 사용자 지시(218차) */
-  if(el.classList.contains('rec-wrap')||el.classList.contains('pv-scroll')){
+  /* 업무 목록(.tk-list)도 제외 — 줄 높이가 40px 라 26px 페이드가 마지막 줄을 반쯤 지운다(250차) */
+  if(el.classList.contains('rec-wrap')||el.classList.contains('pv-scroll')||el.classList.contains('tk-list')){
     el.classList.remove('sb-fade-t','sb-fade-b');return;
   }
   const over=el.scrollHeight>el.clientHeight+2;
