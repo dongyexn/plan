@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='3.1.0';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='3.1.2';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -341,6 +341,7 @@ const S={
   tasks:{},          // {memberId:{itemId:{text,st,updatedAt}}}
   cfg:{},            // 앱 설정(하자 감춘 현장 등)
   tk:{t:null,m:null},       // 주요업무 현황 탭 선택(팀/권역/담당자)
+  tkNewSide:'',      // 새 업무 폼이 열린 카드 — 'a'(팀 업무) · 'b'(담당 업무)
   tkA:'',            // 팀 업무 카드의 탭 — ''(전체) · 'team'(공통) · 담당자 id
   tkB:'',            // 담당 업무 카드의 탭 — ''(전체) · 권역 id · '_none'(권역 미지정)
   filter:{kind:[],st:[],reg:[],own:[],site:[]},  // 달력 필터 — 모두 다중 선택(빈 배열이 '전체')
@@ -2845,27 +2846,26 @@ function rTasks(){
           <span class="n">보류한 업무</span><span class="c">${holdItems().length}</span>
         </div>
       </div>
-      <div class="card tks-card tks-hold">
-        <div class="tks-item tks-reg${sel==='teamall'?' act':''}" data-act="tk.pick" data-id="teamall">
-          <span class="n">${esc(tn)} 전체</span><span class="c">${cCommon+cMems}</span>
-        </div>
-      </div>
+      ${tkFilterHTML()}
     </div>
 
     <div class="tkcol">
-      ${tkFilterHTML()}
       ${split?`<div class="tk-split">
         <div class="card tkmain">
           <div class="tkm-h tkm-tabh">${split.tabsA}
-            <button class="btn bo bxs tkm-add" data-act="tk.newOpen"><svg class="icn"><use href="#i-plus"></use></svg> 업무 추가</button>
+            <button class="btn bo bxs tkm-add" data-act="tk.newOpen" data-side="a"><svg class="icn"><use href="#i-plus"></use></svg> 업무 추가</button>
           </div>
           <div class="tk-list">
-            ${split.sidA&&S.tkNew===split.sidA?taskFormHTML(split.sidA,null,null):''}
+            ${split.sidA&&S.tkNew===split.sidA&&S.tkNewSide!=='b'?taskFormHTML(split.sidA,null,null):''}
             ${split.a||'<div class="tk-empty">표시할 업무가 없습니다.</div>'}</div>
         </div>
         <div class="card tkmain">
-          <div class="tkm-h tkm-tabh">${split.tabsB}</div>
-          <div class="tk-list">${split.b||'<div class="tk-empty">표시할 업무가 없습니다.</div>'}</div>
+          <div class="tkm-h tkm-tabh">${split.tabsB}
+            <button class="btn bo bxs tkm-add" data-act="tk.newOpen" data-side="b"><svg class="icn"><use href="#i-plus"></use></svg> 업무 추가</button>
+          </div>
+          <div class="tk-list">
+            ${split.sidB&&S.tkNew===split.sidB&&S.tkNewSide==='b'?taskFormHTML(split.sidB,null,null):''}
+            ${split.b||'<div class="tk-empty">표시할 업무가 없습니다.</div>'}</div>
         </div>
       </div>`:`<div class="card tkmain">
         <div class="tkm-h"><b>업무 목록</b><span class="tkm-sub">${esc(subject)}</span>
@@ -3111,7 +3111,10 @@ function tkSplitHTML(team,mems,regions){
   /* A 탭 목록 */
   const tabsA=[['','전체',cCommon+headList.reduce((a,p)=>a+taskCount(p.id),0)]];
   if(team)tabsA.push(['team','공통 업무',cCommon]);
-  headList.forEach(p=>tabsA.push([p.id,p.name+(rankLabel(p.rank)?' '+rankLabel(p.rank):''),taskCount(p.id)]));
+  /* ⚠ 탭은 **직급으로만** 적는다(사용자 지시). 같은 직급이 둘 이상일 때만 이름을 덧붙여 구분한다 */
+  const rkCnt={};headList.forEach(p=>{const r=rankLabel(p.rank)||'담당';rkCnt[r]=(rkCnt[r]||0)+1;});
+  headList.forEach(p=>{const r=rankLabel(p.rank)||'담당';
+    tabsA.push([p.id,rkCnt[r]>1?r+' '+p.name:r,taskCount(p.id)]);});
   if(!tabsA.some(t=>t[0]===S.tkA))S.tkA='';
 
   /* B 탭 목록 — 담당자가 있는 권역만 */
@@ -3146,7 +3149,8 @@ function tkSplitHTML(team,mems,regions){
     +list.map(([id,nm,c])=>tabBtn(id,nm,c,sel,side)).join('')+'</div>';
   return{a,b,tabsA:tabHTML(tabsA,S.tkA,'a'),tabsB:tabHTML(tabsB,S.tkB,'b'),
     sidA:(S.tkA&&S.tkA!=='team')?S.tkA:(team?team.id:null),
-    sidB:null};
+    /* 담당 업무 카드에서 만든 업무는 팀 자리에 담고 담당자는 폼에서 고른다 — 권역 탭만으로는 사람이 정해지지 않는다 */
+    sidB:team?team.id:null};
 }
 /* 업무로 이동 — 검색·내 업무·달력에서 공통으로 쓰고, 모달 없이 인라인으로 펼친다 */
 function gotoTask(sid,iid){
@@ -6533,9 +6537,11 @@ const ACT={
     /* 팀 전체 화면은 '팀 업무' 카드 안에 폼을 연다 — 그 카드의 탭이 담당자면 그 사람 자리에,
        아니면 팀 공통 자리에. ⚠ 화면(S.tk.m)은 옮기지 않는다 — 탭이 있으니 옮길 이유가 없다 */
     if(m==='teamall'){
-      const sidA=(S.tkA&&S.tkA!=='team')?S.tkA:((sel.team&&sel.team.id)||'');
+      const side=el.dataset.side==='b'?'b':'a';
+      const sidA=(side==='b')?((sel.team&&sel.team.id)||'')
+        :((S.tkA&&S.tkA!=='team')?S.tkA:((sel.team&&sel.team.id)||''));
       if(!sidA)return toast('먼저 팀을 만들어 주세요');
-      S.tkEdit=null;S.tkNew=sidA;rTasks();
+      S.tkEdit=null;S.tkNew=sidA;S.tkNewSide=side;rTasks();
       setTimeout(()=>{const t=$('#tnTitle');if(t)t.focus();},S.live?260:20);
       return;
     }
