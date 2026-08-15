@@ -408,12 +408,14 @@ html.dark #fcal .dhol.dtoday{color:var(--b300);}
 /* ⚠ 높이를 못 박지 않으면 시간 있는 막대(점 표시)와 기간 막대의 높이가 달라 칸마다 줄이 어긋난다 */
 /* ⚠ 줄 간격은 막대의 상하 여백으로만 준다 — harness 의 margin-top 은 FullCalendar 가 인라인으로 정하는 줄 맞춤 값이라 건드리면 칸마다 어긋난다 */
 #fcal .fc-event .fc-event-title{font-weight:500;}
-#fcal .fc-event.done{opacity:.5;}
 #fcal .fc-event.done{opacity:.72;}   /* 완료는 아이콘·흐림으로만 — 취소선은 쓰지 않는다 */
 /* 넘침 표시 — 234차 5안(우측 정렬 미니): 알약을 없애고 오른쪽 끝에 조용한 회색 글씨로.
    막대와 색·형태로 경쟁하지 않고, 줄이 끊겨 보이던 문제도 사라진다. */
-#fcal .fc-daygrid-day-bottom{display:flex;justify-content:flex-end;padding:1px 5px 0;}
-#fcal .fc-daygrid-more-link{font-size:12px;color:var(--lbl2);font-weight:500;text-decoration:none;
+#fcal .fc-daygrid-day-bottom{display:flex;justify-content:flex-end;padding:3px 5px 0;}
+/* ⚠ line-height 를 못 박는다 — 안 주면 위 계통에서 1(=글자 크기)이 내려와 줄 상자에 여유가 없고,
+   한글 위쪽 획과 왼쪽 가장자리가 렌더 배율에 따라 잘린다. 여백은 day-bottom 의 padding 으로만 준다
+   (padding 3px + 막대 아래 margin 2px = 5px — 막대 사이 4px 보다 한 칸 넓게 떨어뜨린다) */
+#fcal .fc-daygrid-more-link{font-size:12px;line-height:1.35;color:var(--lbl2);font-weight:500;text-decoration:none;
   margin:0;padding:0;border-radius:6px;background:transparent;letter-spacing:-.01em;}
 #fcal .fc-daygrid-more-link:hover{background:transparent;color:var(--bt1);}
 body.wid.glass #fcal .fc-daygrid-more-link{color:rgba(255,255,255,.85);background:transparent;}
@@ -2289,7 +2291,10 @@ html.dark #toast{background:#2B313A;}
      중첩 스크롤은 iOS 에서 클리핑이 깨져 칩이 겹쳐 보인다 */
   body:not(.wid) #fcal .fc-dayGridMonth-view .fc-daygrid-day-frame{overflow:hidden;}   /* 위젯은 좁아도 여러 날 막대를 자르지 않는다 */
   #fcal .fc-dayGridMonth-view .fc-daygrid-day-events{overflow:visible;}
-  #fcal .fc-dayGridMonth-view .fc-daygrid-day-bottom{display:block;margin:1px 0 0;padding:0 2px;}
+  /* ⚠ display 를 block 으로 덮지 않는다 — 덮으면 기본 규칙(414행)의 justify-content 가 무효가 되어
+     좁은 화면과 **위젯(창이 좁아 늘 이 구간에 든다)** 에서만 「외 N건」이 왼쪽으로 갔다.
+     링크가 display:block 이라 text-align 으로는 되돌아오지 않는다 — flex 를 그대로 이어 쓴다 */
+  #fcal .fc-dayGridMonth-view .fc-daygrid-day-bottom{margin:1px 0 0;padding:2px 2px 0;}
   #fcal .fc-daygrid-more-link{font-size:12px;font-weight:500;color:var(--lbl2);}
   #fcal .fc-daygrid-more-link:hover{color:var(--bt1);}
   /* iOS 사파리는 글자가 16px 보다 작은 입력칸을 누르면 화면을 저절로 확대하고, 손을 떼도 돌아오지 않는다.
@@ -2314,7 +2319,7 @@ html.dark #toast{background:#2B313A;}
   /* 칩을 15px 로 못박는 구간 — 다른 날의 숫자 줄 높이(--dnh)도 같은 값으로 맞춘다 */
   #fcal,body.wid #fcal{--dnh:15px;}
   #fcal .fc-daygrid-more-link{font-size:10.5px;margin:0;}   /* 막대와 같은 값 */
-  #fcal .fc-daygrid-day-bottom{padding:0 4px 0 2px;}
+  #fcal .fc-daygrid-day-bottom{padding:2px 4px 0 2px;}
 }
 @media(max-width:720px){
   /* 좁은 화면에서는 이모지 칸이 28px 밖에 안 돼 8열로 줄인다 */
@@ -2571,15 +2576,17 @@ html.dark body.hasbg #fcal .fc-event.team{background:rgba(44,47,54,.92)!importan
 :root{--risk-ic:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.1'%3E%3Ccircle cx='12' cy='12' r='9.5'/%3E%3Cpath d='M12 6.9v6.4' stroke-linecap='round'/%3E%3Ccircle cx='12' cy='17.2' r='1.25' fill='%23000' stroke='none'/%3E%3C/svg%3E");}
 #fcal .fc-event.risk .fc-event-title{display:flex;align-items:center;}
 #fcal .fc-event.risk .fc-event-title::before,#fcal .fc-event.team.risk .fc-event-title::before{
-  content:'';flex:none;width:11px;height:11px;margin-right:4px;border:0;border-radius:0;
+  content:'';flex:none;width:.92em;height:.92em;margin-right:.34em;border:0;border-radius:0;
   background-color:currentColor;
   -webkit-mask:var(--risk-ic) center/contain no-repeat;mask:var(--risk-ic) center/contain no-repeat;}
 /* 목록·일자 패널·월별 현장 카드의 제목 앞 표식 — 배경이 늘 카드(흰·다크)라 색을 고정한다 */
-.risk-b{display:inline-block;flex:none;width:13px;height:13px;margin-right:5px;vertical-align:-2px;
+/* ⚠ 크기는 em — 위젯은 글자 크기를 85~140% 로 조절하므로(--wfz) px 로 못 박으면 표식만 제자리에 남는다.
+   달력 막대의 ::before 도 같은 이유로 em 이다 */
+.risk-b{display:inline-block;flex:none;width:.93em;height:.93em;margin-right:.34em;vertical-align:-.13em;
   background-color:#DC2626;
   -webkit-mask:var(--risk-ic) center/contain no-repeat;mask:var(--risk-ic) center/contain no-repeat;}
 html.dark .risk-b{background-color:#F87171;}
-.rpm-t .risk-b{vertical-align:-1px;}
+.rpm-t .risk-b{vertical-align:-.1em;}
 /* 내 업무 — 1열(작은 달력·멘션) + 2열 카드 */
 /* 작은 달력에서 고른 날에 걸치는 업무 강조 — 테두리만, 배경은 두지 않는다 */
 .tk-item.hl{box-shadow:inset 0 0 0 1.5px var(--b500);}
@@ -3139,5 +3146,5 @@ html.dark .risk-b{background-color:#F87171;}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=298"></script>
+<script src="./app.js?v=301"></script>
 </body></html>
