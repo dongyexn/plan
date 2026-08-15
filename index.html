@@ -1499,7 +1499,8 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 .pal-add .pal-inp{position:absolute;inset:0;opacity:0;cursor:pointer;padding:0;border:none;}
 
 /* ══════════ 주요업무 현황 — 좌: 대상 선택 · 우: 작성/목록 ══════════ */
-.tkwrap{display:grid;grid-template-columns:320px minmax(0,1fr);gap:12px;align-items:stretch;flex:1;min-height:0;overflow:hidden;}
+/* ⚠ 왼쪽은 작은 달력·보류함만 남았다(대상 고르기는 카드 머리의 탭이 맡는다 — 249차) — 폭을 줄여 목록에 준다 */
+.tkwrap{display:grid;grid-template-columns:264px minmax(0,1fr);gap:12px;align-items:stretch;flex:1;min-height:0;overflow:hidden;}
 .tkside{display:flex;flex-direction:column;gap:12px;min-height:0;height:100%;overflow:hidden;}
 .tks-card{padding:9px 10px;}
 .tks-hold{flex:0 0 auto;padding:9px 10px;}
@@ -1509,10 +1510,7 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 .tkcol{display:flex;flex-direction:column;gap:9px;min-height:0;min-width:0;height:100%;overflow:hidden;}
 .tkf-card{flex:0 0 auto;}   /* .dp-fcard 가 이미 카드 껍데기다 — 여기서 또 씌우면 테두리가 두 겹으로 보인다 */
 .tkmain{display:flex;flex-direction:column;min-height:0;height:100%;padding:0;flex:1;overflow:hidden;}
-/* 하위 항목 앞 동그라미 — 하자처리현황 사이드바 현장 점(.std)과 동일 */
-.tks-item .std{width:6px;height:6px;border-radius:50%;flex-shrink:0;background:var(--sepo);transition:background var(--tr);margin-right:2px;}
-.tks-item:hover .std{background:var(--b500);}
-.tks-item.act .std{background:var(--b500);}.tks-item{display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:var(--rmd);cursor:pointer;font-size:14px;color:var(--lbl);transition:background .13s;}
+.tks-item{display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:var(--rmd);cursor:pointer;font-size:14px;color:var(--lbl);transition:background .13s;}
 .tks-item:hover{background:var(--fill);}
 .tks-item.act{background:linear-gradient(135deg,var(--b50),var(--b100));color:var(--bt1);font-weight:700;}
 .tks-item .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -1531,6 +1529,16 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 .tkm-c{display:none;}   /* 패널 머리 건수는 표시하지 않는다(분류별 건수로 충분) */
 .tkm-add{margin-left:auto;}   /* 업무 추가는 머리 오른쪽 끝 */
 .tkm-h b{font-size:16px;font-weight:800;color:var(--lbl);letter-spacing:-.01em;}
+/* ── 카드 머리를 탭이 대신한다(팀 전체 화면) ──
+   ⚠ 밑줄은 카드 양 끝까지 가지 않는다 — 머리 좌우 여백만큼 안쪽에서 끊는다.
+   그래서 밑줄은 .tkm-tabs(탭 묶음)가 아니라 머리 줄 자신이 그리고, 좌우 패딩을 그대로 둔다. */
+.tkm-tabh{padding:0 16px;gap:0;border-bottom:1.5px solid var(--sep);margin-bottom:12px;}
+.tkm-tabh .tkm-tabs{flex:1;min-width:0;margin-bottom:0;border-bottom:none;overflow-x:auto;scrollbar-width:none;}
+.tkm-tabh .tkm-tabs::-webkit-scrollbar{display:none;}
+.tkm-tabh .rp-tab{padding:13px 14px;white-space:nowrap;}
+.tkm-tabh .rp-tab::after{bottom:-1.5px;}   /* 머리 줄의 밑줄과 같은 자리에 겹친다 */
+.tkm-tabh .tkm-add{margin-left:10px;flex:0 0 auto;}
+@media(max-width:1100px){.tkm-tabh{padding:0 12px;}.tkm-tabh .rp-tab{padding:12px 11px;}}
 .tkm-h .tkm-sub{font-size:13px;font-weight:600;color:var(--lbl3);}
 .tkm-h .btn{flex:0 0 auto;}   /* 우측 정렬은 .tkm-c 의 margin-left:auto 가 맡는다 */
 /* 인라인 작성창 */
@@ -3127,5 +3135,5 @@ html.dark .risk-b{background-color:#F87171;}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=306"></script>
+<script src="./app.js?v=307"></script>
 </body></html>
