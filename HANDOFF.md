@@ -3335,6 +3335,83 @@ calapp.bgBri). 사이드바 블록은 hasbg 에서 **#fff 불투명 고정 + 블
   업무가 '공통'에 들어갈 수 있다. 앱과 스크립트를 함께 고쳐야 해 이번엔 손대지 않았다.
 - app.js?v=301 · APP_VER 2.9.5.
 
+### 244차 — 반복 업무가 목록에서 첫 회차 날짜로 뜨던 문제
+- 243차에 남겨 둔 항목. 사용자 확인 결과 팀에서 반복은 거의 안 쓰고 **매월 14일·28일** 정도인데,
+  매월 반복은 시작일이 한참 과거라 목록·내 업무에서 **늘 지연**으로 보였다(달력만 회차가 정상).
+- `taskDate(sid,iid,it)` 추가 — 반복이면 **아직 안 끝난 회차 중 오늘에서 가장 가까운 것**을 낸다.
+  지난 회차가 남아 있어도 다음 회차가 더 가까우면(주기의 절반을 넘겼으면) 다음 회차를 본다 —
+  ⚠ **완료 체크를 건너뛰는 업무가 영영 지난 날짜에 묶이지 않게.** 반복이 아니면 it.date 를 그대로 낸다.
+- 적용: 업무 목록 카드(날짜 배지 dueInfo·메타 날짜), 위젯 내 업무 세 섹션(공통·미완료·보류),
+  mineTasks·mineHolds·집계 보조의 정렬. 회차 전개·완료 판정 자체는 그대로라 설계 변경이 아니다.
+- 확인(오늘 8/15 기준): 매월14 미완료 → 8/14(지연) · 매월14 이번 회차 완료 → 9/14 ·
+  매월28(7/28 미완료) → 8/28 · 일반 업무 → 그대로. 위젯·브라우저 모두 달력 회차와 일치.
+- ⚠ 남은 것: **메일의 공통/담당 분리는 여전히 sid 기준**(app.js mailItems, scripts/weekly.mjs).
+- app.js?v=302 · APP_VER 2.9.6.
+
+### 245차 — 메일 발송 기능 제거
+사용자 결정: 주간 메일은 쓰지 않는다. 관련된 것을 전부 걷어냈다.
+- 지운 파일: `scripts/weekly.mjs` · `scripts/mail-common.mjs` · `.github/workflows/mail.yml`.
+- app.js: mailItems·mailHTML·mailPreview·saveMailCfg·mailRecipients·weekRange·weekLabel,
+  `mail.preview` 핸들러, `set.mail` 위임, rCfg 의 토글 반영 제거(rCfg 는 rBk 만 남았다).
+  ⚠ **teamIds·isTeamSid 는 남겼다** — 업무 목록이 '개인 묶음인지' 가릴 때 쓴다(메일 전용이 아니었다).
+- index.html: 설정의 '메일 발송' 카드(도움말 카드가 왼쪽 첫 카드가 됐다), `.ml-pv`·`.mlp-*`·`#mb.mlw` CSS.
+- database.rules.json: `cfg/mail` 검증 블록 삭제. ⚠ DB 에 남아 있는 옛 `calapp/cfg/mail` 값은
+  **읽는 곳이 없어 무해**하다(백업에도 그대로 실린다). 규칙상 이제 그 경로에 새로 쓸 수는 없다.
+  ⚠ 백업 되돌리기는 cfg 를 쓰지 않으므로 규칙 변경과 충돌하지 않는다.
+- static-audit.mjs 도 지운 두 스크립트를 더 읽지 않게 고쳤다(안 고치면 ENOENT 로 죽는다).
+- 저장소 Secrets(FIREBASE_SERVICE_ACCOUNT·BREVO_API_KEY·MAIL_FROM)는 더 쓰지 않는다 — 지워도 된다.
+- 243차에 남겨 둔 '메일의 공통/담당 분리가 sid 기준' 항목은 **이 제거로 함께 없어졌다.**
+- 게이트: 감사 FAIL 0 · WARN 0, 설정 화면·사용 안내·백업 데이터 생성 확인, 오류 0.
+- app.js?v=303 · **APP_VER 3.0.0**(기능 하나가 빠져 메이저를 올린다).
+
+### 246차 — 정밀 검토(데드코드·불일치)
+감사 통과 상태에서 감사가 못 잡는 것들을 따로 훑었다. 찾은 것 —
+- **주간 보고에 반복 업무가 통째로 빠져 있었다.** rptRows 가 it.date/it.end 만 보는데 반복 업무의
+  date 는 첫 회차(과거)라 어느 주기에도 안 걸렸다. **달력·월별 현장에는 나오는데 보고서에만 없었다.**
+  recurDates 로 회차를 펼치고 완료도 회차별(doneOn)로 보게 고쳤다. 표의 날짜도 그 회차 날짜를 쓴다.
+  ⚠ 이번 주기의 **미완료**가 어느 표에도 안 나오는 것은 설계 그대로다(한 일 / 할 일 두 표).
+- **미사용 상태 필드 `S.dfRep` 제거** — 선언뿐이고 읽는 곳이 없었다.
+- **CSS 인접 중복 선언 4건 정리** — `.rpt .page`(break-after 와 page-break-after 를 두 규칙으로 나눠 둠),
+  `.rec-tbl th`(position:sticky 재선언), `.rec-tbl td.wide`(뒤 줄이 min-width 260→220 을 덮어 260 이 죽어 있었다),
+  `.tk-new`(margin-bottom 같은 값 두 번). ⚠ 미디어쿼리 오버라이드는 정상이므로 건드리지 않았다.
+확인해서 문제 없던 것 —
+- cleanTask 전 필드 왕복(백업→복원) 무손실, 저장 필드 ↔ database.rules.json 양방향 일치,
+  앱이 쓰는 DB 경로 15개 모두 규칙에 존재.
+- id 참조 정합(동적 생성분 포함), data-act 짝, 죽은 함수·CSS 클래스 0.
+- 6개 환경 × 위젯 글자 3배율 순회 오류 0, 인쇄 모드(탭 숨김·2열) 정상, build-single 정상.
+- 위젯 스텁(window.newMentions·bootBrief·bkExport·bkNote) 유지, 상태값 정규화(stOf/stEff) 안전.
+- taskDate 성능 0.4ms, until 이 지난 반복은 시작일로 폴백(회차가 없으니 그 이상은 무의미).
+남긴 것 —
+- `store.migrateRemote()` 의 옛 경로(calapp/plans·calapp/recur) 이관 코드는 그대로 뒀다.
+  이미 옮겨진 환경에서는 읽고 바로 빠지지만, **아직 안 옮긴 기기가 있을 수 있어** 제거는 위험하다.
+- app.js?v=304 · APP_VER 3.0.1.
+
+### 247차 — 공휴일 문구 위치 · 달력 이벤트 범위 보강
+- **오늘이면서 공휴일인 칸에서 공휴일 문구가 가운데로 밀렸다**(사용자 보고: 광복절).
+  `.dhol` 이 `flex:1;margin-right:auto` 라 '오늘' 배지와 공휴일 문구 **둘 다** 그 규칙을 받아
+  공간을 나눠 갖고 서로를 밀어냈다. dayCellContent 에서 겹칠 때만 '오늘' 에 `wnm` 을 붙이고
+  `#fcal .dhol.dtoday.wnm{flex:none;margin-right:0;}` 로 자리를 양보시켰다 → '오늘 광복절' 이 왼쪽에 나란히.
+  ⚠ `:has()` 나 `:only-of-type` 은 쓰지 않았다(WebView2 버전 편차·같은 태그 형제 문제).
+- **buildEvents 가 범위를 CAL.view 에서 읽던 것을 FullCalendar 가 넘겨주는 info.start/end 로** 바꿨다.
+  달을 넘길 때 뷰 상태가 갱신되기 전에 계산되면 그 달 반복 회차가 통째로 빠질 수 있는 구조였다.
+  ⚠ info.end 는 배타적(다음 날)이라 하루 빼서 쓴다. 인자 없이 부르면 종전대로 visibleRange() 로 떨어진다.
+  ⚠ **사용자가 보고한 '다음 달에 반복이 안 뜬다' 는 재현하지 못했다** — 브라우저·위젯에서 버튼으로
+  3개월 이동, 목록 폼·달력 폼 저장 경로 모두 정상이었다. 위 보강은 예방 차원이고, 원인은 별도 확인 필요
+  (반복 종료일이 과거로 들어갔거나, 시작일이 기대와 다른 경우를 먼저 볼 것).
+- app.js?v=305 · APP_VER 3.0.2.
+
+### 248차 — 안 쓰이는 파일·죽은 셀렉터 정리
+- **`scripts/test/smoke.mjs` 삭제.** puppeteer 가 있어야 도는데 회사 PC 는 npm 이 막혀 실제로 돌린 적이
+  없었고, 검사 내용(화면 6개 전환·콘솔 오류 0·달력 42칸)은 세션마다 하는 검증에 모두 포함된다.
+  ⚠ 다시 필요해지면(집 PC·Actions 자동 검사) 이 항목을 근거로 되살릴 것 — 셀렉터는 당시 기준으로 유효했다.
+  README 의 구성 목록에서도 뺐다. `static-audit.mjs` 는 의존성 없이 돌고 실제로 문제를 잡으므로 유지.
+- **죽은 id 셀렉터 2개 제거** — `body.snap` 규칙의 `#tbBell`·`#tbHelp`. 상단바 알림·도움말 버튼은
+  이미 없어진 요소다(도움말은 245차에 설정으로 옮겼다). ⚠ 죽은 CSS 검사는 **클래스만** 보므로
+  id 셀렉터는 감사에 안 걸린다 — 이번처럼 따로 훑어야 한다.
+- vendor 12개는 전부 실제로 참조·사용 중임을 확인(LZString·marked·DOMPurify·XLSX·ChartDataLabels·
+  Chart·firebase appCheck 까지 호출 지점 있음). 지울 것 없음.
+- app.js?v=306 · APP_VER 3.0.3.
+
 ## 8. 보류하기로 한 것
 
 - 업무 이력(변경 기록) — 과도하다고 판단
