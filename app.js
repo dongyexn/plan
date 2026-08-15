@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='3.1.2';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='3.2.0';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -2409,28 +2409,39 @@ function taskItemHTML(sid,iid,it,withSubject,hideOwn){
   const lnk=Object.values(it.links||{}).filter(l=>l&&l.url)[0];
   const md=x=>{const t=toDate(x);return (t.getMonth()+1)+'/'+t.getDate();};
   const span=it.end&&it.end!==it.date&&!(it.recur&&it.recur.f);   /* 반복은 회차 하루로 본다 */
-  const left=[kindLabel(it.kind),
-    dsp?(span?md(dsp)+'–'+md(it.end):md(dsp)):'',
-    fmtSpan(it),
-    (it.recur&&it.recur.f)?REC_LBL[it.recur.f]:''].filter(Boolean);
-  const right=[sn,withSubject?subjName(sid):'',asg.map(x=>x.name).join(', ')].filter(Boolean);
+  /* ── 한 줄 · 열 고정(250차) ──
+     [색 원][제목][구분][현장][담당][날짜][조작]. 열 폭이 고정이라 행마다 같은 자리에 같은 정보가 온다
+     — 예전처럼 좌우 양끝으로 밀면 칸이 넓을수록 가운데가 비고 행마다 위치가 달라 훑기 어려웠다.
+     ⚠ 시각·반복처럼 가끔 있는 정보는 열을 따로 주지 않고 제목 뒤에 흐리게 붙인다(열이 늘면 다 좁아진다) */
+  const dcell=dsp?(span?md(dsp)+'–'+md(it.end):md(dsp)):'';
+  /* 제목 뒤에 흐리게 붙는 것 — **가끔만 있는 값**이라 열을 따로 주지 않는다.
+     ⚠ 구분은 '일반'이 대부분이라 열로 두면 같은 글자만 반복된다(고위험은 제목 앞 표식이 이미 알린다).
+     ⚠ 담당자도 열을 두지 않는다 — 목록이 담당자별로 묶여 있어 소제목과 겹말이다.
+     공동 담당(둘 이상)일 때만 나머지 사람을 여기 적는다. */
+  const sub=[kindOf(it.kind)?kindLabel(it.kind):'',fmtSpan(it),
+    (it.recur&&it.recur.f)?REC_LBL[it.recur.f]:'',
+    asg.length?asg.map(x=>x.name).join(', '):(withSubject?subjName(sid):'')].filter(Boolean).join(' · ');
+  const go=' data-act="tk.open" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"';
   return `
   <div class="tk-item s${st}${open?' open':''}${onSelDay(sid,iid,it)?' hl':''}" draggable="true" data-sid="${esc(sid)}" data-iid="${esc(iid)}">
-    <div class="tk-line">
+    <div class="tk-row">
       ${colDotHTML(planColor(p0),iid,!planOwners(p0).length)}
-      <div class="tk-ttl" data-act="tk.open" data-sid="${esc(sid)}" data-iid="${esc(iid)}">${riskMark(it.kind)}${esc(it.text||'제목 없음')}</div>
-      <div class="tk-acts">
+      <span class="tk-ttl"${go}>${riskMark(it.kind)}${esc(it.text||'제목 없음')}${sub?'<i class="tk-sub-i">'+esc(sub)+'</i>':''}</span>
+      <span class="tkc tkc-s"${go}>${esc(sn)}</span>
+      <span class="tkc tkc-d ${esc(di.cls)}"${go}>${esc(dcell)}</span>
+      <span class="tk-acts">
         ${lnk?'<a class="tk-ico" href="'+esc(lnk.url)+'" target="_blank" rel="noopener" data-act="lnk.open" aria-label="링크 열기" data-tip="'+esc(linkLabel(lnk))+'"><svg class="icn"><use href="#i-ext"></use></svg></a>':''}
         ${stIcon(st,' data-act="tk.st" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"')}
         <button class="tk-ico" data-act="tk.edit" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="수정" data-tip="수정"><svg class="icn"><use href="#i-pen"></use></svg></button>
-      </div>
-    </div>
-    <div class="plan-meta" data-act="tk.open" data-sid="${esc(sid)}" data-iid="${esc(iid)}">
-      <span class="pm-l">${left.map(esc).join(' · ')}</span>
-      <span class="pm-r">${right.map(esc).join(' · ')}</span>
+      </span>
     </div>
     ${open?taskDetailHTML(sid,iid,it):''}
   </div>`;
+}
+/* 목록 맨 위 열 이름 — 어느 열이 무엇인지 한 번만 알려 준다 */
+function tkHeadRowHTML(){
+  return '<div class="tk-row tk-hrow"><span></span><span class="tk-ttl">업무</span>'
+    +'<span class="tkc tkc-s">현장</span><span class="tkc tkc-d">날짜</span><span class="tk-acts"></span></div>';
 }
 /* 펼친 업무 — 진행경과·처리계획·링크 (수정 버튼은 위 tk-line 우측 상단) */
 function taskDetailHTML(sid,iid,it){
@@ -2846,10 +2857,10 @@ function rTasks(){
           <span class="n">보류한 업무</span><span class="c">${holdItems().length}</span>
         </div>
       </div>
-      ${tkFilterHTML()}
     </div>
 
     <div class="tkcol">
+      ${tkFilterHTML()}
       ${split?`<div class="tk-split">
         <div class="card tkmain">
           <div class="tkm-h tkm-tabh">${split.tabsA}
@@ -2857,7 +2868,7 @@ function rTasks(){
           </div>
           <div class="tk-list">
             ${split.sidA&&S.tkNew===split.sidA&&S.tkNewSide!=='b'?taskFormHTML(split.sidA,null,null):''}
-            ${split.a||'<div class="tk-empty">표시할 업무가 없습니다.</div>'}</div>
+            ${split.a?tkHeadRowHTML()+split.a:'<div class="tk-empty">표시할 업무가 없습니다.</div>'}</div>
         </div>
         <div class="card tkmain">
           <div class="tkm-h tkm-tabh">${split.tabsB}
@@ -2865,7 +2876,7 @@ function rTasks(){
           </div>
           <div class="tk-list">
             ${split.sidB&&S.tkNew===split.sidB&&S.tkNewSide==='b'?taskFormHTML(split.sidB,null,null):''}
-            ${split.b||'<div class="tk-empty">표시할 업무가 없습니다.</div>'}</div>
+            ${split.b?tkHeadRowHTML()+split.b:'<div class="tk-empty">표시할 업무가 없습니다.</div>'}</div>
         </div>
       </div>`:`<div class="card tkmain">
         <div class="tkm-h"><b>업무 목록</b><span class="tkm-sub">${esc(subject)}</span>
@@ -2874,7 +2885,7 @@ function rTasks(){
         </div>
         <div class="tk-list">
           ${sid&&S.tkNew===sid?taskFormHTML(sid,null,null):''}
-          ${listHTML}
+          ${listHTML.includes('tk-item')?tkHeadRowHTML():''}${listHTML}
         </div>
       </div>`}
     </div>
