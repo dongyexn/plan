@@ -1573,8 +1573,14 @@ html.dark .tk-item+.tk-item{box-shadow:inset 0 1px 0 rgba(255,255,255,.07);}
    [색 원][제목][구분][현장][담당][날짜][조작]. **열 폭을 못 박아** 행마다 같은 자리에 같은 정보가 온다.
    ⚠ 예전(2행 + 좌우 양끝)은 칸이 넓을수록 가운데가 비고 행마다 위치가 달라 세로로 훑기 어려웠다.
    ⚠ 열을 더 늘리지 말 것 — 늘리면 제목 열이 그만큼 좁아진다. 가끔 있는 값은 제목 뒤 .tk-sub-i 로. */
-.tk-row{display:grid;grid-template-columns:8px minmax(0,1fr) 150px 52px auto;
-  align-items:center;gap:10px;padding:9px 12px;}
+/* 시안 1안 그대로 — [색 원][제목][구분][현장][담당][날짜][조작].
+   ⚠ 색 원(.p-col)은 margin-left:6px 를 갖고 있다 — 열 안에서는 지워야 제목과 붙지 않는다. */
+/* ⚠ 마지막(조작) 열을 auto 로 두면 **링크가 있는 행만 아이콘이 하나 더 붙어** 열 폭이 달라지고
+   그 앞의 모든 열이 밀린다 — 헤더와도 어긋난다. 아이콘 3개 기준으로 **폭을 못 박고** 오른쪽 정렬한다. */
+.tk-row{display:grid;grid-template-columns:8px minmax(0,1fr) 50px 132px 62px 50px 84px;
+  align-items:center;gap:12px;padding:9px 14px;}
+.tk-row .tk-acts{justify-content:flex-end;}
+.tk-row .p-col{margin-left:0;}
 .tk-item .tk-detail{padding:0 12px 12px 27px;}
 .tk-ttl{min-width:0;font-size:13.5px;font-weight:700;color:var(--lbl);cursor:pointer;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -1588,8 +1594,32 @@ html.dark .tk-item+.tk-item{box-shadow:inset 0 1px 0 rgba(255,255,255,.07);}
 .tk-item.s2 .tk-ttl{color:var(--lbl3);}
 .tk-item.s2 .tkc{color:var(--lbl3);}
 /* 좁아지면 오른쪽 열부터 접는다 — 담당·현장 순으로 남긴다 */
-@media(max-width:1500px){.tk-row{grid-template-columns:8px minmax(0,1fr) 112px 50px auto;gap:8px;}}
-@media(max-width:1180px){.tk-row .tkc-s{display:none;}.tk-row{grid-template-columns:8px minmax(0,1fr) 50px auto;}}
+/* 열 이름 줄 — 목록을 내려도 맨 위에 붙어 있다 */
+.tk-hrow{position:sticky;top:0;z-index:3;background:var(--surf);padding-top:2px;padding-bottom:5px;cursor:default;}
+.tk-hrow span{font-size:11px;font-weight:700;color:var(--lbl3);}
+.tk-item+.tk-item,.tk-hrow+.tk-item{box-shadow:none;}
+.tk-list>.tk-hrow+.tk-sub{margin-top:0;padding-top:0;border-top:0;}
+/* ── 열을 몇 개까지 보일지는 **창 폭이 아니라 카드 폭**으로 정한다 ──
+   ⚠ 창이 1720px 이어도 왼쪽 사이드바(220)와 달력 칸(264)이 먼저 먹고 남는 폭을 2열로 쪼개므로
+   카드는 590px 뿐이다. 창 폭으로 재면 열을 다 펼쳤다가 제목이 죽는다(실측: 28건 중 24건 잘림).
+   그래서 컨테이너 질의로 카드 자신의 폭을 본다. 지원하지 않는 엔진에서는 기본(3열)로 떨어져 안전하다.
+   기본 = 제목·현장·날짜 → 넓어지면 구분 → 더 넓어지면 담당 순으로 붙인다. */
+.tkmain{container-type:inline-size;container-name:tkpanel;}
+.tk-row{grid-template-columns:8px minmax(0,1fr) 50px 84px;}
+.tk-row .tkc-k,.tk-row .tkc-w,.tk-row .tkc-s{display:none;}
+@container tkpanel (min-width:520px){
+  .tk-row{grid-template-columns:8px minmax(0,1fr) 124px 50px 84px;}
+  .tk-row .tkc-s{display:block;}
+}
+@container tkpanel (min-width:610px){
+  .tk-row{grid-template-columns:8px minmax(0,1fr) 46px 132px 50px 84px;}
+  .tk-row .tkc-k{display:block;}
+}
+@container tkpanel (min-width:700px){
+  .tk-row{grid-template-columns:8px minmax(0,1fr) 46px 140px 62px 50px 84px;}
+  .tk-row .tkc-w{display:block;}
+}
+
 /* 담당자 — 회색 바탕 + 색 점 */
 /* 업무 구분 — 상태와 헷갈리지 않게 테두리만 */
 /* 현장 — 흰 바탕 + 파란 테두리 */
@@ -2556,7 +2586,7 @@ html.dark .rpm-cnt .c-done{color:#34D399;}html.dark .rpm-cnt .c-run{color:#93B4F
 /* 업무 목록 — 팀 전체일 때 카드를 둘로 나눈다(공통·팀장 / 권역 담당자) */
 .tk-split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:stretch;min-height:0;overflow:hidden;}
 .tk-split .tkmain{margin:0;}
-@media (max-width:1200px){.tk-split{grid-template-columns:minmax(0,1fr);}}
+@media (max-width:1400px){.tk-split{grid-template-columns:minmax(0,1fr);}}   /* ⚠ 1200 에서는 카드가 375px 라 제목이 죽는다 */
 /* 카드 사이·구분선 앞뒤 모두 일자 패널과 같은 8px */
 .tk-list{gap:8px;}
 .tk-list .tk-sub{margin-top:8px;padding:8px 2px 0;border-top:1px solid var(--sep);}
@@ -3166,5 +3196,5 @@ html.dark .risk-b{background-color:#F87171;}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=311"></script>
+<script src="./app.js?v=313"></script>
 </body></html>
