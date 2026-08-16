@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='4.4.2';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='4.7.3';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -430,7 +430,6 @@ function cleanTask(t){
   }
   if(t.body)o.body=String(t.body).slice(0,2000);
   if(t.prog)o.prog=String(t.prog).slice(0,2000);
-  if(t.plan)o.plan=String(t.plan).slice(0,2000);
   if(t.site)o.site=String(t.site).slice(0,40);
   if(kindOf(t.kind))o.kind=kindOf(t.kind);
   if(t.color)o.color=String(t.color).slice(0,16);
@@ -1652,7 +1651,8 @@ function calInit(){
       }
       /* 드래그는 '기간 선택' — 그 사이 업무를 패널에 보여 주고, 업무 추가를 누르면 이 기간으로 연다 */
       selRange(a,b);},
-    datesSet:()=>{rMonTitle();subVisibleMonths();markSel();}
+    datesSet:()=>{rMonTitle();subVisibleMonths();markSel();
+      requestAnimationFrame(holdFit);}   /* 주 수(5·6주)가 바뀌면 칸 높이도 바뀐다 — 보류함을 다시 맞춘다(389차) */
   });
   CAL.render();
   markSel();
@@ -1794,7 +1794,7 @@ function planToTask(p){
     date:p.date||'',end:p.end||'',time:p.time||'',
     site:p.site!==undefined?p.site:(base.site||''),
     kind:p.kind!==undefined?kindOf(p.kind):kindOf(base.kind||''),
-    plan:p.plan!==undefined?String(p.plan||''):(base.plan||''),
+    plan:'',   /* (389차) 처리계획은 내용으로 합쳤다 — 새로 쓰지 않는다 */
     links:p.links!==undefined?(p.links||{}):(base.links||{}),
     color:p.color||base.color||'',
     assignees:(()=>{const o={};owns.forEach(k=>{o[k]=1;});return o;})(),
@@ -1807,7 +1807,7 @@ function planToTask(p){
 }
 function taskAsPlan(sid,iid,it){
   /* 달력·일자 패널이 쓰던 모양으로 감싼다 — 필드 이름만 맞춰 준다 */
-  return{...it,id:iid,sid,title:it.text||'',body:it.prog||it.body||'',
+  return{...it,id:iid,sid,title:it.text||'',body:taskBody(it),
     owners:it.assignees||{},done:stEff(it)===2};
 }
 /* ⚠ 범위는 **FullCalendar 가 넘겨주는 것**을 먼저 쓴다 — CAL.view 를 읽으면 달을 넘길 때
@@ -2087,7 +2087,7 @@ function rangePlans(){
    링크는 여기 넣지 않는다 — 머리줄 옆 아이콘이 이미 있어 겹말이다(브라우저·위젯 동일, 319차) */
 function planDetHTML(p){
   const sec=(h,v)=>v?'<div class="pd-sec"><div class="pd-h">'+h+'</div><div class="pd-b">'+esc(v)+'</div></div>':'';
-  const body=kindSplit(p.kind)?sec('진행경과',p.body)+sec('처리계획',p.plan):sec('내용',p.body);
+  const body=sec('내용',p.body);
   /* 보여 줄 게 없으면 펼침 자체를 만들지 않는다 — 눌러도 아무 일이 없던 헛손질 방지 */
   return body?'<div class="plan-det">'+body+'</div>':'';
 }
@@ -2130,16 +2130,17 @@ function rDay(){
     const md=x=>{const t=toDate(x);return (t.getMonth()+1)+'/'+t.getDate();};
     const lnk=Object.values(p.links||{}).filter(l=>l&&l.url)[0];
     const det=planDetHTML(p);
-    const openAct=det?' data-act="plan.open" data-pid="'+esc(p.id)+'" data-occ="'+esc(occ)+'"':'';
+    /* 내용이 없어도 펼친다 — 접힌 카드는 제목 한 줄이고, 구분·날짜·현장·담당자가 펼침 안에 있다(388차) */
+    const openAct=' data-act="plan.open" data-pid="'+esc(p.id)+'" data-occ="'+esc(occ)+'"';
     return `
-    <div class="plan${done?' done':''}${det?' has-det':''}${det&&S.planOpen===p.id?' open':''}" data-pid="${esc(p.id)}">
+    <div class="plan${done?' done':''}${S.planOpen===p.id?' open':''}" data-pid="${esc(p.id)}">
       <div class="plan-hd">
         ${colDotHTML(planColor(p),p.id,!planOwners(p).length)}
         <div class="plan-t"${openAct}>${riskMark(p.kind)}${esc(p.title)}</div>
-        <div class="plan-side">
+        <div class="plan-side${lnk?' has-lnk':''}">
           ${lnk?'<a class="p-ico" href="'+esc(lnk.url)+'" target="_blank" rel="noopener" aria-label="링크 열기" data-tip="'+esc(linkLabel(lnk))+'"><svg class="icn"><use href="#i-ext"></use></svg></a>':''}
-          ${stIcon(st,' data-act="plan.stCycle" data-pid="'+esc(p.id)+'" data-occ="'+esc(occ)+'"')}
           <button class="p-ico p-edit" data-act="plan.edit" data-pid="${esc(p.id)}" data-occ="${esc(occ)}" aria-label="수정" data-tip="수정"><svg class="icn"><use href="#i-pen"></use></svg></button>
+          ${stIcon(st,' data-act="plan.stCycle" data-pid="'+esc(p.id)+'" data-occ="'+esc(occ)+'"')}
         </div>
       </div>
       <div class="plan-main"${openAct}>
@@ -2283,10 +2284,7 @@ function closePlanEdit(){
 }
 /* 본문 칸 — 업무 구분이 '일반'이면 진행경과·처리계획 두 칸(업무 목록 폼과 동일), 그 외는 한 칸 */
 function peBodyHTML(d,kind){
-  return kindSplit(kind)
-    ? `<div class="frow"><label>진행경과</label><textarea class="inp inp-sm" id="peProg" maxlength="2000" placeholder="지금까지의 경과">${esc(d.body||'')}</textarea></div>
-       <div class="frow"><label>처리계획</label><textarea class="inp inp-sm" id="pePlan" maxlength="2000" placeholder="앞으로의 계획">${esc(d.plan||'')}</textarea></div>`
-    : `<div class="frow"><label>내용</label><textarea class="inp inp-sm" id="peProg" maxlength="2000" placeholder="${esc(kindLabel(kind))} 내용을 적으세요">${esc(d.body||'')}</textarea></div>`;
+  return `<div class="frow"><label>내용</label><textarea class="inp inp-sm" id="peProg" maxlength="2000" placeholder="${esc(kindLabel(kind))} 내용을 적으세요">${esc(d.body||'')}</textarea></div>`;
 }
 /* 업무 구분을 바꾸면 본문 칸 구성이 달라진다 — 그 부분만 다시 그려 다른 입력을 지키지 않게 한다 */
 function peKindRefresh(){
@@ -2373,8 +2371,7 @@ function planCollect(base){
     time:($('#peTime')&&$('#peTime').value)||'',
     site:($('#peSite')&&$('#peSite').value)||'',
     owners:(()=>{const v=($('#peOwners')&&$('#peOwners').value)||'';return v?{[v]:1}:{};})(),owner:'',
-    body:(($('#peProg')&&$('#peProg').value)||'').trim(),
-    plan:(($('#pePlan')&&$('#pePlan').value)||'').trim(),
+    body:(($('#peProg')&&$('#peProg').value)||'').trim(),plan:'',
     links,
     color:(d&&d.color)||'auto',
     recur:f?{f,until:(($('#peUntil')&&$('#peUntil').value)||'')}:{f:'',until:''},
@@ -2581,14 +2578,15 @@ function taskItemHTML(sid,iid,it,withSubject,hideOwn,colsIn,occ){
   const sub=[fmtSpan(it),(it.recur&&it.recur.f)?REC_LBL[it.recur.f]:''].filter(Boolean).join(' · ');
   const who=asg.map(x=>x.name).join(', ')||(withSubject?subjName(sid):'');
   /* 적힌 내용이 있으면 제목 뒤에 표시를 단다 — 어느 행에 진행사항·계획이 있는지 눌러 보지 않아도 안다(361차) */
-  const hasDet=!!(String(it.prog||it.body||'').trim()||String(it.plan||'').trim());
+  const hasDet=!!taskBody(it).trim();
   const go=' data-act="tk.open" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"';
   return `
   <div class="tk-item s${st}${editing?' editing':''}${open?' open':''}${cols.grp?' grp':''}${cols.gw?' gw':''}${onSelDay(sid,iid,it,dsp)?' hl':''}" data-sid="${esc(sid)}" data-iid="${esc(iid)}">
     <div class="tk-row">
       ${cols.noReg?'':'<span class="tkc tkc-r"'+go+'>'+esc(cols.regLabel||'')+'</span>'}
       ${editing
-        ? (cols.who?'<span class="tkc tkc-w">'+ownSelHTML('tnAsg',(Object.keys(it.assignees||{}).filter(k=>it.assignees[k])[0])||'',roster())+'</span>':'')
+        ? (cols.who?'<span class="tkc tkc-w"><i class="tkc-dot" id="tnAsgDot" style="background:'+esc(planColor(p0))+'"></i>'
+            +ownSelHTML('tnAsg',(Object.keys(it.assignees||{}).filter(k=>it.assignees[k])[0])||'',roster())+'</span>':'')
           +(cols.site?'<span class="tkc tkc-s">'+sitePickHTML('tnSite',it.site||'')+'</span>':'')
           +'<span class="tk-ttl"><input class="inp cell-inp" id="tnTitle" value="'+esc(it.text||'')+'" placeholder="무엇을 하나요?"></span>'
           +'<span class="tkc tkc-d date-wrap">'
@@ -2728,7 +2726,6 @@ function tkDateRefresh(){
 function tkEditRestHTML(sid,iid,it){
   const kind=kindOf(it.kind),rc=(it.recur&&it.recur.f)||'';
   const lnk=Object.values(it.links||{})[0]||null;
-  const split=kindSplit(it.kind);
   return `<div class="tk-editrest">
     <div class="tk-erow">
       <label>구분<select class="inp cell-inp" id="tnKind" data-act="tk.kind">
@@ -2739,7 +2736,7 @@ function tkEditRestHTML(sid,iid,it){
       <label class="ru"${rc?'':' hidden'}>반복 종료<input type="date" class="inp cell-inp" id="tnUntil" value="${esc((it.recur&&it.recur.until)||'')}"></label>
       <label class="gw">링크<input class="inp cell-inp" id="tnLink" maxlength="${LINK_MAX}" placeholder="https://…" value="${esc((lnk&&lnk.url)||'')}"></label>
     </div>
-    <div id="tnBodySec" class="tk-ebody">${tkBodyHTML(split,it.prog||it.body||'',it.plan||'',kind)}</div>
+    <div id="tnBodySec" class="tk-ebody">${tkBodyHTML(taskBody(it),kind)}</div>
 
     <input type="hidden" id="tnColor" value="${esc(it.color||'')}">
   </div>`;
@@ -2752,10 +2749,8 @@ function taskDetailHTML(sid,iid,it){
       <div class="tk-sec-b" contenteditable="true" data-act="tk.field" data-f="${field}" data-sid="${esc(sid)}" data-iid="${esc(iid)}"
         data-ph="${lbl}를 입력하세요">${esc(val||'')}</div>
     </div>`;
-  const split=kindSplit(it.kind);
   return `<div class="tk-detail">
-    ${split?'<div class="tk-secs">'+box('진행경과',it.prog||it.body,'prog')+box('처리계획',it.plan,'plan')+'</div>'
-      :box('내용',it.prog||it.body,'prog')}
+    ${box('내용',taskBody(it),'prog')}
   </div>`;
 }
 /* 보류함 — 아침 확인에서 넘긴 업무(st=3). 고른 팀의 공통·담당자 것을 모아 기한 오래된 순으로 */
@@ -2779,7 +2774,7 @@ function taskFormHTML(sid,iid,cur){
      다만 업무 목록에는 '자세히'(접기·펼치기)와 '업무 목록에서 쓰기' 아이콘이 필요 없다 */
   const d=cur||{text:'',prog:'',plan:'',site:'',assignees:meOwner(),links:{},color:'',date:'',end:'',time:'',kind:KIND_DEF,recur:{f:'',until:''}};
   const people=tkSel().mems;
-  const kind=kindOf(d.kind),split=kindSplit(kind);
+  const kind=kindOf(d.kind);
   /* (상태는 폼에서 바꾸지 않는다 — 목록의 상태 아이콘이 담당) */
   const rc=(d.recur&&d.recur.f)||'';
   const lnk=Object.values(d.links||{}).filter(l=>l&&l.url)[0];
@@ -2813,17 +2808,12 @@ function taskFormHTML(sid,iid,cur){
         <div class="frow"><label>현장</label>${sitePickHTML('tnSite',d.site||'')}</div>
         <div class="frow"><label>링크</label><input class="inp inp-sm" id="tnLink" maxlength="${LINK_MAX}" placeholder="https://…" value="${esc((lnk&&lnk.url)||'')}"></div>
       </div>
-      <div id="tnBodySec">${tkBodyHTML(split,d.prog||d.body||'',d.plan||'',kind)}</div>
+      <div id="tnBodySec">${tkBodyHTML(taskBody(d),kind)}</div>
     </div>
   </div>`;
 }
-function tkBodyHTML(split,prog,plan,kind){
-  return split
-    ? `<div class="frow2">
-        <div class="frow"><label>진행경과</label><textarea class="inp inp-sm" id="tnProg" maxlength="2000" placeholder="지금까지의 경과">${esc(prog)}</textarea></div>
-        <div class="frow"><label>처리계획</label><textarea class="inp inp-sm" id="tnPlan" maxlength="2000" placeholder="앞으로의 계획">${esc(plan)}</textarea></div>
-       </div>`
-    : `<div class="frow"><label>내용</label><textarea class="inp inp-sm" id="tnProg" maxlength="2000" placeholder="${esc(kindLabel(kind))} 내용을 적으세요">${esc(prog)}</textarea></div>`;
+function tkBodyHTML(prog,kind){
+  return `<div class="frow"><label>내용</label><textarea class="inp inp-sm" id="tnProg" maxlength="2000" placeholder="${esc(kindLabel(kind))} 내용을 적으세요">${esc(prog)}</textarea></div>`;
 }
 /* 업무 구분을 바꾸면 본문 칸 구성이 달라진다 — 그 부분만 다시 그려 다른 입력을 지키지 않게 한다 */
 /* 업무 구분을 '공통'으로 고르면 담당자도 공통(빈 값)으로 — 공통 업무는 특정 담당자에게 걸지 않는다 */
@@ -2835,8 +2825,7 @@ function tkKindRefresh(){
   const sec=$('#tnBodySec');if(!sec)return;
   const kind=kindOf(($('#tnKind')&&$('#tnKind').value)||'');
   const prog=($('#tnProg')&&$('#tnProg').value)||'';
-  const plan=($('#tnPlan')&&$('#tnPlan').value)||'';
-  sec.innerHTML=tkBodyHTML(kindSplit(kind),prog,plan,kind);
+  sec.innerHTML=tkBodyHTML(prog,kind);
 }
 function taskFormSave(sid,iid){
   S.tkDate={open:false,ym:'',a:'',b:''};const rp0=$('#tkRcPop');if(rp0)rp0.remove();
@@ -2844,7 +2833,12 @@ function taskFormSave(sid,iid){
   if(!t){toast('제목을 입력하세요');$('#tnTitle').focus();return;}
   const cur=iid?((S.tasks[sid]||{})[iid]||null):null;
   const id=iid||uid();
-  const v=($('#tnAsg')&&$('#tnAsg').value)||'';const asg=v?{[v]:1}:{};
+  /* ⚠ 폼에 그 칸이 없으면(현장별 업무에는 현장·권역 칸이 없다) 기존 값을 그대로 지킨다 —
+     없는 칸을 읽어 빈 값으로 덮으면 담당자·현장이 소리 없이 지워진다(389차) */
+  const asgEl=$('#tnAsg');
+  const asg=asgEl?(asgEl.value?{[asgEl.value]:1}:{}):{...((cur&&cur.assignees)||{})};
+  const siteEl=$('#tnSite');
+  const siteV=siteEl?(siteEl.value||''):String((cur&&cur.site)||'');
   /* 링크는 업무 일정 폼과 같이 한 칸 — 예전에 여러 개 넣어 둔 것은 첫 칸만 고치고 나머지는 그대로 둔다 */
   const links={...((cur&&cur.links)||{})};
   const lu=(($('#tnLink')&&$('#tnLink').value)||'').trim();
@@ -2854,9 +2848,8 @@ function taskFormSave(sid,iid){
   const rec=($('#tnRec')&&$('#tnRec').value)||'';
   store.putTask(sid,id,{...(cur||{createdAt:Date.now()}),
     text:t,kind:kindOf(($('#tnKind')&&$('#tnKind').value)||''),
-    prog:(($('#tnProg')&&$('#tnProg').value)||'').trim(),
-    plan:(($('#tnPlan')&&$('#tnPlan').value)||'').trim(),
-    site:$('#tnSite').value||'',
+    prog:(($('#tnProg')&&$('#tnProg').value)||'').trim(),plan:'',
+    site:siteV,
     date:($('#tnDate')&&$('#tnDate').value)||'',
     end:($('#tnEnd')&&$('#tnEnd').value)||'',
     time:($('#tnTime')&&$('#tnTime').value)||'',
@@ -2883,9 +2876,7 @@ function tkFormDirty(){
   const cur=(key&&(S.tasks[sid]||{})[iid])||{};
   const v=id=>{const el=$('#'+id);return el?String(el.value||'').trim():'';};
   const was=x=>String(x||'').trim();
-  return v('tnTitle')!==was(cur.text)
-    ||v('tnProg')!==was(cur.prog||cur.body)
-    ||v('tnPlan')!==was(cur.plan);
+  return v('tnTitle')!==was(cur.text)||v('tnProg')!==was(taskBody(cur));
 }
 /* 폼을 닫는 유일한 통로 — 취소 버튼과 Escape 가 함께 쓴다 */
 function tkFormClose(){
@@ -2906,7 +2897,14 @@ const TK_KIND=[['','일반'],['risk','고위험'],['gather','공통'],['trip','�
 const KIND_DEF='';
 function kindOf(v){return TK_KIND.some(k=>k[0]===v)?v:'';}
 function kindLabel(v){const k=TK_KIND.find(x=>x[0]===kindOf(v));return k?k[1]:'일반';}
-function kindSplit(v){return kindOf(v)==='';}   /* 일반이면 두 칸으로 나눈다 */
+/* 업무 내용 — 구분과 상관없이 한 칸이다(389차: 진행경과·처리계획을 내용으로 일원화).
+   ⚠ 옛 업무에 남아 있는 처리계획(plan)은 버리지 않고 내용 뒤에 이어 붙여 보여 준다.
+   저장하면 cleanTask 가 plan 을 쓰지 않으므로 합쳐진 내용만 남는다 */
+function taskBody(t){
+  if(!t)return '';
+  const a=String(t.prog||t.body||'').trim(),b=String(t.plan||'').trim();
+  return b?(a?a+'\n'+b:b):a;
+}
 function isRisk(v){return kindOf(v)==='risk';}   /* 고위험 — 달력 막대·목록에서 느낌표로 표시 */
 /* 제목 앞 고위험 표식 — 달력 막대는 CSS(.fc-event.risk)가 같은 아이콘을 그린다.
    ⚠ 모양은 CSS 마스크가 그린다 — 안에 글자를 넣지 않는다(넣으면 원 안에서 위로 뜬다) */
@@ -3009,16 +3007,15 @@ function rTasks(){
 
   let mainHTML='';
   if(sel==='hold'){
-    const hs=holdItems().filter(x=>tkMatch(x.sid,x.iid,x.it));   /* 검색·필터가 보류함에도 걸린다(323차) */
+    /* 검색·필터가 보류함에도 걸린다(323차). 탭도 함께 건다(389차) — 위 탭 줄과 목록이 어긋나면 안 된다 */
+    const Rh={};roster().forEach(p=>{Rh[p.id]=p;});
+    const hs=holdItems().filter(x=>tkMatch(x.sid,x.iid,x.it)&&tkTabHit(x.it,S.tkTab,Rh));
     const colsS=tkColsOf(hs,'');
     const listHTML=hs.length?hs.map(({sid,iid,it})=>taskItemHTML(sid,iid,it,false,'',{...colsS,regLabel:tkRegionOf(it).name})).join('')
       :'<div class="tk-empty">보류한 업무가 없습니다.</div>';
-    mainHTML=`<div class="card tkmain">
-      <div class="tkm-h">
-        <button class="btn bg2 bxs tkm-back" data-act="tk.pick" data-id="teamall"><svg class="icn"><use href="#i-chevl"></use></svg> 업무 현황</button>
-        <b>보류한 업무</b>
-      </div>
-      <div class="tk-list">
+    mainHTML=tkTabsHTML(team,mems,regions,'hold')+`<div class="tkmain">
+      <div class="tkmo-g">
+        <div class="tkmo-h">보류한 업무</div>
         ${listHTML.includes('tk-item')?'<div class="tkl '+tkListCls(colsS)+'">'+tkHeadRowHTML(colsS)+listHTML+'</div>':listHTML}
       </div>
     </div>`;
@@ -3183,7 +3180,8 @@ function tkTabsHTML(team,mems,regions,mode){
   const tally={};ids.forEach(id=>{tally[id]=0;});
   const R={};roster().forEach(p=>{R[p.id]=p;});
   const bump=it=>ids.forEach(id=>{if(tkTabHit(it,id,R))tally[id]++;});
-  if(mode==='month')tkMonthItems('').forEach(x=>bump(x.it));
+  if(mode==='hold')holdItems().forEach(x=>bump(x.it));
+  else if(mode==='month')tkMonthItems('').forEach(x=>bump(x.it));
   else{tkCycleItems(cur.start,cur.end,true,'').forEach(x=>bump(x.it));
        tkCycleItems(nxt.start,nxt.end,false,'').forEach(x=>bump(x.it));}
   const cnt=t=>tally[t]||0;
@@ -5448,6 +5446,9 @@ function dfTopbar(){
 }
 
 /* ═══════════ 보류함 — 일자 패널 아래. 달력 날짜로 끌어다 놓으면 그 날짜로 되살아난다 ═══════════ */
+/* 보류함이 달력 옆에서 지나치게 길어지지 않게 — 날짜칸 두 개 높이를 넘기지 않는다(389차).
+   달력 칸 높이는 창 크기·주 수에 따라 달라지므로 값을 박지 않고 그때그때 잰다.
+   ⚠ 위젯도 같은 달력을 쓰므로 함께 적용된다 */
 function rHold(){
   const card=$('#holdCard'),box=$('#holdList'),ttl=$('#holdTtl'),mn=$('#holdMine');
   if(!card||!box)return;
@@ -5467,17 +5468,17 @@ function rHold(){
     +'<span class="t">'+esc(it.text||'제목 없음')+'</span>'
     +'<span class="d">'+esc(md(it.date))+'</span></div>').join('');
 }
-/* 보류함 높이 — 옆 달력의 4주차 줄에 맞춰 **최대 높이**만 준다.
+/* 보류함 높이 — 옆 달력의 **날짜칸 두 개**를 넘지 않게 최대 높이만 준다(389차 지시).
    ⚠ 예전에는 height 로 못박아 보류가 2~3건뿐이어도 열 바닥까지 빈 칸이 남았다(실사용 지적).
-   max-height 로 두면 적을 땐 내용만큼만 차지하고, 많을 땐 예전처럼 4주차 줄에 맞춰 안에서 스크롤한다 */
+   max-height 로 두면 적을 땐 내용만큼만 차지하고, 많을 땐 그 안에서 스크롤한다.
+   ⚠ 칸 높이는 창 크기·주 수(5·6주)에 따라 달라지므로 값을 박지 않고 그때그때 잰다 */
 function holdFit(){
   const card=$('#holdCard');if(!card)return;
   const rows=$$('#fcal .fc-daygrid-body tr');
   const clear=()=>{card.style.height='';card.style.maxHeight='';};
   if(WIDGET||card.hidden||window.innerWidth<=960||rows.length<4){clear();return;}
-  const col=$('.cal-wrap .dp-col');if(!col){clear();return;}
-  const top=rows[3].getBoundingClientRect().top, bot=col.getBoundingClientRect().bottom;
-  const h=Math.round(bot-top);
+  const td=rows[0].querySelector('td');if(!td){clear();return;}
+  const h=Math.round(td.getBoundingClientRect().height*2);
   card.style.height='';
   card.style.maxHeight=(h>120?h:120)+'px';
 }
@@ -5798,9 +5799,12 @@ function curTeam(){const ts=(S.org.teams||[]).filter(t=>t.name);return ts.find(t
 function rOrgBar(tab){
   const bar=$('#orgBar');if(!bar)return;
   const regs=(S.org.regions||[]).filter(r=>r.name);
+  const teamless=p=>!p.team||!(S.org.teams||[]).some(x=>x.id===p.team);
   const cnt=rid=>{
     if(tab==='site')return (S.org.sites||[]).filter(x=>x.name&&orgRegHit(x.region,rid)).length;
     const t=curTeam();
+    /* 미배정은 팀에 속하지 않은 계정이라 팀 필터를 태우지 않는다(389차) */
+    if(rid==='_free')return roster().filter(teamless).length;
     return roster().filter(p=>(t?p.team===t.id:true)&&orgTabHit(p,rid)).length;
   };
   /* 계정 보기에는 '인수 전 현장' 권역이 없다 — 사람이 배정되지 않는 자리다.
@@ -5817,6 +5821,7 @@ function rOrgBar(tab){
   }
   useRegs.forEach(r=>tabs.push([r.id,r.name]));
   if(cnt('_none'))tabs.push(['_none','권역 미지정']);
+  if(tab!=='site'&&cnt('_free'))tabs.push(['_free','미배정']);   /* 팀에 아직 넣지 않은 계정(389차) */
   if(!tabs.some(x=>x[0]===S.orgReg))S.orgReg='';
   bar.innerHTML='<div class="rp-tabs tkm-tabs tkbar-tabs">'+tabs.map(([id,nm])=>
       '<button class="rp-tab'+(id===S.orgReg?' on':'')+'" data-act="org.reg" data-id="'+esc(id)+'">'
@@ -5877,7 +5882,8 @@ function rOrg(){
   }
   /* 팀은 사이드바에서 고르므로 표에서 팀 열은 없앤다 —
      선택한 팀 소속과 아직 팀이 없는 계정만 보여주고, 소속은 버튼으로 넣고 뺀다 */
-  const mine=(t?all.filter(p=>p.team===t.id||p.local):[]).filter(p=>orgTabHit(p,S.orgReg));   /* 탭 적용(340차·341차) */
+  /* 탭 적용(340차·341차). '미배정' 탭을 고르면 팀 소속은 감추고 아래 미배정 묶음만 남긴다(389차) */
+  const mine=(S.orgReg==='_free')?[]:(t?all.filter(p=>p.team===t.id||p.local):[]).filter(p=>orgTabHit(p,S.orgReg));
   const free=all.filter(p=>!p.local&&(!p.team||!(S.org.teams||[]).some(x=>x.id===p.team)));
   const myUid=S.user?S.user.uid:'';
   const editors=all.filter(p=>p.role==='editor');
@@ -5893,7 +5899,7 @@ function rOrg(){
   const sitesOf=p=>{
     const list=(S.org.sites||[]).filter(x=>(p.sites||{})[x.id]);
     /* ⚠ 무조건 3개로 자르면 칸이 넓어도 '+1'이 뜬다 — 넣을 수 있는 만큼 다 넣고 넘칠 때만 접는다(CSS 가 판단) */
-    const shown=list.map(x=>'<span class="site-on">'+esc(x.name)+'</span>').join('');
+    const shown=list.map(x=>'<button class="site-on" data-act="acct.siteOff" data-id="'+esc(p.id)+'" data-sid="'+esc(x.id)+'" data-tip="눌러서 빼기">'+esc(x.name)+'</button>').join('');
     return '<div class="site-chk">'
       +'<button class="site-pick" data-act="acct.sitePick" data-id="'+esc(p.id)+'" aria-label="담당 현장 선택" data-tip="담당 현장 선택"><svg class="icn"><use href="#i-plus"></use></svg></button>'
       +(list.length?shown:'<span class="site-none">미지정</span>')
@@ -5934,14 +5940,20 @@ function rOrg(){
       <td class="utbl-r">${roleCtl(p)}</td>
     </tr>`;
   };
-  ar.innerHTML='<table class="utbl"><thead><tr><th style="width:180px">이름</th><th style="width:142px">팀</th><th style="width:96px">직급</th><th style="width:106px">권역</th><th>담당 현장</th><th class="utbl-r" style="width:120px">권한</th></tr></thead><tbody>'
+  /* '미배정' 탭을 고르면 팀 소속 표는 아예 감춘다(389차) — 빈 표만 남아 어수선했다 */
+  const freeOnly=(S.orgReg==='_free');
+  /* ⚠ 안(#acctRoot)만 비우면 빈 카드의 테두리가 가로선으로 남는다 — 카드째 감춘다(389차) */
+  const acard=ar.closest('.card');if(acard)acard.style.display=freeOnly?'none':'';
+  ar.style.display=freeOnly?'none':'';
+  ar.innerHTML=freeOnly?'':'<table class="utbl"><thead><tr><th style="width:180px">이름</th><th style="width:142px">팀</th><th style="width:96px">직급</th><th style="width:106px">권역</th><th>담당 현장</th><th class="utbl-r" style="width:120px">권한</th></tr></thead><tbody>'
     +(mine.length?mine.map(row).join('')
       :'<tr><td colspan="6" style="font-size:12px;color:var(--lbl3);padding:10px">이 팀에 배정된 계정이 없습니다.</td></tr>')
     +'</tbody></table>';
   /* 팀 미배정 계정 — 섞어 두면 헷갈린다는 지적에 따라 별도 카드로 분리 */
   const fc=$('#freeCard'),fr=$('#freeRoot');
   if(fc&&fr){
-    fc.style.display=(free.length&&(S.orgTab||'acct')==='acct')?'':'none';   /* 현장 탭에선 미배정 카드도 접는다 */
+    /* 미배정 계정은 '미배정' 탭에서만 보여 준다(389차) — 다른 탭에도 나오면 탭을 만든 뜻이 없다 */
+    fc.style.display=(free.length&&(S.orgTab||'acct')==='acct'&&S.orgReg==='_free')?'':'none';
     fr.innerHTML=free.length
       ?'<table class="utbl"><thead><tr><th style="width:176px">이름</th><th style="width:142px">팀</th><th></th><th class="utbl-r" style="width:120px">권한</th></tr></thead><tbody>'
         +free.map(p=>`<tr>
@@ -6847,7 +6859,8 @@ const ACT={
   'tk.edit':el=>{S.tkNew=null;S.tkOpen=null;S.tkDate={open:false,ym:'',a:'',b:''};S.tkEdit=el.dataset.sid+'/'+el.dataset.iid;
     S.tkEditOcc=el.dataset.occ||'';   /* 반복이면 어느 회차에서 눌렀는지 — 팝업을 그 행에 붙이고 표시도 그 행만 */
     rTasks();},
-  'tk.pick':el=>{S.tk.m=el.dataset.id;rTasks();},
+  /* 같은 것을 다시 누르면 되돌아온다(389차) — 보류함에 따로 '뒤로' 버튼을 두지 않는다 */
+  'tk.pick':el=>{const id=el.dataset.id;S.tk.m=(S.tk.m===id&&id==='hold')?'teamall':id;rTasks();},
   'tk.st':el=>{
     const sid=el.dataset.sid,iid=el.dataset.iid,occ=el.dataset.occ||'';
     const cur=(S.tasks[sid]||{})[iid];if(!cur)return;
@@ -6943,6 +6956,19 @@ const ACT={
         region:cur.region||p.region||'',rank:rankOf(cur.rank||p.rank),sites:sel});
       closeModal();if(!S.live)rOrg();
     }};
+  },
+  /* 담당 현장 칩을 눌러 그 현장만 뺀다(389차) — 넣는 길(+ 선택창)만 있고 빼는 길이 없었다.
+     ⚠ putPerson 은 레코드 전체를 쓴다 — 나머지 값을 그대로 실어 보내야 지워지지 않는다 */
+  'acct.siteOff':el=>{
+    const id=el.dataset.id,sid=el.dataset.sid;
+    const p=roster().find(x=>x.id===id);if(!p)return;
+    const cur=(S.people||{})[id]||{};
+    const sites={...(cur.sites||p.sites||{})};delete sites[sid];
+    store.putPerson(id,{name:p.name||'',email:p.email||'',team:cur.team||p.team||'',
+      region:cur.region||p.region||'',rank:rankOf(cur.rank||p.rank),sites});
+    rosterBust();          /* ⚠ roster() 는 같은 틱 동안 캐시를 쓴다 — 비우지 않으면 옛 배정이 다시 그려진다 */
+    if(!S.live)rOrg();
+    toast(siteName(sid)+' 을(를) 뺐습니다');
   },
   'set.guide':()=>openReadme(),
   'offday.save':()=>{
@@ -7291,6 +7317,9 @@ document.addEventListener('change',e=>{
 document.addEventListener('input',e=>{if(e.target.id==='nqQ')rNq();});
 
 document.addEventListener('change',e=>{const el=e.target;if(!el||!el.dataset)return;
+  /* 담당자를 바꾸면 앞의 색 점도 따라간다(389차) — select 는 클릭 처리에서 막히므로 change 에서 다룬다 */
+  if(el.id==='tnAsg'){const dot=document.getElementById('tnAsgDot');
+    if(dot)dot.style.background=el.value?ownColor(el.value):'var(--lbl3)';}
   if(el.dataset.act==='df.moYear'){S.dfMoYear=el.value;if(DF.lastDash)dfDashMonthTable(DF.lastDash);}
   else if(el.dataset.act==='df.detailYear'){S.dfDetailYear=el.value;rDefect();}
   else if(el.dataset.act==='df.trendYear'){
