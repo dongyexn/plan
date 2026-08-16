@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='4.7.3';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='4.8.1';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -2130,10 +2130,10 @@ function rDay(){
     const md=x=>{const t=toDate(x);return (t.getMonth()+1)+'/'+t.getDate();};
     const lnk=Object.values(p.links||{}).filter(l=>l&&l.url)[0];
     const det=planDetHTML(p);
-    /* 내용이 없어도 펼친다 — 접힌 카드는 제목 한 줄이고, 구분·날짜·현장·담당자가 펼침 안에 있다(388차) */
-    const openAct=' data-act="plan.open" data-pid="'+esc(p.id)+'" data-occ="'+esc(occ)+'"';
+    /* 펼침은 적어 둔 내용을 여는 용도다 — 내용이 없으면 펼치지 않는다(390차) */
+    const openAct=det?' data-act="plan.open" data-pid="'+esc(p.id)+'" data-occ="'+esc(occ)+'"':'';
     return `
-    <div class="plan${done?' done':''}${S.planOpen===p.id?' open':''}" data-pid="${esc(p.id)}">
+    <div class="plan${done?' done':''}${det?' has-det':''}${det&&S.planOpen===p.id?' open':''}" data-pid="${esc(p.id)}">
       <div class="plan-hd">
         ${colDotHTML(planColor(p),p.id,!planOwners(p).length)}
         <div class="plan-t"${openAct}>${riskMark(p.kind)}${esc(p.title)}</div>
