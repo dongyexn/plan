@@ -114,5 +114,17 @@ OK('구문 검사 (node --check)');
   catch (e) { F('build-single.mjs 실패: ' + String(e.stderr || e).slice(0, 300)); }
 }
 
+/* ── 10. 인수인계 문서 ↔ 실제 파일 대조(383차) — 문서가 없는 파일을 안내하면 없느니만 못하다.
+        HANDOFF.md '파일 구성' 표의 백틱 경로가 실제로 존재하는지 본다(끝이 / 면 폴더). ── */
+{
+  const ho = rd('HANDOFF.md');
+  const tbl = ho.slice(ho.indexOf('## 2. 파일 구성'), ho.indexOf('## 3.'));
+  const paths = [...tbl.matchAll(/^\|\s*`([^`]+)`/gm)].map(m => m[1]);
+  const gone = paths.filter(p => !fs.existsSync(path.join(root, p.replace(/\/$/, ''))));
+  if (!paths.length) W('HANDOFF.md 파일 구성 표를 찾지 못함 — 형식이 바뀌었으면 이 검사도 고칠 것');
+  else if (gone.length) F('HANDOFF.md 가 안내하는데 실제로 없는 파일: ' + gone.join(', ') + '  (문서를 현행화할 것)');
+  else OK('HANDOFF 파일 구성 표 실존 (' + paths.length + '개)');
+}
+
 console.log('\n결과: FAIL ' + fail + ' · WARN ' + warn);
 process.exit(fail ? 1 : 0);

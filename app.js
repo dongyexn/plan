@@ -6,7 +6,7 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='3.9.1';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+const APP_VER='4.4.2';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -300,9 +300,6 @@ const ST_PICK=[['1','진행'],['2','완료'],['3','보류']];
 /* 링크 최대 길이 — 원드라이브·쉐어포인트 공유 링크는 한글 경로가 퍼센트 인코딩되어 길다.
    ⚠ 이 값을 바꾸면 database.rules.json 의 links/url 한도(<=2000)도 같이 바꿔야 한다 */
 const LINK_MAX=2000;
-/* 완료 업무를 목록에 남겨 두는 기간(일) — 지나면 '지난 완료 N건' 접기 안으로 들어간다.
-   ⚠ 미니달력(miniDots)은 이 값과 무관하다 — 거기서는 완료도 계속 점으로 남는다 */
-const DONE_KEEP_D=3;
 const WIDGET_URL='https://github.com/dongyexn/plan/releases/latest/download/HPlanWidgetLite.exe';   /* 늘 최신 릴리스를 가리킨다 — 버전을 적을 필요가 없다. 186차부터 Lite(WebView2) 판 */
 /* ── 한국 공휴일(대체공휴일 포함, 2025~2030) — 임시공휴일 지정 등 변동 시 이 표만 수정 ── */
 const HOLI={
@@ -339,8 +336,11 @@ const S={
   people:{},         // calapp/people/{id}: {name,email,team,region} — id는 로그인 uid
   accounts:{},       // users/{uid}: {email,name,role} — 하자처리 현황과 공용
   tasks:{},          // {memberId:{itemId:{text,st,updatedAt}}}
+  arch:{},           // 아카이브에서 읽어 온 옛 업무(풀린 상태) — ARCH.loaded 일 때만 채워진다(384차)
   cfg:{},            // 앱 설정(하자 감춘 현장 등)
   tk:{t:null,m:null},       // 업무 현황 대상 — m 은 'teamall'(기본) · 'hold'(보류함)만 쓴다
+  tkDate:{open:false,ym:'',a:'',b:''},   // 날짜 칸의 기간 달력
+  tkEditOcc:'',      // 반복 업무를 어느 회차 행에서 수정하는지(팝업 위치·표시용)
   tkFOpen:false,     // 왼쪽 칸 필터 펼침 여부(찾기 줄 옆 꺽쇠) — 기본은 접힘
   tkTab:'',          // 업무 현황 탭 — ''(전체) · 'team'(공통 업무) · 담당자 id(팀장 등) · 'reg:<권역id>'
   loading:false,     // 첫 데이터를 기다리는 중(캐시가 없는 첫 실행에서만 참) — 뼈대 화면을 그린다
@@ -381,13 +381,29 @@ function shEditing(){const a=document.activeElement;return !!(a&&(a.tagName==='T
 function tkFormOpen(){return !!(S.tkEdit||S.tkNew||S.planEdit);}
 function tkHold(){return shEditing()||tkFormOpen();}
 const PEND={day:false,tasks:false,org:false};
+/* 수정 충돌 가드(383차) — 칸에 들어갈 때의 값을 기억해 둔다.
+   구독이 실시간이라 대개 최신이지만, 오래 입력하는 사이 남이 같은 칸을 고치면
+   focusout 저장이 그 내용을 소리 없이 덮어쓴다 — 그때만 물어보고 덮는다 */
+document.addEventListener('focusin',e=>{
+  const f=e.target&&e.target.closest&&e.target.closest('[data-act="tk.field"]');
+  if(f){const cur=(S.tasks[f.dataset.sid]||{})[f.dataset.iid];f.dataset.base=cur?(cur[f.dataset.f]||''):'';}
+});
 document.addEventListener('focusout',e=>{
   const f=e.target&&e.target.closest&&e.target.closest('[data-act="tk.field"]');
   if(f){
     const sid=f.dataset.sid,iid=f.dataset.iid,cur=(S.tasks[sid]||{})[iid];
     if(cur){
       const v=f.innerText.replace(/\u00a0/g,' ').trim();
-      if((cur[f.dataset.f]||'')!==v)store.putTask(sid,iid,{...cur,[f.dataset.f]:v,updatedAt:Date.now()});
+      const now=cur[f.dataset.f]||'';
+      if(f.dataset.base!==undefined&&now!==f.dataset.base&&v!==now){
+        /* 입력하는 사이 남이 이 칸을 고쳤다 — 서버 값을 먼저 화면에 보이고, 덮을지 묻는다 */
+        rTasks();
+        confirmModal('수정이 겹쳤습니다',
+          '입력하는 사이 다른 사람이 이 칸을 고쳤습니다. 내 내용으로 덮어쓸까요?',
+          ()=>{const c2=(S.tasks[sid]||{})[iid];if(c2)store.putTask(sid,iid,{...c2,[f.dataset.f]:v,updatedAt:Date.now()});},
+          '덮어쓰기');
+      }
+      else if(now!==v)store.putTask(sid,iid,{...cur,[f.dataset.f]:v,updatedAt:Date.now()});
     }
   }
   setTimeout(()=>{if(tkHold())return;
@@ -432,6 +448,110 @@ function cleanTask(t){
   }
   return o;
 }
+/* ═══════════ 휴지통(383차) — 삭제는 지우지 않고 30일 보관한다 ═══════════
+   원본은 lz 압축(z)으로 통째 보관 — 필드가 늘어도 DB 규칙은 안 바뀌고,
+   복원할 때 cleanTask 를 다시 지나므로 tasks 스키마는 그대로 지켜진다.
+   text·date 는 목록 표시용 평문. 30일 지난 항목은 접속 때 누구나 정리한다. */
+const TRASH_KEEP=30*24*3600*1000;
+function trashWrap(it){return{text:String(it.text||'').slice(0,500),date:String(it.date||''),
+  deletedAt:Date.now(),z:LZString.compressToBase64(JSON.stringify(cleanTask(it)))};}
+function trashAll(cb){                 /* {sid:{iid:wrap}} — 구독하지 않고 열 때마다 읽는다 */
+  if(!S.live){cb((LocalStore._d&&LocalStore._d.trash)||{});return;}
+  FB.db.ref('calapp/trash').get().then(s=>cb(s.val()||{})).catch(e=>{fbErr(e);cb({});});}
+function trashDrop(sid,iid){           /* 휴지통에서 한 건 제거(복원·영구 삭제 공용) */
+  if(S.live)FB.db.ref('calapp/trash/'+sid+'/'+iid).remove().catch(fbErr);
+  else{if(LocalStore._d.trash&&LocalStore._d.trash[sid])delete LocalStore._d.trash[sid][iid];lsSave(LocalStore._d);}}
+function trashPurge(){                 /* 30일 지난 항목 정리 — 부팅 뒤 한 번 */
+  trashAll(t=>{const lim=Date.now()-TRASH_KEEP,up={};let n=0;
+    Object.keys(t).forEach(sid=>Object.keys(t[sid]||{}).forEach(iid=>{
+      const w=t[sid][iid];if(w&&Number(w.deletedAt||0)<lim){n++;
+        if(S.live)up['calapp/trash/'+sid+'/'+iid]=null;else delete LocalStore._d.trash[sid][iid];}}));
+    if(!n)return;
+    if(S.live)FB.db.ref().update(up).catch(()=>{});else lsSave(LocalStore._d);});}
+function trashOpen(){
+  trashAll(t=>{
+    const rows=[];
+    Object.keys(t).forEach(sid=>Object.keys(t[sid]||{}).forEach(iid=>rows.push({sid,iid,...t[sid][iid]})));
+    rows.sort((a,b)=>(b.deletedAt||0)-(a.deletedAt||0));
+    const body=rows.length?rows.map(r=>'<div class="share-row"><div class="share-info"><b>'+esc(r.text||'제목 없음')+'</b>'
+      +'<span>'+(r.date?esc(r.date)+' · ':'')+'삭제 '+new Date(Number(r.deletedAt)||0).toLocaleDateString('ko-KR')+'</span></div>'
+      +'<span style="display:flex;gap:6px;flex:none">'
+      +'<button class="btn bo bsm" data-act="trash.restore" data-sid="'+esc(r.sid)+'" data-iid="'+esc(r.iid)+'">복원</button>'
+      +'<button class="btn bg2 bsm" data-act="trash.del" data-sid="'+esc(r.sid)+'" data-iid="'+esc(r.iid)+'">영구 삭제</button></span></div>').join('')
+      :'<div style="font-size:13px;color:var(--lbl2)">비어 있습니다.</div>';
+    openModal('휴지통 — 30일 보관 후 자동 삭제됩니다',body,
+      '<button class="btn bg2 bsm" data-act="modal.close">닫기</button>');
+  });}
+
+/* ═══════════ 아카이브(384차) — 오래 끝난 업무를 실시간 구독 밖으로 ═══════════
+   업무가 해마다 쌓이면 calapp/tasks 전량 구독이 무거워진다. 완료·종료 후 6개월이
+   지난 업무를 calapp/archive 로 옮겨 두고(휴지통과 같은 wrap 모양 — z 압축 + 표시용 평문),
+   달력·월별 현장을 과거로 넘기거나 찾기를 쓸 때만 통째로 한 번 읽어 합친다.
+   옮겨진 업무를 건드리면(수정·상태·삭제) putTask·trashTask 가 아카이브 사본을 지워
+   그 자리에서 다시 살아난다 — 두 곳에 겹쳐 남지 않는다. */
+const ARCH_AFTER=180*24*3600*1000;
+const ARCH={loaded:false,loading:false};
+function archWrap(it){return{text:String(it.text||'').slice(0,500),date:String(it.date||''),
+  archivedAt:Date.now(),z:LZString.compressToBase64(JSON.stringify(cleanTask(it)))};}
+function archCutStr(){return dstr(new Date(Date.now()-ARCH_AFTER));}
+/* 이동 대상 판정 — 보류(st3)와 아직 도는 반복은 남긴다. 날짜 없는 업무는 완료된 것만 */
+function archDue(it,cut,cutMs){
+  if(!it)return false;
+  if(it.recur&&it.recur.f)return !!(it.recur.until&&String(it.recur.until)<cut);
+  if(stOf(it.st)===3)return false;
+  const d=it.end||it.date;
+  if(d)return String(d)<cut;
+  return stOf(it.st)===2&&(Number(it.updatedAt)||0)<cutMs;
+}
+/* 부팅 뒤 한 번 — 이동 대상을 archive 로 옮기고 원본을 지운다. 라이브는 200건씩 끊는다 */
+function archMigrate(){
+  const cut=archCutStr(),cutMs=Date.now()-ARCH_AFTER,moves=[];
+  Object.keys(S.tasks||{}).forEach(sid=>Object.keys(S.tasks[sid]||{}).forEach(iid=>{
+    const it=S.tasks[sid][iid];if(archDue(it,cut,cutMs))moves.push({sid,iid,it});}));
+  if(!moves.length)return;
+  if(!S.live){
+    const d=LocalStore._d;d.archive=d.archive||{};
+    moves.forEach(({sid,iid,it})=>{(d.archive[sid]=d.archive[sid]||{})[iid]=archWrap(it);delete d.tasks[sid][iid];});
+    S.tasks=d.tasks;lsSave(d);rTasks();refetchCal();rDay();rWidget();return;
+  }
+  (async()=>{
+    for(let i=0;i<moves.length;i+=200){
+      const up={};moves.slice(i,i+200).forEach(({sid,iid,it})=>{
+        up['calapp/archive/'+sid+'/'+iid]=archWrap(it);up['calapp/tasks/'+sid+'/'+iid]=null;});
+      try{await FB.db.ref().update(up);}    /* 원본 삭제는 구독이 받아 화면에 반영한다 */
+      catch(e){console.warn('[FB] 아카이브 이동 실패',e);return;}
+    }
+  })();
+}
+function archLoad(cb){
+  if(ARCH.loaded){if(cb)cb();return;}
+  const unpack=v=>{S.arch={};
+    Object.keys(v||{}).forEach(sid=>Object.keys(v[sid]||{}).forEach(iid=>{
+      try{const it=JSON.parse(LZString.decompressFromBase64((v[sid][iid]||{}).z||'')||'null');
+        if(it)(S.arch[sid]=S.arch[sid]||{})[iid]=it;}catch(e){}}));
+    ARCH.loaded=true;ARCH.loading=false;if(cb)cb();};
+  if(!S.live){unpack((LocalStore._d&&LocalStore._d.archive)||{});return;}
+  if(ARCH.loading)return;ARCH.loading=true;
+  FB.db.ref('calapp/archive').get().then(s=>unpack(s.val()||{}))
+    .catch(e=>{ARCH.loading=false;console.warn('[FB] 아카이브 읽기',e);});
+}
+/* 과거 화면·찾기가 부른다 — 범위가 아카이브 경계보다 오래됐을 때만 한 번 읽고 다시 그린다 */
+function archNeed(fromStr){
+  if(ARCH.loaded||ARCH.loading)return;
+  if(fromStr!==undefined&&!(String(fromStr)<archCutStr()))return;
+  archLoad(()=>{refetchCal();rDay();rTasks();rWidget();if(typeof rNq==='function')rNq();});
+}
+/* 핫(S.tasks)에 아카이브를 합친 {sid:{iid:it}} — 같은 iid 는 핫이 이긴다.
+   ⚠ 반환값을 고치지 말 것 — 안 읽혔을 때는 S.tasks 그 자체를 돌려준다 */
+function mergedTaskMaps(){
+  if(!ARCH.loaded)return S.tasks||{};
+  const out={};
+  Object.keys(S.tasks||{}).forEach(sid=>{out[sid]={...S.tasks[sid]};});
+  Object.keys(S.arch||{}).forEach(sid=>{out[sid]=out[sid]||{};
+    Object.keys(S.arch[sid]).forEach(iid=>{if(!out[sid][iid])out[sid][iid]=S.arch[sid][iid];});});
+  return out;
+}
+
 /* 선택 목록과 정렬 순서를 같은 차례로 둔다 — 팀장 · 공구장 · 담당자 · 안전 · 원가 */
 const RANKS=[['head','팀장'],['lead','공구장'],['member','담당자'],['safety','안전'],['cost','원가']];
 function rankOrd(v){const i=RANKS.findIndex(r=>r[0]===rankOf(v));return i<0?2:i;}
@@ -483,18 +603,30 @@ const LocalStore={
     const moved=migratePlans(this._d)|migrateDue(this._d);
     normOrg(this._d.org);
     if(moved)lsSave(this._d);   /* 옮긴 결과를 저장하지 않으면 새로고침 때마다 되살아난다 */
-    S.org=this._d.org;S.tasks=this._d.tasks;S.cfg=this._d.cfg;S.people=this._d.people;S.prefs=this._d.prefs;S.offdays=this._d.offdays;S.accounts={};},
+    S.org=this._d.org;S.tasks=this._d.tasks;S.cfg=this._d.cfg;S.people=this._d.people;S.prefs=this._d.prefs;S.offdays=this._d.offdays;S.accounts={};
+    setTimeout(trashPurge,1500);   /* 휴지통 30일 정리(383차) */
+    setTimeout(archMigrate,1800);  /* 오래 끝난 업무를 보관함으로(384차) */},
   putPlan(p){const{sid,iid,item,prevSid}=planToTask(p);
     if(prevSid&&prevSid!==sid)this.putTask(prevSid,iid,null);   /* 담당자가 바뀌면 옛 소속에서 지운다 */
     this.putTask(sid,iid,item);},
-  delPlan(ym,id){const hit=allTasks().find(x=>x.iid===id);if(hit)this.putTask(hit.sid,hit.iid,null);},
+  /* 사용자 삭제는 전부 여기로 — 지우지 않고 휴지통에 30일 보관한다(383차).
+     아카이브에서 보이는 업무도 같은 길로 — 사본을 함께 걷는다(384차) */
+  trashTask(sid,iid){const it=(S.tasks[sid]||{})[iid]||((S.arch[sid]||{})[iid]);if(!it)return;
+    this._d.trash=this._d.trash||{};(this._d.trash[sid]=this._d.trash[sid]||{})[iid]=trashWrap(it);
+    if(S.arch[sid]&&S.arch[sid][iid])delete S.arch[sid][iid];
+    if(this._d.archive&&this._d.archive[sid])delete this._d.archive[sid][iid];
+    this.putTask(sid,iid,null);},
+  delPlan(ym,id){const hit=allTasks().find(x=>x.iid===id);if(hit)this.trashTask(hit.sid,hit.iid);},
   movePlan(p){this.putPlan(p);},
   putOrg(org){this._d.org=org;S.org=org;lsSave(this._d);},
   putOffday(ds,name){this._d.offdays=this._d.offdays||{};
     if(name)this._d.offdays[ds]=name;else delete this._d.offdays[ds];
     S.offdays=this._d.offdays;lsSave(this._d);calRerender();rDay();rWidget();},
   putPerson(id,p){if(p)this._d.people[id]=p;else delete this._d.people[id];S.people=this._d.people;lsSave(this._d);},
-  putTask(mid,iid,item){this._d.tasks[mid]=this._d.tasks[mid]||{};if(item)this._d.tasks[mid][iid]=item;else delete this._d.tasks[mid][iid];S.tasks=this._d.tasks;lsSave(this._d);},
+  putTask(mid,iid,item){
+    if(S.arch[mid]&&S.arch[mid][iid])delete S.arch[mid][iid];   /* 아카이브 사본 제거(384차) */
+    if(this._d.archive&&this._d.archive[mid])delete this._d.archive[mid][iid];
+    this._d.tasks[mid]=this._d.tasks[mid]||{};if(item)this._d.tasks[mid][iid]=item;else delete this._d.tasks[mid][iid];S.tasks=this._d.tasks;lsSave(this._d);},
   putCfg(k,v,cb){this._d.cfg[k]=v;S.cfg=this._d.cfg;lsSave(this._d);if(cb)cb(null);},
   putPref(k,v){this._d.prefs=this._d.prefs||{};if(v)this._d.prefs[k]=v;else delete this._d.prefs[k];S.prefs=this._d.prefs;lsSave(this._d);},
 };
@@ -542,7 +674,16 @@ const FbStore={
   putPlan(p){const{sid,iid,item,prevSid}=planToTask(p);
     if(prevSid&&prevSid!==sid)this.putTask(prevSid,iid,null);   /* 담당자가 바뀌면 옛 소속에서 지운다 */
     this.putTask(sid,iid,item);},
-  delPlan(ym,id){const hit=allTasks().find(x=>x.iid===id);if(hit)this.putTask(hit.sid,hit.iid,null);},
+  /* 사용자 삭제는 전부 여기로 — 휴지통 저장과 원본 제거를 multi-path update 한 번으로(383차).
+     아카이브에서 보이는 업무도 같은 길로 지운다 — 사본을 함께 걷는다(384차) */
+  trashTask(sid,iid){const it=(S.tasks[sid]||{})[iid]||((S.arch[sid]||{})[iid]);if(!it)return;
+    const wrap=trashWrap(it);
+    if(S.tasks[sid])delete S.tasks[sid][iid];   /* 화면 먼저 — putTask 와 같은 원칙 */
+    const up={['calapp/trash/'+sid+'/'+iid]:wrap,['calapp/tasks/'+sid+'/'+iid]:null};
+    if(S.arch[sid]&&S.arch[sid][iid]){delete S.arch[sid][iid];up['calapp/archive/'+sid+'/'+iid]=null;}
+    rDay();rTasks();refetchCal();rWidget();
+    FB.db.ref().update(up).catch(fbErr);},
+  delPlan(ym,id){const hit=allTasks().find(x=>x.iid===id);if(hit)this.trashTask(hit.sid,hit.iid);},
   movePlan(p){this.putPlan(p);},
   putOrg(org){FB.db.ref('calapp/org').set(cleanOrg(org)).catch(fbErr);},
   putOffday(ds,name){FB.db.ref('calapp/offdays/'+ds)[name?'set':'remove'](name||null).catch(fbErr);},
@@ -550,6 +691,9 @@ const FbStore={
   putTask(mid,iid,item){
     /* 서버 응답을 기다리면 한 박자 늦게 반영된다 — 화면에 먼저 반영하고 서버 값이 오면 덮어쓴다.
        실패하면 구독이 원래 값을 되돌려 주므로 화면이 어긋난 채 남지 않는다 */
+    /* 아카이브에 있던 업무를 건드리면 그 사본을 지운다 — 두 곳에 겹쳐 남지 않게(384차) */
+    if(S.arch[mid]&&S.arch[mid][iid]){delete S.arch[mid][iid];
+      FB.db.ref('calapp/archive/'+mid+'/'+iid).remove().catch(()=>{});}
     S.tasks[mid]=S.tasks[mid]||{};
     if(item)S.tasks[mid][iid]=item;else delete S.tasks[mid][iid];
     rDay();rTasks();refetchCal();rWidget();
@@ -568,8 +712,8 @@ const FbStore={
     }catch(e){console.warn('[FB] 옛 일정 읽기 건너뜀',e);return;}
     /* 기한(due)만 있던 업무를 날짜(date)로 — 실패해도 나머지 이전은 계속한다 */
     const dueFix={};
-    allTasks().forEach(({sid,iid,it})=>{
-      if(!it||!it.due)return;
+    allTasks().forEach(({sid,iid,it,arch})=>{
+      if(arch||!it||!it.due)return;   /* 아카이브 사본은 tasks 로 되쓰면 되살아난다 — 손대지 않는다(384차) */
       dueFix['calapp/tasks/'+sid+'/'+iid]=cleanTask({...it,date:it.date||it.due,due:undefined});
     });
     if(Object.keys(dueFix).length){
@@ -656,6 +800,7 @@ const FbStore={
   },
   bindShared(){
     this.migrateRemote();
+    setTimeout(trashPurge,5000);   /* 휴지통 30일 정리(383차) — 부팅 통신이 잦아든 뒤 한 번 */
 
     /* ⚠ 팀·권역·현장의 원본은 하자처리 현황이다. 복사해 두지 않고 **그 자리를 그대로 구독**한다 —
        거기서 현장이 바뀌면 이 앱도 즉시 따라간다.
@@ -669,6 +814,7 @@ const FbStore={
     this._on('calapp/tasks',v=>{S.tasks=v||{};S.loading=false;bootCacheSave();
       /* 첫 스냅샷이 온 뒤 한 번 — 놓친 담당자 업무를 아침 확인으로 묻는다 */
       if(!FB._mrv){FB._mrv=true;setTimeout(morningReview,WIDGET?1400:800);   /* 위젯은 첫 렌더가 조금 늦다 */
+        setTimeout(archMigrate,8000);   /* 오래 끝난 업무를 구독 밖으로(384차) — 부팅 통신이 잦아든 뒤 */
         /* 5시가 지난 뒤 PC 를 켠 경우 — 놓친 업무 확인 모달이 지나간 뒤에 띄운다(겹치면 가린다) */
         setTimeout(()=>{if(!$('#mo')||!$('#mo').classList.contains('open'))evePopShow();},WIDGET?4200:3600);}
       if(tkHold()){PEND.tasks=true;PEND.day=true;return;}
@@ -1626,10 +1772,11 @@ function visibleRange(){
 function regSel(){const r=S.filter.reg;return Array.isArray(r)?r.map(String):(r&&r!=='*'?[String(r)]:[]);}
 /* 모든 업무를 한 곳(tasks)에서 읽는다 — 날짜가 있으면 달력에, 기한이 있으면 기한 배지로 */
 function allTasks(){
-  const out=[];
-  Object.keys(S.tasks||{}).forEach(sid=>{
-    const m=S.tasks[sid]||{};
-    Object.keys(m).forEach(iid=>{const it=m[iid];if(it)out.push({sid,iid,it});});
+  const out=[],hot=S.tasks||{},src=mergedTaskMaps();
+  Object.keys(src).forEach(sid=>{
+    const m=src[sid]||{};
+    Object.keys(m).forEach(iid=>{const it=m[iid];
+      if(it)out.push({sid,iid,it,arch:ARCH.loaded&&!((hot[sid]||{})[iid])});});
   });
   return out;
 }
@@ -1669,6 +1816,7 @@ function taskAsPlan(sid,iid,it){
 function buildEvents(rFrom,rTo){
   const vr=visibleRange();
   const from=rFrom||vr[0],to=rTo||vr[1];
+  archNeed(from);   /* 아카이브 경계보다 과거를 보면 옛 업무를 읽어 합친다(384차) */
   const evs=[],today=todayStr();
   /* 수정 중인 업무는 저장 전이라도 draft 로 그린다 — 입력하는 대로 달력에 바로 반영된다 */
   const pe=S.planEdit,dr=(pe&&pe.draft&&pe.draft.title)?pe.draft:null;
@@ -2399,10 +2547,16 @@ function onSelDay(sid,iid,it,dsp){
   if(it.recur&&it.recur.f)return recurDates(taskAsPlan(sid,iid,it),d,d).length>0;
   return d>=it.date&&d<=(it.end||it.date);
 }
+let _edShown=false;   /* 이번 렌더에서 수정 폼을 이미 그렸는지 */
 function taskItemHTML(sid,iid,it,withSubject,hideOwn,colsIn,occ){
   const cols=colsIn||{site:true,who:true};
   const key=sid+'/'+iid;
-  if(S.tkEdit===key)return taskFormHTML(sid,iid,it);   /* 수정 중이면 항목 자리에 폼이 들어간다 */
+  /* ⚠ 수정 폼은 행 자리에 넣지 않는다(360차). 반복 업무는 회차마다 행이 있는데 키가 같아
+     **폼이 회차 수만큼 열렸다**(실측 2개). 표 열 정렬도 깨져 작성과 같은 팝업으로 옮겼다 */
+  /* ⚠ 반복 업무는 회차마다 행이 있어 키만으로는 여러 행이 걸린다 — 누른 회차(tkEditOcc)로 좁히고,
+     그것도 없는 경로(검색에서 바로 열기 등)를 대비해 **한 번 그리면 잠근다**(363차) */
+  let editing=S.tkEdit===key&&(!S.tkEditOcc||S.tkEditOcc===(occ||dsp||''));
+  if(editing){if(_edShown)editing=false;else _edShown=true;}
   const dsp=occ||taskDate(sid,iid,it);       /* 반복이면 주기 화면이 준 그 회차, 아니면 it.date */
   /* ⚠ 반복은 회차별 완료(doneOn)가 상태다 — stEff 는 반복을 늘 '진행'으로 보므로 여기서 회차를 본다(323차) */
   const rec=!!(it.recur&&it.recur.f);
@@ -2426,30 +2580,77 @@ function taskItemHTML(sid,iid,it,withSubject,hideOwn,colsIn,occ){
   /* 제목 뒤에 흐리게 붙는 것 — 시각·반복처럼 **열을 줄 만큼 잦지 않은 값**만 */
   const sub=[fmtSpan(it),(it.recur&&it.recur.f)?REC_LBL[it.recur.f]:''].filter(Boolean).join(' · ');
   const who=asg.map(x=>x.name).join(', ')||(withSubject?subjName(sid):'');
-  /* 펼칠 내용(진행경과·처리계획)이 없으면 펼치기 자체를 붙이지 않는다 — 눌러도 아무 일이 없던 헛손질 방지(일자 패널과 같은 규칙) */
+  /* 적힌 내용이 있으면 제목 뒤에 표시를 단다 — 어느 행에 진행사항·계획이 있는지 눌러 보지 않아도 안다(361차) */
   const hasDet=!!(String(it.prog||it.body||'').trim()||String(it.plan||'').trim());
-  const go=hasDet?' data-act="tk.open" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"':'';
+  const go=' data-act="tk.open" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"';
   return `
-  <div class="tk-item s${st}${hasDet&&open?' open':''}${hasDet?'':' nod'}${cols.grp?' grp':''}${cols.gw?' gw':''}${onSelDay(sid,iid,it,dsp)?' hl':''}" data-sid="${esc(sid)}" data-iid="${esc(iid)}">
+  <div class="tk-item s${st}${editing?' editing':''}${open?' open':''}${cols.grp?' grp':''}${cols.gw?' gw':''}${onSelDay(sid,iid,it,dsp)?' hl':''}" data-sid="${esc(sid)}" data-iid="${esc(iid)}">
     <div class="tk-row">
       ${cols.noReg?'':'<span class="tkc tkc-r"'+go+'>'+esc(cols.regLabel||'')+'</span>'}
-      ${cols.who?(cols.gw?'<span class="tkc tkc-w"></span>'
-        :'<span class="tkc tkc-w'+(who?'':' dim')+(cols.whoDone?' wdone':'')+'"'+go+'>'
-          +'<i class="tkc-dot" style="background:'+esc(planColor(p0))+'"></i>'+(who?esc(who):'공통')+'</span>'):''}
-      ${cols.site?'<span class="tkc tkc-s"'+go+'>'+esc(sn)+'</span>':''}
-      <span class="tk-ttl"${go}>${riskMark(it.kind)}${esc(it.text||'제목 없음')}${sub?'<i class="tk-sub-i">'+esc(sub)+'</i>':''}</span>
-      <span class="tkc tkc-d${di.cls==='over'?' over':''}"${go}>${esc(dcell)}</span>
+      ${editing
+        ? (cols.who?'<span class="tkc tkc-w">'+ownSelHTML('tnAsg',(Object.keys(it.assignees||{}).filter(k=>it.assignees[k])[0])||'',roster())+'</span>':'')
+          +(cols.site?'<span class="tkc tkc-s">'+sitePickHTML('tnSite',it.site||'')+'</span>':'')
+          +'<span class="tk-ttl"><input class="inp cell-inp" id="tnTitle" value="'+esc(it.text||'')+'" placeholder="무엇을 하나요?"></span>'
+          +'<span class="tkc tkc-d date-wrap">'
+            +'<button type="button" class="inp cell-inp date-cell" data-act="tk.dateOpen">'+esc(rangeLabel(it.date||'',it.end||'')||'선택')+'</button>'
+            +'<input type="hidden" id="tnDate" value="'+esc(it.date||'')+'"><input type="hidden" id="tnEnd" value="'+esc(it.end||'')+'">'
+            +tkRangePopHTML()+'</span>'
+        : (cols.who?(cols.gw?'<span class="tkc tkc-w"></span>'
+            :'<span class="tkc tkc-w'+(who?'':' dim')+(cols.whoDone?' wdone':'')+'"'+go+'>'
+              +'<i class="tkc-dot" style="background:'+esc(planColor(p0))+'"></i>'+(who?esc(who):'공통')+'</span>'):'')
+          +(cols.site?'<span class="tkc tkc-s"'+go+'>'+esc(sn)+'</span>':'')
+          +'<span class="tk-ttl"'+go+'>'+riskMark(it.kind)+esc(it.text||'제목 없음')
+            +(sub?'<i class="tk-sub-i">'+esc(sub)+'</i>':'')
+            +(hasDet?'<i class="tk-note" aria-label="적힌 내용 있음"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></i>':'')
+            +'</span>'
+          +'<span class="tkc tkc-d'+(di.cls==='over'?' over':'')+'"'+go+'>'+esc(dcell)+'</span>'}
       <span class="tk-acts">
-        <button class="tk-ico tk-ed" data-act="tk.edit" data-sid="${esc(sid)}" data-iid="${esc(iid)}" aria-label="수정" data-tip="수정"><svg class="icn"><use href="#i-pen"></use></svg></button>
-        ${stIcon(st,' data-act="tk.st" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" data-occ="'+esc(dsp||'')+'"')}
+        ${editing
+          ? '<button class="tk-ico tk-ok" data-act="tk.formSave" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" aria-label="저장" data-tip="저장"><svg class="icn"><use href="#i-check"></use></svg></button>'
+            +'<button class="tk-ico tk-cx" data-act="tk.formCancel" aria-label="취소" data-tip="취소"><svg class="icn"><use href="#i-close"></use></svg></button>'
+            +'<button class="tk-ico tk-del" data-act="tk.del" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" aria-label="삭제" data-tip="삭제"><svg class="icn"><use href="#i-trash"></use></svg></button>'
+          : '<button class="tk-ico tk-ed" data-act="tk.edit" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" data-occ="'+esc(dsp||'')+'" aria-label="수정" data-tip="수정"><svg class="icn"><use href="#i-pen"></use></svg></button>'
+            +stIcon(st,' data-act="tk.st" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" data-occ="'+esc(dsp||'')+'"')}
       </span>
     </div>
-    ${hasDet&&open?taskDetailHTML(sid,iid,it):''}
+    ${editing?tkEditRestHTML(sid,iid,it):(open?taskDetailHTML(sid,iid,it):'')}
   </div>`;
 }
 
 /* 목록 맨 위 열 이름 — 어느 열이 무엇인지 알려 준다.
    ⚠ 목록 안에 두고 sticky 로 붙인다 — 그냥 두면 스크롤할 때 위로 밀려 잘린 채 남는다(251차) */
+/* 한 행만 다시 그린다 — 화면을 통째로 갈아엎지 않으므로 **그 행의 요소가 살아남고**,
+   덕분에 상태 아이콘의 모션이 그대로 보인다(372차). 다른 행·스크롤·펼침은 건드리지 않는다.
+   ⚠ 주기가 바뀌어 그 행이 다른 칸으로 옮겨가야 하면(완료↔예정) 전체를 다시 그린다 */
+function tkRowRefresh(el){
+  const row=el&&el.closest&&el.closest('.tk-item');
+  const list=row&&row.closest('.tkl');
+  if(!row||!list)return rTasks();
+  const sid=row.dataset.sid,iid=row.dataset.iid;
+  const it=(S.tasks[sid]||{})[iid];
+  if(!it)return rTasks();
+  const occ=el.dataset.occ||'';
+  const cols=tkColsFromList(list);
+  const done=(it.recur&&it.recur.f&&occ)?isDone(taskAsPlan(sid,iid,it),occ):(stEff(it)===2);
+  const inDone=!!row.closest('.tkwk-col:first-child');
+  if(S.tkView!=='month'&&done!==inDone)return rTasks();   /* 칸이 달라진다 — 전체로 */
+  const box=document.createElement('div');
+  box.innerHTML=taskItemHTML(sid,iid,it,false,'',cols,occ);
+  const next=box.firstElementChild;
+  if(!next)return rTasks();
+  next.classList.add('st-just');   /* 상태 아이콘이 살짝 튀어나오는 표시 */
+  row.replaceWith(next);
+}
+/* 그 목록이 어떤 열 구성인지 — 행을 다시 그릴 때 열이 어긋나지 않게 클래스에서 되읽는다 */
+function tkColsFromList(list){
+  const c=list.className||'';
+  if(/tkl-nr-w/.test(c))return{site:false,who:true,noReg:true};
+  if(/tkl-nr/.test(c))return{site:false,who:false,noReg:true};
+  if(/tkl-s-w/.test(c))return{site:true,who:true};
+  if(/tkl-s/.test(c))return{site:true,who:false};
+  if(/tkl-w/.test(c))return{site:false,who:true};
+  return{site:false,who:false};
+}
 function tkHeadRowHTML(cols){
   const c=cols||{site:true,who:true};
   return '<div class="tk-row tk-hrow">'
@@ -2474,9 +2675,79 @@ function tkListCls(c){   /* ⚠ 리터럴로 낸다 — 문자열을 조합하�
   if(c.noReg)return c.who?'tkl-nr-w':'tkl-nr';   /* 월간 업무 — 권역·현장 열이 없다 */
   return c.site?(c.who?'tkl-s-w':'tkl-s'):(c.who?'tkl-w':'tkl');}
 /* 펼친 업무 — 진행경과·처리계획. 링크는 넣지 않는다 — 행 우측 아이콘이 이미 있어 겹말이다(319차) */
+/* 행에 열이 없는 값들 — 셀 스위칭만으로는 고칠 수 없어 아래 한 줄로 잇는다(363차).
+   ⚠ 큰 카드 폼을 끼워 넣지 않는다 — 표의 연장으로 보이게 라벨을 작게, 한 줄로 */
+/* 날짜 칸 표기 — 하루면 한 날짜, 기간이면 시작~종료 */
+function rangeLabel(a,b){
+  if(!a)return '';
+  const md=x=>Number(x.slice(5,7))+'/'+Number(x.slice(8,10));
+  return (b&&b!==a)?md(a)+'~'+md(b):md(a);
+}
+/* 날짜 칸을 누르면 뜨는 작은 달력 — 한 번 누르면 시작, 다시 누르면 종료(그 사이가 기간).
+   ⚠ 칸을 둘로 늘리지 않는다(365차 지시) — 한 칸 안에서 기간을 잡는다 */
+function tkRangePopHTML(){
+  const D=S.tkDate||{};if(!D.open)return '';
+  const a=($('#tnDate')&&$('#tnDate').value)||D.a||'';
+  const ym=D.ym||(a?a.slice(0,7):todayStr().slice(0,7));
+  const y=Number(ym.slice(0,4)),m=Number(ym.slice(5,7))-1;
+  const days=new Date(y,m+1,0).getDate(),lead=new Date(y,m,1).getDay();
+  const b=($('#tnEnd')&&$('#tnEnd').value)||D.b||'';
+  let cells='';
+  for(let i=0;i<lead;i++)cells+='<i class="rc-d out"></i>';
+  for(let d=1;d<=days;d++){
+    const ds=y+'-'+pad(m+1)+'-'+pad(d);
+    const inR=a&&b&&ds>a&&ds<b;
+    cells+='<button type="button" class="rc-d'+(ds===a?' a':'')+(ds===b?' b':'')+(inR?' in':'')
+      +'" data-act="tk.dateDay" data-d="'+ds+'">'+d+'</button>';
+  }
+  return `<div class="rc-pop" id="tkRcPop" data-act="modal.stop">
+    <div class="rc-h">
+      <button type="button" class="rc-nb" data-act="tk.dateMon" data-d="-1">‹</button>
+      <b>${y}년 ${m+1}월</b>
+      <button type="button" class="rc-nb" data-act="tk.dateMon" data-d="1">›</button>
+    </div>
+    <div class="rc-w">${['일','월','화','수','목','금','토'].map(x=>'<i>'+x+'</i>').join('')}</div>
+    <div class="rc-g">${cells}</div>
+  </div>`;
+}
+/* 달력만 다시 그린다 — 행 전체를 다시 그리면 입력 중인 값이 날아간다 */
+function tkDateRefresh(){
+  const cell=$('.date-wrap');if(!cell)return;
+  const old=$('#tkRcPop');if(old)old.remove();
+  const btn=cell.querySelector('.date-cell');
+  if(btn)btn.textContent=rangeLabel(($('#tnDate')&&$('#tnDate').value)||'',($('#tnEnd')&&$('#tnEnd').value)||'')||'선택';
+  const html=tkRangePopHTML();if(!html)return;
+  /* ⚠ 표 안에 두면 목록·카드의 overflow 가 달력을 잘라낸다(370차 실측) — 화면 기준으로 띄우고 좌표만 맞춘다 */
+  document.body.insertAdjacentHTML('beforeend',html);
+  const pop=$('#tkRcPop');if(!pop||!btn)return;
+  const r=btn.getBoundingClientRect(),h=pop.offsetHeight,w=pop.offsetWidth;
+  let top=r.bottom+6;if(top+h>window.innerHeight-8)top=Math.max(8,r.top-h-6);
+  let left=r.left;if(left+w>window.innerWidth-8)left=Math.max(8,window.innerWidth-w-8);
+  pop.style.top=Math.round(top)+'px';pop.style.left=Math.round(left)+'px';
+}
+function tkEditRestHTML(sid,iid,it){
+  const kind=kindOf(it.kind),rc=(it.recur&&it.recur.f)||'';
+  const lnk=Object.values(it.links||{})[0]||null;
+  const split=kindSplit(it.kind);
+  return `<div class="tk-editrest">
+    <div class="tk-erow">
+      <label>구분<select class="inp cell-inp" id="tnKind" data-act="tk.kind">
+        ${TK_KIND.map(([v,l])=>'<option value="'+v+'"'+(v===kind?' selected':'')+'>'+esc(l)+'</option>').join('')}</select></label>
+      <label>시간<input type="time" class="inp cell-inp" id="tnTime" value="${esc(it.time||'')}"></label>
+      <label>반복<select class="inp cell-inp" id="tnRec">
+        ${Object.keys(REC_LBL).map(k=>'<option value="'+k+'"'+(k===rc?' selected':'')+'>'+REC_LBL[k]+'</option>').join('')}</select></label>
+      <label class="ru"${rc?'':' hidden'}>반복 종료<input type="date" class="inp cell-inp" id="tnUntil" value="${esc((it.recur&&it.recur.until)||'')}"></label>
+      <label class="gw">링크<input class="inp cell-inp" id="tnLink" maxlength="${LINK_MAX}" placeholder="https://…" value="${esc((lnk&&lnk.url)||'')}"></label>
+    </div>
+    <div id="tnBodySec" class="tk-ebody">${tkBodyHTML(split,it.prog||it.body||'',it.plan||'',kind)}</div>
+
+    <input type="hidden" id="tnColor" value="${esc(it.color||'')}">
+  </div>`;
+}
 function taskDetailHTML(sid,iid,it){
-  /* 비어 있는 칸은 그리지 않는다 — 펼쳐 보기만 할 때 빈 상자가 자리를 먹는다 */
-  const box=(lbl,val,field)=>!String(val||'').trim()?'':`<div class="tk-sec">
+  /* ⚠ 비어 있어도 칸을 그린다(361차) — 예전에는 값이 없으면 펼침 자체가 열리지 않아
+     **새로 적을 방법이 수정 폼밖에** 없었다. 펼침은 읽기이자 쓰기 자리다 */
+  const box=(lbl,val,field)=>`<div class="tk-sec">
       <div class="tk-sec-h">${lbl}</div>
       <div class="tk-sec-b" contenteditable="true" data-act="tk.field" data-f="${field}" data-sid="${esc(sid)}" data-iid="${esc(iid)}"
         data-ph="${lbl}를 입력하세요">${esc(val||'')}</div>
@@ -2568,6 +2839,7 @@ function tkKindRefresh(){
   sec.innerHTML=tkBodyHTML(kindSplit(kind),prog,plan,kind);
 }
 function taskFormSave(sid,iid){
+  S.tkDate={open:false,ym:'',a:'',b:''};const rp0=$('#tkRcPop');if(rp0)rp0.remove();
   const t=($('#tnTitle').value||'').trim();
   if(!t){toast('제목을 입력하세요');$('#tnTitle').focus();return;}
   const cur=iid?((S.tasks[sid]||{})[iid]||null):null;
@@ -2617,9 +2889,10 @@ function tkFormDirty(){
 }
 /* 폼을 닫는 유일한 통로 — 취소 버튼과 Escape 가 함께 쓴다 */
 function tkFormClose(){
-  if(!tkFormDirty()){S.tkNew=null;S.tkEdit=null;rTasks();return;}
+  S.tkDate={open:false,ym:'',a:'',b:''};const rp=$('#tkRcPop');if(rp)rp.remove();
+  if(!tkFormDirty()){S.tkNew=null;S.tkEdit=null;S.tkEditOcc='';rTasks();return;}
   confirmModal('작성 중인 내용 버리기','적은 내용이 저장되지 않았습니다. 그대로 닫으면 사라집니다.',
-    ()=>{S.tkNew=null;S.tkEdit=null;rTasks();},'버리고 닫기',true);
+    ()=>{S.tkNew=null;S.tkEdit=null;S.tkEditOcc='';rTasks();},'버리고 닫기',true);
 }
 /* ── 목록 보조 ── */
 function nextOrder(sid){
@@ -2712,7 +2985,12 @@ function tkMatch(sid,iid,it){
    그냥 두면 완료 체크·펼치기마다 목록이 맨 위로 튄다.
    ⚠ 대상(팀/담당자)을 바꿨을 때는 되돌리지 않는다 — 새 목록이 아래로 내려간 채 열린다 */
 let _tkScKey='';
+/* 연타(탭·주 이동)로 렌더 요청이 몰리면 다음 프레임에 한 번만 그린다 — 총 비용이 줄고 화면이 튀지 않는다(372차) */
+let _rqT=0;
+function rTasksSoon(){if(_rqT)return;_rqT=requestAnimationFrame(()=>{_rqT=0;rTasks();});}
 function rTasks(){
+  if(_rqT){cancelAnimationFrame(_rqT);_rqT=0;}
+  _edShown=false;
   const root=$('#tkRoot');
   const scKey=String(S.tk.t||'')+'|'+String(S.tk.m||'');
   const scSame=_tkScKey===scKey;
@@ -2771,7 +3049,7 @@ function rTasks(){
   </div>`;
   restoreScroll();
   rTkNewOverlay();
-  if(S.tkNew||S.tkEdit){const t=$('#tnTitle');if(t&&document.activeElement!==t)t.focus();}
+  if(S.tkNew){const t=$('#tnTitle');if(t&&document.activeElement!==t)t.focus();}   /* ⚠ 초점은 **새 업무**에서만 — 수정은 행 안에서 고치므로 자동 초점이 가면 그 칸만 면이 켜진 채 남는다(369차) */
 }
 /* 새 업무 작성 모달 — 상태(S.tkNew)를 켜고 끄는 곳은 그대로 두고(핸들러·저장·닫기),
    rTasks 가 매번 여기서 오버레이를 상태에 맞춘다. 폼 로직은 인라인 시절과 동일(#tkNew·전역 위임).
@@ -2779,14 +3057,19 @@ function rTasks(){
 function rTkNewOverlay(){
   const o=$('#tko');if(!o)return;
   const c=$('#tkoCard');
+  /* 팝업은 **새 업무**만 맡는다 — 수정은 그 행 아래에서 펼쳐진다(363차, 펼침과 같은 자리라 직관적) */
   if(!S.tkNew){o.classList.remove('open');c.innerHTML='';c.removeAttribute('style');return;}
-  c.innerHTML=taskFormHTML(S.tkNew,null,null);o.classList.add('open');
+  c.innerHTML=taskFormHTML(S.tkNew,null,null);
+  o.classList.add('open');
   /* 화면 한가운데 뜨는 모달이 아니라 **업무 추가 버튼에 붙는 팝업**으로 띄운다(327차).
      버튼이 없으면(보류함 등) 오른쪽 위에 붙인다 */
   const b=$('.tkq-add');
   const W=Math.min(720,window.innerWidth-24);
   let top=76,right=16;
   if(b){const r=b.getBoundingClientRect();top=Math.round(r.bottom+8);right=Math.round(window.innerWidth-r.right);}
+  /* 아래로 넘치면 위쪽으로 붙인다 — 목록 끝 행을 고쳐도 폼이 화면 밖으로 나가지 않게 */
+  const H=Math.min(420,window.innerHeight-32);
+  if(top+H>window.innerHeight-12&&b)top=Math.max(12,Math.round(b.getBoundingClientRect().top-H-8));
   c.style.cssText='width:'+W+'px;position:fixed;top:'+top+'px;right:'+Math.max(8,right)+'px;';
 }
 /* 보고 주기 — 목요일에 시작해 수요일에 끝난다(8/6~8/12 → 8/13~8/19 …).
@@ -2822,10 +3105,12 @@ function tkTabHit(it,tab,R){
    기준 날짜만 다르다 — 왼쪽은 종료일(완료일 대용), 오른쪽은 시작일. 기한 없는 업무는 예정 칸에.
    반복은 회차를 펼친다. 보류(st=3)는 보류함이 맡는다. */
 function tkCycleItems(from,to,done,tab){
+  archNeed(from);   /* 옛 주기를 보면 아카이브도 합친다(384차) */
+  const TM=mergedTaskMaps();
   const R={};roster().forEach(p=>{R[p.id]=p;});
   const out=[],seen=new Set();
-  Object.keys(S.tasks||{}).forEach(sid=>{
-    const m=S.tasks[sid]||{};
+  Object.keys(TM).forEach(sid=>{
+    const m=TM[sid]||{};
     Object.keys(m).forEach(iid=>{
       const it=m[iid];if(!it||seen.has(iid))return;seen.add(iid);
       if(!tkTabHit(it,tab,R))return;
@@ -2977,10 +3262,12 @@ function tkWeekHTML(team,mems,regions){
 function tkMonthItems(tab){
   const ym=(S.mineYm||todayStr().slice(0,7)+'-01').slice(0,7);
   const from=ym+'-01',to=ym+'-'+pad(new Date(Number(ym.slice(0,4)),Number(ym.slice(5,7)),0).getDate());
+  archNeed(from);   /* 옛 달을 보면 아카이브도 합친다(384차) */
+  const TM=mergedTaskMaps();
   const R={};roster().forEach(p=>{R[p.id]=p;});
   const items=[],seen=new Set();
-  Object.keys(S.tasks||{}).forEach(sid=>{
-    const m=S.tasks[sid]||{};
+  Object.keys(TM).forEach(sid=>{
+    const m=TM[sid]||{};
     Object.keys(m).forEach(iid=>{
       const it=m[iid];if(!it||!it.date||seen.has(iid))return;
       if(!tkTabHit(it,tab,R)||!tkMatch(sid,iid,it))return;
@@ -3085,9 +3372,11 @@ function nqMark(text,q){
 function nqSearch(q){
   const out={tasks:[],sites:[],defects:[]};
   if(q.length<1)return out;
+  archNeed();   /* 찾기는 옛 업무까지 — 읽히면 rNq 가 다시 그린다(384차) */
   const lo=q.toLowerCase(),hit=v=>String(v||'').toLowerCase().includes(lo);
-  Object.keys(S.tasks||{}).forEach(sid=>{
-    const m=S.tasks[sid]||{};
+  const TM=mergedTaskMaps();
+  Object.keys(TM).forEach(sid=>{
+    const m=TM[sid]||{};
     Object.keys(m).forEach(iid=>{
       const it=m[iid];if(!it)return;
       if(hit(it.text)||hit(it.body)||hit(it.prog)||hit(it.plan)||hit(siteName(it.site)))out.tasks.push({sid,iid,it});
@@ -5368,6 +5657,7 @@ function teamTasks(){
 /* 날짜별 점 — 업무 목록과 같은 필터(S.tkF)를 탄 모든 업무. 색은 그 업무의 지정색을 그대로 쓴다 */
 function miniDots(y,m){
   const first=y+'-'+pad(m+1)+'-01',last=y+'-'+pad(m+1)+'-'+pad(new Date(y,m+1,0).getDate());
+  archNeed(first);   /* 옛 달을 넘겨 보면 아카이브 점도 찍는다(384차) */
   const map={};
   const add=(d,c,done)=>{(map[d]=map[d]||[]).push({c,done});};
   allTasks().forEach(({sid,iid,it})=>{
@@ -6256,12 +6546,12 @@ const ACT={
       return;
     }
     const ym=el.dataset.ym,pid=el.dataset.pid,ttl=(p&&p.title)||'제목 없음';
-    confirmModal('업무 삭제','"'+ttl+'" 업무를 삭제합니다. 되돌릴 수 없습니다.',()=>{
+    confirmModal('업무 삭제','"'+ttl+'" 업무를 휴지통으로 옮깁니다. 30일 안에는 설정 > 휴지통에서 복원할 수 있습니다.',()=>{
       /* ⚠ 폼부터 닫고 지운다 — 순서가 바뀌면 다시 그릴 때 '이미 없는 업무'의 폼이 남아 한 박자 늦게 보인다 */
       clearTimeout(PE_SAVE);S.planEdit=null;
       store.delPlan(ym,pid);
       rDay();refetchCal();rWidget();          /* 라이브에서도 즉시 반영(구독 값이 오면 덮어쓴다) */
-      toast('업무를 삭제했습니다');
+      toast('휴지통으로 옮겼습니다');
     });},
   'plan.moveOcc':el=>{
     const p=findPlan(el.dataset.pid);if(!p)return;
@@ -6455,7 +6745,7 @@ const ACT={
     S.dfSid=sid;S.dfTab='sum';go('defect');},
   /* 날짜 클릭은 **강조만** 한다 — 주기 이동은 머리의 ‹ › 버튼 전용(320차, 사용자 지시) */
   'mine.day':el=>{const d=el.dataset.date;if(!d)return;
-    S.mineSel=(S.mineSel===d?'':d);rTasks();},
+    S.mineSel=(S.mineSel===d?'':d);rTasksSoon();},
   /* ‹ 이전 주 · 집 이번 주 · › 다음 주 — 달력이 보는 달도 주기를 따라 옮긴다 */
   'mine.mon':el=>{
     const d=Number(el.dataset.d)||0;
@@ -6515,7 +6805,7 @@ const ACT={
        달력에 주기 띠가 하나도 안 보였다(325차 자체 검증에서 확인) */
     if(S.tkView==='week'){const{nxt}=tkWeekCycles();S.mineYm=nxt.start.slice(0,7)+'-01';}
     rTasks();},
-  'tk.tab':el=>{S.tkTab=el.dataset.id||'';S.tkNew=null;rTasks();},
+  'tk.tab':el=>{S.tkTab=el.dataset.id||'';S.tkNew=null;rTasksSoon();},
   'tk.newOpen':el=>{
     /* 새 업무를 담을 자리 — 개인 탭(팀장 등)이면 그 사람 밑에, 그 외(전체·공통·권역·보류함)는 팀 공통.
        담당자는 어차피 폼에서 고른다(모달) */
@@ -6529,14 +6819,34 @@ const ACT={
   },
   'tk.formCancel':()=>tkFormClose(),
   'tk.kind':()=>tkKindRefresh(),
+  /* 날짜 칸 — 한 칸 안에서 기간을 잡는다(365차) */
+  'tk.dateOpen':()=>{const D=S.tkDate||{};
+    /* 다시 누르면 닫는다 */
+    S.tkDate={open:!D.open,ym:(($('#tnDate')&&$('#tnDate').value)||todayStr()).slice(0,7),
+      a:($('#tnDate')&&$('#tnDate').value)||'',b:($('#tnEnd')&&$('#tnEnd').value)||''};
+    tkDateRefresh();},
+  'tk.dateMon':el=>{const D=S.tkDate||{};const t=toDate((D.ym||todayStr().slice(0,7))+'-01');
+    t.setMonth(t.getMonth()+(Number(el.dataset.d)||0));
+    S.tkDate={...D,ym:dstr(t).slice(0,7)};tkDateRefresh();},
+  'tk.dateDay':el=>{const d=el.dataset.d,D=S.tkDate||{};
+    /* 처음 누르면 하루, 다시 뒤 날짜를 누르면 그날까지가 기간. 앞 날짜를 누르면 다시 시작일 */
+    let a=D.a,b=D.b;
+    /* 같은 날을 다시 누르면 비운다 — 아래 '지우기' 줄을 없앤 대신(371차) */
+    if(a===d&&!b){a='';b='';}
+    else if(!a||b||d<a){a=d;b='';}
+    else if(d>a){b=d;}
+    S.tkDate={...D,a,b,open:!b};   /* 종료일까지 고르면 닫는다 */
+    const i=$('#tnDate'),j=$('#tnEnd');if(i)i.value=a;if(j)j.value=b;
+    tkDateRefresh();},
   'tk.formSave':el=>taskFormSave(el.dataset.sid,el.dataset.iid||null),
   'tk.open':el=>{
     const key=el.dataset.sid+'/'+el.dataset.iid;
     S.tkOpen=S.tkOpen===key?null:key;rTasks();
   },
   'tk.field':()=>{},
-  'tk.edit':el=>{S.tkNew=null;S.tkEdit=el.dataset.sid+'/'+el.dataset.iid;rTasks();
-    setTimeout(()=>{const t=$('#tnTitle');if(t)t.focus();},30);},
+  'tk.edit':el=>{S.tkNew=null;S.tkOpen=null;S.tkDate={open:false,ym:'',a:'',b:''};S.tkEdit=el.dataset.sid+'/'+el.dataset.iid;
+    S.tkEditOcc=el.dataset.occ||'';   /* 반복이면 어느 회차에서 눌렀는지 — 팝업을 그 행에 붙이고 표시도 그 행만 */
+    rTasks();},
   'tk.pick':el=>{S.tk.m=el.dataset.id;rTasks();},
   'tk.st':el=>{
     const sid=el.dataset.sid,iid=el.dataset.iid,occ=el.dataset.occ||'';
@@ -6547,25 +6857,25 @@ const ACT={
       const doneOn={...(cur.doneOn||{})};
       if(on)delete doneOn[k];else doneOn[k]=1;
       store.putTask(sid,iid,{...cur,doneOn,updatedAt:Date.now()});
-      if(!S.live){rTasks();rDay();rWidget();}
+      if(!S.live){tkRowRefresh(el);rDay();rWidget();}
       refetchCal();return;
     }
     const n=stEff(cur)===2?1:2;
     store.putTask(sid,iid,{...cur,st:n,stKeep:n===1,updatedAt:Date.now()});
-    if(!S.live){rTasks();rDay();rWidget();}
+    if(!S.live){tkRowRefresh(el);rDay();rWidget();}
     refetchCal();   /* 완료 처리하면 달력의 기한 표시도 즉시 사라져야 한다 */
   },
   'tk.del':el=>{
     const sid=el.dataset.sid,iid=el.dataset.iid,key=sid+'/'+iid;
     const it=(S.tasks[sid]||{})[iid]||{};
     confirmModal('업무 삭제',
-      '"'+(it.text||'제목 없음')+'" 업무를 삭제합니다. 되돌릴 수 없습니다.',
+      '"'+(it.text||'제목 없음')+'" 업무를 휴지통으로 옮깁니다. 30일 안에는 설정 > 휴지통에서 복원할 수 있습니다.',
       ()=>{
         if(S.tkEdit===key)S.tkEdit=null;   /* 폼부터 닫고 지운다 — 순서가 바뀌면 반영이 한 박자 늦다 */
-        store.putTask(sid,iid,null);
+        store.trashTask(sid,iid);
         if(S.tkOpen===key)S.tkOpen=null;
         if(!S.live)rTasks();else setTimeout(rTasks,220);
-        refetchCal();toast('업무를 삭제했습니다');
+        refetchCal();toast('휴지통으로 옮겼습니다');
       });},
   'org.addTeam':()=>{
     
@@ -6653,6 +6963,19 @@ const ACT={
       navigator.clipboard.writeText(txt).then(()=>toast('복사했습니다')).catch(()=>toast('복사 실패'));
     else toast('복사를 지원하지 않는 브라우저입니다');
   },
+  /* 휴지통(383차) — 열기·복원·영구 삭제. 목록은 열 때마다 서버에서 읽는다 */
+  'trash.open':()=>trashOpen(),
+  'trash.restore':el=>{const sid=el.dataset.sid,iid=el.dataset.iid;
+    trashAll(t=>{const w=t[sid]&&t[sid][iid];
+      if(!w){toast('이미 없는 항목입니다');trashOpen();return;}
+      let it=null;try{it=JSON.parse(LZString.decompressFromBase64(w.z)||'null');}catch(e){}
+      if(!it){toast('복원할 수 없는 항목입니다');return;}
+      store.putTask(sid,iid,cleanTask(it));   /* cleanTask 를 다시 지나 tasks 스키마로 검증된다 */
+      trashDrop(sid,iid);
+      toast('복원했습니다');trashOpen();});},
+  'trash.del':el=>{const sid=el.dataset.sid,iid=el.dataset.iid;
+    confirmModal('영구 삭제','이 업무를 휴지통에서 완전히 지웁니다. 되돌릴 수 없습니다.',()=>{
+      trashDrop(sid,iid);toast('완전히 지웠습니다');trashOpen();});},
   'bk.now':()=>{
     if(!isEditor())return toast('관리자만 내보낼 수 있습니다');
     const d=window.bkExport&&window.bkExport();
@@ -6713,8 +7036,6 @@ const ACT={
     if(i<0)cur.push(el.dataset.v);else cur.splice(i,1);
     st[g]=cur;mselApply(m);},
   'filt.mall':el=>{const m=el.closest('.msel');mselStore(m)[m.dataset.g]=[];mselApply(m);},
-  /* 펼친 카드 안의 링크 — 클릭이 위임을 타고 올라가 '펼침'을 도로 접지 않게 여기서 멈춘다(이동은 a 기본 동작) */
-  'lnk.open':()=>{},
   'cal.pick':()=>openYMPick(),
   'cal.pickY':el=>{const c=CAL?CAL.view.currentStart:new Date();
     YM_Y=(YM_Y===null?c.getFullYear():YM_Y)+Number(el.dataset.d);
@@ -6929,7 +7250,11 @@ document.addEventListener('change',e=>{
 document.addEventListener('change',e=>{
   if(e.target.id==='teamSelEl'){ACT['team.switch'](e.target);return;}
   if(e.target.closest('[data-act="pf.org"]')){ACT['pf.org']();return;}
-  if(e.target.id==='tnRec'){const r=$('#tnUntilRow');if(r)r.style.display=e.target.value?'':'none';return;}
+  if(e.target.id==='tnRec'){
+    /* 반복 종료 칸 — 팝업 폼은 행(#tnUntilRow), 셀 편집은 라벨을 감춘다(364차) */
+    const r=$('#tnUntilRow');if(r)r.style.display=e.target.value?'':'none';
+    const u=$('#tnUntil'),l=u&&u.closest('label');if(l)l.hidden=!e.target.value;
+    return;}
   if(e.target.id==='tnKind'){kindOwnerSync('tnKind','tnAsg');tkKindRefresh();return;}   /* 구분에 따라 내용 칸 구성이 달라진다 */
   if(e.target.id==='peKind'){kindOwnerSync('peKind','peOwners');return;}   /* 팝업 편집기도 동일 규칙 */
   if(e.target.id==='peKind'){peKindRefresh();return;}

@@ -8,6 +8,11 @@
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>H · 주요업무현황</title>
+<!-- PWA 설치(383차) — 서비스워커 없이 매니페스트만으로 설치가 뜬다(Chrome/Edge).
+     ⚠ 서비스워커는 쓰지 않는다 — 예전에 캐시 때문에 옛 코드가 계속 돌던 사고가 있었다(app.js 말미의 제거 코드 유지) -->
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#538CDE">
+<link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0' y1='0' x2='0.8' y2='1'><stop offset='0' stop-color='%236FB0FF'/><stop offset='1' stop-color='%2316357C'/></linearGradient></defs><rect width='64' height='64' rx='13' fill='url(%23g)'/><g transform='translate(11,16) scale(0.4828)' fill='white'><path d='M50.2456 0L44.4349 9.8333L11.2683 65.9786H11.2736H75.6123H86.8843L50.2456 0Z'/><path d='M38.9747 0L0 65.9786H7.58667L42.6533 6.62664L38.9747 0Z'/></g></svg>">
 <script src="./vendor/fullcalendar.min.js"></script>
 <!-- Firebase SDK — vendor/ 자체 호스팅(181차). 사내망에서 CDN 이 막혀도 앱이 뜨도록 marked/purify 와 같은 방식 -->
@@ -15,8 +20,10 @@
 <script src="./vendor/firebase-auth-compat.js"></script>
 <script src="./vendor/firebase-database-compat.js"></script>
 <script src="./vendor/firebase-app-check-compat.js"></script>
+<!-- 폰트 2분할 서브셋(383차) — KS 2,350자 core(500KB)는 항상, 나머지 음절 rare 는 그 글자가 나올 때만 받는다.
+     원본 2,058KB 단일 파일을 대체. 재생성은 scripts/font-subset.py -->
+<link rel="stylesheet" href="./vendor/pretendard.css">
 <style>
-@font-face{font-family:'Pretendard Variable';font-weight:45 920;font-style:normal;font-display:swap;src:url('./vendor/PretendardVariable.woff2') format('woff2-variations');}
 /* ══════════ 디자인 토큰 — 하자처리 현황과 동일 체계 ══════════ */
 :root{
 --b50:#F1F7FD;--b100:#F1F7FD;--b200:#C7DDF6;--b300:#C7DDF6;--b400:#538CDE;
@@ -1526,10 +1533,7 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 /* 오른쪽 열 — 업무 일정과 같은 구성: 제목 없는 필터 카드 + 제목이 붙은 업무 패널 */
 #tkRoot{flex:1;min-height:0;display:flex;flex-direction:column;}
 .tkcol{display:flex;flex-direction:column;gap:var(--s2);min-height:0;min-width:0;height:100%;overflow:hidden;}
-/* ── 목록 위 한 줄 — 검색(꽉 채움) + 업무 추가 ──
-   ⚠ .dp-fcard 가 flex-direction:column 이라 그대로 두면 버튼이 검색 아래로 내려간다 */
-.tkq-card{flex:0 0 auto;display:flex;flex-direction:row;align-items:center;gap:10px;padding:10px 12px;}
-.tkq-card .dp-srch{flex:1 1 auto;min-width:0;max-width:none;}
+/* ── 목록 위 한 줄 — 검색(꽉 채움) + 업무 추가 ── */
 .tkq-add{flex:0 0 auto;white-space:nowrap;}
 /* ── 필터 — 왼쪽 칸, 보류한 업무 아래 ── */
 .tkf-card{flex:0 0 auto;display:flex;flex-direction:column;gap:var(--s2);padding:var(--s2) var(--s3);}
@@ -1544,7 +1548,6 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 .tkf-card.open .tkf-tg .icn{transform:rotate(-90deg);}   /* 펼침 — 위 */
 .tkf-tg.on::after{content:'';position:absolute;top:4px;right:4px;width:5px;height:5px;border-radius:50%;background:var(--b500);}
 .tkf-body{display:flex;flex-direction:column;gap:8px;}
-.tkf-rst{align-self:flex-start;}   /* 보류함 카드(.tks-hold)와 같은 안쪽 여백 — 기본 .card(18/20)면 선택 상자가 안으로 밀려 좁아 보인다 */
 .tkf-card .msel{width:100%;min-width:0;}
 /* 보기 전환 — 작은 달력 위 (주간 업무 · 월간 업무) */
 /* 보기 전환 — 왼쪽 사이드바 머리와 **같은 높이·같은 아랫선**. 폭은 왼쪽 칸을 가득 채운다.
@@ -1557,7 +1560,7 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 .tkv-seg button.act{background:var(--bg2);color:var(--bt1);box-shadow:0 1px 2px rgba(16,24,40,.06);}
 .tkv-seg .icn{width:15px;height:15px;flex-shrink:0;}
 /* 월간 업무 — 현장별 묶음 */
-.tkmo-g{min-width:0;border:1px solid var(--sep);border-radius:var(--rxl);padding:0 0 var(--s2);background:var(--bg2);overflow:hidden;
+.tkmo-g{min-width:0;border:1px solid var(--sep);border-radius:var(--rxl);padding:0;background:var(--bg2);overflow:hidden;
   box-shadow:0 1px 2px rgba(16,24,40,.05),0 1px 3px rgba(16,24,40,.04);}   /* 카드와 같은 그림자 — 큰 카드 안에 갇히지 않고 스스로 카드가 된다(334차) */   /* 현장마다 한 칸 — 내용에 비해 넓던 영역을 나눠 채운다(332차) */
 .tkmo-h{display:flex;align-items:center;gap:var(--s2);padding:10px var(--s4);font-size:13.5px;font-weight:700;color:var(--lbl);letter-spacing:.01em;
   background:var(--bg);border-bottom:1px solid var(--sep);border-radius:var(--rlg) var(--rlg) 0 0;}
@@ -1599,7 +1602,7 @@ body.hasbg .tkbar .rp-tab.on,body.hasbg .tkbar .tkq-add{color:var(--lbl);}
   background:var(--bg);border-bottom:1px solid var(--sep);}
 .tkwk-h b{font-size:13.5px;font-weight:700;color:var(--lbl);letter-spacing:.01em;}
 .tkwk-period{font-size:12.5px;font-weight:700;color:var(--lbl2);font-variant-numeric:tabular-nums;}
-.tkwk-col .tk-list{padding:0 0 var(--s3);}   /* 표는 칸을 꽉 채운다 — 숨은 아래 .tk-row 안쪽 여백이 준다(337차) */
+.tkwk-col .tk-list{padding:0;}   /* 표는 칸을 꽉 채운다 — 아래 여백을 두면 마지막 행만 떠 보인다(359차) */
 /* 칸이 절반이라 창이 좁으면 위아래로 세운다 */
 @media (max-width:1360px){
   .tkwk-cols{grid-template-columns:minmax(0,1fr);}
@@ -1639,7 +1642,7 @@ body.hasbg .tkbar .rp-tab.on,body.hasbg .tkbar .tkq-add{color:var(--lbl);}
 /* ⚠ 목록이 길면 화면 밖 행까지 배치·그리기 비용을 낸다 — 보이는 것만 그리게 한다(346차 실측: DOM 반영 110ms).
    contain-intrinsic-size 로 자리 높이를 미리 알려 줘야 스크롤 막대가 흔들리지 않는다 */
 .tk-item{content-visibility:auto;contain-intrinsic-size:auto 36px;border-radius:0;background:transparent;   /* 표 행은 모서리를 굴리지 않는다 — 호버 면이 라운드로 뜨면 표에서 떠 보인다(338차) */
-  border-style:solid;border-width:1.5px;border-color:transparent;   /* 늘 자리를 잡아 둔다 — 강조가 켜질 때 행이 흔들리지 않게 */
+  border:0;   /* ⚠ 투명 테두리(1.5px)를 두면 배경과 아래 구분선 사이에 얇은 틈이 남는다 — 강조는 outline 이 그린다(363차) */
   transition:none;position:relative;}   /* ⚠ 행 호버는 전환을 두지 않는다 — 커서보다 늦게 따라오면 표가 굼떠 보인다(353차) */
 /* 행 사이 선 — **안쪽 줄(.tk-row)에** 긋는다.
    ⚠ .tk-item 에 그으면 강조용 투명 테두리(1.5px)와 모서리 굴림 때문에 선이 안으로 휘어 토막져 보이고,
@@ -1649,6 +1652,8 @@ body.hasbg .tkbar .rp-tab.on,body.hasbg .tkbar .tkq-add{color:var(--lbl);}
 .tk-item+.tk-item>.tk-row::before{content:'';position:absolute;left:84px;right:0;top:0;height:1px;background:var(--sep);}   /* 84 = 안쪽 여백 22 + 권역 열 62 */
 .tk-item+.tk-item.grp>.tk-row::before{left:0;}          /* 권역이 바뀌는 자리 — 끝까지 */
 .tk-item+.tk-item.gw>.tk-row::before{left:158px;}       /* 이름까지 같은 자리 — 이름 칸도 비껴간다(22+62+12+62) */
+/* 표의 **마지막 행 아래에도** 선을 긋는다 — 없으면 목록이 허공에서 끊긴다(359차) */
+.tkl>.tk-item:last-child>.tk-row::after{content:'';position:absolute;left:0;right:0;bottom:0;height:1px;background:var(--sep);}
 /* 월간 업무는 권역 열이 없다 — 이름 칸(14+62)까지만 비껴간다 */
 .tkl-nr-w .tk-item+.tk-item>.tk-row::before{left:0;}
 .tkl-nr-w .tk-item+.tk-item.gw>.tk-row::before{left:84px;}
@@ -1684,7 +1689,90 @@ body.hasbg .tkbar .rp-tab.on,body.hasbg .tkbar .tkq-add{color:var(--lbl);}
   transition:opacity var(--ms),transform var(--ms) cubic-bezier(.2,.8,.3,1);}
 .tk-item:hover .tk-row .tk-ed,.tk-item.open .tk-row .tk-ed{opacity:1;transform:translate(0,-50%);pointer-events:auto;}
 @media (hover:none){.tk-row .tk-ed{position:static;transform:none;opacity:1;pointer-events:auto;}}
-.tk-item .tk-detail{padding:0 14px 12px 30px;}
+/* 펼침 — 그 행에 딸린 영역임이 보이게 업무 열에서 시작하고 왼쪽에 연결선을 둔다(361차).
+   ⚠ 표 좌우 여백(22px)과 열 폭(권역 62 + 간격 12 + 이름 62 + 간격 12)을 더해 업무 열에 맞춘다 */
+.tk-item .tk-detail{margin:2px 61px 10px 84px;padding:0 0 0 12px;border-left:2px solid var(--sep);}   /* ⚠ 오른쪽 끝까지 늘이면 날짜·조작 열 아래까지 파고들어 표가 흐트러진다. 읽기 좋은 폭에서 끊는다(362차) */
+.tk-sec-b{max-width:100%;}
+/* 수정 — 행의 셀이 그 자리에서 입력칸으로 바뀐다(363차). 표 열은 그대로 유지된다 */
+.cell-inp{width:100%;min-width:0;height:28px;padding:0 8px;font-size:12.5px;line-height:26px;border-radius:var(--rsm);
+  background:var(--fill);border:1px solid transparent;color:var(--lbl);}   /* 테두리 없이 면으로만 — 표와 한 몸으로 보이게(367차) */
+.cell-inp:hover{background:var(--fill2,var(--fill));}
+/* 편집 중인 행·아래 줄의 모든 입력은 **면으로만** 구분한다 — 담당자·현장 선택 상자는 자기 테두리를
+   갖고 있어 1행만 테두리가 남아 있었다(368차 실측: rgba(255,255,255,.3)) */
+.tk-item.editing .tk-row select,.tk-item.editing .tk-row input,
+.tk-editrest select,.tk-editrest input,.tk-editrest textarea{
+  background-color:var(--fill);border:1px solid transparent;border-radius:var(--rsm);color:var(--lbl);}
+/* ⚠ background 를 통째로 덮으면 선택 상자의 화살표(background-image)까지 지워진다 — 색만 바꾼다(368차) */
+.tk-item.editing .tk-row select,.tk-editrest select{background-position:right 8px center;padding-right:24px;}
+/* ⚠ 표의 칸은 글자가 0 에서 시작한다 — 입력의 좌측 여백(8px)을 그대로 두면 읽기 때보다 글자가 밀려 보인다(368차).
+   행 안에서는 여백을 없애 **읽기와 같은 자리에서** 글자가 시작하게 한다(아래 줄은 라벨이 있어 그대로 8px) */
+/* 행 안에서는 **상자 면을 없앤다**(369차) — 칸 폭이 좁아 상자가 잘리고, 글자를 읽기와 같은 자리에
+   맞추려 넓히면 옆 칸을 침범한다. 표의 글자처럼 두고 초점이 갔을 때만 면이 드러난다 */
+.tk-item.editing .tk-row .cell-inp,.tk-item.editing .tk-row select{
+  background-color:transparent;padding-left:0;width:100%;margin-left:0;}
+/* ⚠ 글자 크기·굵기도 읽기 때와 같아야 한다(369차 실측: 업무 13.5→13, 이름 12→13, 날짜 굵기 700→400) */
+.tk-item.editing .tk-row .tkc-w select,.tk-item.editing .tk-row .tkc-s select{font-size:12px;font-weight:400;}
+.tk-item.editing .tk-row .tk-ttl .cell-inp{font-size:13.5px;font-weight:600;}
+.tk-item.editing .tk-row .date-cell{font-size:12px;font-weight:700;}
+.tk-item.editing .tk-row select{padding-right:16px;background-position:right 2px center;}
+.tk-item.editing .tk-row .cell-inp:hover,.tk-item.editing .tk-row select:hover{background-color:var(--fill);}
+.tk-item.editing .tk-row .cell-inp:focus,.tk-item.editing .tk-row select:focus{background-color:var(--fill);}
+.tk-item.editing .tk-row .date-cell:focus{background-color:transparent;}   /* 날짜는 달력이 열림을 말하므로 칸 배경까지 덧씌우지 않는다(370차) */
+.tk-item.editing .tk-row .date-cell{text-align:left;padding:0;}   /* 날짜도 왼쪽 정렬 — 다른 칸과 같은 축(369차) */
+/* 기간 달력 — 날짜 칸을 누르면 뜬다. ⚠ 369차 치환 중 이 블록이 통째로 유실돼 스타일 없이 뭉개져 있었다(370차 복원) */
+.date-wrap{position:relative;overflow:visible;}
+.rc-pop{position:fixed;z-index:1200;width:232px;padding:10px;text-align:left;
+  background:var(--bg2);border:1px solid var(--sep);border-radius:var(--rlg);box-shadow:0 12px 32px rgba(16,24,40,.24);}
+.rc-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;font-size:12.5px;font-weight:700;color:var(--lbl);}
+.rc-nb{width:24px;height:24px;border-radius:var(--rsm);color:var(--lbl2);}
+.rc-nb:hover{background:var(--fill);}
+.rc-w{display:grid;grid-template-columns:repeat(7,1fr);}
+.rc-w i{font-style:normal;text-align:center;font-size:10.5px;color:var(--lbl3);padding-bottom:3px;}
+.rc-g{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
+.rc-d{height:26px;border-radius:var(--rsm);font-size:12px;font-weight:400;color:var(--lbl);font-variant-numeric:tabular-nums;}
+.rc-d.out{visibility:hidden;}
+.rc-d:hover{background:var(--fill);}
+.rc-d.in{background:var(--tint-b,var(--b50));border-radius:0;}
+.rc-d.a,.rc-d.b{background:var(--b600);color:#fff;font-weight:700;}
+.tk-item .cell-inp:focus,.tk-item .tk-ebody .inp:focus,
+.tk-item.editing .tk-row select:focus,.tk-editrest select:focus,.tk-editrest textarea:focus{
+  background-color:var(--bg2);border-color:transparent;outline:none;box-shadow:none;}   /* ⚠ .inp:focus(테두리+링)를 이기려면 특이성을 올려야 한다 — 초점은 면 밝기로만(368차) */
+.tk-ttl .cell-inp{font-size:13px;font-weight:600;}
+.tk-item.editing>.tk-row{align-items:start;padding-top:3px;padding-bottom:3px;}   /* ⚠ 가운데 정렬이면 조작 열(세로 3개)이 행을 키우면서 다른 칸이 함께 내려간다 — 위에 붙인다(367차) */
+/* 행에 열이 없는 값들 — 아래 한 줄 */
+.tk-editrest{margin:0 61px 10px 84px;padding:8px 0 0;}   /* 왼쪽 파란 바 제거 — 행 테두리가 이미 편집 중임을 말한다(368차) */   /* 오른쪽은 조작 열 앞(22+60+12)까지 — 아래 줄이 날짜 칸 끝과 나란해진다(367차) */   /* 왼쪽 선은 이름 열이 시작하는 자리(22+62)에 둔다(366차) */
+.tkl-nr-w .tk-editrest{margin-left:22px;}
+/* 아래 줄 — 칸을 균등하게 나눈다(366차). 라벨 높이까지 같아 줄이 들쭉날쭉하지 않는다 */
+.tk-erow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s2);align-items:end;}
+.tk-erow label{display:flex;flex-direction:column;gap:4px;min-width:0;font-size:11px;font-weight:700;color:var(--lbl3);line-height:14px;}
+.tk-erow .cell-inp{width:100%;}
+/* 날짜 셀 — 편집 중에는 시작·종료를 위아래로 함께 다룬다(364차).
+   ⚠ 열 폭(68px)으로는 날짜 입력이 잘린다 — 편집 행에서만 그 셀을 넓히고, 넓힌 만큼 업무 열이 줄어든다 */
+/* ⚠ 편집 중이라고 열 폭을 바꾸지 않는다 — 읽기 때 칸이 그대로 작성 칸이 된다(366차 지시).
+   날짜 칸(68px)에는 달력 버튼 하나만 들어가므로 넓힐 이유가 없다 */
+/* 편집 중 조작 열 — 저장·취소·삭제를 세로로 쌓고 다른 행의 진행 아이콘과 같은 축에 둔다(365차).
+   ⚠ 앞의 .tk-row .tk-acts 를 이기려면 두 클래스로 적어야 한다 */
+/* 편집 조작 — 세로로 쌓되 **행 높이를 키우지 않는다**(367차: 아이콘 3개가 89px 를 차지해 아래 줄이 밀렸다).
+   자리는 첫 아이콘 하나만 잡고 나머지는 아래로 흘려 보낸다 */
+.tk-item.editing .tk-row .tk-acts{position:relative;align-self:start;height:28px;margin-right:-3px;}
+.tk-item.editing .tk-row .tk-acts .tk-ico{position:absolute;right:0;}
+.tk-item.editing .tk-row .tk-acts .tk-ico:nth-child(1){top:0;}
+.tk-item.editing .tk-row .tk-acts .tk-ico:nth-child(2){top:28px;}
+.tk-item.editing .tk-row .tk-acts .tk-ico:nth-child(3){top:56px;}
+/* 아래 줄 끝 — 삭제는 완료 옆이 아니라 여기(364차) */
+.tk-erow label[hidden]{display:none;}
+
+.tk-ebody{margin-top:var(--s2);}
+.tk-ebody .frow>label{font-size:11px;font-weight:700;color:var(--lbl3);}
+.tk-ebody textarea{min-height:56px;}
+.tk-ebody .inp{background:var(--fill);border:1px solid transparent;font-size:12.5px;}   /* 위 칸들과 같은 언어 */
+.tk-ok{color:var(--gn);}.tk-cx{color:var(--lbl3);}
+.tkl-nr-w .tk-item .tk-detail{margin-left:22px;}   /* 현장별 업무 — 권역 열이 없다 */
+.tk-item.open{background:var(--fill);}   /* 펼친 행과 그 아래 영역을 한 덩어리로 */
+/* 제목 뒤 '적힌 내용 있음' 표시 */
+.tk-note{display:inline-flex;margin-left:6px;vertical-align:-1px;color:var(--lbl3);}
+.tk-note svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;}
+.tk-item.open .tk-note{color:var(--bt1);}
 .tk-ttl{min-width:0;font-size:13.5px;line-height:1;font-weight:600;color:var(--lbl);cursor:pointer;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .tk-sub-i{margin-left:6px;font-size:11.5px;font-style:normal;font-weight:500;color:var(--lbl3);}
@@ -1700,7 +1788,6 @@ body.hasbg .tkbar .rp-tab.on,body.hasbg .tkbar .tkq-add{color:var(--lbl);}
 .tk-item.s2 .tkc{color:var(--lbl3);}
 .tk-item.s2 .tkc-w{color:var(--lbl);}          /* 이름은 그 행의 상태를 따르지 않는다(337차) */
 .tk-item .tkc-w.wdone{color:var(--lbl3);}      /* 그 이름의 모든 행이 완료일 때만 옅게 */
-.tk-item.nod .tk-ttl,.tk-item.nod .tkc{cursor:default;}   /* 펼칠 내용이 없는 행 — 눌러도 아무 일이 없다 */
 /* 칸이 좁으면 현장 → 권역 순으로 접는다(이름·업무·날짜는 끝까지 남긴다).
    ⚠ 열 개수는 창 폭이 아니라 **칸 폭**(컨테이너 질의)으로 정한다 — 완료·예정이 카드를 반씩 나눠 쓴다. */
 @container tkpanel (max-width:620px){
@@ -1738,7 +1825,7 @@ body.hasbg .tkbar .rp-tab.on,body.hasbg .tkbar .tkq-add{color:var(--lbl);}
 .tk-detail>.tk-secs:empty{display:none;}   /* 진행경과·처리계획이 모두 비면 그 줄을 지운다 */
 .tk-secs{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .tk-sec{display:flex;flex-direction:column;min-width:0;}
-.tk-sec-h{font-size:12px;font-weight:700;color:var(--lbl3);letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px;}
+.tk-sec-h{font-size:11px;font-weight:700;color:var(--lbl3);letter-spacing:.02em;text-transform:none;margin:0 0 4px 10px;}   /* 본문 상자의 안쪽 여백(10px)과 왼쪽 선을 맞춘다(362차) */
 .tk-detail>.tk-sec:first-child,.tk-detail>.tk-secs:first-child{margin-top:6px;}
 .tk-sec-b{font-size:13px;line-height:1.65;color:var(--lbl);white-space:pre-wrap;word-break:break-all;min-height:37px;padding:8px 10px;border-radius:var(--rmd);background:var(--surf2);border:1px solid transparent;outline:none;}
 .tk-sec-b:hover{border-color:var(--sep);}
@@ -1926,12 +2013,13 @@ html.dark .col-pop{background:#242426;}
   background:var(--bg);border-bottom:1px solid var(--sep);}
 .share-row{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);padding:10px var(--s4);min-height:52px;}
 .share-row+.share-row{box-shadow:inset 0 1px 0 var(--sep);}
+.set-card>.share-row:last-child{box-shadow:inset 0 -1px 0 var(--sep),inset 0 1px 0 var(--sep);}
+.set-card>.share-row:first-of-type:last-of-type{box-shadow:inset 0 -1px 0 var(--sep);}
 .share-row>.share-info{flex:1;}
 .share-info{min-width:0;display:flex;flex-direction:column;gap:2px;}
 .share-info>b{font-size:13px;color:var(--lbl);font-weight:700;}
 .share-info span{font-size:12px;color:var(--lbl2);line-height:1.45;}
 .share-info span b{color:var(--lbl);font-weight:600;}
-.share-sep{height:1px;background:var(--sep);margin:13px 0;}
 /* 팀 선택기 (사이드바) */
 .teamsel{display:flex;align-items:center;gap:6px;padding:7px;margin:0;border-bottom:0;}
 /* 접으면 팀 선택기는 감추되 자리 높이는 그대로 — 아래 메뉴 아이콘이 올라가지 않는다 */
@@ -1951,9 +2039,11 @@ html.dark .col-pop{background:#242426;}
 .tm-h{display:flex;align-items:center;justify-content:space-between;margin:0;height:41px;padding:0 var(--s4);
   font-size:13.5px;font-weight:700;color:var(--lbl);letter-spacing:.01em;
   background:var(--bg);border-bottom:1px solid var(--sep);border-radius:var(--rxl) var(--rxl) 0 0;}
-.tm-list{display:flex;flex-direction:column;padding:var(--s1) 0 var(--s2);}
+.tm-list{display:flex;flex-direction:column;padding:0;}   /* ⚠ 위아래 여백을 두면 첫 행·마지막 행만 높아 보인다 — 줄 높이는 .tm-row 가 갖는다(358차) */
 .tm-row{display:flex;align-items:center;gap:var(--s2);padding:var(--s1) var(--s4);border:0;border-radius:0;background:transparent;min-height:34px;}
 .tm-row+.tm-row{box-shadow:inset 0 1px 0 var(--sep);}
+.tm-list>.tm-row:last-child{box-shadow:inset 0 -1px 0 var(--sep),inset 0 1px 0 var(--sep);}
+.tm-list>.tm-row:first-child:last-child{box-shadow:inset 0 -1px 0 var(--sep);}   /* 목록이 어디서 끝나는지 보이게(359차) */
 .tm-row:hover{background:var(--fill);}   /* 전환 없음 — 표 줄은 즉시 반응한다 */
 .tm-row.act{background:var(--tint-b,var(--b50));}
 .tm-empty{padding:14px;}
@@ -2608,7 +2698,7 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
    박스 높이와 행간을 카드 제목(14px x 1.5 = 21px)과 똑같이 못 박는다 */
 .pe-ttl{font-size:14px;height:21px;line-height:21px;padding:0;}
 /* 제목 줄 자체의 높이도 읽기 카드와 같게 못 박는다(위 여백 8 + 아이콘 26) */
-.tk-line,.plan-hd{min-height:26px;}
+.plan-hd{min-height:26px;}
 .pe-bar{min-height:26px;box-sizing:content-box;}
 /* 위젯 — 읽기 카드 제목만 줄여 두어 수정하면 글자가 커지던 것. 폼도 같은 배율을 따른다 */
 body.wid .pe-ttl{font-size:calc(12.5px*var(--wfz));}
@@ -2635,40 +2725,8 @@ body.wid .dp-edit .inp-sm{font-size:calc(12px*var(--wfz));}
 .rp-tab:hover:not(.on){color:var(--lbl2);}
 .rp-tcnt{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;border-radius:9px;background:var(--fill);font-size:10px;font-weight:700;margin-left:5px;padding:0 4px;color:var(--lbl3);}
 .rp-tab.on .rp-tcnt{background:rgba(59,130,246,.10);color:var(--b600);}
-/* 2열 분리 */
-@media(max-width:1100px){.rp-split{grid-template-columns:1fr;gap:16px;}}
-/* 섹션 카드 */
-/* 테이블 */
-.rp-tbl tbody tr:last-child td{border-bottom:none;}
-.rp-tbl tbody tr:hover{background:rgba(59,130,246,.03);}
-.rp-tbl .rp-own::after{content:'';position:absolute;right:0;top:8px;bottom:8px;width:1px;background:var(--sep);}
-/* ── 월별 현장 보기 — 고른 달의 업무를 현장별 카드로 ── */
-.rpm-sum{font-size:12px;color:var(--lbl3);margin-left:8px;font-weight:500;}
-.rpm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:14px;align-items:start;}
-.rpm-grid.rpm-nosite{margin-top:14px;}
-.rpm-card{background:var(--bg2);border:1px solid var(--sep);border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden;break-inside:avoid;}
-.rpm-card.empty{opacity:.62;}
-.rpm-h{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid rgba(60,60,67,.06);}
-.rpm-card.empty .rpm-h{border-bottom:none;}
-.rpm-site{font-size:13px;font-weight:700;color:var(--lbl);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.rpm-cnt{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;flex-shrink:0;}
-.rpm-cnt .c-done{color:#065F46;}.rpm-cnt .c-run{color:#1E40AF;}
-.rpm-cnt i{color:var(--lbl3);font-style:normal;font-weight:400;}
-html.dark .rpm-cnt .c-done{color:#34D399;}html.dark .rpm-cnt .c-run{color:#93B4F5;}
-.rpm-noneb{margin-left:auto;font-size:11.5px;color:var(--lbl3);flex-shrink:0;}
-.rpm-rows{padding:4px 0;}
-.rpm-row{display:flex;align-items:center;gap:8px;padding:6px 14px;cursor:pointer;transition:background .12s;}
-.rpm-row:hover{background:rgba(59,130,246,.05);}
-.rpm-row .stx{width:20px;height:20px;flex-shrink:0;pointer-events:none;}   /* 표시 전용 — 이동은 줄 전체가 담당 */
-.rpm-t{flex:1;min-width:0;font-size:12.5px;color:var(--lbl);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.rpm-row.done .rpm-t{color:var(--lbl3);}
-.rpm-memo{margin-left:6px;font-size:11px;color:var(--lbl3);}
-.rpm-own{flex-shrink:0;font-size:11px;font-weight:600;color:var(--lbl2);}
-.rpm-own.team{color:var(--b600);}
-.rpm-d{flex-shrink:0;min-width:44px;text-align:right;font-size:11.5px;color:var(--lbl2);font-variant-numeric:tabular-nums;white-space:nowrap;}
-/* 인쇄 — 탭을 숨기고 전 권역을 펼쳐 넣는다 */
-@media print{.rp-tabs{display:none;}.rp-split{grid-template-columns:1fr 1fr;}
-  .rpm-grid{grid-template-columns:1fr 1fr;}}
+/* 인쇄 — 권역 탭은 숨긴다 */
+@media print{.rp-tabs{display:none;}}
 /* ── 8차 ── */
 /* 진행 상태 아이콘 — 체크를 구멍으로 뚫어 카드 배경이 비쳐 보이게(유리 배경에서 흰 체크가 묻히던 것).
    ⚠ 마스크는 마크업의 mask 속성으로 걸고, 완료일 때만 CSS 로 끈다(CSS mask 로는 참조가 안 먹었다) */
@@ -2739,13 +2797,17 @@ html.dark body.hasbg #fcal .fc-event.team{background:rgba(44,47,54,.92)!importan
   background-color:#DC2626;
   -webkit-mask:var(--risk-ic) center/contain no-repeat;mask:var(--risk-ic) center/contain no-repeat;}
 html.dark .risk-b{background-color:#F87171;}
-.rpm-t .risk-b{vertical-align:-.1em;}
 /* 내 업무 — 1열(작은 달력·멘션) + 2열 카드 */
 /* 작은 달력에서 고른 날에 걸치는 업무 강조 — 테두리만, 배경은 두지 않는다 */
 /* 작은 달력에서 고른 날의 업무 — 테두리로 표시.
    ⚠ box-shadow 로 그리면 다크 모드 구분선(html.dark .tk-item+.tk-item, 특이성 0,2,1)이
    같은 속성을 덮어써 **두 번째 행부터 링이 사라진다**(322차까지의 버그). 테두리는 별도 속성이라 겹치지 않는다 */
-.tk-item.hl{border-color:var(--b500);}
+/* 방금 상태가 바뀐 행 — 그 행만 다시 그리므로 요소가 살아 있어 모션이 보인다(372차) */
+.tk-item.st-just .tk-acts .stx-in{animation:stx-pop .26s cubic-bezier(.34,1.56,.64,1);}
+/* 목록 끝에서 페이지가 딸려 움직이지 않게 */
+.tk-list,.tkmo-list{overscroll-behavior:contain;}
+.tk-item.hl{outline:1.5px solid var(--b500);outline-offset:-1.5px;}   /* 자리를 차지하지 않는 outline — 행 높이가 흔들리지 않는다 */
+.tk-item.editing{background:var(--tint-b,var(--b50));outline:1.5px solid var(--b400);outline-offset:-1.5px;}   /* 지금 고치고 있는 행 — 팝업이 어디서 왔는지 알 수 있게(360차) */
 /* 좌측 대상 목록 — 줄 간격을 조금 좁히고 글자 크기를 하나로 맞춘다(팀·권역·담당자 13px) */
 .tks-item{padding:7px 11px;font-size:13px;}
 .tks-item.sub{padding-top:6px;padding-bottom:6px;font-size:13px;}
@@ -2755,7 +2817,6 @@ html.dark .risk-b{background-color:#F87171;}
 .tkside{display:flex;flex-direction:column;gap:var(--s2);min-height:0;}
 .tkside .mini-cal{flex:0 0 auto;}
 .tkside .tks-card{flex:0 1 auto;min-height:0;display:flex;flex-direction:column;overflow:hidden;}
-.tks-list{overflow-y:auto;min-height:0;margin:-2px;padding:2px;}
 /* 점 색은 업무 지정색을 그대로 쓴다 — 기본색 지정은 지운다 */
 .mc-d .dots i{background:var(--lbl3);}
 .mc-d.sel .dots i,.mc-d.today .dots i{background:inherit;}
@@ -2810,9 +2871,8 @@ html.dark .risk-b{background-color:#F87171;}
 .wl-more.on .icn{transform:rotate(-90deg);}
 .wl-more:hover{color:var(--lbl);}
 @media print{
-  #sidebar,#topbar,.rp-head{display:none!important;}
+  #sidebar,#topbar{display:none!important;}
   #content{padding:0;overflow:visible;}
-  .rp-tbl{font-size:10.5px;}
   /* 하자 화면 — 카드 테두리를 지우고 표는 쪽이 넘어가도 이어지게. 차트는 그대로 인쇄된다 */
   #view-defect .card,#view-defect .kc,#view-defect .ic,#view-defect .mom-row{border:0;box-shadow:none;break-inside:avoid;page-break-inside:avoid;}
   #view-defect .akpi{gap:8px;}
@@ -3254,6 +3314,10 @@ html.dark .risk-b{background-color:#F87171;}
               <button class="btn bo bsm" data-act="bk.restore">불러오기</button>
             </div>
             <div class="share-row">
+              <div class="share-info"><b>휴지통</b><span>삭제한 업무를 30일 보관합니다 — 복원하거나 완전히 지웁니다</span></div>
+              <button class="btn bo bsm" data-act="trash.open">열기</button>
+            </div>
+            <div class="share-row">
               <div class="share-info"><b>하자 관리 스냅샷</b><span>현재 게시월 기준 — 대시보드·현장·목록·분석을 담은 단일 HTML(로그인 없이 열립니다)</span></div>
               <button class="btn bo bsm" data-act="set.dfsnap">내보내기</button>
             </div>
@@ -3307,5 +3371,5 @@ html.dark .risk-b{background-color:#F87171;}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=358"></script>
+<script src="./app.js?v=386"></script>
 </body></html>
