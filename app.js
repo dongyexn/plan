@@ -6,7 +6,10 @@
      로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
-const APP_VER='4.8.1';   /* 이 웹앱의 버전. ⚠ 예전엔 위젯 버전과 같은 값으로 묶었으나 위젯이 Lite 로 갈리며 끊었다 — 위젯 버전은 트레이 메뉴에 나온다 */
+/* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
+   ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
+     어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
+const APP_VER='405';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -1407,9 +1410,12 @@ function teamShort(nm){
 function rTeamSel(){
   const el=$('#teamsel');if(!el)return;
   const teams=(S.org.teams||[]).filter(t=>t.name);
-  if(!teams.length){$('#tselWrap').innerHTML='';el.style.display='none';return;}
-  el.style.display='';
+  if(!teams.length){$('#tselWrap').innerHTML='';el.hidden=true;return;}
   if(!teams.some(t=>t.id===S.tk.t))S.tk.t=teams[0].id;
+  /* 팀이 하나뿐이면 고를 것이 없다 — 선택기를 감춘다(390차). 팀이 늘면 저절로 다시 나온다.
+     ⚠ 고른 팀(S.tk.t)은 감춘 상태에서도 위에서 정해 둔다 — 다른 화면이 이 값을 쓴다 */
+  if(teams.length<2){$('#tselWrap').innerHTML='';el.hidden=true;return;}
+  el.hidden=false;
   const opts=teams.map(t=>'<option value="'+esc(t.id)+'"'+(t.id===S.tk.t?' selected':'')+'>'+esc(t.name)+'</option>').join('');
   /* 선택창은 정적 마크업 — 내용만 채운다 */
   const cur=teams.find(t=>t.id===S.tk.t)||teams[0];
@@ -3475,15 +3481,17 @@ const dfDlt=(d,isFirst,cur,u)=>{
   if(d===0)return`<span class="ba bgr"${tt}>─ 0</span>`;
   const cls=d>0?'brd':'bgn',sign=d>0?'+':'−',arrow=d>0?'▲':'▼';
   return`<span class="ba ${cls}"${tt}>${arrow} ${sign}${Math.abs(d).toLocaleString()}</span>`;};
-const dfLtrTip=(nm,unr,d60,d30,d0)=>{const p=n=>unr>0?(n/unr*100).toFixed(1)+'%':'0%';
-  return esc(nm)+' — 60일+ '+d60.toLocaleString()+'건('+p(d60)+') · 30~59일 '+d30.toLocaleString()+'건('+p(d30)+') · 30일 미만 '+d0.toLocaleString()+'건('+p(d0)+')';};
-const dfLtrBar=(nm,unr,d60,d30,d0)=>{
+/* 막대 툴팁 — 짚은 구간 하나만 말한다(391차). 예전에는 현장명 + 세 구간을 한 줄에 몰아 넣어
+   정작 어디를 짚었는지가 묻혔다. 구간별로 따로 달므로 이름도 필요 없다 */
+const dfLtrTip=(lbl,n,unr)=>lbl+' '+Number(n).toLocaleString()+'건'+(unr>0?' ('+(n/unr*100).toFixed(1)+'%)':'');
+const dfLtrBar=(unr,d60,d30,d0)=>{   /* 이름은 더 쓰지 않는다 — 툴팁이 구간별로 갈라졌다(391차) */
   const ltr=unr>0?((d60+d30)/unr*100):0;
   const p60=unr>0?Math.min(d60/unr*100,100):0,p30=unr>0?Math.min(d30/unr*100,100):0,p0=unr>0?Math.min(d0/unr*100,100):0;
-  return`<div class="ltrbar-wrap"><div class="ltrbar" data-tip="${dfLtrTip(nm,unr,d60,d30,d0)}"><div class="seg s60" style="width:${p60.toFixed(1)}%"></div><div class="seg s30" style="width:${p30.toFixed(1)}%"></div><div class="seg s0" style="width:${p0.toFixed(1)}%"></div></div><span class="ltrbar-pct">${ltr.toFixed(1)}%</span></div>`;};
+  const seg=(cls,lbl,n,w)=>w>0?`<div class="seg ${cls}" style="width:${w.toFixed(1)}%" data-tip="${esc(dfLtrTip(lbl,n,unr))}"></div>`:'';
+  return`<div class="ltrbar-wrap"><div class="ltrbar">${seg('s60','60일 이상',d60,p60)}${seg('s30','30~59일',d30,p30)}${seg('s0','30일 미만',d0,p0)}</div><span class="ltrbar-pct">${ltr.toFixed(1)}%</span></div>`;};
 const dfLtrCells=(d0,d30,d60,unr,ltDlt,isFirst,u)=>{
   const lt=d30+d60;
-  return`<td class="cc ltr-red tl-grp-ltr">${dfNF(lt)}</td><td class="cc tl-grp-ltr">${dfLtrBar('장기미처리',unr,d60,d30,d0)}</td><td class="cc">${dfDlt(ltDlt,isFirst,lt,u)}</td>`;};
+  return`<td class="cc ltr-red tl-grp-ltr">${dfNF(lt)}</td><td class="cc tl-grp-ltr">${dfLtrBar(unr,d60,d30,d0)}</td><td class="cc">${dfDlt(ltDlt,isFirst,lt,u)}</td>`;};
 const dfMetrics=(cur,prev,prev2)=>{const tR=cur.r,cumRes=cur.res,unr=cur.u,d0=cur.d0,lt=cur.d30+cur.d60;
   const rate=tR>0?(cumRes/tR*100):0;
   const recvW=prev?cur.r-prev.r:cur.r;const resW=prev?cur.res-prev.res:cur.res;
@@ -3723,7 +3731,10 @@ function dfTrendDraw(key,cid,wks){
   DF.ch[key]=new Chart(el,{data:{labels:rows.map(x=>`${Number(x.m)||0}월\n${Number(x.w)||0}주`),datasets:ds},
     options:{responsive:true,maintainAspectRatio:false,
       animation:{duration:DUR,easing:'easeOutQuart',onComplete(ac){if(DF.noAnim){ac.chart.$dlShown=true;ac.chart.$la=1;return;}if(!ac.initial||ac.chart.$dlShown)return;ac.chart.$dlShown=true;const ch=ac.chart,t0=performance.now(),fd=350;const tick=()=>{if(!ch||ch.$destroyed||!ch.ctx)return;try{const p=Math.min(1,(performance.now()-t0)/fd);ch.$la=p*p*(3-2*p);ch.update('none');if(p<1)requestAnimationFrame(tick);}catch(e){console.warn('label fade tick aborted',e);}};requestAnimationFrame(tick);}},
-      plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,position:'aboveAll',yAlign:'top',caretPadding:6,padding:12,usePointStyle:true,boxWidth:10,boxHeight:10,boxPadding:6,callbacks:{label:ctx=>`${ctx.dataset.label}: ${(ctx.parsed.y??ctx.parsed??0).toLocaleString()}건`}}},
+      plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,position:'aboveAll',yAlign:'top',caretPadding:6,padding:12,usePointStyle:true,boxWidth:10,boxHeight:10,boxPadding:6,callbacks:{
+        /* 가로축 라벨은 두 줄('8월'·'3주')이지만 툴팁에서는 한 줄로 읽는다(391차) */
+        title:items=>String((items[0]&&items[0].label)||'').replace(/\s*\n\s*/g,' '),
+        label:ctx=>`${ctx.dataset.label}: ${(ctx.parsed.y??ctx.parsed??0).toLocaleString()}건`}}},
       /* 인쇄 상자는 720px 폭이라 주차 라벨이 자동 회전한다(원본은 화면 폭 그대로 인쇄해 수평).
          인쇄용만 회전을 막고 촘촘하면 건너뛰게 한다 — 화면은 원본 그대로. */
       scales:{x:{grid:{display:false},ticks:{font:{size:_pr?9:10},color:ink,
@@ -3850,7 +3861,7 @@ function dfDashRowHTML(s,st){
     +`<td class="n" style="color:var(--am)">${st.unr.toLocaleString()}</td>`
     +`<td class="cc" style="white-space:nowrap"><span class="ba ${b1.dBadge}" data-tip="전월 ${st.prev.unr.toLocaleString()} → 금월 ${st.unr.toLocaleString()}">${b1.dArrow} ${b1.dTxt}</span></td>`
     +`<td class="n" style="color:var(--rd)">${st.lt.toLocaleString()}</td>`
-    +`<td>${dfLtrBar(s.name,st.unr,st.dd[2],st.dd[1],st.dd[0])}</td>`
+    +`<td>${dfLtrBar(st.unr,st.dd[2],st.dd[1],st.dd[0])}</td>`
     +`<td class="cc" style="white-space:nowrap"><span class="ba ${b2.dBadge}" data-tip="전월 ${st.prev.lt.toLocaleString()} → 금월 ${st.lt.toLocaleString()}">${b2.dArrow} ${b2.dTxt}</span></td></tr>`;
 }
 function dfDashSort(all){
@@ -6281,7 +6292,7 @@ document.addEventListener('mouseover',e=>{
   if(t===_tipFor)return;                                 /* 이미 그 요소를 보여 주는 중 */
   clearTimeout(_tipT);
   const el=$('#htip');if(el)el.classList.remove('on');
-  _tipT=setTimeout(()=>tipShow(t),420);                  /* 지나가다 뜨지 않게 조금 기다린다 */
+  _tipT=setTimeout(()=>tipShow(t),180);                  /* 지나가다 뜨지 않을 만큼만 기다린다(391차: 420 은 굼떴다) */
 });
 document.addEventListener('mouseout',e=>{
   const t=e.target.closest?e.target.closest('[data-tip]'):null;
@@ -6344,7 +6355,7 @@ function go(view){
     if(b){
       const sc=[...document.scripts].map(x=>x.src).find(x=>/app\.js\?v=/.test(x))||'';
       const cv=(sc.match(/v=(\d+)/)||[])[1]||'?';
-      b.textContent='버전 '+APP_VER+' · 화면 v'+cv+' · 기록된 오류 '+ERRLOG.length+'건';
+      b.textContent='버전 v'+(cv!=='?'?cv:APP_VER)+' · 기록된 오류 '+ERRLOG.length+'건';
     }
     /* 위젯은 별도 파일이라 버전이 따로 논다 — 설정에서 한눈에 보이게 같이 적는다 */
   }
@@ -6984,7 +6995,7 @@ const ACT={
     const sc=$('#mbody .md-scroll');if(sc)sc.scrollTop=0;
   },
   'set.copyErr':()=>{
-    const txt='버전 '+APP_VER+' · '+navigator.userAgent+'\n'+(ERRLOG.length?ERRLOG.join('\n'):'기록된 오류 없음');
+    const txt='버전 v'+APP_VER+' · '+navigator.userAgent+'\n'+(ERRLOG.length?ERRLOG.join('\n'):'기록된 오류 없음');
     if(navigator.clipboard&&navigator.clipboard.writeText)
       navigator.clipboard.writeText(txt).then(()=>toast('복사했습니다')).catch(()=>toast('복사 실패'));
     else toast('복사를 지원하지 않는 브라우저입니다');
@@ -7534,23 +7545,31 @@ function calFitApply(){
 function bindCalResize(){
   const sb=$('#sidebar');
   if(sb){
-    /* 전환이 끝날 때만 다시 그리면 달력이 마지막에 뚝 바뀐다 —
-       접히는 동안 매 프레임 따라 그려 이어지게 한다 */
-    let raf=null,until=0;
-    const follow=()=>{
+    /* ⚠ 접히는 동안 매 프레임 CAL.updateSize() 를 부르지 않는다(391차 실측).
+       달력 전체 레이아웃을 다시 재는 무거운 일이라 전환 내내 프레임이 밀렸다
+       (44프레임 · 최악 158ms → 63프레임 · 최악 103ms). 폭은 CSS 가 이미 따라가므로
+       전환 중에는 그대로 두고, **끝난 뒤 한 번만** 정확히 맞춘다.
+       ⚠ transitionend 를 못 받는 경우(중간에 다시 누름 등)를 대비해 타이머로도 마무리한다 */
+    let endT=null;
+    const settle=()=>{
+      clearTimeout(endT);endT=null;midT.forEach(clearTimeout);midT=[];
+      document.body.classList.remove('sb-anim');
       if(CAL)CAL.updateSize();
-      if(performance.now()<until)raf=requestAnimationFrame(follow);
-      else{raf=null;if(CAL)CAL.updateSize();}
+      calFitApply();               /* 칸 높이가 바뀌었으면 보류함 상한도 다시 잰다 */
     };
+    /* ⚠ 전환 내내 손을 놓으면 여러 날에 걸친 막대(절대 배치)가 폭을 못 따라와 끝에서 뚝 움직인다.
+       매 프레임은 너무 무거우므로 전환 중 두 번만 다시 맞춘다(391차) */
+    let midT=[];
     const start=()=>{
-      until=performance.now()+340;          /* --tr 은 .22s, 여유를 둔다 */
-      if(!raf)raf=requestAnimationFrame(follow);
-    };
+      document.body.classList.add('sb-anim');   /* 전환 동안 달력을 배치 계산에서 떼어 낸다(391차) */
+      midT.forEach(clearTimeout);
+      midT=[100,220].map(ms=>setTimeout(()=>{if(CAL)CAL.updateSize();},ms));
+      clearTimeout(endT);endT=setTimeout(settle,460);};   /* --sbtr .30s + 여유 */
     sb.addEventListener('transitionstart',e=>{
       if(e.propertyName==='width'||e.propertyName==='min-width')start();
     });
     sb.addEventListener('transitionend',e=>{
-      if(e.propertyName==='width'||e.propertyName==='min-width'){until=0;if(CAL)CAL.updateSize();}
+      if(e.propertyName==='width'||e.propertyName==='min-width')settle();
     });
     /* transitionstart 를 못 받는 경우 대비 — 토글 버튼에서도 건다 */
     document.addEventListener('click',e=>{if(e.target.closest('[data-act="nav.toggle"]'))start();});
