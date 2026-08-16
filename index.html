@@ -1637,8 +1637,8 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 .tkbar{flex:0 0 auto;height:var(--th);display:flex;align-items:stretch;gap:var(--s3);padding-top:1.5px;border-bottom:1.5px solid var(--sep);}   /* ⚠ 아랫선 1.5px 이 안쪽 높이를 깎아 글자가 1px 위로 뜬다 — 같은 만큼 위를 띄워 옆 줄과 글자 중심을 맞춘다(331차) */
 .tkbar-tabs{flex:1;min-width:0;height:100%;margin-bottom:0;border-bottom:0;align-items:stretch;}   /* 아랫선은 줄(.tkbar) 이 그린다 — 업무 추가 버튼 아래까지 이어진다(330차) */   /* ⚠ height:100% 를 줘야 줄 높이를 채운다 — stretch 만으로는 28px 에 머물렀다(329차 실측) */
 .tkbar .rp-tab{display:flex;align-items:center;height:100%;gap:6px;padding:0 15px;font-size:13.5px;white-space:nowrap;}
-.tkbar .rp-tab::after{bottom:-1.5px;}
-.tkbar .rp-tab.on::after{height:3px;border-radius:1.5px 1.5px 0 0;}   /* 선택 탭의 파란 줄 */
+.tkbar .rp-tab::after{bottom:-2px;z-index:1;}   /* ⚠ 줄(.tkbar)의 아랫선까지 덮어야 한다(391차) — -1.5px 이면 회색이 0.5px 삐져나온다 */
+.tkbar .rp-tab.on::after{height:5px;border-radius:2.5px 2.5px 0 0;}   /* 선택 탭의 파란 줄 — 아래 구분선을 덮고도 또렷하게(391차) */
 /* 업무 추가 — 탭과 같은 생김새(테두리·배경 없는 글자 버튼) */
 .tkbar .tkq-add{flex:0 0 auto;display:flex;align-items:center;height:100%;gap:6px;padding:0 15px;
   border:0;background:none;border-radius:0;font-size:13.5px;font-weight:600;color:var(--lbl3);white-space:nowrap;}
@@ -1708,6 +1708,9 @@ body.hasbg .tkbar .rp-tab.on,body.hasbg .tkbar .tkq-add{color:var(--lbl);}
    선이 겹쳐 마지막 줄만 눌려 보였다. 카드 밖 목록(주간 업무 등)에서는 그대로 긋는다 */
 .tkl>.tk-item:last-child>.tk-row::after{content:'';position:absolute;left:0;right:0;bottom:0;height:1px;background:var(--sep);}
 .tkmo-g .tkl>.tk-item:last-child>.tk-row::after{display:none;}
+/* 마지막 줄 안쪽 여백 — 조직 관리 목록과 같은 원칙(391차). 바깥에 주면 그만큼 호버 배경이
+   카드 밑변에 닿지 못해 틈이 보인다. 줄 안쪽이라 호버가 밑변까지 꽉 찬다 */
+.tkmo-g .tkl>.tk-item:last-child>.tk-row{padding-bottom:12px;}
 /* 월간 업무는 권역 열이 없다 — 이름 칸(14+62)까지만 비껴간다 */
 .tkl-nr-w .tk-item+.tk-item>.tk-row::before{left:0;}
 .tkl-nr-w .tk-item+.tk-item.gw>.tk-row::before{left:84px;}
@@ -2117,7 +2120,8 @@ html.dark .col-pop{background:#242426;}
 .tm-h{display:flex;align-items:center;justify-content:space-between;margin:0;height:41px;padding:0 var(--s4);
   font-size:13.5px;font-weight:700;color:var(--lbl);letter-spacing:.01em;
   background:var(--bg);border-bottom:1px solid var(--sep);border-radius:var(--rxl) var(--rxl) 0 0;}
-.tm-list{display:flex;flex-direction:column;padding:0;}   /* ⚠ 위아래 여백을 두면 첫 행·마지막 행만 높아 보인다 — 줄 높이는 .tm-row 가 갖는다(358차) */
+.tm-list{display:flex;flex-direction:column;padding:0;}   /* ⚠ 줄 사이에 여백을 주지 말 것 — 첫 행·마지막 행만 높아 보인다(358차) */
+.tm-list>.tm-row:last-child{padding-bottom:8px;}   /* 마지막 줄 안쪽 여백 — 호버 배경이 카드 밑변까지 꽉 찬다(391차) */
 .tm-row{display:flex;align-items:center;gap:var(--s2);padding:var(--s1) var(--s4);border:0;border-radius:0;background:transparent;min-height:34px;}
 .tm-row+.tm-row{box-shadow:inset 0 1px 0 var(--sep);}
 /* (389차) 맨 끝 줄에는 아래 선을 두지 않는다 — 카드 밑변과 겹쳐 그 줄만 굵어 보였다.
@@ -2236,6 +2240,8 @@ select.mg-inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-
 
 /* 계정 표 — 참조 앱 utbl 이식 */
 .utbl{width:100%;border-collapse:collapse;table-layout:fixed;}
+/* 표도 같은 원칙 — 마지막 줄 안쪽에 여백을 둬 호버가 카드 밑변까지 닿게 한다(391차) */
+#siteRoot .mgtbl tbody tr:last-child td,#acctRoot .utbl tbody tr:last-child td,#freeRoot .utbl tbody tr:last-child td{padding-bottom:8px;}
 .utbl thead th{font-size:11px;font-weight:700;color:var(--lbl3);letter-spacing:.01em;text-align:left;height:34px;padding:0 10px;background:var(--bg);border-bottom:1px solid var(--sep);white-space:nowrap;}
 .utbl th:first-child,.utbl td:first-child{padding-left:var(--s4);}
 .utbl th:last-child,.utbl td:last-child{padding-right:var(--s4);}   /* 업무 현황 표와 같은 열 이름 줄(341차) */
@@ -3454,5 +3460,5 @@ html.dark .risk-b{background-color:#F87171;}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=405"></script>
+<script src="./app.js?v=410"></script>
 </body></html>
