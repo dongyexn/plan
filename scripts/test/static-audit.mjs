@@ -114,6 +114,16 @@ OK('구문 검사 (node --check)');
   catch (e) { F('build-single.mjs 실패: ' + String(e.stderr || e).slice(0, 300)); }
 }
 
+/* ── 9-1. 버전 두 곳 일치(390차) — APP_VER 와 index.html 의 app.js?v=NNN 은 같은 숫자여야 한다.
+        예전엔 semver 를 따로 뒀다가 배포마다 손으로 맞춰야 했다. 이제 기계가 본다. ── */
+{
+  const av = (js.match(/const APP_VER='(\d+)'/) || [])[1];
+  const qv = (html.match(/app\.js\?v=(\d+)/) || [])[1];
+  if (!av || !qv) F('버전 값을 찾지 못했습니다 (APP_VER=' + av + ' · ?v=' + qv + ')');
+  else if (av !== qv) F('버전 불일치: APP_VER=' + av + ' vs app.js?v=' + qv + '  (zip 이름도 calapp-v' + qv + ' 여야 한다)');
+  else OK('버전 일치 (APP_VER = ?v = ' + av + ')');
+}
+
 /* ── 10. 인수인계 문서 ↔ 실제 파일 대조(383차) — 문서가 없는 파일을 안내하면 없느니만 못하다.
         HANDOFF.md '파일 구성' 표의 백틱 경로가 실제로 존재하는지 본다(끝이 / 면 폴더). ── */
 {

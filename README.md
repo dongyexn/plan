@@ -18,6 +18,7 @@ GitHub Pages + Firebase Realtime Database(무료 티어)로 동작한다.
 > 위젯이 곧 이 앱입니다. 달력·오늘 업무·내 업무가 모두 위젯 안에 있습니다.
 
 화면은 사이드바에서 오갑니다 — **캘린더 · 업무 현황 · 하자처리 현황 · 조직 관리 · 설정**.
+팀 선택기는 **팀이 둘 이상일 때만** 사이드바에 나옵니다(하나면 고를 것이 없으므로 감춥니다).
 
 ### 문제가 생기면
 
@@ -272,7 +273,8 @@ widget-lite/                   바탕화면 위젯 (Tauri · WebView2)
 0. **배포 전 검증**: `node scripts/test/static-audit.mjs` — 의존성 없이 바로 돈다.
    죽은 함수 · 짝 잃은 `data-act` · 죽은 CSS · 규칙-저장 필드 불일치 · 외부 CDN 재유입 ·
    버전 쿼리 태그 훼손 · 단일 빌드 동작을 검사한다(FAIL 있으면 종료 코드 1).
-1. **버전 세 곳을 함께 올린다** — zip 이름(calapp-vNNN) · `index.html` 의 `app.js?v=NNN` · `app.js` 의 `APP_VER`.
+1. **버전을 올린다** — zip 이름(calapp-vNNN) · `index.html` 의 `app.js?v=NNN` · `app.js` 의 `APP_VER` 는
+   **모두 같은 숫자**다(390차에 semver 를 없애고 회차 하나로 합쳤다). 어긋나면 static-audit 이 FAIL 로 잡는다.
 2. 새 파일을 저장소에 push → GitHub Pages 가 배포. 규칙을 바꿨다면 **먼저** Firebase 콘솔 >
    Realtime Database > 규칙에 `database.rules.json` 전체를 붙여넣는다.
 3. 브라우저에서 강력 새로고침(`Ctrl+Shift+R`)으로 확인한다.
