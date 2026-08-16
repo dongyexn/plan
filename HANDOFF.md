@@ -1,6 +1,6 @@
 # 인수인계 — 일정공유 달력 앱 (calapp)
 
-새 대화를 시작할 때 이 파일을 먼저 읽으면 됩니다. 238차 작업까지 반영된 상태입니다.
+새 대화를 시작할 때 이 파일을 먼저 읽으면 됩니다. 화면 v386 기준입니다.
 (⚠ 이 줄의 차수는 배포마다 갱신할 것 — 한동안 81차로 방치돼 인수인계 문서 구실을 못 했다.)
 
 ## 1. 이 앱이 무엇인가
@@ -18,14 +18,19 @@ GitHub Pages에 올리고 Firebase Realtime Database(무료 플랜)를 씁니다
 | 파일 | 설명 |
 |---|---|
 | `index.html` | 화면 구조와 전체 스타일. CSS가 전부 여기 들어 있습니다 |
-| `app.js` | 모든 로직. 약 3,300줄 |
+| `app.js` | 모든 로직. 약 7,700줄 |
 | `database.rules.json` | Firebase 보안 규칙. **필드를 추가하면 여기도 반드시 함께 수정** |
-| `scripts/mail-common.mjs` | 메일 수신자 계산 공용 모듈 |
-| `scripts/remind.mjs` | 당일 아침 리마인드 메일 (GitHub Actions) |
-| `scripts/weekly.mjs` | 주간 요약 메일 (GitHub Actions) |
-| `vendor/` | FullCalendar, Pretendard 폰트 |
-| `widget/` | Electron 위젯 |
+| `scripts/test/static-audit.mjs` | 배포 전 정적 감사 — FAIL 0 이어야 배포 |
+| `scripts/test/smoke.mjs` | 브라우저 스모크 — `?local=1` 로 핵심 흐름을 실제로 눌러 본다 |
+| `scripts/font-subset.py` | Pretendard 2분할 서브셋 재생성(core·rare·pretendard.css) |
+| `vendor/` | FullCalendar · Firebase SDK · Pretendard 서브셋 등 자체 호스팅 전부 |
+| `widget-lite/` | Tauri(Rust/WebView2) 위젯 — 버전은 웹앱과 따로 |
+| `manifest.webmanifest` | PWA 설치용(서비스워커 없음 — 캐시 사고 전력 때문에 안 쓴다) |
 | `build-single.mjs` | 단일 HTML로 묶는 빌드 스크립트 |
+| `README.md` | 사용 안내 — 앱 안(설정 > 도움말)에서 그대로 읽힌다 |
+
+(예전의 메일 스크립트 `scripts/mail-common.mjs`·`remind.mjs`·`weekly.mjs` 와 Electron `widget/` 은
+기능 정리 때 삭제됐다 — 이 표는 static-audit 검사 10번이 실제 파일과 대조한다.)
 
 ## 3. 데이터 구조 — 업무 하나로 통합됨
 
@@ -53,6 +58,9 @@ calapp/tasks/{sid}/{iid}
 
 나머지 노드는 `calapp/org`(팀·권역·현장), `calapp/people/{uid}`(소속·직급),
 `calapp/prefs/{uid}`, `calapp/mentions/{uid}`, `calapp/cfg`입니다.
+`calapp/trash`(삭제 30일 보관 · 383차)와 `calapp/archive`(완료 6개월 뒤 보관 · 384차)는
+업무를 z(lz 압축)로 통째 담는 같은 wrap 모양입니다 — 아카이브는 달력 과거 이동·찾기 때만
+통째로 한 번 읽어 합치고, 건드리면 tasks 로 되살아납니다.
 `users/{uid}`는 하자처리 현황 앱과 공용이라 권한과 프로필이 들어갑니다.
 
 `calapp/plans`와 `calapp/recur`는 폐기됐지만 **자동 이전을 위해 규칙에 남겨 뒀습니다**.
@@ -78,6 +86,11 @@ calapp/tasks/{sid}/{iid}
   막으려고 넣은 가드 때문이며, `change` 쪽에 별도 분기를 넣어야 동작합니다.
 - **같은 명시도면 뒤 규칙이 이깁니다.** 공통 규칙을 새로 만들 때 앞쪽에 남은 개별
   정의를 함께 지우지 않으면 옛 값이 살아남습니다.
+- **사용자 삭제는 반드시 `store.trashTask()` 를 거칩니다(383차).** `putTask(sid,iid,null)` 를
+  직접 부르면 휴지통을 건너뛰고 영영 지워집니다 — 그건 담당자 변경 같은 '이동'에만 씁니다.
+- **같은 업무가 tasks 와 archive 두 곳에 남으면 안 됩니다(384차).** putTask·trashTask 가
+  아카이브 사본을 걷어 줍니다 — tasks 에 쓰는 새 경로를 만들면 같은 처리를 반드시 넣으세요.
+  또 `migrateRemote` 처럼 전 업무를 훑어 되쓰는 코드는 `arch` 플래그를 건너뛰어야 합니다.
 - **FullCalendar 요일 헤더도 `fc-day-sun`/`fc-day-sat`을 가집니다.** 주말 배경을
   줄 때 `td.fc-daygrid-day`로 한정하지 않으면 헤더까지 덮습니다.
 - **`table-layout:fixed`에서 열 폭을 지정해도 컨테이너가 좁으면 비율로 축소됩니다.**
