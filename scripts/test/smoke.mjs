@@ -27,6 +27,19 @@ let fail = 0;
 const OK = m => console.log('ok    ' + m);
 const F = m => { fail++; console.log('FAIL  ' + m); };
 
+/* ⚠ 고정 대기(waitForTimeout)를 쓰지 말 것 — CI 러너는 개발 PC 보다 몇 배 느려서
+   로컬에서만 통과하는 시험이 된다. 조건이 참이 될 때까지 폴링한다. */
+const waitFor = async (page, fn, arg, ms = 15000, label = '') => {
+  const t0 = Date.now();
+  for (;;) {
+    if (await page.evaluate(fn, arg)) return true;
+    if (Date.now() - t0 > ms) throw new Error('조건 대기 시간 초과' + (label ? ': ' + label : ''));
+    await page.waitForTimeout(100);
+  }
+};
+/* 로컬 저장소의 업무 트리를 그대로 읽어 온다 — 화면 표식보다 흔들림이 적다 */
+const store = page => page.evaluate(() => JSON.parse(localStorage.getItem('calapp.v1') || '{}'));
+
 /* 저장소를 그대로 띄우는 정적 서버 — 의존성 없이 */
 const srv = http.createServer((req, res) => {
   let p = decodeURIComponent(req.url.split('?')[0]); if (p === '/') p = '/index.html';
@@ -38,7 +51,14 @@ const srv = http.createServer((req, res) => {
 await new Promise(r => srv.listen(PORT, r));
 
 const exe = process.env.CHROMIUM || undefined;
-const browser = await chromium.launch(exe ? { executablePath: exe } : {});
+let browser;
+try { browser = await chromium.launch(exe ? { executablePath: exe } : {}); }
+catch (e) {
+  console.log('FAIL  브라우저를 실행하지 못했습니다 — `npx playwright install chromium` 을 먼저 돌리세요.');
+  console.log('      (환경변수 CHROMIUM 으로 실행 파일 경로를 직접 줄 수도 있습니다)');
+  console.log('      ' + String(e).split('\n')[0]);
+  srv.close(); process.exit(1);
+}
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 const errs = [];
 page.on('pageerror', e => errs.push(String(e).slice(0, 200)));
@@ -54,7 +74,12 @@ try {
   await page.click('[data-act="plan.new"]');
   await page.waitForSelector('#peTitle', { timeout: 4000 });
   await page.fill('#peTitle', TITLE);
-  await page.waitForTimeout(900);                 /* 자동 저장 디바운스 대기 */
+  await waitFor(page, t => {                      /* 자동 저장이 실제로 끝날 때까지 */
+    const d = JSON.parse(localStorage.getItem('calapp.v1') || '{}');
+    for (const sid in (d.tasks || {})) for (const iid in d.tasks[sid])
+      if (d.tasks[sid][iid].text === t) return true;
+    return false;
+  }, TITLE, 15000, '자동 저장');
   await page.click('[data-act="plan.cancel"]');   /* 체크 = 저장하고 닫기 */
   await page.waitForSelector('.plan .plan-t', { timeout: 4000 });
   const cardTxt = await page.locator('.plan .plan-t').first().textContent();
@@ -71,7 +96,10 @@ try {
   if (!stBefore) F('저장 — localStorage 에 업무가 없음');
   else OK('저장 — localStorage 기록 (st=' + stBefore.st + ')');
   await page.click('[data-act="plan.stCycle"]');
-  await page.waitForTimeout(400);
+  await waitFor(page, k => {
+    const d = JSON.parse(localStorage.getItem('calapp.v1') || '{}');
+    return (((d.tasks[k.sid] || {})[k.iid] || {}).st) !== k.st;
+  }, stBefore, 15000, '상태 토글').catch(() => {});
   const stAfter = await page.evaluate(k => {
     const d = JSON.parse(localStorage.getItem('calapp.v1') || '{}');
     return ((d.tasks[k.sid] || {})[k.iid] || {}).st;
@@ -85,7 +113,12 @@ try {
   await page.click('[data-act="plan.del"]');
   await page.waitForSelector('[data-act="modal.ok"]', { timeout: 4000 });
   await page.click('[data-act="modal.ok"]');
-  await page.waitForTimeout(500);
+  await waitFor(page, t => {
+    const d = JSON.parse(localStorage.getItem('calapp.v1') || '{}');
+    for (const sid in (d.trash || {})) for (const iid in d.trash[sid])
+      if (d.trash[sid][iid].text === t) return true;
+    return false;
+  }, TITLE, 15000, '휴지통 이동').catch(() => {});
   const inTrash = await page.evaluate(t => {
     const d = JSON.parse(localStorage.getItem('calapp.v1') || '{}');
     for (const sid in (d.trash || {})) for (const iid in d.trash[sid])
@@ -105,7 +138,12 @@ try {
   await page.click('[data-act="trash.open"]');
   await page.waitForSelector('[data-act="trash.restore"]', { timeout: 4000 });
   await page.click('[data-act="trash.restore"]');
-  await page.waitForTimeout(500);
+  await waitFor(page, t => {
+    const d = JSON.parse(localStorage.getItem('calapp.v1') || '{}');
+    for (const sid in (d.tasks || {})) for (const iid in d.tasks[sid])
+      if (d.tasks[sid][iid].text === t) return true;
+    return false;
+  }, TITLE, 15000, '복원 반영').catch(() => {});
   await page.reload();
   await page.waitForSelector('#fcal .fc-daygrid-day', { timeout: 8000 });
   const back = await page.evaluate(t => {
@@ -127,7 +165,10 @@ try {
   }, OLDT);
   await page.reload();
   await page.waitForSelector('#fcal .fc-daygrid-day', { timeout: 8000 });
-  await page.waitForTimeout(2300);                     /* archMigrate(1.8초) 대기 */
+  await waitFor(page, () => {                          /* archMigrate 가 끝날 때까지 */
+    const d = JSON.parse(localStorage.getItem('calapp.v1') || '{}');
+    return !!(((d.archive || {}).team || {}).arcSmk1);
+  }, null, 20000, '아카이브 이동').catch(() => {});
   const moved = await page.evaluate(() => {
     const d = JSON.parse(localStorage.getItem('calapp.v1') || '{}');
     return { hot: !!((d.tasks.team || {}).arcSmk1), cold: !!(((d.archive || {}).team || {}).arcSmk1) };
@@ -139,7 +180,10 @@ try {
   await page.keyboard.press('Control+k');
   await page.waitForSelector('#nqQ', { timeout: 4000 });
   await page.fill('#nqQ', '아카이브');          /* fill 이 input 이벤트를 내 rNq 가 돈다 */
-  await page.waitForTimeout(700);
+  await waitFor(page, () => {                   /* 아카이브를 읽어 다시 그릴 때까지 */
+    const els = document.querySelectorAll('#nqRes .nq-item .tt');
+    return [...els].some(e => e.textContent.includes('아카이브'));
+  }, null, 20000, '찾기 결과').catch(() => {});
   const found = await page.locator('#nqRes .nq-item .tt').allTextContents();
   if (found.some(t => t.includes('아카이브'))) OK('찾기 — 보관함 업무 검색됨');
   else F('찾기 — 보관함 업무가 검색되지 않음 (' + found.join(' / ') + ')');
