@@ -9,7 +9,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='450';
+const APP_VER='451';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -6764,7 +6764,7 @@ const ACT={
         const img=new Image();
         img.onerror=()=>toast('이미지를 읽을 수 없습니다');
         img.onload=()=>{
-          const max=1920,sc=Math.min(1,max/Math.max(img.width,img.height));   /* 432차: 화면 배경엔 1920 이면 충분 — 용량·스타일 비용 절감 */
+          const max=2560,sc=Math.min(1,max/Math.max(img.width,img.height));   /* 450차: grain 제거로 합성 부하가 사라져 화질을 되돌린다(성능 실측 무차이) */
           const cv=document.createElement('canvas');
           cv.width=Math.round(img.width*sc);cv.height=Math.round(img.height*sc);
           cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
@@ -6784,9 +6784,9 @@ const ACT={
             }
             localStorage.setItem('calapp.bgLum',String(Math.round(sum/wsum)));
           }catch(e){}
-          let out=cv.toDataURL('image/jpeg',0.82);
-          if(out.length>1.6e6)out=cv.toDataURL('image/jpeg',0.7);
-          if(out.length>1.6e6)out=cv.toDataURL('image/jpeg',0.6);
+          let out=cv.toDataURL('image/jpeg',0.9);
+          if(out.length>2.6e6)out=cv.toDataURL('image/jpeg',0.82);
+          if(out.length>2.6e6)out=cv.toDataURL('image/jpeg',0.7);
           try{localStorage.removeItem('calapp.bg');   /* 새 값을 쓰기 전에 자리를 비운다 */
             localStorage.setItem('calapp.bg',out);applyBg();toast('배경을 바꿨습니다 · 이 기기에만 저장됩니다');}
           catch(e){toast('이 브라우저의 로컬 저장 공간이 부족합니다 · 더 작은 이미지를 골라 주세요');}
