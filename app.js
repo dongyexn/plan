@@ -9,7 +9,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='432';
+const APP_VER='433';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -6358,17 +6358,38 @@ function mobClose(){
 
 /* 테마 */
 /* 앱 배경화면 — 이 기기(localStorage)에만 두므로 팀원 화면·데이터베이스에는 영향이 없다 */
+/* 432차: 배경 dataURL 을 그대로 CSS 변수에 넣으면 수 MB 문자열이 <html> 의 '상속되는'
+   커스텀 프로퍼티가 되어, 화면을 갈아끼울 때마다(요소 수천 개) 스타일 계산이 무거워진다.
+   → 한 번만 Blob 으로 바꿔 짧은 blob: URL 을 쓰고, 값이 바뀌면 이전 URL 을 해제한다. */
+let _bgSrc='',_bgURL='';
+function bgObjURL(dataURL){
+  if(!dataURL)return '';
+  if(dataURL===_bgSrc&&_bgURL)return _bgURL;
+  if(!/^data:/.test(dataURL))return dataURL;   /* 이미 blob·http 면 그대로 */
+  try{
+    const i=dataURL.indexOf(','),head=dataURL.slice(0,i);
+    const mime=(head.match(/data:([^;]+)/)||[])[1]||'image/jpeg';
+    const bin=atob(dataURL.slice(i+1));
+    const buf=new Uint8Array(bin.length);
+    for(let k=0;k<bin.length;k++)buf[k]=bin.charCodeAt(k);
+    if(_bgURL)URL.revokeObjectURL(_bgURL);
+    _bgSrc=dataURL;_bgURL=URL.createObjectURL(new Blob([buf],{type:mime}));
+    return _bgURL;
+  }catch(e){return dataURL;}
+}
 function applyBg(){
   /* ⚠ 위젯 창은 자체 배경 체계(불투명/글라스)를 쓴다 — 같은 localStorage 를 읽는 탓에 hasbg 가 붙으면
      hasbg 토큰(--surf2 밝은 반투명 등)이 위젯을 덮쳐 다른달 셀에 밝은 판이 깔리고 년월·넘김 버튼이
      이상해진다(218차 위젯 회귀의 원인). 위젯에서는 배경 기능 전체를 무시한다.
      (WIDGET 상수는 아래쪽 선언이라 TDZ — location 으로 직접 검사) */
   if(/[?&]w=1\b/.test(location.search)){document.body.classList.remove('hasbg');return;}
+  /* 432차: ?nobg=1 — 배경 때문에 화면이 무거울 때 지우고 들어오는 비상 통로 */
+  if(/[?&]nobg=1\b/.test(location.search)){try{localStorage.removeItem('calapp.bg');}catch(e){}}
   let url='',al='80',bri='100';
   try{url=localStorage.getItem('calapp.bg')||'';al=localStorage.getItem('calapp.bgAlpha')||'90';
     bri=localStorage.getItem('calapp.bgBri')||'100';}catch(e){}
   const root=document.documentElement;
-  root.style.setProperty('--app-bg-img',url?`url("${url}")`:'none');
+  root.style.setProperty('--app-bg-img',url?`url("${bgObjURL(url)}")`:'none');
   root.style.setProperty('--app-card-alpha',(Number(al)||90)/100);
   root.style.setProperty('--app-bg-bri',String((Number(bri)||100)/100));   /* 사진 자체 밝기 */
   document.body.classList.toggle('hasbg',!!url);
@@ -6685,13 +6706,15 @@ const ACT={
         const img=new Image();
         img.onerror=()=>toast('이미지를 읽을 수 없습니다');
         img.onload=()=>{
-          const max=2560,sc=Math.min(1,max/Math.max(img.width,img.height));
+          const max=1920,sc=Math.min(1,max/Math.max(img.width,img.height));   /* 432차: 화면 배경엔 1920 이면 충분 — 용량·스타일 비용 절감 */
           const cv=document.createElement('canvas');
           cv.width=Math.round(img.width*sc);cv.height=Math.round(img.height*sc);
           cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
-          let out=cv.toDataURL('image/jpeg',0.86);
-          if(out.length>3.6e6)out=cv.toDataURL('image/jpeg',0.7);
-          try{localStorage.setItem('calapp.bg',out);applyBg();toast('배경을 바꿨습니다 · 이 기기에만 저장됩니다');}
+          let out=cv.toDataURL('image/jpeg',0.82);
+          if(out.length>1.6e6)out=cv.toDataURL('image/jpeg',0.7);
+          if(out.length>1.6e6)out=cv.toDataURL('image/jpeg',0.6);
+          try{localStorage.removeItem('calapp.bg');   /* 새 값을 쓰기 전에 자리를 비운다 */
+            localStorage.setItem('calapp.bg',out);applyBg();toast('배경을 바꿨습니다 · 이 기기에만 저장됩니다');}
           catch(e){toast('이 브라우저의 로컬 저장 공간이 부족합니다 · 더 작은 이미지를 골라 주세요');}
         };
         img.onerror=()=>toast('이미지를 읽지 못했습니다');
