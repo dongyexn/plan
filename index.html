@@ -152,6 +152,8 @@ body.sb-anim #fcal{contain:layout paint;will-change:transform;}
    위 .sbb 의 opacity 전환이 236차 이후로 한 번도 돌지 않던 원인. 폭만 0 으로 접는다. */
 #sidebar.mini .sbb{opacity:0;width:0;}
 .sblogo{flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+/* 452차: 다크에선 네이비 마크가 어두운 헤더에 묻힌다 — 그라데이션을 덮고 흰색으로 */
+html.dark .sblogo path{fill:#FFFFFF;}
 .sbtext{display:flex;flex-direction:column;justify-content:center;min-width:0;}
 .sbn{font-size:13px;font-weight:700;color:var(--lbl);line-height:1.15;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;}
 .sbtg{margin-right:-3px;width:30px;height:30px;border-radius:3px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--lbl2);transition:background var(--tr),color var(--tr);}
@@ -3580,5 +3582,5 @@ html.dark .risk-b{background-color:#F87171;}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=452"></script>
+<script src="./app.js?v=453"></script>
 </body></html>
