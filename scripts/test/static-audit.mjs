@@ -56,6 +56,9 @@ OK('구문 검사 (node --check)');
   const orphanEmit = [...emitted].filter(a => a.includes('.')
     && !js.includes("'" + a + "'") && !js.includes('"' + a + '"'));
   const keys = new Set([...js.matchAll(/'([a-z][\w]*\.[\w]+)'\s*:\s*(?:async\s*)?(?:function|\(|[A-Za-z_$][\w$]*\s*=>)/g)].map(m => m[1]));
+  /* change·input·mousedown 델리게이트가 dataset.act 로 직접 처리하는 액션도 '짝이 있는' 것으로 본다(442차) */
+  for (const m of js.matchAll(/dataset\.act\s*===\s*'([a-z][\w.]*)'/g)) keys.add(m[1]);
+  for (const m of js.matchAll(/data-act="([a-z][\w.]*)"\]/g)) keys.add(m[1]);
   const DIRECT_CALL = new Set(['plan.moveOcc']);   /* change 델리게이트가 ACT[]로 직접 부르는 액션 — data-act 발신처가 없다(428차) */
   const orphanKey  = [...keys].filter(k => !emitted.has(k) && !DIRECT_CALL.has(k));
   if (orphanEmit.length) F('핸들러 없는 data-act: ' + orphanEmit.join(', '));
@@ -285,6 +288,14 @@ OK('구문 검사 (node --check)');
   'to :: transform'
   ]);
   let body = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  /* @keyframes 안의 from/to/0%… 는 셀렉터가 아니다 — 블록째 제외(440차) */
+  for (;;) {
+    const km = body.match(/@keyframes[^{]*\{/);
+    if (!km) break;
+    let j = km.index + km[0].length, depth = 1;
+    while (depth > 0 && j < body.length) { if (body[j] === '{') depth++; else if (body[j] === '}') depth--; j++; }
+    body = body.slice(0, km.index) + body.slice(j);
+  }
   /* @media 블록은 스코프가 달라 제외 */
   let flat = ''; let i = 0;
   for (;;) {
