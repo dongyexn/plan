@@ -38,7 +38,7 @@
 :root{
 --b50:#F1F7FD;--b100:#F1F7FD;--b200:#C7DDF6;--b300:#C7DDF6;--b400:#538CDE;
 --b500:#538CDE;--b600:#3E71D2;--b700:#3E71D2;--b800:#304D9D;--b900:#304D9D;--b950:#1F2B4C;
---bg:#EAECF1;--bg2:#fff;--fill:rgba(120,120,128,.15);--fill2:rgba(120,120,128,.22);
+--bg:#DCE2EC;--bg2:#fff;--fill:rgba(120,120,128,.15);--fill2:rgba(120,120,128,.22);
 --sep:rgba(60,60,67,.20);--sepo:#B0B0B4;
 --lbl:#1C1C1E;--lbl2:rgba(60,60,67,.70);--lbl3:rgba(60,60,67,.58);
 --gn:#16A34A;--rd:#DC2626;--am:#D97706;
@@ -71,7 +71,7 @@ html.dark{
   --sh-2:0 4px 14px rgba(0,0,0,.32);
   --sh-3:0 16px 40px rgba(0,0,0,.46);}   /* 사이드바 여닫기 전용 곡선(391차) — 앞은 빠르고 끝은 길게 감속 */
 html.dark{
-  --bg:#191919;--bg2:#212121;--surf2:#2A2A2A;--surf3:#333333;
+  --bg:#15181D;--bg2:#212121;--surf2:#2A2A2A;--surf3:#333333;
   --fill:rgba(255,255,255,.09);--fill2:rgba(255,255,255,.15);
   --sep:rgba(255,255,255,.18);--sepo:rgba(255,255,255,.30);
   --lbl:#ECECEC;--lbl2:rgba(236,236,236,.88);--lbl3:rgba(236,236,236,.72);
@@ -115,8 +115,8 @@ svg{display:block;flex-shrink:0;}
 #sidebar{width:var(--sw);min-width:var(--sw);height:100%;display:flex;flex-direction:column;gap:8px;background:transparent;border:0;transition:width var(--sbtr),min-width var(--sbtr);overflow:visible;z-index:200;}
 /* ⚠ 라이트에서는 흰 블록이 옅은 배경과 붙어 경계가 사라진다 — 카드와 같은 테두리를 둘러 준다(389차) */
 #sidebar>.sbh,#sidebar>.sb-tools,#sidebar>.teamsel,#sidebar>.sbsc,#sidebar>.sb-bottom,#sidebar>.sb-foot{
-  border:1px solid var(--sep);box-shadow:var(--shcard);
-  background:var(--glass3);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);
+  border-style:solid;border-color:var(--sep);border-width:0;box-shadow:none;
+  background:var(--surf2);   /* 435차: 표 머리와 같은 회색 면 */
   border:1px solid var(--sep);border-radius:var(--rxl);box-shadow:var(--sh-1);}
 
 /* 사이드바는 세 덩어리다(390차) — [로고] · [팀·찾기·메뉴·관리] · [계정].
@@ -313,8 +313,13 @@ body.wid .tbr{display:none;}   /* 위젯에는 상단바가 없다 */
 #content>.view.act{flex:1;min-height:0;display:flex;flex-direction:column;}
 #content>#view-defect.act,#content>#view-org.act,#content>#view-settings.act{overflow-y:auto;}   /* 세로로 긴 화면만 자체 스크롤 */
 .view{display:none;}
-.view.act{display:block;}   /* ⚠ 화면 전환 페이드(fu .2s)를 뺀다 — 무엇이 어디서 왔는지 설명하지 않으면서
-   큰 화면(달력)에서는 한 번 흐려졌다 진해지는 반짝임으로 읽힌다(355차) */
+.view.act{display:block;}
+/* 440차: 화면 전환 — 355차에 화면 전체를 페이드했다가 뺀 적이 있다(달력이 통째로 반짝였다).
+   이번엔 달력 격자(#fcal)와 사이드바는 그대로 두고, 새로 나타나는 콘텐츠만 6px 아래에서 올라온다. */
+@keyframes viewIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+.view.act>*{animation:viewIn var(--t-base);}
+#view-calendar.act>*{animation:none;}   /* 달력은 제외 — 355차의 반짝임이 여기서 났다 */
+#view-calendar.act .dp-col{animation:viewIn var(--t-base);}
 
 
 /* 업무 항목 — 담당자·링크·드래그 */
@@ -327,7 +332,7 @@ body.wid .tbr{display:none;}   /* 위젯에는 상단바가 없다 */
 .seg button.act{background:var(--bg2);color:var(--bt1);box-shadow:var(--sh-1);}
 
 /* ══════════ 카드 · 버튼 · 입력 ══════════ */
-.card{background:var(--bg2);border-radius:var(--rxl);padding:18px 20px;border:1px solid var(--sep);box-shadow:var(--shcard);}
+.card{background:var(--bg2);border-radius:var(--rxl);padding:18px 20px;border-style:solid;border-color:var(--sep);border-width:0;box-shadow:var(--shcard);}   /* 435차: 경계는 머리 면(surf2)+그림자가 맡는다 */
 /* 카드 그림자 — 라이트에서 배경과 카드의 명도차(1.18)가 작아 색만으로는 경계가 안 선다.
    색을 건드리지 않고 그림자로 층을 만든다(389차). 다크는 그림자가 잘 안 보이므로 옛 값을 그대로 쓴다 */
 :root{--shcard:var(--sh-1);}
@@ -397,7 +402,7 @@ body:not(.wid) #view-calendar .cal-head>.cal-ctl>.cal-nav{background:var(--fill)
 /* FullCalendar 테마 이식 */
 /* 달력 격자 자체에 아웃라인 — 카드로 감싸는 게 아니라 #fcal 의 테두리다(배경 위에서 경계가 보이게).
    배경을 켜면 어두운 칸 위이므로 밝은 선으로 바꾼다(아래 hasbg 규칙). */
-#fcal{height:100%;--fc-border-color:var(--sep);--fc-today-bg-color:transparent;--fc-page-bg-color:var(--bg2);--fc-neutral-bg-color:var(--surf2);font-size:13px;background:var(--bg2);border:1px solid var(--fill);border-radius:var(--rmd);overflow:hidden;}   /* 232차: 두르는 띠 = 년·월 버튼 배경(--fill)과 동일 */
+#fcal{height:100%;--fc-border-color:var(--sep);--fc-today-bg-color:transparent;--fc-page-bg-color:var(--bg2);--fc-neutral-bg-color:var(--surf2);font-size:13px;background:var(--bg2);border-style:solid;border-color:var(--fill);border-width:0;border-radius:var(--rmd);overflow:hidden;}   /* 232차: 두르는 띠 = 년·월 버튼 배경(--fill)과 동일 */
 #fcal .fc-theme-standard td,#fcal .fc-theme-standard th{border-color:transparent;}
 /* scrollgrid 래퍼 td 의 1px 보더(--fc-border-color)가 우·하단에 선으로 남는다 */
 #fcal .fc-scrollgrid-section>td,#fcal .fc-scrollgrid-section>th{border:0;}
@@ -988,7 +993,7 @@ body.snap .sbsl:first-of-type{display:none;}
 /* ══════════ 하자처리 현황 — 원본 화면 이식 CSS ══════════
    클래스 이름은 원본(하자처리 현황)을 그대로 쓰되 #view-defect 범위로 가둔다.
    모서리·글자 크기·색은 이 앱의 토큰이 정한다(--r* 가 전부 8px 라 각지게 나온다). */
-#view-defect .card{background:var(--bg2);border-radius:var(--rxl);padding:16px 18px;border:1px solid var(--sep);}
+#view-defect .card{background:var(--bg2);border-radius:var(--rxl);padding:16px 18px;border-style:solid;border-color:var(--sep);border-width:0;}
 #view-defect .mb12{margin-bottom:12px;}
 #view-defect .sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:10px;}
 /* 카드 제목 — 원본은 .ct(회색)/.st(검정)를 섞어 썼으나 의미 구분이 없어 검정으로 통일, 크기 한 단계 위 */
@@ -1235,6 +1240,10 @@ html.dark #view-defect .ait [style*="color:gray" i],html.dark #view-defect .ait 
 html.dark select.inp{color-scheme:dark;}
 html.dark select.inp option{background:var(--surf3);color:var(--lbl);}
 html.dark #view-defect .ait li::marker{color:var(--b500);}
+/* 435차: 원문 강조색(네이비·다크레드)이 다크에서 묻히던 것 */
+html.dark #view-defect .ait [style*="#08213f" i],html.dark #view-defect .ait [style*="#1a4a7a" i],
+html.dark #view-defect .ait [style*="#265e99" i]{color:#9DBDEA!important;}
+html.dark #view-defect .ait [style*="#961e1e" i],html.dark #view-defect .ait [style*="#8b1a1a" i]{color:#F08A82!important;}
 #view-defect .ait p{margin:0 0 8px;line-height:1.7;}#view-defect .ait p:last-child{margin-bottom:0;}
 /* 공가 현황 스트립(vrow) */
 #view-defect .vac-stat .sh{margin-bottom:8px;}   /* 229차: 제목~수치 간격 살짝 축소 */
@@ -1264,7 +1273,7 @@ html.dark #view-defect .ait li::marker{color:var(--b500);}
 .rl-lim button.on{background:var(--bg2);color:var(--lbl);box-shadow:var(--sh-1);}
 .rl-lim-lbl{font-size:11px;font-weight:600;color:var(--lbl3);margin:0 2px 0 8px;}
 /* 피벗 — 원본(pv-*)과 같은 구성: 행(≤3)·열·값 칩 + 트리 표 */
-.pv-bar{display:flex;align-items:center;gap:10px;flex:none;flex-wrap:wrap;margin-bottom:12px;padding:10px 12px;background:var(--bg);border:1px solid var(--sep);border-radius:var(--rmd);}
+.pv-bar{display:flex;align-items:center;gap:10px;flex:none;flex-wrap:wrap;margin-bottom:12px;padding:10px 12px;background:var(--surf2);border:1px solid var(--sep);border-radius:var(--rmd);}
 .pv-zone{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:30px;}
 .pv-zlbl{font-size:11px;color:var(--lbl2);font-weight:700;margin-right:4px;}
 .pv-chip{display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 7px 0 10px;background:var(--bg2);color:var(--lbl);border:1px solid var(--sep);border-radius:var(--rmd);font:inherit;font-size:12px;font-weight:600;white-space:nowrap;box-shadow:var(--sh-1);transition:border-color var(--t-fast),box-shadow var(--t-fast);}
@@ -1281,14 +1290,27 @@ html.dark #view-defect .ait li::marker{color:var(--b500);}
 .pv-pct-tg{width:26px;justify-content:center;padding:0;background:var(--bg2);color:var(--lbl2);border:1px solid var(--sep);}
 .pv-pct-tg.on{background:var(--b600);border-color:var(--bt1);color:#fff;}
 .pv-scroll{max-height:60vh;overflow:auto;border:1px solid var(--sep);border-radius:var(--rmd);background:var(--bg2);}
+/* 445차: 오버레이 가로 스크롤바 — position:absolute 라 레이아웃 폭을 먹지 않는다.
+   부모(.ovs-host)가 기준이고, 잡아끌 수도 있다. 세로는 그대로 숨긴다(없어도 무방). */
+.ovs-host{position:relative;}
+/* 하자 화면의 넓은 표 — 카드 안에서 가로로 흐르게 두고(화면 전체가 밀리지 않게) 오버레이 바를 붙인다 */
+#view-defect .card:has(>table){overflow-x:auto;}
+.ovs{position:absolute;left:0;right:0;bottom:2px;height:8px;pointer-events:none;opacity:0;
+  transition:opacity var(--t-base);z-index:5;}
+.ovs.on{opacity:1;}
+.ovs-host:hover .ovs.on,.ovs.drag{opacity:1;}
+.ovs-bar{position:absolute;top:2px;height:6px;border-radius:3px;background:var(--sepo);
+  pointer-events:auto;cursor:grab;transition:background var(--t-fast);}
+.ovs-bar:hover,.ovs.drag .ovs-bar{background:var(--lbl3);}
+.ovs.drag .ovs-bar{cursor:grabbing;}
 /* ⚠ 스크롤바 전역 숨김(규약) 때문에 가로로 넘친 표를 넘길 수단이 없었다 — 가로 스크롤이 있는 표 래퍼
    (피벗·미처리 목록)만 얇은 가로 막대를 예외로 보인다. scrollbar-width 는 축 분리가 안 되고
    auto 가 아니면 크롬이 ::-webkit-scrollbar 를 무시하므로, 표준 속성을 풀고 webkit 으로
    세로 0 · 가로 8px 를 지정한다(세로는 규약대로 숨김 유지). */
-.pv-scroll,.rec-wrap{scrollbar-width:auto;}
-.pv-scroll::-webkit-scrollbar,.rec-wrap::-webkit-scrollbar{width:0;height:8px;}
-.pv-scroll::-webkit-scrollbar-thumb,.rec-wrap::-webkit-scrollbar-thumb{background:var(--sepo);border-radius:3px;}
-.pv-scroll::-webkit-scrollbar-track,.rec-wrap::-webkit-scrollbar-track{background:transparent;}
+.pv-scroll,.rec-wrap{scrollbar-width:none;}   /* 445차: 네이티브 바는 자리를 먹는다 — 아래 오버레이 바로 대신한다 */
+.pv-scroll::-webkit-scrollbar,.rec-wrap::-webkit-scrollbar{width:0;height:0;display:none;}
+
+
 #mb.dfwide .pv-scroll{flex:1;min-height:0;max-height:none;}
 .pv-table{border-collapse:separate;border-spacing:0;font-size:12px;width:max-content;min-width:100%;}
 .pv-table th,.pv-table td{border-right:1px solid var(--sep);border-bottom:1px solid var(--sep);padding:7px 14px;text-align:right;white-space:nowrap;background:var(--bg2);}
@@ -1582,8 +1604,9 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 .dp-lh::after{content:'';position:absolute;left:16px;right:16px;bottom:0;height:1px;background:var(--sepo);}   /* 431차: 머리 밑 경계는 진하게 — 사이드바 검색 밑과 같은 위계 */
 .dp-lh-t{font-size:13px;font-weight:700;color:var(--lbl);}
 .dp-add{flex:0 0 auto;}
-.btn.dp-add.on{background:transparent;border:1.5px solid transparent;color:var(--b500);padding-left:4px;padding-right:4px;}
-.btn.dp-add.on:hover{background:transparent;color:#7DA9EA;}   /* 430차: 폼이 열려도 평소와 같은 모습 */   /* 켜짐 — 테두리를 없앤 뒤로는 이 선이 유일한 표시다(345차) */
+.btn.dp-add.on{background:transparent;border:1.5px solid transparent;}
+body:not(.wid) .btn.dp-add.on{color:var(--b500);padding-left:4px;padding-right:4px;}   /* 434차: 무몰딩(브라우저)과 같은 값 — 위젯은 자기 규칙(9px)을 지킨다 */
+body:not(.wid) .btn.dp-add.on:hover{background:transparent;color:#7DA9EA;}   /* 430차: 폼이 열려도 평소와 같은 모습 */   /* 켜짐 — 테두리를 없앤 뒤로는 이 선이 유일한 표시다(345차) */
 
 .tk-ico:hover{background:var(--fill2);color:var(--bt1);}
 .tk-ico.on{opacity:1;color:var(--bt1);}
@@ -1654,17 +1677,17 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 /* 보기 전환 — 왼쪽 사이드바 머리와 **같은 높이·같은 아랫선**. 폭은 왼쪽 칸을 가득 채운다.
    ⚠ .seg 기본 여백(2px)을 남기면 안쪽 버튼이 42px 이 되어 옆 줄보다 낮아 보인다 */
 .tkv-seg{flex:0 0 auto;display:flex;width:100%;height:var(--th);min-height:var(--th);align-items:stretch;padding:7px;
-  background:var(--glass3);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);
-  border:1px solid var(--sep);border-radius:var(--rxl);overflow:hidden;}
+  background:var(--bg2);box-shadow:var(--shcard);
+  border-style:solid;border-color:var(--sep);border-width:0;border-radius:var(--rxl);overflow:hidden;}   /* 436차: 카드와 같은 면·그림자 */
 .tkv-seg button{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;height:100%;padding:0 2px 0 0;font-size:13px;border-radius:var(--rmd);background:none;}   /* padding-right — 왼쪽 아이콘 탓에 글자 무게중심이 오른쪽으로 쏠린다. 기계적 중앙이 아니라 **눈에 맞는 중앙**으로 당긴다(334차) */
 .tkv-seg button:first-child{padding-right:6px;}   /* 달력·체크는 왼쪽 획이 성겨 한 단 더 당긴다(336차) */
-.tkv-seg button.act{background:var(--bg2);color:var(--bt1);box-shadow:var(--sh-1);}
+.tkv-seg button.act{background:var(--surf2);color:var(--bt1);box-shadow:var(--sh-1);}
 .tkv-seg .icn{width:15px;height:15px;flex-shrink:0;}
 /* 월간 업무 — 현장별 묶음 */
 .tkmo-g{min-width:0;border:1px solid var(--sep);border-radius:var(--rxl);padding:0;background:var(--bg2);overflow:hidden;box-shadow:var(--shcard);
   box-shadow:var(--sh-1);}   /* 카드와 같은 그림자 — 큰 카드 안에 갇히지 않고 스스로 카드가 된다(334차) */   /* 현장마다 한 칸 — 내용에 비해 넓던 영역을 나눠 채운다(332차) */
 .tkmo-h{display:flex;align-items:center;gap:var(--s2);padding:10px var(--s4);font-size:13px;font-weight:700;color:var(--lbl);letter-spacing:.01em;
-  background:var(--bg);border-bottom:1px solid var(--sep);border-radius:var(--rlg) var(--rlg) 0 0;}
+  background:var(--surf2);border-bottom:1px solid var(--sep);border-radius:var(--rlg) var(--rlg) 0 0;}
 .tkmo-h .rg{font-size:11px;font-weight:700;color:var(--bt1);background:var(--tint-b,var(--b50));border-radius:3px;padding:2px 7px;}
 .tkmo-h .c{margin-left:auto;font-size:11px;font-weight:700;color:var(--lbl2);background:var(--fill);border-radius:3px;padding:2px 8px;font-variant-numeric:tabular-nums;}
 /* 불러오는 중 뼈대 — 은은하게 흐르는 띠. 움직임을 줄이는 설정에서는 정지한다(위 reduce 규칙) */
@@ -1680,7 +1703,7 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 /* ── 업무 현황(316차) — 탭 바 한 줄 + 완료·예정 통합 카드 ── */
 /* 탭 줄 — 껍데기 없이 밑줄만. 높이는 왼쪽 사이드바 머리(.sbh)와 같고, 오른쪽 끝에 업무 추가가 앉는다.
    ⚠ 배경화면 위에서 흐려 보이던 문제는 표면을 입히지 말고 **글자·밑줄 색**으로만 잡는다(328차) */
-.tkbar{flex:0 0 auto;height:var(--th);display:flex;align-items:stretch;gap:var(--s3);padding-top:1.5px;border-bottom:1px solid var(--sepo);}   /* ⚠ 아랫선 1.5px 이 안쪽 높이를 깎아 글자가 1px 위로 뜬다 — 같은 만큼 위를 띄워 옆 줄과 글자 중심을 맞춘다(331차) */
+.tkbar{flex:0 0 auto;height:var(--th);display:flex;align-items:stretch;gap:var(--s3);padding-top:1.5px;border-bottom:1px solid var(--sepo);}   /* 판 없음 — 가독은 글자 그림자(434차)가 맡는다 */   /* ⚠ 아랫선 1.5px 이 안쪽 높이를 깎아 글자가 1px 위로 뜬다 — 같은 만큼 위를 띄워 옆 줄과 글자 중심을 맞춘다(331차) */
 .tkbar-tabs{flex:1;min-width:0;height:100%;margin-bottom:0;border-bottom:0;align-items:stretch;}   /* 아랫선은 줄(.tkbar) 이 그린다 — 업무 추가 버튼 아래까지 이어진다(330차) */   /* ⚠ height:100% 를 줘야 줄 높이를 채운다 — stretch 만으로는 28px 에 머물렀다(329차 실측) */
 .tkbar .rp-tab{display:flex;align-items:center;height:100%;gap:6px;padding:0 15px;font-size:13px;white-space:nowrap;}
 .tkbar .rp-tab::after{bottom:0;z-index:1;}   /* 431차: overflow 에 잘리던 -2px → 안쪽 바닥 */   /* ⚠ 줄(.tkbar)의 아랫선까지 덮어야 한다(391차) — -1.5px 이면 회색이 0.5px 삐져나온다 */
@@ -1696,8 +1719,16 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 /* 배경화면을 깔면 글자와 밑줄을 한 단 진하게 — 표면을 덮지 않고 대비만 올린다 */
 body.hasbg .tkbar{border-bottom-color:var(--sepo);}
 /* 429차: 사진 위 탭 가독 — 판 대신 글자 뒤 밝은 무리(halo). 다크 배경사진은 어두운 무리 */
-body.hasbg .rp-tab{text-shadow:0 0 6px var(--bg),0 0 2px var(--bg),0 1px 3px var(--bg);}
-body.hasbg .rp-tcnt{box-shadow:0 0 0 3px var(--bg2);}
+body.hasbg .rp-tab{text-shadow:0 1px 2px rgba(0,0,0,.28);}
+/* 439차: 배경 밝기에 따라 배경 위 글자를 뒤집는다(테마와 무관 — 사진이 기준) */
+body.hasbg.bg-dark .tkbar .rp-tab{color:rgba(255,255,255,.78);}
+body.hasbg.bg-dark .tkbar .rp-tab.on,body.hasbg.bg-dark .tkbar .tkq-add{color:#fff;}
+body.hasbg.bg-dark .rp-tab{text-shadow:0 1px 2px rgba(0,0,0,.45);}
+body.hasbg.bg-dark .rp-tcnt{background:rgba(255,255,255,.16);color:rgba(255,255,255,.92);}
+body.hasbg.bg-light .tkbar .rp-tab{color:rgba(20,22,28,.72);}
+body.hasbg.bg-light .tkbar .rp-tab.on,body.hasbg.bg-light .tkbar .tkq-add{color:#14161C;}
+body.hasbg.bg-light .rp-tab{text-shadow:0 1px 2px rgba(255,255,255,.55);}
+body.hasbg.bg-light .rp-tcnt{background:rgba(20,22,28,.10);color:rgba(20,22,28,.80);}   /* 438차: 가독 확보 선까지만 — 번짐 없이 얇게 */   /* 433차: 배지 링 삭제 — 라이트·다크 모두 검은 그림자로 통일 */
 body.hasbg .tkbar .rp-tab{color:var(--lbl2);}
 body.hasbg .tkbar .rp-tab.on,body.hasbg .tkbar .tkq-add{color:var(--lbl);}
 .tkwk{flex:1;min-height:0;display:flex;flex-direction:column;padding:0;overflow:hidden;}
@@ -1706,7 +1737,7 @@ body.hasbg .tkbar .rp-tab.on,body.hasbg .tkbar .tkq-add{color:var(--lbl);}
 .tkwk-col+.tkwk-col{border-left:1px solid var(--sep);}   /* 가운데 한 선 — 카드는 하나다 */
 /* 칸 머리 — 현장별 업무의 칸 머리와 같은 언어: 짙은 면 + 아랫선(335차) */
 .tkwk-h{display:flex;align-items:center;gap:var(--s2);padding:10px var(--s4);flex-shrink:0;
-  background:var(--bg);border-bottom:1px solid var(--sep);}
+  background:var(--surf2);border-bottom:1px solid var(--sep);}
 .tkwk-h b{font-size:13px;font-weight:700;color:var(--lbl);letter-spacing:.01em;}
 .tkwk-period{font-size:12px;font-weight:700;color:var(--lbl2);font-variant-numeric:tabular-nums;}
 .tkwk-col .tk-list{padding:0;padding-bottom:4px;}   /* 표는 칸을 꽉 채운다 — 아래 여백을 두면 마지막 행만 떠 보인다(359차) */
@@ -1928,7 +1959,7 @@ body.hasbg .tkbar .rp-tab.on,body.hasbg .tkbar .tkq-add{color:var(--lbl);}
   .tk-item+.tk-item>.tk-row::before{left:0;}
 }
 /* 열 이름 줄 — 목록을 내려도 맨 위에 붙어 있다. ⚠ 탭 구분선에 바짝 붙인다(사용자 지적: 간격이 넓다) */
-.tk-hrow{position:sticky;top:0;z-index:3;background:var(--bg);padding-top:7px;padding-bottom:7px;
+.tk-hrow{position:sticky;top:0;z-index:3;background:var(--surf2);padding-top:7px;padding-bottom:7px;
   border-bottom:1px solid var(--sep);cursor:default;}   /* ⚠ 배경은 --bg(카드보다 한 단 짙은 면) — 투명하면 스크롤된 행과 글자가 겹친다. sticky 라 불투명이어야 한다. 하단 구분선으로 열 이름과 본문의 층을 나눈다 */
 .tk-hrow span{font-size:11px;font-weight:700;color:var(--lbl3);line-height:1;}
 .tk-hrow .tk-acts{justify-content:center;transform:translateX(2px);font-size:11px;font-weight:700;color:var(--lbl3);white-space:nowrap;overflow:visible;}   /* 아래 진행 아이콘의 중앙과 맞춘다(339차) */
@@ -2138,7 +2169,7 @@ html.dark .dp-edit .frow{border-bottom-color:rgba(255,255,255,.06);}
 /* 현장 표 — 하자처리현황 mgtbl 이식 */
 .mgtbl{width:100%;border-collapse:collapse;font-size:13px;}
 .mgtbl th{white-space:nowrap;font-size:11px;font-weight:700;color:var(--lbl3);letter-spacing:.01em;text-align:left;
-  height:34px;padding:0 10px;background:var(--bg);border-bottom:1px solid var(--sep);}   /* 업무 현황 열 이름 줄과 같은 높이(343차 실측 34px) */
+  height:34px;padding:0 10px;background:var(--surf2);border-bottom:1px solid var(--sep);}   /* 업무 현황 열 이름 줄과 같은 높이(343차 실측 34px) */
 .mgtbl th:first-child,.mgtbl td:first-child{padding-left:var(--s4);}
 .mgtbl th:last-child,.mgtbl td:last-child{padding-right:var(--s4);}
 .mgtbl th.ce,.mgtbl td.ce{text-align:right;}   /* 삭제 열 — 열 이름과 버튼을 오른쪽 끝으로 */
@@ -2166,7 +2197,7 @@ html.dark .dp-edit .frow{border-bottom-color:rgba(255,255,255,.06);}
 .set-grid .card{padding:0;overflow:hidden;}
 .set-h{display:flex;align-items:center;justify-content:space-between;gap:var(--s2);
   height:41px;padding:0 var(--s4);margin:0;font-size:13px;font-weight:700;color:var(--lbl);letter-spacing:.01em;
-  background:var(--bg);border-bottom:1px solid var(--sep);}
+  background:var(--surf2);border-bottom:1px solid var(--sep);}
 .share-row{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);padding:10px var(--s4);min-height:52px;}
 .share-row+.share-row{box-shadow:inset 0 1px 0 var(--sep);}
 .set-card>.share-row:last-child{box-shadow:inset 0 -1px 0 var(--sep),inset 0 1px 0 var(--sep);}
@@ -2202,7 +2233,7 @@ html.dark .dp-edit .frow{border-bottom-color:rgba(255,255,255,.06);}
 /* 팀·권역 관리 — 카드 머리는 표 열 이름 줄과 같은 언어(짙은 면), 줄은 테두리 없이 구분선으로만(341차) */
 .tm-h{display:flex;align-items:center;justify-content:space-between;margin:0;height:41px;padding:0 var(--s4);
   font-size:13px;font-weight:700;color:var(--lbl);letter-spacing:.01em;
-  background:var(--bg);border-bottom:1px solid var(--sep);border-radius:var(--rxl) var(--rxl) 0 0;}
+  background:var(--surf2);border-bottom:1px solid var(--sep);border-radius:var(--rxl) var(--rxl) 0 0;}
 .tm-list{display:flex;flex-direction:column;padding:0;}   /* ⚠ 줄 사이에 여백을 주지 말 것 — 첫 행·마지막 행만 높아 보인다(358차) */
 .tm-list>.tm-row:last-child{min-height:39px;}   /* 마지막 줄만 조금 높인다(391차) — padding 을 주면 글자가 위로 떠오른다(392차) */
 .tm-row{display:flex;align-items:center;gap:var(--s2);padding:var(--s1) var(--s4);border:0;border-radius:0;background:transparent;min-height:34px;}
@@ -2324,7 +2355,7 @@ select.mg-inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-
 #siteRoot .mgtbl tbody tr:last-child td,#acctRoot .utbl tbody tr:last-child td,#freeRoot .utbl tbody tr:last-child td{padding-top:4px;padding-bottom:4px;}
 /* 계정 표 마지막 줄 — 다른 줄이 갖는 아래 구분선(1px)이 없어 그만큼 낮아 보인다. 셀 여백으로 메운다(392차) */
 #acctRoot .utbl tbody tr:last-child td,#freeRoot .utbl tbody tr:last-child td{padding-top:8px;padding-bottom:9px;}   /* ⚠ 아래만 주면 글자가 위로 떠오른다 — 위아래 같이(392차) */
-.utbl thead th{font-size:11px;font-weight:700;color:var(--lbl3);letter-spacing:.01em;text-align:left;height:34px;padding:0 10px;background:var(--bg);border-bottom:1px solid var(--sep);white-space:nowrap;}
+.utbl thead th{font-size:11px;font-weight:700;color:var(--lbl3);letter-spacing:.01em;text-align:left;height:34px;padding:0 10px;background:var(--surf2);border-bottom:1px solid var(--sep);white-space:nowrap;}
 .utbl th:first-child,.utbl td:first-child{padding-left:var(--s4);}
 .utbl th:last-child,.utbl td:last-child{padding-right:var(--s4);}   /* 업무 현황 표와 같은 열 이름 줄(341차) */
 .utbl tbody td{padding:8px 8px;border-bottom:1px solid var(--sep);vertical-align:middle;}
@@ -2611,6 +2642,13 @@ body.wid #wgSet.on{display:block;}
 /* 로그인 게이트 */
 .cv-spin{width:30px;height:30px;margin:0 auto;border-radius:50%;border:3px solid rgba(255,255,255,.16);border-top-color:rgba(255,255,255,.9);animation:cvspin .8s linear infinite;will-change:transform;}
 @keyframes cvspin{to{transform:rotate(360deg);}}
+/* 440차: 팝업 등장 — 검색 패널(.nq-panel)과 같은 문법으로 통일. display 토글이라 keyframes 를 쓴다 */
+@keyframes popIn{from{opacity:0;transform:translateY(-8px) scale(.98);}to{opacity:1;transform:none;}}
+/* 새로 생긴 목록 카드 — 아래에서 짧게 올라온다 */
+@keyframes cardIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+.plan.fx-in{animation:cardIn var(--t-base);}
+.ctxmenu,.rl-menu,.tb-pop.on{animation:popIn var(--tr);}
+.popbox{animation:popIn var(--tr);}
 #cvBtn:hover{transform:translateY(-1px);box-shadow:var(--sh-2);}
 
 /* 찾기 — 상단바 검색창 버튼과 패널. 패널은 버튼 바로 아래(헤더 밑 우측)에 뜬다 */
@@ -3540,5 +3578,5 @@ html.dark .risk-b{background-color:#F87171;}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=433"></script>
+<script src="./app.js?v=447"></script>
 </body></html>

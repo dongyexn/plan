@@ -9,7 +9,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='433';
+const APP_VER='447';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -2032,6 +2032,73 @@ function taskFilterOk(sid,it){
   if(SI.length&&!SI.includes(String(it.site||'')))return false;
   return true;
 }
+/* 440차: 목록을 다시 그릴 때마다 전부 깜빡이면 산만하다. 같은 날짜 안에서 '새로 나타난' 카드에만 표시한다.
+   날짜를 옮기면 전부 새 카드이므로 그때는 효과 없이 기준만 새로 잡는다. */
+let _cardKey='',_cardSeen=new Set();
+/* 문자열 서명 — 목록 HTML 을 그대로 들고 있지 않으려고 짧은 해시만 남긴다 */
+function strHash(t){let h=5381;for(let i=0;i<t.length;i++)h=(h*33^t.charCodeAt(i))>>>0;return h.toString(36)+':'+t.length;}
+/* 443차: 같은 내용이면 다시 그리지 않는다.
+   라이브에서는 저장 직후 한 번, Firebase 리스너 에코로 또 한 번 같은 화면을 그린다 —
+   그 재생성이 깜빡임의 정체였다. 바뀐 게 없으면 false 를 돌려주니 후속 작업도 건너뛸 수 있다. */
+function paintHTML(el,html){
+  if(!el)return false;
+  const sig=strHash(html);
+  if(el.__sig===sig)return false;
+  el.__sig=sig;el.innerHTML=html;
+  return true;
+}
+function paintReset(el){if(el)el.__sig=null;}
+
+/* 445차: 오버레이 가로 스크롤바.
+   네이티브 바는 자리를 차지해 표 폭·정렬을 밀어낸다(피벗에서 특히). 그래서 바는 숨기고,
+   내용 위에 떠 있는 얇은 막대를 직접 그린다 — 위치 표시 + 잡아끌기까지 된다.
+   세로는 표시하지 않는다(없어도 쓰는 데 지장이 없다는 판단). */
+function ovsAttach(el){
+  if(!el||el.__ovs)return;
+  const host=el.parentElement;if(!host)return;
+  host.classList.add('ovs-host');
+  const wrap=document.createElement('div');wrap.className='ovs';
+  const bar=document.createElement('div');bar.className='ovs-bar';
+  wrap.appendChild(bar);host.appendChild(wrap);
+  el.__ovs={wrap,bar};
+  const sync=()=>{
+    const w=el.clientWidth,sw=el.scrollWidth;
+    if(sw<=w+1){wrap.classList.remove('on');return;}
+    wrap.classList.add('on');
+    const bw=Math.max(28,Math.round(w*w/sw));
+    const max=w-bw,ratio=el.scrollLeft/(sw-w);
+    bar.style.width=bw+'px';
+    bar.style.left=Math.round(max*ratio)+'px';
+  };
+  el.addEventListener('scroll',sync,{passive:true});
+  if(window.ResizeObserver){const ro=new ResizeObserver(sync);ro.observe(el);el.__ovsRo=ro;}
+  /* 막대 잡아끌기 */
+  bar.addEventListener('pointerdown',e=>{
+    e.preventDefault();
+    const w=el.clientWidth,sw=el.scrollWidth,bw=bar.offsetWidth,max=w-bw;
+    const x0=e.clientX,l0=parseFloat(bar.style.left)||0;
+    wrap.classList.add('drag');bar.setPointerCapture(e.pointerId);
+    const move=ev=>{
+      const l=Math.min(max,Math.max(0,l0+(ev.clientX-x0)));
+      el.scrollLeft=(sw-w)*(max?l/max:0);
+    };
+    const up=()=>{wrap.classList.remove('drag');
+      bar.removeEventListener('pointermove',move);bar.removeEventListener('pointerup',up);};
+    bar.addEventListener('pointermove',move);bar.addEventListener('pointerup',up);
+  });
+  sync();
+}
+/* 화면을 다시 그린 뒤 스크롤 영역에 다시 붙인다 */
+function ovsRefresh(){document.querySelectorAll('.pv-scroll,.rec-wrap,#view-defect .card').forEach(ovsAttach);}
+function markNewCards(box){
+  const key=String(S.selDate||'')+'|'+String(S.selEnd||'');
+  const ids=[...box.querySelectorAll('.plan[data-pid]')].map(e=>e.dataset.pid);
+  if(key!==_cardKey){_cardKey=key;_cardSeen=new Set(ids);return;}
+  box.querySelectorAll('.plan[data-pid]').forEach(e=>{
+    if(!_cardSeen.has(e.dataset.pid))e.classList.add('fx-in');
+  });
+  _cardSeen=new Set(ids);
+}
 function rDayHead(){   /* 426차: 날짜 머리 삭제 — 이제 기간 업무 계산만 한다(이름은 호출부 유지용) */
   return rangePlans();
 }
@@ -2116,6 +2183,7 @@ function rDay(){
   const cnt=$('#dpCount');if(cnt)cnt.textContent='업무 '+ps.length+'건';
   if(!ps.length&&!S.planEdit){
     box.innerHTML='<div class="dp-empty">'+(dayQ()?'검색 결과가 없습니다.':'이 날짜에 등록된 업무가 없습니다.')+'</div>';
+    paintReset(box);   /* 빈 목록으로 갈아끼웠으니 서명도 비운다 — 안 그러면 다시 채워질 때 스킵된다 */
     rHold();wireHoldDnD();return;}
   /* 폼은 원래 카드가 있던 자리에 그대로 들어간다 — 수정을 눌러도 목록이 위로 튀지 않는다 */
   let slot=false;
@@ -2153,7 +2221,14 @@ function rDay(){
       </div>
     </div>`;}).join('');
   /* 편집 중인 업무가 목록에 없으면(새 업무·날짜를 옮긴 경우) 맨 위에 둔다 */
-  box.innerHTML=(S.planEdit&&!slot?'<div id="peSlot"></div>':'')+parts;
+  const html=(S.planEdit&&!slot?'<div id="peSlot"></div>':'')+parts;
+  /* 441차: 라이브에서는 저장 직후 한 번, 리스너 에코로 또 한 번 그린다.
+     내용이 같으면 DOM 을 통째로 갈지 않는다 — 그 재생성이 화면 깜빡임의 정체였다.
+     폼이 떠 있을 때는 아래에서 노드를 도로 꽂아야 하므로 건너뛰지 않는다. */
+  if(S.planEdit)paintReset(box);   /* 폼이 뜰 땐 노드를 도로 꽂아야 하므로 항상 다시 그린다 */
+  else if(!paintHTML(box,html)){ rHold();wireHoldDnD();return; }
+  if(S.planEdit)box.innerHTML=html;
+  markNewCards(box);   /* 440차: 이번에 새로 생긴 카드만 등장 효과 */
   const sl=$('#peSlot');
   if(sl){
     if(keep)sl.replaceWith(keep);
@@ -3015,7 +3090,7 @@ function rTasks(){
     mainHTML=(S.tkView==='month')?tkMonthHTML(team,mems,regions):tkWeekHTML(team,mems,regions);
   }
 
-  root.innerHTML=`<div class="tkwrap">
+  const tkHTML=`<div class="tkwrap">
     <div class="tkside">
       <div class="seg tkv-seg">
         <button class="${S.tkView==='month'?'':'act'}" data-act="tk.view" data-v="week"><svg class="icn" aria-hidden="true"><use href="#i-cal-ck"></use></svg>주간 업무</button>
@@ -3034,6 +3109,7 @@ function rTasks(){
       ${mainHTML}
     </div>
   </div>`;
+  if(!paintHTML(root,tkHTML)){restoreScroll();rTkNewOverlay();return;}   /* 443차: 같은 내용이면 다시 그리지 않는다 */
   restoreScroll();
   rTkNewOverlay();
   if(S.tkNew){const t=$('#tnTitle');if(t&&document.activeElement!==t)t.focus();}   /* ⚠ 초점은 **새 업무**에서만 — 수정은 행 안에서 고치므로 자동 초점이 가면 그 칸만 면이 켜진 채 남는다(369차) */
@@ -3399,7 +3475,7 @@ function rNq(){
   const item=(icon,tt,sb,attrs)=>`<div class="nq-item" ${attrs}>
     <span class="ic"><svg class="icn"><use href="#${icon}"></use></svg></span>
     <div style="min-width:0"><div class="tt">${tt}</div><div class="sb">${esc(sb)}</div></div></div>`;
-  box.innerHTML=
+  paintHTML(box,
     (r.tasks.length?'<div class="nq-g">업무 '+r.tasks.length+'</div>'+r.tasks.slice(0,20).map(({sid,iid,it})=>
       item('i-tasks',nqMark(it.text,q),
         subjName(sid)+(it.date?' · '+it.date+(it.end&&it.end!==it.date?'~'+it.end:''):''),
@@ -3410,7 +3486,7 @@ function rNq(){
     +(r.defects.length?'<div class="nq-g">하자 '+r.defects.length+'</div>'+r.defects.slice(0,20).map(({sid,r:x})=>
       item('i-defect',nqMark([x.trade,x.defectType,x.receiptContent].filter(Boolean).join(' · '),q),
         (siteName(sid)||'')+' · '+[x.building,x.unit].filter(Boolean).join('-')+' · 지연 '+(Number(x.delayDays)||0)+'일',
-        'data-act="nq.site" data-sid="'+esc(sid)+'"')).join(''):'');
+        'data-act="nq.site" data-sid="'+esc(sid)+'"')).join(''):''));
 }
 
 /* ═══════════ 하자처리 현황 — 원본(하자처리 현황 앱) 화면 이식 ═══════════
@@ -3879,7 +3955,8 @@ function dfDashTableFill(d){
     const b1=dfDeltaParts(T.unr-T.pU),b2=dfDeltaParts(T.lt-T.pLt);
     foot=`<tfoot><tr class="tot"><td class="cc"></td><td><b>합계</b></td><td class="n">${T.units.toLocaleString()}</td><td class="n">${T.tR.toLocaleString()}</td><td class="n" style="color:var(--gn)">${T.res.toLocaleString()}</td><td class="n">${rate.toFixed(1)}%</td><td class="n" style="color:var(--am)">${T.unr.toLocaleString()}</td><td class="cc" style="white-space:nowrap"><span class="ba ${b1.dBadge}" data-tip="전월 ${T.pU.toLocaleString()} → 금월 ${T.unr.toLocaleString()}">${b1.dArrow} ${b1.dTxt}</span></td><td class="n" style="color:var(--rd)">${T.lt.toLocaleString()}</td><td>${dfLtrBar(T.unr,T.d60,T.d30,T.d0)}</td><td class="cc" style="white-space:nowrap"><span class="ba ${b2.dBadge}" data-tip="전월 ${T.pLt.toLocaleString()} → 금월 ${T.lt.toLocaleString()}">${b2.dArrow} ${b2.dTxt}</span></td></tr></tfoot>`;
   }
-  tbl.innerHTML=dfDashTheadHTML()+'<tbody>'+rows+'</tbody>'+foot;
+  paintHTML(tbl,dfDashTheadHTML()+'<tbody>'+rows+'</tbody>'+foot);
+  ovsRefresh();
 }
 /* 대시보드 업체별 축 — 현장별 coAgg 를 업체 기준으로 합친다(원본 dashCoAgg). 상위 10 + 나머지 한 줄 */
 /* 업체별 하자처리현황 집계 — 대시보드 표·보고서 양식 공용 */
@@ -3933,7 +4010,8 @@ function dfDashCoFill(tbl){
   const body=ordered.length?ordered.map((x,i)=>rowH(x,i,{muted:!!(x.fold||x.key==='(미기재)')})).join('')
     :'<tr><td colspan="11" style="text-align:center;padding:14px;color:var(--lbl3)">이 게시본에는 업체별 자료가 없습니다 · 재게시하면 보입니다</td></tr>';
   const tfoot=ordered.length?`<tfoot>${rowH(Object.assign({},T,{key:'합계',side:''}),0,{tot:true})}</tfoot>`:'';
-  tbl.innerHTML=thead+'<tbody>'+body+'</tbody>'+tfoot;
+  paintHTML(tbl,thead+'<tbody>'+body+'</tbody>'+tfoot);
+  ovsRefresh();
 }
 /* 월별 하자처리현황 (대시보드) — 원본 buildDashMonthTable 포트. 현장별 weekly 를 월말 carry-forward 합산 */
 function dfDashMonthTable(d){
@@ -4065,7 +4143,7 @@ function dfSiteAxisOnly(sid){
   const ths=tbl.querySelectorAll('thead th');
   if(ths[1])ths[1].firstChild.nodeValue=(P.ax==='co'?'시공업체':'공종')+' ';
   if(ths[2])ths[2].firstChild.nodeValue=(P.ax==='co'?'주요 공종':'시공업체')+' ';
-  tbl.querySelector('tbody').innerHTML=P.rows||P.emptyRow;
+  paintHTML(tbl.querySelector('tbody'),P.rows||P.emptyRow);
   const card=tbl.closest('.card');
   if(card){
     card.querySelectorAll('.axseg button').forEach(b=>b.classList.toggle('on',b.dataset.ax===(S.dfAxSite==='co'?'co':'trade')));
@@ -4686,7 +4764,7 @@ function rptThumb(kind){
     <g stroke="#C8CDD4"><line x1="14" y1="99" x2="146" y2="99"/><line x1="14" y1="104" x2="146" y2="104"/>
       <line x1="14" y1="109" x2="146" y2="109"/></g></svg>`;
 }
-function rptFont(){return localStorage.getItem('calapp.rptFont')==='sys'?'sys':'brand';}
+function rptFont(){try{return localStorage.getItem('calapp.rptFont')==='sys'?'sys':'brand';}catch(e){return 'brand';}}   /* 442차: 저장소 차단(프라이빗 모드 등)에서도 죽지 않게 */
 function openPrintPick(){
   const fSaved=rptFont();
   const opt=(v,nm,ds,mt)=>`<div class="rpk-opt${v==='report'?' on':''}" data-act="print.pick" data-v="${v}">
@@ -5135,7 +5213,7 @@ function recRowsOnly(){
 }
 function recRender(){
   const t=$('#mt');if(t&&!$('#recQ'))t.innerHTML=recHeadHTML();
-  const b=$('#mbody');if(b)b.innerHTML=recBodyHTML();
+  const b=$('#mbody');if(b){b.innerHTML=recBodyHTML();ovsRefresh();}
   recHeadSync(REC.view.length,REC.rows.length);
 }
 /* 표 복사 — 화면에 보이는 열·행을 탭 구분 텍스트로 클립보드에 */
@@ -5299,6 +5377,7 @@ function pivHTML(){
     +'<div class="pv-zone"><span class="pv-zlbl">값</span><button class="pv-chip pv-val" data-act="rec.pvVal">'+(PIV.val==='avgDelay'?'평균 지연일':'건수')+' <span class="pv-caret">▾</span></button></div>'
     +(PIV.val==='count'?'<div class="pv-zone" style="margin-left:auto"><button class="pv-chip pv-pct-tg'+(PIV.pct?' on':'')+'" data-act="rec.pvPct" data-tip="비중(%) 함께 표시" aria-pressed="'+(PIV.pct?'true':'false')+'">%</button></div>':'')
     +'</div><div class="pv-scroll" id="pvBody">'+pivTableHTML()+'</div>';
+  ovsRefresh();   /* 445차: 오버레이 가로 스크롤바 부착 */
 }
 /* FLIP: 재배치 전후 위치 차이를 transform 으로 보간해 부드럽게 슬라이드(드래그 중인 칩 제외) */
 function pvFlip(zone,mutate){
@@ -5456,14 +5535,14 @@ function rHold(){
   if(ttl)ttl.textContent='보류한 업무 '+list.length+'건';
   holdFit();
   if(!any){box.innerHTML='';return;}
-  if(!list.length){box.innerHTML='<div class="hold-empty">내 보류 업무가 없습니다.</div>';return;}
+  if(!list.length){paintReset(box);box.innerHTML='<div class="hold-empty">내 보류 업무가 없습니다.</div>';return;}
   const md=x=>{if(!x)return '기한 없음';const t=toDate(x);return (t.getMonth()+1)+'/'+t.getDate();};
-  box.innerHTML=list.map(({sid,iid,it})=>
+  paintHTML(box,list.map(({sid,iid,it})=>
     '<div class="hold-i" draggable="true" data-act="hold.go" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"'
     +' data-tip="누르면 업무로 이동 · 달력 날짜로 끌어 놓으면 그 날짜로">'
     +(x=>colDotHTML(planColor(x),'ro',!planOwners(x).length))(taskAsPlan(sid,iid,it))
     +'<span class="t">'+esc(it.text||'제목 없음')+'</span>'
-    +'<span class="d">'+esc(md(it.date))+'</span></div>').join('');
+    +'<span class="d">'+esc(md(it.date))+'</span></div>').join(''));
 }
 /* 보류함 높이 — 옆 달력의 **날짜칸 두 개**를 넘지 않게 최대 높이만 준다(389차 지시).
    ⚠ 예전에는 height 로 못박아 보류가 2~3건뿐이어도 열 바닥까지 빈 칸이 남았다(실사용 지적).
@@ -5942,16 +6021,16 @@ function rOrg(){
   /* ⚠ 안(#acctRoot)만 비우면 빈 카드의 테두리가 가로선으로 남는다 — 카드째 감춘다(389차) */
   const acard=ar.closest('.card');if(acard)acard.style.display=freeOnly?'none':'';
   ar.style.display=freeOnly?'none':'';
-  ar.innerHTML=freeOnly?'':'<table class="utbl"><thead><tr><th style="width:200px">이름</th><th style="width:142px">팀</th><th style="width:96px">직급</th><th style="width:106px">권역</th><th>담당 현장</th><th class="utbl-r" style="width:120px">권한</th></tr></thead><tbody>'
+  paintHTML(ar,freeOnly?'':'<table class="utbl"><thead><tr><th style="width:200px">이름</th><th style="width:142px">팀</th><th style="width:96px">직급</th><th style="width:106px">권역</th><th>담당 현장</th><th class="utbl-r" style="width:120px">권한</th></tr></thead><tbody>'
     +(mine.length?mine.map(row).join('')
       :'<tr><td colspan="6" style="font-size:12px;color:var(--lbl3);padding:10px">이 팀에 배정된 계정이 없습니다.</td></tr>')
-    +'</tbody></table>';
+    +'</tbody></table>');
   /* 팀 미배정 계정 — 섞어 두면 헷갈린다는 지적에 따라 별도 카드로 분리 */
   const fc=$('#freeCard'),fr=$('#freeRoot');
   if(fc&&fr){
     /* 미배정 계정은 '미배정' 탭에서만 보여 준다(389차) — 다른 탭에도 나오면 탭을 만든 뜻이 없다 */
     fc.style.display=(free.length&&(S.orgTab||'acct')==='acct'&&S.orgReg==='_free')?'':'none';
-    fr.innerHTML=free.length
+    paintHTML(fr,free.length
       ?'<table class="utbl"><thead><tr><th style="width:176px">이름</th><th style="width:142px">팀</th><th></th><th class="utbl-r" style="width:120px">권한</th></tr></thead><tbody>'
         +free.map(p=>`<tr>
           <td><div class="utbl-name">${avHTML(p.id)}
@@ -5961,7 +6040,7 @@ function rOrg(){
           <td class="utbl-r">${roleCtl(p)}</td>
         </tr>`).join('')
         +'</tbody></table>'
-      :'';
+      :'');
   }
   rFilter();
 }
@@ -6393,6 +6472,11 @@ function applyBg(){
   root.style.setProperty('--app-card-alpha',(Number(al)||90)/100);
   root.style.setProperty('--app-bg-bri',String((Number(bri)||100)/100));   /* 사진 자체 밝기 */
   document.body.classList.toggle('hasbg',!!url);
+  /* 439차: 배경이 밝으면 어두운 글자, 어두우면 밝은 글자 — 밝기 슬라이더까지 반영한 실효값으로 판단 */
+  let lum=-1;try{lum=Number(localStorage.getItem('calapp.bgLum'));}catch(e){}
+  const eff=(lum>0)?lum*((Number(bri)||100)/100):-1;
+  document.body.classList.toggle('bg-light',!!url&&eff>=140);
+  document.body.classList.toggle('bg-dark', !!url&&eff>0&&eff<140);
   const btn=$('#bgClearBtn');if(btn)btn.hidden=!url;
   const dl=$('#bgAlpha');if(dl)dl.value=al;
   const alv=$('#bgAlphaV');if(alv)alv.textContent=al+'%';
@@ -6710,6 +6794,22 @@ const ACT={
           const cv=document.createElement('canvas');
           cv.width=Math.round(img.width*sc);cv.height=Math.round(img.height*sc);
           cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+          /* 439차: 배경 평균 밝기를 재둔다 — 배경 위 글자(탭 등) 색을 자동으로 맞추기 위해 */
+          try{
+            const sm=document.createElement('canvas');sm.width=32;sm.height=18;
+            const sx=sm.getContext('2d',{willReadFrequently:true});
+            sx.drawImage(cv,0,0,32,18);
+            const px=sx.getImageData(0,0,32,18).data;
+            let sum=0,wsum=0;
+            for(let y=0;y<18;y++){
+              const w=y<6?1.6:1;   /* 글자가 놓이는 위쪽을 더 크게 본다 */
+              for(let x=0;x<32;x++){
+                const i=(y*32+x)*4;
+                sum+=w*(0.2126*px[i]+0.7152*px[i+1]+0.0722*px[i+2]);wsum+=w;
+              }
+            }
+            localStorage.setItem('calapp.bgLum',String(Math.round(sum/wsum)));
+          }catch(e){}
           let out=cv.toDataURL('image/jpeg',0.82);
           if(out.length>1.6e6)out=cv.toDataURL('image/jpeg',0.7);
           if(out.length>1.6e6)out=cv.toDataURL('image/jpeg',0.6);
@@ -6721,7 +6821,7 @@ const ACT={
         img.src=String(r.result);};
       r.readAsDataURL(file);};
     f.click();},
-  'set.bgClear':()=>{try{localStorage.removeItem('calapp.bg');}catch(e){}applyBg();toast('배경을 없앴습니다');},
+  'set.bgClear':()=>{try{localStorage.removeItem('calapp.bg');localStorage.removeItem('calapp.bgLum');}catch(e){}applyBg();toast('배경을 없앴습니다');},
   'set.bgAlpha':el=>{const v=String(el.value||'80');try{localStorage.setItem('calapp.bgAlpha',v);}catch(e){}applyBg();},
   'set.bgBri':el=>{const v=String(el.value||'100');try{localStorage.setItem('calapp.bgBri',v);}catch(e){}applyBg();},
   'cal.set':el=>{
@@ -7347,7 +7447,7 @@ document.addEventListener('change',e=>{const el=e.target;if(!el||!el.dataset)ret
     else{S.dfTrendYearSite=el.value;const key=dfRm()+'/'+S.dfSid,k=DF.kpi[key];if(!k)return;
       const rmY=S.dfRm.slice(0,4);dfTrendDraw('strend','dfSiteTrend',el.value===rmY?DF.sw[key]:dfWksOfYear(k.weekly,el.value));}}});
 document.addEventListener('input',e=>{if(e.target.id==='recQ'){REC.q=e.target.value;
-  const b=$('#mbody');if(!b)return;b.innerHTML=recBodyHTML();recHeadSync(REC.view.length,REC.rows.length);}});
+  const b=$('#mbody');if(!b)return;b.innerHTML=recBodyHTML();ovsRefresh();recHeadSync(REC.view.length,REC.rows.length);}});
 /* 처리계획 — 입력을 멈추면 저장한다(하자처리 현황과 같은 노드를 쓰므로 그쪽 화면에도 바로 반영된다) */
 function dfPlanFit(el){if(!el||el.offsetParent===null)return;el.style.height='auto';el.style.height=el.scrollHeight+'px';}
 function dfPlanFitAll(){$$('#view-defect .plan-ta').forEach(dfPlanFit);}
