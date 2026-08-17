@@ -136,5 +136,180 @@ OK('구문 검사 (node --check)');
   else OK('HANDOFF 파일 구성 표 실존 (' + paths.length + '개)');
 }
 
+
+/* ── 11. CSS 늦은 재선언 감시(422차) ──────────────────────────────
+   같은 셀렉터를 파일 뒤쪽에서 다시 선언해 같은 프로퍼티를 덮으면, 앞의 수정이
+   말없이 무효가 된다(§frow margin 사고). 기존 재선언은 베이스라인으로 동결하고
+   → 새로 생기는 재선언만 잡는다. 의도적 재선언이면 베이스라인에 항목을 추가할 것. */
+{
+  const CSS_DUP_BASELINE = new Set([
+  '#fcal .dhol.off :: color',
+  '#fcal .fc-day-today .dnum :: height',
+  '#fcal .fc-day-today .dnum :: margin',
+  '#fcal .fc-day-today .dnum :: min-width',
+  '#fcal .fc-day-today .dnum :: padding',
+  '#fcal .fc-day-today .dnum :: width',
+  '#fcal .fc-event :: border-radius',
+  '#fcal .fc-popover :: background',
+  '#fcal .fc-popover :: border-radius',
+  '#fcal .fc-popover :: box-shadow',
+  '#fcal .fc-popover-header :: background',
+  '#fcal .fc-popover-header :: color',
+  '#fcal .fc-popover-header :: font-size',
+  '#fcal .fc-popover-header :: font-weight',
+  '#fcal .fc-scrollgrid :: border-radius',
+  '#sidebar.mini .teamsel :: height',
+  '#sidebar.mini .teamsel :: justify-content',
+  '#sidebar.mini .teamsel :: padding',
+  '#view-defect #dfPrintPages .ait :: font-size',
+  '#view-defect #dfPrintPages .ait :: line-height',
+  '#view-defect #dfPrintPages .dn-side .canv :: align-self',
+  '#view-defect #dfPrintPages .dn-side .canv :: flex',
+  '#view-defect #dfPrintPages .dn-side .canv :: height',
+  '#view-defect #dfPrintPages .dn-side .canv :: max-height',
+  '#view-defect #dfPrintPages .dn-side .canv :: max-width',
+  '#view-defect #dfPrintPages .dn-side .canv :: width',
+  '#view-defect #dfPrintPages .dn-side .lg .cnt :: font-size',
+  '#view-defect #dfPrintPages .dn-side .lg .cnt :: padding',
+  '#view-defect #dfPrintPages .dn-side .lg .cnt :: text-align',
+  '#view-defect #dfPrintPages .dn-side .lg .cnt :: white-space',
+  '#view-defect #dfPrintPages .dn-side .lg .it :: gap',
+  '#view-defect #dfPrintPages .dn-side .lg .it :: grid-template-columns',
+  '#view-defect #dfPrintPages .dn-side .lg .it :: height',
+  '#view-defect #dfPrintPages .dn-side .lg .it :: line-height',
+  '#view-defect #dfPrintPages .dn-side .lg .nm :: font-size',
+  '#view-defect #dfPrintPages .dn-side .lg .nm :: min-width',
+  '#view-defect #dfPrintPages .dn-side .lg .nm :: overflow',
+  '#view-defect #dfPrintPages .dn-side .lg .nm :: text-overflow',
+  '#view-defect #dfPrintPages .dn-side .lg .nm :: white-space',
+  '#view-defect #dfPrintPages .dn-side .lg .pct :: font-size',
+  '#view-defect #dfPrintPages .dn-side .lg .pct :: min-width',
+  '#view-defect #dfPrintPages .dn-side .lg .pct :: padding',
+  '#view-defect #dfPrintPages .dn-side .lg .pct :: text-align',
+  '#view-defect #dfPrintPages .dn-side .lg .pct :: white-space',
+  '#view-defect #dfPrintPages .dn-side .lg :: align-self',
+  '#view-defect #dfPrintPages .dn-side .lg :: flex',
+  '#view-defect #dfPrintPages .dn-side .lg :: font-size',
+  '#view-defect #dfPrintPages .dn-side .lg :: min-width',
+  '#view-defect #dfPrintPages .dn-side .lg :: overflow',
+  '#view-defect #dfPrintPages .dn-side .lg.lg-2col :: column-gap',
+  '#view-defect #dfPrintPages .dn-side .lg.lg-2col :: display',
+  '#view-defect #dfPrintPages .dn-side .lg.lg-2col :: grid-auto-flow',
+  '#view-defect #dfPrintPages .dn-side .lg.lg-2col :: grid-template-columns',
+  '#view-defect #dfPrintPages .dn-side .lg.lg-2col :: grid-template-rows',
+  '#view-defect #dfPrintPages .dn-side .lg.lg-2col :: min-width',
+  '#view-defect #dfPrintPages .dn-side .lg.lg-2col :: row-gap',
+  '#view-defect #dfPrintPages .dn-side :: align-items',
+  '#view-defect #dfPrintPages .dn-side :: gap',
+  '#view-defect #dfPrintPages .dn-side :: height',
+  '#view-defect #dfPrintPages .dn-side :: justify-content',
+  '#view-defect #dfPrintPages .dn-side :: max-height',
+  '#view-defect #dfPrintPages .dn-side :: min-height',
+  '#view-defect #dfPrintPages .dn-side :: overflow',
+  '#view-defect #dfPrintPages .dn-side :: padding',
+  '#view-defect #dfPrintPages .main-chart-card :: aspect-ratio',
+  '#view-defect #dfPrintPages .main-chart-card :: height',
+  '#view-defect #dfPrintPages .main-chart-card :: min-height',
+  '.acct-btn :: height',
+  '.acct-pane :: min-height',
+  '.bp :: background',
+  '.day-panel :: min-height',
+  '.dp-edit .frow :: margin-bottom',
+  '.dp-edit .frow2 :: display',
+  '.dp-edit .frow2 :: gap',
+  '.mc-d .dots i :: background',
+  '.mc-d.sel .dots i,.mc-d.today .dots i :: background',
+  '.mg-grid :: grid-template-columns',
+  '.mgtbl :: border-collapse',
+  '.mgtbl :: width',
+  '.mgtbl td :: padding',
+  '.mgtbl td :: vertical-align',
+  '.msel-b :: height',
+  '.nic :: border-radius',
+  '.nic :: height',
+  '.nic :: width',
+  '.nvi :: gap',
+  '.nvi :: margin-bottom',
+  '.nvi :: padding',
+  '.nvi.act .nic :: background',
+  '.nvi.act .nic svg :: color',
+  '.nvi:not(.act) .nic :: background',
+  '.pd-b :: color',
+  '.pe-bar :: padding',
+  '.pe-bar::after :: left',
+  '.pe-bar::after :: right',
+  '.pe-body :: padding',
+  '.pe-side :: gap',
+  '.pe-ttl :: font-size',
+  '.pe-ttl :: line-height',
+  '.pe-ttl :: padding',
+  '.plan-side :: gap',
+  '.rpt .page :: box-shadow',
+  '.rpt .page :: margin',
+  '.rpt .page :: min-height',
+  '.tb-ic :: height',
+  '.tb-ic :: width',
+  '.tk-acts :: gap',
+  '.tk-ico .icn :: height',
+  '.tk-ico .icn :: width',
+  '.tk-ico.on :: color',
+  '.tk-ico.on :: opacity',
+  '.tk-ico:hover :: background',
+  '.tk-ico:hover :: color',
+  '.tk-item+.tk-item>.tk-row::before :: left',
+  '.tk-item.editing .tk-row .cell-inp,.tk-item.editing .tk-row select :: margin-left',
+  '.tk-item.editing .tk-row .cell-inp,.tk-item.editing .tk-row select :: padding-left',
+  '.tk-item.editing .tk-row select :: padding-right',
+  '.tk-item.open :: background',
+  '.tk-list :: gap',
+  '.tkl-s .tk-row :: grid-template-columns',
+  '.tkl-s-w .tk-row :: grid-template-columns',
+  '.tkmain :: flex',
+  '.tkmain :: min-height',
+  '.tks-item .rk :: font-size',
+  '.tks-item :: font-size',
+  '.tks-item :: padding',
+  '.tks-item.sub :: font-size',
+  '.tkside :: display',
+  '.tkside :: flex-direction',
+  '.tkside :: gap',
+  '.tkside :: min-height',
+  '.tm-empty :: padding',
+  '100% :: transform',
+  'body.wid #fcal :: font-size',
+  'body.wid .cal-title :: font-size',
+  'body.wid.glass .cal-title,body.wid.glass .cal-title .y :: color',
+  'textarea.inp :: min-height',
+  'to :: transform'
+  ]);
+  let body = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  /* @media 블록은 스코프가 달라 제외 */
+  let flat = ''; let i = 0;
+  for (;;) {
+    const m = body.slice(i).match(/@media[^{]*\{/);
+    if (!m) { flat += body.slice(i); break; }
+    flat += body.slice(i, i + m.index);
+    let j = i + m.index + m[0].length, depth = 1;
+    while (depth > 0 && j < body.length) { if (body[j] === '{') depth++; else if (body[j] === '}') depth--; j++; }
+    i = j;
+  }
+  const seen = new Map();   /* sel → [props…] 목록 */
+  for (const m of flat.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const sel = m[1].trim().replace(/\s+/g, ' ');
+    if (!sel || sel.startsWith('@')) continue;
+    const props = new Set(m[2].split(';').map(p => p.split(':')[0].trim()).filter(Boolean));
+    if (!seen.has(sel)) seen.set(sel, []);
+    seen.get(sel).push(props);
+  }
+  const fresh = [];
+  for (const [sel, blocks] of seen) {
+    if (blocks.length < 2) continue;
+    for (let a = 0; a < blocks.length; a++) for (let b = a + 1; b < blocks.length; b++)
+      for (const p of blocks[a]) if (blocks[b].has(p) && !CSS_DUP_BASELINE.has(sel + ' :: ' + p)) fresh.push(sel + ' :: ' + p);
+  }
+  if (fresh.length) F('CSS 재선언 신규 ' + fresh.length + '건 — 앞선 규칙을 말없이 덮는다: ' + [...new Set(fresh)].slice(0, 5).join(' · '));
+  else OK('CSS 재선언 신규 없음 (베이스라인 ' + CSS_DUP_BASELINE.size + '건 동결)');
+}
+
 console.log('\n결과: FAIL ' + fail + ' · WARN ' + warn);
 process.exit(fail ? 1 : 0);

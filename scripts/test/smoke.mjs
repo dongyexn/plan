@@ -188,6 +188,61 @@ try {
   if (found.some(t => t.includes('아카이브'))) OK('찾기 — 보관함 업무 검색됨');
   else F('찾기 — 보관함 업무가 검색되지 않음 (' + found.join(' / ') + ')');
 
+  /* ⑨ 반복 — 주간 반복을 만들고, 다음 주 회차가 뜨고, 한 회차만 제외되는지(422차) */
+  await page.keyboard.press('Escape');
+  const RT = '반복 스모크 점검';
+  const today = await page.evaluate(() => todayStr());
+  const nextWk = await page.evaluate(() => { const d = new Date(); d.setDate(d.getDate() + 7); return d.toISOString().slice(0, 10); });
+  await page.evaluate(ds => { selDate(ds, true); rDay(); }, today);
+  await page.click('[data-act="plan.new"]');
+  await page.waitForSelector('#peTitle', { timeout: 4000 });
+  await page.fill('#peTitle', RT);
+  await page.click('#peMoreBtn');
+  await page.selectOption('#peRec', 'w');
+  await page.click('[data-act="plan.cancel"]');   /* 저장하고 닫기 */
+  await waitFor(page, t => {
+    const d = JSON.parse(localStorage.getItem('calapp.v1') || '{}');
+    for (const sid in (d.tasks || {})) for (const iid in d.tasks[sid])
+      if (d.tasks[sid][iid].text === t && d.tasks[sid][iid].recur && d.tasks[sid][iid].recur.f === 'w') return true;
+    return false;
+  }, RT, 15000, '반복 저장');
+  OK('반복 — 주간 반복으로 저장 (recur.f=w)');
+  await page.evaluate(ds => { selDate(ds, true); rDay(); }, nextWk);
+  await waitFor(page, t => [...document.querySelectorAll('#dpList .plan-t')].some(e => e.textContent.includes(t)),
+    RT, 15000, '다음 주 회차').catch(() => {});
+  const occ2 = await page.evaluate(t => [...document.querySelectorAll('#dpList .plan-t')].some(e => e.textContent.includes(t)), RT);
+  if (occ2) OK('반복 — 다음 주 같은 요일에 회차가 뜬다');
+  else F('반복 — 다음 주 회차가 안 보인다');
+  /* 다음 주 회차를 열어 "이 날짜만 제외" */
+  await page.click('#dpList .plan [data-act="plan.edit"]');
+  await page.waitForSelector('[data-act="plan.del"]', { timeout: 4000 });
+  await page.click('[data-act="plan.del"]');           /* 반복 회차의 삭제 → 선택 모달 */
+  await page.waitForSelector('[data-act="plan.skipOcc"]', { timeout: 4000 });
+  await page.click('[data-act="plan.skipOcc"]');       /* "이 날짜만 제외" */
+  await waitFor(page, t => {
+    const d = JSON.parse(localStorage.getItem('calapp.v1') || '{}');
+    for (const sid in (d.tasks || {})) for (const iid in d.tasks[sid]) {
+      const it = d.tasks[sid][iid];
+      if (it.text === t && it.skipOn && Object.keys(it.skipOn).length) return true;
+    }
+    return false;
+  }, RT, 15000, 'skipOn 기록').catch(() => {});
+  const afterSkip = await page.evaluate(([t, ds]) => {
+    selDate(ds, true); rDay();
+    const gone = ![...document.querySelectorAll('#dpList .plan-t')].some(e => e.textContent.includes(t));
+    const d = JSON.parse(localStorage.getItem('calapp.v1') || '{}');
+    let skip = false;
+    for (const sid in (d.tasks || {})) for (const iid in d.tasks[sid]) {
+      const it = d.tasks[sid][iid];
+      if (it.text === t && it.skipOn && Object.keys(it.skipOn).length) skip = true;
+    }
+    return { gone, skip };
+  }, [RT, nextWk]);
+  const origLeft = await page.evaluate(([t, ds]) => { selDate(ds, true); rDay();
+    return [...document.querySelectorAll('#dpList .plan-t')].some(e => e.textContent.includes(t)); }, [RT, today]);
+  if (afterSkip.gone && afterSkip.skip && origLeft) OK('반복 — 이 날짜만 제외: 그날은 빠지고 원래 날짜는 남는다');
+  else F('반복 — 제외 실패 (사라짐 ' + afterSkip.gone + ' · skipOn ' + afterSkip.skip + ' · 원날짜 ' + origLeft + ')');
+
   if (errs.length) F('페이지 오류 ' + errs.length + '건: ' + errs[0]);
   else OK('페이지 오류 없음');
 } catch (e) {
