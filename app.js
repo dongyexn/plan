@@ -9,7 +9,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='428';
+const APP_VER='432';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -3659,7 +3659,7 @@ function dfChartInit(){
       return{x,y};
     };
   }Chart.defaults.set('plugins.datalabels',{display:false});Chart.__dlOff=true;}
-  if(!Chart.__ctReg){Chart.register({id:'centerText',afterDraw(chart,_,opts){if(!opts||!opts.display)return;const{ctx,chartArea:{left,right,top,bottom}}=chart;const cx=(left+right)/2,cy=(top+bottom)/2;ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle=opts.valueColor||cvar('--lbl','#1C1C1E');ctx.font=`700 ${opts.valueSize||16}px 'Pretendard Variable',Pretendard,sans-serif`;ctx.fillText(opts.value||'',cx,cy-2);ctx.fillStyle=opts.labelColor||cvar('--ch-axis','rgba(60,60,67,.58)');ctx.font=`600 ${opts.labelSize||11}px 'Pretendard Variable',Pretendard,sans-serif`;ctx.fillText(opts.label||'',cx,cy+14);ctx.restore();}});Chart.__ctReg=true;}
+  if(!Chart.__ctReg){Chart.register({id:'centerText',afterDatasetsDraw(chart,_,opts){if(!opts||!opts.display)return;const{ctx,chartArea:{left,right,top,bottom}}=chart;const cx=(left+right)/2,cy=(top+bottom)/2;ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle=opts.valueColor||cvar('--lbl','#1C1C1E');ctx.font=`700 ${opts.valueSize||16}px 'Pretendard Variable',Pretendard,sans-serif`;ctx.fillText(opts.value||'',cx,cy-2);ctx.fillStyle=opts.labelColor||cvar('--ch-axis','rgba(60,60,67,.58)');ctx.font=`600 ${opts.labelSize||11}px 'Pretendard Variable',Pretendard,sans-serif`;ctx.fillText(opts.label||'',cx,cy+14);ctx.restore();}});Chart.__ctReg=true;}
   return true;
 }
 /* 원본 moDLCfg(app-core.js 691) 문자 그대로 — 228차: 자릿수 축소 루프(임의 추가)를 걷어냈다.
@@ -3877,7 +3877,7 @@ function dfDashTableFill(d){
     all.forEach(({s,st})=>{T.tR+=st.tR;T.res+=st.res;T.unr+=st.unr;T.lt+=st.lt;T.d0+=st.dd[0];T.d30+=st.dd[1];T.d60+=st.dd[2];T.pU+=st.prev.unr;T.pLt+=st.prev.lt;T.units+=s.units||0;});
     const rate=T.tR>0?T.res/T.tR*100:0;
     const b1=dfDeltaParts(T.unr-T.pU),b2=dfDeltaParts(T.lt-T.pLt);
-    foot=`<tfoot><tr class="tot"><td class="cc"></td><td><b>합계</b></td><td class="n">${T.units.toLocaleString()}</td><td class="n">${T.tR.toLocaleString()}</td><td class="n" style="color:var(--gn)">${T.res.toLocaleString()}</td><td class="n">${rate.toFixed(1)}%</td><td class="n" style="color:var(--am)">${T.unr.toLocaleString()}</td><td class="cc" style="white-space:nowrap"><span class="ba ${b1.dBadge}" data-tip="전월 ${T.pU.toLocaleString()} → 금월 ${T.unr.toLocaleString()}">${b1.dArrow} ${b1.dTxt}</span></td><td class="n" style="color:var(--rd)">${T.lt.toLocaleString()}</td><td>${dfLtrBar('합계',T.unr,T.d60,T.d30,T.d0)}</td><td class="cc" style="white-space:nowrap"><span class="ba ${b2.dBadge}" data-tip="전월 ${T.pLt.toLocaleString()} → 금월 ${T.lt.toLocaleString()}">${b2.dArrow} ${b2.dTxt}</span></td></tr></tfoot>`;
+    foot=`<tfoot><tr class="tot"><td class="cc"></td><td><b>합계</b></td><td class="n">${T.units.toLocaleString()}</td><td class="n">${T.tR.toLocaleString()}</td><td class="n" style="color:var(--gn)">${T.res.toLocaleString()}</td><td class="n">${rate.toFixed(1)}%</td><td class="n" style="color:var(--am)">${T.unr.toLocaleString()}</td><td class="cc" style="white-space:nowrap"><span class="ba ${b1.dBadge}" data-tip="전월 ${T.pU.toLocaleString()} → 금월 ${T.unr.toLocaleString()}">${b1.dArrow} ${b1.dTxt}</span></td><td class="n" style="color:var(--rd)">${T.lt.toLocaleString()}</td><td>${dfLtrBar(T.unr,T.d60,T.d30,T.d0)}</td><td class="cc" style="white-space:nowrap"><span class="ba ${b2.dBadge}" data-tip="전월 ${T.pLt.toLocaleString()} → 금월 ${T.lt.toLocaleString()}">${b2.dArrow} ${b2.dTxt}</span></td></tr></tfoot>`;
   }
   tbl.innerHTML=dfDashTheadHTML()+'<tbody>'+rows+'</tbody>'+foot;
 }
@@ -5461,6 +5461,7 @@ function rHold(){
   box.innerHTML=list.map(({sid,iid,it})=>
     '<div class="hold-i" draggable="true" data-act="hold.go" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"'
     +' data-tip="누르면 업무로 이동 · 달력 날짜로 끌어 놓으면 그 날짜로">'
+    +(x=>colDotHTML(planColor(x),'ro',!planOwners(x).length))(taskAsPlan(sid,iid,it))
     +'<span class="t">'+esc(it.text||'제목 없음')+'</span>'
     +'<span class="d">'+esc(md(it.date))+'</span></div>').join('');
 }
@@ -5897,17 +5898,17 @@ function rOrg(){
     /* ⚠ 무조건 3개로 자르면 칸이 넓어도 '+1'이 뜬다 — 넣을 수 있는 만큼 다 넣고 넘칠 때만 접는다(CSS 가 판단) */
     const shown=list.map(x=>'<button class="site-on" data-act="acct.siteOff" data-id="'+esc(p.id)+'" data-sid="'+esc(x.id)+'" data-tip="눌러서 빼기">'+esc(x.name)+'</button>').join('');
     return '<div class="site-chk">'
-      +'<button class="site-pick" data-act="acct.sitePick" data-id="'+esc(p.id)+'" aria-label="담당 현장 선택" data-tip="담당 현장 선택"><svg class="icn"><use href="#i-plus"></use></svg></button>'
       +(list.length?shown:'<span class="site-none">미지정</span>')
+      +'<button class="site-pick" data-act="acct.sitePick" data-id="'+esc(p.id)+'" aria-label="담당 현장 선택" data-tip="담당 현장 선택"><svg class="icn"><use href="#i-plus"></use></svg></button>'
       +'</div>';
   };
   const roleCtl=p=>{
     const role=p.role||'viewer',rc='r-'+role,isMe=p.id===myUid,lastEd=role==='editor'&&editors.length<=1;
-    const lock=isMe?'본인 계정':(lastEd?'마지막 관리자':'');
-    return (!isEditor()||isMe||lastEd)
-      ? (lock?'<span class="fbu-lock">'+lock+'</span> ':'')+'<span class="fbu-role '+rc+'">'+esc(roleLabel(role))+'</span>'
-      : '<select class="fbu-sel" data-act="acct.role" data-id="'+esc(p.id)+'" aria-label="권한">'
-        +roleOpt('editor','관리자',role)+roleOpt('viewer','사용자',role)+roleOpt('blocked','차단',role)+'</select>';
+    const lock=isMe?'본인 권한은 스스로 바꿀 수 없습니다':(lastEd?'마지막 관리자는 강등할 수 없습니다':'');
+    const off=(!isEditor()||isMe||lastEd);   /* 429차: 배지 대신 다른 행과 같은 선택창 — 잠긴 행은 disabled */
+    return '<select class="fbu-sel" data-act="acct.role" data-id="'+esc(p.id)+'" aria-label="권한"'
+      +(off?' disabled'+(lock?' data-tip="'+lock+'"':''):'')+'>'
+      +roleOpt('editor','관리자',role)+roleOpt('viewer','사용자',role)+roleOpt('blocked','차단',role)+'</select>';
   };
   const teams=(S.org.teams||[]).filter(t=>t.name);
   const teamCtl=p=>{
@@ -5926,7 +5927,7 @@ function rOrg(){
     const u=rankUses(p.rank);
     return `<tr>
       <td><div class="utbl-name">${avHTML(p.id)}
-        <div style="min-width:0"><div class="utbl-nick">${esc(p.name)}</div><div class="utbl-mail">${esc(p.email||'')}</div></div></div></td>
+        <div style="min-width:0"><div class="utbl-nick${p.id===myUid?' me':''}">${esc(p.name)}</div><div class="utbl-mail">${esc(p.email||'')}</div></div></div></td>
       <td>${teamCtl(p)}</td>
       <td>${rankCtl(p)}</td>
       <td>${u.region
@@ -5941,7 +5942,7 @@ function rOrg(){
   /* ⚠ 안(#acctRoot)만 비우면 빈 카드의 테두리가 가로선으로 남는다 — 카드째 감춘다(389차) */
   const acard=ar.closest('.card');if(acard)acard.style.display=freeOnly?'none':'';
   ar.style.display=freeOnly?'none':'';
-  ar.innerHTML=freeOnly?'':'<table class="utbl"><thead><tr><th style="width:180px">이름</th><th style="width:142px">팀</th><th style="width:96px">직급</th><th style="width:106px">권역</th><th>담당 현장</th><th class="utbl-r" style="width:120px">권한</th></tr></thead><tbody>'
+  ar.innerHTML=freeOnly?'':'<table class="utbl"><thead><tr><th style="width:200px">이름</th><th style="width:142px">팀</th><th style="width:96px">직급</th><th style="width:106px">권역</th><th>담당 현장</th><th class="utbl-r" style="width:120px">권한</th></tr></thead><tbody>'
     +(mine.length?mine.map(row).join('')
       :'<tr><td colspan="6" style="font-size:12px;color:var(--lbl3);padding:10px">이 팀에 배정된 계정이 없습니다.</td></tr>')
     +'</tbody></table>';
