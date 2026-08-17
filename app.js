@@ -9,7 +9,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='414';
+const APP_VER='426';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -2032,18 +2032,7 @@ function taskFilterOk(sid,it){
   if(SI.length&&!SI.includes(String(it.site||'')))return false;
   return true;
 }
-function rDayHead(){
-  const ds=S.selDate,d=toDate(ds),ho=holOf(ds);
-  const fmt=x=>{const t=toDate(x);return t.getFullYear()+'. '+(t.getMonth()+1)+'. '+t.getDate()+'.';};
-  const dow=$('#dpDow');
-  if(S.selEnd){   /* 기간 선택 — 날짜도 요일도 시작 ~ 종료 */
-    const e=toDate(S.selEnd);
-    $('#dpDate').textContent=fmt(ds)+' ~ '+fmt(S.selEnd);
-    if(dow)dow.textContent=DOW[d.getDay()]+' ~ '+DOW[e.getDay()]+'요일';
-  }else{
-    $('#dpDate').textContent=fmt(ds);
-    if(dow)dow.textContent=DOW[d.getDay()]+'요일'+(ho?' · '+ho.n:'')+(ds===todayStr()?' · 오늘':'');
-  }
+function rDayHead(){   /* 426차: 날짜 머리 삭제 — 이제 기간 업무 계산만 한다(이름은 호출부 유지용) */
   return rangePlans();
 }
 /* 선택 기간(하루면 그날)에 걸친 업무 — 날짜순 */
@@ -2328,7 +2317,7 @@ function planFormHTML(){
         <div class="frow"><label>종료일</label><input type="date" class="inp inp-sm" id="peEnd" value="${esc(d.end||'')}"></div>
       </div>
       <div class="frow2">
-        <div class="frow"><label>업무 구분</label>
+        <div class="frow"><label>구분</label>
           <select class="inp inp-sm" id="peKind">${TK_KIND.map(k=>'<option value="'+k[0]+'"'+(k[0]===kind?' selected':'')+'>'+k[1]+'</option>').join('')}</select></div>
         <div class="frow"><label>담당자</label>${ownSelHTML('peOwners',planOwners(d)[0]||'',people)}</div>
       </div>
@@ -2806,7 +2795,7 @@ function taskFormHTML(sid,iid,cur){
       </div>
       <div class="frow" id="tnUntilRow" style="${rc?'':'display:none'}"><label>반복 종료</label><input type="date" class="inp inp-sm" id="tnUntil" value="${esc((d.recur&&d.recur.until)||'')}"></div>
       <div class="frow4">
-        <div class="frow"><label>업무 구분</label>
+        <div class="frow"><label>구분</label>
           <select class="inp inp-sm" id="tnKind" data-act="tk.kind">
             ${TK_KIND.map(([v,l])=>'<option value="'+v+'"'+(v===kind?' selected':'')+'>'+esc(l)+'</option>').join('')}
           </select></div>
@@ -3832,7 +3821,7 @@ function dfMomRender(elId,tot){
 }
 /* KPI 카드 — 원본 kc 구조(라벨/큰 값/메타 + 우상단 '목록 보기') */
 function dfKcHTML(list){
-  return '<div class="akpi">'+list.map(k=>`<div class="kc ${k.cls}${k.act?' kc-click':''}"${k.act?` data-act="rec.list" data-sid="${esc(k.sid||'')}" data-scope="${k.act}"`:''}${k.tt?` data-tip="${esc(k.tt)}"`:''}><div class="kl">${k.label}</div><div class="kv">${k.valHTML!==undefined?k.valHTML:k.val.toLocaleString()+(k.unit?`<span class="u">${k.unit}</span>`:'')}</div><div class="km">${k.meta}</div>${k.act?`<span class="kc-cta"><span class="kc-cta-t">목록 보기</span> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></span>`:''}</div>`).join('')+'</div>';
+  return '<div class="akpi">'+list.map(k=>`<div class="kc ${k.cls}${k.act?' kc-click':''}"${k.act?` data-act="rec.list" data-sid="${esc(k.sid||'')}" data-scope="${k.act}"`:''}${k.tt?` data-tip="${esc(k.tt)}"`:''}><div class="kl">${k.label}</div><div class="kv">${k.valHTML!==undefined?k.valHTML:k.val.toLocaleString()+(k.unit?`<span class="u">${k.unit}</span>`:'')}</div><div class="km">${k.meta}</div>${k.act?`<span class="kc-cta"><span class="kc-cta-t">목록</span> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></span>`:''}</div>`).join('')+'</div>';
 }
 /* 주요 이슈 — 게시본 HTML 그대로(원본 .ic 카드). 남이 만든 HTML 이므로 반드시 DOMPurify 로 씻는다 */
 function dfInsightHTML(html){
@@ -3979,8 +3968,8 @@ function rDefectDash(root,d){
     {cls:'bl',label:'관리대상현장',valHTML:`${units.toLocaleString()}<span class="u">세대</span>`,meta:`${sites.length.toLocaleString()}개 현장`},
     {cls:'sk',label:'전체 접수',val:tR,unit:'건',meta:`세대당 ${units>0?(tR/units).toFixed(1):'0.0'}건`},
     {cls:'ms',label:'처리 완료',val:tRes,unit:'건',meta:`처리율 ${rate.toFixed(1)}%`},
-    {cls:'wh',label:'미처리',val:tU,unit:'건',meta:`세대당 ${units>0?(tU/units).toFixed(1):'0.0'}건`,act:'ul',sid:'',tt:'팀 전체 미처리 목록 보기'},
-    {cls:'wh',label:'장기미처리(30일+)',val:tLt,unit:'건',meta:`미처리의 ${tU>0?(tLt/tU*100).toFixed(1):0}%`,act:'lul',sid:'',tt:'팀 전체 장기미처리 목록 보기'}]);
+    {cls:'wh'+(tU>0?' kc-warn':''),label:'미처리',val:tU,unit:'건',meta:`세대당 ${units>0?(tU/units).toFixed(1):'0.0'}건`,act:'ul',sid:'',tt:'팀 전체 미처리 목록 보기'},
+    {cls:'wh'+(tLt>0?' kc-bad':''),label:'장기미처리(30일+)',val:tLt,unit:'건',meta:`미처리의 ${tU>0?(tLt/tU*100).toFixed(1):0}%`,act:'lul',sid:'',tt:'팀 전체 장기미처리 목록 보기'}]);
   const dashYears=[...new Set(Object.values(d.wk||{}).flatMap(dfYearsOf))].sort();
   const rmY=S.dfRm.slice(0,4);
   const dashYear=(dashYears.includes(S.dfTrendYearDash)?S.dfTrendYearDash:rmY);
@@ -4188,8 +4177,8 @@ function rDefectSite(root,site){
     {cls:'bl kc-site',label:esc(site.region||'-'),valHTML:`<span class="kc-site-nm">${esc(site.name||'-')}</span>`,meta:`${units.toLocaleString()}세대 · ${site.buildings||0}개동${compDate}`},
     {cls:'sk',label:'전체 접수',val:st.tR||0,unit:'건',meta:`세대당 ${units>0?((st.tR||0)/units).toFixed(1):'0.0'}건`},
     {cls:'ms',label:'처리 완료',val:st.res||0,unit:'건',meta:`처리율 ${(Number(st.rate)||0).toFixed(1)}%`},
-    {cls:'wh',label:'미처리',val:st.unr||0,unit:'건',meta:`세대당 ${units>0?((st.unr||0)/units).toFixed(1):'0.0'}건`,act:'ul',sid:site.id,tt:'미처리 하자리스트 보기'},
-    {cls:'wh',label:'장기미처리(30일+)',val:st.lt||0,unit:'건',meta:`미처리의 ${(Number(st.ltr)||0).toFixed(1)}%`,act:'lul',sid:site.id,tt:'장기미처리 하자리스트 보기'}]);
+    {cls:'wh'+((st.unr||0)>0?' kc-warn':''),label:'미처리',val:st.unr||0,unit:'건',meta:`세대당 ${units>0?((st.unr||0)/units).toFixed(1):'0.0'}건`,act:'ul',sid:site.id,tt:'미처리 하자리스트 보기'},
+    {cls:'wh'+((st.lt||0)>0?' kc-bad':''),label:'장기미처리(30일+)',val:st.lt||0,unit:'건',meta:`미처리의 ${(Number(st.ltr)||0).toFixed(1)}%`,act:'lul',sid:site.id,tt:'장기미처리 하자리스트 보기'}]);
   /* 탭 — 원본과 같은 구성(공가세대/공가상가는 현장 설정에 따라) */
   const showSedae=site.showVacant!==false,showSangga=!!site.hasCommercial;
   let tab=S.dfTab||'sum';
@@ -4813,8 +4802,8 @@ async function dfPrint(){
       {cls:'bl',label:'현장규모',valHTML:`${units.toLocaleString()}<span class="u">세대</span>`,meta:`${site.buildings||0}개동${compDate}`},
       {cls:'sk',label:'전체 접수',val:st.tR||0,unit:'건',meta:`세대당 ${units>0?((st.tR||0)/units).toFixed(1):'0.0'}건`},
       {cls:'ms',label:'처리 완료',val:st.res||0,unit:'건',meta:`처리율 ${(Number(st.rate)||0).toFixed(1)}%`},
-      {cls:'wh',label:'미처리',val:st.unr||0,unit:'건',meta:`세대당 ${units>0?((st.unr||0)/units).toFixed(1):'0.0'}건`},
-      {cls:'wh',label:'장기미처리(30일+)',val:st.lt||0,unit:'건',meta:`미처리의 ${(Number(st.ltr)||0).toFixed(1)}%`}]);
+      {cls:'wh'+((st.unr||0)>0?' kc-warn':''),label:'미처리',val:st.unr||0,unit:'건',meta:`세대당 ${units>0?((st.unr||0)/units).toFixed(1):'0.0'}건`},
+      {cls:'wh'+((st.lt||0)>0?' kc-bad':''),label:'장기미처리(30일+)',val:st.lt||0,unit:'건',meta:`미처리의 ${(Number(st.ltr)||0).toFixed(1)}%`}]);
     const trend=dfPrTrendCard();
     const opsr=`<div class="opsr"><div class="card"><div class="ct cardttl">전월대비 실적 현황</div><div id="dfPrMom" class="mom-wrap"></div></div>${dfDonutCardHTML('공종별 미처리 분포','dfPrMx','dfPrMxLg')}</div>`;
     const P=dfAxParts(site.id,st);
@@ -4846,8 +4835,8 @@ async function dfPrint(){
       {cls:'bl',label:'관리대상현장',valHTML:`${units.toLocaleString()}<span class="u">세대</span>`,meta:`${sites.length.toLocaleString()}개 현장`},
       {cls:'sk',label:'전체 접수',val:tR,unit:'건',meta:`세대당 ${units>0?(tR/units).toFixed(1):'0.0'}건`},
       {cls:'ms',label:'처리 완료',val:tRes,unit:'건',meta:`처리율 ${rate.toFixed(1)}%`},
-      {cls:'wh',label:'미처리',val:tU,unit:'건',meta:`세대당 ${units>0?(tU/units).toFixed(1):'0.0'}건`},
-      {cls:'wh',label:'장기미처리(30일+)',val:tLt,unit:'건',meta:`미처리의 ${tU>0?(tLt/tU*100).toFixed(1):0}%`}]);
+      {cls:'wh'+(tU>0?' kc-warn':''),label:'미처리',val:tU,unit:'건',meta:`세대당 ${units>0?(tU/units).toFixed(1):'0.0'}건`},
+      {cls:'wh'+(tLt>0?' kc-bad':''),label:'장기미처리(30일+)',val:tLt,unit:'건',meta:`미처리의 ${tU>0?(tLt/tU*100).toFixed(1):0}%`}]);
     const trend=dfPrTrendCard();
     html+=pg('',hdr()+kpis+trend
       +`<div class="opsr"><div class="card"><div class="ct cardttl">전월대비 실적 현황</div><div id="dfPrMom" class="mom-wrap"></div></div>${dfDonutCardHTML('현장별 미처리 분포','dfPrSx','dfPrSxLg')}</div>`
@@ -5041,8 +5030,8 @@ function recHeadHTML(){
     +'<span class="rl-q-wrap"><svg class="icn icn-sm" aria-hidden="true"><use href="#i-search"></use></svg>'
     +'<input id="recQ" class="rl-q" placeholder="동·호·공종·내용 검색" value="'+esc(REC.q)+'" autocomplete="off"></span>'
     +'<span class="rec-n" id="recN"></span>'
-    +'<button class="btn bo bsm" data-act="rec.xlsx">엑셀</button>'
-    +'<button class="btn bo bsm" data-act="rec.pivot" id="recPivBtn">피벗</button>'
+    +'<button class="btn bg2 bsm" data-act="rec.xlsx">엑셀</button>'
+    +'<button class="btn bg2 bsm" data-act="rec.pivot" id="recPivBtn">피벗</button>'
     +'<button class="btn bg2 bsm" data-act="modal.close">닫기</button>'
     +'</div></div>';
 }
@@ -6484,7 +6473,6 @@ const ACT={
   },
   'nav.mob':()=>{$('#sidebar').classList.add('mob-open');$('#scrim').classList.add('on');},
   'nav.mobClose':mobClose,
-  'day.sheetClose':()=>dpSheet(false),
   'theme.toggle':()=>applyTheme(!document.documentElement.classList.contains('dark')),
   'nav.tools':()=>{const t=$('#sbTools');if(t)t.classList.toggle('open');},
   /* 달 이동은 보기만 바꾼다 — 선택일(날짜 헤더)은 그대로 둔다 */
@@ -6696,11 +6684,13 @@ const ACT={
   'set.bgPick':()=>{
     const f=document.createElement('input');f.type='file';f.accept='image/*';
     f.onchange=()=>{const file=f.files&&f.files[0];if(!file)return;
+      if(file.size>30*1024*1024)return toast('30MB 이하 이미지만 쓸 수 있습니다');
       /* 크기 제한 대신 자동 축소 — 브라우저 로컬 저장은 보통 5MB 남짓이고 dataURL 은 원본보다 약 33% 커진다.
          긴 변 2560px·JPEG 로 줄이면 큰 사진도 대개 1MB 안쪽이 된다. */
       const r=new FileReader();
       r.onload=()=>{
         const img=new Image();
+        img.onerror=()=>toast('이미지를 읽을 수 없습니다');
         img.onload=()=>{
           const max=2560,sc=Math.min(1,max/Math.max(img.width,img.height));
           const cv=document.createElement('canvas');
@@ -7027,6 +7017,7 @@ const ACT={
     inp.type='file';inp.accept='.json,application/json';
     inp.onchange=()=>{
       const f=inp.files&&inp.files[0];if(!f)return;
+      if(f.size>20*1024*1024)return toast('20MB 이하 백업 파일만 불러올 수 있습니다');
       const rd=new FileReader();
       rd.onload=()=>{
         let d=null;
