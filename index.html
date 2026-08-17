@@ -845,6 +845,7 @@ body:not(.df-printing):not(.rpt-on) textarea,body:not(.df-printing):not(.rpt-on)
 
 /* 앱 배경화면(로컬 전용) — 처리 방식은 디뉴어 앱의 로그인 배경과 같다:
    ① 사진 위에 위→아래 어두운 그라디언트 ② 가장자리를 어둡게 눌러 주는 비네트(radial)
+   (448차: ③ 미세 입자 레이어는 전면 mix-blend-mode 합성 비용 때문에 제거했다) */
 body::before{content:'';position:fixed;inset:0;z-index:-2;background-image:var(--app-bg-img,none);background-size:cover;background-position:center;opacity:0;transition:opacity .45s ease;filter:brightness(var(--app-bg-bri,1));}
 body.hasbg::before{opacity:1;}
 /* 그라디언트 + 비네트 한 겹(디뉴어 #gate 와 같은 구성) — 밑칠(단색 덮개) 방식은 대체됐다 */
@@ -3576,5 +3577,5 @@ html.dark .risk-b{background-color:#F87171;}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=449"></script>
+<script src="./app.js?v=450"></script>
 </body></html>
