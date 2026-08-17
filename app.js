@@ -9,7 +9,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='426';
+const APP_VER='428';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -2330,18 +2330,13 @@ function planFormHTML(){
           <div class="frow"><label>시간</label><input type="time" class="inp inp-sm" id="peTime" value="${esc(d.time||'')}"></div>
           <div class="frow"><label>반복</label><select class="inp inp-sm" id="peRec">${Object.keys(REC_LBL).map(k=>'<option value="'+k+'"'+(k===rc?' selected':'')+'>'+REC_LBL[k]+'</option>').join('')}</select></div>
         </div>
-        <div class="frow" id="peUntilRow" style="${rc?'':'display:none'}"><label>반복 종료</label><input type="date" class="inp inp-sm" id="peUntil" value="${esc((d.recur&&d.recur.until)||'')}"></div>
+        ${(pe.orig&&rc&&pe.occ)?`<div class="frow2" id="peUntilRow">
+          <div class="frow"><label>반복 종료</label><input type="date" class="inp inp-sm" id="peUntil" value="${esc((d.recur&&d.recur.until)||'')}"></div>
+          <div class="frow"><label>회차 이동</label><input type="date" class="inp inp-sm" id="peOcc" data-pid="${esc(d.id)}" data-occ="${esc(pe.occ)}" value="${esc(pe.occ)}" data-tip="날짜를 고르면 이 회차만 옮깁니다 — 원래 날짜를 고르면 되돌립니다"></div>
+        </div>`:`<div class="frow" id="peUntilRow" style="${rc?'':'display:none'}"><label>반복 종료</label><input type="date" class="inp inp-sm" id="peUntil" value="${esc((d.recur&&d.recur.until)||'')}"></div>`}
         <div class="frow"><label>링크</label><input class="inp inp-sm" id="peLink" maxlength="${LINK_MAX}" placeholder="https://…" value="${esc((lnk&&lnk.url)||'')}"></div>
         <div id="peBodySec">${peBodyHTML(d,kind)}</div>
 
-        ${(pe.orig&&rc&&pe.occ)?`<div class="frow occ-row">
-          <label>이 회차만 옮기기 <span style="font-weight:500;color:var(--lbl3)">반복 규칙은 그대로</span></label>
-          <div class="occ-line">
-            <input type="date" class="inp inp-sm" id="peOcc" value="${esc(pe.occ)}">
-            <button class="btn bo bxs" data-act="plan.moveOcc" data-pid="${esc(d.id)}" data-occ="${esc(pe.occ)}">이 회차 옮기기</button>
-            ${(d.moveOn&&d.moveOn[occSrc(d,pe.occ)])?'<button class="btn bg2 bxs" data-act="plan.resetOcc" data-pid="'+esc(d.id)+'" data-occ="'+esc(pe.occ)+'">원래대로</button>':''}
-          </div>
-        </div>`:''}
       </div>
     </div>
   </div>`;
@@ -3473,7 +3468,8 @@ const dfDlt=(d,isFirst,cur,u)=>{
 /* 막대 툴팁 — 짚은 구간 하나만 말한다(391차). 예전에는 현장명 + 세 구간을 한 줄에 몰아 넣어
    정작 어디를 짚었는지가 묻혔다. 구간별로 따로 달므로 이름도 필요 없다 */
 const dfLtrTip=(lbl,n,unr)=>lbl+' '+Number(n).toLocaleString()+'건'+(unr>0?' ('+(n/unr*100).toFixed(1)+'%)':'');
-const dfLtrBar=(unr,d60,d30,d0)=>{   /* 이름은 더 쓰지 않는다 — 툴팁이 구간별로 갈라졌다(391차) */
+const dfLtrBar=(unr,d60,d30,d0)=>{
+  d60=Math.max(0,Number(d60)||0);d30=Math.max(0,Number(d30)||0);d0=Math.max(0,Number(d0)||0);unr=Math.max(0,Number(unr)||0);   /* 427차: 인자 어긋남·이상치 방어 */   /* 이름은 더 쓰지 않는다 — 툴팁이 구간별로 갈라졌다(391차) */
   const ltr=unr>0?((d60+d30)/unr*100):0;
   const p60=unr>0?Math.min(d60/unr*100,100):0,p30=unr>0?Math.min(d30/unr*100,100):0,p0=unr>0?Math.min(d0/unr*100,100):0;
   const seg=(cls,lbl,n,w)=>w>0?`<div class="seg ${cls}" style="width:${w.toFixed(1)}%" data-tip="${esc(dfLtrTip(lbl,n,unr))}"></div>`:'';
@@ -3931,7 +3927,7 @@ function dfDashCoFill(tbl){
     return`<tr${opt.tot?' class="tot"':''}><td class="cc">${muted?'':(i+1)}</td><td>${name}</td><td class="cc">${muted?'-':esc(x.side||'-')}</td>`
       +`<td class="n">${x.r.toLocaleString()}</td><td class="n" style="color:var(--gn)">${x.res.toLocaleString()}</td><td class="n" style="font-weight:600">${rate.toFixed(1)}%</td>`
       +`<td class="n" style="color:var(--am)">${x.u.toLocaleString()}</td><td class="cc" style="white-space:nowrap"><span class="ba ${b1.dBadge}" data-tip="전월 ${x.pu.toLocaleString()} → 금월 ${x.u.toLocaleString()}">${b1.dArrow} ${b1.dTxt}</span></td>`
-      +`<td class="n" style="color:var(--rd)">${x.lt.toLocaleString()}</td><td>${dfLtrBar(x.key,x.u,x.d60,x.d30,x.d0)}</td>`
+      +`<td class="n" style="color:var(--rd)">${x.lt.toLocaleString()}</td><td>${dfLtrBar(x.u,x.d60,x.d30,x.d0)}</td>`
       +`<td class="cc" style="white-space:nowrap"><span class="ba ${b2.dBadge}" data-tip="전월 ${x.plt.toLocaleString()} → 금월 ${x.lt.toLocaleString()}">${b2.dArrow} ${b2.dTxt}</span></td></tr>`;};
   const T=rows.reduce((a,r)=>{a.r+=r.r;a.res+=r.res;a.u+=r.u;a.lt+=r.lt;a.d0+=r.d0;a.d30+=r.d30;a.d60+=r.d60;a.pu+=r.pu;a.plt+=r.plt;return a;},{r:0,res:0,u:0,lt:0,d0:0,d30:0,d60:0,pu:0,plt:0});
   const body=ordered.length?ordered.map((x,i)=>rowH(x,i,{muted:!!(x.fold||x.key==='(미기재)')})).join('')
@@ -4042,7 +4038,7 @@ function dfAggRowHTML(x,i,axis,sid,blankIdx,isTot,foldRow){
     +`<td class="cc" style="color:var(--am);font-weight:600">${x.u.toLocaleString()}</td>`
     +`<td class="cc" style="white-space:nowrap"><span class="ba ${b1.dBadge}" data-tip="전월 ${x.pu.toLocaleString()} → 금월 ${x.u.toLocaleString()}">${b1.dArrow} ${b1.dTxt}</span></td>`
     +`<td class="n" style="color:var(--rd)">${x.lt.toLocaleString()}</td>`
-    +`<td>${dfLtrBar(x.key,x.u,x.d60,x.d30,x.d0)}</td>`
+    +`<td>${dfLtrBar(x.u,x.d60,x.d30,x.d0)}</td>`
     +`<td class="cc" style="white-space:nowrap"><span class="ba ${badge}">${arrow} ${sign}${Math.abs(dN).toFixed(1)}p</span></td></tr>`;
 }
 function dfAxParts(sid,k){
@@ -6569,22 +6565,18 @@ const ACT={
     const src=occSrc(p,el.dataset.occ);
     const to=($('#peOcc')&&$('#peOcc').value)||'';
     if(!/^\d{4}-\d{2}-\d{2}$/.test(to)){toast('옮길 날짜를 고르세요');return;}
-    if(to===src){toast('원래 날짜와 같습니다');return;}
+    if(to===src){   /* 428차: 원래 날짜를 고르면 되돌리기 */
+      if(p.moveOn&&p.moveOn[src]){p.moveOn={...p.moveOn};delete p.moveOn[src];p.updatedAt=Date.now();store.putPlan(p);
+        S.planEdit=null;selDate(src);
+        if(!S.live){refetchCal();rWidget();}else setTimeout(refetchCal,220);
+        toast('원래 날짜로 되돌렸습니다');}
+      return;}
     p.moveOn={...(p.moveOn||{})};p.moveOn[src]=to;
     /* 완료·제외 표시는 원래 날짜 기준이라 그대로 둔다 */
     p.updatedAt=Date.now();store.putPlan(p);
     S.planEdit=null;selDate(to);
     if(!S.live){refetchCal();rWidget();}else setTimeout(refetchCal,220);
     toast('이 회차를 '+to+'로 옮겼습니다');},
-  'plan.resetOcc':el=>{
-    const p=findPlan(el.dataset.pid);if(!p)return;
-    const src=occSrc(p,el.dataset.occ);
-    if(!p.moveOn||!p.moveOn[src]){toast('옮긴 회차가 아닙니다');return;}
-    const mv={...p.moveOn};delete mv[src];p.moveOn=mv;
-    p.updatedAt=Date.now();store.putPlan(p);
-    S.planEdit=null;selDate(src);
-    if(!S.live){refetchCal();rWidget();}else setTimeout(refetchCal,220);
-    toast('원래 날짜로 되돌렸습니다');},
   'plan.skipOcc':el=>{const p=findPlan(el.dataset.pid);if(!p)return;
     const src=occSrc(p,el.dataset.occ);
     p.skipOn=p.skipOn||{};p.skipOn[src]=1;
@@ -7265,6 +7257,7 @@ document.addEventListener('input',e=>{
 /* 업무 폼은 자동 저장 — 입력이 멎으면 조용히 반영된다(저장 버튼 없음) */
 document.addEventListener('input',e=>{if(e.target.closest&&e.target.closest('#dpEdit'))planAutosave();});
 document.addEventListener('change',e=>{
+  if(e.target.id==='peOcc'){ACT['plan.moveOcc'](e.target);return;}   /* 428차: 날짜 고르면 즉시 회차 이동 */
   if(e.target.classList&&e.target.classList.contains('cp-hue')){
     const pop=$('#colPop');if(!pop)return;
     const d=pop.querySelector('.cp-dot');
