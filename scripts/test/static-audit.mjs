@@ -237,6 +237,7 @@ OK('구문 검사 (node --check)');
   '.nvi:not(.act) .nic :: background',
   '.pd-b :: color',
   '.pe-bar :: padding',
+  '.pe-bar :: gap',
   '.pe-bar::after :: left',
   '.pe-bar::after :: right',
   '.pe-body :: padding',

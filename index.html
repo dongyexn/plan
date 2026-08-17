@@ -134,7 +134,9 @@ svg{display:block;flex-shrink:0;}
 #sidebar>.sbsc{border-radius:0;border-top:0;border-bottom:0;margin-bottom:-8px;}
 #sidebar>.sb-bottom{border-radius:0 0 var(--rxl) var(--rxl);border-top:0;position:relative;}
 /* 찾기 ↔ 메뉴, 메뉴 ↔ 관리 경계 — 좌우 6px 를 남긴 선(접으면 4px) */
-#sidebar>.sb-tools::after,#sidebar>.sb-bottom::before{content:'';position:absolute;left:6px;right:6px;height:1px;background:var(--sep);}
+#sidebar>.sb-tools::after,#sidebar>.sb-bottom::before{content:'';position:absolute;left:6px;right:6px;height:1px;}
+#sidebar>.sb-tools::after{background:var(--sepo);}   /* 검색 밑 — 진하게 */
+#sidebar>.sb-bottom::before{background:var(--fill);}   /* 관리 위 — 분류 사이와 동일하게 옅게 */
 #sidebar>.sb-tools::after{bottom:0;}
 #sidebar>.sb-bottom::before{top:0;}
 #sidebar.mini>.sb-tools::after,#sidebar.mini>.sb-bottom::before{left:4px;right:4px;}
@@ -180,7 +182,7 @@ body.sb-anim #fcal{contain:layout paint;will-change:transform;}
 .sbsl{position:relative;}
 .sbsl+*{margin-top:0;}
 .sbsl:not(:first-child){margin-top:8px;padding-top:12px;}
-.sbsl:not(:first-child)::before{content:'';position:absolute;left:6px;right:6px;top:0;height:1px;background:var(--sep);}
+.sbsl:not(:first-child)::before{content:'';position:absolute;left:6px;right:6px;top:0;height:1px;background:var(--fill);}   /* 430차: 분류 사이는 옅게 */
 #sidebar.mini .sbsl{visibility:visible;text-align:center;padding-left:0;padding-right:0;font-size:11px;letter-spacing:0;white-space:nowrap;transition:none;}
 /* 접힘 — 글자만 작아지고 세로 여백은 펼침 규칙을 그대로 쓴다(357차).
    ⚠ 예전에는 height 를 못 박아 위 여백이 사라졌다: 첫 라벨은 블록 위에 붙고, 두 번째 라벨은
@@ -1217,18 +1219,22 @@ html.dark #view-defect .kc.kc-bad .kv{color:#F87171;}
 #view-defect .ait{font-size:13px;line-height:1.7;color:var(--lbl);word-break:keep-all;overflow-wrap:anywhere;}
 /* ⚠ 분석 의견은 AI 가 만든 HTML 을 그대로 넣는다 — 안에 밝은 배경 기준 글자색(회색·검정)이 인라인으로
    박혀 있어 다크에서 배경에 묻혔다. 다크에서만 본문 색을 강제로 상속시킨다(351차) */
-html.dark #view-defect .ait,html.dark #view-defect .ait *{color:var(--lbl)!important;}
-html.dark #view-defect .ait a{color:var(--bt1)!important;}
+/* 429차: 색 전체 강제(351차)를 해제 — 분석 의견은 원문의 색을 그대로 보여준다. 색 없는 텍스트는 .ait 상속(--lbl) */
+html.dark #view-defect .ait a{color:var(--bt1);}
+/* 429차: 원문 인라인 중 '일반 글자' 회색·검정 계열만 다크에서 밝게 — 강조색(네이비·빨강 등)은 원문 그대로 */
+html.dark #view-defect .ait [style*="#1a1a1a" i],html.dark #view-defect .ait [style*="#4a5568" i],
+html.dark #view-defect .ait [style*="#6b7280" i],html.dark #view-defect .ait [style*="#333" i],
+html.dark #view-defect .ait [style*="#000" i],html.dark #view-defect .ait [style*="black" i],
+html.dark #view-defect .ait [style*="#444" i],html.dark #view-defect .ait [style*="#555" i],
+html.dark #view-defect .ait [style*="#666" i],html.dark #view-defect .ait [style*="#777" i],
+html.dark #view-defect .ait [style*="#888" i],html.dark #view-defect .ait [style*="#999" i],
+html.dark #view-defect .ait [style*="#374151" i],html.dark #view-defect .ait [style*="#1f2937" i],
+html.dark #view-defect .ait [style*="#2d3748" i],html.dark #view-defect .ait [style*="#718096" i],
+html.dark #view-defect .ait [style*="color:gray" i],html.dark #view-defect .ait [style*="color:grey" i]{color:var(--lbl)!important;}
 /* 428차: 다크에서 select 펼침 목록이 밝게 떠 글자가 안 보이던 것 — 목록 배경·글자를 명시 */
 html.dark select.inp{color-scheme:dark;}
 html.dark select.inp option{background:var(--surf3);color:var(--lbl);}
-/* 427차: 분석 의견 강조색 — 원문(리포트 산출)의 strong·insight-block 에 색을 입힌다.
-   calapp 엔 원래 색 규칙이 없어 원문 형식에 따라 강조가 죽었음. 다크 강제(위 줄)보다 뒤라 이긴다 */
-#view-defect .ait strong,#view-defect .ait .insight-block .ib-body strong{color:#08213F;}
-#view-defect .ait .insight-block.warn strong,#view-defect .ait .warn strong{color:#961E1E;}
-html.dark #view-defect .ait strong{color:#9DBDEA!important;}
-html.dark #view-defect .ait .insight-block.warn strong,html.dark #view-defect .ait .warn strong{color:#F87171!important;}
-html.dark #view-defect .ait li::marker{color:var(--b500)!important;}
+html.dark #view-defect .ait li::marker{color:var(--b500);}
 #view-defect .ait p{margin:0 0 8px;line-height:1.7;}#view-defect .ait p:last-child{margin-bottom:0;}
 /* 공가 현황 스트립(vrow) */
 #view-defect .vac-stat .sh{margin-bottom:8px;}   /* 229차: 제목~수치 간격 살짝 축소 */
@@ -1376,12 +1382,12 @@ html.dark #view-defect .ait li::marker{color:var(--b500)!important;}
 .day-panel{min-height:0;}
 .hold-empty{font-size:12px;color:var(--lbl3);text-align:center;padding:16px 0;}
 .hold-mine.on{background:var(--b50);border:1px solid var(--b400);color:var(--bt1);}   /* 켜짐 표시 */
-.hold-body{padding:8px 16px 12px 16px;display:flex;flex-direction:column;gap:5px;flex:1;min-height:0;overflow-y:auto;}
-.hold-i{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--rmd);
+.hold-body{padding:12px 16px 16px 16px;display:flex;flex-direction:column;gap:8px;flex:1;min-height:0;overflow-y:auto;}   /* 430차: 업무패널(dp-body)과 동일 */
+.hold-i{display:flex;align-items:center;gap:6px;padding:8px 12px 8px 7px;border-radius:var(--rlg);
   background:var(--surf2);border:1px solid var(--sep);cursor:grab;transition:background var(--tr),border-color var(--tr);}
 .hold-i:hover{background:var(--bg2);border-color:var(--b300);}
 .hold-i.drag{opacity:.45;}
-.hold-i .t{flex:1;min-width:0;font-size:13px;font-weight:600;color:var(--lbl);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hold-i .t{flex:1;min-width:0;font-size:12px;font-weight:600;color:var(--lbl);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .hold-i .d{flex:0 0 auto;font-size:11px;font-weight:700;color:var(--lbl3);}
 /* 끌어다 놓는 동안 날짜 칸을 표시한다 */
 .fc-daygrid-day.hold-over .fc-daygrid-day-frame{box-shadow:inset 0 0 0 2px var(--b500);background:var(--b50)!important;}
@@ -1414,9 +1420,9 @@ html.dark .fc-daygrid-day.hold-over .fc-daygrid-day-frame{background:rgba(83,140
 /* 펼칠 내용이 없는 카드는 손가락 커서를 띄우지 않는다 — 눌러도 반응이 없는 헛손질 방지 */
 #dpList .plan:not(.has-det) .plan-t,#dpList .plan:not(.has-det) .plan-main{cursor:default;}
 .plan.done .plan-t{color:var(--lbl3);}
-.plan-meta{display:flex;align-items:center;gap:8px;margin-top:4px;font-size:12px;color:var(--lbl2);font-weight:500;line-height:1.45;}
+.plan-meta{display:flex;align-items:center;gap:8px;margin-top:4px;font-size:12px;color:var(--lbl3);font-weight:500;line-height:1.45;}
 .pm-l{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.pm-r{margin-left:auto;flex:0 0 auto;color:var(--lbl2);font-weight:600;}
+.pm-r{margin-left:auto;flex:0 0 auto;color:var(--lbl3);font-weight:500;}
 .plan.done .pm-r{color:var(--lbl3);font-weight:500;}
 .plan-side{display:flex;align-items:center;gap:2px;flex-shrink:0;}
 .p-ico{width:26px;height:26px;border-radius:3px;display:flex;align-items:center;justify-content:center;color:var(--lbl3);transition:background var(--tr),color var(--tr);}
@@ -1527,7 +1533,7 @@ body.wid #dpFcard .dp-fadv{position:absolute;z-index:640;top:calc(100% + 8px);ri
   --fill:rgba(255,255,255,.12);--b200:rgba(255,255,255,.2);}
 body.wid.glass .cal-title,body.wid.glass .cal-title .y{color:#fff;}
 /* 필터 카드 — 1행 업무 구분·진행 상태, 2행 권역·담당자, 3행 현장, 4행 검색·업무 추가 */
-.dp-fcard{padding:7px 12px;display:flex;flex-direction:column;gap:8px;flex:0 0 auto;}   /* 425차: 사이드바 머리(46px)와 같은 높이 */
+.dp-fcard{padding:7px 8px 7px 12px;display:flex;flex-direction:column;gap:8px;flex:0 0 auto;}   /* 425차: 사이드바 머리(46px)와 같은 높이 */
 .dp-fcard .dp-frow{display:flex;gap:8px;align-items:center;}
 .dp-fcard .dp-sel{flex:1 1 0;min-width:0;}
 .dp-fcard .dp-srch{flex:1 1 0;min-width:0;}
@@ -1573,10 +1579,11 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 /* 7. 목록 카드 머리 — 좌 건수, 우 업무 추가. 구분선은 양옆을 띄운다 */
 .dp-lh{position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;
   padding:11px 16px 10px;flex:0 0 auto;}
-.dp-lh::after{content:'';position:absolute;left:16px;right:16px;bottom:0;height:1px;background:var(--sep);}
+.dp-lh::after{content:'';position:absolute;left:16px;right:16px;bottom:0;height:1px;background:var(--sepo);}   /* 431차: 머리 밑 경계는 진하게 — 사이드바 검색 밑과 같은 위계 */
 .dp-lh-t{font-size:13px;font-weight:700;color:var(--lbl);}
 .dp-add{flex:0 0 auto;}
-.btn.dp-add.on{background:transparent;border:1.5px solid transparent;color:var(--lbl3);}   /* 켜짐 — 테두리를 없앤 뒤로는 이 선이 유일한 표시다(345차) */
+.btn.dp-add.on{background:transparent;border:1.5px solid transparent;color:var(--b500);padding-left:4px;padding-right:4px;}
+.btn.dp-add.on:hover{background:transparent;color:#7DA9EA;}   /* 430차: 폼이 열려도 평소와 같은 모습 */   /* 켜짐 — 테두리를 없앤 뒤로는 이 선이 유일한 표시다(345차) */
 
 .tk-ico:hover{background:var(--fill2);color:var(--bt1);}
 .tk-ico.on{opacity:1;color:var(--bt1);}
@@ -1676,8 +1683,8 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 .tkbar{flex:0 0 auto;height:var(--th);display:flex;align-items:stretch;gap:var(--s3);padding-top:1.5px;border-bottom:1px solid var(--sepo);}   /* ⚠ 아랫선 1.5px 이 안쪽 높이를 깎아 글자가 1px 위로 뜬다 — 같은 만큼 위를 띄워 옆 줄과 글자 중심을 맞춘다(331차) */
 .tkbar-tabs{flex:1;min-width:0;height:100%;margin-bottom:0;border-bottom:0;align-items:stretch;}   /* 아랫선은 줄(.tkbar) 이 그린다 — 업무 추가 버튼 아래까지 이어진다(330차) */   /* ⚠ height:100% 를 줘야 줄 높이를 채운다 — stretch 만으로는 28px 에 머물렀다(329차 실측) */
 .tkbar .rp-tab{display:flex;align-items:center;height:100%;gap:6px;padding:0 15px;font-size:13px;white-space:nowrap;}
-.tkbar .rp-tab::after{bottom:-2px;z-index:1;}   /* ⚠ 줄(.tkbar)의 아랫선까지 덮어야 한다(391차) — -1.5px 이면 회색이 0.5px 삐져나온다 */
-.tkbar .rp-tab.on::after{height:3px;border-radius:0;}
+.tkbar .rp-tab::after{bottom:0;z-index:1;}   /* 431차: overflow 에 잘리던 -2px → 안쪽 바닥 */   /* ⚠ 줄(.tkbar)의 아랫선까지 덮어야 한다(391차) — -1.5px 이면 회색이 0.5px 삐져나온다 */
+.tkbar .rp-tab.on::after{height:2px;border-radius:0;}
 /* 개편 3-1: 첫 탭 14px 들여쓰기 — 여백은 .tkbar 가 아니라 .rp-tabs 에(탭 전체가 밀리는 사고 방지). 활성선은 줄 왼쪽 끝까지 */
 .tkbar .rp-tabs{padding-left:14px;}
 .tkbar .rp-tab.on:first-child::after{left:-14px;}   /* 선택 탭의 파란 줄 — 아래 구분선을 덮고도 또렷하게(391차) */
@@ -1687,7 +1694,10 @@ body.wid #dpFcard .msel-k{background:transparent;border-color:rgba(255,255,255,.
 .tkbar .tkq-add:hover{color:var(--bt1);background:none;}
 .tkbar .tkq-add .icn{width:14px;height:14px;}
 /* 배경화면을 깔면 글자와 밑줄을 한 단 진하게 — 표면을 덮지 않고 대비만 올린다 */
-body.hasbg .tkbar{border-bottom-color:var(--sepo);background:var(--bg2);}   /* 427차: 사진 위에서 탭이 침몰하지 않게 — 카드와 같은 반투명 판 */
+body.hasbg .tkbar{border-bottom-color:var(--sepo);}
+/* 429차: 사진 위 탭 가독 — 판 대신 글자 뒤 밝은 무리(halo). 다크 배경사진은 어두운 무리 */
+body.hasbg .rp-tab{text-shadow:0 0 6px var(--bg),0 0 2px var(--bg),0 1px 3px var(--bg);}
+body.hasbg .rp-tcnt{box-shadow:0 0 0 3px var(--bg2);}
 body.hasbg .tkbar .rp-tab{color:var(--lbl2);}
 body.hasbg .tkbar .rp-tab.on,body.hasbg .tkbar .tkq-add{color:var(--lbl);}
 .tkwk{flex:1;min-height:0;display:flex;flex-direction:column;padding:0;overflow:hidden;}
@@ -1961,6 +1971,7 @@ body.hasbg .tkbar .rp-tab.on,body.hasbg .tkbar .tkq-add{color:var(--lbl);}
 .pe-ttl{flex:1;min-width:0;background:transparent;border:0;padding:0;font-size:13px;font-weight:700;color:var(--lbl);font-family:inherit;line-height:1.5;}
 .pe-ttl::placeholder{color:var(--lbl3);font-weight:500;}
 .pe-ttl:focus{outline:none;}
+.pe-ttl:focus-visible{outline:none;box-shadow:none;}   /* 429차: 제목의 파란 포커스 띠 제거 — 캐럿만 */
 .pe-ic{width:26px;height:26px;border-radius:3px;display:inline-flex;align-items:center;justify-content:center;color:var(--lbl2);flex:0 0 auto;transition:background var(--tr),color var(--tr);}
 .pe-ic:hover{background:var(--fill);color:var(--lbl);}
 .pe-ic .icn{width:14px;height:14px;}
@@ -1991,7 +2002,7 @@ html.dark .col-pop{background:#242426;}
 .dp-edit .pal-c{width:20px;height:20px;border-radius:3px;}
 /* ── 개편 6장: 수정 폼 압축 — 라벨 52px 고정 grid 행, 폼 500→356px (DESIGN-SPEC 6장 계측값) ── */
 .dp-edit .pe-body{padding:6px 10px 10px;}
-.dp-edit .frow{display:grid;grid-template-columns:44px 1fr;align-items:center;gap:6px;min-height:30px;margin-bottom:0;border-bottom:1px solid rgba(0,0,0,.05);}
+.dp-edit .frow{display:grid;grid-template-columns:44px 1fr;padding-left:3px;   /* 429차: 라벨을 머리 색원과 정렬 */align-items:center;gap:6px;min-height:30px;margin-bottom:0;border-bottom:1px solid rgba(0,0,0,.05);}
 html.dark .dp-edit .frow{border-bottom-color:rgba(255,255,255,.06);}
 .dp-edit .frow>label{font-size:11px;font-weight:600;color:var(--lbl3);margin:0;}
 .dp-edit .inp,.dp-edit select.inp,.dp-edit input.inp{height:28px;font-size:12px;color:var(--lbl);padding:0 2px;background:transparent;border:0;border-radius:0;min-width:0;box-shadow:none;}
@@ -1999,7 +2010,7 @@ html.dark .dp-edit .frow{border-bottom-color:rgba(255,255,255,.06);}
 .dp-edit .frow2>.frow{margin-bottom:0;}
 /* 긴 값은 1열 — 2열에 넣으면 글자가 잘린다 */
 .dp-edit .frow:has(#peSite),.dp-edit .frow:has(#peLink),.dp-edit .frow:has(textarea){grid-column:1 / -1;}
-.dp-edit .frow:has(textarea){align-items:start;padding:5px 0;}
+.dp-edit .frow:has(textarea){align-items:start;padding:5px 0 5px 3px;}
 .dp-edit textarea.inp{height:auto;min-height:44px;padding:2px;background:transparent;border:0;border-radius:0;font-size:12px;}
 /* 마지막 행만 선 제거 — 직속(>) 한정이라 frow2 안 열(2열의 오른쪽)은 지워지지 않는다 */
 .dp-edit .pe-body>.frow:last-child,.dp-edit .pe-adv>.frow:last-child,
@@ -2029,8 +2040,8 @@ html.dark .dp-edit .frow{border-bottom-color:rgba(255,255,255,.06);}
 .site-on{cursor:pointer;transition:background var(--ms),color var(--ms);}
 .site-on:hover{background:var(--rd-bg,rgba(220,38,38,.12));color:var(--rd,#DC2626);text-decoration:line-through;}
 .site-chk{display:flex;flex-wrap:wrap;gap:4px;align-items:center;min-width:0;min-height:24px;}
-.site-pick{flex-shrink:0;width:24px;height:24px;border-radius:3px;display:inline-flex;align-items:center;justify-content:center;color:var(--lbl3);border:1px dashed var(--sepo);box-sizing:border-box;}   /* 옆 현장 배지와 같은 높이·라운드 */
-.site-pick:hover{background:var(--fill);color:var(--bt1);border-color:var(--b300);}
+.site-pick{flex-shrink:0;width:24px;height:24px;border-radius:3px;display:inline-flex;align-items:center;justify-content:center;color:var(--lbl3);border:0;background:transparent;cursor:pointer;}
+.site-pick:hover{background:var(--fill);color:var(--bt1);}
 .site-pick .icn{width:12px;height:12px;}
 .site-on{display:inline-flex;align-items:center;height:24px;padding:0 8px;border-radius:3px;background:var(--fill);border:1px solid var(--sep);font-size:12px;font-weight:600;color:var(--lbl2);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;}   /* 라운드는 업무 막대와 같은 5px */
 .site-none{font-size:12px;color:var(--lbl3);display:inline-flex;align-items:center;height:26px;}
@@ -2297,11 +2308,8 @@ select.mg-inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-
 .fbu-av.r-viewer svg{fill:var(--lbl2);}
 .fbu-av.r-blocked{background:rgba(255,59,48,.16);}
 .fbu-av.r-blocked svg{fill:var(--rd);}
-.fbu-lock{font-size:12px;color:var(--lbl3);white-space:nowrap;}
-.fbu-role{font-size:12px;font-weight:700;padding:3px 10px;border-radius:3px;white-space:nowrap;}
-.fbu-role.r-editor{color:var(--bt1);background:rgba(62,113,210,.12);}
-.fbu-role.r-viewer{color:var(--lbl2);background:var(--fill);}
-.fbu-role.r-blocked{color:var(--rd);background:rgba(255,59,48,.1);}
+.utbl-nick.me{color:var(--b600);}   /* 429차: 본인 계정 — 배지 대신 이름 파랑 */
+.fbu-sel:disabled{opacity:.65;cursor:default;}
 .fbu-sel{-webkit-appearance:none;-moz-appearance:none;appearance:none;width:100%;min-width:0;max-width:112px;padding:8px 34px 8px 13px;font-size:13px;line-height:1.35;font-weight:500;color:var(--lbl);border:1px solid var(--sepo);border-radius:var(--rmd);background-color:var(--bg2);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23636366' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;background-size:12px;cursor:pointer;transition:border-color var(--t-fast);}
 .fbu-sel:hover{border-color:var(--b500);}
 .utbl th.utbl-r,.utbl td.utbl-r{text-align:right;}
@@ -2540,8 +2548,8 @@ body.wid .wid-pop select.inp option,body.wid #mb select.inp option{background:#2
 body.wid .wid-pop input[type=date].inp,body.wid .wid-pop input[type=time].inp{color-scheme:dark;}
 
 .wid-pop .wp-h{display:flex;align-items:center;gap:8px;padding:10px 12px 4px;margin-bottom:2px;}   /* 좌우 8px = 아래 '업무 N건'(.dp-lh)과 같은 자리 */
-.wid-pop .wp-d{font-size:13px;font-weight:800;color:#fff;line-height:22px;}
-.wid-pop .wp-w{font-size:12px;font-weight:600;color:rgba(255,255,255,.6);margin-left:auto;line-height:22px;}
+.wid-pop .wp-d{font-size:13px;font-weight:800;color:#fff;line-height:22px;transform:translateY(1px);}
+.wid-pop .wp-w{font-size:12px;font-weight:600;color:rgba(255,255,255,.6);margin-left:auto;line-height:22px;transform:translateY(1px);}
 .wid-pop .wp-x{width:22px;height:22px;border-radius:3px;display:flex;align-items:center;justify-content:center;
   color:rgba(255,255,255,.7);flex:0 0 auto;margin-left:2px;}
 .wid-pop .wp-x:hover{background:rgba(255,255,255,.14);color:#fff;}
@@ -2675,7 +2683,7 @@ html.dark #toast{background:#2B313A;}
   /* 펼치는 .22s 동안 도구 버튼이 좁은 폭에 맞춰 세로로 쌓였다가 한 줄로 돌아오던 문제 —
      내용칸 폭을 펼침 기준(--sw 에서 .sb-tools 좌우 여백 7px 씩)으로 고정해 되접히지 않게 한다.
      ⚠ flex-wrap:wrap 은 그대로 둔다 — 하자 관리에서 버튼이 실제로 넘칠 때는 줄바꿈이 필요하다 */
-  #sidebar:not(.mini) .sb-tools-in{min-width:calc(var(--sw) - 14px);}
+  #sidebar:not(.mini) .sb-tools-in{min-width:calc(var(--sw) - 22px);}   /* 429차: sb-tools 좌우 패딩 10+10 — 우측도 좌측과 같은 여백 */
 }
 /* ══════════ 모바일 ══════════ */
 #scrim{position:fixed;inset:0;background:rgba(0,0,0,.32);z-index:250;opacity:0;pointer-events:none;transition:opacity var(--t-base);}
@@ -2788,7 +2796,7 @@ html.dark #toast{background:#2B313A;}
   display:inline-flex;align-items:center;justify-content:center;}
 .tm-add:hover{background:var(--fill);color:var(--bt1);}
 .tm-add .icn{width:14px;height:14px;}
-.tb-ic,.cal-nb,.pe-ic,.p-ico,.tk-ico,.dp-fmore,.sbtg,.mc,.mo-x,.nq-cl{width:30px;height:30px;}
+.tb-ic,.cal-nb,.p-ico,.tk-ico,.dp-fmore,.sbtg,.mc,.mo-x,.nq-cl{width:30px;height:30px;}   /* 429차: pe-ic 는 읽기 아이콘과 같은 26px */
 .acct-btn{height:30px;padding-top:0;padding-bottom:0;}
 /* 입력 높이 30px 통일 — 표 안(mg-inp)·여러 줄(textarea)은 제외, 로그인은 인라인이라 자동 예외 */
 .inp{height:30px;padding-top:0;padding-bottom:0;}
@@ -2856,12 +2864,12 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 /* ── 5차 ── */
 /* 수정 폼을 읽기 카드와 같은 자리·같은 크기로 —
    제목 줄 여백(8/8)과 본문 좌우 여백(8)을 카드에 맞춰 전환 시 글이 움직이지 않게 한다 */
-.pe-bar{padding:8px 8px 10px;}
+.pe-bar{padding:6px 7px 4px 7px;gap:6px;}   /* 429차: 읽기 카드 머리와 동일 규격 */
 .pe-bar::after{left:0;right:0;}
 .pe-body{padding:10px 8px 12px;}
 /* 제목 칸은 input 이라 같은 글꼴·크기여도 읽기 카드의 div 와 세로 정렬이 어긋난다 —
    박스 높이와 행간을 카드 제목(14px x 1.5 = 21px)과 똑같이 못 박는다 */
-.pe-ttl{font-size:13px;height:21px;line-height:21px;padding:0;}
+.pe-ttl{font-size:12px;height:26px;line-height:26px;padding:0;}
 /* 제목 줄 자체의 높이도 읽기 카드와 같게 못 박는다(위 여백 8 + 아이콘 26) */
 .plan-hd{min-height:26px;}
 .pe-bar{min-height:26px;box-sizing:content-box;}
@@ -2882,9 +2890,10 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 /* 권역 탭 */
 .rp-tabs{display:flex;gap:0;border-bottom:1px solid var(--sepo);margin-bottom:18px;}
 .rp-tab{border:none;background:transparent;padding:9px 20px;font-size:13px;font-weight:600;color:var(--lbl3);cursor:pointer;position:relative;transition:color var(--t-fast);}
-.rp-tab::after{content:'';position:absolute;left:0;right:0;bottom:-1.5px;height:2px;border-radius:1px;background:transparent;transition:background var(--t-fast);}
+.rp-tab::after{content:'';position:absolute;left:0;right:0;bottom:0;height:2px;border-radius:0;background:transparent;transition:background var(--t-fast);}
 .rp-tab.on{color:var(--lbl);}
-.rp-tab.on::after{background:var(--b600);}
+.rp-tab.on::after{background:var(--b600);border-radius:0;}
+html.dark .rp-tab.on::after{background:var(--bt1);}   /* 431차: 다크엔 b600 재정의가 없어 검은 배경에 묻혔음 */
 .rp-tab:hover:not(.on){color:var(--lbl2);}
 .rp-tcnt{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;border-radius:3px;background:var(--fill);font-size:10px;font-weight:700;margin-left:5px;padding:0 4px;color:var(--lbl3);}
 .rp-tab.on .rp-tcnt{background:rgba(83,140,222,.14);color:#3E71D2;}
@@ -3531,5 +3540,5 @@ html.dark .risk-b{background-color:#F87171;}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=428"></script>
+<script src="./app.js?v=432"></script>
 </body></html>
