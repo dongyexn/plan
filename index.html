@@ -71,7 +71,7 @@ html.dark{
   --sh-2:0 4px 14px rgba(0,0,0,.32);
   --sh-3:0 16px 40px rgba(0,0,0,.46);}   /* 사이드바 여닫기 전용 곡선(391차) — 앞은 빠르고 끝은 길게 감속 */
 html.dark{
-  --bg:#15181D;--bg2:#212121;--surf2:#2A2A2A;--surf3:#333333;
+  --bg:#17181B;--bg2:#212121;--surf2:#2A2A2A;--surf3:#333333;
   --fill:rgba(255,255,255,.09);--fill2:rgba(255,255,255,.15);
   --sep:rgba(255,255,255,.18);--sepo:rgba(255,255,255,.30);
   --lbl:#ECECEC;--lbl2:rgba(236,236,236,.88);--lbl3:rgba(236,236,236,.72);
@@ -136,7 +136,7 @@ svg{display:block;flex-shrink:0;}
 /* 찾기 ↔ 메뉴, 메뉴 ↔ 관리 경계 — 좌우 6px 를 남긴 선(접으면 4px) */
 #sidebar>.sb-tools::after,#sidebar>.sb-bottom::before{content:'';position:absolute;left:6px;right:6px;height:1px;}
 #sidebar>.sb-tools::after{background:var(--sepo);}   /* 검색 밑 — 진하게 */
-#sidebar>.sb-bottom::before{background:var(--fill);}   /* 관리 위 — 분류 사이와 동일하게 옅게 */
+#sidebar>.sb-bottom::before{background:var(--fill);left:14px;right:14px;}   /* 447차: 분류 사이 선과 같은 폭 */   /* 관리 위 — 분류 사이와 동일하게 옅게 */
 #sidebar>.sb-tools::after{bottom:0;}
 #sidebar>.sb-bottom::before{top:0;}
 #sidebar.mini>.sb-tools::after,#sidebar.mini>.sb-bottom::before{left:4px;right:4px;}
@@ -1013,7 +1013,7 @@ body.snap .sbsl:first-of-type{display:none;}
 #view-defect .kc{border-radius:var(--rxl);padding:14px 16px;min-height:84px;position:relative;overflow:hidden;border:1px solid transparent;transition:transform var(--t-base),box-shadow var(--t-base);}
 /* 424차: 호버 부양 제거 — 상태는 목록 › 색 변화로만 */
 /* 개편 4-1: 파란 채움 제거 — 카드 전부 중립, 상태는 숫자 색으로만(kc-warn/kc-bad, 0건이면 미부착) */
-#view-defect .kc.bl,#view-defect .kc.sk,#view-defect .kc.ms,#view-defect .kc.wh{background:var(--bg2);border-color:var(--sep);color:var(--lbl);}
+#view-defect .kc.bl,#view-defect .kc.sk,#view-defect .kc.ms,#view-defect .kc.wh{background:var(--surf2);border-color:var(--sep);color:var(--lbl);}   /* 447차 */
 #view-defect .kc.kc-warn .kv{color:#B45309;}
 #view-defect .kc.kc-warn .kv .u,#view-defect .kc.kc-bad .kv .u{color:var(--lbl);}
 #view-defect .kc.kc-bad .kv{color:#B91C1C;}
@@ -1677,11 +1677,11 @@ body:not(.wid) .btn.dp-add.on:hover{background:transparent;color:#7DA9EA;}   /* 
 /* 보기 전환 — 왼쪽 사이드바 머리와 **같은 높이·같은 아랫선**. 폭은 왼쪽 칸을 가득 채운다.
    ⚠ .seg 기본 여백(2px)을 남기면 안쪽 버튼이 42px 이 되어 옆 줄보다 낮아 보인다 */
 .tkv-seg{flex:0 0 auto;display:flex;width:100%;height:var(--th);min-height:var(--th);align-items:stretch;padding:7px;
-  background:var(--bg2);box-shadow:var(--shcard);
-  border-style:solid;border-color:var(--sep);border-width:0;border-radius:var(--rxl);overflow:hidden;}   /* 436차: 카드와 같은 면·그림자 */
+  background:var(--surf2);box-shadow:var(--shcard);
+  border-style:solid;border-color:var(--sep);border-width:0;border-radius:var(--rxl);overflow:hidden;}   /* 447차: 사이드바와 같은 회색 면 */
 .tkv-seg button{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;height:100%;padding:0 2px 0 0;font-size:13px;border-radius:var(--rmd);background:none;}   /* padding-right — 왼쪽 아이콘 탓에 글자 무게중심이 오른쪽으로 쏠린다. 기계적 중앙이 아니라 **눈에 맞는 중앙**으로 당긴다(334차) */
 .tkv-seg button:first-child{padding-right:6px;}   /* 달력·체크는 왼쪽 획이 성겨 한 단 더 당긴다(336차) */
-.tkv-seg button.act{background:var(--surf2);color:var(--bt1);box-shadow:var(--sh-1);}
+.tkv-seg button.act{background:var(--bg2);color:var(--bt1);box-shadow:var(--sh-1);}
 .tkv-seg .icn{width:15px;height:15px;flex-shrink:0;}
 /* 월간 업무 — 현장별 묶음 */
 .tkmo-g{min-width:0;border:1px solid var(--sep);border-radius:var(--rxl);padding:0;background:var(--bg2);overflow:hidden;box-shadow:var(--shcard);
@@ -3578,5 +3578,5 @@ html.dark .risk-b{background-color:#F87171;}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=447"></script>
+<script src="./app.js?v=448"></script>
 </body></html>
