@@ -9,7 +9,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='448';
+const APP_VER='449';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -6482,36 +6482,10 @@ function applyBg(){
   const alv=$('#bgAlphaV');if(alv)alv.textContent=al+'%';
   const db=$('#bgBri');if(db)db.value=bri;
   const dbv=$('#bgBriV');if(dbv)dbv.textContent=bri+'%';
-  if(url)bgGrainPaint();      /* 필름 그레인은 배경이 있을 때만 그린다 */
   calGlassApply();
 }
 /* 배경 위 정적 필름 그레인 — 디뉴어 로그인 배경과 같은 방식(타일 노이즈 + 먼지 입자, 애니메이션 없음).
    ⚠ 한 번만 그린다. 매 프레임 그리면 위젯·저사양 PC 에서 그대로 부담이 된다. */
-let _grainDone=false;
-function bgGrainPaint(){
-  const cv=$('#bgGrain');if(!cv||!cv.getContext)return;
-  const ctx=cv.getContext('2d',{alpha:true});if(!ctx)return;
-  const DPR=Math.min(devicePixelRatio||1,1.5);
-  const W=Math.floor(innerWidth*DPR),H=Math.floor(innerHeight*DPR);
-  if(_grainDone&&cv.width===W&&cv.height===H)return;
-  cv.width=W;cv.height=H;cv.style.width=innerWidth+'px';cv.style.height=innerHeight+'px';
-  const TILE=180,SPREAD=92;
-  const t=document.createElement('canvas');t.width=t.height=TILE;
-  const tc=t.getContext('2d');const img=tc.createImageData(TILE,TILE);
-  for(let i=3;i<img.data.length;i+=4)img.data[i]=255;
-  for(let i=0;i<img.data.length;i+=4){const v=128+(Math.random()*2-1)*SPREAD;img.data[i]=img.data[i+1]=img.data[i+2]=v;}
-  tc.putImageData(img,0,0);
-  ctx.clearRect(0,0,W,H);
-  ctx.globalAlpha=1;ctx.fillStyle=ctx.createPattern(t,'repeat');ctx.fillRect(0,0,W,H);
-  const n=Math.round((W*H)/(DPR*DPR)/13000);   /* 정적인 먼지 입자 */
-  for(let i=0;i<n;i++){const big=Math.random()<0.10;const s=(big?2.2+Math.random()*3.4:1+Math.random()*1.3)*DPR;
-    ctx.globalAlpha=big?0.12:0.07;ctx.fillStyle=Math.random()<0.5?'#000':'#fff';
-    ctx.fillRect(Math.random()*W,Math.random()*H,s,s);}
-  ctx.globalAlpha=1;_grainDone=true;
-}
-let _grainT=null;
-addEventListener('resize',()=>{clearTimeout(_grainT);
-  _grainT=setTimeout(()=>{if(document.body.classList.contains('hasbg'))bgGrainPaint();},150);},{passive:true});
 /* ── 달력 유리(앱) — 위젯 설정과 같은 두 축: 투명도(a)·유리 톤(tint) ──
    ⚠ 위젯과 같은 이유로 변수 상속이 아니라 **리터럴 규칙을 스타일 태그로 주입**한다
    (FullCalendar 셀에서 var() 상속이 갱신되지 않는 엔진 특이 동작 — widApply 주석 참조). */
