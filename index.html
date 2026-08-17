@@ -902,7 +902,10 @@ html.dark body.hasbg .nq-panel,html.dark body.hasbg .popbox{--bg2:#1C1C1E;--surf
    유리(반투명+blur)는 각 블록에만. 블록 6개 수준의 blur 는 하자 화면과 달리 체감 부담이 없다. */
 /* 227차: 226차의 '흰색 고정'을 사용자 지시로 **취소** — 배경 시 유리+블러(225차 이전 상태)로 복귀 */
 body.hasbg #sidebar>*{background:var(--surf2);}   /* 448차: 불투명 면이라 blur 는 보이지 않고 합성 비용만 든다 */
-body.hasbg .card,body.hasbg #sidebar>*{box-shadow:var(--sh-2);}
+body.hasbg .card{box-shadow:var(--sh-2);}
+/* 450차: 사이드바는 조각(도구·목록·하단)이 이어붙어 한 판을 이룬다 —
+   조각마다 그림자를 주면 이음매마다 어두운 띠가 생긴다. 불투명 면이라 그림자 없이도 배경과 구분된다 */
+body.hasbg #sidebar>*{box-shadow:none;}
 /* ⚠ 달력을 감싸는 카드(.cal-card)에는 그림자를 주지 않는다 — 판이 투명이라 그림자만 네모로 떠서
    달력과 위 버튼을 한 덩어리로 감싼 것처럼 보였다. 그림자는 격자와 버튼에 각각 건다. */
 body.hasbg .cal-card{box-shadow:none;}
@@ -3577,5 +3580,5 @@ html.dark .risk-b{background-color:#F87171;}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=450"></script>
+<script src="./app.js?v=451"></script>
 </body></html>
