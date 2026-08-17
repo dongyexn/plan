@@ -56,7 +56,8 @@ OK('구문 검사 (node --check)');
   const orphanEmit = [...emitted].filter(a => a.includes('.')
     && !js.includes("'" + a + "'") && !js.includes('"' + a + '"'));
   const keys = new Set([...js.matchAll(/'([a-z][\w]*\.[\w]+)'\s*:\s*(?:async\s*)?(?:function|\(|[A-Za-z_$][\w$]*\s*=>)/g)].map(m => m[1]));
-  const orphanKey  = [...keys].filter(k => !emitted.has(k));
+  const DIRECT_CALL = new Set(['plan.moveOcc']);   /* change 델리게이트가 ACT[]로 직접 부르는 액션 — data-act 발신처가 없다(428차) */
+  const orphanKey  = [...keys].filter(k => !emitted.has(k) && !DIRECT_CALL.has(k));
   if (orphanEmit.length) F('핸들러 없는 data-act: ' + orphanEmit.join(', '));
   if (orphanKey.length)  W('발신처 없는 핸들러(UI 를 지울 때 짝을 안 지운 흔적): ' + orphanKey.join(', '));
   if (!orphanEmit.length && !orphanKey.length) OK('data-act 짝 일치 (' + emitted.size + '개 발신)');
@@ -71,7 +72,7 @@ OK('구문 검사 (node --check)');
 
 /* ── 5. 죽은 CSS 클래스 ─────────────────────────────── */
 {
-  const KEEP = /^(fc-|wf-|x-none$|r-blocked$|woff2$|s\d$)/;   /* 위 판정 원칙 + url(*.woff2) 오탐 + tk-item s${st} 동적 */
+  const KEEP = /^(fc-|wf-|x-none$|r-blocked$|woff2$|s\d$|insight-block$|ib-body$|warn$)/;   /* insight-*: 분석 의견 원문(DB 저장 HTML)의 클래스 — 마크업엔 없다(427차) */   /* 위 판정 원칙 + url(*.woff2) 오탐 + tk-item s${st} 동적 */
   const cls = new Set([...css.matchAll(/\.([A-Za-z_][\w-]*)/g)].map(m => m[1]));
   const dead = [...cls].filter(c => !KEEP.test(c) &&
     !new RegExp('[\'"`\\s<>=.(]' + c.replace(/-/g, '\\-') + '[\'"`\\s<>.,)\\]}:$]').test(hay));
