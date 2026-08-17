@@ -9,7 +9,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='451';
+const APP_VER='452';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -105,6 +105,8 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('input',e=>{
   if(e.target.id==='acctName'){acctAutoSave();return;}
+  /* 451차: 배경 슬라이더는 끄는 동안 바로 보여야 한다(change 는 손을 뗄 때만 온다) */
+  if(e.target.id==='bgAlpha'||e.target.id==='bgBri'){ACT[e.target.dataset.act](e.target);return;}
   /* 색상 띠 — 끌 때는 미리보기만(끌 때마다 저장하면 목록이 다시 그려져 팝오버가 사라진다) */
   if(e.target.classList&&e.target.classList.contains('cp-hue')){
     const pop=$('#colPop');if(!pop)return;
@@ -6756,7 +6758,7 @@ const ACT={
   'set.bgPick':()=>{
     const f=document.createElement('input');f.type='file';f.accept='image/*';
     f.onchange=()=>{const file=f.files&&f.files[0];if(!file)return;
-      if(file.size>30*1024*1024)return toast('30MB 이하 이미지만 쓸 수 있습니다');
+      if(file.size>60*1024*1024)return toast('60MB 이하 이미지만 쓸 수 있습니다');   /* 451차: 상한 완화 */
       /* 크기 제한 대신 자동 축소 — 브라우저 로컬 저장은 보통 5MB 남짓이고 dataURL 은 원본보다 약 33% 커진다.
          긴 변 2560px·JPEG 로 줄이면 큰 사진도 대개 1MB 안쪽이 된다. */
       const r=new FileReader();
