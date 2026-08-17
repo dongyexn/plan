@@ -845,7 +845,6 @@ body:not(.df-printing):not(.rpt-on) textarea,body:not(.df-printing):not(.rpt-on)
 
 /* 앱 배경화면(로컬 전용) — 처리 방식은 디뉴어 앱의 로그인 배경과 같다:
    ① 사진 위에 위→아래 어두운 그라디언트 ② 가장자리를 어둡게 눌러 주는 비네트(radial)
-   ③ 정적 필름 그레인 캔버스(#bgGrain, overlay). 사진 자체는 눕히지 않고 레이어로만 다스린다. */
 body::before{content:'';position:fixed;inset:0;z-index:-2;background-image:var(--app-bg-img,none);background-size:cover;background-position:center;opacity:0;transition:opacity .45s ease;filter:brightness(var(--app-bg-bri,1));}
 body.hasbg::before{opacity:1;}
 /* 그라디언트 + 비네트 한 겹(디뉴어 #gate 와 같은 구성) — 밑칠(단색 덮개) 방식은 대체됐다 */
@@ -857,11 +856,8 @@ body.hasbg::after{content:'';position:fixed;inset:0;z-index:-1;pointer-events:no
 /* 안쪽 비네트 한 겹 더 — 가운데는 그대로 두고 가장자리만 눌러 화면이 붕 뜨지 않게(디뉴어 #gate::after) */
 body.hasbg #app::after{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
   background:radial-gradient(118% 96% at 50% 44%, transparent 46%, rgba(0,0,0,.28) 100%);}
-/* 정적 필름 그레인 — 캔버스(#bgGrain)를 한 번만 그린다. 디뉴어와 같은 opacity .17 · overlay */
-#bgGrain{position:fixed;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none;
-  opacity:.17;mix-blend-mode:overlay;display:none;}
-body.hasbg #bgGrain{display:block;}
-@media print{#bgGrain{display:none!important;}}
+
+
 body.hasbg #app,body.hasbg #main,body.hasbg #content{background:transparent!important;}
 /* 배경을 켜면 카드가 유리가 된다 — 토큰만 바꿔 앱 전체에 한 번에 먹인다.
    (220차의 톤 밝기 --cl 은 사용자 지시로 철회 — 달력 유리는 아래 달력 전용 설정이 맡는다) */
@@ -904,7 +900,7 @@ html.dark body.hasbg .nq-panel,html.dark body.hasbg .popbox{--bg2:#1C1C1E;--surf
 /* 블록 사이는 배경 사진이 그대로 비친다 — 사이드바 자체에는 판을 깔지 않는다(깔면 '한 장'이 돼 버린다).
    유리(반투명+blur)는 각 블록에만. 블록 6개 수준의 blur 는 하자 화면과 달리 체감 부담이 없다. */
 /* 227차: 226차의 '흰색 고정'을 사용자 지시로 **취소** — 배경 시 유리+블러(225차 이전 상태)로 복귀 */
-body.hasbg #sidebar>*{background:var(--glass3);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);}
+body.hasbg #sidebar>*{background:var(--surf2);}   /* 448차: 불투명 면이라 blur 는 보이지 않고 합성 비용만 든다 */
 body.hasbg .card,body.hasbg #sidebar>*{box-shadow:var(--sh-2);}
 /* ⚠ 달력을 감싸는 카드(.cal-card)에는 그림자를 주지 않는다 — 판이 투명이라 그림자만 네모로 떠서
    달력과 위 버튼을 한 덩어리로 감싼 것처럼 보였다. 그림자는 격자와 버튼에 각각 건다. */
@@ -1338,7 +1334,10 @@ html.dark #view-defect .ait [style*="#961e1e" i],html.dark #view-defect .ait [st
 #mb.dfwide .rec-wrap{flex:1;min-height:0;max-height:none;}
 .rl-head{display:flex;align-items:center;gap:14px;}
 .rl-ttl{font-size:15px;font-weight:700;color:var(--lbl);white-space:nowrap;}
-.rl-acts{margin-left:auto;display:flex;align-items:center;gap:8px;}
+.rl-acts{margin-left:auto;display:flex;align-items:center;gap:14px;}
+/* 448차: 무몰딩 글자 버튼이 연달아 있으면 덩어리로 읽힌다 — 설정(.set-ctl)과 같은 문법으로 사이에 · */
+.rl-acts>.btn+.btn{position:relative;}
+.rl-acts>.btn+.btn::before{content:'·';position:absolute;left:-9px;top:50%;transform:translateY(-50%);color:var(--lbl3);font-weight:700;pointer-events:none;}
 .rl-q-wrap{position:relative;display:inline-flex;align-items:center;}
 .rl-q-wrap .icn-sm{position:absolute;left:9px;width:14px;height:14px;color:var(--lbl3);pointer-events:none;}
 .rl-q{height:30px;width:230px;padding:0 11px 0 28px;border:1px solid var(--sepo);border-radius:var(--rp);background:var(--bg2);color:var(--lbl);font:inherit;font-size:12px;outline:none;}
@@ -3195,7 +3194,6 @@ html.dark .risk-b{background-color:#F87171;}
 </head>
 <body>
 <!-- 배경화면 위 정적 필름 그레인(디뉴어 로그인 배경과 같은 방식) — 배경을 켤 때만 보인다 -->
-<canvas id="bgGrain" aria-hidden="true"></canvas>
 <!-- 아이콘: Lucide (ISC) — 24 그리드 · stroke 2 -->
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true" focusable="false">
 <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.2"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .9-1 1.6v.4"/><path d="M12 17.2h.01"/></symbol>
@@ -3578,5 +3576,5 @@ html.dark .risk-b{background-color:#F87171;}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=448"></script>
+<script src="./app.js?v=449"></script>
 </body></html>
