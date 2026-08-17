@@ -9,7 +9,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='453';
+const APP_VER='455';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -5215,7 +5215,7 @@ function recRowsOnly(){
 }
 function recRender(){
   const t=$('#mt');if(t&&!$('#recQ'))t.innerHTML=recHeadHTML();
-  const b=$('#mbody');if(b){b.innerHTML=recBodyHTML();ovsRefresh();}
+  const b=$('#mbody');if(b&&paintHTML(b,recBodyHTML()))ovsRefresh();   /* 453차: 같은 내용이면 다시 그리지 않는다 */
   recHeadSync(REC.view.length,REC.rows.length);
 }
 /* 표 복사 — 화면에 보이는 열·행을 탭 구분 텍스트로 클립보드에 */
@@ -7423,7 +7423,7 @@ document.addEventListener('change',e=>{const el=e.target;if(!el||!el.dataset)ret
     else{S.dfTrendYearSite=el.value;const key=dfRm()+'/'+S.dfSid,k=DF.kpi[key];if(!k)return;
       const rmY=S.dfRm.slice(0,4);dfTrendDraw('strend','dfSiteTrend',el.value===rmY?DF.sw[key]:dfWksOfYear(k.weekly,el.value));}}});
 document.addEventListener('input',e=>{if(e.target.id==='recQ'){REC.q=e.target.value;
-  const b=$('#mbody');if(!b)return;b.innerHTML=recBodyHTML();ovsRefresh();recHeadSync(REC.view.length,REC.rows.length);}});
+  const b=$('#mbody');if(!b)return;if(paintHTML(b,recBodyHTML()))ovsRefresh();recHeadSync(REC.view.length,REC.rows.length);}});
 /* 처리계획 — 입력을 멈추면 저장한다(하자처리 현황과 같은 노드를 쓰므로 그쪽 화면에도 바로 반영된다) */
 function dfPlanFit(el){if(!el||el.offsetParent===null)return;el.style.height='auto';el.style.height=el.scrollHeight+'px';}
 function dfPlanFitAll(){$$('#view-defect .plan-ta').forEach(dfPlanFit);}
