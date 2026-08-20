@@ -801,13 +801,17 @@ button.p-col:hover{box-shadow:inset 0 0 0 1px rgba(0,0,0,.10),0 0 0 3px var(--fi
 @media print{
 @page{size:A4 portrait;margin:8mm 9mm;}
 *,*::before,*::after{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+/* ⚠ 513차의 html,body{overflow:hidden}(화면 스크롤바 방지)이 인쇄까지 잘랐다 — **2쪽부터 통째로 사라져
+   모든 인쇄가 한 장으로 잘리던** 원인(524차). 인쇄 때는 전 경로에서 반드시 되돌린다 */
+html,body{overflow:visible!important;height:auto!important;}
 body:not(.df-printing):not(.rpt-on) #sidebar,body:not(.df-printing):not(.rpt-on) #topbar,
 body:not(.df-printing) #scrim,body:not(.df-printing) #toast,body:not(.df-printing) #htip,body:not(.df-printing) #evePop,
-body:not(.df-printing) #mo,body:not(.df-printing) .tnav,.no-print{display:none!important;}
+body:not(.df-printing) #mo,body:not(.df-printing) .tnav,.no-print,#appHdr{display:none!important;}   /* ⚠ #appHdr(519차 새 헤더)는 인쇄 전 경로에서 숨긴다 — 빠뜨려서 고정 헤더 띠가 지면 위에 찍혔다(524차) */
 body:not(.df-printing):not(.rpt-on),body:not(.df-printing):not(.rpt-on) #app,
 body:not(.df-printing):not(.rpt-on) #main,body:not(.df-printing):not(.rpt-on) #content{
   display:block!important;height:auto!important;overflow:visible!important;background:#fff!important;}
 body:not(.df-printing):not(.rpt-on) #content{padding:0!important;}
+body:not(.df-printing):not(.rpt-on) #app{padding:0!important;gap:0!important;}   /* 셸 패딩(위 44px 헤더 자리)이 Ctrl+P 지면을 밀어 내리던 것(524차) — df-printing 쪽은 아래 990행대가 이미 리셋한다 */
 body:not(.df-printing) .view{display:none!important;}
 body:not(.df-printing) .view.act{display:block!important;}
 body:not(.df-printing):not(.rpt-on) .df-printhdr{display:flex!important;}   /* 전용 인쇄·보고서 인쇄엔 자체 머리가 있다(원본 1038행 대응) */
@@ -3483,5 +3487,5 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=523"></script>
+<script src="./app.js?v=524"></script>
 </body></html>
