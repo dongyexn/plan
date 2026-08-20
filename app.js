@@ -9,7 +9,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='521';
+const APP_VER='522';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -1898,8 +1898,14 @@ function openYMPick(){
   const pop=document.createElement('div');
   pop.id='ymPop';pop.innerHTML=ymPickHTML();
   const btn2=$('#view-calendar .cal-title');
-  if(btn2)pop.style.top=(btn2.offsetTop+btn2.offsetHeight+8)+'px';   /* 연·월 버튼 바로 아래 */
   host.appendChild(pop);
+  /* ⚠ offsetTop 계산은 위젯(글라스)에서 4px 어긋나 알약을 덮었다(522차) — 붙인 뒤 실측으로 보정한다.
+     간격 8px 는 필터 팝업과 동일. 포함 블록이 무엇이든 화면 좌표 차이만큼 옮기므로 항상 맞는다 */
+  if(btn2){
+    pop.style.top='0px';
+    const want=btn2.getBoundingClientRect().bottom+8;
+    pop.style.top=(want-pop.getBoundingClientRect().top)+'px';
+  }
   setTimeout(()=>{document.addEventListener('click',ymOutside,true);},0);
 }
 function ymOutside(e){
