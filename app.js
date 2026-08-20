@@ -9,7 +9,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='524';
+const APP_VER='525';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -4214,7 +4214,11 @@ function dfVacPane(sid,stat,vacSv,kind){
   const mb=parseInt(sv['미분양'],10)||0,mk=parseInt(sv['미키불출'],10)||0;
   const hasV=(sv['미분양']!=null&&sv['미분양']!=='')||(sv['미키불출']!=null&&sv['미키불출']!=='');
   const edit=`data-act="df.vacEdit" data-sid="${esc(sid)}" data-kind="${sangga?'sangga':'sedae'}" role="button" tabindex="0" data-tip="${vl} 수 입력"`;
-  const st=stat||{T:0,Res:0,Unr:0,Rate:0,Lt:0,Units:0,Top:[],TopPrev:{}};
+  /* ⚠ 게시본에 공가 필드가 결손이면(undefined) .toLocaleString 에서 던져 **공가 페이지가 통째로
+     조용히 빠졌다**(525차 실측) — 숫자로 강제해 페이지는 항상 남긴다 */
+  const s0=stat||{};
+  const st={T:Number(s0.T)||0,Res:Number(s0.Res)||0,Unr:Number(s0.Unr)||0,Rate:Number(s0.Rate)||0,
+    Lt:Number(s0.Lt)||0,Units:Number(s0.Units)||0,Top:s0.Top||[],TopPrev:s0.TopPrev||{}};
   const perRecv=st.Units>0?(st.T/st.Units).toFixed(1):'-',perUnr=st.Units>0?(st.Unr/st.Units).toFixed(1):'-';
   return`<div class="as">
     <div class="card vac-stat"><div class="sh"><div class="st cardttl">${vl} 현황</div></div><div class="vrow">
@@ -7074,6 +7078,7 @@ const ACT={
   },
   'wid.open':()=>{window.open(location.origin+location.pathname,'_blank','noopener');},
   'wid.reload':()=>location.reload(),
+  'app.reload':()=>location.reload(),   /* 헤더 로고 클릭 — 새로고침(525차 사용자 지시) */
   'wid.side':el=>{evePopHide();widSideOpen(el.dataset.tab||'mine');},   /* 누르면 말풍선은 할 일을 다했다 */
   /* 위젯 내 업무에서 바로 완료/진행 전환 — 애니메이션을 보여 주고 목록을 다시 그린다 */
   'wid.st':el=>{
