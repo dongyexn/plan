@@ -9,7 +9,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='513';
+const APP_VER='517';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -1405,11 +1405,6 @@ function exitLive(){
   subVisibleMonths();rAll();rAcct();
 }
 /* 팀 이름 줄이기 — 'H서비스중부팀' → '중부'. 앞의 회사·조직 접두와 끝의 '팀'만 떼고 가운데만 쓴다 */
-function teamShort(nm){
-  const s2=String(nm||'').trim();
-  const m=s2.match(/^[A-Za-z가-힣]*?서비스(.+?)팀$/);
-  return (m&&m[1])?m[1]:s2;
-}
 function rTeamSel(){
   const el=$('#teamsel');if(!el)return;
   const teams=(S.org.teams||[]).filter(t=>t.name);
@@ -1422,9 +1417,18 @@ function rTeamSel(){
   const opts=teams.map(t=>'<option value="'+esc(t.id)+'"'+(t.id===S.tk.t?' selected':'')+'>'+esc(t.name)+'</option>').join('');
   /* 선택창은 정적 마크업 — 내용만 채운다 */
   const cur=teams.find(t=>t.id===S.tk.t)||teams[0];
-  $('#tselWrap').innerHTML='<select id="teamSelEl" aria-label="팀 선택">'+opts+'</select>'
+  /* 516차: 네이티브 select 팝업은 OS 가 그려 앱과 결이 다르다 — 앱 팝업(tb-pop)으로 바꾼다 */
+  $('#tselWrap').innerHTML=
+    '<button class="tsel-b" id="teamSelEl" data-act="team.pop" aria-haspopup="listbox" aria-expanded="false">'
+    +'<span class="tsel-t">'+esc(cur?cur.name:'')+'</span>'
     +'<span class="tsel-ch"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3.5l3 3 3-3"/></svg></span>'
-    +'<span class="tsel-mini">'+esc(teamShort(cur?cur.name:''))+'</span>';   /* 접었을 때 보이는 줄인 이름 */
+    +'</button>'
+    +'<div class="tb-pop tsel-pop" id="teamPop" role="listbox">'
+    + teams.map(t=>'<button class="tsel-o'+(t.id===S.tk.t?' on':'')+'" role="option" data-act="team.switch" data-tid="'+esc(t.id)+'">'
+        +'<span>'+esc(t.name)+'</span>'
+        +(t.id===S.tk.t?'<svg class="icn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>':'')
+      +'</button>').join('')
+    +'</div>';
 }
 /* ═══════════ 오후 점검 알림 — 그날 아직 안 끝낸 업무를 알림창에 띄운다 ═══════════
    ⚠ 어디에도 저장하지 않는다. 조건이 맞을 때만 알림창에 끼워 그리는 '가상 줄'이다 —
@@ -3733,7 +3737,10 @@ function dfChartInit(){
       let minY=Infinity,sumX=0;
       for(const it of items){const p=it.element.tooltipPosition();if(p.y<minY)minY=p.y;sumX+=p.x;}
       const x=sumX/items.length;
-      const y=Math.max(this.chart.chartArea.top+4,minY-16);
+      /* 515차: 늘 최고점 위에 붙어 상단 고정처럼 보였다 — 커서 높이를 따라가되 그래프 안에 머문다 */
+      const ca=this.chart.chartArea;
+      const cy=(evt&&typeof evt.y==='number')?evt.y:minY;
+      const y=Math.min(ca.bottom-4,Math.max(ca.top+4,cy-16));
       return{x,y};
     };
   }Chart.defaults.set('plugins.datalabels',{display:false});Chart.__dlOff=true;}
@@ -6340,6 +6347,19 @@ function offdayAsk(ds){
 /* ── 툴팁 — `data-tip` 이 있는 요소에 잠깐 머무르면 뜬다 ── */
 let _tipT=null,_tipFor=null;
 function tipHide(){clearTimeout(_tipT);_tipFor=null;const el=$('#htip');if(el)el.classList.remove('on');}
+/* 514차: 대상이 움직이거나 사라지면 툴팁을 따라 옮기거나 지운다.
+   사이드바 접기·뷰 전환처럼 레이아웃이 바뀔 때 툴팁만 제자리에 남아 떠 있었다. */
+function tipSync(){
+  if(!_tipFor)return;
+  const el=$('#htip');if(!el||!el.classList.contains('on'))return;
+  if(!_tipFor.isConnected||!_tipFor.matches(':hover')){tipHide();return;}
+  const r=_tipFor.getBoundingClientRect(),t=el.getBoundingClientRect();
+  if(!r.width&&!r.height){tipHide();return;}
+  let x=r.left+r.width/2-t.width/2, y=r.top-t.height-8;
+  if(y<6)y=r.bottom+8;
+  el.style.left=Math.max(6,Math.min(x,innerWidth-t.width-6))+'px';
+  el.style.top=y+'px';
+}
 function tipShow(target){
   const el=$('#htip');if(!el)return;
   /* ⚠ 기다리는 동안 그 요소가 사라지거나(다시 그려짐) 마우스가 떠났을 수 있다 */
@@ -6355,6 +6375,8 @@ function tipShow(target){
   el.style.left=Math.max(6,Math.min(x,innerWidth-t.width-6))+'px';
   el.style.top=y+'px';
 }
+addEventListener('scroll',tipSync,true);
+addEventListener('resize',tipHide);
 document.addEventListener('mouseover',e=>{
   const t=e.target.closest?e.target.closest('[data-tip]'):null;
   if(!t){if(_tipFor)tipHide();return;}
@@ -6448,6 +6470,7 @@ function mobClose(){
 const ACT={
   'nav.go':el=>{if(el.dataset.view==='defect')S.dfSid='';go(el.dataset.view);},
   'nav.toggle':()=>{
+    tipHide();   /* 514차: 사이드바가 움직이면 툴팁은 제자리에 남는다 */
     /* 접기/펼치기 동안 차트를 '다시 그리는' 모션(막대가 바닥에서 솟는 520ms)이 보이면 안 된다.
        responsive=false 저글링은 이미 붙은 ResizeObserver 를 막지 못해 무효였다(216차 실패 원인) —
        대신 duration 이 DF.noAnim 을 읽는 함수라서, 플래그를 세우면 옵저버가 몇 번을 발화하든
@@ -6989,7 +7012,14 @@ const ACT={
     };
     inp.click();
   },
+  'team.pop':el=>{
+    const p=$('#teamPop');if(!p)return;
+    const on=!p.classList.contains('on');
+    p.classList.toggle('on',on);
+    el.setAttribute('aria-expanded',on?'true':'false');
+  },
   'team.switch':el=>{
+    const p=$('#teamPop');if(p)p.classList.remove('on');
     const tid=el.dataset.tid||(el.value||'');
     if(!tid)return;
     S.tk.t=tid;S.tk.m=null;
@@ -7155,6 +7185,9 @@ function calFiltClose(){
 }
 document.addEventListener('mousedown',e=>{
   if(!(e.target.closest&&e.target.closest('#calFiltWrap')))calFiltClose();   /* 466차: 필터도 바깥 클릭으로 닫는다 */
+  if(!(e.target.closest&&e.target.closest('#teamsel'))){const tp=$('#teamPop');
+    if(tp&&tp.classList.contains('on')){tp.classList.remove('on');
+      const tb=$('#teamSelEl');if(tb)tb.setAttribute('aria-expanded','false');}}   /* 516차 */
 },true);
 
 /* 임의로 추가한 색 칩은 우클릭으로 지운다 — 지우면 첫 칩(자동)으로 되돌린다 */
@@ -7231,7 +7264,6 @@ document.addEventListener('change',e=>{
   if(e.target.closest&&e.target.closest('#dpEdit'))planAutosave();
 });
 document.addEventListener('change',e=>{
-  if(e.target.id==='teamSelEl'){ACT['team.switch'](e.target);return;}
   if(e.target.closest('[data-act="pf.org"]')){ACT['pf.org']();return;}
   if(e.target.id==='tnRec'){
     /* 반복 종료 칸 — 팝업 폼은 행(#tnUntilRow), 셀 편집은 라벨을 감춘다(364차) */
@@ -7422,6 +7454,7 @@ document.addEventListener('keydown',e=>{
     const wg=$('#wgSet');
     if(wg&&wg.classList.contains('on')){wg.classList.remove('on');wg.setAttribute('aria-hidden','true');return;}
     if($('#calFilt')&&$('#calFilt').classList.contains('on')){calFiltClose();return;}
+    {const tp=$('#teamPop');if(tp&&tp.classList.contains('on')){tp.classList.remove('on');return;}}
     const sd=$('#widSide');
     if(sd&&sd.classList.contains('on')){sd.classList.remove('on');S.widSide='';return;}
     if(WIDGET&&S.widPop){S.widPop=false;if(S.planEdit)closePlanEdit();rWidget();return;}

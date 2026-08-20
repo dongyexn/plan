@@ -38,7 +38,7 @@
 :root{
 --b50:#F1F7FD;--b100:#F1F7FD;--b200:#C7DDF6;--b300:#C7DDF6;--b400:#538CDE;
 --b500:#538CDE;--b600:#3E71D2;--b700:#3E71D2;--b800:#304D9D;--b900:#304D9D;--b950:#1F2B4C;
---bg:#FBFBFB;--bg2:#fff;--cardline:#E8ECEF;--shell:#2C2F34;--shell2:#5F636E;--shell-txt:#F2F5F9;--shell-dim:rgba(242,245,249,.72);--shell-icon:#DCE3EC;--shell-line:rgba(255,255,255,.10);--shell-field:rgba(255,255,255,.07);--shell-act:rgba(255,255,255,.10);--shell-acc:#93B8F2;--fill:rgba(120,120,128,.15);--fill2:rgba(120,120,128,.22);
+--bg:#FBFBFB;--bg2:#fff;--cardline:#DDE3E9;--shell:#2C2F34;--shell2:#5F636E;--shell-txt:#F2F5F9;--shell-dim:rgba(242,245,249,.72);--shell-icon:#DCE3EC;--shell-line:rgba(255,255,255,.10);--shell-field:rgba(255,255,255,.07);--shell-act:rgba(255,255,255,.10);--shell-acc:#93B8F2;--fill:rgba(120,120,128,.15);--fill2:rgba(120,120,128,.22);
 --sep:rgba(60,60,67,.20);--sepo:#B0B0B4;
 --lbl:#1C1C1E;--lbl2:rgba(60,60,67,.70);--lbl3:rgba(60,60,67,.58);
 --gn:#16A34A;--rd:#DC2626;--am:#D97706;
@@ -68,7 +68,7 @@
   --sp-1:4px;--sp-2:8px;--sp-3:12px;--sp-4:16px;--sp-5:24px;--sp-6:32px;}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;}
-body{font-family:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,system-ui,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;font-size:13px;color:var(--lbl);background:var(--bg);line-height:1.5;}
+body{font-family:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,system-ui,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;font-size:13px;color:var(--lbl);background:var(--bg);line-height:0;}   /* 513차: 공백 텍스트 노드가 줄 상자를 만들어 #app 을 밀어냈다 */
 /* ⚠ `-webkit-font-smoothing:antialiased` 는 쓰지 않는다 — 윈도우의 서브픽셀 렌더링(ClearType)을 꺼
    글자가 회색조로 뭉개진다. 메모장보다 흐려 보이던 원인. */
 button{font-family:inherit;cursor:pointer;border:none;background:none;outline:none;color:inherit;}
@@ -122,15 +122,26 @@ html,body{background:var(--shell);}
 /* 483차: 팀 선택은 사이드바 머리로 — 헤더 요소를 줄이고, 데이터 범위는 사이드바에서 고른다 */
 .sb-title-team{flex:0 1 auto;min-width:0;padding:0;background:transparent;border:0;box-shadow:none;margin:0;display:flex;align-items:center;}   /* 484차: 내용 폭만 차지 */
 .sb-title-team .tsel-wrap{position:relative;width:auto;max-width:100%;display:inline-flex;align-items:center;}   /* 484차: 내용 폭에 맞춘다 */
-#teamSelEl{width:auto;max-width:100%;height:28px;padding:0;border:0;border-radius:3px;
-  background:transparent;color:#fff;font-size:13.5px;font-weight:800;letter-spacing:-.01em;
-  -webkit-appearance:none;appearance:none;cursor:pointer;}   /* 484차: 꺽쇠는 원래 있던 .tsel-ch 가 그린다 */
-.sb-title-team .tsel-wrap{gap:6px;}   /* 490차: 팀명과 꺽쇠를 띄운다 */
-.sb-title-team .tsel-ch{position:static!important;transform:none!important;flex:0 0 auto;color:#DCE3EC;}   /* 484차: 흐름 배치로 이름 뒤에 나란히 */
+/* 516차: 팀 선택 — 앱 팝업으로 그린다(네이티브 select 목록은 OS 가 그려 결이 다르다) */
+#teamSelEl{display:flex;align-items:center;gap:6px;height:28px;padding:0 2px;border:0;border-radius:3px;
+  background:transparent;color:#fff;font-size:13.5px;font-weight:800;letter-spacing:-.01em;cursor:pointer;
+  max-width:100%;min-width:0;}
 #teamSelEl:hover{background-color:rgba(255,255,255,.10);}
-#teamSelEl option{background:#2C2F34;color:#F2F5F9;}
+#teamSelEl .tsel-t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+#teamSelEl .tsel-ch{flex:0 0 auto;color:#DCE3EC;display:flex;}
+.tsel-pop{position:absolute;left:0;top:calc(100% + 6px);width:max-content;min-width:170px;max-width:230px;
+  padding:5px;gap:1px;}
+.tsel-pop.on{display:flex;flex-direction:column;}
+.tsel-o{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;
+  height:32px;padding:0 10px;border-radius:3px;font-size:13px;font-weight:600;color:var(--lbl);text-align:left;}
+.tsel-o:hover{background:var(--fill);}
+.tsel-o.on{color:var(--bt1);font-weight:700;}
+.tsel-o .icn{width:14px;height:14px;flex:0 0 auto;color:var(--b600);}
 
 #app{display:flex;height:100vh;height:100dvh;overflow:hidden;gap:8px;padding:44px 0 14px 0;background:transparent;}
+html,body{overflow:hidden;}   /* 513차: 문서가 뷰포트를 넘지 않게 — 헤더가 fixed 라 스크롤바가 생겼다 */
+body>svg{position:absolute;width:0;height:0;overflow:hidden;}
+#app,#appHdr,#mo,#tko,#scrim,#toast,#nqPanel,#htip{line-height:1.5;}   /* 513차: 본문 행간 복원 */
 /* 456차: 어두운 판 위의 사이드바 내부 색 */
 /* 479차: 헤더 도구는 무몰딩 — 검색 밑줄·팀 선택과 같은 결 */
 #appHdr .ah-right .tb-rm{background:transparent;border:0;font-weight:600;font-size:13px;color:var(--shell-dim);}   /* 493차: 검색 자리표시와 같은 색 */
@@ -168,7 +179,11 @@ html,body{background:var(--shell);}
 #sidebar.mini .sb-title{padding:0;justify-content:center;}
 #sidebar.mini .sb-title-tg{margin-left:0;}   /* 493차: 접으면 꺽쇠가 가운데 */
 /* 489차: 팀 선택도 메뉴 항목과 같은 축 — 아이콘 칸 26px + 간격 9px */
-.sb-title-ic{flex:0 0 auto;width:26px;height:26px;display:flex;align-items:center;justify-content:center;color:#DCE3EC;}
+.sb-title-ic{flex:0 0 auto;width:26px;height:26px;display:flex;align-items:center;justify-content:center;
+  color:#DCE3EC;pointer-events:none;}   /* 514차: 아이콘은 장식 — 클릭은 아래 팀 선택 영역이 받는다 */
+/* 아이콘까지 감싸는 눌림 영역 */
+.sb-title>.sb-title-ic,.sb-title>.sb-title-team{border-radius:3px;}
+.sb-title:has(#teamSelEl:hover)>.sb-title-ic{color:#fff;}
 .sb-title-ic .icn{width:17px;height:17px;}   /* 490차: 메뉴 아이콘과 같은 크기 */
 #sidebar.mini .sb-title-ic{display:none;}
 #sidebar.mini .sb-title-team{display:none;}   /* 493차: 접으면 팀명 숨기고 꺽쇠만 남긴다 */
@@ -260,9 +275,9 @@ body.sb-anim #fcal{contain:layout paint;will-change:transform;}
 #sidebar.mini .sbsl:not(:first-child)::before{left:4px;right:4px;}
 .nvi{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:var(--rmd);cursor:pointer;font-size:13px;font-weight:500;color:var(--lbl2);transition:background var(--t-fast),color var(--t-fast);white-space:nowrap;overflow:hidden;margin-bottom:2px;}
 .nvi:hover{background:var(--fill);color:var(--lbl);}
-.nvi.act{background:linear-gradient(135deg,var(--b50),var(--b100));color:var(--bt1);}
+.nvi.act{background:var(--b50);color:var(--bt1);}
 .nic{width:32px;height:32px;border-radius:3px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:background var(--t-fast);}
-.nvi.act .nic{background:linear-gradient(135deg,var(--b500),var(--b800));}
+.nvi.act .nic{background:var(--b600);}
 .nvi:not(.act) .nic{background:var(--fill);}
 .nvi.act .nic svg{color:#fff;}
 .nvi:not(.act) .nic svg{color:var(--lbl2);}
@@ -295,7 +310,7 @@ body.sb-anim #fcal{contain:layout paint;will-change:transform;}
    접힘 팝업(#sidebar.mini)은 폭 개념이 달라 아이콘형 그대로. */
 .sb-acct{flex:1;min-width:0;display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:var(--rmd);cursor:pointer;transition:background var(--t-fast);}
 .sb-acct:hover{background:var(--fill);}
-.sb-acct-av{flex:0 0 auto;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--b500),var(--b800));}
+.sb-acct-av{flex:0 0 auto;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--b600);}
 .sb-acct-av svg{width:17px;height:17px;display:block;}
 .sb-acct-av.av-cus{background:var(--avc,var(--b600));}
 .sb-acct-info{min-width:0;flex:1;display:flex;flex-direction:column;gap:1px;}
@@ -397,7 +412,7 @@ body.wid .tbr{display:none;}   /* 위젯에는 상단바가 없다 */
    색을 건드리지 않고 그림자로 층을 만든다(389차). 다크는 그림자가 잘 안 보이므로 옛 값을 그대로 쓴다 */
 :root{--shcard:var(--sh-1);}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--rp);font-size:13px;font-weight:600;cursor:pointer;transition:background var(--ms),color var(--ms),border-color var(--ms);white-space:nowrap;}   /* ⚠ transition:all 은 레이아웃 속성까지 따라 움직여 재렌더 때 끌린다 — 색만 바꾼다(350차) */
-.bp{background:linear-gradient(135deg,var(--b500),var(--b800));color:#fff;border:none;}
+.bp{background:var(--b600);color:#fff;border:none;}
 .bp:hover{opacity:.86;transform:translateY(-1px);}
 .bg2{background:var(--fill);color:var(--lbl);border:none;}
 .bg2:hover{background:var(--fill2);}
@@ -428,7 +443,7 @@ select.inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-ima
 .frow4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;}
 @media(max-width:960px){.frow4{grid-template-columns:1fr 1fr;}}
 /* ══════════ 달력 페이지 ══════════ */
-.cal-wrap{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:12px;align-items:stretch;flex:1;min-height:0;overflow:hidden;}   /* 페이지 헤더가 없어져 남는 높이를 그대로 쓴다 */
+.cal-wrap{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:12px;align-items:stretch;flex:1;min-height:0;overflow:hidden;}   /* 페이지 헤더가 없어져 남는 높이를 그대로 쓴다 */
 .cal-card{padding:16px 18px;display:flex;flex-direction:column;min-height:0;}
 /* 달력은 위젯과 같은 배치를 쓰되 카드 프레임은 두르지 않는다 */
 /* ⚠ 달력에 카드 프레임을 씌우지 않는다(217차에 '위젯과 동일'을 프레임 복원으로 잘못 해석해 씌웠다 —
@@ -647,7 +662,7 @@ button.p-col:hover{box-shadow:inset 0 0 0 1px rgba(0,0,0,.10),0 0 0 3px var(--fi
 .stx.hold .stx-run{opacity:0;}
 .stx.hold .stx-hold{opacity:1;}
 /* 보류함 — 일자 패널 아래. 머리 글자·간격은 위 카드와 같고, 배지는 업무 목록 트리와 같은 알약 */
-.hold-card{padding:0;overflow:hidden;display:flex;flex-direction:column;flex:0 0 auto;}
+.hold-card{padding:0;overflow:hidden;display:flex;flex-direction:column;flex:0 0 auto;height:236px;}   /* 514차: 달력 두 칸 높이로 고정 — 건수에 따라 들썩이지 않게 */
 .hold-card[hidden]{display:none;}
 /* 하자 관리 — 사이드바 소분류(권역)와 그 아래 현장 */
 .nvi.df-site{padding:4px 8px 4px 22px;gap:8px;margin-bottom:0;font-size:12px;}
@@ -1578,7 +1593,7 @@ body:not(.wid) .btn.dp-add.on:hover{background:transparent;color:#7DA9EA;}   /* 
   color:var(--lbl);transition:background var(--tr),color var(--tr);}
 .ymp-m:hover{background:var(--fill2);}
 .ymp-m.now{box-shadow:inset 0 0 0 1.5px var(--b300);color:var(--bt1);}
-.ymp-m.sel{background:linear-gradient(135deg,var(--b500),var(--b800));color:#fff;box-shadow:none;}
+.ymp-m.sel{background:var(--b600);color:#fff;box-shadow:none;}
 /* 색 팔레트 선택 */
 .pal{display:flex;gap:7px;flex-wrap:wrap;align-items:center;}
 /* ⚠ 팝오버 안에서는 확대 호버를 쓰지 않는다 — 좁은 격자에서 서로 겹쳐 보인다 */
@@ -1698,14 +1713,14 @@ body:not(.wid) .btn.dp-add.on:hover{background:transparent;color:#7DA9EA;}   /* 
 .tkmain{display:flex;flex-direction:column;min-height:0;height:100%;padding:0;flex:1;overflow:hidden;}
 .tks-item{display:flex;align-items:center;gap:8px;padding:9px 11px;border-radius:var(--rmd);cursor:pointer;font-size:13px;color:var(--lbl);transition:background var(--t-fast);}
 .tks-item:hover{background:var(--fill);}
-.tks-item.act{background:linear-gradient(135deg,var(--b50),var(--b100));color:var(--bt1);font-weight:700;}
+.tks-item.act{background:var(--b50);color:var(--bt1);font-weight:700;}
 .tks-item .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .tks-item .c{font-size:12px;font-weight:700;color:var(--lbl2);background:var(--fill);border-radius:3px;padding:1px 8px;}
 .tks-item.act .c{background:var(--bg2);color:var(--bt1);}
 .tks-item.tks-reg{font-weight:700;margin-top:6px;background:var(--surf2);border-radius:var(--rsm);
   padding-top:7px;padding-bottom:7px;}
 .tks-item.tks-reg:hover{background:var(--surf3);}
-.tks-item.tks-reg.act{background:linear-gradient(135deg,var(--b50),var(--b100));}
+.tks-item.tks-reg.act{background:var(--b50);}
 .tks-item.tks-reg:first-of-type{margin-top:0;}
 .tks-item.tks-reg .n{font-size:13px;color:var(--bt1);letter-spacing:.02em;}
 .tks-item.tks-reg.act .n{color:var(--bt1);}
@@ -2163,8 +2178,6 @@ body:not(.wid) .btn.dp-add.on:hover{background:transparent;color:#7DA9EA;}   /* 
 /* 펼침과 정확히 같은 자리를 차지해야 아래 아이콘이 안 움직인다:
    높이 50px + margin-bottom 2px(펼침과 동일), 구분선만 투명으로 감춘다 */
 #sidebar.mini .teamsel{display:none;}   /* 493차: 접으면 팀 선택은 감추고 꺽쇠만 */   /* 펼침과 같은 높이(356차) */
-#sidebar.mini .tsel-mini{display:inline-flex;align-items:center;justify-content:center;width:32px;height:26px;border-radius:var(--rsm);background:var(--fill);font-size:11px;font-weight:700;color:var(--lbl);}
-.tsel-mini{display:none;}
 #sidebar.mini .tsel-wrap{flex:none;}
 .teamsel .tsel-wrap{position:relative;flex:0 1 auto;min-width:0;}
 .teamsel select{width:100%;-webkit-appearance:none;appearance:none;background:var(--fill);border:1px solid var(--sep);border-radius:var(--rsm);padding:7px 26px 7px 10px;font-size:13px;font-weight:600;color:var(--lbl);cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -2274,7 +2287,7 @@ select.mg-inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-
 .acct-tab.act{background:var(--bg2);color:var(--bt1);box-shadow:var(--sh-1);}
 /* 탭을 바꾸거나 팝오버가 떠도 모달 크기가 흔들리지 않도록 높이를 고정 */
 .acct-pane{position:relative;min-height:276px;}
-.fbu-av.r-editor{background:linear-gradient(135deg,var(--b500),var(--b800));}
+.fbu-av.r-editor{background:var(--b600);}
 .fbu-av.r-viewer{background:rgba(120,120,128,.2);}
 .fbu-av.r-viewer svg{fill:var(--lbl2);}
 .fbu-av.r-blocked{background:rgba(255,59,48,.16);}
@@ -2575,7 +2588,7 @@ body.wid #wgSet.on{display:block;}
 /* 계정 모달 — 참조 앱과 동일 */
 .il{font-size:12px;font-weight:600;color:var(--lbl2);margin-bottom:6px;display:block;}
 .acct-head{display:flex;align-items:center;gap:12px;margin-bottom:20px;}
-.acct-av{flex:0 0 auto;width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--b500),var(--b800));}
+.acct-av{flex:0 0 auto;width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--b600);}
 .acct-av svg{width:24px;height:24px;display:block;}
 .acct-mail{font-size:13px;font-weight:600;color:var(--lbl);word-break:break-all;line-height:1.3;}
 .acct-rolebadge{display:inline-block;margin-top:5px;font-size:12px;font-weight:700;padding:3px 10px;border-radius:3px;}
@@ -2583,7 +2596,7 @@ body.wid #wgSet.on{display:block;}
 .acct-rolebadge.r-viewer{background:var(--fill);color:var(--lbl2);}.acct-gap{margin-bottom:8px;}
 .acct-btn-sm{height:34px;padding:0 14px;font-size:13px;flex-shrink:0;}
 .acct-btn{height:42px;display:inline-flex;align-items:center;justify-content:center;padding:0 18px;border-radius:var(--rmd);font-size:13px;font-weight:600;cursor:pointer;border:none;transition:filter var(--t-fast),background var(--t-fast);white-space:nowrap;}
-.acct-btn-primary{background:linear-gradient(135deg,var(--b500),var(--b800));color:#fff;}
+.acct-btn-primary{background:var(--b600);color:#fff;}
 .acct-btn-primary:hover{filter:brightness(1.07);}
 .acct-btn-full{width:100%;}.acct-btn-danger{background:transparent;color:var(--rd);border:1.5px solid rgba(255,59,48,.32);}
 .acct-btn-danger:hover{background:rgba(255,59,48,.06);}
@@ -3183,7 +3196,7 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
     </div>
   </div>
 </div>
-<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute;overflow:hidden" aria-hidden="true">
+<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute;overflow:hidden;display:block" aria-hidden="true">
   <mask id="stx-ck" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24">
     <rect x="0" y="0" width="24" height="24" fill="#fff"/>
     <path d="m8.3 12.2 2.5 2.5 4.9-5.2" fill="none" stroke="#000" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
@@ -3460,5 +3473,5 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=513"></script>
+<script src="./app.js?v=517"></script>
 </body></html>
