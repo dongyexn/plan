@@ -106,7 +106,7 @@ html,body{background:var(--shell);}
   background:transparent;border:0;border-bottom:1px solid rgba(255,255,255,.22);border-radius:0;padding:0 4px 0 26px;
   transition:border-color var(--t-fast),width var(--t-base);}
 .ah-srch:hover{border-bottom-color:rgba(255,255,255,.38);}
-.ah-srch:focus-within{width:200px;border-bottom-color:#fff;}   /* 477차: 상자를 없애고 밑줄만 — 헤더에서 가장 가벼운 형태 */
+.ah-srch:focus-within{border-bottom-color:#fff;}   /* 517차: 폭은 그대로, 색만 바뀐다 */
 .ah-srch .ah-srch-i{left:4px;}
 .ah-srch-in:focus-visible{box-shadow:none;}   /* 477차: 밑줄이 포커스를 알리므로 전역 링은 끈다 */
 .ah-srch-i{position:absolute;left:9px;top:50%;transform:translateY(-50%);width:13px;height:13px;color:var(--shell-icon);pointer-events:none;}
@@ -443,7 +443,7 @@ select.inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-ima
 .frow4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;}
 @media(max-width:960px){.frow4{grid-template-columns:1fr 1fr;}}
 /* ══════════ 달력 페이지 ══════════ */
-.cal-wrap{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:12px;align-items:stretch;flex:1;min-height:0;overflow:hidden;}   /* 페이지 헤더가 없어져 남는 높이를 그대로 쓴다 */
+.cal-wrap{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:12px;align-items:stretch;flex:1;min-height:0;overflow:hidden;}   /* 페이지 헤더가 없어져 남는 높이를 그대로 쓴다 */
 .cal-card{padding:16px 18px;display:flex;flex-direction:column;min-height:0;}
 /* 달력은 위젯과 같은 배치를 쓰되 카드 프레임은 두르지 않는다 */
 /* ⚠ 달력에 카드 프레임을 씌우지 않는다(217차에 '위젯과 동일'을 프레임 복원으로 잘못 해석해 씌웠다 —
@@ -1552,6 +1552,7 @@ body.wid.glass .cal-title,body.wid.glass .cal-title .y{color:#fff;}
   max-height:238px;overflow-y:auto;background:var(--bg2);border:1px solid var(--sep);border-radius:var(--rmd);
   box-shadow:var(--sh-2);padding:5px;}
 .msel.open .msel-pop{display:block;}
+.msel.up .msel-pop{top:auto;bottom:calc(100% + 5px);}   /* 아래 공간이 모자라면 위로 편다(520차) — 업무현황 왼쪽 칸(overflow:hidden) 하단의 담당자·현장 목록이 잘리던 것 */
 .msel-o,.msel-all{width:100%;display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--rsm);
   font-size:13px;font-weight:500;color:var(--lbl);text-align:left;}
 .msel-o:hover,.msel-all:hover{background:var(--fill);}
@@ -1561,6 +1562,10 @@ body.wid.glass .cal-title,body.wid.glass .cal-title .y{color:#fff;}
 .msel-k .icn{width:10px;height:10px;stroke-width:3.2;}
 .msel-o.on .msel-k{background:var(--b600);border-color:var(--b600);color:#fff;}
 .msel-o.on{font-weight:700;color:var(--bt1);}
+/* ⚠ 목록(.msel-pop)은 이 요소를 기준으로 절대 배치된다 — 이 한 줄이 없으면 가장 가까운
+   배치 조상까지 올라가 붙는다. 519차 필터 카드 정리 때 함께 지워져 업무현황 드롭다운이
+   화면 밖(문서 맨 아래 전체 폭)에 그려지던 원인(520차 복원) */
+.msel{position:relative;}
 /* 위젯(유리) — 목록도 어두운 카드로 */
 body.wid .cal-filt-pop .msel-b{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.2);color:#fff;}
 body.wid .cal-filt-pop .msel-pop{background:rgba(22,25,33,.96);border-color:rgba(255,255,255,.16);}
@@ -1634,9 +1639,9 @@ body:not(.wid) .btn.dp-add.on:hover{background:transparent;color:#7DA9EA;}   /* 
 .tkf-top{display:flex;align-items:center;gap:6px;}
 .tkq-srch{position:relative;flex:1;min-width:0;}
 /* 473차: 검색 아이콘 자리 — v458 에서 필터 카드를 지울 때 .dp-srch 규칙이 함께 사라져 아이콘이 칸 밖으로 나갔다 */
-.dp-srch{position:relative;display:flex;align-items:center;}
+.dp-srch{position:relative;display:flex;align-items:center;isolation:isolate;}   /* 517차: 아이콘과 입력칸을 같은 쌓임 맥락에 둔다 */
 .dp-srch .dp-srch-i{position:absolute;left:9px;top:50%;transform:translateY(-50%);width:13px;height:13px;
-  color:var(--lbl3);pointer-events:none;z-index:2;}
+  color:var(--lbl3);pointer-events:none;z-index:3;}   /* 517차: 포커스 시 입력칸이 z-index:1 로 올라와 아이콘을 덮었다 */
 .dp-srch>.inp{padding-left:28px;}
 /* 필터 여닫이 꺽쇠 — 펼치면 아래를 가리킨다 */
 .tkf-tg{flex:0 0 auto;width:28px;height:28px;display:flex;align-items:center;justify-content:center;
@@ -1780,11 +1785,11 @@ body:not(.wid) .btn.dp-add.on:hover{background:transparent;color:#7DA9EA;}   /* 
 .tkmain{container-type:inline-size;container-name:tkpanel;}
 .tk-row{display:grid;align-items:center;gap:var(--s3);padding:var(--s1) 22px;min-height:34px;   /* 행 높이 고정 — 이름 점·반복 배지·강조 테두리 유무로 들쭉날쭉해지지 않게(329차) */
   
-  grid-template-columns:62px minmax(0,1fr) 68px 26px;}
-.tkl-s .tk-row{grid-template-columns:62px 150px minmax(0,1fr) 68px 26px;}
-.tkl-w .tk-row{grid-template-columns:62px 62px minmax(0,1fr) 68px 26px;}
-.tkl-s-w .tk-row{grid-template-columns:62px 62px 150px minmax(0,1fr) 68px 26px;}
-.tkl-nr .tk-row{grid-template-columns:minmax(0,1fr) 68px 26px;}
+  grid-template-columns:62px minmax(0,1fr) 80px 26px;}
+.tkl-s .tk-row{grid-template-columns:62px 150px minmax(0,1fr) 80px 26px;}
+.tkl-w .tk-row{grid-template-columns:62px 62px minmax(0,1fr) 80px 26px;}
+.tkl-s-w .tk-row{grid-template-columns:62px 62px 150px minmax(0,1fr) 80px 26px;}
+.tkl-nr .tk-row{grid-template-columns:minmax(0,1fr) 80px 26px;}
 .tkl-nr-w .tk-row{grid-template-columns:62px minmax(0,1fr) 80px 26px;}   /* 월간 업무 — 권역·현장 열이 없다.
    ⚠ 날짜 80px — 기간(8/26–8/28 · 82px)이 열을 살짝 넘지만 수정 버튼과는 닿지 않는 최소치다(389차) */
 .tk-row .p-col{margin-left:0;}
@@ -1902,22 +1907,19 @@ body:not(.wid) .btn.dp-add.on:hover{background:transparent;color:#7DA9EA;}   /* 
 .tkc-dot{width:6px;height:6px;border-radius:50%;flex:0 0 auto;}   /* 담당자 색은 글자가 아니라 이 점이 맡는다 */
 .tk-item.editing .tk-row .tkc-w{gap:6px;}   /* 편집 중에도 점 + 선택칸 — 읽기 때와 이름 시작 위치가 같아진다(389차) */
 .tk-item.editing .tk-row .tkc-w select{min-width:0;flex:1 1 auto;}
-.tkc-d{font-variant-numeric:tabular-nums;overflow:visible;}   /* 좌측 정렬 — 기간이 있어 오른끝을 맞추면 시작 위치가 행마다 흔들린다. 열은 68px — 기간(75~82px)은 옆 간격을 빌린다(잘라내기보다 낫다) — 잘라내기보다 낫다 */
+.tkc-d{font-variant-numeric:tabular-nums;overflow:visible;}   /* 좌측 정렬 — 기간이 있어 오른끝을 맞추면 시작 위치가 행마다 흔들린다. 열은 80px(520차: 68→80) — 기간(8/26–8/28 · 82px)이 수정 버튼과 겹치던 것을 제목 폭을 살짝 줄여 해결(tkl-nr-w 의 389차 처방을 전 변형에 적용) */
 .tkc-d.over{color:var(--rd);font-weight:700;}
-.tk-item.s2 .tk-ttl{color:var(--lbl3);}
-.tk-item.s2 .tkc{color:var(--lbl3);}
-.tk-item.s2 .tkc-w{color:var(--lbl);}          /* 이름은 그 행의 상태를 따르지 않는다(337차) */
-.tk-item .tkc-w.wdone{color:var(--lbl3);}      /* 그 이름의 모든 행이 완료일 때만 옅게 */
+.tk-item.s2 .tk-ttl{color:var(--lbl3);}   /* 완료는 **업무명만** 옅게 — 이름·현장·날짜까지 옅어지던 것을 사용자 지시로 좁혔다(520차). wdone(이름 묶음 전체 완료 시 옅게)도 함께 폐기 */
 /* 칸이 좁으면 현장 → 권역 순으로 접는다(이름·업무·날짜는 끝까지 남긴다).
    ⚠ 열 개수는 창 폭이 아니라 **칸 폭**(컨테이너 질의)으로 정한다 — 완료·예정이 카드를 반씩 나눠 쓴다. */
 @container tkpanel (max-width:620px){
-  .tkl-s .tk-row{grid-template-columns:62px minmax(0,1fr) 68px 26px;}
-  .tkl-s-w .tk-row{grid-template-columns:62px 62px minmax(0,1fr) 68px 26px;}
+  .tkl-s .tk-row{grid-template-columns:62px minmax(0,1fr) 80px 26px;}
+  .tkl-s-w .tk-row{grid-template-columns:62px 62px minmax(0,1fr) 80px 26px;}
   .tkl-s .tkc-s,.tkl-s-w .tkc-s{display:none;}
 }
 @container tkpanel (max-width:460px){
-  .tk-row,.tkl-s .tk-row{grid-template-columns:minmax(0,1fr) 68px 26px;}
-  .tkl-w .tk-row,.tkl-s-w .tk-row{grid-template-columns:62px minmax(0,1fr) 68px 26px;}
+  .tk-row,.tkl-s .tk-row{grid-template-columns:minmax(0,1fr) 80px 26px;}
+  .tkl-w .tk-row,.tkl-s-w .tk-row{grid-template-columns:62px minmax(0,1fr) 80px 26px;}
   .tkc-r{display:none;}
   .tk-item+.tk-item>.tk-row::before{left:0;}
 }
@@ -2446,6 +2448,9 @@ body.wid #calFiltWrap{display:flex;}
 #view-calendar .cal-card{overflow:visible;}
 #view-calendar .cal-head{position:relative;z-index:30;}
 .cal-filt-pop{width:306px;top:calc(100% + 8px);right:0;padding:11px;}
+.cal-filt-pop{overflow:visible;}   /* 517차: 안쪽 선택 목록이 팝업 테두리에 잘려 안 보였다 */
+.cal-filt-pop .msel-pop{z-index:260;}   /* 팝업(210)보다 위 */
+#view-calendar .cal-wrap{overflow:visible;}
 #calFilt.on{display:flex;}
 #calFiltWrap .dp-fadv{display:flex;flex-direction:column;gap:6px;}   /* 459차: 위젯과 같은 간격 */
 /* 460차: 필터는 2·2·1 두 열 배치 — 필터 카드를 지울 때 이 규칙까지 함께 지워 1열로 떨어졌었다 */
@@ -3473,5 +3478,5 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=517"></script>
+<script src="./app.js?v=520"></script>
 </body></html>

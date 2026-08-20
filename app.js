@@ -9,7 +9,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='517';
+const APP_VER='520';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -2663,7 +2663,7 @@ function taskItemHTML(sid,iid,it,withSubject,hideOwn,colsIn,occ){
             +'<input type="hidden" id="tnDate" value="'+esc(it.date||'')+'"><input type="hidden" id="tnEnd" value="'+esc(it.end||'')+'">'
             +tkRangePopHTML()+'</span>'
         : (cols.who?(cols.gw?'<span class="tkc tkc-w"></span>'
-            :'<span class="tkc tkc-w'+(who?'':' dim')+(cols.whoDone?' wdone':'')+'"'+go+'>'
+            :'<span class="tkc tkc-w'+(who?'':' dim')+'"'+go+'>'
               +'<i class="tkc-dot" style="background:'+esc(planColor(p0))+'"></i>'+(who?esc(who):'공통')+'</span>'):'')
           +(cols.site?'<span class="tkc tkc-s"'+go+'>'+esc(sn)+'</span>':'')
           +'<span class="tk-ttl"'+go+'>'+riskMark(it.kind)+esc(it.text||'제목 없음')
@@ -3220,12 +3220,7 @@ function tkOwnerName(it){
   const R=roster();
   return asg.map(id=>(R.find(x=>x.id===id)||{}).name).filter(Boolean).join(', ');
 }
-/* 그 행(반복이면 그 회차)의 상태 — 2면 완료 */
-function stOfRow(x){
-  const it=x.it;
-  if(it.recur&&it.recur.f&&x.d)return isDone(taskAsPlan(x.sid,x.iid,it),x.d)?2:1;
-  return stEff(it);
-}
+/* (stOfRow — wdone 판정 전용이던 함수 — 는 wdone 폐기(520차)와 함께 제거) */
 /* 예정 주가 그 달의 몇째 주인지 — 주기 시작(목요일) 날짜로 센다 */
 function tkWeekNo(ds){return Math.floor((toDate(ds).getDate()-1)/7)+1;}
 /* ── 통합 탭 — 전체 · 공통 · 팀 직급 · 권역(담당자 있는 것만). 주간·월간이 함께 쓴다 ── */
@@ -3291,23 +3286,14 @@ function tkWeekHTML(team,mems,regions){
       ||(a.it.createdAt||0)-(b.it.createdAt||0));
     /* 권역은 순서대로 서 있으니 **표의 병합 셀처럼** 낸다 — 묶음 첫 행에만 적고,
        이어지는 행의 구분선은 권역 칸을 지나가지 않는다(325차) */
-    /* 이름 칸은 묶음의 첫 행에만 찍힌다 — 그 한 행의 상태를 따라 옅어지면 **아래 행이 미완료여도 옅게** 보인다.
-       그래서 같은 권역·같은 이름 묶음이 통째로 완료일 때만 옅게 한다(337차 지적) */
-    const allDone=[];
-    {let pr0=null,pw0=null,st=-1;
-     list.forEach((x,i)=>{
-       const rn=x._rn,wn=x._wn;
-       if(rn!==pr0||wn!==pw0){st=i;pr0=rn;pw0=wn;}
-       allDone[st]=(allDone[st]===undefined?true:allDone[st])&&(stOfRow(x)===2);
-     });}
-    let pr=null,pw=null,gi=0;
+    /* (337차의 wdone — 이름 묶음 전체 완료 시 이름을 옅게 — 는 520차에 폐기. 완료 표시는 업무명만) */
+    let pr=null,pw=null;
     const rows=list.map(x=>{
       const rn=x._rn,wn=x._wn;
       const grp=rn!==pr,gw=!grp&&wn===pw;   /* 권역이 같고 이름도 같으면 이름 칸까지 이어진 것으로 본다 */
-      if(!gw)gi=list.indexOf(x);
       pr=rn;pw=wn;
       return taskItemHTML(x.sid,x.iid,x.it,false,'',
-        {...base,regLabel:grp?rn:'',grp,gw,whoDone:allDone[gi]===true},x.d||'');
+        {...base,regLabel:grp?rn:'',grp,gw},x.d||'');
     }).join('');
     const cols=base;
     return `<section class="tkwk-col">
@@ -3372,16 +3358,10 @@ function tkMonthHTML(team,mems,regions){
   const body=groups.map(([nm,list,rgName])=>{
     list.sort((a,b)=>tkOwnerName(a.it).localeCompare(tkOwnerName(b.it),'ko')
       ||String(a.d||'9999').localeCompare(String(b.d||'9999')));
-    const allDone=[];
-    {let pw0=null,st=-1;
-     list.forEach((x,i)=>{const wn=tkOwnerName(x.it);
-       if(wn!==pw0){st=i;pw0=wn;}
-       allDone[st]=(allDone[st]===undefined?true:allDone[st])&&(stOfRow(x)===2);});}
-    let pw=null,gi=0;
+    let pw=null;
     const rows=list.map(x=>{
       const wn=tkOwnerName(x.it),gw=wn===pw;pw=wn;
-      if(!gw)gi=list.indexOf(x);
-      return taskItemHTML(x.sid,x.iid,x.it,false,'',{...cols,gw,whoDone:allDone[gi]===true},x.d||'');
+      return taskItemHTML(x.sid,x.iid,x.it,false,'',{...cols,gw},x.d||'');
     }).join('');
     return '<div class="tkmo-g"><div class="tkmo-h">'+esc(nm)
       +(rgName?'<span class="rg">'+esc(rgName)+'</span>':'')
@@ -4008,8 +3988,10 @@ function dfDashCoFill(tbl){
     const rate=x.r>0?(x.res/x.r*100):0;
     const b1=dfDeltaParts(x.u-x.pu),b2=dfDeltaParts(x.lt-x.plt);
     const muted=opt.tot||opt.muted;
-    const name=opt.tot?`<b>${esc(x.key)}</b>`:muted?`<b style="color:var(--lbl3);font-style:italic">${esc(x.key)}</b>`:`<b style="color:var(--bt1)">${esc(x.key)}</b>`;
-    return`<tr${opt.tot?' class="tot"':''}><td class="cc">${muted?'':(i+1)}</td><td>${name}</td><td class="cc">${muted?'-':esc(x.side||'-')}</td>`
+    const name=opt.tot?`<b>${esc(x.key)}</b>`:muted?`<b style="color:var(--lbl3);font-style:italic">${esc(x.key)}</b>`:`<b>${esc(x.key)}</b>`;
+    /* 시공업체 클릭 → 팀 전체 미처리 목록(그 업체만). 상위 10 접기 개편 때 링크가 빠졌던 회귀 복원 */
+    const nameTd=(opt.tot||muted)?`<td>${name}</td>`:`<td class="rl-link" data-act="rec.list" data-sid="" data-scope="ul" data-co="${esc(x.key)}">${name}</td>`;
+    return`<tr${opt.tot?' class="tot"':''}><td class="cc">${muted?'':(i+1)}</td>${nameTd}<td class="cc">${muted?'-':esc(x.side||'-')}</td>`
       +`<td class="n">${x.r.toLocaleString()}</td><td class="n" style="color:var(--gn)">${x.res.toLocaleString()}</td><td class="n" style="font-weight:600">${rate.toFixed(1)}%</td>`
       +`<td class="n" style="color:var(--am)">${x.u.toLocaleString()}</td><td class="cc" style="white-space:nowrap"><span class="ba ${b1.dBadge}" data-tip="전월 ${x.pu.toLocaleString()} → 금월 ${x.u.toLocaleString()}">${b1.dArrow} ${b1.dTxt}</span></td>`
       +`<td class="n" style="color:var(--rd)">${x.lt.toLocaleString()}</td><td>${dfLtrBar(x.u,x.d60,x.d30,x.d0)}</td>`
@@ -4104,10 +4086,8 @@ function dfAggNorm(list,axis){
 }
 function dfAggRowHTML(x,i,axis,sid,blankIdx,isTot,foldRow){
   const rt=x.r>0?(x.res/x.r*100).toFixed(1):'0.0';
-  const ltr=x.u>0?(x.lt/x.u*100):0,pLtr=x.pu>0?(x.plt/x.pu*100):0;
-  const dN=Number((ltr-pLtr).toFixed(1));
-  const arrow=dN===0?'─':dN>0?'▲':'▼',sign=dN===0?'':dN>0?'+':'−',badge=dN===0?'bgr':dN>0?'brd':'bgn';
-  const b1=dfDeltaParts(x.u-x.pu);
+  /* 마지막 전월대비는 장기미처리 '건수' 증감 — 대시보드 표와 같은 표기(비율 %p 표기는 사용자 지시로 폐기) */
+  const b1=dfDeltaParts(x.u-x.pu),b2=dfDeltaParts(x.lt-x.plt);
   const na=x.key==='(미기재)';
   const link=axis==='co'
     ?`data-act="rec.list" data-sid="${esc(sid)}" data-scope="ul" data-co="${esc(x.key)}"`
@@ -4125,7 +4105,7 @@ function dfAggRowHTML(x,i,axis,sid,blankIdx,isTot,foldRow){
     +`<td class="cc" style="white-space:nowrap"><span class="ba ${b1.dBadge}" data-tip="전월 ${x.pu.toLocaleString()} → 금월 ${x.u.toLocaleString()}">${b1.dArrow} ${b1.dTxt}</span></td>`
     +`<td class="n" style="color:var(--rd)">${x.lt.toLocaleString()}</td>`
     +`<td>${dfLtrBar(x.u,x.d60,x.d30,x.d0)}</td>`
-    +`<td class="cc" style="white-space:nowrap"><span class="ba ${badge}">${arrow} ${sign}${Math.abs(dN).toFixed(1)}p</span></td></tr>`;
+    +`<td class="cc" style="white-space:nowrap"><span class="ba ${b2.dBadge}" data-tip="전월 ${x.plt.toLocaleString()} → 금월 ${x.lt.toLocaleString()}">${b2.dArrow} ${b2.dTxt}</span></td></tr>`;
 }
 function dfAxParts(sid,k){
   const ax=(S.dfAxSite==='co'&&(k.coAgg||[]).length)?'co':'trade';
@@ -7037,14 +7017,28 @@ const ACT={
       .then(()=>toast(who+' → '+roleLabel(v)))
       .catch(e=>{fbErr(e);rOrg();});
   },
-  'day.fmore':el=>{   /* 458차: 필터는 달력 상단 꺽쇠 팝업으로 옮겼다(위젯과 같은 경험) */
-    const p=$('#calFilt');if(!p)return;
+  'day.fmore':el=>{   /* 458차: 달력 상단 꺽쇠 팝업 · 518차: 화면마다 자기 팝업을 연다 */
+    const wrap=el.closest('.cal-nav');
+    const p=wrap?wrap.querySelector('.cal-filt-pop'):$('#calFilt');
+    if(!p)return;
     const on=!p.classList.contains('on');
+    document.querySelectorAll('.cal-filt-pop.on').forEach(x=>{if(x!==p)x.classList.remove('on');});
     p.classList.toggle('on',on);
     if(el&&el.setAttribute)el.setAttribute('aria-expanded',on?'true':'false');
     if(on)rFilter();
   },
-  'filt.msel':el=>{const m=el.closest('.msel'),was=m.classList.contains('open');mselClose();if(!was)m.classList.add('open');},
+  'filt.msel':el=>{const m=el.closest('.msel'),was=m.classList.contains('open');mselClose();if(was)return;
+    m.classList.remove('up');m.classList.add('open');
+    /* 아래가 잘리면 위로 편다(520차) — 잘림 한계는 viewport 가 아니라 overflow 조상(업무현황 왼쪽 칸)까지 본다 */
+    const p=m.querySelector('.msel-pop');
+    if(p){
+      let lim=innerHeight,a=m.parentElement;
+      while(a&&a!==document.body){const cs=getComputedStyle(a);
+        if(cs.overflowY!=='visible')lim=Math.min(lim,a.getBoundingClientRect().bottom);
+        a=a.parentElement;}
+      const r=p.getBoundingClientRect(),mr=m.getBoundingClientRect();
+      if(r.bottom>lim&&mr.top-r.height-5>0)m.classList.add('up');
+    }},
   'filt.mopt':el=>{
     const m=el.closest('.msel'),g=m.dataset.g,st=mselStore(m);
     const cur=(st[g]||[]).map(String),i=cur.indexOf(el.dataset.v);
@@ -7490,14 +7484,21 @@ function isNarrow(){return window.matchMedia('(max-width:960px)').matches;}
       (칸 178px · 막대 피치 29px · 더보기 20px → 5개+더보기=165px 가 들어가는데 4개만 썼다).
       그래서 자동에 맡기지 않고 숫자로 넘긴다. 잴 수 없으면(첫 렌더 전) 예전처럼 자동으로 둔다 */
 function calFitRows(){
-  const frame=document.querySelector('#fcal .fc-dayGridMonth-view .fc-daygrid-day-frame');
-  if(!frame)return null;
+  /* 줄 높이가 내용에 따라 다를 수 있어 가장 낮은 칸 기준으로 잰다(520차) */
+  const frames=document.querySelectorAll('#fcal .fc-dayGridMonth-view .fc-daygrid-day-frame');
+  if(!frames.length)return null;
+  let frame=frames[0];
+  frames.forEach(f=>{if(f.clientHeight&&f.clientHeight<frame.clientHeight)frame=f;});
   const num=frame.querySelector('.fc-daygrid-day-number');
   const ev=document.querySelector('#fcal .fc-daygrid-event-harness');
   if(!num||!ev)return null;
   const avail=frame.clientHeight-num.offsetHeight-2;          /* -2 는 day-events 의 padding-bottom */
   const pitch=ev.offsetHeight;                                /* harness 에 여백이 포함돼 있다 */
-  const link=document.querySelector('#fcal .fc-daygrid-day-bottom');
+  /* ⚠ 더보기 줄 높이는 **링크가 실제로 든** day-bottom 에서 잰다(520차).
+     문서상 첫 day-bottom 은 빈 칸의 것(높이 2px)일 수 있어 — 그걸 믿고 4개를 넣었다가
+     '외 N건'이 칸 아래로 11px 탈출했다(실측: 빈 것 2px vs 실제 18px) */
+  const moreLink=document.querySelector('#fcal .fc-daygrid-day-bottom .fc-daygrid-more-link');
+  const link=moreLink?moreLink.closest('.fc-daygrid-day-bottom'):null;
   const lh=(link&&link.offsetHeight)||18;
   if(!(pitch>6)||avail<pitch)return null;
   const n=Math.floor((avail-lh)/pitch);
