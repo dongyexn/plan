@@ -1461,7 +1461,7 @@ body.snap .sbsl:first-of-type{display:none;}
 body:not(.wid) .cal-card{position:relative;}
 #ymPop{position:absolute;top:56px;left:-8px;z-index:60;width:272px;background:var(--bg2);border:1px solid var(--sep);border-radius:var(--rlg);box-shadow:var(--sh-2);padding:13px 14px;}
 /* 위젯에서는 설정 팝업(#wgSet)과 같은 유리 카드로 — 왼쪽이 잘리지 않게 안쪽으로 붙인다 */
-body.wid #ymPop{left:0;top:44px;width:252px;background:rgba(22,25,33,.94);
+body.wid #ymPop{left:0;top:44px;width:252px;background:rgba(22,25,33,.94);   /* top 은 openYMPick 이 실측으로 덮는다(522차) — 여기 값은 폴백 */
   -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
   border:1px solid rgba(255,255,255,.14);border-radius:3px;box-shadow:0 10px 30px rgba(0,0,0,.45);
   color:rgba(255,255,255,.9);padding:12px 14px;}
@@ -1567,6 +1567,7 @@ body.wid.glass .cal-title,body.wid.glass .cal-title .y{color:#fff;}
    화면 밖(문서 맨 아래 전체 폭)에 그려지던 원인(520차 복원) */
 .msel{position:relative;}
 /* 위젯(유리) — 목록도 어두운 카드로 */
+body.wid .cal-filt-pop::before{background:rgba(22,25,33,.96);border-color:rgba(255,255,255,.16);}   /* 꼬리도 유리 카드 색 — 기본 --bg2(흰색)가 다크 팝업 위에 흰 마름모로 떴다(521차) */
 body.wid .cal-filt-pop .msel-b{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.2);color:#fff;}
 body.wid .cal-filt-pop .msel-pop{background:rgba(22,25,33,.96);border-color:rgba(255,255,255,.16);}
 body.wid .cal-filt-pop .msel-o,body.wid .cal-filt-pop .msel-all{color:rgba(255,255,255,.85);}
@@ -2390,7 +2391,9 @@ body.wid.glass #content{background:transparent;padding:6px;}
 body.wid.glass #main,body.wid.glass #app,body.wid.glass .view,body.wid.glass .cal-wrap,body.wid.glass #fcal,
 body.wid.glass #fcal .fc-view-harness,body.wid.glass #fcal .fc-scroller,
 body.wid.glass #fcal .fc-scrollgrid,body.wid.glass #fcal table{background:transparent!important;}
-body.wid.glass #fcal{--fc-page-bg-color:transparent;--fc-neutral-bg-color:transparent;}
+body.wid.glass #fcal{--fc-page-bg-color:transparent;--fc-neutral-bg-color:transparent;
+  border:0;border-radius:0;}   /* 232차 달력 프레임(테두리 띠)은 앱 전용 — 유리 위젯에서는 상자로 보인다(521차) */
+body.wid.glass #fcal .fc-scrollgrid{border:0!important;}   /* FC 자체 외곽선도 — 칸 사이 선(td)은 남는다 */
 body.wid.glass .card{background:transparent;border:0;box-shadow:none!important;border-radius:0;padding:6px 4px;}
 body.wid.glass .cal-title,body.wid.glass .cal-title .y{color:#fff;}
 body.wid.glass .cal-head .seg,body.wid.glass .cal-head .cal-nav{
@@ -2546,7 +2549,7 @@ body.wid .wid-pop select.inp option,body.wid #mb select.inp option{background:#2
 
 body.wid .wid-pop input[type=date].inp,body.wid .wid-pop input[type=time].inp{color-scheme:dark;}
 
-.wid-pop .wp-h{display:flex;align-items:center;gap:8px;padding:10px 12px 4px;margin-bottom:2px;}   /* 좌우 8px = 아래 '업무 N건'(.dp-lh)과 같은 자리 */
+.wid-pop .wp-h{display:flex;align-items:center;gap:8px;padding:14px 12px 4px;margin-bottom:2px;}   /* 좌우 8px = 아래 '업무 N건'(.dp-lh)과 같은 자리 · 위 10→14px(521차 사용자 지시 — 상단에 3~5px 더) */
 .wid-pop .wp-d{font-size:13px;font-weight:800;color:#fff;line-height:22px;transform:translateY(1px);}
 .wid-pop .wp-w{font-size:12px;font-weight:600;color:rgba(255,255,255,.6);margin-left:auto;line-height:22px;transform:translateY(1px);}
 .wid-pop .wp-x{width:22px;height:22px;border-radius:3px;display:flex;align-items:center;justify-content:center;
@@ -3480,5 +3483,5 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=521"></script>
+<script src="./app.js?v=522"></script>
 </body></html>
