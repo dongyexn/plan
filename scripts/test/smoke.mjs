@@ -178,8 +178,9 @@ try {
 
   /* ⑦ 찾기 — 보관함에 있어도 검색으로 다시 찾아진다 */
   await page.keyboard.press('Control+k');
-  await page.waitForSelector('#nqQ', { timeout: 4000 });
-  await page.fill('#nqQ', '아카이브');          /* fill 이 input 이벤트를 내 rNq 가 돈다 */
+  /* 457차: 검색 입력은 헤더 검색창으로 옮겼다(패널 안 입력은 위젯·모바일 전용) */
+  await page.waitForSelector('#ahQ', { timeout: 4000 });
+  await page.fill('#ahQ', '아카이브');          /* fill 이 input 이벤트를 내 rNq 가 돈다 */
   await waitFor(page, () => {                   /* 아카이브를 읽어 다시 그릴 때까지 */
     const els = document.querySelectorAll('#nqRes .nq-item .tt');
     return [...els].some(e => e.textContent.includes('아카이브'));
@@ -242,6 +243,20 @@ try {
     return [...document.querySelectorAll('#dpList .plan-t')].some(e => e.textContent.includes(t)); }, [RT, today]);
   if (afterSkip.gone && afterSkip.skip && origLeft) OK('반복 — 이 날짜만 제외: 그날은 빠지고 원래 날짜는 남는다');
   else F('반복 — 제외 실패 (사라짐 ' + afterSkip.gone + ' · skipOn ' + afterSkip.skip + ' · 원날짜 ' + origLeft + ')');
+
+  /* 469차: 인라인 CSS 가 끝까지 파싱되는지 — 주석 미닫힘·중괄호 붕괴는 오류 없이 규칙을 삼킨다.
+     실제 화면이 깨져도 정적 검사·오류 로그로는 안 잡히므로 파싱 결과를 직접 센다. */
+  const cssStat = await page.evaluate(() => {
+    const inl = [...document.styleSheets].filter(s => !s.href);
+    const our = inl[inl.length - 1];
+    let n = 0; try { n = our.cssRules.length; } catch (e) { n = -1; }
+    const last = (() => { try { const r = [...our.cssRules]; const x = r[r.length - 1];
+      return (x.selectorText || x.cssText || '').slice(0, 60); } catch (e) { return ''; } })();
+    return { n, last, mcg: (() => { const g = document.querySelector('.mc-g');
+      return g ? getComputedStyle(g).display : 'none'; })() };
+  });
+  if (cssStat.n >= 1800) OK('CSS 전량 파싱 (' + cssStat.n + '개 규칙)');
+  else F('CSS 파싱이 중간에 끊겼다 — 주석 미닫힘·중괄호 붕괴 의심 (' + cssStat.n + '개에서 멈춤, 마지막: ' + cssStat.last + ')');
 
   if (errs.length) F('페이지 오류 ' + errs.length + '건: ' + errs[0]);
   else OK('페이지 오류 없음');

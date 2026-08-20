@@ -37,6 +37,38 @@ for (const f of ['app.js', 'build-single.mjs']) {
 }
 OK('구문 검사 (node --check)');
 
+/* 1-b. 주석 닫힘 — 파일 끝까지 열린 채 남은 주석만 잡는다.
+   ⚠ 중간에서 닫는 기호를 잃으면 뒤 주석의 닫는 기호와 짝이 맞아 여기서는 안 걸린다.
+   그 경우는 smoke 의 'CSS 전량 파싱' 검사가 규칙 수로 잡는다(469차). */
+{
+  const unclosed = (src, isJS) => {
+    let i = 0;
+    while (i < src.length) {
+      const c = src[i], n = src[i + 1];
+      if (c === '/' && n === '*') {
+        const e = src.indexOf('*/', i + 2);
+        if (e < 0) return src.slice(i, i + 90).replace(/\s+/g, ' ');
+        i = e + 2; continue;
+      }
+      if (isJS && c === '/' && n === '/') { const e = src.indexOf('\n', i); i = e < 0 ? src.length : e + 1; continue; }
+      if (c === '"' || c === "'" || (isJS && c === '`')) {
+        let k = i + 1;
+        while (k < src.length) { if (src[k] === '\\') { k += 2; continue; } if (src[k] === c) break; k++; }
+        i = k + 1; continue;
+      }
+      i++;
+    }
+    return null;
+  };
+  const style = html.slice(html.indexOf('<style>') + 7, html.indexOf('</style>'));
+  let bad = 0;
+  for (const [src, name, isJS] of [[style, 'CSS', false], [js, 'JS', true]]) {
+    const hit = unclosed(src, isJS);
+    if (hit) { F(name + ' 주석이 닫히지 않았다 — 뒤 내용이 통째로 무시된다: ' + hit); bad++; }
+  }
+  if (!bad) OK('주석 닫힘 (CSS·JS)');
+}
+
 /* ── 2. 죽은 함수 — 정의 말고는 아무 데서도 안 부르는 이름 ── */
 {
   const all = hay;

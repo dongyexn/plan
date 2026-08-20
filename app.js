@@ -9,7 +9,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='455';
+const APP_VER='513';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -104,6 +104,7 @@ document.addEventListener('click',e=>{
     p.classList.remove('open');
 });
 document.addEventListener('input',e=>{
+  if(e.target.id==='ahQ'){ahSrchSync(e.target.value);return;}
   if(e.target.id==='acctName'){acctAutoSave();return;}
   /* 451차: 배경 슬라이더는 끄는 동안 바로 보여야 한다(change 는 손을 뗄 때만 온다) */
   if(e.target.id==='bgAlpha'||e.target.id==='bgBri'){ACT[e.target.dataset.act](e.target);return;}
@@ -1416,7 +1417,7 @@ function rTeamSel(){
   if(!teams.some(t=>t.id===S.tk.t))S.tk.t=teams[0].id;
   /* 팀이 하나뿐이면 고를 것이 없다 — 선택기를 감춘다(390차). 팀이 늘면 저절로 다시 나온다.
      ⚠ 고른 팀(S.tk.t)은 감춘 상태에서도 위에서 정해 둔다 — 다른 화면이 이 값을 쓴다 */
-  if(teams.length<2){$('#tselWrap').innerHTML='';el.hidden=true;return;}
+  /* 484차: 팀이 하나여도 지금 보는 범위를 보여준다 — 사이드바 머리의 제목 역할을 겸한다 */
   el.hidden=false;
   const opts=teams.map(t=>'<option value="'+esc(t.id)+'"'+(t.id===S.tk.t?' selected':'')+'>'+esc(t.name)+'</option>').join('');
   /* 선택창은 정적 마크업 — 내용만 채운다 */
@@ -2299,10 +2300,7 @@ document.addEventListener('mousedown',e=>{
   const wg=$('#wgSet');
   if(wg&&wg.classList.contains('on')&&!t.closest('#wgSet')&&!t.closest('[data-act="wid.set"]')){
     wg.classList.remove('on');wg.setAttribute('aria-hidden','true');
-  }
-  const fc=$('#dpFcard');
-  if(fc&&fc.classList.contains('adv-on')&&!t.closest('#dpFcard'))fc.classList.remove('adv-on');
-  const sd=$('#widSide');
+  }  const sd=$('#widSide');
   if(sd&&sd.classList.contains('on')&&!t.closest('#widSide')&&!t.closest('[data-act="wid.side"]')){
     sd.classList.remove('on');S.widSide='';
   }
@@ -2526,7 +2524,7 @@ function rosterBuild(){
   const out={};
   Object.keys(S.accounts||{}).forEach(uid=>{
     const a=S.accounts[uid]||{};
-    if(a.role==='blocked')return;
+    /* 501차: 차단 계정도 담는다 — 감추는 대신 '차단' 탭에서만 보여 준다 */
     out[uid]={id:uid,name:a.name||String(a.email||'').split('@')[0]||'이름없음',email:a.email||'',team:'',region:'',rank:'member',role:a.role||'viewer',acct:true};
   });
   Object.keys(S.people||{}).forEach(id=>{
@@ -3256,7 +3254,7 @@ function tkTabsHTML(team,mems,regions,mode){
   return '<div class="tkbar"><div class="rp-tabs tkm-tabs tkbar-tabs">'+tabs.map(([id,nm])=>
     '<button class="rp-tab'+(id===S.tkTab?' on':'')+'" data-act="tk.tab" data-id="'+esc(id)+'">'
     +esc(nm)+'<span class="rp-tcnt">'+cnt(id)+'</span></button>').join('')
-    +'</div><button class="btn bo bsm tkq-add" data-act="tk.newOpen"><svg class="icn"><use href="#i-plus"></use></svg> 업무 추가</button></div>';
+    +'</div><button class="btn bo bsm tkq-add" data-act="tk.newOpen" aria-label="업무 추가" data-tip="업무 추가"><svg class="icn"><use href="#i-plus"></use></svg></button></div>';
 }
 /* 첫 데이터를 기다리는 동안의 뼈대 — 곧 나타날 표와 같은 자리·같은 높이로 둔다.
    ⚠ 빈 화면을 보여 주면 "없는 것"으로 읽힌다 — 기다리는 중임을 형태로 알린다(348차) */
@@ -3416,18 +3414,20 @@ function gotoTask(sid,iid){
 }
 
 /* ═══════════ 찾기 — 업무·현장·하자를 한 번에 ═══════════ */
+/* 457차: 헤더 검색창 → 기존 검색 패널(nqQ)로 값을 넘긴다.
+   패널 안 입력은 그대로 두고(위젯·모바일에서 쓴다) 헤더에서 친 값만 흘려보낸다. */
+let nqFromHdr=false;
+function ahSrchSync(v){
+  const wrap=$('#ahSrch');if(wrap)wrap.classList.toggle('has',!!String(v||'').trim());
+  const q=$('#nqQ');if(q)q.value=v;
+  nqFromHdr=true;
+  if(String(v||'').trim()){ if(!$('#nqPanel').classList.contains('on'))nqOpen(true); rNq(); }
+  else nqOpen(false);
+  nqFromHdr=false;
+}
 function nqOpen(on){
-  const p=$('#nqPanel');if(!p)return;
-  /* 접힌 사이드바에서 기능 팝오버(#sbTools.open)와 자리가 겹친다 — 열 때 그쪽을 먼저 닫는다.
-     팝오버가 z-index 400, 찾기 패널이 61 이라 그대로 두면 패널이 아래로 깔려 잘려 보인다 */
-  if(on){const t=$('#sbTools');if(t)t.classList.remove('open');}
-  p.classList.toggle('on',!!on);
-  p.setAttribute('aria-hidden',on?'false':'true');
-  /* 여는 버튼이 둘 — 앱은 사이드바(#tbSrch), 위젯은 헤더(#widSrch). 있는 쪽만 눌린 표시를 준다 */
-  [$('#tbSrch'),$('#widSrch')].forEach(f=>{
-    if(!f)return;
-    f.classList.toggle('on',!!on);f.setAttribute('aria-expanded',on?'true':'false');});
-  if(on)setTimeout(()=>{const q=$('#nqQ');if(q){q.focus();q.select();}},60);
+  const p=$('#nqPanel');if(!p)return;  p.classList.toggle('on',!!on);
+  p.setAttribute('aria-hidden',on?'false':'true');  if(on&&!nqFromHdr)setTimeout(()=>{const q=$('#nqQ');if(q){q.focus();q.select();}},60);   /* 457차: 헤더에서 칠 땐 포커스를 빼앗지 않는다 */
 }
 function nqMark(text,q){
   const t=String(text||'');
@@ -3483,7 +3483,7 @@ function rNq(){
         subjName(sid)+(it.date?' · '+it.date+(it.end&&it.end!==it.date?'~'+it.end:''):''),
         'data-act="nq.task" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" data-date="'+esc(it.date||'')+'"')).join(''):'')
     +(r.sites.length?'<div class="nq-g">하자처리 현황 · 현장 '+r.sites.length+'</div>'+r.sites.slice(0,10).map(s=>
-      item('i-defect',nqMark(s.name,q),'하자 현황 보기',
+      item('i-defect',nqMark(s.name,q),'하자처리 현황 보기',
         'data-act="nq.site" data-sid="'+esc(s.id)+'"')).join(''):'')
     +(r.defects.length?'<div class="nq-g">하자 '+r.defects.length+'</div>'+r.defects.slice(0,20).map(({sid,r:x})=>
       item('i-defect',nqMark([x.trade,x.defectType,x.receiptContent].filter(Boolean).join(' · '),q),
@@ -3763,9 +3763,8 @@ function dfTrendDraw(key,cid,wks){
   const el=document.getElementById(cid);if(!el)return;
   dfC(key);
   const rows=Array.isArray(wks)?wks:[];if(!rows.length)return;
-  const dark=document.documentElement.classList.contains('dark');
   const ink=cvar('--lbl','#1C1C1E'),grid=cvar('--ch-grid','rgba(0,0,0,.05)'),axisT=cvar('--ch-axis','rgba(60,60,67,.42)');
-  const stroke=cvar('--bg2',dark?'#212121':'#fff');
+  const stroke=cvar('--bg2','#fff');
   const cumR=rows.map(x=>Number(x.cumR)||0),cumRes=rows.map(x=>Number(x.cumRes)||0);
   const y1v=[...cumR,...cumRes].filter(v=>v>0);let y1min=0,y1max;
   if(y1v.length){const r=dfNiceFit(Math.min(...y1v),Math.max(...y1v));y1min=r.min;y1max=r.max;}
@@ -3850,7 +3849,7 @@ function dfDonutDraw(key,cid,lgid,items){
   const lg=document.getElementById(lgid);
   if(!data.length){if(lg)lg.innerHTML='<div class="dn-empty">자료 없음</div>';return;}
   const tot=data.reduce((a,x)=>a+Number(x.c),0);
-  const border=cvar('--bg2',document.documentElement.classList.contains('dark')?'#212121':'#fff');
+  const border=cvar('--bg2','#fff');
   /* 원본 app-view.js 911·919행 문자 그대로 — pointStyle:'circle'·caretPadding:32 포함,
      animation 옵션은 원본처럼 지정하지 않는다(도넛 기본 회전·원호 이징까지 동일해야 한다).
      유일 편차: DF.noAnim(전용 인쇄·사이드바 토글) 때만 duration 0 을 덧씌우는 어댑터 한 줄. */
@@ -3944,7 +3943,7 @@ function dfDashTheadHTML(){
 function dfDashTableFill(d){
   const tbl=$('#dfDashTbl');if(!tbl)return;
   if(S.dfAxDash==='co'){dfDashCoFill(tbl);return;}
-  const ttl=$('#dfDashAxTtl');if(ttl)ttl.textContent='현장별 하자처리현황';
+  const ttl=$('#dfDashAxTtl');if(ttl)ttl.textContent='현장별 하자처리 현황';
   $$('#dfDashAx button').forEach(b=>b.classList.toggle('on',b.dataset.ax==='site'));
   const all=dfDashSites().map(s=>({s,st:dfStFromWeekly(d.wk[s.id],d.rm)}));
   const rows=dfDashSort(all).map(({s,st})=>dfDashRowHTML(s,st)).join('')
@@ -3961,7 +3960,7 @@ function dfDashTableFill(d){
   ovsRefresh();
 }
 /* 대시보드 업체별 축 — 현장별 coAgg 를 업체 기준으로 합친다(원본 dashCoAgg). 상위 10 + 나머지 한 줄 */
-/* 업체별 하자처리현황 집계 — 대시보드 표·보고서 양식 공용 */
+/* 업체별 하자처리 현황 집계 — 대시보드 표·보고서 양식 공용 */
 /* 범례·보고서용 짧은 현장명 — '힐스테이트'는 어디에 붙어 있든 뗀다(갑천1 트리풀시티 힐스테이트 등) */
 function dfShortSite(nm){
   const s2=String(nm||'').replace(/힐스테이트/g,'').replace(/\s{2,}/g,' ').trim().replace(/^[·\-\s]+|[·\-\s]+$/g,'');
@@ -3977,7 +3976,7 @@ function dfDashCoAgg(rm,list){
   return [...m.values()].map(o=>{const top=[...o.tr.entries()].sort((a,b)=>b[1]-a[1]);return Object.assign(o,{side:top[0]?top[0][0]:'-'});}).sort((a,b)=>b.u-a.u);
 }
 function dfDashCoFill(tbl){
-  const ttl=$('#dfDashAxTtl');if(ttl)ttl.textContent='업체별 하자처리현황';
+  const ttl=$('#dfDashAxTtl');if(ttl)ttl.textContent='업체별 하자처리 현황';
   $$('#dfDashAx button').forEach(b=>b.classList.toggle('on',b.dataset.ax==='co'));
   const rm=dfRm(),list=dfDashSites();
   const miss=list.some(s=>DF.kpi[rm+'/'+s.id]===undefined);
@@ -4015,7 +4014,7 @@ function dfDashCoFill(tbl){
   paintHTML(tbl,thead+'<tbody>'+body+'</tbody>'+tfoot);
   ovsRefresh();
 }
-/* 월별 하자처리현황 (대시보드) — 원본 buildDashMonthTable 포트. 현장별 weekly 를 월말 carry-forward 합산 */
+/* 월별 하자처리 현황 (대시보드) — 원본 buildDashMonthTable 포트. 현장별 weekly 를 월말 carry-forward 합산 */
 function dfDashMonthTable(d){
   const tbl=$('#dfDashMo');if(!tbl)return;
   const wkDash={};dfDashSites().forEach(s2=>{wkDash[s2.id]=d.wk[s2.id];});   /* 집계 범위 = 대시보드 현장 */
@@ -4054,8 +4053,8 @@ function rDefectDash(root,d){
     +dfTrendCardHTML('dfTrend','dash',dashYears,dashYear)
     +`<div class="opsr"><div class="card"><div class="ct cardttl">전월대비 실적 현황</div><div id="dfMom" class="mom-wrap"></div></div>${dfDonutCardHTML('현장별 미처리 분포','dfSx','dfSxLg')}</div>`
     +`<div class="opsr">${dfInsightHTML(d.ins)}${dfDonutCardHTML('공종별 미처리 분포','dfMx','dfMxLg')}</div>`
-    +`<div class="card mb12"><div class="sh"><div class="ct cardttl">월별 하자처리현황</div><select class="yr-sel" id="dfMoYr" data-act="df.moYear" aria-label="월별 연도 선택"></select></div><div style="overflow-x:auto"><table class="dt dt-detail" style="table-layout:fixed" id="dfDashMo"></table></div></div>`
-    +`<div class="card mb12"><div class="sh"><div class="st cardttl" id="dfDashAxTtl">현장별 하자처리현황</div><div class="axseg" id="dfDashAx" role="group" aria-label="묶는 기준"><button data-act="df.ax.dash" data-ax="site" class="${S.dfAxDash==='co'?'':'on'}">현장별</button><button data-act="df.ax.dash" data-ax="co" class="${S.dfAxDash==='co'?'on':''}">업체별</button></div></div><table class="dt" id="dfDashTbl" style="table-layout:fixed"></table></div>`;
+    +`<div class="card mb12"><div class="sh"><div class="ct cardttl">월별 하자처리 현황</div><select class="yr-sel" id="dfMoYr" data-act="df.moYear" aria-label="월별 연도 선택"></select></div><div style="overflow-x:auto"><table class="dt dt-detail" style="table-layout:fixed" id="dfDashMo"></table></div></div>`
+    +`<div class="card mb12"><div class="sh"><div class="st cardttl" id="dfDashAxTtl">현장별 하자처리 현황</div><div class="axseg" id="dfDashAx" role="group" aria-label="묶는 기준"><button data-act="df.ax.dash" data-ax="site" class="${S.dfAxDash==='co'?'':'on'}">현장별</button><button data-act="df.ax.dash" data-ax="co" class="${S.dfAxDash==='co'?'on':''}">업체별</button></div></div><table class="dt" id="dfDashTbl" style="table-layout:fixed"></table></div>`;
   DF.lastDash=d;
   setTimeout(()=>{
     dfTrendDraw('trend','dfTrend',dashWks);
@@ -4149,7 +4148,7 @@ function dfSiteAxisOnly(sid){
   const card=tbl.closest('.card');
   if(card){
     card.querySelectorAll('.axseg button').forEach(b=>b.classList.toggle('on',b.dataset.ax===(S.dfAxSite==='co'?'co':'trade')));
-    const ttl=card.querySelector('.cardttl');if(ttl)ttl.textContent=(P.ax==='co'?'업체별':'공종별')+' 하자처리현황';
+    const ttl=card.querySelector('.cardttl');if(ttl)ttl.textContent=(P.ax==='co'?'업체별':'공종별')+' 하자처리 현황';
   }
 }
 /* 지난달 계획 — 원본 prevPlanTop: 이번 달 입력 칸 바로 위에 쌓는다 */
@@ -4285,7 +4284,7 @@ function rDefectSite(root,site){
     body=`<div class="as">
       ${ltrMomBar}
       <div class="card"><div class="sh"><div class="st cardttl">장기미처리 상위 5개 공종 처리 현황</div></div><table class="dt" style="table-layout:fixed">${DF_TOP5_THEAD}<tbody>${dfTop5Rows(site.id,st.topLt,st.topLtPrev,st.lt||0,'processingPlan','')}</tbody></table></div>
-      <div class="card"><div class="sh"><div class="st cardttl">${P.ax==='co'?'업체별':'공종별'} 하자처리현황</div><div class="axseg" role="group" aria-label="묶는 기준"><button class="${P.ax==='trade'?'on':''}" data-act="df.ax.site" data-ax="trade">공종별</button><button class="${P.ax==='co'?'on':''}" data-act="df.ax.site" data-ax="co">업체별</button></div></div><table class="dt" style="table-layout:fixed" id="dfTrade-${esc(site.id)}"><thead><tr>${sortTh('NO','num','cc','6%')}${sortTh(P.ax==='co'?'시공업체':'공종','str','','11%')}${sortTh(P.ax==='co'?'주요 공종':'시공업체','str','','11%')}${sortTh('전체 접수','num','n','7%')}${sortTh('처리','num','n','7%')}${sortTh('처리율','num','cc','7%')}${sortTh('미처리','num','cc','7%')}${sortTh('전월대비','num','cc','6%')}${sortTh('장기미처리','num','n','7%')}<th class="cc" style="width:25%">장기미처리 비율</th>${sortTh('전월대비','num','cc','6%')}</tr></thead><tbody>${P.rows||P.emptyRow}</tbody></table></div>
+      <div class="card"><div class="sh"><div class="st cardttl">${P.ax==='co'?'업체별':'공종별'} 하자처리 현황</div><div class="axseg" role="group" aria-label="묶는 기준"><button class="${P.ax==='trade'?'on':''}" data-act="df.ax.site" data-ax="trade">공종별</button><button class="${P.ax==='co'?'on':''}" data-act="df.ax.site" data-ax="co">업체별</button></div></div><table class="dt" style="table-layout:fixed" id="dfTrade-${esc(site.id)}"><thead><tr>${sortTh('NO','num','cc','6%')}${sortTh(P.ax==='co'?'시공업체':'공종','str','','11%')}${sortTh(P.ax==='co'?'주요 공종':'시공업체','str','','11%')}${sortTh('전체 접수','num','n','7%')}${sortTh('처리','num','n','7%')}${sortTh('처리율','num','cc','7%')}${sortTh('미처리','num','cc','7%')}${sortTh('전월대비','num','cc','6%')}${sortTh('장기미처리','num','n','7%')}<th class="cc" style="width:25%">장기미처리 비율</th>${sortTh('전월대비','num','cc','6%')}</tr></thead><tbody>${P.rows||P.emptyRow}</tbody></table></div>
     </div>`;
   }else if(tab==='vac'){
     body=dfVacPane(site.id,st.vacU||{T:st.vT,Res:st.vRes,Unr:st.vUnr,Rate:st.vRate,Lt:st.vLt,Units:st.vUnits,Top:st.vTop,TopPrev:st.vTopPrev},DF.vac[key],'sedae');
@@ -4371,7 +4370,7 @@ async function dfSnapshot(){
   const blob=new Blob([idx],{type:'text/html;charset=utf-8'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download='하자처리현황_스냅샷_'+rm+'.html';
+  a.download='하자처리 현황_스냅샷_'+rm+'.html';
   document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(a.href),4000);
   toast('스냅샷을 내려받았습니다 · '+rm);
@@ -4513,9 +4512,9 @@ function rptDashboard(){
   const rgs=[...new Set(sites.map(s2=>s2.region).filter(Boolean))];
   const{team}=tkSel();
   const asof=((st[0]&&st[0].c.rmEnd)||dfEnds(S.dfRm).rmEnd||S.dfRm).replace(/-/g,'. ')+'.';
-  const hdrF=rpHdr(((team&&team.name)||'H서비스센터')+' 하자처리현황 보고',
+  const hdrF=rpHdr(((team&&team.name)||'H서비스센터')+' 하자처리 현황 보고',
     [`권역 <b>${esc(rgs.join(' · '))}</b>`,`관리대상현장 <b>${sites.length}개</b>`,`관리세대 <b>${rpN(units)}세대</b>`],asof);
-  const hdrS=rpHdr(((team&&team.name)||'H서비스센터')+' 하자처리현황 보고',[],asof,true);
+  const hdrS=rpHdr(((team&&team.name)||'H서비스센터')+' 하자처리 현황 보고',[],asof,true);
 
   const kpi=rpKpi([
     {k:'전체 접수',v:tR,d:`세대당 ${units?(tR/units).toFixed(1):'0.0'}건 · ${rpDelta(tR-pR)}`},
@@ -4611,11 +4610,11 @@ function rptSite(sid){
   const site=(S.org.sites||[]).find(s2=>s2.id===sid);if(!site)return '';
   const c=DF.kpi[dfRm()+'/'+sid];if(!c)return '';
   const p=c.prev||{},asof=(c.rmEnd||S.dfRm).replace(/-/g,'. ')+'.';
-  const hdrF=rpHdr(site.name+' 하자처리현황 보고',
+  const hdrF=rpHdr(site.name+' 하자처리 현황 보고',
     [`권역 <b>${esc(site.region||'-')}</b>`,
      `규모 <b>${site.buildings?site.buildings+'개동 ':''}${rpN(site.units)}세대</b>`,
      `준공 <b>${esc((site.completionDate||'').replace('-','. ')+'.')}</b>`],asof);
-  const hdrS=rpHdr(site.name+' 하자처리현황 보고',[],asof,true);
+  const hdrS=rpHdr(site.name+' 하자처리 현황 보고',[],asof,true);
 
   const kpi=rpKpi([
     {k:'전체 접수',v:c.tR,d:`세대당 ${site.units?((c.tR||0)/site.units).toFixed(1):'0.0'}건 · ${rpDelta((c.tR||0)-(p.total||0))}`},
@@ -4853,7 +4852,7 @@ function dfPrintHdrHTML(title){
   const{team}=tkSel();
   const ym=S.dfRm||new Date().toISOString().slice(0,7),[y,m]=ym.split('-');
   const last=new Date(Number(y),Number(m),0).getDate();
-  return `<div class="sp-page-hdr"><div class="ph-l"><div class="ph-team">${esc((team&&team.name)||'H서비스센터')} 하자처리현황</div><div class="ph-title">${esc(title)}</div></div><div class="ph-r"><div class="ph-label">기준일</div><div class="ph-date">${y}.${m}.${String(last).padStart(2,'0')}</div></div></div>`;
+  return `<div class="sp-page-hdr"><div class="ph-l"><div class="ph-team">${esc((team&&team.name)||'H서비스센터')} 하자처리 현황</div><div class="ph-title">${esc(title)}</div></div><div class="ph-r"><div class="ph-label">기준일</div><div class="ph-date">${y}.${m}.${String(last).padStart(2,'0')}</div></div></div>`;
 }
 async function dfPrint(){
   if(S.view!=='defect'){window.print();return;}
@@ -4862,8 +4861,6 @@ async function dfPrint(){
   const k=site?DF.kpi[dfRm()+'/'+site.id]:null;
   if(site&&!k){toast('자료를 불러온 뒤 인쇄할 수 있습니다');return;}
   if(!site&&!d){toast('자료를 불러온 뒤 인쇄할 수 있습니다');return;}
-  const wasDark=document.documentElement.classList.contains('dark');
-  if(wasDark)document.documentElement.classList.remove('dark');   /* 인쇄는 항상 밝은 색(원본 printThemeSwap) */
   DF.noAnim=true;   /* 인쇄용 차트는 즉시 완성 상태로 — 인쇄 미디어 전환 때 리사이즈가 나도 애니메이션 없이 붙는다 */
   const box=document.createElement('div');
   box.id='dfPrintPages';
@@ -4883,7 +4880,7 @@ async function dfPrint(){
     const trend=dfPrTrendCard();
     const opsr=`<div class="opsr"><div class="card"><div class="ct cardttl">전월대비 실적 현황</div><div id="dfPrMom" class="mom-wrap"></div></div>${dfDonutCardHTML('공종별 미처리 분포','dfPrMx','dfPrMxLg')}</div>`;
     const P=dfAxParts(site.id,st);
-    const tradeAll=`<div class="card"><div class="sh"><div class="st cardttl">${P.ax==='co'?'업체별':'공종별'} 하자처리현황</div></div><table class="dt" style="table-layout:fixed"><thead><tr><th class="cc" style="width:6%">NO</th><th style="width:11%">${P.ax==='co'?'시공업체':'공종'}</th><th style="width:11%">${P.ax==='co'?'주요 공종':'시공업체'}</th><th class="n" style="width:7%">전체 접수</th><th class="n" style="width:7%">처리</th><th class="cc" style="width:7%">처리율</th><th class="cc" style="width:7%">미처리</th><th class="cc" style="width:6%">전월대비</th><th class="n" style="width:7%">장기미처리</th><th class="cc" style="width:25%">장기미처리 비율</th><th class="cc" style="width:6%">전월대비</th></tr></thead><tbody>${P.rows||P.emptyRow}</tbody></table></div>`;
+    const tradeAll=`<div class="card"><div class="sh"><div class="st cardttl">${P.ax==='co'?'업체별':'공종별'} 하자처리 현황</div></div><table class="dt" style="table-layout:fixed"><thead><tr><th class="cc" style="width:6%">NO</th><th style="width:11%">${P.ax==='co'?'시공업체':'공종'}</th><th style="width:11%">${P.ax==='co'?'주요 공종':'시공업체'}</th><th class="n" style="width:7%">전체 접수</th><th class="n" style="width:7%">처리</th><th class="cc" style="width:7%">처리율</th><th class="cc" style="width:7%">미처리</th><th class="cc" style="width:6%">전월대비</th><th class="n" style="width:7%">장기미처리</th><th class="cc" style="width:25%">장기미처리 비율</th><th class="cc" style="width:6%">전월대비</th></tr></thead><tbody>${P.rows||P.emptyRow}</tbody></table></div>`;
     html+=pg('',hdr()+kpis+trend+opsr+dfMonthCardHTML(st,S.dfRm.slice(0,4),''));
     html+=pg('sp-page-break-before sp-p2',hdr()+dfLtrMomHTML(st)+`<div class="card"><div class="sh"><div class="st cardttl">장기미처리 상위 5개 공종 처리 현황</div></div><table class="dt" style="table-layout:fixed">${DF_TOP5_THEAD}<tbody>${dfTop5Rows(site.id,st.topLt,st.topLtPrev,st.lt||0,'processingPlan','')}</tbody></table></div>`);
     /* 231차: 공가 페이지가 통째로 빠지는 사례 — 한 페이지 조립이 실패하면 그 뒤 페이지까지 날아갔다.
@@ -4918,8 +4915,8 @@ async function dfPrint(){
       +`<div class="opsr"><div class="card"><div class="ct cardttl">전월대비 실적 현황</div><div id="dfPrMom" class="mom-wrap"></div></div>${dfDonutCardHTML('현장별 미처리 분포','dfPrSx','dfPrSxLg')}</div>`
       +`<div class="opsr">${dfInsightHTML(d.ins)}${dfDonutCardHTML('공종별 미처리 분포','dfPrMx','dfPrMxLg')}</div>`);
     html+=pg('sp-page-break-before',hdr()
-      +`<div class="card"><div class="sh"><div class="ct cardttl">월별 하자처리현황</div></div><div><table class="dt dt-detail" style="table-layout:fixed" id="dfPrDashMo"></table></div></div>`
-      +`<div class="card"><div class="sh"><div class="st cardttl">현장별 하자처리현황</div></div><table class="dt" id="dfPrDashTbl" style="table-layout:fixed"></table></div>`);
+      +`<div class="card"><div class="sh"><div class="ct cardttl">월별 하자처리 현황</div></div><div><table class="dt dt-detail" style="table-layout:fixed" id="dfPrDashMo"></table></div></div>`
+      +`<div class="card"><div class="sh"><div class="st cardttl">현장별 하자처리 현황</div></div><table class="dt" id="dfPrDashTbl" style="table-layout:fixed"></table></div>`);
   }
   box.innerHTML=html;
   /* 쪽번호 n / N — @page 카운터가 크롬에서 죽어 있어 DOM 으로 넣는다(224차) */
@@ -4968,8 +4965,7 @@ async function dfPrint(){
     document.body.classList.remove('df-printing');
     if(box.parentNode)box.parentNode.removeChild(box);
     ['prTrend','prMx','prSx','prMom'].forEach(dfC);
-    DF.noAnim=true;   /* 상시 해제(351차) — 예전에는 여기서 애니메이션을 되살렸다 */
-    if(wasDark)document.documentElement.classList.add('dark');};
+    DF.noAnim=true;   /* 상시 해제(351차) — 예전에는 여기서 애니메이션을 되살렸다 */};
   window.addEventListener('afterprint',done);
   window.print();
   /* ⚠ 231차: 1.5초 폴백이 인쇄 대화상자보다 먼저 터져 2쪽 이후가 통째로 사라졌다(원본 인쇄본 대조로 확인).
@@ -5492,7 +5488,7 @@ function rDefectNav(){
    전용 인쇄 버튼과 무관하게 브라우저 인쇄에서도 머리가 나오도록 beforeprint 에서 채운다. */
 function dfUpdatePrintHdr(){
   const tm=(typeof tkSel==='function'?tkSel().team:null);
-  const a=$('#dfPhTeam');if(a)a.textContent=(tm&&tm.name?tm.name:'H서비스센터')+' 하자처리현황';
+  const a=$('#dfPhTeam');if(a)a.textContent=(tm&&tm.name?tm.name:'H서비스센터')+' 하자처리 현황';
   const site=S.dfSid?(S.org.sites||[]).find(x=>x.id===S.dfSid):null;
   const t=$('#dfPhTitle');if(t)t.textContent=site?`${site.region||''} · ${site.name}`.replace(/^ · /,''):'전체 현황 대시보드';
   const d=$('#dfPhDate');if(d){const ym=dfRm()||new Date().toISOString().slice(0,7);
@@ -5830,7 +5826,7 @@ function regRows(){
     </div>`;}).join('');
 }
 /* 현장은 권역 그룹 아래에 놓고, 끌어서 다른 권역으로 옮기거나 순서를 바꾼다 */
-/* 현장 표 — 하자처리현황의 현장 관리 표를 그대로 이식(권역·현장명·세대수·동수·상가수·준공일).
+/* 현장 표 — 하자처리 현황의 현장 관리 표를 그대로 이식(권역·현장명·세대수·동수·상가수·준공일).
    행에서 바로 고치면 즉시 저장된다. 순서는 권역 등록 순 → 이름순. */
 /* 그 현장을 담당하는 사람들 — 계정의 담당 현장(p.sites)에서 거꾸로 모은다.
    ⚠ 여기서는 보여 주기만 한다. 배정은 계정 보기의 '담당 현장 선택'이 맡는다(한 곳에서만 고친다) */
@@ -5882,7 +5878,8 @@ function rOrgBar(tab){
     if(tab==='site')return (S.org.sites||[]).filter(x=>x.name&&orgRegHit(x.region,rid)).length;
     const t=curTeam();
     /* 미배정은 팀에 속하지 않은 계정이라 팀 필터를 태우지 않는다(389차) */
-    if(rid==='_free')return roster().filter(teamless).length;
+    if(rid==='_blocked')return roster().filter(p=>p.role==='blocked').length;   /* 501차: 팀과 무관하게 전부 */
+    if(rid==='_free')return roster().filter(p=>p.role!=='blocked'&&teamless(p)).length;
     return roster().filter(p=>(t?p.team===t.id:true)&&orgTabHit(p,rid)).length;
   };
   /* 계정 보기에는 '인수 전 현장' 권역이 없다 — 사람이 배정되지 않는 자리다.
@@ -5900,6 +5897,7 @@ function rOrgBar(tab){
   useRegs.forEach(r=>tabs.push([r.id,r.name]));
   if(cnt('_none'))tabs.push(['_none','권역 미지정']);
   if(tab!=='site'&&cnt('_free'))tabs.push(['_free','미배정']);   /* 팀에 아직 넣지 않은 계정(389차) */
+  if(tab!=='site'&&cnt('_blocked'))tabs.push(['_blocked','차단']);   /* 501차 */
   if(!tabs.some(x=>x[0]===S.orgReg))S.orgReg='';
   bar.innerHTML='<div class="rp-tabs tkm-tabs tkbar-tabs">'+tabs.map(([id,nm])=>
       '<button class="rp-tab'+(id===S.orgReg?' on':'')+'" data-act="org.reg" data-id="'+esc(id)+'">'
@@ -5915,6 +5913,8 @@ function orgRegHit(rid,tab){
 }
 /* 계정 탭 적중 — 직급 탭(rank:<uid>)이면 그 사람만, 그 외는 권역으로 */
 function orgTabHit(p,tab){
+  if(tab==='_blocked')return p.role==='blocked';
+  if(p.role==='blocked')return false;   /* 501차: 차단 계정은 다른 탭에 섞이지 않는다 */
   if(!tab)return true;
   if(String(tab).indexOf('rank:')===0)return p.id===tab.slice(5);
   if(isTeamRank(p.rank))return false;   /* 팀장·원가는 권역 탭에 섞지 않는다 */
@@ -5961,8 +5961,10 @@ function rOrg(){
   /* 팀은 사이드바에서 고르므로 표에서 팀 열은 없앤다 —
      선택한 팀 소속과 아직 팀이 없는 계정만 보여주고, 소속은 버튼으로 넣고 뺀다 */
   /* 탭 적용(340차·341차). '미배정' 탭을 고르면 팀 소속은 감추고 아래 미배정 묶음만 남긴다(389차) */
-  const mine=(S.orgReg==='_free')?[]:(t?all.filter(p=>p.team===t.id||p.local):[]).filter(p=>orgTabHit(p,S.orgReg));
-  const free=all.filter(p=>!p.local&&(!p.team||!(S.org.teams||[]).some(x=>x.id===p.team)));
+  const mine=(S.orgReg==='_free'||S.orgReg==='_blocked')?[]:(t?all.filter(p=>p.team===t.id||p.local):[]).filter(p=>orgTabHit(p,S.orgReg));
+  const free=(S.orgReg==='_blocked')
+    ? all.filter(p=>p.role==='blocked')   /* 501차: 차단 탭 — 팀과 무관하게 모아 본다 */
+    : all.filter(p=>!p.local&&p.role!=='blocked'&&(!p.team||!(S.org.teams||[]).some(x=>x.id===p.team)));
   const myUid=S.user?S.user.uid:'';
   const editors=all.filter(p=>p.role==='editor');
   /* 팀장 → 공구장 → 담당자 순, 같은 직급 안에서는 이름순 */
@@ -6019,7 +6021,7 @@ function rOrg(){
     </tr>`;
   };
   /* '미배정' 탭을 고르면 팀 소속 표는 아예 감춘다(389차) — 빈 표만 남아 어수선했다 */
-  const freeOnly=(S.orgReg==='_free');
+  const freeOnly=(S.orgReg==='_free'||S.orgReg==='_blocked');
   /* ⚠ 안(#acctRoot)만 비우면 빈 카드의 테두리가 가로선으로 남는다 — 카드째 감춘다(389차) */
   const acard=ar.closest('.card');if(acard)acard.style.display=freeOnly?'none':'';
   ar.style.display=freeOnly?'none':'';
@@ -6031,7 +6033,7 @@ function rOrg(){
   const fc=$('#freeCard'),fr=$('#freeRoot');
   if(fc&&fr){
     /* 미배정 계정은 '미배정' 탭에서만 보여 준다(389차) — 다른 탭에도 나오면 탭을 만든 뜻이 없다 */
-    fc.style.display=(free.length&&(S.orgTab||'acct')==='acct'&&S.orgReg==='_free')?'':'none';
+    fc.style.display=(free.length&&(S.orgTab||'acct')==='acct'&&(S.orgReg==='_free'||S.orgReg==='_blocked'))?'':'none';   /* 501차: 차단 탭도 이 자리에 그린다 */
     paintHTML(fr,free.length
       ?'<table class="utbl"><thead><tr><th style="width:176px">이름</th><th style="width:142px">팀</th><th></th><th class="utbl-r" style="width:120px">권한</th></tr></thead><tbody>'
         +free.map(p=>`<tr>
@@ -6251,7 +6253,7 @@ function ctxFor(t){
     items.push({label:'표 전체 복사',act:()=>recCopy()});
     return items;
   }
-  /* ⓪-2 대시보드 '현장별 하자처리현황' 행 · 사이드바 현장 항목 — 원본 ③⑤: 현장 열기·목록 바로가기.
+  /* ⓪-2 대시보드 '현장별 하자처리 현황' 행 · 사이드바 현장 항목 — 원본 ③⑤: 현장 열기·목록 바로가기.
      사이드바 트리 항목은 .nvi.df-site — 컨테이너가 회차마다 바뀔 수 있어 클래스로 직접 잡는다 */
   const siteEl=t.closest('#dfDashTbl [data-act="df.site"][data-sid], .df-site[data-sid]');
   if(siteEl){
@@ -6386,17 +6388,11 @@ setInterval(()=>{
 
 /* ═══════════ 화면 전환 · 공통 UI ═══════════ */
 const VIEW_TTL={calendar:'캘린더',tasks:'업무 현황',defect:'하자처리 현황',org:'조직 관리',settings:'설정'};
-document.addEventListener('click',e=>{
-  const t=$('#sbTools');if(!t||!t.classList.contains('open'))return;
-  if(!t.contains(e.target))t.classList.remove('open');   /* 접힌 사이드바의 기능 팝업 — 바깥 클릭이면 닫는다 */
-},true);
 function go(view){
   if(view==='report')view='tasks';   /* 주요 업무는 업무 현황으로 통합됐다(316차) — 옛 진입점은 넘겨 준다 */
   S.view=view;
   S.planOpen='';S.tkOpen=null;   /* 펼쳐 둔 카드는 화면을 옮기면 접는다(일정·업무 목록 모두) */
-  if(S.dpSheet)dpSheet(false);
-  const fc=$('#dpFcard');if(fc)fc.classList.remove('adv-on');   /* 화면을 옮기면 펼쳐 둔 필터는 닫는다 */
-  mselClose();
+  if(S.dpSheet)dpSheet(false);  mselClose();
   $$('.view').forEach(v=>v.classList.toggle('act',v.id==='view-'+view));
   $$('#sidebar .nvi[data-view]').forEach(n=>n.classList.toggle('act',n.dataset.view===view));
   $('#tbt').textContent=VIEW_TTL[view];
@@ -6442,99 +6438,11 @@ function mobClose(){
 /* 432차: 배경 dataURL 을 그대로 CSS 변수에 넣으면 수 MB 문자열이 <html> 의 '상속되는'
    커스텀 프로퍼티가 되어, 화면을 갈아끼울 때마다(요소 수천 개) 스타일 계산이 무거워진다.
    → 한 번만 Blob 으로 바꿔 짧은 blob: URL 을 쓰고, 값이 바뀌면 이전 URL 을 해제한다. */
-let _bgSrc='',_bgURL='';
-function bgObjURL(dataURL){
-  if(!dataURL)return '';
-  if(dataURL===_bgSrc&&_bgURL)return _bgURL;
-  if(!/^data:/.test(dataURL))return dataURL;   /* 이미 blob·http 면 그대로 */
-  try{
-    const i=dataURL.indexOf(','),head=dataURL.slice(0,i);
-    const mime=(head.match(/data:([^;]+)/)||[])[1]||'image/jpeg';
-    const bin=atob(dataURL.slice(i+1));
-    const buf=new Uint8Array(bin.length);
-    for(let k=0;k<bin.length;k++)buf[k]=bin.charCodeAt(k);
-    if(_bgURL)URL.revokeObjectURL(_bgURL);
-    _bgSrc=dataURL;_bgURL=URL.createObjectURL(new Blob([buf],{type:mime}));
-    return _bgURL;
-  }catch(e){return dataURL;}
-}
-function applyBg(){
-  /* ⚠ 위젯 창은 자체 배경 체계(불투명/글라스)를 쓴다 — 같은 localStorage 를 읽는 탓에 hasbg 가 붙으면
-     hasbg 토큰(--surf2 밝은 반투명 등)이 위젯을 덮쳐 다른달 셀에 밝은 판이 깔리고 년월·넘김 버튼이
-     이상해진다(218차 위젯 회귀의 원인). 위젯에서는 배경 기능 전체를 무시한다.
-     (WIDGET 상수는 아래쪽 선언이라 TDZ — location 으로 직접 검사) */
-  if(/[?&]w=1\b/.test(location.search)){document.body.classList.remove('hasbg');return;}
-  /* 432차: ?nobg=1 — 배경 때문에 화면이 무거울 때 지우고 들어오는 비상 통로 */
-  if(/[?&]nobg=1\b/.test(location.search)){try{localStorage.removeItem('calapp.bg');}catch(e){}}
-  let url='',al='80',bri='100';
-  try{url=localStorage.getItem('calapp.bg')||'';al=localStorage.getItem('calapp.bgAlpha')||'90';
-    bri=localStorage.getItem('calapp.bgBri')||'100';}catch(e){}
-  const root=document.documentElement;
-  root.style.setProperty('--app-bg-img',url?`url("${bgObjURL(url)}")`:'none');
-  root.style.setProperty('--app-card-alpha',(Number(al)||90)/100);
-  root.style.setProperty('--app-bg-bri',String((Number(bri)||100)/100));   /* 사진 자체 밝기 */
-  document.body.classList.toggle('hasbg',!!url);
-  /* 439차: 배경이 밝으면 어두운 글자, 어두우면 밝은 글자 — 밝기 슬라이더까지 반영한 실효값으로 판단 */
-  let lum=-1;try{lum=Number(localStorage.getItem('calapp.bgLum'));}catch(e){}
-  const eff=(lum>0)?lum*((Number(bri)||100)/100):-1;
-  document.body.classList.toggle('bg-light',!!url&&eff>=140);
-  document.body.classList.toggle('bg-dark', !!url&&eff>0&&eff<140);
-  const btn=$('#bgClearBtn');if(btn)btn.hidden=!url;
-  const dl=$('#bgAlpha');if(dl)dl.value=al;
-  const alv=$('#bgAlphaV');if(alv)alv.textContent=al+'%';
-  const db=$('#bgBri');if(db)db.value=bri;
-  const dbv=$('#bgBriV');if(dbv)dbv.textContent=bri+'%';
-  calGlassApply();
-}
 /* 배경 위 정적 필름 그레인 — 디뉴어 로그인 배경과 같은 방식(타일 노이즈 + 먼지 입자, 애니메이션 없음).
    ⚠ 한 번만 그린다. 매 프레임 그리면 위젯·저사양 PC 에서 그대로 부담이 된다. */
 /* ── 달력 유리(앱) — 위젯 설정과 같은 두 축: 투명도(a)·유리 톤(tint) ──
    ⚠ 위젯과 같은 이유로 변수 상속이 아니라 **리터럴 규칙을 스타일 태그로 주입**한다
    (FullCalendar 셀에서 var() 상속이 갱신되지 않는 엔진 특이 동작 — widApply 주석 참조). */
-const CAL_GLASS_KEY='calapp.calGlass';
-function calGlassLoad(){try{return JSON.parse(localStorage.getItem(CAL_GLASS_KEY))||{};}catch(e){return{};}}
-function calGlassSave(c){try{localStorage.setItem(CAL_GLASS_KEY,JSON.stringify(c));}catch(e){}}
-function calGlassApply(){
-  if(WIDGET)return;                       /* 위젯은 자체 설정(widApply)이 맡는다 */
-  const c=calGlassLoad();
-  const a=Number.isFinite(Number(c.a))?Number(c.a)/100:.85;               /* 기본 85% (투명도 15%) */
-  const tint=Math.min(1.6,Math.max(.5,(Number(c.tint)||100)/100));
-  const sc=rgb=>rgb.split(',').map(x=>Math.min(255,Math.round(Number(x)*tint))).join(',');
-  const f=n=>Math.min(1,Math.max(0,n)).toFixed(3);
-  const B=sc('24,28,38'),W=sc('57,52,61'),H=sc('13,16,24'),N=sc('16,20,30');
-  let dyn=document.getElementById('calDyn');
-  if(!dyn){dyn=document.createElement('style');dyn.id='calDyn';document.head.appendChild(dyn);}
-  dyn.textContent=[
-    /* 232차: 달력을 두르는 띠는 **년·월 버튼 배경과 같은 색**으로(사용자 지시).
-       버튼은 아래 6091행에서 rgba(N, a*.9) 를 쓴다 — 같은 값을 테두리에도 준다. */
-    'body.hasbg #fcal{border-color:rgba('+N+','+f(a*.9)+');}',
-    'body.hasbg #fcal .fc-scrollgrid{box-shadow:0 0 0 1px rgba(255,255,255,'+f(.22*tint)+');}',
-    'body.hasbg #fcal td.fc-daygrid-day{background:rgba('+B+','+f(a)+');}',
-    /* 공휴일도 주말과 같은 칸 색 — 쉬는 날이라는 뜻이 같다(위젯과 동일) */
-    'body.hasbg #fcal td.fc-daygrid-day.fc-day-sat,body.hasbg #fcal td.fc-daygrid-day.fc-day-sun,body.hasbg #fcal td.fc-daygrid-day.hol{background:rgba('+W+','+f(a*.92)+');}',
-    /* ⚠ 이웃(다른) 달 칸은 테마와 무관하게 같은 값 — 다크에서 --surf2 등이 끼어들어 색이 달라지던 것을 막는다 */
-    'body.hasbg #fcal td.fc-daygrid-day.fc-day-other,html.dark body.hasbg #fcal td.fc-daygrid-day.fc-day-other{background:rgba('+B+','+f(a*.22)+');}',
-    'body.hasbg #fcal .fc-col-header-cell{background:rgba('+H+','+f(a+.12)+');}',
-    /* 년월·월넘김 버튼도 위젯과 같은 채움 */
-    'body.hasbg:not(.wid) #view-calendar .cal-title,body.hasbg:not(.wid) #view-calendar .cal-head>.cal-ctl>.cal-nav{background:rgba('+N+','+f(a*.9)+');}',
-    'body.hasbg #view-calendar .cal-title,body.hasbg #view-calendar .cal-title .y{color:#fff;}',
-    /* 꺽쇠는 .cal-title-c 가 따로 색(--lbl3)을 갖는다 — 버튼 색만 바꾸면 어두운 채움 위에서 안 보인다 */
-    'body.hasbg #view-calendar .cal-title-c{color:rgba(255,255,255,.72);}',
-    'body.hasbg #view-calendar .cal-nb{color:rgba(255,255,255,.82);}',
-    'body.hasbg #view-calendar .cal-nb:hover{background:rgba(255,255,255,.14);color:#fff;}'
-  ].join('\n');
-  const ra=$('#bgCalA');if(ra)ra.value=Math.round(100-a*100);
-  const va=$('#bgCalAV');if(va)va.textContent=Math.round(100-a*100)+'%';
-  const rt=$('#bgCalT');if(rt)rt.value=Math.round(tint*100);
-  const vt=$('#bgCalTV');if(vt)vt.textContent=Math.round(tint*100)+'%';
-}
-function applyTheme(dark){
-  document.documentElement.classList.toggle('dark',dark);
-  const u=$('#thIcon');if(u)u.setAttribute('href',dark?'#i-moon':'#i-sun');
-  try{localStorage.setItem('calapp.theme',dark?'dark':'light');}catch(e){}
-  /* 차트는 그릴 때의 토큰 색을 굽는다 — 테마가 바뀌면 하자 화면을 다시 그려야 색이 따라온다 */
-  if(S.view==='defect'){try{rDefect();}catch(e){}}
-}
 
 /* ═══════════ 액션 위임 ═══════════ */
 const ACT={
@@ -6551,9 +6459,6 @@ const ACT={
   },
   'nav.mob':()=>{$('#sidebar').classList.add('mob-open');$('#scrim').classList.add('on');},
   'nav.mobClose':mobClose,
-  'theme.toggle':()=>applyTheme(!document.documentElement.classList.contains('dark')),
-  'nav.tools':()=>{const t=$('#sbTools');if(t)t.classList.toggle('open');},
-  /* 달 이동은 보기만 바꾼다 — 선택일(날짜 헤더)은 그대로 둔다 */
   'cal.prev':()=>CAL&&CAL.prev(),
   'cal.next':()=>CAL&&CAL.next(),
   /* 이동만 한다 — 위젯에서 날짜를 고른 것처럼 업무 팝업이 열리던 문제(오늘·연월 이동 공통) */
@@ -6755,60 +6660,13 @@ const ACT={
   'print.font':el=>rptPickFont(el),
   'print.go':()=>rptPickGo(),
   'set.dfsnap':()=>dfSnapshot(),
-  'set.bgPick':()=>{
-    const f=document.createElement('input');f.type='file';f.accept='image/*';
-    f.onchange=()=>{const file=f.files&&f.files[0];if(!file)return;
-      if(file.size>60*1024*1024)return toast('60MB 이하 이미지만 쓸 수 있습니다');   /* 451차: 상한 완화 */
-      /* 크기 제한 대신 자동 축소 — 브라우저 로컬 저장은 보통 5MB 남짓이고 dataURL 은 원본보다 약 33% 커진다.
-         긴 변 2560px·JPEG 로 줄이면 큰 사진도 대개 1MB 안쪽이 된다. */
-      const r=new FileReader();
-      r.onload=()=>{
-        const img=new Image();
-        img.onerror=()=>toast('이미지를 읽을 수 없습니다');
-        img.onload=()=>{
-          const max=2560,sc=Math.min(1,max/Math.max(img.width,img.height));   /* 450차: grain 제거로 합성 부하가 사라져 화질을 되돌린다(성능 실측 무차이) */
-          const cv=document.createElement('canvas');
-          cv.width=Math.round(img.width*sc);cv.height=Math.round(img.height*sc);
-          cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
-          /* 439차: 배경 평균 밝기를 재둔다 — 배경 위 글자(탭 등) 색을 자동으로 맞추기 위해 */
-          try{
-            const sm=document.createElement('canvas');sm.width=32;sm.height=18;
-            const sx=sm.getContext('2d',{willReadFrequently:true});
-            sx.drawImage(cv,0,0,32,18);
-            const px=sx.getImageData(0,0,32,18).data;
-            let sum=0,wsum=0;
-            for(let y=0;y<18;y++){
-              const w=y<6?1.6:1;   /* 글자가 놓이는 위쪽을 더 크게 본다 */
-              for(let x=0;x<32;x++){
-                const i=(y*32+x)*4;
-                sum+=w*(0.2126*px[i]+0.7152*px[i+1]+0.0722*px[i+2]);wsum+=w;
-              }
-            }
-            localStorage.setItem('calapp.bgLum',String(Math.round(sum/wsum)));
-          }catch(e){}
-          let out=cv.toDataURL('image/jpeg',0.9);
-          if(out.length>2.6e6)out=cv.toDataURL('image/jpeg',0.82);
-          if(out.length>2.6e6)out=cv.toDataURL('image/jpeg',0.7);
-          try{localStorage.removeItem('calapp.bg');   /* 새 값을 쓰기 전에 자리를 비운다 */
-            localStorage.setItem('calapp.bg',out);applyBg();toast('배경을 바꿨습니다 · 이 기기에만 저장됩니다');}
-          catch(e){toast('이 브라우저의 로컬 저장 공간이 부족합니다 · 더 작은 이미지를 골라 주세요');}
-        };
-        img.onerror=()=>toast('이미지를 읽지 못했습니다');
-        img.src=String(r.result);};
-      r.readAsDataURL(file);};
-    f.click();},
-  'set.bgClear':()=>{try{localStorage.removeItem('calapp.bg');localStorage.removeItem('calapp.bgLum');}catch(e){}applyBg();toast('배경을 없앴습니다');},
-  'set.bgAlpha':el=>{const v=String(el.value||'80');try{localStorage.setItem('calapp.bgAlpha',v);}catch(e){}applyBg();},
-  'set.bgBri':el=>{const v=String(el.value||'100');try{localStorage.setItem('calapp.bgBri',v);}catch(e){}applyBg();},
-  'cal.set':el=>{
-    const p=$('#calSet');if(!p)return;
-    const on=!p.classList.contains('on');
-    p.classList.toggle('on',on);
-    el.setAttribute('aria-expanded',on?'true':'false');
-    if(on)calGlassApply();   /* 열 때 현재 값으로 맞춘다 */
-  },
-  'set.calA':el=>{const c=calGlassLoad();c.a=100-Number(el.value);calGlassSave(c);calGlassApply();},   /* 슬라이더는 '투명도' — 클수록 투명 */
-  'set.calT':el=>{const c=calGlassLoad();c.tint=Number(el.value);calGlassSave(c);calGlassApply();},
+
+
+
+
+
+
+
   'df.rm':async el=>{
     if(document.querySelector('.ctxmenu')){closeCtx();return;}   /* 열려 있으면 닫기(토글) */
     if(!S.live||!FB.db)return;
@@ -6824,6 +6682,8 @@ const ACT={
   'mrv.done':el=>{stxSet(el,2);setTimeout(()=>mrvApply(el,{st:2,done:true},'완료로 바꿨습니다'),160);},
   'mrv.today':el=>mrvApply(el,{st:1,done:false,stKeep:true,date:todayStr(),end:''},'오늘로 옮겼습니다'),
   'nq.toggle':()=>{const on=!$('#nqPanel').classList.contains('on');nqOpen(on);if(on)rNq();},
+  /* 457차: 헤더 검색창 — 입력창에 바로 치고 결과는 아래로 */
+  'nq.clear':()=>{const i=$('#ahQ');if(i){i.value='';i.focus();}ahSrchSync('');},
   'nq.close':()=>nqOpen(false),
   /* ⚠ 위젯에는 업무 목록·하자 관리 화면이 없다 — 그쪽으로 보내면 빈 화면이 된다.
      위젯에서는 그 업무의 날짜로 달력을 옮기고 팝업을 펼친다(내 업무 팝오버와 같은 방식) */
@@ -6844,7 +6704,7 @@ const ACT={
     if(WIDGET){
       const u=location.origin+location.pathname+'?df='+encodeURIComponent(sid);
       window.open(u,'_blank','noopener');
-      toast('브라우저에서 하자 현황을 엽니다');
+      toast('브라우저에서 하자처리 현황을 엽니다');
       return;
     }
     S.dfSid=sid;S.dfTab='sum';go('defect');},
@@ -7147,8 +7007,13 @@ const ACT={
       .then(()=>toast(who+' → '+roleLabel(v)))
       .catch(e=>{fbErr(e);rOrg();});
   },
-  'day.qclear':()=>{const i=$('#dpQ');if(i){i.value='';}S.dayQ='';dpSrchMark();rDay();},
-  'day.fmore':()=>{const c=$('#dpFcard');if(c)c.classList.toggle('adv-on');},
+  'day.fmore':el=>{   /* 458차: 필터는 달력 상단 꺽쇠 팝업으로 옮겼다(위젯과 같은 경험) */
+    const p=$('#calFilt');if(!p)return;
+    const on=!p.classList.contains('on');
+    p.classList.toggle('on',on);
+    if(el&&el.setAttribute)el.setAttribute('aria-expanded',on?'true':'false');
+    if(on)rFilter();
+  },
   'filt.msel':el=>{const m=el.closest('.msel'),was=m.classList.contains('open');mselClose();if(!was)m.classList.add('open');},
   'filt.mopt':el=>{
     const m=el.closest('.msel'),g=m.dataset.g,st=mselStore(m);
@@ -7282,18 +7147,15 @@ document.addEventListener('click',e=>{
   if(fn){if(el.dataset.act!=='modal.stop')e.stopPropagation();fn(el);}
 });
 /* 달력 설정 팝업 닫기 — ⚠ click 이 아니라 **mousedown 캡처**로 듣는다.
-   FullCalendar 가 달력 칸의 click 을 삼켜, click 위임으로는 달력 위를 눌렀을 때 안 닫힌다(openCtx 와 같은 함정).
-   여는 버튼(#calSetWrap 안)은 제외 — 그래야 click 의 토글이 정상 동작한다(219차 게시월 토글과 같은 이유). */
-function calSetClose(){
-  const cs=$('#calSet');if(!cs||!cs.classList.contains('on'))return;
-  cs.classList.remove('on');
-  const b=document.querySelector('[data-act="cal.set"]');if(b)b.setAttribute('aria-expanded','false');
+   FullCalendar 가 달력 칸의 click 을 삼켜, click 위임으로는 달력 위를 눌렀을 때 안 닫힌다(openCtx 와 같은 함정). */
+function calFiltClose(){
+  const cf=$('#calFilt');if(!cf||!cf.classList.contains('on'))return;
+  cf.classList.remove('on');
+  const b=document.querySelector('[data-act="day.fmore"]');if(b)b.setAttribute('aria-expanded','false');
 }
 document.addEventListener('mousedown',e=>{
-  if(e.target.closest&&e.target.closest('#calSetWrap'))return;
-  calSetClose();
+  if(!(e.target.closest&&e.target.closest('#calFiltWrap')))calFiltClose();   /* 466차: 필터도 바깥 클릭으로 닫는다 */
 },true);
-document.addEventListener('keydown',e=>{if(e.key==='Escape')calSetClose();});
 
 /* 임의로 추가한 색 칩은 우클릭으로 지운다 — 지우면 첫 칩(자동)으로 되돌린다 */
 document.addEventListener('contextmenu',e=>{
@@ -7381,7 +7243,6 @@ document.addEventListener('change',e=>{
   if(e.target.id==='peKind'){peKindRefresh();return;}
   const rl=e.target.closest('[data-act="acct.role"]');
   if(rl){ACT['acct.role'](rl);return;}
-  if(e.target.id==='dpScope'){S.dayScope=e.target.value;filtSave();rDay();return;}
   const ren=e.target.closest('[data-act="org.ren"]');
   if(ren){
     const k=ren.dataset.kind;
@@ -7452,7 +7313,7 @@ document.addEventListener('change',e=>{
   rDefectNav();
   toast('"'+(st.name||'이름 없음')+'" 을 하자 관리에서 '+(hide?'숨깁니다':'표시합니다'));
 });
-/* 현장 표 인라인 저장 — 하자처리현황과 같은 즉시 반영 */
+/* 현장 표 인라인 저장 — 하자처리 현황과 같은 즉시 반영 */
 document.addEventListener('change',e=>{
   const el=e.target.closest('[data-act="org.siteUpd"]');
   if(!el)return;
@@ -7487,7 +7348,6 @@ document.addEventListener('click',e=>{
   }
 });
 document.addEventListener('input',e=>{
-  if(e.target.id==='dpQ'){S.dayQ=e.target.value;dpSrchMark();rDay();return;}
   if(e.target.id==='tkQ'){
     S.tkF={...S.tkF,q:e.target.value};
     clearTimeout(tkQT);tkQT=setTimeout(tkRefresh,160);   /* 전체 렌더는 포커스를 날린다 */
@@ -7550,7 +7410,6 @@ function tkRefresh(){
     if(focus){const q=old.querySelector('#tkQ');if(q){const n=q.value.length;q.focus();try{q.setSelectionRange(n,n);}catch(_){}}}
   }
 }
-function dpSrchMark(){const w=document.querySelector('.dp-srch');if(w)w.classList.toggle('has',!!String(S.dayQ||'').trim());}
 document.addEventListener('keydown',e=>{
   if(e.key==='Enter'&&(e.target.id==='fbEmail'||e.target.id==='fbPw')){e.preventDefault();fbDoLogin();return;}
   if(e.key==='Enter'&&e.target.id==='peTitle'){e.preventDefault();savePlanInline();return;}
@@ -7562,8 +7421,7 @@ document.addEventListener('keydown',e=>{
     if($('#ymPop')){closeYMPop();return;}
     const wg=$('#wgSet');
     if(wg&&wg.classList.contains('on')){wg.classList.remove('on');wg.setAttribute('aria-hidden','true');return;}
-    const fc=$('#dpFcard');
-    if(fc&&fc.classList.contains('adv-on')){fc.classList.remove('adv-on');return;}
+    if($('#calFilt')&&$('#calFilt').classList.contains('on')){calFiltClose();return;}
     const sd=$('#widSide');
     if(sd&&sd.classList.contains('on')){sd.classList.remove('on');S.widSide='';return;}
     if(WIDGET&&S.widPop){S.widPop=false;if(S.planEdit)closePlanEdit();rWidget();return;}
@@ -7823,15 +7681,6 @@ function widMove(on){
    패널을 새로 만들지 않고 **일자 패널(.day-panel) 자체를 팝업 안으로 옮겨** 쓴다.
    그래야 카드·수정 아이콘·편집 폼·자동 저장이 앱과 완전히 같게 동작한다. */
 function widMount(){
-  const slot=$('#widFilterSlot'),fc=$('#dpFcard');
-  if(slot&&fc&&!slot.contains(fc)){
-    /* 위젯에는 찾기 기능을 두지 않는다 — 검색칸과 범위 선택은 아예 떼어 낸다(숨기면 값이 남아 필터처럼 작동한다) */
-    const q=fc.querySelector('.dp-srch'),sc=fc.querySelector('.dp-scope');
-    if(q)q.remove();
-    if(sc)sc.remove();
-    S.dayQ='';
-    slot.appendChild(fc);                                 /* 필터 버튼만 헤더 줄로 */
-  }
   const pop=$('#widPop'),panel=document.querySelector('.day-panel');
   if(!pop||!panel||pop.contains(panel))return;
   pop.innerHTML='<div class="wp-h"><span class="wp-d" id="wpDate"></span><span class="wp-w" id="wpDow"></span>'
@@ -7875,9 +7724,6 @@ function widPlace(){
 /* ═══════════ 부팅 ═══════════ */
 function rAll(){rDay();rTasks();rOrg();rCfg();rFilter();rTeamSel();refetchCal();rWidget();}   /* 팀 선택기는 조직 화면 밖(사이드바)이라 rAll 에서도 그린다 */
 (function boot(){
-  let dark=false;
-  try{dark=localStorage.getItem('calapp.theme')==='dark';}catch(e){}
-  applyTheme(dark);
   if(WIDGET)document.body.classList.add('wid');
   if(WIDGET&&GLASS)document.body.classList.add('glass');
   if(WIDGET)widApply();
@@ -7887,7 +7733,6 @@ function rAll(){rDay();rTasks();rOrg();rCfg();rFilter();rTeamSel();refetchCal();
   bindCalResize();
   subVisibleMonths();
   rDay();rAcct();rFilter();rTeamSel();rWidget();   /* 팀 선택기는 사이드바 상시 요소 — 부팅 때부터 그린다 */
-  applyBg();
   if(window.__SNAP_Z__&&dfSnapBoot()){/* 스냅샷 문서 — 하자 화면만 */}
   else if(DEV_LOCAL){hideCover();rDefectNav();setTimeout(morningReview,600);}
   else{
