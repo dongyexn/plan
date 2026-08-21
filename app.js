@@ -9,7 +9,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='525';
+const APP_VER='546';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -372,6 +372,7 @@ const S={
   tkF:{q:'',st:[],kind:[],site:[],own:[]},   // 업무 현황 검색·필터 — 모두 다중 선택(권역은 탭이 맡는다)
   orgTab:'acct',     // 조직 관리 좌측 보기 (acct | site)
   orgReg:'',         // 조직 관리 권역 탭 — ''(전체) · 권역 id · '_none'(권역 미지정)
+  km:null,           // 현장 위치 지도 보기 상태 {vb,sel,hist} — 조직 관리 좌측 카드
   prefs:{},          // calapp/prefs/{uid} — 저장한 필터 등 개인 설정
   live:false,        // Firebase 실시간 모드 여부
   role:null,         // editor · viewer (users/{uid})
@@ -1421,7 +1422,6 @@ function rTeamSel(){
   $('#tselWrap').innerHTML=
     '<button class="tsel-b" id="teamSelEl" data-act="team.pop" aria-haspopup="listbox" aria-expanded="false">'
     +'<span class="tsel-t">'+esc(cur?cur.name:'')+'</span>'
-    +'<span class="tsel-ch"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 3.5l3 3 3-3"/></svg></span>'
     +'</button>'
     +'<div class="tb-pop tsel-pop" id="teamPop" role="listbox">'
     + teams.map(t=>'<button class="tsel-o'+(t.id===S.tk.t?' on':'')+'" role="option" data-act="team.switch" data-tid="'+esc(t.id)+'">'
@@ -5865,6 +5865,349 @@ function siteTable(){
     <td class="ce"><button class="tm-x tm-del" data-act="org.delSite" data-id="${esc(x.id)}" aria-label="삭제">${ICON_TRASH}</button></td>
   </tr>`).join('')}</tbody></table></div>`;
 }
+/* ── 현장 위치 지도(526차) ─────────────────────────────────────────────
+   vendor/korea-geo.js 의 시도·시군구·읍면동 경계를 SVG 로 그린다. 외부 요청은 없다.
+   좌표는 KRGEO.k 배 정수 메르카토르 — 화면 좌표계와 지도 좌표계를 여기서만 오간다.
+   제주는 제자리에 두면 지도가 세로로 길어져 **좌하단 네모로 옮겨** 그린다(KM_JD). */
+const KM_VB0={x:232,y:8,w:2104,h:3222};            /* 전체 보기 — 본토 + 제주 네모.
+   544차: x 를 8(=화면 1px) 늘려 지도를 왼쪽으로 1px 민다 */
+const KM_JD=[1506,-706];                           /* 제주 이동량 — 오른쪽 아래 모서리 */
+const KM_FR={x:1832,y:2906,w:496,h:324};           /* 제주 네모 — 보기 상자 우하단에 붙인다 */
+function krGeo(){return window.KRGEO||null;}
+/* 현장 자리는 **저장하지 않고 이름에서 그때그때 찾는다**(529차).
+   좌표를 두려면 현장 목록이 게시본 구독이라 cfg 로 빼야 하고, 그러면 사람이 한 번씩 찍어 넣어야 한다.
+   이름만으로 되는 범위까지만 하기로 했다 — 못 찾은 현장은 지도에 나오지 않는다.
+   ⚠ kmAuto 는 색인 전체를 훑는다. 한 번 그릴 때 현장마다 불리므로 이름 단위로 기억해 둔다 */
+const KM_XY={};
+/* 현장명에 지역이 없으면 **권역 이름을 힌트로 붙인다**(531차) —
+   '갑천1 트리풀시티' 는 권역 '대전·세종' 이 붙어야 강원 갑천면으로 새지 않는다 */
+function kmSiteHint(st){
+  const r=(S.org.regions||[]).find(x=>x.id===st.region);
+  return (r&&r.name)||'';
+}
+function kmSiteXY(st){
+  if(!st||!st.name)return null;
+  const addr=SITE_ADDR[st.id]||'';
+  const txt=addr||st.name;                               /* 주소가 있으면 이름보다 정확하다 */
+  const hint=kmSiteHint(st), nm=txt+'\u0000'+hint;        /* 권역이 바뀌면 다시 찾는다 */
+  if(!(nm in KM_XY)){
+    const h=kmAuto(txt,hint);
+    /* ⚠ 제주 항목의 중심점은 추자도까지 안고 있어 네모 위로 벗어난다 — 네모 안으로 가둔다 */
+    KM_XY[nm]=h?(h.pc==='39'
+      ?[Math.min(Math.max(h.x,KM_FR.x+40),KM_FR.x+KM_FR.w-40),
+        Math.min(Math.max(h.y,KM_FR.y+50),KM_FR.y+KM_FR.h-50)]
+      :[h.x,h.y]):null;
+  }
+  return KM_XY[nm];
+}
+/* 그 현장의 담당자 색 — 여러 명이면 첫 사람. 배정이 없으면 회색 */
+/* 담당자 색. 배정이 없으면 null — 그리는 쪽이 **속 빈 원**으로 그린다.
+   ⚠ 공통 색(TEAM_COLOR)과 첫 담당자 색(OWN_PAL[0])이 같은 파랑이라 색만으로는 갈리지 않는다.
+   달력이 공통 업무를 속 빈 막대로 가르는 것과 같은 문법을 쓴다(535차) */
+function kmSiteColor(sid){
+  const t=curTeam();
+  const p=roster().find(x=>(t?x.team===t.id:true)&&rankUses(x.rank).sites&&(x.sites||{})[sid]);
+  return p?ownColor(p.id):null;
+}
+/* 겹치는 점을 서로 밀어낸다 — 작은 지도에서 한 덩어리가 되는 것을 푼다 */
+function kmSpread(pts,d){
+  for(let k=0;k<50;k++){let moved=0;
+    for(let i=0;i<pts.length;i++)for(let j=i+1;j<pts.length;j++){
+      const a=pts[i],b=pts[j];let dx=b.x-a.x,dy=b.y-a.y,q=Math.hypot(dx,dy);
+      if(q>=d)continue;
+      if(q<.001){dx=.5;dy=.3;q=.58;}
+      const f=(d-q)/2/q;a.x-=dx*f;a.y-=dy*f;b.x+=dx*f;b.y+=dy*f;moved=1;}
+    if(!moved)break;}
+}
+/* 이름표가 잡은 자리 밖으로 점을 민다 — 가장 가까운 변으로 뺀다 */
+function kmPushOut(pts,boxes,pad){
+  for(let k=0;k<20;k++){let moved=0;
+    for(const p of pts)for(const b of boxes){
+      const x0=b.x-pad,x1=b.x+b.w+pad,y0=b.y-pad,y1=b.y+b.h+pad;
+      if(p.x<x0||p.x>x1||p.y<y0||p.y>y1)continue;
+      const d=[p.x-x0,x1-p.x,p.y-y0,y1-p.y],i=d.indexOf(Math.min(...d));
+      if(i===0)p.x=x0;else if(i===1)p.x=x1;else if(i===2)p.y=y0;else p.y=y1;
+      moved=1;}
+    if(!moved)break;}
+}
+function kmHit(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;}
+/* 지도 한 장. o.w·o.h 는 그려질 상자 크기(px) — 배율을 여기서 정해 글자·점 크기를 맞춘다.
+   o.sites 를 주면 그 현장만 그린다 */
+function kmSVG(vb,sel,o){
+  const g=krGeo();if(!g)return '<div class="okm-none">지도 데이터를 불러오지 못했습니다.</div>';
+  o=o||{};
+  const W=o.w||240,H=o.h||300;
+  const u=1/Math.min(W/vb.w,H/vb.h);            /* 지도 좌표 1 = 화면 u 분의 1 px */
+  const R=(o.r||3.3)*u, zoom=vb.w<KM_VB0.w*0.6, deep=vb.w<KM_VB0.w*0.2;
+  const jd=c=>c==='39'?' transform="translate('+KM_JD[0]+','+KM_JD[1]+')"':'';
+  /* 제주 네모는 바탕을 먼저 덮는다 — 네모가 겹쳐 놓인 서남해 섬이 안쪽에 비쳐 보였다 */
+  let s='<rect class="okm-frbg" x="'+KM_FR.x+'" y="'+KM_FR.y+'" width="'+KM_FR.w+'" height="'+KM_FR.h+'" rx="24"></rect>';
+  /* ⚠ 큰 것부터 그린다 — 경계를 단순화하며 구멍(서울·대구)을 지웠기 때문에, 순서대로 그리면
+     경기가 서울을, 경북이 대구를 덮어 그 시들이 보이지도 눌리지도 않았다(531차) */
+  const order=g.prov.slice().sort((a,b)=>((b[7]-b[5])*(b[8]-b[6]))-((a[7]-a[5])*(a[8]-a[6])));
+  order.forEach(f=>{s+='<path class="okm-pv'+(sel===f[0]?' on':'')+'"'+jd(f[0])
+    +' d="'+f[9]+'" data-act="org.mapPv" data-c="'+f[0]+'" data-tip="'+esc(kmSelLabel(f[0]))+'"></path>';});
+  /* ⚠ 제주는 네모로 옮겨 그린다 — 화면에 걸쳤는지 볼 때도 옮긴 자리로 봐야 한다 */
+  const inView=f=>{
+    const dx=f[0]==='39'?KM_JD[0]:0,dy=f[0]==='39'?KM_JD[1]:0;
+    return !(f[7]+dx<vb.x||f[5]+dx>vb.x+vb.w||f[8]+dy<vb.y||f[6]+dy>vb.y+vb.h);
+  };
+  if(zoom)g.prov.forEach(f=>{if(g.mesh[f[0]]&&inView(f))s+='<path class="okm-mn"'+jd(f[0])+' d="'+g.mesh[f[0]]+'"></path>';});
+  if(deep)g.prov.forEach(f=>{if(g.sub[f[0]]&&inView(f))s+='<path class="okm-sb"'+jd(f[0])+' d="'+g.sub[f[0]]+'"></path>';});
+  if(sel){const sf=g.prov.find(f=>f[0]===sel);if(sf)s+='<path class="okm-sl"'+jd(sel)+' d="'+sf[9]+'"></path>';}
+  s+='<rect class="okm-fr" x="'+KM_FR.x+'" y="'+KM_FR.y+'" width="'+KM_FR.w+'" height="'+KM_FR.h+'" rx="24"></rect>';
+  s+='<text class="okm-ct" x="'+(KM_FR.x+10)+'" y="'+(KM_FR.y+KM_FR.h-12)+'" style="font-size:'+(9.5*u).toFixed(2)
+    +'px;stroke-width:'+(2.4*u).toFixed(2)+'px">제주</text>';
+  /* 시도 이름 — 화면에 크게 걸친 것부터 자리를 잡고, 이미 놓인 이름표와 부딪히면 접는다 */
+  const boxes=[],cand=[];
+  g.prov.forEach(f=>{
+    if(f[0]==='39')return;                       /* 제주는 네모 안에 따로 적었다 */
+    const ix0=Math.max(f[5],vb.x),ix1=Math.min(f[7],vb.x+vb.w);
+    const iy0=Math.max(f[6],vb.y),iy1=Math.min(f[8],vb.y+vb.h);
+    if(ix1-ix0<22*u||iy1-iy0<18*u)return;
+    cand.push({f,x:Math.min(Math.max(f[3],ix0+16*u),ix1-16*u),
+                 y:Math.min(Math.max(f[4],iy0+12*u),iy1-10*u),a:(ix1-ix0)*(iy1-iy0)});
+  });
+  cand.sort((a,b)=>b.a-a.a);
+  cand.forEach(c=>{
+    const w=(c.f[1].length*11+7)*u,h=14*u,b={x:c.x-w/2,y:c.y-h/2,w,h};
+    if(boxes.some(z=>kmHit(b,z)))return;
+    boxes.push(b);
+    s+='<text class="okm-pl'+(sel===c.f[0]?' on':'')+'" x="'+c.x.toFixed(1)+'" y="'+(c.y+11*u*.35).toFixed(1)
+      +'" text-anchor="middle" style="font-size:'+(11*u).toFixed(2)+'px;stroke-width:'+(2.8*u).toFixed(2)+'px">'
+      +esc(c.f[1])+'</text>';
+  });
+  /* 시·군·구 이름(확대) → 읍면동 이름(더 확대). 같은 규칙으로 자리를 다툰다 */
+  if(zoom){
+    const mc=[],add=(src,minW,minH)=>{for(const pc in src)src[pc].forEach(m=>{
+      const dx=pc==='39'?KM_JD[0]:0,dy=pc==='39'?KM_JD[1]:0;
+      const cx=m[1]+dx,cy=m[2]+dy,hw=m[3]/2;
+      const ix0=Math.max(cx-hw,vb.x),ix1=Math.min(cx+hw,vb.x+vb.w);
+      const iy0=Math.max(cy-hw,vb.y),iy1=Math.min(cy+hw,vb.y+vb.h);
+      if(ix1-ix0<minW*u||iy1-iy0<minH*u)return;
+      mc.push({n:m[0],x:Math.min(Math.max(cx,ix0+12*u),ix1-12*u),
+                      y:Math.min(Math.max(cy,iy0+8*u),iy1-6*u),a:(ix1-ix0)*(iy1-iy0)});});};
+    add(g.muni,20,14);
+    if(deep)add(g.subl,18,12);
+    /* 시군구까지 들어가면 그 안이 텅 빈다 — 읍면동 경계는 광역시만 있으므로 **이름**으로 채운다.
+       g.dong 은 중심점만 있어 크기를 모르니, 화면 안이면 놓고 부딪히면 접는다(537차) */
+    if(deep)for(const pc in g.dong)g.dong[pc].forEach(m=>{
+      const dx=pc==='39'?KM_JD[0]:0,dy=pc==='39'?KM_JD[1]:0;
+      const x=m[1]+dx,y=m[2]+dy;
+      if(x<vb.x+10*u||x>vb.x+vb.w-10*u||y<vb.y+8*u||y>vb.y+vb.h-8*u)return;
+      mc.push({n:m[0],x,y,a:0});
+    });
+    mc.sort((a,b)=>b.a-a.a);
+    mc.forEach(m=>{
+      const w=(m.n.length*9.5+5)*u,h=11.5*u,b={x:m.x-w/2,y:m.y-h/2,w,h};
+      if(boxes.some(z=>kmHit(b,z)))return;
+      boxes.push(b);
+      s+='<text class="okm-ct" x="'+m.x.toFixed(1)+'" y="'+(m.y+9.5*u*.35).toFixed(1)
+        +'" text-anchor="middle" style="font-size:'+(9.5*u).toFixed(2)+'px;stroke-width:'+(2.4*u).toFixed(2)+'px">'
+        +esc(m.n)+'</text>';
+    });
+  }
+  /* 현장 점 — 원래 자리에서 밀려나면 가는 선으로 제자리를 가리킨다 */
+  const pts=[];
+  (o.sites||[]).forEach(st=>{const q=kmSiteXY(st);if(q)pts.push({st,ox:q[0],oy:q[1],x:q[0],y:q[1]});});
+  kmPushOut(pts,boxes,R+u);kmSpread(pts,R*2+1.6*u);kmPushOut(pts,boxes,R+u);
+  pts.forEach(p=>{
+    /* ⚠ 굵기를 여기서 주지 않는다 — .okm-pin·.okm-ld 는 non-scaling-stroke 라
+       굵기를 화면 px 로 읽는다. 지도 단위(u)를 넘기면 u 배로 부푼다(529차에 흰 테가 원을 삼켰다) */
+    if(Math.hypot(p.x-p.ox,p.y-p.oy)>1.2*u)
+      s+='<line class="okm-ld" x1="'+p.ox.toFixed(1)+'" y1="'+p.oy.toFixed(1)+'" x2="'+p.x.toFixed(1)
+        +'" y2="'+p.y.toFixed(1)+'"></line>';
+    const col=kmSiteColor(p.st.id);
+    s+='<circle class="okm-pin'+(col?'':' none')+'" cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="'+R.toFixed(2)
+      +'"'+(col?' fill="'+esc(col)+'"':'')
+      +' data-tip="'+esc((p.st.name||'이름 없음')+' · '+(p.st.units||0).toLocaleString()+'세대')+'"></circle>';
+  });
+  return '<svg class="okm'+(o.cls?' '+o.cls:'')+'" id="'+(o.id||'okmSvg')+'" viewBox="'+vb.x+' '+vb.y+' '
+    +vb.w+' '+vb.h+'" preserveAspectRatio="xMidYMid meet" style="height:'+H+'px" aria-label="현장 위치 지도">'
+    +s+'</svg>';
+}
+/* ── 현장명·주소에서 자리 찾기(527차) ────────────────────────────────
+   korea-geo 의 읍면동·시군구 이름 색인과 대조한다. **밖으로 나가는 요청이 없다** —
+   지도 API 를 붙이려면 CSP 를 열고 키·도메인을 등록해야 하는데, 그러면 현장명이
+   외부로 나간다. 사내 자료라 그 길은 택하지 않았다. */
+const KM_STOP=/힐스테이트|현대건설|아파트|오피스텔|주상복합|단지|현장|생활권|블록|구역|지구|신도시|트리풀시티/g;
+/* ⚠ 붙여 쓴 글자 속에서 지명을 찾으면 엉뚱한 곳이 걸린다 — '충남천안'에서 '남천(동)' 같은 식이다.
+   그래서 공백을 지우지 않고 **어절 단위**로 나눠, 어절의 앞머리가 지명과 맞을 때만 인정한다 */
+function kmWords(t){
+  return String(t||'').replace(KM_STOP,' ').split(/[^가-힣0-9A-Za-z]+/).filter(w=>w.length>1);
+}
+/* 이름 끝의 행정 단위를 뗀 알맹이 — '두정동' → '두정', '오창읍' → '오창' */
+function kmBare(n){return String(n).replace(/(특별자치시|특별자치도|광역시|특별시|동|읍|면|가|시|군|구)$/,'');}
+/* text = 현장명, hint = 권역 이름.
+   ⚠ 힌트는 **시군구·시도 수준에서만** 쓴다 — 힌트를 읍면동·법정동에까지 대면
+   권역 '대전·세종' 이 세종시 세종동을 잡아 현장 자리를 그리로 끌고 간다(532차) */
+function kmFind(text,hint){
+  const g=krGeo();if(!g||!g.dong)return [];
+  const ws=kmWords(text);if(!ws.length)return [];
+  const hs=ws.concat(kmWords(hint||''));
+  const hit=[];
+  const scan=(src,kind,base)=>{
+    const pool=(kind==='읍면동'||kind==='법정동')?ws:hs;
+    for(const pc in src)src[pc].forEach(a=>{
+    const b=kmBare(a[0]);
+    if(b.length<2)return;
+    /* 행정구역 이름은 어절 앞머리로만 본다('충남천안'에서 '남천동'이 걸리던 것을 막는다).
+       단지명은 표기가 조금씩 달라(띄어쓰기·브랜드 순서) 어절 어디든 들어 있으면 인정한다 */
+    if(kind==='단지'?!pool.some(w=>w.indexOf(b)>=0||b.indexOf(w)>=0&&w.length>=3)
+                    :!pool.some(w=>w.indexOf(b)===0))return;
+    const byName=ws.some(w=>w.indexOf(b)===0);   /* 힌트(권역)에서만 걸린 것인지 가른다 */
+    const dx=pc==='39'?KM_JD[0]:0,dy=pc==='39'?KM_JD[1]:0;
+    hit.push({nm:a[0],pc,kind,src:byName?'name':'hint',x:a[1]+dx,y:a[2]+dy,sc:base+b.length*10});
+  });};
+  /* 공동주택명 색인이 있으면 가장 먼저 본다(540차) — 현장명이 곧 단지명인 경우가 많다.
+     vendor/apt-geo.js 가 있을 때만 동작하고, 없으면 아래 행정구역 이름 대조로 넘어간다 */
+  if(window.KRAPT)scan(window.KRAPT,'단지',140);
+  scan(g.dong,'읍면동',100);
+  /* 법정동도 경계 중심좌표를 갖는다(538차) — 행정동과 같은 등급이다.
+     현장명에 쓰이는 이름은 대개 법정동 쪽이다(두정동·도안동·방서동) */
+  if(g.bjd)scan(g.bjd,'법정동',100);
+  scan(g.muni,'시군구',60);
+  /* 광역시·특별시는 시군구 색인에 구 이름만 있다 — '부산 명지' 같은 이름을 위해 시도도 훑는다.
+     ⚠ 전남광주 통합(36) 때문에 약칭이 '전남광주' 하나뿐이라 '전남'·'광주' 어느 쪽으로도 안 잡혔다.
+     '광주'는 경기 광주시만 걸려 **광주광역시 현장이 경기도로 가고 있었다**(546차).
+     그래서 36 은 세 이름을 모두 두고, '광주'는 옛 광역시 자리(그 안의 구들 평균)를 쓴다 */
+  {const pv={};
+   g.prov.forEach(f=>{pv[f[0]]=[[f[1],f[3],f[4]]];});
+   const gj=(g.muni['36']||[]).filter(m=>/구$/.test(m[0]));
+   if(gj.length){
+     const gx=Math.round(gj.reduce((a,m)=>a+m[1],0)/gj.length);
+     const gy=Math.round(gj.reduce((a,m)=>a+m[2],0)/gj.length);
+     pv['36']=[['전남광주',pv['36'][0][1],pv['36'][0][2]],
+               ['전남',pv['36'][0][1],pv['36'][0][2]],
+               ['광주',gx,gy]];
+   }
+   scan(pv,'시도',30);
+   /* 별칭('전남'·'광주')으로 걸린 것은 좁히기(sd)에 쓰지 않는다 — '광주' 하나로
+      경기 광주시가 통째로 잘려 나갔다. 실제 약칭(f[1])만 시도로 인정한다 */
+   const real={};g.prov.forEach(f=>{real[f[1]]=1;});
+   hit.forEach(h=>{if(h.kind==='시도'&&!real[h.nm])h.kind='시도별칭';});}
+  if(!hit.length)return [];
+  /* 지역이 잡혔으면 **그 밖의 후보는 버린다** — '서산 예천'이 경북 예천읍으로 가던 것을 막는다.
+     시도가 잡혔으면 시도만으로 좁힌다. 권역 이름이 시도를 알려 주는 경우가 많다(531차) */
+  const sd={},any={};
+  /* ⚠ 좁히는 기준은 시군구·시도뿐이다 — 법정동을 여기 넣었더니 동명이의(충남 두정동 ↔ 광주 두정동)가
+     서로를 살려 놓아 후보가 안 좁혀졌다(538차) */
+  hit.forEach(h=>{if(h.kind==='읍면동'||h.kind==='법정동')return;any[h.pc]=1;if(h.kind==='시도')sd[h.pc]=1;});
+  const pcs=Object.keys(sd).length?sd:any;
+  const scoped=Object.keys(pcs).length?hit.filter(h=>pcs[h.pc]):hit;
+  const seen={},out=[];
+  scoped.sort((a,b)=>b.sc-a.sc).forEach(h=>{
+    const k=h.nm+'|'+h.pc;if(seen[k])return;seen[k]=1;
+    const f=g.prov.find(x=>x[0]===h.pc);
+    out.push({...h,area:f?f[1]:''});
+  });
+  return out.slice(0,6);
+}
+/* 이름에서 찾은 후보를 한 자리로 좁힌다.
+   ⚠ 읍면동 색인은 통계청 **행정동** 기준이라 두정동·갑천·도안 같은 법정동·지구명이 아예 없다.
+   그래서 못 찾으면 시군구 → 시도 순으로 물러선다. 여러 곳이 걸리면 평균 자리에 찍는다 —
+   권역 안 어딘가로는 반드시 떨어지므로 크게 틀리지 않는다(531차). */
+function kmAuto(text,hint){
+  const r=kmFind(text,hint);
+  const near=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y)<100;   /* 100 ≈ 25km */
+  const gu=r.filter(h=>h.kind==='시군구');
+  const sido=r.filter(h=>h.kind==='시도'||h.kind==='시도별칭');
+  /* ⚠ **현장명에** 시군구가 함께 있으면 그 시군구 근처의 동만 인정한다(537차).
+     같은 시도 안에도 같은 이름의 동이 있어(천안 ↔ 태안) 엉뚱한 곳으로 새고 있었다.
+     ⚠ 권역 이름에서만 걸린 시군구는 이 검사에 쓰지 않는다 — 권역이 '대전·세종' 이면
+     세종만 잡혀 대전 도안동이 40km 밖으로 밀려났다(538차) */
+  const guN=gu.filter(h=>h.src==='name');
+  /* 현장명에 시도까지 들어 있으면(예: '광주 첨단') 그 시도 안의 동은 거리 검사를 면제한다 —
+     '광주'가 경기 광주시로도 걸려 광주광역시 첨단동이 40km 밖으로 밀려났다(546차).
+     ⚠ 권역에서만 온 시도는 면제하지 않는다 — '천안 태안'이 다시 새 버린다 */
+  const sdN={};r.forEach(h=>{if((h.kind==='시도'||h.kind==='시도별칭')&&h.src==='name')sdN[h.pc]=1;});
+  const ok=h=>sdN[h.pc]||!guN.length||guN.some(g=>Math.hypot(h.x-g.x,h.y-g.y)<160);   /* 160 ≈ 40km */
+  /* 행정동·법정동은 둘 다 ±0.5km 라 한 등급으로 묶는다. 서로 붙어 있으면 같은 자리로 본다 */
+  /* 단지명이 잡히면 그것으로 끝 — 이름이 곧 그 자리다 */
+  const apt=r.filter(h=>h.kind==='단지'&&ok(h));
+  if(apt.length&&(apt.length===1||apt.every(d=>near(d,apt[0]))))return apt[0];
+  const fine=r.filter(h=>(h.kind==='읍면동'||h.kind==='법정동')&&ok(h));
+  if(fine.length&&(fine.length===1||fine.every(d=>near(d,fine[0]))))return fine[0];
+  /* 시군구를 못 찾은 시도는 남긴다 — 권역 '대전·세종' 처럼 두 지역에 걸치면
+     한쪽만 잡혀 그리로 쏠린다. 겹치지 않는 것만 더해 평균을 낸다 */
+  const base=gu.concat(sido.filter(x=>!gu.some(y=>near(x,y))));
+  if(!base.length)return null;
+  if(base.length===1)return base[0];
+  /* ⚠ 후보가 멀리 흩어져 있으면 평균은 엉뚱한 빈 자리가 된다 —
+     '광주'(경기 광주시 ↔ 광주광역시)처럼 갈리는 이름이 그렇다. 그때는 **찍지 않는다**(546차).
+     틀린 자리에 찍는 것보다 비워 두는 편이 낫다 — 권역을 채우면 저절로 좁혀진다 */
+  const far=base.some(a=>base.some(b=>Math.hypot(a.x-b.x,a.y-b.y)>400));   /* 400 ≈ 100km */
+  if(far)return null;
+  const n=base.length;
+  return {...base[0],nm:base.map(h=>h.nm).join('·'),
+    x:Math.round(base.reduce((a,h)=>a+h.x,0)/n),
+    y:Math.round(base.reduce((a,h)=>a+h.y,0)/n)};
+}
+/* 화면 좌표 → 지도 좌표. preserveAspectRatio=meet 이라 남는 여백을 되짚는다 */
+function kmMapXY(svg,cx,cy){
+  const km=S.km;if(!svg||!km)return null;
+  const r=svg.getBoundingClientRect(),vb=km.vb;
+  const k=Math.min(r.width/vb.w,r.height/vb.h);
+  if(!(k>0))return null;
+  return [vb.x+(cx-r.left-(r.width-vb.w*k)/2)/k, vb.y+(cy-r.top-(r.height-vb.h*k)/2)/k];
+}
+/* 누른 자리에 있는 시군구 — 경계상자로 고르고, 겹치면 중심이 가까운 쪽을 잡는다 */
+function kmMuniAt(pc,x,y){
+  const g=krGeo();const list=g&&g.muni&&g.muni[pc];if(!list)return null;
+  let best=null,bd=1e9;
+  list.forEach(m=>{
+    if(m.length<8)return;
+    if(x<m[4]||x>m[6]||y<m[5]||y>m[7])return;
+    const d=Math.hypot(x-m[1],y-m[2]);
+    if(d<bd){bd=d;best=m;}
+  });
+  if(!best)return null;
+  const pd=Math.max(best[6]-best[4],best[7]-best[5])*0.16;
+  return {nm:best[0],vb:{x:best[4]-pd,y:best[5]-pd,w:(best[6]-best[4])+pd*2,h:(best[7]-best[5])+pd*2}};
+}
+/* 시도 하나를 화면에 채우는 보기 상자 */
+function kmZoomBox(c){
+  const g=krGeo();if(!g)return {...KM_VB0};
+  const f=g.prov.find(x=>x[0]===c);if(!f)return {...KM_VB0};
+  let x0=f[5],y0=f[6],x1=f[7],y1=f[8];
+  if(c==='39'){x0+=KM_JD[0];x1+=KM_JD[0];y0+=KM_JD[1];y1+=KM_JD[1];}
+  if(c==='23')x0=Math.max(x0,KM_VB0.x);        /* 백령도까지 넣으면 인천이 통째로 서해가 된다 */
+  if(c==='37')x1=Math.min(x1,2240);            /* 울릉도·독도 제외 */
+  const pd=Math.max(x1-x0,y1-y0)*0.14;
+  return {x:x0-pd,y:y0-pd,w:(x1-x0)+pd*2,h:(y1-y0)+pd*2};
+}
+/* 조직 관리 좌측 카드 */
+function rOrgMap(){
+  const root=$('#orgMapRoot');if(!root)return;
+  const all=(S.org.sites||[]).filter(x=>x.name);
+  const sites=all.filter(x=>orgRegHit(x.region,S.orgReg));
+  const put=sites.filter(x=>kmSiteXY(x));
+  const km=S.km||(S.km={vb:{...KM_VB0},sel:'',hist:[]});
+  const lbl=$('#orgMapCnt');
+  if(lbl)lbl.textContent=String(put.length);
+  /* ⚠ w·h 는 실제로 그려질 상자 크기다 — 카드 안쪽 폭(264 − 테두리 2)과 어긋나면
+     배율이 틀려 글자·점이 의도한 크기로 안 나온다 */
+  root.innerHTML='<div class="okm-wrap">'+kmSVG(km.vb,km.sel,{sites:put,w:262,h:401})
+    +(km.hist.length?'<button class="okm-back" data-act="org.mapAll" aria-label="전체 보기"'
+        +' data-tip="전체 보기"><svg class="icn" aria-hidden="true"><use href="#i-chevl"></use></svg></button>':'')
+    +'</div>';
+}
+/* 시도 툴팁 문구 — 정식 이름과 그 안에 찍힌 현장 수 */
+function kmSelLabel(c){
+  const g=krGeo();const f=g&&g.prov.find(x=>x[0]===c);
+  if(!f)return '';
+  const n=(S.org.sites||[]).filter(x=>{const q=kmSiteXY(x);
+    return q&&q[0]>=f[5]+(c==='39'?KM_JD[0]:0)&&q[0]<=f[7]+(c==='39'?KM_JD[0]:0)
+            &&q[1]>=f[6]+(c==='39'?KM_JD[1]:0)&&q[1]<=f[8]+(c==='39'?KM_JD[1]:0);}).length;
+  return f[2]+' · 현장 '+n+'개';
+}
+/* 지도에서 한 단계 되돌린다 — 우클릭·바다 클릭·뒤로 버튼이 모두 이리로 온다 */
+function kmBack(){
+  const km=S.km;if(!km)return;
+  const h=km.hist.pop();
+  if(h){km.vb=h.vb;km.sel=h.sel;}else{km.vb={...KM_VB0};km.sel='';}
+  rOrgMap();
+}
 function curTeam(){const ts=(S.org.teams||[]).filter(t=>t.name);return ts.find(t=>t.id===S.tk.t)||ts[0]||null;}
 /* 조직 관리 권역 탭 — 업무 현황의 탭 줄과 같은 것을 쓴다. 현장 보기에서는 오른쪽 끝에 현장 추가(340차) */
 function rOrgBar(tab){
@@ -5925,6 +6268,7 @@ function rOrg(){
   if(tr)tr.innerHTML=teamRows();
   if(rr)rr.innerHTML=regRows();
   if(sr)sr.innerHTML=siteTable();
+  rOrgMap();
   /* 계정/현장 보기 상태 */
   const tab=S.orgTab||'acct';
   const ap=$('#acctPane'),sp=$('#sitePane');
@@ -6049,7 +6393,15 @@ function rOrg(){
    ⚠ 권역은 저쪽이 '이름 문자열'로 다루므로 이름을 그대로 id 로 삼는다 */
 let ORG_LIVE=false,ORG_RM='',ORG_OFF=null;
 function arrOf(v){return v?(Array.isArray(v)?v.filter(Boolean):Object.values(v).filter(Boolean)):[];}
+/* 하자처리 현황 게시본이 현장 주소를 실어 보내면 지도가 그걸 먼저 쓴다(539차).
+   ⚠ S.org.sites 에는 넣지 않는다 — DB 규칙이 정해진 필드만 허용해 쓰기가 통째로 거부된다.
+   지금 게시본에 주소가 있는지는 확인하지 못했다. 없으면 이 표는 비고 현장명으로 돌아간다. */
+const SITE_ADDR={};
 function orgFromDash(teams,sites){
+  sites.forEach(x=>{
+    const a=String(x.addr||x.address||x.roadAddr||x.jibunAddr||x.location||'').trim();
+    if(a)SITE_ADDR[String(x.id)]=a.slice(0,120);
+  });
   const regNames=[...new Set([...teams.flatMap(t=>arrOf(t.regions)),...sites.map(x=>x.region)]
     .map(x=>String(x||'').trim()).filter(Boolean))];
   return {
@@ -6350,6 +6702,8 @@ function tipSync(){
   el.style.left=Math.max(6,Math.min(x,innerWidth-t.width-6))+'px';
   el.style.top=y+'px';
 }
+let _tipMx=0,_tipMy=0;
+addEventListener('mousemove',e=>{_tipMx=e.clientX;_tipMy=e.clientY;},{passive:true});
 function tipShow(target){
   const el=$('#htip');if(!el)return;
   /* ⚠ 기다리는 동안 그 요소가 사라지거나(다시 그려짐) 마우스가 떠났을 수 있다 */
@@ -6358,7 +6712,10 @@ function tipShow(target){
   _tipFor=target;
   el.textContent=txt;
   el.classList.add('on');
-  const r=target.getBoundingClientRect(),t=el.getBoundingClientRect();
+  const t=el.getBoundingClientRect();
+  /* 지도 안(시도 면·현장 점)은 요소가 커서 중앙에 띄우면 엉뚱한 곳에 뜬다 — 커서를 따른다(531차) */
+  const map=target.closest&&target.closest('#okmSvg');
+  const r=map?{left:_tipMx,width:0,top:_tipMy-2,bottom:_tipMy+18}:target.getBoundingClientRect();
   let x=r.left+r.width/2-t.width/2;
   let y=r.top-t.height-8;
   if(y<6)y=r.bottom+8;                                  /* 위가 좁으면 아래로 */
@@ -6883,6 +7240,19 @@ const ACT={
       orgSave();});
   },
   'org.tab':el=>{S.orgTab=el.dataset.t;rOrg();},
+  /* 현장 위치 지도(526차) — 시도를 누르면 확대, 우클릭·바다 클릭·뒤로 버튼이면 한 단계 되돌린다 */
+  'org.mapPv':el=>{
+    const km=S.km||(S.km={vb:{...KM_VB0},sel:'',hist:[]});
+    const c=el.dataset.c;
+    /* ⚠ 이미 그 시도를 보고 있으면 아무것도 하지 않는다 — 확대된 면이 화면을 거의 채우므로
+       무심코 한 번 더 눌리기 쉽고, 그때마다 이력이 쌓여 뒤로가 두 번 필요했다(531차) */
+    if(c===km.sel)return;
+    km.hist.push({vb:{...km.vb},sel:km.sel});
+    km.vb=kmZoomBox(c);km.sel=c;rOrgMap();
+  },
+  /* 축소 버튼은 한 번에 전체로 — 여러 시도를 옮겨 다닌 뒤에는 한 단계씩 되돌리면 안 듣는 것처럼 보였다 */
+  'org.mapAll':()=>{const km=S.km;if(!km)return;km.vb={...KM_VB0};km.sel='';km.hist=[];rOrgMap();},
+
   'org.reg':el=>{S.orgReg=el.dataset.id||'';rOrg();},
   'org.addSite':()=>{
     
@@ -7175,6 +7545,16 @@ document.addEventListener('click',e=>{
   }
   /* 팝오버는 색 원 버튼 안에 들어 있다 — 여기서 막지 않으면 안쪽 클릭이 버튼까지 올라가 팝오버가 닫힌다 */
   if(e.target.closest('#colPop'))return;
+  if(e.target.closest('#okmSvg')&&!e.target.closest('[data-act]')){kmBack();return;}
+  /* 이미 그 시도 안이면 한 단계 더 — 누른 자리의 시군구로 들어간다(537차) */
+  {const pv=e.target.closest&&e.target.closest('.okm-pv');
+   const km=S.km;
+   if(pv&&km&&km.sel&&pv.dataset.c===km.sel){
+     const q=kmMapXY(e.target.closest('#okmSvg'),e.clientX,e.clientY);
+     const m=q&&kmMuniAt(km.sel,q[0],q[1]);
+     if(m){km.hist.push({vb:{...km.vb},sel:km.sel});km.vb=m.vb;km.sel='';rOrgMap();return;}
+       /* 시도 강조선은 끈다 — 시군구 안까지 들어왔는데 시도 윤곽이 화면을 가로지르면 어지럽다 */
+   }}
   const el=e.target.closest('[data-act]');
   if(!el)return;
   if(el.tagName==='SELECT')return;   /* select 는 change 에서만 처리 — 누르기만 해도 실행되던 버그 방지 */
@@ -7363,6 +7743,11 @@ document.addEventListener('change',e=>{
   }else st[f]=String(v||'');
   orgSave();
   if(f==='region'&&!S.live)rOrg();   /* 권역이 바뀌면 정렬 위치가 달라진다 */
+});
+/* 현장 위치 지도 — 우클릭·빈 바다로 한 단계 되돌린다 */
+document.addEventListener('contextmenu',e=>{
+  if(!e.target.closest('#okmSvg'))return;
+  e.preventDefault();kmBack();
 });
 /* 위젯 설정 팝업 조작 */
 document.addEventListener('input',e=>{

@@ -91,12 +91,12 @@ svg{display:block;flex-shrink:0;}
 /* 456차: 어두운 셸 위에 사이드바 판과 본문 판이 떠 있는 구조.
    좌우는 화면 끝까지, 위(헤더)와 아래만 셸이 보인다. */
 html,body{background:var(--shell);}
-#appHdr{position:fixed;top:0;left:0;right:0;height:44px;z-index:400;display:flex;align-items:center;
+#appHdr{position:fixed;top:0;left:0;right:0;height:48px;z-index:400;display:flex;align-items:center;
   gap:14px;padding:0 18px 0 16px;color:#fff;}   /* 472차: 검색창 우측 끝을 업무패널 축과 맞춘다 */
 #appHdr .ah-brand{display:flex;align-items:center;gap:12px;flex:0 0 auto;cursor:pointer;}   /* 525차: 로고 클릭 = 새로고침 */
 /* 509차: 사내 CI 로고 — 마크 + HYUNDAI 워드마크 통합본 */
-.ah-logo{height:17px;width:auto;display:block;flex:0 0 auto;}
-#appHdr .ah-name{font-size:13.5px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;
+.ah-logo{height:19px;width:auto;display:block;flex:0 0 auto;}
+#appHdr .ah-name{font-size:14.5px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;
   color:var(--shell-dim);padding-left:12px;position:relative;}   /* 509차: 로고가 브랜드를 맡고 이름은 부제로 */
 #appHdr .ah-name::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);
   width:1px;height:14px;background:rgba(255,255,255,.24);}
@@ -120,15 +120,21 @@ html,body{background:var(--shell);}
 #appHdr .teamsel{display:flex;align-items:center;padding:0;background:transparent;border:0;box-shadow:none;margin:0;height:30px;}
 #appHdr .tsel-wrap{position:relative;flex:0 0 auto;min-width:0;}
 /* 483차: 팀 선택은 사이드바 머리로 — 헤더 요소를 줄이고, 데이터 범위는 사이드바에서 고른다 */
-.sb-title-team{flex:0 1 auto;min-width:0;padding:0;background:transparent;border:0;box-shadow:none;margin:0;display:flex;align-items:center;}   /* 484차: 내용 폭만 차지 */
-.sb-title-team .tsel-wrap{position:relative;width:auto;max-width:100%;display:inline-flex;align-items:center;}   /* 484차: 내용 폭에 맞춘다 */
+#sidebar .sb-title-team{flex:1 1 auto;min-width:0;padding:0;gap:0;background:transparent;border:0;box-shadow:none;margin:0;display:flex;align-items:center;}
+  /* ⚠ 셀렉터를 #sidebar 로 올린 이유(543차) — 이 규칙은 파일 앞쪽에 있고, 뒤쪽 .teamsel 이
+     padding:7px · gap:6px 을 주고 있었다. 명시도가 같아 뒤가 이겨서 팀명만 아래 메뉴보다
+     8px 오른쪽으로 밀려 있었다. 간격(gap)을 아무리 만져도 안 맞던 원인이 이것이다.
+     536차: 남은 폭을 다 쓴다 — 484차의 "내용 폭만"은 팀명이 잘려 되돌렸다 */
+.sb-title-team .tsel-wrap{position:relative;width:100%;max-width:100%;display:flex;align-items:center;}   /* 536차 */
 /* 516차: 팀 선택 — 앱 팝업으로 그린다(네이티브 select 목록은 OS 가 그려 결이 다르다) */
-#teamSelEl{display:flex;align-items:center;gap:6px;height:28px;padding:0 2px;border:0;border-radius:3px;
-  background:transparent;color:#fff;font-size:13.5px;font-weight:800;letter-spacing:-.01em;cursor:pointer;
-  max-width:100%;min-width:0;}
-#teamSelEl:hover{background-color:rgba(255,255,255,.10);}
-#teamSelEl .tsel-t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-#teamSelEl .tsel-ch{flex:0 0 auto;color:#DCE3EC;display:flex;}
+#teamSelEl{display:flex;align-items:center;justify-content:flex-start;text-align:left;width:100%;gap:0;height:30px;
+  padding:0;margin:0;border:0;border-radius:0;
+  background:transparent;color:var(--shell-txt);font-size:13px;font-weight:500;letter-spacing:-.01em;cursor:pointer;
+  max-width:100%;min-width:0;transition:color var(--t-fast);}   /* 539차: 배경 없이 글자만 밝아진다.
+  ⚠ button 은 기본이 text-align:center 라 flex:1 인 .tsel-t 안에서 이름이 가운데로 몰렸다 */   /* 533차: 평소엔 메뉴 글자와 같은 색·굵기, 호버에서만 흰색.
+  ⚠ 좌우 여백은 안쪽으로 주고 같은 값만큼 바깥으로 물린다 — 글자 축(51px)이 메뉴와 어긋나지 않게 */
+#teamSelEl:hover{color:#fff;}
+#teamSelEl .tsel-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .tsel-pop{position:absolute;left:0;top:calc(100% + 6px);width:max-content;min-width:170px;max-width:230px;
   padding:5px;gap:1px;}
 .tsel-pop.on{display:flex;flex-direction:column;}
@@ -138,7 +144,7 @@ html,body{background:var(--shell);}
 .tsel-o.on{color:var(--bt1);font-weight:700;}
 .tsel-o .icn{width:14px;height:14px;flex:0 0 auto;color:var(--b600);}
 
-#app{display:flex;height:100vh;height:100dvh;overflow:hidden;gap:8px;padding:44px 0 14px 0;background:transparent;}
+#app{display:flex;height:100vh;height:100dvh;overflow:hidden;gap:8px;padding:48px 0 8px 0;background:transparent;}   /* 534차: 참조 화면(CS 업무관리시스템) 실측 — 헤더 48px · 아래 8px(판 사이 간격과 같은 값) */
 html,body{overflow:hidden;}   /* 513차: 문서가 뷰포트를 넘지 않게 — 헤더가 fixed 라 스크롤바가 생겼다 */
 body>svg{position:absolute;width:0;height:0;overflow:hidden;}
 #app,#appHdr,#mo,#tko,#scrim,#toast,#nqPanel,#htip{line-height:1.5;}   /* 513차: 본문 행간 복원 */
@@ -171,9 +177,9 @@ body>svg{position:absolute;width:0;height:0;overflow:hidden;}
   width:1px;height:16px;background:rgba(255,255,255,.16);}
 #sidebar .nvi,#sidebar .sbsl,#sidebar .sb-acct-info,#sidebar .sb-acct-name{color:var(--shell-txt);}
 /* 470차: 사내 시스템과 같은 배치 — 앱 이름은 사이드바 머리, 접기 버튼은 그 우측 */
-.sb-title{flex:0 0 auto;display:flex;align-items:center;gap:2px;height:44px;padding:0 8px 0 16px;
-  background:#444B55;color:#fff;border-radius:0 14px 0 0;}   /* 471차: 사이드바 판의 우상단 라운드를 제목줄이 이어받는다 */
-.sb-title-tg{flex:0 0 auto;margin-left:auto;width:26px;height:26px;border-radius:3px;display:flex;align-items:center;justify-content:center;
+.sb-title{flex:0 0 auto;display:flex;align-items:center;gap:9px;height:48px;padding:0 12px 0 16px;
+  background:#444B55;color:#fff;border-radius:0 8px 0 0;}   /* 471차: 사이드바 판의 우상단 라운드를 제목줄이 이어받는다 — 판과 같은 값이어야 한다(533차) */
+.sb-title-tg{flex:0 0 auto;margin-left:0;width:26px;height:26px;border-radius:3px;display:flex;align-items:center;justify-content:center;
   color:rgba(255,255,255,.72);transition:background var(--t-fast),color var(--t-fast);}
 .sb-title-tg:hover{background:rgba(255,255,255,.12);color:#fff;}
 #sidebar.mini .sb-title{padding:0;justify-content:center;}
@@ -207,7 +213,7 @@ body>svg{position:absolute;width:0;height:0;overflow:hidden;}
 /* 236차: 접을 때는 자연스러운데 펼칠 때 글자가 갑자기 나타나던 문제 — 내용물 opacity 에 전환을 건다.
    .sbsc/.sb-bottom 은 overflow-x:hidden 이라 폭이 좁을 때 내용이 잘리고, 넓어지면 한 번에 뿅 보인다.
    mini 에서 내용물 opacity 를 0 으로 감추고 펼칠 때 .22s 뒤에 1 로 페이드하면 자연스럽다. */
-#sidebar{width:var(--sw);min-width:var(--sw);height:100%;display:flex;flex-direction:column;gap:0;background:var(--shell2);border-radius:0 14px 14px 0;overflow:hidden;border:0;transition:width var(--sbtr),min-width var(--sbtr);overflow:visible;z-index:200;}
+#sidebar{width:var(--sw);min-width:var(--sw);height:100%;display:flex;flex-direction:column;gap:0;background:var(--shell2);border-radius:0 8px 8px 0;overflow:hidden;border:0;transition:width var(--sbtr),min-width var(--sbtr);overflow:visible;z-index:200;}
 /* ⚠ 라이트에서는 흰 블록이 옅은 배경과 붙어 경계가 사라진다 — 카드와 같은 테두리를 둘러 준다(389차) */
 #sidebar>.teamsel,#sidebar>.sbsc,#sidebar>.sb-bottom,#sidebar>.sb-foot{
   border:0;box-shadow:none;border-radius:0;
@@ -330,7 +336,7 @@ body.sb-anim #fcal{contain:layout paint;will-change:transform;}
 /* 구분선은 프로필 버튼과 테마 버튼의 **중간**에 온다 — margin-left:6px 이므로 left:-3px 이 정확히 가운데.
    높이는 위아래 7px 씩 물려 살짝 짧게(전 5px). */
 
-#main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;background:var(--bg);border-radius:14px 0 0 14px;}
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;background:var(--bg);border-radius:8px 0 0 8px;}   /* 534차: 바깥 모서리 둘 다 8px — 14px 에서 줄였다 */
 /* 상단바 알림 팝오버 — 모달 대신 버튼 아래에 붙는다 */
 .tb-pop{position:absolute;z-index:210;top:calc(100% + 10px);right:0;width:352px;max-height:min(64dvh,540px);
   display:none;flex-direction:column;background:var(--bg2);border:1px solid var(--sep);border-radius:var(--rxl);
@@ -811,7 +817,7 @@ body:not(.df-printing):not(.rpt-on),body:not(.df-printing):not(.rpt-on) #app,
 body:not(.df-printing):not(.rpt-on) #main,body:not(.df-printing):not(.rpt-on) #content{
   display:block!important;height:auto!important;overflow:visible!important;background:#fff!important;}
 body:not(.df-printing):not(.rpt-on) #content{padding:0!important;}
-body:not(.df-printing):not(.rpt-on) #app{padding:0!important;gap:0!important;}   /* 셸 패딩(위 44px 헤더 자리)이 Ctrl+P 지면을 밀어 내리던 것(524차) — df-printing 쪽은 아래 990행대가 이미 리셋한다 */
+body:not(.df-printing):not(.rpt-on) #app{padding:0!important;gap:0!important;}   /* 셸 패딩(위 48px 헤더 자리)이 Ctrl+P 지면을 밀어 내리던 것(524차) — df-printing 쪽은 아래 990행대가 이미 리셋한다 */
 body:not(.df-printing) .view{display:none!important;}
 body:not(.df-printing) .view.act{display:block!important;}
 body:not(.df-printing):not(.rpt-on) .df-printhdr{display:flex!important;}   /* 전용 인쇄·보고서 인쇄엔 자체 머리가 있다(원본 1038행 대응) */
@@ -1468,7 +1474,7 @@ body.snap .sbsl:first-of-type{display:none;}
 body:not(.wid) .cal-card{position:relative;}
 #ymPop{position:absolute;top:56px;left:-8px;z-index:60;width:272px;background:var(--bg2);border:1px solid var(--sep);border-radius:var(--rlg);box-shadow:var(--sh-2);padding:13px 14px;}
 /* 위젯에서는 설정 팝업(#wgSet)과 같은 유리 카드로 — 왼쪽이 잘리지 않게 안쪽으로 붙인다 */
-body.wid #ymPop{left:0;top:44px;width:252px;background:rgba(22,25,33,.94);   /* top 은 openYMPick 이 실측으로 덮는다(522차) — 여기 값은 폴백 */
+body.wid #ymPop{left:0;top:48px;width:252px;background:rgba(22,25,33,.94);   /* top 은 openYMPick 이 실측으로 덮는다(522차) — 여기 값은 폴백 */
   -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
   border:1px solid rgba(255,255,255,.14);border-radius:3px;box-shadow:0 10px 30px rgba(0,0,0,.45);
   color:rgba(255,255,255,.9);padding:12px 14px;}
@@ -1665,8 +1671,10 @@ body:not(.wid) .btn.dp-add.on:hover{background:transparent;color:#7DA9EA;}   /* 
 /* 보기 전환 — 왼쪽 사이드바 머리와 **같은 높이·같은 아랫선**. 폭은 왼쪽 칸을 가득 채운다.
    ⚠ .seg 기본 여백(2px)을 남기면 안쪽 버튼이 42px 이 되어 옆 줄보다 낮아 보인다 */
 .tkv-seg{flex:0 0 auto;display:flex;width:100%;height:var(--th);min-height:var(--th);align-items:stretch;padding:7px;
-  background:var(--surf2);box-shadow:var(--shcard);
-  border-style:solid;border-color:var(--sep);border-width:0;border-radius:var(--rxl);overflow:hidden;}   /* 447차: 사이드바와 같은 회색 면 */
+  background:var(--surf2);box-shadow:none;
+  border-style:solid;border-color:var(--cardline);border-width:1px;border-radius:var(--rxl);overflow:hidden;}   /* 447차: 사이드바와 같은 회색 면 */
+  /* 530차: 카드 머리(.tm-h)·표 열 이름 줄(.mgtbl th)과 같은 면으로 읽히게 한다 — 셋 다 --surf2 지만
+     이 줄만 캔버스 위에 떠 있어(그림자) 더 밝아 보였다. 그림자를 빼고 카드와 같은 테두리를 준다 */
 .tkv-seg button{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;height:100%;padding:0 2px 0 0;font-size:13px;border-radius:var(--rmd);background:none;}   /* padding-right — 왼쪽 아이콘 탓에 글자 무게중심이 오른쪽으로 쏠린다. 기계적 중앙이 아니라 **눈에 맞는 중앙**으로 당긴다(334차) */
 .tkv-seg button:first-child{padding-right:6px;}   /* 달력·체크는 왼쪽 획이 성겨 한 단 더 당긴다(336차) */
 .tkv-seg button.act{background:var(--bg2);color:var(--bt1);box-shadow:var(--sh-1);}
@@ -2192,7 +2200,6 @@ body:not(.wid) .btn.dp-add.on:hover{background:transparent;color:#7DA9EA;}   /* 
 .teamsel .tsel-wrap{position:relative;flex:0 1 auto;min-width:0;}
 .teamsel select{width:100%;-webkit-appearance:none;appearance:none;background:var(--fill);border:1px solid var(--sep);border-radius:var(--rsm);padding:7px 26px 7px 10px;font-size:13px;font-weight:600;color:var(--lbl);cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .teamsel select:hover{background:var(--fill2);}
-.teamsel .tsel-ch{position:absolute;right:8px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--lbl2);}
 /* 팀·권역 관리 — 카드 머리는 표 열 이름 줄과 같은 언어(짙은 면), 줄은 테두리 없이 구분선으로만(341차) */
 .tm-h{display:flex;align-items:center;justify-content:space-between;margin:0;height:41px;padding:0 var(--s4);
   font-size:13px;font-weight:700;color:var(--lbl);letter-spacing:.01em;
@@ -2223,6 +2230,32 @@ body:not(.wid) .btn.dp-add.on:hover{background:transparent;color:#7DA9EA;}   /* 
 .mg-inp:hover{border-color:var(--sep);}
 .mg-inp:focus{border-color:var(--b400);background:var(--bg2);}
 select.mg-inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 10 10'%3E%3Cpath d='M2 3.5l3 3 3-3' fill='none' stroke='%238E8E93' stroke-width='1.4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 6px center;padding-right:20px;}
+/* 현장 위치 미니 지도(526차) — 통계청 시도·시군구·읍면동 경계를 상수로 그린다.
+   선 굵기로 위계를 준다: 시도 .9 · 시군구 .7 · 읍면동 .5. 확대 단계에 따라 아래 층이 켜진다 */
+.okm-wrap{position:relative;}   /* 여백 없음 — 제주 네모가 카드 모서리에 붙는다(530차) */
+.okm{display:block;width:100%;}
+/* ⚠ 면·선이 모두 흰색에 가까워 지도가 바래 보였다(530차) — 면은 한 단 진하게, 선은 --sepo 로 올린다 */
+.okm-pv{fill:var(--surf2);stroke:var(--sepo);stroke-width:.8;stroke-linejoin:round;vector-effect:non-scaling-stroke;cursor:pointer;opacity:.72;}
+.okm-pv.on{fill:var(--b50);}
+.okm-sl{fill:none;stroke:var(--b400);stroke-width:1.4;stroke-linejoin:round;vector-effect:non-scaling-stroke;pointer-events:none;}
+.okm-mn{fill:none;stroke:var(--sepo);stroke-width:.7;stroke-linejoin:round;vector-effect:non-scaling-stroke;pointer-events:none;opacity:.42;}
+.okm-sb{fill:none;stroke:var(--sepo);stroke-width:.5;stroke-linejoin:round;vector-effect:non-scaling-stroke;pointer-events:none;opacity:.24;}
+.okm-frbg{fill:var(--bg2);stroke:none;pointer-events:none;}
+.okm-fr{fill:none;stroke:var(--sepo);stroke-width:.8;vector-effect:non-scaling-stroke;pointer-events:none;}
+.okm-pl{fill:var(--lbl3);font-weight:600;paint-order:stroke;stroke:var(--bg2);stroke-linejoin:round;pointer-events:none;}
+.okm-pl.on{fill:var(--lbl2);}
+.okm-ct{fill:var(--lbl3);paint-order:stroke;stroke:var(--bg2);opacity:.85;stroke-linejoin:round;pointer-events:none;opacity:.85;}
+/* ⚠ 굵기는 여기서만 준다 — non-scaling-stroke 라 화면 px 로 읽힌다(530차 버그) */
+.okm-pin{stroke:var(--bg2);stroke-width:1;vector-effect:non-scaling-stroke;cursor:pointer;}
+.okm-pin.none{fill:var(--bg2);stroke:var(--b600);stroke-width:1.6;}   /* 담당자 미지정 — 공통 업무 막대와 같은 '속 빈' 문법(535차) */
+.okm-ld{fill:none;stroke:var(--sepo);stroke-width:.8;vector-effect:non-scaling-stroke;pointer-events:none;}
+/* 뒤로는 지도 위 오른쪽 위에 얹는다 — 하단바를 없앴다(528차) */
+.okm-back{position:absolute;left:8px;top:8px;width:28px;height:28px;z-index:2;border-radius:3px;
+  display:flex;align-items:center;justify-content:center;color:var(--lbl3);
+  background:var(--bg2);border:1px solid var(--sep);box-shadow:var(--sh-1);}
+.okm-back:hover{color:var(--bt1);border-color:var(--b300);}
+.okm-back .icn{width:13px;height:13px;}
+.okm-none{padding:22px 14px;text-align:center;font-size:12.5px;color:var(--lbl3);line-height:1.6;}
 /* 계정 관리 아바타·권한 */
 .fbu-av{flex:0 0 auto;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;}
 .fbu-av svg{width:18px;height:18px;display:block;fill:#fff;}
@@ -2336,7 +2369,7 @@ select.mg-inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-
 /* ══════════ 위젯 모드 (?w=1 — 데스크톱 PWA 창) ══════════ */
 body.wid #sidebar,body.wid #topbar,body.wid #appHdr,body.wid .dp-col,body.wid #scrim{display:none!important;}   /* ⚠ #appHdr(519차 새 헤더)도 반드시 — 빠뜨려서 위젯에 앱 헤더가 떴다(520차) */
 body.wid #content{overflow:hidden;}
-body.wid #app{padding:0;gap:0;}   /* 셸 패딩(위 44px = 헤더 자리 · 아래 14px)은 앱 전용 — 위젯은 가장자리까지(520차) */
+body.wid #app{padding:0;gap:0;}   /* 셸 패딩(위 48px = 헤더 자리 · 아래 8px)은 앱 전용 — 위젯은 가장자리까지(520차) */
 /* 위치·크기 조정 모드 — 이때만 창을 끌어 옮기고 크기를 바꾼다. 평소엔 고정 */
 body.wid .wid-move{position:fixed;inset:0;z-index:9000;-webkit-app-region:drag;cursor:move;
   background:rgba(62,113,210,.10);border:2px dashed rgba(62,113,210,.8);border-radius:3px;}
@@ -3403,6 +3436,10 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
             <div class="tm-h"><span>권역 <span class="tm-sub" id="regTeamLbl"></span></span><button class="btn tm-add" data-act="org.addReg" aria-label="권역 추가" data-tip="권역 추가"><svg class="icn" aria-hidden="true"><use href="#i-plus"></use></svg></button></div>
             <div class="tm-list" id="regRoot"></div>
           </div>
+          <div class="card mb12">
+            <div class="tm-h"><span>미니 맵</span><span class="tm-cnt" id="orgMapCnt">0</span></div>
+            <div id="orgMapRoot"></div>
+          </div>
         </div>
         <div class="set-col">
           <div class="tkbar" id="orgBar"></div>
@@ -3490,5 +3527,7 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 <script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./app.js?v=525"></script>
+<script src="./vendor/korea-geo.js?v=546"></script>
+<script src="./vendor/apt-geo.js?v=546" onerror="void 0"></script>   <!-- 540차: 공동주택명 색인 — 없으면 그냥 건너뛴다 -->
+<script src="./app.js?v=546"></script>
 </body></html>
