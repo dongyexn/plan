@@ -177,7 +177,7 @@ GitHub Pages에 올리고 Firebase Realtime Database(무료 플랜)를 씁니다
   ⚠ **두 함수의 고리 필터는 항상 같아야 한다.** 다르면 면과 선이 어긋난다.
 - **599차 = 597차 그대로(598차 취소).** 598차에 끊긴 자리를 공식 해안선으로 메웠는데 **필요 없는 짓이었다** — 채워진 면의 테두리는
   이미 해안을 따라간다. 문제의 직선은 면적이 없는 군더더기 선이었고, 긴 직선을 끊는 것만으로 끝이다.
-  `scripts/coast-simp.mjs` 와 `geo2026.mjs` 의 `COAST=` 는 남아 있지만 쓰지 않는다.
+  `geo2026.mjs` 의 `COAST=` 는 남아 있지만 쓰지 않는다(608차 확인: `scripts/coast-simp.mjs` 는 이미 지워졌다 — 이 줄이 오래 틀려 있었다).
 - **597차 — 최종. 직선만 지운다.** 섬 문턱은 지시대로 크게(`MINA=200 MINAP=3000` ≈ 4.5·67km²), 간략화도 원래대로(`TOL=2 TOLP=4`).
   590차 방식을 되살려 **면과 테두리를 분리**: `.okm-pv` 는 채우기만, 테두리는 `KRGEO.provl`(45단위≈7km 넘는 직선을 끊은 선)로 `.okm-pvl`·`.okm-sl` 에 그린다.
   → 공유수면 해상경계 직선이 화면에서 사라진다. 면은 자료 그대로라 시군구 판정·클릭·호버 그대로. 파일 537KB.
@@ -397,9 +397,20 @@ SGIS 시군구·읍면동 자료에서 광주광역시 코드는 `24` 인데 생
 | `manifest.webmanifest` | PWA 설치용(서비스워커 없음 — 캐시 사고 전력 때문에 안 쓴다) |
 | `build-single.mjs` | 단일 HTML로 묶는 빌드 스크립트 |
 | `README.md` | 사용 안내 — 앱 안(설정 > 도움말)에서 그대로 읽힌다 |
+| `HANDOFF.md` | 이 문서. 배포되지 않는다(앱이 읽는 건 README 쪽) |
+| `icon-192.png`·`icon-512.png` | PWA 설치 아이콘 — manifest 가 가리킨다 |
+| `scripts/geo2026.mjs` | `vendor/korea-geo.js` 재생성(행정경계). 재생성 명령은 597차 항목에 |
+| `scripts/coast-land.mjs` | 해안선 → 육지 폴리곤. **595차에 폐기된 접근이다**(아래 참조) |
+| `.github/workflows/smoke.yml` | push·PR 마다 정적 감사 + 브라우저 스모크 |
+| `.github/workflows/widget-lite.yml` | `widget-lite/**` 가 바뀌면 위젯 exe 를 만들어 릴리스 |
 
 (예전의 메일 스크립트 `scripts/mail-common.mjs`·`remind.mjs`·`weekly.mjs` 와 Electron `widget/` 은
 기능 정리 때 삭제됐다 — 이 표는 static-audit 검사 10번이 실제 파일과 대조한다.)
+
+608차 전수 점검 결과 **위 목록이 저장소 파일 전부이고, 지워도 되는 것은 `scripts/coast-land.mjs` 하나뿐**이다.
+vendor 12개는 모두 실제로 불린다(`apt-geo.js` 는 빈 표지만 index.html 이 `onerror` 로 부르는 자리라 남긴다.
+지우면 매 접속마다 404 가 하나 뜬다). `widget-lite/assets/index.html` 은 내용이 비어 보여도
+`tauri.conf.json` 의 `frontendDist:"assets"` 가 가리키는 자리라 지우면 위젯 빌드가 깨진다.
 
 ## 3. 데이터 구조 — 업무 하나로 통합됨
 
