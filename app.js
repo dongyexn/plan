@@ -9,7 +9,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='608';
+const APP_VER='609';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -8204,7 +8204,7 @@ document.addEventListener('click',e=>{
   const fb=e.target.closest('#wgFont [data-fontd]');
   if(fb){
     const c=widCfgLoad(),ids=WID_FONTS.map(f=>f[0]);
-    const cur=Math.max(0,ids.indexOf(c.font==='sys'?'malgun':(c.font||'app')));
+    const cur=Math.max(0,ids.indexOf(widFontId(c.font)));
     c.font=ids[(cur+Number(fb.dataset.fontd)+ids.length)%ids.length];
     widCfgSave(c);widApply();
   }
@@ -8423,8 +8423,15 @@ const WIDGET=/[?&]w=1\b/.test(location.search);
 const GLASS=/[?&]glass=1\b/.test(location.search);   /* 위젯 유리(반투명) 모드 — 배경을 비운다 */
 /* 위젯 설정 — 진하기·글자 크기·오늘 목록. 위젯 창(PC)별 로컬 저장 */
 const WID_KEY='calapp.wid';
-/* 위젯 글꼴 — 윈도우에 늘 있는 것만. 굴림·돋움은 작은 크기 비트맵이 있어 더 또렷할 수 있다 */
-const WID_FONTS=[['app','기본'],['malgun','맑은 고딕'],['gulim','굴림'],['dotum','돋움']];
+/* 위젯 글꼴 — 윈도우에 늘 있는 것만. 돋움은 작은 크기 비트맵이 있어 더 또렷할 수 있다.
+   609차: 굴림을 뺐다(사용자 지시). '맑은 고딕' 은 '윈도우 기본'(win)으로 이름과 스택을 바로잡았다 —
+   ⚠ **맑은 고딕의 라틴·숫자 글자는 Segoe UI 계열이다.** 그래서 'Malgun Gothic' 만 앞에 두면
+   이름만 맑은 고딕일 뿐 실제로는 윈도우 기본 조합과 같다. 스택을 'Segoe UI' 먼저로 바꿔 뜻을 맞춘다. */
+const WID_FONTS=[['app','기본'],['win','윈도우 기본'],['dotum','돋움']];
+/* 옛 저장값 → 지금 값. ⚠ 지우지 말 것 — 위젯 설정은 PC 마다 localStorage 에 남아 있어
+   137차('sys')·609차('malgun'·'gulim') 값을 쓰던 PC 가 그대로 있다. 없으면 조용히 '기본' 으로 떨어진다. */
+const WID_FONT_OLD={sys:'win',malgun:'win',gulim:'win'};
+function widFontId(v){const f=String(v||'');return WID_FONTS.some(x=>x[0]===f)?f:(WID_FONT_OLD[f]||'app');}
 function widCfgLoad(){try{return JSON.parse(localStorage.getItem(WID_KEY))||{};}catch(e){return{};}}
 function widCfgSave(c){try{localStorage.setItem(WID_KEY,JSON.stringify(c));}catch(e){}}
 function widApply(){
@@ -8440,7 +8447,7 @@ function widApply(){
   /* 글꼴 — 투명 창에서는 가변 폰트가 뭉개져 보인다. 윈도우 글꼴은 작은 크기용 힌팅이 있어 더 또렷할 수 있다.
      어느 쪽이 나은지는 모니터마다 달라 고르게 둔다 */
   const FONTS=WID_FONTS.map(f=>f[0]);
-  const font=FONTS.includes(c.font)?c.font:(c.font==='sys'?'malgun':'app');   /* 137차의 'sys' 는 맑은 고딕으로 */
+  const font=widFontId(c.font);   /* 옛 값('sys'·'malgun'·'gulim')은 '윈도우 기본'으로 흡수 */
   FONTS.forEach(f=>document.body.classList.toggle('wf-'+f,f===font));
   document.body.classList.toggle('wsysfont',font!=='app');
   let dyn=document.getElementById('wgDyn');

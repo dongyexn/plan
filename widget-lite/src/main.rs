@@ -408,8 +408,11 @@ fn hand_over_to_home() -> bool {
     let here = exe_path(); let home = settle_home();
     if norm(&here) == norm(&home) { return false; }
     if !home.exists() { return false; }
-    let _ = std::process::Command::new(&home).spawn();
-    true
+    /* ⚠ 609차: 넘기기가 실패했는데 true 를 돌려주면 이 판도 끝나 아무것도 안 뜬다 — swap_and_restart 와 같은 함정 */
+    match std::process::Command::new(&home).spawn() {
+        Ok(_) => true,
+        Err(e) => { log(&format!("문서 폴더 판 실행 실패({}) — 여기서 그대로 띄운다", e)); false }
+    }
 }
 /* ⚠ 업데이트 교체가 절반만 끝난 채 죽으면 exe 가 없고 .old 만 남는다 — 켤 때마다 되돌린다(164차) */
 fn self_heal() {
@@ -436,6 +439,19 @@ fn set_auto_start(on: bool) {
             else { let _ = run.delete_value(RUN_KEY_NAME); }
         }
     }
+}
+/* Run 키에 **실제로** 들어 있는 값. `is_auto_start` 와 달리 저장해 둔 뜻은 보지 않는다 —
+   등록이 사라졌는지 판정하려면 레지스트리만 봐야 한다(609차). */
+fn run_key_want() -> String { format!("\"{}\"", home_exe().to_string_lossy()) }
+fn run_key_value() -> Option<String> {
+    #[cfg(windows)] {
+        use winreg::enums::HKEY_CURRENT_USER;
+        use winreg::RegKey;
+        return RegKey::predef(HKEY_CURRENT_USER)
+            .open_subkey("Software\\Microsoft\\Windows\\CurrentVersion\\Run").ok()
+            .and_then(|r| r.get_value::<String, _>(RUN_KEY_NAME).ok());
+    }
+    #[cfg(not(windows))] { None }
 }
 fn is_auto_start() -> bool {
     /* ⚠ 사내 정책으로 등록이 막히면 레지스트리는 계속 빈다 — 저장해 둔 뜻도 함께 본다(Electron 그대로) */
@@ -674,9 +690,14 @@ fn swap_and_restart(src: &Path) -> bool {
     match step {
         Ok(()) => {
             STATE.lock().unwrap().pending_ver.clear(); save_state();
-            log("교체 성공(즉시) → 다시 실행");
-            let _ = std::process::Command::new(&target).spawn();
-            true
+            /* ⚠ 609차: 여기서 `let _ = spawn()` 으로 결과를 버렸다. 부팅 직후 백신·정책이 갓 교체된 exe 의
+               실행을 막으면 **새 판은 안 뜨고 이 판은 return 으로 끝나** 위젯이 통째로 사라진다.
+               pending_ver 는 이미 지워졌으니 다음 부팅에는 정상 — 그래서 "가끔"으로 보인다.
+               실패하면 false 를 돌려 **이 판을 그대로 띄운다**(디스크의 exe 는 이미 새 판이라 다음 부팅에 반영). */
+            match std::process::Command::new(&target).spawn() {
+                Ok(_) => { log("교체 성공(즉시) → 다시 실행"); true }
+                Err(e) => { log(&format!("교체는 끝났으나 다시 실행 실패({}) — 이번은 그대로 띄운다", e)); false }
+            }
         }
         Err(e) => {
             if !target.exists() && old.exists() { let _ = std::fs::rename(&old, &target); }
@@ -819,9 +840,12 @@ fn on_menu(app: &AppHandle, id: &str) {
         "autostat" => {
             let reg = if is_auto_start() { "등록됨" } else { "등록 안 됨" };
             let b = STATE.lock().unwrap().bounds;
+            /* ⚠ 609차: 예전에는 '등록된 실행 파일'로 **지금 돌고 있는 파일**(exe_path)을 보여 줬다 —
+               정작 알고 싶은 건 Run 키에 든 값이라 진단에 아무 쓸모가 없었다. 실물을 보여 준다. */
+            let regv = run_key_value().unwrap_or_else(|| "(레지스트리에 값 없음)".into());
             msg_ok("자동 실행", &format!("윈도우 시작 시 자동 실행: {}", reg),
-                &format!("등록된 실행 파일\n{}\n\n설정 파일\n{}\n저장된 자리·크기: {}\n버전: {}\n\n⚠ 이 경로에 파일이 그대로 있어야 재부팅 뒤에도 뜹니다.",
-                    exe_path().display(), state_file().display(),
+                &format!("레지스트리에 등록된 값\n{}\n\n지금 돌고 있는 파일\n{}\n\n설정 파일\n{}\n저장된 자리·크기: {}\n버전: {}\n\n⚠ 이 경로에 파일이 그대로 있어야 재부팅 뒤에도 뜹니다.",
+                    regv, exe_path().display(), state_file().display(),
                     b.map(|b| format!("{},{},{},{}", b.x, b.y, b.w, b.h)).unwrap_or_else(|| "(없음)".into()),
                     cur_ver()));
         }
@@ -951,6 +975,10 @@ fn main() {
             apply_mode(&handle, if mode.is_empty() { "below" } else { &mode });
             let locked = STATE.lock().unwrap().locked.unwrap_or(true);
             let _ = w.set_resizable(!locked);
+            /* 609차: 로그만으로 "프로세스가 안 떴다" 와 "떴는데 화면 밖·뒤에 있다" 를 가를 수 있게 한다 */
+            log(&format!("창 표시 · 모드={} · 자리={}",
+                if mode.is_empty() { "below" } else { &mode },
+                w.outer_position().map(|p| format!("{},{}", p.x, p.y)).unwrap_or_else(|_| "?".into())));
 
             /* 트레이 */
             let tray_png = include_bytes!("../icons/tray.png");
@@ -989,9 +1017,19 @@ fn main() {
                 write_help_file();
                 let first = STATE.lock().unwrap().auto_start.is_none();
                 let want_auto = STATE.lock().unwrap().auto_start.unwrap_or(false);
-                let cur_path = STATE.lock().unwrap().auto_path.clone();
                 if first { set_auto_start(true); rebuild_tray(&h8); }
-                else if want_auto && cur_path != home_exe().to_string_lossy() { set_auto_start(true); }
+                else if want_auto {
+                    /* ⚠ 609차: 예전에는 **저장해 둔 경로(auto_path)** 끼리만 견줬다. 그러면 사내 정책·정리 도구가
+                       Run 키 값을 지워도 저장값은 그대로라 **다시 등록하지 않는다** — 부팅 때 조용히 안 뜨는
+                       원인이 된다("가끔"인 이유: 지워진 뒤부터 계속). 레지스트리 실물을 보고 어긋나면 다시 넣는다. */
+                    let want = run_key_want();
+                    let now = run_key_value();
+                    if now.as_deref() != Some(want.as_str()) {
+                        log(&format!("자동 실행 재등록 · 레지스트리={} · 기대={}",
+                            now.clone().unwrap_or_else(|| "(없음)".into()), want));
+                        set_auto_start(true);
+                    }
+                }
             });
 
             /* 주기 작업 — Electron 의 시각표 그대로 */
