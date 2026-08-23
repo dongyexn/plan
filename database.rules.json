@@ -397,6 +397,9 @@
         "dfHide": {
           "$sid": { ".validate": "newData.isBoolean()" }
         },
+        "siteAddr": {
+          "$sid": { ".validate": "newData.isString() && newData.val().length <= 120" }
+        },
         "$other":    { ".validate": false }
       },
 
