@@ -37,35 +37,35 @@
 /* ══════════ 디자인 토큰 — 하자처리 현황과 동일 체계 ══════════ */
 :root{
 --b50:#F1F7FD;--b100:#F1F7FD;--b200:#C7DDF6;--b300:#C7DDF6;--b400:#538CDE;
---b500:#538CDE;--b600:#3E71D2;--b700:#3E71D2;--b800:#304D9D;--b900:#304D9D;--b950:#1F2B4C;
---bg:#FBFBFB;--bg2:#fff;--cardline:#DDE3E9;--shell:#2C2F34;--shell2:#5F636E;--shell-txt:#F2F5F9;--shell-dim:rgba(242,245,249,.72);--shell-icon:#DCE3EC;--shell-line:rgba(255,255,255,.10);--shell-field:rgba(255,255,255,.07);--shell-act:rgba(255,255,255,.10);--shell-acc:#93B8F2;--fill:rgba(120,120,128,.15);--fill2:rgba(120,120,128,.22);
+--b500:#538CDE;--b600:#3E71D2;--b700:#3E71D2;--b800:#304D9D;
+--bg:#FBFBFB;--bg2:#fff;--cardline:#DDE3E9;--shell:#2C2F34;--shell2:#5F636E;--shell-txt:#F2F5F9;--shell-dim:rgba(242,245,249,.72);--shell-icon:#DCE3EC;--shell-line:rgba(255,255,255,.10);--shell-act:rgba(255,255,255,.10);--shell-acc:#93B8F2;--fill:rgba(120,120,128,.15);--fill2:rgba(120,120,128,.22);
 --sep:rgba(60,60,67,.20);--sepo:#B0B0B4;
 --lbl:#1C1C1E;--lbl2:rgba(60,60,67,.70);--lbl3:rgba(60,60,67,.58);
 --gn:#16A34A;--rd:#DC2626;--am:#D97706;
 --surf2:#F5F7FA;--surf3:#EAECF1;
 --bt1:#3E71D2;--bt2:#1F2B4C;
---glass:rgba(255,255,255,.88);--glass2:rgba(255,255,255,.75);
---tint-rd:#FDEAEA;--tint-gn:#E9F6EE;--tint-am:#FBF0DE;
+--glass:rgba(255,255,255,.88);
+--tint-rd:#FDEAEA;--tint-gn:#E9F6EE;
 --ch-d60:#DA6A60;--ch-d30:#E89C9A;--ch-d0:#B3C7DD;--ch-recv:#3E71D2;--ch-done:#F0B144;
 --ch-d60h:#C65A50;--ch-d30h:#C76F6D;--ch-d0h:#7E9BBC;--ch-lbl:#1F2B4C;--ch-lbl2:#7A3434;
 --ch-grid:rgba(0,0,0,.05);--ch-axis:rgba(60,60,67,.42);--ch-dlr:#2C437C;--ch-dld:#A0590A;--seg-lbl0:#2C437C;
---rsm:var(--r-sm);--rmd:var(--r-md);--rlg:var(--r-lg);--rxl:var(--r-lg);--rp:var(--r-lg);--sbw:4px;   /* 모서리는 한 값으로 통일 — 349차에 원래대로 되돌림(단계를 두니 앱 인상이 흐트러졌다) */
+--rsm:var(--r-sm);--rmd:var(--r-md);--rlg:var(--r-lg);--rxl:var(--r-lg);--rp:var(--r-lg);   /* 모서리는 한 값으로 통일 — 349차에 원래대로 되돌림(단계를 두니 앱 인상이 흐트러졌다) */
   --ms:.12s;--mm:.2s;--ml:.3s;   /* 전환 시간 3단 — 빠름·보통·느림 */
   --ring:0 0 0 3px rgba(83,140,222,.35);   /* 키보드 포커스 링 */
-  --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:20px;--s6:24px;   /* 간격 격자 — 새 코드는 이 값만 쓴다(347차) */
+  --s1:4px;--s2:8px;--s3:12px;--s4:16px;   /* 간격 격자 — 새 코드는 이 값만 쓴다(347차). 605차: 쓰지 않던 --s5·--s6 제거 */
 --sw:240px;--swm:64px;--th:46px;--tr:var(--t-fast);--ct:rgba(60,60,67,.70);
   --sbtr:var(--t-slow);}
 :root{
-  /* 개편 토큰 — 그림자 3 · 전환 3 · 모서리 4 · 글자 6 · 간격 6 (DESIGN-SPEC 1장) */
+  /* 개편 토큰 — 그림자 3 · 전환 3 · 모서리 3 (DESIGN-SPEC 1장) */
   --sh-1:0 1px 2px rgba(16,24,40,.06);
   --sh-2:0 4px 14px rgba(16,24,40,.10);
   --sh-3:0 16px 40px rgba(16,24,40,.16);
   --t-fast:.12s cubic-bezier(.4,0,.2,1);
   --t-base:.2s cubic-bezier(.4,0,.2,1);
   --t-slow:.3s cubic-bezier(.22,1,.36,1);
-  --r-sm:3px;--r-md:3px;--r-lg:3px;--r-full:999px;
-  --fs-xs:11px;--fs-sm:12px;--fs-md:13px;--fs-lg:15px;--fs-xl:18px;--fs-2xl:22px;
-  --sp-1:4px;--sp-2:8px;--sp-3:12px;--sp-4:16px;--sp-5:24px;--sp-6:32px;}
+  --r-sm:3px;--r-md:3px;--r-lg:3px;
+  /* ⚠ 605차: 글자 6단(--fs-*)·간격 6단(--sp-*) 토큰은 어디서도 var() 로 쓰이지 않아 지웠다 —
+     실제 값은 규칙마다 리터럴(13px 등)로 적혀 있다. 되살리려면 쓰는 곳을 함께 바꿀 것. */}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;}
 body{font-family:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,system-ui,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;font-size:13px;color:var(--lbl);background:var(--bg);line-height:0;}   /* 513차: 공백 텍스트 노드가 줄 상자를 만들어 #app 을 밀어냈다 */
@@ -94,6 +94,16 @@ html,body{background:var(--shell);}
 #appHdr{position:fixed;top:0;left:0;right:0;height:48px;z-index:400;display:flex;align-items:center;
   gap:14px;padding:0 18px 0 16px;color:#fff;}   /* 472차: 검색창 우측 끝을 업무패널 축과 맞춘다 */
 #appHdr .ah-brand{display:flex;align-items:center;gap:12px;flex:0 0 auto;cursor:pointer;}   /* 525차: 로고 클릭 = 새로고침 */
+/* 606차: 로고에 눌리는 느낌이 없었다(클릭 대상인데 호버 반응이 0). 어두운 셸 위라 밝기로 답한다 —
+   로고는 은은히 발광하고 부제는 흐린 흰색에서 온전한 흰색으로 올라온다.
+   ⚠ 번짐 반경은 3px 이 상한이다 — 4px 부터 워드마크 아래 'ENGINEERING & CONSTRUCTION'(높이 3px 남짓)이
+   뭉개진다. 5안(7/4/3px·푸른기·밝기만)을 3배 배율로 떠 비교해 정한 값이다.
+   ⚠ 깜빡이거나 쓸고 지나가는 연출은 쓰지 않는다 — 새로고침 버튼이지 장식이 아니다. */
+#appHdr .ah-logo,#appHdr .ah-name{transition:filter var(--t-base),color var(--t-base);}
+#appHdr .ah-brand:hover .ah-logo,#appHdr .ah-brand:focus-visible .ah-logo{
+  filter:drop-shadow(0 0 3px rgba(255,255,255,.35));}
+#appHdr .ah-brand:hover .ah-name,#appHdr .ah-brand:focus-visible .ah-name{color:#fff;}
+#appHdr .ah-brand:focus-visible{outline:none;}   /* 발광이 곧 포커스 표시다 */
 /* 509차: 사내 CI 로고 — 마크 + HYUNDAI 워드마크 통합본 */
 .ah-logo{height:19px;width:auto;display:block;flex:0 0 auto;}
 #appHdr .ah-name{font-size:14.5px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;
@@ -686,13 +696,25 @@ button.p-col:hover{box-shadow:inset 0 0 0 1px rgba(0,0,0,.10),0 0 0 3px var(--fi
   color:var(--lbl3);background:var(--fill);border:1px solid var(--sep);border-radius:3px;}
 /* ══════════ 보고서 양식(rpt) — 원본 CSS 이식(문서 전용 고정 색·토큰 무관) ══════════ */
 #rptRoot{position:fixed;left:-10000px;top:0;}   /* 화면 밖에서 조립·실측하고 인쇄 때만 본문이 된다 */
-.rpt{--rp-navy:#08213f; --rp-n2:#14395f; --rp-n3:#22537f; --rp-n4:#3a6f9f; --rp-n5:#6b96bd; --rp-n6:#b9c9d8;  --rp-text:#1a202c; --rp-gray:#4a5568; --rp-label:#6b7280;  --rp-line:#c8cdd4; --rp-lines:#e4e7eb; --rp-bg:#f7f8fa;}
+/* ⚠ 605차: --rp-n2~n6(6색 팔레트 사본)은 지웠다 — 실제로 쓰는 것은 app.js 의 RP_COL 이고
+   여기 있던 값은 아무도 var() 로 부르지 않는 죽은 사본이었다. 색을 바꾸려면 RP_COL 을 고칠 것. */
+.rpt{--rp-navy:#08213f; --rp-text:#1a202c; --rp-gray:#4a5568; --rp-label:#6b7280;  --rp-line:#c8cdd4; --rp-lines:#e4e7eb; --rp-bg:#f7f8fa;}
 .rpt *{box-sizing:border-box;margin:0;padding:0;}
-.rpt{font-family:'HDharmony','Pretendard Variable','Pretendard',-apple-system,BlinkMacSystemFont,sans-serif;color:var(--rp-text);-webkit-font-smoothing:antialiased;}
+.rpt{font-family:'HDharmony','Pretendard Variable','Pretendard',-apple-system,BlinkMacSystemFont,sans-serif;color:var(--rp-text);-webkit-font-smoothing:antialiased;line-height:normal;}
+/* ⚠ line-height:normal 은 필수다. 513차가 body{line-height:0} 을 넣고 150행에서 #app 계열만 1.5 로 되돌렸는데,
+   보고서는 rptPrint() 가 document.body 에 직접 붙여(#rptRoot) 그 복원 대상 밖이라 0 이 그대로 상속됐다.
+   .rpt 안에서 line-height 를 직접 준 요소(h1·.asof·.iss .m·.ai li·.plan .tx)만 멀쩡하고
+   td·th·.sec-n/.sec-t·.kpi .k/.d·.cap 은 줄 상자가 0 이 돼 행끼리 겹쳐 인쇄됐다(602차 실측: 행 높이 8.3px).
+   원본 rpt 는 독립 문서용이라 브라우저 기본값을 전제로 잡힌 규격 — 1.5 가 아니라 normal 로 되돌린다. */
 /* ↑ 'Pretendard'만 있으면 @font-face 이름('Pretendard Variable')과 달라 번들 글꼴을 못 잡고 OS 기본으로 떨어졌다 — 기본 글꼴을 앱 화면과 같게 고정 */
 /* 보고서 글꼴 — 인쇄 모달에서 고른다. 시스템 글꼴은 앱 UI와 달리 문서 인쇄물에 가까운 인상을 준다.
    글꼴마다 자·행 폭이 달라 표 높이가 바뀌므로, 넘침은 rptFit()이 인쇄 직전 실측해 밀도로 흡수한다. */
-.rpt.f-sys{font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto Sans KR','Noto Sans CJK KR',system-ui,sans-serif;}
+/* ⚠ 맑은 고딕의 **라틴·숫자 글자는 Segoe UI 계열**이다(같은 설계). 그래서 'Malgun Gothic' 만 앞에 두면
+   화면 기본(Pretendard)과 인상이 크게 다르지 않았다 — "더 베이직한 느낌" 이 안 나던 이유.
+   라틴·숫자를 Arial 로 잡고 한글만 맑은 고딕에 넘긴다(Arial 에 한글 글자가 없어 자동으로 넘어간다).
+   ⚠ 엑셀 기본은 Arial 이 아니다 — 2007~2021 은 Calibri, 365 는 Aptos. Arial 은 엑셀 2003 기본이자
+   윈도우에 늘 있는 가장 중립적인 문서 글꼴이라 고른 것이다. 바꾸려면 이 줄만 손대면 된다. */
+.rpt.f-sys{font-family:Arial,'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto Sans KR','Noto Sans CJK KR',Helvetica,sans-serif;}
 .rpt .page{width:794px;min-height:1123px;background:#fff;margin:0 auto 22px;position:relative;box-shadow:var(--sh-2);}
 .rpt .sheet{width:595px;min-height:842px;padding:0 36px;position:relative;zoom:1.333333;}
 /* 인쇄 — break-after 와 옛 이름(page-break-after)을 한 규칙에 함께 둔다(엔진별 지원 차이) */
@@ -768,7 +790,9 @@ button.p-col:hover{box-shadow:inset 0 0 0 1px rgba(0,0,0,.10),0 0 0 3px var(--fi
 .rpt .iss .m b{color:var(--rp-navy);font-weight:600;}
 .rpt .pg{font-variant-numeric:tabular-nums;}
 
-.rpt .up{color:#C0392B;} .rpt .dn2{color:#1E8449;}
+/* ⚠ nowrap 은 행간 복원(602차)과 한 짝이다 — line-height:0 시절엔 접힌 둘째 줄이 높이 0 이라 한 줄처럼 보였다.
+   행간을 되돌리자 합계 행(굵은 글씨)에서 '▼'와 숫자가 두 줄로 갈라졌다 */
+.rpt .up{color:#C0392B;white-space:nowrap;} .rpt .dn2{color:#1E8449;white-space:nowrap;}
 .rpt .dl{overflow:hidden;flex:1 1 auto;min-width:0;}
 /* 종합 분석 의견 — rptAI가 원문 서식을 걷어내고 넘기므로 보고서 본문 크기를 여기서 입힌다.
    (규칙이 없으면 브라우저 기본 16px + .sheet zoom 1.333이 겹쳐 다른 항목의 2배로 출력됨) */
@@ -1125,7 +1149,12 @@ body.snap .sbsl:first-of-type{display:none;}
 #view-defect .mom-row .bar .vl{font-weight:700;color:var(--lbl);text-align:right;}
 #view-defect .mom-row .bar.curr .vl{color:var(--bt2);font-weight:800;}
 #view-defect .mom-row .delta{display:flex;flex-direction:column;align-items:flex-end;font-variant-numeric:tabular-nums;min-width:64px;gap:3px;}
-#view-defect .mom-row .delta .d{font-size:11px;font-weight:700;padding:2px 8px;border-radius:var(--rp);display:inline-flex;align-items:center;}
+/* ⚠ 607차: `white-space:nowrap` 은 필수다. 변동이 0 이면 문구가 '— 변동 없음'(nowrap 73.3px)이 되는데
+   열 폭이 78px 이라 여유가 4.7px 뿐이고, 없으면 '변동 없 / 음' 으로 접혀 배지 높이가 19 → 37px 로 뛴다.
+   ⚠ 768px 이하 미디어 쿼리(1129~1132행)가 이 열을 64px 로 줄이려 하지만 **그 규칙은 죽어 있다** —
+   바로 아래 기본 규칙이 같은 명시도로 뒤에 와서 덮는다(600px 뷰포트 실측: 열이 그대로 78px).
+   그래서 좁은 화면에서도 78px 이고 한 줄로 들어간다. 그 미디어 블록을 되살리려면 여기부터 손봐야 한다. */
+#view-defect .mom-row .delta .d{font-size:11px;font-weight:700;padding:2px 8px;border-radius:var(--rp);display:inline-flex;align-items:center;white-space:nowrap;}
 #view-defect .mom-row .delta .d.up{background:rgba(52,199,89,.12);color:var(--gn);}
 #view-defect .mom-row .delta .d.dn{background:rgba(255,59,48,.1);color:var(--rd);}
 #view-defect .mom-row .delta .d.eq{background:var(--fill);color:var(--lbl3);}
@@ -2076,6 +2105,7 @@ body:not(.wid) .btn.dp-add.on:hover{background:transparent;color:#7DA9EA;}   /* 
   box-shadow:var(--sh-2);pointer-events:none;opacity:0;visibility:hidden;
   transition:opacity var(--t-fast);white-space:pre-line;}
 #htip.on{opacity:1;visibility:visible;}
+#htip{will-change:transform;}   /* 550차: 제 층 — 툴팁이 옮겨 다닐 때마다 뒤의 화면 전체를 다시 칠했다 */
 /* 오후 점검 말풍선 — 종 아이콘 아래에 잠깐 붙는다(하루 한 번, 10초).
    ⚠ 위젯은 창이 곧 화면이라 position:fixed 로 두고 좌우를 창 안으로 물린다 */
 #evePop{position:fixed;z-index:3100;padding:7px 12px;border-radius:3px;background:var(--b600);color:#fff;
@@ -2219,6 +2249,7 @@ body:not(.wid) .btn.dp-add.on:hover{background:transparent;color:#7DA9EA;}   /* 
 .tm-row.act .tm-pick{color:var(--bt1);}
 .tm-nameinp{flex:1;min-width:0;font-weight:600;font-size:13px;background:transparent;border-color:transparent;}
 .tm-row:hover .tm-nameinp,.tm-nameinp:focus{background:var(--bg2);border-color:var(--sep);}
+.tm-h>.tm-cnt{margin-right:2px;}   /* 547차: 줄의 배지는 뒤에 삭제 버튼(폭 0 · margin-left -6px)이 있어 끝에서 2px 안쪽에 선다 — 머리 배지도 같은 축 */
 .tm-cnt{flex-shrink:0;margin-left:auto;font-size:11px;font-weight:700;color:var(--lbl3);background:var(--fill);border-radius:3px;padding:2px 8px;font-variant-numeric:tabular-nums;}.tm-row .tm-del{width:0;min-width:0;padding:0;margin-left:-6px;opacity:0;pointer-events:none;overflow:hidden;
   transition:width var(--tr),opacity var(--tr),margin-left var(--tr);}
 .tm-row:hover .tm-del,.tm-row:focus-within .tm-del{width:28px;margin-left:0;opacity:1;pointer-events:auto;}.tm-x{flex-shrink:0;width:28px;height:28px;border-radius:3px;display:flex;align-items:center;justify-content:center;color:var(--lbl3);background:none;}
@@ -2233,21 +2264,109 @@ select.mg-inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-
 /* 현장 위치 미니 지도(526차) — 통계청 시도·시군구·읍면동 경계를 상수로 그린다.
    선 굵기로 위계를 준다: 시도 .9 · 시군구 .7 · 읍면동 .5. 확대 단계에 따라 아래 층이 켜진다 */
 .okm-wrap{position:relative;}   /* 여백 없음 — 제주 네모가 카드 모서리에 붙는다(530차) */
-.okm{display:block;width:100%;}
+.okm{display:block;width:100%;will-change:transform;}   /* 550차: 제 층을 갖게 한다 — 위 겹층(점·호버)이 바뀌어도 경계를 다시 칠하지 않는다 */
+/* 550차: 점·지시선·호버 강조는 따로 얹은 svg(.okm-ov)에 그린다. SVG 는 자식 하나가 바뀌어도 통째로 다시 칠해서,
+   경계 경로(수백 KB)와 한 svg 에 두면 점 하나 커질 때마다 지도 전체를 다시 칠했다 — 이것이 모달·호버 렉의 원인 */
+.okm-ov{position:absolute;inset:0;width:100%;pointer-events:none;}
+.okm-ov .okm-pin{pointer-events:auto;}
+.okm-hv{fill:var(--fill2);stroke:var(--sepo);stroke-width:.8;stroke-linejoin:round;vector-effect:non-scaling-stroke;opacity:.4;pointer-events:none;}   /* 이름표 위에 얹히므로 옅게 — 글자가 비쳐야 한다 */
+.okm-hv.on{fill:var(--b100,var(--b50));}
+.okm-hv:not([d]),.okm-hvt:empty{display:none;}
 /* ⚠ 면·선이 모두 흰색에 가까워 지도가 바래 보였다(530차) — 면은 한 단 진하게, 선은 --sepo 로 올린다 */
-.okm-pv{fill:var(--surf2);stroke:var(--sepo);stroke-width:.8;stroke-linejoin:round;vector-effect:non-scaling-stroke;cursor:pointer;opacity:.72;}
-.okm-pv.on{fill:var(--b50);}
-.okm-sl{fill:none;stroke:var(--b400);stroke-width:1.4;stroke-linejoin:round;vector-effect:non-scaling-stroke;pointer-events:none;}
+.okm-pv{fill:var(--surf2);stroke:none;cursor:pointer;opacity:.72;}   /* 597차: 면은 채우기만 — 테두리는 .okm-pvl(공유수면 해상경계 직선을 끊은 선) */
+.okm-pvl{fill:none;stroke:var(--sepo);stroke-width:.8;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke;pointer-events:none;opacity:.72;}
+.okm-pv.has{fill:rgba(37,99,235,.045);}   /* 583차: 현장이 있는 시도 — 선택(.on)보다 한 단 옅은 하늘색 */
+.okm-pv.on{fill:var(--b50);}   /* 550차: 시도 호버 면은 .okm-hv(겹층)가 그린다 — :hover 로 바꾸면 경계 전체를 다시 칠한다 */
+.okm-sl{fill:none;stroke:var(--b400);stroke-width:1.4;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke;pointer-events:none;}
+/* 584차: 시군구 면 — 선택한 시도 안에서만 그린다. 현장이 있는 시군구는 하늘색. 광주 외곽선은 늘 그린다(전남광주 통합 표시에서 광주를 구분) */
+.okm-mp{fill:transparent;stroke:none;}
+.okm-mp.has{fill:rgba(37,99,235,.07);}
+.okm-gj{fill:none;stroke:var(--sepo);stroke-width:.8;stroke-linejoin:round;vector-effect:non-scaling-stroke;pointer-events:none;opacity:.8;}   /* 587차: 시군구 경계와 같은 색, 조금 더 진하게만 */
 .okm-mn{fill:none;stroke:var(--sepo);stroke-width:.7;stroke-linejoin:round;vector-effect:non-scaling-stroke;pointer-events:none;opacity:.42;}
 .okm-sb{fill:none;stroke:var(--sepo);stroke-width:.5;stroke-linejoin:round;vector-effect:non-scaling-stroke;pointer-events:none;opacity:.24;}
 .okm-frbg{fill:var(--bg2);stroke:none;pointer-events:none;}
-.okm-fr{fill:none;stroke:var(--sepo);stroke-width:.8;vector-effect:non-scaling-stroke;pointer-events:none;}
+.okm-fr{fill:none;stroke:var(--sep);stroke-width:.8;vector-effect:non-scaling-stroke;pointer-events:none;}
 .okm-pl{fill:var(--lbl3);font-weight:600;paint-order:stroke;stroke:var(--bg2);stroke-linejoin:round;pointer-events:none;}
 .okm-pl.on{fill:var(--lbl2);}
 .okm-ct{fill:var(--lbl3);paint-order:stroke;stroke:var(--bg2);opacity:.85;stroke-linejoin:round;pointer-events:none;opacity:.85;}
+.okm-ct.hov{fill:var(--lbl);font-weight:700;opacity:1;}   /* 547차: 시군구 이름 강조 — 550차부터 겹층의 .okm-hvt 사본에 붙는다 */
 /* ⚠ 굵기는 여기서만 준다 — non-scaling-stroke 라 화면 px 로 읽힌다(530차 버그) */
 .okm-pin{stroke:var(--bg2);stroke-width:1;vector-effect:non-scaling-stroke;cursor:pointer;}
-.okm-pin.none{fill:var(--bg2);stroke:var(--b600);stroke-width:1.6;}   /* 담당자 미지정 — 공통 업무 막대와 같은 '속 빈' 문법(535차) */
+.okm-pin.none{fill:var(--bg2);stroke:var(--b600);stroke-width:1.6;}
+.okm-pin.hov{stroke:var(--b600);stroke-width:2;}   /* 582차: 확대는 CSS transform 이 아니라 r 속성(kmPinHov) — transform-box 가 한 프레임 viewBox 기준으로 잡혀 점이 아래로 튀었다 */   /* 547차: 현장 표 행 호버 */
+.okm-pin.none.hov{fill:var(--b50);}
+#mb.kmw{width:auto;max-width:94vw;padding:20px 22px 22px;}   /* 549차: 폭은 지도가 정한다(kmBigHTML) — 지도는 창 높이에 매이므로 모달 폭을 고정하면 양옆이 빈다 */
+#mb.kmw .mt2{margin-bottom:12px;}
+#mb.kmw .mo-x{top:11px;right:13px;}
+#mb.kmw .okm-wrap{margin-top:0;}
+.kmw-grid{display:grid;grid-template-columns:1fr 284px;gap:16px;align-items:start;}   /* 565차: 숫자 두 열이 생겨 284 */
+/* 571차: 지도 오른쪽을 패널 쪽으로 페이드 — mask 가 아니라 그라데이션 판을 얹는다(mask 는 경계 층·겹층을 한 표면으로 합쳐 550차 렉 해결을 되돌린다) */
+#okmBigRoot .okm-wrap::after{content:'';position:absolute;top:0;right:0;bottom:0;width:36px;pointer-events:none;z-index:3;
+  background:linear-gradient(to right,rgba(255,255,255,0),var(--bg2));}   /* 548차: 지도 + 현장 목록 */
+/* 550차: 우측 패널은 현장 · 담당자 탭 — 549차의 플로팅 범례를 여기로 합쳤다 */
+/* 551차: 패널 탭은 글자만 — 판·테두리 없이 진한 글자가 현재 탭이다(헤더·사이드바와 같은 무몰딩) */
+/* 560차: 패널 머리는 사이드바 계정·현장과 같은 이분할 세그(.seg) — 배지 없음 */
+.kml-h .seg{display:flex;width:100%;height:38px;padding:4px;}   /* 564차: 세그 = 판·합계와 같은 38(안쪽 4 + 줄 30 + 4) */
+.kml-h .seg button{flex:1;padding:0;height:30px;display:flex;align-items:center;justify-content:center;}
+/* 575차: 지도 도구는 오른쪽 위 한 묶음(.okm-tools) — 전체 보기 · 년차 필터. 574차의 select 줄은 뺐다 */
+.okm-tools{position:absolute;right:0;top:0;z-index:4;display:flex;gap:6px;}
+/* 581차: 카드도 같은 도구 묶음(오른쪽 위) — 전체 보기 + 크게 보기. 제목은 평문이고 모달로 가는 길은 이 아이콘이다. 카드는 28 크기 */
+#orgMapRoot .okm-tools{right:8px;top:8px;}
+#orgMapRoot .okm-tools .okm-back{width:28px;height:28px;}
+#orgMapRoot .okm-tools .okm-back .icn{width:13px;height:13px;}
+/* 576~577차: 옆 세그와 같은 38 정사각. 테두리·그림자가 있으면 같은 높이여도 더 커 보여 세그와 같은 꼴(fill 바탕, 테두리 없음)로 */
+.okm-tools .okm-back{position:static;width:38px;height:38px;border:0;box-shadow:none;background:var(--fill);color:var(--lbl2);}
+.okm-tools .okm-back:hover{background:var(--bg2);box-shadow:var(--sh-1);color:var(--bt1);}
+.okm-tools .okm-back.on{background:var(--bg2);box-shadow:var(--sh-1);color:var(--bt1);}
+.okm-tools .okm-back .icn{width:18px;height:18px;}
+.okm-back.on{color:var(--bt1);border-color:var(--b300);background:var(--b50);}
+/* 602차: 다중 선택 메뉴의 선택 표시는 앱의 다른 필터(.msel-o)와 같은 체크 상자 */
+.ctx-it.chk{display:flex;align-items:center;gap:8px;}
+.ctx-k{width:15px;height:15px;flex:0 0 auto;border:1px solid var(--sepo);border-radius:4px;
+  display:flex;align-items:center;justify-content:center;color:transparent;background:var(--bg2);}
+.ctx-k .icn{width:10px;height:10px;stroke-width:3.2;}
+.ctx-it.on .ctx-k{background:var(--b600);border-color:var(--b600);color:#fff;}
+.ctx-it.on{color:var(--bt1);font-weight:700;}
+.kml-r.on{background:var(--b50);color:var(--lbl);font-weight:700;}
+.kml-b.filt .kml-r:not(.on){opacity:.55;}
+#mo:has(#mb.kmw){-webkit-backdrop-filter:none;backdrop-filter:none;}   /* 550차: 배경 흐림은 지도 모달에서 끈다 — 큰 경로를 칠할 때마다 흐림을 다시 계산한다 */
+.mgtbl tbody tr.hov{background:var(--fill);}
+
+.kml-h{padding:0 6px;}
+.kml-b{overflow-y:auto;scrollbar-width:none;}
+.kml-b::-webkit-scrollbar{width:0;}
+/* 558~559차: 권역은 아주 옅은 음영 판(.kml-grp)으로 묶고, 머리줄 아래 안쪽 구분선. 바깥 테두리는 없다 — 판이 이미 묶음을 보여 준다.
+   수는 전부 "라벨 바로 뒤 배지" 한 가지 자리(탭·권역·합계). 숫자는 회계 서식 — .kml-n 한 열(오른쪽 정렬·tabular·같은 크기) */
+.kml-grp{margin:6px 6px 0;padding:4px 0;border-radius:3px;background:rgba(120,120,128,.055);}   /* 561차: 위 4px — 머리줄 글자가 판 위 모서리에 붙어 위로 쏠려 보였다. 위·아래 같게 */
+.kml-grp:first-child{margin-top:8px;}
+/* 머리줄 30 · 구분선은 머리줄 아래 4px · 항목 시작은 7px — 머리줄 글자 중심↔선 = 선↔첫 항목 글자 중심 = 18px 로 대칭 */
+.kml-g{position:relative;height:30px;margin-bottom:7px;padding:0 10px;font-size:12.5px;font-weight:600;color:var(--lbl2);cursor:pointer;display:flex;align-items:center;gap:6px;}   /* 563차: 행간은 항목과 같은 1.5 — line-height:1 이면 글자가 위로 떠 보인다 */
+.kml-g::after{content:'';position:absolute;left:10px;right:10px;bottom:-4px;height:1px;background:var(--sep);}
+.kml-g:hover,.kml-g.on{color:var(--b700,var(--b600));}
+.kml-n{margin-left:auto;flex-shrink:0;width:40px;text-align:right;font-style:normal;font-size:12.5px;font-weight:500;color:var(--lbl3);font-variant-numeric:tabular-nums;}
+/* 562차: 합계는 권역 판과 같은 꼴(음영 판 + 머리줄 하나) — 일체감. 숫자만 진하다 */
+.kml-f{height:38px;margin:6px 6px 0;padding:0 10px;border-radius:3px;background:rgba(120,120,128,.055);display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--lbl2);}
+/* 565~566차: 수는 표처럼 — 단위 글자 없이 줄마다 숫자 두 열(.kml-s 현장수 · .kml-n 세대), 같은 폭의 오른쪽 정렬이라 머리줄·항목·합계가 한 격자에 선다 */
+.kml-s{margin-left:auto;flex-shrink:0;width:20px;text-align:right;font-size:12.5px;font-weight:500;color:var(--lbl3);font-variant-numeric:tabular-nums;}   /* 566차: 글자와 같은 12.5 — 크기가 다르면 가운데 정렬에서도 숫자가 떠 보인다 */
+.kml-s+.kml-n{margin-left:6px;}   /* 569차: 점은 뺐다(568차) · 두 열 사이 6px */
+/* 570차: ⚠ 두 열 사이 = flex gap + margin 이라 머리줄(gap 6)·합계(gap 6)와 항목(gap 8)의 현장 수 칸이 2px 어긋났다 — gap 을 8 로 통일 */
+.kml-g,.kml-f{gap:8px;}
+/* 567차: 머리줄·합계는 들여쓰지 않는다(565차의 25px 들여쓰기는 빈 자리가 애매했다) — 머리줄은 판 가장자리, 항목은 점만큼 안쪽 = 트리 위계 */
+.kml-f .kml-n{font-weight:700;color:var(--lbl);}
+.kml-b{padding-bottom:2px;}
+.kml-r.dim{opacity:.4;}   /* 필터에 걸린 줄은 지우지 않고 가라앉힌다 — 분류를 누른 자리가 그대로 남아야 풀기 쉽다 */
+.kml-r{display:flex;align-items:center;gap:8px;padding:0 10px;height:30px;font-size:12.5px;color:var(--lbl);cursor:pointer;}
+.kml-r:hover,.kml-r.hov{background:var(--fill2);}
+.kml-r i{flex-shrink:0;width:7px;height:7px;border-radius:50%;border:1.5px solid var(--b600);background:var(--bg2);}
+.kml-r i[style]{border-color:transparent;}
+.kml-r b{flex:1;min-width:0;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+.kml-r.off{color:var(--lbl3);}.kml-r.off i{opacity:.35;}   /* 자리를 못 찾은 현장 — 지도에 없다. 누르면 주소 입력(552차) · 553차: 모든 줄 더블클릭 = 주소 */
+.kml-r.edit{padding:0 6px;}
+.kml-r.edit input{flex:1;min-width:0;height:24px;font-size:12px;}
+.okm.pan{cursor:grab;}
+.okm-wrap.drag svg{cursor:grabbing;}
+.okm-wrap.drag svg *{pointer-events:none;}   /* 담당자 미지정 — 공통 업무 막대와 같은 '속 빈' 문법(535차) */
 .okm-ld{fill:none;stroke:var(--sepo);stroke-width:.8;vector-effect:non-scaling-stroke;pointer-events:none;}
 /* 뒤로는 지도 위 오른쪽 위에 얹는다 — 하단바를 없앴다(528차) */
 .okm-back{position:absolute;left:8px;top:8px;width:28px;height:28px;z-index:2;border-radius:3px;
@@ -3196,19 +3315,17 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></symbol>
 <symbol id="i-tasks" viewBox="0 0 24 24"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></symbol>
 <symbol id="i-settings" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
-<symbol id="i-dash" viewBox="0 0 24 24"><rect x="3" y="3" width="7.5" height="7.5" rx="1.6"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.6"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.6"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.6"/></symbol>
 <symbol id="i-chevl" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+<symbol id="i-expand" viewBox="0 0 24 24"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></symbol>
+<symbol id="i-filter" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M7 12h10"/><path d="M10 18h4"/></symbol>
 <symbol id="i-chevd" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
 <symbol id="i-chevr" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
 <symbol id="i-close" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
 <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
 <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></symbol>
-<symbol id="i-bell" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></symbol>
 <symbol id="i-pen" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></symbol>
 <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
 <symbol id="i-ext" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
-<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></symbol>
-<symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
 <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
 <symbol id="i-me" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
 <symbol id="i-print" viewBox="0 0 24 24"><path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7" rx="1"/></symbol>
@@ -3351,7 +3468,7 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
                 </div>
               </div>
               <div class="cal-nav wido">
-                <button class="cal-nb" id="widSrch" data-act="nq.toggle" aria-label="찾기" data-tip="찾기" aria-expanded="false"><svg class="icn" aria-hidden="true"><use href="#i-search"></use></svg></button>
+                <button class="cal-nb" data-act="nq.toggle" aria-label="찾기" data-tip="찾기" aria-expanded="false"><svg class="icn" aria-hidden="true"><use href="#i-search"></use></svg></button>
                 <button class="cal-nb" data-act="wid.side" data-tab="mine" aria-label="내 업무" data-tip="내 업무"><svg class="icn" aria-hidden="true"><use href="#i-tasks"></use></svg></button>
                 <button class="cal-nb wid-acct" data-act="acct.open" aria-label="내 프로필" data-tip="내 프로필"><span class="av sb-acct-av" id="widAcctAv"><svg class="icn" aria-hidden="true"><use href="#i-me"></use></svg></span></button>
                 <button class="cal-nb" data-act="wid.set" aria-label="위젯 설정" data-tip="위젯 설정"><svg class="icn" aria-hidden="true"><use href="#i-settings"></use></svg></button>
@@ -3437,7 +3554,7 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
             <div class="tm-list" id="regRoot"></div>
           </div>
           <div class="card mb12">
-            <div class="tm-h"><span>미니 맵</span><span class="tm-cnt" id="orgMapCnt">0</span></div>
+            <div class="tm-h"><span>현장 지도</span></div>
             <div id="orgMapRoot"></div>
           </div>
         </div>
@@ -3524,10 +3641,9 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./vendor/xlsx.full.min.js" defer></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./vendor/korea-geo.js?v=546"></script>
-<script src="./vendor/apt-geo.js?v=546" onerror="void 0"></script>   <!-- 540차: 공동주택명 색인 — 없으면 그냥 건너뛴다 -->
-<script src="./app.js?v=546"></script>
+<script src="./vendor/korea-geo.js?v=608"></script>
+<script src="./vendor/apt-geo.js?v=608" onerror="void 0"></script>   <!-- 540차: 공동주택명 색인 — 없으면 그냥 건너뛴다 -->
+<script src="./app.js?v=608"></script>
 </body></html>

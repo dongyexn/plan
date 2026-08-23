@@ -9,7 +9,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='546';
+const APP_VER='608';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -336,6 +336,7 @@ function fmtTime(t){if(!t)return'';const[h,m]=t.split(':').map(Number);const ap=
 /* ───── 상태 ───── */
 const S={
   view:'calendar',
+  snap:false,        // 스냅샷 문서로 열렸는가(dfSnapBoot) — 읽기 전용이라 정리 작업을 건너뛴다
   selDate:todayStr(),
   org:{teams:[],regions:[],sites:[]},  // 팀·권역·현장 목록 (모두 {id,name}, 현장은 team·region 포함)
   offdays:{},        // calapp/offdays/<날짜> = 이름 — 단체연차 등 팀 휴무일(공휴일처럼 칠한다)
@@ -468,6 +469,7 @@ function trashDrop(sid,iid){           /* 휴지통에서 한 건 제거(복원�
   if(S.live)FB.db.ref('calapp/trash/'+sid+'/'+iid).remove().catch(fbErr);
   else{if(LocalStore._d.trash&&LocalStore._d.trash[sid])delete LocalStore._d.trash[sid][iid];lsSave(LocalStore._d);}}
 function trashPurge(){                 /* 30일 지난 항목 정리 — 부팅 뒤 한 번 */
+  if(S.snap)return;   /* 607차: 스냅샷은 읽기 전용 문서다 — 정리를 돌리면 '저장되지 않습니다' 알림만 뜬다 */
   trashAll(t=>{const lim=Date.now()-TRASH_KEEP,up={};let n=0;
     Object.keys(t).forEach(sid=>Object.keys(t[sid]||{}).forEach(iid=>{
       const w=t[sid][iid];if(w&&Number(w.deletedAt||0)<lim){n++;
@@ -511,6 +513,7 @@ function archDue(it,cut,cutMs){
 }
 /* 부팅 뒤 한 번 — 이동 대상을 archive 로 옮기고 원본을 지운다. 라이브는 200건씩 끊는다 */
 function archMigrate(){
+  if(S.snap)return;   /* 607차: 스냅샷은 읽기 전용 문서다 */
   const cut=archCutStr(),cutMs=Date.now()-ARCH_AFTER,moves=[];
   Object.keys(S.tasks||{}).forEach(sid=>Object.keys(S.tasks[sid]||{}).forEach(iid=>{
     const it=S.tasks[sid][iid];if(archDue(it,cut,cutMs))moves.push({sid,iid,it});}));
@@ -2264,11 +2267,16 @@ function openModal(title,bodyHTML,footHTML){
   $('#mt').textContent=title;$('#mbody').innerHTML=bodyHTML;$('#mf').innerHTML=footHTML||'';
   /* 하단 버튼이 없는 모달(사용 안내 등)은 우상단 X 로 닫는다 — 참조 앱과 동일 */
   const mb=$('#mb');
-  mb.classList.remove('rdw','narrow','mlw','dfwide','wide-pick');   /* ⚠ 지난번 모달의 폭 설정이 남으면 다음 모달이 엉뚱한 크기로 뜬다 */
+  mb.classList.remove('rdw','narrow','mlw','dfwide','wide-pick','kmw');   /* ⚠ 지난번 모달의 폭 설정이 남으면 다음 모달이 엉뚱한 크기로 뜬다 */
+  /* ⚠ 605차: 'kmw' 가 이 목록에서 빠져 있었다 — 조직 관리 지도 모달을 한 번 열면 그 뒤 **모든** 모달에 남는다.
+     `#mb.kmw{width:auto;max-width:94vw}` 는 `#mb.dfwide{width:88vw;max-width:88vw}` 와 명시도가 같은데
+     CSS 에서 더 뒤에 있어 이긴다 → 목록 모달 폭이 내용에 따라 정해지고, 목록↔피벗 전환 때 폭이 튄다
+     (실측: 단일현장 피벗 1353.6px → 452.5px). 폭 클래스를 새로 만들면 반드시 이 줄에 함께 넣을 것. */
   mb.classList.toggle('has-x',!footHTML);
   $('#mo').classList.add('open');
 }
-function closeModal(){mrvHoldRest();$('#mo').classList.remove('open');MODAL_CB=null;pfDrop();}
+function closeModal(){mrvHoldRest();$('#mo').classList.remove('open');MODAL_CB=null;pfDrop();
+  if($('#mb').classList.contains('kmw'))kmModalClosed();}   /* 552차: 지도 모달 — 카드 상태 복원 */
 /* 인라인 편집기 — 모달 대신 우측 일자 패널 안에서 작성·수정한다 */
 function openPlanEdit(p,startD,endD,occ){
   S.planEdit={orig:p?{...p}:null,occ:occ||'',start:startD||S.selDate,end:endD||''};
@@ -4349,11 +4357,20 @@ async function dfSnapshot(){
     [idx,app]=await Promise.all([fetch('./index.html').then(r=>r.text()),fetch('./app.js?v='+Date.now()).then(r=>r.text())]);
   }catch(e){toast('스냅샷 생성 실패 · 앱 파일을 불러올 수 없습니다');return;}
   /* vendor 인라인 — firebase 4종은 뺀다(스냅샷은 통신하지 않는다) */
+  /* ⚠ 607차: 이 반복은 index.html 의 `<script src>` **태그를 훑는다**. 605차에 xlsx 를 지연 로드로
+     바꾸면서 그 태그를 지웠고, 그러자 스냅샷에 XLSX 가 안 실려 **목록의 '엑셀' 버튼이 죽었다**
+     (스냅샷은 파일 하나로 도는 문서라 `./vendor/…` 를 받아올 곳이 없다).
+     태그가 없어진 vendor 는 여기서 이름으로 직접 챙긴다 — 앞으로 다른 vendor 를 지연 로드로 바꿀 때도 같다. */
+  let extra='';
+  try{
+    const code=await fetch('./vendor/xlsx.full.min.js').then(r=>r.text());
+    extra='<script>\n'+code.split('</scr'+'ipt>').join('<\\/scr'+'ipt>')+'\n</scr'+'ipt>';
+  }catch(e){console.warn('[스냅샷] xlsx 인라인 실패 — 엑셀 내보내기는 빠진다',e);}
   const tags=[...idx.matchAll(/<script src="\.\/(vendor\/[^"]+|app\.js[^"]*)"[^>]*><\/script>/g)];
   for(const m of tags){
     const src=m[1];
     if(/firebase/.test(src)){idx=idx.replace(m[0],'');continue;}
-    if(/^app\.js/.test(src)){const rep='<script>\n'+app.split('</scr'+'ipt>').join('<\\/scr'+'ipt>')+'\n</scr'+'ipt>';idx=idx.replace(m[0],()=>rep);continue;}
+    if(/^app\.js/.test(src)){const rep=extra+'<script>\n'+app.split('</scr'+'ipt>').join('<\\/scr'+'ipt>')+'\n</scr'+'ipt>';idx=idx.replace(m[0],()=>rep);continue;}
     try{
       const code=await fetch('./'+src).then(r=>r.text());
       const rep='<script>\n'+code.split('</scr'+'ipt>').join('<\\/scr'+'ipt>')+'\n</scr'+'ipt>';
@@ -4384,11 +4401,16 @@ function dfSnapBoot(){
   });
   const walk=(o,ps)=>{let c=o;for(const k of ps){if(c==null)return null;c=c[k];}return c==null?null:c;};
   S.live=true;
+  /* ⚠ 607차: `get` 이 빠져 있어 스냅샷 문서를 열 때마다 `FB.db.ref(...).get is not a function` 이
+     터졌다(trashAll·archLoad·migrateRemote 가 쓴다). 실 Firebase 의 ref 는 once/get 를 다 갖는다 —
+     여기 스텁도 같은 모양이어야 한다. 새 Firebase 메서드를 쓰기 시작하면 이 스텁에 함께 넣을 것. */
   FB.db={ref:p=>({
     once:async()=>({val:()=>{const v=walk(tree,String(p||'').split('/').filter(Boolean));return v===undefined?null:v;}}),
+    get:async()=>({val:()=>{const v=walk(tree,String(p||'').split('/').filter(Boolean));return v===undefined?null:v;}}),
     on:(ev,cb)=>{const v=walk(tree,String(p||'').split('/').filter(Boolean));setTimeout(()=>cb&&cb({val:()=>v===undefined?null:v}),30);return cb;},
     off:()=>{},set:async()=>{toast('스냅샷 문서 · 저장되지 않습니다');},update:async()=>{toast('스냅샷 문서 · 저장되지 않습니다');}
   })};
+  S.snap=true;   /* 읽기 전용 문서 — 정리 작업(휴지통·보관함)은 돌지 않는다 */
   ORG_RM=snap.rm;ORG_LIVE=true;
   S.org=snap.org||{teams:[],regions:[],sites:[]};
   document.body.classList.add('snap');
@@ -4776,7 +4798,7 @@ function openPrintPick(){
       ${opt('report','보고서 양식','A4 문서 형태로 재구성해 인쇄합니다.',S.dfSid?'현황 · 추이 · 이슈 · 표 순 · 3쪽':'현황 · 추이 · 이슈 · 표 순 · 2쪽')}
     </div>
     <div class="rpk-fnt" id="rpkFont"><span class="rpk-fnt-l">보고서 글꼴</span><div class="rpk-seg">
-      ${[['brand','기본'],['sys','맑은 고딕']].map(([f,nm])=>
+      ${[['brand','기본'],['sys','윈도우 기본']].map(([f,nm])=>
         `<button class="${f===fSaved?'on':''}" data-act="print.font" data-f="${f}">${nm}</button>`).join('')}
     </div></div>`,
     `<button class="btn bg2 bsm" data-act="modal.close">취소</button>
@@ -5440,9 +5462,23 @@ function pivExport(){
   tr.push(nv(D.grand,D.grandS));aoa.push(tr);
   recWriteXlsx('피벗_'+(REC.title||'').replace(/\s+/g,'')+'_'+(S.dfRm||'')+'.xlsx',aoa,'피벗');
 }
-/* 엑셀 — 하자처리 현황과 같은 열 순서로 내보낸다 */
-function recWriteXlsx(filename,aoa,sheet){
-  if(typeof XLSX==='undefined'){toast('엑셀 모듈을 불러오지 못했습니다');return;}
+/* 엑셀 — 하자처리 현황과 같은 열 순서로 내보낸다.
+   ⚠ 605차: `xlsx.full.min.js` 는 930KB 인데 첫 화면에서 늘 받아지고 있었다(전체 첫 로드의 3분의 1).
+   실제로 쓰는 곳은 이 함수 하나뿐이라 **누를 때 받는다**. 실패해도 화면은 그대로 두고 알림만 띄운다. */
+let _xlsxPromise=null;
+function loadXlsx(){
+  if(typeof XLSX!=='undefined')return Promise.resolve(true);
+  if(_xlsxPromise)return _xlsxPromise;
+  _xlsxPromise=new Promise((res,rej)=>{
+    const el=document.createElement('script');el.src='./vendor/xlsx.full.min.js?v='+APP_VER;
+    el.onload=()=>res(true);el.onerror=()=>rej(new Error('xlsx'));
+    document.head.appendChild(el);
+  }).catch(e=>{_xlsxPromise=null;throw e;});
+  return _xlsxPromise;
+}
+async function recWriteXlsx(filename,aoa,sheet){
+  try{await loadXlsx();}
+  catch(e){console.warn('loadXlsx',e);toast('엑셀 모듈을 불러오지 못했습니다');return;}
   try{
     const wb=XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(aoa),(sheet||'Sheet1').slice(0,31));
@@ -5850,7 +5886,7 @@ function siteTable(){
     <th class="cc" style="width:7%" data-tip="끄면 하자 관리 화면의 현장 목록에서 숨깁니다">하자현황</th>
     <th class="cc" style="width:6%">공가세대</th><th class="cc" style="width:6%">공가상가</th>
     <th class="cc mg-disth" style="width:9%">업데이트일</th><th class="ce" style="width:5%">삭제</th>
-  </tr></thead><tbody>${sites.map(x=>`<tr>
+  </tr></thead><tbody>${sites.map(x=>`<tr data-sid="${esc(x.id)}">
     <td><select class="mg-inp" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="region" aria-label="권역 선택">${regOpts(x)}</select></td>
     <td><input class="mg-inp" value="${esc(x.name)}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="name" aria-label="현장명"></td>
     <td class="mg-own">${siteOwnersHTML(x.id)}</td>
@@ -5869,7 +5905,7 @@ function siteTable(){
    vendor/korea-geo.js 의 시도·시군구·읍면동 경계를 SVG 로 그린다. 외부 요청은 없다.
    좌표는 KRGEO.k 배 정수 메르카토르 — 화면 좌표계와 지도 좌표계를 여기서만 오간다.
    제주는 제자리에 두면 지도가 세로로 길어져 **좌하단 네모로 옮겨** 그린다(KM_JD). */
-const KM_VB0={x:232,y:8,w:2104,h:3222};            /* 전체 보기 — 본토 + 제주 네모.
+const KM_VB0={x:232,y:8,w:2120,h:3222};   /* 601차: 오른쪽 여백 — 경북·울산이 테두리에 붙어 있었다(2104→602차 2120) */            /* 전체 보기 — 본토 + 제주 네모.
    544차: x 를 8(=화면 1px) 늘려 지도를 왼쪽으로 1px 민다 */
 const KM_JD=[1506,-706];                           /* 제주 이동량 — 오른쪽 아래 모서리 */
 const KM_FR={x:1832,y:2906,w:496,h:324};           /* 제주 네모 — 보기 상자 우하단에 붙인다 */
@@ -5887,7 +5923,7 @@ function kmSiteHint(st){
 }
 function kmSiteXY(st){
   if(!st||!st.name)return null;
-  const addr=SITE_ADDR[st.id]||'';
+  const addr=SITE_ADDR[st.id]||((S.cfg&&S.cfg.siteAddr)||{})[st.id]||'';   /* 552차: 관리자가 적은 주소(cfg.siteAddr)도 쓴다 */
   const txt=addr||st.name;                               /* 주소가 있으면 이름보다 정확하다 */
   const hint=kmSiteHint(st), nm=txt+'\u0000'+hint;        /* 권역이 바뀌면 다시 찾는다 */
   if(!(nm in KM_XY)){
@@ -5938,26 +5974,50 @@ function kmSVG(vb,sel,o){
   o=o||{};
   const W=o.w||240,H=o.h||300;
   const u=1/Math.min(W/vb.w,H/vb.h);            /* 지도 좌표 1 = 화면 u 분의 1 px */
-  const R=(o.r||3.3)*u, zoom=vb.w<KM_VB0.w*0.6, deep=vb.w<KM_VB0.w*0.2;
+  /* 581차: 점은 화면 px 고정이라 확대할수록 상대적으로 작아 보였다 — 배율 z 에 따라 1배 3.3px → 2배 4.5 → 4배 5.6 → 8배 6.8 (상한 7.5) */
+  const z=Math.max(1,KM_VB0.w/vb.w),R=Math.min(7.5,(o.r||3.3)*(1+0.35*Math.log2(z)))*u, zoom=vb.w<KM_VB0.w*0.7, deep=vb.w<KM_VB0.w*0.2;   /* 585차: 0.6→0.7 — 2026 경계는 섬을 품어 충남·강원 상자가 0.6 을 넘는다 */
   const jd=c=>c==='39'?' transform="translate('+KM_JD[0]+','+KM_JD[1]+')"':'';
+  const noFr=!!sel&&sel!=='39';   /* 588차: 다른 시도를 골랐을 땐 제주 네모를 안 그린다 — 2026 경계의 경남 남쪽 섬 때문에 상자가 네모에 닿았다 */
   /* 제주 네모는 바탕을 먼저 덮는다 — 네모가 겹쳐 놓인 서남해 섬이 안쪽에 비쳐 보였다 */
-  let s='<rect class="okm-frbg" x="'+KM_FR.x+'" y="'+KM_FR.y+'" width="'+KM_FR.w+'" height="'+KM_FR.h+'" rx="24"></rect>';
+  /* 553차: 경계 층은 전체 보기의 오른쪽 끝(KM_VB0 우변)에서 자른다 — 모달은 지도보다 넓어 meet 여백에 울릉도가 비쳤다.
+     경북 확대에서 울릉도·독도를 빼던 정책(kmZoomBox)과 같다. clipPath id 는 svg 마다 달라야 한다(카드·모달) */
+  const cid=(o.id||'okmSvg')+'-clip';
+  /* 585차: 왼쪽도 자른다(KM_VB0.x−120) — 2026 경계에 백령도가 들어와 모달 왼쪽 여백에 걸렸다. 신안 군도(x≈145)는 남는다 */
+  let s='<clipPath id="'+cid+'"><rect x="'+(KM_VB0.x-120)+'" y="-20000" width="'+(KM_VB0.w+120)+'" height="60000"></rect></clipPath><g clip-path="url(#'+cid+')">'
+    +(noFr?'':'<rect class="okm-frbg" x="'+KM_FR.x+'" y="'+KM_FR.y+'" width="'+KM_FR.w+'" height="'+KM_FR.h+'" rx="24"></rect>');
   /* ⚠ 큰 것부터 그린다 — 경계를 단순화하며 구멍(서울·대구)을 지웠기 때문에, 순서대로 그리면
      경기가 서울을, 경북이 대구를 덮어 그 시들이 보이지도 눌리지도 않았다(531차) */
   const order=g.prov.slice().sort((a,b)=>((b[7]-b[5])*(b[8]-b[6]))-((a[7]-a[5])*(a[8]-a[6])));
-  order.forEach(f=>{s+='<path class="okm-pv'+(sel===f[0]?' on':'')+'"'+jd(f[0])
-    +' d="'+f[9]+'" data-act="org.mapPv" data-c="'+f[0]+'" data-tip="'+esc(kmSelLabel(f[0]))+'"></path>';});
+  /* 583차: 현장이 있는 시도는 옅은 하늘색 — 시군구 면 데이터가 없어(경계는 mesh 한 덩어리) 시군구 단위로는 못 칠한다 */
+  const has={};(o.sites||[]).forEach(st=>{const q=kmSiteXY(st);if(!q)return;
+    const f=g.prov.find(f=>{const dx=f[0]==='39'?KM_JD[0]:0,dy=f[0]==='39'?KM_JD[1]:0;
+      return q[0]>=f[5]+dx&&q[0]<=f[7]+dx&&q[1]>=f[6]+dy&&q[1]<=f[8]+dy;});if(f)has[f[0]]=1;});
+  order.forEach(f=>{if(noFr&&f[0]==='39')return;s+='<path class="okm-pv'+(sel===f[0]?' on':has[f[0]]?' has':'')+'"'+jd(f[0])
+    +' d="'+f[9]+'" data-act="org.mapPv" data-c="'+f[0]+'"></path>';});   /* 547차: 시도 툴팁은 뗐다 — 면 호버만 */
   /* ⚠ 제주는 네모로 옮겨 그린다 — 화면에 걸쳤는지 볼 때도 옮긴 자리로 봐야 한다 */
   const inView=f=>{
     const dx=f[0]==='39'?KM_JD[0]:0,dy=f[0]==='39'?KM_JD[1]:0;
     return !(f[7]+dx<vb.x||f[5]+dx>vb.x+vb.w||f[8]+dy<vb.y||f[6]+dy>vb.y+vb.h);
   };
+  /* 584차: 선택 시도의 시군구 면 — 현장이 든 것은 has. 시도와 같은 data-act 라 클릭·호버가 시도처럼 흐른다(시군구 진입은 기존 kmMuniAt) */
+  /* 586차: 현장이 든 시군구는 **모든 시도에서, 전체 보기에서도** 하늘색. 빈 시군구 면은 선택한 시도에서만(호버·클릭용) */
+  if(g.mpoly){const allpts=(o.sites||[]).map(st=>kmSiteXY(st)).filter(Boolean);
+    g.prov.forEach(f=>{const pc=f[0];if(!g.mpoly[pc]||!inView(f))return;
+      const dx=pc==='39'?KM_JD[0]:0,dy=pc==='39'?KM_JD[1]:0;
+      const pts=allpts.filter(q=>q[0]>=f[5]+dx&&q[0]<=f[7]+dx&&q[1]>=f[6]+dy&&q[1]<=f[8]+dy).map(q=>[q[0]-dx,q[1]-dy]);
+      g.mpoly[pc].forEach(m=>{const has=pts.length&&pts.some(q=>kmInPath(m[2],q[0],q[1]));
+        if(!has&&sel!==pc)return;
+        s+='<path class="okm-mp'+(has?' has':'')+'"'+jd(pc)+' d="'+m[2]+'" data-act="org.mapPv" data-c="'+pc+'" data-mn="'+esc(m[0])+'"></path>';});});}
+  if(g.gj&&inView(g.prov.find(f=>f[0]==='36')||g.prov[0]))s+='<path class="okm-gj" d="'+g.gj+'"></path>';
   if(zoom)g.prov.forEach(f=>{if(g.mesh[f[0]]&&inView(f))s+='<path class="okm-mn"'+jd(f[0])+' d="'+g.mesh[f[0]]+'"></path>';});
   if(deep)g.prov.forEach(f=>{if(g.sub[f[0]]&&inView(f))s+='<path class="okm-sb"'+jd(f[0])+' d="'+g.sub[f[0]]+'"></path>';});
-  if(sel){const sf=g.prov.find(f=>f[0]===sel);if(sf)s+='<path class="okm-sl"'+jd(sel)+' d="'+sf[9]+'"></path>';}
-  s+='<rect class="okm-fr" x="'+KM_FR.x+'" y="'+KM_FR.y+'" width="'+KM_FR.w+'" height="'+KM_FR.h+'" rx="24"></rect>';
-  s+='<text class="okm-ct" x="'+(KM_FR.x+10)+'" y="'+(KM_FR.y+KM_FR.h-12)+'" style="font-size:'+(9.5*u).toFixed(2)
-    +'px;stroke-width:'+(2.4*u).toFixed(2)+'px">제주</text>';
+  /* 597차: 시도 테두리는 provl(선) — 공유수면 해상경계의 긴 직선(사천만 등)은 끊겨 있다. 면(okm-pv)은 자료 그대로라 클릭·판정엔 영향 없다 */
+  if(g.provl)order.forEach(f=>{if(noFr&&f[0]==='39')return;if(inView(f))s+='<path class="okm-pvl"'+jd(f[0])+' d="'+(g.provl[f[0]]||'')+'"></path>';});
+  if(sel){const sf=g.prov.find(f=>f[0]===sel);if(sf)s+='<path class="okm-sl"'+jd(sel)+' d="'+((g.provl&&g.provl[sel])||sf[9])+'"></path>';}
+  if(!noFr)s+='<rect class="okm-fr" x="'+KM_FR.x+'" y="'+KM_FR.y+'" width="'+KM_FR.w+'" height="'+KM_FR.h+'" rx="24"></rect>';
+  /* 547차: 제주 이름표는 네모 가운데 — 아래 귀퉁이에 두면 카드 아래 페이드에 먹혀 바래 보였다 */
+  if(!noFr)s+='<text class="okm-pl'+(sel==='39'?' on':'')+'" x="'+(KM_FR.x+KM_FR.w/2).toFixed(1)+'" y="'+(KM_FR.y+KM_FR.h*.56+11*u*.35).toFixed(1)
+    +'" text-anchor="middle" style="font-size:'+(11*u).toFixed(2)+'px;stroke-width:'+(2.8*u).toFixed(2)+'px">제주</text>';
   /* 시도 이름 — 화면에 크게 걸친 것부터 자리를 잡고, 이미 놓인 이름표와 부딪히면 접는다 */
   const boxes=[],cand=[];
   g.prov.forEach(f=>{
@@ -5979,14 +6039,20 @@ function kmSVG(vb,sel,o){
   });
   /* 시·군·구 이름(확대) → 읍면동 이름(더 확대). 같은 규칙으로 자리를 다툰다 */
   if(zoom){
-    const mc=[],add=(src,minW,minH)=>{for(const pc in src)src[pc].forEach(m=>{
+    const mc=[],add=(src,minW,minH)=>{for(const pc in src){
+      if(src===g.muni&&src[pc].length===1)continue;   /* 580차: 시군구가 하나뿐인 시도(세종)는 시도 이름표와 겹치므로 뺀다 — 자리를 옮기자 이중으로 찍혔다 */
+      src[pc].forEach(m=>{
       const dx=pc==='39'?KM_JD[0]:0,dy=pc==='39'?KM_JD[1]:0;
-      const cx=m[1]+dx,cy=m[2]+dy,hw=m[3]/2;
+      const lp=src===g.muni?kmMuniLabelPt(pc,m):null;   /* 580차: 시군구는 읍면동 점의 중앙값 자리(육지) */
+      const cx=(lp?lp[0]:m[1])+dx,cy=(lp?lp[1]:m[2])+dy,hw=m[3]/2;
       const ix0=Math.max(cx-hw,vb.x),ix1=Math.min(cx+hw,vb.x+vb.w);
       const iy0=Math.max(cy-hw,vb.y),iy1=Math.min(cy+hw,vb.y+vb.h);
       if(ix1-ix0<minW*u||iy1-iy0<minH*u)return;
-      mc.push({n:m[0],x:Math.min(Math.max(cx,ix0+12*u),ix1-12*u),
-                      y:Math.min(Math.max(cy,iy0+8*u),iy1-6*u),a:(ix1-ix0)*(iy1-iy0)});});};
+      /* 580차: 중심이 화면 밖이면 그리지 않는다 — 전에는 네모∩화면 안으로 밀어 넣어서, 섬까지 품은 네모(옹진·태안·보령·군산…)의
+         이름표가 바다 한가운데 떴다. 중심이 안이면 가장자리 여백만 지킨다 */
+      if(cx<vb.x||cx>vb.x+vb.w||cy<vb.y||cy>vb.y+vb.h)return;
+      mc.push({n:m[0],pc,x:Math.min(Math.max(cx,vb.x+12*u),vb.x+vb.w-12*u),
+                      y:Math.min(Math.max(cy,vb.y+8*u),vb.y+vb.h-6*u),a:(ix1-ix0)*(iy1-iy0)});});}};
     add(g.muni,20,14);
     if(deep)add(g.subl,18,12);
     /* 시군구까지 들어가면 그 안이 텅 빈다 — 읍면동 경계는 광역시만 있으므로 **이름**으로 채운다.
@@ -6002,29 +6068,31 @@ function kmSVG(vb,sel,o){
       const w=(m.n.length*9.5+5)*u,h=11.5*u,b={x:m.x-w/2,y:m.y-h/2,w,h};
       if(boxes.some(z=>kmHit(b,z)))return;
       boxes.push(b);
-      s+='<text class="okm-ct" x="'+m.x.toFixed(1)+'" y="'+(m.y+9.5*u*.35).toFixed(1)
+      s+='<text class="okm-ct"'+(m.pc?' data-m="'+m.pc+'|'+esc(m.n)+'"':'')+' x="'+m.x.toFixed(1)+'" y="'+(m.y+9.5*u*.35).toFixed(1)
         +'" text-anchor="middle" style="font-size:'+(9.5*u).toFixed(2)+'px;stroke-width:'+(2.4*u).toFixed(2)+'px">'
         +esc(m.n)+'</text>';
     });
   }
   /* 현장 점 — 원래 자리에서 밀려나면 가는 선으로 제자리를 가리킨다 */
-  const pts=[];
-  (o.sites||[]).forEach(st=>{const q=kmSiteXY(st);if(q)pts.push({st,ox:q[0],oy:q[1],x:q[0],y:q[1]});});
+  const pts=[];let ov='';
+  (o.sites||[]).forEach(st=>{const q=kmSiteXY(st);if(q&&!(noFr&&q[1]>=KM_FR.y))pts.push({st,ox:q[0],oy:q[1],x:q[0],y:q[1]});});   /* 네모를 안 그릴 땐 제주 점도 뺀다 */
   kmPushOut(pts,boxes,R+u);kmSpread(pts,R*2+1.6*u);kmPushOut(pts,boxes,R+u);
+  /* 550차: 여기부터는 겹층(.okm-ov)에 그린다 — 호버로 바뀌는 것은 전부 이쪽. 경계 svg 는 손대지 않는다 */
+  ov+='<path class="okm-hv"></path><text class="okm-ct hov okm-hvt" text-anchor="middle"></text>';
   pts.forEach(p=>{
     /* ⚠ 굵기를 여기서 주지 않는다 — .okm-pin·.okm-ld 는 non-scaling-stroke 라
        굵기를 화면 px 로 읽는다. 지도 단위(u)를 넘기면 u 배로 부푼다(529차에 흰 테가 원을 삼켰다) */
     if(Math.hypot(p.x-p.ox,p.y-p.oy)>1.2*u)
-      s+='<line class="okm-ld" x1="'+p.ox.toFixed(1)+'" y1="'+p.oy.toFixed(1)+'" x2="'+p.x.toFixed(1)
+      ov+='<line class="okm-ld" x1="'+p.ox.toFixed(1)+'" y1="'+p.oy.toFixed(1)+'" x2="'+p.x.toFixed(1)
         +'" y2="'+p.y.toFixed(1)+'"></line>';
     const col=kmSiteColor(p.st.id);
-    s+='<circle class="okm-pin'+(col?'':' none')+'" cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="'+R.toFixed(2)
-      +'"'+(col?' fill="'+esc(col)+'"':'')
+    ov+='<circle class="okm-pin'+(col?'':' none')+'" cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="'+R.toFixed(2)
+      +'"'+(col?' fill="'+esc(col)+'"':'')+' data-sid="'+esc(p.st.id)+'"'
       +' data-tip="'+esc((p.st.name||'이름 없음')+' · '+(p.st.units||0).toLocaleString()+'세대')+'"></circle>';
   });
-  return '<svg class="okm'+(o.cls?' '+o.cls:'')+'" id="'+(o.id||'okmSvg')+'" viewBox="'+vb.x+' '+vb.y+' '
-    +vb.w+' '+vb.h+'" preserveAspectRatio="xMidYMid meet" style="height:'+H+'px" aria-label="현장 위치 지도">'
-    +s+'</svg>';
+  const vbs=' viewBox="'+vb.x+' '+vb.y+' '+vb.w+' '+vb.h+'" preserveAspectRatio="xMidYMid meet" style="height:'+H+'px"';
+  return '<svg class="okm'+(o.cls?' '+o.cls:'')+(vb.w<KM_VB0.w?' pan':'')+'" id="'+(o.id||'okmSvg')+'"'+vbs+' aria-label="현장 위치 지도">'
+    +s+'</g></svg><svg class="okm-ov"'+vbs+' aria-hidden="true">'+ov+'</svg>';
 }
 /* ── 현장명·주소에서 자리 찾기(527차) ────────────────────────────────
    korea-geo 의 읍면동·시군구 이름 색인과 대조한다. **밖으로 나가는 요청이 없다** —
@@ -6172,38 +6240,379 @@ function kmZoomBox(c){
   let x0=f[5],y0=f[6],x1=f[7],y1=f[8];
   if(c==='39'){x0+=KM_JD[0];x1+=KM_JD[0];y0+=KM_JD[1];y1+=KM_JD[1];}
   if(c==='23')x0=Math.max(x0,KM_VB0.x);        /* 백령도까지 넣으면 인천이 통째로 서해가 된다 */
-  if(c==='37')x1=Math.min(x1,2240);            /* 울릉도·독도 제외 */
+  if(c==='37')x1=Math.min(x1,2240);
+  if(c==='38')y1=Math.min(y1,KM_FR.y-60);      /* 587차: 2026 경계의 먼 남쪽 섬 때문에 상자가 제주 네모를 덮었다 */            /* 울릉도·독도 제외 */
   const pd=Math.max(x1-x0,y1-y0)*0.14;
   return {x:x0-pd,y:y0-pd,w:(x1-x0)+pd*2,h:(y1-y0)+pd*2};
 }
 /* 조직 관리 좌측 카드 */
 function rOrgMap(){
   const root=$('#orgMapRoot');if(!root)return;
+  if(_kmDown){_kmPend=true;return;}   /* 601차 */
   const all=(S.org.sites||[]).filter(x=>x.name);
   const sites=all.filter(x=>orgRegHit(x.region,S.orgReg));
-  const put=sites.filter(x=>kmSiteXY(x));
+  const put=sites.filter(x=>kmSiteXY(x)&&kmFiltHit(x));
   const km=S.km||(S.km={vb:{...KM_VB0},sel:'',hist:[]});
-  const lbl=$('#orgMapCnt');
-  if(lbl)lbl.textContent=String(put.length);
   /* ⚠ w·h 는 실제로 그려질 상자 크기다 — 카드 안쪽 폭(264 − 테두리 2)과 어긋나면
      배율이 틀려 글자·점이 의도한 크기로 안 나온다 */
   root.innerHTML='<div class="okm-wrap">'+kmSVG(km.vb,km.sel,{sites:put,w:262,h:401})
-    +(km.hist.length?'<button class="okm-back" data-act="org.mapAll" aria-label="전체 보기"'
-        +' data-tip="전체 보기"><svg class="icn" aria-hidden="true"><use href="#i-chevl"></use></svg></button>':'')
+    +'<div class="okm-tools">'+kmBackBtn(km)
+    +'<button class="okm-back" data-act="org.mapBig" aria-label="크게 보기" data-tip="크게 보기"><svg class="icn" aria-hidden="true"><use href="#i-expand"></use></svg></button></div>'
     +'</div>';
+  /* ⚠ 닫힌 모달의 본문은 비워지지 않는다 — 열려 있을 때만 그린다. 안 그러면 숨은 지도의 점이 호버 대상으로 잡혀
+     툴팁이 엉뚱한 자리(보이지 않는 모달의 점 위)에 떴다(551차) */
+  const big=$('#mo.open #okmBigRoot');if(big)big.innerHTML=kmBigHTML(put);
 }
-/* 시도 툴팁 문구 — 정식 이름과 그 안에 찍힌 현장 수 */
-function kmSelLabel(c){
-  const g=krGeo();const f=g&&g.prov.find(x=>x[0]===c);
-  if(!f)return '';
-  const n=(S.org.sites||[]).filter(x=>{const q=kmSiteXY(x);
-    return q&&q[0]>=f[5]+(c==='39'?KM_JD[0]:0)&&q[0]<=f[7]+(c==='39'?KM_JD[0]:0)
-            &&q[1]>=f[6]+(c==='39'?KM_JD[1]:0)&&q[1]<=f[8]+(c==='39'?KM_JD[1]:0);}).length;
-  return f[2]+' · 현장 '+n+'개';
+/* 584차: path 문자열(M x y l dx dy … z 반복) → 고리 배열, 점이 안에 드는지(짝수-홀수). 고리 파싱은 한 번만 */
+const KM_RINGS={};
+function kmPathRings(d){
+  if(KM_RINGS[d])return KM_RINGS[d];
+  const rings=[];let cur=null,x=0,y=0;
+  const re=/([Mlz])([^Mlz]*)/g;let m;
+  while((m=re.exec(d))){const c=m[1],v=m[2].trim().split(/[\s,]+/).map(Number);
+    if(c==='M'){cur=[];rings.push(cur);x=v[0];y=v[1];cur.push([x,y]);}
+    else if(c==='l'){for(let i=0;i+1<v.length;i+=2){x+=v[i];y+=v[i+1];cur.push([x,y]);}}}
+  return KM_RINGS[d]=rings;
 }
+function kmInPath(d,px,py){
+  let inside=false;
+  kmPathRings(d).forEach(r=>{for(let i=0,j=r.length-1;i<r.length;j=i++){const [xi,yi]=r[i],[xj,yj]=r[j];
+    if((yi>py)!==(yj>py)&&px<(xj-xi)*(py-yi)/(yj-yi)+xi)inside=!inside;}});
+  return inside;
+}
+/* 580차: 시군구 이름표 자리 — 색인의 중심은 네모 중심이라 섬이 많은 군(태안·보령·군산·옹진…)은 바다에 떨어진다.
+   네모 안 읍면동 점(전부 육지)의 x·y 중앙값을 쓴다. 이웃 군의 점이 섞여도 중앙값이라 육지에 남는다. 한 번 계산해 둔다 */
+const KM_MLP={};
+function kmMuniLabelPt(pc,m){
+  const k=pc+'|'+m[0];if(KM_MLP[k]!==undefined)return KM_MLP[k];
+  const g=krGeo(),ds=(g&&g.dong&&g.dong[pc])||[];
+  const pts=ds.filter(d=>d[1]>=m[4]&&d[1]<=m[6]&&d[2]>=m[5]&&d[2]<=m[7]);
+  if(!pts.length)return KM_MLP[k]=null;
+  const med=a=>{a=a.slice().sort((x,y)=>x-y);const n=a.length;return n%2?a[(n-1)/2]:(a[n/2-1]+a[n/2])/2;};
+  return KM_MLP[k]=[med(pts.map(d=>d[1])),med(pts.map(d=>d[2]))];
+}
+/* 551차: 되돌아가기 버튼은 **확대돼 있으면** 보인다 — 휠·끌기는 이력을 안 쌓아서 이력만 보면 버튼이 안 생겼다 */
+function kmBackBtn(km){
+  if(!km.hist.length&&!(km.vb.w<KM_VB0.w))return '';
+  return '<button class="okm-back" data-act="org.mapAll" aria-label="전체 보기" data-tip="전체 보기">'
+    +'<svg class="icn" aria-hidden="true"><use href="#i-chevl"></use></svg></button>';
+}
+/* 547차: 제목을 누르면 같은 지도를 모달에 크게 — 보기 상자·확대 이력(S.km)은 카드와 공유한다 */
+function kmBigHTML(put){
+  /* 550차: 폭은 **확대 상태 기준**으로 고정한다 — 전체 보기에서는 양옆이 비지만, 시도로 들어가면 그 폭을 다 쓴다.
+     (549차에 전체 보기 비율로 줄였더니 확대하면 좁았다) */
+  const km=S.km,H=Math.max(420,Math.round(innerHeight*0.88)-78),
+    W=Math.max(420,Math.min(800,Math.round(innerWidth*.94)-44-300));
+  /* 548차: 우측 현장 목록 — 권역 순, 이름 순. 자리를 못 찾은 현장도 옅게 적어 배지 숫자와의 차이를 보여 준다 */
+  const regs=(S.org.regions||[]).filter(r=>r.name),ord={};regs.forEach((r,i)=>{ord[r.id]=i;});
+  const all=(S.org.sites||[]).filter(x=>x.name&&orgRegHit(x.region,S.orgReg))
+    .sort((a,b)=>(ord[a.region]??99)-(ord[b.region]??99)
+      ||String(b.completionDate||'').localeCompare(String(a.completionDate||''))   /* 579차: 준공일 최신이 위, 없으면 맨 아래 */
+      ||String(a.name).localeCompare(String(b.name),'ko'));
+  const list=kmSiteList(all,'reg');
+  /* ⚠ 폭을 .okm-wrap 에 직접 준다 — 모달이 내용 크기(width:auto)라 svg 의 100% 가 viewBox 비율 폭으로 줄어든다 */
+  return '<div class="kmw-grid"><div class="okm-wrap" style="width:'+W+'px">'+kmSVG(km.vb,km.sel,{sites:put,w:W,h:H,id:'okmBig'})
+    +'<div class="okm-tools">'+kmBackBtn(km)
+    +'<button class="okm-back'+(S.kmYr&&S.kmYr.length?' on':'')+'" data-act="org.mapYrMenu" aria-label="준공 년차 필터" data-tip="'+esc(S.kmYr&&S.kmYr.length?'준공 년차 · '+S.kmYr.map(k=>(KM_YR.find(z=>z[0]===k)||[])[1]).join(' · '):'준공 년차 필터')+'">'
+    +'<svg class="icn" aria-hidden="true"><use href="#i-filter"></use></svg></button></div>'
+    +'</div>'+kmPanelHTML(all,put,list,H)+'</div>';
+}
+/* 549차: 범례 — 보이는 현장의 담당자(첫 사람 기준)와 미지정. 누르면 그 사람 현장만 남긴다(S.kmOwn).
+   ⚠ 범례는 모달에만 띄우지만 필터는 S.km 처럼 카드와 공유한다 — 모달을 열 때 초기화한다 */
+function kmOwnOf(sid){
+  const t=curTeam();
+  const p=roster().find(x=>(t?x.team===t.id:true)&&rankUses(x.rank).sites&&(x.sites||{})[sid]);
+  return p?p.id:'';
+}
+/* 573차: 준공 년차 — 담보책임기간 경과 기준(A안). 준공일부터 오늘까지 경과 연수 y 로
+   y<2 → 2년차(2년 담보 안), <3 → 3년차, <5 → 5년차, <10 → 10년차, 그 이상. 준공일이 오늘 뒤면 준공 전, 비어 있으면 미입력(따로 센다 — 누락이 보여야 한다) */
+const KM_YR=[['pre','준공 전'],['2','2년 이내'],['3','2~3년'],['5','3~5년'],['10','5~10년'],['over','10년 초과']];   /* 581차: 구간이 읽히게 · 미입력 항목은 뺐다(해당 없음) */
+const KM_YR_NONE='준공일 미입력';
+function kmYearBand(x){
+  const d=x.completionDate;if(!d)return 'none';
+  const t=new Date(d+'T00:00:00');if(isNaN(t))return 'none';
+  const y=(Date.now()-t.getTime())/(365.25*86400e3);
+  return y<0?'pre':y<2?'2':y<3?'3':y<5?'5':y<10?'10':'over';
+}
+/* 573차: 현장 목록 — mode 'reg'(권역 묶음) 또는 'yr'(년차 묶음). 줄 모양은 같다 */
+function kmSiteList(all,mode){
+  const regs=(S.org.regions||[]).filter(r=>r.name);
+  const groups=mode==='yr'?KM_YR.map(([k,nm])=>({k,nm,attr:'data-act="org.mapYr" data-yr="'+esc(k)+'"',on:S.kmYr===k,items:all.filter(x=>kmYearBand(x)===k)}))
+    :(()=>{const seen=[];all.forEach(x=>{if(!seen.includes(x.region||''))seen.push(x.region||'');});
+      return seen.map(k=>{const r=regs.find(z=>z.id===k);return {k,nm:r?r.name:'권역 없음',attr:r?'data-act="org.mapReg" data-reg="'+esc(k)+'"':'',on:!!S.kmReg&&S.kmReg===k,items:all.filter(x=>(x.region||'')===k)};});})();
+  let list='';
+  groups.forEach(g=>{
+    if(!g.items.length)return;
+    const un=g.items.reduce((a,z)=>a+(Number(z.units)||0),0);
+    list+='<div class="kml-grp"><div class="kml-g'+(g.on?' on':'')+'"'+(g.attr?' '+g.attr:'')+'>'
+      +esc(g.nm)+'<span class="kml-s">'+g.items.length+'</span><em class="kml-n">'+un.toLocaleString()+'</em></div>';
+    g.items.forEach(x=>{
+      const dim=!kmFiltHit(x);   /* 554차: 필터에 걸리면 지우지 않고 가라앉힌다 */
+      const on=!!kmSiteXY(x),col=kmSiteColor(x.id),ad=((S.cfg&&S.cfg.siteAddr)||{})[x.id]||'';
+      const yb=kmYearBand(x),yl=(KM_YR.find(z=>z[0]===yb)||[])[1]||KM_YR_NONE;
+      const tip=[x.completionDate?'준공 '+x.completionDate+' · '+yl:yl,ad||(on?'':'현장명으로 자리를 찾지 못했습니다 — 눌러서 주소 입력')
+        ].filter(Boolean).join('\n');   /* 583차: '더블클릭으로 주소 입력' 안내는 뺐다 */
+      /* 553차: 줄 더블클릭이 주소 입력. 자리를 못 찾은 줄은 한 번 클릭으로도 연다 */
+      list+='<div class="kml-r'+(on?'':' off')+(dim?' dim':'')+'" data-sid="'+esc(x.id)+'"'+(on?' data-act="org.mapTo"':' data-act="org.mapAddr"')
+        +' data-tip="'+esc(tip)+'">'
+        +'<i'+(col?' style="background:'+esc(col)+'"':'')+'></i><b>'+esc(x.name)+'</b><span class="kml-s"></span><em class="kml-n">'+(x.units||0).toLocaleString()+'</em></div>';});
+    list+='</div>';});
+  return list;
+}
+/* 551차: 패널 필터 — 담당자(S.kmOwn)와 권역(S.kmReg)을 함께 건다. 둘 다 모달을 열 때 비운다 */
+function kmFiltHit(x){
+  if(S.kmYr&&S.kmYr.length&&!S.kmYr.includes(kmYearBand(x)))return false;   /* 573차 · 576차: 다중 선택(배열) */
+  if(S.kmReg&&x.region!==S.kmReg)return false;
+  if(S.kmOwn)return S.kmOwn==='none'?!kmOwnOf(x.id):kmOwnOf(x.id)===S.kmOwn;
+  return true;
+}
+/* 550차: 우측 패널 — 현장 탭(목록)과 담당자 탭(549차 범례를 옮긴 것). S.kmTab */
+function kmPanelHTML(all,put,list,H){
+  const tab=S.kmTab||'site';
+  /* 담당자·권역 수는 지도에 찍힌 현장(자리를 찾은 것) 기준. 다른 쪽 필터는 반영해 "지금 보이는" 수를 적는다 */
+  /* 563차: 담당자 탭도 현장 탭과 같은 꼴 — 권역 판 안에 그 권역 현장의 담당자(첫 사람 기준) 줄. 한 사람이 여러 권역에 나올 수 있다.
+     줄 오른쪽은 "n개 현장" + 세대 합(같은 숫자 열). 누르면 그 사람 현장만(S.kmOwn) */
+  const ppl=roster(),fo=S.kmOwn||'';
+  const regs2=(S.org.regions||[]).filter(r=>r.name),ord2={};regs2.forEach((r,i)=>{ord2[r.id]=i;});
+  const byReg={};
+  all.forEach(x=>{if(S.kmYr&&S.kmYr.length&&!S.kmYr.includes(kmYearBand(x)))return;   /* 574차: 년차 필터 안의 수만 */
+    const o=kmOwnOf(x.id)||'none',u=Number(x.units)||0,k=x.region||'';
+    const g=byReg[k]||(byReg[k]={cnt:{},un:{},tot:0,n:0});g.cnt[o]=(g.cnt[o]||0)+1;g.un[o]=(g.un[o]||0)+u;g.tot+=u;g.n++;});
+  let own='';
+  Object.keys(byReg).sort((a,b)=>(ord2[a]??99)-(ord2[b]??99)).forEach(k=>{
+    const r=regs2.find(z=>z.id===k),g=byReg[k];
+    const ids=Object.keys(g.cnt).sort((a,b)=>a==='none'?1:b==='none'?-1:g.cnt[b]-g.cnt[a]);
+    own+='<div class="kml-grp"><div class="kml-g'+(S.kmReg&&S.kmReg===k?' on':'')+'"'+(r?' data-act="org.mapReg" data-reg="'+esc(r.id)+'"':'')+'>'
+      +esc(r?r.name:'권역 없음')+'<span class="kml-s">'+g.n+'</span><em class="kml-n">'+g.tot.toLocaleString()+'</em></div>';
+    ids.forEach(id=>{const p=id==='none'?null:ppl.find(x=>x.id===id),col=id==='none'?null:ownColor(id);
+      const dim=(S.kmReg&&S.kmReg!==k)||(fo&&fo!==id);
+      own+='<div class="kml-r'+(fo===id?' on':'')+(dim?' dim':'')+'" data-act="org.mapOwn" data-own="'+esc(id)+'">'
+        +'<i'+(col?' style="background:'+esc(col)+'"':'')+'></i><b>'+esc(id==='none'?'미지정':p?p.name:'?')+'</b>'
+        +'<span class="kml-s">'+g.cnt[id]+'</span><em class="kml-n">'+g.un[id].toLocaleString()+'</em></div>';});
+    own+='</div>';});
+  const tot=all.reduce((a,z)=>a+(Number(z.units)||0),0);
+  const body=tab==='own'?(own||'<div class="tm-empty">담당자가 없습니다.</div>'):(list||'<div class="tm-empty">현장이 없습니다.</div>');
+  const foot=all.length?'<div class="kml-f">합계<span class="kml-s">'+all.length+'</span><em class="kml-n">'+tot.toLocaleString()+'</em></div>':'';
+  const t=(id,nm)=>'<button'+(tab===id?' class="act"':'')+' data-act="org.mapTab" data-t="'+id+'">'+nm+'</button>';
+  return '<div class="kml"><div class="kml-h"><div class="seg">'+t('site','현장')+t('own','담당자')+'</div></div>'
+    +'<div class="kml-b" style="max-height:'+(H-36-(foot?44:0))+'px">'+body+'</div>'+foot+'</div>';
+}
+function kmModalClosed(){
+  const s=S.kmSnap;if(s){S.km={vb:{...s.vb},sel:s.sel,hist:s.hist};S.kmSnap=null;}
+  S.kmOwn='';S.kmReg='';S.kmYr=[];
+  rOrgMap();
+}
+/* 601차: 마우스를 누르고 있는 동안에는 지도를 다시 그리지 않는다.
+   휠 재그리기(140ms)나 호버 갱신이 mousedown~mouseup 사이에 끼면 노드가 바뀌어 click 이 아예 안 나온다 — "한 번 안 눌리는" 증상의 원인 */
+let _kmDown=false,_kmPend=false;
+document.addEventListener('mousedown',e=>{if(e.target.closest&&e.target.closest('.okm-wrap'))_kmDown=true;},true);
+document.addEventListener('mouseup',()=>{if(!_kmDown)return;_kmDown=false;if(_kmPend){_kmPend=false;setTimeout(rOrgMap,0);}},true);
+/* 552차: 현장 주소 입력 — 줄을 입력칸으로 바꾼다. Enter 저장 · Esc/포커스 이탈 취소. cfg.siteAddr[sid](관리자 쓰기).
+   이름 추론이 틀리거나 못 찾는 현장의 근본 처방이다(547차 결론). 주소에 시·군·구·동이 있으면 kmAuto 가 그대로 찍는다 */
+function kmAddrEdit(sid){
+  if(!isEditor()){denyEdit();return;}
+  const row=$('.kml-r[data-sid="'+sid+'"]');if(!row||row.classList.contains('edit'))return;
+  const cur=((S.cfg&&S.cfg.siteAddr)||{})[sid]||'';
+  row.classList.add('edit');row.removeAttribute('data-act');
+  row.innerHTML='<input class="mg-inp" value="'+esc(cur)+'" placeholder="주소 — 시·군·구·동까지" aria-label="현장 주소" maxlength="120">';
+  const inp=row.querySelector('input');inp.focus();inp.select();
+  let done=false;
+  const fin=save=>{if(done)return;done=true;
+    if(save){const v=inp.value.trim();const m={...((S.cfg&&S.cfg.siteAddr)||{})};
+      if(v)m[sid]=v;else delete m[sid];
+      store.putCfg('siteAddr',m);S.cfg={...S.cfg,siteAddr:m};
+      for(const k in KM_XY)delete KM_XY[k];   /* 자리 기억은 이름+힌트 단위라 주소가 바뀌면 비운다 */
+      toast(v?'주소를 저장했습니다':'주소를 지웠습니다');}
+    rOrgMap();};
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();fin(true);}else if(e.key==='Escape'){e.stopPropagation();fin(false);}});
+  inp.addEventListener('blur',()=>fin(false));
+}
+document.addEventListener('dblclick',e=>{   /* 553차: 목록 줄 더블클릭 = 주소 입력 */
+  const row=e.target.closest&&e.target.closest('.kml-r[data-sid]');if(!row)return;
+  clearTimeout(_kmCT);e.preventDefault();kmAddrEdit(row.dataset.sid);
+});
+/* 548차: 목록의 현장을 누르면 그 현장이 있는 시도로 */
+function kmGoSite(sid){
+  const st=(S.org.sites||[]).find(x=>x.id===sid),q=st&&kmSiteXY(st),g=krGeo();if(!q||!g)return;
+  const f=g.prov.find(f=>{const dx=f[0]==='39'?KM_JD[0]:0,dy=f[0]==='39'?KM_JD[1]:0;
+    return q[0]>=f[5]+dx&&q[0]<=f[7]+dx&&q[1]>=f[6]+dy&&q[1]<=f[8]+dy;});
+  if(!f)return;
+  ACT['org.mapPv']({dataset:{c:f[0]}});
+  kmHoverSite(sid);
+}
+/* 550차: 점(겹층)에서 난 이벤트도 같은 지도로 친다 */
+function kmSvgOf(el){const w=el&&el.closest&&el.closest('.okm-wrap');return w?w.querySelector('.okm'):null;}
+function kmSetVB(vb){$$('.okm,.okm-ov').forEach(s=>s.setAttribute('viewBox',vb.x+' '+vb.y+' '+vb.w+' '+vb.h));}
+/* 548차: 확대 상태에서 끌어서 옮긴다. 끄는 동안은 viewBox 만 바꾸고, 놓을 때 한 번 다시 그린다(이름표 자리가 보기 상자에 매인다).
+   ⚠ 3px 넘게 끌었으면 그 뒤의 click 은 삼킨다 — 안 그러면 놓는 순간 바다 클릭으로 한 단계 되돌아간다 */
+let _kmDrag=null,_kmDragged=0;
+document.addEventListener('mousedown',e=>{
+  const svg=kmSvgOf(e.target);const km=S.km;
+  if(!svg||e.button!==0||!km||!(km.vb.w<KM_VB0.w))return;
+  const r=svg.getBoundingClientRect(),k=Math.min(r.width/km.vb.w,r.height/km.vb.h);
+  _kmDrag={svg,k,x:e.clientX,y:e.clientY,vb:{...km.vb}};_kmDragged=0;
+});
+document.addEventListener('mousemove',e=>{
+  const d=_kmDrag;if(!d)return;
+  const dx=(d.x-e.clientX)/d.k,dy=(d.y-e.clientY)/d.k;
+  if(!_kmDragged&&Math.hypot(e.clientX-d.x,e.clientY-d.y)<3)return;
+  _kmDragged=1;d.svg.parentNode.classList.add('drag');
+  const vb=S.km.vb;
+  vb.x=Math.min(Math.max(d.vb.x+dx,KM_VB0.x-vb.w*.5),KM_VB0.x+KM_VB0.w-vb.w*.5);
+  vb.y=Math.min(Math.max(d.vb.y+dy,KM_VB0.y-vb.h*.5),KM_VB0.y+KM_VB0.h-vb.h*.5);
+  kmSetVB(vb);
+});
+document.addEventListener('mouseup',()=>{
+  if(!_kmDrag)return;
+  const was=_kmDragged;_kmDrag=null;
+  if(was)rOrgMap();
+});
+document.addEventListener('click',e=>{if(_kmDragged&&kmSvgOf(e.target)){e.stopPropagation();e.preventDefault();_kmDragged=0;}},true);
+/* 549차: 커서 자리를 고정한 채 배율을 바꾼다. f>1 확대. 전체보다 커지면 전체 보기로 되돌린다.
+   그리는 쪽이 무거우니 viewBox 만 먼저 바꾸고, 손이 멈추면 한 번 다시 그린다 */
+let _kmZT=0,_kmWT=0;
+function kmZoomAt(svg,cx,cy,f,push){
+  const km=S.km;if(!km||!svg)return;
+  const q=kmMapXY(svg,cx,cy);if(!q)return;
+  const vb=km.vb,w=vb.w/f;
+  if(w>=KM_VB0.w){km.vb={...KM_VB0};km.sel='';km.hist=[];rOrgMap();return;}
+  if(w<KM_VB0.w*0.03)return;
+  /* 554차: 휠은 한 묶음(0.8초 안의 연속 굴림)에 한 번만 이력을 쌓는다 — 안 쌓으면 시도에서 휠로 들어간 뒤
+     우클릭·바다 클릭이 시도를 건너뛰고 전체로 갔고, 매 틱 쌓으면 되돌리기에 틱 수만큼 걸린다 */
+  const now=Date.now();
+  if(push||now-_kmWT>800)km.hist.push({vb:{...vb},sel:km.sel});
+  if(!push)_kmWT=now;
+  const h=vb.h/f;
+  km.vb={x:q[0]-(q[0]-vb.x)/f,y:q[1]-(q[1]-vb.y)/f,w,h};
+  kmSetVB(km.vb);
+  clearTimeout(_kmZT);_kmZT=setTimeout(rOrgMap,push?0:140);
+}
+document.addEventListener('wheel',e=>{
+  const svg=kmSvgOf(e.target);if(!svg)return;
+  e.preventDefault();
+  kmZoomAt(svg,e.clientX,e.clientY,e.deltaY<0?1.25:1/1.25,false);
+},{passive:false});
+/* 549차: 더블클릭 = 커서 자리로 2배 확대. 앞서 난 한 번 클릭 동작은 220ms 미뤘다가 더블클릭이 오면 버린다 —
+   안 그러면 시도 선택 → 시군구 진입 → 확대가 한꺼번에 일어난다 */
+let _kmCT=0;
+function kmClickDefer(fn){clearTimeout(_kmCT);_kmCT=setTimeout(fn,220);}
+document.addEventListener('dblclick',e=>{
+  const svg=kmSvgOf(e.target);if(!svg||svg.id!=='okmBig')return;   /* 552차: 더블클릭 확대는 모달만 */
+  clearTimeout(_kmCT);e.preventDefault();
+  kmZoomAt(svg,e.clientX,e.clientY,2,true);
+});
+/* 550차: 시도 면 호버 — 경계 svg 의 :hover 대신 겹층(.okm-hv)에 같은 경로를 옮겨 그린다 */
+document.addEventListener('mouseover',e=>{
+  const pv=e.target.closest&&e.target.closest('.okm-pv,.okm-mp');if(!pv)return;   /* 584차: 시군구 면이 있으면 그 면이 호버 */
+  const hv=pv.closest('.okm-wrap').querySelector('.okm-hv');if(!hv)return;
+  hv.setAttribute('d',pv.getAttribute('d'));
+  const tf=pv.getAttribute('transform');if(tf)hv.setAttribute('transform',tf);else hv.removeAttribute('transform');
+  hv.classList.toggle('on',pv.classList.contains('on'));
+});
+document.addEventListener('mouseout',e=>{
+  const pv=e.target.closest&&e.target.closest('.okm-pv,.okm-mp');if(!pv)return;
+  const to=e.relatedTarget;if(to&&to.closest&&to.closest('.okm-pv,.okm-mp')===pv)return;
+  const hv=pv.closest('.okm-wrap').querySelector('.okm-hv');if(hv)hv.removeAttribute('d');
+});
+/* 549차: 점 → 행 역방향. 지도의 점에 올리면 현장 표·모달 목록의 그 행을 밝히고 목록은 보이는 자리로 굴린다 */
+document.addEventListener('mouseover',e=>{
+  const pin=e.target.closest&&e.target.closest('.okm-pin[data-sid]');if(!pin)return;
+  $$('.kml-r.hov,#siteRoot tr.hov').forEach(x=>x.classList.remove('hov'));
+  /* 550차: 모달이 열려 있으면 뒤의 표는 건드리지 않는다 — 가려진 줄을 밝히느라 바탕 층 전체가 다시 칠해졌다 */
+  const sel=$('#mo.open #okmBigRoot')?'.kml-r[data-sid="'+pin.dataset.sid+'"]':'#siteRoot tr[data-sid="'+pin.dataset.sid+'"]';
+  $$(sel).forEach(x=>{x.classList.add('hov');
+    if(x.classList.contains('kml-r'))x.scrollIntoView({block:'nearest'});});
+});
+document.addEventListener('mouseout',e=>{
+  const pin=e.target.closest&&e.target.closest('.okm-pin[data-sid]');if(!pin)return;
+  $$('.kml-r.hov,#siteRoot tr.hov').forEach(x=>x.classList.remove('hov'));
+});
+function kmOpenBig(){
+  S.km=S.km||{vb:{...KM_VB0},sel:'',hist:[]};S.kmOwn='';S.kmReg='';S.kmYr=[];S.kmTab='site';
+  /* 552차: 모달에서 확대·필터한 것은 닫을 때 되돌린다 — 카드는 열기 전 상태로 */
+  S.kmSnap={vb:{...S.km.vb},sel:S.km.sel,hist:S.km.hist.map(h=>({vb:{...h.vb},sel:h.sel}))};
+  openModal('현장 지도','<div id="okmBigRoot"></div>','');
+  $('#mb').classList.add('kmw');
+  rOrgMap();
+}
+/* 582차: 점 확대/복원 — r 을 직접 바꾼다(원래 r 은 data-r 에) */
+function kmPinHov(p,on){
+  if(on){if(!p.dataset.r)p.dataset.r=p.getAttribute('r');p.setAttribute('r',(Number(p.dataset.r)*1.45).toFixed(2));p.classList.add('hov');}
+  else{if(p.dataset.r)p.setAttribute('r',p.dataset.r);p.classList.remove('hov');}
+}
+/* 547차: 현장 표의 행에 마우스를 올리면 지도의 그 현장 점을 키우고 툴팁을 점 위에 띄운다.
+   ⚠ 공용 툴팁(_tipFor)은 쓰지 않는다 — 행 안에서 움직일 때마다 mouseover 가 tipHide 를 부른다 */
+function kmVisible(el){return !el.closest('#mo')||$('#mo').classList.contains('open');}   /* 닫힌 모달에 남은 지도는 뺀다 */
+function kmHoverSite(sid){
+  $$('.okm-pin.hov').forEach(p=>kmPinHov(p,false));
+  const el=$('#htip');
+  if(!sid){if(el&&!_tipFor)el.classList.remove('on');return;}
+  /* 모달이 열려 있으면 카드·모달 양쪽에 같은 점이 있다 — 둘 다 키우고, 툴팁은 위에 떠 있는 쪽(마지막)에 */
+  const pins=$$('.okm-pin[data-sid="'+sid+'"]').filter(kmVisible),pin=pins[pins.length-1];
+  if(!pin)return;
+  pins.forEach(p=>kmPinHov(p,true));
+  if(!el||_tipFor)return;
+  el.textContent=pin.dataset.tip||'';el.classList.add('on');
+  const t=el.getBoundingClientRect(),r=pin.getBoundingClientRect();
+  let x=r.left+r.width/2-t.width/2,y=r.top-t.height-8;
+  if(y<6)y=r.bottom+8;
+  el.style.left=Math.max(6,Math.min(x,innerWidth-t.width-6))+'px';el.style.top=y+'px';
+}
+const KM_ROW='#siteRoot tr[data-sid],.kml-r[data-sid]';   /* 548차: 모달의 목록 행도 같은 길 */
+/* 551차: 계정 표의 행 → 그 사람이 맡은 현장 점을 모두 키운다(툴팁은 없다 — 여러 개라 어디에 띄울지 없다) */
+function kmHoverOwner(pid){
+  $$('.okm-pin.hov').forEach(p=>kmPinHov(p,false));
+  if(!pid)return;
+  const p=roster().find(x=>x.id===pid);if(!p)return;
+  Object.keys(p.sites||{}).forEach(sid=>$$('.okm-pin[data-sid="'+sid+'"]').filter(kmVisible).forEach(e=>kmPinHov(e,true)));
+}
+document.addEventListener('mouseover',e=>{
+  const tr=e.target.closest&&e.target.closest('#acctRoot tr[data-pid]');
+  if(tr)kmHoverOwner(tr.dataset.pid);
+});
+document.addEventListener('mouseout',e=>{
+  const tr=e.target.closest&&e.target.closest('#acctRoot tr[data-pid]');
+  if(!tr)return;
+  const to=e.relatedTarget;if(to&&to.closest&&to.closest('#acctRoot tr[data-pid]')===tr)return;
+  kmHoverOwner(null);
+});
+document.addEventListener('mouseover',e=>{
+  const tr=e.target.closest&&e.target.closest(KM_ROW);
+  if(!tr)return;
+  kmHoverSite(tr.dataset.sid);
+});
+document.addEventListener('mouseout',e=>{
+  const tr=e.target.closest&&e.target.closest(KM_ROW);
+  if(!tr)return;
+  const to=e.relatedTarget;if(to&&to.closest&&to.closest(KM_ROW)===tr)return;
+  kmHoverSite(null);
+});
+/* 547차: 시군구는 면 데이터가 없다(경계는 mesh 한 덩어리) — 커서 아래 시군구의 이름표만 강조한다 */
+let _kmMv=0;
+document.addEventListener('mousemove',e=>{
+  const svg=kmSvgOf(e.target);
+  if(!svg&&!_kmMv)return;
+  const km=S.km;
+  let key='';
+  if(svg&&km&&km.sel){const q=kmMapXY(svg,e.clientX,e.clientY);const m=q&&kmMuniAt(km.sel,q[0],q[1]);if(m)key=km.sel+'|'+m.nm;}
+  if(key===(_kmMv||''))return;
+  _kmMv=key;
+  /* 550차: 경계 svg 의 글자는 건드리지 않는다 — 겹층의 사본(.okm-hvt)에 자리·글자를 옮겨 적는다 */
+  $$('.okm-wrap').forEach(w=>{const t=w.querySelector('.okm-hvt');if(!t)return;
+    const src=key&&[...w.querySelectorAll('.okm-ct[data-m]')].find(x=>x.dataset.m===key);
+    if(!src){t.textContent='';return;}
+    t.setAttribute('x',src.getAttribute('x'));t.setAttribute('y',src.getAttribute('y'));t.setAttribute('style',src.getAttribute('style'));
+    t.textContent=src.textContent;});
+},{passive:true});
 /* 지도에서 한 단계 되돌린다 — 우클릭·바다 클릭·뒤로 버튼이 모두 이리로 온다 */
 function kmBack(){
   const km=S.km;if(!km)return;
+  /* 601차: 이력이 비어도 한 번에 전체로 가지 않는다 — 시도 안에서 확대돼 있으면 먼저 그 시도 보기로 돌아간다
+     (휠·모달 복원처럼 이력이 없는 확대에서 우클릭이 전체로 튀던 문제) */
+  if(!km.hist.length&&km.sel){
+    const box=kmZoomBox(km.sel);
+    if(km.vb.w<box.w*0.98){km.vb=box;rOrgMap();return;}
+  }
   const h=km.hist.pop();
   if(h){km.vb=h.vb;km.sel=h.sel;}else{km.vb={...KM_VB0};km.sel='';}
   rOrgMap();
@@ -6349,7 +6758,7 @@ function rOrg(){
     : '<span class="rk-fix">'+esc(rankLabel(p.rank))+'</span>';
   const row=p=>{
     const u=rankUses(p.rank);
-    return `<tr>
+    return `<tr data-pid="${esc(p.id)}">
       <td><div class="utbl-name">${avHTML(p.id)}
         <div style="min-width:0"><div class="utbl-nick${p.id===myUid?' me':''}">${esc(p.name)}</div><div class="utbl-mail">${esc(p.email||'')}</div></div></div></td>
       <td>${teamCtl(p)}</td>
@@ -6511,7 +6920,9 @@ function openCtx(x,y,items,anchor){
   el.className='ctxmenu';el.setAttribute('role','menu');
   el.innerHTML=list.map((it,i)=>it.sep
     ?'<div class="ctx-sep"></div>'
-    :'<button class="ctx-it'+(it.danger?' dg':'')+'" role="menuitem" data-ci="'+i+'">'+esc(it.label)+'</button>').join('');
+    :'<button class="ctx-it'+(it.danger?' dg':'')+(it.on?' on':'')+(it.check?' chk':'')+'" role="menuitem" data-ci="'+i+'">'
+      +(it.check?'<span class="ctx-k"><svg class="icn" aria-hidden="true"><use href="#i-check"></use></svg></span>':'')
+      +esc(it.label)+'</button>').join('');   /* it.on: 현재 값(575차) · it.check: 체크 상자(602차) */
   document.body.appendChild(el);
   const r=el.getBoundingClientRect();
   el.style.left=Math.max(6,Math.min(x,innerWidth-r.width-8))+'px';
@@ -6714,7 +7125,7 @@ function tipShow(target){
   el.classList.add('on');
   const t=el.getBoundingClientRect();
   /* 지도 안(시도 면·현장 점)은 요소가 커서 중앙에 띄우면 엉뚱한 곳에 뜬다 — 커서를 따른다(531차) */
-  const map=target.closest&&target.closest('#okmSvg');
+  const map=target.closest&&target.closest('.okm,.okm-ov');   /* ⚠ .okm-wrap 으로 잡으면 뒤로 버튼까지 커서를 따라간다(551차) */
   const r=map?{left:_tipMx,width:0,top:_tipMy-2,bottom:_tipMy+18}:target.getBoundingClientRect();
   let x=r.left+r.width/2-t.width/2;
   let y=r.top-t.height-8;
@@ -7247,11 +7658,27 @@ const ACT={
     /* ⚠ 이미 그 시도를 보고 있으면 아무것도 하지 않는다 — 확대된 면이 화면을 거의 채우므로
        무심코 한 번 더 눌리기 쉽고, 그때마다 이력이 쌓여 뒤로가 두 번 필요했다(531차) */
     if(c===km.sel)return;
+    /* 602차: 이미 그 시도보다 더 깊이 확대돼 있으면(시군구까지 들어간 상태) 좌클릭으로 도로 축소되지 않게 한다 */
+    const box=kmZoomBox(c);
+    if(km.vb.w<box.w*0.98)return;
     km.hist.push({vb:{...km.vb},sel:km.sel});
-    km.vb=kmZoomBox(c);km.sel=c;rOrgMap();
+    km.vb=box;km.sel=c;rOrgMap();
   },
   /* 축소 버튼은 한 번에 전체로 — 여러 시도를 옮겨 다닌 뒤에는 한 단계씩 되돌리면 안 듣는 것처럼 보였다 */
   'org.mapAll':()=>{const km=S.km;if(!km)return;km.vb={...KM_VB0};km.sel='';km.hist=[];rOrgMap();},
+  'org.mapBig':kmOpenBig,   /* 547차 */
+  'org.mapYrMenu':el=>{   /* 575차: 년차 필터 드롭다운 — 앱 공용 메뉴(openCtx). 576차: 다중 선택 — 고르면 닫지 않고 같은 자리에 다시 연다 */
+    if(_ctxEl&&document.contains(_ctxEl)&&_ctxEl.dataset.for==='kmYr'){closeCtx();return;}   /* 580차: 열려 있으면 닫는다 · 601차: 떼어진 메뉴는 무시 */
+    const r=el.getBoundingClientRect(),cur=S.kmYr||[];
+    const items=[{label:'전체',on:!cur.length,act:()=>{S.kmYr=[];rOrgMap();}},{sep:true},   /* 구분선은 다른 메뉴와 같은 {sep:true} */
+      ...KM_YR.map(([k,nm])=>({label:nm,check:true,on:cur.includes(k),act:()=>{S.kmYr=cur.includes(k)?cur.filter(z=>z!==k):[...cur,k];rOrgMap();
+        const b=$('[data-act="org.mapYrMenu"]');if(b)ACT['org.mapYrMenu'](b);}}))];
+    openCtx(r.right-172,r.bottom+4,items,el);if(_ctxEl)_ctxEl.dataset.for='kmYr';},
+  'org.mapTo':el=>kmClickDefer(()=>kmGoSite(el.dataset.sid)),   /* 548차 · 553차: 더블클릭(주소)과 겹치지 않게 미룬다 */
+  'org.mapOwn':el=>{S.kmOwn=S.kmOwn===el.dataset.own?'':el.dataset.own;rOrgMap();},   /* 549차 */
+  'org.mapTab':el=>{S.kmTab=el.dataset.t;rOrgMap();},   /* 550차 */
+  'org.mapReg':el=>{S.kmReg=S.kmReg===el.dataset.reg?'':el.dataset.reg;rOrgMap();},   /* 551차 */
+  'org.mapAddr':el=>kmAddrEdit(el.dataset.sid),   /* 552차 */
 
   'org.reg':el=>{S.orgReg=el.dataset.id||'';rOrg();},
   'org.addSite':()=>{
@@ -7545,15 +7972,27 @@ document.addEventListener('click',e=>{
   }
   /* 팝오버는 색 원 버튼 안에 들어 있다 — 여기서 막지 않으면 안쪽 클릭이 버튼까지 올라가 팝오버가 닫힌다 */
   if(e.target.closest('#colPop'))return;
-  if(e.target.closest('#okmSvg')&&!e.target.closest('[data-act]')){kmBack();return;}
-  /* 이미 그 시도 안이면 한 단계 더 — 누른 자리의 시군구로 들어간다(537차) */
-  {const pv=e.target.closest&&e.target.closest('.okm-pv');
-   const km=S.km;
-   if(pv&&km&&km.sel&&pv.dataset.c===km.sel){
-     const q=kmMapXY(e.target.closest('#okmSvg'),e.clientX,e.clientY);
-     const m=q&&kmMuniAt(km.sel,q[0],q[1]);
-     if(m){km.hist.push({vb:{...km.vb},sel:km.sel});km.vb=m.vb;km.sel='';rOrgMap();return;}
-       /* 시도 강조선은 끈다 — 시군구 안까지 들어왔는데 시도 윤곽이 화면을 가로지르면 어지럽다 */
+  /* 지도 안 클릭(시도·바다)은 549차부터 220ms 미룬다 — 더블클릭이면 버린다(kmClickDefer).
+     범례·뒤로 같은 버튼은 지도(svg) 밖이라 바로 간다 */
+  {const svg=e.target.closest('.okm');   /* 겹층의 점은 여기 안 걸린다 — 점 클릭은 아무 일도 하지 않는다 */
+   if(svg){
+     const tgt=e.target,cx=e.clientX,cy=e.clientY;
+     e.stopPropagation();
+     /* 552차: 지연은 더블클릭이 있는 **모달에서만** — 카드는 바로 반응한다 */
+     (svg.id==='okmBig'?kmClickDefer:f=>f())(()=>{
+       /* 547차: 모달 안의 지도는 조상에 modal.stop 이 있어 [data-act] 를 지도 안으로 한정한다 */
+       if(!tgt.closest('.okm [data-act]')){kmBack();return;}
+       /* 이미 그 시도 안이면 한 단계 더 — 누른 자리의 시군구로 들어간다(537차) */
+       const pv=tgt.closest('.okm-pv,.okm-mp'),km=S.km;   /* 584차: 시군구 면도 시도처럼 */
+       if(pv&&km&&km.sel&&pv.dataset.c===km.sel){
+         const q=kmMapXY($('#'+svg.id)||svg,cx,cy);   /* 554차: 미루는 사이 다시 그려졌으면 새 svg 로 잰다 */
+         const m=q&&kmMuniAt(km.sel,q[0],q[1]);
+         if(m){km.hist.push({vb:{...km.vb},sel:km.sel});km.vb=m.vb;km.sel='';rOrgMap();return;}
+         /* 시도 강조선은 끈다 — 시군구 안까지 들어왔는데 시도 윤곽이 화면을 가로지르면 어지럽다 */
+       }
+       const el=tgt.closest('.okm [data-act]');const fn=el&&ACT[el.dataset.act];if(fn)fn(el);
+     });
+     return;
    }}
   const el=e.target.closest('[data-act]');
   if(!el)return;
@@ -7746,8 +8185,9 @@ document.addEventListener('change',e=>{
 });
 /* 현장 위치 지도 — 우클릭·빈 바다로 한 단계 되돌린다 */
 document.addEventListener('contextmenu',e=>{
-  if(!e.target.closest('#okmSvg'))return;
-  e.preventDefault();kmBack();
+  if(!kmSvgOf(e.target))return;
+  e.preventDefault();clearTimeout(_kmCT);   /* 602차: 미뤄둔 좌클릭(220ms)이 뒤늦게 확대시키던 문제 */
+  kmBack();
 });
 /* 위젯 설정 팝업 조작 */
 document.addEventListener('input',e=>{
