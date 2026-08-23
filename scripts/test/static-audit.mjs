@@ -356,5 +356,26 @@ OK('구문 검사 (node --check)');
   else OK('CSS 재선언 신규 없음 (베이스라인 ' + CSS_DUP_BASELINE.size + '건 동결)');
 }
 
+/* ── 12. 배포본에 작업 잔재가 섞였는가(608차) ────────────────────
+   608차에 검증용으로 만든 `_modal.html`(529KB)이 저장소에 남아 배포 zip 에 그대로 실려 나갔다.
+   앱은 멀쩡히 돌아서 다른 검사에 전혀 안 걸렸다 — 사람이 눈으로 볼 수밖에 없는 부류였다.
+   임시 파일에 쓰는 이름꼴만 잡는다(오탐이 나면 이름을 바꾸는 편이 낫다). */
+{
+  const JUNK = /(^_|\.(tmp|bak|orig|rej)$|^snap.*\.html$|^test.*\.html$|~$)/;
+  const SKIP = new Set(['node_modules', 'dist', '.git']);
+  const found = [];
+  const walk = (rel) => {
+    for (const e of fs.readdirSync(path.join(root, rel), { withFileTypes: true })) {
+      if (SKIP.has(e.name)) continue;
+      const r = rel ? rel + '/' + e.name : e.name;
+      if (e.isDirectory()) { walk(r); continue; }
+      if (JUNK.test(e.name)) found.push(r);
+    }
+  };
+  walk('');
+  if (found.length) F('배포본에 작업 잔재 ' + found.length + '개 — 지우고 다시 묶을 것: ' + found.join(' · '));
+  else OK('작업 잔재 없음 (임시 파일 이름꼴 검사)');
+}
+
 console.log('\n결과: FAIL ' + fail + ' · WARN ' + warn);
 process.exit(fail ? 1 : 0);
