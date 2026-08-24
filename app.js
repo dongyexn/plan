@@ -9,7 +9,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='609';
+const APP_VER='613';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -160,6 +160,23 @@ function colDotHTML(c,pid,team){
   return pid
     ?'<span class="p-col p-col-ro'+(team?' p-col-team':'')+'" style="'+st+'"></span>'
     :'<button class="p-col'+(team?' p-col-team':'')+'" data-act="plan.color" aria-label="색 고르기" data-tip="색 고르기" style="'+st+'"></button>';
+}
+/* 담당자를 바꾸면 색 원도 곧바로 따라 바뀐다(609차 · 폼을 다시 그리지 않고 그 원만 고친다).
+   ⚠ 판정은 `planColor` 에 맡긴다 — 직접 고른 색이면 담당자를 바꿔도 그대로다('auto' 일 때만 담당자 색).
+   ⚠ 공통(담당자 없음)은 색뿐 아니라 **꼴**이 바뀐다(속 빈 원) — 클래스도 함께 토글해야 한다.
+   ⚠ 폼은 둘이고 규칙이 다르다: 달력 옆 인라인(#dpEdit·peOwners)은 속 빈 원을 쓰고,
+     업무 현황 목록(#tkNew·tnAsg)은 원래부터 team 인자를 안 넘겨 늘 꽉 찬 원이다 — 그 차이를 지킨다. */
+function peColorSync(){
+  const inline=$('#dpEdit'),box=inline||$('#tkNew');if(!box)return;
+  const dot=box.querySelector('.pe-bar .p-col');if(!dot)return;
+  const sel=box.querySelector(inline?'#peOwners':'#tnAsg');
+  const v=(sel&&sel.value)||'';
+  const color=inline?((S.planEdit&&S.planEdit.draft&&S.planEdit.draft.color)||'auto')
+                    :(($('#tnColor')&&$('#tnColor').value)||'');
+  const pp={color,owners:v?{[v]:1}:{}};
+  const c=planColor(pp),team=!!inline&&!planOwners(pp).length;
+  dot.classList.toggle('p-col-team',team);
+  dot.style.cssText=team?'background:transparent;box-shadow:inset 0 0 0 1.5px '+c:'background:'+c;
 }
 /* 색 선택기 HTML — 기본 팔레트 + 임의 색 추가.
    현재 값이 팔레트에 없으면(직접 고른 색) 맨 뒤에 칩으로 붙여 선택 상태를 유지한다. */
@@ -1614,7 +1631,9 @@ function calInit(){
        여러 날에 걸친 막대는 모든 날에서 같은 줄이어야 하나로 이어지는데, 등급 때문에 날마다
        줄이 달라지면 FullCalendar 가 가장 아래 줄로 통일해 그 위 칸들이 비어 버린다.
        기간 막대는 예전처럼 맨 위에 두고, 하루짜리 막대들만 등급으로 세운다 */
-    eventOrder:'-duration,ord,oky,start,allDay,title',
+    /* ⚠ 609차: 끝을 `title` 로 두면 수정 중 제목을 칠 때마다 막대가 줄을 옮겨 다닌다 —
+       만든 순(cre) → 업무 id(pid) 로 못 박는다. 둘 다 편집 중에 변하지 않는 값이다. */
+    eventOrder:'-duration,ord,oky,start,allDay,cre,pid',
     headerToolbar:false,height:'100%',dayMaxEvents:maxEvOf(),
     moreLinkContent:a=>'외 '+a.num+'건 ›',   /* 234차: 5안(우측 정렬 미니) — 조용하게 오른쪽 끝에 */
     /* 기본 더보기 팝오버 대신 그 날짜를 골라 업무 패널(위젯은 팝업)에서 전부 보게 한다 */
@@ -1776,7 +1795,7 @@ function planEvent(p,date){
     classNames:(done?['done']:[]).concat((!team&&isLightColor(planColor(p)))?['on-light']:[]).concat(team?['team']:[]).concat(isRisk(p.kind)?['risk']:[]),
     /* 칸 안 차례 — 공통(0) · 내 업무(1) · 팀장(2) · 나머지(3).
        칸이 넘쳐 '외 N건' 으로 접힐 때 나와 상관 있는 것이 먼저 남는다(eventOrder 참조) */
-    extendedProps:{pid:p.id,occ:date,recur:!!(p.recur&&p.recur.f),ord:evOrd(p,team),oky:evOwnKey(p)},
+    extendedProps:{pid:p.id,occ:date,recur:!!(p.recur&&p.recur.f),ord:evOrd(p,team),oky:evOwnKey(p),cre:Number(p.createdAt)||0},
     editable:!(p.recur&&p.recur.f)
   };
 }
@@ -2134,7 +2153,12 @@ function sortPlans(list){
     if(tx&&ty&&tx!==ty)return tx<ty?-1:1;
     const ax=x.p.date||'', ay=y.p.date||'';
     if(ax!==ay)return ax<ay?-1:1;
-    return String(x.p.title||'').localeCompare(String(y.p.title||''),'ko');
+    /* ⚠ 609차: 마지막 기준이 **제목**이었다 — 수정 폼에서 제목을 한 글자 칠 때마다 카드가 목록에서
+       위아래로 튀었다(입력 때마다 planAutosave 가 다시 그린다). 만든 순서로 바꿔 고정한다.
+       createdAt 이 없는 옛 업무는 id 로 가른다 — `uid()` 가 Date.now() 로 시작해 대체로 만든 순이다. */
+    const cx=Number(x.p.createdAt)||0, cy=Number(y.p.createdAt)||0;
+    if(cx!==cy)return cx-cy;
+    return String(x.p.id||'').localeCompare(String(y.p.id||''));
   });
 }
 function rangePlans(){
@@ -2902,7 +2926,7 @@ function tkBodyHTML(prog,kind){
 /* 업무 구분을 '공통'으로 고르면 담당자도 공통(빈 값)으로 — 공통 업무는 특정 담당자에게 걸지 않는다 */
 function kindOwnerSync(kindId,ownId){
   const k=$('#'+kindId),o=$('#'+ownId);
-  if(k&&o&&k.value==='gather')o.value='';
+  if(k&&o&&k.value==='gather'){o.value='';peColorSync();}   /* 609차: 값을 코드로 바꾸면 input 이 안 울린다 — 직접 부른다 */
 }
 function tkKindRefresh(){
   const sec=$('#tnBodySec');if(!sec)return;
@@ -3031,7 +3055,7 @@ function tkFilterHTML(){
     <div class="tkf-top">
       ${tkSearchHTML()}
       <button class="tkf-tg${on?' on':''}" data-act="tkf.toggle" aria-label="필터 ${open?'접기':'펼치기'}" aria-expanded="${open}" data-tip="필터">
-        <svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg>
+        <svg class="icn" aria-hidden="true"><use href="#i-filter"></use></svg>
       </button>
     </div>
     ${open?`<div class="tkf-body">
@@ -5924,10 +5948,18 @@ function kmSiteHint(st){
 function kmSiteXY(st){
   if(!st||!st.name)return null;
   const addr=SITE_ADDR[st.id]||((S.cfg&&S.cfg.siteAddr)||{})[st.id]||'';   /* 552차: 관리자가 적은 주소(cfg.siteAddr)도 쓴다 */
-  const txt=addr||st.name;                               /* 주소가 있으면 이름보다 정확하다 */
-  const hint=kmSiteHint(st), nm=txt+'\u0000'+hint;        /* 권역이 바뀌면 다시 찾는다 */
+  const hint=kmSiteHint(st), nm=addr+'\u0000'+st.name+'\u0000'+hint;   /* 주소·이름·권역 중 하나라도 바뀌면 다시 찾는다 */
   if(!(nm in KM_XY)){
-    const h=kmAuto(txt,hint);
+    /* ── 612차: 주소와 이름을 **2단계**로 쓴다(예전에는 `addr||name` 이라 주소가 있으면 이름을 통째로 버렸다).
+       ① 주소만으로 동 수준(단지·읍면동·법정동)이 나오면 그것으로 끝.
+       ② 안 나오면(주소가 '천안'·'대전' 처럼 도시만 적혔거나 아예 없으면) **이름을 보태** 다시 찾는다.
+          '천안' + '…두정역' → 충남 두정동 · '대전' + '…도안' → 대전 도안동 · '광주' + '…첨단' → 첨단동.
+       ⚠ ①을 먼저 보는 순서가 핵심이다. 무조건 합치면, 도로명주소를 제대로 적었는데 이름의 지명이
+         실제와 다른 현장(이름 '…두정역' · 주소 성성동)에서 **이름이 이겨 엉뚱한 동으로 간다** — 실측 확인.
+       ⚠ 권역 이름은 힌트 구실을 못 한다('중부1'·'중부2'는 행정구역이 아니고 '광주'는 경기 광주시로도 걸린다).
+         그래서 동명이의(충남 두정동 ↔ 광주 두정동)는 **주소 없이는 못 가른다** — 이름만으로는 안 찍힌다. */
+    let h=addr?kmAuto(addr,hint):null;
+    if(!h||!/^(단지|읍면동|법정동)$/.test(h.kind))h=kmAuto(addr?addr+' '+st.name:st.name,hint);
     /* ⚠ 제주 항목의 중심점은 추자도까지 안고 있어 네모 위로 벗어난다 — 네모 안으로 가둔다 */
     KM_XY[nm]=h?(h.pc==='39'
       ?[Math.min(Math.max(h.x,KM_FR.x+40),KM_FR.x+KM_FR.w-40),
@@ -6198,7 +6230,12 @@ function kmAuto(text,hint){
   if(fine.length&&(fine.length===1||fine.every(d=>near(d,fine[0]))))return fine[0];
   /* 시군구를 못 찾은 시도는 남긴다 — 권역 '대전·세종' 처럼 두 지역에 걸치면
      한쪽만 잡혀 그리로 쏠린다. 겹치지 않는 것만 더해 평균을 낸다 */
-  const base=gu.concat(sido.filter(x=>!gu.some(y=>near(x,y))));
+  /* ⚠ 613차: 같은 시도의 시군구가 이미 잡혔으면 **그 시도는 버린다.** 시도는 시군구의 상위이지
+     별개 지역이 아니다. 예전에는 거리(25km)로만 걸러서 '전북 익산' 이 익산시 중심과 전북도 중심의
+     **평균**으로 갔다 — 도 중심이 완주·임실 부근이라 익산에서 남동쪽으로 크게 밀렸다("자꾸 완주를 잡는다").
+     '전남 여수' 는 둘이 100km 넘게 떨어져 아예 안 찍혔다. 지역을 정성껏 적을수록 틀리던 셈이다.
+     ⚠ pc 가 다른 것끼리는 그대로 남긴다 — 권역 '대전·세종' 처럼 두 시도에 걸치면 평균이 맞다(531차). */
+  const base=gu.concat(sido.filter(x=>!gu.some(y=>y.pc===x.pc||near(x,y))));
   if(!base.length)return null;
   if(base.length===1)return base[0];
   /* ⚠ 후보가 멀리 흩어져 있으면 평균은 엉뚱한 빈 자리가 된다 —
@@ -6255,9 +6292,12 @@ function rOrgMap(){
   const km=S.km||(S.km={vb:{...KM_VB0},sel:'',hist:[]});
   /* ⚠ w·h 는 실제로 그려질 상자 크기다 — 카드 안쪽 폭(264 − 테두리 2)과 어긋나면
      배율이 틀려 글자·점이 의도한 크기로 안 나온다 */
+  /* ⚠ 609차: '크게 보기' 는 지도 안이 아니라 **카드 머리 오른쪽**(.tm-h 의 .tm-add)으로 옮겼다 —
+     팀·권역 카드의 + 버튼과 같은 자리·같은 무몰딩 규격이라 셋이 한 줄로 맞는다(index.html 참조).
+     지도 안에는 상태에 따라 나타나는 '전체 보기' 만 남는다 — 늘 있는 버튼과 가끔 있는 버튼이
+     한 묶음이면 자리가 흔들려 보였다. */
   root.innerHTML='<div class="okm-wrap">'+kmSVG(km.vb,km.sel,{sites:put,w:262,h:401})
-    +'<div class="okm-tools">'+kmBackBtn(km)
-    +'<button class="okm-back" data-act="org.mapBig" aria-label="크게 보기" data-tip="크게 보기"><svg class="icn" aria-hidden="true"><use href="#i-expand"></use></svg></button></div>'
+    +'<div class="okm-tools">'+kmBackBtn(km)+'</div>'
     +'</div>';
   /* ⚠ 닫힌 모달의 본문은 비워지지 않는다 — 열려 있을 때만 그린다. 안 그러면 숨은 지도의 점이 호버 대상으로 잡혀
      툴팁이 엉뚱한 자리(보이지 않는 모달의 점 위)에 떴다(551차) */
@@ -8085,6 +8125,9 @@ document.addEventListener('change',e=>{
     setPlanColor(hex);palAdd(hex);return;
   }
   if(e.target.id==='peKind'){peKindRefresh();return;}
+  /* 609차: 담당자 → 색 원. ⚠ 이 자리는 `change` 리스너다(select 는 change 가 확실히 온다).
+     input 리스너는 8104행의 한 줄짜리 하나뿐이라 여기 두는 편이 맞다 — 옮기지 말 것. */
+  if(e.target.id==='peOwners'||e.target.id==='tnAsg')peColorSync();
   if(e.target.closest&&e.target.closest('#dpEdit'))planAutosave();
 });
 document.addEventListener('change',e=>{

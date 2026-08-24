@@ -157,7 +157,14 @@ html,body{background:var(--shell);}
 #app{display:flex;height:100vh;height:100dvh;overflow:hidden;gap:8px;padding:48px 0 8px 0;background:transparent;}   /* 534차: 참조 화면(CS 업무관리시스템) 실측 — 헤더 48px · 아래 8px(판 사이 간격과 같은 값) */
 html,body{overflow:hidden;}   /* 513차: 문서가 뷰포트를 넘지 않게 — 헤더가 fixed 라 스크롤바가 생겼다 */
 body>svg{position:absolute;width:0;height:0;overflow:hidden;}
-#app,#appHdr,#mo,#tko,#scrim,#toast,#nqPanel,#htip{line-height:1.5;}   /* 513차: 본문 행간 복원 */
+#app,#appHdr,#mo,#tko,#scrim,#toast,#nqPanel,#htip,
+#evePop,#rlMenu,#colPop,#widMove,#pfPop,.ctxmenu{line-height:1.5;}   /* 513차: 본문 행간 복원 */
+/* ⚠ 609차: 이 목록은 **body 직속으로 붙는 요소를 하나도 빠뜨리면 안 된다.**
+   `body{line-height:0}`(71행)이 그대로 상속돼 줄 상자가 0 이 되고, 글자가 상자 밖으로 넘친다.
+   602차에 보고서(#rptRoot)가, 609차에 나머지 6개가 같은 이유로 걸렸다 — 실측 높이:
+   `#evePop` 14px(글자 13px) · `#rlMenu` 0px · `#colPop` 28px · `#widMove` 16px · `.ctxmenu` 29px.
+   앞으로 body 직속으로 요소를 붙이면(appendChild) 그 요소를 여기 함께 넣을 것.
+   (#rptRoot 는 보고서 규격이 달라 `.rpt{line-height:normal}` 로 따로 처리한다 — 602차) */
 /* 456차: 어두운 판 위의 사이드바 내부 색 */
 /* 479차: 헤더 도구는 무몰딩 — 검색 밑줄·팀 선택과 같은 결 */
 #appHdr .ah-right .tb-rm{background:transparent;border:0;font-weight:600;font-size:13px;color:var(--shell-dim);}   /* 493차: 검색 자리표시와 같은 색 */
@@ -1688,13 +1695,14 @@ body:not(.wid) .btn.dp-add.on:hover{background:transparent;color:#7DA9EA;}   /* 
 .dp-srch .dp-srch-i{position:absolute;left:9px;top:50%;transform:translateY(-50%);width:13px;height:13px;
   color:var(--lbl3);pointer-events:none;z-index:3;}   /* 517차: 포커스 시 입력칸이 z-index:1 로 올라와 아이콘을 덮었다 */
 .dp-srch>.inp{padding-left:28px;}
-/* 필터 여닫이 꺽쇠 — 펼치면 아래를 가리킨다 */
+/* 필터 여닫이 — 611차: 꺾쇠를 걷고 현장 지도와 같은 필터 아이콘(#i-filter)으로.
+   ⚠ 회전 규칙(rotate 90/-90)도 함께 없앴다 — 필터 아이콘은 가리키는 방향이 없어 돌리면 뜻이 깨진다.
+   여닫힘은 아이콘 방향이 아니라 아래 `.on` 점과 펼쳐진 본문이 알린다. */
 .tkf-tg{flex:0 0 auto;width:28px;height:28px;display:flex;align-items:center;justify-content:center;
   border-radius:var(--rmd);color:var(--lbl3);position:relative;transition:color var(--t-fast),background var(--t-fast);}
 .tkf-tg:hover{background:var(--fill);color:var(--bt1);}
-.tkf-tg .icn{width:14px;height:14px;transition:transform var(--t-base);}
-.tkf-tg .icn{transform:rotate(90deg);}                    /* 접힘 — 아래를 가리킨다 */
-.tkf-card.open .tkf-tg .icn{transform:rotate(-90deg);}   /* 펼침 — 위 */
+.tkf-tg .icn{width:14px;height:14px;}
+.tkf-card.open .tkf-tg{background:var(--fill);color:var(--bt1);}   /* 펼침 — 눌린 상태로 알린다 */
 .tkf-tg.on::after{content:'';position:absolute;top:4px;right:4px;width:5px;height:5px;border-radius:50%;background:var(--b500);}
 .tkf-body{display:flex;flex-direction:column;gap:8px;}
 .tkf-card .msel{width:100%;min-width:0;}
@@ -3464,7 +3472,7 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
                 <button class="cal-nb" data-act="cal.next" aria-label="다음"><svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg></button>
               </div>
               <div class="cal-nav appo" id="calFiltWrap">
-                <button class="cal-nb" data-act="day.fmore" aria-label="필터" data-tip="필터" aria-expanded="false"><svg class="icn" aria-hidden="true"><use href="#i-chevd"></use></svg></button>
+                <button class="cal-nb" data-act="day.fmore" aria-label="필터" data-tip="필터" aria-expanded="false"><svg class="icn" aria-hidden="true"><use href="#i-filter"></use></svg></button>
                 <div class="tb-pop cal-filt-pop" id="calFilt">
                   <div class="dp-fadv" id="dpFadv"></div>
                 </div>
@@ -3556,7 +3564,7 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
             <div class="tm-list" id="regRoot"></div>
           </div>
           <div class="card mb12">
-            <div class="tm-h"><span>현장 지도</span></div>
+            <div class="tm-h"><span>현장 지도</span><button class="btn tm-add" data-act="org.mapBig" aria-label="크게 보기" data-tip="크게 보기"><svg class="icn" aria-hidden="true"><use href="#i-expand"></use></svg></button></div>
             <div id="orgMapRoot"></div>
           </div>
         </div>
@@ -3645,7 +3653,7 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 <script src="./vendor/lz-string.min.js"></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./vendor/korea-geo.js?v=609"></script>
-<script src="./vendor/apt-geo.js?v=609" onerror="void 0"></script>   <!-- 540차: 공동주택명 색인 — 없으면 그냥 건너뛴다 -->
-<script src="./app.js?v=609"></script>
+<script src="./vendor/korea-geo.js?v=613"></script>
+<script src="./vendor/apt-geo.js?v=613" onerror="void 0"></script>   <!-- 540차: 공동주택명 색인 — 없으면 그냥 건너뛴다 -->
+<script src="./app.js?v=613"></script>
 </body></html>
