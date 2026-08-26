@@ -1,9 +1,14 @@
 {
   // ===================================================================
   // H서비스센터 — Firebase Realtime Database 보안 규칙 (report-c29a1)
-  //   · 하자처리 현황  : users · report · reportIndex · plans · analysis · meta · siteConfig · aiRules
-  //   · 주요업무 현황  : calapp/*            ← 이번에 추가된 블록
-  // 두 앱이 같은 프로젝트·같은 계정을 쓴다. 기존 블록은 손대지 않았다.
+  //
+  // 단일 앱 체제(622차) — 별도 앱이던 '하자처리 현황'은 주요업무 현황(calapp)으로
+  // 통합·폐기되었다. 아래 최상위 노드는 전부 calapp 하나가 쓴다.
+  //   · 하자 관리 : users · report · reportIndex · plans · analysis · meta · siteConfig
+  //   · 업무 관리 : calapp/*
+  // 폐기 정리: aiRules(규칙 편집 기능 폐지 — 규칙은 코드 내 RULE_DEF/CRIT_DEF 고정),
+  //   calapp/mentions(멘션 기능 제거) 블록 삭제. 잔존 데이터는 콘솔에서만 접근된다.
+  //   복원이 필요하면 report 저장소 최종본(report-final)의 규칙을 참조.
   //
   // 권한 모델(공통)
   //   - 접근 자격(VERIF): 로그인 + 이메일 인증 완료 + @hdec.co.kr 도메인
@@ -64,8 +69,8 @@
     },
 
     "reportIndex": {
-      // 게시월 인덱스: 뷰어 기준월 선택기가 이 노드만 읽어 목록을 구성(report 전체 다운로드 방지).
-      // 게시(fb2Publish) 시 reportIndex/{rm}=Date.now() 로 편집자가 기록.
+      // 게시월 인덱스: 기준월 선택기·위젯 새 게시월 신호가 이 노드만 읽어 목록을 구성
+      // (report 전체 다운로드 방지). 게시(dfPublish) 시 reportIndex/{rm}=Date.now() 로 관리자가 기록.
       ".read": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
       "$rm": {
         ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'",
@@ -91,8 +96,7 @@
       "$sid": {
         // 분석의견은 기준월별 아카이브: analysis/{sid}/{YYYY-MM} = HTML 문자열 ≤20000자.
         // 쓰기는 월 노드에만 허용 — 구버전 형태(analysis/{sid} = 문자열) 직접 쓰기는 거부된다.
-        // 기존 레거시 문자열 데이터는 읽기 가능하며, 클라이언트가 최초 조우 시 현재 기준월 노드로
-        // 재기록해 마이그레이션한다(하위 경로 쓰기가 원시값 부모를 대체하는 RTDB 의미론, 멱등).
+        // 레거시 문자열 데이터는 읽기 시 수용된다(dfAitHTML 의 typeof 분기).
         "$rm": {
           ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
           ".validate": "$rm.matches(/^[0-9]{4}-[0-9]{2}$/) && newData.isString() && newData.val().length <= 20000"
@@ -122,28 +126,11 @@
       }
     },
 
-    "aiRules": {
-      // AI 분석 규칙 팀 공유(설정 > AI 분석): 추가 지침(custom)·중대하자 키워드(critKw)·
-      // 기본 규칙 항목별 수정본(ovr/{ruleId})을 한 노드에 저장 — 전 MEMBER 실시간 구독, 쓰기는 관리자만.
-      // 클라이언트는 항상 노드 전체를 set() 하며, 수정본이 없으면 ovr:null 로 키를 제거한다.
-      ".read": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
-      ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'",
-      "custom":    { ".validate": "newData.isString() && newData.val().length <= 20000" },
-      "critKw":    { ".validate": "newData.isString() && newData.val().length <= 5000" },
-      "ovr": {
-        // ruleId 형식: s_*(현장 분석) / d_*(대시보드) / c_*(중대하자 추출) — index.html 의 RULE_DEF·CRIT_DEF 와 일치
-        "$ruleId": { ".validate": "$ruleId.matches(/^[sdc]_[A-Za-z0-9]+$/) && newData.isString() && newData.val().length <= 20000" }
-      },
-      "updatedAt": { ".validate": "newData.isNumber()" },
-      "updatedBy": { ".validate": "newData.isString() && newData.val().length <= 200" },
-      "$other":    { ".validate": false }
-    },
-
     // ===================================================================
     // 주요업무 현황 앱 (일정 달력 + 주요업무 현황)
     //   읽기는 MEMBER 전체. 쓰기는 두 단계로 나눈다.
     //     · 일정·업무 : MEMBER 누구나 (협업 도구이므로 사용자도 작성 가능)
-    //     · 팀·권역·명부·설정 : EDITOR 만 (하자처리 현황의 현장 관리와 같은 원칙)
+    //     · 설정(cfg)·휴무일 : EDITOR 만
     // ===================================================================
     "calapp": {
       ".read": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
@@ -366,26 +353,10 @@
         }
       },
 
-      // 멘션 알림 — 대상자에게 쌓이고, 읽으면 지운다. 누구나(MEMBER) 남길 수 있어야 하므로 쓰기 개방
       // 팀 휴무일(단체연차 등) — 날짜별 이름 한 줄. 관리자만 지정
       "offdays": {
         ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'",
         "$date": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 12 && $date.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)" }
-      },
-
-      "mentions": {
-        "$uid": {
-          ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
-          "$mid": {
-            "by":   { ".validate": "newData.isString() && newData.val().length <= 60" },
-            "text": { ".validate": "newData.isString() && newData.val().length <= 300" },
-            "sid":  { ".validate": "newData.isString() && newData.val().length <= 60" },
-            "iid":  { ".validate": "newData.isString() && newData.val().length <= 60" },
-            "at":   { ".validate": "newData.isNumber()" },
-            "read": { ".validate": "newData.isNumber()" },
-            "$other": { ".validate": false }
-          }
-        }
       },
 
       // 앱 설정(바로가기 주소 등) — 관리자만 변경

@@ -9,7 +9,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='613';
+const APP_VER='625';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -405,6 +405,10 @@ function shEditing(){const a=document.activeElement;return !!(a&&(a.tagName==='T
    **수정 중인 폼이 다른 자리로 튀어** 사용자가 위치를 잃었다(사용자 지적). */
 function tkFormOpen(){return !!(S.tkEdit||S.tkNew||S.planEdit);}
 function tkHold(){return shEditing()||tkFormOpen();}
+/* 조직 관리 표 입력 중 — 에코(구독 콜백)의 rOrg 가 입력 칸을 갈아끼워 초점을 죽인다(615차:
+   준공일 연도 첫 자리 '2' 입력 → 0002-… 완전값 → change 저장 → 에코 재렌더 → 초점 소실).
+   입력 중에는 PEND.org 로 미루고, 칸을 떠날 때 아래 focusout 이 몰아 그린다. */
+function orgHold(){const a=document.activeElement;return !!(a&&a.closest&&a.closest('#view-org')&&a.matches('input,select,textarea'));}
 const PEND={day:false,tasks:false,org:false};
 /* 수정 충돌 가드(383차) — 칸에 들어갈 때의 값을 기억해 둔다.
    구독이 실시간이라 대개 최신이지만, 오래 입력하는 사이 남이 같은 칸을 고치면
@@ -786,24 +790,17 @@ const FbStore={
      ⚠ 게시월이 나뉘어 있어 `reportIndex` 로 최신 월을 먼저 찾고, 그 달이 바뀌면 다시 붙는다.
      ⚠ 읽기 권한이 없거나 게시본이 없으면 아무것도 하지 않는다 — 그러면 사본(calapp/org)이 계속 쓰인다. */
   bindReportOrg(){
+    /* ⚠ 614차 조직 원본 역전: 팀·권역·현장의 원본은 이제 **calapp/org** 다(생산자 이식으로 게시 주체가
+       이 앱이 됐다 — _dash.sites/teams 는 게시 때 S.org 에서 파생되는 스냅샷일 뿐).
+       그래서 _dash 구독으로 S.org 를 덮어쓰던 코드를 걷어내고, reportIndex 로 **최신 게시월(ORG_RM)만**
+       따라간다(하자 화면 기준월). ORG_LIVE 는 스냅샷 문서(dfSnapBoot)만 켠다 — 여기서는 더 안 켠다. */
     const attach=rm=>{
       if(!rm||rm===ORG_RM)return;
       ORG_RM=rm;
-      if(ORG_OFF){ORG_OFF();ORG_OFF=null;}
-      const ref=FB.db.ref('report/'+rm+'/_dash');
-      const cb=ref.on('value',snap=>{
-        const v=snap.val()||{};
-        const teams=arrOf(v.teams),sites=arrOf(v.sites);
-        if(!teams.length&&!sites.length)return;   /* 빈 게시본이면 사본을 그대로 둔다 */
-        ORG_LIVE=true;
-        S.org=orgFromDash(teams,sites);
-        bootCacheSave();
-        /* 읽지 못하는 계정을 위해 사본도 맞춰 둔다(관리자만 쓸 수 있다) */
-        if(isEditor())FB.db.ref('calapp/org').set(cleanOrg(S.org)).catch(()=>{});
-        if(tkHold()){PEND.org=true;PEND.tasks=true;return;}
-        rOrg();rTasks();rTeamSel();rFilter();dfLinkOpen();
-      },()=>{ /* 권한 없음 — 사본으로 간다 */ });
-      ORG_OFF=()=>{try{ref.off('value',cb);}catch(e){}};
+      if(WIDGET)dfNewPopMaybe();   /* 615차: 위젯 — 새 게시월 말풍선(설정 톱니에 꼬리) */
+      if(tkHold()){PEND.org=true;return;}
+      dfLinkOpen();
+      if(S.view==='defect')rDefect();   /* 새 게시월 — 하자 화면을 보고 있으면 즉시 갈아탄다 */
     };
     /* 최신 게시월 따라가기 */
     FB.db.ref('reportIndex').on('value',snap=>{
@@ -828,14 +825,13 @@ const FbStore={
     this.migrateRemote();
     setTimeout(trashPurge,5000);   /* 휴지통 30일 정리(383차) — 부팅 통신이 잦아든 뒤 한 번 */
 
-    /* ⚠ 팀·권역·현장의 원본은 하자처리 현황이다. 복사해 두지 않고 **그 자리를 그대로 구독**한다 —
-       거기서 현장이 바뀌면 이 앱도 즉시 따라간다.
-       `calapp/org` 는 **읽지 못하는 계정·오프라인을 위한 사본**으로만 남긴다(관리자가 접속해 있을 때 갱신). */
+    /* ⚠ 614차 조직 원본 역전: `calapp/org` 가 팀·권역·현장의 **원본**이다(사본 아님).
+       hasCommercial/showVacant 토글은 규칙상 org 에 실리지 않는다 — siteConfig 채널(dfSubSiteCfg)이
+       실시간 진실이므로, org 스냅샷이 S.org 를 통째로 갈아끼운 직후 마지막 siteConfig 를 다시 입힌다. */
     this._on('calapp/org',v=>{
-      if(ORG_LIVE)return;                       /* 원본을 읽고 있으면 사본은 무시한다 */
-      S.org=v||{teams:[],regions:[],sites:[]};normOrg(S.org);bootCacheSave();
-      if(tkHold()){PEND.org=true;PEND.tasks=true;return;}
-      rOrg();rTasks();dfLinkOpen();});
+      S.org=v||{teams:[],regions:[],sites:[]};normOrg(S.org);dfApplySiteCfg(DF._cfgLast);bootCacheSave();
+      if(tkHold()||orgHold()){PEND.org=true;PEND.tasks=true;return;}
+      rOrg();rTasks();rTeamSel();rFilter();dfLinkOpen();});
     this.bindReportOrg();
     this._on('calapp/tasks',v=>{S.tasks=v||{};S.loading=false;bootCacheSave();
       /* 첫 스냅샷이 온 뒤 한 번 — 놓친 담당자 업무를 아침 확인으로 묻는다 */
@@ -1475,6 +1471,38 @@ function eveBell(){
   return WIDGET?document.querySelector('[data-act="wid.side"][data-tab="mine"]')
               :document.querySelector('#sidebar .nvi[data-view="tasks"]');
 }
+/* 위젯 새 게시월 말풍선(615차) — 저녁 말풍선(evePop)과 같은 결: 새 게시월이 오면 한 번 뜨고
+   10초 뒤 접힌다. 위젯에는 하자 화면이 없으므로 누르면 브라우저 대시보드(?df=dash)를 연다.
+   꼬리는 설정(톱니)을 가리키고 색은 차콜(--lbl) — 파란 저녁 말풍선과 헷갈리지 않게. */
+const DFPOP_KEY='calapp.dfSeenRm';
+function dfNewPopMaybe(){
+  if(!WIDGET||!ORG_RM)return;
+  let seen='';try{seen=localStorage.getItem(DFPOP_KEY)||'';}catch(e){}
+  if(ORG_RM<=seen)return;
+  const gear=document.querySelector('[data-act="wid.set"]');
+  if(!gear||!gear.isConnected){setTimeout(dfNewPopMaybe,1500);return;}   /* 위젯 첫 렌더 전이면 잠시 뒤 다시 */
+  try{localStorage.setItem(DFPOP_KEY,ORG_RM);}catch(e){}
+  const old=$('#dfNewPop');if(old)old.remove();
+  const el=document.createElement('div');
+  el.id='dfNewPop';
+  el.innerHTML='<b>하자처리현황 '+Number(ORG_RM.slice(5))+'월 게시</b>';   /* evePop 과 동일 체급 — 굵은 한 줄 */
+  document.body.appendChild(el);
+  const r=gear.getBoundingClientRect(),b=el.getBoundingClientRect();
+  let x=r.left+r.width/2-b.width/2;
+  x=Math.max(6,Math.min(x,innerWidth-b.width-6));
+  el.style.left=Math.round(x)+'px';
+  let ty=r.bottom+8;
+  const eve=document.getElementById('evePop');   /* 625차: 저녁 말풍선과 앵커(내 업무·톱니)가 68px 차라 포개진다 — 떠 있으면 아래로 쌓는다 */
+  if(eve&&eve.classList.contains('on'))ty=Math.max(ty,eve.getBoundingClientRect().bottom+6);
+  el.style.top=Math.round(ty)+'px';
+  const ax=Math.max(14,Math.min(r.left+r.width/2-x,b.width-14));
+  el.style.setProperty('--ax',Math.round(ax)+'px');
+  requestAnimationFrame(()=>el.classList.add('on'));
+  el.addEventListener('click',()=>{el.remove();
+    window.open(location.origin+location.pathname+'?df=dash','_blank','noopener');
+    toast('브라우저에서 하자처리 현황을 엽니다');});
+  setTimeout(()=>{if(el.isConnected){el.classList.remove('on');setTimeout(()=>el.remove(),200);}},10000);
+}
 function evePopShow(force){
   if(!eveOn())return;
   if(!force&&evePopDone())return;
@@ -1493,7 +1521,10 @@ function evePopShow(force){
   let x=r.left+r.width/2-b.width/2;
   x=Math.max(6,Math.min(x,innerWidth-b.width-6));       /* 위젯은 창이 곧 화면 — 넘치면 잘린다 */
   el.style.left=Math.round(x)+'px';
-  el.style.top=Math.round(r.bottom+8)+'px';
+  let ty2=r.bottom+8;
+  const dnp=document.getElementById('dfNewPop');   /* 625차: 새 게시월 말풍선이 먼저 떠 있으면 그 아래로(역순 대비) */
+  if(dnp)ty2=Math.max(ty2,dnp.getBoundingClientRect().bottom+6);
+  el.style.top=Math.round(ty2)+'px';
   /* 꼬리는 종 한가운데를 가리키되, 둥근 모서리(10px) 밖으로 나가지 않게 안쪽으로 물린다 */
   const ax=Math.max(14,Math.min(r.left+r.width/2-x,b.width-14));
   el.style.setProperty('--ax',Math.round(ax)+'px');
@@ -2300,6 +2331,8 @@ function openModal(title,bodyHTML,footHTML){
   $('#mo').classList.add('open');
 }
 function closeModal(){mrvHoldRest();$('#mo').classList.remove('open');MODAL_CB=null;pfDrop();
+  if(window.__SNAPPICK__){const r=window.__SNAPPICK__;window.__SNAPPICK__=null;try{r(null);}catch(_){}}   /* 614차: 스냅샷 월 선택 대기 중 닫히면(Esc·배경) 취소로 종결 — 원본 app-core 641 과 동일 */
+  if(window.__PUBOK__){const r=window.__PUBOK__;window.__PUBOK__=null;try{r(false);}catch(_){}}   /* 615차: 게시 확인 대기 중 닫히면 게시 중단 */
   if($('#mb').classList.contains('kmw'))kmModalClosed();}   /* 552차: 지도 모달 — 카드 상태 복원 */
 /* 인라인 편집기 — 모달 대신 우측 일자 패널 안에서 작성·수정한다 */
 function openPlanEdit(p,startD,endD,occ){
@@ -2652,6 +2685,8 @@ function onSelDay(sid,iid,it,dsp){
   return d>=it.date&&d<=(it.end||it.date);
 }
 let _edShown=false;   /* 이번 렌더에서 수정 폼을 이미 그렸는지 */
+/* 615차: 행의 인라인 수정 버튼 제거(수정은 펼침의 체크 아래 .tk-det-ed) · 완료(st=2)면 날짜 지남(over)
+   강조를 끈다 — 끝난 일이 붉게 남아 있었다. ⚠ 템플릿 리터럴 안에는 주석을 달 수 없다(그대로 렌더됨) */
 function taskItemHTML(sid,iid,it,withSubject,hideOwn,colsIn,occ){
   const cols=colsIn||{site:true,who:true};
   const key=sid+'/'+iid;
@@ -2708,17 +2743,16 @@ function taskItemHTML(sid,iid,it,withSubject,hideOwn,colsIn,occ){
             +(sub?'<i class="tk-sub-i">'+esc(sub)+'</i>':'')
             +(hasDet?'<i class="tk-note" aria-label="적힌 내용 있음"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></i>':'')
             +'</span>'
-          +'<span class="tkc tkc-d'+(di.cls==='over'?' over':'')+'"'+go+'>'+esc(dcell)+'</span>'}
+          +'<span class="tkc tkc-d'+(st!==2&&di.cls==='over'?' over':'')+'"'+go+'>'+esc(dcell)+'</span>'}
       <span class="tk-acts">
         ${editing
           ? '<button class="tk-ico tk-ok" data-act="tk.formSave" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" aria-label="저장" data-tip="저장"><svg class="icn"><use href="#i-check"></use></svg></button>'
             +'<button class="tk-ico tk-cx" data-act="tk.formCancel" aria-label="취소" data-tip="취소"><svg class="icn"><use href="#i-close"></use></svg></button>'
             +'<button class="tk-ico tk-del" data-act="tk.del" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" aria-label="삭제" data-tip="삭제"><svg class="icn"><use href="#i-trash"></use></svg></button>'
-          : '<button class="tk-ico tk-ed" data-act="tk.edit" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" data-occ="'+esc(dsp||'')+'" aria-label="수정" data-tip="수정"><svg class="icn"><use href="#i-pen"></use></svg></button>'
-            +stIcon(st,' data-act="tk.st" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" data-occ="'+esc(dsp||'')+'"')}
+          : stIcon(st,' data-act="tk.st" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" data-occ="'+esc(dsp||'')+'"')}
       </span>
     </div>
-    ${editing?tkEditRestHTML(sid,iid,it):(open?taskDetailHTML(sid,iid,it):'')}
+    ${editing?tkEditRestHTML(sid,iid,it):(open?taskDetailHTML(sid,iid,it,dsp):'')}
   </div>`;
 }
 
@@ -2848,7 +2882,7 @@ function tkEditRestHTML(sid,iid,it){
     <input type="hidden" id="tnColor" value="${esc(it.color||'')}">
   </div>`;
 }
-function taskDetailHTML(sid,iid,it){
+function taskDetailHTML(sid,iid,it,occ){
   /* ⚠ 비어 있어도 칸을 그린다(361차) — 예전에는 값이 없으면 펼침 자체가 열리지 않아
      **새로 적을 방법이 수정 폼밖에** 없었다. 펼침은 읽기이자 쓰기 자리다 */
   const box=(lbl,val,field)=>`<div class="tk-sec">
@@ -2857,9 +2891,10 @@ function taskDetailHTML(sid,iid,it){
         data-ph="${lbl}를 입력하세요">${esc(val||'')}</div>
     </div>`;
   return `<div class="tk-detail">
+    <button class="tk-ico tk-ed tk-det-ed" data-act="tk.edit" data-sid="${esc(sid)}" data-iid="${esc(iid)}" data-occ="${esc(occ||'')}" aria-label="수정" data-tip="수정"><svg class="icn"><use href="#i-pen"></use></svg></button>
     ${box('내용',taskBody(it),'prog')}
   </div>`;
-}
+}   /* 615차: 수정 버튼을 펼침으로 — 행의 체크 버튼 바로 아래 자리(.tk-det-ed) */
 /* 보류함 — 아침 확인에서 넘긴 업무(st=3). 고른 팀의 공통·담당자 것을 모아 기한 오래된 순으로 */
 function holdItems(){
   const{team,mems}=tkSel();
@@ -3470,17 +3505,9 @@ function nqSearch(q){
       if(hit(it.text)||hit(it.body)||hit(it.prog)||hit(it.plan)||hit(siteName(it.site)))out.tasks.push({sid,iid,it});
     });
   });
-  /* 하자처리 현황도 함께 찾는다 — 현장 이름과, 이미 불러온 하자 목록의 건.
-     ⚠ 목록은 현장을 한 번 연 뒤에야 손에 있다(전 현장 목록을 미리 받으면 수 MB). */
   (S.org.sites||[]).forEach(s=>{if(hit(s.name))out.sites.push(s);});
-  Object.keys(DF.list||{}).forEach(ck=>{
-    const sid=ck.split('/')[1]||'';
-    (DF.list[ck]||[]).forEach(r=>{
-      if(out.defects.length>=40)return;
-      if(hit(r.trade)||hit(r.defectType)||hit(r.receiptContent)||hit(r.space)||hit(r.building)||hit(r.unit))
-        out.defects.push({sid,r});
-    });
-  });
+  /* 하자 건 찾기는 rNq 의 자연어 해석(NLQ · 생산자 ④)으로 옮겼다(614차) — 이전에는 '이미 불러온'
+     목록만 훑어서 현장을 열기 전엔 안 찾혔다. 지금은 전 현장 미처리 목록을 조건으로 거른다. */
   return out;
 }
 function subjName(sid){
@@ -3492,13 +3519,25 @@ function subjName(sid){
 function rNq(){
   const box=$('#nqRes'),q=($('#nqQ')&&$('#nqQ').value||'').trim();
   if(!box)return;
-  if(!q){box.innerHTML='<div class="nq-empty">업무 제목·진행경과·처리계획, 현장, 하자에서 찾습니다.</div>';return;}
+  if(!q){paintHTML(box,'<div class="nq-empty">업무 제목·진행경과·처리계획, 현장, 하자에서 찾습니다.</div>');return;}   /* ⚠ 615차: innerHTML 직접 대입은 paintHTML 서명과 어긋나 다음 렌더가 건너뛰어진다 */
   const r=nqSearch(q);
-  const total=r.tasks.length+r.sites.length+r.defects.length;
-  if(!total){box.innerHTML='<div class="nq-empty">"'+esc(q)+'" 에 해당하는 결과가 없습니다.</div>';return;}
+  /* 하자 절 — 자연어 해석(원본 NLQ · 생산자 ④): 현장·공종·지연·동호·공가를 조건 칩으로 풀고
+     전 현장 미처리 목록에서 거른다. 뷰어는 첫 사용 때 목록을 받아 둔다(dfNqWarm). */
+  let dRows=[],dChips=[],dR=null,dNote='';
+  try{
+    const {R}=nlqParse(q,nlqDict());dR=R;
+    dRows=nlqApply(dfNqRawRows(),R);
+    dChips=nlqChips(R);
+    if(_dfNqWarm===1)dNote='전 현장 하자 목록 받는 중… ('+_dfNqWarmProg[0]+'/'+_dfNqWarmProg[1]+' 현장) — 받는 대로 결과가 늘어납니다';
+    else if(!dRows.length&&_dfNqWarm===0)dfNqWarm();   /* 뷰어 첫 사용 — 받아지면 rNq 를 다시 부른다 */
+    window.__DFNQ=dRows.length?{q,R,n:dRows.length}:null;
+  }catch(e){console.warn('nlq',e);window.__DFNQ=null;}
+  const total=r.tasks.length+r.sites.length+dRows.length;
+  if(!total&&!dNote){paintHTML(box,'<div class="nq-empty">"'+esc(q)+'" 에 해당하는 결과가 없습니다.</div>');return;}   /* ⚠ 615차: 같은 이유 — 직접 대입 뒤 같은 질의 재입력 시 결과가 안 돌아오던 버그 */
   const item=(icon,tt,sb,attrs)=>`<div class="nq-item" ${attrs}>
     <span class="ic"><svg class="icn"><use href="#${icon}"></use></svg></span>
     <div style="min-width:0"><div class="tt">${tt}</div><div class="sb">${esc(sb)}</div></div></div>`;
+  const chipsHTML=dChips.length?'<div style="display:flex;flex-wrap:wrap;gap:4px;padding:4px 10px 2px">'+dChips.map(c=>'<span class="nq-chip">'+esc(c[0])+' · '+esc(c[1])+'</span>').join('')+'</div>':'';   /* ⚠ .ba 는 #view-defect 스코프 — 패널 전용 칩 클래스(615차) */
   paintHTML(box,
     (r.tasks.length?'<div class="nq-g">업무 '+r.tasks.length+'</div>'+r.tasks.slice(0,20).map(({sid,iid,it})=>
       item('i-tasks',nqMark(it.text,q),
@@ -3507,11 +3546,1366 @@ function rNq(){
     +(r.sites.length?'<div class="nq-g">하자처리 현황 · 현장 '+r.sites.length+'</div>'+r.sites.slice(0,10).map(s=>
       item('i-defect',nqMark(s.name,q),'하자처리 현황 보기',
         'data-act="nq.site" data-sid="'+esc(s.id)+'"')).join(''):'')
-    +(r.defects.length?'<div class="nq-g">하자 '+r.defects.length+'</div>'+r.defects.slice(0,20).map(({sid,r:x})=>
-      item('i-defect',nqMark([x.trade,x.defectType,x.receiptContent].filter(Boolean).join(' · '),q),
-        (siteName(sid)||'')+' · '+[x.building,x.unit].filter(Boolean).join('-')+' · 지연 '+(Number(x.delayDays)||0)+'일',
-        'data-act="nq.site" data-sid="'+esc(sid)+'"')).join(''):''));
+    +(dRows.length||dNote?'<div class="nq-g">하자 '+(dRows.length?dRows.length.toLocaleString():'')+'</div>'+chipsHTML
+      +(dNote?'<div class="nq-empty">'+esc(dNote)+'</div>':'')
+      +dRows.slice(0,12).map(x=>
+        item('i-defect',nqMark([x.trade,x.defectType,x.receiptContent].filter(Boolean).join(' · '),q),
+          (x.siteName||'')+' · '+[x.building,x.unit].filter(Boolean).join('-')+' · 지연 '+(Number(x.delayDays)||0)+'일',
+          'data-act="nq.list"')).join('')
+      +(dRows.length?item('i-defect','전체 목록으로 보기','조건 그대로 미처리 목록 창을 엽니다 · '+dRows.length.toLocaleString()+'건','data-act="nq.list"'):''):''));
 }
+
+/* ═══════════ 하자 생산자 ① — 집계 엔진 (원본 app-core.js·app-view.js 이식 · 614차) ═══════════
+   report 앱 폐기 계획에 따라 생산자 쪽(업로드→집계→게시)을 순차 이식한다. 이 절은 그 1단계로,
+   순수 집계 함수만 담는다(화면 변화 없음). ⚠ 아래 함수들은 **원본에서 바이트 그대로 옮겼다** —
+   게시본 kpi 와의 일치가 생명이므로 임의 수정 금지. 수정할 일이 있으면 반드시 scripts/test/calc-equiv.mjs
+   (원본 대비 동등성 검사)를 함께 돌릴 것.
+   원본과 달라진 곳(⚠ 표시 4곳뿐):
+   - capAll · warmCalcKick: dashSites()/teamSites()/S.sites → dfDashSites()/dfSites() (calapp 조직 모델)
+   - capAll · trendYearInfo · _warmStep: S.rm → dfPubRm() (게시 기준월 — 아래 정의)
+   원본 하자 행은 S.def[sid] (IndexedDB 이식은 2단계). 캐시 무효화는 S.def Proxy 가 자동 처리. */
+/* 게시 기준월 — 원본 규칙과 동일하게 자동 전월(pM(todayYM())), 나중에 게시 UI에서 조정한다(3단계) */
+function dfPubRm(){return S.dfPubRm||pM(todayYM());}
+S.def={};S.defVer=0;   /* 원본 하자 행(현장별)·계산 캐시 세대 — report S 와 같은 자리 */
+const _calcCache=new Map();
+function pM(ym){const[y,m]=ym.split('-').map(Number);return m===1?`${y-1}-12`:`${y}-${String(m-1).padStart(2,'0')}`;}
+function todayYM(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;}
+/* AI 분석·중대하자 규칙 — 원본 app-view.js 15~58행 그대로. 형식 규칙(OUTPUT FORMAT)은 화면 렌더와 결합 — 내용 규칙만 손댈 것(원본 README 7장) */
+const RULE_DEF=[
+ {scope:"site",label:"역할",hdr:null,fmt:false,rules:[
+  {id:"s_role",t:"역할 정의",d:"You are a senior housing defect maintenance manager at a construction company, writing the analysis section of a monthly executive meeting report. Analyze the provided defect data and write a concise, insightful Korean analysis."}]},
+ {scope:"site",label:"출력 형식·스타일",hdr:"**[OUTPUT FORMAT & STYLE RULES]**",fmt:true,rules:[
+  {id:"s_f1",t:"1. HTML 출력만",d:"1. Return the output ONLY in raw HTML using elements like <div>, <p>, <ul>, <li>, <strong>, <span>. Do NOT wrap the response in markdown code blocks like ```html. Just return raw HTML text."},
+  {id:"s_f2",t:"2. 마크다운 금지",d:"2. NO MARKDOWN SYMBOLS: Absolutely DO NOT include markdown header tags like '###' or '#' in the text. Subtitles must be styled purely with HTML (e.g., <div style='font-size: 16px; font-weight: bold; margin-top: 16px; margin-bottom: 8px; color: #333;'>Subtitle Name</div>)."},
+  {id:"s_f3",t:"3. 서두 문장 금지",d:"3. NO INTRO PARAGRAPH: Do NOT write any introductory sentence summarizing what the report covers (e.g., do NOT write '본 보고서는 ...을 제시함.'). Start directly with the first subtitle and its content."},
+  {id:"s_f4",t:"4. 개조식 어미",d:"4. TONE & ENDING (개조식): Use a concise, professional, bullet-point reporting style. Every sentence MUST end with short noun-style terminations such as '~함.', '~임.', '~음.' instead of full polite sentences like '~합니다.', '~입니다.'"},
+  {id:"s_f5",t:"5. 본문 폰트",d:"5. FONT SIZE: Apply font size 14px to all body text (<p>, <li>) using inline styles (e.g., style='font-size: 14px; line-height: 1.6; color: #444;'). Subtitles use 16px bold as shown above."},
+  {id:"s_f6",t:"6. 숫자 천단위",d:"6. FORMAT NUMBERS: Always apply thousands separators (e.g., 1,234)."},
+  {id:"s_f7",t:"7. 강조 색상",d:"7. TEXT HIGHLIGHTING: Emphasize key metrics with bold + color inline styles (e.g., <strong style='color: #d9534f;'>text</strong> for negative/critical/delay issues, <strong style='color: #0275d8;'>text</strong> for achievements/positive metrics)."}]},
+ {scope:"site",label:"내용 규칙",hdr:"**[CONTENT RULES — IMPORTANT]**",fmt:false,rules:[
+  {id:"s_cA",t:"A. 소제목 최대 6개",d:"A. Write a MAXIMUM of 6 subtitled sections. Do NOT force all topics. Select only meaningful sections and order them by importance."},
+  {id:"s_cB",t:"B. 무의미 항목 생략",d:"B. OMIT any section with no data or nothing noteworthy. If vacant-unit (공가세대) count is 0 or negligible, skip it. If the outstanding-case contents reveal no special issue, skip that section."},
+  {id:"s_cC",t:"C. 논리적 인과(핵심)",d:"C. ANALYTICAL & LOGICAL REASONING (MOST IMPORTANT): Never write a sentence that only reports a current number or status. The dashboard already shows the figures. EVERY bullet must contain reasoning: (1) briefly state the fact, (2) explain WHY it happened by inferring the cause from the trade/type/delay/content data given, (3) project the expected outcome IF a specific concrete action is taken (e.g., '~에 우선 재방문을 집중하면 60일+ 장기미처리가 다음 달 X건 수준으로 감소할 것으로 판단됨'). A bullet without cause OR projection is unacceptable."},
+  {id:"s_cD",t:"D. 성과·리스크 우선",d:"D. Lead with the two most important things first: notable month-over-month achievements, and worsened/risk points (each with reasoning). Then structural analysis, then concrete improvements."},
+  {id:"s_cE",t:"E. 조치 범위 제한",d:"E. SCOPE OF IMPROVEMENTS — STRICT: Every suggested action must be executable by a single field maintenance manager (담당자) at the site level. ABSOLUTELY NEVER mention or propose company-level or organizational changes: dedicated team / task force operation (전담팀 운영), executive or management decisions (경영진), supply-chain / procurement-system reform (공급망, 구매 시스템 개선), hiring more staff (인력 충원), or introducing new IT/approval systems (시스템 도입). These are impossible at the manager level and must not appear at all. Limit advice strictly to: prioritizing specific units/trades, scheduling re-visits (재방문), coordinating with specific subcontractors already contracted, following up on pending 품의/자재 지연, managing 공가세대 access, etc."},
+  {id:"s_cF",t:"F. 기호 안전",d:"F. SYMBOL SAFETY (CRITICAL): For emphasis use ONLY <strong> tags. NEVER wrap any word in single or double quotation marks (e.g., do NOT write '민원', '품의'). Stray quotes collide with the HTML inline-style quotes and break the layout, causing symbols to overlap with text. Always refer to keywords plainly inside tags, e.g., <strong style='color: #d9534f;'>누수</strong>. Do not place bullet characters or markdown dashes inside the text; the <li> element already provides the bullet."},
+  {id:"s_cG",t:"G. 중대하자 판정·서술",d:"G. CRITICAL DEFECTS (중대하자) — HIGH PRIORITY + JUDGMENT REQUIRED: The [중대하자 의심 후보] block lists items rule-extracted from receipt content/type (keywords, 피해보상, long complaints) each with a 의심 reason tag. These are CANDIDATES, NOT confirmed. Apply the COMPANY MANUAL and CONFIRM only those that genuinely qualify, EXCLUDING keyword false-positives (e.g., a passing mention of 보상 with no real damage, or a long but trivial complaint). Manual 중대하자 = 누수, a defect forcing residents to vacate the unit for 2+ weeks, 엘리베이터 갇힘·멈춤, 침수, or 언론보도 리스크; also confirm severe 피해보상/강성민원 when the content shows real severity. If 1 or more candidates genuinely qualify, you MUST add a dedicated subtitled section near the TOP: state how many qualify and of what kind, cite the specific 동/호 of the most serious ones, infer the cause, and give manager-level priority actions ONLY (prioritized re-visit to that 동/호, calling the already-contracted subcontractor first, accelerating the pending 품의) — NEVER executives (경영진), task forces (전담팀), hiring, or new systems. If NONE genuinely qualify (or the block shows 의심 0건), include ONE brief line: 중대하자 의심 해당 없음. This is an EXCEPTION to rule B's omit policy."}]},
+ {scope:"site",label:"후보 주제",hdr:"**[CANDIDATE TOPICS — pick the most relevant, up to 5]**",fmt:false,rules:[
+  {id:"s_topics",t:"후보 주제 6종",d:"- 현황 분석 및 전월대비 추이 (analytical interpretation with cause and projection)\n- 공종별/유형별 특이사항 및 장기미처리 리스크 (infer delay causes, project effect of targeted follow-up)\n- 중대하자 현황 및 안전·법적 리스크 (critical defects: types/counts/MoM, cause + manager-level priority action; if 0, one brief line per rule G)\n- 미처리건 접수내용 특이사항 (only if the provided outstanding-case text reveals critical keywords: 누수, 민원, 품의, 자재, 피해보상 등)\n- 공가세대 하자처리 현황 (only if vacant-unit data is meaningful)\n- 처리 신속도 개선 방안 / 괄목할만한 성과 (manager-level concrete actions only)"}]},
+ {scope:"dash",label:"역할",hdr:null,fmt:false,rules:[
+  {id:"d_role",t:"역할 정의",d:"You are a senior housing defect maintenance manager writing the '주요 이슈 및 분석 의견' callouts on a monthly dashboard. You are given 3 pre-selected issue cards, each with a title, grade, and two raw lines (key metrics, diagnosis/action). Rewrite each card's TWO lines in Korean following the rules below. Keep the exact numbers from the source — do NOT invent or change any figure."}]},
+ {scope:"dash",label:"출력 형식",hdr:"**[OUTPUT FORMAT]**",fmt:true,rules:[
+  {id:"d_f1",t:"1. JSON 배열 출력",d:"1. Return ONLY a raw JSON array of exactly 3 objects, no markdown fences, no commentary. Each object: {\"line1\":\"...\",\"line2\":\"...\"}. Output order must match the input card order (card1, card2, card3)."},
+  {id:"d_f2",t:"2. 줄 구성",d:"2. line1 = key metrics line (state the figures and month-over-month change concisely). line2 = diagnosis + action line."},
+  {id:"d_f3",t:"3. HTML 강조",d:"3. Each line is ONE line of raw HTML. Use <strong style='color:#C0392B'>...</strong> for negative/risk figures and <strong style='color:#1A7A3C'>...</strong> for positive/achievement figures. Do NOT use <br> inside a line."},
+  {id:"d_f4",t:"4. 길이 제한",d:"4. Keep each line SHORT (fits one dashboard line, roughly under 60 Korean chars)."}]},
+ {scope:"dash",label:"스타일·내용",hdr:"**[STYLE & CONTENT RULES]**",fmt:false,rules:[
+  {id:"d_cA",t:"A. 개조식",d:"A. 개조식: end phrases with noun-style terminations such as '~함.', '~임.', '~음.' — never '~합니다.', '~입니다.'"},
+  {id:"d_cB",t:"B. 논리적 인과",d:"B. LOGICAL REASONING in line2: do not merely restate status. Infer the likely cause and project the expected effect of a concrete action (cause → action → expected change)."},
+  {id:"d_cC",t:"C. 조치 범위 제한",d:"C. SCOPE — STRICT: every action must be doable by a single field manager (담당자). NEVER mention 전담팀/태스크포스 운영, 경영진 결정, 공급망·구매 시스템 개선, 인력 충원, 신규 시스템 도입. Limit to: 특정 세대·공종 우선처리, 재방문 일정, 기존 협력업체 PM 호출·처리계획 요구, 품의·자재 지연 후속조치, 공가세대 출입 관리 등."},
+  {id:"d_cD",t:"D. 기호 안전",d:"D. SYMBOL SAFETY: never wrap words in quotation marks for emphasis; use <strong> only. No bullet characters or dashes inside text."}]}
+];
+// 중대하자 의심 추출 규칙 기본값 — critReason이 critKwRegex/critLongLen으로 참조. 쉼표 구분, 키워드 내 공백은 \s*로 완화(띄어쓰기 유무 모두 매칭).
+const CRIT_DEF=[
+ {id:'c_leak',t:'누수·침수 키워드',d:'누수, 침수, 누유, 역류',hint:'하자유형+접수내용 대상 · 부정문맥 필터 적용'},
+ {id:'c_ev1',t:'엘리베이터 대상어',d:'엘리베이터, 엘베, 승강기, EV',hint:'아래 상태어와 접수내용에 함께 있을 때만 의심'},
+ {id:'c_ev2',t:'엘리베이터 상태어',d:'갇힘, 갇혔, 멈춤, 정지, 고장, 추락'},
+ {id:'c_evict',t:'퇴거·거주불가 키워드',d:'퇴거, 이주, 이사, 숙박, 호텔, 거주 불가, 입주 불가',hint:'부정문맥 필터 적용'},
+ {id:'c_media',t:'언론리스크 키워드',d:'언론, 기자, 방송, 뉴스, 제보, 보도'},
+ {id:'c_legal',t:'피해보상·법적 키워드',d:'피해, 보상, 배상, 변상, 손해, 소송, 법무, 내용증명, 고소, 고발'},
+ {id:'c_long',t:'장문민원 기준(공백 제외 글자수)',d:'80',num:true},
+];
+let _critRxCache={}; // 정규식 캐시(규칙이 고정이라 무효화 불필요)
+function _ruleFind(id){for(const g of RULE_DEF)for(const r of g.rules)if(r.id===id)return r;for(const r of CRIT_DEF)if(r.id===id)return r;return null;}
+function ruleVal(id){const r=_ruleFind(id);return r?r.d:'';}
+function critKwRegex(id,flags){const k=id+'|'+(flags||'');if(k in _critRxCache)return _critRxCache[k];const v=String(ruleVal(id)||'').split(',').map(x=>x.trim()).filter(Boolean);let rx=null;if(v.length){try{rx=new RegExp(v.map(x=>x.replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/\s+/g,'\\s*')).join('|'),flags||'');}catch(e){rx=null;}}_critRxCache[k]=rx;return rx;}
+function critLongLen(){const n=parseInt(ruleVal('c_long'),10);return (isFinite(n)&&n>0)?n:80;}
+function critReason(i){
+  const c=((i.receiptContent||'')+' '+(i.complaint||''));
+  const t=((i.defectType||'')+' '+(i.trade||''));
+  const tags=[];
+  // 부정·해소 절 필터: 위험어가 속한 절(다음 구두점까지, 최대 20자) 안에 부정/해소어(없음·정상·해결 등)만
+  //   있고 위험 확정 문맥이 아니면 그 매치는 무효. 모든 매치가 부정 문맥이면 신호 제외(오탐 제거).
+  //   위험어가 부정 없이 한 번이라도 등장하면 채택(recall 보존 — 최종 판정은 AI).
+  const NEG=/없|아니|아님|無|해결|정상|이상\s*무|단순\s*문의|해당\s*무/;
+  const hasHazard=(re,text)=>{
+    const g=new RegExp(re.source,re.flags.replace('g','')+'g');let m;
+    while((m=g.exec(text))){
+      const clause=text.slice(m.index,m.index+20).split(/[,.\n·;]/)[0];
+      if(!NEG.test(clause.slice(m[0].length)))return true;
+    }
+    return false;
+  };
+  if(i.criticalType&&String(i.criticalType).trim())tags.push('유형기재');
+  {const rx=critKwRegex('c_leak');if(rx&&hasHazard(rx,t+' '+c))tags.push('누수침수');}
+  {const r1=critKwRegex('c_ev1','i'),r2=critKwRegex('c_ev2');if(r1&&r2&&r1.test(c)&&r2.test(c))tags.push('엘리베이터');}
+  {const rx=critKwRegex('c_evict');if(rx&&hasHazard(rx,c))tags.push('퇴거거주불가');}
+  {const rx=critKwRegex('c_media');if(rx&&rx.test(c))tags.push('언론리스크');}
+  {const rx=critKwRegex('c_legal');if(rx&&rx.test(c))tags.push('피해보상법적');}
+  if((i.receiptContent||'').replace(/\s+/g,'').length>=critLongLen())tags.push('장문민원');
+  return tags;
+}
+function wk(d){if(!d)return null;const m=String(d).match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);if(!m)return null;const dt=new Date(Date.UTC(+m[1],+m[2]-1,+m[3]));if(isNaN(dt))return null;const sunOff=(7-dt.getUTCDay())%7;const sun=new Date(dt.getTime()+sunOff*86400000);return `${sun.getUTCFullYear()}-${String(sun.getUTCMonth()+1).padStart(2,'0')}-${String(sun.getUTCDate()).padStart(2,'0')}`;}
+function isCritCandidate(i){return critReason(i).length>0;}
+function topT(items,n){
+  const m={};
+  items.forEach(i=>{const k=i.trade||'기타';if(!m[k])m[k]={c:0,co:{}};m[k].c++;const co=i.contractor||'';if(co)m[k].co[co]=(m[k].co[co]||0)+1;});
+  const s=Object.entries(m).sort((a,b)=>b[1].c-a[1].c);
+  const top=s.slice(0,n).map(([t,v])=>{const coEntries=Object.entries(v.co).sort((a,b)=>b[1]-a[1]);return{t,c:v.c,co:coEntries[0]?.[0]||'-',coN:coEntries.length};});
+  const oth=s.slice(n).reduce((a,[,v])=>a+v.c,0),tot=s.reduce((a,[,v])=>a+v.c,0);
+  // 기타(6위~끝) 묶음의 고유 시공업체 집합
+  const othCo={};s.slice(n).forEach(([,v])=>{Object.keys(v.co).forEach(c=>{othCo[c]=true;});});
+  if(oth>0)top.push({t:'기타',c:oth,isO:true,coN:Object.keys(othCo).length,keys:s.slice(n).map(([k])=>k)});
+  top.push({t:'계',c:tot,isT:true});
+  return top;
+}
+function calcW(items,rmEnd,pmEnd){
+  // 각 주차 일요일 cutoff 기준 역산. 지연구간(d0/d30/d60) 분해를 diff-array로 O(N·logW+W)에 계산.
+  // (구버전 O(주차×건수) 재순회 대체 — 동일 입력 BIT-EXACT 일치 검증 완료)
+  const DAY=86400000;
+  const cutSet={};
+  for(const i of items){const k=wk(i.receiptDate);if(k)cutSet[k]=true;}
+  // 월말 컷 추가: 월별 표의 각 월 값이 '월 마지막 일요일'이 아닌 '월말일' 기준이 되도록.
+  // KPI(unr=접수≤월말−처리≤월말)·도넛·추이차트 종점(refLim)과 동일 수식으로 정렬된다. 일요일 컷 값들은 불변.
+  const _me=ym=>{const[y,m]=ym.split('-').map(Number);cutSet[`${ym}-${String(new Date(y,m,0).getDate()).padStart(2,'0')}`]=true;};
+  for(const i of items){const rd=i.receiptDate;if(rd&&/^\d{4}-\d{2}/.test(rd))_me(rd.slice(0,7));}
+  if(rmEnd)cutSet[rmEnd]=true;
+  if(pmEnd)cutSet[pmEnd]=true;
+  const cuts=Object.keys(cutSet).sort();const W=cuts.length;if(!W)return[];
+  const cutMs=cuts.map(c=>new Date(c).getTime());
+  const byReceipt=items.filter(i=>i.receiptDate).slice().sort((a,b)=>a.receiptDate<b.receiptDate?-1:a.receiptDate>b.receiptDate?1:0);
+  const doneSorted=byReceipt.filter(i=>i.status==='처리'&&i.completionDate).map(i=>i.completionDate).sort();
+  // 누적 접수 r / 누적 처리 res — 포인터(문자열 비교, 구버전과 동일)
+  const rArr=new Array(W),resArr=new Array(W);
+  {let rPtr=0,resPtr=0;for(let c=0;c<W;c++){const cutoff=cuts[c];
+    while(rPtr<byReceipt.length&&byReceipt[rPtr].receiptDate<=cutoff)rPtr++;rArr[c]=rPtr;
+    while(resPtr<doneSorted.length&&doneSorted[resPtr]<=cutoff)resPtr++;resArr[c]=resPtr;}}
+  // cutMs 오름차순 → lowerBound(첫 c: cutMs[c]>=v)
+  const lb=v=>{let lo=0,hi=W;while(lo<hi){const mid=(lo+hi)>>1;if(cutMs[mid]>=v)hi=mid;else lo=mid+1;}return lo;};
+  const D0=new Float64Array(W+1),D30=new Float64Array(W+1),D60=new Float64Array(W+1);
+  const addRange=(D,a,b)=>{if(a<b){D[a]++;D[b]--;}};
+  for(const it of byReceipt){
+    const rcMs=new Date(it.receiptDate).getTime();
+    const enter=lb(rcMs);                                   // 접수<=cutoff 최초 주차
+    const done=it.status==='처리'&&it.completionDate;
+    const end=Math.min(done?lb(new Date(it.completionDate).getTime()):W,W); // 완료<=cutoff 이후 제외
+    if(enter>=end)continue;
+    const i30=lb(rcMs+30*DAY),i60=lb(rcMs+60*DAY);          // 경과 30·60일 도달 주차
+    addRange(D0,enter,Math.min(i30,end));
+    addRange(D30,Math.max(i30,enter),Math.min(i60,end));
+    addRange(D60,Math.max(i60,enter),end);
+  }
+  let a0=0,a30=0,a60=0;const arr=[];
+  for(let c=0;c<W;c++){a0+=D0[c];a30+=D30[c];a60+=D60[c];
+    arr.push({week:cuts[c],r:rArr[c],res:resArr[c],u:rArr[c]-resArr[c],d0:a0,d30:a30,d60:a60});}
+  // M월 Nw주 — 같은 달 내 누적 주 번호 (월 바뀌면 1로 리셋). 일요일 컷만 주번호를 증가시키고,
+  // 월말(비일요일) 컷은 'M월 말' 라벨 + sun:false — 월별 표 전용 스냅샷임을 표시(주차별 표는 sun 컷만 표시).
+  let lastM=null,wInM=0;
+  arr.forEach(r=>{const m=Number(r.week.slice(5,7));r.m=m;
+    const isSun=new Date(r.week).getUTCDay()===0;r.sun=isSun;
+    if(m!==lastM){wInM=0;lastM=m;}
+    if(isSun){wInM++;r.wn=wInM;r.label=`${m}월 ${wInM}주`;}
+    else{r.wn=wInM;r.label=`${m}월 말`;}
+  });
+  return arr;
+}
+function calcMo(items){const m={};items.forEach(i=>{const k=(i.receiptDate||'').slice(0,7);if(!k)return;if(!m[k])m[k]={month:k,r:0,res:0,u:0};m[k].r++;const done=i.status==='처리'&&i.completionDate;if(done)m[k].res++;else m[k].u++;});return Object.values(m).sort((a,b)=>a.month.localeCompare(b.month));}
+function _calcImpl(items,site,rm){
+  const pm=pM(rm),all=items.filter(i=>i.receiptDate);
+  // 전월 말일 문자열 (ex. "2026-04-30") — 역산 기준일
+  const pmParts=pm.split('-').map(Number);
+  const pmLastDay=new Date(pmParts[0],pmParts[1],0).getDate();
+  const pmEnd=`${pm}-${String(pmLastDay).padStart(2,'0')}`;
+  // 금월 말일 문자열
+  const rmParts=rm.split('-').map(Number);
+  const rmLastDay=new Date(rmParts[0],rmParts[1],0).getDate();
+  const rmEnd=`${rm}-${String(rmLastDay).padStart(2,'0')}`;
+
+  // 미처리 통일 기준: 접수일<=cutoff & (status가 미처리 또는 완료일이 cutoff 이후) → 미처리
+  // 처리로 간주: status==='처리' AND 완료일<=cutoff. (status 미처리는 무조건 미처리)
+  const isDone=(i,cutoff)=>i.status==='처리'&&i.completionDate&&i.completionDate<=cutoff;
+
+  // 금월 기준: 접수일 <= 금월말
+  const ref=all.filter(i=>i.receiptDate<=rmEnd);
+  const tR=ref.length;
+  const res=ref.filter(i=>isDone(i,rmEnd)).length;
+  const unr=tR-res;
+  const rate=tR>0?res/tR*100:0;
+  // 금월 기준 미처리 목록
+  const ul=ref.filter(i=>!isDone(i,rmEnd));
+  // 지연일 역산: 기준일 - 접수일 (단, 원본 delayDays가 있으면 보조로만 활용)
+  const daysBetween=(a,b)=>{const da=new Date(a),db=new Date(b);return Math.max(0,Math.round((db-da)/86400000));};
+  const d0=ul.filter(i=>{const dd=daysBetween(i.receiptDate,rmEnd);return dd<30;}).length;
+  const d30=ul.filter(i=>{const dd=daysBetween(i.receiptDate,rmEnd);return dd>=30&&dd<60;}).length;
+  const d60=ul.filter(i=>{const dd=daysBetween(i.receiptDate,rmEnd);return dd>=60;}).length;
+  const lt=d30+d60;
+  const ltr=unr>0?lt/unr*100:0;
+  const top=topT(ul,5);
+  // 금월 장기미처리(30일+) 목록 및 TOP5 — 장기미처리 탭 상위5 표용
+  const lul=ul.filter(i=>daysBetween(i.receiptDate,rmEnd)>=30);
+  const topLt=topT(lul,5);
+
+  // 전월 기준 역산: 접수일 <= 전월말
+  const prev=all.filter(i=>i.receiptDate<=pmEnd);
+  const pT=prev.length;
+  const pRes=prev.filter(i=>isDone(i,pmEnd)).length;
+  const pUnr=pT-pRes;
+  const pRate=pT>0?pRes/pT*100:0;
+  const ulPrev=prev.filter(i=>!isDone(i,pmEnd));
+  const pd0=ulPrev.filter(i=>{const dd=daysBetween(i.receiptDate,pmEnd);return dd<30;}).length;
+  const pd30=ulPrev.filter(i=>{const dd=daysBetween(i.receiptDate,pmEnd);return dd>=30&&dd<60;}).length;
+  const pd60=ulPrev.filter(i=>{const dd=daysBetween(i.receiptDate,pmEnd);return dd>=60;}).length;
+  const pLt=pd30+pd60;
+  const pLtr=pUnr>0?pLt/pUnr*100:0;
+
+  // 전월 공종별 미처리 맵 — 증감 계산용
+  const topPrev={};ulPrev.forEach(i=>{const k=i.trade||'기타';topPrev[k]=(topPrev[k]||0)+1;});
+  // 전월 공종별 장기미처리(30일+) 맵 — 장기미처리 탭 증감 계산용
+  const lulPrev=ulPrev.filter(i=>daysBetween(i.receiptDate,pmEnd)>=30);
+  const topLtPrev={};lulPrev.forEach(i=>{const k=i.trade||'기타';topLtPrev[k]=(topLtPrev[k]||0)+1;});
+
+  // 공가 — 세대/상가 개별 집계
+  const _buildVac=(set,pset)=>{
+    const ul=set.filter(i=>!isDone(i,rmEnd));
+    const T=set.length,Unr=ul.length,Res=T-Unr,Rate=T>0?Res/T*100:0,Top=topT(ul,5);
+    const Lt=ul.filter(i=>daysBetween(i.receiptDate,rmEnd)>=30).length;
+    const _us=new Set(set.map(i=>`${i.building||''}-${i.unit||''}`));_us.delete('-');const Units=_us.size;
+    const TopPrev={};pset.filter(i=>!isDone(i,pmEnd)).forEach(i=>{const k=i.trade||'기타';TopPrev[k]=(TopPrev[k]||0)+1;});
+    return{T,Res,Unr,Rate,Lt,Units,Top,TopPrev};
+  };
+  const vacU=_buildVac(ref.filter(i=>isVacUnit(i)),prev.filter(i=>isVacUnit(i)));     // 공가세대
+  const vacS=_buildVac(ref.filter(i=>isVacStore(i,site)),prev.filter(i=>isVacStore(i,site))); // 공가상가
+  // 레거시 평면 필드(vT 등)는 세대 기준으로 매핑(AI 프롬프트·기타 호환)
+  const vT=vacU.T,vRes=vacU.Res,vUnr=vacU.Unr,vRate=vacU.Rate,vLt=vacU.Lt,vUnits=vacU.Units,vTop=vacU.Top,vTopPrev=vacU.TopPrev;
+
+  const rpb={};ul.forEach(i=>{rpb[i.repairParty||'미지정']=(rpb[i.repairParty||'미지정']||0)+1;});
+  const dtb={};ul.forEach(i=>{dtb[i.defectType||'미분류']=(dtb[i.defectType||'미분류']||0)+1;});
+  // 중대하자 "의심" 후보 — isCritCandidate(규칙: 매뉴얼 키워드+피해보상+장문)로 추출. 최종 판정은 AI가 함.
+  const _critAll=ref.filter(isCritCandidate);
+  const critT=_critAll.length;
+  const critUl=_critAll.filter(i=>!isDone(i,rmEnd));
+  const critUnr=critUl.length;
+  const critPrevUnr=prev.filter(i=>isCritCandidate(i)&&!isDone(i,pmEnd)).length;
+  // 공종별 전체 처리현황 집계(trAgg) — 현장 화면 표의 단일 출처. 게시 kpi에 실려 뷰어·스냅샷도 동일 표를 본다.
+  //   (기존에는 rSite가 로컬 원본으로 직접 재계산 → 원본이 없는 뷰어에서 표가 비는 문제)
+  const _trm={};
+  for(const i of all){
+    if(i.receiptDate>rmEnd)continue;
+    const t=i.trade||'기타';
+    const o=_trm[t]||(_trm[t]={t,r:0,res:0,u:0,lt:0,d0:0,d30:0,d60:0,co:{},pu:0,plt:0});
+    o.r++;
+    const done=i.status==='처리'&&i.completionDate&&i.completionDate<=rmEnd;
+    if(done)o.res++;else{o.u++;const dd=daysBetween(i.receiptDate,rmEnd);if(dd>=60){o.d60++;o.lt++;}else if(dd>=30){o.d30++;o.lt++;}else o.d0++;}
+    if(i.contractor)o.co[i.contractor]=(o.co[i.contractor]||0)+1;
+  }
+  for(const i of all){ // 전월 기준 역산(증감용) — rmEnd 범위가 pmEnd를 포함하므로 _trm에 항목 존재 보장
+    if(i.receiptDate>pmEnd)continue;
+    const o=_trm[i.trade||'기타'];if(!o)continue;
+    const done=i.status==='처리'&&i.completionDate&&i.completionDate<=pmEnd;
+    if(!done){o.pu++;if(daysBetween(i.receiptDate,pmEnd)>=30)o.plt++;}
+  }
+  const trAgg=Object.values(_trm).sort((a,b)=>b.u-a.u).map(o=>({t:o.t,r:o.r,res:o.res,u:o.u,lt:o.lt,d0:o.d0,d30:o.d30,d60:o.d60,coTop:Object.entries(o.co).sort((a,b)=>b[1]-a[1])[0]?.[0]||'-',coN:Object.keys(o.co).length,pu:o.pu,plt:o.plt}));
+  // 시공업체별 집계(coAgg) — 같은 원본을 업체로 묶은 것. 표의 축 전환에 쓰이고 게시본에도 실려 뷰어가 같은 표를 본다.
+  //   업체가 비어 있는 행은 '(미기재)'로 따로 센다 — 숨기면 합계가 안 맞는다.
+  const _com={};
+  for(const i of all){
+    if(i.receiptDate>rmEnd)continue;
+    const c=i.contractor||'(미기재)';
+    const o=_com[c]||(_com[c]={c,r:0,res:0,u:0,lt:0,d0:0,d30:0,d60:0,tr:{},pu:0,plt:0});
+    o.r++;
+    const done=i.status==='처리'&&i.completionDate&&i.completionDate<=rmEnd;
+    if(done)o.res++;else{o.u++;const dd=daysBetween(i.receiptDate,rmEnd);if(dd>=60){o.d60++;o.lt++;}else if(dd>=30){o.d30++;o.lt++;}else o.d0++;}
+    const tr=i.trade||'기타';o.tr[tr]=(o.tr[tr]||0)+1;
+  }
+  for(const i of all){
+    if(i.receiptDate>pmEnd)continue;
+    const o=_com[i.contractor||'(미기재)'];if(!o)continue;
+    const done=i.status==='처리'&&i.completionDate&&i.completionDate<=pmEnd;
+    if(!done){o.pu++;if(daysBetween(i.receiptDate,pmEnd)>=30)o.plt++;}
+  }
+  const coAgg=Object.values(_com).sort((a,b)=>b.u-a.u).map(o=>({c:o.c,r:o.r,res:o.res,u:o.u,lt:o.lt,d0:o.d0,d30:o.d30,d60:o.d60,trTop:Object.entries(o.tr).sort((a,b)=>b[1]-a[1])[0]?.[0]||'-',trN:Object.keys(o.tr).length,pu:o.pu,plt:o.plt}));
+  return{tR,res,unr,rate,lt,ltr,prev:{total:pT,res:pRes,unr:pUnr,rate:pRate,lt:pLt,ltr:pLtr,dd:[pd0,pd30,pd60]},weekly:calcW(ref,rmEnd,pmEnd),monthly:calcMo(all),top,topPrev,topLt,topLtPrev,dd:[d0,d30,d60],vT,vRes,vUnr,vRate,vLt,vUnits,vTop,vTopPrev,vacU,vacS,rpb,dtb,critT,critUnr,critPrevUnr,critUl,rm,pm,rmEnd,pmEnd,ul,lul,trAgg,coAgg};
+}
+function isStoreLabel(s){return /[강산살상성싱][가거기]/.test(String(s||''));}
+function capAm(defs,rm){
+  const _rmP=rm.split('-').map(Number),_rmEnd=`${rm}-${String(new Date(_rmP[0],_rmP[1],0).getDate()).padStart(2,'0')}`;
+  const am={};(defs||[]).filter(i=>i.receiptDate&&i.receiptDate<=_rmEnd&&!(i.status==='처리'&&i.completionDate&&i.completionDate<=_rmEnd)).forEach(i=>{am[i.trade||'기타']=(am[i.trade||'기타']||0)+1;});
+  return am;
+}
+function isVacUnit(item){return item.defectClass==='세대'&&(item.saleStatus==='미분양'||item.saleStatus==='미납');}
+function isVacStore(item,site){return !!site?.hasCommercial&&item.defectClass==='공용'&&(isStoreLabel(item.building)||isStoreLabel(item.unit));}
+function capWks(defs,rm,year){
+  const _ty=Number(year);
+  const ymPart=rm.split('-').map(Number),lastDay=new Date(ymPart[0],ymPart[1],0).getDate();
+  const refLimTS=Math.min(Date.UTC(ymPart[0],ymPart[1]-1,lastDay),Date.UTC(_ty,11,31));
+  const _rl=new Date(refLimTS),refLimStr=`${_rl.getUTCFullYear()}-${String(_rl.getUTCMonth()+1).padStart(2,'0')}-${String(_rl.getUTCDate()).padStart(2,'0')}`;
+  const startTS=Date.UTC(_ty,0,1),firstSunOff=(7-new Date(startTS).getUTCDay())%7;
+  const wks=[];let sunTS=startTS+firstSunOff*86400000,prevCutoff=`${_ty}-01-01`;
+  while(prevCutoff<refLimStr){
+    const isPartial=sunTS>refLimTS;
+    const cutTS=isPartial?refLimTS:sunTS;
+    const cutD=new Date(cutTS),cutoff=`${cutD.getUTCFullYear()}-${String(cutD.getUTCMonth()+1).padStart(2,'0')}-${String(cutD.getUTCDate()).padStart(2,'0')}`;
+    const m=cutD.getUTCMonth()+1;
+    let weekNum;
+    if(wks.length>0&&wks[wks.length-1].m===m)weekNum=wks[wks.length-1].w+1;
+    else weekNum=1;
+    let cR=0,cRes=0,curU=0,curLt=0,curLt60=0;
+    for(const it of defs){if(it.receiptDate>cutoff)continue;cR++;const done=it.status==='처리'&&it.completionDate&&it.completionDate<=cutoff;if(done)cRes++;else{curU++;const _dd=Math.max(0,Math.round((new Date(cutoff)-new Date(it.receiptDate))/86400000));if(_dd>=60){curLt++;curLt60++;}else if(_dd>=30)curLt++;}}
+    wks.push({m,w:weekNum,cumR:cR,cumRes:cRes,u:curU,lt:curLt,lt60:curLt60});
+    if(isPartial)break;
+    sunTS+=7*86400000;prevCutoff=cutoff;
+  }
+  return wks;
+}
+function trendYearInfo(defs,stateKey){
+  const ys=new Set();
+  for(const i of defs){if(i&&i.receiptDate&&/^\d{4}/.test(i.receiptDate))ys.add(i.receiptDate.slice(0,4));}
+  ys.add('2026');const curY=dfPubRm().slice(0,4);ys.add(curY);
+  const years=[...ys].sort();const sel=S[stateKey];
+  const year=(sel&&years.includes(sel))?sel:(years.includes(curY)?curY:years[years.length-1]);
+  return {year,years};
+}
+function capAll(){
+  const allDefRaw=dfDashSites().flatMap(s=>S.def[s.id]||[]);
+  const allDef=allDefRaw.filter(i=>i.receiptDate&&/^\d{4}-\d{2}-\d{2}/.test(i.receiptDate));
+  const cap={wks:capWks(allDef,dfPubRm(),trendYearInfo(allDef,'trendYear').year),am:capAm(allDefRaw,dfPubRm()),siteWks:{},siteAm:{}};
+  for(const s of dfSites()){ // 현장별 캡처는 인수 전 현장 포함 — 대시보드 합산(wks/am)만 dashSites로 집계 제외
+    const defs=S.def[s.id]||[];
+    const sd=defs.filter(i=>i.receiptDate&&/^\d{4}-\d{2}-\d{2}/.test(i.receiptDate));
+    cap.siteWks[s.id]=capWks(sd,dfPubRm(),trendYearInfo(sd,'siteTrendYear').year);
+    cap.siteAm[s.id]=capAm(defs,dfPubRm());
+  }
+  return cap;
+}
+const _PII_ROLE=new Set(['고객','손님','선생','사장','기사','소장','반장','과장','차장','부장','대리','주임','팀장','실장','원장','이사','상무','전무','대표','회장','여사','담당','담당자','관리자','작업자','기술자','입주자','입주민','세대주','어르신','사모','아저','아주머','어머','아버']);
+function maskPII(s){
+  return String(s==null?'':s)
+    .replace(/01[016789][ .-]?\d{3,4}[ .-]?\d{4}\b/g,'010-****-****')
+    .replace(/\b0\d{1,2}[ .-]\d{3,4}[ .-]\d{4}\b/g,'0**-***-****')
+    .replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g,'***@***')
+    .replace(/([가-힣]{2,4})(님|씨)(?![가-힣])/g,(m,name,h)=>_PII_ROLE.has(name)?m:'○○'+h);
+  // 알려진 한계: '홍길동님이'처럼 님/씨 뒤에 조사가 바로 붙으면 매치하지 않음(의도 — 완화 시 '날씨가' 등
+  // 일반 어휘 오탐이 발생). 인명 마스킹은 best-effort이며 고위험 PII(전화·이메일)는 위 규칙이 전담.
+}
+function redactUL(ul,all){const a=all?(ul||[]):(ul||[]).slice(0,300);return a.map(i=>Object.assign({},i,{receiptContent:maskPII(String(i.receiptContent||'')),complaint:''}));}
+function slimUL(ul){return (ul||[]).map(i=>({building:i.building,unit:i.unit,receiptDate:i.receiptDate,defectClass:i.defectClass,space:i.space,trade:i.trade,defectType:i.defectType,receiptContent:maskPII(String(i.receiptContent||'')),saleStatus:i.saleStatus,repairParty:i.repairParty,contractor:i.contractor,repairContractor:i.repairContractor,delayDays:i.delayDays}));}
+/* deriveLul 은 이식하지 않는다(614차) — report 소비자 전용 헬퍼. calapp 소비자는 목록 모달에서 delayDays 필터로 자체 파생하고, 게시는 kpi.lul 을 직접 싣는다. */
+function bumpDef(){S.defVer++;_calcCache.clear();warmCalcKick();}
+let _warmT=null,_warmQ=null;
+S.def=new Proxy(S.def,{set(t,k,v){t[k]=v;bumpDef();return true;},deleteProperty(t,k){delete t[k];bumpDef();return true;}});
+function warmCalcKick(){clearTimeout(_warmT);_warmQ=null;_warmT=setTimeout(()=>{if(window.__SNAP__)return;_warmQ=(dfSites()||[]).slice();_warmStep();},600);}
+function _warmStep(){
+  if(!_warmQ||!_warmQ.length)return;
+  const idle=window.requestIdleCallback||function(f){return setTimeout(()=>f(),120);};
+  idle(()=>{if(!_warmQ)return;const s=_warmQ.shift();if(s){try{calc(S.def[s.id]||[],s,dfPubRm());}catch(e){}}if(_warmQ&&_warmQ.length)_warmStep();},{timeout:3000});
+}
+function calc(items,site,rm){
+  if(window.__SNAP__){const _e=window.__SNAP__.st&&window.__SNAP__.st[site.id];if(_e)return _e;} // 스냅샷: 임베드 집계 반환
+  // 메모이즈: (현장·기준월·데이터버전·건수) 조합으로 캐시. 건수를 내용 프록시로 사용한다.
+  // 캐시 무효화는 S.def Proxy가 자동 처리(set/delete). defVer·length는 키의 보조 식별자.
+  const _ck=site.id+'|'+rm+'|'+S.defVer+'|'+(site.lastUploadedAt||'')+'|'+(items?items.length:0);
+  const _hit=_calcCache.get(_ck);if(_hit)return _hit;
+  if(_calcCache.size>80)_calcCache.clear(); // 소프트 상한 — 월 전환 반복 열람 시 메모리 증식 방지
+  const _res=_calcImpl(items,site,rm);
+  _calcCache.set(_ck,_res);
+  return _res;
+}
+/* ═══════════ 하자 생산자 ① 끝 ═══════════ */
+
+/* ═══════════ 하자 생산자 ② — 저장·업로드·주요이슈·게시 (원본 이식 · 614차) ═══════════
+   원본: app-data.js(IndexedDB·게시)·app-boot.js(업로드)·app-view.js(주요이슈)·app-core.js(진행오버레이).
+   ⚠ ①과 같은 규칙 — 함수 본문은 원본 그대로, 달라진 곳만 ⚠ 주석. scripts/test/upload-equiv.mjs 로 검증.
+   ⚠ IndexedDB 는 report 앱과 **같은 오리진·같은 DB(hdec_db_v1)** 다 — 기존 마스터 PC 의 원본 하자 행을
+     그대로 읽으므로 마이그레이션이 없다. 위젯(WebView2)은 다른 IndexedDB 를 갖는다 — 업로드·게시는
+     브라우저에서만 한다(dfProdBoot 가 위젯·스냅샷에서 조기 반환).
+   ⚠ meta 스토어의 'state' 레코드는 report 앱 것 — 건드리지 않는다. calapp 은 'calapp' 레코드를 따로 쓴다. */
+const DB_NAME='hdec_db_v1',DB_VER=1;
+let _db=null;
+
+function dbOpen(){
+  return new Promise((res,rej)=>{
+    if(_db)return res(_db);
+    let settled=false;
+    const done=(fn,v)=>{if(settled)return;settled=true;fn(v);};
+    // open이 onsuccess/onerror/onblocked 어느 것도 안 부르고 멈추는 경우 대비 (file:// 등)
+    const to=setTimeout(()=>done(rej,new Error('indexedDB.open timeout')),5000);
+    let req;
+    try{req=indexedDB.open(DB_NAME,DB_VER);}
+    catch(e){clearTimeout(to);return done(rej,e);}
+    req.onupgradeneeded=e=>{
+      const db=e.target.result;
+      if(!db.objectStoreNames.contains('meta'))db.createObjectStore('meta',{keyPath:'id'});
+      if(!db.objectStoreNames.contains('defects'))db.createObjectStore('defects',{keyPath:'sid'});
+    };
+    req.onsuccess=()=>{clearTimeout(to);_db=req.result;done(res,_db);};
+    req.onerror=()=>{clearTimeout(to);done(rej,req.error);};
+    req.onblocked=()=>{clearTimeout(to);done(rej,new Error('indexedDB.open blocked'));};
+  });
+}
+function dbTx(store,mode){return dbOpen().then(db=>db.transaction(store,mode).objectStore(store));}
+function dbGet(store,key){return dbTx(store,'readonly').then(os=>new Promise((res,rej)=>{const r=os.get(key);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);}));}
+function dbPut(store,value){return dbTx(store,'readwrite').then(os=>new Promise((res,rej)=>{const r=os.put(value);r.onsuccess=()=>res();r.onerror=()=>rej(r.error);}));}
+function dbDel(store,key){return dbTx(store,'readwrite').then(os=>new Promise((res,rej)=>{const r=os.delete(key);r.onsuccess=()=>res();r.onerror=()=>rej(r.error);}));}
+function dbAll(store){return dbTx(store,'readonly').then(os=>new Promise((res,rej)=>{const r=os.getAll();r.onsuccess=()=>res(r.result||[]);r.onerror=()=>rej(r.error);}));}
+function defEncode(json){
+  if(typeof LZString==='undefined')return{data:json,enc:'raw'};
+  return{data:LZString.compressToBase64(json),enc:'b64'};
+}
+function defDecode(row){
+  if(!row)return null;
+  if(typeof LZString==='undefined'){
+    // 압축 저장분을 압축 해제 없이 JSON.parse 하면 정체불명 오류가 난다 → 원인을 명확히 남기고 중단
+    if(row.enc==='b64'||row.enc==='utf16'||row.compressed){
+      if(!defDecode._warned){defDecode._warned=true;console.error('[store] 압축 해제 라이브러리(LZString) 미로드 — 로컬 데이터를 읽을 수 없습니다. vendor/lz-string.min.js 배포를 확인하세요.');}
+      return null;
+    }
+    return row.data;
+  }
+  // enc 명시 우선, 없으면 과거 데이터(compressed:true=utf16) 추정
+  const enc=row.enc||(row.compressed?'utf16':'raw');
+  try{
+    if(enc==='b64')return LZString.decompressFromBase64(row.data);
+    if(enc==='utf16')return LZString.decompressFromUTF16(row.data);
+    return row.data;
+  }catch(e){console.warn('defDecode failed',e);return null;}
+}
+async function defSave(sid,items){
+  try{
+    const json=JSON.stringify(items||[]);
+    const{data,enc}=defEncode(json);
+    await dbPut('defects',{sid,data,enc,compressed:enc!=='raw',count:(items||[]).length,savedAt:Date.now()});
+  }catch(e){console.error('defSave failed for',sid,e);toast('하자 데이터 저장 실패');}
+}
+async function defLoadAll(){
+  try{
+    const rows=await dbAll('defects');
+    for(const row of rows){
+      try{
+        const raw=defDecode(row);
+        if(raw)S.def[row.sid]=Object.freeze(JSON.parse(raw)); // freeze: 통째 교체 규약 강제 — push/splice 등 in-place 편집 시 무증상 캐시 스테일 차단
+      }catch(e){console.warn('defLoad parse failed for',row.sid,e);}
+    }
+  }catch(e){console.warn('defLoadAll',e);}
+}
+async function defDelete(sid){try{await dbDel('defects',sid);}catch(e){console.warn('defDelete failed',e);}}
+/* ── calapp 생산자 메타(게시 기준월·현장별 최근 업로드) — meta/'calapp' 레코드 ── */
+let DFMETA={lastUp:{},hist:[]};   /* hist: 최근 업로드 10회(시각·행수·현장수·기준월) — 615차 */
+function dfFmtDT(v){const d=v instanceof Date?v:new Date(v);if(isNaN(d))return '—';
+  return (d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}   /* 업로드·등록 시각 한 서식(615차) */
+async function dfMetaLoad(){try{const o=await dbGet('meta','calapp');if(o){if(/^\d{4}-\d{2}$/.test(o.pubRm||''))S.dfPubRm=o.pubRm;if(o.lastUp)DFMETA.lastUp=o.lastUp;if(Array.isArray(o.hist))DFMETA.hist=o.hist.slice(0,10);}}catch(e){console.warn('dfMetaLoad',e);}}
+function dfMetaSave(){dbPut('meta',{id:'calapp',pubRm:S.dfPubRm||'',lastUp:DFMETA.lastUp,hist:DFMETA.hist||[]}).catch(e=>console.warn('dfMetaSave',e));}
+/* 제외 키워드 — 원본 기본값 'dummy'(테스트행 제외) 유지. 레거시 키('exTk' — report 앱)를 한 번 물려받는다 */
+S.exTk=(function(){try{return localStorage.getItem('calapp.exTk')??localStorage.getItem('exTk')??'dummy';}catch(e){return 'dummy';}})();
+/* 권역 이름 목록 — 원본 curRegions 와 같은 규칙(고정 권역 '인수 전 현장'을 끝에 붙인다) */
+function dfRegionNames(){const base=(S.org.regions||[]).map(r=>r&&r.name).filter(n=>n&&n!=='인수 전 현장');base.push('인수 전 현장');return base;}
+
+function progShow(msg){const o=document.getElementById('uprog');if(!o)return;document.getElementById('uprogMsg').textContent=msg||'처리 중...';document.getElementById('uprogFill').style.width='0%';document.getElementById('uprogSub').textContent='';o.classList.add('show');}
+function progSet(pct,sub){const f=document.getElementById('uprogFill');if(f)f.style.width=Math.max(0,Math.min(100,pct))+'%';if(sub!=null){const s=document.getElementById('uprogSub');if(s)s.textContent=sub;}}
+function progMsg(msg){const m=document.getElementById('uprogMsg');if(m)m.textContent=msg;}
+function progHide(){const o=document.getElementById('uprog');if(o)o.classList.remove('show');}
+function nextFrame(){return new Promise(r=>{let done=false;const fin=()=>{if(done)return;done=true;r();};requestAnimationFrame(()=>requestAnimationFrame(fin));setTimeout(fin,60);});}
+/* ── 업로드 파이프라인 — 원본 app-boot.js 그대로(치환 지점은 각 ⚠ 주석) ── */
+const COLS_REQ=['접수일','처리상태','공종'];
+const COLS_WARN=[['현장'],['현장코드'],['동'],['호'],['접수번호'],['처리확인일'],['하자유형'],['하자구분'],['중대하자유형','중대하자'],['지연일','지연일수'],['보수주체'],['시공업체'],['보수업체'],['입주상태','분양상태'],['공간'],['접수내용'],['민원']];
+function findHeaderRow(rows){const sniff=['접수일','공종','처리상태','보수주체'];for(let i=0;i<Math.min(rows.length,20);i++){const r=rows[i]||[];const cells=r.map(c=>String(c||'').trim());let hits=0;for(const s of sniff)if(cells.includes(s))hits++;if(hits>=2)return i;}return 0;}
+function rowsToObjs(aoa){const hi=findHeaderRow(aoa),hs=(aoa[hi]||[]).map(c=>String(c||'').trim());const objs=[];for(let i=hi+1;i<aoa.length;i++){const row=aoa[i]||[];if(row.every(c=>c===''||c==null))continue;const o={};hs.forEach((h,j)=>{if(h&&h!=='__proto__'&&h!=='constructor'&&h!=='prototype')o[h]=row[j]!=null?row[j]:'';});objs.push(o);}return{rows:objs,headers:hs.filter(Boolean)};}
+function setStep(n){document.querySelectorAll('#upstepper .step').forEach((s,i)=>{const j=i+1;s.classList.toggle('done',j<n);s.classList.toggle('act',j===n);if(j<n)s.querySelector('.step-c').innerHTML='<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 8l3 3 7-7"/></svg>';else s.querySelector('.step-c').textContent=String(j);});}
+function onFile(f){
+  if(!isEditor()){toast('보기 전용 · 업로드는 관리자만 가능');return;}
+  if(!f){console.warn('[upload] onFile called without file');return;}
+  const e=f.name.split('.').pop().toLowerCase();
+  if(e==='csv')rCSV(f);
+  else if(['xlsx','xls'].includes(e))rXLSX(f);
+  else toast('지원하지 않는 형식: '+e);
+  // 같은 파일 재선택 시 onchange가 안 뜨는 브라우저 동작 대응
+  const fi=document.getElementById('dfFi');if(fi)fi.value='';
+}
+function csvDecode(buf){
+  const u=new Uint8Array(buf);
+  if(u.length>=3&&u[0]===0xEF&&u[1]===0xBB&&u[2]===0xBF)return new TextDecoder('utf-8').decode(u.subarray(3)); // UTF-8 BOM
+  try{return new TextDecoder('utf-8',{fatal:true}).decode(u);}           // 유효 UTF-8이면 그대로
+  catch(_){try{return new TextDecoder('euc-kr').decode(u);}catch(__){return new TextDecoder('utf-8').decode(u);}} // 아니면 CP949
+}
+function csvToAoA(text){
+  text=text.replace(/^\uFEFF/,'');
+  const rows=[];let row=[],fld='',q=false;
+  for(let i=0;i<text.length;i++){const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){fld+='"';i++;} else q=false; } else fld+=c; continue; }
+    if(c==='"'){q=true;continue;}
+    if(c===','){row.push(fld);fld='';continue;}
+    if(c==='\n'){row.push(fld);rows.push(row);row=[];fld='';continue;}
+    if(c==='\r')continue;
+    fld+=c;
+  }
+  if(fld.length||row.length){row.push(fld);rows.push(row);}
+  return rows.map(r=>r.map(c=>c.trim())).filter(r=>r.some(c=>c!==''));
+}
+function rCSV(f){
+  const r=new FileReader();
+  r.onerror=err=>{console.error('[upload] CSV read error',err);toast('CSV 읽기 실패');};
+  r.onload=e=>{
+    try{
+      const aoa=csvToAoA(csvDecode(e.target.result));
+      const{rows,headers}=rowsToObjs(aoa);
+      handleParsed(rows,headers);
+    }catch(err){console.error('[upload] CSV parse error',err);toast('CSV 파싱 실패: '+err.message);}
+  };
+  r.readAsArrayBuffer(f);
+}
+function readWorkbookSafe(data,opts){
+  const before=new Set(Object.getOwnPropertyNames(Object.prototype));
+  try{return XLSX.read(data,opts);}
+  finally{
+    for(const k of Object.getOwnPropertyNames(Object.prototype)){
+      if(!before.has(k)){try{delete Object.prototype[k];}catch(_){}}
+    }
+  }
+}
+async function rXLSX(f){
+  try{await loadXlsx();}catch(e){toast('엑셀 모듈 로드 실패 · 네트워크·CDN 차단 확인');return;}
+  const r=new FileReader();
+  r.onerror=err=>{console.error('[upload] XLSX read error',err);toast('파일 읽기 실패');};
+  r.onload=e=>{
+    try{
+      const wb=readWorkbookSafe(e.target.result,{type:'array',cellDates:true});
+      const sh=wb.Sheets[wb.SheetNames[0]];
+      const aoa=XLSX.utils.sheet_to_json(sh,{header:1,defval:'',raw:false,dateNF:'yyyy-mm-dd'});
+      const{rows,headers}=rowsToObjs(aoa);
+      handleParsed(rows,headers);
+    }catch(err){
+      console.error('[upload] XLSX parse error',err);
+      const msg=String(err.message||err);
+      if(/Encrypted|EncryptionInfo|ECMA-376/i.test(msg)){
+        toast('암호로 보호된 엑셀입니다.',5000);
+      }else{
+        toast('Excel 파싱 실패: '+msg);
+      }
+    }
+  };
+  r.readAsArrayBuffer(f);
+}
+function handleParsed(rowsRaw,hs){
+  // 제외 키워드 적용: 대소문자/공백 무시. 여러 키워드는 쉼표로 구분.
+  const exTk=(S.exTk||'').split(',').map(t=>t.replace(/\s+/g,'').toLowerCase()).filter(Boolean);
+  let excluded=0,rows=rowsRaw;
+  if(exTk.length){const matchRow=r=>{const blob=Object.values(r).map(v=>String(v??'').replace(/\s+/g,'').toLowerCase()).join('|');return exTk.some(t=>blob.includes(t));};rows=rowsRaw.filter(r=>{if(matchRow(r)){excluded++;return false;}return true;});}
+  // 필수 컬럼 검증
+  const missing=COLS_REQ.filter(c=>!hs.includes(c));
+  if(missing.length){toast('필수 컬럼 누락: '+missing.join(', '),5000);return;}
+  // 경고 컬럼 점검(차단 아님): 대체명 중 하나도 없으면 해당 값이 전부 비어 집계됨 → HCS 컬럼명 변경 신호
+  const warnMiss=COLS_WARN.filter(alts=>!alts.some(c=>hs.includes(c))).map(alts=>alts[0]);
+  if(warnMiss.length&&!confirm('다음 컬럼이 엑셀에 없어 해당 값이 전부 빈 채로 집계됩니다.\n(HCS 컬럼명 변경 가능성 — 원본 헤더를 확인하세요)\n\n· '+warnMiss.join('  · ')+'\n\n그대로 진행하시겠습니까?'))return;
+  if(!rows.length){toast('처리할 데이터가 없습니다');return;}
+  S.ubuf=rows;
+  if(excluded)toast(`제외 ${excluded.toLocaleString()}건 적용 · ${rows.length.toLocaleString()}건 처리`);
+  confirmUL();
+}
+function auditUpload(items){
+  const today=new Date(Date.now()+9*36e5).toISOString().slice(0,10); // KST 기준 오늘 YYYY-MM-DD
+  let futR=0,futC=0,noDate=0;const rn=new Map();
+  for(const i of items){
+    if(!i.receiptDate)noDate++;else if(i.receiptDate>today)futR++;
+    if(i.completionDate&&i.completionDate>today)futC++;
+    const k=(i.receiptNo||'').trim();if(k)rn.set(k,(rn.get(k)||0)+1);
+  }
+  let dupKeys=0,dupRows=0;rn.forEach(c=>{if(c>1){dupKeys++;dupRows+=c;}});
+  const L=[];
+  if(futR)L.push(`· 미래 접수일(오늘 이후): ${futR.toLocaleString()}건`);
+  if(futC)L.push(`· 미래 완료일(오늘 이후): ${futC.toLocaleString()}건`);
+  if(dupKeys)L.push(`· 중복 접수번호: ${dupKeys.toLocaleString()}종 ${dupRows.toLocaleString()}건`);
+  if(noDate)L.push(`· 접수일 없음(집계 제외): ${noDate.toLocaleString()}건`);
+  if(!L.length)return '';
+  return `업로드 데이터에서 이상 징후가 발견되었습니다.\n\n${L.join('\n')}\n\n그대로 진행하면 회의자료 수치에 영향을 줄 수 있습니다. 계속 진행하시겠습니까?\n(취소 후 원본 파일을 수정하는 것을 권장합니다)`;
+}
+async function confirmUL(){
+  if(!S.ubuf){toast('파일을 먼저 업로드하세요');return;}
+  progShow('데이터 정규화 중...');
+  await nextFrame();
+  // 정규화 + 현장명별 그룹핑 — 청크 단위로 처리해 진행률 표시
+  const src=S.ubuf,total=src.length,items=new Array(total);
+  const CHUNK=5000;
+  for(let i=0;i<total;i+=CHUNK){
+    const end=Math.min(i+CHUNK,total);
+    for(let j=i;j<end;j++)items[j]=norm(src[j]);
+    progSet(end/total*100,`${end.toLocaleString()} / ${total.toLocaleString()}행`);
+    await nextFrame();
+  }
+  // 이상 징후 점검(차단 아님 — 진행 여부는 사용자 판단)
+  const _audit=auditUpload(items);
+  if(_audit){progHide();if(!confirm(_audit)){cancelUL();return;}progShow('데이터 저장 준비 중...');await nextFrame();}
+  const byName={},rawByName={};
+  for(let i=0;i<items.length;i++){const it=items[i];const k=it.siteName||'(미지정)';(byName[k]=byName[k]||[]).push(it);(rawByName[k]=rawByName[k]||[]).push(src[i]);}
+  S._uploadRaw=rawByName;
+  const names=Object.keys(byName);
+  if(!names.length||(names.length===1&&names[0]==='(미지정)')){progHide();toast('현장명 식별 불가 · 엑셀의 "현장" 컬럼 확인');return;}
+  // 신규 현장 추출
+  const unknown=names.filter(n=>n!=='(미지정)'&&!dfSites().some(s=>s.name===n));
+  if(unknown.length){
+    progHide();
+    // 신규 현장 순차 등록 wizard. 마지막 현장 등록 후 doSaveUL 호출
+    openNewSiteWizard(unknown,0,byName,items);
+    return;
+  }
+  await doSaveUL(byName,items);
+}
+/* 신규 현장 위저드 — 원본 openNewSiteWizard/confirmNewSite. ⚠ 모달 API 만 calapp(openModal)로,
+   현장은 S.org.sites 에 넣고 orgSave()로 calapp/org 에 쓴다(조직 원본 역전 — ④단계). */
+function openNewSiteWizard(unknown,idx,byName,allItems){
+  if(idx>=unknown.length){doSaveUL(byName,allItems);return;}
+  const name=unknown[idx];
+  const sample=byName[name]||[];
+  const bldgs=new Set(sample.map(i=>i.building).filter(Boolean));
+  const bldgHint=bldgs.size||'';
+  const{team}=tkSel();
+  openModal('신규 현장 등록 ('+(idx+1)+'/'+unknown.length+')',
+    '<p style="font-size:12.5px;color:var(--lbl2);margin-bottom:14px">"<b style="color:var(--bt1)">'+esc(name)+'</b>" 현장이 등록되어 있지 않습니다. 정보를 입력하세요.</p>'
+    /* 615차 배치: 1행 팀·권역·준공일 / 2행 동수·세대수·상가수 */
+    +'<div class="g3"><div class="ig2"><label class="il" for="mtm">팀</label><select class="inp" id="mtm">'+(S.org.teams||[]).map(t=>'<option value="'+esc(t.id)+'"'+(team&&team.id===t.id?' selected':'')+'>'+esc(t.name||t.id)+'</option>').join('')+'</select></div>'
+    +'<div class="ig2"><label class="il" for="mr">권역 *</label><select class="inp" id="mr">'+dfRegionNames().map(r=>'<option>'+esc(r)+'</option>').join('')+'</select></div>'
+    +'<div class="ig2"><label class="il" for="mc">준공일</label><input class="inp" id="mc" type="date" max="9999-12-31"></div></div>'
+    +'<div class="g3"><div class="ig2"><label class="il" for="mb2">동수</label><input class="inp" id="mb2" type="number" value="'+bldgHint+'" placeholder="예: 12"></div>'
+    +'<div class="ig2"><label class="il" for="mu">세대수</label><input class="inp" id="mu" type="number" placeholder="예: 1,240"></div>'
+    +'<div class="ig2"><label class="il" for="mcu">상가수</label><input class="inp" id="mcu" type="number" placeholder="예: 24"></div></div>'
+    +'<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-top:4px"><input type="checkbox" id="mco" aria-label="공가상가 포함 현장"> 공가상가 포함 현장</label>',
+    '<button class="btn bg2 bsm" data-act="dfp.ulCancel">전체 취소</button><button class="btn bp bsm" data-act="dfp.ulSite" data-name="'+esc(name)+'" data-idx="'+idx+'" data-total="'+unknown.length+'">'+(idx+1<unknown.length?'다음':'완료 및 저장')+'</button>');
+  S._wiz={unknown,byName,allItems};
+}
+async function confirmNewSite(name,idx,total){
+  const w=S._wiz;if(!w){closeModal();return;}
+  const region=document.getElementById('mr').value;
+  const units=Number(document.getElementById('mu').value)||0;
+  const buildings=Number(document.getElementById('mb2').value)||0;
+  const commercialUnits=Number(document.getElementById('mcu').value)||0;
+  const completionDate=document.getElementById('mc').value;
+  const hasCommercial=document.getElementById('mco').checked;
+  const id='s'+Date.now()+'_'+idx;
+  const tmSel=document.getElementById('mtm');
+  const teamId=(tmSel&&tmSel.value)||((tkSel().team||{}).id)||'';   /* 615차: 위저드에서 팀 선택 */
+  const newSite={id,name,region,units,buildings,commercialUnits,completionDate,hasCommercial,team:teamId};
+  S.org.sites.push(newSite);
+  orgSave();
+  dfSiteCfgWrite(id,newSite);   /* hasCommercial/showVacant 실시간 채널 — 원본 fb2SiteConfigWrite 와 같은 자리 */
+  rOrg();
+  if(idx+1<total){openNewSiteWizard(w.unknown,idx+1,w.byName,w.allItems);}
+  else{closeModal();await doSaveUL(w.byName,w.allItems);S._wiz=null;}
+}
+function dfSiteCfgWrite(sid,site){
+  if(!S.live||!FB.db)return;
+  FB.db.ref('siteConfig/'+sid).set({hasCommercial:!!site.hasCommercial,showVacant:site.showVacant!==false,updatedAt:Date.now()})
+    .catch(e=>console.warn('[siteConfig] 쓰기 실패',sid,e));
+}
+
+async function doSaveUL(byName,allItems){
+  S._importing=true;
+  progShow('하자 데이터 저장 중...');
+  await nextFrame();
+  // 기준월 자동 결정: 모든 receiptDate의 최댓값이 속한 월
+  const dates=allItems.map(i=>i.receiptDate).filter(Boolean).sort();
+  const maxDate=dates[dates.length-1]||'';
+  const autoRm=maxDate.slice(0,7);
+  // 기준월 자동값 상한 = 전월. 월간보고는 '전월 말일까지' 기준인데, 월초 HCS 추출본에는
+  // 당월 접수분이 몇 건 섞여 들어와 기준월이 당월로 튀고, 그 상태로 게시하면 미래 월
+  // 게시본이 생겨 뷰어 전원이 잘못된 기준월을 보게 된다. 수동 변경(기준월 칩)은 그대로 가능.
+  const _capRm=pM(todayYM());
+  const effRm=(autoRm&&autoRm>_capRm)?_capRm:autoRm;
+  if(effRm)S.dfPubRm=effRm;dfMetaSave();   /* ⚠ 원본 S.rm/lsSave → 게시 기준월 + calapp meta 레코드 */
+  // 현장별 저장 (메모리 + IndexedDB 압축). 순차 처리로 진행률 표시.
+  let savedCount=0,savedSites=0,firstSid=null;
+  const entries=Object.entries(byName).filter(([name])=>name!=='(미지정)');
+  for(let k=0;k<entries.length;k++){
+    const[name,its]=entries[k];
+    const site=dfSites().find(s=>s.name===name);if(!site)continue;
+    progMsg(`저장 중: ${name}`);
+    progSet(k/entries.length*100,`${k+1} / ${entries.length}개 현장 · ${its.length.toLocaleString()}건 압축`);
+    await nextFrame();
+    S.def[site.id]=Object.freeze(its); // freeze: 통째 교체 규약 강제
+    site.lastUploadedAt=new Date().toISOString();DFMETA.lastUp[site.id]=site.lastUploadedAt;   /* ⚠ 원본은 meta(state)의 sites 에 실렸다 — calapp 은 별도 meta 레코드 */
+    await defSave(site.id,its);// 현장 단위로 압축+IndexedDB 쓰기
+    savedCount+=its.length;savedSites++;
+    if(!firstSid)firstSid=site.id;
+  }
+  progSet(100,'완료');
+  await nextFrame();
+  progHide();
+  S._uploadRaw=null;
+  DFMETA.hist=[{at:new Date().toISOString(),rows:savedCount,sites:savedSites,rm:S.dfPubRm||''}].concat(DFMETA.hist||[]).slice(0,10);dfMetaSave();   /* 업로드 이력(615차) */
+  dfProdCardFill();   /* ⚠ 원본 setRmChip → 게시 카드 갱신 */
+  toast(`${savedCount.toLocaleString()}건 · ${savedSites}개 현장 저장 완료`);
+  S.ubuf=null;setStep(3);
+  setTimeout(()=>{
+    setStep(1);
+    S._importing=false;
+    toast('저장 완료 · 아직 게시 전입니다 — [등록]을 눌러야 팀 화면에 반영됩니다',6000);   /* ⚠ 원본은 화면 이동 — calapp 화면은 게시본 기준이라 이동해도 숫자가 안 변해 오해를 부른다 */
+  },600);
+}
+function cancelUL(){S.ubuf=null;S._uploadRaw=null;S._importing=false;}
+function norm(r){
+  const pick=(...keys)=>{for(const k of keys){const v=r[k];if(v!=null&&String(v).trim()!=='')return v;}return '';};
+  // 처리상태: '처리','미처리','처리완료' 등을 정규화. 처리확인일이 있으면 처리로 간주
+  // 처리일 기준 = 처리확인일 단독 (업체처리일·처리완료일 폴백 제거 → 전 계산 일관)
+  const rawStatus=String(pick('처리상태')).trim();
+  const compRaw=pick('처리확인일');
+  const comp=nd(compRaw);
+  let status='미처리';
+  if(rawStatus==='처리'||rawStatus==='처리완료'||rawStatus==='완료')status='처리';
+  else if(rawStatus==='미처리')status='미처리';
+  else if(comp)status='처리';
+  return{
+    // 메모리=슬림 원칙: 원본 전 컬럼은 공유폴더 압축 파일(defects/{id}.json)에만 보존하고
+    // 메모리/IndexedDB에는 표시용 필드만 올린다. (70만 건 규모에서 ...r 전개는 메모리 과부하)
+    receiptNo:String(pick('접수번호')||''),
+    building:String(pick('동')||''),
+    unit:String(pick('호')||''),
+    trade:String(pick('공종')||''),
+    defectType:String(pick('하자유형')||''),
+    criticalType:String(pick('중대하자유형','중대하자')||'').trim(), // 중대하자유형 — AI 분석용(비어있지 않으면 중대하자)
+    defectClass:String(pick('하자구분')||'').trim(),
+    receiptDate:nd(pick('접수일')),
+    completionDate:comp,
+    status,
+    delayDays:Number(pick('지연일','지연일수'))||0,
+    repairParty:String(pick('보수주체')||''),
+    contractor:String(pick('시공업체')||''),       // 시공업체 — 더 이상 보수업체와 병합하지 않음
+    repairContractor:String(pick('보수업체')||''), // 보수업체 별도 보존
+    saleStatus:String(pick('입주상태','분양상태')||'입주완료'),
+    unitType:String(pick('세대구분')||'세대'),
+    moveIn:String(pick('입점여부')||'Y'),
+    space:String(pick('공간')||'').trim(),
+    receiptContent:String(pick('접수내용')||'').trim(),
+    complaint:String(pick('민원')||'').trim(),
+    siteName:String(pick('현장')||'').trim(),
+    siteCode:String(pick('현장코드')||'').trim()
+  };
+}
+function nd(v){
+  if(v==null||v==='')return '';
+  // Excel Date 객체 (cellDates:true 사용 시)
+  if(v instanceof Date){const y=v.getFullYear();if(y<1900||y>2100)return '';return`${y}-${String(v.getMonth()+1).padStart(2,'0')}-${String(v.getDate()).padStart(2,'0')}`;}
+  // Excel 시리얼 숫자 (1899-12-30 기준)
+  if(typeof v==='number'&&v>1&&v<60000){const d=new Date(Math.round((v-25569)*86400*1000));if(!isNaN(d))return`${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;}
+  const s=String(v).trim();
+  // 'YYYY-MM-DD 오전 12:00:00' 같은 한국식 시각 포함도 슬라이스로 처리
+  const m=s.match(/^(\d{4})[-./](\d{1,2})[-./](\d{1,2})/);
+  if(m)return`${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`;
+  if(/^\d{8}$/.test(s))return`${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}`;
+  return '';
+}
+/* ── 주요 이슈 생성 — 원본 rInsights 본문 그대로(머리·꼬리만 순수 함수화 · ⚠ 주석 참조) ── */
+const AI_COLOR_MAP={'#c0392b':'var(--rd)','#1a7a3c':'var(--gn)','#a0590a':'var(--am)','#d97706':'var(--am)',
+                    '#3e71d2':'var(--bt1)','#3259b6':'var(--bt1)','#1f2b4c':'var(--bt2)',
+                    '#1c1c1e':'var(--lbl)','#6e6e73':'var(--lbl2)','#333':'var(--lbl)','#444':'var(--lbl)'};
+function themeHTML(html){
+  return String(html||'').replace(/color:\s*(#[0-9a-fA-F]{3,6})/g,(m,hex)=>{
+    const t=AI_COLOR_MAP[hex.toLowerCase()];return t?('color:'+t):m;
+  });
+}
+function icoSVG(v){
+  const s=String(v||'');
+  const inner=/^\s*[Mm][\s\d.-]/.test(s)?'<path d="'+s+'"/>':s;
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+inner+'</svg>';
+}
+function safeHTML(dirty){
+  const s=String(dirty==null?'':dirty);
+  if(window.DOMPurify&&DOMPurify.sanitize){
+    // class 토큰 화이트리스트 훅(1회 등록): 살균 통과 HTML이 앱 스타일 클래스를 도용해 UI를 위장하지 못하도록
+    // 인사이트 카드가 실제 사용하는 클래스만 통과시킨다. (AI 분석 HTML은 인라인 스타일만 사용 → 무영향)
+    if(!safeHTML._clsHook){
+      safeHTML._cls=new Set(['ic','ic-i','ic-t','ic-ttl','ic-sub','warn','bad','ok']);
+      DOMPurify.addHook('uponSanitizeAttribute',(node,data)=>{
+        if(data.attrName==='class'){
+          data.attrValue=String(data.attrValue).split(/\s+/).filter(c=>safeHTML._cls.has(c)).join(' ');
+          if(!data.attrValue)data.keepAttr=false;
+        }
+      });
+      safeHTML._clsHook=true;
+    }
+    return DOMPurify.sanitize(s,{
+      ALLOWED_TAGS:['div','p','ul','ol','li','strong','b','em','i','span','br','small','h1','h2','h3','h4','table','thead','tbody','tr','td','th','svg','path'],
+      ALLOWED_ATTR:['style','class','viewBox','fill','stroke','stroke-width','stroke-linecap','stroke-linejoin','d','opacity','width','height','xmlns'],
+      ALLOW_DATA_ATTR:false
+    });
+  }
+  // 폴백(DOMPurify 부재): 위험 태그·이벤트핸들러·위험 URL 스킴 제거 (최소 방어선)
+  return s.replace(/<\/?(?:script|iframe|object|embed|link|meta|style|form|input|button|base|frame|frameset|applet)\b[^>]*>/gi,'')
+          .replace(/\son\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi,'')
+          .replace(/(?:href|src|xlink:href|formaction|action)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi,'')
+          .replace(/(?:javascript|vbscript)\s*:/gi,'');
+}
+function dfInsShortName(name){if(!name)return'-';const stripped=String(name).replace(/힐스테이트/g,' ').replace(/\s+/g,' ').trim();return stripped||String(name).trim();}
+function dfInsightsBuild(all,tR,tRes,tU,tLt,rate,pRate,rm){
+  if(!all.length)return '';
+  const C={gn:'#1A7A3C',rd:'#C0392B'};
+  const ICON={up:'<path d="M22.0 7.0L13.5 15.5L8.5 10.5L2.0 17.0"/><path d="M16.0 7.0L22.0 7.0L22.0 13.0"/>',clock:'<path d="M2.0 12.0a10.0 10.0 0 1 0 20.0 0a10.0 10.0 0 1 0 -20.0 0"/><path d="M12.0 6.0L12.0 12.0L16.0 14.0"/>',wrench:'<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',user:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M5.0 7.0a4.0 4.0 0 1 0 8.0 0a4.0 4.0 0 1 0 -8.0 0"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',layers:'<path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/>',box:'<path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><path d="M12 22V12"/><path d="m3.3 7 7.703 4.734a2 2 0 0 0 1.994 0L20.7 7"/><path d="m7.5 4.27 9 5.15"/>',home:'<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>'}; // Lucide(ISC) — path만 사용(safeHTML 허용 태그 제약) // Lucide(ISC) — path만 사용(safeHTML 허용 태그 제약)
+  const fmt=n=>Math.round(n).toLocaleString();
+  const sgn=n=>(n>=0?'+':'−')+fmt(Math.abs(n));
+  const pct=(n,d)=>d>0?(n/d*100):0;
+  // z-score 헬퍼: 현장 배열에서 한 현장이 평균 대비 얼마나 튀는지(표준편차 배수)
+  const zTop=(arr)=>{const v=arr.map(a=>a.v),n=v.length;if(n<2)return arr[0]?{...arr[0],z:0}:null;const m=v.reduce((a,b)=>a+b,0)/n,sd=Math.sqrt(v.reduce((a,b)=>a+(b-m)**2,0)/n)||1;return arr.map(a=>({...a,z:(a.v-m)/sd})).sort((a,b)=>b.z-a.z)[0];};
+  // 전월대비 변화 점수: 비율(%) 절댓값을 0~1로 (40% 변화면 만점). 악화 방향이면 가산.
+  const chg=(curr,prev,worseUp)=>{if(prev<=0)return curr>0?0.5:0;const r=(curr-prev)/prev;const mag=Math.min(Math.abs(r)/0.4,1);const worse=worseUp?r>0:r<0;return mag*(worse?1:0.35);};
+  // 미처리 원시건 (대시보드 기준월말 기준)
+  const _rmPi=rm.split('-').map(Number),_rmEndI=`${rm}-${String(new Date(_rmPi[0],_rmPi[1],0).getDate()).padStart(2,'0')}`;
+  const siteUnr={};all.forEach(({s})=>{siteUnr[s.id]=(S.def[s.id]||[]).filter(i=>i.receiptDate&&i.receiptDate<=_rmEndI&&!(i.status==='처리'&&i.completionDate&&i.completionDate<=_rmEndI));});
+  const _unrAll=all.flatMap(({s})=>siteUnr[s.id]);
+  // 집계 헬퍼
+  const agg=(items,key)=>{const m={};items.forEach(i=>{const k=(typeof key==='function'?key(i):i[key])||'기타';m[k]=(m[k]||0)+1;});return Object.entries(m).sort((a,b)=>b[1]-a[1]);};
+  // 미귀책 보수주체 집합 (시공업체=정상귀책 외 전부)
+  const NONFAULT=new Set(['품의(대기)','외주','외주(다기능공)','H서비스센터','신속대응팀','현장직영','미지정']);
+  // 전월 대비 합계
+  const pT=all.reduce((a,x)=>a+x.st.prev.total,0),pRes=all.reduce((a,x)=>a+x.st.prev.res,0),pU=all.reduce((a,x)=>a+x.st.prev.unr,0),pLt=all.reduce((a,x)=>a+x.st.prev.lt,0);
+  const deltaU=tU-pU,deltaLt=tLt-pLt,deltaR=tRes-pRes,deltaIn=tR-pT,delta=rate-pRate;
+  const ltr=pct(tLt,tU);
+
+  // 현장명 줄임말 헬퍼 (도넛 차트 범례와 동일)
+  const sn=s=>dfInsShortName(s.name);
+  // 현장 목록 → 줄임말 나열 (최대 4개, 초과 시 '외N개')
+  const siteList=(arr,max=4)=>{if(!arr||!arr.length)return'';const names=arr.map(s=>sn(s));if(names.length<=max)return names.map(n=>`<b>${n}</b>`).join('·');return names.slice(0,max).map(n=>`<b>${n}</b>`).join('·')+`·외${names.length-max}개`;};
+
+  // 미처리 상위 10 협력사 집합 (미처리 건수 기준) — 협력사/공종 후보 필터링에 공통 사용
+  const _unrByCo={}; _unrAll.forEach(i=>{const k=i.contractor||'미지정';if(k==='미지정'||k==='')return;(_unrByCo[k]=_unrByCo[k]||0);_unrByCo[k]++;});
+  const _top10Co=new Set(Object.entries(_unrByCo).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([k])=>k));
+  // 미처리 상위 10 공종 집합
+  const _unrByTr={}; _unrAll.forEach(i=>{const k=i.trade||'기타';(_unrByTr[k]=_unrByTr[k]||0);_unrByTr[k]++;});
+  const _top10Tr=new Set(Object.entries(_unrByTr).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([k])=>k));
+
+  const cand=[];
+  // 1. 협력사 처리율 저조 — 미처리 상위 10 업체 중 처리율 최저, 타 업체 평균 대비 격차
+  (()=>{
+    // 협력사별 접수·처리·미처리 + 주공종(미처리 기준) + 소속 현장 추적
+    const byCo={};all.flatMap(({s})=>(S.def[s.id]||[]).filter(i=>i.receiptDate&&i.receiptDate<=_rmEndI).map(i=>({...i,_s:s}))).forEach(i=>{const k=i.contractor||'미지정';if(k==='미지정'||k==='')return;const done=i.status==='처리'&&i.completionDate&&i.completionDate<=_rmEndI;if(!byCo[k])byCo[k]={t:0,r:0,u:0,siteSet:new Set(),trades:{}};byCo[k].t++;if(done)byCo[k].r++;else{byCo[k].u++;const tr=i.trade||'기타';byCo[k].trades[tr]=(byCo[k].trades[tr]||0)+1;}byCo[k].siteSet.add(i._s.id);});
+    // 미처리 상위 10 업체만 대상 + 접수 충분(50건+) 필터
+    const rows=Object.entries(byCo).filter(([k,v])=>_top10Co.has(k)&&v.t>=50).map(([k,v])=>({k,t:v.t,rate:pct(v.r,v.t),u:v.u,topTr:Object.entries(v.trades).sort((a,b)=>b[1]-a[1])[0]?.[0]||'-',sites:[...v.siteSet].map(id=>all.find(x=>x.s.id===id)?.s).filter(Boolean)}));if(rows.length<2)return;
+    const avg=rows.reduce((a,r)=>a+r.rate,0)/rows.length;const w=rows.slice().sort((a,b)=>a.rate-b.rate)[0];const gap=avg-w.rate;if(w.rate>=90||gap<10)return;
+    const score=0.6*Math.min(gap/30,1)+0.4*Math.min(gap/15,1);
+    const sLabel=w.sites.length===1?` (${sn(w.sites[0])})`:w.sites.length>1?` (${siteList(w.sites)})`:' ';
+    cand.push({score,cls:'bad',icon:ICON.user,ttl:'협력사 처리율 저조',
+      sub:`<b>${w.topTr} · ${w.k}</b>${sLabel} 처리율 <b style="color:${C.rd}">${w.rate.toFixed(1)}%</b> · 미처리 ${fmt(w.u)}건 (타 협력사 평균 ${avg.toFixed(1)}%, <b>−${gap.toFixed(1)}%p</b>)<br>해당 협력사 PM 호출 — 다음 달 처리계획 제출 요구, 미처리 ${fmt(w.u)}건 일정 확정 필요`});})();
+  // 2. 장기미처리 다수 — 30일+ 절대건수·미처리대비%, 현장 z-score
+  (()=>{const z=zTop(all.filter(x=>x.st.unr>0).map(x=>({s:x.s,v:x.st.lt,st:x.st})));if(!z)return;
+    const score=0.6*chg(tLt,pLt,true)+0.4*Math.min(Math.max(z.z,0)/2,1)*(ltr>=25?1:0.6);
+    cand.push({score,cls:deltaLt>0||ltr>=40?'bad':ltr>=25?'warn':'ok',icon:ICON.clock,ttl:'장기미처리 적체',
+      sub:`30일+ <b>${fmt(tLt)}건</b> (전월대비 <b style="color:${deltaLt<=0?C.gn:C.rd}">${sgn(deltaLt)}</b>) · 미처리 대비 <b>${ltr.toFixed(1)}%</b> · 집중 <b>${sn(z.s)}</b> ${fmt(z.v)}건<br>${deltaLt>0?`<b style="color:${C.rd}">증가 ${fmt(deltaLt)}건</b> — 60일+ 별도 추적, 180일+ 동결건 분리 후 30일대 가속`:`<b style="color:${C.gn}">전월대비 ${fmt(Math.abs(deltaLt))}건 감소</b> — 개선 흐름 유지, <b>${sn(z.s)}</b> 집중 관리`}`});})();
+  // 3. 품의(대기) 적체 — 건수·평균지연 + 쏠린 공종/유형/업체
+  (()=>{const pi=_unrAll.filter(i=>i.repairParty==='품의(대기)');const n=pi.length;if(n<30)return;
+    const _dB=(a,b)=>Math.max(0,Math.round((new Date(b)-new Date(a))/86400000));
+    const avgDelay=pi.reduce((a,i)=>a+(i.receiptDate?_dB(i.receiptDate,_rmEndI):0),0)/Math.max(n,1); // 역산(기준일-접수일)으로 통일 — 대시보드 전체와 동일 기준
+    const tT=agg(pi,'trade')[0],dT=agg(pi,'defectType')[0],cT=agg(pi,i=>i.contractor||'미지정')[0];
+    // 품의 적체가 쏠린 현장
+    const piSites=all.map(({s})=>({s,v:siteUnr[s.id].filter(i=>i.repairParty==='품의(대기)').length})).filter(r=>r.v>=10).sort((a,b)=>b.v-a.v);
+    const piSiteLbl=piSites.length?` · 집중 ${siteList(piSites.slice(0,3).map(r=>r.s))}`:' ';
+    const score=0.6*Math.min(avgDelay/120,1)+0.4*Math.min(n/200,1);
+    cand.push({score,cls:n>=100||avgDelay>=100?'bad':'warn',icon:ICON.box,ttl:'품의(대기) 적체 — 당사 의사결정 병목',
+      sub:`품의(대기) <b>${fmt(n)}건</b> · 평균지연 <b>${Math.round(avgDelay)}일</b>${piSiteLbl}<br>쏠림: <b>${tT?.[0]||'-'}</b> ${fmt(tT?.[1]||0)}건 · <b>${dT?.[0]||'-'}</b> ${fmt(dT?.[1]||0)}건 · <b>${cT?.[0]||'-'}</b> — 30일↑ 외주 전환·품의 승인 가속 필요`});})();
+  // 4. 특정 하자유형 다수 — 미처리 최다 하자유형 점유율
+  (()=>{const dt=agg(_unrAll,'defectType');if(!dt.length)return;const top=dt[0],share=pct(top[1],tU);if(share<20)return;
+    const tradeOf=agg(_unrAll.filter(i=>(i.defectType||'미분류')===top[0]),'trade')[0];
+    // 해당 유형이 쏠린 현장들
+    const dtSites=all.map(({s})=>({s,v:siteUnr[s.id].filter(i=>(i.defectType||'미분류')===top[0]).length})).filter(r=>r.v>0).sort((a,b)=>b.v-a.v);
+    const dtSiteLbl=dtSites.length?` · ${siteList(dtSites.slice(0,3).map(r=>r.s))} 집중`:' ';
+    const score=0.6*Math.min(share/50,1)+0.4*Math.min(share/35,1);
+    cand.push({score,cls:share>=40?'bad':'warn',icon:ICON.wrench,ttl:'특정 하자유형 집중',
+      sub:`<b>${esc(top[0])}</b> 미처리 <b>${fmt(top[1])}건</b> (미처리의 <b>${share.toFixed(0)}%</b>) · 주 공종 <b>${esc(tradeOf?.[0]||'-')}</b>${dtSiteLbl}<br>해당 하자유형 표준 보수절차 정비·자재 선조달로 일괄 해소 검토`});})();
+  // 5. 공가세대 다수 — 공가 미처리 건수, 현장 z-score
+  (()=>{const isVac=i=>isVacUnit(i); // 공식 공가세대 정의로 일원화 — 카드/탭과 동일(하자구분='세대' AND 입주상태∈{미분양,미납})
+    const rows=all.map(({s})=>({s,v:siteUnr[s.id].filter(isVac).length})).filter(r=>r.v>0);if(!rows.length)return;
+    const tot=rows.reduce((a,r)=>a+r.v,0);const z=zTop(rows);if(tot<30||!z)return;
+    const tradeOf=agg(all.flatMap(({s})=>siteUnr[s.id].filter(isVac)),'trade')[0];
+    const affSites=rows.sort((a,b)=>b.v-a.v).slice(0,3).map(r=>r.s);
+    const score=0.6*Math.min(tot/150,1)+0.4*Math.min(Math.max(z.z,0)/2,1);
+    cand.push({score,cls:'warn',icon:ICON.home,ttl:'공가세대 미처리 다수',
+      sub:`공가세대 미처리 <b>${fmt(tot)}건</b> · 집중 ${siteList(affSites)} · 주 공종 <b>${esc(tradeOf?.[0]||'-')}</b><br>공가 일괄작업일 지정 — 단일 업체 다공종 보유 시 1회 투입으로 동선 절감`});})();
+  // 6. 전월대비 접수 급증
+  (()=>{if(pT<=0)return;const r=(tR-pT)/pT;if(r<=0.15)return;const z=zTop(all.filter(x=>x.st.prev.total>0).map(x=>({s:x.s,v:(x.st.tR-x.st.prev.total)/x.st.prev.total})));
+    const score=0.6*chg(tR,pT,true)+0.4*Math.min(Math.max(z?.z||0,0)/2,1);
+    cand.push({score,cls:'warn',icon:ICON.up,ttl:'전월대비 접수 급증',
+      sub:`전체 접수 <b>${fmt(tR)}건</b> (전월대비 <b style="color:${C.rd}">${sgn(deltaIn)}</b>, <b>+${(r*100).toFixed(0)}%</b>)${z?` · 급증 <b>${sn(z.s)}</b>`:''}<br>입주 초기 피크 가능성 — 다발 공종 사전 인력·자재 확보, 신규 30일+ 진입 차단`});})();
+  // 7. 전월대비 처리 급감
+  (()=>{if(pRes<=0)return;const r=(tRes-pRes)/pRes;if(r>=-0.15)return;const z=zTop(all.filter(x=>x.st.prev.res>0).map(x=>({s:x.s,v:(x.st.prev.res-x.st.res)/x.st.prev.res})));
+    const score=0.6*chg(tRes,pRes,false)+0.4*Math.min(Math.max(z?.z||0,0)/2,1);
+    cand.push({score,cls:'bad',icon:ICON.up,ttl:'전월대비 처리량 급감',
+      sub:`처리 완료 <b>${fmt(tRes)}건</b> (전월대비 <b style="color:${C.rd}">${sgn(deltaR)}</b>, <b>${(r*100).toFixed(0)}%</b>)${z?` · 급감 <b>${sn(z.s)}</b>`:''}<br>처리 동력 저하 — 협력사 가동률 점검, 주간 처리 KPI 직전월 평균 +50% 재설정`});})();
+  // 8. 전월대비 미처리 급증
+  (()=>{if(pU<=0)return;const r=(tU-pU)/pU;if(r<=0.1)return;const z=zTop(all.filter(x=>x.st.prev.unr>0).map(x=>({s:x.s,v:(x.st.unr-x.st.prev.unr)/x.st.prev.unr})));
+    const score=0.6*chg(tU,pU,true)+0.4*Math.min(Math.max(z?.z||0,0)/2,1);
+    cand.push({score,cls:'bad',icon:ICON.clock,ttl:'전월대비 미처리 급증',
+      sub:`미처리 <b>${fmt(tU)}건</b> (전월대비 <b style="color:${C.rd}">${sgn(deltaU)}</b>, <b>+${(r*100).toFixed(0)}%</b>)${z?` · 급증 <b>${sn(z.s)}</b>`:''}<br>접수 대비 처리 적체 — 다발 공종 우선 배정, 미귀책건 외주 전환 가속`});})();
+  // 9. 전월대비 장기미처리 급증
+  (()=>{if(pLt<=0)return;const r=(tLt-pLt)/pLt;if(r<=0.1)return;const z=zTop(all.filter(x=>x.st.prev.lt>0).map(x=>({s:x.s,v:(x.st.lt-x.st.prev.lt)/x.st.prev.lt})));
+    const score=0.6*chg(tLt,pLt,true)+0.4*Math.min(Math.max(z?.z||0,0)/2,1)+0.1;
+    cand.push({score,cls:'bad',icon:ICON.clock,ttl:'전월대비 장기미처리 급증',
+      sub:`30일+ <b>${fmt(tLt)}건</b> (전월대비 <b style="color:${C.rd}">${sgn(deltaLt)}</b>, <b>+${(r*100).toFixed(0)}%</b>)${z?` · 급증 <b>${sn(z.s)}</b>`:''}<br>신규 장기진입 가속 — 30일 도래 임박건 집중 처리, 60일+ 별도 동결 분류`});})();
+  // 10. 전 현장 특정 업체·공종 미처리 다수 — 미처리 상위 10 업체 AND 상위 10 공종 조합만
+  (()=>{const m={};_unrAll.forEach(i=>{const co=i.contractor||'미지정',tr=i.trade||'기타';if(co==='미지정')return;if(!_top10Co.has(co)||!_top10Tr.has(tr))return;// 상위 10 업체·공종 교차만
+    const k=co+'|'+tr;if(!m[k])m[k]={co,tr,c:0,siteIds:new Set()};m[k].c++;m[k].siteIds.add(i.siteCode||i.siteName||'');});
+    const rows=Object.values(m).filter(v=>v.siteIds.size>=2).sort((a,b)=>b.c-a.c);if(!rows.length)return;const top=rows[0];const share=pct(top.c,tU);if(top.c<50)return;
+    // 해당 협력사+공종 조합이 있는 현장 실제 객체 찾기
+    const affIds=top.siteIds;const affSites=all.filter(({s})=>affIds.has(s.id)||affIds.has(s.name)).map(({s})=>s);
+    const siteLbl=affSites.length?` (${siteList(affSites)})`:` (${top.siteIds.size}개 현장)`;
+    const score=0.6*Math.min(share/30,1)+0.4*Math.min(top.siteIds.size/all.length,1);
+    cand.push({score,cls:share>=15?'bad':'warn',icon:ICON.layers,ttl:'전 현장 특정 업체·공종 미처리',
+      sub:`<b>${top.tr} · ${top.co}</b> 미처리 <b>${fmt(top.c)}건</b>${siteLbl} · 미처리의 ${share.toFixed(0)}%<br>전사 단일 협력사 적체 — 본부 차원 합동 점검·자재 선조달, 협력사 증원 협의`});})();
+  // 11. 미귀책 보수주체 비중 과다 — 쏠린 공종·업체가 미처리 상위 10 안에 있을 때만 명시
+  (()=>{const nf=_unrAll.filter(i=>NONFAULT.has(i.repairParty));const share=pct(nf.length,tU);if(nf.length<50||share<25)return;
+    const rows=all.map(({s})=>{const u=siteUnr[s.id];return{s,v:pct(u.filter(i=>NONFAULT.has(i.repairParty)).length,u.length)};}).filter(r=>r.v>0);const z=zTop(rows);
+    const tT=agg(nf.filter(i=>_top10Tr.has(i.trade||'기타')),'trade')[0];// 상위 10 공종만
+    const cT=agg(nf.filter(i=>_top10Co.has(i.contractor||'')),'contractor')[0];// 상위 10 업체만
+    const pT2=agg(nf,'repairParty')[0];
+    const score=0.6*Math.min(share/50,1)+0.4*Math.min(Math.max(z?.z||0,0)/2,1);
+    const trCoLbl=(tT&&cT)?`<b>${tT[0]} · ${cT[0]}</b>`:(tT?`공종 <b>${tT[0]}</b>`:(cT?`업체 <b>${cT[0]}</b>`:''));
+    cand.push({score,cls:share>=40?'bad':'warn',icon:ICON.box,ttl:'미귀책 보수주체 비중 과다',
+      sub:`시공업체 외 보수주체 <b>${fmt(nf.length)}건</b> (미처리의 <b>${share.toFixed(0)}%</b>) · 최다 <b>${pT2?.[0]||'-'}</b>${z?` · 집중 <b>${sn(z.s)}</b>`:''}<br>쏠림: ${trCoLbl||'-'} — 품의 승인·외주 발주 우선 처리로 신속 해소`});})();
+
+  // ── 긍정 후보 ──
+  // 12. 전월대비 처리율 상승 — 괄목 현장 포함
+  (()=>{if(delta<=1)return;// 1%p 초과 상승
+    const byImpP=all.filter(x=>x.st.prev.total>0).map(x=>({s:x.s,imp:x.st.rate-x.st.prev.rate})).sort((a,b)=>b.imp-a.imp);
+    const topUp=byImpP[0];const upSites=byImpP.filter(x=>x.imp>1).map(x=>x.s);
+    const score=0.45*Math.min(delta/10,1)+0.3*Math.min((rate-60)/35,1)+0.25;// 긍정은 기본 0.25 가산
+    cand.push({score,cls:'ok',icon:ICON.up,ttl:'전월대비 처리율 상승',
+      sub:`처리율 <b style="color:${C.gn}">${rate.toFixed(1)}%</b> (전월대비 <b style="color:${C.gn}">+${delta.toFixed(1)}%p</b>) · 미처리 <b>${fmt(tU)}건</b> (전월대비 ${deltaU<=0?`<b style="color:${C.gn}">${sgn(deltaU)}</b>`:`<b style="color:${C.rd}">${sgn(deltaU)}</b>`})<br>${upSites.length?`개선 현장: ${siteList(upSites.slice(0,4))} — 처리 흐름 유지, 미도달 현장 집중 지원`:'전체 처리율 상승 — 협력사 현 가동률 유지 권고'}`});})();
+  // 13. 전월대비 미처리 감소 (처리율 상승 없이도 미처리 자체가 줄었을 때)
+  (()=>{if(deltaU>=-5||tU<=0)return;const r=Math.abs(deltaU)/Math.max(pU,1);if(r<0.05)return;
+    const byDn=all.filter(x=>x.st.prev.unr>0).map(x=>({s:x.s,dn:x.st.prev.unr-x.st.unr})).filter(x=>x.dn>0).sort((a,b)=>b.dn-a.dn);
+    const score=0.4*Math.min(r/0.3,1)+0.25;
+    cand.push({score,cls:'ok',icon:ICON.clock,ttl:'전월대비 미처리 감소',
+      sub:`미처리 <b style="color:${C.gn}">${fmt(tU)}건</b> (전월대비 <b style="color:${C.gn}">${sgn(deltaU)}</b>, <b>${(r*100).toFixed(0)}%↓</b>) · 처리율 <b>${rate.toFixed(1)}%</b><br>${byDn.length?`감소 주도: ${siteList(byDn.slice(0,3).map(x=>x.s))} — 미처리 추가 감축 목표 연속 설정`:'전반 미처리 감소 — 처리 속도 유지, 60일+ 모니터링 강화'}`});})();
+  // 14. 전월대비 장기미처리 감소
+  (()=>{if(deltaLt>=-5||tLt<=0)return;const r=Math.abs(deltaLt)/Math.max(pLt,1);if(r<0.05)return;
+    const z=zTop(all.filter(x=>x.st.prev.lt>0&&x.st.lt<x.st.prev.lt).map(x=>({s:x.s,v:x.st.prev.lt-x.st.lt})));
+    const score=0.4*Math.min(r/0.3,1)+0.2;
+    cand.push({score,cls:'ok',icon:ICON.clock,ttl:'전월대비 장기미처리 감소',
+      sub:`30일+ <b style="color:${C.gn}">${fmt(tLt)}건</b> (전월대비 <b style="color:${C.gn}">${sgn(deltaLt)}</b>, <b>${(r*100).toFixed(0)}%↓</b>) · 미처리 대비 <b>${ltr.toFixed(1)}%</b>${z?` · 최대개선 <b>${sn(z.s)}</b> −${fmt(z.v)}건`:''}<br>장기 적체 해소 진행 중 — 60일+ 동결건 분리 완료 후 30일 구간 가속 권고`});})();
+  // 15. 전월대비 처리량 급증
+  (()=>{if(pRes<=0)return;const r=(tRes-pRes)/pRes;if(r<0.15)return;const z=zTop(all.filter(x=>x.st.prev.res>0).map(x=>({s:x.s,v:(x.st.res-x.st.prev.res)/x.st.prev.res})));
+    const score=0.4*Math.min(r/0.4,1)+0.2;
+    cand.push({score,cls:'ok',icon:ICON.up,ttl:'전월대비 처리량 급증',
+      sub:`처리 완료 <b style="color:${C.gn}">${fmt(tRes)}건</b> (전월대비 <b style="color:${C.gn}">+${(r*100).toFixed(0)}%</b>, ${sgn(deltaR)})${z?` · 선도 <b>${sn(z.s)}</b>`:''}<br>처리 동력 강화 확인 — 협력사 가동률·인력 현수준 유지, 미처리 감축 목표 추가 설정`});})();
+
+  // 항상 노출되는 기본 카드(종합 처리 성과) — 후보 부족 시 보충용
+  const byImpAll=all.filter(x=>x.st.prev.total>0).map(x=>({s:x.s,imp:x.st.rate-x.st.prev.rate}));
+  const mostUp=byImpAll.slice().sort((a,b)=>b.imp-a.imp)[0],mostDn=byImpAll.slice().sort((a,b)=>a.imp-b.imp)[0];
+  cand.push({score:0.05,cls:rate>=75?'ok':rate>=60?'warn':'bad',icon:ICON.up,ttl:'종합 처리 성과',
+    sub:`처리율 <b>${rate.toFixed(1)}%</b> (전월대비 <b style="color:${delta>=0?C.gn:C.rd}">${delta>=0?'+':''}${delta.toFixed(1)}%p</b>) · 미처리 <b>${fmt(tU)}건</b> (전월대비 <b style="color:${deltaU<=0?C.gn:C.rd}">${sgn(deltaU)}</b>)<br>${mostUp&&mostUp.imp>0.5?`괄목 <b>${sn(mostUp.s)}</b> <b style="color:${C.gn}">+${mostUp.imp.toFixed(1)}%p</b>`:'전월 대비 큰 개선 현장 없음'}${mostDn&&mostDn.imp<-0.5?` · 문제 <b>${sn(mostDn.s)}</b> <b style="color:${C.rd}">${mostDn.imp.toFixed(1)}%p</b> 하락`:` · 전반 ${delta>=0?'개선 유지':'하락 — 본부 일정 협의'}`}`});
+
+  // 상위 3개 선정 — 경고/불량만 뽑지 않도록 ok 후보도 반드시 1개 이상 확보
+  // 1) 점수 내림차순 정렬, 중복 제목 제거
+  const seen=new Set(),allItems=[];
+  cand.sort((a,b)=>b.score-a.score);
+  for(const c of cand){if(seen.has(c.ttl))continue;seen.add(c.ttl);allItems.push(c);}
+  // 2) bad/warn 후보와 ok 후보 분리
+  const badItems=allItems.filter(x=>x.cls==='bad'||x.cls==='warn');
+  const okItems=allItems.filter(x=>x.cls==='ok');
+  // 3) 3개 슬롯 구성: ok 후보가 있으면 최소 1개 ok 보장. bad/warn 가득 차면 최하위 1개를 ok로 교체.
+  const items=[];
+  if(badItems.length>=3&&okItems.length>0){
+    // bad/warn 상위 2 + ok 상위 1
+    items.push(badItems[0],badItems[1],okItems[0]);
+  }else{
+    // 그냥 점수순 상위 3
+    for(const c of allItems){items.push(c);if(items.length===3)break;}
+  }
+  /* ⚠ 원본은 #d-insight 에 innerHTML — 여기서는 게시 문자열을 돌려준다(원본 insCleanHTML 캡처와 동일 내용) */
+  S._dashIns=items.map(x=>({cls:x.cls,icon:x.icon,ttl:x.ttl,sub:x.sub}));
+  return themeHTML(safeHTML(items.map(x=>`<div class="ic ${x.cls}"><div class="ic-i">${icoSVG(x.icon)}</div><div class="ic-t"><div class="ic-ttl">${x.ttl}</div><div class="ic-sub">${x.sub}</div></div></div>`).join('')));
+}
+function deepEncKeys(v){if(Array.isArray(v))return v.map(deepEncKeys);if(v&&typeof v==='object'){const o={};Object.keys(v).forEach(function(k){o[dfEncKey(k)]=deepEncKeys(v[k]);});return o;}return v;}
+/* ── 게시용 조직 변환 — calapp S.org → 원본(report) 현장·팀 모양. _dash 에 실려
+   구버전 report 앱 뷰어·스냅샷과의 호환을 지킨다(폐기 전 병행 기간). ── */
+function dfOrgToDashSites(){
+  return (S.org.sites||[]).filter(x=>x&&x.name).map(x=>({id:String(x.id),name:String(x.name),region:String(x.region||''),
+    teamId:String(x.team||''),units:Number(x.units)||0,buildings:Number(x.buildings)||0,
+    commercialUnits:Number(x.commercialUnits)||0,completionDate:String(x.completionDate||''),
+    hasCommercial:!!x.hasCommercial,showVacant:x.showVacant!==false,
+    lastUploadedAt:DFMETA.lastUp[x.id]||x.lastUploadedAt||''}));
+}
+function dfOrgToDashTeams(){
+  const regs=(S.org.regions||[]).map(r=>r&&r.name).filter(n=>n&&n!=='인수 전 현장');
+  return (S.org.teams||[]).map(t=>({id:String(t.id),name:String(t.name||''),regions:regs}));
+}
+
+/* ── 게시 — 원본 fb2Publish 의 구조를 그대로 따른다. 달라진 곳(⚠):
+   · insightsHTML: 원본은 #d-insight DOM 캡처(insCleanHTML) — 여기서는 dfInsightsBuild 가 같은 내용을 문자열로 만든다
+   · vac: 원본은 로컬 S.cmt — calapp 편집 경로는 RTDB 리프이므로 금월 리프 → 전월 리프 순으로 읽어 싣는다(이월)
+   · fb2SeedPlansAnalysis 생략 — calapp 은 처리계획·분석의견을 처음부터 리프에 실시간으로 쓴다
+   · 미래 게시월 정리: toastAction 대신 confirm ── */
+async function dfPublish(){
+  if(!isEditor()){toast('등록 권한이 없습니다(관리자 전용)');return;}
+  if(!S.live||!FB.db){toast('네트워크에 연결할 수 없습니다.');return;}
+  if(!Object.keys(S.def||{}).length){toast('등록할 데이터 없음 · 리스트 업로드 필요');return;}
+  const btn=$('#dfPubBtn');if(btn)btn.disabled=true;
+  try{
+    toast('등록 준비 중…');
+    dfSubSiteCfg();   /* hasCommercial/showVacant 최신화 — 게시 sites 에 실린다 */
+    const rm=dfPubRm(),pm=pM(rm);
+    const cap=capAll();
+    const all=dfDashSites().map(s=>({s,st:calc(S.def[s.id]||[],s,rm)}));
+    /* 합계 — 원본 rDash 단일 패스와 동일 수식 */
+    let tR=0,tRes=0,tU=0,tLt=0,pR=0,pRes=0;
+    for(const x of all){const st=x.st;tR+=st.tR;tRes+=st.res;tU+=st.unr;tLt+=st.lt;pR+=st.prev.total;pRes+=st.prev.res;}
+    const rate=tR>0?tRes/tR*100:0,pRate=pR>0?pRes/pR*100:0;
+    /* 게시 전 검토(615차) — 잘못된 파일·기준월을 마지막으로 거른다. 취소·닫기(Esc·배경)는 게시 중단. */
+    const _chg=pR>0?((tR-pR)/pR*100):0;
+    const goOn=await new Promise(resolve=>{
+      window.__PUBOK__=resolve;
+      /* 615차: 요약 대신 현장 열거 — 왼쪽부터 현장명·전체 접수·미처리·처리율(합계 행 굵게) */
+      const _cell='padding:7px 2px;font-size:12.5px;font-variant-numeric:tabular-nums;';
+      const _row=(a,b,c,d,bold,red)=>'<div style="display:grid;grid-template-columns:1fr 84px 74px 70px;gap:8px;align-items:center;box-shadow:inset 0 1px 0 var(--sep);'+(bold?'font-weight:700;':'')+'">'
+        +'<div style="'+_cell+'min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+a+'</div>'
+        +'<div style="'+_cell+'text-align:right;">'+b+'</div>'
+        +'<div style="'+_cell+'text-align:right;'+(red?'color:var(--rd);font-weight:700;':'')+'">'+c+'</div>'
+        +'<div style="'+_cell+'text-align:right;">'+d+'</div></div>';
+      const siteRows=dfSites().map(s2=>{const k=calc(S.def[s2.id]||[],s2,rm);
+        return _row(esc(s2.name)+(s2.region==='인수 전 현장'?' <span style="font-size:10.5px;color:var(--lbl3)">인수 전</span>':''),
+          k.tR.toLocaleString(),k.unr.toLocaleString(),(k.tR>0?(k.res/k.tR*100).toFixed(1):'0.0')+'%',false,k.unr>0);}).join('');
+      openModal('사내 게시 확인',
+        '<p style="font-size:12.5px;color:var(--lbl2);margin-bottom:10px">아래 내용이 맞으면 게시하세요 — 팀 전원 화면에 곧바로 반영됩니다.</p>'
+        +'<div class="share-row" style="padding-left:0;padding-right:0"><div class="share-info"><b>기준월</b></div><b style="font-size:14px">'+esc(rm)+'</b></div>'
+        +'<div class="md-scroll" style="max-height:46vh">'
+        +'<div style="display:grid;grid-template-columns:1fr 84px 74px 70px;gap:8px;font-size:11px;font-weight:700;color:var(--lbl2);padding:2px 0 4px;"><div style="padding:0 2px">현장명</div><div style="text-align:right;padding:0 2px">전체 접수</div><div style="text-align:right;padding:0 2px">미처리</div><div style="text-align:right;padding:0 2px">처리율</div></div>'
+        +siteRows
+        +_row('합계 · 대시보드 집계 '+dfDashSites().length+'개'+(pR>0?' · 전월 대비 '+((_chg>=0?'+':'')+_chg.toFixed(1)+'%'):''),tR.toLocaleString(),tU.toLocaleString(),rate.toFixed(1)+'%',true,true)
+        +'</div>',
+        '<button class="btn bg2 bsm" data-act="dfp.pubCancel">취소</button><button class="btn bp bsm" data-act="dfp.pubOk">게시</button>');
+    });
+    if(!goOn){toast('게시를 취소했습니다');return;}
+    toast('등록 중…');
+    const insightsHTML=dfInsightsBuild(all,tR,tRes,tU,tLt,rate,pRate,rm);
+    const upd={};
+    upd['report/'+rm+'/_dash']={wks:cap.wks||[],am:cap.am||{},insightsHTML:insightsHTML,sites:dfOrgToDashSites(),teams:dfOrgToDashTeams()};
+    for(const s2 of dfSites()){ // 인수 전 현장 포함 — 대시보드 집계 제외는 유지되나 현장 개별 게시본은 전 현장에 제공(원본과 동일)
+      const r=calc(S.def[s2.id]||[],s2,rm);
+      const kpi=Object.assign({},r,{ul:redactUL(r.ul),lul:redactUL(r.lul),critUl:redactUL(r.critUl)}); // 캡(300) 목록 — ulz 해제 실패 시 폴백
+      let ulz='';
+      try{
+        if(typeof LZString!=='undefined'){
+          ulz=LZString.compressToBase64(JSON.stringify(slimUL(r.ul)));
+        }
+      }catch(e){console.warn('[게시] ulz 압축 실패 — 캡 목록으로 게시',s2.id,e);ulz='';}
+      let vac={};
+      try{vac=(await FB.db.ref('report/'+rm+'/'+s2.id+'/vac').once('value')).val()||{};}catch(e){}
+      if(!Object.keys(vac).length){try{vac=(await FB.db.ref('report/'+pm+'/'+s2.id+'/vac').once('value')).val()||{};}catch(e){}}
+      upd['report/'+rm+'/'+s2.id]={kpi:kpi,ulz:ulz,siteWks:(cap.siteWks&&cap.siteWks[s2.id])||[],siteAm:(cap.siteAm&&cap.siteAm[s2.id])||{},vac:dfDec(vac)}; /* dfDec: 리프의 인코딩 키를 되돌려 deepEncKeys 이중 인코딩 방지 */
+    }
+    upd['report/'+rm+'/_meta']={publishedAt:Date.now(),publishedBy:String((S.user&&S.user.email)||'').slice(0,120),rm:rm};
+    upd['reportIndex/'+rm]=Date.now();
+    Object.keys(upd).forEach(function(p){upd[p]=deepEncKeys(upd[p]);}); // 중첩 맵 키(하자유형/공종/보수주체 등)에 '/'·'.' 등이 있으면 거부되므로 인코딩
+    await FB.db.ref().update(upd);
+    /* 소비자 캐시 무효화 — 같은 화면에서 곧바로 새 게시본을 본다 */
+    delete DF.cache[rm];
+    Object.keys(DF.kpi).forEach(k=>{if(k.indexOf(rm+'/')===0){delete DF.kpi[k];delete DF.sw[k];delete DF.sam[k];delete DF.vac[k];}});
+    dfProdCardFill();
+    toast('등록 완료 · '+rm+' · 현장 '+dfSites().length+'개',6000);
+    try{
+      const idx=(await FB.db.ref('reportIndex').once('value')).val()||{};
+      const stale=Object.keys(idx).filter(k=>/^\d{4}-\d{2}$/.test(k)&&k>rm);
+      if(stale.length&&confirm('기준월('+rm+')보다 미래인 게시월 발견: '+stale.join(', ')+'\n잘못 게시된 월이면 삭제해야 뷰어 기준월이 어긋나지 않습니다. 지금 삭제하시겠습니까?')){
+        const del={};stale.forEach(m=>{del['report/'+m]=null;del['reportIndex/'+m]=null;});
+        await FB.db.ref().update(del);toast('게시월 삭제 완료 · '+stale.join(', '));
+      }
+    }catch(e){console.warn('[게시] 미래 게시월 감지 실패',e);}
+  }catch(e){console.error('[게시] 실패',e);toast('등록 실패: '+((e&&e.message)||e));}
+  finally{if(btn)btn.disabled=false;}
+}
+
+/* ── 게시 카드(설정 화면 · 관리자 전용) 상태 채우기 + 배선 ── */
+function dfProdCardFill(){
+  const card=$('#dfPubCard');if(!card)return;
+  card.style.display=isEditor()&&!S.snap?'':'none';
+  const sids=Object.keys(S.def||{});let n=0;sids.forEach(k=>{n+=(S.def[k]||[]).length;});
+  /* 615차 통합 행 — 굵은 줄=이 PC 상태, 아랫줄=업로드·최신 등록 시각 */
+  const st=$('#dfLocalStat');
+  if(st)st.textContent=sids.length?('이 PC 데이터 · '+sids.length+'개 현장 · '+n.toLocaleString()+'건'):'업로드된 데이터 없음';
+  const sub=$('#dfPubSub');
+  if(sub){const h0=(DFMETA.hist||[])[0];let t=sids.length?'':'이 PC 가 마스터가 아니면 정상 · ';
+    if(h0)t='업로드 '+dfFmtDT(h0.at)+' · ';
+    sub.innerHTML=esc(t)+'등록 <span id="dfPubAt">—</span>';}
+  const rl=$('#dfPubRm');if(rl&&document.activeElement!==rl)rl.value=dfPubRm();
+  dfExTkRender();
+  const ck=$('#dfCk');if(ck&&document.activeElement!==ck)ck.value=S.ck||'';
+  const hi=$('#dfUpHist');
+  if(hi){const h=DFMETA.hist||[];
+    hi.innerHTML=h.length?h.slice(0,3).map(x=>'<div>'+esc(dfFmtDT(x.at))+' · '+x.sites+'개 현장 · 기준월 '+esc(x.rm||'—')+'</div>').join('')
+      :'—';}   /* 행수는 뺐다(사용자: 궁금하지 않음) — meta 에는 계속 남는다 */
+  const at=$('#dfPubAt');
+  if(at){at.textContent='—';
+    if(S.live&&FB.db)FB.db.ref('report/'+dfPubRm()+'/_meta/publishedAt').once('value')
+      .then(s=>{const v=s.val();if(v)at.textContent=dfFmtDT(v);}).catch(()=>{});}   /* 업로드와 같은 서식(615차) */
+}
+/* 제외 키워드 칩(615차) — 엔터·쉼표로 추가, ×·백스페이스로 제거. 엔진 쪽 값은 그대로 쉼표 문자열(S.exTk) */
+function dfExTkList(){return String(S.exTk||'').split(',').map(x=>x.trim()).filter(Boolean);}
+function dfExTkSet(list){S.exTk=list.join(', ');try{localStorage.setItem('calapp.exTk',S.exTk);}catch(_){ }dfExTkRender();}
+function dfExTkRender(){
+  const box=$('#dfExTkBox');if(!box)return;
+  const inp=box.querySelector('#dfExTk');const keep=inp?inp.value:'';
+  box.querySelectorAll('.tag-chip').forEach(x=>x.remove());
+  const frag=document.createDocumentFragment();
+  dfExTkList().forEach((t,i)=>{
+    const c=document.createElement('span');c.className='tag-chip';
+    c.append(t);
+    const x=document.createElement('span');x.className='tag-x';x.textContent='×';x.dataset.i=i;
+    x.setAttribute('role','button');x.setAttribute('aria-label','"'+t+'" 제거');
+    c.appendChild(x);frag.appendChild(c);
+  });
+  box.insertBefore(frag,inp);
+  if(inp)inp.value=keep;
+}
+function dfProdWire(){
+  Object.assign(ACT,{
+    'dfp.uz':()=>{const fi=document.getElementById('dfFi');if(fi)fi.click();},
+    'dfp.publish':()=>dfPublish(),
+    'dfp.ulCancel':()=>{cancelUL();S._wiz=null;closeModal();},
+    'dfp.ulSite':el=>confirmNewSite(el.dataset.name,Number(el.dataset.idx),Number(el.dataset.total)),
+    'dfp.ai':el=>runAI(el.dataset.sid),
+    'dfp.dashAi':()=>runDashAI(),
+    'dfp.snapAll':()=>{$$('#mbody .snap-mo').forEach(c=>{c.checked=true;});},
+    'dfp.snapCancel':()=>{const r=window.__SNAPPICK__;window.__SNAPPICK__=null;closeModal();if(r)r(null);},
+    'dfp.snapOk':()=>{const v=$$('#mbody .snap-mo:checked').map(c=>c.value);
+      if(!v.length){toast('기준월을 한 개 이상 선택하세요');return;}
+      const r=window.__SNAPPICK__;window.__SNAPPICK__=null;closeModal();if(r)r(v);},
+    'dfp.pubOk':()=>{const r=window.__PUBOK__;window.__PUBOK__=null;closeModal();if(r)r(true);},
+    'dfp.pubCancel':()=>{const r=window.__PUBOK__;window.__PUBOK__=null;closeModal();if(r)r(false);},
+  });
+  document.addEventListener('change',e=>{
+    const el=e.target;if(!el)return;
+    if(el.id==='dfFi'){onFile(el.files&&el.files[0]);return;}
+    if(el.id==='dfExTk'){const v=el.value.trim();if(v){el.value='';dfExTkSet(dfExTkList().concat(v.split(',').map(x=>x.trim()).filter(Boolean)));}return;}   /* blur 잔여 글도 칩으로 */
+    if(el.id==='dfPubRm'){const v=el.value;if(/^\d{4}-\d{2}$/.test(v)){S.dfPubRm=v;dfMetaSave();dfProdCardFill();}return;}
+    if(el.id==='dfCk'){S.ck=el.value.trim();try{localStorage.setItem('calapp.ck',S.ck);}catch(_){ }return;}
+  });
+  /* 제외 키워드 칩 — 엔터·쉼표 추가, 빈 칸 백스페이스로 마지막 칩 제거, × 클릭 제거 */
+  document.addEventListener('keydown',e=>{
+    const el=e.target;if(!el||el.id!=='dfExTk')return;
+    if(e.key==='Enter'||e.key===','){e.preventDefault();const v=el.value.trim();
+      if(v)dfExTkSet(dfExTkList().concat(v));el.value='';return;}
+    if(e.key==='Backspace'&&!el.value){const l=dfExTkList();if(l.length){l.pop();dfExTkSet(l);}}
+  });
+  document.addEventListener('click',e=>{
+    const x=e.target.closest&&e.target.closest('#dfExTkBox .tag-x');
+    if(x){const l=dfExTkList();l.splice(Number(x.dataset.i),1);dfExTkSet(l);return;}
+    const bx=e.target.closest&&e.target.closest('#dfExTkBox');
+    if(bx){const i=bx.querySelector('#dfExTk');if(i)i.focus();}
+  });
+  /* 드롭존 — 원본 uz 위임과 같은 동작 */
+  document.addEventListener('dragover',e=>{const z=e.target.closest&&e.target.closest('#dfUz');if(z){e.preventDefault();z.classList.add('drag');}});
+  document.addEventListener('dragleave',e=>{const z=e.target.closest&&e.target.closest('#dfUz');if(z)z.classList.remove('drag');});
+  document.addEventListener('drop',e=>{const z=e.target.closest&&e.target.closest('#dfUz');if(z){e.preventDefault();z.classList.remove('drag');const f=e.dataTransfer&&e.dataTransfer.files[0];if(f)onFile(f);}});
+}
+/* 부팅 — 위젯(WebView2 별도 IndexedDB)·스냅샷 문서에서는 생산자 기능을 켜지 않는다 */
+async function dfProdBoot(){
+  if(S.snap||/[?&]w=1\b/.test(location.search))return;
+  dfProdWire();
+  try{await dfMetaLoad();await defLoadAll();}catch(e){console.warn('dfProdBoot',e);}
+  dfProdCardFill();
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(dfProdBoot,0));
+else setTimeout(dfProdBoot,0);
+
+/* ═══════════ 하자 생산자 ② 끝 ═══════════ */
+
+/* ═══════════ 하자 생산자 ③ — AI 분석 (원본 app-view.js 이식 · 614차) ═══════════
+   runAI(현장 종합 분석)·runDashAI(대시보드 주요이슈 재작성). 프롬프트·규칙 조립(buildRules→RULE_DEF)은
+   원본 그대로 — 문구를 바꾸면 회의자료 산출물이 달라진다. 적응 지점은 각 ⚠ 주석.
+   ⚠ 둘 다 **원본 하자 행이 있는 마스터 PC 전용**이다(calc 를 로컬 행으로 돌린다).
+   ⚠ CSP connect-src 의 *.googleapis.com 이 generativelanguage 를 허용한다 — CSP 를 죄면 여기가 죽는다. */
+S.ck=(function(){try{return localStorage.getItem('calapp.ck')??localStorage.getItem('ck')??'';}catch(e){return '';}})();   /* Gemini API 키 — 레거시(report 앱) 'ck' 1회 승계 */
+function dfAnaWrite(sid,txt,rm){
+  if(!S.live||!FB.db)return;
+  if(!/^\d{4}-\d{2}$/.test(rm||''))return;
+  try{
+    FB.db.ref('analysis/'+sid+'/'+rm).set(String(txt==null?'':txt).slice(0,20000));
+    FB.db.ref('meta/'+sid).set({updatedAt:Date.now(),updatedBy:String((S.user&&S.user.email)||'').slice(0,120)});   /* 원본 fb2TouchMeta 와 동일 */
+  }catch(e){console.warn('[AI] anaWrite',e);}
+}
+function buildRules(scope){let out='';for(const g of RULE_DEF){if(g.scope!==scope)continue;const body=g.rules.map(r=>String(ruleVal(r.id)).trim()).filter(Boolean).join('\n');if(!body)continue;out+=(out?'\n\n':'')+(g.hdr?g.hdr+'\n':'')+body;}return out;}
+async function runAI(sid){if(!S.ck){toast('설정 > 하자 데이터 등록에서 Gemini API 키를 입력하세요');return;}const site=(S.org.sites||[]).find(s=>s.id===sid);if(!site)return;
+if(!((S.def[sid]||[]).length)){toast('이 PC 에 원본 하자 행이 없습니다 — 업로드한 마스터 PC 에서만 AI 분석을 만들 수 있습니다',6000);return;}   /* ⚠ 원본엔 없던 안내 — calapp 은 전원이 게시본을 보므로 원본 행 유무를 먼저 알린다 */
+const rm=dfPubRm();   /* ⚠ 원본 S.rm — 게시 기준월로 통일 */
+const st=calc(S.def[sid]||[],site,rm),el=(S.dfSid===sid)?document.getElementById('dfAit'):null;   /* ⚠ 원본 ait-{sid} — calapp 의 분석 칸은 열린 현장 하나(#dfAit) */if(el)el.innerHTML='<p style="color:var(--lbl3)">AI 분석 생성 중…</p>';
+const systemInstruction = buildRules('site'); // 기본 규칙 레지스트리(RULE_DEF)에서 조립 — 설정>기본 규칙 편집의 override 반영, 미수정 시 종전 문자열과 동일
+const _ul=st.ul||[];
+// 키워드 포함건 우선 + 60일+ 장기미처리 우선으로 접수내용 샘플 추출 (최대 40건, 각 60자)
+const _kw=new RegExp('누수|민원|품의|자재|피해|보상|결로|곰팡이|균열|파손|재시공|소송|법무|하자판정|중대');
+const _daysB=(a,b)=>{const da=new Date(a),db=new Date(b);return Math.max(0,Math.round((db-da)/86400000));};
+const _scored=_ul.map(i=>{const c=(i.receiptContent||'').replace(/\s+/g,' ').trim();const dd=i.receiptDate?_daysB(i.receiptDate,st.rmEnd):0;return{c,dd,co:i.complaint,t:i.trade||'',kw:_kw.test(c)||_kw.test(i.complaint||'')};}).filter(x=>x.c);
+_scored.sort((a,b)=>(b.kw-a.kw)||(b.dd-a.dd));
+const _sample=_scored.slice(0,40).map(x=>`- [${x.t}|${x.dd}일${x.kw?'|★':''}] ${maskPII(x.c).slice(0,60)}`).join('\n');
+const _contentBlock=_sample?`\n[미처리건 접수내용 샘플 — ★는 누수·민원·품의·자재·피해보상 등 주요 키워드 포함건]\n${_sample}`:`\n[미처리건 접수내용] 제공된 접수내용 데이터 없음 (해당 분석 항목 생략)`;
+// 중대하자 의심 후보 블록 — 규칙(isCritCandidate)으로 넓게 추출한 후보 + 의심사유 태그. AI가 매뉴얼 기준으로 최종 판정.
+const _critList=(st.critUl||[]).slice(0,12).map(i=>{const dd=i.receiptDate?_daysB(i.receiptDate,st.rmEnd):0;const c=(i.receiptContent||'').replace(/\s+/g,' ').trim();const rs=critReason(i).join('/');return `- ${i.building||'?'}동 ${i.unit||'?'}호 [${i.trade||'-'}|${i.defectType||'-'}|${dd}일|의심:${rs}] ${maskPII(c).slice(0,70)}`;}).join('\n');
+const _critBlock=(st.critUnr>0)?`\n[중대하자 의심 후보 — 규칙 추출, AI가 사내 매뉴얼 기준으로 최종 판정할 것] 미처리 의심 ${st.critUnr}건(전월 의심 ${st.critPrevUnr}건)\n${_critList}`:`\n[중대하자 의심 후보] 규칙상 의심 0건`;
+const p=`현대건설 ${((((S.org.teams||[]).find(t=>t.id===site.team))||((S.org.teams||[])[0]))||{}).name||'H서비스센터'} ${site.name} 현장의 하자처리 현황을 분석하여 한국어 개조식으로 작성하세요. 기준월 ${rm}, 전월 대비 변화를 중심으로 분석할 것.\n[현장] ${site.name}(${site.region}), ${site.units}세대 ${site.buildings}동, 준공 ${site.completionDate}\n[현황] 전체접수 ${st.tR}건(전월${st.prev.total}), 처리 ${st.res}건(전월${st.prev.res}), 미처리 ${st.unr}건(전월${st.prev.unr}), 처리율 ${st.rate.toFixed(1)}%(전월${st.prev.rate.toFixed(1)}%), 장기미처리 ${st.lt}건(전월${st.prev.lt}건, 미처리의 ${st.ltr.toFixed(1)}%), 지연구간: ~29일 ${st.dd[0]}, 30~59일 ${st.dd[1]}, 60일+ ${st.dd[2]}\n[상위공종(미처리)] ${st.top.filter(t=>!t.isT&&!t.isO).map(t=>`${t.t}:${t.c}건`).join(', ')}\n[하자유형(미처리)] ${Object.entries(st.dtb).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([t,c])=>`${t}:${c}건`).join(', ')}\n[공가세대] 총접수 ${st.vT}건, 미처리 ${st.vUnr}건${_critBlock}${_contentBlock}\n\n위 데이터를 분석해 시스템 지침의 형식·내용 규칙에 따라 작성하세요. 단순 수치 나열이 아닌 해석·원인·대응을 담되, 데이터가 없거나 특이사항이 없는 항목은 생략하고 중요한 것만 최대 6개 소제목으로 쓸 것. (단 중대하자는 시스템 지침 G에 따라 처리)`;
+try{const url=`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`;const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':S.ck},body:JSON.stringify({systemInstruction:{parts:[{text:systemInstruction}]},contents:[{parts:[{text:p}]}],generationConfig:{maxOutputTokens:4096,temperature:0.4,thinkingConfig:{thinkingBudget:0}}})});const d=await r.json();if(d.error)throw new Error(d.error.message||'API 오류');let txt=d.candidates?.[0]?.content?.parts?.[0]?.text||'분석 결과를 불러올 수 없습니다.';txt=txt.replace(/^```html\s*/i,'').replace(/```$/,'').trim();dfAnaWrite(sid,txt,rm);   /* ⚠ 원본 anaSet+lsSave+fb2AnaWrite — calapp 은 리프가 원본, 화면은 기존 실시간 구독이 갱신 */if(el)el.innerHTML=themeHTML(safeHTML(txt));toast('AI 분석 완료');}
+catch(e){if(el)el.innerHTML=`<p style="color:var(--rd)">(AI 오류: ${esc(e.message)})</p>`;}}
+async function runDashAI(){
+  if(!S.ck){toast('설정 > 하자 데이터 등록에서 Gemini API 키를 입력하세요');return;}
+  /* ⚠ 원본은 편집자 화면(#d-insight)만 바꿨고 게시 시점의 DOM 이 실렸다 — calapp 화면은 게시본이므로
+     재작성 결과를 report/{rm}/_dash/insightsHTML 에 직접 써서 전원에게 반영한다(등록 후 실행). */
+  const items=S._dashIns||[];
+  if(!items.length){toast('재작성할 이슈가 없습니다 — 먼저 [등록]을 실행하세요');return;}
+  const rm=dfPubRm();
+  toast('AI 분석 생성 중…');
+  const stripTags=h=>String(h).replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim();
+  const src=items.map((x,i)=>{const parts=String(x.sub).split('<br>');return `[카드${i+1}] 제목:${x.ttl} | 등급:${x.cls}\n  핵심수치(원문):${stripTags(parts[0]||'')}\n  진단·조치(원문):${stripTags(parts[1]||'')}`;}).join('\n');
+  const dashSystem = buildRules('dash'); // RULE_DEF 조립 — 기본 규칙 편집 override 반영
+  const dp=`아래 3개 카드의 각 2줄을 위 규칙에 따라 한국어 개조식으로 다시 작성하세요. 수치는 원문 그대로 유지할 것.\n\n${src}`;
+  try{
+    const url=`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`;
+    const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':S.ck},body:JSON.stringify({systemInstruction:{parts:[{text:dashSystem}]},contents:[{parts:[{text:dp}]}],generationConfig:{maxOutputTokens:1200,temperature:0.4,thinkingConfig:{thinkingBudget:0}}})});
+    const d=await r.json();
+    if(d.error)throw new Error(d.error.message||'API 오류');
+    let txt=(d.candidates?.[0]?.content?.parts?.[0]?.text||'').replace(/^```json\s*/i,'').replace(/^```\s*/i,'').replace(/```$/,'').trim();
+    const arr=JSON.parse(txt);
+    if(!Array.isArray(arr)||arr.length<items.length)throw new Error('형식 오류');
+    const html=items.map((x,i)=>{const a=arr[i]||{};const l1=safeHTML(a.line1||''),l2=safeHTML(a.line2||'');return `<div class="ic ${x.cls}"><div class="ic-i">${icoSVG(x.icon)}</div><div class="ic-t"><div class="ic-ttl">${x.ttl}</div><div class="ic-sub">${l1}<br>${l2}</div></div></div>`;}).join('');
+    await FB.db.ref('report/'+rm+'/_dash/insightsHTML').set(themeHTML(html));
+    delete DF.cache[rm];if(S.view==='defect')rDefect();
+    toast('AI 분석 완료 · 게시본에 반영됨');
+  }catch(e){
+    /* ⚠ 실패 시 게시본은 그대로(규칙기반) — 화면 복원이 필요 없다 */
+    toast('AI 분석 실패: '+e.message);
+  }
+}
+/* ═══════════ 하자 생산자 ③ 끝 ═══════════ */
+
+/* ═══════════ 하자 생산자 ④ — 자연어 찾기(NLQ) 해석기 (원본 app-core.js 이식 · 614차) ═══════════
+   기존 찾기 패널의 '하자' 절을 원본 NLQ 로 승격한다 — "두정역 도배 30일 이상 누수" 처럼 현장·공종·
+   지연·동호·공가를 섞어 물으면 조건 칩으로 해석해 전 현장 미처리 목록에서 거른다.
+   해석기(nlqParse/Chips/Apply)·사전(_nlqKeys)은 원본 그대로 — 행 원천만 calapp 에 맞춘다(⚠ 주석):
+   · 마스터 PC(원본 행 보유): calc().ul — 원본 nlqRows 와 동일 수식
+   · 뷰어: 게시 목록(dfList 의 DF.list 캐시) — 처음 물을 때 전 현장을 한 번 받아 둔다(dfNqWarm)
+   ⚠ 원본의 패널 UI(nq-hist·전용 패널)는 이식하지 않는다 — calapp 찾기 패널이 그 자리다. */
+let _dfNqCache=null,_dfNqWarm=0,_dfNqWarmProg=[0,0];   /* warm: 0 안함 · 1 진행 중 · 2 완료 · 진행률 [i,n] (615차) */
+function dfNqRawRows(){
+  const rm=dfRm();if(!rm)return [];
+  const sites=dfDashSites();
+  const hasLocal=sites.some(s=>((S.def[s.id]||[]).length));
+  const key=[hasLocal?'L':'P',rm,sites.length,sites.reduce((a,s)=>a+((S.def[s.id]||[]).length)+((DF.list[rm+'/'+s.id]||[]).length),0)].join('|');
+  if(_dfNqCache&&_dfNqCache.k===key)return _dfNqCache.v;
+  const out=[];
+  if(hasLocal){   /* 원본 nlqRows 와 동일 — 로컬 원본 행에서 미처리 목록.
+                     ⚠ 원본 편집자 화면은 생 데이터를 보였지만, 여기서는 redactUL(all=true)로 마스킹해
+                     게시 목록(뷰어 경로)과 같은 모양을 보인다 — 찾기 미리보기에 전화번호가 노출되지 않게(615차 E2E 에서 발견) */
+    sites.forEach(s=>{
+      const st=calc(S.def[s.id]||[],s,rm);
+      redactUL(st.ul,true).forEach(i=>out.push(Object.assign(i,{siteName:s.name,__hc:!!s.hasCommercial})));
+    });
+  }else{          /* 뷰어 — 게시 목록(이미 받아 둔 것만; 워밍은 dfNqWarm) */
+    sites.forEach(s=>{
+      (DF.list[rm+'/'+s.id]||[]).forEach(i=>out.push(Object.assign({},i,{siteName:s.name,__hc:!!s.hasCommercial})));
+    });
+  }
+  _dfNqCache={k:key,v:out};
+  return out;
+}
+async function dfNqWarm(){
+  if(_dfNqWarm||!S.live||!FB.db||!dfRm())return;
+  const sites=dfDashSites();
+  if(sites.some(s=>((S.def[s.id]||[]).length)))return;   /* 마스터 — 워밍 불필요 */
+  _dfNqWarm=1;_dfNqWarmProg=[0,sites.length];
+  for(const s of sites){
+    try{await dfList(s.id);}catch(e){}
+    _dfNqWarmProg[0]++;_dfNqCache=null;
+    try{rNq();}catch(e){}   /* 현장 하나 받을 때마다 진행률·결과를 갱신(≤현장 수 회) */
+  }
+  _dfNqWarm=2;_dfNqCache=null;
+  try{rNq();}catch(e){}
+}
+const NLQ_JOSA=/(에서|으로|에게|까지|부터|이랑|하고|이야|인거|인 거|랑|만|도|은|는|이|가|을|를|의|에|로|와|과)$/;
+const NLQ_NOISE=/^(거|것|좀|중|해줘|알려줘|보여줘|찾아줘|줘|해|목록|건|개|다|전부|모두|세대|어때|뭐|얼마나|건수|몇)$/;
+const NLQ_SYN={
+  vac:['공가세대','공가','빈집'], shop:['상가','근생'],
+  old:['오래된 순','오래된순','지연 순','지연순','밀린 순','오래된'], recent:['최신순','최근 순','최근순'],
+  done:['처리완료','완료된','완료']
+};
+function _nlqKeys(names){
+  const cand=new Map();
+  const add=(k,n)=>{ k=(k||'').trim(); if(k.length<2)return;
+    if(!cand.has(k))cand.set(k,new Set()); cand.get(k).add(n); };
+  names.forEach(n=>{
+    add(n,n);
+    n.split(/[\s·,()\-\/]+/).forEach(w=>{ add(w,n); add(w.replace(/(역|지구|시티|아파트|단지|차)$/,''),n); });
+    (n.match(/[가-힣]{2,}/g)||[]).forEach(w=>{ add(w,n); add(w.replace(/(역|지구|시티|아파트|단지|차)$/,''),n); });
+  });
+  const uniq=[],ambig=[];
+  cand.forEach((set,k)=>{ if(set.size===1)uniq.push([k,[...set][0]]); else ambig.push(k); });
+  uniq.sort((a,b)=>b[0].length-a[0].length);
+  ambig.sort((a,b)=>b.length-a.length);
+  return {keys:uniq,ambig:ambig};
+}
+function nlqDict(){
+  const sites=dfDashSites().map(s=>s.name).filter(Boolean);   /* ⚠ 원본 dashSites/S.sites → calapp */
+  const tr=new Set();
+  dfNqRawRows().forEach(r=>{ if(r.trade)tr.add(r.trade); });   /* ⚠ 원본은 로컬 원본 행 — calapp 은 마스터·뷰어 공용 원천(dfNqRawRows) */
+  const A=_nlqKeys([...new Set(sites)]), B=_nlqKeys([...tr]);
+  return {siteKeys:A.keys, siteAmbig:A.ambig, tradeKeys:B.keys, tradeAmbig:B.ambig};
+}
+function nlqParse(q,dict){
+  const D=dict||nlqDict();
+  let s=' '+String(q||'').trim()+' ';
+  const R={site:null,trades:[],delay:null,vac:false,shop:false,dong:null,ho:null,sort:null,doneAsked:false};
+  const rx=v=>new RegExp(v.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'g');
+  const eat=(re,fn)=>{ s=s.replace(re,(...a)=>{ fn(...a); return ' '; }); };
+  eat(/(\d+)\s*일\s*(이상|넘는|넘은|넘어|초과)/g,(m,n)=>R.delay={op:'gte',n:+n});
+  eat(/(\d+)\s*일\s*(미만|이내|이하)/g,(m,n)=>R.delay={op:'lt',n:+n});
+  eat(/장기\s*미?처리?/g,()=>{ R.delay=R.delay||{op:'gte',n:30}; });
+  eat(/미처리/g,()=>{});                     // 목록 자체가 미처리라 조건이 아니다
+  eat(/(\d+)\s*동/g,(m,n)=>R.dong=String(+n));
+  eat(/(\d+)\s*호/g,(m,n)=>R.ho=String(+n));
+  NLQ_SYN.done.forEach(v=>eat(rx(v),()=>R.doneAsked=true));
+  NLQ_SYN.vac.forEach(v=>eat(rx(v),()=>R.vac=true));
+  NLQ_SYN.shop.forEach(v=>eat(rx(v),()=>R.shop=true));
+  NLQ_SYN.old.forEach(v=>eat(rx(v),()=>R.sort='old'));
+  NLQ_SYN.recent.forEach(v=>eat(rx(v),()=>R.sort='new'));
+  D.tradeKeys.forEach(kv=>eat(rx(kv[0]),()=>{ if(!R.trades.includes(kv[1]))R.trades.push(kv[1]); }));
+  D.siteKeys.forEach(kv=>eat(rx(kv[0]),()=>{ R.site=R.site||kv[1]; }));
+  // 여러 현장이 함께 쓰는 말은 조건이 되지 못한다 — 못 알아들은 말로 보고하지 말고 따로 알린다
+  D.siteAmbig.concat(D.tradeAmbig).forEach(v=>eat(rx(v),()=>{ R.ambig=v; }));
+  // 남은 말은 버리지 않고 '본문 검색어'로 쓴다 — 접수내용·하자유형·공간·업체까지 훑는다
+  R.text=s.split(/[\s,·]+/).map(w=>w.replace(NLQ_JOSA,'').trim()).filter(w=>w&&!NLQ_NOISE.test(w));
+  R.empty=!(R.site||R.trades.length||R.delay||R.vac||R.shop||R.dong||R.ho||R.text.length);
+  return {R};   // 본문 검색어는 R.text 하나로 전달
+}
+function nlqChips(R){
+  const c=[];
+  if(R.site)c.push(['현장',R.site]);
+  if(R.trades.length)c.push(['공종',R.trades.join(', ')]);
+  if(R.delay)c.push(['지연',R.delay.op==='gte'?(R.delay.n+'일 이상'):(R.delay.n+'일 미만')]);
+  if(R.vac)c.push(['구분','공가세대']);
+  if(R.shop)c.push(['구분','상가']);
+  if(R.dong)c.push(['동',R.dong+'동']);
+  if(R.ho)c.push(['호',R.ho+'호']);
+  if(R.text&&R.text.length)c.push(['내용',R.text.join(' ')]);
+  if(R.sort)c.push(['정렬',R.sort==='old'?'오래된 순':'최근 순']);
+  return c;
+}
+function nlqApply(rows,R){
+  const out=(rows||[]).filter(r=>{
+    if(R.site&&(r.siteName||'')!==R.site)return false;
+    if(R.trades.length&&!R.trades.includes(r.trade||'기타'))return false;
+    if(R.co&&(r.contractor||'(미기재)')!==R.co)return false;   // 업체별 표에서 목록을 열 때
+    if(R.dong&&String(r.building||'').replace(/[^0-9]/g,'')!==R.dong)return false;
+    if(R.ho&&String(r.unit||'').replace(/[^0-9]/g,'')!==R.ho)return false;
+    if(R.vac&&!isVacUnit(r))return false;
+    if(R.shop&&!r.__hc)return false;
+    if(R.delay){ const d=Number(r.delayDays)||0;
+      if(R.delay.op==='gte'&&!(d>=R.delay.n))return false;
+      if(R.delay.op==='lt'&&!(d<R.delay.n))return false; }
+    if(R.text&&R.text.length){
+      const hay=[r.siteName,r.building,r.unit,r.space,r.trade,r.defectType,r.receiptContent,
+                 r.defectClass,r.saleStatus,r.repairParty,r.contractor,r.repairContractor,r.receiptDate]
+                .filter(Boolean).join(' ').toLowerCase();
+      for(const w of R.text){ if(hay.indexOf(w.toLowerCase())<0)return false; }   // 모두 포함(AND)
+    }
+    return true;
+  });
+  if(R.sort==='old')out.sort((a,b)=>(Number(b.delayDays)||0)-(Number(a.delayDays)||0));
+  else if(R.sort==='new')out.sort((a,b)=>(Number(a.delayDays)||0)-(Number(b.delayDays)||0));
+  return out;
+}
+/* ═══════════ 하자 생산자 ④ 끝 ═══════════ */
+
+
+
 
 /* ═══════════ 하자처리 현황 — 원본(하자처리 현황 앱) 화면 이식 ═══════════
    대시보드·현장 패널의 화면 구성과 기능은 원본을 그대로 따르고,
@@ -3547,8 +4941,8 @@ function dfEnds(rm){
 /* 보고 있는 기준월 — 기본은 최신 게시월(ORG_RM), 상단바에서 지난 게시월을 골라 볼 수 있다 */
 function dfRm(){return S.dfRmSel||ORG_RM;}
 /* 하자 관리 화면에서 감춘 현장 — ⚠ 현장 레코드에 두면 안 된다.
-   게시본을 구독 중일 때(ORG_LIVE) orgFromDash 가 S.org.sites 를 통째로 갈아끼워 지워지고,
-   orgSave 도 거부한다. 그래서 게시본과 무관한 calapp/cfg 에 현장 id 만 모아 둔다(팀 전체 공유) */
+   calapp/org 스냅샷이 S.org.sites 를 통째로 갈아끼우면 지워진다(규칙도 정해진 필드만 허용).
+   그래서 조직과 무관한 calapp/cfg 에 현장 id 만 모아 둔다(팀 전체 공유) */
 function dfHidden(){return (S.cfg&&S.cfg.dfHide)||{};}
 function dfIsHidden(id){return !!dfHidden()[id];}
 /* 하자 관리가 다루는 현장 — 대시보드·집계·사이드바가 모두 이 목록을 쓴다.
@@ -3619,16 +5013,22 @@ function dfMoSnapsDash(wkBySite){
 async function dfRef(path){return dfDec((await FB.db.ref(path).once('value')).val());}
 /* 현장 토글(공가세대 표시·공가상가 포함) — 원본이 siteConfig/{sid} 리프에 실시간으로 쓴다.
    게시본 _dash/sites 는 게시 시점의 스냅샷이라 이 리프가 항상 우선이다(fb2SubSiteConfig 와 동일 규칙). */
+/* siteConfig 적용부 — 구독 콜백과 org 스냅샷 직후(원본 역전 · 614차) 양쪽에서 부른다 */
+function dfApplySiteCfg(cfg){
+  let changed=false;
+  for(const sid in (cfg||{})){
+    const c=cfg[sid]||{},x=(S.org.sites||[]).find(y=>y.id===sid);if(!x)continue;
+    if(typeof c.hasCommercial==='boolean'&&x.hasCommercial!==c.hasCommercial){x.hasCommercial=c.hasCommercial;changed=true;}
+    if(typeof c.showVacant==='boolean'&&(x.showVacant!==false)!==c.showVacant){x.showVacant=c.showVacant;changed=true;}
+  }
+  return changed;
+}
 function dfSubSiteCfg(){
   if(DF._cfgBound||!S.live||!FB.db)return;DF._cfgBound=true;
   FB.db.ref('siteConfig').on('value',snap=>{
-    const cfg=snap.val()||{};let changed=false;
-    for(const sid in cfg){
-      const c=cfg[sid]||{},x=(S.org.sites||[]).find(y=>y.id===sid);if(!x)continue;
-      if(typeof c.hasCommercial==='boolean'&&x.hasCommercial!==c.hasCommercial){x.hasCommercial=c.hasCommercial;changed=true;}
-      if(typeof c.showVacant==='boolean'&&(x.showVacant!==false)!==c.showVacant){x.showVacant=c.showVacant;changed=true;}
-    }
-    if(!changed)return;   /* 값이 같은 에코는 다시 그리지 않는다(깜빡임 방지) */
+    const cfg=snap.val()||{};
+    DF._cfgLast=cfg;   /* ⚠ 614차: calapp/org 스냅샷이 S.org 를 갈아끼운 뒤 다시 입히기 위한 보관본 */
+    if(!dfApplySiteCfg(cfg))return;   /* 값이 같은 에코는 다시 그리지 않는다(깜빡임 방지) */
     if(S.view==='defect')rDefect();
     if(S.view==='org')rOrg();
   });
@@ -3747,6 +5147,15 @@ function cvar(n,f){try{const v=getComputedStyle(document.documentElement).getPro
 function dfC(k){if(DF.ch[k]){DF.ch[k].$destroyed=true;try{DF.ch[k].destroy();}catch(e){}delete DF.ch[k];}}
 function dfChartInit(){
   if(typeof Chart==='undefined')return false;
+  /* 623차 톤 정합 — ① 서체: 축·눈금·라벨·툴팁이 브라우저 기본체였다(도넛 중앙만 Pretendard 명시).
+     ② 툴팁: 앱 툴팁(#htip)과 같은 차콜·라운드 3·같은 글자 체급. 개별 차트의 위치·모드 옵션은 그대로다. */
+  if(!Chart.__calappTone){
+    Chart.defaults.font.family="'Pretendard Variable',Pretendard,sans-serif";
+    const tt=Chart.defaults.plugins.tooltip;
+    tt.backgroundColor='rgba(28,32,42,.96)';tt.titleColor='#fff';tt.bodyColor='#fff';
+    tt.cornerRadius=3;tt.titleFont={size:12,weight:700};tt.bodyFont={size:12,weight:600};
+    Chart.__calappTone=true;
+  }
   if(window.ChartDataLabels&&!Chart.__dlOff){Chart.register(ChartDataLabels);
   /* 원본과 동일한 툴팁 위치 — 가장 높은 지점 위에 뜨는 'aboveAll'(app-core.js 774) */
   if(Chart.Tooltip&&!Chart.Tooltip.positioners.aboveAll){
@@ -3928,7 +5337,7 @@ function dfInsightHTML(html){
      (상세 집계는 게시본에 실리지 않아 이 앱에서는 펼칠 수 없다) */
   const inner=raw?String((typeof DOMPurify!=='undefined')?DOMPurify.sanitize(raw):esc(raw)).replace(/\sdata-tt="펼치기"/g,'')
     :'<div class="ic warn"><div class="ic-i"><svg viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/></svg></div><div class="ic-t"><div class="ic-ttl">주요 이슈 없음</div><div class="ic-sub">이 게시본에는 주요 이슈가 포함되지 않았습니다 · 재게시하면 표시됩니다.</div></div></div>';
-  return `<div class="card"><div class="sh"><div class="ct cardttl">주요 이슈 및 분석 의견</div><span class="df-sub">${esc(S.dfRm)} 게시본</span></div><div class="ins-grid">${inner}</div></div>`;
+  return `<div class="card"><div class="sh"><div class="ct cardttl">주요 이슈 및 분석 의견</div><span class="df-sub">${esc(S.dfRm)} 게시본</span>${isEditor()&&!S.snap?`<button class="btn bo bsm no-print" data-act="dfp.dashAi" data-tt="주요 이슈 3장을 Gemini 로 다듬어 게시본에 반영합니다([등록] 직후, 마스터 PC 전용)">AI 다듬기</button>`:''}</div><div class="ins-grid">${inner}</div></div>`;
 }
 function dfNoneHTML(msg){
   return `<div class="card dfc-none">
@@ -4304,7 +5713,7 @@ function rDefectSite(root,site){
     body=`<div class="as">
       ${dfTrendCardHTML('dfSiteTrend','site',siteYears,siteYear)}
       <div class="opsr" style="margin-bottom:0"><div class="card"><div class="ct cardttl">전월대비 실적 현황</div><div id="dfSiteMom" class="mom-wrap"></div></div>${dfDonutCardHTML('공종별 미처리 분포','dfSiteMx','dfSiteMxLg')}</div>
-      <div class="card" data-print="ov-analysis"><div class="sh"><div class="st cardttl">종합 분석 의견</div></div><div class="aib"><div class="ail">AI 분석</div><div class="ait" id="dfAit">${dfAitHTML(site.id)}</div></div></div>
+      <div class="card" data-print="ov-analysis"><div class="sh"><div class="st cardttl">종합 분석 의견</div>${isEditor()&&!S.snap?`<button class="btn bo bsm no-print" data-act="dfp.ai" data-sid="${esc(site.id)}" data-tt="이 현장 원본 행으로 Gemini 분석을 생성해 게시본에 반영합니다(마스터 PC 전용)">AI 분석</button>`:''}</div><div class="aib"><div class="ail">AI 분석</div><div class="ait" id="dfAit">${dfAitHTML(site.id)}</div></div></div>
     </div>`;
   }else if(tab==='lt'){
     const ltrMomBar=dfLtrMomHTML(st);
@@ -4358,22 +5767,46 @@ function rDefectSite(root,site){
    단일 HTML 로 굳힌다. 파일을 열면 로그인 없이 하자 화면만 열리고, 저장은 되지 않는다. */
 async function dfSnapshot(){
   if(!S.live||!FB.db){toast('로그인 후 사용할 수 있습니다');return;}
-  const rm=dfRm();
+  /* 614차 다월: 게시된 달 목록에서 담을 달을 고른다(원본 pickSnapMonths). 두 달 이상이면
+     파일 안의 기준월 선택기('df.rm')가 스텁 reportIndex 를 읽어 그대로 동작한다. */
+  let idxAll={};
+  try{idxAll=(await FB.db.ref('reportIndex').once('value')).val()||{};}catch(e){}
+  const monthsAll=Object.keys(idxAll).filter(k=>/^\d{4}-\d{2}$/.test(k)).sort().reverse();
+  if(!monthsAll.length){toast('게시본이 없습니다');return;}
+  const defRm=dfRm()||monthsAll[0];
+  let months=[defRm];
+  if(monthsAll.length>1){
+    const picked=await new Promise(resolve=>{
+      window.__SNAPPICK__=resolve;
+      openModal('스냅샷 내보내기',
+        '<div class="md-scroll" style="max-height:56vh"><p style="font-size:12.5px;color:var(--lbl2);margin-bottom:10px">두 달 이상 담으면 파일 안에서 기준월을 바꿔가며 볼 수 있습니다(월당 수백 KB~수 MB).</p>'
+        +monthsAll.map(m=>'<label class="share-row" style="cursor:pointer"><span class="share-info"><b>'+esc(m)+(m===defRm?' <span style="font-size:11px;font-weight:600;color:var(--bt1);vertical-align:1px">현재</span>':'')+'</b></span><input type="checkbox" class="snap-mo" value="'+esc(m)+'"'+(m===defRm?' checked':'')+' style="width:17px;height:17px;accent-color:var(--bt1)"></label>').join('')
+        +'</div>',
+        '<button class="btn bo bsm" data-act="dfp.snapAll">전체 선택</button><div style="flex:1"></div><button class="btn bg2 bsm" data-act="dfp.snapCancel">취소</button><button class="btn bp bsm" data-act="dfp.snapOk">내보내기</button>');
+    });
+    if(!picked||!picked.length)return;   /* 취소 */
+    months=picked.sort().reverse();
+  }
+  const rm=months[0];   /* 파일이 처음 열리는 달 = 담은 것 중 최신 */
   toast('스냅샷 준비 중 — 현장 자료 수집…');
-  const d=await dfLoad();if(!d){toast('게시본이 없습니다');return;}
-  await dfAllKpi();
   const sites=dfSites();
   /* ⚠ org 에 전체 현장을 담으면 뷰어에서 감춘 현장이 자료 없이 뜬다 — 자료를 담은 현장만 넣는다
      (스냅샷은 cfg 를 싣지 않으므로 dfHide 를 뷰어에서 다시 읽을 수 없다) */
-  const snap={rm,org:{...S.org,sites},dash:{wks:d.wks,am:d.am,ins:d.ins,wk:d.wk},site:{},plans:{},ana:{}};
-  for(const st of sites){
-    const key=rm+'/'+st.id;
-    if(DF.kpi[key]===undefined)await dfSiteData(st.id);
-    await dfLoadPlans(st.id);await dfLoadAna(st.id);
-    let ulz='';
-    try{ulz=(await FB.db.ref('report/'+rm+'/'+st.id+'/ulz').once('value')).val()||'';}catch(e){}
-    snap.site[st.id]={kpi:DF.kpi[key]||null,sw:DF.sw[key]||[],sam:DF.sam[key]||{},vac:DF.vac[key]||{},ulz};
-    snap.plans[st.id]=DF.plans[st.id]||{};snap.ana[st.id]=DF.ana[st.id]||{};
+  const snap={rm,org:{...S.org,sites},months:{},plans:{},ana:{}};
+  for(const st of sites){await dfLoadPlans(st.id);await dfLoadAna(st.id);
+    snap.plans[st.id]=DF.plans[st.id]||{};snap.ana[st.id]=DF.ana[st.id]||{};}
+  /* 달마다 _dash 와 현장 노드를 리프에서 직접 받는다 — DF 캐시는 보고 있는 달만 갖고 있어서 */
+  for(let mi=0;mi<months.length;mi++){
+    const m=months[mi];
+    toast('스냅샷 준비 중 — '+m+' ('+(mi+1)+'/'+months.length+')');
+    let dash={};try{dash=dfDec((await FB.db.ref('report/'+m+'/_dash').once('value')).val())||{};}catch(e){}
+    const mo={dash:{wks:dash.wks||[],am:dash.am||{},ins:dash.insightsHTML||''},site:{}};
+    for(const st of sites){
+      let v={};try{v=dfDec((await FB.db.ref('report/'+m+'/'+st.id).once('value')).val())||{};}catch(e){}
+      /* ulz 는 압축 문자열이라 dfDec 무해 — kpi/sam/vac 의 인코딩 키가 풀린다(소비자 dfSiteData 와 동일) */
+      mo.site[st.id]={kpi:v.kpi||null,sw:v.siteWks||[],sam:v.siteAm||{},vac:v.vac||{},ulz:v.ulz||''};
+    }
+    snap.months[m]=mo;
   }
   toast('스냅샷 문서 조립 중…');
   let idx,app;
@@ -4408,20 +5841,28 @@ async function dfSnapshot(){
   const blob=new Blob([idx],{type:'text/html;charset=utf-8'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download='하자처리 현황_스냅샷_'+rm+'.html';
+  a.download='하자처리 현황_스냅샷_'+(months.length>1?(months[months.length-1]+'~'+months[0]):rm)+'.html';
   document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(a.href),4000);
-  toast('스냅샷을 내려받았습니다 · '+rm);
+  toast('스냅샷을 내려받았습니다 · '+(months.length>1?months.length+'개월':rm));
 }
 /* 스냅샷 문서로 열렸을 때 — FB 대신 박아 둔 자료를 읽는다. 쓰기는 전부 무시 */
 function dfSnapBoot(){
   let snap=null;
   try{snap=JSON.parse(LZString.decompressFromBase64(window.__SNAP_Z__));}catch(e){}
   if(!snap)return false;
-  const tree={report:{[snap.rm]:{_dash:{wks:snap.dash.wks,am:snap.dash.am,insightsHTML:snap.dash.ins}}},plans:snap.plans,analysis:snap.ana,siteConfig:{},reportIndex:{[snap.rm]:1}};
-  Object.keys(snap.site||{}).forEach(sid=>{
-    const v=snap.site[sid];
-    tree.report[snap.rm][sid]={kpi:v.kpi,siteWks:v.sw,siteAm:v.sam,vac:v.vac,ulz:v.ulz};
+  /* 614차 다월: snap.months={달:{dash,site}} 이면 달마다 트리를 채운다 — 기준월 선택기('df.rm')가
+     스텁 reportIndex 를 읽어 파일 안에서 달 전환이 그대로 된다. 구형(단월 snap.dash/site)도 연다. */
+  const mos=snap.months||{[snap.rm]:{dash:snap.dash,site:snap.site}};
+  const tree={report:{},plans:snap.plans,analysis:snap.ana,siteConfig:{},reportIndex:{}};
+  Object.keys(mos).sort().forEach((m,i)=>{
+    const mo=mos[m]||{},d=mo.dash||{};
+    tree.report[m]={_dash:{wks:d.wks||[],am:d.am||{},insightsHTML:d.ins||''}};
+    tree.reportIndex[m]=i+1;   /* 값은 게시 순서 흉내 — 최신 달이 최댓값이면 충분하다 */
+    Object.keys(mo.site||{}).forEach(sid=>{
+      const v=mo.site[sid];
+      tree.report[m][sid]={kpi:v.kpi,siteWks:v.sw,siteAm:v.sam,vac:v.vac,ulz:v.ulz};
+    });
   });
   const walk=(o,ps)=>{let c=o;for(const k of ps){if(c==null)return null;c=c[k];}return c==null?null:c;};
   S.live=true;
@@ -5141,10 +6582,10 @@ function recBodyHTML(){
 /* 모달 머리 — 원본과 같은 한 줄: 제목 · 검색 · 결과 수 · 표 복사/엑셀/피벗(목록)/닫기 */
 function recHeadHTML(){
   return '<div class="rl-head"><span class="rl-ttl">'+esc(REC.title||'미처리')+'</span>'
+    +'<span class="rec-n" id="recN"></span>'   /* 624차: 건수를 제목 옆으로 — 값이 변해도 검색창 자리가 안 흔들린다 */
     +'<div class="rl-acts">'
     +'<span class="rl-q-wrap"><svg class="icn icn-sm" aria-hidden="true"><use href="#i-search"></use></svg>'
     +'<input id="recQ" class="rl-q" placeholder="동·호·공종·내용 검색" value="'+esc(REC.q)+'" autocomplete="off"></span>'
-    +'<span class="rec-n" id="recN"></span>'
     +'<button class="btn bg2 bsm" data-act="rec.xlsx">엑셀</button>'
     +'<button class="btn bg2 bsm" data-act="rec.pivot" id="recPivBtn">피벗</button>'
     +'<button class="btn bg2 bsm" data-act="modal.close">닫기</button>'
@@ -5908,7 +7349,7 @@ function siteTable(){
     <th class="cc" style="width:7%">세대수</th><th class="cc" style="width:6%">동수</th>
     <th class="cc" style="width:7%">상가수</th><th class="cc" style="width:10%">준공일</th>
     <th class="cc" style="width:7%" data-tip="끄면 하자 관리 화면의 현장 목록에서 숨깁니다">하자현황</th>
-    <th class="cc" style="width:6%">공가세대</th><th class="cc" style="width:6%">공가상가</th>
+    <th class="cc" style="width:6%" data-tip="끄면 이 현장의 하자 화면에서 공가세대 탭을 숨깁니다 · 전원에게 즉시 반영">공가세대</th><th class="cc" style="width:6%" data-tip="켜면 이 현장의 하자 화면에 공가상가 탭이 생깁니다 · 전원에게 즉시 반영">공가상가</th>
     <th class="cc mg-disth" style="width:9%">업데이트일</th><th class="ce" style="width:5%">삭제</th>
   </tr></thead><tbody>${sites.map(x=>`<tr data-sid="${esc(x.id)}">
     <td><select class="mg-inp" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="region" aria-label="권역 선택">${regOpts(x)}</select></td>
@@ -5919,8 +7360,8 @@ function siteTable(){
     <td><input class="mg-inp n" type="text" inputmode="numeric" value="${(x.commercialUnits||0).toLocaleString()}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="commercialUnits" aria-label="상가수" style="text-align:right;min-width:52px"></td>
     <td class="cc"><input class="mg-inp" type="date" max="9999-12-31" style="width:120px;max-width:100%;text-align:center;display:inline-block" value="${esc(x.completionDate||'')}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="completionDate" aria-label="준공일"></td>
     <td class="cc"><label class="sw"><input type="checkbox"${dfIsHidden(x.id)?'':' checked'} data-act="org.siteShow" data-id="${esc(x.id)}" aria-label="하자 관리 화면에 표시"><span class="sw-t"></span></label></td>
-    <td class="cc mg-ro"><label class="sw"><input type="checkbox"${x.showVacant!==false?' checked':''} disabled aria-label="공가세대 — 하자처리 현황에서 관리"><span class="sw-t"></span></label></td>
-    <td class="cc mg-ro"><label class="sw"><input type="checkbox"${x.hasCommercial?' checked':''} disabled aria-label="공가상가 — 하자처리 현황에서 관리"><span class="sw-t"></span></label></td>
+    <td class="cc"><label class="sw"><input type="checkbox"${x.showVacant!==false?' checked':''} data-act="org.siteVac" data-id="${esc(x.id)}" aria-label="공가세대 탭 표시"><span class="sw-t"></span></label></td>
+    <td class="cc"><label class="sw"><input type="checkbox"${x.hasCommercial?' checked':''} data-act="org.siteShop" data-id="${esc(x.id)}" aria-label="공가상가 포함 현장"><span class="sw-t"></span></label></td>
     <td class="cc mg-dis" style="font-size:11.5px;white-space:nowrap">—</td>
     <td class="ce"><button class="tm-x tm-del" data-act="org.delSite" data-id="${esc(x.id)}" aria-label="삭제">${ICON_TRASH}</button></td>
   </tr>`).join('')}</tbody></table></div>`;
@@ -6840,38 +8281,19 @@ function rOrg(){
 }
 /* 하자처리 현황 게시본 → 이 앱의 조직·현장 모양으로 바꾼다(가져오기와 같은 규칙).
    ⚠ 권역은 저쪽이 '이름 문자열'로 다루므로 이름을 그대로 id 로 삼는다 */
-let ORG_LIVE=false,ORG_RM='',ORG_OFF=null;
-function arrOf(v){return v?(Array.isArray(v)?v.filter(Boolean):Object.values(v).filter(Boolean)):[];}
+let ORG_LIVE=false,ORG_RM='';   /* ORG_LIVE 는 스냅샷 문서(dfSnapBoot)만 켠다 — 614차 역전 이후 실사용 없음(호환 잔존) */
+/* arrOf 삭제(614차) — _dash 구독 제거(조직 원본 역전)로 사용처가 사라졌다 */
 /* 하자처리 현황 게시본이 현장 주소를 실어 보내면 지도가 그걸 먼저 쓴다(539차).
    ⚠ S.org.sites 에는 넣지 않는다 — DB 규칙이 정해진 필드만 허용해 쓰기가 통째로 거부된다.
    지금 게시본에 주소가 있는지는 확인하지 못했다. 없으면 이 표는 비고 현장명으로 돌아간다. */
 const SITE_ADDR={};
-function orgFromDash(teams,sites){
-  sites.forEach(x=>{
-    const a=String(x.addr||x.address||x.roadAddr||x.jibunAddr||x.location||'').trim();
-    if(a)SITE_ADDR[String(x.id)]=a.slice(0,120);
-  });
-  const regNames=[...new Set([...teams.flatMap(t=>arrOf(t.regions)),...sites.map(x=>x.region)]
-    .map(x=>String(x||'').trim()).filter(Boolean))];
-  return {
-    teams:teams.map(t=>({id:String(t.id),name:String(t.name||'').slice(0,60)})),
-    regions:regNames.map(n=>({id:n,name:n})),
-    sites:sites.map(x=>({id:String(x.id),name:String(x.name||'').slice(0,60),
-      team:String(x.teamId||''),region:String(x.region||''),
-      units:Number(x.units)||0,buildings:Number(x.buildings)||0,
-      commercialUnits:Number(x.commercialUnits)||0,completionDate:String(x.completionDate||'').slice(0,10),
-      vacantUnits:!!(x.vacantUnits||x.vacant||x.distUnits),
-      vacantCommercial:!!(x.vacantCommercial||x.distCommercial),
-      showVacant:x.showVacant!==false,               /* 공가세대 탭 표시 여부 — 원본 현장 설정 */
-      hasCommercial:!!x.hasCommercial}))             /* 공가상가 탭 표시 여부 */
-  };
-}
+/* orgFromDash 삭제(614차) — 조직 원본 역전으로 _dash 를 조직 소스로 읽지 않는다. 게시용 역변환은 dfOrgToDashSites/Teams. */
 function orgSave(){
-  /* ⚠ 원본(하자처리 현황)을 구독 중일 때는 이 앱에서 고쳐도 곧 덮어써진다 — 손대지 않는다 */
-  if(ORG_LIVE){toast('팀·권역·현장은 하자처리 현황에서 관리합니다');rOrg();return;}
+  /* ⚠ 614차 조직 원본 역전: calapp/org 가 원본이므로 여기서 저장한다. 스냅샷 문서만 읽기 전용. */
+  if(S.snap){toast('스냅샷 문서에서는 저장되지 않습니다');rOrg();return;}
   normOrg(S.org);store.putOrg(S.org);if(!S.live){rOrg();rTasks();}
 }
-function rCfg(){rBk();}
+function rCfg(){rBk();dfProdCardFill();}   /* 614차: 하자 게시 카드(관리자 전용) 상태 갱신 */
 
 /* ═══════════ 백업 ═══════════
    ⚠ 브라우저는 아무 폴더에나 쓸 수 없다 — 그래서 **위젯이 대신 쓴다.**
@@ -7138,8 +8560,8 @@ function offdayAsk(ds){
 }
 
 /* ── 툴팁 — `data-tip` 이 있는 요소에 잠깐 머무르면 뜬다 ── */
-let _tipT=null,_tipFor=null;
-function tipHide(){clearTimeout(_tipT);_tipFor=null;const el=$('#htip');if(el)el.classList.remove('on');}
+let _tipT=null,_tipFor=null,_tipWarm=0;   /* warm: 방금까지 툴팁이 떠 있던 시각 — 인접 이동은 즉시 띄운다(621차) */
+function tipHide(){clearTimeout(_tipT);if(_tipFor)_tipWarm=Date.now();_tipFor=null;const el=$('#htip');if(el)el.classList.remove('on');}
 /* 514차: 대상이 움직이거나 사라지면 툴팁을 따라 옮기거나 지운다.
    사이드바 접기·뷰 전환처럼 레이아웃이 바뀔 때 툴팁만 제자리에 남아 떠 있었다. */
 function tipSync(){
@@ -7181,7 +8603,11 @@ document.addEventListener('mouseover',e=>{
   if(t===_tipFor)return;                                 /* 이미 그 요소를 보여 주는 중 */
   clearTimeout(_tipT);
   const el=$('#htip');if(el)el.classList.remove('on');
-  _tipT=setTimeout(()=>tipShow(t),180);                  /* 지나가다 뜨지 않을 만큼만 기다린다(391차: 420 은 굼떴다) */
+  /* 621차: 인접 즉시 — 툴팁이 떠 있거나 방금(400ms 안) 떠 있었다면 지연·페이드 없이 바로 옮겨 뜬다.
+     첫 진입 지연(180ms)은 유지 — 지나가다 뜨는 것을 막는 원래 목적 그대로 */
+  const warm=_tipFor||((Date.now()-_tipWarm)<400);
+  if(warm){if(el)el.classList.add('fast');tipShow(t);}
+  else{if(el)el.classList.remove('fast');_tipT=setTimeout(()=>tipShow(t),180);}
 });
 document.addEventListener('mouseout',e=>{
   const t=e.target.closest?e.target.closest('[data-tip]'):null;
@@ -7190,10 +8616,13 @@ document.addEventListener('mouseout',e=>{
   if(to&&to.closest&&to.closest('[data-tip]')===t)return; /* 같은 요소 안에서 움직인 것 */
   tipHide();
 });
-/* 누르면 곧바로 감춘다 — 누른 뒤에도 떠 있으면 화면을 가린다 */
-document.addEventListener('mousedown',tipHide,true);
-document.addEventListener('scroll',tipHide,true);
-window.addEventListener('blur',tipHide);
+/* 누르면 곧바로 감춘다 — 누른 뒤에도 떠 있으면 화면을 가린다.
+   625차: 클릭·스크롤·이탈은 **콜드** 숨김 — warm(인접 즉시)을 살려 두면 클릭이 화면을 갈아끼울 때
+   커서 아래 새 버튼의 툴팁이 곧바로 번쩍 뜬다(연필→편집 폼의 '취소' 툴팁). 인접 즉시는 hover 이동에만 */
+function tipHideCold(){tipHide();_tipWarm=0;}
+document.addEventListener('mousedown',tipHideCold,true);
+document.addEventListener('scroll',tipHideCold,true);
+window.addEventListener('blur',tipHideCold);
 /* ⚠ 화면을 다시 그리면 툴팁이 가리키던 요소가 사라져 그대로 떠 있는다 — 주기로 확인해 치운다 */
 setInterval(()=>{if(_tipFor&&!_tipFor.isConnected)tipHide();},700);
 /* 오후 점검 알림 — 창을 켜 둔 채 5시를 넘기는 일이 흔하므로 1분마다 조건을 다시 본다.
@@ -7503,6 +8932,17 @@ const ACT={
   'mrv.done':el=>{stxSet(el,2);setTimeout(()=>mrvApply(el,{st:2,done:true},'완료로 바꿨습니다'),160);},
   'mrv.today':el=>mrvApply(el,{st:1,done:false,stKeep:true,date:todayStr(),end:''},'오늘로 옮겼습니다'),
   'nq.toggle':()=>{const on=!$('#nqPanel').classList.contains('on');nqOpen(on);if(on)rNq();},
+  /* NLQ 결과 → 목록 창(recOpen) 매핑 — 현장·공종·공가·장기(30일+)는 창의 필터로, 나머지(동·호·본문)는
+     목록 검색어로 넘긴다. ⚠ '60일 이상' 같은 세밀한 지연 조건은 밴드(d60)로 근사 — 정확한 수는 패널 칩이 답 */
+  'nq.list':async()=>{const N=window.__DFNQ;if(!N)return;nqOpen(false);
+    const R=N.R;
+    const site=R.site?dfDashSites().find(s=>s.name===R.site):null;
+    const scope=(R.delay&&R.delay.op==='gte'&&R.delay.n>=30)?'lul':'ul';
+    await recOpen(site?site.id:null,scope,{trade:(R.trades&&R.trades[0])||'',vac:R.vac?'unit':''});
+    if(R.delay&&R.delay.op==='gte'&&R.delay.n>=60)REC.band='d60';
+    const terms=[...((R.text)||[])];if(R.dong)terms.push(R.dong);if(R.ho)terms.push(R.ho);
+    if(terms.length)REC.q=terms.join(' ');
+    if(terms.length||REC.band)recRender();},
   /* 457차: 헤더 검색창 — 입력창에 바로 치고 결과는 아래로 */
   'nq.clear':()=>{const i=$('#ahQ');if(i){i.value='';i.focus();}ahSrchSync('');},
   'nq.close':()=>nqOpen(false),
@@ -7734,6 +9174,10 @@ const ACT={
       S.org.sites=S.org.sites.filter(x=>x.id!==st.id);
       Object.keys(S.people||{}).forEach(id=>{const p=S.people[id];
         if(p.sites&&p.sites[st.id]){const ns={...p.sites};delete ns[st.id];store.putPerson(id,{...p,sites:ns});}});
+      /* 620차 전수 점검: 삭제 잔재 정리 — ① 이 PC 의 원본 하자 행(IndexedDB) ② siteConfig 리프.
+         과거 게시월의 report/{rm}/{sid} 노드는 역사(스냅샷·과거 조회)라 남긴다 */
+      delete S.def[st.id];defDelete(st.id);
+      if(S.live&&FB.db)try{FB.db.ref('siteConfig/'+st.id).set(null);}catch(e){}
       orgSave();});
   },
   'acct.sitePick':el=>{
@@ -8212,6 +9656,30 @@ document.addEventListener('change',e=>{
   rDefectNav();
   toast('"'+(st.name||'이름 없음')+'" 을 하자 관리에서 '+(hide?'숨깁니다':'표시합니다'));
 });
+/* 현장 표 — 공가세대/공가상가 토글(615차). ⚠ 저장은 org 가 아니라 siteConfig 리프 —
+   org 규칙이 이 필드를 허용하지 않고(cleanOrg 도 걷어냄), siteConfig 가 실시간 진실 채널이다
+   (소비자 dfSubSiteCfg 가 전원에게 즉시 입힌다 · 게시본 _dash.sites 에는 [등록] 때 실린다).
+   신규 현장 위저드(confirmNewSite)와 같은 dfSiteCfgWrite 를 쓴다. */
+document.addEventListener('change',e=>{
+  const el=e.target.closest('[data-act="org.siteVac"],[data-act="org.siteShop"]');
+  if(!el)return;
+  if(!isEditor()){denyEdit();rOrg();return;}
+  const st=(S.org.sites||[]).find(x=>x.id===el.dataset.id);if(!st)return;
+  if(el.dataset.act==='org.siteVac')st.showVacant=el.checked;
+  else st.hasCommercial=el.checked;
+  dfSiteCfgWrite(st.id,st);
+  if(DF._cfgLast)DF._cfgLast[st.id]={...(DF._cfgLast[st.id]||{}),hasCommercial:!!st.hasCommercial,showVacant:st.showVacant!==false};   /* org 스냅샷 재적용 보관본도 맞춰 둔다 — 에코 전 재렌더 대비 */
+  if(S.view==='defect')rDefect();   /* 열어 둔 하자 화면의 탭 구성 즉시 갱신(에코는 값이 같아 다시 안 그린다) */
+  toast('"'+(st.name||'이름 없음')+'" · '+(el.dataset.act==='org.siteVac'?('공가세대 탭을 '+(el.checked?'표시':'숨김')):('공가상가 탭을 '+(el.checked?'표시':'숨김')))+'으로 바꿨습니다');
+});
+/* 조직 표 입력을 떠나면 미뤄 둔 조직 그리기를 몰아 처리(615차 — orgHold 짝) */
+document.addEventListener('focusout',e=>{
+  const el=e.target;if(!el||!el.closest||!el.closest('#view-org'))return;
+  setTimeout(()=>{if(orgHold()||tkHold())return;
+    if(PEND.org){PEND.org=false;rOrg();}
+    if(PEND.tasks){PEND.tasks=false;if(!S.tkNew&&!S.tkEdit)rTasks();}
+  },60);
+});
 /* 현장 표 인라인 저장 — 하자처리 현황과 같은 즉시 반영 */
 document.addEventListener('change',e=>{
   const el=e.target.closest('[data-act="org.siteUpd"]');
@@ -8219,6 +9687,7 @@ document.addEventListener('change',e=>{
   if(!isEditor()){denyEdit();rOrg();return;}
   const st=(S.org.sites||[]).find(x=>x.id===el.dataset.id);if(!st)return;
   const f=el.dataset.f,v=el.value;
+  if(f==='completionDate'&&v&&v.slice(0,4)<'1900')return;   /* 615차: 연도 타이핑 과도기(0002-…)는 저장하지 않는다 */
   if(f==='units'||f==='buildings'||f==='commercialUnits'){
     st[f]=Number(String(v).replace(/[^0-9]/g,''))||0;   /* #,##0 표기의 콤마를 걷어내고 저장 */
     el.value=st[f].toLocaleString();                    /* 칸에도 서식을 되입힌다 */
@@ -8455,6 +9924,9 @@ const DF_LINK=(location.search.match(/[?&]df=([\w-]{1,40})/)||[])[1]||'';
 let _dfLinkDone=false;
 function dfLinkOpen(){
   if(_dfLinkDone||!DF_LINK||WIDGET)return;
+  if(DF_LINK==='dash'){_dfLinkDone=true;S.dfSid='';go('defect');   /* 615차: 위젯 새 게시월 말풍선 → 대시보드 */
+    try{history.replaceState(null,'',location.pathname+location.search.replace(/([?&])df=[\w-]+&?/,'$1').replace(/[?&]$/,''));}catch(e){}
+    return;}
   const st=(S.org.sites||[]).find(x=>x.id===DF_LINK);
   if(!st)return;                       /* 아직 목록이 안 왔다 — 다음 갱신 때 다시 본다 */
   _dfLinkDone=true;

@@ -42,7 +42,7 @@
 --sep:rgba(60,60,67,.20);--sepo:#B0B0B4;
 --lbl:#1C1C1E;--lbl2:rgba(60,60,67,.70);--lbl3:rgba(60,60,67,.58);
 --gn:#16A34A;--rd:#DC2626;--am:#D97706;
---surf2:#F5F7FA;--surf3:#EAECF1;
+--surf2:#F0F3F7;--surf3:#EAECF1;   /* 618차: 제목 띠(surf2) 반 단계 진하게 #F5F7FA→#F0F3F7 — 카드 머리·표 머리 등 30곳이 이 토큰 하나를 따른다 */
 --bt1:#3E71D2;--bt2:#1F2B4C;
 --glass:rgba(255,255,255,.88);
 --tint-rd:#FDEAEA;--tint-gn:#E9F6EE;
@@ -158,7 +158,7 @@ html,body{background:var(--shell);}
 html,body{overflow:hidden;}   /* 513차: 문서가 뷰포트를 넘지 않게 — 헤더가 fixed 라 스크롤바가 생겼다 */
 body>svg{position:absolute;width:0;height:0;overflow:hidden;}
 #app,#appHdr,#mo,#tko,#scrim,#toast,#nqPanel,#htip,
-#evePop,#rlMenu,#colPop,#widMove,#pfPop,.ctxmenu{line-height:1.5;}   /* 513차: 본문 행간 복원 */
+#evePop,#dfNewPop,#rlMenu,#colPop,#widMove,#pfPop,.ctxmenu{line-height:1.5;}   /* 513차: 본문 행간 복원 · 625차 #dfNewPop 추가(누락으로 납작했다 — body line-height:0 함정) */
 /* ⚠ 609차: 이 목록은 **body 직속으로 붙는 요소를 하나도 빠뜨리면 안 된다.**
    `body{line-height:0}`(71행)이 그대로 상속돼 줄 상자가 0 이 되고, 글자가 상자 밖으로 넘친다.
    602차에 보고서(#rptRoot)가, 609차에 나머지 6개가 같은 이유로 걸렸다 — 실측 높이:
@@ -173,10 +173,10 @@ body>svg{position:absolute;width:0;height:0;overflow:hidden;}
 #appHdr .ah-right .tb-ic:hover{background:rgba(255,255,255,.10);color:#fff;}
 #appHdr .ah-right .tbr{gap:16px;}
 /* 505차: 사용 안내 — 검색 오른쪽, 헤더의 다른 도구와 같은 결 */
-.ah-help{flex:0 0 auto;margin-left:-7px;width:28px;height:28px;border-radius:3px;display:flex;align-items:center;justify-content:center;   /* 525차: 검색창과의 간격 4px 축소(-3→-7) */
+.ah-help{flex:0 0 auto;margin-left:-7px;width:32px;height:32px;border-radius:3px;display:flex;align-items:center;justify-content:center;   /* 525차: 검색창과의 간격 4px 축소(-3→-7) · 615차: 28→32 확대 */
   color:var(--shell-icon);opacity:.72;transition:background var(--t-fast),color var(--t-fast),opacity var(--t-fast);}
 .ah-help:hover{background:rgba(255,255,255,.10);color:#fff;opacity:1;}
-.ah-help .icn{width:15px;height:15px;}   /* 507차: 검색 아이콘보다 살짝 크게 */
+.ah-help .icn{width:18px;height:18px;}   /* 507차: 검색 아이콘보다 살짝 크게 · 615차: 15→18 확대(사용자 요청) */
 /* 481차: 기준월은 눌러서 월을 바꾸는 메뉴 — 꺽쇠로 알린다 */
 #appHdr .ah-right .tb-rm{padding:0 20px 0 2px;position:relative;cursor:pointer;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath d='M2 3.5l3 3 3-3' fill='none' stroke='%23DCE3EC' stroke-width='1.4'/%3E%3C/svg%3E");
@@ -1064,9 +1064,10 @@ body.snap .sbsl:first-of-type{display:none;}
 /* 424차: 호버 부양 제거 — 상태는 목록 › 색 변화로만 */
 /* 개편 4-1: 파란 채움 제거 — 카드 전부 중립, 상태는 숫자 색으로만(kc-warn/kc-bad, 0건이면 미부착) */
 #view-defect .kc.bl,#view-defect .kc.sk,#view-defect .kc.ms,#view-defect .kc.wh{background:var(--surf2);border-color:var(--sep);color:var(--lbl);}   /* 447차 */
-#view-defect .kc.kc-warn .kv{color:#B45309;}
+/* 624차: 미처리=파랑(--bt1) · 장기미처리=차트 장기 막대(--ch-d60)와 동일색 — KPI 와 추이 차트가 같은 지표를 같은 색으로 말한다 */
+#view-defect .kc.kc-warn .kv{color:var(--bt1);}
 #view-defect .kc.kc-warn .kv .u,#view-defect .kc.kc-bad .kv .u{color:var(--lbl);}
-#view-defect .kc.kc-bad .kv{color:#B91C1C;}
+#view-defect .kc.kc-bad .kv{color:var(--ch-d60);}
 #view-defect .kl{font-size:13px;font-weight:500;opacity:.72;margin-bottom:4px;}
 #view-defect .kv{font-size:22px;font-weight:700;line-height:1;margin-bottom:4px;}
 #view-defect .kv .u{font-size:11px;font-weight:400;opacity:.72;margin-left:2px;}
@@ -1308,7 +1309,7 @@ body.snap .sbsl:first-of-type{display:none;}
 .rl-lim{display:inline-flex;align-items:center;margin-left:auto;background:var(--fill);border-radius:var(--rp);padding:2px;gap:2px;}
 .rl-lim button{border:none;background:transparent;padding:4px 10px;border-radius:3px;font:inherit;font-size:11px;font-weight:600;color:var(--lbl2);cursor:pointer;white-space:nowrap;transition:background var(--t-fast),color var(--t-fast);}
 .rl-lim button.on{background:var(--bg2);color:var(--lbl);box-shadow:var(--sh-1);}
-.rl-lim-lbl{font-size:11px;font-weight:600;color:var(--lbl3);margin:0 2px 0 8px;}
+.rl-lim-lbl{font-size:11px;font-weight:600;color:var(--lbl3);margin:0 6px 0 10px;}   /* 624차: 캡슐 왼쪽에 딱 붙어 보이던 것 */
 /* 피벗 — 원본(pv-*)과 같은 구성: 행(≤3)·열·값 칩 + 트리 표 */
 .pv-bar{display:flex;align-items:center;gap:10px;flex:none;flex-wrap:wrap;margin-bottom:12px;padding:10px 12px;background:var(--surf2);border:1px solid var(--sep);border-radius:var(--rmd);}
 .pv-zone{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:30px;}
@@ -1806,9 +1807,9 @@ body:not(.wid) .btn.dp-add.on:hover{background:transparent;color:#7DA9EA;}   /* 
    라이트에서는 rgba(60,60,67,.10)이 너무 옅어 사실상 보이지 않았다(324차 지적). --sep 은 양쪽 테마에 대응한다.
    ⚠ 권역이 같은 행(=묶음 이어짐)에서는 선이 **권역 칸을 지나가지 않는다** — 표의 병합 셀처럼 보이게(325차) */
 .tk-item+.tk-item>.tk-row{position:relative;}
-.tk-item+.tk-item>.tk-row::before{content:'';position:absolute;left:84px;right:0;top:0;height:1px;background:var(--sep);}   /* 84 = 안쪽 여백 22 + 권역 열 62 */
+.tk-item+.tk-item>.tk-row::before{content:'';position:absolute;left:72px;right:0;top:0;height:1px;background:var(--sep);}   /* 72 = 안쪽 여백 22 + 권역 열 50(615차) */
 .tk-item+.tk-item.grp>.tk-row::before{left:0;}          /* 권역이 바뀌는 자리 — 끝까지 */
-.tk-item+.tk-item.gw>.tk-row::before{left:158px;}       /* 이름까지 같은 자리 — 이름 칸도 비껴간다(22+62+12+62) */
+.tk-item+.tk-item.gw>.tk-row::before{left:140px;}       /* 이름까지 같은 자리 — 이름 칸도 비껴간다(22+50+12+56 · 615차) */
 /* 표의 **마지막 행 아래에도** 선을 긋는다 — 없으면 목록이 허공에서 끊긴다(359차) */
 /* (389차) 카드에 담긴 목록의 맨 끝에는 밑줄을 두지 않는다 — 카드 밑변이 곧 경계라
    선이 겹쳐 마지막 줄만 눌려 보였다. 카드 밖 목록(주간 업무 등)에서는 그대로 긋는다 */
@@ -1841,14 +1842,14 @@ body:not(.wid) .btn.dp-add.on:hover{background:transparent;color:#7DA9EA;}   /* 
 .tk-row{display:grid;align-items:center;gap:var(--s3);padding:var(--s1) 22px;min-height:34px;   /* 행 높이 고정 — 이름 점·반복 배지·강조 테두리 유무로 들쭉날쭉해지지 않게(329차) */
   
   grid-template-columns:62px minmax(0,1fr) 80px 26px;}
-.tkl-s .tk-row{grid-template-columns:62px 150px minmax(0,1fr) 80px 26px;}
-.tkl-w .tk-row{grid-template-columns:62px 62px minmax(0,1fr) 80px 26px;}
-.tkl-s-w .tk-row{grid-template-columns:62px 62px 150px minmax(0,1fr) 80px 26px;}
-.tkl-nr .tk-row{grid-template-columns:minmax(0,1fr) 80px 26px;}
-.tkl-nr-w .tk-row{grid-template-columns:62px minmax(0,1fr) 80px 26px;}   /* 월간 업무 — 권역·현장 열이 없다.
+.tkl-s .tk-row{grid-template-columns:50px 150px minmax(0,1fr) 74px 26px;}   /* 615차: 권역 62→50(3글자 기준) — 남는 폭은 업무로 */
+.tkl-w .tk-row{grid-template-columns:50px 56px minmax(0,1fr) 74px 26px;}   /* 권역 50 · 이름 56(점+3글자) */
+.tkl-s-w .tk-row{grid-template-columns:50px 56px 150px minmax(0,1fr) 74px 26px;}
+.tkl-nr .tk-row{grid-template-columns:minmax(0,1fr) 74px 26px;}
+.tkl-nr-w .tk-row{grid-template-columns:56px minmax(0,1fr) 74px 26px;}   /* 월간 업무 — 권역·현장 열이 없다.
    ⚠ 날짜 80px — 기간(8/26–8/28 · 82px)이 열을 살짝 넘지만 수정 버튼과는 닿지 않는 최소치다(389차) */
 .tk-row .p-col{margin-left:0;}
-.tk-row .tk-acts{justify-content:flex-end;gap:0;}   /* 60px = 상태·수정 두 개 기준 — 링크가 있는 행만 세 개째가 왼쪽 공백을 빌린다(우측 끝 정렬은 그대로) */
+.tk-row .tk-acts{justify-content:flex-end;gap:0;}   /* 625차 갱신: 이제 상태 아이콘 하나뿐(616차에 수정 버튼을 펼침으로) — '링크 행 세 개째' 서술은 목록 행에 링크 아이콘이 없어진 지금은 옛말 */
 .tk-row .tk-ico{min-width:24px;width:24px;padding:0;}
 /* 평소에는 진행 아이콘만 표 오른쪽 끝에 있다가, 행에 마우스를 올리면 수정이 그 왼쪽으로 미끄러져 나온다.
    ⚠ 자리를 차지하지 않도록 절대 배치 — 열 너비(26px)는 상태 아이콘 하나만 잡는다 */
@@ -1859,7 +1860,7 @@ body:not(.wid) .btn.dp-add.on:hover{background:transparent;color:#7DA9EA;}   /* 
 @media (hover:none){.tk-row .tk-ed{position:static;transform:none;opacity:1;pointer-events:auto;}}
 /* 펼침 — 그 행에 딸린 영역임이 보이게 업무 열에서 시작하고 왼쪽에 연결선을 둔다(361차).
    ⚠ 표 좌우 여백(22px)과 열 폭(권역 62 + 간격 12 + 이름 62 + 간격 12)을 더해 업무 열에 맞춘다 */
-.tk-item .tk-detail{margin:2px 61px 10px 84px;padding:0 0 0 12px;}   /* ⚠ 오른쪽 끝까지 늘이면 날짜·조작 열 아래까지 파고들어 표가 흐트러진다. 읽기 좋은 폭에서 끊는다(362차) */
+.tk-item .tk-detail{margin:2px 61px 10px 72px;padding:0 0 0 12px;position:relative;}   /* ⚠ 오른쪽 끝까지 늘이면 날짜·조작 열 아래까지 파고들어 표가 흐트러진다. 읽기 좋은 폭에서 끊는다(362차) */
 .tk-sec-b{max-width:100%;}
 /* 수정 — 행의 셀이 그 자리에서 입력칸으로 바뀐다(363차). 표 열은 그대로 유지된다 */
 .cell-inp{width:100%;min-width:0;height:28px;padding:0 8px;font-size:12px;line-height:26px;border-radius:var(--rsm);
@@ -1918,7 +1919,7 @@ body:not(.wid) .btn.dp-add.on:hover{background:transparent;color:#7DA9EA;}   /* 
 .tk-ttl .cell-inp{font-size:13px;font-weight:600;}
 .tk-item.editing>.tk-row{align-items:start;padding-top:3px;padding-bottom:3px;}   /* ⚠ 가운데 정렬이면 조작 열(세로 3개)이 행을 키우면서 다른 칸이 함께 내려간다 — 위에 붙인다(367차) */
 /* 행에 열이 없는 값들 — 아래 한 줄 */
-.tk-editrest{margin:0 61px 10px 84px;padding:8px 0 0;}   /* 왼쪽 파란 바 제거 — 행 테두리가 이미 편집 중임을 말한다(368차) */   /* 오른쪽은 조작 열 앞(22+60+12)까지 — 아래 줄이 날짜 칸 끝과 나란해진다(367차) */   /* 왼쪽 선은 이름 열이 시작하는 자리(22+62)에 둔다(366차) */
+.tk-editrest{margin:0 61px 10px 72px;padding:8px 0 0;}   /* 616차: 권역 열 62→50 에 맞춰 84→72 */   /* 왼쪽 파란 바 제거 — 행 테두리가 이미 편집 중임을 말한다(368차) */   /* 오른쪽은 조작 열 앞(22+60+12)까지 — 아래 줄이 날짜 칸 끝과 나란해진다(367차) */   /* 왼쪽 선은 이름 열이 시작하는 자리(22+62)에 둔다(366차) */
 .tkl-nr-w .tk-editrest{margin-left:22px;}
 /* 아래 줄 — 칸을 균등하게 나눈다(366차). 라벨 높이까지 같아 줄이 들쭉날쭉하지 않는다 */
 .tk-erow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s2);align-items:end;}
@@ -1956,25 +1957,26 @@ body:not(.wid) .btn.dp-add.on:hover{background:transparent;color:#7DA9EA;}   /* 
 .tk-sub-i{margin-left:6px;font-size:11px;font-style:normal;font-weight:500;color:var(--lbl3);}
 .tkc{font-size:12px;line-height:1;color:var(--lbl2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;}
 /* 부가 열은 전부 기본 굵기 — 제목(600)과 싸우지 않게 한다(324차) */
-.tkc-r,.tkc-w,.tkc-s{font-weight:400;color:var(--lbl2);}
+.tkc-w,.tkc-s{font-weight:400;color:var(--lbl2);}
+.tkc-r{font-weight:400;color:var(--lbl);}   /* 615차: 권역은 검은색 */
 .tkc-w{display:flex;align-items:center;gap:6px;color:var(--lbl);}
 .tkc-w.dim{color:var(--lbl3);}                   /* 공통 업무 — 이름 대신 흐린 「공통」 */
 .tkc-dot{width:6px;height:6px;border-radius:50%;flex:0 0 auto;}   /* 담당자 색은 글자가 아니라 이 점이 맡는다 */
 .tk-item.editing .tk-row .tkc-w{gap:6px;}   /* 편집 중에도 점 + 선택칸 — 읽기 때와 이름 시작 위치가 같아진다(389차) */
 .tk-item.editing .tk-row .tkc-w select{min-width:0;flex:1 1 auto;}
-.tkc-d{font-variant-numeric:tabular-nums;overflow:visible;}   /* 좌측 정렬 — 기간이 있어 오른끝을 맞추면 시작 위치가 행마다 흔들린다. 열은 80px(520차: 68→80) — 기간(8/26–8/28 · 82px)이 수정 버튼과 겹치던 것을 제목 폭을 살짝 줄여 해결(tkl-nr-w 의 389차 처방을 전 변형에 적용) */
+.tkc-d{font-variant-numeric:tabular-nums;overflow:visible;}   /* 좌측 정렬 — 기간이 있어 오른끝을 맞추면 시작 위치가 행마다 흔들린다. 열은 74px(618차: 80→74) — 최장 문자열 12/31–12/31 실측 72px + 숨 2px. 인라인 수정 버튼이 사라져 겹칠 것도 없다 */
 .tkc-d.over{color:var(--rd);font-weight:700;}
 .tk-item.s2 .tk-ttl{color:var(--lbl3);}   /* 완료는 **업무명만** 옅게 — 이름·현장·날짜까지 옅어지던 것을 사용자 지시로 좁혔다(520차). wdone(이름 묶음 전체 완료 시 옅게)도 함께 폐기 */
 /* 칸이 좁으면 현장 → 권역 순으로 접는다(이름·업무·날짜는 끝까지 남긴다).
    ⚠ 열 개수는 창 폭이 아니라 **칸 폭**(컨테이너 질의)으로 정한다 — 완료·예정이 카드를 반씩 나눠 쓴다. */
 @container tkpanel (max-width:620px){
-  .tkl-s .tk-row{grid-template-columns:62px minmax(0,1fr) 80px 26px;}
-  .tkl-s-w .tk-row{grid-template-columns:62px 62px minmax(0,1fr) 80px 26px;}
+  .tkl-s .tk-row{grid-template-columns:50px minmax(0,1fr) 74px 26px;}
+  .tkl-s-w .tk-row{grid-template-columns:50px 56px minmax(0,1fr) 74px 26px;}
   .tkl-s .tkc-s,.tkl-s-w .tkc-s{display:none;}
 }
 @container tkpanel (max-width:460px){
-  .tk-row,.tkl-s .tk-row{grid-template-columns:minmax(0,1fr) 80px 26px;}
-  .tkl-w .tk-row,.tkl-s-w .tk-row{grid-template-columns:62px minmax(0,1fr) 80px 26px;}
+  .tk-row,.tkl-s .tk-row{grid-template-columns:minmax(0,1fr) 74px 26px;}
+  .tkl-w .tk-row,.tkl-s-w .tk-row{grid-template-columns:56px minmax(0,1fr) 74px 26px;}
   .tkc-r{display:none;}
   .tk-item+.tk-item>.tk-row::before{left:0;}
 }
@@ -1996,6 +1998,9 @@ body:not(.wid) .btn.dp-add.on:hover{background:transparent;color:#7DA9EA;}   /* 
 .tk-ico .icn{width:14px;height:14px;}
 /* 펼친 상세 */
 .tk-detail{padding:0 13px 13px 46px;display:flex;flex-direction:column;gap:12px;}
+/* 펼침의 수정 버튼(616차 보정) — 행의 상태 아이콘(.stx 20px·우측 1px 여백)과 **중심**을 맞춘다:
+   상태 중심 = 카드 오른끝 −22(행 안쪽) −1 −10 = −33 → 연필(26px) right = 61(펼침 오른여백) −33 −13 = −41 */
+.tk-det-ed{position:absolute;top:-2px;right:-41px;}
 /* 펼쳤을 때는 카드 아래 여백이 두 번 겹친다 — 접힘용 여백을 줄인다 */
 .tk-item.open .plan-meta{padding-bottom:4px;}
 .tk-detail:empty{padding:0;}
@@ -2115,6 +2120,7 @@ body:not(.wid) .btn.dp-add.on:hover{background:transparent;color:#7DA9EA;}   /* 
   box-shadow:var(--sh-2);pointer-events:none;opacity:0;visibility:hidden;
   transition:opacity var(--t-fast);white-space:pre-line;}
 #htip.on{opacity:1;visibility:visible;}
+#htip.fast{transition:none;}   /* 621차: 인접 이동은 페이드도 없이 — 이미 뜬 상태의 연속이라 갑작스럽지 않다 */
 #htip{will-change:transform;}   /* 550차: 제 층 — 툴팁이 옮겨 다닐 때마다 뒤의 화면 전체를 다시 칠했다 */
 /* 오후 점검 말풍선 — 종 아이콘 아래에 잠깐 붙는다(하루 한 번, 10초).
    ⚠ 위젯은 창이 곧 화면이라 position:fixed 로 두고 좌우를 창 안으로 물린다 */
@@ -2126,6 +2132,15 @@ body:not(.wid) .btn.dp-add.on:hover{background:transparent;color:#7DA9EA;}   /* 
 #evePop::before{content:'';position:absolute;top:-5px;left:var(--ax,50%);margin-left:-5px;
   border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:5px solid var(--b600);}
 #evePop:hover{background:var(--b500);}
+/* 위젯 새 게시월 말풍선(615차) — evePop 과 같은 골격, 차콜(--lbl). 꼬리는 설정 톱니를 가리킨다 */
+#dfNewPop{position:fixed;z-index:3100;padding:7px 12px;border-radius:3px;background:var(--lbl);color:#fff;
+  box-shadow:var(--sh-2);cursor:pointer;white-space:nowrap;
+  opacity:0;transform:translateY(-4px);transition:opacity var(--t-fast),transform var(--t-fast);}
+#dfNewPop.on{opacity:1;transform:none;}
+#dfNewPop b{font-size:13px;font-weight:700;}
+#dfNewPop::before{content:'';position:absolute;top:-5px;left:var(--ax,50%);margin-left:-5px;
+  border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:5px solid var(--lbl);}
+#dfNewPop:hover{opacity:.92;}
 /* 사용 안내(README) — 왼쪽 목차 탭 + 본문 한 장씩. 하자처리 현황과 같은 방식 */
 #mb.rdw{max-width:min(1180px,96vw);}
 #mb.narrow{max-width:min(380px,92vw);}   /* 한 줄 입력만 받는 모달은 좁게 */
@@ -2209,8 +2224,7 @@ body:not(.wid) .btn.dp-add.on:hover{background:transparent;color:#7DA9EA;}   /* 
 /* 하자처리 현황 전용 항목 — 균형 유지를 위해 표기하되 회색 비활성 */
 .mgtbl .mg-dis{opacity:.4;pointer-events:none;filter:grayscale(1);}
 /* 공가 여부는 하자처리 현황이 원본 — 색은 그대로 보여 주되 여기서는 바꿀 수 없다 */
-.mgtbl .mg-ro{pointer-events:none;}
-.mgtbl .mg-ro .sw{opacity:.9;}
+/* 현장 표 공가 열의 잠금 스타일 삭제(615차) — 토글이 편집 가능해져 사용처가 사라졌다 */
 .mgtbl th.mg-disth{color:var(--lbl3);}
 /* 설정 카드 — 업무 현황·조직 관리와 같은 규칙(352차):
    ① 카드 머리는 짙은 면 + 아랫선, 높이 41px  ② 내용은 카드를 꽉 채우고 여백은 줄 안쪽이 갖는다 */
@@ -3131,7 +3145,9 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 /* 목록 끝에서 페이지가 딸려 움직이지 않게 */
 .tk-list,.tkmo-list{overscroll-behavior:contain;}
 .tk-item.hl{outline:1.5px solid var(--b500);outline-offset:-1.5px;}   /* 자리를 차지하지 않는 outline — 행 높이가 흔들리지 않는다 */
-.tk-item.editing{outline:1.5px solid var(--b400);outline-offset:-1.5px;}   /* 지금 고치고 있는 행 — 테두리로만 알린다(388차: 배경 음영이 입력 글자 대비를 떨어뜨렸다) */
+.tk-item.editing{outline:1.5px solid var(--b400);outline-offset:-1.5px;background:var(--fill);}   /* 616차: 펼침(open)과 같은 배경으로 잇는다 — 펼침→수정 전환 때 배경이 흰색으로 '툭' 빠지던 것.
+   388차의 대비 문제(음영 위 음영 입력칸)는 아래에서 입력칸을 흰색으로 띄워 해소 */
+.tk-item.editing .cell-inp,.tk-item.editing .tk-editrest .inp{background:var(--bg2);}   /* 회색 행 위 흰 칸 — 어디가 입력인지도 또렷해진다(내용 textarea 포함) */
 /* 좌측 대상 목록 — 줄 간격을 조금 좁히고 글자 크기를 하나로 맞춘다(팀·권역·담당자 13px) */
 .tks-item{padding:7px 11px;font-size:13px;}
 .tks-item.sub{padding-top:6px;padding-bottom:6px;font-size:13px;}
@@ -3306,6 +3322,54 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 #view-defect #dfPrintPages .ait{font-size:9pt!important;line-height:1.6!important;}
 #view-defect #dfPrintPages .ait>div{font-size:10pt!important;}
 #view-defect #dfPrintPages .ait li{margin-bottom:5px!important;}
+/* ═══ 하자 생산자(업로드·게시) — 원본(하자처리 현황 앱) CSS 그대로 · 614차 ═══
+   ⚠ 토큰(--b50~800·--rlg)은 두 앱이 같은 값이라 원본 규칙을 그대로 옮겼다. 임의 수정 금지. */
+.uz{border:2px dashed var(--b300);border-radius:var(--rlg);padding:24px 18px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s;background:var(--b50);}
+.uz:hover,.uz.drag{border-color:var(--b500);background:var(--b100);}
+/* 그라디언트 아이콘 타일 규칙 삭제(615차) — 드롭존이 정석 꼴(아웃라인 아이콘)로 바뀌며 사용처가 사라졌다 */
+.uzt{font-size:13.5px;font-weight:600;color:var(--lbl);}
+.uzh{font-size:11px;color:var(--lbl2);margin-top:4px;}
+/* 615차 — 설정 카드용 드롭존, 상용 정석 꼴(드래거형 업로드 관례): 가운데 정렬 점선 영역 ·
+   상단 아웃라인 아이콘 · "끌어다 놓거나 클릭(링크색)" · 형식 힌트. 원본 .uz 규칙은 보존, 변형만 얹는다 */
+.uz.std{margin:14px var(--s4) 4px;padding:22px 16px 20px;border-width:1.5px;border-radius:10px;background:transparent;}   /* 카드 인셋 준수 — 제목 구분선·모서리와 점선이 닿지 않게(615차) */
+.uz.std:hover,.uz.std.drag{background:var(--b50);border-color:var(--b500);}
+.uz.std .uz-ic{display:block;width:28px;height:28px;color:var(--lbl3);margin:0 auto 8px;transition:color .15s;}   /* 전역 svg 규칙이 블록·좌측으로 밀어서 가운데 고정 */
+.uz.std:hover .uz-ic,.uz.std.drag .uz-ic{color:var(--bt1);}
+.uz.std .uzt{font-size:13px;font-weight:500;color:var(--lbl);}
+.uz.std .uz-link{color:var(--bt1);font-weight:700;}
+.uz.std .uzh{font-size:11.5px;color:var(--lbl3);margin-top:4px;}
+.dfadv{margin:0 var(--s4) 12px;box-shadow:inset 0 1px 0 var(--sep);}   /* 게시 행과 같은 머리선 리듬 — 간격 애매함 해소(615차) */
+.dfadv>summary{list-style:none;cursor:pointer;font-size:12px;font-weight:600;color:var(--lbl2);padding:12px 2px 3px;margin-left:-6px;user-select:none;display:flex;align-items:center;gap:6px;}   /* 살짝 왼쪽(-6px) — 꺾쇠가 본문 시작선에 걸리게 */
+.dfadv>summary::-webkit-details-marker{display:none;}
+.dfadv>summary::before{content:'';width:7px;height:7px;border-right:1.5px solid var(--lbl3);border-bottom:1.5px solid var(--lbl3);transform:rotate(-45deg);transition:transform .15s;margin-left:2px;}
+.dfadv[open]>summary::before{transform:rotate(45deg);}
+.dfadv>summary:hover{color:var(--lbl);}
+/* NLQ 조건 칩(615차 리뷰에서 발견) — .ba 는 #view-defect 스코프라 찾기 패널에선 맨 텍스트가 됐다.
+   하자 배지와 같은 생김새를 패널용 클래스로 분리 */
+.nq-chip{display:inline-flex;align-items:center;font-size:11px;font-weight:600;padding:2px 8px;
+  border-radius:var(--rp);white-space:nowrap;background:var(--b100);color:var(--bt1);}
+/* 제외 키워드 칩 입력(615차) — 엔터·쉼표로 칩 추가, ×로 제거. 값은 여전히 쉼표 문자열(S.exTk) */
+.tag-box{display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-height:38px;padding:5px 8px;
+  border:1px solid var(--inp-bd,var(--sep));border-radius:6px;background:var(--bg2);cursor:text;}
+.tag-box:focus-within{border-color:var(--b500);}
+.tag-chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:3px 6px 3px 9px;
+  border-radius:var(--rp);background:var(--b100);color:var(--bt1);white-space:nowrap;}
+.tag-x{width:14px;height:14px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;color:var(--bt1);opacity:.65;font-size:12px;line-height:1;}
+.tag-x:hover{opacity:1;background:var(--b200);}
+.tag-in{flex:1;min-width:110px;border:0;outline:0;background:none;font:inherit;font-size:13px;color:var(--lbl);padding:3px 2px;}
+.tag-in:focus-visible{box-shadow:none;}   /* 상자 테두리(focus-within)가 포커스를 알리므로 전역 링은 끈다 — .ah-srch-in 과 같은 규칙(615차) */
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}   /* 위저드 행(615차 — 2열 그리드는 3열 개편으로 삭제) */
+.g3>.ig2{margin-bottom:14px;}   /* ⚠ 원본은 .ig2 전역 — calapp 은 공가 수정 모달이 이미 .ig2 를 인라인 여백과 함께 쓰고 있어 위저드 그리드 안으로 한정한다 */
+.uprog{position:fixed;inset:0;z-index:10000;display:none;align-items:center;justify-content:center;background:rgba(20,22,28,.42);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);}
+.uprog.show{display:flex;}
+.uprog-box{background:var(--bg2);border-radius:10px;padding:28px 32px;width:340px;max-width:86vw;box-shadow:var(--sh-2);text-align:center;}   /* 615차 리뷰: 무몰딩 톤 정합(16→10 · 그림자 토큰) */
+.uprog-spin{width:34px;height:34px;margin:0 auto 16px;border:3px solid var(--b100);border-top-color:var(--bt1);border-radius:50%;animation:uprogspin .8s linear infinite;}
+@keyframes uprogspin{to{transform:rotate(360deg);}}
+.uprog-msg{font-size:14px;font-weight:700;color:var(--lbl);margin-bottom:14px;}
+.uprog-bar{height:7px;background:var(--b100);border-radius:99px;overflow:hidden;}
+.uprog-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--b500),var(--b700));border-radius:99px;transition:width .25s ease;}
+.uprog-sub{font-size:11.5px;color:var(--lbl2);margin-top:9px;font-variant-numeric:tabular-nums;min-height:14px;}
 </style>
 </head>
 <body>
@@ -3588,6 +3652,33 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
     <div id="view-settings" class="view">
       <div class="set-grid">
         <div class="set-col">
+          <!-- 하자 데이터 등록(생산자) — 관리자 전용 · dfProdCardFill 이 표시/숨김과 값을 채운다(614차 · 615차 간소화) -->
+          <div class="card" id="dfPubCard" style="display:none">
+            <div class="set-h">하자 데이터 등록</div>
+            <div id="dfUz" class="uz std" data-act="dfp.uz">
+              <svg class="uz-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="M12 18v-6"></path><path d="m9 15 3-3 3 3"></path></svg>
+              <div class="uzt">파일을 끌어다 놓거나 <span class="uz-link">클릭해서 선택</span></div>
+              <div class="uzh">CSV · XLSX — HCS 전체 하자리스트</div>
+            </div>
+            <input type="file" id="dfFi" accept=".csv,.xlsx,.xls" style="display:none" aria-label="하자 데이터 파일 선택">
+            <!-- 615차: 데이터 상태 + 게시를 한 행으로 통합 — 좌 상태(굵게)·시각, 우 기준월+[등록] -->
+            <div class="share-row">
+              <div class="share-info"><b id="dfLocalStat">—</b><span id="dfPubSub">최신 등록 <span id="dfPubAt">—</span></span></div>
+              <div style="display:flex;gap:8px;align-items:center;flex:none">
+                <input class="inp" id="dfPubRm" type="month" style="width:150px" aria-label="게시 기준월" data-tip="업로드 시 자동 결정(전월 상한) · 직접 변경 가능">
+                <button class="btn bp bsm" id="dfPubBtn" data-act="dfp.publish">등록</button>
+              </div>
+            </div>
+            <details class="dfadv">
+              <summary>자세히 — 제외 키워드 · AI 키 · 업로드 이력</summary>
+              <div class="ig2" style="margin-top:12px"><label class="il" for="dfExTk">제외 키워드 <span style="font-weight:400;color:var(--lbl3)">· 엔터로 추가</span></label>
+                <div class="tag-box" id="dfExTkBox"><input class="tag-in" id="dfExTk" placeholder="예: 공가세대점검"></div></div>
+              <div class="ig2" style="margin-top:12px"><label class="il" for="dfCk">Gemini API 키 <span style="font-weight:400;color:var(--lbl3)">· AI 분석용 · 이 PC 브라우저에만 저장</span></label><input class="inp" id="dfCk" type="password" autocomplete="off" placeholder="AI 분석을 쓰지 않으면 비워 둡니다"></div>
+              <div class="ig2" style="margin-top:12px"><span class="il">업로드 이력</span><span id="dfUpHist" style="display:block;font-size:12px;color:var(--lbl2);line-height:1.7">—</span></div>
+            </details>
+          </div>
+        </div>
+        <div class="set-col set-col-stack">
           <div class="card" id="bkCard">
             <div class="set-h">백업 · 기록</div>
             <div class="share-row">
@@ -3611,13 +3702,11 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
               <button class="btn bg2 bsm" data-act="set.copyErr">복사</button>
             </div>
           </div>
-        </div>
-        <div class="set-col set-col-stack">
           <div class="card">
             <div class="set-h">도움말</div>
             <div class="share-row">
               <div class="share-info"><b>사용 안내</b><span>화면별 사용 방법 — 저장소의 README 를 그대로 보여줍니다</span></div>
-              <button class="btn bg2 bsm" data-act="set.guide"><svg class="icn" style="width:14px;height:14px"><use href="#i-help"></use></svg>열기</button>
+              <button class="btn bg2 bsm" data-act="set.guide"><svg class="icn" style="width:17px;height:17px"><use href="#i-help"></use></svg>열기</button>
             </div>
           </div>
                     <div class="set-card card">
@@ -3647,13 +3736,14 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 <div id="scrim" data-act="nav.mobClose"></div>
 <div id="tko" data-act="tk.formCancel"><div id="tkoCard" data-act="modal.stop"></div></div>
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
+<div id="uprog" class="uprog"><div class="uprog-box"><div class="uprog-spin"></div><div class="uprog-msg" id="uprogMsg">처리 중...</div><div class="uprog-bar"><div class="uprog-fill" id="uprogFill" style="width:0%"></div></div><div class="uprog-sub" id="uprogSub"></div></div></div>
 <div id="toast"></div>
 
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./vendor/korea-geo.js?v=613"></script>
-<script src="./vendor/apt-geo.js?v=613" onerror="void 0"></script>   <!-- 540차: 공동주택명 색인 — 없으면 그냥 건너뛴다 -->
-<script src="./app.js?v=613"></script>
+<script src="./vendor/korea-geo.js?v=625"></script>
+<script src="./vendor/apt-geo.js?v=625" onerror="void 0"></script>   <!-- 540차: 공동주택명 색인 — 없으면 그냥 건너뛴다 -->
+<script src="./app.js?v=625"></script>
 </body></html>
