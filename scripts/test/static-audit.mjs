@@ -135,7 +135,16 @@ OK('구문 검사 (node --check)');
   const body = js.slice(js.indexOf('function cleanTask'), js.indexOf('function cleanTask') + 1600);
   const writes = [...body.matchAll(/\bo\.(\w+)\s*=/g)].map(m => m[1])
     .concat([...body.matchAll(/\bo=\{([^}]*)\}/gs)].flatMap(m => [...m[1].matchAll(/(\w+)\s*:/g)].map(x => x[1])));
-  const seg = rules.slice(rules.indexOf('"tasks"'), rules.indexOf('"tasks"') + 3500);
+  const seg = rules.slice(rules.indexOf('"tasks"'), rules.indexOf('"trash"'));   /* 627차: 고정 3500자 창이 소유 규칙 추가로 모자랐다 — 블록 경계로 */
+
+  /* 632차: 무지개 그라디언트는 app.js(RAINBOW_BG)와 index.html(.ev-rb)에 이중 정의 — 값이 갈리면 잡는다 */
+  {
+    const mApp = /RAINBOW_BG='([^']+)'/.exec(js);
+    const mCss = /\.fc \.ev-rb\{background:([^!]+) !important/.exec(html);
+    if (!mApp || !mCss) F('무지개 정의를 찾지 못했다(RAINBOW_BG 또는 .ev-rb)');
+    else if (mApp[1].replace(/\s+/g,'') !== mCss[1].trim().replace(/\s+/g,''))
+      F('무지개 그라디언트 이중 정의 불일치 — app.js RAINBOW_BG 와 index.html .ev-rb');
+  }
   const allowed = new Set([...seg.matchAll(/"(\w+)"\s*:\s*\{/g)].map(m => m[1]));
   const miss = [...new Set(writes)].filter(f => !allowed.has(f));
   if (miss.length) F('cleanTask 가 쓰는데 규칙 tasks 에 없는 필드: ' + miss.join(', ') + '  (규칙 먼저 게시!)');

@@ -9,7 +9,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='625';
+const APP_VER='632';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -87,7 +87,7 @@ const PAL=['#6B7280','#3E71D2','#0EA5E9','#0D9488','#16A34A','#65A30D',
 /* 아바타 배경색 즉시 반영 · 이모지 검색 */
 function pfPaint(c){
   const av=document.querySelector('.acct-av');
-  if(av&&c)av.style.setProperty('--avc',c);
+  if(av&&c)av.style.setProperty('--avc',colBg(c));
 }
 document.addEventListener('click',e=>{
   /* 색상환 슬라이더 — 끌 때는 미리보기만, 놓을 때 확정한다(끌 때마다 저장하면 목록이 다시 그려져 팝오버가 사라진다) */
@@ -156,7 +156,7 @@ function sitePickHTML(id,cur){
 /* 색 원 — 공통 업무(담당자 없음)는 달력 막대와 같은 '속 빈' 표시로 그린다(테두리만 업무색).
    team 은 호출부에서 넘긴다(미지정이면 기존처럼 꽉 찬 원). */
 function colDotHTML(c,pid,team){
-  const st=team?'background:transparent;box-shadow:inset 0 0 0 1.5px '+esc(c):'background:'+esc(c);
+  const st=team?'background:transparent;box-shadow:inset 0 0 0 1.5px '+esc(c):'background:'+esc(colBg(c));   /* 632차: team 테두리형엔 rainbow 가 못 온다(팀색 고정) */
   return pid
     ?'<span class="p-col p-col-ro'+(team?' p-col-team':'')+'" style="'+st+'"></span>'
     :'<button class="p-col'+(team?' p-col-team':'')+'" data-act="plan.color" aria-label="색 고르기" data-tip="색 고르기" style="'+st+'"></button>';
@@ -250,9 +250,10 @@ function hexHsv(hex){
 }
 function palHTML(id,cur,extraFirst){
   const c=cur||'';
-  const custom=c&&c!=='auto'&&PAL.indexOf(c)<0?c:'';
+  const custom=c&&c!=='auto'&&c!=='rainbow'&&PAL.indexOf(c)<0?c:'';
   return '<div class="pal" id="'+id+'">'+(extraFirst||'')
     +PAL.map(x=>'<div class="pal-c'+(x===c?' sel':'')+'" data-c="'+x+'" style="background:'+x+'"></div>').join('')
+    +'<div class="pal-c'+(c==='rainbow'?' sel':'')+'" data-c="rainbow" style="background:'+RAINBOW_BG+'" data-tip="무지개"></div>'
     +(custom?'<div class="pal-c pal-custom sel" data-c="'+esc(custom)+'" style="background:'+esc(custom)+'" data-tip="우클릭으로 삭제"></div>':'')
     +'<label class="pal-c pal-add" data-tip="직접 고르기">'
     +'<input type="color" class="pal-inp" value="'+esc(custom||'#3E71D2')+'"><span>+</span></label>'
@@ -286,11 +287,16 @@ const AV_DFLT='<svg class="av-ic" viewBox="0 0 24 24" aria-hidden="true"><use hr
 function avInner(icon){return icon?'<span class="av-em">'+esc(icon)+'</span>':AV_DFLT;}
 function avHTML(pid,cls){
   const{color,icon}=avOf(pid);
-  return '<div class="'+(cls||'fbu-av')+' av-cus" style="--avc:'+esc(color||ownColor(pid))+'">'
+  return '<div class="'+(cls||'fbu-av')+' av-cus" style="--avc:'+esc(colBg(color||ownColor(pid)))+'">'
     +avInner(icon)+'</div>';
 }
 /* 담당자 자동 색 — 명부 순서에 따라 안정적으로 배정 */
 const OWN_PAL=['#3E71D2','#16A34A','#D97706','#DC2626','#7C5CD6','#0EA5E9','#DB2777','#65A30D','#EA580C','#0D9488'];
+/* 632차 무지개(재미용 기본색) — 색 파이프에 특수 토큰 'rainbow' 하나를 흘린다.
+   background 를 받는 자리는 colBg() 로 그라디언트를, 단색만 받는 자리는 없다(FC 이벤트는
+   아래 eventDidMount 훅이 배경을 직접 칠한다). isLightColor('rainbow')=false → 흰 글자. */
+const RAINBOW_BG='linear-gradient(135deg,#F43F5E 0%,#F59E0B 20%,#FACC15 40%,#22C55E 60%,#3B82F6 80%,#8B5CF6 100%)';
+function colBg(c){return c==='rainbow'?RAINBOW_BG:c;}
 function ownColor(pid){
   if(!pid)return PAL[0];
   /* 프로필에서 고른 색이 있으면 그 색을 쓴다 — 노란 프로필인데 보라 업무로 뜨면 헷갈린다 */
@@ -429,10 +435,10 @@ document.addEventListener('focusout',e=>{
         rTasks();
         confirmModal('수정이 겹쳤습니다',
           '입력하는 사이 다른 사람이 이 칸을 고쳤습니다. 내 내용으로 덮어쓸까요?',
-          ()=>{const c2=(S.tasks[sid]||{})[iid];if(c2)store.putTask(sid,iid,{...c2,[f.dataset.f]:v,updatedAt:Date.now()});},
+          ()=>{const c2=(S.tasks[sid]||{})[iid];if(c2)store.putTask(sid,iid,histPush({...c2,[f.dataset.f]:v,updatedAt:Date.now()},'edit'));},
           '덮어쓰기');
       }
-      else if(now!==v)store.putTask(sid,iid,{...cur,[f.dataset.f]:v,updatedAt:Date.now()});
+      else if(now!==v)store.putTask(sid,iid,histPush({...cur,[f.dataset.f]:v,updatedAt:Date.now()},'edit'));
     }
   }
   setTimeout(()=>{if(tkHold())return;
@@ -443,9 +449,81 @@ document.addEventListener('focusout',e=>{
 
 /* DB 규칙이 스키마 외 키를 거부($other:false)하므로, 저장 전에 필드를 정제한다.
    반복이 아닌 일정에 doneOn/skipOn 이 남아 들어가는 것도 여기서 걸러진다. */
+/* 627차 — 업무 소유·이력. 정책: 앞으로 만드는 업무만 소유 적용(레거시 createdBy 없음 = 기존대로 전원),
+   완료 체크·수정·삭제·보류 전부 작성자(또는 관리자)만. 이력은 live 에서만 최근 20건. */
+function authUid(){return String((S.user||{}).uid||'');}
+function myRank(){return rankOf(((S.people||{})[authUid()]||{}).rank);}
+function myRegion(){return String(((S.people||{})[authUid()]||{}).region||'');}
+function mySites(){return ((S.people||{})[authUid()]||{}).sites||{};}
+/* 628차 확장 — 수정 권한: 관리자 ∥ 레거시 ∥ 작성자 ∥ 지정 담당자(assignees) ∥ 직급 위계
+   (팀장=모든 업무 · 공구장=자기 권역 트리의 업무 · 담당자=업무의 현장(site)이 내 담당 현장).
+   ownerSid = 업무가 달린 트리 주인(멤버 id). 팀 공통 트리는 people 에 없어 공구장 권역 판정에서
+   자연히 제외된다(공통 업무는 작성자·담당자·팀장·관리자만). */
+function canEditTask(it,ownerSid){
+  if(!S.live||isEditor()||!it)return true;
+  if(!it.createdBy)return true;                       /* 레거시 — 기존대로 전원 */
+  const me=authUid();
+  if(it.createdBy===me)return true;
+  if(it.assignees&&it.assignees[me])return true;      /* 남이 만들어 줘도 담당자로 지정되면 수정 가능 */
+  const rk=myRank();
+  if(rk==='head')return true;                         /* 팀장: 모든 업무 */
+  if(rk==='lead'){const o=(S.people||{})[ownerSid];
+    if(o&&o.region&&o.region===myRegion())return true;}   /* 공구장: 자기 권역 */
+  if(it.site&&mySites()[it.site])return true;         /* 담당자: 내 담당 현장의 업무 */
+  return false;
+}
+/* 명부 배정 권한(628차) — 권역: 관리자·팀장 / 담당 현장: 관리자·팀장 전원, 공구장은 자기 권역 사람,
+   담당자는 본인만(선택 범위도 자기 권역 내 — 선택창이 제한한다) */
+function canAssignRegion(){return isEditor()||myRank()==='head';}
+/* 담당 현장 칩+선택 버튼(628차 공용) — 조직 관리 명부와 내 계정이 같은 꼴을 쓴다.
+   ⚠ 무조건 3개로 자르면 칸이 넓어도 '+1'이 뜬다 — 넣을 수 있는 만큼 다 넣고 넘칠 때만 접는다(CSS 가 판단) */
+function sitesChkHTML(p){
+  const can=canAssignSites(p.id);
+  const list=(S.org.sites||[]).filter(x=>(p.sites||{})[x.id]);
+  const shown=list.map(x=>can
+    ?'<button class="site-on" data-act="acct.siteOff" data-id="'+esc(p.id)+'" data-sid="'+esc(x.id)+'" data-tip="눌러서 빼기">'+esc(x.name)+'</button>'
+    :'<span class="site-on site-ro">'+esc(x.name)+'</span>').join('');
+  return '<div class="site-chk">'
+    +(list.length?shown:'<span class="site-none">미지정</span>')
+    +(can?'<button class="site-pick" data-act="acct.sitePick" data-id="'+esc(p.id)+'" aria-label="담당 현장 선택" data-tip="담당 현장 선택"><svg class="icn"><use href="#i-plus"></use></svg></button>':'')
+    +'</div>';
+}
+function canAssignSites(pid){
+  if(!S.live)return true;
+  if(isEditor()||myRank()==='head')return true;
+  if(myRank()==='lead'){const t=(S.people||{})[pid]||{};return !!myRegion()&&t.region===myRegion();}
+  return pid===authUid();
+}
+function denyTask(){toast('작성자만 수정할 수 있습니다');}
+function histName(){const u=authUid();
+  return String(((S.people||{})[u]||{}).name||String((S.user||{}).email||'').split('@')[0]||'?').slice(0,30);}
+function histPush(it,k){if(!S.live)return it;
+  const h=(Array.isArray(it.hist)?it.hist:[]).slice(-19);
+  h.push({t:Date.now(),u:histName(),k:String(k)});it.hist=h;return it;}
+const HIST_LBL={new:'작성',edit:'수정',done:'완료',undone:'진행으로',hold:'보류',move:'날짜 이동',restore:'복원'};
+/* 암호화 백업 복호(629차) — 위젯 브리지(hpw-restore-req/res) 왕복. 실패·비위젯이면 안내하고 null. */
+function bkDecrypt(text){
+  return new Promise(res=>{
+    const ev=window.__TAURI__&&window.__TAURI__.event;
+    if(!WIDGET||!ev){toast('암호화된 위젯 백업입니다 — 같은 PC 의 위젯 화면에서 되돌려 주세요');return res(null);}
+    const id='r'+Date.now()+Math.random().toString(36).slice(2,6);
+    let un=null,done=false;
+    const fin=v=>{if(done)return;done=true;clearTimeout(to);if(un)try{un();}catch(e){}res(v);};
+    const to=setTimeout(()=>{toast('위젯 응답이 없습니다 — 위젯을 다시 실행해 보세요');fin(null);},8000);
+    ev.listen('hpw-restore-res',e=>{
+      const p=(e&&e.payload)||{};if(p.id!==id)return;
+      if(p.err||!p.json){toast('복호에 실패했습니다 — 이 PC·이 계정에서 만든 백업만 되돌릴 수 있습니다');fin(null);}
+      else fin(p.json);
+    }).then(u=>{un=u;ev.emit('hpw-restore-req',{id,text});})
+      .catch(()=>{toast('위젯 연결에 실패했습니다');fin(null);});
+  });
+}
 function cleanTask(t){
   const o={text:String(t.text||'').slice(0,500),st:stOf(t.st),stKeep:!!t.stKeep,
     createdAt:Number(t.createdAt)||Date.now(),updatedAt:Number(t.updatedAt)||Date.now()};
+  if(t.createdBy)o.createdBy=String(t.createdBy).slice(0,64);   /* 627차: 소유 — 없으면 레거시(전원 수정) */
+  if(Array.isArray(t.hist)&&t.hist.length)o.hist=t.hist.slice(-20)
+    .map(h=>({t:Number(h.t)||0,u:String(h.u||'').slice(0,30),k:String(h.k||'').slice(0,10)}));
   /* 일정 성격 — 날짜가 있으면 달력에도 뜬다 */
   if(t.date)o.date=String(t.date).slice(0,10);
   if(t.end)o.end=String(t.end).slice(0,10);
@@ -597,12 +675,7 @@ function rankUses(v){
   return{region:r==='member'||r==='lead',sites:r==='member'};
 }
 /* 팀장·공구장 지정은 아무나 하면 안 된다 — 관리자이거나, 이미 팀장·공구장인 사람만 */
-function canSetRank(){
-  if(!S.live)return true;
-  if(isEditor())return true;
-  const me=S.user&&roster().find(p=>p.id===S.user.uid);
-  return !!me&&(rankOf(me.rank)==='head'||rankOf(me.rank)==='lead');
-}
+
 function cleanPerson(p){
   const o={name:String(p.name||'').slice(0,60),email:String(p.email||'').slice(0,200),
     team:String(p.team||''),region:String(p.region||''),rank:rankOf(p.rank)};
@@ -715,7 +788,11 @@ const FbStore={
     FB.db.ref().update(up).catch(fbErr);},
   delPlan(ym,id){const hit=allTasks().find(x=>x.iid===id);if(hit)this.trashTask(hit.sid,hit.iid);},
   movePlan(p){this.putPlan(p);},
-  putOrg(org){FB.db.ref('calapp/org').set(cleanOrg(org)).catch(fbErr);},
+  putOrg(org){const o=cleanOrg(org);
+    /* 630차: org.sites 는 배열(인덱스 키)이라 규칙에서 현장 id 로 권역을 찾을 수 없다 —
+       {sid:region} 미러를 함께 원자 기록해 people.sites 권역 검증의 서버 참조점으로 쓴다 */
+    const mir={};(o.sites||[]).forEach(x=>{if(x&&x.id)mir[x.id]=String(x.region||'');});
+    FB.db.ref().update({'calapp/org':o,'calapp/orgSiteRegion':mir}).catch(fbErr);},
   putOffday(ds,name){FB.db.ref('calapp/offdays/'+ds)[name?'set':'remove'](name||null).catch(fbErr);},
   putPerson(id,p){const r=FB.db.ref('calapp/people/'+id);(p?r.set(cleanPerson(p)):r.remove()).catch(fbErr);},
   putTask(mid,iid,item){
@@ -1098,7 +1175,7 @@ function acctHeadHTML(){
   const u=S.user;if(!u)return '';
   const av=avOf(u.uid),role=S.role||'viewer';
   return `<div class="acct-head">
-      <button class="acct-av av-cus av-btn" data-act="pf.toggle" aria-label="아바타 변경" style="--avc:${esc(av.color||ownColor(u.uid))}">
+      <button class="acct-av av-cus av-btn" data-act="pf.toggle" aria-label="아바타 변경" style="--avc:${esc(colBg(av.color||ownColor(u.uid)))}">
         ${avInner(av.icon)}<span class="av-pen"><svg class="icn"><use href="#i-plus"></use></svg></span>
       </button>
       <div style="min-width:0;flex:1">
@@ -1128,36 +1205,27 @@ function acctTabBody(tab){
     ${myOrgHTML()}
     ${emojiPickerHTML(av)}`;
 }
-/* 내 소속 — 팀·직급은 여기서, 권역·담당 현장은 조직 관리에서(양쪽에서 고치면 서로 덮어쓴다) */
+/* 내 소속(628차) — 팀·직급·권역은 조직 관리에서 배정(본인 읽기 전용), 본인은 이름·비밀번호·
+   담당 현장만. 담당 현장 UI 는 조직 관리 명부와 동일(칩 + 선택창 — sitesChkHTML 공용). */
 function myOrgHTML(){
   const u=S.user;if(!u)return '';
-  const me=roster().find(p=>p.id===u.uid)||{};
-  const teams=(S.org.teams||[]).filter(t=>t.name);
-  const regions=(S.org.regions||[]).filter(r=>r.name);
+  const me=roster().find(p=>p.id===u.uid)||{id:u.uid};
+  const teams=(S.org.teams||[]);
   const uses=rankUses(me.rank);
   const rk=rankOf(me.rank);
-  const canRank=canSetRank();
+  const tName=(teams.find(t=>t.id===me.team)||{}).name||'미배정';
+  const rName=me.region||(uses.region?'미지정':'해당 없음');
+  const fix=v=>'<div class="myorg-fix">'+esc(v)+'</div>';
+  const sitesHTML=uses.sites?`
+      <div class="myorg-f myorg-f-wide"><label>담당 현장</label>${sitesChkHTML(me)}</div>`:'';
   return `<div class="myorg">
     <div class="myorg-h">소속</div>
     <div class="myorg-g myorg-g3">
-      <div class="myorg-f"><label for="acctTeam">팀</label>
-        <select class="inp inp-sm" id="acctTeam" data-act="pf.org">
-          <option value="">미배정</option>
-          ${teams.map(t=>'<option value="'+esc(t.id)+'"'+(t.id===me.team?' selected':'')+'>'+esc(t.name)+'</option>').join('')}
-        </select></div>
-      <div class="myorg-f"><label for="acctRank">직급</label>
-        ${canRank
-          ?'<select class="inp inp-sm" id="acctRank" data-act="pf.org">'
-            +RANKS.map(([v,l])=>'<option value="'+v+'"'+(v===rk?' selected':'')+'>'+l+'</option>').join('')+'</select>'
-          :'<div class="myorg-fix">'+esc(rankLabel(rk))+'<span>관리자·팀장·공구장만</span></div>'}
-      </div>
-      <div class="myorg-f"><label for="acctRegion">권역</label>
-        ${uses.region
-          ?'<select class="inp inp-sm" id="acctRegion" data-act="pf.org"><option value="">미지정</option>'
-            +regions.map(r=>'<option value="'+esc(r.id)+'"'+(r.id===me.region?' selected':'')+'>'+esc(r.name)+'</option>').join('')+'</select>'
-          :'<div class="myorg-fix">해당 없음<span>'+esc(rankLabel(rk))+'</span></div>'}
-      </div>
+      <div class="myorg-f"><label>팀</label>${fix(tName)}</div>
+      <div class="myorg-f"><label>직급</label>${fix(rankLabel(rk))}</div>
+      <div class="myorg-f"><label>권역</label>${fix(rName)}</div>
     </div>
+    ${sitesHTML}
   </div>`;
 }
 /* 직급·권역을 바꾸면 아래 칸 구성이 달라진다 — 소속 블록만 다시 그린다 */
@@ -1326,17 +1394,19 @@ async function acctSave(silent){
   /* 소속(팀·직급)은 조직 데이터(people)라 계정 저장과 별개로 먼저 반영한다 */
   const myUid=(S.user||{}).uid||'';
   const tSel=$('#acctTeam'),rSel=$('#acctRank');
-  if(myUid&&(tSel||rSel)){
+  if(myUid){
     const me=roster().find(p=>p.id===myUid)||{};
     const pcur=(S.people||{})[myUid]||{};
-    const gSel=$('#acctRegion');
-    const rank=rSel?rankOf(rSel.value):rankOf(pcur.rank);
+    /* 627차: 팀·권역·직급은 관리자 배정 — 본인 저장은 기존값을 그대로 싣는다(규칙도 불변을 강제).
+       최초 등록(레코드 없음)은 빈 팀·빈 권역·member 로 시작한다. */
+    const rank=rankOf(pcur.rank);
     const uses=rankUses(rank);
+    const sites=uses.sites?(pcur.sites||{}):{};   /* 628차: 담당 현장은 선택창(acct.sitePick)이 putPerson 으로 직접 반영 */
     store.putPerson(myUid,{
       name:name||me.name||'',email:String((S.user||{}).email||me.email||'').toLowerCase(),
-      team:tSel?tSel.value:(pcur.team||''),
-      region:uses.region?(gSel?gSel.value:(pcur.region||'')):'',
-      rank,sites:uses.sites?(pcur.sites||{}):{}});
+      team:pcur.team||'',
+      region:uses.region?(pcur.region||''):'',
+      rank,sites});
     if(!S.live){rOrg();if(S.view==='tasks')rTasks();}
     pfScopeRefresh();          /* 직급에 따라 권역 칸 구성이 달라진다 */
   }
@@ -1641,7 +1711,7 @@ function rAcct(){
   const paint=el=>{
     if(!el||!a)return;
     el.classList.add('av-cus');
-    el.style.setProperty('--avc',a.color||ownColor(S.user.uid));
+    el.style.setProperty('--avc',colBg(a.color||ownColor(S.user.uid)));
     el.innerHTML=avInner(a.icon);   /* 이모지·기본 아이콘 모두 처리 */
   };
   paint($('#sbAcctAv'));
@@ -1823,7 +1893,7 @@ function planEvent(p,date){
     /* ⚠ display 를 지정하지 않으면 시간이 있는 업무는 FullCalendar 가 '점 형식'으로 그린다 —
        배경 없이 어두운 글자라 유리(어두운) 배경 위에서 거의 보이지 않는다. 전부 색 막대로 통일한다 */
     display:'block',
-    classNames:(done?['done']:[]).concat((!team&&isLightColor(planColor(p)))?['on-light']:[]).concat(team?['team']:[]).concat(isRisk(p.kind)?['risk']:[]),
+    classNames:(done?['done']:[]).concat((!team&&isLightColor(planColor(p)))?['on-light']:[]).concat(team?['team']:[]).concat(isRisk(p.kind)?['risk']:[]).concat((!team&&planColor(p)==='rainbow')?['ev-rb']:[]),   /* 632차: 무지개는 인라인 색 대신 클래스 — CSS 가 그라디언트를 칠한다 */
     /* 칸 안 차례 — 공통(0) · 내 업무(1) · 팀장(2) · 나머지(3).
        칸이 넘쳐 '외 N건' 으로 접힐 때 나와 상관 있는 것이 먼저 남는다(eventOrder 참조) */
     extendedProps:{pid:p.id,occ:date,recur:!!(p.recur&&p.recur.f),ord:evOrd(p,team),oky:evOwnKey(p),cre:Number(p.createdAt)||0},
@@ -2351,13 +2421,13 @@ function setPlanColor(c){
   if(scope==='tk'&&tn&&$('#tkNew')){
     tn.value=(c==='auto')?'':c;
     const dot=$('#tkNew .p-col');
-    if(dot)dot.style.background=planColor({color:tn.value,assignees:{}});
+    if(dot)dot.style.background=colBg(planColor({color:tn.value,assignees:{}}));
     return;
   }
   const pe=S.planEdit;if(!pe||!pe.draft)return;
   pe.draft.color=c;
   const btn=$('#dpEdit .p-col');
-  if(btn)btn.style.background=planColor(pe.draft);
+  if(btn)btn.style.background=colBg(planColor(pe.draft));
   planAutosave();
 }
 function colOutside(e){
@@ -2890,9 +2960,16 @@ function taskDetailHTML(sid,iid,it,occ){
       <div class="tk-sec-b" contenteditable="true" data-act="tk.field" data-f="${field}" data-sid="${esc(sid)}" data-iid="${esc(iid)}"
         data-ph="${lbl}를 입력하세요">${esc(val||'')}</div>
     </div>`;
+  const hist=(Array.isArray(it.hist)?it.hist:[]).slice().reverse();
+  const histHTML=hist.length?`<details class="tk-hist"><summary>이력 ${hist.length}</summary><div class="tk-hist-l">${
+    hist.map(h=>{const d=new Date(h.t);
+      return '<div>'+esc((d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'))
+        +' · '+esc(h.u||'?')+' · '+esc(HIST_LBL[h.k]||h.k)+'</div>';}).join('')
+  }</div></details>`:'';
   return `<div class="tk-detail">
-    <button class="tk-ico tk-ed tk-det-ed" data-act="tk.edit" data-sid="${esc(sid)}" data-iid="${esc(iid)}" data-occ="${esc(occ||'')}" aria-label="수정" data-tip="수정"><svg class="icn"><use href="#i-pen"></use></svg></button>
+    ${canEditTask(it,sid)?`<button class="tk-ico tk-ed tk-det-ed" data-act="tk.edit" data-sid="${esc(sid)}" data-iid="${esc(iid)}" data-occ="${esc(occ||'')}" aria-label="수정" data-tip="수정"><svg class="icn"><use href="#i-pen"></use></svg></button>`:''}
     ${box('내용',taskBody(it),'prog')}
+    ${histHTML}
   </div>`;
 }   /* 615차: 수정 버튼을 펼침으로 — 행의 체크 버튼 바로 아래 자리(.tk-det-ed) */
 /* 보류함 — 아침 확인에서 넘긴 업무(st=3). 고른 팀의 공통·담당자 것을 모아 기한 오래된 순으로 */
@@ -2988,7 +3065,8 @@ function taskFormSave(sid,iid){
   if(lu){const k=lk0||uid();links[k]={...(links[k]||{}),url:/^https?:\/\//i.test(lu)?lu:'https://'+lu};}
   else if(lk0)delete links[lk0];
   const rec=($('#tnRec')&&$('#tnRec').value)||'';
-  store.putTask(sid,id,{...(cur||{createdAt:Date.now()}),
+  const _nu=!cur;   /* 627차: 신규 판별 — 신규면 소유·작성 이력, 기존이면 수정 이력 */
+  store.putTask(sid,id,histPush({...(cur||{createdAt:Date.now(),...(S.live&&authUid()?{createdBy:authUid()}:{})}),
     text:t,kind:kindOf(($('#tnKind')&&$('#tnKind').value)||''),
     prog:(($('#tnProg')&&$('#tnProg').value)||'').trim(),plan:'',
     site:siteV,
@@ -3001,7 +3079,7 @@ function taskFormSave(sid,iid){
     stKeep:!!(cur&&cur.stKeep),
     assignees:asg,links,color:($('#tnColor')&&$('#tnColor').value)||'',
     order:(cur&&Number.isFinite(Number(cur.order)))?Number(cur.order):nextOrder(sid),
-    updatedAt:Date.now()});
+    updatedAt:Date.now()},_nu?'new':'edit'));
   S.tkNew=null;S.tkEdit=null;S.tkOpen=sid+'/'+id;
   if(!S.live){rTasks();rDay();rWidget();}else setTimeout(rTasks,220);
   refetchCal();
@@ -4325,11 +4403,9 @@ function safeHTML(dirty){
       ALLOW_DATA_ATTR:false
     });
   }
-  // 폴백(DOMPurify 부재): 위험 태그·이벤트핸들러·위험 URL 스킴 제거 (최소 방어선)
-  return s.replace(/<\/?(?:script|iframe|object|embed|link|meta|style|form|input|button|base|frame|frameset|applet)\b[^>]*>/gi,'')
-          .replace(/\son\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi,'')
-          .replace(/(?:href|src|xlink:href|formaction|action)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi,'')
-          .replace(/(?:javascript|vbscript)\s*:/gi,'');
+  // 폴백(DOMPurify 부재): 626차 — 정규식 살균은 보안 최종선이 못 된다(우회 여지). HTML 을 버리고
+  // 텍스트로만 표시한다. DOMPurify 는 자체 번들이라 부재 자체가 이상 상황 — 기능 저하보다 안전을 택한다.
+  return esc(s);
 }
 function dfInsShortName(name){if(!name)return'-';const stripped=String(name).replace(/힐스테이트/g,' ').replace(/\s+/g,' ').trim();return stripped||String(name).trim();}
 function dfInsightsBuild(all,tR,tRes,tU,tLt,rate,pRate,rm){
@@ -7061,8 +7137,8 @@ function holdDrop(ds){
   const{sid,iid}=HOLD_DRAG;HOLD_DRAG=null;
   const cur=(S.tasks[sid]||{})[iid];if(!cur)return;
   const span=(cur.end&&cur.date)?daysBetween(cur.date,cur.end):0;
-  store.putTask(sid,iid,{...cur,st:1,done:false,stKeep:true,date:ds,
-    end:span>0?addDays(ds,span):'',updatedAt:Date.now()});
+  store.putTask(sid,iid,histPush({...cur,st:1,done:false,stKeep:true,date:ds,
+    end:span>0?addDays(ds,span):'',updatedAt:Date.now()},'move'));
   if(!S.live){rTasks();rDay();rWidget();}
   rHold();refetchCal();
   const t=toDate(ds);toast((t.getMonth()+1)+'월 '+t.getDate()+'일로 옮겼습니다');
@@ -7159,7 +7235,8 @@ function mrvHoldRest(){
   $$('#mbody .mrv-i').forEach(row=>{
     const cur=(S.tasks[row.dataset.sid]||{})[row.dataset.iid];
     if(!cur||stOf(cur.st)!==1)return;
-    store.putTask(row.dataset.sid,row.dataset.iid,{...cur,st:3,done:false,updatedAt:Date.now()});n++;
+    if(!canEditTask(cur,row.dataset.sid))return;   /* 627차: 권한 없는 업무는 일괄 보류에서 건너뛴다 */
+    store.putTask(row.dataset.sid,row.dataset.iid,histPush({...cur,st:3,done:false,updatedAt:Date.now()},'hold'));n++;
   });
   if(!n)return;
   if(!S.live){rTasks();rDay();rWidget();}
@@ -7170,7 +7247,7 @@ function mrvHoldRest(){
 function mrvApply(el,patch,msg){
   const row=el.closest('.mrv-i');if(!row)return;
   const sid=row.dataset.sid,iid=row.dataset.iid,cur=(S.tasks[sid]||{})[iid];
-  if(cur)store.putTask(sid,iid,{...cur,...patch,updatedAt:Date.now()});
+  if(cur)store.putTask(sid,iid,histPush({...cur,...patch,updatedAt:Date.now()},patch.st===2?'done':(patch.date?'move':'edit')));
   row.remove();
   const left=$$('#mbody .mrv-i').length;
   const n=$('#mrvN');if(n)n.textContent=left;
@@ -7334,7 +7411,7 @@ function siteOwnersHTML(sid){
      여기에만 나오면 두 화면이 어긋난다(341차) */
   const list=roster().filter(p=>(t?p.team===t.id:true)&&rankUses(p.rank).sites&&(p.sites||{})[sid]);
   if(!list.length)return '<span class="site-none">미지정</span>';
-  return list.map(p=>'<span class="own-chip"><i style="background:'+esc(ownColor(p.id))+'"></i>'+esc(p.name)+'</span>').join('');
+  return list.map(p=>'<span class="own-chip"><i style="background:'+esc(colBg(ownColor(p.id)))+'"></i>'+esc(p.name)+'</span>').join('');
 }
 function siteTable(){
   const regs=(S.org.regions||[]).filter(r=>r.name);
@@ -7865,7 +7942,7 @@ function kmPanelHTML(all,put,list,H){
     const ids=Object.keys(g.cnt).sort((a,b)=>a==='none'?1:b==='none'?-1:g.cnt[b]-g.cnt[a]);
     own+='<div class="kml-grp"><div class="kml-g'+(S.kmReg&&S.kmReg===k?' on':'')+'"'+(r?' data-act="org.mapReg" data-reg="'+esc(r.id)+'"':'')+'>'
       +esc(r?r.name:'권역 없음')+'<span class="kml-s">'+g.n+'</span><em class="kml-n">'+g.tot.toLocaleString()+'</em></div>';
-    ids.forEach(id=>{const p=id==='none'?null:ppl.find(x=>x.id===id),col=id==='none'?null:ownColor(id);
+    ids.forEach(id=>{const p=id==='none'?null:ppl.find(x=>x.id===id),col=id==='none'?null:colBg(ownColor(id));
       const dim=(S.kmReg&&S.kmReg!==k)||(fo&&fo!==id);
       own+='<div class="kml-r'+(fo===id?' on':'')+(dim?' dim':'')+'" data-act="org.mapOwn" data-own="'+esc(id)+'">'
         +'<i'+(col?' style="background:'+esc(col)+'"':'')+'></i><b>'+esc(id==='none'?'미지정':p?p.name:'?')+'</b>'
@@ -8207,15 +8284,7 @@ function rOrg(){
   mine.sort(sortFn);free.sort(sortFn);
   const regOpt=sel=>'<option value="">권역 —</option>'+(S.org.regions||[]).map(x=>'<option value="'+esc(x.id)+'"'+(x.id===sel?' selected':'')+'>'+esc(x.name)+'</option>').join('');
   const roleOpt=(v,txt,cur)=>'<option value="'+v+'"'+(cur===v?' selected':'')+'>'+txt+'</option>';
-  const sitesOf=p=>{
-    const list=(S.org.sites||[]).filter(x=>(p.sites||{})[x.id]);
-    /* ⚠ 무조건 3개로 자르면 칸이 넓어도 '+1'이 뜬다 — 넣을 수 있는 만큼 다 넣고 넘칠 때만 접는다(CSS 가 판단) */
-    const shown=list.map(x=>'<button class="site-on" data-act="acct.siteOff" data-id="'+esc(p.id)+'" data-sid="'+esc(x.id)+'" data-tip="눌러서 빼기">'+esc(x.name)+'</button>').join('');
-    return '<div class="site-chk">'
-      +(list.length?shown:'<span class="site-none">미지정</span>')
-      +'<button class="site-pick" data-act="acct.sitePick" data-id="'+esc(p.id)+'" aria-label="담당 현장 선택" data-tip="담당 현장 선택"><svg class="icn"><use href="#i-plus"></use></svg></button>'
-      +'</div>';
-  };
+  const sitesOf=p=>sitesChkHTML(p);   /* 628차: 내 계정과 공용 — 전역으로 승격 */
   const roleCtl=p=>{
     const role=p.role||'viewer',rc='r-'+role,isMe=p.id===myUid,lastEd=role==='editor'&&editors.length<=1;
     const lock=isMe?'본인 권한은 스스로 바꿀 수 없습니다':(lastEd?'마지막 관리자는 강등할 수 없습니다':'');
@@ -8232,7 +8301,7 @@ function rOrg(){
       +'<option value=""'+(p.team?'':' selected')+'>미배정</option>'   /* 팀에서 빼면 아래 미배정 카드로 내려간다 */
       +'</select>';
   };
-  const canRank=canSetRank();
+  const canRank=isEditor();   /* 627차: 직급 배정은 관리자만 — 규칙(people 쓰기 EDITOR·본인)과 일치 */
   const rankOpt=cur=>RANKS.map(([v,l])=>'<option value="'+v+'"'+(v===rankOf(cur)?' selected':'')+'>'+l+'</option>').join('');
   const rankCtl=p=>canRank
     ? '<select class="mg-inp" data-act="acct.set" data-f="rank" data-id="'+esc(p.id)+'" aria-label="직급">'+rankOpt(p.rank)+'</select>'
@@ -8245,7 +8314,9 @@ function rOrg(){
       <td>${teamCtl(p)}</td>
       <td>${rankCtl(p)}</td>
       <td>${u.region
-        ?'<select class="mg-inp" data-act="acct.set" data-f="region" data-id="'+esc(p.id)+'" aria-label="권역">'+regOpt(p.region)+'</select>'
+        ?(canAssignRegion()
+          ?'<select class="mg-inp" data-act="acct.set" data-f="region" data-id="'+esc(p.id)+'" aria-label="권역">'+regOpt(p.region)+'</select>'
+          :'<span class="rk-fix">'+esc((S.org.regions||[]).find(r=>r.id===p.region)?.name||'권역 —')+'</span>')
         :''}</td>
       <td>${u.sites?sitesOf(p):''}</td>
       <td class="utbl-r">${roleCtl(p)}</td>
@@ -8527,12 +8598,15 @@ function ctxFor(t){
   const tk=t.closest('.tk-item');
   if(tk&&tk.dataset.sid){
     const sid=tk.dataset.sid,iid=tk.dataset.iid,it=(S.tasks[sid]||{})[iid];
-    if(it)return[
+    if(it){const own=canEditTask(it,sid);   /* 627차: 권한 없는 업무는 보기·복사만 */
+      return own?[
       {label:stEff(it)===2?'진행으로 되돌리기':'완료로 표시',act:()=>ACT['tk.st']({dataset:{sid,iid}})},
       {label:'제목 복사',act:()=>copyText(it.text||'','제목을 복사했습니다')},
       {sep:true},
       {label:'삭제',danger:true,act:()=>ACT['tk.del']({dataset:{sid,iid}})}
-    ];
+    ]:[
+      {label:'제목 복사',act:()=>copyText(it.text||'','제목을 복사했습니다')}
+    ];}
   }
   /* ② 달력 날짜 칸 */
   const cell=t.closest('#fcal td.fc-daygrid-day');
@@ -9070,7 +9144,9 @@ const ACT={
     S.tkOpen=S.tkOpen===key?null:key;rTasks();
   },
   'tk.field':()=>{},
-  'tk.edit':el=>{S.tkNew=null;S.tkOpen=null;S.tkDate={open:false,ym:'',a:'',b:''};S.tkEdit=el.dataset.sid+'/'+el.dataset.iid;
+  'tk.edit':el=>{const _it=(S.tasks[el.dataset.sid]||{})[el.dataset.iid];
+    if(_it&&!canEditTask(_it,el.dataset.sid)){denyTask();return;}
+    S.tkNew=null;S.tkOpen=null;S.tkDate={open:false,ym:'',a:'',b:''};S.tkEdit=el.dataset.sid+'/'+el.dataset.iid;
     S.tkEditOcc=el.dataset.occ||'';   /* 반복이면 어느 회차에서 눌렀는지 — 팝업을 그 행에 붙이고 표시도 그 행만 */
     rTasks();},
   /* 같은 것을 다시 누르면 되돌아온다(389차) — 보류함에 따로 '뒤로' 버튼을 두지 않는다 */
@@ -9078,23 +9154,25 @@ const ACT={
   'tk.st':el=>{
     const sid=el.dataset.sid,iid=el.dataset.iid,occ=el.dataset.occ||'';
     const cur=(S.tasks[sid]||{})[iid];if(!cur)return;
+    if(!canEditTask(cur,sid)){denyTask();return;}   /* 627·628차: 상태 변경도 권한 위계를 지난다 */
     if(cur.recur&&cur.recur.f&&occ){        /* 반복은 그 회차만 완료로 — 업무 전체를 건드리면 다음 회차까지 닫힌다 */
       const p=taskAsPlan(sid,iid,cur),k=occSrc(p,occ);
       const on=!!(cur.doneOn&&cur.doneOn[k]);
       const doneOn={...(cur.doneOn||{})};
       if(on)delete doneOn[k];else doneOn[k]=1;
-      store.putTask(sid,iid,{...cur,doneOn,updatedAt:Date.now()});
+      store.putTask(sid,iid,histPush({...cur,doneOn,updatedAt:Date.now()},on?'undone':'done'));
       if(!S.live){tkRowRefresh(el);rDay();rWidget();}
       refetchCal();return;
     }
     const n=stEff(cur)===2?1:2;
-    store.putTask(sid,iid,{...cur,st:n,stKeep:n===1,updatedAt:Date.now()});
+    store.putTask(sid,iid,histPush({...cur,st:n,stKeep:n===1,updatedAt:Date.now()},n===2?'done':(n===3?'hold':'undone')));
     if(!S.live){tkRowRefresh(el);rDay();rWidget();}
     refetchCal();   /* 완료 처리하면 달력의 기한 표시도 즉시 사라져야 한다 */
   },
   'tk.del':el=>{
     const sid=el.dataset.sid,iid=el.dataset.iid,key=sid+'/'+iid;
     const it=(S.tasks[sid]||{})[iid]||{};
+    if(!canEditTask(it,sid)){denyTask();return;}
     confirmModal('업무 삭제',
       '"'+(it.text||'제목 없음')+'" 업무를 휴지통으로 옮깁니다. 30일 안에는 설정 > 휴지통에서 복원할 수 있습니다.',
       ()=>{
@@ -9183,21 +9261,32 @@ const ACT={
   'acct.sitePick':el=>{
     
     const id=el.dataset.id,p=roster().find(x=>x.id===id);if(!p)return;
-    const regs=(S.org.regions||[]).filter(r=>r.name);
+    if(!canAssignSites(id)){toast('담당 현장을 바꿀 권한이 없습니다');return;}   /* 628차 위계 */
+    /* 자기 권역 현장만 고른다(628·630차: 담당자 본인 + 공구장의 남 배정 — 규칙 orgSiteRegion 검증과
+       일치시켜 타권역 체크가 저장에서 거부되는 혼란을 막는다). 타권역 기존 배정은 숨은 채로 보존.
+       관리자·팀장만 전 그룹. */
+    const selfLtd=!isEditor()&&myRank()!=='head';
+    const regsAll=(S.org.regions||[]).filter(r=>r.name);
+    const regs=selfLtd?regsAll.filter(r=>r.id===myRegion()):regsAll;
     const sites=S.org.sites||[];
     if(!sites.length){toast('등록된 현장이 없습니다');return;}
+    if(selfLtd&&!regs.length){toast('권역이 아직 지정되지 않았습니다 — 관리자에게 요청하세요');return;}
     const group=(rid,label)=>{
       const items=sites.filter(x=>(x.region||'')===rid);
       if(!items.length)return '';
       return '<div class="spk-g">'+esc(label)+'</div>'+items.map(x=>
         '<label class="spk-i"><input type="checkbox" data-sid="'+esc(x.id)+'"'+((p.sites||{})[x.id]?' checked':'')+'>'+esc(x.name)+'</label>').join('');
     };
+    const shownRegIds=new Set(regs.map(r=>r.id).concat(selfLtd?[]:['']));
+    const hiddenKeep=Object.keys(p.sites||{}).filter(sid2=>{
+      const st2=sites.find(x=>x.id===sid2);return st2&&!shownRegIds.has(st2.region||'');
+    }).map(sid2=>'<input type="checkbox" data-sid="'+esc(sid2)+'" checked hidden>').join('');
     openModal(p.name+' · 담당 현장',   /* 제목은 textContent — esc 하면 &가 &amp;로 보인다 */
-      '<div class="spk">'+regs.map(r=>group(r.id,r.name)).join('')+group('','권역 미지정')+'</div>',
+      '<div class="spk">'+regs.map(r=>group(r.id,r.name)).join('')+(selfLtd?'':group('','권역 미지정'))+hiddenKeep+'</div>',
       '<button class="btn bg2 bsm" data-act="modal.close">취소</button><button class="btn bp bsm" data-act="modal.ok">저장</button>');
     MODAL_CB={type:'sites',ok:()=>{
       const sel={};
-      $$('.spk input:checked').forEach(c=>{sel[c.dataset.sid]=1;});
+      $$('.spk input:checked').forEach(c=>{sel[c.dataset.sid]=1;});   /* hidden 보존분 포함(628차) */
       const cur=(S.people||{})[id]||{};
       store.putPerson(id,{name:p.name||'',email:p.email||'',team:cur.team||p.team||'',
         region:cur.region||p.region||'',rank:rankOf(cur.rank||p.rank),sites:sel});
@@ -9209,6 +9298,7 @@ const ACT={
   'acct.siteOff':el=>{
     const id=el.dataset.id,sid=el.dataset.sid;
     const p=roster().find(x=>x.id===id);if(!p)return;
+    if(!canAssignSites(id)){toast('담당 현장을 바꿀 권한이 없습니다');return;}   /* 628차 위계 */
     const cur=(S.people||{})[id]||{};
     const sites={...(cur.sites||p.sites||{})};delete sites[sid];
     store.putPerson(id,{name:p.name||'',email:p.email||'',team:cur.team||p.team||'',
@@ -9243,7 +9333,8 @@ const ACT={
       if(!w){toast('이미 없는 항목입니다');trashOpen();return;}
       let it=null;try{it=JSON.parse(LZString.decompressFromBase64(w.z)||'null');}catch(e){}
       if(!it){toast('복원할 수 없는 항목입니다');return;}
-      store.putTask(sid,iid,cleanTask(it));   /* cleanTask 를 다시 지나 tasks 스키마로 검증된다 */
+      if(!canEditTask(it,sid)){denyTask();return;}   /* 627차 */
+      store.putTask(sid,iid,histPush(cleanTask(it),'restore'));   /* cleanTask 를 다시 지나 tasks 스키마로 검증된다 */
       trashDrop(sid,iid);
       toast('복원했습니다');trashOpen();});},
   'trash.del':el=>{const sid=el.dataset.sid,iid=el.dataset.iid;
@@ -9257,6 +9348,8 @@ const ACT={
     try{localStorage.setItem(bkKey(),JSON.stringify({at:new Date().toISOString(),name:d.name,by:'수동'}));}catch(e){}
     rBk();toast('내려받기 폴더에 저장했습니다 · '+d.name);
   },
+  /* 암호화 백업 복호(629차) — 위젯 안에서만 가능(DPAPI 는 그 PC·그 계정 귀속).
+     브라우저 단독이면 같은 PC 의 위젯 화면에서 되돌리라고 안내한다. */
   'bk.restore':()=>{
     if(!isEditor())return toast('관리자만 되돌릴 수 있습니다');
     const inp=document.createElement('input');
@@ -9265,9 +9358,14 @@ const ACT={
       const f=inp.files&&inp.files[0];if(!f)return;
       if(f.size>20*1024*1024)return toast('20MB 이하 백업 파일만 불러올 수 있습니다');
       const rd=new FileReader();
-      rd.onload=()=>{
+      rd.onload=async()=>{
+        let raw=String(rd.result||'');
+        if(raw.startsWith('HPWENC1')){   /* 629차: 위젯 자동 백업은 DPAPI 로 잠겨 있다 */
+          raw=await bkDecrypt(raw);
+          if(raw==null)return;   /* 안내는 bkDecrypt 가 했다 */
+        }
         let d=null;
-        try{d=JSON.parse(rd.result);}catch(e){return toast('읽을 수 없는 파일입니다');}
+        try{d=JSON.parse(raw);}catch(e){return toast('읽을 수 없는 파일입니다');}
         if(!d||d.kind!=='hplan-backup')return toast('이 앱의 백업 파일이 아닙니다');
         const n=Object.values(d.tasks||{}).reduce((a,m)=>a+Object.keys(m||{}).length,0);
         confirmModal('백업으로 되돌리기',
@@ -9367,7 +9465,7 @@ const ACT={
     const cur=(S.tasks[sid]||{})[iid];if(!cur)return;
     const n=stEff(cur)===2?1:2;
     stxSet(el,n);
-    store.putTask(sid,iid,{...cur,st:n,stKeep:n===1,updatedAt:Date.now()});
+    store.putTask(sid,iid,histPush({...cur,st:n,stKeep:n===1,updatedAt:Date.now()},n===2?'done':(n===3?'hold':'undone')));
     toast(n===2?'완료로 바꿨습니다':'진행으로 되돌렸습니다');
     setTimeout(()=>{if(!S.live){rTasks();rDay();rWidget();}widSideRender();refetchCal();},220);
   },
@@ -9597,6 +9695,9 @@ document.addEventListener('change',e=>{
   const el=e.target.closest('[data-act="acct.set"]');
   if(!el)return;
   const id=el.dataset.id,f=el.dataset.f;
+  /* 628차 위계: 권역 배정은 관리자·팀장, 팀·직급은 관리자만 — UI 를 뚫어도 규칙이 거부하지만
+     여기서 먼저 끊어 혼란(값 바뀐 듯 보이다 원복)을 막는다 */
+  if(f==='region'?!canAssignRegion():!isEditor()){toast('권한이 없습니다');rOrg();return;}
   const cur=(S.people||{})[id]||{};
   const base=roster().find(p=>p.id===id)||{};
   const rank=f==='rank'?rankOf(el.value):rankOf(cur.rank);
@@ -9618,7 +9719,7 @@ document.addEventListener('input',e=>{if(e.target.id==='nqQ')rNq();});
 document.addEventListener('change',e=>{const el=e.target;if(!el||!el.dataset)return;
   /* 담당자를 바꾸면 앞의 색 점도 따라간다(389차) — select 는 클릭 처리에서 막히므로 change 에서 다룬다 */
   if(el.id==='tnAsg'){const dot=document.getElementById('tnAsgDot');
-    if(dot)dot.style.background=el.value?ownColor(el.value):'var(--lbl3)';}
+    if(dot)dot.style.background=el.value?colBg(ownColor(el.value)):'var(--lbl3)';}
   if(el.dataset.act==='df.moYear'){S.dfMoYear=el.value;if(DF.lastDash)dfDashMonthTable(DF.lastDash);}
   else if(el.dataset.act==='df.detailYear'){S.dfDetailYear=el.value;rDefect();}
   else if(el.dataset.act==='df.trendYear'){

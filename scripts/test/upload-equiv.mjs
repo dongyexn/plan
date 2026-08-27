@@ -174,6 +174,9 @@ function loadPort(){
   sb.window={};sb.globalThis=sb;
   sb.LZString={compressToBase64:s=>'LZ:'+s.length+':'+s.slice(0,40)};
   sb.toast=()=>{};sb.$=()=>null;sb.confirm=()=>false;
+  /* 626차: 실브라우저와 동일 조건 — DOMPurify 는 자체 번들로 항상 존재한다. 스텁이 없으면 이식본의
+     text-only 폴백이 발동해 원본(regex 폴백)과 산출이 갈린다(폴백 경로는 비교 대상이 아니다) */
+  sb.window.DOMPurify=sb.DOMPurify={sanitize:x=>String(x),addHook(){}};
   /* 게시 전 검토 모달(615차) — 열리면 곧바로 [게시] 승인으로 응답 */
   sb.openModal=()=>{setTimeout(()=>{const r=sb.window.__PUBOK__;sb.window.__PUBOK__=null;if(r)r(true);},0);};
   sb.closeModal=()=>{};

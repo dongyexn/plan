@@ -1,0 +1,9 @@
+{
+  "name": "calapp-devtools",
+  "private": true,
+  "description": "검증 게이트 전용 개발 의존성 — 앱 런타임은 이 패키지와 무관(정적 파일 단독 실행)",
+  "devDependencies": {
+    "playwright-core": "1.62.1",
+    "playwright": "1.62.1"
+  }
+}
