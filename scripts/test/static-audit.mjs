@@ -144,6 +144,10 @@ OK('구문 검사 (node --check)');
     if (!mApp || !mCss) F('무지개 정의를 찾지 못했다(RAINBOW_BG 또는 .ev-rb)');
     else if (mApp[1].replace(/\s+/g,'') !== mCss[1].trim().replace(/\s+/g,''))
       F('무지개 그라디언트 이중 정의 불일치 — app.js RAINBOW_BG 와 index.html .ev-rb');
+    const mTeam=/\#fcal \.fc-event\.ev-rb\.team\{background:([^!]+) !important;/.exec(html);
+    if (!mTeam) F('공통 무지개 막대의 ID급 팀 전용 CSS가 누락됐다');
+    else if (!mTeam[1].includes('padding-box') || !mTeam[1].includes('border-box')) F('공통 무지개 막대의 흰 내부/무지개 테두리 CSS가 불완전하다');
+    else OK('무지개 공통 막대 — ID급 team 구체성 규칙 유지');
   }
   const allowed = new Set([...seg.matchAll(/"(\w+)"\s*:\s*\{/g)].map(m => m[1]));
   const miss = [...new Set(writes)].filter(f => !allowed.has(f));

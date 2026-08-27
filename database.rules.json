@@ -34,7 +34,7 @@
       "$uid": {
         // 본인 레코드는 본인이, 그 외에는 MEMBER 가 읽을 수 있음
         ".read": "auth != null && (auth.uid == $uid || (auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')))",
-        // 쓰기: ① 본인이면 (최초 등록 시에만) role을 viewer로 생성 / 등록 이후엔 기존 role 유지만 가능
+        // 쓰기: ① 본인이면 최초 등록 시 role=viewer 생성, 등록 이후에는 현재 role 유지
         //         (자기 권한 상승 차단 + blocked 계정이 스스로 viewer로 되돌리는 자가해제 차단)
         //         + email 은 본인 토큰 이메일과 일치해야 함(타인 이메일 기재 레코드 생성·변조 차단)
         //           클라이언트가 가입·기록 시 이메일을 소문자로 정규화하므로 토큰 이메일과 대소문자 일치.
@@ -201,16 +201,13 @@
       "tasks": {
         "$sid": {
           "$iid": {
-            // 627·628차 업무 권한: 관리자는 전부. 그 외 기존 항목은 레거시(createdBy 없음 — 기존대로 전원)
+            // 업무 권한: 관리자는 전부. 작성자·담당자·직급·권역·현장 범위에 따라 일반 사용자의 수정 권한을 결정
             // ∥ 작성자 ∥ 지정 담당자(assignees) ∥ 팀장(head)=모든 업무 ∥ 공구장(lead)=트리 주인($sid)이
             // 같은 권역 ∥ 업무의 현장(site)이 내 담당 현장. 완료 체크·보류·삭제(null 쓰기)도 같은 조건.
-            // 630차 ①: **createdBy 는 불변** — 있던 것을 바꾸거나(양도·사칭) 지워서(레거시화로 전원
-            //   개방) 권한 구조를 흔들 수 없다. 레거시 항목에 심는 것도 금지(남이 심으면 소유권 탈취).
-            //   관리자만 정리 목적 변경 가능. 항목 삭제(null)는 예외.
-            // 630차 ②: 신규의 createdBy 무표기 허용은 **의도** — 레거시 항목의 휴지통 복원이 규칙상
-            //   '무표기 신규 set'과 구분되지 않는다. 우회로 얻는 것은 전원이 고칠 수 있는 공용 성격
-            //   업무 1건뿐(권한 상승 없음) — 위협 수용. trash·archive 의 MEMBER 유지도 의도:
-            //   삭제(작성자=viewer 가능)의 이동 대상이고, 아카이브 이월은 아무 세션이나 수행한다.
+            // createdBy는 불변이다. 작성자 양도·사칭·삭제를 통한 권한 변경을 막는다.
+            // 신규 업무는 createdBy 없이도 생성할 수 있으며, 작성자 정보가 있는 업무는 해당 소유권을 유지한다.
+            // 관리자만 소유권 정리 목적의 변경이 가능하고 삭제(null)는 예외다.
+            // trash·archive는 업무 삭제·보관 흐름을 위해 MEMBER가 접근한다.
             ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer') && (root.child('users').child(auth.uid).child('role').val() == 'editor' || (!data.exists() ? (!newData.child('createdBy').exists() || newData.child('createdBy').val() == auth.uid) : (!data.child('createdBy').exists() || data.child('createdBy').val() == auth.uid || data.child('assignees').child(auth.uid).exists() || root.child('calapp/people').child(auth.uid).child('rank').val() == 'head' || (root.child('calapp/people').child(auth.uid).child('rank').val() == 'lead' && root.child('calapp/people').child(auth.uid).child('region').val() != '' && root.child('calapp/people').child($sid).child('region').val() == root.child('calapp/people').child(auth.uid).child('region').val()) || (data.child('site').val() != '' && root.child('calapp/people').child(auth.uid).child('sites').child(data.child('site').val()).exists()))) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || !newData.exists() || (!data.exists() || (data.child('createdBy').exists() ? newData.child('createdBy').val() == data.child('createdBy').val() : !newData.child('createdBy').exists()))))",
             "text":      { ".validate": "newData.isString() && newData.val().length <= 500" },
             "body":      { ".validate": "newData.isString() && newData.val().length <= 2000" },
@@ -342,8 +339,7 @@
       // 담당자 명부(팀·권역·현장 배정) — MEMBER 변경 가능
       "people": {
         "$pid": {
-          // 630차 재구성: **인증(HDEC·메일 검증) AND (관리자 ∥ 본인 ∥ 팀장 ∥ 공구장)** — 예전엔 인증 조건이
-          // 첫 분기에만 있어 뒤 분기가 인증을 안 지났다(외부 리뷰 지적 — 실우회는 어려우나 방어적 재구성).
+          // 인증된 사용자 중 관리자·본인·팀장·공구장에게 역할에 맞는 조직 정보 변경 권한을 부여한다.
           // 본인: 이름·이메일·담당 현장만(팀·권역·직급 불변, 최초는 빈 팀·빈 권역·member).
           // 팀장(head): 전원의 권역·담당 현장(이름·이메일·팀·직급 불변). 공구장(lead): 자기 권역 사람의
           // 담당 현장만(권역도 불변). 현장의 권역 검증은 sites/$sid .validate(orgSiteRegion 미러 참조).
