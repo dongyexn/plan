@@ -10,7 +10,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const root=path.join(path.dirname(fileURLToPath(import.meta.url)),'..','..');
-const OUT='/home/claude/work/e2e';
+const OUT=process.env.E2E_OUT || path.join(root,'e2e');
 fs.mkdirSync(OUT,{recursive:true});
 const MIME={'.html':'text/html','.js':'text/javascript','.css':'text/css','.woff2':'font/woff2','.png':'image/png'};
 const srv=http.createServer((req,res)=>{const u=req.url.split('?')[0];const f=path.join(root,u==='/'?'index.html':u);
