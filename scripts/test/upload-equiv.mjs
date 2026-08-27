@@ -12,7 +12,10 @@ import {fileURLToPath} from 'node:url';
 const HERE=path.dirname(fileURLToPath(import.meta.url));
 const APP=path.join(HERE,'../../app.js');
 const argi=process.argv.indexOf('--report');
-const REPORT=argi>0?process.argv[argi+1]:path.join(HERE,'../../../../report/report-main');
+const REPORT_ARG=argi>=0?process.argv[argi+1]:'';
+if(argi>=0 && (!REPORT_ARG || REPORT_ARG.startsWith('--'))){ console.error('FAIL  --report 뒤에 report-main 경로가 필요합니다.'); process.exit(2); }
+const REPORT=REPORT_ARG||process.env.REPORT_MAIN||path.join(HERE,'../../../../report/report-main');
+if(!fs.existsSync(REPORT)){ console.log('SKIP  report-main 원본이 없어 동등성 비교를 건너뜁니다: '+REPORT); process.exit(0); }
 
 /* calc-equiv 와 동일한 스택 스캐너 grab */
 function grab(src,name){

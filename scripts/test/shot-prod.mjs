@@ -1,4 +1,4 @@
-import { chromium } from 'playwright-core';
+import { chromium } from 'playwright';
 import http from 'http';
 import fs from 'fs';
 import path from 'path';
@@ -15,7 +15,7 @@ const srv = http.createServer((req,res)=>{
   res.end(fs.readFileSync(f));
 }).listen(PORT);
 
-const br = await chromium.launch({executablePath:process.env.CHROMIUM||'/tmp/chromium',args:['--no-sandbox']});
+const br = await chromium.launch({...(process.env.CHROMIUM?{executablePath:process.env.CHROMIUM}:{}),args:['--no-sandbox']});
 const pg = await br.newPage({viewport:{width:1440,height:960},deviceScaleFactor:2});
 pg.on('pageerror',e=>console.log('PAGEERR',e.message));
 await pg.goto(`http://localhost:${PORT}/index.html?local=1`);

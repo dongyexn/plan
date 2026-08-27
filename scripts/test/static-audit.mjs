@@ -137,7 +137,7 @@ OK('구문 검사 (node --check)');
     .concat([...body.matchAll(/\bo=\{([^}]*)\}/gs)].flatMap(m => [...m[1].matchAll(/(\w+)\s*:/g)].map(x => x[1])));
   const seg = rules.slice(rules.indexOf('"tasks"'), rules.indexOf('"trash"'));   /* 627차: 고정 3500자 창이 소유 규칙 추가로 모자랐다 — 블록 경계로 */
 
-  /* 632차: 무지개 그라디언트는 app.js(RAINBOW_BG)와 index.html(.ev-rb)에 이중 정의 — 값이 갈리면 잡는다 */
+  /* 633차: 무지개 그라디언트는 app.js(RAINBOW_BG)와 index.html(.ev-rb)에 이중 정의 — 값이 갈리면 잡는다 */
   {
     const mApp = /RAINBOW_BG='([^']+)'/.exec(js);
     const mCss = /\.fc \.ev-rb\{background:([^!]+) !important/.exec(html);
@@ -149,6 +149,20 @@ OK('구문 검사 (node --check)');
   const miss = [...new Set(writes)].filter(f => !allowed.has(f));
   if (miss.length) F('cleanTask 가 쓰는데 규칙 tasks 에 없는 필드: ' + miss.join(', ') + '  (규칙 먼저 게시!)');
   else OK('cleanTask 필드 전부 규칙에 존재 (' + new Set(writes).size + '개)');
+}
+
+/* ── 8-b. 무지개 색 원 렌더 경로 — rainbow 토큰을 CSS에 그대로 흘리지 않는다(633차) ── */
+{
+  const bad = [
+    /background:\'+esc\(planColor\(/,
+    /background:\'+esc\(c\)/
+  ].filter(re => re.test(js));
+  if (bad.length) F('무지개 토큰이 변환 없이 inline background 로 흘러갈 수 있는 경로가 남아 있음');
+  else OK('무지개 색 원 — colBg() 변환 경로 유지');
+  if (!js.includes("c==='rainbow'?' p-col-rainbow':''")) F('공통/일반 색 원의 p-col-rainbow 클래스 부착 로직 누락');
+  else OK('무지개 색 원 — p-col-rainbow 클래스 부착');
+  if (!js.includes("planColor(p)==='rainbow'?['ev-rb']:[]")) F('FullCalendar 무지개 ev-rb 클래스 경로 누락');
+  else OK('FullCalendar 무지개 — 공통/일반 공통 ev-rb 경로');
 }
 
 /* ── 9. 단일 파일 빌드 시험 — 태그 정규식이 어긋나면 여기서 잡힌다 ── */
@@ -386,5 +400,16 @@ OK('구문 검사 (node --check)');
   else OK('작업 잔재 없음 (임시 파일 이름꼴 검사)');
 }
 
+
+/* 637차 업무 저장 partial update 경로 감사 */
+{
+  const start=js.indexOf('const FbStore');
+  const end=js.indexOf('/* 서버에 남은 예전 구조',start);
+  const fbStore=start>=0&&end>start?js.slice(start,end):'';
+  if(!fbStore.includes('r.update(patch)')) F('FbStore.putTask partial update diff 누락');
+  else OK('업무 저장 partial update diff 경로');
+}
+
 console.log('\n결과: FAIL ' + fail + ' · WARN ' + warn);
 process.exit(fail ? 1 : 0);
+
