@@ -1,4 +1,4 @@
-# 배포 전 자동 검증 — npm test 한 번으로 정적·권한·브라우저 회귀를 순서대로 실행한다.
+# 배포 전 자동 검증 — npm test 한 번으로 정적·권한·브라우저 회귀를 순서대로 실행한다. 
 # 로컬: npm ci && npx playwright install chromium && npm test
 name: smoke
 on: [push, pull_request]
