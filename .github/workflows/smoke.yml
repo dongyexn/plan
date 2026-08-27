@@ -1,8 +1,5 @@
-# 배포 전 자동 검증 — 정적 감사(FAIL 0) 뒤에 브라우저 스모크를 돈다.
-# 로컬에서도 같은 것을 돌릴 수 있다:
-#   node scripts/test/static-audit.mjs
-#   npm ci && npx playwright install chromium && node scripts/test/smoke.mjs   (의존성은 package-lock 고정)
-# ⚠ 어느 단계에서 깨졌는지 한눈에 보이도록 step 을 잘게 나눠 둔다 — 합치지 말 것.
+# 배포 전 자동 검증 — npm test 한 번으로 정적·권한·브라우저 회귀를 순서대로 실행한다.
+# 로컬: npm ci && npx playwright install chromium && npm test
 name: smoke
 on: [push, pull_request]
 jobs:
@@ -13,30 +10,25 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 24
+          cache: npm
 
-      # 시험 파일이 저장소에 실제로 올라와 있는지 먼저 확인한다 —
-      # 워크플로만 올리고 스크립트를 빠뜨리면 여기서 이유가 분명하게 드러난다.
       - name: 시험 파일 확인
         run: |
           node --version
-          for f in scripts/test/static-audit.mjs scripts/test/smoke.mjs index.html app.js; do
-            [ -f "$f" ] || { echo "::error::$f 가 저장소에 없습니다 — 앱 파일도 함께 올렸는지 확인하세요"; exit 1; }
+          for f in scripts/test/static-audit.mjs scripts/test/rules-auth.mjs scripts/test/run-all.mjs scripts/test/smoke.mjs scripts/test/rainbow-render.mjs scripts/test/e2e-defect.mjs index.html app.js package.json package-lock.json; do
+            [ -f "$f" ] || { echo "::error::$f 가 저장소에 없습니다"; exit 1; }
           done
           echo "확인 완료"
 
-      - name: 정적 감사
-        run: node scripts/test/static-audit.mjs
-      - name: 규칙 침투(AUTH-01~11)
-        run: node scripts/test/rules-auth.mjs
-
-      - name: 브라우저 준비
+      - name: 의존성·브라우저 준비
         run: |
           npm ci
           npx playwright install --with-deps chromium
 
-      - name: 스모크
-        run: node scripts/test/smoke.mjs
-
-      # 가상 HCS 데이터 전 구간(업로드→등록→소비 21항목+) — 615차
-      - name: 하자 전 구간 E2E
-        run: node scripts/test/e2e-defect.mjs
+      - name: 전체 회귀 게이트
+        env:
+          LIVE_E2E_EMAIL: ${{ secrets.LIVE_E2E_EMAIL }}
+          LIVE_E2E_PASSWORD: ${{ secrets.LIVE_E2E_PASSWORD }}
+          LIVE_E2E_SECOND_EMAIL: ${{ secrets.LIVE_E2E_SECOND_EMAIL }}
+          LIVE_E2E_SECOND_PASSWORD: ${{ secrets.LIVE_E2E_SECOND_PASSWORD }}
+        run: npm test
