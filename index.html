@@ -2457,8 +2457,10 @@ select.mg-inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-
 /* 633차 무지개 — 색 원과 FullCalendar 업무 막대 모두 rainbow 토큰을 CSS 그라디언트로 렌더링한다.
    공통 업무(team)는 흰 속을 유지하면서 그라디언트 테두리만 보여준다. */
 .p-col.p-col-team.p-col-rainbow{background:linear-gradient(#fff,#fff) padding-box,linear-gradient(135deg,#F43F5E 0%,#F59E0B 20%,#FACC15 40%,#22C55E 60%,#3B82F6 80%,#8B5CF6 100%) border-box !important;border:1.5px solid transparent !important;box-shadow:none !important;}
-.fc .ev-rb{background:linear-gradient(135deg,#F43F5E 0%,#F59E0B 20%,#FACC15 40%,#22C55E 60%,#3B82F6 80%,#8B5CF6 100%) !important;border-color:transparent !important;}
-.fc .ev-rb.team{background:linear-gradient(#fff,#fff) padding-box,linear-gradient(135deg,#F43F5E 0%,#F59E0B 20%,#FACC15 40%,#22C55E 60%,#3B82F6 80%,#8B5CF6 100%) border-box !important;border:1.5px solid transparent !important;}
+/* ⚠ 640차: 셀렉터는 #fcal 급이어야 한다 — 3125행 '#fcal .fc-event.team{background:#fff!important}'(ID)가
+   클래스 조합(.fc .ev-rb.team)을 구체성에서 압도해 공통 무지개 테두리가 흰 배경에 졌었다(검수에서 발견) */
+#fcal .fc-event.ev-rb{background:linear-gradient(135deg,#F43F5E 0%,#F59E0B 20%,#FACC15 40%,#22C55E 60%,#3B82F6 80%,#8B5CF6 100%) !important;border-color:transparent !important;}
+#fcal .fc-event.ev-rb.team{background:linear-gradient(#fff,#fff) padding-box,linear-gradient(135deg,#F43F5E 0%,#F59E0B 20%,#FACC15 40%,#22C55E 60%,#3B82F6 80%,#8B5CF6 100%) border-box !important;border:1.5px solid transparent !important;}
 .tk-hist{margin-top:2px;}
 .tk-hist>summary{list-style:none;cursor:pointer;font-size:11.5px;font-weight:600;color:var(--lbl3);padding:2px 0;}
 .tk-hist>summary::-webkit-details-marker{display:none;}
@@ -3758,5 +3760,5 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
 <script src="./vendor/korea-geo.js?v=635"></script>
 <script src="./vendor/apt-geo.js?v=635" onerror="void 0"></script>   <!-- 540차: 공동주택명 색인 — 없으면 그냥 건너뛴다 -->
-<script src="./app.js?v=637"></script>
+<script src="./app.js?v=640"></script>
 </body></html>

@@ -1,6 +1,13 @@
 # 인수인계 — 일정공유 달력 앱 (calapp)
 
-새 대화를 시작할 때 이 파일을 먼저 읽으면 됩니다. **현재 기준 v637**입니다.
+## 현재 기준선 — v639
+
+- 이 저장소가 업무·조직·하자 데이터의 단일 운영 앱이다. 하자 데이터는 HCS 원본 업로드 → 로컬 저장 → 집계 → 게시 → 조회까지 이 앱에서 처리한다.
+- 하자 원본 IndexedDB 저장소는 `calapp_defects_v1`로 독립 운영한다. 기존 로컬 설치에서 데이터가 발견되면 최초 1회만 현재 저장소로 자동 복사하고 이후에는 현재 저장소만 사용한다.
+- 회귀 테스트는 이 저장소만으로 실행하며 외부 저장소 비교 하네스는 운영 게이트에서 제외했다.
+- README와 보안 규칙은 현재 운영 구조만 설명하며 과거 운영 구조를 전제로 하지 않는다.
+
+새 대화를 시작할 때 이 파일을 먼저 읽으면 됩니다. **현재 기준 v639**입니다.
 (⚠ 이 줄의 차수는 배포마다 갱신할 것 — 한동안 81차로 방치돼 인수인계 문서 구실을 못 했다.)
 
 ## 1. 이 앱이 무엇인가
@@ -390,13 +397,11 @@ SGIS 시군구·읍면동 자료에서 광주광역시 코드는 `24` 인데 생
 | `database.rules.json` | Firebase 보안 규칙. **필드를 추가하면 여기도 반드시 함께 수정** |
 | `scripts/test/static-audit.mjs` | 배포 전 정적 감사 — FAIL 0 이어야 배포 |
 | `scripts/test/smoke.mjs` | 브라우저 스모크 — `?local=1` 로 핵심 흐름을 실제로 눌러 본다 |
-| `scripts/test/calc-equiv.mjs` | 하자 집계 엔진 동등성 — report 원본 대비 JSON 일치(614차, `--report <report-main>`) |
-| `scripts/test/upload-equiv.mjs` | 업로드 파서·주요이슈·게시 payload 동등성 + 생산자 부팅 스모크(614차) |
 | `scripts/test/shot-prod.mjs` | 설정 게시 카드 실렌더 스크린샷(로컬 모드 · CHROMIUM 경로 지정) |
 | `scripts/test/e2e-defect.mjs` | 가상 HCS 데이터 전 구간(업로드→등록→소비 21항목) 실브라우저 검증(615차) |
 | `scripts/test/rainbow-render.mjs` | 무지개 색 원·업무 막대의 실제 브라우저 렌더링 검증(633차) |
 | `scripts/test/firebase-live-e2e.mjs` | 실제 Firebase Auth·RTDB 2계정 E2E — CRUD·권한·새로고침·partial update·동시 수정(634~637차) |
-| `scripts/test/run-all.mjs` | 전체 회귀 게이트 단일 실행 — 정적·Rules·브라우저·하자 E2E + 조건부 Firebase/report 동등성 |
+| `scripts/test/run-all.mjs` | 전체 회귀 게이트 단일 실행 — 정적·Rules·브라우저·하자 E2E + 조건부 Firebase E2E |
 | `scripts/font-subset.py` | Pretendard 2분할 서브셋 재생성(core·rare·pretendard.css) |
 | `scripts/apt-index.mjs` | 도로명주소 건물DB → 공동주택명 색인(`vendor/apt-geo.js`) 생성 |
 | `vendor/` | FullCalendar · Firebase SDK · Pretendard 서브셋 · 행정경계(korea-geo.js) 등 자체 호스팅 전부 |
@@ -4845,3 +4850,25 @@ report 앱 폐기 절차(아카이브·안내 페이지)뿐이다.
 - README와 HANDOFF의 현재 차수·테스트 파일·오류 대응 내용을 현행화했다.
 - 기능 추가나 모듈화는 하지 않고 안정화에 집중한다.
 - 검증 목표: static-audit FAIL 0, build-single PASS, 기존 AUTH/rainbow/defect 게이트 유지.
+
+### 640차 — 검수: 공통 무지개 막대 CSS 구체성 결함 수정
+- 검수(Claude)에서 npm test 실패 1건 발견: rainbow-render 의 "실제 FullCalendar DOM — 공통 무지개
+  막대". 원인은 **CSS 구체성** — `#fcal .fc-event.team{background:#fff!important}`(231차, ID 셀렉터)가
+  633차의 `.fc .ev-rb.team`(클래스 3개)을 압도해 공통 업무의 무지개 테두리가 흰 배경에 졌다.
+  프로브 div(#fcal 밖)에서는 규칙이 정상 적용돼 보여 스타일시트만 봐서는 안 잡히는 결함 —
+  실 DOM computedStyle 검증이 잡아냈다.
+- 수정: 무지개 두 규칙을 `#fcal .fc-event.ev-rb`/`#fcal .fc-event.ev-rb.team` 으로 승격(ID 급).
+  static-audit 의 이중 정의 동기 검사 정규식도 새 셀렉터로 갱신.
+- 검수 소견(633~639 전반): putTask diff-update(635)는 규칙 createdBy 불변과 정합(자식 경로 쓰기도
+  $iid .write 스코프에서 평가) · IndexedDB 이전(639)은 dfProdBoot 초입에서 1회 호출·마크 정상 ·
+  equiv 게이트 제거는 report 폐기와 일관(⚠ 실데이터 대조(마스터 PC 게시본 수치 비교)는 아직
+  안 했다면 그것이 마지막 등가 확인 기회) · 638차는 결번(기록 없음).
+- APP_VER 640.
+
+### 639차 — 하자처리 운영 경로 독립화
+- 하자 업로드·집계·게시·조회가 현재 앱 하나에서 완결되는 구조로 문서와 런타임 주석을 정리했다.
+- 하자 원본 IndexedDB를 `calapp_defects_v1`로 분리하고, 기존 설치의 로컬 하자 데이터가 있으면 최초 1회만 자동 이전한다.
+- 제외 키워드 설정은 `calapp.exTk`만 사용하도록 정리했다.
+- 외부 비교 전용 `calc-equiv.mjs`·`upload-equiv.mjs`를 제거하고 `npm test`를 저장소 단독 회귀 게이트로 단순화했다.
+- README와 `database.rules.json`은 현재 앱의 운영 구조만 설명하도록 현행화했다.
+- APP_VER 639.

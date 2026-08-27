@@ -140,7 +140,7 @@ OK('구문 검사 (node --check)');
   /* 633차: 무지개 그라디언트는 app.js(RAINBOW_BG)와 index.html(.ev-rb)에 이중 정의 — 값이 갈리면 잡는다 */
   {
     const mApp = /RAINBOW_BG='([^']+)'/.exec(js);
-    const mCss = /\.fc \.ev-rb\{background:([^!]+) !important/.exec(html);
+    const mCss = /#fcal \.fc-event\.ev-rb\{background:([^!]+) !important/.exec(html);   /* 640차: 셀렉터 승격에 맞춤 */
     if (!mApp || !mCss) F('무지개 정의를 찾지 못했다(RAINBOW_BG 또는 .ev-rb)');
     else if (mApp[1].replace(/\s+/g,'') !== mCss[1].trim().replace(/\s+/g,''))
       F('무지개 그라디언트 이중 정의 불일치 — app.js RAINBOW_BG 와 index.html .ev-rb');

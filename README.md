@@ -1,8 +1,8 @@
 # H · 주요업무현황
 
-> **현재 배포 기준: v637** — 기능 동결에 가까운 안정화 단계입니다. 633차 무지개 색상 렌더링, 634차 실제 Firebase E2E, 635차 업무 partial update 보강, 636차 오류 안내·토스트 안정화, 637차 검증 하네스 정리와 테스트 단일 실행 게이트가 반영되어 있습니다.
+> **현재 배포 기준: v639** — 업무 일정·주요업무·하자처리·조직·설정을 한 앱에서 운영합니다. 633차 무지개 색상 렌더링, 634차 실제 Firebase E2E, 635차 업무 partial update 보강, 636차 오류 안내·토스트 안정화, 637차 검증 하네스 정리, 638차 Playwright API 호환성 수정, 639차 하자 데이터 저장소·검증 체계 독립화가 반영되어 있습니다.
 
-팀 업무 일정과 담당자별 현황을 실시간으로 공유하는 사내 웹앱. 하자처리 현황도 함께 본다.
+팀 업무 일정과 담당자별 현황, 하자처리 현황을 실시간으로 공유하고 관리하는 사내 웹앱.
 
 - **주소** — `https://dongyexn.github.io/plan/`
 - **로그인** — 회사 메일(`@hdec.co.kr`)
@@ -119,7 +119,7 @@
 
 ## 4. 하자처리 현황
 
-하자처리 현황 앱이 **게시한 자료를 읽는 화면**이다. 여기서는 업로드·게시를 하지 않는다.
+하자 데이터의 **업로드·집계·게시·조회·처리계획 관리**를 이 앱에서 모두 수행한다. 관리자는 설정에서 HCS 원본 파일을 등록하고 [등록]으로 게시하며, 일반 사용자는 게시된 최신 현황을 조회한다.
 
 | 화면 | 내용 |
 |---|---|
@@ -147,7 +147,7 @@
 
 ## 5. 조직 · 권한
 
-> 팀·권역·현장의 **원본은 하자처리 현황**이다. 여기서는 고치지 않는다.
+> 팀·권역·현장의 기준 정보는 **조직 관리**에서 관리한다.
 
 담당 범위는 **조직 관리**에서 정한다. 직급에 따라 쓰는 칸이 다르다.
 
@@ -221,9 +221,7 @@ npx playwright install chromium
 npm test
 ```
 
-`npm test`는 정적 감사 → Firebase Rules 감사 → 브라우저 스모크 → 무지개 렌더링 → 하자 전 구간 E2E 순서로 실행합니다. `LIVE_E2E_EMAIL`, `LIVE_E2E_PASSWORD`, `LIVE_E2E_SECOND_EMAIL`, `LIVE_E2E_SECOND_PASSWORD`가 모두 있으면 실제 Firebase 2계정 E2E도 자동으로 이어서 실행합니다. `REPORT_MAIN`을 지정하면 원본 report 앱과의 집계·업로드 동등성 검사도 추가합니다.
-
-원본 report 저장소가 없는 환경에서는 동등성 검사를 자동으로 건너뛰며, 그 사실을 `SKIP`으로 표시합니다. 테스트 하네스가 특정 개발자 PC의 `/tmp/report` 경로에 의존하지 않도록 되어 있습니다.
+`npm test`는 정적 감사 → Firebase Rules 감사 → 브라우저 스모크 → 무지개 렌더링 → 하자 전 구간 E2E 순서로 실행합니다. `LIVE_E2E_EMAIL`, `LIVE_E2E_PASSWORD`, `LIVE_E2E_SECOND_EMAIL`, `LIVE_E2E_SECOND_PASSWORD`가 모두 있으면 실제 Firebase 2계정 E2E도 자동으로 이어서 실행합니다. 모든 테스트 데이터와 검증 로직은 이 저장소 안에서 독립적으로 준비됩니다.
 
 ## 9. 문제 해결
 
@@ -314,14 +312,20 @@ Realtime Database > 규칙에 `database.rules.json` **전체를 붙여넣는다.
 | 경로 | 내용 |
 |---|---|
 | `calapp/tasks/{sid}/{iid}` | **업무 하나** — 일정과 업무가 통합된 단일 엔티티 |
-| `calapp/org` | 팀·권역·현장 — 게시본의 사본(읽기 폴백) |
+| `calapp/org` | 팀·권역·현장 — 조직 관리의 기준 정보 |
 | `calapp/people/{uid}` | 담당자 배정 |
 | `calapp/offdays/{날짜}` | 팀 휴무일 |
 | `calapp/cfg` | 앱 설정 |
 | `calapp/prefs/{uid}` | 개인 설정 — 본인만 쓰기 |
 | `calapp/trash/{sid}/{iid}` | 휴지통 — 30일 보관 |
 | `calapp/archive/{sid}/{iid}` | 보관함 — 완료 6개월 뒤 |
-| `users/{uid}` | 계정·권한 — 하자처리 대시보드와 **공용** |
+| `users/{uid}` | 계정·권한 |
+| `report/{YYYY-MM}` | 하자 월별 게시본 — 대시보드·현장 집계·미처리 목록 |
+| `reportIndex/{YYYY-MM}` | 게시된 기준월 인덱스 |
+| `plans/{sid}` | 현장별 처리계획 |
+| `analysis/{sid}/{YYYY-MM}` | 현장별 분석 의견 |
+| `meta/{sid}` | 하자 현장 메타·업데이트 정보 |
+| `siteConfig/{sid}` | 현장별 하자 표시 설정 |
 
 `sid` 는 업무가 담긴 자리다 — 첫 담당자의 uid, 없으면 팀 id.
 ⚠ **집계는 항상 `assignees` 로 한다. `sid` 에 기대지 않는다.**
@@ -329,7 +333,7 @@ Realtime Database > 규칙에 `database.rules.json` **전체를 붙여넣는다.
 캘린더와 업무 현황은 같은 업무를 다른 각도로 보여 준다. 항목 단위로 쓰므로 동시 작성해도 덮어쓰지 않고,
 입력 중에는 실시간 수신 렌더를 보류해 타이핑이 지워지지 않는다.
 
-팀·권역·현장의 원본은 게시본(`report/<게시월>/_dash`)이고 앱이 직접 구독한다.
+팀·권역·현장은 `calapp/org`가 기준 정보이며, 하자 게시본의 `sites`·`teams`는 게시 시점의 집계용 스냅샷으로 저장한다.
 
 ---
 
@@ -343,6 +347,8 @@ Realtime Database > 규칙에 `database.rules.json` **전체를 붙여넣는다.
 ### 배포할 때마다
 
 ```bash
+npm test                              # 전체 회귀 게이트
+# 또는 개별 실행
 node scripts/test/static-audit.mjs   # FAIL 0 · WARN 0 이어야 함
 node scripts/test/smoke.mjs          # 핵심 흐름 클릭 (CHROMIUM 환경변수 필요)
 ```
