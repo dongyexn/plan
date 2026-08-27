@@ -1,7 +1,7 @@
 # 배포 전 자동 검증 — 정적 감사(FAIL 0) 뒤에 브라우저 스모크를 돈다.
 # 로컬에서도 같은 것을 돌릴 수 있다:
 #   node scripts/test/static-audit.mjs
-#   npm i --no-save playwright && npx playwright install chromium && node scripts/test/smoke.mjs
+#   npm ci && npx playwright install chromium && node scripts/test/smoke.mjs   (의존성은 package-lock 고정)
 # ⚠ 어느 단계에서 깨졌는지 한눈에 보이도록 step 을 잘게 나눠 둔다 — 합치지 말 것.
 name: smoke
 on: [push, pull_request]
@@ -26,11 +26,17 @@ jobs:
 
       - name: 정적 감사
         run: node scripts/test/static-audit.mjs
+      - name: 규칙 침투(AUTH-01~11)
+        run: node scripts/test/rules-auth.mjs
 
       - name: 브라우저 준비
         run: |
-          npm i --no-save playwright playwright-core
+          npm ci
           npx playwright install --with-deps chromium
 
       - name: 스모크
         run: node scripts/test/smoke.mjs
+
+      # 가상 HCS 데이터 전 구간(업로드→등록→소비 21항목+) — 615차
+      - name: 하자 전 구간 E2E
+        run: node scripts/test/e2e-defect.mjs
