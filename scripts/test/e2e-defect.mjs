@@ -1,9 +1,9 @@
-/* 가상데이터 전 구간 검증(615차) — 업로드→저장→[등록]→소비 화면 전부를 실브라우저에서 돌린다.
+/* 가상데이터 전 구간 검증(637차 기준 회귀 스위트) — 업로드→저장→[등록]→소비 화면 전부를 실브라우저에서 돌린다.
    Firebase 는 페이지 안 가짜 트리로 대체(스냅샷 문서의 FB 스텁과 같은 발상 + update/set 구현).
    검사: 기준월 자동 결정 · 게시 트리 무결성 · 대시보드 합계=게시 kpi 합 · 현장 탭 5종 렌더 ·
    NLQ 질의 · 목록 모달 · 월 전환 · AI 분석(가짜 Gemini) · 페이지 오류 0. 스크린샷 저장.
    사용: CHROMIUM=/tmp/chromium node scripts/test/e2e-defect.mjs */
-import { chromium } from 'playwright-core';
+import { chromium } from 'playwright';
 import http from 'http';
 import fs from 'fs';
 import path from 'path';
@@ -19,7 +19,7 @@ const srv=http.createServer((req,res)=>{const u=req.url.split('?')[0];const f=pa
 
 let fail=0;const ok=(n,c)=>{console.log((c?'✓ ':'✗ ')+n);if(!c)fail++;};
 const exe=process.env.CHROMIUM||'';
-const br=await chromium.launch(Object.assign({args:['--no-sandbox']},exe?{executablePath:exe}:{}));   /* CI 는 playwright 설치본, 로컬은 CHROMIUM 경로 */
+const br=await chromium.launch(Object.assign({args:['--no-sandbox']},exe?{executablePath:exe}:{}));   /* CI 는 Playwright 설치본, 로컬은 CHROMIUM 경로 */
 const pg=await br.newPage({viewport:{width:1560,height:1000},deviceScaleFactor:2});
 const perr=[];pg.on('pageerror',e=>perr.push(e.message));
 await pg.goto('http://localhost:8399/index.html?local=1');
@@ -123,7 +123,7 @@ const pub=await pg.evaluate(async()=>{
     on:()=>{},off:()=>{},
   })};
   S.live=true;S.role='editor';S.user={email:'editor@hdec.co.kr'};   /* isEditor()=!live||role — live 전환 시 role 필요 */
-  const pubWithOk=async()=>{const p=dfPublish();   /* 게시 전 검토 모달(615차) — [게시]를 눌러 승인 */
+  const pubWithOk=async()=>{const p=dfPublish();   /* 게시 전 검토 모달(637차 기준 회귀 스위트) — [게시]를 눌러 승인 */
     for(let i=0;i<50&&!document.querySelector('[data-act="dfp.pubOk"]');i++)await new Promise(r=>setTimeout(r,100));
     const b=document.querySelector('[data-act="dfp.pubOk"]');if(b)b.click();
     await p;};

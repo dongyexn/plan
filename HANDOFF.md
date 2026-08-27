@@ -1,6 +1,6 @@
 # 인수인계 — 일정공유 달력 앱 (calapp)
 
-새 대화를 시작할 때 이 파일을 먼저 읽으면 됩니다. 화면 v613 기준입니다.
+새 대화를 시작할 때 이 파일을 먼저 읽으면 됩니다. **현재 기준 v637**입니다.
 (⚠ 이 줄의 차수는 배포마다 갱신할 것 — 한동안 81차로 방치돼 인수인계 문서 구실을 못 했다.)
 
 ## 1. 이 앱이 무엇인가
@@ -386,7 +386,7 @@ SGIS 시군구·읍면동 자료에서 광주광역시 코드는 `24` 인데 생
 | 파일 | 설명 |
 |---|---|
 | `index.html` | 화면 구조와 전체 스타일. CSS가 전부 여기 들어 있습니다 |
-| `app.js` | 모든 로직. 약 7,700줄 |
+| `app.js` | 모든 로직. 약 10,300줄 |
 | `database.rules.json` | Firebase 보안 규칙. **필드를 추가하면 여기도 반드시 함께 수정** |
 | `scripts/test/static-audit.mjs` | 배포 전 정적 감사 — FAIL 0 이어야 배포 |
 | `scripts/test/smoke.mjs` | 브라우저 스모크 — `?local=1` 로 핵심 흐름을 실제로 눌러 본다 |
@@ -394,6 +394,9 @@ SGIS 시군구·읍면동 자료에서 광주광역시 코드는 `24` 인데 생
 | `scripts/test/upload-equiv.mjs` | 업로드 파서·주요이슈·게시 payload 동등성 + 생산자 부팅 스모크(614차) |
 | `scripts/test/shot-prod.mjs` | 설정 게시 카드 실렌더 스크린샷(로컬 모드 · CHROMIUM 경로 지정) |
 | `scripts/test/e2e-defect.mjs` | 가상 HCS 데이터 전 구간(업로드→등록→소비 21항목) 실브라우저 검증(615차) |
+| `scripts/test/rainbow-render.mjs` | 무지개 색 원·업무 막대의 실제 브라우저 렌더링 검증(633차) |
+| `scripts/test/firebase-live-e2e.mjs` | 실제 Firebase Auth·RTDB 2계정 E2E — CRUD·권한·새로고침·partial update·동시 수정(634~637차) |
+| `scripts/test/run-all.mjs` | 전체 회귀 게이트 단일 실행 — 정적·Rules·브라우저·하자 E2E + 조건부 Firebase/report 동등성 |
 | `scripts/font-subset.py` | Pretendard 2분할 서브셋 재생성(core·rare·pretendard.css) |
 | `scripts/apt-index.mjs` | 도로명주소 건물DB → 공동주택명 색인(`vendor/apt-geo.js`) 생성 |
 | `vendor/` | FullCalendar · Firebase SDK · Pretendard 서브셋 · 행정경계(korea-geo.js) 등 자체 호스팅 전부 |
@@ -4742,6 +4745,15 @@ report 앱 폐기 절차(아카이브·안내 페이지)뿐이다.
   사내 서버 확보 시 재론. 기능 동결 기조 — 이후 수정은 실사용 발견분 위주.
 - app.js?v=631 · APP_VER 631.
 
+### 633차 — 무지개 색 원/공통 업무 렌더링 보강
+- `rainbow` 토큰이 업무 색 원에 그대로 `background: rainbow` 로 들어가던 누락 경로를 제거하고, 모든 색 원의 배경은 `colBg()`를 거치도록 정리.
+- 공통 업무의 속 빈 색 원도 `p-col-rainbow` 클래스로 그라디언트 테두리를 렌더링하고 흰 속을 유지.
+- 업무 현황 편집/읽기 색 점도 `colBg(planColor(...))`를 사용해 무지개를 정상 표시.
+- FullCalendar는 담당자 유무와 관계없이 `ev-rb`를 붙이며, 공통 업무는 흰 속 + 무지개 테두리로 렌더링.
+- `scripts/test/rainbow-render.mjs` 추가: 실제 브라우저에서 색 원 computedStyle 및 FullCalendar DOM의 `ev-rb` 렌더링을 검증. CI `smoke.yml`에도 편입.
+- static-audit에 무지개 inline background 누락 경로 및 클래스 경로 회귀 검사 추가.
+- app.js?v=633 · APP_VER 633.
+
 ### 632차 — 프로필 무지개색(재미용 기본색, 전면 적용)
 - 색 파이프에 특수 토큰 **'rainbow'** 하나(RAINBOW_BG 그라디언트, users.avColor 검증 ≤16 통과).
   팔레트 스와치는 단색 뒤·[+] 앞(custom 판정에서 rainbow 제외). background 소비처 9곳은 colBg()
@@ -4796,3 +4808,40 @@ report 앱 폐기 절차(아카이브·안내 페이지)뿐이다.
 
 디자인은 하자처리 현황 앱의 언어를 그대로 가져오는 것이 원칙입니다. 값을 임의로
 조정하지 말고 그쪽 앱 값을 확인해 쓰세요.
+
+
+### 634차 — 실제 Firebase E2E 게이트 추가
+
+- `APP_VER=634`, `index.html`의 vendor/app 캐시 버전 `634`로 통일.
+- `scripts/test/firebase-live-e2e.mjs` 추가: 실제 Firebase Auth + RTDB에서 2계정 로그인, 신규 업무 생성/재조회/새로고침/수정/삭제, 타 사용자 무단 수정 거부, `createdBy` 불변, 동시 partial update 보존을 검증한다.
+- CI는 `LIVE_E2E_EMAIL`, `LIVE_E2E_PASSWORD`, `LIVE_E2E_SECOND_EMAIL`, `LIVE_E2E_SECOND_PASSWORD` 4개 GitHub Secrets가 있을 때만 실제 Firebase E2E를 실행한다.
+- 테스트 계정은 별도로 준비해야 하며, 실제 데이터가 오염되지 않도록 `calapp/tasks/__e2e634__` 아래 임시 데이터만 사용 후 삭제한다.
+- 모듈화는 보류. 634차의 목적은 구조 변경이 아니라 실제 Firebase 운영 경로를 검증하는 것.
+
+
+### 635차 — 업무 동시 수정 덮어쓰기 방지 + partial update 권한 검증
+- `FbStore.putTask()`의 기존 업무 저장을 전체 `set()`에서 변경 필드 diff 기반 `update()`로 보강했다. 신규는 `set()`, 삭제는 `remove()`를 유지한다.
+- 중첩 객체(`assignees`, `links`, `recur` 등)는 경로별 diff로 처리하여 서로 다른 사용자의 변경을 불필요하게 덮지 않도록 했다.
+- 실제 Firebase E2E에 `createdBy` 부분 삭제 우회 차단, 담당자 partial update, 비변경 필드 보존 검증을 추가했다. 시험 경로는 `calapp/tasks/__e2e635__`.
+- 모듈화는 계속 보류한다. 이번 차수의 목적은 운영 데이터 안정화다.
+
+
+
+### 637차 — 테스트 하네스 정리 + 독립 실행 회귀 게이트
+- `APP_VER=637`, `index.html`의 `app.js?v=637`로 버전을 통일했다.
+- 브라우저 테스트는 `playwright` 하나로 통일하고 `playwright-core` 중복 의존성을 제거했다. CI의 Playwright Chromium 설치 경로와 로컬 `CHROMIUM` 지정 경로를 모두 지원한다.
+- `scripts/test/run-all.mjs`를 추가해 정적 감사 → Rules → smoke → rainbow → 하자 E2E를 `npm test` 한 번으로 실행한다. 실제 Firebase E2E는 4개 `LIVE_E2E_*` 환경변수가 모두 있을 때만 실행한다.
+- `calc-equiv.mjs`·`upload-equiv.mjs`는 개발자 PC의 옛 `/report/report-main` 절대/상대 경로에 묶이지 않는다. 원본이 없으면 `SKIP`, `REPORT_MAIN` 또는 `--report <경로>`를 주면 비교한다.
+- `static-audit.mjs`의 partial update 검사가 `process.exit()` 뒤에 있어 실행되지 않던 위치 오류를 바로잡았다.
+- 브라우저 smoke에서 실패를 `.catch(()=>{})`로 삼켜 `FAIL 0`처럼 보일 수 있던 대기 구간을 실제 실패로 전파하도록 정리했다.
+- 637차에서는 앱 기능·디자인을 추가하지 않았다. 목적은 테스트 신뢰성, 독립 실행성, 회귀 검출력 강화다.
+- 검증 목표: `npm test` 전체 게이트에서 실제 실패는 1건이라도 즉시 종료 코드 1로 전달한다.
+
+### 636차 — 오류 UX 안정화 + 문서/검증 현행화
+- `APP_VER=636`, `index.html`의 `app.js?v=636`으로 버전을 통일했다.
+- Firebase 저장 오류를 권한 오류와 연결 오류로 구분해 사용자에게 안내한다. 동일 오류의 짧은 시간 반복 토스트는 억제한다.
+- `toast(msg,duration)`이 호출자가 지정한 표시 시간을 실제로 사용하도록 정리했다.
+- 실제 Firebase E2E 시험 경로를 `calapp/tasks/__e2e637__`으로 갱신했다.
+- README와 HANDOFF의 현재 차수·테스트 파일·오류 대응 내용을 현행화했다.
+- 기능 추가나 모듈화는 하지 않고 안정화에 집중한다.
+- 검증 목표: static-audit FAIL 0, build-single PASS, 기존 AUTH/rainbow/defect 게이트 유지.

@@ -1,7 +1,7 @@
 /* 브라우저 스모크 — `?local=1` 모드에서 핵심 흐름을 실제로 눌러 본다.
    정적 감사(static-audit)가 못 잡는 부류(동작이 실제로 되는가)를 배포 전에 확인한다.
 
-   실행:  npm i playwright-core   (한 번만 — 저장소에는 넣지 않는다)
+   실행:  npm ci   (한 번만 — 저장소에는 넣지 않는다)
           node scripts/test/smoke.mjs
    브라우저: 환경변수 CHROMIUM 에 크로미움 경로를 주면 그걸 쓰고,
              없으면 playwright 기본 설치 경로를 쓴다(CI 는 install 단계에서 받는다).
@@ -12,7 +12,7 @@
    ③ 토글: 상태 원을 눌러 완료로
    ④ 삭제: 카드 열어 삭제 → 확인 → 휴지통으로 이동
    ⑤ 복원: 설정 > 휴지통 > 복원 → 카드가 되살아난다 · 새로고침 후에도 남는다 */
-import { chromium } from 'playwright-core';
+import { chromium } from 'playwright';
 import http from 'http';
 import fs from 'fs';
 import path from 'path';
@@ -99,7 +99,7 @@ try {
   await waitFor(page, k => {
     const d = JSON.parse(localStorage.getItem('calapp.v1') || '{}');
     return (((d.tasks[k.sid] || {})[k.iid] || {}).st) !== k.st;
-  }, stBefore, 15000, '상태 토글').catch(() => {});
+  }, stBefore, 15000, '상태 토글');
   const stAfter = await page.evaluate(k => {
     const d = JSON.parse(localStorage.getItem('calapp.v1') || '{}');
     return ((d.tasks[k.sid] || {})[k.iid] || {}).st;
@@ -118,7 +118,7 @@ try {
     for (const sid in (d.trash || {})) for (const iid in d.trash[sid])
       if (d.trash[sid][iid].text === t) return true;
     return false;
-  }, TITLE, 15000, '휴지통 이동').catch(() => {});
+  }, TITLE, 15000, '휴지통 이동');
   const inTrash = await page.evaluate(t => {
     const d = JSON.parse(localStorage.getItem('calapp.v1') || '{}');
     for (const sid in (d.trash || {})) for (const iid in d.trash[sid])
@@ -143,7 +143,7 @@ try {
     for (const sid in (d.tasks || {})) for (const iid in d.tasks[sid])
       if (d.tasks[sid][iid].text === t) return true;
     return false;
-  }, TITLE, 15000, '복원 반영').catch(() => {});
+  }, TITLE, 15000, '복원 반영');
   await page.reload();
   await page.waitForSelector('#fcal .fc-daygrid-day', { timeout: 8000 });
   const back = await page.evaluate(t => {
@@ -168,7 +168,7 @@ try {
   await waitFor(page, () => {                          /* archMigrate 가 끝날 때까지 */
     const d = JSON.parse(localStorage.getItem('calapp.v1') || '{}');
     return !!(((d.archive || {}).team || {}).arcSmk1);
-  }, null, 20000, '아카이브 이동').catch(() => {});
+  }, null, 20000, '아카이브 이동');
   const moved = await page.evaluate(() => {
     const d = JSON.parse(localStorage.getItem('calapp.v1') || '{}');
     return { hot: !!((d.tasks.team || {}).arcSmk1), cold: !!(((d.archive || {}).team || {}).arcSmk1) };
@@ -184,7 +184,7 @@ try {
   await waitFor(page, () => {                   /* 아카이브를 읽어 다시 그릴 때까지 */
     const els = document.querySelectorAll('#nqRes .nq-item .tt');
     return [...els].some(e => e.textContent.includes('아카이브'));
-  }, null, 20000, '찾기 결과').catch(() => {});
+  }, null, 20000, '찾기 결과');
   const found = await page.locator('#nqRes .nq-item .tt').allTextContents();
   if (found.some(t => t.includes('아카이브'))) OK('찾기 — 보관함 업무 검색됨');
   else F('찾기 — 보관함 업무가 검색되지 않음 (' + found.join(' / ') + ')');
@@ -210,7 +210,7 @@ try {
   OK('반복 — 주간 반복으로 저장 (recur.f=w)');
   await page.evaluate(ds => { selDate(ds, true); rDay(); }, nextWk);
   await waitFor(page, t => [...document.querySelectorAll('#dpList .plan-t')].some(e => e.textContent.includes(t)),
-    RT, 15000, '다음 주 회차').catch(() => {});
+    RT, 15000, '다음 주 회차');
   const occ2 = await page.evaluate(t => [...document.querySelectorAll('#dpList .plan-t')].some(e => e.textContent.includes(t)), RT);
   if (occ2) OK('반복 — 다음 주 같은 요일에 회차가 뜬다');
   else F('반복 — 다음 주 회차가 안 보인다');
@@ -227,7 +227,7 @@ try {
       if (it.text === t && it.skipOn && Object.keys(it.skipOn).length) return true;
     }
     return false;
-  }, RT, 15000, 'skipOn 기록').catch(() => {});
+  }, RT, 15000, 'skipOn 기록');
   const afterSkip = await page.evaluate(([t, ds]) => {
     selDate(ds, true); rDay();
     const gone = ![...document.querySelectorAll('#dpList .plan-t')].some(e => e.textContent.includes(t));

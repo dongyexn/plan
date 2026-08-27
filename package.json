@@ -3,7 +3,14 @@
   "private": true,
   "description": "검증 게이트 전용 개발 의존성 — 앱 런타임은 이 패키지와 무관(정적 파일 단독 실행)",
   "devDependencies": {
-    "playwright-core": "1.62.1",
     "playwright": "1.62.1"
+  },
+  "scripts": {
+    "test": "node scripts/test/run-all.mjs",
+    "test:static": "node scripts/test/static-audit.mjs",
+    "test:auth": "node scripts/test/rules-auth.mjs",
+    "test:browser": "node scripts/test/smoke.mjs && node scripts/test/rainbow-render.mjs && node scripts/test/e2e-defect.mjs",
+    "test:equiv": "node scripts/test/calc-equiv.mjs",
+    "test:upload-equiv": "node scripts/test/upload-equiv.mjs"
   }
 }

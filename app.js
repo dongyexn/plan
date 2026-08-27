@@ -9,7 +9,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='632';
+const APP_VER='637';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -156,10 +156,14 @@ function sitePickHTML(id,cur){
 /* 색 원 — 공통 업무(담당자 없음)는 달력 막대와 같은 '속 빈' 표시로 그린다(테두리만 업무색).
    team 은 호출부에서 넘긴다(미지정이면 기존처럼 꽉 찬 원). */
 function colDotHTML(c,pid,team){
-  const st=team?'background:transparent;box-shadow:inset 0 0 0 1.5px '+esc(c):'background:'+esc(colBg(c));   /* 632차: team 테두리형엔 rainbow 가 못 온다(팀색 고정) */
+  const rb=c==='rainbow';
+  const st=team
+    ? (rb?'background:transparent;box-shadow:none':'background:transparent;box-shadow:inset 0 0 0 1.5px '+esc(c))
+    : 'background:'+esc(colBg(c));
+  const cls=(team?' p-col-team':'')+(c==='rainbow'?' p-col-rainbow':'');
   return pid
-    ?'<span class="p-col p-col-ro'+(team?' p-col-team':'')+'" style="'+st+'"></span>'
-    :'<button class="p-col'+(team?' p-col-team':'')+'" data-act="plan.color" aria-label="색 고르기" data-tip="색 고르기" style="'+st+'"></button>';
+    ?'<span class="p-col p-col-ro'+cls+'" style="'+st+'"></span>'
+    :'<button class="p-col'+cls+'" data-act="plan.color" aria-label="색 고르기" data-tip="색 고르기" style="'+st+'"></button>';
 }
 /* 담당자를 바꾸면 색 원도 곧바로 따라 바뀐다(609차 · 폼을 다시 그리지 않고 그 원만 고친다).
    ⚠ 판정은 `planColor` 에 맡긴다 — 직접 고른 색이면 담당자를 바꿔도 그대로다('auto' 일 때만 담당자 색).
@@ -174,9 +178,12 @@ function peColorSync(){
   const color=inline?((S.planEdit&&S.planEdit.draft&&S.planEdit.draft.color)||'auto')
                     :(($('#tnColor')&&$('#tnColor').value)||'');
   const pp={color,owners:v?{[v]:1}:{}};
-  const c=planColor(pp),team=!!inline&&!planOwners(pp).length;
+  const c=planColor(pp),team=!!inline&&!planOwners(pp).length,rb=c==='rainbow';
   dot.classList.toggle('p-col-team',team);
-  dot.style.cssText=team?'background:transparent;box-shadow:inset 0 0 0 1.5px '+c:'background:'+c;
+  dot.classList.toggle('p-col-rainbow',rb);
+  dot.style.cssText=team
+    ? (rb?'background:transparent;box-shadow:none':'background:transparent;box-shadow:inset 0 0 0 1.5px '+c)
+    : 'background:'+colBg(c);
 }
 /* 색 선택기 HTML — 기본 팔레트 + 임의 색 추가.
    현재 값이 팔레트에 없으면(직접 고른 색) 맨 뒤에 칩으로 붙여 선택 상태를 유지한다. */
@@ -292,7 +299,7 @@ function avHTML(pid,cls){
 }
 /* 담당자 자동 색 — 명부 순서에 따라 안정적으로 배정 */
 const OWN_PAL=['#3E71D2','#16A34A','#D97706','#DC2626','#7C5CD6','#0EA5E9','#DB2777','#65A30D','#EA580C','#0D9488'];
-/* 632차 무지개(재미용 기본색) — 색 파이프에 특수 토큰 'rainbow' 하나를 흘린다.
+/* 633차 무지개(재미용 기본색) — 색 파이프에 특수 토큰 'rainbow' 하나를 흘린다.
    background 를 받는 자리는 colBg() 로 그라디언트를, 단색만 받는 자리는 없다(FC 이벤트는
    아래 eventDidMount 훅이 배경을 직접 칠한다). isLightColor('rainbow')=false → 흰 글자. */
 const RAINBOW_BG='linear-gradient(135deg,#F43F5E 0%,#F59E0B 20%,#FACC15 40%,#22C55E 60%,#3B82F6 80%,#8B5CF6 100%)';
@@ -797,14 +804,40 @@ const FbStore={
   putPerson(id,p){const r=FB.db.ref('calapp/people/'+id);(p?r.set(cleanPerson(p)):r.remove()).catch(fbErr);},
   putTask(mid,iid,item){
     /* 서버 응답을 기다리면 한 박자 늦게 반영된다 — 화면에 먼저 반영하고 서버 값이 오면 덮어쓴다.
-       실패하면 구독이 원래 값을 되돌려 주므로 화면이 어긋난 채 남지 않는다 */
+       실패하면 구독이 원래 값을 되돌려 주므로 화면이 어긋난 채 남지 않는다.
+       635차: 기존 set()은 다른 사용자가 먼저 바꾼 필드를 통째로 덮을 수 있었다.
+       기존 화면값과 새 값을 diff 해 변경된 필드만 RTDB update() 한다. 중첩 객체도 경로별로
+       쪼개므로 assignees/links 같은 별도 변경까지 불필요하게 덮지 않는다. 신규는 set(), 삭제는 remove(). */
     /* 아카이브에 있던 업무를 건드리면 그 사본을 지운다 — 두 곳에 겹쳐 남지 않게(384차) */
     if(S.arch[mid]&&S.arch[mid][iid]){delete S.arch[mid][iid];
       FB.db.ref('calapp/archive/'+mid+'/'+iid).remove().catch(()=>{});}
     S.tasks[mid]=S.tasks[mid]||{};
+    const before=S.tasks[mid][iid]||null;
     if(item)S.tasks[mid][iid]=item;else delete S.tasks[mid][iid];
     rDay();rTasks();refetchCal();rWidget();
-    const r=FB.db.ref('calapp/tasks/'+mid+'/'+iid);(item?r.set(cleanTask(item)):r.remove()).catch(fbErr);},
+    const r=FB.db.ref('calapp/tasks/'+mid+'/'+iid);
+    if(!item){r.remove().catch(fbErr);return;}
+    const next=cleanTask(item),base=before?cleanTask(before):null;
+    if(!base){r.set(next).catch(fbErr);return;}
+    const patch={};
+    const walk=(a,b,path='')=>{
+      const ao=a&&typeof a==='object'&&!Array.isArray(a)?a:null;
+      const bo=b&&typeof b==='object'&&!Array.isArray(b)?b:null;
+      if(ao&&bo){
+        const keys=new Set([...Object.keys(a),...Object.keys(b)]);
+        keys.forEach(k=>{
+          const p=path?path+'/'+k:k;
+          if(!(k in b))patch[p]=null;
+          else if(!(k in a))patch[p]=b[k];
+          else walk(a[k],b[k],p);
+        });
+        return;
+      }
+      if(JSON.stringify(a)!==JSON.stringify(b)&&path)patch[path]=b;
+    };
+    walk(base,next);
+    if(Object.keys(patch).length)r.update(patch).catch(fbErr);
+  },
   putCfg(k,v,cb){FB.db.ref('calapp/cfg/'+k).set(v).then(()=>cb&&cb(null)).catch(e=>{fbErr(e);if(cb)cb(e);});},
   putPref(k,v){const uid=S.user&&S.user.uid;if(!uid)return;
     const r=FB.db.ref('calapp/prefs/'+uid+'/'+k);(v?r.set(v):r.remove()).catch(fbErr);},
@@ -943,12 +976,16 @@ const FbStore={
     }
   }
 };
+let fbErrT=0,fbErrMsg='';
 function fbErr(e){
   console.warn('[FB]',e);
   const c=String((e&&e.code)||'');
-  if(/permission|PERMISSION/i.test(c+String(e&&e.message)))
-    toast('저장 권한이 없습니다 — Firebase 규칙에 calapp 블록이 반영됐는지 확인하세요');
-  else toast('저장하지 못했습니다 — 연결을 확인하세요. 화면 값은 서버 값으로 곧 되돌아갑니다');
+  const msg=/permission|PERMISSION/i.test(c+String(e&&e.message))
+    ? '저장 권한이 없습니다 — Firebase 규칙에 calapp 블록이 반영됐는지 확인하세요'
+    : '저장하지 못했습니다 — 연결을 확인하세요. 화면 값은 서버 값으로 곧 되돌아갑니다';
+  const now=Date.now();
+  if(msg===fbErrMsg && now-fbErrT<1800)return;
+  fbErrMsg=msg;fbErrT=now;toast(msg,4000);
 }
 /* Firebase 배열 직렬화 보정: 빈 배열은 사라지고 객체로 돌아올 수 있다 */
 function normOrg(org){org.teams=arr(org.teams);org.regions=arr(org.regions);org.sites=arr(org.sites);}
@@ -1893,7 +1930,7 @@ function planEvent(p,date){
     /* ⚠ display 를 지정하지 않으면 시간이 있는 업무는 FullCalendar 가 '점 형식'으로 그린다 —
        배경 없이 어두운 글자라 유리(어두운) 배경 위에서 거의 보이지 않는다. 전부 색 막대로 통일한다 */
     display:'block',
-    classNames:(done?['done']:[]).concat((!team&&isLightColor(planColor(p)))?['on-light']:[]).concat(team?['team']:[]).concat(isRisk(p.kind)?['risk']:[]).concat((!team&&planColor(p)==='rainbow')?['ev-rb']:[]),   /* 632차: 무지개는 인라인 색 대신 클래스 — CSS 가 그라디언트를 칠한다 */
+    classNames:(done?['done']:[]).concat((!team&&isLightColor(planColor(p)))?['on-light']:[]).concat(team?['team']:[]).concat(isRisk(p.kind)?['risk']:[]).concat(planColor(p)==='rainbow'?['ev-rb']:[]),   /* 633차: 담당자/공통 모두 무지개 렌더링 경로를 통일 */
     /* 칸 안 차례 — 공통(0) · 내 업무(1) · 팀장(2) · 나머지(3).
        칸이 넘쳐 '외 N건' 으로 접힐 때 나와 상관 있는 것이 먼저 남는다(eventOrder 참조) */
     extendedProps:{pid:p.id,occ:date,recur:!!(p.recur&&p.recur.f),ord:evOrd(p,team),oky:evOwnKey(p),cre:Number(p.createdAt)||0},
@@ -2797,7 +2834,7 @@ function taskItemHTML(sid,iid,it,withSubject,hideOwn,colsIn,occ){
     <div class="tk-row">
       ${cols.noReg?'':'<span class="tkc tkc-r"'+go+'>'+esc(cols.regLabel||'')+'</span>'}
       ${editing
-        ? (cols.who?'<span class="tkc tkc-w"><i class="tkc-dot" id="tnAsgDot" style="background:'+esc(planColor(p0))+'"></i>'
+        ? (cols.who?'<span class="tkc tkc-w"><i class="tkc-dot" id="tnAsgDot" style="background:'+esc(colBg(planColor(p0)))+'"></i>'
             +ownSelHTML('tnAsg',(Object.keys(it.assignees||{}).filter(k=>it.assignees[k])[0])||'',roster())+'</span>':'')
           +(cols.site?'<span class="tkc tkc-s">'+sitePickHTML('tnSite',it.site||'')+'</span>':'')
           +'<span class="tk-ttl"><input class="inp cell-inp" id="tnTitle" value="'+esc(it.text||'')+'" placeholder="무엇을 하나요?"></span>'
@@ -2807,7 +2844,7 @@ function taskItemHTML(sid,iid,it,withSubject,hideOwn,colsIn,occ){
             +tkRangePopHTML()+'</span>'
         : (cols.who?(cols.gw?'<span class="tkc tkc-w"></span>'
             :'<span class="tkc tkc-w'+(who?'':' dim')+'"'+go+'>'
-              +'<i class="tkc-dot" style="background:'+esc(planColor(p0))+'"></i>'+(who?esc(who):'공통')+'</span>'):'')
+              +'<i class="tkc-dot" style="background:'+esc(colBg(planColor(p0)))+'"></i>'+(who?esc(who):'공통')+'</span>'):'')
           +(cols.site?'<span class="tkc tkc-s"'+go+'>'+esc(sn)+'</span>':'')
           +'<span class="tk-ttl"'+go+'>'+riskMark(it.kind)+esc(it.text||'제목 없음')
             +(sub?'<i class="tk-sub-i">'+esc(sub)+'</i>':'')
@@ -8748,9 +8785,9 @@ function go(view){
   mobClose();
 }
 let toastT=null;
-function toast(msg){
+function toast(msg,duration=2400){
   const t=$('#toast');t.textContent=msg;t.classList.add('show');
-  clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),2400);
+  clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),Math.max(1000,Number(duration)||2400));
 }
 function mobClose(){
   if(S.dpSheet){dpSheet(false);return;}   /* 시트가 열려 있으면 스크림 탭은 시트부터 닫는다 */
@@ -9719,7 +9756,7 @@ document.addEventListener('input',e=>{if(e.target.id==='nqQ')rNq();});
 document.addEventListener('change',e=>{const el=e.target;if(!el||!el.dataset)return;
   /* 담당자를 바꾸면 앞의 색 점도 따라간다(389차) — select 는 클릭 처리에서 막히므로 change 에서 다룬다 */
   if(el.id==='tnAsg'){const dot=document.getElementById('tnAsgDot');
-    if(dot)dot.style.background=el.value?colBg(ownColor(el.value)):'var(--lbl3)';}
+    if(dot){const c=el.value?colBg(ownColor(el.value)):'var(--lbl3)';dot.style.background=c;dot.classList.toggle('p-col-rainbow',false);}}
   if(el.dataset.act==='df.moYear'){S.dfMoYear=el.value;if(DF.lastDash)dfDashMonthTable(DF.lastDash);}
   else if(el.dataset.act==='df.detailYear'){S.dfDetailYear=el.value;rDefect();}
   else if(el.dataset.act==='df.trendYear'){
