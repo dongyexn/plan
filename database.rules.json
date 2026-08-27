@@ -206,7 +206,17 @@
       "tasks": {
         "$sid": {
           "$iid": {
-            ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
+            // 627·628차 업무 권한: 관리자는 전부. 그 외 기존 항목은 레거시(createdBy 없음 — 기존대로 전원)
+            // ∥ 작성자 ∥ 지정 담당자(assignees) ∥ 팀장(head)=모든 업무 ∥ 공구장(lead)=트리 주인($sid)이
+            // 같은 권역 ∥ 업무의 현장(site)이 내 담당 현장. 완료 체크·보류·삭제(null 쓰기)도 같은 조건.
+            // 630차 ①: **createdBy 는 불변** — 있던 것을 바꾸거나(양도·사칭) 지워서(레거시화로 전원
+            //   개방) 권한 구조를 흔들 수 없다. 레거시 항목에 심는 것도 금지(남이 심으면 소유권 탈취).
+            //   관리자만 정리 목적 변경 가능. 항목 삭제(null)는 예외.
+            // 630차 ②: 신규의 createdBy 무표기 허용은 **의도** — 레거시 항목의 휴지통 복원이 규칙상
+            //   '무표기 신규 set'과 구분되지 않는다. 우회로 얻는 것은 전원이 고칠 수 있는 공용 성격
+            //   업무 1건뿐(권한 상승 없음) — 위협 수용. trash·archive 의 MEMBER 유지도 의도:
+            //   삭제(작성자=viewer 가능)의 이동 대상이고, 아카이브 이월은 아무 세션이나 수행한다.
+            ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer') && (root.child('users').child(auth.uid).child('role').val() == 'editor' || (!data.exists() ? (!newData.child('createdBy').exists() || newData.child('createdBy').val() == auth.uid) : (!data.child('createdBy').exists() || data.child('createdBy').val() == auth.uid || data.child('assignees').child(auth.uid).exists() || root.child('calapp/people').child(auth.uid).child('rank').val() == 'head' || (root.child('calapp/people').child(auth.uid).child('rank').val() == 'lead' && root.child('calapp/people').child(auth.uid).child('region').val() != '' && root.child('calapp/people').child($sid).child('region').val() == root.child('calapp/people').child(auth.uid).child('region').val()) || (data.child('site').val() != '' && root.child('calapp/people').child(auth.uid).child('sites').child(data.child('site').val()).exists()))) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || !newData.exists() || (!data.exists() || (data.child('createdBy').exists() ? newData.child('createdBy').val() == data.child('createdBy').val() : !newData.child('createdBy').exists()))))",
             "text":      { ".validate": "newData.isString() && newData.val().length <= 500" },
             "body":      { ".validate": "newData.isString() && newData.val().length <= 2000" },
             "prog":      { ".validate": "newData.isString() && newData.val().length <= 2000" },
@@ -251,6 +261,13 @@
                 "$other": { ".validate": false }
               }
             },
+            "createdBy": { ".validate": "newData.isString() && newData.val().length <= 64 && (!data.exists() || newData.val() == data.val())" },
+            "hist": { "$h": {
+              "t": { ".validate": "newData.isNumber()" },
+              "u": { ".validate": "newData.isString() && newData.val().length <= 30" },
+              "k": { ".validate": "newData.isString() && newData.val().length <= 10" },
+              "$other": { ".validate": false }
+            } },
             "$other": { ".validate": false }
           }
         }
@@ -289,7 +306,7 @@
 
       // 팀·권역·현장 목록 — MEMBER 변경 가능
       "org": {
-        ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
+        ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'",
         "teams": {
           "$i": {
             "id":   { ".validate": "newData.isString() && newData.val().length <= 40" },
@@ -320,16 +337,31 @@
         "$other": { ".validate": false }
       },
 
+      // 630차: org.sites(배열)의 {현장id: 권역} 미러 — putOrg 가 조직 저장 때 원자 기록.
+      // people.sites 권역 검증(위)의 서버 참조점. 조직과 같은 권한(관리자만 쓰기).
+      "orgSiteRegion": {
+        ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'",
+        "$sid": { ".validate": "newData.isString() && newData.val().length <= 40" }
+      },
+
       // 담당자 명부(팀·권역·현장 배정) — MEMBER 변경 가능
       "people": {
-        ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
         "$pid": {
+          // 630차 재구성: **인증(HDEC·메일 검증) AND (관리자 ∥ 본인 ∥ 팀장 ∥ 공구장)** — 예전엔 인증 조건이
+          // 첫 분기에만 있어 뒤 분기가 인증을 안 지났다(외부 리뷰 지적 — 실우회는 어려우나 방어적 재구성).
+          // 본인: 이름·이메일·담당 현장만(팀·권역·직급 불변, 최초는 빈 팀·빈 권역·member).
+          // 팀장(head): 전원의 권역·담당 현장(이름·이메일·팀·직급 불변). 공구장(lead): 자기 권역 사람의
+          // 담당 현장만(권역도 불변). 현장의 권역 검증은 sites/$sid .validate(orgSiteRegion 미러 참조).
+          // ⚠ $pid 변수는 이 층에서만 유효 — people 레벨 .write 에 두면 규칙 컴파일이 깨진다
+          ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || ($pid == auth.uid && (data.exists() ? (newData.child('team').val() == data.child('team').val() && newData.child('region').val() == data.child('region').val() && newData.child('rank').val() == data.child('rank').val()) : (newData.child('team').val() == '' && newData.child('region').val() == '' && newData.child('rank').val() == 'member'))) || ($pid != auth.uid && data.exists() && root.child('calapp/people').child(auth.uid).child('rank').val() == 'head' && newData.child('name').val() == data.child('name').val() && newData.child('email').val() == data.child('email').val() && newData.child('team').val() == data.child('team').val() && newData.child('rank').val() == data.child('rank').val()) || ($pid != auth.uid && data.exists() && root.child('calapp/people').child(auth.uid).child('rank').val() == 'lead' && root.child('calapp/people').child(auth.uid).child('region').val() != '' && data.child('region').val() == root.child('calapp/people').child(auth.uid).child('region').val() && newData.child('region').val() == data.child('region').val() && newData.child('name').val() == data.child('name').val() && newData.child('email').val() == data.child('email').val() && newData.child('team').val() == data.child('team').val() && newData.child('rank').val() == data.child('rank').val()))",
           "name":   { ".validate": "newData.isString() && newData.val().length <= 60" },
           "email":  { ".validate": "newData.isString() && newData.val().length <= 200" },
           "team":   { ".validate": "newData.isString() && newData.val().length <= 40" },
           "region": { ".validate": "newData.isString() && newData.val().length <= 40" },
           "rank":   { ".validate": "newData.isString() && (newData.val() == 'member' || newData.val() == 'lead' || newData.val() == 'head' || newData.val() == 'safety' || newData.val() == 'cost')" },
-          "sites":  { "$sid": { ".validate": "newData.isNumber()" } },
+          // 630차: 현장 권역 강제 — 관리자·팀장 외에는 orgSiteRegion 미러의 권역이 내 권역과 같을 때만.
+          // 미러 값이 아직 없으면(이행기 — 관리자가 조직 저장을 한 번 하면 채워진다) 허용.
+          "sites":  { "$sid": { ".validate": "newData.val() == 1 && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('calapp/people').child(auth.uid).child('rank').val() == 'head' || !root.child('calapp/orgSiteRegion').child($sid).exists() || root.child('calapp/orgSiteRegion').child($sid).val() == root.child('calapp/people').child(auth.uid).child('region').val())" } },
           "$other": { ".validate": false }
         }
       },

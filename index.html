@@ -2452,6 +2452,16 @@ select.mg-inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-
 .myorg-f{display:flex;flex-direction:column;gap:5px;min-width:0;}
 .myorg-f label{font-size:12px;font-weight:600;color:var(--lbl2);}
 .myorg-f .inp-sm{width:100%;}
+.myorg-f-wide{grid-column:1/-1;}
+.site-on.site-ro{cursor:default;}   /* 628차: 배정 권한이 없으면 칩은 보기만 */
+/* 632차 무지개 — FC 는 backgroundColor 로 그라디언트를 못 받아 클래스로 칠한다(app.js RAINBOW_BG 와 동일 값) */
+.fc .ev-rb{background:linear-gradient(135deg,#F43F5E 0%,#F59E0B 20%,#FACC15 40%,#22C55E 60%,#3B82F6 80%,#8B5CF6 100%) !important;border-color:transparent !important;}
+.tk-hist{margin-top:2px;}
+.tk-hist>summary{list-style:none;cursor:pointer;font-size:11.5px;font-weight:600;color:var(--lbl3);padding:2px 0;}
+.tk-hist>summary::-webkit-details-marker{display:none;}
+.tk-hist>summary:hover{color:var(--lbl2);}
+.tk-hist-l{padding:4px 0 2px;display:flex;flex-direction:column;gap:3px;}
+.tk-hist-l>div{font-size:11.5px;color:var(--lbl2);font-variant-numeric:tabular-nums;line-height:1.4;}
 .myorg-fix{background:var(--surf2);border:1px solid var(--sep);border-radius:var(--rmd);
   padding:7px 11px;font-size:13px;font-weight:600;color:var(--lbl);line-height:1.35;min-height:36px;
   display:flex;flex-direction:column;justify-content:center;}
@@ -3743,7 +3753,7 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 <script src="./vendor/lz-string.min.js"></script>
 <script src="./vendor/chart.umd.min.js"></script>
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./vendor/korea-geo.js?v=625"></script>
-<script src="./vendor/apt-geo.js?v=625" onerror="void 0"></script>   <!-- 540차: 공동주택명 색인 — 없으면 그냥 건너뛴다 -->
-<script src="./app.js?v=625"></script>
+<script src="./vendor/korea-geo.js?v=632"></script>
+<script src="./vendor/apt-geo.js?v=632" onerror="void 0"></script>   <!-- 540차: 공동주택명 색인 — 없으면 그냥 건너뛴다 -->
+<script src="./app.js?v=632"></script>
 </body></html>

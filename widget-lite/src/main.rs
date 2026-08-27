@@ -135,6 +135,18 @@ mod win32 {
     pub const SWP_NOSIZE: u32 = 0x0001; pub const SWP_NOMOVE: u32 = 0x0002;
     pub const SWP_NOACTIVATE: u32 = 0x0010; pub const SWP_SHOWWINDOW: u32 = 0x0040;
     pub const GWL_EXSTYLE: i32 = -20; pub const WS_EX_TOOLWINDOW: isize = 0x0000_0080;
+    /* 629차 백업 암호화 — DPAPI(사용자 계정 귀속). windows 크레이트 없이 crypt32 직접 바인딩 */
+    #[repr(C)] pub struct DataBlob { pub cb: u32, pub pb: *mut u8 }
+    #[link(name = "crypt32")]
+    extern "system" {
+        pub fn CryptProtectData(pin: *const DataBlob, desc: *const u16, entropy: *const DataBlob,
+            reserved: *mut core::ffi::c_void, prompt: *mut core::ffi::c_void, flags: u32, pout: *mut DataBlob) -> i32;
+        pub fn CryptUnprotectData(pin: *const DataBlob, desc: *mut *mut u16, entropy: *const DataBlob,
+            reserved: *mut core::ffi::c_void, prompt: *mut core::ffi::c_void, flags: u32, pout: *mut DataBlob) -> i32;
+    }
+    #[link(name = "kernel32")]
+    extern "system" { pub fn LocalFree(h: *mut core::ffi::c_void) -> *mut core::ffi::c_void; }
+    pub const CRYPTPROTECT_UI_FORBIDDEN: u32 = 0x1;
 }
 fn hwnd_of(w: &WebviewWindow) -> Option<isize> { w.hwnd().ok().map(|h| h.0 as isize) }
 /* ── 주소(URL)를 기본 브라우저로 ──
@@ -435,14 +447,35 @@ fn set_auto_start(on: bool) {
         let run = RegKey::predef(HKEY_CURRENT_USER)
             .open_subkey_with_flags("Software\\Microsoft\\Windows\\CurrentVersion\\Run", winreg::enums::KEY_ALL_ACCESS);
         if let Ok(run) = run {
-            if on { let _ = run.set_value(RUN_KEY_NAME, &format!("\"{}\"", p.to_string_lossy())); }
+            if on { let _ = run.set_value(RUN_KEY_NAME, &format!("\"{}\" --autostart", p.to_string_lossy())); }   /* 629차: 자동/수동 기동을 로그에서 가르기 위한 표식 */
             else { let _ = run.delete_value(RUN_KEY_NAME); }
         }
     }
 }
+/* 629차: 작업관리자·설정의 '시작 앱 사용 안 함'은 Run 키를 지우지 않고
+   Explorer\StartupApproved\Run 의 같은 이름 값(12바이트, 첫 바이트 홀수=사용 안 함)으로만 막는다.
+   그래서 8-26·27처럼 **Run 키는 멀쩡한데 부팅 때 아무 로그도 없는** 증상이 된다.
+   꺼져 있으면 값을 지워(기본=사용) 되살리고, 매 시작 점검 결과를 한 줄 남긴다. */
+#[cfg(windows)]
+fn startup_approved_state() -> &'static str {
+    use winreg::enums::{HKEY_CURRENT_USER, KEY_ALL_ACCESS};
+    use winreg::RegKey;
+    let Ok(k) = RegKey::predef(HKEY_CURRENT_USER)
+        .open_subkey_with_flags("Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run", KEY_ALL_ACCESS)
+        else { return "확인 불가"; };
+    match k.get_raw_value(RUN_KEY_NAME) {
+        Ok(v) => {
+            if v.bytes.first().map(|b| b & 1 == 1).unwrap_or(false) {
+                if k.delete_value(RUN_KEY_NAME).is_ok() { "사용 안 함이었다 — 되살림" } else { "사용 안 함(복구 실패)" }
+            } else { "사용" }
+        }
+        Err(_) => "값 없음(=사용)",
+    }
+}
+#[cfg(not(windows))] fn startup_approved_state() -> &'static str { "해당 없음" }
 /* Run 키에 **실제로** 들어 있는 값. `is_auto_start` 와 달리 저장해 둔 뜻은 보지 않는다 —
    등록이 사라졌는지 판정하려면 레지스트리만 봐야 한다(609차). */
-fn run_key_want() -> String { format!("\"{}\"", home_exe().to_string_lossy()) }
+fn run_key_want() -> String { format!("\"{}\" --autostart", home_exe().to_string_lossy()) }   /* 629차: 구버전 등록값(인자 없음)과 달라 첫 실행 때 한 번 재등록된다 — 의도된 이행 */
 fn run_key_value() -> Option<String> {
     #[cfg(windows)] {
         use winreg::enums::HKEY_CURRENT_USER;
@@ -475,6 +508,62 @@ fn is_auto_start() -> bool {
    앱의 window.bkExport() 로 내용을 받아 문서\H 주요업무현황\backup\hplan_YYMMDD.json 으로 남긴다(163차).
    ⚠ 관리자 계정 + 자료 수신 뒤에만 내용이 온다 — 빈 백업으로 덮어쓰는 사고는 앱 쪽에서 막는다. */
 fn backup_dir() -> PathBuf { home_dir().join("backup") }
+/* ══════════ 백업 암호화(629차) ══════════
+   DPAPI 사용자 스코프 — 같은 PC·같은 윈도우 계정에서만 복호된다. 파일 꼴: "HPWENC1\n" + base64(blob).
+   복호는 위젯 안 웹의 '되돌리기'가 hpw-restore-req 로 요청한다(브라우저 단독은 복호 불가 — 안내). */
+const B64: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+fn b64_encode(data: &[u8]) -> String {
+    let mut out = String::with_capacity((data.len() + 2) / 3 * 4);
+    for ch in data.chunks(3) {
+        let b = [ch[0], *ch.get(1).unwrap_or(&0), *ch.get(2).unwrap_or(&0)];
+        let n = ((b[0] as u32) << 16) | ((b[1] as u32) << 8) | b[2] as u32;
+        out.push(B64[(n >> 18) as usize & 63] as char);
+        out.push(B64[(n >> 12) as usize & 63] as char);
+        out.push(if ch.len() > 1 { B64[(n >> 6) as usize & 63] as char } else { '=' });
+        out.push(if ch.len() > 2 { B64[n as usize & 63] as char } else { '=' });
+    }
+    out
+}
+fn b64_decode(text: &str) -> Option<Vec<u8>> {
+    let mut val = [255u8; 256];
+    for (i, c) in B64.iter().enumerate() { val[*c as usize] = i as u8; }
+    let mut buf = 0u32; let mut bits = 0u32; let mut out = Vec::new();
+    for c in text.bytes() {
+        if c == b'=' || c == b'\n' || c == b'\r' { continue; }
+        let v = val[c as usize];
+        if v == 255 { return None; }
+        buf = (buf << 6) | v as u32; bits += 6;
+        if bits >= 8 { bits -= 8; out.push((buf >> bits) as u8); }
+    }
+    Some(out)
+}
+#[cfg(windows)]
+fn dpapi_encrypt(data: &[u8]) -> Option<Vec<u8>> {
+    unsafe {
+        let pin = win32::DataBlob { cb: data.len() as u32, pb: data.as_ptr() as *mut u8 };
+        let mut pout = win32::DataBlob { cb: 0, pb: std::ptr::null_mut() };
+        if win32::CryptProtectData(&pin, std::ptr::null(), std::ptr::null(), std::ptr::null_mut(),
+            std::ptr::null_mut(), win32::CRYPTPROTECT_UI_FORBIDDEN, &mut pout) == 0 { return None; }
+        let v = std::slice::from_raw_parts(pout.pb, pout.cb as usize).to_vec();
+        win32::LocalFree(pout.pb as *mut core::ffi::c_void);
+        Some(v)
+    }
+}
+#[cfg(not(windows))] fn dpapi_encrypt(_d: &[u8]) -> Option<Vec<u8>> { None }
+#[cfg(windows)]
+fn dpapi_decrypt(data: &[u8]) -> Option<Vec<u8>> {
+    unsafe {
+        let pin = win32::DataBlob { cb: data.len() as u32, pb: data.as_ptr() as *mut u8 };
+        let mut pout = win32::DataBlob { cb: 0, pb: std::ptr::null_mut() };
+        if win32::CryptUnprotectData(&pin, std::ptr::null_mut(), std::ptr::null(), std::ptr::null_mut(),
+            std::ptr::null_mut(), win32::CRYPTPROTECT_UI_FORBIDDEN, &mut pout) == 0 { return None; }
+        let v = std::slice::from_raw_parts(pout.pb, pout.cb as usize).to_vec();
+        win32::LocalFree(pout.pb as *mut core::ffi::c_void);
+        Some(v)
+    }
+}
+#[cfg(not(windows))] fn dpapi_decrypt(_d: &[u8]) -> Option<Vec<u8>> { None }
+
 fn run_backup(app: &AppHandle, force: bool) -> bool {
     if !force {
         let last = STATE.lock().unwrap().last_backup.clone();
@@ -485,11 +574,16 @@ fn run_backup(app: &AppHandle, force: bool) -> bool {
     let (Some(name), Some(text)) = (d.get("name").and_then(|v| v.as_str()), d.get("text").and_then(|v| v.as_str())) else { return false };
     let _ = std::fs::create_dir_all(backup_dir());
     let f = backup_dir().join(name);
-    if std::fs::write(&f, text).is_err() { log("백업 저장 실패"); return false; }
+    /* 629차: DPAPI 로 잠근다 — 실패(이론상 희귀)하면 백업이 아예 없는 것보다 평문이 낫다 */
+    let (body, enc) = match dpapi_encrypt(text.as_bytes()) {
+        Some(blob) => (format!("HPWENC1\n{}", b64_encode(&blob)), true),
+        None => { log("백업 암호화 실패 — 평문으로 저장"); (text.to_string(), false) }
+    };
+    if std::fs::write(&f, &body).is_err() { log("백업 저장 실패"); return false; }
     STATE.lock().unwrap().last_backup = format!("{}T00:00:00", today_str());
     save_state();
     prune_backups();
-    log(&format!("백업 저장 {} ({}KB)", f.display(), text.len() / 1024));
+    log(&format!("백업 저장{} {} ({}KB)", if enc { "(암호화)" } else { "" }, f.display(), text.len() / 1024));
     let _ = ask(app, &format!("window.bkNote && window.bkNote({})", serde_json::to_string(name).unwrap()), 3000);
     true
 }
@@ -888,7 +982,9 @@ fn main() {
     }
     { *STATE.lock().unwrap() = load_state(); }          /* ⚠ 준비된 뒤 맨 앞에서 읽는다(146차) */
     self_heal();
-    log(&format!("시작 · 설정파일={} · 실행파일={} · 버전={}", state_file().display(), exe_path().display(), cur_ver()));
+    let booted = std::env::args().any(|a| a == "--autostart");
+    log(&format!("시작({}) · 설정파일={} · 실행파일={} · 버전={}",
+        if booted { "자동" } else { "수동" }, state_file().display(), exe_path().display(), cur_ver()));
     if take_update_on_boot() { return; }                /* 카톡처럼 — 창을 만들기 전에 갈아탄다(157차) */
     if hand_over_to_home() { return; }                  /* 다른 자리에서 실행됐으면 문서 폴더 판에 넘긴다 */
 
@@ -902,6 +998,22 @@ fn main() {
             let handle = app.handle().clone();
 
             /* 브리지 회신 받기 */
+            /* 629차: 암호화 백업 복원 — 위젯 안 웹의 '되돌리기'가 파일 전체 텍스트를 보내면 복호해 돌려준다 */
+            let hr = handle.clone();
+            handle.listen_any("hpw-restore-req", move |ev| {
+                let p: serde_json::Value = serde_json::from_str(ev.payload()).unwrap_or(serde_json::Value::Null);
+                let id = p.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string();
+                let text = p.get("text").and_then(|v| v.as_str()).unwrap_or("");
+                let res = text.strip_prefix("HPWENC1\n")
+                    .and_then(b64_decode)
+                    .and_then(|blob| dpapi_decrypt(&blob))
+                    .and_then(|raw| String::from_utf8(raw).ok());
+                let _ = match res {
+                    Some(json) => hr.emit("hpw-restore-res", serde_json::json!({ "id": id, "json": json })),
+                    None => { log("백업 복호 실패 — 다른 PC·계정의 파일이거나 손상");
+                        hr.emit("hpw-restore-res", serde_json::json!({ "id": id, "err": true })) }
+                };
+            });
             handle.listen_any("hpw-answer", move |ev| {
                 if let Ok(v) = serde_json::from_str::<Value>(ev.payload()) {
                     if let Some(id) = v.get("id").and_then(|x| x.as_u64()) {
@@ -1029,6 +1141,9 @@ fn main() {
                             now.clone().unwrap_or_else(|| "(없음)".into()), want));
                         set_auto_start(true);
                     }
+                    /* 629차: Run 키가 있어도 '시작 앱 사용 안 함'이면 부팅 때 실행되지 않는다 — 점검·복구·기록 */
+                    log(&format!("자동 실행 점검 · Run={} · 시작 앱={}",
+                        if run_key_value().is_some() { "있음" } else { "없음" }, startup_approved_state()));
                 }
             });
 
