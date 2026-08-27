@@ -1,15 +1,14 @@
 /* ═══════════════════════════════════════════════════════════════
    H서비스센터 · 일정·업무 공유
-   - 디자인·구조 원칙은 하자처리 현황 앱을 따른다 (토큰·컴포넌트 동일)
-   - 데이터: 로그인 전 localStorage → 로그인 후 Firebase RTDB(calapp/*) 실시간
-   - 같은 origin(GitHub Pages)·같은 Firebase 프로젝트라, 하자처리 현황에
-     로그인돼 있으면 세션이 자동 공유되어 이 앱도 곧바로 실시간 모드가 된다.
+   - 업무·조직·하자 관리를 하나의 앱에서 운영한다.
+   - 데이터: 로그인 전 localStorage → 로그인 후 Firebase RTDB 실시간
+   - 브라우저와 위젯은 같은 앱 주소와 인증 체계를 사용한다.
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='637';
+const APP_VER='640';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -3670,15 +3669,10 @@ function rNq(){
       +(dRows.length?item('i-defect','전체 목록으로 보기','조건 그대로 미처리 목록 창을 엽니다 · '+dRows.length.toLocaleString()+'건','data-act="nq.list"'):''):''));
 }
 
-/* ═══════════ 하자 생산자 ① — 집계 엔진 (원본 app-core.js·app-view.js 이식 · 614차) ═══════════
-   report 앱 폐기 계획에 따라 생산자 쪽(업로드→집계→게시)을 순차 이식한다. 이 절은 그 1단계로,
-   순수 집계 함수만 담는다(화면 변화 없음). ⚠ 아래 함수들은 **원본에서 바이트 그대로 옮겼다** —
-   게시본 kpi 와의 일치가 생명이므로 임의 수정 금지. 수정할 일이 있으면 반드시 scripts/test/calc-equiv.mjs
-   (원본 대비 동등성 검사)를 함께 돌릴 것.
-   원본과 달라진 곳(⚠ 표시 4곳뿐):
-   - capAll · warmCalcKick: dashSites()/teamSites()/S.sites → dfDashSites()/dfSites() (calapp 조직 모델)
-   - capAll · trendYearInfo · _warmStep: S.rm → dfPubRm() (게시 기준월 — 아래 정의)
-   원본 하자 행은 S.def[sid] (IndexedDB 이식은 2단계). 캐시 무효화는 S.def Proxy 가 자동 처리. */
+/* ═══════════ 하자 데이터 생산·집계 — 현재 앱의 단일 처리 경로 ═══════════
+   HCS 업로드 → 로컬 원본 보관 → 집계 → 게시본 생성까지 이 앱이 직접 처리한다.
+   집계 결과는 게시본 KPI·추이·목록의 공통 기준이며, 임의 수정 시 회귀 게이트를 함께 갱신한다.
+   원본 행은 S.def[sid] 에 보관하고 캐시 무효화는 S.def Proxy 가 담당한다. */
 /* 게시 기준월 — 원본 규칙과 동일하게 자동 전월(pM(todayYM())), 나중에 게시 UI에서 조정한다(3단계) */
 function dfPubRm(){return S.dfPubRm||pM(todayYM());}
 S.def={};S.defVer=0;   /* 원본 하자 행(현장별)·계산 캐시 세대 — report S 와 같은 자리 */
@@ -4027,16 +4021,34 @@ function calc(items,site,rm){
 }
 /* ═══════════ 하자 생산자 ① 끝 ═══════════ */
 
-/* ═══════════ 하자 생산자 ② — 저장·업로드·주요이슈·게시 (원본 이식 · 614차) ═══════════
-   원본: app-data.js(IndexedDB·게시)·app-boot.js(업로드)·app-view.js(주요이슈)·app-core.js(진행오버레이).
-   ⚠ ①과 같은 규칙 — 함수 본문은 원본 그대로, 달라진 곳만 ⚠ 주석. scripts/test/upload-equiv.mjs 로 검증.
-   ⚠ IndexedDB 는 report 앱과 **같은 오리진·같은 DB(hdec_db_v1)** 다 — 기존 마스터 PC 의 원본 하자 행을
-     그대로 읽으므로 마이그레이션이 없다. 위젯(WebView2)은 다른 IndexedDB 를 갖는다 — 업로드·게시는
-     브라우저에서만 한다(dfProdBoot 가 위젯·스냅샷에서 조기 반환).
-   ⚠ meta 스토어의 'state' 레코드는 report 앱 것 — 건드리지 않는다. calapp 은 'calapp' 레코드를 따로 쓴다. */
-const DB_NAME='hdec_db_v1',DB_VER=1;
+/* ═══════════ 하자 데이터 저장·업로드·주요이슈·게시 ═══════════
+   HCS 원본 행은 이 앱 전용 IndexedDB 에 보관하고, 업로드 → 집계 → 게시를 모두 이 앱에서 수행한다.
+   위젯(WebView2)과 스냅샷은 원본 업로드 저장소를 사용하지 않으며, 브라우저의 관리자 화면에서만 업로드·게시한다.
+   meta 스토어에는 이 앱의 게시 기준월·업로드 이력을 별도 레코드로 저장한다. */
+const DB_NAME='calapp_defects_v1',DB_VER=1;
+const PREV_DB_NAME='hdec_db_v1';
 let _db=null;
 
+async function migrateDefectStore(){
+  /* 기존 로컬 데이터가 있는 설치만 조용히 현재 저장소로 한 번 복사한다. 이후에는 새 저장소만 사용한다. */
+  try{
+    const mark=localStorage.getItem('calapp.defectStoreV1');
+    if(mark==='1')return;
+    if(!indexedDB.databases)return;
+    const dbs=await indexedDB.databases();
+    if(!dbs.some(x=>x&&x.name===PREV_DB_NAME)){localStorage.setItem('calapp.defectStoreV1','1');return;}
+    const rows=await new Promise((res,rej)=>{
+      let req;try{req=indexedDB.open(PREV_DB_NAME,1);}catch(e){return rej(e);}
+      req.onerror=()=>rej(req.error);
+      req.onsuccess=()=>{const db=req.result;if(!db.objectStoreNames.contains('defects')){db.close();return res([]);}
+        const tx=db.transaction('defects','readonly'),os=tx.objectStore('defects'),r=os.getAll();
+        r.onsuccess=()=>{const v=r.result||[];db.close();res(v);};r.onerror=()=>{const e=r.error;db.close();rej(e);};
+      };
+    });
+    for(const row of rows){if(row&&row.sid&&!S.def[row.sid]){const raw=defDecode(row);if(raw){try{await dbPut('defects',{sid:row.sid,data:row.data,enc:row.enc,compressed:row.compressed,count:row.count,savedAt:row.savedAt});}catch(e){console.warn('[store] 데이터 이전 실패',row.sid,e);}}}}
+    localStorage.setItem('calapp.defectStoreV1','1');
+  }catch(e){console.warn('[store] 기존 로컬 데이터 확인 실패',e);}
+}
 function dbOpen(){
   return new Promise((res,rej)=>{
     if(_db)return res(_db);
@@ -4109,8 +4121,8 @@ function dfFmtDT(v){const d=v instanceof Date?v:new Date(v);if(isNaN(d))return '
   return (d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}   /* 업로드·등록 시각 한 서식(615차) */
 async function dfMetaLoad(){try{const o=await dbGet('meta','calapp');if(o){if(/^\d{4}-\d{2}$/.test(o.pubRm||''))S.dfPubRm=o.pubRm;if(o.lastUp)DFMETA.lastUp=o.lastUp;if(Array.isArray(o.hist))DFMETA.hist=o.hist.slice(0,10);}}catch(e){console.warn('dfMetaLoad',e);}}
 function dfMetaSave(){dbPut('meta',{id:'calapp',pubRm:S.dfPubRm||'',lastUp:DFMETA.lastUp,hist:DFMETA.hist||[]}).catch(e=>console.warn('dfMetaSave',e));}
-/* 제외 키워드 — 원본 기본값 'dummy'(테스트행 제외) 유지. 레거시 키('exTk' — report 앱)를 한 번 물려받는다 */
-S.exTk=(function(){try{return localStorage.getItem('calapp.exTk')??localStorage.getItem('exTk')??'dummy';}catch(e){return 'dummy';}})();
+/* 제외 키워드 — 기본값 'dummy'(테스트행 제외). 이 앱의 설정만 사용한다. */
+S.exTk=(function(){try{return localStorage.getItem('calapp.exTk')??'dummy';}catch(e){return 'dummy';}})();
 /* 권역 이름 목록 — 원본 curRegions 와 같은 규칙(고정 권역 '인수 전 현장'을 끝에 붙인다) */
 function dfRegionNames(){const base=(S.org.regions||[]).map(r=>r&&r.name).filter(n=>n&&n!=='인수 전 현장');base.push('인수 전 현장');return base;}
 
@@ -4119,7 +4131,7 @@ function progSet(pct,sub){const f=document.getElementById('uprogFill');if(f)f.st
 function progMsg(msg){const m=document.getElementById('uprogMsg');if(m)m.textContent=msg;}
 function progHide(){const o=document.getElementById('uprog');if(o)o.classList.remove('show');}
 function nextFrame(){return new Promise(r=>{let done=false;const fin=()=>{if(done)return;done=true;r();};requestAnimationFrame(()=>requestAnimationFrame(fin));setTimeout(fin,60);});}
-/* ── 업로드 파이프라인 — 원본 app-boot.js 그대로(치환 지점은 각 ⚠ 주석) ── */
+/* ── 업로드 파이프라인 — 현재 앱의 HCS 데이터 처리 경로 ── */
 const COLS_REQ=['접수일','처리상태','공종'];
 const COLS_WARN=[['현장'],['현장코드'],['동'],['호'],['접수번호'],['처리확인일'],['하자유형'],['하자구분'],['중대하자유형','중대하자'],['지연일','지연일수'],['보수주체'],['시공업체'],['보수업체'],['입주상태','분양상태'],['공간'],['접수내용'],['민원']];
 function findHeaderRow(rows){const sniff=['접수일','공종','처리상태','보수주체'];for(let i=0;i<Math.min(rows.length,20);i++){const r=rows[i]||[];const cells=r.map(c=>String(c||'').trim());let hits=0;for(const s of sniff)if(cells.includes(s))hits++;if(hits>=2)return i;}return 0;}
@@ -4622,8 +4634,7 @@ function dfInsightsBuild(all,tR,tRes,tU,tLt,rate,pRate,rm){
   return themeHTML(safeHTML(items.map(x=>`<div class="ic ${x.cls}"><div class="ic-i">${icoSVG(x.icon)}</div><div class="ic-t"><div class="ic-ttl">${x.ttl}</div><div class="ic-sub">${x.sub}</div></div></div>`).join('')));
 }
 function deepEncKeys(v){if(Array.isArray(v))return v.map(deepEncKeys);if(v&&typeof v==='object'){const o={};Object.keys(v).forEach(function(k){o[dfEncKey(k)]=deepEncKeys(v[k]);});return o;}return v;}
-/* ── 게시용 조직 변환 — calapp S.org → 원본(report) 현장·팀 모양. _dash 에 실려
-   구버전 report 앱 뷰어·스냅샷과의 호환을 지킨다(폐기 전 병행 기간). ── */
+/* ── 게시용 조직 변환 — calapp S.org 를 월별 게시본에 필요한 현장·팀 구조로 변환한다. ── */
 function dfOrgToDashSites(){
   return (S.org.sites||[]).filter(x=>x&&x.name).map(x=>({id:String(x.id),name:String(x.name),region:String(x.region||''),
     teamId:String(x.team||''),units:Number(x.units)||0,buildings:Number(x.buildings)||0,
@@ -4807,7 +4818,7 @@ function dfProdWire(){
 async function dfProdBoot(){
   if(S.snap||/[?&]w=1\b/.test(location.search))return;
   dfProdWire();
-  try{await dfMetaLoad();await defLoadAll();}catch(e){console.warn('dfProdBoot',e);}
+  try{await migrateDefectStore();await dfMetaLoad();await defLoadAll();}catch(e){console.warn('dfProdBoot',e);}
   dfProdCardFill();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(dfProdBoot,0));
@@ -4820,7 +4831,7 @@ else setTimeout(dfProdBoot,0);
    원본 그대로 — 문구를 바꾸면 회의자료 산출물이 달라진다. 적응 지점은 각 ⚠ 주석.
    ⚠ 둘 다 **원본 하자 행이 있는 마스터 PC 전용**이다(calc 를 로컬 행으로 돌린다).
    ⚠ CSP connect-src 의 *.googleapis.com 이 generativelanguage 를 허용한다 — CSP 를 죄면 여기가 죽는다. */
-S.ck=(function(){try{return localStorage.getItem('calapp.ck')??localStorage.getItem('ck')??'';}catch(e){return '';}})();   /* Gemini API 키 — 레거시(report 앱) 'ck' 1회 승계 */
+S.ck=(function(){try{return localStorage.getItem('calapp.ck')??'';}catch(e){return '';}})();   /* Gemini API 키 — 이 앱의 설정만 사용 */
 function dfAnaWrite(sid,txt,rm){
   if(!S.live||!FB.db)return;
   if(!/^\d{4}-\d{2}$/.test(rm||''))return;
@@ -5020,11 +5031,10 @@ function nlqApply(rows,R){
 
 
 
-/* ═══════════ 하자처리 현황 — 원본(하자처리 현황 앱) 화면 이식 ═══════════
-   대시보드·현장 패널의 화면 구성과 기능은 원본을 그대로 따르고,
-   색·모서리·글자 크기·간격만 이 앱의 토큰을 쓴다(각진 8px 모서리 등).
-   ⚠ 이 앱은 **읽기 전용**이다(처리계획·분석 의견 제외). 원본 하자 행은 업로드한 PC에만 있고,
-   집계·게시는 하자처리 현황 앱이 한다. 숫자의 단일 출처는 게시본:
+/* ═══════════ 하자처리 현황 — 현재 앱의 하자 관리 화면 ═══════════
+   대시보드·현장 패널은 이 앱의 공통 UI 규칙으로 구성한다.
+   HCS 원본 행은 관리자 업로드로 이 앱의 로컬 저장소에 보관하고, 집계·게시는 이 앱에서 수행한다.
+   숫자의 단일 출처는 게시본:
    - report/{rm}/_dash : wks(주차 누계)·am(공종별 미처리)·insightsHTML·sites·teams
    - report/{rm}/{sid} : kpi(calc 전체 — weekly·monthly·trAgg·coAgg·top·topLt·prev·vacU·vacS…)
                           ·siteWks(추이차트용)·siteAm(도넛용)·vac(공가 입력값)·ulz(미처리 목록 압축) */
@@ -5188,7 +5198,7 @@ async function dfAllKpi(){
     if(DF.kpi[rm+'/'+list[i].id]===undefined){toast('현장 자료 받는 중… ('+(i+1)+'/'+list.length+')');await dfSiteData(list[i].id);}
   }
 }
-/* 처리계획 — 하자처리 현황과 같은 자리(plans/{현장}/{필드}/{기준월@공종}) · 키는 fbEncKey 와 동일 규칙 */
+/* 처리계획 — 현장별·기준월별 저장(plans/{현장}/{필드}/{기준월@공종}) */
 function dfPlanKey(rm,trade){return encodeURIComponent(rm+'@'+trade).replace(/\./g,'%2E');}
 async function dfLoadPlans(sid){
   if(!S.live||!FB.db||!sid)return {};
@@ -5208,7 +5218,7 @@ function dfPlanSet(sid,field,rm,trade,val){
   DF.plans[sid][field][key]=v;
   if(S.live&&FB.db)FB.db.ref('plans/'+sid+'/'+field+'/'+key).set(v).catch(()=>toast('처리계획 저장 실패'));
 }
-/* 분석 의견 — analysis/{현장}/{기준월}. 열람자도 쓸 수 있다(원본의 공동 작성 규칙) */
+/* 분석 의견 — analysis/{현장}/{기준월}. 허용된 사용자가 공동 작성한다. */
 async function dfLoadAna(sid){
   if(!S.live||!FB.db||!sid)return {};
   if(DF.ana[sid])return DF.ana[sid];
@@ -5216,22 +5226,22 @@ async function dfLoadAna(sid){
   catch(e){DF.ana[sid]={};}
   return DF.ana[sid];
 }
-/* 분석 의견 HTML — 원본과 같이 AI 산출 HTML 을 씻어서 그대로 렌더한다(레거시 문자열 값도 수용) */
+/* 분석 의견 HTML — AI 산출 HTML 을 정제해서 렌더한다. */
 function dfAitHTML(sid){
   const m=DF.ana[sid];
   const v=(typeof m==='string')?m:((m||{})[S.dfRm]||'');
   if(!v)return '<p style="color:var(--lbl3)">이 달의 AI 분석이 없습니다.</p>';
   return (typeof DOMPurify!=='undefined')?DOMPurify.sanitize(v):esc(v);
 }
-/* 현재 열어 둔 현장의 처리계획·분석 의견 실시간 구독 — 원본(fb2SubSite)과 같은 동작.
-   내가 입력 중인 칸은 건드리지 않는다(타이핑을 실시간 수신이 덮어쓰는 사고 방지). */
+/* 현재 열어 둔 현장의 처리계획·분석 의견 실시간 구독.
+   입력 중인 칸은 타이핑이 덮어쓰지 않도록 보호한다. */
 function dfSubSite(sid){
   const skey=dfRm()+'/'+sid;   /* 기준월이 바뀌면 vac 경로도 바뀐다 — rm 포함 키로 재구독 */
   if(DF._sub&&DF._sub.sid===skey)return;
   if(DF._sub)DF._sub.offs.forEach(f=>{try{f();}catch(e){}});
   DF._sub={sid:skey,offs:[]};
   if(!S.live||!FB.db||!sid)return;
-  /* 공가 수(미분양·미키불출)는 하자처리 현황이 원 소스 — 그쪽에서 수정하면 즉시 따라간다(226차: '연동 안 됨' 지적의 원인) */
+  /* 공가 수(미분양·미키불출)는 현재 앱의 게시본 리프이며, 이 앱에서 수정하면 즉시 반영된다. */
   {const vref=FB.db.ref('report/'+dfRm()+'/'+sid+'/vac');
    const vh=vref.on('value',snap=>{
      DF.vac[skey]=dfDec(snap.val())||{};
@@ -5758,7 +5768,7 @@ function dfMonthCardHTML(st,curYear,pickerHTML){
       return`<tr><td class="cc mcell">${w.m}월</td><td class="cc recv-total tl-grp">${dfNF(m.tR)}</td><td class="cc recv-weekly">${dfNF(m.recvW)}</td><td class="cc proc-blue tl-grp">${dfNF(m.cumRes)}</td><td class="rate-col proc-blue">${m.rate.toFixed(1)}%</td><td class="cc proc-blue">${dfNF(m.resW)}</td><td class="cc">${dfDlt(m.resWDlt,first,m.resW,'월')}</td><td class="cc unr-red tl-grp">${dfNF(m.unr)}</td><td class="cc">${dfDlt(m.unrDlt,first,m.unr,'월')}</td>${dfLtrCells(m.d0,m.d30,m.d60,m.unr,m.ltDlt,first,'월')}</tr>`;}).join('');
   return `<div class="card" data-print="tl-month"><div class="sh"><div class="st cardttl">월별 현황</div>${pickerHTML||''}</div><div style="overflow-x:auto"><table class="dt dt-detail" style="table-layout:fixed">${moColgroup}${moThead}<tbody>${moBody||'<tr><td colspan="12" style="text-align:center;padding:14px;color:var(--lbl3)">데이터 없음</td></tr>'}</tbody></table></div></div>`;
 }
-/* 공가 탭 — 원본 vacPaneHTML. 공가 수(미분양·미키불출)는 하자처리 현황에서 입력한 값을 읽기만 한다 */
+/* 공가 탭 — 현재 앱 게시본의 공가 수(미분양·미키불출)를 표시한다. */
 function dfVacPane(sid,stat,vacSv,kind){
   const sangga=kind==='sangga';
   const vl=sangga?'공가상가':'공가세대';
@@ -5964,7 +5974,7 @@ function dfSnapBoot(){
   let snap=null;
   try{snap=JSON.parse(LZString.decompressFromBase64(window.__SNAP_Z__));}catch(e){}
   if(!snap)return false;
-  /* 614차 다월: snap.months={달:{dash,site}} 이면 달마다 트리를 채운다 — 기준월 선택기('df.rm')가
+  /* 다월 스냅샷: snap.months={달:{dash,site}} 이면 달마다 트리를 채운다 — 기준월 선택기가
      스텁 reportIndex 를 읽어 파일 안에서 달 전환이 그대로 된다. 구형(단월 snap.dash/site)도 연다. */
   const mos=snap.months||{[snap.rm]:{dash:snap.dash,site:snap.site}};
   const tree={report:{},plans:snap.plans,analysis:snap.ana,siteConfig:{},reportIndex:{}};
@@ -5979,9 +5989,7 @@ function dfSnapBoot(){
   });
   const walk=(o,ps)=>{let c=o;for(const k of ps){if(c==null)return null;c=c[k];}return c==null?null:c;};
   S.live=true;
-  /* ⚠ 607차: `get` 이 빠져 있어 스냅샷 문서를 열 때마다 `FB.db.ref(...).get is not a function` 이
-     터졌다(trashAll·archLoad·migrateRemote 가 쓴다). 실 Firebase 의 ref 는 once/get 를 다 갖는다 —
-     여기 스텁도 같은 모양이어야 한다. 새 Firebase 메서드를 쓰기 시작하면 이 스텁에 함께 넣을 것. */
+  /* 스냅샷 문서는 읽기 전용이므로 Firebase ref 의 once/get/on 인터페이스만 제공한다. */
   FB.db={ref:p=>({
     once:async()=>({val:()=>{const v=walk(tree,String(p||'').split('/').filter(Boolean));return v===undefined?null:v;}}),
     get:async()=>({val:()=>{const v=walk(tree,String(p||'').split('/').filter(Boolean));return v===undefined?null:v;}}),
@@ -6416,7 +6424,7 @@ async function dfPrintReport(){
     try{await dfAllKpi();}catch(e){console.warn('[하자] 인쇄 사전 로드(kpi)',e);}
   }
   const old=document.getElementById('rptRoot');if(old)old.remove();
-  /* 보고서는 A4 전면을 직접 쓴다 — 기존 @page(여백·쪽번호)를 인쇄 동안만 덮는다 */
+  /* 보고서는 A4 전면을 직접 구성한다 — @page 설정은 인쇄 동안만 적용한다 */
   let _ps=document.getElementById('rptPageCSS');
   if(!_ps){_ps=document.createElement('style');_ps.id='rptPageCSS';document.head.appendChild(_ps);}
   _ps.textContent='@page{size:A4 portrait;margin:0;@bottom-right{content:""}@bottom-left{content:""}@top-left{content:""}@top-right{content:""}}';

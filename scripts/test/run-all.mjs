@@ -1,7 +1,6 @@
-/* 전체 로컬 회귀 게이트 — 외부 원본(report-main)이 없어도 독립적으로 실행된다.
+/* 전체 로컬 회귀 게이트 — 이 저장소만으로 독립 실행한다.
    기본: 정적 감사 → Rules 감사 → 브라우저 smoke → rainbow → 하자 E2E.
-   LIVE_E2E_* 4개가 모두 있으면 실제 Firebase E2E도 마지막에 실행한다.
-   REPORT_MAIN이 있으면 calc/upload 동등성 검사도 추가한다. */
+   LIVE_E2E_* 4개가 모두 있으면 실제 Firebase E2E도 마지막에 실행한다. */
 import { spawnSync } from 'node:child_process';
 import process from 'node:process';
 
@@ -27,11 +26,6 @@ if(live.every(k=>process.env[k])){
   if(run('실제 Firebase E2E',['scripts/test/firebase-live-e2e.mjs'])!==0) failed++;
 }else console.log('\n=== 실제 Firebase E2E ===\nSKIP  LIVE_E2E_* 4개 Secret이 모두 있을 때만 실행합니다.');
 
-if(process.env.REPORT_MAIN){
-  for(const [name,file] of [['집계 동등성',['scripts/test/calc-equiv.mjs','--report',process.env.REPORT_MAIN]],['업로드 동등성',['scripts/test/upload-equiv.mjs','--report',process.env.REPORT_MAIN]]]){
-    if(run(name,file)!==0) failed++;
-  }
-}else console.log('\n=== 원본 동등성 검사 ===\nSKIP  REPORT_MAIN이 없어 calc/upload 원본 비교를 건너뜁니다.');
 
 console.log(`\n전체 결과: ${failed?'FAIL '+failed:'PASS'}`);
 process.exitCode=failed?1:0;

@@ -1,14 +1,10 @@
 {
   // ===================================================================
-  // H서비스센터 — Firebase Realtime Database 보안 규칙 (report-c29a1)
+  // H서비스센터 — Firebase Realtime Database 보안 규칙
   //
-  // 단일 앱 체제(622차) — 별도 앱이던 '하자처리 현황'은 주요업무 현황(calapp)으로
-  // 통합·폐기되었다. 아래 최상위 노드는 전부 calapp 하나가 쓴다.
+  // 이 앱 하나가 업무 일정·조직·하자 데이터의 저장과 게시를 담당한다.
   //   · 하자 관리 : users · report · reportIndex · plans · analysis · meta · siteConfig
   //   · 업무 관리 : calapp/*
-  // 폐기 정리: aiRules(규칙 편집 기능 폐지 — 규칙은 코드 내 RULE_DEF/CRIT_DEF 고정),
-  //   calapp/mentions(멘션 기능 제거) 블록 삭제. 잔존 데이터는 콘솔에서만 접근된다.
-  //   복원이 필요하면 report 저장소 최종본(report-final)의 규칙을 참조.
   //
   // 권한 모델(공통)
   //   - 접근 자격(VERIF): 로그인 + 이메일 인증 완료 + @hdec.co.kr 도메인
@@ -95,8 +91,7 @@
       ".read": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
       "$sid": {
         // 분석의견은 기준월별 아카이브: analysis/{sid}/{YYYY-MM} = HTML 문자열 ≤20000자.
-        // 쓰기는 월 노드에만 허용 — 구버전 형태(analysis/{sid} = 문자열) 직접 쓰기는 거부된다.
-        // 레거시 문자열 데이터는 읽기 시 수용된다(dfAitHTML 의 typeof 분기).
+        // 쓰기는 월 노드에만 허용한다.
         "$rm": {
           ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
           ".validate": "$rm.matches(/^[0-9]{4}-[0-9]{2}$/) && newData.isString() && newData.val().length <= 20000"

@@ -68,11 +68,11 @@ try{
   await page.evaluate(()=>{
     const d='2026-08-27';
     S.tasks=S.tasks||{}; S.tasks.team=S.tasks.team||{};
-    S.tasks.team.rbE2E={text:'634차 무지개 렌더 시험',date:d,end:'',color:'rainbow',assignees:{},st:1,createdAt:Date.now(),updatedAt:Date.now()};
+    S.tasks.team.rbE2E={text:'637차 무지개 렌더 시험',date:d,end:'',color:'rainbow',assignees:{},st:1,createdAt:Date.now(),updatedAt:Date.now()};
     S.selDate=d;
     calRerender();
   });
-  await page.wait_for_selector('.fc .ev-rb', {timeout:8000});
+  await page.locator('.fc .ev-rb').first().waitFor({state:'attached', timeout:8000});
   const domEv=await page.locator('.fc .ev-rb').first().evaluate(el=>({
     cls:el.className,
     bg:getComputedStyle(el).backgroundImage,
