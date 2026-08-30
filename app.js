@@ -8,7 +8,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='673';
+const APP_VER='675';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -4966,8 +4966,10 @@ async function dfPublish(){
 function dfProdCardFill(){
   const card=$('#dfPubCard');if(!card)return;
   card.style.display=isEditor()&&!S.snap?'':'none';
-  const aic=$('#aiCard');if(aic)aic.style.display=card.style.display;   /* 671차: AI 연결 카드도 같은 관리자 선 */
-  if(isEditor())aiConfLoad();   /* 671차: 값은 Firebase 에 있다 — 다 받으면 이 함수를 한 번 더 부른다 */
+  /* 671차: AI 연결 카드도 같은 관리자 선. ⚠ 675차: 값이 Firebase 에 있으므로 로컬 모드(!S.live)에서는
+     저장 자체가 불가능하다 — 보이는데 안 되는 칸을 두지 않는다. */
+  const aic=$('#aiCard');if(aic)aic.style.display=(isEditor()&&!S.snap&&S.live)?'':'none';
+  aiConfLoad();   /* 값은 Firebase 에 있다 — 다 받으면 이 함수를 한 번 더 부른다(내부에서 조건을 가린다) */
   const sids=Object.keys(S.def||{});let n=0;sids.forEach(k=>{n+=(S.def[k]||[]).length;});
   /* 615차 통합 행 — 굵은 줄=이 PC 상태, 아랫줄=업로드·최신 등록 시각 */
   const st=$('#dfLocalStat');
@@ -5029,10 +5031,10 @@ function dfProdWire(){
     if(el.id==='dfExTk'){const v=el.value.trim();if(v){el.value='';dfExTkSet(dfExTkList().concat(v.split(',').map(x=>x.trim()).filter(Boolean)));}return;}   /* blur 잔여 글도 칩으로 */
     if(el.id==='dfPubRm'){const v=el.value;if(/^\d{4}-\d{2}$/.test(v)){S.dfPubRm=v;dfMetaSave();dfProdCardFill();}return;}
     if(el.id==='dfAzEp'||el.id==='dfAzDep'||el.id==='dfAzCk'){
-      if(el.id==='dfAzEp')S.azEp=el.value.trim();
-      else if(el.id==='dfAzDep')S.azDep=el.value.trim();
-      else S.azCk=el.value.trim();
-      aiConfSave();return;}
+      const v=el.value.trim();
+      const f=el.id==='dfAzEp'?'endpoint':(el.id==='dfAzDep'?'deployment':'key');
+      if(f==='endpoint')S.azEp=v;else if(f==='deployment')S.azDep=v;else S.azCk=v;
+      aiConfSave(f,v);return;}
   });
   /* 제외 키워드 칩 — 엔터·쉼표 추가, 빈 칸 백스페이스로 마지막 칩 제거, × 클릭 제거 */
   document.addEventListener('keydown',e=>{
@@ -5076,22 +5078,36 @@ else setTimeout(dfProdBoot,0);
    ⚠ 그래도 호출은 브라우저에서 일어난다 — 키는 관리자 화면의 네트워크 탭에 헤더로 찍힌다.
       노출을 실제로 줄이려면 키가 아니라 사용자 토큰(Entra)이나 중계 서버가 필요하다. */
 S.azEp='';S.azDep='';S.azCk='';
+/* 675차: 671차 이전 판이 브라우저에 남긴 키를 지운다 — calapp.ck 에는 **Gemini API 키가 평문**으로 남아 있다.
+   앱이 더는 읽지 않는다는 것과 사용자 브라우저에서 사라졌다는 것은 다른 얘기다. */
+try{['calapp.ck','calapp.ai','ck'].forEach(k=>localStorage.removeItem(k));}catch(_){ }
 let _aiConfP=null;
-function aiConfLoad(){
+let _aiBusy=false;   /* 675차: runAI·runDashAI 동시 실행 방지 — 둘이 같은 게시본 리프를 쓴다 */
+/* force=true 면 캐시를 버리고 다시 읽는다. 화면 갱신(dfProdCardFill)은 캐시를 쓰고,
+   실제 실행(runAI·runDashAI) 진입에서만 강제로 읽는다 —
+   다른 관리자 PC 가 방금 바꾼 엔드포인트·키를 옛 값으로 부르지 않기 위해서다(호출당 읽기 1회는 무시할 비용). */
+function aiConfLoad(force){
+  if(force)_aiConfP=null;
   if(_aiConfP)return _aiConfP;
-  if(!S.live||!FB.db||!isEditor())return Promise.resolve(false);
+  if(!S.live||!FB.db||!isEditor()||S.snap)return Promise.resolve(false);
   _aiConfP=FB.db.ref('aiConf').once('value').then(sn=>{
-    const o=sn.val()||{};
+    const o=(sn.val()&&typeof sn.val()==='object')?sn.val():{};   /* 리프에 원시값이 들어와도 죽지 않는다 */
     S.azEp=String(o.endpoint||'');S.azDep=String(o.deployment||'');S.azCk=String(o.key||'');
-    dfProdCardFill();return true;
+    dfProdCardFill();
+    return true;
   }).catch(e=>{console.warn('[AI] aiConf 읽기 실패',e);_aiConfP=null;return false;});
   return _aiConfP;
 }
-function aiConfSave(){
+/* ⚠ 바뀐 칸 하나만 update 한다. set 으로 통째 쓰면 두 가지가 깨진다.
+   ① 읽기가 끝나기 전에 한 칸을 고치면 나머지 두 칸이 빈 문자열로 지워진다.
+   ② 다른 관리자가 그 사이 바꾼 값을, 내 세션의 옛 값으로 되돌려 놓는다(lost update). */
+function aiConfSave(field,val){
   if(!S.live||!FB.db){toast('로그인 상태에서만 저장됩니다');return;}
   if(!isEditor()){toast('AI 연결 정보는 관리자만 저장할 수 있습니다');return;}
-  FB.db.ref('aiConf').set({endpoint:S.azEp,deployment:S.azDep,key:S.azCk,
-    updatedAt:Date.now(),updatedBy:String((S.user&&S.user.email)||'').slice(0,200)})
+  _azMode=null;   /* ⚠ 배포·엔드포인트가 바뀌면 모델 계열 캐시는 무효다 — 안 지우면 새 배포에서 계속 400 이 난다 */
+  const u={updatedAt:Date.now(),updatedBy:String((S.user&&S.user.email)||'').slice(0,200)};
+  u[field]=val;
+  FB.db.ref('aiConf').update(u)
     .catch(e=>{console.warn('[AI] aiConf 쓰기 실패',e);toast('AI 연결 저장 실패: '+e.message);});
 }
 
@@ -5102,50 +5118,70 @@ function aiConfSave(){
    ⚠ 프롬프트·규칙 조립(RULE_DEF·buildRules)은 산출물의 문구를 정하므로 여기 들어오지 않는다.
    ⚠ 키는 브라우저에 있다 — 비밀값이 아니다. 회사 인증 체계로 옮길 때는 키가 아니라 사용자 토큰이 되므로,
       provider 는 키 유무가 아니라 ready() 로 준비 상태를 답한다. */
-let _azMode=null;   /* 673차: 배포 모델의 계열 캐시 — 'chat'|'reason'|'bare' */
+let _azMode=null;   /* 673차: 배포 모델의 계열 캐시 — 'chat'|'reason'|'bare'|'legacy'. 배포를 바꾸면 aiConfSave 가 비운다 */
+const AZ_TIMEOUT=180000;   /* 675차: 응답이 안 오면 3분에 끊는다 — 안 끊으면 '생성 중…' 이 영원히 남는다 */
+/* 엔드포인트 정규화 — 포털이 주는 값이 여러 모양이라 **호스트만** 남긴다.
+   `…/openai/v1/responses` 도, 프로젝트 엔드포인트 `…/api/projects/p1` 도 같은 결과가 된다. */
+function azBase(v){
+  let t=String(v||'').trim().replace(/\s+/g,'');
+  if(!t)return '';
+  if(!/^https?:\/\//i.test(t))t='https://'+t;
+  try{return new URL(t).origin;}catch(e){return t.replace(/\/+$/,'').replace(/\/openai(\/.*)?$/,'');}
+}
 const AI_PROVIDERS={
   /* Azure AI Foundry — 배포한 모델을 chat completions 로 부른다.
-     ⚠ 엔드포인트는 도메인까지만 쓴다. 포털이 주는 `/openai/v1/responses` 를 통째로 붙여넣어도 아래에서 잘라 낸다.
      ⚠ model 에는 모델명이 아니라 **배포 이름**이 들어간다(포털 기본값엔 `-1` 이 붙는다).
-     ⚠ gpt-4.1 계열(비추론) 기준이다. gpt-5 계열 배포로 바꾸면 temperature 가 거부되고
-        max_completion_tokens 를 추론 토큰이 함께 먹으므로, temp 를 빼고 한도를 키워야 한다. */
+     ⚠ 모델 계열마다 본문이 다르다. 설정에서 고르게 하지 않고 첫 호출로 알아낸다(shape 주석 참조). */
   azure:{
     id:'azure', label:'Azure AI Foundry',
     ready(){return !!(S.azEp&&S.azDep&&S.azCk);},
     hint:'설정 > AI 분석 연결에서 엔드포인트·배포이름·키를 입력하세요',
     /* system: 규칙, prompt: 데이터, max: 최대 토큰 → 순수 텍스트를 돌려준다 */
     async ask({system,prompt,max=4096,temp=0.4}){
-      const base=String(S.azEp||'').trim().replace(/\s+/g,'').replace(/\/+$/,'').replace(/\/openai(\/.*)?$/,'');
-      const url=base+'/openai/v1/chat/completions';
+      const url=azBase(S.azEp)+'/openai/v1/chat/completions';
       const msgs=[{role:'system',content:system},{role:'user',content:prompt}];
-      /* 673차: 배포한 모델의 계열에 따라 본문이 다르다 — 설정에서 고르게 하지 않고 첫 호출로 알아낸다.
-         · chat  : gpt-4.1 계열(비추론). temperature 를 받고 max_completion_tokens 는 본문 토큰만 센다.
-         · reason: gpt-5 계열(추론). temperature 를 400 으로 거부하고, 한도를 추론 토큰이 함께 먹으므로
-                   여유(AZ_REASON_PAD)를 얹지 않으면 본문이 빈 채 finish_reason:'length' 로 돌아온다.
-         · bare  : 위 둘이 다 거부될 때의 최소 본문. 모델이 또 갈리더라도 앱이 죽지 않게 두는 안전판.
-         ⚠ 알아낸 계열은 _azMode 에 남겨 다음 호출부터 한 번에 간다(세션 한정 — 배포를 바꾸면 새로고침).  */
+      /* · chat  : gpt-4.1 계열(비추론). temperature 를 받고 한도는 본문 토큰만 센다.
+         · reason: gpt-5 계열(추론). temperature 를 400 으로 거부하고, 한도를 추론 토큰이 함께 먹으므로 여유를 얹는다.
+         · bare  : 추론 모델인데 reasoning_effort 를 안 받는 경우.
+         · legacy: max_completion_tokens 대신 옛 max_tokens 만 받는 배포. */
       const AZ_REASON_PAD=16000;
       const shape=m=>{
         const b={model:S.azDep,messages:msgs};
         if(m==='reason'){b.max_completion_tokens=max+AZ_REASON_PAD;b.reasoning_effort='minimal';}
         else if(m==='bare'){b.max_completion_tokens=max+AZ_REASON_PAD;}
+        else if(m==='legacy'){b.max_tokens=max;b.temperature=temp;}
         else{b.max_completion_tokens=max;b.temperature=temp;}
         return b;
       };
+      /* ⚠ 여기서 던지는 오류는 모양 탐색을 멈춘다 — 연결·인증·응답형식 문제는 모양을 바꿔도 안 풀린다 */
       const once=async m=>{
-        const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','api-key':S.azCk},body:JSON.stringify(shape(m))});
-        return r.json();
+        const ac=(typeof AbortController!=='undefined')?new AbortController():null;
+        const tid=ac?setTimeout(()=>ac.abort(),AZ_TIMEOUT):null;
+        let r;
+        try{r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','api-key':S.azCk},
+          body:JSON.stringify(shape(m)),signal:ac?ac.signal:undefined});}
+        catch(e){throw new Error((ac&&ac.signal.aborted)
+          ?'응답이 3분 안에 오지 않아 중단했습니다'
+          :'연결 실패 — 엔드포인트 주소와 사내망 차단(CSP·프록시)을 확인하세요');}
+        finally{if(tid)clearTimeout(tid);}
+        const body=await r.text();
+        let d=null;try{d=JSON.parse(body);}catch(e){d=null;}
+        /* JSON 이 아니면 프록시·WAF 가 가로챈 HTML 이다 — 파싱 오류 문구 대신 상태코드를 보여 준다 */
+        if(!d||typeof d!=='object')throw new Error('HTTP '+r.status+' — 응답이 JSON 이 아닙니다(프록시 차단 의심)');
+        if(!r.ok&&!d.error)d={error:{message:'HTTP '+r.status}};
+        return d;
       };
-      const order=_azMode?[_azMode]:['chat','reason','bare'];
+      const order=_azMode?[_azMode]:['chat','reason','bare','legacy'];
       let d=null,used=null,lastErr='';
       for(const m of order){
         d=await once(m);
         if(!d.error){used=m;break;}
         lastErr=d.error.message||'API 오류';
         /* 모델이 파라미터 자체를 거부한 것만 다음 모양으로 넘어간다 — 키·배포이름 오류는 즉시 알린다 */
-        if(!/temperature|reasoning_effort|max_completion_tokens|unsupported|not supported/i.test(lastErr))break;
+        if(!/temperature|reasoning_effort|max_completion_tokens|max_tokens|unsupported|not supported|unrecognized/i.test(lastErr))break;
       }
-      if(!used)throw new Error(lastErr);
+      /* 캐시해 둔 모양이 거부당했다면 배포가 바뀐 것이다 — 캐시를 비워 다음 호출이 다시 탐색하게 한다 */
+      if(!used){if(_azMode)_azMode=null;throw new Error(lastErr);}
       const c=(d.choices||[])[0];
       if(!c||!c.message||!c.message.content)throw new Error('본문이 비었습니다'+(c&&c.finish_reason?' ('+c.finish_reason+')':''));
       _azMode=used;
@@ -5161,8 +5197,10 @@ const AI={
   label(){return aiProvider().label;},
   /* 응답을 코드펜스 없이 정리해 돌려준다 — 두 호출부가 똑같이 하던 일 */
   async text(o){
-    const t=await aiProvider().ask(o);
-    return String(t||'').replace(/^```(?:html|json)?\s*/i,'').replace(/```$/,'').trim();
+    /* ⚠ trim 을 **먼저** 한다. `$` 는 입력 맨 끝에서만 맞아, 끝에 개행이 하나만 붙어도
+       닫는 펜스가 살아남아 runDashAI 의 JSON.parse 가 터졌다(670차부터 있던 결함). */
+    const t=String(await aiProvider().ask(o)||'').trim();
+    return t.replace(/^```(?:html|json)?\s*/i,'').replace(/\s*```$/,'').trim();
   }
 };
 function dfAnaWrite(sid,txt,rm){
@@ -5179,7 +5217,8 @@ function dfAnaWrite(sid,txt,rm){
 function buildRules(scope){let out='';for(const g of RULE_DEF){if(g.scope!==scope)continue;const body=g.rules.map(r=>String(ruleVal(r.id)).trim()).filter(Boolean).join('\n');if(!body)continue;out+=(out?'\n\n':'')+(g.hdr?g.hdr+'\n':'')+body;}return out;}
 async function runAI(sid){
 if(!isEditor()){toast('AI 분석은 관리자만 실행할 수 있습니다');return;}   /* 671차: 화면(버튼 노출)과 같은 선을 실행부에도 긋는다 */
-await aiConfLoad();   /* 671차: 설정 화면을 거치지 않고 눌러도 Firebase 의 연결 정보를 먼저 받는다 */
+if(_aiBusy){toast('AI 분석이 이미 실행 중입니다');return;}   /* 675차: 연타 방지 — 한 번 더 누르면 프롬프트 3만자가 또 나간다 */
+await aiConfLoad(true);   /* 671차: 설정 화면을 거치지 않고 눌러도 연결 정보를 받는다. true = 다른 PC 의 최신 값 */
 if(!AI.ready()){toast(AI.hint());return;}const site=(S.org.sites||[]).find(s=>s.id===sid);if(!site)return;
 if(!((S.def[sid]||[]).length)){toast('이 PC 에 원본 하자 행이 없습니다 — 업로드한 마스터 PC 에서만 AI 분석을 만들 수 있습니다',6000);return;}   /* ⚠ 원본엔 없던 안내 — calapp 은 전원이 게시본을 보므로 원본 행 유무를 먼저 알린다 */
 const rm=dfPubRm();   /* ⚠ 원본 S.rm — 게시 기준월로 통일 */
@@ -5211,16 +5250,21 @@ const _trBlock=(st.trAgg||[]).length?`\n[공종별 집계 — 공종|접수|처�
   (st.trAgg||[]).slice(0,15).map(o=>`- ${o.t}|${o.r}|${o.res}|${o.u}|${o.lt}|${o.d0}/${o.d30}/${o.d60}|${o.coTop}|${o.pu}`).join('\n'):'';
 const _coBlock=(st.coAgg||[]).length?`\n[시공업체별 집계 — 업체|접수|처리|미처리|장기|~29일/30~59일/60일+|주공종|전월미처리]\n`+
   (st.coAgg||[]).slice(0,12).map(o=>`- ${o.c}|${o.r}|${o.res}|${o.u}|${o.lt}|${o.d0}/${o.d30}/${o.d60}|${o.trTop}|${o.pu}`).join('\n'):'';
-const _rpBlock=Object.keys(st.rpb||{}).length?`\n[보수주체별 미처리] ${Object.entries(st.rpb).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${k}:${v}건`).join(', ')}`:'';
+const _rpBlock=Object.keys(st.rpb||{}).length?`\n[보수주체별 미처리] ${Object.entries(st.rpb).sort((a,b)=>b[1]-a[1]).slice(0,12).map(([k,v])=>`${k}:${v}건`).join(', ')}`:'';
 // 중대하자 의심 후보 블록 — 규칙(isCritCandidate)으로 넓게 추출한 후보 + 의심사유 태그. AI가 매뉴얼 기준으로 최종 판정.
 const _critList=(st.critUl||[]).slice(0,12).map(i=>{const dd=i.receiptDate?_daysB(i.receiptDate,st.rmEnd):0;const c=(i.receiptContent||'').replace(/\s+/g,' ').trim();const rs=critReason(i).join('/');return `- ${i.building||'?'}동 ${i.unit||'?'}호 [${i.trade||'-'}|${i.defectType||'-'}|${dd}일|의심:${rs}] ${maskPII(c).slice(0,70)}`;}).join('\n');
 const _critBlock=(st.critUnr>0)?`\n[중대하자 의심 후보 — 규칙 추출, AI가 사내 매뉴얼 기준으로 최종 판정할 것] 미처리 의심 ${st.critUnr}건(전월 의심 ${st.critPrevUnr}건)\n${_critList}`:`\n[중대하자 의심 후보] 규칙상 의심 0건`;
 const p=`현대건설 ${((((S.org.teams||[]).find(t=>t.id===site.team))||((S.org.teams||[])[0]))||{}).name||'H서비스센터'} ${site.name} 현장의 하자처리 현황을 분석하여 한국어 개조식으로 작성하세요. 기준월 ${rm}, 전월 대비 변화를 중심으로 분석할 것.\n[현장] ${site.name}(${site.region}), ${site.units}세대 ${site.buildings}동, 준공 ${site.completionDate}\n[현황] 전체접수 ${st.tR}건(전월${st.prev.total}), 처리 ${st.res}건(전월${st.prev.res}), 미처리 ${st.unr}건(전월${st.prev.unr}), 처리율 ${st.rate.toFixed(1)}%(전월${st.prev.rate.toFixed(1)}%), 장기미처리 ${st.lt}건(전월${st.prev.lt}건, 미처리의 ${st.ltr.toFixed(1)}%), 지연구간: ~29일 ${st.dd[0]}, 30~59일 ${st.dd[1]}, 60일+ ${st.dd[2]}\n[상위공종(미처리)] ${st.top.filter(t=>!t.isT&&!t.isO).map(t=>`${t.t}:${t.c}건`).join(', ')}\n[하자유형(미처리)] ${Object.entries(st.dtb).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([t,c])=>`${t}:${c}건`).join(', ')}\n[공가세대] 총접수 ${st.vT}건, 미처리 ${st.vUnr}건${_rpBlock}${_trBlock}${_coBlock}${_critBlock}${_contentBlock}\n\n위 데이터를 분석해 시스템 지침의 형식·내용 규칙에 따라 작성하세요. 단순 수치 나열이 아닌 해석·원인·대응을 담되, 데이터가 없거나 특이사항이 없는 항목은 생략하고 중요한 것만 최대 6개 소제목으로 쓸 것. (단 중대하자는 시스템 지침 G에 따라 처리)\n원인 추론은 반드시 접수내용 원문과 공종·업체 집계를 교차해 근거를 대고, 지목한 동/호·공종·업체를 문장 안에 밝힐 것. 근거 없이 일반론으로 원인을 단정하지 말 것.`;
+_aiBusy=true;
 try{let txt=await AI.text({system:systemInstruction,prompt:p,max:4096});if(!txt)txt='분석 결과를 불러올 수 없습니다.';dfAnaWrite(sid,txt,rm);   /* ⚠ 원본 anaSet+lsSave+fb2AnaWrite — calapp 은 리프가 원본, 화면은 기존 실시간 구독이 갱신 */if(el)el.innerHTML=themeHTML(safeHTML(txt));toast('AI 분석 완료');}
-catch(e){if(el)el.innerHTML=`<p style="color:var(--rd)">(AI 오류: ${esc(e.message)})</p>`;}}
+/* ⚠ 675차: 토스트를 함께 띄운다. el 은 호출 시점의 노드라 기다리는 동안 화면이 다시 그려지면
+   떨어져 나간 노드에 오류를 쓰게 되어, 사용자에겐 아무 일도 없던 것처럼 보였다(runDashAI 와 비대칭이었다). */
+catch(e){if(el)el.innerHTML=`<p style="color:var(--rd)">(AI 오류: ${esc(e.message)})</p>`;toast('AI 분석 실패: '+e.message,6000);}
+finally{_aiBusy=false;}}
 async function runDashAI(){
   if(!isEditor()){toast('업데이트는 관리자만 실행할 수 있습니다');return;}   /* 671차 */
-  await aiConfLoad();   /* 671차 */
+  if(_aiBusy){toast('AI 작업이 이미 실행 중입니다');return;}   /* 675차 */
+  await aiConfLoad(true);   /* 671차 · 675차 true = 다른 PC 의 최신 값 */
   if(!AI.ready()){toast(AI.hint());return;}
   /* ⚠ 원본은 편집자 화면(#d-insight)만 바꿨고 게시 시점의 DOM 이 실렸다 — calapp 화면은 게시본이므로
      재작성 결과를 report/{rm}/_dash/insightsHTML 에 직접 써서 전원에게 반영한다(등록 후 실행). */
@@ -5232,9 +5276,13 @@ async function runDashAI(){
   const src=items.map((x,i)=>{const parts=String(x.sub).split('<br>');return `[카드${i+1}] 제목:${x.ttl} | 등급:${x.cls}\n  핵심수치(원문):${stripTags(parts[0]||'')}\n  진단·조치(원문):${stripTags(parts[1]||'')}`;}).join('\n');
   const dashSystem = buildRules('dash'); // RULE_DEF 조립 — 기본 규칙 편집 override 반영
   const dp=`아래 3개 카드의 각 2줄을 위 규칙에 따라 한국어 개조식으로 다시 작성하세요. 수치는 원문 그대로 유지할 것.\n\n${src}`;
+  _aiBusy=true;
   try{
     const txt=await AI.text({system:dashSystem,prompt:dp,max:1200});
-    const arr=JSON.parse(txt);
+    /* ⚠ 규칙은 JSON 배열만 내라고 하지만 모델이 앞뒤에 한마디 붙이는 일이 있다 —
+       첫 [ 부터 마지막 ] 까지만 떼어 낸다. 배열이 아예 없으면 아래 JSON.parse 가 형식 오류로 걸린다. */
+    const _b=txt.indexOf('['),_e=txt.lastIndexOf(']');
+    const arr=JSON.parse((_b>=0&&_e>_b)?txt.slice(_b,_e+1):txt);
     if(!Array.isArray(arr)||arr.length<items.length)throw new Error('형식 오류');
     const html=items.map((x,i)=>{const a=arr[i]||{};const l1=safeHTML(a.line1||''),l2=safeHTML(a.line2||'');return `<div class="ic ${x.cls}"><div class="ic-i">${icoSVG(x.icon)}</div><div class="ic-t"><div class="ic-ttl">${x.ttl}</div><div class="ic-sub">${l1}<br>${l2}</div></div></div>`;}).join('');
     await FB.db.ref('report/'+rm+'/_dash/insightsHTML').set(themeHTML(html));
@@ -5242,8 +5290,8 @@ async function runDashAI(){
     toast('AI 분석 완료 · 게시본에 반영됨');
   }catch(e){
     /* ⚠ 실패 시 게시본은 그대로(규칙기반) — 화면 복원이 필요 없다 */
-    toast('AI 분석 실패: '+e.message);
-  }
+    toast('AI 분석 실패: '+e.message,6000);
+  }finally{_aiBusy=false;}
 }
 /* ═══════════ 하자 생산자 ③ 끝 ═══════════ */
 

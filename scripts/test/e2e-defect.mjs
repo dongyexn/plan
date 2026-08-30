@@ -1,7 +1,7 @@
 /* 가상데이터 전 구간 검증(637차 기준 회귀 스위트) — 업로드→저장→[등록]→소비 화면 전부를 실브라우저에서 돌린다.
    Firebase 는 페이지 안 가짜 트리로 대체(스냅샷 문서의 FB 스텁과 같은 발상 + update/set 구현).
    검사: 기준월 자동 결정 · 게시 트리 무결성 · 대시보드 합계=게시 kpi 합 · 현장 탭 5종 렌더 ·
-   NLQ 질의 · 목록 모달 · 월 전환 · AI 분석(가짜 Gemini) · 페이지 오류 0. 스크린샷 저장.
+   NLQ 질의 · 목록 모달 · 월 전환 · AI 분석(가짜 Azure AI Foundry) · 페이지 오류 0. 스크린샷 저장.
    사용: CHROMIUM=/tmp/chromium node scripts/test/e2e-defect.mjs */
 import { chromium } from 'playwright';
 import http from 'http';
@@ -222,22 +222,32 @@ const mo2=await pg.evaluate(async()=>{
 ok('전월('+mo2.prev+') 추가 게시 · 색인 2개월',mo2.idx.length===2);
 await pg.evaluate(prev=>{S.dfRmSel=prev;S.dfSid='';rDefect();},mo2.prev);
 await pg.waitForTimeout(1000);
-const swch=await pg.evaluate(()=>document.querySelector('#view-defect').textContent.includes(S.dfRm));
-ok('기준월 전환 렌더('+mo2.prev+')',swch);
+/* ⚠ 672차: 대시보드 카드의 '{기준월} 게시본' 칩을 없앴다(제목과 중복). 화면에서 기준월을 알리는 자리는
+   상단바 #tbRm 하나다 — 검사도 그쪽을 본다. 화면이 실제로 그려졌는지는 본문 길이로 함께 확인한다. */
+const swch=await pg.evaluate(prev=>{
+  const rm=document.getElementById('tbRm');
+  return {tb:rm?rm.textContent.trim():'', hidden:rm?rm.hidden:true, cur:S.dfRm, body:document.querySelector('#view-defect').textContent.length, want:prev};
+},mo2.prev);
+ok('기준월 전환 렌더('+mo2.prev+' · 상단바 "'+swch.tb+'")',swch.cur===swch.want&&swch.tb===swch.want&&!swch.hidden&&swch.body>500);
 await pg.screenshot({path:OUT+'/5-month-switch.png',fullPage:false});
 await pg.evaluate(()=>{S.dfRmSel='';rDefect();});
 await pg.waitForTimeout(600);
 
 /* ── 8) AI 분석 — 가짜 Gemini ── */
 const ai=await pg.evaluate(async()=>{
-  S.ck='vk-test';
+  /* 671차: 연결 정보는 Firebase aiConf 리프에서 온다 — S.az* 를 직접 넣으면 aiConfLoad 가 덮어쓴다.
+     리프에 심어 실제 경로(aiConfLoad → S.az* → AI.ready)를 그대로 태운다. */
+  window.__TREE.aiConf={endpoint:'https://e2e.services.ai.azure.com',deployment:'e2e-dep',key:'vk-test'};
   const calls=[];
   window.fetch=async(url,opt)=>{calls.push(url);
-    const body=JSON.parse(opt.body);
-    const isDash=/재작성|line1/.test(body.systemInstruction.parts[0].text)||/line1/.test(body.contents[0].parts[0].text);
+    const body=JSON.parse(opt.body);   /* Azure chat completions 모양 — messages[0]=규칙, messages[1]=데이터 */
+    const sys=body.messages[0].content||'',usr=body.messages[1].content||'';
+    const isDash=/line1/.test(sys)||/line1/.test(usr);
     const text=isDash?JSON.stringify([{line1:'<b>AI</b> 요약 1',line2:'세부 1'},{line1:'요약 2',line2:'세부 2'},{line1:'요약 3',line2:'세부 3'}])
       :'<div style="font-weight:700">종합 소견</div><ul><li>미처리 상위 공종 집중 보수 필요</li><li>장기 미처리 30건 — 주간 단위 감축 계획 권고</li></ul>';
-    return {json:async()=>({candidates:[{content:{parts:[{text}]}}]})};
+    /* ⚠ 675차: provider 가 r.ok·r.status 를 보고 r.text() 로 읽는다(프록시가 HTML 을 주는 경우 대비) —
+       가짜 응답도 Response 모양을 갖춰야 한다. json() 만 있으면 첫 줄에서 TypeError 가 난다. */
+    return {ok:true,status:200,text:async()=>JSON.stringify({choices:[{message:{content:text},finish_reason:'stop'}]})};
   };
   S.dfSid='sA';S.dfTab='sum';rDefect();
   await new Promise(r=>setTimeout(r,400));
