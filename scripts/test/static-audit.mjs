@@ -400,8 +400,25 @@ OK('구문 검사 (node --check)');
     }
   };
   walk('');
+  /* 665차: 이름꼴만으로는 못 잡는 부류 — 테스트가 뱉은 산출물 폴더가 통째로 실려 나갔다(e2e/ 3MB).
+     쓰지 않는 무거운 폴더는 이름으로 직접 잡는다. */
+  const ART = ['e2e', 'shots', 'out', 'tmp'];
+  for (const d of ART) {
+    const abs = path.join(root, d);
+    if (fs.existsSync(abs) && fs.statSync(abs).isDirectory()) found.push(d + '/ (테스트 산출물)');
+  }
+  /* 배포본이 지나치게 커지지 않았는지도 본다 — 커진 이유는 대개 위 같은 잔재다 */
+  let bytes = 0;
+  const sz = (rel) => { for (const e of fs.readdirSync(path.join(root, rel), { withFileTypes: true })) {
+    if (SKIP.has(e.name)) continue;
+    const r = rel ? rel + '/' + e.name : e.name;
+    if (e.isDirectory()) sz(r); else bytes += fs.statSync(path.join(root, r)).size; } };
+  sz('');
+  const mb = bytes / 1048576;
+  if (mb > 8) F('배포본 ' + mb.toFixed(1) + 'MB — 8MB 를 넘었다. 잔재가 섞였는지 확인할 것');
+  else OK('배포본 크기 ' + mb.toFixed(1) + 'MB');
   if (found.length) F('배포본에 작업 잔재 ' + found.length + '개 — 지우고 다시 묶을 것: ' + found.join(' · '));
-  else OK('작업 잔재 없음 (임시 파일 이름꼴 검사)');
+  else OK('작업 잔재 없음 (임시 파일·산출물 폴더 검사)');
 }
 
 
