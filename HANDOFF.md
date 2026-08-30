@@ -4851,6 +4851,46 @@ report 앱 폐기 절차(아카이브·안내 페이지)뿐이다.
 - 기능 추가나 모듈화는 하지 않고 안정화에 집중한다.
 - 검증 목표: static-audit FAIL 0, build-single PASS, 기존 AUTH/rainbow/defect 게이트 유지.
 
+### 670차 — AI 호출부 분리(제공자 한 겹)
+- 리뷰 지적대로 **엔진 교체 전에 호출부부터 뗀다.** runAI·runDashAI 가 Gemini 의 URL·헤더·응답 모양을
+  직접 알고 있어서, 회사 AI 로 갈아탈 때 분석 로직까지 건드려야 했다.
+- `AI_PROVIDERS`(gemini · copilot 자리) + 창구 `AI.ready() / AI.hint() / AI.label() / AI.text()`.
+  두 호출부는 이제 `await AI.text({system, prompt, max})` 한 줄이다. 남은 Gemini 흔적은 provider 안의 URL 하나뿐.
+  제공자는 `localStorage['calapp.ai']` 로 고른다(기본 gemini).
+- ⚠ 프롬프트·규칙 조립(RULE_DEF·buildRules)은 산출물 문구를 정하므로 provider 안으로 넣지 않았다.
+- ⚠ 준비 상태를 `S.ck`(키 유무)가 아니라 `ready()` 로 묻게 바꿨다 — 회사 체계에서는 키가 아니라
+  **사용자 토큰**이라 키 유무로 판단하면 그때 다시 고쳐야 한다.
+- copilot 자리는 껍데기만 둔다. 붙이기 전 확인할 것 둘: ① Entra 앱 등록·관리자 동의(회사가 막으면 여기서 끝),
+  ② 사용자별 Microsoft 365 Copilot 라이선스. 둘 다 앱이 아니라 회사 정책 문제다.
+- 검증: 준비 상태·안내 문구·제공자 전환·코드펜스 제거·API 오류 전달 8항목 + 다섯 게이트.
+- APP_VER 670, index.html `app.js?v=670`.
+
+### 669차 — 화면과 서버 권한 불일치 3곳 정리
+외부 리뷰 지적을 규칙 파일에서 직접 확인했고, 셋 다 사실이었다.
+- **analysis / meta 쓰기가 viewer 에게도 열려 있었다.** 화면은 `isEditor()` 로 AI 버튼을 감췄지만
+  서버는 MEMBER(editor|viewer) 면 통과였다 → SDK 로 직접 쓰면 일반 사용자도 게시 산출물을 덮어쓸 수 있었다.
+  둘 다 `role == 'editor'` 로 좁혔다. 화면 쪽에도 `dfAnaWrite()` 앞에 `isEditor()` 가드를 넣었다 —
+  규칙만 죄면 일반 사용자에게 조용한 permission denied 로 보인다.
+- **trash / archive 가 소유 검사 없이 MEMBER 면 통과였다.** 업무 본체(tasks)는 작성자·담당자·팀장·공구장·담당현장을
+  따지는데 휴지통·보관함은 아무나였다 → 남의 업무를 지우거나 되살릴 수 있었다.
+  같은 소유 조건을 넣되 방향을 나눈다: **넣을 때는 원본 업무(root tasks)** 를, **뺄 때는 저장된 사본(data)** 을 본다.
+  ⚠ 두 노드의 스키마는 업무 전체가 아니라 `{text,date,deletedAt|archivedAt,z}` 다($other:false).
+    처음에 테스트에서 업무 객체를 그대로 넣었다가 .validate 로 거부됐다.
+- 권한 테스트 9개 추가(AUTH-12a/b·13a/b·14a~f). 전체 30개 PASS.
+- 리뷰의 나머지 지적은 이번에 손대지 않았다: Gemini 키 브라우저 노출(서버 프록시 필요),
+  app.js 단일 파일 분리, HANDOFF.md 를 Pages 배포 대상에서 제외.
+- APP_VER 669, index.html `app.js?v=669`.
+
+### 668차 — 위젯 년월 알약 안에 상자가 하나 더 있던 문제
+- 643차에 년월·화살표를 `.cal-move` 알약 하나로 묶었는데, 위젯 유리 모드의 배경 주입(widApply)과 정적 CSS가
+  여전히 `.cal-title` 에도 면을 칠하고 있었다 → 알약(0.55) 안에 더 진한 상자(0.765)가 생겨
+  화살표만 밝은 판 위에 뜬 것처럼 보였다.
+- 면은 알약이 지고 제목은 투명으로. `widApply()` 의 주입 선택자도 `.cal-nav` → `.cal-nav, .cal-move` 로 넓혔다.
+  ⚠ `.cal-nav` 는 **우측 도구 묶음**도 쓰는 클래스다 — 처음에 `.cal-move` 로 바꿔치기했다가 도구 아이콘의
+    유리 판이 통째로 사라졌다. 둘 다 남겨야 한다.
+- 실측(유리 모드): 알약 rgba(16,20,30,.765) + 1px 흰 테두리, 제목 배경 transparent.
+- APP_VER 668, index.html `app.js?v=668`.
+
 ### 667차 — 크기 검사 오탐 수정
 - 666차에 넣은 크기 한계 8MB 가 **정상 저장소를 잡았다**(실사용 저장소 8.0MB). 내가 쓰던 사본만 보고 정한 값이었다.
 - 한계를 12MB 로 올리고, 숫자만 던지지 않도록 **무거운 항목 4개를 함께 찍는다**.

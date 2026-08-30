@@ -93,7 +93,8 @@
         // 분석의견은 기준월별 아카이브: analysis/{sid}/{YYYY-MM} = HTML 문자열 ≤20000자.
         // 쓰기는 월 노드에만 허용한다.
         "$rm": {
-          ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
+          // 669차: 게시 산출물이라 만드는 쪽은 관리자만 — 화면(isEditor)과 서버를 일치시킨다.
+          ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'",
           ".validate": "$rm.matches(/^[0-9]{4}-[0-9]{2}$/) && newData.isString() && newData.val().length <= 20000"
         }
       }
@@ -102,7 +103,8 @@
     "meta": {
       ".read": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
       "$sid": {
-        ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
+        // 669차: 게시 메타도 관리자만 쓴다(화면과 일치).
+        ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'",
         "updatedAt": { ".validate": "newData.isNumber()" },
         "updatedBy": { ".validate": "newData.isString() && newData.val().length <= 200" },
         "$other":    { ".validate": false }
@@ -271,7 +273,8 @@
       "trash": {
         "$sid": {
           "$iid": {
-            ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
+            // 669차: 업무 본체와 같은 소유 검사를 건다 — 예전엔 MEMBER 면 남의 업무도 휴지통에 넣고 뺄 수 있었다.
+            ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer') && (root.child('users').child(auth.uid).child('role').val() == 'editor' || (newData.exists() ? (!root.child('calapp/tasks').child($sid).child($iid).exists() || !root.child('calapp/tasks').child($sid).child($iid).child('createdBy').exists() || root.child('calapp/tasks').child($sid).child($iid).child('createdBy').val() == auth.uid || root.child('calapp/tasks').child($sid).child($iid).child('assignees').child(auth.uid).exists() || root.child('calapp/people').child(auth.uid).child('rank').val() == 'head' || (root.child('calapp/people').child(auth.uid).child('rank').val() == 'lead' && root.child('calapp/people').child(auth.uid).child('region').val() != '' && root.child('calapp/people').child($sid).child('region').val() == root.child('calapp/people').child(auth.uid).child('region').val()) || (root.child('calapp/tasks').child($sid).child($iid).child('site').val() != '' && root.child('calapp/people').child(auth.uid).child('sites').child(root.child('calapp/tasks').child($sid).child($iid).child('site').val()).exists())) : (!data.exists() || !data.child('createdBy').exists() || data.child('createdBy').val() == auth.uid || data.child('assignees').child(auth.uid).exists() || root.child('calapp/people').child(auth.uid).child('rank').val() == 'head' || (root.child('calapp/people').child(auth.uid).child('rank').val() == 'lead' && root.child('calapp/people').child(auth.uid).child('region').val() != '' && root.child('calapp/people').child($sid).child('region').val() == root.child('calapp/people').child(auth.uid).child('region').val()) || (data.child('site').val() != '' && root.child('calapp/people').child(auth.uid).child('sites').child(data.child('site').val()).exists()))))",
             "text":      { ".validate": "newData.isString() && newData.val().length <= 500" },
             "date":      { ".validate": "newData.isString() && newData.val().length <= 10" },
             "deletedAt": { ".validate": "newData.isNumber()" },
@@ -286,7 +289,8 @@
       "archive": {
         "$sid": {
           "$iid": {
-            ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
+            // 669차: 보관함도 같은 소유 검사. 넣을 때는 원본 업무를, 뺄 때는 보관된 사본을 본다.
+            ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer') && (root.child('users').child(auth.uid).child('role').val() == 'editor' || (newData.exists() ? (!root.child('calapp/tasks').child($sid).child($iid).exists() || !root.child('calapp/tasks').child($sid).child($iid).child('createdBy').exists() || root.child('calapp/tasks').child($sid).child($iid).child('createdBy').val() == auth.uid || root.child('calapp/tasks').child($sid).child($iid).child('assignees').child(auth.uid).exists() || root.child('calapp/people').child(auth.uid).child('rank').val() == 'head' || (root.child('calapp/people').child(auth.uid).child('rank').val() == 'lead' && root.child('calapp/people').child(auth.uid).child('region').val() != '' && root.child('calapp/people').child($sid).child('region').val() == root.child('calapp/people').child(auth.uid).child('region').val()) || (root.child('calapp/tasks').child($sid).child($iid).child('site').val() != '' && root.child('calapp/people').child(auth.uid).child('sites').child(root.child('calapp/tasks').child($sid).child($iid).child('site').val()).exists())) : (!data.exists() || !data.child('createdBy').exists() || data.child('createdBy').val() == auth.uid || data.child('assignees').child(auth.uid).exists() || root.child('calapp/people').child(auth.uid).child('rank').val() == 'head' || (root.child('calapp/people').child(auth.uid).child('rank').val() == 'lead' && root.child('calapp/people').child(auth.uid).child('region').val() != '' && root.child('calapp/people').child($sid).child('region').val() == root.child('calapp/people').child(auth.uid).child('region').val()) || (data.child('site').val() != '' && root.child('calapp/people').child(auth.uid).child('sites').child(data.child('site').val()).exists()))))",
             "text":       { ".validate": "newData.isString() && newData.val().length <= 500" },
             "date":       { ".validate": "newData.isString() && newData.val().length <= 10" },
             "archivedAt": { ".validate": "newData.isNumber()" },

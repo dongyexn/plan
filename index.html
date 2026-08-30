@@ -2654,10 +2654,13 @@ body.wid.glass #fcal{--fc-page-bg-color:transparent;--fc-neutral-bg-color:transp
 body.wid.glass #fcal .fc-scrollgrid{border:0!important;}   /* FC 자체 외곽선도 — 칸 사이 선(td)은 남는다 */
 body.wid.glass .card{background:transparent;border:0;box-shadow:none!important;border-radius:0;padding:6px 4px;}
 
-body.wid.glass .cal-head .seg,body.wid.glass .cal-head .cal-nav{
+body.wid.glass .cal-head .seg,body.wid.glass .cal-head .cal-nav,body.wid.glass .cal-move{
   background:rgba(16,20,30,.5);border:1px solid rgba(255,255,255,.14);
   -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);}
-body.wid.glass .cal-head .cal-nav{border-radius:3px;padding:2px;}
+body.wid.glass .cal-head .cal-nav,body.wid.glass .cal-move{border-radius:3px;padding:2px;}
+/* 668차: 알약 안의 제목은 면을 갖지 않는다 — 상자 안 상자로 보였다 */
+body.wid.glass .cal-title{background:transparent;}
+body.wid.glass .cal-title:hover{background:rgba(255,255,255,.12);}
 body.wid.glass .cal-head .seg button,body.wid.glass .cal-nb{color:rgba(255,255,255,.82);}
 body.wid.glass .cal-head .seg .act{background:var(--b600);color:#fff;}
 /* 요일 머리 — 어두운 띠 */
@@ -3892,5 +3895,5 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
 <script src="./vendor/korea-geo.js?v=635"></script>
 <script src="./vendor/apt-geo.js?v=635" onerror="void 0"></script>   <!-- 540차: 공동주택명 색인 — 없으면 그냥 건너뛴다 -->
-<script src="./app.js?v=667"></script>
+<script src="./app.js?v=670"></script>
 </body></html>
