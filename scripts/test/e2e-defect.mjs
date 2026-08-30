@@ -7,10 +7,13 @@ import { chromium } from 'playwright';
 import http from 'http';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import { fileURLToPath } from 'url';
 
 const root=path.join(path.dirname(fileURLToPath(import.meta.url)),'..','..');
-const OUT=process.env.E2E_OUT || path.join(root,'e2e');
+/* 665차: 기본 저장 위치를 저장소 밖(OS 임시 폴더)으로 옮긴다 —
+   예전엔 저장소 안 e2e/ 에 쌓여 배포 zip 이 3MB 커졌다. 보고 싶으면 E2E_OUT 을 준다. */
+const OUT=process.env.E2E_OUT || path.join(os.tmpdir(),'calapp-e2e');
 fs.mkdirSync(OUT,{recursive:true});
 const MIME={'.html':'text/html','.js':'text/javascript','.css':'text/css','.woff2':'font/woff2','.png':'image/png'};
 const srv=http.createServer((req,res)=>{const u=req.url.split('?')[0];const f=path.join(root,u==='/'?'index.html':u);
