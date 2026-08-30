@@ -2510,14 +2510,27 @@ body.dec #fcal .fc-event.team:not(.ev-rb){
   background:repeating-linear-gradient(45deg,#A8213A 0 9px,#256B3B 9px 18px)!important;
   border-color:transparent!important;color:#fff!important;}
 body.dec #fcal .fc-event.team:not(.ev-rb) .fc-event-title{color:#fff!important;}
-#fcal .fc-event.ev-rb{background:linear-gradient(135deg,#F43F5E 0%,#F59E0B 17%,#FACC15 33%,#22C55E 50%,#3B82F6 67%,#8B5CF6 83%,#F43F5E 100%) !important;background-size:400px 100% !important;
+/* ⚠ 676차: `background` **단축**으로 쓰면 안 된다. 단축은 background-position 까지 초기값으로 되돌리는데,
+   여기엔 !important 가 붙어야 해서(인라인 배경색을 이겨야 한다) position 도 !important 가 된다.
+   CSS 우선순위상 애니메이션은 !important 선언을 못 이기므로, rbflow 가 돌아도 화면은 멈춰 있었다.
+   → longhand 로 쪼개고 **background-position 은 선언하지 않는다** — 그 자리는 애니메이션이 갖는다. */
+#fcal .fc-event.ev-rb{background-image:linear-gradient(135deg,#F43F5E 0%,#F59E0B 17%,#FACC15 33%,#22C55E 50%,#3B82F6 67%,#8B5CF6 83%,#F43F5E 100%) !important;background-color:transparent !important;
+  background-repeat:repeat !important;background-size:400px 100% !important;
   border-color:transparent !important;animation:rbflow 8s linear infinite;}
 /* 644차: 그라디언트 끝을 첫 색으로 닫고 한 타일 폭(400px)만 밀어 이음매를 없앤다 */
 @keyframes rbflow{from{background-position:0 50%}to{background-position:400px 50%}}
-@media(prefers-reduced-motion:reduce){#fcal .fc-event.ev-rb{animation:none;}}
+@media(prefers-reduced-motion:reduce){#fcal .fc-event.ev-rb,#fcal .fc-event.ev-rb.team{animation:none;}}
 /* 위젯이 비활성이면 멈춘다 — 항상 떠 있는 창이라 계속 돌면 전력만 먹는다 */
-body.wid-await #fcal .fc-event.ev-rb{animation-play-state:paused;}
-#fcal .fc-event.ev-rb.team{background:linear-gradient(#fff,#fff) padding-box,linear-gradient(135deg,#F43F5E 0%,#F59E0B 17%,#FACC15 33%,#22C55E 50%,#3B82F6 67%,#8B5CF6 83%,#F43F5E 100%) border-box !important;border:1.5px solid transparent !important;}
+body.wid-await #fcal .fc-event.ev-rb,body.wid-await #fcal .fc-event.ev-rb.team{animation-play-state:paused;}
+/* 공통(team)은 흰 속 + 무지개 테두리. 같은 이유로 longhand — clip/origin 을 따로 준다. */
+#fcal .fc-event.ev-rb.team{background-image:linear-gradient(#fff,#fff),linear-gradient(135deg,#F43F5E 0%,#F59E0B 17%,#FACC15 33%,#22C55E 50%,#3B82F6 67%,#8B5CF6 83%,#F43F5E 100%) !important;
+  background-origin:padding-box,border-box !important;background-clip:padding-box,border-box !important;
+  background-size:auto,400px 100% !important;background-repeat:repeat,repeat !important;
+  border:1.5px solid transparent !important;
+  /* ⚠ 레이어가 둘이라 rbflow(값 하나)로는 애니메이션이 적용되지 않는다 — 레이어 수를 맞춘 키프레임을 따로 쓴다.
+     흰 속은 고정하고 무지개 테두리만 민다. */
+  animation:rbflow2 8s linear infinite;}
+@keyframes rbflow2{from{background-position:0 50%,0 50%}to{background-position:0 50%,400px 50%}}
 .tk-hist{margin-top:2px;}
 .tk-hist>summary{list-style:none;cursor:pointer;font-size:11.5px;font-weight:600;color:var(--lbl3);padding:2px 0;}
 .tk-hist>summary::-webkit-details-marker{display:none;}
@@ -3250,7 +3263,9 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
    box-shadow+currentColor 로 그리면 글자색에 끌려가 회색이 됐다(232차 수정). */
 /* ⚠ border shorthand 로 쓰면 색이 currentColor(흰색)로 리셋돼 테두리가 사라진다.
    style·width 만 지정해 FullCalendar 가 인라인으로 준 업무색(borderColor)이 살아나게 한다. */
-#fcal .fc-event.team{background:#fff!important;border-style:solid!important;border-width:1.5px!important;font-weight:700;}
+/* ⚠ 676차: 단축 `background:#fff!important` 였다. 단축은 background-position 까지 !important 로 초기화해
+   무지개 공통 막대(.ev-rb.team)의 흐름 애니메이션을 죽였다 — 색만 필요하므로 longhand 로 쪼갠다. */
+#fcal .fc-event.team{background-color:#fff!important;background-image:none!important;border-style:solid!important;border-width:1.5px!important;font-weight:700;}
 #fcal .fc-event.team .fc-event-title,#fcal .fc-event.team .fc-event-main{color:#1F3A6B!important;}
 /* ⚠ 다크 + 배경화면 — 위 hasbg 규칙과 3,1) 로 같아 **뒤에 오는 hasbg 가 이긴다**.
    그래서 막대만 흰색이 되고 글자는 다크용 연한 파랑(#BBD0F2)으로 남아 거의 안 보였다.
@@ -3901,5 +3916,5 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
 <script src="./vendor/korea-geo.js?v=635"></script>
 <script src="./vendor/apt-geo.js?v=635" onerror="void 0"></script>   <!-- 540차: 공동주택명 색인 — 없으면 그냥 건너뛴다 -->
-<script src="./app.js?v=675"></script>
+<script src="./app.js?v=676"></script>
 </body></html>
