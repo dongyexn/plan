@@ -30,6 +30,13 @@ class N {
   isNumber() { return typeof this.v === 'number'; }
   isString() { return typeof this.v === 'string'; }
   isBoolean() { return typeof this.v === 'boolean'; }
+  /* 675차: aiConf 노드가 객체인지 보는 데 쓴다. 인자가 없으면 '자식이 하나라도 있는가',
+     배열이면 '그 키들이 전부 있는가' — RTDB 규칙의 hasChildren 과 같은 뜻이다. */
+  hasChildren(keys) {
+    if (this.v == null || typeof this.v !== 'object') return false;
+    if (Array.isArray(keys)) return keys.every(k => this.v[k] !== undefined && this.v[k] !== null);
+    return Object.keys(this.v).length > 0;
+  }
 }
 
 function evalExpr(expr, ctx) {
@@ -192,6 +199,8 @@ t('AUTH-15b', 'editor → aiConf 읽기', true, tryRead('aiConf', A('E1'), TREE)
 t('AUTH-15c', 'viewer → aiConf 쓰기', false, tryWrite('aiConf', A('U1'), TREE, AIC));
 t('AUTH-15d', 'editor → aiConf 쓰기', true, tryWrite('aiConf', A('E1'), TREE, AIC));
 t('AUTH-15e', 'editor → aiConf 에 규칙 밖 필드', false, tryWrite('aiConf', A('E1'), TREE, { ...AIC, evil: 1 }));
+t('AUTH-15f', 'editor → aiConf 한 칸만 부분 갱신(첫 설정)', true, tryWrite('aiConf', A('E1'), TREE, { deployment: 'gpt-5-mini-1', updatedAt: 1, updatedBy: 'e1@hdec.co.kr' }));
+t('AUTH-15g', 'editor → aiConf 에 원시값 쓰기', false, tryWrite('aiConf', A('E1'), TREE, 'x'));
 /* AUTH-14 휴지통·보관함도 업무 본체와 같은 소유 검사 */
 const TR = (sid, iid) => ({ text: T(sid, iid).text, date: '2026-08-01', deletedAt: 1, z: 'x' });
 const AR = (sid, iid) => ({ text: T(sid, iid).text, date: '2026-08-01', archivedAt: 1, z: 'x' });

@@ -114,6 +114,9 @@
     // AI 분석 연결(671차) — Azure AI Foundry 엔드포인트·배포이름·키.
     //   ⚠ 키를 담으므로 읽기도 관리자(editor)만이다. viewer 는 존재조차 읽지 못한다.
     "aiConf": {
+      // 675차: 노드 자체가 객체인지 못박는다 — 원시값(문자열)이 들어오면 자식 .validate 도 $other 도 안 걸린다.
+      //   ⚠ 세 필드를 다 요구하면(hasChildren([...])) 첫 설정 때 칸을 하나씩 채우는 update 가 막힌다 — 객체이기만 하면 된다.
+      ".validate": "newData.hasChildren()",
       ".read":  "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'",
       ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'",
       "endpoint":   { ".validate": "newData.isString() && newData.val().length <= 300" },

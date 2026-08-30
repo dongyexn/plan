@@ -1,5 +1,5 @@
 /* 전체 로컬 회귀 게이트 — 이 저장소만으로 독립 실행한다.
-   기본: 정적 감사 → Rules 감사 → 브라우저 smoke → rainbow → 하자 E2E.
+   기본: 정적 감사 → Rules 감사 → 브라우저 smoke → rainbow → 하자 E2E → AI 단위.
    LIVE_E2E_* 4개가 모두 있으면 실제 Firebase E2E도 마지막에 실행한다. */
 import { spawnSync } from 'node:child_process';
 import process from 'node:process';
@@ -17,6 +17,7 @@ const jobs=[
   ['브라우저 smoke',['scripts/test/smoke.mjs']],
   ['무지개 렌더링 E2E',['scripts/test/rainbow-render.mjs']],
   ['하자 전 구간 E2E',['scripts/test/e2e-defect.mjs']],
+  ['AI 연결·호출 단위',['scripts/test/ai-unit.mjs']],
 ];
 let failed=0;
 for(const [name,args] of jobs){ if(run(name,args)!==0) failed++; }
