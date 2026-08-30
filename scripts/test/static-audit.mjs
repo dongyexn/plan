@@ -107,7 +107,7 @@ OK('구문 검사 (node --check)');
 
 /* ── 5. 죽은 CSS 클래스 ─────────────────────────────── */
 {
-  const KEEP = /^(fc-|wf-|x-none$|r-blocked$|woff2$|s\d$|insight-block$|ib-body$|warn$)/;   /* insight-*: 분석 의견 원문(DB 저장 HTML)의 클래스 — 마크업엔 없다(427차) */   /* 위 판정 원칙 + url(*.woff2) 오탐 + tk-item s${st} 동적 */
+  const KEEP = /^(fc-|wf-|x-none$|r-blocked$|woff2$|s\d$|insight-block$|ib-body$|warn$|ev-g-\w+$)/;   /* 678차: ev-g-* 는 'ev-g-'+토큰 으로 조립한다(GRADS 대조는 8-b 에서 따로 한다) */   /* insight-*: 분석 의견 원문(DB 저장 HTML)의 클래스 — 마크업엔 없다(427차) */   /* 위 판정 원칙 + url(*.woff2) 오탐 + tk-item s${st} 동적 */
   const cls = new Set([...css.matchAll(/\.([A-Za-z_][\w-]*)/g)].map(m => m[1]));
   const dead = [...cls].filter(c => !KEEP.test(c) &&
     !new RegExp('[\'"`\\s<>=.(]' + c.replace(/-/g, '\\-') + '[\'"`\\s<>.,)\\]}:$]').test(hay));
@@ -166,6 +166,54 @@ OK('구문 검사 (node --check)');
     }
     if(!/@keyframes rbflow\{/.test(html)||!/@keyframes rbflow2\{/.test(html)) F('무지개 흐름 키프레임(rbflow·rbflow2) 누락');
     else OK('무지개 흐름 키프레임 2종(일반 1레이어 · 공통 2레이어)');
+    /* 677차: 무지개 두 종 — 고정('rainbow')과 흐름('rainbow-anim'/.ev-fx)이 갈려 있어야 한다.
+       흐름을 .ev-rb 에 도로 걸면 고정을 고른 사람 화면까지 움직인다. */
+    {
+      const mBase=/(?:^|[};])\s*#fcal \.fc-event\.ev-rb\{([\s\S]*?)\}/m.exec(cssNC);
+      if(mBase&&/animation\s*:/.test(mBase[1])) F('고정 무지개(.ev-rb)에 애니메이션이 걸려 있다 — 흐름은 .ev-fx 전용이다');
+      else if(!/#fcal \.fc-event\.ev-rb\.ev-fx\{[^}]*animation\s*:/.test(cssNC)) F('흐름 무지개(.ev-fx) 애니메이션 규칙 누락');
+      else if(!/#fcal \.fc-event\.ev-rb\.ev-fx\.team\{[^}]*rbflow2/.test(cssNC)) F('흐름 무지개 공통 막대(.ev-fx.team)가 rbflow2 를 안 쓴다 — 레이어 수 불일치로 멈춘다');
+      /* ⚠ 677차: 머리쪽 전역 규칙이 동작 줄이기에서 모든 애니메이션을 !important 로 죽인다.
+         흐름 무지개는 그 안에서 되살려야 한다 — 예외가 사라지면 사용자 눈에는 '안 움직인다'로 보인다. */
+      else if(!/#fcal \.fc-event\.ev-fx\{animation-duration:8s!important;animation-iteration-count:infinite!important;\}/.test(cssNC))
+        F('동작 줄이기 예외가 없다 — 전역 reduce 규칙이 흐름 무지개까지 멈춘다');
+      else if(/ev-fx[^}]*animation\s*:\s*none/.test(cssNC)) F('흐름 무지개를 어딘가에서 끄고 있다');
+      else OK('무지개 두 종 분리 — 고정(.ev-rb) · 흐름(.ev-fx)');
+      /* 678차: 그라디언트 7종도 app.js(GRADS)와 index.html(.ev-g-*)에 이중 정의 — 무지개와 같은 방식으로 대조한다 */
+      {
+        const mG=/const GRADS=\{([\s\S]*?)\};/.exec(js);
+        if(!mG) F('GRADS 정의를 찾지 못했다');
+        else{
+          const pairs=[...mG[1].matchAll(/'(grad-\w+)'\s*:\s*'([^']+)'/g)].map(m=>[m[1],m[2]]);
+          if(pairs.length!==7) F('그라디언트 색이 7종이 아니다: '+pairs.length);
+          const bad=pairs.filter(([k,v])=>!cssNC.includes('#fcal .fc-event.ev-g-'+k.slice(5)+'{--gb:'+v+';}'));
+          if(bad.length) F('그라디언트 이중 정의 불일치(app.js GRADS ↔ index.html .ev-g-*): '+bad.map(x=>x[0]).join(', '));
+          else if(!/#fcal \.fc-event\.ev-gd\{[^}]*var\(--gb\)/.test(cssNC)) F('그라디언트 막대 기본 규칙(.ev-gd)이 --gb 를 안 쓴다');
+          else if(!/#fcal \.fc-event\.ev-gd\.team\{[^}]*var\(--gb\)/.test(cssNC)) F('공통 그라디언트 막대(.ev-gd.team) 규칙 누락');
+          else if(!/\.pal-row\.pal-grad\{/.test(html)) F('팔레트 그라디언트 줄(.pal-row.pal-grad) 누락');
+          else if(!/#fcal \.fc-event\.ev-gd\.ev-fx\{[^}]*animation\s*:/.test(cssNC)) F('그라디언트 흐름 규칙(.ev-gd.ev-fx) 누락');
+          else if(!/#fcal \.fc-event\.ev-gd\.ev-fx\.team\{[^}]*rbflow2/.test(cssNC)) F('공통 그라디언트 흐름(.ev-gd.ev-fx.team)이 rbflow2 를 안 쓴다');
+          else if(pairs.some(([,v])=>{const m=/#([0-9A-Fa-f]{6})[^,]*0%.*#([0-9A-Fa-f]{6})[^,]*100%/.exec(v);return !m||m[1].toLowerCase()!==m[2].toLowerCase();}))
+            F('그라디언트가 첫 색으로 닫혀 있지 않다 — 흐름에서 이음매가 보인다(A→…→A 규약)');
+          else if(!js.includes("g+GRAD_ANIM")) F('팔레트에 그라디언트 흐름 칩이 없다');
+          else OK('그라디언트 7종 — 이중 정의 일치 · 고정/흐름 두 벌 · 첫 색으로 닫힘');
+        }
+      }
+      /* 682차: 스킨 고르기는 되돌렸다. 남은 것은 12월 자동 크리스마스 하나뿐이고,
+         그 규칙이 직접 고른 색(무지개·그라디언트)까지 덮으면 안 된다는 것만 지킨다. */
+      {
+        const rules=[...cssNC.matchAll(/body\.dec #fcal \.fc-event\.team([^{]*)\{/g)];
+        if(rules.length<2) F('12월 크리스마스 규칙이 없다');
+        else if(rules.some(m=>!/:not\(\.ev-rb\)/.test(m[1])||!/:not\(\.ev-gd\)/.test(m[1])))
+          F('크리스마스 규칙이 무지개·그라디언트 막대까지 덮는다 — :not(.ev-rb):not(.ev-gd) 를 빠뜨렸다');
+        else if(/skin-/.test(cssNC)||js.includes('SKINS')) F('되돌린 스킨 고르기 잔재가 남아 있다');
+        else OK('12월 크리스마스 — 직접 고른 색을 덮지 않는다');
+      }
+      if(!js.includes("const RB_ANIM='rainbow-anim'")) F("흐름 무지개 토큰(RB_ANIM) 정의 누락");
+      else if(!js.includes("data-c=\"'+RB_ANIM+'\"")) F('팔레트에 흐름 무지개 칩이 없다');
+      else if(!/\.pal-c\.pal-fx::after\{/.test(html)) F('흐름 무지개 칩의 재생 삼각형(.pal-fx::after) 누락');
+      else OK('팔레트 — 흐름 무지개 칩 + 재생 삼각형');
+    }
   }
   const allowed = new Set([...seg.matchAll(/"(\w+)"\s*:\s*\{/g)].map(m => m[1]));
   const miss = [...new Set(writes)].filter(f => !allowed.has(f));
@@ -181,9 +229,9 @@ OK('구문 검사 (node --check)');
   ].filter(re => re.test(js));
   if (bad.length) F('무지개 토큰이 변환 없이 inline background 로 흘러갈 수 있는 경로가 남아 있음');
   else OK('무지개 색 원 — colBg() 변환 경로 유지');
-  if (!js.includes("c==='rainbow'?' p-col-rainbow':''")) F('공통/일반 색 원의 p-col-rainbow 클래스 부착 로직 누락');
+  if (!js.includes("rb?' p-col-rainbow':''")) F('공통/일반 색 원의 p-col-rainbow 클래스 부착 로직 누락');
   else OK('무지개 색 원 — p-col-rainbow 클래스 부착');
-  if (!js.includes("planColor(p)==='rainbow'?['ev-rb']:[]")) F('FullCalendar 무지개 ev-rb 클래스 경로 누락');
+  if (!js.includes("isRainbow(planColor(p))?['ev-rb']:[]")) F('FullCalendar 무지개 ev-rb 클래스 경로 누락');
   else OK('FullCalendar 무지개 — 공통/일반 공통 ev-rb 경로');
 }
 

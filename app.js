@@ -8,7 +8,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='676';
+const APP_VER='682';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -102,7 +102,7 @@ document.addEventListener('click',e=>{
   }
   const pc=e.target.closest('#pfPal .pal-c');
   if(pc&&!pc.classList.contains('pal-add')){const cv=pc.dataset.c||'';PF_SEL.color=cv;
-    if(cv&&cv!=='auto'&&cv!=='rainbow'&&PAL.indexOf(cv)<0)palAdd(cv);   /* 651차: 고른 색을 최근색으로 */
+    if(cv&&cv!=='auto'&&!isRainbow(cv)&&!isGrad(cv)&&PAL.indexOf(cv)<0)palAdd(cv);   /* 651차: 고른 색을 최근색으로 */
     setTimeout(()=>pfPaint(cv||ownColor((S.user||{}).uid)),0);acctAutoSave();return;}
   /* 팝오버 밖을 누르면 닫는다 — 아바타 버튼 자체는 토글이 처리 */
   const p=$('#pfPop');
@@ -162,11 +162,11 @@ function sitePickHTML(id,cur){
 /* 색 원 — 공통 업무(담당자 없음)는 달력 막대와 같은 '속 빈' 표시로 그린다(테두리만 업무색).
    team 은 호출부에서 넘긴다(미지정이면 기존처럼 꽉 찬 원). */
 function colDotHTML(c,pid,team){
-  const rb=c==='rainbow';
+  const rb=isRainbow(c)||isGrad(c);   /* 678차: 그라디언트도 테두리만 칠하는 공통 표시를 같이 쓴다 */
   const st=team
     ? (rb?'background:transparent;box-shadow:none':'background:transparent;box-shadow:inset 0 0 0 1.5px '+esc(c))
     : 'background:'+esc(colBg(c));
-  const cls=(team?' p-col-team':'')+(c==='rainbow'?' p-col-rainbow':'');
+  const cls=(team?' p-col-team':'')+(rb?' p-col-rainbow':'')+(isFlow(c)?' p-col-fx':'');
   return pid
     ?'<span class="p-col p-col-ro'+cls+'" style="'+st+'"></span>'
     :'<button class="p-col'+cls+'" data-act="plan.color" aria-label="색 고르기" data-tip="색 고르기" style="'+st+'"></button>';
@@ -184,9 +184,10 @@ function peColorSync(){
   const color=inline?((S.planEdit&&S.planEdit.draft&&S.planEdit.draft.color)||'auto')
                     :(($('#tnColor')&&$('#tnColor').value)||'');
   const pp={color,owners:v?{[v]:1}:{}};
-  const c=planColor(pp),team=!!inline&&!planOwners(pp).length,rb=c==='rainbow';
+  const c=planColor(pp),team=!!inline&&!planOwners(pp).length,rb=isRainbow(c)||isGrad(c);
   dot.classList.toggle('p-col-team',team);
   dot.classList.toggle('p-col-rainbow',rb);
+  dot.classList.toggle('p-col-fx',isFlow(c));
   dot.style.cssText=team
     ? (rb?'background:transparent;box-shadow:none':'background:transparent;box-shadow:inset 0 0 0 1.5px '+c)
     : 'background:'+colBg(c);
@@ -266,13 +267,22 @@ function palHTML(id,cur,extraFirst){
   /* 651차: 직접 고른 색을 칩 한 칸에 덮어쓰던 것을 '최근 쓴 색' 목록으로 바꾼다.
      업무 색 팝오버와 같은 저장소(palCustom/palAdd)를 쓰므로 두 곳의 최근색이 하나로 모인다. */
   const cust=palCustom().filter(x=>x&&PAL.indexOf(x)<0);
-  if(c&&c!=='auto'&&c!=='rainbow'&&PAL.indexOf(c)<0&&cust.indexOf(c)<0)cust.unshift(c);
+  if(c&&c!=='auto'&&!isRainbow(c)&&!isGrad(c)&&PAL.indexOf(c)<0&&cust.indexOf(c)<0)cust.unshift(c);
   return '<div class="pal" id="'+id+'">'+(extraFirst||'')
     +PAL.map(x=>'<div class="pal-c'+(x===c?' sel':'')+'" data-c="'+x+'" style="background:'+x+'"></div>').join('')
-    +'<div class="pal-c'+(c==='rainbow'?' sel':'')+'" data-c="rainbow" style="background:'+RAINBOW_BG+'" data-tip="무지개"></div>'
     +cust.map(x=>'<div class="pal-c pal-custom'+(x===c?' sel':'')+'" data-c="'+esc(x)+'" style="background:'+esc(x)+'" data-tip="우클릭으로 삭제"></div>').join('')
     +'<label class="pal-c pal-add" data-tip="직접 고르기">'
-    +'<input type="color" class="pal-inp" value="'+esc(c&&c!=='auto'&&c!=='rainbow'?c:'#3E71D2')+'"><span>+</span></label>'
+    +'<input type="color" class="pal-inp" value="'+esc(c&&c!=='auto'&&!isRainbow(c)&&!isGrad(c)?c:'#3E71D2')+'"><span>+</span></label>'
+    /* 678차: 그라디언트는 단색과 성격이 달라 줄을 나눈다 — 무지개 2종 + 색 그라디언트 7종 */
+    /* 위 줄은 고정, 아래 줄은 흐름(▶). 같은 순서로 세워 세로로 짝이 맞는다. */
+    +'<div class="pal-row pal-grad">'
+    +'<div class="pal-c'+(c==='rainbow'?' sel':'')+'" data-c="rainbow" style="background:'+RAINBOW_BG+'" data-tip="무지개"></div>'
+    +Object.keys(GRADS).map(g=>'<div class="pal-c'+(g===c?' sel':'')+'" data-c="'+g+'" style="background:'+GRADS[g]+'" data-tip="그라디언트"></div>').join('')
+    +'</div>'
+    +'<div class="pal-row pal-grad pal-grad2">'
+    +'<div class="pal-c pal-fx'+(c===RB_ANIM?' sel':'')+'" data-c="'+RB_ANIM+'" style="background:'+RAINBOW_BG+'" data-tip="무지개 · 흐름"></div>'
+    +Object.keys(GRADS).map(g=>'<div class="pal-c pal-fx'+(g+GRAD_ANIM===c?' sel':'')+'" data-c="'+g+GRAD_ANIM+'" style="background:'+GRADS[g]+'" data-tip="그라디언트 · 흐름"></div>').join('')
+    +'</div>'
     +'</div>';
 }
 /* 프로필 아바타 — 계정에 저장한 색·아이콘이 있으면 그것을, 없으면 자동 색 */
@@ -312,7 +322,34 @@ const OWN_PAL=['#3E71D2','#16A34A','#D97706','#DC2626','#7C5CD6','#0EA5E9','#DB2
    background 를 받는 자리는 colBg() 로 그라디언트를, 단색만 받는 자리는 없다(FC 이벤트는
    아래 eventDidMount 훅이 배경을 직접 칠한다). isLightColor('rainbow')=false → 흰 글자. */
 const RAINBOW_BG='linear-gradient(135deg,#F43F5E 0%,#F59E0B 17%,#FACC15 33%,#22C55E 50%,#3B82F6 67%,#8B5CF6 83%,#F43F5E 100%)';
-function colBg(c){return c==='rainbow'?RAINBOW_BG:c;}
+const RB_ANIM='rainbow-anim';   /* 677차: 무지개 두 종 — 'rainbow'(고정) · 'rainbow-anim'(흐름).
+   ⚠ 서버 규칙의 color 는 16자 이내 문자열이면 통과하므로 규칙 변경은 없다.
+   ⚠ 애니메이션 쪽은 사용자가 **직접 고른** 장식이므로 OS 동작 줄이기(prefers-reduced-motion)에도 멈추지 않는다.
+      고정 무지개가 그 설정을 위한 선택지다. */
+function isRainbow(c){return c==='rainbow'||c===RB_ANIM;}
+/* 678차: 그라디언트 계열 — 무지개와 같은 자리(색 파이프)를 쓰는 특수 토큰이다.
+   ⚠ 토큰은 16자 이내여야 한다(서버 규칙 color 제한). 'grad-xx' 는 7자다.
+   ⚠ 값을 여기서만 정하고 CSS 는 클래스로 받는다 — 종류가 고정 7개라 인라인이 필요 없다.
+      막대는 `ev-g-{id}` 가 --gb 변수를 채우고, 색 원·팔레트 칩은 colBg() 문자열을 그대로 쓴다. */
+const GRADS={
+  'grad-rd':'linear-gradient(135deg,#FB7185 0%,#EF4444 38%,#F97316 72%,#FB7185 100%)',
+  'grad-og':'linear-gradient(135deg,#FBBF24 0%,#F97316 38%,#EF4444 72%,#FBBF24 100%)',
+  'grad-yl':'linear-gradient(135deg,#FDE68A 0%,#FACC15 38%,#A3E635 72%,#FDE68A 100%)',
+  'grad-gr':'linear-gradient(135deg,#34D399 0%,#22C55E 38%,#14B8A6 72%,#34D399 100%)',
+  'grad-bl':'linear-gradient(135deg,#38BDF8 0%,#3B82F6 38%,#6366F1 72%,#38BDF8 100%)',
+  'grad-nv':'linear-gradient(135deg,#6366F1 0%,#4338CA 38%,#7C3AED 72%,#6366F1 100%)',
+  'grad-pp':'linear-gradient(135deg,#A78BFA 0%,#8B5CF6 38%,#EC4899 72%,#A78BFA 100%)'
+};
+const GRAD_ANIM='-anim';   /* 679차: 그라디언트도 고정·흐름 두 벌 — 'grad-bl' / 'grad-bl-anim' (12자, 규칙 16자 제한 안) */
+function gradBase(c){const t=String(c||'');return t.endsWith(GRAD_ANIM)?t.slice(0,-GRAD_ANIM.length):t;}
+function isGrad(c){return Object.prototype.hasOwnProperty.call(GRADS,gradBase(c));}
+function isGradAnim(c){return isGrad(c)&&String(c||'').endsWith(GRAD_ANIM);}
+/* 흐름(움직임)을 켜는 색인지 — 무지개·그라디언트가 같은 판정을 쓴다 */
+function isFlow(c){return c===RB_ANIM||isGradAnim(c);}
+/* 밝은 그라디언트는 흰 글자가 안 읽힌다 — 노랑만 어두운 글자로 넘긴다(isLightColor 는 hex 만 판정한다) */
+const GRAD_LIGHT={'grad-yl':1};
+function isLightBg(c){return isGrad(c)?!!GRAD_LIGHT[gradBase(c)]:isLightColor(c);}
+function colBg(c){return isRainbow(c)?RAINBOW_BG:(isGrad(c)?GRADS[gradBase(c)]:c);}
 function ownColor(pid){
   if(!pid)return PAL[0];
   /* 프로필에서 고른 색이 있으면 그 색을 쓴다 — 노란 프로필인데 보라 업무로 뜨면 헷갈린다 */
@@ -1995,11 +2032,11 @@ function planEvent(p,date){
        예전에 파랑으로 저장된 공통 업무도 여기서 함께 윤곽선형이 된다(색 지정 여부와 무관). */
     backgroundColor:team?'transparent':planColor(p),
     borderColor:team?planColor(p):'transparent',
-    textColor:team?'':(isLightColor(planColor(p))?'#1B1B1F':'#fff'),
+    textColor:team?'':(isLightBg(planColor(p))?'#1B1B1F':'#fff'),
     /* ⚠ display 를 지정하지 않으면 시간이 있는 업무는 FullCalendar 가 '점 형식'으로 그린다 —
        배경 없이 어두운 글자라 유리(어두운) 배경 위에서 거의 보이지 않는다. 전부 색 막대로 통일한다 */
     display:'block',
-    classNames:(done?['done']:[]).concat((!team&&isLightColor(planColor(p)))?['on-light']:[]).concat(team?['team']:[]).concat(isRisk(p.kind)?['risk']:[]).concat(planColor(p)==='rainbow'?['ev-rb']:[]),   /* 633차: 담당자/공통 모두 무지개 렌더링 경로를 통일 */
+    classNames:(done?['done']:[]).concat((!team&&isLightBg(planColor(p)))?['on-light']:[]).concat(team?['team']:[]).concat(isRisk(p.kind)?['risk']:[]).concat(isRainbow(planColor(p))?['ev-rb']:[]).concat(isFlow(planColor(p))?['ev-fx']:[]).concat(isGrad(planColor(p))?['ev-gd','ev-g-'+gradBase(planColor(p)).slice(5)]:[]),   /* 633차: 담당자/공통 모두 무지개 렌더링 경로를 통일 · 677차: 흐름은 ev-fx 가 켠다 */
     /* 칸 안 차례 — 공통(0) · 내 업무(1) · 팀장(2) · 나머지(3).
        칸이 넘쳐 '외 N건' 으로 접힐 때 나와 상관 있는 것이 먼저 남는다(eventOrder 참조) */
     extendedProps:{pid:p.id,occ:date,recur:!!(p.recur&&p.recur.f),ord:evOrd(p,team),oky:evOwnKey(p),cre:Number(p.createdAt)||0},
@@ -2141,7 +2178,9 @@ function rMonTitle(){
   if(!CAL)return;const c=CAL.view.currentStart;
   $('#calMonTxt').textContent=(c.getMonth()+1)+'월';
   $('#calYearTxt').textContent=c.getFullYear()+'년';
-  /* 644차: 12월이면 공통 업무 막대를 크리스마스 줄무늬로 — 보고 있는 달 기준 */
+  /* 644차: 12월이면 공통 업무 막대를 크리스마스 줄무늬로 — 보고 있는 달 기준
+     ⚠ 681차에 스킨 고르기를 넣었다가 되돌렸다(682차). 다시 넣는다면 설정 카드가 아니라
+        **색 팔레트 아래 구분선 밑에 스킨 칩**으로 붙이기로 했다 — 색과 같은 자리에서 고르는 편이 맞다. */
   document.body.classList.toggle('dec',c.getMonth()===11);
   rCalMini();
 }
@@ -10270,7 +10309,7 @@ document.addEventListener('input',e=>{if(e.target.id==='nqQ')rNq();});
 document.addEventListener('change',e=>{const el=e.target;if(!el||!el.dataset)return;
   /* 담당자를 바꾸면 앞의 색 점도 따라간다(389차) — select 는 클릭 처리에서 막히므로 change 에서 다룬다 */
   if(el.id==='tnAsg'){const dot=document.getElementById('tnAsgDot');
-    if(dot){const c=el.value?colBg(ownColor(el.value)):'var(--lbl3)';dot.style.background=c;dot.classList.toggle('p-col-rainbow',false);}}
+    if(dot){const c=el.value?colBg(ownColor(el.value)):'var(--lbl3)';dot.style.background=c;dot.classList.toggle('p-col-rainbow',false);dot.classList.toggle('p-col-fx',false);}}
   if(el.dataset.act==='df.moYear'){S.dfMoYear=el.value;if(DF.lastDash)dfDashMonthTable(DF.lastDash);}
   else if(el.dataset.act==='df.detailYear'){S.dfDetailYear=el.value;rDefect();}
   else if(el.dataset.act==='df.trendYear'){
