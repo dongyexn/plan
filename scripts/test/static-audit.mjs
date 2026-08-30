@@ -407,16 +407,24 @@ OK('구문 검사 (node --check)');
     const abs = path.join(root, d);
     if (fs.existsSync(abs) && fs.statSync(abs).isDirectory()) found.push(d + '/ (테스트 산출물)');
   }
-  /* 배포본이 지나치게 커지지 않았는지도 본다 — 커진 이유는 대개 위 같은 잔재다 */
+  /* 배포본 크기 — 잔재가 섞이면 대개 여기서 먼저 티가 난다.
+     ⚠ 666차에 8MB 로 잡았더니 정상 저장소(문서·아이콘 포함)가 바로 걸렸다.
+     숫자만 던지면 뭘 지워야 할지 알 수 없으므로 **무거운 항목을 같이 찍는다**.
+     한계는 12MB — vendor(4.2MB)와 문서가 자라도 여유가 있고, 3MB짜리 잔재 폴더가 들어오면 걸린다. */
+  const size = {};
   let bytes = 0;
-  const sz = (rel) => { for (const e of fs.readdirSync(path.join(root, rel), { withFileTypes: true })) {
+  const sz = (rel, topKey) => { for (const e of fs.readdirSync(path.join(root, rel), { withFileTypes: true })) {
     if (SKIP.has(e.name)) continue;
     const r = rel ? rel + '/' + e.name : e.name;
-    if (e.isDirectory()) sz(r); else bytes += fs.statSync(path.join(root, r)).size; } };
-  sz('');
+    const key = topKey || (e.isDirectory() ? e.name + '/' : e.name);
+    if (e.isDirectory()) sz(r, key);
+    else { const n = fs.statSync(path.join(root, r)).size; bytes += n; size[key] = (size[key] || 0) + n; } } };
+  sz('', null);
   const mb = bytes / 1048576;
-  if (mb > 8) F('배포본 ' + mb.toFixed(1) + 'MB — 8MB 를 넘었다. 잔재가 섞였는지 확인할 것');
-  else OK('배포본 크기 ' + mb.toFixed(1) + 'MB');
+  const top = Object.entries(size).sort((a, b) => b[1] - a[1]).slice(0, 4)
+    .map(([k, v]) => k + ' ' + (v / 1048576).toFixed(1) + 'MB').join(' · ');
+  if (mb > 12) F('배포본 ' + mb.toFixed(1) + 'MB — 12MB 초과. 무거운 항목: ' + top);
+  else OK('배포본 크기 ' + mb.toFixed(1) + 'MB (' + top + ')');
   if (found.length) F('배포본에 작업 잔재 ' + found.length + '개 — 지우고 다시 묶을 것: ' + found.join(' · '));
   else OK('작업 잔재 없음 (임시 파일·산출물 폴더 검사)');
 }
