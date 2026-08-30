@@ -8,7 +8,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='670';
+const APP_VER='673';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -4966,6 +4966,8 @@ async function dfPublish(){
 function dfProdCardFill(){
   const card=$('#dfPubCard');if(!card)return;
   card.style.display=isEditor()&&!S.snap?'':'none';
+  const aic=$('#aiCard');if(aic)aic.style.display=card.style.display;   /* 671차: AI 연결 카드도 같은 관리자 선 */
+  if(isEditor())aiConfLoad();   /* 671차: 값은 Firebase 에 있다 — 다 받으면 이 함수를 한 번 더 부른다 */
   const sids=Object.keys(S.def||{});let n=0;sids.forEach(k=>{n+=(S.def[k]||[]).length;});
   /* 615차 통합 행 — 굵은 줄=이 PC 상태, 아랫줄=업로드·최신 등록 시각 */
   const st=$('#dfLocalStat');
@@ -4976,7 +4978,8 @@ function dfProdCardFill(){
     sub.innerHTML=esc(t)+'등록 <span id="dfPubAt">—</span>';}
   const rl=$('#dfPubRm');if(rl&&document.activeElement!==rl)rl.value=dfPubRm();
   dfExTkRender();
-  const ck=$('#dfCk');if(ck&&document.activeElement!==ck)ck.value=S.ck||'';
+  const _fill=(id,v)=>{const e=$(id);if(e&&document.activeElement!==e)e.value=v||'';};
+  _fill('#dfAzEp',S.azEp);_fill('#dfAzDep',S.azDep);_fill('#dfAzCk',S.azCk);
   const hi=$('#dfUpHist');
   if(hi){const h=DFMETA.hist||[];
     hi.innerHTML=h.length?h.slice(0,3).map(x=>'<div>'+esc(dfFmtDT(x.at))+' · '+x.sites+'개 현장 · 기준월 '+esc(x.rm||'—')+'</div>').join('')
@@ -5025,7 +5028,11 @@ function dfProdWire(){
     if(el.id==='dfFi'){onFile(el.files&&el.files[0]);return;}
     if(el.id==='dfExTk'){const v=el.value.trim();if(v){el.value='';dfExTkSet(dfExTkList().concat(v.split(',').map(x=>x.trim()).filter(Boolean)));}return;}   /* blur 잔여 글도 칩으로 */
     if(el.id==='dfPubRm'){const v=el.value;if(/^\d{4}-\d{2}$/.test(v)){S.dfPubRm=v;dfMetaSave();dfProdCardFill();}return;}
-    if(el.id==='dfCk'){S.ck=el.value.trim();try{localStorage.setItem('calapp.ck',S.ck);}catch(_){ }return;}
+    if(el.id==='dfAzEp'||el.id==='dfAzDep'||el.id==='dfAzCk'){
+      if(el.id==='dfAzEp')S.azEp=el.value.trim();
+      else if(el.id==='dfAzDep')S.azDep=el.value.trim();
+      else S.azCk=el.value.trim();
+      aiConfSave();return;}
   });
   /* 제외 키워드 칩 — 엔터·쉼표 추가, 빈 칸 백스페이스로 마지막 칩 제거, × 클릭 제거 */
   document.addEventListener('keydown',e=>{
@@ -5061,47 +5068,92 @@ else setTimeout(dfProdBoot,0);
    runAI(현장 종합 분석)·runDashAI(대시보드 주요이슈 재작성). 프롬프트·규칙 조립(buildRules→RULE_DEF)은
    원본 그대로 — 문구를 바꾸면 회의자료 산출물이 달라진다. 적응 지점은 각 ⚠ 주석.
    ⚠ 둘 다 **원본 하자 행이 있는 마스터 PC 전용**이다(calc 를 로컬 행으로 돌린다).
-   ⚠ CSP connect-src 의 *.googleapis.com 이 generativelanguage 를 허용한다 — CSP 를 죄면 여기가 죽는다. */
-S.ck=(function(){try{return localStorage.getItem('calapp.ck')??'';}catch(e){return '';}})();   /* Gemini API 키 — 이 앱의 설정만 사용 */
+   ⚠ CSP connect-src 의 *.services.ai.azure.com 이 이 호출을 허용한다 — CSP 를 죄면 여기가 죽는다. */
+/* 671차: Azure AI Foundry 접속 정보 — 설정 > AI 분석 연결의 세 칸.
+   Firebase `aiConf` 리프에 두어 관리자 PC 가 바뀌어도 다시 입력하지 않는다.
+   ⚠ 키가 담기므로 규칙에서 **읽기까지 editor 로 좁혔다**(viewer 는 존재도 못 읽는다).
+      규칙이 유일한 방어선이므로 database.rules.json 의 aiConf 를 느슨하게 고치지 말 것.
+   ⚠ 그래도 호출은 브라우저에서 일어난다 — 키는 관리자 화면의 네트워크 탭에 헤더로 찍힌다.
+      노출을 실제로 줄이려면 키가 아니라 사용자 토큰(Entra)이나 중계 서버가 필요하다. */
+S.azEp='';S.azDep='';S.azCk='';
+let _aiConfP=null;
+function aiConfLoad(){
+  if(_aiConfP)return _aiConfP;
+  if(!S.live||!FB.db||!isEditor())return Promise.resolve(false);
+  _aiConfP=FB.db.ref('aiConf').once('value').then(sn=>{
+    const o=sn.val()||{};
+    S.azEp=String(o.endpoint||'');S.azDep=String(o.deployment||'');S.azCk=String(o.key||'');
+    dfProdCardFill();return true;
+  }).catch(e=>{console.warn('[AI] aiConf 읽기 실패',e);_aiConfP=null;return false;});
+  return _aiConfP;
+}
+function aiConfSave(){
+  if(!S.live||!FB.db){toast('로그인 상태에서만 저장됩니다');return;}
+  if(!isEditor()){toast('AI 연결 정보는 관리자만 저장할 수 있습니다');return;}
+  FB.db.ref('aiConf').set({endpoint:S.azEp,deployment:S.azDep,key:S.azCk,
+    updatedAt:Date.now(),updatedBy:String((S.user&&S.user.email)||'').slice(0,200)})
+    .catch(e=>{console.warn('[AI] aiConf 쓰기 실패',e);toast('AI 연결 저장 실패: '+e.message);});
+}
 
-/* ═══════════ 670차: AI 제공자 한 겹 ═══════════
-   지금까지 runAI·runDashAI 가 Gemini 의 URL·헤더·응답 모양을 직접 알고 있었다.
-   회사 AI(Copilot 등)로 갈아탈 때 분석 로직까지 건드리게 되므로, 호출만 떼어 낸다.
+/* ═══════════ AI 제공자 한 겹 (670차 도입 · 671차 Azure 단일화) ═══════════
+   runAI·runDashAI 는 엔진의 URL·헤더·응답 모양을 모른다 — 아래 provider 만 안다.
+   671차에 Gemini 를 걷어내고 회사 Azure AI Foundry 로 일원화했다. 다른 엔진을 붙일 때는
+   이 객체를 하나 더 만들고 aiProvider() 가 고르게 하면 된다(Claude 계열은 응답 모양이 달라 별도 provider 가 필요하다).
    ⚠ 프롬프트·규칙 조립(RULE_DEF·buildRules)은 산출물의 문구를 정하므로 여기 들어오지 않는다.
-   ⚠ 지금 Gemini 키는 브라우저(localStorage)에 있다 — 비밀값이 아니다.
-      회사 체계로 옮길 때는 키가 아니라 **사용자 인증 토큰**으로 바뀌므로,
-      provider 는 키 유무가 아니라 `ready()` 로 준비 상태를 답한다. */
+   ⚠ 키는 브라우저에 있다 — 비밀값이 아니다. 회사 인증 체계로 옮길 때는 키가 아니라 사용자 토큰이 되므로,
+      provider 는 키 유무가 아니라 ready() 로 준비 상태를 답한다. */
+let _azMode=null;   /* 673차: 배포 모델의 계열 캐시 — 'chat'|'reason'|'bare' */
 const AI_PROVIDERS={
-  gemini:{
-    id:'gemini', label:'Gemini',
-    ready(){return !!S.ck;},
-    hint:'설정 > 하자 데이터 등록에서 Gemini API 키를 입력하세요',
+  /* Azure AI Foundry — 배포한 모델을 chat completions 로 부른다.
+     ⚠ 엔드포인트는 도메인까지만 쓴다. 포털이 주는 `/openai/v1/responses` 를 통째로 붙여넣어도 아래에서 잘라 낸다.
+     ⚠ model 에는 모델명이 아니라 **배포 이름**이 들어간다(포털 기본값엔 `-1` 이 붙는다).
+     ⚠ gpt-4.1 계열(비추론) 기준이다. gpt-5 계열 배포로 바꾸면 temperature 가 거부되고
+        max_completion_tokens 를 추론 토큰이 함께 먹으므로, temp 를 빼고 한도를 키워야 한다. */
+  azure:{
+    id:'azure', label:'Azure AI Foundry',
+    ready(){return !!(S.azEp&&S.azDep&&S.azCk);},
+    hint:'설정 > AI 분석 연결에서 엔드포인트·배포이름·키를 입력하세요',
     /* system: 규칙, prompt: 데이터, max: 최대 토큰 → 순수 텍스트를 돌려준다 */
     async ask({system,prompt,max=4096,temp=0.4}){
-      const url='https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
-      const r=await fetch(url,{method:'POST',
-        headers:{'Content-Type':'application/json','x-goog-api-key':S.ck},
-        body:JSON.stringify({systemInstruction:{parts:[{text:system}]},contents:[{parts:[{text:prompt}]}],
-          generationConfig:{maxOutputTokens:max,temperature:temp,thinkingConfig:{thinkingBudget:0}}})});
-      const d=await r.json();
-      if(d.error)throw new Error(d.error.message||'API 오류');
-      return d.candidates?.[0]?.content?.parts?.[0]?.text||'';
+      const base=String(S.azEp||'').trim().replace(/\s+/g,'').replace(/\/+$/,'').replace(/\/openai(\/.*)?$/,'');
+      const url=base+'/openai/v1/chat/completions';
+      const msgs=[{role:'system',content:system},{role:'user',content:prompt}];
+      /* 673차: 배포한 모델의 계열에 따라 본문이 다르다 — 설정에서 고르게 하지 않고 첫 호출로 알아낸다.
+         · chat  : gpt-4.1 계열(비추론). temperature 를 받고 max_completion_tokens 는 본문 토큰만 센다.
+         · reason: gpt-5 계열(추론). temperature 를 400 으로 거부하고, 한도를 추론 토큰이 함께 먹으므로
+                   여유(AZ_REASON_PAD)를 얹지 않으면 본문이 빈 채 finish_reason:'length' 로 돌아온다.
+         · bare  : 위 둘이 다 거부될 때의 최소 본문. 모델이 또 갈리더라도 앱이 죽지 않게 두는 안전판.
+         ⚠ 알아낸 계열은 _azMode 에 남겨 다음 호출부터 한 번에 간다(세션 한정 — 배포를 바꾸면 새로고침).  */
+      const AZ_REASON_PAD=16000;
+      const shape=m=>{
+        const b={model:S.azDep,messages:msgs};
+        if(m==='reason'){b.max_completion_tokens=max+AZ_REASON_PAD;b.reasoning_effort='minimal';}
+        else if(m==='bare'){b.max_completion_tokens=max+AZ_REASON_PAD;}
+        else{b.max_completion_tokens=max;b.temperature=temp;}
+        return b;
+      };
+      const once=async m=>{
+        const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','api-key':S.azCk},body:JSON.stringify(shape(m))});
+        return r.json();
+      };
+      const order=_azMode?[_azMode]:['chat','reason','bare'];
+      let d=null,used=null,lastErr='';
+      for(const m of order){
+        d=await once(m);
+        if(!d.error){used=m;break;}
+        lastErr=d.error.message||'API 오류';
+        /* 모델이 파라미터 자체를 거부한 것만 다음 모양으로 넘어간다 — 키·배포이름 오류는 즉시 알린다 */
+        if(!/temperature|reasoning_effort|max_completion_tokens|unsupported|not supported/i.test(lastErr))break;
+      }
+      if(!used)throw new Error(lastErr);
+      const c=(d.choices||[])[0];
+      if(!c||!c.message||!c.message.content)throw new Error('본문이 비었습니다'+(c&&c.finish_reason?' ('+c.finish_reason+')':''));
+      _azMode=used;
+      return c.message.content;
     }
-  },
-  /* Copilot 자리 — 붙일 때 이 객체만 채우면 된다. 아래 두 가지는 붙이기 전에 확인해야 한다.
-     ① Entra 앱 등록·관리자 동의(회사가 막고 있으면 여기서 끝난다)
-     ② 사용자별 Microsoft 365 Copilot 라이선스. 호출은 키가 아니라 Graph 토큰을 쓴다. */
-  copilot:{
-    id:'copilot', label:'Microsoft 365 Copilot',
-    ready(){return false;},
-    hint:'회사 Copilot 연결이 아직 준비되지 않았습니다',
-    async ask(){throw new Error('Copilot 제공자가 아직 연결되지 않았습니다');}
   }
 };
-function aiProvider(){
-  const want=(function(){try{return localStorage.getItem('calapp.ai')||'';}catch(e){return '';}})();
-  return AI_PROVIDERS[want]||AI_PROVIDERS.gemini;
-}
+function aiProvider(){return AI_PROVIDERS.azure;}   /* 671차: 제공자 하나 — 늘어나면 여기서 고른다 */
 /* 화면이 쓰는 창구는 이 둘뿐이다 — 엔진이 바뀌어도 호출부는 그대로다 */
 const AI={
   ready(){return aiProvider().ready();},
@@ -5125,26 +5177,50 @@ function dfAnaWrite(sid,txt,rm){
   }catch(e){console.warn('[AI] anaWrite',e);}
 }
 function buildRules(scope){let out='';for(const g of RULE_DEF){if(g.scope!==scope)continue;const body=g.rules.map(r=>String(ruleVal(r.id)).trim()).filter(Boolean).join('\n');if(!body)continue;out+=(out?'\n\n':'')+(g.hdr?g.hdr+'\n':'')+body;}return out;}
-async function runAI(sid){if(!AI.ready()){toast(AI.hint());return;}const site=(S.org.sites||[]).find(s=>s.id===sid);if(!site)return;
+async function runAI(sid){
+if(!isEditor()){toast('AI 분석은 관리자만 실행할 수 있습니다');return;}   /* 671차: 화면(버튼 노출)과 같은 선을 실행부에도 긋는다 */
+await aiConfLoad();   /* 671차: 설정 화면을 거치지 않고 눌러도 Firebase 의 연결 정보를 먼저 받는다 */
+if(!AI.ready()){toast(AI.hint());return;}const site=(S.org.sites||[]).find(s=>s.id===sid);if(!site)return;
 if(!((S.def[sid]||[]).length)){toast('이 PC 에 원본 하자 행이 없습니다 — 업로드한 마스터 PC 에서만 AI 분석을 만들 수 있습니다',6000);return;}   /* ⚠ 원본엔 없던 안내 — calapp 은 전원이 게시본을 보므로 원본 행 유무를 먼저 알린다 */
 const rm=dfPubRm();   /* ⚠ 원본 S.rm — 게시 기준월로 통일 */
 const st=calc(S.def[sid]||[],site,rm),el=(S.dfSid===sid)?document.getElementById('dfAit'):null;   /* ⚠ 원본 ait-{sid} — calapp 의 분석 칸은 열린 현장 하나(#dfAit) */if(el)el.innerHTML='<p style="color:var(--lbl3)">AI 분석 생성 중…</p>';
 const systemInstruction = buildRules('site'); // 기본 규칙 레지스트리(RULE_DEF)에서 조립 — 설정>기본 규칙 편집의 override 반영, 미수정 시 종전 문자열과 동일
 const _ul=st.ul||[];
-// 키워드 포함건 우선 + 60일+ 장기미처리 우선으로 접수내용 샘플 추출 (최대 40건, 각 60자)
+/* 672차: AI 에 주는 데이터를 키웠다. 종전엔 40건·각 60자였는데, 60자로는 접수내용이 잘려
+   AI 가 원인을 추론할 근거가 사실상 없었다(그래서 수치 재서술에 그쳤다). 모델 컨텍스트가 커진 만큼
+   건수·길이를 올리고 동/호·유형·업체·접수일을 함께 준다.
+   ⚠ 대형 현장에서 컨텍스트를 넘기지 않도록 AI_SAMPLE_CAP(총 문자수)로 잘라 낸다 —
+      상한에 걸리면 정렬 우선순위(키워드 → 지연일)가 높은 것부터 남는다. */
+const AI_SAMPLE_N=200, AI_SAMPLE_LEN=200, AI_SAMPLE_CAP=90000;
 const _kw=new RegExp('누수|민원|품의|자재|피해|보상|결로|곰팡이|균열|파손|재시공|소송|법무|하자판정|중대');
 const _daysB=(a,b)=>{const da=new Date(a),db=new Date(b);return Math.max(0,Math.round((db-da)/86400000));};
-const _scored=_ul.map(i=>{const c=(i.receiptContent||'').replace(/\s+/g,' ').trim();const dd=i.receiptDate?_daysB(i.receiptDate,st.rmEnd):0;return{c,dd,co:i.complaint,t:i.trade||'',kw:_kw.test(c)||_kw.test(i.complaint||'')};}).filter(x=>x.c);
+const _scored=_ul.map(i=>{const c=(i.receiptContent||'').replace(/\s+/g,' ').trim();const dd=i.receiptDate?_daysB(i.receiptDate,st.rmEnd):0;
+  return{c,dd,t:i.trade||'-',dt:i.defectType||'-',co:i.contractor||'-',bu:i.building||'?',un:i.unit||'?',rd:i.receiptDate||'',kw:_kw.test(c)||_kw.test(i.complaint||'')};}).filter(x=>x.c);
 _scored.sort((a,b)=>(b.kw-a.kw)||(b.dd-a.dd));
-const _sample=_scored.slice(0,40).map(x=>`- [${x.t}|${x.dd}일${x.kw?'|★':''}] ${maskPII(x.c).slice(0,60)}`).join('\n');
-const _contentBlock=_sample?`\n[미처리건 접수내용 샘플 — ★는 누수·민원·품의·자재·피해보상 등 주요 키워드 포함건]\n${_sample}`:`\n[미처리건 접수내용] 제공된 접수내용 데이터 없음 (해당 분석 항목 생략)`;
+let _used=0;const _lines=[];
+for(const x of _scored.slice(0,AI_SAMPLE_N)){
+  const ln=`- ${x.bu}동 ${x.un}호 [${x.t}|${x.dt}|${x.co}|접수 ${x.rd}|${x.dd}일${x.kw?'|★':''}] ${maskPII(x.c).slice(0,AI_SAMPLE_LEN)}`;
+  if(_used+ln.length>AI_SAMPLE_CAP)break;
+  _used+=ln.length;_lines.push(ln);
+}
+const _sample=_lines.join('\n');
+const _contentBlock=_sample?`\n[미처리건 접수내용 ${_lines.length}건(미처리 ${_ul.length}건 중 키워드·지연 우선) — ★는 누수·민원·품의·자재·피해보상 등 주요 키워드 포함건]\n${_sample}`:`\n[미처리건 접수내용] 제공된 접수내용 데이터 없음 (해당 분석 항목 생략)`;
+/* 672차: 공종·업체 집계표를 통째로 준다 — 어느 공종이 어느 업체에서 밀리는지 교차 판단의 근거다.
+   화면 표와 같은 출처(trAgg·coAgg)라 AI 서술과 표의 숫자가 어긋나지 않는다. */
+const _trBlock=(st.trAgg||[]).length?`\n[공종별 집계 — 공종|접수|처리|미처리|장기|~29일/30~59일/60일+|주업체|전월미처리]\n`+
+  (st.trAgg||[]).slice(0,15).map(o=>`- ${o.t}|${o.r}|${o.res}|${o.u}|${o.lt}|${o.d0}/${o.d30}/${o.d60}|${o.coTop}|${o.pu}`).join('\n'):'';
+const _coBlock=(st.coAgg||[]).length?`\n[시공업체별 집계 — 업체|접수|처리|미처리|장기|~29일/30~59일/60일+|주공종|전월미처리]\n`+
+  (st.coAgg||[]).slice(0,12).map(o=>`- ${o.c}|${o.r}|${o.res}|${o.u}|${o.lt}|${o.d0}/${o.d30}/${o.d60}|${o.trTop}|${o.pu}`).join('\n'):'';
+const _rpBlock=Object.keys(st.rpb||{}).length?`\n[보수주체별 미처리] ${Object.entries(st.rpb).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${k}:${v}건`).join(', ')}`:'';
 // 중대하자 의심 후보 블록 — 규칙(isCritCandidate)으로 넓게 추출한 후보 + 의심사유 태그. AI가 매뉴얼 기준으로 최종 판정.
 const _critList=(st.critUl||[]).slice(0,12).map(i=>{const dd=i.receiptDate?_daysB(i.receiptDate,st.rmEnd):0;const c=(i.receiptContent||'').replace(/\s+/g,' ').trim();const rs=critReason(i).join('/');return `- ${i.building||'?'}동 ${i.unit||'?'}호 [${i.trade||'-'}|${i.defectType||'-'}|${dd}일|의심:${rs}] ${maskPII(c).slice(0,70)}`;}).join('\n');
 const _critBlock=(st.critUnr>0)?`\n[중대하자 의심 후보 — 규칙 추출, AI가 사내 매뉴얼 기준으로 최종 판정할 것] 미처리 의심 ${st.critUnr}건(전월 의심 ${st.critPrevUnr}건)\n${_critList}`:`\n[중대하자 의심 후보] 규칙상 의심 0건`;
-const p=`현대건설 ${((((S.org.teams||[]).find(t=>t.id===site.team))||((S.org.teams||[])[0]))||{}).name||'H서비스센터'} ${site.name} 현장의 하자처리 현황을 분석하여 한국어 개조식으로 작성하세요. 기준월 ${rm}, 전월 대비 변화를 중심으로 분석할 것.\n[현장] ${site.name}(${site.region}), ${site.units}세대 ${site.buildings}동, 준공 ${site.completionDate}\n[현황] 전체접수 ${st.tR}건(전월${st.prev.total}), 처리 ${st.res}건(전월${st.prev.res}), 미처리 ${st.unr}건(전월${st.prev.unr}), 처리율 ${st.rate.toFixed(1)}%(전월${st.prev.rate.toFixed(1)}%), 장기미처리 ${st.lt}건(전월${st.prev.lt}건, 미처리의 ${st.ltr.toFixed(1)}%), 지연구간: ~29일 ${st.dd[0]}, 30~59일 ${st.dd[1]}, 60일+ ${st.dd[2]}\n[상위공종(미처리)] ${st.top.filter(t=>!t.isT&&!t.isO).map(t=>`${t.t}:${t.c}건`).join(', ')}\n[하자유형(미처리)] ${Object.entries(st.dtb).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([t,c])=>`${t}:${c}건`).join(', ')}\n[공가세대] 총접수 ${st.vT}건, 미처리 ${st.vUnr}건${_critBlock}${_contentBlock}\n\n위 데이터를 분석해 시스템 지침의 형식·내용 규칙에 따라 작성하세요. 단순 수치 나열이 아닌 해석·원인·대응을 담되, 데이터가 없거나 특이사항이 없는 항목은 생략하고 중요한 것만 최대 6개 소제목으로 쓸 것. (단 중대하자는 시스템 지침 G에 따라 처리)`;
+const p=`현대건설 ${((((S.org.teams||[]).find(t=>t.id===site.team))||((S.org.teams||[])[0]))||{}).name||'H서비스센터'} ${site.name} 현장의 하자처리 현황을 분석하여 한국어 개조식으로 작성하세요. 기준월 ${rm}, 전월 대비 변화를 중심으로 분석할 것.\n[현장] ${site.name}(${site.region}), ${site.units}세대 ${site.buildings}동, 준공 ${site.completionDate}\n[현황] 전체접수 ${st.tR}건(전월${st.prev.total}), 처리 ${st.res}건(전월${st.prev.res}), 미처리 ${st.unr}건(전월${st.prev.unr}), 처리율 ${st.rate.toFixed(1)}%(전월${st.prev.rate.toFixed(1)}%), 장기미처리 ${st.lt}건(전월${st.prev.lt}건, 미처리의 ${st.ltr.toFixed(1)}%), 지연구간: ~29일 ${st.dd[0]}, 30~59일 ${st.dd[1]}, 60일+ ${st.dd[2]}\n[상위공종(미처리)] ${st.top.filter(t=>!t.isT&&!t.isO).map(t=>`${t.t}:${t.c}건`).join(', ')}\n[하자유형(미처리)] ${Object.entries(st.dtb).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([t,c])=>`${t}:${c}건`).join(', ')}\n[공가세대] 총접수 ${st.vT}건, 미처리 ${st.vUnr}건${_rpBlock}${_trBlock}${_coBlock}${_critBlock}${_contentBlock}\n\n위 데이터를 분석해 시스템 지침의 형식·내용 규칙에 따라 작성하세요. 단순 수치 나열이 아닌 해석·원인·대응을 담되, 데이터가 없거나 특이사항이 없는 항목은 생략하고 중요한 것만 최대 6개 소제목으로 쓸 것. (단 중대하자는 시스템 지침 G에 따라 처리)\n원인 추론은 반드시 접수내용 원문과 공종·업체 집계를 교차해 근거를 대고, 지목한 동/호·공종·업체를 문장 안에 밝힐 것. 근거 없이 일반론으로 원인을 단정하지 말 것.`;
 try{let txt=await AI.text({system:systemInstruction,prompt:p,max:4096});if(!txt)txt='분석 결과를 불러올 수 없습니다.';dfAnaWrite(sid,txt,rm);   /* ⚠ 원본 anaSet+lsSave+fb2AnaWrite — calapp 은 리프가 원본, 화면은 기존 실시간 구독이 갱신 */if(el)el.innerHTML=themeHTML(safeHTML(txt));toast('AI 분석 완료');}
 catch(e){if(el)el.innerHTML=`<p style="color:var(--rd)">(AI 오류: ${esc(e.message)})</p>`;}}
 async function runDashAI(){
+  if(!isEditor()){toast('업데이트는 관리자만 실행할 수 있습니다');return;}   /* 671차 */
+  await aiConfLoad();   /* 671차 */
   if(!AI.ready()){toast(AI.hint());return;}
   /* ⚠ 원본은 편집자 화면(#d-insight)만 바꿨고 게시 시점의 DOM 이 실렸다 — calapp 화면은 게시본이므로
      재작성 결과를 report/{rm}/_dash/insightsHTML 에 직접 써서 전원에게 반영한다(등록 후 실행). */
@@ -5740,7 +5816,7 @@ function dfInsightHTML(html){
      (상세 집계는 게시본에 실리지 않아 이 앱에서는 펼칠 수 없다) */
   const inner=raw?String((typeof DOMPurify!=='undefined')?DOMPurify.sanitize(raw):esc(raw)).replace(/\sdata-tt="펼치기"/g,'')
     :'<div class="ic warn"><div class="ic-i"><svg viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/></svg></div><div class="ic-t"><div class="ic-ttl">주요 이슈 없음</div><div class="ic-sub">이 게시본에는 주요 이슈가 포함되지 않았습니다 · 재게시하면 표시됩니다.</div></div></div>';
-  return `<div class="card"><div class="sh"><div class="ct cardttl">주요 이슈 및 분석 의견</div><span class="df-sub">${esc(S.dfRm)} 게시본</span>${isEditor()&&!S.snap?`<button class="btn bo bsm no-print" data-act="dfp.dashAi" data-tt="주요 이슈 3장을 Gemini 로 다듬어 게시본에 반영합니다([등록] 직후, 마스터 PC 전용)">AI 다듬기</button>`:''}</div><div class="ins-grid">${inner}</div></div>`;
+  return `<div class="card"><div class="sh"><div class="ct cardttl">주요 이슈 및 분석 의견</div>${isEditor()&&!S.snap?`<button class="btn bo bsm no-print" data-act="dfp.dashAi" data-tt="주요 이슈 3장을 ${esc(AI.label())} 로 다시 써서 게시본에 반영합니다([등록] 직후, 마스터 PC 전용)">업데이트</button>`:''}</div><div class="ins-grid">${inner}</div></div>`;
 }
 function dfNoneHTML(msg){
   return `<div class="card dfc-none">
@@ -6116,7 +6192,7 @@ function rDefectSite(root,site){
     body=`<div class="as">
       ${dfTrendCardHTML('dfSiteTrend','site',siteYears,siteYear)}
       <div class="opsr" style="margin-bottom:0"><div class="card"><div class="ct cardttl">전월대비 실적 현황</div><div id="dfSiteMom" class="mom-wrap"></div></div>${dfDonutCardHTML('공종별 미처리 분포','dfSiteMx','dfSiteMxLg')}</div>
-      <div class="card" data-print="ov-analysis"><div class="sh"><div class="st cardttl">종합 분석 의견</div>${isEditor()&&!S.snap?`<button class="btn bo bsm no-print" data-act="dfp.ai" data-sid="${esc(site.id)}" data-tt="이 현장 원본 행으로 Gemini 분석을 생성해 게시본에 반영합니다(마스터 PC 전용)">AI 분석</button>`:''}</div><div class="aib"><div class="ail">AI 분석</div><div class="ait" id="dfAit">${dfAitHTML(site.id)}</div></div></div>
+      <div class="card" data-print="ov-analysis"><div class="sh"><div class="st cardttl">종합 분석 의견</div>${isEditor()&&!S.snap?`<button class="btn bo bsm no-print" data-act="dfp.ai" data-sid="${esc(site.id)}" data-tt="이 현장 원본 행으로 ${esc(AI.label())} 분석을 생성해 게시본에 반영합니다(마스터 PC 전용)">AI 분석</button>`:''}</div><div class="aib"><div class="ait" id="dfAit">${dfAitHTML(site.id)}</div></div></div>
     </div>`;
   }else if(tab==='lt'){
     const ltrMomBar=dfLtrMomHTML(st);
@@ -6781,7 +6857,7 @@ async function dfPrint(){
       catch(e){console.warn('[print] 공가상가 페이지 조립 실패',e);}
     }
     html+=pg('sp-page-break-before',hdr()+tradeAll);
-    html+=pg('sp-page-break-before',hdr()+`<div class="card"><div class="sh"><div class="st cardttl">종합 분석 의견</div></div><div class="aib"><div class="ail">AI 분석</div><div class="ait">${dfAitHTML(site.id)}</div></div></div>`);
+    html+=pg('sp-page-break-before',hdr()+`<div class="card"><div class="sh"><div class="st cardttl">종합 분석 의견</div></div><div class="aib"><div class="ait">${dfAitHTML(site.id)}</div></div></div>`);
   }else{
     const sites=dfDashSites();
     const units=sites.reduce((a,x)=>a+(x.units||0),0);

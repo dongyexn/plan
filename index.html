@@ -2,7 +2,7 @@
 <html lang="ko"><head>
 <meta charset="UTF-8">
 <!-- CSP: 개발은 외부 app.js('self'), 단일 파일 배포는 build-single.mjs가 인라인 스크립트 해시를 넣는다 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://www.gstatic.com https://www.google.com; font-src 'self' data:; object-src 'none'; base-uri 'self'; script-src 'self' https://www.gstatic.com https://www.google.com https://www.recaptcha.net https://recaptcha.google.com https://apis.google.com https://*.firebasedatabase.app; frame-src https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; connect-src 'self' https://*.googleapis.com https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.firebaseio.com wss://*.firebaseio.com https://www.gstatic.com https://www.google.com https://www.recaptcha.net https://recaptcha.google.com">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://www.gstatic.com https://www.google.com; font-src 'self' data:; object-src 'none'; base-uri 'self'; script-src 'self' https://www.gstatic.com https://www.google.com https://www.recaptcha.net https://recaptcha.google.com https://apis.google.com https://*.firebasedatabase.app; frame-src https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; connect-src 'self' https://*.googleapis.com https://*.services.ai.azure.com https://*.openai.azure.com https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.firebaseio.com wss://*.firebaseio.com https://www.gstatic.com https://www.google.com https://www.recaptcha.net https://recaptcha.google.com">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -1074,7 +1074,6 @@ body.snap .sbsl:first-of-type{display:none;}
 #view-defect .as>.mb12{margin-bottom:0;}
 /* ⚠ 간격 통일 값은 아래의 각 개별 정의(뒤쪽)에 직접 넣는다 — 여기에 공통 규칙을 앞서 두면
    같은 명시도의 뒤 규칙에 전부 밀린다(216차 통일이 무효였던 원인) */
-#view-defect .df-sub{font-size:12px;color:var(--lbl3);}
 #view-defect .yr-sel{-webkit-appearance:none;appearance:none;background:var(--bg2);border:1px solid var(--sepo);border-radius:var(--rsm);padding:5px 28px 5px 11px;font-size:12px;font-weight:600;color:var(--lbl);cursor:pointer;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%233E71D2' stroke-width='2.4' stroke-linecap='round'><path d='M6 9l6 6-6 6'/></svg>");background-repeat:no-repeat;background-position:right 9px center;transition:border-color var(--t-fast);}
 #view-defect .yr-sel:hover{border-color:var(--b400);}
 /* ── KPI 카드(kc) — 원본 톤(bl/sk/ms/wh) + 우상단 '목록 보기' ── */
@@ -1292,8 +1291,6 @@ body.snap .sbsl:first-of-type{display:none;}
 #view-defect .plan-ta:focus{border-color:var(--b400);outline:none;box-shadow:0 0 0 3px rgba(83,140,222,.14);}
 /* 종합 분석 의견 상자 */
 #view-defect .aib{background:var(--b50);border:1px solid var(--b200);border-radius:var(--rlg);padding:14px 16px;}
-#view-defect .ail{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;color:var(--bt1);letter-spacing:.04em;margin-bottom:8px;}
-#view-defect .ail::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--b500);}
 #view-defect .ait{font-size:13px;line-height:1.7;color:var(--lbl);word-break:keep-all;overflow-wrap:anywhere;}
 /* ⚠ 분석 의견은 AI 가 만든 HTML 을 그대로 넣는다 — 안에 밝은 배경 기준 글자색(회색·검정)이 인라인으로
    박혀 있어 다크에서 배경에 묻혔다. 다크에서만 본문 색을 강제로 상속시킨다(351차) */
@@ -3411,7 +3408,6 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 #view-defect #dfPrintPages .mom-wrap{gap:2px!important;padding-top:0!important;}
 /* 231차 지시: 현장 인쇄 '종합 분석 의견' 글자 전체 축소 */
 #view-defect #dfPrintPages .aib{padding:9px 11px!important;}
-#view-defect #dfPrintPages .ail{font-size:6.5pt!important;margin-bottom:4px!important;}
 #view-defect #dfPrintPages .ait{font-size:7.5pt!important;line-height:1.5!important;}
 #view-defect #dfPrintPages .ait h1,#view-defect #dfPrintPages .ait h2,#view-defect #dfPrintPages .ait h3{font-size:8pt!important;margin:6px 0 3px!important;}
 #view-defect #dfPrintPages .ait li{margin:1px 0!important;}
@@ -3489,6 +3485,8 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 .uz.std .uz-link{color:var(--bt1);font-weight:700;}
 .uz.std .uzh{font-size:11.5px;color:var(--lbl3);margin-top:4px;}
 .dfadv{margin:0 var(--s4) 12px;box-shadow:inset 0 1px 0 var(--sep);}   /* 게시 행과 같은 머리선 리듬 — 간격 애매함 해소(615차) */
+/* 671차: AI 분석 연결 카드 — .set-grid .card 는 padding:0 이라 본문이 여백을 갖는다 */
+.ai-body{padding:14px var(--s4) 16px;}
 .dfadv>summary{list-style:none;cursor:pointer;font-size:12px;font-weight:600;color:var(--lbl2);padding:12px 2px 3px;margin-left:-6px;user-select:none;display:flex;align-items:center;gap:6px;}   /* 살짝 왼쪽(-6px) — 꺾쇠가 본문 시작선에 걸리게 */
 .dfadv>summary::-webkit-details-marker{display:none;}
 .dfadv>summary::before{content:'';width:7px;height:7px;border-right:1.5px solid var(--lbl3);border-bottom:1.5px solid var(--lbl3);transform:rotate(-45deg);transition:transform .15s;margin-left:2px;}
@@ -3820,12 +3818,20 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
               </div>
             </div>
             <details class="dfadv">
-              <summary>자세히 — 제외 키워드 · AI 키 · 업로드 이력</summary>
+              <summary>자세히 — 제외 키워드 · 업로드 이력</summary>
               <div class="ig2" style="margin-top:12px"><label class="il" for="dfExTk">제외 키워드 <span style="font-weight:400;color:var(--lbl3)">· 엔터로 추가</span></label>
                 <div class="tag-box" id="dfExTkBox"><input class="tag-in" id="dfExTk" placeholder="예: 공가세대점검"></div></div>
-              <div class="ig2" style="margin-top:12px"><label class="il" for="dfCk">Gemini API 키 <span style="font-weight:400;color:var(--lbl3)">· AI 분석용 · 이 PC 브라우저에만 저장</span></label><input class="inp" id="dfCk" type="password" autocomplete="off" placeholder="AI 분석을 쓰지 않으면 비워 둡니다"></div>
               <div class="ig2" style="margin-top:12px"><span class="il">업로드 이력</span><span id="dfUpHist" style="display:block;font-size:12px;color:var(--lbl2);line-height:1.7">—</span></div>
             </details>
+          </div>
+          <!-- AI 분석 연결(관리자 전용) — 671차: 하자 등록에서 분리. 값은 이 PC 브라우저에만 남는다 -->
+          <div class="card" id="aiCard" style="display:none">
+            <div class="set-h">AI 분석 연결</div>
+            <div class="ai-body">
+              <div class="ig2"><label class="il" for="dfAzDep">배포 이름</label><input class="inp" id="dfAzDep" type="text" autocomplete="off" placeholder="예: gpt-4.1-mini-1"></div>
+              <div class="ig2" style="margin-top:12px"><label class="il" for="dfAzEp">엔드포인트</label><input class="inp" id="dfAzEp" type="text" autocomplete="off" placeholder="https://&lt;리소스&gt;.services.ai.azure.com"></div>
+              <div class="ig2" style="margin-top:12px"><label class="il" for="dfAzCk">API 키</label><input class="inp" id="dfAzCk" type="password" autocomplete="off" placeholder="AI 분석을 쓰지 않으면 비워 둡니다"></div>
+            </div>
           </div>
         </div>
         <div class="set-col set-col-stack">
@@ -3895,5 +3901,5 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
 <script src="./vendor/korea-geo.js?v=635"></script>
 <script src="./vendor/apt-geo.js?v=635" onerror="void 0"></script>   <!-- 540차: 공동주택명 색인 — 없으면 그냥 건너뛴다 -->
-<script src="./app.js?v=670"></script>
+<script src="./app.js?v=673"></script>
 </body></html>

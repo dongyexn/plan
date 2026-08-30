@@ -101,6 +101,23 @@ function tryWrite(pathStr, auth, treeRoot, newVal) {
   return { ok: true };
 }
 
+/* 671차: 읽기 판정 — RTDB 는 상위 .read 가 허용하면 하위가 전부 열린다(캐스케이드).
+   경로를 따라가며 하나라도 참이면 ALLOW. aiConf 는 키를 담으므로 이 캐스케이드가 핵심이다. */
+function tryRead(pathStr, auth, treeRoot) {
+  const pathArr = pathStr.split('/').filter(Boolean);
+  const ctx0 = { auth, root: new N(treeRoot) };
+  for (let i = 0; i <= pathArr.length; i++) {
+    const sub = pathArr.slice(0, i);
+    const found = ruleNodeAt(sub);
+    if (!found || found.node['.read'] === undefined) continue;
+    const r = found.node['.read'];
+    if (typeof r !== 'string') { if (r) return { ok: true }; continue; }   /* 루트의 .read:false 처럼 불리언으로 적힌 규칙 */
+    const data = new N(sub.reduce((n, k) => (n || {})[k], treeRoot) ?? null);
+    if (evalExpr(r, { ...ctx0, data, newData: data, vars: found.vars })) return { ok: true };
+  }
+  return { ok: false, why: '.read 거부' };
+}
+
 /* ── 픽스처 — v628 검증과 같은 조직 ── */
 const A = uid => ({ uid, token: { email: uid.toLowerCase() + '@hdec.co.kr', email_verified: true } });
 const TREE = {
@@ -168,6 +185,13 @@ t('AUTH-12a', 'viewer → analysis 쓰기', false, tryWrite('analysis/sA/2026-07
 t('AUTH-12b', 'editor → analysis 쓰기', true, tryWrite('analysis/sA/2026-07', A('E1'), TREE, '<p>의견</p>'));
 t('AUTH-13a', 'viewer → meta 쓰기', false, tryWrite('meta/sA', A('U1'), TREE, { updatedAt: 1, updatedBy: 'U1' }));
 t('AUTH-13b', 'editor → meta 쓰기', true, tryWrite('meta/sA', A('E1'), TREE, { updatedAt: 1, updatedBy: 'E1' }));
+/* AUTH-15 AI 분석 연결(671차) — Azure 키가 담기므로 읽기까지 관리자만 */
+const AIC = { endpoint: 'https://x.services.ai.azure.com', deployment: 'gpt-4.1-mini-1', key: 'K', updatedAt: 1, updatedBy: 'e1@hdec.co.kr' };
+t('AUTH-15a', 'viewer → aiConf 읽기(키 노출)', false, tryRead('aiConf', A('U1'), TREE));
+t('AUTH-15b', 'editor → aiConf 읽기', true, tryRead('aiConf', A('E1'), TREE));
+t('AUTH-15c', 'viewer → aiConf 쓰기', false, tryWrite('aiConf', A('U1'), TREE, AIC));
+t('AUTH-15d', 'editor → aiConf 쓰기', true, tryWrite('aiConf', A('E1'), TREE, AIC));
+t('AUTH-15e', 'editor → aiConf 에 규칙 밖 필드', false, tryWrite('aiConf', A('E1'), TREE, { ...AIC, evil: 1 }));
 /* AUTH-14 휴지통·보관함도 업무 본체와 같은 소유 검사 */
 const TR = (sid, iid) => ({ text: T(sid, iid).text, date: '2026-08-01', deletedAt: 1, z: 'x' });
 const AR = (sid, iid) => ({ text: T(sid, iid).text, date: '2026-08-01', archivedAt: 1, z: 'x' });
