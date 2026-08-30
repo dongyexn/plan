@@ -4851,6 +4851,83 @@ report 앱 폐기 절차(아카이브·안내 페이지)뿐이다.
 - 기능 추가나 모듈화는 하지 않고 안정화에 집중한다.
 - 검증 목표: static-audit FAIL 0, build-single PASS, 기존 AUTH/rainbow/defect 게이트 유지.
 
+### 673차 — 모델 계열 자동 감지(gpt-5 계열 대응)
+- 배포를 gpt-5-mini(글로벌 표준)로 잡으면서 671~672차 provider 본문이 그대로는 400 을 낸다는 것이 드러났다.
+  추론 모델은 `temperature` 를 거부하고, `max_completion_tokens` 를 추론 토큰이 함께 먹어 본문이 빈 채
+  `finish_reason:'length'` 로 돌아온다.
+- **설정에 모델 계열 스위치를 두지 않고 첫 호출로 알아내게 했다.** 사용자가 모델 내부 사정을 알 필요가 없다.
+  세 모양을 차례로 시도한다: `chat`(temperature + 본문 한도) → `reason`(temperature 제거, 한도 +16000,
+  `reasoning_effort:'minimal'`) → `bare`(둘 다 뺀 최소 본문, 모델이 또 갈릴 때의 안전판).
+- ⚠ **파라미터 거부일 때만** 다음 모양으로 넘어간다. 키·배포이름 오류(DeploymentNotFound 등)는 즉시 알린다 —
+  그러지 않으면 오타 하나에 3회를 호출하고 마지막 오류만 보여 준다.
+- 알아낸 계열은 `_azMode` 에 남겨 다음 호출부터 한 번에 간다. **세션 한정**이라 배포를 바꾸면 새로고침이 필요하다
+  (Firebase 에 남기지 않았다 — 모델을 바꾸는 일이 드물고, 잘못 캐시되면 되돌릴 화면이 없다).
+- `AZ_REASON_PAD=16000`. runAI 는 max 4096 → 요청 한도 20,096. 추론이 이걸 다 먹으면 종전대로
+  `본문이 비었습니다 (length)` 로 끝난다 — 그때는 PAD 를 올릴 것.
+- 검증(단위 스텁 5경로): ① 4.1 계열 1회 성공 ② 5 계열 temperature 거부 → reason 승격, 2회차는 캐시로 1회
+  ③ reasoning_effort 도 거부 → bare ④ DeploymentNotFound 는 1회에서 중단 ⑤ 빈 본문 시 finish_reason 포함 오류.
+- 배포 유형은 **글로벌 표준**이다. 표준·데이터 영역 표준은 이 구독에 쿼터가 없었다(2026-08-30).
+  ⚠ 글로벌 배포는 **추론 처리가 리소스 지역 밖에서 될 수 있다**(저장은 지역 유지). 회사 확인 사항으로 남긴다.
+- APP_VER 673, index.html `app.js?v=673`, README 기준선 673.
+
+### 672차 — 분석 입력 데이터 확대 · 하자 화면 문구 정리 · 문서 현행화
+- **분석 의견의 재료를 키웠다.** 종전 미처리 접수내용 샘플은 40건·각 60자였다 — 60자면 문장이 잘려
+  AI 가 원인을 추론할 근거가 사실상 없었고, 그래서 결과가 수치 재서술에 머물렀다.
+  `AI_SAMPLE_N=200 / AI_SAMPLE_LEN=200` 으로 올리고 동/호·하자유형·시공업체·접수일을 함께 준다.
+- 여기에 **공종별 집계(trAgg 상위 15)·시공업체별 집계(coAgg 상위 12)·보수주체별 미처리(rpb)** 블록을 신설했다.
+  화면 표와 같은 출처를 쓰므로 AI 서술의 숫자와 표가 어긋나지 않는다.
+- ⚠ 대형 현장에서 컨텍스트가 넘치지 않도록 `AI_SAMPLE_CAP=90000`(총 문자수) 상한을 둔다 —
+  걸리면 정렬 우선순위(키워드 → 지연일)가 높은 것부터 남는다. 실측: 미처리 400건 스텁에서 사용자 프롬프트 30,675자.
+- ⚠ **`RULE_DEF` 는 손대지 않았다.** 늘어난 재료를 쓰게 하는 한 줄만 실행 프롬프트 끝에 넣었다
+  (원인 추론은 접수내용 원문과 공종·업체 집계를 교차해 근거를 대고, 지목한 동/호·공종·업체를 밝힐 것).
+  시스템 규칙을 건드리면 산출물 문구가 통째로 달라진다 — 바꾸려면 별도 차수로.
+- ⚠ **대시보드 「주요 이슈 및 분석 의견」의 출력 크기는 그대로다.** 이번 확대는 현장 종합 분석(runAI) 쪽이고,
+  runDashAI 는 `max:1200` 과 규칙 d_f4(한 줄 60자 이내)를 유지한다 — 카드 3장이 대시보드 한 줄에 맞아야 한다.
+  분량을 늘리려면 카드 클릭 시 확장 같은 화면 장치가 먼저 있어야 한다(미구현).
+- 화면 문구: 대시보드 카드의 `{기준월} 게시본` 칩(`.df-sub`) 삭제, 버튼 **AI 다듬기 → 업데이트**.
+  현장 「종합 분석 의견」 카드 안쪽 파란점 라벨 `AI 분석`(`.ail`) 삭제(화면·인쇄 양쪽) — 카드 제목과 중복이었다.
+  ⚠ 두 클래스의 CSS 도 함께 지웠다. 남겨 두면 static-audit 의 죽은 CSS 검사가 FAIL 로 잡는다.
+- README 현행화: 「AI 분석」 절 신설(버튼 2개의 역할·관리자/마스터PC 제약·설정 위치·엔드포인트와 배포 이름 규칙·
+  gpt-5 계열 전환 시 주의), 데이터 구조 표에 `aiConf` 추가, 머리말·버전 3종 표 갱신.
+- ⚠ 인쇄 회귀 주의: 분석문이 길어지면 525차에서 잡은 "머리만 남는 빈 페이지"가 재발할 수 있다.
+  처방(`.card:has(.aib)`·`.aib`·`.ait` 의 `break-inside:auto`)은 그대로 살아 있으므로 되돌리지 말 것.
+- APP_VER 672, index.html `app.js?v=672`, README 기준선 672.
+
+### 671차 — AI 엔진을 회사 Azure AI Foundry 로 교체(Gemini 제거)
+- 670차에 떼어 둔 provider 한 겹 덕분에 호출부(runAI·runDashAI)와 프롬프트 조립은 무변경이다.
+- **CORS 가 관문이었고, 열려 있었다.** 실측: `https://<리소스>.services.ai.azure.com/openai/v1/chat/completions`
+  에 `api-key` 헤더로 POST → 200. 프록시·APIM 불필요. MS 문서는 백엔드 호출을 권장하지만 CORS 자체는 막지 않는다.
+- CSP `connect-src` += `https://*.services.ai.azure.com https://*.openai.azure.com`.
+  ⚠ `*.googleapis.com` 은 Firebase Auth·App Check 가 쓰므로 남긴다 — Gemini 잔재로 보고 지우지 말 것.
+- **Gemini 완전 제거** — provider, `S.ck`, `localStorage['calapp.ck']`, `#dfCk`, 제공자 선택 `#dfAiPv`,
+  `localStorage['calapp.ai']`, 미연결 `copilot` 자리까지. `aiProvider()` 는 `AI_PROVIDERS.azure` 를 돌려준다.
+  창구(`AI.ready/hint/label/text`)는 유지 — 엔진을 늘릴 이음매다.
+- **설정 레이아웃 분리** — AI 설정을 「하자 데이터 등록 > 자세히」에서 빼내 별도 카드 `#aiCard`("AI 분석 연결").
+  필드 순서 **배포 이름 → 엔드포인트 → API 키**. 본문 여백은 `.ai-body` 가 갖는다(`.set-grid .card{padding:0}`).
+  ⚠ 카드 간격은 `#view-settings .set-col{gap:16px}` 이 이미 준다 — `mb12` 를 덧붙이면 28px 로 다른 열과 어긋난다.
+- **AI 실행을 관리자로 좁혔다** — runAI·runDashAI 진입부에 `isEditor()` 가드.
+  669차에 규칙은 좁혔지만 화면 버튼 노출만 관리자였고 실행부에는 선이 없었다.
+- **연결 정보를 Firebase 로** — `aiConf`(`endpoint`/`deployment`/`key`/`updatedAt`/`updatedBy`).
+  `aiConfLoad()` 는 once 로 읽어 `S.az*` 에 넣고 `dfProdCardFill()` 을 한 번 더 부른다(`_aiConfP` 로 중복 방지).
+  두 실행 함수도 진입 시 `await aiConfLoad()` — 설정 화면을 거치지 않고 눌러도 동작한다.
+- `database.rules.json` 에 `aiConf` 노드 — **읽기·쓰기 모두 editor**. 키가 담기므로 viewer 는 존재도 못 읽는다.
+  ⚠ 루트 `.read` 가 `false` 라 캐스케이드로 새지 않는다. 이 노드를 느슨하게 고치면 회사 리소스 키가 전원에게 열린다.
+- rules-auth 하네스에 **AUTH-15a~e** 신설(viewer 읽기 DENY / editor 읽기 ALLOW / viewer 쓰기 DENY /
+  editor 쓰기 ALLOW / 규칙 밖 필드 DENY). 읽기 판정을 위해 `tryRead()`(상위 `.read` 캐스케이드 + 불리언 규칙) 추가.
+- ⚠ 남은 위험: 호출이 브라우저에서 일어나므로 **관리자 화면의 네트워크 탭에 키가 헤더로 찍힌다.**
+  규칙으로 읽기를 좁혀도 이건 줄지 않는다. 실질적 해결은 Entra 사용자 토큰(MSAL) 또는 중계 서버이며 별건 작업.
+- ⚠ 엔드포인트는 도메인까지만 쓴다(포털이 주는 `/openai/v1/responses` 를 붙여넣어도 provider 가 잘라 낸다).
+  `model` 에는 모델명이 아니라 **배포 이름**이 들어간다(포털 기본값에 `-1` 이 붙는다).
+- ⚠ 현재 provider 본문은 **gpt-4.1 계열(비추론)** 기준이다. gpt-5 계열 배포로 바꾸면 `temperature` 가 400 으로
+  거부되고 `max_completion_tokens` 를 추론 토큰이 함께 먹어 본문이 빈 채 `finish_reason:'length'` 로 돌아온다.
+  `claude-*` 는 Foundry 에서 "메시지"(Anthropic Messages API) 형태라 provider 를 따로 만들어야 한다(URL 경로 미확인).
+- 배포 현황: gpt-5.4-mini 는 이 구독에 쿼터가 없어 배포 불가(2026-08-30). gpt-4.1-mini 글로벌 표준 100k TPM 으로 배포.
+- 검증: static-audit FAIL 0 · rules-auth ALL PASS(AUTH-15 포함) · provider 단위 스텁 5항목 ·
+  Playwright 실DOM(값 채움·필드 순서·카드 간격·Firebase 쓰기·localStorage 잔재 0·viewer 차단·pageerror 0).
+  ⚠ **실제 [AI 분석]·[업데이트] 1회 실행은 미검증** — 원본 행이 있는 마스터 PC 에서 확인해야 한다.
+  특히 [업데이트]는 응답을 `JSON.parse` 하므로 모델이 설명 문장을 덧붙이면 그 자리에서 실패한다.
+- APP_VER 671, index.html `app.js?v=671`.
+
 ### 670차 — AI 호출부 분리(제공자 한 겹)
 - 리뷰 지적대로 **엔진 교체 전에 호출부부터 뗀다.** runAI·runDashAI 가 Gemini 의 URL·헤더·응답 모양을
   직접 알고 있어서, 회사 AI 로 갈아탈 때 분석 로직까지 건드려야 했다.

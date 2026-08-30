@@ -111,6 +111,19 @@
       }
     },
 
+    // AI 분석 연결(671차) — Azure AI Foundry 엔드포인트·배포이름·키.
+    //   ⚠ 키를 담으므로 읽기도 관리자(editor)만이다. viewer 는 존재조차 읽지 못한다.
+    "aiConf": {
+      ".read":  "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'",
+      ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'",
+      "endpoint":   { ".validate": "newData.isString() && newData.val().length <= 300" },
+      "deployment": { ".validate": "newData.isString() && newData.val().length <= 120" },
+      "key":        { ".validate": "newData.isString() && newData.val().length <= 300" },
+      "updatedAt":  { ".validate": "newData.isNumber()" },
+      "updatedBy":  { ".validate": "newData.isString() && newData.val().length <= 200" },
+      "$other":     { ".validate": false }
+    },
+
     "siteConfig": {
       ".read": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
       "$sid": {
