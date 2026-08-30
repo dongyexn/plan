@@ -1,6 +1,6 @@
 # H · 주요업무현황
 
-> **현재 배포 기준: v667** — 업무 일정·주요업무·하자처리·조직·설정을 한 앱에서 운영합니다. 633차 무지개 색상 렌더링, 634차 실제 Firebase E2E, 635차 업무 partial update 보강, 636차 오류 안내·토스트 안정화, 637차 검증 하네스 정리, 638차 Playwright API 호환성 수정, 639차 하자 데이터 저장소·검증 체계 독립화, 640~641차 무지개 FullCalendar 실DOM 구체성 보강이 반영되어 있습니다.
+> **현재 배포 기준: v670** — 업무 일정·주요업무·하자처리·조직·설정을 한 앱에서 운영합니다. 633차 무지개 색상 렌더링, 634차 실제 Firebase E2E, 635차 업무 partial update 보강, 636차 오류 안내·토스트 안정화, 637차 검증 하네스 정리, 638차 Playwright API 호환성 수정, 639차 하자 데이터 저장소·검증 체계 독립화, 640~641차 무지개 FullCalendar 실DOM 구체성 보강이 반영되어 있습니다.
 
 팀 업무 일정과 담당자별 현황, 하자처리 현황을 실시간으로 공유하고 관리하는 사내 웹앱.
 
@@ -357,9 +357,9 @@ node scripts/test/smoke.mjs          # 핵심 흐름 클릭 (CHROMIUM 환경변�
 
 | 고칠 파일 | 고칠 자리 |
 |---|---|
-| zip 이름 | `calapp-v667` |
-| `index.html` | `app.js?v=667` |
-| `app.js` | `const APP_VER='667'` |
+| zip 이름 | `calapp-v670` |
+| `index.html` | `app.js?v=670` |
+| `app.js` | `const APP_VER='670'` |
 
 > 어긋나면 static-audit 이 FAIL 로 잡는다.
 

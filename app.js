@@ -8,7 +8,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='667';
+const APP_VER='670';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -5063,8 +5063,61 @@ else setTimeout(dfProdBoot,0);
    ⚠ 둘 다 **원본 하자 행이 있는 마스터 PC 전용**이다(calc 를 로컬 행으로 돌린다).
    ⚠ CSP connect-src 의 *.googleapis.com 이 generativelanguage 를 허용한다 — CSP 를 죄면 여기가 죽는다. */
 S.ck=(function(){try{return localStorage.getItem('calapp.ck')??'';}catch(e){return '';}})();   /* Gemini API 키 — 이 앱의 설정만 사용 */
+
+/* ═══════════ 670차: AI 제공자 한 겹 ═══════════
+   지금까지 runAI·runDashAI 가 Gemini 의 URL·헤더·응답 모양을 직접 알고 있었다.
+   회사 AI(Copilot 등)로 갈아탈 때 분석 로직까지 건드리게 되므로, 호출만 떼어 낸다.
+   ⚠ 프롬프트·규칙 조립(RULE_DEF·buildRules)은 산출물의 문구를 정하므로 여기 들어오지 않는다.
+   ⚠ 지금 Gemini 키는 브라우저(localStorage)에 있다 — 비밀값이 아니다.
+      회사 체계로 옮길 때는 키가 아니라 **사용자 인증 토큰**으로 바뀌므로,
+      provider 는 키 유무가 아니라 `ready()` 로 준비 상태를 답한다. */
+const AI_PROVIDERS={
+  gemini:{
+    id:'gemini', label:'Gemini',
+    ready(){return !!S.ck;},
+    hint:'설정 > 하자 데이터 등록에서 Gemini API 키를 입력하세요',
+    /* system: 규칙, prompt: 데이터, max: 최대 토큰 → 순수 텍스트를 돌려준다 */
+    async ask({system,prompt,max=4096,temp=0.4}){
+      const url='https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+      const r=await fetch(url,{method:'POST',
+        headers:{'Content-Type':'application/json','x-goog-api-key':S.ck},
+        body:JSON.stringify({systemInstruction:{parts:[{text:system}]},contents:[{parts:[{text:prompt}]}],
+          generationConfig:{maxOutputTokens:max,temperature:temp,thinkingConfig:{thinkingBudget:0}}})});
+      const d=await r.json();
+      if(d.error)throw new Error(d.error.message||'API 오류');
+      return d.candidates?.[0]?.content?.parts?.[0]?.text||'';
+    }
+  },
+  /* Copilot 자리 — 붙일 때 이 객체만 채우면 된다. 아래 두 가지는 붙이기 전에 확인해야 한다.
+     ① Entra 앱 등록·관리자 동의(회사가 막고 있으면 여기서 끝난다)
+     ② 사용자별 Microsoft 365 Copilot 라이선스. 호출은 키가 아니라 Graph 토큰을 쓴다. */
+  copilot:{
+    id:'copilot', label:'Microsoft 365 Copilot',
+    ready(){return false;},
+    hint:'회사 Copilot 연결이 아직 준비되지 않았습니다',
+    async ask(){throw new Error('Copilot 제공자가 아직 연결되지 않았습니다');}
+  }
+};
+function aiProvider(){
+  const want=(function(){try{return localStorage.getItem('calapp.ai')||'';}catch(e){return '';}})();
+  return AI_PROVIDERS[want]||AI_PROVIDERS.gemini;
+}
+/* 화면이 쓰는 창구는 이 둘뿐이다 — 엔진이 바뀌어도 호출부는 그대로다 */
+const AI={
+  ready(){return aiProvider().ready();},
+  hint(){return aiProvider().hint;},
+  label(){return aiProvider().label;},
+  /* 응답을 코드펜스 없이 정리해 돌려준다 — 두 호출부가 똑같이 하던 일 */
+  async text(o){
+    const t=await aiProvider().ask(o);
+    return String(t||'').replace(/^```(?:html|json)?\s*/i,'').replace(/```$/,'').trim();
+  }
+};
 function dfAnaWrite(sid,txt,rm){
   if(!S.live||!FB.db)return;
+  /* 669차: 서버 규칙이 analysis·meta 쓰기를 관리자로 좁혔다 — 화면에서도 같은 선을 긋는다.
+     ⚠ 규칙만 죄면 일반 사용자 화면에서 조용히 실패(permission denied)한다. */
+  if(!isEditor()){toast('분석 저장은 관리자만 가능합니다');return;}
   if(!/^\d{4}-\d{2}$/.test(rm||''))return;
   try{
     FB.db.ref('analysis/'+sid+'/'+rm).set(String(txt==null?'':txt).slice(0,20000));
@@ -5072,7 +5125,7 @@ function dfAnaWrite(sid,txt,rm){
   }catch(e){console.warn('[AI] anaWrite',e);}
 }
 function buildRules(scope){let out='';for(const g of RULE_DEF){if(g.scope!==scope)continue;const body=g.rules.map(r=>String(ruleVal(r.id)).trim()).filter(Boolean).join('\n');if(!body)continue;out+=(out?'\n\n':'')+(g.hdr?g.hdr+'\n':'')+body;}return out;}
-async function runAI(sid){if(!S.ck){toast('설정 > 하자 데이터 등록에서 Gemini API 키를 입력하세요');return;}const site=(S.org.sites||[]).find(s=>s.id===sid);if(!site)return;
+async function runAI(sid){if(!AI.ready()){toast(AI.hint());return;}const site=(S.org.sites||[]).find(s=>s.id===sid);if(!site)return;
 if(!((S.def[sid]||[]).length)){toast('이 PC 에 원본 하자 행이 없습니다 — 업로드한 마스터 PC 에서만 AI 분석을 만들 수 있습니다',6000);return;}   /* ⚠ 원본엔 없던 안내 — calapp 은 전원이 게시본을 보므로 원본 행 유무를 먼저 알린다 */
 const rm=dfPubRm();   /* ⚠ 원본 S.rm — 게시 기준월로 통일 */
 const st=calc(S.def[sid]||[],site,rm),el=(S.dfSid===sid)?document.getElementById('dfAit'):null;   /* ⚠ 원본 ait-{sid} — calapp 의 분석 칸은 열린 현장 하나(#dfAit) */if(el)el.innerHTML='<p style="color:var(--lbl3)">AI 분석 생성 중…</p>';
@@ -5089,10 +5142,10 @@ const _contentBlock=_sample?`\n[미처리건 접수내용 샘플 — ★는 누�
 const _critList=(st.critUl||[]).slice(0,12).map(i=>{const dd=i.receiptDate?_daysB(i.receiptDate,st.rmEnd):0;const c=(i.receiptContent||'').replace(/\s+/g,' ').trim();const rs=critReason(i).join('/');return `- ${i.building||'?'}동 ${i.unit||'?'}호 [${i.trade||'-'}|${i.defectType||'-'}|${dd}일|의심:${rs}] ${maskPII(c).slice(0,70)}`;}).join('\n');
 const _critBlock=(st.critUnr>0)?`\n[중대하자 의심 후보 — 규칙 추출, AI가 사내 매뉴얼 기준으로 최종 판정할 것] 미처리 의심 ${st.critUnr}건(전월 의심 ${st.critPrevUnr}건)\n${_critList}`:`\n[중대하자 의심 후보] 규칙상 의심 0건`;
 const p=`현대건설 ${((((S.org.teams||[]).find(t=>t.id===site.team))||((S.org.teams||[])[0]))||{}).name||'H서비스센터'} ${site.name} 현장의 하자처리 현황을 분석하여 한국어 개조식으로 작성하세요. 기준월 ${rm}, 전월 대비 변화를 중심으로 분석할 것.\n[현장] ${site.name}(${site.region}), ${site.units}세대 ${site.buildings}동, 준공 ${site.completionDate}\n[현황] 전체접수 ${st.tR}건(전월${st.prev.total}), 처리 ${st.res}건(전월${st.prev.res}), 미처리 ${st.unr}건(전월${st.prev.unr}), 처리율 ${st.rate.toFixed(1)}%(전월${st.prev.rate.toFixed(1)}%), 장기미처리 ${st.lt}건(전월${st.prev.lt}건, 미처리의 ${st.ltr.toFixed(1)}%), 지연구간: ~29일 ${st.dd[0]}, 30~59일 ${st.dd[1]}, 60일+ ${st.dd[2]}\n[상위공종(미처리)] ${st.top.filter(t=>!t.isT&&!t.isO).map(t=>`${t.t}:${t.c}건`).join(', ')}\n[하자유형(미처리)] ${Object.entries(st.dtb).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([t,c])=>`${t}:${c}건`).join(', ')}\n[공가세대] 총접수 ${st.vT}건, 미처리 ${st.vUnr}건${_critBlock}${_contentBlock}\n\n위 데이터를 분석해 시스템 지침의 형식·내용 규칙에 따라 작성하세요. 단순 수치 나열이 아닌 해석·원인·대응을 담되, 데이터가 없거나 특이사항이 없는 항목은 생략하고 중요한 것만 최대 6개 소제목으로 쓸 것. (단 중대하자는 시스템 지침 G에 따라 처리)`;
-try{const url=`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`;const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':S.ck},body:JSON.stringify({systemInstruction:{parts:[{text:systemInstruction}]},contents:[{parts:[{text:p}]}],generationConfig:{maxOutputTokens:4096,temperature:0.4,thinkingConfig:{thinkingBudget:0}}})});const d=await r.json();if(d.error)throw new Error(d.error.message||'API 오류');let txt=d.candidates?.[0]?.content?.parts?.[0]?.text||'분석 결과를 불러올 수 없습니다.';txt=txt.replace(/^```html\s*/i,'').replace(/```$/,'').trim();dfAnaWrite(sid,txt,rm);   /* ⚠ 원본 anaSet+lsSave+fb2AnaWrite — calapp 은 리프가 원본, 화면은 기존 실시간 구독이 갱신 */if(el)el.innerHTML=themeHTML(safeHTML(txt));toast('AI 분석 완료');}
+try{let txt=await AI.text({system:systemInstruction,prompt:p,max:4096});if(!txt)txt='분석 결과를 불러올 수 없습니다.';dfAnaWrite(sid,txt,rm);   /* ⚠ 원본 anaSet+lsSave+fb2AnaWrite — calapp 은 리프가 원본, 화면은 기존 실시간 구독이 갱신 */if(el)el.innerHTML=themeHTML(safeHTML(txt));toast('AI 분석 완료');}
 catch(e){if(el)el.innerHTML=`<p style="color:var(--rd)">(AI 오류: ${esc(e.message)})</p>`;}}
 async function runDashAI(){
-  if(!S.ck){toast('설정 > 하자 데이터 등록에서 Gemini API 키를 입력하세요');return;}
+  if(!AI.ready()){toast(AI.hint());return;}
   /* ⚠ 원본은 편집자 화면(#d-insight)만 바꿨고 게시 시점의 DOM 이 실렸다 — calapp 화면은 게시본이므로
      재작성 결과를 report/{rm}/_dash/insightsHTML 에 직접 써서 전원에게 반영한다(등록 후 실행). */
   const items=S._dashIns||[];
@@ -5104,11 +5157,7 @@ async function runDashAI(){
   const dashSystem = buildRules('dash'); // RULE_DEF 조립 — 기본 규칙 편집 override 반영
   const dp=`아래 3개 카드의 각 2줄을 위 규칙에 따라 한국어 개조식으로 다시 작성하세요. 수치는 원문 그대로 유지할 것.\n\n${src}`;
   try{
-    const url=`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`;
-    const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':S.ck},body:JSON.stringify({systemInstruction:{parts:[{text:dashSystem}]},contents:[{parts:[{text:dp}]}],generationConfig:{maxOutputTokens:1200,temperature:0.4,thinkingConfig:{thinkingBudget:0}}})});
-    const d=await r.json();
-    if(d.error)throw new Error(d.error.message||'API 오류');
-    let txt=(d.candidates?.[0]?.content?.parts?.[0]?.text||'').replace(/^```json\s*/i,'').replace(/^```\s*/i,'').replace(/```$/,'').trim();
+    const txt=await AI.text({system:dashSystem,prompt:dp,max:1200});
     const arr=JSON.parse(txt);
     if(!Array.isArray(arr)||arr.length<items.length)throw new Error('형식 오류');
     const html=items.map((x,i)=>{const a=arr[i]||{};const l1=safeHTML(a.line1||''),l2=safeHTML(a.line2||'');return `<div class="ic ${x.cls}"><div class="ic-i">${icoSVG(x.icon)}</div><div class="ic-t"><div class="ic-ttl">${x.ttl}</div><div class="ic-sub">${l1}<br>${l2}</div></div></div>`;}).join('');
@@ -10459,7 +10508,11 @@ function widApply(){
     'body.wid.glass #fcal td.fc-daygrid-day.fc-day-other{background:rgba('+B+','+f(a*.22)+')!important;}',
     'body.wid.glass #fcal .fc-col-header-cell{background:rgba('+H+','+f(a+.12)+')!important;}',
     'body.wid.glass .plan{background:rgba('+C+','+f(a+.05)+');}',
-    'body.wid.glass .cal-head .seg,body.wid.glass .cal-head .cal-nav,body.wid.glass .cal-title{background:rgba('+N+','+f(a*.9)+');}'
+    /* 668차: 643차에 년월·화살표가 .cal-move 알약 하나로 묶였다 —
+       그런데 여기서 .cal-title 에 여전히 배경을 칠해 알약 **안에 상자가 하나 더** 생겼다(년월만 더 진하게).
+       이제 면은 알약(.cal-move)이 지고 제목은 투명이다. */
+    'body.wid.glass .cal-head .seg,body.wid.glass .cal-head .cal-nav,body.wid.glass .cal-move{background:rgba('+N+','+f(a*.9)+');}',
+    'body.wid.glass .cal-title{background:transparent;}'
   ].join('\n'):'';
   /* 글자 크기 — 85~140% 사이에서 자유롭게. 여백·막대 높이도 이 값에 함께 묶여 있다 */
   const fz=Math.min(1.4,Math.max(.85,Number(c.fz)||1));

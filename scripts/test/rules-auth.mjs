@@ -162,6 +162,23 @@ t('AUTH-10e', '공구장 → 타권역 업무 수정', false, tryWrite('calapp/t
 t('AUTH-10f', '담당자 → 내 담당 현장 업무 수정', true, tryWrite('calapp/tasks/U2/siteT', A('U1'), TREE, { ...T('U2', 'siteT'), st: 2 }));
 t('AUTH-10g', '누구나 → 레거시 업무 수정(정책 유지)', true, tryWrite('calapp/tasks/U2/legacy', A('U5'), TREE, { ...T('U2', 'legacy'), st: 2 }));
 /* 미인증 방어(people 재구성 확인) */
+/* ── 669차: 화면(UI)과 서버 권한이 어긋나던 곳 ── */
+/* AUTH-12 게시 산출물 — 만드는 쪽은 관리자만 */
+t('AUTH-12a', 'viewer → analysis 쓰기', false, tryWrite('analysis/sA/2026-07', A('U1'), TREE, '<p>의견</p>'));
+t('AUTH-12b', 'editor → analysis 쓰기', true, tryWrite('analysis/sA/2026-07', A('E1'), TREE, '<p>의견</p>'));
+t('AUTH-13a', 'viewer → meta 쓰기', false, tryWrite('meta/sA', A('U1'), TREE, { updatedAt: 1, updatedBy: 'U1' }));
+t('AUTH-13b', 'editor → meta 쓰기', true, tryWrite('meta/sA', A('E1'), TREE, { updatedAt: 1, updatedBy: 'E1' }));
+/* AUTH-14 휴지통·보관함도 업무 본체와 같은 소유 검사 */
+const TR = (sid, iid) => ({ text: T(sid, iid).text, date: '2026-08-01', deletedAt: 1, z: 'x' });
+const AR = (sid, iid) => ({ text: T(sid, iid).text, date: '2026-08-01', archivedAt: 1, z: 'x' });
+t('AUTH-14a', '남의 업무 → 휴지통에 넣기', false, tryWrite('calapp/trash/U5/far', A('U1'), TREE, TR('U5','far')));
+t('AUTH-14b', '자기 담당 업무 → 휴지통에 넣기', true, tryWrite('calapp/trash/U2/asg', A('U1'), TREE, TR('U2','asg')));
+t('AUTH-14c', '작성자 → 자기 업무 보관', true, tryWrite('calapp/archive/U2/own', A('U2'), TREE, AR('U2','own')));
+t('AUTH-14d', '남의 업무 → 보관', false, tryWrite('calapp/archive/U5/far', A('U1'), TREE, AR('U5','far')));
+t('AUTH-14e', '팀장 → 남의 업무 휴지통', true, tryWrite('calapp/trash/U5/far', A('U3'), TREE, TR('U5','far')));
+t('AUTH-14f', '휴지통에 든 남의 업무 지우기(복원)', false,
+  tryWrite('calapp/trash/U5/far', A('U1'), { ...TREE, calapp: { ...TREE.calapp,
+    trash: { U5: { far: { ...TR('U5','far'), createdBy: 'U5' } } } } }, null));
 t('AUTH-11', '메일 미검증 계정 → 자기 people 쓰기', false, tryWrite('calapp/people/U1', { uid: 'U1', token: { email: 'u1@hdec.co.kr', email_verified: false } }, TREE, { ...P('U1'), name: 'x' }));
 
 console.log(fail ? `\nFAIL ${fail}` : '\nRULES-AUTH ALL PASS');
