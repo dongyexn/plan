@@ -140,14 +140,32 @@ OK('구문 검사 (node --check)');
   /* 633차: 무지개 그라디언트는 app.js(RAINBOW_BG)와 index.html(.ev-rb)에 이중 정의 — 값이 갈리면 잡는다 */
   {
     const mApp = /RAINBOW_BG='([^']+)'/.exec(js);
-    const mCss = /#fcal \.fc-event\.ev-rb\{background:([^!]+) !important/.exec(html);   /* 640차: 셀렉터 승격에 맞춤 */
+    /* 676차: 단축 background 를 쓰면 position 까지 !important 로 굳어 흐름 애니메이션이 죽는다 — longhand 를 본다 */
+    const mCss = /#fcal \.fc-event\.ev-rb\{background-image:([^!]+) !important/.exec(html);
     if (!mApp || !mCss) F('무지개 정의를 찾지 못했다(RAINBOW_BG 또는 .ev-rb)');
     else if (mApp[1].replace(/\s+/g,'') !== mCss[1].trim().replace(/\s+/g,''))
       F('무지개 그라디언트 이중 정의 불일치 — app.js RAINBOW_BG 와 index.html .ev-rb');
-    const mTeam=/\#fcal \.fc-event\.ev-rb\.team\{background:([^!]+) !important;/.exec(html);
-    if (!mTeam) F('공통 무지개 막대의 ID급 팀 전용 CSS가 누락됐다');
-    else if (!mTeam[1].includes('padding-box') || !mTeam[1].includes('border-box')) F('공통 무지개 막대의 흰 내부/무지개 테두리 CSS가 불완전하다');
+    /* ⚠ CSS 주석을 먼저 걷어낸다 — 주석 안에도 셀렉터 문자열이 있어 정규식이 그쪽을 문다 */
+    const cssNC=html.replace(/\/\*[\s\S]*?\*\//g,'');
+    const mTeamRule=/(?:^|[};])\s*#fcal \.fc-event\.ev-rb\.team\{([\s\S]*?)\}/m.exec(cssNC);   /* 쉼표로 이어진 셀렉터(reduce 블록)를 물지 않도록 앞을 못박는다 */
+    if (!mTeamRule) F('공통 무지개 막대의 ID급 팀 전용 CSS가 누락됐다');
+    else if (!mTeamRule[1].includes('padding-box') || !mTeamRule[1].includes('border-box')) F('공통 무지개 막대의 흰 내부/무지개 테두리 CSS가 불완전하다');
     else OK('무지개 공통 막대 — ID급 team 구체성 규칙 유지');
+    /* 676차 회귀 방지: 무지개 막대에 닿는 규칙이 단축 background 나 background-position 을 쓰면 흐름이 멈춘다.
+       (실제로 `#fcal .fc-event.team{background:#fff!important}` 하나 때문에 공통 막대가 멈춰 있었다) */
+    {
+      const bad=[];
+      const rx=/(#fcal \.fc-event(?:\.ev-rb|\.team)[^{]*)\{([^}]*)\}/g;
+      let m;while((m=rx.exec(cssNC))){
+        if(/:not\(\.ev-rb\)/.test(m[1])) continue;   /* 무지개를 제외한 규칙은 흐름과 무관하다(12월 공통 막대 등) */
+        if(/(^|;|\s)background\s*:/.test(m[2])) bad.push(m[1].trim()+' — 단축 background');
+        if(/background-position\s*:/.test(m[2])) bad.push(m[1].trim()+' — background-position 선언');
+      }
+      if(bad.length) F('무지개 막대 흐름이 죽는 선언: '+bad.join(' / '));
+      else OK('무지개 막대 흐름 — 단축 background·background-position 선언 없음');
+    }
+    if(!/@keyframes rbflow\{/.test(html)||!/@keyframes rbflow2\{/.test(html)) F('무지개 흐름 키프레임(rbflow·rbflow2) 누락');
+    else OK('무지개 흐름 키프레임 2종(일반 1레이어 · 공통 2레이어)');
   }
   const allowed = new Set([...seg.matchAll(/"(\w+)"\s*:\s*\{/g)].map(m => m[1]));
   const miss = [...new Set(writes)].filter(f => !allowed.has(f));

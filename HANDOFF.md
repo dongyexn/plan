@@ -4851,6 +4851,37 @@ report 앱 폐기 절차(아카이브·안내 페이지)뿐이다.
 - 기능 추가나 모듈화는 하지 않고 안정화에 집중한다.
 - 검증 목표: static-audit FAIL 0, build-single PASS, 기존 AUTH/rainbow/defect 게이트 유지.
 
+### 676차 — 무지개 업무 막대가 흐르지 않던 것(633차부터 잠복)
+담당자 색을 무지개로 두면 막대는 무지개로 그려지는데 **그라디언트가 흐르지 않았다.**
+`rbflow` 애니메이션은 돌고 있었다(`animationName=rbflow`, `playState=running`) — 실측한 계산값이
+2초가 지나도 `background-position: 0% 0%` 그대로였다.
+
+- **원인은 CSS 우선순위다.** `background` 는 **단축**이라 `background-position` 까지 초기값으로 되돌린다.
+  이 선언에는 `!important` 가 붙어 있었고(FullCalendar 가 인라인으로 넣는 배경색을 이겨야 한다),
+  그래서 `background-position:0% 0% !important` 가 함께 걸렸다.
+  CSS 캐스케이드에서 **애니메이션은 author `!important` 선언을 이기지 못한다** — 키프레임이 position 을 바꿔도 무시된다.
+  ⚠ 키프레임 안에 `!important` 를 넣는 것은 규격상 **무시**되므로 해법이 아니다.
+- **고친 방법: 단축을 longhand 로 쪼개고 `background-position` 은 아예 선언하지 않는다.** 그 자리를 애니메이션이 갖는다.
+  `#fcal .fc-event.ev-rb` → `background-image` / `background-color` / `background-repeat` / `background-size` (모두 !important).
+- **공통(team) 막대는 두 군데가 더 있었다.**
+  ① 배경 레이어가 둘(흰 속 + 무지개 테두리)인데 `rbflow` 는 값이 하나라 **적용 자체가 안 된다**(레이어 수 불일치).
+     → 레이어 수를 맞춘 `rbflow2`(`0 50%,0 50%` → `0 50%,400px 50%`)를 따로 두고 `.ev-rb.team` 에만 건다.
+     흰 속은 고정, 무지개 테두리만 민다.
+  ② **진짜 범인** — 스타일시트 뒤쪽의 `#fcal .fc-event.team{background:#fff!important;…}`(구 규칙).
+     `.ev-rb.team` 이 구체성으로 `background-image` 는 이겼지만, **position 은 이 단축이 !important 로 잡고 있었다.**
+     색만 필요한 규칙이므로 `background-color:#fff!important;background-image:none!important;` 로 쪼갰다.
+  ③ `prefers-reduced-motion` 과 `body.wid-await` 규칙은 `.ev-rb` 만 겨냥해 새 `.ev-rb.team`(구체성 더 높음)을
+     못 눌렀다 — 두 셀렉터에 `.ev-rb.team` 을 함께 넣었다.
+- **게이트 2종 추가.** 이 결함은 스타일시트를 눈으로 봐서는 안 잡히고 `animationName` 을 봐도 안 잡힌다
+  (애니메이션은 정상적으로 돌고 있다). 계산값이 시간에 따라 변하는지가 유일한 판정이다.
+  · rainbow-render: 실 DOM 에서 `background-position` 을 1.2초 간격으로 두 번 읽어 **다른지** 본다.
+  · static-audit: `#fcal .fc-event.ev-rb|.team` 계열 규칙에 **단축 `background:` 나 `background-position` 선언이 있으면 FAIL**
+    (`:not(.ev-rb)` 로 무지개를 제외한 규칙은 건너뛴다). 키프레임 2종 존재도 함께 확인한다.
+    ⚠ 정규식은 CSS 주석을 먼저 걷어내고 돌린다 — 주석 안에도 같은 셀렉터 문자열이 있어 그쪽을 문다.
+- ⚠ 앞으로 이 막대에 닿는 규칙을 쓸 때는 **단축 `background` 를 쓰지 말 것.** 색만 바꾸려면 `background-color` 를 쓴다.
+- 검증: `npm test` 전체 PASS. rainbow-render 에 흐름 항목 추가(rbflow2 · 레이어 2 확인).
+- APP_VER 676, index.html `app.js?v=676`, README 기준선 676.
+
 ### 675차 — AI 영역 재검토(결함 9건 정리 · 단위 게이트 신설)
 671~674차의 AI 교체 구간을 독립 검토했다. 죽은 코드·죽은 CSS 는 static-audit 이 이미 막고 있어 없었고,
 실제로 문제였던 것은 **타이밍과 오류 경로**였다. 아래 순서는 위험이 큰 것부터다.

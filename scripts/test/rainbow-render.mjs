@@ -81,6 +81,18 @@ try{
   if(domEv.cls.includes('team')&&domEv.bg.includes('linear-gradient'))OK('실제 FullCalendar DOM — 공통 무지개 막대 렌더');
   else F('실제 FullCalendar DOM — 공통 무지개 막대 실패: '+JSON.stringify(domEv));
 
+  /* 676차: 그라디언트가 **흐르는지**까지 본다. rbflow 는 background-position 을 애니메이션하는데,
+     어느 규칙이든 단축 background(=position 을 !important 로 초기화)를 쓰면 애니메이션이 조용히 죽는다.
+     계산값이 시간에 따라 변하는지가 유일하게 믿을 만한 판정이다 — animationName 만 봐서는 못 잡는다.
+     ⚠ 공통 막대는 배경 레이어가 둘이라 rbflow2(값 2개)를 쓴다. 레이어 수가 안 맞으면 적용되지 않는다. */
+  const flow=await page.locator('.fc .ev-rb').first().evaluate(async el=>{
+    const g=()=>getComputedStyle(el).backgroundPosition;
+    const t0=g(); await new Promise(r=>setTimeout(r,1200));
+    return {t0,t1:g(),anim:getComputedStyle(el).animationName,layers:getComputedStyle(el).backgroundImage.split('linear-gradient').length-1};
+  });
+  if(flow.t0!==flow.t1)OK('실제 FullCalendar DOM — 무지개 막대가 실제로 흐른다('+flow.anim+' · 레이어 '+flow.layers+')');
+  else F('무지개 막대가 멈춰 있다 — background-position 이 안 움직인다: '+JSON.stringify(flow));
+
   await page.evaluate(()=>{
     document.querySelectorAll('[data-rb-test]').forEach(x=>x.remove());
     const box=document.createElement('div');box.dataset.rbTest='1';box.innerHTML=colDotHTML('rainbow','rb-test',false);document.body.appendChild(box);
