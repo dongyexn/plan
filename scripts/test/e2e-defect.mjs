@@ -258,12 +258,56 @@ const ai=await pg.evaluate(async()=>{
   delete DF.ana.sA;await dfLoadAna('sA');rDefect();
   await new Promise(r=>setTimeout(r,300));
   const shown=document.getElementById('dfAit')?document.getElementById('dfAit').textContent:'';
-  await runDashAI();
+  /* 686차: runDashAI(대시보드 AI 재작성)를 걷어냈다. 대신 ① 함수·버튼이 정말 사라졌는지
+     ② 주요이슈가 [등록] 때 규칙으로 채워졌는지를 본다 — 자동 갱신이 유일한 경로가 됐다. */
   const insLeaf=(window.__TREE.report[dfPubRm()]._dash.insightsHTML)||'';
-  return {calls:calls.length,leaf:leaf.slice(0,30),shown:shown.slice(0,30),dashAI:/AI/.test(insLeaf)};
+  return {calls:calls.length,leaf:leaf.slice(0,30),shown:shown.slice(0,30),
+    gone:typeof window.runDashAI==='undefined',
+    btn:!!document.querySelector('[data-act="dfp.dashAi"]'),
+    ins:/ic-ttl/.test(insLeaf)};
 });
 ok('runAI → analysis 리프 기록·화면 반영: "'+ai.shown+'…"',ai.calls>=1&&/종합 소견/.test(ai.leaf)&&/종합 소견/.test(ai.shown));
-ok('runDashAI → 게시본 insightsHTML 갱신',ai.calls>=2&&ai.dashAI);
+ok('주요이슈 — AI 재작성 경로 제거(함수·버튼 없음) · 규칙기반 자동 갱신만 남음',ai.gone&&!ai.btn&&ai.ins);
+
+/* ── 686차: 원본이 없는 현장을 0 으로 덮지 않는지 ─────────────────────────
+   현장 3개만 올린 PC 에서 [등록]을 누르면 나머지 현장 게시본이 통째로 0 이 되던 결함.
+   S.def 에서 두 현장을 지운 뒤 재게시하고, 그 현장 kpi 가 그대로 남는지 본다. */
+const keep=await pg.evaluate(async()=>{
+  const rm=dfPubRm(),ids=Object.keys(S.def);
+  const drop=ids.slice(0,2),live=ids.slice(2);
+  const before={};drop.forEach(id=>{before[id]=(window.__TREE.report[rm][id]||{}).kpi;});
+  const bT=before[drop[0]]&&before[drop[0]].tR;
+  drop.forEach(id=>{delete S.def[id];});
+  window.__PUBOK_AUTO__=true;
+  const p=dfPublish();
+  await new Promise(r=>setTimeout(r,300));
+  if(window.__PUBOK__)window.__PUBOK__(true);
+  await p;
+  const after={};drop.forEach(id=>{after[id]=(window.__TREE.report[rm][id]||{}).kpi;});
+  return {dropN:drop.length,liveN:live.length,
+    beforeTR:bT, afterTR:after[drop[0]]&&after[drop[0]].tR,
+    zeroed:drop.some(id=>after[id]&&Number(after[id].tR)===0&&Number(before[id].tR)>0)};
+});
+ok('원본 없는 현장 — 0 으로 안 덮고 직전 게시본 유지 ('+keep.beforeTR+'→'+keep.afterTR+')',
+   !keep.zeroed&&keep.beforeTR===keep.afterTR&&keep.beforeTR>0);
+
+/* ── 686차: 업로드 즉시 이 PC 현장 화면이 로컬 원본으로 바뀌는지 ────────────
+   게시본에는 없는 값(kpi 를 통째로 지운 뒤)이라도 로컬 원본이 있으면 화면이 채워져야 한다. */
+const lp=await pg.evaluate(async()=>{
+  /* ⚠ 앞 검사에서 S.def 의 앞 두 현장을 지웠다 — 원본이 남아 있는 현장을 고른다 */
+  const rm=dfPubRm(),sid=Object.keys(S.def).find(k=>(S.def[k]||[]).length);
+  const pubTR=(window.__TREE.report[rm][sid].kpi||{}).tR;
+  window.__TREE.report[rm][sid].kpi=null;          // 게시본을 비운다
+  delete DF.kpi[rm+'/'+sid];delete DF.sw[rm+'/'+sid];delete DF.sam[rm+'/'+sid];delete DF.local[rm+'/'+sid];
+  const k=await dfSiteData(sid);
+  return {pubTR,locTR:k&&k.tR,local:!!DF.local[rm+'/'+sid],rows:(S.def[sid]||[]).length,
+    hasRows:!!dfLocalRows(sid),site:!!dfSites().find(x=>x.id===sid),rm,dfRm:dfRm(),
+    calcOK:(()=>{try{const st=dfLocalSiteData(sid,dfRm());return st?st.kpi.tR:'null';}catch(e){return 'ERR '+e.message;}})()};
+});
+ok('업로드 원본이 있는 현장 — 게시본 없이도 로컬로 화면이 채워진다 ('+lp.locTR+'건 · 로컬표시 '+lp.local+')',
+   lp.local===true&&lp.locTR>0&&lp.rows>0);
+
+
 await pg.evaluate(async()=>{S.dfSid='';delete DF.cache[dfPubRm()];rDefect();});
 await pg.waitForTimeout(900);
 await pg.screenshot({path:OUT+'/6-ai.png',fullPage:false});

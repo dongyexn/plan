@@ -83,7 +83,7 @@ input,textarea,select{font-family:inherit;outline:none;}
   /* 677차 예외 — 흐름 무지개(.ev-fx)만 살린다. 사용자가 팔레트에서 직접 고른 장식이고,
      동작 줄이기를 쓰는 사람을 위한 선택지는 고정 무지개('rainbow')로 따로 있다.
      ⚠ 위 전역 규칙이 !important 라 여기서도 !important 로 되돌려야 한다(구체성만으로는 안 이긴다). */
-  #fcal .fc-event.ev-fx{animation-duration:8s!important;animation-iteration-count:infinite!important;}
+  #fcal .fc-event.ev-fx::after{animation-duration:8s!important;animation-iteration-count:infinite!important;}
 }
 table{border-collapse:collapse;width:100%;}
 .hidden{display:none!important;}
@@ -2518,46 +2518,35 @@ select.mg-inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-
 .pal-c.pal-fx::after{content:'';position:absolute;left:50%;top:50%;transform:translate(-40%,-50%);
   width:0;height:0;border-left:7px solid rgba(255,255,255,.95);border-top:5px solid transparent;border-bottom:5px solid transparent;
   filter:drop-shadow(0 0 1px rgba(0,0,0,.45));pointer-events:none;}
-.p-col.p-col-team.p-col-rainbow{background:linear-gradient(#fff,#fff) padding-box,linear-gradient(135deg,#F43F5E 0%,#F59E0B 17%,#FACC15 33%,#22C55E 50%,#3B82F6 67%,#8B5CF6 83%,#F43F5E 100%) border-box !important;border:1.5px solid transparent !important;box-shadow:none !important;}
-/* 641차: FullCalendar 공통 무지개 막대는 기존 #fcal .fc-event.team의 ID 구체성을 이긴다.
-   일반/공통 모두 같은 ev-rb 계열을 사용하고, 공통은 흰 내부 + 무지개 테두리로 표시한다. */
+.p-col.p-col-team.p-col-rainbow{background:linear-gradient(#fff,#fff) padding-box,var(--gb,linear-gradient(135deg,#F43F5E 0%,#F59E0B 17%,#FACC15 33%,#22C55E 50%,#3B82F6 67%,#8B5CF6 83%,#F43F5E 100%)) border-box !important;   /* 687차: 그라디언트 공통 원은 --gb(colDotHTML)가 링을 정한다 */border:1.5px solid transparent !important;box-shadow:none !important;}
 /* 644차: 12월에는 공통 업무 막대를 크리스마스 줄무늬로 — 스킨 선택이 아니라 그 달에만 자동.
-   ⚠ 담당자 색은 건드리지 않는다(공통 업무만 색이 없으므로 여기만 바꿔도 규칙이 깨지지 않는다) */
+   ⚠ 담당자 색은 건드리지 않는다(공통 업무만 색이 없으므로 여기만 바꿔도 규칙이 깨지지 않는다)
+   ⚠ 684차: 색 그라디언트가 돌아와 제외 목록도 둘로 되돌렸다 */
 body.dec #fcal .fc-event.team:not(.ev-rb):not(.ev-gd){
   background:repeating-linear-gradient(45deg,#A8213A 0 9px,#256B3B 9px 18px)!important;
   border-color:transparent!important;color:#fff!important;}
 body.dec #fcal .fc-event.team:not(.ev-rb):not(.ev-gd) .fc-event-title{color:#fff!important;}
-#fcal .fc-event.ev-rb{background-image:linear-gradient(135deg,#F43F5E 0%,#F59E0B 17%,#FACC15 33%,#22C55E 50%,#3B82F6 67%,#8B5CF6 83%,#F43F5E 100%) !important;background-color:transparent !important;
-  background-repeat:repeat !important;background-size:100% 100% !important;   /* 678차: 고정은 막대 폭에 맞춰 빨~보라가 다 보인다 */
-  border-color:transparent !important;}
-/* 644차: 그라디언트 끝을 첫 색으로 닫고 한 타일 폭(400px)만 밀어 이음매를 없앤다 */
-@keyframes rbflow{from{background-position:0 50%}to{background-position:400px 50%}}
-/* 677차: 무지개는 두 종이다 — 'rainbow'(고정)는 그리기만 하고, 'rainbow-anim'(.ev-fx)만 흐른다.
-   ⚠ 흐름은 사용자가 팔레트에서 **직접 고른** 장식이므로 prefers-reduced-motion 으로 끄지 않는다.
-      OS 동작 줄이기를 쓰는 사람에게는 고정 무지개가 그 선택지다.
-   ⚠ 공통(team)은 배경 레이어가 둘이라 값이 2개인 rbflow2 를 쓴다(레이어 수가 안 맞으면 적용 자체가 안 된다). */
-/* ⚠ 흐름은 한 타일(400px)을 밀어 이음매를 없애는 방식이라 타일 크기를 되돌려야 한다 —
-   고정처럼 100% 로 두면 밀 여지가 없어 색이 제자리에서 뭉갠다. */
-#fcal .fc-event.ev-rb.ev-fx{background-size:400px 100% !important;animation:rbflow 8s linear infinite;}
-#fcal .fc-event.ev-rb.ev-fx.team{background-size:auto,400px 100% !important;animation:rbflow2 8s linear infinite;}
-/* 위젯이 비활성이면 멈춘다 — 항상 떠 있는 창이라 계속 돌면 전력만 먹는다 */
-body.wid-await #fcal .fc-event.ev-fx{animation-play-state:paused;}
-/* 공통(team)은 흰 속 + 무지개 테두리. 같은 이유로 longhand — clip/origin 을 따로 준다. */
-#fcal .fc-event.ev-rb.team{background-image:linear-gradient(#fff,#fff),linear-gradient(135deg,#F43F5E 0%,#F59E0B 17%,#FACC15 33%,#22C55E 50%,#3B82F6 67%,#8B5CF6 83%,#F43F5E 100%) !important;
-  background-origin:padding-box,border-box !important;background-clip:padding-box,border-box !important;
-  background-size:auto,100% 100% !important;background-repeat:repeat,repeat !important;
-  border:1.5px solid transparent !important;
-}
-@keyframes rbflow2{from{background-position:0 50%,0 50%}to{background-position:0 50%,400px 50%}}
-/* 678차: 색 그라디언트 7종 — 무지개와 같은 파이프를 쓰되 값은 app.js GRADS 가 진실이고 여기선 클래스로 받는다.
+/* ══ 683차 무지개 — 그리기와 흐름을 막대 자신에서 ::after 한 겹으로 내린다 ══
+   ⚠ 677~682차는 막대의 background-position 을 애니메이션했다. 이 속성은 합성(GPU)으로 올라가지 않아
+      **프레임마다 주 스레드가 막대를 다시 칠했다**. 8초 측정에서 주 스레드가 쓴 시간:
+      막대 20개 554ms · 60개 1083ms · 150개 1981ms (스타일 재계산 초당 60회).
+      transform 은 합성 전용이라 같은 조건에서 3ms · 4ms · 9ms 다 — 이것이 근본 원인이자 해결이다.
+   ⚠ 자르기는 clip-path 다. overflow:hidden 은 padding-box 에서 자르므로
+      공통 막대(테두리 1.5px)의 무지개 링이 통째로 잘려 사라진다. clip-path 는 border-box 기준이다.
+   ⚠ 반지름 3px 은 #fcal .fc-event 의 마지막 선언(3190행대)과 같은 값이다 — 같이 움직여야 한다.
+   ⚠ ::after · ::before 는 반드시 position:absolute 를 유지할 것. .fc-event 가 flex 라
+      절대배치를 놓치는 순간 의사요소가 flex 항목이 되어 글자를 밀어낸다.
+   ⚠ 단축 background · background-position 을 쓰지 말 것(676차) — longhand 규약을 그대로 잇는다. */
+#fcal .fc-event.ev-rb,#fcal .fc-event.ev-gd{position:relative;background-image:none !important;background-color:transparent !important;
+  border-color:transparent !important;clip-path:inset(0 round 3px);}
+#fcal .fc-event.ev-rb::after,#fcal .fc-event.ev-gd::after{content:'';position:absolute;left:-2px;right:-2px;top:-2px;bottom:-2px;z-index:0;pointer-events:none;
+  background-repeat:no-repeat !important;background-size:100% 100% !important;}
+#fcal .fc-event.ev-rb::after{
+  background-image:linear-gradient(135deg,#F43F5E 0%,#F59E0B 17%,#FACC15 33%,#22C55E 50%,#3B82F6 67%,#8B5CF6 83%,#F43F5E 100%) !important;}
+/* 684차: 색 그라디언트 7종 — 값은 app.js GRADS 가 진실이고 여기선 --gb 를 클래스로 받는다.
    ⚠ 값이 두 곳에 있으므로 static-audit 이 GRADS 와 이 규칙들을 대조한다(무지개와 같은 방식).
-   ⚠ 단축 background 를 쓰지 말 것(676차) — 여기선 흐름이 없지만 규칙을 하나로 유지한다. */
-#fcal .fc-event.ev-gd{background-image:var(--gb) !important;background-color:transparent !important;
-  background-repeat:repeat !important;background-size:100% 100% !important;border-color:transparent !important;}
-#fcal .fc-event.ev-gd.team{background-image:linear-gradient(#fff,#fff),var(--gb) !important;
-  background-origin:padding-box,border-box !important;background-clip:padding-box,border-box !important;
-  background-size:auto,100% 100% !important;background-repeat:repeat,repeat !important;
-  border:1.5px solid transparent !important;}
+   ⚠ 각 그라디언트는 첫 색으로 닫혀 있어야(A→B→C→A) 한 타일을 밀 때 이음매가 안 보인다. */
+#fcal .fc-event.ev-gd::after{background-image:var(--gb) !important;}
 #fcal .fc-event.ev-g-rd{--gb:linear-gradient(135deg,#FB7185 0%,#EF4444 38%,#F97316 72%,#FB7185 100%);}
 #fcal .fc-event.ev-g-og{--gb:linear-gradient(135deg,#FBBF24 0%,#F97316 38%,#EF4444 72%,#FBBF24 100%);}
 #fcal .fc-event.ev-g-yl{--gb:linear-gradient(135deg,#FDE68A 0%,#FACC15 38%,#A3E635 72%,#FDE68A 100%);}
@@ -2565,10 +2554,22 @@ body.wid-await #fcal .fc-event.ev-fx{animation-play-state:paused;}
 #fcal .fc-event.ev-g-bl{--gb:linear-gradient(135deg,#38BDF8 0%,#3B82F6 38%,#6366F1 72%,#38BDF8 100%);}
 #fcal .fc-event.ev-g-nv{--gb:linear-gradient(135deg,#6366F1 0%,#4338CA 38%,#7C3AED 72%,#6366F1 100%);}
 #fcal .fc-event.ev-g-pp{--gb:linear-gradient(135deg,#A78BFA 0%,#8B5CF6 38%,#EC4899 72%,#A78BFA 100%);}
-/* 679차: 그라디언트도 흐름 버전이 있다 — 무지개와 같은 키프레임을 쓴다.
-   ⚠ 각 그라디언트는 첫 색으로 닫혀 있어야(A→B→C→A) 한 타일을 밀 때 이음매가 안 보인다. GRADS 값이 그 규약이다. */
-#fcal .fc-event.ev-gd.ev-fx{background-size:400px 100% !important;animation:rbflow 8s linear infinite;}
-#fcal .fc-event.ev-gd.ev-fx.team{background-size:auto,400px 100% !important;animation:rbflow2 8s linear infinite;}
+/* 공통(team)은 흰 속 + 무지개 테두리 — 흰 판을 padding-box(0)에 덮으면 테두리 칸만 무지개로 남는다.
+   두께는 기존 규칙(데스크톱 1.5px · 모바일 1px)이 정하므로 여기서 다시 적지 않는다. */
+#fcal .fc-event.ev-rb.team::before,#fcal .fc-event.ev-gd.team::before{content:'';position:absolute;left:0;right:0;top:0;bottom:0;z-index:1;pointer-events:none;
+  background-color:#fff;border-radius:2px;}
+/* 글자를 두 겹 위로 — in-flow 자식은 절대배치 의사요소보다 아래에 깔린다 */
+#fcal .fc-event.ev-rb .fc-event-main,#fcal .fc-event.ev-gd .fc-event-main{position:relative;z-index:2;}
+/* 흐름 — 한 타일(400px)만큼 오른쪽으로 민다. 밀 여지를 오른쪽에 -400px 더 만들고 -400px → 0 으로 온다.
+   ⚠ steps(160) = 초당 20칸. 늘 떠 있는 위젯에서 60fps 로 돌 이유가 없는 장식이라 합성 깨우기를 1/3 로 줄인다.
+   ⚠ 흐름은 사용자가 팔레트에서 **직접 고른** 장식이므로 prefers-reduced-motion 으로 끄지 않는다.
+      동작 줄이기를 쓰는 사람의 선택지는 고정 무지개('rainbow')다. */
+@keyframes rbslide{from{transform:translate3d(-400px,0,0)}to{transform:translate3d(0,0,0)}}
+#fcal .fc-event.ev-rb.ev-fx::after,#fcal .fc-event.ev-gd.ev-fx::after{right:-402px;
+  background-repeat:repeat-x !important;background-size:400px 100% !important;
+  animation:rbslide 8s steps(160) infinite;}
+/* 위젯이 비활성이면 멈춘다 — 항상 떠 있는 창이라 계속 돌면 전력만 먹는다 */
+body.wid-await #fcal .fc-event.ev-fx::after{animation-play-state:paused;}
 .tk-hist{margin-top:2px;}
 .tk-hist>summary{list-style:none;cursor:pointer;font-size:11.5px;font-weight:600;color:var(--lbl3);padding:2px 0;}
 .tk-hist>summary::-webkit-details-marker{display:none;}
@@ -3016,21 +3017,23 @@ body:not(.wid) .nq-panel{padding-top:6px;}
      ⚠ flex-wrap:wrap 은 그대로 둔다 — 하자 관리에서 버튼이 실제로 넘칠 때는 줄바꿈이 필요하다 */
 }
 /* ══════════ 모바일 ══════════ */
-#scrim{position:fixed;inset:0;background:rgba(0,0,0,.32);z-index:250;opacity:0;pointer-events:none;transition:opacity var(--t-base);}
+#scrim{position:fixed;inset:0;background:rgba(0,0,0,.32);z-index:380;opacity:0;pointer-events:none;transition:opacity var(--t-base);}
 #scrim.on{opacity:1;pointer-events:auto;}
 .mc{display:none;width:34px;height:34px;border-radius:3px;align-items:center;justify-content:center;color:var(--lbl2);}
 .mc:hover{background:var(--fill);}
 @media(max-width:960px){
   #app{padding:0;gap:0;}
   #content{padding:12px;}
-  #sidebar{position:fixed;top:0;left:0;height:100vh;height:100dvh;z-index:300;transform:translateX(-100%);transition:transform var(--t-slow);box-shadow:var(--sh-3);width:var(--sw)!important;min-width:var(--sw)!important;padding:0;gap:0;background:var(--shell2);}
+  #sidebar{position:fixed;top:0;left:0;height:100vh;height:100dvh;z-index:400;transform:translateX(-100%);transition:transform var(--t-slow);box-shadow:var(--sh-3);width:var(--sw)!important;min-width:var(--sw)!important;padding:0;gap:0;background:var(--shell2);}
   #sidebar.mob-open{transform:translateX(0);}
   /* 드로어는 늘 펼친 폭이라 mini 접힘 스타일을 전부 무효화한다.
      ⚠ display 뿐 아니라 폭도 되돌려야 한다 — 접힘은 display:none 이 아니라 width:0 로 구현돼 있다 */
   #sidebar.mini .nil{flex:1!important;}
   #sidebar.mini .sb-acct{display:flex;}
   .mc{display:flex;}
-  /* 접기 버튼은 드로어에선 무의미 — mini 상태만 만들고 혼란을 준다 */
+  /* 접기 버튼은 드로어에선 무의미 — mini 상태만 만들고 혼란을 준다.
+     ⚠ 685차: 여태 이 주석만 있고 규칙이 없어 버튼이 그대로 보였다 */
+  .sb-title-tg{display:none;}
   /* grid 의 1fr 은 최소폭이 max-content 라서 내용이 넓으면 화면 밖으로 밀려난다 — 전부 minmax(0,1fr) 로 */
   .cal-wrap{grid-template-columns:minmax(0,1fr);height:auto;min-height:0;}
   /* ── 업무 일정: 달력을 화면 가득(캘린더 앱처럼), 일자 패널은 날짜를 누르면 올라오는 하단 시트 ── */
@@ -3062,7 +3065,10 @@ body:not(.wid) .nq-panel{padding-top:6px;}
   body:not(.wid) #view-calendar .cal-head>.cal-ctl>.cal-nav{background:transparent;padding:0;}
   .cal-mini{padding:0;border:0;background:transparent;box-shadow:none;}
   .cal-mini .mc-d.sel{outline:2px solid var(--bt1);outline-offset:-2px;border-radius:3px;}
-  body:not(.wid) #view-calendar .dp-col{position:static;transform:none;flex:1 1 auto;min-height:0;
+  /* ⚠ 685차: z-index:auto 를 반드시 같이 되돌린다. .cal-wrap 이 flex 로 바뀌면서 .dp-col 이 flex 항목이 되는데,
+     **flex 항목은 position:static 이어도 z-index 가 먹어 쌓임 맥락을 만든다.** 위 .dp-col 규칙의 z-index:320 이
+     그대로 살아 사이드바 드로어(300)를 덮고 있었다 — 서랍을 열어도 업무 패널이 위에 있었다. */
+  body:not(.wid) #view-calendar .dp-col{position:static;transform:none;z-index:auto;flex:1 1 auto;min-height:0;
     max-height:none;padding:6px 8px calc(8px + env(safe-area-inset-bottom));gap:0;pointer-events:auto;}
   body:not(.wid) #view-calendar .dp-col .card{box-shadow:none;}
   .day-panel{max-height:52dvh;min-width:0;}
@@ -3089,15 +3095,64 @@ body:not(.wid) .nq-panel{padding-top:6px;}
   body:not(.wid) #view-tasks .tkbar-wrap .dp-srch-i{position:static;transform:none;width:15px;height:15px;color:var(--lbl2);}
   /* 조직 관리 — 한 열로 쌓되 순서를 바꾼다: 세그 → 권역 탭 → 목록 → (팀·권역·지도 관리)
      ⚠ 두 열의 자식들을 한 흐름에 세워야 순서를 바꿀 수 있다 → .set-col 을 display:contents 로 없앤다 */
-  body:not(.wid) #view-org .mg-grid{display:flex;flex-direction:column;gap:0;}
+  /* ⚠ 685차: align-items 를 stretch 로 되돌린다. 데스크톱 .mg-grid 의 align-items:start 가 남아 있어
+     세로로 쌓을 때 카드마다 내용 폭으로 줄어들었다 — 팀·권역·지도 카드가 계단처럼 어긋나 보였다 */
+  body:not(.wid) #view-org .mg-grid{display:flex;flex-direction:column;gap:0;align-items:stretch;}
   body:not(.wid) #view-org .mg-grid>.set-col{display:contents;}
   body:not(.wid) #view-org .orgseg{order:1;}
   body:not(.wid) #view-org #orgBar{order:2;}
   body:not(.wid) #view-org .mg-grid>.set-col:last-child>.card{order:3;}
   body:not(.wid) #view-org .mg-grid>.set-col:first-child>.card{order:4;}
+  /* ⚠ 685차: 현장 표도 열을 눌러 담으면 현장명이 「힐스」로 잘리고 오른쪽 열이 화면 밖으로 나간다.
+     하자 표와 같이 카드 안에서 가로로 밀게 둔다 */
+  /* ⚠ 현장 표는 이미 자체 가로 스크롤 칸(app.js 의 overflow-x:auto)을 갖고 있다. 문제는 폭이었다 —
+     열 너비가 % 라 366px 에서 현장명 칸이 50px 로 줄어 「힐스」만 보였다.
+     읽을 수 있는 최소 폭을 주고 % 가 그 폭 위에서 풀리게 한다(18% × 900 ≈ 162px). */
+  body:not(.wid) #view-org .mgtbl{min-width:900px;table-layout:fixed;}
   body:not(.wid) #view-calendar .hold-card{display:none;}   /* 642차: 모바일 달력 시트에는 보류함을 두지 않는다 — 업무 현황에서 본다 */
-  .tkwrap{grid-template-columns:minmax(0,1fr);}
+  .tkwrap{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);}   /* 687차: 1열이 되면 auto 두 행이 flex:1 높이를 나눠 가져 위 칸(내용 110px)이 300px 로 늘고 아래에 빈 띠가 생겼다 */
   .set-grid{grid-template-columns:minmax(0,1fr);}
+  /* ══ 업무 현황 — 스크롤 한 겹으로 ══════════════════════════
+     ⚠ 685차: 데스크톱은 「완료」·「예정」 두 칸이 각자 스크롤한다(페이지는 안 굴린다는 원칙).
+        모바일은 그 두 칸이 세로로 쌓이는데 스크롤은 그대로 각자 남아, 한 칸이 258px 로 눌리고
+        **마지막 줄이 가로로 반쯤 잘려** 보였다. 안쪽 스크롤을 풀고 카드 하나만 굴린다. */
+  body:not(.wid) #view-tasks .tkwk,body:not(.wid) #view-tasks .tkmain{overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  body:not(.wid) #view-tasks .tkwk-cols{display:flex;flex-direction:column;}
+  body:not(.wid) #view-tasks .tkwk-col{flex:0 0 auto;min-height:0;}
+  body:not(.wid) #view-tasks .tk-list{overflow:visible;flex:0 0 auto;}
+  /* ══ 하자처리 현황 ══════════════════════════════════════════
+     ⚠ 685차: 이 화면은 여태 모바일 규칙이 **하나도 없었다.** 데스크톱의 5열 KPI·2열 카드·넓은 표가
+        390px 에 그대로 들어가 숫자가 잘리고("6,92"), 라벨이 한 글자씩 세로로 쪼개지고, 표는 열이 겹쳤다. */
+  /* KPI — 5열은 한 칸이 70px 도 안 된다. 2열로 내리고 「목록」 화살표는 오른쪽 아래로 */
+  body:not(.wid) #view-defect .akpi{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+  body:not(.wid) #view-defect .kc{padding:10px 12px;min-height:0;}
+  body:not(.wid) #view-defect .kl{font-size:12px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  body:not(.wid) #view-defect .kv{font-size:20px;}
+  body:not(.wid) #view-defect .km{font-size:11px;}
+  /* ⚠ 「목록」은 절대배치라 좁아지면 숫자 위에 그대로 겹친다 — 아래로 내리고 라벨은 화살표만 남긴다 */
+  body:not(.wid) #view-defect .kc-cta{top:auto;bottom:10px;right:10px;}
+  body:not(.wid) #view-defect .kc-cta-t{display:none;}
+  /* 현장 머리 카드(첫 칸)는 두 칸을 쓴다 — 현장명·세대수·준공일이 한 글자씩 쪼개지던 자리 */
+  body:not(.wid) #view-defect .akpi>.kc:first-child{grid-column:1 / -1;}
+  /* 탭 — 잘라 버리지 말고 가로로 민다 */
+  body:not(.wid) #view-defect .tnav{overflow-x:auto;overflow-y:hidden;scrollbar-width:none;flex-wrap:nowrap;}
+  body:not(.wid) #view-defect .tnav::-webkit-scrollbar{display:none;}
+  body:not(.wid) #view-defect .tnav-i{flex:0 0 auto;}
+  /* 좌우 두 칸(전월대비·분포)은 한 칸으로 */
+  body:not(.wid) #view-defect .opsr{grid-template-columns:minmax(0,1fr);min-height:0;}
+  /* 표 — 열을 눌러 담으면 숫자가 겹친다. 카드 안에서 가로로 밀게 둔다 */
+  body:not(.wid) #view-defect .card:has(table){overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  body:not(.wid) #view-defect table{min-width:760px;}
+  /* ⚠ 카드가 화면보다 넓어지던 문제 — 안쪽 캔버스(Chart.js)가 카드 폭을 밀어 올려
+     차트 범례가 오른쪽에서 잘렸다. flex 항목의 min-width 기본값(auto)을 0 으로 내린다 */
+  body:not(.wid) #view-defect .as>.card,body:not(.wid) #view-defect .main-chart-card{min-width:0;}
+  /* ⚠ 주차 추이 차트는 캔버스 폭을 주차 수에 맞춰 잡는다(모바일에서 986px). 데스크톱은 .ovs 커스텀
+     스크롤바로 밀지만, 모바일엔 그 손잡이가 없고 #content 가 overflow-x:hidden 이라 오른쪽이 **닿지 않았다.**
+     손가락으로 밀 수 있게 감싼 칸을 스크롤로 바꾼다 */
+  body:not(.wid) #view-defect .ovs-host{min-width:0;}
+  body:not(.wid) #view-defect .main-chart-card{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;
+    width:100%;max-width:100%;}
+  body:not(.wid) #view-defect .main-chart-card::-webkit-scrollbar{display:none;}
 
   #content{padding:9px 10px 14px 14px;overflow-x:hidden;}
   #content>*{min-width:0;}
@@ -3954,5 +4009,5 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
 <script src="./vendor/korea-geo.js?v=635"></script>
 <script src="./vendor/apt-geo.js?v=635" onerror="void 0"></script>   <!-- 540차: 공동주택명 색인 — 없으면 그냥 건너뛴다 -->
-<script src="./app.js?v=682"></script>
+<script src="./app.js?v=687"></script>
 </body></html>

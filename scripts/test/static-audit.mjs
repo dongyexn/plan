@@ -107,7 +107,7 @@ OK('구문 검사 (node --check)');
 
 /* ── 5. 죽은 CSS 클래스 ─────────────────────────────── */
 {
-  const KEEP = /^(fc-|wf-|x-none$|r-blocked$|woff2$|s\d$|insight-block$|ib-body$|warn$|ev-g-\w+$)/;   /* 678차: ev-g-* 는 'ev-g-'+토큰 으로 조립한다(GRADS 대조는 8-b 에서 따로 한다) */   /* insight-*: 분석 의견 원문(DB 저장 HTML)의 클래스 — 마크업엔 없다(427차) */   /* 위 판정 원칙 + url(*.woff2) 오탐 + tk-item s${st} 동적 */
+  const KEEP = /^(fc-|wf-|x-none$|r-blocked$|woff2$|s\d$|insight-block$|ib-body$|warn$|ev-g-\w+$)/;   /* 678차: ev-g-* 는 'ev-g-'+토큰 으로 조립한다(GRADS 대조는 아래에서 따로 한다) */   /* insight-*: 분석 의견 원문(DB 저장 HTML)의 클래스 — 마크업엔 없다(427차) */   /* 위 판정 원칙 + url(*.woff2) 오탐 + tk-item s${st} 동적 */
   const cls = new Set([...css.matchAll(/\.([A-Za-z_][\w-]*)/g)].map(m => m[1]));
   const dead = [...cls].filter(c => !KEEP.test(c) &&
     !new RegExp('[\'"`\\s<>=.(]' + c.replace(/-/g, '\\-') + '[\'"`\\s<>.,)\\]}:$]').test(hay));
@@ -137,25 +137,29 @@ OK('구문 검사 (node --check)');
     .concat([...body.matchAll(/\bo=\{([^}]*)\}/gs)].flatMap(m => [...m[1].matchAll(/(\w+)\s*:/g)].map(x => x[1])));
   const seg = rules.slice(rules.indexOf('"tasks"'), rules.indexOf('"trash"'));   /* 627차: 고정 3500자 창이 소유 규칙 추가로 모자랐다 — 블록 경계로 */
 
-  /* 633차: 무지개 그라디언트는 app.js(RAINBOW_BG)와 index.html(.ev-rb)에 이중 정의 — 값이 갈리면 잡는다 */
+  /* 633차: 무지개 그라디언트는 app.js(RAINBOW_BG)와 index.html(.ev-rb::after)에 이중 정의 — 값이 갈리면 잡는다.
+     ⚠ 683차: 그리기가 막대 자신에서 ::after 로 내려갔다(합성 애니메이션 전환). 대조 자리도 같이 옮긴다. */
   {
+    const cssNC=html.replace(/\/\*[\s\S]*?\*\//g,'');   /* ⚠ 주석 안 셀렉터 문자열을 물지 않게 먼저 걷는다 */
     const mApp = /RAINBOW_BG='([^']+)'/.exec(js);
-    /* 676차: 단축 background 를 쓰면 position 까지 !important 로 굳어 흐름 애니메이션이 죽는다 — longhand 를 본다 */
-    const mCss = /#fcal \.fc-event\.ev-rb\{background-image:([^!]+) !important/.exec(html);
-    if (!mApp || !mCss) F('무지개 정의를 찾지 못했다(RAINBOW_BG 또는 .ev-rb)');
+    const mCss = /#fcal \.fc-event\.ev-rb::after[^{]*\{[^}]*background-image:([^!]+) !important/.exec(cssNC);
+    if (!mApp || !mCss) F('무지개 정의를 찾지 못했다(RAINBOW_BG 또는 .ev-rb::after)');
     else if (mApp[1].replace(/\s+/g,'') !== mCss[1].trim().replace(/\s+/g,''))
-      F('무지개 그라디언트 이중 정의 불일치 — app.js RAINBOW_BG 와 index.html .ev-rb');
-    /* ⚠ CSS 주석을 먼저 걷어낸다 — 주석 안에도 셀렉터 문자열이 있어 정규식이 그쪽을 문다 */
-    const cssNC=html.replace(/\/\*[\s\S]*?\*\//g,'');
-    const mTeamRule=/(?:^|[};])\s*#fcal \.fc-event\.ev-rb\.team\{([\s\S]*?)\}/m.exec(cssNC);   /* 쉼표로 이어진 셀렉터(reduce 블록)를 물지 않도록 앞을 못박는다 */
-    if (!mTeamRule) F('공통 무지개 막대의 ID급 팀 전용 CSS가 누락됐다');
-    else if (!mTeamRule[1].includes('padding-box') || !mTeamRule[1].includes('border-box')) F('공통 무지개 막대의 흰 내부/무지개 테두리 CSS가 불완전하다');
-    else OK('무지개 공통 막대 — ID급 team 구체성 규칙 유지');
+      F('무지개 그라디언트 이중 정의 불일치 — app.js RAINBOW_BG 와 index.html .ev-rb::after');
+    /* 683차: 공통(team) 막대는 흰 판(::before, inset 0)을 덮어 테두리 칸만 무지개로 남긴다.
+       예전(padding-box/border-box 2겹 배경)과 방식이 다르므로 판정도 바뀐다. */
+    const mTeam=/#fcal \.fc-event\.ev-rb\.team::before[^{]*\{([\s\S]*?)\}/.exec(cssNC);
+    if (!mTeam) F('공통 무지개 막대의 흰 속 판(.ev-rb.team::before) 규칙이 없다');
+    else if (!/position:absolute/.test(mTeam[1]) || !/background-color:#fff/.test(mTeam[1]))
+      F('공통 무지개 막대의 흰 속 판이 불완전하다(절대배치·흰 배경)');
+    else if (!/#fcal \.fc-event\.ev-rb[^{]*\{[^}]*clip-path:inset\(0 round 3px\)/.test(cssNC))
+      F('무지개 막대 자르기(clip-path, border-box 기준)가 없다 — overflow:hidden 은 테두리 링을 잘라먹는다');
+    else OK('무지개 공통 막대 — 흰 속 판 + border-box 자르기');
     /* 676차 회귀 방지: 무지개 막대에 닿는 규칙이 단축 background 나 background-position 을 쓰면 흐름이 멈춘다.
        (실제로 `#fcal .fc-event.team{background:#fff!important}` 하나 때문에 공통 막대가 멈춰 있었다) */
     {
       const bad=[];
-      const rx=/(#fcal \.fc-event(?:\.ev-rb|\.team)[^{]*)\{([^}]*)\}/g;
+      const rx=/(#fcal \.fc-event(?:\.ev-rb|\.ev-gd|\.team)[^{]*)\{([^}]*)\}/g;
       let m;while((m=rx.exec(cssNC))){
         if(/:not\(\.ev-rb\)/.test(m[1])) continue;   /* 무지개를 제외한 규칙은 흐름과 무관하다(12월 공통 막대 등) */
         if(/(^|;|\s)background\s*:/.test(m[2])) bad.push(m[1].trim()+' — 단축 background');
@@ -164,55 +168,73 @@ OK('구문 검사 (node --check)');
       if(bad.length) F('무지개 막대 흐름이 죽는 선언: '+bad.join(' / '));
       else OK('무지개 막대 흐름 — 단축 background·background-position 선언 없음');
     }
-    if(!/@keyframes rbflow\{/.test(html)||!/@keyframes rbflow2\{/.test(html)) F('무지개 흐름 키프레임(rbflow·rbflow2) 누락');
-    else OK('무지개 흐름 키프레임 2종(일반 1레이어 · 공통 2레이어)');
+    /* ── 683차 핵심: 흐름은 **합성되는 속성**으로만 돈다 ──────────────────
+       background-position 애니메이션은 합성으로 올라가지 않아 프레임마다 주 스레드가 막대를 다시 칠한다.
+       측정(8초): 막대 20개 554ms · 60개 1083ms · 150개 1981ms.  transform 은 3·4·9ms.
+       그래서 키프레임이 transform 이 아니면 여기서 막는다 — 되돌아가면 CPU 문제가 그대로 돌아온다. */
+    {
+      const mk=/@keyframes rbslide\{([^}]*\}[^}]*)\}/.exec(cssNC);
+      if(!mk) F('무지개 흐름 키프레임(rbslide) 누락');
+      else if(!/transform:\s*translate3d/.test(mk[1])) F('rbslide 가 transform 을 안 쓴다 — 합성이 안 돼 주 스레드가 매 프레임 다시 칠한다');
+      else if(/background-position/.test(mk[1])) F('rbslide 가 background-position 을 애니메이션한다 — 682차 CPU 문제로 되돌아간다');
+      else if(/@keyframes rbflow2?\{/.test(cssNC)) F('폐지한 키프레임(rbflow·rbflow2)이 남아 있다');
+      else OK('무지개 흐름 — transform(합성) 키프레임 rbslide');
+    }
     /* 677차: 무지개 두 종 — 고정('rainbow')과 흐름('rainbow-anim'/.ev-fx)이 갈려 있어야 한다.
        흐름을 .ev-rb 에 도로 걸면 고정을 고른 사람 화면까지 움직인다. */
     {
-      const mBase=/(?:^|[};])\s*#fcal \.fc-event\.ev-rb\{([\s\S]*?)\}/m.exec(cssNC);
-      if(mBase&&/animation\s*:/.test(mBase[1])) F('고정 무지개(.ev-rb)에 애니메이션이 걸려 있다 — 흐름은 .ev-fx 전용이다');
-      else if(!/#fcal \.fc-event\.ev-rb\.ev-fx\{[^}]*animation\s*:/.test(cssNC)) F('흐름 무지개(.ev-fx) 애니메이션 규칙 누락');
-      else if(!/#fcal \.fc-event\.ev-rb\.ev-fx\.team\{[^}]*rbflow2/.test(cssNC)) F('흐름 무지개 공통 막대(.ev-fx.team)가 rbflow2 를 안 쓴다 — 레이어 수 불일치로 멈춘다');
+      const mBase=/#fcal \.fc-event\.ev-rb::after[^{]*\{([\s\S]*?)\}/.exec(cssNC);
+      if(mBase&&/animation\s*:/.test(mBase[1])) F('고정 무지개(.ev-rb::after)에 애니메이션이 걸려 있다 — 흐름은 .ev-fx 전용이다');
+      else if(!/#fcal \.fc-event\.ev-rb\.ev-fx::after[^{]*\{[^}]*animation:rbslide/.test(cssNC)) F('흐름 무지개(.ev-fx::after) 애니메이션 규칙 누락');
+      else if(!/#fcal \.fc-event\.ev-rb\.ev-fx::after[^{]*\{[^}]*steps\(/.test(cssNC)) F('흐름 무지개에 프레임 감축(steps)이 없다 — 늘 떠 있는 위젯에서 60fps 로 돌 이유가 없다');
       /* ⚠ 677차: 머리쪽 전역 규칙이 동작 줄이기에서 모든 애니메이션을 !important 로 죽인다.
-         흐름 무지개는 그 안에서 되살려야 한다 — 예외가 사라지면 사용자 눈에는 '안 움직인다'로 보인다. */
-      else if(!/#fcal \.fc-event\.ev-fx\{animation-duration:8s!important;animation-iteration-count:infinite!important;\}/.test(cssNC))
-        F('동작 줄이기 예외가 없다 — 전역 reduce 규칙이 흐름 무지개까지 멈춘다');
+         흐름 무지개는 그 안에서 되살려야 한다 — 예외가 사라지면 사용자 눈에는 '안 움직인다'로 보인다.
+         ⚠ 683차: 애니메이션이 ::after 로 내려갔으므로 예외도 ::after 를 짚어야 한다. */
+      else if(!/#fcal \.fc-event\.ev-fx::after\{animation-duration:8s!important;animation-iteration-count:infinite!important;\}/.test(cssNC))
+        F('동작 줄이기 예외가 없다(또는 ::after 를 안 짚는다) — 전역 reduce 규칙이 흐름 무지개까지 멈춘다');
       else if(/ev-fx[^}]*animation\s*:\s*none/.test(cssNC)) F('흐름 무지개를 어딘가에서 끄고 있다');
-      else OK('무지개 두 종 분리 — 고정(.ev-rb) · 흐름(.ev-fx)');
-      /* 678차: 그라디언트 7종도 app.js(GRADS)와 index.html(.ev-g-*)에 이중 정의 — 무지개와 같은 방식으로 대조한다 */
+      else if(!/body\.wid-await #fcal \.fc-event\.ev-fx::after\{animation-play-state:paused;\}/.test(cssNC))
+        F('위젯 비활성 시 흐름을 멈추는 규칙이 없다(또는 ::after 를 안 짚는다)');
+      else OK('무지개 두 종 분리 — 고정(.ev-rb) · 흐름(.ev-fx) · 비활성 정지');
+      /* 678~679차: 색 그라디언트 7종 — 값이 app.js(GRADS)와 index.html(--gb) 두 곳에 있다. 갈리면 잡는다.
+         ⚠ 684차: 683차에 걷어냈다가 되살렸다. 그리기는 ::after 로 내려갔고 값만 --gb 로 받는다. */
       {
-        const mG=/const GRADS=\{([\s\S]*?)\};/.exec(js);
-        if(!mG) F('GRADS 정의를 찾지 못했다');
-        else{
-          const pairs=[...mG[1].matchAll(/'(grad-\w+)'\s*:\s*'([^']+)'/g)].map(m=>[m[1],m[2]]);
-          if(pairs.length!==7) F('그라디언트 색이 7종이 아니다: '+pairs.length);
-          const bad=pairs.filter(([k,v])=>!cssNC.includes('#fcal .fc-event.ev-g-'+k.slice(5)+'{--gb:'+v+';}'));
-          if(bad.length) F('그라디언트 이중 정의 불일치(app.js GRADS ↔ index.html .ev-g-*): '+bad.map(x=>x[0]).join(', '));
-          else if(!/#fcal \.fc-event\.ev-gd\{[^}]*var\(--gb\)/.test(cssNC)) F('그라디언트 막대 기본 규칙(.ev-gd)이 --gb 를 안 쓴다');
-          else if(!/#fcal \.fc-event\.ev-gd\.team\{[^}]*var\(--gb\)/.test(cssNC)) F('공통 그라디언트 막대(.ev-gd.team) 규칙 누락');
-          else if(!/\.pal-row\.pal-grad\{/.test(html)) F('팔레트 그라디언트 줄(.pal-row.pal-grad) 누락');
-          else if(!/#fcal \.fc-event\.ev-gd\.ev-fx\{[^}]*animation\s*:/.test(cssNC)) F('그라디언트 흐름 규칙(.ev-gd.ev-fx) 누락');
-          else if(!/#fcal \.fc-event\.ev-gd\.ev-fx\.team\{[^}]*rbflow2/.test(cssNC)) F('공통 그라디언트 흐름(.ev-gd.ev-fx.team)이 rbflow2 를 안 쓴다');
-          else if(pairs.some(([,v])=>{const m=/#([0-9A-Fa-f]{6})[^,]*0%.*#([0-9A-Fa-f]{6})[^,]*100%/.exec(v);return !m||m[1].toLowerCase()!==m[2].toLowerCase();}))
-            F('그라디언트가 첫 색으로 닫혀 있지 않다 — 흐름에서 이음매가 보인다(A→…→A 규약)');
-          else if(!js.includes("g+GRAD_ANIM")) F('팔레트에 그라디언트 흐름 칩이 없다');
-          else OK('그라디언트 7종 — 이중 정의 일치 · 고정/흐름 두 벌 · 첫 색으로 닫힘');
+        const mg=[...js.matchAll(/'(grad-\w\w)':'([^']+)'/g)].map(m=>[m[1],m[2]]);
+        const bad=[];
+        for(const [k,v] of mg){
+          const rx=new RegExp('#fcal \\.fc-event\\.ev-g-'+k.slice(5)+'\\{--gb:([^;]+);');
+          const m2=rx.exec(cssNC);
+          if(!m2) bad.push(k+' CSS 규칙 없음');
+          else if(m2[1].replace(/\s+/g,'')!==v.replace(/\s+/g,'')) bad.push(k+' 값 불일치');
+          const cols=[...v.matchAll(/#[0-9A-Fa-f]{6}/g)].map(x=>x[0]);
+          if(cols.length<2||cols[0].toLowerCase()!==cols[cols.length-1].toLowerCase())
+            bad.push(k+' 첫 색으로 안 닫힘(흐를 때 이음매가 보인다)');
         }
+        if(mg.length!==7) F('그라디언트 7종이 아니다 — '+mg.length+'종');
+        else if(bad.length) F('그라디언트 이중 정의: '+bad.join(' / '));
+        else if(!/#fcal \.fc-event\.ev-gd::after\{background-image:var\(--gb\)/.test(cssNC))
+          F('그라디언트가 ::after 로 안 그려진다 — 막대 본체에 칠하면 682차 CPU 문제로 되돌아간다');
+        else if(!/#fcal \.fc-event\.ev-gd\.ev-fx::after/.test(cssNC)) F('그라디언트 흐름(.ev-gd.ev-fx::after) 규칙 누락');
+        else if(!/const GRAD_LIGHT=/.test(js)||!/function isLightBg\(/.test(js)) F('밝은 그라디언트 글자색 판정(GRAD_LIGHT·isLightBg)이 없다');
+        else if(/normColor|GRAD_OLD/.test(js)) F('683차의 단색 대체(normColor·GRAD_OLD)가 남아 있다 — 그라디언트가 단색으로 읽힌다');
+        else OK('그라디언트 7종 — 이중 정의 일치 · 첫 색으로 닫힘 · ::after 합성 경로');
       }
       /* 682차: 스킨 고르기는 되돌렸다. 남은 것은 12월 자동 크리스마스 하나뿐이고,
-         그 규칙이 직접 고른 색(무지개·그라디언트)까지 덮으면 안 된다는 것만 지킨다. */
+         그 규칙이 직접 고른 색(무지개)까지 덮으면 안 된다는 것만 지킨다. */
       {
         const rules=[...cssNC.matchAll(/body\.dec #fcal \.fc-event\.team([^{]*)\{/g)];
         if(rules.length<2) F('12월 크리스마스 규칙이 없다');
         else if(rules.some(m=>!/:not\(\.ev-rb\)/.test(m[1])||!/:not\(\.ev-gd\)/.test(m[1])))
-          F('크리스마스 규칙이 무지개·그라디언트 막대까지 덮는다 — :not(.ev-rb):not(.ev-gd) 를 빠뜨렸다');
+          F('크리스마스 규칙이 직접 고른 색까지 덮는다 — :not(.ev-rb) 또는 :not(.ev-gd) 를 빠뜨렸다');
         else if(/skin-/.test(cssNC)||js.includes('SKINS')) F('되돌린 스킨 고르기 잔재가 남아 있다');
         else OK('12월 크리스마스 — 직접 고른 색을 덮지 않는다');
       }
       if(!js.includes("const RB_ANIM='rainbow-anim'")) F("흐름 무지개 토큰(RB_ANIM) 정의 누락");
       else if(!js.includes("data-c=\"'+RB_ANIM+'\"")) F('팔레트에 흐름 무지개 칩이 없다');
-      else if(!/\.pal-c\.pal-fx::after\{/.test(html)) F('흐름 무지개 칩의 재생 삼각형(.pal-fx::after) 누락');
-      else OK('팔레트 — 흐름 무지개 칩 + 재생 삼각형');
+      else if(!/\.pal-row\.pal-grad\{/.test(html)||!/\.pal-row\.pal-grad2\{/.test(html)) F('팔레트 두 줄(.pal-grad · .pal-grad2) 누락');
+      else if(!js.includes("data-c=\"'+g+GRAD_ANIM+'\"")) F('팔레트에 흐름 그라디언트 칩이 없다');
+      else if(!/\.pal-c\.pal-fx::after\{/.test(html)) F('흐름 칩의 재생 삼각형(.pal-fx::after) 누락');
+      else OK('팔레트 — 고정 8종 · 흐름 8종 · 재생 삼각형');
     }
   }
   const allowed = new Set([...seg.matchAll(/"(\w+)"\s*:\s*\{/g)].map(m => m[1]));

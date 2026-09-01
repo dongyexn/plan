@@ -8,7 +8,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='682';
+const APP_VER='687';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -164,7 +164,7 @@ function sitePickHTML(id,cur){
 function colDotHTML(c,pid,team){
   const rb=isRainbow(c)||isGrad(c);   /* 678차: 그라디언트도 테두리만 칠하는 공통 표시를 같이 쓴다 */
   const st=team
-    ? (rb?'background:transparent;box-shadow:none':'background:transparent;box-shadow:inset 0 0 0 1.5px '+esc(c))
+    ? (rb?'background:transparent;box-shadow:none;--gb:'+esc(colBg(c)):'background:transparent;box-shadow:inset 0 0 0 1.5px '+esc(c))   /* 687차: 링 그라디언트는 --gb 로 넘긴다(CSS 는 무지개를 기본값으로만 둔다) */
     : 'background:'+esc(colBg(c));
   const cls=(team?' p-col-team':'')+(rb?' p-col-rainbow':'')+(isFlow(c)?' p-col-fx':'');
   return pid
@@ -189,7 +189,7 @@ function peColorSync(){
   dot.classList.toggle('p-col-rainbow',rb);
   dot.classList.toggle('p-col-fx',isFlow(c));
   dot.style.cssText=team
-    ? (rb?'background:transparent;box-shadow:none':'background:transparent;box-shadow:inset 0 0 0 1.5px '+c)
+    ? (rb?'background:transparent;box-shadow:none;--gb:'+colBg(c):'background:transparent;box-shadow:inset 0 0 0 1.5px '+c)
     : 'background:'+colBg(c);
 }
 /* 색 선택기 HTML — 기본 팔레트 + 임의 색 추가.
@@ -330,7 +330,8 @@ function isRainbow(c){return c==='rainbow'||c===RB_ANIM;}
 /* 678차: 그라디언트 계열 — 무지개와 같은 자리(색 파이프)를 쓰는 특수 토큰이다.
    ⚠ 토큰은 16자 이내여야 한다(서버 규칙 color 제한). 'grad-xx' 는 7자다.
    ⚠ 값을 여기서만 정하고 CSS 는 클래스로 받는다 — 종류가 고정 7개라 인라인이 필요 없다.
-      막대는 `ev-g-{id}` 가 --gb 변수를 채우고, 색 원·팔레트 칩은 colBg() 문자열을 그대로 쓴다. */
+      막대는 `ev-g-{id}` 가 --gb 변수를 채우고, 색 원·팔레트 칩은 colBg() 문자열을 그대로 쓴다.
+   ⚠ 684차: 683차에 한 번 걷어냈다가 되살렸다. 그리기·흐름은 이제 막대가 아니라 ::after 가 맡는다. */
 const GRADS={
   'grad-rd':'linear-gradient(135deg,#FB7185 0%,#EF4444 38%,#F97316 72%,#FB7185 100%)',
   'grad-og':'linear-gradient(135deg,#FBBF24 0%,#F97316 38%,#EF4444 72%,#FBBF24 100%)',
@@ -350,6 +351,18 @@ function isFlow(c){return c===RB_ANIM||isGradAnim(c);}
 const GRAD_LIGHT={'grad-yl':1};
 function isLightBg(c){return isGrad(c)?!!GRAD_LIGHT[gradBase(c)]:isLightColor(c);}
 function colBg(c){return isRainbow(c)?RAINBOW_BG:(isGrad(c)?GRADS[gradBase(c)]:c);}
+/* 687차: SVG fill 은 CSS 그라디언트 문자열을 못 받는다(fill="grad-rd" → 검정). 지도 점은 <linearGradient> 로 받는다.
+   정지점은 colBg() 문자열에서 그대로 옮긴다 — 값의 진실은 GRADS·RAINBOW_BG 한 곳뿐이다.
+   pfx 는 svg id 로 가른다(카드 okmSvg · 모달 okmBig 이 한 문서에 같이 있어 id 가 겹치면 한쪽이 못 찾는다). */
+function colSvgKey(c){return isRainbow(c)?'rainbow':isGrad(c)?gradBase(c):'';}
+function colSvgFill(c,pfx){const k=colSvgKey(c);return k?'url(#'+pfx+'-'+k+')':c;}
+function colSvgDefs(cols,pfx){
+  const seen={};let s='';
+  cols.forEach(c=>{const k=colSvgKey(c);if(!k||seen[k])return;seen[k]=1;
+    const st=[];String(colBg(c)).replace(/(#[0-9A-Fa-f]{6})\s+(\d+)%/g,(m,h,q)=>{st.push('<stop offset="'+q+'%" stop-color="'+h+'"/>');return m;});
+    s+='<linearGradient id="'+pfx+'-'+k+'" x1="0" y1="0" x2="1" y2="1">'+st.join('')+'</linearGradient>';});
+  return s?'<defs>'+s+'</defs>':'';
+}
 function ownColor(pid){
   if(!pid)return PAL[0];
   /* 프로필에서 고른 색이 있으면 그 색을 쓴다 — 노란 프로필인데 보라 업무로 뜨면 헷갈린다 */
@@ -2143,7 +2156,8 @@ function calMiniHTML(){
     /* FullCalendar 의 end 는 배타적이다 — 하루 당겨야 실제 마지막 날 */
     let en=ev.endStr?addDays(ev.endStr.slice(0,10),-1):st;
     if(en<st)en=st;
-    const col=(ev.backgroundColor||ev.borderColor||'var(--lbl3)');
+    /* 687차: 공통 업무는 backgroundColor 가 'transparent'(참값)라 점이 안 보였다 — 테두리색으로. 그라디언트는 colBg 로 */
+    const bc=ev.backgroundColor,col=colBg((bc&&bc!=='transparent')?bc:(ev.borderColor||'var(--lbl3)'));
     const done=(ev.classNames||[]).indexOf('done')>=0;
     for(let d=st;d<=en;d=addDays(d,1))(dots[d]=dots[d]||[]).push({c:col,done});
   });
@@ -3957,17 +3971,17 @@ const RULE_DEF=[
   {id:"s_f1",t:"1. HTML 출력만",d:"1. Return the output ONLY in raw HTML using elements like <div>, <p>, <ul>, <li>, <strong>, <span>. Do NOT wrap the response in markdown code blocks like ```html. Just return raw HTML text."},
   {id:"s_f2",t:"2. 마크다운 금지",d:"2. NO MARKDOWN SYMBOLS: Absolutely DO NOT include markdown header tags like '###' or '#' in the text. Subtitles must be styled purely with HTML (e.g., <div style='font-size: 16px; font-weight: bold; margin-top: 16px; margin-bottom: 8px; color: #333;'>Subtitle Name</div>)."},
   {id:"s_f3",t:"3. 서두 문장 금지",d:"3. NO INTRO PARAGRAPH: Do NOT write any introductory sentence summarizing what the report covers (e.g., do NOT write '본 보고서는 ...을 제시함.'). Start directly with the first subtitle and its content."},
-  {id:"s_f4",t:"4. 개조식 어미",d:"4. TONE & ENDING (개조식): Use a concise, professional, bullet-point reporting style. Every sentence MUST end with short noun-style terminations such as '~함.', '~임.', '~음.' instead of full polite sentences like '~합니다.', '~입니다.'"},
+  {id:"s_f4",t:"4. 개조식 어미",d:"4. TONE & ENDING (개조식): Concise Korean report style. Each sentence ends with EXACTLY ONE of: 함. / 됨. / 임. / 음. / 필요함. / 판단됨. / 예상됨. / 요구됨.\\nHARD BANS — never produce these:\\n- Do NOT stack two endings: 음임 / 함임 / 됨임 / 임음 / 음함 are all WRONG.\\n- Do NOT use polite forms: 합니다 / 입니다 / 됩니다 / 하였습니다.\\nGOOD: 60일+ 장기미처리가 전월 대비 42건 증가함.\\nGOOD: 도배 공종 재방문을 우선 배정할 필요가 있음.\\nBAD: 증가하였음임. / 필요함임. / 감소될 것으로 판단됩니다."},
   {id:"s_f5",t:"5. 본문 폰트",d:"5. FONT SIZE: Apply font size 14px to all body text (<p>, <li>) using inline styles (e.g., style='font-size: 14px; line-height: 1.6; color: #444;'). Subtitles use 16px bold as shown above."},
   {id:"s_f6",t:"6. 숫자 천단위",d:"6. FORMAT NUMBERS: Always apply thousands separators (e.g., 1,234)."},
-  {id:"s_f7",t:"7. 강조 색상",d:"7. TEXT HIGHLIGHTING: Emphasize key metrics with bold + color inline styles (e.g., <strong style='color: #d9534f;'>text</strong> for negative/critical/delay issues, <strong style='color: #0275d8;'>text</strong> for achievements/positive metrics)."}]},
+  {id:"s_f7",t:"7. 강조 색상",d:"7. TEXT HIGHLIGHTING — MANDATORY, NOT OPTIONAL: Every <li> MUST contain AT LEAST ONE colored <strong>. A bullet with no colored <strong> is a rule violation.\\nUse <strong style='color:#C0392B'>...</strong> for negative figures (증가, 지연, 장기미처리, 중대하자, 민원) and <strong style='color:#1A7A3C'>...</strong> for positive figures (감소, 처리율 개선, 목표 달성).\\nColor the NUMBER together with its unit and subject, not a bare digit — e.g. <strong style='color:#C0392B'>60일+ 장기미처리 180건</strong>.\\nDo NOT color whole sentences and use no color other than these two."}]},
  {scope:"site",label:"내용 규칙",hdr:"**[CONTENT RULES — IMPORTANT]**",fmt:false,rules:[
   {id:"s_cA",t:"A. 소제목 최대 6개",d:"A. Write a MAXIMUM of 6 subtitled sections. Do NOT force all topics. Select only meaningful sections and order them by importance."},
   {id:"s_cB",t:"B. 무의미 항목 생략",d:"B. OMIT any section with no data or nothing noteworthy. If vacant-unit (공가세대) count is 0 or negligible, skip it. If the outstanding-case contents reveal no special issue, skip that section."},
   {id:"s_cC",t:"C. 논리적 인과(핵심)",d:"C. ANALYTICAL & LOGICAL REASONING (MOST IMPORTANT): Never write a sentence that only reports a current number or status. The dashboard already shows the figures. EVERY bullet must contain reasoning: (1) briefly state the fact, (2) explain WHY it happened by inferring the cause from the trade/type/delay/content data given, (3) project the expected outcome IF a specific concrete action is taken (e.g., '~에 우선 재방문을 집중하면 60일+ 장기미처리가 다음 달 X건 수준으로 감소할 것으로 판단됨'). A bullet without cause OR projection is unacceptable."},
   {id:"s_cD",t:"D. 성과·리스크 우선",d:"D. Lead with the two most important things first: notable month-over-month achievements, and worsened/risk points (each with reasoning). Then structural analysis, then concrete improvements."},
   {id:"s_cE",t:"E. 조치 범위 제한",d:"E. SCOPE OF IMPROVEMENTS — STRICT: Every suggested action must be executable by a single field maintenance manager (담당자) at the site level. ABSOLUTELY NEVER mention or propose company-level or organizational changes: dedicated team / task force operation (전담팀 운영), executive or management decisions (경영진), supply-chain / procurement-system reform (공급망, 구매 시스템 개선), hiring more staff (인력 충원), or introducing new IT/approval systems (시스템 도입). These are impossible at the manager level and must not appear at all. Limit advice strictly to: prioritizing specific units/trades, scheduling re-visits (재방문), coordinating with specific subcontractors already contracted, following up on pending 품의/자재 지연, managing 공가세대 access, etc."},
-  {id:"s_cF",t:"F. 기호 안전",d:"F. SYMBOL SAFETY (CRITICAL): For emphasis use ONLY <strong> tags. NEVER wrap any word in single or double quotation marks (e.g., do NOT write '민원', '품의'). Stray quotes collide with the HTML inline-style quotes and break the layout, causing symbols to overlap with text. Always refer to keywords plainly inside tags, e.g., <strong style='color: #d9534f;'>누수</strong>. Do not place bullet characters or markdown dashes inside the text; the <li> element already provides the bullet."},
+  {id:"s_cF",t:"F. 기호 안전",d:"F. SYMBOL SAFETY (CRITICAL): For emphasis use ONLY <strong> tags. NEVER wrap any word in single or double quotation marks (e.g., do NOT write '민원', '품의'). Stray quotes collide with the HTML inline-style quotes and break the layout, causing symbols to overlap with text. Always refer to keywords plainly inside tags, e.g., <strong style='color: #d9534f;'>누수</strong>. Do not place bullet characters or markdown dashes inside the text — the <li> element already provides the bullet.\\nSEMICOLON BAN (CRITICAL): NEVER write a semicolon (;) in Korean body text. Semicolons belong ONLY inside CSS inline styles. Korean report prose does not use them — split into two sentences, or join with 과/와 or a comma. Never write HTML entities (&nbsp; &amp;) in visible text either."},
   {id:"s_cG",t:"G. 중대하자 판정·서술",d:"G. CRITICAL DEFECTS (중대하자) — HIGH PRIORITY + JUDGMENT REQUIRED: The [중대하자 의심 후보] block lists items rule-extracted from receipt content/type (keywords, 피해보상, long complaints) each with a 의심 reason tag. These are CANDIDATES, NOT confirmed. Apply the COMPANY MANUAL and CONFIRM only those that genuinely qualify, EXCLUDING keyword false-positives (e.g., a passing mention of 보상 with no real damage, or a long but trivial complaint). Manual 중대하자 = 누수, a defect forcing residents to vacate the unit for 2+ weeks, 엘리베이터 갇힘·멈춤, 침수, or 언론보도 리스크; also confirm severe 피해보상/강성민원 when the content shows real severity. If 1 or more candidates genuinely qualify, you MUST add a dedicated subtitled section near the TOP: state how many qualify and of what kind, cite the specific 동/호 of the most serious ones, infer the cause, and give manager-level priority actions ONLY (prioritized re-visit to that 동/호, calling the already-contracted subcontractor first, accelerating the pending 품의) — NEVER executives (경영진), task forces (전담팀), hiring, or new systems. If NONE genuinely qualify (or the block shows 의심 0건), include ONE brief line: 중대하자 의심 해당 없음. This is an EXCEPTION to rule B's omit policy."}]},
  {scope:"site",label:"후보 주제",hdr:"**[CANDIDATE TOPICS — pick the most relevant, up to 5]**",fmt:false,rules:[
   {id:"s_topics",t:"후보 주제 6종",d:"- 현황 분석 및 전월대비 추이 (analytical interpretation with cause and projection)\n- 공종별/유형별 특이사항 및 장기미처리 리스크 (infer delay causes, project effect of targeted follow-up)\n- 중대하자 현황 및 안전·법적 리스크 (critical defects: types/counts/MoM, cause + manager-level priority action; if 0, one brief line per rule G)\n- 미처리건 접수내용 특이사항 (only if the provided outstanding-case text reveals critical keywords: 누수, 민원, 품의, 자재, 피해보상 등)\n- 공가세대 하자처리 현황 (only if vacant-unit data is meaningful)\n- 처리 신속도 개선 방안 / 괄목할만한 성과 (manager-level concrete actions only)"}]},
@@ -4626,13 +4640,19 @@ async function doSaveUL(byName,allItems){
   progHide();
   S._uploadRaw=null;
   DFMETA.hist=[{at:new Date().toISOString(),rows:savedCount,sites:savedSites,rm:S.dfPubRm||''}].concat(DFMETA.hist||[]).slice(0,10);dfMetaSave();   /* 업로드 이력(615차) */
+  /* ⚠ 686차: 저장하자마자 이 PC 화면이 새 원본을 쓰도록 현장 캐시를 비운다.
+     원본 앱이 그랬듯 업로드 즉시 현장 페이지가 바뀐다(팀 화면은 여전히 [등록] 후에 바뀐다). */
+  Object.keys(DF.kpi).forEach(k=>{const sid=k.slice(k.indexOf('/')+1);
+    if(((S.def||{})[sid]||[]).length){delete DF.kpi[k];delete DF.sw[k];delete DF.sam[k];delete (DF.local||{})[k];}});
+  DF.lastDash=null;
   dfProdCardFill();   /* ⚠ 원본 setRmChip → 게시 카드 갱신 */
+  if(S.view==='defect')rDefect();
   toast(`${savedCount.toLocaleString()}건 · ${savedSites}개 현장 저장 완료`);
   S.ubuf=null;setStep(3);
   setTimeout(()=>{
     setStep(1);
     S._importing=false;
-    toast('저장 완료 · 아직 게시 전입니다 — [등록]을 눌러야 팀 화면에 반영됩니다',6000);   /* ⚠ 원본은 화면 이동 — calapp 화면은 게시본 기준이라 이동해도 숫자가 안 변해 오해를 부른다 */
+    toast('저장 완료 · 이 PC 화면에는 바로 반영됩니다 — 팀 화면은 [등록] 후에 바뀝니다',6000);   /* ⚠ 원본은 화면 이동 — calapp 화면은 게시본 기준이라 이동해도 숫자가 안 변해 오해를 부른다 */
   },600);
 }
 function cancelUL(){S.ubuf=null;S._uploadRaw=null;S._importing=false;}
@@ -4932,7 +4952,21 @@ async function dfPublish(){
     dfSubSiteCfg();   /* hasCommercial/showVacant 최신화 — 게시 sites 에 실린다 */
     const rm=dfPubRm(),pm=pM(rm);
     const cap=capAll();
-    const all=dfDashSites().map(s=>({s,st:calc(S.def[s.id]||[],s,rm)}));
+    /* ⚠ 686차 핵심 수정 — 예전에는 dfSites() 전부를 calc(S.def[id]||[]) 로 다시 계산해 게시했다.
+       이 PC 에 원본 행이 없는 현장은 빈 배열로 계산돼 **전부 0 으로 덮였다.**
+       현장 3개만 올린 PC 에서 [등록]을 누르면 나머지 현장 숫자가 통째로 0 이 됐고,
+       사용자는 「숫자가 꼬였다」며 원본 앱에서 재게시해야 했다.
+       이제 원본이 있는 현장만 새로 쓰고, 없는 현장은 **직전 게시본을 그대로 읽어 남긴다.** */
+    const _hasRows=id=>((S.def||{})[id]||[]).length>0;
+    const _keepSites=dfSites().filter(s=>!_hasRows(s.id));
+    const _keepKpi={};
+    for(const s2 of _keepSites){
+      try{const v=(await FB.db.ref('report/'+rm+'/'+s2.id+'/kpi').once('value')).val();if(v)_keepKpi[s2.id]=dfDec(v);}catch(e){}
+    }
+    /* 대시보드 합계도 같은 규칙 — 새로 계산한 현장 + 직전 게시본을 남긴 현장을 함께 더한다.
+       둘 다 없는 현장(한 번도 안 올린 신규)만 합계에서 빠진다. */
+    const all=dfDashSites().map(s=>({s,st:_hasRows(s.id)?calc(S.def[s.id],s,rm):(_keepKpi[s.id]||null)}))
+      .filter(x=>x.st&&typeof x.st.tR==='number');
     /* 합계 — 원본 rDash 단일 패스와 동일 수식 */
     let tR=0,tRes=0,tU=0,tLt=0,pR=0,pRes=0;
     for(const x of all){const st=x.st;tR+=st.tR;tRes+=st.res;tU+=st.unr;tLt+=st.lt;pR+=st.prev.total;pRes+=st.prev.res;}
@@ -4948,8 +4982,13 @@ async function dfPublish(){
         +'<div style="'+_cell+'text-align:right;">'+b+'</div>'
         +'<div style="'+_cell+'text-align:right;'+(red?'color:var(--rd);font-weight:700;':'')+'">'+c+'</div>'
         +'<div style="'+_cell+'text-align:right;">'+d+'</div></div>';
-      const siteRows=dfSites().map(s2=>{const k=calc(S.def[s2.id]||[],s2,rm);
-        return _row(esc(s2.name)+(s2.region==='인수 전 현장'?' <span style="font-size:10.5px;color:var(--lbl3)">인수 전</span>':''),
+      const siteRows=dfSites().map(s2=>{
+        const isNew=_hasRows(s2.id);
+        const k=isNew?calc(S.def[s2.id],s2,rm):_keepKpi[s2.id];
+        const tag=s2.region==='인수 전 현장'?' <span style="font-size:10.5px;color:var(--lbl3)">인수 전</span>':'';
+        /* ⚠ 이 PC 에 원본이 없는 현장은 「유지」로 표시한다 — 0 으로 덮이지 않는다는 걸 게시 전에 알린다 */
+        if(!k)return _row(esc(s2.name)+tag+' <span style="font-size:10.5px;color:var(--lbl3)">원본 없음 · 게시 제외</span>','—','—','—',false,false);
+        return _row(esc(s2.name)+tag+(isNew?'':' <span style="font-size:10.5px;color:var(--bl)">직전 게시본 유지</span>'),
           k.tR.toLocaleString(),k.unr.toLocaleString(),(k.tR>0?(k.res/k.tR*100).toFixed(1):'0.0')+'%',false,k.unr>0);}).join('');
       openModal('사내 게시 확인',
         '<p style="font-size:12.5px;color:var(--lbl2);margin-bottom:10px">아래 내용이 맞으면 게시하세요 — 팀 전원 화면에 곧바로 반영됩니다.</p>'
@@ -4967,7 +5006,8 @@ async function dfPublish(){
     const upd={};
     upd['report/'+rm+'/_dash']={wks:cap.wks||[],am:cap.am||{},insightsHTML:insightsHTML,sites:dfOrgToDashSites(),teams:dfOrgToDashTeams()};
     for(const s2 of dfSites()){ // 인수 전 현장 포함 — 대시보드 집계 제외는 유지되나 현장 개별 게시본은 전 현장에 제공(원본과 동일)
-      const r=calc(S.def[s2.id]||[],s2,rm);
+      if(!_hasRows(s2.id))continue;   /* ⚠ 686차: 원본이 없으면 아예 쓰지 않는다(직전 게시본 유지) */
+      const r=calc(S.def[s2.id],s2,rm);
       const kpi=Object.assign({},r,{ul:redactUL(r.ul),lul:redactUL(r.lul),critUl:redactUL(r.critUl)}); // 캡(300) 목록 — ulz 해제 실패 시 폴백
       let ulz='';
       try{
@@ -4988,7 +5028,8 @@ async function dfPublish(){
     delete DF.cache[rm];
     Object.keys(DF.kpi).forEach(k=>{if(k.indexOf(rm+'/')===0){delete DF.kpi[k];delete DF.sw[k];delete DF.sam[k];delete DF.vac[k];}});
     dfProdCardFill();
-    toast('등록 완료 · '+rm+' · 현장 '+dfSites().length+'개',6000);
+    {const _n=dfSites().filter(s2=>_hasRows(s2.id)).length,_k=_keepSites.filter(s2=>_keepKpi[s2.id]).length;
+     toast('등록 완료 · '+rm+' · 갱신 '+_n+'개 현장'+(_k?' · 유지 '+_k+'개':''),6000);}
     try{
       const idx=(await FB.db.ref('reportIndex').once('value')).val()||{};
       const stale=Object.keys(idx).filter(k=>/^\d{4}-\d{2}$/.test(k)&&k>rm);
@@ -5023,7 +5064,9 @@ function dfProdCardFill(){
   _fill('#dfAzEp',S.azEp);_fill('#dfAzDep',S.azDep);_fill('#dfAzCk',S.azCk);
   const hi=$('#dfUpHist');
   if(hi){const h=DFMETA.hist||[];
-    hi.innerHTML=h.length?h.slice(0,3).map(x=>'<div>'+esc(dfFmtDT(x.at))+' · '+x.sites+'개 현장 · 기준월 '+esc(x.rm||'—')+'</div>').join('')
+    /* ⚠ 686차: slice(0,3) 이었다. meta 에는 10회가 쌓이는데 화면엔 3줄만 나와
+       네 번째부터 「이력이 더 안 생긴다」로 보였다. 보관하는 만큼 그대로 보여 준다. */
+    hi.innerHTML=h.length?h.map(x=>'<div>'+esc(dfFmtDT(x.at))+' · '+x.sites+'개 현장 · 기준월 '+esc(x.rm||'—')+'</div>').join('')
       :'—';}   /* 행수는 뺐다(사용자: 궁금하지 않음) — meta 에는 계속 남는다 */
   const at=$('#dfPubAt');
   if(at){at.textContent='—';
@@ -5055,7 +5098,6 @@ function dfProdWire(){
     'dfp.ulCancel':()=>{cancelUL();S._wiz=null;closeModal();},
     'dfp.ulSite':el=>confirmNewSite(el.dataset.name,Number(el.dataset.idx),Number(el.dataset.total)),
     'dfp.ai':el=>runAI(el.dataset.sid),
-    'dfp.dashAi':()=>runDashAI(),
     'dfp.snapAll':()=>{$$('#mbody .snap-mo').forEach(c=>{c.checked=true;});},
     'dfp.snapCancel':()=>{const r=window.__SNAPPICK__;window.__SNAPPICK__=null;closeModal();if(r)r(null);},
     'dfp.snapOk':()=>{const v=$$('#mbody .snap-mo:checked').map(c=>c.value);
@@ -5106,7 +5148,7 @@ else setTimeout(dfProdBoot,0);
 /* ═══════════ 하자 생산자 ② 끝 ═══════════ */
 
 /* ═══════════ 하자 생산자 ③ — AI 분석 (원본 app-view.js 이식 · 614차) ═══════════
-   runAI(현장 종합 분석)·runDashAI(대시보드 주요이슈 재작성). 프롬프트·규칙 조립(buildRules→RULE_DEF)은
+   runAI(현장 종합 분석). 프롬프트·규칙 조립(buildRules→RULE_DEF)은
    원본 그대로 — 문구를 바꾸면 회의자료 산출물이 달라진다. 적응 지점은 각 ⚠ 주석.
    ⚠ 둘 다 **원본 하자 행이 있는 마스터 PC 전용**이다(calc 를 로컬 행으로 돌린다).
    ⚠ CSP connect-src 의 *.services.ai.azure.com 이 이 호출을 허용한다 — CSP 를 죄면 여기가 죽는다. */
@@ -5121,9 +5163,9 @@ S.azEp='';S.azDep='';S.azCk='';
    앱이 더는 읽지 않는다는 것과 사용자 브라우저에서 사라졌다는 것은 다른 얘기다. */
 try{['calapp.ck','calapp.ai','ck'].forEach(k=>localStorage.removeItem(k));}catch(_){ }
 let _aiConfP=null;
-let _aiBusy=false;   /* 675차: runAI·runDashAI 동시 실행 방지 — 둘이 같은 게시본 리프를 쓴다 */
+let _aiBusy=false;   /* 675차: AI 연타 방지 — 한 번 더 누르면 프롬프트가 통째로 또 나간다 */
 /* force=true 면 캐시를 버리고 다시 읽는다. 화면 갱신(dfProdCardFill)은 캐시를 쓰고,
-   실제 실행(runAI·runDashAI) 진입에서만 강제로 읽는다 —
+   실제 실행(runAI) 진입에서만 강제로 읽는다 —
    다른 관리자 PC 가 방금 바꾼 엔드포인트·키를 옛 값으로 부르지 않기 위해서다(호출당 읽기 1회는 무시할 비용). */
 function aiConfLoad(force){
   if(force)_aiConfP=null;
@@ -5151,7 +5193,7 @@ function aiConfSave(field,val){
 }
 
 /* ═══════════ AI 제공자 한 겹 (670차 도입 · 671차 Azure 단일화) ═══════════
-   runAI·runDashAI 는 엔진의 URL·헤더·응답 모양을 모른다 — 아래 provider 만 안다.
+   runAI 는 엔진의 URL·헤더·응답 모양을 모른다 — 아래 provider 만 안다.
    671차에 Gemini 를 걷어내고 회사 Azure AI Foundry 로 일원화했다. 다른 엔진을 붙일 때는
    이 객체를 하나 더 만들고 aiProvider() 가 고르게 하면 된다(Claude 계열은 응답 모양이 달라 별도 provider 가 필요하다).
    ⚠ 프롬프트·규칙 조립(RULE_DEF·buildRules)은 산출물의 문구를 정하므로 여기 들어오지 않는다.
@@ -5237,7 +5279,7 @@ const AI={
   /* 응답을 코드펜스 없이 정리해 돌려준다 — 두 호출부가 똑같이 하던 일 */
   async text(o){
     /* ⚠ trim 을 **먼저** 한다. `$` 는 입력 맨 끝에서만 맞아, 끝에 개행이 하나만 붙어도
-       닫는 펜스가 살아남아 runDashAI 의 JSON.parse 가 터졌다(670차부터 있던 결함). */
+       닫는 펜스가 살아남아 JSON.parse 가 터졌다(670차부터 있던 결함). */
     const t=String(await aiProvider().ask(o)||'').trim();
     return t.replace(/^```(?:html|json)?\s*/i,'').replace(/\s*```$/,'').trim();
   }
@@ -5297,41 +5339,16 @@ const p=`현대건설 ${((((S.org.teams||[]).find(t=>t.id===site.team))||((S.org
 _aiBusy=true;
 try{let txt=await AI.text({system:systemInstruction,prompt:p,max:4096});if(!txt)txt='분석 결과를 불러올 수 없습니다.';dfAnaWrite(sid,txt,rm);   /* ⚠ 원본 anaSet+lsSave+fb2AnaWrite — calapp 은 리프가 원본, 화면은 기존 실시간 구독이 갱신 */if(el)el.innerHTML=themeHTML(safeHTML(txt));toast('AI 분석 완료');}
 /* ⚠ 675차: 토스트를 함께 띄운다. el 은 호출 시점의 노드라 기다리는 동안 화면이 다시 그려지면
-   떨어져 나간 노드에 오류를 쓰게 되어, 사용자에겐 아무 일도 없던 것처럼 보였다(runDashAI 와 비대칭이었다). */
+   떨어져 나간 노드에 오류를 쓰게 되어, 사용자에겐 아무 일도 없던 것처럼 보였다. */
 catch(e){if(el)el.innerHTML=`<p style="color:var(--rd)">(AI 오류: ${esc(e.message)})</p>`;toast('AI 분석 실패: '+e.message,6000);}
 finally{_aiBusy=false;}}
-async function runDashAI(){
-  if(!isEditor()){toast('업데이트는 관리자만 실행할 수 있습니다');return;}   /* 671차 */
-  if(_aiBusy){toast('AI 작업이 이미 실행 중입니다');return;}   /* 675차 */
-  await aiConfLoad(true);   /* 671차 · 675차 true = 다른 PC 의 최신 값 */
-  if(!AI.ready()){toast(AI.hint());return;}
-  /* ⚠ 원본은 편집자 화면(#d-insight)만 바꿨고 게시 시점의 DOM 이 실렸다 — calapp 화면은 게시본이므로
-     재작성 결과를 report/{rm}/_dash/insightsHTML 에 직접 써서 전원에게 반영한다(등록 후 실행). */
-  const items=S._dashIns||[];
-  if(!items.length){toast('재작성할 이슈가 없습니다 — 먼저 [등록]을 실행하세요');return;}
-  const rm=dfPubRm();
-  toast('AI 분석 생성 중…');
-  const stripTags=h=>String(h).replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim();
-  const src=items.map((x,i)=>{const parts=String(x.sub).split('<br>');return `[카드${i+1}] 제목:${x.ttl} | 등급:${x.cls}\n  핵심수치(원문):${stripTags(parts[0]||'')}\n  진단·조치(원문):${stripTags(parts[1]||'')}`;}).join('\n');
-  const dashSystem = buildRules('dash'); // RULE_DEF 조립 — 기본 규칙 편집 override 반영
-  const dp=`아래 3개 카드의 각 2줄을 위 규칙에 따라 한국어 개조식으로 다시 작성하세요. 수치는 원문 그대로 유지할 것.\n\n${src}`;
-  _aiBusy=true;
-  try{
-    const txt=await AI.text({system:dashSystem,prompt:dp,max:1200});
-    /* ⚠ 규칙은 JSON 배열만 내라고 하지만 모델이 앞뒤에 한마디 붙이는 일이 있다 —
-       첫 [ 부터 마지막 ] 까지만 떼어 낸다. 배열이 아예 없으면 아래 JSON.parse 가 형식 오류로 걸린다. */
-    const _b=txt.indexOf('['),_e=txt.lastIndexOf(']');
-    const arr=JSON.parse((_b>=0&&_e>_b)?txt.slice(_b,_e+1):txt);
-    if(!Array.isArray(arr)||arr.length<items.length)throw new Error('형식 오류');
-    const html=items.map((x,i)=>{const a=arr[i]||{};const l1=safeHTML(a.line1||''),l2=safeHTML(a.line2||'');return `<div class="ic ${x.cls}"><div class="ic-i">${icoSVG(x.icon)}</div><div class="ic-t"><div class="ic-ttl">${x.ttl}</div><div class="ic-sub">${l1}<br>${l2}</div></div></div>`;}).join('');
-    await FB.db.ref('report/'+rm+'/_dash/insightsHTML').set(themeHTML(html));
-    delete DF.cache[rm];if(S.view==='defect')rDefect();
-    toast('AI 분석 완료 · 게시본에 반영됨');
-  }catch(e){
-    /* ⚠ 실패 시 게시본은 그대로(규칙기반) — 화면 복원이 필요 없다 */
-    toast('AI 분석 실패: '+e.message,6000);
-  }finally{_aiBusy=false;}
-}
+/* 686차: runDashAI(대시보드 주요이슈 AI 재작성)를 걷어냈다.
+   ⚠ 이 카드는 [등록] 때마다 dfInsightsBuild 가 규칙으로 다시 쓴다 — 자동 갱신이 진실이고
+      AI 재작성은 그 위에 한 번 더 덮는 선택 기능이었다. 두 경로가 겹쳐 사용자에겐
+      「자동으로 바뀌는데 업데이트 버튼은 왜 있나」로만 보였다. 규칙 기반 하나로 정리한다.
+   ⚠ 되살릴 때는 이 주석 · 버튼 · 'dfp.dashAi' 액션 · RULE_DEF 의 scope:'dash' 세 묶음 ·
+      e2e-defect · ai-unit 의 검사를 같이 되돌릴 것. RULE_DEF 의 dash 규칙은 지우지 않고 남겨 뒀다
+      — 지금은 아무도 안 읽지만 되살릴 때 그대로 쓰기 위함이다. */
 /* ═══════════ 하자 생산자 ③ 끝 ═══════════ */
 
 /* ═══════════ 하자 생산자 ④ — 자연어 찾기(NLQ) 해석기 (원본 app-core.js 이식 · 614차) ═══════════
@@ -5484,9 +5501,26 @@ function nlqApply(rows,R){
 /* ⚠ noAnim 은 기본이 **켜짐**이다(351차) — 차트 등장 애니메이션은 큰 표가 함께 그려질 때 렉만 남기고
    정보를 더해 주지 않는다. 인쇄·사이드바 토글에서 잠시 끄던 스위치를 상시로 돌린 것이라
    그 경로들은 손대지 않아도 그대로 동작한다 */
-const DF={cache:{},kpi:{},sw:{},sam:{},vac:{},plans:{},ana:{},list:{},ch:{},busy:false,lastDash:null,noAnim:true};
-/* 도넛 팔레트 — 원본과 동일 고정값(같은 현장·공종이 어디서나 같은 색) */
-const DF_PAL=['#1F2B4C','#2C437C','#304D9D','#3259B6','#3E71D2','#538CDE','#74ABE6','#A0C8F0','#C7DDF6','#DFEBFA','#EAF2FC','#B3C7DD'];
+const DF={cache:{},kpi:{},sw:{},sam:{},vac:{},plans:{},ana:{},list:{},ch:{},local:{},busy:false,lastDash:null,noAnim:true};
+/* 도넛 팔레트 — 686차: 고정 12색 배열을 버리고 **양 끝만 정해 개수에 맞춰 나눈다.**
+   ⚠ 예전에는 12색을 순환했다. 현장 도넛은 현장 수를 자르지 않으므로(공종 도넛만 상위 11+기타)
+      현장이 13개가 되는 순간 13번째가 배열을 한 바퀴 돌아 첫 색(가장 진한 남색)으로 되돌아왔고,
+      옅어지던 띠 끝에 진한 조각이 박혀 순서가 끊겨 보였다.
+   ⚠ 가운데 앵커(브랜드 파랑)를 하나 둔다. 짙은 남색→연한 하늘을 곧바로 이으면 중간이 회색으로
+      죽는다(실측: 8칸의 4번째가 #929CAC). 양 끝은 고정이고 중간만 파랑을 지난다.
+   ⚠ 섞기는 제곱 공간에서 한다 — sRGB 를 그대로 선형 보간하면 중간이 탁해진다. */
+const DF_PAL_A='#1F2B4C',DF_PAL_M='#3E71D2',DF_PAL_B='#DCE9F8';
+function dfRamp(n){
+  const hx=c=>[1,3,5].map(i=>parseInt(c.substr(i,2),16));
+  const A=hx(DF_PAL_A),M=hx(DF_PAL_M),B=hx(DF_PAL_B),m=Math.max(1,n|0),out=[];
+  const mix=(x,y,t)=>'#'+[0,1,2].map(k=>Math.round(Math.sqrt(x[k]*x[k]*(1-t)+y[k]*y[k]*t))
+    .toString(16).padStart(2,'0')).join('').toUpperCase();
+  for(let i=0;i<m;i++){
+    const t=m<=1?0:i/(m-1);
+    out.push(t<=0.5?mix(A,M,t*2):mix(M,B,(t-0.5)*2));
+  }
+  return out;
+}
 /* 게시본 키 복원 — 게시 때 deepEncKeys 로 인코딩된 중첩 맵 키(공종·하자유형 등)를 되돌린다 */
 function dfDecKey(k){try{return decodeURIComponent(String(k));}catch(e){return String(k);}}
 function dfEncKey(k){return encodeURIComponent(String(k==null?'':k)).replace(/\./g,'%2E');}   /* 원본 fbEncKey 와 동일 — 쓰기 키 규칙 통일 */
@@ -5621,11 +5655,37 @@ async function dfLoad(){
   }catch(e){console.warn('[하자] 게시본 읽기 실패',e);return null;}
   finally{DF.busy=false;}
 }
+/* 686차: 이 PC 에 원본 행이 있는 현장인가 — 업로드한 마스터 PC 에서만 참이다.
+   ⚠ 게시 여부와 무관하다. 업로드 직후(게시 전)에도 참이다. */
+function dfLocalRows(sid){const a=(S.def||{})[sid];return (a&&a.length)?a:null;}
+/* 686차: 로컬 원본으로 현장 화면 값을 그 자리에서 계산한다 — 원본 앱이 그랬듯 업로드하면 바로 보인다.
+   ⚠ 게시본을 덮어쓰지 않는다. 이 PC 화면에만 쓰고, 팀 화면은 여전히 [등록]을 눌러야 바뀐다.
+   ⚠ 게시 경로(dfPublish)와 같은 calc()·capAll() 을 쓴다 — 미리 보는 숫자와 게시될 숫자가 어긋나면 안 된다. */
+function dfLocalSiteData(sid,rm){
+  const rows=dfLocalRows(sid);if(!rows)return null;
+  const site=dfSites().find(x=>x.id===sid);if(!site)return null;
+  try{
+    const cap=capAll();
+    return {kpi:calc(rows,site,rm),
+      sw:(cap.siteWks&&cap.siteWks[sid])||[],
+      sam:(cap.siteAm&&cap.siteAm[sid])||{}};
+  }catch(e){console.warn('[하자] 로컬 미리보기 계산 실패',sid,e);return null;}
+}
 /* 현장 하나를 열 때 — kpi 전체·추이·도넛·공가 입력값을 병렬로 읽는다 */
 async function dfSiteData(sid){
-  const rm=dfRm();if(!S.live||!FB.db||!rm||!sid)return null;
+  const rm=dfRm();if(!rm||!sid)return null;
   const k=rm+'/'+sid;
   if(DF.kpi[k]!==undefined)return DF.kpi[k];
+  /* ⚠ 686차: 이 PC 에 원본이 있으면 게시본을 기다리지 않고 로컬 계산을 먼저 쓴다.
+     공가 입력값(vac)만은 여럿이 같이 쓰는 값이라 게시본에서 계속 읽는다. */
+  const loc=dfLocalSiteData(sid,rm);
+  if(loc){
+    DF.kpi[k]=loc.kpi;DF.sw[k]=loc.sw;DF.sam[k]=loc.sam;DF.local=DF.local||{};DF.local[k]=true;
+    DF.vac[k]=DF.vac[k]||{};
+    if(S.live&&FB.db)dfRef('report/'+rm+'/'+sid+'/vac').then(v=>{DF.vac[k]=v||{};}).catch(()=>{});
+    return DF.kpi[k];
+  }
+  if(!S.live||!FB.db)return null;
   try{
     const[kpi,sw,sam,vac]=await Promise.all([
       dfRef('report/'+rm+'/'+sid+'/kpi'),dfRef('report/'+rm+'/'+sid+'/siteWks'),
@@ -5853,7 +5913,8 @@ function dfDonutDraw(key,cid,lgid,items){
   /* 원본 app-view.js 911·919행 문자 그대로 — pointStyle:'circle'·caretPadding:32 포함,
      animation 옵션은 원본처럼 지정하지 않는다(도넛 기본 회전·원호 이징까지 동일해야 한다).
      유일 편차: DF.noAnim(전용 인쇄·사이드바 토글) 때만 duration 0 을 덧씌우는 어댑터 한 줄. */
-  DF.ch[key]=new Chart(el,{type:'doughnut',data:{labels:data.map(d=>d.t),datasets:[{data:data.map(d=>Number(d.c)),backgroundColor:data.map((d,i)=>DF_PAL[i%DF_PAL.length]),borderWidth:3,borderColor:border,pointStyle:'circle',hoverOffset:12,hoverBorderWidth:3}]},
+  const PAL=dfRamp(data.length);
+  DF.ch[key]=new Chart(el,{type:'doughnut',data:{labels:data.map(d=>d.t),datasets:[{data:data.map(d=>Number(d.c)),backgroundColor:data.map((d,i)=>PAL[i]),borderWidth:3,borderColor:border,pointStyle:'circle',hoverOffset:12,hoverBorderWidth:3}]},
     options:{responsive:true,maintainAspectRatio:false,layout:{padding:14},cutout:'58%',
       ...(DF.noAnim?{animation:{duration:0}}:{}),
       /* 231차 지시: 인쇄본에서 도넛 안 글자가 커 보인다 — 인쇄용 캔버스(prSx/prMx)만 축소.
@@ -5865,7 +5926,7 @@ function dfDonutDraw(key,cid,lgid,items){
     /* 원본과 동일: 범례는 항상 2열 — --lgr(행수)로 좌열부터 세로 채움. 폭 조건 토글은 원본에 없다(225차 철회). */
     lg.classList.add('lg-2col');
     lg.style.setProperty('--lgr',String(Math.max(1,Math.ceil(data.length/2))));
-    lg.innerHTML=data.map((d,i)=>`<div class="it" data-idx="${i}"${d.full?` data-tt="${esc(d.full)}" aria-label="${esc(d.full)}"`:''} data-tip="${esc(d.full||d.t)}"><span class="l"><span class="dt" style="background:${DF_PAL[i%DF_PAL.length]}"></span><span class="nm">${esc(d.t)}</span></span><span class="cnt">${Number(d.c).toLocaleString()}건</span><span class="pct">${tot>0?(Number(d.c)/tot*100).toFixed(1):0}%</span></div>`).join('');
+    lg.innerHTML=data.map((d,i)=>`<div class="it" data-idx="${i}"${d.full?` data-tt="${esc(d.full)}" aria-label="${esc(d.full)}"`:''} data-tip="${esc(d.full||d.t)}"><span class="l"><span class="dt" style="background:${PAL[i]}"></span><span class="nm">${esc(d.t)}</span></span><span class="cnt">${Number(d.c).toLocaleString()}건</span><span class="pct">${tot>0?(Number(d.c)/tot*100).toFixed(1):0}%</span></div>`).join('');
     lg.querySelectorAll('.it').forEach(it=>{
       it.addEventListener('mouseenter',()=>{const ch=DF.ch[key];if(!ch)return;const idx=Number(it.dataset.idx);ch.setActiveElements([{datasetIndex:0,index:idx}]);if(ch.tooltip)ch.tooltip.setActiveElements([{datasetIndex:0,index:idx}],{x:0,y:0});ch.update();});
       it.addEventListener('mouseleave',()=>{const ch=DF.ch[key];if(!ch)return;ch.setActiveElements([]);if(ch.tooltip)ch.tooltip.setActiveElements([],{x:0,y:0});ch.update();});
@@ -5903,7 +5964,9 @@ function dfInsightHTML(html){
      (상세 집계는 게시본에 실리지 않아 이 앱에서는 펼칠 수 없다) */
   const inner=raw?String((typeof DOMPurify!=='undefined')?DOMPurify.sanitize(raw):esc(raw)).replace(/\sdata-tt="펼치기"/g,'')
     :'<div class="ic warn"><div class="ic-i"><svg viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/></svg></div><div class="ic-t"><div class="ic-ttl">주요 이슈 없음</div><div class="ic-sub">이 게시본에는 주요 이슈가 포함되지 않았습니다 · 재게시하면 표시됩니다.</div></div></div>';
-  return `<div class="card"><div class="sh"><div class="ct cardttl">주요 이슈 및 분석 의견</div>${isEditor()&&!S.snap?`<button class="btn bo bsm no-print" data-act="dfp.dashAi" data-tt="주요 이슈 3장을 ${esc(AI.label())} 로 다시 써서 게시본에 반영합니다([등록] 직후, 마스터 PC 전용)">업데이트</button>`:''}</div><div class="ins-grid">${inner}</div></div>`;
+  /* 686차: 「업데이트」 버튼을 없앴다 — 이 카드는 [등록] 때마다 dfInsightsBuild 가 데이터로 다시 쓴다.
+     버튼은 그 세 장을 AI 로 한 번 더 고쳐 쓰는 것이었는데, 자동 갱신과 구분이 안 돼 혼란만 줬다. */
+  return `<div class="card"><div class="sh"><div class="ct cardttl">주요 이슈 및 분석 의견</div></div><div class="ins-grid">${inner}</div></div>`;
 }
 function dfNoneHTML(msg){
   return `<div class="card dfc-none">
@@ -6253,7 +6316,8 @@ function rDefectSite(root,site){
   const units=site.units||0;
   const compDate=site.completionDate?` · ${site.completionDate}`:'';
   const kpis=dfKcHTML([
-    {cls:'bl kc-site',label:esc(site.region||'-'),valHTML:`<span class="kc-site-nm">${esc(site.name||'-')}</span>`,meta:`${units.toLocaleString()}세대 · ${site.buildings||0}개동${compDate}`},
+    /* ⚠ 686차: 이 PC 원본으로 계산한 화면이면 표시한다 — 팀 화면(게시본)과 다를 수 있음을 숨기지 않는다 */
+    {cls:'bl kc-site',label:esc(site.region||'-')+((DF.local||{})[dfRm()+'/'+site.id]?' <span style="font-size:10.5px;font-weight:700;color:var(--bl)">이 PC 원본 · 미게시 반영</span>':''),valHTML:`<span class="kc-site-nm">${esc(site.name||'-')}</span>`,meta:`${units.toLocaleString()}세대 · ${site.buildings||0}개동${compDate}`},
     {cls:'sk',label:'전체 접수',val:st.tR||0,unit:'건',meta:`세대당 ${units>0?((st.tR||0)/units).toFixed(1):'0.0'}건`},
     {cls:'ms',label:'처리 완료',val:st.res||0,unit:'건',meta:`처리율 ${(Number(st.rate)||0).toFixed(1)}%`},
     {cls:'wh'+((st.unr||0)>0?' kc-warn':''),label:'미처리',val:st.unr||0,unit:'건',meta:`세대당 ${units>0?((st.unr||0)/units).toFixed(1):'0.0'}건`,act:'ul',sid:site.id,tt:'미처리 하자리스트 보기'},
@@ -7803,7 +7867,7 @@ function miniDots(y,m){
     /* 완료도 점으로 남긴다 — 목록에서 빠진 뒤에도 그 날 무엇을 했는지 달력에는 보이게(흐린 점) */
     const done=stEff(it)===2;
     if(!tkMatch(sid,iid,it))return;
-    const p=taskAsPlan(sid,iid,it),col=planColor(p);
+    const p=taskAsPlan(sid,iid,it),col=colBg(planColor(p));   /* 687차: 그라디언트·무지개는 colBg 를 거쳐야 점에 칠해진다 */
     if(it.recur&&it.recur.f){recurDates(p,first,last).forEach(d=>add(d,col,done));return;}
     const end=it.end||it.date;
     for(let d=(it.date<first?first:it.date);d<=(end>last?last:end);d=addDays(d,1))add(d,col,done);
@@ -8124,6 +8188,8 @@ function kmSVG(vb,sel,o){
   (o.sites||[]).forEach(st=>{const q=kmSiteXY(st);if(q&&!(noFr&&q[1]>=KM_FR.y))pts.push({st,ox:q[0],oy:q[1],x:q[0],y:q[1]});});   /* 네모를 안 그릴 땐 제주 점도 뺀다 */
   kmPushOut(pts,boxes,R+u);kmSpread(pts,R*2+1.6*u);kmPushOut(pts,boxes,R+u);
   /* 550차: 여기부터는 겹층(.okm-ov)에 그린다 — 호버로 바뀌는 것은 전부 이쪽. 경계 svg 는 손대지 않는다 */
+  const gpx=(o.id||'okmSvg')+'-g';
+  ov+=colSvgDefs(pts.map(p=>kmSiteColor(p.st.id)),gpx);   /* 687차: 그라디언트·무지개 담당자 색을 점에 그린다 */
   ov+='<path class="okm-hv"></path><text class="okm-ct hov okm-hvt" text-anchor="middle"></text>';
   pts.forEach(p=>{
     /* ⚠ 굵기를 여기서 주지 않는다 — .okm-pin·.okm-ld 는 non-scaling-stroke 라
@@ -8133,7 +8199,7 @@ function kmSVG(vb,sel,o){
         +'" y2="'+p.y.toFixed(1)+'"></line>';
     const col=kmSiteColor(p.st.id);
     ov+='<circle class="okm-pin'+(col?'':' none')+'" cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="'+R.toFixed(2)
-      +'"'+(col?' fill="'+esc(col)+'"':'')+' data-sid="'+esc(p.st.id)+'"'
+      +'"'+(col?' fill="'+esc(colSvgFill(col,gpx))+'"':'')+' data-sid="'+esc(p.st.id)+'"'
       +' data-tip="'+esc((p.st.name||'이름 없음')+' · '+(p.st.units||0).toLocaleString()+'세대')+'"></circle>';
   });
   const vbs=' viewBox="'+vb.x+' '+vb.y+' '+vb.w+' '+vb.h+'" preserveAspectRatio="xMidYMid meet" style="height:'+H+'px"';
@@ -8402,7 +8468,7 @@ function kmSiteList(all,mode){
       +esc(g.nm)+'<span class="kml-s">'+g.items.length+'</span><em class="kml-n">'+un.toLocaleString()+'</em></div>';
     g.items.forEach(x=>{
       const dim=!kmFiltHit(x);   /* 554차: 필터에 걸리면 지우지 않고 가라앉힌다 */
-      const on=!!kmSiteXY(x),col=kmSiteColor(x.id),ad=((S.cfg&&S.cfg.siteAddr)||{})[x.id]||'';
+      const on=!!kmSiteXY(x),col=colBg(kmSiteColor(x.id)),ad=((S.cfg&&S.cfg.siteAddr)||{})[x.id]||'';
       const yb=kmYearBand(x),yl=(KM_YR.find(z=>z[0]===yb)||[])[1]||KM_YR_NONE;
       const tip=[x.completionDate?'준공 '+x.completionDate+' · '+yl:yl,ad||(on?'':'현장명으로 자리를 찾지 못했습니다 — 눌러서 주소 입력')
         ].filter(Boolean).join('\n');   /* 583차: '더블클릭으로 주소 입력' 안내는 뺐다 */

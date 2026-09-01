@@ -106,8 +106,9 @@ ok('엔드포인트를 호스트로 정규화',r7.every(v=>v==='https://x.servic
 
 /* ⑧ 연타 방지 */
 const r8=await pg.evaluate(async()=>{
+  /* 686차: runDashAI 를 걷어내 연타 방지 검사를 runAI 로 옮겼다 */
   window.__TOASTS__=[];_aiBusy=true;
-  await runDashAI();
+  await runAI('sA');
   _aiBusy=false;
   return window.__TOASTS__.join('|');
 });
