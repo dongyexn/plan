@@ -1,6 +1,6 @@
 # 인수인계 — 일정공유 달력 앱 (calapp)
 
-## 현재 기준선 — v641
+## 현재 기준선 — v687
 
 - 이 저장소가 업무·조직·하자 데이터의 단일 운영 앱이다. 하자 데이터는 HCS 원본 업로드 → 로컬 저장 → 집계 → 게시 → 조회까지 이 앱에서 처리한다.
 - 하자 원본 IndexedDB 저장소는 `calapp_defects_v1`로 독립 운영한다. 기존 로컬 설치에서 데이터가 발견되면 최초 1회만 현재 저장소로 자동 복사하고 이후에는 현재 저장소만 사용한다.
@@ -487,6 +487,10 @@ calapp/tasks/{sid}/{iid}
 - **같은 업무가 tasks 와 archive 두 곳에 남으면 안 됩니다(384차).** putTask·trashTask 가
   아카이브 사본을 걷어 줍니다 — tasks 에 쓰는 새 경로를 만들면 같은 처리를 반드시 넣으세요.
   또 `migrateRemote` 처럼 전 업무를 훑어 되쓰는 코드는 `arch` 플래그를 건너뛰어야 합니다.
+- **움직이는 장식은 `transform`/`opacity` 로만 만드세요(683차).** `background-position` 처럼
+  합성으로 안 올라가는 속성을 애니메이션하면 **프레임마다 주 스레드가 그 요소를 다시 칠합니다** —
+  막대 60개에서 8초에 1.08초, 150개면 1.98초를 먹었습니다. 판정은 `Performance.getMetrics()` 의
+  `RecalcStyleCount` 로 합니다(합성이면 0, 아니면 요소 수와 무관하게 초당 60회).
 - **FullCalendar 요일 헤더도 `fc-day-sun`/`fc-day-sat`을 가집니다.** 주말 배경을
   줄 때 `td.fc-daygrid-day`로 한정하지 않으면 헤더까지 덮습니다.
 - **`table-layout:fixed`에서 열 폭을 지정해도 컨테이너가 좁으면 비율로 축소됩니다.**
@@ -4850,6 +4854,184 @@ report 앱 폐기 절차(아카이브·안내 페이지)뿐이다.
 - README와 HANDOFF의 현재 차수·테스트 파일·오류 대응 내용을 현행화했다.
 - 기능 추가나 모듈화는 하지 않고 안정화에 집중한다.
 - 검증 목표: static-audit FAIL 0, build-single PASS, 기존 AUTH/rainbow/defect 게이트 유지.
+
+### 687차 — 그라디언트·무지개 색이 안 닿던 자리 넷 · 모바일 업무 현황 빈 띠 (실브라우저 전수조사)
+
+크로미움 141 로 데스크톱 1440·모바일 390 여섯 화면을 시드 데이터로 돌리고 computedStyle 을 찍어 잡았다.
+게이트(정적·smoke·rules·rainbow·e2e-defect·ai-unit)는 686 기준 전부 통과 상태였다 — 아래는 게이트가 못 보던 것.
+
+- **`colBg()` 를 안 거치고 토큰(`grad-rd`·`rainbow-anim`)을 그대로 색 속성에 넣던 자리가 넷** 있었다.
+  686차 문서의 「색 원·팝오버는 colBg 문자열이라 CSS 추가 불필요」는 이 넷을 빼먹은 말이다.
+  | 자리 | 증상 |
+  |---|---|
+  | 조직 관리 현장 지도 점(`kmSVG` · `fill=`) | `fill="grad-rd"` → computed `rgb(0,0,0)` **검은 점** |
+  | 지도 모달 현장 탭 목록 색점(`kmPanelHTML`) | 같은 토큰 → 점 안 뜸. 담당자 탭은 colBg 라 정상 — 한 화면에서 탭마다 달랐다 |
+  | 업무 현황 미니달력 점(`miniDots`) | 그라디언트 → 기본 파랑으로 뭉개짐 |
+  | 모바일 캘린더 미니달력 점(`calMiniHTML`) | 그라디언트 → 파랑, **공통 업무는 `'transparent'` 가 참값이라 점 자체가 없었다** |
+  → 목록·미니달력 셋은 `colBg()` 로 감쌌다. 지도 점은 **SVG `fill` 이라 CSS 그라디언트 문자열을 못 받는다** —
+    `colSvgDefs()` 가 쓰인 토큰마다 `<linearGradient>` 를 겹층(`.okm-ov`)에 한 번 만들고 `colSvgFill()` 이 `url(#…)` 로 가리킨다.
+    정지점은 `colBg()` 문자열을 정규식으로 옮긴다(값의 진실은 GRADS·RAINBOW_BG 한 곳). ⚠ id 는 svg id 로 갈라 둔다(`okmSvg-g-grad-rd` ·
+    `okmBig-g-grad-rd`) — 카드와 모달이 한 문서에 같이 있어 겹치면 한쪽이 못 찾는다.
+- **공통(속 빈 원) + 그라디언트는 무지개 링으로 떴다.** `.p-col.p-col-team.p-col-rainbow` 가 무지개를 하드코딩하고 있었다.
+  → `colDotHTML`·`peColorSync` 가 `--gb` 로 링 그라디언트를 넘기고 CSS 는 `var(--gb, 무지개)` 로 받는다. 무지개는 기본값이라 그대로다.
+- **모바일 업무 현황에 위 칸 아래 60px 빈 띠.** `.tkwrap` 이 1열 grid 가 되면 `flex:1` 높이를 `auto` 두 행이 나눠 가져
+  `.tkside`(내용 110px)가 300px 가 됐다. → `grid-template-rows:auto minmax(0,1fr)`.
+- rainbow-render 에 회귀 검사 3건 추가(공통 그라디언트 링 · 지도 점 `<linearGradient>` fill · 미니달력 점).
+- 이번에 보고 **안 고친 것**: 모바일 하자 화면 상단바에서 「인쇄」 글자가 아이콘보다 훨씬 옅다(비활성이면 아이콘도 함께 옅어야 한다) ·
+  모바일 조직 관리 계정 카드에서 권한 선택이 현장 칩 줄과 직급 줄 사이에 홀로 뜬다(세로 리듬). 위젯(`?w=1`)의 미니달력 점은
+  같은 `miniDots` 를 쓰므로 함께 고쳐졌을 것이나 위젯 모드는 안 돌렸다.
+- APP_VER 687, index.html `app.js?v=687`, README 기준선 687.
+
+### 686차 — 도넛 색 램프 · 대시보드 AI 버튼 제거 · AI 문체 규칙 · 게시 0덮기 수정
+
+- **업로드하면 이 PC 현장 화면이 곧바로 바뀐다(원본 앱과 같은 동작).**
+  예전에는 업로드해도 화면이 게시본만 봐서 [등록] 전에는 아무 변화가 없었다.
+  → `dfSiteData` 가 이 PC 에 원본 행이 있으면(`dfLocalRows`) 게시본을 기다리지 않고
+     `dfLocalSiteData` 로 그 자리에서 계산해 쓴다. 저장 직후 해당 현장 캐시를 비워 즉시 반영된다.
+  ⚠ **게시본을 덮지 않는다.** 이 PC 화면에만 쓰고 팀 화면은 여전히 [등록] 후에 바뀐다.
+     현장 머리 카드에 「이 PC 원본 · 미게시 반영」을 표시해 둘이 다를 수 있음을 숨기지 않는다.
+  ⚠ 미리보기는 게시 경로와 **같은 `calc()`·`capAll()`** 을 쓴다 — 미리 본 숫자와 게시될 숫자가 어긋나면 안 된다.
+  ⚠ 공가 입력값(`vac`)만은 여럿이 같이 쓰는 값이라 로컬 계산 대상이 아니다(게시본에서 계속 읽는다).
+  → e2e-defect 회귀 검사: 게시본 kpi 를 비운 뒤에도 로컬 원본만으로 화면이 채워지는지.
+
+- **도넛 색이 12개를 넘으면 처음으로 되돌아왔다.** 고정 12색 배열을 `i % 12` 로 돌렸는데,
+  ⚠ **현장 도넛만 개수를 자르지 않는다**(공종 도넛은 상위 11+기타로 12개에 묶여 안 터졌다).
+  현장이 13개가 되는 순간 13번째가 첫 색(진한 남색)으로 돌아와 띠 끝에 진한 조각이 박혔다.
+  → `DF_PAL` 배열을 버리고 `dfRamp(n)` 으로 **양 끝을 고정하고 개수만큼 나눈다.**
+  ⚠ 가운데 앵커(`DF_PAL_M`=브랜드 파랑)를 둔다. 남색→하늘을 곧바로 이으면 중간이 회색으로 죽는다(8칸의 4번째가 #929CAC).
+  ⚠ 섞기는 제곱 공간에서 한다 — sRGB 선형 보간은 중간이 탁해진다.
+  모든 도넛이 `dfDonutDraw` 하나를 쓰므로 대시보드·현장·인쇄본이 함께 바뀐다.
+- **대시보드 「업데이트」 버튼과 `runDashAI` 를 걷어냈다**(사용자 판단).
+  이 카드는 [등록] 때마다 `dfInsightsBuild` 가 규칙으로 다시 쓴다 — 자동 갱신이 유일한 경로가 됐다.
+  ⚠ `RULE_DEF` 의 `scope:'dash'` 세 묶음은 **지우지 않고 남겼다**(되살릴 때 그대로 쓰기 위함).
+  ⚠ 되살릴 때는 버튼 · `'dfp.dashAi'` 액션 · e2e-defect · ai-unit 검사를 같이 되돌릴 것.
+- **AI 문체 규칙을 조였다** — 실사용에서 강조색을 거의 안 쓰고, 한국어 본문에 `;` 가 섞이고,
+  `음임` 같은 겹말 어미가 나왔다. 규칙이 「강조하라」 수준이라 지켜지지 않았다.
+  → `s_f7` 은 **모든 `<li>` 에 색 있는 `<strong>` 최소 1개 없으면 위반**으로 못박음,
+    `s_cF` 에 **세미콜론 금지**(CSS 인라인 스타일 안에서만) 추가, `s_f4`·`d_cA` 에 허용 어미 목록과
+    금지 예(`음임/함임/됨임/임음/음함`), 옳은/틀린 문장 예시를 넣었다.
+  ⚠ 규칙 ID 는 그대로다 — 사용자가 설정에서 override 해 둔 규칙이 있으면 **override 가 우선**이라
+    이 수정이 안 먹는다. 그 경우 해당 규칙 초기화가 필요하다.
+- **[등록]이 원본 없는 현장을 0 으로 덮었다(가장 큰 결함).**
+  ⚠ 예전 코드는 `dfSites()` 전부를 `calc(S.def[id]||[])` 로 다시 계산해 게시했다.
+     이 PC 에 원본 행이 없는 현장은 **빈 배열로 계산돼 전부 0** 이 됐다.
+     현장 3개만 올린 PC 에서 [등록]을 누르면 나머지 현장 게시 숫자가 통째로 0 이 되어
+     사용자가 원본 앱에서 재게시해야 했다.
+  → 원본이 있는 현장만 새로 쓰고(`if(!_hasRows(id))continue`), 없는 현장은
+     `report/{rm}/{sid}/kpi` 를 읽어 **직전 게시본을 그대로 남긴다.**
+     대시보드 합계도 「새로 계산 + 유지분」으로 더한다. 둘 다 없는 현장만 합계에서 빠진다.
+     게시 전 검토 모달이 현장마다 「직전 게시본 유지」·「원본 없음 · 게시 제외」를 표시한다.
+     완료 토스트도 `갱신 N개 · 유지 M개` 로 바뀌었다.
+  → e2e-defect 에 회귀 검사 추가: 현장 둘을 `S.def` 에서 지우고 재게시해도 kpi 가 그대로인지.
+- **업로드 이력이 3줄에서 멈춰 보였다.** `DFMETA.hist` 는 10회를 보관하는데 화면은 `slice(0,3)` 이었다.
+  네 번째 업로드부터 「이력이 더 안 생긴다」로 보였다 → 보관하는 만큼 전부 표시.
+- APP_VER 686, index.html `app.js?v=686`, README 기준선 686.
+
+### 685차 — 모바일 붕괴 일괄 수정(실사용 점검)
+
+390px 실브라우저로 다섯 화면을 직접 돌려 보고 고쳤다. 하자 화면은 가상 하자 7,079행을
+실제 업로드→게시 경로로 넣고 봤다.
+
+- **업무 패널이 사이드바 드로어를 덮고 있었다.** `elementFromPoint` 로 찍으니
+  `dp-body > card day-panel > dp-col > … > sidebar` 순서였다.
+  ⚠ 원인: **flex 항목은 `position:static` 이어도 z-index 가 먹는다.** 모바일에서 `.cal-wrap` 이 flex 로
+  바뀌며 `.dp-col` 이 flex 항목이 되는데, 시트용 `z-index:320` 이 그대로 살아 사이드바(300)를 덮었다.
+  `position:static` 으로 되돌리는 규칙에 `z-index:auto` 가 빠져 있었다.
+  → `.dp-col` 에 `z-index:auto`, 드로어는 `#sidebar` 400 · `#scrim` 380 으로 올렸다.
+- **사이드바 접기 버튼이 모바일에 그대로 보였다.** 모바일 블록에 「접기 버튼은 드로어에선 무의미」라는
+  **주석만 있고 규칙이 없었다.** `.sb-title-tg{display:none}` 을 넣었다.
+- **조직 관리 카드 폭이 계단처럼 어긋났다.** `.mg-grid` 를 세로 flex 로 바꾸면서 데스크톱의
+  `align-items:start` 가 남아 카드가 내용 폭으로 줄었다 → `align-items:stretch`.
+- **조직 현장 표에서 현장명이 「힐스」로 잘렸다.** 표는 이미 자체 가로 스크롤 칸을 갖고 있었고
+  문제는 폭이었다 — 열 너비가 % 라 366px 에서 현장명이 50px 로 줄었다.
+  → `.mgtbl{min-width:900px;table-layout:fixed}` (18% × 900 ≈ 162px).
+- **업무 현황 목록이 세로로 반쯤 잘렸다.** 데스크톱은 「완료」·「예정」 두 칸이 각자 스크롤하는데,
+  모바일에서 세로로 쌓인 뒤에도 안쪽 스크롤이 남아 한 칸이 258px 로 눌리고 마지막 줄이 가로로 잘렸다.
+  → 안쪽 스크롤을 풀고 카드(`.tkwk`·`.tkmain`) 하나만 굴린다.
+- **하자처리 현황은 모바일 규칙이 하나도 없었다.** 데스크톱 5열 KPI·2열 카드·넓은 표가 390px 에
+  그대로 들어가 숫자가 「6,92」로 잘리고 라벨이 한 글자씩 세로로 쪼개졌다.
+  → KPI 2열(현장 머리 카드는 두 칸), 「목록」 CTA 는 절대배치라 좁아지면 숫자와 겹치므로 오른쪽 아래로
+  내리고 글자는 화살표만, 탭 줄 가로 스크롤, 좌우 2열 카드 1열, 표 `min-width:760px` + 카드 가로 스크롤.
+- **주차 추이 차트가 화면 밖으로 잘려 닿지 않았다.** 캔버스 폭을 주차 수에 맞춰 986px 로 잡는데
+  데스크톱은 `.ovs` 커스텀 스크롤바로 밀지만 모바일엔 그 손잡이가 없고 `#content` 가 `overflow-x:hidden` 이다.
+  → 차트 카드 자체를 가로 스크롤로. 범례까지 두 줄로 접혀 전부 보인다.
+- ⚠ **모바일 규칙을 새로 넣을 때는 `body:not(.wid)` 를 붙일 것.** 위젯 창은 좁아서 이 미디어쿼리에
+  그대로 걸린다. 위 규칙은 전부 `body:not(.wid)` 로 막았다.
+- APP_VER 685, index.html `app.js?v=685`, README 기준선 685.
+
+### 684차 — 색 그라디언트 7종 되살림(합성 경로 위에서)
+
+- **683차에 걷어낸 색 그라디언트 7종을 되돌렸다**(사용자 판단). 단, **683차의 합성 전환은 그대로 둔다.**
+  즉 그리기·흐름이 막대 본체가 아니라 `::after` 에서 일어나는 구조 위에 그라디언트를 얹었다.
+- 되살린 것: `GRADS` · `GRAD_ANIM` · `gradBase` · `isGrad` · `isGradAnim` · `GRAD_LIGHT` · `isLightBg`,
+  팔레트 두 줄(`.pal-grad` 고정 · `.pal-grad2` 흐름), `.ev-gd` · `.ev-g-*`, 크리스마스 `:not(.ev-gd)`.
+- **지운 것: `GRAD_OLD` · `normColor`.** 683차에 옛 토큰을 단색으로 바꾸던 장치인데,
+  그라디언트가 돌아온 지금은 오히려 `grad-*` 를 단색으로 뭉개 버린다. static-audit 이 잔존을 FAIL 로 잡는다.
+- CSS 구조:
+  - `#fcal .fc-event.ev-rb,#fcal .fc-event.ev-gd` — 배경 없음 · 테두리색 투명 · `clip-path:inset(0 round 3px)`
+  - `…ev-rb::after,…ev-gd::after` — 공통 뼈대(절대배치 · `inset -2px` · `background-size:100% 100%`)
+  - `…ev-rb::after` 는 무지개를, `…ev-gd::after{background-image:var(--gb)}` 는 `.ev-g-*` 가 채운 값을 그린다
+  - `…ev-rb.team::before,…ev-gd.team::before` — 흰 속 판(테두리 칸만 색이 남는다)
+  - 흐름은 `…ev-rb.ev-fx::after,…ev-gd.ev-fx::after` 에서 `rbslide`(transform · `steps(160)`) 하나로 공용
+- ⚠ **`rbflow` · `rbflow2` 는 되살리지 않았다.** 682차의 두 벌 키프레임은 `background-position` 을
+  애니메이션하려고 레이어 수를 맞추던 것인데, 합성 경로에서는 `::after` 한 겹뿐이라 `rbslide` 하나로 끝난다.
+  되살리면 683차에 측정한 CPU 문제(막대 60개 8초에 1083ms)가 그대로 돌아온다.
+- ⚠ **셀렉터가 콤마 그룹이 되면서 정규식 검사가 줄줄이 깨졌다.** static-audit 의 무지개 검사들이
+  `\.ev-rb\{` · `\.ev-rb::after\{` 처럼 여는 중괄호를 바로 붙여 찾고 있었다. `[^{]*\{` 로 고쳤다.
+  앞으로 셀렉터에 콤마를 추가할 때는 이 검사들을 같이 볼 것.
+- 검사 추가: 그라디언트 7종의 app.js↔CSS 값 대조, **각 값이 첫 색으로 닫히는지**(흐를 때 이음매),
+  `.ev-gd::after` 가 `var(--gb)` 를 쓰는지(막대 본체에 칠하면 CPU 회귀), `normColor`/`GRAD_OLD` 잔존 금지.
+- rainbow-render: 고정 그라디언트가 정지·`100% 100%` 인지, 흐름 그라디언트가 `transform` 으로 움직이고
+  `background-position` 은 고정인지, 밝은 그라디언트(노랑)가 어두운 글자로 넘어가는지.
+- APP_VER 684, index.html `app.js?v=684`, README 기준선 684.
+
+### 683차 — 흐름 애니메이션 CPU 근본 수정 · 색 그라디언트 7종 폐지
+
+- **CPU 원인은 `background-position` 애니메이션이었다.** 이 속성은 합성(GPU)으로 올라가지 않아
+  **프레임마다 주 스레드가 막대를 다시 칠한다.** Chromium CDP 로 8초 측정한 값(막대 수 → 주 스레드 시간):
+
+  | 방식 | 20개 | 60개 | 150개 | 스타일 재계산 |
+  |---|---|---|---|---|
+  | 682차까지 (`background-position`) | 554ms | 1083ms | 1981ms | 초당 60회 |
+  | 683차 (`::after` + `transform`) | 3ms | 4ms | 9ms | 0회 |
+  | 683차 + `steps(160)` | 2ms | 1ms | 1ms | 0회 |
+
+  막대 60개에서 주 스레드를 상시 13% 물고 있었다. 위젯은 늘 떠 있으므로 그대로 전력이다.
+- **구조 변경.** 무지개 그리기와 흐름을 막대 자신에서 **`::after` 한 겹으로 내렸다.**
+  - `#fcal .fc-event.ev-rb` — 배경 없음 · 테두리색 투명 · `clip-path:inset(0 round 3px)`
+  - `#fcal .fc-event.ev-rb::after` — 무지개(절대배치, `inset -2px`, `z-index:0`)
+  - `#fcal .fc-event.ev-rb.team::before` — 흰 판(`inset 0`, `z-index:1`) → **테두리 칸만 무지개로 남는다**
+  - `#fcal .fc-event.ev-rb .fc-event-main` — `z-index:2`
+  - 흐름: `@keyframes rbslide{translate3d(-400px,0,0) → translate3d(0,0,0)}` · `.ev-fx::after` 에만 건다
+  - `rbflow` · `rbflow2` 는 폐지했다(레이어 수를 맞추던 두 벌 키프레임이 더는 필요 없다).
+- ⚠ **자르기는 `clip-path` 다. `overflow:hidden` 을 쓰면 안 된다** — overflow 는 padding-box 에서 자르므로
+  공통 막대(테두리 1.5px)의 무지개 링이 통째로 사라진다. `clip-path:inset()` 은 border-box 기준이다.
+- ⚠ **반지름 3px 은 `#fcal .fc-event` 의 마지막 선언(3190행대)과 같은 값이다.** 한쪽만 바꾸면 모서리가 어긋난다.
+  (모바일 @media 의 6px 은 그 뒤 규칙에 덮여 실제로는 적용되지 않는다 — 전 화면 3px 이다.)
+- ⚠ **`::after`·`::before` 는 반드시 `position:absolute` 를 유지할 것.** `.fc-event` 가 flex 라
+  절대배치를 놓치는 순간 의사요소가 flex 항목이 되어 글자를 옆으로 밀어낸다.
+- ⚠ 동작 줄이기 예외와 위젯 정지 규칙도 **`::after` 를 짚어야 한다** — 애니메이션이 거기로 옮겨갔다.
+  `#fcal .fc-event.ev-fx::after{animation-duration:8s!important;animation-iteration-count:infinite!important}`
+  `body.wid-await #fcal .fc-event.ev-fx::after{animation-play-state:paused}`
+- **프레임 감축.** `animation:rbslide 8s steps(160) infinite` — 초당 20칸. 늘 떠 있는 위젯에서
+  60fps 로 돌 장식이 아니라 합성 깨우기를 1/3 로 줄인다.
+- **색 그라디언트 7종(678~679차)을 폐지했다**(사용자 판단 — 여러 사람이 각자 고르면 달력이 난잡해진다).
+  `GRADS` · `GRAD_ANIM` · `gradBase` · `isGrad` · `isGradAnim` · `GRAD_LIGHT` · `isLightBg`,
+  CSS `.ev-gd` · `.ev-g-*`, 팔레트 흐름 줄 `.pal-row.pal-grad2` 를 모두 걷었다.
+  `isFlow(c)` 는 `c===RB_ANIM` 하나로 줄고, `isLightBg` 자리는 원래의 `isLightColor` 로 돌아갔다.
+  팔레트에는 무지개 2종(고정 · 흐름▶)만 한 줄로 남는다.
+- ⚠ **이미 저장된 `grad-xx` / `grad-xx-anim` 은 DB 를 고치지 않고 읽을 때만 단색으로 바꾼다.**
+  `GRAD_OLD` 대응표 + `normColor()` 를 `planColor()` 와 `colBg()` 가 통과시킨다.
+  그대로 흘리면 CSS 가 못 읽는 색이 되어 막대가 검게 뜬다. 그 업무 색을 다음에 고치면 자연히 덮인다.
+- 크리스마스 규칙의 제외 목록은 `:not(.ev-rb)` 하나로 줄었다(`:not(.ev-gd)` 는 대상이 사라졌다).
+- **검사도 회귀 방지 쪽으로 옮겼다.**
+  - static-audit: 키프레임이 `transform` 이 아니거나 `background-position` 을 애니메이션하면 FAIL,
+    `steps()` 가 없으면 FAIL, `rbflow`/`rbflow2`·`.ev-gd`·`pal-grad2` 잔재가 남으면 FAIL,
+    `GRAD_OLD`·`normColor` 가 없으면 FAIL.
+  - rainbow-render: `::after` 의 `transform` 이 실제로 움직이고 `background-position` 은 **안 움직이는지**
+    둘 다 본다. 추가로 **흐름 막대 30개를 띄우고 4초간 스타일 재계산 횟수를 세어** 120회를 넘으면 FAIL —
+    합성 애니메이션이 아니면 초당 60회씩 찍히므로 숫자로 못 박아 둔다(실측 0회 · 주 스레드 1ms).
+- APP_VER 683, index.html `app.js?v=683`, README 기준선 683.
 
 ### 682차 — 이벤트 스킨 고르기 철회(12월 크리스마스만 남김)
 - 681차의 스킨 고르기를 되돌렸다(사용자 판단). 설정 「화면 꾸미기」 카드, `SKINS`/`skinGet`/`skinSet`/`applySkin`/`skinFill`,
