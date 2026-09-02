@@ -258,6 +258,86 @@ try {
   if (cssStat.n >= 1800) OK('CSS 전량 파싱 (' + cssStat.n + '개 규칙)');
   else F('CSS 파싱이 중간에 끊겼다 — 주석 미닫힘·중괄호 붕괴 의심 (' + cssStat.n + '개에서 멈춤, 마지막: ' + cssStat.last + ')');
 
+  /* 689차: 기간 업무 라벨 — 완료 패널이 occ 로 끝날짜를 넘겨 「8/31–8/31」로 찍히던 회귀 */
+  const lbl = await page.evaluate(() => {
+    const it = { text: '기간', date: '2026-08-29', end: '2026-08-31', color: 'auto', assignees: {}, st: 1, createdAt: 1, updatedAt: 1 };
+    const m = taskItemHTML('t1', 'x', it, false, '', { site: false, who: false }, '2026-08-31').match(/tkc-d[^>]*>([^<]*)/);
+    return m ? m[1] : '';
+  });
+  if (lbl === '8/29–8/31') OK('기간 업무 라벨 — occ(끝날짜)를 받아도 시작–끝 (' + lbl + ')');
+  else F('기간 업무 라벨 이상: ' + JSON.stringify(lbl));
+  /* 689차: 가로 페이드 — data-sbx 요소는 잘린 쪽만 sb-fade-l/r 을 받는다 */
+  const hx = await page.evaluate(async () => {
+    const d = document.createElement('div'); d.setAttribute('data-sbx', ''); d.style.cssText = 'width:100px;overflow-x:auto;white-space:nowrap';
+    d.innerHTML = '<span style="display:inline-block;width:400px">x</span>'; document.body.appendChild(d);
+    fadeOne(d); const a = d.className; d.scrollLeft = 150; fadeOne(d); const b = d.className; d.scrollLeft = 999; fadeOne(d); const c = d.className;
+    d.setAttribute('data-sbx', 'r'); d.scrollLeft = 150; fadeOne(d); const r = d.className; d.remove();
+    return { a, b, c, r };
+  });
+  if (hx.a === 'sb-fade-r' && hx.b.split(' ').sort().join(' ') === 'sb-fade-l sb-fade-r' && hx.c === 'sb-fade-l' && hx.r === 'sb-fade-r') OK('가로 페이드 — 시작 r · 중간 l+r · 끝 l · data-sbx=r 은 오른쪽만');
+  else F('가로 페이드 클래스 이상: ' + JSON.stringify(hx));
+
+  /* 692차: 현장 순서(권역 → 준공일 → 이름) · 드래그 범위 안 우클릭 「업무 추가」는 범위를 지킨다 */
+  const so = await page.evaluate(() => {
+    const regs = [{ id: 'r1', name: 'R1' }, { id: 'r2', name: 'R2' }];
+    const sites = [{ id: 'a', name: 'C', region: 'r2', completionDate: '2026-05-01' }, { id: 'b', name: 'B', region: 'r1', completionDate: '2024-01-01' },
+      { id: 'c', name: 'A', region: 'r1', completionDate: '2025-06-01' }, { id: 'd', name: 'D', region: 'r1' }, { id: 'e', name: 'E', region: 'r2', completionDate: '2023-01-01' }];
+    const order = sites.sort(siteCmp(regs)).map(x => x.id).join('');
+    const was = { d: S.selDate, e: S.selEnd };
+    selRange('2026-09-08', '2026-09-11');
+    const cell = document.querySelector('#fcal td[data-date="2026-09-10"]') || document.querySelector('#fcal td.fc-daygrid-day');
+    const keep = cell ? (() => { const it = ctxFor(cell); const inRange = cell.dataset.date >= '2026-09-08' && cell.dataset.date <= '2026-09-11'; return { inRange, lbl: it[0].label, endBefore: S.selEnd }; })() : null;
+    S.selDate = was.d; S.selEnd = was.e;
+    return { order, keep };
+  });
+  if (so.order === 'cbdae') OK('현장 순서 — 권역 → 준공일 최신 위 → 준공일 없음 뒤 (' + so.order + ')');
+  else F('현장 순서 이상: ' + so.order);
+  if (so.keep && (!so.keep.inRange || /기간/.test(so.keep.lbl))) OK('드래그 범위 안 우클릭 — 「이 기간에 업무 추가」');
+  else F('우클릭 범위 유지 이상: ' + JSON.stringify(so.keep));
+
+  /* 695차: 담당자·현장 삭제는 우클릭 → 확인 모달 → 실행. 표에는 삭제 버튼이 없다 */
+  const del = await page.evaluate(async () => {
+    store.putOrg({ teams: [{ id: 't1', name: 'T' }], regions: [{ id: 'r1', name: 'R' }], sites: [{ id: 'sX', name: 'X', region: 'r1', team: 't1' }, { id: 'sY', name: 'Y', region: 'r1', team: 't1' }] });
+    store.putPerson('p1', { name: 'P1', email: '', team: 't1', region: 'r1', rank: 'member', sites: { sX: 1 } });
+    store.putPerson('p2', { name: 'P2', email: '', team: 't1', region: 'r1', rank: 'member', sites: { sY: 1 } });
+    S.accounts = { p1: { name: 'P1', role: 'editor' }, p2: { name: 'P2', role: 'editor' } }; S.user = { uid: 'p1' }; S.tk.t = 't1'; rosterBust(); rAll();
+    go('org'); S.orgTab = 'site'; rOrg(); rOrgBar('site'); await new Promise(r => setTimeout(r, 100));
+    const noBtn = !document.querySelector('#siteRoot [data-act="org.delSite"]');
+    const sItems = ctxFor(document.querySelector('#siteRoot .mgtbl tr[data-sid="sY"] td'));
+    sItems[0].act(); await new Promise(r => setTimeout(r, 100));
+    const sModal = /현장 삭제/.test(document.querySelector('#mt').textContent);
+    document.querySelector('[data-act="modal.ok"]').click(); await new Promise(r => setTimeout(r, 200));
+    const siteGone = !S.org.sites.some(x => x.id === 'sY') && !(S.people.p2.sites || {}).sY;
+    S.orgTab = 'acct'; rOrg(); rOrgBar('acct'); await new Promise(r => setTimeout(r, 100));
+    const pItems = ctxFor(document.querySelector('#acctRoot .utbl tr[data-pid="p2"] td'));
+    pItems[0].act(); await new Promise(r => setTimeout(r, 100));
+    const pModal = /담당자 삭제/.test(document.querySelector('#mt').textContent);
+    document.querySelector('[data-act="modal.ok"]').click(); await new Promise(r => setTimeout(r, 200));
+    const personGone = !!S.people.p2 && S.people.p2.team === '' && S.people.p2.name === 'P2' && !Object.keys(S.people.p2.sites || {}).length;   /* 696차: 지우지 않고 미배정으로 */
+    ACT['org.delPerson']({ dataset: { id: 'p1' } }); await new Promise(r => setTimeout(r, 100));
+    const selfBlocked = !!S.people.p1 && !document.querySelector('#mo').classList.contains('open');
+    return { noBtn, sModal, siteGone, pModal, personGone, selfBlocked };
+  });
+  if (del.noBtn && del.sModal && del.siteGone) OK('현장 삭제 — 표에 버튼 없음 · 우클릭 → 확인 모달 → 사람 배정도 해제');
+  else F('현장 삭제 흐름 이상: ' + JSON.stringify(del));
+  if (del.pModal && del.personGone && del.selfBlocked) OK('담당자 삭제 — 우클릭 → 확인 모달 → 미배정으로(이름 유지) · 본인은 차단');
+  else F('담당자 삭제 흐름 이상: ' + JSON.stringify(del));
+
+  /* 696차: 현장 표 편집은 초안 → [저장] 한 번. 나가면 묻는다 */
+  const dr = await page.evaluate(async () => {
+    go('org'); S.orgTab = 'site'; rOrg(); rOrgBar('site'); await new Promise(r => setTimeout(r, 100));
+    const inp = document.querySelector('#siteRoot input[data-f="units"][data-id="sX"]'); inp.value = '777'; inp.dispatchEvent(new Event('change', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 50));
+    const pending = orgDraftN() === 1 && (S.org.sites.find(x => x.id === 'sX').units || 0) !== 777 && !document.querySelector('#orgSaveBar').hidden;
+    go('calendar'); await new Promise(r => setTimeout(r, 100));
+    const asked = document.querySelector('#mo').classList.contains('open') && S.view === 'org';
+    document.querySelector('[data-act="modal.ok"]').click(); await new Promise(r => setTimeout(r, 150));
+    const saved = S.org.sites.find(x => x.id === 'sX').units === 777 && S.view === 'calendar' && orgDraftN() === 0;
+    return { pending, asked, saved };
+  });
+  if (dr.pending && dr.asked && dr.saved) OK('현장 표 초안 — 바로 저장 안 함 · 나갈 때 묻고 저장');
+  else F('현장 표 초안 흐름 이상: ' + JSON.stringify(dr));
+
   if (errs.length) F('페이지 오류 ' + errs.length + '건: ' + errs[0]);
   else OK('페이지 오류 없음');
 } catch (e) {
