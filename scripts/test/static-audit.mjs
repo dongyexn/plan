@@ -91,7 +91,7 @@ OK('구문 검사 (node --check)');
   /* change·input·mousedown 델리게이트가 dataset.act 로 직접 처리하는 액션도 '짝이 있는' 것으로 본다(442차) */
   for (const m of js.matchAll(/dataset\.act\s*===\s*'([a-z][\w.]*)'/g)) keys.add(m[1]);
   for (const m of js.matchAll(/data-act="([a-z][\w.]*)"\]/g)) keys.add(m[1]);
-  const DIRECT_CALL = new Set(['plan.moveOcc']);   /* change 델리게이트가 ACT[]로 직접 부르는 액션 — data-act 발신처가 없다(428차) */
+  const DIRECT_CALL = new Set(['plan.moveOcc','org.delPerson','org.delSite','org.draftDropGo']);   /* 695차: 조직 삭제 둘은 우클릭 메뉴(ctxFor → ACT[...]) 로만 */   /* change 델리게이트가 ACT[]로 직접 부르는 액션 — data-act 발신처가 없다(428차) */
   const orphanKey  = [...keys].filter(k => !emitted.has(k) && !DIRECT_CALL.has(k));
   if (orphanEmit.length) F('핸들러 없는 data-act: ' + orphanEmit.join(', '));
   if (orphanKey.length)  W('발신처 없는 핸들러(UI 를 지울 때 짝을 안 지운 흔적): ' + orphanKey.join(', '));
@@ -294,6 +294,10 @@ OK('구문 검사 (node --check)');
    → 새로 생기는 재선언만 잡는다. 의도적 재선언이면 베이스라인에 항목을 추가할 것. */
 {
   const CSS_DUP_BASELINE = new Set([
+  /* 689차: @container tkpanel(≤460px) 안의 의도적 덮어쓰기 — 감사기가 @media 만 스코프로 빼고 @container 는 못 가른다 */
+  '.tk-row :: gap',
+  '.tkl-nr .tk-row :: grid-template-columns',
+  '.tkl-nr-w .tk-row :: grid-template-columns',
   '#fcal .dhol.off :: color',
   '#fcal .fc-day-today .dnum :: height',
   '#fcal .fc-day-today .dnum :: margin',

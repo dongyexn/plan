@@ -1063,7 +1063,7 @@ fn main() {
                 .title("H · 주요업무현황 위젯")
                 .decorations(false).transparent(true).shadow(false)
                 .skip_taskbar(true).resizable(true)
-                .inner_size(620.0, 520.0).min_inner_size(300.0, 380.0)
+                .inner_size(620.0, 520.0).min_inner_size(360.0, 380.0)   // 694: 300 에서는 월 제목·막대·팝업이 잘린다(693차 조사)
                 .visible(false)
                 .initialization_script(INIT_JS)
                 .build()?;

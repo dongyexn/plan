@@ -281,15 +281,17 @@ const keep=await pg.evaluate(async()=>{
   window.__PUBOK_AUTO__=true;
   const p=dfPublish();
   await new Promise(r=>setTimeout(r,300));
+  const warn=/원본 없는 현장 2개.*추이/.test((document.querySelector('#modal,.modal,[class*=modal]')||document.body).textContent);   /* 691차 */
   if(window.__PUBOK__)window.__PUBOK__(true);
   await p;
   const after={};drop.forEach(id=>{after[id]=(window.__TREE.report[rm][id]||{}).kpi;});
-  return {dropN:drop.length,liveN:live.length,
+  return {dropN:drop.length,liveN:live.length,warn,
     beforeTR:bT, afterTR:after[drop[0]]&&after[drop[0]].tR,
     zeroed:drop.some(id=>after[id]&&Number(after[id].tR)===0&&Number(before[id].tR)>0)};
 });
 ok('원본 없는 현장 — 0 으로 안 덮고 직전 게시본 유지 ('+keep.beforeTR+'→'+keep.afterTR+')',
    !keep.zeroed&&keep.beforeTR===keep.afterTR&&keep.beforeTR>0);
+ok('원본 없는 현장 — 게시 확인창에 추이·공종 집계 경고',keep.warn===true);
 
 /* ── 686차: 업로드 즉시 이 PC 현장 화면이 로컬 원본으로 바뀌는지 ────────────
    게시본에는 없는 값(kpi 를 통째로 지운 뒤)이라도 로컬 원본이 있으면 화면이 채워져야 한다. */
@@ -299,13 +301,44 @@ const lp=await pg.evaluate(async()=>{
   const pubTR=(window.__TREE.report[rm][sid].kpi||{}).tR;
   window.__TREE.report[rm][sid].kpi=null;          // 게시본을 비운다
   delete DF.kpi[rm+'/'+sid];delete DF.sw[rm+'/'+sid];delete DF.sam[rm+'/'+sid];delete DF.local[rm+'/'+sid];
+  /* 690차: 로컬 계산은 등록~게시 사이뿐 — 방금 올린 것처럼 업로드 시각을 게시 도장 뒤로 놓는다 */
+  const upWas=DFMETA.lastUp[sid];DFMETA.lastUp[sid]=new Date(Date.now()+500).toISOString();
   const k=await dfSiteData(sid);
+  DFMETA.lastUp[sid]=upWas;
   return {pubTR,locTR:k&&k.tR,local:!!DF.local[rm+'/'+sid],rows:(S.def[sid]||[]).length,
     hasRows:!!dfLocalRows(sid),site:!!dfSites().find(x=>x.id===sid),rm,dfRm:dfRm(),
     calcOK:(()=>{try{const st=dfLocalSiteData(sid,dfRm());return st?st.kpi.tR:'null';}catch(e){return 'ERR '+e.message;}})()};
 });
 ok('업로드 원본이 있는 현장 — 게시본 없이도 로컬로 화면이 채워진다 ('+lp.locTR+'건 · 로컬표시 '+lp.local+')',
    lp.local===true&&lp.locTR>0&&lp.rows>0);
+
+/* ── 688차: 「이 PC 원본 · 미게시 변경」 — 게시 뒤엔 꺼지고, 다시 올리면(lastUp 갱신) 켜진다 ── */
+const dt=await pg.evaluate(async()=>{
+  const sid=Object.keys(S.def).find(k=>(S.def[k]||{}).length);
+  const tb=()=>{S.dfSid=sid;dfTopbar();const e=document.querySelector('#tbLoc');return {hid:e.hidden,t:e.textContent};};
+  const afterPub=tb();                                   /* 방금 게시했다 — 꺼져 있어야 */
+  const stampedPub=!!(DFMETA.pubAt||{})[sid];
+  /* 690차: 게시 뒤엔 마스터 PC 도 게시본을 읽는다 — DF.local 이 안 붙어야 */
+  const k=dfRm()+'/'+sid;delete DF.kpi[k];delete (DF.local||{})[k];await dfSiteData(sid);const srvAfterPub=!(DF.local||{})[k]&&DF.kpi[k]!==undefined;
+  /* 699차: 다른 PC 흉내 — 이 PC 도장은 없고(pubAt 비움) 원본은 서버 게시보다 오래됐다 → 서버를 읽어야 */
+  const pubAtWas=DFMETA.pubAt;DFMETA.pubAt={};delete DF._pubAt[dfRm()];DFMETA.lastUp[sid]=new Date(Date.now()-3600e3).toISOString();
+  delete DF.kpi[k];delete (DF.local||{})[k];await dfSiteData(sid);const otherPcSrv=!(DF.local||{})[k]&&DF.kpi[k]!==undefined&&!dfLocalDirty(sid);
+  DFMETA.pubAt=pubAtWas;
+  DFMETA.lastUp[sid]=new Date(Date.now()+1000).toISOString();   /* 새 업로드 흉내 */
+  delete DF.kpi[k];await dfSiteData(sid);const locAfterUp=!!(DF.local||{})[k];
+  const afterUp=tb();
+  S.dfSid='';dfTopbar();const dash=document.querySelector('#tbLoc').textContent;
+  const kpiBadge=!!document.querySelector('.kc-site .kc-lbl, .kc-site')&&/미게시/.test(document.querySelector('#view-defect').textContent||'');
+  return {stampedPub,afterPub,afterUp,dash,kpiBadge,dirty:dfLocalDirty(sid),srvAfterPub,locAfterUp,otherPcSrv};
+});
+ok('게시 뒤 현장 읽기 — 로컬 원본이 아니라 게시본(DF.local 없음)',dt.srvAfterPub===true);
+ok('재업로드 뒤 현장 읽기 — 다시 로컬 원본',dt.locAfterUp===true);
+ok('다른 PC 가 나중에 게시 — 이 PC 옛 원본 대신 서버 게시본(서버 publishedAt 비교)',dt.otherPcSrv===true);
+ok('미게시 변경 표시 — 게시 직후 꺼짐(pubAt 도장 '+dt.stampedPub+')',dt.stampedPub&&dt.afterPub.hid===true);
+ok('미게시 변경 표시 — 새 업로드 뒤 상단바에 켜짐 ('+dt.afterUp.t+' / 대시보드 '+dt.dash+')',
+   dt.afterUp.hid===false&&/미게시 변경/.test(dt.afterUp.t)&&/1개 현장/.test(dt.dash)&&dt.dirty===true);
+ok('KPI 카드에서 미게시 배지 제거',!dt.kpiBadge);
+await pg.evaluate(()=>{const sid=Object.keys(S.def).find(k=>(S.def[k]||{}).length);DFMETA.lastUp[sid]='';});
 
 
 await pg.evaluate(async()=>{S.dfSid='';delete DF.cache[dfPubRm()];rDefect();});

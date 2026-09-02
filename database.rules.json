@@ -343,6 +343,7 @@
             "buildings":       { ".validate": "newData.isNumber()" },
             "commercialUnits": { ".validate": "newData.isNumber()" },
             "completionDate":  { ".validate": "newData.isString() && newData.val().length <= 10" },
+            "lastUploadedAt":  { ".validate": "newData.isString() && newData.val().length <= 24" },
             "$other": { ".validate": false }
           }
         },
