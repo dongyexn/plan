@@ -1,0 +1,15 @@
+{
+  "name": "calapp-ai-proxy",
+  "version": "1.0.0",
+  "description": "CALAPP AI 중계 — Azure AI Foundry 키를 서버에만 둔다 (700차)",
+  "main": "src/functions/*.js",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "func start",
+    "test": "node --test test/"
+  },
+  "dependencies": {
+    "@azure/functions": "^4.7.0",
+    "jose": "^5.9.6"
+  }
+}

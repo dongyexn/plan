@@ -118,6 +118,20 @@ ok('실행 중에는 두 번째 클릭을 막는다',/이미 실행 중/.test(r8
 const r9=await pg.evaluate(()=>{S.live=false;dfProdCardFill();const d=getComputedStyle(document.getElementById('aiCard')).display;S.live=true;dfProdCardFill();return d;});
 ok('로컬 모드에서 AI 연결 카드 숨김',r9==='none',r9);
 
+/* 700차: 중계 서버 경로 — Function 만 부르고 api-key 헤더가 없다. system/prompt/max 만 보낸다 */
+const r10=await pg.evaluate(async()=>{
+  const calls=[];S.azProxy='https://calapp-ai-proxy-x.azurewebsites.net';S.azCk='SHOULD-NOT-BE-SENT';
+  FB.auth={currentUser:{getIdToken:async()=>'ID.TOKEN'}};
+  window.fetch=async(u,o)=>{calls.push({u:String(u),h:o.headers,b:JSON.parse(o.body)});return {ok:true,status:200,json:async()=>({text:'프록시 답',mode:'chat'})};};
+  const t=await AI.text({system:'s',prompt:'p',max:1000});
+  const err=await (async()=>{window.fetch=async()=>({ok:false,status:403,json:async()=>({error:'AI 분석은 관리자만 쓸 수 있습니다'})});try{await AI.text({system:'s',prompt:'p'});return '';}catch(e){return e.message;}})();
+  S.azProxy='';
+  return {t,calls,err,ready:AI.ready()};
+});
+const c10=r10.calls[0]||{h:{},b:{}};
+ok('중계 경로 — Function URL /api/ai 로, Authorization=ID 토큰, api-key 없음',
+   /\/api\/ai$/.test(c10.u)&&c10.h.Authorization==='Bearer ID.TOKEN'&&!('api-key' in c10.h)&&JSON.stringify(Object.keys(c10.b).sort())==='["max","prompt","system"]'&&r10.t==='프록시 답',JSON.stringify(c10));
+ok('중계 서버 오류 문구가 그대로 뜬다',/관리자만/.test(r10.err),r10.err);
 ok('페이지 오류 0',perr.length===0,perr.join(' / '));
 await br.close();srv.close();
 console.log(fail?('AI-UNIT FAIL '+fail):'AI-UNIT ALL PASS');
