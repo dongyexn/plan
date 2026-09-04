@@ -2,7 +2,7 @@
 <html lang="ko"><head>
 <meta charset="UTF-8">
 <!-- CSP: 개발은 외부 app.js('self'), 단일 파일 배포는 build-single.mjs가 인라인 스크립트 해시를 넣는다 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://www.gstatic.com https://www.google.com; font-src 'self' data:; object-src 'none'; base-uri 'self'; script-src 'self' https://www.gstatic.com https://www.google.com https://www.recaptcha.net https://recaptcha.google.com https://apis.google.com https://*.firebasedatabase.app; frame-src https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; connect-src 'self' https://*.googleapis.com https://*.services.ai.azure.com https://*.openai.azure.com https://*.cognitiveservices.azure.com https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.firebaseio.com wss://*.firebaseio.com https://www.gstatic.com https://www.google.com https://www.recaptcha.net https://recaptcha.google.com">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://www.gstatic.com https://www.google.com; font-src 'self' data:; object-src 'none'; base-uri 'self'; script-src 'self' https://www.gstatic.com https://www.google.com https://www.recaptcha.net https://recaptcha.google.com https://apis.google.com https://*.firebasedatabase.app; frame-src https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; connect-src 'self' https://*.googleapis.com https://*.services.ai.azure.com https://*.openai.azure.com https://*.cognitiveservices.azure.com https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.firebaseio.com wss://*.firebaseio.com https://www.gstatic.com https://www.google.com https://www.recaptcha.net https://recaptcha.google.com https://*.azurewebsites.net">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -36,7 +36,7 @@
 
 /* ══════════ 디자인 토큰 — 하자처리 현황과 동일 체계 ══════════ */
 :root{
---b50:#F1F7FD;--b100:#F1F7FD;--b200:#C7DDF6;--b300:#C7DDF6;--b400:#538CDE;
+--b50:#F1F7FD https://*.azurewebsites.net;--b100:#F1F7FD;--b200:#C7DDF6;--b300:#C7DDF6;--b400:#538CDE;
 --b500:#538CDE;--b600:#3E71D2;--b700:#3E71D2;--b800:#304D9D;
 --bg:#FBFBFB;--bg2:#fff;--cardline:#DDE3E9;--shell:#2C2F34;--shell2:#5F636E;--shell-txt:#F2F5F9;--shell-dim:rgba(242,245,249,.72);--shell-icon:#DCE3EC;--shell-line:rgba(255,255,255,.10);--shell-act:rgba(255,255,255,.10);--shell-acc:#93B8F2;--fill:rgba(120,120,128,.15);--fill2:rgba(120,120,128,.22);
 --sep:rgba(60,60,67,.20);--sepo:#B0B0B4;
@@ -3971,6 +3971,7 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
             <div class="ai-body">
               <div class="ig2"><label class="il" for="dfAzDep">배포 이름</label><input class="inp" id="dfAzDep" type="text" autocomplete="off" placeholder="예: gpt-4.1-mini-1"></div>
               <div class="ig2" style="margin-top:12px"><label class="il" for="dfAzEp">엔드포인트</label><input class="inp" id="dfAzEp" type="text" autocomplete="off" placeholder="https://&lt;리소스&gt;.services.ai.azure.com"></div>
+              <div class="ig2" style="margin-top:12px"><label class="il" for="dfAzPx">중계 서버(Azure Function)</label><input class="inp" id="dfAzPx" type="text" autocomplete="off" placeholder="https://calapp-ai-proxy-….azurewebsites.net"></div>
               <div class="ig2" style="margin-top:12px"><label class="il" for="dfAzCk">API 키</label><input class="inp" id="dfAzCk" type="password" autocomplete="off" placeholder="AI 분석을 쓰지 않으면 비워 둡니다"></div>
             </div>
           </div>
@@ -4042,5 +4043,5 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
 <script src="./vendor/korea-geo.js?v=635"></script>
 <script src="./vendor/apt-geo.js?v=635" onerror="void 0"></script>   <!-- 540차: 공동주택명 색인 — 없으면 그냥 건너뛴다 -->
-<script src="./app.js?v=699"></script>
+<script src="./app.js?v=700"></script>
 </body></html>

@@ -120,6 +120,7 @@
       ".read":  "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'",
       ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'",
       "endpoint":   { ".validate": "newData.isString() && newData.val().length <= 300" },
+      "proxy":      { ".validate": "newData.isString() && newData.val().length <= 300" },
       "deployment": { ".validate": "newData.isString() && newData.val().length <= 120" },
       "key":        { ".validate": "newData.isString() && newData.val().length <= 300" },
       "updatedAt":  { ".validate": "newData.isNumber()" },

@@ -1,0 +1,14 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "AZURE_AI_ENDPOINT": "https://<resource>.openai.azure.com",
+    "AZURE_AI_KEY": "<여기에 넣지 말고 local.settings.json 에만>",
+    "AZURE_AI_DEPLOYMENT": "<배포 이름>",
+    "FIREBASE_PROJECT_ID": "report-c29a1",
+    "FIREBASE_DB_URL": "https://report-c29a1-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "ALLOWED_ORIGINS": "https://dongyexn.github.io,http://localhost:8399",
+    "APPCHECK_MODE": "soft"
+  }
+}

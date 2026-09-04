@@ -1,6 +1,6 @@
 # 인수인계 — 일정공유 달력 앱 (calapp)
 
-## 현재 기준선 — v699
+## 현재 기준선 — v700
 
 - 이 저장소가 업무·조직·하자 데이터의 단일 운영 앱이다. 하자 데이터는 HCS 원본 업로드 → 로컬 저장 → 집계 → 게시 → 조회까지 이 앱에서 처리한다.
 - 하자 원본 IndexedDB 저장소는 `calapp_defects_v1`로 독립 운영한다. 기존 로컬 설치에서 데이터가 발견되면 최초 1회만 현재 저장소로 자동 복사하고 이후에는 현재 저장소만 사용한다.
@@ -4854,6 +4854,20 @@ report 앱 폐기 절차(아카이브·안내 페이지)뿐이다.
 - README와 HANDOFF의 현재 차수·테스트 파일·오류 대응 내용을 현행화했다.
 - 기능 추가나 모듈화는 하지 않고 안정화에 집중한다.
 - 검증 목표: static-audit FAIL 0, build-single PASS, 기존 AUTH/rainbow/defect 게이트 유지.
+
+### 700차 — AI 중계 서버(Azure Function) · 브라우저에서 Azure 키 제거 1단계
+
+- **왜** — `aiConf.key` 를 관리자 브라우저가 받아 `api-key` 헤더로 Azure 를 직접 불렀다. 규칙으로 읽기를 제한해도 브라우저에 온 순간 DevTools 에 보인다.
+- **구조** — `calapp-ai-proxy/`(Node 22 · Functions v4 · 사용량 Windows · Korea Central). 브라우저는 `POST /api/ai` 에 `{system,prompt,max}` + Firebase ID 토큰만 보낸다. 
+  Function 이 Google JWKS 로 토큰 검증 → RTDB REST 를 **사용자 토큰으로** 읽어 `users/{uid}/role=='editor'` 확인 → 환경변수 키로 Azure 호출 → `{text,mode}`. 
+  서비스 계정·Entra 앱 등록 없음. 모델 형식 탐색(chat/reason/bare/legacy)·`azBase` 는 서버로 이관. 상세는 `calapp-ai-proxy/README.md`.
+- **앱** — `aiConf.proxy`(규칙에 필드 추가) 가 있으면 `AI_PROVIDERS.azure.ask` 가 `azProxyAsk()` 로 간다(키 없이 `ready()` 참). 없으면 예전 직접 호출 그대로 — **실환경 확인 뒤 701차에서 직접 경로·`S.azCk`·`aiConf.key` 제거**. 
+  설정 화면에 「중계 서버」 칸. CSP `connect-src` 에 `https://*.azurewebsites.net`.
+- **왜 Flex 가 아니라 사용량(Windows)** — 구독이 무료 평가판이라 Flex 생성이 거부됐다. 코드는 OS 무관. 구독을 올리면 Flex 로 옮길 수 있다.
+- **배포 경로(CLI 없이)** — Cloud Shell 은 회사 정책으로 안 열렸다. Kudu 는 SSO 로 열리므로 페이지 안에서 `fetch('/api/zipdeploy')` 로 소스 zip 을 밀어넣고 `POST /api/command` 로 `npm install`. 
+  ⚠ `file_upload` 로 zip 을 못 올리므로 base64 로 넣었다 — node_modules 없이 8.7KB 라 가능했다.
+- 검사: Function 단위 14건(`calapp-ai-proxy/test`), ai-unit +2(중계 경로 헤더·본문 / 서버 오류 문구). rules-auth 통과(`aiConf.proxy` 허용).
+- **남은 일(701차)**: 포털에 `AZURE_AI_*` 값 입력(사용자) → 규칙 배포 → 앱에 proxy URL 입력 → 실환경 분석 1회·viewer 403·Network 에 api-key 0건 확인 → 직접 경로 제거·`aiConf/key` `.validate:false`·CSP 에서 Azure 도메인 제거·정적 감사에 `api-key`/`azCk` 금지. `FIREBASE_PROJECT_NUMBER` 넣고 App Check hard 전환은 위젯 토큰 확인 뒤.
 
 ### 699차 — 다른 PC 에서 옛 원본이 「최신」으로 그려지던 사고 (서버 publishedAt 비교)
 
