@@ -288,6 +288,18 @@ OK('구문 검사 (node --check)');
 }
 
 
+/* ── 10a. AI 키가 브라우저로 돌아오지 않도록(702차) ─────────────────
+   700~702차에 Azure 직접 호출을 Function 으로 옮겼다. 다시 들어오면 키가 DevTools 에 보인다. */
+{
+  const bad = [];
+  if (/['"]api-key['"]/.test(js)) bad.push("app.js 에 'api-key' 헤더");
+  if (/\bazCk\b/.test(js) || /\bazCk\b/.test(html)) bad.push('azCk 식별자');
+  if (/services\.ai\.azure\.com|openai\.azure\.com|cognitiveservices\.azure\.com/.test(html)) bad.push('index.html(CSP) 에 Azure AI 도메인');
+  if (/S\.azCk|o\.key\b.*azCk/.test(js)) bad.push('aiConf.key 읽기');
+  if (bad.length) F('브라우저에 Azure 키 경로가 돌아왔다 — ' + bad.join(' · '));
+  else OK('브라우저에 Azure 키·직접 호출 없음');
+}
+
 /* ── 10b. CSS 주석이 뒤를 삼키는지(701차) ─────────────────────────
    700차에 CSP 편집 스크립트가 `;` 를 잘못 찾아 :root 안에 `https://*.azurewebsites.net` 을 넣었다 — `/*` 가 주석을 열어
    뒤의 CSS 수백 줄이 사라지고 화면이 하얗게 됐다. smoke 의 규칙 수 하한(1800)으로는 못 잡았다.

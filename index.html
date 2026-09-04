@@ -2,7 +2,7 @@
 <html lang="ko"><head>
 <meta charset="UTF-8">
 <!-- CSP: 개발은 외부 app.js('self'), 단일 파일 배포는 build-single.mjs가 인라인 스크립트 해시를 넣는다 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://www.gstatic.com https://www.google.com; font-src 'self' data:; object-src 'none'; base-uri 'self'; script-src 'self' https://www.gstatic.com https://www.google.com https://www.recaptcha.net https://recaptcha.google.com https://apis.google.com https://*.firebasedatabase.app; frame-src https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; connect-src 'self' https://*.googleapis.com https://*.services.ai.azure.com https://*.openai.azure.com https://*.cognitiveservices.azure.com https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.firebaseio.com wss://*.firebaseio.com https://www.gstatic.com https://www.google.com https://www.recaptcha.net https://recaptcha.google.com https://*.azurewebsites.net">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://www.gstatic.com https://www.google.com; font-src 'self' data:; object-src 'none'; base-uri 'self'; script-src 'self' https://www.gstatic.com https://www.google.com https://www.recaptcha.net https://recaptcha.google.com https://apis.google.com https://*.firebasedatabase.app; frame-src https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; connect-src 'self' https://*.googleapis.com https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.firebaseio.com wss://*.firebaseio.com https://www.gstatic.com https://www.google.com https://www.recaptcha.net https://recaptcha.google.com https://*.azurewebsites.net">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -3969,10 +3969,7 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
           <div class="card" id="aiCard" style="display:none">
             <div class="set-h">AI 분석 연결</div>
             <div class="ai-body">
-              <div class="ig2"><label class="il" for="dfAzDep">배포 이름</label><input class="inp" id="dfAzDep" type="text" autocomplete="off" placeholder="예: gpt-4.1-mini-1"></div>
-              <div class="ig2" style="margin-top:12px"><label class="il" for="dfAzEp">엔드포인트</label><input class="inp" id="dfAzEp" type="text" autocomplete="off" placeholder="https://&lt;리소스&gt;.services.ai.azure.com"></div>
               <div class="ig2" style="margin-top:12px"><label class="il" for="dfAzPx">중계 서버(Azure Function)</label><input class="inp" id="dfAzPx" type="text" autocomplete="off" placeholder="https://calapp-ai-proxy-….azurewebsites.net"></div>
-              <div class="ig2" style="margin-top:12px"><label class="il" for="dfAzCk">API 키</label><input class="inp" id="dfAzCk" type="password" autocomplete="off" placeholder="AI 분석을 쓰지 않으면 비워 둡니다"></div>
             </div>
           </div>
         </div>
@@ -4043,5 +4040,5 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
 <script src="./vendor/korea-geo.js?v=635"></script>
 <script src="./vendor/apt-geo.js?v=635" onerror="void 0"></script>   <!-- 540차: 공동주택명 색인 — 없으면 그냥 건너뛴다 -->
-<script src="./app.js?v=701"></script>
+<script src="./app.js?v=702"></script>
 </body></html>

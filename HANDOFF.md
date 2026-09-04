@@ -1,6 +1,6 @@
 # 인수인계 — 일정공유 달력 앱 (calapp)
 
-## 현재 기준선 — v701
+## 현재 기준선 — v702
 
 - 이 저장소가 업무·조직·하자 데이터의 단일 운영 앱이다. 하자 데이터는 HCS 원본 업로드 → 로컬 저장 → 집계 → 게시 → 조회까지 이 앱에서 처리한다.
 - 하자 원본 IndexedDB 저장소는 `calapp_defects_v1`로 독립 운영한다. 기존 로컬 설치에서 데이터가 발견되면 최초 1회만 현재 저장소로 자동 복사하고 이후에는 현재 저장소만 사용한다.
@@ -4854,6 +4854,17 @@ report 앱 폐기 절차(아카이브·안내 페이지)뿐이다.
 - README와 HANDOFF의 현재 차수·테스트 파일·오류 대응 내용을 현행화했다.
 - 기능 추가나 모듈화는 하지 않고 안정화에 집중한다.
 - 검증 목표: static-audit FAIL 0, build-single PASS, 기존 AUTH/rainbow/defect 게이트 유지.
+
+### 702차 — 브라우저 Azure 직접 호출 제거(중계 2단계 · 실환경 확인 뒤)
+
+- 실환경 확인(701): 앱에서 `AI.text()` → Function → Azure → 「연결 확인」 9.8초. 페이지가 접속한 Azure 계열 호스트는 Function 뿐(직접 호출 0건). Function 환경변수의 키는 Azure **Key 2** — 포털 복사 버튼 → 붙여넣기로 옮겨 사람·모델 어느 쪽 화면에도 안 보였다.
+- **제거** — `AI_PROVIDERS.azure.ask` 의 직접 fetch·`api-key` 헤더·`azBase`·`_azMode`(모델 형식 탐색)·`S.azEp/azDep/azCk` 전부. 이제 `ready()` = `!!S.azProxy`, `ask()` = `azProxyAsk()`.
+- **설정 화면** — 엔드포인트·배포·API 키 칸 삭제, 「중계 서버」 칸만. `aiConfLoad` 는 DB 에 옛 `key/endpoint/deployment` 가 남아 있으면 **관리자가 자동으로 null 로 지운다**(한 번). 규칙은 세 필드 `.validate:false`(삭제만 통과).
+- **CSP** `connect-src` 에서 `*.services.ai.azure.com`·`*.openai.azure.com`·`*.cognitiveservices.azure.com` 제거 — `*.azurewebsites.net` 만.
+- **정적 감사 10a** — app.js 의 `'api-key'`·`azCk`, index.html(CSP)의 Azure AI 도메인이 돌아오면 FAIL.
+- ai-unit 재작성(직접 경로 검사 삭제): update 저장 · 옛 필드 정리 · 503 문구 · 코드펜스 · 중계 URL 정규화 · 연타 · 로컬 카드 · 중계 헤더/본문 · 오류 문구.
+- **배포 뒤 할 것**: ① 관리자로 한 번 접속(옛 필드 자동 정리 토스트 확인) ② Azure 포털 → `2314916-5702-resource` → 키 및 엔드포인트 → **키1 다시 생성** (노출됐던 키 무효화 · Function 은 Key 2 라 영향 없음) ③ 규칙 배포.
+- 미해결: viewer 403 실환경 확인(viewer 세션 필요) · App Check hard 전환(`FIREBASE_PROJECT_NUMBER` 필요) · 위젯에서 Function 경로 확인.
 
 ### 701차 — 700차 배포본 화면이 하얗게 된 사고 복구 · CSS 주석 감사
 
