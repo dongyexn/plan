@@ -119,10 +119,11 @@
       ".validate": "newData.hasChildren()",
       ".read":  "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'",
       ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'",
-      "endpoint":   { ".validate": "newData.isString() && newData.val().length <= 300" },
+      // 702차: 브라우저 경로 제거 — 키·엔드포인트·배포는 Function 환경변수. 세 필드는 삭제(null)만 통과한다
+      "endpoint":   { ".validate": false },
       "proxy":      { ".validate": "newData.isString() && newData.val().length <= 300" },
-      "deployment": { ".validate": "newData.isString() && newData.val().length <= 120" },
-      "key":        { ".validate": "newData.isString() && newData.val().length <= 300" },
+      "deployment": { ".validate": false },
+      "key":        { ".validate": false },
       "updatedAt":  { ".validate": "newData.isNumber()" },
       "updatedBy":  { ".validate": "newData.isString() && newData.val().length <= 200" },
       "$other":     { ".validate": false }

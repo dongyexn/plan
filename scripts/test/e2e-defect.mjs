@@ -237,17 +237,20 @@ await pg.waitForTimeout(600);
 const ai=await pg.evaluate(async()=>{
   /* 671차: 연결 정보는 Firebase aiConf 리프에서 온다 — S.az* 를 직접 넣으면 aiConfLoad 가 덮어쓴다.
      리프에 심어 실제 경로(aiConfLoad → S.az* → AI.ready)를 그대로 태운다. */
-  window.__TREE.aiConf={endpoint:'https://e2e.services.ai.azure.com',deployment:'e2e-dep',key:'vk-test'};
+  /* 702차: 브라우저는 중계 서버만 안다 — fetch 가짜는 Function 응답 {text} 을 낸다 */
+  window.__TREE.aiConf={proxy:'https://e2e-proxy.azurewebsites.net'};
+  FB.auth={currentUser:{getIdToken:async()=>'E2E.TOKEN'}};
   const calls=[];
   window.fetch=async(url,opt)=>{calls.push(url);
-    const body=JSON.parse(opt.body);   /* Azure chat completions 모양 — messages[0]=규칙, messages[1]=데이터 */
-    const sys=body.messages[0].content||'',usr=body.messages[1].content||'';
+    if(!/\/api\/ai$/.test(String(url))||!/^Bearer /.test((opt.headers||{}).Authorization||''))throw new Error('중계 서버가 아닌 곳으로 갔다: '+url);
+    const body=JSON.parse(opt.body);   /* 702차: 중계 요청 {system,prompt,max} */
+    const sys=body.system||'',usr=body.prompt||'';
     const isDash=/line1/.test(sys)||/line1/.test(usr);
     const text=isDash?JSON.stringify([{line1:'<b>AI</b> 요약 1',line2:'세부 1'},{line1:'요약 2',line2:'세부 2'},{line1:'요약 3',line2:'세부 3'}])
       :'<div style="font-weight:700">종합 소견</div><ul><li>미처리 상위 공종 집중 보수 필요</li><li>장기 미처리 30건 — 주간 단위 감축 계획 권고</li></ul>';
     /* ⚠ 675차: provider 가 r.ok·r.status 를 보고 r.text() 로 읽는다(프록시가 HTML 을 주는 경우 대비) —
        가짜 응답도 Response 모양을 갖춰야 한다. json() 만 있으면 첫 줄에서 TypeError 가 난다. */
-    return {ok:true,status:200,text:async()=>JSON.stringify({choices:[{message:{content:text},finish_reason:'stop'}]})};
+    return {ok:true,status:200,json:async()=>({text,mode:'chat'})};
   };
   S.dfSid='sA';S.dfTab='sum';rDefect();
   await new Promise(r=>setTimeout(r,400));

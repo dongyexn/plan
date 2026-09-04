@@ -8,7 +8,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='701';
+const APP_VER='702';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -5097,7 +5097,7 @@ function dfProdCardFill(){
     pd.innerHTML=ids.length?'<b>미게시 '+ids.length+'개 현장</b> — '+esc(ids.map(id=>((S.org.sites||[]).find(x=>x.id===id)||{}).name||id).join(' · ')):'';}
   dfExTkRender();
   const _fill=(id,v)=>{const e=$(id);if(e&&document.activeElement!==e)e.value=v||'';};
-  _fill('#dfAzEp',S.azEp);_fill('#dfAzDep',S.azDep);_fill('#dfAzCk',S.azCk);_fill('#dfAzPx',S.azProxy);
+  _fill('#dfAzPx',S.azProxy);   /* 702차: 엔드포인트·배포·키는 Function 환경변수로 갔다 — 브라우저는 중계 서버 주소만 안다 */
   const hi=$('#dfUpHist');
   if(hi){const h=DFMETA.hist||[];
     /* ⚠ 686차: slice(0,3) 이었다. meta 에는 10회가 쌓이는데 화면엔 3줄만 나와
@@ -5148,11 +5148,7 @@ function dfProdWire(){
     if(el.id==='dfFi'){onFile(el.files&&el.files[0]);return;}
     if(el.id==='dfExTk'){const v=el.value.trim();if(v){el.value='';dfExTkSet(dfExTkList().concat(v.split(',').map(x=>x.trim()).filter(Boolean)));}return;}   /* blur 잔여 글도 칩으로 */
     if(el.id==='dfPubRm'){const v=el.value;if(/^\d{4}-\d{2}$/.test(v)){S.dfPubRm=v;dfMetaSave();dfProdCardFill();}return;}
-    if(el.id==='dfAzEp'||el.id==='dfAzDep'||el.id==='dfAzCk'||el.id==='dfAzPx'){
-      const v=el.value.trim();
-      const f=el.id==='dfAzEp'?'endpoint':(el.id==='dfAzDep'?'deployment':(el.id==='dfAzPx'?'proxy':'key'));
-      if(f==='endpoint')S.azEp=v;else if(f==='deployment')S.azDep=v;else if(f==='proxy')S.azProxy=v;else S.azCk=v;
-      aiConfSave(f,v);return;}
+    if(el.id==='dfAzPx'){const v=el.value.trim();S.azProxy=v;aiConfSave('proxy',v);return;}
   });
   /* 제외 키워드 칩 — 엔터·쉼표 추가, 빈 칸 백스페이스로 마지막 칩 제거, × 클릭 제거 */
   document.addEventListener('keydown',e=>{
@@ -5195,7 +5191,7 @@ else setTimeout(dfProdBoot,0);
       규칙이 유일한 방어선이므로 database.rules.json 의 aiConf 를 느슨하게 고치지 말 것.
    ⚠ 그래도 호출은 브라우저에서 일어난다 — 키는 관리자 화면의 네트워크 탭에 헤더로 찍힌다.
       노출을 실제로 줄이려면 키가 아니라 사용자 토큰(Entra)이나 중계 서버가 필요하다. */
-S.azEp='';S.azDep='';S.azCk='';S.azProxy='';   /* 700차: azProxy — 중계 서버(Azure Function) 주소. 있으면 키 없이 이 경로만 쓴다 */
+S.azProxy='';   /* 702차: 브라우저가 아는 AI 연결 정보는 중계 서버 주소뿐. 키·엔드포인트·배포는 Function 환경변수 */
 /* 675차: 671차 이전 판이 브라우저에 남긴 키를 지운다 — calapp.ck 에는 **Gemini API 키가 평문**으로 남아 있다.
    앱이 더는 읽지 않는다는 것과 사용자 브라우저에서 사라졌다는 것은 다른 얘기다. */
 try{['calapp.ck','calapp.ai','ck'].forEach(k=>localStorage.removeItem(k));}catch(_){ }
@@ -5210,7 +5206,12 @@ function aiConfLoad(force){
   if(!S.live||!FB.db||!isEditor()||S.snap)return Promise.resolve(false);
   _aiConfP=FB.db.ref('aiConf').once('value').then(sn=>{
     const o=(sn.val()&&typeof sn.val()==='object')?sn.val():{};   /* 리프에 원시값이 들어와도 죽지 않는다 */
-    S.azEp=String(o.endpoint||'');S.azDep=String(o.deployment||'');S.azCk=String(o.key||'');S.azProxy=String(o.proxy||'');
+    S.azProxy=String(o.proxy||'');
+    /* 702차: 옛 필드(endpoint/deployment/key)가 남아 있으면 관리자가 지운다 — 키가 DB 에 남아 있을 이유가 없다 */
+    if((o.key||o.endpoint||o.deployment)&&isEditor()&&!S.snap){
+      FB.db.ref('aiConf').update({key:null,endpoint:null,deployment:null}).then(()=>toast('예전 AI 키·엔드포인트를 DB 에서 지웠습니다 — 이제 중계 서버만 씁니다'))
+        .catch(e=>console.warn('[AI] 옛 필드 정리',e));
+    }
     dfProdCardFill();
     return true;
   }).catch(e=>{console.warn('[AI] aiConf 읽기 실패',e);_aiConfP=null;return false;});
@@ -5222,7 +5223,6 @@ function aiConfLoad(force){
 function aiConfSave(field,val){
   if(!S.live||!FB.db){toast('로그인 상태에서만 저장됩니다');return;}
   if(!isEditor()){toast('AI 연결 정보는 관리자만 저장할 수 있습니다');return;}
-  _azMode=null;   /* ⚠ 배포·엔드포인트가 바뀌면 모델 계열 캐시는 무효다 — 안 지우면 새 배포에서 계속 400 이 난다 */
   const u={updatedAt:Date.now(),updatedBy:String((S.user&&S.user.email)||'').slice(0,200)};
   u[field]=val;
   FB.db.ref('aiConf').update(u)
@@ -5236,76 +5236,15 @@ function aiConfSave(field,val){
    ⚠ 프롬프트·규칙 조립(RULE_DEF·buildRules)은 산출물의 문구를 정하므로 여기 들어오지 않는다.
    ⚠ 키는 브라우저에 있다 — 비밀값이 아니다. 회사 인증 체계로 옮길 때는 키가 아니라 사용자 토큰이 되므로,
       provider 는 키 유무가 아니라 ready() 로 준비 상태를 답한다. */
-let _azMode=null;   /* 673차: 배포 모델의 계열 캐시 — 'chat'|'reason'|'bare'|'legacy'. 배포를 바꾸면 aiConfSave 가 비운다 */
-const AZ_TIMEOUT=180000;   /* 675차: 응답이 안 오면 3분에 끊는다 — 안 끊으면 '생성 중…' 이 영원히 남는다 */
-/* 엔드포인트 정규화 — 포털이 주는 값이 여러 모양이라 **호스트만** 남긴다.
-   `…/openai/v1/responses` 도, 프로젝트 엔드포인트 `…/api/projects/p1` 도 같은 결과가 된다. */
-function azBase(v){
-  let t=String(v||'').trim().replace(/\s+/g,'');
-  if(!t)return '';
-  if(!/^https?:\/\//i.test(t))t='https://'+t;
-  try{return new URL(t).origin;}catch(e){return t.replace(/\/+$/,'').replace(/\/openai(\/.*)?$/,'');}
-}
+const AZ_TIMEOUT=180000;   /* 675차: 응답 대기 3분 — 중계 서버는 170초에 끊으므로 늘 서버 쪽 문구가 먼저 온다 */
+/* 702차: Azure 직접 호출 제거. 엔드포인트·배포·키·모델 형식 탐색(_azMode)은 전부 calapp-ai-proxy(Function)로 갔다.
+   브라우저는 중계 서버 주소(S.azProxy)만 알고, Authorization 에 Firebase ID 토큰을 실어 보낸다. */
 const AI_PROVIDERS={
-  /* Azure AI Foundry — 배포한 모델을 chat completions 로 부른다.
-     ⚠ model 에는 모델명이 아니라 **배포 이름**이 들어간다(포털 기본값엔 `-1` 이 붙는다).
-     ⚠ 모델 계열마다 본문이 다르다. 설정에서 고르게 하지 않고 첫 호출로 알아낸다(shape 주석 참조). */
   azure:{
     id:'azure', label:'Azure AI Foundry',
-    ready(){return !!S.azProxy||!!(S.azEp&&S.azDep&&S.azCk);},   /* 700차: 중계 서버가 있으면 키 없이 준비됨 */
-    hint:'설정 > AI 분석 연결에서 엔드포인트·배포이름·키를 입력하세요',
-    /* system: 규칙, prompt: 데이터, max: 최대 토큰 → 순수 텍스트를 돌려준다 */
-    async ask({system,prompt,max=4096,temp=0.4}){
-      if(S.azProxy)return azProxyAsk({system,prompt,max});   /* 700차: 키는 서버에만 — 브라우저는 Function 만 부른다 */
-      const url=azBase(S.azEp)+'/openai/v1/chat/completions';
-      const msgs=[{role:'system',content:system},{role:'user',content:prompt}];
-      /* · chat  : gpt-4.1 계열(비추론). temperature 를 받고 한도는 본문 토큰만 센다.
-         · reason: gpt-5 계열(추론). temperature 를 400 으로 거부하고, 한도를 추론 토큰이 함께 먹으므로 여유를 얹는다.
-         · bare  : 추론 모델인데 reasoning_effort 를 안 받는 경우.
-         · legacy: max_completion_tokens 대신 옛 max_tokens 만 받는 배포. */
-      const AZ_REASON_PAD=16000;
-      const shape=m=>{
-        const b={model:S.azDep,messages:msgs};
-        if(m==='reason'){b.max_completion_tokens=max+AZ_REASON_PAD;b.reasoning_effort='minimal';}
-        else if(m==='bare'){b.max_completion_tokens=max+AZ_REASON_PAD;}
-        else if(m==='legacy'){b.max_tokens=max;b.temperature=temp;}
-        else{b.max_completion_tokens=max;b.temperature=temp;}
-        return b;
-      };
-      /* ⚠ 여기서 던지는 오류는 모양 탐색을 멈춘다 — 연결·인증·응답형식 문제는 모양을 바꿔도 안 풀린다 */
-      const once=async m=>{
-        const ac=(typeof AbortController!=='undefined')?new AbortController():null;
-        const tid=ac?setTimeout(()=>ac.abort(),AZ_TIMEOUT):null;
-        let r;
-        try{r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','api-key':S.azCk},
-          body:JSON.stringify(shape(m)),signal:ac?ac.signal:undefined});}
-        catch(e){throw new Error((ac&&ac.signal.aborted)
-          ?'응답이 3분 안에 오지 않아 중단했습니다'
-          :'연결 실패 — 엔드포인트 주소와 사내망 차단(CSP·프록시)을 확인하세요');}
-        finally{if(tid)clearTimeout(tid);}
-        const body=await r.text();
-        let d=null;try{d=JSON.parse(body);}catch(e){d=null;}
-        /* JSON 이 아니면 프록시·WAF 가 가로챈 HTML 이다 — 파싱 오류 문구 대신 상태코드를 보여 준다 */
-        if(!d||typeof d!=='object')throw new Error('HTTP '+r.status+' — 응답이 JSON 이 아닙니다(프록시 차단 의심)');
-        if(!r.ok&&!d.error)d={error:{message:'HTTP '+r.status}};
-        return d;
-      };
-      const order=_azMode?[_azMode]:['chat','reason','bare','legacy'];
-      let d=null,used=null,lastErr='';
-      for(const m of order){
-        d=await once(m);
-        if(!d.error){used=m;break;}
-        lastErr=d.error.message||'API 오류';
-        /* 모델이 파라미터 자체를 거부한 것만 다음 모양으로 넘어간다 — 키·배포이름 오류는 즉시 알린다 */
-        if(!/temperature|reasoning_effort|max_completion_tokens|max_tokens|unsupported|not supported|unrecognized/i.test(lastErr))break;
-      }
-      /* 캐시해 둔 모양이 거부당했다면 배포가 바뀐 것이다 — 캐시를 비워 다음 호출이 다시 탐색하게 한다 */
-      if(!used){if(_azMode)_azMode=null;throw new Error(lastErr);}
-      const c=(d.choices||[])[0];
-      if(!c||!c.message||!c.message.content)throw new Error('본문이 비었습니다'+(c&&c.finish_reason?' ('+c.finish_reason+')':''));
-      _azMode=used;
-      return c.message.content;
-    }
+    ready(){return !!S.azProxy;},
+    hint:'설정 > AI 연결에 중계 서버 주소를 넣으세요',
+    async ask({system,prompt,max=4096}){return azProxyAsk({system,prompt,max});}
   }
 };
 /* 700차: 중계 서버 경로. Authorization = Firebase ID 토큰, X-Firebase-AppCheck = App Check 토큰(있으면).

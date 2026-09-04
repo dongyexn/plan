@@ -197,9 +197,10 @@ const AIC = { endpoint: 'https://x.services.ai.azure.com', deployment: 'gpt-4.1-
 t('AUTH-15a', 'viewer → aiConf 읽기(키 노출)', false, tryRead('aiConf', A('U1'), TREE));
 t('AUTH-15b', 'editor → aiConf 읽기', true, tryRead('aiConf', A('E1'), TREE));
 t('AUTH-15c', 'viewer → aiConf 쓰기', false, tryWrite('aiConf', A('U1'), TREE, AIC));
-t('AUTH-15d', 'editor → aiConf 쓰기', true, tryWrite('aiConf', A('E1'), TREE, AIC));
+t('AUTH-15d', 'editor 가 aiConf 에 중계 서버 주소 저장', true, tryWrite('aiConf', A('E1'), TREE, { proxy: 'https://calapp-ai-proxy.azurewebsites.net', updatedAt: 1, updatedBy: 'e1@hdec.co.kr' }));   /* 702차: 키·엔드포인트·배포는 규칙이 막는다 */
+t('AUTH-15d2', 'editor 라도 aiConf 에 키를 쓰면 거부(702차)', false, tryWrite('aiConf', A('E1'), TREE, AIC));
 t('AUTH-15e', 'editor → aiConf 에 규칙 밖 필드', false, tryWrite('aiConf', A('E1'), TREE, { ...AIC, evil: 1 }));
-t('AUTH-15f', 'editor → aiConf 한 칸만 부분 갱신(첫 설정)', true, tryWrite('aiConf', A('E1'), TREE, { deployment: 'gpt-5-mini-1', updatedAt: 1, updatedBy: 'e1@hdec.co.kr' }));
+t('AUTH-15f', 'editor 가 aiConf 배포 이름을 쓰면 거부(702차 — Function 환경변수로 갔다)', false, tryWrite('aiConf', A('E1'), TREE, { deployment: 'gpt-5-mini-1', updatedAt: 1, updatedBy: 'e1@hdec.co.kr' }));
 t('AUTH-15g', 'editor → aiConf 에 원시값 쓰기', false, tryWrite('aiConf', A('E1'), TREE, 'x'));
 /* AUTH-14 휴지통·보관함도 업무 본체와 같은 소유 검사 */
 const TR = (sid, iid) => ({ text: T(sid, iid).text, date: '2026-08-01', deletedAt: 1, z: 'x' });
