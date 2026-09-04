@@ -288,6 +288,28 @@ OK('구문 검사 (node --check)');
 }
 
 
+/* ── 10b. CSS 주석이 뒤를 삼키는지(701차) ─────────────────────────
+   700차에 CSP 편집 스크립트가 `;` 를 잘못 찾아 :root 안에 `https://*.azurewebsites.net` 을 넣었다 — `/*` 가 주석을 열어
+   뒤의 CSS 수백 줄이 사라지고 화면이 하얗게 됐다. smoke 의 규칙 수 하한(1800)으로는 못 잡았다.
+   주석 안의 `/*` 는 글자일 뿐이라 짝 세기는 못 쓴다 — 순차 스캔으로 '한 주석이 2,500자를 넘는지'와 '주석 밖 URL 조각(://*)'을 본다. */
+{
+  const styles = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map(m => m[1]);
+  const bad = [];
+  styles.forEach((css, si) => {
+    let i = 0, inC = false, start = 0;
+    while (i < css.length - 1) {
+      const two = css.slice(i, i + 2);
+      if (!inC && two === '/*') { inC = true; start = i; i += 2; continue; }
+      if (inC && two === '*/') { inC = false; if (i - start > 2500) bad.push('style#' + si + ' ' + (css.slice(0, start).split('\n').length) + '행 주석이 ' + (i - start) + '자 — 뒤를 삼킴'); i += 2; continue; }
+      if (!inC && /:\/\/\*/.test(css.slice(i, i + 4))) { bad.push('style#' + si + ' ' + (css.slice(0, i).split('\n').length) + '행 URL 조각 ' + css.slice(i - 8, i + 30).replace(/\s+/g, ' ')); i += 4; continue; }
+      i++;
+    }
+    if (inC) bad.push('style#' + si + ' 주석이 끝까지 안 닫힘(' + css.slice(0, start).split('\n').length + '행)');
+  });
+  if (bad.length) F('CSS 주석이 뒤를 삼킨다 — ' + bad.join(' · '));
+  else OK('CSS 주석 길이·URL 조각 정상 (' + styles.length + '개 style)');
+}
+
 /* ── 11. CSS 늦은 재선언 감시(422차) ──────────────────────────────
    같은 셀렉터를 파일 뒤쪽에서 다시 선언해 같은 프로퍼티를 덮으면, 앞의 수정이
    말없이 무효가 된다(§frow margin 사고). 기존 재선언은 베이스라인으로 동결하고
