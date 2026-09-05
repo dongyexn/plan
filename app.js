@@ -8,7 +8,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='702';
+const APP_VER='707';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -1912,7 +1912,7 @@ function calInit(){
        만든 순(cre) → 업무 id(pid) 로 못 박는다. 둘 다 편집 중에 변하지 않는 값이다. */
     eventOrder:'-duration,ord,oky,start,allDay,cre,pid',
     headerToolbar:false,height:'100%',dayMaxEvents:maxEvOf(),
-    moreLinkContent:a=>'외 '+a.num+'건 ›',   /* 234차: 5안(우측 정렬 미니) — 조용하게 오른쪽 끝에 */
+    moreLinkContent:a=>(isMob()&&!WIDGET&&document.body.classList.contains('mcal-full'))?'+'+a.num:'외 '+a.num+'건 ›',   /* 704차: 폰 큰 달력은 「+N」 */   /* 234차: 5안(우측 정렬 미니) — 조용하게 오른쪽 끝에 */
     /* 기본 더보기 팝오버 대신 그 날짜를 골라 업무 패널(위젯은 팝업)에서 전부 보게 한다 */
     moreLinkClick:a=>{const ds=dstr(a.date);selDate(ds,true);
       if(WIDGET){S.widPop=true;rWidget();}
@@ -1930,7 +1930,7 @@ function calInit(){
       const end=new Date(info.end);end.setDate(end.getDate()-1);   /* FullCalendar 의 end 는 다음 날(배타적) */
       ok(buildEvents(dstr(info.start),dstr(end)));
     },
-    dateClick:info=>{S.selEnd='';selDate(String(info.dateStr).slice(0,10));},
+    dateClick:info=>{S.selEnd='';selDate(String(info.dateStr).slice(0,10));if(isMob()&&!WIDGET){if(mcalIsLand()){const d=$('#view-calendar .dp-col');if(d)d.classList.add('on');}else mcalSet('mini');}},   /* 704차: 가로는 시트, 세로는 점 달력 */
     eventClick:info=>{info.jsEvent.preventDefault();
       const t=info.event.extendedProps.task;
       if(t){gotoTask(t.sid,t.iid);return;}
@@ -2203,8 +2203,31 @@ function calMiniHTML(){
     +'<div class="mc-w">'+DOW.map((w,i)=>'<span'+(i===0?' class="sun"':i===6?' class="sat"':'')+'>'+w+'</span>').join('')+'</div>'
     +'<div class="mc-g">'+cells+'</div></div>';
 }
+/* 704차: 모바일 달력 두 상태 — 'full'(큰 월 달력, 기본) ↔ 'mini'(점 달력 + 업무 패널). 네이버 캘린더 방식.
+   날짜 탭·위로 스와이프 → mini, 패널을 맨 위에서 아래로 당김·점 달력에서 아래로 스와이프 → full. 좌우 스와이프 = 월 이동.
+   가로 모드(높이 500 이하)는 늘 full 이고 패널은 아래에서 올라오는 시트(.dp-col.on). */
+S.mcal=S.mcal||'full';
+function mcalIsLand(){return matchMedia('(max-height:500px)').matches;}
+function mcalSet(mode){
+  if(!isMob()||WIDGET)return;
+  if(mcalIsLand()){mode='full';const d=$('#view-calendar .dp-col');if(d)d.classList.remove('on');}   /* 가로: 시트는 날짜를 눌러야 올라온다 */
+  const changed=S.mcal!==mode;S.mcal=mode;
+  if(changed){document.body.classList.add('mcal-anim');clearTimeout(mcalSet._t);mcalSet._t=setTimeout(()=>document.body.classList.remove('mcal-anim'),240);}   /* 706차: 전환 페이드 */
+  document.body.classList.toggle('mcal-full',mode==='full');
+  document.body.classList.toggle('mcal-mini',mode==='mini');
+  rCalMini();
+  if(CAL){const n=maxEvOf();if(n!==_maxEv){_maxEv=n;CAL.setOption('dayMaxEvents',n);}   /* 가로는 한 줄 */
+    if(mode==='full')requestAnimationFrame(()=>{try{CAL.updateSize();}catch(e){}});}
+}
+function mcalTitle(){
+  const t=$('#tbt');if(!t||!CAL)return;
+  if(S.view!=='calendar'||!isMob()||WIDGET)return;
+  const c=CAL.view.currentStart;
+  t.innerHTML='<button class="tbt-ym" data-act="cal.pick">'+c.getFullYear()+'. '+(c.getMonth()+1)+'.<svg class="icn" aria-hidden="true"><use href="#i-chevd"></use></svg></button>';
+}
 function rCalMini(){
   const box=$('#calMini');if(!box)return;
+  mcalTitle();
   /* ⚠ 위젯도 폭이 좁아 isMob()이 참이다 — 위젯은 FullCalendar 를 그대로 쓰므로 제외한다 */
   const on=isMob()&&S.view==='calendar'&&!WIDGET;
   box.hidden=!on;
@@ -8020,7 +8043,7 @@ function siteTable(){
   const regOpts=x=>'<option value="">권역 —</option>'+regs.map(r=>'<option value="'+esc(r.id)+'"'+(r.id===x.region?' selected':'')+'>'+esc(r.name)+'</option>').join('');
   const dn=orgDraftN();
   return `<div class="mg-savebar" id="orgSaveBar"${dn?'':' hidden'}><span>저장하지 않은 변경 <b id="orgSaveN">${dn}</b>건</span><button class="btn bg2 bsm" data-act="org.draftDrop">되돌리기</button><button class="btn bp bsm" data-act="org.draftSave">저장</button></div>
-  <div style="overflow-x:auto"><table class="mgtbl"><thead><tr>
+  <div style="overflow-x:auto" data-sbx="r"><table class="mgtbl"><thead><tr>
     <th style="width:11%">권역</th><th style="width:19%">현장명</th><th style="width:13%">담당자</th>
     <th class="cc" style="width:6%">세대수</th><th class="cc" style="width:5%">동수</th>
     <th class="cc" style="width:6%">상가수</th><th class="cc" style="width:10%">준공일</th>
@@ -9088,6 +9111,33 @@ function copyText(t,msg){
     try{document.execCommand('copy');done();}catch(e){toast('복사 실패');}ta.remove();}
 }
 /* 우클릭 대상 — 달력 날짜 칸 · 업무 막대 · 업무 카드 · 미처리 목록(엑셀식 열 메뉴) */
+/* 704차: 모바일 달력 제스처 — 좌우 스와이프 = 월 이동(‹ › 없음), 위로 = 점 달력+패널, 아래로(패널 맨 위·점 달력) = 큰 달력.
+   편집 중(입력 상자)에는 안 잡는다. 700ms 넘는 느린 움직임·대각선은 무시 */
+(function(){
+  let sx=0,sy=0,st=0,tgt=null,dpTop=-1;
+  document.addEventListener('touchstart',e=>{
+    tgt=null;if(WIDGET||S.view!=='calendar')return;   /* 705차: 태블릿(터치·넓은 화면)도 좌우 스와이프로 월 이동 — 상하 전환은 폰만 */
+    const t=e.touches[0];sx=t.clientX;sy=t.clientY;st=Date.now();tgt=e.target;
+    const body=tgt.closest&&tgt.closest('#view-calendar .dp-body');dpTop=body?body.scrollTop:-1;
+  },{passive:true});
+  document.addEventListener('touchend',e=>{
+    if(!tgt||!tgt.closest)return;
+    if(tgt.closest('input,textarea,select,[contenteditable],#ymPop,.pe-wrap,.plan-ed,#mo'))return;
+    const t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy,dt=Date.now()-st;tgt0=tgt;tgt=null;
+    if(dt>700||!CAL)return;
+    const inCal=!!tgt0.closest('#view-calendar .cal-card'),inDp=!!tgt0.closest('#view-calendar .dp-col');
+    if(!inCal&&!inDp)return;
+    if(Math.abs(dx)>60&&Math.abs(dy)<40){if(dx<0)CAL.next();else CAL.prev();return;}
+    if(!isMob())return;
+    if(Math.abs(dy)>50&&Math.abs(dx)<40){
+      if(mcalIsLand()){const d=$('#view-calendar .dp-col');if(d&&inDp&&dy>0&&dpTop<=0)d.classList.remove('on');return;}
+      if(dy<0&&inCal&&S.mcal==='full')mcalSet('mini');
+      else if(dy>0&&inCal&&S.mcal==='mini')mcalSet('full');
+      else if(dy>0&&inDp&&dpTop<=0&&S.mcal==='mini')mcalSet('full');
+    }
+  },{passive:true});
+  let tgt0=null;
+})();
 /* 696차: 모바일엔 우클릭이 없다 — 조직 관리 행을 550ms 길게 누르면 같은 메뉴. 손가락이 8px 넘게 움직이면 취소(스크롤) */
 let _orgLpT=0,_orgLpXY=null;
 document.addEventListener('touchstart',e=>{
@@ -9351,6 +9401,8 @@ function go(view){
   $('#tbt').textContent=VIEW_TTL[view];
   /* ⚠ 30ms 뒤에 크기를 맞추면 그 사이 **이전 화면 기준 폭**으로 한 번 그려졌다가 늘어난다 —
      화면이 바뀐 직후 곧바로 맞추고, 레이아웃이 잡힌 다음 프레임에 한 번 더 보정한다(355차) */
+  if(view==='calendar'&&isMob()&&!WIDGET)mcalSet(S.mcal||'full');   /* 704차 */
+  else{document.body.classList.remove('mcal-full','mcal-mini');}
   if(view==='calendar'&&CAL){
     /* ⚠ 숨겨져 있던 동안 달력은 크기를 모른다 — 그대로 보이면 **이전 화면 폭**으로 한 번 그려졌다가
        늘어나며 반짝인다. 크기를 맞출 때까지 감춰 두고, 다 맞춘 다음 프레임에 보인다(355차) */
@@ -9455,6 +9507,7 @@ function mobClose(){
 const ACT={
   'nav.go':el=>{if(el.dataset.view==='defect')S.dfSid='';go(el.dataset.view);},
   'nav.toggle':()=>{
+    S.sbUser=true;   /* 705차: 사용자가 직접 접었다 폈으면 태블릿 자동 접기(sbAuto)가 손대지 않는다 */
     tipHide();   /* 514차: 사이드바가 움직이면 툴팁은 제자리에 남는다 */
     /* 접기/펼치기 동안 차트를 '다시 그리는' 모션(막대가 바닥에서 솟는 520ms)이 보이면 안 된다.
        responsive=false 저글링은 이미 붙은 ResizeObserver 를 막지 못해 무효였다(216차 실패 원인) —
@@ -10749,7 +10802,7 @@ function calFitRows(){
   return n<1?null:n;   /* 더보기 줄까지 넣을 자리도 없을 만큼 낮으면 자동에 맡긴다 */
 }
 function maxEvOf(){
-  if(isNarrow())return 2;
+  if(isNarrow())return (typeof mcalIsLand==='function'&&mcalIsLand())?1:(document.body.classList.contains('mcal-full')?3:2);   /* 704차: 폰 큰 달력 3줄 · 가로 1줄 */
   const n=calFitRows();
   return n===null?true:n;
 }
@@ -10794,11 +10847,17 @@ function bindCalResize(){
     /* transitionstart 를 못 받는 경우 대비 — 토글 버튼에서도 건다 */
     document.addEventListener('click',e=>{if(e.target.closest('[data-act="nav.toggle"]'))start();});
   }
+  /* 705차: 태블릿 가로(901~1280px) 는 사이드바를 아이콘 레일(.mini)로 자동 접는다 — 달력 + 업무 패널 3단이 나온다. 그 밖에선 펼친다.
+     사용자가 한 번이라도 직접 토글했으면(S.sbUser) 자동 조정 안 함 */
+  const sbAuto=()=>{const sb=$('#sidebar');if(!sb||S.sbUser||WIDGET)return;const w=innerWidth;const want=w>900&&w<=1280;if(sb.classList.contains('mini')!==want){sb.classList.toggle('mini',want);}};
+  sbAuto();
   let rt=null;
   const redraw=()=>{clearTimeout(rt);rt=setTimeout(()=>{
+    sbAuto();
     if(!CAL)return;
     const nar=isNarrow();
     if(nar!==MOBILE_CAL){MOBILE_CAL=nar;_maxEv=null;CAL.setOption('dayMaxEvents',maxEvOf());}
+    if(S.view==='calendar'){if(isMob()&&!WIDGET)mcalSet(S.mcal||'full');else document.body.classList.remove('mcal-full','mcal-mini');}   /* 704차: 회전·창 크기 */
     CAL.updateSize();
     calFitApply();               /* 창 크기가 바뀌면 칸 높이도 바뀐다 — 다시 재서 맞춘다 */
   },120);};

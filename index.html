@@ -409,7 +409,15 @@ body.wid .tbr{display:none;}   /* 위젯에는 상단바가 없다 */
   .ah-srch-i{color:var(--lbl3);}
   #appHdr .ah-right .tb-rm{color:var(--lbl2);}
   #appHdr .ah-right .tb-ic{color:var(--lbl2);}
-  #appHdr .ah-right .tb-ic-t{color:var(--lbl2);}   /* 688차: 밝은 상단바에서 「인쇄」 글자가 셸용 회색으로 꺼져 보였다 */
+  #appHdr .ah-right .tb-ic-t{color:var(--lbl2);}
+  /* 707차: 폰 상단바 아이콘을 햄버거(.mc 34px·lbl2)와 같은 규격으로 — 도움은 셸용 옅은 색(--shell-icon)이라 혼자 흐렸고, 검색은 13px 였다 */
+  .ah-help{width:34px;height:34px;margin-left:0;color:var(--lbl2);}
+  .ah-help .icn{width:20px;height:20px;}
+  .ah-srch .ah-srch-i{width:20px;height:20px;color:var(--lbl2);}
+  .ah-srch{height:34px;}
+  body.mcal-full:not(.wid) #view-calendar .cal-ctl .cal-nb,body.mcal-mini:not(.wid) #view-calendar .cal-ctl .cal-nb{width:34px;height:34px;color:var(--lbl2);background:transparent;}
+  body.mcal-full:not(.wid) #view-calendar .cal-ctl .cal-nb .icn,body.mcal-mini:not(.wid) #view-calendar .cal-ctl .cal-nb .icn{width:20px;height:20px;}
+  body.mcal-full:not(.wid) #view-calendar .cal-ctl,body.mcal-mini:not(.wid) #view-calendar .cal-ctl{right:96px;}   /* 688차: 밝은 상단바에서 「인쇄」 글자가 셸용 회색으로 꺼져 보였다 */
   #appHdr .ah-right .tb-loc{color:var(--b400);font-size:0;padding:0 4px;}   /* 688차: 좁은 상단바엔 긴 문장이 안 들어간다 — data-s 의 「미게시」만. --bl 은 셸 변수라 여기선 흰색에 가깝다 */
   #appHdr .ah-right .tb-loc::after{content:attr(data-s);font-size:11px;}}
 @media(max-width:620px){
@@ -1862,6 +1870,8 @@ body.pickmode #tkRoot .tk-item,body.pickmode .day-panel .plan{user-select:none;}
 /* (389차) 카드에 담긴 목록의 맨 끝에는 밑줄을 두지 않는다 — 카드 밑변이 곧 경계라
    선이 겹쳐 마지막 줄만 눌려 보였다. 카드 밖 목록(주간 업무 등)에서는 그대로 긋는다 */
 .tkl>.tk-item:last-child>.tk-row::after{content:'';position:absolute;left:0;right:0;bottom:0;height:1px;background:var(--sep);}
+/* 707차: 현장별 카드 안에서는 content-visibility 를 끈다 — 화면 밖 행이 36px 자리표시자로 계산돼 grid 행 높이가 실제보다 짧아지고 다음 카드가 앞 카드 위로 겹쳤다(사용자가 본 「박살」). 카드는 작아서 가상화 이득이 없다 */
+.tkmo-g .tk-item{content-visibility:visible;contain-intrinsic-size:auto;}
 .tkmo-g .tkl>.tk-item:last-child>.tk-row::after{display:none;}
 /* 마지막 줄 안쪽 여백 — 조직 관리 목록과 같은 원칙(391차). 바깥에 주면 그만큼 호버 배경이
    카드 밑변에 닿지 못해 틈이 보인다. 줄 안쪽이라 호버가 밑변까지 꽉 찬다 */
@@ -2282,6 +2292,8 @@ body.pickmode #tkRoot .tk-item,body.pickmode .day-panel .plan{user-select:none;}
 /* 설정 카드 — 업무 현황·조직 관리와 같은 규칙(352차):
    ① 카드 머리는 짙은 면 + 아랫선, 높이 41px  ② 내용은 카드를 꽉 채우고 여백은 줄 안쪽이 갖는다 */
 .set-grid .card{padding:0;overflow:hidden;}
+.set-h-lnk{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;color:var(--bl);text-decoration:none;}   /* 703차: 카드 제목 오른쪽 외부 링크 */
+.set-h-lnk .icn{width:12px;height:12px;}
 .set-h{display:flex;align-items:center;justify-content:space-between;gap:var(--s2);
   height:41px;padding:0 var(--s4);margin:0;font-size:13px;font-weight:700;color:var(--lbl);letter-spacing:.01em;
   background:var(--surf2);border-bottom:1px solid var(--sep);}
@@ -3063,8 +3075,42 @@ body:not(.wid) .nq-panel{padding-top:6px;}
   /* 645차: 모바일 달력 = 미니달력 + 상시 업무 패널. FullCalendar 는 숨기고 시트도 쓰지 않는다 */
   body:not(.wid) #view-calendar .cal-wrap{display:flex;flex-direction:column;height:calc(100dvh - var(--th));gap:0;}
   body:not(.wid) #view-calendar .cal-card{flex:0 0 auto;height:auto;padding:8px 8px 4px;}
+  /* 704차: 두 상태. mcal-full = 큰 월 달력이 화면을 채움(기본), mcal-mini = 점 달력 + 업무 패널.
+     상단바 제목이 「2026. 9. ▾」 를 맡으므로 카드 안 월 머리(.cal-head)는 숨긴다 — ‹ › 대신 좌우 스와이프 */
+  body.mcal-full:not(.wid) #view-calendar .cal-head,body.mcal-mini:not(.wid) #view-calendar .cal-head{height:0;margin:0;padding:0;overflow:visible;position:static;z-index:auto;}   /* 706차: 월 이동 줄은 없애되 필터는 상단바로. z-index:30 스택을 풀어야 fixed 필터가 상단바(z 100) 위에 온다 */
+  body:not(.wid) #view-calendar .cal-move{display:none;}
+  body.mcal-full:not(.wid) #view-calendar .cal-ctl,body.mcal-mini:not(.wid) #view-calendar .cal-ctl{position:fixed;top:calc(var(--th) / 2);right:74px;transform:translateY(-50%);z-index:101;}
+  body.mcal-full:not(.wid) #view-calendar .cal-ctl .cal-filt-pop,body.mcal-mini:not(.wid) #view-calendar .cal-ctl .cal-filt-pop{right:0;left:auto;}
+  body:not(.wid) #view-calendar .cal-card{padding:2px 8px 0;}
   body:not(.wid) #view-calendar #fcal{display:none;}
   body:not(.wid) #view-calendar #calMini{display:block;}
+  body.mcal-full:not(.wid) #view-calendar .cal-card{flex:1 1 auto;height:100%;min-height:0;display:block;padding-bottom:0;}   /* height:100% — #fcal 의 height:100% 가 여기 기대어 풀린다(flex 만으론 0) */
+  body.mcal-full:not(.wid) #view-calendar #fcal{display:flex;height:100%;min-height:0;}   /* FC 루트는 flex 열 — block 으로 두면 view-harness(flex-grow) 가 0 이 된다 */
+  body.mcal-full:not(.wid) #view-calendar #calMini{display:none;}
+  body.mcal-full:not(.wid) #view-calendar .dp-col{display:none;}
+  @keyframes mcalIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  body.mcal-anim:not(.wid) #view-calendar .cal-card,body.mcal-anim:not(.wid) #view-calendar .dp-col{animation:mcalIn .18s ease-out;}
+  body.mcal-full:not(.wid) #view-calendar .fc .fc-daygrid-day-frame{min-height:0;}
+  body.mcal-full:not(.wid) #view-calendar .fc .fc-daygrid-day-number{font-size:13px;font-weight:600;padding:5px 6px 2px;}
+  body.mcal-full:not(.wid) #view-calendar .fc-event{font-size:10px;height:15px;line-height:15px;}
+  /* 705차: 기존 달력 디자인(요일 띠·주말/휴일 틴트·이달 밖 회색·「오늘」 표시)은 데스크톱 그대로 — 폰에선 배치만 바꾼다 */
+  /* 706차: 날짜는 데스크톱처럼 칸 우측 상단, 「오늘」·휴일명은 좌측 — 좁으면 휴일명만 말줄임 */
+  body.mcal-full:not(.wid) #view-calendar #fcal .fc-daygrid-day-number{padding:3px 4px 1px;}
+  body.mcal-full:not(.wid) #view-calendar #fcal .fc-daygrid-day-number .dhol{font-size:9.5px;}
+  body.mcal-full:not(.wid) #view-calendar #fcal .fc-daygrid-day-events{margin:0 2px;}
+  body.mcal-full:not(.wid) #view-calendar #fcal .fc-daygrid-more-link{font-size:10px;padding:0 2px;}
+  /* 점 달력: 행 구분선 · 패널과 붙인다 */
+  body.mcal-mini:not(.wid) #view-calendar .cal-mini .mc-g .mc-d{height:44px;}   /* 707차: 구분선 없이 원래 미니 달력 모양, 칸만 조금 키움 */
+  body.mcal-mini:not(.wid) #view-calendar .dp-col{padding-top:0;border-top:1px solid var(--sep);}
+  body.mcal-mini:not(.wid) #view-calendar .dp-col::before{content:'';display:block;width:36px;height:4px;border-radius:2px;background:#D6DAE1;margin:6px auto 4px;}
+  /* 상단바 가운데 「2026. 9. ▾」 */
+  #topbar .tbt-ym{display:inline-flex;align-items:center;gap:2px;border:0;background:transparent;font:800 17px/1 inherit;font-family:inherit;color:var(--lbl);padding:6px 8px;border-radius:var(--rmd);}
+  #topbar .tbt-ym .icn{width:16px;height:16px;color:var(--lbl3);}
+  body.mcal-full #topbar .tbl,body.mcal-mini #topbar .tbl{flex:1;}
+  body.mcal-full #topbar .tbt,body.mcal-mini #topbar .tbt{position:absolute;left:0;right:0;text-align:center;pointer-events:none;}
+  body.mcal-full #topbar .tbt-ym,body.mcal-mini #topbar .tbt-ym{pointer-events:auto;}
+  body.mcal-full #topbar,body.mcal-mini #topbar{position:relative;}
+  body.mcal-full #ymPop,body.mcal-mini #ymPop{left:50%;transform:translateX(-50%);}
   /* 646차: 모바일 달력 머리 — 년월은 가운데 맨몸으로, 필터는 오른쪽 끝에 여유를 두고 맨몸으로 */
   body:not(.wid) #view-calendar .cal-head{position:relative;justify-content:center;height:44px;margin-bottom:2px;}
   body:not(.wid) #view-calendar .cal-move{margin:0;background:transparent;padding:0;}
@@ -3084,6 +3130,14 @@ body:not(.wid) .nq-panel{padding-top:6px;}
   body:not(.wid) #view-calendar .dp-col .card{box-shadow:none;}
   .day-panel{max-height:52dvh;min-width:0;}
   body:not(.wid) #view-calendar .day-panel{max-height:none;flex:1;min-height:0;}
+  @media(max-height:500px){
+    /* 704차: 가로로 눕히면 큰 달력만 — 날짜를 누르면 패널이 아래에서 올라오는 시트(685차 .dp-col.on) */
+    body:not(.wid) #view-calendar .dp-col{display:none;position:fixed;left:0;right:0;bottom:0;z-index:320;max-height:80dvh;padding:8px 10px calc(8px + env(safe-area-inset-bottom));transform:translateY(103%);transition:transform var(--t-slow);background:var(--bg2);border-top:1px solid var(--sep);}
+    body:not(.wid) #view-calendar .dp-col.on{display:flex;transform:none;}
+    body:not(.wid) #view-calendar .day-panel{max-height:72dvh;}
+    /* 가로에선 6주가 344px 에 안 들어간다 — 업무 막대는 한 줄(maxEvOf) + 나머지 「+N」, 날짜 숫자는 작게 */
+    body.mcal-full:not(.wid) #view-calendar #fcal .fc-daygrid-day-number{padding:1px 0 0;font-size:12px;}
+  }
   /* 업무 현황 도구띠 — 년월·주차, 보류, 찾기·필터를 한 줄로 */
   body:not(.wid) #view-tasks .tkbar-wrap{display:flex;align-items:center;gap:2px;padding:5px 6px 5px 2px;
     background:var(--bg2);border:1px solid var(--cardline);border-radius:var(--rxl);}
@@ -3122,7 +3176,8 @@ body:not(.wid) .nq-panel{padding-top:6px;}
   body:not(.wid) #view-org .mgtbl{min-width:900px;table-layout:fixed;}
   body:not(.wid) #view-calendar .hold-card{display:none;}   /* 642차: 모바일 달력 시트에는 보류함을 두지 않는다 — 업무 현황에서 본다 */
   .tkwrap{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);}
-  #view-tasks .tkmo-list{grid-template-columns:minmax(0,1fr);}   /* 689차: 기본 규칙(3339행)이 이 블록보다 뒤라 id 로 이긴다. minmax(430px,1fr) 이 390px 에서 카드를 430px 로 밀어 완료 열이 화면 밖으로 나갔다 */   /* 687차: 1열이 되면 auto 두 행이 flex:1 높이를 나눠 가져 위 칸(내용 110px)이 300px 로 늘고 아래에 빈 띠가 생겼다 */
+  #view-tasks .tkmo-list{display:flex;flex-direction:column;gap:var(--s3);}
+  #view-tasks .tkmo-list>.tkmo-g{flex:0 0 auto;}   /* flex 자식은 기본으로 줄어든다 — 카드가 잘리지 않게 */   /* 707차: 폰은 grid 대신 세로 flex — grid 행 높이가 카드가 자란 뒤에도 옛 값(353px)으로 남아 다음 카드가 위로 겹쳤다(사용자가 본 「박살」) */
   .set-grid{grid-template-columns:minmax(0,1fr);}
   /* ══ 업무 현황 — 스크롤 한 겹으로 ══════════════════════════
      ⚠ 685차: 데스크톱은 「완료」·「예정」 두 칸이 각자 스크롤한다(페이지는 안 굴린다는 원칙).
@@ -3967,9 +4022,9 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
           </div>
           <!-- AI 분석 연결(관리자 전용) — 671차: 하자 등록에서 분리. 값은 Firebase aiConf 리프(읽기·쓰기 모두 관리자)에 저장된다 -->
           <div class="card" id="aiCard" style="display:none">
-            <div class="set-h">AI 분석 연결</div>
+            <div class="set-h">AI 분석 연결<a class="set-h-lnk" href="https://ai.azure.com" target="_blank" rel="noopener" data-tip="Azure AI Foundry 포털 — 모델·배포·키 관리">Azure AI<svg class="icn" aria-hidden="true"><use href="#i-ext"></use></svg></a></div>
             <div class="ai-body">
-              <div class="ig2" style="margin-top:12px"><label class="il" for="dfAzPx">중계 서버(Azure Function)</label><input class="inp" id="dfAzPx" type="text" autocomplete="off" placeholder="https://calapp-ai-proxy-….azurewebsites.net"></div>
+              <div class="ig2"><label class="il" for="dfAzPx">중계 서버(Azure Function)</label><input class="inp" id="dfAzPx" type="text" autocomplete="off" placeholder="https://calapp-ai-proxy-….azurewebsites.net"></div>
             </div>
           </div>
         </div>
@@ -4040,5 +4095,5 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
 <script src="./vendor/korea-geo.js?v=635"></script>
 <script src="./vendor/apt-geo.js?v=635" onerror="void 0"></script>   <!-- 540차: 공동주택명 색인 — 없으면 그냥 건너뛴다 -->
-<script src="./app.js?v=702"></script>
+<script src="./app.js?v=707"></script>
 </body></html>

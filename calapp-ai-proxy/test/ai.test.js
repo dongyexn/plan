@@ -9,6 +9,7 @@ process.env.ALLOWED_ORIGINS = 'https://dongyexn.github.io';
 process.env.AZURE_AI_ENDPOINT = 'https://x.openai.azure.com';
 process.env.AZURE_AI_KEY = 'TESTKEY';
 process.env.AZURE_AI_DEPLOYMENT = 'gpt-test';
+process.env.APPCHECK_MODE = 'soft';   // 단위 검사는 App Check 토큰 없이 돈다
 
 const jose = require('jose');
 let KEYS;

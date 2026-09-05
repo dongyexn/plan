@@ -16,9 +16,9 @@
 | `AZURE_AI_KEY` | **여기에만** — 코드·Firebase·브라우저 어디에도 넣지 않는다 |
 | `FIREBASE_PROJECT_ID` | `report-c29a1` |
 | `FIREBASE_DB_URL` | RTDB 주소 |
-| `FIREBASE_PROJECT_NUMBER` | App Check 검증용(Firebase 콘솔 → 프로젝트 설정). 없으면 App Check 는 기록만 |
+| `FIREBASE_PROJECT_NUMBER` | App Check 검증용. 없으면 코드 기본값 `625677240502`(report-c29a1) |
 | `ALLOWED_ORIGINS` | `https://dongyexn.github.io` (쉼표로 추가) |
-| `APPCHECK_MODE` | `soft`(기본: 있으면 검증·없으면 통과) / `hard`(필수) |
+| `APPCHECK_MODE` | 기본 **`hard`**(703차: 토큰 없거나 틀리면 401). 급할 때 `soft` 로 내리면 기록만 |
 | `SCM_DO_BUILD_DURING_DEPLOYMENT` | `true` — zip 배포 뒤 Kudu 가 `npm install` |
 
 ## 인증·권한 (서비스 계정 없음)
