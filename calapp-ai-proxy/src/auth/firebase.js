@@ -47,7 +47,7 @@ async function fetchRole(user) {
 }
 
 async function verifyAppCheck(header) {
-  const mode = String(process.env.APPCHECK_MODE || 'soft').toLowerCase();
+  const mode = String(process.env.APPCHECK_MODE || 'hard').toLowerCase();   /* 703차: 기본 hard — 브라우저가 늘 토큰을 낸다(실환경 확인). soft 로 되돌리려면 환경변수 */
   const tok = String(header || '').trim();
   if (!tok) { if (mode === 'hard') throw new AuthError(401, 'App Check 토큰이 없습니다'); return { ok: false, reason: 'missing' }; }
   try {
@@ -64,9 +64,7 @@ async function verifyAppCheck(header) {
 }
 /* App Check 의 iss 는 프로젝트 **번호** 를 쓴다. 환경변수 FIREBASE_PROJECT_NUMBER 가 없으면 iss 검증을 건너뛰지 않고 실패로 둔다(soft 면 기록) */
 async function projectNumber() {
-  const n = process.env.FIREBASE_PROJECT_NUMBER;
-  if (!n) throw new Error('FIREBASE_PROJECT_NUMBER 없음');
-  return n;
+  return process.env.FIREBASE_PROJECT_NUMBER || '625677240502';   /* 703차: report-c29a1 의 프로젝트 번호(비밀 아님) — 환경변수가 있으면 그것 */
 }
 
 module.exports = { verifyIdToken, fetchRole, verifyAppCheck, AuthError,
