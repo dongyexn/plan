@@ -1,7 +1,6 @@
 /* 가상데이터 전 구간 검증(637차 기준 회귀 스위트) — 업로드→저장→[등록]→소비 화면 전부를 실브라우저에서 돌린다.
    Firebase 는 페이지 안 가짜 트리로 대체(스냅샷 문서의 FB 스텁과 같은 발상 + update/set 구현).
    검사: 기준월 자동 결정 · 게시 트리 무결성 · 대시보드 합계=게시 kpi 합 · 현장 탭 5종 렌더 ·
-   NLQ 질의 · 목록 모달 · 월 전환 · AI 분석(가짜 Azure AI Foundry) · 페이지 오류 0. 스크린샷 저장.
    사용: CHROMIUM=/tmp/chromium node scripts/test/e2e-defect.mjs */
 import { chromium } from 'playwright';
 import http from 'http';
@@ -165,9 +164,9 @@ await pg.evaluate(()=>{ORG_RM=dfPubRm();S.dfSid='';go('defect');});
 await pg.waitForTimeout(1500);
 const dash=await pg.evaluate(()=>{
   const t=document.querySelector('#view-defect').textContent;
-  return {hasIns:!!document.querySelector('.ins-grid'),txt:t.slice(0,50)};
+  return {hasIns:!!document.querySelector('.rkh')||!!document.querySelector('.ins-grid'),txt:t.slice(0,50)};   /* 712차: 인사이트 자리에 민원 현황(.rkd) */
 });
-ok('대시보드 렌더(주요이슈 카드 포함)',dash.hasIns);
+ok('대시보드 렌더(민원 현황 카드 포함)',dash.hasIns);
 await pg.screenshot({path:OUT+'/1-dashboard.png',fullPage:false});
 
 /* ── 4) 현장 화면 — 탭 5종 ── */
@@ -232,45 +231,6 @@ ok('기준월 전환 렌더('+mo2.prev+' · 상단바 "'+swch.tb+'")',swch.cur==
 await pg.screenshot({path:OUT+'/5-month-switch.png',fullPage:false});
 await pg.evaluate(()=>{S.dfRmSel='';rDefect();});
 await pg.waitForTimeout(600);
-
-/* ── 8) AI 분석 — 가짜 Gemini ── */
-const ai=await pg.evaluate(async()=>{
-  /* 671차: 연결 정보는 Firebase aiConf 리프에서 온다 — S.az* 를 직접 넣으면 aiConfLoad 가 덮어쓴다.
-     리프에 심어 실제 경로(aiConfLoad → S.az* → AI.ready)를 그대로 태운다. */
-  /* 702차: 브라우저는 중계 서버만 안다 — fetch 가짜는 Function 응답 {text} 을 낸다 */
-  window.__TREE.aiConf={proxy:'https://e2e-proxy.azurewebsites.net'};
-  FB.auth={currentUser:{getIdToken:async()=>'E2E.TOKEN'}};
-  const calls=[];
-  window.fetch=async(url,opt)=>{calls.push(url);
-    if(!/\/api\/ai$/.test(String(url))||!/^Bearer /.test((opt.headers||{}).Authorization||''))throw new Error('중계 서버가 아닌 곳으로 갔다: '+url);
-    const body=JSON.parse(opt.body);   /* 702차: 중계 요청 {system,prompt,max} */
-    const sys=body.system||'',usr=body.prompt||'';
-    const isDash=/line1/.test(sys)||/line1/.test(usr);
-    const text=isDash?JSON.stringify([{line1:'<b>AI</b> 요약 1',line2:'세부 1'},{line1:'요약 2',line2:'세부 2'},{line1:'요약 3',line2:'세부 3'}])
-      :'<div style="font-weight:700">종합 소견</div><ul><li>미처리 상위 공종 집중 보수 필요</li><li>장기 미처리 30건 — 주간 단위 감축 계획 권고</li></ul>';
-    /* ⚠ 675차: provider 가 r.ok·r.status 를 보고 r.text() 로 읽는다(프록시가 HTML 을 주는 경우 대비) —
-       가짜 응답도 Response 모양을 갖춰야 한다. json() 만 있으면 첫 줄에서 TypeError 가 난다. */
-    return {ok:true,status:200,json:async()=>({text,mode:'chat'})};
-  };
-  S.dfSid='sA';S.dfTab='sum';rDefect();
-  await new Promise(r=>setTimeout(r,400));
-  await runAI('sA');
-  await new Promise(r=>setTimeout(r,300));
-  const leafFull=(window.__TREE.analysis&&window.__TREE.analysis.sA&&window.__TREE.analysis.sA[dfPubRm()])||'';
-  const leaf=/종합 소견/.test(leafFull)?'종합 소견':leafFull.slice(0,30);
-  delete DF.ana.sA;await dfLoadAna('sA');rDefect();
-  await new Promise(r=>setTimeout(r,300));
-  const shown=document.getElementById('dfAit')?document.getElementById('dfAit').textContent:'';
-  /* 686차: runDashAI(대시보드 AI 재작성)를 걷어냈다. 대신 ① 함수·버튼이 정말 사라졌는지
-     ② 주요이슈가 [등록] 때 규칙으로 채워졌는지를 본다 — 자동 갱신이 유일한 경로가 됐다. */
-  const insLeaf=(window.__TREE.report[dfPubRm()]._dash.insightsHTML)||'';
-  return {calls:calls.length,leaf:leaf.slice(0,30),shown:shown.slice(0,30),
-    gone:typeof window.runDashAI==='undefined',
-    btn:!!document.querySelector('[data-act="dfp.dashAi"]'),
-    ins:/ic-ttl/.test(insLeaf)};
-});
-ok('runAI → analysis 리프 기록·화면 반영: "'+ai.shown+'…"',ai.calls>=1&&/종합 소견/.test(ai.leaf)&&/종합 소견/.test(ai.shown));
-ok('주요이슈 — AI 재작성 경로 제거(함수·버튼 없음) · 규칙기반 자동 갱신만 남음',ai.gone&&!ai.btn&&ai.ins);
 
 /* ── 686차: 원본이 없는 현장을 0 으로 덮지 않는지 ─────────────────────────
    현장 3개만 올린 PC 에서 [등록]을 누르면 나머지 현장 게시본이 통째로 0 이 되던 결함.

@@ -187,21 +187,6 @@ t('AUTH-10f', '담당자 → 내 담당 현장 업무 수정', true, tryWrite('c
 t('AUTH-10g', '누구나 → 레거시 업무 수정(정책 유지)', true, tryWrite('calapp/tasks/U2/legacy', A('U5'), TREE, { ...T('U2', 'legacy'), st: 2 }));
 /* 미인증 방어(people 재구성 확인) */
 /* ── 669차: 화면(UI)과 서버 권한이 어긋나던 곳 ── */
-/* AUTH-12 게시 산출물 — 만드는 쪽은 관리자만 */
-t('AUTH-12a', 'viewer → analysis 쓰기', false, tryWrite('analysis/sA/2026-07', A('U1'), TREE, '<p>의견</p>'));
-t('AUTH-12b', 'editor → analysis 쓰기', true, tryWrite('analysis/sA/2026-07', A('E1'), TREE, '<p>의견</p>'));
-t('AUTH-13a', 'viewer → meta 쓰기', false, tryWrite('meta/sA', A('U1'), TREE, { updatedAt: 1, updatedBy: 'U1' }));
-t('AUTH-13b', 'editor → meta 쓰기', true, tryWrite('meta/sA', A('E1'), TREE, { updatedAt: 1, updatedBy: 'E1' }));
-/* AUTH-15 AI 분석 연결(671차) — Azure 키가 담기므로 읽기까지 관리자만 */
-const AIC = { endpoint: 'https://x.services.ai.azure.com', deployment: 'gpt-4.1-mini-1', key: 'K', updatedAt: 1, updatedBy: 'e1@hdec.co.kr' };
-t('AUTH-15a', 'viewer → aiConf 읽기(키 노출)', false, tryRead('aiConf', A('U1'), TREE));
-t('AUTH-15b', 'editor → aiConf 읽기', true, tryRead('aiConf', A('E1'), TREE));
-t('AUTH-15c', 'viewer → aiConf 쓰기', false, tryWrite('aiConf', A('U1'), TREE, AIC));
-t('AUTH-15d', 'editor 가 aiConf 에 중계 서버 주소 저장', true, tryWrite('aiConf', A('E1'), TREE, { proxy: 'https://calapp-ai-proxy.azurewebsites.net', updatedAt: 1, updatedBy: 'e1@hdec.co.kr' }));   /* 702차: 키·엔드포인트·배포는 규칙이 막는다 */
-t('AUTH-15d2', 'editor 라도 aiConf 에 키를 쓰면 거부(702차)', false, tryWrite('aiConf', A('E1'), TREE, AIC));
-t('AUTH-15e', 'editor → aiConf 에 규칙 밖 필드', false, tryWrite('aiConf', A('E1'), TREE, { ...AIC, evil: 1 }));
-t('AUTH-15f', 'editor 가 aiConf 배포 이름을 쓰면 거부(702차 — Function 환경변수로 갔다)', false, tryWrite('aiConf', A('E1'), TREE, { deployment: 'gpt-5-mini-1', updatedAt: 1, updatedBy: 'e1@hdec.co.kr' }));
-t('AUTH-15g', 'editor → aiConf 에 원시값 쓰기', false, tryWrite('aiConf', A('E1'), TREE, 'x'));
 /* AUTH-14 휴지통·보관함도 업무 본체와 같은 소유 검사 */
 const TR = (sid, iid) => ({ text: T(sid, iid).text, date: '2026-08-01', deletedAt: 1, z: 'x' });
 const AR = (sid, iid) => ({ text: T(sid, iid).text, date: '2026-08-01', archivedAt: 1, z: 'x' });

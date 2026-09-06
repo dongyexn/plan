@@ -87,47 +87,8 @@
       }
     },
 
-    "analysis": {
-      ".read": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
-      "$sid": {
-        // 분석의견은 기준월별 아카이브: analysis/{sid}/{YYYY-MM} = HTML 문자열 ≤20000자.
-        // 쓰기는 월 노드에만 허용한다.
-        "$rm": {
-          // 669차: 게시 산출물이라 만드는 쪽은 관리자만 — 화면(isEditor)과 서버를 일치시킨다.
-          ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'",
-          ".validate": "$rm.matches(/^[0-9]{4}-[0-9]{2}$/) && newData.isString() && newData.val().length <= 20000"
-        }
-      }
-    },
 
-    "meta": {
-      ".read": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
-      "$sid": {
-        // 669차: 게시 메타도 관리자만 쓴다(화면과 일치).
-        ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'",
-        "updatedAt": { ".validate": "newData.isNumber()" },
-        "updatedBy": { ".validate": "newData.isString() && newData.val().length <= 200" },
-        "$other":    { ".validate": false }
-      }
-    },
 
-    // AI 분석 연결(671차) — Azure AI Foundry 엔드포인트·배포이름·키.
-    //   ⚠ 키를 담으므로 읽기도 관리자(editor)만이다. viewer 는 존재조차 읽지 못한다.
-    "aiConf": {
-      // 675차: 노드 자체가 객체인지 못박는다 — 원시값(문자열)이 들어오면 자식 .validate 도 $other 도 안 걸린다.
-      //   ⚠ 세 필드를 다 요구하면(hasChildren([...])) 첫 설정 때 칸을 하나씩 채우는 update 가 막힌다 — 객체이기만 하면 된다.
-      ".validate": "newData.hasChildren()",
-      ".read":  "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'",
-      ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'",
-      // 702차: 브라우저 경로 제거 — 키·엔드포인트·배포는 Function 환경변수. 세 필드는 삭제(null)만 통과한다
-      "endpoint":   { ".validate": false },
-      "proxy":      { ".validate": "newData.isString() && newData.val().length <= 300" },
-      "deployment": { ".validate": false },
-      "key":        { ".validate": false },
-      "updatedAt":  { ".validate": "newData.isNumber()" },
-      "updatedBy":  { ".validate": "newData.isString() && newData.val().length <= 200" },
-      "$other":     { ".validate": false }
-    },
 
     "siteConfig": {
       ".read": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
