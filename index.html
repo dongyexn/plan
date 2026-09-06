@@ -2,7 +2,7 @@
 <html lang="ko"><head>
 <meta charset="UTF-8">
 <!-- CSP: 개발은 외부 app.js('self'), 단일 파일 배포는 build-single.mjs가 인라인 스크립트 해시를 넣는다 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://www.gstatic.com https://www.google.com; font-src 'self' data:; object-src 'none'; base-uri 'self'; script-src 'self' https://www.gstatic.com https://www.google.com https://www.recaptcha.net https://recaptcha.google.com https://apis.google.com https://*.firebasedatabase.app; frame-src https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; connect-src 'self' https://*.googleapis.com https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.firebaseio.com wss://*.firebaseio.com https://www.gstatic.com https://www.google.com https://www.recaptcha.net https://recaptcha.google.com https://*.azurewebsites.net">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://www.gstatic.com https://www.google.com; font-src 'self' data:; object-src 'none'; base-uri 'self'; script-src 'self' https://www.gstatic.com https://www.google.com https://www.recaptcha.net https://recaptcha.google.com https://apis.google.com https://*.firebasedatabase.app; frame-src https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; connect-src 'self' https://*.googleapis.com https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.firebaseio.com wss://*.firebaseio.com https://www.gstatic.com https://www.google.com https://www.recaptcha.net https://recaptcha.google.com">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -126,6 +126,7 @@ html,body{background:var(--shell);}
 .ah-srch-i{position:absolute;left:9px;top:50%;transform:translateY(-50%);width:13px;height:13px;color:var(--shell-icon);pointer-events:none;}
 .ah-srch-in{flex:1;min-width:0;height:100%;background:transparent;border:0;outline:none;font:600 12.5px/1 inherit;color:#fff;}
 .ah-srch-in::placeholder{color:var(--shell-dim);font-weight:500;}
+.ah-srch-m{display:none;}
 .ah-srch-x{display:none;width:18px;height:18px;border-radius:50%;align-items:center;justify-content:center;background:rgba(255,255,255,.14);color:#fff;flex:0 0 auto;}
 .ah-srch-x .icn{width:10px;height:10px;}
 .ah-srch.has .ah-srch-x{display:flex;}
@@ -411,13 +412,25 @@ body.wid .tbr{display:none;}   /* 위젯에는 상단바가 없다 */
   #appHdr .ah-right .tb-ic{color:var(--lbl2);}
   #appHdr .ah-right .tb-ic-t{color:var(--lbl2);}
   /* 707차: 폰 상단바 아이콘을 햄버거(.mc 34px·lbl2)와 같은 규격으로 — 도움은 셸용 옅은 색(--shell-icon)이라 혼자 흐렸고, 검색은 13px 였다 */
-  .ah-help{width:34px;height:34px;margin-left:0;color:var(--lbl2);}
+  /* 732차: 폰 헤더 — 도움말 숨김, 검색은 맨 오른쪽 아이콘(누르면 전체화면 검색) */
+  .ah-help{display:none!important;}
+  .ah-srch{display:none!important;}
+  .ah-srch-m{display:flex;align-items:center;justify-content:center;width:34px;height:34px;margin-left:auto;border:0;background:transparent;color:var(--lbl2);border-radius:var(--rmd);}
+  .ah-srch-m .icn{width:20px;height:20px;}
+  /* 폰 검색 패널 = 전체화면 */
+  body:not(.wid) .nq-panel{position:fixed;inset:0;width:auto;height:100dvh;max-width:none;max-height:none;border-radius:0;border:0;
+    padding-top:env(safe-area-inset-top);z-index:520;transform:translateY(8px);}
+  body:not(.wid) .nq-panel.on{transform:none;}
+  body:not(.wid) .nq-panel .nq-in input{font-size:16px;height:44px;}   /* 16px 미만이면 iOS 가 화면을 확대한다 */
+  body:not(.wid) .nq-panel .nq-res{max-height:none;flex:1 1 auto;min-height:0;}
+  body:not(.wid) .nq-panel .nq-hd,body:not(.wid) .nq-panel .nq-in{flex:0 0 auto;}
   .ah-help .icn{width:20px;height:20px;}
   .ah-srch .ah-srch-i{width:20px;height:20px;color:var(--lbl2);}
   .ah-srch{height:34px;}
   body.mcal-full:not(.wid) #view-calendar .cal-ctl .cal-nb,body.mcal-mini:not(.wid) #view-calendar .cal-ctl .cal-nb{width:34px;height:34px;color:var(--lbl2);background:transparent;}
   body.mcal-full:not(.wid) #view-calendar .cal-ctl .cal-nb .icn,body.mcal-mini:not(.wid) #view-calendar .cal-ctl .cal-nb .icn{width:20px;height:20px;}
-  body.mcal-full:not(.wid) #view-calendar .cal-ctl,body.mcal-mini:not(.wid) #view-calendar .cal-ctl{right:96px;}   /* 688차: 밝은 상단바에서 「인쇄」 글자가 셸용 회색으로 꺼져 보였다 */
+  body.mcal-full:not(.wid) #view-calendar .cal-ctl,body.mcal-mini:not(.wid) #view-calendar .cal-ctl{right:54px;}   /* 733차: 검색(34px·right 12) 바로 왼쪽, 틈 8px */
+  body.mcal-full:not(.wid) #view-calendar .cal-head>.cal-ctl>.cal-nav,body.mcal-mini:not(.wid) #view-calendar .cal-head>.cal-ctl>.cal-nav{background:transparent;padding:0;}   /* 733차: 540행 캡슐 채움(--fill)을 벗긴다 — 햄버거·검색과 같은 맨 아이콘 */
   #appHdr .ah-right .tb-loc{color:var(--b400);font-size:0;padding:0 4px;}   /* 688차: 좁은 상단바엔 긴 문장이 안 들어간다 — data-s 의 「미게시」만. --bl 은 셸 변수라 여기선 흰색에 가깝다 */
   #appHdr .ah-right .tb-loc::after{content:attr(data-s);font-size:11px;}}
 @media(max-width:620px){
@@ -838,16 +851,8 @@ button.p-col:hover{box-shadow:inset 0 0 0 1px rgba(0,0,0,.10),0 0 0 3px var(--fi
    행간을 되돌리자 합계 행(굵은 글씨)에서 '▼'와 숫자가 두 줄로 갈라졌다 */
 .rpt .up{color:#C0392B;white-space:nowrap;} .rpt .dn2{color:#1E8449;white-space:nowrap;}
 .rpt .dl{overflow:hidden;flex:1 1 auto;min-width:0;}
-/* 종합 분석 의견 — rptAI가 원문 서식을 걷어내고 넘기므로 보고서 본문 크기를 여기서 입힌다.
+/* 보고서 본문 규격 — 표·문단 공통 */
    (규칙이 없으면 브라우저 기본 16px + .sheet zoom 1.333이 겹쳐 다른 항목의 2배로 출력됨) */
-.rpt .ai{--aifs:8.5px;font-size:var(--aifs);color:var(--rp-gray);}
-.rpt .ai .ai-h{font-size:calc(var(--aifs) + 1px);font-weight:700;color:var(--rp-navy);
-  margin:calc(var(--aifs) * 1.15) 0 3px;padding-bottom:2px;border-bottom:1px solid var(--rp-lines);}
-.rpt .ai .ai-h:first-child{margin-top:3px;}
-.rpt .ai ul{margin:0;padding-left:11px;list-style:disc;}
-.rpt .ai li{font-size:var(--aifs);line-height:1.55;margin-bottom:2.5px;}
-.rpt .ai li:last-child{margin-bottom:0;}
-.rpt .ai b,.rpt .ai strong{font-weight:700;color:var(--rp-navy);}
 /* 표 밀도 — 행이 많아 한 쪽을 넘길 때 rptDashboard가 .page에 부여 */
 .rpt .dense th{padding:4px 4px;}
 .rpt .dense td{padding:1.5px 4px;}
@@ -896,6 +901,19 @@ body:not(.df-printing):not(.rpt-on) .df-printhdr{display:flex!important;}   /* �
 /* KPI — 웹과 동일 5열, 폰트 조금만 축소 */
 #view-defect .akpi{gap:6px!important;margin-bottom:10pt!important;grid-template-columns:repeat(5,1fr)!important;}
 #view-defect .akpi .kc{padding:9px 11px!important;min-height:0!important;transform:none!important;box-shadow:none!important;}
+#view-defect .akpi>.kc:first-child{grid-column:auto!important;}   /* 717차: A4 폭(794px)이 폰 규칙(≤960: 첫 카드 전폭)에 걸리던 것 — 인쇄는 1행 5칸 */
+/* 717차: 현장별 민원 현황 히트맵 — 인쇄는 14현장 전부, 행 15px */
+#view-defect .rkh-body{max-height:none!important;overflow:visible!important;gap:1px!important;}
+#view-defect .rkh-h{font-size:7pt!important;padding-bottom:2px!important;}
+#view-defect .rkh-r{padding:0!important;}
+#view-defect .rkh-n,#view-defect .rkh-c{height:15px!important;line-height:15px!important;font-size:7.5pt!important;}
+#view-defect .rkh-n{font-weight:600!important;}
+/* 월별 처리 현황 표는 dt-detail 을 떼어 현장별 표(.dt)와 같은 글자·행 높이 */
+#view-defect table.dt-detail th,#view-defect table.dt-detail td{padding:4px 4px!important;font-size:6.5pt!important;}   /* 화면 그대로 인쇄: 월별 표(폰 규칙 11px)도 현장별 표와 같은 글자 */
+/* 2면(표 3개 — 월별 12행·현장별 ~16행·공종별 ~12행)이 A4 한 장에 들어가도록 행 19px */
+#view-defect .sp-p2 .dt th,#view-defect .sp-p2 .dt td{padding:3px 4px!important;line-height:1.25!important;}
+#view-defect .sp-p2 .card{margin-bottom:5px!important;}
+#view-defect .sp-p2 .card .sh{margin-bottom:4px!important;}
 #view-defect .akpi .kl{font-size:8pt!important;margin-bottom:2px!important;}
 #view-defect .akpi .kv{font-size:16pt!important;line-height:1!important;}
 #view-defect .akpi .kv .u{font-size:8pt!important;}
@@ -948,6 +966,7 @@ canvas{max-width:100%!important;height:auto!important;}
 /* 인터랙티브 요소 숨김 */
 body:not(.df-printing):not(.rpt-on) input,body:not(.df-printing):not(.rpt-on) select,
 body:not(.df-printing):not(.rpt-on) textarea,body:not(.df-printing):not(.rpt-on) button{display:none!important;}
+body:not(.df-printing) .rkh-n,body:not(.df-printing) .rkh-c{display:block!important;}   /* 717차: 히트맵 셀·현장명은 버튼이지만 인쇄에 남는다 */
 #view-defect .sortmk,#view-defect .kc-cta,#view-defect .axseg,#view-defect .yr-sel,#view-defect .btn{display:none!important;}
 }
 /* 인쇄 방식 선택 모달 */
@@ -974,12 +993,12 @@ body:not(.df-printing):not(.rpt-on) textarea,body:not(.df-printing):not(.rpt-on)
 .rpk-seg button.on{background:var(--bg);color:var(--lbl);box-shadow:var(--sh-1);}
 @media (max-width:560px){.rpk{grid-template-columns:1fr;}}
 
-/* 앱 배경화면(로컬 전용) — 처리 방식은 디뉴어 앱의 로그인 배경과 같다:
+/* 앱 배경화면(로컬 전용) — 처리 방식:
    ① 사진 위에 위→아래 어두운 그라디언트 ② 가장자리를 어둡게 눌러 주는 비네트(radial)
    (448차: ③ 미세 입자 레이어는 전면 mix-blend-mode 합성 비용 때문에 제거했다) */
-/* 그라디언트 + 비네트 한 겹(디뉴어 #gate 와 같은 구성) — 밑칠(단색 덮개) 방식은 대체됐다 */
+/* 그라디언트 + 비네트 한 겹 — 밑칠(단색 덮개) 방식은 대체됐다 */
 /* 226차: '넣을 때 너무 어둡다' 지시로 강도 완화 — 그라디언트 .40/.62 → .16/.30, 비네트 .42 → .26.
-/* 안쪽 비네트 한 겹 더 — 가운데는 그대로 두고 가장자리만 눌러 화면이 붕 뜨지 않게(디뉴어 #gate::after) */
+/* 안쪽 비네트 한 겹 더 — 가운데는 그대로 두고 가장자리만 눌러 화면이 붕 뜨지 않게 */
 
 
 /* 배경을 켜면 카드가 유리가 된다 — 토큰만 바꿔 앱 전체에 한 번에 먹인다.
@@ -1004,15 +1023,6 @@ body:not(.df-printing):not(.rpt-on) textarea,body:not(.df-printing):not(.rpt-on)
 /* 기준월 칩 — 하자 관리에서는 눌러서 게시월을 고른다 */
 #tbRm[data-act]{cursor:pointer;}
 #tbRm[data-act]:hover{border-color:var(--b400);color:#fff;}   /* 525차: 어두운 헤더 위 — --lbl(검정)이면 글자가 꺼져 보였다 */
-/* AI 분석 본문 — 원본 .ait 규격(섹션 제목·목록 들여쓰기) */
-#view-defect .ait ul{list-style:disc;margin:6px 0 16px;padding-left:24px;}
-#view-defect .ait li{margin-bottom:8px;padding-left:6px;line-height:1.7;}
-#view-defect .ait li::marker{color:var(--b500);}
-#view-defect .ait li:last-child{margin-bottom:0;}
-#view-defect .ait>div{margin-top:20px;margin-bottom:10px;}
-#view-defect .ait>div:first-child{margin-top:0;}
-#view-defect .ait strong{font-weight:700;}
-#view-defect .ait>*:first-child{margin-top:0;}
 /* 스냅샷 문서 — 하자 화면만 남긴다 */
 body.snap .nvi[data-view]:not([data-view="defect"]),body.snap .sb-bottom .sbsl,body.snap [data-view="org"],body.snap [data-view="settings"],body.snap #tbSrch,body.snap .sb-foot{display:none!important;}
 body.snap .sbsl:first-of-type{display:none;}
@@ -1040,7 +1050,8 @@ body.snap .sbsl:first-of-type{display:none;}
 /* 쪽번호용 페이지 박스 — ⚠ 반드시 **상시** 규칙이어야 한다. @media print 안에만 두면 인쇄 순간
    박스가 늘어나며 레이아웃이 변한다(224차에서 그 실수로 마지막 쪽에 유령 띠가 생겼다).
    1050px < A4 내용높이(1123-상하 8mm=1063px) — 논리 한 쪽 = 물리 한 쪽. */
-#dfPrintPages .sp-print-page{position:relative;min-height:1050px;}
+#dfPrintPages .sp-print-page{position:relative;min-height:1000px;}   /* 719차: 1050 은 여백 설정에 따라 A4 를 넘어 빈 마지막 장을 만들었다 */
+#dfPrintPages .sp-print-page:last-child{break-after:auto;page-break-after:auto;}
 #dfPrintPages .sp-pgn{position:absolute;right:2px;bottom:0;font-size:7pt;color:#8a8a8e;font-variant-numeric:tabular-nums;}
 
 .sp-page-hdr{display:flex;justify-content:space-between;align-items:flex-end;padding-bottom:8pt;border-bottom:2pt solid var(--bt2);margin-bottom:10pt;}
@@ -1073,9 +1084,9 @@ body.snap .sbsl:first-of-type{display:none;}
   .sp-print-page{display:block;}
   .sp-page-break-before{break-before:page;page-break-before:always;}
   #dfPrintPages .card,#dfPrintPages .kc,#dfPrintPages .ic,#dfPrintPages .mom-row{break-inside:avoid;page-break-inside:avoid;}
-  /* ⚠ 분석 카드만 분할 허용(원본 #_sp_p4 규칙 이식, 525차) — 긴 AI 분석이 break-inside:avoid 로
+  /* ⚠ 분석 카드만 분할 허용(원본 #_sp_p4 규칙 이식, 525차) — 긴 분석 문단이 break-inside:avoid 로
      통째로 다음 장에 밀리면 **머리만 남은 빈 페이지**가 생긴다(실데이터 인쇄에서 확인) */
-  #dfPrintPages .card:has(.aib),#dfPrintPages .aib,#dfPrintPages .ait{break-inside:auto!important;page-break-inside:auto!important;}
+  {break-inside:auto!important;page-break-inside:auto!important;}
 }
 /* ══════════ 하자처리 현황 — 원본 화면 이식 CSS ══════════
    클래스 이름은 원본(하자처리 현황)을 그대로 쓰되 #view-defect 범위로 가둔다.
@@ -1118,12 +1129,48 @@ body.snap .sbsl:first-of-type{display:none;}
 #view-defect .kc.kc-site .km{opacity:.85;line-height:1.45;}
 /* ── 현장 탭(tnav) — 원본과 같은 큰 탭. 각진 8px 모서리 ── */
 #view-defect .tnav{display:flex;gap:6px;background:var(--glass);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);padding:6px;border-radius:var(--rxl);border:1px solid var(--sep);margin-bottom:12px;position:sticky;top:0;z-index:50;}
+/* 709차: 민원 세대 탭 */
+.rkl{display:inline-block;padding:2px 8px;border-radius:3px;font-size:11px;font-weight:700;white-space:nowrap;}   /* 712차: 다른 칩과 같은 3px */
+/* 711차: 앱 기존 색만 — 긴급 tint-rd+rd 테두리 · 심각 tint-rd · 경계 amber 12% · 주의 fill */
+.rkl-ur{background:var(--tint-rd);color:var(--rd);box-shadow:inset 0 0 0 1px var(--rd);}.rkl-hi{background:var(--tint-rd);color:var(--rd);}.rkl-mg{background:rgba(217,119,6,.12);color:var(--am);}.rkl-wa{background:var(--fill);color:var(--lbl2);}.rkl-ok{background:var(--fill);color:var(--lbl3);}
+.rk-t{display:inline-block;margin:1px 4px 1px 0;padding:1px 7px;border-radius:3px;background:var(--fill);font-size:11px;color:var(--lbl2);}.rk-t.crit{background:var(--tint-rd);color:var(--rd);font-weight:700;}.rk-t.hard{background:var(--b50);color:var(--bt1);}.rk-tn{margin-left:4px;font-size:10px;color:var(--lbl3);}
+.rk-sub{font-size:11px;color:var(--lbl3);margin-left:6px;}
+.rk-r{cursor:pointer;}.rk-r:hover td{background:var(--surf2);}
+/* 727차: 부모 행 + 펼침 블록을 왼쪽 파란 선으로 묶는다 — 둘 다 box-shadow:inset 로 그려야 단차가 없다(td 는 border-left 가 셀 안쪽, tr>td 는 표 경계라 1px 어긋난다).
+   부모 행 바탕은 이 앱의 표 호버색(--b50), 펼침 표 머리는 회색(surf2) 그대로 — 서로 구분된다 */
+.rk-ev>td{background:transparent;padding:0 0 0 2px!important;box-shadow:inset 2px 0 0 var(--b400);}   /* 728차: 왼쪽 2px 은 선 자리 — 안쪽 표 머리(배경 있음)가 선을 덮던 것 */
+#view-defect .rk-tbl tbody tr.rk-r.open td,#mb .rk-tbl tbody tr.rk-r.open td{background:var(--b50);}
+#view-defect .rk-tbl tbody tr.rk-r.open td:first-child,#mb .rk-tbl tbody tr.rk-r.open td:first-child{box-shadow:inset 2px 0 0 var(--b400);}
+.rk-tbl td{vertical-align:top;}
+/* 714차: 대시보드 민원 현황 히트맵 — 현장 × 레벨. 셀은 열 최대값 대비 농도 */
+.rkh .cardttl{margin-bottom:0;}
+.rkh-h,.rkh-r{display:grid;grid-template-columns:minmax(96px,1.3fr) repeat(5,minmax(44px,1fr));column-gap:4px;align-items:center;}
+.rkh-h{font-size:11px;color:var(--lbl3);text-align:center;padding-bottom:3px;}
+.rkh-r{padding:1px 0;}
+.rkh-body{display:flex;flex-direction:column;gap:2px;max-height:350px;overflow-y:auto;}   /* 행 22px × 16 = 352 — 16현장까지 스크롤 없이(옆 도넛 카드가 같이 늘어난다), 그 이상은 카드 안 스크롤 */
+.rkh-n{border:0;background:transparent;text-align:left;font-size:12px;font-weight:600;color:var(--lbl);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 2px;height:20px;font-family:inherit;cursor:pointer;border-radius:3px;}.rkh-n:hover{color:var(--bt1);}
+.rkh-c{display:block;width:100%;border:0;text-align:center;border-radius:3px;height:20px;line-height:20px;padding:0;font-size:12px;font-family:inherit;font-variant-numeric:tabular-nums;cursor:pointer;}.rkh-c:hover{box-shadow:inset 0 0 0 1.5px var(--lbl);}.rkh-ok{background:var(--fill);color:var(--lbl2);}
+.rk-th{cursor:pointer;user-select:none;}.rk-th.on{color:var(--lbl);}
+.rk-fr td{padding:4px 6px;background:var(--surf2);}.rk-q.cc{text-align:center;}
+.rk-tbl td{padding:8px 10px;}   /* 717차: 칩 열이 폭을 더 쓰도록 셀 여백 축소 */.rk-q{width:100%;height:26px;border:1px solid var(--sep);border-radius:3px;padding:0 8px;font-size:12px;font-family:inherit;background:var(--bg2);color:var(--lbl);}.rk-q:focus{outline:none;border-color:var(--b400);}
+.rk-e{padding:6px 0;}.rk-et{font-size:12.5px;color:var(--lbl);line-height:1.6;}
+/* 719차: 펼침 하자건 표 — 하자 목록 규격 */
+.rk-etbl{width:100%;border-collapse:collapse;font-size:12px;}
+#view-defect .rk-etbl th,#mb .rk-etbl th{padding:5px 10px;text-align:left;font-size:11px;font-weight:700;color:var(--lbl2);background:var(--surf2);border-bottom:1px solid var(--sep);white-space:nowrap;}
+#view-defect .rk-etbl td,#mb .rk-etbl td{padding:6px 10px;border-bottom:1px solid var(--sep);vertical-align:top;color:var(--lbl);white-space:nowrap;font-weight:400;}#view-defect .rk-etbl tr:last-child td,#mb .rk-etbl tr:last-child td{border-bottom:0;}
+#view-defect .rk-etbl .rk-etx,#mb .rk-etbl .rk-etx{white-space:normal;line-height:1.55;}
+#view-defect .rk-etbl th.cc,#view-defect .rk-etbl td.cc,#mb .rk-etbl th.cc,#mb .rk-etbl td.cc{text-align:center;}
+#view-defect .rkmom-card .ltrmom-row{grid-template-columns:40px 118px 1fr;}   /* 722차: 장기미처리 카드와 같은 폼 */
+#view-defect .rkmom-card .ltrmom-bar .seg{color:#fff;justify-content:center;min-width:0;overflow:hidden;}
+#view-defect .rkmom-card .ltrmom-bar .seg:nth-child(n+3){color:var(--lbl);}
+#view-defect .card>.rp-tabs{margin:0;padding:0 6px;}
+
 #view-defect .tnav-i{flex:1;padding:9px 14px;font-size:13px;font-weight:600;color:var(--lbl2);border-radius:var(--rmd);cursor:pointer;transition:all var(--t-fast);display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;border:none;background:transparent;}
 #view-defect .tnav-i:hover{background:var(--fill);color:var(--lbl);}
 #view-defect .tnav-i.act{background:var(--b600);color:#fff;box-shadow:var(--sh-1);}
 #view-defect .tnav-i .icn-sm{width:15px;height:15px;}
 /* ── 추이 차트 카드 ── */
-#view-defect .main-chart-card{aspect-ratio:16/4;min-height:256px;display:flex;flex-direction:column;}
+#view-defect .main-chart-card{aspect-ratio:16/4;min-height:256px;display:flex;flex-direction:column;width:100%;max-width:100%;min-width:0;}   /* 731차: width 를 안 정하면 aspect-ratio 가 min-height(256)×4=1024 로 **폭을 키워** 창이 1024~1100 일 때 화면 전체에 가로 스크롤이 생겼다 */
 #view-defect .cw{position:relative;width:100%;}
 #view-defect .chart-lg{display:flex;align-items:center;gap:18px;padding:8px 0 0 48px;font-size:11px;color:var(--ct);flex-wrap:wrap;flex-shrink:0;}
 #view-defect .chart-lg .li,#view-defect .ltrmom-lg .li{display:flex;align-items:center;gap:6px;}
@@ -1146,14 +1193,14 @@ body.snap .sbsl:first-of-type{display:none;}
    '도넛·범례·바·숫자가 다 크다'는 지적을 받았다 — 원본에 그런 조건은 없다. */
 #view-defect .dn-side{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:6px 4px;height:100%;}
 #view-defect .dn-side .canv{flex:0 0 210px;width:210px;height:210px;max-width:210px;max-height:210px;position:relative;align-self:center;}
-#view-defect .dn-side .lg{display:flex;flex-direction:column;gap:5px;min-width:0;font-size:12px;margin-left:auto;}
-#view-defect .dn-side .lg .it{display:grid;grid-template-columns:9px minmax(60px,1fr) auto auto;align-items:center;gap:0;min-width:0;height:22px;font-variant-numeric:tabular-nums;cursor:pointer;border-radius:4px;transition:background var(--t-fast);padding:0 4px;}
+#view-defect .dn-side .lg{display:flex;flex-direction:column;gap:5px;min-width:0;font-size:12px;margin-left:auto;overflow:hidden;}   /* 731차: 범례 항목이 카드 밖으로 나가 화면에 가로 스크롤이 생기던 것 */
+#view-defect .dn-side .lg .it{display:grid;grid-template-columns:9px minmax(0,1fr) auto auto;align-items:center;gap:0;min-width:0;height:22px;font-variant-numeric:tabular-nums;cursor:pointer;border-radius:4px;transition:background var(--t-fast);padding:0 4px;}
 #view-defect .dn-side .lg .it:hover{background:var(--bg);}
 #view-defect .dn-side .lg .l{display:contents;}
 #view-defect .dn-side .lg .dt{width:9px;height:9px;border-radius:50%;}
 #view-defect .dn-side .lg .nm{color:var(--ct);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;font-size:12px;min-width:0;padding-left:9px;}
-#view-defect .dn-side .lg .cnt{color:var(--ct);font-weight:600;font-size:12px;white-space:nowrap;padding:0 16px 0 24px;text-align:right;}
-#view-defect .dn-side .lg .pct{color:var(--lbl);font-weight:700;font-size:12px;white-space:nowrap;text-align:right;min-width:48px;}
+#view-defect .dn-side .lg .cnt{color:var(--ct);font-weight:600;font-size:12px;white-space:nowrap;padding:0 12px 0 14px;text-align:right;}
+#view-defect .dn-side .lg .pct{color:var(--lbl);font-weight:700;font-size:12px;white-space:nowrap;text-align:right;min-width:44px;}
 #view-defect .dn-side .lg.lg-2col .it{padding:0 2px;}
 #view-defect .dn-side .lg.lg-2col .nm{padding-left:6px;}
 #view-defect .dn-side .lg.lg-2col .cnt{padding:0 4px 0 6px;}
@@ -1218,13 +1265,15 @@ body.snap .sbsl:first-of-type{display:none;}
 #view-defect .ic.bad{background:rgba(255,59,48,.06);border-color:rgba(255,59,48,.3);}
 #view-defect .ic.bad .ic-i{background:var(--rd);color:#fff;}
 /* ── 표(dt) — 원본 표 규격 그대로 ── */
-#view-defect .dt{width:100%;font-size:12px;}
-#view-defect .dt thead tr{border-bottom:1px solid var(--sep);}
-#view-defect .dt th{padding:9px 12px;text-align:left;font-size:12px;font-weight:700;color:var(--lbl2);white-space:nowrap;}
-#view-defect .dt td{padding:10px 12px;border-bottom:1px solid var(--sep);vertical-align:middle;}
+#view-defect .dt,#mb .rk-tbl{width:100%;font-size:12px;}   /* 715차: 히트맵 셀 모달의 세대 표도 같은 규격 */
+#view-defect .dt thead tr,#mb .rk-tbl thead tr{border-bottom:1px solid var(--sep);}
+#view-defect .dt th,#mb .rk-tbl th{padding:9px 12px;text-align:left;font-size:12px;font-weight:700;color:var(--lbl2);white-space:nowrap;}
+#view-defect .dt td,#mb .rk-tbl td{padding:10px 12px;border-bottom:1px solid var(--sep);vertical-align:middle;}
 #view-defect .dt tr:last-child td{border-bottom:none;}
-#view-defect .dt tbody tr:hover td{background:var(--b50);}
-#view-defect .dt th.cc,#view-defect .dt td.cc{text-align:center;}
+#view-defect .dt tbody tr:hover td,#mb .rk-tbl tbody tr:hover td{background:var(--b50);}
+#view-defect .dt th.cc,#view-defect .dt td.cc,#mb .rk-tbl th.cc,#mb .rk-tbl td.cc{text-align:center;}
+#view-defect #dfDashMo td:not(:first-child),#view-defect #dfDashTbl td:not(:nth-child(-n+2)),#view-defect #dfPrDashMo td:not(:first-child),#view-defect #dfPrDashTbl td:not(:nth-child(-n+2)),#view-defect #dfPrDashTblCo td:not(:nth-child(-n+2)){font-weight:700;}   /* 719차: 대시보드 표 수치 볼드 */
+#view-defect .dt td.ltr-col,#view-defect .dt th.ltr-col{padding-left:18px;}   /* 719차: 장기미처리 ↔ 비율바 간격(월별 표와 정렬감) */
 #view-defect .dt th.n,#view-defect .dt td.n{text-align:right;}
 #view-defect .dt .tot td{background:transparent;border-top:1px solid var(--sep);font-weight:700;color:var(--lbl);}
 #view-defect .dt tfoot .tot td{border-bottom:none;}
@@ -1308,15 +1357,9 @@ body.snap .sbsl:first-of-type{display:none;}
 #view-defect .plan-ta{flex:1;min-width:0;width:100%;padding:5px 9px;font:inherit;font-size:11px;min-height:32px;resize:none;overflow:hidden;transition:height var(--t-fast);border:1px solid var(--sepo);border-radius:var(--rsm);background:var(--bg2);color:var(--lbl);}
 #view-defect .plan-ta:focus{border-color:var(--b400);outline:none;box-shadow:0 0 0 3px rgba(83,140,222,.14);}
 /* 종합 분석 의견 상자 */
-#view-defect .aib{background:var(--b50);border:1px solid var(--b200);border-radius:var(--rlg);padding:14px 16px;}
-#view-defect .ait{font-size:13px;line-height:1.7;color:var(--lbl);word-break:keep-all;overflow-wrap:anywhere;}
-/* ⚠ 분석 의견은 AI 가 만든 HTML 을 그대로 넣는다 — 안에 밝은 배경 기준 글자색(회색·검정)이 인라인으로
-   박혀 있어 다크에서 배경에 묻혔다. 다크에서만 본문 색을 강제로 상속시킨다(351차) */
-/* 429차: 색 전체 강제(351차)를 해제 — 분석 의견은 원문의 색을 그대로 보여준다. 색 없는 텍스트는 .ait 상속(--lbl) */
 /* 429차: 원문 인라인 중 '일반 글자' 회색·검정 계열만 다크에서 밝게 — 강조색(네이비·빨강 등)은 원문 그대로 */
 /* 428차: 다크에서 select 펼침 목록이 밝게 떠 글자가 안 보이던 것 — 목록 배경·글자를 명시 */
 /* 435차: 원문 강조색(네이비·다크레드)이 다크에서 묻히던 것 */
-#view-defect .ait p{margin:0 0 8px;line-height:1.7;}#view-defect .ait p:last-child{margin-bottom:0;}
 /* 공가 현황 스트립(vrow) */
 #view-defect .vac-stat .sh{margin-bottom:8px;}   /* 229차: 제목~수치 간격 살짝 축소 */
 #view-defect .vrow{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:0 -20px;}
@@ -1408,6 +1451,8 @@ body.snap .sbsl:first-of-type{display:none;}
 #mb.dfwide .mt2{margin-bottom:14px;}   /* 하자처리 현황의 목록 모달과 동일 */
 #mb.dfwide #mbody{flex:1;min-height:0;display:flex;flex-direction:column;}
 #mb.dfwide .rec-wrap{flex:1;min-height:0;max-height:none;}
+#mb.dfwide.rkm .mo-x{display:flex!important;}   /* 717차: 민원 세대 모달은 우측 상단 X */
+#mb.dfwide.rkm #mbody>div{flex:1;min-height:0;overflow:auto;}
 .rl-head{display:flex;align-items:center;gap:14px;}
 .rl-ttl{font-size:15px;font-weight:700;color:var(--lbl);white-space:nowrap;}
 .rl-acts{margin-left:auto;display:flex;align-items:center;gap:14px;}
@@ -2292,8 +2337,6 @@ body.pickmode #tkRoot .tk-item,body.pickmode .day-panel .plan{user-select:none;}
 /* 설정 카드 — 업무 현황·조직 관리와 같은 규칙(352차):
    ① 카드 머리는 짙은 면 + 아랫선, 높이 41px  ② 내용은 카드를 꽉 채우고 여백은 줄 안쪽이 갖는다 */
 .set-grid .card{padding:0;overflow:hidden;}
-.set-h-lnk{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;color:var(--bl);text-decoration:none;}   /* 703차: 카드 제목 오른쪽 외부 링크 */
-.set-h-lnk .icn{width:12px;height:12px;}
 .set-h{display:flex;align-items:center;justify-content:space-between;gap:var(--s2);
   height:41px;padding:0 var(--s4);margin:0;font-size:13px;font-weight:700;color:var(--lbl);letter-spacing:.01em;
   background:var(--surf2);border-bottom:1px solid var(--sep);}
@@ -2975,8 +3018,9 @@ body.wid #wgSet.on{display:block;}
   transition:opacity var(--tr),transform var(--tr);}
 .nq-panel.on{opacity:1;transform:none;pointer-events:auto;}
 /* 457차: 헤더 검색창이 입력을 맡으므로 패널 안 입력·머리는 감춘다(위젯은 자기 규칙 유지) */
-body:not(.wid) .nq-panel>.nq-hd,body:not(.wid) .nq-panel>.nq-in{display:none;}
-body:not(.wid) .nq-panel{padding-top:6px;}
+/* 732차: 폰 검색은 전체화면이라 머리·입력이 필요하다 — 예전엔 상단바 입력으로 검색해 숨겼다 */
+@media(min-width:961px){body:not(.wid) .nq-panel>.nq-hd,body:not(.wid) .nq-panel>.nq-in{display:none;}
+body:not(.wid) .nq-panel{padding-top:6px;}}
 .nq-hd{display:flex;align-items:flex-start;gap:8px;padding:14px 14px 12px;border-bottom:1px solid var(--sep);}
 .nq-tt{font-size:13px;font-weight:700;}
 .nq-sb{font-size:12px;color:var(--lbl3);margin-top:2px;}
@@ -3075,60 +3119,90 @@ body:not(.wid) .nq-panel{padding-top:6px;}
   /* 645차: 모바일 달력 = 미니달력 + 상시 업무 패널. FullCalendar 는 숨기고 시트도 쓰지 않는다 */
   body:not(.wid) #view-calendar .cal-wrap{display:flex;flex-direction:column;height:calc(100dvh - var(--th));gap:0;}
   body:not(.wid) #view-calendar .cal-card{flex:0 0 auto;height:auto;padding:8px 8px 4px;}
-  /* 704차: 두 상태. mcal-full = 큰 월 달력이 화면을 채움(기본), mcal-mini = 점 달력 + 업무 패널.
-     상단바 제목이 「2026. 9. ▾」 를 맡으므로 카드 안 월 머리(.cal-head)는 숨긴다 — ‹ › 대신 좌우 스와이프 */
-  body.mcal-full:not(.wid) #view-calendar .cal-head,body.mcal-mini:not(.wid) #view-calendar .cal-head{height:0;margin:0;padding:0;overflow:visible;position:static;z-index:auto;}   /* 706차: 월 이동 줄은 없애되 필터는 상단바로. z-index:30 스택을 풀어야 fixed 필터가 상단바(z 100) 위에 온다 */
+  /* 732차: 폰 달력은 **미니 달력 하나**만 쓴다(FullCalendar 는 숨김) — 확장/축소는 같은 격자의 셀 높이만 바뀌므로 이질감이 없다.
+     mcal-full = 셀 큼(업무 막대 3줄) · mcal-mini = 셀 작음(점) + 아래 업무 패널. 전환은 높이 트랜지션. */
+  body:not(.wid) #view-calendar .cal-head{height:0;margin:0;padding:0;overflow:visible;position:static;z-index:auto;}
   body:not(.wid) #view-calendar .cal-move{display:none;}
-  body.mcal-full:not(.wid) #view-calendar .cal-ctl,body.mcal-mini:not(.wid) #view-calendar .cal-ctl{position:fixed;top:calc(var(--th) / 2);right:74px;transform:translateY(-50%);z-index:101;}
-  body.mcal-full:not(.wid) #view-calendar .cal-ctl .cal-filt-pop,body.mcal-mini:not(.wid) #view-calendar .cal-ctl .cal-filt-pop{right:0;left:auto;}
-  body:not(.wid) #view-calendar .cal-card{padding:2px 8px 0;}
+  body.mcal-full:not(.wid) #view-calendar .cal-ctl,body.mcal-mini:not(.wid) #view-calendar .cal-ctl{position:fixed;top:calc(var(--th) / 2);right:54px;transform:translateY(-50%);z-index:101;}
   body:not(.wid) #view-calendar #fcal{display:none;}
   body:not(.wid) #view-calendar #calMini{display:block;}
-  body.mcal-full:not(.wid) #view-calendar .cal-card{flex:1 1 auto;height:100%;min-height:0;display:block;padding-bottom:0;}   /* height:100% — #fcal 의 height:100% 가 여기 기대어 풀린다(flex 만으론 0) */
-  body.mcal-full:not(.wid) #view-calendar #fcal{display:flex;height:100%;min-height:0;}   /* FC 루트는 flex 열 — block 으로 두면 view-harness(flex-grow) 가 0 이 된다 */
-  body.mcal-full:not(.wid) #view-calendar #calMini{display:none;}
+  body:not(.wid) #view-calendar .cal-card{padding:2px 8px 0;}
+  /* 격자 — 셀 높이만 다르다. 733차: 손가락을 따라가는 전환은 #view-calendar 의 --mch(셀 높이)·--mcp(0=점 달력 … 1=큰 달력) 로 보간한다.
+     ⚠ 두 높이(46px · (100dvh - th - 78)/6)는 app.js mcalFullH()/MCAL_MINI_H 와 같은 식 — 함께 고칠 것 */
+  body:not(.wid) #view-calendar .cal-mini .mc-slide{overflow:hidden;}
+  body:not(.wid) #view-calendar .cal-mini .mc-track{display:flex;width:300%;transform:translateX(-33.3333%);will-change:transform;}
+  body:not(.wid) #view-calendar .cal-mini .mc-track.snap{transition:transform .3s cubic-bezier(.22,.61,.36,1);}
+  body:not(.wid) #view-calendar .cal-mini .mc-track>.mc-g{flex:0 0 33.3333%;min-width:0;}
+  body:not(.wid) #view-calendar .cal-mini .mc-g{gap:0;grid-template-columns:repeat(7,minmax(0,1fr));}   /* 1fr 의 최소폭은 max-content — 제목이 길면 열이 벌어진다(§7) */
+  body:not(.wid) #view-calendar .cal-mini .mc-d{height:auto;min-height:0;padding:3px 2px 2px;border-radius:0;align-items:stretch;justify-content:flex-start;flex-direction:column;
+    transition:height var(--t-slow) cubic-bezier(.22,.61,.36,1);overflow:hidden;}
+  body.mcal-mini:not(.wid) #view-calendar .cal-mini .mc-d{height:var(--mch,46px);align-items:center;}
+  body.mcal-full:not(.wid) #view-calendar .cal-mini .mc-d{height:var(--mch,calc((100dvh - var(--th) - 78px) / 6));overflow:visible;}   /* 머리 조각의 제목이 옆 칸으로 흐른다 — 큰 달력만 */
+  body:not(.wid) #view-calendar .cal-mini .mc-d .n{align-self:center;}
+  /* 큰 달력의 숫자 줄 = 고정 높이 16px(데스크톱처럼 오른쪽), 휴일명은 같은 줄 왼쪽에 절대배치 — 칸마다 막대 시작 높이가 같아진다 */
+  body.mcal-full:not(.wid) #view-calendar .cal-mini .mc-d .n{align-self:auto;text-align:right;padding-right:3px;height:16px;line-height:16px;}
+  body.mcal-full:not(.wid) #view-calendar .cal-mini .mc-d .dots{display:none;}
+  body.mcal-mini:not(.wid) #view-calendar .cal-mini .mc-bars,body.mcal-mini:not(.wid) #view-calendar .cal-mini .mc-ho{display:none;}
+  .mc-ho{position:absolute;left:2px;top:3px;right:22px;height:16px;line-height:16px;text-align:left;font-size:9px;color:var(--rd);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  /* 업무 막대 — FullCalendar 막대(≤620: 15px·10.5px·500·모서리 3·완료 .72·공통 속 빈 막대·밝은 색 어두운 글자)를 그대로. 기간 업무는 조각을 이어 붙인다 */
+  .mc-bars{display:flex;flex-direction:column;gap:2px;margin-top:2px;min-width:0;}
+  .mc-bar{display:block;height:15px;line-height:15px;border-radius:0;margin:0 -2px;min-width:0;font-style:normal;color:#fff;letter-spacing:-.02em;}
+  .mc-bar.s{border-radius:3px 0 0 3px;margin-left:0;}
+  .mc-bar.e{border-radius:0 3px 3px 0;margin-right:0;}
+  .mc-bar.s.e{border-radius:3px;}
+  .mc-bar.dn{opacity:.72;}
+  .mc-bar.sp{background:transparent!important;}
+  .mc-bar.lt{color:#1B1B1F;}
+  .mc-bar b{display:block;position:relative;z-index:1;height:15px;line-height:15px;font-size:10.5px;font-weight:500;padding:0 4px;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-sizing:border-box;}   /* z-index 1 = 뒤 칸의 이어진 조각(같은 색) 위로 제목이 흐른다. 폭은 mcalPane 이 주 안 길이만큼 인라인으로 */
+  .mc-bar.lt b{font-weight:600;}
+  /* 공통(속 빈 막대): 색은 바깥 1px 테두리로만 — 색이 그라디언트여도 되도록 안쪽을 흰 판으로 덮는다 */
+  .mc-bar.tm{color:#1F3A6B;}
+  .mc-bar.tm b{background:#fff;height:13px;line-height:13px;margin:1px 0;font-weight:700;color:#1F3A6B;padding:0 3px;}
+  .mc-bar.tm.s b{margin-left:1px;border-radius:2px 0 0 2px;}
+  .mc-bar.tm.e b{margin-right:1px;border-radius:0 2px 2px 0;}
+  .mc-bar.tm.s.e b{border-radius:2px;}
+  .mc-bar.tm b::before{content:'';display:inline-block;vertical-align:1px;width:0;height:0;margin-right:2px;border-left:3px solid currentColor;border-top:2px solid transparent;border-bottom:2px solid transparent;}
+  .mc-bar.tm b:empty::before{display:none;}
+  .mc-bar.rk b::before{content:'';display:inline-block;vertical-align:-1px;width:.92em;height:.92em;margin-right:.3em;border:0;background-color:currentColor;-webkit-mask:var(--risk-ic) center/contain no-repeat;mask:var(--risk-ic) center/contain no-repeat;}
+  .mc-more{display:block;font-style:normal;font-size:10.5px;line-height:15px;color:var(--lbl2);text-align:right;padding-right:2px;}
+  /* 드래그 중 — 높이 트랜지션 없이 손가락을 따르고, 점↔막대·패널은 --mcp 로 섞는다. 정착(settle)은 트랜지션으로 목표 높이까지 */
+  body.mcal-drag:not(.wid) #view-calendar .cal-mini .mc-d{transition:none;}
+  body.mcal-drag:not(.wid) #view-calendar .cal-mini .mc-d,body.mcal-settle:not(.wid) #view-calendar .cal-mini .mc-d{align-items:stretch;overflow:hidden;}   /* 막대가 칸 폭을 쓰도록(점 달력의 center 를 푼다). 숫자 정렬은 원래 모드 그대로 — 확정 때 한 번 옮겨 선다 */
+  body.mcal-drag:not(.wid) #view-calendar .cal-mini .mc-d .n,body.mcal-settle:not(.wid) #view-calendar .cal-mini .mc-d .n{height:16px;line-height:16px;}
+  body.mcal-drag:not(.wid) #view-calendar .cal-mini .mc-d .dots,body.mcal-settle:not(.wid) #view-calendar .cal-mini .mc-d .dots{display:flex;opacity:calc(1 - var(--mcp,1));transition:none;}
+  body.mcal-drag:not(.wid) #view-calendar .cal-mini .mc-bars,body.mcal-settle:not(.wid) #view-calendar .cal-mini .mc-bars{display:flex;opacity:var(--mcp,1);}
+  body.mcal-drag:not(.wid) #view-calendar .cal-mini .mc-ho,body.mcal-settle:not(.wid) #view-calendar .cal-mini .mc-ho{display:block;opacity:var(--mcp,1);}
+  body.mcal-settle:not(.wid) #view-calendar .cal-mini .mc-d .dots,body.mcal-settle:not(.wid) #view-calendar .cal-mini .mc-bars,body.mcal-settle:not(.wid) #view-calendar .cal-mini .mc-ho{transition:opacity .3s;}
+  /* 업무 패널 — 축소일 때만, 구분선으로 붙는다 */
   body.mcal-full:not(.wid) #view-calendar .dp-col{display:none;}
-  @keyframes mcalIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-  body.mcal-anim:not(.wid) #view-calendar .cal-card,body.mcal-anim:not(.wid) #view-calendar .dp-col{animation:mcalIn .18s ease-out;}
-  body.mcal-full:not(.wid) #view-calendar .fc .fc-daygrid-day-frame{min-height:0;}
-  body.mcal-full:not(.wid) #view-calendar .fc .fc-daygrid-day-number{font-size:13px;font-weight:600;padding:5px 6px 2px;}
-  body.mcal-full:not(.wid) #view-calendar .fc-event{font-size:10px;height:15px;line-height:15px;}
-  /* 705차: 기존 달력 디자인(요일 띠·주말/휴일 틴트·이달 밖 회색·「오늘」 표시)은 데스크톱 그대로 — 폰에선 배치만 바꾼다 */
-  /* 706차: 날짜는 데스크톱처럼 칸 우측 상단, 「오늘」·휴일명은 좌측 — 좁으면 휴일명만 말줄임 */
-  body.mcal-full:not(.wid) #view-calendar #fcal .fc-daygrid-day-number{padding:3px 4px 1px;}
-  body.mcal-full:not(.wid) #view-calendar #fcal .fc-daygrid-day-number .dhol{font-size:9.5px;}
-  body.mcal-full:not(.wid) #view-calendar #fcal .fc-daygrid-day-events{margin:0 2px;}
-  body.mcal-full:not(.wid) #view-calendar #fcal .fc-daygrid-more-link{font-size:10px;padding:0 2px;}
-  /* 점 달력: 행 구분선 · 패널과 붙인다 */
-  body.mcal-mini:not(.wid) #view-calendar .cal-mini .mc-g .mc-d{height:44px;}   /* 707차: 구분선 없이 원래 미니 달력 모양, 칸만 조금 키움 */
-  body.mcal-mini:not(.wid) #view-calendar .dp-col{padding-top:0;border-top:1px solid var(--sep);}
+  body.mcal-mini:not(.wid) #view-calendar .cal-card{flex:0 0 auto;height:auto;min-height:0;}
+  body.mcal-mini:not(.wid) #view-calendar .dp-col{position:static;transform:none;padding-top:0;border-top:1px solid var(--sep);flex:1 1 auto;min-height:0;}   /* 732차: 시트(fixed·translateY 103%) 를 풀어 달력 바로 아래로 */
+  body.mcal-mini:not(.wid) #view-calendar .dp-col .card{box-shadow:none;}
   body.mcal-mini:not(.wid) #view-calendar .dp-col::before{content:'';display:block;width:36px;height:4px;border-radius:2px;background:#D6DAE1;margin:6px auto 4px;}
-  /* 상단바 가운데 「2026. 9. ▾」 */
-  #topbar .tbt-ym{display:inline-flex;align-items:center;gap:2px;border:0;background:transparent;font:800 17px/1 inherit;font-family:inherit;color:var(--lbl);padding:6px 8px;border-radius:var(--rmd);}
-  #topbar .tbt-ym .icn{width:16px;height:16px;color:var(--lbl3);}
+  /* 드래그·정착 중 패널 — 아래 mcal-full 의 display:none 보다 뒤에 있어야 이긴다(같은 구체성) */
+  body.mcal-drag:not(.wid) #view-calendar .cal-card,body.mcal-settle:not(.wid) #view-calendar .cal-card{flex:0 0 auto;height:auto;min-height:0;}
+  body.mcal-drag:not(.wid) #view-calendar .dp-col,body.mcal-settle:not(.wid) #view-calendar .dp-col{display:flex;position:static;transform:none;padding-top:0;border-top:1px solid var(--sep);flex:1 1 auto;min-height:0;opacity:calc(1 - var(--mcp,1));}
+  body.mcal-settle:not(.wid) #view-calendar .dp-col{transition:opacity .3s;}
+  body.mcal-drag:not(.wid) #view-calendar .dp-col .card,body.mcal-settle:not(.wid) #view-calendar .dp-col .card{box-shadow:none;}
+  /* 상단바 가운데 「2026. 9. ▾」 — 볼드·크게 */
+  #topbar .tbt-ym{display:inline-flex;align-items:center;gap:2px;border:0;background:transparent;font-family:inherit;font-weight:800;font-size:19px;line-height:1;color:var(--lbl);padding:6px 8px;border-radius:var(--rmd);letter-spacing:-.01em;}   /* 733차: `font:800 19px/1 inherit` 단축은 inherit 이 섞여 선언째 버려졌다 — 개별 속성으로 */
+  #topbar .tbt-ym .icn{width:17px;height:17px;color:var(--lbl2);}
   body.mcal-full #topbar .tbl,body.mcal-mini #topbar .tbl{flex:1;}
   body.mcal-full #topbar .tbt,body.mcal-mini #topbar .tbt{position:absolute;left:0;right:0;text-align:center;pointer-events:none;}
   body.mcal-full #topbar .tbt-ym,body.mcal-mini #topbar .tbt-ym{pointer-events:auto;}
   body.mcal-full #topbar,body.mcal-mini #topbar{position:relative;}
   body.mcal-full #ymPop,body.mcal-mini #ymPop{left:50%;transform:translateX(-50%);}
-  /* 646차: 모바일 달력 머리 — 년월은 가운데 맨몸으로, 필터는 오른쪽 끝에 여유를 두고 맨몸으로 */
-  body:not(.wid) #view-calendar .cal-head{position:relative;justify-content:center;height:44px;margin-bottom:2px;}
-  body:not(.wid) #view-calendar .cal-move{margin:0;background:transparent;padding:0;}
-  body:not(.wid) #view-calendar .cal-title{background:transparent;font-size:16px;}
-  body:not(.wid) #view-calendar .cal-title:hover{background:var(--fill);}
-  /* 652차: 필터를 토요일 칸 가운데에 맞춘다 — 미니달력 칸 폭의 절반만큼 안쪽으로 */
-  body:not(.wid) #view-calendar .cal-ctl{position:absolute;top:50%;transform:translateY(-50%);
-    right:calc((100% - 16px) / 14 - 4px);}
-  body:not(.wid) #view-calendar .cal-head>.cal-ctl>.cal-nav{background:transparent;padding:0;}
-  .cal-mini{padding:0;border:0;background:transparent;box-shadow:none;}
-  .cal-mini .mc-d.sel{outline:2px solid var(--bt1);outline-offset:-2px;border-radius:3px;}
-  /* ⚠ 685차: z-index:auto 를 반드시 같이 되돌린다. .cal-wrap 이 flex 로 바뀌면서 .dp-col 이 flex 항목이 되는데,
-     **flex 항목은 position:static 이어도 z-index 가 먹어 쌓임 맥락을 만든다.** 위 .dp-col 규칙의 z-index:320 이
-     그대로 살아 사이드바 드로어(300)를 덮고 있었다 — 서랍을 열어도 업무 패널이 위에 있었다. */
-  body:not(.wid) #view-calendar .dp-col{position:static;transform:none;z-index:auto;flex:1 1 auto;min-height:0;
-    max-height:none;padding:6px 8px calc(8px + env(safe-area-inset-bottom));gap:0;pointer-events:auto;}
-  body:not(.wid) #view-calendar .dp-col .card{box-shadow:none;}
-  .day-panel{max-height:52dvh;min-width:0;}
+  /* 가로 = 데스크톱 레이아웃: 상단바 대신 달력+오른쪽 패널 */
+  body.mcal-land:not(.wid) #view-calendar #fcal{display:flex;}   /* 733차: block 이면 view-harness 높이 0 — 격자가 안 그려졌다(§6 「#fcal 은 flex」) */
+  body.mcal-land:not(.wid) #view-calendar #calMini{display:none;}
+  body.mcal-land:not(.wid) #view-calendar .cal-head{height:auto;padding:0 0 6px;}
+  body.mcal-land:not(.wid) #view-calendar .cal-move{display:flex;}
+  body.mcal-land:not(.wid) #view-calendar .cal-ctl{position:static;transform:none;}
+  body.mcal-land:not(.wid) #view-calendar .cal-wrap{flex-direction:row;gap:10px;}
+  body.mcal-land:not(.wid) #view-calendar .cal-card{flex:1 1 auto;min-width:0;padding:8px 10px;}
+  body.mcal-land:not(.wid) #view-calendar .dp-col{display:flex;position:static;transform:none;flex:0 0 300px;max-width:300px;border-top:0;border-left:1px solid var(--sep);padding:0 0 0 10px;}
+  body.mcal-land:not(.wid) #view-calendar .dp-col::before{display:none;}
+  body.mcal-land #topbar .tbt{position:static;text-align:left;pointer-events:auto;}
   body:not(.wid) #view-calendar .day-panel{max-height:none;flex:1;min-height:0;}
   @media(max-height:500px){
     /* 704차: 가로로 눕히면 큰 달력만 — 날짜를 누르면 패널이 아래에서 올라오는 시트(685차 .dp-col.on) */
@@ -3136,7 +3210,9 @@ body:not(.wid) .nq-panel{padding-top:6px;}
     body:not(.wid) #view-calendar .dp-col.on{display:flex;transform:none;}
     body:not(.wid) #view-calendar .day-panel{max-height:72dvh;}
     /* 가로에선 6주가 344px 에 안 들어간다 — 업무 막대는 한 줄(maxEvOf) + 나머지 「+N」, 날짜 숫자는 작게 */
-    body.mcal-full:not(.wid) #view-calendar #fcal .fc-daygrid-day-number{padding:1px 0 0;font-size:12px;}
+    body.mcal-land:not(.wid) #view-calendar #fcal .fc-daygrid-day-number{padding:1px 4px 0;font-size:12px;}   /* 733차: 대상은 가로(mcal-land) — 732차부터 폰 세로는 FullCalendar 를 안 쓴다 */
+    /* 733차: 가로 칸은 41px — 숫자 줄 + 막대 1줄이 전부라 「외 N건」 자리가 없다(넣으면 다음 줄 숫자를 덮었다). 나머지는 날짜를 눌러 패널에서 본다 */
+    body.mcal-land:not(.wid) #view-calendar #fcal .fc-daygrid-day-bottom{display:none;}
   }
   /* 업무 현황 도구띠 — 년월·주차, 보류, 찾기·필터를 한 줄로 */
   body:not(.wid) #view-tasks .tkbar-wrap{display:flex;align-items:center;gap:2px;padding:5px 6px 5px 2px;
@@ -3209,9 +3285,13 @@ body:not(.wid) .nq-panel{padding-top:6px;}
   body:not(.wid) #view-defect .opsr{grid-template-columns:minmax(0,1fr);min-height:0;}
   /* 표 — 열을 눌러 담으면 숫자가 겹친다. 카드 안에서 가로로 밀게 둔다 */
   body:not(.wid) #view-defect .card:has(table){overflow-x:auto;-webkit-overflow-scrolling:touch;}
-  body:not(.wid) #view-defect table{min-width:760px;}
+  body:not(.wid) #view-defect table{min-width:1118px;}   /* 730차: 760 은 데스크톱 표(1118)를 억지로 눌러 숫자·배지가 겹치고 앞자리가 잘렸다 — 폰에서도 데스크톱과 같은 폭으로 두고 가로로 민다 */
+  /* 표가 아닌 가로 카드(장기미처리·민원 세대 현황·전월대비)도 같은 폭으로 — 막대 세그먼트 숫자와 배지가 겹치던 것 */
+  body:not(.wid) #view-defect .ltrmom-card,body:not(.wid) #view-defect .card:has(.mom-wrap){overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  body:not(.wid) #view-defect .ltrmom-body,body:not(.wid) #view-defect .mom-wrap{min-width:1118px;}
+  body:not(.wid) #view-defect .ltrmom-head{min-width:1118px;}
   /* 689차: 상세표 — 첫 열(월·주차)을 붙박이로, 칸 여백·글자 축소. 12열 760px 은 가로 스크롤이 맞고 붙박이 열이 기준을 잡아 준다 */
-  body:not(.wid) #view-defect table.dt-detail th,body:not(.wid) #view-defect table.dt-detail td{padding:7px 8px;font-size:11px;}
+  body:not(.wid) #view-defect table.dt-detail th,body:not(.wid) #view-defect table.dt-detail td{padding:9px 12px;font-size:12px;}   /* 731차: 폭을 데스크톱과 같게 뒀으니 여백·글자도 같게 — 좁혀 둘 이유가 없다 */
   body:not(.wid) #view-defect table.dt-detail th:first-child,body:not(.wid) #view-defect table.dt-detail td:first-child{position:sticky;left:0;z-index:1;background:var(--bg2);box-shadow:1px 0 0 var(--bg2),2px 0 0 var(--sep);}   /* 693차: 소수점 스크롤에서 옆 칸 색이 1px 비치던 것 — 배경색 1px 덧대고 경계선을 그 뒤에 */
   /* 689차: 추이 범례 — 왼쪽 48px 들여쓰기·틈 18px 이면 두 줄로 접혔다 */
   body:not(.wid) #view-defect .chart-lg{padding-left:0;gap:10px 12px;font-size:10px;}
@@ -3237,7 +3317,7 @@ body:not(.wid) .nq-panel{padding-top:6px;}
   .seg,.cal-nav{flex:0 0 auto;}
   /* 셀 내부 스크롤 대신 '+N 더보기' — 좁은 셀에서 스크롤은 잡히지 않고,
      중첩 스크롤은 iOS 에서 클리핑이 깨져 칩이 겹쳐 보인다 */
-  body:not(.wid) #fcal .fc-dayGridMonth-view .fc-daygrid-day-frame{overflow:hidden;}   /* 위젯은 좁아도 여러 날 막대를 자르지 않는다 */
+  body:not(.wid):not(.mcal-land) #fcal .fc-dayGridMonth-view .fc-daygrid-day-frame{overflow:hidden;}   /* 위젯은 좁아도 여러 날 막대를 자르지 않는다 · 733차: 폰 가로(mcal-land)도 제외 — 이 클립이 기간 막대를 칸마다 잘랐다(dayMaxEvents 가 이미 줄 수를 막는다) */
   #fcal .fc-dayGridMonth-view .fc-daygrid-day-events{overflow:visible;}
   /* ⚠ display 를 block 으로 덮지 않는다 — 덮으면 기본 규칙(414행)의 justify-content 가 무효가 되어
      좁은 화면과 **위젯(창이 좁아 늘 이 구간에 든다)** 에서만 「외 N건」이 왼쪽으로 갔다.
@@ -3602,12 +3682,6 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 #view-defect #dfPrintPages .mom-row .bar{padding:1px 3px!important;}
 #view-defect #dfPrintPages .mom-wrap{gap:2px!important;padding-top:0!important;}
 /* 231차 지시: 현장 인쇄 '종합 분석 의견' 글자 전체 축소 */
-#view-defect #dfPrintPages .aib{padding:9px 11px!important;}
-#view-defect #dfPrintPages .ait{font-size:7.5pt!important;line-height:1.5!important;}
-#view-defect #dfPrintPages .ait h1,#view-defect #dfPrintPages .ait h2,#view-defect #dfPrintPages .ait h3{font-size:8pt!important;margin:6px 0 3px!important;}
-#view-defect #dfPrintPages .ait li{margin:1px 0!important;}
-#view-defect #dfPrintPages .ait p{margin:3px 0!important;}
-#view-defect #dfPrintPages .ait strong,#view-defect #dfPrintPages .ait b{font-size:7.5pt!important;}
 #view-defect #dfPrintPages .chart-lg{padding-left:14px!important;font-size:5.8pt!important;gap:8px!important;}   /* 231차: 크기·항목 간격(18→8) 축소 */
 #view-defect #dfPrintPages .chart-lg .li{gap:3px!important;}
 #view-defect #dfPrintPages .chart-lg .mk-bar,#view-defect #dfPrintPages .chart-lg .mk-ln{transform:scale(.62);}
@@ -3660,9 +3734,6 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 #view-defect #dfPrintPages .ic{padding:8px 10px!important;}
 #view-defect #dfPrintPages .ic-ttl{font-size:8.5pt!important;}
 #view-defect #dfPrintPages .ic-sub{font-size:7.5pt!important;}
-#view-defect #dfPrintPages .ait{font-size:9pt!important;line-height:1.6!important;}
-#view-defect #dfPrintPages .ait>div{font-size:10pt!important;}
-#view-defect #dfPrintPages .ait li{margin-bottom:5px!important;}
 /* ═══ 하자 생산자(업로드·게시) — 원본(하자처리 현황 앱) CSS 그대로 · 614차 ═══
    ⚠ 토큰(--b50~800·--rlg)은 두 앱이 같은 값이라 원본 규칙을 그대로 옮겼다. 임의 수정 금지. */
 .uz{border:2px dashed var(--b300);border-radius:var(--rlg);padding:24px 18px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s;background:var(--b50);}
@@ -3680,8 +3751,6 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 .uz.std .uz-link{color:var(--bt1);font-weight:700;}
 .uz.std .uzh{font-size:11.5px;color:var(--lbl3);margin-top:4px;}
 .dfadv{margin:0 var(--s4) 12px;box-shadow:inset 0 1px 0 var(--sep);}   /* 게시 행과 같은 머리선 리듬 — 간격 애매함 해소(615차) */
-/* 671차: AI 분석 연결 카드 — .set-grid .card 는 padding:0 이라 본문이 여백을 갖는다 */
-.ai-body{padding:14px var(--s4) 16px;}
 .dfadv>summary{list-style:none;cursor:pointer;font-size:12px;font-weight:600;color:var(--lbl2);padding:12px 2px 3px;margin-left:-6px;user-select:none;display:flex;align-items:center;gap:6px;}   /* 살짝 왼쪽(-6px) — 꺾쇠가 본문 시작선에 걸리게 */
 .dfadv>summary::-webkit-details-marker{display:none;}
 .dfadv>summary::before{content:'';width:7px;height:7px;border-right:1.5px solid var(--lbl3);border-bottom:1.5px solid var(--lbl3);transform:rotate(-45deg);transition:transform .15s;margin-left:2px;}
@@ -3716,11 +3785,12 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 </style>
 </head>
 <body>
-<!-- 배경화면 위 정적 필름 그레인(디뉴어 로그인 배경과 같은 방식) — 배경을 켤 때만 보인다 -->
+<!-- 배경화면 위 정적 필름 그레인 — 배경을 켤 때만 보인다 -->
 <!-- 아이콘: Lucide (ISC) — 24 그리드 · stroke 2 -->
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true" focusable="false">
 <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.2"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .9-1 1.6v.4"/><path d="M12 17.2h.01"/></symbol>
 <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></symbol>
+<symbol id="i-voice" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M12 7v4"/><path d="M12 14h.01"/></symbol>
 <symbol id="i-warn" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
 <symbol id="i-home" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
 <symbol id="i-grid4" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
@@ -3810,6 +3880,7 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
         <button class="ah-srch-x" data-act="nq.clear" aria-label="지우기"><svg class="icn"><use href="#i-close"></use></svg></button>
       </div>
       <button class="ah-help" data-act="set.guide" aria-label="사용 안내" data-tip="사용 안내"><svg class="icn" aria-hidden="true"><use href="#i-help"></use></svg></button>
+      <button class="ah-srch-m" data-act="nq.mob" aria-label="검색"><svg class="icn" aria-hidden="true"><use href="#i-search"></use></svg></button>
     </div>
 </div>
 </header>
@@ -4020,13 +4091,6 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
               <div class="ig2" style="margin-top:12px"><span class="il">업로드 이력</span><span id="dfUpHist" style="display:block;font-size:12px;color:var(--lbl2);line-height:1.7">—</span></div>
             </details>
           </div>
-          <!-- AI 분석 연결(관리자 전용) — 671차: 하자 등록에서 분리. 값은 Firebase aiConf 리프(읽기·쓰기 모두 관리자)에 저장된다 -->
-          <div class="card" id="aiCard" style="display:none">
-            <div class="set-h">AI 분석 연결<a class="set-h-lnk" href="https://ai.azure.com" target="_blank" rel="noopener" data-tip="Azure AI Foundry 포털 — 모델·배포·키 관리">Azure AI<svg class="icn" aria-hidden="true"><use href="#i-ext"></use></svg></a></div>
-            <div class="ai-body">
-              <div class="ig2"><label class="il" for="dfAzPx">중계 서버(Azure Function)</label><input class="inp" id="dfAzPx" type="text" autocomplete="off" placeholder="https://calapp-ai-proxy-….azurewebsites.net"></div>
-            </div>
-          </div>
         </div>
         <div class="set-col set-col-stack">
           <div class="card" id="bkCard">
@@ -4095,5 +4159,5 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
 <script src="./vendor/korea-geo.js?v=635"></script>
 <script src="./vendor/apt-geo.js?v=635" onerror="void 0"></script>   <!-- 540차: 공동주택명 색인 — 없으면 그냥 건너뛴다 -->
-<script src="./app.js?v=707"></script>
+<script src="./app.js?v=733"></script>
 </body></html>

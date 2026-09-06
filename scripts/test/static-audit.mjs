@@ -288,16 +288,15 @@ OK('구문 검사 (node --check)');
 }
 
 
-/* ── 10a. AI 키가 브라우저로 돌아오지 않도록(702차) ─────────────────
-   700~702차에 Azure 직접 호출을 Function 으로 옮겼다. 다시 들어오면 키가 DevTools 에 보인다. */
+/* ── 10c. 함수 이름 중복 정의(718차) ─────────────────────────
+   문자열 위치 편집 스크립트가 어긋나 파일 꼬리가 통째로 복제된 적이 있다(node --check 는 통과한다). 같은 이름의 최상위 function 이 둘이면 FAIL. */
 {
-  const bad = [];
-  if (/['"]api-key['"]/.test(js)) bad.push("app.js 에 'api-key' 헤더");
-  if (/\bazCk\b/.test(js) || /\bazCk\b/.test(html)) bad.push('azCk 식별자');
-  if (/services\.ai\.azure\.com|openai\.azure\.com|cognitiveservices\.azure\.com/.test(html)) bad.push('index.html(CSP) 에 Azure AI 도메인');
-  if (/S\.azCk|o\.key\b.*azCk/.test(js)) bad.push('aiConf.key 읽기');
-  if (bad.length) F('브라우저에 Azure 키 경로가 돌아왔다 — ' + bad.join(' · '));
-  else OK('브라우저에 Azure 키·직접 호출 없음');
+  const names = [...js.matchAll(/^(?:async\s+)?function\s+([A-Za-z_$][\w$]*)\s*\(/gm)].map(m => m[1]);
+  const seen = new Map(); const dup = [];
+  names.forEach(n => { seen.set(n, (seen.get(n) || 0) + 1); });
+  seen.forEach((c, n) => { if (c > 1) dup.push(n + '×' + c); });
+  if (dup.length) F('함수 이름 중복 정의: ' + dup.slice(0, 8).join(', '));
+  else OK('함수 이름 중복 없음 (' + names.length + '개)');
 }
 
 /* ── 10b. CSS 주석이 뒤를 삼키는지(701차) ─────────────────────────
