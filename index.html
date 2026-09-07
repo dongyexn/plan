@@ -1170,7 +1170,7 @@ body.snap .sbsl:first-of-type{display:none;}
 #view-defect .tnav-i.act{background:var(--b600);color:#fff;box-shadow:var(--sh-1);}
 #view-defect .tnav-i .icn-sm{width:15px;height:15px;}
 /* ── 추이 차트 카드 ── */
-#view-defect .main-chart-card{aspect-ratio:16/4;min-height:256px;display:flex;flex-direction:column;width:100%;max-width:100%;min-width:0;}   /* 731차: width 를 안 정하면 aspect-ratio 가 min-height(256)×4=1024 로 **폭을 키워** 창이 1024~1100 일 때 화면 전체에 가로 스크롤이 생겼다 */
+#view-defect .main-chart-card{aspect-ratio:16/4;min-height:256px;display:flex;flex-direction:column;width:100%;max-width:100%;min-width:0;}   /* 731차: width 를 명시해야 aspect-ratio 가 min-height(256)×4=1024 를 **최소 폭**으로 잡아 1024~1100 에서 카드를 밀어내지 않는다 · 754차: 753차의 화면 높이 맞춤(clamp) 롤백 */
 #view-defect .cw{position:relative;width:100%;}
 #view-defect .chart-lg{display:flex;align-items:center;gap:18px;padding:8px 0 0 48px;font-size:11px;color:var(--ct);flex-wrap:wrap;flex-shrink:0;}
 #view-defect .chart-lg .li,#view-defect .ltrmom-lg .li{display:flex;align-items:center;gap:6px;}
@@ -1266,7 +1266,24 @@ body.snap .sbsl:first-of-type{display:none;}
 #view-defect .ic.bad .ic-i{background:var(--rd);color:#fff;}
 /* ── 표(dt) — 원본 표 규격 그대로 ── */
 #view-defect .dt,#mb .rk-tbl{width:100%;font-size:12px;}
-.rk-tbl,.rk-etbl{table-layout:fixed;}   /* 734차: auto 배치는 긴 칩·내용에 열이 밀려 펼침 표의 감지요소 열이 행마다 어긋났다 — 고정 폭이라야 바깥 감지요소 = 안쪽 접수내용 시작선이 같다 */   /* 715차: 히트맵 셀 모달의 세대 표도 같은 규격 */
+.rk-tbl,.rk-etbl{table-layout:fixed;}
+.rk-tbl td.rk-sc{font-variant-numeric:tabular-nums;font-weight:700;color:var(--lbl2);}   /* 743차: 민원 점수 */
+.rk-etbl tr.rk-auto td{color:var(--lbl2);}   /* 756차: 자동 판정 근거 줄 */
+/* 745차(746차 현황도 꼴로): 동별 세대 현황도 */
+.rk-sep{height:1px;background:var(--sep);margin:14px 16px 20px;}   /* 753차: 현황도 위 여백 늘림(사용자) */   /* 748차: 현황 막대와 현황도 사이 인셋 구분선 */
+.rkm-wrap{display:flex;gap:22px;align-items:flex-end;overflow-x:auto;overflow-y:hidden;padding:2px 2px 10px;scrollbar-width:thin;}   /* 747차: 동이 많아 가로 스크롤 — 막대를 보인다(rec-wrap 과 같은 예외) */
+.rkm-wrap::-webkit-scrollbar{height:8px;display:block;}.rkm-wrap::-webkit-scrollbar-thumb{background:var(--sepo);border-radius:4px;}
+.rkm-b{flex:none;}
+.rkm-bt{flex:1;text-align:center;font-size:12px;font-weight:700;color:var(--lbl);margin-top:4px;padding:3px 0;background:var(--fill);border-radius:3px;}
+.rkm-row{display:flex;gap:1px;align-items:center;margin-bottom:1px;}
+.rkm-fl{width:24px;flex:none;font-size:9px;color:var(--lbl3);text-align:right;padding-right:4px;font-variant-numeric:tabular-nums;}
+.rkm-c{width:36px;height:15px;flex:none;border-radius:2px;border:0;padding:0;background:var(--bg);font-size:9px;line-height:15px;text-align:center;color:var(--lbl3);font-variant-numeric:tabular-nums;font-family:inherit;}
+.rkm-c.gap{background:transparent;}
+.rkm-c.on{cursor:pointer;color:#1B1B1F;font-weight:600;transition:transform var(--t-fast);}
+.rkm-c.on.inv{color:#fff;}
+.rkm-c.on:hover{transform:scale(1.12);outline:1px solid var(--lbl2);z-index:1;position:relative;}
+.rkm-ft .rkm-ln{background:var(--fill);color:var(--lbl2);font-weight:700;}
+   /* 734차: auto 배치는 긴 칩·내용에 열이 밀려 펼침 표의 감지요소 열이 행마다 어긋났다 — 고정 폭이라야 바깥 감지요소 = 안쪽 접수내용 시작선이 같다 */   /* 715차: 히트맵 셀 모달의 세대 표도 같은 규격 */
 #view-defect .dt thead tr,#mb .rk-tbl thead tr{border-bottom:1px solid var(--sep);}
 #view-defect .dt th,#mb .rk-tbl th{padding:9px 12px;text-align:left;font-size:12px;font-weight:700;color:var(--lbl2);white-space:nowrap;}
 #view-defect .dt td,#mb .rk-tbl td{padding:10px 12px;border-bottom:1px solid var(--sep);vertical-align:middle;}
@@ -1423,7 +1440,7 @@ body.snap .sbsl:first-of-type{display:none;}
 .ovs-host{position:relative;}
 /* 하자 화면의 넓은 표 — 카드 안에서 가로로 흐르게 두고(화면 전체가 밀리지 않게) 오버레이 바를 붙인다 */
 #view-defect .card:has(>table){overflow-x:auto;}
-.ovs{position:absolute;left:0;right:0;bottom:2px;height:8px;pointer-events:none;opacity:0;
+.ovs{position:absolute;left:0;right:0;bottom:2px;height:8px;pointer-events:none;opacity:0;overflow:hidden;
   transition:opacity var(--t-base);z-index:5;}
 .ovs.on{opacity:1;}
 .ovs-host:hover .ovs.on,.ovs.drag{opacity:1;}
@@ -3153,11 +3170,12 @@ body:not(.wid) .nq-panel{padding-top:6px;}}
   body:not(.wid) #view-calendar .cal-mini .mc-g{gap:0;grid-template-columns:repeat(7,minmax(0,1fr));}   /* 1fr 의 최소폭은 max-content — 제목이 길면 열이 벌어진다(§7) */
   body:not(.wid) #view-calendar .cal-mini .mc-d{height:auto;min-height:0;padding:3px 2px 2px;border-radius:0;align-items:stretch;justify-content:flex-start;flex-direction:column;
     transition:height var(--t-slow) cubic-bezier(.22,.61,.36,1);overflow:hidden;}
-  body.mcal-mini:not(.wid) #view-calendar .cal-mini .mc-d{height:var(--mch,46px);align-items:center;}
+  body.mcal-mini:not(.wid) #view-calendar .cal-mini .mc-d{height:var(--mch,46px);align-items:stretch;}
   body.mcal-full:not(.wid) #view-calendar .cal-mini .mc-d{height:var(--mch,calc((100dvh - var(--th) - 78px) / 6));overflow:visible;}   /* 머리 조각의 제목이 옆 칸으로 흐른다 — 큰 달력만 */
-  body:not(.wid) #view-calendar .cal-mini .mc-d .n{align-self:center;}
+  /* 742차: 숫자는 두 모드 모두 오른쪽 위(데스크톱과 동일) — 점 달력↔큰 달력 전환 때 가운데↔오른쪽으로 튀던 것을 고정. 점도 오른쪽 아래 */
+  body:not(.wid) #view-calendar .cal-mini .mc-d .n{align-self:auto;text-align:right;padding-right:3px;height:16px;line-height:16px;}
+  body:not(.wid) #view-calendar .cal-mini .mc-d .dots{left:auto;right:4px;bottom:8px;justify-content:flex-end;}
   /* 큰 달력의 숫자 줄 = 고정 높이 16px(데스크톱처럼 오른쪽), 휴일명은 같은 줄 왼쪽에 절대배치 — 칸마다 막대 시작 높이가 같아진다 */
-  body.mcal-full:not(.wid) #view-calendar .cal-mini .mc-d .n{align-self:auto;text-align:right;padding-right:3px;height:16px;line-height:16px;}
   body.mcal-full:not(.wid) #view-calendar .cal-mini .mc-d .dots{display:none;}
   body.mcal-mini:not(.wid) #view-calendar .cal-mini .mc-bars,body.mcal-mini:not(.wid) #view-calendar .cal-mini .mc-ho{display:none;}
   .mc-ho{position:absolute;left:2px;top:3px;right:22px;height:16px;line-height:16px;text-align:left;font-size:9px;color:var(--rd);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -3269,7 +3287,7 @@ body:not(.wid) .nq-panel{padding-top:6px;}}
   body:not(.wid) #view-org .mgtbl{min-width:900px;table-layout:fixed;}
   body:not(.wid) #view-calendar .hold-card{display:none;}   /* 642차: 모바일 달력 시트에는 보류함을 두지 않는다 — 업무 현황에서 본다 */
   .tkwrap{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);}
-  #view-tasks .tkmo-list{display:flex;flex-direction:column;gap:var(--s3);}
+  #view-tasks .tkmo-list{display:flex;flex-direction:column;gap:var(--s3);align-items:stretch;}   /* 742차: 기본 규칙의 align-items:start 가 남아 현장 카드가 내용 폭(295px)으로 줄었다 — 화면 폭에 맞춘다 */
   #view-tasks .tkmo-list>.tkmo-g{flex:0 0 auto;}   /* flex 자식은 기본으로 줄어든다 — 카드가 잘리지 않게 */   /* 707차: 폰은 grid 대신 세로 flex — grid 행 높이가 카드가 자란 뒤에도 옛 값(353px)으로 남아 다음 카드가 위로 겹쳤다(사용자가 본 「박살」) */
   .set-grid{grid-template-columns:minmax(0,1fr);}
   /* ══ 업무 현황 — 스크롤 한 겹으로 ══════════════════════════
@@ -3304,9 +3322,25 @@ body:not(.wid) .nq-panel{padding-top:6px;}}
   body:not(.wid) #view-defect .card:has(table){overflow-x:auto;-webkit-overflow-scrolling:touch;}
   body:not(.wid) #view-defect table{min-width:1118px;}   /* 730차: 760 은 데스크톱 표(1118)를 억지로 눌러 숫자·배지가 겹치고 앞자리가 잘렸다 — 폰에서도 데스크톱과 같은 폭으로 두고 가로로 민다 */
   /* 표가 아닌 가로 카드(장기미처리·민원 세대 현황·전월대비)도 같은 폭으로 — 막대 세그먼트 숫자와 배지가 겹치던 것 */
-  body:not(.wid) #view-defect .ltrmom-card,body:not(.wid) #view-defect .card:has(.mom-wrap){overflow-x:auto;-webkit-overflow-scrolling:touch;}
-  body:not(.wid) #view-defect .ltrmom-body,body:not(.wid) #view-defect .mom-wrap{min-width:1118px;}
+  body:not(.wid) #view-defect .ltrmom-card{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  body:not(.wid) #view-defect .ltrmom-body{min-width:1118px;}
+  /* 742차: 전월대비 실적은 가로로 밀지 않고 폭에 맞춰 줄인다(사용자) — 1220행의 좁은 판 격자 */
+  body:not(.wid) #view-defect .mom-wrap{min-width:0;}
+  body:not(.wid) #view-defect .mom-row{grid-template-columns:56px minmax(0,1fr) 58px;gap:8px;padding:5px 0;}
+  body:not(.wid) #view-defect .mom-row .label{font-size:12px;}
+  body:not(.wid) #view-defect .mom-row .bar{grid-template-columns:28px minmax(0,1fr) 44px;font-size:10.5px;gap:5px;}
+  body:not(.wid) #view-defect .mom-row .delta{min-width:0;}
+  body:not(.wid) #view-defect .mom-row .delta .d{padding:2px 5px;font-size:10.5px;}
+  body:not(.wid) #view-defect .rkh-h,body:not(.wid) #view-defect .rkh-r{grid-template-columns:minmax(0,1.6fr) repeat(5,minmax(34px,1fr));column-gap:3px;}   /* 742차: 히트맵 첫 열 150px 고정이 폰에서 가로 스크롤을 만들었다 */
   body:not(.wid) #view-defect .ltrmom-head{min-width:1118px;}
+  /* 751차: 민원 세대 현황 카드는 장기미처리 카드 문법을 빌렸지만 폰에서는 폭에 맞춘다 — 가로 스크롤은 안쪽 현황도(.rkm-wrap)만 */
+  body:not(.wid) #view-defect .rkmom-card{overflow-x:visible;}
+  body:not(.wid) #view-defect .rkmom-card .ltrmom-body,body:not(.wid) #view-defect .rkmom-card .ltrmom-head{min-width:0;}
+  body:not(.wid) #view-defect .rkmom-card .ltrmom-head{flex-wrap:wrap;gap:6px;}
+  body:not(.wid) #view-defect .rkmom-card .ltrmom-row{grid-template-columns:34px 1fr;}   /* 폰: 전월/금월 라벨 + 막대만(수치는 막대 위 숫자로) */
+  body:not(.wid) #view-defect .rkmom-card .lm-stat{display:none;}
+  body:not(.wid) #view-defect .rkmom-card .ltrmom-body{gap:10px;}
+  body:not(.wid) #view-defect .rkmom-card .ltrmom-delta{min-width:0;}
   /* 689차: 상세표 — 첫 열(월·주차)을 붙박이로, 칸 여백·글자 축소. 12열 760px 은 가로 스크롤이 맞고 붙박이 열이 기준을 잡아 준다 */
   body:not(.wid) #view-defect table.dt-detail th,body:not(.wid) #view-defect table.dt-detail td{padding:9px 12px;font-size:12px;}   /* 731차: 폭을 데스크톱과 같게 뒀으니 여백·글자도 같게 — 좁혀 둘 이유가 없다 */
   body:not(.wid) #view-defect table.dt-detail th:first-child,body:not(.wid) #view-defect table.dt-detail td:first-child{position:sticky;left:0;z-index:1;background:var(--bg2);box-shadow:1px 0 0 var(--bg2),2px 0 0 var(--sep);}   /* 693차: 소수점 스크롤에서 옆 칸 색이 1px 비치던 것 — 배경색 1px 덧대고 경계선을 그 뒤에 */
@@ -4176,5 +4210,5 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
 <script src="./vendor/korea-geo.js?v=635"></script>
 <script src="./vendor/apt-geo.js?v=635" onerror="void 0"></script>   <!-- 540차: 공동주택명 색인 — 없으면 그냥 건너뛴다 -->
-<script src="./app.js?v=741"></script>
+<script src="./app.js?v=756"></script>
 </body></html>

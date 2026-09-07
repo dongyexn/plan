@@ -8,7 +8,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='741';
+const APP_VER='756';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -1751,6 +1751,7 @@ function dfNewPopMaybe(){
 }
 function evePopShow(force){
   if(!eveOn())return;
+  if(isMob()&&!WIDGET)return;   /* 742차: 폰에서는 「오늘 남은 업무」 말풍선을 띄우지 않는다(사용자) — 화면이 좁고 종 아이콘이 없다 */
   if(!force&&evePopDone())return;
   const bell=eveBell();if(!bell||!bell.isConnected)return;
   /* 알림창이 이미 열려 있으면 굳이 겹쳐 띄우지 않는다 */
@@ -2503,7 +2504,7 @@ function ovsAttach(el){
   el.__ovs={wrap,bar};
   const sync=()=>{
     const w=el.clientWidth,sw=el.scrollWidth;
-    if(sw<=w+1){wrap.classList.remove('on');return;}
+    if(sw<=w+1){wrap.classList.remove('on');bar.style.width='0px';bar.style.left='0px';return;}   /* 742차: 숨겨도(opacity 0) 옛 left+width 가 scrollWidth 에 남아 뷰포트를 넘겼다(1366px 게이트 +13px) */
     wrap.classList.add('on');
     const bw=Math.max(28,Math.round(w*w/sw));
     const max=w-bw,ratio=el.scrollLeft/(sw-w);
@@ -4356,46 +4357,106 @@ function _warmStep(){
   idle(()=>{if(!_warmQ)return;const s=_warmQ.shift();if(s){try{calc(S.def[s.id]||[],s,dfPubRm());}catch(e){}}if(_warmQ&&_warmQ.length)_warmStep();},{timeout:3000});
 }
 /* ═══ 709차: 민원 세대 레벨화 — 규칙 엔진 ═══════════════════════════════════
-   접수건을 세대(동·호) 단위로 묶어 [축 A] 물리 심각도(하자유형·공종) 와 [축 B] 민원 감지요소 10종(접수내용 고객 발화)으로 판정한다.
+   접수건을 세대(동·호) 단위로 묶어 [축 A] 물리 심각도(하자유형·공종) 와 [축 B] 민원 감지요소 13종(접수내용 고객 발화 · 749차 기준: ★중대 5 · 일반 6 · soft 2)으로 판정한다.
    팀 「민원 발생 관리 보고서」 정의 계승: ★중대 = 안전위험·보상요구·법적·감정격화·외부확산. 고위험 = ★중대 1개 이상 또는 감지요소 3개 이상.
    추가(사용자 결정): 「장기방치」 — 문장의 장기간 방치 표현 또는 지연일 60일 이상. ★중대 아님, 3개 규칙에도 안 셈, 최대 「주의」.
    소송 미참여 세대 태그는 민원이 아니다(채권양도 안 한 세대 구분) — 지우고 본다. 근거 조각·위치·접수번호를 함께 저장해 표에서 펼쳐 보인다.
    규칙은 RISK_RULES 한 곳에 — 사람이 고친다. 검사: scripts/test/risk-gold.mjs (예문 60건 정답셋). */
 const RISK_RULES={
-  staffMemo:/자재발주|직영확인|이관|안내함|안내드림|처리예정|처리불가\s*안내|보수불가\s*안내|방문예정|같은\s*현상으로\s*민원/,
+  /* 743차: 「키워드가 있느냐」→「민원 의미로 쓰였느냐」. 요소마다
+       rx   = 강한 직접어(단독 적중)
+       cond = 조건부어 — 같은 조각에 ctx(문맥어)가 **다른 자리에** 함께 있어야 적중
+       no   = 제외 문맥(조각째 무효) · 직원 방향 문장 포함
+     직원 메모 조각(staffMemo)은 memoOk 요소만 본다. 판정 로그는 riskDetect(text,log) 로 남는다(riskAuditCSV). */
+  staffMemo:/자재발주|직영확인|이관|안내함|안내드림|선\s*안내|처리예정|처리\s*예정|(조치|방문|확인|시공|보수|재시공|교체)\s*예정|처리불가\s*안내|보수불가\s*안내|방문예정|같은\s*현상으로\s*민원|지급\s*(함|예정|완료)|청구서\s*접수|신고\s*여부\s*확인|책임지고\s*(처리|조치)|끝까지\s*책임|책임감/,
   tags:/\[?소송\s*미참여\s*세대\]?|소송현장\s*세대|\[탄성세대\]|\[?기접수건\]?/g,
   factors:{
-    '안전위험':{crit:true,rx:/다칠|다치|무섭|무서울|불안|화재|감전|추락|꺼집|꺼지|가라앉|사고|위험|디디면|디딜때|삐그덕/,no:/위험\s*없|안전\s*확인/},
-    '보상요구':{crit:true,rx:/보상|배상|환불|비용\s*청구|청구|손해|손실|비용\s*(지급|미지급)|지급요함|정신적/,no:/보상\s*(불가|없)/},
-    '법적·외부기관':{crit:true,rx:/소송|내용증명|국토부|하심위|하자\s*분쟁|분쟁조정|소비자원|국민신문고|본사(에|\s)|고발(?!디)/,no:/고\s*발디/},
-    '처리지연·일정피해':{rx:/재촉\s*반복|반복\s*재촉|입주\s*지연|일정\s*피해|지연\s*보상|(개월|달)째.*(안\s*됨|미처리|안됨)/},
-    '보수품질·반복하자':{rx:/재하자|(?<!자)재발|재접수|여전히|미개선|[2-9]\s*번째\s*접수|[2-9]년차\s*재접수|보수(했으나|받았으나|를\s*받았|\s*이후|\s*후에도)|이번에도|메꾸고\s*갔으나|처리\s*받고\s*싶다/,memoOk:true},
-    '응대·소통불만':{rx:/연락\s*(이\s*)?없|연락이없|연락\s*(요청|주세요)|회신\s*요청|회신요청|답변\s*(이\s*)?없|미루|기사\s*변경|담당\s*변경|연락안주/},
-    '생활불편':{rx:/수면\s*장애|사용\s*불가|생활(에|\s*중).*(불편|지장|어려)|일상\s*생활|주거|손상|(지속|계속).*소음|소음.*(지속|계속|새벽)|처리불가(?!\s*안내)/},
-    '책임·형평성불만':{rx:/다른\s*세대|형평|유독|시공\s*하자로\s*판단|시공사\s*측|책임|원인\s*규명|원인규명|본사\s*차원/},
-    '감정격화·위협표현':{crit:true,rx:/화가\s*나|화나|스트레스|정신적\s*고통|난리|!{3,}|언성|너무한거|폭언|협박|욕설|경찰|고성|정말\s*바랍|필요없으니/},
+    '안전위험':{crit:true,
+      rx:/다칠|다치|무섭|무서|화재|감전|추락|가라앉|붕괴|넘어[지질]|전도(?!율)/,
+      cond:/꺼[짐지집]|위험|불안|사고|삐그덕|디디|디딜|흔들|탈락|파편/,
+      ctx:/바닥|천장|발(?!주|송|생)|아이|아기|어린이|노인|다치|떨어|무너|기울|흔들|불안|위험|디디|디딜|가라앉|꺼[짐지집]|파편|깨|칼|뾰족/,
+      no:/위험\s*없|안전\s*확인|사고\s*없|이상\s*없|위험물/},
+    '보상요구':{crit:true,
+      rx:/보상|배상|환불|손해배상|비용\s*청구|청구\s*하겠|청구하겠/,
+      cond:/청구|비용|손실|손해|지급|정신적/,
+      ctx:/요구|요청|요함|해달|해주|하겠|바람|바랍|원함|원한다|주세요|해야|받아야|하라|해줘|합당|보전|물어|주셔야|받고|피해|경제적|어려/,
+      no:/보상\s*(불가|없)|비용\s*(지급함|지급\s*예정|지급완료)|청구서\s*접수|비용\s*발생\s*여부|인테리어|줄눈/},   /* 744차: 인테리어·줄눈 시공분 보상 문의는 거른다(사용자) */
+    '법적·외부기관':{crit:true,rx:/소송|내용증명|국토부|하심위|하자\s*분쟁|분쟁조정|소비자원|국민신문고|본사(에|\s)|고발(?!디)/,no:/고\s*발디|협력\s*업체|협력사|(업체|제조사|LG|삼성)\s*본사/},   /* 744차: 협력업체·제조사 본사 언급은 외부기관이 아니다 */
+    /* 749차: 시간 경과 + 처리 미완료 조합으로 넓힘(리뷰 1순위). 장기방치와 같이 잡히는 것은 정상 */
+    '처리지연·일정피해':{rx:/재촉\s*반복|반복\s*재촉|입주\s*지연|일정\s*피해|지연\s*보상|(개월|달|주|년)째.*(안\s*됨|미처리|안됨|안\s*되|않)|(작년|재작년|지난해|오래\s*전)부터|수개월|계속\s*미처리|아직\s*(처리|조치|방문|보수)\s*(안|않|되지|못)|여태\s*(처리|조치|방문)|처리(가)?\s*안\s*(됨|되)|(방문|조치|처리)하지\s*않/},
+    '보수품질·반복하자':{memoOk:true,
+      rx:/재하자|(?<!자)재발|재시공\s*(요구|요청)|여전히|미개선|[2-9]\s*번째\s*접수|[2-9]년차\s*재접수|이번에도|메꾸고\s*갔으나|처리\s*받고\s*싶다|보수(했으나|했지만|받았으나|를\s*받았으나|\s*이후에도|\s*후에도)|처리(했으나|했지만|\s*이후에도)|동일\s*(현상|부위|문제).*(반복|재발|발생)/},
+    '반복민원':{memoOk:true,rx:/재문의|재요청|다시\s*문의|다시\s*요청|재접수|여러\s*차례|여러\s*번|몇\s*번이나|몇\s*번을|지난번에도|이전에도|또\s*연락|계속\s*문의|계속\s*연락/},
+    '응대·소통불만':{rx:/연락\s*(이\s*)?없|연락이없|연락\s*(요청|주세요|해라|하라|바람|바랍|달라|요망|부탁|줘)|회신\s*요청|회신요청|답변\s*(이\s*)?없|미루|기사\s*변경|담당\s*변경|연락안주|전화\s*(달라|주세요|요망|바람|해라|하라)|직접\s*(와서|방문|나와)|직접\s*확인\s*(해|하|바람|요청)|담당자\s*(대면|나와)/},   /* 744차: 「현대에서 직접 와서 봐라」「연락해라」 */
+    '생활불편':{
+      rx:/수면\s*장애|사용\s*불가|생활(에|\s*중).*(불편|지장|어려)|일상\s*생활|(지속|계속).*소음|소음.*(지속|계속|새벽)|처리불가(?!\s*안내)/,
+      cond:/주거|손상|불편|지장/,
+      ctx:/심각|훼손|생활|일상|가구|침대|매트리스|가전|물건|옷|젖|곰팡이|잠|수면|사용|거주|아이|밤/},
+    '책임·형평성불만':{
+      rx:/다른\s*세대|형평|유독|시공\s*하자로\s*판단|시공사\s*측|원인\s*규명|원인규명|본사\s*차원|책임\s*소재|책임\s*규명|누가\s*책임|시공사\s*책임|회사\s*책임|책임을\s*물|책임\s*회피|책임\s*전가|책임져|책임\s*요구|책임\s*있는/,
+      cond:/책임/,
+      ctx:/요구|요청|밝혀|물|져야|지어야|규명|소재|시공사|회사|본사|누구|누가|전가|회피/,
+      no:/책임지고\s*(처리|조치)|담당자가\s*책임|끝까지\s*책임|책임감/},
+    '감정격화·위협표현':{crit:true,
+      rx:/화가\s*나|화나|정신적\s*고통|난리|!{3,}|언성|너무한거|폭언|협박|욕설|고성|정말\s*바랍|필요없으니/,
+      cond:/스트레스|경찰|짜증|분노/,
+      ctx:/심|너무|많|받|때문|힘들|부르|신고하겠|부른다|하겠|고소/,
+      no:/경찰\s*신고\s*여부|스트레스\s*관리/},
     '외부확산':{crit:true,rx:/언론|투고|게시판|올리겠|커뮤니티|유튜브|인터넷|카페에|입주민.*공유|공론|(?<!안내)방송(?!\s*(안\s*들|설비|스피커))/,no:/스피커|안내방송|방송\s*안\s*들/},
     '장기방치':{soft:true,rx:/(년|겨울|여름|봄|가을|월)부터.*(아직|여태|연락)|년\s*(다\s*)?됐|한달째|몇\s*달째|몇\s*개월째|아직도/},
+    /* 745차: 사설 시공(인테리어·줄눈·사설 중문 등) 언급 — 보상 요구로 올리지 않고 주의로만(soft). 다른 요소와 겹치면 그쪽 등급 */
+    '사설시공·인테리어':{soft:true,memoOk:true,rx:/인테리어|사설|자체\s*시공|개인\s*시공|줄눈|중문/},
   },
   phys:{4:/누수|침수|역류|균열|크랙|파손|개폐|작동불량|미점등|감전|화재|탈락/,3:/들뜸|고정불량|틈새|단차|구배|수압/,2:/코킹|줄눈|바탕면|수직|수평|시공불량/,1:/흠집|오염|변색|주름|랩핑|기스|스크래치/},
   physTradeBoost:/방화문|창호|전기|설비|스프링클러|콘크리트/,
-  longDelayDays:60,
+  /* 접수 데이터로 자동 붙이는 요소(743차): 지연 60일+ → 장기방치, 90일+·180일+ 는 점수·등급 가산 / 세대 접수 N건 이상 → 반복민원 / 같은 공간·하자유형 M건 이상 → 보수품질·반복하자 */
+  longDelayDays:60,delay180:180,delay365:365,autoRepeatN:8,autoRepeatN2:5,autoRepeatOpen:2,autoSameDefectN:2,
+  urgentMinScore:7,   /* 745차: 「외부·법적 + 미처리」 경로의 긴급은 점수 7 이상일 때만(중대 하나 + 미처리 1건으로 긴급이 되던 것을 조인다) */   /* 744차: 90일 가중 삭제, 180일 +1 · 365일 +2, 등급 승격은 365일(사용자: 널널하게) */
+  /* 최종 민원 점수(743차): 태그 개수 대신 하나의 수 — 등급 안 정렬·우선순위. 상한 12 */
+  score:{crit:3,hard:1,soft:1,d180:1,d365:2,phys4:2,phys3:1,cap:12},
   levelNames:['','양호','주의','경계','심각'],
 };
+
 function riskSegs(text){return String(text||'').replace(RISK_RULES.tags,' ').split(/\s*(?:\/\/|\/|\|| - |■|▶)\s*/).map(x=>x.trim()).filter(Boolean);}
-function riskDetect(content){
+function riskDetect(content,log){
   const hits={},evid=[];
-  for(const seg of riskSegs(content)){
+  const rec=(f,kw,seg,ok,why)=>{if(log)log.push({f,kw,seg:seg.slice(0,140),ok,why});};
+  /* 749차: 직원 메모로 판정된 조각은 쉼표로 더 쪼개 고객 발화가 섞인 부분(「고객 보상 요구함, 자재발주 처리예정」)을 살린다 */
+  /* 756차: 절 단위 — 쉼표뿐 아니라 「~했으나/~지만/~하고/~며」 뒤에서도 끊어 「자재발주했으나 고객이 보상을 요구함」의 뒷절을 살린다 */
+  const segs=[];for(const seg of riskSegs(content)){if(RISK_RULES.staffMemo.test(seg))seg.split(/[,，]|(?<=으나|았으나|었으나|였으나|지만|하고|하며|으며|고서|한\s*뒤|한\s*후)\s*/).map(x=>x.trim()).filter(Boolean).forEach(x=>segs.push(x));else segs.push(seg);}
+  for(const seg of segs){
     const staff=RISK_RULES.staffMemo.test(seg);
     for(const [name,f] of Object.entries(RISK_RULES.factors)){
       if(hits[name])continue;
-      if(staff&&!f.memoOk)continue;
-      const m=seg.match(f.rx);if(!m)continue;
-      if(f.no&&f.no.test(seg))continue;
-      hits[name]=true;evid.push({f:name,t:seg.slice(0,140),i:m.index});
+      const m1=seg.match(f.rx),m2=(!m1&&f.cond)?seg.match(f.cond):null;
+      if(!m1&&!m2)continue;
+      const kw=(m1||m2)[0];
+      if(staff&&!f.memoOk){rec(name,kw,seg,false,'직원 메모');continue;}
+      if(f.no&&f.no.test(seg)){rec(name,kw,seg,false,'제외문맥');continue;}
+      if(m1){hits[name]=true;evid.push({f:name,t:seg.slice(0,140),i:m1.index});rec(name,kw,seg,true,'직접어');continue;}
+      /* 조건부어: 그 낱말을 지운 나머지에 문맥어가 있어야 한다 */
+      const rest=seg.slice(0,m2.index)+' '+seg.slice(m2.index+kw.length);
+      const c=f.ctx&&rest.match(f.ctx);
+      if(c){hits[name]=true;evid.push({f:name,t:seg.slice(0,140),i:m2.index});rec(name,kw,seg,true,'조건부+'+c[0]);}
+      else rec(name,kw,seg,false,'문맥 없음');
     }
   }
-  return {factors:Object.keys(hits),evid};
+  /* 749차: 「8/21 // 8/30 / 9/2 독촉」 — 날짜가 2개 이상 나열되거나 독촉이 2번 이상이면 여러 번 재촉한 것 → 반복민원 */
+  const txt=String(content||''),nd=(txt.match(/(^|[^\d])\d{1,2}\/\d{1,2}(?!\d)/g)||[]).length,nu=(txt.match(/독촉/g)||[]).length;
+  /* 756차: 날짜 나열만으로는 안 잡는다(「8/21 접수 / 8/30 방문」) — 독촉·재촉·재문의·재연락·반복·다시 같은 행동어가 함께 있어야 */
+  const act=/독촉|재촉|재문의|재연락|반복|다시|또\s*연락|여러\s*번/.test(txt);
+  if(!hits['반복민원']&&((nd>=2&&act)||nu>=2)){hits['반복민원']=true;evid.push({f:'반복민원',t:txt.slice(0,140),i:0});rec('반복민원',nu>=2?'독촉 '+nu+'회':'날짜 '+nd+'회+행동어',txt,true,'재촉 횟수');}
+  return {factors:Object.keys(hits),evid,log:log||null};
+}
+/* 743차: 판정 로그 CSV — 현장 원본 행 전부를 돌려 요소·검출어·원문·판정·사유를 남긴다. 콘솔에서 riskAuditCSV(sid) → 내려받기.
+   300~500건만 봐도 어느 정규식이 오탐인지 드러난다. */
+function riskAuditCSV(sid){
+  const rows=(S.def&&S.def[sid])||[];const out=[['접수번호','동','호','요소','검출어','판정','사유','원문']];
+  for(const r0 of rows){const r=r0.receiptContent!==undefined?r0:norm(r0);const log=[];riskDetect(r.receiptContent,log);
+    log.forEach(l=>out.push([r.receiptNo,r.building,r.unit,l.f,l.kw,l.ok?'TRUE':'FALSE',l.why,maskPII(l.seg)]));}   /* 756차: 원문은 마스킹 — 게시본과 같은 원칙 */
+  const csv='\ufeff'+out.map(a=>a.map(v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='risk-audit_'+sid+'_'+todayStr()+'.csv';a.click();
+  return out.length-1;
 }
 function riskPhys(dtype,trade){
   let lv=1;for(const k of [4,3,2,1]){if(RISK_RULES.phys[k].test(String(dtype||''))){lv=k;break;}}
@@ -4403,13 +4464,20 @@ function riskPhys(dtype,trade){
   return lv;
 }
 /* 710차: 한 척도 5단계 — 양호 · 주의 · 경계 · 심각 · 긴급(즉시 대응).
-   긴급 = ★중대 2개 이상, 또는 법적·외부기관/외부확산 이 있고 미처리 건이 남음
-   심각 = ★중대 1개, 또는 비중대 3개 이상
+   긴급 = ★중대 3개 이상(738차, 종전 2), 또는 법적·외부기관/외부확산 이 있고 미처리 건이 남음
+   심각 = ★중대 1~2개, 또는 비중대 3개 이상
    경계 = 비중대 1~2개, 또는 물리 심각(누수·균열·파손 등) 보유
    주의 = 장기방치만, 또는 물리 경계
    양호 = 나머지 */
 const RISK_LEVELS=['양호','주의','경계','심각','긴급'];
-function riskLevel(factors,phys,open){
+function riskScore(factors,phys,delay){
+  const F=RISK_RULES.factors,W=RISK_RULES.score;let sc=0;
+  factors.forEach(f=>{const d=F[f];if(!d)return;sc+=d.crit?W.crit:d.soft?W.soft:W.hard;});
+  if(delay>=RISK_RULES.delay365)sc+=W.d365;else if(delay>=RISK_RULES.delay180)sc+=W.d180;
+  if(phys>=4)sc+=W.phys4;else if(phys>=3)sc+=W.phys3;
+  return Math.min(W.cap,sc);
+}
+function riskLevel(factors,phys,open,delay,sc){
   const F=RISK_RULES.factors;
   const crit=factors.filter(f=>F[f]&&F[f].crit),hard=factors.filter(f=>F[f]&&!F[f].soft);
   const ext=factors.some(f=>f==='법적·외부기관'||f==='외부확산');
@@ -4424,7 +4492,9 @@ function riskLevel(factors,phys,open){
      ⚠ 그동안 「심각 + 미처리 잔여」면 전부 긴급으로 올려 심각이 0 이 되고 긴급으로 쏠렸다(게다가 처리 판정 오류로 전 건이 미처리였다) */
   const hasOpen=(open===undefined||open>0);
   if(crit.length>=3){lv=4;why='중대 3개 이상 · '+why;}   /* 738차: 2→3(사용자) */
-  else if(lv===3&&ext&&hasOpen){lv=4;why='외부·법적 + 미처리 잔여 · '+why;}
+  else if(lv===3&&ext&&hasOpen&&(sc===undefined||sc>=RISK_RULES.urgentMinScore)){lv=4;why='외부·법적 + 미처리 잔여 · '+why;}
+  /* 743차(744차 365일로): 1년 이상 방치는 한 단계 올린다(심각까지) */
+  if((delay||0)>=RISK_RULES.delay365&&lv>=1&&lv<3){lv++;why='1년 이상 방치 · '+why;}
   const pl=phys>=4?2:phys>=3?1:0;   /* 물리 심각 → 경계, 물리 경계 → 주의 */
   if(pl>lv){lv=pl;why=(why?why+' · ':'')+'물리 '+RISK_RULES.levelNames[phys];}
   return {lv,disp:RISK_LEVELS[lv],level:RISK_LEVELS[lv],why};
@@ -4435,30 +4505,42 @@ function riskHH(items){
   for(const r of items||[]){
     const bu=String(r.building||'').trim(),un=String(r.unit||'').trim();if(!bu&&!un)continue;
     const key=bu+'-'+un;let h=map.get(key);
-    if(!h){h={bu,un,n:0,phys:1,factors:new Set(),evid:[],no:'',maxDelay:0,open:0,types:new Map()};map.set(key,h);}
+    if(!h){h={bu,un,n:0,phys:1,factors:new Set(),evid:[],no:'',maxDelay:0,openDelay:0,open:0,types:new Map()};map.set(key,h);}
     h.n++;if(!h.no)h.no=String(r.receiptNo||'');
     const pl=riskPhys(r.defectType,r.trade);h.phys=Math.max(h.phys,pl);
     {const t=String(r.defectType||'').trim();if(t){const cur=h.types.get(t)||{lv:pl,n:0};cur.n++;h.types.set(t,cur);}}   /* 711차: 하자유형 칩 */
     const d=riskDetect(r.receiptContent);
     d.factors.forEach(f=>h.factors.add(f));
     /* 712차: 근거는 접수건 단위 — 감지요소 묶음 + 접수일·공간·공종·하자유형·지연일 + 접수내용(마스킹·200자) */
-    if(d.factors.length&&h.evid.length<6)h.evid.push({no:String(r.receiptNo||''),f:d.factors,d:String(r.receiptDate||'').slice(0,10),sp:String(r.space||''),tr:String(r.trade||''),ty:String(r.defectType||''),dl:Number(r.delayDays)||0,st:r.status==='처리'?'완료':'',t:String(r.receiptContent||'').replace(/^\s*제목\s*[:：]\s*/,'').slice(0,200)});
+    if(d.factors.length&&h.evid.length<6)h.evid.push({no:String(r.receiptNo||''),f:d.factors,d:String(r.receiptDate||'').slice(0,10),sp:String(r.space||''),tr:String(r.trade||''),ty:String(r.defectType||''),dl:Number(r.delayDays)||0,st:r.status==='처리'?'완료':'',t:maskPII(String(r.receiptContent||'').replace(/^\s*제목\s*[:：]\s*/,'')).slice(0,200)});   /* 756차: 게시본에 실리므로 마스킹 */
     const dl=Number(r.delayDays)||0;if(dl>h.maxDelay)h.maxDelay=dl;
-    if(dl>=RISK_RULES.longDelayDays)h.factors.add('장기방치');
+    /* 756차: 등급·점수·장기방치 자동 태그는 **현재 미처리 건**의 지연일만 본다 — 400일 걸려 끝난 옛 건이 지금 5일짜리 새 민원을 1년 방치 세대로 올리지 않게. maxDelay 는 이력용 */
+    if(r.status!=='처리'){if(dl>h.openDelay)h.openDelay=dl;if(dl>=RISK_RULES.longDelayDays)h.factors.add('장기방치');}
+    {const sk=String(r.space||'').trim()+'|'+String(r.defectType||'').trim();h.same=h.same||new Map();h.same.set(sk,(h.same.get(sk)||0)+1);}
     if(r.status!=='처리')h.open++;   /* 734차: norm() 의 상태값은 '처리'/'미처리' — '완료' 를 찾던 탓에 전 건이 미처리로 세어졌다(처리완료 0·미처리=접수) */
   }
   const cnt={양호:0,주의:0,경계:0,심각:0,긴급:0,total:map.size};const list=[];const fac={};
   for(const h of map.values()){
-    const factors=[...h.factors];const lv=riskLevel(factors,h.phys,h.open);
+    /* 743차: 접수 데이터 기반 자동 요소 — 세대 접수 N건+ → 반복민원, 같은 공간·유형 M건+ → 보수품질·반복하자 */
+    /* 756차: 자동 요소마다 산출 근거를 근거 표에 한 줄로(auto:true — 접수건 아님) */
+    const autoEv=(f,why)=>{h.factors.add(f);h.evid.push({no:'',f:[f],d:'',sp:'',tr:'',ty:'',dl:0,st:'',t:why,auto:true});};
+    if(h.n>=RISK_RULES.autoRepeatN)autoEv('반복민원','세대 접수 '+h.n+'건('+RISK_RULES.autoRepeatN+'건 이상)');
+    else if(h.n>=RISK_RULES.autoRepeatN2&&h.open>=RISK_RULES.autoRepeatOpen)autoEv('반복민원','세대 접수 '+h.n+'건 · 미처리 '+h.open+'건');   /* 749차: 8건+, 또는 5건+ 미처리 2건+ */
+    if(h.n>=3&&h.same){const top=[...h.same.entries()].filter(([k,v])=>v>=RISK_RULES.autoSameDefectN).sort((a,b)=>b[1]-a[1])[0];if(top)autoEv('보수품질·반복하자',top[0].replace('|',' / ')+' '+top[1]+'건 반복');}   /* 749차: 3건 이상 + 같은 공간·유형 반복 */
+    if(h.factors.has('장기방치')&&h.openDelay>=RISK_RULES.longDelayDays)h.evid.push({no:'',f:['장기방치'],d:'',sp:'',tr:'',ty:'',dl:h.openDelay,st:'',t:'현재 미처리 최장 '+h.openDelay+'일('+RISK_RULES.longDelayDays+'일 이상)',auto:true});
+    const FO=Object.keys(RISK_RULES.factors),F=RISK_RULES.factors;
+    /* 744차: 감지요소는 중요한 순(★중대 → 일반 → 장기방치), 같은 급은 규칙 순 — 왜 이 등급인지 칩만 보고 읽히게 */
+    const factors=[...h.factors].sort((a,b)=>((F[b]&&F[b].crit)?2:(F[b]&&F[b].soft)?0:1)-((F[a]&&F[a].crit)?2:(F[a]&&F[a].soft)?0:1)||(FO.indexOf(a)-FO.indexOf(b)));
+    const sc=riskScore(factors,h.phys,h.openDelay);const lv=riskLevel(factors,h.phys,h.open,h.openDelay,sc);
     cnt[lv.disp]=(cnt[lv.disp]||0)+1;
     {const types=[...h.types.entries()].sort((a,b)=>(b[1].lv-a[1].lv)||(b[1].n-a[1].n)).slice(0,4).map(([t,v])=>({t,lv:v.lv,n:v.n}));
       /* 713차: 양호 세대도 얇게 싣는다(근거 없음) — 필터 「양호;주의」 로 같이 보기 위함. 650세대 × 작은 객체라 게시본 부담은 작다 */
-      const row={bu:h.bu,un:h.un,n:h.n,open:h.open,done:h.n-h.open,phys:h.phys,types,factors,lv:lv.lv,level:lv.level,why:lv.why,no:h.no,delay:h.maxDelay};
+      const row={bu:h.bu,un:h.un,n:h.n,open:h.open,done:h.n-h.open,phys:h.phys,types,factors,lv:lv.lv,level:lv.level,why:lv.why,no:h.no,delay:h.openDelay,maxDelay:h.maxDelay,sc};
       if(lv.lv>=1)row.evid=h.evid.map(e=>({...e,t:maskPII(e.t)}));
       list.push(row);}
     factors.forEach(f=>{fac[f]=(fac[f]||0)+1;});
   }
-  list.sort((a,b)=>(b.lv-a.lv)||(b.factors.length-a.factors.length)||(b.phys-a.phys)||(b.open-a.open));
+  list.sort((a,b)=>(b.lv-a.lv)||((b.sc||0)-(a.sc||0))||(b.open-a.open)||(b.factors.length-a.factors.length)||(b.phys-a.phys));   /* 750차: 레벨 → 점수 → 미처리 순 */
   return {cnt,list,fac};
 }
 function calc(items,site,rm){
@@ -5285,6 +5367,7 @@ function dfProdWire(){
     'df.siteRisk':el=>{closeModal();S.dfSid=el.dataset.sid;S.dfTab='risk';S.dfRiskLv='';go('defect');},
     'df.riskCell':el=>{dfRiskCellModal(el.dataset.sid,el.dataset.lv);},
     'df.riskLv':el=>{S.dfRiskLv=el.dataset.lv||'';rDefect();},
+    'df.riskMapPick':el=>{const st=rkState('site');st.search=el.dataset.q||'';S.dfRiskLv='';rDefect();setTimeout(()=>{const t=document.querySelector('#view-defect .rk-card');if(t)t.scrollIntoView({block:'start',behavior:'smooth'});},50);},   /* 745차: 배치도 칸 → 표를 그 세대로 검색 */
     'df.riskLimit':el=>{const ns=el.dataset.ns||'site';rkState(ns).limit=Number(el.dataset.n)||0;rkRerender(ns);},
     'df.riskChip':el=>{const ns=el.dataset.ns||'site',st=rkState(ns),k=el.dataset.q,v=el.dataset.v;st.q=st.q||{};
       const t=String(st.q[k]||'').split(/[;,]/).map(z=>z.trim()).filter(Boolean);const i=t.indexOf(v);if(i>=0)t.splice(i,1);else t.push(v);st.q[k]=t.join(';');rkRerender(ns);},
@@ -6281,7 +6364,7 @@ function dfRiskDashHTML(sites,hh){
   const mx={};LV.forEach(k=>{mx[k]=Math.max(1,...rows.map(({c})=>c[k]||0));});
   /* 715차: 세대 열 없음(표 자체가 세대 수). 셀을 누르면 그 현장·레벨의 세대 목록 모달, 현장명을 누르면 현장 페이지 */
   const cell=(sid,k,v)=>{const n=(v||0).toLocaleString();if(k==='양호')return `<button class="rkh-c rkh-ok" data-act="df.riskCell" data-sid="${esc(sid)}" data-lv="${k}">${n}</button>`;const AR={긴급:[0.45,0.5],심각:[0.15,0.55]}[k]||[0.08,0.72];const a=v?AR[0]+AR[1]*v/mx[k]:0;return `<button class="rkh-c" data-act="df.riskCell" data-sid="${esc(sid)}" data-lv="${k}" style="background:rgba(${RGB[k]},${a.toFixed(2)});color:${a>0.45?'#fff':'var(--lbl)'}">${n}</button>`;};
-  const tr=({s,c})=>`<div class="rkh-r"><button class="rkh-n" data-act="df.siteRisk" data-sid="${esc(s.id)}" data-tip="${esc(s.name)}">${esc(s.name)}</button>${LV.map(k=>cell(s.id,k,c[k])).join('')}</div>`;
+  const tr=({s,c})=>`<div class="rkh-r"><button class="rkh-n" data-act="df.siteRisk" data-sid="${esc(s.id)}" data-tip="${esc(s.name)}">${esc((isMob()&&!WIDGET)?dfShortSite(s.name):s.name)}</button>${LV.map(k=>cell(s.id,k,c[k])).join('')}</div>`;
   return `<div class="card rkh"><div class="ct cardttl">현장별 민원 현황</div>
     <div class="rkh-h"><span></span>${LV.map(k=>`<span>${k}</span>`).join('')}</div>
     <div class="rkh-body">${rows.map(tr).join('')}</div></div>`;
@@ -6299,28 +6382,30 @@ function dfRiskTableHTML(all,ns){
   const qq=String(st.search||'').trim().toLowerCase();
   const blob=h=>[h.level,hhName(h),h.factors.join(' '),(h.types||[]).map(t=>t.t).join(' '),(h.evid||[]).map(e=>[e.sp,e.tr,e.ty,e.t].join(' ')).join(' ')].join(' ').toLowerCase();
   let list=all.filter(h=>has(h.level,q.lv)&&has(h.bu,q.bu)&&has(h.un,q.un)&&has(h.factors.join(' '),q.fac)&&has((h.types||[]).map(t=>t.t).join(' '),q.ty)&&(!qq||blob(h).includes(qq)));   /* 735차: 검색은 세대·감지요소·유형·근거 접수내용까지 */
-  const kv={lv:h=>h.lv,bu:h=>Number(h.bu)||0,un:h=>Number(h.un)||0,n:h=>h.n,done:h=>h.done||0,open:h=>h.open,fac:h=>h.factors.length,ty:h=>(h.types||[]).length};
-  const kf=kv[so.k]||kv.lv;list=list.slice().sort((a,b)=>{const x=kf(a),y=kf(b);return (x>y?1:x<y?-1:0)*so.d||(b.lv-a.lv)||(b.factors.length-a.factors.length);});
-  const W={lv:76,bu:68,un:64,n:56,done:68,open:60};   /* 734차: 동 60→68 — 「상가3동」이 두 줄로 접혔다. 안쪽 표 접수일 92→100 으로 합(392) 유지 */
+  const kv={lv:h=>h.lv,sc:h=>h.sc||0,bu:h=>Number(h.bu)||0,un:h=>Number(h.un)||0,n:h=>h.n,done:h=>h.done||0,open:h=>h.open,fac:h=>h.factors.length,ty:h=>(h.types||[]).length};
+  const kf=kv[so.k]||kv.lv;list=list.slice().sort((a,b)=>{const x=kf(a),y=kf(b);return (x>y?1:x<y?-1:0)*so.d||(b.lv-a.lv)||((b.sc||0)-(a.sc||0))||(b.open-a.open)||(b.factors.length-a.factors.length);});   /* 750차: 레벨 → 점수 → 미처리 */
+  const W={lv:60,sc:38,bu:62,un:58,n:52,done:62,open:54};   /* 755차: 레벨 60·점수 38, 합 386. 안쪽 표는 NO 58(=레벨−선 2)·접수일 100(=점수+동)·공간·공종·하자유형 74+76+76(=호~미처리 226) 로 384 */
   const th=(k,nm,cls)=>`<th class="rk-th${cls?' '+cls:''}${so.k===k?' on':''}" data-act="df.riskSort" data-ns="${ns}" data-k="${k}"${W[k]?` style="width:${W[k]}px"`:k==='ty'?' style="width:251px"':''}>${nm}${so.k===k?(so.d>0?' ↑':' ↓'):''}</th>`;
   const RKC={긴급:'rkl rkl-ur',심각:'rkl rkl-hi',경계:'rkl rkl-mg',주의:'rkl rkl-wa'};
   const chip=f=>`<span class="rk-t${RISK_RULES.factors[f]&&RISK_RULES.factors[f].crit?' crit':''}">${esc(f)}</span>`;
+  const FOr=Object.keys(RISK_RULES.factors),Fd=RISK_RULES.factors,fw=f=>(Fd[f]&&Fd[f].crit)?2:(Fd[f]&&Fd[f].soft)?0:1;
+  const facOrd=a=>a.slice().sort((x,y)=>(fw(y)-fw(x))||(FOr.indexOf(x)-FOr.indexOf(y)));   /* 744차: 칩은 중요한 순 — 옛 게시본도 같게 */
   const typeChip=t=>`<span class="rk-t${t.lv>=4?' hard':''}">${esc(t.t)}${t.n>1?`<span class="rk-tn">${t.n}</span>`:''}</span>`;
   /* 719차: 펼침 = 문제가 된 하자건을 하자 목록처럼 표로 */
   /* 721차: 접수번호(10자리) 폭 맞춤 · 접수번호~하자유형 가운데 · 접수번호 클릭 복사 */
   /* 722차: 앞은 NO, 뒤는 처리상태 */
-  /* 724차: 열폭을 바깥 표에 맞춘다 — NO~하자유형 합 392px(= 레벨76+동68+호64+접수56+처리완료68+미처리60, 안쪽 NO 는 왼쪽 선 2px 만큼 46), 감지요소+처리상태 = 20%(= 바깥 하자 유형) */
-  const evTbl=list=>`<table class="rk-etbl"><thead><tr><th class="cc" style="width:46px">NO</th><th class="cc" style="width:100px">접수일</th><th class="cc" style="width:76px">공간</th><th class="cc" style="width:82px">공종</th><th class="cc" style="width:86px">하자유형</th><th>접수내용</th><th style="width:177px">감지요소</th><th class="cc" style="width:74px">처리상태</th></tr></thead><tbody>${list.map((e,i)=>`<tr><td class="cc">${i+1}</td><td class="cc">${esc(e.d||'')}</td><td class="cc">${esc(e.sp||'')}</td><td class="cc">${esc(e.tr||'')}</td><td class="cc">${esc(e.ty||'')}</td><td class="rk-etx">${esc(e.t)}</td><td class="rk-f"${((e.f||[]).length>1||(e.f||[]).join('').length>7)?` data-tip="${esc((e.f||[]).join(' · '))}"`:''}>${(e.f||[]).map(chip).join('')}</td><td class="cc">${e.st==='완료'?'처리완료':'미처리'}</td></tr>`).join('')}</tbody></table>`;
+  /* 724차: 열폭을 바깥 표에 맞춘다 — NO~하자유형 합 384px(= 레벨60+점수38+동62+호58+접수52+처리완료62+미처리54 − 선 2), 접수내용 = 바깥 감지요소, 처리상태+감지요소 = 바깥 하자 유형, 감지요소+처리상태 = 20%(= 바깥 하자 유형) */
+  /* 755차: 접수내용 = 바깥 감지요소, 처리상태 74 는 바깥 하자 유형 시작선에, 감지요소 177 이 그 뒤. 앞 다섯 열 합 384 = 바깥 레벨~미처리 386 − 선 2 */
+  const evTbl=list=>`<table class="rk-etbl"><thead><tr><th class="cc" style="width:58px">NO</th><th class="cc" style="width:100px">접수일</th><th class="cc" style="width:74px">공간</th><th class="cc" style="width:76px">공종</th><th class="cc" style="width:76px">하자유형</th><th>접수내용</th><th class="cc" style="width:74px">처리상태</th><th style="width:177px">감지요소</th></tr></thead><tbody>${list.map((e,i)=>e.auto?`<tr class="rk-auto"><td class="cc">—</td><td class="cc" colspan="4">자동 판정</td><td class="rk-etx">${esc(e.t)}</td><td></td><td class="rk-f">${(e.f||[]).map(chip).join('')}</td></tr>`:`<tr><td class="cc">${i+1}</td><td class="cc">${esc(e.d||'')}</td><td class="cc">${esc(e.sp||'')}</td><td class="cc">${esc(e.tr||'')}</td><td class="cc">${esc(e.ty||'')}</td><td class="rk-etx">${esc(e.t)}</td><td class="cc">${e.st==='완료'?'처리완료':'미처리'}</td><td class="rk-f"${((e.f||[]).length>1||(e.f||[]).join('').length>9)?` data-tip="${esc((e.f||[]).join(' · '))}"`:''}>${(e.f||[]).map(chip).join('')}</td></tr>`).join('')}</tbody></table>`;
   /* 734차: 「더 보기」 대신 목록보기와 같은 표시 건수(st.limit: 100·300·1000·전체) */
-  const PAGE=100;
   const lim=st.limit===undefined?100:st.limit;
   const shown=lim>0?Math.min(list.length,lim):list.length;   /* 736차: 현장 표도 모달과 같은 표시 건수 */
-  const rows=list.slice(0,shown).map((h,i)=>`<tr class="rk-r" data-act="df.riskOpen" data-ns="${ns}" data-i="${i}" data-h="${i}"><td class="cc"><span class="${RKC[h.level]||'rkl rkl-ok'}">${esc(h.level)}</span></td><td class="cc">${esc(h.bu)}</td><td class="cc">${esc(h.un)}</td><td class="cc">${h.n}</td><td class="cc">${h.done||0}</td><td class="cc">${h.open?`<b style="color:var(--rd)">${h.open}</b>`:'0'}</td><td class="rk-f">${h.factors.map(chip).join('')||'<span class="rk-sub" style="margin:0">'+esc(h.why||'')+'</span>'}</td><td class="rk-f">${(h.types||[]).map(typeChip).join('')}</td></tr>
-    <tr class="rk-ev" data-ns="${ns}" data-i="${i}" hidden><td colspan="8">${(h.evid||[]).length?evTbl(h.evid):'<div class="rk-e"><div class="rk-et">근거 접수건 없음'+(h.why?' — '+esc(h.why):'')+'</div></div>'}</td></tr>`).join('')
+  const rows=list.slice(0,shown).map((h,i)=>`<tr class="rk-r" data-act="df.riskOpen" data-ns="${ns}" data-i="${i}" data-h="${i}"><td class="cc"><span class="${RKC[h.level]||'rkl rkl-ok'}">${esc(h.level)}</span></td><td class="cc rk-sc">${h.sc||0}</td><td class="cc">${esc(h.bu)}</td><td class="cc">${esc(h.un)}</td><td class="cc">${h.n}</td><td class="cc">${h.done||0}</td><td class="cc">${h.open?`<b style="color:var(--rd)">${h.open}</b>`:'0'}</td><td class="rk-f">${facOrd(h.factors).map(chip).join('')||'<span class="rk-sub" style="margin:0">'+esc(h.why||'')+'</span>'}</td><td class="rk-f">${(h.types||[]).map(typeChip).join('')}</td></tr>
+    <tr class="rk-ev" data-ns="${ns}" data-i="${i}" hidden><td colspan="9">${(h.evid||[]).length?evTbl(h.evid):'<div class="rk-e"><div class="rk-et">근거 접수건 없음'+(h.why?' — '+esc(h.why):'')+'</div></div>'}</td></tr>`).join('')
     +'';
   const inp=(k,ph,cls)=>`<td><input class="rk-q${cls?' '+cls:''}" data-act="df.riskQ" data-ns="${ns}" data-q="${k}" value="${esc(q[k]||'')}" placeholder="${ph}"></td>`;
-  const filt=st.filt?`<tr class="rk-fr">${inp('lv','레벨','cc')}${inp('bu','동','cc')}${inp('un','호','cc')}<td></td><td></td><td></td>${inp('fac','감지요소')}${inp('ty','하자 유형')}</tr>`:'';
-  const tbl=`<table class="dt rk-tbl"><thead><tr>${th('lv','레벨','cc')}${th('bu','동','cc')}${th('un','호','cc')}${th('n','접수','cc')}${th('done','처리완료','cc')}${th('open','미처리','cc')}${th('fac','감지요소')}${th('ty','하자 유형')}</tr>${filt}</thead><tbody>${rows||'<tr><td colspan="8"><div class="dfnone">해당 세대가 없습니다</div></td></tr>'}</tbody></table>`;
+  const filt=st.filt?`<tr class="rk-fr">${inp('lv','레벨','cc')}<td></td>${inp('bu','동','cc')}${inp('un','호','cc')}<td></td><td></td><td></td>${inp('fac','감지요소')}${inp('ty','하자 유형')}</tr>`:'';
+  const tbl=`<table class="dt rk-tbl"><thead><tr>${th('lv','레벨','cc')}${th('sc','점수','cc')}${th('bu','동','cc')}${th('un','호','cc')}${th('n','접수','cc')}${th('done','처리완료','cc')}${th('open','미처리','cc')}${th('fac','감지요소')}${th('ty','하자 유형')}</tr>${filt}</thead><tbody>${rows||'<tr><td colspan="9"><div class="dfnone">해당 세대가 없습니다</div></td></tr>'}</tbody></table>`;
   /* 모달·현장 공통(736차):  머리와 표 사이에 감지요소·하자유형 칩(목록보기 밴드와 같은 꼴, 누르면 ';' OR 필터) + 표시 건수, 표는 세로·가로 스크롤 */
   const tok=v=>String(v||'').split(/[;,]/).map(z=>z.trim()).filter(Boolean);
   const on=(k,x)=>tok(q[k]).includes(x);
@@ -6364,6 +6449,37 @@ function dfRiskModalBody(){
   const nEl=$('#rkN');if(nEl){const n=b?b.querySelectorAll('.rk-r').length:0;const shown=(st.search||Object.values(st.q||{}).some(Boolean));nEl.textContent=shown?'결과 '+n.toLocaleString()+' / 전체 '+m.list.length.toLocaleString():'';}
   const f=$('#mf');if(f)f.innerHTML='';
 }
+/* 745차(시안): 동별 세대 배치도 — 동마다 층(위→아래) × 라인(호 끝 두 자리) 격자, 칸 색 = 세대 레벨. 접수 없는 세대는 빈 칸(세대 목록이 없어 접수된 세대만 안다).
+   칸을 누르면 아래 표를 그 세대로 검색. 동 블록은 가로로 흐르고 넘치면 가로 스크롤(페이드) */
+function dfRiskMapHTML(all){
+  /* 746차: 팀에서 쓰는 세대 현황도 꼴 — 층은 「27F」, 라인은 「1호」, 칸엔 호수(2301). 라인마다 자료에 보인 최고층까지 칸을 그려 계단형 외곽을 흉내 낸다(세대 목록이 없어 그 이상은 모른다) */
+  const C=RISK_COLORS;   /* 범례(현황 막대)와 같은 색 */
+  const by=new Map();
+  for(const h of all){
+    const m=String(h.un||'').match(/^(\d+)$/);if(!m)continue;const n=Number(m[1]);if(n<100)continue;
+    const fl=Math.floor(n/100),ln=n%100;const k=String(h.bu||'');
+    let b=by.get(k);if(!b){b={bu:k,top:{},cells:new Map()};by.set(k,b);}
+    b.top[ln]=Math.max(b.top[ln]||0,fl);b.cells.set(fl+'-'+ln,h);
+  }
+  if(!by.size)return '';
+  const key=x=>{const m=String(x).match(/\d+/);return (/상가|근생|오피스/.test(String(x))?100000:0)+(m?Number(m[0]):9999);};   /* 아파트 동 먼저, 상가는 뒤 */
+  const blocks=[...by.values()].sort((a,b)=>key(a.bu)-key(b.bu)).map(b=>{
+    const lns=Object.keys(b.top).map(Number).sort((x,y)=>x-y);const maxF=Math.max(...Object.values(b.top));
+    let rows='';
+    for(let f=maxF;f>=1;f--){
+      rows+=`<div class="rkm-row"><span class="rkm-fl">${f}F</span>${lns.map(l=>{
+        if(f>b.top[l])return '<span class="rkm-c gap"></span>';
+        const h=b.cells.get(f+'-'+l),un=f*100+l;
+        if(!h)return `<span class="rkm-c">${un}</span>`;
+        return `<button class="rkm-c on${h.level==='긴급'?' inv':''}" style="background:${C[h.level]||C.양호}" data-act="df.riskMapPick" data-q="${esc(b.bu+' '+un)}" data-tip="${esc((/동$/.test(b.bu)?b.bu:b.bu+'동')+' '+un+'호 · '+h.level+' · 점수 '+(h.sc||0)+(h.factors&&h.factors.length?' · '+h.factors.slice(0,3).join(' · '):''))}">${un}</button>`;}).join('')}</div>`;
+    }
+    const foot=`<div class="rkm-row rkm-ft"><span class="rkm-fl"></span>${lns.map(l=>`<span class="rkm-c rkm-ln">${l}호</span>`).join('')}</div>`;
+    /* 747차: 배지 없음, 동 띠는 층 라벨 열을 빼고 칸 폭만 */
+    return `<div class="rkm-b"><div class="rkm-grid">${rows}${foot}</div><div class="rkm-row"><span class="rkm-fl"></span><div class="rkm-bt">${esc(/동$/.test(b.bu)?b.bu:b.bu+'동')}</div></div></div>`;
+  }).join('');
+  /* 748차: 별도 카드·제목·범례 없이 「민원 세대 현황」 카드 안, 인셋 구분선 아래 — 가로 스크롤은 이 구간만 */
+  return `<div class="rk-sep"></div><div class="rkm-wrap" data-sbx>${blocks}</div>`;
+}
 function dfRiskPane(hh){
   if(!hh)return '<div class="as"><div class="card"><div class="dfnone">이 게시본에는 세대 레벨 정보가 없습니다 — 원본을 다시 등록·게시하면 채워집니다.</div></div></div>';
   const c=hh.cnt||{},all=hh.list||[],fac=hh.fac||{};
@@ -6372,7 +6488,7 @@ function dfRiskPane(hh){
   /* 737차: 레벨 탭은 카드 밖 탭 줄(업무 현황의 .tkbar 과 같은 문법) — 카드 안에는 칩·검색·표만 */
   const tabs=`<div class="tkbar rk-tabbar"><div class="rp-tabs tkm-tabs tkbar-tabs" data-sbx>${tab('','전체',all.length)}${['긴급','심각','경계','주의','양호'].map(l=>tab(l,l,c[l])).join('')}</div></div>`;
   /* 722차: 장기미처리 비율 현황과 같은 폼 — 머리(제목+범례) · 전월/금월 두 줄 · 오른쪽 전월대비 배지(긴급 기준) */
-  const viz=`<div class="card ltrmom-card rkmom-card"><div class="ltrmom-head"><span class="lm-ttl">민원 세대 현황</span><div class="ltrmom-lg">${RISK_LEVELS.slice().reverse().map(k=>`<div class="li"><span class="mk" style="background:${RISK_COLORS[k]}"></span>${k}</div>`).join('')}</div></div><div class="ltrmom-body" id="dfRkMom"></div></div>`;
+  const viz=`<div class="card ltrmom-card rkmom-card"><div class="ltrmom-head"><span class="lm-ttl">민원 세대 현황</span><div class="ltrmom-lg">${RISK_LEVELS.slice().reverse().map(k=>`<div class="li"><span class="mk" style="background:${RISK_COLORS[k]}"></span>${k}</div>`).join('')}<div class="li"><span class="mk" style="background:var(--bg);box-shadow:inset 0 0 0 1px var(--sep)"></span>접수 없음</div></div></div><div class="ltrmom-body" id="dfRkMom"></div>${dfRiskMapHTML(all)}</div>`;
   setTimeout(async()=>{
     const el=document.getElementById('dfRkMom');if(!el)return;
     const rm=dfRm(),[y,m]=rm.split('-').map(Number);const pyr=(m===1?(y-1)+'-12':y+'-'+String(m-1).padStart(2,'0'));
@@ -9360,8 +9476,8 @@ function ctxFor(t){
   /* 718차: 민원 세대 표 머리 우클릭 — 필터 줄 켜기/끄기·필터 지우기·정렬 초기화(목록보기와 같은 방식) */
   const rkth=t.closest('.rk-tbl thead th');
   if(rkth){const ns=(rkth.closest('#mb')?'modal':'site'),st=rkState(ns);
-    return[{label:st.filt?'필터 줄 끄기':'필터 줄 켜기',act:()=>{st.filt=!st.filt;if(!st.filt)st.q={};st.page=1;rkRerender(ns);}},
-      Object.keys(st.q||{}).some(k=>st.q[k])?{label:'필터 지우기',act:()=>{st.q={};st.page=1;rkRerender(ns);}}:null,
+    return[{label:st.filt?'필터 줄 끄기':'필터 줄 켜기',act:()=>{st.filt=!st.filt;if(!st.filt)st.q={};rkRerender(ns);}},
+      Object.keys(st.q||{}).some(k=>st.q[k])?{label:'필터 지우기',act:()=>{st.q={};rkRerender(ns);}}:null,
       {label:'정렬 초기화',act:()=>{st.sort={k:'lv',d:-1};rkRerender(ns);}}];}
   /* ⓪ 하자 표 — 표 복사 · 공종 행이면 그 공종 목록 */
   const dfTr=t.closest('#view-defect .dt tr, .rec-tbl tr');
@@ -10747,7 +10863,7 @@ document.addEventListener('focusout',e=>{
 /* 712차: 민원 현황 표 필터 줄 — 입력 300ms 뒤 다시 그리고 포커스를 되돌린다 */
 document.addEventListener('input',e=>{
   const el=e.target.closest&&e.target.closest('input.rk-q[data-act="df.riskQ"]');if(!el)return;
-  const ns=el.dataset.ns||'site',st=rkState(ns);st.q[el.dataset.q]=el.value;st.page=1;
+  const ns=el.dataset.ns||'site',st=rkState(ns);st.q[el.dataset.q]=el.value;
   clearTimeout(window.__rkqT);window.__rkqT=setTimeout(()=>{const q=el.dataset.q;rkRerender(ns);const n=document.querySelector('input.rk-q[data-ns="'+ns+'"][data-q="'+q+'"]');if(n){n.focus();n.setSelectionRange(n.value.length,n.value.length);}},300);
 });
 /* 696차: 현장 표 편집은 초안(ORG_DRAFT)에 모았다가 [저장] 한 번에 orgSave — 전엔 칸마다 바로 저장돼 오타가 팀 전원에게 실시간으로 나갔고,
