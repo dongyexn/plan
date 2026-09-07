@@ -1132,7 +1132,7 @@ body.snap .sbsl:first-of-type{display:none;}
 /* 709차: 민원 세대 탭 */
 .rkl{display:inline-block;padding:2px 8px;border-radius:3px;font-size:11px;font-weight:700;white-space:nowrap;}   /* 712차: 다른 칩과 같은 3px */
 /* 711차: 앱 기존 색만 — 긴급 tint-rd+rd 테두리 · 심각 tint-rd · 경계 amber 12% · 주의 fill */
-.rkl-ur{background:var(--tint-rd);color:var(--rd);box-shadow:inset 0 0 0 1px var(--rd);}.rkl-hi{background:var(--tint-rd);color:var(--rd);}.rkl-mg{background:rgba(217,119,6,.12);color:var(--am);}.rkl-wa{background:var(--fill);color:var(--lbl2);}.rkl-ok{background:var(--fill);color:var(--lbl3);}
+.rkl-ur{background:rgba(218,106,96,.22);color:#B3372C;box-shadow:inset 0 0 0 1px #DA6A60;}.rkl-hi{background:rgba(232,156,154,.35);color:#B3372C;}   /* 738차: 긴급=--ch-d60(#DA6A60) · 심각=--ch-d30(#E89C9A) 계열 — 장기미처리 차트와 같은 3단 */.rkl-mg{background:rgba(179,199,221,.45);color:#2F5C8F;}   /* 735차: 경계 = 장기미처리 차트 30일 미만 색(--ch-d0 #B3C7DD) 계열 */.rkl-wa{background:var(--fill);color:var(--lbl2);}.rkl-ok{background:var(--fill);color:var(--lbl3);}
 .rk-t{display:inline-block;margin:1px 4px 1px 0;padding:1px 7px;border-radius:3px;background:var(--fill);font-size:11px;color:var(--lbl2);}.rk-t.crit{background:var(--tint-rd);color:var(--rd);font-weight:700;}.rk-t.hard{background:var(--b50);color:var(--bt1);}.rk-tn{margin-left:4px;font-size:10px;color:var(--lbl3);}
 .rk-sub{font-size:11px;color:var(--lbl3);margin-left:6px;}
 .rk-r{cursor:pointer;}.rk-r:hover td{background:var(--surf2);}
@@ -1144,7 +1144,7 @@ body.snap .sbsl:first-of-type{display:none;}
 .rk-tbl td{vertical-align:top;}
 /* 714차: 대시보드 민원 현황 히트맵 — 현장 × 레벨. 셀은 열 최대값 대비 농도 */
 .rkh .cardttl{margin-bottom:0;}
-.rkh-h,.rkh-r{display:grid;grid-template-columns:minmax(96px,1.3fr) repeat(5,minmax(44px,1fr));column-gap:4px;align-items:center;}
+.rkh-h,.rkh-r{display:grid;grid-template-columns:minmax(150px,2fr) repeat(5,minmax(44px,1fr));column-gap:4px;align-items:center;}   /* 734차: 현장명 풀네임 */
 .rkh-h{font-size:11px;color:var(--lbl3);text-align:center;padding-bottom:3px;}
 .rkh-r{padding:1px 0;}
 .rkh-body{display:flex;flex-direction:column;gap:2px;max-height:350px;overflow-y:auto;}   /* 행 22px × 16 = 352 — 16현장까지 스크롤 없이(옆 도넛 카드가 같이 늘어난다), 그 이상은 카드 안 스크롤 */
@@ -1157,7 +1157,7 @@ body.snap .sbsl:first-of-type{display:none;}
 /* 719차: 펼침 하자건 표 — 하자 목록 규격 */
 .rk-etbl{width:100%;border-collapse:collapse;font-size:12px;}
 #view-defect .rk-etbl th,#mb .rk-etbl th{padding:5px 10px;text-align:left;font-size:11px;font-weight:700;color:var(--lbl2);background:var(--surf2);border-bottom:1px solid var(--sep);white-space:nowrap;}
-#view-defect .rk-etbl td,#mb .rk-etbl td{padding:6px 10px;border-bottom:1px solid var(--sep);vertical-align:top;color:var(--lbl);white-space:nowrap;font-weight:400;}#view-defect .rk-etbl tr:last-child td,#mb .rk-etbl tr:last-child td{border-bottom:0;}
+#view-defect .rk-etbl td,#mb .rk-etbl td{padding:6px 10px;border-bottom:1px solid var(--sep);vertical-align:top;color:var(--lbl);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:400;}#view-defect .rk-etbl tr:last-child td,#mb .rk-etbl tr:last-child td{border-bottom:0;}
 #view-defect .rk-etbl .rk-etx,#mb .rk-etbl .rk-etx{white-space:normal;line-height:1.55;}
 #view-defect .rk-etbl th.cc,#view-defect .rk-etbl td.cc,#mb .rk-etbl th.cc,#mb .rk-etbl td.cc{text-align:center;}
 #view-defect .rkmom-card .ltrmom-row{grid-template-columns:40px 118px 1fr;}   /* 722차: 장기미처리 카드와 같은 폼 */
@@ -1265,7 +1265,8 @@ body.snap .sbsl:first-of-type{display:none;}
 #view-defect .ic.bad{background:rgba(255,59,48,.06);border-color:rgba(255,59,48,.3);}
 #view-defect .ic.bad .ic-i{background:var(--rd);color:#fff;}
 /* ── 표(dt) — 원본 표 규격 그대로 ── */
-#view-defect .dt,#mb .rk-tbl{width:100%;font-size:12px;}   /* 715차: 히트맵 셀 모달의 세대 표도 같은 규격 */
+#view-defect .dt,#mb .rk-tbl{width:100%;font-size:12px;}
+.rk-tbl,.rk-etbl{table-layout:fixed;}   /* 734차: auto 배치는 긴 칩·내용에 열이 밀려 펼침 표의 감지요소 열이 행마다 어긋났다 — 고정 폭이라야 바깥 감지요소 = 안쪽 접수내용 시작선이 같다 */   /* 715차: 히트맵 셀 모달의 세대 표도 같은 규격 */
 #view-defect .dt thead tr,#mb .rk-tbl thead tr{border-bottom:1px solid var(--sep);}
 #view-defect .dt th,#mb .rk-tbl th{padding:9px 12px;text-align:left;font-size:12px;font-weight:700;color:var(--lbl2);white-space:nowrap;}
 #view-defect .dt td,#mb .rk-tbl td{padding:10px 12px;border-bottom:1px solid var(--sep);vertical-align:middle;}
@@ -1384,6 +1385,15 @@ body.snap .sbsl:first-of-type{display:none;}
 .rl-band.d0.on b{color:var(--bt2);}
 .rl-vsep{width:1px;height:16px;background:var(--sepo);margin:0 3px;flex:none;}
 .rl-lim{display:inline-flex;align-items:center;margin-left:auto;background:var(--fill);border-radius:var(--rp);padding:2px;gap:2px;}
+.rk-band{flex-wrap:nowrap;}   /* 739차: 칩은 줄바꿈 대신 .rk-chips 가로 스크롤 — 검색·표시 건수는 오른쪽에 고정 */
+.rk-band .rk-chips{display:flex;align-items:center;gap:6px;flex:1 1 auto;min-width:0;overflow-x:auto;overflow-y:hidden;padding:1px 0;}
+.rk-band .rk-chips>.rl-band{flex:none;}
+.rk-band .rk-qs{flex:none;margin-left:auto;}.rk-band .rk-qs .rl-q{height:28px;width:220px;}
+.rk-band .rk-qs+.rl-lim{margin-left:8px;}
+.rk-band .rl-lim{flex:none;}.rk-band .rl-lim-lbl{white-space:nowrap;}   /* 칩 줄이 밀어도 「표시」가 두 줄로 접히지 않게 */
+.rk-band2{margin-bottom:12px;}
+#view-defect .rk-tabbar{margin-bottom:-2px;}   /* 탭 줄은 카드 밖 — .as 의 gap 12 와 합쳐 10px */
+#view-defect .rk-card{padding-top:14px;}
 .rl-lim button{border:none;background:transparent;padding:4px 10px;border-radius:3px;font:inherit;font-size:11px;font-weight:600;color:var(--lbl2);cursor:pointer;white-space:nowrap;transition:background var(--t-fast),color var(--t-fast);}
 .rl-lim button.on{background:var(--bg2);color:var(--lbl);box-shadow:var(--sh-1);}
 .rl-lim-lbl{font-size:11px;font-weight:600;color:var(--lbl3);margin:0 6px 0 10px;}   /* 624차: 캡슐 왼쪽에 딱 붙어 보이던 것 */
@@ -1451,8 +1461,12 @@ body.snap .sbsl:first-of-type{display:none;}
 #mb.dfwide .mt2{margin-bottom:14px;}   /* 하자처리 현황의 목록 모달과 동일 */
 #mb.dfwide #mbody{flex:1;min-height:0;display:flex;flex-direction:column;}
 #mb.dfwide .rec-wrap{flex:1;min-height:0;max-height:none;}
-#mb.dfwide.rkm .mo-x{display:flex!important;}   /* 717차: 민원 세대 모달은 우측 상단 X */
-#mb.dfwide.rkm #mbody>div{flex:1;min-height:0;overflow:auto;}
+/* 735차: 머리에 닫기 버튼이 생겨 우상단 X 는 목록 모달과 같이 숨긴다 */
+#mb.dfwide.rkm #mbody>.rk-wrap{flex:1;min-height:0;overflow:auto;border:1px solid var(--sep);border-radius:var(--rmd);scrollbar-width:auto;}   /* 734차: 세로·가로 스크롤바 — 세대가 많아 스크롤 신호가 필요하다(목록보기 rec-wrap 과 같은 예외) */
+#mb.dfwide.rkm #mbody>.rk-wrap::-webkit-scrollbar{width:8px;height:8px;display:block;}
+#mb.dfwide.rkm #mbody>.rk-wrap::-webkit-scrollbar-thumb{background:var(--sepo);border-radius:4px;}
+#mb.dfwide.rkm #mbody>.rk-wrap .rk-tbl thead th{position:sticky;top:0;background:var(--bg2);z-index:2;}
+#mb.dfwide.rkm .rk-band{margin-bottom:10px;}
 .rl-head{display:flex;align-items:center;gap:14px;}
 .rl-ttl{font-size:15px;font-weight:700;color:var(--lbl);white-space:nowrap;}
 .rl-acts{margin-left:auto;display:flex;align-items:center;gap:14px;}
@@ -1460,7 +1474,7 @@ body.snap .sbsl:first-of-type{display:none;}
 .rl-acts>.btn+.btn{position:relative;}
 .rl-acts>.btn+.btn::before{content:'·';position:absolute;left:-9px;top:50%;transform:translateY(-50%);color:var(--lbl3);font-weight:700;pointer-events:none;}
 .rl-q-wrap{position:relative;display:inline-flex;align-items:center;}
-.rl-q-wrap .icn-sm{position:absolute;left:9px;width:14px;height:14px;color:var(--lbl3);pointer-events:none;}
+.rl-q-wrap .icn-sm{position:absolute;left:9px;width:14px;height:14px;color:var(--lbl3);pointer-events:none;z-index:2;}   /* 738차: 78행 `:focus-visible{position:relative;z-index:1}` 이 초점 잡힌 입력칸을 아이콘 위로 올려 돋보기가 사라졌다 */
 .rl-q{height:30px;width:230px;padding:0 11px 0 28px;border:1px solid var(--sepo);border-radius:var(--rp);background:var(--bg2);color:var(--lbl);font:inherit;font-size:12px;outline:none;}
 .rl-q:focus{border-color:var(--b400);box-shadow:0 0 0 3px rgba(83,140,222,.14);}
 .rl-q::placeholder{color:var(--lbl3);font-weight:400;}
@@ -4159,5 +4173,5 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 <script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
 <script src="./vendor/korea-geo.js?v=635"></script>
 <script src="./vendor/apt-geo.js?v=635" onerror="void 0"></script>   <!-- 540차: 공동주택명 색인 — 없으면 그냥 건너뛴다 -->
-<script src="./app.js?v=733"></script>
+<script src="./app.js?v=740"></script>
 </body></html>

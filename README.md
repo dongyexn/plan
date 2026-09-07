@@ -1,6 +1,6 @@
 # H · 주요업무현황
 
-> **현재 배포 기준: v733** — 업무 일정·업무 현황·하자처리 현황(민원 현황 포함)·조직·설정을 한 앱에서 운영합니다. 데이터는 Firebase(RTDB·Auth), 배포는 GitHub Pages, 데스크톱 위젯은 Tauri.
+> **현재 배포 기준: v740** — 업무 일정·업무 현황·하자처리 현황(민원 현황 포함)·조직·설정을 한 앱에서 운영합니다. 데이터는 Firebase(RTDB·Auth), 배포는 GitHub Pages, 데스크톱 위젯은 Tauri.
 
 팀 업무 일정과 담당자별 현황, 하자처리 현황을 실시간으로 공유하고 관리하는 사내 웹앱.
 
@@ -390,7 +390,7 @@ node scripts/test/smoke.mjs          # 핵심 흐름 클릭 (CHROMIUM 환경변�
 
 | 고칠 파일 | 고칠 자리 |
 |---|---|
-| zip 이름 | `calapp-v733` |
+| zip 이름 | `calapp-v740` |
 | `index.html` | `app.js?v=686` |
 | `app.js` | `const APP_VER='686'` |
 

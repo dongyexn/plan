@@ -18,8 +18,9 @@ const ok=(m,c)=>{console.log((c?'ok    ':'FAIL  ')+m);if(!c)fail++;};
 ok(`예문 ${rows.length}건 완전일치 ${(acc*100).toFixed(0)}% (${exact}/${rows.length})`,acc>=0.9);
 ok(`감지요소 정밀도 ${(prec*100).toFixed(0)}% · 재현율 ${(rec*100).toFixed(0)}%`,prec>=0.9&&rec>=0.9);
 /* 고위험 규칙: 중대 1개 → 고위험, 소프트(장기방치)만 → 주의 */
-const lv=await pg.evaluate(()=>[riskLevel(['안전위험'],1,0).level,riskLevel(['안전위험'],1,2).level,riskLevel(['장기방치'],1,0).level,riskLevel(['응대·소통불만','생활불편','책임·형평성불만'],1,0).level,riskLevel(['응대·소통불만','생활불편','책임·형평성불만'],1,1).level,riskLevel(['응대·소통불만','장기방치','생활불편'],1,0).level,riskLevel([],3,0).level,riskLevel([],4,0).level,riskLevel(['안전위험','보상요구'],1,0).level]);
-ok('5단계 — 긴급 = 심각 + 미처리 잔여(처리 끝나면 심각) · 장기방치만→주의 · 비중대3→심각 · 물리3→주의 · 물리4→경계',JSON.stringify(lv)==='["심각","긴급","주의","심각","긴급","경계","주의","경계","심각"]');
+const lv=await pg.evaluate(()=>[riskLevel(['안전위험'],1,0).level,riskLevel(['안전위험'],1,2).level,riskLevel(['장기방치'],1,0).level,riskLevel(['응대·소통불만','생활불편','책임·형평성불만'],1,0).level,riskLevel(['응대·소통불만','생활불편','책임·형평성불만'],1,1).level,riskLevel(['응대·소통불만','장기방치','생활불편'],1,0).level,riskLevel([],3,0).level,riskLevel([],4,0).level,riskLevel(['안전위험','보상요구'],1,0).level,riskLevel(['법적·외부기관'],1,0).level,riskLevel(['법적·외부기관'],1,1).level,riskLevel(['안전위험','보상요구','감정격화·위협표현'],1,0).level]);
+/* 734차: 긴급 = ★중대 2개 이상, 또는 법적·외부기관/외부확산 + 미처리 잔여(HANDOFF §민원 현황 규칙). 종전 「심각 + 미처리」 승격은 심각을 비우고 긴급으로 쏠리게 했다 */
+ok('5단계 — 긴급 = 중대3 · 외부/법적+미처리 · 장기방치만→주의 · 비중대3→심각 · 물리3→주의 · 물리4→경계',JSON.stringify(lv)==='["심각","심각","주의","심각","심각","경계","주의","경계","심각","심각","긴급","긴급"]');
 /* 오탐 5종 */
 const fp5=await pg.evaluate(()=>['거실 스피커 방송 안들림','회장대 도배 불량','걷고 발디딜때마다 가라앉을까 무서울만큼요','101호와 같은 현상으로 민원','[소송미참여세대] 침1 전등스위치 작동불량','세면대 하부장 스크래치 / 자재발주'].map(t=>riskDetect(t).factors));
 ok('오탐 5종 — 방송·회장대·고발/발디딜·직원 민원 메모·소송 태그·자재발주',fp5[0].length===0&&fp5[1].length===0&&!fp5[2].includes('법적·외부기관')&&fp5[3].length===0&&fp5[4].length===0&&fp5[5].length===0);
