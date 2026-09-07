@@ -209,7 +209,11 @@ for(const w of [1024,1100,1180,1280,1366,1440,1600,1920]){
   await pg.setViewportSize({width:w,height:820});
   for(const [nm,f] of [['대시보드',()=>pg.evaluate(()=>{closeModal&&closeModal();S.dfSid='';go('defect');})],['현장 종합',()=>pg.evaluate(()=>{S.dfSid='sA';S.dfTab='sum';go('defect');})]]){
     await f();await pg.waitForTimeout(900);
-    const r=await pg.evaluate(()=>{const v=document.querySelector('#view-defect');return {doc:document.documentElement.scrollWidth,vw:innerWidth,cw:v.clientWidth,sw:v.scrollWidth};});
-    mok(w+'px '+nm+' 가로 스크롤 없음',r.doc<=r.vw+1&&r.sw<=r.cw+1,'doc '+r.doc+'/'+r.vw+' view '+r.sw+'/'+r.cw);}
+    /* 741차: 넘치면 범인을 이름으로 — 환경(글꼴 폭)에 따라 간헐적으로 나서 숫자만으로는 못 잡았다 */
+    const r=await pg.evaluate(()=>{const v=document.querySelector('#view-defect');const vb=v.getBoundingClientRect();
+      const bad=[...v.querySelectorAll('*')].map(e=>({e,d:e.getBoundingClientRect().right-vb.right})).filter(x=>x.d>0.5&&x.e.getBoundingClientRect().width>0).sort((a,b)=>b.d-a.d).slice(0,4)
+        .map(x=>x.e.tagName.toLowerCase()+(x.e.id?'#'+x.e.id:'')+'.'+String(x.e.className||'').trim().split(/\s+/).slice(0,3).join('.')+' +'+x.d.toFixed(0)+'px');
+      return {doc:document.documentElement.scrollWidth,vw:innerWidth,cw:v.clientWidth,sw:v.scrollWidth,bad};});
+    mok(w+'px '+nm+' 가로 스크롤 없음',r.doc<=r.vw+1&&r.sw<=r.cw+1,'doc '+r.doc+'/'+r.vw+' view '+r.sw+'/'+r.cw+(r.bad.length?' ← '+r.bad.join(' | '):''));}
 }
 await br.close();console.log(mfail?('MOBILE-FIT FAIL '+mfail):'MOBILE-FIT ALL PASS');process.exit(mfail?1:0);

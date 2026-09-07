@@ -8,7 +8,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='740';
+const APP_VER='741';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -6310,7 +6310,7 @@ function dfRiskTableHTML(all,ns){
   /* 721차: 접수번호(10자리) 폭 맞춤 · 접수번호~하자유형 가운데 · 접수번호 클릭 복사 */
   /* 722차: 앞은 NO, 뒤는 처리상태 */
   /* 724차: 열폭을 바깥 표에 맞춘다 — NO~하자유형 합 392px(= 레벨76+동68+호64+접수56+처리완료68+미처리60, 안쪽 NO 는 왼쪽 선 2px 만큼 46), 감지요소+처리상태 = 20%(= 바깥 하자 유형) */
-  const evTbl=list=>`<table class="rk-etbl"><thead><tr><th class="cc" style="width:46px">NO</th><th class="cc" style="width:100px">접수일</th><th class="cc" style="width:76px">공간</th><th class="cc" style="width:82px">공종</th><th class="cc" style="width:86px">하자유형</th><th>접수내용</th><th style="width:177px">감지요소</th><th class="cc" style="width:74px">처리상태</th></tr></thead><tbody>${list.map((e,i)=>`<tr><td class="cc">${i+1}</td><td class="cc">${esc(e.d||'')}</td><td class="cc">${esc(e.sp||'')}</td><td class="cc">${esc(e.tr||'')}</td><td class="cc">${esc(e.ty||'')}</td><td class="rk-etx">${esc(e.t)}</td><td class="rk-f">${(e.f||[]).map(chip).join('')}</td><td class="cc">${e.st==='완료'?'처리완료':'미처리'}</td></tr>`).join('')}</tbody></table>`;
+  const evTbl=list=>`<table class="rk-etbl"><thead><tr><th class="cc" style="width:46px">NO</th><th class="cc" style="width:100px">접수일</th><th class="cc" style="width:76px">공간</th><th class="cc" style="width:82px">공종</th><th class="cc" style="width:86px">하자유형</th><th>접수내용</th><th style="width:177px">감지요소</th><th class="cc" style="width:74px">처리상태</th></tr></thead><tbody>${list.map((e,i)=>`<tr><td class="cc">${i+1}</td><td class="cc">${esc(e.d||'')}</td><td class="cc">${esc(e.sp||'')}</td><td class="cc">${esc(e.tr||'')}</td><td class="cc">${esc(e.ty||'')}</td><td class="rk-etx">${esc(e.t)}</td><td class="rk-f"${((e.f||[]).length>1||(e.f||[]).join('').length>7)?` data-tip="${esc((e.f||[]).join(' · '))}"`:''}>${(e.f||[]).map(chip).join('')}</td><td class="cc">${e.st==='완료'?'처리완료':'미처리'}</td></tr>`).join('')}</tbody></table>`;
   /* 734차: 「더 보기」 대신 목록보기와 같은 표시 건수(st.limit: 100·300·1000·전체) */
   const PAGE=100;
   const lim=st.limit===undefined?100:st.limit;
@@ -6336,8 +6336,9 @@ function dfRiskTableHTML(all,ns){
   /* 739차(740차 순서 교체): 1행 하자유형 칩 + (현장: 검색) + 표시 건수, 2행 감지요소 칩. 칩 묶음은 줄바꿈 대신 가로 스크롤(.rk-chips, 페이드) — 감지요소 11종이 다 나와도 한 줄 */
   const lim2=`<span class="rl-lim"><span class="rl-lim-lbl">표시</span>${limBtn(100)}${limBtn(300)}${limBtn(1000)}${limBtn(0)}</span>`;
   /* 740차: 1행 하자유형(짧고 개수 적음) + 검색·표시, 2행 감지요소(길고 11종까지) — 모달·현장 동일 */
-  const bar=`<div class="rl-band-bar rk-band"><div class="rk-chips" data-sbx>${tys.map(t=>bchip('ty',t,cntT[t])).join('')}</div>${srch}${lim2}</div>`
-    +`<div class="rl-band-bar rk-band rk-band2"><div class="rk-chips" data-sbx>${facs.map(f=>bchip('fac',f,cntF[f])).join('')}</div></div>`;
+  /* 741차: 현장 표는 1행 하자유형 + 검색, 2행 감지요소 + 표시. 모달은 검색이 머리에 있어 1행 하자유형 + 표시, 2행 감지요소 */
+  const bar=`<div class="rl-band-bar rk-band"><div class="rk-chips" data-sbx>${tys.map(t=>bchip('ty',t,cntT[t])).join('')}</div>${ns==='modal'?lim2:srch}</div>`
+    +`<div class="rl-band-bar rk-band rk-band2"><div class="rk-chips" data-sbx>${facs.map(f=>bchip('fac',f,cntF[f])).join('')}</div>${ns==='modal'?'':lim2}</div>`;
   return bar+(ns==='modal'?`<div class="rk-wrap">${tbl}</div>`:`<div style="overflow-x:auto" data-sbx="r">${tbl}</div>`);
 }
 /* 히트맵 셀 → 그 현장·레벨 세대 목록 모달(현장 페이지 표와 동일, 탭만 없음) */
