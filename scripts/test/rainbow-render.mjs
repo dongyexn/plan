@@ -182,6 +182,7 @@ try{
   else F('실제 DOM 색 원 — computedStyle 무지개 미반영: '+JSON.stringify(inline));
 
   /* ── 687차: colBg() 를 안 거치던 자리 네 곳 — 지도 점(SVG fill) · 모달 현장 목록 · 업무 현황 미니달력 · 공통 그라디언트 원 ── */
+  await page.evaluate(()=>loadGeo());   /* 762차: 지도 자료는 지연 로드 — 먼저 읽어 둔다 */
   {
     const r=await page.evaluate(()=>{
       const box=document.querySelector('[data-rb-test]');box.innerHTML=colDotHTML('grad-gr','rb-test',true);
