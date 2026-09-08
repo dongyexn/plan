@@ -335,6 +335,16 @@ const del=await pg.evaluate(async()=>{
 });
 ok('현장 삭제 잔재 정리(IndexedDB·siteConfig)',del.defGone&&del.idbGone&&del.cfgGone);
 
+/* 763차: IndexedDB 저장 실패는 호출부로 전파된다(먹으면 「저장 완료」로 세어져 새로고침 뒤 자료가 사라진다) */
+const sv=await pg.evaluate(async()=>{const orig=dbPut;window.dbPut=async()=>{throw new Error('quota');};const r=await defSave('sX',[{a:1}]);window.dbPut=orig;return r;});
+ok('IndexedDB 저장 실패 → defSave false',sv===false);
+/* 765차: 업로드 원자성 — 기존 원본이 있는 현장에 새 파일을 올리다 저장이 실패하면 옛 원본·업로드 시각이 그대로 남는다 */
+const atom=await pg.evaluate(async()=>{const site=dfSites().find(s=>S.def[s.id]&&S.def[s.id].length)||dfSites()[0];const sid=site.id;const before=S.def[sid],beforeN=before?before.length:0,beforeAt=site.lastUploadedAt,beforeMeta=DFMETA.lastUp[sid];
+  const orig=dbPut;window.dbPut=async()=>{throw new Error('quota');};let err='';
+  try{await doSaveUL({[site.name]:[{...(before&&before[0]||{}),receiptNo:'NEW1'}]},[{receiptDate:'2026-08-01'}]);}catch(e){err=String(e.message||e);}
+  window.dbPut=orig;
+  return {err,same:S.def[sid]===before,n:S.def[sid]?S.def[sid].length:0,beforeN,atSame:site.lastUploadedAt===beforeAt,metaSame:DFMETA.lastUp[sid]===beforeMeta};});
+ok('업로드 저장 실패 → 옛 원본·업로드 시각 유지('+atom.n+'건, '+atom.err.slice(0,30)+')',/저장 실패/.test(atom.err)&&atom.same&&atom.n===atom.beforeN&&atom.atSame&&atom.metaSame);
 ok('페이지 오류 0'+(perr.length?' — '+perr[0]:''),perr.length===0);
 await br.close();srv.close();
 console.log(fail?('FAIL '+fail):'E2E ALL PASS');

@@ -1153,7 +1153,7 @@ body.snap .sbsl:first-of-type{display:none;}
 .rk-th{cursor:pointer;user-select:none;}.rk-th.on{color:var(--lbl);}
 .rk-fr td{padding:4px 6px;background:var(--surf2);}.rk-q.cc{text-align:center;}
 .rk-tbl td{padding:8px 10px;}   /* 717차: 칩 열이 폭을 더 쓰도록 셀 여백 축소 */.rk-q{width:100%;height:26px;border:1px solid var(--sep);border-radius:3px;padding:0 8px;font-size:12px;font-family:inherit;background:var(--bg2);color:var(--lbl);}.rk-q:focus{outline:none;border-color:var(--b400);}
-.rk-e{padding:6px 0;}.rk-et{font-size:12.5px;color:var(--lbl);line-height:1.6;}
+.rk-none{margin:8px 10px 10px;padding:14px;text-align:center;font-size:12.5px;color:var(--lbl2);background:var(--surf2);border-radius:var(--rmd);}   /* 760차: 근거 없음 — 가운데 회색 판 */
 /* 719차: 펼침 하자건 표 — 하자 목록 규격 */
 .rk-etbl{width:100%;border-collapse:collapse;font-size:12px;}
 #view-defect .rk-etbl th,#mb .rk-etbl th{padding:5px 10px;text-align:left;font-size:11px;font-weight:700;color:var(--lbl2);background:var(--surf2);border-bottom:1px solid var(--sep);white-space:nowrap;}
@@ -1270,9 +1270,10 @@ body.snap .sbsl:first-of-type{display:none;}
 .rk-tbl td.rk-sc{font-variant-numeric:tabular-nums;font-weight:700;color:var(--lbl2);}   /* 743차: 민원 점수 */
 .rk-etbl tr.rk-auto td{color:var(--lbl2);}   /* 756차: 자동 판정 근거 줄 */
 /* 745차(746차 현황도 꼴로): 동별 세대 현황도 */
-.rk-sep{height:1px;background:var(--sep);margin:14px 16px 20px;}   /* 753차: 현황도 위 여백 늘림(사용자) */   /* 748차: 현황 막대와 현황도 사이 인셋 구분선 */
-.rkm-wrap{display:flex;gap:22px;align-items:flex-end;overflow-x:auto;overflow-y:hidden;padding:2px 2px 10px;scrollbar-width:thin;}   /* 747차: 동이 많아 가로 스크롤 — 막대를 보인다(rec-wrap 과 같은 예외) */
-.rkm-wrap::-webkit-scrollbar{height:8px;display:block;}.rkm-wrap::-webkit-scrollbar-thumb{background:var(--sepo);border-radius:4px;}
+.rk-sep{height:1px;background:var(--sep);margin:14px 4px 6px;}   /* 757차: 좌우 4px 만 남김. 아래 여백은 .rkm-wrap padding-top(토글 자리)이 맡는다 */   /* 748차: 현황 막대와 현황도 사이 인셋 구분선 */
+.rkm-sec{position:relative;}
+.rkm-wrap{display:flex;gap:22px;align-items:flex-end;overflow-x:auto;overflow-y:hidden;padding:10px 2px 12px;scrollbar-width:none;}   /* 757차: 스크롤바는 앱 정책대로 숨기고 카드 밑 ovs 막대 + 휠 가로 이동 */
+.rkm-wrap::-webkit-scrollbar{display:none;}
 .rkm-b{flex:none;}
 .rkm-bt{flex:1;text-align:center;font-size:12px;font-weight:700;color:var(--lbl);margin-top:4px;padding:3px 0;background:var(--fill);border-radius:3px;}
 .rkm-row{display:flex;gap:1px;align-items:center;margin-bottom:1px;}
@@ -1494,7 +1495,9 @@ body.snap .sbsl:first-of-type{display:none;}
 .rl-acts>.btn+.btn{position:relative;}
 .rl-acts>.btn+.btn::before{content:'·';position:absolute;left:-9px;top:50%;transform:translateY(-50%);color:var(--lbl3);font-weight:700;pointer-events:none;}
 .rl-q-wrap{position:relative;display:inline-flex;align-items:center;}
-.rl-q-wrap .icn-sm{position:absolute;left:9px;width:14px;height:14px;color:var(--lbl3);pointer-events:none;z-index:2;}   /* 738차: 78행 `:focus-visible{position:relative;z-index:1}` 이 초점 잡힌 입력칸을 아이콘 위로 올려 돋보기가 사라졌다 */
+.rl-q-wrap .icn-sm{position:absolute;left:9px;width:14px;height:14px;color:var(--lbl3);pointer-events:none;z-index:2;}
+.rl-qx{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:18px;height:18px;border:0;border-radius:50%;background:var(--fill);color:var(--lbl2);font-size:14px;line-height:18px;padding:0;cursor:pointer;display:none;z-index:2;}   /* 760차: 검색 지우기 × — 값이 있을 때만 */
+.rl-q-wrap.has .rl-qx{display:block;}.rl-q-wrap.has .rl-q{padding-right:28px;}   /* 738차: 78행 `:focus-visible{position:relative;z-index:1}` 이 초점 잡힌 입력칸을 아이콘 위로 올려 돋보기가 사라졌다 */
 .rl-q{height:30px;width:230px;padding:0 11px 0 28px;border:1px solid var(--sepo);border-radius:var(--rp);background:var(--bg2);color:var(--lbl);font:inherit;font-size:12px;outline:none;}
 .rl-q:focus{border-color:var(--b400);box-shadow:0 0 0 3px rgba(83,140,222,.14);}
 .rl-q::placeholder{color:var(--lbl3);font-weight:400;}
@@ -4204,11 +4207,8 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 <div id="uprog" class="uprog"><div class="uprog-box"><div class="uprog-spin"></div><div class="uprog-msg" id="uprogMsg">처리 중...</div><div class="uprog-bar"><div class="uprog-fill" id="uprogFill" style="width:0%"></div></div><div class="uprog-sub" id="uprogSub"></div></div></div>
 <div id="toast"></div>
 
+<!-- 762차: chart.umd·datalabels·korea-geo·apt-geo 는 app.js 의 loadChart()/loadGeo() 가 필요할 때 읽는다(첫 로드 800KB 절감) -->
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./vendor/chart.umd.min.js"></script>
-<script src="./vendor/chartjs-plugin-datalabels.min.js"></script>
-<script src="./vendor/korea-geo.js?v=635"></script>
-<script src="./vendor/apt-geo.js?v=635" onerror="void 0"></script>   <!-- 540차: 공동주택명 색인 — 없으면 그냥 건너뛴다 -->
-<script src="./app.js?v=756"></script>
+<script src="./app.js?v=766"></script>
 </body></html>
