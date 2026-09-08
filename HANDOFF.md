@@ -1,6 +1,6 @@
 # 인수인계 — H · 주요업무현황 (calapp)
 
-**현재 기준: v766.**
+**현재 기준: v767.**
 
 - **저장 신뢰성(763·765차)**: `defSave` 는 IndexedDB 실패 시 false — 업로드 루프(`doSaveUL`)는 저장 성공 때만 교체를 확정하고, 실패하면 이 세션의 옛 원본·`site.lastUploadedAt`·`DFMETA.lastUp` 을 되돌린 뒤 오류로 중단(765차: 763차의 delete 는 옛 원본까지 지웠다). e2e 검사 2건(defSave false · 835건 현장에 새 파일 저장 실패 → 옛 원본·시각 유지). 구버전 저장소 이전(`migrateDefectStore`)은 `indexedDB.databases()` 가 없는 브라우저에서 옛 DB 를 직접 열어 확인(없으면 onupgradeneeded 에서 취소·삭제).
 - **지연 로드(762차)**: chart.umd·datalabels 는 `loadChart()`(하자 화면 첫 차트 그릴 때, dfChartInit 이 부른다), korea-geo·apt-geo 는 `loadGeo()`(조직 관리 지도 첫 렌더, krGeo 가 부른다) — 첫 로드 JS 2,270→1,476KB. 읽히면 그 화면을 한 번 다시 그린다. 인쇄·보고서는 시작에서 `await loadChart()`. 검사 스크립트가 지도를 바로 쓰면 `loadGeo()` 를 먼저(rainbow-render). 이 문서는 지금 코드가 어떻게 되어 있는지만 적는다. 회차별 변경 이력은 `HANDOFF-log.md`(읽기 전용 참고).

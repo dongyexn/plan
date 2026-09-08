@@ -3329,9 +3329,10 @@ body:not(.wid) .nq-panel{padding-top:6px;}}
   body:not(.wid) #view-defect .ltrmom-body{min-width:1118px;}
   /* 742차: 전월대비 실적은 가로로 밀지 않고 폭에 맞춰 줄인다(사용자) — 1220행의 좁은 판 격자 */
   body:not(.wid) #view-defect .mom-wrap{min-width:0;}
-  body:not(.wid) #view-defect .mom-row{grid-template-columns:56px minmax(0,1fr) 58px;gap:8px;padding:5px 0;}
+  body:not(.wid) #view-defect .mom-row{grid-template-columns:52px minmax(0,1fr) 64px;gap:6px;padding:5px 0;}   /* 767차: 값·증감 칸을 넓힌다 — Windows 글꼴에서 「1,396」이 증감 배지와 3px 겹쳤다(사용자 게이트) */
   body:not(.wid) #view-defect .mom-row .label{font-size:12px;}
-  body:not(.wid) #view-defect .mom-row .bar{grid-template-columns:28px minmax(0,1fr) 44px;font-size:10.5px;gap:5px;}
+  body:not(.wid) #view-defect .mom-row .bar{grid-template-columns:26px minmax(0,1fr) 52px;font-size:10.5px;gap:4px;}
+  body:not(.wid) #view-defect .mom-row .bar>*:last-child{overflow:hidden;white-space:nowrap;}   /* 값이 칸을 넘어도 이웃 배지를 침범하지 않게 */
   body:not(.wid) #view-defect .mom-row .delta{min-width:0;}
   body:not(.wid) #view-defect .mom-row .delta .d{padding:2px 5px;font-size:10.5px;}
   body:not(.wid) #view-defect .rkh-h,body:not(.wid) #view-defect .rkh-r{grid-template-columns:minmax(0,1.6fr) repeat(5,minmax(34px,1fr));column-gap:3px;}   /* 742차: 히트맵 첫 열 150px 고정이 폰에서 가로 스크롤을 만들었다 */
@@ -4210,5 +4211,5 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 <!-- 762차: chart.umd·datalabels·korea-geo·apt-geo 는 app.js 의 loadChart()/loadGeo() 가 필요할 때 읽는다(첫 로드 800KB 절감) -->
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=766"></script>
+<script src="./app.js?v=767"></script>
 </body></html>
