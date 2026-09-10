@@ -97,6 +97,7 @@
         ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'",
         "hasCommercial": { ".validate": "newData.isBoolean()" },
         "showVacant":    { ".validate": "newData.isBoolean()" },
+        "lawsuit":       { ".validate": "newData.isBoolean()" },
         "updatedAt":     { ".validate": "newData.isNumber()" },
         "$other":        { ".validate": false }
       }

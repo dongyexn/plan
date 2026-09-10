@@ -8,7 +8,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='767';
+const APP_VER='797';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -450,8 +450,6 @@ const S={
   tkEdit:null,       // 인라인 수정 중인 업무 'sid/iid'
   tkOpen:null,       // 펼쳐 놓은 업무 'sid/iid'
   planEdit:null,     // 일자 패널 인라인 편집기 상태
-  dayQ:'',           // 일자 패널 검색어
-  dayScope:'day',    // 찾는 범위: day(이 날짜) · month(이 달) · all(전체)
   widPop:false,
   widMore:{com:false,mine:false,hold:false},   // 위젯 내 업무 팝업에서 목록을 펼쳤는지
   holdMine:false,    // 보류함을 내 업무만 보기로 좁혔는지
@@ -551,8 +549,8 @@ function sitesChkHTML(p){
     ?'<button class="site-on" data-act="acct.siteOff" data-id="'+esc(p.id)+'" data-sid="'+esc(x.id)+'" data-tip="눌러서 빼기">'+esc(x.name)+'</button>'
     :'<span class="site-on site-ro">'+esc(x.name)+'</span>').join('');
   return '<div class="site-chk">'
-    +(list.length?shown:'<span class="site-none">미지정</span>')
-    +(can?'<button class="site-pick" data-act="acct.sitePick" data-id="'+esc(p.id)+'" aria-label="담당 현장 선택" data-tip="담당 현장 선택"><svg class="icn"><use href="#i-plus"></use></svg></button>':'')
+    +(list.length?shown:(can?'':'<span class="site-none">미지정</span>'))   /* 771차: 현장이 없을 때는 [+] 대신 「현장 추가」 글자 버튼 */
+    +(can?(list.length?'<button class="site-pick" data-act="acct.sitePick" data-id="'+esc(p.id)+'" aria-label="담당 현장 선택" data-tip="담당 현장 선택"><svg class="icn"><use href="#i-plus"></use></svg></button>':'<button class="site-pick site-pick-txt" data-act="acct.sitePick" data-id="'+esc(p.id)+'"><svg class="icn"><use href="#i-plus"></use></svg>현장 추가</button>'):'')
     +'</div>';
 }
 function canAssignSites(pid){
@@ -1003,6 +1001,10 @@ const FbStore={
       S.org=v||{teams:[],regions:[],sites:[]};normOrg(S.org);dfApplySiteCfg(DF._cfgLast);bootCacheSave();
       if(tkHold()||orgHold()){PEND.org=true;PEND.tasks=true;return;}
       rOrg();rTasks();rTeamSel();rFilter();dfLinkOpen();});
+    /* 795차: siteConfig 구독을 부팅 때 건다 — 전엔 하자 화면(rDefect)·게시에서만 걸려, 조직 화면만 연 세션은
+       ① 저장된 공가세대 끔이 켜짐으로 보이고 ② 다른 칸 저장(조직 에코) 뒤 방금 끈 토글이 도로 켜졌으며
+       ③ 그 상태에서 공가상가·소송 토글을 누르면 dfSiteCfgWrite 가 화면값(켜짐)으로 공가세대를 서버에 덮어썼다 */
+    dfSubSiteCfg();
     this.bindReportOrg();
     this._on('calapp/tasks',v=>{S.tasks=v||{};S.loading=false;bootCacheSave();
       /* 첫 스냅샷이 온 뒤 한 번 — 놓친 담당자 업무를 아침 확인으로 묻는다 */
@@ -1052,10 +1054,11 @@ function fbErr(e){
 function normOrg(org){org.teams=arr(org.teams);org.regions=arr(org.regions);org.sites=arr(org.sites);org.sites.sort(siteCmp(org.regions));}
 /* 692차: 현장 순서는 한 곳에서 — 권역(권역 목록 순) → 준공일 내림차순(최신 위 · 없으면 뒤) → 이름.
    normOrg 가 읽을 때·저장할 때 배열 자체를 정렬하므로 조직 표·업무 추가/수정 현장 선택·필터·사이드바가 저절로 같은 순서다.
-   ⚠ 이름 없는 새 행은 준공일도 없어 그 권역 맨 뒤로 간다 — 입력 중 행이 튀지 않는다 */
+   ⚠ 795차: 이름 없는 새 행은 **맨 끝** — 전엔 권역 비교가 먼저라 그 권역 안에서, 이름('')이 가장 앞이라 준공일 없는 줄들 맨 앞에 끼었다 */
 function siteCmp(regs){
   const ord={};(regs||[]).forEach((r,i)=>{ord[r.id]=i;});
-  return (a,b)=>((ord[a.region]??99)-(ord[b.region]??99))
+  return (a,b)=>((a.name?0:1)-(b.name?0:1))
+    ||((ord[a.region]??99)-(ord[b.region]??99))
     ||((a.completionDate?0:1)-(b.completionDate?0:1))
     ||String(b.completionDate||'').localeCompare(String(a.completionDate||''))   /* 694차: 최신 준공이 위로(내림차순) */
     ||String(a.name||'').localeCompare(String(b.name||''),'ko');
@@ -1765,6 +1768,17 @@ function evePopShow(force){
   el.innerHTML='<b>오늘 남은 업무 '+n+'건</b>';
   document.body.appendChild(el);
   const r=bell.getBoundingClientRect(),b=el.getBoundingClientRect();
+  /* 779차: 사이드바가 접혀 있으면 아이콘 아래가 아니라 **오른쪽 옆**에 붙인다(툴팁과 같은 자리) — 전엔 좁은 아이콘 기준이라 달력 위로 튀어나와 가리키는 곳이 없어 보였다 */
+  const sbMini=!WIDGET&&document.querySelector('#sidebar')&&document.querySelector('#sidebar').classList.contains('mini');
+  if(sbMini){
+    el.classList.add('side');
+    el.style.left=Math.round(r.right+10)+'px';
+    el.style.top=Math.round(r.top+r.height/2-b.height/2)+'px';
+    el.style.setProperty('--ax','0px');
+    requestAnimationFrame(()=>el.classList.add('on'));
+    el.addEventListener('click',()=>{evePopHide();eveOpenPanel();});
+    return;
+  }
   let x=r.left+r.width/2-b.width/2;
   x=Math.max(6,Math.min(x,innerWidth-b.width-6));       /* 위젯은 창이 곧 화면 — 넘치면 잘린다 */
   el.style.left=Math.round(x)+'px';
@@ -1967,7 +1981,7 @@ function calInit(){
       }
       /* 드래그는 '기간 선택' — 그 사이 업무를 패널에 보여 주고, 업무 추가를 누르면 이 기간으로 연다 */
       selRange(a,b);},
-    datesSet:()=>{rMonTitle();subVisibleMonths();markSel();
+    datesSet:()=>{rMonTitle();subVisibleMonths();markSel();if(WIDGET)setTimeout(calFitApply,0);   /* 776차: 위젯은 달이 바뀔 때마다 칸 높이로 막대 단계 재계산 */
       requestAnimationFrame(holdFit);}   /* 주 수(5·6주)가 바뀌면 칸 높이도 바뀐다 — 보류함을 다시 맞춘다(389차) */
   });
   CAL.render();
@@ -2429,7 +2443,6 @@ function dayPlans(ds,raw){
   allTasks().forEach(({sid,iid,it})=>{
     if(!it.date)return;
     if(!raw&&!taskFilterOk(sid,it))return;
-    if(!raw&&!dayHit((it.text||'')+' '+(it.prog||'')+' '+(it.plan||'')))return;
     const p=taskAsPlan(sid,iid,it);
     if(it.recur&&it.recur.f){
       if(recurDates(p,ds,ds).length)out.push({p,occ:ds});
@@ -2448,8 +2461,7 @@ function planSt(p,occ){
   return stEff(p,p.end||p.date);
 }
 function isDone(p,occ){return (p.recur&&p.recur.f)?!!(p.doneOn&&p.doneOn[occSrc(p,occ)]):!!p.done;}
-function dayQ(){return String((S.dayQ||'')).trim().toLowerCase();}
-function dayHit(txt){const q=dayQ();return !q||String(txt||'').toLowerCase().indexOf(q)>=0;}
+/* 780차: 일자 패널 검색어(S.dayQ)·범위(S.dayScope)는 입력 UI 가 없어 늘 기본값이었다 — dayQ/dayHit·검색 전용 분기 제거 */
 function taskOwnOk(sid,it){
   const who=[sid].concat(Object.keys(it.assignees||{}).filter(k=>(it.assignees||{})[k]));
   const rs=regSel();
@@ -2568,21 +2580,6 @@ function sortPlans(list){
   });
 }
 function rangePlans(){
-  const q=dayQ(),sc=S.dayScope||'day';
-  /* 검색어가 있고 범위가 '월·전체'면 선택 날짜를 벗어나 찾는다 */
-  if(q&&sc!=='day'){
-    const ym=ymOf(S.selDate),out=[];
-    allTasks().forEach(({sid,iid,it})=>{
-      if(!it.date||!taskFilterOk(sid,it))return;
-      if(!dayHit((it.text||'')+' '+(it.prog||'')+' '+(it.plan||'')))return;
-      if(sc==='month'){
-        const s0=it.date,e0=it.end||it.date;
-        if(ymOf(s0)>ym||ymOf(e0)<ym)return;   /* 기간이 이 달에 걸치기만 해도 포함 */
-      }
-      out.push({p:taskAsPlan(sid,iid,it),occ:it.date});
-    });
-    return sortPlans(out);
-  }
   const a=S.selDate,b=S.selEnd||S.selDate;
   if(!S.selEnd)return sortPlans(dayPlans(a));
   const seen={},out=[];
@@ -2628,8 +2625,10 @@ function rDay(){
   /* 처음 여는 순간엔 draft 가 아직 없다(planFormHTML 이 만든다) — orig 로도 찾아야 자리를 지킨다 */
   const editingId=S.planEdit?(((S.planEdit.draft||{}).id)||((S.planEdit.orig||{}).id)||null):null;
   const cnt=$('#dpCount');if(cnt)cnt.textContent='업무 '+ps.length+'건';
+  /* 771차: 머리에 날짜 — 「9월 9일 (수) · 업무 3건」, 공휴일·휴무일이면 이름도 */
+  const dEl=$('#dpDate');if(dEl){const d=toDate(S.selDate),ho=holOf(S.selDate);dEl.textContent=(d.getMonth()+1)+'월 '+d.getDate()+'일 ('+DOW[d.getDay()]+')'+(ho&&ho.n?' · '+ho.n:'')+' · ';}
   if(!ps.length&&!S.planEdit){
-    box.innerHTML='<div class="dp-empty">'+(dayQ()?'검색 결과가 없습니다.':'이 날짜에 등록된 업무가 없습니다.')+'</div>';
+    box.innerHTML='<div class="dp-empty">이 날짜에 등록된 업무가 없습니다.</div>';
     paintReset(box);   /* 빈 목록으로 갈아끼웠으니 서명도 비운다 — 안 그러면 다시 채워질 때 스킵된다 */
     rHold();wireHoldDnD();return;}
   /* 폼은 원래 카드가 있던 자리에 그대로 들어간다 — 수정을 눌러도 목록이 위로 튀지 않는다 */
@@ -3443,14 +3442,13 @@ function riskMark(kind){return isRisk(kind)?'<span class="risk-b" role="img" ari
 /* 필터는 매번 다시 고르기 번거롭다 — 계정별로 이 브라우저에 저장해 다음에 그대로 연다 */
 function filtKey(){return 'calapp.filt.'+((S.user&&S.user.uid)||'local');}
 function filtSave(){
-  try{localStorage.setItem(filtKey(),JSON.stringify({filter:S.filter,dayScope:S.dayScope,tkF:S.tkF}));}
+  try{localStorage.setItem(filtKey(),JSON.stringify({filter:S.filter,tkF:S.tkF}));}
   catch(e){/* 저장 실패는 무시 */}
 }
 function filtLoad(){
   try{
     const v=JSON.parse(localStorage.getItem(filtKey())||'null');if(!v)return;
     if(v.filter)S.filter={...S.filter,...v.filter};
-    if(v.dayScope)S.dayScope=v.dayScope;
     if(v.tkF){S.tkF={...S.tkF,...v.tkF};delete S.tkF.reg;}   /* 옛 저장값의 권역은 버린다(필터에서 없앴다) */
   }catch(e){/* 깨진 값은 무시 */}
 }
@@ -3459,11 +3457,11 @@ function filtLoad(){
 /* 찾기 — 왼쪽 칸 필터 카드 맨 위에 둔다(327차) */
 function tkSearchHTML(){
   const f=S.tkF||{};
-  return `<div class="dp-srch tkq-srch">
+  return `<div class="dp-srch tkq-srch${String(f.q||'').trim()?' has':''}">
       <svg class="icn dp-srch-i" aria-hidden="true"><use href="#i-search"></use></svg>
       <input class="inp inp-sm" id="tkQ" placeholder="찾기" value="${esc(f.q||'')}" autocomplete="off">
-      ${String(f.q||'').trim()?'<button class="dp-srch-x" data-act="tkf.qclear" aria-label="지우기"><svg class="icn"><use href="#i-close"></use></svg></button>':''}
-    </div>`;
+      <button class="dp-srch-x" data-act="tkf.qclear" aria-label="지우기"><svg class="icn"><use href="#i-close"></use></svg></button>
+    </div>`;   /* 771차: × 는 늘 두고 값이 있을 때만 보인다(has) — 타이핑 중 바로 뜨게 */
 }
 /* 필터 — 왼쪽 칸(보류한 업무 아래)에 따로 둔다. 셋뿐이라 접지 않고 세로로 세운다 */
 function tkFilterHTML(){
@@ -3866,7 +3864,7 @@ function tkWeekHTML(team,mems,regions){
     }).join('');
     const cols=base;
     return `<section class="tkwk-col">
-      <div class="tkwk-h"><b>${done?'완료':'예정'}</b><span class="tkwk-period">${esc(short(cy.start,cy.end))}</span></div>
+      <div class="tkwk-h"><b>${done?'완료':'예정'}</b><span class="tkwk-period">${esc(short(cy.start,cy.end))}</span><span class="c">${list.length}</span></div>
       <div class="tk-list">
         ${rows?'<div class="tkl '+tkListCls(cols)+'">'+tkHeadRowHTML(cols)+rows+'</div>'
           :'<div class="tk-empty">'+(done?'이 주기에 마감된 업무가 없습니다.':'다음 주기에 잡힌 업무가 없습니다.')+'</div>'}
@@ -4858,7 +4856,7 @@ async function confirmNewSite(name,idx,total){
 }
 function dfSiteCfgWrite(sid,site){
   if(!S.live||!FB.db)return;
-  FB.db.ref('siteConfig/'+sid).set({hasCommercial:!!site.hasCommercial,showVacant:site.showVacant!==false,updatedAt:Date.now()})
+  FB.db.ref('siteConfig/'+sid).set({hasCommercial:!!site.hasCommercial,showVacant:site.showVacant!==false,lawsuit:!!site.lawsuit,updatedAt:Date.now()})
     .catch(e=>console.warn('[siteConfig] 쓰기 실패',sid,e));
 }
 
@@ -5186,7 +5184,6 @@ function dfInsightsBuild(all,tR,tRes,tU,tLt,rate,pRate,rm){
     for(const c of allItems){items.push(c);if(items.length===3)break;}
   }
   /* ⚠ 원본은 #d-insight 에 innerHTML — 여기서는 게시 문자열을 돌려준다(원본 insCleanHTML 캡처와 동일 내용) */
-  S._dashIns=items.map(x=>({cls:x.cls,icon:x.icon,ttl:x.ttl,sub:x.sub}));
   return themeHTML(safeHTML(items.map(x=>`<div class="ic ${x.cls}"><div class="ic-i">${icoSVG(x.icon)}</div><div class="ic-t"><div class="ic-ttl">${x.ttl}</div><div class="ic-sub">${x.sub}</div></div></div>`).join('')));
 }
 function deepEncKeys(v){if(Array.isArray(v))return v.map(deepEncKeys);if(v&&typeof v==='object'){const o={};Object.keys(v).forEach(function(k){o[dfEncKey(k)]=deepEncKeys(v[k]);});return o;}return v;}
@@ -5195,7 +5192,7 @@ function dfOrgToDashSites(){
   return (S.org.sites||[]).filter(x=>x&&x.name).map(x=>({id:String(x.id),name:String(x.name),region:String(x.region||''),
     teamId:String(x.team||''),units:Number(x.units)||0,buildings:Number(x.buildings)||0,
     commercialUnits:Number(x.commercialUnits)||0,completionDate:String(x.completionDate||''),
-    hasCommercial:!!x.hasCommercial,showVacant:x.showVacant!==false,
+    hasCommercial:!!x.hasCommercial,showVacant:x.showVacant!==false,lawsuit:!!x.lawsuit,
     lastUploadedAt:DFMETA.lastUp[x.id]||x.lastUploadedAt||''}));
 }
 function dfOrgToDashTeams(){
@@ -5300,7 +5297,7 @@ async function dfPublish(){
     {const _now=new Date().toISOString();DFMETA.pubAt=DFMETA.pubAt||{};dfSites().forEach(s2=>{if(_hasRows(s2.id))DFMETA.pubAt[s2.id]=_now;});DF._pubAt[rm]=_now;dfMetaSave();dfTopbar();if(S.view==='settings')dfProdCardFill();}   /* 697차: 미게시 현장 목록도 갱신 */   /* 688차: 게시 도장 — 이 뒤로 원본이 안 바뀌면 「미게시 변경」이 꺼진다 */
     dfProdCardFill();
     {const _n=dfSites().filter(s2=>_hasRows(s2.id)).length,_k=_keepSites.filter(s2=>_keepKpi[s2.id]).length;
-     toast('등록 완료 · '+rm+' · 갱신 '+_n+'개 현장'+(_k?' · 유지 '+_k+'개':''),6000);}
+     toast('등록 완료 · '+rm+' · 갱신 '+_n+'개 현장'+(_k?' · 유지 '+_k+'개':''),3500);}
     try{
       const idx=(await FB.db.ref('reportIndex').once('value')).val()||{};
       const stale=Object.keys(idx).filter(k=>/^\d{4}-\d{2}$/.test(k)&&k>rm);
@@ -5379,6 +5376,7 @@ function dfProdWire(){
     'df.siteRisk':el=>{closeModal();S.dfSid=el.dataset.sid;S.dfTab='risk';S.dfRiskLv='';go('defect');},
     'df.riskCell':el=>{dfRiskCellModal(el.dataset.sid,el.dataset.lv);},
     'df.riskLv':el=>{S.dfRiskLv=el.dataset.lv||'';rDefect();},
+    'rec.qclear':()=>{REC.q='';const i=document.getElementById('recQ');if(i){i.value='';i.closest('.rl-q-wrap').classList.remove('has');i.focus();}const b=$('#mbody');if(b&&paintHTML(b,recBodyHTML()))ovsRefresh();recHeadSync(REC.view.length,REC.rows.length);},   /* 771차 */
     'df.riskQClear':el=>{const ns=el.dataset.ns||'site';rkState(ns).search='';if(ns==='modal'){const t=document.getElementById('rkQ');if(t){t.value='';t.closest('.rl-q-wrap').classList.remove('has');}dfRiskModalBody();}else rkRerender('site');},   /* 760차: 검색 지우기 × */
     'df.riskMapPick':el=>{const st=rkState('site');st.search=el.dataset.q||'';S.dfRiskLv='';rDefect();setTimeout(()=>{const t=document.querySelector('#view-defect .rk-card');if(t)t.scrollIntoView({block:'start',behavior:'smooth'});},50);},   /* 745차: 배치도 칸 → 표를 그 세대로 검색 */
     'df.riskLimit':el=>{const ns=el.dataset.ns||'site';rkState(ns).limit=Number(el.dataset.n)||0;rkRerender(ns);},
@@ -5695,6 +5693,7 @@ function dfApplySiteCfg(cfg){
     const c=cfg[sid]||{},x=(S.org.sites||[]).find(y=>y.id===sid);if(!x)continue;
     if(typeof c.hasCommercial==='boolean'&&x.hasCommercial!==c.hasCommercial){x.hasCommercial=c.hasCommercial;changed=true;}
     if(typeof c.showVacant==='boolean'&&(x.showVacant!==false)!==c.showVacant){x.showVacant=c.showVacant;changed=true;}
+    if(typeof c.lawsuit==='boolean'&&!!x.lawsuit!==c.lawsuit){x.lawsuit=c.lawsuit;changed=true;}   /* 771차 */
   }
   return changed;
 }
@@ -5874,6 +5873,48 @@ function loadGeo(){
   _geoP=loadScriptOnce('./vendor/korea-geo.js?v=635').then(()=>loadScriptOnce('./vendor/apt-geo.js?v=635').catch(()=>true)).catch(e=>{_geoP=null;throw e;});
   return _geoP;
 }
+/* 782차: 추이 차트용 HTML 툴팁 — 이름(왼쪽) / 값(오른쪽) 두 열. 커서 아래 15px */
+function chTipHide(){const t=document.getElementById('chTip');if(t)t.classList.remove('on');}
+function chTipDraw(ctx){
+  const {chart,tooltip}=ctx;
+  /* 782차: 캔버스 밖으로 나가면 닫는다 — Chart 는 마우스가 캔버스를 벗어나면 external 을 더 부르지 않는다.
+     mouseleave 가 늦게(또는 안) 오는 경우가 있어 document 의 mousemove 로도 판정한다 */
+  if(!chart.canvas.__tipOut){chart.canvas.__tipOut=1;
+    /* 784차: 커서 좌표를 직접 기억한다 — tooltip.caretY 는 「데이터 점」의 y 라 계열이 바뀔 때마다 툴팁이 세로로 튀었다(781차 캔버스 툴팁은 마우스 y 를 썼다) */
+    chart.canvas.addEventListener('mousemove',e=>{chart.canvas.__mx=e.clientX;chart.canvas.__my=e.clientY;
+      /* 같은 주차 안에서 위아래로만 움직이면 Chart 가 external 을 다시 부르지 않는다 → 자리만 직접 옮긴다 */
+      const t=document.getElementById('chTip');if(t&&t.classList.contains('on')&&t.__pos)t.__pos();});
+    chart.canvas.addEventListener('mouseleave',chTipHide);
+    document.addEventListener('mousemove',e=>{const t=document.getElementById('chTip');if(!t||!t.classList.contains('on'))return;
+      const b=chart.canvas.getBoundingClientRect();
+      if(e.clientX<b.left-4||e.clientX>b.right+4||e.clientY<b.top-4||e.clientY>b.bottom+4)chTipHide();},true);}
+  let el=document.getElementById('chTip');
+  if(!el){el=document.createElement('div');el.id='chTip';document.body.appendChild(el);}
+  if(!tooltip||tooltip.opacity===0){chTipHide();return;}
+  const title=(tooltip.title||[]).join(' ').replace(/\s*\n\s*/g,' ');   /* 가로축 라벨은 두 줄('8월'·'3주') — 한 줄로 */
+  const rows=(tooltip.dataPoints||[]).map(p=>{
+    /* 막대는 배경색, 선의 점은 테두리색이 그 계열 색이다(점 속은 흰색) */
+    const o=(p.element&&p.element.options)||{};
+    const c=(p.dataset.type==='line'||p.dataset.borderWidth)?(p.dataset.borderColor||o.borderColor||o.backgroundColor):(o.backgroundColor||p.dataset.backgroundColor||'#888');
+    const v=(p.parsed&&p.parsed.y!=null?p.parsed.y:p.parsed)||0;
+    return '<div class="r"><i style="background:'+esc(String(c))+'"></i><span class="n">'+esc(p.dataset.label||'')+'</span><b>'+Number(v).toLocaleString()+'건</b></div>';
+  }).join('');
+  el.innerHTML='<div class="t">'+esc(title)+'</div>'+rows;
+  el.classList.add('on');
+  const cb=chart.canvas.getBoundingClientRect(),b=el.getBoundingClientRect();
+  const my=chart.canvas.__my!=null?chart.canvas.__my:(cb.top+tooltip.caretY);
+  let x=cb.left+tooltip.caretX-b.width/2, y=my+15;   /* 가로는 그 주차에 맞춰 스냅, 세로는 커서 아래 15px */
+  x=Math.max(6,Math.min(x,innerWidth-b.width-6));
+  if(y+b.height>innerHeight-6)y=my-b.height-15;
+  /* 784차: 자리 계산을 함수로 두고 마우스가 움직일 때마다 다시 부른다(transform 만 바꾸므로 레이아웃 비용 없음) */
+  el.__pos=()=>{const cb2=chart.canvas.getBoundingClientRect(),b2=el.getBoundingClientRect();
+    const my2=chart.canvas.__my!=null?chart.canvas.__my:(cb2.top+tooltip.caretY);
+    let x2=cb2.left+tooltip.caretX-b2.width/2, y2=my2+15;
+    x2=Math.max(6,Math.min(x2,innerWidth-b2.width-6));
+    if(y2+b2.height>innerHeight-6)y2=my2-b2.height-15;
+    el.style.transform='translate('+Math.round(x2)+'px,'+Math.round(y2)+'px)';};
+  el.style.transform='translate('+Math.round(x)+'px,'+Math.round(y)+'px)';
+}
 function dfChartInit(){
   if(typeof Chart==='undefined'){loadChart().then(()=>{if(S.view==='defect')rDefect();}).catch(()=>{});return false;}
   /* 623차 톤 정합 — ① 서체: 축·눈금·라벨·툴팁이 브라우저 기본체였다(도넛 중앙만 Pretendard 명시).
@@ -5896,7 +5937,7 @@ function dfChartInit(){
       /* 515차: 늘 최고점 위에 붙어 상단 고정처럼 보였다 — 커서 높이를 따라가되 그래프 안에 머문다 */
       const ca=this.chart.chartArea;
       const cy=(evt&&typeof evt.y==='number')?evt.y:minY;
-      const y=Math.min(ca.bottom-4,Math.max(ca.top+4,cy-16));
+      const y=Math.min(ca.bottom-4,Math.max(ca.top+4,cy+26));   /* 781차: 커서 위(−16)에서 아래(+26)로 — 손·커서가 값을 가리지 않게 */
       return{x,y};
     };
   }Chart.defaults.set('plugins.datalabels',{display:false});Chart.__dlOff=true;}
@@ -5957,10 +5998,9 @@ function dfTrendDraw(key,cid,wks){
   DF.ch[key]=new Chart(el,{data:{labels:rows.map(x=>`${Number(x.m)||0}월\n${Number(x.w)||0}주`),datasets:ds},
     options:{responsive:true,maintainAspectRatio:false,
       animation:{duration:DUR,easing:'easeOutQuart',onComplete(ac){if(DF.noAnim){ac.chart.$dlShown=true;ac.chart.$la=1;return;}if(!ac.initial||ac.chart.$dlShown)return;ac.chart.$dlShown=true;const ch=ac.chart,t0=performance.now(),fd=350;const tick=()=>{if(!ch||ch.$destroyed||!ch.ctx)return;try{const p=Math.min(1,(performance.now()-t0)/fd);ch.$la=p*p*(3-2*p);ch.update('none');if(p<1)requestAnimationFrame(tick);}catch(e){console.warn('label fade tick aborted',e);}};requestAnimationFrame(tick);}},
-      plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,position:'aboveAll',yAlign:'top',caretPadding:6,padding:12,usePointStyle:true,boxWidth:10,boxHeight:10,boxPadding:6,callbacks:{
-        /* 가로축 라벨은 두 줄('8월'·'3주')이지만 툴팁에서는 한 줄로 읽는다(391차) */
-        title:items=>String((items[0]&&items[0].label)||'').replace(/\s*\n\s*/g,' '),
-        label:ctx=>`${ctx.dataset.label}: ${(ctx.parsed.y??ctx.parsed??0).toLocaleString()}건`}}},
+      /* 782차: 이름 왼쪽·값 오른쪽으로 나누려면 캔버스 툴팁으로는 안 된다(한 줄 문자열뿐) → HTML 툴팁(#chTip)으로 그린다.
+         위치는 커서 아래 +15px, 화면 밖으로 나가지 않게 좌우·아래를 물린다 */
+      plugins:{legend:{display:false},tooltip:{enabled:false,external:chTipDraw,mode:'index',intersect:false}},
       /* 인쇄 상자는 720px 폭이라 주차 라벨이 자동 회전한다(원본은 화면 폭 그대로 인쇄해 수평).
          인쇄용만 회전을 막고 촘촘하면 건너뛰게 한다 — 화면은 원본 그대로. */
       scales:{x:{grid:{display:false},ticks:{font:{size:_pr?9:10},color:ink,
@@ -6024,17 +6064,19 @@ function dfDonutDraw(key,cid,lgid,items,opt){   /* 714차: opt {colors,unit,labe
       ...(DF.noAnim?{animation:{duration:0}}:{}),
       /* 231차 지시: 인쇄본에서 도넛 안 글자가 커 보인다 — 인쇄용 캔버스(prSx/prMx)만 축소.
          화면은 원본과 동일한 기본값(16/11)을 그대로 둔다. */
+      /* 768차: 조각·범례에 마우스를 올리면 가운데 수치가 그 항목(건수·이름)으로, 떼면 전체로 */
+      onHover:(ev,els,ch)=>{const ct=ch.options.plugins.centerText;const i=els&&els.length?els[0].index:-1;const nv=i>=0?{value:Number(data[i].c).toLocaleString()+unit,label:data[i].t}:{value:tot.toLocaleString()+unit,label:clabel};if(ct.value!==nv.value||ct.label!==nv.label){ct.value=nv.value;ct.label=nv.label;ch.update('none');}},
       plugins:{centerText:{display:true,value:tot.toLocaleString()+unit,label:clabel,
         ...(/^pr/.test(key)?{valueSize:13,labelSize:8}:{})},legend:{display:false},
-        tooltip:{caretPadding:32,padding:12,usePointStyle:true,boxWidth:10,boxHeight:10,boxPadding:6,callbacks:{labelPointStyle:()=>({pointStyle:'circle',rotation:0}),label:ctx=>`${ctx.label}: ${ctx.parsed.toLocaleString()}${unit} (${tot>0?(ctx.parsed/tot*100).toFixed(1):0}%)`}},datalabels:{display:false}}}});
+        tooltip:{enabled:false},datalabels:{display:false}}}});   /* 770차: 가운데 수치가 항목을 따라 바뀌므로 툴팁은 끈다 */
   if(lg){
     /* 원본과 동일: 범례는 항상 2열 — --lgr(행수)로 좌열부터 세로 채움. 폭 조건 토글은 원본에 없다(225차 철회). */
     lg.classList.add('lg-2col');
     lg.style.setProperty('--lgr',String(Math.max(1,Math.ceil(data.length/2))));
     lg.innerHTML=data.map((d,i)=>`<div class="it" data-idx="${i}"${d.full?` data-tt="${esc(d.full)}" aria-label="${esc(d.full)}"`:''} data-tip="${esc(d.full||d.t)}"><span class="l"><span class="dt" style="background:${(colors&&colors[i])||PAL[i]}"></span><span class="nm">${esc(d.t)}</span></span><span class="cnt">${Number(d.c).toLocaleString()}${unit}</span><span class="pct">${tot>0?(Number(d.c)/tot*100).toFixed(1):0}%</span></div>`).join('');
     lg.querySelectorAll('.it').forEach(it=>{
-      it.addEventListener('mouseenter',()=>{const ch=DF.ch[key];if(!ch)return;const idx=Number(it.dataset.idx);ch.setActiveElements([{datasetIndex:0,index:idx}]);if(ch.tooltip)ch.tooltip.setActiveElements([{datasetIndex:0,index:idx}],{x:0,y:0});ch.update();});
-      it.addEventListener('mouseleave',()=>{const ch=DF.ch[key];if(!ch)return;ch.setActiveElements([]);if(ch.tooltip)ch.tooltip.setActiveElements([],{x:0,y:0});ch.update();});
+      it.addEventListener('mouseenter',()=>{const ch=DF.ch[key];if(!ch)return;const idx=Number(it.dataset.idx);ch.setActiveElements([{datasetIndex:0,index:idx}]);const ct=ch.options.plugins.centerText;ct.value=Number(data[idx].c).toLocaleString()+unit;ct.label=data[idx].t;ch.update();});
+      it.addEventListener('mouseleave',()=>{const ch=DF.ch[key];if(!ch)return;ch.setActiveElements([]);const ct=ch.options.plugins.centerText;ct.value=tot.toLocaleString()+unit;ct.label=clabel;ch.update();});
     });
   }
 }
@@ -6131,7 +6173,8 @@ function dfDashTableFill(d){
 /* 업체별 하자처리 현황 집계 — 대시보드 표·보고서 양식 공용 */
 /* 범례·보고서용 짧은 현장명 — '힐스테이트'는 어디에 붙어 있든 뗀다(갑천1 트리풀시티 힐스테이트 등) */
 function dfShortSite(nm){
-  const s2=String(nm||'').replace(/힐스테이트/g,'').replace(/\s{2,}/g,' ').trim().replace(/^[·\-\s]+|[·\-\s]+$/g,'');
+  /* 783차: 브랜드를 지우지 않고 줄인다 — 힐스테이트 → HS, 디에이치/THE H → TH */
+  const s2=String(nm||'').replace(/힐스테이트/g,'HS').replace(/디에이치|더\s*에이치|THE\s*H/gi,'TH').replace(/\s{2,}/g,' ').trim().replace(/^[·\-\s]+|[·\-\s]+$/g,'');
   return s2||String(nm||'');
 }
 function dfDashCoAgg(rm,list){
@@ -6196,7 +6239,7 @@ function dfDashMonthTable(d){
   const rows=keys.map((k,i)=>{const w=map[k],prev=i>0?map[keys[i-1]]:null,prev2=i>1?map[keys[i-2]]:null;
     return{w,m:dfMetrics(w,prev,prev2),first:i===0,yr:k.slice(0,4),mo:Number(k.slice(5,7))};}).filter(x=>x.yr===cur);
   const body=rows.map(x=>{const{w,m,first,mo}=x;
-    return`<tr><td class="cc mcell">${mo}월</td><td class="cc recv-total tl-grp">${dfNF(m.tR)}</td><td class="cc recv-weekly">${dfNF(m.recvW)}</td><td class="cc proc-blue tl-grp">${dfNF(m.cumRes)}</td><td class="rate-col proc-blue">${m.rate.toFixed(1)}%</td><td class="cc proc-blue">${dfNF(m.resW)}</td><td class="cc">${dfDlt(m.resWDlt,first,m.resW,'월')}</td><td class="cc unr-red tl-grp">${dfNF(m.unr)}</td><td class="cc">${dfDlt(m.unrDlt,first,m.unr,'월')}</td>${dfLtrCells(m.d0,m.d30,m.d60,m.unr,m.ltDlt,first,'월')}</tr>`;}).join('');
+    return`<tr${(x.yr+'-'+String(mo).padStart(2,'0'))===S.dfRm?' class="cur-row"':''}><td class="cc mcell">${mo}월</td><td class="cc recv-total tl-grp">${dfNF(m.tR)}</td><td class="cc recv-weekly">${dfNF(m.recvW)}</td><td class="cc proc-blue tl-grp">${dfNF(m.cumRes)}</td><td class="rate-col proc-blue">${m.rate.toFixed(1)}%</td><td class="cc proc-blue">${dfNF(m.resW)}</td><td class="cc">${dfDlt(m.resWDlt,first,m.resW,'월')}</td><td class="cc unr-red tl-grp">${dfNF(m.unr)}</td><td class="cc">${dfDlt(m.unrDlt,first,m.unr,'월')}</td>${dfLtrCells(m.d0,m.d30,m.d60,m.unr,m.ltDlt,first,'월')}</tr>`;}).join('');
   const eq='6.5%',ltrW='16%';
   const colgroup=`<colgroup><col style="width:9%">${('<col style="width:'+eq+'">').repeat(9)}<col style="width:${ltrW}"><col style="width:${eq}"></colgroup>`;
   const thead=`<thead><tr>${dfTh('','월')}${dfThG('','전체 접수')}${dfTh('recv-sub','월간 접수')}${dfThG('','전체 처리')}${dfTh('rate-col','처리율')}${dfTh('','월간 처리')}${dfTh('','전월대비')}${dfThG('','전체 미처리')}${dfTh('','전월대비')}${dfTh('tl-grp-ltr','장기미처리')}<th class="cc tl-grp-ltr">장기미처리 비율</th><th class="cc">전월대비</th></tr></thead>`;
@@ -6376,7 +6419,7 @@ function dfMonthCardHTML(st,curYear,pickerHTML){
   const moBody=moKeys.map((mk2,i)=>({w:moMap[mk2],k:mk2,m:dfMetrics(moMap[mk2],i>0?moMap[moKeys[i-1]]:null,i>1?moMap[moKeys[i-2]]:null),first:i===0,yr:mk2.slice(0,4)}))
     .filter(x=>x.yr===curYear&&x.k<=S.dfRm)
     .map(x=>{const{w,m,first}=x;
-      return`<tr><td class="cc mcell">${w.m}월</td><td class="cc recv-total tl-grp">${dfNF(m.tR)}</td><td class="cc recv-weekly">${dfNF(m.recvW)}</td><td class="cc proc-blue tl-grp">${dfNF(m.cumRes)}</td><td class="rate-col proc-blue">${m.rate.toFixed(1)}%</td><td class="cc proc-blue">${dfNF(m.resW)}</td><td class="cc">${dfDlt(m.resWDlt,first,m.resW,'월')}</td><td class="cc unr-red tl-grp">${dfNF(m.unr)}</td><td class="cc">${dfDlt(m.unrDlt,first,m.unr,'월')}</td>${dfLtrCells(m.d0,m.d30,m.d60,m.unr,m.ltDlt,first,'월')}</tr>`;}).join('');
+      return`<tr${x.k===S.dfRm?' class="cur-row"':''}><td class="cc mcell">${w.m}월</td><td class="cc recv-total tl-grp">${dfNF(m.tR)}</td><td class="cc recv-weekly">${dfNF(m.recvW)}</td><td class="cc proc-blue tl-grp">${dfNF(m.cumRes)}</td><td class="rate-col proc-blue">${m.rate.toFixed(1)}%</td><td class="cc proc-blue">${dfNF(m.resW)}</td><td class="cc">${dfDlt(m.resWDlt,first,m.resW,'월')}</td><td class="cc unr-red tl-grp">${dfNF(m.unr)}</td><td class="cc">${dfDlt(m.unrDlt,first,m.unr,'월')}</td>${dfLtrCells(m.d0,m.d30,m.d60,m.unr,m.ltDlt,first,'월')}</tr>`;}).join('');
   return `<div class="card" data-print="tl-month"><div class="sh"><div class="st cardttl">월별 현황</div>${pickerHTML||''}</div><div style="overflow-x:auto" data-sbx="r"><table class="dt dt-detail" style="table-layout:fixed">${moColgroup}${moThead}<tbody>${moBody||'<tr><td colspan="12" style="text-align:center;padding:14px;color:var(--lbl3)">데이터 없음</td></tr>'}</tbody></table></div></div>`;
 }
 /* 공가 탭 — 현재 앱 게시본의 공가 수(미분양·미키불출)를 표시한다. */
@@ -6391,14 +6434,17 @@ function dfRiskDashHTML(sites,hh){
   const LV=['긴급','심각','경계','주의','양호'];const RGB={긴급:'218,106,96',심각:'232,156,154',경계:'179,199,221',주의:'120,128,140'};   /* 738차: 긴급·심각·경계 = 장기미처리 차트 3단(--ch-d60/d30/d0)과 같은 색 — 긴급·심각이 같은 빨강이라 구분이 안 됐다. 농도 범위도 갈라(긴급 .45~.95 · 심각 .15~.70) 같은 세대 수라도 긴급이 늘 진하다 */
   const mx={};LV.forEach(k=>{mx[k]=Math.max(1,...rows.map(({c})=>c[k]||0));});
   /* 715차: 세대 열 없음(표 자체가 세대 수). 셀을 누르면 그 현장·레벨의 세대 목록 모달, 현장명을 누르면 현장 페이지 */
-  const cell=(sid,k,v)=>{const n=(v||0).toLocaleString();if(k==='양호')return `<button class="rkh-c rkh-ok" data-act="df.riskCell" data-sid="${esc(sid)}" data-lv="${k}">${n}</button>`;const AR={긴급:[0.45,0.5],심각:[0.15,0.55]}[k]||[0.08,0.72];const a=v?AR[0]+AR[1]*v/mx[k]:0;return `<button class="rkh-c" data-act="df.riskCell" data-sid="${esc(sid)}" data-lv="${k}" style="background:rgba(${RGB[k]},${a.toFixed(2)});color:${a>0.45?'#fff':'var(--lbl)'}">${n}</button>`;};
-  const tr=({s,c})=>`<div class="rkh-r"><button class="rkh-n" data-act="df.siteRisk" data-sid="${esc(s.id)}" data-tip="${esc(s.name)}">${esc((isMob()&&!WIDGET)?dfShortSite(s.name):s.name)}</button>${LV.map(k=>cell(s.id,k,c[k])).join('')}</div>`;
-  return `<div class="card rkh"><div class="ct cardttl">현장별 민원 현황</div>
-    <div class="rkh-h"><span></span>${LV.map(k=>`<span>${k}</span>`).join('')}</div>
+  const cell=(sid,k,v)=>{const n=(v||0).toLocaleString();if(k==='양호')return `<button class="rkh-c rkh-ok" data-act="df.riskCell" data-sid="${esc(sid)}" data-lv="${k}">${n}</button>`;const AR={긴급:[0.55,0.45],심각:[0.5,0.5]}[k]||[0.5,0.45];   /* 769차: 최소 농도 .5~.55 — 흰 글자 가독성(사용자 스크린샷) */const a=v?AR[0]+AR[1]*v/mx[k]:0;return `<button class="rkh-c" data-act="df.riskCell" data-sid="${esc(sid)}" data-lv="${k}" style="background:rgba(${RGB[k]},${a.toFixed(2)})">${n}</button>`;};   /* 768차: 글자는 전부 흰색(그림자로 가독성) — 농도 따라 흰/검 섞이던 것 정리 */
+  /* 769차: 권역을 앞에 작게(현장명 폭은 내용 폭까지만) */
+  const tr=({s,c})=>`<div class="rkh-r"><span class="rkh-rg">${esc(s.region||'')}</span><button class="rkh-n" data-act="df.siteRisk" data-sid="${esc(s.id)}" data-tip="${esc(s.name)}">${esc((isMob()&&!WIDGET)?dfShortSite(s.name):s.name)}</button>${LV.map(k=>cell(s.id,k,c[k])).join('')}</div>`;
+  /* 769차: 현장명 칸 폭 = 가장 긴 이름 기준(한 글자 ≈ 12.5px, 최대 240) — 행마다 격자가 따로라 max-content 로는 열이 안 맞는다 */
+  const nameW=Math.min(240,Math.max(120,Math.round(Math.max(...rows.map(({s})=>String(s.name||'').length))*12.5+12)));
+  return `<div class="card rkh" style="--rkhn:${nameW}px"><div class="ct cardttl">현장별 민원 현황</div>
+    <div class="rkh-h"><span></span><span></span>${LV.map(k=>`<span>${k}</span>`).join('')}</div>
     <div class="rkh-body">${rows.map(tr).join('')}</div></div>`;
 }
 /* 717차: 세대 표 공용 렌더러 — 현장 페이지(ns='site')와 히트맵 셀 모달(ns='modal')이 같은 표를 쓴다.
-   상태 S.rk[ns] = {q:{lv,hh,fac,ty}, sort:{k,d}, page}. 필터는 ';' OR. 100행씩 「더 보기」. */
+   상태 S.rk[ns] = {q:{lv,bu,un,fac,ty}, sort:{k,d}, limit, search, filt}. 필터는 ';' OR. 표시 건수 100·300·1,000·전체(780차 주석 최신화). */
 function rkState(ns){S.rk=S.rk||{};return S.rk[ns]||(S.rk[ns]={q:{},sort:{k:'lv',d:-1},limit:100,filt:false});}   /* filt: 필터 줄 — 처음엔 없고 머리 우클릭으로 켠다(목록보기와 같은 방식) */
 /* 757차: 현장 표는 검색·칩·표시 건수 변경 때 카드 안쪽만 다시 그린다(전체 rDefect 는 현황도·막대까지 다시 그려 타이핑이 버벅였다). 목록은 dfRiskPane 이 S._rkSiteList 에 둔다 */
 function rkRerender(ns){if(ns==='modal'){dfRiskModalBody();return;}const c=document.querySelector('#view-defect .rk-card');if(c&&S._rkSiteList){c.innerHTML=dfRiskTableHTML(S._rkSiteList,'site');fadeSoon();ovsRefresh();}else rDefect();}
@@ -6501,7 +6547,9 @@ function dfRiskMapHTML(all){
   }
   if(!by.size)return '';
   const hhN=h=>(/동$/.test(String(h.bu))?h.bu:h.bu+'동')+' '+(/호$/.test(String(h.un))?h.un:h.un+'호');
-  const tip=h=>esc(hhN(h)+' · '+h.level+' · 점수 '+(h.sc||0)+(h.factors&&h.factors.length?' · '+h.factors.slice(0,3).join(' · '):''));
+  /* 781차: 3단 — ①동·호 ②레벨·점수 ③감지요소(#htip 이 white-space:pre-line 이라 \n 이 줄로 산다) */
+  const tip=h=>esc(hhN(h)+'\n'+h.level+' · '+(h.sc||0)+'점');
+  const tipc=h=>' data-tipc="'+esc(C[h.level]||'')+'"';   /* 783차: 툴팁 둘째 줄(레벨) 글자색 */
   const key=x=>{const m=String(x).match(/\d+/);return m?Number(m[0]):9999;};
   const blocks=[...by.values()].sort((a,b)=>key(a.bu)-key(b.bu)).map(b=>{
     const lns=Object.keys(b.top).map(Number).sort((x,y)=>x-y);const maxF=Math.max(...Object.values(b.top));
@@ -6511,7 +6559,7 @@ function dfRiskMapHTML(all){
         if(f>b.top[l])return '<span class="rkm-c gap"></span>';
         const h=b.cells.get(f+'-'+l),un=f*100+l;
         if(!h)return `<span class="rkm-c">${un}</span>`;
-        return `<button class="rkm-c on${h.level==='긴급'?' inv':''}" style="background:${C[h.level]||C.양호}" data-act="df.riskMapPick" data-q="${esc(hhN(h))}" data-tip="${tip(h)}">${un}</button>`;}).join('')}</div>`;
+        return `<button class="rkm-c on${h.level==='긴급'?' inv':''}" style="background:${C[h.level]||C.양호}" data-act="df.riskMapPick" data-q="${esc(hhN(h))}" data-tip="${tip(h)}"${tipc(h)}>${un}</button>`;}).join('')}</div>`;
     }
     const foot=`<div class="rkm-row rkm-ft"><span class="rkm-fl"></span>${lns.map(l=>`<span class="rkm-c rkm-ln">${l}호</span>`).join('')}</div>`;
     return `<div class="rkm-b"><div class="rkm-grid">${rows}${foot}</div><div class="rkm-row"><span class="rkm-fl"></span><div class="rkm-bt">${esc(/동$/.test(b.bu)?b.bu:b.bu+'동')}</div></div></div>`;
@@ -6652,7 +6700,7 @@ function rDefectSite(root,site){
         const firstOfMonth=j===0||arr[j-1].w.m!==w.m;
         const lastOfMonth=j===arr.length-1||arr[j+1].w.m!==w.m;
         const monthCell=firstOfMonth?`<td class="cc mcell">${w.m}월</td>`:'<td class="cc"></td>';
-        return`<tr class="${lastOfMonth?'mend':''}">${monthCell}<td class="cc">${w.wn}주</td><td class="cc recv-total tl-grp">${dfNF(m.tR)}</td><td class="cc recv-weekly">${dfNF(m.recvW)}</td><td class="cc proc-blue tl-grp">${dfNF(m.cumRes)}</td><td class="rate-col proc-blue">${m.rate.toFixed(1)}%</td><td class="cc proc-blue">${dfNF(m.resW)}</td><td class="cc">${dfDlt(m.resWDlt,first,m.resW,'주')}</td><td class="cc unr-red tl-grp">${dfNF(m.unr)}</td><td class="cc">${dfDlt(m.unrDlt,first,m.unr,'주')}</td>${dfLtrCells(m.d0,m.d30,m.d60,m.unr,m.ltDlt,first,'주')}</tr>`;}).join('');
+        return`<tr class="${lastOfMonth?'mend':''}${w.week===rmEnd?' cur-row':''}">${monthCell}<td class="cc">${w.wn}주</td><td class="cc recv-total tl-grp">${dfNF(m.tR)}</td><td class="cc recv-weekly">${dfNF(m.recvW)}</td><td class="cc proc-blue tl-grp">${dfNF(m.cumRes)}</td><td class="rate-col proc-blue">${m.rate.toFixed(1)}%</td><td class="cc proc-blue">${dfNF(m.resW)}</td><td class="cc">${dfDlt(m.resWDlt,first,m.resW,'주')}</td><td class="cc unr-red tl-grp">${dfNF(m.unr)}</td><td class="cc">${dfDlt(m.unrDlt,first,m.unr,'주')}</td>${dfLtrCells(m.d0,m.d30,m.d60,m.unr,m.ltDlt,first,'주')}</tr>`;}).join('');
     const wkThead=`<thead><tr>${dfTh('','월')}${dfTh('','주차')}${dfThG('','전체 접수')}${dfTh('recv-sub','주간 접수')}${dfThG('','전체 처리')}${dfTh('rate-col','처리율')}${dfTh('','주간 처리')}${dfTh('','전월대비')}${dfThG('','전체 미처리')}${dfTh('','전월대비')}${dfTh('tl-grp-ltr','장기미처리')}<th class="cc tl-grp-ltr">장기미처리 비율</th><th class="cc">전월대비</th></tr></thead>`;
     body=`<div class="as">
       ${dfMonthCardHTML(st,curYear,yrPicker)}
@@ -7489,8 +7537,8 @@ function recHeadHTML(){
   return '<div class="rl-head"><span class="rl-ttl">'+esc(REC.title||'미처리')+'</span>'
     +'<span class="rec-n" id="recN"></span>'   /* 624차: 건수를 제목 옆으로 — 값이 변해도 검색창 자리가 안 흔들린다 */
     +'<div class="rl-acts">'
-    +'<span class="rl-q-wrap"><svg class="icn icn-sm" aria-hidden="true"><use href="#i-search"></use></svg>'
-    +'<input id="recQ" class="rl-q" placeholder="동·호·공종·내용 검색" value="'+esc(REC.q)+'" autocomplete="off"></span>'
+    +'<span class="rl-q-wrap'+(REC.q?' has':'')+'"><svg class="icn icn-sm" aria-hidden="true"><use href="#i-search"></use></svg>'
+    +'<input id="recQ" class="rl-q" placeholder="동·호·공종·내용 검색" value="'+esc(REC.q)+'" autocomplete="off"><button class="rl-qx" data-act="rec.qclear" aria-label="지우기">×</button></span>'
     +'<button class="btn bg2 bsm" data-act="rec.xlsx">엑셀</button>'
     +'<button class="btn bg2 bsm" data-act="rec.pivot" id="recPivBtn">피벗</button>'
     +'<button class="btn bg2 bsm" data-act="modal.close">닫기</button>'
@@ -7882,9 +7930,10 @@ function rDefectNav(){
       +' aria-expanded="'+(open?'true':'false')+'">'
       +'<svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg>'
       +'<span class="n">'+esc(rn)+'</span></button>'
-      +(open?list.map(x=>'<div class="nvi df-site'+(S.view==='defect'&&S.dfSid===x.id?' act':'')+'" role="button" tabindex="0"'
+      /* 774·775차: 접힌 권역의 현장은 .df-hid 로 렌더(두 상태 모두 숨김 — mini 는 펼침과 같은 줄을 보여 준다) */
+      +list.map(x=>'<div class="nvi df-site'+(open?'':' df-hid')+(S.view==='defect'&&S.dfSid===x.id?' act':'')+'" role="button" tabindex="0"'
         +' data-act="df.site" data-sid="'+esc(x.id)+'" data-tip="'+esc(x.name)+'">'
-        +'<span class="dot"></span><span class="nil">'+esc(x.name)+'</span></div>').join(''):'');
+        +'<span class="dot"></span><span class="nil">'+esc(x.name)+'</span></div>').join('');
   }).join('');
 }
 /* Ctrl+P 머리(팀명·제목·기준일) — 원본 updatePrintHeader(app-boot.js 359) 이식.
@@ -8254,10 +8303,15 @@ function siteOwnersHTML(sid){
      여기에만 나오면 두 화면이 어긋난다(341차) */
   const list=roster().filter(p=>(t?p.team===t.id:true)&&rankUses(p.rank).sites&&(p.sites||{})[sid]);
   /* 694차: 현장 쪽에서도 담당자를 지정한다 — 계정 탭의 현장 [+] 와 짝. 편집자·팀장·공구장(자기 권역)만 */
-  const can=!S.live||isEditor()||myRank()==='head'||myRank()==='lead';
-  const add=can?'<button class="site-pick" data-act="org.siteOwnPick" data-id="'+esc(sid)+'" aria-label="담당자 지정" data-tip="담당자 지정"><svg class="icn"><use href="#i-plus"></use></svg></button>':'';
-  if(!list.length)return '<span class="site-none">미지정</span>'+add;
-  return list.map(p=>'<span class="own-chip"><i style="background:'+esc(colBg(ownColor(p.id)))+'"></i>'+esc(p.name)+'</span>').join('')+add;
+  /* 771차: 현장 쪽 [+] 제거 — 담당자는 계정 탭에서 사람별로 지정한다(사용자) */
+  if(!list.length)return '<span class="site-none">미지정</span>';
+  return list.map(p=>'<span class="own-chip"><i style="background:'+esc(colBg(ownColor(p.id)))+'"></i>'+esc(p.name)+'</span>').join('');
+}
+/* 771차: 그 현장 권역의 공구장(rank=lead) 이름 — 담당자 앞 열 */
+function siteLeadHTML(x){
+  const ls=roster().filter(p=>p.rank==='lead'&&p.region&&p.region===x.region);
+  if(!ls.length)return '<span class="site-none">—</span>';
+  return ls.map(p=>'<span class="own-chip"><i style="background:'+esc(colBg(ownColor(p.id)))+'"></i>'+esc(p.name)+'</span>').join('');
 }
 function siteTable(){
   const regs=(S.org.regions||[]).filter(r=>r.name);
@@ -8268,16 +8322,17 @@ function siteTable(){
   const regOpts=x=>'<option value="">권역 —</option>'+regs.map(r=>'<option value="'+esc(r.id)+'"'+(r.id===x.region?' selected':'')+'>'+esc(r.name)+'</option>').join('');
   const dn=orgDraftN();
   return `<div class="mg-savebar" id="orgSaveBar"${dn?'':' hidden'}><span>저장하지 않은 변경 <b id="orgSaveN">${dn}</b>건</span><button class="btn bg2 bsm" data-act="org.draftDrop">되돌리기</button><button class="btn bp bsm" data-act="org.draftSave">저장</button></div>
-  <div style="overflow-x:auto" data-sbx="r"><table class="mgtbl"><thead><tr>
-    <th style="width:11%">권역</th><th style="width:19%">현장명</th><th style="width:13%">담당자</th>
-    <th class="cc" style="width:6%">세대수</th><th class="cc" style="width:5%">동수</th>
-    <th class="cc" style="width:6%">상가수</th><th class="cc" style="width:10%">준공일</th>
-    <th class="cc" style="width:7%" data-tip="끄면 하자 관리 화면의 현장 목록에서 숨깁니다">하자현황</th>
-    <th class="cc" style="width:6%" data-tip="끄면 이 현장의 하자 화면에서 공가세대 탭을 숨깁니다 · 전원에게 즉시 반영">공가세대</th><th class="cc" style="width:6%" data-tip="켜면 이 현장의 하자 화면에 공가상가 탭이 생깁니다 · 전원에게 즉시 반영">공가상가</th>
-    <th class="cc" style="width:9%" data-tip="이 현장 원본이 마지막으로 올라온 날 — 마스터 PC 가 올리면 조직 정보에 함께 저장돼 모두에게 보입니다">업데이트일</th>
+  <div style="overflow-x:auto" data-sbx="r" data-sbh><table class="mgtbl"><thead><tr>
+    <th style="width:9%">권역</th><th style="width:16%">현장명</th><th style="width:8%">공구장</th><th style="width:11%">담당자</th>
+    <th class="cc" style="width:5.5%">세대수</th><th class="cc" style="width:4.5%">동수</th>
+    <th class="cc" style="width:5.5%">상가수</th><th class="cc" style="width:9.5%">준공일</th>
+    <th class="cc" style="width:5.5%" data-tip="끄면 하자 관리 화면의 현장 목록에서 숨깁니다">하자현황</th>
+    <th class="cc" style="width:5.5%" data-tip="끄면 이 현장의 하자 화면에서 공가세대 탭을 숨깁니다 · 전원에게 즉시 반영">공가세대</th><th class="cc" style="width:5.5%" data-tip="켜면 이 현장의 하자 화면에 공가상가 탭이 생깁니다 · 전원에게 즉시 반영">공가상가</th><th class="cc" style="width:5.5%" data-tip="소송 진행 현장 표시 · 전원에게 즉시 반영">소송현장</th>
+    <th class="cc" style="width:7%" data-tip="이 현장 원본이 마지막으로 올라온 날 — 마스터 PC 가 올리면 조직 정보에 함께 저장돼 모두에게 보입니다">업데이트일</th>
   </tr></thead><tbody>${sites.map(x=>`<tr data-sid="${esc(x.id)}">
     <td><select class="mg-inp" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="region" aria-label="권역 선택">${regOpts(x)}</select></td>
     <td><input class="mg-inp" value="${esc(x.name)}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="name" aria-label="현장명"></td>
+    <td class="mg-lead">${siteLeadHTML(x)}</td>
     <td class="mg-own"><div class="mg-ownw">${siteOwnersHTML(x.id)}</div></td>
     <td><input class="mg-inp n" type="text" inputmode="numeric" value="${(x.units||0).toLocaleString()}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="units" aria-label="세대수" style="text-align:right;min-width:56px"></td>
     <td><input class="mg-inp n" type="text" inputmode="numeric" value="${(x.buildings||0).toLocaleString()}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="buildings" aria-label="동수" style="text-align:right;min-width:48px"></td>
@@ -8286,6 +8341,7 @@ function siteTable(){
     <td class="cc"><label class="sw"><input type="checkbox"${dfIsHidden(x.id)?'':' checked'} data-act="org.siteShow" data-id="${esc(x.id)}" aria-label="하자 관리 화면에 표시"><span class="sw-t"></span></label></td>
     <td class="cc"><label class="sw"><input type="checkbox"${x.showVacant!==false?' checked':''} data-act="org.siteVac" data-id="${esc(x.id)}" aria-label="공가세대 탭 표시"><span class="sw-t"></span></label></td>
     <td class="cc"><label class="sw"><input type="checkbox"${x.hasCommercial?' checked':''} data-act="org.siteShop" data-id="${esc(x.id)}" aria-label="공가상가 포함 현장"><span class="sw-t"></span></label></td>
+    <td class="cc"><label class="sw"><input type="checkbox"${x.lawsuit?' checked':''} data-act="org.siteSuit" data-id="${esc(x.id)}" aria-label="소송현장"><span class="sw-t"></span></label></td>
     <td class="cc" style="font-size:11.5px;white-space:nowrap;color:var(--lbl2)">${(()=>{const d=(DFMETA.lastUp||{})[x.id]||x.lastUploadedAt||'';return d?esc(String(d).slice(0,10)):'<span style="color:var(--lbl3)">—</span>';})()}</td>
   </tr>`).join('')}</tbody></table></div>`;
 }
@@ -8297,7 +8353,7 @@ const KM_VB0={x:232,y:8,w:2120,h:3222};   /* 601차: 오른쪽 여백 — 경북
    544차: x 를 8(=화면 1px) 늘려 지도를 왼쪽으로 1px 민다 */
 const KM_JD=[1506,-706];                           /* 제주 이동량 — 오른쪽 아래 모서리 */
 const KM_FR={x:1832,y:2906,w:496,h:324};           /* 제주 네모 — 보기 상자 우하단에 붙인다 */
-function krGeo(){if(!window.KRGEO){loadGeo().then(()=>{if(S.view==='org')rOrg();}).catch(()=>{});}return window.KRGEO||null;}   /* 762차: 처음 부르면 지연 로드, 읽히면 조직 화면 재렌더 */
+function krGeo(){if(!window.KRGEO){loadGeo().then(()=>{Object.keys(KM_XY).forEach(k=>{delete KM_XY[k];});if(S.view==='org')rOrg();}).catch(()=>{});}return window.KRGEO||null;}   /* 762차: 처음 부르면 지연 로드, 읽히면 조직 화면 재렌더 */
 /* 현장 자리는 **저장하지 않고 이름에서 그때그때 찾는다**(529차).
    좌표를 두려면 현장 목록이 게시본 구독이라 cfg 로 빼야 하고, 그러면 사람이 한 번씩 찍어 넣어야 한다.
    이름만으로 되는 범위까지만 하기로 했다 — 못 찾은 현장은 지도에 나오지 않는다.
@@ -8311,6 +8367,7 @@ function kmSiteHint(st){
 }
 function kmSiteXY(st){
   if(!st||!st.name)return null;
+  if(!window.KRGEO)return null;   /* 774차: 지도 자료 지연 로드 전엔 계산·캐시하지 않는다 — 전엔 null 이 KM_XY 에 박혀 자료가 와도 점이 안 찍혔다 */
   const addr=SITE_ADDR[st.id]||((S.cfg&&S.cfg.siteAddr)||{})[st.id]||'';   /* 552차: 관리자가 적은 주소(cfg.siteAddr)도 쓴다 */
   const hint=kmSiteHint(st), nm=addr+'\u0000'+st.name+'\u0000'+hint;   /* 주소·이름·권역 중 하나라도 바뀌면 다시 찾는다 */
   if(!(nm in KM_XY)){
@@ -8363,6 +8420,27 @@ function kmPushOut(pts,boxes,pad){
     if(!moved)break;}
 }
 function kmHit(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;}
+/* 793차: 현장명 실제 폭(화면 px, .okm-snm 과 같은 600 12px). 792차는 「글자 수×11+6」으로 잡아 실제보다 25~30px 넓었고,
+   안 부딪히는 이름까지 부딪힌 것으로 쳐서 빠졌다. 글꼴이 아직 안 읽혔으면 재기만 하고 기억하지 않는다 */
+const KM_TW={};let _kmTC=null;
+function kmTextW(t){
+  if(t in KM_TW)return KM_TW[t];
+  _kmTC=_kmTC||document.createElement('canvas').getContext('2d');
+  _kmTC.font='600 12px '+getComputedStyle(document.body).fontFamily;
+  const w=_kmTC.measureText(t).width;
+  if(!document.fonts||document.fonts.status==='loaded')KM_TW[t]=w;
+  return w;
+}
+/* 791차: 같은 동으로 찍혀 **좌표가 똑같은** 현장은 색원이 한 점에 포개진다 — 그 묶음만 가로로 나란히 붙인다(간격 step).
+   묶음 가운데는 원래 자리 그대로라 787차 원칙(현장 자리 그대로)은 유지된다. 자리가 다른 점은 건드리지 않는다.
+   돌려주는 것은 {sid:[x,y]} — 라벨 예약 상자와 점이 같은 자리를 쓴다 */
+function kmSpots(sites,step){
+  const out={},grp={};
+  sites.forEach(st=>{const q=kmSiteXY(st);if(!q)return;
+    const k=Math.round(q[0])+','+Math.round(q[1]);(grp[k]=grp[k]||[]).push([st.id,q]);});
+  Object.values(grp).forEach(a=>a.forEach(([id,q],i)=>{out[id]=[q[0]+(i-(a.length-1)/2)*step,q[1]];}));
+  return out;
+}
 /* 지도 한 장. o.w·o.h 는 그려질 상자 크기(px) — 배율을 여기서 정해 글자·점 크기를 맞춘다.
    o.sites 를 주면 그 현장만 그린다 */
 function kmSVG(vb,sel,o){
@@ -8371,7 +8449,7 @@ function kmSVG(vb,sel,o){
   const W=o.w||240,H=o.h||300;
   const u=1/Math.min(W/vb.w,H/vb.h);            /* 지도 좌표 1 = 화면 u 분의 1 px */
   /* 581차: 점은 화면 px 고정이라 확대할수록 상대적으로 작아 보였다 — 배율 z 에 따라 1배 3.3px → 2배 4.5 → 4배 5.6 → 8배 6.8 (상한 7.5) */
-  const z=Math.max(1,KM_VB0.w/vb.w),R=Math.min(7.5,(o.r||3.3)*(1+0.35*Math.log2(z)))*u, zoom=vb.w<KM_VB0.w*0.7, deep=vb.w<KM_VB0.w*0.2;   /* 585차: 0.6→0.7 — 2026 경계는 섬을 품어 충남·강원 상자가 0.6 을 넘는다 */
+  const z=Math.max(1,KM_VB0.w/vb.w),R=Math.min(6,(o.r||3.3)*(1+0.28*Math.log2(z)))*u   /* 786차: 깊게 확대해도 점이 커지지 않게(7.5→6) */, zoom=vb.w<KM_VB0.w*0.7, deep=vb.w<KM_VB0.w*0.2;   /* 585차: 0.6→0.7 — 2026 경계는 섬을 품어 충남·강원 상자가 0.6 을 넘는다 */
   const jd=c=>c==='39'?' transform="translate('+KM_JD[0]+','+KM_JD[1]+')"':'';
   const noFr=!!sel&&sel!=='39';   /* 588차: 다른 시도를 골랐을 땐 제주 네모를 안 그린다 — 2026 경계의 경남 남쪽 섬 때문에 상자가 네모에 닿았다 */
   /* 제주 네모는 바탕을 먼저 덮는다 — 네모가 겹쳐 놓인 서남해 섬이 안쪽에 비쳐 보였다 */
@@ -8411,11 +8489,31 @@ function kmSVG(vb,sel,o){
   if(g.provl)order.forEach(f=>{if(noFr&&f[0]==='39')return;if(inView(f))s+='<path class="okm-pvl"'+jd(f[0])+' d="'+(g.provl[f[0]]||'')+'"></path>';});
   if(sel){const sf=g.prov.find(f=>f[0]===sel);if(sf)s+='<path class="okm-sl"'+jd(sel)+' d="'+((g.provl&&g.provl[sel])||sf[9])+'"></path>';}
   if(!noFr)s+='<rect class="okm-fr" x="'+KM_FR.x+'" y="'+KM_FR.y+'" width="'+KM_FR.w+'" height="'+KM_FR.h+'" rx="24"></rect>';
+  /* 792차: 시·군 이름은 781차부터 확대할수록 9.5→12px 로 커지는데 시도 이름은 11px 고정이라, 확대하면 「아산」이 「충남」보다 컸다.
+     시도 이름은 늘 시·군 이름 + 1px(최소 11px — 전체 보기는 그대로). ctFs·plFs 는 화면 px */
+  const ctFs=Math.min(12,9.5*Math.max(1,0.72+0.28*z)),plFs=Math.max(11,ctFs+1);
   /* 547차: 제주 이름표는 네모 가운데 — 아래 귀퉁이에 두면 카드 아래 페이드에 먹혀 바래 보였다 */
-  if(!noFr)s+='<text class="okm-pl'+(sel==='39'?' on':'')+'" x="'+(KM_FR.x+KM_FR.w/2).toFixed(1)+'" y="'+(KM_FR.y+KM_FR.h*.56+11*u*.35).toFixed(1)
-    +'" text-anchor="middle" style="font-size:'+(11*u).toFixed(2)+'px;stroke-width:'+(2.8*u).toFixed(2)+'px">제주</text>';
+  if(!noFr)s+='<text class="okm-pl'+(sel==='39'?' on':'')+'" x="'+(KM_FR.x+KM_FR.w/2).toFixed(1)+'" y="'+(KM_FR.y+KM_FR.h*.56+plFs*u*.35).toFixed(1)
+    +'" text-anchor="middle" style="font-size:'+(plFs*u).toFixed(2)+'px;stroke-width:'+(2.8*u).toFixed(2)+'px">제주</text>';
   /* 시도 이름 — 화면에 크게 걸친 것부터 자리를 잡고, 이미 놓인 이름표와 부딪히면 접는다 */
   const boxes=[],cand=[];
+  /* 784차: 현장 점·현장명이 앉을 자리를 먼저 막아 둔다 — 동·읍·면 이름이 그 위에 겹쳐 지저분했다.
+     (점은 뒤에서 흩뿌려지므로 원래 좌표 기준으로 넉넉히 잡는다) */
+  const zz=Math.max(1,KM_VB0.w/vb.w);
+  const spot=kmSpots(o.sites||[],2*R+2*u);   /* 791차: 원 지름 + 2px — 흰 테(1px)끼리 닿지 않을 만큼만 */
+  /* 792차: 현장명 자리 — 먼저 놓인 현장명과 부딪히면 다음 자리, 다 막히면 뺀다(점 툴팁으로 본다).
+     794차: 위 → 아래 → **오른쪽 → 왼쪽**. 오른쪽·왼쪽은 점 가운데 높이에 글자를 붙인다(text-anchor start/end).
+       다른 현장의 **점도 피한다** — 옆자리 이름이 같은 동 묶음의 이웃 점을 덮으면 안 된다.
+       상자는 글자 잉크(기준선 −10.5 ~ +2.5px, 좌우 +1px)로 잡는다 — 흰 테끼리 닿는 것은 허용해야 위·아래 이름 사이에 옆 이름이 들어간다.
+     snm[sid] = {x, yb(기준선), a(text-anchor)} (없으면 이름 생략). 고른 자리를 예약해 동·읍·면 이름이 그 위에 앉지 않게 한다 */
+  const snm={},nbx=[],pbx=Object.keys(spot).map(id=>({id,b:{x:spot[id][0]-R,y:spot[id][1]-R,w:2*R,h:2*R}}));
+  (o.sites||[]).forEach(st=>{const q=spot[st.id];if(!q)return;
+    if(zz>2){const nm=dfShortSite(st.name||''),tw=(kmTextW(nm)+2)*u,ym=q[1]+5*u;
+      const pick=[[q[0],q[1]-R-3*u,'middle'],[q[0],q[1]+R+13*u,'middle'],[q[0]+R+4*u,ym,'start'],[q[0]-R-4*u,ym,'end']]
+        .map(([x,yb,a])=>({x,yb,a,b:{x:a==='middle'?x-tw/2:a==='start'?x-u:x-tw+u,y:yb-10.5*u,w:tw,h:13*u}}))
+        .find(c=>!nbx.some(b=>kmHit(c.b,b))&&!pbx.some(p=>p.id!==st.id&&kmHit(c.b,p.b)));
+      if(pick){snm[st.id]=pick;nbx.push(pick.b);boxes.push(pick.b);}}
+    boxes.push({x:q[0]-9*u,y:q[1]-9*u,w:18*u,h:18*u});});   /* 점 자리 */
   g.prov.forEach(f=>{
     if(f[0]==='39')return;                       /* 제주는 네모 안에 따로 적었다 */
     const ix0=Math.max(f[5],vb.x),ix1=Math.min(f[7],vb.x+vb.w);
@@ -8426,11 +8524,11 @@ function kmSVG(vb,sel,o){
   });
   cand.sort((a,b)=>b.a-a.a);
   cand.forEach(c=>{
-    const w=(c.f[1].length*11+7)*u,h=14*u,b={x:c.x-w/2,y:c.y-h/2,w,h};
+    const w=(c.f[1].length*plFs+7)*u,h=(plFs+3)*u,b={x:c.x-w/2,y:c.y-h/2,w,h};
     if(boxes.some(z=>kmHit(b,z)))return;
     boxes.push(b);
-    s+='<text class="okm-pl'+(sel===c.f[0]?' on':'')+'" x="'+c.x.toFixed(1)+'" y="'+(c.y+11*u*.35).toFixed(1)
-      +'" text-anchor="middle" style="font-size:'+(11*u).toFixed(2)+'px;stroke-width:'+(2.8*u).toFixed(2)+'px">'
+    s+='<text class="okm-pl'+(sel===c.f[0]?' on':'')+'" x="'+c.x.toFixed(1)+'" y="'+(c.y+plFs*u*.35).toFixed(1)
+      +'" text-anchor="middle" style="font-size:'+(plFs*u).toFixed(2)+'px;stroke-width:'+(2.8*u).toFixed(2)+'px">'
       +esc(c.f[1])+'</text>';
   });
   /* 시·군·구 이름(확대) → 읍면동 이름(더 확대). 같은 규칙으로 자리를 다툰다 */
@@ -8450,10 +8548,12 @@ function kmSVG(vb,sel,o){
       mc.push({n:m[0],pc,x:Math.min(Math.max(cx,vb.x+12*u),vb.x+vb.w-12*u),
                       y:Math.min(Math.max(cy,vb.y+8*u),vb.y+vb.h-6*u),a:(ix1-ix0)*(iy1-iy0)});});}};
     add(g.muni,20,14);
-    if(deep)add(g.subl,18,12);
+    /* 792차: 동·읍·면 이름은 z>10 부터(경계선은 deep 그대로) — 시군구를 눌러 들어간 화면(대개 z 5~9)에선 시·군 이름만 */
+    const dongZ=vb.w<KM_VB0.w*0.1;
+    if(dongZ)add(g.subl,18,12);
     /* 시군구까지 들어가면 그 안이 텅 빈다 — 읍면동 경계는 광역시만 있으므로 **이름**으로 채운다.
        g.dong 은 중심점만 있어 크기를 모르니, 화면 안이면 놓고 부딪히면 접는다(537차) */
-    if(deep)for(const pc in g.dong)g.dong[pc].forEach(m=>{
+    if(dongZ)for(const pc in g.dong)g.dong[pc].forEach(m=>{
       const dx=pc==='39'?KM_JD[0]:0,dy=pc==='39'?KM_JD[1]:0;
       const x=m[1]+dx,y=m[2]+dy;
       if(x<vb.x+10*u||x>vb.x+vb.w-10*u||y<vb.y+8*u||y>vb.y+vb.h-8*u)return;
@@ -8461,32 +8561,39 @@ function kmSVG(vb,sel,o){
     });
     mc.sort((a,b)=>b.a-a.a);
     mc.forEach(m=>{
-      const w=(m.n.length*9.5+5)*u,h=11.5*u,b={x:m.x-w/2,y:m.y-h/2,w,h};
+      /* 781차: 확대할수록 시·군 이름을 조금씩 키운다(화면 px 기준 9.5 → 최대 16) */
+      /* 784차: 크기는 시·군 기준으로 한 번만 정하고 동·읍·면은 그보다 작게(0.86) — 하위 라벨이 더 커 보여 지저분했다 */
+      const isDong=!m.pc, fsBase=ctFs*u, fs=isDong?fsBase*0.86:fsBase;
+      const w=(m.n.length*(fs/u)+5)*u,h=(fs/u+2)*u,b={x:m.x-w/2,y:m.y-h/2,w,h};
       if(boxes.some(z=>kmHit(b,z)))return;
       boxes.push(b);
-      s+='<text class="okm-ct"'+(m.pc?' data-m="'+m.pc+'|'+esc(m.n)+'"':'')+' x="'+m.x.toFixed(1)+'" y="'+(m.y+9.5*u*.35).toFixed(1)
-        +'" text-anchor="middle" style="font-size:'+(9.5*u).toFixed(2)+'px;stroke-width:'+(2.4*u).toFixed(2)+'px">'
+      s+='<text class="okm-ct'+(isDong?' dong':'')+'"'+(m.pc?' data-m="'+m.pc+'|'+esc(m.n)+'"':'')+' x="'+m.x.toFixed(1)+'" y="'+(m.y+fs*.35).toFixed(1)
+        +'" text-anchor="middle" style="font-size:'+fs.toFixed(2)+'px;stroke-width:'+(fs*0.25).toFixed(2)+'px">'
         +esc(m.n)+'</text>';
     });
   }
   /* 현장 점 — 원래 자리에서 밀려나면 가는 선으로 제자리를 가리킨다 */
   const pts=[];let ov='';
-  (o.sites||[]).forEach(st=>{const q=kmSiteXY(st);if(q&&!(noFr&&q[1]>=KM_FR.y))pts.push({st,ox:q[0],oy:q[1],x:q[0],y:q[1]});});   /* 네모를 안 그릴 땐 제주 점도 뺀다 */
-  kmPushOut(pts,boxes,R+u);kmSpread(pts,R*2+1.6*u);kmPushOut(pts,boxes,R+u);
+  (o.sites||[]).forEach(st=>{const q=kmSiteXY(st);if(q&&!(noFr&&q[1]>=KM_FR.y))pts.push({st,ox:q[0],oy:q[1],x:spot[st.id][0],y:spot[st.id][1]});});   /* 네모를 안 그릴 땐 제주 점도 뺀다 */
+  /* 787차: 점은 **현장 자리 그대로** 둔다 — 라벨을 피해 밀고(kmPushOut) 서로 흩뿌리던(kmSpread) 탓에
+     실제 위치에서 벗어난 자리에 색원이 찍히고 지시선이 따라붙어 「엉뚱한 곳에 꽂힌 핀」처럼 보였다.
+     대신 겹치는 것은 라벨 쪽에서 피한다(현장 자리를 라벨 배치 전에 상자로 예약해 둔다). */
   /* 550차: 여기부터는 겹층(.okm-ov)에 그린다 — 호버로 바뀌는 것은 전부 이쪽. 경계 svg 는 손대지 않는다 */
   const gpx=(o.id||'okmSvg')+'-g';
   ov+=colSvgDefs(pts.map(p=>kmSiteColor(p.st.id)),gpx);   /* 687차: 그라디언트·무지개 담당자 색을 점에 그린다 */
   ov+='<path class="okm-hv"></path><text class="okm-ct hov okm-hvt" text-anchor="middle"></text>';
   pts.forEach(p=>{
-    /* ⚠ 굵기를 여기서 주지 않는다 — .okm-pin·.okm-ld 는 non-scaling-stroke 라
+    /* ⚠ 굵기를 여기서 주지 않는다 — .okm-pin 은 non-scaling-stroke 라
        굵기를 화면 px 로 읽는다. 지도 단위(u)를 넘기면 u 배로 부푼다(529차에 흰 테가 원을 삼켰다) */
-    if(Math.hypot(p.x-p.ox,p.y-p.oy)>1.2*u)
-      ov+='<line class="okm-ld" x1="'+p.ox.toFixed(1)+'" y1="'+p.oy.toFixed(1)+'" x2="'+p.x.toFixed(1)
-        +'" y2="'+p.y.toFixed(1)+'"></line>';
     const col=kmSiteColor(p.st.id);
     ov+='<circle class="okm-pin'+(col?'':' none')+'" cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="'+R.toFixed(2)
       +'"'+(col?' fill="'+esc(colSvgFill(col,gpx))+'"':'')+' data-sid="'+esc(p.st.id)+'"'
       +' data-tip="'+esc((p.st.name||'이름 없음')+' · '+(p.st.units||0).toLocaleString()+'세대')+'"></circle>';
+    /* 781차: 어느 정도 확대되면(z≥3) 점 위에 현장명 — 글자에 흰 테두리(그림자) */
+    /* 792차: 그림자는 인라인으로 u 배 — SVG 요소의 CSS drop-shadow 길이는 viewBox 단위라 깊게 확대할수록 번졌다(실측) */
+    const sn=snm[p.st.id];
+    if(z>2&&sn)ov+='<text class="okm-snm" x="'+sn.x.toFixed(1)+'" y="'+sn.yb.toFixed(1)+'" text-anchor="'+sn.a+'"'
+      +' style="font-size:'+(12*u).toFixed(2)+'px;stroke-width:'+(2.4*u).toFixed(2)+'px;filter:drop-shadow(0 '+u.toFixed(3)+'px '+u.toFixed(3)+'px rgba(20,30,50,.14))">'+esc(dfShortSite(p.st.name||''))+'</text>';
   });
   const vbs=' viewBox="'+vb.x+' '+vb.y+' '+vb.w+' '+vb.h+'" preserveAspectRatio="xMidYMid meet" style="height:'+H+'px"';
   return '<svg class="okm'+(o.cls?' '+o.cls:'')+(vb.w<KM_VB0.w?' pan':'')+'" id="'+(o.id||'okmSvg')+'"'+vbs+' aria-label="현장 위치 지도">'
@@ -8515,7 +8622,10 @@ function kmFind(text,hint){
   const scan=(src,kind,base)=>{
     const pool=(kind==='읍면동'||kind==='법정동')?ws:hs;
     for(const pc in src)src[pc].forEach(a=>{
-    const b=kmBare(a[0]);
+    /* 790차: 두 글자 동네('마동'·'신동'·'중동')는 끝 글자를 떼면 한 글자만 남아 통째로 버려지고 있었다 —
+       그럴 때는 원래 이름 그대로 대조한다(어절 앞머리 규칙은 같다) */
+    let b=kmBare(a[0]);
+    if(b.length<2)b=String(a[0]);
     if(b.length<2)return;
     /* 행정구역 이름은 어절 앞머리로만 본다('충남천안'에서 '남천동'이 걸리던 것을 막는다).
        단지명은 표기가 조금씩 달라(띄어쓰기·브랜드 순서) 어절 어디든 들어 있으면 인정한다 */
@@ -8761,7 +8871,7 @@ function kmSiteList(all,mode){
       /* 553차: 줄 더블클릭이 주소 입력. 자리를 못 찾은 줄은 한 번 클릭으로도 연다 */
       list+='<div class="kml-r'+(on?'':' off')+(dim?' dim':'')+'" data-sid="'+esc(x.id)+'"'+(on?' data-act="org.mapTo"':' data-act="org.mapAddr"')
         +' data-tip="'+esc(tip)+'">'
-        +'<i'+(col?' style="background:'+esc(col)+'"':'')+'></i><b>'+esc(x.name)+'</b><span class="kml-s"></span><em class="kml-n">'+(x.units||0).toLocaleString()+'</em></div>';});
+        +'<i'+(col?' style="background:'+esc(col)+'"':'')+'></i><b>'+esc(x.name)+'</b><em class="kml-n">'+(x.units||0).toLocaleString()+'</em></div>';});
     list+='</div>';});
   return list;
 }
@@ -9626,7 +9736,11 @@ function tipShow(target){
   if(!target.isConnected||!target.matches(':hover'))return;
   const txt=target.dataset.tip;if(!txt)return;
   _tipFor=target;
-  el.textContent=txt;
+  /* 783차: data-tipc 가 있으면 둘째 줄(레벨)만 그 색으로 — 세대 현황도 칸 */
+  const tc=target.dataset.tipc;
+  if(tc){const ln=txt.split('\n');
+    el.innerHTML=esc(ln[0])+(ln.length>1?'<br><span style="color:'+esc(tc)+'">'+esc(ln.slice(1).join(' '))+'</span>':'');}
+  else el.textContent=txt;
   el.classList.add('on');
   const t=el.getBoundingClientRect();
   /* 지도 안(시도 면·현장 점)은 요소가 커서 중앙에 띄우면 엉뚱한 곳에 뜬다 — 커서를 따른다(531차) */
@@ -9782,7 +9896,9 @@ function toastUndo(msg,ms=4000){
 }
 function toast(msg,duration=2400){
   const t=$('#toast');t.textContent=msg;t.classList.remove('has-btn');t.classList.add('show');
-  clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),Math.max(1000,Number(duration)||2400));
+  clearTimeout(toastT);const ms=Math.max(1000,Number(duration)||2400);toastT=setTimeout(()=>t.classList.remove('show'),ms);
+  /* 771차: 마우스를 올리면 남고, 떼면 1초 뒤 닫힘 */
+  if(!t.__hold){t.__hold=true;t.addEventListener('mouseenter',()=>clearTimeout(toastT));t.addEventListener('mouseleave',()=>{clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),1000);});}
 }
 function mobClose(){
   if(S.dpSheet){dpSheet(false);return;}   /* 시트가 열려 있으면 스크림 탭은 시트부터 닫는다 */
@@ -10300,9 +10416,13 @@ const ACT={
   'org.draftDrop':()=>{ORG_DRAFT={};rOrg();},
   'org.draftDropGo':el=>{ORG_DRAFT={};closeModal();go(el.dataset.v);},
   'org.addSite':()=>{
-    
-    const id=uid();const r0=(S.org.regions||[]).find(x=>x.name);
-    S.org.sites=(S.org.sites||[]).concat([{id,name:'',team:'',region:r0?r0.id:''}]);orgSave();
+    /* 795차: 새 현장은 권역 없이(→ 공구장·담당자도 빈 채) · 토글 전부 끔(하자현황 = dfHide, 공가·소송 = siteConfig) · 표 맨 아래(siteCmp: 이름 없는 행은 끝).
+       전엔 첫 권역을 넣어 그 권역 준공일 없는 줄 사이에 끼었다. 권역 탭에서 누르면 새 행이 안 보이므로 전체 탭으로 */
+    const id=uid(),off={hasCommercial:false,showVacant:false,lawsuit:false};
+    if(!orgRegHit('',S.orgReg))S.orgReg='';
+    const hm={...dfHidden(),[id]:true};store.putCfg('dfHide',hm);S.cfg={...S.cfg,dfHide:hm};
+    dfSiteCfgWrite(id,off);if(DF._cfgLast)DF._cfgLast[id]={...off};
+    S.org.sites=(S.org.sites||[]).concat([{id,name:'',team:'',region:'',...off}]);orgSave();
     setTimeout(()=>{const i=document.querySelector('#siteRoot .mg-inp[data-id="'+id+'"]');if(i)i.focus();},S.live?300:30);
   },
   /* 695차: 담당자(명단) 삭제 — people/{id} 만 지운다. 계정(users)·그 사람 업무(tasks/{uid})는 남는다(업무 화면에선 이름만 사라진다).
@@ -10334,31 +10454,6 @@ const ACT={
       orgSave();});
   },
   /* 694차: 현장 → 담당자 지정. 사람별 sites 맵을 고쳐 저장한다(데이터 구조는 그대로 — 현장 쪽 목록은 없다) */
-  'org.siteOwnPick':el=>{
-    const sid=el.dataset.id,st=(S.org.sites||[]).find(x=>x.id===sid);if(!st)return;
-    const t=curTeam();
-    const list=roster().filter(p=>(t?p.team===t.id:true)&&rankUses(p.rank).sites);
-    if(!list.length){toast('담당 현장을 가질 수 있는 사람이 없습니다');return;}
-    const rows=list.map(p=>{const ok=canAssignSites(p.id);
-      return '<label class="spk-i"'+(ok?'':' style="opacity:.5"')+'><input type="checkbox" data-pid="'+esc(p.id)+'"'+((p.sites||{})[sid]?' checked':'')+(ok?'':' disabled')+'>'
-        +'<i class="tkc-dot" style="background:'+esc(colBg(ownColor(p.id)))+'"></i>'+esc(p.name)+(p.region?' <span style="color:var(--lbl3);font-size:12px">'+esc(((S.org.regions||[]).find(r=>r.id===p.region)||{}).name||'')+'</span>':'')+'</label>';}).join('');
-    openModal(st.name+' 담당자',
-      '<div class="spk">'+rows+'</div>',
-      '<button class="btn bg2 bsm" data-act="modal.close">취소</button><button class="btn bp bsm" data-act="modal.ok">저장</button>');
-    MODAL_CB={type:'siteOwn',ok:()=>{
-      $$('.spk input[data-pid]').forEach(c=>{
-        if(c.disabled)return;
-        const p=roster().find(x=>x.id===c.dataset.pid);if(!p)return;
-        const cur=(S.people||{})[p.id]||{};
-        const sites={...(cur.sites||p.sites||{})};
-        const had=!!sites[sid];if(had===c.checked)return;
-        if(c.checked)sites[sid]=1;else delete sites[sid];
-        store.putPerson(p.id,{name:p.name||'',email:p.email||'',team:cur.team||p.team||'',
-          region:cur.region||p.region||'',rank:rankOf(cur.rank||p.rank),sites});
-      });
-      rosterBust();closeModal();if(!S.live)rOrg();
-    }};
-  },
   'acct.sitePick':el=>{
     
     const id=el.dataset.id,p=roster().find(x=>x.id===id);if(!p)return;
@@ -10536,6 +10631,7 @@ const ACT={
     st[g]=cur;mselApply(m);},
   'filt.mall':el=>{const m=el.closest('.msel');mselStore(m)[m.dataset.g]=[];mselApply(m);},
   'cal.pick':()=>openYMPick(),
+  'cal.today':()=>{if(CAL)CAL.today();selDate(todayStr());if(isMob()&&!WIDGET)rCalMini();},   /* 773차: 오늘로 — 달력 이동 + 오늘 선택(폰 미니 격자도 다시 그림) */
   'nq.mob':()=>{nqOpen(true);const i=$('#nqQ');if(i)setTimeout(()=>i.focus(),120);},   /* 732차: 폰 검색 = 전체화면 */
   'cal.pickY':el=>{const c=CAL?CAL.view.currentStart:new Date();
     YM_Y=(YM_Y===null?c.getFullYear():YM_Y)+Number(el.dataset.d);
@@ -10846,7 +10942,8 @@ document.addEventListener('change',e=>{const el=e.target;if(!el||!el.dataset)ret
       const rmY=S.dfRm.slice(0,4);dfTrendDraw('trend','dfTrend',el.value===rmY?d.wks:dfDashWksOfYear(d.wk,el.value));}
     else{S.dfTrendYearSite=el.value;const key=dfRm()+'/'+S.dfSid,k=DF.kpi[key];if(!k)return;
       const rmY=S.dfRm.slice(0,4);dfTrendDraw('strend','dfSiteTrend',el.value===rmY?DF.sw[key]:dfWksOfYear(k.weekly,el.value));}}});
-document.addEventListener('input',e=>{if(e.target.id==='rkQ'){rkState('modal').search=e.target.value;e.target.closest('.rl-q-wrap').classList.toggle('has',!!e.target.value);clearTimeout(window.__rkQT);window.__rkQT=setTimeout(()=>dfRiskModalBody(),250);return;}   /* 735차: 민원 모달 검색 — 머리는 그대로 두고 본문만 */
+document.addEventListener('input',e=>{if(e.target.id==='recQ')e.target.closest('.rl-q-wrap').classList.toggle('has',!!e.target.value);
+  if(e.target.id==='rkQ'){rkState('modal').search=e.target.value;e.target.closest('.rl-q-wrap').classList.toggle('has',!!e.target.value);clearTimeout(window.__rkQT);window.__rkQT=setTimeout(()=>dfRiskModalBody(),250);return;}   /* 735차: 민원 모달 검색 — 머리는 그대로 두고 본문만 */
   if(e.target.id==='rkQs'){rkState('site').search=e.target.value;e.target.closest('.rl-q-wrap').classList.toggle('has',!!e.target.value);clearTimeout(window.__rkQT);window.__rkQT=setTimeout(()=>{rkRerender('site');const n=document.getElementById('rkQs');if(n){n.focus();n.setSelectionRange(n.value.length,n.value.length);}},250);return;}   /* 736차·757차: 현장 표 검색 — 표 카드만 다시 그리고 포커스 복원 */
   if(e.target.id==='recQ'){REC.q=e.target.value;
   const b=$('#mbody');if(!b)return;if(paintHTML(b,recBodyHTML()))ovsRefresh();recHeadSync(REC.view.length,REC.rows.length);}});
@@ -10883,16 +10980,18 @@ document.addEventListener('change',e=>{
    (소비자 dfSubSiteCfg 가 전원에게 즉시 입힌다 · 게시본 _dash.sites 에는 [등록] 때 실린다).
    신규 현장 위저드(confirmNewSite)와 같은 dfSiteCfgWrite 를 쓴다. */
 document.addEventListener('change',e=>{
-  const el=e.target.closest('[data-act="org.siteVac"],[data-act="org.siteShop"]');
+  const el=e.target.closest('[data-act="org.siteVac"],[data-act="org.siteShop"],[data-act="org.siteSuit"]');
   if(!el)return;
   if(!isEditor()){denyEdit();rOrg();return;}
   const st=(S.org.sites||[]).find(x=>x.id===el.dataset.id);if(!st)return;
-  if(el.dataset.act==='org.siteVac')st.showVacant=el.checked;
-  else st.hasCommercial=el.checked;
-  dfSiteCfgWrite(st.id,st);
-  if(DF._cfgLast)DF._cfgLast[st.id]={...(DF._cfgLast[st.id]||{}),hasCommercial:!!st.hasCommercial,showVacant:st.showVacant!==false};   /* org 스냅샷 재적용 보관본도 맞춰 둔다 — 에코 전 재렌더 대비 */
+  const f=el.dataset.act==='org.siteVac'?'showVacant':el.dataset.act==='org.siteSuit'?'lawsuit':'hasCommercial';
+  st[f]=el.checked;
+  /* 795차: 바뀐 필드만 쓴다 — 전체 set 은 화면에 아직 안 입혀진 다른 토글 값을 기본값으로 덮어썼다 */
+  if(S.live&&FB.db)FB.db.ref('siteConfig/'+st.id).update({[f]:el.checked,updatedAt:Date.now()}).catch(e=>{console.warn('[siteConfig] 쓰기 실패',st.id,e);fbErr(e);});
+  if(DF._cfgLast)DF._cfgLast[st.id]={...(DF._cfgLast[st.id]||{}),hasCommercial:!!st.hasCommercial,showVacant:st.showVacant!==false,lawsuit:!!st.lawsuit};   /* org 스냅샷 재적용 보관본도 맞춰 둔다 — 에코 전 재렌더 대비 */
   if(S.view==='defect')rDefect();   /* 열어 둔 하자 화면의 탭 구성 즉시 갱신(에코는 값이 같아 다시 안 그린다) */
-  toast('"'+(st.name||'이름 없음')+'" · '+(el.dataset.act==='org.siteVac'?('공가세대 탭을 '+(el.checked?'표시':'숨김')):('공가상가 탭을 '+(el.checked?'표시':'숨김')))+'으로 바꿨습니다');
+  toast('"'+(st.name||'이름 없음')+'" · '+(f==='lawsuit'?('소송현장 표시를 '+(el.checked?'켰습니다':'껐습니다'))   /* 796차: 소송 토글이 「공가상가 탭」 문구로 나왔다 */
+    :((f==='showVacant'?'공가세대':'공가상가')+' 탭을 '+(el.checked?'표시':'숨김')+'으로 바꿨습니다')));
 });
 /* 조직 표 입력을 떠나면 미뤄 둔 조직 그리기를 몰아 처리(615차 — orgHold 짝) */
 document.addEventListener('focusout',e=>{
@@ -10969,15 +11068,29 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('input',e=>{
   if(e.target.id==='tkQ'){
-    S.tkF={...S.tkF,q:e.target.value};
+    S.tkF={...S.tkF,q:e.target.value};e.target.closest('.dp-srch').classList.toggle('has',!!e.target.value.trim());
     clearTimeout(tkQT);tkQT=setTimeout(tkRefresh,160);   /* 전체 렌더는 포커스를 날린다 */
   }
 });
 /* 아래에 더 있다는 표시 — 스크롤이 남아 있으면 칸 아래쪽을 서서히 지운다(끝에 닿으면 없앤다).
    ⚠ 덧칠이 아니라 mask 라서 카드 배경색이 무엇이든 그대로 어울린다 */
-const SB_SEL='#content,.dp-body,.tk-list,.nq-res,.pf-emg,.rd-body,[data-sb],[data-sbx]';
+const SB_SEL='#content,.dp-body,.tk-list,.nq-res,.pf-emg,.rd-body,[data-sb],[data-sbx],[data-sbh]';
 function fadeOne(el){
   if(!el||!el.classList)return;
+  /* 797차: 머리 붙박이 표 칸(data-sbh — 조직 관리 계정·미배정·현장 표). 위 페이드는 **머리 줄 아래에서** 시작한다
+     (--sbh = thead 높이, 마스크가 머리 줄 구간은 그대로 둔다). 가로로도 넘치는 칸(data-sbx)은 여기서 함께 재고
+     CSS 가 세로·가로 두 판을 교차한다 — sb-fade-* 를 쓰면 한쪽 마스크가 다른 쪽을 덮어쓴다 */
+  if(el.hasAttribute('data-sbh')){
+    const th=el.querySelector('thead'),h=(th?th.offsetHeight:0)+'px';
+    if(el.style.getPropertyValue('--sbh')!==h)el.style.setProperty('--sbh',h);
+    const ov=el.scrollHeight>el.clientHeight+2,mv=el.scrollHeight-el.clientHeight-el.scrollTop;
+    const sx=el.getAttribute('data-sbx'),oh=sx!==null&&el.scrollWidth>el.clientWidth+2,mh=el.scrollWidth-el.clientWidth-el.scrollLeft;
+    el.classList.toggle('sbh-t',ov&&el.scrollTop>4);
+    el.classList.toggle('sbh-b',ov&&mv>4);
+    el.classList.toggle('sbh-l',oh&&sx!=='r'&&el.scrollLeft>4);
+    el.classList.toggle('sbh-r',oh&&mh>4);
+    return;
+  }
   /* 689차: 가로 스크롤 요소(data-sbx) — 탭 줄·상세표. 스크롤바는 숨기고 잘린 쪽만 페이드로 알린다.
      data-sbx="r" 는 오른쪽만 — 붙박이 첫 열(sticky) 이 있는 표에서 왼쪽 페이드가 그 열을 흐리게 만든다 */
   if(el.hasAttribute('data-sbx')){
@@ -11107,15 +11220,23 @@ function calFitRows(){
   return n<1?null:n;   /* 더보기 줄까지 넣을 자리도 없을 만큼 낮으면 자동에 맡긴다 */
 }
 function maxEvOf(){
-  if(isNarrow())return (typeof mcalIsLand==='function'&&mcalIsLand())?1:(document.body.classList.contains('mcal-full')?3:2);   /* 704차: 폰 큰 달력 3줄 · 가로 1줄 */
+  if(isNarrow()&&!WIDGET)return (typeof mcalIsLand==='function'&&mcalIsLand())?1:(document.body.classList.contains('mcal-full')?3:2);   /* 704차: 폰 큰 달력 3줄 · 가로 1줄 */
   const n=calFitRows();
   return n===null?true:n;
 }
 /* 첫 렌더·달 이동 뒤에 다시 재서 맞춘다 — 값이 그대로면 건드리지 않는다(무한 재렌더 방지) */
 let _maxEv=null;
 function calFitApply(){
-  if(!CAL||isNarrow())return;
-  const n=calFitRows();
+  if(!CAL||(isNarrow()&&!WIDGET))return;   /* 776차: 위젯은 폭이 좁아도 칸 높이 기준으로 맞춘다 */
+  let n=calFitRows();
+  /* 776차: 위젯은 칸 높이에 따라 막대 크기를 단계별로 줄인다 — ① 보통 ② 촘촘(막대 14px·숫자 여백 축소, .wid-tight) ③ 그래도 안 들어가면 「외 N건」 줄을 없애고 1줄만(.wid-nomore).
+     최소 크기에서도 막대·더보기가 날짜 칸을 넘지 않게 */
+  if(WIDGET){
+    const b=document.body;
+    if(n===null&&!b.classList.contains('wid-tight')){b.classList.add('wid-tight');n=calFitRows();}
+    else if(n!==null&&n>=2&&b.classList.contains('wid-tight')){b.classList.remove('wid-tight');const n2=calFitRows();if(n2===null)b.classList.add('wid-tight');else n=n2;}
+    if(n===null){b.classList.add('wid-nomore');n=1;}else b.classList.remove('wid-nomore');
+  }
   if(n===null||n===_maxEv)return;
   _maxEv=n;CAL.setOption('dayMaxEvents',n);
 }
@@ -11129,19 +11250,26 @@ function bindCalResize(){
        전환 중에는 그대로 두고, **끝난 뒤 한 번만** 정확히 맞춘다.
        ⚠ transitionend 를 못 받는 경우(중간에 다시 누름 등)를 대비해 타이머로도 마무리한다 */
     let endT=null;
+    /* 777차: 사이드바가 움직이는 동안 Chart.js 는 폭이 바뀔 때마다 다시 그려 프레임을 잡아먹었다(하자 화면 700ms 에 긴 프레임 7개·430ms) →
+       움직이는 동안은 responsive 를 끄고 캔버스를 CSS 로만 늘렸다가(시각적으로는 같이 늘어난다) 끝나면 한 번만 resize */
+    /* responsive 옵션은 생성 뒤엔 안 먹는다(216차 실패) → 인스턴스의 resize 를 잠시 빈 함수로 덮어 ResizeObserver 콜백을 무력화하고, 캔버스는 CSS 폭 100% 로 같이 늘어나게 둔다 */
+    const chartsFreeze=on=>{Object.values((typeof DF!=='undefined'&&DF.ch)||{}).forEach(ch=>{try{if(!ch||!ch.canvas)return;
+      if(on){if(!ch.__frz){ch.__frz=true;ch.resize=()=>{};}ch.canvas.style.width='100%';}
+      else if(ch.__frz){delete ch.resize;ch.__frz=false;ch.canvas.style.width='';ch.resize();}}catch(e){}});};
     const settle=()=>{
       clearTimeout(endT);endT=null;midT.forEach(clearTimeout);midT=[];
       document.body.classList.remove('sb-anim');
+      chartsFreeze(false);
       if(CAL)CAL.updateSize();
-      calFitApply();               /* 칸 높이가 바뀌었으면 보류함 상한도 다시 잰다 */
+      calFitApply();               /* 접힌 뒤 칸 높이에 맞춘 줄 수 */
     };
     /* ⚠ 전환 내내 손을 놓으면 여러 날에 걸친 막대(절대 배치)가 폭을 못 따라와 끝에서 뚝 움직인다.
        매 프레임은 너무 무거우므로 전환 중 두 번만 다시 맞춘다(391차) */
     let midT=[];
     const start=()=>{
       document.body.classList.add('sb-anim');   /* 전환 동안 달력을 배치 계산에서 떼어 낸다(391차) */
-      midT.forEach(clearTimeout);
-      midT=[100,220].map(ms=>setTimeout(()=>{if(CAL)CAL.updateSize();},ms));
+      midT.forEach(clearTimeout);chartsFreeze(true);
+      midT=[220].map(ms=>setTimeout(()=>{if(CAL)CAL.updateSize();},ms));   /* 777차: 중간 갱신 100ms 제거(긴 프레임 3개) — 220 하나만 */
       clearTimeout(endT);endT=setTimeout(settle,460);};   /* --sbtr .30s + 여유 */
     sb.addEventListener('transitionstart',e=>{
       if(e.propertyName==='width'||e.propertyName==='min-width')start();

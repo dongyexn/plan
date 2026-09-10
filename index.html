@@ -243,7 +243,7 @@ body>svg{position:absolute;width:0;height:0;overflow:hidden;}
 /* 236차: 접을 때는 자연스러운데 펼칠 때 글자가 갑자기 나타나던 문제 — 내용물 opacity 에 전환을 건다.
    .sbsc/.sb-bottom 은 overflow-x:hidden 이라 폭이 좁을 때 내용이 잘리고, 넓어지면 한 번에 뿅 보인다.
    mini 에서 내용물 opacity 를 0 으로 감추고 펼칠 때 .22s 뒤에 1 로 페이드하면 자연스럽다. */
-#sidebar{width:var(--sw);min-width:var(--sw);height:100%;display:flex;flex-direction:column;gap:0;background:var(--shell2);border-radius:0 8px 8px 0;overflow:hidden;border:0;transition:width var(--sbtr),min-width var(--sbtr);overflow:visible;z-index:200;}
+#sidebar{width:var(--sw);min-width:var(--sw);height:100%;display:flex;flex-direction:column;gap:0;background:var(--shell2);border-radius:0 8px 8px 0;overflow:hidden;border:0;transition:width .32s cubic-bezier(.4,0,.2,1),min-width .32s cubic-bezier(.4,0,.2,1);overflow:visible;z-index:200;}   /* 774차: 접힘 이징 */
 /* ⚠ 라이트에서는 흰 블록이 옅은 배경과 붙어 경계가 사라진다 — 카드와 같은 테두리를 둘러 준다(389차) */
 #sidebar>.teamsel,#sidebar>.sbsc,#sidebar>.sb-bottom,#sidebar>.sb-foot{
   border:0;box-shadow:none;border-radius:0;
@@ -259,7 +259,7 @@ body>svg{position:absolute;width:0;height:0;overflow:hidden;}
 /* ⚠ 팀 선택기가 숨어도 인접 선택자(+)는 그대로 맞는다 — 숨김을 [hidden] 으로 두고 그것을 빼야
    찾기 블록의 윗선이 살아남는다(391차: 이 한 줄 때문에 위 경계가 통째로 사라졌다) */
 #sidebar>.teamsel[hidden]{display:none!important;}   /* ⚠ .teamsel 의 display 지정이 hidden 을 이긴다 — !important 로 못 박는다(#tbRm 과 같은 사유) */
-#sidebar>.sbsc{border-radius:0;border-top:0;border-bottom:0;margin-bottom:-8px;}
+#sidebar>.sbsc{border-radius:0;border-top:0;border-bottom:0;margin-bottom:0;padding-bottom:0;}   /* 778차: 아래 끝을 「관리」 위 구분선에 맞춘다(전엔 -8px 로 겹쳐 마지막 줄이 구분선 위에 걸쳤다) */
 #sidebar>.sb-bottom{border-radius:0 0 var(--rxl) var(--rxl);border-top:0;position:relative;}
 /* 찾기 ↔ 메뉴, 메뉴 ↔ 관리 경계 — 좌우 6px 를 남긴 선(접으면 4px) */
 #sidebar>.sb-bottom::before{content:'';position:absolute;height:1px;background:var(--shell-line);left:15px;right:15px;}   /* 462차: 분류 사이 선과 같은 자리 */
@@ -282,7 +282,9 @@ body.sb-anim #fcal{contain:layout paint;will-change:transform;}
    ⚠ 여기 열거된 것들은 전부 display 가 아니라 width:0 으로 접혀 있어야 한다(display:none 이면 전환이 안 돈다) */
 #sidebar .nvi .nil,#sidebar .sbsl .sbsl-long,
 #sidebar .sb-acct-info,#sidebar .sb-acct-role{transition:opacity var(--t-base) .1s;}
-#sidebar.mini .nvi .nil,#sidebar.mini .sbsl .sbsl-long{opacity:0;transition:opacity var(--t-fast);}
+#sidebar.mini .nvi .nil,#sidebar.mini .sbsl .sbsl-long{opacity:0;transition:opacity .16s;}
+#sidebar .nvi .nil,#sidebar .sbsl .sbsl-long{transition:opacity .22s .08s;}   /* 774차: 펼칠 땐 폭이 어느 정도 열린 뒤 글자가 들어온다 */
+#sidebar .nvi{transition:background var(--t-fast),color var(--t-fast),padding .32s cubic-bezier(.4,0,.2,1),gap .32s cubic-bezier(.4,0,.2,1);}
 #sidebar.mini .sb-acct-info,#sidebar.mini .sb-acct-role{transition:opacity var(--t-fast);}
 .sbsc>*{flex-shrink:0;}
 .sb-bottom{flex:0 0 auto;padding:8px 8px 8px;}   /* 스크롤 영역 밖 — 목록이 길어도 관리·프로필은 늘 아래에 남는다 */
@@ -322,7 +324,8 @@ body.sb-anim #fcal{contain:layout paint;will-change:transform;}
    폭만 0 으로 접어 요소를 늘 살려 둔다(아이콘 위치는 그대로: 접힘 폭 64px 에서 내용칸이 정확히 32px). */
 #sidebar.mini .nil{flex:0 0 0;width:0;overflow:hidden;}
 /* 접으면 모든 블록의 내용물을 가운데로 모은다(폭 64px = 16+32+16 이라 아이콘 x 는 펼침과 같다) */
-#sidebar.mini .nvi{justify-content:center;padding:0 8px;gap:0;height:32px;}   /* 펼침과 같은 줄 높이(356차 실측 32px) */
+#sidebar.mini .nvi{padding-left:11px;}   /* 776차: 아이콘을 64px 가운데(8+11+13=32)로 — 패딩만 바뀌므로 트랜지션으로 미끄러진다(높이는 그대로) */
+#sidebar.mini .nvi.df-site{padding-left:11px;}   /* 777차: 점 가운데 8+11+11+2=32 — 펼침(29)과 이동량 3px 로 아이콘과 같다 */   /* 펼침과 같은 줄 높이(356차 실측 32px) */
 #sidebar.mini .sbsc,#sidebar.mini .sb-bottom{padding-left:8px;padding-right:8px;}
 /* 프로필 블록 — 구분선 대신 블록 간격으로 나뉜다 */
 .sb-foot{position:relative;margin:0;padding:7px 8px;display:flex;align-items:center;gap:8px;}
@@ -430,6 +433,7 @@ body.wid .tbr{display:none;}   /* 위젯에는 상단바가 없다 */
   body.mcal-full:not(.wid) #view-calendar .cal-ctl .cal-nb,body.mcal-mini:not(.wid) #view-calendar .cal-ctl .cal-nb{width:34px;height:34px;color:var(--lbl2);background:transparent;}
   body.mcal-full:not(.wid) #view-calendar .cal-ctl .cal-nb .icn,body.mcal-mini:not(.wid) #view-calendar .cal-ctl .cal-nb .icn{width:20px;height:20px;}
   body.mcal-full:not(.wid) #view-calendar .cal-ctl,body.mcal-mini:not(.wid) #view-calendar .cal-ctl{right:54px;}   /* 733차: 검색(34px·right 12) 바로 왼쪽, 틈 8px */
+  body.mcal-full:not(.wid) #view-calendar .cal-nb.cal-today,body.mcal-mini:not(.wid) #view-calendar .cal-nb.cal-today{width:auto;padding:0 9px;font-size:12.5px;white-space:nowrap;}   /* 773차: 폰 헤더 「오늘」 */
   body.mcal-full:not(.wid) #view-calendar .cal-head>.cal-ctl>.cal-nav,body.mcal-mini:not(.wid) #view-calendar .cal-head>.cal-ctl>.cal-nav{background:transparent;padding:0;}   /* 733차: 540행 캡슐 채움(--fill)을 벗긴다 — 햄버거·검색과 같은 맨 아이콘 */
   #appHdr .ah-right .tb-loc{color:var(--b400);font-size:0;padding:0 4px;}   /* 688차: 좁은 상단바엔 긴 문장이 안 들어간다 — data-s 의 「미게시」만. --bl 은 셸 변수라 여기선 흰색에 가깝다 */
   #appHdr .ah-right .tb-loc::after{content:attr(data-s);font-size:11px;}}
@@ -740,13 +744,17 @@ button.p-col:hover{box-shadow:inset 0 0 0 1px rgba(0,0,0,.10),0 0 0 3px var(--fi
 /* 하자 관리 — 사이드바 소분류(권역)와 그 아래 현장 */
 .nvi.df-site{padding:4px 8px 4px 22px;gap:8px;margin-bottom:0;font-size:12px;}
 .nvi.df-site .nil{font-size:12px;}
-.nvi.df-site .dot{width:4px;height:4px;border-radius:50%;background:var(--sepo);flex:0 0 auto;margin:0 0 0 5px;transition:background var(--tr);}   /* 점-이름 사이는 gap(8px)만 */
+.nvi.df-site .dot{width:4px;height:4px;border-radius:50%;background:var(--sepo);flex:0 0 auto;margin:0 0 0 11px;transition:background var(--tr);}   /* 점-이름 사이는 gap(8px)만 */
 .nvi.df-site:hover .dot,.nvi.df-site.act .dot{background:var(--b500);}
 /* 접힘 — display:none 이면 펼치는 순간 목록이 통째로 튀어나온다. 높이를 0 으로 접어 두면
    ⚠ 높이 자체는 auto 라 전환되지 않지만(스냅), 글자는 위 페이드 규칙을 타고 뒤따라 떠오른다 */
-#sidebar.mini .df-reg,#sidebar.mini .nvi.df-site{
-  height:0;min-height:0;padding-top:0;padding-bottom:0;margin-top:0;margin-bottom:0;
-  overflow:hidden;opacity:0;pointer-events:none;}
+/* 775차: mini 도 펼침과 **같은 줄·같은 자리** — 권역 머리는 높이를 그대로 두고 글자만 지운 채 짧은 선, 현장은 같은 패딩에 같은 4px 점(글자만 안 보임). 접힌 권역은 두 상태 모두 숨김 */
+#sidebar:not(.mini) .nvi.df-site.df-hid{display:none;}   /* 779차: 접힘에서는 접힌 권역의 현장도 점으로 보인다 — 안 그러면 권역 선만 줄줄이 남는다(사용자 스크린샷) */
+#sidebar.mini .df-reg{color:transparent;pointer-events:none;background:linear-gradient(var(--shell-sep,rgba(255,255,255,.14)),var(--shell-sep,rgba(255,255,255,.14))) 14px 60%/22px 1px no-repeat;}
+#sidebar.mini .df-reg .icn,#sidebar.mini .df-reg .n{opacity:0;}
+#sidebar.mini .nvi.df-site{pointer-events:auto;}
+#sidebar.mini .nvi.df-site .dot{background:rgba(255,255,255,.45);}
+#sidebar.mini .nvi.df-site.act .dot{background:#fff;}
 /* 상단바 기준월 칩 */
 #tbRm[hidden],#tbLoc[hidden],#tbPrintWrap[hidden]{display:none!important;}   /* display 지정이 hidden 을 이기던 버그 — 하자 관리 밖에선 숨는다 */
 .tb-rm{display:inline-flex;align-items:center;height:30px;padding:0 10px;margin:0;font-size:12px;font-weight:600;
@@ -1143,13 +1151,17 @@ body.snap .sbsl:first-of-type{display:none;}
 #view-defect .rk-tbl tbody tr.rk-r.open td:first-child,#mb .rk-tbl tbody tr.rk-r.open td:first-child{box-shadow:inset 2px 0 0 var(--b400);}
 .rk-tbl td{vertical-align:top;}
 /* 714차: 대시보드 민원 현황 히트맵 — 현장 × 레벨. 셀은 열 최대값 대비 농도 */
-.rkh .cardttl{margin-bottom:0;}
-.rkh-h,.rkh-r{display:grid;grid-template-columns:minmax(150px,2fr) repeat(5,minmax(44px,1fr));column-gap:4px;align-items:center;}   /* 734차: 현장명 풀네임 */
+.cal-nb.cal-today{width:auto;padding:0 12px;font-size:13px;font-weight:700;color:var(--lbl);}   /* 773차: 「오늘」 글자 알약 — 필터 알약 왼쪽 */
+.rkh .cardttl{margin-bottom:0!important;}   /* 770차: 제목과 표 사이 여백 0(카드 공통 .ct 의 12px 를 덮는다) */
+.rkh-h,.rkh-r{display:grid;grid-template-columns:52px var(--rkhn,200px) repeat(5,minmax(56px,1fr));column-gap:4px;align-items:center;}   /* 769차: 권역 52px + 현장명은 내용 폭(최대 220)까지만 — 나머지를 레벨 칸이 나눠 가진다 */
+.rkh-rg{font-size:11px;color:var(--lbl3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:2px;}
 .rkh-h{font-size:11px;color:var(--lbl3);text-align:center;padding-bottom:3px;}
 .rkh-r{padding:1px 0;}
 .rkh-body{display:flex;flex-direction:column;gap:2px;max-height:350px;overflow-y:auto;}   /* 행 22px × 16 = 352 — 16현장까지 스크롤 없이(옆 도넛 카드가 같이 늘어난다), 그 이상은 카드 안 스크롤 */
 .rkh-n{border:0;background:transparent;text-align:left;font-size:12px;font-weight:600;color:var(--lbl);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 2px;height:20px;font-family:inherit;cursor:pointer;border-radius:3px;}.rkh-n:hover{color:var(--bt1);}
-.rkh-c{display:block;width:100%;border:0;text-align:center;border-radius:3px;height:20px;line-height:20px;padding:0;font-size:12px;font-family:inherit;font-variant-numeric:tabular-nums;cursor:pointer;}.rkh-c:hover{box-shadow:inset 0 0 0 1.5px var(--lbl);}.rkh-ok{background:var(--fill);color:var(--lbl2);}
+.rkh-c{display:block;width:100%;border:0;text-align:center;border-radius:3px;height:20px;line-height:20px;padding:0;font-size:12px;font-weight:600;font-family:inherit;font-variant-numeric:tabular-nums;cursor:pointer;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.45),0 0 1px rgba(0,0,0,.3);box-shadow:0 1px 2px rgba(20,30,50,.14);position:relative;will-change:transform;transition:transform .22s cubic-bezier(.2,.7,.3,1),box-shadow .22s ease;}   /* 768·769·770차: 글자 흰색 600 + 진한 그림자, 셀 그림자. position 은 늘 relative(호버 때만 주면 레이아웃이 튄다) */
+.rkh-c:hover{transform:translateY(-1px) scale(1.04);box-shadow:0 5px 12px rgba(20,30,50,.20);z-index:1;}   /* 770차: 살짝 뜨는 정도로, 이징 부드럽게 */
+.rkh-ok{background:#B9BFC8;}   /* 768차: 양호도 흰 글자 — 연회색 대신 중간 회색 */
 .rk-th{cursor:pointer;user-select:none;}.rk-th.on{color:var(--lbl);}
 .rk-fr td{padding:4px 6px;background:var(--surf2);}.rk-q.cc{text-align:center;}
 .rk-tbl td{padding:8px 10px;}   /* 717차: 칩 열이 폭을 더 쓰도록 셀 여백 축소 */.rk-q{width:100%;height:26px;border:1px solid var(--sep);border-radius:3px;padding:0 8px;font-size:12px;font-family:inherit;background:var(--bg2);color:var(--lbl);}.rk-q:focus{outline:none;border-color:var(--b400);}
@@ -1289,6 +1301,8 @@ body.snap .sbsl:first-of-type{display:none;}
 #view-defect .dt th,#mb .rk-tbl th{padding:9px 12px;text-align:left;font-size:12px;font-weight:700;color:var(--lbl2);white-space:nowrap;}
 #view-defect .dt td,#mb .rk-tbl td{padding:10px 12px;border-bottom:1px solid var(--sep);vertical-align:middle;}
 #view-defect .dt tr:last-child td{border-bottom:none;}
+#view-defect .dt tbody tr.cur-row td{background:var(--tint-b,var(--b50));}   /* 771차: 월별 = 기준월 행, 주차별 = 기준월 마지막 주 행 강조 */
+#view-defect .dt tbody tr.cur-row td.mcell,#view-defect .dt tbody tr.cur-row td:first-child{font-weight:700;color:var(--bt1);}
 #view-defect .dt tbody tr:hover td,#mb .rk-tbl tbody tr:hover td{background:var(--b50);}
 /* 741차: 펼침 블록(tr.rk-ev)은 통째로 호버하지 않고 안쪽 표의 행만 — 바깥 규칙이 후손 tr 까지 잡는다 */
 #view-defect .dt tbody tr.rk-ev:hover td,#mb .rk-tbl tbody tr.rk-ev:hover td{background:transparent;}
@@ -1323,6 +1337,7 @@ body.snap .sbsl:first-of-type{display:none;}
 #view-defect .axfold-k{color:var(--lbl3)!important;font-style:italic;}
 #view-defect .axfold-h{font-style:normal;font-weight:700;font-size:11px;color:var(--bt1);background:var(--b100);border:1px solid var(--b200);border-radius:var(--rp);padding:2px 8px;margin-left:6px;display:inline-block;line-height:1.5;}
 #view-defect tr.axfold:hover .axfold-h{background:var(--b200);}
+body.df-printing .axfold-h,#dfPrintPages .axfold-h{display:none!important;}   /* 774차: 화면 그대로 인쇄에 「펼치기」 힌트가 찍히던 것 */
 /* 증감 배지(ba)·권역 배지 */
 #view-defect .ba{display:inline-flex;align-items:center;font-size:11px;font-weight:600;padding:2px 8px;border-radius:var(--rp);white-space:nowrap;font-variant-numeric:tabular-nums;}
 #view-defect .bbl{background:var(--b100);color:var(--bt1);}
@@ -1795,6 +1810,7 @@ body:not(.wid) .btn.dp-add.on:hover{background:transparent;color:#7DA9EA;}   /* 
 .tkwrap{display:grid;grid-template-columns:264px minmax(0,1fr);gap:var(--s3);align-items:stretch;flex:1;min-height:0;overflow:hidden;}
 .tkside{display:flex;flex-direction:column;gap:var(--s2);min-height:0;height:100%;overflow:hidden;}
 .tks-card{padding:var(--s2) var(--s3);}
+.tkbar-wrap{display:flex;flex-direction:column;gap:var(--s2);}   /* 769차: 미니 달력·보류한 업무·찾기 카드 사이 간격 — 다른 카드 열과 같게(전엔 붙어 있었다) */
 .tks-hold{flex:0 0 auto;padding:9px 10px;}
 .tks-hold .tks-item{margin-top:0;}
 /* 오른쪽 열 — 업무 일정과 같은 구성: 제목 없는 필터 카드 + 제목이 붙은 업무 패널 */
@@ -1811,6 +1827,9 @@ body:not(.wid) .btn.dp-add.on:hover{background:transparent;color:#7DA9EA;}   /* 
 .dp-srch .dp-srch-i{position:absolute;left:9px;top:50%;transform:translateY(-50%);width:13px;height:13px;
   color:var(--lbl3);pointer-events:none;z-index:3;}   /* 517차: 포커스 시 입력칸이 z-index:1 로 올라와 아이콘을 덮었다 */
 .dp-srch>.inp{padding-left:28px;}
+.dp-srch-x{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:18px;height:18px;border:0;border-radius:50%;background:var(--fill);color:var(--lbl2);padding:0;display:none;align-items:center;justify-content:center;cursor:pointer;z-index:2;}   /* 771차: 찾기 × — 값 있을 때만 */
+.dp-srch-x .icn{width:10px;height:10px;}
+.dp-srch.has .dp-srch-x{display:flex;}.dp-srch.has>.inp{padding-right:28px;}
 /* 필터 여닫이 — 611차: 꺾쇠를 걷고 현장 지도와 같은 필터 아이콘(#i-filter)으로.
    ⚠ 회전 규칙(rotate 90/-90)도 함께 없앴다 — 필터 아이콘은 가리키는 방향이 없어 돌리면 뜻이 깨진다.
    여닫힘은 아이콘 방향이 아니라 아래 `.on` 점과 펼쳐진 본문이 알린다. */
@@ -1879,6 +1898,7 @@ body:not(.wid) .btn.dp-add.on:hover{background:transparent;color:#7DA9EA;}   /* 
   background:var(--surf2);border-bottom:1px solid var(--sep);}
 .tkwk-h b{font-size:13px;font-weight:700;color:var(--lbl);letter-spacing:.01em;}
 .tkwk-period{font-size:12px;font-weight:700;color:var(--lbl2);font-variant-numeric:tabular-nums;}
+.tkwk-h .c{margin-left:auto;font-size:11px;font-weight:700;color:var(--lbl2);background:var(--fill);border-radius:3px;padding:2px 8px;font-variant-numeric:tabular-nums;}   /* 770차: 주간 업무 열 머리 오른쪽 건수 배지(현장별 업무와 같은 꼴) */
 .tkwk-col .tk-list{padding:0;padding-bottom:4px;}   /* 표는 칸을 꽉 채운다 — 아래 여백을 두면 마지막 행만 떠 보인다(359차) */
 /* 칸이 절반이라 창이 좁으면 위아래로 세운다 */
 @media (max-width:1360px){
@@ -2241,6 +2261,8 @@ body.pickmode #tkRoot .tk-item,body.pickmode .day-panel .plan{user-select:none;}
 .site-pick{flex-shrink:0;width:24px;height:24px;border-radius:3px;display:inline-flex;align-items:center;justify-content:center;color:var(--lbl3);border:0;background:transparent;cursor:pointer;}
 .site-pick:hover{background:var(--fill);color:var(--bt1);}
 .site-pick .icn{width:12px;height:12px;}
+.site-pick.site-pick-txt{width:auto;padding:0 9px 0 6px;gap:4px;font-size:12px;font-weight:600;color:var(--bt1);border:1px dashed var(--sepo);}   /* 771차: 현장 없을 때 글자 버튼 */
+.site-pick.site-pick-txt:hover{background:var(--tint-b,var(--b50));}
 .site-on{display:inline-flex;align-items:center;height:24px;padding:0 8px;border-radius:3px;background:var(--fill);border:1px solid var(--sep);font-size:12px;font-weight:600;color:var(--lbl2);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;}   /* 라운드는 업무 막대와 같은 5px */
 .site-none{font-size:12px;color:var(--lbl3);display:inline-flex;align-items:center;height:26px;}
 .spk{display:flex;flex-direction:column;gap:4px;max-height:48dvh;overflow-y:auto;}
@@ -2259,6 +2281,14 @@ body.pickmode #tkRoot .tk-item,body.pickmode .day-panel .plan{user-select:none;}
 .ctx-it.dg:hover{background:rgba(221,59,48,.1);color:var(--rd);}
 .ctx-sep{height:1px;background:var(--sep);margin:4px 6px;}
 /* ── 툴팁 — data-tip 이 있는 요소에 잠깐 머무르면 뜬다 ── */
+#chTip{position:fixed;left:0;top:0;z-index:3200;pointer-events:none;opacity:0;visibility:hidden;transition:opacity var(--t-fast);will-change:transform;
+  background:rgba(28,32,42,.96);color:#fff;border-radius:6px;padding:11px 12px 12px;box-shadow:var(--sh-2);min-width:150px;font-size:12px;}   /* 782차: 추이 차트 툴팁(이름 왼쪽·값 오른쪽) */
+#chTip.on{opacity:1;visibility:visible;}
+#chTip .t{font-weight:700;line-height:1.2;margin:2px 0 10px;}   /* 785차: 제목(「4월 4주」) 위 2 · 아래 10 — 첫 줄과 붙어 있었다 */
+#chTip .r{display:flex;align-items:center;gap:7px;line-height:1.7;}
+#chTip .r i{width:9px;height:9px;border-radius:50%;flex:0 0 auto;}
+#chTip .r .n{flex:1;min-width:0;white-space:nowrap;color:rgba(255,255,255,.88);}
+#chTip .r b{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;}
 #htip{position:fixed;top:-999px;left:-999px;z-index:3200;max-width:280px;padding:6px 10px;border-radius:3px;
   background:rgba(28,32,42,.96);color:#fff;font-size:12px;font-weight:600;line-height:1.45;
   box-shadow:var(--sh-2);pointer-events:none;opacity:0;visibility:hidden;
@@ -2275,6 +2305,7 @@ body.pickmode #tkRoot .tk-item,body.pickmode .day-panel .plan{user-select:none;}
 #evePop b{font-size:13px;font-weight:700;}
 #evePop::before{content:'';position:absolute;top:-5px;left:var(--ax,50%);margin-left:-5px;
   border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:5px solid var(--b600);}
+#evePop.side::before{top:50%;left:-5px;margin-left:0;transform:translateY(-50%);border-bottom:5px solid transparent;border-top:5px solid transparent;border-right:5px solid var(--b600);border-left:0;}   /* 779차: 접힌 사이드바 옆에 붙을 때는 화살표를 왼쪽으로 */
 #evePop:hover{background:var(--b500);}
 /* 위젯 새 게시월 말풍선(615차) — evePop 과 같은 골격, 차콜(--lbl). 꼬리는 설정 톱니를 가리킨다 */
 #dfNewPop{position:fixed;z-index:3100;padding:7px 12px;border-radius:3px;background:var(--lbl);color:#fff;
@@ -2339,6 +2370,21 @@ body.pickmode #tkRoot .tk-item,body.pickmode .day-panel .plan{user-select:none;}
 .mg-grid{display:grid;grid-template-columns:264px minmax(0,1fr);gap:var(--s3);align-items:start;}
 .mg-grid .set-col>.card{padding:0;overflow:hidden;}   /* 표·목록이 카드를 꽉 채운다 — 숨은 줄·칸 안쪽이 갖는다(342차) */
 @media(max-width:980px){.mg-grid{grid-template-columns:minmax(0,1fr);}}   /* 하자처리 현황과 동일 */
+/* 796차: 조직 관리(데스크톱) — 화면은 굴리지 않고 **표 안쪽만** 굴린다(열 이름 줄 붙박이). 계정·미배정·현장 표 공통.
+   카드는 내용만큼이되 화면보다 길면 줄어들고(flex 0 1 auto + min-height 0 을 층마다), 넘친 만큼 표 칸이 스크롤한다.
+   왼쪽 열(팀·권역·지도)은 창이 낮을 때만 자체 스크롤. ⚠ 폰(≤980)은 685차 한 줄 쌓기 그대로(화면 스크롤) */
+@media(min-width:981px){
+  #content>#view-org.act{overflow:hidden;}
+  #view-org .mg-grid{flex:1;min-height:0;grid-template-rows:minmax(0,1fr);align-items:stretch;}
+  #view-org .mg-grid>.set-col{display:flex;flex-direction:column;min-height:0;}
+  #view-org .mg-grid>.set-col>*{flex-shrink:0;}
+  #view-org .mg-grid>.set-col:first-child{overflow-y:auto;}
+  #view-org .mg-grid>.set-col:last-child>.card{flex:0 1 auto;min-height:0;display:flex;flex-direction:column;}
+  #view-org #acctPane,#view-org #sitePane,#view-org #siteRoot{flex:0 1 auto;min-height:0;display:flex;flex-direction:column;}
+  #view-org #acctRoot,#view-org #freeRoot,#view-org #siteRoot>[data-sbx]{flex:0 1 auto;min-height:0;overflow:auto;}
+  #view-org #siteRoot>.mg-savebar,#view-org #siteRoot>.tm-empty{flex-shrink:0;}
+  #view-org #siteRoot .mgtbl thead th,#view-org #acctRoot .utbl thead th,#view-org #freeRoot .utbl thead th{position:sticky;top:0;z-index:2;border-bottom:0;box-shadow:inset 0 -1px 0 var(--sep);}   /* 붙박이 칸은 collapse 테두리가 따라오지 않는다 — 선을 그림자로 */
+}
 /* 계정 · 현장 전환 — 업무 현황의 보기 전환과 같은 생김새(340차) */
 .orgseg{margin-bottom:var(--s2);}
 /* ⚠ 여백은 업무 현황과 같은 8px 이어야 한다(389차) — 12px 로 두면 오른쪽 카드만 4px 내려앉아
@@ -2444,12 +2490,12 @@ select.mg-inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-
 /* ⚠ 면·선이 모두 흰색에 가까워 지도가 바래 보였다(530차) — 면은 한 단 진하게, 선은 --sepo 로 올린다 */
 .okm-pv{fill:var(--surf2);stroke:none;cursor:pointer;opacity:.72;}   /* 597차: 면은 채우기만 — 테두리는 .okm-pvl(공유수면 해상경계 직선을 끊은 선) */
 .okm-pvl{fill:none;stroke:var(--sepo);stroke-width:.8;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke;pointer-events:none;opacity:.72;}
-.okm-pv.has{fill:rgba(37,99,235,.045);}   /* 583차: 현장이 있는 시도 — 선택(.on)보다 한 단 옅은 하늘색 */
+.okm-pv.has{fill:rgba(37,99,235,.09);}   /* 583차: 현장이 있는 시도 — 선택(.on)보다 한 단 옅은 하늘색 */
 .okm-pv.on{fill:var(--b50);}   /* 550차: 시도 호버 면은 .okm-hv(겹층)가 그린다 — :hover 로 바꾸면 경계 전체를 다시 칠한다 */
 .okm-sl{fill:none;stroke:var(--b400);stroke-width:1.4;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke;pointer-events:none;}
 /* 584차: 시군구 면 — 선택한 시도 안에서만 그린다. 현장이 있는 시군구는 하늘색. 광주 외곽선은 늘 그린다(전남광주 통합 표시에서 광주를 구분) */
 .okm-mp{fill:transparent;stroke:none;}
-.okm-mp.has{fill:rgba(37,99,235,.07);}
+.okm-mp.has{fill:rgba(37,99,235,.16);}   /* 781차: 현장 있는 시·군 음영을 진하게 */
 .okm-gj{fill:none;stroke:var(--sepo);stroke-width:.8;stroke-linejoin:round;vector-effect:non-scaling-stroke;pointer-events:none;opacity:.8;}   /* 587차: 시군구 경계와 같은 색, 조금 더 진하게만 */
 .okm-mn{fill:none;stroke:var(--sepo);stroke-width:.7;stroke-linejoin:round;vector-effect:non-scaling-stroke;pointer-events:none;opacity:.42;}
 .okm-sb{fill:none;stroke:var(--sepo);stroke-width:.5;stroke-linejoin:round;vector-effect:non-scaling-stroke;pointer-events:none;opacity:.24;}
@@ -2457,7 +2503,9 @@ select.mg-inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-
 .okm-fr{fill:none;stroke:var(--sep);stroke-width:.8;vector-effect:non-scaling-stroke;pointer-events:none;}
 .okm-pl{fill:var(--lbl3);font-weight:600;paint-order:stroke;stroke:var(--bg2);stroke-linejoin:round;pointer-events:none;}
 .okm-pl.on{fill:var(--lbl2);}
-.okm-ct{fill:var(--lbl3);paint-order:stroke;stroke:var(--bg2);opacity:.85;stroke-linejoin:round;pointer-events:none;opacity:.85;}
+.okm-ct{fill:var(--lbl3);paint-order:stroke;stroke:var(--bg2);stroke-linejoin:round;pointer-events:none;opacity:.85;}
+.okm-ct.dong{opacity:.55;}   /* 789차: 동·읍·면은 시·군보다 연하게 */
+.okm-snm{fill:var(--lbl2);font-weight:600;paint-order:stroke;stroke:rgba(255,255,255,.9);stroke-linejoin:round;pointer-events:none;}   /* 788차: 시·군 이름과 어울리게 — 굵기 600·색 --lbl2·테두리 반투명. 792차: 그림자는 kmSVG 인라인(viewBox 단위 보정) */
 .okm-ct.hov{fill:var(--lbl);font-weight:700;opacity:1;}   /* 547차: 시군구 이름 강조 — 550차부터 겹층의 .okm-hvt 사본에 붙는다 */
 /* ⚠ 굵기는 여기서만 준다 — non-scaling-stroke 라 화면 px 로 읽힌다(530차 버그) */
 .okm-pin{stroke:var(--bg2);stroke-width:1;vector-effect:non-scaling-stroke;cursor:pointer;}
@@ -2469,9 +2517,7 @@ select.mg-inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-
 #mb.kmw .mo-x{top:11px;right:13px;}
 #mb.kmw .okm-wrap{margin-top:0;}
 .kmw-grid{display:grid;grid-template-columns:1fr 284px;gap:16px;align-items:start;}   /* 565차: 숫자 두 열이 생겨 284 */
-/* 571차: 지도 오른쪽을 패널 쪽으로 페이드 — mask 가 아니라 그라데이션 판을 얹는다(mask 는 경계 층·겹층을 한 표면으로 합쳐 550차 렉 해결을 되돌린다) */
-#okmBigRoot .okm-wrap::after{content:'';position:absolute;top:0;right:0;bottom:0;width:36px;pointer-events:none;z-index:3;
-  background:linear-gradient(to right,rgba(255,255,255,0),var(--bg2));}   /* 548차: 지도 + 현장 목록 */
+/* 796차: 571차의 지도 오른쪽 페이드(.okm-wrap::after)는 뺐다(사용자) — 모달 지도에는 페이드를 두지 않는다 */
 /* 550차: 우측 패널은 현장 · 담당자 탭 — 549차의 플로팅 범례를 여기로 합쳤다 */
 /* 551차: 패널 탭은 글자만 — 판·테두리 없이 진한 글자가 현재 탭이다(헤더·사이드바와 같은 무몰딩) */
 /* 560차: 패널 머리는 사이드바 계정·현장과 같은 이분할 세그(.seg) — 배지 없음 */
@@ -2513,6 +2559,7 @@ select.mg-inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-
 .kml-g::after{content:'';position:absolute;left:10px;right:10px;bottom:-4px;height:1px;background:var(--sep);}
 .kml-g:hover,.kml-g.on{color:var(--b700,var(--b600));}
 .kml-n{margin-left:auto;flex-shrink:0;width:40px;text-align:right;font-style:normal;font-size:12.5px;font-weight:500;color:var(--lbl3);font-variant-numeric:tabular-nums;}
+.kml-g .kml-n{font-weight:700;color:var(--lbl);}   /* 789차: 권역 줄(소계)만 검게 — 담당자 줄은 원래대로 */
 /* 562차: 합계는 권역 판과 같은 꼴(음영 판 + 머리줄 하나) — 일체감. 숫자만 진하다 */
 .kml-f{height:38px;margin:6px 6px 0;padding:0 10px;border-radius:3px;background:rgba(120,120,128,.055);display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--lbl2);}
 /* 565~566차: 수는 표처럼 — 단위 글자 없이 줄마다 숫자 두 열(.kml-s 현장수 · .kml-n 세대), 같은 폭의 오른쪽 정렬이라 머리줄·항목·합계가 한 격자에 선다 */
@@ -2536,7 +2583,6 @@ select.mg-inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-
 .okm.pan{cursor:grab;}
 .okm-wrap.drag svg{cursor:grabbing;}
 .okm-wrap.drag svg *{pointer-events:none;}   /* 담당자 미지정 — 공통 업무 막대와 같은 '속 빈' 문법(535차) */
-.okm-ld{fill:none;stroke:var(--sepo);stroke-width:.8;vector-effect:non-scaling-stroke;pointer-events:none;}
 /* 뒤로는 지도 위 오른쪽 위에 얹는다 — 하단바를 없앴다(528차) */
 .okm-back{position:absolute;left:8px;top:8px;width:28px;height:28px;z-index:2;border-radius:3px;
   display:flex;align-items:center;justify-content:center;color:var(--lbl3);
@@ -2862,7 +2908,7 @@ body:not(.wid) .appo{display:flex;}
 /* 458차: 달력 상단 필터 팝업 — 설정 팝업과 같은 문법(위젯의 꺽쇠 경험과 동일) */
 #calFiltWrap{position:relative;}
 /* 459차: 위젯에서도 같은 꺽쇠 필터를 쓴다(옛 필터 카드가 사라졌으므로) */
-body.wid #calFiltWrap{display:flex;}
+body.wid #calFiltWrap,body.wid #calTodayWrap{display:flex;}   /* 774차: 위젯에도 「오늘」 */
 /* 459차: 위젯 필터와 같은 폭·여백 */
 /* 458차: 달력 머리 팝업이 카드에 잘리지 않게 — 머리 줄만 넘침을 허용한다 */
 #view-calendar .cal-card{overflow:visible;}
@@ -2893,6 +2939,11 @@ body.wid #fcal .fc-daygrid-more-link{font-size:round(calc(11px*var(--wfz)),1px);
 body.wid #fcal .fc-col-header-cell-cushion{font-size:round(calc(12.5px*var(--wfz)),1px);}
 body.wid #fcal .fc-event-title,body.wid #fcal .fc-event-time{font-size:round(calc(11px*var(--wfz)),1px);}
 body.wid #fcal .fc-event{height:round(calc(18px*var(--wfz)),1px);padding:0 calc(5px*var(--wfz));font-weight:500;}
+/* 776차: 칸이 낮을 때의 단계 — 촘촘(14px) → 더보기 줄 없음 */
+body.wid.wid-tight #fcal .fc-event{height:round(calc(14px*var(--wfz)),1px);font-size:round(calc(10px*var(--wfz)),1px);}
+body.wid.wid-tight #fcal .fc-daygrid-day-number{padding:1px 5px 0;}
+body.wid.wid-tight #fcal .fc-daygrid-event-harness{margin-top:1px!important;}
+body.wid.wid-nomore #fcal .fc-daygrid-day-bottom{display:none;}
 /* ⚠ 그림자는 글자를 흐리게 만든다 — 밝은 막대는 글자색을 어둡게 바꾸는 것으로 이미 해결했으므로 쓰지 않는다 */
 /* 노랑·연두처럼 밝은 막대는 글자를 어둡게 쓰고 그림자도 밝은 쪽으로 뒤집는다.
    ⚠ FullCalendar 의 textColor 옵션은 #fcal 규칙에 가려 먹지 않는다 — 색은 여기서 정한다 */
@@ -3335,7 +3386,8 @@ body:not(.wid) .nq-panel{padding-top:6px;}}
   body:not(.wid) #view-defect .mom-row .bar>*:last-child{overflow:hidden;white-space:nowrap;}   /* 값이 칸을 넘어도 이웃 배지를 침범하지 않게 */
   body:not(.wid) #view-defect .mom-row .delta{min-width:0;}
   body:not(.wid) #view-defect .mom-row .delta .d{padding:2px 5px;font-size:10.5px;}
-  body:not(.wid) #view-defect .rkh-h,body:not(.wid) #view-defect .rkh-r{grid-template-columns:minmax(0,1.6fr) repeat(5,minmax(34px,1fr));column-gap:3px;}   /* 742차: 히트맵 첫 열 150px 고정이 폰에서 가로 스크롤을 만들었다 */
+  body:not(.wid) #view-defect .rkh-h,body:not(.wid) #view-defect .rkh-r{grid-template-columns:0 minmax(0,1.6fr) repeat(5,minmax(34px,1fr));column-gap:3px;}   /* 769차: 폰은 권역 칸 접음 */
+  body:not(.wid) #view-defect .rkh-rg{display:none;}   /* 742차: 히트맵 첫 열 150px 고정이 폰에서 가로 스크롤을 만들었다 */
   body:not(.wid) #view-defect .ltrmom-head{min-width:1118px;}
   /* 751차: 민원 세대 현황 카드는 장기미처리 카드 문법을 빌렸지만 폰에서는 폭에 맞춘다 — 가로 스크롤은 안쪽 현황도(.rkm-wrap)만 */
   body:not(.wid) #view-defect .rkmom-card{overflow-x:visible;}
@@ -3568,6 +3620,16 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
   mask-image:linear-gradient(to right,transparent,#000 28px);}
 .sb-fade-l.sb-fade-r{-webkit-mask-image:linear-gradient(to right,transparent,#000 28px,#000 calc(100% - 28px),transparent);
   mask-image:linear-gradient(to right,transparent,#000 28px,#000 calc(100% - 28px),transparent);}
+/* 797차: 머리 붙박이 표 칸(data-sbh) — 세로 판(--mv)은 머리 줄(--sbh) 아래부터 지우고 가로 판(--mh)과 교차한다.
+   페이드가 없을 땐 마스크를 아예 걸지 않는다(스크롤 칸이 늘 합성 층이 되지 않게) */
+[data-sbh]{--mv:linear-gradient(#000,#000);--mh:linear-gradient(#000,#000);}
+[data-sbh].sbh-t{--mv:linear-gradient(to bottom,#000 var(--sbh,0px),transparent var(--sbh,0px),#000 calc(var(--sbh,0px) + 26px));}
+[data-sbh].sbh-b{--mv:linear-gradient(to bottom,#000 calc(100% - 26px),transparent);}
+[data-sbh].sbh-t.sbh-b{--mv:linear-gradient(to bottom,#000 var(--sbh,0px),transparent var(--sbh,0px),#000 calc(var(--sbh,0px) + 26px),#000 calc(100% - 26px),transparent);}
+[data-sbh].sbh-r{--mh:linear-gradient(to right,#000 calc(100% - 28px),transparent);}
+[data-sbh].sbh-l{--mh:linear-gradient(to right,transparent,#000 28px);}
+[data-sbh].sbh-l.sbh-r{--mh:linear-gradient(to right,transparent,#000 28px,#000 calc(100% - 28px),transparent);}
+[data-sbh]:is(.sbh-t,.sbh-b,.sbh-l,.sbh-r){-webkit-mask-image:var(--mv),var(--mh);mask-image:var(--mv),var(--mh);-webkit-mask-composite:source-in;mask-composite:intersect;}
 /* 스크롤 막대는 아예 그리지 않는다(규약: 스크롤바는 자리를 차지하지 않는다).
    더 볼 내용이 있다는 신호는 위·아래 페이드(.sb-fade-t/.sb-fade-b)가 맡는다 */
 /* 스크립트가 옮기는 스크롤은 부드럽게(휠·손가락 스크롤은 운영체제가 맡는다) */
@@ -3806,9 +3868,9 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 .uz.std .uz-link{color:var(--bt1);font-weight:700;}
 .uz.std .uzh{font-size:11.5px;color:var(--lbl3);margin-top:4px;}
 .dfadv{margin:0 var(--s4) 12px;box-shadow:inset 0 1px 0 var(--sep);}   /* 게시 행과 같은 머리선 리듬 — 간격 애매함 해소(615차) */
-.dfadv>summary{list-style:none;cursor:pointer;font-size:12px;font-weight:600;color:var(--lbl2);padding:12px 2px 3px;margin-left:-6px;user-select:none;display:flex;align-items:center;gap:6px;}   /* 살짝 왼쪽(-6px) — 꺾쇠가 본문 시작선에 걸리게 */
+.dfadv>summary{list-style:none;cursor:pointer;font-size:12px;font-weight:600;color:var(--bt1);padding:12px 2px 3px;margin-left:-6px;user-select:none;display:flex;align-items:center;gap:6px;}   /* 살짝 왼쪽(-6px) — 꺾쇠가 본문 시작선에 걸리게 */
 .dfadv>summary::-webkit-details-marker{display:none;}
-.dfadv>summary::before{content:'';width:7px;height:7px;border-right:1.5px solid var(--lbl3);border-bottom:1.5px solid var(--lbl3);transform:rotate(-45deg);transition:transform .15s;margin-left:2px;}
+.dfadv>summary::before{content:'';width:7px;height:7px;border-right:1.5px solid var(--bt1);border-bottom:1.5px solid var(--bt1);transform:rotate(-45deg);transition:transform .15s;margin-left:2px;}
 .dfadv[open]>summary::before{transform:rotate(45deg);}
 .dfadv>summary:hover{color:var(--lbl);}
 /* NLQ 조건 칩(615차 리뷰에서 발견) — .ba 는 #view-defect 스코프라 찾기 패널에선 맨 텍스트가 됐다.
@@ -3946,7 +4008,7 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
     <div class="teamsel sb-title-team" id="teamsel"><div class="tsel-wrap" id="tselWrap"></div></div>
     <button class="sb-title-tg" data-act="nav.toggle" aria-label="사이드바 접기" data-tip="사이드바 접기"><svg class="icn" aria-hidden="true"><use href="#i-chevl"></use></svg></button>
   </div>
-  <div class="sbsc">
+  <div class="sbsc" data-sb>   <!-- 778차: 넘칠 때 위·아래 페이드(fadeOne) -->
     <div class="sbsl"><span class="sbsl-long">업무 관리</span><span class="sbsl-short">업무</span></div>
     <div class="nvi act" role="button" tabindex="0" data-view="calendar" data-act="nav.go">
       <div class="nic"><svg class="icn" aria-hidden="true"><use href="#i-cal"></use></svg></div>
@@ -4004,6 +4066,7 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
               <button class="cal-nb" data-act="cal.next" aria-label="다음"><svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg></button>
             </div>
             <div class="cal-ctl">
+              <div class="cal-nav appo" id="calTodayWrap"><button class="cal-nb cal-today" data-act="cal.today">오늘</button></div>
               <div class="cal-nav appo" id="calFiltWrap">
                 <button class="cal-nb" data-act="day.fmore" aria-label="필터" data-tip="필터" aria-expanded="false"><svg class="icn" aria-hidden="true"><use href="#i-filter"></use></svg></button>
                 <div class="tb-pop cal-filt-pop" id="calFilt">
@@ -4053,7 +4116,7 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
         <div class="dp-col">
           <div class="card day-panel">
             <div class="dp-lh">
-              <span class="dp-lh-t" id="dpCount">업무 0건</span>
+              <span class="dp-lh-t"><span id="dpDate"></span><span id="dpCount">업무 0건</span></span>
               <button class="btn bo bxs dp-add" data-act="plan.new" aria-label="업무 추가" data-tip="업무 추가"><svg class="icn" aria-hidden="true"><use href="#i-plus"></use></svg></button>
             </div>
             <div class="dp-body">
@@ -4106,14 +4169,14 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
           <div class="tkbar" id="orgBar"></div>
           <div class="card mb12">
             <div id="acctPane">
-              <div id="acctRoot"></div>
+              <div id="acctRoot" data-sbh></div>
             </div>
             <div id="sitePane" style="display:none">
               <div id="siteRoot"></div>
             </div>
           </div>
           <div class="card" id="freeCard" style="display:none">
-            <div id="freeRoot"></div>
+            <div id="freeRoot" data-sbh></div>
           </div>
         </div>
       </div>
@@ -4124,7 +4187,7 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
         <div class="set-col">
           <!-- 하자 데이터 등록(생산자) — 관리자 전용 · dfProdCardFill 이 표시/숨김과 값을 채운다(614차 · 615차 간소화) -->
           <div class="card" id="dfPubCard" style="display:none">
-            <div class="set-h">하자 데이터 등록</div>
+            <div class="set-h">하자 데이터</div>
             <div id="dfUz" class="uz std" data-act="dfp.uz">
               <svg class="uz-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="M12 18v-6"></path><path d="m9 15 3-3 3 3"></path></svg>
               <div class="uzt">파일을 끌어다 놓거나 <span class="uz-link">클릭해서 선택</span></div>
@@ -4145,6 +4208,10 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
                 <div class="tag-box" id="dfExTkBox"><input class="tag-in" id="dfExTk" placeholder="예: 공가세대점검"></div></div>
               <div class="ig2" style="margin-top:12px"><span class="il">업로드 이력</span><span id="dfUpHist" style="display:block;font-size:12px;color:var(--lbl2);line-height:1.7">—</span></div>
             </details>
+            <div class="share-row" style="box-shadow:inset 0 1px 0 var(--sep)">
+              <div class="share-info"><b>하자 관리 스냅샷</b><span>현재 게시월 기준 — 대시보드·현장·목록·분석을 담은 단일 HTML(로그인 없이 열립니다)</span></div>
+              <button class="btn bg2 bsm" data-act="set.dfsnap">내보내기</button>
+            </div>
           </div>
         </div>
         <div class="set-col set-col-stack">
@@ -4162,20 +4229,16 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
               <div class="share-info"><b>휴지통</b><span>삭제한 업무를 30일 보관합니다 — 복원하거나 완전히 지웁니다</span></div>
               <button class="btn bg2 bsm" data-act="trash.open">열기</button>
             </div>
-            <div class="share-row">
-              <div class="share-info"><b>하자 관리 스냅샷</b><span>현재 게시월 기준 — 대시보드·현장·목록·분석을 담은 단일 HTML(로그인 없이 열립니다)</span></div>
-              <button class="btn bg2 bsm" data-act="set.dfsnap">내보내기</button>
-            </div>
-            <div class="share-row">
-              <div class="share-info"><b>버전 · 오류 기록</b><span id="buildInfo">—</span></div>
-              <button class="btn bg2 bsm" data-act="set.copyErr">복사</button>
-            </div>
           </div>
           <div class="card">
             <div class="set-h">도움말</div>
             <div class="share-row">
               <div class="share-info"><b>사용 안내</b><span>화면별 사용 방법 — 저장소의 README 를 그대로 보여줍니다</span></div>
               <button class="btn bg2 bsm" data-act="set.guide"><svg class="icn" style="width:17px;height:17px"><use href="#i-help"></use></svg>열기</button>
+            </div>
+            <div class="share-row">
+              <div class="share-info"><b>버전 · 오류 기록</b><span id="buildInfo">—</span></div>
+              <button class="btn bg2 bsm" data-act="set.copyErr">복사</button>
             </div>
           </div>
                     <div class="set-card card">
@@ -4211,5 +4274,5 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 <!-- 762차: chart.umd·datalabels·korea-geo·apt-geo 는 app.js 의 loadChart()/loadGeo() 가 필요할 때 읽는다(첫 로드 800KB 절감) -->
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=767"></script>
+<script src="./app.js?v=797"></script>
 </body></html>
