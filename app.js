@@ -10,7 +10,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='854';
+const APP_VER='863';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -7980,6 +7980,7 @@ function dfTopbar(){
     if(on){if(S.dfSid){if(dfLocalDirty(S.dfSid))t='이 PC 원본 · 미게시 변경';}
            else{const n=dfLocalDirtySites().length;if(n)t='이 PC 원본 · 미게시 변경 '+n+'개 현장';}}
     lc.hidden=!t;lc.textContent=t;lc.dataset.s=t?'미게시':'';}   /* data-s: 좁은 화면(≤900)은 CSS 가 이 짧은 글자만 보인다 */
+  const xw=$('#tbXlWrap');if(xw)xw.hidden=(S.view!=='photo');   /* 855차: 엑셀 내보내기는 사진대지에서만 */
   if(pw){pw.hidden=!(on||S.view==='photo'||S.view==='dwg');   /* 인쇄 버튼 — 하자처리 현황 · 사진대지(798차) · 도면 인쇄(815차) */
     /* 801차: 왼쪽에 보이는 것이 있을 때만 구분선 */
     let prev=false;for(let e=pw.previousElementSibling;e;e=e.previousElementSibling)if(!e.hidden&&e.offsetParent!==null){prev=true;break;}
@@ -11537,7 +11538,7 @@ function widPlace(){
      창을 닫거나 새로고침하면 사라지는 것이 정상이다. 앱 안에서 다른 화면을 다녀오는 동안은 남는다.
    사진은 넣을 때 긴 변 2000px JPEG 로 줄여 blob URL 로 들고 있다(원본 File 은 놓는다) — 폴더째 수백 장을 넣어도
    미리보기·인쇄가 버티게. 자르기는 줄인 사진(src)에서 잘라 새 blob(url)을 만들고, 다시 열면 src 위에 영역을 보여 준다. */
-const PD={orient:'por',per:6,title:'사진대지',site:'',photos:[],sel:new Set(),anchor:'',seq:0,load:null,zoom:'w2',pz:0,page:1,split:false,tool:'none',color:'#E02424',lw:2,dash:0,undo:[],asel:null,clip:null};   /* 847차: asel=고른 표시 · clip=복사한 표시 */   /* 846차: 표시(원·네모·화살표) */   /* 807차: 폴더별 쪽 나누기. 808차: 용지 A4 고정·여백 10mm 고정·사진 번호 제거(인쇄 창에서 고르면 되는 것은 두지 않는다) */   /* 800차: 기본 세로 6장 · 현장명 공백. 802차: 용지·여백·자유 배율(pz) */
+const PD={orient:'por',per:6,title:'사진대지',site:'',photos:[],sel:new Set(),anchor:'',seq:0,load:null,zoom:'w2',pz:0,page:1,split:false,tool:'none',color:'#E02424',custom:'#7048E8',lw:2,dash:0,undo:[],asel:null,clip:null};   /* 856차: asel={id,idxs[]} · custom=사용자 지정색 */   /* 847차: asel=고른 표시 · clip=복사한 표시 */   /* 846차: 표시(원·네모·화살표) */   /* 807차: 폴더별 쪽 나누기. 808차: 용지 A4 고정·여백 10mm 고정·사진 번호 제거(인쇄 창에서 고르면 되는 것은 두지 않는다) */   /* 800차: 기본 세로 6장 · 현장명 공백. 802차: 용지·여백·자유 배율(pz) */
 const PD_MAX=2000;
 /* 800차: 파일·폴더 이름에서 위치·내용을 읽는다(예: 두정역/지하1층/트렌치 작업전.jpg → 위치 지하1층 · 내용 트렌치 작업 전).
    못 읽으면 빈칸으로 둔다 — 엉뚱하게 채우는 것보다 낫다. 단계 낱말은 **토막 끝**에서만 본다(「전경」·「전면」이 「전」으로 잡히지 않게) */
@@ -11600,7 +11601,7 @@ function pdPagesHTML(print){
       let i=cell?cell.i:next;
       if(!cell){for(let k2=k+1;k2<per;k2++){const c2=list[p][k2];if(c2){i=c2.i;break;}}}
       cells+=ph
-        ?'<div class="phs-cell'+(!print&&PD.sel.has(ph.id)?' sel':'')+'" data-id="'+ph.id+'" data-i="'+i+'"><div class="phs-ph'+(ph.fit&&ph.fit!=='fill'?' '+ph.fit:'')+'"><img src="'+ph.url+'" alt="" draggable="false">'+pdAnnSVG(ph)+'</div>'
+        ?'<div class="phs-cell'+(!print&&PD.sel.has(ph.id)?' sel':'')+'" data-id="'+ph.id+'" data-i="'+i+'"><div class="phs-ph'+(ph.fit&&ph.fit!=='fill'?' '+ph.fit:'')+'"><img src="'+ph.url+'" alt="" draggable="false"'+(ph.rot?' style="transform:rotate('+ph.rot+'deg)"':'')+'>'+pdAnnSVG(ph)+'</div>'
           +pdF('위 치','phs-loc',ph.loc)+pdF('내 용','phs-desc',ph.desc)+'</div>'
         :'<div class="phs-cell" data-i="'+i+'" data-fill="1"><div class="phs-ph"></div>'+pdF('위 치','phs-loc','')+pdF('내 용','phs-desc','')+'</div>';
     }
@@ -11630,10 +11631,6 @@ function rPhoto(){
         +[['off','이어서'],['on','폴더별']].map(([k,l])=>'<button class="'+((PD.split?'on':'off')===k?'act':'')+'" data-act="pd.split" data-s="'+k+'" data-tip="'+(k==='on'?'폴더가 바뀌면 새 쪽에서 시작합니다':'폴더와 상관없이 이어 붙입니다')+'">'+l+'</button>').join('')+'</span></div>'
       +'<div class="phs-add phs-fr2"><button data-act="pd.files"><svg class="icn" aria-hidden="true"><use href="#i-photo"></use></svg>사진</button>'
       +'<button data-act="pd.dir"><svg class="icn" aria-hidden="true"><use href="#i-folder"></use></svg>폴더</button></div></div></div>'
-    /* ⚠ 848차: 이 카드는 늘 그린다 — 사진을 넣을 때는 pdPages() 만 돌아 왼쪽 칸을 다시 그리지 않는다 */
-    +'<div class="card"><div class="tm-h"><span>내보내기</span></div><div class="phs-b">'
-      +'<button class="phs-xl" id="pdXl" data-act="pd.xlsx"'+(PD.photos.length?'':' disabled')+' data-tip="지금 미리보기 그대로 — 사진·표시·위치·내용·테두리까지 엑셀로">엑셀로 내보내기</button>'
-      +'<div class="phs-xlh">인쇄는 위 인쇄 단추 · PDF 는 인쇄 창에서 저장</div></div></div>'
     +'<div class="card"><div class="tm-h"><span>머리글</span></div><div class="phs-b">'
       +'<div class="phs-fr"><label for="pdTitle">제목</label><input id="pdTitle" class="inp inp-sm" data-pd="title" maxlength="30" autocomplete="off" value="'+esc(PD.title)+'"></div>'
       +'<div class="phs-fr phs-sitew"><label for="pdSite">현장명</label>'
@@ -11820,7 +11817,6 @@ function pdPages(){
   pdZoom();   /* 805차: 쪽 수가 배율에 영향을 준다(한 쪽뿐이면 두 쪽 칸을 비워 두지 않는다) — 다시 그릴 때마다 계산 */
   const c=$('#pdCnt');if(c)c.textContent=pdCntText();
   if(typeof pdAnnUI==='function')pdAnnUI();   /* 847차: 다시 그리면 고른 표시의 상자도 다시 */
-  const xl=$('#pdXl');if(xl)xl.disabled=!PD.photos.length;
   rPdSel();
 }
 function rPdSel(){
@@ -11835,45 +11831,59 @@ function rPdSel(){
     +'<div class="phs-fr"><label for="pdDesc">내용</label><input id="pdDesc" class="inp inp-sm" data-pd="desc" maxlength="80" autocomplete="off" value="'+esc(dv??'')+'"'+(dv===null?' placeholder="여러 값"':'')+'></div>'
     +'<div class="phs-fr"><label>사진</label><span class="seg">'
       +[['fill','늘림'],['contain','맞춤'],['cover','채움']].map(([k,l])=>'<button class="'+(fv===k?'act':'')+'" data-act="pd.fit" data-f="'+k+'">'+l+'</button>').join('')+'</span></div>'
-    +'<div class="phs-act phs-act3"><button data-act="pd.rot" data-d="-1" data-tip="왼쪽으로 90° 돌리기">↺ 왼쪽</button>'
-      +'<button data-act="pd.rot" data-d="1" data-tip="오른쪽으로 90° 돌리기">↻ 오른쪽</button>'
-      +'<button data-act="pd.swap"'+(list.length>1?' disabled':'')+' data-tip="위치·내용·순서는 그대로 두고 사진만 바꿉니다">사진 교체</button></div>'
-    +'<div class="phs-act phs-act2"><button data-act="pd.fillFirst"'+(list.length<2?' disabled':'')+' data-tip="선택한 것 중 맨 앞 사진의 위치·내용을 나머지에 복사합니다">첫 값 복사</button>'
-      +'<button data-act="pd.fillBlank"'+(list.length<2?' disabled':'')+' data-tip="빈 칸만 바로 앞 사진 값으로 채웁니다">빈칸 채우기</button></div>'
+    +'<div class="phs-act"><button data-act="pd.crop"'+(list.length>1?' disabled':'')+'><svg class="icn" aria-hidden="true"><use href="#i-crop"></use></svg>자르기</button>'
+    +'<button class="dg" data-act="pd.del"><svg class="icn" aria-hidden="true"><use href="#i-trash"></use></svg>삭제</button></div>'
     +'<div class="phs-tools">'
       +PD_TOOLS.map(([k,l])=>'<button class="'+(PD.tool===k?'act':'')+'" data-act="pd.tool" data-t="'+k+'">'+l+'</button>').join('')+'</div>'
-    +(PD.tool!=='none'||PD.asel
-      ?'<div class="phs-fr"><label>색·굵기</label><span class="phs-cw">'
+    +'<div class="phs-annb">'
+      +'<div class="phs-fr"><label>색</label><span class="phs-cw">'
         +PD_COLORS.map(c=>'<button class="phs-co'+(PD.color===c?' on':'')+'" style="background:'+c+'" data-act="pd.annColor" data-c="'+c+'" aria-label="'+c+'"></button>').join('')
-        +'<span class="seg phs-lw">'+[[1,'가늘게'],[2,'보통'],[4,'굵게']].map(([w,l])=>'<button class="'+(PD.lw===w?'act':'')+'" data-act="pd.annLw" data-w="'+w+'">'+l+'</button>').join('')+'</span></span></div>'
+        /* 856차: 마지막 칸은 사용자 지정색 — 누르면 색 고르개가 뜬다 */
+        +'<label class="phs-co phs-cox'+(PD_COLORS.includes(PD.color)?'':' on')+'" style="background:'+esc(PD_COLORS.includes(PD.color)?(PD.custom||'#7048E8'):PD.color)+'" data-tip="색 직접 고르기">'
+          +'<input type="color" id="pdColor" value="'+esc(PD_COLORS.includes(PD.color)?(PD.custom||'#7048E8'):PD.color)+'"></label>'
+        +'</span></div>'
       +'<div class="phs-fr"><label>선</label><span class="seg">'
         +[[0,'실선'],[1,'점선']].map(([d,l])=>'<button class="'+((PD.dash?1:0)===d?'act':'')+'" data-act="pd.annDash" data-d="'+d+'">'+l+'</button>').join('')+'</span></div>'
-      :'')
-    +((PD.tool!=='none'||PD.asel||list.some(p=>(p.ann||[]).length))?'<div class="phs-act phs-act2"><button data-act="pd.annUndo">되돌리기</button><button data-act="pd.annClear"'+(list.some(p=>(p.ann||[]).length)?'':' disabled')+'>이 사진 표시 지우기</button></div>':'')
-    +'<div class="phs-act"><button data-act="pd.crop"'+(list.length>1?' disabled':'')+'><svg class="icn" aria-hidden="true"><use href="#i-crop"></use></svg>자르기</button>'
-    +'<button class="dg" data-act="pd.del"><svg class="icn" aria-hidden="true"><use href="#i-trash"></use></svg>삭제</button></div></div></div>';
+      +'<div class="phs-fr"><label>굵기</label><span class="seg">'
+        +[[1,'가늘게'],[2,'보통'],[4,'굵게']].map(([w,l])=>'<button class="'+(PD.lw===w?'act':'')+'" data-act="pd.annLw" data-w="'+w+'">'+l+'</button>').join('')+'</span></div></div>'
+    +'</div></div>';
 }
 /* ═══ 846차: 사진 위 표시(원·네모·화살표·선) ═══
    좌표는 사진 칸을 0~100 으로 본 **비율**로 넣는다 — 배율을 바꾸거나 인쇄해도 같은 자리에 남는다.
    선 굵기는 `vector-effect:non-scaling-stroke` 라 화면과 종이에서 같은 두께가 된다. */
-const PD_TOOLS=[['none','고르기'],['rect','네모'],['ellipse','원'],['arrow','화살표']];   /* 847차: 선·지우개는 뺀다 — 지우기는 고른 뒤 Delete 나 우클릭 */
+const PD_TOOLS=[['rect','네모'],['ellipse','원'],['arrow','화살표']];   /* 855차: 「고르기」 단추는 뺀다 — 누른 도구를 다시 누르면 꺼지고, 그리고 나면 저절로 고르기로 돌아간다 */
 const PD_COLORS=['#E02424','#F59F00','#1C7ED6','#2F9E44','#111111'];
 const PD_DASH='6,4';   /* 849차: 점선 — 굵기와 무관하게 같은 간격으로 보이게 화면 단위(px) */
+/* 화면 기준 회전을 늘어난 좌표계로 옮긴 행렬 */
+function pdRotTf(a){
+  if(!a.rot)return '';
+  const box=$('#pdView .phs-ph');
+  const r=box?box.getBoundingClientRect():null;
+  const W=(r&&r.width)||4,H=(r&&r.height)||3;
+  const t=a.rot*Math.PI/180,c=Math.cos(t),s2=Math.sin(t);
+  const A=c,B=s2*W/H,C2=-s2*H/W,D=c;
+  const cx=(a.x+a.x2)/2,cy=(a.y+a.y2)/2;
+  const e=cx-A*cx-C2*cy,f=cy-B*cx-D*cy;
+  return ' transform="matrix('+[A,B,C2,D,e,f].map(v=>+v.toFixed(5)).join(' ')+')"';
+}
 function pdAnnSVG(ph,extra){
   const list=(ph&&ph.ann)||[];
   if(!list.length&&!extra)return '';
   const one=a=>{
     const c=esc(a.c||'#E02424'),w=a.w||2;
+    /* ⚠ 863차: 좌표계가 칸 비율대로 늘어나 있어(preserveAspectRatio=none) 그냥 rotate 를 걸면 **정사각형이 직사각형이 된다**.
+       화면에서 도는 것과 같게 하려면 늘림(S)을 되돌린 자리에서 돌려야 한다 — S⁻¹·R·S 를 matrix 로 적는다. */
+    const rot=pdRotTf(a);
     const st='fill="none" stroke="'+c+'" stroke-width="'+w+'"'+(a.d?' stroke-dasharray="'+PD_DASH+'"':'')+' vector-effect="non-scaling-stroke" stroke-linecap="'+(a.d?'butt':'round')+'" stroke-linejoin="round"';
-    if(a.t==='rect')return '<rect x="'+Math.min(a.x,a.x2)+'" y="'+Math.min(a.y,a.y2)+'" width="'+Math.abs(a.x2-a.x)+'" height="'+Math.abs(a.y2-a.y)+'" '+st+'/>';
-    if(a.t==='ellipse')return '<ellipse cx="'+((a.x+a.x2)/2)+'" cy="'+((a.y+a.y2)/2)+'" rx="'+(Math.abs(a.x2-a.x)/2)+'" ry="'+(Math.abs(a.y2-a.y)/2)+'" '+st+'/>';
-    if(a.t==='line')return '<line x1="'+a.x+'" y1="'+a.y+'" x2="'+a.x2+'" y2="'+a.y2+'" '+st+'/>';
+    if(a.t==='rect')return '<rect'+rot+' x="'+Math.min(a.x,a.x2)+'" y="'+Math.min(a.y,a.y2)+'" width="'+Math.abs(a.x2-a.x)+'" height="'+Math.abs(a.y2-a.y)+'" '+st+'/>';
+    if(a.t==='ellipse')return '<ellipse'+rot+' cx="'+((a.x+a.x2)/2)+'" cy="'+((a.y+a.y2)/2)+'" rx="'+(Math.abs(a.x2-a.x)/2)+'" ry="'+(Math.abs(a.y2-a.y)/2)+'" '+st+'/>';
+    if(a.t==='line')return '<line'+rot+' x1="'+a.x+'" y1="'+a.y+'" x2="'+a.x2+'" y2="'+a.y2+'" '+st+'/>';
     /* 화살표 — 촉은 선 끝에서 각도대로 두 획 */
     const dx=a.x2-a.x,dy=a.y2-a.y,len=Math.hypot(dx,dy)||1;
     const hx=Math.min(9,Math.max(3.5,len*0.28)),ang=Math.atan2(dy,dx),sp=0.42;
     const p1=[a.x2-hx*Math.cos(ang-sp),a.y2-hx*Math.sin(ang-sp)],p2=[a.x2-hx*Math.cos(ang+sp),a.y2-hx*Math.sin(ang+sp)];
-    return '<line x1="'+a.x+'" y1="'+a.y+'" x2="'+a.x2+'" y2="'+a.y2+'" '+st+'/>'
-      +'<polyline points="'+p1[0]+','+p1[1]+' '+a.x2+','+a.y2+' '+p2[0]+','+p2[1]+'" '+st+'/>';
+    return '<g'+rot+'><line x1="'+a.x+'" y1="'+a.y+'" x2="'+a.x2+'" y2="'+a.y2+'" '+st+'/>'
+      +'<polyline points="'+p1[0]+','+p1[1]+' '+a.x2+','+a.y2+' '+p2[0]+','+p2[1]+'" '+st+'/></g>';
   };
   return '<svg class="phs-ann" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">'
     +list.map(one).join('')+(extra?one(extra):'')+'</svg>';
@@ -11904,10 +11914,12 @@ document.addEventListener('pointermove',e=>{
   const r=_pdAnn.r;
   _pdAnn.a.x2=Math.max(0,Math.min(100,(e.clientX-r.left)/r.width*100));
   _pdAnn.a.y2=Math.max(0,Math.min(100,(e.clientY-r.top)/r.height*100));
-  if(e.shiftKey&&_pdAnn.a.t!=='line'&&_pdAnn.a.t!=='arrow'){   /* Shift = 정사각형·정원 */
-    const s=Math.min(Math.abs(_pdAnn.a.x2-_pdAnn.a.x),Math.abs(_pdAnn.a.y2-_pdAnn.a.y));
-    _pdAnn.a.x2=_pdAnn.a.x+Math.sign(_pdAnn.a.x2-_pdAnn.a.x)*s;
-    _pdAnn.a.y2=_pdAnn.a.y+Math.sign(_pdAnn.a.y2-_pdAnn.a.y)*s;
+  if(e.shiftKey&&_pdAnn.a.t!=='arrow'){
+    /* ⚠ 863차: 좌표는 칸을 0~100 으로 본 비율이라 %로 맞추면 칸 비율대로 찌그러진다 — **px 로 재서** 같게 만든다 */
+    const a=_pdAnn.a,W=r.width,H=r.height;
+    const px=Math.abs(a.x2-a.x)/100*W,py=Math.abs(a.y2-a.y)/100*H,d=Math.min(px,py);
+    a.x2=a.x+Math.sign(a.x2-a.x||1)*(d/W*100);
+    a.y2=a.y+Math.sign(a.y2-a.y||1)*(d/H*100);
   }
   pdAnnPaint(_pdAnn.id,_pdAnn.a);
 },true);
@@ -11919,7 +11931,7 @@ document.addEventListener('pointerup',()=>{
   if(small){pdAnnPaint(id);return;}
   pdAnnSnap(id);
   (ph.ann=ph.ann||[]).push(a);
-  PD.asel={id,idx:ph.ann.length-1};PD.tool='none';   /* 847차: 그리고 나면 바로 고를 수 있게 */
+  PD.asel={id,idxs:[ph.ann.length-1]};PD.tool='none';   /* 847차: 그리고 나면 바로 고를 수 있게 */
   document.body.classList.remove('pd-drawing');
   pdAnnPaint(id);pdAnnUI();rPdSel();
 },true);
@@ -11936,8 +11948,9 @@ document.addEventListener('keydown',e=>{
 /* 고른 표시가 있으면 색·굵기를 그 표시에 바로 입힌다 */
 function pdAnnApply(patch){
   const sel=PD.asel;if(!sel)return;
-  const ph=PD.photos.find(p=>p.id===sel.id);if(!ph||!ph.ann||!ph.ann[sel.idx])return;
-  pdAnnSnap(sel.id);Object.assign(ph.ann[sel.idx],patch);pdAnnPaint(sel.id);pdAnnUI();
+  const ph=PD.photos.find(p=>p.id===sel.id);if(!ph||!ph.ann)return;
+  const idxs=pdAselIdxs().filter(i=>ph.ann[i]);if(!idxs.length)return;
+  pdAnnSnap(sel.id);idxs.forEach(i=>Object.assign(ph.ann[i],patch));pdAnnPaint(sel.id);pdAnnUI();
 }
 function pdAnnSnap(id){
   const ph=PD.photos.find(p=>p.id===id);if(!ph)return;
@@ -11955,52 +11968,121 @@ function pdAnnHit(ph,x,y){
   return -1;
 }
 const PD_H=[['nw',0,0],['n',.5,0],['ne',1,0],['e',1,.5],['se',1,1],['s',.5,1],['sw',0,1],['w',0,.5]];
+/* 863차: 고른 도형의 상자·잡이도 **도형과 같이 돈다**. 좌표계가 0~100 으로 늘어난 칸이라
+   상자는 같은 좌표계의 SVG 로 그리고(찌그러짐까지 똑같이), 잡이는 그 자리에 HTML 로 얹는다(네모 모양 유지). */
+function pdAselIdxs(){return (PD.asel&&PD.asel.idxs)||[];}
+/* ⚠ 화면에서 도는 것과 같게 — 칸 비율(W:H)만큼 늘린 자리에서 돌리고 되돌린다 */
+function pdRotPt(x,y,cx,cy,deg,W,H){
+  if(!deg)return [x,y];
+  const r=deg*Math.PI/180,c=Math.cos(r),s2=Math.sin(r);
+  const dx=(x-cx)*W/100,dy=(y-cy)*H/100;
+  return [cx+(dx*c-dy*s2)/W*100,cy+(dx*s2+dy*c)/H*100];
+}
 function pdAnnUI(){
   $$('#pdView .phs-annui').forEach(e=>e.remove());
   const sel=PD.asel;if(!sel||PD.tool!=='none')return;
-  const ph=PD.photos.find(p=>p.id===sel.id);if(!ph||!ph.ann||!ph.ann[sel.idx])return;
-  const a=ph.ann[sel.idx],b=pdAnnBox(a);
-  const arrow=a.t==='arrow';
-  const hs=(arrow?[['a1',0,0],['a2',1,1]]:PD_H).map(([k,fx,fy])=>{
-    /* 화살표는 양끝을 잡는다 — 상자 모서리로는 방향을 못 바꾼다 */
-    const px=arrow?(k==='a1'?a.x:a.x2):(b.x+b.w*fx),py=arrow?(k==='a1'?a.y:a.y2):(b.y+b.h*fy);
-    return '<i class="phs-h" data-h="'+k+'" style="left:'+px+'%;top:'+py+'%"></i>';
-  }).join('');
-  const html='<div class="phs-annui" data-idx="'+sel.idx+'">'
-    +'<div class="phs-abox" style="left:'+b.x+'%;top:'+b.y+'%;width:'+b.w+'%;height:'+b.h+'%"></div>'+hs+'</div>';
+  const ph=PD.photos.find(p=>p.id===sel.id);if(!ph||!ph.ann)return;
+  const idxs=sel.idxs.filter(i=>ph.ann[i]);
+  if(!idxs.length)return;
+  let poly='',hs='';
+  const pr=$('#pdView .phs-ph');const RW=(pr?pr.getBoundingClientRect().width:4)||4,RH=(pr?pr.getBoundingClientRect().height:3)||3;
+  idxs.forEach((i,n)=>{
+    const a=ph.ann[i],b=pdAnnBox(a),cx=b.x+b.w/2,cy=b.y+b.h/2,deg=a.rot||0;
+    const pts=[[b.x,b.y],[b.x+b.w,b.y],[b.x+b.w,b.y+b.h],[b.x,b.y+b.h]].map(([x,y])=>pdRotPt(x,y,cx,cy,deg,RW,RH));
+    poly+='<polygon points="'+pts.map(p=>p[0]+','+p[1]).join(' ')+'"/>';
+    if(idxs.length===1){
+      const arrow=a.t==='arrow';
+      if(arrow){
+        hs+='<i class="phs-h" data-h="a1" style="left:'+a.x+'%;top:'+a.y+'%"></i>'
+          +'<i class="phs-h" data-h="a2" style="left:'+a.x2+'%;top:'+a.y2+'%"></i>';
+      }else{
+        PD_H.forEach(([k,fx,fy])=>{
+          const [px,py]=pdRotPt(b.x+b.w*fx,b.y+b.h*fy,cx,cy,deg,RW,RH);
+          hs+='<i class="phs-h" data-h="'+k+'" style="left:'+px+'%;top:'+py+'%"></i>';
+        });
+        const [rx,ry]=pdRotPt(cx,b.y,cx,cy,deg,RW,RH);
+        hs+='<button class="phs-arot" data-arot="'+i+'" style="left:'+rx+'%;top:'+ry+'%" aria-label="도형 돌리기" data-tip="끌어서 돌리기 · Shift 는 15°">'
+          +'<svg class="icn" aria-hidden="true"><use href="#i-expand"></use></svg></button>';
+      }
+    }
+  });
+  const html='<div class="phs-annui">'
+    +'<svg class="phs-abox" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">'+poly+'</svg>'+hs+'</div>';
   $$('#pdView .phs-cell[data-id="'+sel.id+'"] .phs-ph').forEach(box=>box.insertAdjacentHTML('beforeend',html));
 }
+let _pdAr=null;
+document.addEventListener('pointerdown',e=>{
+  const h=e.target.closest&&e.target.closest('.phs-arot');if(!h)return;
+  e.preventDefault();e.stopPropagation();
+  const box=h.closest('.phs-ph'),r=box.getBoundingClientRect();
+  const cell=box.closest('.phs-cell'),ph=PD.photos.find(p=>p.id===cell.dataset.id);if(!ph)return;
+  const idx=Number(h.dataset.arot),a=ph.ann&&ph.ann[idx];if(!a)return;
+  const cx=r.left+r.width*((a.x+a.x2)/200),cy=r.top+r.height*((a.y+a.y2)/200);
+  pdAnnSnap(ph.id);
+  _pdAr={id:ph.id,idx,cx,cy,a0:Math.atan2(e.clientY-cy,e.clientX-cx)*180/Math.PI,r0:a.rot||0};
+  h.setPointerCapture&&h.setPointerCapture(e.pointerId);
+},true);
+document.addEventListener('pointermove',e=>{
+  const d=_pdAr;if(!d)return;
+  const ph=PD.photos.find(p=>p.id===d.id),a=ph&&ph.ann[d.idx];if(!a)return;
+  let rot=d.r0+(Math.atan2(e.clientY-d.cy,e.clientX-d.cx)*180/Math.PI-d.a0);
+  if(e.shiftKey)rot=Math.round(rot/15)*15;
+  a.rot=((Math.round(rot)%360)+360)%360;
+  pdAnnPaint(d.id);pdAnnUI();
+},true);
+document.addEventListener('pointerup',()=>{if(_pdAr){_pdAr=null;rPdSel();}},true);
+/* 863차: 미리보기 밖을 눌러도 고르기가 풀린다 — 색·선·굵기 단추를 누를 때는 그대로 둔다 */
+document.addEventListener('pointerdown',e=>{
+  if(!PD.asel||S.view!=='photo'||!e.target.closest)return;
+  if(e.target.closest('#pdView')||e.target.closest('.phs-tools,.phs-annb,.ctxmenu,#mo'))return;
+  if(e.target.closest('[data-act^="pd."]'))return;
+  PD.asel=null;pdAnnUI();rPdSel();
+},true);
 let _pdAe=null;
 document.addEventListener('pointerdown',e=>{
   if(PD.tool!=='none'||e.button!==0||!e.target.closest)return;
-  const box=e.target.closest('#pdView .phs-cell[data-id] .phs-ph');if(!box)return;
+  const box=e.target.closest('#pdView .phs-cell[data-id] .phs-ph');
+  if(!box){if(PD.asel&&e.target.closest('#pdView')){PD.asel=null;pdAnnUI();rPdSel();}return;}   /* 863차: 미리보기 빈 곳을 눌러도 풀린다 */
   const cell=box.closest('.phs-cell'),ph=PD.photos.find(p=>p.id===cell.dataset.id);if(!ph)return;
   const r=box.getBoundingClientRect();
   const x=(e.clientX-r.left)/r.width*100,y=(e.clientY-r.top)/r.height*100;
+  if(e.target.closest('.phs-arot,.phs-rot'))return;   /* ⚠ 863차: 회전 잡이는 따로 처리한다 — 같은 document 에 걸린 처리라 stopPropagation 으로는 못 막는다(stopImmediate 가 필요한 자리) */
+  if(document.querySelector('.ctxmenu'))closeCtx();   /* ⚠ 856차: 여기서 preventDefault 를 하면 mousedown 이 안 나 우클릭 메뉴가 안 닫힌다(839차와 같은 함정) */
   const handle=e.target.closest('.phs-h');
-  if(handle&&PD.asel&&PD.asel.id===ph.id){
+  const idxs=pdAselIdxs();
+  if(handle&&PD.asel&&PD.asel.id===ph.id&&idxs.length===1){
     e.preventDefault();e.stopPropagation();
     pdAnnSnap(ph.id);
-    _pdAe={mode:'size',h:handle.dataset.h,id:ph.id,idx:PD.asel.idx,r,a0:{...ph.ann[PD.asel.idx]},x,y};
+    _pdAe={mode:'size',h:handle.dataset.h,id:ph.id,idx:idxs[0],r,a0:{...ph.ann[idxs[0]]},x,y};
     return;
   }
   const hit=pdAnnHit(ph,x,y);
-  if(hit<0){if(PD.asel){PD.asel=null;pdAnnUI();}return;}
+  if(hit<0){if(PD.asel){PD.asel=null;pdAnnUI();rPdSel();}return;}
   e.preventDefault();e.stopPropagation();
-  PD.asel={id:ph.id,idx:hit};pdAnnUI();
+  const multi=e.ctrlKey||e.metaKey;   /* 856차: Ctrl 클릭은 **여러 개 고르기**(복사는 하지 않는다) */
+  let cur=(PD.asel&&PD.asel.id===ph.id)?idxs.slice():[];
+  if(multi){
+    const at=cur.indexOf(hit);
+    if(at>=0)cur.splice(at,1);else cur.push(hit);
+    if(!cur.length){PD.asel=null;pdAnnUI();rPdSel();return;}
+  }else if(!cur.includes(hit))cur=[hit];
+  PD.asel={id:ph.id,idxs:cur};pdAnnUI();rPdSel();
   pdAnnSnap(ph.id);
-  _pdAe={mode:'move',id:ph.id,idx:hit,r,a0:{...ph.ann[hit]},x,y,moved:false};
+  _pdAe={mode:'move',id:ph.id,idxs:cur.slice(),r,a0:cur.map(i=>({...ph.ann[i]})),x,y,moved:false};
 },true);
 document.addEventListener('pointermove',e=>{
   const d=_pdAe;if(!d)return;
   const ph=PD.photos.find(p=>p.id===d.id);if(!ph)return;
-  const a=ph.ann[d.idx];if(!a)return;
   const nx=(e.clientX-d.r.left)/d.r.width*100,ny=(e.clientY-d.r.top)/d.r.height*100;
   const dx=nx-d.x,dy=ny-d.y;
   if(Math.abs(dx)+Math.abs(dy)>0.4)d.moved=true;
-  if(d.mode==='move'){
-    a.x=d.a0.x+dx;a.y=d.a0.y+dy;a.x2=d.a0.x2+dx;a.y2=d.a0.y2+dy;
-  }else if(d.h==='a1'){a.x=nx;a.y=ny;}
+  if(d.mode==='move'){                 /* 고른 것 전부 같이 움직인다 */
+    d.idxs.forEach((i,n)=>{const a=ph.ann[i],b=d.a0[n];if(!a||!b)return;
+      a.x=b.x+dx;a.y=b.y+dy;a.x2=b.x2+dx;a.y2=b.y2+dy;});
+    pdAnnPaint(d.id);pdAnnUI();return;
+  }
+  const a=ph.ann[d.idx];if(!a)return;
+  if(d.h==='a1'){a.x=nx;a.y=ny;}
   else if(d.h==='a2'){a.x2=nx;a.y2=ny;}
   else{
     let x1=Math.min(d.a0.x,d.a0.x2),y1=Math.min(d.a0.y,d.a0.y2),x2=Math.max(d.a0.x,d.a0.x2),y2=Math.max(d.a0.y,d.a0.y2);
@@ -12014,7 +12096,7 @@ document.addEventListener('pointermove',e=>{
 },true);
 document.addEventListener('pointerup',()=>{
   if(!_pdAe)return;
-  if(!_pdAe.moved)PD.undo.pop();     /* 그냥 고르기만 한 것은 되돌리기에 남기지 않는다 */
+  if(!_pdAe.moved)PD.undo.pop();      /* 그냥 고르기만 한 것은 되돌리기에 남기지 않는다 */
   _pdAe=null;rPdSel();
 },true);
 /* 우클릭 — 복사 · 잘라내기 · 삭제 · 붙여넣기 */
@@ -12025,33 +12107,56 @@ document.addEventListener('contextmenu',e=>{
   const r=box.getBoundingClientRect();
   const x=(e.clientX-r.left)/r.width*100,y=(e.clientY-r.top)/r.height*100;
   const hit=pdAnnHit(ph,x,y);
-  if(hit>=0){PD.asel={id:ph.id,idx:hit};PD.tool='none';document.body.classList.remove('pd-drawing');pdAnnUI();rPdSel();}
+  if(hit>=0){
+    /* 이미 여러 개를 골라 둔 상태에서 그 안을 우클릭하면 고른 것을 유지한다(엑셀·PPT 와 같은 결) */
+    const cur=(PD.asel&&PD.asel.id===ph.id)?pdAselIdxs():[];
+    if(!cur.includes(hit))PD.asel={id:ph.id,idxs:[hit]};
+    PD.tool='none';document.body.classList.remove('pd-drawing');pdAnnUI();rPdSel();
+  }
   e.preventDefault();
   const items=[];
-  if(hit>=0)items.push(
-    {label:'복사',act:()=>{PD.clip={...ph.ann[hit]};toast('표시를 복사했습니다');}},
-    {label:'잘라내기',act:()=>{PD.clip={...ph.ann[hit]};pdAnnDel();}},
-    {label:'삭제',danger:true,act:()=>pdAnnDel()});
+  const sel=pdAselIdxs().filter(i=>ph.ann&&ph.ann[i]);
+  if(hit>=0&&sel.length){
+    const n=sel.length,sfx=n>1?' ('+n+'개)':'';
+    items.push(
+      {label:'복사'+sfx,act:()=>{PD.clip=sel.map(i=>({...ph.ann[i]}));toast('표시를 복사했습니다');}},
+      {label:'잘라내기'+sfx,act:()=>{PD.clip=sel.map(i=>({...ph.ann[i]}));pdAnnDel();}},
+      {label:'삭제'+sfx,danger:true,act:()=>pdAnnDel()});
+  }
   if(PD.clip)items.push({label:'붙여넣기',act:()=>pdAnnPaste(ph.id,x,y)});
   if(!items.length)return;
   openCtx(e.clientX,e.clientY,items);
 },true);
 function pdAnnDel(){
   const sel=PD.asel;if(!sel)return;
-  const ph=PD.photos.find(p=>p.id===sel.id);if(!ph||!ph.ann||!ph.ann[sel.idx])return;
+  const ph=PD.photos.find(p=>p.id===sel.id);if(!ph||!ph.ann)return;
+  const idxs=pdAselIdxs().filter(i=>ph.ann[i]).sort((a,b)=>b-a);
+  if(!idxs.length)return;
   pdAnnSnap(sel.id);
-  ph.ann.splice(sel.idx,1);PD.asel=null;
+  idxs.forEach(i=>ph.ann.splice(i,1));
+  PD.asel=null;
   pdAnnPaint(sel.id);pdAnnUI();rPdSel();
 }
 function pdAnnPaste(id,x,y){
   const ph=PD.photos.find(p=>p.id===id);if(!ph||!PD.clip)return;
-  const c=PD.clip,b=pdAnnBox(c);
+  const clip=Array.isArray(PD.clip)?PD.clip:[PD.clip];
+  if(clip.length>1){                    /* 여러 개 — 묶음 가운데를 누른 자리에 맞춘다 */
+    let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+    clip.forEach(c=>{const b=pdAnnBox(c);x0=Math.min(x0,b.x);y0=Math.min(y0,b.y);x1=Math.max(x1,b.x+b.w);y1=Math.max(y1,b.y+b.h);});
+    const dx=(x!=null?x-(x0+x1)/2:3),dy=(y!=null?y-(y0+y1)/2:3);
+    pdAnnSnap(id);ph.ann=ph.ann||[];
+    const start=ph.ann.length;
+    clip.forEach(c=>ph.ann.push({...c,x:c.x+dx,y:c.y+dy,x2:c.x2+dx,y2:c.y2+dy}));
+    PD.asel={id,idxs:ph.ann.map((_,i)=>i).slice(start)};
+    pdAnnPaint(id);pdAnnUI();rPdSel();return;
+  }
+  const c=clip[0],b=pdAnnBox(c);
   const a={...c};
   if(x!=null){const dx=x-(b.x+b.w/2),dy=y-(b.y+b.h/2);a.x+=dx;a.y+=dy;a.x2+=dx;a.y2+=dy;}
   else{a.x+=3;a.y+=3;a.x2+=3;a.y2+=3;}
   pdAnnSnap(id);
   (ph.ann=ph.ann||[]).push(a);
-  PD.asel={id,idx:ph.ann.length-1};
+  PD.asel={id,idxs:[ph.ann.length-1]};
   pdAnnPaint(id);pdAnnUI();rPdSel();
 }
 /* 키 — Delete 삭제 · Ctrl+C/X/V */
@@ -12059,13 +12164,14 @@ document.addEventListener('keydown',e=>{
   if(S.view!=='photo'||!PD.asel)return;
   const t=e.target;if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable))return;
   const ph=PD.photos.find(p=>p.id===PD.asel.id);if(!ph)return;
-  const a=ph.ann&&ph.ann[PD.asel.idx];
+  const idxs=pdAselIdxs().filter(i=>ph.ann&&ph.ann[i]);
+  const a=idxs.length===1?ph.ann[idxs[0]]:null;
   if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();e.stopPropagation();pdAnnDel();return;}
   if(e.key==='Escape'){PD.asel=null;pdAnnUI();return;}
-  if(!(e.ctrlKey||e.metaKey)||!a)return;
+  if(!(e.ctrlKey||e.metaKey)||!idxs.length)return;
   const k=e.key.toLowerCase();
-  if(k==='c'||e.key==='ㅊ'){e.preventDefault();e.stopPropagation();PD.clip={...a};toast('표시를 복사했습니다');}
-  else if(k==='x'||e.key==='ㅌ'){e.preventDefault();e.stopPropagation();PD.clip={...a};pdAnnDel();}
+  if(k==='c'||e.key==='ㅊ'){e.preventDefault();e.stopPropagation();PD.clip=idxs.map(i=>({...ph.ann[i]}));toast('표시를 복사했습니다');}
+  else if(k==='x'||e.key==='ㅌ'){e.preventDefault();e.stopPropagation();PD.clip=idxs.map(i=>({...ph.ann[i]}));pdAnnDel();}
   else if(k==='v'||e.key==='ㅍ'){e.preventDefault();e.stopPropagation();pdAnnPaste(PD.asel.id);}
 },true);
 function pdAnnUndo(){
@@ -12075,8 +12181,48 @@ function pdAnnUndo(){
 }
 function pdSelPaint(){
   $$('#pdView .phs-cell[data-id]').forEach(c=>c.classList.toggle('sel',PD.sel.has(c.dataset.id)));
+  pdRotHandle();
   rPdSel();
 }
+/* 855차: 고른 사진 위쪽 가운데에 회전 잡이 — 끌면 돌고, Shift 를 누르면 90° 단위로 맞는다 */
+function pdRotHandle(){
+  $$('#pdView .phs-rot').forEach(e=>e.remove());
+  if(PD.tool!=='none'||PD.sel.size!==1)return;
+  const id=[...PD.sel][0];
+  $$('#pdView .phs-cell[data-id="'+id+'"] .phs-ph').forEach(box=>{
+    box.insertAdjacentHTML('beforeend','<button class="phs-rot" data-rot="'+id+'" aria-label="돌리기" data-tip="끌어서 돌리기 · Shift 는 90°"><svg class="icn" aria-hidden="true"><use href="#i-expand"></use></svg></button>');
+  });
+}
+let _pdRot=null;
+document.addEventListener('pointerdown',e=>{
+  const h=e.target.closest&&e.target.closest('.phs-rot');if(!h)return;
+  e.preventDefault();e.stopPropagation();
+  const box=h.closest('.phs-ph'),r=box.getBoundingClientRect();
+  const p=PD.photos.find(x=>x.id===h.dataset.rot);if(!p)return;
+  const cx=r.left+r.width/2,cy=r.top+r.height/2;
+  _pdRot={p,cx,cy,a0:Math.atan2(e.clientY-cy,e.clientX-cx)*180/Math.PI,r0:p.rot||0,box};
+  h.setPointerCapture&&h.setPointerCapture(e.pointerId);
+},true);
+document.addEventListener('pointermove',e=>{
+  const d=_pdRot;if(!d)return;
+  const a=Math.atan2(e.clientY-d.cy,e.clientX-d.cx)*180/Math.PI;
+  let rot=d.r0+(a-d.a0);
+  if(e.shiftKey)rot=Math.round(rot/90)*90;
+  d.p.rot=((Math.round(rot)%360)+360)%360;
+  const img=d.box.querySelector('img');if(img)img.style.transform='rotate('+d.p.rot+'deg)';
+},true);
+document.addEventListener('pointerup',async()=>{
+  if(!_pdRot)return;
+  const {p}=_pdRot;_pdRot=null;
+  const q=Math.round(((p.rot||0)%360+360)%360/90)%4;   /* 가장 가까운 90° */
+  p.rot=0;
+  const img=$('#pdView .phs-cell[data-id="'+p.id+'"] .phs-ph img');if(img)img.style.transform='';
+  if(q){
+    const dir=q===3?-1:1,times=q===2?2:1;
+    for(let i=0;i<times;i++){try{await pdRotOne(p,dir);}catch(e){console.warn('[사진대지] 회전 실패',e);}}
+  }
+  pdPages();
+},true);
 /* 선택 — 클릭 = 그 사진만 · Ctrl = 하나씩 더하거나 빼기 · Shift = 기준점(마지막으로 누른 사진)부터 그 사진까지 */
 function pdClickSel(id,ctrl,shift){
   const ids=PD.photos.map(p=>p.id);
@@ -12089,6 +12235,8 @@ function pdClickSel(id,ctrl,shift){
 }
 /* 806차: 사진 회전 — 그림 자체를 돌려 다시 만든다(미리보기·인쇄가 같은 그림을 쓰므로 CSS 회전보다 단순하다).
    잘라 둔 영역이 있으면 그 영역도 같이 돌린다 */
+/* ⚠ 861차: 회전은 **90° 단위로 사진을 다시 구워** 넣는다(855~860차의 `p.rot` 각도 방식은 되돌린다).
+   각도로만 돌리면 칸 비율이 달라 미리보기와 엑셀이 서로 다르게 잘리고, 빈 구석이 생겨 결과가 지저분했다. */
 async function pdRotOne(p,dir){
   const turn=async(url,w,h)=>{
     const im=new Image();im.src=url;await im.decode();
@@ -12113,12 +12261,8 @@ async function pdRotOne(p,dir){
   p.src=nsrc;p.url=nurl;p.crop=ncrop;const t=p.w;p.w=p.h;p.h=t;
   return true;
 }
-async function pdRot(dir){
-  const list=PD.photos.filter(p=>PD.sel.has(p.id));if(!list.length)return;
-  for(const p of list){try{await pdRotOne(p,dir);}catch(e){console.warn('[사진대지] 회전 실패',e);}}
-  pdPages();
-}
 /* 806차: 사진 교체 — 위치·내용·맞춤·순서는 그대로 두고 그림만 바꾼다 */
+
 async function pdSwap(file){
   const id=[...PD.sel][0],p=PD.photos.find(x=>x.id===id);if(!p||!file)return;
   let np;try{np=await pdDecode(file);}catch(e){toast('이 파일은 열 수 없습니다');return;}
@@ -12127,13 +12271,6 @@ async function pdSwap(file){
   pdPages();
 }
 /* 806차: 위치·내용 채우기 — 첫 값 복사 / 빈칸만 앞 값으로 */
-function pdFill(mode){
-  const list=PD.photos.filter(p=>PD.sel.has(p.id));if(list.length<2)return;
-  if(mode==='first'){const a=list[0];list.slice(1).forEach(p=>{p.loc=a.loc;p.desc=a.desc;});}
-  else{let lo=list[0].loc,de=list[0].desc;
-    list.forEach(p=>{if(!p.loc)p.loc=lo;else lo=p.loc;if(!p.desc)p.desc=de;else de=p.desc;});}
-  pdPages();
-}
 function pdRevoke(p){try{if(p.url&&p.url!==p.src)URL.revokeObjectURL(p.url);URL.revokeObjectURL(p.src);}catch(e){}}
 /* 넣기 — 파일 여러 장 또는 폴더(하위 폴더 전부, webkitdirectory). 경로·이름의 자연 정렬(1, 2, 10) 순으로 뒤에 붙인다 */
 async function pdDecode(f){
@@ -12275,11 +12412,15 @@ document.addEventListener('input',e=>{
       const s=$('#pdView .phs-cell[data-id="'+p.id+'"] .phs-'+k);if(s)s.textContent=v;});
   }
 });
+document.addEventListener('input',e=>{if(e.target&&e.target.id==='pdColor'){PD.color=PD.custom=e.target.value;pdAnnApply({c:PD.color});}});
 document.addEventListener('change',e=>{
+  if(e.target&&e.target.id==='pdColor'){PD.color=PD.custom=e.target.value;pdAnnApply({c:PD.color});rPdSel();return;}
   const t=e.target;
-  if(t&&t.id==='pdSwap'){const f=(t.files||[])[0];t.value='';if(f)pdSwap(f);return;}
   if(!t||(t.id!=='pdFiles'&&t.id!=='pdDir'))return;
-  const fl=[...(t.files||[])];t.value='';pdAdd(fl);
+  const fl=[...(t.files||[])];t.value='';
+  /* 855차: 사진 하나를 고른 채 사진 하나를 넣으면 **교체**한다(따로 교체 단추를 두지 않는다) */
+  if(t.id==='pdFiles'&&fl.length===1&&PD.sel.size===1){pdSwap(fl[0]);return;}
+  pdAdd(fl);
 });
 document.addEventListener('keydown',e=>{
   if(S.view!=='photo')return;
@@ -12420,17 +12561,13 @@ Object.assign(ACT,{
   'pd.zoom':el=>{if(PD.zoom===el.dataset.z)return;const keep=PD.page;PD.zoom=el.dataset.z;rPhoto();PD.page=keep;pdPgGo(0);},   /* 배율을 바꿔도 보던 쪽을 지킨다 */
   'pd.zStep':el=>{const d=Number(el.dataset.d);PD.zoom='free';PD.pz=Math.max(.1,Math.min(4,(PD.pz||1)*(d>0?1.15:1/1.15)));pdZoom();},
   'pd.split':el=>{const on=el.dataset.s==='on';if(PD.split===on)return;PD.split=on;const keep=PD.page;rPhoto();PD.page=keep;pdPgGo(0);},
-  'pd.rot':el=>{pdRot(Number(el.dataset.d));},
-  'pd.swap':()=>{if(PD.sel.size!==1)return;const i=$('#pdSwap');if(i)i.click();},
-  'pd.tool':el=>{PD.tool=el.dataset.t;if(PD.tool!=='none')PD.asel=null;rPdSel();document.body.classList.toggle('pd-drawing',PD.tool!=='none');pdAnnUI();},
+
+  'pd.tool':el=>{const t=el.dataset.t;PD.tool=(PD.tool===t?'none':t);if(PD.tool!=='none')PD.asel=null;rPdSel();document.body.classList.toggle('pd-drawing',PD.tool!=='none');pdAnnUI();},
   'pd.annColor':el=>{PD.color=el.dataset.c;pdAnnApply({c:PD.color});rPdSel();},
   'pd.annLw':el=>{PD.lw=Number(el.dataset.w);pdAnnApply({w:PD.lw});rPdSel();},
   'pd.annDash':el=>{PD.dash=Number(el.dataset.d);pdAnnApply({d:PD.dash});rPdSel();},
-  'pd.annUndo':()=>pdAnnUndo(),
   'pd.xlsx':()=>pdXlsx(),
-  'pd.annClear':()=>{PD.photos.forEach(p=>{if(PD.sel.has(p.id)&&(p.ann||[]).length){PD.undo.push({id:p.id,ann:p.ann});p.ann=[];pdAnnPaint(p.id);}});rPdSel();},
-  'pd.fillFirst':()=>pdFill('first'),
-  'pd.fillBlank':()=>pdFill('blank'),
+
   'pd.pgGo':el=>pdPgGo(Number(el.dataset.d)),
   'pd.fit':el=>{const f=el.dataset.f;PD.photos.forEach(p=>{if(PD.sel.has(p.id))p.fit=f;});
     $$('#pdView .phs-cell.sel .phs-ph').forEach(x=>{x.classList.remove('contain','cover');if(f!=='fill')x.classList.add(f);});
@@ -13307,6 +13444,7 @@ async function pdBake(ph, wmm, hmm, padMM) {
   cx.fillStyle = '#fff'; cx.fillRect(0, 0, W, H);
   cx.save(); cx.beginPath(); cx.rect(P, P, IW, IH); cx.clip(); cx.translate(P, P);
   const im = new Image(); im.src = ph.url; await im.decode();
+  if (ph.rot) { cx.translate(IW / 2, IH / 2); cx.rotate(ph.rot * Math.PI / 180); cx.translate(-IW / 2, -IH / 2); }   /* 855차: 회전 반영 */
   const fit = ph.fit || 'fill';
   if (fit === 'fill') cx.drawImage(im, 0, 0, IW, IH);
   else {
@@ -13323,11 +13461,13 @@ async function pdBake(ph, wmm, hmm, padMM) {
     cx.lineCap = a.d ? 'butt' : 'round'; cx.lineJoin = 'round';
     const k = XL_DPI / 96;
     cx.setLineDash(a.d ? PD_DASH.split(',').map(v => Number(v) * k) : []);
-    if (a.t === 'rect') { cx.strokeRect(X(Math.min(a.x, a.x2)), Y(Math.min(a.y, a.y2)), X(Math.abs(a.x2 - a.x)), Y(Math.abs(a.y2 - a.y))); return; }
+    cx.save();
+    if (a.rot) { cx.translate(X((a.x + a.x2) / 2), Y((a.y + a.y2) / 2)); cx.rotate(a.rot * Math.PI / 180); cx.translate(-X((a.x + a.x2) / 2), -Y((a.y + a.y2) / 2)); }
+    if (a.t === 'rect') { cx.strokeRect(X(Math.min(a.x, a.x2)), Y(Math.min(a.y, a.y2)), X(Math.abs(a.x2 - a.x)), Y(Math.abs(a.y2 - a.y))); cx.restore(); return; }
     if (a.t === 'ellipse') {
       cx.beginPath();
       cx.ellipse(X((a.x + a.x2) / 2), Y((a.y + a.y2) / 2), X(Math.abs(a.x2 - a.x)) / 2, Y(Math.abs(a.y2 - a.y)) / 2, 0, 0, Math.PI * 2);
-      cx.stroke(); return;
+      cx.stroke(); cx.restore(); return;
     }
     const x1 = X(a.x), y1 = Y(a.y), x2 = X(a.x2), y2 = Y(a.y2);
     cx.beginPath(); cx.moveTo(x1, y1); cx.lineTo(x2, y2); cx.stroke();
@@ -13340,6 +13480,7 @@ async function pdBake(ph, wmm, hmm, padMM) {
       cx.lineTo(x2 - hx * Math.cos(ang + sp), y2 - hx * Math.sin(ang + sp));
       cx.stroke();
     }
+    cx.restore();
   });
   cx.restore();
   /* ⚠ 854차: 그림에는 테두리를 그리지 않는다 — 사진 한 칸(사진+위치+내용)의 **바깥 테두리를 굵게** 둘러
@@ -13356,57 +13497,72 @@ function xlTitle(t) {
 }
 async function pdXlsx() {
   if (!PD.photos.length) { toast('넣은 사진이 없습니다'); return; }
-  const btn = $('[data-act="pd.xlsx"]'); if (btn) { btn.disabled = true; btn.textContent = '만드는 중…'; }
+  const btn = $('#tbXlWrap button'); if (btn) btn.disabled = true;   /* ⚠ 857차: 글자를 바꾸면 「만드는 중…」이 남는다 — 끄기만 한다 */
   try {
     const land = PD.orient === 'land', [C, R] = pdCR(PD.per, land);
-    const [pw, ph2] = pdPaperMM(), MG = PD_MG;
-    /* 854차(사용자): 위 여백 1.9cm · 꼬리말 1cm. 아래 여백은 꼬리말보다 커야 해서 1.5cm */
-    const MGT = 19, MGB = 15, FT = 10;
-    const innerW = pw - MG * 2, innerH = ph2 - MGT - MGB - 1;
-    const TTL = 12, SITE = 7, CAP = 5.2;                  /* 제목 · 현장명 · 위치/내용 줄 높이(mm) */
-    const colW = innerW / C;
-    const imgH = (innerH - TTL - SITE - R * CAP * 2) / R;
-    /* ⚠ 853차: 엑셀은 열 너비를 「글자 수」로 갖고 있고 그 px 환산이 판·글꼴·화면 배율마다 다르다 —
-       우리가 mm 로 맞춰도 MS 엑셀에서는 좁게 잡혀 종이 폭을 다 못 썼다.
-       그래서 일부러 **조금 넓게(WIDEN) 잡고 「폭에 맞추기」로 줄인다** — 어느 엑셀에서든 폭을 꽉 채운다.
-       세로도 같은 비율로 줄어드니 쪽 높이는 그만큼 여유가 생긴다. */
-    const WIDEN = 1.06;
-    const colPx = Math.round(mm2px(colW) * WIDEN), imgPx = Math.round(mm2px(imgH) * WIDEN);
+    const [pw, ph2] = pdPaperMM();
+    /* ── 862차: 사용자가 직접 만든 사진대지 엑셀을 본떠 수치를 맞춘다 ──
+       여백 L/R 10mm · 위 19mm · 아래 15mm · 꼬리말 10mm, 배율 85% 고정(「폭에 맞추기」 대신 — 사용자 파일과 같다).
+       한 사진 칸 = [여백열][사진열][여백열] · [여백행][사진행][여백행][위치][내용].
+       글자는 여백열(A)에 넣어 오른쪽으로 흘린다(사용자 파일과 같은 방식) — 병합하지 않는다. */
+    const MGL = 10, MGT = 19, MGB = 15, FT = 10, SCALE = 85;
+    const PADCH = 0.88671875;                              /* 여백 열 너비(글자 수) — 사용자 파일 값 */
+    const padMM = (PADCH * 7 + 5) * 25.4 / 96;             /* ≈ 2.96mm */
+    const TTLpt = 34.05, SITEpt = 19.8, PADpt = 4.95, CAPpt = 14.7;
+    const pt2mm = p => p * 25.4 / 72;
+    /* 배율 85% 이므로 종이에 들어갈 시트 크기는 1/0.85 배 */
+    const sheetW = (pw - MGL * 2) / (SCALE / 100), sheetH = (ph2 - MGT - MGB) / (SCALE / 100);
+    const colWmm = (sheetW - padMM * 2 * C) / C;
+    const rowMM = pt2mm(PADpt) * 2 + pt2mm(CAPpt) * 2;
+    const imgHmm = (sheetH - pt2mm(TTLpt) - pt2mm(SITEpt) - 4 - R * rowMM) / R;   /* 4mm 안전 여유 */
+    const w2c = mm => Math.round(((mm2px(mm) - 5) / 7) * 10000) / 10000;
     const pages = pdPageList();
     const media = [], anchors = [];
     let rows = '', rowIdx = 0, breaks = [];
+    const mergeList = [];
+    const COLN = C * 3;
     const cellRef = (r, c) => xlCol(c) + (r + 1);
-    /* ── 머리(제목·현장명)는 **한 번만** 쓰고 인쇄 제목으로 쪽마다 되풀이한다(사용자) ── */
-    rows += `<row r="1" ht="${mm2pt(TTL).toFixed(1)}" customHeight="1"><c r="${cellRef(0, 0)}" s="1" t="inlineStr"><is><t>${xlEsc(xlTitle(PD.title))}</t></is></c></row>`;
-    rows += `<row r="2" ht="${mm2pt(SITE).toFixed(1)}" customHeight="1"><c r="${cellRef(1, 0)}" s="2" t="inlineStr"><is><t>현장명 : ${xlEsc(PD.site)}</t></is></c></row>`;
+    /* 머리 — 한 번만 쓰고 인쇄 제목으로 되풀이한다 */
+    rows += `<row r="1" ht="${TTLpt}" customHeight="1"><c r="A1" s="1" t="inlineStr"><is><t>${xlEsc(xlTitle(PD.title))}</t></is></c></row>`;
+    rows += `<row r="2" ht="${SITEpt}" customHeight="1"><c r="A2" s="2" t="inlineStr"><is><t>현장명 : ${xlEsc(PD.site)}</t></is></c></row>`;
+    mergeList.push(`A1:${cellRef(0, COLN - 1)}`, `A2:${cellRef(1, COLN - 1)}`);
     rowIdx = 2;
+    /* 스타일 번호(아래 styles.xml 과 짝) — 5 왼·6 위·7 오른위 … 아래 표 참조 */
+    const band = (l, m, r2) => {
+      let t = '';
+      for (let c = 0; c < C; c++) t += `<c r="${cellRef(rowIdx, c * 3)}" s="${l}"/><c r="${cellRef(rowIdx, c * 3 + 1)}" s="${m}"/><c r="${cellRef(rowIdx, c * 3 + 2)}" s="${r2}"/>`;
+      return t;
+    };
     for (let p = 0; p < pages.length; p++) {
       for (let r = 0; r < R; r++) {
-        let cs = '';
-        for (let c = 0; c < C; c++) cs += `<c r="${cellRef(rowIdx, c)}" s="5"/>`;   /* 854차: 사진 칸 — 굵은 바깥 테두리 */
-        rows += `<row r="${rowIdx + 1}" ht="${(imgPx * 72 / 96).toFixed(2)}" customHeight="1">${cs}</row>`;
+        rows += `<row r="${rowIdx + 1}" ht="${PADpt}" customHeight="1">${band(5, 6, 7)}</row>`;   /* 위 여백 */
+        rowIdx++;
+        rows += `<row r="${rowIdx + 1}" ht="${(imgHmm * 72 / 25.4).toFixed(2)}" customHeight="1">${band(8, 0, 9)}</row>`;
         const imgRow = rowIdx; rowIdx++;
         for (let c = 0; c < C; c++) {
           const cell = pages[p][r * C + c], photo = cell && cell.ph;
           if (!photo) continue;
-          const baked = await pdBake(photo, colW, imgH, 0);
+          const baked = await pdBake(photo, colWmm, imgHmm, 0);
           media.push(baked.bytes);
-          anchors.push({ row: imgRow, col: c, id: media.length });
+          anchors.push({ row: imgRow, col: c * 3 + 1, id: media.length });
         }
-        for (const [key, fld, st] of [['위 치', 'loc', 6], ['내 용', 'desc', 7]]) {
+        rows += `<row r="${rowIdx + 1}" ht="${PADpt}" customHeight="1">${band(8, 0, 9)}</row>`;   /* 아래 여백 */
+        rowIdx++;
+        for (const [key, fld, sl, sm, sr] of [['위 치', 'loc', 10, 11, 12], ['내 용', 'desc', 13, 14, 15]]) {
           let t = '';
           for (let c = 0; c < C; c++) {
             const cell = pages[p][r * C + c], photo = cell && cell.ph;
-            t += `<c r="${cellRef(rowIdx, c)}" s="${st}" t="inlineStr"><is><t>${key} : ${xlEsc(photo ? (photo[fld] || '') : '')}</t></is></c>`;
+            t += `<c r="${cellRef(rowIdx, c * 3)}" s="${sl}" t="inlineStr"><is><t>${key} : ${xlEsc(photo ? (photo[fld] || '') : '')}</t></is></c>`
+              + `<c r="${cellRef(rowIdx, c * 3 + 1)}" s="${sm}"/><c r="${cellRef(rowIdx, c * 3 + 2)}" s="${sr}"/>`;
           }
-          rows += `<row r="${rowIdx + 1}" ht="${mm2pt(CAP).toFixed(1)}" customHeight="1">${t}</row>`;
+          rows += `<row r="${rowIdx + 1}" ht="${CAPpt}" customHeight="1">${t}</row>`;
           rowIdx++;
         }
       }
       if (p < pages.length - 1) breaks.push(rowIdx);
     }
-    const mergeList = [`${cellRef(0, 0)}:${cellRef(0, C - 1)}`, `${cellRef(1, 0)}:${cellRef(1, C - 1)}`];
-    const cols = `<cols>${Array.from({ length: C }, (_, i) => `<col min="${i + 1}" max="${i + 1}" width="${Math.round(((colPx - 5) / 7) * 100) / 100}" customWidth="1"/>`).join('')}</cols>`;
+    const cols = `<cols>${Array.from({ length: COLN }, (_, i) =>
+      `<col min="${i + 1}" max="${i + 1}" width="${i % 3 === 1 ? w2c(colWmm) : PADCH}" customWidth="1"/>`).join('')}</cols>`;
     const sheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
 <sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>
@@ -13416,8 +13572,8 @@ ${cols}
 <sheetData>${rows}</sheetData>
 <mergeCells count="${mergeList.length}">${mergeList.map(m => `<mergeCell ref="${m}"/>`).join('')}</mergeCells>
 <printOptions horizontalCentered="1"/>
-<pageMargins left="${(MG / 25.4).toFixed(3)}" right="${(MG / 25.4).toFixed(3)}" top="${(MGT / 25.4).toFixed(3)}" bottom="${(MGB / 25.4).toFixed(3)}" header="0" footer="${(FT / 25.4).toFixed(3)}"/>
-<pageSetup paperSize="9" orientation="${land ? 'landscape' : 'portrait'}" fitToWidth="1" fitToHeight="0"/>
+<pageMargins left="${(MGL / 25.4).toFixed(3)}" right="${(MGL / 25.4).toFixed(3)}" top="${(MGT / 25.4).toFixed(3)}" bottom="${(MGB / 25.4).toFixed(3)}" header="0" footer="${(FT / 25.4).toFixed(3)}"/>
+<pageSetup paperSize="9" scale="${SCALE}" fitToHeight="0" orientation="${land ? 'landscape' : 'portrait'}"/>
 <headerFooter><oddFooter>&amp;C&amp;P / &amp;N</oddFooter></headerFooter>
 ${breaks.length ? `<rowBreaks count="${breaks.length}" manualBreakCount="${breaks.length}">${breaks.map(b => `<brk id="${b}" max="16383" man="1"/>`).join('')}</rowBreaks>` : ''}
 <drawing r:id="rId1"/>
@@ -13442,34 +13598,52 @@ ${anchors.map((an, i) => `<xdr:twoCellAnchor editAs="oneCell">
 <font><sz val="9"/><name val="맑은 고딕"/></font>
 <font><sz val="9"/><name val="맑은 고딕"/></font></fonts>
 <fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>
-<borders count="5"><border><left/><right/><top/><bottom/><diagonal/></border>
+<borders count="16">
+<!-- ⚠ 자식 차례는 left → right → top → bottom → diagonal(어기면 엑셀이 복구한다) · 862차: 사용자 파일과 같은 구성 -->
+<border><left/><right/><top/><bottom/><diagonal/></border>
 <border><left style="thin"><color rgb="FF000000"/></left><right style="thin"><color rgb="FF000000"/></right><top style="thin"><color rgb="FF000000"/></top><bottom style="thin"><color rgb="FF000000"/></bottom><diagonal/></border>
-<!-- 854차: 사진 칸 — 좌·우·위는 굵게, 아래는 얇게 -->
-<border><left style="medium"><color rgb="FF000000"/></left><right style="medium"><color rgb="FF000000"/></right><top style="medium"><color rgb="FF000000"/></top><bottom style="thin"><color rgb="FF000000"/></bottom><diagonal/></border>
-<!-- 위치 줄 — 좌·우 굵게, 위아래 얇게 -->
-<border><left style="medium"><color rgb="FF000000"/></left><right style="medium"><color rgb="FF000000"/></right><top style="thin"><color rgb="FF000000"/></top><bottom style="thin"><color rgb="FF000000"/></bottom><diagonal/></border>
-<!-- 내용 줄 — 좌·우·아래 굵게 -->
-<border><left style="medium"><color rgb="FF000000"/></left><right style="medium"><color rgb="FF000000"/></right><top style="thin"><color rgb="FF000000"/></top><bottom style="medium"><color rgb="FF000000"/></bottom><diagonal/></border></borders>
+<border><left style="medium"><color rgb="FF000000"/></left><right/><top style="medium"><color rgb="FF000000"/></top><bottom/><diagonal/></border>
+<border><left/><right/><top style="medium"><color rgb="FF000000"/></top><bottom/><diagonal/></border>
+<border><left/><right style="medium"><color rgb="FF000000"/></right><top style="medium"><color rgb="FF000000"/></top><bottom/><diagonal/></border>
+<border><left style="medium"><color rgb="FF000000"/></left><right/><top/><bottom/><diagonal/></border>
+<border><left/><right style="medium"><color rgb="FF000000"/></right><top/><bottom/><diagonal/></border>
+<border><left style="medium"><color rgb="FF000000"/></left><right/><top style="thin"><color rgb="FF000000"/></top><bottom style="thin"><color rgb="FF000000"/></bottom><diagonal/></border>
+<border><left/><right/><top style="thin"><color rgb="FF000000"/></top><bottom style="thin"><color rgb="FF000000"/></bottom><diagonal/></border>
+<border><left/><right style="medium"><color rgb="FF000000"/></right><top style="thin"><color rgb="FF000000"/></top><bottom style="thin"><color rgb="FF000000"/></bottom><diagonal/></border>
+<border><left style="medium"><color rgb="FF000000"/></left><right/><top style="thin"><color rgb="FF000000"/></top><bottom style="medium"><color rgb="FF000000"/></bottom><diagonal/></border>
+<border><left/><right/><top style="thin"><color rgb="FF000000"/></top><bottom style="medium"><color rgb="FF000000"/></bottom><diagonal/></border>
+<border><left/><right style="medium"><color rgb="FF000000"/></right><top style="thin"><color rgb="FF000000"/></top><bottom style="medium"><color rgb="FF000000"/></bottom><diagonal/></border>
+<border><left style="medium"><color rgb="FF000000"/></left><right/><top/><bottom style="thin"><color rgb="FF000000"/></bottom><diagonal/></border>
+<border><left/><right style="medium"><color rgb="FF000000"/></right><top/><bottom style="thin"><color rgb="FF000000"/></bottom><diagonal/></border>
+<border><left/><right/><top/><bottom style="thin"><color rgb="FF000000"/></bottom><diagonal/></border>
+</borders>
 <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-<cellXfs count="8">
+<cellXfs count="16">
 <xf xfId="0" numFmtId="0" fontId="0" fillId="0" borderId="0"/>
 <xf xfId="0" numFmtId="0" fontId="1" fillId="0" borderId="0" applyFont="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>
 <xf xfId="0" numFmtId="0" fontId="2" fillId="0" borderId="0" applyFont="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>
-<xf xfId="0" numFmtId="0" fontId="0" fillId="0" borderId="1" applyBorder="1"/>
-<xf xfId="0" numFmtId="0" fontId="3" fillId="0" borderId="1" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" indent="1"/></xf>
+<xf xfId="0" numFmtId="0" fontId="0" fillId="0" borderId="0"/>
+<xf xfId="0" numFmtId="0" fontId="0" fillId="0" borderId="0"/>
 <xf xfId="0" numFmtId="0" fontId="0" fillId="0" borderId="2" applyBorder="1"/>
-<xf xfId="0" numFmtId="0" fontId="3" fillId="0" borderId="3" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" indent="1"/></xf>
-<xf xfId="0" numFmtId="0" fontId="3" fillId="0" borderId="4" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" indent="1"/></xf>
+<xf xfId="0" numFmtId="0" fontId="0" fillId="0" borderId="3" applyBorder="1"/>
+<xf xfId="0" numFmtId="0" fontId="0" fillId="0" borderId="4" applyBorder="1"/>
+<xf xfId="0" numFmtId="0" fontId="0" fillId="0" borderId="5" applyBorder="1"/>
+<xf xfId="0" numFmtId="0" fontId="0" fillId="0" borderId="6" applyBorder="1"/>
+<xf xfId="0" numFmtId="0" fontId="3" fillId="0" borderId="7" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" indent="1"/></xf>
+<xf xfId="0" numFmtId="0" fontId="3" fillId="0" borderId="8" applyFont="1" applyBorder="1"/>
+<xf xfId="0" numFmtId="0" fontId="3" fillId="0" borderId="9" applyFont="1" applyBorder="1"/>
+<xf xfId="0" numFmtId="0" fontId="3" fillId="0" borderId="10" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="left" vertical="center" indent="1"/></xf>
+<xf xfId="0" numFmtId="0" fontId="3" fillId="0" borderId="11" applyFont="1" applyBorder="1"/>
+<xf xfId="0" numFmtId="0" fontId="3" fillId="0" borderId="12" applyFont="1" applyBorder="1"/>
 </cellXfs>
 <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
     const files = [
-      { name: '[Content_Types].xml', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="jpeg" ContentType="image/jpeg"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/></Types>` },
-      { name: '_rels/.rels', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/></Relationships>` },
-      { name: 'docProps/core.xml', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>${xlEsc(PD.title)}</dc:title><dcterms:created xsi:type="dcterms:W3CDTF">${new Date().toISOString().slice(0,19)}Z</dcterms:created></cp:coreProperties>` },
-      { name: 'docProps/app.xml', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes"><Application>calapp</Application></Properties>` },
+      /* ⚠ 860차: docProps(core·app)는 넣지 않는다 — core.xml 은 요소 차례가 정해져 있어(created 가 title 보다 앞) 어기면 MS 엑셀이 「내용에 문제」로 연다. 없어도 되는 부품이라 뺀다. */
+      { name: '[Content_Types].xml', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="jpeg" ContentType="image/jpeg"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/></Types>` },
+      { name: '_rels/.rels', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>` },
       /* ⚠ 인쇄 제목 — 제목·현장명 두 줄을 쪽마다 되풀이한다(시트에는 한 번만 쓴다) */
-      { name: 'xl/workbook.xml', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="사진대지" sheetId="1" r:id="rId1"/></sheets><definedNames><definedName name="_xlnm.Print_Titles" localSheetId="0">사진대지!$1:$2</definedName><definedName name="_xlnm.Print_Area" localSheetId="0">사진대지!$A$1:$${'ABCDEFGH'[C-1]}$${rowIdx}</definedName></definedNames></workbook>` },
+      { name: 'xl/workbook.xml', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="사진대지" sheetId="1" r:id="rId1"/></sheets><definedNames><definedName name="_xlnm.Print_Titles" localSheetId="0">사진대지!$1:$2</definedName><definedName name="_xlnm.Print_Area" localSheetId="0">사진대지!$A$1:$${xlCol(COLN - 1)}$${rowIdx}</definedName></definedNames></workbook>` },
       { name: 'xl/_rels/workbook.xml.rels', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>` },
       { name: 'xl/styles.xml', data: styles },
       { name: 'xl/worksheets/sheet1.xml', data: sheet },
@@ -13489,7 +13663,7 @@ ${anchors.map((an, i) => `<xdr:twoCellAnchor editAs="oneCell">
     console.warn('[사진대지] 엑셀', err);
     toast('엑셀로 내보내지 못했습니다');
   } finally {
-    const b2 = $('[data-act="pd.xlsx"]'); if (b2) { b2.disabled = false; b2.textContent = '엑셀로 내보내기'; }
+    const b2 = $('#tbXlWrap button'); if (b2) b2.disabled = false;
   }
 }
 
