@@ -1,7 +1,16 @@
 # 인수인계 — H · 주요업무현황 (calapp)
 
-**현재 기준: v844.**
+**현재 기준: v854.**
 
+- **사진대지 표시·엑셀(846~848차)**: 사진 위에 네모·원·화살표를 그린다(`ph.ann`, 칸을 0~100 으로 보는 비율). 고르면 상자와 잡이가 붙어 크기·자리를 바꾸고, 우클릭으로 복사·잘라내기·삭제, Ctrl+C/X/V·Delete·Ctrl+Z 가 듣는다.
+  「엑셀로 내보내기」는 **xlsx(zip)를 직접 만든다**(`pdXlsx`) — SheetJS 무료판은 그림을 못 넣는다. 압축 없이(STORE) 쓰고, 사진은 칸 크기대로 canvas 에 구워(표시까지 함께) `xl/media` 에 넣는다. 열 너비·행 높이·테두리·쪽 나눔·A4 인쇄 설정까지 담는다. ⚠ **그림 크기를 px 로 계산해 넣지 말 것**(849차에 그렇게 했다가 MS 엑셀에서 칸을 넘었다). 열 너비는 «글자 수» 단위이고 그 px 환산이 엑셀 판·기본 글꼴마다 다르다 — LibreOffice 는 맞고 MS 엑셀은 어긋난다.
+  850차부터 그림은 **칸에 붙인다**(`twoCellAnchor` + `editAs="oneCell"`) — 엑셀이 칸 크기에 맞춰 준다. 사진은 칸을 **꽉 채운다**. 칸 테두리가 사진에 가리는 문제는 사진 한 칸(사진+위치+내용)의 **바깥 테두리를 굵게(medium)** 둘러 해결한다(854차 — 굵은 선은 절반이 칸 밖에 그려져 그림에 안 가린다). 제목은 글자 사이를 띄워(`xlTitle`) 20pt, 위 여백 19mm · 아래 15mm · 꼬리말 10mm.
+  ⚠ 인쇄 범위(`_xlnm.Print_Area`)를 반드시 넣는다 — 그림이 `twoCellAnchor` 로 다음 열까지 걸쳐 있어 빈 열이 인쇄 범위에 끌려들어가고, 그 탓에 「폭에 맞추기」가 과하게 줄여 종이 폭을 못 채웠다.
+  머리(제목·현장명)는 시트에 **한 번만** 쓰고 `_xlnm.Print_Titles`(1:2행)로 쪽마다 되풀이한다.
+  열 너비는 mm 보다 6% 넓게 잡고(`WIDEN`) 「폭에 맞추기」로 줄인다 — 엑셀마다 다른 열 너비 환산에 휘둘리지 않고 폭을 꽉 채운다.
+  ⚠ **기본 글꼴(styles 의 0번)은 Calibri 11 로 둔다** — 엑셀의 열 너비 단위가 기본 글꼴의 숫자 너비로 정해져서, 한글 글꼴을 0번에 두면 우리가 계산한 mm 와 실제 폭이 어긋난다(쪽이 줄거나 넘친다). 보이는 칸은 1~3번(맑은 고딕)으로 칠한다.
+  ⚠ 시트 XML 은 **차례가 정해져 있다** — `headerFooter` 는 `rowBreaks` 보다 앞. 어기면 MS 엑셀이 「내용에 문제가 있다」며 빈 문서로 연다(851차에 겪었다. LibreOffice·openpyxl 은 그대로 열려 못 잡는다).
+  꼬리말은 `&C&P / &N` 만 쓴다(글꼴 지정 `&"이름"` 은 넣지 않는다). 아래 여백 12mm · 꼬리말 4mm, 내용은 남은 높이를 채운다. `printOptions horizontalCentered` 로 가로 가운데. docProps(core·app)도 함께 넣는다.
 - **업무 도구 › 도면 인쇄(815차)**: DWG 를 그대로 읽어 **도면틀마다 한 장**으로 나눠 인쇄한다(ZWCAD 를 열지 않으려는 목적). `#view-dwg` / `rDwg()` / 상태 `DW`. 이 창 메모리에서만.
   ⚠ 엔진(vendor/libredwg, GPL-3.0, wasm 9.7MB)은 **워커에서만** 돌린다 — 엠스크립튼 글루가 `new Function` 을 써서 문서 CSP(script-src 'self')에 막히지만, 워커 전역에는 그 CSP 가 상속되지 않아 그대로 돈다(실측). 그래서 **CSP 는 손대지 않았다**.
   워커(`vendor/libredwg/dwg-worker.js`)가 파싱 + 도형 펴기(블록·치수 블록 전개, MTEXT 서식코드 제거)까지 하고 선 묶음·글자 목록만 돌려준다. 본체는 도면틀 찾기(`dwRects` — 닫힌 네모 + **선 4개로 된 틀**)와 덩어리 나누기(`dwClusters`), 미리보기·인쇄를 맡는다.
@@ -73,6 +82,7 @@ H건설 서비스중부팀(중부1·중부2·광주, 현장 약 14개)의 내부
 | `scripts/test/e2e-defect.mjs` | 하자 전 구간: 가짜 HCS 업로드 → 게시 → 대시보드·현장 탭 → 부분 등록 유지 → 미게시 판정 |
 | `scripts/test/risk-gold.mjs` | 민원 세대 레벨화 — `fixtures/risk-gold.md` 60건 정답셋 |
 | `scripts/test/mobile-fit.mjs` | 폰 폭(375·390·360) 겹침·잘림 + 데스크톱 폭(1024~1920) 가로 스크롤 |
+| `scripts/test/clip-audit.mjs` | **스크롤로도 닿을 수 없는 내용**이 있는지(845차). 화면마다 잘라내는 칸을 모두 찾아 맨 위·맨 아래에서 잰다. 자기시험 2건(일부러 잘린 칸은 잡고, 그냥 구르는 칸은 통과) 포함 |
 | `scripts/test/firebase-live-e2e.mjs` | 실제 Firebase 2계정 E2E(환경변수 있을 때만) |
 | `scripts/test/run-all.mjs` | 위 게이트 순서대로 |
 | `scripts/test/shot-prod.mjs` | 배포본 스크린샷(수동) |
@@ -88,7 +98,7 @@ H건설 서비스중부팀(중부1·중부2·광주, 현장 약 14개)의 내부
 ```
 node --check app.js
 node scripts/test/static-audit.mjs      # FAIL 0 · WARN 0
-CHROMIUM=/path/to/chrome node scripts/test/run-all.mjs   # rules-auth · smoke · rainbow · e2e-defect · risk-gold
+CHROMIUM=/path/to/chrome node scripts/test/run-all.mjs   # rules-auth · smoke · rainbow · e2e-defect · risk-gold · mobile-fit · clip-audit
 ```
 - 헤드리스 크로미움이 필요하다. `playwright` 패키지 대신 `playwright-core` + `node_modules/playwright/index.js` 재수출 심(shim)으로 돌아간다.
 - 배포 zip 은 `calapp-vNNN/` 폴더 통째. **세 곳 버전 동기**: zip 이름 · `index.html` 의 `app.js?v=NNN` · `app.js` 의 `APP_VER`. 감사기가 어긋나면 FAIL.
@@ -171,7 +181,7 @@ CHROMIUM=/path/to/chrome node scripts/test/run-all.mjs   # rules-auth · smoke �
 - 요소 하나만 보지 말고 관계를 본다(카드 겹침·grid 행 높이·flex 자식 축소). 변경 보고 전 스크린샷 확인.
 - 현실적인 데이터 규모(28개 업무 · 14개 현장 · 650세대)로 검증하지 않으면 릴리즈 뒤 붕괴한다.
 - **한글 UI 의 세로 맞춤은 상자가 아니라 잉크로 잰다.** 한글은 내려긋는 획이 없어 글자가 줄 상자보다 위에 앉는다 — `align-items:center` 만 믿으면 1px 씩 떠 보인다(821·829차).
-- **가운데 정렬은 `safe` 를 붙인다.** `align-content:center` 는 내용이 칸보다 커지는 순간 위쪽을 잘라 스크롤로도 못 닿는다(822차).
+- **가운데 정렬은 `safe` 를 붙인다.** `align-content:center` 는 내용이 칸보다 커지는 순간 위쪽을 잘라 스크롤로도 못 닿는다(822차). 845차부터 `clip-audit` 이 이 부류를 자동으로 잡는다.
 - **`pointerdown` 에서 `preventDefault()` 하면 `mousedown` 이 아예 안 난다** — 그 이벤트로 닫히던 것(우클릭 메뉴)이 안 닫힌다(839차).
 - 숨긴 인라인 요소는 `display:inline-block; width:0` 대신 **흐름에서 빼라**(`position:absolute`) — 밑선 정렬 때문에 줄 상자가 커진다(832차).
 - 브라우저 기본 UI(`datalist`, 스크롤바)는 CSS 로 못 맞춘다 — 앱 모양이 필요하면 직접 그린다(841차).
