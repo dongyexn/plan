@@ -49,6 +49,7 @@
 --ch-d60:#DA6A60;--ch-d30:#E89C9A;--ch-d0:#B3C7DD;--ch-recv:#3E71D2;--ch-done:#F0B144;
 --ch-d60h:#C65A50;--ch-d30h:#C76F6D;--ch-d0h:#7E9BBC;--ch-lbl:#1F2B4C;--ch-lbl2:#7A3434;
 --ch-grid:rgba(0,0,0,.05);--ch-axis:rgba(60,60,67,.42);--ch-dlr:#2C437C;--ch-dld:#A0590A;--seg-lbl0:#2C437C;
+--mono:ui-monospace,'Cascadia Mono',Consolas,'D2Coding','Malgun Gothic',monospace;   /* 823차: 고정폭 글꼴은 이 한 값만 쓴다 */
 --rsm:var(--r-sm);--rmd:var(--r-md);--rlg:var(--r-lg);--rxl:var(--r-lg);--rp:var(--r-lg);   /* 모서리는 한 값으로 통일 — 349차에 원래대로 되돌림(단계를 두니 앱 인상이 흐트러졌다) */
   --ms:.12s;--mm:.2s;--ml:.3s;   /* 전환 시간 3단 — 빠름·보통·느림 */
   --ring:0 0 0 3px rgba(83,140,222,.35);   /* 키보드 포커스 링 */
@@ -230,7 +231,7 @@ body>svg{position:absolute;width:0;height:0;overflow:hidden;}
 #sidebar .df-reg .n{color:var(--shell-txt);}
 #sidebar .df-reg .icn{color:var(--shell-icon);}
 #sidebar .df-site .nil{color:var(--shell-txt);}
-#sidebar .nvi{padding:5px 8px;gap:9px;}   /* 464차: 아이콘 칸 배경이 없어져 32px 빈 칸이 여백처럼 커 보였다 — 항목 높이를 낮춘다 */
+#sidebar .nvi{padding:5px 8px 5px 11px;gap:9px;}   /* 464차: 아이콘 칸 배경이 없어져 32px 빈 칸이 여백처럼 커 보였다 — 항목 높이를 낮춘다. 829차: 왼쪽 10.5px — 접었을 때(레일 가운데)와 아이콘 x 를 맞춘다 */
 #sidebar .nvi .nic{background:transparent;width:26px;height:26px;}
 #sidebar .nvi .nic svg{color:var(--shell-icon);}
 #sidebar .nvi:hover{background:rgba(255,255,255,.06);}
@@ -304,12 +305,12 @@ body.sb-anim #fcal{contain:layout paint;will-change:transform;}
 .sbsl+*{margin-top:0;}
 .sbsl:not(:first-child){margin-top:8px;padding-top:12px;}
 .sbsl:not(:first-child)::before{content:'';position:absolute;left:6px;right:6px;top:0;height:1px;background:var(--fill);}   /* 430차: 분류 사이는 옅게 */
-#sidebar.mini .sbsl{visibility:visible;text-align:center;padding-left:0;padding-right:0;font-size:11px;letter-spacing:0;white-space:nowrap;transition:none;}
+#sidebar.mini .sbsl{visibility:visible;text-align:center;padding-left:0;padding-right:0;white-space:nowrap;transition:none;}   /* 831차: 접어도 글자 크기·자간은 그대로(줄이지 않는다) */
 /* 접힘 — 글자만 작아지고 세로 여백은 펼침 규칙을 그대로 쓴다(357차).
    ⚠ 예전에는 height 를 못 박아 위 여백이 사라졌다: 첫 라벨은 블록 위에 붙고, 두 번째 라벨은
    구분선과 겹쳐 아래로 눌린 것처럼 보였다. 줄 높이 차이(12→10.5px)만 아래 여백으로 메운다 */
-#sidebar.mini .sbsl{padding-bottom:4px;line-height:14px;}
-#sidebar.mini .sbsl>.sbsl-long{display:inline-block;width:0;overflow:hidden;}
+#sidebar.mini .sbsl{padding-bottom:4px;line-height:18px;}   /* 832차: 펼침과 같은 줄 높이 — 이 값이 없으면 라벨이 5px 높아져 아래 항목이 통째로 내려갔다 */
+#sidebar.mini .sbsl>.sbsl-long{position:absolute;width:0;overflow:hidden;}   /* 832차: inline-block 이면 밑선 정렬 때문에 줄 상자가 5px 높아져 아래 항목이 통째로 내려갔다 — 흐름에서 뺀다 */
 #sidebar.mini .sbsl>.sbsl-short{display:inline;}
 .sbsl>.sbsl-short{display:none;}
 #sidebar.mini .sbsl:not(:first-child)::before{left:4px;right:4px;}
@@ -751,8 +752,8 @@ button.p-col:hover{box-shadow:inset 0 0 0 1px rgba(0,0,0,.10),0 0 0 3px var(--fi
 /* 접힘 — display:none 이면 펼치는 순간 목록이 통째로 튀어나온다. 높이를 0 으로 접어 두면
    ⚠ 높이 자체는 auto 라 전환되지 않지만(스냅), 글자는 위 페이드 규칙을 타고 뒤따라 떠오른다 */
 /* 775차: mini 도 펼침과 **같은 줄·같은 자리** — 권역 머리는 높이를 그대로 두고 글자만 지운 채 짧은 선, 현장은 같은 패딩에 같은 4px 점(글자만 안 보임). 접힌 권역은 두 상태 모두 숨김 */
-#sidebar:not(.mini) .nvi.df-site.df-hid{display:none;}   /* 779차: 접힘에서는 접힌 권역의 현장도 점으로 보인다 — 안 그러면 권역 선만 줄줄이 남는다(사용자 스크린샷) */
-#sidebar.mini .df-reg{color:transparent;pointer-events:none;background:linear-gradient(var(--shell-sep,rgba(255,255,255,.14)),var(--shell-sep,rgba(255,255,255,.14))) 14px 60%/22px 1px no-repeat;}
+.nvi.df-site.df-hid{display:none;}   /* 824차: 접힌 권역의 현장은 아이콘 레일(mini)에서도 숨긴다 — 예전에는 접은 사이드바에서 전 현장이 점으로 다 나와 더 길었다 */
+#sidebar.mini .df-reg{display:none;}   /* 828차: 아이콘 레일에서는 권역 줄(구분선)을 감춘다 — 824차에 접힌 권역 현장을 숨기면서 선만 줄줄이 남았다 */
 #sidebar.mini .df-reg .icn,#sidebar.mini .df-reg .n{opacity:0;}
 #sidebar.mini .nvi.df-site{pointer-events:auto;}
 #sidebar.mini .nvi.df-site .dot{background:rgba(255,255,255,.45);}
@@ -1776,6 +1777,11 @@ body:not(.wid) .btn.dp-add.on:hover{background:transparent;color:#7DA9EA;}   /* 
 /* 주요업무 검색·필터 바 */
 /* 연·월 선택 */
 .ymp{padding:2px 0;}
+/* 826차: 연월 팝업 맨 위 「오늘로」 */
+.ymp-now{width:100%;height:32px;margin-top:8px;   /* 832차: 월 단추 사이 간격(8px)과 같게 */border-radius:var(--rmd);background:var(--b50);color:var(--bt1);
+  font-size:12.5px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px;}
+.ymp-now:hover{background:var(--b100);}
+.ymp-now:disabled{background:var(--fill);color:var(--lbl3);cursor:default;}
 .ymp-h{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:14px;}
 .ymp-h b{font-size:15px;font-weight:800;color:var(--lbl);min-width:76px;text-align:center;}
 .ymp-g{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
@@ -2347,7 +2353,7 @@ body.pickmode #tkRoot .tk-item,body.pickmode .day-panel .plan{user-select:none;}
 .md-doc li{margin:3px 0;color:var(--lbl2);}
 .md-doc b,.md-doc strong{color:var(--lbl);font-weight:700;}
 .md-doc code{background:var(--fill2);border-radius:3px;padding:1.5px 5px;font-size:12px;
-  font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--lbl);}
+  font-family:var(--mono);color:var(--lbl);}
 .md-doc pre{background:var(--fill2);border:1px solid var(--sep);border-radius:3px;padding:12px 14px;
   overflow:auto;font-size:12px;line-height:1.6;}
 .md-doc pre code{background:none;padding:0;}
@@ -2911,6 +2917,10 @@ body:not(.wid) .appo{display:flex;}
 #calFiltWrap{position:relative;}
 /* 459차: 위젯에서도 같은 꺽쇠 필터를 쓴다(옛 필터 카드가 사라졌으므로) */
 body.wid #calFiltWrap,body.wid #calTodayWrap{display:flex;}   /* 774차: 위젯에도 「오늘」 */
+/* 826차: 이번 달을 보고 있으면 숨는다 — 자리도 차지하지 않는다 */
+.cal-todayw.off{display:none!important;}
+.cal-todayw .cal-today{font-size:12px;font-weight:700;height:26px;padding:0 10px;border-radius:999px;background:var(--b50);color:var(--bt1);}
+body.wid.glass .cal-todayw .cal-today{background:rgba(255,255,255,.18);color:#fff;}   /* ⚠ 어두운 유리 배경일 때만 흰 칩 — 위젯이라도 유리가 꺼져 있으면 흰 바탕이라 안 보인다 */
 /* 459차: 위젯 필터와 같은 폭·여백 */
 /* 458차: 달력 머리 팝업이 카드에 잘리지 않게 — 머리 줄만 넘침을 허용한다 */
 #view-calendar .cal-card{overflow:visible;}
@@ -3954,25 +3964,34 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 .phs-pgn button .icn{width:15px;height:15px}
 .phs-pgn .phs-pgt{font-size:12.5px;font-weight:600;color:var(--lbl);font-variant-numeric:tabular-nums;min-width:54px;text-align:center}
 .phs-bar .phs-cnt{font-size:13px;font-weight:700;color:var(--lbl)}
-.phs-bar .phs-cnt span{color:var(--lbl3);font-weight:500;margin-left:6px}
+.phs-bar .phs-cnt>span:not(.phs-pgn){color:var(--lbl3);font-weight:500;margin-left:6px}   /* 831차: 부제용 규칙이 쪽 이동 묶음에도 걸려 「◀」 오른쪽만 6px 더 벌어졌다 */
 .phs-view{flex:1;min-height:0;margin-top:8px;background:var(--surf2);border:1px solid var(--cardline);border-radius:var(--rxl);overflow:auto;padding:12px;display:flex;flex-wrap:wrap;align-content:flex-start;justify-content:center;gap:14px;overscroll-behavior:contain}   /* 805차: 안쪽 여백 20→12 · 쪽 사이 20→14 — 용지를 조금이라도 크게 */
 .phs-pw{display:flex;flex-direction:column;align-items:center;gap:6px}
 /* 809차: 미리보기 세로 막대 — 구를 때만 잠깐. 자리를 먹지 않게 떠 있고, 사진 끌기와 겹치지 않게 클릭은 통과시킨다 */
-.phs-sb{position:absolute;right:4px;width:6px;border-radius:3px;background:var(--lbl3);opacity:0;pointer-events:none;z-index:6;
+.phs-sb{position:absolute;right:7px;width:6px;border-radius:3px;background:var(--lbl3);opacity:0;pointer-events:none;z-index:6;
   transition:opacity .35s ease;}
 .phs-sb.show{opacity:.55;transition:none;}   /* 나타날 땐 바로, 사라질 땐 서서히 */
 .phs-page{width:210mm;height:297mm;box-sizing:border-box;background:#fff;padding:10mm;   /* 실제 값은 802차부터 인라인(용지·여백) */display:flex;flex-direction:column;
   font-family:'Malgun Gothic','맑은 고딕','Pretendard Variable',Pretendard,sans-serif;color:#000;line-height:1.2}
 .phs-page.land{width:297mm;height:210mm}
 .phs-view .phs-page{zoom:var(--pz);border:2px solid var(--cardline)}
-/* 804차: 내용이 칸보다 짧으면 위아래 가운데 */
-.phs-view.vc{align-content:center}
-.phs-view.z1.vc{justify-content:center}
+/* 804차: 내용이 칸보다 짧으면 위아래 가운데.
+   ⚠ 822차: safe 를 붙인다 — 그냥 center 면 내용이 칸보다 커지는 순간 **위쪽이 잘려 스크롤로 닿을 수 없다** */
+.phs-view.vc{align-content:safe center}
+.phs-view.z1.vc{justify-content:safe center}
 .phs-view.z1{flex-direction:column;flex-wrap:nowrap;justify-content:flex-start;align-items:center}   /* ⚠ 801차: 세로 방향에서 justify-content:center 를 그대로 두면 쪽이 화면보다 클 때 위쪽이 넘쳐 나가 스크롤로 닿을 수 없다 */
 .phs-view.zg{gap:10px}
 .phs-sh{flex:1;min-height:0;display:flex;flex-direction:column}   /* 800차: 제목·현장명 쪽 테두리 없음(사용자) — 테두리는 사진 표에만 */
 .phs-ttl{text-align:center;font-size:22pt;font-weight:700;padding:3.5mm 0 2mm;white-space:nowrap;overflow:hidden;min-height:13mm}
 .phs-site{font-size:9pt;padding:0 1mm 2mm;min-height:5.5mm;white-space:nowrap;overflow:hidden}
+/* 841차: 현장명 고르기 — 브라우저 기본 목록(datalist) 대신 앱 글자·줄 높이로 그린다 */
+.phs-sw{position:relative;min-width:0}
+.phs-sw .inp{width:100%}
+.phs-sl{position:fixed;z-index:640;max-height:216px;overflow-y:auto;
+  background:var(--bg2);border:1px solid var(--sep);border-radius:var(--rmd);box-shadow:var(--sh-2);padding:4px}
+.phs-sio{display:block;width:100%;text-align:left;font-size:12.5px;line-height:1.35;color:var(--lbl);
+  padding:6px 8px;border-radius:var(--rsm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.phs-sio:hover,.phs-sio.on{background:var(--b50);color:var(--bt1)}
 .phs-cells{flex:1;min-height:0;display:grid;gap:.35mm;background:#000;border:.35mm solid #000}
 /* 803차: 꼬리말은 띠의 **아래쪽**에 붙인다 — 800차는 7mm 띠의 위에 글자를 놓아 밑에 3~4mm 가 비어 높아 보였다.
    글자 밑선이 여백선과 맞으므로 종이 끝까지 거리는 = 설정한 여백 그대로다 */
@@ -4025,12 +4044,12 @@ body.phs-dragging,body.phs-dragging *{cursor:grabbing!important;user-select:none
 /* ═══════════ 811차: 업무 도구 — 견적 검토 ═══════════ */
 #view-qc{overflow:hidden}
 #qcRoot{flex:1;min-height:0;display:flex;flex-direction:column}
-.qc-grid{flex:1;min-height:0;display:grid;grid-template-columns:316px minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:var(--s3)}
+.qc-grid{flex:1;min-height:0;display:grid;grid-template-columns:264px minmax(0,1fr);   /* 823차: 업무 도구 세 화면 모두 조직 관리(264px)와 같은 폭 */grid-template-rows:minmax(0,1fr);gap:var(--s3)}
 .qc-col{display:flex;flex-direction:column;min-height:0;gap:12px;position:relative;overflow-y:auto}
 .qc-col.qc-right{gap:0;overflow:visible}
 .qc-col>.card{padding:0;overflow:hidden;flex-shrink:0}
 .qc-b{padding:12px var(--s4) 14px}
-.qc-ta{width:100%;height:250px;resize:none;font-family:ui-monospace,Consolas,monospace;font-size:12px;line-height:1.65;
+.qc-ta{width:100%;height:250px;resize:none;font-family:var(--mono);font-size:12px;line-height:1.65;
   border:1px solid var(--sepo);border-radius:var(--rmd);padding:10px 12px;background:var(--bg2);color:var(--lbl);white-space:pre;overflow:auto}
 .qc-ta:focus{border-color:var(--b400);box-shadow:0 0 0 3px rgba(83,140,222,.14)}
 .qc-run{margin-top:10px;width:100%;height:36px;border-radius:var(--rmd);background:var(--b600);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px}
@@ -4038,11 +4057,13 @@ body.phs-dragging,body.phs-dragging *{cursor:grabbing!important;user-select:none
 .qc-fr+.qc-fr{margin-top:8px}
 .qc-fr label{font-size:12px;font-weight:600;color:var(--lbl2)}
 .qc-fr .seg{width:100%}
-.qc-fr .seg button{flex:1;padding:4px 0}
-.qc-sum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px var(--s4) 14px}
-.qc-sc{border:1px solid var(--cardline);border-radius:var(--rmd);padding:8px 6px;text-align:center}
-.qc-sc b{display:block;font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.2}
-.qc-sc span{font-size:11.5px;color:var(--lbl3)}
+.qc-fr .seg button{flex:1;padding:0;height:25px;display:flex;align-items:center;justify-content:center}   /* 828차: 글자에 따라 높이가 달라지지 않게(도면 인쇄와 같은 규칙) */
+.qc-sum{display:grid;grid-template-columns:repeat(3,1fr);padding:12px 0 14px}   /* 830차: 좌우 여백을 빼서 바깥 여백과 칸 사이 간격을 같게 — 칸 안쪽 여백까지 더해져 바깥만 넓어 보였다 */
+/* 828차: 칸막이 없이 구분선만 — 하자 「공가세대 현황」(.vseg)과 같은 결 */
+.qc-sc{position:relative;padding:2px 0;display:flex;flex-direction:column;align-items:center;text-align:center;gap:5px}
+.qc-sc+.qc-sc::before{content:"";position:absolute;left:0;top:3px;bottom:3px;width:1px;background:var(--sep)}
+.qc-sc b{font-size:22px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums;color:var(--lbl)}
+.qc-sc span{font-size:12px;font-weight:500;color:var(--lbl2)}
 .qc-sc.ok b{color:var(--gn)}
 .qc-sc.no b{color:var(--rd)}
 .qc-sc.sk b{color:var(--lbl3)}
@@ -4057,9 +4078,9 @@ body.phs-dragging,body.phs-dragging *{cursor:grabbing!important;user-select:none
   mask-image:linear-gradient(to bottom,#000 var(--qh,34px),transparent var(--qh,34px),#000 calc(var(--qh,34px) + 26px))}
 .qc-wrap.ft.fb{-webkit-mask-image:linear-gradient(to bottom,#000 var(--qh,34px),transparent var(--qh,34px),#000 calc(var(--qh,34px) + 26px),#000 calc(100% - 26px),transparent);
   mask-image:linear-gradient(to bottom,#000 var(--qh,34px),transparent var(--qh,34px),#000 calc(var(--qh,34px) + 26px),#000 calc(100% - 26px),transparent)}
-.qc-sb{position:absolute;right:4px;width:6px;border-radius:3px;background:var(--lbl3);opacity:0;pointer-events:none;z-index:6;transition:opacity .35s ease}
+.qc-sb{position:absolute;right:7px;width:6px;border-radius:3px;background:var(--lbl3);opacity:0;pointer-events:none;z-index:6;transition:opacity .35s ease}
 .qc-sb.show{opacity:.55;transition:none}
-.qc-tbl{width:100%;min-width:760px;border-collapse:collapse;font-size:12.5px;table-layout:fixed}   /* 좁은 화면에서는 가로로 흐르게 두고 아래 오버레이 막대(445차)로 넘긴다 */
+.qc-tbl{width:100%;min-width:1040px;border-collapse:collapse;font-size:12.5px;table-layout:fixed}   /* 좁은 화면에서는 가로로 흐르게 두고 아래 오버레이 막대(445차)로 넘긴다 */
 .qc-tbl th{position:sticky;top:0;z-index:2;background:var(--surf2);font-size:12px;font-weight:700;color:var(--lbl2);text-align:left;
   padding:8px 10px;white-space:nowrap;box-shadow:inset 0 -1px 0 var(--sep)}
 .qc-tbl td{padding:7px 10px;border-bottom:1px solid var(--sep);vertical-align:top;color:var(--lbl)}
@@ -4068,16 +4089,34 @@ body.phs-dragging,body.phs-dragging *{cursor:grabbing!important;user-select:none
 .qc-tbl tbody tr:first-child td{border-top:0}
 .qc-tbl .n{width:46px;color:var(--lbl3);font-variant-numeric:tabular-nums;text-align:center}
 .qc-tbl th.n{text-align:center}
-.qc-tbl .pl{width:158px;color:var(--lbl2);line-height:1.45}
-.qc-tbl .f{font-family:ui-monospace,Consolas,monospace;font-size:12px;white-space:pre-wrap;word-break:break-word;line-height:1.5}
-.qc-tbl .v{width:86px;text-align:right;font-variant-numeric:tabular-nums;font-family:ui-monospace,Consolas,monospace}
-.qc-tbl .v em{font-style:normal;color:var(--lbl3);margin-left:3px;font-size:11px}
-.qc-tbl .st{width:78px;padding-left:18px}
-.qc-tbl th.st{padding-left:18px}
+.qc-tbl .pl{width:104px;color:var(--lbl2);line-height:1.45}
+.qc-tbl .it{width:190px;color:var(--lbl);line-height:1.45}   /* 834차: 공간·항목 분리 */
+.qc-tbl td.f{font-family:var(--mono);font-size:12px;white-space:pre-wrap;word-break:break-word;line-height:1.5}
+.qc-tbl td.v{width:96px;text-align:right;font-variant-numeric:tabular-nums;font-family:var(--mono)}
+/* 835차: 엑셀 회계 서식처럼 — 숫자는 오른쪽 끝에 맞추고 단위는 그 오른쪽 고정 칸. ⚠ td 에 flex 를 주면 표 레이아웃이 깨진다 — 안쪽 span 으로 */
+.qc-tbl td.v em{display:inline-block;width:17px;text-align:left;margin-left:3px}   /* ⚠ flex 로 묶으면 밑선 정렬이 숫자를 1px 내린다 — 인라인 그대로 두고 단위만 고정 폭 */
+.qc-tbl th.v{width:96px;text-align:right;padding-right:24px}   /* 828차: 머리글은 본문 글꼴(Pretendard) */
+.qc-tbl .v em{font-style:normal;color:var(--lbl3);font-size:11px}
+/* ⚠ ㎡·㎥ 는 한 글자에 두 글자를 욱여넣은 활자라 같은 크기로 두면 m 보다 작아 보인다 — 조금 키운다 */
+.qc-tbl .v em sup{font-size:8px;line-height:0;vertical-align:super;margin-left:.5px}
+.qc-tbl .st{width:86px;text-align:center}
+.qc-tbl th.st{text-align:center}   /* 829차: 판정은 가로 가운데 */
 .qc-tbl .rs{width:236px;color:var(--lbl2)}
 .qc-tbl tr.no td{background:var(--tint-rd)}
+/* 833차: 세대별 합계 줄 — 내역서에 올릴 값(정수 올림) */
+.qc-tbl tr.sub td{background:var(--surf2);font-weight:600;color:var(--lbl2)}
+.qc-tbl tr.sub.top td{border-top:1px solid var(--sep)}
+.qc-tbl td.selc{background:var(--b50)!important;box-shadow:inset 0 0 0 1px var(--b200)}   /* 838차: 끌어 고른 칸 */
+body.qc-dragging{user-select:none}
+.qc-tbl tr.vs td{color:var(--lbl3)}   /* 836차: 업체가 적어 둔 「* 합계」 줄 — 우리 합계와 견주기만 하고 더하지는 않는다 */
+.qc-tbl tr.vs td.pl{font-weight:600}
+.qc-tbl tr.sub td.pl{color:var(--lbl);font-weight:700}
+.qc-tbl tr.sub td.f{font-family:var(--mono);font-size:12px;color:var(--lbl3);font-weight:500}
+.qc-tbl tr.sub td.it{color:var(--lbl);font-weight:600}
+.qc-tbl tr.sub td.v.up{font-size:13px;font-weight:800;color:var(--lbl)}
+.qc-tag.up{background:var(--b50);color:var(--bt1)}
 .qc-tbl tr.no .v.bad{color:var(--rd);font-weight:700}
-.qc-tag{display:inline-flex;align-items:center;font-size:11px;font-weight:600;padding:2px 8px;border-radius:var(--rp);white-space:nowrap}
+.qc-tag{display:inline-flex;align-items:center;position:relative;top:-1px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:var(--rp);white-space:nowrap}   /* 829차: 한글 글자 잉크가 같은 줄 다른 칸보다 1px 내려앉아 보였다 — 배지만 1px 올린다 */
 .qc-tag.ok{background:var(--tint-gn);color:var(--gn)}
 .qc-tag.no{background:var(--tint-rd);color:var(--rd)}
 .qc-tag.sk{background:var(--fill);color:var(--lbl3)}
@@ -4095,7 +4134,7 @@ body.phs-dragging,body.phs-dragging *{cursor:grabbing!important;user-select:none
 /* ═══════════ 815차: 업무 도구 — 도면 인쇄 ═══════════ */
 #view-dwg{overflow:hidden}
 #dwgRoot{flex:1;min-height:0;display:flex;flex-direction:column}
-.dw-grid{flex:1;min-height:0;display:grid;grid-template-columns:276px minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:var(--s3)}
+.dw-grid{flex:1;min-height:0;display:grid;grid-template-columns:264px minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:var(--s3)}
 .dw-col{display:flex;flex-direction:column;min-height:0;gap:12px;position:relative;overflow-y:auto}
 .dw-col.dw-right{gap:0;overflow:visible}
 .dw-col>.card{padding:0;overflow:hidden;flex-shrink:0}
@@ -4106,6 +4145,7 @@ body.phs-dragging,body.phs-dragging *{cursor:grabbing!important;user-select:none
 .dw-file{margin-top:9px;font-size:12.5px;font-weight:600;color:var(--lbl);word-break:break-all}
 .dw-stat{margin-top:6px;font-size:11.5px;color:var(--lbl3);line-height:1.6;font-variant-numeric:tabular-nums}
 .dw-warn{margin-top:6px;font-size:11.5px;line-height:1.55;color:var(--am);background:rgba(217,119,6,.10);border-radius:var(--rsm);padding:5px 8px}
+.dw-warn.dw-bad{color:var(--rd);background:var(--tint-rd)}   /* 840차: 못 연 까닭 */
 .dw-b .seg{width:100%}
 .dw-b .seg button{flex:1;padding:0;height:25px;display:flex;align-items:center;justify-content:center}   /* 819차: 글자에 따라 높이가 달라지지 않게(A4·A3 줄만 3px 낮았다) */
 .dw-fr{display:grid;grid-template-columns:44px minmax(0,1fr);align-items:center;gap:8px}
@@ -4121,6 +4161,7 @@ body.phs-dragging,body.phs-dragging *{cursor:grabbing!important;user-select:none
 .dw-bar{align-items:center;justify-content:space-between;padding:0 2px 0 4px;gap:var(--s3)}
 .dw-bar .dw-t{font-size:13px;font-weight:700;color:var(--lbl)}
 .dw-bar .dw-t{display:flex;align-items:center;gap:var(--s2)}
+.dw-bar .dw-t>span:not(.dw-pgn){margin-left:6px;font-weight:500;color:var(--lbl3);font-variant-numeric:tabular-nums}   /* 831차: 부제만 — 쪽 이동 묶음에는 안 걸리게 */
 .dw-pgt{font-size:12.5px;font-weight:600;color:var(--lbl);font-variant-numeric:tabular-nums;min-width:46px;text-align:center}
 .dw-tools{display:flex;align-items:center;gap:var(--s2)}
 .dw-pgn{display:flex;align-items:center;gap:2px}
@@ -4129,9 +4170,9 @@ body.phs-dragging,body.phs-dragging *{cursor:grabbing!important;user-select:none
 .dw-pgn button .icn{width:15px;height:15px}
 .dw-view{flex:1;min-height:0;margin-top:8px;background:var(--surf2);border:1px solid var(--cardline);border-radius:var(--rxl);
   overflow:auto;padding:12px;display:flex;flex-wrap:wrap;align-content:flex-start;justify-content:center;gap:14px;overscroll-behavior:contain;--dz:.5}
-.dw-view.vc{align-content:center}
+.dw-view.vc{align-content:safe center}
 .dw-view.z1{flex-direction:column;flex-wrap:nowrap;justify-content:flex-start;align-items:center}
-.dw-view.z1.vc{justify-content:center}
+.dw-view.z1.vc{justify-content:safe center}
 .dw-view.zg{gap:10px}
 .dw-page{background:#fff;box-sizing:border-box;padding:6mm;display:flex}
 .dw-view .dw-page{zoom:var(--dz);border:2px solid var(--cardline)}
@@ -4139,7 +4180,7 @@ body.phs-dragging,body.phs-dragging *{cursor:grabbing!important;user-select:none
 .dw-svg polyline{fill:none;stroke:#111;stroke-width:0.95px;vector-effect:non-scaling-stroke;stroke-linejoin:round;stroke-linecap:round}   /* 818차: 기본 0.25mm · 실제 굵기는 SVG 안쪽에 붙는 굵기 규칙이 덮는다 */
 .dw-svg text{fill:#111;font-family:'Malgun Gothic','맑은 고딕','Pretendard Variable',sans-serif;transform-box:fill-box}
 .dw-svg .dw-g text{transform:scale(1,-1);transform-origin:center}
-.dw-sb{position:absolute;right:4px;width:6px;border-radius:3px;background:var(--lbl3);opacity:0;pointer-events:none;z-index:6;transition:opacity .35s ease}
+.dw-sb{position:absolute;right:7px;width:6px;border-radius:3px;background:var(--lbl3);opacity:0;pointer-events:none;z-index:6;transition:opacity .35s ease}
 .dw-sb.show{opacity:.55;transition:none}
 .dw-empty{flex:1;min-height:0;margin-top:8px;border:1px dashed var(--sepo);border-radius:var(--rxl);background:var(--surf2);
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--lbl3)}
@@ -4334,13 +4375,13 @@ body.phs-dragging,body.phs-dragging *{cursor:grabbing!important;user-select:none
           <div class="cal-head">
             <div class="cal-move">
               <button class="cal-nb" data-act="cal.prev" aria-label="이전"><svg class="icn" aria-hidden="true"><use href="#i-chevl"></use></svg></button>
-              <button class="cal-title" data-act="cal.pick" aria-label="연·월 선택">
+              <button class="cal-title" data-act="cal.pick" aria-label="연·월 선택" data-tip="연·월 선택 · 두 번 누르면 오늘">
                 <span class="y" id="calYearTxt">2026년</span><span id="calMonTxt">7월</span>
               </button>
               <button class="cal-nb" data-act="cal.next" aria-label="다음"><svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg></button>
             </div>
             <div class="cal-ctl">
-              <div class="cal-nav appo" id="calTodayWrap"><button class="cal-nb cal-today" data-act="cal.today">오늘</button></div>
+              <div class="cal-nav appo cal-todayw off" id="calTodayWrap"><button class="cal-nb cal-today" data-act="cal.today" data-tip="오늘로 (T)">오늘</button></div>
               <div class="cal-nav appo" id="calFiltWrap">
                 <button class="cal-nb" data-act="day.fmore" aria-label="필터" data-tip="필터" aria-expanded="false"><svg class="icn" aria-hidden="true"><use href="#i-filter"></use></svg></button>
                 <div class="tb-pop cal-filt-pop" id="calFilt">
@@ -4350,6 +4391,7 @@ body.phs-dragging,body.phs-dragging *{cursor:grabbing!important;user-select:none
               <div class="cal-nav wido">
                 <button class="cal-nb" data-act="nq.toggle" aria-label="찾기" data-tip="찾기" aria-expanded="false"><svg class="icn" aria-hidden="true"><use href="#i-search"></use></svg></button>
                 <button class="cal-nb" data-act="wid.side" data-tab="mine" aria-label="내 업무" data-tip="내 업무"><svg class="icn" aria-hidden="true"><use href="#i-tasks"></use></svg></button>
+                <button class="cal-nb" data-act="wid.open" aria-label="브라우저로 열기" data-tip="브라우저로 열기"><svg class="icn" aria-hidden="true"><use href="#i-home"></use></svg></button>
                 <button class="cal-nb wid-acct" data-act="acct.open" aria-label="내 프로필" data-tip="내 프로필"><span class="av sb-acct-av" id="widAcctAv"><svg class="icn" aria-hidden="true"><use href="#i-me"></use></svg></span></button>
                 <button class="cal-nb" data-act="wid.set" aria-label="위젯 설정" data-tip="위젯 설정"><svg class="icn" aria-hidden="true"><use href="#i-settings"></use></svg></button>
               </div>
@@ -4551,5 +4593,5 @@ body.phs-dragging,body.phs-dragging *{cursor:grabbing!important;user-select:none
 <!-- 762차: chart.umd·datalabels·korea-geo·apt-geo 는 app.js 의 loadChart()/loadGeo() 가 필요할 때 읽는다(첫 로드 800KB 절감) -->
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=821"></script>
+<script src="./app.js?v=841"></script>
 </body></html>
