@@ -43,7 +43,9 @@ fs.writeFileSync(path.join(dir, 'dist', 'index.html'), out);
 /* vendor 파일은 용량이 커서 별도로 둔다 — dist 폴더째 올리면 된다 */
 fs.mkdirSync(path.join(dir, 'dist', 'vendor'), { recursive: true });
 for (const f of fs.readdirSync(path.join(dir, 'vendor'))) {
-  fs.copyFileSync(path.join(dir, 'vendor', f), path.join(dir, 'dist', 'vendor', f));
+  const src = path.join(dir, 'vendor', f), dst = path.join(dir, 'dist', 'vendor', f);
+  if (fs.statSync(src).isDirectory()) { fs.cpSync(src, dst, { recursive: true }); continue; }   /* 815차: vendor/libredwg 처럼 폴더도 있다 */
+  fs.copyFileSync(src, dst);
 }
 
 /* PWA 매니페스트·아이콘(383차) — index.html 옆에 있어야 설치 버튼이 뜬다 */

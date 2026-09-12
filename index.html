@@ -202,8 +202,10 @@ body>svg{position:absolute;width:0;height:0;overflow:hidden;}
 #appHdr .ah-right>*+*{position:relative;}
 #appHdr .ah-right>*+*::before{content:'';position:absolute;left:-8px;top:50%;transform:translateY(-50%);
   width:1px;height:16px;background:rgba(255,255,255,.16);}
+/* 801차: 인쇄 버튼 왼쪽 세로선은 **왼쪽에 보이는 것이 있을 때만** — 기준월·미게시 표시가 다 숨은 화면(사진대지)에선
+   줄 맨 앞에 선만 덩그러니 남았다. 보이는 앞 형제가 있으면 dfTopbar 가 .sep 을 붙인다 */
 #appHdr .ah-right .tbr>.tb-nav{position:relative;}
-#appHdr .ah-right .tbr>.tb-nav::before{content:'';position:absolute;left:-8px;top:50%;transform:translateY(-50%);
+#appHdr .ah-right .tbr>.tb-nav.sep::before{content:'';position:absolute;left:-8px;top:50%;transform:translateY(-50%);
   width:1px;height:16px;background:rgba(255,255,255,.16);}
 #sidebar .nvi,#sidebar .sbsl,#sidebar .sb-acct-info,#sidebar .sb-acct-name{color:var(--shell-txt);}
 /* 470차: 사내 시스템과 같은 배치 — 앱 이름은 사이드바 머리, 접기 버튼은 그 우측 */
@@ -319,7 +321,7 @@ body.sb-anim #fcal{contain:layout paint;will-change:transform;}
 .nvi:not(.act) .nic{background:var(--fill);}
 .nvi.act .nic svg{color:#fff;}
 .nvi:not(.act) .nic svg{color:var(--lbl2);}
-.nil{flex:1;text-align:left;}
+.nil{flex:1;text-align:left;position:relative;top:1px;}   /* 821차: 한글은 글자 잉크가 줄 상자보다 1px 위에 앉는다 — 아이콘(줄 한가운데)과 눈으로 맞추려고 글자만 1px 내린다 */
 /* ⚠ display:none 이면 펼칠 때 opacity 전환(90행)이 시작되지 않아 글자가 그냥 튀어나온다 —
    폭만 0 으로 접어 요소를 늘 살려 둔다(아이콘 위치는 그대로: 접힘 폭 64px 에서 내용칸이 정확히 32px). */
 #sidebar.mini .nil{flex:0 0 0;width:0;overflow:hidden;}
@@ -3899,47 +3901,306 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 .uprog-bar{height:7px;background:var(--b100);border-radius:99px;overflow:hidden;}
 .uprog-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--b500),var(--b700));border-radius:99px;transition:width .25s ease;}
 .uprog-sub{font-size:11.5px;color:var(--lbl2);margin-top:9px;font-variant-numeric:tabular-nums;min-height:14px;}
+/* ═══════════ 798차: 업무 보조 — 사진대지 ═══════════
+   용지는 mm 로 짓고 미리보기만 zoom 으로 줄인다 — 인쇄(#pdPrint)는 같은 마크업을 zoom 없이 찍는다(보이는 대로 나온다).
+   ⚠ 선택·끌기 표시는 미리보기(.phs-view) 안에서만 — zoom(.54) 이 곱해지므로 px 값은 화면의 약 2배로 적는다 */
+#view-photo{overflow:hidden}
+/* 800차: 미리보기 배율은 --pz 하나로 — 한 쪽/두 쪽은 칸 크기를 재서 JS(pdZoom)가 넣고, 여러 쪽은 고정 */
+.phs-view{--pz:.54}
+#pdRoot{flex:1;min-height:0;display:flex;flex-direction:column}   /* 799차: 화면(flex)의 자식은 #pdRoot — 여기서 높이를 잡지 않으면 쪽이 많을 때 미리보기가 스크롤 대신 늘어나 잘렸다 */
+.phs-grid{flex:1;min-height:0;display:grid;grid-template-columns:264px minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:var(--s3)}
+.phs-col{display:flex;flex-direction:column;min-height:0;position:relative}
+.phs-left{gap:12px;overflow-y:auto}
+.phs-left .card{padding:0;overflow:hidden;flex-shrink:0}
+.phs-b{padding:12px var(--s4) 14px}
+.phs-or{display:flex;width:100%;margin-bottom:10px}
+.phs-or button{flex:1;height:28px}
+.phs-lay{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.phs-lay button{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:7px;height:84px;padding:0 0 8px;border:1px solid var(--cardline);border-radius:var(--rmd);background:var(--bg2);font-size:12px;font-weight:700;color:var(--lbl2)}
+.phs-lay button.on{border-color:var(--b400);background:var(--b50);color:var(--bt1)}
+.phs-gl{width:30px;height:42px;border:1.5px solid currentColor;border-radius:2px;padding:4px 3px 3px;display:grid;gap:2px}
+.phs-gl.land{width:42px;height:30px;padding:3px 4px 3px}
+.phs-gl i{background:currentColor;opacity:.35;border-radius:1px}
+.phs-add{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.phs-add button,.phs-act button{height:34px;display:flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--cardline);border-radius:var(--rmd);background:var(--bg2);font-size:13px;font-weight:600;color:var(--lbl)}
+.phs-add .icn{width:15px;height:15px;color:var(--lbl2)}
+.phs-fr{display:grid;grid-template-columns:44px minmax(0,1fr);align-items:center;gap:8px}
+.phs-fr+.phs-fr{margin-top:8px}
+.phs-fr label{font-size:12px;font-weight:600;color:var(--lbl2)}
+.phs-fr .inp{height:32px;padding:0 10px}
+.phs-act{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.phs-act button{height:32px}
+.phs-act2{grid-template-columns:1fr 1fr}
+.phs-act3{grid-template-columns:repeat(3,1fr)}
+.phs-act3 button{font-size:12px;padding:0 2px}
+
+.phs-act button .icn{width:14px;height:14px}
+.phs-act button.dg{color:var(--rd)}
+.phs-act button:disabled{color:var(--lbl3);background:var(--surf2);cursor:default}
+.phs-bar{align-items:center;justify-content:space-between;padding:0 2px 0 4px;gap:var(--s3)}
+.phs-bar .phs-cnt{display:flex;align-items:center;gap:var(--s2)}
+.phs-nav{display:flex;align-items:center;gap:var(--s2)}
+.phs-nav .seg button{padding:4px 10px}
+.phs-zc{display:flex;align-items:center;gap:2px}
+.phs-zc button{width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:var(--rsm);font-size:15px;font-weight:700;color:var(--lbl2);line-height:1}
+.phs-zc button:hover{background:var(--fill);color:var(--lbl)}
+.phs-pct{font-size:12.5px;font-weight:600;color:var(--lbl);font-variant-numeric:tabular-nums;min-width:44px;text-align:center}
+.phs-fr2{margin-top:10px}
+.phs-fr .seg{width:100%}
+.phs-fr .seg button{flex:1;padding:4px 0}
+.phs-pgn{display:flex;align-items:center;gap:2px}
+.phs-pgn button{width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:var(--rsm);color:var(--lbl2)}
+.phs-pgn button:disabled{color:var(--lbl3);opacity:.5;cursor:default}
+.phs-pgn button .icn{width:15px;height:15px}
+.phs-pgn .phs-pgt{font-size:12.5px;font-weight:600;color:var(--lbl);font-variant-numeric:tabular-nums;min-width:54px;text-align:center}
+.phs-bar .phs-cnt{font-size:13px;font-weight:700;color:var(--lbl)}
+.phs-bar .phs-cnt span{color:var(--lbl3);font-weight:500;margin-left:6px}
+.phs-view{flex:1;min-height:0;margin-top:8px;background:var(--surf2);border:1px solid var(--cardline);border-radius:var(--rxl);overflow:auto;padding:12px;display:flex;flex-wrap:wrap;align-content:flex-start;justify-content:center;gap:14px;overscroll-behavior:contain}   /* 805차: 안쪽 여백 20→12 · 쪽 사이 20→14 — 용지를 조금이라도 크게 */
+.phs-pw{display:flex;flex-direction:column;align-items:center;gap:6px}
+/* 809차: 미리보기 세로 막대 — 구를 때만 잠깐. 자리를 먹지 않게 떠 있고, 사진 끌기와 겹치지 않게 클릭은 통과시킨다 */
+.phs-sb{position:absolute;right:4px;width:6px;border-radius:3px;background:var(--lbl3);opacity:0;pointer-events:none;z-index:6;
+  transition:opacity .35s ease;}
+.phs-sb.show{opacity:.55;transition:none;}   /* 나타날 땐 바로, 사라질 땐 서서히 */
+.phs-page{width:210mm;height:297mm;box-sizing:border-box;background:#fff;padding:10mm;   /* 실제 값은 802차부터 인라인(용지·여백) */display:flex;flex-direction:column;
+  font-family:'Malgun Gothic','맑은 고딕','Pretendard Variable',Pretendard,sans-serif;color:#000;line-height:1.2}
+.phs-page.land{width:297mm;height:210mm}
+.phs-view .phs-page{zoom:var(--pz);border:2px solid var(--cardline)}
+/* 804차: 내용이 칸보다 짧으면 위아래 가운데 */
+.phs-view.vc{align-content:center}
+.phs-view.z1.vc{justify-content:center}
+.phs-view.z1{flex-direction:column;flex-wrap:nowrap;justify-content:flex-start;align-items:center}   /* ⚠ 801차: 세로 방향에서 justify-content:center 를 그대로 두면 쪽이 화면보다 클 때 위쪽이 넘쳐 나가 스크롤로 닿을 수 없다 */
+.phs-view.zg{gap:10px}
+.phs-sh{flex:1;min-height:0;display:flex;flex-direction:column}   /* 800차: 제목·현장명 쪽 테두리 없음(사용자) — 테두리는 사진 표에만 */
+.phs-ttl{text-align:center;font-size:22pt;font-weight:700;padding:3.5mm 0 2mm;white-space:nowrap;overflow:hidden;min-height:13mm}
+.phs-site{font-size:9pt;padding:0 1mm 2mm;min-height:5.5mm;white-space:nowrap;overflow:hidden}
+.phs-cells{flex:1;min-height:0;display:grid;gap:.35mm;background:#000;border:.35mm solid #000}
+/* 803차: 꼬리말은 띠의 **아래쪽**에 붙인다 — 800차는 7mm 띠의 위에 글자를 놓아 밑에 3~4mm 가 비어 높아 보였다.
+   글자 밑선이 여백선과 맞으므로 종이 끝까지 거리는 = 설정한 여백 그대로다 */
+.phs-pg{flex-shrink:0;display:flex;align-items:flex-end;justify-content:center;height:6.5mm;font-size:9pt;line-height:1}
+.phs-cell{display:flex;flex-direction:column;min-width:0;min-height:0;background:#fff;position:relative}
+.phs-ph{flex:1;min-height:0;margin:1.5mm;position:relative}
+/* 800차: 비율이 안 맞아도 **자르지 않는다** — 기본은 「늘림」(칸에 맞춰 늘려 채움, 여백 없음).
+   선택 카드에서 「맞춤」(사진 전체가 보이고 남는 곳은 여백) · 「채움」(비율 유지하고 넘치는 부분은 잘림)으로 바꿀 수 있다 */
+.phs-ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;display:block;-webkit-user-drag:none;user-select:none}
+.phs-ph.contain img{object-fit:contain}
+.phs-ph.cover img{object-fit:cover}
+.phs-f{flex-shrink:0;height:6mm;display:flex;align-items:center;padding:0 2.5mm;font-size:9pt;border-top:.3mm dotted #000;white-space:nowrap;overflow:hidden}
+.phs-f b{font-weight:400;flex-shrink:0;margin-right:3mm}
+.phs-view .phs-cell[data-id] .phs-ph{cursor:pointer}
+.phs-view .phs-cell.sel .phs-ph::after{content:'';position:absolute;inset:-6px;border:4px solid var(--b600);border-radius:3px;pointer-events:none}
+.phs-view .phs-cell.sel .phs-ph::before{content:'';position:absolute;left:10px;top:10px;width:30px;height:30px;border-radius:50%;z-index:1;
+  background:var(--b600) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center/18px no-repeat}
+.phs-view .phs-cell.sel .phs-f{background:var(--b50)}
+.phs-view .phs-cell.src .phs-ph img{opacity:.28}
+body.phs-dragging,body.phs-dragging *{cursor:grabbing!important;user-select:none!important}
+.phs-ghost{position:fixed;z-index:60;width:150px;height:92px;border-radius:var(--rsm);overflow:hidden;box-shadow:var(--sh-2);pointer-events:none}
+.phs-ghost img{width:100%;height:100%;object-fit:cover;opacity:.9;display:block}
+.phs-ghost em{position:absolute;right:6px;bottom:6px;font-style:normal;font-size:12px;font-weight:700;color:#fff;background:var(--b600);border-radius:10px;padding:1px 8px}
+.phs-ins{position:fixed;z-index:59;display:none;background:var(--b600);border-radius:2px;pointer-events:none}
+#mb.pdcw{width:720px;max-width:94vw}
+#mb.pdcw .mf2 .phs-mfsp{flex:1}
+.phs-crop{display:flex;flex-direction:column;gap:12px}
+.phs-cbar{display:flex;align-items:center;justify-content:space-between}
+.phs-csz{font-size:12px;color:var(--lbl3);font-variant-numeric:tabular-nums}
+.phs-cstage{height:430px;background:var(--surf3);border-radius:var(--rmd);display:flex;align-items:center;justify-content:center;overflow:hidden;touch-action:none}
+.phs-cimg{position:relative;overflow:hidden;user-select:none}
+.phs-cimg img{width:100%;height:100%;display:block;-webkit-user-drag:none}
+.phs-cbox{position:absolute;border:1.5px solid #fff;cursor:move;box-shadow:0 0 0 3000px rgba(28,28,30,.5)}
+.phs-cbox i{position:absolute;width:11px;height:11px;background:#fff;border:1.5px solid var(--b600);border-radius:2px;transform:translate(-50%,-50%)}
+#pdPrint{display:none}
+@media print{
+  body.phs-printing.phs-printing>*:not(#pdPrint):not(#pdPrint){display:none!important}   /* ⚠ 전역 인쇄 규칙(#app display:block!important, 명시도 1-2-1)을 이겨야 한다 */
+  body.phs-printing{background:#fff!important}
+  body.phs-printing #pdPrint{display:block!important}
+  #pdPrint .phs-page{break-after:page;page-break-after:always}   /* 높이는 pdPrintMount 가 용지에 맞춰 넣는다(802차) */
+  #pdPrint .phs-page:last-child{break-after:auto;page-break-after:auto}
+}
+@media(max-width:980px){
+  body:not(.wid) #view-photo{overflow-y:auto}
+  body:not(.wid) #pdRoot{flex:none}
+  body:not(.wid) .phs-grid{grid-template-columns:minmax(0,1fr);grid-template-rows:auto;flex:none}
+  body:not(.wid) .phs-view{min-height:70vh}
+  body:not(.wid) .phs-nav .seg{display:none}
+}
+/* ═══════════ 811차: 업무 도구 — 견적 검토 ═══════════ */
+#view-qc{overflow:hidden}
+#qcRoot{flex:1;min-height:0;display:flex;flex-direction:column}
+.qc-grid{flex:1;min-height:0;display:grid;grid-template-columns:316px minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:var(--s3)}
+.qc-col{display:flex;flex-direction:column;min-height:0;gap:12px;position:relative;overflow-y:auto}
+.qc-col.qc-right{gap:0;overflow:visible}
+.qc-col>.card{padding:0;overflow:hidden;flex-shrink:0}
+.qc-b{padding:12px var(--s4) 14px}
+.qc-ta{width:100%;height:250px;resize:none;font-family:ui-monospace,Consolas,monospace;font-size:12px;line-height:1.65;
+  border:1px solid var(--sepo);border-radius:var(--rmd);padding:10px 12px;background:var(--bg2);color:var(--lbl);white-space:pre;overflow:auto}
+.qc-ta:focus{border-color:var(--b400);box-shadow:0 0 0 3px rgba(83,140,222,.14)}
+.qc-run{margin-top:10px;width:100%;height:36px;border-radius:var(--rmd);background:var(--b600);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px}
+.qc-fr{display:grid;grid-template-columns:64px minmax(0,1fr);align-items:center;gap:8px}
+.qc-fr+.qc-fr{margin-top:8px}
+.qc-fr label{font-size:12px;font-weight:600;color:var(--lbl2)}
+.qc-fr .seg{width:100%}
+.qc-fr .seg button{flex:1;padding:4px 0}
+.qc-sum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px var(--s4) 14px}
+.qc-sc{border:1px solid var(--cardline);border-radius:var(--rmd);padding:8px 6px;text-align:center}
+.qc-sc b{display:block;font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.2}
+.qc-sc span{font-size:11.5px;color:var(--lbl3)}
+.qc-sc.ok b{color:var(--gn)}
+.qc-sc.no b{color:var(--rd)}
+.qc-sc.sk b{color:var(--lbl3)}
+.qc-bar{align-items:center;justify-content:space-between;padding:0 2px 0 4px;gap:var(--s3)}
+.qc-bar .qc-t{font-size:13px;font-weight:700;color:var(--lbl)}
+.qc-bar .qc-t span{margin-left:6px;font-weight:500;color:var(--lbl3)}
+.qc-wrap{flex:1;min-height:0;margin-top:8px;border:1px solid var(--cardline);border-radius:var(--rxl);background:var(--bg2);overflow:auto;position:relative}
+/* 위 페이드는 붙박이 머리(--qh) 아래에서 시작한다 — 열 이름은 늘 선명하게 */
+.qc-wrap.fb{-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 26px),transparent);
+  mask-image:linear-gradient(to bottom,#000 calc(100% - 26px),transparent)}
+.qc-wrap.ft{-webkit-mask-image:linear-gradient(to bottom,#000 var(--qh,34px),transparent var(--qh,34px),#000 calc(var(--qh,34px) + 26px));
+  mask-image:linear-gradient(to bottom,#000 var(--qh,34px),transparent var(--qh,34px),#000 calc(var(--qh,34px) + 26px))}
+.qc-wrap.ft.fb{-webkit-mask-image:linear-gradient(to bottom,#000 var(--qh,34px),transparent var(--qh,34px),#000 calc(var(--qh,34px) + 26px),#000 calc(100% - 26px),transparent);
+  mask-image:linear-gradient(to bottom,#000 var(--qh,34px),transparent var(--qh,34px),#000 calc(var(--qh,34px) + 26px),#000 calc(100% - 26px),transparent)}
+.qc-sb{position:absolute;right:4px;width:6px;border-radius:3px;background:var(--lbl3);opacity:0;pointer-events:none;z-index:6;transition:opacity .35s ease}
+.qc-sb.show{opacity:.55;transition:none}
+.qc-tbl{width:100%;min-width:760px;border-collapse:collapse;font-size:12.5px;table-layout:fixed}   /* 좁은 화면에서는 가로로 흐르게 두고 아래 오버레이 막대(445차)로 넘긴다 */
+.qc-tbl th{position:sticky;top:0;z-index:2;background:var(--surf2);font-size:12px;font-weight:700;color:var(--lbl2);text-align:left;
+  padding:8px 10px;white-space:nowrap;box-shadow:inset 0 -1px 0 var(--sep)}
+.qc-tbl td{padding:7px 10px;border-bottom:1px solid var(--sep);vertical-align:top;color:var(--lbl)}
+.qc-tbl tr:last-child td{border-bottom:0}
+.qc-tbl tr.top td{border-top:1px solid var(--sep)}
+.qc-tbl tbody tr:first-child td{border-top:0}
+.qc-tbl .n{width:46px;color:var(--lbl3);font-variant-numeric:tabular-nums;text-align:center}
+.qc-tbl th.n{text-align:center}
+.qc-tbl .pl{width:158px;color:var(--lbl2);line-height:1.45}
+.qc-tbl .f{font-family:ui-monospace,Consolas,monospace;font-size:12px;white-space:pre-wrap;word-break:break-word;line-height:1.5}
+.qc-tbl .v{width:86px;text-align:right;font-variant-numeric:tabular-nums;font-family:ui-monospace,Consolas,monospace}
+.qc-tbl .v em{font-style:normal;color:var(--lbl3);margin-left:3px;font-size:11px}
+.qc-tbl .st{width:78px;padding-left:18px}
+.qc-tbl th.st{padding-left:18px}
+.qc-tbl .rs{width:236px;color:var(--lbl2)}
+.qc-tbl tr.no td{background:var(--tint-rd)}
+.qc-tbl tr.no .v.bad{color:var(--rd);font-weight:700}
+.qc-tag{display:inline-flex;align-items:center;font-size:11px;font-weight:600;padding:2px 8px;border-radius:var(--rp);white-space:nowrap}
+.qc-tag.ok{background:var(--tint-gn);color:var(--gn)}
+.qc-tag.no{background:var(--tint-rd);color:var(--rd)}
+.qc-tag.sk{background:var(--fill);color:var(--lbl3)}
+.qc-empty{flex:1;min-height:0;margin-top:8px;border:1px dashed var(--sepo);border-radius:var(--rxl);background:var(--surf2);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--lbl3)}
+.qc-empty .icn{width:26px;height:26px}
+.qc-empty p{font-size:13px;line-height:1.7;text-align:center}
+@media(max-width:980px){
+  body:not(.wid) #view-qc{overflow-y:auto}
+  body:not(.wid) #qcRoot{flex:none}
+  body:not(.wid) .qc-grid{grid-template-columns:minmax(0,1fr);grid-template-rows:auto;flex:none}
+  body:not(.wid) .qc-col{overflow:visible}
+  body:not(.wid) .qc-wrap{min-height:60vh}
+}
+/* ═══════════ 815차: 업무 도구 — 도면 인쇄 ═══════════ */
+#view-dwg{overflow:hidden}
+#dwgRoot{flex:1;min-height:0;display:flex;flex-direction:column}
+.dw-grid{flex:1;min-height:0;display:grid;grid-template-columns:276px minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:var(--s3)}
+.dw-col{display:flex;flex-direction:column;min-height:0;gap:12px;position:relative;overflow-y:auto}
+.dw-col.dw-right{gap:0;overflow:visible}
+.dw-col>.card{padding:0;overflow:hidden;flex-shrink:0}
+.dw-b{padding:12px var(--s4) 14px}
+.dw-open{width:100%;height:36px;display:flex;align-items:center;justify-content:center;gap:7px;border-radius:var(--rmd);background:var(--b600);color:#fff;font-size:13px;font-weight:700}
+.dw-open .icn{width:15px;height:15px}
+.dw-load{height:36px;display:flex;align-items:center;justify-content:center;border-radius:var(--rmd);background:var(--surf2);color:var(--lbl2);font-size:12.5px;font-weight:600}
+.dw-file{margin-top:9px;font-size:12.5px;font-weight:600;color:var(--lbl);word-break:break-all}
+.dw-stat{margin-top:6px;font-size:11.5px;color:var(--lbl3);line-height:1.6;font-variant-numeric:tabular-nums}
+.dw-warn{margin-top:6px;font-size:11.5px;line-height:1.55;color:var(--am);background:rgba(217,119,6,.10);border-radius:var(--rsm);padding:5px 8px}
+.dw-b .seg{width:100%}
+.dw-b .seg button{flex:1;padding:0;height:25px;display:flex;align-items:center;justify-content:center}   /* 819차: 글자에 따라 높이가 달라지지 않게(A4·A3 줄만 3px 낮았다) */
+.dw-fr{display:grid;grid-template-columns:44px minmax(0,1fr);align-items:center;gap:8px}
+.dw-fr+.dw-fr{margin-top:8px}   /* 817차: 첫 줄 위 여백은 카드 padding 이 이미 준다 */
+.dw-fr label{font-size:12px;font-weight:600;color:var(--lbl2)}
+.dw-list{max-height:230px;overflow-y:auto;padding:6px 10px 10px}
+.dw-pl{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:var(--rsm);font-size:12.5px;color:var(--lbl);cursor:pointer}
+.dw-pl:hover{background:var(--fill)}
+.dw-pl input{width:15px;height:15px;accent-color:var(--b600)}
+.dw-pl b{font-weight:700;min-width:18px}
+.dw-pl span{color:var(--lbl3);font-variant-numeric:tabular-nums}
+.dw-pl.off b,.dw-pl.off span{color:var(--lbl3);opacity:.6}
+.dw-bar{align-items:center;justify-content:space-between;padding:0 2px 0 4px;gap:var(--s3)}
+.dw-bar .dw-t{font-size:13px;font-weight:700;color:var(--lbl)}
+.dw-bar .dw-t{display:flex;align-items:center;gap:var(--s2)}
+.dw-pgt{font-size:12.5px;font-weight:600;color:var(--lbl);font-variant-numeric:tabular-nums;min-width:46px;text-align:center}
+.dw-tools{display:flex;align-items:center;gap:var(--s2)}
+.dw-pgn{display:flex;align-items:center;gap:2px}
+.dw-pgn button{width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:var(--rsm);color:var(--lbl2)}
+.dw-pgn button:disabled{color:var(--lbl3);opacity:.5;cursor:default}
+.dw-pgn button .icn{width:15px;height:15px}
+.dw-view{flex:1;min-height:0;margin-top:8px;background:var(--surf2);border:1px solid var(--cardline);border-radius:var(--rxl);
+  overflow:auto;padding:12px;display:flex;flex-wrap:wrap;align-content:flex-start;justify-content:center;gap:14px;overscroll-behavior:contain;--dz:.5}
+.dw-view.vc{align-content:center}
+.dw-view.z1{flex-direction:column;flex-wrap:nowrap;justify-content:flex-start;align-items:center}
+.dw-view.z1.vc{justify-content:center}
+.dw-view.zg{gap:10px}
+.dw-page{background:#fff;box-sizing:border-box;padding:6mm;display:flex}
+.dw-view .dw-page{zoom:var(--dz);border:2px solid var(--cardline)}
+.dw-svg{width:100%;height:100%;display:block}
+.dw-svg polyline{fill:none;stroke:#111;stroke-width:0.95px;vector-effect:non-scaling-stroke;stroke-linejoin:round;stroke-linecap:round}   /* 818차: 기본 0.25mm · 실제 굵기는 SVG 안쪽에 붙는 굵기 규칙이 덮는다 */
+.dw-svg text{fill:#111;font-family:'Malgun Gothic','맑은 고딕','Pretendard Variable',sans-serif;transform-box:fill-box}
+.dw-svg .dw-g text{transform:scale(1,-1);transform-origin:center}
+.dw-sb{position:absolute;right:4px;width:6px;border-radius:3px;background:var(--lbl3);opacity:0;pointer-events:none;z-index:6;transition:opacity .35s ease}
+.dw-sb.show{opacity:.55;transition:none}
+.dw-empty{flex:1;min-height:0;margin-top:8px;border:1px dashed var(--sepo);border-radius:var(--rxl);background:var(--surf2);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--lbl3)}
+.dw-empty .icn{width:26px;height:26px}
+.dw-empty p{font-size:13px;line-height:1.7;text-align:center}
+#dwPrint{display:none}
+@media print{
+  body.dw-printing.dw-printing>*:not(#dwPrint):not(#dwPrint){display:none!important}
+  body.dw-printing{background:#fff!important}
+  body.dw-printing #dwPrint{display:block!important}
+  #dwPrint .dw-page{break-after:page;page-break-after:always}
+  #dwPrint .dw-page:last-child{break-after:auto;page-break-after:auto}
+}
+@media(max-width:980px){
+  body:not(.wid) #view-dwg{overflow-y:auto}
+  body:not(.wid) #dwgRoot{flex:none}
+  body:not(.wid) .dw-grid{grid-template-columns:minmax(0,1fr);grid-template-rows:auto;flex:none}
+  body:not(.wid) .dw-col{overflow:visible}
+  body:not(.wid) .dw-view{min-height:60vh}
+}
 </style>
 </head>
 <body>
 <!-- 배경화면 위 정적 필름 그레인 — 배경을 켤 때만 보인다 -->
 <!-- 아이콘: Lucide (ISC) — 24 그리드 · stroke 2 -->
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true" focusable="false">
-<symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.2"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .9-1 1.6v.4"/><path d="M12 17.2h.01"/></symbol>
+<symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /> <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /> <path d="M12 17h.01" /></symbol>
 <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></symbol>
-<symbol id="i-voice" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M12 7v4"/><path d="M12 14h.01"/></symbol>
+<symbol id="i-voice" viewBox="0 0 24 24"><path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z" /> <path d="M12 15h.01" /> <path d="M12 7v4" /></symbol>
 <symbol id="i-warn" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
 <symbol id="i-home" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
-<symbol id="i-grid4" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
-<symbol id="i-build" viewBox="0 0 24 24"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></symbol>
-<symbol id="i-trend" viewBox="0 0 24 24"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></symbol>
-<symbol id="i-today" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.6V20a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V9.6"/><path d="M9.6 21v-6.2h4.8V21"/></symbol>
-<symbol id="i-cal" viewBox="0 0 24 24"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></symbol>
-<symbol id="i-cal-ck" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/></symbol>
-<symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></symbol>
-<symbol id="i-tasks" viewBox="0 0 24 24"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></symbol>
-<symbol id="i-settings" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
+<symbol id="i-grid4" viewBox="0 0 24 24"><rect width="7" height="7" x="3" y="3" rx="1" /> <rect width="7" height="7" x="14" y="3" rx="1" /> <rect width="7" height="7" x="14" y="14" rx="1" /> <rect width="7" height="7" x="3" y="14" rx="1" /></symbol>
+<symbol id="i-build" viewBox="0 0 24 24"><path d="M10 12h4" /> <path d="M10 8h4" /> <path d="M14 21v-3a2 2 0 0 0-4 0v3" /> <path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2" /> <path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16" /></symbol>
+<symbol id="i-trend" viewBox="0 0 24 24"><path d="M16 7h6v6" /> <path d="m22 7-8.5 8.5-5-5L2 17" /></symbol>
+<symbol id="i-today" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" /> <path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></symbol>
+<symbol id="i-cal" viewBox="0 0 24 24"><path d="M8 2v3" /> <path d="M16 2v3" /> <rect x="3" y="3" width="18" height="18" rx="2" /> <path d="M3 9h18" /></symbol>
+<symbol id="i-cal-ck" viewBox="0 0 24 24"><path d="M8 2v3" /> <path d="M16 2v3" /> <rect x="3" y="3" width="18" height="18" rx="2" /> <path d="M3 9h18" /> <path d="m9 15 2 2 4-4" /></symbol>
+<symbol id="i-layers" viewBox="0 0 24 24"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z" /> <path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12" /> <path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17" /></symbol>
+<symbol id="i-tasks" viewBox="0 0 24 24"><path d="M13 5h8" /> <path d="M13 12h8" /> <path d="M13 19h8" /> <path d="m3 17 2 2 4-4" /> <path d="m3 7 2 2 4-4" /></symbol>
+<symbol id="i-settings" viewBox="0 0 24 24"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915" /> <circle cx="12" cy="12" r="3" /></symbol>
 <symbol id="i-chevl" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
-<symbol id="i-expand" viewBox="0 0 24 24"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></symbol>
-<symbol id="i-filter" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M7 12h10"/><path d="M10 18h4"/></symbol>
+<symbol id="i-expand" viewBox="0 0 24 24"><path d="M15 3h6v6" /> <path d="m21 3-7 7" /> <path d="m3 21 7-7" /> <path d="M9 21H3v-6" /></symbol>
+<symbol id="i-filter" viewBox="0 0 24 24"><path d="M2 5h20" /> <path d="M6 12h12" /> <path d="M9 19h6" /></symbol>
 <symbol id="i-chevd" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
 <symbol id="i-chevr" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
 <symbol id="i-close" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
 <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
-<symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></symbol>
-<symbol id="i-pen" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24"><path d="M10 11v6" /> <path d="M14 11v6" /> <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /> <path d="M3 6h18" /> <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></symbol>
+<symbol id="i-pen" viewBox="0 0 24 24"><path d="M13 21h8" /> <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" /></symbol>
 <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
 <symbol id="i-ext" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
-<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
-<symbol id="i-me" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
-<symbol id="i-print" viewBox="0 0 24 24"><path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7" rx="1"/></symbol>
-<symbol id="i-defect" viewBox="0 0 24 24"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><rect x="7" y="13.5" width="3" height="4.5" rx=".7" fill="currentColor" stroke="none"/><rect x="11.6" y="11" width="3" height="7" rx=".7" fill="currentColor" stroke="none"/><rect x="16.2" y="12.5" width="3" height="5.5" rx=".7" fill="currentColor" stroke="none"/><path d="M7.5 9.5 11 6l3 2.5L18.5 4"/><path d="M15.5 3.5h3.2v3.2"/></symbol>
-<symbol id="i-org" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
-<symbol id="i-people" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34" /> <circle cx="11" cy="11" r="8" /></symbol>
+<symbol id="i-me" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /> <circle cx="12" cy="7" r="4" /></symbol>
+<symbol id="i-print" viewBox="0 0 24 24"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /> <path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6" /> <rect x="6" y="14" width="12" height="8" rx="1" /></symbol><symbol id="i-photo" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2" ry="2" /> <circle cx="9" cy="9" r="2" /> <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /></symbol><symbol id="i-folder" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9L9.6 3.9A2 2 0 0 0 7.9 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></symbol><symbol id="i-crop" viewBox="0 0 24 24"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></symbol><symbol id="i-calc" viewBox="0 0 24 24"><!-- 813차: 견적 검토 — Lucide plus·minus·x·equal 을 2×2 로(사용자 선택 C). 기호가 작아 stroke-width 를 3.4 로 올려 그린다 --><g transform="translate(-0.5,-0.5) scale(0.5)" stroke-width="3.4"><path d="M5 12h14"/><path d="M12 5v14"/></g><g transform="translate(12.5,-0.5) scale(0.5)" stroke-width="3.4"><path d="M5 12h14"/></g><g transform="translate(-0.5,12.5) scale(0.5)" stroke-width="3.4"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></g><g transform="translate(12.5,12.5) scale(0.5)" stroke-width="3.4"><path d="M5 9h14"/><path d="M5 15h14"/></g></symbol><symbol id="i-paste" viewBox="0 0 24 24"><rect width="8" height="4" x="8" y="2" rx="1" ry="1" /> <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /></symbol><symbol id="i-frame" viewBox="0 0 24 24"><line x1="22" x2="2" y1="6" y2="6"/><line x1="22" x2="2" y1="18" y2="18"/><line x1="6" x2="6" y1="2" y2="22"/><line x1="18" x2="18" y1="2" y2="22"/></symbol>
+<symbol id="i-defect" viewBox="0 0 24 24"><path d="M13 17V9" /> <path d="M18 17V5" /> <path d="M3 3v16a2 2 0 0 0 2 2h16" /> <path d="M8 17v-3" /></symbol>
+<symbol id="i-org" viewBox="0 0 24 24"><rect x="16" y="16" width="6" height="6" rx="1" /> <rect x="2" y="16" width="6" height="6" rx="1" /> <rect x="9" y="2" width="6" height="6" rx="1" /> <path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3" /> <path d="M12 12V8" /></symbol>
+<symbol id="i-people" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /> <path d="M16 3.128a4 4 0 0 1 0 7.744" /> <path d="M22 21v-2a4 4 0 0 0-3-3.87" /> <circle cx="9" cy="7" r="4" /></symbol>
 
 
-<symbol id="av-person" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4"/><path d="M5.4 20a6.6 6.6 0 0 1 13.2 0"/></symbol>
-<symbol id="i-menu" viewBox="0 0 24 24"><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="18" y2="18"/></symbol>
+<symbol id="av-person" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /> <circle cx="12" cy="7" r="4" /></symbol>
+<symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 5h16" /> <path d="M4 12h16" /> <path d="M4 19h16" /></symbol>
 </svg>
 
 <div id="coverGate" style="position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:#191919;font-family:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,sans-serif;">
@@ -4017,6 +4278,19 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
     <div class="nvi" role="button" tabindex="0" data-view="tasks" data-act="nav.go">
       <div class="nic"><svg class="icn" aria-hidden="true"><use href="#i-tasks"></use></svg></div>
       <span class="nil">업무 현황</span>
+    </div>
+    <div class="sbsl"><span class="sbsl-long">업무 도구</span><span class="sbsl-short">도구</span></div>   <!-- 798차 · 799차: 업무 보조 → 업무 도구 -->
+    <div class="nvi" role="button" tabindex="0" data-view="photo" data-act="nav.go">
+      <div class="nic"><svg class="icn" aria-hidden="true"><use href="#i-photo"></use></svg></div>
+      <span class="nil">사진대지 작성</span>
+    </div>
+    <div class="nvi" role="button" tabindex="0" data-view="qc" data-act="nav.go">
+      <div class="nic"><svg class="icn" aria-hidden="true"><use href="#i-calc"></use></svg></div>
+      <span class="nil">견적 검토</span>
+    </div>
+    <div class="nvi" role="button" tabindex="0" data-view="dwg" data-act="nav.go">
+      <div class="nic"><svg class="icn" aria-hidden="true"><use href="#i-frame"></use></svg></div>
+      <span class="nil">도면 인쇄</span>
     </div>
     <div class="sbsl"><span class="sbsl-long">하자 관리</span><span class="sbsl-short">하자</span></div>
     <div class="nvi" role="button" tabindex="0" data-view="defect" data-act="nav.go">
@@ -4142,6 +4416,9 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
     <div id="view-tasks" class="view">
       <div id="tkRoot"></div>
     </div>
+    <div id="view-photo" class="view"><div id="pdRoot"></div></div>
+    <div id="view-qc" class="view"><div id="qcRoot"></div></div>
+    <div id="view-dwg" class="view"><div id="dwgRoot"></div></div>   <!-- 815차: 업무 도구 — 도면 인쇄(이 창 메모리에서만) -->   <!-- 811차: 업무 도구 — 견적 검토(이 창 메모리에서만) -->   <!-- 798차: 업무 보조 — 사진대지(이 창 메모리에서만) -->
 
 
 
@@ -4274,5 +4551,5 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 <!-- 762차: chart.umd·datalabels·korea-geo·apt-geo 는 app.js 의 loadChart()/loadGeo() 가 필요할 때 읽는다(첫 로드 800KB 절감) -->
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=797"></script>
+<script src="./app.js?v=821"></script>
 </body></html>

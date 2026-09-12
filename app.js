@@ -8,7 +8,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='797';
+const APP_VER='821';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -2697,7 +2697,7 @@ function openModal(title,bodyHTML,footHTML){
   $('#mt').textContent=title;$('#mbody').innerHTML=bodyHTML;$('#mf').innerHTML=footHTML||'';
   /* 하단 버튼이 없는 모달(사용 안내 등)은 우상단 X 로 닫는다 — 참조 앱과 동일 */
   const mb=$('#mb');
-  mb.classList.remove('rdw','narrow','mlw','dfwide','wide-pick','kmw','rkm');   /* ⚠ 지난번 모달의 폭 설정이 남으면 다음 모달이 엉뚱한 크기로 뜬다 */
+  mb.classList.remove('rdw','narrow','mlw','dfwide','wide-pick','kmw','rkm','pdcw');   /* pdcw: 798차 사진 자르기 */   /* ⚠ 지난번 모달의 폭 설정이 남으면 다음 모달이 엉뚱한 크기로 뜬다 */
   /* ⚠ 605차: 'kmw' 가 이 목록에서 빠져 있었다 — 조직 관리 지도 모달을 한 번 열면 그 뒤 **모든** 모달에 남는다.
      `#mb.kmw{width:auto;max-width:94vw}` 는 `#mb.dfwide{width:88vw;max-width:88vw}` 와 명시도가 같은데
      CSS 에서 더 뒤에 있어 이긴다 → 목록 모달 폭이 내용에 따라 정해지고, 목록↔피벗 전환 때 폭이 튄다
@@ -7973,7 +7973,10 @@ function dfTopbar(){
     if(on){if(S.dfSid){if(dfLocalDirty(S.dfSid))t='이 PC 원본 · 미게시 변경';}
            else{const n=dfLocalDirtySites().length;if(n)t='이 PC 원본 · 미게시 변경 '+n+'개 현장';}}
     lc.hidden=!t;lc.textContent=t;lc.dataset.s=t?'미게시':'';}   /* data-s: 좁은 화면(≤900)은 CSS 가 이 짧은 글자만 보인다 */
-  if(pw)pw.hidden=!on;   /* 인쇄가 필요한 화면은 하자처리 현황뿐이다(338차: 옛 보고 화면 제거) */
+  if(pw){pw.hidden=!(on||S.view==='photo'||S.view==='dwg');   /* 인쇄 버튼 — 하자처리 현황 · 사진대지(798차) · 도면 인쇄(815차) */
+    /* 801차: 왼쪽에 보이는 것이 있을 때만 구분선 */
+    let prev=false;for(let e=pw.previousElementSibling;e;e=e.previousElementSibling)if(!e.hidden&&e.offsetParent!==null){prev=true;break;}
+    pw.classList.toggle('sep',prev);}
 }
 
 /* ═══════════ 보류함 — 일자 패널 아래. 달력 날짜로 끌어다 놓으면 그 날짜로 되살아난다 ═══════════ */
@@ -9793,7 +9796,7 @@ setInterval(()=>{
 },60000);
 
 /* ═══════════ 화면 전환 · 공통 UI ═══════════ */
-const VIEW_TTL={calendar:'캘린더',tasks:'업무 현황',defect:'하자처리 현황',org:'조직 관리',settings:'설정'};
+const VIEW_TTL={calendar:'캘린더',tasks:'업무 현황',photo:'사진대지 작성',qc:'견적 검토',dwg:'도면 인쇄',defect:'하자처리 현황',org:'조직 관리',settings:'설정'};
 function go(view){
   if(view==='report')view='tasks';   /* 주요 업무는 업무 현황으로 통합됐다(316차) — 옛 진입점은 넘겨 준다 */
   if(S.view==='org'&&view!=='org'&&orgDraftN()){   /* 696차: 현장 표 초안을 버리고 나가지 않도록 */
@@ -9822,6 +9825,9 @@ function go(view){
       requestAnimationFrame(()=>{if(cv)cv.classList.remove('sizing');});});
   }
   if(view==='tasks')rTasks();
+  if(view==='photo')rPhoto();   /* 798차 */
+  if(view==='qc')rQc();         /* 811차 */
+  if(view==='dwg')rDwg();       /* 815차 */
   if(view==='defect')rDefect();
   dfTopbar();rDefectNav();
   if(view==='org'){
@@ -10221,7 +10227,7 @@ const ACT={
     rTasks();},
   /* 인쇄 — 상단바 버튼(#tbPrintWrap) 하나가 두 화면을 맡는다.
      ⚠ 예전엔 없는 함수(dfPrintOpen)를 typeof 로 감싸 불러 하자 관리에서 조용히 아무 일도 안 했다 */
-  'sb.print':()=>{if(S.view==='defect')openPrintPick();},
+  'sb.print':()=>{if(S.view==='defect')openPrintPick();else if(S.view==='photo')pdPrint();else if(S.view==='dwg')dwPrint();},
   /* 오후 점검 알림 — 누르면 오늘로 이동해 남은 업무를 펼친다. x 는 그날만 닫는다 */
 
   'pf.org':()=>acctAutoSave(),
@@ -11513,6 +11519,1174 @@ function widPlace(){
   box.style.left=Math.round(x)+'px';box.style.top=Math.round(y)+'px';
   box.dataset.px=Math.round(x);box.dataset.py=Math.round(y);
 }
+
+/* ═══════════ 798차: 업무 보조 — 사진대지 ═══════════
+   ⚠ 전부 이 창 메모리에서만 처리한다 — 서버·localStorage·IndexedDB 어디에도 쓰지 않는다(사용자 지시).
+     창을 닫거나 새로고침하면 사라지는 것이 정상이다. 앱 안에서 다른 화면을 다녀오는 동안은 남는다.
+   사진은 넣을 때 긴 변 2000px JPEG 로 줄여 blob URL 로 들고 있다(원본 File 은 놓는다) — 폴더째 수백 장을 넣어도
+   미리보기·인쇄가 버티게. 자르기는 줄인 사진(src)에서 잘라 새 blob(url)을 만들고, 다시 열면 src 위에 영역을 보여 준다. */
+const PD={orient:'por',per:6,title:'사진대지',site:'',photos:[],sel:new Set(),anchor:'',seq:0,load:null,zoom:'w2',pz:0,page:1,split:false};   /* 807차: 폴더별 쪽 나누기. 808차: 용지 A4 고정·여백 10mm 고정·사진 번호 제거(인쇄 창에서 고르면 되는 것은 두지 않는다) */   /* 800차: 기본 세로 6장 · 현장명 공백. 802차: 용지·여백·자유 배율(pz) */
+const PD_MAX=2000;
+/* 800차: 파일·폴더 이름에서 위치·내용을 읽는다(예: 두정역/지하1층/트렌치 작업전.jpg → 위치 지하1층 · 내용 트렌치 작업 전).
+   못 읽으면 빈칸으로 둔다 — 엉뚱하게 채우는 것보다 낫다. 단계 낱말은 **토막 끝**에서만 본다(「전경」·「전면」이 「전」으로 잡히지 않게) */
+const PD_LOC=/(지하\s*\d+\s*층|[Bb]\s*\d+\s*층?|\d+\s*층|\d+\s*동\s*\d+\s*호|\d+\s*동|\d+\s*호|옥상|지하주차장|주차장|계단실|복도|엘리베이터|승강기|기계실|전기실|조경|필로티|외벽|옥외)/;
+const PD_STEP=/(작업|시공|보수|공사|철거|교체|청소|도장|방수|절삭|정리)?\s*(완료|후|중간|중|전)(?=\s|$)/g;
+function pdParseName(path,name){
+  const full=String(path||name||'').replace(/\.[a-z0-9]+$/i,'');
+  const segs=full.split(/[\\/]/),base=segs[segs.length-1];
+  const sp=t=>' '+String(t).replace(/[_\-.]+/g,' ').replace(/\s+/g,' ').trim()+' ';
+  const txt=sp(full),bt=sp(base);
+  const lm=txt.match(PD_LOC);let loc=lm?lm[1].replace(/\s+/g,''):'';
+  loc=loc.replace(/^(\d+동)(\d+호)$/,'$1 $2');   /* 806차: 101동 1203호 처럼 띄어 쓴다 */
+  PD_STEP.lastIndex=0;let m,last=null;
+  while((m=PD_STEP.exec(bt)))last=m;
+  let desc='';
+  if(last){
+    const verb=last[1]||'작업',step=last[2]==='중간'?'중':last[2];
+    let obj=bt.replace(last[0],' ')
+      .replace(/\d{4}[-.]?\d{2}[-.]?\d{2}|\d{6,}|\(\d+\)|IMG|DSC|KakaoTalk|사진|photo/gi,' ')
+      .replace(PD_LOC,' ');
+    /* 파일 이름에 현장명이 붙어 있으면 내용에서 뺀다 — 현장명은 머리글에 따로 적힌다 */
+    (S.org.sites||[]).map(x=>x.name).filter(Boolean).sort((a,b)=>b.length-a.length).forEach(nm=>{obj=obj.split(nm).join(' ');});
+    obj=obj.replace(/\s+/g,' ').trim();
+    desc=(obj?obj+' ':'')+verb+' '+step;
+  }
+  return {loc,desc};
+}
+/* 802차: 용지·여백 — 엑셀 인쇄 설정과 같은 갈래. 치수는 mm, 화면 px 는 ×96/25.4 */
+const PD_A4=[210,297],PD_MG=10;   /* 808차: 용지는 A4, 안쪽 여백 10mm 고정 — 크기·여백은 인쇄 창에서 고른다. 방향만 여기서 정한다 */
+function pdPaperMM(){const[a,b]=PD_A4;return PD.orient==='land'?[b,a]:[a,b];}
+function pdCR(per,land){return per===2?(land?[2,1]:[1,2]):per===4?[2,2]:(land?[3,2]:[2,3]);}   /* [열, 줄] */
+function pdLs(t){const n=String(t||'').length;return n<=4?'.6em':n<=8?'.3em':n<=14?'.1em':'0';}   /* 예시의 「사 진 대 지」 — 길면 좁힌다 */
+const pdF=(k,cls,v)=>'<div class="phs-f"><b>'+k+' :</b><span class="'+cls+'">'+esc(v||'')+'</span></div>';
+/* 807차: 쪽에 담을 차례 — 보통은 앞에서부터 per 장씩. 「폴더별 쪽 나누기」를 켜면 폴더(경로의 마지막 폴더)가
+   바뀔 때 새 쪽에서 시작한다(남는 칸은 빈다). 폴더 없이 넣은 사진은 한 묶음으로 본다.
+   반환: [[{ph,i}|null, …per장], …] — i 는 PD.photos 안의 자리(끌어 옮기기·번호가 그대로 쓴다) */
+function pdFolderOf(p){const q=String(p.path||'');const k=q.lastIndexOf('/');return k<0?'':q.slice(0,k);}
+function pdPageList(){
+  const per=PD.per,n=PD.photos.length,out=[];
+  const push=arr=>{for(let i=0;i<arr.length;i+=per){const pg=arr.slice(i,i+per);while(pg.length<per)pg.push(null);out.push(pg);}};
+  if(!PD.split||!n){const all=PD.photos.map((ph,i)=>({ph,i}));if(!all.length)out.push(new Array(per).fill(null));else push(all);return out;}
+  let grp=[],key=null;
+  PD.photos.forEach((ph,i)=>{const f=pdFolderOf(ph);
+    if(key!==null&&f!==key){push(grp);grp=[];}
+    key=f;grp.push({ph,i});});
+  if(grp.length)push(grp);
+  if(!out.length)out.push(new Array(per).fill(null));
+  return out;
+}
+function pdPagesHTML(print){
+  const land=PD.orient==='land',per=PD.per,[c,r]=pdCR(per,land),n=PD.photos.length;
+  const list=pdPageList(),pages=list.length;
+  const ls=pdLs(PD.title);
+  let h='';
+  for(let p=0;p<pages;p++){
+    let cells='';
+    /* 빈 칸에 놓으면 그 뒤에 오는 사진 앞으로 — 없으면 맨 끝으로 */
+    let next=n;for(let q=pages-1;q>p;q--)for(let k=per-1;k>=0;k--){const c2=list[q][k];if(c2)next=c2.i;}
+    for(let k=0;k<per;k++){const cell=list[p][k],ph=cell&&cell.ph;
+      let i=cell?cell.i:next;
+      if(!cell){for(let k2=k+1;k2<per;k2++){const c2=list[p][k2];if(c2){i=c2.i;break;}}}
+      cells+=ph
+        ?'<div class="phs-cell'+(!print&&PD.sel.has(ph.id)?' sel':'')+'" data-id="'+ph.id+'" data-i="'+i+'"><div class="phs-ph'+(ph.fit&&ph.fit!=='fill'?' '+ph.fit:'')+'"><img src="'+ph.url+'" alt="" draggable="false"></div>'
+          +pdF('위 치','phs-loc',ph.loc)+pdF('내 용','phs-desc',ph.desc)+'</div>'
+        :'<div class="phs-cell" data-i="'+i+'" data-fill="1"><div class="phs-ph"></div>'+pdF('위 치','phs-loc','')+pdF('내 용','phs-desc','')+'</div>';
+    }
+    const [mw,mh]=pdPaperMM(),mg=PD_MG;
+    const pg='<div class="phs-page'+(land?' land':'')+'" style="width:'+mw+'mm;height:'+mh+'mm;padding:'+mg+'mm"><div class="phs-sh"><div class="phs-ttl" style="letter-spacing:'+ls+';text-indent:'+ls+'">'+esc(PD.title)+'</div>'
+      +'<div class="phs-site">현장명 : '+esc(PD.site)+'</div>'
+      +'<div class="phs-cells" style="grid-template-columns:repeat('+c+',minmax(0,1fr));grid-template-rows:repeat('+r+',minmax(0,1fr))">'+cells+'</div>'
+      +'<div class="phs-pg">'+(p+1)+' / '+pages+'</div></div></div>';
+    h+=print?pg:'<div class="phs-pw" data-p="'+(p+1)+'">'+pg+'</div>';   /* 803차: 미리보기 밑 쪽 번호는 뺐다 — 바의 「n / 전체」와 중복 */
+  }
+  return {html:h,pages};
+}
+function pdCntText(){const j=PD.load;return PD.photos.length+'장'+(j?' · 불러오는 중 '+j.done+'/'+j.total:'');}
+function rPhoto(){
+  const root=$('#pdRoot');if(!root)return;
+  const land=PD.orient==='land',pg=pdPagesHTML(false);
+  const lay=[2,4,6].map(k=>{const[c,r]=pdCR(k,land);
+    return '<button class="'+(k===PD.per?'on':'')+'" data-act="pd.per" data-k="'+k+'"><span class="phs-gl'+(land?' land':'')+'" style="grid-template-columns:repeat('+c+',1fr);grid-template-rows:repeat('+r+',1fr)">'+'<i></i>'.repeat(k)+'</span>'+k+'장</button>';}).join('');
+  const sites=[...new Set((S.org.sites||[]).map(x=>x.name).filter(Boolean))].map(x=>'<option value="'+esc(x)+'">').join('');
+  root.innerHTML='<div class="phs-grid"><div class="phs-col phs-left">'
+    +'<div class="card"><div class="tm-h"><span>레이아웃</span></div><div class="phs-b">'
+      +'<div class="seg phs-or"><button class="'+(land?'':'act')+'" data-act="pd.orient" data-o="por">세로</button><button class="'+(land?'act':'')+'" data-act="pd.orient" data-o="land">가로</button></div>'
+      +'<div class="phs-lay">'+lay+'</div></div></div>'
+    +'<div class="card"><div class="tm-h"><span>사진 <span class="tm-sub" id="pdCnt">'+pdCntText()+'</span></span><button class="btn bo bxs" data-act="pd.reset">초기화</button></div>'
+      +'<div class="phs-b"><div class="phs-fr"><label>쪽 나눔</label><span class="seg">'
+        +[['off','이어서'],['on','폴더별']].map(([k,l])=>'<button class="'+((PD.split?'on':'off')===k?'act':'')+'" data-act="pd.split" data-s="'+k+'" data-tip="'+(k==='on'?'폴더가 바뀌면 새 쪽에서 시작합니다':'폴더와 상관없이 이어 붙입니다')+'">'+l+'</button>').join('')+'</span></div>'
+      +'<div class="phs-add phs-fr2"><button data-act="pd.files"><svg class="icn" aria-hidden="true"><use href="#i-photo"></use></svg>사진</button>'
+      +'<button data-act="pd.dir"><svg class="icn" aria-hidden="true"><use href="#i-folder"></use></svg>폴더</button></div></div></div>'
+    +'<div class="card"><div class="tm-h"><span>머리글</span></div><div class="phs-b">'
+      +'<div class="phs-fr"><label for="pdTitle">제목</label><input id="pdTitle" class="inp inp-sm" data-pd="title" maxlength="30" autocomplete="off" value="'+esc(PD.title)+'"></div>'
+      +'<div class="phs-fr"><label for="pdSite">현장명</label><input id="pdSite" class="inp inp-sm" data-pd="site" maxlength="60" autocomplete="off" list="pdSites" value="'+esc(PD.site)+'"><datalist id="pdSites">'+sites+'</datalist></div></div></div>'
+    +'<div id="pdSelCard"></div>'
+    +'</div><div class="phs-col"><div class="tkbar phs-bar"><span class="phs-cnt">미리보기'
+    +'<span class="phs-pgn"><button data-act="pd.pgGo" data-d="-1" aria-label="이전 쪽" data-tip="이전 쪽"><svg class="icn" aria-hidden="true"><use href="#i-chevl"></use></svg></button>'
+    +'<span class="phs-pgt" id="pdPgt">1 / '+pg.pages+'</span>'
+    +'<button data-act="pd.pgGo" data-d="1" aria-label="다음 쪽" data-tip="다음 쪽"><svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg></button></span></span>'
+    +'<span class="phs-nav"><span class="phs-zc"><button data-act="pd.zStep" data-d="-1" aria-label="축소" data-tip="축소(Ctrl+휠)">−</button>'
+      +'<span class="phs-pct" id="pdPct">100%</span>'
+      +'<button data-act="pd.zStep" data-d="1" aria-label="확대" data-tip="확대(Ctrl+휠)">+</button></span>'
+    +'<span class="seg">'
+      +[['wf','쪽 맞춤'],['w1','폭 맞춤'],['w2','두 쪽'],['wg','여러 쪽']].map(([k,l])=>'<button class="'+(PD.zoom===k?'act':'')+'" data-act="pd.zoom" data-z="'+k+'">'+l+'</button>').join('')
+    +'</span></span></div>'
+    +'<div class="phs-view" id="pdView" data-sb>'+pg.html+'</div></div></div>'
+    +'<input type="file" id="pdFiles" accept="image/*" multiple hidden><input type="file" id="pdDir" webkitdirectory multiple hidden>'
+    +'<input type="file" id="pdSwap" accept="image/*" hidden>';
+  rPdSel();pdZoom();
+}
+/* 800차: 미리보기 배율 — 「한 쪽」·「두 쪽」은 남는 칸을 재서 꽉 차게, 「여러 쪽」은 훑어보기용 고정.
+   ⚠ zoom 은 레이아웃 크기를 바꾸므로 칸 크기(clientWidth)를 잰 뒤 넣는다 — 넣고 다시 재면 값이 흔들린다 */
+function pdZoom(){
+  const v=$('#pdView');if(!v)return;
+  v.classList.toggle('z1',PD.zoom==='w1'||PD.zoom==='free');   /* 한 쪽·자유 — 한 줄에 한 쪽만(가로로 넘칠 수 있으므로) */
+  v.classList.toggle('zg',PD.zoom==='wg');
+  const [mw,mh]=pdPaperMM(),W=mw*96/25.4,H=mh*96/25.4;
+  const cw=v.clientWidth-24-2,ch=v.clientHeight-24-4;   /* 805차: 안쪽 여백 12×2 · 테두리 */
+  const np=Math.max(1,Math.ceil(PD.photos.length/PD.per));   /* 805차: 쪽이 하나뿐이면 두 쪽 칸을 잡아 둘 이유가 없다 */
+  let z;
+  if(PD.zoom==='free')z=PD.pz||1;
+  else if(PD.zoom==='w1')z=Math.min(1,cw/W);   /* 한 쪽 = 폭에 꽉(원본 크기까지) */
+  else if(PD.zoom==='w2')z=np<2?Math.min(cw/W,ch/H):Math.min((cw-14-10)/2/W,ch/H);   /* -10 은 여유 — 딱 맞추면 반올림 한두 px 에 둘째 쪽이 아래로 내려간다 */
+  else if(PD.zoom==='wf')z=Math.min(cw/W,ch/H);   /* 쪽 맞춤 — 한 쪽이 통째로 */
+  else z=Math.min((cw-3*10)/4/W,.3);
+  z=Math.max(.1,Math.min(4,z));
+  PD.pz=z;
+  v.style.setProperty('--pz',z.toFixed(3));
+  const pct=$('#pdPct');if(pct)pct.textContent=Math.round(z*100)+'%';
+  pdVC();pdSbSync();
+  $$('#pdRoot [data-act="pd.zoom"]').forEach(b=>b.classList.toggle('act',b.dataset.z===PD.zoom));
+  pdPgIndi();
+}
+/* Ctrl+휠 확대·축소 — 커서 아래 지점을 잡아 둔다(엑셀·브라우저와 같은 느낌). 0.1~4배 */
+function pdWheelZoom(e){
+  const v=$('#pdView');if(!v)return;
+  e.preventDefault();
+  const r=v.getBoundingClientRect(),before=PD.pz||1;
+  const px=(v.scrollLeft+e.clientX-r.left)/before,py=(v.scrollTop+e.clientY-r.top)/before;
+  const z=Math.max(.1,Math.min(4,before*Math.pow(1.0015,-e.deltaY)));
+  PD.zoom='free';PD.pz=z;pdZoom();
+  v.scrollTo({left:px*z-(e.clientX-r.left),top:py*z-(e.clientY-r.top),behavior:'instant'});
+  pdPgIndi();
+}
+/* 804차: 쪽이 칸을 못 채우면 위아래 가운데로(두 쪽 보기에서 폭이 먼저 차면 늘 밑에만 빈다).
+   ⚠ 넘칠 때 켜 두면 flex 가운데 정렬이 위쪽을 잘라 먹는다 — 쪽 수·배율이 바뀔 때마다 다시 판단한다 */
+/* 809차: 미리보기 세로 스크롤 막대 — 앱 정책상 네이티브 바는 숨기므로(459행) 얇은 막대를 직접 띄운다.
+   445차 가로 막대(`ovs`)와 같은 방식이되 세로이고, **구를 때만 잠깐** 보였다가 사라진다(사용자).
+   ⚠ 미리보기 안은 사진을 끌어 옮기는 곳이라 막대는 잡아끌지 않는다(pointerdown 을 가로채면 끌기와 부딪힌다) */
+function pdSbSync(){
+  const v=$('#pdView');if(!v)return;
+  const w=v.__psb||(v.__psb=(()=>{const b=document.createElement('div');b.className='phs-sb';v.parentElement.appendChild(b);return b;})());
+  const h=v.clientHeight,sh=v.scrollHeight;
+  if(sh<=h+1){w.classList.remove('on','show');w.style.height='0px';return;}
+  w.classList.add('on');
+  const bh=Math.max(24,Math.round(h*h/sh)),max=h-bh,ratio=v.scrollTop/(sh-h);
+  w.style.height=bh+'px';
+  w.style.top=Math.round(v.offsetTop+max*ratio)+'px';
+}
+function pdSbFlash(){
+  const v=$('#pdView');if(!v)return;
+  pdSbSync();
+  const w=v.__psb;if(!w||!w.classList.contains('on'))return;
+  w.classList.add('show');
+  clearTimeout(v.__psbT);v.__psbT=setTimeout(()=>w.classList.remove('show'),900);
+}
+function pdVC(){
+  const v=$('#pdView');if(!v)return;
+  v.classList.remove('vc');
+  if(v.scrollHeight<=v.clientHeight+1)v.classList.add('vc');
+}
+/* 보이는 쪽 번호 — 미리보기 칸 가운데에 걸친 쪽 */
+function pdPgIndi(){
+  const v=$('#pdView'),t=$('#pdPgt');if(!v||!t)return;
+  const pw=[...v.querySelectorAll('.phs-pw')];if(!pw.length)return;
+  /* 한 줄에 여러 쪽이 놓이므로 「위에서부터 처음 보이는 쪽」을 현재 쪽으로 삼는다(마지막 쪽 기준이면 두 쪽 보기에서 늘 뒤 쪽이 잡혔다) */
+  const vt=v.getBoundingClientRect().top;
+  let cur=pw[pw.length-1];
+  for(const w of pw){if(w.getBoundingClientRect().bottom>vt+12){cur=w;break;}}
+  PD.page=Number(cur.dataset.p)||1;
+  t.textContent=PD.page+' / '+pw.length;
+  const bs=$$('#pdRoot .phs-pgn button');
+  if(bs[0])bs[0].disabled=PD.page<=1;
+  if(bs[1])bs[1].disabled=PD.page>=pw.length;
+}
+function pdPgGo(d){
+  const v=$('#pdView');if(!v)return;
+  const pw=[...v.querySelectorAll('.phs-pw')];if(!pw.length)return;
+  const n=Math.min(pw.length,Math.max(1,PD.page+d)),w=pw[n-1];
+  v.scrollTo({top:n===1?0:Math.max(0,v.scrollTop+w.getBoundingClientRect().top-v.getBoundingClientRect().top-20),behavior:'instant'});
+  pdPgIndi();
+}
+/* 미리보기만 다시 — 왼쪽 입력칸(포커스)과 스크롤 자리를 지킨다 */
+function pdPages(){
+  const v=$('#pdView');if(!v){rPhoto();return;}
+  const st=v.scrollTop,pg=pdPagesHTML(false);
+  v.innerHTML=pg.html;v.scrollTo({top:st,behavior:'instant'});
+  pdZoom();   /* 805차: 쪽 수가 배율에 영향을 준다(한 쪽뿐이면 두 쪽 칸을 비워 두지 않는다) — 다시 그릴 때마다 계산 */
+  const c=$('#pdCnt');if(c)c.textContent=pdCntText();
+  rPdSel();
+}
+function rPdSel(){
+  const box=$('#pdSelCard');if(!box)return;
+  const list=PD.photos.filter(p=>PD.sel.has(p.id));
+  if(!list.length){box.innerHTML='';return;}
+  const same=k=>list.every(p=>p[k]===list[0][k])?list[0][k]:null;
+  const lv=same('loc'),dv=same('desc'),fv=list.every(p=>(p.fit||'fill')===(list[0].fit||'fill'))?(list[0].fit||'fill'):'';
+  box.innerHTML='<div class="card"><div class="tm-h"><span>선택한 사진 <span class="tm-sub">'+list.length+'장</span></span>'
+    +'<button class="btn tm-add" data-act="pd.selClear" aria-label="선택 해제" data-tip="선택 해제"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button></div>'
+    +'<div class="phs-b"><div class="phs-fr"><label for="pdLoc">위치</label><input id="pdLoc" class="inp inp-sm" data-pd="loc" maxlength="60" autocomplete="off" value="'+esc(lv??'')+'"'+(lv===null?' placeholder="여러 값"':'')+'></div>'
+    +'<div class="phs-fr"><label for="pdDesc">내용</label><input id="pdDesc" class="inp inp-sm" data-pd="desc" maxlength="80" autocomplete="off" value="'+esc(dv??'')+'"'+(dv===null?' placeholder="여러 값"':'')+'></div>'
+    +'<div class="phs-fr"><label>사진</label><span class="seg">'
+      +[['fill','늘림'],['contain','맞춤'],['cover','채움']].map(([k,l])=>'<button class="'+(fv===k?'act':'')+'" data-act="pd.fit" data-f="'+k+'">'+l+'</button>').join('')+'</span></div>'
+    +'<div class="phs-act phs-act3"><button data-act="pd.rot" data-d="-1" data-tip="왼쪽으로 90° 돌리기">↺ 왼쪽</button>'
+      +'<button data-act="pd.rot" data-d="1" data-tip="오른쪽으로 90° 돌리기">↻ 오른쪽</button>'
+      +'<button data-act="pd.swap"'+(list.length>1?' disabled':'')+' data-tip="위치·내용·순서는 그대로 두고 사진만 바꿉니다">사진 교체</button></div>'
+    +'<div class="phs-act phs-act2"><button data-act="pd.fillFirst"'+(list.length<2?' disabled':'')+' data-tip="선택한 것 중 맨 앞 사진의 위치·내용을 나머지에 복사합니다">첫 값 복사</button>'
+      +'<button data-act="pd.fillBlank"'+(list.length<2?' disabled':'')+' data-tip="빈 칸만 바로 앞 사진 값으로 채웁니다">빈칸 채우기</button></div>'
+    +'<div class="phs-act"><button data-act="pd.crop"'+(list.length>1?' disabled':'')+'><svg class="icn" aria-hidden="true"><use href="#i-crop"></use></svg>자르기</button>'
+    +'<button class="dg" data-act="pd.del"><svg class="icn" aria-hidden="true"><use href="#i-trash"></use></svg>삭제</button></div></div></div>';
+}
+function pdSelPaint(){
+  $$('#pdView .phs-cell[data-id]').forEach(c=>c.classList.toggle('sel',PD.sel.has(c.dataset.id)));
+  rPdSel();
+}
+/* 선택 — 클릭 = 그 사진만 · Ctrl = 하나씩 더하거나 빼기 · Shift = 기준점(마지막으로 누른 사진)부터 그 사진까지 */
+function pdClickSel(id,ctrl,shift){
+  const ids=PD.photos.map(p=>p.id);
+  if(shift&&PD.anchor&&ids.includes(PD.anchor)){
+    const a=ids.indexOf(PD.anchor),b=ids.indexOf(id),rng=ids.slice(Math.min(a,b),Math.max(a,b)+1);
+    if(ctrl)rng.forEach(x=>PD.sel.add(x));else PD.sel=new Set(rng);
+  }else if(ctrl){if(PD.sel.has(id))PD.sel.delete(id);else PD.sel.add(id);PD.anchor=id;}
+  else{PD.sel=new Set([id]);PD.anchor=id;}
+  pdSelPaint();
+}
+/* 806차: 사진 회전 — 그림 자체를 돌려 다시 만든다(미리보기·인쇄가 같은 그림을 쓰므로 CSS 회전보다 단순하다).
+   잘라 둔 영역이 있으면 그 영역도 같이 돌린다 */
+async function pdRotOne(p,dir){
+  const turn=async(url,w,h)=>{
+    const im=new Image();im.src=url;await im.decode();
+    const cv=document.createElement('canvas');cv.width=h;cv.height=w;
+    const cx=cv.getContext('2d');cx.translate(h/2,w/2);cx.rotate(dir>0?Math.PI/2:-Math.PI/2);cx.drawImage(im,-w/2,-h/2,w,h);
+    const blob=await new Promise(r=>cv.toBlob(r,'image/jpeg',.92));
+    return blob?URL.createObjectURL(blob):null;
+  };
+  const nsrc=await turn(p.src,p.w,p.h);if(!nsrc)return false;
+  let nurl=nsrc,ncrop=null;
+  if(p.crop){
+    const c=p.crop;
+    ncrop=dir>0?{x:1-c.y-c.h,y:c.x,w:c.h,h:c.w}:{x:c.y,y:1-c.x-c.w,w:c.h,h:c.w};
+    const im=new Image();im.src=nsrc;await im.decode();
+    const sw=Math.max(1,Math.round(ncrop.w*p.h)),sh=Math.max(1,Math.round(ncrop.h*p.w));
+    const cv=document.createElement('canvas');cv.width=sw;cv.height=sh;
+    cv.getContext('2d').drawImage(im,Math.round(ncrop.x*p.h),Math.round(ncrop.y*p.w),sw,sh,0,0,sw,sh);
+    const blob=await new Promise(r=>cv.toBlob(r,'image/jpeg',.92));
+    if(blob)nurl=URL.createObjectURL(blob);
+  }
+  pdRevoke(p);
+  p.src=nsrc;p.url=nurl;p.crop=ncrop;const t=p.w;p.w=p.h;p.h=t;
+  return true;
+}
+async function pdRot(dir){
+  const list=PD.photos.filter(p=>PD.sel.has(p.id));if(!list.length)return;
+  for(const p of list){try{await pdRotOne(p,dir);}catch(e){console.warn('[사진대지] 회전 실패',e);}}
+  pdPages();
+}
+/* 806차: 사진 교체 — 위치·내용·맞춤·순서는 그대로 두고 그림만 바꾼다 */
+async function pdSwap(file){
+  const id=[...PD.sel][0],p=PD.photos.find(x=>x.id===id);if(!p||!file)return;
+  let np;try{np=await pdDecode(file);}catch(e){toast('이 파일은 열 수 없습니다');return;}
+  pdRevoke(p);
+  p.src=np.src;p.url=np.url;p.w=np.w;p.h=np.h;p.crop=null;p.name=np.name;p.path=np.path;
+  pdPages();
+}
+/* 806차: 위치·내용 채우기 — 첫 값 복사 / 빈칸만 앞 값으로 */
+function pdFill(mode){
+  const list=PD.photos.filter(p=>PD.sel.has(p.id));if(list.length<2)return;
+  if(mode==='first'){const a=list[0];list.slice(1).forEach(p=>{p.loc=a.loc;p.desc=a.desc;});}
+  else{let lo=list[0].loc,de=list[0].desc;
+    list.forEach(p=>{if(!p.loc)p.loc=lo;else lo=p.loc;if(!p.desc)p.desc=de;else de=p.desc;});}
+  pdPages();
+}
+function pdRevoke(p){try{if(p.url&&p.url!==p.src)URL.revokeObjectURL(p.url);URL.revokeObjectURL(p.src);}catch(e){}}
+/* 넣기 — 파일 여러 장 또는 폴더(하위 폴더 전부, webkitdirectory). 경로·이름의 자연 정렬(1, 2, 10) 순으로 뒤에 붙인다 */
+async function pdDecode(f){
+  const bmp=await createImageBitmap(f,{imageOrientation:'from-image'});
+  const s=Math.min(1,PD_MAX/Math.max(bmp.width,bmp.height)),w=Math.max(1,Math.round(bmp.width*s)),h=Math.max(1,Math.round(bmp.height*s));
+  const cv=document.createElement('canvas');cv.width=w;cv.height=h;
+  const cx=cv.getContext('2d');cx.fillStyle='#fff';cx.fillRect(0,0,w,h);cx.drawImage(bmp,0,0,w,h);bmp.close();
+  const blob=await new Promise(res=>cv.toBlob(res,'image/jpeg',.9));
+  if(!blob)throw new Error('encode');
+  const url=URL.createObjectURL(blob);
+  const g=pdParseName(f.webkitRelativePath||f.name,f.name);
+  return {id:'p'+(++PD.seq),name:f.name,path:f.webkitRelativePath||'',src:url,url,w,h,crop:null,fit:'fill',loc:g.loc,desc:g.desc};
+}
+async function pdAdd(fl){
+  const list=[...(fl||[])].filter(f=>/^image\//i.test(f.type)||/\.(jpe?g|png|gif|bmp|webp|heic|heif)$/i.test(f.name));
+  if(!list.length){toast('사진이 없습니다');return;}
+  /* 806차: 이름이 같고 단계만 다르면 전 → 중 → 후(완료) 순으로 — 가나다순이면 「보수완료」가 「보수전」보다 앞에 온다 */
+  const key=n=>String(n).replace(/전(?=[_\-. ]|$)/g,'\u00011').replace(/(중간|중)(?=[_\-. ]|$)/g,'\u00012').replace(/(완료후|완료|후)(?=[_\-. ]|$)/g,'\u00013');
+  list.sort((a,b)=>key(a.webkitRelativePath||a.name).localeCompare(key(b.webkitRelativePath||b.name),'ko',{numeric:true}));
+  const job={total:list.length,done:0,dead:false};PD.load=job;
+  const cnt=()=>{const c=$('#pdCnt');if(c)c.textContent=pdCntText();};cnt();
+  const out=new Array(list.length);let k=0,bad=0;
+  const work=async()=>{while(k<list.length){const i=k++;try{out[i]=await pdDecode(list[i]);}catch(e){bad++;}job.done++;if(PD.load===job)cnt();}};
+  await Promise.all([work(),work(),work()]);
+  if(job.dead){out.forEach(p=>p&&pdRevoke(p));return;}   /* 불러오는 사이 초기화했다 */
+  if(!PD.site){   /* 800차: 경로·파일 이름에 조직의 현장명이 들어 있으면 머리글 현장명을 채운다(비어 있을 때만) */
+    const names=(S.org.sites||[]).map(x=>x.name).filter(Boolean).sort((a,b)=>b.length-a.length);
+    const keys=out.filter(Boolean).map(p=>(p.path||p.name)).join(' ').replace(/\s+/g,'');
+    const hit=names.find(nm=>keys.includes(nm.replace(/\s+/g,'')));
+    if(hit){PD.site=hit;const el=$('#pdSite');if(el)el.value=hit;}
+  }
+  if(PD.load===job)PD.load=null;
+  out.forEach(p=>{if(p)PD.photos.push(p);});
+  if(S.view==='photo')pdPages();
+  if(bad)toast(bad+'장은 열 수 없어 넣지 않았습니다');
+}
+function pdDel(){
+  if(!PD.sel.size)return;
+  PD.photos=PD.photos.filter(p=>{if(PD.sel.has(p.id)){pdRevoke(p);return false;}return true;});
+  PD.sel.clear();PD.anchor='';pdPages();
+}
+function pdResetNow(){
+  if(PD.load)PD.load.dead=true;
+  PD.photos.forEach(pdRevoke);
+  Object.assign(PD,{orient:'por',per:6,title:'사진대지',site:'',photos:[],sel:new Set(),anchor:'',load:null,zoom:'w2',pz:0,page:1,split:false});
+  rPhoto();
+}
+/* ── 끌어 옮기기 — 여러 장을 골라 두었으면 그 묶음째(순서 유지). 놓은 칸의 앞/뒤(가로 반쪽 · 1열이면 세로 반쪽)에 끼워 넣는다 ── */
+let _pdDn=null,_pdDrag=null;
+function pdDragStart(d){
+  if(!PD.sel.has(d.id)){PD.sel=new Set([d.id]);PD.anchor=d.id;pdSelPaint();}
+  const ids=PD.photos.filter(p=>PD.sel.has(p.id)).map(p=>p.id),first=PD.photos.find(p=>p.id===d.id);
+  const g=document.createElement('div');g.className='phs-ghost';
+  g.innerHTML='<img src="'+first.url+'" alt="">'+(ids.length>1?'<em>'+ids.length+'</em>':'');
+  const bar=document.createElement('div');bar.className='phs-ins';
+  document.body.appendChild(g);document.body.appendChild(bar);
+  ids.forEach(id=>{const c=$('#pdView .phs-cell[data-id="'+id+'"]');if(c)c.classList.add('src');});
+  document.body.classList.add('phs-dragging');
+  _pdDrag={ids,g,bar,slot:null,x:d.x,y:d.y,raf:0};
+}
+function pdDropCalc(){
+  const D=_pdDrag;if(!D)return;
+  const el=document.elementFromPoint(D.x,D.y);
+  let cell=el&&el.closest&&el.closest('#pdView .phs-cell');
+  /* 799차: 쪽 사이 틈·쪽 번호·여백 위에서는 가장 가까운 칸으로 — 아래 끝까지 끌어 자동 스크롤한 뒤 틈에서 놓으면 아무 일도 안 일어났다 */
+  if(!cell){const v=$('#pdView'),vr=v&&v.getBoundingClientRect();
+    if(vr&&D.x>=vr.left&&D.x<=vr.right&&D.y>=vr.top&&D.y<=vr.bottom){let best=1e9;
+      v.querySelectorAll('.phs-cell').forEach(c=>{const r=c.getBoundingClientRect();if(r.bottom<vr.top||r.top>vr.bottom)return;
+        const dx=Math.max(r.left-D.x,0,D.x-r.right),dy=Math.max(r.top-D.y,0,D.y-r.bottom),d=dx*dx+dy*dy;if(d<best){best=d;cell=c;}});}}
+  if(!cell){D.slot=null;D.bar.style.display='none';return;}
+  const n=PD.photos.length,i=Number(cell.dataset.i),r=cell.getBoundingClientRect();
+  const horiz=pdCR(PD.per,PD.orient==='land')[0]>1;
+  /* 빈 칸은 늘 「그 자리 앞」 — 폴더별 쪽 나누기에서 가운데 빈 칸이 생기므로 뒤/앞을 따지면 엉뚱한 자리로 간다 */
+  const after=!cell.dataset.fill&&i<n&&(horiz?D.x>r.left+r.width/2:D.y>r.top+r.height/2);
+  D.slot=i>=n?n:(after?i+1:i);
+  const st=D.bar.style;st.display='block';
+  if(horiz){st.left=((after?r.right:r.left)-2)+'px';st.top=r.top+'px';st.width='3px';st.height=r.height+'px';}
+  else{st.left=r.left+'px';st.top=((after?r.bottom:r.top)-2)+'px';st.width=r.width+'px';st.height='3px';}
+}
+function pdAutoScroll(){
+  const D=_pdDrag;if(!D)return;
+  const v=$('#pdView');if(!v)return;
+  const r=v.getBoundingClientRect(),E=48;
+  const dy=D.y<r.top+E?-Math.ceil((r.top+E-D.y)/4):D.y>r.bottom-E?Math.ceil((D.y-(r.bottom-E))/4):0;
+  if(dy){v.scrollBy({top:dy,behavior:'instant'});pdDropCalc();}   /* ⚠ [data-sb] 는 scroll-behavior:smooth — 대입하면 매 프레임 애니메이션이 겹쳐 느려진다 */
+  D.raf=requestAnimationFrame(pdAutoScroll);
+}
+function pdDragEnd(cancel){
+  const D=_pdDrag;_pdDrag=null;if(!D)return;
+  cancelAnimationFrame(D.raf);D.g.remove();D.bar.remove();document.body.classList.remove('phs-dragging');
+  if(cancel||D.slot==null){$$('#pdView .phs-cell.src').forEach(c=>c.classList.remove('src'));return;}
+  const set=new Set(D.ids),before=PD.photos.slice(0,D.slot).filter(p=>set.has(p.id)).length;
+  const moving=PD.photos.filter(p=>set.has(p.id)),rest=PD.photos.filter(p=>!set.has(p.id));
+  rest.splice(D.slot-before,0,...moving);
+  PD.photos=rest;pdPages();
+}
+document.addEventListener('pointerdown',e=>{
+  if(e.button!==0||!e.target.closest)return;
+  if(!e.target.closest('#pdView'))return;
+  const cell=e.target.closest('.phs-cell[data-id]');
+  if(!cell){if(!e.ctrlKey&&!e.metaKey&&!e.shiftKey&&PD.sel.size){PD.sel.clear();pdSelPaint();}return;}
+  e.preventDefault();
+  _pdDn={id:cell.dataset.id,x:e.clientX,y:e.clientY,ctrl:e.ctrlKey||e.metaKey,shift:e.shiftKey,moved:false};
+});
+document.addEventListener('pointermove',e=>{
+  if(!_pdDn)return;
+  if(!_pdDn.moved){
+    if(Math.hypot(e.clientX-_pdDn.x,e.clientY-_pdDn.y)<5)return;
+    _pdDn.moved=true;pdDragStart(_pdDn);_pdDrag.raf=requestAnimationFrame(pdAutoScroll);
+  }
+  const D=_pdDrag;if(!D)return;
+  D.x=e.clientX;D.y=e.clientY;D.g.style.left=(D.x+14)+'px';D.g.style.top=(D.y+14)+'px';
+  pdDropCalc();
+});
+document.addEventListener('pointerup',()=>{
+  const d=_pdDn;_pdDn=null;if(!d)return;
+  if(d.moved)pdDragEnd(false);else pdClickSel(d.id,d.ctrl,d.shift);
+});
+document.addEventListener('pointercancel',()=>{if(_pdDn){_pdDn=null;pdDragEnd(true);}});
+document.addEventListener('scroll',e=>{if(e.target&&e.target.id==='pdView'){pdPgIndi();pdSbFlash();}},true);
+/* ⚠ passive:false 여야 preventDefault 가 먹는다 — 아니면 브라우저 전체가 확대된다 */
+document.addEventListener('wheel',e=>{if((e.ctrlKey||e.metaKey)&&e.target.closest&&e.target.closest('#pdView'))pdWheelZoom(e);},{passive:false});
+let _pdRT=0;
+/* ⚠ 사이드바 자동 접기(705차)도 resize 로 움직인다 — 바로 재면 접히기 전 폭으로 잡힌다. 손이 멈춘 뒤 잰다 */
+window.addEventListener('resize',()=>{if(S.view!=='photo')return;clearTimeout(_pdRT);_pdRT=setTimeout(pdZoom,260);});
+document.addEventListener('dblclick',e=>{
+  const c=e.target.closest&&e.target.closest('#pdView .phs-cell[data-id]');
+  if(c)pdCropOpen(c.dataset.id);
+});
+document.addEventListener('input',e=>{
+  const t=e.target;if(!t||!t.dataset||!t.dataset.pd||!t.closest('#pdRoot'))return;
+  const k=t.dataset.pd,v=t.value;
+  if(k==='title'){PD.title=v;const ls=pdLs(v);$$('#pdView .phs-ttl').forEach(x=>{x.textContent=v;x.style.letterSpacing=ls;x.style.textIndent=ls;});}
+  else if(k==='site'){PD.site=v;$$('#pdView .phs-site').forEach(x=>{x.textContent='현장명 : '+v;});}
+  else if(k==='loc'||k==='desc'){
+    t.removeAttribute('placeholder');
+    PD.photos.forEach(p=>{if(!PD.sel.has(p.id))return;p[k]=v;
+      const s=$('#pdView .phs-cell[data-id="'+p.id+'"] .phs-'+k);if(s)s.textContent=v;});
+  }
+});
+document.addEventListener('change',e=>{
+  const t=e.target;
+  if(t&&t.id==='pdSwap'){const f=(t.files||[])[0];t.value='';if(f)pdSwap(f);return;}
+  if(!t||(t.id!=='pdFiles'&&t.id!=='pdDir'))return;
+  const fl=[...(t.files||[])];t.value='';pdAdd(fl);
+});
+document.addEventListener('keydown',e=>{
+  if(S.view!=='photo')return;
+  const k=(e.key||'').toLowerCase();
+  if((e.ctrlKey||e.metaKey)&&!e.altKey&&k==='p'){e.preventDefault();pdPrint();return;}   /* Ctrl+P 도 사진대지 인쇄로 */
+  const t=e.target,typing=t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT'||t.isContentEditable);
+  if(typing||$('#mo').classList.contains('open')||!PD.sel.size)return;
+  if(e.key==='Delete'){e.preventDefault();pdDel();}
+  else if(e.key==='Escape'){PD.sel.clear();pdSelPaint();}
+});
+/* ── 자르기 — 영역은 사진(src) 대비 비율 {x,y,w,h}. 비율 고정이면 끌어도 그 비율을 지킨다 ── */
+const PDC_R=[['free','자유'],['cell','칸 비율'],['orig','원본'],['43','4:3'],['11','1:1']];
+let PDC=null;
+function pdCellRatio(){
+  const ph=$('#pdView .phs-ph');
+  if(ph&&ph.offsetWidth&&ph.offsetHeight)return ph.offsetWidth/ph.offsetHeight;
+  const land=PD.orient==='land',[c,r]=pdCR(PD.per,land),W=land?297:210,H=land?210:297;
+  return ((W-20)/c-3)/((H-20-19)/r-12-3);
+}
+function pdCropOpen(id){
+  const p=PD.photos.find(x=>x.id===id);if(!p)return;
+  const sc=Math.min(640/p.w,406/p.h),W=Math.round(p.w*sc),H=Math.round(p.h*sc);
+  PDC={id,W,H,ratio:'free',R:null,r:p.crop?{...p.crop}:{x:0,y:0,w:1,h:1}};
+  const hs=['nw','n','ne','e','se','s','sw','w'],pos={nw:[0,0],n:[50,0],ne:[100,0],e:[100,50],se:[100,100],s:[50,100],sw:[0,100],w:[0,50]};
+  const cur={nw:'nwse',se:'nwse',ne:'nesw',sw:'nesw',n:'ns',s:'ns',e:'ew',w:'ew'};
+  openModal('사진 자르기',
+    '<div class="phs-crop"><div class="phs-cbar"><div class="seg" id="pdcRatio">'
+      +PDC_R.map(([k,l])=>'<button class="'+(k==='free'?'act':'')+'" data-act="pd.cropRatio" data-k="'+k+'">'+l+'</button>').join('')
+      +'</div><span class="phs-csz" id="pdcSz"></span></div>'
+      +'<div class="phs-cstage"><div class="phs-cimg" id="pdcImg" style="width:'+W+'px;height:'+H+'px"><img src="'+p.src+'" alt="" draggable="false">'
+      +'<div class="phs-cbox" id="pdcBox" data-h="move">'+hs.map(h=>'<i data-h="'+h+'" style="left:'+pos[h][0]+'%;top:'+pos[h][1]+'%;cursor:'+cur[h]+'-resize"></i>').join('')+'</div></div></div></div>',
+    '<button class="btn bg2 bsm" data-act="pd.cropFull">원래대로</button><span class="phs-mfsp"></span>'
+      +'<button class="btn bg2 bsm" data-act="modal.close">취소</button><button class="btn bp bsm" data-act="pd.cropApply">적용</button>');
+  $('#mb').classList.add('pdcw');
+  pdcPaint();
+}
+function pdcPaint(){
+  if(!PDC)return;const b=$('#pdcBox');if(!b)return;
+  const {W,H,r}=PDC,p=PD.photos.find(x=>x.id===PDC.id);
+  Object.assign(b.style,{left:r.x*W+'px',top:r.y*H+'px',width:r.w*W+'px',height:r.h*H+'px'});
+  const sz=$('#pdcSz');if(sz&&p)sz.textContent=Math.round(r.w*p.w).toLocaleString()+' × '+Math.round(r.h*p.h).toLocaleString();
+}
+/* 비율을 고르면 지금 영역의 가운데를 지키며 그 비율로 사진 안에 들어가는 가장 큰 영역 */
+function pdcSetRatio(k){
+  if(!PDC)return;const p=PD.photos.find(x=>x.id===PDC.id);if(!p)return;
+  PDC.ratio=k;
+  PDC.R=k==='cell'?pdCellRatio():k==='orig'?p.w/p.h:k==='43'?4/3:k==='11'?1:null;
+  $$('#pdcRatio button').forEach(x=>x.classList.toggle('act',x.dataset.k===k));
+  if(PDC.R){
+    const {W,H,r}=PDC,cx=(r.x+r.w/2)*W,cy=(r.y+r.h/2)*H;
+    let w=W,h=w/PDC.R;if(h>H){h=H;w=h*PDC.R;}
+    let x=Math.min(Math.max(0,cx-w/2),W-w),y=Math.min(Math.max(0,cy-h/2),H-h);
+    PDC.r={x:x/W,y:y/H,w:w/W,h:h/H};
+  }
+  pdcPaint();
+}
+let _pdcDn=null;
+document.addEventListener('pointerdown',e=>{
+  const t=e.target.closest&&e.target.closest('#pdcBox [data-h],#pdcBox');if(!t||!PDC)return;
+  e.preventDefault();e.stopPropagation();
+  const {W,H,r}=PDC;
+  _pdcDn={h:t.dataset.h||'move',x:e.clientX,y:e.clientY,b:{x1:r.x*W,y1:r.y*H,x2:(r.x+r.w)*W,y2:(r.y+r.h)*H}};
+});
+document.addEventListener('pointermove',e=>{
+  const d=_pdcDn;if(!d||!PDC)return;
+  const {W,H,R}=PDC,dx=e.clientX-d.x,dy=e.clientY-d.y,MIN=24;
+  let {x1,y1,x2,y2}=d.b;
+  if(d.h==='move'){const w=x2-x1,h=y2-y1;x1=Math.min(Math.max(0,x1+dx),W-w);y1=Math.min(Math.max(0,y1+dy),H-h);x2=x1+w;y2=y1+h;}
+  else{
+    const h=d.h;
+    if(h.includes('w'))x1=Math.min(Math.max(0,x1+dx),x2-MIN);
+    if(h.includes('e'))x2=Math.max(Math.min(W,x2+dx),x1+MIN);
+    if(h.includes('n'))y1=Math.min(Math.max(0,y1+dy),y2-MIN);
+    if(h.includes('s'))y2=Math.max(Math.min(H,y2+dy),y1+MIN);
+    if(R){
+      /* 비율 고정 — 모서리는 가로 기준, 가운데 손잡이는 끈 쪽 기준으로 다른 변을 맞추고, 사진 밖으로 나가면 둘 다 줄인다 */
+      let w=x2-x1,hh=y2-y1;
+      if(h==='n'||h==='s')w=hh*R;else hh=w/R;
+      const ax=h.includes('w')?d.b.x2:h.includes('e')?d.b.x1:(d.b.x1+d.b.x2)/2;
+      const ay=h.includes('n')?d.b.y2:h.includes('s')?d.b.y1:(d.b.y1+d.b.y2)/2;
+      const maxW=h.includes('w')?ax:h.includes('e')?W-ax:2*Math.min(ax,W-ax);
+      const maxH=h.includes('n')?ay:h.includes('s')?H-ay:2*Math.min(ay,H-ay);
+      const f=Math.min(1,maxW/w,maxH/hh);w*=f;hh*=f;
+      x1=h.includes('w')?ax-w:h.includes('e')?ax:ax-w/2;x2=x1+w;
+      y1=h.includes('n')?ay-hh:h.includes('s')?ay:ay-hh/2;y2=y1+hh;
+    }
+  }
+  PDC.r={x:x1/W,y:y1/H,w:(x2-x1)/W,h:(y2-y1)/H};
+  pdcPaint();
+});
+document.addEventListener('pointerup',()=>{_pdcDn=null;});
+async function pdcApply(){
+  if(!PDC)return;const p=PD.photos.find(x=>x.id===PDC.id);if(!p){closeModal();return;}
+  const r=PDC.r,full=r.x<.001&&r.y<.001&&r.w>.999&&r.h>.999;
+  if(full){if(p.url!==p.src)URL.revokeObjectURL(p.url);p.url=p.src;p.crop=null;}
+  else{
+    const img=$('#pdcImg img');
+    const sx=Math.round(r.x*p.w),sy=Math.round(r.y*p.h),sw=Math.max(1,Math.round(r.w*p.w)),sh=Math.max(1,Math.round(r.h*p.h));
+    const cv=document.createElement('canvas');cv.width=sw;cv.height=sh;cv.getContext('2d').drawImage(img,sx,sy,sw,sh,0,0,sw,sh);
+    const blob=await new Promise(res=>cv.toBlob(res,'image/jpeg',.92));
+    if(!blob){toast('자르지 못했습니다');return;}
+    if(p.url!==p.src)URL.revokeObjectURL(p.url);
+    p.url=URL.createObjectURL(blob);p.crop={...r};
+  }
+  PDC=null;closeModal();pdPages();
+}
+/* ── 인쇄 — 상단바 인쇄 버튼 · Ctrl+P. 브라우저 인쇄 창의 「PDF로 저장」이 곧 PDF 추출이다 ── */
+function pdPrintMount(){
+  pdPrintUnmount();
+  const box=document.createElement('div');box.id='pdPrint';box.innerHTML=pdPagesHTML(true).html;document.body.appendChild(box);
+  const st=document.createElement('style');st.id='pdPageCss';
+  const [pw2,ph2]=pdPaperMM();
+  st.textContent='@media print{@page{size:'+pw2+'mm '+ph2+'mm;margin:0}#pdPrint .phs-page{width:'+pw2+'mm;height:'+(ph2-.5)+'mm}}';   /* 전역 @page(A4 세로·8mm)보다 뒤에 붙여 이긴다 */
+  document.head.appendChild(st);
+  document.body.classList.add('phs-printing');
+}
+function pdPrintUnmount(){
+  const b=$('#pdPrint');if(b)b.remove();
+  const s=$('#pdPageCss');if(s)s.remove();
+  document.body.classList.remove('phs-printing');
+}
+async function pdPrint(){
+  if(_pdDrag)return;
+  pdPrintMount();
+  await Promise.all([...$$('#pdPrint img')].map(i=>i.decode?i.decode().catch(()=>{}):null));
+  let done=false;
+  const fin=()=>{if(done)return;done=true;window.removeEventListener('afterprint',fin);pdPrintUnmount();};
+  window.addEventListener('afterprint',fin);
+  window.print();
+  setTimeout(()=>{if(!done)fin();},60000);
+}
+/* 브라우저 메뉴의 인쇄도 사진대지만 찍히게 */
+let _pdAutoPrint=false;
+window.addEventListener('beforeprint',()=>{if(S.view==='photo'&&!document.body.classList.contains('phs-printing')){pdPrintMount();_pdAutoPrint=true;}});
+window.addEventListener('afterprint',()=>{if(_pdAutoPrint){_pdAutoPrint=false;pdPrintUnmount();}});
+Object.assign(ACT,{
+  'pd.orient':el=>{if(PD.orient===el.dataset.o)return;PD.orient=el.dataset.o;rPhoto();},
+  'pd.zoom':el=>{if(PD.zoom===el.dataset.z)return;const keep=PD.page;PD.zoom=el.dataset.z;rPhoto();PD.page=keep;pdPgGo(0);},   /* 배율을 바꿔도 보던 쪽을 지킨다 */
+  'pd.zStep':el=>{const d=Number(el.dataset.d);PD.zoom='free';PD.pz=Math.max(.1,Math.min(4,(PD.pz||1)*(d>0?1.15:1/1.15)));pdZoom();},
+  'pd.split':el=>{const on=el.dataset.s==='on';if(PD.split===on)return;PD.split=on;const keep=PD.page;rPhoto();PD.page=keep;pdPgGo(0);},
+  'pd.rot':el=>{pdRot(Number(el.dataset.d));},
+  'pd.swap':()=>{if(PD.sel.size!==1)return;const i=$('#pdSwap');if(i)i.click();},
+  'pd.fillFirst':()=>pdFill('first'),
+  'pd.fillBlank':()=>pdFill('blank'),
+  'pd.pgGo':el=>pdPgGo(Number(el.dataset.d)),
+  'pd.fit':el=>{const f=el.dataset.f;PD.photos.forEach(p=>{if(PD.sel.has(p.id))p.fit=f;});
+    $$('#pdView .phs-cell.sel .phs-ph').forEach(x=>{x.classList.remove('contain','cover');if(f!=='fill')x.classList.add(f);});
+    $$('#pdRoot [data-act="pd.fit"]').forEach(b=>b.classList.toggle('act',b.dataset.f===f));},
+  'pd.per':el=>{const k=Number(el.dataset.k);if(PD.per===k)return;PD.per=k;rPhoto();},
+  'pd.files':()=>{const i=$('#pdFiles');if(i)i.click();},
+  'pd.dir':()=>{const i=$('#pdDir');if(i)i.click();},
+  'pd.reset':()=>{
+    /* 814차: 기본값과 같으면 물어보지 않는다 — 808차에 기본이 6장으로 바뀐 뒤에도 4 로 남아 빈 화면에서 확인창이 떴다 */
+    if(!PD.photos.length&&!PD.load&&!PD.site&&PD.title==='사진대지'&&PD.per===6&&PD.orient==='por'&&!PD.split)return;
+    confirmModal('초기화','사진과 입력한 내용을 모두 지웁니다.',pdResetNow,'초기화');
+  },
+  'pd.selClear':()=>{PD.sel.clear();pdSelPaint();},
+  'pd.del':()=>pdDel(),
+  'pd.crop':()=>{if(PD.sel.size===1)pdCropOpen([...PD.sel][0]);},
+  'pd.cropRatio':el=>pdcSetRatio(el.dataset.k),
+  'pd.cropFull':()=>{if(!PDC)return;PDC.r={x:0,y:0,w:1,h:1};pdcSetRatio('free');},
+  'pd.cropApply':()=>{pdcApply();},
+});
+
+/* ═══════════ 811차: 업무 도구 — 견적 검토 ═══════════
+   업체 산출서의 「산출 근거」 열을 엑셀에서 통째로 복사해 붙여넣으면 줄마다 계산식을 확인한다.
+   ⚠ 사진대지와 같이 **이 창 메모리에서만** 처리한다 — 서버·localStorage 어디에도 쓰지 않는다.
+   읽는 방식(실제 산출서 기준):
+     · 「1. 공용욕실」 처럼 번호가 **1 로 다시 시작하면 다음 세대**. 그 안의 2·3 은 같은 세대의 다른 공간.
+     · 「- 타일(벽체)」 는 항목, 그 아래 「 : (1.2*1.2)+(0.6*0.6)=1.8m2」 가 계산식.
+     · 식이 길어 「 = 11.1m」 이 다음 줄로 넘어가면 이어 읽는다.
+     · 「- 샤워부스 해체 및 설치」(수량 없음)·「 : 조공 0.25인」(계산식 없이 수량만)은 제외로 둔다. */
+const QC={txt:'',rows:[],rnd:1,tol:0,filter:'all',ran:false};
+const QC_UNIT={'m2':'㎡','M2':'㎡','m²':'㎡','sqm':'㎡'};
+function qcRound(v,d){if(d==null||d<0)return v;const m=Math.pow(10,d);return Math.round((v*m).toFixed(6)*1)/m;}
+function qcFmt(v){if(v==null||!isFinite(v))return '—';return String(Math.round(v*1e6)/1e6);}
+/* 사칙연산·괄호·숫자만 직접 읽어 계산한다.
+   ⚠ eval·new Function 은 쓸 수 없다 — 이 앱의 CSP(script-src 'self')가 막는다(실제로 막혀 전부 「읽을 수 없는 줄」이 됐다). */
+function qcEval(ex){
+  /* 814차: 「1.2㎡ × 1.2㎡ = 1.44㎡」처럼 식 안에 단위가 섞인 표기도 읽는다 — 숫자 뒤 단위 낱말만 걷어낸다 */
+  const t=String(ex).replace(/[×xX]/g,'*').replace(/÷/g,'/')
+    .replace(/(\d)\s*(㎡|㎥|m2|m3|M2|M3|평|m|M|EA|ea|개|인|본|매|식|㎜|mm|cm|㎝)(?![0-9.])/g,'$1')
+    .replace(/\s+/g,'');
+  if(!t||!/^[0-9.+\-*/()]+$/.test(t)||!/\d/.test(t))return null;
+  let i=0,bad=false;
+  const peek=()=>t[i];
+  const num=()=>{const s0=i;while(i<t.length&&/[0-9.]/.test(t[i]))i++;const w=t.slice(s0,i);
+    if(!/^\d*\.?\d+$|^\d+\.$/.test(w)){bad=true;return 0;}   /* 「1..2」 같은 잘못 적힌 수 */
+    const v=parseFloat(w);if(!isFinite(v)){bad=true;return 0;}return v;};
+  const atom=()=>{
+    if(peek()==='('){i++;const v=expr();if(peek()!==')'){bad=true;return v;}i++;return v;}
+    if(peek()==='-'){i++;return -atom();}
+    if(peek()==='+'){i++;return atom();}
+    if(peek()===undefined||!/[0-9.]/.test(peek())){bad=true;return 0;}
+    return num();
+  };
+  const term=()=>{let v=atom();
+    while(!bad&&(peek()==='*'||peek()==='/')){const op=t[i++];const r=atom();
+      if(op==='/'&&r===0){bad=true;return 0;}
+      v=op==='*'?v*r:v/r;}
+    return v;};
+  const expr=()=>{let v=term();
+    while(!bad&&(peek()==='+'||peek()==='-')){const op=t[i++];const r=term();v=op==='+'?v+r:v-r;}
+    return v;};
+  const v=expr();
+  if(bad||i!==t.length||!isFinite(v))return null;
+  return Math.round(v*1e9)/1e9;   /* 0.1+0.2 같은 부동소수 찌꺼기 정리 */
+}
+function qcParse(text){
+  const out=[];let unit=0,place='',pend=null;
+  const flush=()=>{
+    if(!pend)return;
+    const p=pend;pend=null;
+    const ex=p.expr.trim();
+    const base={no:p.unit,place:p.place,item:p.item.trim()};
+    if(!ex){out.push({...base,expr:'',calc:null,want:null,u:'',st:'sk',why:'수량 계산식이 없는 줄'});return;}
+    const i=ex.lastIndexOf('=');
+    const lhs=i<0?ex:ex.slice(0,i),rhs=i<0?ex:ex.slice(i+1);
+    const m=rhs.match(/^\s*(-?\d+(?:\.\d+)?)\s*(.*)$/);   /* ⚠ 수량은 = 바로 뒤 · 나머지가 단위 — 끝에서 찾으면 「1.8m2」의 2 를 수량으로 읽는다 */
+    const want=m?parseFloat(m[1]):null;
+    const ut=((m&&m[2])||'').trim().split(/\s+/)[0]||'';   /* 「=6㎡ 추가메모」처럼 뒤에 글자가 붙으면 첫 토막만 단위로 */
+    const u=QC_UNIT[ut]||ut;
+    if(i<0){out.push({...base,expr:'',calc:null,want,u,st:'sk',why:'계산식 없이 수량만 적힌 줄'});return;}
+    const calc=qcEval(lhs);
+    if(calc==null){out.push({...base,expr:lhs.trim(),calc:null,want,u,st:'sk',why:'계산식으로 읽을 수 없는 줄'});return;}
+    if(want==null){out.push({...base,expr:lhs.trim(),calc,want:null,u,st:'sk',why:'= 뒤에 수량이 없는 줄'});return;}
+    const d=QC.rnd,rc=qcRound(calc,d),rw=qcRound(want,d),diff=qcRound(Math.abs(rc-rw),6);
+    const okTol=QC.tol>0&&diff<=QC.tol+1e-9;
+    if(rc===rw||okTol){
+      const why=okTol&&rc!==rw?('허용 오차 안(차이 '+qcFmt(diff)+')')
+        :(calc!==want?('반올림 후 비교('+qcFmt(rc)+' = '+qcFmt(rw)+')'):'');
+      out.push({...base,expr:lhs.trim(),calc,want,u,st:'ok',why});
+    }else{
+      const why='계산값 '+qcFmt(calc)+(calc!==rc?' → '+qcFmt(rc):'')+' · 적힌 값 '+qcFmt(want)
+        +' — '+qcFmt(diff)+(rc>rw?' 적음':' 많음');
+      out.push({...base,expr:lhs.trim(),calc,want,u,st:'no',why});
+    }
+  };
+  String(text||'').split(/\r?\n/).forEach(raw=>{
+    let s=raw.replace(/\t/g,' ').trim();
+    s=s.replace(/^"+/,'').replace(/"+$/,'').trim();   /* 엑셀이 여러 줄 칸에 씌우는 따옴표 */
+    if(!s)return;
+    if(/^<.*>$/.test(s)){flush();return;}             /* <산출 근거> 같은 머리줄 */
+    let m=s.match(/^(\d+)\s*[.)]\s*(.*)$/);
+    if(m){flush();if(m[1]==='1')unit++;place=m[2].trim();return;}
+    if(/^[-•*·]\s*/.test(s)){
+      flush();
+      const rest=s.replace(/^[-•*·]\s*/,'');
+      const c=rest.indexOf(':');
+      pend={unit:unit||1,place,item:c<0?rest:rest.slice(0,c),expr:c<0?'':rest.slice(c+1)};
+      return;
+    }
+    if(/^:/.test(s)){
+      if(!pend)pend={unit:unit||1,place,item:'',expr:''};
+      pend.expr+=(pend.expr?' ':'')+s.slice(1);
+      return;
+    }
+    if(/^=/.test(s)&&pend){pend.expr+=' '+s;return;}
+    if(pend&&/^[0-9.+\-*/()= ]+$/.test(s)){pend.expr+=' '+s;return;}   /* 식이 여러 줄로 이어진 경우 */
+  });
+  flush();
+  return out;
+}
+function qcRun(){
+  const ta=$('#qcTa');if(ta)QC.txt=ta.value;
+  QC.rows=qcParse(QC.txt);QC.ran=true;
+  rQc();
+  const n=QC.rows.filter(r=>r.st==='no').length;
+  toast(QC.rows.length?('검토 완료 — '+QC.rows.length+'줄 중 오답 '+n+'건'):'읽을 수 있는 줄이 없습니다');
+}
+function qcCount(){return {ok:QC.rows.filter(r=>r.st==='ok').length,no:QC.rows.filter(r=>r.st==='no').length,sk:QC.rows.filter(r=>r.st==='sk').length,
+  unit:new Set(QC.rows.map(r=>r.no)).size};}
+function qcView(){return QC.filter==='all'?QC.rows:QC.rows.filter(r=>r.st===QC.filter);}
+function qcTag(s){return s==='ok'?'<span class="qc-tag ok">정답</span>':s==='no'?'<span class="qc-tag no">오답</span>':'<span class="qc-tag sk">제외</span>';}
+function qcRowsHTML(){
+  let h='',cur=null;
+  qcView().forEach((r,i)=>{
+    const first=r.no!==cur;cur=r.no;
+    const pl=[r.place,r.item].filter(Boolean).join(' · ');
+    h+='<tr class="'+(first?'top ':'')+(r.st==='no'?'no':'')+'" data-i="'+i+'">'
+      +'<td class="n">'+(first?r.no:'')+'</td>'
+      +'<td class="pl">'+esc(pl)+'</td>'
+      +'<td class="f">'+esc(r.expr||'—')+'</td>'
+      +'<td class="v">'+(r.calc==null?'—':qcFmt(r.calc))+'</td>'
+      +'<td class="v'+(r.st==='no'?' bad':'')+'">'+(r.want==null?'—':qcFmt(r.want))
+        +(r.u?'<em>'+esc(r.u)+'</em>':'')+'</td>'
+      +'<td class="st">'+qcTag(r.st)+'</td>'
+      +'<td class="rs">'+esc(r.why||'')+'</td></tr>';
+  });
+  return h||'<tr><td colspan="7" style="padding:22px;text-align:center;color:var(--lbl3)">해당하는 줄이 없습니다</td></tr>';
+}
+function rQc(){
+  const root=$('#qcRoot');if(!root)return;
+  const c=qcCount();
+  /* ⚠ data-act 는 **문자열 그대로** 적는다 — 붙여 만들면 정적 감사가 발신처를 못 찾아 경고한다 */
+  const seg=(cur,list,btn)=>'<span class="seg">'+list.map(([k,l])=>btn(k,l,String(cur)===String(k)?' act':'')).join('')+'</span>';
+  const segRnd=seg(QC.rnd,[[0,'정수'],[1,'0.0'],[2,'0.00'],[-1,'안 함']],(k,l,a)=>'<button class="'+a.trim()+'" data-act="qc.rnd" data-r="'+k+'">'+l+'</button>');
+  const segTol=seg(QC.tol,[[0,'없음'],[0.1,'±0.1'],[0.5,'±0.5']],(k,l,a)=>'<button class="'+a.trim()+'" data-act="qc.tol" data-t="'+k+'">'+l+'</button>');
+  const segFil=seg(QC.filter,[['all','전체'],['ok','정답'],['no','오답'],['sk','제외']],(k,l,a)=>'<button class="'+a.trim()+'" data-act="qc.filter" data-k="'+k+'">'+l+'</button>');
+  root.innerHTML='<div class="qc-grid"><div class="qc-col">'
+    +(QC.ran?'<div class="card"><div class="tm-h"><span>결과</span></div>'
+      +'<div class="qc-sum"><div class="qc-sc ok"><b>'+c.ok+'</b><span>정답</span></div>'
+      +'<div class="qc-sc no"><b>'+c.no+'</b><span>오답</span></div>'
+      +'<div class="qc-sc sk"><b>'+c.sk+'</b><span>제외</span></div></div></div>':'')
+    +'<div class="card"><div class="tm-h"><span>산출 근거 붙여넣기</span><button class="btn bo bxs" data-act="qc.clear">지우기</button></div>'
+      +'<div class="qc-b"><textarea id="qcTa" class="qc-ta" spellcheck="false" placeholder="엑셀에서 산출 근거 열을 복사해 붙여넣으세요">'+esc(QC.txt)+'</textarea>'
+      +'<button class="qc-run" data-act="qc.run"><svg class="icn" aria-hidden="true"><use href="#i-check"></use></svg>검토</button></div></div>'
+    +'<div class="card"><div class="tm-h"><span>기준</span></div><div class="qc-b">'
+      +'<div class="qc-fr"><label>반올림</label>'+segRnd+'</div>'
+      +'<div class="qc-fr"><label>허용 오차</label>'+segTol+'</div></div></div>'
+    +'</div><div class="qc-col qc-right"><div class="tkbar qc-bar"><span class="qc-t">검토 결과'+(QC.ran?'<span>'+c.unit+'세대 · '+QC.rows.length+'줄</span>':'')+'</span>'
+      +'<span>'+segFil+'</span></div>'
+    +(QC.ran
+      ?'<div class="qc-wrap" id="qcWrap"><table class="qc-tbl"><thead><tr><th class="n">NO</th><th class="pl">부위 · 항목</th><th>계산식</th>'
+        +'<th class="v">계산값</th><th class="v">적힌 값</th><th class="st">판정</th><th class="rs">사유</th></tr></thead><tbody>'+qcRowsHTML()+'</tbody></table></div>'
+      :'<div class="qc-empty"><svg class="icn" aria-hidden="true"><use href="#i-paste"></use></svg>'
+        +'<p>엑셀의 산출 근거 열을 붙여넣고<br>[검토]를 누르면 줄마다 맞는지 확인합니다.</p></div>')
+    +'</div></div>';
+  qcFade();
+  const w=$('#qcWrap');if(w)ovsAttach(w);   /* 445차 가로 오버레이 막대 — 좁은 화면에서 표가 가로로 넘칠 때 */
+}
+/* 표 스크롤 — 머리 줄은 붙박이라 페이드·막대 모두 머리 아래에서만(사진대지와 같은 방식) */
+function qcFade(){
+  const w=$('#qcWrap');if(!w)return;
+  const th=w.querySelector('thead');const h=th?th.offsetHeight:0;
+  w.style.setProperty('--qh',h+'px');
+  const ov=w.scrollHeight>w.clientHeight+2;
+  w.classList.toggle('ft',ov&&w.scrollTop>4);
+  w.classList.toggle('fb',ov&&w.scrollHeight-w.clientHeight-w.scrollTop>4);
+  const bar=w.__sb||(w.__sb=(()=>{const b=document.createElement('div');b.className='qc-sb';w.parentElement.appendChild(b);return b;})());
+  if(!ov){bar.classList.remove('on','show');bar.style.height='0px';return;}
+  bar.classList.add('on');
+  const vh=w.clientHeight-h,sh=w.scrollHeight-h,bh=Math.max(24,Math.round(vh*vh/sh));
+  bar.style.height=bh+'px';
+  bar.style.top=Math.round(w.offsetTop+h+(vh-bh)*(w.scrollTop/(w.scrollHeight-w.clientHeight)))+'px';
+}
+function qcFlash(){
+  qcFade();
+  const w=$('#qcWrap');if(!w||!w.__sb||!w.__sb.classList.contains('on'))return;
+  w.__sb.classList.add('show');
+  clearTimeout(w.__sbT);w.__sbT=setTimeout(()=>w.__sb.classList.remove('show'),900);
+}
+document.addEventListener('scroll',e=>{if(e.target&&e.target.id==='qcWrap')qcFlash();},true);
+window.addEventListener('resize',()=>{if(S.view==='qc')qcFade();});
+/* 결과 내보내기 — 엑셀에 그대로 붙일 수 있게 탭으로 나눈다 */
+function qcTsv(list,cols){
+  const head=cols===2?['판정','사유']:['NO','부위 · 항목','계산식','계산값','적힌 값','판정','사유'];
+  const line=r=>{const st=r.st==='ok'?'정답':r.st==='no'?'오답':'제외';
+    return cols===2?[st,r.why||''].join('\t')
+      :[r.no,[r.place,r.item].filter(Boolean).join(' · '),r.expr||'',r.calc==null?'':qcFmt(r.calc),
+        (r.want==null?'':qcFmt(r.want))+(r.u?' '+r.u:''),st,r.why||''].join('\t');};
+  return [head.join('\t')].concat(list.map(line)).join('\n');
+}
+Object.assign(ACT,{
+  'qc.run':()=>qcRun(),
+  'qc.clear':()=>{QC.txt='';QC.rows=[];QC.ran=false;rQc();const t=$('#qcTa');if(t)t.focus();},
+  'qc.rnd':el=>{const v=Number(el.dataset.r);if(QC.rnd===v)return;QC.rnd=v;if(QC.ran)qcRun0();else rQc();},
+  'qc.tol':el=>{const v=Number(el.dataset.t);if(QC.tol===v)return;QC.tol=v;if(QC.ran)qcRun0();else rQc();},
+  'qc.filter':el=>{if(QC.filter===el.dataset.k)return;QC.filter=el.dataset.k;rQc();},
+});
+function qcRun0(){QC.rows=qcParse(QC.txt);rQc();}   /* 기준만 바꿔 다시 판정 — 토스트 없이 */
+/* 우클릭 — 결과 복사(버튼 대신, 810차 시안대로) */
+document.addEventListener('contextmenu',e=>{
+  if(!e.target.closest)return;
+  const w=e.target.closest('#qcWrap');if(!w||!QC.ran)return;
+  const tr=e.target.closest('tbody tr[data-i]');
+  e.preventDefault();
+  const row=tr?qcView()[Number(tr.dataset.i)]:null;
+  const nos=QC.rows.filter(r=>r.st==='no');
+  openCtx(e.clientX,e.clientY,[
+    row&&{label:'이 줄 복사',act:()=>copyText(qcTsv([row]).split('\n')[1],'이 줄을 복사했습니다')},
+    {label:'오답만 복사'+(nos.length?' ('+nos.length+')':''),act:()=>{if(!nos.length){toast('오답이 없습니다');return;}copyText(qcTsv(nos),'오답 '+nos.length+'줄을 복사했습니다');}},
+    {label:'전체 결과 복사',act:()=>copyText(qcTsv(QC.rows),'전체 '+QC.rows.length+'줄을 복사했습니다')},
+    {sep:true},
+    {label:'판정·사유만 복사(엑셀 2열)',act:()=>copyText(qcTsv(QC.rows,2),'판정·사유를 복사했습니다')},
+  ]);
+});
+
+/* ═══════════ 815차: 업무 도구 — 도면 인쇄 ═══════════
+   DWG 를 그대로 읽어 **도면틀(사각형)마다 한 장**으로 나눠 인쇄한다. ZWCAD 를 열지 않고 뽑기 위한 것.
+   ⚠ 사진대지·견적 검토와 같이 이 창 메모리에서만 — 파일은 서버로 올라가지 않는다.
+   ⚠ 읽기는 워커(vendor/libredwg/dwg-worker.js)가 한다. 본체에서 부르면 CSP(script-src 'self')가 막는다.
+   나누는 방법: ① 도면틀 — 닫힌 네모(축에 나란한) 중 큰 것들. 겹쳐 그린 이중 테두리는 바깥 것만 남긴다.
+                ② 틀이 없으면 — 도형이 붙어 있는 덩어리끼리(격자 칠하기 + 이웃 잇기). */
+const DW={name:'',polys:[],texts:[],styles:[],ext:null,pages:[],off:new Set(),mode:'auto',used:'',paper:'a3',orient:'auto',lw:true,zoom:'w2',pz:0,page:1,busy:'',stat:null,worker:null};
+let DW_WORKER=null;
+const DW_PAPER={a4:[210,297],a3:[297,420]};   /* 816차: 실무에선 A4·A3 면 충분(사용자) */
+function dwWorker(){
+  if(DW_WORKER)return DW_WORKER;
+  const w=new Worker('./vendor/libredwg/dwg-worker.js',{type:'module'});
+  w.onmessage=e=>dwLoaded(e.data);
+  w.onerror=e=>{DW.busy='';toast('도면을 읽지 못했습니다');console.warn('[도면] 워커',e.message);rDwg();};
+  DW_WORKER=w;return w;
+}
+function dwOpen(file){
+  if(!file)return;
+  DW.busy=file.name;DW.name=file.name;rDwg();
+  file.arrayBuffer().then(buf=>{dwWorker().postMessage({buf,name:file.name},[buf]);})
+    .catch(()=>{DW.busy='';toast('파일을 열지 못했습니다');rDwg();});
+}
+function dwLoaded(d){
+  DW.busy='';
+  if(!d||!d.ok){toast('도면을 읽지 못했습니다'+(d&&d.err?' — '+d.err:''));rDwg();return;}
+  DW.polys=d.polys||[];DW.texts=d.texts||[];DW.styles=d.styles||[];DW.ext=d.ext;DW.off=new Set();DW.page=1;
+  DW.stat={n:DW.polys.length,t:DW.texts.length,ms:d.ms,skipped:d.skipped,layouts:d.layouts};
+  dwSplit();
+  toast(DW.pages.length+'장으로 나눴습니다');
+  rDwg();
+}
+/* ── 도면틀 찾기 ── */
+function dwRects(){
+  if(!DW.ext)return [];
+  const W=DW.ext[2]-DW.ext[0],H=DW.ext[3]-DW.ext[1],area=W*H;
+  const out=[];
+  DW.polys.forEach(p=>{
+    if(!p.c)return;
+    const n=p.p.length/2;if(n<4||n>6)return;
+    const w=p.b[2]-p.b[0],h=p.b[3]-p.b[1];
+    if(w<=0||h<=0)return;
+    if(w*h<area*0.005)return;                 /* 전체의 0.5% 보다 작으면 도면틀로 보지 않는다 */
+    const r=Math.max(w,h)/Math.min(w,h);if(r>6)return;
+    /* 축에 나란한 네모인지 — 모든 점이 상자 모서리에 붙어 있어야 한다 */
+    const tol=Math.max(w,h)*0.02;let ok=true;
+    for(let i=0;i<p.p.length;i+=2){
+      const dx=Math.min(Math.abs(p.p[i]-p.b[0]),Math.abs(p.p[i]-p.b[2]));
+      const dy=Math.min(Math.abs(p.p[i+1]-p.b[1]),Math.abs(p.p[i+1]-p.b[3]));
+      if(dx>tol&&dy>tol){ok=false;break;}
+    }
+    if(ok)out.push(p.b.slice());
+  });
+  /* 도면틀을 네모 하나가 아니라 **선 네 개**로 그린 도면도 많다 — 긴 가로·세로 선을 모아 네모를 이룬 조합을 찾는다 */
+  const hs=[],vs=[];
+  DW.polys.forEach(p=>{
+    if(p.p.length!==4)return;                /* 선분 하나짜리만 */
+    const [x1,y1,x2,y2]=p.p,dx=Math.abs(x2-x1),dy=Math.abs(y2-y1);
+    if(dy<=dx*0.002&&dx>W*0.12)hs.push({y:(y1+y2)/2,a:Math.min(x1,x2),b:Math.max(x1,x2)});
+    else if(dx<=dy*0.002&&dy>H*0.12)vs.push({x:(x1+x2)/2,a:Math.min(y1,y2),b:Math.max(y1,y2)});
+  });
+  hs.sort((a,b)=>(b.b-b.a)-(a.b-a.a));vs.sort((a,b)=>(b.b-b.a)-(a.b-a.a));
+  const HS=hs.slice(0,40),VS=vs.slice(0,40);
+  for(let i=0;i<VS.length;i++)for(let j=i+1;j<VS.length;j++){
+    const xa=Math.min(VS[i].x,VS[j].x),xb=Math.max(VS[i].x,VS[j].x),w=xb-xa;if(w<W*0.1)continue;
+    for(let k=0;k<HS.length;k++)for(let l=k+1;l<HS.length;l++){
+      const ya=Math.min(HS[k].y,HS[l].y),yb=Math.max(HS[k].y,HS[l].y),h=yb-ya;if(h<H*0.1)continue;
+      if(w*h<area*0.02)continue;
+      const r=Math.max(w,h)/Math.min(w,h);if(r>4)continue;
+      const cov=(s1,a1,b1)=>s1.a<=a1+(b1-a1)*0.1&&s1.b>=b1-(b1-a1)*0.1;
+      if(!cov(HS[k],xa,xb)||!cov(HS[l],xa,xb)||!cov(VS[i],ya,yb)||!cov(VS[j],ya,yb))continue;
+      out.push([xa,ya,xb,yb]);
+    }
+  }
+  /* 겹치는 틀 정리 — 이중 테두리(안쪽 여백선)는 바깥 것만 남긴다 */
+  out.sort((a,b)=>((b[2]-b[0])*(b[3]-b[1]))-((a[2]-a[0])*(a[3]-a[1])));
+  let keep=[];
+  out.forEach(r=>{
+    const inside=keep.some(k=>r[0]>=k[0]-1&&r[1]>=k[1]-1&&r[2]<=k[2]+1&&r[3]<=k[3]+1);
+    if(!inside)keep.push(r);
+  });
+  /* 818차: 오검출 줄이기 — 도면틀은 보통 **같은 크기가 되풀이된다**.
+     같은 크기(3% 안)끼리 묶어 가장 큰 무리가 둘 이상이면 그 무리만 쓴다.
+     그렇지 않으면 가장 큰 것의 40% 보다 작은 후보(내부 상세도·표)는 버린다. */
+  if(keep.length>1){
+    const grp=[];
+    keep.forEach(r=>{
+      const w=r[2]-r[0],h=r[3]-r[1];
+      const g=grp.find(g=>Math.abs(g.w-w)<=g.w*0.03&&Math.abs(g.h-h)<=g.h*0.03);
+      if(g)g.list.push(r);else grp.push({w,h,list:[r]});
+    });
+    grp.sort((a,b)=>b.list.length-a.list.length||(b.w*b.h)-(a.w*a.h));
+    if(grp[0].list.length>1)keep=grp[0].list;
+    else{const big=(keep[0][2]-keep[0][0])*(keep[0][3]-keep[0][1]);
+      keep=keep.filter(r=>((r[2]-r[0])*(r[3]-r[1]))>=big*0.4);}
+  }
+  return keep;
+}
+/* ── 틀이 없을 때: 붙어 있는 덩어리끼리 ── */
+function dwClusters(){
+  if(!DW.ext)return [];
+  const N=420,[X0,Y0,X1,Y1]=DW.ext,cw=(X1-X0)/N||1,ch=(Y1-Y0)/N||1;
+  const g=new Uint8Array(N*N);
+  const put=(x,y)=>{const i=Math.min(N-1,Math.max(0,Math.floor((x-X0)/cw))),j=Math.min(N-1,Math.max(0,Math.floor((y-Y0)/ch)));g[j*N+i]=1;};
+  DW.polys.forEach(p=>{const a=p.p;
+    for(let k=0;k<a.length;k+=2){put(a[k],a[k+1]);
+      if(k){const n=Math.min(200,Math.max(1,Math.ceil(Math.max(Math.abs(a[k]-a[k-2])/cw,Math.abs(a[k+1]-a[k-1])/ch))));
+        for(let t=1;t<n;t++)put(a[k-2]+(a[k]-a[k-2])*t/n,a[k-1]+(a[k+1]-a[k-1])*t/n);}}});
+  DW.texts.forEach(t=>put(t.x,t.y));
+  let cur=g;
+  for(let d=0;d<2;d++){const nx=new Uint8Array(N*N);
+    for(let j=0;j<N;j++)for(let i=0;i<N;i++){if(!cur[j*N+i])continue;
+      for(let dj=-1;dj<=1;dj++)for(let di=-1;di<=1;di++){const a=j+dj,b=i+di;if(a>=0&&a<N&&b>=0&&b<N)nx[a*N+b]=1;}}
+    cur=nx;}
+  const lab=new Int32Array(N*N).fill(-1),comps=[];let nl=0;
+  for(let s=0;s<N*N;s++){
+    if(!cur[s]||lab[s]>=0)continue;
+    const st=[s];lab[s]=nl;let mnx=N,mny=N,mxx=-1,mxy=-1,cnt=0;
+    while(st.length){const q=st.pop(),j=(q/N)|0,i=q%N;cnt++;
+      if(i<mnx)mnx=i;if(i>mxx)mxx=i;if(j<mny)mny=j;if(j>mxy)mxy=j;
+      for(let dj=-1;dj<=1;dj++)for(let di=-1;di<=1;di++){const a=j+dj,b=i+di;if(a<0||a>=N||b<0||b>=N)continue;
+        const t=a*N+b;if(cur[t]&&lab[t]<0){lab[t]=nl;st.push(t);}}}
+    comps.push({c:cnt,b:[X0+mnx*cw,Y0+mny*ch,X0+(mxx+1)*cw,Y0+(mxy+1)*ch]});nl++;}
+  comps.sort((a,b)=>b.c-a.c);
+  const big=comps.filter(c=>c.c>=Math.max(30,comps[0].c*0.02));
+  return big.map(c=>c.b);
+}
+/* 왼쪽 위 → 오른쪽 → 아래 순으로 */
+function dwSort(boxes){
+  if(!boxes.length)return boxes;
+  const h=boxes.reduce((s,b)=>s+(b[3]-b[1]),0)/boxes.length;
+  return boxes.slice().sort((a,b)=>{
+    const ra=Math.round((-a[3])/(h*0.6)),rb=Math.round((-b[3])/(h*0.6));
+    return ra!==rb?ra-rb:a[0]-b[0];
+  });
+}
+function dwSplit(){
+  let boxes=[],used='';
+  if(DW.mode!=='cluster'){boxes=dwRects();if(boxes.length)used='틀';}
+  if(!boxes.length&&DW.mode!=='frame'){boxes=dwClusters();if(boxes.length)used='덩어리';}
+  if(!boxes.length&&DW.ext){boxes=[DW.ext.slice()];used='전체';}
+  DW.used=used;
+  DW.pages=dwSort(boxes).map(b=>{
+    const w=b[2]-b[0],h=b[3]-b[1],pad=Math.max(w,h)*0.01;
+    return {b:[b[0]-pad,b[1]-pad,b[2]+pad,b[3]+pad],w,h};
+  });
+  DW.off=new Set();
+}
+const dwOn=()=>DW.pages.filter((p,i)=>!DW.off.has(i));
+/* ── 한 장 그리기 ── */
+const DW_PX=96/25.4;   /* 1mm → px. 선 굵기는 vector-effect:non-scaling-stroke 라 화면·종이에서 같은 두께가 된다 */
+function dwStyleCSS(used){
+  if(!DW.lw)return '';
+  let css='';
+  used.forEach(i=>{const st=DW.styles[i];if(!st)return;
+    /* ⚠ 바깥 CSS(.dw-svg polyline)와 명시도를 맞춰야 이긴다 — 문서 뒤에 오는 이 규칙이 우선한다 */
+    css+='polyline.s'+i+'{stroke-width:'+(Math.round(st.w*DW_PX*100)/100)+'px'
+      +(st.d?';stroke-dasharray:'+st.d.split(',').map(n=>Math.round(Number(n)*DW_PX*100)/100).join(','):'')+'}';});
+  return css?'<style>'+css+'</style>':'';
+}
+function dwPageSVG(pg,forPrint){
+  const [x0,y0,x1,y1]=pg.b,w=x1-x0,h=y1-y0;
+  let d='';const used=new Set();
+  DW.polys.forEach(p=>{
+    const b=p.b;if(b[2]<x0||b[0]>x1||b[3]<y0||b[1]>y1)return;
+    const a=p.p;let s='';
+    for(let k=0;k<a.length;k+=2)s+=(k?' ':'')+(Math.round(a[k]*100)/100)+','+(Math.round(a[k+1]*100)/100);
+    if(DW.lw&&p.s!=null)used.add(p.s);
+    d+='<polyline'+(DW.lw&&p.s!=null?' class="s'+p.s+'"':'')+' points="'+s+'"/>';
+  });
+  DW.texts.forEach(t=>{
+    if(t.x<x0||t.x>x1||t.y<y0||t.y>y1)return;
+    /* ⚠ 글자도 도형과 같은 좌표계(y 위로)로 적는다 — 여기서 -y 로 적으면 바깥 group 의 뒤집기와 겹쳐 위아래가 뒤바뀐다 */
+    const tx=Math.round(t.x*100)/100,ty=Math.round(t.y*100)/100;
+    d+='<text x="'+tx+'" y="'+ty+'" font-size="'+(Math.round(t.h*100)/100)+'"'
+      +(t.r?' transform="rotate('+(-t.r)+' '+tx+' '+ty+')"':'')
+      +'>'+esc(t.s)+'</text>';
+  });
+  return '<svg class="dw-svg" viewBox="'+x0+' '+(-y1)+' '+w+' '+h+'" preserveAspectRatio="xMidYMid meet">'
+    +dwStyleCSS(used)+'<g class="dw-g" transform="scale(1,-1)">'+d.replace(/<text /g,'<text data-t="1" ')+'</g></svg>';
+}
+/* 818차: 용지·방향은 **인쇄 한 번에 하나**로 고정한다 — 장마다 다르면 브라우저가 첫 장 기준으로 찍어 나머지가 어긋난다.
+   자동이면 장들의 가로세로를 세어 많은 쪽을 따른다. 도면은 그 용지 안에 비율 그대로(contain) 들어간다. */
+function dwLand(){
+  if(DW.orient==='land')return true;
+  if(DW.orient==='por')return false;
+  const on=dwOn();if(!on.length)return true;
+  let l=0;on.forEach(p=>{if(p.w>=p.h)l++;});
+  return l*2>=on.length;
+}
+function dwPaperMM(){
+  const [a,b]=DW_PAPER[DW.paper||'a3']||DW_PAPER.a3;
+  return dwLand()?[b,a]:[a,b];
+}
+function dwPagesHTML(forPrint){
+  const list=dwOn();
+  if(!list.length)return '';
+  const [mw,mh]=dwPaperMM();
+  return list.map((pg,i)=>'<div class="dw-pw" data-p="'+(i+1)+'"><div class="dw-page" style="width:'+mw+'mm;height:'+mh+'mm">'
+      +dwPageSVG(pg,forPrint)+'</div></div>').join('');
+}
+function rDwg(){
+  const root=$('#dwgRoot');if(!root)return;
+  const seg=(cur,list,btn)=>'<span class="seg">'+list.map(([k,l])=>btn(k,l,String(cur)===String(k)?'act':'')).join('')+'</span>';
+  const segMode=seg(DW.mode,[['auto','자동'],['frame','도면틀'],['cluster','오브젝트']],(k,l,a)=>'<button class="'+a+'" data-act="dwg.mode" data-m="'+k+'">'+l+'</button>');
+  const segPaper=seg(DW.paper||'a3',[['a4','A4'],['a3','A3']],(k,l,a)=>'<button class="'+a+'" data-act="dwg.paper" data-p="'+k+'">'+l+'</button>');
+  const segOri=seg(DW.orient,[['auto','자동'],['land','가로'],['por','세로']],(k,l,a)=>'<button class="'+a+'" data-act="dwg.orient" data-o="'+k+'">'+l+'</button>');
+  const segLw=seg(DW.lw?'on':'off',[['on','반영'],['off','일정']],(k,l,a)=>'<button class="'+a+'" data-act="dwg.lw" data-w="'+k+'">'+l+'</button>');
+  const segZoom=seg(DW.zoom,[['wf','쪽 맞춤'],['w1','폭 맞춤'],['w2','두 쪽'],['wg','여러 쪽']],(k,l,a)=>'<button class="'+a+'" data-act="dwg.zoom" data-z="'+k+'">'+l+'</button>');
+  const st=DW.stat;
+  const skip=st&&st.skipped?Object.entries(st.skipped).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k,v])=>k+' '+v).join(' · '):'';
+  const list=DW.pages.map((p,i)=>'<label class="dw-pl'+(DW.off.has(i)?' off':'')+'"><input type="checkbox" data-act="dwg.toggle" data-i="'+i+'"'+(DW.off.has(i)?'':' checked')+'>'
+    +'<b>'+(i+1)+'</b><span>'+Math.round(p.w)+' × '+Math.round(p.h)+'</span></label>').join('');
+  root.innerHTML='<div class="dw-grid"><div class="dw-col">'
+    +'<div class="card"><div class="tm-h"><span>도면 파일</span>'+(DW.pages.length?'<button class="btn bo bxs" data-act="dwg.reset">초기화</button>':'')+'</div>'
+      +'<div class="dw-b">'
+      +(DW.busy?'<div class="dw-load">'+esc(DW.busy)+' 읽는 중…</div>'
+        :'<button class="dw-open" data-act="dwg.file"><svg class="icn" aria-hidden="true"><use href="#i-folder"></use></svg>'+(DW.name?'다른 도면 열기':'DWG 열기')+'</button>')
+      +(DW.name&&!DW.busy?'<div class="dw-file">'+esc(DW.name)+'</div>':'')
+      +(st?'<div class="dw-stat">도형 '+st.n.toLocaleString()+' · 글자 '+st.t.toLocaleString()+'</div>':'')
+      +(skip?'<div class="dw-warn">못 그린 것 '+esc(skip)+'</div>':'')
+      +'</div></div>'
+    +(DW.pages.length?'<div class="card"><div class="tm-h"><span>기준</span></div>'
+      +'<div class="dw-b"><div class="dw-fr"><label>분리</label>'+segMode+'</div>'
+      +'<div class="dw-fr"><label>용지</label>'+segPaper+'</div>'
+      +'<div class="dw-fr"><label>방향</label>'+segOri+'</div>'
+      +'<div class="dw-fr"><label>선</label>'+segLw+'</div></div></div>':'')
+    +(DW.pages.length?'<div class="card"><div class="tm-h"><span>목록</span><span class="tm-sub">'+dwOn().length+' / '+DW.pages.length+'장</span></div>'
+      +'<div class="dw-list">'+list+'</div></div>':'')
+    +'</div><div class="dw-col dw-right"><div class="tkbar dw-bar"><span class="dw-t">미리보기'
+      +(DW.pages.length?'<span class="dw-pgn"><button data-act="dwg.pgGo" data-d="-1" aria-label="이전 장" data-tip="이전 장"><svg class="icn" aria-hidden="true"><use href="#i-chevl"></use></svg></button>'
+        +'<span class="dw-pgt" id="dwPgt">1 / '+dwOn().length+'</span>'
+        +'<button data-act="dwg.pgGo" data-d="1" aria-label="다음 장" data-tip="다음 장"><svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg></button></span>':'')+'</span>'
+      +(DW.pages.length?'<span class="dw-tools">'+segZoom+'</span>':'')
+    +'</div>'
+    +(DW.pages.length?'<div class="dw-view" id="dwView">'+dwPagesHTML(false)+'</div>'
+      :'<div class="dw-empty"><svg class="icn" aria-hidden="true"><use href="#i-frame"></use></svg>'
+       +'<p>DWG 파일을 열면 도면틀마다 한 장으로 나눠<br>미리보기와 인쇄를 할 수 있습니다.</p></div>')
+    +'</div></div>'
+    +'<input type="file" id="dwgFile" accept=".dwg" hidden>';
+  dwZoom();
+}
+function dwZoom(){
+  const v=$('#dwView');if(!v)return;
+  v.classList.toggle('z1',DW.zoom==='w1'||DW.zoom==='free');
+  v.classList.toggle('zg',DW.zoom==='wg');
+  if(!DW.pages.length||!dwOn().length)return;
+  const [mw,mh]=dwPaperMM(),W=mw*96/25.4,H=mh*96/25.4;
+  const cw=v.clientWidth-24-2,ch=v.clientHeight-24-4;
+  let z;
+  if(DW.zoom==='free')z=DW.pz||1;
+  else if(DW.zoom==='w1')z=Math.min(1,cw/W);
+  else if(DW.zoom==='w2')z=dwOn().length<2?Math.min(cw/W,ch/H):Math.min((cw-24)/2/W,ch/H);
+  else if(DW.zoom==='wf')z=Math.min(cw/W,ch/H);
+  else z=Math.min((cw-3*10)/4/W,.3);
+  z=Math.max(.05,Math.min(4,z));DW.pz=z;
+  v.style.setProperty('--dz',z.toFixed(3));
+  v.classList.remove('vc');if(v.scrollHeight<=v.clientHeight+1)v.classList.add('vc');
+  dwSbSync();dwPgIndi();
+}
+/* 816차: 미리보기 세로 막대 — 사진대지(809차)와 같은 방식. 구를 때만 보이고 0.9초 뒤 사라진다.
+   ⚠ 도형을 끌지는 않지만 다른 도구와 손놀림을 맞추려고 클릭은 통과시킨다(pointer-events:none) */
+function dwSbSync(){
+  const v=$('#dwView');if(!v)return;
+  const w=v.__sb||(v.__sb=(()=>{const b=document.createElement('div');b.className='dw-sb';v.parentElement.appendChild(b);return b;})());
+  const h=v.clientHeight,sh=v.scrollHeight;
+  if(sh<=h+1){w.classList.remove('on','show');w.style.height='0px';return;}
+  w.classList.add('on');
+  const bh=Math.max(24,Math.round(h*h/sh)),max=h-bh;
+  w.style.height=bh+'px';
+  w.style.top=Math.round(v.offsetTop+max*(v.scrollTop/(sh-h)))+'px';
+}
+function dwSbFlash(){
+  dwSbSync();
+  const v=$('#dwView');if(!v||!v.__sb||!v.__sb.classList.contains('on'))return;
+  v.__sb.classList.add('show');
+  clearTimeout(v.__sbT);v.__sbT=setTimeout(()=>v.__sb.classList.remove('show'),900);
+}
+function dwPgIndi(){
+  const v=$('#dwView'),t=$('#dwPgt');if(!v||!t)return;
+  const pw=[...v.querySelectorAll('.dw-pw')];if(!pw.length)return;
+  const vt=v.getBoundingClientRect().top;let cur=pw[pw.length-1];
+  for(const w of pw){if(w.getBoundingClientRect().bottom>vt+12){cur=w;break;}}
+  DW.page=Number(cur.dataset.p)||1;
+  t.textContent=DW.page+' / '+pw.length;
+  const bs=$$('#dwgRoot .dw-pgn button');
+  if(bs[0])bs[0].disabled=DW.page<=1;
+  if(bs[1])bs[1].disabled=DW.page>=pw.length;
+}
+function dwPgGo(d){
+  const v=$('#dwView');if(!v)return;
+  const pw=[...v.querySelectorAll('.dw-pw')];if(!pw.length)return;
+  const n=Math.min(pw.length,Math.max(1,DW.page+d)),w=pw[n-1];
+  v.scrollTo({top:n===1?0:Math.max(0,v.scrollTop+w.getBoundingClientRect().top-v.getBoundingClientRect().top-12),behavior:'instant'});
+  dwPgIndi();
+}
+document.addEventListener('scroll',e=>{if(e.target&&e.target.id==='dwView'){dwPgIndi();dwSbFlash();}},true);
+let _dwRT=0;
+window.addEventListener('resize',()=>{if(S.view!=='dwg')return;clearTimeout(_dwRT);_dwRT=setTimeout(dwZoom,260);});
+document.addEventListener('wheel',e=>{
+  if(!(e.ctrlKey||e.metaKey)||!e.target.closest||!e.target.closest('#dwView'))return;
+  e.preventDefault();
+  const v=$('#dwView'),r=v.getBoundingClientRect(),before=DW.pz||1;
+  const px=(v.scrollLeft+e.clientX-r.left)/before,py=(v.scrollTop+e.clientY-r.top)/before;
+  DW.zoom='free';DW.pz=Math.max(.05,Math.min(4,before*Math.pow(1.0015,-e.deltaY)));dwZoom();
+  v.scrollTo({left:px*DW.pz-(e.clientX-r.left),top:py*DW.pz-(e.clientY-r.top),behavior:'instant'});
+},{passive:false});
+/* ── 인쇄 — 사진대지와 같은 방식(#dwPrint 를 붙이고 @page 를 뒤에 끼운다) ── */
+function dwPrintMount(){
+  dwPrintUnmount();
+  const list=dwOn();if(!list.length)return false;
+  const box=document.createElement('div');box.id='dwPrint';
+  const [mw,mh]=dwPaperMM();
+  box.innerHTML=list.map(pg=>'<div class="dw-page" style="width:'+mw+'mm;height:'+mh+'mm">'+dwPageSVG(pg,true)+'</div>').join('');
+  document.body.appendChild(box);
+  const st=document.createElement('style');st.id='dwPageCss';
+  st.textContent='@media print{@page{size:'+mw+'mm '+mh+'mm;margin:0}#dwPrint .dw-page{width:'+mw+'mm;height:'+(mh-.5)+'mm}}';
+  document.head.appendChild(st);
+  document.body.classList.add('dw-printing');
+  return true;
+}
+function dwPrintUnmount(){
+  const b=$('#dwPrint');if(b)b.remove();
+  const s=$('#dwPageCss');if(s)s.remove();
+  document.body.classList.remove('dw-printing');
+}
+function dwPrint(){
+  if(!dwPrintMount()){toast('인쇄할 장이 없습니다');return;}
+  let done=false;
+  const fin=()=>{if(done)return;done=true;window.removeEventListener('afterprint',fin);dwPrintUnmount();};
+  window.addEventListener('afterprint',fin);
+  window.print();
+  setTimeout(()=>{if(!done)fin();},60000);
+}
+let _dwAuto=false;
+window.addEventListener('beforeprint',()=>{if(S.view==='dwg'&&!document.body.classList.contains('dw-printing')&&dwPrintMount())_dwAuto=true;});
+window.addEventListener('afterprint',()=>{if(_dwAuto){_dwAuto=false;dwPrintUnmount();}});
+document.addEventListener('change',e=>{
+  const t=e.target;if(!t)return;
+  if(t.id==='dwgFile'){const f=(t.files||[])[0];t.value='';if(f)dwOpen(f);return;}
+  if(t.dataset&&t.dataset.act==='dwg.toggle'&&t.closest('#dwgRoot')){
+    const i=Number(t.dataset.i);if(t.checked)DW.off.delete(i);else DW.off.add(i);
+    rDwg();
+  }
+});
+Object.assign(ACT,{
+  'dwg.file':()=>{const i=$('#dwgFile');if(i)i.click();},
+  'dwg.reset':()=>{DW.polys=[];DW.texts=[];DW.ext=null;DW.pages=[];DW.off=new Set();DW.name='';DW.stat=null;DW.page=1;rDwg();},
+  'dwg.mode':el=>{if(DW.mode===el.dataset.m)return;DW.mode=el.dataset.m;dwSplit();rDwg();
+    toast(DW.pages.length+'장 ('+(DW.used==='틀'?'도면틀 기준':DW.used==='덩어리'?'오브젝트 기준':'전체 1장')+')');},
+  'dwg.paper':el=>{if((DW.paper||'a3')===el.dataset.p)return;DW.paper=el.dataset.p;rDwg();},
+  'dwg.orient':el=>{if(DW.orient===el.dataset.o)return;DW.orient=el.dataset.o;rDwg();},
+  'dwg.lw':el=>{const on=el.dataset.w==='on';if(DW.lw===on)return;DW.lw=on;rDwg();},
+  'dwg.zoom':el=>{if(DW.zoom===el.dataset.z)return;const keep=DW.page;DW.zoom=el.dataset.z;rDwg();DW.page=keep;dwPgGo(0);},
+  'dwg.pgGo':el=>dwPgGo(Number(el.dataset.d)),
+  'dwg.toggle':()=>{},   /* change 위임이 처리한다 */
+});
 
 /* ═══════════ 부팅 ═══════════ */
 function rAll(){rDay();rTasks();rOrg();rCfg();rFilter();rTeamSel();refetchCal();rWidget();}   /* 팀 선택기는 조직 화면 밖(사이드바)이라 rAll 에서도 그린다 */
