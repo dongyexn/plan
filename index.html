@@ -3968,9 +3968,10 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 .phs-view{flex:1;min-height:0;margin-top:8px;background:var(--surf2);border:1px solid var(--cardline);border-radius:var(--rxl);overflow:auto;padding:12px;display:flex;flex-wrap:wrap;align-content:flex-start;justify-content:center;gap:14px;overscroll-behavior:contain}   /* 805차: 안쪽 여백 20→12 · 쪽 사이 20→14 — 용지를 조금이라도 크게 */
 .phs-pw{display:flex;flex-direction:column;align-items:center;gap:6px}
 /* 809차: 미리보기 세로 막대 — 구를 때만 잠깐. 자리를 먹지 않게 떠 있고, 사진 끌기와 겹치지 않게 클릭은 통과시킨다 */
-.phs-sb{position:absolute;right:7px;width:6px;border-radius:3px;background:var(--lbl3);opacity:0;pointer-events:none;z-index:6;
-  transition:opacity .35s ease;}
-.phs-sb.show{opacity:.55;transition:none;}   /* 나타날 땐 바로, 사라질 땐 서서히 */
+.phs-sb{position:absolute;right:7px;width:8px;border-radius:4px;background:var(--sepo);opacity:0;pointer-events:none;z-index:6;cursor:grab;transition:background var(--t-fast),opacity .2s ease}
+.phs-sb.on{opacity:1;pointer-events:auto}
+.phs-sb:hover,.phs-sb.drag{background:var(--lbl3)}
+.phs-sb.drag{cursor:grabbing}
 .phs-page{width:210mm;height:297mm;box-sizing:border-box;background:#fff;padding:10mm;   /* 실제 값은 802차부터 인라인(용지·여백) */display:flex;flex-direction:column;
   font-family:'Malgun Gothic','맑은 고딕','Pretendard Variable',Pretendard,sans-serif;color:#000;line-height:1.2}
 .phs-page.land{width:297mm;height:210mm}
@@ -4049,10 +4050,10 @@ body.phs-dragging,body.phs-dragging *{cursor:grabbing!important;user-select:none
 .qc-col.qc-right{gap:0;overflow:visible}
 .qc-col>.card{padding:0;overflow:hidden;flex-shrink:0}
 .qc-b{padding:12px var(--s4) 14px}
-.qc-ta{width:100%;height:250px;resize:none;font-family:var(--mono);font-size:12px;line-height:1.65;
+.qc-ta{display:block;width:100%;height:250px;resize:none;font-family:var(--mono);font-size:12px;line-height:1.65;
   border:1px solid var(--sepo);border-radius:var(--rmd);padding:10px 12px;background:var(--bg2);color:var(--lbl);white-space:pre;overflow:auto}
 .qc-ta:focus{border-color:var(--b400);box-shadow:0 0 0 3px rgba(83,140,222,.14)}
-.qc-run{margin-top:10px;width:100%;height:36px;border-radius:var(--rmd);background:var(--b600);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px}
+.qc-run{margin-top:6px;width:100%;height:36px;border-radius:var(--rmd);background:var(--b600);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px}
 .qc-fr{display:grid;grid-template-columns:64px minmax(0,1fr);align-items:center;gap:8px}
 .qc-fr+.qc-fr{margin-top:8px}
 .qc-fr label{font-size:12px;font-weight:600;color:var(--lbl2)}
@@ -4078,8 +4079,10 @@ body.phs-dragging,body.phs-dragging *{cursor:grabbing!important;user-select:none
   mask-image:linear-gradient(to bottom,#000 var(--qh,34px),transparent var(--qh,34px),#000 calc(var(--qh,34px) + 26px))}
 .qc-wrap.ft.fb{-webkit-mask-image:linear-gradient(to bottom,#000 var(--qh,34px),transparent var(--qh,34px),#000 calc(var(--qh,34px) + 26px),#000 calc(100% - 26px),transparent);
   mask-image:linear-gradient(to bottom,#000 var(--qh,34px),transparent var(--qh,34px),#000 calc(var(--qh,34px) + 26px),#000 calc(100% - 26px),transparent)}
-.qc-sb{position:absolute;right:7px;width:6px;border-radius:3px;background:var(--lbl3);opacity:0;pointer-events:none;z-index:6;transition:opacity .35s ease}
-.qc-sb.show{opacity:.55;transition:none}
+.qc-sb{position:absolute;right:7px;width:8px;border-radius:4px;background:var(--sepo);opacity:0;pointer-events:none;z-index:6;cursor:grab;transition:background var(--t-fast),opacity .2s ease}
+.qc-sb.on{opacity:1;pointer-events:auto}
+.qc-sb:hover,.qc-sb.drag{background:var(--lbl3)}
+.qc-sb.drag{cursor:grabbing}
 .qc-tbl{width:100%;min-width:1040px;border-collapse:collapse;font-size:12.5px;table-layout:fixed}   /* 좁은 화면에서는 가로로 흐르게 두고 아래 오버레이 막대(445차)로 넘긴다 */
 .qc-tbl th{position:sticky;top:0;z-index:2;background:var(--surf2);font-size:12px;font-weight:700;color:var(--lbl2);text-align:left;
   padding:8px 10px;white-space:nowrap;box-shadow:inset 0 -1px 0 var(--sep)}
@@ -4180,8 +4183,10 @@ body.qc-dragging{user-select:none}
 .dw-svg polyline{fill:none;stroke:#111;stroke-width:0.95px;vector-effect:non-scaling-stroke;stroke-linejoin:round;stroke-linecap:round}   /* 818차: 기본 0.25mm · 실제 굵기는 SVG 안쪽에 붙는 굵기 규칙이 덮는다 */
 .dw-svg text{fill:#111;font-family:'Malgun Gothic','맑은 고딕','Pretendard Variable',sans-serif;transform-box:fill-box}
 .dw-svg .dw-g text{transform:scale(1,-1);transform-origin:center}
-.dw-sb{position:absolute;right:7px;width:6px;border-radius:3px;background:var(--lbl3);opacity:0;pointer-events:none;z-index:6;transition:opacity .35s ease}
-.dw-sb.show{opacity:.55;transition:none}
+.dw-sb{position:absolute;right:7px;width:8px;border-radius:4px;background:var(--sepo);opacity:0;pointer-events:none;z-index:6;cursor:grab;transition:background var(--t-fast),opacity .2s ease}
+.dw-sb.on{opacity:1;pointer-events:auto}
+.dw-sb:hover,.dw-sb.drag{background:var(--lbl3)}
+.dw-sb.drag{cursor:grabbing}
 .dw-empty{flex:1;min-height:0;margin-top:8px;border:1px dashed var(--sepo);border-radius:var(--rxl);background:var(--surf2);
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--lbl3)}
 .dw-empty .icn{width:26px;height:26px}
@@ -4593,5 +4598,5 @@ body.qc-dragging{user-select:none}
 <!-- 762차: chart.umd·datalabels·korea-geo·apt-geo 는 app.js 의 loadChart()/loadGeo() 가 필요할 때 읽는다(첫 로드 800KB 절감) -->
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=842"></script>
+<script src="./app.js?v=844"></script>
 </body></html>
