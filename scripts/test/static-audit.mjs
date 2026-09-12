@@ -548,7 +548,8 @@ OK('구문 검사 (node --check)');
   const mb = bytes / 1048576;
   const top = Object.entries(size).sort((a, b) => b[1] - a[1]).slice(0, 4)
     .map(([k, v]) => k + ' ' + (v / 1048576).toFixed(1) + 'MB').join(' · ');
-  if (mb > 12) F('배포본 ' + mb.toFixed(1) + 'MB — 12MB 초과. 무거운 항목: ' + top);
+  /* 815차: DWG 엔진(vendor/libredwg 9.7MB wasm)이 들어와 한계를 20MB 로 올렸다 — 3MB 짜리 잔재는 여전히 걸린다 */
+  if (mb > 20) F('배포본 ' + mb.toFixed(1) + 'MB — 20MB 초과. 무거운 항목: ' + top);
   else OK('배포본 크기 ' + mb.toFixed(1) + 'MB (' + top + ')');
   if (found.length) F('배포본에 작업 잔재 ' + found.length + '개 — 지우고 다시 묶을 것: ' + found.join(' · '));
   else OK('작업 잔재 없음 (임시 파일·산출물 폴더 검사)');

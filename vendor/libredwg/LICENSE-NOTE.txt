@@ -1,0 +1,5 @@
+libredwg-web (@mlightcad/libredwg-web) — GNU LibreDWG 를 WebAssembly 로 빌드한 것.
+라이선스: GPL-3.0. 이 폴더(wrapper.js · libredwg-web.js · libredwg-web.wasm)가 그 산출물이다.
+원본: https://github.com/mlightcad/libredwg-web  /  https://github.com/LibreDWG/libredwg
+⚠ 이 엔진은 **웹 워커(dwg-worker.js)에서만** 돌린다 — 엠스크립튼 글루가 new Function 을 쓰므로
+   문서 CSP(script-src 'self')에서는 막히지만, 워커 전역에는 그 CSP 가 상속되지 않아 그대로 돈다(815차 실측).
