@@ -10,7 +10,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='842';
+const APP_VER='844';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -11690,24 +11690,33 @@ function pdWheelZoom(e){
 /* 809차: 미리보기 세로 스크롤 막대 — 앱 정책상 네이티브 바는 숨기므로(459행) 얇은 막대를 직접 띄운다.
    445차 가로 막대(`ovs`)와 같은 방식이되 세로이고, **구를 때만 잠깐** 보였다가 사라진다(사용자).
    ⚠ 미리보기 안은 사진을 끌어 옮기는 곳이라 막대는 잡아끌지 않는다(pointerdown 을 가로채면 끌기와 부딪힌다) */
-function pdSbSync(){
-  const v=$('#pdView');if(!v)return;
-  const w=v.__psb||(v.__psb=(()=>{const b=document.createElement('div');b.className='phs-sb';v.parentElement.appendChild(b);return b;})());
-  const h=v.clientHeight,sh=v.scrollHeight;
-  if(sh<=h+1){w.classList.remove('on','show');w.style.height='0px';return;}
+/* 843차: 업무 도구 세 화면의 세로 막대 — **늘 보이고 잡아끌 수 있다**(사용자).
+   ⚠ 미리보기 안은 사진을 끌어 옮기는 곳이라 막대에만 포인터를 주고(`.on{pointer-events:auto}`) 나머지는 통과시킨다.
+   topPad: 붙박이 머리 줄 높이(견적 검토 표) — 막대는 그 아래에서만 움직인다. */
+function dwSb(v,cls,topPad){
+  if(!v||!v.parentElement)return;
+  const w=v.__sb||(v.__sb=(()=>{const b=document.createElement('div');b.className=cls;v.parentElement.appendChild(b);
+    b.addEventListener('pointerdown',e=>{
+      e.preventDefault();e.stopPropagation();
+      const tp=v.__sbTop||0,y0=e.clientY,top0=v.scrollTop;
+      const track=(v.clientHeight-tp)-12-b.offsetHeight;
+      const ratio=track>0?((v.scrollHeight-v.clientHeight)/track):0;
+      b.setPointerCapture(e.pointerId);b.classList.add('drag');
+      const mv=ev=>{v.scrollTo({top:top0+(ev.clientY-y0)*ratio,behavior:'instant'});};
+      const up=()=>{b.classList.remove('drag');b.removeEventListener('pointermove',mv);b.removeEventListener('pointerup',up);};
+      b.addEventListener('pointermove',mv);b.addEventListener('pointerup',up);
+    });
+    return b;})());
+  const tp=v.__sbTop=topPad||0;
+  const h=v.clientHeight-tp,sh=v.scrollHeight-tp;
+  if(sh<=h+1){w.classList.remove('on');w.style.height='0px';return;}
   w.classList.add('on');
-  const PAD=6;   /* 822차: 위·아래 끝에 딱 붙지 않게 */
-  const track=h-PAD*2,bh=Math.max(24,Math.round(track*h/sh)),max=track-bh,ratio=v.scrollTop/(sh-h);
+  const PAD=6,track=h-PAD*2,bh=Math.max(24,Math.round(track*h/sh)),max=track-bh;
   w.style.height=bh+'px';
-  w.style.top=Math.round(v.offsetTop+PAD+max*ratio)+'px';
+  w.style.top=Math.round(v.offsetTop+tp+PAD+max*(v.scrollTop/(v.scrollHeight-v.clientHeight)))+'px';
 }
-function pdSbFlash(){
-  const v=$('#pdView');if(!v)return;
-  pdSbSync();
-  const w=v.__psb;if(!w||!w.classList.contains('on'))return;
-  w.classList.add('show');
-  clearTimeout(v.__psbT);v.__psbT=setTimeout(()=>w.classList.remove('show'),900);
-}
+function pdSbSync(){dwSb($('#pdView'),'phs-sb');}
+function pdSbFlash(){pdSbSync();}
 /* ── 841차: 현장명 고르기(앱 목록) ── */
 let PD_SITES=[],PD_SI=-1;
 function pdSiteNames(){return [...new Set((S.org.sites||[]).map(x=>x.name).filter(Boolean))];}
@@ -12453,19 +12462,9 @@ function qcFade(){
   const ov=w.scrollHeight>w.clientHeight+2;
   w.classList.toggle('ft',ov&&w.scrollTop>4);
   w.classList.toggle('fb',ov&&w.scrollHeight-w.clientHeight-w.scrollTop>4);
-  const bar=w.__sb||(w.__sb=(()=>{const b=document.createElement('div');b.className='qc-sb';w.parentElement.appendChild(b);return b;})());
-  if(!ov){bar.classList.remove('on','show');bar.style.height='0px';return;}
-  bar.classList.add('on');
-  const PAD=6,vh=w.clientHeight-h-PAD*2,sh=w.scrollHeight-h,bh=Math.max(24,Math.round(vh*w.clientHeight/sh));
-  bar.style.height=bh+'px';
-  bar.style.top=Math.round(w.offsetTop+h+PAD+(vh-bh)*(w.scrollTop/(w.scrollHeight-w.clientHeight)))+'px';
+  dwSb(w,'qc-sb',h);   /* 붙박이 머리 줄 아래에서만 */
 }
-function qcFlash(){
-  qcFade();
-  const w=$('#qcWrap');if(!w||!w.__sb||!w.__sb.classList.contains('on'))return;
-  w.__sb.classList.add('show');
-  clearTimeout(w.__sbT);w.__sbT=setTimeout(()=>w.__sb.classList.remove('show'),900);
-}
+function qcFlash(){qcFade();}
 document.addEventListener('scroll',e=>{if(e.target&&e.target.id==='qcWrap')qcFlash();},true);
 window.addEventListener('resize',()=>{if(S.view==='qc')qcFade();});
 /* 결과 내보내기 — 엑셀에 그대로 붙일 수 있게 탭으로 나눈다 */
@@ -12599,24 +12598,32 @@ function dwOpen(file){
 function dwLoaded(d){
   DW.busy='';
   if(!d||!d.ok){DW.err='도면을 읽지 못했습니다'+(d&&d.err?' — '+d.err:'');toast('도면을 읽지 못했습니다');rDwg();return;}
-  DW.err='';DW.polys=d.polys||[];DW.texts=d.texts||[];DW.styles=d.styles||[];DW.ext=d.ext;DW.off=new Set();DW.page=1;
+  DW.err='';DW._core=null;DW._coreN=-1;DW.polys=d.polys||[];DW.texts=d.texts||[];DW.styles=d.styles||[];DW.ext=d.ext;DW.off=new Set();DW.page=1;
   DW.stat={n:DW.polys.length,t:DW.texts.length,ms:d.ms,skipped:d.skipped,layouts:d.layouts};
   dwSplit();
   toast(DW.pages.length+'장으로 나눴습니다');
   rDwg();
 }
 /* ── 도면틀 찾기 ── */
+/* 도면틀 찾기 — 닫힌 네모 + **선 네 개로 그린 네모**.
+   ⚠ 844차: 크기 문턱을 「도면 전체의 몇 %」로 두면, 한 장에 작은 틀이 여러 개 있는 시트(전개도 모음)를
+     통째로 놓친다(청라55A형: 가장 큰 네모가 전체의 0.04%). 문턱은 **후보들끼리 견주어** 정한다. */
 function dwRects(){
   if(!DW.ext)return [];
-  const W=DW.ext[2]-DW.ext[0],H=DW.ext[3]-DW.ext[1],area=W*H;
+  const C=dwCore(),W=C[2]-C[0],H=C[3]-C[1];
+  const MINW=W*0.01,MINH=H*0.01;              /* 글자 상자 같은 자잘한 네모는 거른다 */
   const out=[];
+  const push=(x0,y0,x1,y1)=>{
+    const w=x1-x0,h=y1-y0;
+    if(w<MINW||h<MINH)return;
+    if(Math.max(w,h)/Math.min(w,h)>8)return;
+    out.push([x0,y0,x1,y1]);
+  };
   DW.polys.forEach(p=>{
     if(!p.c)return;
     const n=p.p.length/2;if(n<4||n>6)return;
     const w=p.b[2]-p.b[0],h=p.b[3]-p.b[1];
     if(w<=0||h<=0)return;
-    if(w*h<area*0.005)return;                 /* 전체의 0.5% 보다 작으면 도면틀로 보지 않는다 */
-    const r=Math.max(w,h)/Math.min(w,h);if(r>6)return;
     /* 축에 나란한 네모인지 — 모든 점이 상자 모서리에 붙어 있어야 한다 */
     const tol=Math.max(w,h)*0.02;let ok=true;
     for(let i=0;i<p.p.length;i+=2){
@@ -12624,39 +12631,65 @@ function dwRects(){
       const dy=Math.min(Math.abs(p.p[i+1]-p.b[1]),Math.abs(p.p[i+1]-p.b[3]));
       if(dx>tol&&dy>tol){ok=false;break;}
     }
-    if(ok)out.push(p.b.slice());
+    if(ok)push(p.b[0],p.b[1],p.b[2],p.b[3]);
   });
-  /* 도면틀을 네모 하나가 아니라 **선 네 개**로 그린 도면도 많다 — 긴 가로·세로 선을 모아 네모를 이룬 조합을 찾는다 */
-  const hs=[],vs=[];
+  /* 선 네 개로 그린 네모 — 같은 x 구간을 덮는 가로선 두 개를 짝지어, 그 양끝을 잇는 세로선이 있는지 본다.
+     ⚠ 예전에는 긴 선 40개씩 네 겹으로 돌렸다(O(n⁴)) — 작은 틀은 길이 문턱에 걸려 아예 후보가 못 됐다. */
+  const hs=[],vx=new Map();
   DW.polys.forEach(p=>{
     if(p.p.length!==4)return;                /* 선분 하나짜리만 */
     const [x1,y1,x2,y2]=p.p,dx=Math.abs(x2-x1),dy=Math.abs(y2-y1);
-    if(dy<=dx*0.002&&dx>W*0.12)hs.push({y:(y1+y2)/2,a:Math.min(x1,x2),b:Math.max(x1,x2)});
-    else if(dx<=dy*0.002&&dy>H*0.12)vs.push({x:(x1+x2)/2,a:Math.min(y1,y2),b:Math.max(y1,y2)});
-  });
-  hs.sort((a,b)=>(b.b-b.a)-(a.b-a.a));vs.sort((a,b)=>(b.b-b.a)-(a.b-a.a));
-  const HS=hs.slice(0,40),VS=vs.slice(0,40);
-  for(let i=0;i<VS.length;i++)for(let j=i+1;j<VS.length;j++){
-    const xa=Math.min(VS[i].x,VS[j].x),xb=Math.max(VS[i].x,VS[j].x),w=xb-xa;if(w<W*0.1)continue;
-    for(let k=0;k<HS.length;k++)for(let l=k+1;l<HS.length;l++){
-      const ya=Math.min(HS[k].y,HS[l].y),yb=Math.max(HS[k].y,HS[l].y),h=yb-ya;if(h<H*0.1)continue;
-      if(w*h<area*0.02)continue;
-      const r=Math.max(w,h)/Math.min(w,h);if(r>4)continue;
-      const cov=(s1,a1,b1)=>s1.a<=a1+(b1-a1)*0.1&&s1.b>=b1-(b1-a1)*0.1;
-      if(!cov(HS[k],xa,xb)||!cov(HS[l],xa,xb)||!cov(VS[i],ya,yb)||!cov(VS[j],ya,yb))continue;
-      out.push([xa,ya,xb,yb]);
+    if(dy<=dx*0.002&&dx>=MINW)hs.push({y:(y1+y2)/2,a:Math.min(x1,x2),b:Math.max(x1,x2)});
+    else if(dx<=dy*0.002&&dy>=MINH){
+      const x=(x1+x2)/2,k=Math.round(x/Math.max(1e-9,MINW*0.2));
+      if(!vx.has(k))vx.set(k,[]);
+      vx.get(k).push({x,a:Math.min(y1,y2),b:Math.max(y1,y2)});
     }
-  }
-  /* 겹치는 틀 정리 — 이중 테두리(안쪽 여백선)는 바깥 것만 남긴다 */
+  });
+  const hKey=new Map();
+  hs.forEach(h=>{
+    const k=Math.round(h.a/Math.max(1e-9,MINW*0.2))+'|'+Math.round(h.b/Math.max(1e-9,MINW*0.2));
+    if(!hKey.has(k))hKey.set(k,[]);
+    hKey.get(k).push(h);
+  });
+  const hasV=(x,y0,y1)=>{
+    const step=Math.max(1e-9,MINW*0.2),k0=Math.round(x/step);
+    for(let k=k0-1;k<=k0+1;k++){
+      const list=vx.get(k);if(!list)continue;
+      const pad=(y1-y0)*0.08;
+      for(const v of list)if(Math.abs(v.x-x)<=Math.max(MINW,(y1-y0))*0.02&&v.a<=y0+pad&&v.b>=y1-pad)return true;
+    }
+    return false;
+  };
+  hKey.forEach(list=>{
+    if(list.length<2||list.length>40)return;
+    list.sort((a,b)=>a.y-b.y);
+    for(let i=0;i<list.length;i++)for(let j=i+1;j<list.length;j++){
+      const y0=list[i].y,y1=list[j].y,h=y1-y0;
+      if(h<MINH)continue;
+      const x0=Math.max(list[i].a,list[j].a),x1=Math.min(list[i].b,list[j].b);
+      if(x1-x0<MINW)continue;
+      if(hasV(x0,y0,y1)&&hasV(x1,y0,y1))push(x0,y0,x1,y1);
+    }
+  });
+  if(!out.length)return [];
+  /* 겹치는 틀 정리 — 이중 테두리(안쪽 여백선)·내부 상세 칸은 바깥 것만 남긴다 */
   out.sort((a,b)=>((b[2]-b[0])*(b[3]-b[1]))-((a[2]-a[0])*(a[3]-a[1])));
   let keep=[];
   out.forEach(r=>{
     const inside=keep.some(k=>r[0]>=k[0]-1&&r[1]>=k[1]-1&&r[2]<=k[2]+1&&r[3]<=k[3]+1);
     if(!inside)keep.push(r);
   });
-  /* 818차: 오검출 줄이기 — 도면틀은 보통 **같은 크기가 되풀이된다**.
-     같은 크기(3% 안)끼리 묶어 가장 큰 무리가 둘 이상이면 그 무리만 쓴다.
-     그렇지 않으면 가장 큰 것의 40% 보다 작은 후보(내부 상세도·표)는 버린다. */
+  /* 후보들끼리 견주어 거른다 — 가장 큰 것의 2% 도 안 되는 네모(치수 칸·글자 상자)는 틀이 아니다 */
+  const A=r=>(r[2]-r[0])*(r[3]-r[1]);
+  const big=A(keep[0]);
+  keep=keep.filter(r=>A(r)>=big*0.02);
+  /* 안이 비어 있는 네모도 틀이 아니다 — 도형이 최소 6개는 들어 있어야 한다 */
+  const cnt=r=>{let n=0;for(const p of DW.polys){const cx=(p.b[0]+p.b[2])/2,cy=(p.b[1]+p.b[3])/2;
+    if(cx>=r[0]&&cx<=r[2]&&cy>=r[1]&&cy<=r[3]){n++;if(n>=6)return n;}}return n;};
+  const filled=keep.filter(r=>cnt(r)>=6);
+  if(filled.length)keep=filled;
+  /* 818차: 도면틀은 보통 **같은 크기가 되풀이된다** — 같은 크기(3% 안) 무리가 후보의 절반을 넘으면 그 무리만 쓴다 */
   if(keep.length>1){
     const grp=[];
     keep.forEach(r=>{
@@ -12665,16 +12698,49 @@ function dwRects(){
       if(g)g.list.push(r);else grp.push({w,h,list:[r]});
     });
     grp.sort((a,b)=>b.list.length-a.list.length||(b.w*b.h)-(a.w*a.h));
-    if(grp[0].list.length>1)keep=grp[0].list;
-    else{const big=(keep[0][2]-keep[0][0])*(keep[0][3]-keep[0][1]);
-      keep=keep.filter(r=>((r[2]-r[0])*(r[3]-r[1]))>=big*0.4);}
+    if(grp[0].list.length>1&&grp[0].list.length*2>=keep.length)keep=grp[0].list;
   }
   return keep;
+}
+
+/* 843차: 도면 한구석에 **엉뚱한 좌표**로 떨어진 도형이 섞이면(실제 파일에서 ±900만) 범위가 통째로 늘어나
+   격자가 무의미해진다(도면 전체가 한 칸에 들어간다) → 도형 중심의 1~99% 를 실제 범위로 본다. 그림은 그대로 그린다. */
+function dwCore(){
+  if(DW._core&&DW._coreN===DW.polys.length)return DW._core;
+  const xs=[],ys=[];
+  DW.polys.forEach(p=>{xs.push((p.b[0]+p.b[2])/2);ys.push((p.b[1]+p.b[3])/2);});
+  DW.texts.forEach(t=>{xs.push(t.x);ys.push(t.y);});
+  if(!xs.length)return DW.ext;
+  /* ⚠ 백분위(1~99%)로는 모자란다 — 실제 파일에서 튀는 도형이 1만 3천 개 중 30개(0.2%)였다.
+     중앙값에서 얼마나 떨어졌는지(MAD)를 재고, 도형의 97% 가 들어올 때까지 범위를 넓힌다. */
+  const med=a=>{const b=a.slice().sort((x,y)=>x-y);return b[b.length>>1];};
+  const mx=med(xs),my=med(ys);
+  const dx=med(xs.map(v=>Math.abs(v-mx)))||1,dy=med(ys.map(v=>Math.abs(v-my)))||1;
+  const n=xs.length;let k=6;
+  for(const t of [6,10,20,40,80,200,1000]){
+    k=t;let inside=0;
+    for(let i=0;i<n;i++)if(Math.abs(xs[i]-mx)<=dx*t&&Math.abs(ys[i]-my)<=dy*t)inside++;
+    if(inside>=n*0.97)break;
+  }
+  let x0=mx-dx*k,x1=mx+dx*k,y0=my-dy*k,y1=my+dy*k;
+  /* 그 범위 안에 실제로 들어온 도형들의 상자로 좁힌다(여백 3%) */
+  let a0=Infinity,a1=-Infinity,b0=Infinity,b1=-Infinity;
+  DW.polys.forEach(p=>{const cx=(p.b[0]+p.b[2])/2,cy=(p.b[1]+p.b[3])/2;
+    if(cx<x0||cx>x1||cy<y0||cy>y1)return;
+    if(p.b[0]<a0)a0=p.b[0];if(p.b[1]<b0)b0=p.b[1];if(p.b[2]>a1)a1=p.b[2];if(p.b[3]>b1)b1=p.b[3];});
+  DW.texts.forEach(t=>{if(t.x<x0||t.x>x1||t.y<y0||t.y>y1)return;
+    if(t.x<a0)a0=t.x;if(t.y<b0)b0=t.y;if(t.x>a1)a1=t.x;if(t.y>b1)b1=t.y;});
+  const full=DW.ext||[x0,y0,x1,y1];
+  if(!isFinite(a0)||a1<=a0||b1<=b0){DW._core=full.slice();DW._coreN=DW.polys.length;return DW._core;}
+  const pad=Math.max(a1-a0,b1-b0)*0.03;
+  const core=[a0-pad,b0-pad,a1+pad,b1+pad];
+  DW._core=core;DW._coreN=DW.polys.length;
+  return core;
 }
 /* ── 틀이 없을 때: 붙어 있는 덩어리끼리 ── */
 function dwClusters(){
   if(!DW.ext)return [];
-  const N=420,[X0,Y0,X1,Y1]=DW.ext,cw=(X1-X0)/N||1,ch=(Y1-Y0)/N||1;
+  const N=420,[X0,Y0,X1,Y1]=dwCore(),cw=(X1-X0)/N||1,ch=(Y1-Y0)/N||1;
   const g=new Uint8Array(N*N);
   const put=(x,y)=>{const i=Math.min(N-1,Math.max(0,Math.floor((x-X0)/cw))),j=Math.min(N-1,Math.max(0,Math.floor((y-Y0)/ch)));g[j*N+i]=1;};
   DW.polys.forEach(p=>{const a=p.p;
@@ -12711,9 +12777,13 @@ function dwSort(boxes){
 }
 function dwSplit(){
   let boxes=[],used='';
-  if(DW.mode!=='cluster'){boxes=dwRects();if(boxes.length)used='틀';}
+  if(DW.mode!=='cluster'){
+    const fr=dwRects();
+    /* 844차: 자동일 때는 틀이 지나치게 많으면(30장 넘게) 오검출로 보고 덩어리로 간다 — 「도면틀」을 직접 고르면 그대로 쓴다 */
+    if(fr.length&&(DW.mode==='frame'||fr.length<=30)){boxes=fr;used='틀';}
+  }
   if(!boxes.length&&DW.mode!=='frame'){boxes=dwClusters();if(boxes.length)used='덩어리';}
-  if(!boxes.length&&DW.ext){boxes=[DW.ext.slice()];used='전체';}
+  if(!boxes.length&&DW.ext){boxes=[dwCore().slice()];used='전체';}
   DW.used=used;
   DW.pages=dwSort(boxes).map(b=>{
     const w=b[2]-b[0],h=b[3]-b[1],pad=Math.max(w,h)*0.01;
@@ -12836,22 +12906,8 @@ function dwZoom(){
 }
 /* 816차: 미리보기 세로 막대 — 사진대지(809차)와 같은 방식. 구를 때만 보이고 0.9초 뒤 사라진다.
    ⚠ 도형을 끌지는 않지만 다른 도구와 손놀림을 맞추려고 클릭은 통과시킨다(pointer-events:none) */
-function dwSbSync(){
-  const v=$('#dwView');if(!v)return;
-  const w=v.__sb||(v.__sb=(()=>{const b=document.createElement('div');b.className='dw-sb';v.parentElement.appendChild(b);return b;})());
-  const h=v.clientHeight,sh=v.scrollHeight;
-  if(sh<=h+1){w.classList.remove('on','show');w.style.height='0px';return;}
-  w.classList.add('on');
-  const PAD=6,track=h-PAD*2,bh=Math.max(24,Math.round(track*h/sh)),max=track-bh;
-  w.style.height=bh+'px';
-  w.style.top=Math.round(v.offsetTop+PAD+max*(v.scrollTop/(sh-h)))+'px';
-}
-function dwSbFlash(){
-  dwSbSync();
-  const v=$('#dwView');if(!v||!v.__sb||!v.__sb.classList.contains('on'))return;
-  v.__sb.classList.add('show');
-  clearTimeout(v.__sbT);v.__sbT=setTimeout(()=>v.__sb.classList.remove('show'),900);
-}
+function dwSbSync(){dwSb($('#dwView'),'dw-sb');}
+function dwSbFlash(){dwSbSync();}
 function dwPgIndi(){
   const v=$('#dwView'),t=$('#dwPgt');if(!v||!t)return;
   const pw=[...v.querySelectorAll('.dw-pw')];if(!pw.length)return;
