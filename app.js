@@ -8,7 +8,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='821';
+const APP_VER='841';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -2303,6 +2303,7 @@ function rMonTitle(){
   if(!CAL)return;const c=CAL.view.currentStart;
   $('#calMonTxt').textContent=(c.getMonth()+1)+'월';
   $('#calYearTxt').textContent=c.getFullYear()+'년';
+  calTodaySync();   /* 826차: 달이 바뀌면 「오늘」 칩을 보이거나 숨긴다 */
   /* 644차: 12월이면 공통 업무 막대를 크리스마스 줄무늬로 — 보고 있는 달 기준
      ⚠ 681차에 스킨 고르기를 넣었다가 되돌렸다(682차). 다시 넣는다면 설정 카드가 아니라
         **색 팔레트 아래 구분선 밑에 스킨 칩**으로 붙이기로 했다 — 색과 같은 자리에서 고르는 편이 맞다. */
@@ -2316,6 +2317,7 @@ function ymPickHTML(){
   const cy=YM_Y===null?c.getFullYear():YM_Y;
   const now=new Date(),ty=now.getFullYear(),tm=now.getMonth()+1;
   const sy=c.getFullYear(),sm=c.getMonth()+1;
+  const isNow=sy===ty&&sm===tm;
   return `<div class="ymp">
     <div class="ymp-h">
       <button class="cal-nb" data-act="cal.pickY" data-d="-1" aria-label="이전 해"><svg class="icn"><use href="#i-chevl"></use></svg></button>
@@ -2328,6 +2330,7 @@ function ymPickHTML(){
         return '<button class="ymp-m'+(sel?' sel':'')+(today?' now':'')+'" data-act="cal.goYM" data-y="'+cy+'" data-m="'+m+'">'+m+'월</button>';
       }).join('')}
     </div>
+    <button class="ymp-now" data-act="cal.today"${isNow?' disabled':''}>오늘로 이동</button>
   </div>`;
 }
 function openYMPick(){
@@ -7924,8 +7927,10 @@ function rDefectNav(){
   if(none.length)groups.push(['','권역 미지정',none]);
   box.innerHTML=groups.map(([rid,rn,list])=>{
     /* 기본은 접힘 — 열어 둔 현장이 속한 권역만 자동으로 편다. 사용자가 누르면 그 선택이 우선 */
-    const open=S.dfFold[rid]!==undefined?S.dfFold[rid]===false
-      :(S.view==='defect'&&!!S.dfSid&&list.some(x=>x.id===S.dfSid));
+    /* 824차: 저장값이 여러 권역을 펼치고 있어도(예전 방식) 한 곳만 살린다 — 보고 있는 현장이 있으면 그 권역 우선 */
+    const cur=S.view==='defect'&&!!S.dfSid&&list.some(x=>x.id===S.dfSid);
+    const openKeys=Object.keys(S.dfFold||{}).filter(k=>S.dfFold[k]===false);
+    const open=cur||(S.dfFold[rid]===false&&(openKeys.length<2||openKeys[0]===rid));
     return '<button class="df-reg'+(open?' open':'')+'" data-act="df.fold" data-rid="'+esc(rid)+'"'
       +' aria-expanded="'+(open?'true':'false')+'">'
       +'<svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg>'
@@ -10107,9 +10112,11 @@ const ACT={
   'rec.menuClear':()=>{const M=REC._menu;if(!M)return;delete REC.vals[M.key];recCloseMenu();recRender();},
   'rec.menuHideCol':()=>{const M=REC._menu;if(!M)return;const col=recCols().find(c=>c.k===M.key);REC.hidden[M.key]=1;recCloseMenu();recRender();toast('「'+(col?col.t:M.key)+'」 열을 숨겼습니다 · 아무 열 머리 우클릭으로 복원');},
   'rec.menuShowCols':()=>{REC.hidden={};recCloseMenu();recRender();},
+  /* 824차: 권역은 **한 번에 하나만** 펼친다 — 다 펼치면 사이드바가 화면을 넘긴다(12현장·1366px 에서 266px 넘침) */
   'df.fold':el=>{const k=el.dataset.rid;
     const btn=el.closest('.df-reg'),wasOpen=btn&&btn.classList.contains('open');
-    S.dfFold[k]=wasOpen?true:false;   /* true=접힘 · false=펼침 (기존 저장값과 호환) */
+    $$('#dfNav .df-reg').forEach(b=>{S.dfFold[b.dataset.rid]=true;});   /* true=접힘 · false=펼침 (기존 저장값과 호환) */
+    S.dfFold[k]=wasOpen?true:false;
     rDefectNav();},
   'df.vacEdit':el=>{
     const sid=el.dataset.sid,sangga=el.dataset.kind==='sangga';
@@ -10637,7 +10644,7 @@ const ACT={
     st[g]=cur;mselApply(m);},
   'filt.mall':el=>{const m=el.closest('.msel');mselStore(m)[m.dataset.g]=[];mselApply(m);},
   'cal.pick':()=>openYMPick(),
-  'cal.today':()=>{if(CAL)CAL.today();selDate(todayStr());if(isMob()&&!WIDGET)rCalMini();},   /* 773차: 오늘로 — 달력 이동 + 오늘 선택(폰 미니 격자도 다시 그림) */
+  'cal.today':()=>{closeYMPop();if(CAL)CAL.today();selDate(todayStr());if(isMob()&&!WIDGET)rCalMini();calTodaySync();},   /* 773차: 오늘로 — 달력 이동 + 오늘 선택(폰 미니 격자도 다시 그림) */
   'nq.mob':()=>{nqOpen(true);const i=$('#nqQ');if(i)setTimeout(()=>i.focus(),120);},   /* 732차: 폰 검색 = 전체화면 */
   'cal.pickY':el=>{const c=CAL?CAL.view.currentStart:new Date();
     YM_Y=(YM_Y===null?c.getFullYear():YM_Y)+Number(el.dataset.d);
@@ -11083,6 +11090,8 @@ document.addEventListener('input',e=>{
 const SB_SEL='#content,.dp-body,.tk-list,.nq-res,.pf-emg,.rd-body,[data-sb],[data-sbx],[data-sbh]';
 function fadeOne(el){
   if(!el||!el.classList)return;
+  /* 823차: 글 입력칸에는 페이드를 걸지 않는다 — 마스크가 **테두리까지** 흐려 칸이 깨져 보인다(견적 검토 붙여넣기 칸) */
+  if(el.tagName==='TEXTAREA'||el.tagName==='INPUT'){el.classList.remove('sb-fade-t','sb-fade-b','sb-fade-l','sb-fade-r');return;}
   /* 797차: 머리 붙박이 표 칸(data-sbh — 조직 관리 계정·미배정·현장 표). 위 페이드는 **머리 줄 아래에서** 시작한다
      (--sbh = thead 높이, 마스크가 머리 줄 구간은 그대로 둔다). 가로로도 넘치는 칸(data-sbx)은 여기서 함께 재고
      CSS 가 세로·가로 두 판을 교차한다 — sb-fade-* 를 쓰면 한쪽 마스크가 다른 쪽을 덮어쓴다 */
@@ -11487,6 +11496,7 @@ function rWidget(){
   if(h)h.textContent=d.getFullYear()+'년 '+(d.getMonth()+1)+'월 '+d.getDate()+'일';
   const dw=$('#wpDow');
   if(dw)dw.textContent=[ho?ho.n:'',DOW[d.getDay()]+'요일',ds===todayStr()?'오늘':''].filter(Boolean).join(' · ');
+  calTodaySync();
   box.classList.add('on');
   widPlace();
   /* 폼이 열리고 닫힐 때마다 팝업 높이가 달라진다 — 내용이 바뀌면 자리를 다시 잡는다 */
@@ -11607,7 +11617,8 @@ function rPhoto(){
   const land=PD.orient==='land',pg=pdPagesHTML(false);
   const lay=[2,4,6].map(k=>{const[c,r]=pdCR(k,land);
     return '<button class="'+(k===PD.per?'on':'')+'" data-act="pd.per" data-k="'+k+'"><span class="phs-gl'+(land?' land':'')+'" style="grid-template-columns:repeat('+c+',1fr);grid-template-rows:repeat('+r+',1fr)">'+'<i></i>'.repeat(k)+'</span>'+k+'장</button>';}).join('');
-  const sites=[...new Set((S.org.sites||[]).map(x=>x.name).filter(Boolean))].map(x=>'<option value="'+esc(x)+'">').join('');
+  /* 841차: 브라우저 기본 datalist 목록은 글자·줄 높이가 앱과 따로 놀아 유난히 커 보였다 — 목록을 직접 그린다 */
+  const siteNames=[...new Set((S.org.sites||[]).map(x=>x.name).filter(Boolean))];
   root.innerHTML='<div class="phs-grid"><div class="phs-col phs-left">'
     +'<div class="card"><div class="tm-h"><span>레이아웃</span></div><div class="phs-b">'
       +'<div class="seg phs-or"><button class="'+(land?'':'act')+'" data-act="pd.orient" data-o="por">세로</button><button class="'+(land?'act':'')+'" data-act="pd.orient" data-o="land">가로</button></div>'
@@ -11619,7 +11630,9 @@ function rPhoto(){
       +'<button data-act="pd.dir"><svg class="icn" aria-hidden="true"><use href="#i-folder"></use></svg>폴더</button></div></div></div>'
     +'<div class="card"><div class="tm-h"><span>머리글</span></div><div class="phs-b">'
       +'<div class="phs-fr"><label for="pdTitle">제목</label><input id="pdTitle" class="inp inp-sm" data-pd="title" maxlength="30" autocomplete="off" value="'+esc(PD.title)+'"></div>'
-      +'<div class="phs-fr"><label for="pdSite">현장명</label><input id="pdSite" class="inp inp-sm" data-pd="site" maxlength="60" autocomplete="off" list="pdSites" value="'+esc(PD.site)+'"><datalist id="pdSites">'+sites+'</datalist></div></div></div>'
+      +'<div class="phs-fr phs-sitew"><label for="pdSite">현장명</label>'
+        +'<span class="phs-sw"><input id="pdSite" class="inp inp-sm" data-pd="site" maxlength="60" autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list" value="'+esc(PD.site)+'">'
+        +'<div class="phs-sl" id="pdSiteList" hidden></div></span></div></div></div>'
     +'<div id="pdSelCard"></div>'
     +'</div><div class="phs-col"><div class="tkbar phs-bar"><span class="phs-cnt">미리보기'
     +'<span class="phs-pgn"><button data-act="pd.pgGo" data-d="-1" aria-label="이전 쪽" data-tip="이전 쪽"><svg class="icn" aria-hidden="true"><use href="#i-chevl"></use></svg></button>'
@@ -11681,9 +11694,10 @@ function pdSbSync(){
   const h=v.clientHeight,sh=v.scrollHeight;
   if(sh<=h+1){w.classList.remove('on','show');w.style.height='0px';return;}
   w.classList.add('on');
-  const bh=Math.max(24,Math.round(h*h/sh)),max=h-bh,ratio=v.scrollTop/(sh-h);
+  const PAD=6;   /* 822차: 위·아래 끝에 딱 붙지 않게 */
+  const track=h-PAD*2,bh=Math.max(24,Math.round(track*h/sh)),max=track-bh,ratio=v.scrollTop/(sh-h);
   w.style.height=bh+'px';
-  w.style.top=Math.round(v.offsetTop+max*ratio)+'px';
+  w.style.top=Math.round(v.offsetTop+PAD+max*ratio)+'px';
 }
 function pdSbFlash(){
   const v=$('#pdView');if(!v)return;
@@ -11692,6 +11706,71 @@ function pdSbFlash(){
   w.classList.add('show');
   clearTimeout(v.__psbT);v.__psbT=setTimeout(()=>w.classList.remove('show'),900);
 }
+/* ── 841차: 현장명 고르기(앱 목록) ── */
+let PD_SITES=[],PD_SI=-1;
+function pdSiteNames(){return [...new Set((S.org.sites||[]).map(x=>x.name).filter(Boolean))];}
+function pdSiteOpen(q){
+  const box=$('#pdSiteList'),inp=$('#pdSite');if(!box||!inp)return;
+  const key=String(q==null?inp.value:q).trim().toLowerCase();
+  const all=pdSiteNames();
+  /* 이미 고른 이름 그대로면 목록을 다시 다 보여 준다 — 한 줄만 뜨면 바꿀 수가 없다 */
+  PD_SITES=(!key||all.some(n=>n.toLowerCase()===key))?all:all.filter(n=>n.toLowerCase().includes(key));
+  if(!PD_SITES.length){pdSiteClose();return;}
+  PD_SI=-1;
+  box.innerHTML=PD_SITES.map((n,i)=>'<button class="phs-sio" type="button" data-i="'+i+'">'+esc(n)+'</button>').join('');
+  box.hidden=false;inp.setAttribute('aria-expanded','true');
+  pdSitePos();
+}
+/* ⚠ 목록은 카드(overflow:hidden)와 스크롤 칸에 잘린다 — 화면 기준(fixed)으로 띄우고 자리만 맞춘다 */
+function pdSitePos(){
+  const box=$('#pdSiteList'),inp=$('#pdSite');if(!box||!inp||box.hidden)return;
+  const r=inp.getBoundingClientRect();
+  const below=innerHeight-r.bottom-10,above=r.top-10;
+  const h=Math.min(216,Math.max(120,below>=160?below:above));
+  const up=below<160&&above>below;
+  box.style.left=Math.round(r.left)+'px';
+  box.style.width=Math.round(r.width)+'px';
+  box.style.maxHeight=Math.round(h)+'px';
+  box.style.top=up?'':Math.round(r.bottom+4)+'px';
+  box.style.bottom=up?Math.round(innerHeight-r.top+4)+'px':'';
+}
+document.addEventListener('scroll',()=>{const b=$('#pdSiteList');if(b&&!b.hidden)pdSitePos();},true);
+window.addEventListener('resize',()=>{const b=$('#pdSiteList');if(b&&!b.hidden)pdSitePos();});
+function pdSiteClose(){
+  const box=$('#pdSiteList'),inp=$('#pdSite');
+  if(box){box.hidden=true;box.innerHTML='';}
+  if(inp)inp.setAttribute('aria-expanded','false');
+  PD_SITES=[];PD_SI=-1;
+}
+function pdSitePick(n){
+  const inp=$('#pdSite');if(!inp)return;
+  inp.value=n;PD.site=n;
+  $$('#pdView .phs-site').forEach(x=>{x.textContent='현장명 : '+n;});
+  pdSiteClose();inp.focus();
+}
+function pdSiteMove(d){
+  const box=$('#pdSiteList');if(!box||box.hidden)return;
+  const n=PD_SITES.length;if(!n)return;
+  PD_SI=(PD_SI+d+n)%n;
+  [...box.children].forEach((b,i)=>b.classList.toggle('on',i===PD_SI));
+  const el=box.children[PD_SI];if(el)el.scrollIntoView({block:'nearest'});
+}
+document.addEventListener('focusin',e=>{if(e.target&&e.target.id==='pdSite')pdSiteOpen();});
+document.addEventListener('click',e=>{if(e.target&&e.target.id==='pdSite'){const b=$('#pdSiteList');if(b&&b.hidden)pdSiteOpen();}});
+document.addEventListener('input',e=>{if(e.target&&e.target.id==='pdSite')pdSiteOpen();});
+document.addEventListener('keydown',e=>{
+  if(!e.target||e.target.id!=='pdSite')return;
+  const box=$('#pdSiteList'),open=box&&!box.hidden;
+  if(e.key==='ArrowDown'){e.preventDefault();if(!open)pdSiteOpen();else pdSiteMove(1);return;}
+  if(e.key==='ArrowUp'){e.preventDefault();pdSiteMove(-1);return;}
+  if(e.key==='Enter'&&open&&PD_SI>=0){e.preventDefault();pdSitePick(PD_SITES[PD_SI]);return;}
+  if(e.key==='Escape'&&open){e.preventDefault();e.stopPropagation();pdSiteClose();}
+});
+document.addEventListener('mousedown',e=>{
+  const b=e.target.closest&&e.target.closest('.phs-sio');
+  if(b){e.preventDefault();pdSitePick(PD_SITES[+b.dataset.i]);return;}
+  if(!(e.target.closest&&e.target.closest('.phs-sw')))pdSiteClose();
+},true);
 function pdVC(){
   const v=$('#pdView');if(!v)return;
   v.classList.remove('vc');
@@ -12161,14 +12240,30 @@ function qcEval(ex){
   if(bad||i!==t.length||!isFinite(v))return null;
   return Math.round(v*1e9)/1e9;   /* 0.1+0.2 같은 부동소수 찌꺼기 정리 */
 }
+/* 836차: 엑셀에서 여러 칸을 한 번에 복사하면 줄바꿈이 사라져 **한 줄로** 들어오는 일이 잦다.
+   그런 경우도 읽도록 붙은 줄을 표시 앞에서 끊어 준다 — <산출 근거> · 따옴표 · 「1.」 같은 공간 번호 ·
+   「 - 항목」 · 「* 합계」. ⚠ 식 안의 빼기(`(0.7*2.33)-(0.2*0.2)`)는 끊으면 안 되므로 **앞뒤가 공백이고
+   뒤에 숫자·괄호가 아닌 글자**가 오는 하이픈만 항목으로 본다. */
+function qcNormalize(t){
+  let s=String(t||'');
+  if((s.match(/\n/g)||[]).length>=Math.max(2,(s.match(/<산출\s*근거>/g)||[]).length))return s;   /* 줄이 이미 나뉘어 있으면 그대로 */
+  return s
+    .replace(/<산출\s*근거>/g,'\n<산출 근거>\n')
+    .replace(/"/g,'\n')
+    .replace(/\s+[*★]\s*합계/g,'\n* 합계')
+    .replace(/\s+-\s+(?=[^\d(\s])/g,'\n- ')
+    .replace(/(^|[^\d.])(\d{1,2})\.\s+(?=[^\d=+*/])/g,'$1\n$2. ')
+    .replace(/[ \t]+\n/g,'\n');
+}
 function qcParse(text){
-  const out=[];let unit=0,place='',pend=null;
+  const out=[];let unit=0,place='',pend=null,sumMode=false;
   const flush=()=>{
     if(!pend)return;
     const p=pend;pend=null;
     const ex=p.expr.trim();
-    const base={no:p.unit,place:p.place,item:p.item.trim()};
-    if(!ex){out.push({...base,expr:'',calc:null,want:null,u:'',st:'sk',why:'수량 계산식이 없는 줄'});return;}
+    const base={no:p.unit,place:p.place,item:p.item.trim(),sum:!!p.sum};
+    /* 837차: 「시스템 가구 해체 / 설치」처럼 수량이 안 적힌 항목은 **1식**으로 보고 합계에 넣는다(사용자) */
+    if(!ex){out.push({...base,expr:'',calc:1,want:1,u:'식',st:'sk',why:'수량 없음 — 1식으로 봄'});return;}
     const i=ex.lastIndexOf('=');
     const lhs=i<0?ex:ex.slice(0,i),rhs=i<0?ex:ex.slice(i+1);
     const m=rhs.match(/^\s*(-?\d+(?:\.\d+)?)\s*(.*)$/);   /* ⚠ 수량은 = 바로 뒤 · 나머지가 단위 — 끝에서 찾으면 「1.8m2」의 2 를 수량으로 읽는다 */
@@ -12191,27 +12286,33 @@ function qcParse(text){
       out.push({...base,expr:lhs.trim(),calc,want,u,st:'no',why});
     }
   };
-  String(text||'').split(/\r?\n/).forEach(raw=>{
+  qcNormalize(text).split(/\r?\n/).forEach(raw=>{
     let s=raw.replace(/\t/g,' ').trim();
     s=s.replace(/^"+/,'').replace(/"+$/,'').trim();   /* 엑셀이 여러 줄 칸에 씌우는 따옴표 */
     if(!s)return;
-    if(/^<.*>$/.test(s)){flush();return;}             /* <산출 근거> 같은 머리줄 */
-    let m=s.match(/^(\d+)\s*[.)]\s*(.*)$/);
-    if(m){flush();if(m[1]==='1')unit++;place=m[2].trim();return;}
+    if(/^<.*>$/.test(s)){flush();sumMode=false;return;}   /* <산출 근거> 같은 머리줄 */
+    if(/^[*★•]?\s*합계/.test(s)||/^[*★]\s/.test(s)){flush();sumMode=true;return;}   /* 업체가 적어 둔 「* 합계」 — 우리 합계와 견주기만 한다 */
+    /* 828차: 「2.3*0.6=…」 같은 식이 「2.」 로 시작한다고 세대 머리줄로 읽히면 안 된다 — 뒤에 **글자**가 와야 머리줄 */
+    let m=s.match(/^(\d{1,3})\s*[.)]\s+([^\d=+*/].*)$/);
+    if(m){flush();sumMode=false;if(m[1]==='1')unit++;place=m[2].trim();return;}
     if(/^[-•*·]\s*/.test(s)){
       flush();
       const rest=s.replace(/^[-•*·]\s*/,'');
       const c=rest.indexOf(':');
-      pend={unit:unit||1,place,item:c<0?rest:rest.slice(0,c),expr:c<0?'':rest.slice(c+1)};
+      pend={unit:unit||1,place:sumMode?'합계':place,item:c<0?rest:rest.slice(0,c),expr:c<0?'':rest.slice(c+1),sum:sumMode};
       return;
     }
     if(/^:/.test(s)){
-      if(!pend)pend={unit:unit||1,place,item:'',expr:''};
+      if(!pend)pend={unit:unit||1,place:sumMode?'합계':place,item:'',expr:'',sum:sumMode};
       pend.expr+=(pend.expr?' ':'')+s.slice(1);
       return;
     }
     if(/^=/.test(s)&&pend){pend.expr+=' '+s;return;}
     if(pend&&/^[0-9.+\-*/()= ]+$/.test(s)){pend.expr+=' '+s;return;}   /* 식이 여러 줄로 이어진 경우 */
+    /* 828차: 「1+1=3」처럼 항목 줄(- …) 없이 식만 적힌 줄도 한 줄로 본다 */
+    if(/=/.test(s)&&/^[0-9.+\-*/()=×÷xX ]+$/.test(s.replace(/(㎡|㎥|m2|m3|평|EA|ea|개|인|본|매|식|mm|cm|m|M)/g,''))){
+      flush();pend={unit:unit||1,place:sumMode?'합계':place,item:'',expr:s,sum:sumMode};flush();return;
+    }
   });
   flush();
   return out;
@@ -12225,24 +12326,92 @@ function qcRun(){
 }
 function qcCount(){return {ok:QC.rows.filter(r=>r.st==='ok').length,no:QC.rows.filter(r=>r.st==='no').length,sk:QC.rows.filter(r=>r.st==='sk').length,
   unit:new Set(QC.rows.map(r=>r.no)).size};}
-function qcView(){return QC.filter==='all'?QC.rows:QC.rows.filter(r=>r.st===QC.filter);}
+function qcView(){return (QC.filter==='all'||QC.filter==='sum')?QC.rows:QC.rows.filter(r=>r.st===QC.filter);}
 function qcTag(s){return s==='ok'?'<span class="qc-tag ok">정답</span>':s==='no'?'<span class="qc-tag no">오답</span>':'<span class="qc-tag sk">제외</span>';}
+/* 833차: 세대별 합계 — 내역서에는 세대마다 그 세대 내역의 합을 **정수로 올려** 적는다.
+   단위가 다른 것끼리는 못 더하므로 단위별로 따로 더한다(㎡·m·인 …). 합은 적힌 값 기준,
+   계산값 합이 다르면 사유 칸에 같이 적는다. */
+/* 834차: 합계는 **항목별**로 낸다(내역서가 항목 단위라). 같은 항목 이름끼리 묶어 적힌 값을 더하고 정수로 올린다. */
+function qcSum(no){
+  const m={},order=[];
+  QC.rows.filter(r=>r.no===no&&r.want!=null&&!r.sum).forEach(r=>{
+    const k=(r.item||'(항목 없음)')+'|'+(r.u||'');
+    if(!m[k]){m[k]={item:r.item||'(항목 없음)',u:r.u||'',vals:[],calc:0};order.push(k);}
+    m[k].vals.push(r.want);m[k].calc+=(r.calc==null?r.want:r.calc);
+  });
+  return order.map(k=>{const v=m[k],want=qcRound(v.vals.reduce((a,b)=>a+b,0),6);
+    /* 835차: 인력 품(조공·다기능공)은 내역서에 소수 그대로 올린다 — 올림하지 않는다(사용자) */
+    const noUp=QC_NOUP.test(v.item);
+    return {item:v.item,u:v.u,vals:v.vals,want,calc:qcRound(v.calc,6),up:noUp?want:Math.ceil(want-1e-9),noUp};});
+}
+/* ⚠ 834차: ㎡·㎥ 는 한 글자 활자라 같은 크기로 두면 m 보다 작아 보인다 — m + 위첨자로 조립해 다른 단위와 크기를 맞춘다 */
+const QC_NOUP=/조공|다기능공/;
+function qcUnit(u){
+  if(u==='㎡'||u==='m2')return '<em>m<sup>2</sup></em>';
+  if(u==='㎥'||u==='m3')return '<em>m<sup>3</sup></em>';
+  return '<em>'+esc(u||'')+'</em>';
+}
+/* 835차: 엑셀 회계 서식처럼 — 숫자는 오른쪽 끝에 맞추고 단위는 그 오른쪽 고정 칸에 둔다(자릿수가 달라도 세로로 줄이 선다) */
+function qcNum(v,u){return '<span class="vw"><span class="nv">'+(v==null?'—':qcFmt(v))+'</span>'+qcUnit(u)+'</span>';}
+/* 업체가 산출 근거에 적어 둔 「* 합계」와 우리 합계를 견준다 */
+function qcVendorNote(no,x){
+  const vend=QC.rows.filter(r=>r.no===no&&r.sum&&r.want!=null);
+  const v=vend.find(r=>(r.item||'').replace(/\s/g,'')===(x.item||'').replace(/\s/g,''));
+  /* 이름이 안 맞을 때는 **항목도 합계도 하나뿐일 때만** 그 값과 견준다 —
+     837차에 「1식」 항목이 늘면서, 이름이 달라도 아무 합계나 끌어다 견주면 죄다 경고가 떴다 */
+  const t=v||((vend.length===1&&qcSum(no).filter(y=>y.u!=='식').length===1&&x.u!=='식')?vend[0]:null);
+  if(!t)return '';
+  return Math.abs(t.want-x.want)<1e-9?'':('⚠ 업체 합계 '+qcFmt(t.want)+(t.u?' '+t.u:''));   /* 같으면 굳이 적지 않는다 */
+}
+function qcSumRow(no){
+  const list=qcSum(no);if(!list.length)return '';
+  return list.map((x,i)=>'<tr class="sub'+(i?'':' top')+'">'
+    +'<td class="n"></td>'
+    +'<td class="pl">'+(i?'':'세대 '+no+' 합계')+'</td>'
+    +'<td class="it">'+esc(x.item)+'</td>'
+    +'<td class="f">'+esc(x.vals.map(v=>qcFmt(v)).join('+'))+'</td>'
+    +'<td class="v">'+qcNum(x.want,x.u)+'</td>'
+    +'<td class="v up">'+qcNum(x.up,x.u)+'</td>'
+    +'<td class="st"></td>'
+    /* 반올림 자리까지 같으면 계산값 합은 적지 않는다 — 줄마다 뜨면 시끄럽다 */
+    +'<td class="rs">'+esc([qcRound(x.calc,QC.rnd)!==qcRound(x.want,QC.rnd)?('계산값 합 '+qcFmt(x.calc)):'',qcVendorNote(no,x)].filter(Boolean).join(' · '))+'</td></tr>').join('');
+}
+/* 838차: 엑셀처럼 칸을 끌어 고르고 복사한다. 칸마다 행·열 번호를 붙여 두고 아래 포인터 처리에서 쓴다. */
+function qcCoord(html,r){
+  let c=0;
+  return html.replace(/<td /g,()=>'<td data-r="'+r+'" data-c="'+(c++)+'" ');
+}
+/* 만들어진 표 조각에 행 번호를 매긴다 — 줄(tr)마다 열 번호는 0 부터 다시 */
+function qcNumberCells(html){
+  let r=-1;
+  return html.replace(/<tr([^>]*)>([\s\S]*?)<\/tr>/g,(m,attr,body)=>{r++;return '<tr'+attr+'>'+qcCoord(body,r)+'</tr>';});
+}
 function qcRowsHTML(){
   let h='',cur=null;
+  if(QC.filter==='sum'){   /* 837차: 세대 합계 줄만 */
+    const nos=[...new Set(QC.rows.map(r=>r.no))];
+    nos.forEach(n=>{h+=qcSumRow(n);});
+    h=qcNumberCells(h);
+    return h||'<tr><td colspan="8" style="padding:22px;text-align:center;color:var(--lbl3)">합계를 낼 줄이 없습니다</td></tr>';
+  }
+  const all=QC.filter==='all';
   qcView().forEach((r,i)=>{
-    const first=r.no!==cur;cur=r.no;
-    const pl=[r.place,r.item].filter(Boolean).join(' · ');
-    h+='<tr class="'+(first?'top ':'')+(r.st==='no'?'no':'')+'" data-i="'+i+'">'
+    const first=r.no!==cur;
+    if(all&&first&&cur!==null)h+=qcSumRow(cur);   /* 세대가 바뀌기 직전에 그 세대 합계 */
+    cur=r.no;
+    h+='<tr class="'+(first?'top ':'')+(r.sum?'vs ':'')+(r.st==='no'?'no':'')+'" data-i="'+i+'">'
       +'<td class="n">'+(first?r.no:'')+'</td>'
-      +'<td class="pl">'+esc(pl)+'</td>'
+      +'<td class="pl">'+esc(r.place||'')+'</td>'
+      +'<td class="it">'+esc(r.item||'')+'</td>'
       +'<td class="f">'+esc(r.expr||'—')+'</td>'
-      +'<td class="v">'+(r.calc==null?'—':qcFmt(r.calc))+'</td>'
-      +'<td class="v'+(r.st==='no'?' bad':'')+'">'+(r.want==null?'—':qcFmt(r.want))
-        +(r.u?'<em>'+esc(r.u)+'</em>':'')+'</td>'
+      +'<td class="v">'+qcNum(r.calc,r.calc==null?'':r.u)+'</td>'
+      +'<td class="v'+(r.st==='no'?' bad':'')+'">'+qcNum(r.want,r.want==null?'':r.u)+'</td>'
       +'<td class="st">'+qcTag(r.st)+'</td>'
       +'<td class="rs">'+esc(r.why||'')+'</td></tr>';
   });
-  return h||'<tr><td colspan="7" style="padding:22px;text-align:center;color:var(--lbl3)">해당하는 줄이 없습니다</td></tr>';
+  if(all&&cur!==null)h+=qcSumRow(cur);
+  h=qcNumberCells(h);
+  return h||'<tr><td colspan="8" style="padding:22px;text-align:center;color:var(--lbl3)">해당하는 줄이 없습니다</td></tr>';
 }
 function rQc(){
   const root=$('#qcRoot');if(!root)return;
@@ -12251,14 +12420,14 @@ function rQc(){
   const seg=(cur,list,btn)=>'<span class="seg">'+list.map(([k,l])=>btn(k,l,String(cur)===String(k)?' act':'')).join('')+'</span>';
   const segRnd=seg(QC.rnd,[[0,'정수'],[1,'0.0'],[2,'0.00'],[-1,'안 함']],(k,l,a)=>'<button class="'+a.trim()+'" data-act="qc.rnd" data-r="'+k+'">'+l+'</button>');
   const segTol=seg(QC.tol,[[0,'없음'],[0.1,'±0.1'],[0.5,'±0.5']],(k,l,a)=>'<button class="'+a.trim()+'" data-act="qc.tol" data-t="'+k+'">'+l+'</button>');
-  const segFil=seg(QC.filter,[['all','전체'],['ok','정답'],['no','오답'],['sk','제외']],(k,l,a)=>'<button class="'+a.trim()+'" data-act="qc.filter" data-k="'+k+'">'+l+'</button>');
+  const segFil=seg(QC.filter,[['all','전체'],['ok','정답'],['no','오답'],['sk','제외'],['sum','합계']],(k,l,a)=>'<button class="'+a.trim()+'" data-act="qc.filter" data-k="'+k+'">'+l+'</button>');
   root.innerHTML='<div class="qc-grid"><div class="qc-col">'
-    +(QC.ran?'<div class="card"><div class="tm-h"><span>결과</span></div>'
-      +'<div class="qc-sum"><div class="qc-sc ok"><b>'+c.ok+'</b><span>정답</span></div>'
-      +'<div class="qc-sc no"><b>'+c.no+'</b><span>오답</span></div>'
-      +'<div class="qc-sc sk"><b>'+c.sk+'</b><span>제외</span></div></div></div>':'')
+    +'<div class="card"><div class="tm-h"><span>결과</span></div>'
+      +'<div class="qc-sum"><div class="qc-sc ok"><span>정답</span><b>'+(QC.ran?c.ok:'—')+'</b></div>'
+      +'<div class="qc-sc no"><span>오답</span><b>'+(QC.ran?c.no:'—')+'</b></div>'
+      +'<div class="qc-sc sk"><span>제외</span><b>'+(QC.ran?c.sk:'—')+'</b></div></div></div>'
     +'<div class="card"><div class="tm-h"><span>산출 근거 붙여넣기</span><button class="btn bo bxs" data-act="qc.clear">지우기</button></div>'
-      +'<div class="qc-b"><textarea id="qcTa" class="qc-ta" spellcheck="false" placeholder="엑셀에서 산출 근거 열을 복사해 붙여넣으세요">'+esc(QC.txt)+'</textarea>'
+      +'<div class="qc-b"><textarea id="qcTa" class="qc-ta" spellcheck="false">'+esc(QC.txt)+'</textarea>'
       +'<button class="qc-run" data-act="qc.run"><svg class="icn" aria-hidden="true"><use href="#i-check"></use></svg>검토</button></div></div>'
     +'<div class="card"><div class="tm-h"><span>기준</span></div><div class="qc-b">'
       +'<div class="qc-fr"><label>반올림</label>'+segRnd+'</div>'
@@ -12266,7 +12435,7 @@ function rQc(){
     +'</div><div class="qc-col qc-right"><div class="tkbar qc-bar"><span class="qc-t">검토 결과'+(QC.ran?'<span>'+c.unit+'세대 · '+QC.rows.length+'줄</span>':'')+'</span>'
       +'<span>'+segFil+'</span></div>'
     +(QC.ran
-      ?'<div class="qc-wrap" id="qcWrap"><table class="qc-tbl"><thead><tr><th class="n">NO</th><th class="pl">부위 · 항목</th><th>계산식</th>'
+      ?'<div class="qc-wrap" id="qcWrap"><table class="qc-tbl"><thead><tr><th class="n">NO</th><th class="pl">공간</th><th class="it">항목</th><th>계산식</th>'
         +'<th class="v">계산값</th><th class="v">적힌 값</th><th class="st">판정</th><th class="rs">사유</th></tr></thead><tbody>'+qcRowsHTML()+'</tbody></table></div>'
       :'<div class="qc-empty"><svg class="icn" aria-hidden="true"><use href="#i-paste"></use></svg>'
         +'<p>엑셀의 산출 근거 열을 붙여넣고<br>[검토]를 누르면 줄마다 맞는지 확인합니다.</p></div>')
@@ -12285,9 +12454,9 @@ function qcFade(){
   const bar=w.__sb||(w.__sb=(()=>{const b=document.createElement('div');b.className='qc-sb';w.parentElement.appendChild(b);return b;})());
   if(!ov){bar.classList.remove('on','show');bar.style.height='0px';return;}
   bar.classList.add('on');
-  const vh=w.clientHeight-h,sh=w.scrollHeight-h,bh=Math.max(24,Math.round(vh*vh/sh));
+  const PAD=6,vh=w.clientHeight-h-PAD*2,sh=w.scrollHeight-h,bh=Math.max(24,Math.round(vh*w.clientHeight/sh));
   bar.style.height=bh+'px';
-  bar.style.top=Math.round(w.offsetTop+h+(vh-bh)*(w.scrollTop/(w.scrollHeight-w.clientHeight)))+'px';
+  bar.style.top=Math.round(w.offsetTop+h+PAD+(vh-bh)*(w.scrollTop/(w.scrollHeight-w.clientHeight)))+'px';
 }
 function qcFlash(){
   qcFade();
@@ -12299,12 +12468,21 @@ document.addEventListener('scroll',e=>{if(e.target&&e.target.id==='qcWrap')qcFla
 window.addEventListener('resize',()=>{if(S.view==='qc')qcFade();});
 /* 결과 내보내기 — 엑셀에 그대로 붙일 수 있게 탭으로 나눈다 */
 function qcTsv(list,cols){
-  const head=cols===2?['판정','사유']:['NO','부위 · 항목','계산식','계산값','적힌 값','판정','사유'];
+  const head=cols===2?['판정','사유']:['NO','공간','항목','계산식','계산값','적힌 값','판정','사유'];
+  const sumLine=no=>qcSum(no).map((x,i)=>[no,(i?'':'세대 '+no+' 합계'),x.item,x.vals.map(v=>qcFmt(v)).join('+'),
+    qcFmt(x.want)+(x.u?' '+x.u:''),x.up+(x.u?' '+x.u:''),'',
+    Math.abs(x.calc-x.want)>1e-9?('계산값 합 '+qcFmt(x.calc)):''].join('\t')).join('\n');
   const line=r=>{const st=r.st==='ok'?'정답':r.st==='no'?'오답':'제외';
     return cols===2?[st,r.why||''].join('\t')
-      :[r.no,[r.place,r.item].filter(Boolean).join(' · '),r.expr||'',r.calc==null?'':qcFmt(r.calc),
+      :[r.no,r.place||'',r.item||'',r.expr||'',(r.calc==null?'':qcFmt(r.calc))+(r.u?' '+r.u:''),
         (r.want==null?'':qcFmt(r.want))+(r.u?' '+r.u:''),st,r.why||''].join('\t');};
-  return [head.join('\t')].concat(list.map(line)).join('\n');
+  const body=[];let cur=null;
+  list.forEach(r=>{
+    if(cols!==2&&cur!==null&&r.no!==cur)body.push(sumLine(cur));
+    cur=r.no;body.push(line(r));
+  });
+  if(cols!==2&&cur!==null)body.push(sumLine(cur));
+  return [head.join('\t')].concat(body).join('\n');
 }
 Object.assign(ACT,{
   'qc.run':()=>qcRun(),
@@ -12314,6 +12492,60 @@ Object.assign(ACT,{
   'qc.filter':el=>{if(QC.filter===el.dataset.k)return;QC.filter=el.dataset.k;rQc();},
 });
 function qcRun0(){QC.rows=qcParse(QC.txt);rQc();}   /* 기준만 바꿔 다시 판정 — 토스트 없이 */
+/* ── 838차: 칸 끌어 고르기(엑셀식) ── */
+const QCSEL={on:false,r0:0,c0:0,r1:0,c1:0,drag:false};
+function qcCellVal(td){
+  const nv=td.querySelector('.nv');
+  return (nv?nv.textContent:td.textContent).replace(/\s+/g,' ').trim();
+}
+function qcSelPaint(){
+  const w=$('#qcWrap');if(!w)return;
+  w.querySelectorAll('td.selc').forEach(td=>td.classList.remove('selc'));
+  if(!QCSEL.on)return;
+  const r0=Math.min(QCSEL.r0,QCSEL.r1),r1=Math.max(QCSEL.r0,QCSEL.r1);
+  const c0=Math.min(QCSEL.c0,QCSEL.c1),c1=Math.max(QCSEL.c0,QCSEL.c1);
+  w.querySelectorAll('td[data-r]').forEach(td=>{
+    const r=+td.dataset.r,c=+td.dataset.c;
+    if(r>=r0&&r<=r1&&c>=c0&&c<=c1)td.classList.add('selc');
+  });
+}
+function qcSelText(){
+  const w=$('#qcWrap');if(!w||!QCSEL.on)return '';
+  const rows={};
+  w.querySelectorAll('td.selc').forEach(td=>{(rows[+td.dataset.r]=rows[+td.dataset.r]||[]).push([+td.dataset.c,qcCellVal(td)]);});
+  return Object.keys(rows).map(Number).sort((a,b)=>a-b)
+    .map(r=>rows[r].sort((a,b)=>a[0]-b[0]).map(x=>x[1]).join('\t')).join('\n');
+}
+function qcSelClear(){QCSEL.on=false;qcSelPaint();}
+document.addEventListener('pointerdown',e=>{
+  const td=e.target.closest&&e.target.closest('#qcWrap td[data-r]');
+  if(!td){if(QCSEL.on&&!(e.target.closest&&e.target.closest('.ctxmenu')))qcSelClear();return;}
+  if(e.button!==0)return;
+  /* ⚠ 839차: 아래 preventDefault 가 mousedown 을 막아 우클릭 메뉴가 안 닫혔다(메뉴는 mousedown 캡처로 닫는다) — 여기서 직접 닫는다 */
+  if(document.querySelector('.ctxmenu'))closeCtx();
+  e.preventDefault();
+  QCSEL.on=true;QCSEL.drag=true;
+  if(e.shiftKey){QCSEL.r1=+td.dataset.r;QCSEL.c1=+td.dataset.c;}
+  else{QCSEL.r0=QCSEL.r1=+td.dataset.r;QCSEL.c0=QCSEL.c1=+td.dataset.c;}
+  document.body.classList.add('qc-dragging');
+  qcSelPaint();
+});
+document.addEventListener('pointermove',e=>{
+  if(!QCSEL.drag)return;
+  const td=document.elementFromPoint(e.clientX,e.clientY);
+  const cell=td&&td.closest&&td.closest('#qcWrap td[data-r]');
+  if(!cell)return;
+  QCSEL.r1=+cell.dataset.r;QCSEL.c1=+cell.dataset.c;qcSelPaint();
+});
+document.addEventListener('pointerup',()=>{if(!QCSEL.drag)return;QCSEL.drag=false;document.body.classList.remove('qc-dragging');});
+document.addEventListener('keydown',e=>{
+  if(!QCSEL.on)return;
+  if(e.key==='Escape'){qcSelClear();return;}
+  if((e.ctrlKey||e.metaKey)&&(e.key==='c'||e.key==='C'||e.key==='ㅊ')){
+    const t=qcSelText();if(!t)return;
+    e.preventDefault();copyText(t,'고른 칸을 복사했습니다');
+  }
+});
 /* 우클릭 — 결과 복사(버튼 대신, 810차 시안대로) */
 document.addEventListener('contextmenu',e=>{
   if(!e.target.closest)return;
@@ -12322,7 +12554,9 @@ document.addEventListener('contextmenu',e=>{
   e.preventDefault();
   const row=tr?qcView()[Number(tr.dataset.i)]:null;
   const nos=QC.rows.filter(r=>r.st==='no');
+  const selN=QCSEL.on?($$('#qcWrap td.selc').length):0;
   openCtx(e.clientX,e.clientY,[
+    selN?{label:'고른 칸 복사 ('+selN+'칸)',act:()=>{const t=qcSelText();if(t)copyText(t,'고른 칸을 복사했습니다');}}:null,
     row&&{label:'이 줄 복사',act:()=>copyText(qcTsv([row]).split('\n')[1],'이 줄을 복사했습니다')},
     {label:'오답만 복사'+(nos.length?' ('+nos.length+')':''),act:()=>{if(!nos.length){toast('오답이 없습니다');return;}copyText(qcTsv(nos),'오답 '+nos.length+'줄을 복사했습니다');}},
     {label:'전체 결과 복사',act:()=>copyText(qcTsv(QC.rows),'전체 '+QC.rows.length+'줄을 복사했습니다')},
@@ -12337,26 +12571,33 @@ document.addEventListener('contextmenu',e=>{
    ⚠ 읽기는 워커(vendor/libredwg/dwg-worker.js)가 한다. 본체에서 부르면 CSP(script-src 'self')가 막는다.
    나누는 방법: ① 도면틀 — 닫힌 네모(축에 나란한) 중 큰 것들. 겹쳐 그린 이중 테두리는 바깥 것만 남긴다.
                 ② 틀이 없으면 — 도형이 붙어 있는 덩어리끼리(격자 칠하기 + 이웃 잇기). */
-const DW={name:'',polys:[],texts:[],styles:[],ext:null,pages:[],off:new Set(),mode:'auto',used:'',paper:'a3',orient:'auto',lw:true,zoom:'w2',pz:0,page:1,busy:'',stat:null,worker:null};
+const DW={name:'',polys:[],texts:[],styles:[],ext:null,pages:[],off:new Set(),mode:'auto',used:'',paper:'a3',orient:'auto',lw:true,zoom:'w2',pz:0,page:1,busy:'',stat:null,err:'',worker:null};
 let DW_WORKER=null;
 const DW_PAPER={a4:[210,297],a3:[297,420]};   /* 816차: 실무에선 A4·A3 면 충분(사용자) */
 function dwWorker(){
   if(DW_WORKER)return DW_WORKER;
   const w=new Worker('./vendor/libredwg/dwg-worker.js',{type:'module'});
   w.onmessage=e=>dwLoaded(e.data);
-  w.onerror=e=>{DW.busy='';toast('도면을 읽지 못했습니다');console.warn('[도면] 워커',e.message);rDwg();};
+  /* 840차: 왜 안 열렸는지 화면에 남긴다 — 엔진 파일이 배포에 빠진 경우와 도면이 깨진 경우는 손볼 곳이 다르다 */
+  w.onerror=e=>{DW.busy='';DW_WORKER=null;
+    DW.err='도면 엔진을 불러오지 못했습니다 — vendor/libredwg 파일이 배포에 들어갔는지 확인해 주세요'+(e&&e.message?' ('+e.message+')':'');
+    toast('도면 엔진을 불러오지 못했습니다');console.warn('[도면] 워커',e&&e.message);rDwg();};
   DW_WORKER=w;return w;
 }
 function dwOpen(file){
   if(!file)return;
-  DW.busy=file.name;DW.name=file.name;rDwg();
-  file.arrayBuffer().then(buf=>{dwWorker().postMessage({buf,name:file.name},[buf]);})
-    .catch(()=>{DW.busy='';toast('파일을 열지 못했습니다');rDwg();});
+  DW.busy=file.name;DW.name=file.name;DW.err='';rDwg();
+  file.arrayBuffer().then(buf=>{
+    /* DWG 는 앞 6글자가 AC10xx(예: AC1032). 아니면 엔진에 넘기기 전에 알려 준다 */
+    const head=String.fromCharCode(...new Uint8Array(buf.slice(0,6)));
+    if(!/^AC10/.test(head)){DW.busy='';DW.err='DWG 파일이 아닌 것 같습니다(앞머리 '+esc(head.replace(/[^\x20-\x7e]/g,'.'))+'). DXF·PDF 는 아직 읽지 못합니다';toast('DWG 파일이 아닙니다');rDwg();return;}
+    dwWorker().postMessage({buf,name:file.name},[buf]);
+  }).catch(err=>{DW.busy='';DW.err='파일을 읽지 못했습니다'+(err&&err.message?' ('+err.message+')':'');toast('파일을 열지 못했습니다');rDwg();});
 }
 function dwLoaded(d){
   DW.busy='';
-  if(!d||!d.ok){toast('도면을 읽지 못했습니다'+(d&&d.err?' — '+d.err:''));rDwg();return;}
-  DW.polys=d.polys||[];DW.texts=d.texts||[];DW.styles=d.styles||[];DW.ext=d.ext;DW.off=new Set();DW.page=1;
+  if(!d||!d.ok){DW.err='도면을 읽지 못했습니다'+(d&&d.err?' — '+d.err:'');toast('도면을 읽지 못했습니다');rDwg();return;}
+  DW.err='';DW.polys=d.polys||[];DW.texts=d.texts||[];DW.styles=d.styles||[];DW.ext=d.ext;DW.off=new Set();DW.page=1;
   DW.stat={n:DW.polys.length,t:DW.texts.length,ms:d.ms,skipped:d.skipped,layouts:d.layouts};
   dwSplit();
   toast(DW.pages.length+'장으로 나눴습니다');
@@ -12551,6 +12792,7 @@ function rDwg(){
       +(DW.name&&!DW.busy?'<div class="dw-file">'+esc(DW.name)+'</div>':'')
       +(st?'<div class="dw-stat">도형 '+st.n.toLocaleString()+' · 글자 '+st.t.toLocaleString()+'</div>':'')
       +(skip?'<div class="dw-warn">못 그린 것 '+esc(skip)+'</div>':'')
+      +(DW.err?'<div class="dw-warn dw-bad">'+esc(DW.err)+'</div>':'')
       +'</div></div>'
     +(DW.pages.length?'<div class="card"><div class="tm-h"><span>기준</span></div>'
       +'<div class="dw-b"><div class="dw-fr"><label>분리</label>'+segMode+'</div>'
@@ -12598,9 +12840,9 @@ function dwSbSync(){
   const h=v.clientHeight,sh=v.scrollHeight;
   if(sh<=h+1){w.classList.remove('on','show');w.style.height='0px';return;}
   w.classList.add('on');
-  const bh=Math.max(24,Math.round(h*h/sh)),max=h-bh;
+  const PAD=6,track=h-PAD*2,bh=Math.max(24,Math.round(track*h/sh)),max=track-bh;
   w.style.height=bh+'px';
-  w.style.top=Math.round(v.offsetTop+max*(v.scrollTop/(sh-h)))+'px';
+  w.style.top=Math.round(v.offsetTop+PAD+max*(v.scrollTop/(sh-h)))+'px';
 }
 function dwSbFlash(){
   dwSbSync();
@@ -12677,7 +12919,7 @@ document.addEventListener('change',e=>{
 });
 Object.assign(ACT,{
   'dwg.file':()=>{const i=$('#dwgFile');if(i)i.click();},
-  'dwg.reset':()=>{DW.polys=[];DW.texts=[];DW.ext=null;DW.pages=[];DW.off=new Set();DW.name='';DW.stat=null;DW.page=1;rDwg();},
+  'dwg.reset':()=>{DW.polys=[];DW.texts=[];DW.styles=[];DW.ext=null;DW.pages=[];DW.off=new Set();DW.name='';DW.stat=null;DW.err='';DW.page=1;rDwg();},
   'dwg.mode':el=>{if(DW.mode===el.dataset.m)return;DW.mode=el.dataset.m;dwSplit();rDwg();
     toast(DW.pages.length+'장 ('+(DW.used==='틀'?'도면틀 기준':DW.used==='덩어리'?'오브젝트 기준':'전체 1장')+')');},
   'dwg.paper':el=>{if((DW.paper||'a3')===el.dataset.p)return;DW.paper=el.dataset.p;rDwg();},
@@ -12688,6 +12930,31 @@ Object.assign(ACT,{
   'dwg.toggle':()=>{},   /* change 위임이 처리한다 */
 });
 
+/* 826차: 「오늘」은 따로 둔 단추가 아니라 **지금 달이 아닐 때만** 제목 옆에 나타나는 칩이다.
+   평소 머리줄은 아이콘만 남아 깔끔하고, 다른 달을 보는 동안에만 돌아갈 길이 보인다.
+   연월 팝업 맨 위의 「오늘로」와 단축키 T 로도 같은 곳으로 간다. */
+/* 827차: 연월 제목을 **두 번 누르면** 오늘로. 첫 클릭이 연월 팝업을 열었다 두 번째가 닫으므로,
+   여기서는 남은 팝업만 닫고 이동하면 된다. 숨은 길이라 칩·팝업·단축키(T)는 그대로 둔다. */
+document.addEventListener('dblclick',e=>{
+  const t=e.target.closest&&e.target.closest('.cal-title');
+  if(!t)return;
+  e.preventDefault();
+  closeYMPop();
+  ACT['cal.today']();
+});
+function calTodaySync(){
+  const wrap=$('#calTodayWrap');if(!wrap)return;
+  const c=CAL?CAL.view.currentStart:new Date(),now=new Date();
+  const same=c.getFullYear()===now.getFullYear()&&c.getMonth()===now.getMonth();
+  wrap.classList.toggle('off',same);
+}
+document.addEventListener('keydown',e=>{
+  if(e.ctrlKey||e.metaKey||e.altKey)return;
+  const t=e.target;
+  if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT'||t.isContentEditable))return;
+  if($('#mo')&&$('#mo').classList.contains('open'))return;
+  if((e.key==='t'||e.key==='T'||e.key==='ㅅ')&&(S.view==='calendar'||WIDGET)){e.preventDefault();ACT['cal.today']();}
+});
 /* ═══════════ 부팅 ═══════════ */
 function rAll(){rDay();rTasks();rOrg();rCfg();rFilter();rTeamSel();refetchCal();rWidget();}   /* 팀 선택기는 조직 화면 밖(사이드바)이라 rAll 에서도 그린다 */
 (function boot(){
