@@ -10,7 +10,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='876';
+const APP_VER='881';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -2332,7 +2332,6 @@ function ymPickHTML(){
         return '<button class="ymp-m'+(sel?' sel':'')+(today?' now':'')+'" data-act="cal.goYM" data-y="'+cy+'" data-m="'+m+'">'+m+'월</button>';
       }).join('')}
     </div>
-    <button class="ymp-now" data-act="cal.today"${isNow?' disabled':''}>오늘로 이동</button>
   </div>`;
 }
 function openYMPick(){
@@ -7980,7 +7979,8 @@ function dfTopbar(){
     if(on){if(S.dfSid){if(dfLocalDirty(S.dfSid))t='이 PC 원본 · 미게시 변경';}
            else{const n=dfLocalDirtySites().length;if(n)t='이 PC 원본 · 미게시 변경 '+n+'개 현장';}}
     lc.hidden=!t;lc.textContent=t;lc.dataset.s=t?'미게시':'';}   /* data-s: 좁은 화면(≤900)은 CSS 가 이 짧은 글자만 보인다 */
-  const xw=$('#tbXlWrap');if(xw)xw.hidden=(S.view!=='photo');   /* 855차: 엑셀 내보내기는 사진대지에서만 */
+  const xw=$('#tbXlWrap');if(xw)xw.hidden=(S.view!=='photo');
+
   if(pw){pw.hidden=!(on||S.view==='photo'||S.view==='dwg');   /* 인쇄 버튼 — 하자처리 현황 · 사진대지(798차) · 도면 인쇄(815차) */
     /* 801차: 왼쪽에 보이는 것이 있을 때만 구분선 */
     let prev=false;for(let e=pw.previousElementSibling;e;e=e.previousElementSibling)if(!e.hidden&&e.offsetParent!==null){prev=true;break;}
@@ -9493,7 +9493,21 @@ function copyText(t,msg){
     if(i<0)return;
     const n=i+(dx<0?1:-1);
     if(n<0||n>=bs.length)return;
-    bs[n].click();
+    /* 880차: 달력처럼 미끄러지는 느낌 — 지금 화면을 밀어 낸 뒤 새 탭을 반대쪽에서 들여보낸다 */
+    const box=bs[0].closest('#view-defect,#view-tasks');
+    const pane=box&&(box.querySelector('.as')||box.querySelector('.tkcol')||box);
+    const dir=dx<0?-1:1;
+    if(!pane){bs[n].click();return;}
+    pane.style.transition='transform .16s ease-out,opacity .16s ease-out';
+    pane.style.transform='translateX('+(dir*22)+'px)';pane.style.opacity='.35';
+    setTimeout(()=>{
+      bs[n].click();
+      const p2=box.querySelector('.as')||box.querySelector('.tkcol')||box;
+      p2.style.transition='none';p2.style.transform='translateX('+(-dir*22)+'px)';p2.style.opacity='.35';
+      requestAnimationFrame(()=>{p2.style.transition='transform .2s cubic-bezier(.2,.7,.3,1),opacity .2s';
+        p2.style.transform='';p2.style.opacity='';
+        setTimeout(()=>{p2.style.transition='';},240);});
+    },140);
   },{passive:true});
 })();
 /* 우클릭 대상 — 달력 날짜 칸 · 업무 막대 · 업무 카드 · 미처리 목록(엑셀식 열 메뉴) */
@@ -9953,6 +9967,13 @@ function toast(msg,duration=2400){
   clearTimeout(toastT);const ms=Math.max(1000,Number(duration)||2400);toastT=setTimeout(()=>t.classList.remove('show'),ms);
   /* 771차: 마우스를 올리면 남고, 떼면 1초 뒤 닫힘 */
   if(!t.__hold){t.__hold=true;t.addEventListener('mouseenter',()=>clearTimeout(toastT));t.addEventListener('mouseleave',()=>{clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),1000);});}
+}
+/* 877차: 폰 사이드바 머리의 로고 — 상단 헤더의 로고를 그대로 복제해 쓴다(같은 SVG 를 두 번 적지 않는다) */
+document.addEventListener('DOMContentLoaded',()=>sbLogoInit());
+function sbLogoInit(){
+  const box=$('#sbLogo'),src=document.querySelector('#appHdr .ah-logo');
+  if(!box||!src||box.firstChild)return;
+  box.appendChild(src.cloneNode(true));
 }
 function mobClose(){
   /* ⚠ 864차: 사이드바가 열려 있으면 그것부터 닫는다 — 시트를 먼저 닫느라 오른쪽 빈 곳을 눌러도 안 닫히는 것처럼 보였다 */
@@ -12894,6 +12915,13 @@ function qcFade(){
   dwSb(w,'qc-sb',h);   /* 붙박이 머리 줄 아래에서만 */
 }
 function qcFlash(){qcFade();}
+/* 880차: 폰에서 업무 필터는 팝업 — 바깥을 누르면 닫는다 */
+document.addEventListener('pointerdown',e=>{
+  if(!matchMedia('(max-width:960px)').matches||WIDGET)return;
+  const card=$('#tkFcard');if(!card||!card.classList.contains('open'))return;
+  if(e.target.closest&&e.target.closest('#tkFcard,.msel-pop,.tb-pop,#mo'))return;
+  S.tkFOpen=false;rTasksSoon();
+},true);
 /* 865차: 폰 도구띠 찾기 — 바깥을 누르면 접는다(값이 없을 때만) */
 document.addEventListener('pointerdown',e=>{
   const w=$('#view-tasks .tkbar-wrap .dp-srch.qopen');if(!w)return;
@@ -13427,21 +13455,29 @@ Object.assign(ACT,{
 /* 826차: 「오늘」은 따로 둔 단추가 아니라 **지금 달이 아닐 때만** 제목 옆에 나타나는 칩이다.
    평소 머리줄은 아이콘만 남아 깔끔하고, 다른 달을 보는 동안에만 돌아갈 길이 보인다.
    연월 팝업 맨 위의 「오늘로」와 단축키 T 로도 같은 곳으로 간다. */
-/* 827차: 연월 제목을 **두 번 누르면** 오늘로. 첫 클릭이 연월 팝업을 열었다 두 번째가 닫으므로,
-   여기서는 남은 팝업만 닫고 이동하면 된다. 숨은 길이라 칩·팝업·단축키(T)는 그대로 둔다. */
-document.addEventListener('dblclick',e=>{
-  const t=e.target.closest&&e.target.closest('.cal-title');
-  if(!t)return;
-  e.preventDefault();
-  closeYMPop();
-  ACT['cal.today']();
-});
+/* 877차: 연월 두 번 누르기(오늘로)는 뺐다(사용자) — 머리줄의 「오늘」 단추와 단축키 T 로 간다. */
 function calTodaySync(){
   const wrap=$('#calTodayWrap');if(!wrap)return;
   const c=CAL?CAL.view.currentStart:new Date(),now=new Date();
   const same=c.getFullYear()===now.getFullYear()&&c.getMonth()===now.getMonth();
   wrap.classList.toggle('off',same);
+  calTodayPlace();
 }
+/* ⚠ 881차: 폰은 년월이 **상단바(#topbar .tbt)** 에 있고 데스크톱은 달력 머리줄(.cal-head)에 있다 —
+   「오늘」이 년월 옆에 서려면 화면 폭에 따라 옮겨 심어야 한다(CSS 만으로는 두 자리에 둘 수 없다). */
+function calTodayPlace(){
+  const wrap=$('#calTodayWrap');if(!wrap)return;
+  const mob=!WIDGET&&matchMedia('(max-width:960px)').matches;
+  if(!mob){wrap.style.cssText='';wrap.classList.remove('on-bar');return;}
+  wrap.classList.add('on-bar');
+  /* ⚠ 폰은 년월이 상단바에 있고 그 상단바는 수시로 다시 그려진다 — 옮겨 심으면 지워지므로
+     제자리에 두고 **좌표만** 상단바의 년월 오른쪽에 맞춘다. */
+  const ym=$('#topbar .tbt-ym'),bar=$('#topbar');
+  if(!ym||!bar)return;
+  const r=ym.getBoundingClientRect(),b=bar.getBoundingClientRect();
+  wrap.style.cssText='position:fixed;z-index:1000;left:'+Math.round(r.right+4)+'px;top:'+Math.round(b.top+(b.height-30)/2)+'px;height:30px;margin:0;';
+}
+addEventListener('resize',()=>calTodayPlace());
 document.addEventListener('keydown',e=>{
   if(e.ctrlKey||e.metaKey||e.altKey)return;
   const t=e.target;
