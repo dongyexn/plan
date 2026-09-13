@@ -10,7 +10,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='881';
+const APP_VER='884';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -2228,7 +2228,7 @@ function mcalPane(y,m,evs,dots){
       +'<span class="n">'+d+'</span>'
       +(ho&&ho.n?'<span class="mc-ho">'+esc(ho.n)+'</span>':'')
       +(ln.length
-        ?'<span class="mc-bars">'+Array.from({length:show},(_,k)=>{const o=ln[k];if(!o)return '<i class="mc-bar sp"></i>';
+        ?'<span class="mc-bars'+(ln.some(o=>o&&o.head&&o.n>1)?' hd':'')+'">'+Array.from({length:show},(_,k)=>{const o=ln[k];if(!o)return '<i class="mc-bar sp"></i>';
             const e=o.e;
             return '<i class="mc-bar'+(e.done?' dn':'')+(e.team?' tm':'')+(e.light?' lt':'')+(e.risk?' rk':'')+(o.s?' s':'')+(o.en?' e':'')+'" style="background:'+esc(e.c)+'">'
               +((o.head||e.team)?'<b'+((o.head&&o.n>1)?' style="width:calc('+o.n+'*100% - '+(2*o.n+2)+'px)"':'')+'>'+(o.head?esc(e.t):'')+'</b>':'')+'</i>';}).join('')
@@ -9456,10 +9456,11 @@ function copyText(t,msg){
   else{const ta=document.createElement('textarea');ta.value=String(t);document.body.appendChild(ta);ta.select();
     try{document.execCommand('copy');done();}catch(e){toast('복사 실패');}ta.remove();}
 }
-/* ── 866차: 폰에서 **탭을 좌우로 밀어** 넘긴다(사용자) — 하자 현장 탭(.tnav-i)과 업무 현황 탭(.tkt-i).
-   ⚠ 표·차트처럼 스스로 가로로 구르는 칸 위에서는 잡지 않는다(그 안에서 미는 것과 헷갈린다). */
+/* ── 866차: 폰에서 **탭을 좌우로 밀어** 넘긴다(사용자) — 하자 현장 탭(df.tab)과 업무 현황 탭(tk.tab).
+   882차: 미끄러지는 연출 대신 **손가락을 그대로 따라오는** 방식으로 바꿨다(달력 넘김과 같은 결).
+   ⚠ 표·차트처럼 스스로 가로로 구르는 칸 위에서는 잡지 않는다. */
 (function(){
-  let x0=0,y0=0,t0=0,list=null,on=false;
+  let x0=0,y0=0,t0=0,list=null,pane=null,W=0,dragging=false;
   const tabsAt=el=>{
     if(!el||!el.closest)return null;
     if(el.closest('input,textarea,select,[contenteditable],#mo,.ctxmenu'))return null;
@@ -9470,45 +9471,58 @@ function copyText(t,msg){
     }
     return null;
   };
+  const paneOf=bs=>{const box=bs[0].closest('#view-defect,#view-tasks');
+    return box&&(box.querySelector('.as')||box.querySelector('.tkcol')||box);};
   const scrollsX=el=>{
     for(let e=el;e&&e!==document.body;e=e.parentElement){
       if(e.scrollWidth>e.clientWidth+4&&/(auto|scroll)/.test(getComputedStyle(e).overflowX))return true;
     }
     return false;
   };
+  const cur=bs=>bs.findIndex(b=>b.classList.contains('act')||b.classList.contains('on'));
   document.addEventListener('touchstart',e=>{
-    on=false;list=null;
+    list=null;pane=null;dragging=false;
     if(WIDGET||!matchMedia('(max-width:960px)').matches)return;
     const t=e.touches[0];x0=t.clientX;y0=t.clientY;t0=Date.now();
     if(scrollsX(e.target))return;
     list=tabsAt(e.target);
+    if(list){pane=paneOf(list);W=pane?pane.getBoundingClientRect().width||1:1;}
   },{passive:true});
+  document.addEventListener('touchmove',e=>{
+    if(!list||!pane)return;
+    const t=e.touches[0],dx=t.clientX-x0,dy=t.clientY-y0;
+    if(!dragging){
+      if(Math.abs(dx)<12||Math.abs(dx)<Math.abs(dy)*1.2)return;   /* 세로로 굴리는 중이면 넘기지 않는다 */
+      dragging=true;pane.style.transition='none';pane.style.willChange='transform';
+    }
+    const i=cur(list),edge=(dx>0&&i<=0)||(dx<0&&i>=list.length-1);
+    pane.style.transform='translateX('+(edge?dx*0.25:dx)+'px)';   /* 끝 탭에서는 덜 따라와 벽을 알린다 */
+  },{passive:true});
+  const finish=()=>{if(pane){pane.style.transition='';pane.style.transform='';pane.style.willChange='';}list=null;pane=null;dragging=false;};
   document.addEventListener('touchend',e=>{
-    if(!list)return;
+    if(!list||!pane){finish();return;}
     const t=e.changedTouches[0],dx=t.clientX-x0,dy=t.clientY-y0,dt=Date.now()-t0;
-    list=null;
-    if(dt>600||Math.abs(dx)<60||Math.abs(dx)<Math.abs(dy)*1.6)return;
-    const bs=tabsAt(e.target);if(!bs)return;
-    const i=bs.findIndex(b=>b.classList.contains('act')||b.classList.contains('on'));   /* 하자 탭은 .act · 업무 탭은 .on */
-    if(i<0)return;
+    const bs=list,p=pane,i=cur(bs);
+    const go=dragging&&Math.abs(dx)>Math.max(52,W*0.18)&&Math.abs(dx)>Math.abs(dy)&&dt<900;
     const n=i+(dx<0?1:-1);
-    if(n<0||n>=bs.length)return;
-    /* 880차: 달력처럼 미끄러지는 느낌 — 지금 화면을 밀어 낸 뒤 새 탭을 반대쪽에서 들여보낸다 */
-    const box=bs[0].closest('#view-defect,#view-tasks');
-    const pane=box&&(box.querySelector('.as')||box.querySelector('.tkcol')||box);
+    if(!go||n<0||n>=bs.length){
+      if(dragging){p.style.transition='transform .18s cubic-bezier(.2,.7,.3,1)';p.style.transform='';
+        setTimeout(()=>{p.style.transition='';p.style.willChange='';},200);}
+      list=null;pane=null;dragging=false;return;
+    }
     const dir=dx<0?-1:1;
-    if(!pane){bs[n].click();return;}
-    pane.style.transition='transform .16s ease-out,opacity .16s ease-out';
-    pane.style.transform='translateX('+(dir*22)+'px)';pane.style.opacity='.35';
+    p.style.transition='transform .13s linear';
+    p.style.transform='translateX('+(dir*W)+'px)';   /* 밀던 방향으로 마저 밀어 내고 */
     setTimeout(()=>{
       bs[n].click();
-      const p2=box.querySelector('.as')||box.querySelector('.tkcol')||box;
-      p2.style.transition='none';p2.style.transform='translateX('+(-dir*22)+'px)';p2.style.opacity='.35';
-      requestAnimationFrame(()=>{p2.style.transition='transform .2s cubic-bezier(.2,.7,.3,1),opacity .2s';
-        p2.style.transform='';p2.style.opacity='';
-        setTimeout(()=>{p2.style.transition='';},240);});
-    },140);
+      const p2=paneOf(bs)||p;
+      p2.style.transition='none';p2.style.transform='translateX('+(-dir*W)+'px)';
+      requestAnimationFrame(()=>{p2.style.transition='transform .2s cubic-bezier(.2,.7,.3,1)';p2.style.transform='';
+        setTimeout(()=>{p2.style.transition='';p2.style.willChange='';},220);});
+    },130);
+    list=null;pane=null;dragging=false;
   },{passive:true});
+  document.addEventListener('touchcancel',finish,{passive:true});
 })();
 /* 우클릭 대상 — 달력 날짜 칸 · 업무 막대 · 업무 카드 · 미처리 목록(엑셀식 열 메뉴) */
 /* 704차: 모바일 달력 제스처 — 좌우 스와이프 = 월 이동(‹ › 없음), 위로 = 점 달력+패널, 아래로(패널 맨 위·점 달력) = 큰 달력.
@@ -13475,7 +13489,7 @@ function calTodayPlace(){
   const ym=$('#topbar .tbt-ym'),bar=$('#topbar');
   if(!ym||!bar)return;
   const r=ym.getBoundingClientRect(),b=bar.getBoundingClientRect();
-  wrap.style.cssText='position:fixed;z-index:1000;left:'+Math.round(r.right+4)+'px;top:'+Math.round(b.top+(b.height-30)/2)+'px;height:30px;margin:0;';
+  wrap.style.cssText='position:fixed;z-index:1000;left:'+Math.round(r.right+14)+'px;top:'+Math.round(b.top+(b.height-30)/2)+'px;height:30px;margin:0;';
 }
 addEventListener('resize',()=>calTodayPlace());
 document.addEventListener('keydown',e=>{
