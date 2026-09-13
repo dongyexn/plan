@@ -10,7 +10,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='863';
+const APP_VER='876';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -3462,7 +3462,7 @@ function filtLoad(){
 /* 찾기 — 왼쪽 칸 필터 카드 맨 위에 둔다(327차) */
 function tkSearchHTML(){
   const f=S.tkF||{};
-  return `<div class="dp-srch tkq-srch${String(f.q||'').trim()?' has':''}">
+  return `<div class="dp-srch tkq-srch${String(f.q||'').trim()?' has':''}" data-act="tk.qopen">
       <svg class="icn dp-srch-i" aria-hidden="true"><use href="#i-search"></use></svg>
       <input class="inp inp-sm" id="tkQ" placeholder="찾기" value="${esc(f.q||'')}" autocomplete="off">
       <button class="dp-srch-x" data-act="tkf.qclear" aria-label="지우기"><svg class="icn"><use href="#i-close"></use></svg></button>
@@ -9456,6 +9456,46 @@ function copyText(t,msg){
   else{const ta=document.createElement('textarea');ta.value=String(t);document.body.appendChild(ta);ta.select();
     try{document.execCommand('copy');done();}catch(e){toast('복사 실패');}ta.remove();}
 }
+/* ── 866차: 폰에서 **탭을 좌우로 밀어** 넘긴다(사용자) — 하자 현장 탭(.tnav-i)과 업무 현황 탭(.tkt-i).
+   ⚠ 표·차트처럼 스스로 가로로 구르는 칸 위에서는 잡지 않는다(그 안에서 미는 것과 헷갈린다). */
+(function(){
+  let x0=0,y0=0,t0=0,list=null,on=false;
+  const tabsAt=el=>{
+    if(!el||!el.closest)return null;
+    if(el.closest('input,textarea,select,[contenteditable],#mo,.ctxmenu'))return null;
+    for(const box of [el.closest('#view-defect'),el.closest('#view-tasks')]){
+      if(!box)continue;
+      const bs=[...box.querySelectorAll('[data-act="df.tab"],[data-act="tk.tab"]')];
+      if(bs.length>1)return bs;
+    }
+    return null;
+  };
+  const scrollsX=el=>{
+    for(let e=el;e&&e!==document.body;e=e.parentElement){
+      if(e.scrollWidth>e.clientWidth+4&&/(auto|scroll)/.test(getComputedStyle(e).overflowX))return true;
+    }
+    return false;
+  };
+  document.addEventListener('touchstart',e=>{
+    on=false;list=null;
+    if(WIDGET||!matchMedia('(max-width:960px)').matches)return;
+    const t=e.touches[0];x0=t.clientX;y0=t.clientY;t0=Date.now();
+    if(scrollsX(e.target))return;
+    list=tabsAt(e.target);
+  },{passive:true});
+  document.addEventListener('touchend',e=>{
+    if(!list)return;
+    const t=e.changedTouches[0],dx=t.clientX-x0,dy=t.clientY-y0,dt=Date.now()-t0;
+    list=null;
+    if(dt>600||Math.abs(dx)<60||Math.abs(dx)<Math.abs(dy)*1.6)return;
+    const bs=tabsAt(e.target);if(!bs)return;
+    const i=bs.findIndex(b=>b.classList.contains('act')||b.classList.contains('on'));   /* 하자 탭은 .act · 업무 탭은 .on */
+    if(i<0)return;
+    const n=i+(dx<0?1:-1);
+    if(n<0||n>=bs.length)return;
+    bs[n].click();
+  },{passive:true});
+})();
 /* 우클릭 대상 — 달력 날짜 칸 · 업무 막대 · 업무 카드 · 미처리 목록(엑셀식 열 메뉴) */
 /* 704차: 모바일 달력 제스처 — 좌우 스와이프 = 월 이동(‹ › 없음), 위로 = 점 달력+패널, 아래로(패널 맨 위·점 달력) = 큰 달력.
    편집 중(입력 상자)에는 안 잡는다. 700ms 넘는 느린 움직임·대각선은 무시
@@ -9915,8 +9955,11 @@ function toast(msg,duration=2400){
   if(!t.__hold){t.__hold=true;t.addEventListener('mouseenter',()=>clearTimeout(toastT));t.addEventListener('mouseleave',()=>{clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),1000);});}
 }
 function mobClose(){
-  if(S.dpSheet){dpSheet(false);return;}   /* 시트가 열려 있으면 스크림 탭은 시트부터 닫는다 */
-  $('#sidebar').classList.remove('mob-open');$('#scrim').classList.remove('on');}
+  /* ⚠ 864차: 사이드바가 열려 있으면 그것부터 닫는다 — 시트를 먼저 닫느라 오른쪽 빈 곳을 눌러도 안 닫히는 것처럼 보였다 */
+  const sb=$('#sidebar');
+  if(sb&&sb.classList.contains('mob-open')){sb.classList.remove('mob-open');$('#scrim').classList.toggle('on',!!S.dpSheet);return;}
+  if(S.dpSheet){dpSheet(false);return;}
+  if(sb)sb.classList.remove('mob-open');$('#scrim').classList.remove('on');}
 
 /* 테마 */
 /* 앱 배경화면 — 이 기기(localStorage)에만 두므로 팀원 화면·데이터베이스에는 영향이 없다 */
@@ -10268,6 +10311,11 @@ const ACT={
   'modal.close':closeModal,
   'modal.stop':()=>{},
   'modal.ok':()=>{if(MODAL_CB&&MODAL_CB.ok)MODAL_CB.ok();},
+  /* 865차: 폰 도구띠의 찾기 — 아이콘을 누르면 펼치고 입력칸에 초점을 준다 */
+  'tk.qopen':()=>{
+    const w=$('#view-tasks .tkbar-wrap .dp-srch');if(!w)return;
+    w.classList.add('qopen');const i=w.querySelector('.inp');if(i){i.focus();i.select&&i.select();}
+  },
   'tkf.qclear':()=>{S.tkF={...S.tkF,q:''};filtSave();rTkViews();},
   /* ⚠ id 로 찾으면 숨어 있는 다른 화면의 필터 카드를 잡는다 — 누른 버튼이 속한 카드를 토글한다 */
   /* 꺽쇠 — 펼치기/접기. **접을 때 걸려 있던 필터를 함께 푼다**(330차) — 접힌 채 필터가 남아
@@ -12846,6 +12894,13 @@ function qcFade(){
   dwSb(w,'qc-sb',h);   /* 붙박이 머리 줄 아래에서만 */
 }
 function qcFlash(){qcFade();}
+/* 865차: 폰 도구띠 찾기 — 바깥을 누르면 접는다(값이 없을 때만) */
+document.addEventListener('pointerdown',e=>{
+  const w=$('#view-tasks .tkbar-wrap .dp-srch.qopen');if(!w)return;
+  if(e.target.closest&&e.target.closest('.dp-srch'))return;
+  const i=w.querySelector('.inp');
+  if(!i||!String(i.value||'').trim())w.classList.remove('qopen');
+},true);
 document.addEventListener('scroll',e=>{if(e.target&&e.target.id==='qcWrap')qcFlash();},true);
 window.addEventListener('resize',()=>{if(S.view==='qc')qcFade();});
 /* 결과 내보내기 — 엑셀에 그대로 붙일 수 있게 탭으로 나눈다 */
