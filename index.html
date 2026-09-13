@@ -3562,7 +3562,7 @@ body:not(.wid) .nq-panel{padding-top:6px;}}
     width:100%;max-width:100%;}
   body:not(.wid) #view-defect .main-chart-card::-webkit-scrollbar{display:none;}
 
-  #content{padding:9px 10px 14px 14px;overflow-x:hidden;}
+  #content{padding:12px;overflow-x:hidden;}   /* 885차: 좌 14 · 우 10 의 비대칭은 이유가 남아 있지 않았다(스크롤바는 숨김 정책) — 사방 12px 로 통일(사용자) */
   #content>*{min-width:0;}
   /* 달력 헤더 — 년월(좌) · 넘기기/오늘(우) 한 줄 */
   .cal-head{flex-wrap:nowrap;gap:8px;}
@@ -4768,5 +4768,5 @@ body.qc-dragging{user-select:none}
 <!-- 762차: chart.umd·datalabels·korea-geo·apt-geo 는 app.js 의 loadChart()/loadGeo() 가 필요할 때 읽는다(첫 로드 800KB 절감) -->
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=884"></script>
+<script src="./app.js?v=885"></script>
 </body></html>
