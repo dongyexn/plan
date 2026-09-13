@@ -449,7 +449,7 @@ body.wid .tbr{display:none;}   /* 위젯에는 상단바가 없다 */
   body.mcal-full:not(.wid) #view-calendar .cal-ctl .cal-nb .icn,body.mcal-mini:not(.wid) #view-calendar .cal-ctl .cal-nb .icn{width:20px;height:20px;}
   body.mcal-full:not(.wid) #view-calendar .cal-ctl,body.mcal-mini:not(.wid) #view-calendar .cal-ctl{right:54px;}   /* 733차: 검색(34px·right 12) 바로 왼쪽, 틈 8px */
   /* 881차: 폰에서는 「오늘」을 상단바 년월 오른쪽에 좌표로 얹는다(.on-bar) — 글자색도 상단바 기준 */
-  body:not(.wid) .cal-todayw.on-bar .cal-today{font-size:13px;height:30px;padding:0 8px;color:var(--shell-txt);white-space:nowrap;}
+  body:not(.wid) .cal-todayw.on-bar .cal-today{font-size:13px;height:28px;padding:0 10px;color:var(--shell-txt);background:rgba(255,255,255,.10);white-space:nowrap;}   /* 883차: 짙은 바탕에 맞는 옅은 배경 · 꺽쇠와 14px 띄운다 */
   body:not(.wid) .cal-todayw.on-bar .cal-today:hover{background:var(--shell-act);color:#fff;}
   body.mcal-full:not(.wid) #view-calendar .cal-head>.cal-ctl>.cal-nav,body.mcal-mini:not(.wid) #view-calendar .cal-head>.cal-ctl>.cal-nav{background:transparent;padding:0;}   /* 733차: 540행 캡슐 채움(--fill)을 벗긴다 — 햄버거·검색과 같은 맨 아이콘 */
   #appHdr .ah-right .tb-loc{color:var(--b400);font-size:0;padding:0 4px;}   /* 688차: 좁은 상단바엔 긴 문장이 안 들어간다 — data-s 의 「미게시」만. --bl 은 셸 변수라 여기선 흰색에 가깝다 */
@@ -466,7 +466,8 @@ body.wid .tbr{display:none;}   /* 위젯에는 상단바가 없다 */
   .ah-srch:focus-within .ah-srch-in{width:auto;opacity:1;}
   .ah-srch:focus-within .ah-srch-i{left:9px;transform:translateY(-50%);}}
 .tbl{display:flex;align-items:center;gap:10px;min-width:0;}
-.tbt{font-size:13px;font-weight:700;color:var(--lbl);letter-spacing:-.01em;}   /* 레이아웃 제목 14px · 하자 관리 카드 제목만 15px *//* -- 스크롤바 공통 규약 (⚠ 이 규약은 앞으로도 지킬 것) --
+.tbt{font-size:13px;font-weight:700;color:var(--lbl);letter-spacing:-.01em;}
+@media(max-width:960px){body:not(.wid) #topbar .tbt{font-size:15px;}}   /* 882차: 폰 헤더 제목이 작았다 */   /* 레이아웃 제목 14px · 하자 관리 카드 제목만 15px *//* -- 스크롤바 공통 규약 (⚠ 이 규약은 앞으로도 지킬 것) --
    **모든 스크롤바는 자리를 차지하지 않는다.** 네이티브 스크롤바를 전부 감추고(폭 0), 스크롤 위치는
    위·아래 페이드(.sb-fade-t / .sb-fade-b, fadeOne 이 붙인다)로만 알린다.
    덕분에 스크롤 유무·스크롤바 굵기와 관계없이 본문 폭이 절대 변하지 않는다.
@@ -1169,10 +1170,10 @@ body.snap .sbsl:first-of-type{display:none;}
 #view-defect .rk-tbl tbody tr.rk-r.open td:first-child,#mb .rk-tbl tbody tr.rk-r.open td:first-child{box-shadow:inset 2px 0 0 var(--b400);}
 .rk-tbl td{vertical-align:top;}
 /* 714차: 대시보드 민원 현황 히트맵 — 현장 × 레벨. 셀은 열 최대값 대비 농도 */
-.cal-todayw{display:inline-flex;align-items:center;margin-left:-4px;}   /* 881차: 년월 묶음 바로 옆(gap 12 에서 8 로) */
-.cal-today{border:0;background:transparent;font-family:inherit;font-size:13px;font-weight:700;color:var(--lbl2);
-  height:32px;padding:0 10px;border-radius:var(--rmd);cursor:pointer;}   /* 877차: 알약을 빼고 년월 단추와 같은 높이로 · 881차: 년월 묶음과 떨어뜨린다 */
-.cal-today:hover{background:var(--fill);color:var(--lbl);}
+.cal-todayw{display:inline-flex;align-items:center;margin-left:-4px;}   /* 881차: 년월 묶음 바로 옆(gap 12 에서 8 로) · 882차: 배경 있는 단추 */
+.cal-today{border:0;font-family:inherit;font-size:13px;font-weight:700;color:var(--lbl2);
+  height:34px;padding:0 12px;border-radius:var(--rmd);background:var(--fill);cursor:pointer;}   /* 882차: 년월 묶음(34px)과 같은 높이·배경, 8px 떨어뜨린다 */
+.cal-today:hover{background:var(--fill2);color:var(--lbl);}
 .rkh .cardttl{margin-bottom:0!important;}   /* 770차: 제목과 표 사이 여백 0(카드 공통 .ct 의 12px 를 덮는다) */
 .rkh-h,.rkh-r{display:grid;grid-template-columns:52px var(--rkhn,200px) repeat(5,minmax(56px,1fr));column-gap:4px;align-items:center;}   /* 769차: 권역 52px + 현장명은 내용 폭(최대 220)까지만 — 나머지를 레벨 칸이 나눠 가진다 */
 .rkh-rg{font-size:11px;color:var(--lbl3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:2px;}
@@ -2699,6 +2700,9 @@ body.dec #fcal .fc-event.team:not(.ev-rb):not(.ev-gd){
   background:repeating-linear-gradient(45deg,#A8213A 0 9px,#256B3B 9px 18px)!important;
   border-color:transparent!important;color:#fff!important;}
 body.dec #fcal .fc-event.team:not(.ev-rb):not(.ev-gd) .fc-event-title{color:#fff!important;}
+/* 882차: 폰은 미니 달력(#calMini)이라 위 규칙이 닿지 않았다 — 같은 줄무늬를 여기에도 */
+body.dec #calMini .mc-bar.tm{background:repeating-linear-gradient(45deg,#A8213A 0 9px,#256B3B 9px 18px)!important;}
+body.dec #calMini .mc-bar.tm b{background:#fff;color:#1F3A6B;}
 /* ══ 683차 무지개 — 그리기와 흐름을 막대 자신에서 ::after 한 겹으로 내린다 ══
    ⚠ 677~682차는 막대의 background-position 을 애니메이션했다. 이 속성은 합성(GPU)으로 올라가지 않아
       **프레임마다 주 스레드가 막대를 다시 칠했다**. 8초 측정에서 주 스레드가 쓴 시간:
@@ -2936,7 +2940,7 @@ body.wid #calFiltWrap{display:flex;}
 body.wid #calTodayWrap:not(.off){display:inline-flex;}   /* 774차: 위젯에도 「오늘」 */
 /* 826차: 이번 달을 보고 있으면 숨는다 — 자리도 차지하지 않는다 */
 .cal-todayw.off{display:none!important;}
-.cal-todayw .cal-today{font-size:12px;font-weight:700;height:26px;padding:0 10px;}
+.cal-todayw .cal-today{font-size:12.5px;font-weight:700;height:34px;padding:0 12px;}   /* 882차: 년월 묶음과 같은 높이 */
 body.wid.glass .cal-todayw .cal-today{color:#fff;}
 /* 459차: 위젯 필터와 같은 폭·여백 */
 /* 458차: 달력 머리 팝업이 카드에 잘리지 않게 — 머리 줄만 넘침을 허용한다 */
@@ -3204,7 +3208,7 @@ body:not(.wid) .nq-panel{padding-top:6px;}}
 #scrim{position:fixed;inset:0;background:rgba(0,0,0,.32);z-index:380;opacity:0;pointer-events:none;transition:opacity var(--t-base);}
 #scrim.on{opacity:1;pointer-events:auto;}
 .mc{display:none;width:36px;height:36px;border-radius:6px;align-items:center;justify-content:center;color:var(--lbl2);}
-.mc .icn{width:20px;height:20px;stroke-width:2;transform:translateY(-1px);}   /* 864차: 폰에서 너무 작았다(14px) · 876차: 글자 대비 살짝 낮아 보여 1px 올림 */
+.mc .icn{width:20px;height:20px;stroke-width:2;}   /* 864차: 폰에서 너무 작았다(14px) · 884차: 잉크 중심을 재서 맞췄다 — 아이콘은 손대지 않는다 */
 .mc:hover{background:var(--fill);}
 @media(max-width:960px){
   #app{padding:0;gap:0;}
@@ -3265,6 +3269,10 @@ body:not(.wid) .nq-panel{padding-top:6px;}}
   .mc-ho{position:absolute;left:2px;top:3px;right:22px;height:16px;line-height:16px;text-align:left;font-size:9px;color:var(--rd);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   /* 업무 막대 — FullCalendar 막대(≤620: 15px·10.5px·500·모서리 3·완료 .72·공통 속 빈 막대·밝은 색 어두운 글자)를 그대로. 기간 업무는 조각을 이어 붙인다 */
   .mc-bars{display:flex;flex-direction:column;gap:2px;margin-top:2px;min-width:0;}
+  /* ⚠ 882차: 기간 업무 제목은 첫날 칸에서 다음 칸 위로 흘러 나간다. 뒤 칸이 **나중에 그려져 글자를 덮어** 둘째 날 글자가 흐려 보였다 —
+     제목이 시작되는 칸을 위로 올린다(같은 격자의 형제라 z-index 로 정리된다). */
+  #calMini .mc-d{position:relative;}
+  #calMini .mc-d:has(.mc-bars.hd){z-index:2;}
   .mc-bar{display:block;height:15px;line-height:15px;border-radius:0;margin:0 -2px;min-width:0;font-style:normal;color:#fff;letter-spacing:-.02em;}
   .mc-bar.s{border-radius:3px 0 0 3px;margin-left:0;}
   .mc-bar.e{border-radius:0 3px 3px 0;margin-right:0;}
@@ -3307,7 +3315,9 @@ body:not(.wid) .nq-panel{padding-top:6px;}}
     content:'';display:block;width:52px;height:4px;border-radius:2px;background:#D6DAE1;margin:6px auto 1px;}
   body.mcal-drag:not(.wid) #view-calendar .dp-col .card,body.mcal-settle:not(.wid) #view-calendar .dp-col .card{box-shadow:none;}
   /* 상단바 가운데 「2026. 9. ▾」 — 볼드·크게 */
-  #topbar .tbt-ym{display:inline-flex;align-items:center;gap:2px;border:0;background:transparent;font-family:inherit;font-weight:800;font-size:18px;line-height:1;color:var(--lbl);padding:6px 8px;border-radius:var(--rmd);letter-spacing:-.01em;}   /* 733차: `font:800 19px/1 inherit` 단축은 inherit 이 섞여 선언째 버려졌다 — 개별 속성으로 */
+  /* ⚠ 884차: 상단바 다섯 요소의 **잉크 중심**을 재서 맞췄다(상자 중심이 아니라 실제 획의 가운데).
+     한글·숫자는 잉크가 줄 상자보다 높이 앉아 년월만 2.75px 위에 떠 있었다 — 1.6px 내려 아이콘과 같은 선에 세운다. */
+  #topbar .tbt-ym{display:inline-flex;align-items:center;gap:2px;transform:translateY(1.6px);border:0;background:transparent;font-family:inherit;font-weight:800;font-size:18px;line-height:1;color:var(--lbl);padding:6px 8px;border-radius:var(--rmd);letter-spacing:-.01em;}   /* 733차: `font:800 19px/1 inherit` 단축은 inherit 이 섞여 선언째 버려졌다 — 개별 속성으로 */
   #topbar .tbt-ym .icn{width:17px;height:17px;color:var(--lbl2);}
   body.mcal-full #topbar .tbl,body.mcal-mini #topbar .tbl{flex:1;}
   body.mcal-full #topbar .tbt,body.mcal-mini #topbar .tbt{position:static;text-align:left;pointer-events:auto;margin-right:auto;}   /* 864차: 년월을 가운데에 띄우지 않는다(사용자) */
@@ -4758,5 +4768,5 @@ body.qc-dragging{user-select:none}
 <!-- 762차: chart.umd·datalabels·korea-geo·apt-geo 는 app.js 의 loadChart()/loadGeo() 가 필요할 때 읽는다(첫 로드 800KB 절감) -->
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=881"></script>
+<script src="./app.js?v=884"></script>
 </body></html>
