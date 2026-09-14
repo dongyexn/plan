@@ -3317,7 +3317,7 @@ body:not(.wid) .nq-panel{padding-top:6px;}}
   /* 상단바 가운데 「2026. 9. ▾」 — 볼드·크게 */
   /* ⚠ 884차: 상단바 다섯 요소의 **잉크 중심**을 재서 맞췄다(상자 중심이 아니라 실제 획의 가운데).
      한글·숫자는 잉크가 줄 상자보다 높이 앉아 년월만 2.75px 위에 떠 있었다 — 1.6px 내려 아이콘과 같은 선에 세운다. */
-  #topbar .tbt-ym{display:inline-flex;align-items:center;gap:2px;transform:translateY(1.6px);border:0;background:transparent;font-family:inherit;font-weight:800;font-size:18px;line-height:1;color:var(--lbl);padding:6px 8px;border-radius:var(--rmd);letter-spacing:-.01em;}   /* 733차: `font:800 19px/1 inherit` 단축은 inherit 이 섞여 선언째 버려졌다 — 개별 속성으로 */
+  #topbar .tbt-ym{display:inline-flex;align-items:center;gap:2px;transform:translateY(.8px);   /* 886차: 잉크는 맞았지만 눈에는 아직 낮아 보여 0.8px 로 줄임(사용자) */border:0;background:transparent;font-family:inherit;font-weight:800;font-size:18px;line-height:1;color:var(--lbl);padding:6px 8px;border-radius:var(--rmd);letter-spacing:-.01em;}   /* 733차: `font:800 19px/1 inherit` 단축은 inherit 이 섞여 선언째 버려졌다 — 개별 속성으로 */
   #topbar .tbt-ym .icn{width:17px;height:17px;color:var(--lbl2);}
   body.mcal-full #topbar .tbl,body.mcal-mini #topbar .tbl{flex:1;}
   body.mcal-full #topbar .tbt,body.mcal-mini #topbar .tbt{position:static;text-align:left;pointer-events:auto;margin-right:auto;}   /* 864차: 년월을 가운데에 띄우지 않는다(사용자) */
@@ -3351,8 +3351,22 @@ body:not(.wid) .nq-panel{padding-top:6px;}}
   /* ⚠ 871차: 폰 달력은 FullCalendar(#fcal)가 아니라 **미니 달력(#calMini)** 이다 — 864차에 #fcal 에 그려 놓아
      화면에는 아무 선도 안 나왔다(숨은 달력을 재고 통과로 봤다). 미니 격자는 7칸 × 6주 이므로 8번째 칸부터 위 선을 준다. */
   body:not(.wid) #view-calendar #calMini .mc-g>.mc-d:nth-child(n+8){border-top:1px solid var(--sep);}
-  /* 872차: 요일 머리와 날짜 격자 사이 구분선(사용자) — 주차선과 같은 색 */
-  body:not(.wid) #view-calendar #calMini .mc-w{border-bottom:1px solid var(--sep);padding-bottom:6px;}
+  /* 872차: 요일 머리와 날짜 격자 사이 구분선 · 886차: 요일 줄을 상단바와 같은 색으로 묶고 달력만 좌우 여백을 없앤다(사용자) */
+  /* ⚠ 887차: 상단바 아래 1px 경계선이 요일 줄과 사이에 흰 실선으로 보였다 — 달력 화면에서만 지운다 */
+  body.mcal-full:not(.wid) #topbar,body.mcal-mini:not(.wid) #topbar,body.mcal-drag:not(.wid) #topbar,body.mcal-settle:not(.wid) #topbar{border-bottom-color:transparent;}
+  body:not(.wid) #view-calendar #calMini .mc-w{background:var(--shell);color:var(--shell-txt);padding:0 0 6px;margin:0;border-bottom:0;}   /* 888차: 위 여백을 없애 상단바 글자와 같은 흐름으로(사용자) */
+  body:not(.wid) #view-calendar #calMini .mc-w span{color:var(--shell-txt);}
+  body:not(.wid) #view-calendar #calMini .mc-w .sun{color:#FF9A9A;}
+  body:not(.wid) #view-calendar #calMini .mc-w .sat{color:#9EC1FF;}
+  body:not(.wid) #content>#view-calendar.act{margin:-12px -12px 0;}   /* 달력만 좌우·위 여백 0 */
+  body:not(.wid) #view-calendar #calMini{margin:0 -8px;}   /* 달력 칸이 8px 안쪽에서 시작했다 — 화면 끝까지 편다 */
+  body:not(.wid) #view-calendar .cal-mini{padding:0 0 14px;}
+  body:not(.wid) #view-calendar .cal-wrap{padding:0;margin:0;gap:0;}
+  /* ⚠ 요일 줄 위의 흰 2px 은 달력 카드(.cal-card)의 테두리·여백이었다 */
+  body:not(.wid) #view-calendar .cal-card{border:0;border-radius:0;padding:0;background:transparent;}
+  body:not(.wid) #view-calendar #calMini .mc-w{padding-left:8px;padding-right:8px;}
+  body:not(.wid) #view-calendar #calMini .mc-g{padding:8px 8px 0;}   /* 889차: 요일 줄과 첫 주 사이에 숨 쉴 틈(사용자) */
+  body:not(.wid) #view-calendar .cal-head{padding:0 12px;}
   /* ── 873차(사용자): 폰 상단바를 데스크톱 헤더와 같은 짙은 색으로 · 업무 패널의 카드 테두리는 뺀다 ── */
   body:not(.wid) #topbar{background:var(--shell);border-bottom:0;color:var(--shell-txt);}
   body:not(.wid) #topbar .tbt,body:not(.wid) #topbar .tbt-ym{color:var(--shell-txt);}
@@ -3562,7 +3576,17 @@ body:not(.wid) .nq-panel{padding-top:6px;}}
     width:100%;max-width:100%;}
   body:not(.wid) #view-defect .main-chart-card::-webkit-scrollbar{display:none;}
 
-  #content{padding:12px;overflow-x:hidden;}   /* 885차: 좌 14 · 우 10 의 비대칭은 이유가 남아 있지 않았다(스크롤바는 숨김 정책) — 사방 12px 로 통일(사용자) */
+  #content{padding:12px;overflow-x:hidden;}
+  /* ⚠ 890차: 목록 창(미처리·장기미처리)이 **가로로 두 번** 굴렀다 — 표(1,180px)는 제 칸에서 굴렀는데
+     제목 줄의 찾기·엑셀·피벗·닫기(.rl-acts, 358px)가 창 자체를 673px 로 넓혀 놓았다.
+     제목 줄을 접어 내리고 창은 가로로 구르지 않게 한다. */
+  body:not(.wid) #mb{overflow-x:hidden;}
+  body:not(.wid) #mt .rl-head{flex-wrap:wrap;gap:8px 10px;}
+  body:not(.wid) #mt .rl-head .rl-ttl{font-size:15px;}
+  body:not(.wid) #mt .rl-acts{margin-left:0;width:100%;gap:8px 12px;flex-wrap:wrap;}
+  body:not(.wid) #mt .rl-acts>.btn{flex:0 0 auto;}
+  body:not(.wid) #mt .rl-acts>.btn+.btn::before{content:none;}
+  body:not(.wid) #mt .rl-q-wrap{flex:1 1 100%;}   /* 찾기는 한 줄 전체 · 단추는 그 아래 */   /* 885차: 좌 14 · 우 10 의 비대칭은 이유가 남아 있지 않았다(스크롤바는 숨김 정책) — 사방 12px 로 통일(사용자) */
   #content>*{min-width:0;}
   /* 달력 헤더 — 년월(좌) · 넘기기/오늘(우) 한 줄 */
   .cal-head{flex-wrap:nowrap;gap:8px;}
@@ -4768,5 +4792,5 @@ body.qc-dragging{user-select:none}
 <!-- 762차: chart.umd·datalabels·korea-geo·apt-geo 는 app.js 의 loadChart()/loadGeo() 가 필요할 때 읽는다(첫 로드 800KB 절감) -->
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=885"></script>
+<script src="./app.js?v=891"></script>
 </body></html>
