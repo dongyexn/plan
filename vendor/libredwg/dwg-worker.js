@@ -37,13 +37,31 @@ function flatten(db, extra) {
      이름은 파일 이름(확장자 뺀 것)과 맞춘다(대소문자·공백 무시). */
   const key = s => String(s || '').replace(/\.dwg$/i, '').replace(/\s+/g, '').toLowerCase();
   const missing = {};
-  if (extra) Object.keys(extra).forEach(n => {
-    const k = key(n);
-    Object.keys(blocks).forEach(bn => {
-      const b = blocks[bn];
-      if (key(bn) === k && (!b.entities || !b.entities.length)) b.entities = extra[n];
-    });
+  const empty = () => Object.keys(blocks).filter(bn => {
+    const b = blocks[bn]; return (!b.entities || !b.entities.length) && !/^\*/.test(bn);
   });
+  if (extra) {
+    const names = Object.keys(extra);
+    names.forEach(n => {
+      const k = key(n);
+      /* ① 블록 이름과 파일 이름이 같은 자리에 끼운다 */
+      let hit = false;
+      Object.keys(blocks).forEach(bn => {
+        const b = blocks[bn];
+        if (key(bn) === k && (!b.entities || !b.entities.length)) { b.entities = extra[n].ents; hit = true; }
+      });
+      /* ② 894차: 이름이 다르면 못 붙는다 — 빈 참조가 하나뿐이고 올린 파일도 하나면 그 자리에 넣는다 */
+      if (!hit && names.length === 1) {
+        const e = empty();
+        if (e.length === 1) blocks[e[0]].entities = extra[n].ents;
+      }
+      /* ③ 894차: 참조 파일이 제 안에서 쓰는 블록(창호·가구…)도 같이 실어 온다 — 없으면 그 부분이 빈다 */
+      Object.keys(extra[n].blocks || {}).forEach(bn => {
+        const cur = blocks[bn];
+        if (!cur || !cur.entities || !cur.entities.length) blocks[bn] = extra[n].blocks[bn];
+      });
+    });
+  }
   const layers = {};
   Object.values(db.tables.LAYER.entries || {}).forEach(l => { layers[l.name] = l; });
   const styles = [], styleKey = {};
@@ -225,7 +243,10 @@ self.onmessage = async (ev) => {
     (refs || []).forEach(r => {
       try {
         const d2 = lib.convert(lib.dwg_read_data(new Uint8Array(r.buf), Dwg_File_Type.DWG));
-        extra[r.name] = d2.entities || [];
+        const bl = {};
+        Object.values((d2.tables && d2.tables.BLOCK_RECORD && d2.tables.BLOCK_RECORD.entries) || {})
+          .forEach(b => { if (b && b.name) bl[b.name] = b; });
+        extra[r.name] = { ents: d2.entities || [], blocks: bl };
       } catch (err) { }
     });
     const out = flatten(db, extra);
