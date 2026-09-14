@@ -10,7 +10,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='894';
+const APP_VER='897';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -1798,13 +1798,17 @@ function evePopShow(force){
 /* 오늘 걸린 '내 업무 + 공통 업무' 중 아직 안 끝난 것.
    ⚠ mineTasks 는 완료·보류를 이미 뺀다. teamTasks 는 완료만 빼므로 보류(3)를 여기서 한 번 더 거른다
       — 일부러 미뤄 둔 것을 오후에 다시 찌르면 보류함의 뜻이 없어진다.
-   ⚠ 공통 업무에 내가 담당자로도 들어 있으면 두 목록에 겹쳐 나온다 — sid/iid 로 한 번만 센다 */
+   ⚠ 공통 업무에 내가 담당자로도 들어 있으면 두 목록에 겹쳐 나온다 — sid/iid 로 한 번만 센다
+   ⚠⚠ 897차: **기간 업무는 마지막 날에만** 센다(사용자). 예전에는 걸쳐 있기만 하면 매일 담아,
+      3/10~3/14 업무가 첫날 5시부터 「오늘 남은 업무」로 떴다. 기간 업무는 상태가 하나뿐이라
+      (회차별 완료는 반복 업무의 doneOn 전용) 그 자리에서 완료를 누르면 **14일까지 걸린 업무가 통째로 닫힌다** —
+      오늘 몫만 끝내는 것처럼 보이는 게 문제였다. 이제 아침의 「놓친 업무 확인」(mrvList: end < 오늘)과
+      같은 마감일 기준으로 맞춘다: 마감일 5시에 한 번 찌르고, 그날도 안 끝나면 다음 날 아침 확인이 잡는다. */
 function eveList(){
   const today=todayStr();
   const onToday=({it})=>{
     if(!it||!it.date)return false;
-    const span=it.end&&it.end>it.date;
-    return span?(it.date<=today&&today<=it.end):(it.date===today);
+    return (it.end||it.date)===today;
   };
   const seen=new Set(),out=[];
   mineTasks().concat(teamTasks().filter(({it})=>stEff(it)!==3))
@@ -13056,7 +13060,10 @@ document.addEventListener('contextmenu',e=>{
    ⚠ 읽기는 워커(vendor/libredwg/dwg-worker.js)가 한다. 본체에서 부르면 CSP(script-src 'self')가 막는다.
    나누는 방법: ① 도면틀 — 닫힌 네모(축에 나란한) 중 큰 것들. 겹쳐 그린 이중 테두리는 바깥 것만 남긴다.
                 ② 틀이 없으면 — 도형이 붙어 있는 덩어리끼리(격자 칠하기 + 이웃 잇기). */
-const DW={name:'',polys:[],texts:[],styles:[],ext:null,pages:[],off:new Set(),mode:'auto',used:'',paper:'a3',orient:'auto',lw:true,zoom:'w2',pz:0,page:1,busy:'',stat:null,err:'',worker:null};
+/* 896차: inserts(최상위 블록 상자)·layers(폴리의 레이어 이름표)·layouts(배치)·xrefs(참조 경로)·hid(뺀 레이어·도형 수)는 워커가 준다.
+   frame 은 틀 기준 — '' 자동 · 'b:블록이름' · 'l:레이어이름'. all 은 꺼진 레이어까지 그리기(워커 재읽기). */
+const DW={name:'',polys:[],texts:[],styles:[],ext:null,pages:[],off:new Set(),mode:'auto',used:'',paper:'a3',orient:'auto',lw:true,zoom:'w2',pz:0,page:1,busy:'',stat:null,err:'',worker:null,
+  inserts:[],layers:[],layouts:[],xrefs:{},hid:null,frame:'',all:false};
 let DW_WORKER=null;
 const DW_PAPER={a4:[210,297],a3:[297,420]};   /* 816차: 실무에선 A4·A3 면 충분(사용자) */
 function dwWorker(){
@@ -13072,20 +13079,24 @@ function dwWorker(){
 /* 893차: 외부 참조(XREF) — 본 도면에는 이름만 있고 알맹이가 없다.
    못 찾은 참조 이름을 화면에 알리고, 그 파일을 함께 올리면 그 자리에 끼워 다시 그린다. */
 function dwAddRefs(files){
-  const list=[...(files||[])].filter(f=>/\.dwg$/i.test(f.name));
-  if(!list.length)return;
+  const all=[...(files||[])];
+  const list=all.filter(f=>/\.dwg$/i.test(f.name));
+  if(!all.length)return;                                   /* 창만 닫은 경우 */
+  if(!list.length){toast('DWG 파일만 붙일 수 있습니다');return;}
+  if(!DW.buf){toast('원본 도면을 먼저 열어 주세요');return;}
+  DW._before=DW.polys.length;
+  toast('참조 '+list.length+'개 읽는 중…');
   DW.busy=DW.name||'참조';rDwg();
   Promise.all(list.map(f=>f.arrayBuffer().then(b=>({name:f.name,buf:b}))))
     .then(rs=>{
       DW.refs=(DW.refs||[]).filter(r=>!rs.some(x=>x.name===r.name)).concat(rs);
-      if(DW.buf)dwSend(DW.buf.slice(0),DW.name);
-      else{DW.busy='';toast('원본 도면을 다시 열어 주세요');rDwg();}
+      dwSend(DW.buf.slice(0),DW.name);
     })
-    .catch(()=>{DW.busy='';toast('참조 파일을 읽지 못했습니다');rDwg();});
+    .catch(err=>{DW.busy='';toast('참조 파일을 읽지 못했습니다'+(err&&err.message?' ('+err.message+')':''));rDwg();});
 }
 function dwSend(buf,name){
   const refs=(DW.refs||[]).map(r=>({name:r.name,buf:r.buf.slice(0)}));
-  dwWorker().postMessage({buf,name,refs},[buf,...refs.map(r=>r.buf)]);
+  dwWorker().postMessage({buf,name,refs,all:DW.all},[buf,...refs.map(r=>r.buf)]);
 }
 /* 893차: 못 찾은 외부 참조를 알리고 그 파일을 받는 칸 */
 function dwRefHTML(){
@@ -13095,7 +13106,10 @@ function dwRefHTML(){
   let h='<div class="dw-xr">';
   if(miss.length){
     h+='<div class="dw-xr-t">외부 참조 '+miss.length+'개가 빠져 있습니다</div>'
-      +'<div class="dw-xr-l">'+miss.map(n=>'<span>'+esc(n)+'.dwg</span>').join('')+'</div>'
+      +'<div class="dw-xr-l">'+miss.map(n=>{const x=DW.xrefs&&DW.xrefs[n];
+        /* 896차: 참조에 적힌 원래 경로를 같이 보여 준다 — 어느 파일을 찾아 올려야 하는지 바로 안다 */
+        const fn=x&&x.path?x.path.replace(/^.*[\\/]/,''):n+'.dwg';
+        return '<span'+(x&&x.path?' data-tip="'+esc(x.path)+'"':'')+'>'+esc(fn)+(x&&x.overlay?' <i>오버레이</i>':'')+'</span>';}).join('')+'</div>'
       +'<div class="dw-xr-s">이 파일을 함께 올리면 그 자리에 그려 넣습니다</div>';
   }else{
     h+='<div class="dw-xr-t dw-xr-ok">외부 참조를 모두 붙였습니다</div>';
@@ -13119,17 +13133,33 @@ function dwLoaded(d){
   DW.busy='';
   if(!d||!d.ok){DW.err='도면을 읽지 못했습니다'+(d&&d.err?' — '+d.err:'');toast('도면을 읽지 못했습니다');rDwg();return;}
   DW.err='';DW._core=null;DW._coreN=-1;DW.polys=d.polys||[];DW.texts=d.texts||[];DW.styles=d.styles||[];DW.ext=d.ext;DW.off=new Set();DW.page=1;
-  DW.stat={n:DW.polys.length,t:DW.texts.length,ms:d.ms,skipped:d.skipped,layouts:d.layouts,missing:d.missing||{}};
+  DW.inserts=d.inserts||[];DW.layers=d.layers||[];DW.layouts=(d.layouts||[]).filter(l=>l&&l.lim);DW.xrefs=d.xrefs||{};DW.hid=d.hid||null;DW._lrc=null;
+  if(DW.mode==='layout'&&!dwHasLayout())DW.mode='auto';
+  if(DW.frame&&!dwFrameOpts().some(o=>o[0]===DW.frame))DW.frame='';
+  DW.stat={n:DW.polys.length,t:DW.texts.length,ms:d.ms,skipped:d.skipped,missing:d.missing||{},refInfo:d.refInfo||{}};
   dwSplit();
-  toast(DW.pages.length+'장으로 나눴습니다');
+  /* 895차: 참조를 붙인 뒤에는 「몇 개 늘었는지 · 왜 안 붙었는지」를 반드시 알린다(아무 반응 없다는 지적) */
+  if(DW._before!=null){
+    const add=DW.polys.length-DW._before;DW._before=null;
+    const info=DW.stat.refInfo||{};
+    const bad=Object.entries(info).filter(([,v])=>v&&v.err);
+    const emptyRef=Object.entries(info).filter(([,v])=>v&&!v.err&&!v.ents&&!v.blocks);
+    if(bad.length)toast('참조를 읽지 못했습니다 — '+bad[0][0]+' ('+bad[0][1].err+')');
+    else if(add>0)toast('참조를 붙였습니다 — 도형 '+add.toLocaleString()+'개 늘었습니다');
+    else if(emptyRef.length)toast('그 파일에는 그릴 도형이 없습니다 — '+emptyRef[0][0]);
+    else toast('변화가 없습니다 — 이 파일이 그 참조가 맞는지 확인해 주세요');
+  }else if(DW._all!=null){DW._all=null;toast(DW.all?'꺼진 레이어까지 그렸습니다':'인쇄용 레이어만 그렸습니다');}
+  else toast(DW.pages.length+'장으로 나눴습니다'+(DW.used?' ('+dwUsedLbl()+')':''));
   rDwg();
 }
+const dwUsedLbl=()=>({'틀':'도면틀','블록':'틀 블록','레이어':'틀 레이어','배치':'배치','덩어리':'오브젝트','전체':'전체 1장'})[DW.used]||DW.used;
 /* ── 도면틀 찾기 ── */
 /* 도면틀 찾기 — 닫힌 네모 + **선 네 개로 그린 네모**.
    ⚠ 844차: 크기 문턱을 「도면 전체의 몇 %」로 두면, 한 장에 작은 틀이 여러 개 있는 시트(전개도 모음)를
      통째로 놓친다(청라55A형: 가장 큰 네모가 전체의 0.04%). 문턱은 **후보들끼리 견주어** 정한다. */
-function dwRects(){
+function dwRects(src){
   if(!DW.ext)return [];
+  src=src||DW.polys;                        /* 896차: 틀 레이어 기준일 때는 그 레이어의 폴리만 넘긴다 */
   const C=dwCore(),W=C[2]-C[0],H=C[3]-C[1];
   const MINW=W*0.01,MINH=H*0.01;              /* 글자 상자 같은 자잘한 네모는 거른다 */
   const out=[];
@@ -13139,19 +13169,20 @@ function dwRects(){
     if(Math.max(w,h)/Math.min(w,h)>8)return;
     out.push([x0,y0,x1,y1]);
   };
-  DW.polys.forEach(p=>{
-    if(!p.c)return;
+  src.forEach(p=>{
     const n=p.p.length/2;if(n<4||n>6)return;
     const w=p.b[2]-p.b[0],h=p.b[3]-p.b[1];
     if(w<=0||h<=0)return;
-    /* 축에 나란한 네모인지 — 모든 점이 상자 모서리에 붙어 있어야 한다 */
-    const tol=Math.max(w,h)*0.02;let ok=true;
+    /* 축에 나란한 네모인지 — 모든 점이 상자 모서리에 붙어 있고, **네 귀퉁이가 다 찍혀** 있어야 한다.
+       896차: 닫힘 표시(c)가 빠진 채 네 꼭짓점만 있는 폴리선(변환기가 closed 를 잃은 파일)도 네모로 본다 — 귀퉁이 넷이 근거다 */
+    const tol=Math.max(w,h)*0.02;let ok=true;const hit=[0,0,0,0];
     for(let i=0;i<p.p.length;i+=2){
-      const dx=Math.min(Math.abs(p.p[i]-p.b[0]),Math.abs(p.p[i]-p.b[2]));
-      const dy=Math.min(Math.abs(p.p[i+1]-p.b[1]),Math.abs(p.p[i+1]-p.b[3]));
-      if(dx>tol&&dy>tol){ok=false;break;}
+      const x=p.p[i],y=p.p[i+1];
+      const dx0=Math.abs(x-p.b[0]),dx1=Math.abs(x-p.b[2]),dy0=Math.abs(y-p.b[1]),dy1=Math.abs(y-p.b[3]);
+      if(Math.min(dx0,dx1)>tol&&Math.min(dy0,dy1)>tol){ok=false;break;}
+      if(dx0<=tol&&dy0<=tol)hit[0]=1;if(dx1<=tol&&dy0<=tol)hit[1]=1;if(dx1<=tol&&dy1<=tol)hit[2]=1;if(dx0<=tol&&dy1<=tol)hit[3]=1;
     }
-    if(ok)push(p.b[0],p.b[1],p.b[2],p.b[3]);
+    if(ok&&(p.c||hit[0]+hit[1]+hit[2]+hit[3]===4))push(p.b[0],p.b[1],p.b[2],p.b[3]);
   });
   /* 선 네 개로 그린 네모 — 같은 x 구간을 덮는 가로선 두 개를 짝지어, 그 양끝을 잇는 세로선이 있는지 본다.
      ⚠ 예전에는 긴 선 40개씩 네 겹으로 돌렸다(O(n⁴)) — 작은 틀은 길이 문턱에 걸려 아예 후보가 못 됐다. */
@@ -13162,7 +13193,7 @@ function dwRects(){
   let hs=[],vx=new Map();
   const collect=(useSeg)=>{
     hs=[];vx=new Map();
-    DW.polys.forEach(p=>{
+    src.forEach(p=>{
       const q=p.p;
       if(!useSeg){if(q.length!==4)return;}
       else if(q.length>40)return;            /* 꼭짓점 20개까지 — 이 갈래는 「한 장도 못 찾았을 때」만 돈다 */
@@ -13333,17 +13364,83 @@ function dwSort(boxes){
     return ra!==rb?ra-rb:a[0]-b[0];
   });
 }
+/* ── 896차: 틀을 CAD 가 가진 정보로 먼저 찾는다(ZWCAD SMARTPLOT 의 Block / Layer / Scatter Line 순서) ──
+   ① 틀 블록: 같은 이름의 최상위 INSERT 가 두 번 이상 놓였고 상자가 네모꼴이며 크기가 서로 같으면 그 상자가 곧 한 장.
+   ② 틀 레이어: 이름에 FRAME·BORDER·TITLE·도면틀·표제 … 가 든 레이어의 폴리만으로 네모를 찾는다.
+   ③ 기하 규칙(dwRects) — 예전 방식. 실파일마다 규칙이 하나씩 붙던 갈래라 맨 뒤로 보냈다. */
+const DW_FRAME_RE=/FRAME|BORDER|TITLE|TTLB|SHEET|도면틀|표제|图框|틀$/i;
+function dwCoreArea(){const C=dwCore();return C?Math.max(1e-9,(C[2]-C[0])*(C[3]-C[1])):1;}
+/* 블록 이름별 후보 — {n, list:[상자…]} (틀일 법한 무리만) */
+function dwBlockGroups(){
+  const g=new Map();
+  DW.inserts.forEach(i=>{if(!g.has(i.n))g.set(i.n,[]);g.get(i.n).push(i);});
+  const A=dwCoreArea(),out=[];
+  g.forEach((list,n)=>{
+    if(list.length<2||list.length>60)return;
+    const ok=list.filter(i=>{const w=i.b[2]-i.b[0],h=i.b[3]-i.b[1];
+      return w>0&&h>0&&Math.max(w,h)/Math.min(w,h)<=8&&w*h>=A*0.005&&i.c>=6;});
+    if(ok.length<2)return;
+    /* 크기가 서로 같아야 틀이다(3% 안) — 문·창 블록은 크기가 제각각이거나 너무 작다 */
+    const w0=ok[0].b[2]-ok[0].b[0],h0=ok[0].b[3]-ok[0].b[1];
+    const same=ok.filter(i=>Math.abs((i.b[2]-i.b[0])-w0)<=w0*0.03&&Math.abs((i.b[3]-i.b[1])-h0)<=h0*0.03);
+    if(same.length*3<ok.length*2)return;
+    /* 틀끼리는 겹치지 않는다 — 어느 한 쌍이라도 크게 겹치면 틀이 아니다 */
+    for(let a=0;a<same.length;a++)for(let b=a+1;b<same.length;b++){
+      const x0=Math.max(same[a].b[0],same[b].b[0]),x1=Math.min(same[a].b[2],same[b].b[2]),y0=Math.max(same[a].b[1],same[b].b[1]),y1=Math.min(same[a].b[3],same[b].b[3]);
+      if(x1>x0&&y1>y0&&(x1-x0)*(y1-y0)>w0*h0*0.1)return;
+    }
+    out.push({n,list:same.map(i=>i.b.slice())});
+  });
+  out.sort((a,b)=>b.list.length-a.list.length);
+  return out;
+}
+/* 레이어별 네모 후보 수 — 「틀 레이어」 목록을 만들 때 쓴다(한 번만 센다) */
+function dwLayerRects(){
+  if(DW._lrc)return DW._lrc;
+  const m=new Map();
+  DW.layers.forEach((nm,i)=>{const list=DW.polys.filter(p=>p.l===i);if(!list.length)return;
+    const r=list.some(p=>p.p.length>=8&&p.p.length<=12)||DW_FRAME_RE.test(nm)?dwRects(list).length:0;
+    if(r)m.set(nm,{i,n:r});});
+  DW._lrc=m;return m;
+}
+/* 틀 기준 고르개의 항목들 — [값, 이름표] */
+function dwFrameOpts(){
+  const o=[['','자동']];
+  dwBlockGroups().forEach(g=>o.push(['b:'+g.n,'블록 '+g.n+' ('+g.list.length+')']));
+  dwLayerRects().forEach((v,nm)=>o.push(['l:'+nm,'레이어 '+nm+' ('+v.n+')']));
+  return o;
+}
+const dwHasLayout=()=>DW.layouts.some(l=>l.vps.length||l.polys.length);
+/* 배치를 자동으로 쓸 조건 — 종이 공간에 그린 것(표제란)이 있고 모델을 잘라 넣는 뷰포트도 있는 배치가 하나라도 있을 때.
+   빈 Layout1 하나(새 도면 기본값)로는 배치를 쓰지 않는다. */
+const dwLayoutAuto=()=>DW.layouts.some(l=>l.vps.length&&l.polys.length);
+function dwLayoutPages(){
+  return DW.layouts.filter(l=>l.vps.length||l.polys.length).map(l=>({b:l.lim.slice(),w:l.lim[2]-l.lim[0],h:l.lim[3]-l.lim[1],L:l}));
+}
+function dwFrames(){
+  /* 사용자가 고른 기준이 있으면 그대로 */
+  if(DW.frame&&DW.frame[0]==='b'){const g=dwBlockGroups().find(g=>'b:'+g.n===DW.frame);return g?{boxes:g.list,used:'블록'}:null;}
+  if(DW.frame&&DW.frame[0]==='l'){const nm=DW.frame.slice(2),i=DW.layers.indexOf(nm);
+    const fr=i>=0?dwRects(DW.polys.filter(p=>p.l===i)):[];return fr.length?{boxes:fr,used:'레이어'}:null;}
+  const bg=dwBlockGroups();
+  if(bg.length)return {boxes:bg[0].list,used:'블록'};
+  const li=[];DW.layers.forEach((nm,i)=>{if(DW_FRAME_RE.test(nm))li.push(i);});
+  if(li.length){const fr=dwRects(DW.polys.filter(p=>li.includes(p.l)));if(fr.length&&fr.length<=60)return {boxes:fr,used:'레이어'};}
+  const fr=dwRects();
+  /* 844차: 자동일 때는 틀이 지나치게 많으면(30장 넘게) 오검출로 보고 덩어리로 간다 — 「도면틀」을 직접 고르면 그대로 쓴다 */
+  if(fr.length&&(DW.mode==='frame'||fr.length<=30))return {boxes:fr,used:'틀'};
+  return null;
+}
 function dwSplit(){
-  let boxes=[],used='';
-  if(DW.mode!=='cluster'){
-    const fr=dwRects();
-    /* 844차: 자동일 때는 틀이 지나치게 많으면(30장 넘게) 오검출로 보고 덩어리로 간다 — 「도면틀」을 직접 고르면 그대로 쓴다 */
-    if(fr.length&&(DW.mode==='frame'||fr.length<=30)){boxes=fr;used='틀';}
-  }
-  if(!boxes.length&&DW.mode!=='frame'){boxes=dwClusters();if(boxes.length)used='덩어리';}
-  if(!boxes.length&&DW.ext){boxes=[dwCore().slice()];used='전체';}
+  let boxes=[],used='',pages=null;
+  /* 자동: 배치가 두 장 이상이거나 모델에서 틀을 못 찾았을 때만 배치를 쓴다 — 모델에 틀이 여럿이고 배치는 하나뿐이면 모델이 본체다 */
+  if(DW.mode==='layout'){pages=dwLayoutPages();if(pages.length)used='배치';}
+  if(!pages&&DW.mode!=='cluster'){const f=dwFrames();if(f){boxes=f.boxes;used=f.used;}}
+  if(DW.mode==='auto'&&dwLayoutAuto()){const lp=dwLayoutPages();if(lp.length>=2||!boxes.length){pages=lp;used='배치';}}
+  if(!pages&&!boxes.length&&DW.mode!=='frame'){boxes=dwClusters();if(boxes.length)used='덩어리';}
+  if(!pages&&!boxes.length&&DW.ext){boxes=[dwCore().slice()];used='전체';}
   DW.used=used;
-  DW.pages=dwSort(boxes).map(b=>{
+  DW.pages=pages||dwSort(boxes).map(b=>{
     const w=b[2]-b[0],h=b[3]-b[1],pad=Math.max(w,h)*0.01;
     return {b:[b[0]-pad,b[1]-pad,b[2]+pad,b[3]+pad],w,h};
   });
@@ -13361,27 +13458,44 @@ function dwStyleCSS(used){
       +(st.d?';stroke-dasharray:'+st.d.split(',').map(n=>Math.round(Number(n)*DW_PX*100)/100).join(','):'')+'}';});
   return css?'<style>'+css+'</style>':'';
 }
-function dwPageSVG(pg,forPrint){
-  const [x0,y0,x1,y1]=pg.b,w=x1-x0,h=y1-y0;
-  let d='';const used=new Set();
-  DW.polys.forEach(p=>{
+/* 상자 [x0,y0,x1,y1] 안에 걸리는 폴리·글자를 마크업으로 — used 에 쓰인 선 모양 번호를 모은다 */
+function dwDrawIn(polys,texts,box,used){
+  const [x0,y0,x1,y1]=box;let d='';
+  polys.forEach(p=>{
     const b=p.b;if(b[2]<x0||b[0]>x1||b[3]<y0||b[1]>y1)return;
     const a=p.p;let s='';
     for(let k=0;k<a.length;k+=2)s+=(k?' ':'')+(Math.round(a[k]*100)/100)+','+(Math.round(a[k+1]*100)/100);
     if(DW.lw&&p.s!=null)used.add(p.s);
     d+='<polyline'+(DW.lw&&p.s!=null?' class="s'+p.s+'"':'')+' points="'+s+'"/>';
   });
-  DW.texts.forEach(t=>{
+  texts.forEach(t=>{
     if(t.x<x0||t.x>x1||t.y<y0||t.y>y1)return;
     /* ⚠ 글자도 도형과 같은 좌표계(y 위로)로 적는다 — 여기서 -y 로 적으면 바깥 group 의 뒤집기와 겹쳐 위아래가 뒤바뀐다 */
     const tx=Math.round(t.x*100)/100,ty=Math.round(t.y*100)/100;
-    d+='<text x="'+tx+'" y="'+ty+'" font-size="'+(Math.round(t.h*100)/100)+'"'
+    d+='<text data-t="1" x="'+tx+'" y="'+ty+'" font-size="'+(Math.round(t.h*100)/100)+'"'
       +(t.r?' transform="rotate('+(-t.r)+' '+tx+' '+ty+')"':'')
       +'>'+esc(t.s)+'</text>';
   });
-  return '<svg class="dw-svg" viewBox="'+x0+' '+(-y1)+' '+w+' '+h+'" preserveAspectRatio="xMidYMid meet">'
-    +dwStyleCSS(used)+'<g class="dw-g" transform="scale(1,-1)">'+d.replace(/<text /g,'<text data-t="1" ')+'</g></svg>';
+  return d;
 }
+function dwPageSVG(pg,forPrint){
+  const [x0,y0,x1,y1]=pg.b,w=x1-x0,h=y1-y0;
+  const used=new Set();let d;
+  if(pg.L){
+    /* 896차: 배치 한 장 — 종이 공간 도형은 종이 좌표 그대로, 뷰포트마다 안쪽 <svg> 로 모델을 잘라 넣는다.
+       ⚠ 바깥 g 가 scale(1,-1) 로 뒤집으므로 안쪽 svg 의 x·y·viewBox 는 모두 「y 위로」 좌표로 적는다 — 안쪽에서 또 뒤집지 않는다.
+       뷰포트 축척 = 종이 높이 / 모델 높이(viewHeight). 회전(twist) 은 미반영. */
+    d=dwDrawIn(pg.L.polys,pg.L.texts,pg.b,used);
+    pg.L.vps.forEach(v=>{
+      const vw=v.vh*(v.w/v.h),mx0=v.vc[0]-vw/2,my0=v.vc[1]-v.vh/2;
+      d+='<svg x="'+r2(v.cx-v.w/2)+'" y="'+r2(v.cy-v.h/2)+'" width="'+r2(v.w)+'" height="'+r2(v.h)+'" viewBox="'+r2(mx0)+' '+r2(my0)+' '+r2(vw)+' '+r2(v.vh)+'" preserveAspectRatio="none">'
+        +dwDrawIn(DW.polys,DW.texts,[mx0,my0,mx0+vw,my0+v.vh],used)+'</svg>';
+    });
+  }else d=dwDrawIn(DW.polys,DW.texts,pg.b,used);
+  return '<svg class="dw-svg" viewBox="'+x0+' '+(-y1)+' '+w+' '+h+'" preserveAspectRatio="xMidYMid meet">'
+    +dwStyleCSS(used)+'<g class="dw-g" transform="scale(1,-1)">'+d+'</g></svg>';
+}
+const r2=v=>Math.round(v*100)/100;
 /* 818차: 용지·방향은 **인쇄 한 번에 하나**로 고정한다 — 장마다 다르면 브라우저가 첫 장 기준으로 찍어 나머지가 어긋난다.
    자동이면 장들의 가로세로를 세어 많은 쪽을 따른다. 도면은 그 용지 안에 비율 그대로(contain) 들어간다. */
 function dwLand(){
@@ -13405,7 +13519,13 @@ function dwPagesHTML(forPrint){
 function rDwg(){
   const root=$('#dwgRoot');if(!root)return;
   const seg=(cur,list,btn)=>'<span class="seg">'+list.map(([k,l])=>btn(k,l,String(cur)===String(k)?'act':'')).join('')+'</span>';
-  const segMode=seg(DW.mode,[['auto','자동'],['frame','도면틀'],['cluster','오브젝트']],(k,l,a)=>'<button class="'+a+'" data-act="dwg.mode" data-m="'+k+'">'+l+'</button>');
+  const modes=[['auto','자동']];if(dwHasLayout())modes.push(['layout','배치']);modes.push(['frame','도면틀'],['cluster','오브젝트']);
+  const segMode=seg(DW.mode,modes,(k,l,a)=>'<button class="'+a+'" data-act="dwg.mode" data-m="'+k+'">'+l+'</button>');
+  /* 896차: 틀 기준 고르개 — 자동이 못 맞췄을 때 틀 블록·틀 레이어를 직접 짚는다. 후보가 없으면 줄 자체를 안 그린다 */
+  const fo=DW.mode==='auto'||DW.mode==='frame'?dwFrameOpts():[];
+  const selFrame=fo.length>1?'<div class="dw-fr"><label>틀</label><select class="inp inp-sm" data-act="dwg.frame">'
+    +fo.map(([k,l])=>'<option value="'+esc(k)+'"'+(k===DW.frame?' selected':'')+'>'+esc(l)+'</option>').join('')+'</select></div>':'';
+  const segAll=seg(DW.all?'on':'off',[['off','인쇄용'],['on','모두']],(k,l,a)=>'<button class="'+a+'" data-act="dwg.all" data-a="'+k+'">'+l+'</button>');
   const segPaper=seg(DW.paper||'a3',[['a4','A4'],['a3','A3']],(k,l,a)=>'<button class="'+a+'" data-act="dwg.paper" data-p="'+k+'">'+l+'</button>');
   const segOri=seg(DW.orient,[['auto','자동'],['land','가로'],['por','세로']],(k,l,a)=>'<button class="'+a+'" data-act="dwg.orient" data-o="'+k+'">'+l+'</button>');
   const segLw=seg(DW.lw?'on':'off',[['on','반영'],['off','일정']],(k,l,a)=>'<button class="'+a+'" data-act="dwg.lw" data-w="'+k+'">'+l+'</button>');
@@ -13413,20 +13533,22 @@ function rDwg(){
   const st=DW.stat;
   const skip=st&&st.skipped?Object.entries(st.skipped).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k,v])=>k+' '+v).join(' · '):'';
   const list=DW.pages.map((p,i)=>'<label class="dw-pl'+(DW.off.has(i)?' off':'')+'"><input type="checkbox" data-act="dwg.toggle" data-i="'+i+'"'+(DW.off.has(i)?'':' checked')+'>'
-    +'<b>'+(i+1)+'</b><span>'+Math.round(p.w)+' × '+Math.round(p.h)+'</span></label>').join('');
+    +'<b>'+(i+1)+'</b><span>'+(p.L?esc(p.L.name)+' · ':'')+Math.round(p.w)+' × '+Math.round(p.h)+'</span></label>').join('');
+  const hidTxt=DW.hid&&DW.hid.layers&&!DW.all?'꺼진·동결·플롯 안 함 레이어 '+DW.hid.layers+'개 제외':'';
   root.innerHTML='<div class="dw-grid"><div class="dw-col">'
     +'<div class="card"><div class="tm-h"><span>도면 파일</span>'+(DW.pages.length?'<button class="btn bo bxs" data-act="dwg.reset">초기화</button>':'')+'</div>'
       +'<div class="dw-b">'
       +(DW.busy?'<div class="dw-load">'+esc(DW.busy)+' 읽는 중…</div>'
         :'<button class="dw-open" data-act="dwg.file"><svg class="icn" aria-hidden="true"><use href="#i-folder"></use></svg>'+(DW.name?'다른 도면 열기':'DWG 열기')+'</button>')
       +(DW.name&&!DW.busy?'<div class="dw-file">'+esc(DW.name)+'</div>':'')
-      +(st?'<div class="dw-stat">도형 '+st.n.toLocaleString()+' · 글자 '+st.t.toLocaleString()+'</div>':'')
+      +(st?'<div class="dw-stat">도형 '+st.n.toLocaleString()+' · 글자 '+st.t.toLocaleString()+(hidTxt?'<br>'+hidTxt:'')+'</div>':'')
       +(skip?'<div class="dw-warn">못 그린 것 '+esc(skip)+'</div>':'')
       +dwRefHTML()
       +(DW.err?'<div class="dw-warn dw-bad">'+esc(DW.err)+'</div>':'')
       +'</div></div>'
     +(DW.pages.length?'<div class="card"><div class="tm-h"><span>기준</span></div>'
-      +'<div class="dw-b"><div class="dw-fr"><label>분리</label>'+segMode+'</div>'
+      +'<div class="dw-b"><div class="dw-fr"><label>분리</label>'+segMode+'</div>'+selFrame
+      +'<div class="dw-fr"><label>레이어</label>'+segAll+'</div>'
       +'<div class="dw-fr"><label>용지</label>'+segPaper+'</div>'
       +'<div class="dw-fr"><label>방향</label>'+segOri+'</div>'
       +'<div class="dw-fr"><label>선</label>'+segLw+'</div></div></div>':'')
@@ -13531,6 +13653,9 @@ document.addEventListener('change',e=>{
   const t=e.target;if(!t)return;
   if(t.id==='dwgFile'){const f=(t.files||[])[0];t.value='';if(f)dwOpen(f);return;}
   if(t.id==='dwgRefFile'){const fs=t.files;t.value='';dwAddRefs(fs);return;}
+  if(t.dataset&&t.dataset.act==='dwg.frame'&&t.closest('#dwgRoot')){
+    DW.frame=t.value||'';dwSplit();rDwg();toast(DW.pages.length+'장 ('+dwUsedLbl()+')');return;
+  }
   if(t.dataset&&t.dataset.act==='dwg.toggle'&&t.closest('#dwgRoot')){
     const i=Number(t.dataset.i);if(t.checked)DW.off.delete(i);else DW.off.add(i);
     rDwg();
@@ -13539,9 +13664,14 @@ document.addEventListener('change',e=>{
 Object.assign(ACT,{
   'dwg.file':()=>{const i=$('#dwgFile');if(i)i.click();},
   'dwg.refFile':()=>{const i=$('#dwgRefFile');if(i)i.click();},
-  'dwg.reset':()=>{DW.polys=[];DW.texts=[];DW.styles=[];DW.ext=null;DW.pages=[];DW.off=new Set();DW.name='';DW.stat=null;DW.err='';DW.page=1;rDwg();},
+  'dwg.reset':()=>{DW.polys=[];DW.texts=[];DW.styles=[];DW.ext=null;DW.pages=[];DW.off=new Set();DW.name='';DW.stat=null;DW.err='';DW.page=1;
+    DW.inserts=[];DW.layers=[];DW.layouts=[];DW.xrefs={};DW.hid=null;DW.frame='';DW.refs=[];DW.buf=null;DW._lrc=null;rDwg();},
   'dwg.mode':el=>{if(DW.mode===el.dataset.m)return;DW.mode=el.dataset.m;dwSplit();rDwg();
-    toast(DW.pages.length+'장 ('+(DW.used==='틀'?'도면틀 기준':DW.used==='덩어리'?'오브젝트 기준':'전체 1장')+')');},
+    toast(DW.pages.length+'장 ('+dwUsedLbl()+')');},
+  /* 896차: 꺼진 레이어까지 그리기 — 워커가 다시 읽는다(1~2초) */
+  'dwg.all':el=>{const on=el.dataset.a==='on';if(DW.all===on)return;DW.all=on;if(!DW.buf){rDwg();return;}
+    DW._all=on;DW.busy=DW.name;rDwg();dwSend(DW.buf.slice(0),DW.name);},
+  'dwg.frame':()=>{},   /* change 위임이 처리한다 */
   'dwg.paper':el=>{if((DW.paper||'a3')===el.dataset.p)return;DW.paper=el.dataset.p;rDwg();},
   'dwg.orient':el=>{if(DW.orient===el.dataset.o)return;DW.orient=el.dataset.o;rDwg();},
   'dwg.lw':el=>{const on=el.dataset.w==='on';if(DW.lw===on)return;DW.lw=on;rDwg();},
