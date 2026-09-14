@@ -3206,7 +3206,7 @@ body:not(.wid) .nq-panel{padding-top:6px;}}
 }
 /* ══════════ 모바일 ══════════ */
 #scrim{position:fixed;inset:0;background:rgba(0,0,0,.32);z-index:380;opacity:0;pointer-events:none;transition:opacity var(--t-base);}
-#scrim.on{opacity:1;pointer-events:auto;}
+#scrim.on{opacity:1;pointer-events:auto;cursor:pointer;touch-action:none;}   /* ⚠ 896차: iOS Safari 는 cursor:pointer 가 없는 div 에 위임된 click 을 안 보낸다 — 스크림 탭이 먹지 않던 원인 */
 .mc{display:none;width:36px;height:36px;border-radius:6px;align-items:center;justify-content:center;color:var(--lbl2);}
 .mc .icn{width:20px;height:20px;stroke-width:2;}   /* 864차: 폰에서 너무 작았다(14px) · 884차: 잉크 중심을 재서 맞췄다 — 아이콘은 손대지 않는다 */
 .mc:hover{background:var(--fill);}
@@ -4350,7 +4350,6 @@ body.qc-dragging{user-select:none}
 .dw-fr{display:grid;grid-template-columns:44px minmax(0,1fr);align-items:center;gap:8px}
 .dw-fr+.dw-fr{margin-top:8px}   /* 817차: 첫 줄 위 여백은 카드 padding 이 이미 준다 */
 .dw-fr label{font-size:12px;font-weight:600;color:var(--lbl2)}
-.dw-fr select{height:25px;padding:0 8px;font-size:12px;width:100%;min-width:0}   /* 896차: 틀 고르개 — 옆 seg 와 같은 높이 */
 .dw-list{max-height:230px;overflow-y:auto;padding:6px 10px 10px}
 .dw-pl{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:var(--rsm);font-size:12.5px;color:var(--lbl);cursor:pointer}
 .dw-pl:hover{background:var(--fill)}
@@ -4801,5 +4800,5 @@ body.qc-dragging{user-select:none}
 <!-- 762차: chart.umd·datalabels·korea-geo·apt-geo 는 app.js 의 loadChart()/loadGeo() 가 필요할 때 읽는다(첫 로드 800KB 절감) -->
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=897"></script>
+<script src="./app.js?v=896"></script>
 </body></html>

@@ -1,6 +1,6 @@
 # 인수인계 — H · 주요업무현황 (calapp)
 
-**현재 기준: v897.**
+**현재 기준: v896.**
 
 - **사진대지 표시·엑셀(846~855차)**: 사진 위에 네모·원·화살표를 그린다(`ph.ann`, 칸을 0~100 으로 보는 비율). 고르면 상자와 잡이가 붙어 크기·자리를 바꾸고, 우클릭으로 복사·잘라내기·삭제, Ctrl+C/X/V·Delete·Ctrl+Z 가 듣는다.
   엑셀 내보내기는 **머리줄의 「엑셀」 단추**(인쇄 왼쪽, 사진대지에서만)이며 **xlsx(zip)를 직접 만든다**(`pdXlsx`) — SheetJS 무료판은 그림을 못 넣는다. 압축 없이(STORE) 쓰고, 사진은 칸 크기대로 canvas 에 구워(표시까지 함께) `xl/media` 에 넣는다. 열 너비·행 높이·테두리·쪽 나눔·A4 인쇄 설정까지 담는다. ⚠ **그림 크기를 px 로 계산해 넣지 말 것**(849차에 그렇게 했다가 MS 엑셀에서 칸을 넘었다). 열 너비는 «글자 수» 단위이고 그 px 환산이 엑셀 판·기본 글꼴마다 다르다 — LibreOffice 는 맞고 MS 엑셀은 어긋난다.
@@ -34,15 +34,6 @@
   ⚠ 시트 XML 은 **차례가 정해져 있다** — `headerFooter` 는 `rowBreaks` 보다 앞. 어기면 MS 엑셀이 「내용에 문제가 있다」며 빈 문서로 연다(851차에 겪었다. LibreOffice·openpyxl 은 그대로 열려 못 잡는다).
   꼬리말은 `&C&P / &N` 만 쓴다(글꼴 지정 `&"이름"` 은 넣지 않는다). 아래 여백 12mm · 꼬리말 4mm, 내용은 남은 높이를 채운다. `printOptions horizontalCentered` 로 가로 가운데. docProps(core·app)도 함께 넣는다.
 - **업무 도구 › 도면 인쇄(815차)**: DWG 를 그대로 읽어 **도면틀마다 한 장**으로 나눠 인쇄한다(ZWCAD 를 열지 않으려는 목적). `#view-dwg` / `rDwg()` / 상태 `DW`. 이 창 메모리에서만.
-  **896차(재검토 — 검증은 `scripts/test/dwg-split.mjs`, 브라우저 불필요)**:
-  ⚠ **모델 공간만 그린다** — 엔진 `wrapper.js` 의 `convert()` 는 `db.entities` 에 배치(Paper Space) 도형까지 섞어 준다. 예전엔 그대로 그려 배치의 표제란·뷰포트가 모델 좌표에 찍혔다(example_2000: 65 = 모델 61 + 배치 2 + ATTRIB 2). 같은 이름의 `*Model_Space` 가 둘인 파일(dxf2dwg 산출물)은 도형 있는 쪽. ATTRIB 는 INSERT 의 `attribs` 에서 그린다.
-  ⚠ **꺼진(off)·동결(frozen)·플롯 안 함(plotflag 0) 레이어와 `isVisible=false` 도형은 뺀다**(CAD 플롯과 같게). 카드 「레이어 인쇄용/모두」(`DW.all`, 워커 재읽기)로 되살린다. 왼쪽에 「… 레이어 n개 제외」. plotflag 0 은 **한 레이어라도 1 인 파일에서만** 기준으로 쓴다(어떤 변환기는 전부 0 으로 남긴다 — 파일마다 `markPlot`). 레이어 flag0 의 bit2 는 **off** 다(AutoCAD 파일 실측: 켜진 레이어 bit2=0) — 이 wasm 의 dynapi 필드 이름도 `off`.
-  ⚠ **외부 참조는 BLOCK_HEADER 의 `flag`(4 참조·8 오버레이)·`xref_pname`(원래 경로)으로 확정한다**(`readXrefs`, dynapi 직접 읽기 — `wrapper.js` 는 이 값을 안 준다). 예전의 「알맹이 없는 블록 = 참조」는 대용 지표라 빈 일반 블록도 참조라고 알렸다. 참조 파일 맞추기는 **① 참조 경로의 파일명 → ② 블록 이름 → ③ 하나씩이면 그냥**(`fkey`: 경로·확장자·공백·대소문자 무시). 카드에 파일명(툴팁에 원래 경로)과 오버레이 표시. 참조 안 도형의 레이어는 호스트의 「참조|레이어」 → 참조 파일 제 레이어 순(`layerOf`).
-  **틀 찾기 순서를 ZWCAD SMARTPLOT(Block / Layer / Scatter Line)과 같게 재편(`dwFrames`)**: ① **틀 블록** — 같은 이름 최상위 INSERT 가 2~60개, 상자 가로세로비 ≤ 8, 넓이 ≥ 도면의 0.5%, 안에 폴리 6개 이상, 서로 크기 3% 안, 서로 10% 넘게 안 겹침(`dwBlockGroups`) ② **틀 레이어** — 이름이 `DW_FRAME_RE`(FRAME·BORDER·TITLE·TTLB·SHEET·도면틀·표제·图框·…틀)에 걸리는 레이어의 폴리만으로 `dwRects` ③ 기하 규칙(예전 `dwRects` 전체). 워커가 `inserts`(최상위 INSERT 이름·상자·폴리 수)와 폴리마다 `l`(레이어 번호, `layers[]` 이름표)를 준다. 카드 「틀」 고르개(`DW.frame` = '' / 'b:블록' / 'l:레이어', 후보가 있을 때만 줄이 뜬다)로 직접 짚는다.
-  `dwRects` 는 이제 **닫힘 표시 없이 네 귀퉁이만 찍힌 4~6점 폴리선**도 네모로 본다(closed 를 잃은 파일). ⚠ 실파일 3종(A03 13·청라 22·a1 2)으로는 이번 회차에 회귀를 못 돌렸다(컨테이너에 없음) — **다음에 실파일이 오면 `qc/e892.mjs` 기준을 먼저 확인할 것**.
-  **배치(Layout) 인쇄**: 워커가 배치마다 `{name, lim(종이 한계=용지), polys·texts(종이 좌표), vps:[{cx,cy,w,h, vc, vh}]}` 를 준다. ⚠ `LAYOUT.viewportId` 가 가리키는 VIEWPORT 는 「종이 자체」인 통 뷰포트라 뺀다. 한 장 = 종이 도형 + 뷰포트마다 **안쪽 `<svg x y width height viewBox>`** 로 모델을 잘라 넣는다(축척 = h/viewHeight, 회전 twist 미반영). ⚠ 바깥 g 가 `scale(1,-1)` 이므로 안쪽 svg 의 좌표·viewBox 는 전부 y-위로 좌표 — 안에서 또 뒤집지 않는다. 분리 「배치」는 배치가 있을 때만 보이고, **자동은 배치가 2장 이상이거나 모델에서 틀을 못 찾았을 때만** 배치를 쓴다(빈 Layout1 하나는 배치로 치지 않는다 — 종이 도형 + 뷰포트가 있어야). 종이 크기(plotsettings)는 이 wrapper 로는 못 읽어 `minLimit/maxLimit` 로 대신한다(용지가 A4·A3 와 다르면 contain 이라 축척은 안 맞는다).
-  워커는 비ASCII 이름·글자의 `\U+XXXX` 이스케이프를 푼다(`uesc`).
-  시험 파일은 `scripts/test/fixtures/dwg/`(ezdxf → libredwg `dxf2dwg`/`dwgwrite`, `make-fixtures.py`) — 참조 플래그·레이어 플래그는 JSON 을 손봐 넣었다. ⚠ 이 컨테이너엔 크롬이 없어 화면은 cairosvg 로 SVG 만 확인했다 — 사용자 실기 확인 필요.
   ⚠ 엔진(vendor/libredwg, GPL-3.0, wasm 9.7MB)은 **워커에서만** 돌린다 — 엠스크립튼 글루가 `new Function` 을 써서 문서 CSP(script-src 'self')에 막히지만, 워커 전역에는 그 CSP 가 상속되지 않아 그대로 돈다(실측). 그래서 **CSP 는 손대지 않았다**.
   워커(`vendor/libredwg/dwg-worker.js`)가 파싱 + 도형 펴기(블록·치수 블록 전개, MTEXT 서식코드 제거)까지 하고 선 묶음·글자 목록만 돌려준다. 본체는 도면틀 찾기(`dwRects` — 닫힌 네모 + **선 4개로 된 틀**)와 덩어리 나누기(`dwClusters`), 미리보기·인쇄를 맡는다.
   ⚠ 글자는 도형과 **같은 좌표계(y 위로)** 로 적는다 — `-y` 로 적으면 바깥 그룹의 뒤집기와 겹쳐 위아래가 뒤집힌다(815차에 그 버그를 겪었다).
@@ -114,7 +105,6 @@ H건설 서비스중부팀(중부1·중부2·광주, 현장 약 14개)의 내부
 | `scripts/test/rainbow-render.mjs` | 색(무지개·그라디언트) 렌더·지도 점·미니달력 점 |
 | `scripts/test/e2e-defect.mjs` | 하자 전 구간: 가짜 HCS 업로드 → 게시 → 대시보드·현장 탭 → 부분 등록 유지 → 미게시 판정 |
 | `scripts/test/risk-gold.mjs` | 민원 세대 레벨화 — `fixtures/risk-gold.md` 60건 정답셋 |
-| `scripts/test/dwg-split.mjs` | 도면 인쇄 — 워커(모델 공간·숨김 레이어·참조 경로·배치)와 본체(틀 블록·틀 레이어·배치 SVG)를 node 로. 시험 DWG 는 `fixtures/dwg/` |
 | `scripts/test/mobile-fit.mjs` | 폰 폭(375·390·360) 겹침·잘림 + 데스크톱 폭(1024~1920) 가로 스크롤 |
 | `scripts/test/clip-audit.mjs` | **스크롤로도 닿을 수 없는 내용**이 있는지(845차). 화면마다 잘라내는 칸을 모두 찾아 맨 위·맨 아래에서 잰다. 자기시험 2건(일부러 잘린 칸은 잡고, 그냥 구르는 칸은 통과) 포함 |
 | `scripts/test/firebase-live-e2e.mjs` | 실제 Firebase 2계정 E2E(환경변수 있을 때만) |
@@ -132,8 +122,7 @@ H건설 서비스중부팀(중부1·중부2·광주, 현장 약 14개)의 내부
 ```
 node --check app.js
 node scripts/test/static-audit.mjs      # FAIL 0 · WARN 0
-node scripts/test/dwg-split.mjs         # 도면 인쇄(워커·틀 나누기·배치·참조) — 브라우저 불필요
-CHROMIUM=/path/to/chrome node scripts/test/run-all.mjs   # rules-auth · dwg-split · smoke · rainbow · e2e-defect · risk-gold · mobile-fit · clip-audit
+CHROMIUM=/path/to/chrome node scripts/test/run-all.mjs   # rules-auth · smoke · rainbow · e2e-defect · risk-gold · mobile-fit · clip-audit
 ```
 - 헤드리스 크로미움이 필요하다. `playwright` 패키지 대신 `playwright-core` + `node_modules/playwright/index.js` 재수출 심(shim)으로 돌아간다.
 - 배포 zip 은 `calapp-vNNN/` 폴더 통째. **세 곳 버전 동기**: zip 이름 · `index.html` 의 `app.js?v=NNN` · `app.js` 의 `APP_VER`. 감사기가 어긋나면 FAIL.
@@ -216,6 +205,7 @@ CHROMIUM=/path/to/chrome node scripts/test/run-all.mjs   # rules-auth · dwg-spl
 - 요소 하나만 보지 말고 관계를 본다(카드 겹침·grid 행 높이·flex 자식 축소). 변경 보고 전 스크린샷 확인.
 - 현실적인 데이터 규모(28개 업무 · 14개 현장 · 650세대)로 검증하지 않으면 릴리즈 뒤 붕괴한다.
 - **한글 UI 의 세로 맞춤은 상자가 아니라 잉크로 잰다.** 한글은 내려긋는 획이 없어 글자가 줄 상자보다 위에 앉는다 — `align-items:center` 만 믿으면 1px 씩 떠 보인다(821·829차).
+- ⚠ **iOS Safari 는 `cursor:pointer` 없는 div 에 위임된 click 을 안 보낸다.** 폰에서 스크림(#scrim) 탭이 안 먹던 원인(896차). 문서 click 위임에만 기대는 요소는 `cursor:pointer` 를 주고, 중요한 것은 `touchend` 에서 직접 처리한다. Playwright 의 `touchscreen.tap` 은 click 을 합성해 주므로 **이 버그를 재현하지 못한다** — 실기기 확인이 필요하다.
 - ⚠ **눈으로 맞추지 말고 잉크를 재라.** 폰 상단바 다섯 요소(햄버거·년월·오늘·필터·찾기)를 화면을 4배로 찍어 **획의 세로 중심**을 재 보니 년월만 2.75px 위에 떠 있었다(한글·숫자 잉크가 줄 상자보다 높다). 상자 중심은 모두 정확히 가운데였다 — 그래서 「눈대중 1px 올림/내림」을 반복하게 된다. 재는 스크립트: `/home/claude/qc/ink.mjs`(잉크 중심 편차 출력).
 - ⚠ **폰 달력은 FullCalendar(#fcal)가 아니라 미니 달력(#calMini)이다**(732차부터). 폰 달력 손질은 `.mc-g>.mc-d` 에 해야 하며, 숨어 있는 `#fcal` 을 재면 **시험이 늘 통과한다**(864차에 주차 구분선을 #fcal 에 그려 놓고 통과로 봤다 — 871차에 사용자가 발견).
 - **가운데 정렬은 `safe` 를 붙인다.** `align-content:center` 는 내용이 칸보다 커지는 순간 위쪽을 잘라 스크롤로도 못 닿는다(822차). 845차부터 `clip-audit` 이 이 부류를 자동으로 잡는다.
@@ -236,5 +226,5 @@ CHROMIUM=/path/to/chrome node scripts/test/run-all.mjs   # rules-auth · dwg-spl
 - 실데이터 첫 달 결과로 민원 레벨 경계값·사전 조정.
 - 사이드바 회전 증상(재현 안 됨 — 실기기 캡처 필요).
 - 세대 표 필터 입력 시 전체 재렌더(포커스 복원으로 버팀).
-- 도면 인쇄: 해치 무늬·레이어 색·정확한 축척(배치 용지가 A4·A3 와 다를 때) 미반영, 점·스플라인 미표시, 뷰포트 회전(twist) 미반영. 장 순서 바꾸기·합치기 없음. **896차 결과를 회사 실파일(A03·청라·a1 + 참조·배치 쓰는 도면)로 확인해야 한다.**
+- 도면 인쇄: 해치 무늬·레이어 색·정확한 축척(1:50·1:100) 미반영, 점·스플라인·배치 뷰포트 미표시. 도면틀이 블록으로만 그려진 경우와 장 순서 바꾸기·합치기도 아직 없다.
 - 견적 검토: 업체마다 산출 근거 표기가 달라 파싱 범위를 실데이터로 계속 넓혀야 한다.

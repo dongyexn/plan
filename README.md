@@ -1,6 +1,6 @@
 # H · 주요업무현황
 
-> **현재 배포 기준: v897** — 업무 일정·업무 현황·업무 도구(사진대지 작성·견적 검토·도면 인쇄)·하자처리 현황(민원 현황 포함)·조직·설정을 한 앱에서 운영합니다. 데이터는 Firebase(RTDB·Auth), 배포는 GitHub Pages, 데스크톱 위젯은 Tauri.
+> **현재 배포 기준: v896** — 업무 일정·업무 현황·업무 도구(사진대지 작성·견적 검토·도면 인쇄)·하자처리 현황(민원 현황 포함)·조직·설정을 한 앱에서 운영합니다. 데이터는 Firebase(RTDB·Auth), 배포는 GitHub Pages, 데스크톱 위젯은 Tauri.
 
 팀 업무 일정과 담당자별 현황, 하자처리 현황을 실시간으로 공유하고 관리하는 사내 웹앱.
 
@@ -177,16 +177,13 @@ DWG 를 앱에서 바로 읽어 **도면틀마다 한 장**으로 나눠 인쇄�
 | 하는 일 | 방법 |
 |---|---|
 | 열기 | **DWG 열기**(480KB 0.6초 · 3.4MB 2.2초 정도) |
-| 장 나누기 | 자동 → **틀 블록**(같은 틀 블록이 여러 번) → **틀 레이어**(FRAME·BORDER·TITLE·도면틀·표제 …) → 도면틀(사각형) → 오브젝트 덩어리 → 전체 1장. 「틀」 고르개에서 블록·레이어를 직접 짚을 수 있다 |
-| 배치 | 배치(Layout)에 표제란과 뷰포트가 있으면 「배치」 — 배치 탭마다 한 장, CAD 가 정한 뷰포트대로 모델을 잘라 넣는다. 자동은 배치가 2장 이상이거나 모델에서 틀을 못 찾을 때 배치를 쓴다 |
-| 레이어 | 꺼진·동결·플롯 안 함 레이어는 인쇄에서 뺀다(CAD 플롯과 같음). 「모두」로 되살린다 |
-| 외부 참조 | 빠진 참조는 파일명(원래 경로는 툴팁)으로 알려 준다. 그 파일을 「참조 파일 추가」로 올리면 그 자리에 그려 넣는다 — 이름을 바꿔도 참조에 적힌 파일명으로 맞춘다 |
+| 장 나누기 | 자동 → 도면틀(사각형) → 없으면 오브젝트 덩어리 → 그래도 없으면 전체 1장 |
 | 고르기 | 목록에서 체크를 풀면 그 장은 빠진다 |
 | 용지 | A4 · A3 / 방향 자동·가로·세로 — **한 번의 인쇄에서는 모두 같은 용지** |
 | 선 | 도면의 선 굵기·선종류를 반영(「일정」으로 끌 수 있다) |
 | 인쇄 | 위 인쇄 버튼 — PDF 는 인쇄 창의 「PDF로 저장」 |
 
-- 못 그리는 것: 점 · 스플라인 · 해치 무늬 · 레이어 색(흑백 출력) · 뷰포트 회전. 못 그린 것은 왼쪽에 알려 준다.
+- 못 그리는 것: 점 · 스플라인 · 배치 뷰포트 · 해치 무늬 · 레이어 색(흑백 출력). 못 그린 것은 왼쪽에 알려 준다.
 - 안 열리면 왼쪽에 까닭이 뜬다 — 「도면 엔진을 불러오지 못했습니다」면 배포에 `vendor/libredwg/` 가 빠진 것이다.
 - 엔진은 GNU LibreDWG(GPL-3.0)를 WebAssembly 로 빌드한 것이며 `vendor/libredwg/` 에 고지와 함께 둔다. 문서 CSP 를 건드리지 않으려고 **웹 워커에서만** 돌린다.
 
@@ -376,7 +373,6 @@ vendor/                        FullCalendar · Chart.js · xlsx · Firebase SDK 
 vendor/libredwg/               DWG 읽기 엔진(GNU LibreDWG → WebAssembly, GPL-3.0) + 전용 워커 dwg-worker.js
                                ⚠ 용량이 10MB 다. 배포에서 빠지면 「도면 인쇄」가 파일을 못 연다
 scripts/test/static-audit.mjs  배포 전 정적 검사
-scripts/test/dwg-split.mjs     도면 인쇄 검사(node 만으로)
 scripts/test/smoke.mjs         브라우저 스모크
 widget-lite/                   바탕화면 위젯 (Tauri · WebView2)
 ```
@@ -460,7 +456,6 @@ Realtime Database > 규칙에 `database.rules.json` **전체를 붙여넣는다.
 npm test                              # 전체 회귀 게이트
 # 또는 개별 실행
 node scripts/test/static-audit.mjs   # FAIL 0 · WARN 0 이어야 함
-node scripts/test/dwg-split.mjs      # 도면 인쇄(워커·틀 나누기·배치·참조) — 브라우저 불필요
 node scripts/test/risk-gold.mjs      # 민원 세대 레벨화 정답셋(60건)
 node scripts/test/mobile-fit.mjs     # 폰 폭 겹침·잘림 + 데스크톱 가로 스크롤
 node scripts/test/smoke.mjs          # 핵심 흐름 클릭 (CHROMIUM 환경변수 필요)
@@ -470,9 +465,9 @@ node scripts/test/smoke.mjs          # 핵심 흐름 클릭 (CHROMIUM 환경변�
 
 | 고칠 파일 | 고칠 자리 |
 |---|---|
-| zip 이름 | `calapp-v897` |
-| `index.html` | `app.js?v=895` |
-| `app.js` | `const APP_VER='895'` |
+| zip 이름 | `calapp-v896` |
+| `index.html` | `app.js?v=896` |
+| `app.js` | `const APP_VER='896'` |
 
 > 어긋나면 static-audit 이 FAIL 로 잡는다.
 
