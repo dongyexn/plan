@@ -30,9 +30,20 @@ function dashOf(name) {
   if (n.includes('HIDDEN') || n.includes('DASHED') || n.includes('DASH')) return '3,2';
   return '';
 }
-function flatten(db) {
+function flatten(db, extra) {
   const blocks = {};
   Object.values(db.tables.BLOCK_RECORD.entries).forEach(b => { blocks[b.name] = b; });
+  /* 893차: 외부 참조(XREF)는 블록 이름만 있고 알맹이가 없다 — 함께 올린 파일이 있으면 그 자리에 끼워 넣는다.
+     이름은 파일 이름(확장자 뺀 것)과 맞춘다(대소문자·공백 무시). */
+  const key = s => String(s || '').replace(/\.dwg$/i, '').replace(/\s+/g, '').toLowerCase();
+  const missing = {};
+  if (extra) Object.keys(extra).forEach(n => {
+    const k = key(n);
+    Object.keys(blocks).forEach(bn => {
+      const b = blocks[bn];
+      if (key(bn) === k && (!b.entities || !b.entities.length)) b.entities = extra[n];
+    });
+  });
   const layers = {};
   Object.values(db.tables.LAYER.entries || {}).forEach(l => { layers[l.name] = l; });
   const styles = [], styleKey = {};
@@ -161,7 +172,11 @@ function flatten(db) {
         break;
       }
       case 'INSERT': {
-        const b = blocks[e.name]; if (!b || !b.entities) { skipped[e.type] = (skipped[e.type] || 0) + 1; break; }
+        const b = blocks[e.name];
+        if (!b || !b.entities || !b.entities.length) {   /* 893차: 알맹이 없는 블록 = 못 찾은 외부 참조 */
+          if (e.name) missing[e.name] = (missing[e.name] || 0) + 1;
+          skipped[e.type] = (skipped[e.type] || 0) + 1; break;
+        }
         const a = e.rotation || 0, ca = Math.cos(a), sa = Math.sin(a);
         const sx = e.xScale || 1, sy = e.yScale || 1;
         const ip = e.insertionPoint || { x: 0, y: 0 };
@@ -191,11 +206,11 @@ function flatten(db) {
   let ext = [Infinity, Infinity, -Infinity, -Infinity];
   polys.forEach(p => { if (p.b[0] < ext[0]) ext[0] = p.b[0]; if (p.b[1] < ext[1]) ext[1] = p.b[1]; if (p.b[2] > ext[2]) ext[2] = p.b[2]; if (p.b[3] > ext[3]) ext[3] = p.b[3]; });
   texts.forEach(t => { if (t.x < ext[0]) ext[0] = t.x; if (t.y < ext[1]) ext[1] = t.y; if (t.x > ext[2]) ext[2] = t.x; if (t.y > ext[3]) ext[3] = t.y; });
-  return { polys, texts, ext, seen, skipped, styles };
+  return { polys, texts, ext, seen, skipped, styles, missing };
 }
 
 self.onmessage = async (ev) => {
-  const { buf, name } = ev.data || {};
+  const { buf, name, refs } = ev.data || {};
   try {
     const t0 = Date.now();
     lib = lib || await LibreDwg.create();
@@ -205,13 +220,21 @@ self.onmessage = async (ev) => {
     const db = lib.convert(dwg);
     const tParse = Date.now() - t1;
     const t2 = Date.now();
-    const out = flatten(db);
+    /* 893차: 함께 올린 참조 파일(refs)을 먼저 읽어 이름 → 도형 목록으로 만든다 */
+    const extra = {};
+    (refs || []).forEach(r => {
+      try {
+        const d2 = lib.convert(lib.dwg_read_data(new Uint8Array(r.buf), Dwg_File_Type.DWG));
+        extra[r.name] = d2.entities || [];
+      } catch (err) { }
+    });
+    const out = flatten(db, extra);
     try { lib.dwg_free(dwg); } catch (e) { }
     self.postMessage({
       ok: true, name,
       polys: out.polys, texts: out.texts, ext: out.ext, styles: out.styles,
       layouts: (db.objects.LAYOUT || []).map(l => l.layoutName),
-      seen: out.seen, skipped: out.skipped,
+      seen: out.seen, skipped: out.skipped, missing: out.missing,
       ms: { load: tLoad, parse: tParse, flat: Date.now() - t2 }
     });
   } catch (err) {

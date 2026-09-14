@@ -10,7 +10,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='891';
+const APP_VER='893';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -13069,21 +13069,57 @@ function dwWorker(){
     toast('도면 엔진을 불러오지 못했습니다');console.warn('[도면] 워커',e&&e.message);rDwg();};
   DW_WORKER=w;return w;
 }
+/* 893차: 외부 참조(XREF) — 본 도면에는 이름만 있고 알맹이가 없다.
+   못 찾은 참조 이름을 화면에 알리고, 그 파일을 함께 올리면 그 자리에 끼워 다시 그린다. */
+function dwAddRefs(files){
+  const list=[...(files||[])].filter(f=>/\.dwg$/i.test(f.name));
+  if(!list.length)return;
+  DW.busy=DW.name||'참조';rDwg();
+  Promise.all(list.map(f=>f.arrayBuffer().then(b=>({name:f.name,buf:b}))))
+    .then(rs=>{
+      DW.refs=(DW.refs||[]).filter(r=>!rs.some(x=>x.name===r.name)).concat(rs);
+      if(DW.buf)dwSend(DW.buf.slice(0),DW.name);
+      else{DW.busy='';toast('원본 도면을 다시 열어 주세요');rDwg();}
+    })
+    .catch(()=>{DW.busy='';toast('참조 파일을 읽지 못했습니다');rDwg();});
+}
+function dwSend(buf,name){
+  const refs=(DW.refs||[]).map(r=>({name:r.name,buf:r.buf.slice(0)}));
+  dwWorker().postMessage({buf,name,refs},[buf,...refs.map(r=>r.buf)]);
+}
+/* 893차: 못 찾은 외부 참조를 알리고 그 파일을 받는 칸 */
+function dwRefHTML(){
+  const miss=Object.keys((DW.stat&&DW.stat.missing)||{});
+  const got=(DW.refs||[]).map(r=>r.name);
+  if(!miss.length&&!got.length)return '';
+  let h='<div class="dw-xr">';
+  if(miss.length){
+    h+='<div class="dw-xr-t">외부 참조 '+miss.length+'개가 빠져 있습니다</div>'
+      +'<div class="dw-xr-l">'+miss.map(n=>'<span>'+esc(n)+'.dwg</span>').join('')+'</div>'
+      +'<div class="dw-xr-s">이 파일을 함께 올리면 그 자리에 그려 넣습니다</div>';
+  }else{
+    h+='<div class="dw-xr-t dw-xr-ok">외부 참조를 모두 붙였습니다</div>';
+  }
+  if(got.length)h+='<div class="dw-xr-l dw-xr-got">'+got.map(n=>'<span>'+esc(n)+'</span>').join('')+'</div>';
+  h+='<button class="btn bo bxs" data-act="dwg.refFile">참조 파일 추가</button></div>';
+  return h;
+}
 function dwOpen(file){
   if(!file)return;
-  DW.busy=file.name;DW.name=file.name;DW.err='';rDwg();
+  DW.busy=file.name;DW.name=file.name;DW.err='';DW.refs=[];DW.buf=null;rDwg();
   file.arrayBuffer().then(buf=>{
     /* DWG 는 앞 6글자가 AC10xx(예: AC1032). 아니면 엔진에 넘기기 전에 알려 준다 */
     const head=String.fromCharCode(...new Uint8Array(buf.slice(0,6)));
     if(!/^AC10/.test(head)){DW.busy='';DW.err='DWG 파일이 아닌 것 같습니다(앞머리 '+esc(head.replace(/[^\x20-\x7e]/g,'.'))+'). DXF·PDF 는 아직 읽지 못합니다';toast('DWG 파일이 아닙니다');rDwg();return;}
-    dwWorker().postMessage({buf,name:file.name},[buf]);
+    DW.buf=buf.slice(0);
+    dwSend(buf,file.name);
   }).catch(err=>{DW.busy='';DW.err='파일을 읽지 못했습니다'+(err&&err.message?' ('+err.message+')':'');toast('파일을 열지 못했습니다');rDwg();});
 }
 function dwLoaded(d){
   DW.busy='';
   if(!d||!d.ok){DW.err='도면을 읽지 못했습니다'+(d&&d.err?' — '+d.err:'');toast('도면을 읽지 못했습니다');rDwg();return;}
   DW.err='';DW._core=null;DW._coreN=-1;DW.polys=d.polys||[];DW.texts=d.texts||[];DW.styles=d.styles||[];DW.ext=d.ext;DW.off=new Set();DW.page=1;
-  DW.stat={n:DW.polys.length,t:DW.texts.length,ms:d.ms,skipped:d.skipped,layouts:d.layouts};
+  DW.stat={n:DW.polys.length,t:DW.texts.length,ms:d.ms,skipped:d.skipped,layouts:d.layouts,missing:d.missing||{}};
   dwSplit();
   toast(DW.pages.length+'장으로 나눴습니다');
   rDwg();
@@ -13119,23 +13155,30 @@ function dwRects(){
   });
   /* 선 네 개로 그린 네모 — 같은 x 구간을 덮는 가로선 두 개를 짝지어, 그 양끝을 잇는 세로선이 있는지 본다.
      ⚠ 예전에는 긴 선 40개씩 네 겹으로 돌렸다(O(n⁴)) — 작은 틀은 길이 문턱에 걸려 아예 후보가 못 됐다. */
-  const hs=[],vx=new Map();
-  DW.polys.forEach(p=>{
-    if(p.p.length!==4)return;                /* 선분 하나짜리만 */
-    const [x1,y1,x2,y2]=p.p,dx=Math.abs(x2-x1),dy=Math.abs(y2-y1);
-    if(dy<=dx*0.002&&dx>=MINW)hs.push({y:(y1+y2)/2,a:Math.min(x1,x2),b:Math.max(x1,x2)});
-    else if(dx<=dy*0.002&&dy>=MINH){
-      const x=(x1+x2)/2,k=Math.round(x/Math.max(1e-9,MINW*0.2));
-      if(!vx.has(k))vx.set(k,[]);
-      vx.get(k).push({x,a:Math.min(y1,y2),b:Math.max(y1,y2)});
-    }
-  });
-  const hKey=new Map();
-  hs.forEach(h=>{
-    const k=Math.round(h.a/Math.max(1e-9,MINW*0.2))+'|'+Math.round(h.b/Math.max(1e-9,MINW*0.2));
-    if(!hKey.has(k))hKey.set(k,[]);
-    hKey.get(k).push(h);
-  });
+  /* 선 네 개로 그린 네모를 찾는다. 기본은 예전대로 **선분 하나짜리 폴리선**만 보고,
+     ⚠ 892차: 그걸로 한 장도 못 찾으면(실데이터 A03-001 단위세대평면도 — 틀의 네 변이 여러 마디짜리
+     폴리선 안의 한 구간이었다) **폴리선 구간까지** 넓혀 다시 찾는다. 넓힌 규칙을 늘 쓰면
+     도면 그림에서 가짜 변이 쏟아져(청라·a1) 기존 도면이 망가진다 — 못 찾았을 때만 쓴다. */
+  let hs=[],vx=new Map();
+  const collect=(useSeg)=>{
+    hs=[];vx=new Map();
+    DW.polys.forEach(p=>{
+      const q=p.p;
+      if(!useSeg){if(q.length!==4)return;}
+      else if(q.length>40)return;            /* 꼭짓점 20개까지 — 이 갈래는 「한 장도 못 찾았을 때」만 돈다 */
+      for(let i=0;i+3<q.length;i+=2){
+        const x1=q[i],y1=q[i+1],x2=q[i+2],y2=q[i+3];
+        const dx=Math.abs(x2-x1),dy=Math.abs(y2-y1);
+        if(dy<=dx*0.002&&dx>=MINW)hs.push({y:(y1+y2)/2,a:Math.min(x1,x2),b:Math.max(x1,x2)});
+        else if(dx<=dy*0.002&&dy>=MINH){
+          const x=(x1+x2)/2,k=Math.round(x/Math.max(1e-9,MINW*0.2));
+          if(!vx.has(k))vx.set(k,[]);
+          vx.get(k).push({x,a:Math.min(y1,y2),b:Math.max(y1,y2)});
+        }
+      }
+    });
+  };
+  collect(false);
   const hasV=(x,y0,y1)=>{
     const step=Math.max(1e-9,MINW*0.2),k0=Math.round(x/step);
     for(let k=k0-1;k<=k0+1;k++){
@@ -13145,22 +13188,53 @@ function dwRects(){
     }
     return false;
   };
-  hKey.forEach(list=>{
-    if(list.length<2||list.length>40)return;
-    list.sort((a,b)=>a.y-b.y);
-    for(let i=0;i<list.length;i++)for(let j=i+1;j<list.length;j++){
-      const y0=list[i].y,y1=list[j].y,h=y1-y0;
-      if(h<MINH)continue;
-      const x0=Math.max(list[i].a,list[j].a),x1=Math.min(list[i].b,list[j].b);
-      if(x1-x0<MINW)continue;
-      if(hasV(x0,y0,y1)&&hasV(x1,y0,y1))push(x0,y0,x1,y1);
-    }
-  });
+  const quads=()=>{
+    const hKey2=new Map();
+    hs.forEach(h=>{
+      const k=Math.round(h.a/Math.max(1e-9,MINW*0.2))+'|'+Math.round(h.b/Math.max(1e-9,MINW*0.2));
+      if(!hKey2.has(k))hKey2.set(k,[]);
+      hKey2.get(k).push(h);
+    });
+    hKey2.forEach(list=>{
+      if(list.length<2||list.length>40)return;
+      list.sort((a,b)=>a.y-b.y);
+      for(let i=0;i<list.length;i++)for(let j=i+1;j<list.length;j++){
+        const y0=list[i].y,y1=list[j].y,h=y1-y0;
+        if(h<MINH)continue;
+        const x0=Math.max(list[i].a,list[j].a),x1=Math.min(list[i].b,list[j].b);
+        if(x1-x0<MINW)continue;
+        if(hasV(x0,y0,y1)&&hasV(x1,y0,y1))push(x0,y0,x1,y1);
+      }
+    });
+  };
+  quads();
+  if(!out.length){collect(true);quads();}     /* 892차: 못 찾았을 때만 폴리선 구간까지 넓혀 다시 */
   if(!out.length)return [];
-  /* 겹치는 틀 정리 — 이중 테두리(안쪽 여백선)·내부 상세 칸은 바깥 것만 남긴다 */
+  /* 겹치는 틀 정리 — 이중 테두리(안쪽 여백선)·내부 상세 칸은 바깥 것만 남긴다.
+     ⚠ 892차: 한 줄로 늘어선 틀들을 **한 덩어리로 감싼 큰 네모**(세로 테두리를 통으로 그은 도면)가 있으면
+     그 안의 진짜 틀들이 「안쪽」으로 몰려 통째로 사라졌다(A03-001: 위쪽 5장이 한 장이 됐다).
+     되풀이되는 크기(3% 안)의 틀을 **두 개 이상 품은 네모는 껍데기로 보고 버린다**. */
+  const sizeKey=r=>Math.round((r[2]-r[0])/50)+'x'+Math.round((r[3]-r[1])/50);
+  const freq=new Map();
+  out.forEach(r=>{const k=sizeKey(r);freq.set(k,(freq.get(k)||0)+1);});
+  let domKey='',domN=0;
+  freq.forEach((n,k)=>{if(n>domN){domN=n;domKey=k;}});
+  const dom=domN>=2?out.filter(r=>sizeKey(r)===domKey):[];
+  /* ⚠ 껍데기 판정은 좁게 — 되풀이 틀이 넷 이상이고, 그 틀들이 네모 넓이의 60% 이상을 채울 때만 버린다.
+     (a1.dwg 처럼 틀 안에 작은 네모가 두어 개 있는 도면에서 바깥 틀을 잃지 않도록) */
+  const area=r=>(r[2]-r[0])*(r[3]-r[1]);
+  const wraps=r=>{
+    if(dom.length<4||sizeKey(r)===domKey)return false;
+    let n=0,cov=0;
+    for(const d of dom){
+      if(d[0]>=r[0]-1&&d[1]>=r[1]-1&&d[2]<=r[2]+1&&d[3]<=r[3]+1){n++;cov+=area(d);}
+    }
+    return n>=2&&cov>=area(r)*0.6;
+  };
   out.sort((a,b)=>((b[2]-b[0])*(b[3]-b[1]))-((a[2]-a[0])*(a[3]-a[1])));
   let keep=[];
   out.forEach(r=>{
+    if(wraps(r))return;                       /* 틀 여러 개를 감싼 껍데기 */
     const inside=keep.some(k=>r[0]>=k[0]-1&&r[1]>=k[1]-1&&r[2]<=k[2]+1&&r[3]<=k[3]+1);
     if(!inside)keep.push(r);
   });
@@ -13348,6 +13422,7 @@ function rDwg(){
       +(DW.name&&!DW.busy?'<div class="dw-file">'+esc(DW.name)+'</div>':'')
       +(st?'<div class="dw-stat">도형 '+st.n.toLocaleString()+' · 글자 '+st.t.toLocaleString()+'</div>':'')
       +(skip?'<div class="dw-warn">못 그린 것 '+esc(skip)+'</div>':'')
+      +dwRefHTML()
       +(DW.err?'<div class="dw-warn dw-bad">'+esc(DW.err)+'</div>':'')
       +'</div></div>'
     +(DW.pages.length?'<div class="card"><div class="tm-h"><span>기준</span></div>'
@@ -13367,7 +13442,8 @@ function rDwg(){
       :'<div class="dw-empty"><svg class="icn" aria-hidden="true"><use href="#i-frame"></use></svg>'
        +'<p>DWG 파일을 열면 도면틀마다 한 장으로 나눠<br>미리보기와 인쇄를 할 수 있습니다.</p></div>')
     +'</div></div>'
-    +'<input type="file" id="dwgFile" accept=".dwg" hidden>';
+    +'<input type="file" id="dwgFile" accept=".dwg" hidden>'
+    +'<input type="file" id="dwgRefFile" accept=".dwg" multiple hidden>';
   dwZoom();
 }
 function dwZoom(){
@@ -13454,6 +13530,7 @@ window.addEventListener('afterprint',()=>{if(_dwAuto){_dwAuto=false;dwPrintUnmou
 document.addEventListener('change',e=>{
   const t=e.target;if(!t)return;
   if(t.id==='dwgFile'){const f=(t.files||[])[0];t.value='';if(f)dwOpen(f);return;}
+  if(t.id==='dwgRefFile'){const fs=t.files;t.value='';dwAddRefs(fs);return;}
   if(t.dataset&&t.dataset.act==='dwg.toggle'&&t.closest('#dwgRoot')){
     const i=Number(t.dataset.i);if(t.checked)DW.off.delete(i);else DW.off.add(i);
     rDwg();
@@ -13461,6 +13538,7 @@ document.addEventListener('change',e=>{
 });
 Object.assign(ACT,{
   'dwg.file':()=>{const i=$('#dwgFile');if(i)i.click();},
+  'dwg.refFile':()=>{const i=$('#dwgRefFile');if(i)i.click();},
   'dwg.reset':()=>{DW.polys=[];DW.texts=[];DW.styles=[];DW.ext=null;DW.pages=[];DW.off=new Set();DW.name='';DW.stat=null;DW.err='';DW.page=1;rDwg();},
   'dwg.mode':el=>{if(DW.mode===el.dataset.m)return;DW.mode=el.dataset.m;dwSplit();rDwg();
     toast(DW.pages.length+'장 ('+(DW.used==='틀'?'도면틀 기준':DW.used==='덩어리'?'오브젝트 기준':'전체 1장')+')');},

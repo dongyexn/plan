@@ -1,6 +1,6 @@
 # H · 주요업무현황
 
-> **현재 배포 기준: v891** — 업무 일정·업무 현황·업무 도구(사진대지 작성·견적 검토·도면 인쇄)·하자처리 현황(민원 현황 포함)·조직·설정을 한 앱에서 운영합니다. 데이터는 Firebase(RTDB·Auth), 배포는 GitHub Pages, 데스크톱 위젯은 Tauri.
+> **현재 배포 기준: v893** — 업무 일정·업무 현황·업무 도구(사진대지 작성·견적 검토·도면 인쇄)·하자처리 현황(민원 현황 포함)·조직·설정을 한 앱에서 운영합니다. 데이터는 Firebase(RTDB·Auth), 배포는 GitHub Pages, 데스크톱 위젯은 Tauri.
 
 팀 업무 일정과 담당자별 현황, 하자처리 현황을 실시간으로 공유하고 관리하는 사내 웹앱.
 
@@ -465,9 +465,9 @@ node scripts/test/smoke.mjs          # 핵심 흐름 클릭 (CHROMIUM 환경변�
 
 | 고칠 파일 | 고칠 자리 |
 |---|---|
-| zip 이름 | `calapp-v891` |
-| `index.html` | `app.js?v=891` |
-| `app.js` | `const APP_VER='891'` |
+| zip 이름 | `calapp-v893` |
+| `index.html` | `app.js?v=893` |
+| `app.js` | `const APP_VER='893'` |
 
 > 어긋나면 static-audit 이 FAIL 로 잡는다.
 
