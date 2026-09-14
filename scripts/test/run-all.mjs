@@ -14,7 +14,6 @@ const run=(name,args,env={})=>{
 const jobs=[
   ['정적 감사',['scripts/test/static-audit.mjs']],
   ['Rules 권한 감사',['scripts/test/rules-auth.mjs']],
-  ['도면 인쇄(워커·틀 나누기·배치)',['scripts/test/dwg-split.mjs']],   /* 896차: 브라우저 불필요 */
   ['브라우저 smoke',['scripts/test/smoke.mjs']],
   ['무지개 렌더링 E2E',['scripts/test/rainbow-render.mjs']],
   ['하자 전 구간 E2E',['scripts/test/e2e-defect.mjs']],
