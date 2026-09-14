@@ -10,7 +10,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='885';
+const APP_VER='891';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -12770,7 +12770,7 @@ function qcParse(text){
     /* 828차: 「2.3*0.6=…」 같은 식이 「2.」 로 시작한다고 세대 머리줄로 읽히면 안 된다 — 뒤에 **글자**가 와야 머리줄 */
     let m=s.match(/^(\d{1,3})\s*[.)]\s+([^\d=+*/].*)$/);
     if(m){flush();sumMode=false;if(m[1]==='1')unit++;place=m[2].trim();return;}
-    if(/^[-•*·]\s*/.test(s)){
+    if(/^[-•*·]\s*[^\d.]/.test(s)){   /* ⚠ 891차: 「-0.4+…」 처럼 숫자가 바로 오면 항목 줄이 아니라 이어지는 식이다 */
       flush();
       const rest=s.replace(/^[-•*·]\s*/,'');
       const c=rest.indexOf(':');
@@ -12784,6 +12784,12 @@ function qcParse(text){
     }
     if(/^=/.test(s)&&pend){pend.expr+=' '+s;return;}
     if(pend&&/^[0-9.+\-*/()= ]+$/.test(s)){pend.expr+=' '+s;return;}   /* 식이 여러 줄로 이어진 경우 */
+    /* ⚠ 891차: 엑셀 칸에서 식이 길면 줄이 넘어간다(사용자 실물). 넘어간 줄은 **연산자로 시작**하거나
+       앞줄이 연산자로 끝난다 — 단위(m·㎡…)가 붙어 있어도 이어 붙인다. 이걸 안 하면 넘어간 토막만 읽어 오답이 된다. */
+    if(pend&&(/^[+\-*/×÷]/.test(s)||/[+\-*/×÷(]$/.test(String(pend.expr).trim()))
+       &&/^[0-9.,+\-*/()=×÷xX\s]*(?:㎡|㎥|m2|m3|평|EA|ea|개|인|본|매|식|mm|cm|m|M)?\s*$/.test(s)){
+      pend.expr+=' '+s;return;
+    }
     /* 828차: 「1+1=3」처럼 항목 줄(- …) 없이 식만 적힌 줄도 한 줄로 본다 */
     if(/=/.test(s)&&/^[0-9.+\-*/()=×÷xX ]+$/.test(s.replace(/(㎡|㎥|m2|m3|평|EA|ea|개|인|본|매|식|mm|cm|m|M)/g,''))){
       flush();pend={unit:unit||1,place:sumMode?'합계':place,item:'',expr:s,sum:sumMode};flush();return;
