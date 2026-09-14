@@ -4350,6 +4350,7 @@ body.qc-dragging{user-select:none}
 .dw-fr{display:grid;grid-template-columns:44px minmax(0,1fr);align-items:center;gap:8px}
 .dw-fr+.dw-fr{margin-top:8px}   /* 817차: 첫 줄 위 여백은 카드 padding 이 이미 준다 */
 .dw-fr label{font-size:12px;font-weight:600;color:var(--lbl2)}
+.dw-fr select{height:25px;padding:0 8px;font-size:12px;width:100%;min-width:0}   /* 896차: 틀 고르개 — 옆 seg 와 같은 높이 */
 .dw-list{max-height:230px;overflow-y:auto;padding:6px 10px 10px}
 .dw-pl{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:var(--rsm);font-size:12.5px;color:var(--lbl);cursor:pointer}
 .dw-pl:hover{background:var(--fill)}
@@ -4800,5 +4801,5 @@ body.qc-dragging{user-select:none}
 <!-- 762차: chart.umd·datalabels·korea-geo·apt-geo 는 app.js 의 loadChart()/loadGeo() 가 필요할 때 읽는다(첫 로드 800KB 절감) -->
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=894"></script>
+<script src="./app.js?v=897"></script>
 </body></html>
