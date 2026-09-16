@@ -10,7 +10,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='896';
+const APP_VER='901';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -2213,7 +2213,8 @@ function mcalPane(y,m,evs,dots){
       let k=0;while(used[k]&&used[k].some(r=>!(r.b<a||r.a>b)))k++;
       (used[k]=used[k]||[]).push({a,b});
       const n=daysBetween(a,b)+1;   /* 이 주 안의 길이 — 머리 조각의 제목이 이어진 조각 위로 흐르게 폭을 준다 */
-      for(let d=a;d<=b;d=addDays(d,1)){(lanes[d]=lanes[d]||[])[k]={e,s:d===e.st||d===ws,en:d===e.en||d===we,head:d===a,n};}
+      let idx=0;
+      for(let d=a;d<=b;d=addDays(d,1)){(lanes[d]=lanes[d]||[])[k]={e,s:d===e.st||d===ws,en:d===e.en||d===we,head:d===a,n,idx:idx++};}
     });
   }
   const today=todayStr();
@@ -2230,7 +2231,11 @@ function mcalPane(y,m,evs,dots){
       +(ln.length
         ?'<span class="mc-bars'+(ln.some(o=>o&&o.head&&o.n>1)?' hd':'')+'">'+Array.from({length:show},(_,k)=>{const o=ln[k];if(!o)return '<i class="mc-bar sp"></i>';
             const e=o.e;
-            return '<i class="mc-bar'+(e.done?' dn':'')+(e.team?' tm':'')+(e.light?' lt':'')+(e.risk?' rk':'')+(o.s?' s':'')+(o.en?' e':'')+'" style="background:'+esc(e.c)+'">'
+            /* ⚠ 900차: 그라디언트 기간 막대는 **머리 조각 하나를 주 안 길이만큼 늘려** 그린다(조각마다 배경을 자르는 899차 방식은
+               조각 폭이 2px 씩 달라 이음매가 보였다). 뒤 조각은 자리만 차지하고 투명. 폭 = n×100% + (2n−4)px (머리·꼬리 2px 안쪽 여백 보정). */
+            const grad=/gradient\(/.test(String(e.c))&&o.n>1;
+            const bg=(grad&&!o.head)?'background:transparent':('background:'+esc(e.c)+(grad?';width:calc('+o.n+'*100% + '+(2*o.n-4)+'px);position:relative;z-index:1;border-radius:3px':''));
+            return '<i class="mc-bar'+(e.done?' dn':'')+(e.team?' tm':'')+(e.light?' lt':'')+(e.risk?' rk':'')+(o.s?' s':'')+(o.en?' e':'')+(grad?' gw':'')+'" style="'+bg+'">'
               +((o.head||e.team)?'<b'+((o.head&&o.n>1)?' style="width:calc('+o.n+'*100% - '+(2*o.n+2)+'px)"':'')+'>'+(o.head?esc(e.t):'')+'</b>':'')+'</i>';}).join('')
           +(over?'<i class="mc-more">+'+(ln.filter(Boolean).length-show)+'</i>':'')+'</span>'
         :'')
@@ -7979,7 +7984,7 @@ function dfTopbar(){
     if(on){if(S.dfSid){if(dfLocalDirty(S.dfSid))t='이 PC 원본 · 미게시 변경';}
            else{const n=dfLocalDirtySites().length;if(n)t='이 PC 원본 · 미게시 변경 '+n+'개 현장';}}
     lc.hidden=!t;lc.textContent=t;lc.dataset.s=t?'미게시':'';}   /* data-s: 좁은 화면(≤900)은 CSS 가 이 짧은 글자만 보인다 */
-  const xw=$('#tbXlWrap');if(xw)xw.hidden=(S.view!=='photo');
+  const xw=$('#tbXlWrap');if(xw)xw.hidden=!(S.view==='photo'||S.view==='redo'||S.view==='prod');   /* 901차: 재하자·생산성도 엑셀 */
 
   if(pw){pw.hidden=!(on||S.view==='photo'||S.view==='dwg');   /* 인쇄 버튼 — 하자처리 현황 · 사진대지(798차) · 도면 인쇄(815차) */
     /* 801차: 왼쪽에 보이는 것이 있을 때만 구분선 */
@@ -9612,6 +9617,17 @@ function copyText(t,msg){
     if(dt>700||!CAL)return;
     const inCal=!!tgt0.closest('#view-calendar .cal-card'),inDp=!!tgt0.closest('#view-calendar .dp-col');
     if(!inCal&&!inDp)return;
+    /* 899차(사용자): 폰에서 업무 패널을 좌우로 밀면 **하루씩** 옮긴다 — 선택 날짜가 바뀌고, 달이 바뀌면 달력도 따라간다 */
+    if(phone()&&inDp&&Math.abs(dx)>60&&Math.abs(dy)<40&&!tgt0.closest('.dp-body [data-act],button,a,input,textarea,select')){
+      const ds=addDays(S.selDate||todayStr(),dx<0?1:-1);
+      const col=$('#view-calendar .dp-col');
+      if(col){col.style.transition='none';col.style.transform='translateX('+(dx<0?12:-12)+'px)';col.style.opacity='.6';}
+      selDate(ds,true);   /* 달이 바뀌면 selDate 안에서 CAL.gotoDate 로 따라간다 */
+      rCalMini&&rCalMini();
+      if(col){requestAnimationFrame(()=>{col.style.transition='transform .18s ease-out,opacity .18s';col.style.transform='';col.style.opacity='';
+        setTimeout(()=>{col.style.transition='';},220);});}
+      return;
+    }
     if(phone())return;   /* 733차: 폰 세로는 위 드래그 경로가 전부 맡는다 */
     if(Math.abs(dx)>60&&Math.abs(dy)<40){if(dx<0)CAL.next();else CAL.prev();return;}
     if(!isMob())return;
@@ -9648,6 +9664,10 @@ document.addEventListener('contextmenu',e=>{
 document.addEventListener('mousedown',e=>{if(REC._menu&&!e.target.closest('#rlMenu'))recCloseMenu();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&REC._menu){e.stopImmediatePropagation();e.preventDefault();recCloseMenu();}},true);
 function ctxFor(t){
+  /* 901차: 재하자·생산성 표 열 머리 — 필터행 표시/숨기기 */
+  const tth=t.closest('#rdRoot .rd-tbl thead,#pvRoot .pv-tbl thead');
+  if(tth){const F=tth.closest('#rdRoot')?RD:PV,r=F===RD?rRedo:rProd;
+    return[{label:F.frow?'필터행 숨기기':'필터행 표시',act:()=>{F.frow=!F.frow;r();}},{label:'필터 지우기',act:()=>{F.filters={};r();}}];}
   /* ⓪-0 피벗 셀 — 드릴다운(해당 조합의 원본 목록) + 값 복사 */
   const ptd=t.closest('.pv-table td');
   if(ptd&&PIV.on){
@@ -9872,7 +9892,7 @@ setInterval(()=>{
 },60000);
 
 /* ═══════════ 화면 전환 · 공통 UI ═══════════ */
-const VIEW_TTL={calendar:'캘린더',tasks:'업무 현황',photo:'사진대지 작성',qc:'견적 검토',dwg:'도면 인쇄',defect:'하자처리 현황',org:'조직 관리',settings:'설정'};
+const VIEW_TTL={calendar:'캘린더',tasks:'업무 현황',photo:'사진대지 작성',qc:'견적 검토',dwg:'도면 인쇄',redo:'재하자 추적',prod:'생산성 검토',defect:'하자처리 현황',org:'조직 관리',settings:'설정'};
 function go(view){
   if(view==='report')view='tasks';   /* 주요 업무는 업무 현황으로 통합됐다(316차) — 옛 진입점은 넘겨 준다 */
   if(S.view==='org'&&view!=='org'&&orgDraftN()){   /* 696차: 현장 표 초안을 버리고 나가지 않도록 */
@@ -9904,6 +9924,8 @@ function go(view){
   if(view==='photo')rPhoto();   /* 798차 */
   if(view==='qc')rQc();         /* 811차 */
   if(view==='dwg')rDwg();       /* 815차 */
+  if(view==='redo')rRedo();     /* 901차 */
+  if(view==='prod')rProd();     /* 901차 */
   if(view==='defect')rDefect();
   dfTopbar();rDefectNav();
   if(view==='org'){
@@ -9992,7 +10014,7 @@ function sbLogoInit(){
 function mobClose(){
   /* ⚠ 864차: 사이드바가 열려 있으면 그것부터 닫는다 — 시트를 먼저 닫느라 오른쪽 빈 곳을 눌러도 안 닫히는 것처럼 보였다 */
   const sb=$('#sidebar');
-  if(sb&&sb.classList.contains('mob-open')){sb.classList.remove('mob-open');$('#scrim').classList.toggle('on',!!S.dpSheet);return;}
+  if(sb&&sb.classList.contains('mob-open')){sb.classList.remove('mob-open');$('#scrim').classList.remove('on');return;}   /* 898차: 스크림은 사이드바 전용 — 패널이 열려 있어도 걷는다(음영이 남던 버그) */
   if(S.dpSheet){dpSheet(false);return;}
   if(sb)sb.classList.remove('mob-open');$('#scrim').classList.remove('on');}
 
@@ -10740,10 +10762,8 @@ const ACT={
     if(!$('#ymPop'))closeModal();   /* 팝업으로 열렸으면 그대로 둔다 — 연달아 옮겨 볼 수 있다 */
     if(!CAL)return;
     CAL.gotoDate(new Date(y,m-1,1));
-    /* 그 달에 오늘이 있으면 오늘을, 아니면 1일을 고른다 */
-    const t=new Date(),same=t.getFullYear()===y&&t.getMonth()+1===m;
-    selDate(y+'-'+pad(m)+'-'+pad(same?t.getDate():1),true);   /* 이동만 — 업무 팝업은 열지 않는다 */
-    rMonTitle();subVisibleMonths();refetchCal();
+    /* 898차(사용자): 달을 옮겼다고 1일을 저절로 고르지 않는다 — 고른 날짜는 사용자가 누른 것만 */
+    rMonTitle();subVisibleMonths();refetchCal();rCalMini&&rCalMini();
     const yp=$('#ymPop');if(yp)yp.innerHTML=ymPickHTML();   /* 고른 달을 팝업에도 표시 */},
   'wid.popClose':()=>{S.widPop=false;if(S.planEdit)closePlanEdit();rWidget();},
   /* 위젯 내려받기 — 늘 최신 릴리스를 가리키는 고정 주소(팀원은 받아서 두 번 누르면 끝).
@@ -10957,6 +10977,11 @@ document.addEventListener('change',e=>{
 /* 미처리 목록 — 필터행 입력·메뉴 검색은 input 이벤트로 듣는다(click 위임으로는 못 받는다) */
 document.addEventListener('input',e=>{
   const t=e.target;
+  if(t.classList&&t.classList.contains('tl-fin')){   /* 901차: 재하자·생산성 필터행 */
+    const F=t.dataset.tl==='rd'?RD:PV,k=t.dataset.key,v=t.value;F.filters[k]=v;if(!String(v||'').trim())delete F.filters[k];
+    (F===RD?rRedo:rProd)();const el=document.querySelector('.tl-fin[data-tl="'+t.dataset.tl+'"][data-key="'+k+'"]');if(el){el.focus();el.setSelectionRange(v.length,v.length);}
+    return;
+  }
   if(t.classList&&t.classList.contains('rl-fin')){
     REC.filters[t.dataset.key]=t.value;
     if(!String(t.value||'').trim())delete REC.filters[t.dataset.key];
@@ -12649,7 +12674,7 @@ Object.assign(ACT,{
   'pd.annColor':el=>{PD.color=el.dataset.c;pdAnnApply({c:PD.color});rPdSel();},
   'pd.annLw':el=>{PD.lw=Number(el.dataset.w);pdAnnApply({w:PD.lw});rPdSel();},
   'pd.annDash':el=>{PD.dash=Number(el.dataset.d);pdAnnApply({d:PD.dash});rPdSel();},
-  'pd.xlsx':()=>pdXlsx(),
+  'pd.xlsx':()=>{if(S.view==='redo')return rdXlsx();if(S.view==='prod')return pvXlsx();pdXlsx();},   /* 901차: 머리줄 「엑셀」은 화면별로 */
 
   'pd.pgGo':el=>pdPgGo(Number(el.dataset.d)),
   'pd.fit':el=>{const f=el.dataset.f;PD.photos.forEach(p=>{if(PD.sel.has(p.id))p.fit=f;});
@@ -13593,14 +13618,19 @@ function calTodaySync(){
 function calTodayPlace(){
   const wrap=$('#calTodayWrap');if(!wrap)return;
   const mob=!WIDGET&&matchMedia('(max-width:960px)').matches;
-  if(!mob){wrap.style.cssText='';wrap.classList.remove('on-bar');return;}
+  wrap.style.cssText='';
+  if(!mob){
+    wrap.classList.remove('on-bar');
+    const host=$('#view-calendar .cal-move');
+    if(host&&wrap.previousElementSibling!==host)host.after(wrap);
+    return;
+  }
+  /* 898차(사용자): 년월 옆에 좌표로 붙이던 것은 년월 폭 따라 자리가 흔들렸다 —
+     폰에서는 **필터 묶음(.cal-ctl > #calFiltWrap) 앞**에 심어 필터·찾기와 같은 줄, 같은 모양으로 둔다.
+     .cal-ctl 은 정적 마크업이라 다시 그려져도 지워지지 않는다. */
   wrap.classList.add('on-bar');
-  /* ⚠ 폰은 년월이 상단바에 있고 그 상단바는 수시로 다시 그려진다 — 옮겨 심으면 지워지므로
-     제자리에 두고 **좌표만** 상단바의 년월 오른쪽에 맞춘다. */
-  const ym=$('#topbar .tbt-ym'),bar=$('#topbar');
-  if(!ym||!bar)return;
-  const r=ym.getBoundingClientRect(),b=bar.getBoundingClientRect();
-  wrap.style.cssText='position:fixed;z-index:1000;left:'+Math.round(r.right+14)+'px;top:'+Math.round(b.top+(b.height-30)/2)+'px;height:30px;margin:0;';
+  const fw=$('#view-calendar #calFiltWrap');
+  if(fw&&wrap.nextElementSibling!==fw)fw.before(wrap);
 }
 addEventListener('resize',()=>calTodayPlace());
 document.addEventListener('keydown',e=>{
@@ -13882,6 +13912,278 @@ ${anchors.map((an, i) => `<xdr:twoCellAnchor editAs="oneCell">
     const b2 = $('#tbXlWrap button'); if (b2) b2.disabled = false;
   }
 }
+
+/* ═══════════ 901차: 업무 도구 — 재하자 추적 · 생산성 검토(이 창 메모리에서만) ═══════════
+   둘 다 「전체 하자 목록」 한 파일(xlsx·csv)을 읽어 나눠 쓴다(TL). 읽기는 하자처리 현황과 같은 함수
+   (csvDecode·csvToAoA·rowsToObjs·readWorkbookSafe·nd) — CP949 CSV·엑셀 날짜·시리얼을 그쪽 규칙대로 받는다.
+   하자구분 열이 있으면 「세대」만 남긴다(공용부·상가 제외, 760차 규칙과 같다).
+   처리일 = 처리확인일(하자처리 현황 norm() 과 같다) · 완료 = 처리상태 처리/처리완료/완료 또는 처리확인일 있음.
+   생산성의 투입일은 업체처리일(없으면 처리확인일) — 업체가 실제로 들어간 날이 기준이라서. */
+const TL={name:'',rows:[],all:0,unit:0,busy:false};
+const RD={own:'out',ty:'any',st:'all',frow:false,filters:{},yes:new Set(),groups:[]};
+const PV={co:'',from:'',to:'',md:2,tab:'day',frow:false,filters:{}};
+function tlNorm(r){
+  const pick=(...ks)=>{for(const k of ks){const v=r[k];if(v!=null&&String(v).trim()!=='')return v;}return '';};
+  const S_=k=>String(pick(k)||'').trim();
+  const st=S_('처리상태'),fin=nd(pick('처리확인일')),vend=nd(pick('업체처리일'));
+  const done=(st==='처리'||st==='처리완료'||st==='완료')||!!fin;
+  return{no:S_('접수번호'),dg:S_('동'),ho:S_('호'),cls:S_('하자구분'),sp:S_('공간'),gj:S_('공종'),ty:S_('하자유형'),
+    memo:S_('접수내용'),fix:S_('처리내용'),rcv:nd(pick('접수일')),fin,vend,done,own:S_('보수주체'),co:S_('보수업체'),site:S_('현장')};
+}
+function tlAccept(aoa){
+  const{rows,headers}=rowsToObjs(aoa);
+  const need=['동','호','공종','접수일'].filter(c=>!headers.includes(c));
+  if(need.length){toast('필수 컬럼 누락: '+need.join(', '),5000);return;}
+  const hasCls=headers.includes('하자구분');
+  const all=rows.map(tlNorm).filter(r=>r.rcv);
+  TL.rows=hasCls?all.filter(r=>r.cls==='세대'):all;
+  TL.all=all.length;TL.unit=TL.rows.length;
+  RD.yes=new Set(rdYesLoad());RD.groups=[];RD.filters={};
+  PV.co='';PV.from='';PV.to='';PV.filters={};
+  if(S.view==='redo')rRedo();else rProd();
+  toast((hasCls?'세대 ':'')+TL.unit.toLocaleString()+'건을 읽었습니다');
+}
+async function tlOpen(f){
+  const ext=f.name.split('.').pop().toLowerCase();
+  TL.busy=true;TL.name=f.name;(S.view==='redo'?rRedo:rProd)();
+  const fail=m=>{TL.busy=false;TL.name='';toast(m,5000);(S.view==='redo'?rRedo:rProd)();};
+  try{
+    const buf=await f.arrayBuffer();
+    let aoa;
+    if(ext==='csv')aoa=csvToAoA(csvDecode(buf));
+    else if(ext==='xlsx'||ext==='xls'){
+      try{await loadXlsx();}catch(e){return fail('엑셀 모듈 로드 실패 · 네트워크·CDN 차단 확인');}
+      const wb=readWorkbookSafe(buf,{type:'array',cellDates:true});
+      aoa=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:'',raw:false,dateNF:'yyyy-mm-dd'});
+    }else return fail('지원하지 않는 형식: '+ext);
+    TL.busy=false;tlAccept(aoa);
+  }catch(err){
+    console.error('[업무 도구] 목록 읽기',err);
+    const msg=String(err&&err.message||err);
+    fail(/Encrypted|EncryptionInfo|ECMA-376/i.test(msg)?'암호(AIP)로 보호된 엑셀입니다 — CSV 로 저장해 올려 주세요':'읽기 실패: '+msg);
+  }
+}
+function tlReset(){TL.name='';TL.rows=[];TL.all=0;TL.unit=0;RD.groups=[];RD.filters={};PV.co='';PV.from='';PV.to='';PV.filters={};(S.view==='redo'?rRedo:rProd)();}
+function tlSite(){const c={};TL.rows.forEach(r=>{if(r.site)c[r.site]=(c[r.site]||0)+1;});return Object.keys(c).sort((a,b)=>c[b]-c[a])[0]||'';}
+function tlRange(rows,k){let a='',b='';rows.forEach(r=>{const v=r[k];if(!v)return;if(!a||v<a)a=v;if(!b||v>b)b=v;});return[a,b];}
+function tlDot(d){return d?d.slice(0,4)+'.'+d.slice(5,7)+'.'+d.slice(8,10):'';}
+function tlIsOut(v){return /외주/.test(v||'');}
+/* 파일 카드 — 두 화면이 같은 것을 쓴다 */
+function tlCard(){
+  const[a,b]=tlRange(TL.rows,'rcv');
+  const out=TL.rows.filter(r=>tlIsOut(r.own)).length;
+  return '<div class="card"><div class="tm-h"><span>하자 목록</span>'+(TL.rows.length?'<button class="btn bo bxs" data-act="tl.reset">초기화</button>':'')+'</div>'
+    +'<div class="dw-b">'
+    +(TL.busy?'<div class="dw-load">'+esc(TL.name)+' 읽는 중…</div>'
+      :'<button class="dw-open" data-act="tl.file"><svg class="icn" aria-hidden="true"><use href="#i-folder"></use></svg>'+(TL.rows.length?'다른 파일 열기':'하자 목록 열기')+'</button>')
+    +(TL.rows.length?'<div class="dw-file">'+esc(TL.name)+'</div>'
+      +'<div class="dw-stat">'+esc(tlSite()||'현장 미기재')+' · 세대 '+TL.unit.toLocaleString()+'건'+(TL.all>TL.unit?'(공용부 '+(TL.all-TL.unit).toLocaleString()+'건 제외)':'')+' · 접수 '+tlDot(a)+' ~ '+tlDot(b)
+      +'<br>외주 보수 '+out.toLocaleString()+'건 · 시공업체 '+(TL.unit-out).toLocaleString()+'건</div>':'')
+    +'<input type="file" id="tlFile" accept=".xlsx,.xls,.csv" hidden></div></div>';
+}
+function tlSeg(cur,list,attr){return '<span class="seg">'+list.map(([k,l])=>'<button class="'+(String(cur)===String(k)?'act':'')+'" '+attr+'="'+k+'">'+l+'</button>').join('')+'</span>';}   /* attr: 'data-act="…" data-k' — 감사기가 data-act 를 글자 그대로 찾는다 */
+function tlEmpty(msg){return '<div class="qc-empty"><svg class="icn" aria-hidden="true"><use href="#i-folder"></use></svg><p>'+msg+'</p></div>';}
+function tlFrow(cols,F,cls){return '<tr class="rl-frow'+(F.frow?' open':'')+'"><td class="rl-fc"></td>'+cols.map(k=>'<td class="rl-fc"><input class="rl-fin tl-fin" data-tl="'+cls+'" data-key="'+k+'" value="'+esc(F.filters[k]||'')+'" autocomplete="off" aria-label="필터"></td>').join('')+'</tr>';}
+function tlMatch(F,get){for(const k in F.filters){const q=String(F.filters[k]||'').trim().toLowerCase();if(!q)continue;if(!String(get(k)||'').toLowerCase().includes(q))return false;}return true;}
+function tlTag(k,t){return '<span class="qc-tag '+k+'">'+esc(t)+'</span>';}
+function tlOwnTag(v){return v?tlTag(tlIsOut(v)?'up':'sk',v):'';}
+function tlStTag(r){return r.done?tlTag('ok','완료'):tlTag('no','미처리');}
+function tlDays(a,b){return Math.round((new Date(b)-new Date(a))/864e5);}
+function tlSaveWb(wb,name){
+  const buf=XLSX.write(wb,{type:'array',bookType:'xlsx'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));a.download=name;
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+}
+
+/* ── 재하자 추적 ──
+   같은 동·호·공간·공종 안에서 접수일 차례로 세운 뒤, 「완료」 이고 처리일이 있는 첫 건(1차) 뒤에
+   처리일보다 늦게 접수된 건이 있으면 그 묶음이 후보다. 2차 이후는 전부 재접수(후보 건수)로 센다.
+   하자유형이 1차와 다른 재접수는 「유형 다름」 배지 — 기준 「같음」이면 그 재접수는 뺀다. */
+function rdBuild(){
+  const g={};
+  TL.rows.forEach(r=>{if(!r.dg||!r.ho||!r.gj)return;const k=r.dg+'|'+r.ho+'|'+r.sp+'|'+r.gj;(g[k]=g[k]||[]).push(r);});
+  const out=[];
+  Object.keys(g).forEach(k=>{
+    const rows=g[k].slice().sort((a,b)=>a.rcv<b.rcv?-1:a.rcv>b.rcv?1:0);
+    for(let i=0;i<rows.length;i++){
+      const base=rows[i];if(!base.done||!base.fin)continue;
+      let re=rows.slice(i+1).filter(r=>r.rcv>base.fin);
+      if(RD.ty==='same')re=re.filter(r=>r.ty===base.ty);
+      if(!re.length)continue;
+      if(RD.own==='out'&&!tlIsOut(base.own))continue;
+      if(RD.own==='co'&&tlIsOut(base.own))continue;
+      const diff=re.filter(r=>r.ty!==base.ty).length;
+      const key=k+'|'+(base.no||base.rcv);
+      out.push({key,base,re,rows:[base].concat(re),diff,gap:tlDays(base.fin,re[0].rcv),last:re[re.length-1]});
+      break;   /* 한 묶음에 후보는 하나 — 2차 이후는 재접수로 이미 들어 있다 */
+    }
+  });
+  const nc=(a,b)=>a.localeCompare(b,'ko',{numeric:true});
+  out.sort((a,b)=>nc(a.base.dg,b.base.dg)||nc(a.base.ho,b.base.ho)||nc(a.base.sp,b.base.sp)||a.base.rcv.localeCompare(b.base.rcv));
+  RD.groups=out;
+}
+function rdYesKey(){return 'rd.yes.'+(tlSite()||'x');}
+function rdYesLoad(){try{return JSON.parse(localStorage.getItem(rdYesKey())||'[]');}catch(e){return[];}}
+function rdYesSave(){try{localStorage.setItem(rdYesKey(),JSON.stringify([...RD.yes]));}catch(e){}}
+const RD_COLS=['dg','ho','sp','gj','ty','memo','fix','rcv','fin','st','own','co'];
+function rdCell(r,k){switch(k){case 'st':return r.done?'완료':'미처리';default:return r[k]||'';}}
+function rdVisible(){
+  return RD.groups.filter(G=>{
+    const yes=RD.yes.has(G.key);
+    if(RD.st==='yes'&&!yes)return false;if(RD.st==='no'&&yes)return false;if(RD.st==='open'&&G.last.done)return false;
+    return tlMatch(RD,k=>G.rows.map(r=>rdCell(r,k)).join('\n'));
+  });
+}
+function rRedo(){
+  const root=$('#rdRoot');if(!root)return;
+  if(TL.rows.length)rdBuild();
+  const G=RD.groups,vis=rdVisible();
+  const reN=G.reduce((s,x)=>s+x.re.length,0),units=new Set(G.map(x=>x.base.dg+'|'+x.base.ho)).size,diffN=G.reduce((s,x)=>s+x.diff,0);
+  let yesN=0;G.forEach(x=>{if(RD.yes.has(x.key))yesN++;});
+  const rows=vis.map(x=>{
+    const on=RD.yes.has(x.key);
+    return '<tr class="sub top rd-g'+(on?' on':'')+'" data-key="'+esc(x.key)+'"><td class="n"><input type="checkbox" class="rd-ck" data-act="rd.ck" data-key="'+esc(x.key)+'"'+(on?' checked':'')+' aria-label="재하자"></td>'
+      +'<td class="rd-dg">'+esc(x.base.dg)+'</td><td class="rd-ho">'+esc(x.base.ho)+'</td><td class="pl">'+esc(x.base.sp)+'</td><td class="it">'+esc(x.base.gj)+'</td>'
+      +'<td colspan="3"><span class="rd-gm">재접수 '+x.re.length+'회 · 완료 후 '+x.gap+'일</span>'+(x.diff?' '+tlTag('no','유형 다름'):'')+'</td>'
+      +'<td></td><td></td><td></td><td class="st">'+tlOwnTag(x.base.own)+'</td><td class="rd-co">'+esc(x.base.co)+'</td></tr>'
+      +x.rows.map((r,i)=>'<tr class="rd-r"><td class="n">'+(i+1)+'차</td><td></td><td></td><td></td><td></td><td class="rd-ty">'+esc(r.ty)+'</td><td class="rd-memo">'+esc(r.memo)+'</td><td class="rd-memo">'+esc(r.fix)+'</td>'
+        +'<td class="rd-d">'+esc(r.rcv)+'</td><td class="rd-d">'+(r.fin||'—')+'</td><td class="st">'+tlStTag(r)+'</td><td></td><td></td></tr>').join('');
+  }).join('');
+  root.innerHTML='<div class="qc-grid"><div class="qc-col">'
+    +'<div class="card"><div class="tm-h"><span>결과</span></div><div class="qc-sum">'
+      +'<div class="qc-sc"><span>후보</span><b>'+reN+'</b></div><div class="qc-sc ok"><span>재하자 확정</span><b>'+yesN+'</b></div><div class="qc-sc no"><span>유형 다름</span><b>'+diffN+'</b></div></div></div>'
+    +tlCard()
+    +'<div class="card"><div class="tm-h"><span>기준</span></div><div class="qc-b">'
+      +'<div class="qc-fr"><label>보수주체</label>'+tlSeg(RD.own,[['all','전체'],['out','외주'],['co','시공업체']],'data-act="rd.own" data-k')+'</div>'
+      +'<div class="qc-fr"><label>하자유형</label>'+tlSeg(RD.ty,[['same','같음'],['any','공종만']],'data-act="rd.ty" data-k')+'</div>'
+    +'</div></div>'
+  +'</div><div class="qc-col qc-right">'
+    +'<div class="tkbar qc-bar"><span class="qc-t">재하자 후보<span>'+(G.length?reN+'건 · '+units+'세대'+(vis.length<G.length?' · 표시 '+vis.length+'묶음':''):'')+'</span></span>'
+      +'<span>'+tlSeg(RD.st,[['all','전체'],['yes','확정'],['no','미확정'],['open','미처리']],'data-act="rd.st" data-k')+'</span></div>'
+    +(TL.rows.length
+      ?(G.length?'<div class="qc-wrap rd-wrap"><table class="qc-tbl rd-tbl"><thead><tr>'
+        +'<th class="n">재하자</th><th class="rd-dg">동</th><th class="rd-ho">호</th><th class="pl">공간</th><th class="it">공종</th><th class="rd-ty">하자유형</th><th>접수내용</th><th>처리내용</th><th class="rd-d">접수일</th><th class="rd-d">처리일</th><th class="st">처리상태</th><th class="st">보수주체</th><th class="rd-co">보수업체</th></tr>'
+        +tlFrow(RD_COLS,RD,'rd')+'</thead><tbody>'+(rows||'<tr><td colspan="13" class="rd-none">조건에 맞는 묶음이 없습니다</td></tr>')+'</tbody></table></div>'
+        :tlEmpty('완료 후 같은 세대·공간·공종으로 다시 접수된 건이 없습니다'))
+      :tlEmpty('전체 하자 목록(xlsx·csv)을 열면<br>완료 후 같은 세대·공간·공종으로 다시 접수된 건을 찾습니다'))
+  +'</div></div>';
+}
+async function rdXlsx(){
+  if(!RD.groups.length){toast('내보낼 후보가 없습니다');return;}
+  try{await loadXlsx();}catch(e){toast('엑셀 모듈 로드 실패');return;}
+  const H=['재하자','동','호','공간','공종','차수','하자유형','접수내용','처리내용','접수일','처리일','처리상태','보수주체','보수업체','접수번호'];
+  const aoa=[H];
+  rdVisible().forEach(x=>x.rows.forEach((r,i)=>aoa.push([RD.yes.has(x.key)?'Y':'',x.base.dg,x.base.ho,x.base.sp,x.base.gj,(i+1)+'차',r.ty,r.memo,r.fix,r.rcv,r.fin,r.done?'완료':'미처리',r.own,r.co,r.no])));
+  const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[5,6,7,9,8,5,14,40,30,11,11,8,9,16,12].map(w=>({wch:w}));
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'재하자 후보');
+  tlSaveWb(wb,'재하자추적'+(tlSite()?'_'+tlSite():'')+'_'+todayStr().replace(/-/g,'')+'.xlsx');
+  toast((aoa.length-1)+'줄을 엑셀로 내보냈습니다');
+}
+
+/* ── 생산성 검토 — 보수주체 외주 건만. 투입일 = 업체처리일(없으면 처리확인일) ── */
+function pvDay(r){return r.vend||r.fin;}
+function pvOut(){return TL.rows.filter(r=>tlIsOut(r.own)&&pvDay(r));}
+function pvCos(){const c={};pvOut().forEach(r=>{const k=r.co||'(보수업체 미기재)';c[k]=(c[k]||0)+1;});return Object.keys(c).sort((a,b)=>c[b]-c[a]).map(k=>[k,c[k]]);}
+function pvRows(){
+  const co=PV.co;return pvOut().filter(r=>(r.co||'(보수업체 미기재)')===co&&(!PV.from||pvDay(r)>=PV.from)&&(!PV.to||pvDay(r)<=PV.to)).sort((a,b)=>pvDay(a).localeCompare(pvDay(b))||a.rcv.localeCompare(b.rcv));
+}
+function pvWeek(d){const t=new Date(d);const wd=(t.getDay()+6)%7;t.setDate(t.getDate()-wd);return dstr(t);}
+const PV_COLS=['day','dg','ho','gj','memo','fix'];
+function rProd(){
+  const root=$('#pvRoot');if(!root)return;
+  const cos=pvCos();
+  if(TL.rows.length&&!cos.some(c=>c[0]===PV.co)){PV.co=cos.length?cos[0][0]:'';PV.from='';PV.to='';}
+  if(PV.co&&!PV.from&&!PV.to){const all=pvOut().filter(r=>(r.co||'(보수업체 미기재)')===PV.co);[PV.from,PV.to]=tlRange(all.map(r=>({d:pvDay(r)})),'d');}
+  const rows=pvRows(),md=Number(PV.md)>0?Number(PV.md):1;
+  const byDay={};rows.forEach(r=>{const d=pvDay(r);(byDay[d]=byDay[d]||[]).push(r);});
+  const days=Object.keys(byDay).sort();
+  const N=rows.length,D=days.length,MD=D*md;
+  const f1=v=>(Math.round(v*10)/10).toLocaleString(undefined,{minimumFractionDigits:1,maximumFractionDigits:1});
+  const f2=v=>(Math.round(v*100)/100).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+  let body='';
+  if(PV.tab==='day'){
+    body=days.map((d,i)=>{
+      const L=byDay[d];
+      const vis=L.filter(r=>tlMatch(PV,k=>k==='day'?d:(r[k]||'')));
+      if(Object.keys(PV.filters).length&&!vis.length)return '';
+      const gjs=[...new Set(L.map(r=>r.gj).filter(Boolean))];
+      const units=new Set(L.map(r=>r.dg+'|'+r.ho)).size;
+      return '<tr class="sub top rd-g"><td class="n">'+(i+1)+'</td><td class="pv-d">'+d+'</td><td></td><td></td><td class="pv-g">'+esc(gjs.slice(0,3).join(' · ')+(gjs.length>3?' 외 '+(gjs.length-3):''))+'</td><td colspan="2"></td>'
+        +'<td class="v">'+L.length+'</td><td class="v">'+units+'</td><td class="v">'+f1(md)+'</td><td class="v">'+f1(L.length/md)+'</td></tr>'
+        +vis.map((r,j)=>'<tr class="rd-r"><td class="n">'+(j+1)+'</td><td></td><td class="rd-dg">'+esc(r.dg)+'</td><td class="rd-ho">'+esc(r.ho)+'</td><td class="pv-g">'+esc(r.gj)+'</td><td class="rd-memo">'+esc((r.sp?r.sp+' ':'')+r.memo)+'</td><td class="rd-memo">'+esc(r.fix)+'</td><td colspan="4"></td></tr>').join('');
+    }).join('');
+  }else if(PV.tab==='gj'){
+    const c={};rows.forEach(r=>{const k=r.gj||'(공종 미기재)';const o=c[k]=c[k]||{n:0,u:new Set(),d:new Set()};o.n++;o.u.add(r.dg+'|'+r.ho);o.d.add(pvDay(r));});
+    body=Object.keys(c).sort((a,b)=>c[b].n-c[a].n).map((k,i)=>'<tr><td class="n">'+(i+1)+'</td><td colspan="4">'+esc(k)+'</td><td colspan="2"></td><td class="v">'+c[k].n+'</td><td class="v">'+c[k].u.size+'</td><td class="v">'+c[k].d.size+'일</td><td class="v">'+(N?f1(c[k].n/N*100)+'%':'')+'</td></tr>').join('');
+  }else{
+    const c={};days.forEach(d=>{const w=pvWeek(d);const o=c[w]=c[w]||{n:0,d:0,u:new Set()};o.n+=byDay[d].length;o.d++;byDay[d].forEach(r=>o.u.add(r.dg+'|'+r.ho));});
+    body=Object.keys(c).sort().map((w,i)=>'<tr><td class="n">'+(i+1)+'</td><td class="pv-d">'+w+' 주</td><td colspan="5"></td><td class="v">'+c[w].n+'</td><td class="v">'+c[w].u.size+'</td><td class="v">'+f1(c[w].d*md)+'</td><td class="v">'+f1(c[w].n/(c[w].d*md))+'</td></tr>').join('');
+  }
+  const head=PV.tab==='day'
+    ?'<th class="n">NO</th><th class="pv-d">처리일</th><th class="rd-dg">동</th><th class="rd-ho">호</th><th class="pv-g">공종</th><th>접수내용</th><th>처리내용</th><th class="v">처리건수</th><th class="v">세대</th><th class="v">공수 / 일</th><th class="v">건 / 공수</th></tr>'+tlFrow(PV_COLS,PV,'pv')
+    :PV.tab==='gj'?'<th class="n">NO</th><th colspan="4">공종</th><th colspan="2"></th><th class="v">처리건수</th><th class="v">세대</th><th class="v">투입일</th><th class="v">비율</th></tr>'
+    :'<th class="n">NO</th><th class="pv-d">주(월요일)</th><th colspan="5"></th><th class="v">처리건수</th><th class="v">세대</th><th class="v">공수</th><th class="v">건 / 공수</th></tr>';
+  root.innerHTML='<div class="qc-grid"><div class="qc-col">'
+    +'<div class="card"><div class="tm-h"><span>실적</span>'+(D?'<span class="tm-sub">'+tlDot(days[0])+' ~ '+tlDot(days[D-1]).slice(5)+'</span>':'')+'</div>'
+      +'<div class="qc-sum pv-sum"><div class="qc-sc"><span>총 처리 건수</span><b>'+N.toLocaleString()+'</b></div><div class="qc-sc"><span>총 투입일</span><b>'+D+'</b></div><div class="qc-sc"><span>총 투입 공수</span><b>'+f1(MD)+'</b></div></div>'
+      +'<div class="qc-sum pv-sum pv-sum2"><div class="qc-sc ok"><span>처리 / 일</span><b>'+(D?f1(N/D):'—')+'</b></div><div class="qc-sc ok"><span>건 / 공수</span><b>'+(MD?f1(N/MD):'—')+'</b></div><div class="qc-sc"><span>공수 / 건</span><b>'+(N?f2(MD/N):'—')+'</b></div></div></div>'
+    +tlCard()
+    +'<div class="card"><div class="tm-h"><span>조건</span></div><div class="qc-b pv-cond">'
+      +'<div class="qc-fr"><label>보수업체</label><select class="inp inp-sm" id="pvCo"'+(cos.length?'':' disabled')+'>'+(cos.length?cos.map(c=>'<option value="'+esc(c[0])+'"'+(c[0]===PV.co?' selected':'')+'>'+esc(c[0])+' · '+c[1]+'건</option>').join(''):'<option>외주 건 없음</option>')+'</select></div>'
+      +'<div class="qc-fr"><label>시작</label><input type="date" class="inp inp-sm" id="pvFrom" value="'+esc(PV.from)+'"></div>'
+      +'<div class="qc-fr"><label>종료</label><input type="date" class="inp inp-sm" id="pvTo" value="'+esc(PV.to)+'"></div>'
+      +'<div class="qc-fr"><label>공수 / 일</label><input type="number" class="inp inp-sm" id="pvMd" value="'+esc(PV.md)+'" min="0.5" step="0.5"></div>'
+    +'</div></div>'
+  +'</div><div class="qc-col qc-right">'
+    +'<div class="tkbar qc-bar"><span class="qc-t">투입 실적<span>'+(PV.co?esc(PV.co)+(PV.from||PV.to?' · '+tlDot(PV.from)+' ~ '+tlDot(PV.to):''):'')+'</span></span>'
+      +'<span>'+tlSeg(PV.tab,[['day','일별'],['gj','공종별'],['wk','주차별']],'data-act="pv.tab" data-t')+'</span></div>'
+    +(TL.rows.length
+      ?(N?'<div class="qc-wrap rd-wrap"><table class="qc-tbl pv-tbl"><thead><tr>'+head+'</thead><tbody>'+(body||'<tr><td colspan="11" class="rd-none">조건에 맞는 건이 없습니다</td></tr>')+'</tbody></table></div>'
+        :tlEmpty(cos.length?'조건에 맞는 외주 처리 건이 없습니다':'보수주체가 「외주」이고 처리일이 있는 건이 없습니다'))
+      :tlEmpty('전체 하자 목록(xlsx·csv)을 열면<br>보수주체 외주 건의 업체별 투입 실적을 냅니다'))
+  +'</div></div>';
+}
+async function pvXlsx(){
+  const rows=pvRows();if(!rows.length){toast('내보낼 실적이 없습니다');return;}
+  try{await loadXlsx();}catch(e){toast('엑셀 모듈 로드 실패');return;}
+  const md=Number(PV.md)>0?Number(PV.md):1;
+  const byDay={};rows.forEach(r=>{const d=pvDay(r);(byDay[d]=byDay[d]||[]).push(r);});
+  const days=Object.keys(byDay).sort(),N=rows.length,D=days.length,MD=D*md;
+  const a1=[['처리일','동','호','공간','공종','하자유형','접수내용','처리내용','접수일','보수업체','접수번호']];
+  rows.forEach(r=>a1.push([pvDay(r),r.dg,r.ho,r.sp,r.gj,r.ty,r.memo,r.fix,r.rcv,r.co,r.no]));
+  const a2=[['보수업체',PV.co],['기간',PV.from+' ~ '+PV.to],['공수 / 일',md],[],['총 처리 건수',N],['총 투입일',D],['총 투입 공수',MD],['처리 / 일',D?+(N/D).toFixed(2):''],['건 / 공수',MD?+(N/MD).toFixed(2):''],['공수 / 건',N?+(MD/N).toFixed(3):''],[],
+    ['처리일','처리건수','세대','공수','건 / 공수']];
+  days.forEach(d=>{const L=byDay[d];a2.push([d,L.length,new Set(L.map(r=>r.dg+'|'+r.ho)).size,md,+(L.length/md).toFixed(2)]);});
+  const wb=XLSX.utils.book_new();
+  const w1=XLSX.utils.aoa_to_sheet(a1);w1['!cols']=[11,5,6,9,8,14,40,30,11,16,12].map(w=>({wch:w}));
+  const w2=XLSX.utils.aoa_to_sheet(a2);w2['!cols']=[14,12,10,10,10].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb,w2,'실적 요약');XLSX.utils.book_append_sheet(wb,w1,'처리 건');
+  tlSaveWb(wb,'생산성검토_'+PV.co.replace(/[\\/:*?"<>|]/g,'')+'_'+todayStr().replace(/-/g,'')+'.xlsx');
+  toast(N+'건 · '+D+'일 실적을 엑셀로 내보냈습니다');
+}
+document.addEventListener('change',e=>{
+  const t=e.target;if(!t||!t.classList)return;
+  if(t.id==='tlFile'){const f=(t.files||[])[0];t.value='';if(f)tlOpen(f);return;}
+  if(t.classList.contains('rd-ck')){const k=t.dataset.key;if(t.checked)RD.yes.add(k);else RD.yes.delete(k);rdYesSave();
+    const tr=t.closest('tr');if(tr)tr.classList.toggle('on',t.checked);
+    let n=0;RD.groups.forEach(x=>{if(RD.yes.has(x.key))n++;});const b=$('#rdRoot .qc-sc.ok b');if(b)b.textContent=n;
+    if(RD.st!=='all')rRedo();return;}
+  if(t.id==='pvCo'||t.id==='pvFrom'||t.id==='pvTo'||t.id==='pvMd'){
+    /* ⚠ 초점이 있는 칸을 innerHTML 로 지우면 크롬이 지우는 도중 blur→change 를 한 번 더 내어 같은 root 에 다시 innerHTML 을 걸고
+       NotFoundError 가 난다 — 먼저 초점을 뺀 뒤 그리고, 그린 뒤 같은 칸에 초점을 돌려 준다(숫자 칸 화살표는 누를 때마다 change) */
+    if(t.id==='pvCo'){PV.co=t.value;PV.from='';PV.to='';PV.filters={};}
+    else if(t.id==='pvFrom')PV.from=t.value;else if(t.id==='pvTo')PV.to=t.value;else PV.md=t.value;
+    t.blur();rProd();const el=$('#'+t.id);if(el&&t.id!=='pvCo')el.focus();return;}
+});
+Object.assign(ACT,{
+  'tl.file':()=>{const i=$('#tlFile');if(i)i.click();},
+  'tl.reset':()=>tlReset(),
+  'rd.own':el=>{if(RD.own===el.dataset.k)return;RD.own=el.dataset.k;rRedo();},
+  'rd.ty':el=>{if(RD.ty===el.dataset.k)return;RD.ty=el.dataset.k;rRedo();},
+  'rd.st':el=>{if(RD.st===el.dataset.k)return;RD.st=el.dataset.k;rRedo();},
+  'rd.ck':()=>{},   /* change 위임이 처리한다 */
+  'pv.tab':el=>{if(PV.tab===el.dataset.t)return;PV.tab=el.dataset.t;rProd();},
+});
 
 /* ═══════════ 부팅 ═══════════ */
 function rAll(){rDay();rTasks();rOrg();rCfg();rFilter();rTeamSel();refetchCal();rWidget();}   /* 팀 선택기는 조직 화면 밖(사이드바)이라 rAll 에서도 그린다 */
