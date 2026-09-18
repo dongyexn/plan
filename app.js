@@ -2277,8 +2277,7 @@ const MCAL_MINI_H=46;
 function mcalFullH(){const th=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--th'))||46;
   /* 902차: (100dvh - th - 47 - 탭바) / 주 수 — CSS 와 같은 식. 탭바 높이는 실제 요소에서 잰다(홈 인디케이터 포함) */
   const tab=$('#mtab'),tabH=(tab&&tab.offsetParent)?tab.offsetHeight:0;
-  const g=$('#view-calendar .mc-track>.mc-g:nth-child(2)'),rows=Number(g&&g.dataset.rows)||5;
-  return Math.max(MCAL_MINI_H,(innerHeight-th-47-tabH)/rows);}
+  return Math.max(MCAL_MINI_H,(innerHeight-th-47-tabH)/5);}   /* 903차: 언제나 5행 단위 — 6행 달은 CSS 가 5/6 을 곱한다 */
 function mcalSet(mode){
   if(!isMob()||WIDGET){document.body.classList.remove('mcal-full','mcal-mini','mcal-land','mcal-drag');return;}
   const land=mcalIsLand();
@@ -9583,7 +9582,7 @@ function copyText(t,msg){
       drag.track.style.transform='translateX(calc(-33.3333% + '+Math.round(dx)+'px))';
     }else{
       const full=mcalFullH(),mini=MCAL_MINI_H;
-      const h=Math.max(mini,Math.min(full,drag.h0+dy/6));   /* 6줄이 함께 늘므로 달력 전체 높이가 손가락과 1:1 로 따라간다 */
+      const h=Math.max(mini,Math.min(full,drag.h0+dy/5));   /* 5줄(5행 단위)이 함께 늘므로 달력 전체 높이가 손가락과 1:1 로 따라간다(903차: 6→5) */
       const p=(h-mini)/Math.max(1,full-mini);
       drag.box.style.setProperty('--mch',h.toFixed(1)+'px');
       drag.box.style.setProperty('--mcp',p.toFixed(3));
@@ -12754,6 +12753,7 @@ function qcEval(ex){
 }
 /* 903차: 비례식 — 「a:b=c:d」 네 자리 중 하나가 X(x·?·□)이고, 뒤에 「X=값 단위」가 오면 그 값과 견준다.
    a·b·c·d 는 숫자나 괄호식 모두 qcEval 로 읽는다. a:b=c:d ⇔ a·d = b·c */
+function qcClean(t){return String(t).replace(/[①-⑳]/g,'').replace(/\(\s*[^()]*?[^\d\s.:()=]\s*:\s*(?=[-+(\d])/g,'(');}   /* 903차: 동그라미 번호·괄호 안 라벨 걷기 */
 function qcRatio(ex){
   const s=String(ex).replace(/\s+/g,' ').trim();
   const m=s.match(/^(?:[^:=]*?[^\d\s.):=]\s*:\s*)?([^:=\s]+)\s*:\s*([^:=\s]+)\s*=\s*([^:=\s]+)\s*:\s*([^:=\s,;]+)\s*(?:[,;\s]+[Xx?□]\s*=\s*(-?\d+(?:\.\d+)?)\s*(\S*)?)?\s*$/);
@@ -12807,7 +12807,7 @@ function qcParse(text){
     let lhs=i<0?ex:ex.slice(0,i);const rhs=i<0?ex:ex.slice(i+1);
     /* 903차(사용자): 「AC : 1.2*2.4」 처럼 식 앞에 「낱말 :」 라벨이 붙으면 라벨은 항목 이름에 붙이고 식만 남긴다 */
     /* 903차(실물): 「-(벤츄레이터 : 0.8*0.8)」 「-(AC : 1.4*0.5)」 괄호 안 라벨은 먼저 걷고, 「①(0.4*0.3)+②(1.1*0.3)」 동그라미 번호도 걷는다 */
-    lhs=lhs.replace(/[①-⑳]/g,'').replace(/\(\s*[^()]*?[^\d\s.:()=]\s*:\s*(?=[-+(\d])/g,'(');
+    lhs=qcClean(lhs);
     const lab=lhs.match(/^\s*([^=()]*?[^\d\s.:=()])\s*:\s*(?=[-+(\d])(.*)$/);   /* 맨 앞 라벨 — 괄호를 넘지 않는다 */
     if(lab){base.item=(base.item+' '+lab[1].trim()).trim();lhs=lab[2];}
     const m=rhs.match(/^\s*(-?\d+(?:\.\d+)?)\s*(.*)$/);   /* ⚠ 수량은 = 바로 뒤 · 나머지가 단위 — 끝에서 찾으면 「1.8m2」의 2 를 수량으로 읽는다 */
@@ -12871,15 +12871,15 @@ function qcParse(text){
       if(pend&&!pend.expr.trim()){pend.expr=s;return;}
       flush();pend={unit:unit||1,place:sumMode?'합계':place,item:'',expr:s,sum:sumMode};return;
     }
-    if(pend&&/^[0-9.+\-*/()= ]+$/.test(s)){pend.expr+=' '+s;return;}   /* 식이 여러 줄로 이어진 경우 */
+    if(pend&&/^[0-9.+\-*/()= ]+$/.test(qcClean(s))){pend.expr+=' '+s;return;}   /* 식이 여러 줄로 이어진 경우 */
     /* ⚠ 891차: 엑셀 칸에서 식이 길면 줄이 넘어간다(사용자 실물). 넘어간 줄은 **연산자로 시작**하거나
        앞줄이 연산자로 끝난다 — 단위(m·㎡…)가 붙어 있어도 이어 붙인다. 이걸 안 하면 넘어간 토막만 읽어 오답이 된다. */
     if(pend&&(/^[+\-*/×÷]/.test(s)||/[+\-*/×÷(]$/.test(String(pend.expr).trim()))
-       &&/^[0-9.,+\-*/()=×÷xX\s]*(?:㎡|㎥|m2|m3|평|EA|ea|개|인|본|매|식|mm|cm|m|M)?\s*$/.test(s)){
+       &&/^[0-9.,+\-*/()=×÷xX\s]*(?:㎡|㎥|m2|m3|평|EA|ea|개|인|본|매|식|mm|cm|m|M)?\s*$/.test(qcClean(s))){   /* 903차: 「-(2.6*2.6)-(AC : 1.4*0.5)=21.9m2」 처럼 라벨이 든 이어진 줄도 */
       pend.expr+=' '+s;return;
     }
     /* 828차: 「1+1=3」처럼 항목 줄(- …) 없이 식만 적힌 줄도 한 줄로 본다 */
-    if(/=/.test(s)&&/^[0-9.+\-*/()=×÷xX ]+$/.test(s.replace(/(㎡|㎥|m2|m3|평|EA|ea|개|인|본|매|식|mm|cm|m|M)/g,''))){
+    if(/=/.test(s)&&/^[0-9.+\-*/()=×÷xX ]+$/.test(qcClean(s).replace(/(㎡|㎥|m2|m3|평|EA|ea|개|인|본|매|식|mm|cm|m|M)/g,''))){
       flush();pend={unit:unit||1,place:sumMode?'합계':place,item:'',expr:s,sum:sumMode};flush();return;
     }
   });
