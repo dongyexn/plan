@@ -3351,7 +3351,9 @@ body:not(.wid) .nq-panel{padding-top:6px;}}
   /* 업무 패널 — 축소일 때만, 구분선으로 붙는다 */
   body.mcal-full:not(.wid) #view-calendar .dp-col{display:none;}
   body.mcal-mini:not(.wid) #view-calendar .cal-card{flex:0 0 auto;height:auto;min-height:0;}
-  body.mcal-mini:not(.wid) #view-calendar .dp-col{position:static;transform:none;padding-top:0;border-top:1px solid var(--sep);flex:1 1 auto;min-height:0;}   /* 732차: 시트(fixed·translateY 103%) 를 풀어 달력 바로 아래로 */
+  body.mcal-mini:not(.wid) #view-calendar .dp-col{position:relative;top:auto;bottom:auto;transform:none;padding-top:0;padding-bottom:8px;border-top:1px solid var(--sep);flex:1 1 auto;min-height:0;overflow:hidden;}   /* relative·overflow: 903차 옆 날 미리보기 판(.dp-ghost)의 바탕. ⚠ bottom:auto — 시트 규칙의 bottom(탭바 높이)이 relative 에선 위로 밀어 올린다(마지막 주가 패널에 덮였다) */
+  body:not(.wid) #view-calendar .dp-col .dp-ghost{position:absolute;left:0;right:0;transform:translateX(100%);display:flex;flex-direction:column;overflow:hidden;pointer-events:none;}
+  body:not(.wid) #view-calendar .dp-col .dp-ghost .dp-body{overflow:hidden;}   /* 903차: 아래 여백은 8 — 안전영역은 탭바가 이미 덮는다(패널 아래 빈 띠) */   /* 732차: 시트(fixed·translateY 103%) 를 풀어 달력 바로 아래로 */
   body.mcal-mini:not(.wid) #view-calendar .dp-col .card{box-shadow:none;}
   body.mcal-mini:not(.wid) #view-calendar .dp-col::before{content:'';display:block;width:52px;height:4px;border-radius:2px;background:#D6DAE1;margin:6px auto 1px;}   /* 874차: 잡이 넓게(36→52) · 패널과 간격 좁게(4→1) */
   /* 드래그·정착 중 패널 — 아래 mcal-full 의 display:none 보다 뒤에 있어야 이긴다(같은 구체성) */

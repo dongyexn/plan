@@ -193,7 +193,7 @@ try {
   await page.keyboard.press('Escape');
   const RT = '반복 스모크 점검';
   const today = await page.evaluate(() => todayStr());
-  const nextWk = await page.evaluate(() => { const d = new Date(); d.setDate(d.getDate() + 7); return d.toISOString().slice(0, 10); });
+  const nextWk = await page.evaluate(() => addDays(todayStr(), 7));   /* ⚠ 903차: toISOString 은 UTC 라 KST 00~09시에는 하루 전 날짜가 되어 요일이 어긋났다(다음 주 회차 대기 시간 초과) — 앱과 같은 로컬 날짜로 */
   await page.evaluate(ds => { selDate(ds, true); rDay(); }, today);
   await page.click('[data-act="plan.new"]');
   await page.waitForSelector('#peTitle', { timeout: 4000 });
