@@ -12806,7 +12806,9 @@ function qcParse(text){
     const i=ex.lastIndexOf('=');
     let lhs=i<0?ex:ex.slice(0,i);const rhs=i<0?ex:ex.slice(i+1);
     /* 903차(사용자): 「AC : 1.2*2.4」 처럼 식 앞에 「낱말 :」 라벨이 붙으면 라벨은 항목 이름에 붙이고 식만 남긴다 */
-    const lab=lhs.match(/^\s*([^=]*?[^\d\s.:=])\s*:\s*(?=[-+(\d])(.*)$/);
+    /* 903차(실물): 「-(벤츄레이터 : 0.8*0.8)」 「-(AC : 1.4*0.5)」 괄호 안 라벨은 먼저 걷고, 「①(0.4*0.3)+②(1.1*0.3)」 동그라미 번호도 걷는다 */
+    lhs=lhs.replace(/[①-⑳]/g,'').replace(/\(\s*[^()]*?[^\d\s.:()=]\s*:\s*(?=[-+(\d])/g,'(');
+    const lab=lhs.match(/^\s*([^=()]*?[^\d\s.:=()])\s*:\s*(?=[-+(\d])(.*)$/);   /* 맨 앞 라벨 — 괄호를 넘지 않는다 */
     if(lab){base.item=(base.item+' '+lab[1].trim()).trim();lhs=lab[2];}
     const m=rhs.match(/^\s*(-?\d+(?:\.\d+)?)\s*(.*)$/);   /* ⚠ 수량은 = 바로 뒤 · 나머지가 단위 — 끝에서 찾으면 「1.8m2」의 2 를 수량으로 읽는다 */
     const want=m?parseFloat(m[1]):null;
@@ -12828,19 +12830,33 @@ function qcParse(text){
       out.push({...base,expr:lhs.trim(),calc,want,u,st:'no',why});
     }
   };
+  let curItem='';
   qcNormalize(text).split(/\r?\n/).forEach(raw=>{
     let s=raw.replace(/\t/g,' ').trim();
     s=s.replace(/^"+/,'').replace(/"+$/,'').trim();   /* 엑셀이 여러 줄 칸에 씌우는 따옴표 */
     if(!s)return;
     if(/^<.*>$/.test(s)){flush();sumMode=false;return;}   /* <산출 근거> 같은 머리줄 */
-    if(/^[*★•]?\s*합계/.test(s)||/^[*★]\s/.test(s)){flush();sumMode=true;return;}   /* 업체가 적어 둔 「* 합계」 — 우리 합계와 견주기만 한다 */
+    if(/^-{4,}$/.test(s))return;   /* 903차: 「------」 구분선 */
+    /* 903차(실물): 「합계 : 0.8+5.5+0.8=7.1m」 「* 세대 균열 보수 합계 : 7.1+5.4+9.9=22.4m」 — 식이 붙은 합계 줄은 한 줄로 검토(합계 무리에 둔다) */
+    const sm=s.match(/^[*★•]?\s*(.*?합계.*?)\s*:\s*(.+)$/);
+    if(sm){flush();pend={unit:unit||1,place:'합계',item:(sm[1].trim()==='합계'&&curItem?curItem+' 합계':sm[1].trim()),expr:sm[2],sum:true};flush();return;}
+    if(/^[*★•]?\s*합계/.test(s)||(/^[*★]\s/.test(s)&&/합계/.test(s))){flush();sumMode=true;return;}   /* 업체가 적어 둔 「* 합계」 — 우리 합계와 견주기만 한다 */
+    if(/^[*★]\s*[^\d.]/.test(s)){   /* 903차(실물): 「* 일반줄눈 감액」 — 합계가 아닌 별표 줄은 항목 줄이다 */
+      flush();const rest=s.replace(/^[*★]\s*/,'');const c=rest.indexOf(':');curItem=(c<0?rest:rest.slice(0,c)).trim();
+      pend={unit:unit||1,place:sumMode?'합계':place,item:curItem,expr:c<0?'':rest.slice(c+1),sum:sumMode};return;
+    }
+    /* 903차(실물): 「① 0.8m」 「② 2.5+0.9=5.5m」 — 항목 아래 동그라미 번호 줄은 각각 한 줄 */
+    const cm=s.match(/^([①-⑳])\s*(.+)$/);
+    if(cm){if(pend&&!pend.expr.trim()&&pend.item.trim()===curItem)pend=null;else flush();   /* 머리 항목 줄은 1식이 아니라 아래 번호 줄의 이름일 뿐 */
+      pend={unit:unit||1,place:sumMode?'합계':place,item:(curItem+' '+cm[1]).trim(),expr:cm[2],sum:sumMode};return;}
+    if(/^(=>|→)/.test(s)){s=s.replace(/^(=>|→)\s*/,'');if(!pend)pend={unit:unit||1,place:sumMode?'합계':place,item:curItem,expr:'',sum:sumMode};pend.expr+=(pend.expr?' ':'')+s;return;}   /* 903차(실물): 「=> 17500 : 15000 = 6.7 : X」 */
     /* 828차: 「2.3*0.6=…」 같은 식이 「2.」 로 시작한다고 세대 머리줄로 읽히면 안 된다 — 뒤에 **글자**가 와야 머리줄 */
     let m=s.match(/^(\d{1,3})\s*[.)]\s+([^\d=+*/].*)$/);
     if(m){flush();sumMode=false;if(m[1]==='1')unit++;place=m[2].trim();return;}
-    if(/^[-•*·]\s*[^\d.]/.test(s)){   /* ⚠ 891차: 「-0.4+…」 처럼 숫자가 바로 오면 항목 줄이 아니라 이어지는 식이다 */
+    if(/^[-•*·]\s*[^\d.(]/.test(s)){   /* ⚠ 891차: 「-0.4+…」 처럼 숫자가 바로 오면 항목 줄이 아니라 이어지는 식이다 · 903차: 「-(0.095*0.399)」 괄호도 */
       flush();
       const rest=s.replace(/^[-•*·]\s*/,'');
-      const c=rest.indexOf(':');
+      const c=rest.indexOf(':');curItem=(c<0?rest:rest.slice(0,c)).trim();
       pend={unit:unit||1,place:sumMode?'합계':place,item:c<0?rest:rest.slice(0,c),expr:c<0?'':rest.slice(c+1),sum:sumMode};
       return;
     }
