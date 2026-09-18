@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">   <!-- 903차: viewport-fit=cover 가 있어야 env(safe-area-inset-bottom) 이 0 이 아니다 — 하단 탭이 홈 인디케이터에 깔렸다 -->
 <title>H · 주요업무현황</title>
 <!-- PWA 설치(383차) — 서비스워커 없이 매니페스트만으로 설치가 뜬다(Chrome/Edge).
      ⚠ 서비스워커는 쓰지 않는다 — 예전에 캐시 때문에 옛 코드가 계속 돌던 사고가 있었다(app.js 말미의 제거 코드 유지) -->
@@ -3299,11 +3299,14 @@ body:not(.wid) .nq-panel{padding-top:6px;}}
   body:not(.wid) #view-calendar .cal-mini .mc-g{gap:0;grid-template-columns:repeat(7,minmax(0,1fr));}   /* 1fr 의 최소폭은 max-content — 제목이 길면 열이 벌어진다(§7) */
   body:not(.wid) #view-calendar .cal-mini .mc-d{height:auto;min-height:0;padding:3px 2px 2px;border-radius:0;align-items:stretch;justify-content:flex-start;flex-direction:column;
     transition:height var(--t-slow) cubic-bezier(.22,.61,.36,1);overflow:hidden;}
+  /* 902·903차: 5주 기본 · 6주 달만 6등분. --mch 는 언제나 **5행짜리 한 칸 높이**(점 달력 46 · 큰 달력 (100dvh - th - 47 - 탭바)/5)이고,
+     6행 달의 칸은 그 5/6 — 3장 트랙(앞달·이달·다음달)의 격자 높이가 같아야 이달 격자가 옆 달 높이로 늘어나 아래에 빈 줄이 생기지 않는다
+     (903차: 5행 달을 점 달력·드래그 중에 옆 6행 달이 잡아늘여 마지막 주 아래 46px 틈, 드래그 중 한 주가 화면 밖으로 밀림). app.js mcalFullH()/MCAL_MINI_H·dy/5 와 같은 식 */
   body.mcal-mini:not(.wid) #view-calendar .cal-mini .mc-d{height:var(--mch,46px);align-items:stretch;}
-  /* 902차: 5주 기본 · 6주 달만 6등분. 47px = 요일 줄·위 여백(첫 줄 시작 = th + 40px) + 탭바 위 7px. app.js mcalFullH() 와 같은 식 */
-  body.mcal-full:not(.wid) #view-calendar .cal-mini .mc-d{height:var(--mch,calc((100dvh - var(--th) - 47px - var(--mtab) - env(safe-area-inset-bottom)) / 5));overflow:visible;}
-  body.mcal-full:not(.wid) #view-calendar .cal-mini .mc-g[data-rows="6"] .mc-d{height:var(--mch,calc((100dvh - var(--th) - 47px - var(--mtab) - env(safe-area-inset-bottom)) / 6));}
-  body:not(.wid) #view-calendar .cal-mini .mc-g[data-rows="5"] .mc-d:nth-child(n+36){display:none;}   /* 머리 조각의 제목이 옆 칸으로 흐른다 — 큰 달력만 */
+  body.mcal-mini:not(.wid) #view-calendar .cal-mini .mc-g[data-rows="6"] .mc-d{height:calc(var(--mch,46px) * 5 / 6);}
+  body.mcal-full:not(.wid) #view-calendar .cal-mini .mc-d{height:var(--mch,calc((100dvh - var(--th) - 47px - var(--mtab) - env(safe-area-inset-bottom)) / 5));overflow:visible;}   /* overflow: 머리 조각의 제목이 옆 칸으로 흐른다 — 큰 달력만 */
+  body.mcal-full:not(.wid) #view-calendar .cal-mini .mc-g[data-rows="6"] .mc-d{height:calc(var(--mch,calc((100dvh - var(--th) - 47px - var(--mtab) - env(safe-area-inset-bottom)) / 5)) * 5 / 6);}
+  body:not(.wid) #view-calendar .cal-mini .mc-g[data-rows="5"] .mc-d:nth-child(n+36){display:none;}
   /* 742차: 숫자는 두 모드 모두 오른쪽 위(데스크톱과 동일) — 점 달력↔큰 달력 전환 때 가운데↔오른쪽으로 튀던 것을 고정. 점도 오른쪽 아래 */
   body:not(.wid) #view-calendar .cal-mini .mc-d .n{align-self:auto;text-align:right;padding-right:3px;height:16px;line-height:16px;}
   body:not(.wid) #view-calendar .cal-mini .mc-d .dots{left:auto;right:4px;bottom:8px;justify-content:flex-end;}
