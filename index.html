@@ -1961,7 +1961,7 @@ body.pickmode #tkRoot .tk-item,body.pickmode .day-panel .plan{user-select:none;}
 .tkbulk-del:hover{background:rgba(255,90,80,.18);color:#FFB4AC;}
 .tkbulk-sep{width:1px;height:18px;background:rgba(255,255,255,.18);margin:0 4px;}
 /* 663차: 모바일도 내용만큼만 — 화면 폭을 다 쓸 이유가 없다(넘치면 그때 줄인다) */
-@media(max-width:960px){.tkbulk{max-width:calc(100vw - 16px);
+@media(max-width:960px){.tkbulk{max-width:calc(100vw - 16px);bottom:calc(12px + var(--mtab) + env(safe-area-inset-bottom));
   bottom:calc(12px + env(safe-area-inset-bottom));}}
 .tks-item.tks-reg{font-weight:700;margin-top:6px;background:var(--surf2);border-radius:var(--rsm);
   padding-top:7px;padding-bottom:7px;}
@@ -3208,6 +3208,7 @@ body:not(.wid) .nq-panel{padding-top:6px;}}
      ⚠ flex-wrap:wrap 은 그대로 둔다 — 하자 관리에서 버튼이 실제로 넘칠 때는 줄바꿈이 필요하다 */
 }
 /* ══════════ 모바일 ══════════ */
+#mtab,#mss,#mssScrim{display:none;}   /* 902차: 폰 하단 탭·현장 시트 — 모바일 미디어에서만 켠다 */
 #scrim{position:fixed;inset:0;background:rgba(0,0,0,.32);z-index:380;opacity:0;pointer-events:none;transition:opacity var(--t-base);}
 #scrim.on{opacity:1;pointer-events:auto;cursor:pointer;touch-action:none;}   /* ⚠ 896차: iOS Safari 는 cursor:pointer 가 없는 div 에 위임된 click 을 안 보낸다 — 스크림 탭이 먹지 않던 원인 */
 .mc{display:none;width:36px;height:36px;border-radius:6px;align-items:center;justify-content:center;color:var(--lbl2);}
@@ -3226,23 +3227,60 @@ body:not(.wid) .nq-panel{padding-top:6px;}}
   /* 접기 버튼은 드로어에선 무의미 — mini 상태만 만들고 혼란을 준다.
      ⚠ 685차: 여태 이 주석만 있고 규칙이 없어 버튼이 그대로 보였다 */
   .sb-title-tg{display:none;}
+  /* ── 902차: 하단 탭(캘린더 · 주간 업무 · 현장별 업무 · 업무 도구 · 하자처리 현황) — 903차 치수 — 참고 앱 3x 캡처를 픽셀로 재서 **보이는 잉크**를 맞춤(선 아래 11 · 아이콘 잉크 21 · 사이 8 · 글자 잉크 9.3): 선 아래 9 · 아이콘 박스 21(Lucide 안 여백 2 → 잉크 18) · 사이 6 · 글자 8 · 아래 5 — 글자는 사용자 지정(8px) ── */
+  :root{--mtab:50px;}   /* 탭바 눈에 보이는 높이(선 포함) — 홈 인디케이터는 env() 로 따로 더한다 */
+  body:not(.wid) #mtab{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:370;background:#F7F8FA;border-top:1px solid #E3E6EB;padding:9px 7px calc(5px + env(safe-area-inset-bottom));}   /* 좌우 7 — 참고 앱 칸 중심(0.114·0.307·0.5·0.693·0.885)과 같다 */
+  body:not(.wid) #mtab button{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;background:none;border:0;padding:0;font:inherit;font-size:8px;font-weight:400;line-height:1;letter-spacing:-.01em;color:#A2A6AE;-webkit-tap-highlight-color:transparent;}
+  body:not(.wid) #mtab button .icn{width:21px;height:21px;stroke-width:1.7;}
+  body:not(.wid) #mtab button.act{color:var(--b600);}
+  body:not(.wid) #mtab .mtab-d{stroke:none;fill:currentColor;font-family:inherit;font-size:8.5px;font-weight:700;font-variant-numeric:tabular-nums;}   /* x 는 mtabDateX() 가 잉크 폭으로 맞춘다 — letter-spacing 을 두면 measureText 와 어긋난다 */   /* 틀 몸통(y 9~21) 한가운데 */
+  body:not(.wid) #mtab button[data-t="calendar"] .icn,body:not(.wid) #mtab button[data-t="week"] .icn{width:22px;height:22px;margin:-.5px 0;}   /* 달력 둘은 살짝 크게(22) — 줄 높이는 그대로 */
+  body.kb:not(.wid) #mtab{display:none;}   /* 안드로이드: 키보드가 올라오면 fixed 바가 따라 올라와 입력칸을 가린다 */
+  body:not(.wid) #content{padding-bottom:calc(12px + var(--mtab) + env(safe-area-inset-bottom));}
+  /* 프로필 원 — 햄버거 자리. 드로어를 여는 것은 같다 */
+  body:not(.wid) #topbar .mc.mav{width:32px;height:32px;border-radius:50%;background:#DDEBFF;color:#2F80ED;margin-right:2px;}
+  body:not(.wid) #topbar .mc.mav .icn{width:18px;height:18px;stroke-width:2;}
+  body:not(.wid) #topbar .mc.mav:hover{background:#DDEBFF;color:#2F80ED;}
+  /* 업무 현황 — 주간/현장별 전환은 탭바가 맡는다 · 완료·예정은 카드 둘로 */
+  body:not(.wid) #view-tasks .tkv-seg{display:none;}
+  body:not(.wid) #view-tasks .tkwk{background:transparent;border:0;box-shadow:none;overflow:visible;}
+  body:not(.wid) #view-tasks .tkwk-cols{display:flex;flex-direction:column;gap:10px;}
+  body:not(.wid) #view-tasks .tkwk-col{background:#fff;border:1px solid var(--cardline);border-radius:var(--rxl);overflow:hidden;flex:0 0 auto;}
+  body:not(.wid) #view-tasks .tkwk-col+.tkwk-col{border-left:1px solid var(--cardline);}
+  /* 현장 선택 시트 — 하자처리 현황의 현장 카드(꺽쇠)를 누르면 */
+  #mssScrim{position:fixed;inset:0;background:rgba(0,0,0,.32);z-index:374;display:none;cursor:pointer;}
+  #mssScrim.on{display:block;}
+  #mss{position:fixed;left:0;right:0;bottom:0;z-index:375;background:#fff;border-radius:14px 14px 0 0;box-shadow:0 -8px 32px rgba(0,0,0,.2);padding:8px 12px calc(20px + env(safe-area-inset-bottom));max-height:76dvh;overflow:auto;display:none;}
+  #mss.on{display:block;}
+  #mss::before{content:'';display:block;width:36px;height:4px;border-radius:2px;background:#D7DCE3;margin:0 auto 8px;}
+  #mss .mss-h{font-size:15px;font-weight:700;color:var(--lbl);padding:8px 12px 14px;}
+  #mss .mss-g{font-size:13.5px;font-weight:700;color:var(--lbl2);padding:20px 12px 10px;border-top:1px solid #E7EBF0;margin-top:5px;}
+  #mss .mss-g:first-of-type{margin-top:8px;}
+  #mss .mss-i{display:flex;align-items:center;gap:12px;height:46px;padding:0 12px;font-size:15px;color:var(--lbl);border-radius:10px;cursor:pointer;}
+  #mss .mss-i+.mss-i{margin-top:2px;}
+  #mss .mss-i.act{background:#EAF2FF;color:var(--b600);font-weight:700;}
+  #mss .mss-i .dot{width:8px;height:8px;border-radius:50%;background:var(--b600);flex-shrink:0;}
+  #mss .mss-i .icn{width:18px;height:18px;color:var(--lbl2);}
+  #mss.tools .mss-i{gap:14px;}#mss.tools .mss-i .icn{width:20px;height:20px;}
+  #mss.tools{bottom:calc(var(--mtab) + env(safe-area-inset-bottom));padding-bottom:14px;}   /* 탭에서 연 시트는 탭바 위에 선다 — 「업무 도구」 칸이 켜진 채 보인다 */
+  #mssScrim.tools{z-index:369;}   /* 탭바 아래 — 탭은 그대로 눌린다 */
   /* grid 의 1fr 은 최소폭이 max-content 라서 내용이 넓으면 화면 밖으로 밀려난다 — 전부 minmax(0,1fr) 로 */
   .cal-wrap{grid-template-columns:minmax(0,1fr);height:auto;min-height:0;}
   /* ── 업무 일정: 달력을 화면 가득(캘린더 앱처럼), 일자 패널은 날짜를 누르면 올라오는 하단 시트 ── */
   /* ⚠ 위젯 창은 좁아서 이 모바일 규칙에 걸린다 — 풀블리드·높이 계산이 위젯에 적용되면
      달력이 창보다 넓어져 오른쪽이 잘린다. 위젯은 전부 예외로 둔다 */
   body:not(.wid) #view-calendar{margin:-9px -14px -14px;}         /* content 패딩 상쇄 — 풀블리드 */
-  body:not(.wid) #view-calendar .cal-wrap{height:calc(100dvh - var(--th));}
+  body:not(.wid) #view-calendar .cal-wrap{height:calc(100dvh - var(--th) - var(--mtab) - env(safe-area-inset-bottom));}   /* 902차: 하단 탭 몫 */
   body:not(.wid) #view-calendar .cal-card{height:100%;min-width:0;border:0;border-radius:0;box-shadow:none;padding:10px 8px 4px;}
   .cal-head{margin-bottom:6px;}
-  .dp-col{position:fixed;left:0;right:0;bottom:0;z-index:320;min-width:0;
+  .dp-col{position:fixed;left:0;right:0;bottom:calc(var(--mtab) + env(safe-area-inset-bottom));z-index:320;min-width:0;   /* 902차: 탭바 위 */
     display:flex;flex-direction:column;gap:8px;max-height:78dvh;
     padding:10px 10px calc(10px + env(safe-area-inset-bottom));
     transform:translateY(103%);transition:transform var(--t-slow);}
   .dp-col.on{transform:none;}
   .dp-col .card{box-shadow:0 -8px 32px rgba(0,0,0,.2);}
   /* 645차: 모바일 달력 = 미니달력 + 상시 업무 패널. FullCalendar 는 숨기고 시트도 쓰지 않는다 */
-  body:not(.wid) #view-calendar .cal-wrap{display:flex;flex-direction:column;height:calc(100dvh - var(--th));gap:0;}
+  body:not(.wid) #view-calendar .cal-wrap{display:flex;flex-direction:column;height:calc(100dvh - var(--th) - var(--mtab) - env(safe-area-inset-bottom));gap:0;}
   body:not(.wid) #view-calendar .cal-card{flex:0 0 auto;height:auto;padding:8px 8px 4px;}
   /* 732차: 폰 달력은 **미니 달력 하나**만 쓴다(FullCalendar 는 숨김) — 확장/축소는 같은 격자의 셀 높이만 바뀌므로 이질감이 없다.
      mcal-full = 셀 큼(업무 막대 3줄) · mcal-mini = 셀 작음(점) + 아래 업무 패널. 전환은 높이 트랜지션. */
@@ -3262,7 +3300,10 @@ body:not(.wid) .nq-panel{padding-top:6px;}}
   body:not(.wid) #view-calendar .cal-mini .mc-d{height:auto;min-height:0;padding:3px 2px 2px;border-radius:0;align-items:stretch;justify-content:flex-start;flex-direction:column;
     transition:height var(--t-slow) cubic-bezier(.22,.61,.36,1);overflow:hidden;}
   body.mcal-mini:not(.wid) #view-calendar .cal-mini .mc-d{height:var(--mch,46px);align-items:stretch;}
-  body.mcal-full:not(.wid) #view-calendar .cal-mini .mc-d{height:var(--mch,calc((100dvh - var(--th) - 78px) / 6));overflow:visible;}   /* 머리 조각의 제목이 옆 칸으로 흐른다 — 큰 달력만 */
+  /* 902차: 5주 기본 · 6주 달만 6등분. 47px = 요일 줄·위 여백(첫 줄 시작 = th + 40px) + 탭바 위 7px. app.js mcalFullH() 와 같은 식 */
+  body.mcal-full:not(.wid) #view-calendar .cal-mini .mc-d{height:var(--mch,calc((100dvh - var(--th) - 47px - var(--mtab) - env(safe-area-inset-bottom)) / 5));overflow:visible;}
+  body.mcal-full:not(.wid) #view-calendar .cal-mini .mc-g[data-rows="6"] .mc-d{height:var(--mch,calc((100dvh - var(--th) - 47px - var(--mtab) - env(safe-area-inset-bottom)) / 6));}
+  body:not(.wid) #view-calendar .cal-mini .mc-g[data-rows="5"] .mc-d:nth-child(n+36){display:none;}   /* 머리 조각의 제목이 옆 칸으로 흐른다 — 큰 달력만 */
   /* 742차: 숫자는 두 모드 모두 오른쪽 위(데스크톱과 동일) — 점 달력↔큰 달력 전환 때 가운데↔오른쪽으로 튀던 것을 고정. 점도 오른쪽 아래 */
   body:not(.wid) #view-calendar .cal-mini .mc-d .n{align-self:auto;text-align:right;padding-right:3px;height:16px;line-height:16px;}
   body:not(.wid) #view-calendar .cal-mini .mc-d .dots{left:auto;right:4px;bottom:8px;justify-content:flex-end;}
@@ -3466,7 +3507,29 @@ body:not(.wid) .nq-panel{padding-top:6px;}}
   body:not(.wid) #view-tasks .tkf-card.open .tkf-body{position:absolute;right:6px;top:calc(100% - 4px);z-index:60;
     width:min(300px,calc(100vw - 24px));max-height:min(64vh,460px);overflow:auto;
     background:var(--bg2);border:1px solid var(--cardline);border-radius:var(--rxl);box-shadow:var(--sh-pop,0 10px 24px rgba(16,24,40,.16));padding:10px;}
-  body:not(.wid) #view-tasks .tkbar-wrap{position:relative;}
+  /* ── 902차(사용자): 폰에서는 도구띠(주차 ‹›·보류·찾기·필터)를 **상단바로 올린다** — 달력의 .cal-ctl 처럼 fixed. 카드는 없앤다.
+     팝업(찾기 펼침·필터)은 도구띠 기준 absolute 라 그대로 상단바 아래로 떨어진다 */
+  body:not(.wid) #view-tasks .tkbar-wrap{position:fixed;top:calc(var(--th) / 2);right:54px;left:auto;width:auto;height:auto;transform:translateY(-50%);z-index:101;   /* 달력 .cal-ctl 과 같은 자리 */
+    margin:0;padding:0;border:0;background:transparent;border-radius:0;gap:4px;}
+  body:not(.wid) #view-tasks .tkbar-wrap .mini-cal{display:none;}   /* ‹› 는 상단바 년월 버튼(월 그림)이 맡는다 */
+  body:not(.wid) #view-tasks .tkbar-wrap .tkq-srch{display:none;}   /* 찾기는 전역(#appHdr) 하나만 */
+  body:not(.wid) #view-tasks .tkbar-wrap .tkf-tg{width:34px;height:34px;}
+  body:not(.wid) #view-tasks .tkbar-wrap .tkf-tg .icn{width:20px;height:20px;}
+  body:not(.wid) #view-tasks .tkbar-wrap .tks-hold .tks-item{height:28px;padding:0 10px;font-size:13px;margin-right:2px;}
+  body.tk-hdr #topbar .tbl{flex:1;}
+  body.tk-hdr #topbar .tbt{position:static;text-align:left;pointer-events:auto;margin-right:auto;}
+  body.tk-hdr #topbar .tbt-ym .tbt-wk{color:#9EC1FF;margin-left:1px;}
+  #ymPop.ymp-tk{position:fixed;left:50%;transform:translateX(-50%);top:54px;}
+  body:not(.wid) #view-tasks .tkbar-wrap .tks-hold .tks-item{background:transparent;border-color:rgba(255,255,255,.32);color:var(--shell-txt);margin-top:0;}
+  body:not(.wid) #view-tasks .tkbar-wrap .tks-hold .tks-item .n{color:var(--shell-txt);}
+  body:not(.wid) #view-tasks .tkbar-wrap .tkf-tg{background:transparent;border:0;color:var(--shell-icon);}
+  body:not(.wid) #view-tasks .tkf-card.open .tkf-body{right:-48px;}   /* 상단바 오른쪽 6px 에 맞춘다(도구띠는 찾기 단추 앞 54px 에서 끝난다) */
+  body:not(.wid) #view-tasks .tkf-card.open .tkf-tg{background:var(--shell-act);color:#fff;}
+  body:not(.wid) #view-tasks .tkside{gap:0;}   /* 도구띠가 빠진 자리 — 틈을 남기지 않는다 */
+  body:not(.wid) #view-tasks .tkwrap{gap:0;margin-top:-8px;}   /* 상단바와 탭 줄 사이 4px(사용자: 아주 살짝) */   /* 903차: 빈 .tkside 와의 12px 틈 + #content 위 여백까지 — 탭 줄이 상단바 바로 아래에 붙는다 */
+  body:not(.wid) #view-tasks .tkbar{height:40px;padding-top:0;}   /* 데스크톱은 상단바와 같은 46px — 폰은 40 */
+  body:not(.wid) #view-tasks .tkbar .rp-tabs{margin-bottom:0;}
+  body:not(.wid) #view-tasks .tkbar-wrap{position:fixed;}
   body:not(.wid) #view-tasks .tkbar-wrap .dp-srch-i{position:static;transform:none;width:15px;height:15px;color:var(--lbl2);}
   /* 조직 관리 — 한 열로 쌓되 순서를 바꾼다: 세그 → 권역 탭 → 목록 → (팀·권역·지도 관리)
      ⚠ 두 열의 자식들을 한 흐름에 세워야 순서를 바꿀 수 있다 → .set-col 을 display:contents 로 없앤다 */
@@ -4615,7 +4678,7 @@ body.qc-dragging{user-select:none}
 <main id="main">
   <header id="topbar">
     <div class="tbl">
-      <button class="mc" data-act="nav.mob" aria-label="메뉴"><svg class="icn" aria-hidden="true"><use href="#i-menu"></use></svg></button>
+      <button class="mc mav" data-act="nav.mob" aria-label="메뉴"><svg class="icn" aria-hidden="true"><use href="#i-me"></use></svg></button>   <!-- 902차: 햄버거 대신 프로필 원 — 여는 것은 같은 드로어 -->
       <div class="tbt" id="tbt">업무 일정</div>
     </div>
   </header>
@@ -4842,10 +4905,20 @@ body.qc-dragging{user-select:none}
 <div id="tko" data-act="tk.formCancel"><div id="tkoCard" data-act="modal.stop"></div></div>
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="uprog" class="uprog"><div class="uprog-box"><div class="uprog-spin"></div><div class="uprog-msg" id="uprogMsg">처리 중...</div><div class="uprog-bar"><div class="uprog-fill" id="uprogFill" style="width:0%"></div></div><div class="uprog-sub" id="uprogSub"></div></div></div>
+<!-- 902차: 폰 하단 탭 — 데스크톱·위젯은 CSS 로 숨긴다. 활성 표시는 mtabSync() -->
+<nav id="mtab" aria-label="주요 화면">   <!-- 903차: 「업무 도구」 칸 — 누르면 시트에서 도구를 고른다(mtoolsOpen) -->
+  <button data-act="mtab.go" data-t="calendar"><svg class="icn" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cal"></use><text class="mtab-d" x="12" y="15.4" text-anchor="middle" dominant-baseline="central"></text></svg>캘린더</button>   <!-- 903차: 오늘 날짜를 틀 안에(mtabSync 가 채움) · 캘린더에서 다시 누르면 오늘로 -->
+  <button data-act="mtab.go" data-t="week"><svg class="icn" aria-hidden="true"><use href="#i-cal-ck"></use></svg>주간 업무</button>
+  <button data-act="mtab.go" data-t="month"><svg class="icn" aria-hidden="true"><use href="#i-layers"></use></svg>현장별 업무</button>
+  <button data-act="mtab.go" data-t="tools"><svg class="icn" aria-hidden="true"><use href="#i-grid4"></use></svg>업무 도구</button>
+  <button data-act="mtab.go" data-t="defect"><svg class="icn" aria-hidden="true"><use href="#i-defect"></use></svg>하자처리 현황</button>
+</nav>
+<div id="mssScrim" data-act="mss.close"></div>
+<div id="mss" role="dialog" aria-label="현장 선택"></div>
 <div id="toast"></div>
 
 <!-- 762차: chart.umd·datalabels·korea-geo·apt-geo 는 app.js 의 loadChart()/loadGeo() 가 필요할 때 읽는다(첫 로드 800KB 절감) -->
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=901"></script>
+<script src="./app.js?v=903"></script>
 </body></html>

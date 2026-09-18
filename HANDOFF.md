@@ -1,6 +1,14 @@
 # 인수인계 — H · 주요업무현황 (calapp)
 
-**현재 기준: v901.**
+**현재 기준: v903.**
+
+- **견적 검토 보완(903차, 사용자)**: `qcParse.flush` 에서 식 앞 「낱말 :」 라벨(`AC : 1.2*2.4`)은 항목 이름으로 옮기고 식만 남긴다(정규식: 마지막 「:」 뒤가 숫자·괄호·부호로 시작할 때만 — 비례식의 「:」 와 구분). 비례식은 `qcRatio(ex)`: 「a:b=c:d」 네 자리 중 하나가 X(x·?·□), 뒤에 「X=값 단위」 — a·d=b·c 로 풀어 calc, 적힌 값이 want. 「X=…」 줄은 pend.expr 에 「:」 가 있을 때만 이어 붙이고, 「1:3=4:X」 가 「:」 없이 항목 줄 아래 바로 와도 그 항목의 식으로 본다.
+- **폰 업무 현황 마무리(903차)**: 좌우 스와이프는 탭(tk.tab)이 아니라 **주·달** 을 넘긴다 — 866차 탭 스와이프 IIFE 의 `tabsAt` 이 `#view-tasks` 에서는 [이전, 현재, 다음] 가짜 항목(`click` → `ACT['mine.mon']({dataset:{d}})`)을 돌려 cur·edge·click 로직을 그대로 탄다(`paneOf` 는 `bs[0].closest` 가 없을 때 `#view-tasks` 로). 하자 현장 탭 스와이프(df.tab)는 그대로. 상단바 아래 틈은 빈 `.tkside` + `.tkwrap{gap:12}` + `#content` 위 12px + `.tkbar{height:46}`(데스크톱은 상단바와 같은 높이)가 겹친 것 — 폰은 `.tkwrap{gap:0;margin-top:-8px}` · `.tkbar{height:40px;padding-top:0}` 로 탭 줄이 상단바 아래 4px 에 선다.
+
+- **폰 하단 탭(902차)**: `#mtab`(index.html, `#toast` 앞) 다섯 칸 `data-act="mtab.go" data-t=calendar|week|month|tools|defect`(tools 는 903차 — 시트 `mtoolsOpen()`, `MTOOLS` 표, 고르면 `mtab.tool`→go(view); 시트는 `#mss.tools` 로 탭바 위에 서고 스크림은 탭바 아래(369)라 탭이 그대로 눌린다 · 열린 채 다시 누르면 닫힘 · 도구 화면에 있으면 칸이 켜진다) — 탭은 화면이 아니라 「가는 곳」: week/month 는 `S.tkView` 를 바꿔 업무 현황, defect 는 `S.dfSid=''` 로 팀 대시보드. 활성 표시는 `mtabSync()`(go() 끝 · `tk.view` 뒤). 데스크톱·위젯은 기본 규칙 `#mtab,#mss,#mssScrim{display:none}` 이고 모바일 미디어 `body:not(.wid)` 에서만 켠다. 치수(903차, 참고 앱 3x 캡처의 **보이는 잉크**를 픽셀로 재서 맞춤 — 아이콘 잉크 21 · 사이 8 · 글자 잉크 9.3): 위 9 · 아이콘 박스 21(Lucide 안 여백 2, stroke 1.7) · 사이 6 · 글자 8(400, 사용자 지정) · 아래 5 + `env(safe-area-inset-bottom)`, 눈에 보이는 높이 `--mtab:50px`. 좌우 padding 7 로 칸 중심이 참고 앱과 같다(0.114·0.307·0.5·0.693·0.885). 캘린더 칸 아이콘은 `#i-cal` 틀 안에 `<text class="mtab-d">` 로 오늘 날짜(`mtabSync()` 가 채움, stroke none·fill currentColor·8.5px, x=12 y=15.4 `dominant-baseline:central`). ⚠ 바깥 `<svg class="icn">` 에 **viewBox="0 0 24 24"** 가 있어야 한다 — 없으면 `<use>` 는 심벌 viewBox 로 그려지고 text 는 px 좌표라 12 가 22px 상자의 가운데(11)가 아니어서 숫자가 1px 오른쪽으로 쏠린다(한참 헤맨 원인). 남는 글리프 여백 차이는 `mtabDateX()` 가 canvas measureText(actualBoundingBox, 실제 그리는 크기×DPR)로 잉크 폭을 재서 x 를 보정한다 — 1~31 을 3x 로 렌더해 ±1 기기픽셀 안(qa 의 days2.mjs+measure.py). 캘린더·주간 업무 칸 아이콘만 22px(margin -.5 로 줄 높이 유지), 캘린더 화면에서 다시 누르면 `cal.today`. ⚠ 박스 값이 아니라 잉크로 비교할 것.
+  높이가 걸린 곳 전부 `--mtab + env()` 를 뺀다: `#content` padding-bottom · 달력 `.cal-wrap` 두 줄 · 큰 달력 셀 `.mc-d` · `.dp-col`(일자 시트) bottom · `.tkbulk` bottom. `body.kb`(입력 초점, focusin/out) 이면 탭바를 숨긴다 — 안드로이드 키보드가 fixed 바를 밀어 올려 입력칸을 가린다.
+  **큰 달력 5주 기본**: `.mc-g` 에 `data-rows`(ceil((lead+days)/7)) — 셀 높이 `(100dvh - th - 47px - 탭바)/5`, `[data-rows="6"]` 만 /6, `[data-rows="5"]` 는 36번째 셀부터 숨김. `mcalFullH()` 도 같은 식(탭바는 `#mtab.offsetHeight` 로 잰다). 47 = 첫 줄 시작(th+40) + 탭바 위 7px.
+  햄버거 `.mc` 는 남기고 `.mav` 를 얹어 32px 프로필 원(같은 `nav.mob`). 업무 현황 `.tkv-seg` 는 폰에서 숨기고 `.tkwk-col` 을 카드 둘로. **폰 업무 현황 상단바는 달력과 같은 꼴**: 제목 자리에 `tkYmBtnHTML()` 의 `.tbt-ym`(「2026. 9. 4주차 ˅」, `rTasks()` 가 `#tbt` 에 넣고 go() 가 `body.tk-hdr` 로 왼쪽 정렬) → `tk.ym` 이 `openTkPick()` 으로 달력과 같은 월 그림(`ymPickHTML(base,'tk')`, `#ymPop.ymp-tk` 는 fixed 가운데)을 연다. `tk.goYM`: 월간은 `S.mineYm`, 주간은 그 달 1일이 든 주기(`S.tkWeek`) — 이번 달이면 빈 값(=오늘). 도구띠 `.tkbar-wrap` 은 달력 `.cal-ctl` 자리(fixed right 54 · th/2)에 보류 알약(「보류」)·필터만 남기고 mini-cal(‹›)·찾기는 숨긴다(찾기는 #appHdr 전역 하나). 필터 팝업 `.tkf-body{right:-48px}`. ⚠ 액션 이름 `tk.pick` 은 담당자·보류함 선택이 쓰고 있다 — 년월 버튼은 `tk.ym`(처음에 겹쳐 써서 보류 알약이 픽커를 열었다). 현장 카드는 `dfKcHTML` 의 `pick`(폰만) → `mss.open` → `mssOpen()` 이 `#mss` 시트(팀 전체 대시보드 + 권역별 현장, `tkSel().regions`·`dfSites()` 순서)를 그린다. 시트 치수: 손잡이 · 제목 15 · 권역 13.5/굵게, 구분선 위 5 아래 20 · 행 46 · 선택 행 #EAF2FF.
 
 - **업무 도구 › 재하자 추적 · 생산성 검토(901차)**: 상태 `TL`(공용 파일) · `RD` · `PV`, 화면 `rRedo()` · `rProd()`, 화면 뼈대는 견적 검토의 `qc-*` 를 그대로 쓰고 `rd-/pv-` 로 보정. 파일 읽기는 하자처리 현황의 `csvDecode·csvToAoA·rowsToObjs·readWorkbookSafe·nd` 를 그대로(CP949 CSV·엑셀 날짜·시리얼 같은 규칙), 하자구분 열이 있으면 「세대」만. 완료 = 처리상태 처리/처리완료/완료 또는 처리확인일, 처리일 = 처리확인일(`norm()` 과 같다). **생산성 투입일만 업체처리일**(없으면 처리확인일).
   재하자: 동|호|공간|공종 으로 묶어 접수일 차례로 세운 뒤 완료·처리일 있는 첫 건 뒤에 처리일보다 늦게 접수된 건이 있으면 후보(한 묶음에 하나, 2차 이후는 재접수). 후보 수 = 재접수 건수. 체크는 `localStorage rd.yes.<현장>`. 사내 엑셀은 AIP 보안이라 CSV 로 올린다(사용자 결정).
@@ -194,7 +202,7 @@ CHROMIUM=/path/to/chrome node scripts/test/run-all.mjs   # rules-auth · smoke �
 - 정답셋과 어긋나는 3건은 정답셋 쪽 판단 차이(사용자 결정) — 완전일치 95% 기준선.
 
 ### 업무 도구 (사진대지 작성 · 견적 검토 · 도면 인쇄 · 재하자 추적 · 생산성 검토)
-- 다섯 다 **로컬 전용**. 상태는 `PD`(사진대지) · `QC`(견적 검토) · `DW`(도면 인쇄) · `TL/RD/PV`(재하자·생산성, 901차), 화면은 `rPhoto()` · `rQc()` · `rDwg()` · `rRedo()` · `rProd()`.
+- 다섯 다 **로컬 전용**. 상태는 `PD`(사진대지) · `QC`(견적 검토) · `DW`(도면 인쇄) · `TL/RD/PV`(재하자·생산성, 901차), 화면은 `rPhoto()` · `rQc()` · `rDwg()` · `rRedo()` · `rProd()`. 폰에서는 하단 탭 「업무 도구」 시트(903차)나 드로어로 간다.
 - 왼쪽 카드 폭은 조직 관리와 같은 **264px**, 미리보기 세로 막대는 세 화면 모두 공통 함수 `dwSb(v,cls,topPad)` — **늘 보이고 잡아끌 수 있다**(843차). 막대에만 포인터를 주고(`.on{pointer-events:auto}`) 나머지는 통과시킨다.
 - 자세한 규칙·함정은 이 문서 맨 위 회차 요약과 `HANDOFF-log.md` 를 볼 것.
 
