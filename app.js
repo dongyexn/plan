@@ -10,7 +10,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='901';
+const APP_VER='903';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -2244,7 +2244,7 @@ function mcalPane(y,m,evs,dots){
         :'')+'</button>';
   }
   for(let i=lead+days;i<42;i++)cells+='<div class="mc-d out"><span class="n">'+(i-lead-days+1)+'</span></div>';
-  return '<div class="mc-g">'+cells+'</div>';
+  return '<div class="mc-g" data-rows="'+Math.ceil((lead+days)/7)+'">'+cells+'</div>';   /* 902차: 폰 큰 달력은 5주 기본 — 6주 달만 6행 */
 }
 function calMiniHTML(){
   if(!CAL)return '';
@@ -2274,7 +2274,11 @@ function mcalIsLand(){return isMob()&&!WIDGET&&matchMedia('(orientation:landscap
 /* 733차: 셀 높이 두 값 — ⚠ CSS(`.mcal-full … .mc-d{height:calc((100dvh - var(--th) - 78px) / 6)}` · `.mcal-mini … 46px`)와 같은 식.
    손가락을 따라가는 전환(mcalDrag)이 이 값 사이를 보간하므로 한쪽을 바꾸면 다른 쪽도 함께. */
 const MCAL_MINI_H=46;
-function mcalFullH(){const th=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--th'))||46;return Math.max(MCAL_MINI_H,(innerHeight-th-78)/6);}
+function mcalFullH(){const th=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--th'))||46;
+  /* 902차: (100dvh - th - 47 - 탭바) / 주 수 — CSS 와 같은 식. 탭바 높이는 실제 요소에서 잰다(홈 인디케이터 포함) */
+  const tab=$('#mtab'),tabH=(tab&&tab.offsetParent)?tab.offsetHeight:0;
+  const g=$('#view-calendar .mc-track>.mc-g:nth-child(2)'),rows=Number(g&&g.dataset.rows)||5;
+  return Math.max(MCAL_MINI_H,(innerHeight-th-47-tabH)/rows);}
 function mcalSet(mode){
   if(!isMob()||WIDGET){document.body.classList.remove('mcal-full','mcal-mini','mcal-land','mcal-drag');return;}
   const land=mcalIsLand();
@@ -2319,22 +2323,24 @@ function rMonTitle(){
 }
 /* 연·월 바로 가기 — 제목을 누르면 뜬다 */
 let YM_Y=null;
-function ymPickHTML(){
-  const c=CAL?CAL.view.currentStart:new Date();
+function ymPickHTML(cur,ax){   /* 902차: (기준 Date, 액션 접두) — 업무 현황도 같은 그림을 쓴다. 인자 없으면 달력 */
+  /* 감사기가 data-act 를 글자 그대로 찾는다 — 접두를 이어 붙이지 않고 통째로 고른다 */
+  const AX={cal:['data-act="cal.pickY"','data-act="cal.goYM"'],tk:['data-act="tk.pickY"','data-act="tk.goYM"']}[ax||'cal'];
+  const c=cur||(CAL?CAL.view.currentStart:new Date());
   const cy=YM_Y===null?c.getFullYear():YM_Y;
   const now=new Date(),ty=now.getFullYear(),tm=now.getMonth()+1;
   const sy=c.getFullYear(),sm=c.getMonth()+1;
   const isNow=sy===ty&&sm===tm;
   return `<div class="ymp">
     <div class="ymp-h">
-      <button class="cal-nb" data-act="cal.pickY" data-d="-1" aria-label="이전 해"><svg class="icn"><use href="#i-chevl"></use></svg></button>
+      <button class="cal-nb" ${AX[0]} data-d="-1" aria-label="이전 해"><svg class="icn"><use href="#i-chevl"></use></svg></button>
       <b>${cy}년</b>
-      <button class="cal-nb" data-act="cal.pickY" data-d="1" aria-label="다음 해"><svg class="icn"><use href="#i-chevr"></use></svg></button>
+      <button class="cal-nb" ${AX[0]} data-d="1" aria-label="다음 해"><svg class="icn"><use href="#i-chevr"></use></svg></button>
     </div>
     <div class="ymp-g">
       ${Array.from({length:12},(_,i)=>{
         const m=i+1,sel=cy===sy&&m===sm,today=cy===ty&&m===tm;
-        return '<button class="ymp-m'+(sel?' sel':'')+(today?' now':'')+'" data-act="cal.goYM" data-y="'+cy+'" data-m="'+m+'">'+m+'월</button>';
+        return '<button class="ymp-m'+(sel?' sel':'')+(today?' now':'')+'" '+AX[1]+' data-y="'+cy+'" data-m="'+m+'">'+m+'월</button>';
       }).join('')}
     </div>
   </div>`;
@@ -3678,7 +3684,7 @@ function rTasks(){
         ${miniCalHTML()}
         <div class="card tks-card tks-hold">
           <div class="tks-item tks-reg${sel==='hold'?' act':''}" data-act="tk.pick" data-id="${sel==='hold'?'teamall':'hold'}">
-            <span class="n">보류한 업무</span><span class="c">${holdItems().length}</span>
+            <span class="n">${(isMob()&&!WIDGET)?'보류':'보류한 업무'}</span><span class="c">${holdItems().length}</span>
           </div>
         </div>
         ${tkFilterHTML()}
@@ -3689,6 +3695,7 @@ function rTasks(){
       ${mainHTML}
     </div>
   </div>`;
+  if(isMob()&&!WIDGET){const t=$('#tbt');if(t&&S.view==='tasks')t.innerHTML=tkYmBtnHTML();}   /* 902차: 폰은 달력처럼 「2026. 9. 4주차 ˅」 년월 버튼 */
   if(!paintHTML(root,tkHTML)){restoreScroll();rTkNewOverlay();return;}   /* 443차: 같은 내용이면 다시 그리지 않는다 */
   restoreScroll();
   rTkNewOverlay();
@@ -6111,7 +6118,7 @@ function dfMomRender(elId,tot,rowsIn){   /* 720차: rowsIn — 다른 지표(세
 }
 /* KPI 카드 — 원본 kc 구조(라벨/큰 값/메타 + 우상단 '목록 보기') */
 function dfKcHTML(list){
-  return '<div class="akpi">'+list.map(k=>`<div class="kc ${k.cls}${k.act?' kc-click':''}"${k.act?` data-act="rec.list" data-sid="${esc(k.sid||'')}" data-scope="${k.act}"`:''}${k.tt?` data-tip="${esc(k.tt)}"`:''}><div class="kl">${k.label}</div><div class="kv">${k.valHTML!==undefined?k.valHTML:k.val.toLocaleString()+(k.unit?`<span class="u">${k.unit}</span>`:'')}</div><div class="km">${k.meta}</div>${k.act?`<span class="kc-cta"><span class="kc-cta-t">목록</span> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></span>`:''}</div>`).join('')+'</div>';
+  return '<div class="akpi">'+list.map(k=>`<div class="kc ${k.cls}${(k.act||k.pick)?' kc-click':''}"${k.act?` data-act="rec.list" data-sid="${esc(k.sid||'')}" data-scope="${k.act}"`:k.pick?' data-act="mss.open"':''}${k.tt?` data-tip="${esc(k.tt)}"`:''}><div class="kl">${k.label}</div><div class="kv">${k.valHTML!==undefined?k.valHTML:k.val.toLocaleString()+(k.unit?`<span class="u">${k.unit}</span>`:'')}</div><div class="km">${k.meta}</div>${(k.act||k.pick)?`<span class="kc-cta"><span class="kc-cta-t">목록</span> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></span>`:''}</div>`).join('')+'</div>';
 }
 /* 주요 이슈 — 게시본 HTML 그대로(원본 .ic 카드). 남이 만든 HTML 이므로 반드시 DOMPurify 로 씻는다 */
 function dfInsightHTML(html){
@@ -6649,7 +6656,7 @@ function rDefectSite(root,site){
   const compDate=site.completionDate?` · ${site.completionDate}`:'';
   const kpis=dfKcHTML([
     /* ⚠ 686차: 이 PC 원본으로 계산한 화면이면 표시한다 — 팀 화면(게시본)과 다를 수 있음을 숨기지 않는다 */
-    {cls:'bl kc-site',label:esc(site.region||'-'),   /* 688차: 「이 PC 원본」 표시는 상단바(#tbLoc)로 옮겼다 */valHTML:`<span class="kc-site-nm">${esc(site.name||'-')}</span>`,meta:`${units.toLocaleString()}세대 · ${site.buildings||0}개동${compDate}`},
+    {cls:'bl kc-site',label:esc(site.region||'-'),pick:isMob()&&!WIDGET,   /* 902차: 폰은 이 카드를 눌러 현장을 바꾼다(꺽쇠) · 688차: 「이 PC 원본」 표시는 상단바(#tbLoc)로 옮겼다 */valHTML:`<span class="kc-site-nm">${esc(site.name||'-')}</span>`,meta:`${units.toLocaleString()}세대 · ${site.buildings||0}개동${compDate}`},
     {cls:'sk',label:'전체 접수',val:st.tR||0,unit:'건',meta:`세대당 ${units>0?((st.tR||0)/units).toFixed(1):'0.0'}건`},
     {cls:'ms',label:'처리 완료',val:st.res||0,unit:'건',meta:`처리율 ${(Number(st.rate)||0).toFixed(1)}%`},
     {cls:'wh'+((st.unr||0)>0?' kc-warn':''),label:'미처리',val:st.unr||0,unit:'건',meta:`세대당 ${units>0?((st.unr||0)/units).toFixed(1):'0.0'}건`,act:'ul',sid:site.id,tt:'미처리 하자리스트 보기'},
@@ -9469,14 +9476,17 @@ function copyText(t,msg){
   const tabsAt=el=>{
     if(!el||!el.closest)return null;
     if(el.closest('input,textarea,select,[contenteditable],#mo,.ctxmenu'))return null;
-    for(const box of [el.closest('#view-defect'),el.closest('#view-tasks')]){
-      if(!box)continue;
-      const bs=[...box.querySelectorAll('[data-act="df.tab"],[data-act="tk.tab"]')];
-      if(bs.length>1)return bs;
+    /* 903차(사용자): 업무 현황은 탭이 아니라 **주(주간)·달(현장별)** 을 넘긴다 — 달력 넘김과 같은 결.
+       버튼 목록 대신 [이전, 현재, 다음] 가짜 항목을 돌려 아래 로직(cur·edge·click)을 그대로 탄다 */
+    if(el.closest('#view-tasks')){
+      const step=d=>({classList:{contains:()=>false},click:()=>{ACT['mine.mon']({dataset:{d:String(d)}});}});
+      return [step(-1),{classList:{contains:c=>c==='act'},click(){}},step(1)];
     }
+    const box=el.closest('#view-defect');
+    if(box){const bs=[...box.querySelectorAll('[data-act="df.tab"]')];if(bs.length>1)return bs;}
     return null;
   };
-  const paneOf=bs=>{const box=bs[0].closest('#view-defect,#view-tasks');
+  const paneOf=bs=>{const box=bs[0].closest?bs[0].closest('#view-defect,#view-tasks'):$('#view-tasks');
     return box&&(box.querySelector('.as')||box.querySelector('.tkcol')||box);};
   const scrollsX=el=>{
     for(let e=el;e&&e!==document.body;e=e.parentElement){
@@ -9926,6 +9936,8 @@ function go(view){
   if(view==='dwg')rDwg();       /* 815차 */
   if(view==='redo')rRedo();     /* 901차 */
   if(view==='prod')rProd();     /* 901차 */
+  mtabSync();                   /* 902차 */
+  document.body.classList.toggle('tk-hdr',isMob()&&!WIDGET&&view==='tasks');   /* 902차: 폰 업무 현황 상단바(년월 버튼 왼쪽 정렬) */
   if(view==='defect')rDefect();
   dfTopbar();rDefectNav();
   if(view==='org'){
@@ -10387,7 +10399,7 @@ const ACT={
     /* 주간으로 돌아오면 달력을 **예정 주가 든 달**로 맞춘다 — 월간에서 달을 넘겨 둔 채 돌아오면
        달력에 주기 띠가 하나도 안 보였다(325차 자체 검증에서 확인) */
     if(S.tkView==='week'){const{nxt}=tkWeekCycles();S.mineYm=nxt.start.slice(0,7)+'-01';}
-    rTasks();},
+    rTasks();mtabSync();},
   'tk.tab':el=>{S.tkTab=el.dataset.id||'';S.tkNew=null;rTasksSoon();},
   'tk.newOpen':el=>{
     /* 새 업무를 담을 자리 — 개인 탭(팀장 등)이면 그 사람 밑에, 그 외(전체·공통·권역·보류함)는 팀 공통.
@@ -12740,6 +12752,22 @@ function qcEval(ex){
   if(bad||i!==t.length||!isFinite(v))return null;
   return Math.round(v*1e9)/1e9;   /* 0.1+0.2 같은 부동소수 찌꺼기 정리 */
 }
+/* 903차: 비례식 — 「a:b=c:d」 네 자리 중 하나가 X(x·?·□)이고, 뒤에 「X=값 단위」가 오면 그 값과 견준다.
+   a·b·c·d 는 숫자나 괄호식 모두 qcEval 로 읽는다. a:b=c:d ⇔ a·d = b·c */
+function qcRatio(ex){
+  const s=String(ex).replace(/\s+/g,' ').trim();
+  const m=s.match(/^(?:[^:=]*?[^\d\s.):=]\s*:\s*)?([^:=\s]+)\s*:\s*([^:=\s]+)\s*=\s*([^:=\s]+)\s*:\s*([^:=\s,;]+)\s*(?:[,;\s]+[Xx?□]\s*=\s*(-?\d+(?:\.\d+)?)\s*(\S*)?)?\s*$/);
+  if(!m)return null;
+  const slots=[m[1],m[2],m[3],m[4]],isX=v=>/^[Xx?□]$/.test(v);
+  const xi=slots.findIndex(isX);if(xi<0||slots.filter(isX).length!==1)return null;
+  const v=slots.map((t,i)=>i===xi?null:qcEval(t));
+  if(v.some((x,i)=>i!==xi&&x==null))return {err:'비례식 항을 읽을 수 없는 줄',want:m[5]?parseFloat(m[5]):null,u:m[6]||''};
+  const [a,b,c,d]=v;let calc;
+  if(xi===3)calc=a===0?null:b*c/a;else if(xi===2)calc=b===0?null:a*d/b;else if(xi===1)calc=c===0?null:a*d/c;else calc=d===0?null:b*c/d;
+  if(calc==null||!isFinite(calc))return {err:'비례식이 성립하지 않는 줄(0 으로 나눔)',want:m[5]?parseFloat(m[5]):null,u:m[6]||''};
+  const u=QC_UNIT[m[6]]||m[6]||'';
+  return {calc:Math.round(calc*1e9)/1e9,want:m[5]?parseFloat(m[5]):null,u,show:slots[0]+':'+slots[1]+'='+slots[2]+':'+slots[3]};
+}
 /* 836차: 엑셀에서 여러 칸을 한 번에 복사하면 줄바꿈이 사라져 **한 줄로** 들어오는 일이 잦다.
    그런 경우도 읽도록 붙은 줄을 표시 앞에서 끊어 준다 — <산출 근거> · 따옴표 · 「1.」 같은 공간 번호 ·
    「 - 항목」 · 「* 합계」. ⚠ 식 안의 빼기(`(0.7*2.33)-(0.2*0.2)`)는 끊으면 안 되므로 **앞뒤가 공백이고
@@ -12764,8 +12792,22 @@ function qcParse(text){
     const base={no:p.unit,place:p.place,item:p.item.trim(),sum:!!p.sum};
     /* 837차: 「시스템 가구 해체 / 설치」처럼 수량이 안 적힌 항목은 **1식**으로 보고 합계에 넣는다(사용자) */
     if(!ex){out.push({...base,expr:'',calc:1,want:1,u:'식',st:'sk',why:'수량 없음 — 1식으로 봄'});return;}
+    /* 903차(사용자): 비례식 「1:3=4:X」 + 「X=12」 — 나머지 셋으로 X 를 풀어 적힌 값과 견준다 */
+    const pr=qcRatio(ex);
+    if(pr){
+      if(pr.err){out.push({...base,expr:ex,calc:null,want:pr.want,u:pr.u,st:'sk',why:pr.err});return;}
+      if(pr.want==null){out.push({...base,expr:pr.show,calc:pr.calc,want:null,u:'',st:'sk',why:'X 값이 안 적힌 비례식'});return;}
+      const d=QC.rnd,rc=qcRound(pr.calc,d),rw=qcRound(pr.want,d),diff=qcRound(Math.abs(rc-rw),6);
+      const okTol=QC.tol>0&&diff<=QC.tol+1e-9;
+      if(rc===rw||okTol)out.push({...base,expr:pr.show,calc:pr.calc,want:pr.want,u:pr.u,st:'ok',why:okTol&&rc!==rw?('허용 오차 안(차이 '+qcFmt(diff)+')'):(pr.calc!==pr.want?('반올림 후 비교('+qcFmt(rc)+' = '+qcFmt(rw)+')'):'')});
+      else out.push({...base,expr:pr.show,calc:pr.calc,want:pr.want,u:pr.u,st:'no',why:'비례식 X = '+qcFmt(pr.calc)+(pr.calc!==rc?' → '+qcFmt(rc):'')+' · 적힌 값 '+qcFmt(pr.want)+' — '+qcFmt(diff)+(rc>rw?' 적음':' 많음')});
+      return;
+    }
     const i=ex.lastIndexOf('=');
-    const lhs=i<0?ex:ex.slice(0,i),rhs=i<0?ex:ex.slice(i+1);
+    let lhs=i<0?ex:ex.slice(0,i);const rhs=i<0?ex:ex.slice(i+1);
+    /* 903차(사용자): 「AC : 1.2*2.4」 처럼 식 앞에 「낱말 :」 라벨이 붙으면 라벨은 항목 이름에 붙이고 식만 남긴다 */
+    const lab=lhs.match(/^\s*([^=]*?[^\d\s.:=])\s*:\s*(?=[-+(\d])(.*)$/);
+    if(lab){base.item=(base.item+' '+lab[1].trim()).trim();lhs=lab[2];}
     const m=rhs.match(/^\s*(-?\d+(?:\.\d+)?)\s*(.*)$/);   /* ⚠ 수량은 = 바로 뒤 · 나머지가 단위 — 끝에서 찾으면 「1.8m2」의 2 를 수량으로 읽는다 */
     const want=m?parseFloat(m[1]):null;
     const ut=((m&&m[2])||'').trim().split(/\s+/)[0]||'';   /* 「=6㎡ 추가메모」처럼 뒤에 글자가 붙으면 첫 토막만 단위로 */
@@ -12808,6 +12850,11 @@ function qcParse(text){
       return;
     }
     if(/^=/.test(s)&&pend){pend.expr+=' '+s;return;}
+    if(pend&&/:/.test(pend.expr)&&/^[Xx?□]\s*=/.test(s)){pend.expr+=' '+s;return;}   /* 903차: 비례식 다음 줄 「X=6」 */
+    if(/^[0-9.(][0-9.+\-*/() ]*:\s*[0-9.(Xx?□]/.test(s)&&/=/.test(s)){   /* 903차: 「1:3=4:X」 가 「:」 없이 바로 온 줄 — 항목 줄 아래면 그 항목의 식, 아니면 한 줄짜리 */
+      if(pend&&!pend.expr.trim()){pend.expr=s;return;}
+      flush();pend={unit:unit||1,place:sumMode?'합계':place,item:'',expr:s,sum:sumMode};return;
+    }
     if(pend&&/^[0-9.+\-*/()= ]+$/.test(s)){pend.expr+=' '+s;return;}   /* 식이 여러 줄로 이어진 경우 */
     /* ⚠ 891차: 엑셀 칸에서 식이 길면 줄이 넘어간다(사용자 실물). 넘어간 줄은 **연산자로 시작**하거나
        앞줄이 연산자로 끝난다 — 단위(m·㎡…)가 붙어 있어도 이어 붙인다. 이걸 안 하면 넘어간 토막만 읽어 오답이 된다. */
@@ -14185,6 +14232,91 @@ Object.assign(ACT,{
   'pv.tab':el=>{if(PV.tab===el.dataset.t)return;PV.tab=el.dataset.t;rProd();},
 });
 
+/* ═══════════ 902차: 폰 하단 탭 · 현장 선택 시트 ═══════════
+   탭은 화면(view)이 아니라 「가는 곳」이다 — 주간·현장별은 둘 다 업무 현황(S.tkView)이고, 하자처리 현황은 팀 대시보드(S.dfSid='')가 먼저.
+   활성 표시는 go()·tk.view 뒤에 mtabSync() 로 맞춘다. 데스크톱·위젯은 CSS 가 숨긴다. */
+/* 902차(사용자): 폰 업무 현황 상단바 — 달력의 「2026. 9. ˅」와 같은 버튼·같은 월 그림(ymPickHTML) */
+function tkYmBase(){const{nxt}=tkWeekCycles();const b=S.mineYm||(S.tkView!=='month'?nxt.start.slice(0,7)+'-01':todayStr().slice(0,7)+'-01');return toDate(b);}
+function tkYmBtnHTML(){
+  const d=tkYmBase(),{nxt}=tkWeekCycles();
+  const wk=S.tkView==='month'?'':' <span class="tbt-wk">'+tkWeekNo(nxt.start)+'주차</span>';
+  return '<button class="tbt-ym" data-act="tk.ym">'+d.getFullYear()+'. '+(d.getMonth()+1)+'.'+wk+'<svg class="icn" aria-hidden="true"><use href="#i-chevd"></use></svg></button>';
+}
+function openTkPick(){
+  YM_Y=null;
+  const old=$('#ymPop');
+  if(old){old.remove();document.removeEventListener('click',ymOutside,true);return;}
+  const btn=$('#topbar .tbt-ym');if(!btn)return;
+  const pop=document.createElement('div');pop.id='ymPop';pop.className='ymp-tk';pop.innerHTML=ymPickHTML(tkYmBase(),'tk');
+  document.body.appendChild(pop);
+  pop.style.top=(btn.getBoundingClientRect().bottom+8)+'px';
+  setTimeout(()=>{document.addEventListener('click',ymOutside,true);},0);
+}
+/* 903차: 달력 칸 날짜 숫자 가운데 맞춤 — SVG text-anchor=middle 은 글자 「상자」(advance) 기준이라 잉크가 값마다 오른쪽으로 쏠린다.
+   canvas measureText 의 actualBoundingBoxLeft/Right 로 실제 잉크 폭을 재서 그만큼 옮긴다(글자체가 바뀌어도 따라간다) */
+function mtabDateX(n){
+  try{const c=mtabDateX.c||(mtabDateX.c=document.createElement('canvas').getContext('2d'));
+    /* 실제로 그려지는 크기(8.5 vb 단위 × 22/24 px × DPR)로 재야 힌팅까지 같다 */
+    const dpr=window.devicePixelRatio||1,px=8.5*22/24*dpr;c.font='700 '+px+'px '+(getComputedStyle(document.body).fontFamily||'sans-serif');
+    /* anchor=middle 이면 원점이 x - w/2 · 잉크는 [원점 - L, 원점 + R] → 잉크 중심을 12 에 두는 x = 12 + (w - R + L)/2 (vb 단위로 환산) */
+    const m=c.measureText(n);return 12+((m.width-m.actualBoundingBoxRight+m.actualBoundingBoxLeft)/2)/(px/8.5);
+  }catch(e){return 12;}
+}
+function mtabSync(){
+  const bar=$('#mtab');if(!bar)return;
+  const cur=S.view==='calendar'?'calendar':S.view==='tasks'?(S.tkView==='month'?'month':'week'):S.view==='defect'?'defect':/^(photo|qc|dwg|redo|prod)$/.test(S.view)?'tools':'';
+  $$('#mtab button').forEach(b=>b.classList.toggle('act',b.dataset.t===cur));
+  const d=$('#mtab .mtab-d');if(d){const n=String(Number(todayStr().slice(8,10)));if(d.textContent!==n)d.textContent=n;
+    const x=mtabDateX(n).toFixed(2);if(d.getAttribute('x')!==x)d.setAttribute('x',x);}
+}
+function mssClose(){const s=$('#mss'),sc=$('#mssScrim');if(s){s.classList.remove('on');s.classList.remove('tools');}if(sc){sc.classList.remove('on');sc.classList.remove('tools');}mtabSync();}
+/* 903차: 하단 탭 「업무 도구」 — 바로 가지 않고 시트에서 고른다(현장 시트와 같은 부품) */
+const MTOOLS=[['photo','i-photo','사진대지 작성'],['qc','i-calc','견적 검토'],['dwg','i-frame','도면 인쇄'],['redo','i-redo','재하자 추적'],['prod','i-prod','생산성 검토']];
+function mtoolsOpen(){
+  const box=$('#mss');if(!box)return;
+  box.innerHTML='<div class="mss-h">업무 도구</div>'+MTOOLS.map(([v,ic,l])=>'<div class="mss-i'+(S.view===v?' act':'')+'" data-act="mtab.tool" data-v="'+v+'"><svg class="icn" aria-hidden="true"><use href="#'+ic+'"></use></svg>'+l+'</div>').join('');
+  box.classList.add('on');box.classList.add('tools');const sc=$('#mssScrim');sc.classList.add('on');sc.classList.add('tools');
+  $$('#mtab button').forEach(b=>b.classList.toggle('act',b.dataset.t==='tools'));   /* 시트가 열린 동안 칸을 켠다 */
+}
+function mssOpen(){
+  const box=$('#mss');if(!box)return;
+  const{regions}=tkSel(),sites=dfSites();
+  const groups=[];
+  regions.forEach(r=>{const l=sites.filter(x=>x.region===r.id);if(l.length)groups.push([r.name,l]);});
+  const none=sites.filter(x=>!x.region||!regions.some(r=>r.id===x.region));if(none.length)groups.push(['권역 미지정',none]);
+  box.innerHTML='<div class="mss-h">현장 선택</div>'
+    +'<div class="mss-i'+(S.dfSid?'':' act')+'" data-act="mss.dash"><svg class="icn" aria-hidden="true"><use href="#i-grid4"></use></svg>팀 전체 대시보드</div>'
+    +groups.map(([rn,list])=>'<div class="mss-g">'+esc(rn)+'</div>'
+      +list.map(x=>'<div class="mss-i'+(S.dfSid===x.id?' act':'')+'" data-act="mss.site" data-sid="'+esc(x.id)+'"><span class="dot"></span>'+esc(x.name)+'</div>').join('')).join('');
+  box.classList.add('on');$('#mssScrim').classList.add('on');
+}
+/* 안드로이드 키보드 — 입력 중엔 탭바를 숨긴다(fixed 바가 키보드 위로 올라와 입력칸을 가린다) */
+document.addEventListener('focusin',e=>{const t=e.target;if(t&&t.matches&&t.matches('input:not([type=checkbox]):not([type=radio]):not([type=file]),textarea,select,[contenteditable="true"]'))document.body.classList.add('kb');});
+document.addEventListener('focusout',()=>{setTimeout(()=>{const a=document.activeElement;if(!a||!a.matches||!a.matches('input:not([type=checkbox]):not([type=radio]):not([type=file]),textarea,select,[contenteditable="true"]'))document.body.classList.remove('kb');},50);});
+Object.assign(ACT,{
+  'mtab.go':el=>{
+    const t=el.dataset.t;const wasTools=!!$('#mss.tools.on');mssClose();if(t==='tools'&&wasTools)return;
+    if(t==='calendar'){if(S.view==='calendar'){ACT['cal.today']();return;}go('calendar');return;}   /* 캘린더에서 다시 누르면 오늘로 */
+    if(t==='week'||t==='month'){S.tkView=t;S.tkNew=null;S.tk.m='teamall';
+      if(t==='week'){const{nxt}=tkWeekCycles();S.mineYm=nxt.start.slice(0,7)+'-01';}
+      if(S.view==='tasks')rTasks();else go('tasks');mtabSync();return;}
+    if(t==='defect'){S.dfSid='';go('defect');return;}
+    if(t==='tools'){mtoolsOpen();return;}   /* 열린 채 다시 누르면 위에서 닫고 끝난다 */
+  },
+  'mtab.tool':el=>{mssClose();go(el.dataset.v);},
+  'tk.ym':()=>openTkPick(),   /* ⚠ 'tk.pick' 은 담당자·보류함 선택이 이미 쓴다 — 이름을 겹치면 그쪽이 죽는다 */
+  'tk.pickY':el=>{const c=tkYmBase();YM_Y=(YM_Y===null?c.getFullYear():YM_Y)+Number(el.dataset.d);const box=$('#ymPop');if(box)box.innerHTML=ymPickHTML(c,'tk');},
+  'tk.goYM':el=>{
+    const y=Number(el.dataset.y),m=Number(el.dataset.m);pickClear();
+    const t=todayStr(),cur=t.slice(0,7)===(y+'-'+String(m).padStart(2,'0'));
+    if(S.tkView==='month')S.mineYm=cur?'':y+'-'+String(m).padStart(2,'0')+'-01';
+    else{S.tkWeek=cur?'':dstr(new Date(y,m-1,1));const{nxt}=tkWeekCycles();S.mineYm=nxt.start.slice(0,7)+'-01';}   /* 주간: 그 달 1일이 든 주기로(이번 달이면 이번 주) */
+    closeYMPop();rTasks();},
+  'mss.open':()=>mssOpen(),
+  'mss.close':()=>mssClose(),
+  'mss.dash':()=>{mssClose();S.dfSid='';go('defect');},
+  'mss.site':el=>{mssClose();S.dfSid=el.dataset.sid||'';go('defect');},
+});
 /* ═══════════ 부팅 ═══════════ */
 function rAll(){rDay();rTasks();rOrg();rCfg();rFilter();rTeamSel();refetchCal();rWidget();}   /* 팀 선택기는 조직 화면 밖(사이드바)이라 rAll 에서도 그린다 */
 (function boot(){
