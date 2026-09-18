@@ -2276,8 +2276,27 @@ function mcalIsLand(){return isMob()&&!WIDGET&&matchMedia('(orientation:landscap
 const MCAL_MINI_H=46;
 function mcalFullH(){const th=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--th'))||46;
   /* 902차: (100dvh - th - 47 - 탭바) / 주 수 — CSS 와 같은 식. 탭바 높이는 실제 요소에서 잰다(홈 인디케이터 포함) */
-  const tab=$('#mtab'),tabH=(tab&&tab.offsetParent)?tab.offsetHeight:0;
-  return Math.max(MCAL_MINI_H,(innerHeight-th-47-tabH)/5);}   /* 903차: 언제나 5행 단위 — 6행 달은 CSS 가 5/6 을 곱한다 */
+  /* 903차(사용자 실기): 100dvh·innerHeight 는 iOS 상단 안전영역까지 세어 칸이 12px 씩 커지고 마지막 주가 탭바에 깔렸다 →
+     화면 위치를 **재서** 잰다: 격자 위 ~ 탭바 위(없으면 화면 아래) - 7px, 5행 단위. 6행 달은 CSS 가 5/6 을 곱한다 */
+  const bottom=mtabTop();
+  const g=$('#calMini .mc-track'),top=g?g.getBoundingClientRect().top:th+40;
+  return Math.max(MCAL_MINI_H,(bottom-top-7)/5);}
+/* 탭바 위 y — ⚠ position:fixed 요소는 offsetParent 가 null 이라 그걸로 보임 여부를 재면 안 된다(그래서 탭바 높이가 0 으로 잡혔다) */
+function mtabTop(){const t=$('#mtab');return (t&&getComputedStyle(t).display!=='none')?t.getBoundingClientRect().top:innerHeight;}
+/* 903차: 폰 달력 높이를 화면 실측으로 맞춘다 — .cal-wrap 은 탭바 위까지, 큰 달력 셀은 --mch 인라인(CSS 의 100dvh 식은 JS 전 대비용) */
+function mcalFit(){
+  const wrap=$('#view-calendar .cal-wrap'),box=$('#view-calendar');if(!wrap||!box)return;
+  if(!isMob()||WIDGET||S.view!=='calendar'||mcalIsLand()){wrap.style.removeProperty('height');return;}
+  const bottom=mtabTop();
+  const h=Math.round(bottom-wrap.getBoundingClientRect().top);if(h>200)wrap.style.height=h+'px';
+  if(S.mcal==='full'&&!S.mcalDrag){
+    let mch=mcalFullH();box.style.setProperty('--mch',mch.toFixed(2)+'px');
+    /* 칸 사이 선(1px 대) 몫은 식에 없다 — 한 번 재서 마지막 주 아래가 탭바 위 7px 에 오게 보정 */
+    const cells=$$('#calMini .mc-track>.mc-g:nth-child(2) .mc-d').filter(e=>getComputedStyle(e).display!=='none');
+    if(cells.length){const last=cells[cells.length-1].getBoundingClientRect().bottom,d=last-(bottom-7);const rows=Number($('#calMini .mc-track>.mc-g:nth-child(2)').dataset.rows)||5;
+      if(Math.abs(d)>0.5){mch-=d/rows*(rows===6?6/5:1);box.style.setProperty('--mch',mch.toFixed(2)+'px');}}
+  }
+}
 function mcalSet(mode){
   if(!isMob()||WIDGET){document.body.classList.remove('mcal-full','mcal-mini','mcal-land','mcal-drag');return;}
   const land=mcalIsLand();
@@ -2293,6 +2312,7 @@ function mcalSet(mode){
   document.body.classList.toggle('mcal-full',mode==='full');
   document.body.classList.toggle('mcal-mini',mode==='mini');
   rCalMini();
+  mcalFit();requestAnimationFrame(mcalFit);   /* 903차: 셀 높이·패널 높이를 실측으로(첫 그리기 뒤 한 번 더 — 폰트·탭바가 늦게 잡힐 때) */
 }
 function mcalTitle(){
   const t=$('#tbt');if(!t||!CAL)return;
@@ -2308,6 +2328,7 @@ function rCalMini(){
   box.hidden=!on;
   if(!on){box.innerHTML='';return;}
   paintHTML(box,calMiniHTML());
+  if(!S.mcalDrag)mcalFit();   /* 903차 */
 }
 function rMonTitle(){
   if(!CAL)return;const c=CAL.view.currentStart;
@@ -2372,6 +2393,13 @@ function ymOutside(e){
 function closeYMPop(){
   const pop=$('#ymPop');if(pop)pop.remove();
   document.removeEventListener('click',ymOutside,true);
+}
+/* 903차(사용자): 폰 점 달력의 업무 패널을 좌우로 밀면 달력 트랙처럼 **옆 날이 손가락을 따라 미리 나온다**.
+   미리보기는 카드 그림만 같은 읽기 전용 판(.dp-ghost) — 넘어가면 selDate 로 진짜 패널을 그리고 판을 걷는다 */
+function dpGhostHTML(ds){
+  const ps=sortPlans(dayPlans(ds)),d=toDate(ds),ho=holOf(ds);
+  return '<div class="card day-panel dp-ghost"><div class="dp-lh"><span class="dp-lh-t"><span>'+(d.getMonth()+1)+'월 '+d.getDate()+'일 ('+DOW[d.getDay()]+')'+(ho&&ho.n?' · '+esc(ho.n):'')+' · </span><span>업무 '+ps.length+'건</span></span></div>'
+    +'<div class="dp-body"><div>'+(ps.length?ps.map(({p,occ})=>planCardHTML(p,occ)).join(''):'<div class="dp-empty">이 날짜에 등록된 업무가 없습니다.</div>')+'</div></div></div>';
 }
 /* 모바일 하단 시트 — 날짜를 누르면 일자 패널이 올라온다(캘린더 앱 UX) */
 const isMob=()=>matchMedia('(max-width:960px)').matches;
@@ -2621,34 +2649,8 @@ function linkLabel(l){
 }
 /* 글자 칸이 아니면 커서 위치를 읽을 수 없다(날짜·색 칸은 읽기만 해도 오류) */
 function selOf(el,k){try{return el[k];}catch(e){return null;}}
-function rDay(){
-  const ps=rDayHead();
-  rCalMini();   /* 645차: 점·선택 표시를 목록과 같이 맞춘다 */
-  const box=$('#dpList');
-  /* 작성 중에도 버튼은 남기고, 누르면 새 업무 폼으로 바꾼다 */
-  const add=$('.dp-add');if(add)add.classList.toggle('on',!!S.planEdit);
-  /* 이미 떠 있는 폼은 다시 그리지 않고 그대로 떼었다 도로 꽂는다 —
-     자동 저장이 목록을 다시 그려도 입력 중인 값·포커스·커서가 살아남는다 */
-  const keep=(S.planEdit&&S.planEdit.mounted&&$('#dpEdit'))?$('#dpEdit'):null;
-  /* ⚠ 같은 노드를 도로 꽂아도 **DOM 에서 떼는 순간 포커스는 풀린다** — 값·커서는 남지만
-     글자를 치던 칸에서 초점이 빠진다(자동 저장이 600ms 뒤 이 함수를 부르므로,
-     타이핑을 잠깐 멈출 때마다 끊기는 것처럼 보였다). 어디에 커서가 있었는지 적어 두었다가 되살린다 */
-  const ae=document.activeElement;
-  const kf=(keep&&ae&&keep.contains(ae))?{el:ae,s:selOf(ae,'selectionStart'),e:selOf(ae,'selectionEnd')}:null;
-  if(keep)keep.remove();
-  /* 처음 여는 순간엔 draft 가 아직 없다(planFormHTML 이 만든다) — orig 로도 찾아야 자리를 지킨다 */
-  const editingId=S.planEdit?(((S.planEdit.draft||{}).id)||((S.planEdit.orig||{}).id)||null):null;
-  const cnt=$('#dpCount');if(cnt)cnt.textContent='업무 '+ps.length+'건';
-  /* 771차: 머리에 날짜 — 「9월 9일 (수) · 업무 3건」, 공휴일·휴무일이면 이름도 */
-  const dEl=$('#dpDate');if(dEl){const d=toDate(S.selDate),ho=holOf(S.selDate);dEl.textContent=(d.getMonth()+1)+'월 '+d.getDate()+'일 ('+DOW[d.getDay()]+')'+(ho&&ho.n?' · '+ho.n:'')+' · ';}
-  if(!ps.length&&!S.planEdit){
-    box.innerHTML='<div class="dp-empty">이 날짜에 등록된 업무가 없습니다.</div>';
-    paintReset(box);   /* 빈 목록으로 갈아끼웠으니 서명도 비운다 — 안 그러면 다시 채워질 때 스킵된다 */
-    rHold();wireHoldDnD();return;}
-  /* 폼은 원래 카드가 있던 자리에 그대로 들어간다 — 수정을 눌러도 목록이 위로 튀지 않는다 */
-  let slot=false;
-  const parts=ps.map(({p,occ})=>{
-    if(editingId&&p.id===editingId){slot=true;return '<div id="peSlot"></div>';}
+/* 903차: 업무 카드 한 장 — rDay 와 폰 패널 좌우 넘김(옆 날 미리보기)이 같이 쓴다 */
+function planCardHTML(p,occ){
     const done=isDone(p,occ),rep=p.recur&&p.recur.f,span=p.end&&p.end!==p.date,st=planSt(p,occ);
     const md=x=>{const t=toDate(x);return (t.getMonth()+1)+'/'+t.getDate();};
     const lnk=Object.values(p.links||{}).filter(l=>l&&l.url)[0];
@@ -2679,7 +2681,37 @@ function rDay(){
         </div>
         ${det}
       </div>
-    </div>`;}).join('');
+    </div>`;
+}
+function rDay(){
+  const ps=rDayHead();
+  rCalMini();   /* 645차: 점·선택 표시를 목록과 같이 맞춘다 */
+  const box=$('#dpList');
+  /* 작성 중에도 버튼은 남기고, 누르면 새 업무 폼으로 바꾼다 */
+  const add=$('.dp-add');if(add)add.classList.toggle('on',!!S.planEdit);
+  /* 이미 떠 있는 폼은 다시 그리지 않고 그대로 떼었다 도로 꽂는다 —
+     자동 저장이 목록을 다시 그려도 입력 중인 값·포커스·커서가 살아남는다 */
+  const keep=(S.planEdit&&S.planEdit.mounted&&$('#dpEdit'))?$('#dpEdit'):null;
+  /* ⚠ 같은 노드를 도로 꽂아도 **DOM 에서 떼는 순간 포커스는 풀린다** — 값·커서는 남지만
+     글자를 치던 칸에서 초점이 빠진다(자동 저장이 600ms 뒤 이 함수를 부르므로,
+     타이핑을 잠깐 멈출 때마다 끊기는 것처럼 보였다). 어디에 커서가 있었는지 적어 두었다가 되살린다 */
+  const ae=document.activeElement;
+  const kf=(keep&&ae&&keep.contains(ae))?{el:ae,s:selOf(ae,'selectionStart'),e:selOf(ae,'selectionEnd')}:null;
+  if(keep)keep.remove();
+  /* 처음 여는 순간엔 draft 가 아직 없다(planFormHTML 이 만든다) — orig 로도 찾아야 자리를 지킨다 */
+  const editingId=S.planEdit?(((S.planEdit.draft||{}).id)||((S.planEdit.orig||{}).id)||null):null;
+  const cnt=$('#dpCount');if(cnt)cnt.textContent='업무 '+ps.length+'건';
+  /* 771차: 머리에 날짜 — 「9월 9일 (수) · 업무 3건」, 공휴일·휴무일이면 이름도 */
+  const dEl=$('#dpDate');if(dEl){const d=toDate(S.selDate),ho=holOf(S.selDate);dEl.textContent=(d.getMonth()+1)+'월 '+d.getDate()+'일 ('+DOW[d.getDay()]+')'+(ho&&ho.n?' · '+ho.n:'')+' · ';}
+  if(!ps.length&&!S.planEdit){
+    box.innerHTML='<div class="dp-empty">이 날짜에 등록된 업무가 없습니다.</div>';
+    paintReset(box);   /* 빈 목록으로 갈아끼웠으니 서명도 비운다 — 안 그러면 다시 채워질 때 스킵된다 */
+    rHold();wireHoldDnD();return;}
+  /* 폼은 원래 카드가 있던 자리에 그대로 들어간다 — 수정을 눌러도 목록이 위로 튀지 않는다 */
+  let slot=false;
+  const parts=ps.map(({p,occ})=>{
+    if(editingId&&p.id===editingId){slot=true;return '<div id="peSlot"></div>';}
+    return planCardHTML(p,occ);}).join('');
   /* 편집 중인 업무가 목록에 없으면(새 업무·날짜를 옮긴 경우) 맨 위에 둔다 */
   const html=(S.planEdit&&!slot?'<div id="peSlot"></div>':'')+parts;
   /* 441차: 라이브에서는 저장 직후 한 번, 리스너 에코로 또 한 번 그린다.
@@ -9549,7 +9581,8 @@ function copyText(t,msg){
   let drag=null;   /* {axis:'x'|'y', track, box, w, h0, from} */
   const phone=()=>isMob()&&!WIDGET&&!mcalIsLand()&&S.view==='calendar';
   const track=()=>$('#calMini .mc-track');
-  function dragEnd(){document.body.classList.remove('mcal-drag','mcal-settle');S.mcalDrag=false;const b=$('#view-calendar');if(b){b.style.removeProperty('--mch');b.style.removeProperty('--mcp');}drag=null;}
+  function dragEnd(){document.body.classList.remove('mcal-drag','mcal-settle');S.mcalDrag=false;const b=$('#view-calendar');if(b){b.style.removeProperty('--mch');b.style.removeProperty('--mcp');}
+    $$('#view-calendar .dp-ghost').forEach(g=>g.remove());const c=$('#view-calendar .dp-col .day-panel');if(c){c.style.transition='';c.style.transform='';}drag=null;}
   document.addEventListener('touchstart',e=>{
     tgt=null;if(WIDGET||S.view!=='calendar')return;   /* 705차: 태블릿(터치·넓은 화면)도 좌우 스와이프로 월 이동 — 상하 전환은 폰만 */
     const t=e.touches[0];sx=t.clientX;sy=t.clientY;st=Date.now();tgt=e.target;
@@ -9565,7 +9598,16 @@ function copyText(t,msg){
     if(!drag){
       if(Math.abs(dx)<8&&Math.abs(dy)<8)return;
       if(!inCal&&!inDp)return;
-      if(Math.abs(dx)>Math.abs(dy)){   /* 가로 = 월 트랙 끌기(격자 위에서만) */
+      if(Math.abs(dx)>Math.abs(dy)){   /* 가로 = 월 트랙 끌기(격자 위에서만) · 903차: 점 달력의 업무 패널 위에서는 하루 넘김(옆 날 미리보기) */
+        if(inDp&&S.mcal==='mini'&&!tgt.closest('.dp-body [data-act],button,a,input,textarea,select')){
+          const col=$('#view-calendar .dp-col'),card=col&&col.querySelector('.day-panel:not(.dp-ghost)');if(!col||!card)return;
+          const w=col.clientWidth+12,cur=S.selDate||todayStr();
+          col.insertAdjacentHTML('beforeend',dpGhostHTML(addDays(cur,-1)).replace('dp-ghost','dp-ghost prev')+dpGhostHTML(addDays(cur,1)).replace('dp-ghost','dp-ghost next'));
+          const top=card.offsetTop,h=card.offsetHeight;
+          col.querySelectorAll('.dp-ghost').forEach(g=>{g.style.top=top+'px';g.style.height=h+'px';});
+          drag={axis:'dp',col,card,w,cur};
+          return;
+        }
         if(!inCal)return;
         const tr=track();if(!tr)return;
         drag={axis:'x',track:tr,w:tr.parentElement.clientWidth};
@@ -9578,7 +9620,12 @@ function copyText(t,msg){
       }
     }
     e.preventDefault();
-    if(drag.axis==='x'){
+    if(drag.axis==='dp'){
+      const x=Math.max(-drag.w,Math.min(drag.w,dx));
+      drag.card.style.transform='translateX('+x+'px)';
+      const pv=drag.col.querySelector('.dp-ghost.prev'),nx=drag.col.querySelector('.dp-ghost.next');
+      if(pv)pv.style.transform='translateX('+(x-drag.w)+'px)';if(nx)nx.style.transform='translateX('+(x+drag.w)+'px)';
+    }else if(drag.axis==='x'){
       drag.track.style.transform='translateX(calc(-33.3333% + '+Math.round(dx)+'px))';
     }else{
       const full=mcalFullH(),mini=MCAL_MINI_H;
@@ -9594,6 +9641,24 @@ function copyText(t,msg){
     const t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy,dt=Date.now()-st;tgt0=tgt;tgt=null;
     if(drag){   /* 폰 미니 격자 — 스냅 */
       const d=drag;
+      if(d.axis==='dp'){   /* 903차: 패널 하루 넘김 — 거리·속도로 스냅, 넘어가면 그날을 선택하고 진짜 패널로 갈아 끼운다 */
+        const v=Math.abs(dx)/Math.max(1,dt);
+        const go=(Math.abs(dx)>d.w*0.25||v>0.35)&&Math.abs(dx)>24?(dx<0?1:-1):0;
+        drag=null;
+        const els=[d.card,...d.col.querySelectorAll('.dp-ghost')];
+        els.forEach(el=>{el.style.transition='transform .26s cubic-bezier(.22,.61,.36,1)';});
+        const x=go?-go*d.w:0;
+        d.card.style.transform='translateX('+x+'px)';
+        const pv=d.col.querySelector('.dp-ghost.prev'),nx=d.col.querySelector('.dp-ghost.next');
+        if(pv)pv.style.transform='translateX('+(x-d.w)+'px)';if(nx)nx.style.transform='translateX('+(x+d.w)+'px)';
+        let fired=false;const fin=()=>{if(fired)return;fired=true;
+          d.col.querySelectorAll('.dp-ghost').forEach(g=>g.remove());
+          d.card.style.transition='';d.card.style.transform='';
+          if(go){selDate(addDays(d.cur,go),true);rCalMini&&rCalMini();}   /* 달이 바뀌면 selDate 안에서 달력도 따라간다 */
+        };
+        d.card.addEventListener('transitionend',fin,{once:true});setTimeout(fin,300);
+        return;
+      }
       if(d.axis==='x'){
         const v=Math.abs(dx)/Math.max(1,dt);   /* px/ms */
         const go=(Math.abs(dx)>d.w*0.25||v>0.35)&&Math.abs(dx)>24?(dx<0?1:-1):0;
@@ -9626,8 +9691,8 @@ function copyText(t,msg){
     if(dt>700||!CAL)return;
     const inCal=!!tgt0.closest('#view-calendar .cal-card'),inDp=!!tgt0.closest('#view-calendar .dp-col');
     if(!inCal&&!inDp)return;
-    /* 899차(사용자): 폰에서 업무 패널을 좌우로 밀면 **하루씩** 옮긴다 — 선택 날짜가 바뀌고, 달이 바뀌면 달력도 따라간다 */
-    if(phone()&&inDp&&Math.abs(dx)>60&&Math.abs(dy)<40&&!tgt0.closest('.dp-body [data-act],button,a,input,textarea,select')){
+    /* 899차(사용자): 폰에서 업무 패널을 좌우로 밀면 **하루씩** 옮긴다 — 903차: 점 달력에서는 위 drag.axis==='dp' 트랙이 맡고, 여기는 가로 모드 시트만 */
+    if(phone()&&inDp&&S.mcal!=='mini'&&Math.abs(dx)>60&&Math.abs(dy)<40&&!tgt0.closest('.dp-body [data-act],button,a,input,textarea,select')){
       const ds=addDays(S.selDate||todayStr(),dx<0?1:-1);
       const col=$('#view-calendar .dp-col');
       if(col){col.style.transition='none';col.style.transform='translateX('+(dx<0?12:-12)+'px)';col.style.opacity='.6';}
@@ -12837,6 +12902,8 @@ function qcParse(text){
     if(!s)return;
     if(/^<.*>$/.test(s)){flush();sumMode=false;return;}   /* <산출 근거> 같은 머리줄 */
     if(/^-{4,}$/.test(s))return;   /* 903차: 「------」 구분선 */
+    const bm=s.match(/^\[\s*(.*?)\s*\]$/);   /* 903차(실물): 「[ 세대 합계 ]」 다음 줄 「 : 6.8+3.3+6.2=16.3m」 — 대괄호 머리줄은 항목 이름, 합계면 합계 무리 */
+    if(bm){flush();curItem=bm[1];const isSum=/합계/.test(bm[1]);pend={unit:unit||1,place:isSum?'합계':place,item:bm[1],expr:'',sum:isSum};return;}
     /* 903차(실물): 「합계 : 0.8+5.5+0.8=7.1m」 「* 세대 균열 보수 합계 : 7.1+5.4+9.9=22.4m」 — 식이 붙은 합계 줄은 한 줄로 검토(합계 무리에 둔다) */
     const sm=s.match(/^[*★•]?\s*(.*?합계.*?)\s*:\s*(.+)$/);
     if(sm){flush();pend={unit:unit||1,place:'합계',item:(sm[1].trim()==='합계'&&curItem?curItem+' 합계':sm[1].trim()),expr:sm[2],sum:true};flush();return;}
@@ -14345,6 +14412,7 @@ function rAll(){rDay();rTasks();rOrg();rCfg();rFilter();rTeamSel();refetchCal();
   bindCalResize();
   subVisibleMonths();
   rDay();rAcct();rFilter();rTeamSel();rWidget();   /* 팀 선택기는 사이드바 상시 요소 — 부팅 때부터 그린다 */
+  mtabSync();   /* 903차(사용자): 첫 화면은 go() 를 거치지 않아 하단 탭이 안 켜지고 달력 칸 날짜도 비어 있었다 — 부팅 때 한 번 맞춘다 */
   if(window.__SNAP_Z__&&dfSnapBoot()){/* 스냅샷 문서 — 하자 화면만 */}
   else if(DEV_LOCAL){hideCover();rDefectNav();setTimeout(morningReview,600);}
   else{
