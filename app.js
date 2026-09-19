@@ -10,7 +10,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='910';
+const APP_VER='911';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -11433,7 +11433,7 @@ document.addEventListener('input',e=>{
 });
 /* 아래에 더 있다는 표시 — 스크롤이 남아 있으면 칸 아래쪽을 서서히 지운다(끝에 닿으면 없앤다).
    ⚠ 덧칠이 아니라 mask 라서 카드 배경색이 무엇이든 그대로 어울린다 */
-const SB_SEL='#content,.dp-body,.tk-list,.nq-res,.pf-emg,.rd-body,[data-sb],[data-sbx],[data-sbh]';
+const SB_SEL='#content,.dp-body,.tk-list,.nq-res,.pf-emg,.rd-body,.mss-sc,[data-sb],[data-sbx],[data-sbh]';
 function fadeOne(el){
   if(!el||!el.classList)return;
   /* 823차: 글 입력칸에는 페이드를 걸지 않는다 — 마스크가 **테두리까지** 흐려 칸이 깨져 보인다(견적 검토 붙여넣기 칸) */
@@ -14552,7 +14552,7 @@ function mssClose(){const s=$('#mss'),sc=$('#mssScrim');
 const MTOOLS=[['photo','i-photo','사진대지 작성'],['qc','i-calc','견적 검토'],['dwg','i-frame','도면 인쇄'],['redo','i-redo','재하자 추적'],['prod','i-prod','생산성 검토']];
 function mtoolsOpen(){
   const box=$('#mss');if(!box)return;
-  box.innerHTML='<div class="mss-h">업무 도구</div>'+MTOOLS.map(([v,ic,l])=>'<div class="mss-i'+(S.view===v?' act':'')+'" data-act="mtab.tool" data-v="'+v+'"><svg class="icn" aria-hidden="true"><use href="#'+ic+'"></use></svg>'+l+'</div>').join('');
+  box.innerHTML='<div class="mss-sc"><div class="mss-h">업무 도구</div>'+MTOOLS.map(([v,ic,l])=>'<div class="mss-i'+(S.view===v?' act':'')+'" data-act="mtab.tool" data-v="'+v+'"><svg class="icn" aria-hidden="true"><use href="#'+ic+'"></use></svg>'+l+'</div>').join('')+'</div>';
   mssShow(box,true);
   $$('#mtab button').forEach(b=>b.classList.toggle('act',b.dataset.t==='tools'));   /* 시트가 열린 동안 칸을 켠다 */
 }
@@ -14562,10 +14562,11 @@ function mssOpen(){
   const groups=[];
   regions.forEach(r=>{const l=sites.filter(x=>x.region===r.id);if(l.length)groups.push([r.name,l]);});
   const none=sites.filter(x=>!x.region||!regions.some(r=>r.id===x.region));if(none.length)groups.push(['권역 미지정',none]);
-  box.innerHTML='<div class="mss-h">현장 선택</div>'
+  box.innerHTML='<div class="mss-sc"><div class="mss-h">현장 선택</div>'
     +'<div class="mss-i'+(S.dfSid?'':' act')+'" data-act="mss.dash"><svg class="icn" aria-hidden="true"><use href="#i-grid4"></use></svg>팀 전체 대시보드</div>'
     +groups.map(([rn,list])=>'<div class="mss-g">'+esc(rn)+'</div>'
-      +list.map(x=>'<div class="mss-i'+(S.dfSid===x.id?' act':'')+'" data-act="mss.site" data-sid="'+esc(x.id)+'"><span class="dot"></span>'+esc(x.name)+'</div>').join('')).join('');
+      +list.map(x=>'<div class="mss-i'+(S.dfSid===x.id?' act':'')+'" data-act="mss.site" data-sid="'+esc(x.id)+'"><span class="dot"></span>'+esc(x.name)+'</div>').join('')).join('')
+    +'</div>';
   mssShow(box,false);
   $$('#mtab button').forEach(b=>b.classList.toggle('act',b.dataset.t==='defect'));   /* 910차: 시트가 열린 동안 칸을 켠다 */
 }
@@ -14577,7 +14578,7 @@ function mssOpen(){
   document.addEventListener('touchstart',e=>{
     d=null;const s=sheet();if(!s)return;
     const t0=e.target;if(!t0||!t0.closest||!t0.closest('#mss'))return;
-    if(s.scrollTop>0)return;
+    const sc=s.querySelector('.mss-sc');if(sc&&sc.scrollTop>0)return;   /* 911차: 구르는 것은 안쪽 칸이다 */
     const t=e.touches[0];d={s,y:t.clientY,t:Date.now(),dy:0,on:false};
   },{passive:true});
   document.addEventListener('touchmove',e=>{
