@@ -10,7 +10,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='906';
+const APP_VER='910';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -6354,7 +6354,8 @@ function rDefectDash(root,d){
   all.forEach(({st})=>{tR+=st.tR;tRes+=st.res;tU+=st.unr;tLt+=st.lt;pT+=st.prev.total;pRes+=st.prev.res;pU+=st.prev.unr;pLt+=st.prev.lt;});
   const rate=tR>0?tRes/tR*100:0;
   const kpis=dfKcHTML([
-    {cls:'bl',label:'관리대상현장',valHTML:`${units.toLocaleString()}<span class="u">세대</span>`,meta:`${sites.length.toLocaleString()}개 현장`},
+    {cls:'bl',label:'관리대상현장',pick:isMob()&&!WIDGET,   /* 907차(사용자): 팀 대시보드에서도 이 첫 카드를 눌러 현장을 고른다 — 902차에 현장 화면의 첫 카드에만 달아 두어, 탭으로 들어와 처음 보는 대시보드에서는 현장을 바꿀 길이 없었다 */
+     valHTML:`${units.toLocaleString()}<span class="u">세대</span>`,meta:`${sites.length.toLocaleString()}개 현장`},
     {cls:'sk',label:'전체 접수',val:tR,unit:'건',meta:`세대당 ${units>0?(tR/units).toFixed(1):'0.0'}건`},
     {cls:'ms',label:'처리 완료',val:tRes,unit:'건',meta:`처리율 ${rate.toFixed(1)}%`},
     {cls:'wh'+(tU>0?' kc-warn':''),label:'미처리',val:tU,unit:'건',meta:`세대당 ${units>0?(tU/units).toFixed(1):'0.0'}건`,act:'ul',sid:'',tt:'팀 전체 미처리 목록 보기'},
@@ -9116,6 +9117,64 @@ document.addEventListener('wheel',e=>{
   e.preventDefault();
   kmZoomAt(svg,e.clientX,e.clientY,e.deltaY<0?1.25:1/1.25,false);
 },{passive:false});
+/* 909차(사용자): **폰에서도 지도를 확대**한다 — 여태 손가락 처리가 아예 없어 두 손가락은 브라우저 페이지 확대로 새 나갔다.
+   두 손가락 = 핀치 확대·축소(두 손가락 한가운데의 지도 좌표를 붙들고 배율만 바꾼다) · 한 손가락 = 확대된 상태에서 옮기기(마우스 끌기와 같은 규칙).
+   ⚠ 끄는 동안은 viewBox 만 바꾸고 놓을 때 한 번 다시 그린다(이름표·점 크기가 보기 상자에 매여 있어 매 프레임 다시 그리면 버겁다) */
+let _kmPin=null,_kmPan=null,_kmTapSwallow=0;
+document.addEventListener('touchstart',e=>{
+  const svg=kmSvgOf(e.target);if(!svg)return;
+  const km=S.km;if(!km)return;
+  if(e.touches.length>=2){
+    const a=e.touches[0],b=e.touches[1];
+    const cx=(a.clientX+b.clientX)/2,cy=(a.clientY+b.clientY)/2;
+    const q=kmMapXY(svg,cx,cy);if(!q)return;
+    e.preventDefault();   /* 브라우저 페이지 확대로 새지 않게 */
+    _kmPan=null;
+    _kmPin={svg,d0:Math.max(1,Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)),vb0:{...km.vb},q};
+    km.hist.push({vb:{...km.vb},sel:km.sel});   /* 손짓 한 번에 되돌리기 한 단 */
+  }else if(e.touches.length===1&&km.vb.w<KM_VB0.w){
+    const r=svg.getBoundingClientRect(),k=Math.min(r.width/km.vb.w,r.height/km.vb.h);
+    if(!(k>0))return;
+    _kmPin=null;_kmPan={svg,k,x:e.touches[0].clientX,y:e.touches[0].clientY,vb:{...km.vb},moved:false};
+  }
+},{passive:false});
+document.addEventListener('touchmove',e=>{
+  if(_kmPin&&e.touches.length>=2){
+    e.preventDefault();
+    const a=e.touches[0],b=e.touches[1];
+    const d=Math.max(1,Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY));
+    let w=_kmPin.vb0.w/(d/_kmPin.d0);
+    w=Math.min(KM_VB0.w,Math.max(KM_VB0.w*0.03,w));
+    const f=_kmPin.vb0.w/w,q=_kmPin.q,v0=_kmPin.vb0;
+    S.km.vb={x:q[0]-(q[0]-v0.x)/f,y:q[1]-(q[1]-v0.y)/f,w,h:v0.h/f};
+    kmSetVB(S.km.vb);
+    return;
+  }
+  if(_kmPan&&e.touches.length===1){
+    const t=e.touches[0];
+    if(!_kmPan.moved&&Math.hypot(t.clientX-_kmPan.x,t.clientY-_kmPan.y)<4)return;
+    e.preventDefault();_kmPan.moved=true;
+    const dx=(_kmPan.x-t.clientX)/_kmPan.k,dy=(_kmPan.y-t.clientY)/_kmPan.k,vb=S.km.vb;
+    vb.x=Math.min(Math.max(_kmPan.vb.x+dx,KM_VB0.x-vb.w*.5),KM_VB0.x+KM_VB0.w-vb.w*.5);
+    vb.y=Math.min(Math.max(_kmPan.vb.y+dy,KM_VB0.y-vb.h*.5),KM_VB0.y+KM_VB0.h-vb.h*.5);
+    kmSetVB(vb);
+  }
+},{passive:false});
+function kmTouchEnd(){
+  if(_kmPin){
+    _kmPin=null;_kmTapSwallow=Date.now();
+    const km=S.km;
+    if(km.vb.w>=KM_VB0.w*0.999){km.vb={...KM_VB0};km.sel='';km.hist=[];}   /* 다 줄이면 전체 보기로 */
+    rOrgMap();
+  }
+  if(_kmPan){const p=_kmPan;_kmPan=null;if(p.moved){_kmTapSwallow=Date.now();rOrgMap();}}
+}
+document.addEventListener('touchend',e=>{if(e.touches.length<1)kmTouchEnd();},{passive:true});
+document.addEventListener('touchcancel',kmTouchEnd,{passive:true});
+/* 손짓 뒤에 따라오는 click 은 삼킨다 — 안 그러면 놓는 순간 시도 선택·바다 클릭이 같이 일어난다 */
+document.addEventListener('click',e=>{
+  if(Date.now()-_kmTapSwallow<400&&kmSvgOf(e.target)){e.stopPropagation();e.preventDefault();}
+},true);
 /* 549차: 더블클릭 = 커서 자리로 2배 확대. 앞서 난 한 번 클릭 동작은 220ms 미뤘다가 더블클릭이 오면 버린다 —
    안 그러면 시도 선택 → 시군구 진입 → 확대가 한꺼번에 일어난다 */
 let _kmCT=0;
@@ -14472,7 +14531,7 @@ function mtabDateFit(t){
 }
 function mtabSync(){
   const bar=$('#mtab');if(!bar)return;
-  const cur=S.view==='calendar'?'calendar':S.view==='tasks'?(S.tkView==='month'?'month':'week'):S.view==='defect'?'defect':/^(photo|qc|dwg|redo|prod)$/.test(S.view)?'tools':'';
+  const cur=S.view==='calendar'?'calendar':S.view==='tasks'?'tasks':S.view==='defect'?'defect':/^(photo|qc|dwg|redo|prod)$/.test(S.view)?'tools':'';
   $$('#mtab button').forEach(b=>b.classList.toggle('act',b.dataset.t===cur));
   const d=$('#mtab .mtab-d');if(d){const n=String(Number(todayStr().slice(8,10)));
     if(d.textContent!==n)d.textContent=n;
@@ -14508,19 +14567,52 @@ function mssOpen(){
     +groups.map(([rn,list])=>'<div class="mss-g">'+esc(rn)+'</div>'
       +list.map(x=>'<div class="mss-i'+(S.dfSid===x.id?' act':'')+'" data-act="mss.site" data-sid="'+esc(x.id)+'"><span class="dot"></span>'+esc(x.name)+'</div>').join('')).join('');
   mssShow(box,false);
+  $$('#mtab button').forEach(b=>b.classList.toggle('act',b.dataset.t==='defect'));   /* 910차: 시트가 열린 동안 칸을 켠다 */
 }
+/* 908차(사용자): 시트를 **아래로 끌어 닫는다**(잡이가 있는데 안 끌렸다).
+   시트 안이 위로 다 굴러 있을 때만 잡는다 — 목록을 굴리는 중에 시트가 따라 내려가면 안 된다 */
+(function(){
+  let d=null;
+  const sheet=()=>{const s=$('#mss');return (s&&s.classList.contains('on'))?s:null;};
+  document.addEventListener('touchstart',e=>{
+    d=null;const s=sheet();if(!s)return;
+    const t0=e.target;if(!t0||!t0.closest||!t0.closest('#mss'))return;
+    if(s.scrollTop>0)return;
+    const t=e.touches[0];d={s,y:t.clientY,t:Date.now(),dy:0,on:false};
+  },{passive:true});
+  document.addEventListener('touchmove',e=>{
+    if(!d)return;
+    const dy=e.touches[0].clientY-d.y;
+    if(!d.on){if(dy<6){if(dy<-6)d=null;return;}d.on=true;d.s.style.transition='none';}
+    e.preventDefault();
+    d.dy=Math.max(0,dy);
+    d.s.style.transform='translateY('+d.dy+'px)';
+  },{passive:false});
+  const end=()=>{
+    if(!d)return;const st=d;d=null;if(!st.on)return;
+    st.s.style.transition='';
+    const v=st.dy/Math.max(1,Date.now()-st.t);
+    st.s.style.transform='';   /* 인라인을 걷으면 .on 규칙(transform:none)으로 되돌아간다 — 전환이 붙어 스프링백 */
+    if(st.dy>70||v>0.5)mssClose();   /* 닫을 땐 .on 이 빠져 translateY(100%) 로 이어 내려간다 */
+  };
+  document.addEventListener('touchend',end,{passive:true});
+  document.addEventListener('touchcancel',end,{passive:true});
+})();
 /* 안드로이드 키보드 — 입력 중엔 탭바를 숨긴다(fixed 바가 키보드 위로 올라와 입력칸을 가린다) */
 document.addEventListener('focusin',e=>{const t=e.target;if(t&&t.matches&&t.matches('input:not([type=checkbox]):not([type=radio]):not([type=file]),textarea,select,[contenteditable="true"]'))document.body.classList.add('kb');});
 document.addEventListener('focusout',()=>{setTimeout(()=>{const a=document.activeElement;if(!a||!a.matches||!a.matches('input:not([type=checkbox]):not([type=radio]):not([type=file]),textarea,select,[contenteditable="true"]'))document.body.classList.remove('kb');},50);});
 Object.assign(ACT,{
   'mtab.go':el=>{
-    const t=el.dataset.t;const wasTools=!!$('#mss.tools.on');mssClose();if(t==='tools'&&wasTools)return;
+    /* 910차(사용자): 하자처리 현황도 업무 도구와 같은 결 — 칸을 누르면 **현장 선택 시트**가 먼저 뜬다(첫 줄이 「팀 전체 대시보드」).
+       열린 채 그 칸을 다시 누르면 닫고 끝난다 — 어떤 시트가 열려 있었는지 닫기 전에 기억해 둔다 */
+    const t=el.dataset.t,box=$('#mss');
+    const wasOpen=(box&&box.classList.contains('on'))?(box.classList.contains('tools')?'tools':'site'):'';
+    mssClose();
+    if(t==='tools'){if(wasOpen==='tools')return;mtoolsOpen();return;}
+    if(t==='defect'){if(wasOpen==='site')return;mssOpen();return;}
     if(t==='calendar'){if(S.view==='calendar'){ACT['cal.today']();return;}go('calendar');return;}   /* 캘린더에서 다시 누르면 오늘로 */
-    if(t==='week'||t==='month'){S.tkView=t;S.tkNew=null;S.tk.m='teamall';
-      if(t==='week'){const{nxt}=tkWeekCycles();S.mineYm=nxt.start.slice(0,7)+'-01';}
+    if(t==='tasks'){S.tkNew=null;S.tk.m='teamall';   /* 909차: 주간/현장별은 화면 위 전환 탭(tk.view)이 고른다 — 여기선 화면만 연다 */
       if(S.view==='tasks')rTasks();else go('tasks');mtabSync();return;}
-    if(t==='defect'){S.dfSid='';go('defect');return;}
-    if(t==='tools'){mtoolsOpen();return;}   /* 열린 채 다시 누르면 위에서 닫고 끝난다 */
   },
   'mtab.tool':el=>{mssClose();go(el.dataset.v);},
   'tk.ym':()=>openTkPick(),   /* ⚠ 'tk.pick' 은 담당자·보류함 선택이 이미 쓴다 — 이름을 겹치면 그쪽이 죽는다 */

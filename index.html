@@ -3237,14 +3237,15 @@ body:not(.wid) .nq-panel{padding-top:6px;}}
   body:not(.wid) #mtab button[data-t="calendar"] .icn,body:not(.wid) #mtab button[data-t="week"] .icn{width:22px;height:22px;margin:-.5px 0;}   /* 달력 둘은 살짝 크게(22) — 줄 높이는 그대로 */
   body.kb:not(.wid) #mtab{display:none;}   /* 안드로이드: 키보드가 올라오면 fixed 바가 따라 올라와 입력칸을 가린다 */
   body:not(.wid) #content{padding-bottom:calc(12px + var(--mtab) + env(safe-area-inset-bottom));}
-  /* 프로필 원 — 햄버거 자리. 드로어를 여는 것은 같다 */
+  /* 프로필 원 — 909차: 누르면 계정·프로필 */
   body:not(.wid) #topbar .mc.mav{width:32px;height:32px;border-radius:50%;background:var(--b600);margin-right:2px;overflow:hidden;}
   body:not(.wid) #topbar .mc.mav.av-cus{background:var(--avc,var(--b600));}   /* 903차: 계정 색 */
   body:not(.wid) #topbar .mc.mav .av-ic{width:17px;height:17px;display:block;}
   body:not(.wid) #topbar .mc.mav .av-em{font-size:15px;line-height:1;}
   body:not(.wid) #topbar .mc.mav:hover{background:var(--avc,var(--b600));}
-  /* 업무 현황 — 주간/현장별 전환은 탭바가 맡는다 · 완료·예정은 카드 둘로 */
-  body:not(.wid) #view-tasks .tkv-seg{display:none;}
+  /* 업무 현황 — 909차(사용자): 주간/현장별 전환 탭을 화면 위로 되돌렸다(902~908차에는 하단 탭이 맡았다) · 완료·예정은 카드 둘로 */
+  body:not(.wid) #view-tasks .tkv-seg{height:38px;min-height:38px;padding:4px;margin-bottom:6px;}
+  body:not(.wid) #view-tasks .tkv-seg button{font-size:12.5px;gap:6px;}
   body:not(.wid) #view-tasks .tkwk{background:transparent;border:0;box-shadow:none;overflow:visible;}
   body:not(.wid) #view-tasks .tkwk-cols{display:flex;flex-direction:column;gap:10px;}
   body:not(.wid) #view-tasks .tkwk-col{background:#fff;border:1px solid var(--cardline);border-radius:var(--rxl);overflow:hidden;flex:0 0 auto;}
@@ -3253,9 +3254,9 @@ body:not(.wid) .nq-panel{padding-top:6px;}}
   /* 903차(사용자): 시트는 **아래에서 위로** 올라온다 — display 를 껐다 켜면 전환이 안 되므로 visibility 로 감추고 transform 을 민다 */
   #mssScrim{position:fixed;inset:0;background:rgba(0,0,0,.32);z-index:368;display:block;opacity:0;visibility:hidden;transition:opacity .18s,visibility 0s .18s;cursor:pointer;}   /* 906차(사용자): 탭바(370)보다 **아래** — 시트가 떠 있어도 탭은 그대로 보이고 눌린다 */
   #mssScrim.on{opacity:1;visibility:visible;transition:opacity .18s,visibility 0s;}
-  #mss{position:fixed;left:0;right:0;bottom:0;z-index:369;background:#fff;border-radius:14px 14px 0 0;box-shadow:0 -8px 32px rgba(0,0,0,.2);padding:8px 12px calc(14px + var(--mtab) + env(safe-area-inset-bottom));max-height:76dvh;overflow:auto;display:block;
+  #mss{position:fixed;left:0;right:0;bottom:0;z-index:369;background:#fff;border-radius:14px 14px 0 0;box-shadow:0 -8px 32px rgba(0,0,0,.2);padding:6px 12px calc(14px + var(--mtab) + env(safe-area-inset-bottom));max-height:76dvh;overflow:auto;display:block;
     transform:translateY(100%);visibility:hidden;transition:transform .22s cubic-bezier(.22,.61,.36,1),visibility 0s .22s;}
-  #mss::before{content:'';display:block;width:36px;height:4px;border-radius:2px;background:#D7DCE3;margin:0 auto 8px;}
+  #mss::before{content:'';display:block;width:52px;height:4px;border-radius:2px;background:#D6DAE1;margin:0 auto 1px;}   /* 908차(사용자): 업무 패널 잡이(.dp-col::before)와 같은 치수·색·자리 */
   #mss .mss-h{font-size:15px;font-weight:700;color:var(--lbl);padding:8px 12px 14px;}
   #mss .mss-g{font-size:13.5px;font-weight:700;color:var(--lbl2);padding:20px 12px 10px;border-top:1px solid #E7EBF0;margin-top:5px;}
   #mss .mss-g:first-of-type{margin-top:8px;}
@@ -3545,7 +3546,7 @@ body:not(.wid) .nq-panel{padding-top:6px;}}
   body:not(.wid) #view-tasks .tkcol{position:relative;}
   body:not(.wid) #view-tasks .tk-ghost{position:absolute;inset:0;display:flex;flex-direction:column;gap:var(--s2);overflow:hidden;pointer-events:none;}   /* ⚠ 바탕을 깔지 않는다 — 905차: var(--bg2)(흰색)를 깔았더니 미는 동안 배경색이 바뀌어 보였다 */
   body:not(.wid) #view-tasks .tkcol.tk-drag{overflow:hidden;}   /* 끌 때만이라도 확실히 — 옆 판이 화면 밖으로 새지 않게 */
-  body:not(.wid) #view-tasks .tkwrap{gap:0;margin-top:-8px;}   /* 상단바와 탭 줄 사이 4px(사용자: 아주 살짝) */   /* 903차: 빈 .tkside 와의 12px 틈 + #content 위 여백까지 — 탭 줄이 상단바 바로 아래에 붙는다 */
+  body:not(.wid) #view-tasks .tkwrap{gap:0;margin-top:-8px;}   /* 상단바와 전환 탭 사이(909차: 그 아래 .tkv-seg 가 margin-bottom 6 으로 탭 줄과 띄운다) */
   body:not(.wid) #view-tasks .tkbar{height:40px;padding-top:0;}   /* 데스크톱은 상단바와 같은 46px — 폰은 40 */
   body:not(.wid) #view-tasks .tkbar .rp-tabs{margin-bottom:0;}
   body:not(.wid) #view-tasks .tkbar-wrap{position:fixed;}
@@ -3611,6 +3612,7 @@ body:not(.wid) .nq-panel{padding-top:6px;}}
   body:not(.wid) #view-defect .opsr{grid-template-columns:minmax(0,1fr);min-height:0;}
   /* 표 — 열을 눌러 담으면 숫자가 겹친다. 카드 안에서 가로로 밀게 둔다 */
   body:not(.wid) #view-defect .card:has(table){overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  body:not(.wid) #view-defect .ovs{display:none;}   /* 910차(사용자): 카드 밑 가로 막대는 폰에서 숨긴다 — 445차의 그 막대는 마우스로 넘길 수단이 없어 만든 것이고, 손가락은 표를 바로 밀면 된다(카드 아래 회색 띠로만 보였다) */
   body:not(.wid) #view-defect table{min-width:1118px;}   /* 730차: 760 은 데스크톱 표(1118)를 억지로 눌러 숫자·배지가 겹치고 앞자리가 잘렸다 — 폰에서도 데스크톱과 같은 폭으로 두고 가로로 민다 */
   /* 표가 아닌 가로 카드(장기미처리·민원 세대 현황·전월대비)도 같은 폭으로 — 막대 세그먼트 숫자와 배지가 겹치던 것 */
   body:not(.wid) #view-defect .ltrmom-card{overflow-x:auto;-webkit-overflow-scrolling:touch;}
@@ -3648,9 +3650,12 @@ body:not(.wid) .nq-panel{padding-top:6px;}}
   body:not(.wid) #view-defect table.dt-detail th,body:not(.wid) #view-defect table.dt-detail td{padding:9px 12px;font-size:12px;}   /* 731차: 폭을 데스크톱과 같게 뒀으니 여백·글자도 같게 — 좁혀 둘 이유가 없다 */
   body:not(.wid) #view-defect table.dt-detail th:first-child,body:not(.wid) #view-defect table.dt-detail td:first-child{position:sticky;left:0;z-index:1;background:var(--bg2);box-shadow:1px 0 0 var(--bg2),2px 0 0 var(--sep);}   /* 693차: 소수점 스크롤에서 옆 칸 색이 1px 비치던 것 — 배경색 1px 덧대고 경계선을 그 뒤에 */
   /* 689차: 추이 범례 — 왼쪽 48px 들여쓰기·틈 18px 이면 두 줄로 접혔다 */
-  body:not(.wid) #view-defect .chart-lg{padding-left:0;gap:10px 12px;font-size:10px;}
-  body:not(.wid) #view-defect .chart-lg .mk-bar{width:14px;height:9px;}
-  body:not(.wid) #view-defect .chart-lg .mk-ln{width:10px;height:10px;border-width:2px;}
+  /* 908차(사용자): 범례는 **한 줄에** — 폰 폭 360 에서 마지막 한 칸이 줄을 넘어갔다(필요 335 vs 가용 298).
+     줄바꿈을 막고 항목 간격·표식 크기를 줄여 맞춘다. ⚠ 글자 크기는 건드리지 않는다(10px 이 하한) */
+  body:not(.wid) #view-defect .chart-lg{padding-left:0;gap:0 6px;font-size:10px;flex-wrap:nowrap;justify-content:space-between;}
+  body:not(.wid) #view-defect .chart-lg .li{gap:4px;flex:0 0 auto;white-space:nowrap;}
+  body:not(.wid) #view-defect .chart-lg .mk-bar{width:12px;height:8px;}
+  body:not(.wid) #view-defect .chart-lg .mk-ln{width:9px;height:9px;border-width:2px;}
   /* ⚠ 카드가 화면보다 넓어지던 문제 — 안쪽 캔버스(Chart.js)가 카드 폭을 밀어 올려
      차트 범례가 오른쪽에서 잘렸다. flex 항목의 min-width 기본값(auto)을 0 으로 내린다 */
   body:not(.wid) #view-defect .as>.card,body:not(.wid) #view-defect .main-chart-card{min-width:0;}
@@ -4697,7 +4702,7 @@ body.qc-dragging{user-select:none}
 <main id="main">
   <header id="topbar">
     <div class="tbl">
-      <button class="mc mav" id="tbAcctAv" data-act="nav.mob" aria-label="메뉴"><svg class="av-ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#av-person"></use></svg></button>   <!-- 903차: 사이드바 계정 아바타와 같은 얼굴 — rAcct() 가 색·아이콘을 칠한다 -->   <!-- 902차: 햄버거 대신 프로필 원 — 여는 것은 같은 드로어 -->
+      <button class="mc mav" id="tbAcctAv" data-act="acct.open" aria-label="프로필"><svg class="av-ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#av-person"></use></svg></button>   <!-- 903차: 사이드바 계정 아바타와 같은 얼굴 — rAcct() 가 색·아이콘을 칠한다 -->   <!-- 909차(사용자): 프로필 원은 **프로필(계정)** 을 연다 — 드로어는 하단 탭 첫 칸(메뉴)이 맡는다 -->
       <div class="tbt" id="tbt">업무 일정</div>
     </div>
   </header>
@@ -4925,10 +4930,10 @@ body.qc-dragging{user-select:none}
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
 <div id="uprog" class="uprog"><div class="uprog-box"><div class="uprog-spin"></div><div class="uprog-msg" id="uprogMsg">처리 중...</div><div class="uprog-bar"><div class="uprog-fill" id="uprogFill" style="width:0%"></div></div><div class="uprog-sub" id="uprogSub"></div></div></div>
 <!-- 902차: 폰 하단 탭 — 데스크톱·위젯은 CSS 로 숨긴다. 활성 표시는 mtabSync() -->
-<nav id="mtab" aria-label="주요 화면">   <!-- 903차: 「업무 도구」 칸 — 누르면 시트에서 도구를 고른다(mtoolsOpen) -->
+<nav id="mtab" aria-label="주요 화면">   <!-- 909차(사용자): 첫 칸은 화면이 아니라 **사이드바 열기**(data-t 가 없어 켜지지 않는다) · 주간/현장별은 「업무 현황」 한 칸으로 합치고 전환은 화면 위 탭이 맡는다 -->
+  <button data-act="nav.mob" aria-label="메뉴 열기"><svg class="icn" aria-hidden="true"><use href="#i-menu"></use></svg>메뉴</button>
   <button data-act="mtab.go" data-t="calendar"><svg class="icn" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cal"></use><text class="mtab-d" x="12" y="18" text-anchor="middle"></text></svg>캘린더</button>   <!-- 903차: 오늘 날짜를 틀 안에(mtabSync 가 채움) · 캘린더에서 다시 누르면 오늘로 -->
-  <button data-act="mtab.go" data-t="week"><svg class="icn" aria-hidden="true"><use href="#i-cal-ck"></use></svg>주간 업무</button>
-  <button data-act="mtab.go" data-t="month"><svg class="icn" aria-hidden="true"><use href="#i-layers"></use></svg>현장별 업무</button>
+  <button data-act="mtab.go" data-t="tasks"><svg class="icn" aria-hidden="true"><use href="#i-cal-ck"></use></svg>업무 현황</button>
   <button data-act="mtab.go" data-t="tools"><svg class="icn" aria-hidden="true"><use href="#i-grid4"></use></svg>업무 도구</button>
   <button data-act="mtab.go" data-t="defect"><svg class="icn" aria-hidden="true"><use href="#i-defect"></use></svg>하자처리 현황</button>
 </nav>
@@ -4939,5 +4944,5 @@ body.qc-dragging{user-select:none}
 <!-- 762차: chart.umd·datalabels·korea-geo·apt-geo 는 app.js 의 loadChart()/loadGeo() 가 필요할 때 읽는다(첫 로드 800KB 절감) -->
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=906"></script>
+<script src="./app.js?v=910"></script>
 </body></html>
