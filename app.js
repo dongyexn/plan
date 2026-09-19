@@ -10,7 +10,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='903';
+const APP_VER='904';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -1909,6 +1909,7 @@ function rAcct(){
   };
   paint($('#sbAcctAv'));
   paint($('#widAcctAv'));           /* 위젯 헤더 프로필 버튼도 같은 얼굴로 */
+  paint($('#tbAcctAv'));            /* 903차: 폰 상단바 프로필 단추(드로어 손잡이)도 같은 얼굴로 */
 }
 
 /* ═══════════ 달력 (FullCalendar) ═══════════ */
@@ -1990,7 +1991,7 @@ function calInit(){
   markSel();
   /* Pretendard 가 늦게 스왑되면 칩 높이가 바뀌어 FullCalendar 가 측정해 둔
      기간 바 위치와 어긋난다(칩 겹침의 원인) — 폰트 로드 완료 후 한 번 재계산 */
-  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{if(CAL)CAL.updateSize();});
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{if(CAL)CAL.updateSize();mtabSync();});   /* 903차: 글꼴이 늦게 붙으면 탭 날짜 잉크 위치가 달라진다 — 다시 가운데로 */
 }
 /* 반복 일정 전개 — 화면에 보이는 구간(from~to)의 발생일만 만든다 */
 function recurDates(p,from,to){
@@ -2398,8 +2399,10 @@ function closeYMPop(){
    미리보기는 카드 그림만 같은 읽기 전용 판(.dp-ghost) — 넘어가면 selDate 로 진짜 패널을 그리고 판을 걷는다 */
 function dpGhostHTML(ds){
   const ps=sortPlans(dayPlans(ds)),d=toDate(ds),ho=holOf(ds);
-  return '<div class="card day-panel dp-ghost"><div class="dp-lh"><span class="dp-lh-t"><span>'+(d.getMonth()+1)+'월 '+d.getDate()+'일 ('+DOW[d.getDay()]+')'+(ho&&ho.n?' · '+esc(ho.n):'')+' · </span><span>업무 '+ps.length+'건</span></span></div>'
-    +'<div class="dp-body"><div>'+(ps.length?ps.map(({p,occ})=>planCardHTML(p,occ)).join(''):'<div class="dp-empty">이 날짜에 등록된 업무가 없습니다.</div>')+'</div></div></div>';
+  /* ⚠ 머리의 「+」 단추까지 그대로 둔다 — 빠지면 머리가 41px(실제 51px)로 줄어 앞뒤 날의 높이가 어긋난다(903차 사용자 지적). 눌리지 않게 data-act 없이 그림만 */
+  return '<div class="card day-panel dp-ghost"><div class="dp-lh"><span class="dp-lh-t"><span>'+(d.getMonth()+1)+'월 '+d.getDate()+'일 ('+DOW[d.getDay()]+')'+(ho&&ho.n?' · '+esc(ho.n):'')+' · </span><span>업무 '+ps.length+'건</span></span>'
+    +'<button class="btn bo bxs dp-add" tabindex="-1" aria-hidden="true"><svg class="icn" aria-hidden="true"><use href="#i-plus"></use></svg></button></div>'
+    +'<div class="dp-body"><div class="dp-list">'+(ps.length?ps.map(({p,occ})=>planCardHTML(p,occ)).join(''):'<div class="dp-empty">이 날짜에 등록된 업무가 없습니다.</div>')+'</div></div></div>';
 }
 /* 모바일 하단 시트 — 날짜를 누르면 일자 패널이 올라온다(캘린더 앱 UX) */
 const isMob=()=>matchMedia('(max-width:960px)').matches;
@@ -3756,6 +3759,22 @@ function rTkNewOverlay(){
 /* 보고 주기 — 목요일에 시작해 수요일에 끝난다(8/6~8/12 → 8/13~8/19 …).
    업무 현황의 주간 보기가 이 주기를 쓴다 */
 const RPT_DOW=4;   /* 보고 주기의 시작 요일 — 목요일(0=일) */
+/* 903차(사용자): 업무 현황을 좌우로 밀면 **앞뒤 주기가 손가락을 따라 나온다**(달력 패널과 같은 결).
+   상태(S.tkWeek·S.mineYm)를 잠시 옆 주기로 돌려 화면 HTML만 뽑고 곧바로 되돌린다 — 그리지 않으므로 표시는 그대로다 */
+function tkGhostHTML(d){
+  const sw=S.tkWeek,sy=S.mineYm;
+  try{
+    const{team,regions,mems}=tkSel();
+    if(S.tkView==='month'){
+      const t=toDate(S.mineYm||todayStr().slice(0,7)+'-01');t.setMonth(t.getMonth()+d);S.mineYm=dstr(t).slice(0,7)+'-01';
+      return tkMonthHTML(team,mems,regions);
+    }
+    S.tkWeek=addDays(rptCycle(S.tkWeek||todayStr()).start,d*7);
+    S.mineYm=tkWeekCycles().nxt.start.slice(0,7)+'-01';
+    return tkWeekHTML(team,mems,regions);
+  }catch(e){return '';}
+  finally{S.tkWeek=sw;S.mineYm=sy;}
+}
 function rptCycle(ds){
   const start=addDays(ds,-((toDate(ds).getDay()-RPT_DOW+7)%7));
   return{start,end:addDays(start,6)};
@@ -9503,7 +9522,24 @@ function copyText(t,msg){
    882차: 미끄러지는 연출 대신 **손가락을 그대로 따라오는** 방식으로 바꿨다(달력 넘김과 같은 결).
    ⚠ 표·차트처럼 스스로 가로로 구르는 칸 위에서는 잡지 않는다. */
 (function(){
-  let x0=0,y0=0,t0=0,list=null,pane=null,W=0,dragging=false;
+  let x0=0,y0=0,t0=0,list=null,pane=null,W=0,dragging=false,gh=null;
+  /* 903차(사용자): 업무 현황은 **앞뒤 주기를 미리 보여 주며** 넘어간다 — 달력 패널(.dp-ghost)과 같은 방식.
+     .tkcol 은 제자리에 두고(overflow 가 옆 판을 가려 준다) 그 **자식들만** 함께 민다 */
+  const isTk=p=>!!p&&p.classList&&p.classList.contains('tkcol');
+  const kidsOf=p=>[...p.children].filter(c=>!c.classList.contains('tk-ghost'));
+  const ghMake=(p,w)=>{
+    const mk=d=>{const g=document.createElement('div');g.className='tk-ghost '+(d<0?'prev':'next');
+      g.innerHTML=tkGhostHTML(d);g.style.transform='translateX('+(d*w)+'px)';p.appendChild(g);return g;};
+    return{prev:mk(-1),next:mk(1)};
+  };
+  const setX=(p,x)=>{
+    if(!isTk(p)){p.style.transform=x?'translateX('+x+'px)':'';return;}
+    const t=x?'translateX('+x+'px)':'';
+    kidsOf(p).forEach(c=>{c.style.transform=t;});
+    if(gh){gh.prev.style.transform='translateX('+(x-W)+'px)';gh.next.style.transform='translateX('+(x+W)+'px)';}
+  };
+  const ghDrop=p=>{if(gh){gh.prev.remove();gh.next.remove();gh=null;}
+    if(p&&isTk(p))kidsOf(p).forEach(c=>{c.style.transition='';c.style.transform='';c.style.willChange='';});};
   const tabsAt=el=>{
     if(!el||!el.closest)return null;
     if(el.closest('input,textarea,select,[contenteditable],#mo,.ctxmenu'))return null;
@@ -9539,24 +9575,48 @@ function copyText(t,msg){
     const t=e.touches[0],dx=t.clientX-x0,dy=t.clientY-y0;
     if(!dragging){
       if(Math.abs(dx)<12||Math.abs(dx)<Math.abs(dy)*1.2)return;   /* 세로로 굴리는 중이면 넘기지 않는다 */
-      dragging=true;pane.style.transition='none';pane.style.willChange='transform';
+      dragging=true;
+      if(isTk(pane)){pane.classList.add('tk-drag');kidsOf(pane).forEach(c=>{c.style.transition='none';c.style.willChange='transform';});gh=ghMake(pane,W);}
+      else{pane.style.transition='none';pane.style.willChange='transform';}
     }
     const i=cur(list),edge=(dx>0&&i<=0)||(dx<0&&i>=list.length-1);
-    pane.style.transform='translateX('+(edge?dx*0.25:dx)+'px)';   /* 끝 탭에서는 덜 따라와 벽을 알린다 */
+    setX(pane,edge?dx*0.25:dx);   /* 끝 탭에서는 덜 따라와 벽을 알린다 */
   },{passive:true});
-  const finish=()=>{if(pane){pane.style.transition='';pane.style.transform='';pane.style.willChange='';}list=null;pane=null;dragging=false;};
+  const finish=()=>{if(pane){if(isTk(pane)){ghDrop(pane);pane.classList.remove('tk-drag');}
+    else{pane.style.transition='';pane.style.transform='';pane.style.willChange='';}}list=null;pane=null;dragging=false;};
   document.addEventListener('touchend',e=>{
     if(!list||!pane){finish();return;}
     const t=e.changedTouches[0],dx=t.clientX-x0,dy=t.clientY-y0,dt=Date.now()-t0;
     const bs=list,p=pane,i=cur(bs);
     const go=dragging&&Math.abs(dx)>Math.max(52,W*0.18)&&Math.abs(dx)>Math.abs(dy)&&dt<900;
     const n=i+(dx<0?1:-1);
+    const tk=isTk(p),g0=gh;
     if(!go||n<0||n>=bs.length){
-      if(dragging){p.style.transition='transform .18s cubic-bezier(.2,.7,.3,1)';p.style.transform='';
-        setTimeout(()=>{p.style.transition='';p.style.willChange='';},200);}
+      if(dragging){
+        if(tk){kidsOf(p).forEach(c=>{c.style.transition='transform .18s cubic-bezier(.2,.7,.3,1)';});
+          if(g0){g0.prev.style.transition='transform .18s cubic-bezier(.2,.7,.3,1)';g0.next.style.transition='transform .18s cubic-bezier(.2,.7,.3,1)';}
+          setX(p,0);
+          setTimeout(()=>{if(g0){g0.prev.remove();g0.next.remove();}p.classList.remove('tk-drag');
+            [...p.children].forEach(c=>{c.style.transition='';c.style.transform='';c.style.willChange='';});},200);
+          gh=null;
+        }else{p.style.transition='transform .18s cubic-bezier(.2,.7,.3,1)';p.style.transform='';
+          setTimeout(()=>{p.style.transition='';p.style.willChange='';},200);}
+      }
       list=null;pane=null;dragging=false;return;
     }
     const dir=dx<0?-1:1;
+    if(tk){   /* 903차: 옆 판이 그대로 제자리까지 들어온 뒤 진짜 화면으로 갈아 끼운다 */
+      const tr='transform .22s cubic-bezier(.2,.7,.3,1)';
+      kidsOf(p).forEach(c=>{c.style.transition=tr;});
+      if(g0){g0.prev.style.transition=tr;g0.next.style.transition=tr;}
+      setX(p,dir*W);
+      gh=null;
+      setTimeout(()=>{bs[n].click();   /* rTasks 가 #tkRoot 를 다시 그려 판·그림자를 한꺼번에 치운다 */
+        if(g0&&g0.prev.isConnected){g0.prev.remove();g0.next.remove();}
+        if(p.isConnected){p.classList.remove('tk-drag');[...p.children].forEach(c=>{c.style.transition='';c.style.transform='';c.style.willChange='';});}
+      },230);
+      list=null;pane=null;dragging=false;return;
+    }
     p.style.transition='transform .13s linear';
     p.style.transform='translateX('+(dir*W)+'px)';   /* 밀던 방향으로 마저 밀어 내고 */
     setTimeout(()=>{
@@ -9601,10 +9661,13 @@ function copyText(t,msg){
       if(Math.abs(dx)>Math.abs(dy)){   /* 가로 = 월 트랙 끌기(격자 위에서만) · 903차: 점 달력의 업무 패널 위에서는 하루 넘김(옆 날 미리보기) */
         if(inDp&&S.mcal==='mini'&&!tgt.closest('.dp-body [data-act],button,a,input,textarea,select')){
           const col=$('#view-calendar .dp-col'),card=col&&col.querySelector('.day-panel:not(.dp-ghost)');if(!col||!card)return;
-          const w=col.clientWidth+12,cur=S.selDate||todayStr();
+          const cur=S.selDate||todayStr();
           col.insertAdjacentHTML('beforeend',dpGhostHTML(addDays(cur,-1)).replace('dp-ghost','dp-ghost prev')+dpGhostHTML(addDays(cur,1)).replace('dp-ghost','dp-ghost next'));
-          const top=card.offsetTop,h=card.offsetHeight;
-          col.querySelectorAll('.dp-ghost').forEach(g=>{g.style.top=top+'px';g.style.height=h+'px';});
+          /* 자리는 실제 카드에서 그대로 베낀다 — .dp-col 의 좌우 여백을 빼먹으면 폭이 어긋난다(offsetTop/Left 도 absolute 와 같은 안쪽 기준이라 보정은 필요 없다) */
+          const top=card.offsetTop,left=card.offsetLeft,cw=card.offsetWidth,h=card.offsetHeight;
+          const w=cw+12;
+          col.querySelectorAll('.dp-ghost').forEach(g=>{g.style.top=top+'px';g.style.left=left+'px';g.style.right='auto';g.style.width=cw+'px';g.style.height=h+'px';
+            g.style.transform='translateX('+(g.classList.contains('prev')?-w:w)+'px)';});
           drag={axis:'dp',col,card,w,cur};
           return;
         }
@@ -14337,28 +14400,67 @@ function openTkPick(){
 }
 /* 903차: 달력 칸 날짜 숫자 가운데 맞춤 — SVG text-anchor=middle 은 글자 「상자」(advance) 기준이라 잉크가 값마다 오른쪽으로 쏠린다.
    canvas measureText 의 actualBoundingBoxLeft/Right 로 실제 잉크 폭을 재서 그만큼 옮긴다(글자체가 바뀌어도 따라간다) */
-function mtabDateX(n){
-  try{const c=mtabDateX.c||(mtabDateX.c=document.createElement('canvas').getContext('2d'));
-    /* 실제로 그려지는 크기(8.5 vb 단위 × 22/24 px × DPR)로 재야 힌팅까지 같다 */
-    const dpr=window.devicePixelRatio||1,px=8.5*22/24*dpr;c.font='700 '+px+'px '+(getComputedStyle(document.body).fontFamily||'sans-serif');
-    /* anchor=middle 이면 원점이 x - w/2 · 잉크는 [원점 - L, 원점 + R] → 잉크 중심을 12 에 두는 x = 12 + (w - R + L)/2 (vb 단위로 환산) */
-    const m=c.measureText(n);return 12+((m.width-m.actualBoundingBoxRight+m.actualBoundingBoxLeft)/2)/(px/8.5);
-  }catch(e){return 12;}
+/* 903차: 달력 아이콘 안 날짜를 **틀 안쪽 한가운데**에 둔다.
+   ⚠ getBBox 는 글자에선 잉크가 아니라 줄 상자(어센더~디센더)를 돌려줘 아무 쓸모가 없고,
+     캔버스 measureText 는 잉크를 정확히 주지만 tabular-nums 를 흉내 내지 못한다 → .mtab-d 에서 그 설정을 뺐다(숫자 하나뿐이라 필요 없다).
+   그래서 잉크 상자를 캔버스에서 재어 x(가로)와 baseline(세로)을 직접 계산한다. dominant-baseline 은 쓰지 않는다(브라우저마다 기준이 다르다) */
+const MTAB_CX=12,MTAB_CY=15.00;   /* 틀 안쪽(몸통) 한가운데 — #i-cal 은 rect 3,3,18,18 + 가로줄 y=9, 선 두께 1.7 → 가로 3.85~20.15(중심 12.00) · 세로 9.85~20.15(중심 15.00) */
+const MTAB_FS=8.5;                /* .mtab-d 글자 크기(유닛) — index.html 과 같아야 한다 */
+const MTAB_DY=0;                  /* 시각보정(위로 = 음수) — 몸통 아래가 둥근 모서리로 좁아지는 몫. 자로 정할 수 없는 값이라 눈으로 골라 박는다 */
+function mtabDateFit(t){
+  try{
+    const n=t.textContent;if(!n)return;
+    const c=mtabDateFit.c||(mtabDateFit.c=document.createElement('canvas').getContext('2d'));
+    const P=MTAB_FS*10;   /* 크게 재서 유닛으로 환산 — 작은 크기의 힌팅 흔들림을 피한다 */
+    const ff=getComputedStyle(t).fontFamily||getComputedStyle(document.body).fontFamily||'sans-serif';
+    c.font='700 '+P+'px '+ff;
+    const k=MTAB_FS/P;
+    const m=c.measureText(n);
+    if(typeof m.actualBoundingBoxLeft!=='number'||typeof m.actualBoundingBoxAscent!=='number')return;
+    const L=m.actualBoundingBoxLeft*k,R=m.actualBoundingBoxRight*k,W=m.width*k;
+    if(!(W>0))return;
+    /* 가로 — text-anchor=middle 이라 원점은 x - W/2, 잉크는 [원점 - L, 원점 + R] */
+    t.setAttribute('x',(MTAB_CX+W/2-(R-L)/2).toFixed(2));
+    /* 세로 — **값마다 재지 않는다**. 둥근 숫자(0·3·6·8·9)는 위아래로 오버슈트하고 1·4·7 은 평평해서,
+       값마다 잉크 중심을 맞추면 베이스라인이 값에 따라 흔들린다(숫자 디자인 표준: 평평한 숫자끼리는 같은 값에 정렬).
+       평평한 숫자 「1」 로 베이스라인을 한 번 정해 모든 값에 그대로 쓴다. 글꼴이 바뀌면 다시 잰다 */
+    if(mtabDateFit.ff!==ff){
+      const r=c.measureText('1');
+      const A=r.actualBoundingBoxAscent*k,D=r.actualBoundingBoxDescent*k;
+      if(!(A+D>0))return;
+      mtabDateFit.ff=ff;mtabDateFit.y=MTAB_CY+(A-D)/2+MTAB_DY;
+    }
+    t.setAttribute('y',mtabDateFit.y.toFixed(2));
+  }catch(e){}
 }
 function mtabSync(){
   const bar=$('#mtab');if(!bar)return;
   const cur=S.view==='calendar'?'calendar':S.view==='tasks'?(S.tkView==='month'?'month':'week'):S.view==='defect'?'defect':/^(photo|qc|dwg|redo|prod)$/.test(S.view)?'tools':'';
   $$('#mtab button').forEach(b=>b.classList.toggle('act',b.dataset.t===cur));
-  const d=$('#mtab .mtab-d');if(d){const n=String(Number(todayStr().slice(8,10)));if(d.textContent!==n)d.textContent=n;
-    const x=mtabDateX(n).toFixed(2);if(d.getAttribute('x')!==x)d.setAttribute('x',x);}
+  const d=$('#mtab .mtab-d');if(d){const n=String(Number(todayStr().slice(8,10)));
+    if(d.textContent!==n)d.textContent=n;
+    mtabDateFit(d);}
 }
-function mssClose(){const s=$('#mss'),sc=$('#mssScrim');if(s){s.classList.remove('on');s.classList.remove('tools');}if(sc){sc.classList.remove('on');sc.classList.remove('tools');}mtabSync();}
+/* 903차(사용자): 시트를 슬라이드로 바꿨다 — .tools 는 **내려간 뒤에** 걷는다(바로 걷으면 bottom 이 튀어 탭바 위에서 사라진다) */
+function mssShow(box,tools){
+  const sc=$('#mssScrim');if(!box)return;
+  box.classList.remove('on');if(sc)sc.classList.remove('on');
+  if(mssShow.t){clearTimeout(mssShow.t);mssShow.t=0;}
+  box.classList.toggle('tools',!!tools);if(sc)sc.classList.toggle('tools',!!tools);
+  void box.offsetWidth;   /* 닫힌 자리를 한 번 굳혀야 거기서부터 올라온다 */
+  box.classList.add('on');if(sc)sc.classList.add('on');
+}
+function mssClose(){const s=$('#mss'),sc=$('#mssScrim');
+  if(s)s.classList.remove('on');if(sc)sc.classList.remove('on');
+  if(mssShow.t)clearTimeout(mssShow.t);
+  mssShow.t=setTimeout(()=>{mssShow.t=0;if(s&&!s.classList.contains('on'))s.classList.remove('tools');if(sc&&!sc.classList.contains('on'))sc.classList.remove('tools');},320);
+  mtabSync();}
 /* 903차: 하단 탭 「업무 도구」 — 바로 가지 않고 시트에서 고른다(현장 시트와 같은 부품) */
 const MTOOLS=[['photo','i-photo','사진대지 작성'],['qc','i-calc','견적 검토'],['dwg','i-frame','도면 인쇄'],['redo','i-redo','재하자 추적'],['prod','i-prod','생산성 검토']];
 function mtoolsOpen(){
   const box=$('#mss');if(!box)return;
   box.innerHTML='<div class="mss-h">업무 도구</div>'+MTOOLS.map(([v,ic,l])=>'<div class="mss-i'+(S.view===v?' act':'')+'" data-act="mtab.tool" data-v="'+v+'"><svg class="icn" aria-hidden="true"><use href="#'+ic+'"></use></svg>'+l+'</div>').join('');
-  box.classList.add('on');box.classList.add('tools');const sc=$('#mssScrim');sc.classList.add('on');sc.classList.add('tools');
+  mssShow(box,true);
   $$('#mtab button').forEach(b=>b.classList.toggle('act',b.dataset.t==='tools'));   /* 시트가 열린 동안 칸을 켠다 */
 }
 function mssOpen(){
@@ -14371,7 +14473,7 @@ function mssOpen(){
     +'<div class="mss-i'+(S.dfSid?'':' act')+'" data-act="mss.dash"><svg class="icn" aria-hidden="true"><use href="#i-grid4"></use></svg>팀 전체 대시보드</div>'
     +groups.map(([rn,list])=>'<div class="mss-g">'+esc(rn)+'</div>'
       +list.map(x=>'<div class="mss-i'+(S.dfSid===x.id?' act':'')+'" data-act="mss.site" data-sid="'+esc(x.id)+'"><span class="dot"></span>'+esc(x.name)+'</div>').join('')).join('');
-  box.classList.add('on');$('#mssScrim').classList.add('on');
+  mssShow(box,false);
 }
 /* 안드로이드 키보드 — 입력 중엔 탭바를 숨긴다(fixed 바가 키보드 위로 올라와 입력칸을 가린다) */
 document.addEventListener('focusin',e=>{const t=e.target;if(t&&t.matches&&t.matches('input:not([type=checkbox]):not([type=radio]):not([type=file]),textarea,select,[contenteditable="true"]'))document.body.classList.add('kb');});
