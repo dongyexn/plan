@@ -10,7 +10,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='911';
+const APP_VER='913';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -775,6 +775,7 @@ const LocalStore={
     normOrg(this._d.org);
     if(moved)lsSave(this._d);   /* 옮긴 결과를 저장하지 않으면 새로고침 때마다 되살아난다 */
     S.org=this._d.org;S.tasks=this._d.tasks;S.cfg=this._d.cfg;S.people=this._d.people;S.prefs=this._d.prefs;S.offdays=this._d.offdays;S.accounts={};
+    this._d.d60=this._d.d60||{};S.d60d=this._d.d60;   /* 913차 */
     setTimeout(trashPurge,1500);   /* 휴지통 30일 정리(383차) */
     setTimeout(archMigrate,1800);  /* 오래 끝난 업무를 보관함으로(384차) */},
   putPlan(p){const{sid,iid,item,prevSid}=planToTask(p);
@@ -1035,6 +1036,7 @@ const FbStore={
       e=>{S.accounts={};S.acctDenied=true;console.warn('[FB] users 읽기 권한 없음',e);rOrg();rTasks();});
     /* cfg 에는 하자 관리에서 감춘 현장(dfHide)도 들어 있다 — 목록·현장 표도 함께 다시 그린다 */
     this._on('calapp/cfg',v=>{S.cfg=v||{};bootCacheSave();rCfg();rDefectNav();if(S.view==='org')rOrg();});
+    this._on('calapp/d60',v=>{S.d60d=v||{};if(S.view==='d60')rD60();});   /* 913차: D+60 점검 — 서식·점검 결과 */
     const uid=S.user&&S.user.uid;
     if(uid){
         this._on('calapp/prefs/'+uid,v=>{S.prefs=v||{};});   /* 최근 이모지 등 개인 설정 */
@@ -3918,7 +3920,10 @@ function tkTabsHTML(team,mems,regions,mode){
   else{tkCycleItems(cur.start,cur.end,true,'').forEach(x=>bump(x.it));
        tkCycleItems(nxt.start,nxt.end,false,'').forEach(x=>bump(x.it));}
   const cnt=t=>tally[t]||0;
-  return '<div class="tkbar"><div class="rp-tabs tkm-tabs tkbar-tabs" data-sbx>'+tabs.map(([id,nm])=>
+  /* 912차(사용자): **0건 탭은 숨긴다** — 누를 이유가 없는 칸이 줄을 늘려 진짜 탭을 밀어낸다.
+     ⚠ 「전체」와 **지금 고른 탭**은 0이어도 남긴다 — 고르고 나서 0이 됐다고 칸이 사라지면 왜 빈 목록인지 알 수 없다 */
+  const shown=tabs.filter(([id])=>id===''||id===S.tkTab||cnt(id)>0);
+  return '<div class="tkbar"><div class="rp-tabs tkm-tabs tkbar-tabs" data-sbx>'+shown.map(([id,nm])=>
     '<button class="rp-tab'+(id===S.tkTab?' on':'')+'" data-act="tk.tab" data-id="'+esc(id)+'">'
     +esc(nm)+'<span class="rp-tcnt">'+cnt(id)+'</span></button>').join('')
     +'</div><button class="btn bo bsm tkq-add" data-act="tk.newOpen" aria-label="업무 추가" data-tip="업무 추가"><svg class="icn"><use href="#i-plus"></use></svg></button></div>';
@@ -8077,7 +8082,7 @@ function dfTopbar(){
     if(on){if(S.dfSid){if(dfLocalDirty(S.dfSid))t='이 PC 원본 · 미게시 변경';}
            else{const n=dfLocalDirtySites().length;if(n)t='이 PC 원본 · 미게시 변경 '+n+'개 현장';}}
     lc.hidden=!t;lc.textContent=t;lc.dataset.s=t?'미게시':'';}   /* data-s: 좁은 화면(≤900)은 CSS 가 이 짧은 글자만 보인다 */
-  const xw=$('#tbXlWrap');if(xw)xw.hidden=!(S.view==='photo'||S.view==='redo'||S.view==='prod');   /* 901차: 재하자·생산성도 엑셀 */
+  const xw=$('#tbXlWrap');if(xw)xw.hidden=!(S.view==='photo'||S.view==='redo'||S.view==='prod'||S.view==='d60');   /* 901차: 재하자·생산성도 엑셀 · 913차: D+60 */
 
   if(pw){pw.hidden=!(on||S.view==='photo'||S.view==='dwg');   /* 인쇄 버튼 — 하자처리 현황 · 사진대지(798차) · 도면 인쇄(815차) */
     /* 801차: 왼쪽에 보이는 것이 있을 때만 구분선 */
@@ -8869,7 +8874,9 @@ function kmZoomBox(c){
 }
 /* 조직 관리 좌측 카드 */
 function rOrgMap(){
-  const root=$('#orgMapRoot');if(!root)return;
+  /* 913차: D+60 점검 목록도 같은 지도를 쓴다 — svg id 가 같으니 보이는 화면 것만 두고 다른 쪽은 비운다 */
+  const d60=S.view==='d60',root=$(d60?'#d60Map':'#orgMapRoot');const other=$(d60?'#orgMapRoot':'#d60Map');if(other&&other.innerHTML)other.innerHTML='';
+  if(!root)return;
   if(_kmDown){_kmPend=true;return;}   /* 601차 */
   const all=(S.org.sites||[]).filter(x=>x.name);
   const sites=all.filter(x=>orgRegHit(x.region,S.orgReg));
@@ -10123,7 +10130,7 @@ setInterval(()=>{
 },60000);
 
 /* ═══════════ 화면 전환 · 공통 UI ═══════════ */
-const VIEW_TTL={calendar:'캘린더',tasks:'업무 현황',photo:'사진대지 작성',qc:'견적 검토',dwg:'도면 인쇄',redo:'재하자 추적',prod:'생산성 검토',defect:'하자처리 현황',org:'조직 관리',settings:'설정'};
+const VIEW_TTL={calendar:'캘린더',tasks:'업무 현황',d60:'D+60 점검',photo:'사진대지 작성',qc:'견적 검토',dwg:'도면 인쇄',redo:'재하자 추적',prod:'생산성 검토',defect:'하자처리 현황',org:'조직 관리',settings:'설정'};
 function go(view){
   if(view==='report')view='tasks';   /* 주요 업무는 업무 현황으로 통합됐다(316차) — 옛 진입점은 넘겨 준다 */
   if(S.view==='org'&&view!=='org'&&orgDraftN()){   /* 696차: 현장 표 초안을 버리고 나가지 않도록 */
@@ -10157,6 +10164,7 @@ function go(view){
   if(view==='dwg')rDwg();       /* 815차 */
   if(view==='redo')rRedo();     /* 901차 */
   if(view==='prod')rProd();     /* 901차 */
+  if(view==='d60')rD60();       /* 913차 */
   mtabSync();                   /* 902차 */
   document.body.classList.toggle('tk-hdr',isMob()&&!WIDGET&&view==='tasks');   /* 902차: 폰 업무 현황 상단바(년월 버튼 왼쪽 정렬) */
   if(view==='defect')rDefect();
@@ -12909,7 +12917,7 @@ Object.assign(ACT,{
   'pd.annColor':el=>{PD.color=el.dataset.c;pdAnnApply({c:PD.color});rPdSel();},
   'pd.annLw':el=>{PD.lw=Number(el.dataset.w);pdAnnApply({w:PD.lw});rPdSel();},
   'pd.annDash':el=>{PD.dash=Number(el.dataset.d);pdAnnApply({d:PD.dash});rPdSel();},
-  'pd.xlsx':()=>{if(S.view==='redo')return rdXlsx();if(S.view==='prod')return pvXlsx();pdXlsx();},   /* 901차: 머리줄 「엑셀」은 화면별로 */
+  'pd.xlsx':()=>{if(S.view==='redo')return rdXlsx();if(S.view==='prod')return pvXlsx();if(S.view==='d60')return d60Xlsx();pdXlsx();},   /* 901차: 머리줄 「엑셀」은 화면별로 */
 
   'pd.pgGo':el=>pdPgGo(Number(el.dataset.d)),
   'pd.fit':el=>{const f=el.dataset.f;PD.photos.forEach(p=>{if(PD.sel.has(p.id))p.fit=f;});
@@ -14531,7 +14539,7 @@ function mtabDateFit(t){
 }
 function mtabSync(){
   const bar=$('#mtab');if(!bar)return;
-  const cur=S.view==='calendar'?'calendar':S.view==='tasks'?'tasks':S.view==='defect'?'defect':/^(photo|qc|dwg|redo|prod)$/.test(S.view)?'tools':'';
+  const cur=S.view==='calendar'?'calendar':S.view==='tasks'?'tasks':S.view==='defect'?'defect':/^(d60|photo|qc|dwg|redo|prod)$/.test(S.view)?'tools':'';
   $$('#mtab button').forEach(b=>b.classList.toggle('act',b.dataset.t===cur));
   const d=$('#mtab .mtab-d');if(d){const n=String(Number(todayStr().slice(8,10)));
     if(d.textContent!==n)d.textContent=n;
@@ -14549,7 +14557,7 @@ function mssClose(){const s=$('#mss'),sc=$('#mssScrim');
   if(s){s.classList.remove('on');s.classList.remove('tools');}if(sc){sc.classList.remove('on');sc.classList.remove('tools');}
   mtabSync();}
 /* 903차: 하단 탭 「업무 도구」 — 바로 가지 않고 시트에서 고른다(현장 시트와 같은 부품) */
-const MTOOLS=[['photo','i-photo','사진대지 작성'],['qc','i-calc','견적 검토'],['dwg','i-frame','도면 인쇄'],['redo','i-redo','재하자 추적'],['prod','i-prod','생산성 검토']];
+const MTOOLS=[['d60','i-ckboard','D+60 점검'],['photo','i-photo','사진대지 작성'],['qc','i-calc','견적 검토'],['dwg','i-frame','도면 인쇄'],['redo','i-redo','재하자 추적'],['prod','i-prod','생산성 검토']];
 function mtoolsOpen(){
   const box=$('#mss');if(!box)return;
   box.innerHTML='<div class="mss-sc"><div class="mss-h">업무 도구</div>'+MTOOLS.map(([v,ic,l])=>'<div class="mss-i'+(S.view===v?' act':'')+'" data-act="mtab.tool" data-v="'+v+'"><svg class="icn" aria-hidden="true"><use href="#'+ic+'"></use></svg>'+l+'</div>').join('')+'</div>';
@@ -14629,6 +14637,365 @@ Object.assign(ACT,{
   'mss.dash':()=>{mssClose();S.dfSid='';go('defect');},
   'mss.site':el=>{mssClose();S.dfSid=el.dataset.sid||'';go('defect');},
 });
+/* ═══════════ 913차: 업무 도구 — D+60 점검(팀 공유 · RTDB calapp/d60) ═══════════
+   준공일 + 2개월이 점검일. 대공종(건축·설비·전기·조경)이 각자 따로 점검하고, 구분은 전유부·공용부·민원사항.
+   서식(forms)이 공간 → 점검항목(공종·조치사항 기본값)을 갖고, 점검(insp)은 현장별 판정·조치사항 덧쓰기·세대·민원만 저장한다.
+   사진은 없다(무료 요금제 용량). 조치 기록도 없다(사내 별도 보고서) — 현장에서 체크하고 데스크톱에서 정리·출력만. */
+const D60_TR=[['arch','건축'],['mech','설비'],['elec','전기'],['land','조경']];
+const D60_SC=[['unit','전유부'],['common','공용부'],['civil','민원사항']];
+const D60_A={ok:'양호',ng:'지적',na:'N/A'};
+const D60_SEED={unit:['현관','거실','침실','주방','욕실','발코니 · 다용도실'],common:['지하주차장','계단실 · 승강기홀','옥상 · 지붕','기계실 · 전기실','커뮤니티 · 부대시설','외부']};
+S.d60d=S.d60d||{};
+S.d60=S.d60||{tab:'insp',y:new Date().getFullYear(),m:new Date().getMonth()+1,reg:'',sid:'',tr:'arch',sc:'unit',sp:'',un:'',f:'all',sort:'date',dir:1,ed:null,dateEd:false};
+const d60D=()=>S.d60d||{};
+const d60Nm=(list,k)=>{const h=list.find(x=>x[0]===k);return h?h[1]:k;};
+function d60Items(sp){const o=(sp&&sp.items)||{};return Object.keys(o).map(id=>({id,...o[id]})).sort((a,b)=>(a.ord||0)-(b.ord||0));}
+function d60Forms(tr,sc){const o=(((d60D().forms||{})[tr]||{})[sc])||{};
+  return Object.keys(o).map(id=>({id,...o[id],items:d60Items(o[id])})).sort((a,b)=>(a.ord||0)-(b.ord||0)||String(a.name||'').localeCompare(String(b.name||''),'ko'));}
+function d60Insp(sid){return ((d60D().insp||{})[sid])||{};}
+function d60AddMonths(ds,n){const [y,m,d]=String(ds).split('-').map(Number);if(!y||!m||!d)return '';const dt=new Date(y,m-1+n,d);if(dt.getDate()!==d)dt.setDate(0);return dstr(dt);}
+function d60Date(site){const i=d60Insp(site.id);if(i.date)return i.date;return site.completionDate?d60AddMonths(site.completionDate,2):'';}
+function d60Units(sid){const o=d60Insp(sid).units||{};return Object.keys(o).map(id=>({id,...o[id]})).sort((a,b)=>(a.ord||0)-(b.ord||0));}
+function d60Res(sid,tr){return ((d60Insp(sid).res||{})[tr])||{};}
+function d60Civil(sid,tr){const o=((d60Insp(sid).civil||{})[tr])||{};return Object.keys(o).map(id=>({id,...o[id]})).sort((a,b)=>(a.ts||0)-(b.ts||0));}
+function d60Key(sc,un,sp,it){return sc==='unit'?'u|'+un+'|'+sp+'|'+it:'c|'+sp+'|'+it;}
+function d60Sites(){return (S.org.sites||[]).filter(x=>x.name&&x.completionDate&&!dfIsHidden(x.id));}
+/* 한 현장·한 공종의 양호/지적/N/A 수 — 민원사항 판정도 함께 센다. 아무 판정도 없으면 null(아직 안 봤다) */
+function d60Cnt(sid,tr){const c={ok:0,ng:0,na:0};let any=false;
+  const res=d60Res(sid,tr);Object.keys(res).forEach(k=>{const a=res[k]&&res[k].a;if(a&&c[a]!=null){c[a]++;any=true;}});
+  d60Civil(sid,tr).forEach(x=>{if(x.a&&c[x.a]!=null){c[x.a]++;any=true;}});
+  return any?c:null;}
+/* 쓰기 — 화면 먼저, 서버(또는 로컬)는 뒤. 실패하면 구독이 서버 값으로 되돌린다 */
+function d60Write(path,val){
+  const seg=path.split('/');let o=S.d60d;
+  for(let i=0;i<seg.length-1;i++){o=o[seg[i]]=o[seg[i]]||{};}
+  if(val==null)delete o[seg[seg.length-1]];else o[seg[seg.length-1]]=val;
+  if(S.live&&FB.db){const r=FB.db.ref('calapp/d60/'+path);(val==null?r.remove():r.set(val)).catch(fbErr);}
+  else{LocalStore._d.d60=S.d60d;lsSave(LocalStore._d);}
+  rD60();
+}
+function d60Stamp(){return {by:String((S.user&&S.user.uid)||''),ts:Date.now()};}
+
+/* ── 상세 표의 줄 — [공간, 공종, 점검항목, 판정, 조치사항(현장 덧쓰기 우선), key] ── */
+function d60Rows(sid,tr,sc,sp,un){
+  const res=d60Res(sid,tr),rows=[];
+  if(sc==='civil'){
+    d60Civil(sid,tr).forEach(x=>rows.push({sp:(x.dg?x.dg+'동 ':'')+(x.ho?x.ho+'호':''),gj:'',q:x.txt||'',a:x.a||'',act:x.act||'',key:x.id,civil:true}));
+    return rows;
+  }
+  if(sc==='unit'&&!un)return rows;
+  d60Forms(tr,sc).forEach(s=>{if(sp&&s.id!==sp)return;
+    s.items.forEach(it=>{const k=d60Key(sc,un,s.id,it.id),r=res[k]||{};
+      rows.push({sp:s.name||'',gj:it.gj||'',q:it.q||'',a:r.a||'',act:(r.act!=null?r.act:(it.act||'')),key:k,ov:r.act!=null});});});
+  return rows;
+}
+function d60Base(tr,sc,key){const p=key.split('|');const sp=sc==='unit'?p[2]:p[1],it=sc==='unit'?p[3]:p[2];const s=d60Forms(tr,sc).find(x=>x.id===sp);const i=s&&s.items.find(x=>x.id===it);return i?(i.act||''):'';}
+function d60Filt(rows,f){return f==='all'?rows:f==='none'?rows.filter(r=>!r.a):rows.filter(r=>r.a===f);}
+/* 좌측 공간 줄의 「확인/전체」 */
+function d60SpCnt(sid,tr,sc,sp,un){const res=d60Res(sid,tr);let n=0,t=0;
+  sp.items.forEach(it=>{t++;const r=res[d60Key(sc,un,sp.id,it.id)];if(r&&r.a)n++;});return [n,t];}
+
+/* ═══ 그리기 ═══ */
+function rD60(){
+  const root=$('#d60Root');if(!root||S.view!=='d60')return;
+  const st=S.d60,mob=isMob()&&!WIDGET;
+  if(st.sid&&!d60Sites().some(x=>x.id===st.sid))st.sid='';
+  root.innerHTML=st.sid?(mob?d60MobDetail():d60Detail()):st.tab==='form'&&!mob?d60Form():(mob?d60MobList():d60List());
+  if(!st.sid&&st.tab!=='form'&&!mob){const other=$('#orgMapRoot');if(other)other.innerHTML='';rOrgMap();}
+  dfTopbar();
+}
+/* attr: 'data-act="…" data-k' — 감사기가 data-act 를 글자 그대로 찾는다(tlSeg 와 같은 약속) */
+const d60Seg=(cur,list,attr,cls)=>'<div class="seg '+(cls||'')+'">'+list.map(([k,l,ic])=>'<button class="'+(cur===k?'act':'')+'" '+attr+'="'+k+'">'+(ic?'<svg class="icn" aria-hidden="true"><use href="#'+ic+'"></use></svg>':'')+l+'</button>').join('')+'</div>';
+const d60Tabs=(cur,list,attr,right)=>'<div class="tkbar rk-tabbar d60-tabs"><div class="rp-tabs tkm-tabs tkbar-tabs" data-sbx>'
+  +list.map(([k,l,n])=>'<button class="rp-tab'+(cur===k?' on':'')+'" '+attr+'="'+k+'">'+esc(l)+(n!=null?'<span class="rp-tcnt">'+n+'</span>':'')+'</button>').join('')+'</div>'
+  +(right?'<div class="d60-barr">'+right+'</div>':'')+'</div>';
+const d60Sw=(cur,list)=>'<div class="seg tkv-seg d60-sw">'+list.map(([k,l,ic])=>'<button class="'+(cur===k?'act':'')+'" data-act="d60.tab" data-k="'+k+'"><svg class="icn" aria-hidden="true"><use href="#'+ic+'"></use></svg>'+l+'</button>').join('')+'</div>';
+const d60Pill=a=>a?'<span class="d60-pill '+a+'">'+D60_A[a]+'</span>':'<span class="d60-none">미확인</span>';
+const d60SortMk=k=>{const st=S.d60;return '<span class="sortmk">'+(st.sort===k?(st.dir===1?'▲':'▼'):'↕')+'</span>';};
+const d60Th=(k,l,cls)=>'<th class="'+(cls||'')+(S.d60.sort===k?' act':'')+'" data-act="d60.sort" data-k="'+k+'">'+l+' '+d60SortMk(k)+'</th>';
+
+/* ── 목록(데스크톱): 좌 = 점검/서식 · 월 · 지도, 우 = 권역 탭 + 표 ── */
+function d60List(){
+  const st=S.d60,regs=(S.org.regions||[]).filter(r=>r.name);
+  const all=d60Sites().map(s=>({s,date:d60Date(s)})).filter(x=>x.date);
+  const inYear=all.filter(x=>x.date.slice(0,4)===String(st.y));
+  const mCnt=Array.from({length:12},(_,i)=>inYear.filter(x=>Number(x.date.slice(5,7))===i+1).length);
+  let rows=inYear.filter(x=>!st.reg||x.s.region===st.reg);
+  const val=x=>{switch(st.sort){case 'reg':return regs.findIndex(r=>r.id===x.s.region);case 'site':return x.s.name;case 'comp':return x.s.completionDate;case 'date':return x.date;
+    case 'own':return d60Owner(x.s).name;default:{const c=d60Cnt(x.s.id,st.sort);return c?c.ng:-1;}}};
+  rows.sort((a,b)=>{const va=val(a),vb=val(b);const r=typeof va==='number'?va-vb:String(va).localeCompare(String(vb),'ko');return r*st.dir||a.date.localeCompare(b.date);});
+  const cell=c=>c?'<td><span class="d60-3"><b class="g">'+c.ok+'</b>/<b class="r">'+c.ng+'</b>/<b class="n">'+c.na+'</b></span></td>':'<td class="d60-dash">—</td>';
+  const tr=rows.map(({s,date})=>{const i=d60Insp(s.id),o=d60Owner(s),hi=st.m&&Number(date.slice(5,7))===st.m;
+    return '<tr class="d60-r'+(hi?' hi':'')+'" data-act="d60.open" data-sid="'+esc(s.id)+'">'
+      +'<td><span class="d60-ba">'+esc(d60RegNm(s.region))+'</span></td><td class="l">'+esc(s.name)+'</td><td class="num">'+esc(s.completionDate)+'</td>'
+      +'<td class="num'+(i.date?'':' dim')+'" data-act="d60.date" data-sid="'+esc(s.id)+'" data-tip="점검일 고치기">'+esc(date)+'</td>'
+      +'<td>'+(o.name?'<span class="d60-nm"><i style="background:'+esc(o.color)+'"></i>'+esc(o.name)+'</span>':'—')+'</td>'
+      +D60_TR.map(([k])=>cell(d60Cnt(s.id,k))).join('')+'</tr>';}).join('');
+  const regTabs=[['','전체',inYear.length]].concat(regs.map(r=>[r.id,r.name,inYear.filter(x=>x.s.region===r.id).length]));
+  return '<div class="d60-grid"><div class="as">'
+    +d60Sw('insp',[['insp','점검','i-ckboard'],['form','서식','i-form']])
+    +'<div class="card d60-flat"><div class="d60-gh"><button class="d60-mcb" data-act="d60.y" data-d="-1" aria-label="이전 해"><svg class="icn"><use href="#i-chevl"></use></svg></button><span class="d60-mtt">'+st.y+'년</span><button class="d60-mcb" data-act="d60.y" data-d="1" aria-label="다음 해"><svg class="icn"><use href="#i-chevr"></use></svg></button><span style="flex:1"></span><span class="rp-tcnt">'+inYear.length+'</span></div>'
+      +'<div class="d60-my">'+mCnt.map((n,i)=>'<button class="'+(n?'has':'')+(st.m===i+1?' on':'')+'" data-act="d60.m" data-k="'+(i+1)+'"><span class="mn">'+(i+1)+'월</span><span class="mcn">'+(n?n+'건':'—')+'</span></button>').join('')+'</div></div>'
+    +'<div class="card"><div class="tm-h"><span>현장 지도</span><button class="btn tm-add" data-act="org.mapBig" aria-label="크게 보기" data-tip="크게 보기"><svg class="icn" aria-hidden="true"><use href="#i-expand"></use></svg></button></div><div id="d60Map"></div></div>'
+    +'</div><div class="as">'
+    +d60Tabs(st.reg,regTabs,'data-act="d60.reg" data-k')
+    +'<div class="card d60-flat"><table class="mgtbl d60-tbl"><colgroup><col style="width:74px"><col><col style="width:96px"><col style="width:96px"><col style="width:98px">'+D60_TR.map(()=>'<col style="width:110px">').join('')+'</colgroup>'
+      +'<thead><tr>'+d60Th('reg','권역','c')+d60Th('site','현장','l')+d60Th('comp','준공일','c')+d60Th('date','점검일','c')+d60Th('own','담당자','c')+D60_TR.map(([k,l])=>d60Th(k,l,'c')).join('')+'</tr></thead>'
+      +'<tbody>'+(tr||'<tr><td colspan="9" class="d60-empty">'+st.y+'년에 점검할 현장이 없습니다 — 조직 관리에서 현장 준공일을 채우면 준공일 + 2개월로 잡힙니다</td></tr>')+'</tbody></table></div>'
+    +'</div></div>';
+}
+function d60RegNm(id){const r=(S.org.regions||[]).find(x=>x.id===id);return r?r.name:'—';}
+/* 담당자 = 그 현장을 맡은 명부 사람 중 첫째(공구장·팀장 제외) */
+function d60Owner(site){const p=roster().find(x=>x.sites&&x.sites[site.id]&&rankOf(x.rank)==='member')||roster().find(x=>x.sites&&x.sites[site.id]);
+  return p?{name:p.name,color:colBg((avOf(p.id).color)||ownColor(p.id))}:{name:'',color:''};}
+
+/* ── 상세(데스크톱) ── */
+function d60Detail(){
+  const st=S.d60,site=d60Sites().find(x=>x.id===st.sid);if(!site)return '';
+  const units=d60Units(site.id);if(st.sc==='unit'&&(!st.un||!units.some(u=>u.id===st.un)))st.un=units[0]?units[0].id:'';
+  const left=D60_SC.map(([sc,nm])=>{
+    let body='';
+    if(sc==='unit'){body+='<div class="d60-ulist">'+units.map(u=>'<div class="u'+(st.sc==='unit'&&st.un===u.id?' on':'')+'" role="button" tabindex="0" data-act="d60.un" data-k="'+esc(u.id)+'"><span>'+esc(u.dg)+'동 '+esc(u.ho)+'호</span><button class="d60-ux" data-act="d60.unitDel" data-k="'+esc(u.id)+'" aria-label="세대 삭제"><svg class="icn"><use href="#i-close"></use></svg></button></div>').join('')+'</div>';}
+    if(sc!=='civil'){const sps=d60Forms(st.tr,sc);
+      const tot=sps.reduce((a,s)=>{const [n,t]=d60SpCnt(site.id,st.tr,sc,s,st.un);return [a[0]+n,a[1]+t];},[0,0]);
+      body+='<div class="d60-zone'+(st.sc===sc&&!st.sp?' on':'')+'" data-act="d60.sc" data-k="'+sc+'"><span class="n">전체</span><span class="c">'+tot[0]+'/'+tot[1]+'</span></div>'
+        +sps.map(s=>{const [n,t]=d60SpCnt(site.id,st.tr,sc,s,st.un);return '<div class="d60-zone'+(st.sc===sc&&st.sp===s.id?' on':'')+'" data-act="d60.sp" data-sc="'+sc+'" data-k="'+esc(s.id)+'"><span class="n">'+esc(s.name)+'</span><span class="c">'+n+'/'+t+'</span></div>';}).join('')
+        +(sps.length?'':'<div class="d60-zone d60-zone-empty">서식에 공간이 없습니다</div>');
+    }else{const cv=d60Civil(site.id,st.tr);
+      body+='<div class="d60-zone'+(st.sc==='civil'?' on':'')+'" data-act="d60.sc" data-k="civil"><span class="n">입주민 접수</span><span class="c">'+cv.filter(x=>x.a).length+'/'+cv.length+'</span></div>';}
+    const head='<div class="d60-gh">'+nm+'<span style="flex:1"></span>'
+      +(sc==='unit'?'<button class="btn bo bxs" data-act="d60.unitAdd"><svg class="icn"><use href="#i-plus"></use></svg>세대</button>':sc==='civil'?'<button class="btn bo bxs" data-act="d60.civilAdd"><svg class="icn"><use href="#i-plus"></use></svg>접수</button>':'')+'</div>';
+    return '<div class="card d60-flat">'+head+body+'</div>';
+  }).join('');
+  const trTabs=D60_TR.map(([k,l])=>{const c=d60Cnt(site.id,k);return [k,l,c?c.ng:0];});
+  const rows=d60Filt(d60Rows(site.id,st.tr,st.sc,st.sp,st.un),st.f);
+  const sub=st.sc==='civil'?'민원사항':d60Nm(D60_SC,st.sc)+' · '+(st.sp?esc((d60Forms(st.tr,st.sc).find(x=>x.id===st.sp)||{}).name||''):'전체');
+  const un=units.find(u=>u.id===st.un);
+  return '<div class="d60-grid"><div class="as">'
+    +'<div class="tkbar d60-bk"><button class="bk" data-act="d60.back" aria-label="목록으로"><svg class="icn"><use href="#i-chevl"></use></svg></button><span class="nm">'+esc(site.name)+'</span></div>'
+    +left+'</div><div class="as">'
+    +d60Tabs(st.tr,trTabs,'data-act="d60.tr" data-k',d60Seg(st.f,[['all','전체'],['ok','양호'],['ng','지적'],['na','N/A'],['none','미확인']],'data-act="d60.f" data-k'))
+    +'<div class="card d60-flat"><div class="d60-gh">'+sub+'<span style="flex:1"></span>'+(st.sc==='unit'&&un?'<span class="c">'+esc(un.dg)+'동 '+esc(un.ho)+'호</span>':'')+'<span class="rp-tcnt" style="margin-left:8px">'+rows.length+'</span></div>'
+    +d60Table(rows,site.id)+'</div></div></div>';
+}
+/* 표 — 공간·공종은 같은 값이 이어지면 첫 줄에만, 이어지는 칸엔 아래 선을 긋지 않는다(업무 현황과 같은 규칙) */
+function d60Table(rows,sid){
+  const st=S.d60,civil=st.sc==='civil';
+  if(!rows.length)return '<div class="d60-empty">'+(civil?'접수된 민원이 없습니다':st.sc==='unit'&&!st.un?'세대를 먼저 추가하세요':'표시할 항목이 없습니다')+'</div>';
+  const tr=rows.map((r,i)=>{
+    const p=rows[i-1],n=rows[i+1];
+    const newSp=!p||p.sp!==r.sp,newGj=newSp||p.gj!==r.gj,sameSp=!!n&&n.sp===r.sp,sameGj=sameSp&&n.gj===r.gj;
+    const ed=st.ed&&st.ed.kind==='act'&&st.ed.key===r.key;
+    return '<tr>'
+      +'<td class="c'+(sameSp?' nb':'')+'">'+(i+1)+'</td><td class="mg'+(sameSp?' nb':'')+'">'+(newSp?esc(r.sp):'')+'</td>'
+      +(civil?'':'<td class="mg'+(sameGj?' nb':'')+'">'+(newGj?esc(r.gj):'')+'</td>')
+      +'<td class="l">'+esc(r.q)+'</td>'
+      +'<td class="c d60-ac" data-act="d60.ansCell" data-k="'+esc(r.key)+'">'+(st.ed&&st.ed.kind==='ans'&&st.ed.key===r.key
+          ?'<span class="seg d60-as">'+['ok','ng','na'].map(a=>'<button class="'+(r.a===a?'act':'')+'" data-act="d60.ans" data-k="'+esc(r.key)+'" data-a="'+a+'">'+D60_A[a]+'</button>').join('')+'<button data-act="d60.ans" data-k="'+esc(r.key)+'" data-a="">지움</button></span>'
+          :d60Pill(r.a))+'</td>'
+      +'<td class="l d60-actc" data-act="d60.actEdit" data-k="'+esc(r.key)+'">'+(ed
+          ?'<input class="mg-inp d60-actin" value="'+esc(r.act)+'" data-k="'+esc(r.key)+'" aria-label="조치사항" autofocus>'
+          :'<span class="'+(r.ov?'ov':'')+'">'+((r.a==='ng'||r.ov)?esc(r.act):'')+'</span>')+'</td>'   /* 기본값은 지적일 때만 보인다 — 양호 줄까지 깔리면 표가 소음이 된다 */
+      +(civil?'<td class="c"><button class="tm-x tm-del d60-cx" data-act="d60.civilDel" data-k="'+esc(r.key)+'" aria-label="삭제"><svg class="icn"><use href="#i-trash"></use></svg></button></td>':'')
+      +'</tr>';}).join('');
+  return '<table class="mgtbl d60-tbl d60-dt"><colgroup><col style="width:52px"><col style="width:112px">'+(civil?'':'<col style="width:92px">')+'<col><col style="width:96px"><col style="width:'+(civil?'270':'290')+'px">'+(civil?'<col style="width:44px">':'')+'</colgroup>'
+    +'<thead><tr><th class="c">NO</th><th class="c">'+(civil?'세대':'공간')+'</th>'+(civil?'':'<th class="c">공종</th>')+'<th class="l">점검항목</th><th class="c">결과</th><th class="l">조치사항</th>'+(civil?'<th></th>':'')+'</tr></thead><tbody>'+tr+'</tbody></table>';
+}
+
+/* ── 서식(데스크톱) ── */
+function d60Form(){
+  const st=S.d60;if(st.sc==='civil')st.sc='unit';
+  const sps=d60Forms(st.tr,st.sc);if(st.sp&&!sps.some(x=>x.id===st.sp))st.sp='';if(!st.sp&&sps[0])st.sp=sps[0].id;
+  const left=D60_SC.map(([sc,nm])=>{
+    if(sc==='civil')return '<div class="card d60-flat"><div class="tm-h"><span>민원사항</span></div><div class="tm-row"><span class="tm-nameinp" style="color:var(--lbl3)">현장에서 접수 — 서식 없음</span></div></div>';
+    const list=d60Forms(st.tr,sc);
+    return '<div class="card d60-flat"><div class="tm-h"><span>'+nm+'</span><button class="btn tm-add" data-act="d60.spAdd" data-sc="'+sc+'" aria-label="공간 추가" data-tip="공간 추가"><svg class="icn" aria-hidden="true"><use href="#i-plus"></use></svg></button></div>'
+      +'<div class="tm-list">'+(list.length?list.map(s=>'<div class="tm-row d60-row'+(st.sc===sc&&st.sp===s.id?' act':'')+'" data-act="d60.spPick" data-sc="'+sc+'" data-k="'+esc(s.id)+'">'
+        +'<input class="mg-inp tm-nameinp" value="'+esc(s.name)+'" data-act="d60.spRen" data-sc="'+sc+'" data-k="'+esc(s.id)+'" placeholder="공간 이름" aria-label="공간 이름">'
+        +'<span class="tm-cnt">'+s.items.length+'</span><button class="tm-x tm-del" data-act="d60.spDel" data-sc="'+sc+'" data-k="'+esc(s.id)+'" aria-label="삭제"><svg class="icn"><use href="#i-trash"></use></svg></button></div>').join('')
+        :'<div class="tm-empty">공간이 없습니다 — <a href="#" data-act="d60.seed" data-sc="'+sc+'">기본 공간 넣기</a></div>')+'</div></div>';
+  }).join('');
+  const cur=sps.find(x=>x.id===st.sp);
+  const trTabs=D60_TR.map(([k,l])=>[k,l,['unit','common'].reduce((n,sc)=>n+d60Forms(k,sc).reduce((m,s)=>m+s.items.length,0),0)]);
+  const items=cur?cur.items:[];
+  const ed=st.ed&&st.ed.kind==='item'?st.ed:null;
+  const edRow=e=>'<tr class="d60-ed"><td class="c">'+(e.id==='new'?items.length+1:e.no)+'</td>'
+    +'<td><input class="mg-inp d60-in" data-f="gj" value="'+esc(e.gj)+'" placeholder="공종" aria-label="공종"></td>'
+    +'<td><input class="mg-inp d60-in" data-f="q" value="'+esc(e.q)+'" placeholder="점검항목" aria-label="점검항목"></td>'
+    +'<td><input class="mg-inp d60-in" data-f="act" value="'+esc(e.act)+'" placeholder="조치사항" aria-label="조치사항"></td>'
+    +'<td class="c"><button class="btn bo bxs" data-act="d60.itSave">저장</button> <button class="btn bo bxs" data-act="d60.itCancel">취소</button></td></tr>';
+  const rows=items.map((it,i)=>{if(ed&&ed.id===it.id)return edRow({...ed,no:i+1});
+    const p=items[i-1],n=items[i+1],newGj=!p||p.gj!==it.gj,sameGj=!!n&&n.gj===it.gj;
+    return '<tr><td class="c'+(sameGj?' nb':'')+'">'+(i+1)+'</td><td class="mg'+(sameGj?' nb':'')+'">'+(newGj?esc(it.gj||''):'')+'</td><td class="l">'+esc(it.q||'')+'</td><td class="l dim2">'+esc(it.act||'')+'</td>'
+      +'<td class="c d60-ops"><button class="btn bo bxs" data-act="d60.itEdit" data-k="'+esc(it.id)+'" aria-label="수정"><svg class="icn"><use href="#i-pen"></use></svg></button> <button class="btn bo bxs" data-act="d60.itDel" data-k="'+esc(it.id)+'" aria-label="삭제"><svg class="icn"><use href="#i-trash"></use></svg></button></td></tr>';}).join('')
+    +(ed&&ed.id==='new'?edRow(ed):'');
+  return '<div class="d60-grid"><div class="as">'
+    +d60Sw('form',[['insp','점검','i-ckboard'],['form','서식','i-form']])+left+'</div><div class="as">'
+    +d60Tabs(st.tr,trTabs,'data-act="d60.tr" data-k',cur?'<button class="btn bo bsm" data-act="d60.itAdd"><svg class="icn"><use href="#i-plus"></use></svg>추가</button>':'')
+    +'<div class="card d60-flat"><div class="d60-gh">'+d60Nm(D60_TR,st.tr)+' · '+d60Nm(D60_SC,st.sc)+(cur?' · '+esc(cur.name):'')+'<span style="flex:1"></span><span class="rp-tcnt">'+items.length+'</span></div>'
+    +(cur?'<table class="mgtbl d60-tbl"><colgroup><col style="width:52px"><col style="width:104px"><col><col style="width:300px"><col style="width:96px"></colgroup>'
+      +'<thead><tr><th class="c">NO</th><th class="c">공종</th><th class="l">점검항목</th><th class="l">조치사항</th><th class="c">관리</th></tr></thead><tbody>'+(rows||'<tr><td colspan="5" class="d60-empty">항목이 없습니다 — 위 「추가」로 넣으세요</td></tr>')+'</tbody></table>'
+      :'<div class="d60-empty">왼쪽에서 공간을 고르거나 추가하세요</div>')
+    +'</div></div></div>';
+}
+
+/* ── 폰: 목록 ── */
+function d60MobList(){
+  const st=S.d60,regs=(S.org.regions||[]).filter(r=>r.name);
+  const all=d60Sites().map(s=>({s,date:d60Date(s)})).filter(x=>x.date&&x.date.slice(0,4)===String(st.y)).sort((a,b)=>a.date.localeCompare(b.date));
+  const grp=regs.map(r=>[r.name,all.filter(x=>x.s.region===r.id)]).filter(x=>x[1].length);
+  const none=all.filter(x=>!regs.some(r=>r.id===x.s.region));if(none.length)grp.push(['권역 미지정',none]);
+  return '<div class="d60-mh"><button class="d60-mcb" data-act="d60.y" data-d="-1" aria-label="이전 해"><svg class="icn"><use href="#i-chevl"></use></svg></button><span class="d60-mtt">'+st.y+'년</span><button class="d60-mcb" data-act="d60.y" data-d="1" aria-label="다음 해"><svg class="icn"><use href="#i-chevr"></use></svg></button><span style="flex:1"></span><span class="rp-tcnt">'+all.length+'</span></div>'
+    +(grp.length?grp.map(([rn,list])=>'<div class="card d60-flat d60-mcard"><div class="d60-gh">'+esc(rn)+'</div>'
+      +list.map(({s,date})=>{const ng=D60_TR.reduce((n,[k])=>{const c=d60Cnt(s.id,k);return n+(c?c.ng:0);},0),i=d60Insp(s.id);
+        return '<div class="d60-mrow" data-act="d60.open" data-sid="'+esc(s.id)+'"><span class="n">'+esc(s.name)+'</span><span class="d'+(i.date?'':' dim')+'">'+esc(date)+'</span>'+(ng?'<span class="d60-pill ng">'+ng+'</span>':'')+'<svg class="icn chev"><use href="#i-chevr"></use></svg></div>';}).join('')+'</div>').join('')
+      :'<div class="card d60-flat d60-mcard"><div class="d60-empty">'+st.y+'년에 점검할 현장이 없습니다</div></div>');
+}
+/* ── 폰: 현장에서 체크 ── */
+function d60MobDetail(){
+  const st=S.d60,site=d60Sites().find(x=>x.id===st.sid);if(!site)return '';
+  const units=d60Units(site.id);if(st.sc==='unit'&&(!st.un||!units.some(u=>u.id===st.un)))st.un=units[0]?units[0].id:'';
+  let body='';
+  if(st.sc==='unit'){
+    body+='<div class="d60-ulist d60-mul">'+units.map(u=>'<button class="u'+(st.un===u.id?' on':'')+'" data-act="d60.un" data-k="'+esc(u.id)+'"><span>'+esc(u.dg)+'동 '+esc(u.ho)+'호</span></button>').join('')
+      +'<button class="u add" data-act="d60.unitAdd"><svg class="icn"><use href="#i-plus"></use></svg>세대 추가</button></div>';
+  }
+  if(st.sc!=='civil'){
+    const sps=d60Forms(st.tr,st.sc);if(st.sp&&!sps.some(x=>x.id===st.sp))st.sp='';if(!st.sp&&sps[0])st.sp=sps[0].id;
+    body+='<div class="d60-chips" data-sbx>'+sps.map(s=>{const [n,t]=d60SpCnt(site.id,st.tr,st.sc,s,st.un);return '<button class="d60-chip'+(st.sp===s.id?' on':'')+'" data-act="d60.sp" data-sc="'+st.sc+'" data-k="'+esc(s.id)+'">'+esc(s.name)+'<span class="c">'+n+'/'+t+'</span></button>';}).join('')+'</div>';
+  }else{
+    body+='<div class="d60-mh" style="margin-top:2px"><span class="rp-tcnt">'+d60Civil(site.id,st.tr).length+'</span><span style="flex:1"></span><button class="btn bo bsm" data-act="d60.civilAdd"><svg class="icn"><use href="#i-plus"></use></svg>접수</button></div>';
+  }
+  const rows=d60Rows(site.id,st.tr,st.sc,st.sp,st.un);
+  body+='<div class="card d60-flat d60-mcard">'+(rows.length?rows.map((r,i)=>'<div class="d60-it">'
+      +'<div class="q"><span class="no">'+(i+1)+'</span><span class="tx">'+(r.civil?'<b>'+esc(r.sp)+'</b><br>':'')+esc(r.q)+'</span>'+(r.civil?'<button class="tm-x d60-cx" data-act="d60.civilDel" data-k="'+esc(r.key)+'" aria-label="삭제"><svg class="icn"><use href="#i-trash"></use></svg></button>':'')+'</div>'
+      +'<div class="d60-jd">'+[['ok','i-check'],['ng','i-close'],['na','i-minus']].map(([a,ic])=>'<button class="'+a+(r.a===a?' on':'')+'" data-act="d60.ans" data-k="'+esc(r.key)+'" data-a="'+(r.a===a?'':a)+'"><svg class="icn"><use href="#'+ic+'"></use></svg>'+D60_A[a]+'</button>').join('')+'</div>'
+      +(r.a==='ng'?'<textarea class="inp d60-mact" rows="2" placeholder="조치사항" data-k="'+esc(r.key)+'" aria-label="조치사항">'+esc(r.act)+'</textarea>':'')
+      +'</div>').join('')
+    :'<div class="d60-empty">'+(st.sc==='civil'?'접수된 민원이 없습니다':st.sc==='unit'&&!st.un?'세대를 먼저 추가하세요':'서식에 항목이 없습니다')+'</div>')+'</div>';
+  return '<div class="d60-mh"><button class="d60-mcb" data-act="d60.back" aria-label="목록으로"><svg class="icn"><use href="#i-chevl"></use></svg></button><span class="d60-mtt">'+esc(site.name)+'</span></div>'
+    +d60Seg(st.tr,D60_TR,'data-act="d60.tr" data-k','tkv-seg d60-mseg')
+    +d60Seg(st.sc,D60_SC,'data-act="d60.sc" data-k','tkv-seg d60-mseg')
+    +body;
+}
+
+/* ═══ 동작 ═══ */
+function d60Go(){S.d60.ed=null;rD60();}
+function d60UnitModal(){
+  openModal('세대 추가','<div class="d60-um"><label>동<input id="d60Dg" class="inp" inputmode="numeric" placeholder="101" autocomplete="off"></label><label>호<input id="d60Ho" class="inp" inputmode="numeric" placeholder="1203" autocomplete="off"></label></div>',
+    '<button class="btn bg2" data-act="modal.close">취소</button><button class="btn bp" data-act="d60.unitSave">추가</button>');
+  setTimeout(()=>{const e=$('#d60Dg');if(e)e.focus();},30);
+}
+function d60CivilModal(){
+  openModal('민원 접수','<div class="d60-um"><label>동<input id="d60Dg" class="inp" inputmode="numeric" placeholder="104" autocomplete="off"></label><label>호<input id="d60Ho" class="inp" inputmode="numeric" placeholder="501" autocomplete="off"></label></div>'
+    +'<label class="d60-ul">내용<textarea id="d60Tx" class="inp" rows="3" placeholder="거실 창 결로수로 벽지 얼룩"></textarea></label>',
+    '<button class="btn bg2" data-act="modal.close">취소</button><button class="btn bp" data-act="d60.civilSave">접수</button>');
+  setTimeout(()=>{const e=$('#d60Dg');if(e)e.focus();},30);
+}
+async function d60Xlsx(){
+  const st=S.d60,site=d60Sites().find(x=>x.id===st.sid);
+  try{await loadXlsx();}catch(e){toast('엑셀 모듈 로드 실패');return;}
+  const wb=XLSX.utils.book_new();
+  if(site){
+    D60_TR.forEach(([tr,tl])=>{const aoa=[['구분','세대','공간','공종','점검항목','결과','조치사항']];
+      d60Units(site.id).forEach(u=>d60Rows(site.id,tr,'unit','',u.id).forEach(r=>aoa.push(['전유부',u.dg+'동 '+u.ho+'호',r.sp,r.gj,r.q,D60_A[r.a]||'',r.act])));
+      d60Rows(site.id,tr,'common','','').forEach(r=>aoa.push(['공용부','',r.sp,r.gj,r.q,D60_A[r.a]||'',r.act]));
+      d60Rows(site.id,tr,'civil','','').forEach(r=>aoa.push(['민원사항',r.sp,'','',r.q,D60_A[r.a]||'',r.act]));
+      if(aoa.length===1)return;
+      const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[8,14,16,8,32,6,32].map(w=>({wch:w}));XLSX.utils.book_append_sheet(wb,ws,tl);});
+    if(!wb.SheetNames.length){toast('내보낼 점검 결과가 없습니다');return;}
+    tlSaveWb(wb,'D+60점검_'+site.name.replace(/[\\/:*?"<>|]/g,'')+'_'+todayStr().replace(/-/g,'')+'.xlsx');
+  }else{
+    const aoa=[['권역','현장','준공일','점검일','담당자'].concat(D60_TR.flatMap(([,l])=>[l+' 양호',l+' 지적',l+' N/A']))];
+    d60Sites().map(s=>({s,date:d60Date(s)})).filter(x=>x.date&&x.date.slice(0,4)===String(st.y)).sort((a,b)=>a.date.localeCompare(b.date))
+      .forEach(({s,date})=>aoa.push([d60RegNm(s.region),s.name,s.completionDate,date,d60Owner(s).name].concat(D60_TR.flatMap(([k])=>{const c=d60Cnt(s.id,k);return c?[c.ok,c.ng,c.na]:['','',''];}))));
+    const ws=XLSX.utils.aoa_to_sheet(aoa);XLSX.utils.book_append_sheet(wb,ws,st.y+'년');
+    tlSaveWb(wb,'D+60점검_'+st.y+'_'+todayStr().replace(/-/g,'')+'.xlsx');
+  }
+  toast('엑셀로 내보냈습니다');
+}
+Object.assign(ACT,{
+  'd60.tab':el=>{S.d60.tab=el.dataset.k;S.d60.sid='';d60Go();},
+  'd60.y':el=>{S.d60.y+=Number(el.dataset.d);d60Go();},
+  'd60.m':el=>{const m=Number(el.dataset.k);S.d60.m=S.d60.m===m?0:m;d60Go();},
+  'd60.reg':el=>{S.d60.reg=el.dataset.k;d60Go();},
+  'd60.open':el=>{S.d60.sid=el.dataset.sid;S.d60.sp='';S.d60.f='all';d60Go();},
+  'd60.back':()=>{S.d60.sid='';d60Go();},
+  'd60.tr':el=>{S.d60.tr=el.dataset.k;S.d60.sp='';d60Go();},
+  'd60.sc':el=>{S.d60.sc=el.dataset.k;S.d60.sp='';d60Go();},
+  'd60.sp':el=>{S.d60.sc=el.dataset.sc||S.d60.sc;S.d60.sp=el.dataset.k;d60Go();},
+  'd60.un':el=>{S.d60.sc='unit';S.d60.un=el.dataset.k;d60Go();},
+  'd60.f':el=>{S.d60.f=el.dataset.k;d60Go();},
+  'd60.sort':el=>{const k=el.dataset.k;if(S.d60.sort===k)S.d60.dir=-S.d60.dir;else{S.d60.sort=k;S.d60.dir=1;}d60Go();},
+  /* 점검일 — 칸을 누르면 날짜 입력으로 바뀐다. 고치면 확정(진하게) */
+  'd60.date':el=>{if(el.querySelector('input'))return;const sid=el.dataset.sid,cur=el.textContent.trim();
+    el.innerHTML='<input type="date" class="mg-inp d60-datein" value="'+esc(cur)+'" data-sid="'+esc(sid)+'" aria-label="점검일">';const i=el.querySelector('input');i.focus();
+    i.addEventListener('change',()=>{const v=i.value;if(/^\d{4}-\d{2}-\d{2}$/.test(v)){d60Write('insp/'+sid+'/date',v);}else rD60();});
+    i.addEventListener('blur',()=>setTimeout(rD60,120));},
+  'd60.unitAdd':()=>{if(!S.d60.sid)return;d60UnitModal();},
+  'd60.unitSave':()=>{const dg=($('#d60Dg')||{}).value||'',ho=($('#d60Ho')||{}).value||'';if(!dg.trim()||!ho.trim()){toast('동과 호를 입력하세요');return;}
+    const id=uid(),ord=d60Units(S.d60.sid).length+1;closeModal();S.d60.sc='unit';S.d60.un=id;d60Write('insp/'+S.d60.sid+'/units/'+id,{dg:dg.trim().replace(/동$/,''),ho:ho.trim().replace(/호$/,''),ord});},
+  'd60.unitDel':el=>{const id=el.dataset.k,sid=S.d60.sid;
+    confirmModal('세대 삭제','이 세대의 판정도 함께 지워집니다. 삭제할까요?',()=>{
+      const res=d60Insp(sid).res||{};const patch={};Object.keys(res).forEach(tr=>Object.keys(res[tr]||{}).forEach(k=>{if(k.startsWith('u|'+id+'|'))d60Write('insp/'+sid+'/res/'+tr+'/'+k,null);}));
+      if(S.d60.un===id)S.d60.un='';d60Write('insp/'+sid+'/units/'+id,null);},'삭제',true);},
+  'd60.ansCell':el=>{if(isMob()&&!WIDGET)return;const k=el.dataset.k;if(S.d60.ed&&S.d60.ed.kind==='ans'&&S.d60.ed.key===k)return;S.d60.ed={kind:'ans',key:k};rD60();},
+  'd60.ans':el=>{const k=el.dataset.k,a=el.dataset.a||'',sid=S.d60.sid,tr=S.d60.tr;S.d60.ed=null;
+    if(S.d60.sc==='civil'){d60Write('insp/'+sid+'/civil/'+tr+'/'+k+'/a',a||null);return;}
+    const cur=(d60Res(sid,tr)[k])||{};
+    if(!a&&cur.act==null){d60Write('insp/'+sid+'/res/'+tr+'/'+k,null);return;}
+    d60Write('insp/'+sid+'/res/'+tr+'/'+k,{...cur,a:a||null,...d60Stamp()});},
+  'd60.actEdit':el=>{if(isMob()&&!WIDGET)return;if(el.querySelector('input'))return;S.d60.ed={kind:'act',key:el.dataset.k};rD60();
+    const i=$('#d60Root .d60-actin');if(i){i.focus();i.select();}},
+  'd60.civilAdd':()=>{if(!S.d60.sid)return;d60CivilModal();},
+  'd60.civilSave':()=>{const dg=(($('#d60Dg')||{}).value||'').trim().replace(/동$/,''),ho=(($('#d60Ho')||{}).value||'').trim().replace(/호$/,''),tx=(($('#d60Tx')||{}).value||'').trim();
+    if(!tx){toast('내용을 입력하세요');return;}closeModal();S.d60.sc='civil';
+    d60Write('insp/'+S.d60.sid+'/civil/'+S.d60.tr+'/'+uid(),{dg,ho,txt:tx.slice(0,200),ts:Date.now()});},
+  'd60.civilDel':el=>{const k=el.dataset.k;confirmModal('민원 삭제','이 접수를 지울까요?',()=>d60Write('insp/'+S.d60.sid+'/civil/'+S.d60.tr+'/'+k,null),'삭제',true);},
+  /* 서식 */
+  'd60.spPick':el=>{S.d60.sc=el.dataset.sc;S.d60.sp=el.dataset.k;d60Go();},
+  'd60.spAdd':el=>{const sc=el.dataset.sc,id=uid(),ord=d60Forms(S.d60.tr,sc).length+1;S.d60.sc=sc;S.d60.sp=id;
+    d60Write('forms/'+S.d60.tr+'/'+sc+'/'+id,{name:'새 공간',ord});
+    setTimeout(()=>{const i=$('#d60Root .tm-nameinp[data-k="'+id+'"]');if(i){i.focus();i.select();}},40);},
+  'd60.spDel':el=>{const sc=el.dataset.sc,id=el.dataset.k;const sp=d60Forms(S.d60.tr,sc).find(x=>x.id===id);
+    confirmModal('공간 삭제','「'+((sp&&sp.name)||'')+'」과 안의 항목 '+(sp?sp.items.length:0)+'개를 지울까요? 이미 점검한 결과는 남습니다.',()=>d60Write('forms/'+S.d60.tr+'/'+sc+'/'+id,null),'삭제',true);},
+  'd60.spRen':()=>{},   /* change 위임이 처리한다 */
+  'd60.seed':el=>{const sc=el.dataset.sc;if(!D60_SEED[sc])return;const o={};D60_SEED[sc].forEach((nm,i)=>{o[uid()+i]={name:nm,ord:i+1};});d60Write('forms/'+S.d60.tr+'/'+sc,o);},
+  'd60.itAdd':()=>{S.d60.ed={kind:'item',id:'new',gj:'',q:'',act:''};rD60();setTimeout(()=>{const i=$('#d60Root .d60-ed .d60-in');if(i)i.focus();},40);},
+  'd60.itEdit':el=>{const cur=d60Forms(S.d60.tr,S.d60.sc).find(x=>x.id===S.d60.sp);const it=cur&&cur.items.find(x=>x.id===el.dataset.k);if(!it)return;
+    S.d60.ed={kind:'item',id:it.id,gj:it.gj||'',q:it.q||'',act:it.act||''};rD60();setTimeout(()=>{const i=$('#d60Root .d60-ed .d60-in[data-f="q"]');if(i)i.focus();},40);},
+  'd60.itCancel':()=>{S.d60.ed=null;rD60();},
+  'd60.itSave':()=>{const e=S.d60.ed;if(!e||e.kind!=='item')return;const row=$('#d60Root .d60-ed');if(!row)return;
+    const v=f=>((row.querySelector('.d60-in[data-f="'+f+'"]')||{}).value||'').trim();const gj=v('gj'),q=v('q'),act=v('act');
+    if(!q){toast('점검항목을 입력하세요');return;}
+    const cur=d60Forms(S.d60.tr,S.d60.sc).find(x=>x.id===S.d60.sp);if(!cur)return;
+    const id=e.id==='new'?uid():e.id,old=cur.items.find(x=>x.id===id),ord=old?old.ord:(cur.items.length+1);
+    S.d60.ed=null;d60Write('forms/'+S.d60.tr+'/'+S.d60.sc+'/'+cur.id+'/items/'+id,{gj:gj.slice(0,20),q:q.slice(0,120),act:act.slice(0,200),ord});},
+  'd60.itDel':el=>{const cur=d60Forms(S.d60.tr,S.d60.sc).find(x=>x.id===S.d60.sp);if(!cur)return;
+    confirmModal('항목 삭제','이 점검항목을 서식에서 지울까요? 이미 점검한 결과는 남습니다.',()=>d60Write('forms/'+S.d60.tr+'/'+S.d60.sc+'/'+cur.id+'/items/'+el.dataset.k,null),'삭제',true);},
+});
+/* 이름 고치기·조치사항·폰 조치사항은 change 로 */
+document.addEventListener('change',e=>{
+  const t=e.target;if(!t||S.view!=='d60')return;
+  if(t.matches('.tm-nameinp[data-act="d60.spRen"]')){const nm=(t.value||'').trim().slice(0,40);if(nm)d60Write('forms/'+S.d60.tr+'/'+t.dataset.sc+'/'+t.dataset.k+'/name',nm);else rD60();return;}
+  if(t.classList.contains('d60-actin')||t.classList.contains('d60-mact')){const k=t.dataset.k,v=(t.value||'').trim().slice(0,200),sid=S.d60.sid,tr=S.d60.tr;S.d60.ed=null;
+    if(S.d60.sc==='civil'){d60Write('insp/'+sid+'/civil/'+tr+'/'+k+'/act',v||null);return;}
+    const cur=(d60Res(sid,tr)[k])||{};
+    /* 서식 기본값과 같으면 덧쓰기를 지운다 — 서식이 바뀌면 따라가게 */
+    const base=d60Base(tr,S.d60.sc,k);
+    const next={...cur};if(v===base)delete next.act;else next.act=v;if(!next.a&&next.act==null){d60Write('insp/'+sid+'/res/'+tr+'/'+k,null);return;}
+    d60Write('insp/'+sid+'/res/'+tr+'/'+k,{...next,...d60Stamp()});return;}
+});
+document.addEventListener('keydown',e=>{
+  if(S.view!=='d60')return;const t=e.target;
+  if(t&&t.classList&&t.classList.contains('d60-in')){if(e.key==='Enter'){e.preventDefault();ACT['d60.itSave']();}else if(e.key==='Escape'){ACT['d60.itCancel']();}return;}
+  if(t&&t.classList&&t.classList.contains('d60-actin')){if(e.key==='Enter'){e.preventDefault();t.blur();}else if(e.key==='Escape'){S.d60.ed=null;rD60();}return;}
+  if(t&&(t.id==='d60Dg'||t.id==='d60Ho')&&e.key==='Enter'){e.preventDefault();const f=ACT[$('#d60Tx')?'d60.civilSave':'d60.unitSave'];if(f)f();}
+});
+/* 조치사항 칸 밖을 누르면 편집을 접는다(값은 change 가 이미 저장) */
+document.addEventListener('mousedown',e=>{if(S.view!=='d60'||!S.d60.ed||S.d60.ed.kind==='item')return;
+  if(!e.target.closest('.d60-actin,.d60-as,.d60-ac[data-k="'+S.d60.ed.key+'"]')){S.d60.ed=null;setTimeout(rD60,0);}},true);
+
 /* ═══════════ 부팅 ═══════════ */
 function rAll(){rDay();rTasks();rOrg();rCfg();rFilter();rTeamSel();refetchCal();rWidget();}   /* 팀 선택기는 조직 화면 밖(사이드바)이라 rAll 에서도 그린다 */
 (function boot(){
