@@ -4431,7 +4431,7 @@ body.qc-dragging{user-select:none}
 .d60-gh{display:flex;align-items:center;gap:8px;height:37px;padding:0 12px;background:var(--surf2);border-bottom:1px solid var(--sep);font-size:12px;font-weight:700;color:var(--lbl2)}
 .d60-gh .c{font-weight:600;color:var(--lbl3)}
 .d60-gh .btn{margin:-6px 0}
-.d60-bk{border-bottom:0;align-items:center;gap:8px;padding-top:0}
+.d60-bk{border-bottom:0;align-items:center;gap:8px;padding:0 10px 0 6px;background:var(--surf2);border:1px solid var(--cardline);border-radius:var(--rxl)}   /* 916차: 점검/서식 전환 자리와 같은 카드 */
 .d60-bk .nm{font-size:16px;font-weight:700;color:var(--lbl);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .d60-bk .bk{display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:var(--rmd);color:var(--lbl2);background:none;border:0}
 .d60-zone{display:flex;align-items:center;gap:9px;padding:9px 12px 9px 22px;cursor:pointer;font-size:13px;color:var(--lbl)}
@@ -4442,16 +4442,53 @@ body.qc-dragging{user-select:none}
 .d60-zone.on .c{color:var(--bt1)}
 .d60-zone-empty{color:var(--lbl3);cursor:default}
 .d60-ulist{display:flex;flex-direction:column;gap:6px;padding:8px 10px;background:var(--surf2);border-bottom:1px solid var(--sep)}
-.d60-ulist .u{position:relative;height:36px;padding:0 11px;display:flex;align-items:center;border:1px solid var(--cardline);border-radius:var(--rmd);background:var(--bg2);font-size:13px;font-weight:600;color:var(--lbl2);cursor:pointer}
+.d60-ulist .u{position:relative;height:36px;padding:0 30px 0 8px;display:flex;align-items:center;gap:3px;border:1px solid var(--cardline);border-radius:var(--rmd);background:var(--bg2);font-size:12.5px;font-weight:600;color:var(--lbl2);cursor:pointer}
 .d60-ulist .u.on{background:var(--b600);border-color:var(--b600);color:#fff}
 .d60-ulist .u.add{border-style:dashed;color:var(--lbl3);gap:6px;justify-content:center}
 .d60-ulist .u.add .icn{width:15px;height:15px}
+.d60-ulist .u .d60-uin{width:46px;height:26px;border:1px solid transparent;border-radius:var(--rmd);background:transparent;padding:0 5px;font:inherit;font-size:13px;font-weight:700;color:inherit;text-align:right;min-width:0}
+.d60-ulist .u .d60-uin.ho{width:58px;margin-left:6px}
+.d60-ulist .u:hover .d60-uin,.d60-ulist .u .d60-uin:focus{border-color:var(--sep);background:var(--bg2);color:var(--lbl);outline:0}
+.d60-ulist .u.on:hover .d60-uin,.d60-ulist .u.on .d60-uin:focus{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.35);color:#fff}
+.d60-ulist .u .d60-uin::placeholder{color:currentColor;opacity:.45}
 .d60-ux{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:26px;height:26px;display:flex;align-items:center;justify-content:center;border:0;background:none;color:inherit;opacity:0;border-radius:var(--rmd)}
-.d60-ulist .u:hover .d60-ux{opacity:.85}
+.d60-ulist .u:hover .d60-ux,.d60-ulist .u.on .d60-ux,#d60Root.d60-mob .d60-ux{opacity:.85}   /* 918차: 터치엔 hover 가 없다 — 폰과 고른 세대는 항상 */
+#d60Root.d60-mob{display:block}   /* 918차: 폰은 세로 flex 를 풀어야 한다 — overflow:hidden 카드·overflow:auto 칩 줄이 min-height 0 으로 눌려 항목 8개 중 3개만 보이고 나머지는 닿을 수 없었다 */
+#d60Root.d60-mob .d60-ulist{display:grid;grid-template-columns:1fr 1fr}   /* 918차: 폰 세대는 2열 — 세로 스택은 세대 여섯이면 항목이 화면 밖으로 밀렸다 */
+#d60Root.d60-mob .d60-ulist .u{padding:0 26px 0 6px}
+#d60Root.d60-mob .d60-ulist .u .d60-uin{width:40px}#d60Root.d60-mob .d60-ulist .u .d60-uin.ho{width:50px;margin-left:4px}
+#d60Root.d60-mob .d60-ulist .u.add{grid-column:1/-1}
+#d60Root.d60-mob .d60-chips:not(.d60-mm){position:sticky;top:0;z-index:3;background:var(--bg);padding-top:6px;margin-top:-6px}   /* 918차: 공간 칩은 스크롤해도 위에 붙는다 */
+.d60-chip.dim{color:var(--lbl3);opacity:.6}
+.d60-mv .icn{width:13px;height:13px}
 .d60-ux .icn{width:13px;height:13px}
+#d60Print{display:none}
+@media print{
+  body.d60-printing.d60-printing>*:not(#d60Print):not(#d60Print){display:none!important}
+  body.d60-printing,html:has(body.d60-printing){background:#fff!important}
+  body.d60-printing #d60Print{display:block!important;color:#111;font-size:10.5pt;line-height:1.5}   /* ⚠ body{line-height:0} 함정 — 상속되면 줄이 7px 로 겹친다 */
+  #d60Print .d60p-hd{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;padding-bottom:6px;margin-bottom:8px;border-bottom:2px solid #111}
+  #d60Print .d60p-hd .t{font-size:11pt;font-weight:700;color:#444}
+  #d60Print .d60p-hd .s{font-size:15pt;font-weight:800}
+  #d60Print .d60p-hd .m{margin-left:auto;display:flex;gap:14px;font-size:9.5pt;color:#333}
+  #d60Print h2{font-size:12pt;margin:12px 0 4px;padding:3px 0;border-bottom:1px solid #999;break-after:avoid}
+  #d60Print h3{font-size:10pt;font-weight:700;margin:8px 0 3px;color:#333;break-after:avoid}
+  #d60Print table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:9.5pt}
+  #d60Print th,#d60Print td{border:1px solid #bbb;padding:3px 6px;text-align:left;vertical-align:top;word-break:break-all}
+  #d60Print th{background:#f1f2f4;font-weight:700;font-size:9pt}
+  #d60Print th small{display:block;font-weight:400;font-size:7.5pt;color:#666}
+  #d60Print .c{text-align:center}
+  #d60Print tr{break-inside:avoid}
+  #d60Print .w-no{width:9mm}#d60Print .w-sp{width:26mm}#d60Print .w-gj{width:16mm}#d60Print .w-a{width:14mm}#d60Print .w-act{width:52mm}
+  #d60Print .w-reg{width:16mm}#d60Print .w-dt{width:22mm}#d60Print .w-own{width:16mm}#d60Print .w-tr{width:20mm}
+  #d60Print .d60p-list td{word-break:keep-all;white-space:nowrap}#d60Print .d60p-list td:nth-child(2){white-space:normal}
+  #d60Print td[data-a="ng"]{color:#c1121f;font-weight:700}#d60Print td[data-a="ok"]{color:#1b7f3b}#d60Print td[data-a="none"]{color:#999}
+  #d60Print .d60p-none{color:#666;padding:20px 0;text-align:center}
+}
 .d60-tbl{table-layout:fixed}
 .d60-tbl th{height:34px;padding:0 10px;background:var(--surf2);font-size:11px;font-weight:700;color:var(--lbl3);border-bottom:1px solid var(--sep);text-align:left;white-space:nowrap}
 .d60-tbl th.c,.d60-tbl td.c{text-align:center}
+.d60-tbl th:first-child,.d60-tbl td:first-child{padding-left:10px}   /* mgtbl 의 첫 칸 16px 은 왼쪽 정렬용 — 여기선 권역이 가운데라 좌우를 같게 */
 .d60-tbl th.l,.d60-tbl td.l{text-align:left}
 .d60-tbl th[data-act]{cursor:pointer;user-select:none}
 .d60-tbl th.act{color:var(--bt1)}
@@ -4462,7 +4499,11 @@ body.qc-dragging{user-select:none}
 .d60-tbl td.num{font-variant-numeric:tabular-nums}
 .d60-tbl td.dim{color:var(--lbl3);opacity:.7}   /* 아직 점검 안 한 예정일 — 날짜를 고치면 확정(진하게) */
 .d60-tbl td.dim2{color:var(--lbl2)}
+.d60-tbl td.late,.d60-mrow .d.late{color:var(--rd);font-weight:700;opacity:1}   /* 918차: 예정일 경과 · 미점검 */
+.d60-left{margin-left:2px;font-size:11px;color:var(--lbl3);font-variant-numeric:tabular-nums;white-space:pre}   /* 918차: 미확인 수 — 글자로 「 · n」(복사하면 그대로 붙는다) */
 .d60-tbl tr.d60-r{cursor:pointer}
+.d60-tbl tr.d60-r:hover td{background:var(--fill)}
+.d60-tw{overflow-x:auto}.d60-tw .d60-tbl{min-width:760px}   /* 917차: 열은 %(권역 8 · 현장 15 — 조직 관리와 같게) · 좁은 창은 카드 안에서 가로 스크롤(px 합이 카드보다 커 잘리던 오류) */
 .d60-tbl tr.hi td{background:var(--tint-b,var(--b50))}
 .d60-tbl td.d60-dash{color:var(--lbl3);opacity:.7}
 .d60-3{font-size:12.5px;font-weight:700;color:var(--lbl3);font-variant-numeric:tabular-nums}
@@ -4474,7 +4515,10 @@ body.qc-dragging{user-select:none}
 .d60-pill.ok{background:var(--tint-gn);color:var(--gn)}.d60-pill.ng{background:var(--tint-rd);color:var(--rd)}.d60-pill.na{background:var(--fill);color:var(--lbl3)}
 .d60-none{color:var(--lbl3);opacity:.7;font-size:12px}
 .d60-ac,.d60-actc{cursor:pointer}
-.d60-as{padding:1px}.d60-as button{padding:2px 8px;font-size:11.5px}
+.d60-ac{position:relative}
+/* 판정 세그는 칸 위에 뜬다 — 칸 폭(96px)에 억지로 넣으면 줄이 넘어간다 */
+.d60-as{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:6;white-space:nowrap;padding:2px;background:var(--bg2);border:1px solid var(--cardline);box-shadow:var(--sh-2)}
+.d60-as button{padding:3px 9px;font-size:11.5px}
 .d60-actin{height:26px;border-color:var(--sep);background:var(--bg2)}
 .d60-datein{height:24px;width:132px;padding:0 4px;font-size:12px;border-color:var(--sep);background:var(--bg2)}
 .d60-empty{padding:26px 12px;text-align:center;color:var(--lbl3);font-size:13px}
@@ -4486,18 +4530,25 @@ body.qc-dragging{user-select:none}
 .d60-my button{height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:1px solid var(--cardline);border-radius:var(--rmd);background:var(--bg2)}
 .d60-my .mn{font-size:12.5px;font-weight:700;color:var(--lbl2)}
 .d60-my .mcn{font-size:11px;font-weight:600;color:var(--lbl3);opacity:.7}
+.d60-my button:not(.has){background:var(--surf2);border-color:var(--sep)}   /* 점검 없는 달은 옅은 회색(사용자) */
 .d60-my button.has .mn{color:var(--lbl)}.d60-my button.has .mcn{color:var(--bt1);opacity:1}
+.d60-my button:hover{border-color:var(--b400);background:var(--tint-b,var(--b50))}   /* 917차: 달력 칸 호버(사용자) */
+.d60-my button:not(.has):hover{background:var(--fill)}
 .d60-my button.on{background:var(--b600);border-color:var(--b600)}
 .d60-my button.on .mn,.d60-my button.on .mcn{color:#fff}
 .d60-ed td{padding:4px 6px}
 .d60-in{height:28px;border-color:var(--sep);background:var(--bg2)}
 .d60-ops .btn,.d60-cx{vertical-align:middle}
+.d60-ops{white-space:nowrap}.d60-ops .btn[disabled]{opacity:.3;pointer-events:none}
+.tm-row .d60-mv{width:0;min-width:0;padding:0;margin-left:-6px;opacity:0;pointer-events:none;overflow:hidden;transition:width var(--tr),opacity var(--tr),margin-left var(--tr)}   /* 918차: 순서 화살표도 삭제처럼 호버에만 */
+.tm-row:hover .d60-mv,.tm-row:focus-within .d60-mv{width:24px;margin-left:0;opacity:1;pointer-events:auto}
 .d60-tbl .tm-del.d60-cx{width:28px;margin-left:0;opacity:1;pointer-events:auto}
 .d60-um{display:flex;gap:10px}
 .d60-um label,.d60-ul{display:flex;flex-direction:column;gap:6px;flex:1;font-size:12px;font-weight:600;color:var(--lbl2);margin-top:10px}
 /* ── 폰: 현장에서 체크 ── */
 .d60-mh{display:flex;align-items:center;gap:8px;margin-bottom:8px;min-height:32px}
 .d60-mh .d60-mtt{font-size:15px}
+#d60Root.d60-mob .d60-tabs{height:40px;padding-top:0;margin:0 0 8px}   /* 917차: 폰 공종 밑줄 탭 — 업무 현황 폰 탭과 같은 40px */
 .d60-mseg{margin-bottom:8px;height:38px;min-height:38px;padding:4px}
 .d60-mseg button{font-size:12.5px;gap:0;padding:0}
 .d60-mcard{margin-bottom:10px}
@@ -4667,7 +4718,7 @@ body.qc-dragging{user-select:none}
 <symbol id="i-chevl" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
 <symbol id="i-expand" viewBox="0 0 24 24"><path d="M15 3h6v6" /> <path d="m21 3-7 7" /> <path d="m3 21 7-7" /> <path d="M9 21H3v-6" /></symbol>
 <symbol id="i-filter" viewBox="0 0 24 24"><path d="M2 5h20" /> <path d="M6 12h12" /> <path d="M9 19h6" /></symbol>
-<symbol id="i-chevd" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+<symbol id="i-chevd" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol><symbol id="i-chevu" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol>
 <symbol id="i-chevr" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
 <symbol id="i-close" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
 <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
@@ -5070,5 +5121,5 @@ body.qc-dragging{user-select:none}
 <!-- 762차: chart.umd·datalabels·korea-geo·apt-geo 는 app.js 의 loadChart()/loadGeo() 가 필요할 때 읽는다(첫 로드 800KB 절감) -->
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=913"></script>
+<script src="./app.js?v=918"></script>
 </body></html>

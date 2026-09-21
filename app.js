@@ -10,7 +10,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='913';
+const APP_VER='918';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -1036,7 +1036,7 @@ const FbStore={
       e=>{S.accounts={};S.acctDenied=true;console.warn('[FB] users 읽기 권한 없음',e);rOrg();rTasks();});
     /* cfg 에는 하자 관리에서 감춘 현장(dfHide)도 들어 있다 — 목록·현장 표도 함께 다시 그린다 */
     this._on('calapp/cfg',v=>{S.cfg=v||{};bootCacheSave();rCfg();rDefectNav();if(S.view==='org')rOrg();});
-    this._on('calapp/d60',v=>{S.d60d=v||{};if(S.view==='d60')rD60();});   /* 913차: D+60 점검 — 서식·점검 결과 */
+    this._on('calapp/d60',v=>{S.d60d=v||{};if(S.view==='d60'){if(d60Editing())S.d60._stale=true;else rD60();}});   /* 913차: D+60 점검 — 서식·점검 결과 · 918차: 입력 중이면 다시 그리기를 미룬다(치던 글이 날아갔다) */
     const uid=S.user&&S.user.uid;
     if(uid){
         this._on('calapp/prefs/'+uid,v=>{S.prefs=v||{};});   /* 최근 이모지 등 개인 설정 */
@@ -5354,7 +5354,7 @@ async function dfPublish(){
       const siteRows=dfSites().map(s2=>{
         const isNew=_hasRows(s2.id);
         const k=isNew?calc(S.def[s2.id],s2,rm):_keepKpi[s2.id];
-        const tag=s2.region==='인수 전 현장'?' <span style="font-size:10.5px;color:var(--lbl3)">인수 전</span>':'';
+        const tag=dfIsPre(s2)?' <span style="font-size:10.5px;color:var(--lbl3)">인수 전</span>':'';
         /* ⚠ 이 PC 에 원본이 없는 현장은 「유지」로 표시한다 — 0 으로 덮이지 않는다는 걸 게시 전에 알린다 */
         if(!k)return _row(esc(s2.name)+tag+' <span style="font-size:10.5px;color:var(--lbl3)">원본 없음 · 게시 제외</span>','—','—','—',false,false);
         return _row(esc(s2.name)+tag+(isNew?'':' <span style="font-size:10.5px;color:var(--bl)">직전 게시본 유지</span>'),
@@ -5716,7 +5716,7 @@ function dfEnds(rm){
   const pmEnd=pm?pm+'-'+pad(new Date(pp[0],pp[1],0).getDate()):'';
   return{rmEnd,pmEnd};
 }
-/* 현장 목록 — 사이드바와 동일한 팀 필터. 대시보드 집계는 원본과 같이 '인수 전 현장' 권역 제외 */
+/* 현장 목록 — 사이드바와 동일한 팀 필터. 대시보드 집계는 인수 전 현장(dfIsPre) 제외 */
 /* 보고 있는 기준월 — 기본은 최신 게시월(ORG_RM), 상단바에서 지난 게시월을 골라 볼 수 있다 */
 function dfRm(){return S.dfRmSel||ORG_RM;}
 /* 하자 관리 화면에서 감춘 현장 — ⚠ 현장 레코드에 두면 안 된다.
@@ -5727,7 +5727,22 @@ function dfIsHidden(id){return !!dfHidden()[id];}
 /* 하자 관리가 다루는 현장 — 대시보드·집계·사이드바가 모두 이 목록을 쓴다.
    dfHide 는 현장 관리에서 끈 마이너 현장(현장 자체와 업무는 그대로 남고 하자 화면에서만 빠진다) */
 function dfSites(){const{team}=tkSel();return (S.org.sites||[]).filter(x=>x.name&&!dfIsHidden(x.id)&&(!team||!x.team||x.team===team.id));}
-function dfDashSites(){return dfSites().filter(x=>x.region!=='인수 전 현장');}
+/* 915차(사용자): 인수 전 현장은 권역이 아니라 **현장별 인수인계 토글**로 가른다 — 인수 전에도 권역은 정해져 있으니
+   신규 현장도 권역에 배정하고, 인수인계를 받았는지만 cfg/dfPre 에 둔다(켜짐 = 아직 인수 전 · 저장 규칙은 dfHide 와 같은 이유로 cfg).
+   ⚠ 예전 자료는 권역 이름 '인수 전 현장'으로 갈랐다 — 그 권역에 남아 있는 현장도 그대로 인수 전으로 본다(호환) */
+function dfPreMap(){return (S.cfg&&S.cfg.dfPre)||{};}
+function dfRegIsPre(rid){if(!rid)return false;if(/미인수|인수\s*전/.test(rid))return true;const r=(S.org.regions||[]).find(x=>x&&x.id===rid);return !!(r&&/미인수|인수\s*전/.test(r.name||''));}
+function dfIsPre(x){return !!x&&(!!dfPreMap()[x.id]||dfRegIsPre(x.region));}
+function dfDashSites(){return dfSites().filter(x=>!dfIsPre(x));}
+/* 916차: 하자 화면의 현장 묶음(사이드바·폰 현장 시트 공통) — 권역별 → 권역 미지정 → 인수 전 현장(권역과 무관하게 따로) */
+function dfSiteGroups(sites,regions){
+  const groups=[],pre=sites.filter(dfIsPre),rest=sites.filter(x=>!dfIsPre(x));
+  regions.forEach(r=>{if(dfRegIsPre(r.id))return;const l=rest.filter(x=>x.region===r.id);if(l.length)groups.push([r.id,r.name,l]);});
+  const none=rest.filter(x=>!x.region||!regions.some(r=>r.id===x.region));
+  if(none.length)groups.push(['','권역 미지정',none]);
+  if(pre.length)groups.push(['_pre','인수 전 현장',pre]);
+  return groups;
+}
 /* ── 표 공유 헬퍼 — 원본 tblNF/tblDlt/tblLtrCells/tblMetrics 포트(월별·주차별·대시보드 월별표 단일 출처) ── */
 const dfNF=n=>(n||0).toLocaleString();
 const dfDeltaParts=dN=>({dArrow:dN===0?'─':dN>0?'▲':'▼',dBadge:dN===0?'bgr':dN>0?'brd':'bgn',
@@ -8025,10 +8040,8 @@ function rDefectNav(){
   const box=$('#dfNav');if(!box)return;
   const{team,regions}=tkSel();
   const sites=dfSites();   /* dfHide(현장 관리 토글)는 dfSites 가 걸러 준다 — 대시보드와 같은 목록 */
-  const groups=[];
-  regions.forEach(r=>{const l=sites.filter(x=>x.region===r.id);if(l.length)groups.push([r.id,r.name,l]);});
-  const none=sites.filter(x=>!x.region||!regions.some(r=>r.id===x.region));
-  if(none.length)groups.push(['','권역 미지정',none]);
+  /* 915차: 인수 전 현장(인수인계 토글 꺼짐 · 하자현황 토글 켜짐)은 권역과 무관하게 「인수 전 현장」 묶음으로 — 예전 같은 이름의 권역과 합쳐진다 */
+  const groups=dfSiteGroups(sites,regions);
   box.innerHTML=groups.map(([rid,rn,list])=>{
     /* 기본은 접힘 — 열어 둔 현장이 속한 권역만 자동으로 편다. 사용자가 누르면 그 선택이 우선 */
     /* 824차: 저장값이 여러 권역을 펼치고 있어도(예전 방식) 한 곳만 살린다 — 보고 있는 현장이 있으면 그 권역 우선 */
@@ -8084,7 +8097,7 @@ function dfTopbar(){
     lc.hidden=!t;lc.textContent=t;lc.dataset.s=t?'미게시':'';}   /* data-s: 좁은 화면(≤900)은 CSS 가 이 짧은 글자만 보인다 */
   const xw=$('#tbXlWrap');if(xw)xw.hidden=!(S.view==='photo'||S.view==='redo'||S.view==='prod'||S.view==='d60');   /* 901차: 재하자·생산성도 엑셀 · 913차: D+60 */
 
-  if(pw){pw.hidden=!(on||S.view==='photo'||S.view==='dwg');   /* 인쇄 버튼 — 하자처리 현황 · 사진대지(798차) · 도면 인쇄(815차) */
+  if(pw){pw.hidden=!(on||S.view==='photo'||S.view==='dwg'||S.view==='d60');   /* 인쇄 버튼 — 하자처리 현황 · 사진대지(798차) · 도면 인쇄(815차) · D+60 점검(916차) */
     /* 801차: 왼쪽에 보이는 것이 있을 때만 구분선 */
     let prev=false;for(let e=pw.previousElementSibling;e;e=e.previousElementSibling)if(!e.hidden&&e.offsetParent!==null){prev=true;break;}
     pw.classList.toggle('sep',prev);}
@@ -8437,12 +8450,13 @@ function siteTable(){
   const dn=orgDraftN();
   return `<div class="mg-savebar" id="orgSaveBar"${dn?'':' hidden'}><span>저장하지 않은 변경 <b id="orgSaveN">${dn}</b>건</span><button class="btn bg2 bsm" data-act="org.draftDrop">되돌리기</button><button class="btn bp bsm" data-act="org.draftSave">저장</button></div>
   <div style="overflow-x:auto" data-sbx="r" data-sbh><table class="mgtbl"><thead><tr>
-    <th style="width:9%">권역</th><th style="width:16%">현장명</th><th style="width:8%">공구장</th><th style="width:11%">담당자</th>
-    <th class="cc" style="width:5.5%">세대수</th><th class="cc" style="width:4.5%">동수</th>
-    <th class="cc" style="width:5.5%">상가수</th><th class="cc" style="width:9.5%">준공일</th>
-    <th class="cc" style="width:5.5%" data-tip="끄면 하자 관리 화면의 현장 목록에서 숨깁니다">하자현황</th>
-    <th class="cc" style="width:5.5%" data-tip="끄면 이 현장의 하자 화면에서 공가세대 탭을 숨깁니다 · 전원에게 즉시 반영">공가세대</th><th class="cc" style="width:5.5%" data-tip="켜면 이 현장의 하자 화면에 공가상가 탭이 생깁니다 · 전원에게 즉시 반영">공가상가</th><th class="cc" style="width:5.5%" data-tip="소송 진행 현장 표시 · 전원에게 즉시 반영">소송현장</th>
-    <th class="cc" style="width:7%" data-tip="이 현장 원본이 마지막으로 올라온 날 — 마스터 PC 가 올리면 조직 정보에 함께 저장돼 모두에게 보입니다">업데이트일</th>
+    <th style="width:8%">권역</th><th style="width:15%">현장명</th><th style="width:8%">공구장</th><th style="width:10%">담당자</th>
+    <th class="cc" style="width:5%">세대수</th><th class="cc" style="width:4%">동수</th>
+    <th class="cc" style="width:5%">상가수</th><th class="cc" style="width:8.5%">준공일</th>
+    <th class="cc" style="width:5%" data-tip="인수인계를 받은 현장에 켭니다 · 꺼진 현장은 하자처리 현황에서 「인수 전 현장」으로 묶이고 대시보드 집계에서 빠집니다">인수인계</th>
+    <th class="cc" style="width:5%" data-tip="끄면 하자 관리 화면의 현장 목록에서 숨깁니다">하자현황</th>
+    <th class="cc" style="width:5%" data-tip="끄면 이 현장의 하자 화면에서 공가세대 탭을 숨깁니다 · 전원에게 즉시 반영">공가세대</th><th class="cc" style="width:5%" data-tip="켜면 이 현장의 하자 화면에 공가상가 탭이 생깁니다 · 전원에게 즉시 반영">공가상가</th><th class="cc" style="width:5%" data-tip="소 제기 현장 표시 · 전원에게 즉시 반영">소제기</th>
+    <th class="cc" style="width:6.5%" data-tip="이 현장 원본이 마지막으로 올라온 날 — 마스터 PC 가 올리면 조직 정보에 함께 저장돼 모두에게 보입니다">업데이트일</th>
   </tr></thead><tbody>${sites.map(x=>`<tr data-sid="${esc(x.id)}">
     <td><select class="mg-inp" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="region" aria-label="권역 선택">${regOpts(x)}</select></td>
     <td><input class="mg-inp" value="${esc(x.name)}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="name" aria-label="현장명"></td>
@@ -8451,11 +8465,12 @@ function siteTable(){
     <td><input class="mg-inp n" type="text" inputmode="numeric" value="${(x.units||0).toLocaleString()}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="units" aria-label="세대수" style="text-align:right;min-width:56px"></td>
     <td><input class="mg-inp n" type="text" inputmode="numeric" value="${(x.buildings||0).toLocaleString()}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="buildings" aria-label="동수" style="text-align:right;min-width:48px"></td>
     <td><input class="mg-inp n" type="text" inputmode="numeric" value="${(x.commercialUnits||0).toLocaleString()}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="commercialUnits" aria-label="상가수" style="text-align:right;min-width:52px"></td>
-    <td class="cc"><input class="mg-inp" type="date" max="9999-12-31" style="width:120px;max-width:100%;text-align:center;display:inline-block" value="${esc(x.completionDate||'')}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="completionDate" aria-label="준공일"></td>
+    <td class="cc"><input class="mg-inp" type="text" inputmode="numeric" placeholder="YYYY-MM-DD" maxlength="10" style="width:104px;max-width:100%;text-align:center;display:inline-block;font-variant-numeric:tabular-nums" value="${esc(x.completionDate||'')}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="completionDate" aria-label="준공일" autocomplete="off"></td>
+    <td class="cc"><label class="sw"><input type="checkbox"${dfIsPre(x)?'':' checked'} data-act="org.siteHand" data-id="${esc(x.id)}" aria-label="인수인계 완료"${dfRegIsPre(x.region)?' disabled data-tip="권역이 인수 전 현장이면 권역을 먼저 바꿉니다"':''}><span class="sw-t"></span></label></td>
     <td class="cc"><label class="sw"><input type="checkbox"${dfIsHidden(x.id)?'':' checked'} data-act="org.siteShow" data-id="${esc(x.id)}" aria-label="하자 관리 화면에 표시"><span class="sw-t"></span></label></td>
     <td class="cc"><label class="sw"><input type="checkbox"${x.showVacant!==false?' checked':''} data-act="org.siteVac" data-id="${esc(x.id)}" aria-label="공가세대 탭 표시"><span class="sw-t"></span></label></td>
     <td class="cc"><label class="sw"><input type="checkbox"${x.hasCommercial?' checked':''} data-act="org.siteShop" data-id="${esc(x.id)}" aria-label="공가상가 포함 현장"><span class="sw-t"></span></label></td>
-    <td class="cc"><label class="sw"><input type="checkbox"${x.lawsuit?' checked':''} data-act="org.siteSuit" data-id="${esc(x.id)}" aria-label="소송현장"><span class="sw-t"></span></label></td>
+    <td class="cc"><label class="sw"><input type="checkbox"${x.lawsuit?' checked':''} data-act="org.siteSuit" data-id="${esc(x.id)}" aria-label="소제기"><span class="sw-t"></span></label></td>
     <td class="cc" style="font-size:11.5px;white-space:nowrap;color:var(--lbl2)">${(()=>{const d=(DFMETA.lastUp||{})[x.id]||x.lastUploadedAt||'';return d?esc(String(d).slice(0,10)):'<span style="color:var(--lbl3)">—</span>';})()}</td>
   </tr>`).join('')}</tbody></table></div>`;
 }
@@ -9248,7 +9263,7 @@ function kmHoverSite(sid){
   if(y<6)y=r.bottom+8;
   el.style.left=Math.max(6,Math.min(x,innerWidth-t.width-6))+'px';el.style.top=y+'px';
 }
-const KM_ROW='#siteRoot tr[data-sid],.kml-r[data-sid]';   /* 548차: 모달의 목록 행도 같은 길 */
+const KM_ROW='#siteRoot tr[data-sid],.kml-r[data-sid],#d60Root tr.d60-r[data-sid]';   /* 548차: 모달의 목록 행도 같은 길 · 917차: D+60 목록 행 */
 /* 551차: 계정 표의 행 → 그 사람이 맡은 현장 점을 모두 키운다(툴팁은 없다 — 여러 개라 어디에 띄울지 없다) */
 function kmHoverOwner(pid){
   $$('.okm-pin.hov').forEach(p=>kmPinHov(p,false));
@@ -10580,7 +10595,7 @@ const ACT={
     rTasks();},
   /* 인쇄 — 상단바 버튼(#tbPrintWrap) 하나가 두 화면을 맡는다.
      ⚠ 예전엔 없는 함수(dfPrintOpen)를 typeof 로 감싸 불러 하자 관리에서 조용히 아무 일도 안 했다 */
-  'sb.print':()=>{if(S.view==='defect')openPrintPick();else if(S.view==='photo')pdPrint();else if(S.view==='dwg')dwPrint();},
+  'sb.print':()=>{if(S.view==='defect')openPrintPick();else if(S.view==='photo')pdPrint();else if(S.view==='dwg')dwPrint();else if(S.view==='d60')d60Print();},   /* 916차: D+60 점검 */
   /* 오후 점검 알림 — 누르면 오늘로 이동해 남은 업무를 펼친다. x 는 그날만 닫는다 */
 
   'pf.org':()=>acctAutoSave(),
@@ -10784,7 +10799,8 @@ const ACT={
        전엔 첫 권역을 넣어 그 권역 준공일 없는 줄 사이에 끼었다. 권역 탭에서 누르면 새 행이 안 보이므로 전체 탭으로 */
     const id=uid(),off={hasCommercial:false,showVacant:false,lawsuit:false};
     if(!orgRegHit('',S.orgReg))S.orgReg='';
-    const hm={...dfHidden(),[id]:true};store.putCfg('dfHide',hm);S.cfg={...S.cfg,dfHide:hm};
+    const hm={...dfHidden(),[id]:true};store.putCfg('dfHide',hm);
+    const pm={...dfPreMap(),[id]:true};store.putCfg('dfPre',pm);S.cfg={...S.cfg,dfHide:hm,dfPre:pm};   /* 915차: 새 현장은 인수 전 */
     dfSiteCfgWrite(id,off);if(DF._cfgLast)DF._cfgLast[id]={...off};
     S.org.sites=(S.org.sites||[]).concat([{id,name:'',team:'',region:'',...off}]);orgSave();
     setTimeout(()=>{const i=document.querySelector('#siteRoot .mg-inp[data-id="'+id+'"]');if(i)i.focus();},S.live?300:30);
@@ -10815,6 +10831,7 @@ const ACT={
          과거 게시월의 report/{rm}/{sid} 노드는 역사(스냅샷·과거 조회)라 남긴다 */
       delete S.def[st.id];defDelete(st.id);
       if(S.live&&FB.db)try{FB.db.ref('siteConfig/'+st.id).set(null);}catch(e){}
+      if(dfPreMap()[st.id]){const pm={...dfPreMap()};delete pm[st.id];store.putCfg('dfPre',pm);S.cfg={...S.cfg,dfPre:pm};}   /* 915차 */
       orgSave();});
   },
   /* 694차: 현장 → 담당자 지정. 사람별 sites 맵을 고쳐 저장한다(데이터 구조는 그대로 — 현장 쪽 목록은 없다) */
@@ -11342,6 +11359,22 @@ document.addEventListener('change',e=>{
   rDefectNav();
   toast('"'+(st.name||'이름 없음')+'" 을 하자 관리에서 '+(hide?'숨깁니다':'표시합니다'));
 });
+/* 현장 표 — 인수인계 토글(915차). 켜짐 = 인수 완료(cfg/dfPre 에 키 없음) · 꺼짐 = 인수 전(dfPre[id]=true).
+   하자 화면의 「인수 전 현장」 묶음과 대시보드 집계 제외가 이 값을 본다 — 다른 화면(업무·D+60·캘린더)은 보지 않는다(사용자) */
+document.addEventListener('change',e=>{
+  const el=e.target.closest('[data-act="org.siteHand"]');
+  if(!el)return;
+  if(!isEditor()){denyEdit();rOrg();return;}
+  const id=el.dataset.id;
+  const st=(S.org.sites||[]).find(x=>x.id===id)||{};
+  const pre=!el.checked;
+  const m={...dfPreMap()};
+  if(pre)m[id]=true;else delete m[id];   /* 기본값(인수 완료)은 키를 두지 않는다 */
+  store.putCfg('dfPre',m);
+  S.cfg={...S.cfg,dfPre:m};
+  rDefectNav();
+  toast('"'+(st.name||'이름 없음')+'" '+(pre?'인수 전 현장으로 둡니다 — 대시보드 집계에서 빠집니다':'인수인계 완료 — 대시보드에 집계됩니다'));
+});
 /* 현장 표 — 공가세대/공가상가 토글(615차). ⚠ 저장은 org 가 아니라 siteConfig 리프 —
    org 규칙이 이 필드를 허용하지 않고(cleanOrg 도 걷어냄), siteConfig 가 실시간 진실 채널이다
    (소비자 dfSubSiteCfg 가 전원에게 즉시 입힌다 · 게시본 _dash.sites 에는 [등록] 때 실린다).
@@ -11357,7 +11390,7 @@ document.addEventListener('change',e=>{
   if(S.live&&FB.db)FB.db.ref('siteConfig/'+st.id).update({[f]:el.checked,updatedAt:Date.now()}).catch(e=>{console.warn('[siteConfig] 쓰기 실패',st.id,e);fbErr(e);});
   if(DF._cfgLast)DF._cfgLast[st.id]={...(DF._cfgLast[st.id]||{}),hasCommercial:!!st.hasCommercial,showVacant:st.showVacant!==false,lawsuit:!!st.lawsuit};   /* org 스냅샷 재적용 보관본도 맞춰 둔다 — 에코 전 재렌더 대비 */
   if(S.view==='defect')rDefect();   /* 열어 둔 하자 화면의 탭 구성 즉시 갱신(에코는 값이 같아 다시 안 그린다) */
-  toast('"'+(st.name||'이름 없음')+'" · '+(f==='lawsuit'?('소송현장 표시를 '+(el.checked?'켰습니다':'껐습니다'))   /* 796차: 소송 토글이 「공가상가 탭」 문구로 나왔다 */
+  toast('"'+(st.name||'이름 없음')+'" · '+(f==='lawsuit'?('소제기 표시를 '+(el.checked?'켰습니다':'껐습니다'))   /* 796차: 소송 토글이 「공가상가 탭」 문구로 나왔다 */
     :((f==='showVacant'?'공가세대':'공가상가')+' 탭을 '+(el.checked?'표시':'숨김')+'으로 바꿨습니다')));
 });
 /* 조직 표 입력을 떠나면 미뤄 둔 조직 그리기를 몰아 처리(615차 — orgHold 짝) */
@@ -11395,8 +11428,15 @@ document.addEventListener('change',e=>{
   if(!isEditor()){denyEdit();rOrg();return;}
   const st=(S.org.sites||[]).find(x=>x.id===el.dataset.id);if(!st)return;
   const f=el.dataset.f,v=el.value;
-  if(f==='completionDate'&&v&&v.slice(0,4)<'1900')return;   /* 615차: 연도 4자리 미완성(0002-…) 무시 */
   let nv;
+  if(f==='completionDate'){   /* 916차(사용자): 복붙이 되게 글자 칸 — 2026-07-04 · 2026.07.04 · 20260704 다 받아 YYYY-MM-DD 로 맞춘다 */
+    const d=String(v||'').replace(/[^0-9]/g,'');
+    if(!d){nv='';}
+    else{const y=d.slice(0,4),m=d.slice(4,6),dd=d.slice(6,8);const dt=new Date(Number(y),Number(m)-1,Number(dd));
+      if(d.length!==8||y<'1900'||dt.getFullYear()!==Number(y)||dt.getMonth()!==Number(m)-1||dt.getDate()!==Number(dd)){toast('준공일은 YYYY-MM-DD 로 적어 주세요');el.value=String(((ORG_DRAFT[st.id]||{}).completionDate)??(st.completionDate||''));return;}   /* 되돌림은 저장 전 초안이 있으면 초안으로 */
+      nv=y+'-'+m+'-'+dd;}
+    el.value=nv;
+  }else
   if(f==='units'||f==='buildings'||f==='commercialUnits'){
     nv=Number(String(v).replace(/[^0-9]/g,''))||0;   /* #,##0 입력 허용 */
     el.value=nv.toLocaleString();
@@ -14567,9 +14607,7 @@ function mtoolsOpen(){
 function mssOpen(){
   const box=$('#mss');if(!box)return;
   const{regions}=tkSel(),sites=dfSites();
-  const groups=[];
-  regions.forEach(r=>{const l=sites.filter(x=>x.region===r.id);if(l.length)groups.push([r.name,l]);});
-  const none=sites.filter(x=>!x.region||!regions.some(r=>r.id===x.region));if(none.length)groups.push(['권역 미지정',none]);
+  const groups=dfSiteGroups(sites,regions).map(([,rn,l])=>[rn,l]);   /* 916차: 사이드바와 같은 묶음(인수 전 현장 따로) */
   box.innerHTML='<div class="mss-sc"><div class="mss-h">현장 선택</div>'
     +'<div class="mss-i'+(S.dfSid?'':' act')+'" data-act="mss.dash"><svg class="icn" aria-hidden="true"><use href="#i-grid4"></use></svg>팀 전체 대시보드</div>'
     +groups.map(([rn,list])=>'<div class="mss-g">'+esc(rn)+'</div>'
@@ -14675,18 +14713,28 @@ function d60Write(path,val){
   rD60();
 }
 function d60Stamp(){return {by:String((S.user&&S.user.uid)||''),ts:Date.now()};}
+/* 918차: 누가·언제 — 결과 칸 툴팁 */
+function d60Who(r){if(!r||!r.ts)return '';const a=(S.accounts||{})[r.by]||{},p=roster().find(x=>x.id===r.by);const nm=a.name||(p&&p.name)||'';const d=new Date(r.ts);
+  return (nm?nm+' · ':'')+d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
+/* 918차: 지금 D+60 화면에서 무언가 치고 있는가 — 실시간 콜백이 이걸 보고 다시 그리기를 미룬다 */
+function d60Editing(){const ae=document.activeElement;return !!(S.d60&&S.d60.ed)||!!(ae&&ae.closest&&ae.closest('#d60Root')&&/^(INPUT|TEXTAREA)$/.test(ae.tagName));}
+/* 918차: 공종의 전체 항목 수(세대 수 × 전유부 항목 + 공용부 항목) → 미확인 = 전체 − 판정(민원은 서식이 없어 제외) */
+function d60Tot(sid,tr){const u=d60Units(sid).length;const cnt=sc=>d60Forms(tr,sc).reduce((n,s)=>n+s.items.length,0);return u*cnt('unit')+cnt('common');}
+function d60Left(sid,tr){const res=d60Res(sid,tr);let done=0;Object.keys(res).forEach(k=>{if(res[k]&&res[k].a)done++;});return Math.max(0,d60Tot(sid,tr)-done);}
+/* 918차: 첫 판정을 저장하는 순간 점검일이 없으면 그날로 확정 — 예정일 그대로 점검하면 날짜를 고칠 일이 없어 영영 연하게 남았다 */
+function d60Touch(sid){if(sid&&!d60Insp(sid).date)d60Write('insp/'+sid+'/date',todayStr());}
 
 /* ── 상세 표의 줄 — [공간, 공종, 점검항목, 판정, 조치사항(현장 덧쓰기 우선), key] ── */
 function d60Rows(sid,tr,sc,sp,un){
   const res=d60Res(sid,tr),rows=[];
   if(sc==='civil'){
-    d60Civil(sid,tr).forEach(x=>rows.push({sp:(x.dg?x.dg+'동 ':'')+(x.ho?x.ho+'호':''),gj:'',q:x.txt||'',a:x.a||'',act:x.act||'',key:x.id,civil:true}));
+    d60Civil(sid,tr).forEach(x=>rows.push({sp:(x.dg?x.dg+'동 ':'')+(x.ho?x.ho+'호':''),gj:'',q:x.txt||'',a:x.a||'',act:x.act||'',key:x.id,civil:true,who:d60Who(x)}));
     return rows;
   }
   if(sc==='unit'&&!un)return rows;
   d60Forms(tr,sc).forEach(s=>{if(sp&&s.id!==sp)return;
     s.items.forEach(it=>{const k=d60Key(sc,un,s.id,it.id),r=res[k]||{};
-      rows.push({sp:s.name||'',gj:it.gj||'',q:it.q||'',a:r.a||'',act:(r.act!=null?r.act:(it.act||'')),key:k,ov:r.act!=null});});});
+      rows.push({sp:s.name||'',gj:it.gj||'',q:it.q||'',a:r.a||'',act:(r.act!=null?r.act:(it.act||'')),key:k,ov:r.act!=null,who:d60Who(r)});});});
   return rows;
 }
 function d60Base(tr,sc,key){const p=key.split('|');const sp=sc==='unit'?p[2]:p[1],it=sc==='unit'?p[3]:p[2];const s=d60Forms(tr,sc).find(x=>x.id===sp);const i=s&&s.items.find(x=>x.id===it);return i?(i.act||''):'';}
@@ -14698,10 +14746,12 @@ function d60SpCnt(sid,tr,sc,sp,un){const res=d60Res(sid,tr);let n=0,t=0;
 /* ═══ 그리기 ═══ */
 function rD60(){
   const root=$('#d60Root');if(!root||S.view!=='d60')return;
-  const st=S.d60,mob=isMob()&&!WIDGET;
+  const st=S.d60,mob=isMob()&&!WIDGET;st._stale=false;   /* 918차: 어떤 길로든 다시 그렸으면 미뤄 둔 갱신은 반영된 것 */
   if(st.sid&&!d60Sites().some(x=>x.id===st.sid))st.sid='';
+  root.classList.toggle('d60-mob',mob);
   root.innerHTML=st.sid?(mob?d60MobDetail():d60Detail()):st.tab==='form'&&!mob?d60Form():(mob?d60MobList():d60List());
   if(!st.sid&&st.tab!=='form'&&!mob){const other=$('#orgMapRoot');if(other)other.innerHTML='';rOrgMap();}
+  if(mob&&!st.sid){const on=root.querySelector('.d60-mm .on');if(on&&on.scrollIntoView)on.scrollIntoView({block:'nearest',inline:'center'});}   /* 918차: 고른 달 칩이 보이게 */
   dfTopbar();
 }
 /* attr: 'data-act="…" data-k' — 감사기가 data-act 를 글자 그대로 찾는다(tlSeg 와 같은 약속) */
@@ -14714,6 +14764,11 @@ const d60Pill=a=>a?'<span class="d60-pill '+a+'">'+D60_A[a]+'</span>':'<span cla
 const d60SortMk=k=>{const st=S.d60;return '<span class="sortmk">'+(st.sort===k?(st.dir===1?'▲':'▼'):'↕')+'</span>';};
 const d60Th=(k,l,cls)=>'<th class="'+(cls||'')+(S.d60.sort===k?' act':'')+'" data-act="d60.sort" data-k="'+k+'">'+l+' '+d60SortMk(k)+'</th>';
 
+const d60UnitRow=(u,on)=>'<div class="u'+(on?' on':'')+'" role="button" tabindex="0" data-act="d60.un" data-k="'+esc(u.id)+'">'
+  +'<input class="d60-uin dg" value="'+esc(u.dg)+'" data-act="d60.uin" data-k="'+esc(u.id)+'" data-f="dg" inputmode="numeric" placeholder="동" aria-label="동" autocomplete="off">동'
+  +'<input class="d60-uin ho" value="'+esc(u.ho)+'" data-act="d60.uin" data-k="'+esc(u.id)+'" data-f="ho" inputmode="numeric" placeholder="호" aria-label="호" autocomplete="off">호'
+  +'<button class="d60-ux" data-act="d60.unitDel" data-k="'+esc(u.id)+'" aria-label="세대 삭제"><svg class="icn"><use href="#i-close"></use></svg></button></div>';
+const d60UnitNm=u=>u?((u.dg||u.ho)?(u.dg?u.dg+'동 ':'')+(u.ho?u.ho+'호':''):'새 세대'):'';
 /* ── 목록(데스크톱): 좌 = 점검/서식 · 월 · 지도, 우 = 권역 탭 + 표 ── */
 function d60List(){
   const st=S.d60,regs=(S.org.regions||[]).filter(r=>r.name);
@@ -14724,24 +14779,26 @@ function d60List(){
   const val=x=>{switch(st.sort){case 'reg':return regs.findIndex(r=>r.id===x.s.region);case 'site':return x.s.name;case 'comp':return x.s.completionDate;case 'date':return x.date;
     case 'own':return d60Owner(x.s).name;default:{const c=d60Cnt(x.s.id,st.sort);return c?c.ng:-1;}}};
   rows.sort((a,b)=>{const va=val(a),vb=val(b);const r=typeof va==='number'?va-vb:String(va).localeCompare(String(vb),'ko');return r*st.dir||a.date.localeCompare(b.date);});
-  const cell=c=>c?'<td><span class="d60-3"><b class="g">'+c.ok+'</b>/<b class="r">'+c.ng+'</b>/<b class="n">'+c.na+'</b></span></td>':'<td class="d60-dash">—</td>';
-  const tr=rows.map(({s,date})=>{const i=d60Insp(s.id),o=d60Owner(s),hi=st.m&&Number(date.slice(5,7))===st.m;
+  const today=todayStr();
+  const cell=(s,k)=>{const c=d60Cnt(s.id,k);if(!c)return '<td class="d60-dash">—</td>';const left=d60Left(s.id,k);
+    return '<td data-tip="양호 '+c.ok+' · 지적 '+c.ng+' · N/A '+c.na+(left?' · 미확인 '+left:' · 전부 확인')+'"><span class="d60-3"><b class="g">'+c.ok+'</b>/<b class="r">'+c.ng+'</b>/<b class="n">'+c.na+'</b></span>'+(left?'<span class="d60-left"> · '+left+'</span>':'')+'</td>';};   /* 918차: 미확인 수 — 끝났는지 진행 중인지 */
+  const tr=rows.map(({s,date})=>{const i=d60Insp(s.id),o=d60Owner(s),hi=st.m&&Number(date.slice(5,7))===st.m,late=!i.date&&date<today;   /* 918차: 예정일이 지났는데 손 안 댄 현장 */
     return '<tr class="d60-r'+(hi?' hi':'')+'" data-act="d60.open" data-sid="'+esc(s.id)+'">'
-      +'<td><span class="d60-ba">'+esc(d60RegNm(s.region))+'</span></td><td class="l">'+esc(s.name)+'</td><td class="num">'+esc(s.completionDate)+'</td>'
-      +'<td class="num'+(i.date?'':' dim')+'" data-act="d60.date" data-sid="'+esc(s.id)+'" data-tip="점검일 고치기">'+esc(date)+'</td>'
+      +'<td class="c"><span class="d60-ba">'+esc(d60RegNm(s.region))+'</span></td><td class="l">'+esc(s.name)+'</td><td class="num">'+esc(s.completionDate)+'</td>'
+      +'<td class="num'+(i.date?'':late?' late':' dim')+'" data-act="d60.date" data-sid="'+esc(s.id)+'" data-tip="'+(late?'예정일 경과 · ':'')+'점검일 고치기">'+esc(date)+'</td>'
       +'<td>'+(o.name?'<span class="d60-nm"><i style="background:'+esc(o.color)+'"></i>'+esc(o.name)+'</span>':'—')+'</td>'
-      +D60_TR.map(([k])=>cell(d60Cnt(s.id,k))).join('')+'</tr>';}).join('');
+      +D60_TR.map(([k])=>cell(s,k)).join('')+'</tr>';}).join('');
   const regTabs=[['','전체',inYear.length]].concat(regs.map(r=>[r.id,r.name,inYear.filter(x=>x.s.region===r.id).length]));
   return '<div class="d60-grid"><div class="as">'
     +d60Sw('insp',[['insp','점검','i-ckboard'],['form','서식','i-form']])
     +'<div class="card d60-flat"><div class="d60-gh"><button class="d60-mcb" data-act="d60.y" data-d="-1" aria-label="이전 해"><svg class="icn"><use href="#i-chevl"></use></svg></button><span class="d60-mtt">'+st.y+'년</span><button class="d60-mcb" data-act="d60.y" data-d="1" aria-label="다음 해"><svg class="icn"><use href="#i-chevr"></use></svg></button><span style="flex:1"></span><span class="rp-tcnt">'+inYear.length+'</span></div>'
       +'<div class="d60-my">'+mCnt.map((n,i)=>'<button class="'+(n?'has':'')+(st.m===i+1?' on':'')+'" data-act="d60.m" data-k="'+(i+1)+'"><span class="mn">'+(i+1)+'월</span><span class="mcn">'+(n?n+'건':'—')+'</span></button>').join('')+'</div></div>'
-    +'<div class="card"><div class="tm-h"><span>현장 지도</span><button class="btn tm-add" data-act="org.mapBig" aria-label="크게 보기" data-tip="크게 보기"><svg class="icn" aria-hidden="true"><use href="#i-expand"></use></svg></button></div><div id="d60Map"></div></div>'
+    +'<div class="card d60-flat"><div class="tm-h"><span>현장 지도</span><button class="btn tm-add" data-act="org.mapBig" aria-label="크게 보기" data-tip="크게 보기"><svg class="icn" aria-hidden="true"><use href="#i-expand"></use></svg></button></div><div id="d60Map"></div></div>'
     +'</div><div class="as">'
     +d60Tabs(st.reg,regTabs,'data-act="d60.reg" data-k')
-    +'<div class="card d60-flat"><table class="mgtbl d60-tbl"><colgroup><col style="width:74px"><col><col style="width:96px"><col style="width:96px"><col style="width:98px">'+D60_TR.map(()=>'<col style="width:110px">').join('')+'</colgroup>'
+    +'<div class="card d60-flat"><div class="d60-tw" data-sbx="r" data-sbh><table class="mgtbl d60-tbl"><colgroup><col style="width:8%"><col style="width:15%"><col style="width:10%"><col style="width:10%"><col style="width:11%">'+D60_TR.map(()=>'<col style="width:11.5%">').join('')+'</colgroup>'
       +'<thead><tr>'+d60Th('reg','권역','c')+d60Th('site','현장','l')+d60Th('comp','준공일','c')+d60Th('date','점검일','c')+d60Th('own','담당자','c')+D60_TR.map(([k,l])=>d60Th(k,l,'c')).join('')+'</tr></thead>'
-      +'<tbody>'+(tr||'<tr><td colspan="9" class="d60-empty">'+st.y+'년에 점검할 현장이 없습니다 — 조직 관리에서 현장 준공일을 채우면 준공일 + 2개월로 잡힙니다</td></tr>')+'</tbody></table></div>'
+      +'<tbody>'+(tr||'<tr><td colspan="9" class="d60-empty">'+st.y+'년에 점검할 현장이 없습니다 — 조직 관리에서 현장 준공일을 채우면 준공일 + 2개월로 잡힙니다</td></tr>')+'</tbody></table></div></div>'
     +'</div></div>';
 }
 function d60RegNm(id){const r=(S.org.regions||[]).find(x=>x.id===id);return r?r.name:'—';}
@@ -14755,8 +14812,9 @@ function d60Detail(){
   const units=d60Units(site.id);if(st.sc==='unit'&&(!st.un||!units.some(u=>u.id===st.un)))st.un=units[0]?units[0].id:'';
   const left=D60_SC.map(([sc,nm])=>{
     let body='';
-    if(sc==='unit'){body+='<div class="d60-ulist">'+units.map(u=>'<div class="u'+(st.sc==='unit'&&st.un===u.id?' on':'')+'" role="button" tabindex="0" data-act="d60.un" data-k="'+esc(u.id)+'"><span>'+esc(u.dg)+'동 '+esc(u.ho)+'호</span><button class="d60-ux" data-act="d60.unitDel" data-k="'+esc(u.id)+'" aria-label="세대 삭제"><svg class="icn"><use href="#i-close"></use></svg></button></div>').join('')+'</div>';}
-    if(sc!=='civil'){const sps=d60Forms(st.tr,sc);
+    if(sc==='unit'&&units.length){body+='<div class="d60-ulist">'+units.map(u=>d60UnitRow(u,st.sc==='unit'&&st.un===u.id)).join('')+'</div>';}
+    if(sc==='unit'&&!units.length){}   /* 916차: 세대가 없으면 문구도 공간도 없다 — 머리만 */
+    else if(sc!=='civil'){const sps=d60Forms(st.tr,sc);
       const tot=sps.reduce((a,s)=>{const [n,t]=d60SpCnt(site.id,st.tr,sc,s,st.un);return [a[0]+n,a[1]+t];},[0,0]);
       body+='<div class="d60-zone'+(st.sc===sc&&!st.sp?' on':'')+'" data-act="d60.sc" data-k="'+sc+'"><span class="n">전체</span><span class="c">'+tot[0]+'/'+tot[1]+'</span></div>'
         +sps.map(s=>{const [n,t]=d60SpCnt(site.id,st.tr,sc,s,st.un);return '<div class="d60-zone'+(st.sc===sc&&st.sp===s.id?' on':'')+'" data-act="d60.sp" data-sc="'+sc+'" data-k="'+esc(s.id)+'"><span class="n">'+esc(s.name)+'</span><span class="c">'+n+'/'+t+'</span></div>';}).join('')
@@ -14775,7 +14833,7 @@ function d60Detail(){
     +'<div class="tkbar d60-bk"><button class="bk" data-act="d60.back" aria-label="목록으로"><svg class="icn"><use href="#i-chevl"></use></svg></button><span class="nm">'+esc(site.name)+'</span></div>'
     +left+'</div><div class="as">'
     +d60Tabs(st.tr,trTabs,'data-act="d60.tr" data-k',d60Seg(st.f,[['all','전체'],['ok','양호'],['ng','지적'],['na','N/A'],['none','미확인']],'data-act="d60.f" data-k'))
-    +'<div class="card d60-flat"><div class="d60-gh">'+sub+'<span style="flex:1"></span>'+(st.sc==='unit'&&un?'<span class="c">'+esc(un.dg)+'동 '+esc(un.ho)+'호</span>':'')+'<span class="rp-tcnt" style="margin-left:8px">'+rows.length+'</span></div>'
+    +'<div class="card d60-flat"><div class="d60-gh">'+sub+'<span style="flex:1"></span>'+(st.sc==='unit'&&un?'<span class="c">'+esc(d60UnitNm(un))+'</span>':'')+'<span class="rp-tcnt" style="margin-left:8px">'+rows.length+'</span></div>'
     +d60Table(rows,site.id)+'</div></div></div>';
 }
 /* 표 — 공간·공종은 같은 값이 이어지면 첫 줄에만, 이어지는 칸엔 아래 선을 긋지 않는다(업무 현황과 같은 규칙) */
@@ -14790,8 +14848,8 @@ function d60Table(rows,sid){
       +'<td class="c'+(sameSp?' nb':'')+'">'+(i+1)+'</td><td class="mg'+(sameSp?' nb':'')+'">'+(newSp?esc(r.sp):'')+'</td>'
       +(civil?'':'<td class="mg'+(sameGj?' nb':'')+'">'+(newGj?esc(r.gj):'')+'</td>')
       +'<td class="l">'+esc(r.q)+'</td>'
-      +'<td class="c d60-ac" data-act="d60.ansCell" data-k="'+esc(r.key)+'">'+(st.ed&&st.ed.kind==='ans'&&st.ed.key===r.key
-          ?'<span class="seg d60-as">'+['ok','ng','na'].map(a=>'<button class="'+(r.a===a?'act':'')+'" data-act="d60.ans" data-k="'+esc(r.key)+'" data-a="'+a+'">'+D60_A[a]+'</button>').join('')+'<button data-act="d60.ans" data-k="'+esc(r.key)+'" data-a="">지움</button></span>'
+      +'<td class="c d60-ac" data-act="d60.ansCell" data-k="'+esc(r.key)+'"'+(r.a&&r.who?' data-tip="'+esc(r.who)+'"':'')+'>'+(st.ed&&st.ed.kind==='ans'&&st.ed.key===r.key
+          ?d60Pill(r.a)+'<span class="seg d60-as">'+['ok','ng','na'].map(a=>'<button class="'+(r.a===a?'act':'')+'" data-act="d60.ans" data-k="'+esc(r.key)+'" data-a="'+a+'">'+D60_A[a]+'</button>').join('')+'</span>'
           :d60Pill(r.a))+'</td>'
       +'<td class="l d60-actc" data-act="d60.actEdit" data-k="'+esc(r.key)+'">'+(ed
           ?'<input class="mg-inp d60-actin" value="'+esc(r.act)+'" data-k="'+esc(r.key)+'" aria-label="조치사항" autofocus>'
@@ -14812,7 +14870,7 @@ function d60Form(){
     return '<div class="card d60-flat"><div class="tm-h"><span>'+nm+'</span><button class="btn tm-add" data-act="d60.spAdd" data-sc="'+sc+'" aria-label="공간 추가" data-tip="공간 추가"><svg class="icn" aria-hidden="true"><use href="#i-plus"></use></svg></button></div>'
       +'<div class="tm-list">'+(list.length?list.map(s=>'<div class="tm-row d60-row'+(st.sc===sc&&st.sp===s.id?' act':'')+'" data-act="d60.spPick" data-sc="'+sc+'" data-k="'+esc(s.id)+'">'
         +'<input class="mg-inp tm-nameinp" value="'+esc(s.name)+'" data-act="d60.spRen" data-sc="'+sc+'" data-k="'+esc(s.id)+'" placeholder="공간 이름" aria-label="공간 이름">'
-        +'<span class="tm-cnt">'+s.items.length+'</span><button class="tm-x tm-del" data-act="d60.spDel" data-sc="'+sc+'" data-k="'+esc(s.id)+'" aria-label="삭제"><svg class="icn"><use href="#i-trash"></use></svg></button></div>').join('')
+        +'<span class="tm-cnt">'+s.items.length+'</span><button class="tm-x d60-mv" data-act="d60.spMv" data-sc="'+sc+'" data-k="'+esc(s.id)+'" data-d="-1" aria-label="위로"><svg class="icn"><use href="#i-chevu"></use></svg></button><button class="tm-x d60-mv" data-act="d60.spMv" data-sc="'+sc+'" data-k="'+esc(s.id)+'" data-d="1" aria-label="아래로"><svg class="icn"><use href="#i-chevd"></use></svg></button><button class="tm-x tm-del" data-act="d60.spDel" data-sc="'+sc+'" data-k="'+esc(s.id)+'" aria-label="삭제"><svg class="icn"><use href="#i-trash"></use></svg></button></div>').join('')
         :'<div class="tm-empty">공간이 없습니다 — <a href="#" data-act="d60.seed" data-sc="'+sc+'">기본 공간 넣기</a></div>')+'</div></div>';
   }).join('');
   const cur=sps.find(x=>x.id===st.sp);
@@ -14827,13 +14885,13 @@ function d60Form(){
   const rows=items.map((it,i)=>{if(ed&&ed.id===it.id)return edRow({...ed,no:i+1});
     const p=items[i-1],n=items[i+1],newGj=!p||p.gj!==it.gj,sameGj=!!n&&n.gj===it.gj;
     return '<tr><td class="c'+(sameGj?' nb':'')+'">'+(i+1)+'</td><td class="mg'+(sameGj?' nb':'')+'">'+(newGj?esc(it.gj||''):'')+'</td><td class="l">'+esc(it.q||'')+'</td><td class="l dim2">'+esc(it.act||'')+'</td>'
-      +'<td class="c d60-ops"><button class="btn bo bxs" data-act="d60.itEdit" data-k="'+esc(it.id)+'" aria-label="수정"><svg class="icn"><use href="#i-pen"></use></svg></button> <button class="btn bo bxs" data-act="d60.itDel" data-k="'+esc(it.id)+'" aria-label="삭제"><svg class="icn"><use href="#i-trash"></use></svg></button></td></tr>';}).join('')
+      +'<td class="c d60-ops"><button class="btn bo bxs" data-act="d60.itMv" data-k="'+esc(it.id)+'" data-d="-1" aria-label="위로"'+(i===0?' disabled':'')+'><svg class="icn"><use href="#i-chevu"></use></svg></button> <button class="btn bo bxs" data-act="d60.itMv" data-k="'+esc(it.id)+'" data-d="1" aria-label="아래로"'+(i===items.length-1?' disabled':'')+'><svg class="icn"><use href="#i-chevd"></use></svg></button> <button class="btn bo bxs" data-act="d60.itEdit" data-k="'+esc(it.id)+'" aria-label="수정"><svg class="icn"><use href="#i-pen"></use></svg></button> <button class="btn bo bxs" data-act="d60.itDel" data-k="'+esc(it.id)+'" aria-label="삭제"><svg class="icn"><use href="#i-trash"></use></svg></button></td></tr>';}).join('')
     +(ed&&ed.id==='new'?edRow(ed):'');
   return '<div class="d60-grid"><div class="as">'
     +d60Sw('form',[['insp','점검','i-ckboard'],['form','서식','i-form']])+left+'</div><div class="as">'
     +d60Tabs(st.tr,trTabs,'data-act="d60.tr" data-k',cur?'<button class="btn bo bsm" data-act="d60.itAdd"><svg class="icn"><use href="#i-plus"></use></svg>추가</button>':'')
     +'<div class="card d60-flat"><div class="d60-gh">'+d60Nm(D60_TR,st.tr)+' · '+d60Nm(D60_SC,st.sc)+(cur?' · '+esc(cur.name):'')+'<span style="flex:1"></span><span class="rp-tcnt">'+items.length+'</span></div>'
-    +(cur?'<table class="mgtbl d60-tbl"><colgroup><col style="width:52px"><col style="width:104px"><col><col style="width:300px"><col style="width:96px"></colgroup>'
+    +(cur?'<table class="mgtbl d60-tbl"><colgroup><col style="width:52px"><col style="width:104px"><col><col style="width:300px"><col style="width:150px"></colgroup>'
       +'<thead><tr><th class="c">NO</th><th class="c">공종</th><th class="l">점검항목</th><th class="l">조치사항</th><th class="c">관리</th></tr></thead><tbody>'+(rows||'<tr><td colspan="5" class="d60-empty">항목이 없습니다 — 위 「추가」로 넣으세요</td></tr>')+'</tbody></table>'
       :'<div class="d60-empty">왼쪽에서 공간을 고르거나 추가하세요</div>')
     +'</div></div></div>';
@@ -14842,13 +14900,17 @@ function d60Form(){
 /* ── 폰: 목록 ── */
 function d60MobList(){
   const st=S.d60,regs=(S.org.regions||[]).filter(r=>r.name);
-  const all=d60Sites().map(s=>({s,date:d60Date(s)})).filter(x=>x.date&&x.date.slice(0,4)===String(st.y)).sort((a,b)=>a.date.localeCompare(b.date));
+  const year=d60Sites().map(s=>({s,date:d60Date(s)})).filter(x=>x.date&&x.date.slice(0,4)===String(st.y)).sort((a,b)=>a.date.localeCompare(b.date));
+  const all=st.m?year.filter(x=>Number(x.date.slice(5,7))===st.m):year;   /* 918차: 폰은 월 칩으로 거른다(데스크톱은 음영) */
+  const mCnt=Array.from({length:12},(_,i)=>year.filter(x=>Number(x.date.slice(5,7))===i+1).length);
+  const today=todayStr();
   const grp=regs.map(r=>[r.name,all.filter(x=>x.s.region===r.id)]).filter(x=>x[1].length);
   const none=all.filter(x=>!regs.some(r=>r.id===x.s.region));if(none.length)grp.push(['권역 미지정',none]);
   return '<div class="d60-mh"><button class="d60-mcb" data-act="d60.y" data-d="-1" aria-label="이전 해"><svg class="icn"><use href="#i-chevl"></use></svg></button><span class="d60-mtt">'+st.y+'년</span><button class="d60-mcb" data-act="d60.y" data-d="1" aria-label="다음 해"><svg class="icn"><use href="#i-chevr"></use></svg></button><span style="flex:1"></span><span class="rp-tcnt">'+all.length+'</span></div>'
+    +'<div class="d60-chips d60-mm" data-sbx><button class="d60-chip'+(st.m?'':' on')+'" data-act="d60.m" data-k="0">전체<span class="c">'+year.length+'</span></button>'+mCnt.map((n,i)=>'<button class="d60-chip'+(st.m===i+1?' on':'')+(n?'':' dim')+'" data-act="d60.m" data-k="'+(i+1)+'">'+(i+1)+'월'+(n?'<span class="c">'+n+'</span>':'')+'</button>').join('')+'</div>'
     +(grp.length?grp.map(([rn,list])=>'<div class="card d60-flat d60-mcard"><div class="d60-gh">'+esc(rn)+'</div>'
       +list.map(({s,date})=>{const ng=D60_TR.reduce((n,[k])=>{const c=d60Cnt(s.id,k);return n+(c?c.ng:0);},0),i=d60Insp(s.id);
-        return '<div class="d60-mrow" data-act="d60.open" data-sid="'+esc(s.id)+'"><span class="n">'+esc(s.name)+'</span><span class="d'+(i.date?'':' dim')+'">'+esc(date)+'</span>'+(ng?'<span class="d60-pill ng">'+ng+'</span>':'')+'<svg class="icn chev"><use href="#i-chevr"></use></svg></div>';}).join('')+'</div>').join('')
+        return '<div class="d60-mrow" data-act="d60.open" data-sid="'+esc(s.id)+'"><span class="n">'+esc(s.name)+'</span><span class="d'+(i.date?'':(date<today?' late':' dim'))+'">'+esc(date)+'</span>'+(ng?'<span class="d60-pill ng">'+ng+'</span>':'')+'<svg class="icn chev"><use href="#i-chevr"></use></svg></div>';}).join('')+'</div>').join('')
       :'<div class="card d60-flat d60-mcard"><div class="d60-empty">'+st.y+'년에 점검할 현장이 없습니다</div></div>');
 }
 /* ── 폰: 현장에서 체크 ── */
@@ -14857,7 +14919,7 @@ function d60MobDetail(){
   const units=d60Units(site.id);if(st.sc==='unit'&&(!st.un||!units.some(u=>u.id===st.un)))st.un=units[0]?units[0].id:'';
   let body='';
   if(st.sc==='unit'){
-    body+='<div class="d60-ulist d60-mul">'+units.map(u=>'<button class="u'+(st.un===u.id?' on':'')+'" data-act="d60.un" data-k="'+esc(u.id)+'"><span>'+esc(u.dg)+'동 '+esc(u.ho)+'호</span></button>').join('')
+    body+='<div class="d60-ulist d60-mul">'+units.map(u=>d60UnitRow(u,st.un===u.id)).join('')
       +'<button class="u add" data-act="d60.unitAdd"><svg class="icn"><use href="#i-plus"></use></svg>세대 추가</button></div>';
   }
   if(st.sc!=='civil'){
@@ -14874,18 +14936,13 @@ function d60MobDetail(){
       +'</div>').join('')
     :'<div class="d60-empty">'+(st.sc==='civil'?'접수된 민원이 없습니다':st.sc==='unit'&&!st.un?'세대를 먼저 추가하세요':'서식에 항목이 없습니다')+'</div>')+'</div>';
   return '<div class="d60-mh"><button class="d60-mcb" data-act="d60.back" aria-label="목록으로"><svg class="icn"><use href="#i-chevl"></use></svg></button><span class="d60-mtt">'+esc(site.name)+'</span></div>'
-    +d60Seg(st.tr,D60_TR,'data-act="d60.tr" data-k','tkv-seg d60-mseg')
+    +d60Tabs(st.tr,D60_TR.map(([k,l])=>{const c=d60Cnt(site.id,k);return [k,l,c?c.ng:0];}),'data-act="d60.tr" data-k')   /* 917차(사용자): 폰 공종은 밑줄 탭 */
     +d60Seg(st.sc,D60_SC,'data-act="d60.sc" data-k','tkv-seg d60-mseg')
     +body;
 }
 
 /* ═══ 동작 ═══ */
 function d60Go(){S.d60.ed=null;rD60();}
-function d60UnitModal(){
-  openModal('세대 추가','<div class="d60-um"><label>동<input id="d60Dg" class="inp" inputmode="numeric" placeholder="101" autocomplete="off"></label><label>호<input id="d60Ho" class="inp" inputmode="numeric" placeholder="1203" autocomplete="off"></label></div>',
-    '<button class="btn bg2" data-act="modal.close">취소</button><button class="btn bp" data-act="d60.unitSave">추가</button>');
-  setTimeout(()=>{const e=$('#d60Dg');if(e)e.focus();},30);
-}
 function d60CivilModal(){
   openModal('민원 접수','<div class="d60-um"><label>동<input id="d60Dg" class="inp" inputmode="numeric" placeholder="104" autocomplete="off"></label><label>호<input id="d60Ho" class="inp" inputmode="numeric" placeholder="501" autocomplete="off"></label></div>'
     +'<label class="d60-ul">내용<textarea id="d60Tx" class="inp" rows="3" placeholder="거실 창 결로수로 벽지 얼룩"></textarea></label>',
@@ -14898,7 +14955,7 @@ async function d60Xlsx(){
   const wb=XLSX.utils.book_new();
   if(site){
     D60_TR.forEach(([tr,tl])=>{const aoa=[['구분','세대','공간','공종','점검항목','결과','조치사항']];
-      d60Units(site.id).forEach(u=>d60Rows(site.id,tr,'unit','',u.id).forEach(r=>aoa.push(['전유부',u.dg+'동 '+u.ho+'호',r.sp,r.gj,r.q,D60_A[r.a]||'',r.act])));
+      d60Units(site.id).forEach(u=>d60Rows(site.id,tr,'unit','',u.id).forEach(r=>aoa.push(['전유부',d60UnitNm(u),r.sp,r.gj,r.q,D60_A[r.a]||'',r.act])));
       d60Rows(site.id,tr,'common','','').forEach(r=>aoa.push(['공용부','',r.sp,r.gj,r.q,D60_A[r.a]||'',r.act]));
       d60Rows(site.id,tr,'civil','','').forEach(r=>aoa.push(['민원사항',r.sp,'','',r.q,D60_A[r.a]||'',r.act]));
       if(aoa.length===1)return;
@@ -14914,10 +14971,50 @@ async function d60Xlsx(){
   }
   toast('엑셀로 내보냈습니다');
 }
+/* ── 인쇄(916차, 사용자) — 사진대지·도면과 같은 방식: #d60Print 를 body 에 붙이고 body.d60-printing 으로 나머지를 감춘다.
+   상세 = 현장 머리 + 공종별 표(판정이 하나라도 있는 공종만 · 세대별 전유부 → 공용부 → 민원사항) · 목록 = 그 해 점검 표 */
+function d60PrintHTML(){
+  const st=S.d60,site=d60Sites().find(x=>x.id===st.sid);
+  const tm=(typeof tkSel==='function'?tkSel().team:null),team=(tm&&tm.name)||'H서비스센터';
+  const cellA=a=>'<td class="c" data-a="'+(a||'none')+'">'+(a?D60_A[a]:'—')+'</td>';
+  if(site){
+    const o=d60Owner(site),units=d60Units(site.id);
+    const secs=D60_TR.map(([tr,tl])=>{
+      if(!d60Cnt(site.id,tr))return '';
+      const blocks=[];
+      units.forEach(u=>{const rows=d60Rows(site.id,tr,'unit','',u.id);if(rows.length)blocks.push(['전유부 · '+d60UnitNm(u),rows,false]);});
+      const cm=d60Rows(site.id,tr,'common','','');if(cm.length)blocks.push(['공용부',cm,false]);
+      const cv=d60Rows(site.id,tr,'civil','','');if(cv.length)blocks.push(['민원사항',cv,true]);
+      if(!blocks.length)return '';
+      return '<section class="d60p-sec"><h2>'+esc(tl)+'</h2>'+blocks.map(([nm,rows,civil])=>'<h3>'+esc(nm)+'</h3><table><colgroup><col class="w-no"><col class="w-sp">'+(civil?'':'<col class="w-gj">')+'<col><col class="w-a"><col class="w-act"></colgroup>'
+        +'<thead><tr><th class="c">NO</th><th>'+(civil?'세대':'공간')+'</th>'+(civil?'':'<th>공종</th>')+'<th>점검항목</th><th class="c">결과</th><th>조치사항</th></tr></thead><tbody>'
+        +rows.map((r,i)=>'<tr><td class="c">'+(i+1)+'</td><td>'+esc(r.sp)+'</td>'+(civil?'':'<td>'+esc(r.gj)+'</td>')+'<td>'+esc(r.q)+'</td>'+cellA(r.a)+'<td>'+((r.a==='ng'||r.ov)?esc(r.act):'')+'</td></tr>').join('')
+        +'</tbody></table>').join('')+'</section>';}).join('');
+    return '<div class="d60p-hd"><div class="t">'+esc(team)+' D+60 점검</div><div class="s">'+esc(site.name)+'</div>'
+      +'<div class="m"><span>권역 '+esc(d60RegNm(site.region))+'</span><span>준공일 '+esc(site.completionDate||'—')+'</span><span>점검일 '+esc(d60Date(site)||'—')+'</span><span>담당자 '+esc(o.name||'—')+'</span></div></div>'
+      +(secs||'<p class="d60p-none">점검 결과가 없습니다</p>');
+  }
+  const rows=d60Sites().map(s=>({s,date:d60Date(s)})).filter(x=>x.date&&x.date.slice(0,4)===String(st.y)).sort((a,b)=>a.date.localeCompare(b.date));
+  return '<div class="d60p-hd"><div class="t">'+esc(team)+' D+60 점검</div><div class="s">'+st.y+'년 점검 현황</div></div>'
+    +'<table class="d60p-list"><colgroup><col class="w-reg"><col><col class="w-dt"><col class="w-dt"><col class="w-own">'+D60_TR.map(()=>'<col class="w-tr">').join('')+'</colgroup><thead><tr><th class="c">권역</th><th>현장</th><th class="c">준공일</th><th class="c">점검일</th><th class="c">담당자</th>'+D60_TR.map(([,l])=>'<th class="c">'+l+'<small>양호/지적/N/A</small></th>').join('')+'</tr></thead><tbody>'
+    +rows.map(({s,date})=>'<tr><td class="c">'+esc(d60RegNm(s.region))+'</td><td>'+esc(s.name)+'</td><td class="c">'+esc(s.completionDate)+'</td><td class="c">'+esc(date)+'</td><td class="c">'+esc(d60Owner(s).name||'—')+'</td>'
+      +D60_TR.map(([k])=>{const c=d60Cnt(s.id,k);return '<td class="c">'+(c?c.ok+' / <b>'+c.ng+'</b> / '+c.na:'—')+'</td>';}).join('')+'</tr>').join('')
+    +'</tbody></table>';
+}
+function d60PrintMount(){d60PrintUnmount();const box=document.createElement('div');box.id='d60Print';box.innerHTML=d60PrintHTML();document.body.appendChild(box);document.body.classList.add('d60-printing');}
+function d60PrintUnmount(){const b=$('#d60Print');if(b)b.remove();document.body.classList.remove('d60-printing');}
+function d60Print(){
+  d60PrintMount();
+  let done=false;const fin=()=>{if(done)return;done=true;window.removeEventListener('afterprint',fin);d60PrintUnmount();};
+  window.addEventListener('afterprint',fin);window.print();setTimeout(()=>{if(!done)fin();},60000);
+}
+let _d60AutoPrint=false;
+window.addEventListener('beforeprint',()=>{if(S.view==='d60'&&!document.body.classList.contains('d60-printing')){d60PrintMount();_d60AutoPrint=true;}});
+window.addEventListener('afterprint',()=>{if(_d60AutoPrint){_d60AutoPrint=false;d60PrintUnmount();}});
 Object.assign(ACT,{
   'd60.tab':el=>{S.d60.tab=el.dataset.k;S.d60.sid='';d60Go();},
   'd60.y':el=>{S.d60.y+=Number(el.dataset.d);d60Go();},
-  'd60.m':el=>{const m=Number(el.dataset.k);S.d60.m=S.d60.m===m?0:m;d60Go();},
+  'd60.m':el=>{const m=Number(el.dataset.k);S.d60.m=(!m||S.d60.m===m)?0:m;d60Go();},
   'd60.reg':el=>{S.d60.reg=el.dataset.k;d60Go();},
   'd60.open':el=>{S.d60.sid=el.dataset.sid;S.d60.sp='';S.d60.f='all';d60Go();},
   'd60.back':()=>{S.d60.sid='';d60Go();},
@@ -14932,16 +15029,20 @@ Object.assign(ACT,{
     el.innerHTML='<input type="date" class="mg-inp d60-datein" value="'+esc(cur)+'" data-sid="'+esc(sid)+'" aria-label="점검일">';const i=el.querySelector('input');i.focus();
     i.addEventListener('change',()=>{const v=i.value;if(/^\d{4}-\d{2}-\d{2}$/.test(v)){d60Write('insp/'+sid+'/date',v);}else rD60();});
     i.addEventListener('blur',()=>setTimeout(rD60,120));},
-  'd60.unitAdd':()=>{if(!S.d60.sid)return;d60UnitModal();},
-  'd60.unitSave':()=>{const dg=($('#d60Dg')||{}).value||'',ho=($('#d60Ho')||{}).value||'';if(!dg.trim()||!ho.trim()){toast('동과 호를 입력하세요');return;}
-    const id=uid(),ord=d60Units(S.d60.sid).length+1;closeModal();S.d60.sc='unit';S.d60.un=id;d60Write('insp/'+S.d60.sid+'/units/'+id,{dg:dg.trim().replace(/동$/,''),ho:ho.trim().replace(/호$/,''),ord});},
+  'd60.unitAdd':()=>{if(!S.d60.sid)return;const id=uid(),ord=d60Units(S.d60.sid).length+1;S.d60.sc='unit';S.d60.un=id;S.d60.ed=null;
+    d60Write('insp/'+S.d60.sid+'/units/'+id,{dg:'',ho:'',ord});
+    const i=$('#d60Root .d60-uin[data-k="'+id+'"][data-f="dg"]');if(i)i.focus();},
+  /* 세대 칸을 누르면 그 세대를 고르되, 다시 그려도 커서는 그 칸에 남긴다 */
+  'd60.uin':el=>{const k=el.dataset.k,f=el.dataset.f;if(S.d60.sc==='unit'&&S.d60.un===k)return;S.d60.sc='unit';S.d60.un=k;S.d60.sp='';S.d60.ed=null;rD60();
+    const i=$('#d60Root .d60-uin[data-k="'+k+'"][data-f="'+f+'"]');if(i){i.focus();}},
   'd60.unitDel':el=>{const id=el.dataset.k,sid=S.d60.sid;
     confirmModal('세대 삭제','이 세대의 판정도 함께 지워집니다. 삭제할까요?',()=>{
       const res=d60Insp(sid).res||{};const patch={};Object.keys(res).forEach(tr=>Object.keys(res[tr]||{}).forEach(k=>{if(k.startsWith('u|'+id+'|'))d60Write('insp/'+sid+'/res/'+tr+'/'+k,null);}));
       if(S.d60.un===id)S.d60.un='';d60Write('insp/'+sid+'/units/'+id,null);},'삭제',true);},
   'd60.ansCell':el=>{if(isMob()&&!WIDGET)return;const k=el.dataset.k;if(S.d60.ed&&S.d60.ed.kind==='ans'&&S.d60.ed.key===k)return;S.d60.ed={kind:'ans',key:k};rD60();},
   'd60.ans':el=>{const k=el.dataset.k,a=el.dataset.a||'',sid=S.d60.sid,tr=S.d60.tr;S.d60.ed=null;
-    if(S.d60.sc==='civil'){d60Write('insp/'+sid+'/civil/'+tr+'/'+k+'/a',a||null);return;}
+    if(a)d60Touch(sid);
+    if(S.d60.sc==='civil'){d60Write('insp/'+sid+'/civil/'+tr+'/'+k+'/a',a||null);if(a){const st=d60Stamp();d60Write('insp/'+sid+'/civil/'+tr+'/'+k+'/by',st.by);d60Write('insp/'+sid+'/civil/'+tr+'/'+k+'/ts',st.ts);}return;}
     const cur=(d60Res(sid,tr)[k])||{};
     if(!a&&cur.act==null){d60Write('insp/'+sid+'/res/'+tr+'/'+k,null);return;}
     d60Write('insp/'+sid+'/res/'+tr+'/'+k,{...cur,a:a||null,...d60Stamp()});},
@@ -14960,6 +15061,11 @@ Object.assign(ACT,{
   'd60.spDel':el=>{const sc=el.dataset.sc,id=el.dataset.k;const sp=d60Forms(S.d60.tr,sc).find(x=>x.id===id);
     confirmModal('공간 삭제','「'+((sp&&sp.name)||'')+'」과 안의 항목 '+(sp?sp.items.length:0)+'개를 지울까요? 이미 점검한 결과는 남습니다.',()=>d60Write('forms/'+S.d60.tr+'/'+sc+'/'+id,null),'삭제',true);},
   'd60.spRen':()=>{},   /* change 위임이 처리한다 */
+  /* 918차: 순서 — 현재 순서대로 ord 를 1..n 으로 다시 매기고 이웃과 바꾼다(추가한 순서로 굳어 있었다) */
+  'd60.spMv':el=>{const sc=el.dataset.sc,d=Number(el.dataset.d),list=d60Forms(S.d60.tr,sc),i=list.findIndex(x=>x.id===el.dataset.k),j=i+d;if(i<0||j<0||j>=list.length)return;
+    const o=list.map(x=>x.id);[o[i],o[j]]=[o[j],o[i]];const base='forms/'+S.d60.tr+'/'+sc+'/';o.forEach((id,n)=>{const cur=d60D().forms[S.d60.tr][sc][id];if(cur.ord!==n+1)d60Write(base+id+'/ord',n+1);});},
+  'd60.itMv':el=>{const cur=d60Forms(S.d60.tr,S.d60.sc).find(x=>x.id===S.d60.sp);if(!cur)return;const d=Number(el.dataset.d),i=cur.items.findIndex(x=>x.id===el.dataset.k),j=i+d;if(i<0||j<0||j>=cur.items.length)return;
+    const o=cur.items.map(x=>x.id);[o[i],o[j]]=[o[j],o[i]];const base='forms/'+S.d60.tr+'/'+S.d60.sc+'/'+cur.id+'/items/';o.forEach((id,n)=>{const it=cur.items.find(x=>x.id===id);if(it.ord!==n+1)d60Write(base+id+'/ord',n+1);});},
   'd60.seed':el=>{const sc=el.dataset.sc;if(!D60_SEED[sc])return;const o={};D60_SEED[sc].forEach((nm,i)=>{o[uid()+i]={name:nm,ord:i+1};});d60Write('forms/'+S.d60.tr+'/'+sc,o);},
   'd60.itAdd':()=>{S.d60.ed={kind:'item',id:'new',gj:'',q:'',act:''};rD60();setTimeout(()=>{const i=$('#d60Root .d60-ed .d60-in');if(i)i.focus();},40);},
   'd60.itEdit':el=>{const cur=d60Forms(S.d60.tr,S.d60.sc).find(x=>x.id===S.d60.sp);const it=cur&&cur.items.find(x=>x.id===el.dataset.k);if(!it)return;
@@ -14977,6 +15083,17 @@ Object.assign(ACT,{
 /* 이름 고치기·조치사항·폰 조치사항은 change 로 */
 document.addEventListener('change',e=>{
   const t=e.target;if(!t||S.view!=='d60')return;
+  if(t.classList.contains('d60-uin')){const k=t.dataset.k,f=t.dataset.f,v=(t.value||'').trim().replace(f==='dg'?/동$/:/호$/,'').slice(0,10);
+    const u=d60Units(S.d60.sid).find(x=>x.id===k);if(!u)return;
+    const dg=f==='dg'?v:(u.dg||''),ho=f==='ho'?v:(u.ho||'');
+    /* 다시 그려도 커서는 가려던 칸에 남긴다 — Enter(동→호)는 keydown 이 미리 적어 둔다.
+       blur·change 가 도는 동안 activeElement 는 body 라 그것으로는 알 수 없다 */
+    const nf=S.d60._foc;S.d60._foc=null;
+    const ae=document.activeElement,keep=nf||(ae&&ae.classList&&ae.classList.contains('d60-uin')?{k:ae.dataset.k,f:ae.dataset.f}:null);
+    if(!dg&&!ho&&!(keep&&keep.k===k)){d60Write('insp/'+S.d60.sid+'/units/'+k,null);return;}   /* 둘 다 비우고 나가면 지운 것 */
+    d60Write('insp/'+S.d60.sid+'/units/'+k+'/'+f,v);
+    if(keep){const i=$('#d60Root .d60-uin[data-k="'+keep.k+'"][data-f="'+keep.f+'"]');if(i){i.focus();if(nf)i.select();}}
+    return;}
   if(t.matches('.tm-nameinp[data-act="d60.spRen"]')){const nm=(t.value||'').trim().slice(0,40);if(nm)d60Write('forms/'+S.d60.tr+'/'+t.dataset.sc+'/'+t.dataset.k+'/name',nm);else rD60();return;}
   if(t.classList.contains('d60-actin')||t.classList.contains('d60-mact')){const k=t.dataset.k,v=(t.value||'').trim().slice(0,200),sid=S.d60.sid,tr=S.d60.tr;S.d60.ed=null;
     if(S.d60.sc==='civil'){d60Write('insp/'+sid+'/civil/'+tr+'/'+k+'/act',v||null);return;}
@@ -14990,8 +15107,26 @@ document.addEventListener('keydown',e=>{
   if(S.view!=='d60')return;const t=e.target;
   if(t&&t.classList&&t.classList.contains('d60-in')){if(e.key==='Enter'){e.preventDefault();ACT['d60.itSave']();}else if(e.key==='Escape'){ACT['d60.itCancel']();}return;}
   if(t&&t.classList&&t.classList.contains('d60-actin')){if(e.key==='Enter'){e.preventDefault();t.blur();}else if(e.key==='Escape'){S.d60.ed=null;rD60();}return;}
-  if(t&&(t.id==='d60Dg'||t.id==='d60Ho')&&e.key==='Enter'){e.preventDefault();const f=ACT[$('#d60Tx')?'d60.civilSave':'d60.unitSave'];if(f)f();}
+  if(t&&(t.id==='d60Dg'||t.id==='d60Ho')&&e.key==='Enter'){e.preventDefault();ACT['d60.civilSave']();}
+  if(t&&t.classList&&t.classList.contains('d60-uin')&&e.key==='Enter'){e.preventDefault();const f=t.dataset.f;
+    if(f==='dg'){const k=t.dataset.k;S.d60._foc={k,f:'ho'};t.blur();   /* blur→change 가 저장하고 호 칸에 커서를 둔다 */
+      if(S.d60._foc){S.d60._foc=null;const n=$('#d60Root .d60-uin[data-k="'+k+'"][data-f="ho"]');if(n){n.focus();n.select();}}}   /* 값이 안 바뀌어 change 가 없던 경우 */
+    else t.blur();}
 });
+/* 918차: 표에서 여러 칸을 끌어 잡고 Ctrl+C — 줄은 줄바꿈, 칸은 탭(엑셀에 그대로 붙는다). 입력칸 안에서는 브라우저 기본 */
+document.addEventListener('copy',e=>{
+  if(S.view!=='d60')return;const ae=document.activeElement;if(ae&&/^(INPUT|TEXTAREA)$/.test(ae.tagName))return;
+  const sel=window.getSelection();if(!sel||sel.isCollapsed||!sel.rangeCount)return;
+  const a=sel.anchorNode&&(sel.anchorNode.nodeType===1?sel.anchorNode:sel.anchorNode.parentElement);const tbl=a&&a.closest&&a.closest('#d60Root table');if(!tbl)return;
+  const rows=[...tbl.querySelectorAll('tr')].filter(tr=>sel.containsNode(tr,true));if(rows.length<2)return;   /* 한 줄 안에서는 기본 복사(칸 하나 복사가 대부분) */
+  const tsv=rows.map(tr=>[...tr.children].filter(td=>!td.classList.contains('d60-ops')).map(td=>td.textContent.replace(/\s+/g,' ').trim()).join('\t')).join('\n');
+  e.clipboardData.setData('text/plain',tsv);e.preventDefault();
+});
+/* 918차: 미뤄 둔 실시간 갱신 — 입력을 마치면(포커스가 나가면) 그때 다시 그린다 */
+document.addEventListener('focusout',e=>{if(S.view!=='d60'||!S.d60._stale)return;setTimeout(()=>{if(S.view==='d60'&&S.d60._stale&&!d60Editing()){S.d60._stale=false;rD60();}},60);});
+/* 결과 칸 우클릭 = 판정 지움(사용자) — 「지움」 단추 대신 */
+document.addEventListener('contextmenu',e=>{if(S.view!=='d60')return;const c=e.target.closest&&e.target.closest('.d60-ac[data-k]');if(!c)return;
+  e.preventDefault();S.d60.ed=null;ACT['d60.ans']({dataset:{k:c.dataset.k,a:''}});});
 /* 조치사항 칸 밖을 누르면 편집을 접는다(값은 change 가 이미 저장) */
 document.addEventListener('mousedown',e=>{if(S.view!=='d60'||!S.d60.ed||S.d60.ed.kind==='item')return;
   if(!e.target.closest('.d60-actin,.d60-as,.d60-ac[data-k="'+S.d60.ed.key+'"]')){S.d60.ed=null;setTimeout(rD60,0);}},true);
