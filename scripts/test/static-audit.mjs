@@ -329,6 +329,8 @@ OK('구문 검사 (node --check)');
   const CSS_DUP_BASELINE = new Set([
   /* 689차: @container tkpanel(≤460px) 안의 의도적 덮어쓰기 — 감사기가 @media 만 스코프로 빼고 @container 는 못 가른다 */
   '.tk-row :: gap',
+  '.tk-item+.tk-item.gw>.tk-row::before :: left',   /* 912차: 폰 열 기준(72) — 데스크톱 값(152) 을 좁은 칸에서 덮는다 */
+  '.tkl-nr-w .tk-item+.tk-item.gw>.tk-row::before :: left',   /* 912차: 같은 이유(90 → 72) */
   '.tkl-nr .tk-row :: grid-template-columns',
   '.tkl-nr-w .tk-row :: grid-template-columns',
   '#fcal .dhol.off :: color',

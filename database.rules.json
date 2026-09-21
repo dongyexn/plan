@@ -382,6 +382,76 @@
         "$other":    { ".validate": false }
       },
 
+
+      // 913차: D+60 점검 — 서식(forms: 공종/구분/공간/항목)·점검(insp: 현장별 판정·조치사항 덧쓰기·세대·민원).
+      //   협업 기록이라 MEMBER 누구나 쓴다(업무와 같은 단계). 사진·조치 기록은 없다.
+      "d60": {
+        ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
+        "forms": {
+          "$tr": {
+            ".validate": "$tr == 'arch' || $tr == 'mech' || $tr == 'elec' || $tr == 'land'",
+            "$sc": {
+              ".validate": "$sc == 'unit' || $sc == 'common'",
+              "$sp": {
+                "name":  { ".validate": "newData.isString() && newData.val().length <= 40" },
+                "ord":   { ".validate": "newData.isNumber()" },
+                "items": {
+                  "$it": {
+                    "gj":  { ".validate": "newData.isString() && newData.val().length <= 20" },
+                    "q":   { ".validate": "newData.isString() && newData.val().length <= 120" },
+                    "act": { ".validate": "newData.isString() && newData.val().length <= 200" },
+                    "ord": { ".validate": "newData.isNumber()" },
+                    "$other": { ".validate": false }
+                  }
+                },
+                "$other": { ".validate": false }
+              }
+            }
+          }
+        },
+        "insp": {
+          "$sid": {
+            "date":  { ".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)" },
+            "units": {
+              "$u": {
+                "dg":  { ".validate": "newData.isString() && newData.val().length <= 10" },
+                "ho":  { ".validate": "newData.isString() && newData.val().length <= 10" },
+                "ord": { ".validate": "newData.isNumber()" },
+                "$other": { ".validate": false }
+              }
+            },
+            "res": {
+              "$tr": {
+                ".validate": "$tr == 'arch' || $tr == 'mech' || $tr == 'elec' || $tr == 'land'",
+                "$k": {
+                  "a":   { ".validate": "newData.isString() && (newData.val() == 'ok' || newData.val() == 'ng' || newData.val() == 'na')" },
+                  "act": { ".validate": "newData.isString() && newData.val().length <= 200" },
+                  "by":  { ".validate": "newData.isString() && newData.val().length <= 60" },
+                  "ts":  { ".validate": "newData.isNumber()" },
+                  "$other": { ".validate": false }
+                }
+              }
+            },
+            "civil": {
+              "$tr": {
+                ".validate": "$tr == 'arch' || $tr == 'mech' || $tr == 'elec' || $tr == 'land'",
+                "$id": {
+                  "dg":  { ".validate": "newData.isString() && newData.val().length <= 10" },
+                  "ho":  { ".validate": "newData.isString() && newData.val().length <= 10" },
+                  "txt": { ".validate": "newData.isString() && newData.val().length <= 200" },
+                  "a":   { ".validate": "newData.isString() && (newData.val() == 'ok' || newData.val() == 'ng' || newData.val() == 'na')" },
+                  "act": { ".validate": "newData.isString() && newData.val().length <= 200" },
+                  "ts":  { ".validate": "newData.isNumber()" },
+                  "$other": { ".validate": false }
+                }
+              }
+            },
+            "$other": { ".validate": false }
+          }
+        },
+        "$other": { ".validate": false }
+      },
+
       "$other": { ".validate": false }
     }
   }
