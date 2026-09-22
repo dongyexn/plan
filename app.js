@@ -10,7 +10,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='918';
+const APP_VER='919';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -8219,31 +8219,34 @@ function morningReview(){
   if($('#mo')&&$('#mo').classList.contains('open'))return;
   let last='';try{last=localStorage.getItem(mrvKey())||'';}catch(e){}
   if(last===todayStr())return;                            /* 하루 한 번 */
-  const list=mrvList();
-  if(!list.length){try{localStorage.setItem(mrvKey(),todayStr());}catch(e){}return;}
+  const list=mrvList(),holds=mineHolds();                 /* 919차: 보류 업무도 매일 같이 묻는다 — 보류함으로 넘어가면 다시 볼 일이 없어 쌓였다 */
+  if(!list.length&&!holds.length){try{localStorage.setItem(mrvKey(),todayStr());}catch(e){}return;}
   const md=x=>{const t=toDate(x);return (t.getMonth()+1)+'/'+t.getDate();};
-  const rows=list.map(({sid,iid,it})=>{
-    const sub=[it.end&&it.end!==it.date?md(it.date)+'–'+md(it.end):md(it.date),kindLabel(it.kind),siteName(it.site)].filter(Boolean).join(' · ');
-    return '<div class="mrv-i" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'">'
-      +stIcon(1,' data-act="mrv.done"')
-      +'<div class="mrv-b"><div class="t">'+esc(it.text||'제목 없음')+'</div>'
-      +'<div class="s">'+esc(sub)+'</div></div>'
-      +'<div class="mrv-act"><button class="btn bg2 bxs" data-act="mrv.today">오늘로 이동</button></div></div>';
-  }).join('');
+  const row=({sid,iid,it},hold)=>{
+    const sub=[it.end&&it.end!==it.date?md(it.date)+'–'+md(it.end):(it.date?md(it.date):''),kindLabel(it.kind),siteName(it.site)].filter(Boolean).join(' · ');
+    return '<div class="mrv-i" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"'+(hold?' data-hold="1"':'')+'>'
+      +'<div class="mrv-b"><div class="t">'+esc(it.text||'제목 없음')+'</div><div class="s">'+esc(sub)+'</div></div>'
+      +'<div class="mrv-act">'
+      +'<button class="mrv-ib" data-act="mrv.done" data-tip="완료" aria-label="완료"><svg class="icn"><use href="#i-check"></use></svg></button>'
+      +'<button class="mrv-ib" data-act="mrv.today" data-tip="오늘로 이동" aria-label="오늘로 이동"><svg class="icn"><use href="#i-arr-in"></use></svg></button>'
+      +'<span class="mrv-ib mrv-dt" data-tip="날짜 변경"><svg class="icn"><use href="#i-cal"></use></svg><input type="date" class="mrv-datein" aria-label="날짜 변경"></span>'
+      +'</div></div>';};
+  const sec=(ttl,items,hold)=>items.length?'<div class="mrv-sec'+(hold?' hold':'')+'"><div class="mrv-sh">'+ttl+'<span class="rp-tcnt">'+items.length+'</span></div><div class="mrv-l">'+items.map(x=>row(x,hold)).join('')+'</div></div>':'';
   if(WIDGET){const mb=$('#mb');if(mb)mb.classList.add('mrv-wid');}
-  openModal('놓친 업무 확인',
-    '<div class="mrv-h">날짜가 지난 미완료 업무 <b id="mrvN">'+list.length+'</b>건입니다.<br>'
-    +'끝낸 업무는 왼쪽 아이콘, 남는 업무는 <b>보류함</b>으로 넘어갑니다.</div>'
-    +'<div class="mrv-l">'+rows+'</div>');
+  openModal('놓친 업무 확인','<div class="mrv-wrap">'+sec('놓친 업무',list,false)+sec('보류 업무',holds,true)+'</div>');
+  const mb=$('#mb');if(mb)mb.classList.add('mrv-md');
   MRV_ON=true;                                                /* 창을 닫을 때 남은 줄을 보류로 넘긴다 */
   try{localStorage.setItem(mrvKey(),todayStr());}catch(e){}   /* 열었으면 오늘은 다시 묻지 않는다 */
 }
+/* 919차: 날짜 변경 — 달력에서 고르는 즉시 그 날로 옮긴다(오늘로 이동과 같은 패치, 날짜만 다름) */
+document.addEventListener('change',e=>{const t=e.target;if(!t||!t.classList||!t.classList.contains('mrv-datein'))return;
+  const v=t.value;if(!/^\d{4}-\d{2}-\d{2}$/.test(v))return;mrvApply(t,{st:1,done:false,stKeep:true,date:v,end:''},v.slice(5).replace('-','/')+'로 옮겼습니다');});
 /* 창을 닫을 때 — 손대지 않고 남은 업무는 모두 보류로 넘긴다(하나씩 누르는 수고를 덜기 위함) */
 function mrvHoldRest(){
   if(!MRV_ON)return;
   MRV_ON=false;
   let n=0;
-  $$('#mbody .mrv-i').forEach(row=>{
+  $$('#mbody .mrv-i:not([data-hold])').forEach(row=>{   /* 919차: 보류 줄은 이미 보류 — 놓친 줄만 */
     const cur=(S.tasks[row.dataset.sid]||{})[row.dataset.iid];
     if(!cur||stOf(cur.st)!==1)return;
     if(!canEditTask(cur,row.dataset.sid))return;   /* 627차: 권한 없는 업무는 일괄 보류에서 건너뛴다 */
@@ -8259,9 +8262,9 @@ function mrvApply(el,patch,msg){
   const row=el.closest('.mrv-i');if(!row)return;
   const sid=row.dataset.sid,iid=row.dataset.iid,cur=(S.tasks[sid]||{})[iid];
   if(cur)store.putTask(sid,iid,histPush({...cur,...patch,updatedAt:Date.now()},patch.st===2?'done':(patch.date?'move':'edit')));
-  row.remove();
+  const sec=row.closest('.mrv-sec');row.remove();
+  if(sec){const k=sec.querySelectorAll('.mrv-i').length;if(!k)sec.remove();else{const c=sec.querySelector('.rp-tcnt');if(c)c.textContent=k;}}   /* 919차: 구분 수 갱신 · 비면 구분 제거 */
   const left=$$('#mbody .mrv-i').length;
-  const n=$('#mrvN');if(n)n.textContent=left;
   if(!S.live){rTasks();rDay();rWidget();}
   refetchCal();
   if(!left){MRV_ON=false;closeModal();toast('놓친 업무를 모두 정리했습니다');}
@@ -10532,7 +10535,7 @@ const ACT={
   'hold.go':el=>gotoTask(el.dataset.sid,el.dataset.iid),
   'hold.mine':()=>{S.holdMine=!S.holdMine;rHold();},
   /* 아침 확인 — 누르는 즉시 저장하고 그 줄만 사라진다 */
-  'mrv.done':el=>{stxSet(el,2);setTimeout(()=>mrvApply(el,{st:2,done:true},'완료로 바꿨습니다'),160);},
+  'mrv.done':el=>mrvApply(el,{st:2,done:true},'완료로 바꿨습니다'),   /* 919차: 보류 업무도 원래 날짜 그대로 완료(사용자) */
   'mrv.today':el=>mrvApply(el,{st:1,done:false,stKeep:true,date:todayStr(),end:''},'오늘로 옮겼습니다'),
   'nq.toggle':()=>{const on=!$('#nqPanel').classList.contains('on');nqOpen(on);if(on)rNq();},
   /* NLQ 결과 → 목록 창(recOpen) 매핑 — 현장·공종·공가·장기(30일+)는 창의 필터로, 나머지(동·호·본문)는
