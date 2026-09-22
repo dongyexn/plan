@@ -1611,16 +1611,28 @@ body.df-printing .axfold-h,#dfPrintPages .axfold-h{display:none!important;}   /*
 .hold-i .d{flex:0 0 auto;font-size:11px;font-weight:700;color:var(--lbl3);}
 /* 끌어다 놓는 동안 날짜 칸을 표시한다 */
 .fc-daygrid-day.hold-over .fc-daygrid-day-frame{box-shadow:inset 0 0 0 2px var(--b500);background:var(--b50)!important;}
-/* 아침 확인(놓친 업무) 모달 목록 */
-.mrv-h{font-size:12px;color:var(--lbl2);line-height:1.65;margin-bottom:12px;}   /* 698차: nowrap 이 좁은 모달(위젯 340·모바일)에서 문장을 밖으로 밀었다 */
-.mrv-l{display:flex;flex-direction:column;gap:2px;max-height:46vh;overflow-y:auto;margin:0 -6px;}
+/* 아침 확인(놓친 업무) 모달 목록 — 919차: 놓친/보류 두 구분 · 줄마다 아이콘 셋(완료·오늘로 이동·날짜 변경) */
+#mb.mrv-md{max-width:480px;}
+.mrv-wrap{max-height:62vh;overflow-y:auto;margin:0 -6px;padding:0 6px;}
+.mrv-sec+.mrv-sec{margin-top:12px;padding-top:12px;border-top:1px solid var(--sep);}
+.mrv-sh{display:flex;align-items:center;gap:8px;height:30px;margin-bottom:4px;font-size:12px;font-weight:700;color:var(--lbl2);}
+.mrv-sh .rp-tcnt{margin-left:0;}
+.mrv-l{display:flex;flex-direction:column;gap:2px;}
 .mrv-i{display:flex;align-items:center;gap:10px;padding:8px 6px;border-radius:var(--rmd);}
 .mrv-i:hover{background:var(--fill);}
-.mrv-i .stx{cursor:pointer;}
 .mrv-b{flex:1;min-width:0;}
 .mrv-b .t{font-size:13px;font-weight:600;color:var(--lbl);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .mrv-b .s{font-size:11px;color:var(--lbl2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.mrv-act{display:flex;gap:5px;flex-shrink:0;}
+.mrv-act{display:flex;gap:2px;flex-shrink:0;align-items:center;}
+.mrv-ib{position:relative;width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:var(--rmd);background:none;color:var(--lbl3);cursor:pointer;padding:0;}
+.mrv-ib .icn{width:16px;height:16px;}
+.mrv-ib:hover{background:var(--fill);color:var(--b500);}
+.mrv-dt input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;}
+@media (max-width:640px){
+  .mrv-i{flex-wrap:wrap;gap:4px 10px;padding:10px 6px;}
+  .mrv-i .mrv-b{flex:1 1 100%;}
+  .mrv-act{margin-left:auto;}
+}
 .stx:not(:disabled):hover .stx-in{transform:scale(1.08);}
 .stx-in{transition:transform var(--t-fast);}
 /* 눌렀을 때 — 튀어오름 + 체크 그리기 */
@@ -1711,13 +1723,13 @@ body.wid [data-act="wid.side"]{position:relative;}
 .wl-row>.stx{flex:none;margin-right:4px;}   /* 231차: 진행 아이콘은 줄 오른쪽 끝 */
 .wl-row>.wl{flex:1;min-width:0;}
 /* 위젯에서 뜨는 '놓친 업무 확인' — 창이 좁으니 폭·여백만 줄인다 */
-body.wid #mb.mrv-wid{width:min(340px,calc(100vw - 16px))!important;max-width:none!important;}
-body.wid #mb.mrv-wid .mrv-h{font-size:11.5px;line-height:1.5;}
-body.wid #mb.mrv-wid .mrv-l{max-height:min(46vh,300px);overflow:auto;}
+body.wid #mb.mrv-wid{width:min(480px,calc(100vw - 16px))!important;max-width:none!important;}
+body.wid #mb.mrv-wid .mrv-wrap{max-height:min(62vh,560px);}
 body.wid #mb.mrv-wid .mrv-i{padding:6px 4px;gap:7px;}
 body.wid #mb.mrv-wid .mrv-i .t{font-size:12px;}
 body.wid #mb.mrv-wid .mrv-i .s{font-size:10.5px;}
-body.wid #mb.mrv-wid .mrv-act .btn{padding:3px 7px;font-size:10.5px;}
+body.wid #mb .mrv-ib{color:rgba(255,255,255,.55);}
+body.wid #mb .mrv-ib:hover{background:rgba(255,255,255,.1);color:#B9D3F7;}   /* 919차: 위젯도 무몰딩(사용자) */
 .wl{display:flex;align-items:flex-start;gap:9px;width:100%;text-align:left;padding:8px 9px;border-radius:3px;
   transition:background var(--tr);}
 .wl:hover{background:var(--fill);}
@@ -4718,7 +4730,7 @@ body.qc-dragging{user-select:none}
 <symbol id="i-chevl" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
 <symbol id="i-expand" viewBox="0 0 24 24"><path d="M15 3h6v6" /> <path d="m21 3-7 7" /> <path d="m3 21 7-7" /> <path d="M9 21H3v-6" /></symbol>
 <symbol id="i-filter" viewBox="0 0 24 24"><path d="M2 5h20" /> <path d="M6 12h12" /> <path d="M9 19h6" /></symbol>
-<symbol id="i-chevd" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol><symbol id="i-chevu" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol>
+<symbol id="i-chevd" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol><symbol id="i-chevu" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol><symbol id="i-arr-in" viewBox="0 0 24 24"><path d="M17 12H3"/><path d="m11 18 6-6-6-6"/><path d="M21 5v14"/></symbol>
 <symbol id="i-chevr" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
 <symbol id="i-close" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
 <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
@@ -5121,5 +5133,5 @@ body.qc-dragging{user-select:none}
 <!-- 762차: chart.umd·datalabels·korea-geo·apt-geo 는 app.js 의 loadChart()/loadGeo() 가 필요할 때 읽는다(첫 로드 800KB 절감) -->
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=918"></script>
+<script src="./app.js?v=919"></script>
 </body></html>
