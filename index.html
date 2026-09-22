@@ -4522,7 +4522,7 @@ body.qc-dragging{user-select:none}
 .d60-3 .g{color:var(--gn)}.d60-3 .r{color:var(--rd)}.d60-3 .n{color:var(--lbl3)}
 .d60-ba{display:inline-flex;align-items:center;font-size:11px;font-weight:600;padding:2px 8px;border-radius:var(--rp);white-space:nowrap;background:var(--b100);color:var(--bt1)}   /* 하자처리 현황 .ba.bbl 과 같은 값 */
 .d60-nm{display:inline-flex;align-items:center;gap:7px}
-.d60-nm>i{width:10px;height:10px;border-radius:50%;flex:0 0 auto}
+.d60-nm>i{width:6px;height:6px;border-radius:50%;flex:0 0 auto}   /* 923차: 조직 관리 own-chip 과 같은 6px(사용자: 너무 컸다) */
 .d60-pill{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:var(--rmd);font-size:11px;font-weight:700;white-space:nowrap}
 .d60-pill.ok{background:var(--tint-gn);color:var(--gn)}.d60-pill.ng{background:var(--tint-rd);color:var(--rd)}.d60-pill.na{background:var(--fill);color:var(--lbl3)}
 .d60-none{color:var(--lbl3);opacity:.7;font-size:12px}
@@ -4566,10 +4566,53 @@ body.qc-dragging{user-select:none}
 .d60-mcard{margin-bottom:10px}
 .d60-mrow{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--sep);font-size:14px;color:var(--lbl)}
 .d60-mrow:last-child{border-bottom:0}
-.d60-mrow .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.d60-mrow .n{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}   /* 920차: 두 줄(이름 / 담당자·진행) */
 .d60-mrow .d{font-size:12px;color:var(--lbl2);font-variant-numeric:tabular-nums}
 .d60-mrow .d.dim{color:var(--lbl3);opacity:.7}
 .d60-mrow .chev{width:16px;height:16px;color:var(--lbl3)}
+/* 920차: 폰 목록 행 두 줄(이름 / 담당자·진행) · 펼침(점검일·공종 넷) */
+.d60-mrow .n .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
+.d60-mrow .n .sub{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--lbl2)}
+.d60-mrow .n .sub .d60-nm{gap:5px}
+.d60-mrow.open{background:var(--surf2);border-bottom:0}
+.d60-mrow.open .chev{transform:rotate(90deg)}
+.d60-mxp{padding:0 14px 14px;background:var(--surf2);border-bottom:1px solid var(--sep)}
+.d60-mxp::before{content:'';display:block;height:1px;background:var(--sep);margin:0 0 12px}   /* 923차: 펼친 현장명과 공종 줄 사이 — 양쪽 14px 띄운 선(사용자) */
+.d60-mxp:last-child{border-bottom:0}
+.d60-mdt{position:relative;font-size:12.5px;font-weight:700;color:var(--lbl);font-variant-numeric:tabular-nums;padding:3px 8px;border-radius:var(--rmd);border:1px solid var(--cardline);background:var(--bg2);white-space:nowrap}
+.d60-mdt.dim .v{color:var(--lbl3);font-weight:500}
+.d60-mdt input{position:absolute;inset:0;opacity:0;width:100%;height:100%}
+.d60-mtr{display:flex;flex-direction:column;gap:6px}
+.d60-mtb{display:flex;align-items:center;gap:10px;padding:0 8px 0 0;border:1px solid var(--cardline);border-radius:var(--rmd);background:var(--bg2)}   /* 921차: 공종 한 줄 = 이름·집계 | 그 공종 점검일 */
+.d60-mtb .go{flex:1;min-width:0;height:50px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:3px;padding:0 12px;border:0;background:none;text-align:left}
+.d60-mtb .l{font-size:13.5px;font-weight:700;color:var(--lbl)}
+.d60-mtb .c{font-size:11.5px;color:var(--lbl3);font-variant-numeric:tabular-nums;white-space:nowrap}
+/* 924차: 폰 상세 머리 — 「‹ 현장명  n/m」 + 「건축 · 점검일 · 담당자」 두 줄 */
+.d60-mtd{margin-left:auto;font-size:12.5px;color:var(--lbl2);font-variant-numeric:tabular-nums;white-space:nowrap}.d60-mtd b{color:var(--lbl);font-weight:700;margin-right:2px}   /* 925차: 한 줄 머리 — 현장명 / 대공종 점검일 */
+/* 924차: 세대 밑줄 탭 + 편집 줄 · 미는 판 */
+.d60-utab{display:flex;align-items:stretch;height:40px;border-bottom:1px solid var(--sepo);margin:0 0 8px}
+.d60-utab .sc{flex:1;min-width:0;display:flex;overflow-x:auto;scrollbar-width:none}
+.d60-utab button{flex:0 0 auto;padding:0 12px;border:0;background:none;font-size:13.5px;font-weight:600;color:var(--lbl2);position:relative;white-space:nowrap}
+.d60-utab button.on{color:var(--bt1)}
+.d60-utab button.on::after{content:'';position:absolute;left:8px;right:8px;bottom:-1px;height:2px;background:var(--b500)}
+.d60-utab .add{color:var(--b500);display:flex;align-items:center;gap:4px}
+.d60-utab .add .icn{width:14px;height:14px}
+.d60-uedit{margin:-2px 0 8px}
+.d60-mpane{position:relative}
+.d60-mpane.tk-drag{overflow:hidden}
+.d60-mpane .tk-ghost{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+/* 920차: 다 본 공간 칩 ✓ · 지적 점 · 접힌 항목 · 아래 막대 */
+.d60-chip{position:relative}
+.d60-chip.done{border-color:var(--gn);color:var(--gn);background:var(--tint-gn)}
+.d60-chip.done .c .icn{width:13px;height:13px;vertical-align:-2px}
+.d60-chip.on.done{background:var(--b600);color:#fff;border-color:var(--b600)}
+.d60-chip .ng{position:absolute;top:-3px;right:-3px;width:8px;height:8px;border-radius:50%;background:var(--rd);border:2px solid var(--bg)}
+.d60-it.fold{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer}
+.d60-it.fold .q{flex:1;align-items:center;min-width:0}
+.d60-it.fold .q .tx{font-size:13.5px;color:var(--lbl2);line-height:1.4}   /* 926차: 접혀도 글은 다 보인다(말줄임이면 긴 점검사항을 못 읽는다) */
+#d60Root.d60-mob .d60-mcard{margin-bottom:16px}
+.d60-it.fold .d60-none{flex:0 0 auto;font-size:11.5px;color:var(--lbl3)}
+.d60-it.open .q{cursor:pointer}
 .d60-mul{padding:0;background:none;border:0;margin-bottom:8px}
 .d60-chips{display:flex;gap:6px;overflow-x:auto;padding:0 0 2px;margin-bottom:8px;scrollbar-width:none}
 .d60-chips::-webkit-scrollbar{display:none}
@@ -5133,5 +5176,5 @@ body.qc-dragging{user-select:none}
 <!-- 762차: chart.umd·datalabels·korea-geo·apt-geo 는 app.js 의 loadChart()/loadGeo() 가 필요할 때 읽는다(첫 로드 800KB 절감) -->
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=919"></script>
+<script src="./app.js?v=927"></script>
 </body></html>
