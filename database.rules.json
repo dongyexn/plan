@@ -388,6 +388,23 @@
 
       // 913차: D+60 점검 — 서식(forms: 공종/구분/공간/항목)·점검(insp: 현장별 판정·조치사항 덧쓰기·세대·민원).
       //   협업 기록이라 MEMBER 누구나 쓴다(업무와 같은 단계). 사진·조치 기록은 없다.
+      // 934차: 항목 사진 — d60 와 따로 둔다(앱이 d60 를 통째로 구독하므로 사진이 섞이면 다운로드가 터진다). 항목 단위로 한 번씩 받는다.
+      "d60photo": {
+        ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
+        "$sid": {
+          "$tr": {
+            ".validate": "$tr == 'arch' || $tr == 'mech' || $tr == 'elec' || $tr == 'land'",
+            "$k": {
+              "$pid": {
+                "d":  { ".validate": "newData.isString() && newData.val().length <= 250000" },
+                "by": { ".validate": "newData.isString() && newData.val().length <= 64" },
+                "ts": { ".validate": "newData.isNumber()" },
+                "$other": { ".validate": false }
+              }
+            }
+          }
+        }
+      },
       "d60": {
         ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
         "forms": {
@@ -418,6 +435,19 @@
             "dates": {
               "$tr": { ".validate": "($tr == 'arch' || $tr == 'mech' || $tr == 'elec' || $tr == 'land') && newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)" }
             },
+            "phb": { ".validate": "newData.isNumber()" },
+            "fin": {
+              "$tr": { ".validate": "($tr == 'arch' || $tr == 'mech' || $tr == 'elec' || $tr == 'land') && newData.isNumber()" }
+            },
+            "hide": {
+              "$tr": {
+                ".validate": "$tr == 'arch' || $tr == 'mech' || $tr == 'elec' || $tr == 'land'",
+                "$sc": {
+                  ".validate": "$sc == 'unit' || $sc == 'common' || $sc == 'civil'",
+                  "$sp": { ".validate": "newData.isBoolean()" }
+                }
+              }
+            },
             "units": {
               "$u": {
                 "dg":  { ".validate": "newData.isString() && newData.val().length <= 10" },
@@ -434,6 +464,7 @@
                   "act": { ".validate": "newData.isString() && newData.val().length <= 200" },
                   "by":  { ".validate": "newData.isString() && newData.val().length <= 60" },
                   "ts":  { ".validate": "newData.isNumber()" },
+                  "ph":  { ".validate": "newData.isNumber()" },
                   "$other": { ".validate": false }
                 }
               }
@@ -449,6 +480,7 @@
                   "act": { ".validate": "newData.isString() && newData.val().length <= 200" },
                   "by":  { ".validate": "newData.isString() && newData.val().length <= 64" },
                   "ts":  { ".validate": "newData.isNumber()" },
+                  "ph":  { ".validate": "newData.isNumber()" },
                   "$other": { ".validate": false }
                 }
               }
