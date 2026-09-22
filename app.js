@@ -10,9 +10,9 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='945';
+const APP_VER='950';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
-   저장소의 README.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다.
+   저장소의 docs/manual.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다(946차: README 는 요약만).
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
    ⚠ 받은 글은 반드시 DOMPurify 로 살균한 뒤 넣는다. */
 let _mdPromise=null;
@@ -32,7 +32,7 @@ function loadMarked(){
 }
 async function openReadme(){
   try{
-    const res=await fetch('README.md',{cache:'no-cache'});
+    const res=await fetch('docs/manual.md',{cache:'no-cache'});   /* 946차: README 는 짧게, 사용 안내 전문은 docs/manual.md */
     if(!res.ok)throw new Error('HTTP '+res.status);
     const md=await res.text();
     await loadMarked();
@@ -2783,7 +2783,7 @@ function openModal(title,bodyHTML,footHTML){
   $('#mt').textContent=title;$('#mbody').innerHTML=bodyHTML;$('#mf').innerHTML=footHTML||'';
   /* 하단 버튼이 없는 모달(사용 안내 등)은 우상단 X 로 닫는다 — 참조 앱과 동일 */
   const mb=$('#mb');
-  mb.classList.remove('rdw','narrow','mlw','dfwide','wide-pick','kmw','rkm','pdcw','nott','d60-pvm','d60-oam');   /* pdcw: 798차 사진 자르기 */   /* ⚠ 지난번 모달의 폭 설정이 남으면 다음 모달이 엉뚱한 크기로 뜬다 */
+  mb.classList.remove('rdw','narrow','mlw','dfwide','wide-pick','kmw','rkm','pdcw','nott','d60-pvm','d60-hsm');   /* pdcw: 798차 사진 자르기 */   /* ⚠ 지난번 모달의 폭 설정이 남으면 다음 모달이 엉뚱한 크기로 뜬다 */
   /* ⚠ 605차: 'kmw' 가 이 목록에서 빠져 있었다 — 조직 관리 지도 모달을 한 번 열면 그 뒤 **모든** 모달에 남는다.
      `#mb.kmw{width:auto;max-width:94vw}` 는 `#mb.dfwide{width:88vw;max-width:88vw}` 와 명시도가 같은데
      CSS 에서 더 뒤에 있어 이긴다 → 목록 모달 폭이 내용에 따라 정해지고, 목록↔피벗 전환 때 폭이 튄다
@@ -11547,7 +11547,8 @@ window.addEventListener('resize',fadeSoon);
 window.addEventListener('resize',()=>holdFit());   /* 보류함 높이는 달력 줄에 맞춘다 */
 /* 스크롤바는 그리지 않는다(규약) — 스크롤할 때마다 위·아래 페이드만 다시 잰다 */
 document.addEventListener('scroll',e=>{
-  const el=e.target;if(!el||!el.classList)return;
+  const el=e.target;if(!el||!el.classList||!el.closest)return;
+  if(el.closest('#mo')||el.classList.contains('d60-tsc')||el.classList.contains('d60-lsc'))return;   /* 947·948차: 모달(#mb — iOS 가 미세 스크롤에도 scroll 을 쏴 팝업 밑이 흐려졌다)·D+60 판(자체 막대)은 제외 */
   fadeOne(el);
 },true);
 /* 가로로만 넘친 표(피벗 등)는 휠만으로 넘겨진다 — 세로 여지가 있으면 기본 동작(세로),
@@ -14701,7 +14702,7 @@ const d60HasUnit=tr=>tr!=='land';
 const D60_A={ok:'양호',ng:'지적',na:'N/A'};
 const D60_SEED={civil:['미분양 세대','미분양 상가','입주자 예정 협의회','공동도급','기타'],unit:['현관','거실','침실','주방','욕실','발코니 · 다용도실'],common:['지하주차장','계단실 · 승강기홀','옥상 · 지붕','기계실 · 전기실','커뮤니티 · 부대시설','외부']};
 S.d60d=S.d60d||{};
-S.d60=S.d60||{tab:'insp',y:new Date().getFullYear(),m:new Date().getMonth()+1,reg:'',sid:'',tr:'arch',sc:'unit',sp:'',un:'',f:'all',sort:'date',dir:1,ed:null,dateEd:false,mx:'',mo:''};
+S.d60=S.d60||{tab:'insp',y:new Date().getFullYear(),m:new Date().getMonth()+1,reg:'',sid:'',tr:'arch',sc:'unit',sp:'',un:'',f:'all',sort:'date',dir:1,ed:null,mx:'',mo:''};
 const d60D=()=>S.d60d||{};
 const d60Nm=(list,k)=>{const h=list.find(x=>x[0]===k);return h?h[1]:k;};
 function d60Items(sp){const o=(sp&&sp.items)||{};return Object.keys(o).map(id=>({id,...o[id]})).sort((a,b)=>(a.ord||0)-(b.ord||0));}
@@ -14714,7 +14715,7 @@ function d60Insp(sid){return ((d60D().insp||{})[sid])||{};}
 function d60Fin(sid,tr){return !!(((d60Insp(sid).fin||{})[tr]));}
 function d60SiteFin(sid){const trs=D60_TR.map(([k])=>k).filter(k=>d60Tot(sid,k)>0);return trs.length>0&&trs.every(k=>d60Fin(sid,k));}
 function d60FinToggle(sid,tr){const on=d60Fin(sid,tr);if(on){d60Write('insp/'+sid+'/fin/'+tr,null);return;}
-  const left=Math.max(0,d60Tot(sid,tr)-d60Done(sid,tr));const go2=()=>{d60Write('insp/'+sid+'/fin/'+tr,Date.now());toast(d60Nm(D60_TR,tr)+' 점검 완료');};
+  const left=d60Left(sid,tr);const go2=()=>{d60Write('insp/'+sid+'/fin/'+tr,Date.now());toast(d60Nm(D60_TR,tr)+' 점검 완료');};
   if(left)confirmModal('점검 완료','미확인 '+left+'건이 남아 있습니다. '+d60Nm(D60_TR,tr)+' 점검을 완료로 표시할까요?',go2,'완료');else go2();}
 function d60HideMap(sid,tr,sc){return (((d60Insp(sid).hide||{})[tr]||{})[sc])||{};}
 function d60SForms(sid,tr,sc){const h=d60HideMap(sid,tr,sc);return d60Forms(tr,sc).filter(x=>!h[x.id]);}
@@ -14779,8 +14780,15 @@ function d60SpCnt(sid,tr,sc,sp,un){const res=d60Res(sid,tr);let n=0,t=0;
   sp.items.forEach(it=>{t++;const r=res[d60Key(sc,un,sp.id,it.id)];if(r&&r.a)n++;});return [n,t];}
 
 /* ═══ 그리기 ═══ */
+/* 946차(사용자 「폰에서 클릭이 씹힌다」): 손가락이 닿아 있는 동안(touchstart~touchend) 은 다시 그리지 않는다 —
+   iOS 사파리는 touchstart 를 받은 요소가 DOM 에서 빠지면 click 을 만들지 않는다. 실시간 갱신·focusout 재그리기가 탭 중간에 끼면 그 탭이 사라졌다 */
+let D60_TOUCH=false,D60_TOUCH_T=0;
+document.addEventListener('touchstart',()=>{D60_TOUCH=true;D60_TOUCH_T=Date.now();},{passive:true,capture:true});
+const d60TouchEnd=()=>{D60_TOUCH=false;setTimeout(()=>{if(S.view==='d60'&&S.d60._stale&&!D60_TOUCH&&!d60Editing()){S.d60._stale=false;rD60();}},80);};
+document.addEventListener('touchend',d60TouchEnd,{passive:true,capture:true});document.addEventListener('touchcancel',d60TouchEnd,{passive:true,capture:true});
 function rD60(){
   const root=$('#d60Root');if(!root||S.view!=='d60')return;
+  if(D60_TOUCH&&Date.now()-D60_TOUCH_T<1500){S.d60._stale=true;return;}   /* 1.5초 넘게 눌린 채면(길게 누르기·이벤트 유실) 그냥 그린다 */
   const st=S.d60,mob=isMob()&&!WIDGET;st._stale=false;   /* 918차: 어떤 길로든 다시 그렸으면 미뤄 둔 갱신은 반영된 것 */
   if(mob&&!st._origBoot){st._origBoot=true;d60OrigBoot();}   /* 935차: 저장 안 한 원본 수 */
   if(!mob&&!st.sid)d60PhAutoClean();   /* 944차: 하루 한 번 자동 사진 정리(데스크톱 목록에서) */
@@ -14808,6 +14816,11 @@ const d60UnitRow=(u,on)=>'<div class="u'+(on?' on':'')+'" role="button" tabindex
   +'<input class="d60-uin ho" value="'+esc(u.ho)+'" data-act="d60.uin" data-k="'+esc(u.id)+'" data-f="ho" inputmode="numeric" placeholder="호" aria-label="호" autocomplete="off">호'
   +'<button class="d60-ux" data-act="d60.unitDel" data-k="'+esc(u.id)+'" aria-label="세대 삭제"><svg class="icn"><use href="#i-close"></use></svg></button></div>';
 const d60UnitNm=u=>u?((u.dg||u.ho)?(u.dg?u.dg+'동 ':'')+(u.ho?u.ho+'호':''):'새 세대'):'';
+/* 949차(사용자): 년·달 카드는 데스크톱(3열)·폰(6열, `.d60-my6`) 공용 */
+/* 감사기 표식: data-act="d60.m" data-k(데스크톱) · data-act="d60.pm" data-k(폰) — 아래에서 act 변수로 조립한다 */
+function d60YearCard(mCnt,six){const st=S.d60,sel=six?(st.pm||0):st.m,act=six?'d60.pm':'d60.m',nowM=st.y===new Date().getFullYear()?new Date().getMonth()+1:0;   /* 950차: 폰은 st.pm(기본 없음) · 이번 달은 호버색(.cur) */
+  return '<div class="card d60-flat d60-ycard'+(six?' d60-my6':'')+'"><div class="mc-h"><div class="cal-move mc-move"><button class="cal-nb" data-act="d60.y" data-d="-1" aria-label="이전 해" data-tip="이전 해"><svg class="icn"><use href="#i-chevl"></use></svg></button><button class="mc-lbl" data-act="d60.y" data-d="0" aria-label="올해로" data-tip="올해로"'+(st.y===new Date().getFullYear()?' disabled':'')+'><b>'+st.y+'년</b></button><button class="cal-nb" data-act="d60.y" data-d="1" aria-label="다음 해" data-tip="다음 해"><svg class="icn"><use href="#i-chevr"></use></svg></button></div></div>'
+    +'<div class="d60-my">'+mCnt.map((n,i)=>'<button class="'+(n?'has':'')+(sel===i+1?' on':'')+(six&&nowM===i+1?' cur':'')+'" data-act="'+act+'" data-k="'+(i+1)+'"><span class="mn">'+(i+1)+'월</span><span class="mcn">'+(n?n+'건':'—')+'</span></button>').join('')+'</div></div>';}
 /* ── 목록(데스크톱): 좌 = 점검/서식 · 월 · 지도, 우 = 권역 탭 + 표 ── */
 function d60List(){
   const st=S.d60,regs=(S.org.regions||[]).filter(r=>r.name);
@@ -14834,8 +14847,7 @@ function d60List(){
   const regTabs=[['','전체',inYear.length]].concat(regs.map(r=>[r.id,r.name,inYear.filter(x=>x.s.region===r.id).length]));
   return '<div class="d60-grid"><div class="as">'
     +d60Sw('insp',[['insp','점검','i-ckboard'],['form','서식','i-form']])
-    +'<div class="card d60-flat d60-ycard"><div class="mc-h"><div class="cal-move mc-move"><button class="cal-nb" data-act="d60.y" data-d="-1" aria-label="이전 해" data-tip="이전 해"><svg class="icn"><use href="#i-chevl"></use></svg></button><button class="mc-lbl" data-act="d60.y" data-d="0" aria-label="올해로" data-tip="올해로"'+(st.y===new Date().getFullYear()?' disabled':'')+'><b>'+st.y+'년</b></button><button class="cal-nb" data-act="d60.y" data-d="1" aria-label="다음 해" data-tip="다음 해"><svg class="icn"><use href="#i-chevr"></use></svg></button></div></div>'
-      +'<div class="d60-my">'+mCnt.map((n,i)=>'<button class="'+(n?'has':'')+(st.m===i+1?' on':'')+'" data-act="d60.m" data-k="'+(i+1)+'"><span class="mn">'+(i+1)+'월</span><span class="mcn">'+(n?n+'건':'—')+'</span></button>').join('')+'</div></div>'
+    +d60YearCard(mCnt)
     +'<div class="card d60-flat"><div class="tm-h"><span>현장 지도</span><button class="btn tm-add" data-act="org.mapBig" aria-label="크게 보기" data-tip="크게 보기"><svg class="icn" aria-hidden="true"><use href="#i-expand"></use></svg></button></div><div id="d60Map"></div></div>'
     +'</div><div class="as">'
     +d60Tabs(st.reg,regTabs,'data-act="d60.reg" data-k')
@@ -14955,6 +14967,7 @@ function d60MobList(){
   const st=S.d60,regs=(S.org.regions||[]).filter(r=>r.name);
   const year=d60Sites().map(s=>({s,date:d60Date(s)})).filter(x=>x.date&&x.date.slice(0,4)===String(st.y)).sort((a,b)=>a.date.localeCompare(b.date));
   const today=todayStr();
+  const mCnt=Array.from({length:12},(_,i)=>year.filter(x=>Number(x.date.slice(5,7))===i+1).length);   /* 949차: 폰에도 데스크톱과 같은 달 카드(2행 6열) — 달을 누르면 그 달만, 다시 누르면 전체 */
   /* 940차(사용자): 상용 점검앱처럼 **상태**로 나눈다 — 「‹ 년 ›」 아래 균등 탭 「전체 · 예정 · 진행 중 · 완료」(월 칩 없음).
      완료 = 서식 있는 공종 전부 판정 · 진행 중 = 하나라도 판정 · 예정 = 아직 없음. 줄 오른쪽은 날짜 + (예정: D-n / n일 지남 · 진행 중: 판정/전체 · 완료: 완료) */
   const stat=x=>{const tot=D60_TR.reduce((n,[k])=>n+d60Tot(x.s.id,k),0),done=D60_TR.reduce((n,[k])=>n+d60Done(x.s.id,k),0);
@@ -14962,8 +14975,9 @@ function d60MobList(){
     return {tot,done,fin,prog,plan:!fin&&!prog,late:!d60DateSet(x.s)&&x.date<today,dd};};
   year.forEach(x=>{x.st=stat(x);});
   const ms=['all','plan','prog','fin'].includes(st.ms)?st.ms:'all';st.ms=ms;
-  const cnt={all:year.length,plan:year.filter(x=>x.st.plan).length,prog:year.filter(x=>x.st.prog).length,fin:year.filter(x=>x.st.fin).length};
-  const all=ms==='all'?year:year.filter(x=>x.st[ms]);
+  const pm=st.pm||0,inM=pm?year.filter(x=>Number(x.date.slice(5,7))===pm):year;   /* 달을 골랐으면 탭 수도 그 달 기준 */
+  const cnt={all:inM.length,plan:inM.filter(x=>x.st.plan).length,prog:inM.filter(x=>x.st.prog).length,fin:inM.filter(x=>x.st.fin).length};
+  const all=ms==='all'?inM:inM.filter(x=>x.st[ms]);
   const grp=[];
   regs.forEach(r=>{const l=all.filter(x=>x.s.region===r.id);if(l.length)grp.push([r.name,l]);});
   const none=all.filter(x=>!regs.some(r=>r.id===x.s.region));if(none.length)grp.push(['권역 미지정',none]);
@@ -14973,13 +14987,13 @@ function d60MobList(){
     let h='<div class="d60-mrow'+(open?' open':'')+'" data-act="d60.mx" data-sid="'+esc(s.id)+'"><span class="n"><span class="t">'+esc(s.name)+'</span>'+(o.name?'<span class="sub"><span class="d60-nm"><i style="background:'+esc(o.color)+'"></i>'+esc(o.name)+'</span></span>':'')+'</span>'
       +'<span class="r"><span class="d'+(set?'':(date<today?' late':' dim'))+'">'+esc(date)+'</span>'+(x.fin?'<span class="p fin">완료</span>':x.prog?'<span class="p">진행 중</span>':x.dd<0?'<span class="p late">D+'+(-x.dd)+'</span>':'<span class="p">'+(x.dd===0?'D-DAY':'D-'+x.dd)+'</span>')   /* 941차(사용자): D-n / D-DAY / D+n */+'</span><svg class="icn chev"><use href="#i-chevr"></use></svg></div>';
     if(open){   /* 921차(사용자): 공종마다 점검일 · 「양호 n · 지적 n · 미확인 n」 글자만(배지 없음) */
-      h+='<div class="d60-mxp"><div class="d60-mtr">'+D60_TR.map(([k,l])=>{const t=d60Tot(s.id,k),c=d60Cnt(s.id,k)||{ok:0,ng:0,na:0},left=Math.max(0,t-d60Done(s.id,k)),td=d60TrDate(s,k),tset=!!d60TrSet(s,k);
+      h+='<div class="d60-mxp"><div class="d60-mtr">'+D60_TR.map(([k,l])=>{const t=d60Tot(s.id,k),c=d60Cnt(s.id,k)||{ok:0,ng:0,na:0},left=d60Left(s.id,k),td=d60TrDate(s,k),tset=!!d60TrSet(s,k);
           return '<div class="d60-mtb"><button class="go" data-act="d60.open" data-sid="'+esc(s.id)+'" data-tr="'+k+'"><span class="l">'+l+'</span><span class="c">'+(t?(d60Fin(s.id,k)?'<span class="st fin">완료</span> · ':(d60Done(s.id,k)?'<span class="st">진행 중</span> · ':''))+'양호 '+c.ok+' · 지적 '+c.ng+' · 미확인 '+left:'서식 없음')+'</span></button>'
             +'<span class="d60-mdt'+(tset?'':' dim')+'"><span class="v">'+esc(td)+'</span><input type="date" class="d60-mdtin" value="'+esc(td)+'" data-sid="'+esc(s.id)+'" data-tr="'+k+'" aria-label="'+l+' 점검일"></span></div>';}).join('')+'</div></div>';
     }
     return h;};
   /* 939차(사용자): 「‹ 년 ›」 크게 가운데 · 배지 없음 · 940차: 아래 상태 탭 */
-  return '<div class="d60-mh d60-myh"><button class="d60-mcb" data-act="d60.y" data-d="-1" aria-label="이전 해"><svg class="icn"><use href="#i-chevl"></use></svg></button><span class="d60-mtt">'+st.y+'년</span><button class="d60-mcb" data-act="d60.y" data-d="1" aria-label="다음 해"><svg class="icn"><use href="#i-chevr"></use></svg></button>'+d60OrigBtn()+'</div>'
+  return (D60_ORIG_N&&!d60IsAndroid()?'<div class="d60-mh d60-myh">'+d60OrigBtn()+'</div>':'')+d60YearCard(mCnt,true)
     +'<div class="tkbar rk-tabbar d60-tabs d60-mst4"><div class="rp-tabs tkm-tabs tkbar-tabs">'+[['all','전체'],['plan','예정'],['prog','진행 중'],['fin','완료']].map(([k,l])=>'<button class="rp-tab'+(ms===k?' on':'')+'" data-act="d60.ms" data-k="'+k+'">'+l+'<span class="rp-tcnt">'+cnt[k]+'</span></button>').join('')+'</div></div>'
     +(grp.length?grp.map(([rn,list])=>'<div class="card d60-flat d60-mcard"><div class="d60-gh">'+esc(rn)+'</div>'+list.map(row).join('')+'</div>').join('')
       :'<div class="card d60-flat d60-mcard"><div class="d60-empty">'+st.y+'년에 점검할 현장이 없습니다</div></div>');
@@ -15056,10 +15070,15 @@ const D60_PHC={};   /* 'sid/tr/key' → {pid:{d,by,ts}} · 받는 중이면 'loa
 function d60PhLocal(){const d=LocalStore._d;d.d60photo=d.d60photo||{};return d.d60photo;}
 function d60PhCache(sid,tr,k){return D60_PHC[sid+'/'+tr+'/'+k];}
 function d60PhList(sid,tr,k){const o=d60PhCache(sid,tr,k);if(!o||o==='loading')return [];return Object.keys(o).map(id=>({id,...o[id]})).sort((a,b)=>(a.ts||0)-(b.ts||0));}
+const D60_PHW={};   /* 948차: 받는 중에 또 부르면 콜백을 줄 세운다(사진대지·추가가 영원히 기다리던 것) */
 function d60PhLoad(sid,tr,k,cb){   /* 한 번만 받는다 — 같은 창에서 두 번째부터는 캐시 */
-  const key=sid+'/'+tr+'/'+k;if(D60_PHC[key])return;D60_PHC[key]='loading';
-  const done=v=>{D60_PHC[key]=v||{};if(cb)cb();else rD60();};
-  if(S.live&&FB.db)FB.db.ref('calapp/d60photo/'+sid+'/'+tr+'/'+k).get().then(s=>done(s.val())).catch(e=>{fbErr(e);D60_PHC[key]=null;});
+  const key=sid+'/'+tr+'/'+k;
+  if(D60_PHC[key]==='loading'){if(cb)(D60_PHW[key]=D60_PHW[key]||[]).push(cb);return;}
+  if(D60_PHC[key]){if(cb)cb();return;}
+  D60_PHC[key]='loading';if(cb)(D60_PHW[key]=D60_PHW[key]||[]).push(cb);
+  const fin=()=>{const w=D60_PHW[key]||[];delete D60_PHW[key];if(w.length)w.forEach(f=>{try{f();}catch(e){}});else rD60();};
+  const done=v=>{const cur=D60_PHC[key];D60_PHC[key]={...(v||{}),...(cur&&cur!=='loading'?cur:{})};fin();};   /* 받는 사이 찍어 넣은 사진을 잃지 않는다 */
+  if(S.live&&FB.db)FB.db.ref('calapp/d60photo/'+sid+'/'+tr+'/'+k).get().then(s=>done(s.val())).catch(e=>{fbErr(e);D60_PHC[key]=null;fin();});
   else setTimeout(()=>done((((d60PhLocal()[sid]||{})[tr]||{})[k])||{}),0);
 }
 function d60PhBlob(d){const i=d.indexOf(',');const mime=(d.slice(0,i).match(/data:([^;]+)/)||[])[1]||'image/jpeg';const bin=atob(d.slice(i+1));const u=new Uint8Array(bin.length);for(let j=0;j<bin.length;j++)u[j]=bin.charCodeAt(j);return new Blob([u],{type:mime});}
@@ -15099,32 +15118,28 @@ async function d60OrigKeep(sid,tr,k,file){   /* 찍은 원본 — 안드로이�
   const ts=Date.now(),name=d60OrigName(sid,tr,k,ts);
   if(d60IsAndroid()){const url=URL.createObjectURL(file);const a=document.createElement('a');a.href=url;a.download=name;   /* 939차(사용자): iOS 와 같은 이름(현장_위치_날짜_시각) — 헤드리스 크로뮴은 한글 이름을 버렸지만 실기 크롬은 UTF-8 이름을 쓴다(실기 확인) */document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);return;}
   if(isMob()){
-    /* 937차(사용자): 묻지 않고 바로 공유 시트 — 촬영 뒤 change 가 사용자 동작으로 인정되면 바로 열린다(iOS 「이미지 저장」 한 번은 OS 몫).
-       NotAllowedError(동작 아님)면 그때만 「앨범에 저장」 창을 거친다. 실패·취소는 대기열(「원본 n」)에 남는다 */
-    const f=new File([file],name,{type:file.type||'image/jpeg'});
-    if(navigator.share&&navigator.canShare&&navigator.canShare({files:[f]})){
-      try{await navigator.share({files:[f]});return;}catch(e){if(e&&e.name==='AbortError')return;}
-    }else{toast('이 브라우저는 앨범 저장을 지원하지 않습니다');return;}
-    const id=uid();try{await d60OrigPut({id,ts,name,type:file.type||'image/jpeg',blob:file});}catch(e){toast('원본을 보관하지 못했습니다');return;}rD60();d60OrigAsk(id,file);}
+    /* 947차(사용자): iOS 실기에서 촬영 뒤 change 는 사용자 동작으로 인정되지 않아 시트가 안 떴다(937차 시도 실패 → 「앨범에 저장」 창이 떴다).
+       그래서 원본을 메모리+IDB 에 두고, **다음 판정 탭(양호·지적·N/A) 안에서** 공유 시트를 연다(d60OrigFlush) — 찍고 판정 누르면 「이미지 저장」 한 번.
+       판정을 안 누르면 「원본 n」이 남아 거기서 연다. 창은 띄우지 않는다 */
+    const f=new File([file],name,{type:file.type||'image/jpeg'}),id=uid();
+    if(!(navigator.share&&navigator.canShare&&navigator.canShare({files:[f]})))return;   /* 948차: 공유 시트가 없는 브라우저(좁은 PC 창 등)면 쌓지 않는다 */
+    try{await d60OrigPut({id,ts,name,type:f.type,blob:file});}catch(e){toast('원본을 보관하지 못했습니다');return;}
+    D60_ORIG_MEM.push({id,file:f});if(D60_ORIG_MEM.length>D60_ORIG_MEMMAX)D60_ORIG_MEM.shift();rD60();}
 }
-/* 936차(사용자): 찍을 때마다 바로 묻는다 — 공유 시트는 클릭 안에서만 열리므로 「앨범에 저장」 단추를 한 번 거친다. 「나중에」면 대기열에 남아 「원본 n」으로 */
-function d60OrigAsk(id,file){
-  const url=URL.createObjectURL(file);
-  openModal('','<div class="d60-oa"><img src="'+url+'" alt=""><div class="t">원본을 앨범에 저장할까요?<span class="s">'+(file.size/1048576).toFixed(1)+'MB</span></div></div>',
-    '<button class="btn bg2" data-act="modal.close">나중에</button><button class="btn bp" data-act="d60.origOne" data-k="'+id+'">앨범에 저장</button>');
-  $('#mb').classList.add('nott','d60-oam');
-  setTimeout(()=>URL.revokeObjectURL(url),120000);
-}
-async function d60OrigOne(id){
-  const all=await d60OrigAll();const x=all.find(r=>r.id===id);if(!x){closeModal();return;}
-  const files=[new File([x.blob],x.name,{type:x.type||'image/jpeg'})];
-  if(!navigator.share||!navigator.canShare||!navigator.canShare({files})){toast('이 브라우저는 앨범 저장을 지원하지 않습니다');return;}
-  try{await navigator.share({files});}catch(e){if(e&&e.name==='AbortError')return;toast('저장하지 못했습니다 — 다시 눌러 주세요');return;}
-  await d60OrigDel([id]);closeModal();rD60();
+const D60_ORIG_MEM=[],D60_ORIG_MEMMAX=20;
+async function d60OrigMemLoad(){try{const all=(await d60OrigAll()).sort((a,b)=>(a.ts||0)-(b.ts||0)).slice(0,D60_ORIG_MEMMAX);D60_ORIG_MEM.length=0;all.forEach(x=>D60_ORIG_MEM.push({id:x.id,file:new File([x.blob],x.name,{type:x.type||'image/jpeg'})}));}catch(e){}}   /* 이 창에서 찍은 원본(File) — 클릭 안에서 바로 share 하려고 메모리에 들고 있는다(IDB 읽기는 비동기라 동작 인정이 풀린다) */
+function d60OrigFlush(){   /* 클릭(동작) 안에서만 부른다. 성공하면 IDB 에서도 지운다 */
+  if(!D60_ORIG_MEM.length||!navigator.share||!navigator.canShare)return false;
+  const batch=D60_ORIG_MEM.slice(0,D60_ORIG_BATCH),files=batch.map(x=>x.file);
+  if(!navigator.canShare({files}))return false;
+  navigator.share({files}).then(async()=>{batch.forEach(x=>{const i=D60_ORIG_MEM.indexOf(x);if(i>=0)D60_ORIG_MEM.splice(i,1);});await d60OrigDel(batch.map(x=>x.id));await d60OrigMemLoad();rD60();})
+    .catch(e=>{if(!(e&&e.name==='AbortError'))toast('앨범 저장이 안 됐습니다 — 「원본」을 눌러 다시');});
+  return true;
 }
 function d60OrigBtn(){if(!isMob()||!D60_ORIG_N||d60IsAndroid())return '';
   return '<button class="d60-osv'+(D60_ORIG_N>=D60_ORIG_BATCH?' hot':'')+'" data-act="d60.origSave" aria-label="원본 앨범에 저장">'+d60PhCam+'원본 '+D60_ORIG_N+'</button>';}
-async function d60OrigSave(){   /* 클릭 안에서: IDB 에서 한 묶음 읽어 공유 시트 → 「이미지 저장」 */
+async function d60OrigSave(){   /* 클릭 안에서: 메모리에 있으면 바로, 아니면 IDB 에서 한 묶음 읽어 공유 시트 → 「이미지 저장」 */
+  if(d60OrigFlush())return;
   const all=(await d60OrigAll()).sort((a,b)=>(a.ts||0)-(b.ts||0)).slice(0,D60_ORIG_BATCH);
   if(!all.length){toast('저장할 원본이 없습니다');return;}
   const files=all.map(x=>new File([x.blob],x.name,{type:x.type||'image/jpeg'}));
@@ -15133,7 +15148,9 @@ async function d60OrigSave(){   /* 클릭 안에서: IDB 에서 한 묶음 읽�
   await d60OrigDel(all.map(x=>x.id));rD60();
   toast(all.length+'장을 앨범에 넘겼습니다'+(D60_ORIG_N?' — 남은 원본 '+D60_ORIG_N:''));
 }
-async function d60OrigBoot(){if(!isMob()||d60IsAndroid())return;await d60OrigCount();if(!D60_ORIG_N)return;rD60();
+async function d60OrigBoot(){if(!isMob()||d60IsAndroid())return;await d60OrigCount();if(!D60_ORIG_N)return;
+  /* 948차: 다시 연 뒤에도 「원본 n」이 클릭 안에서 바로 share 하도록 IDB 의 원본을 메모리(File)로 올려 둔다(비동기 읽기 뒤 share 는 iOS 가 막는다) */
+  await d60OrigMemLoad();rD60();
   if(D60_ORIG_OLD&&Date.now()-D60_ORIG_OLD>D60_ORIG_WARN_D*864e5)toast('저장 안 한 원본 '+D60_ORIG_N+'장이 '+D60_ORIG_WARN_D+'일 넘게 있습니다 — 「원본」을 눌러 앨범에 저장하세요');}
 async function d60PhAdd(sid,tr,k,files,fromCam){
   const have=d60PhCount(sid,tr,k),room=D60_PHOTO_MAX-have;
@@ -15146,6 +15163,12 @@ async function d60PhAdd(sid,tr,k,files,fromCam){
   d60Write('insp/'+sid+'/phb',(d60Insp(sid).phb||0)+bytes);
   d60Write(d60PhCntPath(sid,tr,k),n);
   if($('#mo')&&$('#mo').classList.contains('open')&&$('#mb').classList.contains('d60-pvm'))d60PhModal(k);
+}
+function d60PhDropAll(sid,tr,k){   /* 948차: 세대·접수를 지울 때 그 키의 사진 노드도 지우고 phb 를 줄인다(장수 기록은 레코드와 함께 사라진다) */
+  const key=sid+'/'+tr+'/'+k,c=D60_PHC[key];let bytes=0;if(c&&c!=='loading')Object.values(c).forEach(p=>{bytes+=(p.d||'').length;});
+  delete D60_PHC[key];
+  if(S.live&&FB.db)FB.db.ref('calapp/d60photo/'+sid+'/'+tr+'/'+k).remove().catch(fbErr);else{const d=d60PhLocal();if(d[sid]&&d[sid][tr]){delete d[sid][tr][k];lsSave(LocalStore._d);}}
+  if(bytes)d60Write('insp/'+sid+'/phb',Math.max(0,(d60Insp(sid).phb||0)-bytes));
 }
 function d60PhDel(sid,tr,k,pid){
   const list=d60PhList(sid,tr,k),p=list.find(x=>x.id===pid);if(!p)return;
@@ -15212,6 +15235,7 @@ async function d60ToPd(){
 }
 /* 사진 정리 — 대표 점검일이 1년 지난 현장의 사진을 지운다(저장 1GB). 944차(사용자): 단추 없이 **자동** — 하루 한 번, 점검 화면을 열 때 */
 function d60PhAutoClean(){
+  if(!isEditor())return;   /* 948차: 보기 전용 계정은 지우지 않는다 */
   const key='calapp.d60phclean',today=todayStr();try{if(localStorage.getItem(key)===today)return;}catch(e){}
   if(!d60Sites().length)return;
   const lim=new Date();lim.setFullYear(lim.getFullYear()-1);const ls=lim.toISOString().slice(0,10);
@@ -15235,7 +15259,7 @@ function d60HideSheet(){
   const st=S.d60,sid=st.sid;if(!sid)return;
   const body=d60SC(st.tr).map(([sc,nm])=>{const h=d60HideMap(sid,st.tr,sc),list=d60Forms(st.tr,sc);if(!list.length)return '';
     return '<div class="d60-hs"><div class="d60-hsh">'+nm+'</div>'+list.map(s=>'<label class="d60-hsr"><span class="n">'+esc(s.name)+'</span><span class="sw"><input type="checkbox"'+(h[s.id]?'':' checked')+' data-act="d60.hideSw" data-sc="'+sc+'" data-k="'+esc(s.id)+'" aria-label="'+esc(s.name)+' 보이기"><span class="sw-t"></span></span></label>').join('')+'</div>';}).join('');
-  openModal('공간 숨기기',body,'<button class="btn bp" data-act="modal.close">닫기</button>');
+  openModal('공간 숨기기',body,'');$('#mb').classList.add('d60-hsm');   /* 946차(사용자): 우상단 X · 제목 고정, 본문만 구른다 */
 }
 function d60CivilModal(){
   openModal('민원 접수','<div class="d60-um"><label>동<input id="d60Dg" class="inp" inputmode="numeric" placeholder="104" autocomplete="off"></label><label>호<input id="d60Ho" class="inp" inputmode="numeric" placeholder="501" autocomplete="off"></label></div>'
@@ -15310,7 +15334,7 @@ window.addEventListener('afterprint',()=>{if(_d60AutoPrint){_d60AutoPrint=false;
    민원사항은 서식이 없어(현장 접수) 건너뛰고 알린다. 쓰기는 한 번의 multi-path update. */
 function d60WriteMany(patch){   /* {상대경로:값} 을 한 번에 — 로컬 모드는 d60Write 를 돌린다 */
   const keys=Object.keys(patch);if(!keys.length)return;
-  if(S.live&&FB.db){keys.forEach(k=>{const seg=k.split('/');let o=S.d60d;for(let i=0;i<seg.length-1;i++){o=o[seg[i]]=o[seg[i]]||{};}o[seg[seg.length-1]]=patch[k];});
+  if(S.live&&FB.db){keys.forEach(k=>{const seg=k.split('/');let o=S.d60d;for(let i=0;i<seg.length-1;i++){o=o[seg[i]]=o[seg[i]]||{};}const last=seg[seg.length-1];if(patch[k]==null)delete o[last];else o[last]=patch[k];});   /* 948차: null 은 지운다(d60Write 와 같게) */
     FB.db.ref('calapp/d60').update(patch).catch(fbErr);rD60();}
   else keys.forEach(k=>d60Write(k,patch[k]));
 }
@@ -15367,6 +15391,7 @@ Object.assign(ACT,{
   'd60.y':el=>{const d=Number(el.dataset.d);S.d60.y=d?S.d60.y+d:new Date().getFullYear();d60Go();},
   'd60.m':el=>{const m=Number(el.dataset.k);S.d60.m=(!m||S.d60.m===m)?0:m;d60Go();},
   'd60.ms':el=>{S.d60.ms=el.dataset.k;d60Go();},   /* 940차: 폰 상태 탭 */
+  'd60.pm':el=>{const m=Number(el.dataset.k);S.d60.pm=(!m||S.d60.pm===m)?0:m;d60Go();},   /* 950차: 폰 달 필터(기본 없음) */
   'd60.reg':el=>{S.d60.reg=el.dataset.k;d60Go();},
   'd60.open':el=>{S.d60.sid=el.dataset.sid;if(el.dataset.tr)S.d60.tr=el.dataset.tr;if(S.d60.sc==='all')S.d60.sc='unit';S.d60.sp='';S.d60.f='all';S.d60.mo='';d60Go();},
   'd60.mx':el=>{const sid=el.dataset.sid;S.d60.mx=S.d60.mx===sid?'':sid;rD60();},   /* 920차: 폰 목록 행 펼침 */
@@ -15377,7 +15402,7 @@ Object.assign(ACT,{
   'd60.sc':el=>{S.d60.sc=el.dataset.k;S.d60.sp='';d60Go();},
   'd60.sp':el=>{S.d60.sc=el.dataset.sc||S.d60.sc;S.d60.sp=el.dataset.k;d60Go();},
   'd60.un':el=>{const k=el.dataset.k;if(isMob()&&!WIDGET&&S.d60.sc==='unit'&&S.d60.un===k){const u=d60Units(S.d60.sid).find(x=>x.id===k);if(u)d60UnitModal(u);return;}   /* 924·928차: 폰에서 고른 세대 탭을 다시 누르면 팝업으로 고침 */
-    S.d60.sc='unit';S.d60.un=k;d60Go();},
+    if(S.d60.sc!=='unit')S.d60.sp='';S.d60.sc='unit';S.d60.un=k;d60Go();},   /* 948차: 공용부 공간이 남아 표가 비던 것 */
   'd60.f':el=>{S.d60.f=el.dataset.k;d60Go();},
   'd60.sort':el=>{const k=el.dataset.k;if(S.d60.sort===k)S.d60.dir=-S.d60.dir;else{S.d60.sort=k;S.d60.dir=1;}d60Go();},
   /* 점검일 — 칸을 누르면 날짜 입력으로 바뀐다. 고치면 확정(진하게) */
@@ -15390,7 +15415,7 @@ Object.assign(ACT,{
     if(k){d60Write('insp/'+sid+'/units/'+k+'/dg',dg);d60Write('insp/'+sid+'/units/'+k+'/ho',ho);}
     else{const id=uid();S.d60.sc='unit';S.d60.un=id;d60Write('insp/'+sid+'/units/'+id,{dg,ho,ord:d60Units(sid).length+1});}},
   'd60.unitAdd':()=>{if(!S.d60.sid)return;if(isMob()&&!WIDGET){d60UnitModal(null);return;}   /* 928차: 폰은 팝업 */
-    const id=uid(),ord=d60Units(S.d60.sid).length+1;S.d60.sc='unit';S.d60.un=id;S.d60.ed=null;
+    const id=uid(),ord=d60Units(S.d60.sid).length+1;if(S.d60.sc!=='unit')S.d60.sp='';S.d60.sc='unit';S.d60.un=id;S.d60.ed=null;   /* 948차: 공용부 공간이 남아 표가 비던 것 */
     d60Write('insp/'+S.d60.sid+'/units/'+id,{dg:'',ho:'',ord});
     const i=$('#d60Root .d60-uin[data-k="'+id+'"][data-f="dg"]');if(i)i.focus();},
   /* 세대 칸을 누르면 그 세대를 고르되, 다시 그려도 커서는 그 칸에 남긴다 */
@@ -15398,10 +15423,11 @@ Object.assign(ACT,{
     const i=$('#d60Root .d60-uin[data-k="'+k+'"][data-f="'+f+'"]');if(i){i.focus();}},
   'd60.unitDel':el=>{const id=el.dataset.k,sid=S.d60.sid;
     confirmModal('세대 삭제','이 세대의 판정도 함께 지워집니다. 삭제할까요?',()=>{
-      const res=d60Insp(sid).res||{};const patch={};Object.keys(res).forEach(tr=>Object.keys(res[tr]||{}).forEach(k=>{if(k.startsWith('u|'+id+'|'))d60Write('insp/'+sid+'/res/'+tr+'/'+k,null);}));
-      if(S.d60.un===id)S.d60.un='';d60Write('insp/'+sid+'/units/'+id,null);},'삭제',true);},
+      const res=d60Insp(sid).res||{};const patch={};Object.keys(res).forEach(tr=>Object.keys(res[tr]||{}).forEach(k=>{if(k.startsWith('u|'+id+'|')){patch['insp/'+sid+'/res/'+tr+'/'+k]=null;if(res[tr][k]&&res[tr][k].ph)d60PhDropAll(sid,tr,k);}}));
+      patch['insp/'+sid+'/units/'+id]=null;if(S.d60.un===id)S.d60.un='';d60WriteMany(patch);},'삭제',true);},   /* 948차: 한 번에 쓰고 사진도 함께 지운다 */
   'd60.ansCell':el=>{if(isMob()&&!WIDGET)return;const k=el.dataset.k;if(S.d60.ed&&S.d60.ed.kind==='ans'&&S.d60.ed.key===k)return;S.d60.ed={kind:'ans',key:k};rD60();},
   'd60.ans':el=>{const k=el.dataset.k,a=el.dataset.a||'',sid=S.d60.sid,tr=S.d60.tr;S.d60.ed=null;S.d60.mo=a?'':k;   /* 폰: 판정하면 접히고, 지우면 펼쳐 둔다 */
+    if(isMob()&&!d60IsAndroid())d60OrigFlush();   /* 947차: 찍어 둔 원본이 있으면 이 탭 안에서 앨범 저장 시트 */
     if(a)d60Touch(sid);
     if(S.d60.sc==='civil'&&!k.startsWith('v|')){d60Write('insp/'+sid+'/civil/'+tr+'/'+k+'/a',a||null);if(a){const st=d60Stamp();d60Write('insp/'+sid+'/civil/'+tr+'/'+k+'/by',st.by);d60Write('insp/'+sid+'/civil/'+tr+'/'+k+'/ts',st.ts);}return;}
     const cur=(d60Res(sid,tr)[k])||{};
@@ -15413,7 +15439,7 @@ Object.assign(ACT,{
   'd60.civilSave':()=>{const dg=(($('#d60Dg')||{}).value||'').trim().replace(/동$/,''),ho=(($('#d60Ho')||{}).value||'').trim().replace(/호$/,''),tx=(($('#d60Tx')||{}).value||'').trim();
     if(!tx){toast('내용을 입력하세요');return;}closeModal();S.d60.sc='civil';S.d60.sp=D60_RCV;
     d60Write('insp/'+S.d60.sid+'/civil/'+S.d60.tr+'/'+uid(),{dg,ho,txt:tx.slice(0,200),ts:Date.now()});},
-  'd60.civilDel':el=>{const k=el.dataset.k;confirmModal('민원 삭제','이 접수를 지울까요?',()=>d60Write('insp/'+S.d60.sid+'/civil/'+S.d60.tr+'/'+k,null),'삭제',true);},
+  'd60.civilDel':el=>{const k=el.dataset.k;confirmModal('민원 삭제','이 접수를 지울까요?',()=>{const sid=S.d60.sid,tr=S.d60.tr;const x=(((d60Insp(sid).civil||{})[tr])||{})[k];if(x&&x.ph)d60PhDropAll(sid,tr,k);d60Write('insp/'+sid+'/civil/'+tr+'/'+k,null);},'삭제',true);},
   /* 서식 */
   'd60.spPick':el=>{S.d60.sc=el.dataset.sc;S.d60.sp=el.dataset.k||'';d60Go();},
   'd60.fAll':()=>{S.d60.sc='all';S.d60.sp='';d60Go();},   /* 930차: 서식 전부 보기 */
@@ -15425,7 +15451,7 @@ Object.assign(ACT,{
   /* 934차: 사진 */
   'd60.phView':el=>d60PhModal(el.dataset.k),
   'd60.phOne':el=>d60PhOne(el.dataset.k,el.dataset.pid),
-  'd60.phDel':el=>{const {k,pid}=el.dataset;confirmModal('사진 삭제','이 사진을 지울까요?',()=>{d60PhDel(S.d60.sid,S.d60.tr,k,pid);if($('#mb').classList.contains('d60-pvm')){closeModal();if(!isMob())d60PhModal(k);}},'삭제',true);},
+  'd60.phDel':el=>{const {k,pid}=el.dataset;const wasPv=$('#mb').classList.contains('d60-pvm');confirmModal('사진 삭제','이 사진을 지울까요?',()=>{d60PhDel(S.d60.sid,S.d60.tr,k,pid);closeModal();if(wasPv&&!isMob())d60PhModal(k);},'삭제',true);},   /* 948차: confirm 이 #mb 클래스를 지우므로 미리 잡아 둔다 */
   'd60.toPd':()=>d60ToPd(),
   /* 944차(사용자): 서식 초기화 — 설정 · 관리자만. 서식 전체(공종·구분·공간·항목)를 지운다. 점검 결과는 남지만 항목과 연결이 끊긴다 */
   'd60.formReset':()=>{if(!isEditor())return denyEdit();
@@ -15439,7 +15465,6 @@ Object.assign(ACT,{
     i.onchange=()=>{if(i.files&&i.files[0])d60Import(i.files[0],()=>{go('d60');S.d60.tab='form';S.d60.sid='';S.d60.sc='all';S.d60.sp='';rD60();});};i.click();},
   'd60.fin':()=>{if(S.d60.sid)d60FinToggle(S.d60.sid,S.d60.tr);},   /* 942차 */
   'd60.origSave':()=>d60OrigSave(),
-  'd60.origOne':el=>d60OrigOne(el.dataset.k),
 
   'd60.spAdd':el=>{const sc=el.dataset.sc,id=uid(),ord=d60Forms(S.d60.tr,sc).length+1;S.d60.sc=sc;S.d60.sp=id;
     d60Write('forms/'+S.d60.tr+'/'+sc+'/'+id,{name:'새 공간',ord});
@@ -15447,7 +15472,7 @@ Object.assign(ACT,{
   'd60.spDel':el=>{const sc=el.dataset.sc,id=el.dataset.k;const sp=d60Forms(S.d60.tr,sc).find(x=>x.id===id);
     confirmModal('공간 삭제','「'+((sp&&sp.name)||'')+'」과 안의 항목 '+(sp?sp.items.length:0)+'개를 지울까요? 이미 점검한 결과는 남습니다.',()=>d60Write('forms/'+S.d60.tr+'/'+sc+'/'+id,null),'삭제',true);},
   'd60.spRen':el=>{if(!el.readOnly)return;const {sc,k}=el.dataset;if(S.d60.sc===sc&&S.d60.sp===k)return;S.d60.sc=sc;S.d60.sp=k;rD60();},   /* 931차: 한 번 = 고르기 · 두 번 = 이름 고치기(dblclick 아래) */
-  'd60.seed':el=>{const sc=el.dataset.sc;if(!D60_SEED[sc])return;const o={};D60_SEED[sc].forEach((nm,i)=>{o[uid()+i]={name:nm,ord:i+1};});d60Write('forms/'+S.d60.tr+'/'+sc,o);},
+  'd60.seed':el=>{const sc=el.dataset.sc;if(!D60_SEED[sc]||d60Forms(S.d60.tr,sc).length)return;const o={};   /* 948차: 비어 있을 때만(set 이라 덮어쓴다) */D60_SEED[sc].forEach((nm,i)=>{o[uid()+i]={name:nm,ord:i+1};});d60Write('forms/'+S.d60.tr+'/'+sc,o);},
   /* 930차: 항목은 빈 줄을 바로 만들고 칸에 커서 — 편집 모드 없음 */
   'd60.itAdd':()=>{const st=S.d60;if(st.sc==='all'||!st.sp)return;const cur=d60Forms(st.tr,st.sc).find(x=>x.id===st.sp);if(!cur)return;const id=uid();
     d60Write('forms/'+st.tr+'/'+st.sc+'/'+cur.id+'/items/'+id,{gj:'',q:'',act:'',ord:cur.items.length+1});
@@ -15481,7 +15506,7 @@ document.addEventListener('change',e=>{
     const cur=(d60Res(sid,tr)[k])||{};
     /* 서식 기본값과 같으면 덧쓰기를 지운다 — 서식이 바뀌면 따라가게 */
     const base=d60Base(tr,S.d60.sc,k);
-    const next={...cur};if(v===base)delete next.act;else next.act=v;if(!next.a&&next.act==null){d60Write('insp/'+sid+'/res/'+tr+'/'+k,null);return;}
+    const next={...cur};if(v===base)delete next.act;else next.act=v;if(!next.a&&next.act==null){d60Write('insp/'+sid+'/res/'+tr+'/'+k,next.ph?{ph:next.ph}:null);return;}   /* 948차: 사진 수는 남긴다 */
     d60Write('insp/'+sid+'/res/'+tr+'/'+k,{...next,...d60Stamp()});return;}
 });
 document.addEventListener('keydown',e=>{
@@ -15503,7 +15528,7 @@ document.addEventListener('copy',e=>{
   const sel=window.getSelection();if(!sel||sel.isCollapsed||!sel.rangeCount)return;
   const a=sel.anchorNode&&(sel.anchorNode.nodeType===1?sel.anchorNode:sel.anchorNode.parentElement);const tbl=a&&a.closest&&a.closest('#d60Root table');if(!tbl)return;
   const rows=[...tbl.querySelectorAll('tr')].filter(tr=>sel.containsNode(tr,true));if(rows.length<2)return;   /* 한 줄 안에서는 기본 복사(칸 하나 복사가 대부분) */
-  const tsv=rows.map(tr=>[...tr.children].filter(td=>!td.classList.contains('d60-ops')).map(td=>td.textContent.replace(/\s+/g,' ').trim()).join('\t')).join('\n');
+  const tsv=rows.map(tr=>[...tr.children].map(td=>td.textContent.replace(/\s+/g,' ').trim()).join('\t')).join('\n');
   e.clipboardData.setData('text/plain',tsv);e.preventDefault();
 });
 /* 918차: 미뤄 둔 실시간 갱신 — 입력을 마치면(포커스가 나가면) 그때 다시 그린다 */
@@ -15541,15 +15566,15 @@ document.addEventListener('drop',e=>{if(!D60_DRAG)return;const row=e.target.clos
   if(!row||row===d.el||row.dataset.sc!==d.sc||(row.dataset.sp||'')!==d.sp)return;e.preventDefault();
   const tr=S.d60.tr;
   if(d.kind==='sp'){const list=d60Forms(tr,d.sc).map(x=>x.id);const from=list.indexOf(d.k),to=list.indexOf(row.dataset.k);if(from<0||to<0)return;list.splice(to,0,list.splice(from,1)[0]);
-    const base='forms/'+tr+'/'+d.sc+'/',cur=d60Forms(tr,d.sc);list.forEach((id,n)=>{const x=cur.find(y=>y.id===id);if(x&&x.ord!==n+1)d60Write(base+id+'/ord',n+1);});}
+    const base='forms/'+tr+'/'+d.sc+'/',cur=d60Forms(tr,d.sc),patch={};list.forEach((id,n)=>{const x=cur.find(y=>y.id===id);if(x&&x.ord!==n+1)patch[base+id+'/ord']=n+1;});d60WriteMany(patch);}   /* 948차: 한 번에 */
   else{const sp=d60Forms(tr,d.sc).find(x=>x.id===d.sp);if(!sp)return;const list=sp.items.map(x=>x.id);const from=list.indexOf(d.k),to=list.indexOf(row.dataset.k);if(from<0||to<0)return;list.splice(to,0,list.splice(from,1)[0]);
-    const base='forms/'+tr+'/'+d.sc+'/'+sp.id+'/items/';list.forEach((id,n)=>{const x=sp.items.find(y=>y.id===id);if(x&&x.ord!==n+1)d60Write(base+id+'/ord',n+1);});}});
+    const base='forms/'+tr+'/'+d.sc+'/'+sp.id+'/items/',patch={};list.forEach((id,n)=>{const x=sp.items.find(y=>y.id===id);if(x&&x.ord!==n+1)patch[base+id+'/ord']=n+1;});d60WriteMany(patch);}});
 document.addEventListener('dragend',()=>{D60_DRAG=null;$$('#d60Root .d60-dover,#d60Root .d60-dragging').forEach(x=>x.classList.remove('d60-dover','d60-dragging'));});
 /* 결과 칸 우클릭 = 판정 지움(사용자) — 「지움」 단추 대신 */
 document.addEventListener('contextmenu',e=>{if(S.view!=='d60')return;const c=e.target.closest&&e.target.closest('.d60-ac[data-k]');if(!c)return;
   e.preventDefault();S.d60.ed=null;ACT['d60.ans']({dataset:{k:c.dataset.k,a:''}});});
 /* 조치사항 칸 밖을 누르면 편집을 접는다(값은 change 가 이미 저장) */
-document.addEventListener('mousedown',e=>{if(S.view!=='d60'||!S.d60.ed||S.d60.ed.kind==='item')return;
+document.addEventListener('mousedown',e=>{if(S.view!=='d60'||!S.d60.ed)return;
   if(!e.target.closest('.d60-actin,.d60-as,.d60-ac[data-k="'+S.d60.ed.key+'"]')){S.d60.ed=null;setTimeout(rD60,0);}},true);
 
 /* ═══════════ 부팅 ═══════════ */
