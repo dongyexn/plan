@@ -4464,6 +4464,9 @@ body.qc-dragging{user-select:none}
 .d60-zone-hx .chev{width:14px;height:14px;transition:transform var(--tr)}.d60-zone-hx.open .chev{transform:rotate(180deg)}
 .d60-zone-hid{color:var(--lbl3);cursor:default;padding-top:6px;padding-bottom:6px}
 .d60-hs{margin-top:8px}.d60-hs+.d60-hs{margin-top:14px}
+#mb.d60-hsm{display:flex;flex-direction:column;overflow:hidden;padding-bottom:0}#mb.d60-hsm .mt2{flex-shrink:0;margin-bottom:10px}#mb.d60-hsm #mbody{flex:1 1 auto;min-height:0;overflow-y:auto;padding-bottom:20px;margin:0 -28px;padding-left:28px;padding-right:28px}#mb.d60-hsm .mf2{display:none}   /* 946차: 제목 고정 · 본문만 구름 */
+/* 946차(사용자 「폰 클릭 씹힘」): iOS 사파리는 document 위임 click 을 cursor:pointer 없는 div/span 에서 안 만든다 */
+#d60Root.d60-mob [data-act],#mss [data-act],#mtab [data-act]{cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,.06)}
 .d60-hsh{font-size:12px;font-weight:700;color:var(--lbl3);padding:0 2px 6px}
 .d60-hsr{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:40px;padding:0 2px;border-top:1px solid var(--sep);font-size:14px;color:var(--lbl)}
 .d60-hsr .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -4502,11 +4505,6 @@ td.d60-pc:hover{background:var(--fill)}
 .d60-osv{display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 10px;border-radius:14px;border:0;background:var(--b600);color:#fff;font-size:12.5px;font-weight:700;flex:0 0 auto}
 .d60-osv .icn{width:14px;height:14px}
 .d60-osv.hot{background:var(--rd)}
-/* 936차: 찍은 직후 「원본을 앨범에 저장할까요」 */
-.d60-oa{display:flex;gap:12px;align-items:center;margin-top:4px;padding-right:28px}
-.d60-oa img{width:72px;height:72px;object-fit:cover;border-radius:3px;flex:0 0 auto;background:var(--fill)}
-.d60-oa .t{font-size:14px;font-weight:700;color:var(--lbl);line-height:1.4}
-.d60-oa .s{display:block;margin-top:4px;font-size:12px;font-weight:400;color:var(--lbl3)}
 .tm-empty.d60-te{text-align:center;padding:14px 4px}
 .d60-ulist{display:flex;flex-direction:column;gap:6px;padding:8px 10px;background:var(--surf2);border-bottom:1px solid var(--sep)}
 .d60-ulist .u{position:relative;height:36px;padding:0 30px 0 8px;display:flex;align-items:center;gap:3px;border:1px solid var(--cardline);border-radius:var(--rmd);background:var(--bg2);font-size:12.5px;font-weight:600;color:var(--lbl2);cursor:pointer}
@@ -4604,6 +4602,13 @@ td.d60-pc:hover{background:var(--fill)}
 .d60-my button:hover{background:var(--fill)}
 .d60-my button.on{background:var(--b600)}
 .d60-my button.on .mn,.d60-my button.on .mcn{color:#fff}
+/* 949차(사용자): 폰 첫 화면 달 카드 — 2행 6열 */
+#d60Root.d60-mob .d60-ycard.d60-my6{margin-bottom:12px;padding:10px 10px 12px!important}
+.d60-my6 .d60-my{grid-template-columns:repeat(6,1fr);gap:3px 2px}
+.d60-my6 .d60-my button{height:44px}
+.d60-my6 .mc-h{margin-bottom:8px}
+.d60-my6 .mc-h .mc-move{gap:14px}.d60-my6 .mc-lbl b{font-size:19px}.d60-my6 .cal-nb{width:32px;height:32px}.d60-my6 .cal-nb .icn{width:20px;height:20px}   /* 950차: 「‹ 년 ›」은 예전 머리 크기 */
+.d60-my6 .d60-my button.cur:not(.on){background:var(--fill)}   /* 이번 달은 호버색 */
 .d60-cx{vertical-align:middle}
 /* 930차: 서식 표 — 칸에서 바로 고침(mg-inp) · 점검항목·조치사항 같은 폭 · 잡아 끌기 */
 .d60-ft td{padding:3px 6px}
@@ -5295,5 +5300,5 @@ td.d60-pc:hover{background:var(--fill)}
 <!-- 762차: chart.umd·datalabels·korea-geo·apt-geo 는 app.js 의 loadChart()/loadGeo() 가 필요할 때 읽는다(첫 로드 800KB 절감) -->
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=945"></script>
+<script src="./app.js?v=950"></script>
 </body></html>
