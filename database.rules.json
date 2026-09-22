@@ -394,7 +394,7 @@
           "$tr": {
             ".validate": "$tr == 'arch' || $tr == 'mech' || $tr == 'elec' || $tr == 'land'",
             "$sc": {
-              ".validate": "$sc == 'unit' || $sc == 'common'",
+              ".validate": "$sc == 'unit' || $sc == 'common' || $sc == 'civil'",
               "$sp": {
                 "name":  { ".validate": "newData.isString() && newData.val().length <= 40" },
                 "ord":   { ".validate": "newData.isNumber()" },
@@ -415,6 +415,9 @@
         "insp": {
           "$sid": {
             "date":  { ".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)" },
+            "dates": {
+              "$tr": { ".validate": "($tr == 'arch' || $tr == 'mech' || $tr == 'elec' || $tr == 'land') && newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)" }
+            },
             "units": {
               "$u": {
                 "dg":  { ".validate": "newData.isString() && newData.val().length <= 10" },
