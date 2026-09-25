@@ -58,6 +58,8 @@ struct Bounds { x: i32, y: i32, w: u32, h: u32 }
 static STATE: Lazy<Mutex<St>> = Lazy::new(|| Mutex::new(St::default()));
 static RESTORED: AtomicBool = AtomicBool::new(false); /* ⚠ 160차: 되돌리기 전에는 어떤 저장도 금지 */
 static QUITTING: AtomicBool = AtomicBool::new(false);
+/* 955차: 사용자가 숨겼는가(트레이·Alt+Shift+C·닫기). 바탕화면 감시가 Win+D 로 가려진 창만 되살리고, 사용자가 숨긴 창은 두게 한다 */
+static USER_HIDDEN: AtomicBool = AtomicBool::new(false);
 static UPD: Lazy<Mutex<Option<(String, PathBuf)>>> = Lazy::new(|| Mutex::new(None)); /* (버전, 받아 둔 파일) */
 
 fn state_dir() -> PathBuf { dirs::config_dir().unwrap_or_else(std::env::temp_dir).join("HPlanWidgetLite") }
@@ -148,7 +150,8 @@ mod win32 {
     extern "system" { pub fn LocalFree(h: *mut core::ffi::c_void) -> *mut core::ffi::c_void; }
     pub const CRYPTPROTECT_UI_FORBIDDEN: u32 = 0x1;
 }
-fn hwnd_of(w: &WebviewWindow) -> Option<isize> { w.hwnd().ok().map(|h| h.0 as isize) }
+#[cfg(windows)] fn hwnd_of(w: &WebviewWindow) -> Option<isize> { w.hwnd().ok().map(|h| h.0 as isize) }
+#[cfg(not(windows))] fn hwnd_of(_w: &WebviewWindow) -> Option<isize> { None }
 /* ── 주소(URL)를 기본 브라우저로 ──
    ⚠ open::that 은 윈도우에서 `cmd /c start "" "<주소>"` 를 쓴다. cmd 는 따옴표 안에서도 `%…%` 를
    환경변수로 치환하므로, 한글 경로가 퍼센트 인코딩된 원드라이브·쉐어포인트 링크(%ED%9E%90 …)는
@@ -281,7 +284,10 @@ fn spawn_bottom_keeper(app: AppHandle) {
         if QUITTING.load(Ordering::SeqCst) { return; }
         if STATE.lock().unwrap().mode == "top" { continue; }
         let Some(w) = win_of(&app) else { continue };
-        if !w.is_visible().unwrap_or(true) { show_inactive(&w); }
+        if !w.is_visible().unwrap_or(true) {
+            if USER_HIDDEN.load(Ordering::SeqCst) { continue; }   /* 955차: 숨긴 창을 1.5초 만에 다시 띄우던 문제 */
+            show_inactive(&w);
+        }
         /* ⚠ 쓰는 중에 창을 다시 맨 아래로 내리면 한글 조합이 끊긴다 — 손대지 않는다(187차) */
         if typing_here(&w) { continue; }
         send_to_bottom(&w);
@@ -384,7 +390,8 @@ fn default_bounds(w: &WebviewWindow) -> Option<Bounds> {
 }
 fn toggle_window(app: &AppHandle) {
     let Some(w) = win_of(app) else { return };
-    if w.is_visible().unwrap_or(false) { let _ = w.hide(); return; }
+    if w.is_visible().unwrap_or(false) { USER_HIDDEN.store(true, Ordering::SeqCst); let _ = w.hide(); return; }
+    USER_HIDDEN.store(false, Ordering::SeqCst);
     /* 바탕화면 모드는 z-순서가 맨 아래라 그냥 show() 하면 안 뜬 것처럼 보인다 —
        일단 앞으로 꺼낸 뒤 모드를 다시 적용해 제자리로 돌려놓는다(Electron 그대로) */
     let _ = w.show(); let _ = w.set_focus();
@@ -925,6 +932,7 @@ fn on_menu(app: &AppHandle, id: &str) {
                     let _ = w.set_size(tauri::PhysicalSize::new(b.w, b.h));
                     let _ = w.set_position(tauri::PhysicalPosition::new(b.x, b.y));
                 }
+                USER_HIDDEN.store(false, Ordering::SeqCst);
                 let _ = w.show();
                 remember(app, true, "초기화");
                 log("위치·크기 초기화");
@@ -964,7 +972,9 @@ fn spawn_page_watch(app: AppHandle) {
             if QUITTING.load(Ordering::SeqCst) { return; }
             if ask(&app, "1", 4000).is_some() { misses = 0; retries = 0; continue; }
             misses += 1;
-            if misses < 2 || retries >= 20 { continue; }   /* 일시 지연은 넘어가고, 약 3분치만 재시도 */
+            /* 일시 지연은 넘어가고(2회), 처음 20번은 30초 간격 · 그 뒤로는 5분(20회 무응답)마다 계속 — 955차: 전엔 20번 뒤 영구히 멈춰
+               부팅 뒤 망이 늦게 붙으면 오류 화면에 남았다 */
+            if misses < 2 || (retries >= 20 && misses < 20) { continue; }
             retries += 1; misses = 0;
             log(&format!("페이지 무응답 — {}번째 재접속", retries));
             if let Some(w) = win_of(&app) {
@@ -991,7 +1001,7 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             /* 중복 실행 — 이미 떠 있으면 기존 창을 보여준다 */
-            if let Some(w) = app.get_webview_window("main") { let _ = w.show(); let _ = w.set_focus(); }
+            if let Some(w) = app.get_webview_window("main") { USER_HIDDEN.store(false, Ordering::SeqCst); let _ = w.show(); let _ = w.set_focus(); }
         }))
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .setup(|app| {
@@ -1115,10 +1125,8 @@ fn main() {
             let _ = app.global_shortcut().on_shortcut("Alt+Shift+C", move |_a, _s, e| {
                 if e.state() == ShortcutState::Pressed { toggle_window(&h6); }
             });
-            let h7 = app.handle().clone();
-            let _ = app.global_shortcut().on_shortcut("CommandOrControl+Shift+I", move |_a, _s, e| {
-                if e.state() == ShortcutState::Pressed { if let Some(w) = win_of(&h7) { w.open_devtools(); } }
-            });
+            /* 955차: Ctrl+Shift+I 전역 단축키는 뺐다 — 시스템 전체에 걸려 다른 앱(브라우저·메일)의 같은 단축키를 가로챘다.
+               개발자 도구는 트레이 메뉴 「개발자 도구」로 연다 */
 
             /* 파일 정리·자동 실행 등록은 화면이 뜬 뒤로 미룬다(Electron 그대로) */
             let h8 = app.handle().clone();
@@ -1181,7 +1189,7 @@ fn main() {
                 tauri::WindowEvent::Focused(false) => remember(app, true, "blur"),
                 tauri::WindowEvent::CloseRequested { api, .. } => {
                     /* 트레이에 남는다 — Alt+F4 등은 숨김으로 처리하고 종료는 트레이 메뉴로만 */
-                    if !QUITTING.load(Ordering::SeqCst) { api.prevent_close(); let _ = window.hide(); }
+                    if !QUITTING.load(Ordering::SeqCst) { api.prevent_close(); USER_HIDDEN.store(true, Ordering::SeqCst); let _ = window.hide(); }
                     remember(app, true, "close");
                 }
                 _ => {}

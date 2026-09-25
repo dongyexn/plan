@@ -49,7 +49,7 @@ for (const f of fs.readdirSync(path.join(dir, 'vendor'))) {
 }
 
 /* PWA 매니페스트·아이콘(383차) — index.html 옆에 있어야 설치 버튼이 뜬다 */
-for (const f of ['manifest.webmanifest', 'icon-192.png', 'icon-512.png'])
+for (const f of ['manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'boot-wid.js'])   /* 963차: boot-wid.js 는 head 에서 따로 읽는다 */
   if (fs.existsSync(path.join(dir, f))) fs.copyFileSync(path.join(dir, f), path.join(dir, 'dist', f));
 
 const kb = n => (n / 1024).toFixed(0) + 'KB';
