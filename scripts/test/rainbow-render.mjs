@@ -196,7 +196,8 @@ try{
       const pins=[...document.querySelectorAll('#okmSvg ~ .okm-ov .okm-pin, .okm-ov .okm-pin')].map(p=>({sid:p.dataset.sid,attr:p.getAttribute('fill'),fill:getComputedStyle(p).fill}));
       const defs=document.querySelectorAll('.okm-ov linearGradient').length;
       /* 업무 현황 미니달력 점 — 그라디언트 업무 */
-      S.tasks.g1={m1:{text:'미니',date:S.selDate,end:'',color:'auto',assignees:{g1:1},st:1,createdAt:Date.now(),updatedAt:Date.now()}};
+      /* 955차: 미니달력은 「예정 주가 든 달」을 보여 준다(654차) — 오늘 날짜를 쓰면 주기가 다음 달로 넘어가는 주(예: 9/24 목)에 점이 안 보여 날짜 따라 실패했다 */
+      S.tasks.g1={m1:{text:'미니',date:tkWeekCycles().nxt.start,end:'',color:'auto',assignees:{g1:1},st:1,createdAt:Date.now(),updatedAt:Date.now()}};
       go('tasks');rTasks();
       const dot=[...document.querySelectorAll('#view-tasks .dots i')].map(i=>getComputedStyle(i).backgroundImage);
       go('calendar');

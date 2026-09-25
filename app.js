@@ -10,7 +10,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='950';
+const APP_VER='968';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 docs/manual.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다(946차: README 는 요약만).
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -38,6 +38,7 @@ async function openReadme(){
     await loadMarked();
     const src=document.createElement('div');
     src.innerHTML=DOMPurify.sanitize(marked.parse(md,{breaks:true}));   /* 원문의 줄바꿈을 그대로 살린다 */
+    src.querySelectorAll('img[src^="img/"]').forEach(im=>{im.setAttribute('src','docs/'+im.getAttribute('src'));im.style.maxWidth='100%';im.style.height='auto';});   /* 952차: 매뉴얼 그림은 docs/img — 문서 기준 상대 경로를 앱 기준으로 */
     /* 장(h2) 단위로 쪼개 왼쪽 목차 + 본문 한 장씩 — 길어서 스크롤만으로는 찾기 어렵다 */
     const secs=[];let cur={t:'소개',nodes:[]};
     Array.from(src.childNodes).forEach(n=>{
@@ -626,8 +627,13 @@ function cleanTask(t){
    복원할 때 cleanTask 를 다시 지나므로 tasks 스키마는 그대로 지켜진다.
    text·date 는 목록 표시용 평문. 30일 지난 항목은 접속 때 누구나 정리한다. */
 const TRASH_KEEP=30*24*3600*1000;
+/* 954차: 휴지통·보관함 사본에 소유 정보를 평문으로 함께 둔다 — 규칙이 빼기(삭제·복원) 때 사본의 createdBy·assignees·site 를 본다.
+   전엔 z 안에만 있어 규칙의 소유 검사가 늘 「레거시(누구나)」로 통과했다 */
+function ownMeta(it){const c=cleanTask(it),o={};
+  if(c.createdBy)o.createdBy=c.createdBy;if(c.assignees)o.assignees={...c.assignees};if(c.site)o.site=String(c.site);
+  return o;}
 function trashWrap(it){return{text:String(it.text||'').slice(0,500),date:String(it.date||''),
-  deletedAt:Date.now(),z:LZString.compressToBase64(JSON.stringify(cleanTask(it)))};}
+  deletedAt:Date.now(),z:LZString.compressToBase64(JSON.stringify(cleanTask(it))),...ownMeta(it)};}
 function trashAll(cb){                 /* {sid:{iid:wrap}} — 구독하지 않고 열 때마다 읽는다 */
   if(!S.live){cb((LocalStore._d&&LocalStore._d.trash)||{});return;}
   FB.db.ref('calapp/trash').get().then(s=>cb(s.val()||{})).catch(e=>{fbErr(e);cb({});});}
@@ -666,7 +672,7 @@ function trashOpen(){
 const ARCH_AFTER=180*24*3600*1000;
 const ARCH={loaded:false,loading:false};
 function archWrap(it){return{text:String(it.text||'').slice(0,500),date:String(it.date||''),
-  archivedAt:Date.now(),z:LZString.compressToBase64(JSON.stringify(cleanTask(it)))};}
+  archivedAt:Date.now(),z:LZString.compressToBase64(JSON.stringify(cleanTask(it))),...ownMeta(it)};}
 function archCutStr(){return dstr(new Date(Date.now()-ARCH_AFTER));}
 /* 이동 대상 판정 — 보류(st3)와 아직 도는 반복은 남긴다. 날짜 없는 업무는 완료된 것만 */
 function archDue(it,cut,cutMs){
@@ -700,10 +706,13 @@ function archMigrate(){
 }
 function archLoad(cb){
   if(ARCH.loaded){if(cb)cb();return;}
-  const unpack=v=>{S.arch={};
+  const unpack=v=>{S.arch={};const fill={};
     Object.keys(v||{}).forEach(sid=>Object.keys(v[sid]||{}).forEach(iid=>{
-      try{const it=JSON.parse(LZString.decompressFromBase64((v[sid][iid]||{}).z||'')||'null');
-        if(it)(S.arch[sid]=S.arch[sid]||{})[iid]=it;}catch(e){}}));
+      try{const w=v[sid][iid]||{},it=JSON.parse(LZString.decompressFromBase64(w.z||'')||'null');
+        if(it){(S.arch[sid]=S.arch[sid]||{})[iid]=it;
+          /* 954차: 소유 정보 없이 옮겨진 옛 사본 — 관리자가 읽을 때 한 번 채운다(규칙의 소유 검사가 걸리게) */
+          if(!w.createdBy&&!w.assignees&&!w.site){const m=ownMeta(it);Object.keys(m).forEach(k=>{fill['calapp/archive/'+sid+'/'+iid+'/'+k]=m[k];});}}}catch(e){}}));
+    if(S.live&&isEditor()&&Object.keys(fill).length)FB.db.ref().update(fill).catch(e=>console.warn('[FB] 보관함 소유 채우기',e));
     ARCH.loaded=true;ARCH.loading=false;if(cb)cb();};
   if(!S.live){unpack((LocalStore._d&&LocalStore._d.archive)||{});return;}
   if(ARCH.loading)return;ARCH.loading=true;
@@ -871,16 +880,17 @@ const FbStore={
        기존 화면값과 새 값을 diff 해 변경된 필드만 RTDB update() 한다. 중첩 객체도 경로별로
        쪼개므로 assignees/links 같은 별도 변경까지 불필요하게 덮지 않는다. 신규는 set(), 삭제는 remove(). */
     /* 아카이브에 있던 업무를 건드리면 그 사본을 지운다 — 두 곳에 겹쳐 남지 않게(384차) */
-    if(S.arch[mid]&&S.arch[mid][iid]){delete S.arch[mid][iid];
-      FB.db.ref('calapp/archive/'+mid+'/'+iid).remove().catch(()=>{});}
+    /* 953차: 보관함 사본은 **저장이 성공한 뒤에** 지운다 — 규칙에 막혀 저장이 거부되면 사본까지 사라져 업무를 잃었다 */
+    const wasArch=!!(S.arch[mid]&&S.arch[mid][iid]);if(wasArch)delete S.arch[mid][iid];
+    const archDrop=()=>{if(wasArch)FB.db.ref('calapp/archive/'+mid+'/'+iid).remove().catch(()=>{});};
     S.tasks[mid]=S.tasks[mid]||{};
     const before=S.tasks[mid][iid]||null;
     if(item)S.tasks[mid][iid]=item;else delete S.tasks[mid][iid];
     rDay();rTasks();refetchCal();rWidget();
     const r=FB.db.ref('calapp/tasks/'+mid+'/'+iid);
-    if(!item){r.remove().catch(fbErr);return;}
+    if(!item){r.remove().then(archDrop).catch(fbErr);return;}
     const next=cleanTask(item),base=before?cleanTask(before):null;
-    if(!base){r.set(next).catch(fbErr);return;}
+    if(!base){const pr=r.set(next);pr.then(archDrop).catch(fbErr);return pr;}
     const patch={};
     const walk=(a,b,path='')=>{
       const ao=a&&typeof a==='object'&&!Array.isArray(a)?a:null;
@@ -898,7 +908,8 @@ const FbStore={
       if(JSON.stringify(a)!==JSON.stringify(b)&&path)patch[path]=b;
     };
     walk(base,next);
-    if(Object.keys(patch).length)r.update(patch).catch(fbErr);
+    if(Object.keys(patch).length){const pr=r.update(patch);pr.then(archDrop).catch(fbErr);return pr;}
+    archDrop();
   },
   putCfg(k,v,cb){FB.db.ref('calapp/cfg/'+k).set(v).then(()=>cb&&cb(null)).catch(e=>{fbErr(e);if(cb)cb(e);});},
   putPref(k,v){const uid=S.user&&S.user.uid;if(!uid)return;
@@ -1013,6 +1024,7 @@ const FbStore={
       /* 첫 스냅샷이 온 뒤 한 번 — 놓친 담당자 업무를 아침 확인으로 묻는다 */
       if(!FB._mrv){FB._mrv=true;setTimeout(morningReview,WIDGET?1400:800);   /* 위젯은 첫 렌더가 조금 늦다 */
         setTimeout(archMigrate,8000);   /* 오래 끝난 업무를 구독 밖으로(384차) — 부팅 통신이 잦아든 뒤 */
+        setTimeout(()=>{if(isEditor())archNeed();},14000);   /* 954차: 관리자는 보관함을 미리 읽는다 — 백업에 담고 옛 사본에 소유 정보를 채운다 */
         /* 5시가 지난 뒤 PC 를 켠 경우 — 놓친 업무 확인 모달이 지나간 뒤에 띄운다(겹치면 가린다) */
         setTimeout(()=>{if(!$('#mo')||!$('#mo').classList.contains('open'))evePopShow();},WIDGET?4200:3600);}
       if(tkHold()){PEND.tasks=true;PEND.day=true;return;}
@@ -1036,7 +1048,7 @@ const FbStore={
       e=>{S.accounts={};S.acctDenied=true;console.warn('[FB] users 읽기 권한 없음',e);rOrg();rTasks();});
     /* cfg 에는 하자 관리에서 감춘 현장(dfHide)도 들어 있다 — 목록·현장 표도 함께 다시 그린다 */
     this._on('calapp/cfg',v=>{S.cfg=v||{};bootCacheSave();rCfg();rDefectNav();if(S.view==='org')rOrg();});
-    this._on('calapp/d60',v=>{S.d60d=v||{};if(S.view==='d60'){if(d60Editing())S.d60._stale=true;else rD60();}});   /* 913차: D+60 점검 — 서식·점검 결과 · 918차: 입력 중이면 다시 그리기를 미룬다(치던 글이 날아갔다) */
+    this._on('calapp/d60',v=>{S.d60d=v||{};if(!FB._d60q){FB._d60q=true;setTimeout(d60QReplay,1500);}   /* 955차: 지난번에 못 보낸 점검 */if(S.view==='d60'){if(d60Editing())S.d60._stale=true;else rD60();}});   /* 913차: D+60 점검 — 서식·점검 결과 · 918차: 입력 중이면 다시 그리기를 미룬다(치던 글이 날아갔다) */
     const uid=S.user&&S.user.uid;
     if(uid){
         this._on('calapp/prefs/'+uid,v=>{S.prefs=v||{};});   /* 최근 이모지 등 개인 설정 */
@@ -1130,14 +1142,50 @@ const DEV_LOCAL=/[?&]local=1\b/.test(location.search);   // 계정 없이 둘러
 function showCover(){const g=$('#coverGate');if(g)g.style.display='flex';}
 function hideCover(){const g=$('#coverGate');if(g)g.style.display='none';}
 function showGateForm(){const ld=$('#cvLoading');if(ld)ld.style.display='none';const bd=$('#cvBody');if(bd)bd.style.display='';showCover();}
-function fbMsg(t,ok){const e=$('#cvMsg');if(e){e.textContent=t||'';e.style.color=ok?'#7CFC9A':'#ff8a80';}}
-function fbCreds(){return{email:($('#fbEmail')||{}).value||'',pw:($('#fbPw')||{}).value||''};}
+function fbMsg(t,ok){const e=$(cvCur()==='verify'?'#cvVMsg':'#cvMsg');if(e){e.textContent=t||'';e.style.color=ok?'#7CFC9A':'';}}   /* 960차: 성공 색은 기존 로그인 값으로 되돌림, 오류는 CSS(--cv-err=#ff8a80). 958차: 인증 대기 화면은 자기 메시지 칸 */
+/* 958차: 사번만 쳐도 된다 — '@' 가 없으면 @hdec.co.kr 를 붙인다(칸 오른쪽에 도메인이 보인다) */
+function fbCreds(){let em=String(($('#fbEmail')||{}).value||'').trim();if(em&&!em.includes('@'))em+='@hdec.co.kr';return{email:em,pw:($('#fbPw')||{}).value||''};}
+/* ═══ 958차: 로그인 게이트 화면 전환 — login · signup · reset · verify ═══
+   가입은 같은 칸을 쓰되 화면을 따로 연다(제목·버튼·안내가 바뀜). 인증 대기 화면은 4초마다·창으로 돌아올 때 인증 여부를 확인해 자동으로 넘어간다. */
+const CV_V={
+  login:{t:'로그인',s:'',b:'로그인',a:'auth.login'},   /* 965차: 카드 머리는 화면마다 제목 한 줄 — 로고는 페이지 아래 서명(.cv-sig) */
+  signup:{t:'계정 만들기',s:'회사 메일로 가입하면 인증메일을 보내 드립니다',b:'가입하기',a:'auth.signup'},
+  reset:{t:'비밀번호 재설정',s:'가입한 회사 메일로 재설정 링크를 보내 드립니다',b:'재설정 메일 보내기',a:'auth.reset'},
+  verify:{t:'메일함을 확인해 주세요',s:'보낸 메일의 인증 링크를 누르면 가입이 끝납니다',b:'',a:''}
+};
+function cvCur(){const c=$('#cvCard');return c?c.dataset.v:'login';}
+function cvView(v,email){
+  const c=$('#cvCard'),d=CV_V[v];if(!c||!d)return;
+  c.dataset.v=v;$('#cvTitle').textContent=d.t;$('#cvSub').textContent=d.s;
+  const b=$('#cvBtn');if(d.a){b.textContent=d.b;b.dataset.act=d.a;}
+  const pw=$('#fbPw');if(pw)pw.setAttribute('autocomplete',v==='signup'?'new-password':'current-password');
+  $('#cvMsg').textContent='';$('#cvVMsg').textContent='';
+  if(v==='verify'){$('#cvVerifyTo').textContent=email||(FB.auth&&FB.auth.currentUser&&FB.auth.currentUser.email)||'';cvPollStart();}
+  else{cvPollStop();const f=$('#fbEmail');if(f&&!f.value)f.focus({preventScroll:true});else if(v!=='reset'&&pw&&$('#cvBody').style.display!=='none')pw.focus({preventScroll:true});}
+}
+let CV_POLL=null,CV_CD=null,CV_CDN=0;
+function cvPollStop(){clearInterval(CV_POLL);CV_POLL=null;}
+function cvPollStart(){cvPollStop();CV_POLL=setInterval(cvCheckVerified,4000);}
+async function cvCheckVerified(){
+  const u=FB.auth&&FB.auth.currentUser;if(!u||cvCur()!=='verify'){cvPollStop();return;}
+  try{await u.reload();}catch(e){return;}
+  const v=FB.auth.currentUser;if(!v||!v.emailVerified)return;
+  cvPollStop();
+  try{await v.getIdToken(true);}catch(e){}   /* 규칙이 토큰의 email_verified 를 본다 — 새 토큰을 받아야 읽기가 통과한다 */
+  onAuth(v);
+}
+window.addEventListener('focus',()=>{if(CV_POLL)cvCheckVerified();});   /* 메일 탭에서 링크를 누르고 돌아오면 바로 확인 */
+function cvCooldown(sec){
+  const b=$('#cvResend');if(!b)return;clearInterval(CV_CD);CV_CDN=sec;
+  const tick=()=>{if(CV_CDN<=0){clearInterval(CV_CD);b.disabled=false;b.textContent='인증메일 다시 보내기';return;}b.disabled=true;b.textContent='다시 보내기 ('+CV_CDN+'초)';CV_CDN--;};
+  tick();CV_CD=setInterval(tick,1000);
+}
 function fbAuthErr(e){
   const c=(e&&e.code)||'';
   return{
     'auth/invalid-credential':'이메일 또는 비밀번호가 올바르지 않습니다',
     'auth/wrong-password':'비밀번호가 올바르지 않습니다',
-    'auth/user-not-found':'가입되지 않은 계정입니다 · [신규 가입]을 눌러주세요',
+    'auth/user-not-found':'가입되지 않은 계정입니다 · 아래 [가입하기]를 눌러주세요',
     'auth/invalid-email':'이메일 형식이 올바르지 않습니다',
     'auth/email-already-in-use':'이미 가입된 계정입니다 · 로그인하세요',
     'auth/too-many-requests':'시도가 많습니다 · 잠시 후 다시 시도하세요',
@@ -1201,12 +1249,12 @@ async function fbDoSignup(){
   try{
     const cred=await FB.auth.createUserWithEmailAndPassword(email,c.pw);
     try{await cred.user.sendEmailVerification();}catch(e){}
-    fbMsg('인증메일을 보냈습니다. 메일의 링크를 클릭한 뒤 [로그인]을 눌러주세요.',true);
+    cvView('verify',email);cvCooldown(60);   /* 958차: 안내 문구 대신 인증 대기 화면으로 */
   }catch(e){fbMsg(fbAuthErr(e));}
 }
 async function fbDoResend(){
   if(!FB.auth||!FB.auth.currentUser){fbMsg('먼저 로그인 또는 가입을 진행하세요');return;}
-  try{await FB.auth.currentUser.sendEmailVerification();fbMsg('인증메일을 다시 보냈습니다. 받은 메일의 링크를 클릭하세요.',true);}
+  try{await FB.auth.currentUser.sendEmailVerification();fbMsg('인증메일을 다시 보냈습니다.',true);cvCooldown(60);}
   catch(e){fbMsg(fbAuthErr(e));}
 }
 /* 비밀번호 찾기 — 본인이 자기 계정에 재설정 메일을 받는다(관리자·서버 불필요).
@@ -1215,7 +1263,7 @@ async function fbDoResend(){
 async function fbDoReset(){
   if(!FB.auth){fbMsg('네트워크에 연결할 수 없습니다.');return;}
   const email=(fbCreds().email||'').trim().toLowerCase();
-  if(!email){fbMsg('이메일을 먼저 입력한 뒤 [비밀번호를 잊으셨나요?]를 눌러주세요');return;}
+  if(!email){fbMsg('회사 메일(사번)을 입력해 주세요');return;}
   if(!fbDomainOk(email)){fbMsg('@hdec.co.kr 계정만 재설정할 수 있습니다');return;}
   const same='가입된 계정이면 재설정 메일을 보냈습니다. 메일의 링크에서 새 비밀번호를 정하세요.';
   fbMsg('재설정 메일을 보내는 중…',true);
@@ -1257,11 +1305,10 @@ async function resolveRole(user){
 }
 async function onAuth(user){
   clearTimeout(FB._watch);
-  if(!user){exitLive();showGateForm();return;}
+  if(!user){exitLive();if(cvCur()==='verify')cvView('login');showGateForm();return;}
   if(!fbDomainOk(user.email)){showGateForm();fbMsg('@hdec.co.kr 계정만 접근할 수 있습니다.');try{FB.auth.signOut();}catch(e){}return;}
   if(!user.emailVerified){
-    showGateForm();
-    fbMsg('이메일 인증이 필요합니다. 받은 인증메일의 링크를 클릭한 뒤 [로그인]을 다시 누르세요. (메일이 없으면 [인증메일 재발송])');
+    showGateForm();cvView('verify',user.email);   /* 958차: 인증 대기 화면 — 자동 확인 · 다시 보내기 · 다른 계정 */
     return;
   }
   const role=await resolveRole(user);
@@ -1532,7 +1579,6 @@ async function acctSave(silent){
   const color=PF_SEL.color!==null?PF_SEL.color:cur.color;
   /* 소속(팀·직급)은 조직 데이터(people)라 계정 저장과 별개로 먼저 반영한다 */
   const myUid=(S.user||{}).uid||'';
-  const tSel=$('#acctTeam'),rSel=$('#acctRank');
   if(myUid){
     const me=roster().find(p=>p.id===myUid)||{};
     const pcur=(S.people||{})[myUid]||{};
@@ -1952,8 +1998,6 @@ function calInit(){
     },
     dateClick:info=>{S.selEnd='';selDate(String(info.dateStr).slice(0,10));if(isMob()&&!WIDGET){if(mcalIsLand()){const d=$('#view-calendar .dp-col');if(d)d.classList.add('on');}else mcalSet('mini');}},   /* 704차: 가로는 시트, 세로는 점 달력 */
     eventClick:info=>{info.jsEvent.preventDefault();
-      const t=info.event.extendedProps.task;
-      if(t){gotoTask(t.sid,t.iid);return;}
       const p=findPlan(info.event.extendedProps.pid);
       if(!p)return;
       const ds=info.event.extendedProps.occ||p.date;
@@ -2000,14 +2044,16 @@ function recurDates(p,from,to){
   const out=[];const f=p.recur&&p.recur.f;if(!f)return out;
   const until=(p.recur.until||'').trim();
   let d=p.date,guard=0;
-  const step=x=>f==='w'?addDays(x,7):f==='2w'?addDays(x,14):f==='m'?addMonths(x,1):addMonths(x,12);
+  /* 953차: 매월·매년은 **시작일에서 k번째**로 센다 — 이전 회차에서 한 달씩 더하면 31일이 30일로 당겨진 뒤 그대로 굳었다(화면마다 날짜가 달랐다) */
+  const mper=f==='m'?1:f==='y'?12:0;let k=0;
+  const step=x=>{if(mper){k++;return addMonths(p.date,k*mper);}return f==='w'?addDays(x,7):addDays(x,14);};
   /* 시작이 화면보다 한참 이르면 빠르게 근처로 점프 */
   if(f==='w'||f==='2w'){
     const per=f==='w'?7:14,gap=daysBetween(d,from);
     if(gap>per)d=addDays(d,Math.floor(gap/per)*per);
   }else if(f==='m'||f==='y'){
     const per=f==='m'?1:12,gapM=(toDate(from).getFullYear()-toDate(d).getFullYear())*12+(toDate(from).getMonth()-toDate(d).getMonth());
-    if(gapM>per)d=addMonths(d,Math.floor(gapM/per)*per);
+    if(gapM>per){k=Math.floor(gapM/per);d=addMonths(p.date,k*per);}
   }
   while(d<from&&guard++<400)d=step(d);
   const mv=p.moveOn||{};
@@ -2121,7 +2167,11 @@ function planToTask(p){
   const prev=allTasks().find(x=>x.iid===p.id);
   /* ⚠ 담당자가 곧 소속이다 — prev.sid 를 그대로 쓰면 담당자를 바꿔도 만든 사람 밑에 남는다.
      담당자를 비우면 팀 공통으로 돌아간다. 소속이 바뀌면 putPlan 이 옛 자리를 지운다 */
-  const sid=owns[0]||(curTeam()&&curTeam().id)||(S.org.teams&&S.org.teams[0]&&S.org.teams[0].id)||'team';
+  let sid=owns[0]||(curTeam()&&curTeam().id)||(S.org.teams&&S.org.teams[0]&&S.org.teams[0].id)||'team';
+  /* 953차: 담당자가 그대로면 자리도 그대로 — 완료 체크만 해도 다른 팀·다른 담당자 자리로 옮겨지고, 되돌리면 두 벌이 남았다 */
+  if(prev){const pa=Object.keys(prev.it.assignees||{}).filter(k=>prev.it.assignees[k]).sort().join(','),na=owns.slice().sort().join(',');
+    const isTeamSid=(S.org.teams||[]).some(t=>t.id===prev.sid);
+    if(pa===na&&(owns.length?owns.includes(prev.sid)||isTeamSid:isTeamSid))sid=prev.sid;}
   const base=prev?prev.it:{};
   const item={...base,
     text:p.title!==undefined?p.title:base.text,
@@ -2222,17 +2272,9 @@ function mcalPane(y,m,evs,dots){
   }
   const today=todayStr();
   let cells='';
-  for(let i=0;i<lead;i++)cells+='<div class="mc-d out"><span class="n">'+(prevDays-lead+i+1)+'</span></div>';
-  for(let d=1;d<=days;d++){
-    const ds=y+'-'+pad(m+1)+'-'+pad(d),dw=(lead+d-1)%7,ho=holOf(ds);
-    const ln=lanes[ds]||[],over=ln.length>CAP,show=over?CAP-1:Math.min(ln.length,CAP);
-    cells+='<button class="mc-d'+(ds===today?' today':'')+(ds===S.selDate?' sel':'')
-      +((dw===0||(ho&&ho.h))?' sun':'')+(dw===6?' sat':'')+'" data-act="cal.day" data-date="'+ds+'"'
-      +(ho?' data-tip="'+esc(ho.n)+'"':'')+'>'
-      +'<span class="n">'+d+'</span>'
-      +(ho&&ho.n?'<span class="mc-ho">'+esc(ho.n)+'</span>':'')
-      +(ln.length
-        ?'<span class="mc-bars'+(ln.some(o=>o&&o.head&&o.n>1)?' hd':'')+'">'+Array.from({length:show},(_,k)=>{const o=ln[k];if(!o)return '<i class="mc-bar sp"></i>';
+  /* 952차(사용자): 이웃 달 칸에도 막대를 그린다 — 기간 업무가 달 경계에서 잘려 보였다(칸은 흐리게·누르지 않음은 그대로) */
+  const bars=(ln)=>{const over=ln.length>CAP,show=over?CAP-1:Math.min(ln.length,CAP);if(!ln.length)return '';
+    return '<span class="mc-bars'+(ln.some(o=>o&&o.head&&o.n>1)?' hd':'')+'">'+Array.from({length:show},(_,k)=>{const o=ln[k];if(!o)return '<i class="mc-bar sp"></i>';
             const e=o.e;
             /* ⚠ 900차: 그라디언트 기간 막대는 **머리 조각 하나를 주 안 길이만큼 늘려** 그린다(조각마다 배경을 자르는 899차 방식은
                조각 폭이 2px 씩 달라 이음매가 보였다). 뒤 조각은 자리만 차지하고 투명. 폭 = n×100% + (2n−4)px (머리·꼬리 2px 안쪽 여백 보정). */
@@ -2240,13 +2282,22 @@ function mcalPane(y,m,evs,dots){
             const bg=(grad&&!o.head)?'background:transparent':('background:'+esc(e.c)+(grad?';width:calc('+o.n+'*100% + '+(2*o.n-4)+'px);position:relative;z-index:1;border-radius:3px':''));
             return '<i class="mc-bar'+(e.done?' dn':'')+(e.team?' tm':'')+(e.light?' lt':'')+(e.risk?' rk':'')+(o.s?' s':'')+(o.en?' e':'')+(grad?' gw':'')+'" style="'+bg+'">'
               +((o.head||e.team)?'<b'+((o.head&&o.n>1)?' style="width:calc('+o.n+'*100% - '+(2*o.n+2)+'px)"':'')+'>'+(o.head?esc(e.t):'')+'</b>':'')+'</i>';}).join('')
-          +(over?'<i class="mc-more">+'+(ln.filter(Boolean).length-show)+'</i>':'')+'</span>'
-        :'')
+          +(over?'<i class="mc-more">+'+(ln.filter(Boolean).length-show)+'</i>':'')+'</span>';};
+  for(let i=0;i<lead;i++){const ds=addDays(gridStart,i);cells+='<div class="mc-d out"><span class="n">'+(prevDays-lead+i+1)+'</span>'+bars(lanes[ds]||[])+'</div>';}
+  for(let d=1;d<=days;d++){
+    const ds=y+'-'+pad(m+1)+'-'+pad(d),dw=(lead+d-1)%7,ho=holOf(ds);
+    const ln=lanes[ds]||[];
+    cells+='<button class="mc-d'+(ds===today?' today':'')+(ds===S.selDate?' sel':'')
+      +((dw===0||(ho&&ho.h))?' sun':'')+(dw===6?' sat':'')+'" data-act="cal.day" data-date="'+ds+'"'
+      +(ho?' data-tip="'+esc(ho.n)+'"':'')+'>'
+      +'<span class="n">'+d+'</span>'
+      +(ho&&ho.n?'<span class="mc-ho">'+esc(ho.n)+'</span>':'')
+      +bars(ln)
       +(dots[ds]&&dots[ds].length
         ?'<span class="dots">'+dots[ds].slice(0,3).map(o=>'<i class="'+(o.done?'dn':'')+'" style="background:'+esc(o.c)+'"></i>').join('')+'</span>'
         :'')+'</button>';
   }
-  for(let i=lead+days;i<42;i++)cells+='<div class="mc-d out"><span class="n">'+(i-lead-days+1)+'</span></div>';
+  for(let i=lead+days;i<42;i++){const ds=addDays(gridStart,i);cells+='<div class="mc-d out"><span class="n">'+(i-lead-days+1)+'</span>'+bars(lanes[ds]||[])+'</div>';}
   return '<div class="mc-g" data-rows="'+Math.ceil((lead+days)/7)+'">'+cells+'</div>';   /* 902차: 폰 큰 달력은 5주 기본 — 6주 달만 6행 */
 }
 function calMiniHTML(){
@@ -2778,23 +2829,27 @@ function rDay(){
 
 /* ───── 업무 작성·수정 모달 ───── */
 let MODAL_CB=null;
+let MODAL_RET=null;   /* 956차: 모달을 연 요소 — 닫으면 포커스를 돌려준다 */
 function openModal(title,bodyHTML,footHTML){
   pfClosed();                        /* 지난번 프로필 팝오버 때문에 모달이 왼쪽으로 쏠린 채 열리지 않게 */
   $('#mt').textContent=title;$('#mbody').innerHTML=bodyHTML;$('#mf').innerHTML=footHTML||'';
   /* 하단 버튼이 없는 모달(사용 안내 등)은 우상단 X 로 닫는다 — 참조 앱과 동일 */
   const mb=$('#mb');
-  mb.classList.remove('rdw','narrow','mlw','dfwide','wide-pick','kmw','rkm','pdcw','nott','d60-pvm','d60-hsm');   /* pdcw: 798차 사진 자르기 */   /* ⚠ 지난번 모달의 폭 설정이 남으면 다음 모달이 엉뚱한 크기로 뜬다 */
+  mb.classList.remove('rdw','narrow','mlw','dfwide','wide-pick','kmw','rkm','pdcw','nott','d60-pvm','d60-hsm','mrv-md','mrv-wid');   /* 953차: 놓친 업무 창 폭이 다음 창에 남던 것 */   /* pdcw: 798차 사진 자르기 */   /* ⚠ 지난번 모달의 폭 설정이 남으면 다음 모달이 엉뚱한 크기로 뜬다 */
   /* ⚠ 605차: 'kmw' 가 이 목록에서 빠져 있었다 — 조직 관리 지도 모달을 한 번 열면 그 뒤 **모든** 모달에 남는다.
      `#mb.kmw{width:auto;max-width:94vw}` 는 `#mb.dfwide{width:88vw;max-width:88vw}` 와 명시도가 같은데
      CSS 에서 더 뒤에 있어 이긴다 → 목록 모달 폭이 내용에 따라 정해지고, 목록↔피벗 전환 때 폭이 튄다
      (실측: 단일현장 피벗 1353.6px → 452.5px). 폭 클래스를 새로 만들면 반드시 이 줄에 함께 넣을 것. */
   mb.classList.toggle('has-x',!footHTML);
+  if(!$('#mo').classList.contains('open'))MODAL_RET=document.activeElement;   /* 956차: 닫을 때 돌아갈 자리 — 열린 창 내용만 바꿀 땐 처음 것을 유지 */
   $('#mo').classList.add('open');
+  requestAnimationFrame(()=>{if($('#mo').classList.contains('open')&&!mb.contains(document.activeElement))mb.focus({preventScroll:true});});   /* 호출부가 직접 칸에 포커스를 줬으면 그대로 둔다 */
 }
 function closeModal(){mrvHoldRest();$('#mo').classList.remove('open');MODAL_CB=null;pfDrop();
   if(window.__SNAPPICK__){const r=window.__SNAPPICK__;window.__SNAPPICK__=null;try{r(null);}catch(_){}}   /* 614차: 스냅샷 월 선택 대기 중 닫히면(Esc·배경) 취소로 종결 — 원본 app-core 641 과 동일 */
   if(window.__PUBOK__){const r=window.__PUBOK__;window.__PUBOK__=null;try{r(false);}catch(_){}}   /* 615차: 게시 확인 대기 중 닫히면 게시 중단 */
-  if($('#mb').classList.contains('kmw'))kmModalClosed();}   /* 552차: 지도 모달 — 카드 상태 복원 */
+  if($('#mb').classList.contains('kmw'))kmModalClosed();   /* 552차: 지도 모달 — 카드 상태 복원 */
+  {const r=MODAL_RET;MODAL_RET=null;const a=document.activeElement;if(r&&r.isConnected&&r.focus&&(a===document.body||$('#mo').contains(a)))r.focus({preventScroll:true});}}   /* 956차: 모달을 연 요소로 포커스 복귀 */
 /* 인라인 편집기 — 모달 대신 우측 일자 패널 안에서 작성·수정한다 */
 function openPlanEdit(p,startD,endD,occ){
   S.planEdit={orig:p?{...p}:null,occ:occ||'',start:startD||S.selDate,end:endD||''};
@@ -3159,9 +3214,9 @@ function taskItemHTML(sid,iid,it,withSubject,hideOwn,colsIn,occ){
      **폼이 회차 수만큼 열렸다**(실측 2개). 표 열 정렬도 깨져 작성과 같은 팝업으로 옮겼다 */
   /* ⚠ 반복 업무는 회차마다 행이 있어 키만으로는 여러 행이 걸린다 — 누른 회차(tkEditOcc)로 좁히고,
      그것도 없는 경로(검색에서 바로 열기 등)를 대비해 **한 번 그리면 잠근다**(363차) */
+  const dsp=occ||taskDate(sid,iid,it);       /* 반복이면 주기 화면이 준 그 회차, 아니면 it.date · 953차: editing 보다 먼저(선언 전 참조로 보류함 수정이 멎었다) */
   let editing=S.tkEdit===key&&(!S.tkEditOcc||S.tkEditOcc===(occ||dsp||''));
   if(editing){if(_edShown)editing=false;else _edShown=true;}
-  const dsp=occ||taskDate(sid,iid,it);       /* 반복이면 주기 화면이 준 그 회차, 아니면 it.date */
   /* ⚠ 반복은 회차별 완료(doneOn)가 상태다 — stEff 는 반복을 늘 '진행'으로 보므로 여기서 회차를 본다(323차) */
   const rec=!!(it.recur&&it.recur.f);
   const st=(rec&&dsp)?(isDone(taskAsPlan(sid,iid,it),dsp)?2:1):stEff(it,occ||undefined);
@@ -3189,7 +3244,7 @@ function taskItemHTML(sid,iid,it,withSubject,hideOwn,colsIn,occ){
   const hasDet=!!taskBody(it).trim();
   const go=' data-act="tk.open" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"';
   return `
-  <div class="tk-item s${st}${editing?' editing':''}${open?' open':''}${cols.grp?' grp':''}${cols.gw?' gw':''}${onSelDay(sid,iid,it,dsp)?' hl':''}" data-sid="${esc(sid)}" data-iid="${esc(iid)}">
+  <div class="tk-item s${st}${editing?' editing':''}${open?' open':''}${cols.grp?' grp':''}${cols.gw?' gw':''}${onSelDay(sid,iid,it,dsp)?' hl':''}" data-sid="${esc(sid)}" data-iid="${esc(iid)}"${rec?' data-occ="'+esc(dsp)+'"':''}>
     <div class="tk-row">
       ${cols.noReg?'':'<span class="tkc tkc-r"'+go+'>'+esc(cols.regLabel||'')+'</span>'}
       ${editing
@@ -3673,13 +3728,17 @@ function pickEditable(){
 function pickSyncSt(el){
   const k0=el.dataset.sid+'/'+el.dataset.iid;
   const cur0=(S.tasks[el.dataset.sid]||{})[el.dataset.iid];if(!cur0)return;
-  const wantDone=stEff(cur0)!==2;                 /* 누른 행이 가려는 방향 */
-  const{ok,no}=pickEditable();
-  if(!ok.length){denyTask();return;}
-  undoSnap(ok,'일괄 상태');   /* ⚠ 바꾸기 전에 떠야 한다 */
   const rowOcc={};
   pickRows().forEach(r=>{const o=r.querySelector('.tk-acts [data-act="tk.st"]');
     if(o&&o.dataset.occ)rowOcc[pickKey(r)]=o.dataset.occ;});
+  /* 누른 행이 가려는 방향 — 954차: 반복 업무는 그 회차의 완료 여부로 본다(stEff 는 회차를 몰라 늘 「완료로」였다) */
+  let wantDone=stEff(cur0)!==2;
+  if(cur0.recur&&cur0.recur.f){const occ0=el.dataset.occ||rowOcc[k0]||'';
+    const key0=occ0?occSrc(taskAsPlan(el.dataset.sid,el.dataset.iid,cur0),occ0):(cur0.date||'');
+    wantDone=!(key0&&cur0.doneOn&&cur0.doneOn[key0]);}
+  const{ok,no}=pickEditable();
+  if(!ok.length){denyTask();return;}
+  undoSnap(ok,'일괄 상태');   /* ⚠ 바꾸기 전에 떠야 한다 */
   const patch={};
   ok.forEach(({sid,iid,it})=>{
     let next;
@@ -4052,6 +4111,7 @@ function gotoTask(sid,iid){
   if(!isTeam){const p=roster().find(x=>x.id===sid);if(p&&p.team)S.tk.t=p.team;}
   else S.tk.t=sid;
   S.tk.m='teamall';S.tkTab='';   /* 통합 화면 전체 탭에서 연다 */
+  {const it0=(S.tasks[sid]||{})[iid];if(it0&&stOf(it0.st)===3)S.tk.m='hold';}   /* 953차: 보류한 업무는 보류함에서 연다(주간 화면엔 없다) */
   /* 그 업무가 든 주기가 화면에 오도록 기준 주를 맞춘다 —
      완료면 종료일 주기가 「완료」 칸, 미완료면 시작일 주기가 「예정」 칸(기준 주는 그 한 주 전) */
   const it=(S.tasks[sid]||{})[iid];
@@ -4059,7 +4119,7 @@ function gotoTask(sid,iid){
     const sD=it.date||'',e=it.end||it.date||'';
     if(stEff(it)===2){if(e)S.tkWeek=e;}
     else if(sD){const nx=rptCycle(addDays(rptCycle(todayStr()).start,7));
-      S.tkWeek=(sD>nx.end)?addDays(sD,-7):'';}   /* 기본 화면에 이미 보이면 오늘 주기 그대로 */
+      S.tkWeek=(sD>=nx.start&&sD<=nx.end)?'':addDays(sD,-7);}   /* 기본 화면에 이미 보이면 오늘 주기 그대로 · 953차: 지난 미완료도 그 주기로 */
     else S.tkWeek='';
   }else S.tkWeek='';
   S.tkNew=null;S.tkEdit=null;
@@ -4767,8 +4827,6 @@ async function dfMetaLoad(){try{const o=await dbGet('meta','calapp');if(o){if(/^
 function dfMetaSave(){dbPut('meta',{id:'calapp',pubRm:S.dfPubRm||'',lastUp:DFMETA.lastUp,hist:DFMETA.hist||[],pubAt:DFMETA.pubAt||{}}).catch(e=>console.warn('dfMetaSave',e));}
 /* 제외 키워드 — 기본값 'dummy'(테스트행 제외). 이 앱의 설정만 사용한다. */
 S.exTk=(function(){try{return localStorage.getItem('calapp.exTk')??'dummy';}catch(e){return 'dummy';}})();
-/* 권역 이름 목록 — 원본 curRegions 와 같은 규칙(고정 권역 '인수 전 현장'을 끝에 붙인다) */
-function dfRegionNames(){const base=(S.org.regions||[]).map(r=>r&&r.name).filter(n=>n&&n!=='인수 전 현장');base.push('인수 전 현장');return base;}
 
 function progShow(msg){const o=document.getElementById('uprog');if(!o)return;document.getElementById('uprogMsg').textContent=msg||'처리 중...';document.getElementById('uprogFill').style.width='0%';document.getElementById('uprogSub').textContent='';o.classList.add('show');}
 function progSet(pct,sub){const f=document.getElementById('uprogFill');if(f)f.style.width=Math.max(0,Math.min(100,pct))+'%';if(sub!=null){const s=document.getElementById('uprogSub');if(s)s.textContent=sub;}}
@@ -4910,7 +4968,7 @@ async function confirmUL(){
   const names=Object.keys(byName);
   if(!names.length||(names.length===1&&names[0]==='(미지정)')){progHide();toast('현장명 식별 불가 · 엑셀의 "현장" 컬럼 확인');return;}
   // 신규 현장 추출
-  const unknown=names.filter(n=>n!=='(미지정)'&&!dfSites().some(s=>s.name===n));
+  const unknown=names.filter(n=>n!=='(미지정)'&&!(S.org.sites||[]).some(s=>s.name===n));   /* 953차: 숨긴 현장·다른 팀 현장까지 본다 — 같은 이름 현장이 두 벌 생겼다 */
   if(unknown.length){
     progHide();
     // 신규 현장 순차 등록 wizard. 마지막 현장 등록 후 doSaveUL 호출
@@ -4929,10 +4987,10 @@ function openNewSiteWizard(unknown,idx,byName,allItems){
   const bldgHint=bldgs.size||'';
   const{team}=tkSel();
   openModal('신규 현장 등록 ('+(idx+1)+'/'+unknown.length+')',
-    '<p style="font-size:12.5px;color:var(--lbl2);margin-bottom:14px">"<b style="color:var(--bt1)">'+esc(name)+'</b>" 현장이 등록되어 있지 않습니다. 정보를 입력하세요.</p>'
+    '<p style="font-size:13px;color:var(--lbl2);margin-bottom:14px">"<b style="color:var(--bt1)">'+esc(name)+'</b>" 현장이 등록되어 있지 않습니다. 정보를 입력하세요.</p>'
     /* 615차 배치: 1행 팀·권역·준공일 / 2행 동수·세대수·상가수 */
     +'<div class="g3"><div class="ig2"><label class="il" for="mtm">팀</label><select class="inp" id="mtm">'+(S.org.teams||[]).map(t=>'<option value="'+esc(t.id)+'"'+(team&&team.id===t.id?' selected':'')+'>'+esc(t.name||t.id)+'</option>').join('')+'</select></div>'
-    +'<div class="ig2"><label class="il" for="mr">권역 *</label><select class="inp" id="mr">'+dfRegionNames().map(r=>'<option>'+esc(r)+'</option>').join('')+'</select></div>'
+    +'<div class="ig2"><label class="il" for="mr">권역 *</label><select class="inp" id="mr">'+(S.org.regions||[]).filter(r=>r&&r.name&&r.name!=='인수 전 현장').map(r=>'<option value="'+esc(r.id)+'">'+esc(r.name)+'</option>').join('')+'<option value="_pre">인수 전 현장</option></select></div>'
     +'<div class="ig2"><label class="il" for="mc">준공일</label><input class="inp" id="mc" type="date" max="9999-12-31"></div></div>'
     +'<div class="g3"><div class="ig2"><label class="il" for="mb2">동수</label><input class="inp" id="mb2" type="number" value="'+bldgHint+'" placeholder="예: 12"></div>'
     +'<div class="ig2"><label class="il" for="mu">세대수</label><input class="inp" id="mu" type="number" placeholder="예: 1,240"></div>'
@@ -4943,7 +5001,7 @@ function openNewSiteWizard(unknown,idx,byName,allItems){
 }
 async function confirmNewSite(name,idx,total){
   const w=S._wiz;if(!w){closeModal();return;}
-  const region=document.getElementById('mr').value;
+  const rv=document.getElementById('mr').value,pre=rv==='_pre',region=pre?'':rv;   /* 953차: 권역은 **id** 로 저장한다(이름을 넣어 권역 미지정으로 떴다) · 인수 전은 토글로 */
   const units=Number(document.getElementById('mu').value)||0;
   const buildings=Number(document.getElementById('mb2').value)||0;
   const commercialUnits=Number(document.getElementById('mcu').value)||0;
@@ -4955,6 +5013,7 @@ async function confirmNewSite(name,idx,total){
   const newSite={id,name,region,units,buildings,commercialUnits,completionDate,hasCommercial,team:teamId};
   S.org.sites.push(newSite);
   orgSave();
+  if(pre){const pm={...dfPreMap(),[id]:true};store.putCfg('dfPre',pm);S.cfg={...S.cfg,dfPre:pm};}
   dfSiteCfgWrite(id,newSite);   /* hasCommercial/showVacant 실시간 채널 — 원본 fb2SiteConfigWrite 와 같은 자리 */
   rOrg();
   if(idx+1<total){openNewSiteWizard(w.unknown,idx+1,w.byName,w.allItems);}
@@ -4985,7 +5044,7 @@ async function doSaveUL(byName,allItems){
   const entries=Object.entries(byName).filter(([name])=>name!=='(미지정)');
   for(let k=0;k<entries.length;k++){
     const[name,its]=entries[k];
-    const site=dfSites().find(s=>s.name===name);if(!site)continue;
+    const site=dfSites().find(s=>s.name===name)||(S.org.sites||[]).find(s=>s.name===name);if(!site)continue;
     progMsg(`저장 중: ${name}`);
     progSet(k/entries.length*100,`${k+1} / ${entries.length}개 현장 · ${its.length.toLocaleString()}건 압축`);
     await nextFrame();
@@ -5345,7 +5404,7 @@ async function dfPublish(){
     const goOn=await new Promise(resolve=>{
       window.__PUBOK__=resolve;
       /* 615차: 요약 대신 현장 열거 — 왼쪽부터 현장명·전체 접수·미처리·처리율(합계 행 굵게) */
-      const _cell='padding:7px 2px;font-size:12.5px;font-variant-numeric:tabular-nums;';
+      const _cell='padding:7px 2px;font-size:13px;font-variant-numeric:tabular-nums;';
       const _row=(a,b,c,d,bold,red)=>'<div style="display:grid;grid-template-columns:1fr 84px 74px 70px;gap:8px;align-items:center;box-shadow:inset 0 1px 0 var(--sep);'+(bold?'font-weight:700;':'')+'">'
         +'<div style="'+_cell+'min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+a+'</div>'
         +'<div style="'+_cell+'text-align:right;">'+b+'</div>'
@@ -5354,17 +5413,17 @@ async function dfPublish(){
       const siteRows=dfSites().map(s2=>{
         const isNew=_hasRows(s2.id);
         const k=isNew?calc(S.def[s2.id],s2,rm):_keepKpi[s2.id];
-        const tag=dfIsPre(s2)?' <span style="font-size:10.5px;color:var(--lbl3)">인수 전</span>':'';
+        const tag=dfIsPre(s2)?' <span style="font-size:11px;color:var(--lbl3)">인수 전</span>':'';
         /* ⚠ 이 PC 에 원본이 없는 현장은 「유지」로 표시한다 — 0 으로 덮이지 않는다는 걸 게시 전에 알린다 */
-        if(!k)return _row(esc(s2.name)+tag+' <span style="font-size:10.5px;color:var(--lbl3)">원본 없음 · 게시 제외</span>','—','—','—',false,false);
-        return _row(esc(s2.name)+tag+(isNew?'':' <span style="font-size:10.5px;color:var(--bl)">직전 게시본 유지</span>'),
+        if(!k)return _row(esc(s2.name)+tag+' <span style="font-size:11px;color:var(--lbl3)">원본 없음 · 게시 제외</span>','—','—','—',false,false);
+        return _row(esc(s2.name)+tag+(isNew?'':' <span style="font-size:11px;color:var(--bl)">직전 게시본 유지</span>'),
           k.tR.toLocaleString(),k.unr.toLocaleString(),(k.tR>0?(k.res/k.tR*100).toFixed(1):'0.0')+'%',false,k.unr>0);}).join('');
       /* 691차: 원본 없이 유지되는 현장이 있으면 알린다 — 대시보드 추이(wks)·공종 집계(am)는 이 PC 원본으로만 계산돼 KPI 합과 어긋난다.
          운영은 월초에 전 현장을 한 번에 넣으므로 합산 로직 대신 경고로 둔다 */
       const _keepN=dfSites().filter(s2=>!_hasRows(s2.id)&&_keepKpi[s2.id]).length;
       const _keepWarn=_keepN?'<p style="font-size:12px;color:var(--rd);font-weight:700;margin:-4px 0 10px">원본 없는 현장 '+_keepN+'개는 직전 게시본으로 유지되지만, 대시보드의 주차별 추이·공종별 집계는 이 PC에 올린 현장분만 반영됩니다. 월초 전 현장 등록이 원칙입니다.</p>':'';
       openModal('사내 게시 확인',
-        '<p style="font-size:12.5px;color:var(--lbl2);margin-bottom:10px">아래 내용이 맞으면 게시하세요 — 팀 전원 화면에 곧바로 반영됩니다.</p>'+_keepWarn
+        '<p style="font-size:13px;color:var(--lbl2);margin-bottom:10px">아래 내용이 맞으면 게시하세요 — 팀 전원 화면에 곧바로 반영됩니다.</p>'+_keepWarn
         +'<div class="share-row" style="padding-left:0;padding-right:0"><div class="share-info"><b>기준월</b></div><b style="font-size:14px">'+esc(rm)+'</b></div>'
         +'<div class="md-scroll" style="max-height:46vh">'
         +'<div style="display:grid;grid-template-columns:1fr 84px 74px 70px;gap:8px;font-size:11px;font-weight:700;color:var(--lbl2);padding:2px 0 4px;"><div style="padding:0 2px">현장명</div><div style="text-align:right;padding:0 2px">전체 접수</div><div style="text-align:right;padding:0 2px">미처리</div><div style="text-align:right;padding:0 2px">처리율</div></div>'
@@ -5834,7 +5893,7 @@ async function dfLoad(){
   S.dfRm=rm;
   if(DF.cache[rm])return DF.cache[rm];
   if(DF.busy)return null;
-  DF.busy=true;
+  DF.busy=true;DF.lerr=false;
   try{
     const sites=dfSites();
     const[wks,am,ins]=await Promise.all([
@@ -5849,7 +5908,7 @@ async function dfLoad(){
     }));
     DF.cache[rm]={rm,wks:Array.isArray(wks)?wks:[],am:am||{},ins,wk,hh};
     return DF.cache[rm];
-  }catch(e){console.warn('[하자] 게시본 읽기 실패',e);return null;}
+  }catch(e){console.warn('[하자] 게시본 읽기 실패',e);DF.lerr=true;return null;}
   finally{DF.busy=false;}
 }
 /* 686차: 이 PC 에 원본 행이 있는 현장인가 — 업로드한 마스터 PC 에서만 참이다.
@@ -5920,7 +5979,7 @@ async function dfSiteData(sid){
       dfRef('report/'+rm+'/'+sid+'/kpi'),dfRef('report/'+rm+'/'+sid+'/siteWks'),
       dfRef('report/'+rm+'/'+sid+'/siteAm'),dfRef('report/'+rm+'/'+sid+'/vac')]);
     DF.kpi[k]=kpi||null;DF.sw[k]=Array.isArray(sw)?sw:[];DF.sam[k]=sam||{};DF.vac[k]=vac||{};
-  }catch(e){console.warn('[하자] 현장 자료 읽기 실패',e);DF.kpi[k]=null;DF.sw[k]=[];DF.sam[k]={};DF.vac[k]={};}
+  }catch(e){console.warn('[하자] 현장 자료 읽기 실패',e);(DF.kerr=DF.kerr||{})[k]=true;DF.kpi[k]=null;DF.sw[k]=[];DF.sam[k]={};DF.vac[k]={};}
   return DF.kpi[k];
 }
 /* 대시보드 업체별 축 — 전 현장 kpi 를 그때 처음 읽는다(무거워서 누르기 전에는 안 받는다) */
@@ -6124,11 +6183,14 @@ function dfTrendDraw(key,cid,wks){
       plugins:{legend:{display:false},tooltip:{enabled:false,external:chTipDraw,mode:'index',intersect:false}},
       /* 인쇄 상자는 720px 폭이라 주차 라벨이 자동 회전한다(원본은 화면 폭 그대로 인쇄해 수평).
          인쇄용만 회전을 막고 촘촘하면 건너뛰게 한다 — 화면은 원본 그대로. */
+      /* 964차: 폰(_mb·화면용)은 좌우 축 제목을 끄고(차트 위 .ch-ax 한 줄이 대신), X 는 그 달 첫 주에만 「N월」을 눕혀 쓰고,
+         눈금 여백을 줄여 그림 폭을 넓힌다 — 좌우 축이 카드 폭의 약 1/3 을 먹어 막대·선이 눌려 보였다 */
       scales:{x:{grid:{display:false},ticks:{font:{size:_pr?9:10},color:ink,
         ...(_pr?{maxRotation:0,minRotation:0,autoSkip:true,autoSkipPadding:4}:{}),
-        callback:function(v){return this.getLabelForValue(v).split('\n');}}},
-        y:{beginAtZero:true,position:'left',grace:'25%',grid:{color:grid},ticks:{font:{size:_tkSize}},title:{display:true,text:'미처리(건)',font:{size:_atSize,weight:600},color:axisT}},
-        y1:{beginAtZero:false,min:y1min,max:y1max,position:'right',grid:{display:false},ticks:{font:{size:_tkSize}},title:{display:true,text:'접수·처리(건)',font:{size:_atSize,weight:600},color:axisT}}}}});
+        ...(_mb&&!_pr?{maxRotation:0,minRotation:0,autoSkip:false,padding:2}:{}),
+        callback:function(v,i){if(_mb&&!_pr){const r=rows[i],p=rows[i-1];return r&&(!p||Number(p.m)!==Number(r.m))?(Number(r.m)||0)+'월':'';}return this.getLabelForValue(v).split('\n');}}},
+        y:{beginAtZero:true,position:'left',grace:'25%',grid:{color:grid},ticks:{font:{size:_tkSize},...(_mb&&!_pr?{padding:3,maxTicksLimit:6}:{})},title:{display:!(_mb&&!_pr),text:'미처리(건)',font:{size:_atSize,weight:600},color:axisT}},
+        y1:{beginAtZero:false,min:y1min,max:y1max,position:'right',grid:{display:false},ticks:{font:{size:_tkSize},...(_mb&&!_pr?{padding:3,maxTicksLimit:6}:{})},title:{display:!(_mb&&!_pr),text:'접수·처리(건)',font:{size:_atSize,weight:600},color:axisT}}}}});
 }
 function dfWkToTrend(w){return{m:Number(w.m)||Number(String(w.week).slice(5,7)),w:Number(w.wn)||0,
   cumR:Number(w.r)||0,cumRes:Number(w.res)||0,u:Number(w.u)||0,lt:(Number(w.d30)||0)+(Number(w.d60)||0),lt60:Number(w.d60)||0};}
@@ -6156,7 +6218,7 @@ function dfDashWksOfYear(wk,year){
 const dfTrendLegend='<div class="chart-lg"><div class="li"><span class="mk-bar ck-d60"></span>60일 이상</div><div class="li"><span class="mk-bar ck-d30"></span>30~59일</div><div class="li"><span class="mk-bar ck-d0"></span>30일 미만</div><div class="li"><span class="mk-ln ck-recv"></span>전체 접수</div><div class="li"><span class="mk-ln ck-done"></span>처리 완료</div></div>';
 function dfTrendCardHTML(cid,scope,years,cur){
   const opts=(years&&years.length?years:[S.dfRm.slice(0,4)]).map(y=>`<option value="${y}"${y===cur?' selected':''}>${y}년</option>`).join('');
-  return `<div class="card mb12 main-chart-card" data-print="ov-chart"><div class="sh" style="margin-bottom:6px;flex-shrink:0"><div class="ct cardttl">하자접수 · 처리 주차별 추이</div><select class="yr-sel no-print" data-act="df.trendYear" data-scope="${scope}" aria-label="추이 연도 선택">${opts}</select></div><div class="cw" style="flex:1;min-height:0"><canvas id="${cid}"></canvas></div>${dfTrendLegend}</div>`;}
+  return `<div class="card mb12 main-chart-card" data-print="ov-chart"><div class="sh" style="margin-bottom:6px;flex-shrink:0"><div class="ct cardttl">하자접수 · 처리 주차별 추이</div><select class="yr-sel no-print" data-act="df.trendYear" data-scope="${scope}" aria-label="추이 연도 선택">${opts}</select></div><div class="ch-ax" aria-hidden="true"><span>미처리(건)</span><span>접수·처리 누계(건)</span></div><div class="cw" style="flex:1;min-height:0"><canvas id="${cid}"></canvas></div>${dfTrendLegend}</div>`;}   /* 964차: .ch-ax 는 폰(≤768)에서만 보인다 — 세로 축 제목을 차트 위 한 줄로 옮겨 그림 폭을 넓힌다 */
 /* 도넛 — 원본과 같은 가운데 합계 + 우측 2열 범례(항목에 마우스를 올리면 조각이 커진다) */
 function dfEtcOf(am){const m={...am};const v=Number(m['기타'])||0;delete m['기타'];return{m,etc:v};}
 function dfDonutData(am){
@@ -6236,10 +6298,10 @@ function dfInsightHTML(html){
      버튼은 그 세 장을 다시 쓰는 것이었는데, 자동 갱신과 구분이 안 돼 혼란만 줬다. */
   return `<div class="card"><div class="sh"><div class="ct cardttl">주요 이슈 및 분석 의견</div></div><div class="ins-grid">${inner}</div></div>`;
 }
-function dfNoneHTML(msg){
-  return `<div class="card dfc-none">
+function dfNoneHTML(msg,kind){   /* 963차: kind — 'ld' 불러오는 중(돌이) · 'err' 읽기 실패(다시 시도) */
+  return `<div class="card dfc-none${kind==='err'?' err':''}">
     <svg class="icn" aria-hidden="true"><use href="#i-defect"></use></svg>
-    <b>하자처리 현황</b><span>${esc(msg)}</span></div>`;
+    <b>하자처리 현황</b><span${kind==='ld'?' class="ld"':''}>${esc(msg)}</span>${kind==='err'?'<button class="btn bo bsm" data-act="df.retry">다시 시도</button>':''}</div>`;
 }
 /* ── 대시보드 ── */
 function dfDashRowHTML(s,st){
@@ -6626,7 +6688,7 @@ function dfRiskTableHTML(all,ns){
 /* 히트맵 셀 → 그 현장·레벨 세대 목록 모달(현장 페이지 표와 동일, 탭만 없음) */
 async function dfRiskCellModal(sid,lv){
   const st=dfSites().find(x=>x.id===sid);if(!st)return;
-  openModal('','<div class="dfnone">불러오는 중…</div>','');
+  openModal('','<div class="dfnone ld">불러오는 중…</div>','');
   const mb=$('#mb');if(mb){mb.classList.add('dfwide');mb.classList.add('rkm');}
   let k=null;try{k=await dfSiteData(sid);}catch(e){}
   const list=k&&k.hh?(k.hh.list||[]).filter(h=>h.level===lv):[];
@@ -6750,13 +6812,13 @@ function rDefectSite(root,site){
   const key=dfRm()+'/'+site.id;
   const k=DF.kpi[key];
   if(k===undefined||DF.plans[site.id]===undefined){
-    root.innerHTML=dfNoneHTML(site.name+' 자료를 불러오는 중입니다…');
+    root.innerHTML=dfNoneHTML(site.name+' 자료를 불러오는 중입니다…','ld');
     Promise.all([dfSiteData(site.id),dfLoadPlans(site.id)])
       .then(()=>{if(S.view==='defect'&&S.dfSid===site.id)rDefect();});
     return;
   }
   dfSubSite(site.id);   /* 처리계획·분석 의견 실시간 반영 */
-  if(!k){root.innerHTML=dfNoneHTML('이 현장의 게시 자료가 없습니다.');return;}
+  if(!k){root.innerHTML=(DF.kerr&&DF.kerr[key])?dfNoneHTML('현장 자료를 불러오지 못했습니다. 네트워크를 확인한 뒤 다시 시도하세요.','err'):dfNoneHTML('이 현장의 게시 자료가 없습니다.');return;}   /* 963차: 읽기 실패를 「자료 없음」과 가른다 */
   const st=k;
   const units=site.units||0;
   const compDate=site.completionDate?` · ${site.completionDate}`:'';
@@ -6830,6 +6892,7 @@ function rDefectSite(root,site){
     </div>`;
   }
   root.innerHTML=kpis+tnav+body;
+  ovsRefresh();   /* 964차: 현장 화면은 막대를 붙이지 않아 민원 현황의 세대 현황도(.rkm-wrap, 757차)가 가로로 넘쳐도 잡을 막대가 없었다 — 대시보드와 같이 그린 직후 붙인다 */
   setTimeout(dfPlanFitAll,30);   /* 저장된 처리계획 길이에 맞춰 칸 높이를 잡는다 */
   if(tab==='sum')setTimeout(()=>{
     const rmY2=S.dfRm.slice(0,4);
@@ -6856,7 +6919,7 @@ async function dfSnapshot(){
     const picked=await new Promise(resolve=>{
       window.__SNAPPICK__=resolve;
       openModal('스냅샷 내보내기',
-        '<div class="md-scroll" style="max-height:56vh"><p style="font-size:12.5px;color:var(--lbl2);margin-bottom:10px">두 달 이상 담으면 파일 안에서 기준월을 바꿔가며 볼 수 있습니다(월당 수백 KB~수 MB).</p>'
+        '<div class="md-scroll" style="max-height:56vh"><p style="font-size:13px;color:var(--lbl2);margin-bottom:10px">두 달 이상 담으면 파일 안에서 기준월을 바꿔가며 볼 수 있습니다(월당 수백 KB~수 MB).</p>'
         +monthsAll.map(m=>'<label class="share-row" style="cursor:pointer"><span class="share-info"><b>'+esc(m)+(m===defRm?' <span style="font-size:11px;font-weight:600;color:var(--bt1);vertical-align:1px">현재</span>':'')+'</b></span><input type="checkbox" class="snap-mo" value="'+esc(m)+'"'+(m===defRm?' checked':'')+' style="width:17px;height:17px;accent-color:var(--bt1)"></label>').join('')
         +'</div>',
         '<button class="btn bo bsm" data-act="dfp.snapAll">전체 선택</button><div style="flex:1"></div><button class="btn bg2 bsm" data-act="dfp.snapCancel">취소</button><button class="btn bp bsm" data-act="dfp.snapOk">내보내기</button>');
@@ -7006,8 +7069,8 @@ function rpTrend(wks){
       base-=hh;});
   });
   const pts=a=>a.map((v,i)=>`${(L+step*i+step/2).toFixed(1)},${ty(v).toFixed(1)}`).join(' ');
-  s+=`<polyline fill="none" stroke="#22537f" stroke-width="1.4" points="${pts(tv)}"/>`;
-  s+=`<polyline fill="none" stroke="#6b96bd" stroke-width="1.4" stroke-dasharray="3 2" points="${pts(rv)}"/>`;
+  s+=`<polyline fill="none" stroke="${RP_COL[2]}" stroke-width="1.4" points="${pts(tv)}"/>`;
+  s+=`<polyline fill="none" stroke="${RP_COL[4]}" stroke-width="1.4" stroke-dasharray="3 2" points="${pts(rv)}"/>`;
   s+=`<line x1="${L}" y1="${B}" x2="${R}" y2="${B}" stroke="#c8cdd4"/>`;
   let lastM='';
   wks.forEach((w,i)=>{const mm=String(w.week||'').slice(5,7);
@@ -7055,8 +7118,8 @@ const RP_LG=`<div class="lg">
     <span><i style="background:${RP_COL[0]}"></i>60일 이상</span>
     <span><i style="background:${RP_COL[3]}"></i>30~59일</span>
     <span><i style="background:${RP_COL[5]}"></i>30일 미만</span>
-    <span style="margin-left:auto"><i class="ln" style="background:#22537f"></i>전체 접수(누계)</span>
-    <span><i class="ln" style="background:#6b96bd"></i>처리 완료(누계)</span></div>`;
+    <span style="margin-left:auto"><i class="ln" style="background:${RP_COL[2]}"></i>전체 접수(누계)</span>
+    <span><i class="ln" style="background:${RP_COL[4]}"></i>처리 완료(누계)</span></div>`;
 
 /* 736차: 보고서 「주요 이슈」 — 규칙 자동 선별(원본 rpt 의 3항목을 넓힘). 중요도순으로 최대 6건, 각 문장에 근거 수치 */
 function rpIssHTML(iss,n){return iss.slice(0,n||6).map(i=>`<div class="iss"><div class="t">${esc(i.t)}</div><div class="m">${i.m}</div></div>`).join('')||'<div class="iss"><div class="m">특이 사항 없음.</div></div>';}
@@ -7538,9 +7601,9 @@ function rDefect(){
   dfSubSiteCfg();
   const rm=dfRm(),d=rm&&DF.cache[rm];
   if(!d){
-    root.innerHTML=dfNoneHTML('게시본을 불러오는 중입니다…');
+    root.innerHTML=dfNoneHTML('게시본을 불러오는 중입니다…','ld');
     dfLoad().then(r=>{if(S.view!=='defect')return;
-      if(r)rDefect();else $('#defectRoot').innerHTML=dfNoneHTML('아직 게시된 집계가 없습니다.');});
+      if(r)rDefect();else $('#defectRoot').innerHTML=DF.lerr?dfNoneHTML('게시본을 불러오지 못했습니다. 네트워크를 확인한 뒤 다시 시도하세요.','err'):dfNoneHTML('아직 게시된 집계가 없습니다.');});   /* 963차: 실패를 「게시 없음」과 가른다 */
     dfTopbar();return;
   }
   S.dfRm=d.rm;
@@ -7798,7 +7861,7 @@ async function recOpen(sid,scope,opts){
   const all=!sid;
   const scopeLbl=scope==='lul'?'장기미처리':'미처리';
   const filtLbl=opts.trade?' · '+opts.trade:opts.co?' · '+opts.co:'';
-  openModal('',  '<div class="rec-none">불러오는 중…</div>');
+  openModal('',  '<div class="rec-none ld">불러오는 중…</div>');
   const mb=$('#mb');if(mb)mb.classList.add('dfwide');
   REC.title=(site?site.name:'팀 전체')+' · '+scopeLbl+filtLbl;
   const mt0=$('#mt');if(mt0)mt0.innerHTML=recHeadHTML();
@@ -7810,7 +7873,7 @@ async function recOpen(sid,scope,opts){
     rows=[];
     for(let i=0;i<list.length;i++){
       const b=$('#mbody');
-      if(b)b.innerHTML='<div class="rec-none">현장 자료를 불러오는 중… ('+(i+1)+'/'+list.length+')</div>';
+      if(b)b.innerHTML='<div class="rec-none ld">현장 자료를 불러오는 중… ('+(i+1)+'/'+list.length+')</div>';
       const one=await dfList(list[i].id);
       one.forEach(r=>rows.push({...r,siteName:list[i].name}));
     }
@@ -8096,7 +8159,8 @@ function dfTopbar(){
            else{const n=dfLocalDirtySites().length;if(n)t='이 PC 원본 · 미게시 변경 '+n+'개 현장';}}
     lc.hidden=!t;lc.textContent=t;lc.dataset.s=t?'미게시':'';}   /* data-s: 좁은 화면(≤900)은 CSS 가 이 짧은 글자만 보인다 */
   const xw=$('#tbXlWrap');if(xw)xw.hidden=!(S.view==='photo'||S.view==='redo'||S.view==='prod'||S.view==='d60');
-  const fw=$('#tbFinWrap');if(fw){const on=S.view==='d60'&&!!S.d60.sid;fw.hidden=!on;if(on){const b=fw.querySelector('.tb-fin');b.classList.toggle('on',d60Fin(S.d60.sid,S.d60.tr));}}   /* 943차: 현장 점검 화면에서만 「점검 완료」 */   /* 901차: 재하자·생산성도 엑셀 · 913차: D+60 */
+  const fw=$('#tbFinWrap');if(fw){const on=S.view==='d60'&&!!S.d60.sid;fw.hidden=!on;if(on){const b=fw.querySelector('.tb-fin');b.classList.toggle('on',d60Fin(S.d60.sid,S.d60.tr));}}   /* 943차: 현장 점검 화면에서만 「점검 완료」 */
+  const pw2=$('#tbPdWrap');if(pw2)pw2.hidden=!(S.view==='d60'&&!!S.d60.sid);   /* 951차: 「사진대지」도 상단바(데스크톱만 — 폰은 CSS 가 숨긴다) */   /* 901차: 재하자·생산성도 엑셀 · 913차: D+60 */
 
   if(pw){pw.hidden=!(on||S.view==='photo'||S.view==='dwg'||S.view==='d60');   /* 인쇄 버튼 — 하자처리 현황 · 사진대지(798차) · 도면 인쇄(815차) · D+60 점검(916차) */
     /* 801차: 왼쪽에 보이는 것이 있을 때만 구분선 */
@@ -8118,7 +8182,7 @@ function rHold(){
   if(mn)mn.classList.toggle('on',!!S.holdMine);
   if(ttl)ttl.textContent='보류한 업무 '+list.length+'건';
   holdFit();
-  if(!any){box.innerHTML='';return;}
+  if(!any){paintReset(box);box.innerHTML='';return;}   /* 953차: 비운 뒤 같은 목록이 다시 오면 paintHTML 이 건너뛰어 「1건」에 빈 목록이었다 */
   if(!list.length){paintReset(box);box.innerHTML='<div class="hold-empty">내 보류 업무가 없습니다.</div>';return;}
   const md=x=>{if(!x)return '기한 없음';const t=toDate(x);return (t.getMonth()+1)+'/'+t.getDate();};
   paintHTML(box,list.map(({sid,iid,it})=>
@@ -8262,6 +8326,7 @@ function mrvHoldRest(){
 function mrvApply(el,patch,msg){
   const row=el.closest('.mrv-i');if(!row)return;
   const sid=row.dataset.sid,iid=row.dataset.iid,cur=(S.tasks[sid]||{})[iid];
+  if(cur&&patch.date&&patch.end===''&&cur.end&&cur.date&&cur.end>cur.date)patch={...patch,end:addDays(patch.date,daysBetween(cur.date,cur.end))};   /* 953차: 기간 업무는 길이를 지켜 옮긴다 */
   if(cur)store.putTask(sid,iid,histPush({...cur,...patch,updatedAt:Date.now()},patch.st===2?'done':(patch.date?'move':'edit')));
   const sec=row.closest('.mrv-sec');row.remove();
   if(sec){const k=sec.querySelectorAll('.mrv-i').length;if(!k)sec.remove();else{const c=sec.querySelector('.rp-tcnt');if(c)c.textContent=k;}}   /* 919차: 구분 수 갱신 · 비면 구분 제거 */
@@ -8475,7 +8540,7 @@ function siteTable(){
     <td class="cc"><label class="sw"><input type="checkbox"${x.showVacant!==false?' checked':''} data-act="org.siteVac" data-id="${esc(x.id)}" aria-label="공가세대 탭 표시"><span class="sw-t"></span></label></td>
     <td class="cc"><label class="sw"><input type="checkbox"${x.hasCommercial?' checked':''} data-act="org.siteShop" data-id="${esc(x.id)}" aria-label="공가상가 포함 현장"><span class="sw-t"></span></label></td>
     <td class="cc"><label class="sw"><input type="checkbox"${x.lawsuit?' checked':''} data-act="org.siteSuit" data-id="${esc(x.id)}" aria-label="소제기"><span class="sw-t"></span></label></td>
-    <td class="cc" style="font-size:11.5px;white-space:nowrap;color:var(--lbl2)">${(()=>{const d=(DFMETA.lastUp||{})[x.id]||x.lastUploadedAt||'';return d?esc(String(d).slice(0,10)):'<span style="color:var(--lbl3)">—</span>';})()}</td>
+    <td class="cc" style="font-size:12px;white-space:nowrap;color:var(--lbl2)">${(()=>{const d=(DFMETA.lastUp||{})[x.id]||x.lastUploadedAt||'';return d?esc(String(d).slice(0,10)):'<span style="color:var(--lbl3)">—</span>';})()}</td>
   </tr>`).join('')}</tbody></table></div>`;
 }
 /* ── 현장 위치 지도(526차) ─────────────────────────────────────────────
@@ -8531,27 +8596,6 @@ function kmSiteColor(sid){
   const p=roster().find(x=>(t?x.team===t.id:true)&&rankUses(x.rank).sites&&(x.sites||{})[sid]);
   return p?ownColor(p.id):null;
 }
-/* 겹치는 점을 서로 밀어낸다 — 작은 지도에서 한 덩어리가 되는 것을 푼다 */
-function kmSpread(pts,d){
-  for(let k=0;k<50;k++){let moved=0;
-    for(let i=0;i<pts.length;i++)for(let j=i+1;j<pts.length;j++){
-      const a=pts[i],b=pts[j];let dx=b.x-a.x,dy=b.y-a.y,q=Math.hypot(dx,dy);
-      if(q>=d)continue;
-      if(q<.001){dx=.5;dy=.3;q=.58;}
-      const f=(d-q)/2/q;a.x-=dx*f;a.y-=dy*f;b.x+=dx*f;b.y+=dy*f;moved=1;}
-    if(!moved)break;}
-}
-/* 이름표가 잡은 자리 밖으로 점을 민다 — 가장 가까운 변으로 뺀다 */
-function kmPushOut(pts,boxes,pad){
-  for(let k=0;k<20;k++){let moved=0;
-    for(const p of pts)for(const b of boxes){
-      const x0=b.x-pad,x1=b.x+b.w+pad,y0=b.y-pad,y1=b.y+b.h+pad;
-      if(p.x<x0||p.x>x1||p.y<y0||p.y>y1)continue;
-      const d=[p.x-x0,x1-p.x,p.y-y0,y1-p.y],i=d.indexOf(Math.min(...d));
-      if(i===0)p.x=x0;else if(i===1)p.x=x1;else if(i===2)p.y=y0;else p.y=y1;
-      moved=1;}
-    if(!moved)break;}
-}
 function kmHit(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;}
 /* 793차: 현장명 실제 폭(화면 px, .okm-snm 과 같은 600 12px). 792차는 「글자 수×11+6」으로 잡아 실제보다 25~30px 넓었고,
    안 부딪히는 이름까지 부딪힌 것으로 쳐서 빠졌다. 글꼴이 아직 안 읽혔으면 재기만 하고 기억하지 않는다 */
@@ -8577,7 +8621,7 @@ function kmSpots(sites,step){
 /* 지도 한 장. o.w·o.h 는 그려질 상자 크기(px) — 배율을 여기서 정해 글자·점 크기를 맞춘다.
    o.sites 를 주면 그 현장만 그린다 */
 function kmSVG(vb,sel,o){
-  const g=krGeo();if(!g)return '<div class="okm-none">지도 자료를 불러오는 중…</div>';
+  const g=krGeo();if(!g)return '<div class="okm-none ld">지도 자료를 불러오는 중…</div>';
   o=o||{};
   const W=o.w||240,H=o.h||300;
   const u=1/Math.min(W/vb.w,H/vb.h);            /* 지도 좌표 1 = 화면 u 분의 1 px */
@@ -8988,7 +9032,7 @@ function kmYearBand(x){
 /* 573차: 현장 목록 — mode 'reg'(권역 묶음) 또는 'yr'(년차 묶음). 줄 모양은 같다 */
 function kmSiteList(all,mode){
   const regs=(S.org.regions||[]).filter(r=>r.name);
-  const groups=mode==='yr'?KM_YR.map(([k,nm])=>({k,nm,attr:'data-act="org.mapYr" data-yr="'+esc(k)+'"',on:S.kmYr===k,items:all.filter(x=>kmYearBand(x)===k)}))
+  const groups=mode==='yr'?KM_YR.map(([k,nm])=>({k,nm,attr:'data-act="org.mapYr" data-yr="'+esc(k)+'"',on:(S.kmYr||[]).includes(k),items:all.filter(x=>kmYearBand(x)===k)}))
     :(()=>{const seen=[];all.forEach(x=>{if(!seen.includes(x.region||''))seen.push(x.region||'');});
       return seen.map(k=>{const r=regs.find(z=>z.id===k);return {k,nm:r?r.name:'권역 없음',attr:r?'data-act="org.mapReg" data-reg="'+esc(k)+'"':'',on:!!S.kmReg&&S.kmReg===k,items:all.filter(x=>(x.region||'')===k)};});})();
   let list='';
@@ -9531,7 +9575,9 @@ function bkStamp(d){
 function bkData(){
   return JSON.stringify({
     kind:'hplan-backup',ver:APP_VER,savedAt:new Date().toISOString(),
-    org:S.org,people:S.people,tasks:S.tasks,cfg:S.cfg
+    org:S.org,people:S.people,tasks:S.tasks,cfg:S.cfg,
+    /* 954차: 보관함(읽혀 있을 때 — 관리자는 부팅 뒤 미리 읽는다)과 D+60 서식·점검 결과. 점검 사진(d60photo)은 크기 때문에 뺀다 */
+    archive:ARCH.loaded?S.arch:null,d60:S.d60d||null
   },null,1);
 }
 /* ═══════════ 위젯 알림 창구 ═══════════
@@ -10031,7 +10077,8 @@ function ctxFor(t){
     const sid=tk.dataset.sid,iid=tk.dataset.iid,it=(S.tasks[sid]||{})[iid];
     if(it){const own=canEditTask(it,sid);   /* 627차: 권한 없는 업무는 보기·복사만 */
       return own?[
-      {label:stEff(it)===2?'진행으로 되돌리기':'완료로 표시',act:()=>ACT['tk.st']({dataset:{sid,iid}})},
+      ...(()=>{const rc=!!(it.recur&&it.recur.f),occ=tk.dataset.occ||(rc?taskDate(sid,iid,it):''),dn=rc?!!(it.doneOn&&it.doneOn[occSrc(taskAsPlan(sid,iid,it),occ)]):stEff(it)===2;   /* 953차: 반복은 그 회차 */
+        return [{label:dn?'진행으로 되돌리기':'완료로 표시',act:()=>ACT['tk.st']({dataset:{sid,iid,occ},closest:()=>null})}];})(),
       {label:'제목 복사',act:()=>copyText(it.text||'','제목을 복사했습니다')},
       {sep:true},
       {label:'삭제',danger:true,act:()=>ACT['tk.del']({dataset:{sid,iid}})}
@@ -10071,7 +10118,7 @@ function ctxFor(t){
 }
 function offdayAsk(ds){
   openModal('휴무일 지정',
-    '<div style="font-size:12.5px;color:var(--lbl2);margin-bottom:9px;line-height:1.6">'+esc(mdLabel(ds))+' 을(를) 쉬는 날로 표시합니다.<br>공휴일과 같은 색으로 칠해집니다.</div>'
+    '<div style="font-size:13px;color:var(--lbl2);margin-bottom:9px;line-height:1.6">'+esc(mdLabel(ds))+' 을(를) 쉬는 날로 표시합니다.<br>공휴일과 같은 색으로 칠해집니다.</div>'
     +'<input class="inp" id="offName" maxlength="12" placeholder="예: 단체연차, 창립기념일" value="단체연차">',
     '<button class="btn bg2 bsm" data-act="modal.close">취소</button><button class="btn bp bsm" data-act="offday.save" data-ds="'+esc(ds)+'">지정</button>');
   const mb=$('#mb');if(mb)mb.classList.add('narrow');
@@ -10161,13 +10208,17 @@ setInterval(()=>{
 /* ═══════════ 화면 전환 · 공통 UI ═══════════ */
 const VIEW_TTL={calendar:'캘린더',tasks:'업무 현황',d60:'D+60 점검',photo:'사진대지 작성',qc:'견적 검토',dwg:'도면 인쇄',redo:'재하자 추적',prod:'생산성 검토',defect:'하자처리 현황',org:'조직 관리',settings:'설정'};
 function go(view){
-  if(view==='report')view='tasks';   /* 주요 업무는 업무 현황으로 통합됐다(316차) — 옛 진입점은 넘겨 준다 */
+  if(view==='report')view='tasks';
+  if(TOAST_FN&&view!==S.view){TOAST_FN=null;const t=$('#toast');if(t)t.classList.remove('show','has-btn');}   /* 955차: 다른 화면에서 「되돌리기」가 앞 화면을 건드리지 않게 */   /* 주요 업무는 업무 현황으로 통합됐다(316차) — 옛 진입점은 넘겨 준다 */
   if(S.view==='org'&&view!=='org'&&orgDraftN()){   /* 696차: 현장 표 초안을 버리고 나가지 않도록 */
     const n=orgDraftN();
     confirmModal('저장하지 않은 현장 변경','현장 표에 저장하지 않은 변경 '+n+'건이 있습니다. 저장하고 이동할까요?',()=>{orgDraftApply();go(view);},'저장하고 이동',false);
     const b=$('#mo .btn.bg2');if(b){b.textContent='버리고 이동';b.dataset.act='org.draftDropGo';b.dataset.v=view;}
     return;
   }
+  /* 953차: 폼을 연 채 화면을 옮기면 tkHold 가 참으로 남아 실시간 갱신이 멈췄다 — 달력 폼은 확정하고 닫고, 업무 폼은 닫는다 */
+  if(S.view==='calendar'&&view!=='calendar'&&S.planEdit)closePlanEdit();
+  if(S.view==='tasks'&&view!=='tasks'&&(S.tkNew||S.tkEdit)&&!(typeof tkFormDirty==='function'&&tkFormDirty())){S.tkNew=null;S.tkEdit=null;S.tkEditOcc='';}   /* 적던 내용이 있으면 건드리지 않는다 */
   S.view=view;
   S.planOpen='';S.tkOpen=null;   /* 펼쳐 둔 카드는 화면을 옮기면 접는다(일정·업무 목록 모두) */
   pickClear();   /* 655차: 화면을 옮기면 골라 둔 업무도 푼다 — 안 그러면 돌아왔을 때 남은 선택에 일괄 적용된다 */
@@ -10242,6 +10293,9 @@ function _applySnap(items,key){
 function undoRun(){
   if(!UNDO){toast('되돌릴 변경 없음');return;}
   if(!UNDO.items.some(o=>o.next))undoCommit();   /* 버튼을 바로 눌러 아직 못 채웠으면 지금 채운다 */
+  /* 953차: 되돌릴 변경 뒤에 같은 업무가 또 바뀌었으면(폼 수정 등) 되돌리지 않는다 — 옛 값을 통째로 써서 나중 수정이 사라졌다 */
+  {const sig=v=>v?JSON.stringify([v.text||'',v.prog||'',v.date||'',v.end||'',stOf(v.st),v.doneOn||{},v.assignees||{},v.site||'',v.kind||'']):'';
+   if(UNDO.items.some(o=>o.next!==null&&sig(_snap(o.sid,o.iid))!==sig(o.next))){UNDO=null;toast('그 뒤에 바뀐 내용이 있어 되돌리지 않았습니다');return;}}
   _applySnap(UNDO.items,'prev');
   REDO=UNDO;UNDO=null;
   toastUndo(REDO.items.length+'건 되돌림',4000);   /* 659차: 토스트는 여기서만 — 다시 실행 여부를 묻는 자리 */
@@ -10267,6 +10321,13 @@ function toastUndo(msg,ms=4000){
   t.innerHTML='<span>'+esc(msg)+'</span><button class="toast-undo" data-act="undo.redo">다시 실행</button>';
   t.classList.add('show','has-btn');
   clearTimeout(toastT);toastT=setTimeout(()=>{t.classList.remove('show','has-btn');},ms);
+}
+/* 955차: 알림 + 단추 하나(되돌리기 등) — 누르면 fn */
+let TOAST_FN=null;
+function toastAct(msg,label,fn,ms=5000){
+  const t=$('#toast');t.innerHTML='<span>'+esc(msg)+'</span><button class="toast-undo" data-act="toast.act">'+esc(label)+'</button>';
+  t.classList.add('show','has-btn');TOAST_FN=fn;
+  clearTimeout(toastT);toastT=setTimeout(()=>{t.classList.remove('show','has-btn');TOAST_FN=null;},ms);
 }
 function toast(msg,duration=2400){
   const t=$('#toast');t.textContent=msg;t.classList.remove('has-btn');t.classList.add('show');
@@ -10440,6 +10501,10 @@ const ACT={
   'auth.signup':fbDoSignup,
   'auth.resend':fbDoResend,
   'auth.reset':fbDoReset,
+  'auth.view':el=>cvView(el.dataset.v),
+  'auth.other':()=>{cvPollStop();cvView('login');try{FB.auth.signOut();}catch(e){}},
+  'df.retry':()=>{DF.lerr=false;const rm=dfRm();Object.keys(DF.kerr||{}).forEach(k=>{if(k.startsWith(rm+'/')){delete DF.kerr[k];delete DF.kpi[k];}});rDefect();},   /* 963차: 읽기 실패 카드의 다시 시도 */
+  'auth.eye':el=>{const i=$('#fbPw'),on=i.type==='password';i.type=on?'text':'password';el.setAttribute('aria-pressed',on?'true':'false');el.setAttribute('aria-label',on?'비밀번호 숨기기':'비밀번호 보기');},
   'acct.reset':acctResetPw,
   'acct.open':openAcctModal,
   'df.site':el=>{S.dfSid=el.dataset.sid;S.dfTab='sum';go('defect');},
@@ -10491,7 +10556,7 @@ const ACT={
     $$('#dfNav .df-reg').forEach(b=>{S.dfFold[b.dataset.rid]=true;});   /* true=접힘 · false=펼침 (기존 저장값과 호환) */
     S.dfFold[k]=wasOpen?true:false;
     rDefectNav();},
-  'df.vacEdit':el=>{
+  'df.vacEdit':el=>{if(!isEditor())return denyEdit();   /* 953차: 사용자는 서버가 거부한다 — 먼저 알린다 */
     const sid=el.dataset.sid,sangga=el.dataset.kind==='sangga';
     const vl=sangga?'공가상가':'공가세대',_u=sangga?'호실':'세대';
     const field=sangga?'commercialStatus':'vacantStatus';
@@ -10505,7 +10570,7 @@ const ACT={
     const upd=()=>{const a=parseInt($('#vmMb').value,10)||0,b=parseInt($('#vmMk').value,10)||0;const e2=$('#vmSum');if(e2)e2.textContent=(a+b).toLocaleString()+' '+_u;};
     $('#vmMb').addEventListener('input',upd);$('#vmMk').addEventListener('input',upd);upd();
     setTimeout(()=>$('#vmMb').focus(),30);},
-  'df.vacSave':el=>{
+  'df.vacSave':el=>{if(!isEditor())return denyEdit();
     const sid=el.dataset.sid,sangga=el.dataset.kind==='sangga';
     const field=sangga?'commercialStatus':'vacantStatus';
     const rm=dfRm(),key=rm+'/'+sid;
@@ -10695,12 +10760,13 @@ const ACT={
     tkDateRefresh();},
   'tk.formSave':el=>taskFormSave(el.dataset.sid,el.dataset.iid||null),
   'undo.redo':()=>{const t=$('#toast');t.classList.remove('show','has-btn');redoRun();},
+  'toast.act':()=>{const f=TOAST_FN;TOAST_FN=null;$('#toast').classList.remove('show','has-btn');if(f)f();},
   'pick.clear':()=>pickClear(),
   'pick.del':()=>{const{ok}=pickEditable();
     if(!ok.length){denyTask();return;}
     if(!confirm(ok.length+'건을 휴지통으로 보낼까요?'))return;
-    ok.forEach(({sid,iid})=>ACT['tk.del']({dataset:{sid,iid}}));
-    pickClear();},
+    ok.forEach(({sid,iid})=>{const key=sid+'/'+iid;if(S.tkEdit===key)S.tkEdit=null;if(S.tkOpen===key)S.tkOpen=null;store.trashTask(sid,iid);});   /* 953차: tk.del 은 건마다 확인창을 띄워 마지막 한 건만 지워졌다 */
+    pickClear();if(!S.live)rTasks();else setTimeout(rTasks,220);refetchCal();toast(ok.length+'건을 휴지통으로 옮겼습니다');},
   'tk.open':el=>{
     const key=el.dataset.sid+'/'+el.dataset.iid;
     S.tkOpen=S.tkOpen===key?null:key;rTasks();
@@ -10748,17 +10814,17 @@ const ACT={
         if(!S.live)rTasks();else setTimeout(rTasks,220);
         refetchCal();toast('휴지통으로 옮겼습니다');
       });},
-  'org.addTeam':()=>{
+  'org.addTeam':()=>{if(!isEditor())return denyEdit();   /* 953차: 관리자만 */
     
     const id=uid();S.org.teams=(S.org.teams||[]).concat([{id,name:''}]);orgSave();
     setTimeout(()=>{const i=document.querySelector('#teamRoot .mg-inp[data-id="'+id+'"]');if(i)i.focus();},S.live?260:20);
   },
-  'org.addReg':()=>{
+  'org.addReg':()=>{if(!isEditor())return denyEdit();   /* 953차: 관리자만 */
     
     const id=uid();S.org.regions=(S.org.regions||[]).concat([{id,name:''}]);orgSave();
     setTimeout(()=>{const i=document.querySelector('#regRoot .mg-inp[data-id="'+id+'"]');if(i)i.focus();},S.live?260:20);
   },
-  'org.delTeam':el=>{
+  'org.delTeam':el=>{if(!isEditor())return denyEdit();   /* 953차: 관리자만 */
     
     const t=(S.org.teams||[]).find(x=>x.id===el.dataset.id);if(!t)return;
     confirmModal('팀 삭제','"'+t.name+'" 팀을 삭제합니다. 이 팀의 공통 업무도 화면에서 사라지고, 배정된 담당자는 미배정으로 돌아갑니다.',()=>{
@@ -10766,7 +10832,7 @@ const ACT={
       Object.keys(S.people||{}).forEach(id=>{if(S.people[id].team===t.id)store.putPerson(id,{...S.people[id],team:''});});
       orgSave();});
   },
-  'org.delReg':el=>{
+  'org.delReg':el=>{if(!isEditor())return denyEdit();   /* 953차: 관리자만 */
     
     const r=(S.org.regions||[]).find(x=>x.id===el.dataset.id);if(!r)return;
     confirmModal('권역 삭제','"'+r.name+'" 권역을 삭제합니다. 배정된 담당자의 권역은 비워집니다.',()=>{
@@ -10791,6 +10857,7 @@ const ACT={
   /* 축소 버튼은 한 번에 전체로 — 여러 시도를 옮겨 다닌 뒤에는 한 단계씩 되돌리면 안 듣는 것처럼 보였다 */
   'org.mapAll':()=>{const km=S.km;if(!km)return;km.vb={...KM_VB0};km.sel='';km.hist=[];rOrgMap();},
   'org.mapBig':kmOpenBig,   /* 547차 */
+  'org.mapYr':el=>{const k=el.dataset.yr,cur=S.kmYr||[];S.kmYr=cur.includes(k)?cur.filter(z=>z!==k):[...cur,k];rOrgMap();},   /* 953차: 년차 묶음 머리를 누르면 그 년차만(발신처만 있고 처리기가 없었다) */
   'org.mapYrMenu':el=>{   /* 575차: 년차 필터 드롭다운 — 앱 공용 메뉴(openCtx). 576차: 다중 선택 — 고르면 닫지 않고 같은 자리에 다시 연다 */
     if(_ctxEl&&document.contains(_ctxEl)&&_ctxEl.dataset.for==='kmYr'){closeCtx();return;}   /* 580차: 열려 있으면 닫는다 · 601차: 떼어진 메뉴는 무시 */
     const r=el.getBoundingClientRect(),cur=S.kmYr||[];
@@ -10808,7 +10875,7 @@ const ACT={
   'org.draftSave':()=>{if(orgDraftApply())toast('현장 정보를 저장했습니다');},
   'org.draftDrop':()=>{ORG_DRAFT={};rOrg();},
   'org.draftDropGo':el=>{ORG_DRAFT={};closeModal();go(el.dataset.v);},
-  'org.addSite':()=>{
+  'org.addSite':()=>{if(!isEditor())return denyEdit();   /* 953차: 관리자만 */
     /* 795차: 새 현장은 권역 없이(→ 공구장·담당자도 빈 채) · 토글 전부 끔(하자현황 = dfHide, 공가·소송 = siteConfig) · 표 맨 아래(siteCmp: 이름 없는 행은 끝).
        전엔 첫 권역을 넣어 그 권역 준공일 없는 줄 사이에 끼었다. 권역 탭에서 누르면 새 행이 안 보이므로 전체 탭으로 */
     const id=uid(),off={hasCommercial:false,showVacant:false,lawsuit:false};
@@ -10834,7 +10901,7 @@ const ACT={
       rosterBust();rOrg();rTasks();toast('팀 명단에서 뺐습니다 — 「미배정」에서 다시 배정할 수 있습니다');
     },'삭제');
   },
-  'org.delSite':el=>{
+  'org.delSite':el=>{if(!isEditor())return denyEdit();   /* 953차: 관리자만 */
     
     const st=(S.org.sites||[]).find(x=>x.id===el.dataset.id);if(!st)return;
     confirmModal('현장 삭제','"'+(st.name||'이름 없음')+'" 현장을 삭제합니다. 담당자에게 배정된 이 현장도 함께 해제됩니다.',()=>{
@@ -10925,9 +10992,10 @@ const ACT={
       let it=null;try{it=JSON.parse(LZString.decompressFromBase64(w.z)||'null');}catch(e){}
       if(!it){toast('복원할 수 없는 항목입니다');return;}
       if(!canEditTask(it,sid)){denyTask();return;}   /* 627차 */
-      store.putTask(sid,iid,histPush(cleanTask(it),'restore'));   /* cleanTask 를 다시 지나 tasks 스키마로 검증된다 */
-      trashDrop(sid,iid);
-      toast('복원했습니다');trashOpen();});},
+      const pr=store.putTask(sid,iid,histPush(cleanTask(it),'restore'));   /* cleanTask 를 다시 지나 tasks 스키마로 검증된다 */
+      /* 953차: 휴지통 사본은 저장이 성공한 뒤에만 지운다 — 거부되면 업무가 영영 사라졌다 */
+      const ok=()=>{trashDrop(sid,iid);toast('복원했습니다');trashOpen();};
+      if(pr&&pr.then)pr.then(ok).catch(()=>{toast('복원하지 못했습니다 — 이 업무를 복원할 권한이 없습니다');trashOpen();});else ok();});},
   'trash.del':el=>{const sid=el.dataset.sid,iid=el.dataset.iid;
     confirmModal('영구 삭제','이 업무를 휴지통에서 완전히 지웁니다. 되돌릴 수 없습니다.',()=>{
       trashDrop(sid,iid);toast('완전히 지웠습니다');trashOpen();});},
@@ -10959,12 +11027,23 @@ const ACT={
         try{d=JSON.parse(raw);}catch(e){return toast('읽을 수 없는 파일입니다');}
         if(!d||d.kind!=='hplan-backup')return toast('이 앱의 백업 파일이 아닙니다');
         const n=Object.values(d.tasks||{}).reduce((a,m)=>a+Object.keys(m||{}).length,0);
+        /* 954차: 보관함은 지금 업무·보관함 어디에도 없는 것만 되살린다 · D+60 은 서식(공종별)·점검 결과(현장별)를 그때 값으로 */
+        const hot=S.tasks||{},arc=d.archive||{},arcAdd=[];
+        Object.keys(arc).forEach(sid=>Object.keys(arc[sid]||{}).forEach(iid=>{
+          if(!(hot[sid]&&hot[sid][iid])&&!((S.arch||{})[sid]&&S.arch[sid][iid])&&!((d.tasks||{})[sid]&&d.tasks[sid][iid]))arcAdd.push([sid,iid,arc[sid][iid]]);}));
+        const dF=(d.d60&&d.d60.forms)||{},dI=(d.d60&&d.d60.insp)||{};
+        const nF=Object.keys(dF).length,nI=Object.keys(dI).length;
         confirmModal('백업으로 되돌리기',
-          (d.savedAt||'').slice(0,10)+' 시점으로 되돌립니다 · 업무 '+n+'건, 담당자 '+Object.keys(d.people||{}).length+'명.<br>'
-          +'<b>지금 내용은 모두 사라집니다.</b> 되돌리기 전에 한 번 더 백업해 두세요.',()=>{
+          (d.savedAt||'').slice(0,10)+' 시점의 업무 '+n+'건과 담당자 '+Object.keys(d.people||{}).length+'명'+(arcAdd.length?', 보관함 '+arcAdd.length+'건':'')+(nF||nI?', D+60 서식 '+nF+'개 공종과 점검 '+nI+'개 현장':'')+'을 그때 값으로 되돌립니다. 그 뒤에 새로 만든 업무는 그대로 남고, 팀·권역·현장과 점검 사진은 되돌리지 않습니다. 되돌리기 전에 한 번 더 백업해 두세요.',()=>{   /* 953차: 실제 동작대로 · confirmModal 은 글자로 찍혀 <br>·<b> 가 그대로 보였다 */
             /* ⚠ 팀·권역·현장은 하자처리 현황이 원본이라 되돌리지 않는다 — 되돌려도 곧 덮어써진다 */
             if(d.people)Object.keys(d.people).forEach(k=>store.putPerson(k,d.people[k]));   /* 한 명씩 되돌린다 */
             if(d.tasks)Object.keys(d.tasks).forEach(sid=>Object.keys(d.tasks[sid]||{}).forEach(iid=>store.putTask(sid,iid,d.tasks[sid][iid])));
+            if(arcAdd.length){
+              if(S.live){const up={};arcAdd.forEach(([sid,iid,it])=>{up['calapp/archive/'+sid+'/'+iid]=archWrap(it);});FB.db.ref().update(up).catch(fbErr);}
+              else{const L=LocalStore._d;L.archive=L.archive||{};arcAdd.forEach(([sid,iid,it])=>{(L.archive[sid]=L.archive[sid]||{})[iid]=archWrap(it);});lsSave(L);}
+              ARCH.loaded=false;}
+            Object.keys(dF).forEach(tr=>d60Write('forms/'+tr,dF[tr]));
+            Object.keys(dI).forEach(sid=>d60Write('insp/'+sid,dI[sid]));
             toast('되돌렸습니다 · 화면을 새로고침해 주세요');
           },'되돌리기',true);
       };
@@ -11054,6 +11133,12 @@ const ACT={
   'wid.st':el=>{
     const sid=el.dataset.sid,iid=el.dataset.iid;
     const cur=(S.tasks[sid]||{})[iid];if(!cur)return;
+    if(cur.recur&&cur.recur.f){   /* 953차: 반복은 그 회차만 — 업무 전체를 완료하면 다음 회차까지 사라졌다 */
+      const occ=el.dataset.occ||taskDate(sid,iid,cur),k=occSrc(taskAsPlan(sid,iid,cur),occ),doneOn={...(cur.doneOn||{})},on=!!doneOn[k];
+      if(on)delete doneOn[k];else doneOn[k]=1;
+      store.putTask(sid,iid,histPush({...cur,doneOn,updatedAt:Date.now()},on?'undone':'done'));
+      toast(on?'진행으로 되돌렸습니다':'이 회차를 완료했습니다');
+      setTimeout(()=>{if(!S.live){rTasks();rDay();rWidget();}widSideRender();refetchCal();},220);return;}
     const n=stEff(cur)===2?1:2;
     stxSet(el,n);
     store.putTask(sid,iid,histPush({...cur,st:n,stKeep:n===1,updatedAt:Date.now()},n===2?'done':(n===3?'hold':'undone')));
@@ -11297,7 +11382,7 @@ document.addEventListener('change',e=>{
   if(e.target.id==='peKind'){peKindRefresh();return;}
   const rl=e.target.closest('[data-act="acct.role"]');
   if(rl){ACT['acct.role'](rl);return;}
-  const ren=e.target.closest('[data-act="org.ren"]');
+  const ren=e.target.closest('[data-act="org.ren"]');if(ren&&!isEditor()){denyEdit();return;}   /* 953차 */
   if(ren){
     const k=ren.dataset.kind;
     const list=k==='Team'?(S.org.teams||[]):k==='Site'?(S.org.sites||[]):(S.org.regions||[]);
@@ -11575,8 +11660,50 @@ function tkRefresh(){
     if(focus){const q=old.querySelector('#tkQ');if(q){const n=q.value.length;q.focus();try{q.setSelectionRange(n,n);}catch(_){}}}
   }
 }
+/* 956차: role="button" 인 div·span 은 클릭만 받아 키보드(Enter·Space)로는 눌리지 않았다(사이드바 메뉴 등 18곳) — 한 곳에서 click 으로 넘긴다 */
 document.addEventListener('keydown',e=>{
-  if(e.key==='Enter'&&(e.target.id==='fbEmail'||e.target.id==='fbPw')){e.preventDefault();fbDoLogin();return;}
+  const t=e.target;
+  if((e.key!=='Enter'&&e.key!==' ')||e.repeat||e.ctrlKey||e.metaKey||e.altKey||!t||!t.getAttribute)return;
+  if(t.getAttribute('role')!=='button'||/^(BUTTON|A|INPUT|TEXTAREA|SELECT)$/.test(t.tagName)||t.isContentEditable)return;
+  e.preventDefault();t.click();
+});
+/* 963차: 세그먼트(.seg) 선택 표시가 새 칸으로 미끄러진다. 대부분의 세그먼트는 누르면 innerHTML 로 통째 다시 그려져
+   옛 요소가 사라지므로, 누르기 직전 좌표를 적어 두고 다시 그려진 뒤 같은 자리의 새 .act 로 '유령 알약'을 옮긴다.
+   ⚠ 알약은 .seg 안(글자 뒤)에 깔고 새 .act 의 바탕만 잠깐 비운다 — 글자는 움직이지 않는다. 동작 줄이기면 하지 않는다. */
+document.addEventListener('click',e=>{
+  const b=e.target&&e.target.closest&&e.target.closest('.seg>button');if(!b||b.classList.contains('act'))return;
+  const sg=b.parentElement,old=sg.querySelector(':scope>button.act');if(!old)return;
+  if(matchMedia('(prefers-reduced-motion:reduce)').matches)return;
+  const r0=old.getBoundingClientRect(),s0=sg.getBoundingClientRect(),br=b.getBoundingClientRect();
+  const cx=br.left+br.width/2,cy=br.top+br.height/2;
+  requestAnimationFrame(()=>{
+    const hit=document.elementFromPoint(cx,cy),nb=hit&&hit.closest&&hit.closest('.seg>button');if(!nb)return;
+    const ns=nb.parentElement,na=ns.querySelector(':scope>button.act');if(!na)return;
+    const s1=ns.getBoundingClientRect(),r1=na.getBoundingClientRect();
+    if(Math.abs(s1.left-s0.left)>2||Math.abs(s1.top-s0.top)>2||Math.abs(r1.top-r0.top)>2||Math.abs(r1.left-r0.left)<1)return;   /* 틀째 옮겨졌으면 움직이지 않는다 */
+    const cs=getComputedStyle(na),g=document.createElement('i');g.className='seg-ghost';
+    g.style.cssText='top:'+(r1.top-s1.top-ns.clientTop)+'px;height:'+r1.height+'px;background:'+cs.backgroundColor+';box-shadow:'+cs.boxShadow+';border-radius:'+cs.borderRadius;
+    ns.classList.add('seg-mv');ns.appendChild(g);
+    const x0=r0.left-s1.left-ns.clientLeft,x1=r1.left-s1.left-ns.clientLeft;
+    const an=g.animate([{left:x0+'px',width:r0.width+'px'},{left:x1+'px',width:r1.width+'px'}],{duration:200,easing:'cubic-bezier(.4,0,.2,1)',fill:'forwards'});
+    const end=()=>{g.remove();ns.classList.remove('seg-mv');};an.onfinish=end;an.oncancel=end;
+  });
+},true);
+/* 956차: 모달이 열려 있으면 Tab 이 창 안에서만 돌게 한다 — 뒤쪽(헤더·사이드바·본문·하단 탭)으로 빠지면 창 첫 칸으로 되돌린다 */
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Tab'||!$('#mo').classList.contains('open'))return;
+  const mb=$('#mb'),a=document.activeElement;
+  const f=[...mb.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]):not([type=hidden]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')].filter(x=>x.getClientRects().length&&getComputedStyle(x).visibility!=='hidden');
+  if(!f.length){e.preventDefault();mb.focus();return;}
+  if(mb.contains(a)){
+    if(e.shiftKey&&(a===f[0]||a===mb)){e.preventDefault();f[f.length-1].focus();}
+    else if(!e.shiftKey&&a===f[f.length-1]){e.preventDefault();f[0].focus();}
+    return;
+  }
+  if(a===document.body||['#appHdr','#app','#mtab'].some(s=>{const r=$(s);return r&&r.contains(a);})){e.preventDefault();f[0].focus();}
+});
+document.addEventListener('keydown',e=>{
+  /* 958차: 로그인 칸의 Enter 는 <form id=cvForm> 의 기본 제출(=#cvBtn 클릭)이 맡는다 — 화면별로 로그인·가입·재설정 */
   if(e.key==='Enter'&&e.target.id==='peTitle'){e.preventDefault();savePlanInline();return;}
   /* Ctrl/⌘+K 로 찾기 */
   if(e.key==='Escape'){
@@ -11694,7 +11821,7 @@ function bindCalResize(){
       document.body.classList.add('sb-anim');   /* 전환 동안 달력을 배치 계산에서 떼어 낸다(391차) */
       midT.forEach(clearTimeout);chartsFreeze(true);
       midT=[220].map(ms=>setTimeout(()=>{if(CAL)CAL.updateSize();},ms));   /* 777차: 중간 갱신 100ms 제거(긴 프레임 3개) — 220 하나만 */
-      clearTimeout(endT);endT=setTimeout(settle,460);};   /* --sbtr .30s + 여유 */
+      clearTimeout(endT);endT=setTimeout(settle,460);};   /* 사이드바 폭 전환 .32s + 여유 */
     sb.addEventListener('transitionstart',e=>{
       if(e.propertyName==='width'||e.propertyName==='min-width')start();
     });
@@ -11939,12 +12066,184 @@ function widPlace(){
   box.dataset.px=Math.round(x);box.dataset.py=Math.round(y);
 }
 
+/* ═══════════ 955차(사용자): 업무 도구 이어하기 ═══════════
+   사진대지·견적 검토·도면 인쇄·재하자/생산성 작업을 **이 PC 브라우저의 IndexedDB(calapp_tools_v1)** 에 두어
+   새로고침·창 닫기 뒤에도 이어서 한다. ⚠ 서버에는 여전히 아무것도 올리지 않는다(외부 전송 금지 그대로). 지우는 길은 도구마다 「초기화」.
+   불러오기는 **그 도구 화면을 처음 열 때** 한다(부팅 때 수백 장·도면 엔진을 미리 깨우지 않게) — 그 전에는 저장도 미룬다(빈 상태로 덮어쓰지 않게).
+   용량: 크롬·엣지는 사이트마다 디스크 여유의 큰 몫까지 허락한다. 넘치면 한 번 알리고 이 창 메모리로만 계속한다. */
+const TS_KINDS=['pd','qc','dw','tl'];
+const TS={db:null,ok:true,init:false,pend:{},rdy:{},prom:{},t:{},busy:{},again:{},note:{},warned:false,pers:false,pdImg:new Map(),dwBuf:null,dwSig:'',tlRows:null};
+function tsOpen(){
+  if(TS.db)return Promise.resolve(TS.db);
+  return new Promise((res,rej)=>{let q;try{q=indexedDB.open('calapp_tools_v1',1);}catch(err){rej(err);return;}
+    const to=setTimeout(()=>rej(new Error('indexedDB.open timeout')),5000);
+    q.onupgradeneeded=()=>{const db=q.result;if(!db.objectStoreNames.contains('kv'))db.createObjectStore('kv');};
+    q.onsuccess=()=>{clearTimeout(to);TS.db=q.result;res(TS.db);};
+    q.onerror=()=>{clearTimeout(to);rej(q.error);};q.onblocked=()=>{clearTimeout(to);rej(new Error('indexedDB.open blocked'));};});
+}
+function tsReq(mode,fn){return tsOpen().then(db=>new Promise((res,rej)=>{const tx=db.transaction('kv',mode),r=fn(tx.objectStore('kv'));let out;
+  if(r)r.onsuccess=()=>{out=r.result;};tx.oncomplete=()=>res(out);tx.onerror=()=>rej(tx.error);tx.onabort=()=>rej(tx.error||new Error('abort'));}));}
+function tsGet(k){return tsReq('readonly',os=>os.get(k));}
+function tsPut(k,v){return tsReq('readwrite',os=>os.put(v,k));}
+function tsDel(k){return tsReq('readwrite',os=>os.delete(k));}
+/* 부팅 — 무엇이 남아 있는지만 본다(불러오기는 화면을 열 때) */
+async function tsInit(){
+  if(WIDGET||S.snap||typeof indexedDB==='undefined'){TS.ok=false;return;}
+  try{const keys=new Set(await tsReq('readonly',os=>os.getAllKeys()));
+    TS.pend={pd:keys.has('pd'),qc:keys.has('qc'),dw:keys.has('dwbuf'),tl:keys.has('tlrows')};
+    TS.orphan=[...keys].filter(k=>String(k).startsWith('pdimg:'));
+  }catch(err){console.warn('[도구 저장] 열기',err);TS.ok=false;return;}
+  TS.init=true;
+  TS_KINDS.forEach(k=>{if(!TS.pend[k])tsReady(k);});
+  if(!TS.pend.pd&&TS.orphan.length){TS.orphan.forEach(k=>tsDel(k).catch(()=>{}));TS.orphan=[];}   /* 목록 없이 남은 사진 */
+}
+function tsReady(k){TS.rdy[k]=true;if(TS.again[k]){TS.again[k]=false;tsMark(k);}}
+/* 그 도구 화면이 처음 그려질 때 — 남은 작업이 있으면 불러오고 다 되면 다시 그린다 */
+function tsLazy(k){
+  if(!TS.ok||!TS.pend[k])return TS.prom[k]||null;
+  TS.pend[k]=false;
+  TS.prom[k]=(TS_LOAD[k]()).catch(err=>{console.warn('[도구 저장] 불러오기 '+k,err);}).then(()=>{
+    tsReady(k);TS.prom[k]=null;
+    const v=S.view;if(k==='pd'&&v==='photo')rPhoto();else if(k==='qc'&&v==='qc')rQc();else if(k==='dw'&&v==='dwg')rDwg();else if(k==='tl'&&(v==='redo'||v==='prod'))(v==='redo'?rRedo:rProd)();});
+  return TS.prom[k];
+}
+function tsMark(k){
+  if(!TS.ok||WIDGET||S.snap)return;
+  if(!TS.init||!TS.rdy[k]){TS.again[k]=true;return;}
+  clearTimeout(TS.t[k]);TS.t[k]=setTimeout(()=>tsSave(k),700);
+}
+async function tsSave(k){
+  if(TS.busy[k]){TS.again[k]=true;return;}
+  TS.busy[k]=true;
+  try{await TS_SAVE[k]();tsPersist();}catch(err){tsFail(err);}
+  TS.busy[k]=false;
+  if(TS.again[k]){TS.again[k]=false;tsMark(k);}
+}
+function tsPersist(){if(TS.pers)return;TS.pers=true;try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});}catch(err){}}   /* 디스크가 빠듯해도 브라우저가 먼저 지우지 않게 청한다 */
+function tsFail(err){console.warn('[도구 저장]',err);if(TS.warned)return;TS.warned=true;
+  toast(/quota/i.test(String(err&&(err.name||err.message)))?'이 PC 저장 공간이 모자라 작업을 이어서 저장하지 못했습니다 · 이 창에서는 그대로 계속됩니다':'작업을 이 PC 에 저장하지 못했습니다 · 이 창에서는 그대로 계속됩니다',5000);}
+function tsNote(k){const m=TS.note[k];if(m){delete TS.note[k];setTimeout(()=>toast(m),60);}}
+const TS_SAVE={
+  async pd(){
+    const ids=new Set(PD.photos.map(p=>p.id));
+    for(const p of PD.photos){if(p.ob&&TS.pdImg.get(p.id)!==p.ob){await tsPut('pdimg:'+p.id,p.ob);TS.pdImg.set(p.id,p.ob);}}
+    for(const id of [...TS.pdImg.keys()])if(!ids.has(id)){await tsDel('pdimg:'+id);TS.pdImg.delete(id);}
+    if(!PD.photos.length&&!PD.site&&PD.title==='사진대지'){await tsDel('pd');return;}
+    await tsPut('pd',{v:1,orient:PD.orient,per:PD.per,title:PD.title,site:PD.site,split:PD.split,seq:PD.seq,
+      photos:PD.photos.filter(p=>p.ob).map(p=>({id:p.id,name:p.name||'',path:p.path||'',ow:p.ow,oh:p.oh,rq:p.rq||0,crop:p.crop||null,fit:p.fit||'fill',loc:p.loc||'',desc:p.desc||'',ann:p.ann||null}))});
+  },
+  async qc(){if(!String(QC.txt||'').trim()){await tsDel('qc');return;}await tsPut('qc',{txt:QC.txt,rnd:QC.rnd,tol:QC.tol,filter:QC.filter,ran:QC.ran});},
+  async dw(){
+    if(!DW.buf){if(TS.dwBuf){await tsDel('dwbuf');TS.dwBuf=null;TS.dwSig='';}await tsDel('dw');return;}
+    const sig=DW.name+'|'+DW.buf.byteLength+'|'+(DW.refs||[]).map(r=>r.name+':'+r.buf.byteLength).join(',');
+    if(TS.dwBuf!==DW.buf||TS.dwSig!==sig){await tsPut('dwbuf',{name:DW.name,buf:DW.buf,refs:(DW.refs||[]).map(r=>({name:r.name,buf:r.buf}))});TS.dwBuf=DW.buf;TS.dwSig=sig;}
+    await tsPut('dw',{mode:DW.mode,paper:DW.paper,orient:DW.orient,lw:DW.lw,zoom:DW.zoom,n:DW.pages.length,off:[...DW.off],lhide:(DW.layers||[]).filter((l,i)=>DW.lhide.has(i)).map(l=>l.name)});
+  },
+  async tl(){
+    if(!TL.rows.length){if(TS.tlRows){await tsDel('tlrows');TS.tlRows=null;}await tsDel('tl');return;}
+    if(TS.tlRows!==TL.rows){await tsPut('tlrows',{name:TL.name,rows:TL.rows,all:TL.all,unit:TL.unit});TS.tlRows=TL.rows;}
+    await tsPut('tl',{rd:{own:RD.own,ty:RD.ty,st:RD.st,frow:RD.frow,filters:RD.filters},pv:{co:PV.co,from:PV.from,to:PV.to,md:PV.md,tab:PV.tab,frow:PV.frow,filters:PV.filters}});
+  },
+};
+const TS_LOAD={
+  async pd(){
+    const m=await tsGet('pd');
+    const keep=new Set();
+    if(m&&Array.isArray(m.photos)&&!PD.photos.length){
+      const job={total:m.photos.length,done:0,dead:false};PD.load=job;
+      const out=[];
+      for(const x of m.photos){
+        const ob=await tsGet('pdimg:'+x.id);job.done++;const c=$('#pdCnt');if(c)c.textContent=pdCntText();
+        if(!ob||job.dead)continue;
+        const p={id:x.id,name:x.name||'',path:x.path||'',ob,ow:x.ow,oh:x.oh,rq:x.rq||0,crop:x.crop||null,fit:x.fit||'fill',loc:x.loc||'',desc:x.desc||''};
+        if(x.ann)p.ann=x.ann;
+        if(!p.ow||!p.oh){try{const bm=await createImageBitmap(ob);p.ow=bm.width;p.oh=bm.height;bm.close&&bm.close();}catch(err){continue;}}
+        try{await pdRender(p);await pdCropMake(p);}catch(err){continue;}
+        out.push(p);keep.add('pdimg:'+p.id);
+      }
+      if(PD.load===job)PD.load=null;
+      if(!job.dead&&!PD.photos.length){
+        Object.assign(PD,{orient:m.orient||'por',per:m.per||6,title:m.title==null?'사진대지':m.title,site:m.site||'',split:!!m.split,seq:Math.max(PD.seq,Number(m.seq)||0)});
+        PD.photos=out;out.forEach(p=>TS.pdImg.set(p.id,p.ob));
+        if(out.length)TS.note.pd='지난 사진대지를 이어서 엽니다 · 사진 '+out.length+'장';
+      }
+      pdGc();
+    }
+    (TS.orphan||[]).forEach(k=>{if(!keep.has(k)&&!TS.pdImg.has(String(k).slice(6)))tsDel(k).catch(()=>{});});TS.orphan=[];
+  },
+  async qc(){
+    const q=await tsGet('qc');if(!q||QC.txt)return;
+    Object.assign(QC,{txt:q.txt||'',rnd:q.rnd==null?1:q.rnd,tol:q.tol||0,filter:q.filter||'all'});
+    if(q.ran){QC.rows=qcParse(QC.txt);QC.ran=true;}
+    TS.note.qc='지난 검토 내용을 다시 불러왔습니다';
+  },
+  async dw(){
+    const b=await tsGet('dwbuf'),s=await tsGet('dw');
+    if(!b||!b.buf||DW.buf||DW.busy)return;
+    if(s)Object.assign(DW,{mode:s.mode||'auto',paper:s.paper||'a3',orient:s.orient||'auto',lw:s.lw!==false,zoom:s.zoom||'w2'});
+    DW.name=b.name||'';DW.buf=b.buf;DW.refs=(b.refs||[]).map(r=>({name:r.name,buf:r.buf}));DW.err='';
+    TS.dwBuf=DW.buf;TS.dwSig=DW.name+'|'+DW.buf.byteLength+'|'+DW.refs.map(r=>r.name+':'+r.buf.byteLength).join(',');
+    DW._restore=s?{n:s.n,off:s.off||[],lhide:s.lhide||[]}:{};
+    dwBusyStart(DW.name);
+    dwSend(DW.buf.slice(0),DW.name);
+  },
+  async tl(){
+    const r=await tsGet('tlrows'),s=await tsGet('tl');
+    if(!r||!Array.isArray(r.rows)||TL.rows.length||TL.busy)return;
+    TL.name=r.name||'';TL.rows=r.rows;TL.all=r.all||r.rows.length;TL.unit=r.unit||r.rows.length;TS.tlRows=TL.rows;
+    RD.yes=new Set(rdYesLoad());RD.groups=[];
+    if(s){Object.assign(RD,{own:s.rd.own||'out',ty:s.rd.ty||'any',st:s.rd.st||'all',frow:!!s.rd.frow,filters:s.rd.filters||{}});
+      Object.assign(PV,{co:s.pv.co||'',from:s.pv.from||'',to:s.pv.to||'',md:s.pv.md||2,tab:s.pv.tab||'day',frow:!!s.pv.frow,filters:s.pv.filters||{}});}
+    TS.note.tl='지난 하자 목록을 이어서 엽니다 · '+TL.name;
+  },
+};
+/* 955차: 파일 끌어다 놓기 — 사진대지(사진·폴더) · 도면 인쇄(DWG) · 재하자/생산성(xlsx·csv).
+   ⚠ DataTransfer 는 drop 이벤트가 끝나면 비므로 폴더 항목(webkitGetAsEntry)은 그 자리에서 먼저 뽑아 둔다 */
+const TDROP={photo:'#pdRoot',dwg:'#dwgRoot',redo:'#rdRoot',prod:'#pvRoot'};
+function tdropZone(e){
+  const sel=TDROP[S.view];if(!sel||!e.dataTransfer)return null;
+  if(![...(e.dataTransfer.types||[])].includes('Files'))return null;
+  return $(sel);
+}
+function tdropOff(){$$('.tl-drop').forEach(x=>x.classList.remove('tl-drop'));}
+document.addEventListener('dragover',e=>{const z=tdropZone(e);if(!z)return;e.preventDefault();e.dataTransfer.dropEffect='copy';if(!z.classList.contains('tl-drop')){tdropOff();z.classList.add('tl-drop');}});
+document.addEventListener('dragleave',e=>{if(!e.relatedTarget||!(e.relatedTarget.closest&&e.relatedTarget.closest('.tl-drop')))tdropOff();});
+document.addEventListener('drop',e=>{
+  const z=tdropZone(e);if(!z)return;
+  e.preventDefault();tdropOff();
+  const dt=e.dataTransfer,files=[...(dt.files||[])];
+  const ents=S.view==='photo'?[...(dt.items||[])].filter(i=>i.kind==='file').map(i=>i.webkitGetAsEntry&&i.webkitGetAsEntry()).filter(Boolean):[];
+  if(S.view==='photo'){
+    if(ents.some(x=>x.isDirectory))tdropWalk(ents).then(fl=>pdAdd(fl));else pdAdd(files);
+    return;
+  }
+  if(S.view==='dwg'){
+    const dw=files.filter(f=>/\.dwg$/i.test(f.name));if(!dw.length){toast('DWG 파일만 열 수 있습니다');return;}
+    const miss=Object.keys((DW.stat&&DW.stat.missing)||{}).map(n=>n.replace(/\.dwg$/i,'').replace(/\s+/g,'').toLowerCase());
+    const isRef=f=>miss.includes(f.name.replace(/\.dwg$/i,'').replace(/\s+/g,'').toLowerCase());
+    if(DW.buf&&!DW.busy&&dw.every(isRef)){dwAddRefs(dw);return;}   /* 빠진 참조와 이름이 같으면 참조로 붙인다 */
+    DW._pendRefs=dw.slice(1);dwOpen(dw[0]);return;              /* 여러 개면 첫 파일이 본 도면, 나머지는 참조 */
+  }
+  const f=files.find(x=>/\.(xlsx|xls|csv)$/i.test(x.name));
+  if(!f){toast('엑셀(xlsx)·CSV 파일만 열 수 있습니다');return;}
+  tlOpen(f);
+});
+async function tdropWalk(ents){
+  const out=[];
+  const walk=(en,path)=>new Promise(res=>{
+    if(en.isFile){en.file(f=>{try{f._rp=path+f.name;}catch(err){}out.push(f);res();},()=>res());return;}
+    const rd=en.createReader(),kids=[];
+    const next=()=>rd.readEntries(async list=>{if(list.length){kids.push(...list);next();return;}
+      for(const c of kids)await walk(c,path+en.name+'/');res();},()=>res());
+    next();});
+  for(const en of ents)await walk(en,'');
+  return out;
+}
 /* ═══════════ 798차: 업무 보조 — 사진대지 ═══════════
-   ⚠ 전부 이 창 메모리에서만 처리한다 — 서버·localStorage·IndexedDB 어디에도 쓰지 않는다(사용자 지시).
-     창을 닫거나 새로고침하면 사라지는 것이 정상이다. 앱 안에서 다른 화면을 다녀오는 동안은 남는다.
+   ⚠ 서버에는 쓰지 않는다. 955차(사용자)부터 이 PC 브라우저(IndexedDB)에만 저장해 새로고침 뒤에도 이어서 한다(위 TS).
    사진은 넣을 때 긴 변 2000px JPEG 로 줄여 blob URL 로 들고 있다(원본 File 은 놓는다) — 폴더째 수백 장을 넣어도
    미리보기·인쇄가 버티게. 자르기는 줄인 사진(src)에서 잘라 새 blob(url)을 만들고, 다시 열면 src 위에 영역을 보여 준다. */
-const PD={orient:'por',per:6,title:'사진대지',site:'',photos:[],sel:new Set(),anchor:'',seq:0,load:null,zoom:'w2',pz:0,page:1,split:false,tool:'none',color:'#E02424',custom:'#7048E8',lw:2,dash:0,undo:[],asel:null,clip:null};   /* 856차: asel={id,idxs[]} · custom=사용자 지정색 */   /* 847차: asel=고른 표시 · clip=복사한 표시 */   /* 846차: 표시(원·네모·화살표) */   /* 807차: 폴더별 쪽 나누기. 808차: 용지 A4 고정·여백 10mm 고정·사진 번호 제거(인쇄 창에서 고르면 되는 것은 두지 않는다) */   /* 800차: 기본 세로 6장 · 현장명 공백. 802차: 용지·여백·자유 배율(pz) */
+const PD={orient:'por',per:6,title:'사진대지',site:'',photos:[],sel:new Set(),anchor:'',seq:0,load:null,zoom:'w2',pz:0,page:1,split:false,tool:'none',color:'#E02424',custom:'#7048E8',lw:2,dash:0,hist:[],redo:[],asel:null,clip:null};   /* 955차: hist/redo = 사진대지 전체 되돌리기(사진·표시·배치) */   /* 856차: asel={id,idxs[]} · custom=사용자 지정색 */   /* 847차: asel=고른 표시 · clip=복사한 표시 */   /* 846차: 표시(원·네모·화살표) */   /* 807차: 폴더별 쪽 나누기. 808차: 용지 A4 고정·여백 10mm 고정·사진 번호 제거(인쇄 창에서 고르면 되는 것은 두지 않는다) */   /* 800차: 기본 세로 6장 · 현장명 공백. 802차: 용지·여백·자유 배율(pz) */
 const PD_MAX=2000;
 /* 800차: 파일·폴더 이름에서 위치·내용을 읽는다(예: 두정역/지하1층/트렌치 작업전.jpg → 위치 지하1층 · 내용 트렌치 작업 전).
    못 읽으면 빈칸으로 둔다 — 엉뚱하게 채우는 것보다 낫다. 단계 낱말은 **토막 끝**에서만 본다(「전경」·「전면」이 「전」으로 잡히지 않게) */
@@ -12007,7 +12306,7 @@ function pdPagesHTML(print){
       let i=cell?cell.i:next;
       if(!cell){for(let k2=k+1;k2<per;k2++){const c2=list[p][k2];if(c2){i=c2.i;break;}}}
       cells+=ph
-        ?'<div class="phs-cell'+(!print&&PD.sel.has(ph.id)?' sel':'')+'" data-id="'+ph.id+'" data-i="'+i+'"><div class="phs-ph'+(ph.fit&&ph.fit!=='fill'?' '+ph.fit:'')+'"><img src="'+ph.url+'" alt="" draggable="false"'+(ph.rot?' style="transform:rotate('+ph.rot+'deg)"':'')+'>'+pdAnnSVG(ph)+'</div>'
+        ?'<div class="phs-cell'+(!print&&PD.sel.has(ph.id)?' sel':'')+'" data-id="'+ph.id+'" data-i="'+i+'"><div class="phs-ph'+(ph.fit&&ph.fit!=='fill'?' '+ph.fit:'')+'"><img src="'+ph.url+'" alt="" draggable="false"'+(ph.rot?' style="transform:rotate('+ph.rot+'deg)"':'')+'>'+pdAnnHTML(ph)+'</div>'
           +pdF('위 치','phs-loc',ph.loc)+pdF('내 용','phs-desc',ph.desc)+'</div>'
         :'<div class="phs-cell" data-i="'+i+'" data-fill="1"><div class="phs-ph"></div>'+pdF('위 치','phs-loc','')+pdF('내 용','phs-desc','')+'</div>';
     }
@@ -12023,11 +12322,11 @@ function pdPagesHTML(print){
 function pdCntText(){const j=PD.load;return PD.photos.length+'장'+(j?' · 불러오는 중 '+j.done+'/'+j.total:'');}
 function rPhoto(){
   const root=$('#pdRoot');if(!root)return;
+  tsLazy('pd');tsNote('pd');tsMark('pd');   /* 955차: 이어하기 */
   const land=PD.orient==='land',pg=pdPagesHTML(false);
   const lay=[2,4,6].map(k=>{const[c,r]=pdCR(k,land);
     return '<button class="'+(k===PD.per?'on':'')+'" data-act="pd.per" data-k="'+k+'"><span class="phs-gl'+(land?' land':'')+'" style="grid-template-columns:repeat('+c+',1fr);grid-template-rows:repeat('+r+',1fr)">'+'<i></i>'.repeat(k)+'</span>'+k+'장</button>';}).join('');
   /* 841차: 브라우저 기본 datalist 목록은 글자·줄 높이가 앱과 따로 놀아 유난히 커 보였다 — 목록을 직접 그린다 */
-  const siteNames=[...new Set((S.org.sites||[]).map(x=>x.name).filter(Boolean))];
   root.innerHTML='<div class="phs-grid"><div class="phs-col phs-left">'
     +'<div class="card"><div class="tm-h"><span>레이아웃</span></div><div class="phs-b">'
       +'<div class="seg phs-or"><button class="'+(land?'':'act')+'" data-act="pd.orient" data-o="por">세로</button><button class="'+(land?'act':'')+'" data-act="pd.orient" data-o="land">가로</button></div>'
@@ -12047,7 +12346,9 @@ function rPhoto(){
     +'<span class="phs-pgn"><button data-act="pd.pgGo" data-d="-1" aria-label="이전 쪽" data-tip="이전 쪽"><svg class="icn" aria-hidden="true"><use href="#i-chevl"></use></svg></button>'
     +'<span class="phs-pgt" id="pdPgt">1 / '+pg.pages+'</span>'
     +'<button data-act="pd.pgGo" data-d="1" aria-label="다음 쪽" data-tip="다음 쪽"><svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg></button></span></span>'
-    +'<span class="phs-nav"><span class="phs-zc"><button data-act="pd.zStep" data-d="-1" aria-label="축소" data-tip="축소(Ctrl+휠)">−</button>'
+    +'<span class="phs-nav"><span class="phs-ur"><button data-act="pd.undo" aria-label="되돌리기" data-tip="되돌리기(Ctrl+Z)"'+(PD.hist.length?'':' disabled')+'><svg class="icn" aria-hidden="true"><use href="#i-undo2"></use></svg></button>'
+      +'<button data-act="pd.redo" aria-label="다시 하기" data-tip="다시 하기(Ctrl+Y)"'+(PD.redo.length?'':' disabled')+'><svg class="icn" aria-hidden="true"><use href="#i-redo2"></use></svg></button></span>'
+    +'<span class="phs-zc"><button data-act="pd.zStep" data-d="-1" aria-label="축소" data-tip="축소(Ctrl+휠)">−</button>'
       +'<span class="phs-pct" id="pdPct">100%</span>'
       +'<button data-act="pd.zStep" data-d="1" aria-label="확대" data-tip="확대(Ctrl+휠)">+</button></span>'
     +'<span class="seg">'
@@ -12066,7 +12367,7 @@ function pdZoom(){
   v.classList.toggle('zg',PD.zoom==='wg');
   const [mw,mh]=pdPaperMM(),W=mw*96/25.4,H=mh*96/25.4;
   const cw=v.clientWidth-24-2,ch=v.clientHeight-24-4;   /* 805차: 안쪽 여백 12×2 · 테두리 */
-  const np=Math.max(1,Math.ceil(PD.photos.length/PD.per));   /* 805차: 쪽이 하나뿐이면 두 쪽 칸을 잡아 둘 이유가 없다 */
+  const np=Math.max(1,pdPageList().length);   /* 953차: 폴더별 쪽 나눔이면 쪽 수가 다르다 */   /* 805차: 쪽이 하나뿐이면 두 쪽 칸을 잡아 둘 이유가 없다 */
   let z;
   if(PD.zoom==='free')z=PD.pz||1;
   else if(PD.zoom==='w1')z=Math.min(1,cw/W);   /* 한 쪽 = 폭에 꽉(원본 크기까지) */
@@ -12123,7 +12424,6 @@ function dwSb(v,cls,topPad){
   w.style.top=Math.round(v.offsetTop+tp+PAD+max*(v.scrollTop/(v.scrollHeight-v.clientHeight)))+'px';
 }
 function pdSbSync(){dwSb($('#pdView'),'phs-sb');}
-function pdSbFlash(){pdSbSync();}
 /* ── 841차: 현장명 고르기(앱 목록) ── */
 let PD_SITES=[],PD_SI=-1;
 function pdSiteNames(){return [...new Set((S.org.sites||[]).map(x=>x.name).filter(Boolean))];}
@@ -12223,7 +12523,7 @@ function pdPages(){
   pdZoom();   /* 805차: 쪽 수가 배율에 영향을 준다(한 쪽뿐이면 두 쪽 칸을 비워 두지 않는다) — 다시 그릴 때마다 계산 */
   const c=$('#pdCnt');if(c)c.textContent=pdCntText();
   if(typeof pdAnnUI==='function')pdAnnUI();   /* 847차: 다시 그리면 고른 표시의 상자도 다시 */
-  rPdSel();
+  rPdSel();pdUrSync();tsMark('pd');
 }
 function rPdSel(){
   const box=$('#pdSelCard');if(!box)return;
@@ -12237,7 +12537,9 @@ function rPdSel(){
     +'<div class="phs-fr"><label for="pdDesc">내용</label><input id="pdDesc" class="inp inp-sm" data-pd="desc" maxlength="80" autocomplete="off" value="'+esc(dv??'')+'"'+(dv===null?' placeholder="여러 값"':'')+'></div>'
     +'<div class="phs-fr"><label>사진</label><span class="seg">'
       +[['fill','늘림'],['contain','맞춤'],['cover','채움']].map(([k,l])=>'<button class="'+(fv===k?'act':'')+'" data-act="pd.fit" data-f="'+k+'">'+l+'</button>').join('')+'</span></div>'
-    +'<div class="phs-act"><button data-act="pd.crop"'+(list.length>1?' disabled':'')+'><svg class="icn" aria-hidden="true"><use href="#i-crop"></use></svg>자르기</button>'
+    +'<div class="phs-act"><button data-act="pd.rot" data-d="-1" data-tip="고른 사진을 모두 왼쪽으로 90°"><svg class="icn" aria-hidden="true"><use href="#i-rotl"></use></svg>왼쪽 90°</button>'
+    +'<button data-act="pd.rot" data-d="1" data-tip="고른 사진을 모두 오른쪽으로 90°"><svg class="icn" aria-hidden="true"><use href="#i-rotr"></use></svg>오른쪽 90°</button>'
+    +'<button data-act="pd.crop"'+(list.length>1?' disabled':'')+'><svg class="icn" aria-hidden="true"><use href="#i-crop"></use></svg>자르기</button>'
     +'<button class="dg" data-act="pd.del"><svg class="icn" aria-hidden="true"><use href="#i-trash"></use></svg>삭제</button></div>'
     +'<div class="phs-tools">'
       +PD_TOOLS.map(([k,l])=>'<button class="'+(PD.tool===k?'act':'')+'" data-act="pd.tool" data-t="'+k+'">'+l+'</button>').join('')+'</div>'
@@ -12257,7 +12559,7 @@ function rPdSel(){
 /* ═══ 846차: 사진 위 표시(원·네모·화살표·선) ═══
    좌표는 사진 칸을 0~100 으로 본 **비율**로 넣는다 — 배율을 바꾸거나 인쇄해도 같은 자리에 남는다.
    선 굵기는 `vector-effect:non-scaling-stroke` 라 화면과 종이에서 같은 두께가 된다. */
-const PD_TOOLS=[['rect','네모'],['ellipse','원'],['arrow','화살표']];   /* 855차: 「고르기」 단추는 뺀다 — 누른 도구를 다시 누르면 꺼지고, 그리고 나면 저절로 고르기로 돌아간다 */
+const PD_TOOLS=[['rect','네모'],['ellipse','원'],['arrow','화살표'],['num','번호'],['mosaic','모자이크']];   /* 955차: 번호(누를 때마다 1·2·3 — 다시 누르거나 Esc 로 끝) · 모자이크(사람 얼굴·차량 번호 가리기) */   /* 855차: 「고르기」 단추는 뺀다 — 누른 도구를 다시 누르면 꺼지고, 그리고 나면 저절로 고르기로 돌아간다 */
 const PD_COLORS=['#E02424','#F59F00','#1C7ED6','#2F9E44','#111111'];
 const PD_DASH='6,4';   /* 849차: 점선 — 굵기와 무관하게 같은 간격으로 보이게 화면 단위(px) */
 /* 화면 기준 회전을 늘어난 좌표계로 옮긴 행렬 */
@@ -12294,11 +12596,43 @@ function pdAnnSVG(ph,extra){
   return '<svg class="phs-ann" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">'
     +list.map(one).join('')+(extra?one(extra):'')+'</svg>';
 }
+/* 955차: 선 표시(SVG) + 모자이크 + 번호. 번호·모자이크는 늘어난 SVG 좌표계에 두면 찌그러지므로 HTML 로 얹는다.
+   모자이크 = 사진을 긴 변 PD_MOS 칸으로 줄인 그림(p.mx)을 그 자리 크기로 키워(pixelated) 칸 안에만 보인다 — 미리보기·인쇄가 같은 그림 */
+function pdIsShape(a){return a.t!=='num'&&a.t!=='mosaic';}
+function pdAnnHTML(ph,extra){
+  const all=(ph&&ph.ann)||[];
+  let h=pdAnnSVG({ann:all.filter(pdIsShape)},extra&&pdIsShape(extra)?extra:null);
+  const mos=all.filter(a=>a.t==='mosaic').concat(extra&&extra.t==='mosaic'?[extra]:[]);
+  if(mos.length){
+    const ok=!!(ph.mx&&ph.mxFor===ph.url);if(!ok)pdMosaicKick(ph);
+    const fit=ph.fit&&ph.fit!=='fill'?ph.fit:'fill';
+    h+='<div class="phs-mosl" aria-hidden="true">'+mos.map(a=>{const b=pdAnnBox(a);if(b.w<=0||b.h<=0)return '';
+      return '<div class="phs-mos'+(ok?'':' wait')+'" style="left:'+b.x+'%;top:'+b.y+'%;width:'+b.w+'%;height:'+b.h+'%">'
+        +(ok?'<img src="'+ph.mx+'" alt="" draggable="false" style="left:'+(-b.x/b.w*100)+'%;top:'+(-b.y/b.h*100)+'%;width:'+(10000/b.w)+'%;height:'+(10000/b.h)+'%;object-fit:'+fit+'">':'')+'</div>';}).join('')+'</div>';
+  }
+  const nums=all.filter(a=>a.t==='num');
+  if(nums.length)h+='<div class="phs-numl" aria-hidden="true">'+nums.map(a=>'<span class="phs-num" style="left:'+a.x+'%;top:'+a.y+'%;background:'+esc(a.c||'#E02424')+'">'+(Number(a.n)||1)+'</span>').join('')+'</div>';
+  return h;
+}
+const PD_MOS=36;   /* 모자이크 굵기 — 사진 긴 변을 몇 칸으로 뭉갤지 */
+const PD_MXQ=new Set();
+async function pdMosaic(p){
+  if(p.mx&&p.mxFor===p.url)return;
+  const b=p.ub||p.sb;if(!b)return;
+  const bm=await createImageBitmap(b),s=PD_MOS/Math.max(bm.width,bm.height);
+  const w=Math.max(1,Math.round(bm.width*s)),h=Math.max(1,Math.round(bm.height*s));
+  const cv=document.createElement('canvas');cv.width=w;cv.height=h;cv.getContext('2d').drawImage(bm,0,0,w,h);if(bm.close)bm.close();
+  const out=await new Promise(r=>cv.toBlob(r,'image/png'));if(!out)return;
+  p.mx=pdURL(out);p.mxFor=p.url;
+}
+function pdMosaicKick(ph){if(PD_MXQ.has(ph.id))return;PD_MXQ.add(ph.id);
+  pdMosaic(ph).catch(()=>{}).then(()=>{PD_MXQ.delete(ph.id);if(S.view==='photo')pdAnnPaint(ph.id);});}
+async function pdMosaicAll(){for(const p of PD.photos)if((p.ann||[]).some(a=>a.t==='mosaic')){try{await pdMosaic(p);}catch(err){}}}
 function pdAnnPaint(id,extra){
   const ph=PD.photos.find(p=>p.id===id);if(!ph)return;
   $$('#pdView .phs-cell[data-id="'+id+'"] .phs-ph').forEach(box=>{
-    const old=box.querySelector('.phs-ann');if(old)old.remove();
-    const html=pdAnnSVG(ph,extra);
+    box.querySelectorAll('.phs-ann,.phs-mosl,.phs-numl').forEach(x=>x.remove());
+    const html=pdAnnHTML(ph,extra);
     if(html){const ui=box.querySelector('.phs-annui');
       if(ui)ui.insertAdjacentHTML('beforebegin',html);else box.insertAdjacentHTML('beforeend',html);}
   });
@@ -12312,6 +12646,11 @@ document.addEventListener('pointerdown',e=>{
   const r=box.getBoundingClientRect();
   const at=(cx,cy)=>[Math.max(0,Math.min(100,(cx-r.left)/r.width*100)),Math.max(0,Math.min(100,(cy-r.top)/r.height*100))];
   const [x,y]=at(e.clientX,e.clientY);
+  if(PD.tool==='num'){   /* 955차: 번호는 누른 자리에 바로 — 도구는 켜 둔 채 이어서 1·2·3 */
+    pdSnap();const n=(ph.ann||[]).filter(a=>a.t==='num').reduce((m,a)=>Math.max(m,Number(a.n)||0),0)+1;
+    (ph.ann=ph.ann||[]).push({t:'num',x,y,x2:x,y2:y,n,c:PD.color});
+    pdAnnPaint(ph.id);return;
+  }
   _pdAnn={id:ph.id,box,r,a:{t:PD.tool,x,y,x2:x,y2:y,c:PD.color,w:PD.lw,d:PD.dash?1:0}};
   pdAnnPaint(ph.id,_pdAnn.a);
 },true);
@@ -12335,7 +12674,7 @@ document.addEventListener('pointerup',()=>{
   const ph=PD.photos.find(p=>p.id===id);if(!ph)return;
   const small=Math.hypot(a.x2-a.x,a.y2-a.y)<2.5;   /* 그냥 누른 것은 표시로 보지 않는다 */
   if(small){pdAnnPaint(id);return;}
-  pdAnnSnap(id);
+  pdSnap();
   (ph.ann=ph.ann||[]).push(a);
   PD.asel={id,idxs:[ph.ann.length-1]};PD.tool='none';   /* 847차: 그리고 나면 바로 고를 수 있게 */
   document.body.classList.remove('pd-drawing');
@@ -12343,11 +12682,13 @@ document.addEventListener('pointerup',()=>{
 },true);
 /* ⚠ 앱 전체 되돌리기보다 먼저 잡아야 한다(캡처) — 안 그러면 「되돌릴 변경 없음」 토스트가 먼저 뜬다 */
 document.addEventListener('keydown',e=>{
-  if(S.view!=='photo'||!PD.photos.length)return;
+  if(S.view!=='photo'||!(e.ctrlKey||e.metaKey))return;
   const t=e.target;if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable))return;
-  if((e.ctrlKey||e.metaKey)&&(e.key==='z'||e.key==='Z'||e.key==='ㅋ')){
-    if(!PD.undo.length)return;                 /* 표시 기록이 없으면 앱 되돌리기에 넘긴다 */
-    e.preventDefault();e.stopPropagation();pdAnnUndo();
+  const k=e.key,redo=k==='y'||k==='Y'||k==='ㅛ'||(e.shiftKey&&(k==='z'||k==='Z'||k==='ㅋ'));
+  if(redo){if(!PD.redo.length)return;e.preventDefault();e.stopPropagation();pdRedo();return;}
+  if(k==='z'||k==='Z'||k==='ㅋ'){
+    if(!PD.hist.length)return;                 /* 사진대지 기록이 없으면 앱 되돌리기에 넘긴다 */
+    e.preventDefault();e.stopPropagation();pdUndo();
   }
 },true);
 /* ── 847차: 표시 고르기·옮기기·크기 조절·복사 ── */
@@ -12356,14 +12697,38 @@ function pdAnnApply(patch){
   const sel=PD.asel;if(!sel)return;
   const ph=PD.photos.find(p=>p.id===sel.id);if(!ph||!ph.ann)return;
   const idxs=pdAselIdxs().filter(i=>ph.ann[i]);if(!idxs.length)return;
-  pdAnnSnap(sel.id);idxs.forEach(i=>Object.assign(ph.ann[i],patch));pdAnnPaint(sel.id);pdAnnUI();
+  pdSnap('ap');idxs.forEach(i=>Object.assign(ph.ann[i],patch));pdAnnPaint(sel.id);pdAnnUI();
 }
-function pdAnnSnap(id){
-  const ph=PD.photos.find(p=>p.id===id);if(!ph)return;
-  PD.undo.push({id,ann:JSON.parse(JSON.stringify(ph.ann||[]))});
-  if(PD.undo.length>50)PD.undo.shift();
+/* ═══ 955차: 사진대지 되돌리기 — 사진·표시·배치·머리글을 통째로 떠 둔다(최근 60번).
+   사진 그림은 blob URL 을 그대로 들고 있으므로 옛 그림도 되살아난다(안 쓰게 되면 pdGc 가 푼다).
+   key: 색 고르개처럼 잇달아 오는 같은 조작은 1.5초 안이면 한 번으로 묶는다 ═══ */
+function pdSnapNow(){return {photos:PD.photos.map(p=>({...p,ann:p.ann?JSON.parse(JSON.stringify(p.ann)):p.ann})),per:PD.per,orient:PD.orient,split:PD.split,title:PD.title,site:PD.site};}
+function pdSnap(key){
+  const now=Date.now();
+  if(key&&PD._sk===key&&now-PD._st<1500){PD._st=now;return;}
+  PD._sk=key||'';PD._st=now;
+  PD._rb=PD.redo;PD.redo=[];PD.hist.push(pdSnapNow());
+  if(PD.hist.length>60){PD.hist.shift();pdGc();}
+  pdUrSync();tsMark('pd');
 }
-function pdAnnBox(a){return {x:Math.min(a.x,a.x2),y:Math.min(a.y,a.y2),w:Math.abs(a.x2-a.x),h:Math.abs(a.y2-a.y)};}
+function pdSnapDrop(){PD.hist.pop();PD.redo=PD._rb||[];PD._rb=null;PD._sk='';pdUrSync();}   /* 떠 두었는데 바뀐 것이 없을 때 */
+function pdApplySnap(s){
+  PD.photos=s.photos.map(p=>({...p,ann:p.ann?JSON.parse(JSON.stringify(p.ann)):p.ann}));
+  Object.assign(PD,{per:s.per,orient:s.orient,split:s.split,title:s.title,site:s.site,asel:null,tool:'none',_sk:''});
+  const ids=new Set(PD.photos.map(p=>p.id));PD.sel=new Set([...PD.sel].filter(x=>ids.has(x)));
+  document.body.classList.remove('pd-drawing');
+}
+function pdHistGo(from,to,msg){
+  if(!from.length){toast(msg);return;}
+  const v=$('#pdView'),st=v?v.scrollTop:0;
+  to.push(pdSnapNow());pdApplySnap(from.pop());
+  rPhoto();const v2=$('#pdView');if(v2)v2.scrollTo({top:st,behavior:'instant'});
+  pdGc();tsMark('pd');
+}
+function pdUndo(){pdHistGo(PD.hist,PD.redo,'되돌릴 것이 없습니다');}
+function pdRedo(){pdHistGo(PD.redo,PD.hist,'다시 할 것이 없습니다');}
+function pdUrSync(){const b=$$('#pdRoot .phs-ur button');if(b[0])b[0].disabled=!PD.hist.length;if(b[1])b[1].disabled=!PD.redo.length;}
+function pdAnnBox(a){if(a.t==='num')return {x:a.x-3,y:a.y-3,w:6,h:6};return {x:Math.min(a.x,a.x2),y:Math.min(a.y,a.y2),w:Math.abs(a.x2-a.x),h:Math.abs(a.y2-a.y)};}
 /* 누른 자리에 있는 표시 — 위에 그린 것부터 본다 */
 function pdAnnHit(ph,x,y){
   const list=ph.ann||[];
@@ -12396,7 +12761,7 @@ function pdAnnUI(){
     const a=ph.ann[i],b=pdAnnBox(a),cx=b.x+b.w/2,cy=b.y+b.h/2,deg=a.rot||0;
     const pts=[[b.x,b.y],[b.x+b.w,b.y],[b.x+b.w,b.y+b.h],[b.x,b.y+b.h]].map(([x,y])=>pdRotPt(x,y,cx,cy,deg,RW,RH));
     poly+='<polygon points="'+pts.map(p=>p[0]+','+p[1]).join(' ')+'"/>';
-    if(idxs.length===1){
+    if(idxs.length===1&&a.t!=='num'){   /* 955차: 번호는 옮기기만(크기·회전 없음) */
       const arrow=a.t==='arrow';
       if(arrow){
         hs+='<i class="phs-h" data-h="a1" style="left:'+a.x+'%;top:'+a.y+'%"></i>'
@@ -12407,7 +12772,7 @@ function pdAnnUI(){
           hs+='<i class="phs-h" data-h="'+k+'" style="left:'+px+'%;top:'+py+'%"></i>';
         });
         const [rx,ry]=pdRotPt(cx,b.y,cx,cy,deg,RW,RH);
-        hs+='<button class="phs-arot" data-arot="'+i+'" style="left:'+rx+'%;top:'+ry+'%" aria-label="도형 돌리기" data-tip="끌어서 돌리기 · Shift 는 15°">'
+        if(a.t!=='mosaic')hs+='<button class="phs-arot" data-arot="'+i+'" style="left:'+rx+'%;top:'+ry+'%" aria-label="도형 돌리기" data-tip="끌어서 돌리기 · Shift 는 15°">'
           +'<svg class="icn" aria-hidden="true"><use href="#i-expand"></use></svg></button>';
       }
     }
@@ -12424,7 +12789,7 @@ document.addEventListener('pointerdown',e=>{
   const cell=box.closest('.phs-cell'),ph=PD.photos.find(p=>p.id===cell.dataset.id);if(!ph)return;
   const idx=Number(h.dataset.arot),a=ph.ann&&ph.ann[idx];if(!a)return;
   const cx=r.left+r.width*((a.x+a.x2)/200),cy=r.top+r.height*((a.y+a.y2)/200);
-  pdAnnSnap(ph.id);
+  pdSnap();
   _pdAr={id:ph.id,idx,cx,cy,a0:Math.atan2(e.clientY-cy,e.clientX-cx)*180/Math.PI,r0:a.rot||0};
   h.setPointerCapture&&h.setPointerCapture(e.pointerId);
 },true);
@@ -12458,7 +12823,7 @@ document.addEventListener('pointerdown',e=>{
   const idxs=pdAselIdxs();
   if(handle&&PD.asel&&PD.asel.id===ph.id&&idxs.length===1){
     e.preventDefault();e.stopPropagation();
-    pdAnnSnap(ph.id);
+    pdSnap();
     _pdAe={mode:'size',h:handle.dataset.h,id:ph.id,idx:idxs[0],r,a0:{...ph.ann[idxs[0]]},x,y};
     return;
   }
@@ -12473,7 +12838,7 @@ document.addEventListener('pointerdown',e=>{
     if(!cur.length){PD.asel=null;pdAnnUI();rPdSel();return;}
   }else if(!cur.includes(hit))cur=[hit];
   PD.asel={id:ph.id,idxs:cur};pdAnnUI();rPdSel();
-  pdAnnSnap(ph.id);
+  pdSnap();
   _pdAe={mode:'move',id:ph.id,idxs:cur.slice(),r,a0:cur.map(i=>({...ph.ann[i]})),x,y,moved:false};
 },true);
 document.addEventListener('pointermove',e=>{
@@ -12502,7 +12867,7 @@ document.addEventListener('pointermove',e=>{
 },true);
 document.addEventListener('pointerup',()=>{
   if(!_pdAe)return;
-  if(!_pdAe.moved)PD.undo.pop();      /* 그냥 고르기만 한 것은 되돌리기에 남기지 않는다 */
+  if(!_pdAe.moved)pdSnapDrop();      /* 그냥 고르기만 한 것은 되돌리기에 남기지 않는다 */
   _pdAe=null;rPdSel();
 },true);
 /* 우클릭 — 복사 · 잘라내기 · 삭제 · 붙여넣기 */
@@ -12538,7 +12903,7 @@ function pdAnnDel(){
   const ph=PD.photos.find(p=>p.id===sel.id);if(!ph||!ph.ann)return;
   const idxs=pdAselIdxs().filter(i=>ph.ann[i]).sort((a,b)=>b-a);
   if(!idxs.length)return;
-  pdAnnSnap(sel.id);
+  pdSnap();
   idxs.forEach(i=>ph.ann.splice(i,1));
   PD.asel=null;
   pdAnnPaint(sel.id);pdAnnUI();rPdSel();
@@ -12550,7 +12915,7 @@ function pdAnnPaste(id,x,y){
     let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
     clip.forEach(c=>{const b=pdAnnBox(c);x0=Math.min(x0,b.x);y0=Math.min(y0,b.y);x1=Math.max(x1,b.x+b.w);y1=Math.max(y1,b.y+b.h);});
     const dx=(x!=null?x-(x0+x1)/2:3),dy=(y!=null?y-(y0+y1)/2:3);
-    pdAnnSnap(id);ph.ann=ph.ann||[];
+    pdSnap();ph.ann=ph.ann||[];
     const start=ph.ann.length;
     clip.forEach(c=>ph.ann.push({...c,x:c.x+dx,y:c.y+dy,x2:c.x2+dx,y2:c.y2+dy}));
     PD.asel={id,idxs:ph.ann.map((_,i)=>i).slice(start)};
@@ -12560,7 +12925,7 @@ function pdAnnPaste(id,x,y){
   const a={...c};
   if(x!=null){const dx=x-(b.x+b.w/2),dy=y-(b.y+b.h/2);a.x+=dx;a.y+=dy;a.x2+=dx;a.y2+=dy;}
   else{a.x+=3;a.y+=3;a.x2+=3;a.y2+=3;}
-  pdAnnSnap(id);
+  pdSnap();
   (ph.ann=ph.ann||[]).push(a);
   PD.asel={id,idxs:[ph.ann.length-1]};
   pdAnnPaint(id);pdAnnUI();rPdSel();
@@ -12573,18 +12938,13 @@ document.addEventListener('keydown',e=>{
   const idxs=pdAselIdxs().filter(i=>ph.ann&&ph.ann[i]);
   const a=idxs.length===1?ph.ann[idxs[0]]:null;
   if(e.key==='Delete'||e.key==='Backspace'){e.preventDefault();e.stopPropagation();pdAnnDel();return;}
-  if(e.key==='Escape'){PD.asel=null;pdAnnUI();return;}
+  if(e.key==='Escape'){PD.asel=null;pdAnnUI();rPdSel();return;}
   if(!(e.ctrlKey||e.metaKey)||!idxs.length)return;
   const k=e.key.toLowerCase();
   if(k==='c'||e.key==='ㅊ'){e.preventDefault();e.stopPropagation();PD.clip=idxs.map(i=>({...ph.ann[i]}));toast('표시를 복사했습니다');}
   else if(k==='x'||e.key==='ㅌ'){e.preventDefault();e.stopPropagation();PD.clip=idxs.map(i=>({...ph.ann[i]}));pdAnnDel();}
   else if(k==='v'||e.key==='ㅍ'){e.preventDefault();e.stopPropagation();pdAnnPaste(PD.asel.id);}
 },true);
-function pdAnnUndo(){
-  const u=PD.undo.pop();if(!u){toast('되돌릴 표시가 없습니다');return;}
-  const ph=PD.photos.find(p=>p.id===u.id);if(!ph)return;
-  ph.ann=u.ann;PD.asel=null;pdAnnPaint(u.id);pdAnnUI();rPdSel();
-}
 function pdSelPaint(){
   $$('#pdView .phs-cell[data-id]').forEach(c=>c.classList.toggle('sel',PD.sel.has(c.dataset.id)));
   pdRotHandle();
@@ -12624,8 +12984,10 @@ document.addEventListener('pointerup',async()=>{
   p.rot=0;
   const img=$('#pdView .phs-cell[data-id="'+p.id+'"] .phs-ph img');if(img)img.style.transform='';
   if(q){
+    pdSnap();
     const dir=q===3?-1:1,times=q===2?2:1;
     for(let i=0;i<times;i++){try{await pdRotOne(p,dir);}catch(e){console.warn('[사진대지] 회전 실패',e);}}
+    pdGc();
   }
   pdPages();
 },true);
@@ -12644,40 +13006,79 @@ function pdClickSel(id,ctrl,shift){
 /* ⚠ 861차: 회전은 **90° 단위로 사진을 다시 구워** 넣는다(855~860차의 `p.rot` 각도 방식은 되돌린다).
    각도로만 돌리면 칸 비율이 달라 미리보기와 엑셀이 서로 다르게 잘리고, 빈 구석이 생겨 결과가 지저분했다. */
 async function pdRotOne(p,dir){
-  const turn=async(url,w,h)=>{
-    const im=new Image();im.src=url;await im.decode();
-    const cv=document.createElement('canvas');cv.width=h;cv.height=w;
-    const cx=cv.getContext('2d');cx.translate(h/2,w/2);cx.rotate(dir>0?Math.PI/2:-Math.PI/2);cx.drawImage(im,-w/2,-h/2,w,h);
-    const blob=await new Promise(r=>cv.toBlob(r,'image/jpeg',.92));
-    return blob?URL.createObjectURL(blob):null;
-  };
-  const nsrc=await turn(p.src,p.w,p.h);if(!nsrc)return false;
-  let nurl=nsrc,ncrop=null;
-  if(p.crop){
-    const c=p.crop;
-    ncrop=dir>0?{x:1-c.y-c.h,y:c.x,w:c.h,h:c.w}:{x:c.y,y:1-c.x-c.w,w:c.h,h:c.w};
-    const im=new Image();im.src=nsrc;await im.decode();
-    const sw=Math.max(1,Math.round(ncrop.w*p.h)),sh=Math.max(1,Math.round(ncrop.h*p.w));
-    const cv=document.createElement('canvas');cv.width=sw;cv.height=sh;
-    cv.getContext('2d').drawImage(im,Math.round(ncrop.x*p.h),Math.round(ncrop.y*p.w),sw,sh,0,0,sw,sh);
-    const blob=await new Promise(r=>cv.toBlob(r,'image/jpeg',.92));
-    if(blob)nurl=URL.createObjectURL(blob);
-  }
-  pdRevoke(p);
-  p.src=nsrc;p.url=nurl;p.crop=ncrop;const t=p.w;p.w=p.h;p.h=t;
+  /* 955차: 원본(ob)에서 **몇 번 돌렸는지(rq)** 로 다시 만든다 — 돌릴 때마다 JPEG 를 다시 굽던 탓에 조금씩 뭉개졌다 */
+  const st0={w:p.w,h:p.h,crop:p.crop},c=p.crop;
+  const ncrop=c?(dir>0?{x:1-c.y-c.h,y:c.x,w:c.h,h:c.w}:{x:c.y,y:1-c.x-c.w,w:c.h,h:c.w}):null;
+  const q={ob:p.ob,ow:p.ow,oh:p.oh,rq:((p.rq||0)+(dir>0?1:3))%4,crop:ncrop};
+  await pdRender(q);await pdCropMake(q);
+  Object.assign(p,{rq:q.rq,sb:q.sb,src:q.src,w:q.w,h:q.h,crop:q.crop,ub:q.ub,url:q.url,mx:null,mxFor:''});
+  pdAnnRemap(p,st0,{w:p.w,h:p.h,crop:p.crop},dir>0?(U,V)=>[1-V,U]:(U,V)=>[V,1-U]);   /* 954차 */
   return true;
+}
+/* 954차: 회전·자르기 뒤에도 표시(네모·원·화살표)가 사진의 같은 곳에 남게 좌표를 옮긴다.
+   표시 좌표는 **칸** 기준 0~100 이고, 사진은 맞춤(늘림·맞춤·채움)에 따라 칸 안에 놓인다 —
+   칸 → 원본 사진 비율(U,V) → (회전) → 새 칸 좌표. 잘려 나간 곳의 표시는 지우지 않는다(원래대로 되돌리면 다시 보인다) */
+function pdFitBox(fit,Ai,Ac){
+  if(fit==='contain'||fit==='cover'){
+    const byW=fit==='contain'?Ai>Ac:Ai<=Ac;
+    if(byW){const h=100*Ac/Ai;return{x:0,y:(100-h)/2,w:100,h};}
+    const w=100*Ai/Ac;return{x:(100-w)/2,y:0,w,h:100};}
+  return{x:0,y:0,w:100,h:100};
+}
+function pdAnnRemap(p,st0,st1,fn){
+  const lists=[p.ann];   /* 955차: 되돌리기 기록은 사진마다 그때 그림·표시를 통째로 들고 있어 옮기지 않는다 */
+  if(!lists.some(l=>l&&l.length))return;
+  const el=$('#pdView .phs-cell[data-id="'+p.id+'"] .phs-ph')||$('#pdView .phs-ph');
+  const r=el?el.getBoundingClientRect():null,Ac=(r&&r.width&&r.height)?r.width/r.height:4/3;
+  const geo=st=>{const c=st.crop||{x:0,y:0,w:1,h:1};return{c,R:pdFitBox(p.fit,(c.w*st.w)/(c.h*st.h),Ac)};};
+  const g0=geo(st0),g1=geo(st1);
+  const mv=(x,y)=>{
+    const U=g0.c.x+(x-g0.R.x)/g0.R.w*g0.c.w,V=g0.c.y+(y-g0.R.y)/g0.R.h*g0.c.h;
+    const [U2,V2]=fn(U,V);
+    return [g1.R.x+(U2-g1.c.x)/g1.c.w*g1.R.w,g1.R.y+(V2-g1.c.y)/g1.c.h*g1.R.h];};
+  lists.forEach(l=>(l||[]).forEach(a=>{
+    const [x,y]=mv(a.x,a.y),[x2,y2]=mv(a.x2,a.y2);
+    if(a.t==='rect'||a.t==='ellipse'||a.t==='mosaic'){a.x=Math.min(x,x2);a.y=Math.min(y,y2);a.x2=Math.max(x,x2);a.y2=Math.max(y,y2);}
+    else{a.x=x;a.y=y;a.x2=x2;a.y2=y2;}}));
 }
 /* 806차: 사진 교체 — 위치·내용·맞춤·순서는 그대로 두고 그림만 바꾼다 */
 
 async function pdSwap(file){
   const id=[...PD.sel][0],p=PD.photos.find(x=>x.id===id);if(!p||!file)return;
   let np;try{np=await pdDecode(file);}catch(e){toast('이 파일은 열 수 없습니다');return;}
-  pdRevoke(p);
-  p.src=np.src;p.url=np.url;p.w=np.w;p.h=np.h;p.crop=null;p.name=np.name;p.path=np.path;
-  pdPages();
+  pdSnap();
+  Object.assign(p,{ob:np.ob,ow:np.ow,oh:np.oh,rq:0,sb:np.sb,src:np.src,ub:np.ub,url:np.url,w:np.w,h:np.h,crop:null,name:np.name,path:np.path,mx:null,mxFor:''});
+  pdPages();pdGc();
 }
 /* 806차: 위치·내용 채우기 — 첫 값 복사 / 빈칸만 앞 값으로 */
-function pdRevoke(p){try{if(p.url&&p.url!==p.src)URL.revokeObjectURL(p.url);URL.revokeObjectURL(p.src);}catch(e){}}
+/* ═══ 955차: 사진 한 장 = 원본(ob · 넣을 때 긴 변 2000px JPEG) + 돌린 횟수(rq) + 자른 영역(crop).
+   보이는 그림 src(sb) = 원본을 rq 만큼 돌린 것(0 이면 원본 그대로) · url(ub) = src 에서 crop 만큼 자른 것.
+   blob URL 은 PD_URLS 에 적어 두고, 되돌리기 기록까지 아무도 안 쓰게 되면 pdGc 가 푼다(바로 풀면 되돌린 그림이 깨진다) ═══ */
+const PD_URLS=new Set();
+function pdURL(b){const u=URL.createObjectURL(b);PD_URLS.add(u);return u;}
+function pdGc(){
+  const live=new Set();
+  const add=list=>(list||[]).forEach(p=>{if(!p)return;live.add(p.src);live.add(p.url);if(p.mx)live.add(p.mx);});
+  add(PD.photos);PD.hist.forEach(s=>add(s.photos));PD.redo.forEach(s=>add(s.photos));
+  PD_URLS.forEach(u=>{if(!live.has(u)){try{URL.revokeObjectURL(u);}catch(err){}PD_URLS.delete(u);}});
+}
+async function pdRender(p){
+  if(!p.rq){p.sb=p.ob;p.w=p.ow;p.h=p.oh;p.src=pdURL(p.ob);return;}
+  const bm=await createImageBitmap(p.ob),W=bm.width,H=bm.height,odd=p.rq%2===1,sw=odd?H:W,sh=odd?W:H;
+  const cv=document.createElement('canvas');cv.width=sw;cv.height=sh;
+  const cx=cv.getContext('2d');cx.translate(sw/2,sh/2);cx.rotate(p.rq*Math.PI/2);cx.drawImage(bm,-W/2,-H/2);if(bm.close)bm.close();
+  const b=await new Promise(r=>cv.toBlob(r,'image/jpeg',.92));if(!b)throw new Error('encode');
+  p.sb=b;p.w=sw;p.h=sh;p.src=pdURL(b);
+}
+async function pdCropMake(p){
+  if(!p.crop){p.ub=p.sb;p.url=p.src;return;}
+  const c=p.crop,bm=await createImageBitmap(p.sb);
+  const sx=Math.round(c.x*p.w),sy=Math.round(c.y*p.h),sw=Math.max(1,Math.round(c.w*p.w)),sh=Math.max(1,Math.round(c.h*p.h));
+  const cv=document.createElement('canvas');cv.width=sw;cv.height=sh;cv.getContext('2d').drawImage(bm,sx,sy,sw,sh,0,0,sw,sh);if(bm.close)bm.close();
+  const b=await new Promise(r=>cv.toBlob(r,'image/jpeg',.92));if(!b)throw new Error('encode');
+  p.ub=b;p.url=pdURL(b);
+}
+function pdPath(f){return f.webkitRelativePath||f._rp||'';}   /* 955차: 끌어다 놓은 폴더는 webkitRelativePath 가 비어 _rp 에 적어 둔다 */
 /* 넣기 — 파일 여러 장 또는 폴더(하위 폴더 전부, webkitdirectory). 경로·이름의 자연 정렬(1, 2, 10) 순으로 뒤에 붙인다 */
 async function pdDecode(f){
   const bmp=await createImageBitmap(f,{imageOrientation:'from-image'});
@@ -12686,22 +13087,22 @@ async function pdDecode(f){
   const cx=cv.getContext('2d');cx.fillStyle='#fff';cx.fillRect(0,0,w,h);cx.drawImage(bmp,0,0,w,h);bmp.close();
   const blob=await new Promise(res=>cv.toBlob(res,'image/jpeg',.9));
   if(!blob)throw new Error('encode');
-  const url=URL.createObjectURL(blob);
-  const g=pdParseName(f.webkitRelativePath||f.name,f.name);
-  return {id:'p'+(++PD.seq),name:f.name,path:f.webkitRelativePath||'',src:url,url,w,h,crop:null,fit:'fill',loc:g.loc,desc:g.desc};
+  const url=pdURL(blob);
+  const g=pdParseName(pdPath(f)||f.name,f.name);
+  return {id:'p'+(++PD.seq),name:f.name,path:pdPath(f),ob:blob,ow:w,oh:h,rq:0,sb:blob,src:url,ub:blob,url,w,h,crop:null,fit:'fill',loc:g.loc,desc:g.desc};
 }
 async function pdAdd(fl){
   const list=[...(fl||[])].filter(f=>/^image\//i.test(f.type)||/\.(jpe?g|png|gif|bmp|webp|heic|heif)$/i.test(f.name));
   if(!list.length){toast('사진이 없습니다');return;}
   /* 806차: 이름이 같고 단계만 다르면 전 → 중 → 후(완료) 순으로 — 가나다순이면 「보수완료」가 「보수전」보다 앞에 온다 */
   const key=n=>String(n).replace(/전(?=[_\-. ]|$)/g,'\u00011').replace(/(중간|중)(?=[_\-. ]|$)/g,'\u00012').replace(/(완료후|완료|후)(?=[_\-. ]|$)/g,'\u00013');
-  list.sort((a,b)=>key(a.webkitRelativePath||a.name).localeCompare(key(b.webkitRelativePath||b.name),'ko',{numeric:true}));
+  list.sort((a,b)=>key(pdPath(a)||a.name).localeCompare(key(pdPath(b)||b.name),'ko',{numeric:true}));
   const job={total:list.length,done:0,dead:false};PD.load=job;
   const cnt=()=>{const c=$('#pdCnt');if(c)c.textContent=pdCntText();};cnt();
   const out=new Array(list.length);let k=0,bad=0;
   const work=async()=>{while(k<list.length){const i=k++;try{out[i]=await pdDecode(list[i]);}catch(e){bad++;}job.done++;if(PD.load===job)cnt();}};
   await Promise.all([work(),work(),work()]);
-  if(job.dead){out.forEach(p=>p&&pdRevoke(p));return;}   /* 불러오는 사이 초기화했다 */
+  if(job.dead){pdGc();return;}   /* 불러오는 사이 초기화했다 — 만든 그림은 아무도 안 쓰므로 pdGc 가 푼다 */
   if(!PD.site){   /* 800차: 경로·파일 이름에 조직의 현장명이 들어 있으면 머리글 현장명을 채운다(비어 있을 때만) */
     const names=(S.org.sites||[]).map(x=>x.name).filter(Boolean).sort((a,b)=>b.length-a.length);
     const keys=out.filter(Boolean).map(p=>(p.path||p.name)).join(' ').replace(/\s+/g,'');
@@ -12709,20 +13110,25 @@ async function pdAdd(fl){
     if(hit){PD.site=hit;const el=$('#pdSite');if(el)el.value=hit;}
   }
   if(PD.load===job)PD.load=null;
+  if(out.some(Boolean))pdSnap();
   out.forEach(p=>{if(p)PD.photos.push(p);});
-  if(S.view==='photo')pdPages();
+  if(S.view==='photo')pdPages();else tsMark('pd');
   if(bad)toast(bad+'장은 열 수 없어 넣지 않았습니다');
 }
 function pdDel(){
   if(!PD.sel.size)return;
-  PD.photos=PD.photos.filter(p=>{if(PD.sel.has(p.id)){pdRevoke(p);return false;}return true;});
-  PD.sel.clear();PD.anchor='';pdPages();
+  pdSnap();   /* 955차: 삭제도 되돌린다 */
+  const n=PD.sel.size;
+  PD.photos=PD.photos.filter(p=>!PD.sel.has(p.id));
+  PD.sel.clear();PD.anchor='';pdPages();pdGc();
+  toast(n+'장을 뺐습니다 · Ctrl+Z 로 되돌립니다');
 }
+/* 953차: 도구·표시 선택·되돌리기·복사한 표시·불러오는 중 작업을 함께 비운다 — 초기화·D+60 넘기기 뒤에 그리기 도구가 켜진 채 남아 사진을 고를 수 없었다 */
+function pdToolReset(){if(PD.load)PD.load.dead=true;PD.load=null;PD.tool='none';PD.asel=null;PD.clip=null;document.body.classList.remove('pd-drawing');}
 function pdResetNow(){
-  if(PD.load)PD.load.dead=true;
-  PD.photos.forEach(pdRevoke);
-  Object.assign(PD,{orient:'por',per:6,title:'사진대지',site:'',photos:[],sel:new Set(),anchor:'',load:null,zoom:'w2',pz:0,page:1,split:false});
-  rPhoto();
+  pdToolReset();
+  Object.assign(PD,{orient:'por',per:6,title:'사진대지',site:'',photos:[],sel:new Set(),anchor:'',load:null,zoom:'w2',pz:0,page:1,split:false,hist:[],redo:[]});
+  pdGc();rPhoto();   /* 955차: 이 PC 에 저장해 둔 사진대지도 함께 지운다(tsMark → 빈 상태) */
 }
 /* ── 끌어 옮기기 — 여러 장을 골라 두었으면 그 묶음째(순서 유지). 놓은 칸의 앞/뒤(가로 반쪽 · 1열이면 세로 반쪽)에 끼워 넣는다 ── */
 let _pdDn=null,_pdDrag=null;
@@ -12771,6 +13177,7 @@ function pdDragEnd(cancel){
   const set=new Set(D.ids),before=PD.photos.slice(0,D.slot).filter(p=>set.has(p.id)).length;
   const moving=PD.photos.filter(p=>set.has(p.id)),rest=PD.photos.filter(p=>!set.has(p.id));
   rest.splice(D.slot-before,0,...moving);
+  if(rest.some((p,i)=>p!==PD.photos[i]))pdSnap();
   PD.photos=rest;pdPages();
 }
 document.addEventListener('pointerdown',e=>{
@@ -12797,7 +13204,7 @@ document.addEventListener('pointerup',()=>{
   if(d.moved)pdDragEnd(false);else pdClickSel(d.id,d.ctrl,d.shift);
 });
 document.addEventListener('pointercancel',()=>{if(_pdDn){_pdDn=null;pdDragEnd(true);}});
-document.addEventListener('scroll',e=>{if(e.target&&e.target.id==='pdView'){pdPgIndi();pdSbFlash();}},true);
+document.addEventListener('scroll',e=>{if(e.target&&e.target.id==='pdView'){pdPgIndi();pdSbSync();}},true);
 /* ⚠ passive:false 여야 preventDefault 가 먹는다 — 아니면 브라우저 전체가 확대된다 */
 document.addEventListener('wheel',e=>{if((e.ctrlKey||e.metaKey)&&e.target.closest&&e.target.closest('#pdView'))pdWheelZoom(e);},{passive:false});
 let _pdRT=0;
@@ -12807,9 +13214,11 @@ document.addEventListener('dblclick',e=>{
   const c=e.target.closest&&e.target.closest('#pdView .phs-cell[data-id]');
   if(c)pdCropOpen(c.dataset.id);
 });
+let _pdInSnap=null;   /* 955차: 칸 하나에 치는 동안은 되돌리기 한 번 */
 document.addEventListener('input',e=>{
   const t=e.target;if(!t||!t.dataset||!t.dataset.pd||!t.closest('#pdRoot'))return;
   const k=t.dataset.pd,v=t.value;
+  if(_pdInSnap!==t){pdSnap();_pdInSnap=t;}else tsMark('pd');
   if(k==='title'){PD.title=v;const ls=pdLs(v);$$('#pdView .phs-ttl').forEach(x=>{x.textContent=v;x.style.letterSpacing=ls;x.style.textIndent=ls;});}
   else if(k==='site'){PD.site=v;$$('#pdView .phs-site').forEach(x=>{x.textContent='현장명 : '+v;});}
   else if(k==='loc'||k==='desc'){
@@ -12831,12 +13240,13 @@ document.addEventListener('change',e=>{
 document.addEventListener('keydown',e=>{
   if(S.view!=='photo')return;
   const k=(e.key||'').toLowerCase();
-  if((e.ctrlKey||e.metaKey)&&!e.altKey&&k==='p'){e.preventDefault();pdPrint();return;}   /* Ctrl+P 도 사진대지 인쇄로 */
+  if((e.ctrlKey||e.metaKey)&&!e.altKey&&k==='p'){e.preventDefault();if(!PD.photos.length){toast('넣은 사진이 없습니다');return;}pdPrint();return;}   /* Ctrl+P 도 사진대지 인쇄로 · 955차: 빈 사진대지는 찍지 않는다 */
   const t=e.target,typing=t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT'||t.isContentEditable);
   if(typing||$('#mo').classList.contains('open')||!PD.sel.size)return;
   if(e.key==='Delete'){e.preventDefault();pdDel();}
-  else if(e.key==='Escape'){PD.sel.clear();pdSelPaint();}
+  else if(e.key==='Escape'){PD.sel.clear();if(PD.tool!=='none'){PD.tool='none';document.body.classList.remove('pd-drawing');}pdSelPaint();}
 });
+document.addEventListener('keydown',e=>{if(S.view==='photo'&&e.key==='Escape'&&PD.tool==='num'&&!PD.sel.size){PD.tool='none';document.body.classList.remove('pd-drawing');rPdSel();}});   /* 955차: 번호 도구 끝내기 */
 /* ── 자르기 — 영역은 사진(src) 대비 비율 {x,y,w,h}. 비율 고정이면 끌어도 그 비율을 지킨다 ── */
 const PDC_R=[['free','자유'],['cell','칸 비율'],['orig','원본'],['43','4:3'],['11','1:1']];
 let PDC=null;
@@ -12921,17 +13331,13 @@ document.addEventListener('pointerup',()=>{_pdcDn=null;});
 async function pdcApply(){
   if(!PDC)return;const p=PD.photos.find(x=>x.id===PDC.id);if(!p){closeModal();return;}
   const r=PDC.r,full=r.x<.001&&r.y<.001&&r.w>.999&&r.h>.999;
-  if(full){if(p.url!==p.src)URL.revokeObjectURL(p.url);p.url=p.src;p.crop=null;}
-  else{
-    const img=$('#pdcImg img');
-    const sx=Math.round(r.x*p.w),sy=Math.round(r.y*p.h),sw=Math.max(1,Math.round(r.w*p.w)),sh=Math.max(1,Math.round(r.h*p.h));
-    const cv=document.createElement('canvas');cv.width=sw;cv.height=sh;cv.getContext('2d').drawImage(img,sx,sy,sw,sh,0,0,sw,sh);
-    const blob=await new Promise(res=>cv.toBlob(res,'image/jpeg',.92));
-    if(!blob){toast('자르지 못했습니다');return;}
-    if(p.url!==p.src)URL.revokeObjectURL(p.url);
-    p.url=URL.createObjectURL(blob);p.crop={...r};
-  }
-  PDC=null;closeModal();pdPages();
+  const st0={w:p.w,h:p.h,crop:p.crop};
+  const q={sb:p.sb,src:p.src,w:p.w,h:p.h,crop:full?null:{...r}};
+  try{await pdCropMake(q);}catch(err){toast('자르지 못했습니다');return;}
+  pdSnap();   /* 955차: 자르기도 되돌린다 */
+  Object.assign(p,{crop:q.crop,ub:q.ub,url:q.url,mx:null,mxFor:''});
+  pdAnnRemap(p,st0,{w:p.w,h:p.h,crop:p.crop},(U,V)=>[U,V]);   /* 954차: 자른 영역이 바뀌어도 표시는 사진의 그 자리에 */
+  PDC=null;closeModal();pdPages();pdGc();
 }
 /* ── 인쇄 — 상단바 인쇄 버튼 · Ctrl+P. 브라우저 인쇄 창의 「PDF로 저장」이 곧 PDF 추출이다 ── */
 function pdPrintMount(){
@@ -12950,6 +13356,7 @@ function pdPrintUnmount(){
 }
 async function pdPrint(){
   if(_pdDrag)return;
+  await pdMosaicAll();   /* 955차: 모자이크 그림이 다 만들어진 뒤에 찍는다 */
   pdPrintMount();
   await Promise.all([...$$('#pdPrint img')].map(i=>i.decode?i.decode().catch(()=>{}):null));
   let done=false;
@@ -12963,10 +13370,10 @@ let _pdAutoPrint=false;
 window.addEventListener('beforeprint',()=>{if(S.view==='photo'&&!document.body.classList.contains('phs-printing')){pdPrintMount();_pdAutoPrint=true;}});
 window.addEventListener('afterprint',()=>{if(_pdAutoPrint){_pdAutoPrint=false;pdPrintUnmount();}});
 Object.assign(ACT,{
-  'pd.orient':el=>{if(PD.orient===el.dataset.o)return;PD.orient=el.dataset.o;rPhoto();},
+  'pd.orient':el=>{if(PD.orient===el.dataset.o)return;pdSnap();PD.orient=el.dataset.o;rPhoto();},
   'pd.zoom':el=>{if(PD.zoom===el.dataset.z)return;const keep=PD.page;PD.zoom=el.dataset.z;rPhoto();PD.page=keep;pdPgGo(0);},   /* 배율을 바꿔도 보던 쪽을 지킨다 */
   'pd.zStep':el=>{const d=Number(el.dataset.d);PD.zoom='free';PD.pz=Math.max(.1,Math.min(4,(PD.pz||1)*(d>0?1.15:1/1.15)));pdZoom();},
-  'pd.split':el=>{const on=el.dataset.s==='on';if(PD.split===on)return;PD.split=on;const keep=PD.page;rPhoto();PD.page=keep;pdPgGo(0);},
+  'pd.split':el=>{const on=el.dataset.s==='on';if(PD.split===on)return;pdSnap();PD.split=on;const keep=PD.page;rPhoto();PD.page=keep;pdPgGo(0);},
 
   'pd.tool':el=>{const t=el.dataset.t;PD.tool=(PD.tool===t?'none':t);if(PD.tool!=='none')PD.asel=null;rPdSel();document.body.classList.toggle('pd-drawing',PD.tool!=='none');pdAnnUI();},
   'pd.annColor':el=>{PD.color=el.dataset.c;pdAnnApply({c:PD.color});rPdSel();},
@@ -12975,10 +13382,17 @@ Object.assign(ACT,{
   'pd.xlsx':()=>{if(S.view==='redo')return rdXlsx();if(S.view==='prod')return pvXlsx();if(S.view==='d60')return d60Xlsx();pdXlsx();},   /* 901차: 머리줄 「엑셀」은 화면별로 */
 
   'pd.pgGo':el=>pdPgGo(Number(el.dataset.d)),
-  'pd.fit':el=>{const f=el.dataset.f;PD.photos.forEach(p=>{if(PD.sel.has(p.id))p.fit=f;});
+  'pd.fit':el=>{const f=el.dataset.f;pdSnap();PD.photos.forEach(p=>{if(PD.sel.has(p.id)){p.fit=f;}});tsMark('pd');
+    PD.photos.forEach(p=>{if(PD.sel.has(p.id)&&(p.ann||[]).some(a=>a.t==='mosaic'))pdAnnPaint(p.id);});   /* 모자이크 안 그림도 같은 맞춤 */
     $$('#pdView .phs-cell.sel .phs-ph').forEach(x=>{x.classList.remove('contain','cover');if(f!=='fill')x.classList.add(f);});
     $$('#pdRoot [data-act="pd.fit"]').forEach(b=>b.classList.toggle('act',b.dataset.f===f));},
-  'pd.per':el=>{const k=Number(el.dataset.k);if(PD.per===k)return;PD.per=k;rPhoto();},
+  'pd.per':el=>{const k=Number(el.dataset.k);if(PD.per===k)return;pdSnap();PD.per=k;rPhoto();},
+  'pd.undo':()=>pdUndo(),
+  'pd.redo':()=>pdRedo(),
+  'pd.rot':async el=>{   /* 955차: 고른 사진을 한꺼번에 90° */
+    const d=Number(el.dataset.d)||1,list=PD.photos.filter(p=>PD.sel.has(p.id));if(!list.length)return;
+    pdSnap();for(const p of list){try{await pdRotOne(p,d);}catch(err){console.warn('[사진대지] 회전 실패',err);}}
+    pdPages();pdGc();},
   'pd.files':()=>{const i=$('#pdFiles');if(i)i.click();},
   'pd.dir':()=>{const i=$('#pdDir');if(i)i.click();},
   'pd.reset':()=>{
@@ -12986,7 +13400,7 @@ Object.assign(ACT,{
     if(!PD.photos.length&&!PD.load&&!PD.site&&PD.title==='사진대지'&&PD.per===6&&PD.orient==='por'&&!PD.split)return;
     confirmModal('초기화','사진과 입력한 내용을 모두 지웁니다.',pdResetNow,'초기화');
   },
-  'pd.selClear':()=>{PD.sel.clear();pdSelPaint();},
+  'pd.selClear':()=>{PD.sel.clear();if(PD.tool!=='none'){PD.tool='none';document.body.classList.remove('pd-drawing');}pdSelPaint();},   /* 953차: 고른 사진이 없으면 도구 단추도 없다 — 도구를 끈다 */
   'pd.del':()=>pdDel(),
   'pd.crop':()=>{if(PD.sel.size===1)pdCropOpen([...PD.sel][0]);},
   'pd.cropRatio':el=>pdcSetRatio(el.dataset.k),
@@ -13004,14 +13418,14 @@ Object.assign(ACT,{
      · 「- 샤워부스 해체 및 설치」(수량 없음)·「 : 조공 0.25인」(계산식 없이 수량만)은 제외로 둔다. */
 const QC={txt:'',rows:[],rnd:1,tol:0,filter:'all',ran:false};
 const QC_UNIT={'m2':'㎡','M2':'㎡','m²':'㎡','sqm':'㎡'};
-function qcRound(v,d){if(d==null||d<0)return v;const m=Math.pow(10,d);return Math.round((v*m).toFixed(6)*1)/m;}
+function qcRound(v,d){if(d==null||d<0)return v;const m=Math.pow(10,d);return Math.sign(v)*Math.round((Math.abs(v)*m).toFixed(6)*1)/m;}   /* 953차: 음수(감액)는 엑셀 ROUND 처럼 0 에서 먼 쪽으로 */
 function qcFmt(v){if(v==null||!isFinite(v))return '—';return String(Math.round(v*1e6)/1e6);}
 /* 사칙연산·괄호·숫자만 직접 읽어 계산한다.
    ⚠ eval·new Function 은 쓸 수 없다 — 이 앱의 CSP(script-src 'self')가 막는다(실제로 막혀 전부 「읽을 수 없는 줄」이 됐다). */
 function qcEval(ex){
   /* 814차: 「1.2㎡ × 1.2㎡ = 1.44㎡」처럼 식 안에 단위가 섞인 표기도 읽는다 — 숫자 뒤 단위 낱말만 걷어낸다 */
   const t=String(ex).replace(/[×xX]/g,'*').replace(/÷/g,'/')
-    .replace(/(\d)\s*(㎡|㎥|m2|m3|M2|M3|평|m|M|EA|ea|개|인|본|매|식|㎜|mm|cm|㎝)(?![0-9.])/g,'$1')
+    .replace(/(\d)\s*(㎡|㎥|m2|m3|M2|M3|㎜|mm|cm|㎝|평|m|M|EA|ea|개|인|본|매|식)(?![0-9.])/g,'$1')
     .replace(/\s+/g,'');
   if(!t||!/^[0-9.+\-*/()]+$/.test(t)||!/\d/.test(t))return null;
   let i=0,bad=false;
@@ -13071,12 +13485,12 @@ function qcNormalize(t){
     .replace(/[ \t]+\n/g,'\n');
 }
 function qcParse(text){
-  const out=[];let unit=0,place='',pend=null,sumMode=false;
+  const out=[];let unit=0,place='',pend=null,sumMode=false,LI=0;
   const flush=()=>{
     if(!pend)return;
     const p=pend;pend=null;
     const ex=p.expr.trim();
-    const base={no:p.unit,place:p.place,item:p.item.trim(),sum:!!p.sum};
+    const base={no:p.unit,place:p.place,item:p.item.trim(),sum:!!p.sum,ln:p.l0!=null?p.l0:LI,ln2:p.l1!=null?p.l1:LI};   /* 955차: 원문 몇째 줄에서 왔는지(두 번 누르면 그 줄로) */
     /* 837차: 「시스템 가구 해체 / 설치」처럼 수량이 안 적힌 항목은 **1식**으로 보고 합계에 넣는다(사용자) */
     if(!ex){out.push({...base,expr:'',calc:1,want:1,u:'식',st:'sk',why:'수량 없음 — 1식으로 봄'});return;}
     /* 903차(사용자): 비례식 「1:3=4:X」 + 「X=12」 — 나머지 셋으로 X 를 풀어 적힌 값과 견준다 */
@@ -13118,7 +13532,7 @@ function qcParse(text){
     }
   };
   let curItem='';
-  qcNormalize(text).split(/\r?\n/).forEach(raw=>{
+  const qcLine=raw=>{
     let s=raw.replace(/\t/g,' ').trim();
     s=s.replace(/^"+/,'').replace(/"+$/,'').trim();   /* 엑셀이 여러 줄 칸에 씌우는 따옴표 */
     if(!s)return;
@@ -13171,12 +13585,42 @@ function qcParse(text){
     if(/=/.test(s)&&/^[0-9.+\-*/()=×÷xX ]+$/.test(qcClean(s).replace(/(㎡|㎥|m2|m3|평|EA|ea|개|인|본|매|식|mm|cm|m|M)/g,''))){
       flush();pend={unit:unit||1,place:sumMode?'합계':place,item:'',expr:s,sum:sumMode};flush();return;
     }
-  });
+  };
+  /* 955차: 줄마다 그 줄이 만들거나 이어 붙인 항목에 줄 번호를 적는다(l0 처음 · l1 끝) */
+  qcNormalize(text).split(/\r?\n/).forEach((raw,li)=>{LI=li;const p0=pend,e0=pend&&pend.expr;qcLine(raw);
+    if(pend&&(pend!==p0||pend.expr!==e0)){if(pend.l0==null)pend.l0=li;pend.l1=li;}});
   flush();
   return out;
 }
+let _qcLiveT=0;
+document.addEventListener('input',e=>{if(e.target&&e.target.id==='qcTa'){QC.txt=e.target.value;tsMark('qc');
+  if(QC.ran){clearTimeout(_qcLiveT);_qcLiveT=setTimeout(qcLive,450);}}});   /* 953차: 붙여넣은 글이 옵션·필터를 누르거나 화면을 옮기면 사라졌다 · 955차: 검토한 뒤 고치면 바로 다시 판정 */
+/* 955차(사용자): 결과 줄 ↔ 원문 줄 — 결과를 두 번 누르면 원문 그 줄을 골라 두고, 고치면 오른쪽 결과가 바로 다시 판정된다 */
+function qcCaretLine(){const ta=$('#qcTa');if(!ta)return null;return ta.value.slice(0,ta.selectionStart).split('\n').length-1;}
+function qcLive(){if(!QC.ran)return;QC.rows=qcParse(QC.txt);QC.hl=qcCaretLine();qcRefresh(true);}
+function qcHlOf(r){return QC.hl!=null&&r.ln!=null&&r.ln<=QC.hl&&QC.hl<=r.ln2;}
+function qcHlPaint(scroll){
+  const w=$('#qcWrap');if(!w)return;const view=qcView();let hit=null;
+  w.querySelectorAll('tbody tr[data-i]').forEach(tr=>{const r=view[Number(tr.dataset.i)];const on=!!r&&qcHlOf(r);tr.classList.toggle('hl',on);if(on&&!hit)hit=tr;});
+  if(scroll&&hit){const wr=w.getBoundingClientRect(),hr=hit.getBoundingClientRect(),th=(w.querySelector('thead')||{}).offsetHeight||0;
+    if(hr.top<wr.top+th||hr.bottom>wr.bottom)w.scrollTo({top:w.scrollTop+hr.top-wr.top-th-wr.height/3,behavior:'instant'});}
+}
+function qcGoto(r){
+  const ta=$('#qcTa');if(!ta||r.ln==null)return;
+  const lines=ta.value.split('\n');let s=0;for(let i=0;i<r.ln&&i<lines.length;i++)s+=lines[i].length+1;
+  let e2=s;for(let i=r.ln;i<=r.ln2&&i<lines.length;i++)e2+=lines[i].length+(i<r.ln2?1:0);
+  QC.hl=r.ln;qcHlPaint(false);
+  ta.focus({preventScroll:true});ta.setSelectionRange(s,e2);
+  const lh=parseFloat(getComputedStyle(ta).lineHeight)||20;ta.scrollTop=Math.max(0,r.ln*lh-ta.clientHeight/3);
+  if(isMob()&&!WIDGET)ta.scrollIntoView({block:'center'});
+}
+document.addEventListener('dblclick',e=>{const tr=e.target.closest&&e.target.closest('#qcWrap tbody tr[data-i]');if(!tr)return;
+  const r=qcView()[Number(tr.dataset.i)];if(r){qcSelClear();qcGoto(r);}});
+let _qcCaretT=0;
+['keyup','click'].forEach(ev=>document.addEventListener(ev,e=>{if(!e.target||e.target.id!=='qcTa'||!QC.ran)return;clearTimeout(_qcCaretT);_qcCaretT=setTimeout(()=>{QC.hl=qcCaretLine();qcHlPaint(true);},120);}));
 function qcRun(){
   const ta=$('#qcTa');if(ta)QC.txt=ta.value;
+  const norm=qcNormalize(QC.txt);if(norm!==QC.txt){QC.txt=norm;if(ta)ta.value=norm;}   /* 955차: 한 줄로 붙어 들어온 글은 나눈 모양으로 남긴다 — 결과 줄과 원문 줄이 맞게 */
   QC.rows=qcParse(QC.txt);QC.ran=true;
   rQc();
   const n=QC.rows.filter(r=>r.st==='no').length;
@@ -13257,7 +13701,7 @@ function qcRowsHTML(){
     const first=r.no!==cur;
     if(all&&first&&cur!==null)h+=qcSumRow(cur);   /* 세대가 바뀌기 직전에 그 세대 합계 */
     cur=r.no;
-    h+='<tr class="'+(first?'top ':'')+(r.sum?'vs ':'')+(r.st==='no'?'no':'')+'" data-i="'+i+'">'
+    h+='<tr class="'+(first?'top ':'')+(r.sum?'vs ':'')+(r.st==='no'?'no ':'')+(qcHlOf(r)?'hl':'')+'" data-i="'+i+'">'
       +'<td class="n">'+(first?r.no:'')+'</td>'
       +'<td class="pl">'+esc(r.place||'')+'</td>'
       +'<td class="it">'+esc(r.item||'')+'</td>'
@@ -13279,27 +13723,46 @@ function rQc(){
   const segRnd=seg(QC.rnd,[[0,'정수'],[1,'0.0'],[2,'0.00'],[-1,'안 함']],(k,l,a)=>'<button class="'+a.trim()+'" data-act="qc.rnd" data-r="'+k+'">'+l+'</button>');
   const segTol=seg(QC.tol,[[0,'없음'],[0.1,'±0.1'],[0.5,'±0.5']],(k,l,a)=>'<button class="'+a.trim()+'" data-act="qc.tol" data-t="'+k+'">'+l+'</button>');
   const segFil=seg(QC.filter,[['all','전체'],['ok','정답'],['no','오답'],['sk','제외'],['sum','합계']],(k,l,a)=>'<button class="'+a.trim()+'" data-act="qc.filter" data-k="'+k+'">'+l+'</button>');
+  tsLazy('qc');tsNote('qc');
   root.innerHTML='<div class="qc-grid"><div class="qc-col">'
-    +'<div class="card"><div class="tm-h"><span>결과</span></div>'
-      +'<div class="qc-sum"><div class="qc-sc ok"><span>정답</span><b>'+(QC.ran?c.ok:'—')+'</b></div>'
-      +'<div class="qc-sc no"><span>오답</span><b>'+(QC.ran?c.no:'—')+'</b></div>'
-      +'<div class="qc-sc sk"><span>제외</span><b>'+(QC.ran?c.sk:'—')+'</b></div></div></div>'
+    +qcResHTML(c)
     +'<div class="card"><div class="tm-h"><span>산출 근거 붙여넣기</span><button class="btn bo bxs" data-act="qc.clear">지우기</button></div>'
       +'<div class="qc-b"><textarea id="qcTa" class="qc-ta" spellcheck="false">'+esc(QC.txt)+'</textarea>'
       +'<button class="qc-run" data-act="qc.run"><svg class="icn" aria-hidden="true"><use href="#i-check"></use></svg>검토</button></div></div>'
     +'<div class="card"><div class="tm-h"><span>기준</span></div><div class="qc-b">'
       +'<div class="qc-fr"><label>반올림</label>'+segRnd+'</div>'
       +'<div class="qc-fr"><label>허용 오차</label>'+segTol+'</div></div></div>'
-    +'</div><div class="qc-col qc-right"><div class="tkbar qc-bar"><span class="qc-t">검토 결과'+(QC.ran?'<span>'+c.unit+'세대 · '+QC.rows.length+'줄</span>':'')+'</span>'
+    +'</div>'+qcRightHTML(c,segFil)+'</div>';
+  qcFade();
+  const w=$('#qcWrap');if(w)ovsAttach(w);   /* 445차 가로 오버레이 막대 — 좁은 화면에서 표가 가로로 넘칠 때 */
+  tsMark('qc');
+}
+function qcResHTML(c){
+  return '<div class="card" id="qcRes"><div class="tm-h"><span>결과</span></div>'
+    +'<div class="qc-sum"><div class="qc-sc ok"><span>정답</span><b>'+(QC.ran?c.ok:'—')+'</b></div>'
+    +'<div class="qc-sc no"><span>오답</span><b>'+(QC.ran?c.no:'—')+'</b></div>'
+    +'<div class="qc-sc sk"><span>제외</span><b>'+(QC.ran?c.sk:'—')+'</b></div></div></div>';
+}
+function qcRightHTML(c,segFil){
+  return '<div class="qc-col qc-right"><div class="tkbar qc-bar"><span class="qc-t">검토 결과'+(QC.ran?'<span>'+c.unit+'세대 · '+QC.rows.length+'줄</span>':'')+'</span>'
       +'<span>'+segFil+'</span></div>'
     +(QC.ran
       ?'<div class="qc-wrap" id="qcWrap"><table class="qc-tbl"><thead><tr><th class="n">NO</th><th class="pl">공간</th><th class="it">항목</th><th>계산식</th>'
         +'<th class="v">계산값</th><th class="v">적힌 값</th><th class="st">판정</th><th class="rs">사유</th></tr></thead><tbody>'+qcRowsHTML()+'</tbody></table></div>'
       :'<div class="qc-empty"><svg class="icn" aria-hidden="true"><use href="#i-paste"></use></svg>'
         +'<p>엑셀의 산출 근거 열을 붙여넣고<br>[검토]를 누르면 줄마다 맞는지 확인합니다.</p></div>')
-    +'</div></div>';
-  qcFade();
-  const w=$('#qcWrap');if(w)ovsAttach(w);   /* 445차 가로 오버레이 막대 — 좁은 화면에서 표가 가로로 넘칠 때 */
+    +'</div>';
+}
+/* 955차: 원문을 고치는 동안 — 붙여넣기 칸(초점·커서)은 그대로 두고 결과 카드와 오른쪽 표만 바꾼다 */
+function qcRefresh(scroll){
+  const root=$('#qcRoot');if(!root)return;
+  const c=qcCount(),w0=$('#qcWrap'),st=w0?w0.scrollTop:0;
+  const rc=$('#qcRes');if(rc)rc.outerHTML=qcResHTML(c);
+  const segFil=root.querySelector('.qc-right .qc-bar>span:last-child');
+  const right=root.querySelector('.qc-right');if(!right){rQc();return;}
+  right.outerHTML=qcRightHTML(c,segFil?segFil.innerHTML:'');
+  const w=$('#qcWrap');if(w){w.scrollTop=st;ovsAttach(w);}
+  qcFade();qcHlPaint(scroll);
 }
 /* 표 스크롤 — 머리 줄은 붙박이라 페이드·막대 모두 머리 아래에서만(사진대지와 같은 방식) */
 function qcFade(){
@@ -13311,7 +13774,6 @@ function qcFade(){
   w.classList.toggle('fb',ov&&w.scrollHeight-w.clientHeight-w.scrollTop>4);
   dwSb(w,'qc-sb',h);   /* 붙박이 머리 줄 아래에서만 */
 }
-function qcFlash(){qcFade();}
 /* 880차: 폰에서 업무 필터는 팝업 — 바깥을 누르면 닫는다 */
 document.addEventListener('pointerdown',e=>{
   if(!matchMedia('(max-width:960px)').matches||WIDGET)return;
@@ -13339,7 +13801,7 @@ document.addEventListener('pointerdown',e=>{
   const i=w.querySelector('.inp');
   if(!i||!String(i.value||'').trim())w.classList.remove('qopen');
 },true);
-document.addEventListener('scroll',e=>{if(e.target&&e.target.id==='qcWrap')qcFlash();},true);
+document.addEventListener('scroll',e=>{if(e.target&&e.target.id==='qcWrap')qcFade();},true);
 window.addEventListener('resize',()=>{if(S.view==='qc')qcFade();});
 /* 결과 내보내기 — 엑셀에 그대로 붙일 수 있게 탭으로 나눈다 */
 function qcTsv(list,cols){
@@ -13361,7 +13823,7 @@ function qcTsv(list,cols){
 }
 Object.assign(ACT,{
   'qc.run':()=>qcRun(),
-  'qc.clear':()=>{QC.txt='';QC.rows=[];QC.ran=false;rQc();const t=$('#qcTa');if(t)t.focus();},
+  'qc.clear':()=>{QC.txt='';QC.rows=[];QC.ran=false;QC.hl=null;rQc();const t=$('#qcTa');if(t)t.focus();},
   'qc.rnd':el=>{const v=Number(el.dataset.r);if(QC.rnd===v)return;QC.rnd=v;if(QC.ran)qcRun0();else rQc();},
   'qc.tol':el=>{const v=Number(el.dataset.t);if(QC.tol===v)return;QC.tol=v;if(QC.ran)qcRun0();else rQc();},
   'qc.filter':el=>{if(QC.filter===el.dataset.k)return;QC.filter=el.dataset.k;rQc();},
@@ -13432,6 +13894,7 @@ document.addEventListener('contextmenu',e=>{
   const selN=QCSEL.on?($$('#qcWrap td.selc').length):0;
   openCtx(e.clientX,e.clientY,[
     selN?{label:'고른 칸 복사 ('+selN+'칸)',act:()=>{const t=qcSelText();if(t)copyText(t,'고른 칸을 복사했습니다');}}:null,
+    row&&row.ln!=null&&{label:'원문 줄로 가기',act:()=>qcGoto(row)},
     row&&{label:'이 줄 복사',act:()=>copyText(qcTsv([row]).split('\n')[1],'이 줄을 복사했습니다')},
     {label:'오답만 복사'+(nos.length?' ('+nos.length+')':''),act:()=>{if(!nos.length){toast('오답이 없습니다');return;}copyText(qcTsv(nos),'오답 '+nos.length+'줄을 복사했습니다');}},
     {label:'전체 결과 복사',act:()=>copyText(qcTsv(QC.rows),'전체 '+QC.rows.length+'줄을 복사했습니다')},
@@ -13446,15 +13909,16 @@ document.addEventListener('contextmenu',e=>{
    ⚠ 읽기는 워커(vendor/libredwg/dwg-worker.js)가 한다. 본체에서 부르면 CSP(script-src 'self')가 막는다.
    나누는 방법: ① 도면틀 — 닫힌 네모(축에 나란한) 중 큰 것들. 겹쳐 그린 이중 테두리는 바깥 것만 남긴다.
                 ② 틀이 없으면 — 도형이 붙어 있는 덩어리끼리(격자 칠하기 + 이웃 잇기). */
-const DW={name:'',polys:[],texts:[],styles:[],ext:null,pages:[],off:new Set(),mode:'auto',used:'',paper:'a3',orient:'auto',lw:true,zoom:'w2',pz:0,page:1,busy:'',stat:null,err:'',worker:null};
+const DW={name:'',polys:[],texts:[],styles:[],ext:null,pages:[],off:new Set(),mode:'auto',used:'',paper:'a3',orient:'auto',lw:true,zoom:'w2',pz:0,page:1,busy:'',stat:null,err:'',worker:null,
+  layers:[],lhide:new Set(),stage:'',t0:0,_svg:new WeakMap()};   /* 955차: layers=[{name,off,n}] · lhide=끈 레이어 번호 · stage=읽는 단계 · _svg=장마다 그린 SVG(다시 그리지 않게) */
 let DW_WORKER=null;
 const DW_PAPER={a4:[210,297],a3:[297,420]};   /* 816차: 실무에선 A4·A3 면 충분(사용자) */
 function dwWorker(){
   if(DW_WORKER)return DW_WORKER;
   const w=new Worker('./vendor/libredwg/dwg-worker.js',{type:'module'});
-  w.onmessage=e=>dwLoaded(e.data);
+  w.onmessage=e=>{if(e.data&&e.data.stage){DW.stage=e.data.stage;dwBusyTick();return;}dwLoaded(e.data);};
   /* 840차: 왜 안 열렸는지 화면에 남긴다 — 엔진 파일이 배포에 빠진 경우와 도면이 깨진 경우는 손볼 곳이 다르다 */
-  w.onerror=e=>{DW.busy='';DW_WORKER=null;
+  w.onerror=e=>{dwBusyStop();DW_WORKER=null;
     DW.err='도면 엔진을 불러오지 못했습니다 — vendor/libredwg 파일이 배포에 들어갔는지 확인해 주세요'+(e&&e.message?' ('+e.message+')':'');
     toast('도면 엔진을 불러오지 못했습니다');console.warn('[도면] 워커',e&&e.message);rDwg();};
   DW_WORKER=w;return w;
@@ -13469,13 +13933,14 @@ function dwAddRefs(files){
   if(!DW.buf){toast('원본 도면을 먼저 열어 주세요');return;}
   DW._before=DW.polys.length;
   toast('참조 '+list.length+'개 읽는 중…');
-  DW.busy=DW.name||'참조';rDwg();
+  DW._prev={refs:DW.refs||[]};dwBusyStart(DW.name||'참조');
+  const gen=DW.gen=(DW.gen||0)+1;
   Promise.all(list.map(f=>f.arrayBuffer().then(b=>({name:f.name,buf:b}))))
-    .then(rs=>{
+    .then(rs=>{if(gen!==DW.gen)return;
       DW.refs=(DW.refs||[]).filter(r=>!rs.some(x=>x.name===r.name)).concat(rs);
       dwSend(DW.buf.slice(0),DW.name);
     })
-    .catch(err=>{DW.busy='';toast('참조 파일을 읽지 못했습니다'+(err&&err.message?' ('+err.message+')':''));rDwg();});
+    .catch(err=>{dwBusyStop();toast('참조 파일을 읽지 못했습니다'+(err&&err.message?' ('+err.message+')':''));rDwg();});
 }
 function dwSend(buf,name){
   const refs=(DW.refs||[]).map(r=>({name:r.name,buf:r.buf.slice(0)}));
@@ -13500,21 +13965,33 @@ function dwRefHTML(){
 }
 function dwOpen(file){
   if(!file)return;
-  DW.busy=file.name;DW.name=file.name;DW.err='';DW.refs=[];DW.buf=null;rDwg();
-  file.arrayBuffer().then(buf=>{
+  DW._prev=DW.pages.length?{name:DW.name,buf:DW.buf,refs:DW.refs||[]}:null;   /* 955차: 취소·실패하면 보던 도면으로 돌아간다 */
+  const pend=DW._pendRefs||[];DW._pendRefs=null;
+  DW.name=file.name;DW.err='';DW.refs=[];DW.buf=null;DW._restore=null;dwBusyStart(file.name);
+  const gen=DW.gen=(DW.gen||0)+1;   /* 취소한 뒤 늦게 끝난 파일 읽기가 엔진을 다시 깨우지 않게 */
+  file.arrayBuffer().then(async buf=>{
+    if(gen!==DW.gen)return;
     /* DWG 는 앞 6글자가 AC10xx(예: AC1032). 아니면 엔진에 넘기기 전에 알려 준다 */
     const head=String.fromCharCode(...new Uint8Array(buf.slice(0,6)));
-    if(!/^AC10/.test(head)){DW.busy='';DW.err='DWG 파일이 아닌 것 같습니다(앞머리 '+esc(head.replace(/[^\x20-\x7e]/g,'.'))+'). DXF·PDF 는 아직 읽지 못합니다';toast('DWG 파일이 아닙니다');rDwg();return;}
+    if(!/^AC10/.test(head)){dwBusyStop();if(DW._prev){Object.assign(DW,DW._prev);DW._prev=null;}DW.err='DWG 파일이 아닌 것 같습니다(앞머리 '+esc(head.replace(/[^\x20-\x7e]/g,'.'))+'). DXF·PDF 는 아직 읽지 못합니다';toast('DWG 파일이 아닙니다');rDwg();return;}
     DW.buf=buf.slice(0);
+    if(pend.length)DW.refs=await Promise.all(pend.map(f=>f.arrayBuffer().then(b=>({name:f.name,buf:b}))));   /* 955차: 함께 끌어다 놓은 참조 */
+    if(gen!==DW.gen)return;
     dwSend(buf,file.name);
-  }).catch(err=>{DW.busy='';DW.err='파일을 읽지 못했습니다'+(err&&err.message?' ('+err.message+')':'');toast('파일을 열지 못했습니다');rDwg();});
+  }).catch(err=>{if(gen!==DW.gen)return;dwBusyStop();if(DW._prev){Object.assign(DW,DW._prev);DW._prev=null;}DW.err='파일을 읽지 못했습니다'+(err&&err.message?' ('+err.message+')':'');toast('파일을 열지 못했습니다');rDwg();});
 }
 function dwLoaded(d){
-  DW.busy='';
-  if(!d||!d.ok){DW.err='도면을 읽지 못했습니다'+(d&&d.err?' — '+d.err:'');toast('도면을 읽지 못했습니다');rDwg();return;}
+  dwBusyStop();
+  if(!d||!d.ok){if(DW._prev){Object.assign(DW,DW._prev);DW._prev=null;}DW._restore=null;DW.err='도면을 읽지 못했습니다'+(d&&d.err?' — '+d.err:'');toast('도면을 읽지 못했습니다');rDwg();return;}
+  DW._prev=null;
   DW.err='';DW._core=null;DW._coreN=-1;DW.polys=d.polys||[];DW.texts=d.texts||[];DW.styles=d.styles||[];DW.ext=d.ext;DW.off=new Set();DW.page=1;
   DW.stat={n:DW.polys.length,t:DW.texts.length,ms:d.ms,skipped:d.skipped,layouts:d.layouts,missing:d.missing||{},refInfo:d.refInfo||{}};
+  DW.layers=d.layers||[];DW.lhide=new Set(DW.layers.map((l,i)=>l.off?i:-1).filter(i=>i>=0));   /* 955차: 도면에서 꺼 둔 레이어는 끈 채로 */
   dwSplit();
+  const R=DW._restore;DW._restore=null;
+  if(R){if(R.lhide)DW.lhide=new Set(DW.layers.map((l,i)=>R.lhide.includes(l.name)?i:-1).filter(i=>i>=0));
+    if(R.off&&R.n===DW.pages.length)DW.off=new Set(R.off);
+    DW._svg=new WeakMap();toast('지난 도면을 다시 열었습니다 · '+DW.name);rDwg();return;}
   /* 895차: 참조를 붙인 뒤에는 「몇 개 늘었는지 · 왜 안 붙었는지」를 반드시 알린다(아무 반응 없다는 지적) */
   if(DW._before!=null){
     const add=DW.polys.length-DW._before;DW._before=null;
@@ -13746,7 +14223,7 @@ function dwSplit(){
   }
   if(!boxes.length&&DW.mode!=='frame'){boxes=dwClusters();if(boxes.length)used='덩어리';}
   if(!boxes.length&&DW.ext){boxes=[dwCore().slice()];used='전체';}
-  DW.used=used;
+  DW.used=used;DW._svg=new WeakMap();
   DW.pages=dwSort(boxes).map(b=>{
     const w=b[2]-b[0],h=b[3]-b[1],pad=Math.max(w,h)*0.01;
     return {b:[b[0]-pad,b[1]-pad,b[2]+pad,b[3]+pad],w,h};
@@ -13766,10 +14243,12 @@ function dwStyleCSS(used){
   return css?'<style>'+css+'</style>':'';
 }
 function dwPageSVG(pg,forPrint){
-  const [x0,y0,x1,y1]=pg.b,w=x1-x0,h=y1-y0;
+  const hit=DW._svg.get(pg);if(hit)return hit;   /* 955차: 한 번 그린 장은 다시 그리지 않는다(선 굵기·레이어가 바뀌면 비운다) */
+  const [x0,y0,x1,y1]=pg.b,w=x1-x0,h=y1-y0,LH=DW.lhide;
   let d='';const used=new Set();
   DW.polys.forEach(p=>{
     const b=p.b;if(b[2]<x0||b[0]>x1||b[3]<y0||b[1]>y1)return;
+    if(LH.size&&LH.has(p.l))return;
     const a=p.p;let s='';
     for(let k=0;k<a.length;k+=2)s+=(k?' ':'')+(Math.round(a[k]*100)/100)+','+(Math.round(a[k+1]*100)/100);
     if(DW.lw&&p.s!=null)used.add(p.s);
@@ -13777,14 +14256,16 @@ function dwPageSVG(pg,forPrint){
   });
   DW.texts.forEach(t=>{
     if(t.x<x0||t.x>x1||t.y<y0||t.y>y1)return;
+    if(LH.size&&LH.has(t.l))return;
     /* ⚠ 글자도 도형과 같은 좌표계(y 위로)로 적는다 — 여기서 -y 로 적으면 바깥 group 의 뒤집기와 겹쳐 위아래가 뒤바뀐다 */
     const tx=Math.round(t.x*100)/100,ty=Math.round(t.y*100)/100;
     d+='<text x="'+tx+'" y="'+ty+'" font-size="'+(Math.round(t.h*100)/100)+'"'
       +(t.r?' transform="rotate('+(-t.r)+' '+tx+' '+ty+')"':'')
       +'>'+esc(t.s)+'</text>';
   });
-  return '<svg class="dw-svg" viewBox="'+x0+' '+(-y1)+' '+w+' '+h+'" preserveAspectRatio="xMidYMid meet">'
+  const out='<svg class="dw-svg" viewBox="'+x0+' '+(-y1)+' '+w+' '+h+'" preserveAspectRatio="xMidYMid meet">'
     +dwStyleCSS(used)+'<g class="dw-g" transform="scale(1,-1)">'+d.replace(/<text /g,'<text data-t="1" ')+'</g></svg>';
+  DW._svg.set(pg,out);return out;
 }
 /* 818차: 용지·방향은 **인쇄 한 번에 하나**로 고정한다 — 장마다 다르면 브라우저가 첫 장 기준으로 찍어 나머지가 어긋난다.
    자동이면 장들의 가로세로를 세어 많은 쪽을 따른다. 도면은 그 용지 안에 비율 그대로(contain) 들어간다. */
@@ -13799,15 +14280,50 @@ function dwPaperMM(){
   const [a,b]=DW_PAPER[DW.paper||'a3']||DW_PAPER.a3;
   return dwLand()?[b,a]:[a,b];
 }
+function dwPageHTML(i,n,mw,mh){return '<div class="dw-pw" data-i="'+i+'" data-p="'+n+'"><div class="dw-page" style="width:'+mw+'mm;height:'+mh+'mm">'+dwPageSVG(DW.pages[i],false)+'</div></div>';}
 function dwPagesHTML(forPrint){
-  const list=dwOn();
-  if(!list.length)return '';
+  if(!dwOn().length)return '';
+  const [mw,mh]=dwPaperMM();let n=0,h='';
+  DW.pages.forEach((pg,i)=>{if(!DW.off.has(i))h+=dwPageHTML(i,++n,mw,mh);});
+  return h;
+}
+/* 955차: 장 하나 켜고 끄기 — 모두 다시 그리지 않고 그 장만 넣고 뺀다(방향이 「자동」이면 용지 크기만 고친다) */
+function dwToggle(i,on){
+  const v=$('#dwView'),before=dwLand();
+  if(on)DW.off.delete(i);else DW.off.add(i);
+  if(!v||!dwOn().length){rDwg();return;}
   const [mw,mh]=dwPaperMM();
-  return list.map((pg,i)=>'<div class="dw-pw" data-p="'+(i+1)+'"><div class="dw-page" style="width:'+mw+'mm;height:'+mh+'mm">'
-      +dwPageSVG(pg,forPrint)+'</div></div>').join('');
+  if(on){if(!v.querySelector('.dw-pw[data-i="'+i+'"]')){const next=[...v.querySelectorAll('.dw-pw')].find(x=>Number(x.dataset.i)>i);
+    if(next)next.insertAdjacentHTML('beforebegin',dwPageHTML(i,0,mw,mh));else v.insertAdjacentHTML('beforeend',dwPageHTML(i,0,mw,mh));}}
+  else{const el=v.querySelector('.dw-pw[data-i="'+i+'"]');if(el)el.remove();}
+  if(dwLand()!==before)v.querySelectorAll('.dw-page').forEach(p=>{p.style.width=mw+'mm';p.style.height=mh+'mm';});
+  [...v.querySelectorAll('.dw-pw')].forEach((x,n)=>{x.dataset.p=n+1;});
+  const lb=$('#dwgRoot .dw-pl input[data-act="dwg.toggle"][data-i="'+i+'"]');if(lb)lb.closest('.dw-pl').classList.toggle('off',!on);
+  const sub=$('#dwgRoot .dw-cnt');if(sub)sub.textContent=dwOn().length+' / '+DW.pages.length+'장';
+  dwZoom();tsMark('dw');
+}
+/* 955차: 읽는 동안 — 단계·걸린 시간·취소. 1분이 넘으면 오래 걸린다고 알리고 5분이면 멈춘다 */
+function dwBusyStart(name){DW.busy=name;DW.stage='';DW.t0=Date.now();clearInterval(DW._bt);DW._bt=setInterval(dwBusyTick,1000);rDwg();}
+function dwBusyStop(){clearInterval(DW._bt);DW._bt=0;DW.busy='';DW.stage='';}
+function dwBusyText(){const s=Math.round((Date.now()-(DW.t0||Date.now()))/1000);
+  return esc(DW.busy)+' · '+({load:'엔진 준비 중',parse:'읽는 중',flat:'그리는 중'}[DW.stage]||'읽는 중')+'…'+(s>=3?' '+s+'초':'');}
+function dwBusyTick(){
+  if(!DW.busy)return;
+  const s=(Date.now()-DW.t0)/1000;
+  if(s>300){dwCancel('5분이 지나도 끝나지 않아 멈췄습니다 · 도면이 너무 크거나 손상됐을 수 있습니다');return;}
+  const t=$('#dwgRoot .dw-load span');if(t)t.innerHTML=dwBusyText();
+  const w=$('#dwgRoot .dw-slow');if(w)w.hidden=s<60;
+}
+function dwCancel(msg){
+  DW.gen=(DW.gen||0)+1;
+  if(DW_WORKER){try{DW_WORKER.terminate();}catch(err){}DW_WORKER=null;}
+  dwBusyStop();
+  if(DW._prev){Object.assign(DW,DW._prev);DW._prev=null;}else if(!DW.pages.length){DW.buf=null;DW.refs=[];DW.name='';}
+  DW._restore=null;DW._before=null;DW.err=msg||'';toast(msg?'도면 읽기를 멈췄습니다':'도면 읽기를 취소했습니다');rDwg();
 }
 function rDwg(){
   const root=$('#dwgRoot');if(!root)return;
+  tsLazy('dw');tsMark('dw');
   const seg=(cur,list,btn)=>'<span class="seg">'+list.map(([k,l])=>btn(k,l,String(cur)===String(k)?'act':'')).join('')+'</span>';
   const segMode=seg(DW.mode,[['auto','자동'],['frame','도면틀'],['cluster','오브젝트']],(k,l,a)=>'<button class="'+a+'" data-act="dwg.mode" data-m="'+k+'">'+l+'</button>');
   const segPaper=seg(DW.paper||'a3',[['a4','A4'],['a3','A3']],(k,l,a)=>'<button class="'+a+'" data-act="dwg.paper" data-p="'+k+'">'+l+'</button>');
@@ -13818,10 +14334,17 @@ function rDwg(){
   const skip=st&&st.skipped?Object.entries(st.skipped).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k,v])=>k+' '+v).join(' · '):'';
   const list=DW.pages.map((p,i)=>'<label class="dw-pl'+(DW.off.has(i)?' off':'')+'"><input type="checkbox" data-act="dwg.toggle" data-i="'+i+'"'+(DW.off.has(i)?'':' checked')+'>'
     +'<b>'+(i+1)+'</b><span>'+Math.round(p.w)+' × '+Math.round(p.h)+'</span></label>').join('');
+  /* 955차: 레이어 — 도형이 있는 것만, 이름 순 */
+  const lays=(DW.layers||[]).map((l,i)=>({l,i})).filter(x=>x.l.n>0).sort((a,b)=>a.l.name.localeCompare(b.l.name,'ko',{numeric:true}));
+  const lOn=lays.filter(x=>!DW.lhide.has(x.i)).length;
+  const layCard=lays.length>1?'<div class="card"><div class="tm-h"><span>레이어 <span class="tm-sub">'+lOn+' / '+lays.length+'</span></span>'+(lOn<lays.length?'<button class="btn bo bxs" data-act="dwg.layerAll">모두 켜기</button>':'')+'</div>'
+    +'<div class="dw-list">'+lays.map(x=>{const off=DW.lhide.has(x.i);return '<label class="dw-pl'+(off?' off':'')+'"><input type="checkbox" data-act="dwg.layer" data-i="'+x.i+'"'+(off?'':' checked')+'>'
+      +'<b class="dw-ln">'+esc(x.l.name)+'</b><span>'+x.l.n.toLocaleString()+'</span></label>';}).join('')+'</div></div>':'';
   root.innerHTML='<div class="dw-grid"><div class="dw-col">'
     +'<div class="card"><div class="tm-h"><span>도면 파일</span>'+(DW.pages.length?'<button class="btn bo bxs" data-act="dwg.reset">초기화</button>':'')+'</div>'
       +'<div class="dw-b">'
-      +(DW.busy?'<div class="dw-load">'+esc(DW.busy)+' 읽는 중…</div>'
+      +(DW.busy?'<div class="dw-load"><span>'+dwBusyText()+'</span><button class="btn bo bxs" data-act="dwg.cancel">취소</button></div>'
+        +'<div class="dw-warn dw-slow"'+((Date.now()-DW.t0)/1000<60?' hidden':'')+'>오래 걸리고 있습니다 · 큰 도면은 몇 분 걸리기도 합니다</div>'
         :'<button class="dw-open" data-act="dwg.file"><svg class="icn" aria-hidden="true"><use href="#i-folder"></use></svg>'+(DW.name?'다른 도면 열기':'DWG 열기')+'</button>')
       +(DW.name&&!DW.busy?'<div class="dw-file">'+esc(DW.name)+'</div>':'')
       +(st?'<div class="dw-stat">도형 '+st.n.toLocaleString()+' · 글자 '+st.t.toLocaleString()+'</div>':'')
@@ -13834,8 +14357,10 @@ function rDwg(){
       +'<div class="dw-fr"><label>용지</label>'+segPaper+'</div>'
       +'<div class="dw-fr"><label>방향</label>'+segOri+'</div>'
       +'<div class="dw-fr"><label>선</label>'+segLw+'</div></div></div>':'')
-    +(DW.pages.length?'<div class="card"><div class="tm-h"><span>목록</span><span class="tm-sub">'+dwOn().length+' / '+DW.pages.length+'장</span></div>'
+    +(DW.pages.length?'<div class="card"><div class="tm-h"><span>목록 <span class="tm-sub dw-cnt">'+dwOn().length+' / '+DW.pages.length+'장</span></span>'
+      +'<span class="dw-hb"><button class="btn bo bxs" data-act="dwg.all" data-v="1">전체</button><button class="btn bo bxs" data-act="dwg.all" data-v="0">해제</button></span></div>'
       +'<div class="dw-list">'+list+'</div></div>':'')
+    +layCard
     +'</div><div class="dw-col dw-right"><div class="tkbar dw-bar"><span class="dw-t">미리보기'
       +(DW.pages.length?'<span class="dw-pgn"><button data-act="dwg.pgGo" data-d="-1" aria-label="이전 장" data-tip="이전 장"><svg class="icn" aria-hidden="true"><use href="#i-chevl"></use></svg></button>'
         +'<span class="dw-pgt" id="dwPgt">1 / '+dwOn().length+'</span>'
@@ -13871,7 +14396,6 @@ function dwZoom(){
 /* 816차: 미리보기 세로 막대 — 사진대지(809차)와 같은 방식. 구를 때만 보이고 0.9초 뒤 사라진다.
    ⚠ 도형을 끌지는 않지만 다른 도구와 손놀림을 맞추려고 클릭은 통과시킨다(pointer-events:none) */
 function dwSbSync(){dwSb($('#dwView'),'dw-sb');}
-function dwSbFlash(){dwSbSync();}
 function dwPgIndi(){
   const v=$('#dwView'),t=$('#dwPgt');if(!v||!t)return;
   const pw=[...v.querySelectorAll('.dw-pw')];if(!pw.length)return;
@@ -13890,7 +14414,7 @@ function dwPgGo(d){
   v.scrollTo({top:n===1?0:Math.max(0,v.scrollTop+w.getBoundingClientRect().top-v.getBoundingClientRect().top-12),behavior:'instant'});
   dwPgIndi();
 }
-document.addEventListener('scroll',e=>{if(e.target&&e.target.id==='dwView'){dwPgIndi();dwSbFlash();}},true);
+document.addEventListener('scroll',e=>{if(e.target&&e.target.id==='dwView'){dwPgIndi();dwSbSync();}},true);
 let _dwRT=0;
 window.addEventListener('resize',()=>{if(S.view!=='dwg')return;clearTimeout(_dwRT);_dwRT=setTimeout(dwZoom,260);});
 document.addEventListener('wheel',e=>{
@@ -13935,20 +14459,25 @@ document.addEventListener('change',e=>{
   const t=e.target;if(!t)return;
   if(t.id==='dwgFile'){const f=(t.files||[])[0];t.value='';if(f)dwOpen(f);return;}
   if(t.id==='dwgRefFile'){const fs=t.files;t.value='';dwAddRefs(fs);return;}
-  if(t.dataset&&t.dataset.act==='dwg.toggle'&&t.closest('#dwgRoot')){
-    const i=Number(t.dataset.i);if(t.checked)DW.off.delete(i);else DW.off.add(i);
-    rDwg();
+  if(t.dataset&&t.dataset.act==='dwg.toggle'&&t.closest('#dwgRoot')){dwToggle(Number(t.dataset.i),t.checked);return;}
+  if(t.dataset&&t.dataset.act==='dwg.layer'&&t.closest('#dwgRoot')){   /* 955차: 레이어 켜고 끄기 — 모든 장을 다시 그린다 */
+    const i=Number(t.dataset.i);if(t.checked)DW.lhide.delete(i);else DW.lhide.add(i);DW._svg=new WeakMap();
+    const v=$('#dwView'),st=v?v.scrollTop:0;rDwg();const v2=$('#dwView');if(v2)v2.scrollTo({top:st,behavior:'instant'});
   }
 });
 Object.assign(ACT,{
   'dwg.file':()=>{const i=$('#dwgFile');if(i)i.click();},
   'dwg.refFile':()=>{const i=$('#dwgRefFile');if(i)i.click();},
-  'dwg.reset':()=>{DW.polys=[];DW.texts=[];DW.styles=[];DW.ext=null;DW.pages=[];DW.off=new Set();DW.name='';DW.stat=null;DW.err='';DW.page=1;rDwg();},
+  'dwg.reset':()=>{DW.polys=[];DW.texts=[];DW.styles=[];DW.ext=null;DW.pages=[];DW.off=new Set();DW.name='';DW.stat=null;DW.err='';DW.page=1;DW.buf=null;DW.refs=[];DW._before=null;DW._core=null;DW.layers=[];DW.lhide=new Set();DW._svg=new WeakMap();rDwg();},   /* 953차: 참조 파일·원본 버퍼도 비운다(초기화 뒤 참조 추가가 옛 도면을 되살렸다) */
   'dwg.mode':el=>{if(DW.mode===el.dataset.m)return;DW.mode=el.dataset.m;dwSplit();rDwg();
     toast(DW.pages.length+'장 ('+(DW.used==='틀'?'도면틀 기준':DW.used==='덩어리'?'오브젝트 기준':'전체 1장')+')');},
   'dwg.paper':el=>{if((DW.paper||'a3')===el.dataset.p)return;DW.paper=el.dataset.p;rDwg();},
   'dwg.orient':el=>{if(DW.orient===el.dataset.o)return;DW.orient=el.dataset.o;rDwg();},
-  'dwg.lw':el=>{const on=el.dataset.w==='on';if(DW.lw===on)return;DW.lw=on;rDwg();},
+  'dwg.lw':el=>{const on=el.dataset.w==='on';if(DW.lw===on)return;DW.lw=on;DW._svg=new WeakMap();rDwg();},
+  'dwg.all':el=>{const on=el.dataset.v==='1';DW.off=on?new Set():new Set(DW.pages.map((p,i)=>i));rDwg();},   /* 955차 */
+  'dwg.cancel':()=>dwCancel(''),
+  'dwg.layerAll':()=>{DW.lhide=new Set();DW._svg=new WeakMap();rDwg();},
+  'dwg.layer':()=>{},   /* change 위임이 처리한다 */
   'dwg.zoom':el=>{if(DW.zoom===el.dataset.z)return;const keep=DW.page;DW.zoom=el.dataset.z;rDwg();DW.page=keep;dwPgGo(0);},
   'dwg.pgGo':el=>dwPgGo(Number(el.dataset.d)),
   'dwg.toggle':()=>{},   /* change 위임이 처리한다 */
@@ -14052,8 +14581,26 @@ async function pdBake(ph, wmm, hmm, padMM) {
   }
   cx.restore(); cx.save(); cx.translate(P, P);
   const W0 = W, H0 = H; const _W = IW, _H = IH;
+  /* 955차: 모자이크 — 그린 그림을 그 영역만 PD_MOS 칸 굵기로 줄였다 키운다(미리보기와 같은 굵기) */
+  const mb = Math.max(2, Math.max(_W, _H) / PD_MOS);
+  (ph.ann || []).filter(a => a.t === 'mosaic').forEach(a => {
+    const b = pdAnnBox(a), x0 = Math.max(0, b.x), y0 = Math.max(0, b.y), x1 = Math.min(100, b.x + b.w), y1 = Math.min(100, b.y + b.h);
+    const rx = x0 / 100 * _W, ry = y0 / 100 * _H, rw = (x1 - x0) / 100 * _W, rh = (y1 - y0) / 100 * _H;
+    if (rw < 1 || rh < 1) return;
+    const sw = Math.max(1, Math.round(rw / mb)), sh = Math.max(1, Math.round(rh / mb));
+    const t = document.createElement('canvas'); t.width = sw; t.height = sh; t.getContext('2d').drawImage(cv, P + rx, P + ry, rw, rh, 0, 0, sw, sh);
+    cx.imageSmoothingEnabled = false; cx.drawImage(t, 0, 0, sw, sh, rx, ry, rw, rh); cx.imageSmoothingEnabled = true;
+  });
   (ph.ann || []).forEach(a => {
     const X = v => v / 100 * _W, Y = v => v / 100 * _H;
+    if (a.t === 'mosaic') return;
+    if (a.t === 'num') {   /* 955차: 번호 — 미리보기와 같은 5.2mm 원 */
+      const R = 2.6 * XL_DPI / 25.4;
+      cx.save(); cx.setLineDash([]); cx.fillStyle = a.c || '#E02424';
+      cx.beginPath(); cx.arc(X(a.x), Y(a.y), R, 0, Math.PI * 2); cx.fill();
+      cx.fillStyle = '#fff'; cx.font = '700 ' + Math.round(3.2 * XL_DPI / 25.4) + 'px Pretendard, sans-serif'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+      cx.fillText(String(Number(a.n) || 1), X(a.x), Y(a.y) + R * 0.06); cx.restore(); return;
+    }
     cx.strokeStyle = a.c || '#E02424';
     cx.lineWidth = Math.max(1, (a.w || 2) * XL_DPI / 96);
     cx.lineCap = a.d ? 'butt' : 'round'; cx.lineJoin = 'round';
@@ -14115,6 +14662,8 @@ async function pdXlsx() {
     const imgHmm = (sheetH - pt2mm(TTLpt) - pt2mm(SITEpt) - 4 - R * rowMM) / R;   /* 4mm 안전 여유 */
     const w2c = mm => Math.round(((mm2px(mm) - 5) / 7) * 10000) / 10000;
     const pages = pdPageList();
+    await pdMosaicAll();
+    const xlTotal = PD.photos.length; let xlDone = 0;
     const media = [], anchors = [];
     let rows = '', rowIdx = 0, breaks = [];
     const mergeList = [];
@@ -14140,6 +14689,7 @@ async function pdXlsx() {
         for (let c = 0; c < C; c++) {
           const cell = pages[p][r * C + c], photo = cell && cell.ph;
           if (!photo) continue;
+          xlDone++; if (xlDone === 1 || xlDone % 3 === 0 || xlDone === xlTotal) toast('엑셀 만드는 중 · 사진 ' + xlDone + ' / ' + xlTotal, 60000);   /* 955차: 진행 표시 */
           const baked = await pdBake(photo, colWmm, imgHmm, 0);
           media.push(baked.bytes);
           anchors.push({ row: imgRow, col: c * 3 + 1, id: media.length });
@@ -14285,7 +14835,7 @@ function tlNorm(r){
 function tlAccept(aoa){
   const{rows,headers}=rowsToObjs(aoa);
   const need=['동','호','공종','접수일'].filter(c=>!headers.includes(c));
-  if(need.length){toast('필수 컬럼 누락: '+need.join(', '),5000);return;}
+  if(need.length){toast('필수 컬럼 누락: '+need.join(', '),5000);return false;}
   const hasCls=headers.includes('하자구분');
   const all=rows.map(tlNorm).filter(r=>r.rcv);
   TL.rows=hasCls?all.filter(r=>r.cls==='세대'):all;
@@ -14294,10 +14844,11 @@ function tlAccept(aoa){
   PV.co='';PV.from='';PV.to='';PV.filters={};
   if(S.view==='redo')rRedo();else rProd();
   toast((hasCls?'세대 ':'')+TL.unit.toLocaleString()+'건을 읽었습니다');
+  return true;
 }
 async function tlOpen(f){
   const ext=f.name.split('.').pop().toLowerCase();
-  TL.busy=true;TL.name=f.name;(S.view==='redo'?rRedo:rProd)();
+  const prevName=TL.name;TL.busy=true;TL.name=f.name;(S.view==='redo'?rRedo:rProd)();
   const fail=m=>{TL.busy=false;TL.name='';toast(m,5000);(S.view==='redo'?rRedo:rProd)();};
   try{
     const buf=await f.arrayBuffer();
@@ -14308,7 +14859,7 @@ async function tlOpen(f){
       const wb=readWorkbookSafe(buf,{type:'array',cellDates:true});
       aoa=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:'',raw:false,dateNF:'yyyy-mm-dd'});
     }else return fail('지원하지 않는 형식: '+ext);
-    TL.busy=false;tlAccept(aoa);
+    TL.busy=false;if(!tlAccept(aoa)){TL.name=prevName;(S.view==='redo'?rRedo:rProd)();}   /* 953차: 필수 열이 없으면 「읽는 중…」에 멈췄다 */
   }catch(err){
     console.error('[업무 도구] 목록 읽기',err);
     const msg=String(err&&err.message||err);
@@ -14336,6 +14887,9 @@ function tlCard(){
 function tlSeg(cur,list,attr){return '<span class="seg">'+list.map(([k,l])=>'<button class="'+(String(cur)===String(k)?'act':'')+'" '+attr+'="'+k+'">'+l+'</button>').join('')+'</span>';}   /* attr: 'data-act="…" data-k' — 감사기가 data-act 를 글자 그대로 찾는다 */
 function tlEmpty(msg){return '<div class="qc-empty"><svg class="icn" aria-hidden="true"><use href="#i-folder"></use></svg><p>'+msg+'</p></div>';}
 function tlFrow(cols,F,cls){return '<tr class="rl-frow'+(F.frow?' open':'')+'"><td class="rl-fc"></td>'+cols.map(k=>'<td class="rl-fc"><input class="rl-fin tl-fin" data-tl="'+cls+'" data-key="'+k+'" value="'+esc(F.filters[k]||'')+'" autocomplete="off" aria-label="필터"></td>').join('')+'</tr>';}
+/* 955차: 열 필터 단추 — 우클릭으로만 열리던 필터 줄을 누구나 찾게 · 걸린 필터 수를 보인다 */
+function tlFbtn(F,cls){const n=Object.keys(F.filters).length;
+  return '<button class="tl-fbtn'+(F.frow||n?' on':'')+'" data-act="tl.frow" data-tl="'+cls+'" aria-label="열 필터" data-tip="열 필터'+(n?' · 걸린 필터 '+n+'개':'')+'"><svg class="icn" aria-hidden="true"><use href="#i-filter"></use></svg>'+(n?'<span class="c">'+n+'</span>':'')+'</button>';}
 function tlMatch(F,get){for(const k in F.filters){const q=String(F.filters[k]||'').trim().toLowerCase();if(!q)continue;if(!String(get(k)||'').toLowerCase().includes(q))return false;}return true;}
 function tlTag(k,t){return '<span class="qc-tag '+k+'">'+esc(t)+'</span>';}
 function tlOwnTag(v){return v?tlTag(tlIsOut(v)?'up':'sk',v):'';}
@@ -14374,8 +14928,10 @@ function rdBuild(){
   out.sort((a,b)=>nc(a.base.dg,b.base.dg)||nc(a.base.ho,b.base.ho)||nc(a.base.sp,b.base.sp)||a.base.rcv.localeCompare(b.base.rcv));
   RD.groups=out;
 }
-function rdYesKey(){return 'rd.yes.'+(tlSite()||'x');}
-function rdYesLoad(){try{return JSON.parse(localStorage.getItem(rdYesKey())||'[]');}catch(e){return[];}}
+/* 955차: 현장 열이 없는 목록은 모두 「rd.yes.x」 하나를 나눠 써 서로 섞였다 — 파일 이름(번호 괄호·확장자 뺀 것)으로 가른다 */
+function rdYesKey(){const s=tlSite();if(s)return 'rd.yes.'+s;const f=String(TL.name||'').replace(/\.[a-z0-9]+$/i,'').replace(/\s*\(\d+\)$/,'').trim();return 'rd.yes.f:'+(f||'x');}
+function rdYesLoad(){try{const v=localStorage.getItem(rdYesKey());if(v!=null)return JSON.parse(v);
+  return tlSite()?[]:JSON.parse(localStorage.getItem('rd.yes.x')||'[]');}catch(e){return[];}}   /* 옛 공용 키는 현장 없는 목록에서만 한 번 이어받는다 */
 function rdYesSave(){try{localStorage.setItem(rdYesKey(),JSON.stringify([...RD.yes]));}catch(e){}}
 const RD_COLS=['dg','ho','sp','gj','ty','memo','fix','rcv','fin','st','own','co'];
 function rdCell(r,k){switch(k){case 'st':return r.done?'완료':'미처리';default:return r[k]||'';}}
@@ -14388,6 +14944,7 @@ function rdVisible(){
 }
 function rRedo(){
   const root=$('#rdRoot');if(!root)return;
+  tsLazy('tl');tsNote('tl');tsMark('tl');
   if(TL.rows.length)rdBuild();
   const G=RD.groups,vis=rdVisible();
   const reN=G.reduce((s,x)=>s+x.re.length,0),units=new Set(G.map(x=>x.base.dg+'|'+x.base.ho)).size,diffN=G.reduce((s,x)=>s+x.diff,0);
@@ -14411,7 +14968,7 @@ function rRedo(){
     +'</div></div>'
   +'</div><div class="qc-col qc-right">'
     +'<div class="tkbar qc-bar"><span class="qc-t">재하자 후보<span>'+(G.length?reN+'건 · '+units+'세대'+(vis.length<G.length?' · 표시 '+vis.length+'묶음':''):'')+'</span></span>'
-      +'<span>'+tlSeg(RD.st,[['all','전체'],['yes','확정'],['no','미확정'],['open','미처리']],'data-act="rd.st" data-k')+'</span></div>'
+      +'<span class="tl-br">'+(G.length?tlFbtn(RD,'rd'):'')+tlSeg(RD.st,[['all','전체'],['yes','확정'],['no','미확정'],['open','미처리']],'data-act="rd.st" data-k')+'</span></div>'
     +(TL.rows.length
       ?(G.length?'<div class="qc-wrap rd-wrap"><table class="qc-tbl rd-tbl"><thead><tr>'
         +'<th class="n">재하자</th><th class="rd-dg">동</th><th class="rd-ho">호</th><th class="pl">공간</th><th class="it">공종</th><th class="rd-ty">하자유형</th><th>접수내용</th><th>처리내용</th><th class="rd-d">접수일</th><th class="rd-d">처리일</th><th class="st">처리상태</th><th class="st">보수주체</th><th class="rd-co">보수업체</th></tr>'
@@ -14419,6 +14976,7 @@ function rRedo(){
         :tlEmpty('완료 후 같은 세대·공간·공종으로 다시 접수된 건이 없습니다'))
       :tlEmpty('전체 하자 목록(xlsx·csv)을 열면<br>완료 후 같은 세대·공간·공종으로 다시 접수된 건을 찾습니다'))
   +'</div></div>';
+  const w=root.querySelector('.qc-wrap');if(w)ovsAttach(w);   /* 953차: 폰에서 넓은 표 가로 막대(견적 검토와 같게) */
 }
 async function rdXlsx(){
   if(!RD.groups.length){toast('내보낼 후보가 없습니다');return;}
@@ -14441,12 +14999,15 @@ function pvRows(){
 }
 function pvWeek(d){const t=new Date(d);const wd=(t.getDay()+6)%7;t.setDate(t.getDate()-wd);return dstr(t);}
 const PV_COLS=['day','dg','ho','gj','memo','fix'];
+/* 955차: 열 필터를 일별만이 아니라 공종별·주차별·실적 카드·엑셀에 모두 건다 */
+function pvRowsF(){const fs=Object.keys(PV.filters).length;const rows=pvRows();return fs?rows.filter(r=>tlMatch(PV,k=>k==='day'?pvDay(r):(r[k]||''))):rows;}
 function rProd(){
   const root=$('#pvRoot');if(!root)return;
+  tsLazy('tl');tsNote('tl');tsMark('tl');
   const cos=pvCos();
   if(TL.rows.length&&!cos.some(c=>c[0]===PV.co)){PV.co=cos.length?cos[0][0]:'';PV.from='';PV.to='';}
   if(PV.co&&!PV.from&&!PV.to){const all=pvOut().filter(r=>(r.co||'(보수업체 미기재)')===PV.co);[PV.from,PV.to]=tlRange(all.map(r=>({d:pvDay(r)})),'d');}
-  const rows=pvRows(),md=Number(PV.md)>0?Number(PV.md):1;
+  const rows=pvRowsF(),md=Number(PV.md)>0?Number(PV.md):1,nF=Object.keys(PV.filters).length;
   const byDay={};rows.forEach(r=>{const d=pvDay(r);(byDay[d]=byDay[d]||[]).push(r);});
   const days=Object.keys(byDay).sort();
   const N=rows.length,D=days.length,MD=D*md;
@@ -14455,9 +15016,7 @@ function rProd(){
   let body='';
   if(PV.tab==='day'){
     body=days.map((d,i)=>{
-      const L=byDay[d];
-      const vis=L.filter(r=>tlMatch(PV,k=>k==='day'?d:(r[k]||'')));
-      if(Object.keys(PV.filters).length&&!vis.length)return '';
+      const L=byDay[d],vis=L;
       const gjs=[...new Set(L.map(r=>r.gj).filter(Boolean))];
       const units=new Set(L.map(r=>r.dg+'|'+r.ho)).size;
       return '<tr class="sub top rd-g"><td class="n">'+(i+1)+'</td><td class="pv-d">'+d+'</td><td></td><td></td><td class="pv-g">'+esc(gjs.slice(0,3).join(' · ')+(gjs.length>3?' 외 '+(gjs.length-3):''))+'</td><td colspan="2"></td>'
@@ -14487,24 +15046,26 @@ function rProd(){
       +'<div class="qc-fr"><label>공수 / 일</label><input type="number" class="inp inp-sm" id="pvMd" value="'+esc(PV.md)+'" min="0.5" step="0.5"></div>'
     +'</div></div>'
   +'</div><div class="qc-col qc-right">'
-    +'<div class="tkbar qc-bar"><span class="qc-t">투입 실적<span>'+(PV.co?esc(PV.co)+(PV.from||PV.to?' · '+tlDot(PV.from)+' ~ '+tlDot(PV.to):''):'')+'</span></span>'
-      +'<span>'+tlSeg(PV.tab,[['day','일별'],['gj','공종별'],['wk','주차별']],'data-act="pv.tab" data-t')+'</span></div>'
+    +'<div class="tkbar qc-bar"><span class="qc-t">투입 실적<span>'+(PV.co?esc(PV.co)+(PV.from||PV.to?' · '+tlDot(PV.from)+' ~ '+tlDot(PV.to):''):'')+(nF?' · 필터 '+nF+'개':'')+'</span></span>'
+      +'<span class="tl-br">'+(TL.rows.length&&cos.length?tlFbtn(PV,'pv'):'')+tlSeg(PV.tab,[['day','일별'],['gj','공종별'],['wk','주차별']],'data-act="pv.tab" data-t')+'</span></div>'
     +(TL.rows.length
-      ?(N?'<div class="qc-wrap rd-wrap"><table class="qc-tbl pv-tbl"><thead><tr>'+head+'</thead><tbody>'+(body||'<tr><td colspan="11" class="rd-none">조건에 맞는 건이 없습니다</td></tr>')+'</tbody></table></div>'
+      ?(N||nF?'<div class="qc-wrap rd-wrap"><table class="qc-tbl pv-tbl"><thead><tr>'+head+'</thead><tbody>'+(body||'<tr><td colspan="11" class="rd-none">조건에 맞는 건이 없습니다</td></tr>')+'</tbody></table></div>'
         :tlEmpty(cos.length?'조건에 맞는 외주 처리 건이 없습니다':'보수주체가 「외주」이고 처리일이 있는 건이 없습니다'))
       :tlEmpty('전체 하자 목록(xlsx·csv)을 열면<br>보수주체 외주 건의 업체별 투입 실적을 냅니다'))
   +'</div></div>';
+  const w=root.querySelector('.qc-wrap');if(w)ovsAttach(w);   /* 953차 */
 }
 async function pvXlsx(){
-  const rows=pvRows();if(!rows.length){toast('내보낼 실적이 없습니다');return;}
+  const rows=pvRowsF();if(!rows.length){toast('내보낼 실적이 없습니다');return;}   /* 955차: 화면에 건 열 필터 그대로 */
+  const fdesc=Object.entries(PV.filters).map(([k,v])=>({day:'처리일',dg:'동',ho:'호',gj:'공종',memo:'접수내용',fix:'처리내용'}[k]||k)+' ∋ '+v).join(' · ');
   try{await loadXlsx();}catch(e){toast('엑셀 모듈 로드 실패');return;}
   const md=Number(PV.md)>0?Number(PV.md):1;
   const byDay={};rows.forEach(r=>{const d=pvDay(r);(byDay[d]=byDay[d]||[]).push(r);});
   const days=Object.keys(byDay).sort(),N=rows.length,D=days.length,MD=D*md;
   const a1=[['처리일','동','호','공간','공종','하자유형','접수내용','처리내용','접수일','보수업체','접수번호']];
   rows.forEach(r=>a1.push([pvDay(r),r.dg,r.ho,r.sp,r.gj,r.ty,r.memo,r.fix,r.rcv,r.co,r.no]));
-  const a2=[['보수업체',PV.co],['기간',PV.from+' ~ '+PV.to],['공수 / 일',md],[],['총 처리 건수',N],['총 투입일',D],['총 투입 공수',MD],['처리 / 일',D?+(N/D).toFixed(2):''],['건 / 공수',MD?+(N/MD).toFixed(2):''],['공수 / 건',N?+(MD/N).toFixed(3):''],[],
-    ['처리일','처리건수','세대','공수','건 / 공수']];
+  const a2=[['보수업체',PV.co],['기간',PV.from+' ~ '+PV.to],['공수 / 일',md]].concat(fdesc?[['필터',fdesc]]:[]).concat([[],['총 처리 건수',N],['총 투입일',D],['총 투입 공수',MD],['처리 / 일',D?+(N/D).toFixed(2):''],['건 / 공수',MD?+(N/MD).toFixed(2):''],['공수 / 건',N?+(MD/N).toFixed(3):''],[],
+    ['처리일','처리건수','세대','공수','건 / 공수']]);
   days.forEach(d=>{const L=byDay[d];a2.push([d,L.length,new Set(L.map(r=>r.dg+'|'+r.ho)).size,md,+(L.length/md).toFixed(2)]);});
   const wb=XLSX.utils.book_new();
   const w1=XLSX.utils.aoa_to_sheet(a1);w1['!cols']=[11,5,6,9,8,14,40,30,11,16,12].map(w=>({wch:w}));
@@ -14523,6 +15084,7 @@ document.addEventListener('change',e=>{
   if(t.id==='pvCo'||t.id==='pvFrom'||t.id==='pvTo'||t.id==='pvMd'){
     /* ⚠ 초점이 있는 칸을 innerHTML 로 지우면 크롬이 지우는 도중 blur→change 를 한 번 더 내어 같은 root 에 다시 innerHTML 을 걸고
        NotFoundError 가 난다 — 먼저 초점을 뺀 뒤 그리고, 그린 뒤 같은 칸에 초점을 돌려 준다(숫자 칸 화살표는 누를 때마다 change) */
+    if(t.id==='pvMd'&&!(Number(t.value)>0)){toast('공수 / 일은 0 보다 큰 숫자로 넣어 주세요');t.value=PV.md;return;}   /* 955차: 비우면 조용히 1 로 계산됐다 */
     if(t.id==='pvCo'){PV.co=t.value;PV.from='';PV.to='';PV.filters={};}
     else if(t.id==='pvFrom')PV.from=t.value;else if(t.id==='pvTo')PV.to=t.value;else PV.md=t.value;
     t.blur();rProd();const el=$('#'+t.id);if(el&&t.id!=='pvCo')el.focus();return;}
@@ -14535,6 +15097,9 @@ Object.assign(ACT,{
   'rd.st':el=>{if(RD.st===el.dataset.k)return;RD.st=el.dataset.k;rRedo();},
   'rd.ck':()=>{},   /* change 위임이 처리한다 */
   'pv.tab':el=>{if(PV.tab===el.dataset.t)return;PV.tab=el.dataset.t;rProd();},
+  'tl.frow':el=>{const F=el.dataset.tl==='rd'?RD:PV;   /* 955차: 필터 줄은 일별 표에만 있다 — 다른 탭이면 일별로 옮겨 연다 */
+    if(F===PV&&PV.tab!=='day'){PV.tab='day';F.frow=true;}else F.frow=!F.frow;
+    (F===RD?rRedo:rProd)();if(F.frow){const i=document.querySelector('.tl-fin[data-tl="'+el.dataset.tl+'"]');if(i)i.focus();}},
 });
 
 /* ═══════════ 902차: 폰 하단 탭 · 현장 선택 시트 ═══════════
@@ -14742,10 +15307,58 @@ function d60Write(path,val){
   const seg=path.split('/');let o=S.d60d;
   for(let i=0;i<seg.length-1;i++){o=o[seg[i]]=o[seg[i]]||{};}
   if(val==null)delete o[seg[seg.length-1]];else o[seg[seg.length-1]]=val;
-  if(S.live&&FB.db){const r=FB.db.ref('calapp/d60/'+path);(val==null?r.remove():r.set(val)).catch(fbErr);}
+  if(S.live&&FB.db)d60Send({['calapp/d60/'+path]:val==null?null:val});
   else{LocalStore._d.d60=S.d60d;lsSave(LocalStore._d);}
   rD60();
 }
+/* ═══ 955차: D+60 쓰기 보강 ═══
+   ① 판정은 칸(a·by·ts)만 고친다 — 결과를 통째로 쓰면 같은 항목의 조치사항을 다른 사람이 막 고친 것을 덮었다
+   ② 사진 장수·용량은 서버에서 더한다(ServerValue.increment) — 둘이 동시에 찍으면 한 사람 몫이 사라졌다
+   ③ 되돌리기 — 판정·지우기·「남은 항목 양호」를 한 단계씩(Ctrl+Z · 알림의 「되돌리기」)
+   ④ 끊긴 동안 쓴 것 — 이 PC(IndexedDB, 도구 저장소와 같은 곳)에 적어 두고 서버가 받으면 지운다.
+      받기 전에 창을 닫았으면 다음에 열 때 다시 보낸다(웹 SDK 는 보낼 것을 메모리에만 들고 있어 새로고침하면 사라졌다) */
+const D60_BOOT=Date.now(),D60Q={n:0};
+function d60Send(patch){   /* patch = {전체경로: 값} */
+  let done=null;
+  if(TS.ok&&typeof indexedDB!=='undefined'){
+    const id='d60q:'+Date.now().toString(36)+'.'+String(++D60Q.n).padStart(5,'0');
+    const saved=tsPut(id,{at:Date.now(),uid:(S.user&&S.user.uid)||'',patch}).catch(()=>{});
+    done=()=>{saved.then(()=>tsDel(id)).catch(()=>{});};
+  }
+  return FB.db.ref().update(patch).then(()=>{if(done)done();},err=>{if(done)done();fbErr(err);});
+}
+async function d60QReplay(){
+  if(!TS.ok||!S.live||!FB.db||typeof indexedDB==='undefined')return;
+  let keys;try{keys=(await tsReq('readonly',os=>os.getAllKeys())).filter(k=>String(k).startsWith('d60q:')).sort();}catch(err){return;}
+  const me=(S.user&&S.user.uid)||'';let n=0;
+  for(const k of keys){
+    const q=await tsGet(k).catch(()=>null);
+    if(q&&q.at>=D60_BOOT)continue;   /* 이번에 연 창에서 쓴 것은 SDK 가 보내고 있다 */
+    if(q&&q.patch&&Date.now()-(q.at||0)<7*864e5&&(!q.uid||q.uid===me)){
+      try{await FB.db.ref().update(q.patch);n++;}catch(err){console.warn('[D+60] 다시 보내기',err);}}
+    await tsDel(k).catch(()=>{});
+  }
+  if(n)toast('연결이 끊긴 동안 저장하지 못한 점검 '+n+'건을 올렸습니다',4000);
+}
+function d60Inc(path,delta){
+  if(!delta)return;
+  const seg=path.split('/');let o=S.d60d;for(let i=0;i<seg.length-1;i++){o=o[seg[i]]=o[seg[i]]||{};}
+  const last=seg[seg.length-1],nv=Math.max(0,(Number(o[last])||0)+delta);
+  const SV=typeof firebase!=='undefined'&&firebase.database&&firebase.database.ServerValue;
+  if(S.live&&FB.db&&SV&&SV.increment){if(nv)o[last]=nv;else delete o[last];d60Send({['calapp/d60/'+path]:SV.increment(delta)});rD60();}
+  else d60Write(path,nv||null);
+}
+const D60_UNDO=[];
+function d60Get(path){let o=S.d60d;for(const s of path.split('/')){if(o==null)return null;o=o[s];}return o==null?null:o;}
+function d60UndoPush(paths,label){const inv={};paths.forEach(p=>{const v=d60Get(p);inv[p]=v==null?null:(typeof v==='object'?JSON.parse(JSON.stringify(v)):v);});
+  D60_UNDO.push({inv,label});if(D60_UNDO.length>50)D60_UNDO.shift();}
+function d60UndoRun(){const u=D60_UNDO.pop();if(!u){toast('되돌릴 판정이 없습니다');return;}d60WriteMany(u.inv);toast('되돌렸습니다 · '+u.label);}
+function d60LeftKeys(sid,tr,sc,sp,un){return d60Rows(sid,tr,sc,sp,un).filter(r=>!r.a&&!r.civil).map(r=>r.key);}
+document.addEventListener('keydown',e=>{
+  if(S.view!=='d60'||!(e.ctrlKey||e.metaKey)||e.shiftKey||!(e.key==='z'||e.key==='Z'||e.key==='ㅋ')||!D60_UNDO.length)return;
+  const t=e.target;if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable))return;
+  e.preventDefault();e.stopPropagation();d60UndoRun();
+},true);
 function d60Stamp(){return {by:String((S.user&&S.user.uid)||''),ts:Date.now()};}
 /* 918차: 누가·언제 — 결과 칸 툴팁 */
 function d60Who(r){if(!r||!r.ts)return '';const a=(S.accounts||{})[r.by]||{},p=roster().find(x=>x.id===r.by);const nm=a.name||(p&&p.name)||'';const d=new Date(r.ts);
@@ -14887,12 +15500,13 @@ function d60Detail(){
   const rows=d60Filt(d60Rows(site.id,st.tr,st.sc,st.sp,st.un),st.f);
   const sub=d60Nm(D60_SC,st.sc)+' · '+(st.sp===D60_RCV?'현장 접수':st.sp?esc((d60Forms(st.tr,st.sc).find(x=>x.id===st.sp)||{}).name||''):'전체');
   const un=units.find(u=>u.id===st.un);
+  const nLeft=d60LeftKeys(site.id,st.tr,st.sc,st.sp,st.sc==='unit'?st.un:'').length;   /* 955차 */
   return '<div class="d60-grid d60-fg"><div class="as">'
     +'<div class="tkbar d60-bk"><button class="bk" data-act="d60.back" aria-label="목록으로"><svg class="icn"><use href="#i-chevl"></use></svg></button><span class="nm">'+esc(site.name)+'</span></div>'
     +'<div class="d60-lsc">'+left+'</div></div><div class="as">'
-    +d60Tabs(st.tr,trTabs,'data-act="d60.tr" data-k',d60Seg(st.f,[['all','전체'],['ok','양호'],['ng','지적'],['na','N/A'],['none','미확인']],'data-act="d60.f" data-k')+'<button class="btn bo bsm" data-act="d60.toPd" data-tip="이 현장의 사진을 사진대지 편집기로">'+d60PhCam+'사진대지</button>')
-    +'<div class="card d60-flat d60-fcard"><div class="d60-gh">'+sub+'<span style="flex:1"></span>'+(st.sc==='unit'&&un?'<span class="c">'+esc(d60UnitNm(un))+'</span>':'')+'<span class="rp-tcnt" style="margin-left:8px">'+rows.length+'</span></div>'
-    +'<div class="d60-tsc">'+d60Table(rows,site.id)+'</div></div></div></div>';   /* 931차(사용자): 서식과 같은 규칙 — 좌·우 따로 구르고 표 머리 붙박이 */
+    +d60Tabs(st.tr,trTabs,'data-act="d60.tr" data-k',d60Seg(st.f,[['all','전체'],['ok','양호'],['ng','지적'],['na','N/A'],['none','미확인']],'data-act="d60.f" data-k'))
+    +'<div class="d60-tsc"><div class="card d60-flat d60-fcard"><div class="d60-gh">'+sub+'<span style="flex:1"></span>'+(nLeft?'<button class="btn bo bxs" data-act="d60.allOk">남은 '+nLeft+'개 양호</button>':'')+(st.sc==='unit'&&un?'<span class="c">'+esc(d60UnitNm(un))+'</span>':'')+'<span class="rp-tcnt" style="margin-left:8px">'+rows.length+'</span></div>'
+    +d60Table(rows,site.id)+'</div></div></div></div>';   /* 952차(사용자): 막대는 카드 밖 — 구르는 판(.d60-tsc)이 카드를 감싼다 */   /* 931차(사용자): 서식과 같은 규칙 — 좌·우 따로 구르고 표 머리 붙박이 */
 }
 /* 표 — 공간·공종은 같은 값이 이어지면 첫 줄에만, 이어지는 칸엔 아래 선을 긋지 않는다(업무 현황과 같은 규칙) */
 function d60Table(rows,sid){
@@ -14957,8 +15571,8 @@ function d60Form(){
     +d60Sw('form',[['insp','점검','i-ckboard'],['form','서식','i-form']])+'<div class="d60-lsc">'+left+'</div></div><div class="as">'
     +d60Tabs(st.tr,trTabs,'data-act="d60.tr" data-k',(cur?'<button class="btn bo bsm" data-act="d60.itAdd"><svg class="icn"><use href="#i-plus"></use></svg>추가</button>':'')
       +'<button class="btn bo bsm" data-act="d60.imp" data-tip="JSON 파일의 공간·점검사항·조치사항을 서식에 넣습니다 — 같은 공간·같은 점검사항은 건너뜁니다">가져오기</button><button class="btn bo bsm" data-act="d60.exp" data-tip="지금 서식 전체를 JSON 파일로">내보내기</button>')   /* 925차: 서식 JSON 가져오기·내보내기 */
-    +'<div class="card d60-flat d60-fcard"><div class="tm-h"><span>'+head+'</span><span class="rp-tcnt">'+rows.length+'</span></div>'
-    +'<div class="d60-tsc"><table class="mgtbl d60-tbl d60-ft">'+cols+ths+'<tbody>'+(tr||'<tr><td colspan="7" class="d60-empty">'+(cur?'항목이 없습니다 — 위 「추가」로 넣으세요':'항목이 없습니다')+'</td></tr>')+'</tbody></table></div>'
+    +'<div class="d60-tsc"><div class="card d60-flat d60-fcard"><div class="tm-h"><span>'+head+'</span><span class="rp-tcnt">'+rows.length+'</span></div>'
+    +'<table class="mgtbl d60-tbl d60-ft">'+cols+ths+'<tbody>'+(tr||'<tr><td colspan="7" class="d60-empty">'+(cur?'항목이 없습니다 — 위 「추가」로 넣으세요':'항목이 없습니다')+'</td></tr>')+'</tbody></table></div>'
     +'</div></div></div>';   /* 931차(사용자): 좌·우 따로 구르고(전환 세그·탭 줄은 고정) 표 머리는 붙박이 · 세로 막대는 구를 때만 */
 }
 
@@ -15026,6 +15640,8 @@ function d60MobBody(site,sc,sp,un){   /* 판 하나 = 항목 카드. 밀 때 옆
       +d60PhStrip(site.id,tr,r.key)   /* 934차: 사진 줄 */
       +'</div>';}).join('')
     :'<div class="d60-empty">'+(sc==='civil'&&sp===D60_RCV?'접수된 민원이 없습니다':sc==='unit'&&!un?'세대를 먼저 추가하세요':'서식에 항목이 없습니다')+'</div>')+'</div>';
+  const left=rows.filter(r=>!r.a&&!r.civil).length;   /* 955차(사용자): 남은 항목 한 번에 양호 */
+  if(left)body+='<button class="d60-allok" data-act="d60.allOk">남은 '+left+'개 모두 양호</button>';
   return body;
 }
 function d60MobSteps(sid,tr,units){   /* 좌우로 넘기는 순서: 구분 순 → 공간 순(전유부는 고른 세대 기준) */
@@ -15088,7 +15704,7 @@ function d60PhCount(sid,tr,k){const i=d60Insp(sid);const r=d60PhIsCivil(k)?((i.c
 function d60PhWrite(sid,tr,k,pid,rec){   /* rec=null 이면 지움 */
   const key=sid+'/'+tr+'/'+k;const o=(D60_PHC[key]&&D60_PHC[key]!=='loading')?D60_PHC[key]:(D60_PHC[key]={});
   if(rec)o[pid]=rec;else delete o[pid];
-  if(S.live&&FB.db){const r=FB.db.ref('calapp/d60photo/'+sid+'/'+tr+'/'+k+'/'+pid);(rec?r.set(rec):r.remove()).catch(fbErr);}
+  if(S.live&&FB.db)d60Send({['calapp/d60photo/'+sid+'/'+tr+'/'+k+'/'+pid]:rec||null});   /* 955차: 끊긴 동안 찍은 사진도 남긴다 */
   else{const d=d60PhLocal();const t=((d[sid]=d[sid]||{})[tr]=d[sid][tr]||{});const g=(t[k]=t[k]||{});if(rec)g[pid]=rec;else delete g[pid];lsSave(LocalStore._d);}
 }
 async function d60PhShrink(f){   /* 파일 → data URL(긴 변 800) */
@@ -15160,21 +15776,19 @@ async function d60PhAdd(sid,tr,k,files,fromCam){
   if(!d60PhCache(sid,tr,k)&&have)await new Promise(r=>d60PhLoad(sid,tr,k,r));   /* 장수 계산이 맞게 먼저 받아 둔다 */
   let n=have,bytes=0;
   for(const f of list){try{const d=await d60PhShrink(f);d60PhWrite(sid,tr,k,uid(),{d,...d60Stamp()});n++;bytes+=d.length;if(fromCam)await d60OrigKeep(sid,tr,k,f);}catch(e){toast('사진을 열 수 없습니다');}}
-  d60Write('insp/'+sid+'/phb',(d60Insp(sid).phb||0)+bytes);
-  d60Write(d60PhCntPath(sid,tr,k),n);
+  d60Inc('insp/'+sid+'/phb',bytes);d60Inc(d60PhCntPath(sid,tr,k),n-have);   /* 955차: 서버에서 더한다 */
   if($('#mo')&&$('#mo').classList.contains('open')&&$('#mb').classList.contains('d60-pvm'))d60PhModal(k);
 }
 function d60PhDropAll(sid,tr,k){   /* 948차: 세대·접수를 지울 때 그 키의 사진 노드도 지우고 phb 를 줄인다(장수 기록은 레코드와 함께 사라진다) */
   const key=sid+'/'+tr+'/'+k,c=D60_PHC[key];let bytes=0;if(c&&c!=='loading')Object.values(c).forEach(p=>{bytes+=(p.d||'').length;});
   delete D60_PHC[key];
   if(S.live&&FB.db)FB.db.ref('calapp/d60photo/'+sid+'/'+tr+'/'+k).remove().catch(fbErr);else{const d=d60PhLocal();if(d[sid]&&d[sid][tr]){delete d[sid][tr][k];lsSave(LocalStore._d);}}
-  if(bytes)d60Write('insp/'+sid+'/phb',Math.max(0,(d60Insp(sid).phb||0)-bytes));
+  if(bytes)d60Inc('insp/'+sid+'/phb',-bytes);
 }
 function d60PhDel(sid,tr,k,pid){
   const list=d60PhList(sid,tr,k),p=list.find(x=>x.id===pid);if(!p)return;
   d60PhWrite(sid,tr,k,pid,null);
-  d60Write('insp/'+sid+'/phb',Math.max(0,(d60Insp(sid).phb||0)-(p.d||'').length));
-  d60Write(d60PhCntPath(sid,tr,k),Math.max(0,d60PhCount(sid,tr,k)-1)||null);
+  d60Inc('insp/'+sid+'/phb',-(p.d||'').length);d60Inc(d60PhCntPath(sid,tr,k),-1);
 }
 const d60PhCam='<svg class="icn"><use href="#i-camera"></use></svg>';
 function d60PhCamBtn(sid,tr,k){   /* 936차: 판정 줄 오른쪽 네모 카메라 단추(누르면 바로 촬영) — 4장 차면 비활성 */
@@ -15184,7 +15798,7 @@ function d60PhStrip(sid,tr,k){   /* 폰 항목 안 사진 줄: 썸네일(있을 
   const n=d60PhCount(sid,tr,k),c=d60PhCache(sid,tr,k);if(!n)return '';
   if(!c)d60PhLoad(sid,tr,k);
   const th=n&&(!c||c==='loading')?Array.from({length:n},()=>'<span class="p ld"></span>').join('')
-    :d60PhList(sid,tr,k).map(p=>'<span class="p" role="button" data-act="d60.phOne" data-k="'+esc(k)+'" data-pid="'+esc(p.id)+'"><img src="'+p.d+'" alt=""><button class="x" data-act="d60.phDel" data-k="'+esc(k)+'" data-pid="'+esc(p.id)+'" aria-label="사진 삭제"><svg class="icn"><use href="#i-close"></use></svg></button></span>').join('');
+    :d60PhList(sid,tr,k).map(p=>'<span class="p" role="button" tabindex="0" data-act="d60.phOne" data-k="'+esc(k)+'" data-pid="'+esc(p.id)+'"><img src="'+p.d+'" alt=""><button class="x" data-act="d60.phDel" data-k="'+esc(k)+'" data-pid="'+esc(p.id)+'" aria-label="사진 삭제"><svg class="icn"><use href="#i-close"></use></svg></button></span>').join('');
   return '<div class="d60-ph">'+th+'</div>';
 }
 function d60PhRowMeta(sid,tr,k){   /* 키 → 위치·내용(사진대지 칸) */
@@ -15217,6 +15831,7 @@ function d60PhOne(k,pid){   /* 폰 — 한 장 크게 */
 /* 사진대지로 보내기 — 그 현장 사진 있는 항목을 전부 받아(현장 단위 한 번) 사진대지 편집기로 넘긴다. 위치 = 세대·공간, 내용 = 공종 · 점검항목 / 조치사항 */
 async function d60ToPd(){
   const st=S.d60,site=d60Sites().find(x=>x.id===st.sid);if(!site)return;
+  const wait=tsLazy('pd');if(wait)await wait;   /* 955차: 이 PC 에 남은 사진대지를 먼저 불러와야 「비우고 넣을까요」가 맞다 */
   const keys=[];D60_TR.forEach(([tr])=>{const i=d60Insp(site.id);Object.entries((i.res||{})[tr]||{}).forEach(([k,r])=>{if(r&&r.ph)keys.push([tr,k]);});Object.entries((i.civil||{})[tr]||{}).forEach(([k,r])=>{if(r&&r.ph)keys.push([tr,k]);});});
   if(!keys.length){toast('사진이 있는 항목이 없습니다');return;}
   const go2=async()=>{
@@ -15226,9 +15841,9 @@ async function d60ToPd(){
     keys.sort((a,b)=>D60_TR.findIndex(x=>x[0]===a[0])-D60_TR.findIndex(x=>x[0]===b[0])||order(a[1])-order(b[1]));
     const out=[];
     for(const [tr,k] of keys){const m=d60PhRowMeta(site.id,tr,k);
-      for(const p of d60PhList(site.id,tr,k)){try{const url=URL.createObjectURL(d60PhBlob(p.d));   /* fetch(data:) 는 CSP connect-src 에 막힌다 */const dim=await new Promise(res=>{const im=new Image();im.onload=()=>res([im.naturalWidth,im.naturalHeight]);im.onerror=()=>res([600,800]);im.src=url;});
-        out.push({id:'p'+(++PD.seq),name:'',path:'',src:url,url,w:dim[0],h:dim[1],crop:null,fit:'fill',loc:m.loc,desc:m.desc});}catch(e){}}}
-    PD.photos.forEach(pdRevoke);PD.photos=out;PD.sel=new Set();PD.site=site.name;PD.page=1;
+      for(const p of d60PhList(site.id,tr,k)){try{const ob=d60PhBlob(p.d);   /* fetch(data:) 는 CSP connect-src 에 막힌다 */const bm=await createImageBitmap(ob);const w=bm.width,h=bm.height;if(bm.close)bm.close();
+        const url=pdURL(ob);out.push({id:'p'+(++PD.seq),name:'',path:'',ob,ow:w,oh:h,rq:0,sb:ob,src:url,ub:ob,url,w,h,crop:null,fit:'fill',loc:m.loc,desc:m.desc});}catch(e){}}}
+    pdToolReset();pdSnap();PD.photos=out;PD.sel=new Set();PD.site=site.name;PD.page=1;pdGc();   /* 955차: 넣기 전 사진대지는 되돌리기로 돌아간다 */
     go('photo');toast(out.length+'장을 사진대지에 넣었습니다');
   };
   if(PD.photos.length)confirmModal('사진대지로 보내기','사진대지에 있는 '+PD.photos.length+'장을 비우고 이 현장 사진을 넣을까요?',go2,'넣기');else go2();
@@ -15259,7 +15874,7 @@ function d60HideSheet(){
   const st=S.d60,sid=st.sid;if(!sid)return;
   const body=d60SC(st.tr).map(([sc,nm])=>{const h=d60HideMap(sid,st.tr,sc),list=d60Forms(st.tr,sc);if(!list.length)return '';
     return '<div class="d60-hs"><div class="d60-hsh">'+nm+'</div>'+list.map(s=>'<label class="d60-hsr"><span class="n">'+esc(s.name)+'</span><span class="sw"><input type="checkbox"'+(h[s.id]?'':' checked')+' data-act="d60.hideSw" data-sc="'+sc+'" data-k="'+esc(s.id)+'" aria-label="'+esc(s.name)+' 보이기"><span class="sw-t"></span></span></label>').join('')+'</div>';}).join('');
-  openModal('공간 숨기기',body,'');$('#mb').classList.add('d60-hsm');   /* 946차(사용자): 우상단 X · 제목 고정, 본문만 구른다 */
+  openModal('표시할 공간',body,'');   /* 953차: 켜짐 = 보임 — 「숨기기」 제목 아래 켜진 스위치는 거꾸로 읽혔다 */$('#mb').classList.add('d60-hsm');   /* 946차(사용자): 우상단 X · 제목 고정, 본문만 구른다 */
 }
 function d60CivilModal(){
   openModal('민원 접수','<div class="d60-um"><label>동<input id="d60Dg" class="inp" inputmode="numeric" placeholder="104" autocomplete="off"></label><label>호<input id="d60Ho" class="inp" inputmode="numeric" placeholder="501" autocomplete="off"></label></div>'
@@ -15335,7 +15950,7 @@ window.addEventListener('afterprint',()=>{if(_d60AutoPrint){_d60AutoPrint=false;
 function d60WriteMany(patch){   /* {상대경로:값} 을 한 번에 — 로컬 모드는 d60Write 를 돌린다 */
   const keys=Object.keys(patch);if(!keys.length)return;
   if(S.live&&FB.db){keys.forEach(k=>{const seg=k.split('/');let o=S.d60d;for(let i=0;i<seg.length-1;i++){o=o[seg[i]]=o[seg[i]]||{};}const last=seg[seg.length-1];if(patch[k]==null)delete o[last];else o[last]=patch[k];});   /* 948차: null 은 지운다(d60Write 와 같게) */
-    FB.db.ref('calapp/d60').update(patch).catch(fbErr);rD60();}
+    const full={};keys.forEach(k=>{full['calapp/d60/'+k]=patch[k]==null?null:patch[k];});d60Send(full);rD60();}   /* 955차: 끊긴 동안 쓴 것도 남긴다 */
   else keys.forEach(k=>d60Write(k,patch[k]));
 }
 function d60ImpParse(text){
@@ -15429,10 +16044,18 @@ Object.assign(ACT,{
   'd60.ans':el=>{const k=el.dataset.k,a=el.dataset.a||'',sid=S.d60.sid,tr=S.d60.tr;S.d60.ed=null;S.d60.mo=a?'':k;   /* 폰: 판정하면 접히고, 지우면 펼쳐 둔다 */
     if(isMob()&&!d60IsAndroid())d60OrigFlush();   /* 947차: 찍어 둔 원본이 있으면 이 탭 안에서 앨범 저장 시트 */
     if(a)d60Touch(sid);
-    if(S.d60.sc==='civil'&&!k.startsWith('v|')){d60Write('insp/'+sid+'/civil/'+tr+'/'+k+'/a',a||null);if(a){const st=d60Stamp();d60Write('insp/'+sid+'/civil/'+tr+'/'+k+'/by',st.by);d60Write('insp/'+sid+'/civil/'+tr+'/'+k+'/ts',st.ts);}return;}
-    const cur=(d60Res(sid,tr)[k])||{};
-    if(!a&&cur.act==null){d60Write('insp/'+sid+'/res/'+tr+'/'+k,cur.ph?{ph:cur.ph}:null);return;}   /* 934차: 사진 수는 남긴다 */
-    d60Write('insp/'+sid+'/res/'+tr+'/'+k,{...cur,a:a||null,...d60Stamp()});},
+    /* 955차: 판정 칸(a·by·ts)만 고친다(조치사항·사진 수는 그대로) · 되돌리기를 남긴다 */
+    const base='insp/'+sid+'/'+(S.d60.sc==='civil'&&!k.startsWith('v|')?'civil':'res')+'/'+tr+'/'+k,st=d60Stamp();
+    d60UndoPush([base+'/a',base+'/by',base+'/ts'],a?'판정':'판정 지움');
+    d60WriteMany({[base+'/a']:a||null,[base+'/by']:a?st.by:null,[base+'/ts']:a?st.ts:null});
+    if(!a)toastAct('판정을 지웠습니다','되돌리기',d60UndoRun);},
+  'd60.allOk':()=>{   /* 955차(사용자): 공간 안에서 판정 안 한 항목을 한 번에 양호로 — 되돌리기 가능 */
+    const st=S.d60,sid=st.sid,tr=st.tr;if(!sid)return;
+    const keys=d60LeftKeys(sid,tr,st.sc,st.sp,st.sc==='unit'?st.un:'');if(!keys.length)return;
+    const s=d60Stamp(),paths=[],patch={};
+    keys.forEach(k=>{const b='insp/'+sid+'/res/'+tr+'/'+k;paths.push(b+'/a',b+'/by',b+'/ts');patch[b+'/a']='ok';patch[b+'/by']=s.by;patch[b+'/ts']=s.ts;});
+    d60UndoPush(paths,'남은 '+keys.length+'개 양호');d60Touch(sid);d60WriteMany(patch);
+    toastAct(keys.length+'개를 양호로 표시했습니다','되돌리기',d60UndoRun);},
   'd60.actEdit':el=>{if(isMob()&&!WIDGET)return;if(el.querySelector('input'))return;S.d60.ed={kind:'act',key:el.dataset.k};rD60();
     const i=$('#d60Root .d60-actin');if(i){i.focus();i.select();}},
   'd60.civilAdd':()=>{if(!S.d60.sid)return;d60CivilModal();},
@@ -15544,17 +16167,7 @@ document.addEventListener('click',e=>{const l=e.target.closest&&e.target.closest
 document.addEventListener('dblclick',e=>{const i=e.target.closest&&e.target.closest('#d60Root .tm-nameinp[readonly]');if(!i)return;i.readOnly=false;i.classList.add('ed');i.focus();i.select();});
 document.addEventListener('keydown',e=>{const i=e.target;if(!i||!i.classList||!i.classList.contains('ed')||!i.matches('#d60Root .tm-nameinp'))return;if(e.key==='Enter'){e.preventDefault();i.blur();}else if(e.key==='Escape'){e.preventDefault();i.value=i.defaultValue;i.blur();}});
 document.addEventListener('focusout',e=>{const i=e.target;if(i&&i.classList&&i.classList.contains('ed')&&i.matches('#d60Root .tm-nameinp')){i.readOnly=true;i.classList.remove('ed');}});
-/* 931차(사용자): 세로 막대는 구르는 동안만 — 구르고 2초 뒤 스르륵 사라진다. 원래 막대는 숨기고(.d60-tsc/.d60-lsc scrollbar-width:none)
-   판의 부모(position:relative) 에 .d60-vsb 를 얹어 그린다(원래 막대 색은 transition 이 안 먹어 요청한 「스르륵」이 안 된다) */
-function d60Vsb(el){
-  const par=el.parentNode;let bar=par.querySelector(':scope>.d60-vsb');
-  if(!bar){bar=document.createElement('div');bar.className='d60-vsb';bar.innerHTML='<div class="th"></div>';par.appendChild(bar);}
-  const sh=el.scrollHeight,ch=el.clientHeight;if(sh<=ch+2){bar.classList.remove('show');return;}
-  bar.style.top=el.offsetTop+'px';bar.style.height=ch+'px';
-  const th=bar.firstChild,thh=Math.max(24,Math.round(ch*ch/sh));th.style.height=thh+'px';th.style.transform='translateY('+Math.round((ch-thh)*el.scrollTop/(sh-ch))+'px)';
-  bar.classList.add('show');clearTimeout(el._vsbT);el._vsbT=setTimeout(()=>bar.classList.remove('show'),2000);
-}
-document.addEventListener('scroll',e=>{const el=e.target;if(!el||!el.classList||!(el.classList.contains('d60-tsc')||el.classList.contains('d60-lsc')))return;d60Vsb(el);},true);
+/* 951차(사용자): 세로 막대는 브라우저 것(얇게·늘 보임·잡아 끌 수 있음) — 931차의 자체 막대는 pointer-events 가 없어 잡으려다 줄 드래그가 됐다 */
 document.addEventListener('dragstart',e=>{const row=e.target.closest&&e.target.closest('#d60Root [data-drag]');if(!row||S.view!=='d60'){return;}
   D60_DRAG={kind:row.dataset.drag,sc:row.dataset.sc,sp:row.dataset.sp||'',k:row.dataset.k,el:row};row.classList.add('d60-dragging');
   try{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',row.dataset.k);}catch(x){}});
@@ -15578,6 +16191,26 @@ document.addEventListener('mousedown',e=>{if(S.view!=='d60'||!S.d60.ed)return;
   if(!e.target.closest('.d60-actin,.d60-as,.d60-ac[data-k="'+S.d60.ed.key+'"]')){S.d60.ed=null;setTimeout(rD60,0);}},true);
 
 /* ═══════════ 부팅 ═══════════ */
+/* 955차: 새 판 감지 — 며칠 켜 둔 위젯·탭이 옛 app.js 로 계속 돌았다(배포해도 모름).
+   30분마다·다시 볼 때 같은 자리의 index.html 을 읽어 app.js?v= 를 비교한다(외부 호출 아님).
+   위젯은 손을 놓고 있을 때 조용히 새로 부르고, 브라우저는 한 번 알린다(작업 중인 화면을 갑자기 바꾸지 않게) */
+const VER={next:'',told:false};
+function verIdle(){
+  const mo=$('#mo');if(mo&&mo.classList.contains('open'))return false;
+  const a=document.activeElement;if(a&&(/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)||a.isContentEditable))return false;
+  if(tkFormDirty()||S.planEdit||d60Editing())return false;
+  return true;
+}
+function verApply(){
+  if(!VER.next)return;
+  if(WIDGET){if(verIdle())location.reload();return;}
+  if(!VER.told){VER.told=true;toast('새 버전(v'+VER.next+')이 나왔습니다 · 새로고침하면 적용됩니다',4000);}
+}
+function verCheck(){
+  if(S.snap||VER.next)return;
+  fetch('./index.html?vc='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():'').then(t=>{
+    const m=/app\.js\?v=(\d+)/.exec(t||'');if(m&&Number(m[1])>Number(APP_VER)){VER.next=m[1];verApply();}}).catch(()=>{});
+}
 function rAll(){rDay();rTasks();rOrg();rCfg();rFilter();rTeamSel();refetchCal();rWidget();}   /* 팀 선택기는 조직 화면 밖(사이드바)이라 rAll 에서도 그린다 */
 (function boot(){
   if(WIDGET)document.body.classList.add('wid');
@@ -15603,8 +16236,14 @@ function rAll(){rDay();rTasks();rOrg();rCfg();rFilter();rTeamSel();refetchCal();
   /* 서비스워커·캐시는 쓰지 않는다 — 예전에 캐시 때문에 옛 코드가 계속 돌던 사고가 있었다.
      남아 있을 수 있는 등록·캐시를 지운다(PWA 설치용으로 잠시 뒀던 sw.js 도 이 경로로 정리된다) */
   netWatch();   /* 657차: 브라우저 온라인 여부는 로컬 모드에서도 본다 */
+  tsInit();   /* 955차: 업무 도구 이어하기 — 남은 작업이 있는지만 본다 */
+  setInterval(verCheck,30*60*1000);setInterval(verApply,60*1000);   /* 955차: 새 판 감지 · 위젯은 손 놓은 틈에 적용 */
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)verCheck();});
   if('serviceWorker' in navigator){
     navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister())).catch(()=>{});
     if(window.caches&&caches.keys)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k))).catch(()=>{});
   }
 })();
+/* 958차: 로그인 폼 — 제출은 막고(페이지 새로고침 방지) 동작은 #cvBtn 의 data-act 가 한다. '@' 를 직접 치면 도메인 꼬리표를 숨긴다 */
+(()=>{const f=document.getElementById('cvForm');if(f)f.addEventListener('submit',e=>e.preventDefault());
+  const m=document.getElementById('fbEmail');if(m)m.addEventListener('input',()=>m.parentElement.classList.toggle('full',m.value.includes('@')));})();

@@ -1,7 +1,7 @@
 # H · 주요업무현황
 
-> **현재 배포 기준: v950** · 주소 `https://dongyexn.github.io/plan/` · 회사 메일(`@hdec.co.kr`)로 로그인
-> 자세한 사용법은 **[docs/manual.md](docs/manual.md)**, 코드 구조·함정은 **HANDOFF.md**, 회차 이력은 **HANDOFF-log.md**.
+> **현재 배포 기준: v955** · 주소 `https://dongyexn.github.io/plan/` · 회사 메일(`@hdec.co.kr`)로 로그인
+> 사용 안내 **[docs/manual.md](docs/manual.md)** · 시스템·배포 **[docs/dev.md](docs/dev.md)** · 코드 구조·함정 **HANDOFF.md**, 회차 이력은 **HANDOFF-log.md**.
 
 팀 업무 일정·담당자별 현황·하자처리 현황·현장 점검을 한 앱에서 공유한다. 브라우저·바탕화면 위젯·휴대전화(홈 화면에 추가) 어디서나 같다.
 

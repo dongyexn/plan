@@ -64,6 +64,11 @@ function flatten(db, extra) {
   }
   const layers = {};
   Object.values(db.tables.LAYER.entries || {}).forEach(l => { layers[l.name] = l; });
+  /* 955차: 레이어 — 도형마다 레이어 번호(l)를 달아 본체가 켜고 끄게 한다. 블록 안 「0」 레이어 도형은 끼운 자리의 레이어를 따른다(캐드 규칙).
+     도면에서 꺼 둔(off)·얼린(frozen) 레이어는 처음부터 끈 채로 넘긴다 */
+  const lays = [], lidx = {};
+  const layerOf = n => { n = n || '0'; if (lidx[n] === undefined) { const la = layers[n]; lidx[n] = lays.length; lays.push({ name: n, off: !!(la && (la.off || la.frozen)), n: 0 }); } return lidx[n]; };
+  let curL = 0;
   const styles = [], styleKey = {};
   const styleIdx = (w, d) => {
     const k = w + '|' + d;
@@ -96,7 +101,7 @@ function flatten(db, extra) {
   const open = () => { cur = []; curMin = [Infinity, Infinity, -Infinity, -Infinity]; };
   let curS = 0;
   const close = (closed) => {
-    if (cur && cur.length >= 4) polys.push({ b: curMin, p: cur, c: closed ? 1 : 0, s: curS });
+    if (cur && cur.length >= 4) { polys.push({ b: curMin, p: cur, c: closed ? 1 : 0, s: curS, l: curL }); lays[curL].n++; }
     cur = null; curMin = null;
   };
 
@@ -108,9 +113,11 @@ function flatten(db, extra) {
     .replace(/\\P/g, ' ')
     .replace(/\s+/g, ' ').trim();
 
-  function draw(e, m, depth) {
+  function draw(e, m, depth, inh) {
     if (depth > 8) return;
     seen[e.type] = (seen[e.type] || 0) + 1;
+    const ln = (!e.layer || e.layer === '0') && inh ? inh : (e.layer || '0');
+    curL = layerOf(ln);
     try { curS = styleOf(e); } catch (err) { curS = 0; }
     const tp = p => ({ x: m[0] * p.x + m[2] * p.y + m[4], y: m[1] * p.x + m[3] * p.y + m[5] });
     const sc = Math.hypot(m[0], m[1]) || 1;
@@ -180,13 +187,13 @@ function flatten(db, extra) {
       case 'TEXT': case 'ATTRIB': {
         const p = tp(e.startPoint || e.insertionPoint || { x: 0, y: 0 });
         const s = String(e.text || '').trim(); if (!s) break;
-        texts.push({ x: p.x, y: p.y, h: (e.textHeight || e.height || 2.5) * sc, r: (e.rotation || 0) * 180 / Math.PI, s });
+        texts.push({ x: p.x, y: p.y, h: (e.textHeight || e.height || 2.5) * sc, r: (e.rotation || 0) * 180 / Math.PI, s, l: curL }); lays[curL].n++;
         break;
       }
       case 'MTEXT': {
         const p = tp(e.insertionPoint || { x: 0, y: 0 });
         const s = mtext(e.text); if (!s) break;
-        texts.push({ x: p.x, y: p.y, h: (e.textHeight || e.height || 2.5) * sc, r: 0, s });
+        texts.push({ x: p.x, y: p.y, h: (e.textHeight || e.height || 2.5) * sc, r: 0, s, l: curL }); lays[curL].n++;
         break;
       }
       case 'INSERT': {
@@ -205,13 +212,13 @@ function flatten(db, extra) {
           m[0] * (ip.x - bx) + m[2] * (ip.y - by) + m[4],
           m[1] * (ip.x - bx) + m[3] * (ip.y - by) + m[5]
         ];
-        b.entities.forEach(c => draw(c, mm, depth + 1));
+        b.entities.forEach(c => draw(c, mm, depth + 1, ln));
         break;
       }
       case 'DIMENSION': case 'MULTILEADER': case 'ACAD_TABLE': {
         /* 치수·지시선·표는 이름 붙은 익명 블록(*D1 …) 안에 실제 선과 글자가 들어 있다 */
         const b = blocks[e.name || e.blockName];
-        if (b && b.entities) b.entities.forEach(c => draw(c, m, depth + 1));
+        if (b && b.entities) b.entities.forEach(c => draw(c, m, depth + 1, ln));
         else skipped[e.type] = (skipped[e.type] || 0) + 1;
         break;
       }
@@ -224,25 +231,32 @@ function flatten(db, extra) {
   let ext = [Infinity, Infinity, -Infinity, -Infinity];
   polys.forEach(p => { if (p.b[0] < ext[0]) ext[0] = p.b[0]; if (p.b[1] < ext[1]) ext[1] = p.b[1]; if (p.b[2] > ext[2]) ext[2] = p.b[2]; if (p.b[3] > ext[3]) ext[3] = p.b[3]; });
   texts.forEach(t => { if (t.x < ext[0]) ext[0] = t.x; if (t.y < ext[1]) ext[1] = t.y; if (t.x > ext[2]) ext[2] = t.x; if (t.y > ext[3]) ext[3] = t.y; });
-  return { polys, texts, ext, seen, skipped, styles, missing };
+  return { polys, texts, ext, seen, skipped, styles, missing, layers: lays };
 }
 
 self.onmessage = async (ev) => {
   const { buf, name, refs } = ev.data || {};
   try {
     const t0 = Date.now();
+    if (!lib) self.postMessage({ stage: 'load' });   /* 955차: 단계 알림 — 본체가 「엔진 준비 · 읽는 중 · 그리는 중」을 보여 준다 */
     lib = lib || await LibreDwg.create();
+    self.postMessage({ stage: 'parse' });
     const tLoad = Date.now() - t0;
     const t1 = Date.now();
     const dwg = lib.dwg_read_data(new Uint8Array(buf), Dwg_File_Type.DWG);
-    const db = lib.convert(dwg);
+    /* 954차: convert 결과는 JS 객체라 바로 풀어도 된다 — 전엔 flatten 이 던지면 풀지 못하고, 참조 파일은 아예 풀지 않아 열 때마다 wasm 메모리가 쌓였다 */
+    let db;
+    try { db = lib.convert(dwg); } finally { try { lib.dwg_free(dwg); } catch (e) { } }
     const tParse = Date.now() - t1;
+    self.postMessage({ stage: 'flat' });
     const t2 = Date.now();
     /* 893차: 함께 올린 참조 파일(refs)을 먼저 읽어 이름 → 도형 목록으로 만든다 */
     const extra = {}, refErr = {};
     (refs || []).forEach(r => {
       try {
-        const d2 = lib.convert(lib.dwg_read_data(new Uint8Array(r.buf), Dwg_File_Type.DWG));
+        const p2 = lib.dwg_read_data(new Uint8Array(r.buf), Dwg_File_Type.DWG);
+        let d2;
+        try { d2 = lib.convert(p2); } finally { try { lib.dwg_free(p2); } catch (e) { } }
         const bl = {};
         Object.values((d2.tables && d2.tables.BLOCK_RECORD && d2.tables.BLOCK_RECORD.entries) || {})
           .forEach(b => { if (b && b.name) bl[b.name] = b; });
@@ -252,10 +266,9 @@ self.onmessage = async (ev) => {
       } catch (err) { refErr[r.name] = { err: String(err && err.message || err).slice(0, 120) }; }
     });
     const out = flatten(db, extra);
-    try { lib.dwg_free(dwg); } catch (e) { }
     self.postMessage({
       ok: true, name,
-      polys: out.polys, texts: out.texts, ext: out.ext, styles: out.styles,
+      polys: out.polys, texts: out.texts, ext: out.ext, styles: out.styles, layers: out.layers,
       layouts: (db.objects.LAYOUT || []).map(l => l.layoutName),
       seen: out.seen, skipped: out.skipped, missing: out.missing, refInfo: refErr,
       ms: { load: tLoad, parse: tParse, flat: Date.now() - t2 }
