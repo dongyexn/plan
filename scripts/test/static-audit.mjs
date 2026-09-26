@@ -230,11 +230,13 @@ OK('구문 검사 (node --check)');
         else OK('12월 크리스마스 — 직접 고른 색을 덮지 않는다');
       }
       if(!js.includes("const RB_ANIM='rainbow-anim'")) F("흐름 무지개 토큰(RB_ANIM) 정의 누락");
-      else if(!js.includes("data-c=\"'+RB_ANIM+'\"")) F('팔레트에 흐름 무지개 칩이 없다');
-      else if(!/\.pal-row\.pal-grad\{/.test(html)||!/\.pal-row\.pal-grad2\{/.test(html)) F('팔레트 두 줄(.pal-grad · .pal-grad2) 누락');
-      else if(!js.includes("data-c=\"'+g+GRAD_ANIM+'\"")) F('팔레트에 흐름 그라디언트 칩이 없다');
+      /* 971차(사용자): 그라디언트 기본 7종 → 직접 고르는 두 색(gc-/gf- 토큰) · 흐름은 칩 줄 대신 체크 하나 */
+      else if(!js.includes("(fl?RB_ANIM:'rainbow')")) F('팔레트 무지개 칩이 흐름 체크를 따르지 않는다');
+      else if(!/\.pal-row\.pal-grad\{/.test(html)) F('팔레트 그라디언트 줄(.pal-grad) 누락');
+      else if(!js.includes('class="pal-gin"')&&!js.includes("class=\"pal-gin\"")) F('내 그라디언트 두 색 칸(.pal-gin) 누락');
+      else if(!js.includes('class="pal-fl"')&&!js.includes("class=\"pal-fl\"")) F('흐름 체크(.pal-fl) 누락');
       else if(!/\.pal-c\.pal-fx::after\{/.test(html)) F('흐름 칩의 재생 삼각형(.pal-fx::after) 누락');
-      else OK('팔레트 — 고정 8종 · 흐름 8종 · 재생 삼각형');
+      else OK('팔레트 — 무지개 + 내 그라디언트(두 색) + 흐름 체크 · 재생 삼각형');
     }
   }
   const allowed = new Set([...seg.matchAll(/"(\w+)"\s*:\s*\{/g)].map(m => m[1]));

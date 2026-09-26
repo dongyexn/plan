@@ -10,7 +10,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='968';
+const APP_VER='975';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 docs/manual.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다(946차: README 는 요약만).
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -66,7 +66,7 @@ async function openReadme(){
   }catch(e){
     console.warn('[README] 열기 실패',e);
     /* 단일 파일 빌드에는 README.md 가 없다 — 그때는 저장소 주소로 안내한다 */
-    toast('사용 안내를 읽지 못했습니다 · README.md 가 함께 올라갔는지 확인해 주세요');
+    toast('사용 안내를 열지 못했습니다 · 잠시 뒤 다시 눌러 주세요');
   }
 }
 const ERRLOG=[];
@@ -82,9 +82,17 @@ function pad(n){return String(n).padStart(2,'0');}
 function dstr(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
 function ymOf(ds){return ds.slice(0,7);}
 function todayStr(){return dstr(new Date());}
+/* 970차(C8): 받침에 맞춰 조사를 고른다 — josa('두정역','을','를') → '두정역을'. 한글로 끝나지 않으면 받침 없는 꼴(뒤쪽).
+   '으로'는 ㄹ 받침이면 '로'(「9월 25일로」). josaP 는 조사만 돌려준다(「이름」을 처럼 따옴표 뒤에 붙일 때) */
+function josaP(w,a,b){w=String(w||'');const c=w.charCodeAt(w.length-1),k=c>=0xAC00&&c<=0xD7A3?(c-0xAC00)%28:0;
+  if(a==='으로')return k&&k!==8?'으로':'로';return k?a:b;}
+function josa(w,a,b){return String(w||'')+josaP(w,a,b);}
 const DOW=['일','월','화','수','목','금','토'];
-const PAL=['#6B7280','#3E71D2','#0EA5E9','#0D9488','#16A34A','#65A30D',
-           '#D97706','#EA580C','#DC2626','#DB2777','#7C5CD6','#4B5563'];
+/* 972차(사용자): 기본 색을 팝업 두 줄(자동 + 18색 + 「+」 = 20칸)을 채우게 18색으로 — 색상환 순서로 세운다.
+   윗줄 빨강→하늘, 아랫줄 남색→회색. 12색은 그대로 두고 노랑·청록·남색·쪽빛·자주·갈색을 더했다 */
+const PAL=['#DC2626','#EA580C','#D97706','#CA8A04','#65A30D','#16A34A','#0D9488','#0891B2','#0EA5E9',
+           '#1E3A8A','#3E71D2','#4F46E5','#7C5CD6','#9333EA','#DB2777','#92400E','#6B7280','#4B5563'];
+const PAL_FALLBACK='#6B7280';   /* 담당자를 모를 때의 색 — 예전 PAL[0](회색). 순서를 바꿔도 값이 흔들리지 않게 따로 둔다 */
 
 /* 아바타 배경색 즉시 반영 · 이모지 검색 */
 function pfPaint(c){
@@ -127,7 +135,7 @@ document.addEventListener('input',e=>{
     const btn=pop.closest('.p-col');if(btn)btn.style.background=hex;
     return;
   }
-  if(e.target.closest('#pfPal')){const v=e.target.value;PF_SEL.color=v;pfPaint(v);acctAutoSave();return;}
+  if(e.target.closest('#pfPal')&&e.target.classList.contains('pal-inp')){const v=e.target.value;PF_SEL.color=v;pfPaint(v);acctAutoSave();return;}   /* 971차: 그라디언트 두 색·흐름 체크는 따로 듣는다(gcSync) */
   if(e.target.id==='pfSrch'){
     const q=e.target.value.trim();
     $$('#pfCats .pf-cat').forEach(x=>x.classList.remove('act'));
@@ -276,18 +284,43 @@ function palHTML(id,cur,extraFirst){
     +cust.map(x=>'<div class="pal-c pal-custom'+(x===c?' sel':'')+'" data-c="'+esc(x)+'" style="background:'+esc(x)+'" data-tip="우클릭으로 삭제"></div>').join('')
     +'<label class="pal-c pal-add" data-tip="직접 고르기">'
     +'<input type="color" class="pal-inp" value="'+esc(c&&c!=='auto'&&!isRainbow(c)&&!isGrad(c)?c:'#3E71D2')+'"><span>+</span></label>'
-    /* 678차: 그라디언트는 단색과 성격이 달라 줄을 나눈다 — 무지개 2종 + 색 그라디언트 7종 */
-    /* 위 줄은 고정, 아래 줄은 흐름(▶). 같은 순서로 세워 세로로 짝이 맞는다. */
-    +'<div class="pal-row pal-grad">'
-    +'<div class="pal-c'+(c==='rainbow'?' sel':'')+'" data-c="rainbow" style="background:'+RAINBOW_BG+'" data-tip="무지개"></div>'
-    +Object.keys(GRADS).map(g=>'<div class="pal-c'+(g===c?' sel':'')+'" data-c="'+g+'" style="background:'+GRADS[g]+'" data-tip="그라디언트"></div>').join('')
-    +'</div>'
-    +'<div class="pal-row pal-grad pal-grad2">'
-    +'<div class="pal-c pal-fx'+(c===RB_ANIM?' sel':'')+'" data-c="'+RB_ANIM+'" style="background:'+RAINBOW_BG+'" data-tip="무지개 · 흐름"></div>'
-    +Object.keys(GRADS).map(g=>'<div class="pal-c pal-fx'+(g+GRAD_ANIM===c?' sel':'')+'" data-c="'+g+GRAD_ANIM+'" style="background:'+GRADS[g]+'" data-tip="그라디언트 · 흐름"></div>').join('')
-    +'</div>'
+    /* 971차(사용자): 그라디언트 줄 = 무지개(유일한 기본 제공) + 내 그라디언트(두 색을 직접 고름) + 「흐름」 체크 하나.
+       흐름은 따로 칩 줄을 두지 않고 체크로 켠다 — 켜면 두 칩이 모두 흐름 토큰(rainbow-anim · gf-…)을 가리킨다 */
+    +(()=>{const fl=isFlow(c),g=gcParse(c)||gcLegacy(c)||gcLast(),tok=gcMake(g.a,g.b,fl),gSel=!!gcParse(c)||(isGrad(c)&&!gcParse(c));
+      return '<div class="pal-row pal-grad">'
+        +'<div class="pal-c pal-rb'+(fl?' pal-fx':'')+(isRainbow(c)?' sel':'')+'" data-c="'+(fl?RB_ANIM:'rainbow')+'" style="background:'+RAINBOW_BG+'" data-tip="무지개"></div>'
+        /* 972차: 내 그라디언트 = 막대 하나 — 양 끝의 동그라미를 눌러 두 색을 고른다(칩과 편집 칸을 따로 두던 것을 합쳤다) */
+        +'<div class="pal-c pal-gc'+(fl?' pal-fx':'')+(gSel?' sel':'')+'" data-c="'+(gSel&&!gcParse(c)?esc(c):tok)+'" style="background:'+esc(gSel&&!gcParse(c)?colBg(c):gcBg({a:g.a,b:g.b}))+'" data-tip="내 그라디언트 · 양 끝을 눌러 색 바꾸기">'
+          +'<label class="pal-stop pal-stop-a" style="background:'+g.a+'" data-tip="첫 색"><input type="color" class="pal-gin" data-k="a" value="'+g.a+'"></label>'
+          +'<label class="pal-stop pal-stop-b" style="background:'+g.b+'" data-tip="둘째 색"><input type="color" class="pal-gin" data-k="b" value="'+g.b+'"></label></div>'
+        +'<label class="pal-flow"><input type="checkbox" class="pal-fl"'+(fl?' checked':'')+'>흐름</label>'
+        +'</div>';})()
     +'</div>';
 }
+/* 971차: 옛 기본 그라디언트(grad-xx)를 고른 사람은 그 앞 두 색으로 편집기를 채운다 · 마지막으로 만든 두 색은 이 브라우저에 기억 */
+function gcLegacy(c){if(!isGrad(c)||gcParse(c))return null;const h=String(GRADS[gradBase(c)]||'').match(/#[0-9A-Fa-f]{6}/g)||[];return h.length>1?{a:h[0].toUpperCase(),b:h[1].toUpperCase(),flow:isFlow(c)}:null;}
+function gcLast(){try{const v=gcParse(localStorage.getItem('calapp.gc.'+((S.user&&S.user.uid)||'local')));if(v)return v;}catch(e){}return{a:'#3B82F6',b:'#EC4899',flow:false};}
+function gcRemember(tok){try{localStorage.setItem('calapp.gc.'+((S.user&&S.user.uid)||'local'),tok);}catch(e){}}
+/* 내 그라디언트 두 색·흐름 체크 — 칩 두 개의 토큰을 다시 쓰고, 고른 칩이 이 줄에 있으면 값도 함께 바꾼다 */
+function gcSync(row,commit){
+  const box=row.closest('.pal');if(!box)return;
+  const fl=!!(row.querySelector('.pal-fl')||{}).checked;
+  const a=(row.querySelector('.pal-gin[data-k="a"]')||{}).value||'#3B82F6',b=(row.querySelector('.pal-gin[data-k="b"]')||{}).value||'#EC4899';
+  const rb=row.querySelector('.pal-rb'),gc=row.querySelector('.pal-gc');
+  if(rb){rb.dataset.c=fl?RB_ANIM:'rainbow';rb.classList.toggle('pal-fx',fl);}
+  if(gc){gc.dataset.c=gcMake(a,b,fl);gc.style.background=gcBg({a:a.toUpperCase(),b:b.toUpperCase()});gc.classList.toggle('pal-fx',fl);
+    const sa=gc.querySelector('.pal-stop-a'),sb=gc.querySelector('.pal-stop-b');if(sa)sa.style.background=a;if(sb)sb.style.background=b;}
+  return {box,rb,gc};
+}
+document.addEventListener('input',e=>{const t=e.target;if(!t.classList||!t.classList.contains('pal-gin'))return;
+  const r=gcSync(t.closest('.pal-grad'));if(!r)return;
+  r.box.querySelectorAll('.pal-c').forEach(x=>x.classList.remove('sel'));r.gc.classList.add('sel');
+  if(r.box.id==='pfPal'){PF_SEL.color=r.gc.dataset.c;pfPaint(r.gc.dataset.c);}});
+document.addEventListener('change',e=>{const t=e.target;if(!t.classList||!(t.classList.contains('pal-gin')||t.classList.contains('pal-fl')))return;
+  const r=gcSync(t.closest('.pal-grad'));if(!r)return;
+  if(t.classList.contains('pal-gin')){r.box.querySelectorAll('.pal-c').forEach(x=>x.classList.remove('sel'));r.gc.classList.add('sel');gcRemember(r.gc.dataset.c);}
+  const sel=r.box.querySelector('.pal-c.sel');
+  if(sel&&(sel===r.rb||sel===r.gc)&&r.box.id==='pfPal'){PF_SEL.color=sel.dataset.c;pfPaint(sel.dataset.c);acctAutoSave();}});
 /* 프로필 아바타 — 계정에 저장한 색·아이콘이 있으면 그것을, 없으면 자동 색 */
 /* 아바타 — 기본 아이콘 1종(person SVG) + 시스템 이모지.
    이모지 목록은 유니코드 표준 분류(애플 키보드와 동일한 8개 묶음). */
@@ -346,18 +379,28 @@ const GRADS={
 };
 const GRAD_ANIM='-anim';   /* 679차: 그라디언트도 고정·흐름 두 벌 — 'grad-bl' / 'grad-bl-anim' (12자, 규칙 16자 제한 안) */
 function gradBase(c){const t=String(c||'');return t.endsWith(GRAD_ANIM)?t.slice(0,-GRAD_ANIM.length):t;}
-function isGrad(c){return Object.prototype.hasOwnProperty.call(GRADS,gradBase(c));}
-function isGradAnim(c){return isGrad(c)&&String(c||'').endsWith(GRAD_ANIM);}
+/* 971차(사용자): 그라디언트는 기본색 7종 대신 **직접 고르는 두 색**으로 — 기본 제공은 무지개만 남긴다.
+   토큰 'gc-rrggbb-rrggbb'(고정) · 'gf-rrggbb-rrggbb'(흐름) = 16자 — 규칙 color·avColor 16자 제한 안.
+   그림은 90deg — 고정은 A→B, 흐름은 A→B→A(타일 이음매 방지) — gcBg.
+   ⚠ 옛 토큰 grad-xx(-anim)은 팔레트에서만 뺐다 — 이미 고른 사람의 색은 GRADS 로 그대로 그린다 */
+const GC_RE=/^g([cf])-([0-9a-f]{6})-([0-9a-f]{6})$/;
+function gcParse(c){const m=GC_RE.exec(String(c||''));return m?{flow:m[1]==='f',a:'#'+m[2].toUpperCase(),b:'#'+m[3].toUpperCase()}:null;}
+function gcMake(a,b,flow){return 'g'+(flow?'f':'c')+'-'+String(a).slice(1,7).toLowerCase()+'-'+String(b).slice(1,7).toLowerCase();}
+/* 고정은 A→B 한 번(편집 막대와 같은 모양) · 흐름은 A→B→A — 흐름 타일(400px) 좌우 끝이 같은 색이라 이음매가 안 생긴다 */
+function gcBg(g){return g.flow?'linear-gradient(90deg,'+g.a+' 0%,'+g.b+' 50%,'+g.a+' 100%)':'linear-gradient(90deg,'+g.a+' 0%,'+g.b+' 100%)';}
+function isGrad(c){return Object.prototype.hasOwnProperty.call(GRADS,gradBase(c))||!!gcParse(c);}
+function isGradAnim(c){const g=gcParse(c);return g?g.flow:(isGrad(c)&&String(c||'').endsWith(GRAD_ANIM));}
 /* 흐름(움직임)을 켜는 색인지 — 무지개·그라디언트가 같은 판정을 쓴다 */
 function isFlow(c){return c===RB_ANIM||isGradAnim(c);}
 /* 밝은 그라디언트는 흰 글자가 안 읽힌다 — 노랑만 어두운 글자로 넘긴다(isLightColor 는 hex 만 판정한다) */
 const GRAD_LIGHT={'grad-yl':1};
-function isLightBg(c){return isGrad(c)?!!GRAD_LIGHT[gradBase(c)]:isLightColor(c);}
-function colBg(c){return isRainbow(c)?RAINBOW_BG:(isGrad(c)?GRADS[gradBase(c)]:c);}
+function isLightBg(c){const g=gcParse(c);if(g)return isLightColor(hexMid(g.a,g.b));return isGrad(c)?!!GRAD_LIGHT[gradBase(c)]:isLightColor(c);}
+function hexMid(a,b){const p=h=>[1,3,5].map(i=>parseInt(String(h).slice(i,i+2),16));const x=p(a),y=p(b);return '#'+x.map((v,i)=>Math.round((v+y[i])/2).toString(16).padStart(2,'0')).join('');}
+function colBg(c){if(isRainbow(c))return RAINBOW_BG;const g=gcParse(c);return g?gcBg({a:g.a,b:g.b}):(isGrad(c)?GRADS[gradBase(c)]:c);}   /* 975차(사용자): 멈춰 있는 자리(프로필·색 원·점·지도)는 흐름을 켜도 A→B 그대로 — A→B→A 는 흐르는 달력 막대(--gb)만 */
 /* 687차: SVG fill 은 CSS 그라디언트 문자열을 못 받는다(fill="grad-rd" → 검정). 지도 점은 <linearGradient> 로 받는다.
    정지점은 colBg() 문자열에서 그대로 옮긴다 — 값의 진실은 GRADS·RAINBOW_BG 한 곳뿐이다.
    pfx 는 svg id 로 가른다(카드 okmSvg · 모달 okmBig 이 한 문서에 같이 있어 id 가 겹치면 한쪽이 못 찾는다). */
-function colSvgKey(c){return isRainbow(c)?'rainbow':isGrad(c)?gradBase(c):'';}
+function colSvgKey(c){return isRainbow(c)?'rainbow':gcParse(c)?String(c):isGrad(c)?gradBase(c):'';}
 function colSvgFill(c,pfx){const k=colSvgKey(c);return k?'url(#'+pfx+'-'+k+')':c;}
 function colSvgDefs(cols,pfx){
   const seen={};let s='';
@@ -367,12 +410,12 @@ function colSvgDefs(cols,pfx){
   return s?'<defs>'+s+'</defs>':'';
 }
 function ownColor(pid){
-  if(!pid)return PAL[0];
+  if(!pid)return PAL_FALLBACK;
   /* 프로필에서 고른 색이 있으면 그 색을 쓴다 — 노란 프로필인데 보라 업무로 뜨면 헷갈린다 */
   const av=(S.accounts&&S.accounts[pid])||{};
   if(av.avColor)return av.avColor;
   const list=roster();const i=list.findIndex(p=>p.id===pid);
-  return i<0?PAL[0]:OWN_PAL[i%OWN_PAL.length];
+  return i<0?PAL_FALLBACK:OWN_PAL[i%OWN_PAL.length];
 }
 function ownName(pid){const p=roster().find(x=>x.id===pid);return p?p.name:'';}
 /* 로그인한 본인이 담당자 명단에 있으면 {uid:1} 로 — 없으면 팀 공통({}) */
@@ -562,7 +605,7 @@ function canAssignSites(pid){
   if(myRank()==='lead'){const t=(S.people||{})[pid]||{};return !!myRegion()&&t.region===myRegion();}
   return pid===authUid();
 }
-function denyTask(){toast('작성자만 수정할 수 있습니다');}
+function denyTask(){toast('이 업무는 작성자·담당자·팀장만 고칠 수 있습니다');}   /* 970차(C3): 실제 권한(canEditTask)과 같게 */
 function histName(){const u=authUid();
   return String(((S.people||{})[u]||{}).name||String((S.user||{}).email||'').split('@')[0]||'?').slice(0,30);}
 function histPush(it,k){if(!S.live)return it;
@@ -573,17 +616,17 @@ const HIST_LBL={new:'작성',edit:'수정',done:'완료',undone:'진행으로',h
 function bkDecrypt(text){
   return new Promise(res=>{
     const ev=window.__TAURI__&&window.__TAURI__.event;
-    if(!WIDGET||!ev){toast('암호화된 위젯 백업입니다 — 같은 PC 의 위젯 화면에서 되돌려 주세요');return res(null);}
+    if(!WIDGET||!ev){toast('암호화된 위젯 백업입니다 · 같은 PC의 위젯 화면에서 되돌려 주세요');return res(null);}
     const id='r'+Date.now()+Math.random().toString(36).slice(2,6);
     let un=null,done=false;
     const fin=v=>{if(done)return;done=true;clearTimeout(to);if(un)try{un();}catch(e){}res(v);};
     const to=setTimeout(()=>{toast('위젯 응답이 없습니다 — 위젯을 다시 실행해 보세요');fin(null);},8000);
     ev.listen('hpw-restore-res',e=>{
       const p=(e&&e.payload)||{};if(p.id!==id)return;
-      if(p.err||!p.json){toast('복호에 실패했습니다 — 이 PC·이 계정에서 만든 백업만 되돌릴 수 있습니다');fin(null);}
+      if(p.err||!p.json){toast('백업을 풀지 못했습니다 · 이 PC·이 계정에서 만든 백업만 되돌릴 수 있습니다');fin(null);}
       else fin(p.json);
     }).then(u=>{un=u;ev.emit('hpw-restore-req',{id,text});})
-      .catch(()=>{toast('위젯 연결에 실패했습니다');fin(null);});
+      .catch(()=>{toast('위젯과 연결하지 못했습니다 · 위젯 창을 다시 연 뒤 눌러 주세요');fin(null);});
   });
 }
 function cleanTask(t){
@@ -792,12 +835,12 @@ const LocalStore={
     this.putTask(sid,iid,item);},
   /* 사용자 삭제는 전부 여기로 — 지우지 않고 휴지통에 30일 보관한다(383차).
      아카이브에서 보이는 업무도 같은 길로 — 사본을 함께 걷는다(384차) */
-  trashTask(sid,iid){const it=(S.tasks[sid]||{})[iid]||((S.arch[sid]||{})[iid]);if(!it)return;
+  trashTask(sid,iid){const it=(S.tasks[sid]||{})[iid]||((S.arch[sid]||{})[iid]);if(!it)return Promise.resolve(false);
     this._d.trash=this._d.trash||{};(this._d.trash[sid]=this._d.trash[sid]||{})[iid]=trashWrap(it);
     if(S.arch[sid]&&S.arch[sid][iid])delete S.arch[sid][iid];
     if(this._d.archive&&this._d.archive[sid])delete this._d.archive[sid][iid];
-    this.putTask(sid,iid,null);},
-  delPlan(ym,id){const hit=allTasks().find(x=>x.iid===id);if(hit)this.trashTask(hit.sid,hit.iid);},
+    this.putTask(sid,iid,null);return Promise.resolve(true);},
+  delPlan(ym,id){const hit=allTasks().find(x=>x.iid===id);return hit?this.trashTask(hit.sid,hit.iid):Promise.resolve(false);},
   movePlan(p){this.putPlan(p);},
   putOrg(org){this._d.org=org;S.org=org;lsSave(this._d);},
   putOffday(ds,name){this._d.offdays=this._d.offdays||{};
@@ -807,6 +850,7 @@ const LocalStore={
   putTask(mid,iid,item){
     if(S.arch[mid]&&S.arch[mid][iid])delete S.arch[mid][iid];   /* 아카이브 사본 제거(384차) */
     if(this._d.archive&&this._d.archive[mid])delete this._d.archive[mid][iid];
+    if(item)item=cleanTask(item);   /* 970차(L8): 실서버와 같은 정리를 거친다 — 로컬에서만 남는 값이 테스트를 속였다 */
     this._d.tasks[mid]=this._d.tasks[mid]||{};if(item)this._d.tasks[mid][iid]=item;else delete this._d.tasks[mid][iid];S.tasks=this._d.tasks;lsSave(this._d);},
   putCfg(k,v,cb){this._d.cfg[k]=v;S.cfg=this._d.cfg;lsSave(this._d);if(cb)cb(null);},
   putPref(k,v){this._d.prefs=this._d.prefs||{};if(v)this._d.prefs[k]=v;else delete this._d.prefs[k];S.prefs=this._d.prefs;lsSave(this._d);},
@@ -853,18 +897,30 @@ const FbStore={
   init(){},
   _on(path,cb,onErr){const r=FB.db.ref(path);r.on('value',s=>cb(s.val()),e=>{if(onErr)onErr(e);else console.warn('[FB] read',path,e);});FB._subs.push(r);},
   putPlan(p){const{sid,iid,item,prevSid}=planToTask(p);
-    if(prevSid&&prevSid!==sid)this.putTask(prevSid,iid,null);   /* 담당자가 바뀌면 옛 소속에서 지운다 */
-    this.putTask(sid,iid,item);},
+    /* 970차(L1): 소속(sid) 이동은 옛 자리 삭제·새 자리 쓰기를 multi-path update 한 번으로 — 따로 보내면
+       규칙이 삭제만 허용하고 새 자리 쓰기(createdBy≠나)를 거부해 업무가 통째로 사라졌다(휴지통 사본도 없이).
+       한 번에 보내면 하나라도 거부될 때 둘 다 반영되지 않는다 */
+    if(prevSid&&prevSid!==sid)return this.moveTask(prevSid,sid,iid,item);
+    return this.putTask(sid,iid,item);},
+  moveTask(from,to,iid,item){
+    const wasArch=!!(S.arch[from]&&S.arch[from][iid]);if(wasArch)delete S.arch[from][iid];
+    if(S.tasks[from])delete S.tasks[from][iid];
+    S.tasks[to]=S.tasks[to]||{};S.tasks[to][iid]=item;
+    rDay();rTasks();refetchCal();rWidget();
+    const up={['calapp/tasks/'+from+'/'+iid]:null,['calapp/tasks/'+to+'/'+iid]:cleanTask(item)};
+    if(wasArch)up['calapp/archive/'+from+'/'+iid]=null;
+    return FB.db.ref().update(up).catch(fbErr);},
   /* 사용자 삭제는 전부 여기로 — 휴지통 저장과 원본 제거를 multi-path update 한 번으로(383차).
      아카이브에서 보이는 업무도 같은 길로 지운다 — 사본을 함께 걷는다(384차) */
-  trashTask(sid,iid){const it=(S.tasks[sid]||{})[iid]||((S.arch[sid]||{})[iid]);if(!it)return;
+  trashTask(sid,iid){const it=(S.tasks[sid]||{})[iid]||((S.arch[sid]||{})[iid]);if(!it)return Promise.resolve(false);
     const wrap=trashWrap(it);
     if(S.tasks[sid])delete S.tasks[sid][iid];   /* 화면 먼저 — putTask 와 같은 원칙 */
     const up={['calapp/trash/'+sid+'/'+iid]:wrap,['calapp/tasks/'+sid+'/'+iid]:null};
     if(S.arch[sid]&&S.arch[sid][iid]){delete S.arch[sid][iid];up['calapp/archive/'+sid+'/'+iid]=null;}
     rDay();rTasks();refetchCal();rWidget();
-    FB.db.ref().update(up).catch(fbErr);},
-  delPlan(ym,id){const hit=allTasks().find(x=>x.iid===id);if(hit)this.trashTask(hit.sid,hit.iid);},
+    /* 970차(L6): 성공 여부를 돌려준다 — 「휴지통으로 옮겼습니다」는 서버가 받아 준 뒤에 띄운다 */
+    return FB.db.ref().update(up).then(()=>true,e=>{fbErr(e);return false;});},
+  delPlan(ym,id){const hit=allTasks().find(x=>x.iid===id);return hit?this.trashTask(hit.sid,hit.iid):Promise.resolve(false);},
   movePlan(p){this.putPlan(p);},
   putOrg(org){const o=cleanOrg(org);
     /* 630차: org.sites 는 배열(인덱스 키)이라 규칙에서 현장 id 로 권역을 찾을 수 없다 —
@@ -1060,8 +1116,8 @@ function fbErr(e){
   console.warn('[FB]',e);
   const c=String((e&&e.code)||'');
   const msg=/permission|PERMISSION/i.test(c+String(e&&e.message))
-    ? '저장 권한이 없습니다 — Firebase 규칙에 calapp 블록이 반영됐는지 확인하세요'
-    : '저장하지 못했습니다 — 연결을 확인하세요. 화면 값은 서버 값으로 곧 되돌아갑니다';
+    ? '저장하지 못했습니다 · 이 항목을 고칠 권한이 없습니다. 계속되면 관리자에게 알려 주세요'   /* 970차(C2): 사용자 말로 — 원문은 위 콘솔에 */
+    : '저장하지 못했습니다 · 연결을 확인해 주세요. 화면은 서버 값으로 곧 돌아갑니다';
   const now=Date.now();
   if(msg===fbErrMsg && now-fbErrT<1800)return;
   fbErrMsg=msg;fbErrT=now;toast(msg,4000);
@@ -1139,8 +1195,9 @@ let store=LocalStore;
 /* ═══════════ Firebase 초기화 · 세션 감지 ═══════════ */
 /* ═══════════ 로그인 게이트 — 하자처리 현황과 동일한 절차 ═══════════ */
 const DEV_LOCAL=/[?&]local=1\b/.test(location.search);   // 계정 없이 둘러보는 로컬 모드(개발·시연용)
-function showCover(){const g=$('#coverGate');if(g)g.style.display='flex';}
-function hideCover(){const g=$('#coverGate');if(g)g.style.display='none';}
+/* 970차(P1): 게이트가 떠 있는지를 body.gate-on 으로도 알린다 — 위젯 CSS 가 :has([style]) 로 보던 것을 대신한다(아래 index.html 주석) */
+function showCover(){const g=$('#coverGate');if(g)g.style.display='flex';document.body.classList.add('gate-on');}
+function hideCover(){const g=$('#coverGate');if(g)g.style.display='none';document.body.classList.remove('gate-on');}
 function showGateForm(){const ld=$('#cvLoading');if(ld)ld.style.display='none';const bd=$('#cvBody');if(bd)bd.style.display='';showCover();}
 function fbMsg(t,ok){const e=$(cvCur()==='verify'?'#cvVMsg':'#cvMsg');if(e){e.textContent=t||'';e.style.color=ok?'#7CFC9A':'';}}   /* 960차: 성공 색은 기존 로그인 값으로 되돌림, 오류는 CSS(--cv-err=#ff8a80). 958차: 인증 대기 화면은 자기 메시지 칸 */
 /* 958차: 사번만 쳐도 된다 — '@' 가 없으면 @hdec.co.kr 를 붙인다(칸 오른쪽에 도메인이 보인다) */
@@ -1189,14 +1246,14 @@ function fbAuthErr(e){
     'auth/invalid-email':'이메일 형식이 올바르지 않습니다',
     'auth/email-already-in-use':'이미 가입된 계정입니다 · 로그인하세요',
     'auth/too-many-requests':'시도가 많습니다 · 잠시 후 다시 시도하세요',
-    'auth/network-request-failed':'네트워크 오류 · 사내망에서 Firebase 접속이 허용되는지 확인하세요',
+    'auth/network-request-failed':'서버에 연결하지 못했습니다 · 사내망이면 접속이 막혀 있을 수 있습니다. 계속되면 관리자에게 알려 주세요',
     'auth/weak-password':'비밀번호는 6자 이상이어야 합니다',
-    'auth/operation-not-allowed':'이메일/비밀번호 로그인이 콘솔에서 활성화되지 않았습니다'
-  }[c]||('오류: '+((e&&e.message)||c||'알 수 없음'));
+    'auth/operation-not-allowed':'지금은 이 방법으로 로그인할 수 없습니다 · 관리자에게 알려 주세요'
+  }[c]||(console.warn('[인증]',e),'처리하지 못했습니다 · 잠시 뒤 다시 시도해 주세요. 계속되면 관리자에게 알려 주세요');   /* 970차(C2): 영문 원문은 콘솔에 */
 }
 /* 로그인·가입 공통 검증 — 통과하면 {email,pw}, 아니면 null(메시지는 여기서 띄운다) */
 function fbValidCreds(verb){
-  if(!FB.auth){fbMsg('네트워크에 연결할 수 없습니다.');return null;}
+  if(!FB.auth){fbMsg('서버에 연결할 수 없습니다 · 연결을 확인해 주세요');return null;}
   const c=fbCreds(),email=c.email.trim().toLowerCase();
   if(!fbDomainOk(email)){fbMsg('@hdec.co.kr 계정만 '+verb+'할 수 있습니다');return null;}
   if((c.pw||'').length<6){fbMsg('비밀번호는 6자 이상이어야 합니다');return null;}
@@ -1261,7 +1318,7 @@ async function fbDoResend(){
    ⚠ 계정 존재 여부가 새지 않도록 성공·실패 안내를 같게 한다(user-not-found 도 같은 문구).
    단, 형식·도메인·네트워크·과다요청 같은 '고칠 수 있는' 오류는 그대로 알려 준다. */
 async function fbDoReset(){
-  if(!FB.auth){fbMsg('네트워크에 연결할 수 없습니다.');return;}
+  if(!FB.auth){fbMsg('서버에 연결할 수 없습니다 · 연결을 확인해 주세요');return;}
   const email=(fbCreds().email||'').trim().toLowerCase();
   if(!email){fbMsg('회사 메일(사번)을 입력해 주세요');return;}
   if(!fbDomainOk(email)){fbMsg('@hdec.co.kr 계정만 재설정할 수 있습니다');return;}
@@ -1273,7 +1330,7 @@ async function fbDoReset(){
     if(c==='auth/user-not-found'){fbMsg(same,true);return;}   /* 존재 여부 은폐 */
     if(c==='auth/invalid-email'){fbMsg('이메일 형식이 올바르지 않습니다');return;}
     if(c==='auth/too-many-requests'){fbMsg('시도가 많습니다 · 잠시 후 다시 시도하세요');return;}
-    if(c==='auth/network-request-failed'){fbMsg('네트워크 오류 · 사내망에서 Firebase 접속이 허용되는지 확인하세요');return;}
+    if(c==='auth/network-request-failed'){fbMsg('서버에 연결하지 못했습니다 · 사내망이면 접속이 막혀 있을 수 있습니다. 계속되면 관리자에게 알려 주세요');return;}
     fbMsg(same,true);   /* 그 밖의 오류도 은폐 쪽으로 — 정보 노출보다 안전 */
   }
 }
@@ -1354,7 +1411,7 @@ async function acctResetPw(){
   const em=String(((S.user||{}).email)||'').trim().toLowerCase();
   if(!em){toast('메일 주소를 확인할 수 없습니다');return;}
   if(!FB.auth){toast('네트워크에 연결할 수 없습니다');return;}
-  try{await FB.auth.sendPasswordResetEmail(em);toast(em+' 로 재설정 메일을 보냈습니다');}
+  try{await FB.auth.sendPasswordResetEmail(em);toast(josa(em,'으로','로')+' 재설정 메일을 보냈습니다');}
   catch(e){
     const c=e&&e.code;
     if(c==='auth/too-many-requests'){toast('시도가 많습니다 · 잠시 후 다시 시도하세요');return;}
@@ -1431,7 +1488,7 @@ function emojiPickerHTML(av){
     <div class="pop-h">아바타
       <button class="pop-x" data-act="pf.close" aria-label="닫기"><svg class="icn"><use href="#i-close"></use></svg></button>
     </div>
-    <input class="inp inp-sm pf-srch" id="pfSrch" placeholder="이모지 검색(영문) · 직접 붙여넣기도 됩니다" autocomplete="off">
+    <input class="inp inp-sm pf-srch" id="pfSrch" placeholder="이모지 찾기(영문) · 직접 붙여넣기도 됩니다" autocomplete="off">
     <div class="pf-cats" id="pfCats">
       <button class="pf-cat act" data-cat="${rec.length?'recent':'smiley'}" data-act="pf.cat">${rec.length?'🕘':'😀'}</button>
       ${EMOJI_CATS.map((c,i)=>rec.length||i?'<button class="pf-cat" data-cat="'+c.id+'" data-act="pf.cat" data-tip="'+esc(c.label)+'">'+esc(c.s.slice(0,c.s.indexOf(' ')))+'</button>':'').join('')}
@@ -1564,7 +1621,7 @@ function acctAutoSave(){
 function acctMark(state,msg){
   const el=$('#acctState');if(!el)return;
   el.className='acct-state '+(state||'');
-  el.textContent=state==='saving'?'저장 중…':state==='err'?(msg||'저장 실패'):state==='ok'?'저장됨':'';
+  el.textContent=state==='saving'?'저장 중…':state==='err'?(msg||'저장하지 못했습니다'):state==='ok'?'저장됨':'';
   if(state==='ok'){clearTimeout(acctMark._t);acctMark._t=setTimeout(()=>{if($('#acctState'))$('#acctState').textContent='';},1600);}
 }
 async function acctSave(silent){
@@ -1602,7 +1659,7 @@ async function acctSave(silent){
     return;
   }
   if(name&&name!==acctNick()){
-    try{await u.updateProfile({displayName:name});}catch(e){acctMark('err','이름 저장 실패');return;}
+    try{await u.updateProfile({displayName:name});}catch(e){acctMark('err','이름을 저장하지 못했습니다');return;}
   }
   try{
     await FB.db.ref('users/'+u.uid).set(userRecord({name,avColor:color,avIcon:icon}));
@@ -1612,7 +1669,7 @@ async function acctSave(silent){
     S.user=u;PF_SEL={icon:null,color:null};
     rAcct();rOrg();if(S.view==='tasks')rTasks();
     acctMark('ok');
-  }catch(e){acctMark('err',(e&&e.message)||String(e));}
+  }catch(e){console.warn('[계정 저장]',e);acctMark('err','저장하지 못했습니다');}
 }
 async function acctChangePw(){
   const u=FB.auth&&FB.auth.currentUser;if(!u){toast('로그인이 필요합니다');return;}
@@ -1630,10 +1687,10 @@ async function acctChangePw(){
   }catch(e){toast(fbAuthErr(e));}
 }
 function acctSignout(){
-  if(!confirm('로그아웃하시겠습니까?'))return;
-  closeModal();
-  bootCacheClear();   /* 공용 PC 대비 — 로그아웃하면 부팅 캐시도 지운다 */
-  try{FB.auth.signOut();}catch(e){toast('로그아웃 실패');}
+  confirmModal('로그아웃','로그아웃할까요?',()=>{   /* 970차(C6) */
+    bootCacheClear();   /* 공용 PC 대비 — 로그아웃하면 부팅 캐시도 지운다 */
+    try{FB.auth.signOut();}catch(e){console.warn('[로그아웃]',e);toast('로그아웃하지 못했습니다 · 창을 새로 고친 뒤 다시 눌러 주세요');}
+  },'로그아웃',false);
 }
 
 function fbInit(){
@@ -1650,7 +1707,7 @@ function fbInit(){
     }
     FB.auth=firebase.auth();FB.db=firebase.database();
     FB.auth.onAuthStateChanged(onAuth);
-  }catch(e){console.warn('[FB] init',e);showGateForm();fbMsg('네트워크에 연결할 수 없습니다.');}
+  }catch(e){console.warn('[FB] init',e);showGateForm();fbMsg('서버에 연결할 수 없습니다 · 연결을 확인해 주세요');}
 }
 /* ═══════════ 657차: 연결 끊김 ═══════════
    RTDB 는 끊겨도 쓰기를 큐에 쌓아 두었다가 다시 붙으면 밀어 넣는다 —
@@ -1676,8 +1733,8 @@ function netPaintNow(){
   /* 661차: 위젯은 헤더가 없어 알약이 안 보인다 — 상태가 바뀌는 순간 아래 토스트로 알린다.
      ⚠ 끊긴 동안 계속 띄우지 않는다(매 렌더마다 뜨면 방해) — 바뀔 때 한 번만. */
   if(_netWas!==null&&_netWas!==off){
-    if(off)toast('연결 끊김 · 저장 대기',5000);   /* 662차: 위젯 폭에서 줄이 넘어가지 않게 짧게 */
-    else toast('다시 연결됨');
+    if(off)toast('연결이 끊겼습니다 · 고친 내용은 다시 연결되면 저장됩니다',5000);   /* 970차(C10): 무엇을 기다리는지 말한다 — 배지는 662차대로 짧게 유지 */
+    else toast('다시 연결됐습니다');
   }
   _netWas=off;
 }
@@ -1977,6 +2034,8 @@ function calInit(){
     /* ⚠ 609차: 끝을 `title` 로 두면 수정 중 제목을 칠 때마다 막대가 줄을 옮겨 다닌다 —
        만든 순(cre) → 업무 id(pid) 로 못 박는다. 둘 다 편집 중에 변하지 않는 값이다. */
     eventOrder:'-duration,ord,oky,start,allDay,cre,pid',
+    /* 971차: 인라인으로만 줄 수 있는 값 — 직접 고른 그라디언트(--gb)와 옅은 막대 글자색(--sfg) */
+    eventDidMount:info=>{const x=info.event.extendedProps||{};if(x.gb)info.el.style.setProperty('--gb',x.gb);if(x.sfg)info.el.style.setProperty('--sfg',x.sfg);},
     headerToolbar:false,height:'100%',dayMaxEvents:maxEvOf(),
     moreLinkContent:a=>(isMob()&&!WIDGET&&document.body.classList.contains('mcal-full'))?'+'+a.num:'외 '+a.num+'건 ›',   /* 704차: 폰 큰 달력은 「+N」 */   /* 234차: 5안(우측 정렬 미니) — 조용하게 오른쪽 끝에 */
     /* 기본 더보기 팝오버 대신 그 날짜를 골라 업무 패널(위젯은 팝업)에서 전부 보게 한다 */
@@ -1996,15 +2055,19 @@ function calInit(){
       const end=new Date(info.end);end.setDate(end.getDate()-1);   /* FullCalendar 의 end 는 다음 날(배타적) */
       ok(buildEvents(dstr(info.start),dstr(end)));
     },
-    dateClick:info=>{S.selEnd='';selDate(String(info.dateStr).slice(0,10));if(isMob()&&!WIDGET){if(mcalIsLand()){const d=$('#view-calendar .dp-col');if(d)d.classList.add('on');}else mcalSet('mini');}},   /* 704차: 가로는 시트, 세로는 점 달력 */
+    dateClick:info=>{if(WIDGET&&info.jsEvent&&info.jsEvent.target&&info.jsEvent.target.closest&&info.jsEvent.target.closest('.fc-daygrid-more-link'))return;   /* 970차(U11): 「외 N건」은 moreLinkClick 이 연 팝업을 날짜 클릭이 도로 닫았다 */
+      S.selEnd='';selDate(String(info.dateStr).slice(0,10));if(isMob()&&!WIDGET){if(mcalIsLand()){const d=$('#view-calendar .dp-col');if(d)d.classList.add('on');}else mcalSet('mini');}},   /* 704차: 가로는 시트, 세로는 점 달력 */
     eventClick:info=>{info.jsEvent.preventDefault();
       const p=findPlan(info.event.extendedProps.pid);
       if(!p)return;
       const ds=info.event.extendedProps.occ||p.date;
       /* 위젯: 막대를 누르면 바로 그 날 팝업을 열고 그 업무를 펼친다(수정 모드로는 들어가지 않는다) */
       if(WIDGET){selDate(ds,true);S.planOpen=p.id;S.widPop=true;rDay();rWidget();return;}
+      /* 970차(L6): 고칠 권한이 없으면 편집기 대신 그 날 카드를 펼쳐 읽기만 */
+      if(!canEditTask(p,p.sid)){selDate(ds);S.planOpen=p.id;rDay();denyTask();return;}
       selDate(ds);openPlanEdit(p,null,null,info.event.extendedProps.occ);},
     eventDrop:info=>{const p=findPlan(info.event.extendedProps.pid);if(!p||(p.recur&&p.recur.f)){info.revert();return;}
+      if(!canEditTask(p,p.sid)){info.revert();denyTask();return;}   /* 970차(L6) */
       if(p.sid&&p.id)undoSnap([{sid:p.sid,iid:p.id}],'날짜 이동');   /* 657차: 손이 스쳐 옮겨져도 되돌린다.
         ⚠ 660차: 일정은 iid 가 아니라 id 를 쓴다(taskAsPlan) — 657차에 p.iid 로 적어 스냅샷이 안 떴다 */
       const oldYm=ymOf(p.date);const ns=info.event.startStr.slice(0,10);
@@ -2013,7 +2076,7 @@ function calInit(){
       if(oldYm===ymOf(p.date))store.putPlan(p);else store.movePlan(p,oldYm);
       if(!S.live){refetchCal();}
       undoCommit();
-      selDate(p.date);toast('날짜 옮김 · Ctrl+Z');},
+      selDate(p.date);toastAct(josa(mdLabel(p.date),'으로','로')+' 옮겼습니다','되돌리기',undoRun);},   /* 970차(U5·C7): 폰·위젯에서도 되돌릴 수 있게 단추로 */
     editable:true,eventDurationEditable:false,
     selectable:true,selectMirror:true,
     /* 하루만 클릭한 건 날짜 선택으로만 처리하고(dateClick), 이틀 이상 끌었을 때만 기간 업무 작성 */
@@ -2026,7 +2089,7 @@ function calInit(){
       if(S.planEdit&&$('#peDate')){
         $('#peDate').value=a;$('#peEnd').value=b;
         planAutosave();
-        toast('기간을 '+a+' ~ '+b+' 로 바꿨습니다');return;
+        toast('기간을 '+mdLabel(a)+'~'+josa(mdLabel(b),'으로','로')+' 바꿨습니다');return;   /* 970차(C7·C8) */
       }
       /* 드래그는 '기간 선택' — 그 사이 업무를 패널에 보여 주고, 업무 추가를 누르면 이 기간으로 연다 */
       selRange(a,b);},
@@ -2118,12 +2181,21 @@ function evOwnKey(p){
   if(!own.length)return '';
   return own.map(id=>ownName(id)||id).sort((a,b)=>String(a).localeCompare(String(b),'ko')).join(',');
 }
+let WID_SOFT=false;
+function softOf(c){
+  const m=/^#([0-9a-f]{6})$/i.exec(String(c||''));if(!m||isLightColor(c))return null;
+  const n=parseInt(m[1],16),v=[n>>16,(n>>8)&255,n&255],mix=(to,t)=>'rgb('+v.map((x,i)=>Math.round(x+(to[i]-x)*t)).join(',')+')';
+  return{bg:mix([40,44,52],.62),fg:mix([255,255,255],.62)};
+}
 function planEvent(p,date){
   const span=p.end?daysBetween(p.date,p.end):0;
   const done=isDone(p,date);   /* 반복은 occSrc 로 원 회차일의 doneOn 을 본다 — 옮긴 회차의 완료 표시가 칩에서 빠지던 버그 */
   const own=p.owner?ownName(p.owner):'';
   /* 담당자 없는 팀 공통 업무는 제목 앞에 작은 흰 점을 찍어 가른다(점은 CSS 로 그린다) */
   const team=!planOwners(p).length;
+  /* 971차(사용자): 위젯 설정 「막대 옅게」 — 이 PC 위젯에서만, 저장 색은 그대로. 담당자 색(단색)을 칸 색 쪽으로 섞은 판 + 밝은 글자.
+     옅은 색·무지개·그라디언트·공통(속 빈 막대)은 고른 그대로 둔다(옅은 색을 더 옅게 하면 판이 칸에 묻힌다) */
+  const soft=(WIDGET&&WID_SOFT&&!team)?softOf(planColor(p)):null;
   return{
     id:p.id+'@'+date,
     title:(fmtSpan(p)?fmtSpan(p)+' ':'')+p.title+(own?' · '+own:''),
@@ -2132,16 +2204,17 @@ function planEvent(p,date){
     allDay:!p.time||!!p.end,
     /* 231차: 공통 업무는 **속 빈 막대(2안)** — 계정 업무는 전부 꽉 찬 막대라 색과 무관하게 갈린다.
        예전에 파랑으로 저장된 공통 업무도 여기서 함께 윤곽선형이 된다(색 지정 여부와 무관). */
-    backgroundColor:team?'transparent':planColor(p),
+    backgroundColor:team?'transparent':(soft?soft.bg:planColor(p)),
     borderColor:team?planColor(p):'transparent',
-    textColor:team?'':(isLightBg(planColor(p))?'#1B1B1F':'#fff'),
+    textColor:team||soft?'':(isLightBg(planColor(p))?'#1B1B1F':'#fff'),
     /* ⚠ display 를 지정하지 않으면 시간이 있는 업무는 FullCalendar 가 '점 형식'으로 그린다 —
        배경 없이 어두운 글자라 유리(어두운) 배경 위에서 거의 보이지 않는다. 전부 색 막대로 통일한다 */
     display:'block',
-    classNames:(done?['done']:[]).concat((!team&&isLightBg(planColor(p)))?['on-light']:[]).concat(team?['team']:[]).concat(isRisk(p.kind)?['risk']:[]).concat(isRainbow(planColor(p))?['ev-rb']:[]).concat(isFlow(planColor(p))?['ev-fx']:[]).concat(isGrad(planColor(p))?['ev-gd','ev-g-'+gradBase(planColor(p)).slice(5)]:[]),   /* 633차: 담당자/공통 모두 무지개 렌더링 경로를 통일 · 677차: 흐름은 ev-fx 가 켠다 */
+    classNames:(done?['done']:[]).concat((!team&&isLightBg(planColor(p)))?['on-light']:[]).concat(team?['team']:[]).concat(isRisk(p.kind)?['risk']:[]).concat(isRainbow(planColor(p))?['ev-rb']:[]).concat(isFlow(planColor(p))?['ev-fx']:[]).concat(isGrad(planColor(p))?(gcParse(planColor(p))?['ev-gd']:['ev-gd','ev-g-'+gradBase(planColor(p)).slice(5)]):[]).concat(soft?['ev-soft']:[]),   /* 633차: 담당자/공통 모두 무지개 렌더링 경로를 통일 · 677차: 흐름은 ev-fx 가 켠다 */
     /* 칸 안 차례 — 공통(0) · 내 업무(1) · 팀장(2) · 나머지(3).
        칸이 넘쳐 '외 N건' 으로 접힐 때 나와 상관 있는 것이 먼저 남는다(eventOrder 참조) */
-    extendedProps:{pid:p.id,occ:date,recur:!!(p.recur&&p.recur.f),ord:evOrd(p,team),oky:evOwnKey(p),cre:Number(p.createdAt)||0},
+    extendedProps:{pid:p.id,occ:date,recur:!!(p.recur&&p.recur.f),ord:evOrd(p,team),oky:evOwnKey(p),cre:Number(p.createdAt)||0,
+      gb:gcParse(planColor(p))?gcBg(gcParse(planColor(p))):'',sfg:soft?soft.fg:''},   /* 971차: 직접 고른 그라디언트(--gb)·옅은 막대 글자색 — eventDidMount 가 칠한다 */
     editable:!(p.recur&&p.recur.f)
   };
 }
@@ -2171,7 +2244,10 @@ function planToTask(p){
   /* 953차: 담당자가 그대로면 자리도 그대로 — 완료 체크만 해도 다른 팀·다른 담당자 자리로 옮겨지고, 되돌리면 두 벌이 남았다 */
   if(prev){const pa=Object.keys(prev.it.assignees||{}).filter(k=>prev.it.assignees[k]).sort().join(','),na=owns.slice().sort().join(',');
     const isTeamSid=(S.org.teams||[]).some(t=>t.id===prev.sid);
-    if(pa===na&&(owns.length?owns.includes(prev.sid)||isTeamSid:isTeamSid))sid=prev.sid;}
+    if(pa===na&&(owns.length?owns.includes(prev.sid)||isTeamSid:isTeamSid))sid=prev.sid;
+    /* 970차(L1): 작성자·관리자가 아니면 자리를 옮기지 않는다 — 새 자리 생성은 규칙상 작성자(createdBy)만 가능하다.
+       담당자는 assignees 로 바뀌고 소속만 그대로 남는다 */
+    if(sid!==prev.sid&&S.live&&!isEditor()&&prev.it.createdBy&&prev.it.createdBy!==authUid())sid=prev.sid;}
   const base=prev?prev.it:{};
   const item={...base,
     text:p.title!==undefined?p.title:base.text,
@@ -2186,13 +2262,17 @@ function planToTask(p){
     recur:(p.recur&&p.recur.f)?{f:p.recur.f,until:String(p.recur.until||'')}:{f:'',until:''},
     st:(p.st!==undefined?stOf(p.st):(p.done?2:stOf(base.st))),
     createdAt:Number(base.createdAt||p.createdAt)||Date.now(),updatedAt:Date.now()};
-  ['doneOn','skipOn','moveOn'].forEach(k=>{if(p[k])item[k]=p[k];else if(base[k])item[k]=base[k];});
+  /* 970차(L4): 달력으로 새로 만든 업무에도 작성자를 남긴다 — 없으면 규칙이 「작성자 없는 옛 업무」로 보고 누구나 지울 수 있었다 */
+  if(!prev&&S.live&&authUid()&&!item.createdBy)item.createdBy=authUid();
+  ['doneOn','skipOn','moveOn'].forEach(k=>{if(p[k])item[k]={...p[k]};else if(base[k])item[k]={...base[k]};});
   if(!item.recur.f){delete item.doneOn;delete item.skipOn;delete item.moveOn;}
   return{sid,iid:p.id,item,prevSid:prev?prev.sid:null};
 }
 function taskAsPlan(sid,iid,it){
-  /* 달력·일자 패널이 쓰던 모양으로 감싼다 — 필드 이름만 맞춰 준다 */
-  return{...it,id:iid,sid,title:it.text||'',body:taskBody(it),
+  /* 달력·일자 패널이 쓰던 모양으로 감싼다 — 필드 이름만 맞춰 준다.
+     970차(L2): 회차 표시(doneOn·skipOn·moveOn)는 복사해서 준다 — 얕은 복사면 받은 쪽이 고칠 때 S.tasks 원본이 함께 바뀌어 저장 비교가 무력해진다 */
+  const cp=o=>o&&typeof o==='object'?{...o}:o;
+  return{...it,doneOn:cp(it.doneOn),skipOn:cp(it.skipOn),moveOn:cp(it.moveOn),id:iid,sid,title:it.text||'',body:taskBody(it),
     owners:it.assignees||{},done:stEff(it)===2};
 }
 /* ⚠ 범위는 **FullCalendar 가 넘겨주는 것**을 먼저 쓴다 — CAL.view 를 읽으면 달을 넘길 때
@@ -2537,11 +2617,11 @@ function selDate(ds,quiet){
   const same=S.selDate===ds;
   S.selDate=ds;
   if(S.selEnd&&S.selEnd<=ds)S.selEnd='';
-  /* 위젯: 첫 클릭은 날짜 선택까지만, **같은 칸을 한 번 더** 눌러야 업무 팝업이 뜬다.
+  /* 위젯: (970차 전) 첫 클릭은 날짜 선택까지만, 같은 칸을 한 번 더 눌러야 업무 팝업이 떴다 — 지금은 첫 클릭에 뜬다.
      quiet 는 '이동만'(오늘·연월 이동·업무 바 클릭 뒤 별도 처리) */
   if(WIDGET){
     if(!same)S.planOpen='';
-    S.widPop=quiet?false:(same&&!S.widPop);
+    S.widPop=quiet?false:(same?!S.widPop:true);   /* 970차(U11): 첫 클릭에 바로 연다(칩·「외 N건」과 같게) · 같은 칸을 다시 누르면 닫는다 */
     if(!S.widPop)S.planOpen='';   /* 팝업을 닫으면 펼친 카드도 접는다 */
   }   /* 같은 칸: 안 떠 있으면 열고, 떠 있으면 닫는다 */
   setTimeout(rWidget,0);
@@ -2746,8 +2826,9 @@ function planCardHTML(p,occ){
     const md=x=>{const t=toDate(x);return (t.getMonth()+1)+'/'+t.getDate();};
     const lnk=Object.values(p.links||{}).filter(l=>l&&l.url)[0];
     const det=planDetHTML(p);
-    /* 펼침은 적어 둔 내용을 여는 용도다 — 내용이 없으면 펼치지 않는다(390차) */
-    const openAct=det?' data-act="plan.open" data-pid="'+esc(p.id)+'" data-occ="'+esc(occ)+'"':'';
+    /* 펼침은 적어 둔 내용을 여는 용도다 — 내용이 없으면 펼치지 않는다(390차)
+       970차(U4): 앱에서는 카드 본문을 누르면 편집기가 열린다(달력 막대와 같게). 고칠 권한이 없거나 위젯이면 예전처럼 펼치기 */
+    const openAct=(!WIDGET||det)?' data-act="plan.body" data-pid="'+esc(p.id)+'" data-occ="'+esc(occ)+'"':'';
     return `
     <div class="plan${done?' done':''}${det?' has-det':''}${det&&S.planOpen===p.id?' open':''}" data-pid="${esc(p.id)}">
       <div class="plan-hd">
@@ -2848,12 +2929,15 @@ function openModal(title,bodyHTML,footHTML){
 function closeModal(){mrvHoldRest();$('#mo').classList.remove('open');MODAL_CB=null;pfDrop();
   if(window.__SNAPPICK__){const r=window.__SNAPPICK__;window.__SNAPPICK__=null;try{r(null);}catch(_){}}   /* 614차: 스냅샷 월 선택 대기 중 닫히면(Esc·배경) 취소로 종결 — 원본 app-core 641 과 동일 */
   if(window.__PUBOK__){const r=window.__PUBOK__;window.__PUBOK__=null;try{r(false);}catch(_){}}   /* 615차: 게시 확인 대기 중 닫히면 게시 중단 */
+  if(window.__ASKOK__){const r=window.__ASKOK__;window.__ASKOK__=null;try{r(false);}catch(_){}}   /* 970차: confirmAsk 취소 */
   if($('#mb').classList.contains('kmw'))kmModalClosed();   /* 552차: 지도 모달 — 카드 상태 복원 */
   {const r=MODAL_RET;MODAL_RET=null;const a=document.activeElement;if(r&&r.isConnected&&r.focus&&(a===document.body||$('#mo').contains(a)))r.focus({preventScroll:true});}}   /* 956차: 모달을 연 요소로 포커스 복귀 */
 /* 인라인 편집기 — 모달 대신 우측 일자 패널 안에서 작성·수정한다 */
 function openPlanEdit(p,startD,endD,occ){
   S.planEdit={orig:p?{...p}:null,occ:occ||'',start:startD||S.selDate,end:endD||''};
   rDay();
+  /* 970차(L3): 연 순간 폼이 보여 준 값을 기준선으로 떠 둔다 — 저장할 때 이 기준선과 달라진 칸만 현재 서버 값 위에 얹는다 */
+  if(S.planEdit&&S.planEdit.orig&&$('#peTitle'))S.planEdit.base0=PE_SNAP(planCollect({...S.planEdit.orig}));
   setTimeout(()=>{const t=$('#peTitle');if(t)t.focus();},30);
 }
 /* 고른 색 적용 — 읽기 카드에서 골랐으면 바로 저장, 편집 폼이면 draft 에 담고 자동 저장 */
@@ -3019,7 +3103,8 @@ function planCollect(base){
   const links={...(d.links||{})};
   const lk=Object.keys(links).find(k=>links[k]&&links[k].url)||'l1';
   const url=(($('#peLink')&&$('#peLink').value)||'').trim();
-  if(url)links[lk]={url,label:(links[lk]&&links[lk].label)||''};
+  /* 970차(L8): 목록 폼처럼 https:// 를 붙인다 — 없으면 서버 저장 단계(cleanTask·규칙)에서 조용히 버려졌다 */
+  if(url)links[lk]={url:/^https?:\/\//i.test(url)?url:'https://'+url,label:(links[lk]&&links[lk].label)||''};
   else delete links[lk];
   const p={...d,
     date,end,
@@ -3040,9 +3125,30 @@ function planCollect(base){
   if(base)Object.assign(base,p);   /* draft 를 현재 화면 값으로 최신화 */
   return p;
 }
+/* 970차(L3·L7): 편집기 저장은 「연 뒤 편집기에서 실제로 바꾼 칸」만 현재 값(S.tasks) 위에 얹는다.
+   예전엔 연 시점의 사본 전체를 되써서, 그 사이 동료가 바꾼 완료·색·링크·진행경과를 열고 닫기만 해도 되돌렸다.
+   바뀐 칸이 없으면 저장하지 않고, 그 사이 누가 지웠으면 되살리지 않는다 */
+const PE_FIELDS=['title','date','end','time','site','owners','body','links','color','recur','kind','st','done','stKeep'];
+function PE_SNAP(p){const o={};if(!p)return o;PE_FIELDS.forEach(k=>{const v=p[k];o[k]=v===undefined?null:JSON.parse(JSON.stringify(v));});return o;}
+function planMerge(p){
+  const pe=S.planEdit;if(!pe||!pe.orig||!pe.base0)return p;   /* 새 업무 — 그대로 */
+  const cur=allTasks().find(x=>x.iid===pe.orig.id);
+  if(!cur)return null;                                           /* 그 사이 삭제됨 — 되살리지 않는다 */
+  const now=PE_SNAP(p),b=pe.base0,out=taskAsPlan(cur.sid,cur.iid,cur.it);let n=0;
+  const col=v=>(v&&v!=='auto')?v:'auto';
+  PE_FIELDS.forEach(k=>{const x=k==='color'?col(now[k]):now[k],y=k==='color'?col(b[k]):b[k];
+    if(JSON.stringify(x)!==JSON.stringify(y)){out[k]=p[k];n++;}});
+  if(!n)return false;
+  out.updatedAt=Date.now();return out;
+}
 /* 저장 — 반복 여부가 바뀌면 옛 항목을 지우고 새로 넣어야 한다 */
 function planCommit(p){
   const pe=S.planEdit;
+  if(pe&&pe.orig){const m=planMerge(p);
+    if(m===null){toast('다른 사람이 이 업무를 지웠습니다 · 고친 내용은 저장하지 않았습니다');return;}
+    if(m===false)return;                                         /* 바뀐 칸 없음 — 저장하지 않는다 */
+    pe.base0=PE_SNAP(p);                                         /* 저장한 값이 다음 비교의 기준 */
+    p=m;}
   const wasRec=!!(pe&&pe.orig&&pe.orig.recur&&pe.orig.recur.f);
   const nowRec=!!(p.recur&&p.recur.f);
   if(pe&&pe.orig&&wasRec!==nowRec){
@@ -3056,11 +3162,12 @@ function planCommit(p){
 }
 /* 자동 저장 — 입력이 멎으면 조용히 반영한다(토스트 없음).
    일자 패널은 다시 그리지 않는다(rDay 가 열린 폼은 떼었다 도로 꽂으므로 입력·포커스는 살아남는다) */
-let PE_SAVE=null;
+let PE_SAVE=null,PE_CAL=null;
 function planAutosave(now){
   clearTimeout(PE_SAVE);
-  /* 저장(600ms)을 기다리지 않고 달력은 곧바로 갱신한다 — buildEvents 가 draft 를 읽는다 */
-  if(S.planEdit&&S.planEdit.draft&&$('#dpEdit')){planCollect(S.planEdit.draft);refetchCal();}
+  /* 저장(600ms)을 기다리지 않고 달력은 곧바로 갱신한다 — buildEvents 가 draft 를 읽는다
+     970차(P2): 달력 다시 그리기는 0.25초 모아서 — 글자마다 달력 전체를 그려 업무가 많으면 입력이 밀렸다 */
+  if(S.planEdit&&S.planEdit.draft&&$('#dpEdit')){planCollect(S.planEdit.draft);clearTimeout(PE_CAL);PE_CAL=setTimeout(refetchCal,250);}
   const run=()=>{
     const pe=S.planEdit;if(!pe||!$('#dpEdit'))return;
     const p=planCollect(pe.draft);
@@ -3068,6 +3175,7 @@ function planAutosave(now){
     planCommit(p);
     if(!pe.orig){
       pe.orig={...p};                       /* 처음 저장한 뒤부터는 '수정' */
+      pe.base0=PE_SNAP(p);                  /* 970차(L3): 새 업무도 첫 저장부터 바뀐 칸만 */
       /* ⚠ 폼은 다시 그리지 않으므로(입력이 날아간다) 삭제 버튼이 안 생긴다 — 그 자리에 끼워 넣는다 */
       const side=$('#dpEdit .pe-side');
       const old=side&&side.querySelector('[data-act="plan.discard"]');
@@ -3141,13 +3249,16 @@ function stxSet(el,st){
   b.classList.toggle('on',stOf(st)===2);
   b.classList.remove('hold');   /* 보류는 아침 확인에서만 붙는다 — 눌러서 바꾸면 진행·완료 둘 중 하나 */
   b.classList.remove('fx');void b.offsetWidth;b.classList.add('fx');
+  const t=stxTip(stOf(st)===2);b.dataset.tip=t;b.setAttribute('aria-label',t);
 }
+const stxTip=on=>on?'완료 · 누르면 진행으로':'진행 중 · 누르면 완료';
 /* 상태 아이콘. attrs 에 data-act 등을 넣어 누를 수 있게 한다(없으면 표시 전용) */
 function stIcon(st,attrs){
   const on=stOf(st)===2,hold=stOf(st)===3;
   const lbl=on?'완료':hold?'보류':'진행 중';
+  const tip=attrs&&!hold?stxTip(on):lbl;   /* 970차: 누르면 무엇이 되는지까지 */
   return '<button class="stx'+(on?' on':'')+(hold?' hold':'')+'"'+(attrs||' disabled')+' data-on="'+(on?1:0)+'"'
-    +' aria-label="'+lbl+'" data-tip="'+lbl+'">'
+    +' aria-label="'+tip+'" data-tip="'+tip+'">'
     +'<span class="stx-in">'
       +'<svg class="stx-run" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path class="tri" d="M10.4 8.8v6.4l5.2-3.2z"/></svg>'
       +'<svg class="stx-done" viewBox="0 0 24 24"><circle class="cf" mask="url(#stx-ck)" cx="12" cy="12" r="9"/><path class="ck" d="m8.3 12.2 2.5 2.5 4.9-5.2"/></svg>'
@@ -3239,7 +3350,7 @@ function taskItemHTML(sid,iid,it,withSubject,hideOwn,colsIn,occ){
   const dcell=dsp?(span?md(rec?dsp:it.date)+'–'+md(it.end):md(dsp)):'';
   /* 제목 뒤에 흐리게 붙는 것 — 시각·반복처럼 **열을 줄 만큼 잦지 않은 값**만 */
   const sub=[fmtSpan(it),(it.recur&&it.recur.f)?REC_LBL[it.recur.f]:''].filter(Boolean).join(' · ');
-  const who=asg.map(x=>x.name).join(', ')||(withSubject?subjName(sid):'');
+  const who=(asg.length>1?asg[0].name+' 외 '+(asg.length-1):asg.map(x=>x.name).join(', '))||(withSubject?subjName(sid):'');   /* 970차(U7): 여럿이면 「김민수 외 1」(목록 이름 칸은 56px 라 화면에는 「김민수+1」, 전체는 툴팁) — 「김민수, 박…」로 잘렸다 */
   /* 적힌 내용이 있으면 제목 뒤에 표시를 단다 — 어느 행에 진행사항·계획이 있는지 눌러 보지 않아도 안다(361차) */
   const hasDet=!!taskBody(it).trim();
   const go=' data-act="tk.open" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"';
@@ -3257,8 +3368,8 @@ function taskItemHTML(sid,iid,it,withSubject,hideOwn,colsIn,occ){
             +'<input type="hidden" id="tnDate" value="'+esc(it.date||'')+'"><input type="hidden" id="tnEnd" value="'+esc(it.end||'')+'">'
             +tkRangePopHTML()+'</span>'
         : (cols.who?(cols.gw?'<span class="tkc tkc-w"></span>'
-            :'<span class="tkc tkc-w'+(who?'':' dim')+'"'+go+'>'
-              +'<i class="tkc-dot" style="background:'+esc(colBg(planColor(p0)))+'"></i>'+(who?esc(who):'공통')+'</span>'):'')
+            :'<span class="tkc tkc-w'+(who?'':' dim')+'"'+go+(asg.length>1?' data-tip="'+esc(asg.map(x=>x.name).join(', '))+'"':'')+'>'
+              +'<i class="tkc-dot" style="background:'+esc(colBg(planColor(p0)))+'"></i>'+(asg.length>1?'<span class="tkc-nm">'+esc(asg[0].name)+'<span class="tkc-x">+'+(asg.length-1)+'</span></span>':(who?esc(who):'공통'))+'</span>'):'')
           +(cols.site?'<span class="tkc tkc-s"'+go+'>'+esc(sn)+'</span>':'')
           +'<span class="tk-ttl"'+go+'>'+riskMark(it.kind)+esc(it.text||'제목 없음')
             +(sub?'<i class="tk-sub-i">'+esc(sub)+'</i>':'')
@@ -3267,13 +3378,13 @@ function taskItemHTML(sid,iid,it,withSubject,hideOwn,colsIn,occ){
           +'<span class="tkc tkc-d'+(st!==2&&di.cls==='over'?' over':'')+'"'+go+'>'+esc(dcell)+'</span>'}
       <span class="tk-acts">
         ${editing
-          ? '<button class="tk-ico tk-ok" data-act="tk.formSave" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" aria-label="저장" data-tip="저장"><svg class="icn"><use href="#i-check"></use></svg></button>'
-            +'<button class="tk-ico tk-cx" data-act="tk.formCancel" aria-label="취소" data-tip="취소"><svg class="icn"><use href="#i-close"></use></svg></button>'
+          ? '<button class="tk-ico tk-ok" data-act="tk.formSave" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" aria-label="저장하고 닫기" data-tip="저장하고 닫기 (Enter · Esc)"><svg class="icn"><use href="#i-check"></use></svg></button>'
+            +'<button class="tk-ico tk-cx" data-act="tk.formCancel" aria-label="저장하지 않고 닫기" data-tip="저장하지 않고 닫기"><svg class="icn"><use href="#i-close"></use></svg></button>'
             +'<button class="tk-ico tk-del" data-act="tk.del" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" aria-label="삭제" data-tip="삭제"><svg class="icn"><use href="#i-trash"></use></svg></button>'
           : stIcon(st,' data-act="tk.st" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" data-occ="'+esc(dsp||'')+'"')}
       </span>
     </div>
-    ${editing?tkEditRestHTML(sid,iid,it):(open?taskDetailHTML(sid,iid,it,dsp):'')}
+    ${editing?tkEditRestHTML(sid,iid,it,cols.site):(open?taskDetailHTML(sid,iid,it,dsp):'')}
   </div>`;
 }
 
@@ -3385,10 +3496,13 @@ function tkDateRefresh(){
   let left=r.left;if(left+w>window.innerWidth-8)left=Math.max(8,window.innerWidth-w-8);
   pop.style.top=Math.round(top)+'px';pop.style.left=Math.round(left)+'px';
 }
-function tkEditRestHTML(sid,iid,it){
+function tkEditRestHTML(sid,iid,it,hasSite){
   const kind=kindOf(it.kind),rc=(it.recur&&it.recur.f)||'';
   const lnk=Object.values(it.links||{})[0]||null;
+  /* 970차(U7): 칸이 좁아 행의 현장 열이 접히면(1366 노트북 등) 현장을 아래 줄에서 고친다 — 전엔 목록에서 현장을 못 고쳤다.
+     id 는 tnSite2 · 저장은 보이는 쪽을 읽고, 두 칸은 서로 값을 맞춘다 */
   return `<div class="tk-editrest">
+    ${hasSite?'<label class="tk-esite">현장'+sitePickHTML('tnSite2',it.site||'')+'</label>':''}
     <div class="tk-erow">
       <label>구분<select class="inp cell-inp" id="tnKind" data-act="tk.kind">
         ${TK_KIND.map(([v,l])=>'<option value="'+v+'"'+(v===kind?' selected':'')+'>'+esc(l)+'</option>').join('')}</select></label>
@@ -3442,7 +3556,7 @@ function regionMembers(mems,regions,rid){
 function taskFormHTML(sid,iid,cur){
   /* 업무 일정의 편집 폼과 같은 골격 — 행 순서·아이콘·버튼·디자인 전부 동일.
      다만 업무 목록에는 '자세히'(접기·펼치기)와 '업무 목록에서 쓰기' 아이콘이 필요 없다 */
-  const d=cur||{text:'',prog:'',plan:'',site:'',assignees:meOwner(),links:{},color:'',date:'',end:'',time:'',kind:KIND_DEF,recur:{f:'',until:''}};
+  const d=cur||{text:'',prog:'',plan:'',site:'',assignees:meOwner(),links:{},color:'',date:todayStr(),end:'',time:'',kind:KIND_DEF,recur:{f:'',until:''}};   /* 970차(U6): 새 업무 시작일은 오늘 — 비어 있으면 달력에 안 나왔다 */
   const people=tkSel().mems;
   const kind=kindOf(d.kind);
   /* (상태는 폼에서 바꾸지 않는다 — 목록의 상태 아이콘이 담당) */
@@ -3458,7 +3572,7 @@ function taskFormHTML(sid,iid,cur){
         ${iid
           ?'<button class="pe-ic pe-del" data-act="tk.del" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" aria-label="삭제" data-tip="삭제"><svg class="icn"><use href="#i-trash"></use></svg></button>'
           :'<button class="pe-ic pe-del" data-act="tk.formCancel" aria-label="취소" data-tip="저장하지 않고 닫기"><svg class="icn"><use href="#i-close"></use></svg></button>'}
-        <button class="pe-ic pe-ok" data-act="tk.formSave" data-sid="${esc(sid)}" data-iid="${esc(iid||'')}" aria-label="저장하고 닫기" data-tip="저장하고 닫기"><svg class="icn"><use href="#i-check"></use></svg></button>
+        <button class="pe-ic pe-ok" data-act="tk.formSave" data-sid="${esc(sid)}" data-iid="${esc(iid||'')}" aria-label="저장하고 닫기" data-tip="저장하고 닫기 (Enter · Esc)"><svg class="icn"><use href="#i-check"></use></svg></button>
       </div>
     </div>
     <div class="pe-body">
@@ -3507,7 +3621,7 @@ function taskFormSave(sid,iid){
      없는 칸을 읽어 빈 값으로 덮으면 담당자·현장이 소리 없이 지워진다(389차) */
   const asgEl=$('#tnAsg');
   const asg=asgEl?(asgEl.value?{[asgEl.value]:1}:{}):{...((cur&&cur.assignees)||{})};
-  const siteEl=$('#tnSite');
+  const siteEl=[...document.querySelectorAll('#tnSite,#tnSite2')].find(e=>e.offsetParent)||$('#tnSite');   /* 970차(U7): 보이는 칸 */
   const siteV=siteEl?(siteEl.value||''):String((cur&&cur.site)||'');
   /* 링크는 업무 일정 폼과 같이 한 칸 — 예전에 여러 개 넣어 둔 것은 첫 칸만 고치고 나머지는 그대로 둔다 */
   const links={...((cur&&cur.links)||{})};
@@ -3516,13 +3630,18 @@ function taskFormSave(sid,iid){
   if(lu){const k=lk0||uid();links[k]={...(links[k]||{}),url:/^https?:\/\//i.test(lu)?lu:'https://'+lu};}
   else if(lk0)delete links[lk0];
   const rec=($('#tnRec')&&$('#tnRec').value)||'';
+  /* 970차(L9): 종료일이 시작일보다 앞이면 맞바꿔 저장한다(달력 편집기는 이미 막는다) — 자동 완료·보관이 앞 날짜로 계산됐다 */
+  let dv=($('#tnDate')&&$('#tnDate').value)||'',ev=($('#tnEnd')&&$('#tnEnd').value)||'';
+  if(dv&&ev&&ev<dv){const x=dv;dv=ev;ev=x;toast('종료일이 시작일보다 앞이라 두 날짜를 맞바꿔 저장했습니다');}
+  if(ev&&ev===dv)ev='';
+  if(!dv)toast('시작일이 비어 있어 달력에는 나오지 않습니다');   /* 970차(U6) */
   const _nu=!cur;   /* 627차: 신규 판별 — 신규면 소유·작성 이력, 기존이면 수정 이력 */
   store.putTask(sid,id,histPush({...(cur||{createdAt:Date.now(),...(S.live&&authUid()?{createdBy:authUid()}:{})}),
     text:t,kind:kindOf(($('#tnKind')&&$('#tnKind').value)||''),
     prog:(($('#tnProg')&&$('#tnProg').value)||'').trim(),plan:'',
     site:siteV,
-    date:($('#tnDate')&&$('#tnDate').value)||'',
-    end:($('#tnEnd')&&$('#tnEnd').value)||'',
+    date:dv,
+    end:ev,
     time:($('#tnTime')&&$('#tnTime').value)||'',
     recur:rec?{f:rec,until:(($('#tnUntil')&&$('#tnUntil').value)||'')}:{f:'',until:''},
     /* ⚠ 표시 상태(stEff)를 저장하면 지난 팀 업무를 고치기만 해도 완료로 굳는다 — 저장된 상태만 유지 */
@@ -3539,15 +3658,28 @@ function taskFormSave(sid,iid){
 /* ── 업무 폼 닫기 보호 ──
    폼에는 진행경과·처리계획이 각 2000자까지 들어간다. Escape 한 번에 말없이 버리면 손해가 크다.
    ⚠ 저장된 값과 비교해 **정말 바뀐 것이 있을 때만** 묻는다 — 열자마자 닫는 경우까지 물으면 성가시다 */
+/* 970차(U3): 폼이 처음 그려진 순간의 모든 칸 값을 떠 두고 그것과 비교한다 — 전엔 제목·내용만 봐서 날짜·담당자만 고치고 닫으면 말없이 버려졌다 */
+const tkFormKey=()=>S.tkEdit||(S.tkNew?'new:'+S.tkNew:'');
+const tkFormVals=()=>JSON.stringify([...document.querySelectorAll('#view-tasks [id^="tn"],#tko [id^="tn"]')].map(e=>e.id+'='+(e.type==='checkbox'?e.checked:e.value)));
+function tkSnapTake(){const k=tkFormKey();
+  if(!k||!$('#tnTitle')){S.tkSnap=null;return;}
+  if(!S.tkSnap||S.tkSnap.key!==k)S.tkSnap={key:k,v:tkFormVals()};}
 function tkFormDirty(){
   if(!S.tkNew&&!S.tkEdit)return false;
   if(!$('#tnTitle'))return false;
+  if(S.tkSnap&&S.tkSnap.key===tkFormKey())return tkFormVals()!==S.tkSnap.v;
   const key=S.tkEdit||'';
   const sid=key?key.split('/')[0]:S.tkNew,iid=key?key.split('/')[1]:'';
   const cur=(key&&(S.tasks[sid]||{})[iid])||{};
   const v=id=>{const el=$('#'+id);return el?String(el.value||'').trim():'';};
   const was=x=>String(x||'').trim();
   return v('tnTitle')!==was(cur.text)||v('tnProg')!==was(taskBody(cur));
+}
+/* 970차(U3): Esc 는 달력 편집기와 같게 「저장하고 닫기」 — 바뀐 게 없으면 그냥 닫고, 제목이 비었으면 버릴지 묻는다 */
+function tkFormEsc(){
+  const t=$('#tnTitle');
+  if(!t||!tkFormDirty()||!String(t.value||'').trim()){tkFormClose();return;}
+  const b=document.querySelector('[data-act="tk.formSave"]');if(b)b.click();else tkFormClose();
 }
 /* 폼을 닫는 유일한 통로 — 취소 버튼과 Escape 가 함께 쓴다 */
 function tkFormClose(){
@@ -3760,8 +3892,8 @@ function pickSyncSt(el){
   const label=wantDone?'완료':'진행';
   undoCommit();
   pickClear();rDay();rTasks();refetchCal();rWidget();
-  /* 659차: 일괄은 여러 건이 한꺼번에 바뀌므로 결과만 짧게 알린다(되돌리기 버튼은 없앰 — Ctrl+Z) */
-  if(no.length)toast(ok.length+'건 '+label+' · '+no.length+'건 권한 없음');
+  /* 659차: 일괄은 여러 건이 한꺼번에 바뀌므로 결과만 짧게 알린다 · 970차(U5): 폰·위젯은 Ctrl+Z 가 없어 [되돌리기] 단추를 다시 단다 */
+  toastAct(ok.length+'건 '+label+(no.length?' · '+no.length+'건 권한 없음':''),'되돌리기',undoRun);
   void k0;
 }
 function rTasks(){
@@ -3826,9 +3958,10 @@ function rTasks(){
     </div>
   </div>`;
   if(isMob()&&!WIDGET){const t=$('#tbt');if(t&&S.view==='tasks')t.innerHTML=tkYmBtnHTML();}   /* 902차: 폰은 달력처럼 「2026. 9. 4주차 ˅」 년월 버튼 */
-  if(!paintHTML(root,tkHTML)){restoreScroll();rTkNewOverlay();return;}   /* 443차: 같은 내용이면 다시 그리지 않는다 */
+  if(!paintHTML(root,tkHTML)){restoreScroll();rTkNewOverlay();tkSnapTake();return;}   /* 443차: 같은 내용이면 다시 그리지 않는다 */
   restoreScroll();
   rTkNewOverlay();
+  tkSnapTake();
   if(S.tkNew){const t=$('#tnTitle');if(t&&document.activeElement!==t)t.focus();}   /* ⚠ 초점은 **새 업무**에서만 — 수정은 행 안에서 고치므로 자동 초점이 가면 그 칸만 면이 켜진 채 남는다(369차) */
 }
 /* 새 업무 작성 모달 — 상태(S.tkNew)를 켜고 끄는 곳은 그대로 두고(핸들러·저장·닫기),
@@ -3997,10 +4130,10 @@ function tkSkelHTML(){
     </section>`;
   return `<div class="tkbar"><div class="rp-tabs tkm-tabs tkbar-tabs" data-sbx>
       <button class="rp-tab on">불러오는 중<span class="rp-tcnt">·</span></button></div></div>
-    <div class="card tkmain tkwk"><div class="tkwk-cols">${col('완료')}${col('예정')}</div></div>`;
+    <div class="card tkmain tkwk"><div class="tkwk-cols">${col('이번 주기')}${col('다음 주기')}</div></div>`;
 }
 function tkWeekHTML(team,mems,regions){
-  const{cur,nxt}=tkWeekCycles();
+  const{cur,nxt}=tkWeekCycles(),today=todayStr();
   const short=(a,b)=>{const A=toDate(a),B=toDate(b);
     return (A.getMonth()+1)+'/'+A.getDate()+' ~ '+(A.getMonth()===B.getMonth()?'':(B.getMonth()+1)+'/')+B.getDate();};
   /* ── 완료 | 예정 두 칸 — 한 카드 안에서 가운데 선으로 나눈다 ── */
@@ -4028,8 +4161,12 @@ function tkWeekHTML(team,mems,regions){
         {...base,regLabel:grp?rn:'',grp,gw},x.d||'');
     }).join('');
     const cols=base;
+    /* 970차(U8): 칸 이름은 오늘과의 관계(지난·이번·다음 주기) — 「완료」 칸에 아직 안 끝난 업무도 들어 있어 이름이 실제와 달랐다.
+       왼쪽 칸의 미완료는 머리에 「미완료 n」으로 따로 알린다 */
+    const rel=cy.end<today?'지난 주기':cy.start>today?'다음 주기':'이번 주기';
+    const undone=done?list.filter(x=>(x.it.recur&&x.it.recur.f)?!(x.it.doneOn&&x.it.doneOn[occSrc(taskAsPlan(x.sid,x.iid,x.it),x.d)]):stEff(x.it)!==2).length:0;
     return `<section class="tkwk-col">
-      <div class="tkwk-h"><b>${done?'완료':'예정'}</b><span class="tkwk-period">${esc(short(cy.start,cy.end))}</span><span class="c">${list.length}</span></div>
+      <div class="tkwk-h"><b>${rel}</b><span class="tkwk-period">${esc(short(cy.start,cy.end))}</span>${undone?'<span class="tkwk-undone">미완료 '+undone+'</span>':''}<span class="c">${list.length}</span></div>
       <div class="tk-list">
         ${rows?'<div class="tkl '+tkListCls(cols)+'">'+tkHeadRowHTML(cols)+rows+'</div>'
           :'<div class="tk-empty">'+(done?'이 주기에 마감된 업무가 없습니다.':'다음 주기에 잡힌 업무가 없습니다.')+'</div>'}
@@ -4117,10 +4254,13 @@ function gotoTask(sid,iid){
   const it=(S.tasks[sid]||{})[iid];
   if(it&&!(it.recur&&it.recur.f)){
     const sD=it.date||'',e=it.end||it.date||'';
-    if(stEff(it)===2){if(e)S.tkWeek=e;}
-    else if(sD){const nx=rptCycle(addDays(rptCycle(todayStr()).start,7));
-      S.tkWeek=(sD>=nx.start&&sD<=nx.end)?'':addDays(sD,-7);}   /* 기본 화면에 이미 보이면 오늘 주기 그대로 · 953차: 지난 미완료도 그 주기로 */
-    else S.tkWeek='';
+    /* 970차(U8): 기본 화면(오늘 주기 | 다음 주기)에 이미 보이면 주를 옮기지 않는다 — 사이드바로 들어올 때와 같은 화면.
+       전엔 이번 주기 미완료 업무를 찾으면 한 주 앞 화면(예정 칸)으로 가서 들어오는 길마다 주가 달랐다 */
+    const c0=rptCycle(todayStr()),nx=rptCycle(addDays(c0.start,7));
+    const inDef=!sD||(e>=c0.start&&e<=c0.end)||(sD>=nx.start&&sD<=nx.end);
+    if(inDef)S.tkWeek='';
+    else if(stEff(it)===2){S.tkWeek=e;}
+    else S.tkWeek=addDays(sD,-7);   /* 953차: 지난 미완료도 그 주기로 */
   }else S.tkWeek='';
   S.tkNew=null;S.tkEdit=null;
   go('tasks');
@@ -4142,6 +4282,19 @@ function ahSrchSync(v){
   else nqOpen(false);
   nqFromHdr=false;
 }
+/* 970차(U9): 찾기 칸 — ↑↓ 로 결과를 고르고 Enter 로 연다(고른 게 없으면 첫 결과). 칸에 들어가면 지난 검색어를 통째로 골라 두어 새로 치면 바뀐다 */
+document.addEventListener('focusin',e=>{const t=e.target;if(t&&(t.id==='ahQ'||t.id==='nqQ')&&t.value)setTimeout(()=>{try{t.select();}catch(_){}},0);});
+document.addEventListener('keydown',e=>{
+  const t=e.target;if(!t||(t.id!=='ahQ'&&t.id!=='nqQ')||e.isComposing)return;
+  if(e.key!=='ArrowDown'&&e.key!=='ArrowUp'&&e.key!=='Enter')return;
+  const items=[...document.querySelectorAll('#nqPanel.on #nqRes .nq-item')];if(!items.length)return;
+  let i=items.findIndex(x=>x.classList.contains('kb-on'));
+  if(e.key==='Enter'){e.preventDefault();(items[i]||items[0]).click();return;}
+  e.preventDefault();
+  if(i>=0)items[i].classList.remove('kb-on');
+  i=e.key==='ArrowDown'?Math.min(items.length-1,i+1):Math.max(0,i-1);
+  items[i].classList.add('kb-on');items[i].scrollIntoView({block:'nearest'});
+});
 function nqOpen(on){
   const p=$('#nqPanel');if(!p)return;  p.classList.toggle('on',!!on);
   p.setAttribute('aria-hidden',on?'false':'true');  if(on&&!nqFromHdr)setTimeout(()=>{const q=$('#nqQ');if(q){q.focus();q.select();}},60);   /* 457차: 헤더에서 칠 땐 포커스를 빼앗지 않는다 */
@@ -4805,7 +4958,7 @@ async function defSave(sid,items){
     const{data,enc}=defEncode(json);
     await dbPut('defects',{sid,data,enc,compressed:enc!=='raw',count:(items||[]).length,savedAt:Date.now()});
     return true;
-  }catch(e){console.error('defSave failed for',sid,e);toast('하자 데이터 저장 실패');return false;}   /* 763차: 실패를 호출부에 돌려준다 — 먹으면 「저장 완료」로 세어져 새로고침 뒤 자료가 사라진다 */
+  }catch(e){console.error('defSave failed for',sid,e);toast('하자 자료를 이 PC에 저장하지 못했습니다 · 저장 공간을 확인해 주세요');return false;}   /* 763차: 실패를 호출부에 돌려준다 — 먹으면 「저장 완료」로 세어져 새로고침 뒤 자료가 사라진다 */
 }
 async function defLoadAll(){
   try{
@@ -4828,7 +4981,7 @@ function dfMetaSave(){dbPut('meta',{id:'calapp',pubRm:S.dfPubRm||'',lastUp:DFMET
 /* 제외 키워드 — 기본값 'dummy'(테스트행 제외). 이 앱의 설정만 사용한다. */
 S.exTk=(function(){try{return localStorage.getItem('calapp.exTk')??'dummy';}catch(e){return 'dummy';}})();
 
-function progShow(msg){const o=document.getElementById('uprog');if(!o)return;document.getElementById('uprogMsg').textContent=msg||'처리 중...';document.getElementById('uprogFill').style.width='0%';document.getElementById('uprogSub').textContent='';o.classList.add('show');}
+function progShow(msg){const o=document.getElementById('uprog');if(!o)return;document.getElementById('uprogMsg').textContent=msg||'처리 중…';document.getElementById('uprogFill').style.width='0%';document.getElementById('uprogSub').textContent='';o.classList.add('show');}
 function progSet(pct,sub){const f=document.getElementById('uprogFill');if(f)f.style.width=Math.max(0,Math.min(100,pct))+'%';if(sub!=null){const s=document.getElementById('uprogSub');if(s)s.textContent=sub;}}
 function progMsg(msg){const m=document.getElementById('uprogMsg');if(m)m.textContent=msg;}
 function progHide(){const o=document.getElementById('uprog');if(o)o.classList.remove('show');}
@@ -4840,12 +4993,12 @@ function findHeaderRow(rows){const sniff=['접수일','공종','처리상태','�
 function rowsToObjs(aoa){const hi=findHeaderRow(aoa),hs=(aoa[hi]||[]).map(c=>String(c||'').trim());const objs=[];for(let i=hi+1;i<aoa.length;i++){const row=aoa[i]||[];if(row.every(c=>c===''||c==null))continue;const o={};hs.forEach((h,j)=>{if(h&&h!=='__proto__'&&h!=='constructor'&&h!=='prototype')o[h]=row[j]!=null?row[j]:'';});objs.push(o);}return{rows:objs,headers:hs.filter(Boolean)};}
 function setStep(n){document.querySelectorAll('#upstepper .step').forEach((s,i)=>{const j=i+1;s.classList.toggle('done',j<n);s.classList.toggle('act',j===n);if(j<n)s.querySelector('.step-c').innerHTML='<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M3 8l3 3 7-7"/></svg>';else s.querySelector('.step-c').textContent=String(j);});}
 function onFile(f){
-  if(!isEditor()){toast('보기 전용 · 업로드는 관리자만 가능');return;}
+  if(!isEditor()){toast('자료 올리기는 관리자만 할 수 있습니다');return;}
   if(!f){console.warn('[upload] onFile called without file');return;}
   const e=f.name.split('.').pop().toLowerCase();
   if(e==='csv')rCSV(f);
   else if(['xlsx','xls'].includes(e))rXLSX(f);
-  else toast('지원하지 않는 형식: '+e);
+  else toast('엑셀(xlsx·xls)이나 CSV 파일만 올릴 수 있습니다');
   // 같은 파일 재선택 시 onchange가 안 뜨는 브라우저 동작 대응
   const fi=document.getElementById('dfFi');if(fi)fi.value='';
 }
@@ -4871,13 +5024,13 @@ function csvToAoA(text){
 }
 function rCSV(f){
   const r=new FileReader();
-  r.onerror=err=>{console.error('[upload] CSV read error',err);toast('CSV 읽기 실패');};
+  r.onerror=err=>{console.error('[upload] CSV read error',err);toast('CSV 파일을 읽지 못했습니다 · 파일을 다시 골라 주세요');};
   r.onload=e=>{
     try{
       const aoa=csvToAoA(csvDecode(e.target.result));
       const{rows,headers}=rowsToObjs(aoa);
       handleParsed(rows,headers);
-    }catch(err){console.error('[upload] CSV parse error',err);toast('CSV 파싱 실패: '+err.message);}
+    }catch(err){console.error('[upload] CSV parse error',err);toast('CSV 파일을 읽지 못했습니다 · 파일이 깨지지 않았는지 확인해 주세요');}
   };
   r.readAsArrayBuffer(f);
 }
@@ -4891,9 +5044,9 @@ function readWorkbookSafe(data,opts){
   }
 }
 async function rXLSX(f){
-  try{await loadXlsx();}catch(e){toast('엑셀 모듈 로드 실패 · 네트워크·CDN 차단 확인');return;}
+  try{await loadXlsx();}catch(e){toast('엑셀 기능을 불러오지 못했습니다 · 사내망 연결을 확인한 뒤 다시 눌러 주세요');return;}
   const r=new FileReader();
-  r.onerror=err=>{console.error('[upload] XLSX read error',err);toast('파일 읽기 실패');};
+  r.onerror=err=>{console.error('[upload] XLSX read error',err);toast('파일을 읽지 못했습니다 · 파일을 다시 골라 주세요');};
   r.onload=e=>{
     try{
       const wb=readWorkbookSafe(e.target.result,{type:'array',cellDates:true});
@@ -4905,9 +5058,9 @@ async function rXLSX(f){
       console.error('[upload] XLSX parse error',err);
       const msg=String(err.message||err);
       if(/Encrypted|EncryptionInfo|ECMA-376/i.test(msg)){
-        toast('암호로 보호된 엑셀입니다.',5000);
+        toast('암호(AIP)로 보호된 엑셀입니다 · CSV로 저장해 올려 주세요',5000);
       }else{
-        toast('Excel 파싱 실패: '+msg);
+        toast('엑셀 파일을 읽지 못했습니다 · 엑셀에서 다른 이름으로 저장한 뒤 다시 올려 주세요');
       }
     }
   };
@@ -4923,11 +5076,16 @@ function handleParsed(rowsRaw,hs){
   if(missing.length){toast('필수 컬럼 누락: '+missing.join(', '),5000);return;}
   // 경고 컬럼 점검(차단 아님): 대체명 중 하나도 없으면 해당 값이 전부 비어 집계됨 → HCS 컬럼명 변경 신호
   const warnMiss=COLS_WARN.filter(alts=>!alts.some(c=>hs.includes(c))).map(alts=>alts[0]);
-  if(warnMiss.length&&!confirm('다음 컬럼이 엑셀에 없어 해당 값이 전부 빈 채로 집계됩니다.\n(HCS 컬럼명 변경 가능성 — 원본 헤더를 확인하세요)\n\n· '+warnMiss.join('  · ')+'\n\n그대로 진행하시겠습니까?'))return;
-  if(!rows.length){toast('처리할 데이터가 없습니다');return;}
-  S.ubuf=rows;
-  if(excluded)toast(`제외 ${excluded.toLocaleString()}건 적용 · ${rows.length.toLocaleString()}건 처리`);
-  confirmUL();
+  S._upMiss=warnMiss;   /* 973차: 게시 카드의 점검 한 줄 */
+  const go=()=>{
+    if(!rows.length){toast('처리할 데이터가 없습니다');return;}
+    S.ubuf=rows;
+    if(excluded)toast(`제외 ${excluded.toLocaleString()}건 적용 · ${rows.length.toLocaleString()}건 처리`);
+    confirmUL();
+  };
+  /* 970차(C6): 앱 확인창으로 */
+  if(warnMiss.length){confirmAsk('빠진 컬럼 확인','다음 컬럼이 엑셀에 없어 해당 값이 전부 빈 채로 집계됩니다.\n(HCS 컬럼명이 바뀌었을 수 있습니다 — 원본 머리글을 확인하세요)\n\n· '+warnMiss.join('  · '),'그대로 진행',false).then(ok=>{if(ok)go();});return;}
+  go();
 }
 function auditUpload(items){
   const today=new Date(Date.now()+9*36e5).toISOString().slice(0,10); // KST 기준 오늘 YYYY-MM-DD
@@ -4943,12 +5101,13 @@ function auditUpload(items){
   if(futC)L.push(`· 미래 완료일(오늘 이후): ${futC.toLocaleString()}건`);
   if(dupKeys)L.push(`· 중복 접수번호: ${dupKeys.toLocaleString()}종 ${dupRows.toLocaleString()}건`);
   if(noDate)L.push(`· 접수일 없음(집계 제외): ${noDate.toLocaleString()}건`);
+  S._upAud={futR,futC,noDate,dupKeys};   /* 973차: 게시 카드의 점검 한 줄 */
   if(!L.length)return '';
   return `업로드 데이터에서 이상 징후가 발견되었습니다.\n\n${L.join('\n')}\n\n그대로 진행하면 회의자료 수치에 영향을 줄 수 있습니다. 계속 진행하시겠습니까?\n(취소 후 원본 파일을 수정하는 것을 권장합니다)`;
 }
 async function confirmUL(){
   if(!S.ubuf){toast('파일을 먼저 업로드하세요');return;}
-  progShow('데이터 정규화 중...');
+  progShow('자료 정리 중…');
   await nextFrame();
   // 정규화 + 현장명별 그룹핑 — 청크 단위로 처리해 진행률 표시
   const src=S.ubuf,total=src.length,items=new Array(total);
@@ -4961,7 +5120,7 @@ async function confirmUL(){
   }
   // 이상 징후 점검(차단 아님 — 진행 여부는 사용자 판단)
   const _audit=auditUpload(items);
-  if(_audit){progHide();if(!confirm(_audit)){cancelUL();return;}progShow('데이터 저장 준비 중...');await nextFrame();}
+  if(_audit){progHide();if(!(await confirmAsk('올린 자료 확인',_audit,'그대로 진행',false))){cancelUL();return;}progShow('저장 준비 중…');await nextFrame();}   /* 970차(C6) */
   const byName={},rawByName={};
   for(let i=0;i<items.length;i++){const it=items[i];const k=it.siteName||'(미지정)';(byName[k]=byName[k]||[]).push(it);(rawByName[k]=rawByName[k]||[]).push(src[i]);}
   S._uploadRaw=rawByName;
@@ -5027,7 +5186,7 @@ function dfSiteCfgWrite(sid,site){
 
 async function doSaveUL(byName,allItems){
   S._importing=true;
-  progShow('하자 데이터 저장 중...');
+  progShow('하자 자료 저장 중…');
   await nextFrame();
   // 기준월 자동 결정: 모든 receiptDate의 최댓값이 속한 월
   const dates=allItems.map(i=>i.receiptDate).filter(Boolean).sort();
@@ -5057,7 +5216,7 @@ async function doSaveUL(byName,allItems){
       if(prevDef!==undefined)S.def[site.id]=prevDef;else delete S.def[site.id];
       if(prevAt!==undefined)site.lastUploadedAt=prevAt;else delete site.lastUploadedAt;
       if(prevMeta!==undefined)DFMETA.lastUp[site.id]=prevMeta;else delete DFMETA.lastUp[site.id];
-      progHide();S._uploadRaw=null;throw new Error(name+' 저장 실패(IndexedDB) — 이전 자료는 그대로 두었습니다. 브라우저 저장 공간·시크릿 모드 여부를 확인하세요');
+      progHide();S._uploadRaw=null;throw new Error(josa(name,'을','를')+' 이 PC에 저장하지 못했습니다 · 이전 자료는 그대로 두었습니다. 저장 공간이나 시크릿 창인지 확인해 주세요');
     }
     savedCount+=its.length;savedSites++;savedNames.push(site.name);
     if(!firstSid)firstSid=site.id;
@@ -5074,6 +5233,7 @@ async function doSaveUL(byName,allItems){
   Object.keys(DF.kpi).forEach(k=>{const sid=k.slice(k.indexOf('/')+1);
     if(((S.def||{})[sid]||[]).length){delete DF.kpi[k];delete DF.sw[k];delete DF.sam[k];delete (DF.local||{})[k];}});
   DF.lastDash=null;
+  if(savedSites){S._upChk=Object.assign({miss:S._upMiss||[]},S._upAud||{});DFPUB=null;}   /* 973차: 새로 올리면 지난 게시 결과 카드는 닫고 점검 한 줄을 띄운다 */
   dfProdCardFill();   /* ⚠ 원본 setRmChip → 게시 카드 갱신 */
   if(S.view==='defect')rDefect();
   toast(`${savedCount.toLocaleString()}건 · ${savedSites}개 현장 저장 완료`);
@@ -5081,7 +5241,7 @@ async function doSaveUL(byName,allItems){
   setTimeout(()=>{
     setStep(1);
     S._importing=false;
-    toast('저장 완료 · 이 PC 화면에는 바로 반영됩니다 — 팀 화면은 [등록] 후에 바뀝니다',6000);   /* ⚠ 원본은 화면 이동 — calapp 화면은 게시본 기준이라 이동해도 숫자가 안 변해 오해를 부른다 */
+    toast('저장했습니다 · 이 PC 화면에는 바로 반영됩니다 — 팀 화면은 [게시] 후에 바뀝니다',6000);   /* ⚠ 원본은 화면 이동 — calapp 화면은 게시본 기준이라 이동해도 숫자가 안 변해 오해를 부른다 */
   },600);
 }
 function cancelUL(){S.ubuf=null;S._uploadRaw=null;S._importing=false;}
@@ -5370,16 +5530,67 @@ function dfOrgToDashTeams(){
    · vac: 원본은 로컬 S.cmt — calapp 편집 경로는 RTDB 리프이므로 금월 리프 → 전월 리프 순으로 읽어 싣는다(이월)
    · fb2SeedPlansAnalysis 생략 — calapp 은 처리계획·분석의견을 처음부터 리프에 실시간으로 쓴다
    · 미래 게시월 정리: toastAction 대신 confirm ── */
+/* ═══ 973차(사용자): 게시 단계 목록 · 결과 카드 ═══
+   토스트(「게시 중…」「게시했습니다」)로만 지나가던 것을 카드 안에 남긴다. 단계는 실제 순서 그대로 다섯 개.
+   ⚠ 게시본은 FB.db.ref().update(upd) **한 번**으로 쓴다 — 실패하면 아무것도 바뀌지 않는다(일부만 바뀌는 일 없음). 실패 문구가 이 사실에 기대고 있다.
+   결과 카드는 [결과 닫기] 또는 다음 업로드까지 남는다(세션 메모리 — 새로고침하면 사라짐) */
+const DFP_STEPS=[['src','원본 확인'],['keep','직전 게시본 확인'],['agg','집계'],['write','게시본 쓰기'],['stale','뒤 게시월 확인']];
+let DFPUB=null;
+let DF_LAST_PUB='';   /* 최신 게시월(reportIndex 최댓값) — 게시 카드가 채운다. 실패 문구의 「팀 화면은 …그대로」 */
+function dfpStart(rm){DFPUB={rm,state:'run',steps:{},cur:''};DFP_STEPS.forEach(([k])=>{DFPUB.steps[k]={st:'wait',sub:'',cnt:'',ms:null};});
+  const d={src:'이 PC 원본',keep:'원본 없는 현장의 유지값',agg:'대시보드 · 현장별 · 공종별 · 공가',write:'게시본 '+rm+' · 한 번에',stale:'기준월보다 뒤인 게시월이 있는지'};
+  Object.keys(d).forEach(k=>{DFPUB.steps[k].sub=d[k];});rDfPub();}
+function dfpRun(k,sub,cnt){if(!DFPUB)return;const s=DFPUB.steps[k];s.st='run';s.t0=performance.now();if(sub!=null)s.sub=sub;s.cnt=cnt||'';DFPUB.cur=k;rDfPub();}
+function dfpCnt(k,cnt){if(!DFPUB)return;DFPUB.steps[k].cnt=cnt;rDfPub();}
+function dfpOk(k,sub){if(!DFPUB)return;const s=DFPUB.steps[k];s.st='ok';s.ms=performance.now()-(s.t0||performance.now());if(sub!=null)s.sub=sub;s.cnt='';rDfPub();}
+function dfpFail(msg){if(!DFPUB)return;const k=DFPUB.cur,s=k&&DFPUB.steps[k];
+  if(s){s.st='bad';s.ms=performance.now()-(s.t0||performance.now());s.sub=msg;s.cnt='';}
+  DFPUB.state='fail';rDfPub();}
+function dfpClose(){DFPUB=null;rDfPub();}
+function rDfPub(){
+  const box=$('#dfPubBox'),run=$('#dfPubRun');if(!box||!run)return;
+  if(!DFPUB){box.hidden=false;run.hidden=true;run.innerHTML='';return;}
+  box.hidden=true;run.hidden=false;
+  const P=DFPUB,OK='<svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>',X='<svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7 7 17"/></svg>';
+  const fmtMs=ms=>ms==null?'':ms<100?'<0.1s':(ms/1000).toFixed(1)+'s';   /* 잰 값 그대로 — 0.1초 밑은 「<0.1s」 */
+  const rows=DFP_STEPS.map(([k,t])=>{const s=P.steps[k];
+    return '<div class="st-r '+s.st+'"><span class="st-i">'+(s.st==='ok'?OK:s.st==='bad'?X:'')+'</span>'
+      +'<span class="st-t"><b>'+esc(t)+'</b><span>'+esc(s.sub||'')+'</span></span>'
+      +(s.st==='run'&&s.cnt?'<span class="st-c">'+esc(s.cnt)+'</span>':'<span class="st-d">'+((s.st==='ok'||s.st==='bad')?fmtMs(s.ms):'')+'</span>')+'</div>';}).join('');
+  const done=DFP_STEPS.filter(([k])=>P.steps[k].st==='ok').length;
+  const pill=P.state==='run'?'<span class="pb-pill run">'+(P.wait?'확인 대기':'진행 중 · '+Math.min(done+1,5)+' / 5')+'</span>'
+    :P.state==='done'?'<span class="pb-pill ok">게시 완료</span>':'<span class="pb-pill bad">게시 실패</span>';
+  let res='',btns='';
+  if(P.state==='done'&&P.res){const r=P.res;
+    const chg=r.pR>0?((r.tR-r.pR)/r.pR*100):null;
+    res='<div class="rs-sum"><b>게시했습니다 · '+esc(dfFmtDT(r.at))+'</b>팀 전원 화면이 '+esc(P.rm)+' 기준으로 바뀌었습니다. '+r.n+'개 현장을 갱신했고, '
+        +(r.k?r.k+'개 현장은 이 PC에 원본이 없어 직전 게시 값을 유지했습니다.':'원본이 없어 직전 값을 유지한 현장은 없습니다.')+'</div>'
+      +'<div class="rs-t"><div><span>갱신 현장</span><b>'+r.n+'</b></div><div><span>전체 접수</span><b>'+r.tR.toLocaleString()+'</b></div>'   /* KPI 카드(.kc)처럼 이름 위 · 숫자 아래 */
+        +'<div><span>미처리</span><b>'+r.tU.toLocaleString()+'</b></div>'
+        +'<div><span>접수 전월 대비</span><b class="'+(chg==null?'':chg>0?'up':chg<0?'dn':'')+'">'+(chg==null?'—':(chg>0?'+':'')+chg.toFixed(1)+'%')+'</b></div></div>'
+      +'<div class="pb-ok'+(r.warn?' warn':'')+'"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12.3 2.8 2.8L16 9.8"/></svg>'+esc(r.line)+'</div>';
+    btns='<div class="pb-row"><button class="btn bg2" data-act="dfp.close">결과 닫기</button></div>';}
+  else if(P.state==='fail'){
+    res='<div class="rs-sum bad"><b>게시하지 못했습니다 · 아무것도 바뀌지 않았습니다</b>게시본은 모든 현장을 한 번에 쓰므로 일부만 바뀌는 일은 없습니다.'
+      +(P.last?' 팀 화면은 '+esc(P.last)+' 게시본 그대로입니다.':'')+' 연결을 확인한 뒤 [다시 게시]를 눌러 주세요.</div>';
+    btns='<div class="pb-row"><button class="btn bg2" data-act="dfp.close">결과 닫기</button><button class="btn bp" data-act="dfp.publish">다시 게시</button></div>';}
+  run.innerHTML='<div class="pb-h"><b>'+esc(P.rm)+' 게시</b>'+pill+'</div>'+res+'<div class="st">'+rows+'</div>'+btns;
+}
 async function dfPublish(){
-  if(!isEditor()){toast('등록 권한이 없습니다(관리자 전용)');return;}
-  if(!S.live||!FB.db){toast('네트워크에 연결할 수 없습니다.');return;}
-  if(!Object.keys(S.def||{}).length){toast('등록할 데이터 없음 · 리스트 업로드 필요');return;}
+  if(!isEditor()){toast('게시는 관리자만 할 수 있습니다');return;}   /* 970차(C1): 이 흐름은 「게시」 하나로 */
+  if(!S.live||!FB.db){toast('서버에 연결할 수 없습니다 · 연결을 확인해 주세요');return;}
+  if(!Object.keys(S.def||{}).length){toast('게시할 자료가 없습니다 · 먼저 하자 목록을 올려 주세요');return;}
   const btn=$('#dfPubBtn');if(btn)btn.disabled=true;
+  const _last=DF_LAST_PUB;   /* 실패 문구 「팀 화면은 …그대로」 */
   try{
-    toast('등록 준비 중…');
     dfSubSiteCfg();   /* hasCommercial/showVacant 최신화 — 게시 sites 에 실린다 */
     const rm=dfPubRm(),pm=pM(rm);
+    dfpStart(rm);DFPUB.last=_last;
+    dfpRun('src');
     const cap=capAll();
+    {const _ids=Object.keys(S.def||{}).filter(id=>(S.def[id]||[]).length);let _n=0;_ids.forEach(id=>{_n+=S.def[id].length;});
+     dfpOk('src','이 PC 원본 '+_ids.length+'개 현장 · '+_n.toLocaleString()+'건');}
+    dfpRun('keep');
     /* ⚠ 686차 핵심 수정 — 예전에는 dfSites() 전부를 calc(S.def[id]||[]) 로 다시 계산해 게시했다.
        이 PC 에 원본 행이 없는 현장은 빈 배열로 계산돼 **전부 0 으로 덮였다.**
        현장 3개만 올린 PC 에서 [등록]을 누르면 나머지 현장 숫자가 통째로 0 이 됐고,
@@ -5391,6 +5602,8 @@ async function dfPublish(){
     for(const s2 of _keepSites){
       try{const v=(await FB.db.ref('report/'+rm+'/'+s2.id+'/kpi').once('value')).val();if(v)_keepKpi[s2.id]=dfDec(v);}catch(e){}
     }
+    {const _kn=Object.keys(_keepKpi).length;
+     dfpOk('keep',_keepSites.length?'원본 없는 현장 '+_keepSites.length+'개 · 직전 게시 값 '+_kn+'개 유지':'원본 없는 현장 없음');}
     /* 대시보드 합계도 같은 규칙 — 새로 계산한 현장 + 직전 게시본을 남긴 현장을 함께 더한다.
        둘 다 없는 현장(한 번도 안 올린 신규)만 합계에서 빠진다. */
     const all=dfDashSites().map(s=>({s,st:_hasRows(s.id)?calc(S.def[s.id],s,rm):(_keepKpi[s.id]||null)}))
@@ -5401,6 +5614,7 @@ async function dfPublish(){
     const rate=tR>0?tRes/tR*100:0,pRate=pR>0?pRes/pR*100:0;
     /* 게시 전 검토(615차) — 잘못된 파일·기준월을 마지막으로 거른다. 취소·닫기(Esc·배경)는 게시 중단. */
     const _chg=pR>0?((tR-pR)/pR*100):0;
+    DFPUB.wait=true;rDfPub();
     const goOn=await new Promise(resolve=>{
       window.__PUBOK__=resolve;
       /* 615차: 요약 대신 현장 열거 — 왼쪽부터 현장명·전체 접수·미처리·처리율(합계 행 굵게) */
@@ -5423,7 +5637,7 @@ async function dfPublish(){
       const _keepN=dfSites().filter(s2=>!_hasRows(s2.id)&&_keepKpi[s2.id]).length;
       const _keepWarn=_keepN?'<p style="font-size:12px;color:var(--rd);font-weight:700;margin:-4px 0 10px">원본 없는 현장 '+_keepN+'개는 직전 게시본으로 유지되지만, 대시보드의 주차별 추이·공종별 집계는 이 PC에 올린 현장분만 반영됩니다. 월초 전 현장 등록이 원칙입니다.</p>':'';
       openModal('사내 게시 확인',
-        '<p style="font-size:13px;color:var(--lbl2);margin-bottom:10px">아래 내용이 맞으면 게시하세요 — 팀 전원 화면에 곧바로 반영됩니다.</p>'+_keepWarn
+        '<p style="font-size:13px;color:var(--lbl2);margin-bottom:10px">현장별 숫자가 맞으면 게시하세요.</p>'+_keepWarn
         +'<div class="share-row" style="padding-left:0;padding-right:0"><div class="share-info"><b>기준월</b></div><b style="font-size:14px">'+esc(rm)+'</b></div>'
         +'<div class="md-scroll" style="max-height:46vh">'
         +'<div style="display:grid;grid-template-columns:1fr 84px 74px 70px;gap:8px;font-size:11px;font-weight:700;color:var(--lbl2);padding:2px 0 4px;"><div style="padding:0 2px">현장명</div><div style="text-align:right;padding:0 2px">전체 접수</div><div style="text-align:right;padding:0 2px">미처리</div><div style="text-align:right;padding:0 2px">처리율</div></div>'
@@ -5432,13 +5646,16 @@ async function dfPublish(){
         +'</div>',
         '<button class="btn bg2 bsm" data-act="dfp.pubCancel">취소</button><button class="btn bp bsm" data-act="dfp.pubOk">게시</button>');
     });
-    if(!goOn){toast('게시를 취소했습니다');return;}
-    toast('등록 중…');
+    if(!goOn){dfpClose();toast('게시를 취소했습니다');return;}
+    DFPUB.wait=false;
+    const _rows=dfSites().filter(s2=>_hasRows(s2.id));let _ai=0;
+    dfpRun('agg',null,'현장 0 / '+_rows.length);
     const insightsHTML=dfInsightsBuild(all,tR,tRes,tU,tLt,rate,pRate,rm);
     const upd={};
     upd['report/'+rm+'/_dash']={wks:cap.wks||[],am:cap.am||{},insightsHTML:insightsHTML,sites:dfOrgToDashSites(),teams:dfOrgToDashTeams()};
     for(const s2 of dfSites()){ // 인수 전 현장 포함 — 대시보드 집계 제외는 유지되나 현장 개별 게시본은 전 현장에 제공(원본과 동일)
       if(!_hasRows(s2.id))continue;   /* ⚠ 686차: 원본이 없으면 아예 쓰지 않는다(직전 게시본 유지) */
+      dfpCnt('agg','현장 '+(++_ai)+' / '+_rows.length);
       const r=calc(S.def[s2.id],s2,rm);
       const kpi=Object.assign({},r,{ul:redactUL(r.ul),lul:redactUL(r.lul),critUl:redactUL(r.critUl)}); // 캡(300) 목록 — ulz 해제 실패 시 폴백
       let ulz='';
@@ -5455,23 +5672,35 @@ async function dfPublish(){
     upd['report/'+rm+'/_meta']={publishedAt:Date.now(),publishedBy:String((S.user&&S.user.email)||'').slice(0,120),rm:rm};
     upd['reportIndex/'+rm]=Date.now();
     Object.keys(upd).forEach(function(p){upd[p]=deepEncKeys(upd[p]);}); // 중첩 맵 키(하자유형/공종/보수주체 등)에 '/'·'.' 등이 있으면 거부되므로 인코딩
+    dfpOk('agg',_rows.length+'개 현장 · 대시보드 · 현장별 · 공종별 · 공가');
+    dfpRun('write','게시본 '+rm+' · '+_rows.length+'개 현장 한 번에');
     await FB.db.ref().update(upd);
+    dfpOk('write');
     /* 소비자 캐시 무효화 — 같은 화면에서 곧바로 새 게시본을 본다 */
     delete DF.cache[rm];
     Object.keys(DF.kpi).forEach(k=>{if(k.indexOf(rm+'/')===0){delete DF.kpi[k];delete DF.sw[k];delete DF.sam[k];delete DF.vac[k];}});
     {const _now=new Date().toISOString();DFMETA.pubAt=DFMETA.pubAt||{};dfSites().forEach(s2=>{if(_hasRows(s2.id))DFMETA.pubAt[s2.id]=_now;});DF._pubAt[rm]=_now;dfMetaSave();dfTopbar();if(S.view==='settings')dfProdCardFill();}   /* 697차: 미게시 현장 목록도 갱신 */   /* 688차: 게시 도장 — 이 뒤로 원본이 안 바뀌면 「미게시 변경」이 꺼진다 */
     dfProdCardFill();
-    {const _n=dfSites().filter(s2=>_hasRows(s2.id)).length,_k=_keepSites.filter(s2=>_keepKpi[s2.id]).length;
-     toast('등록 완료 · '+rm+' · 갱신 '+_n+'개 현장'+(_k?' · 유지 '+_k+'개':''),3500);}
+    const _n=_rows.length,_k=_keepSites.filter(s2=>_keepKpi[s2.id]).length;
+    toast('게시했습니다 · '+rm+' · 현장 '+_n+'개 갱신'+(_k?' · '+_k+'개 유지':''),3500);
+    let _staleLine='기준월보다 뒤 게시본 없음',_warn=false;
+    dfpRun('stale');
     try{
       const idx=(await FB.db.ref('reportIndex').once('value')).val()||{};
       const stale=Object.keys(idx).filter(k=>/^\d{4}-\d{2}$/.test(k)&&k>rm);
-      if(stale.length&&confirm('기준월('+rm+')보다 미래인 게시월 발견: '+stale.join(', ')+'\n잘못 게시된 월이면 삭제해야 뷰어 기준월이 어긋나지 않습니다. 지금 삭제하시겠습니까?')){
+      if(stale.length){_staleLine='뒤 게시본 '+stale.join(', ')+' 남김';_warn=true;}
+      if(stale.length&&(await confirmAsk('기준월보다 뒤의 게시본','기준월('+rm+')보다 뒤인 게시월이 있습니다: '+stale.join(', ')+'\n잘못 게시된 월이면 지워야 팀 화면의 기준월이 어긋나지 않습니다. 지운 게시본은 되돌릴 수 없습니다.','게시본 지우기',true))){   /* 970차(C6) */
         const del={};stale.forEach(m=>{del['report/'+m]=null;del['reportIndex/'+m]=null;});
-        await FB.db.ref().update(del);toast('게시월 삭제 완료 · '+stale.join(', '));
+        await FB.db.ref().update(del);toast('게시본을 지웠습니다 · '+stale.join(', '));
+        _staleLine='뒤 게시본 '+stale.join(', ')+' 지움';_warn=false;
       }
-    }catch(e){console.warn('[게시] 미래 게시월 감지 실패',e);}
-  }catch(e){console.error('[게시] 실패',e);toast('등록 실패: '+((e&&e.message)||e));}
+      dfpOk('stale',_staleLine);
+    }catch(e){console.warn('[게시] 미래 게시월 감지 실패',e);_staleLine='뒤 게시월은 확인하지 못함';_warn=true;dfpOk('stale',_staleLine);}
+    DF_LAST_PUB=rm>(DF_LAST_PUB||'')?rm:DF_LAST_PUB;
+    DFPUB.state='done';
+    DFPUB.res={at:Date.now(),n:_n,k:_k,tR,tU,pR,warn:_warn,line:'오류 없음 · '+(_k?'유지한 현장 '+_k+'개':'유지한 현장 없음')+' · '+_staleLine};
+    rDfPub();
+  }catch(e){console.error('[게시] 실패',e);dfpFail(navigator.onLine===false?'연결이 끊겨 하지 못했습니다':'하지 못했습니다 · 연결을 확인해 주세요');toast('게시하지 못했습니다 · 연결을 확인한 뒤 다시 눌러 주세요');}   /* 970차(C2): 원문은 콘솔에 */
   finally{if(btn)btn.disabled=false;}
 }
 
@@ -5481,20 +5710,46 @@ function dfProdCardFill(){
   card.style.display=isEditor()&&!S.snap?'':'none';
   /* 값이 Firebase 에 있으므로 로컬 모드(!S.live)에서는
      저장 자체가 불가능하다 — 보이는데 안 되는 칸을 두지 않는다. */
-  const sids=Object.keys(S.def||{});let n=0;sids.forEach(k=>{n+=(S.def[k]||[]).length;});
-  /* 615차 통합 행 — 굵은 줄=이 PC 상태, 아랫줄=업로드·최신 등록 시각 */
+  const sids=Object.keys(S.def||{}).filter(k=>(S.def[k]||[]).length);let n=0;sids.forEach(k=>{n+=S.def[k].length;});
+  /* 973차: 조건 네 줄(이 PC 원본 · 대시보드 집계 · 최신 게시 · 기준월) — 전엔 한 줄에 상태 글자와 기준월·[게시]가 붙어 있었다 */
+  const _sm=t=>t?'<small>'+esc(t)+'</small>':'';   /* 975차(사용자): 회색 설명을 앞에, 검정 값을 뒤(오른쪽 끝)에 — 값이 끝에 서야 무게가 산다 */
   const st=$('#dfLocalStat');
-  if(st)st.textContent=sids.length?('이 PC 데이터 · '+sids.length+'개 현장 · '+n.toLocaleString()+'건'):'업로드된 데이터 없음';
-  const sub=$('#dfPubSub');
-  if(sub){const h0=(DFMETA.hist||[])[0];let t=sids.length?'':'이 PC 가 마스터가 아니면 정상 · ';
-    if(h0)t='업로드 '+dfFmtDT(h0.at)+' · ';
-    sub.innerHTML=esc(t)+'등록 <span id="dfPubAt">—</span>';}
-  const rl=$('#dfPubRm');if(rl&&document.activeElement!==rl)rl.value=dfPubRm();
+  if(st){const h0=(DFMETA.hist||[])[0];
+    st.innerHTML=sids.length?_sm(h0?dfFmtDT(h0.at)+' 업로드':'')+esc(sids.length+'개 현장 · '+n.toLocaleString()+'건'):_sm('이 PC가 마스터가 아니면 정상')+'업로드된 데이터 없음';}
+  const ds=$('#dfDashStat');
+  if(ds){const pre=dfSites().filter(x=>dfIsPre(x)).length;ds.innerHTML=_sm(pre?'인수 전 '+pre+'개 제외':'')+esc(dfDashSites().length+'개 현장');}
+  const rm=dfPubRm();
+  const rl=$('#dfPubRm');if(rl&&document.activeElement!==rl)rl.value=rm;
+  const gb=$('#dfPubBtn');if(gb)gb.textContent=rm+' 게시 · 팀 전원 화면에 반영';
   /* 697차: 등록했지만 아직 게시하지 않은 현장 — 이력보다 이게 실무에 쓸모 있다. 게시하면 사라진다 */
   const pd=$('#dfPending');
   if(pd){const ids=dfLocalDirtySites();
     pd.hidden=!ids.length;
     pd.innerHTML=ids.length?'<b>미게시 '+ids.length+'개 현장</b> — '+esc(ids.map(id=>((S.org.sites||[]).find(x=>x.id===id)||{}).name||id).join(' · ')):'';}
+  /* 973차: 올린 자료 점검 — 이 세션에서 올렸을 때만(S._upChk). 문제가 없어도 한 줄 남긴다 */
+  const ck=$('#dfChk');
+  if(ck){const c=S._upChk;ck.hidden=!c;
+    if(c){const fut=(c.futR||0)+(c.futC||0),bad=(c.miss||[]).length||fut||c.noDate||c.dupKeys;
+      const L=[(c.miss||[]).length?'빠진 컬럼 '+c.miss.join(', '):'빠진 컬럼 없음','미래 날짜 '+fut.toLocaleString()+'건','날짜 없는 건 '+(c.noDate||0).toLocaleString()+'건'];
+      if(c.dupKeys)L.push('중복 접수번호 '+c.dupKeys.toLocaleString()+'종');
+      ck.classList.toggle('warn',!!bad);
+      ck.innerHTML='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/>'+(bad?'<path d="M12 7.5v5.5M12 16.2v.3"/>':'<path d="m8 12.3 2.8 2.8L16 9.8"/>')+'</svg>'
+        +esc((bad?'올린 자료 점검 · 그대로 진행함 · ':'올린 자료 점검 통과 · ')+L.join(' · '));}}
+  /* 최신 게시 — 서버에서 읽는다(늦게 온 응답이 새 값을 덮지 않게 차례표) */
+  const pl=$('#dfPubLast'),tk=(dfProdCardFill._t=(dfProdCardFill._t||0)+1);
+  if(pl&&!(S.live&&FB.db))pl.textContent='—';
+  if(S.live&&FB.db){
+    const who=e=>{e=String(e||'').toLowerCase();if(!e)return '';const f=o=>Object.values(o||{}).find(x=>x&&String(x.email||'').toLowerCase()===e);const q=f(S.people)||f(S.accounts);return (q&&q.name)||e.split('@')[0];};
+    FB.db.ref('reportIndex').once('value').then(async s=>{
+      const ks=Object.keys(s.val()||{}).filter(k=>/^\d{4}-\d{2}$/.test(k)).sort(),lm=ks[ks.length-1]||'';
+      if(tk!==dfProdCardFill._t)return;
+      DF_LAST_PUB=lm;
+      if(pl){if(!lm)pl.innerHTML='없음';
+        else{let m=null;try{m=(await FB.db.ref('report/'+lm+'/_meta').once('value')).val();}catch(e){}
+          if(tk!==dfProdCardFill._t)return;
+          pl.innerHTML=_sm(m?[m.publishedAt?dfFmtDT(m.publishedAt):'',who(m.publishedBy)].filter(Boolean).join(' · '):'')+esc(lm);}}
+    }).catch(()=>{if(tk===dfProdCardFill._t&&pl)pl.textContent='—';});}
+  rDfPub();
   dfExTkRender();
   const _fill=(id,v)=>{const e=$(id);if(e&&document.activeElement!==e)e.value=v||'';};
   const hi=$('#dfUpHist');
@@ -5504,10 +5759,6 @@ function dfProdCardFill(){
     hi.innerHTML=h.length?h.map(x=>'<div>'+esc(dfFmtDT(x.at))+' · '+x.sites+'개 현장 · 기준월 '+esc(x.rm||'—')
       +(Array.isArray(x.names)&&x.names.length?'<div style="font-size:11px;color:var(--lbl3);padding-left:10px">'+esc(x.names.join(' · '))+'</div>':'')+'</div>').join('')   /* 692차: 어느 현장을 넣었는지 */
       :'—';}   /* 행수는 뺐다(사용자: 궁금하지 않음) — meta 에는 계속 남는다 */
-  const at=$('#dfPubAt');
-  if(at){at.textContent='—';
-    if(S.live&&FB.db)FB.db.ref('report/'+dfPubRm()+'/_meta/publishedAt').once('value')
-      .then(s=>{const v=s.val();if(v)at.textContent=dfFmtDT(v);}).catch(()=>{});}   /* 업로드와 같은 서식(615차) */
 }
 /* 제외 키워드 칩(615차) — 엔터·쉼표로 추가, ×·백스페이스로 제거. 엔진 쪽 값은 그대로 쉼표 문자열(S.exTk) */
 function dfExTkList(){return String(S.exTk||'').split(',').map(x=>x.trim()).filter(Boolean);}
@@ -5531,6 +5782,7 @@ function dfProdWire(){
   Object.assign(ACT,{
     'dfp.uz':()=>{const fi=document.getElementById('dfFi');if(fi)fi.click();},
     'dfp.publish':()=>dfPublish(),
+    'dfp.close':()=>dfpClose(),   /* 973차: 결과 카드 닫기 */
     'dfp.ulCancel':()=>{cancelUL();S._wiz=null;closeModal();},
     'dfp.ulSite':el=>confirmNewSite(el.dataset.name,Number(el.dataset.idx),Number(el.dataset.total)),
     'dfp.snapAll':()=>{$$('#mbody .snap-mo').forEach(c=>{c.checked=true;});},
@@ -6007,8 +6259,13 @@ function dfPlanSet(sid,field,rm,trade,val){
   if(!DF.plans[sid])DF.plans[sid]={};
   if(!DF.plans[sid][field])DF.plans[sid][field]={};
   DF.plans[sid][field][key]=v;
-  if(S.live&&FB.db)FB.db.ref('plans/'+sid+'/'+field+'/'+key).set(v).catch(()=>toast('처리계획 저장 실패'));
+  if(S.live&&FB.db)return FB.db.ref('plans/'+sid+'/'+field+'/'+key).set(v).then(()=>true,()=>{toast('처리계획을 저장하지 못했습니다 · 연결을 확인해 주세요');return false;});
+  return Promise.resolve(true);
 }
+/* 970차(U13): 처리계획 칸 옆에 「저장됨 ✓」 1초 — 저장됐는지 알 길이 없었다 */
+function dfSavedMark(el){const box=el&&el.closest('.pp-stack');if(!box)return;
+  let m=box.querySelector('.pp-saved');if(!m){m=document.createElement('span');m.className='pp-saved';m.textContent='저장됨 ✓';box.appendChild(m);}
+  m.classList.add('on');clearTimeout(m._t);m._t=setTimeout(()=>m.classList.remove('on'),1000);}
 /* 현재 열어 둔 현장의 처리계획·분석 의견 실시간 구독.
    입력 중인 칸은 타이핑이 덮어쓰지 않도록 보호한다. */
 function dfSubSite(sid){
@@ -6263,7 +6520,7 @@ function dfDonutDraw(key,cid,lgid,items,opt){   /* 714차: opt {colors,unit,labe
     });
   }
 }
-function dfDonutCardHTML(title,cid,lgid){return `<div class="card"><div class="ct cardttl">${esc(title)}</div><div class="dn-side"><div class="canv"><canvas id="${cid}"></canvas></div><div class="lg lg-2col" id="${lgid}"></div></div></div>`;}
+function dfDonutCardHTML(title,cid,lgid){return `<div class="card dn-card"><div class="ct cardttl">${esc(title)}</div><div class="dn-side"><div class="canv"><canvas id="${cid}"></canvas></div><div class="lg lg-2col" id="${lgid}"></div></div></div>`;}
 /* 전월대비 실적 현황 — 원본과 같은 가로 막대(전월/금월 + 증감 배지) */
 function dfMomRender(elId,tot,rowsIn){   /* 720차: rowsIn — 다른 지표(세대 레벨)도 같은 전월/금월 막대로 */
   const el=document.getElementById(elId);if(!el)return;
@@ -6355,6 +6612,13 @@ function dfDashTableFill(d){
 /* 대시보드 업체별 축 — 현장별 coAgg 를 업체 기준으로 합친다(원본 dashCoAgg). 상위 10 + 나머지 한 줄 */
 /* 업체별 하자처리 현황 집계 — 대시보드 표·보고서 양식 공용 */
 /* 범례·보고서용 짧은 현장명 — '힐스테이트'는 어디에 붙어 있든 뗀다(갑천1 트리풀시티 힐스테이트 등) */
+/* 970차(U10): 범례 이름이 모두 같은 브랜드 약칭(HS·TH)으로 시작하면 그 앞말을 뗀다 — 구분에 쓰이지 않는 글자가 좁은 범례를 채워 전부 「H…」로 보였다.
+   브랜드가 섞여 있으면 783차대로 둔다(HS·TH 가 구분이 된다). 전체 이름은 툴팁(full)에 남는다 */
+function dfLgTrim(items){
+  const m=items.length&&/^(HS|TH) /.exec(items[0].t||'');if(!m)return items;
+  if(!items.every(x=>String(x.t||'').startsWith(m[0])))return items;
+  return items.map(x=>({...x,t:String(x.t).slice(m[0].length)||x.t}));
+}
 function dfShortSite(nm){
   /* 783차: 브랜드를 지우지 않고 줄인다 — 힐스테이트 → HS, 디에이치/THE H → TH */
   const s2=String(nm||'').replace(/힐스테이트/g,'HS').replace(/디에이치|더\s*에이치|THE\s*H/gi,'TH').replace(/\s{2,}/g,' ').trim().replace(/^[·\-\s]+|[·\-\s]+$/g,'');
@@ -6457,7 +6721,7 @@ function rDefectDash(root,d){
     dfTrendDraw('trend','dfTrend',dashWks);
     dfMomRender('dfMom',{tR,res:tRes,unr:tU,lt:tLt,prev:{total:pT,res:pRes,unr:pU,lt:pLt}});
     /* 범례는 '힐스테이트'를 떼고 보여 준다 — 전체 이름은 툴팁으로 */
-    dfDonutDraw('sx','dfSx','dfSxLg',all.filter(x=>x.st.unr>0).map(x=>({t:dfShortSite(x.s.name),full:x.s.name,c:x.st.unr})).sort((a,b)=>b.c-a.c));
+    dfDonutDraw('sx','dfSx','dfSxLg',dfLgTrim(all.filter(x=>x.st.unr>0).map(x=>({t:dfShortSite(x.s.name),full:x.s.name,c:x.st.unr})).sort((a,b)=>b.c-a.c)));
     dfDonutDraw('mx','dfMx','dfMxLg',dfDonutData(d.am));
     dfDashMonthTable(d);
     dfDashTableFill(d);
@@ -6799,7 +7063,7 @@ function dfVacPane(sid,stat,vacSv,kind){
   const perRecv=st.Units>0?(st.T/st.Units).toFixed(1):'-',perUnr=st.Units>0?(st.Unr/st.Units).toFixed(1):'-';
   return`<div class="as">
     <div class="card vac-stat"><div class="sh"><div class="st cardttl">${vl} 현황</div></div><div class="vrow">
-      <div class="vseg vseg-edit" ${edit}><div class="vseg-l">${vl}</div><div class="vseg-v">${hasV?(mb+mk).toLocaleString():'<span class="vph">입력</span>'}<span class="vseg-u">${_u}</span></div><div class="vseg-m">미분양 ${mb.toLocaleString()} · 미키불출 ${mk.toLocaleString()}</div></div>
+      <div class="vseg vseg-edit" ${edit}><div class="vseg-l">${vl}</div><div class="vseg-v">${hasV?(mb+mk).toLocaleString():'<span class="vph">+ 입력</span>'}<span class="vseg-u">${_u}</span></div><div class="vseg-m">미분양 ${mb.toLocaleString()} · 미키불출 ${mk.toLocaleString()}</div></div>
       <div class="vseg"><div class="vseg-l">전체 접수</div><div class="vseg-v">${st.T.toLocaleString()}<span class="vseg-u">건</span></div><div class="vseg-m">${_u}당 ${perRecv}건</div></div>
       <div class="vseg"><div class="vseg-l">처리 완료</div><div class="vseg-v">${st.Res.toLocaleString()}<span class="vseg-u">건</span></div><div class="vseg-m">처리율 ${(Number(st.Rate)||0).toFixed(1)}%</div></div>
       <div class="vseg"><div class="vseg-l">미처리</div><div class="vseg-v" style="color:var(--am)">${st.Unr.toLocaleString()}<span class="vseg-u">건</span></div><div class="vseg-m">${_u}당 ${perUnr}건</div></div>
@@ -6951,7 +7215,7 @@ async function dfSnapshot(){
   let idx,app;
   try{
     [idx,app]=await Promise.all([fetch('./index.html').then(r=>r.text()),fetch('./app.js?v='+Date.now()).then(r=>r.text())]);
-  }catch(e){toast('스냅샷 생성 실패 · 앱 파일을 불러올 수 없습니다');return;}
+  }catch(e){toast('스냅샷을 만들지 못했습니다 · 창을 새로 고친 뒤 다시 눌러 주세요');return;}
   /* vendor 인라인 — firebase 4종은 뺀다(스냅샷은 통신하지 않는다) */
   /* ⚠ 607차: 이 반복은 index.html 의 `<script src>` **태그를 훑는다**. 605차에 xlsx 를 지연 로드로
      바꾸면서 그 태그를 지웠고, 그러자 스냅샷에 XLSX 가 안 실려 **목록의 '엑셀' 버튼이 죽었다**
@@ -7723,7 +7987,7 @@ function recHeadHTML(){
     +'<span class="rec-n" id="recN"></span>'   /* 624차: 건수를 제목 옆으로 — 값이 변해도 검색창 자리가 안 흔들린다 */
     +'<div class="rl-acts">'
     +'<span class="rl-q-wrap'+(REC.q?' has':'')+'"><svg class="icn icn-sm" aria-hidden="true"><use href="#i-search"></use></svg>'
-    +'<input id="recQ" class="rl-q" placeholder="동·호·공종·내용 검색" value="'+esc(REC.q)+'" autocomplete="off"><button class="rl-qx" data-act="rec.qclear" aria-label="지우기">×</button></span>'
+    +'<input id="recQ" class="rl-q" placeholder="동·호·공종·내용 찾기" value="'+esc(REC.q)+'" autocomplete="off"><button class="rl-qx" data-act="rec.qclear" aria-label="지우기">×</button></span>'
     +'<button class="btn bg2 bsm" data-act="rec.xlsx">엑셀</button>'
     +'<button class="btn bg2 bsm" data-act="rec.pivot" id="recPivBtn">피벗</button>'
     +'<button class="btn bg2 bsm" data-act="modal.close">닫기</button>'
@@ -7786,7 +8050,7 @@ function recMenuListHTML(){
   const allc=M.sel.size===M.all.length&&M.all.length>0;
   const head='<label class="rl-menu-item rl-menu-all"><input type="checkbox" data-act="rec.menuAll" '+(allc?'checked':'')+'><span>(모두 선택)</span></label>';
   const items=list.map(v=>'<label class="rl-menu-item"><input type="checkbox" data-act="rec.menuVal" data-val="'+esc(v)+'" '+(M.sel.has(v)?'checked':'')+'><span>'+esc(v)+'</span></label>').join('');
-  return head+items+(more?'<div class="rl-menu-note">상위 '+CAP+'개 표시 · 검색으로 좁히세요</div>':'');
+  return head+items+(more?'<div class="rl-menu-note">상위 '+CAP+'개 표시 · 찾기로 좁히세요</div>':'');
 }
 function recMenuHTML(){
   const M=REC._menu,col=recCols().find(c=>c.k===M.key);
@@ -7796,7 +8060,7 @@ function recMenuHTML(){
     +'<button class="rl-menu-row" data-act="rec.menuHideCol">이 열 숨기기</button>'
     +(nh?'<button class="rl-menu-row" data-act="rec.menuShowCols">숨긴 열 모두 표시 ('+nh+')</button>':'')
     +'<div class="rl-menu-sep"></div>'
-    +'<input class="rl-menu-q" placeholder="검색" data-act="rec.menuSearch" value="'+esc(M.q||'')+'" autocomplete="off">'
+    +'<input class="rl-menu-q" placeholder="찾기" data-act="rec.menuSearch" value="'+esc(M.q||'')+'" autocomplete="off">'
     +'<div class="rl-menu-list" id="rlMenuList">'+recMenuListHTML()+'</div>'
     +'<div class="rl-menu-foot"><button class="btn bg2 bsm" data-act="rec.menuClear">필터 해제</button><button class="btn bo bsm" data-act="rec.menuApply">적용</button></div>';
 }
@@ -8087,7 +8351,7 @@ async function recWriteXlsx(filename,aoa,sheet){
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(aoa),(sheet||'Sheet1').slice(0,31));
     XLSX.writeFile(wb,filename);
     toast('엑셀로 내보냈습니다');
-  }catch(e){console.error('recWriteXlsx',e);toast('내보내기 실패');}
+  }catch(e){console.error('recWriteXlsx',e);toast('엑셀로 내보내지 못했습니다 · 다시 눌러 주세요');}
 }
 function recXlsx(){
   if(PIV.on){pivExport();return;}   /* 피벗을 보고 있으면 피벗 표를 내보낸다 — 원본과 동일 */
@@ -8217,7 +8481,7 @@ function holdDrop(ds){
     end:span>0?addDays(ds,span):'',updatedAt:Date.now()},'move'));
   if(!S.live){rTasks();rDay();rWidget();}
   rHold();refetchCal();
-  const t=toDate(ds);toast((t.getMonth()+1)+'월 '+t.getDate()+'일로 옮겼습니다');
+  toast(josa(mdLabel(ds),'으로','로')+' 옮겼습니다');
 }
 function wireHoldDnD(){
   const box=$('#holdList');if(!box||box.dataset.wired)return;
@@ -8305,7 +8569,7 @@ function morningReview(){
 }
 /* 919차: 날짜 변경 — 달력에서 고르는 즉시 그 날로 옮긴다(오늘로 이동과 같은 패치, 날짜만 다름) */
 document.addEventListener('change',e=>{const t=e.target;if(!t||!t.classList||!t.classList.contains('mrv-datein'))return;
-  const v=t.value;if(!/^\d{4}-\d{2}-\d{2}$/.test(v))return;mrvApply(t,{st:1,done:false,stKeep:true,date:v,end:''},v.slice(5).replace('-','/')+'로 옮겼습니다');});
+  const v=t.value;if(!/^\d{4}-\d{2}-\d{2}$/.test(v))return;mrvApply(t,{st:1,done:false,stKeep:true,date:v,end:''},josa(mdLabel(v),'으로','로')+' 옮겼습니다');   /* 970차(C7): 토스트 날짜는 「9월 25일」 한 꼴 */});
 /* 창을 닫을 때 — 손대지 않고 남은 업무는 모두 보류로 넘긴다(하나씩 누르는 수고를 덜기 위함) */
 function mrvHoldRest(){
   if(!MRV_ON)return;
@@ -8320,7 +8584,7 @@ function mrvHoldRest(){
   if(!n)return;
   if(!S.live){rTasks();rDay();rWidget();}
   refetchCal();
-  toast(n+'건을 보류함으로 넘겼습니다');
+  toast(n+'건을 「보류한 업무」로 넘겼습니다');
 }
 /* 한 건 처리 — 저장하고 그 줄만 지운다. 다 비면 모달을 닫는다 */
 function mrvApply(el,patch,msg){
@@ -8524,8 +8788,8 @@ function siteTable(){
     <th class="cc" style="width:5%">상가수</th><th class="cc" style="width:8.5%">준공일</th>
     <th class="cc" style="width:5%" data-tip="인수인계를 받은 현장에 켭니다 · 꺼진 현장은 하자처리 현황에서 「인수 전 현장」으로 묶이고 대시보드 집계에서 빠집니다">인수인계</th>
     <th class="cc" style="width:5%" data-tip="끄면 하자 관리 화면의 현장 목록에서 숨깁니다">하자현황</th>
-    <th class="cc" style="width:5%" data-tip="끄면 이 현장의 하자 화면에서 공가세대 탭을 숨깁니다 · 전원에게 즉시 반영">공가세대</th><th class="cc" style="width:5%" data-tip="켜면 이 현장의 하자 화면에 공가상가 탭이 생깁니다 · 전원에게 즉시 반영">공가상가</th><th class="cc" style="width:5%" data-tip="소 제기 현장 표시 · 전원에게 즉시 반영">소제기</th>
-    <th class="cc" style="width:6.5%" data-tip="이 현장 원본이 마지막으로 올라온 날 — 마스터 PC 가 올리면 조직 정보에 함께 저장돼 모두에게 보입니다">업데이트일</th>
+    <th class="cc" style="width:5%" data-tip="끄면 이 현장의 하자 화면에서 공가세대 탭을 숨깁니다 · 전원에게 즉시 반영">공가세대</th><th class="cc" style="width:5%" data-tip="켜면 이 현장의 하자 화면에 공가상가 탭이 생깁니다 · 전원에게 즉시 반영">공가상가</th><th class="cc" style="width:5%" data-tip="소제기 현장 표시 · 전원에게 즉시 반영">소제기</th>
+    <th class="cc" style="width:6.5%" data-tip="이 현장 원본이 마지막으로 올라온 날 — 마스터 PC가 올리면 조직 정보에 함께 저장돼 모두에게 보입니다">업데이트일</th>
   </tr></thead><tbody>${sites.map(x=>`<tr data-sid="${esc(x.id)}">
     <td><select class="mg-inp" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="region" aria-label="권역 선택">${regOpts(x)}</select></td>
     <td><input class="mg-inp" value="${esc(x.name)}" data-act="org.siteUpd" data-id="${esc(x.id)}" data-f="name" aria-label="현장명"></td>
@@ -8938,7 +9202,9 @@ function kmZoomBox(c){
 /* 조직 관리 좌측 카드 */
 function rOrgMap(){
   /* 913차: D+60 점검 목록도 같은 지도를 쓴다 — svg id 가 같으니 보이는 화면 것만 두고 다른 쪽은 비운다 */
-  const d60=S.view==='d60',root=$(d60?'#d60Map':'#orgMapRoot');const other=$(d60?'#orgMapRoot':'#d60Map');if(other&&other.innerHTML)other.innerHTML='';
+  const d60=S.view==='d60';
+  if(!d60&&S.view!=='org')return;   /* 970차(P5): 지도가 안 보이는 화면에선 그리지 않는다 — 로그인마다 지도 파일(190KB)을 받았다. 조직 화면으로 가면 그때 그린다 */
+  const root=$(d60?'#d60Map':'#orgMapRoot');const other=$(d60?'#orgMapRoot':'#d60Map');if(other&&other.innerHTML)other.innerHTML='';
   if(!root)return;
   if(_kmDown){_kmPend=true;return;}   /* 601차 */
   const all=(S.org.sites||[]).filter(x=>x.name);
@@ -9008,7 +9274,7 @@ function kmBigHTML(put){
   /* ⚠ 폭을 .okm-wrap 에 직접 준다 — 모달이 내용 크기(width:auto)라 svg 의 100% 가 viewBox 비율 폭으로 줄어든다 */
   return '<div class="kmw-grid"><div class="okm-wrap" style="width:'+W+'px">'+kmSVG(km.vb,km.sel,{sites:put,w:W,h:H,id:'okmBig'})
     +'<div class="okm-tools">'+kmBackBtn(km)
-    +'<button class="okm-back'+(S.kmYr&&S.kmYr.length?' on':'')+'" data-act="org.mapYrMenu" aria-label="준공 년차 필터" data-tip="'+esc(S.kmYr&&S.kmYr.length?'준공 년차 · '+S.kmYr.map(k=>(KM_YR.find(z=>z[0]===k)||[])[1]).join(' · '):'준공 년차 필터')+'">'
+    +'<button class="okm-back'+(S.kmYr&&S.kmYr.length?' on':'')+'" data-act="org.mapYrMenu" aria-label="준공 연차 필터" data-tip="'+esc(S.kmYr&&S.kmYr.length?'준공 연차 · '+S.kmYr.map(k=>(KM_YR.find(z=>z[0]===k)||[])[1]).join(' · '):'준공 연차 필터')+'">'
     +'<svg class="icn" aria-hidden="true"><use href="#i-filter"></use></svg></button></div>'
     +'</div>'+kmPanelHTML(all,put,list,H)+'</div>';
 }
@@ -9457,7 +9723,7 @@ function rOrg(){
     ar.innerHTML='<div class="set-empty">'+(!S.live
       ? '로컬 모드에서는 계정 목록이 없습니다.'
       : (S.acctDenied
-        ? '계정 목록을 읽을 권한이 없습니다. Firebase 규칙에서 users 노드 읽기를 허용하세요.'
+        ? '계정 목록을 볼 권한이 없습니다 · 계속되면 관리자에게 알려 주세요'
         : '아직 로그인한 계정이 없습니다.'))+'</div>';
     rFilter();return;
   }
@@ -9681,9 +9947,9 @@ function openCtx(x,y,items,anchor){
 function copyText(t,msg){
   const done=()=>toast(msg||'복사했습니다');
   if(navigator.clipboard&&navigator.clipboard.writeText)
-    navigator.clipboard.writeText(String(t)).then(done).catch(()=>toast('복사 실패'));
+    navigator.clipboard.writeText(String(t)).then(done).catch(()=>toast('복사하지 못했습니다'));
   else{const ta=document.createElement('textarea');ta.value=String(t);document.body.appendChild(ta);ta.select();
-    try{document.execCommand('copy');done();}catch(e){toast('복사 실패');}ta.remove();}
+    try{document.execCommand('copy');done();}catch(e){toast('복사하지 못했습니다');}ta.remove();}
 }
 /* ── 866차: 폰에서 **탭을 좌우로 밀어** 넘긴다(사용자) — 하자 현장 탭(df.tab)과 업무 현황 탭(tk.tab).
    882차: 미끄러지는 연출 대신 **손가락을 그대로 따라오는** 방식으로 바꿨다(달력 넘김과 같은 결).
@@ -10079,6 +10345,7 @@ function ctxFor(t){
       return own?[
       ...(()=>{const rc=!!(it.recur&&it.recur.f),occ=tk.dataset.occ||(rc?taskDate(sid,iid,it):''),dn=rc?!!(it.doneOn&&it.doneOn[occSrc(taskAsPlan(sid,iid,it),occ)]):stEff(it)===2;   /* 953차: 반복은 그 회차 */
         return [{label:dn?'진행으로 되돌리기':'완료로 표시',act:()=>ACT['tk.st']({dataset:{sid,iid,occ},closest:()=>null})}];})(),
+      {label:'수정',act:()=>ACT['tk.edit']({dataset:{sid,iid,occ:tk.dataset.occ||''}})},   /* 970차(U4): 달력 카드 메뉴와 같게 */
       {label:'제목 복사',act:()=>copyText(it.text||'','제목을 복사했습니다')},
       {sep:true},
       {label:'삭제',danger:true,act:()=>ACT['tk.del']({dataset:{sid,iid}})}
@@ -10118,7 +10385,7 @@ function ctxFor(t){
 }
 function offdayAsk(ds){
   openModal('휴무일 지정',
-    '<div style="font-size:13px;color:var(--lbl2);margin-bottom:9px;line-height:1.6">'+esc(mdLabel(ds))+' 을(를) 쉬는 날로 표시합니다.<br>공휴일과 같은 색으로 칠해집니다.</div>'
+    '<div style="font-size:13px;color:var(--lbl2);margin-bottom:9px;line-height:1.6">'+esc(josa(mdLabel(ds),'을','를'))+' 쉬는 날로 표시합니다.<br>공휴일과 같은 색으로 칠해집니다.</div>'
     +'<input class="inp" id="offName" maxlength="12" placeholder="예: 단체연차, 창립기념일" value="단체연차">',
     '<button class="btn bg2 bsm" data-act="modal.close">취소</button><button class="btn bp bsm" data-act="offday.save" data-ds="'+esc(ds)+'">지정</button>');
   const mb=$('#mb');if(mb)mb.classList.add('narrow');
@@ -10290,11 +10557,30 @@ function _applySnap(items,key){
   else lsSave(LocalStore._d);
   rDay();rTasks();refetchCal();rWidget();
 }
+/* 970차(U5): 삭제 되돌리기 — 지우기 직전 값(it)으로 업무를 도로 쓰고, 저장이 성공하면 휴지통 사본을 걷는다(trash.restore 와 같은 순서) */
+const _taskOf=(sid,iid)=>(S.tasks[sid]||{})[iid]||((S.arch[sid]||{})[iid])||null;
+function trashUndo(list){
+  Promise.all(list.map(({sid,iid,it})=>Promise.resolve(store.putTask(sid,iid,histPush(cleanTask(it),'restore'))).then(()=>trashDrop(sid,iid))))
+    .then(()=>{if(!S.live){rTasks();rDay();refetchCal();rWidget();}toast(list.length>1?list.length+'건을 되살렸습니다':'되살렸습니다');})
+    .catch(()=>toast('되살리지 못했습니다 · 설정 > 휴지통에서 다시 복원해 주세요'));
+}
+/* 삭제 결과 알림 — 서버가 받아 준 것만 세고, [되돌리기]·Ctrl+Z 가 같은 되살리기로 간다.
+   list: [{sid,iid,it,pr}] (pr = trashTask 가 돌려준 성공 여부) */
+function trashDone(list,msg){
+  Promise.all(list.map(x=>x.pr)).then(rs=>{
+    const ok=list.filter((x,i)=>rs[i]!==false&&x.it).map(({sid,iid,it})=>({sid,iid,it}));
+    if(!ok.length)return;
+    UNDO={label:'삭제',at:Date.now(),items:[],del:ok};REDO=null;
+    toastAct(typeof msg==='function'?msg(ok.length):msg,'되돌리기',undoRun,6000);
+  });
+}
 function undoRun(){
   if(!UNDO){toast('되돌릴 변경 없음');return;}
+  if(UNDO.del){const d=UNDO.del;UNDO=null;trashUndo(d);return;}
   if(!UNDO.items.some(o=>o.next))undoCommit();   /* 버튼을 바로 눌러 아직 못 채웠으면 지금 채운다 */
   /* 953차: 되돌릴 변경 뒤에 같은 업무가 또 바뀌었으면(폼 수정 등) 되돌리지 않는다 — 옛 값을 통째로 써서 나중 수정이 사라졌다 */
-  {const sig=v=>v?JSON.stringify([v.text||'',v.prog||'',v.date||'',v.end||'',stOf(v.st),v.doneOn||{},v.assignees||{},v.site||'',v.kind||'']):'';
+  /* 970차(L11): 모든 칸을 비교한다 — 전엔 링크·색·시간이 빠져 그 사이 남이 바꾼 값이 되돌리기에 지워졌다 */
+  {const sig=v=>{if(!v)return '';const c=cleanTask(v);delete c.updatedAt;delete c.createdAt;delete c.hist;return JSON.stringify(c);};
    if(UNDO.items.some(o=>o.next!==null&&sig(_snap(o.sid,o.iid))!==sig(o.next))){UNDO=null;toast('그 뒤에 바뀐 내용이 있어 되돌리지 않았습니다');return;}}
   _applySnap(UNDO.items,'prev');
   REDO=UNDO;UNDO=null;
@@ -10409,12 +10695,12 @@ const ACT={
     pop.style.left=Math.round(x)+'px';pop.style.top=Math.round(y)+'px';
     cpPaint(pop,(cur&&cur!=='auto')?cur:'#3E71D2');
     setTimeout(()=>document.addEventListener('click',colOutside,true),0);},
-  /* 카드 클릭은 '펼쳐 보기' — 수정은 연필 버튼으로 (실수로 값이 바뀌지 않게) */
-  'plan.open':el=>{
-    const card=el.closest('.plan');if(!card)return;
-    const on=card.classList.toggle('open');
-    S.planOpen=on?el.dataset.pid:'';},
-  'plan.edit':el=>{const p=findPlan(el.dataset.pid);if(p)openPlanEdit(p,null,null,el.dataset.occ||'');},
+  /* 970차(U4): 카드 본문 클릭은 plan.body(앱=편집 · 위젯·권한 없음=펼쳐 보기) — 예전 plan.open 은 거기로 합쳤다 */
+  'plan.body':el=>{const p=findPlan(el.dataset.pid);if(!p)return;
+    if(!WIDGET&&canEditTask(p,p.sid)){openPlanEdit(p,null,null,el.dataset.occ||'');return;}
+    const card=el.closest('.plan.has-det');if(!card)return;   /* 펼쳐 보기(예전 plan.open) */
+    const on=card.classList.toggle('open');S.planOpen=on?el.dataset.pid:'';},
+  'plan.edit':el=>{const p=findPlan(el.dataset.pid);if(!p)return;if(!canEditTask(p,p.sid)){denyTask();return;}openPlanEdit(p,null,null,el.dataset.occ||'');},
   /* 상태 배지 — 누를 때마다 예정→진행→완료→보류 순환.
      편집 폼에서는 draft 만 바꾸고 배지 DOM 을 제자리에서 갈아 끼운다(폼을 다시 그리면 입력 중인 값이 날아간다) */
   'plan.stCycle':el=>{
@@ -10432,13 +10718,14 @@ const ACT={
       return;
     }
     const p=findPlan(el.dataset.pid);if(!p)return;
+    if(!canEditTask(p,p.sid)){denyTask();return;}   /* 970차(L6) */
     const occ=el.dataset.occ||p.date;
     const n=planSt(p,occ)===2?1:2;
     /* 660차: 일정 카드(달력·일자 패널·위젯)도 되돌리기 대상 — 저장소는 업무와 같다(planToTask) */
     if(p.sid&&p.id)undoSnap([{sid:p.sid,iid:p.id}],'상태');
     if(p.recur&&p.recur.f){                 /* 반복은 회차별 완료(doneOn)가 우선한다 */
       const k=occSrc(p,occ);
-      p.doneOn=p.doneOn||{};
+      p.doneOn={...(p.doneOn||{})};   /* 970차(L2): 새 객체로 — 원본(S.tasks)을 직접 고치면 저장 직전 비교에서 차이가 안 잡혀 서버에 안 갔다 */
       if(n===2)p.doneOn[k]=1;else{delete p.doneOn[k];p.st=n;p.done=false;}
     }else{p.st=n;p.done=n===2;p.stKeep=n===1;}   /* 날짜가 지난 뒤 손으로 '진행'을 고르면 그대로 둔다 */
     p.updatedAt=Date.now();store.putPlan(p);
@@ -10456,6 +10743,7 @@ const ACT={
   },
   'plan.del':el=>{
     const p=findPlan(el.dataset.pid),occ=el.dataset.occ||'';
+    if(p&&!canEditTask(p,p.sid)){denyTask();return;}   /* 970차(L6) */
     if(p&&p.recur&&p.recur.f&&occ){
       closeModal();
       openModal('반복 업무 삭제','<div style="font-size:13px;color:var(--lbl2);line-height:1.6">"'+esc(p.title)+'" — 이 날짜만 뺄지, 반복 전체를 지울지 고르세요.</div>',
@@ -10468,12 +10756,13 @@ const ACT={
     confirmModal('업무 삭제','"'+ttl+'" 업무를 휴지통으로 옮깁니다. 30일 안에는 설정 > 휴지통에서 복원할 수 있습니다.',()=>{
       /* ⚠ 폼부터 닫고 지운다 — 순서가 바뀌면 다시 그릴 때 '이미 없는 업무'의 폼이 남아 한 박자 늦게 보인다 */
       clearTimeout(PE_SAVE);S.planEdit=null;
-      store.delPlan(ym,pid);
+      const it=p?_taskOf(p.sid,pid):null;
+      const pr=store.delPlan(ym,pid);
       rDay();refetchCal();rWidget();          /* 라이브에서도 즉시 반영(구독 값이 오면 덮어쓴다) */
-      toast('휴지통으로 옮겼습니다');
-    });},
+      if(p)trashDone([{sid:p.sid,iid:pid,it,pr}],'휴지통으로 옮겼습니다');   /* 970차(L6·U5): 저장 성공 뒤에 · [되돌리기] */
+    },'휴지통으로 옮기기');},
   'plan.moveOcc':el=>{
-    const p=findPlan(el.dataset.pid);if(!p)return;
+    const p=findPlan(el.dataset.pid);if(!p)return;if(!canEditTask(p,p.sid)){denyTask();return;}
     const src=occSrc(p,el.dataset.occ);
     const to=($('#peOcc')&&$('#peOcc').value)||'';
     if(!/^\d{4}-\d{2}-\d{2}$/.test(to)){toast('옮길 날짜를 고르세요');return;}
@@ -10488,15 +10777,17 @@ const ACT={
     p.updatedAt=Date.now();store.putPlan(p);
     S.planEdit=null;selDate(to);
     if(!S.live){refetchCal();rWidget();}else setTimeout(refetchCal,220);
-    toast('이 회차를 '+to+'로 옮겼습니다');},
-  'plan.skipOcc':el=>{const p=findPlan(el.dataset.pid);if(!p)return;
+    toast('이 회차를 '+josa(mdLabel(to),'으로','로')+' 옮겼습니다');},   /* 970차(C7) */
+  'plan.skipOcc':el=>{const p=findPlan(el.dataset.pid);if(!p)return;if(!canEditTask(p,p.sid)){denyTask();return;}
     const src=occSrc(p,el.dataset.occ);
-    p.skipOn=p.skipOn||{};p.skipOn[src]=1;
+    p.skipOn={...(p.skipOn||{})};p.skipOn[src]=1;   /* 970차(L2): 새 객체로 */
     if(p.moveOn&&p.moveOn[src]){const mv={...p.moveOn};delete mv[src];p.moveOn=mv;}
     p.updatedAt=Date.now();store.putPlan(p);
     closeModal();S.planEdit=null;rDay();if(!S.live){refetchCal();rWidget();}toast('이 날짜를 반복에서 제외했습니다');},
-  'plan.delAll':el=>{store.delPlan('',el.dataset.pid);closeModal();S.planEdit=null;rDay();
-    if(!S.live){refetchCal();rWidget();}toast('반복 업무를 삭제했습니다');},
+  'plan.delAll':el=>{const p=findPlan(el.dataset.pid);if(p&&!canEditTask(p,p.sid)){denyTask();return;}
+    const it=p?_taskOf(p.sid,p.id):null,pr=store.delPlan('',el.dataset.pid);closeModal();S.planEdit=null;rDay();
+    if(!S.live){refetchCal();rWidget();}
+    if(p)trashDone([{sid:p.sid,iid:p.id,it,pr}],'반복 업무를 휴지통으로 옮겼습니다');},   /* 970차(C5): 실제로는 휴지통 */
   'auth.login':fbDoLogin,
   'auth.signup':fbDoSignup,
   'auth.resend':fbDoResend,
@@ -10579,7 +10870,7 @@ const ACT={
     DF.vac[key][field]['미분양']=mb;DF.vac[key][field]['미키불출']=mk;
     /* 게시본은 한글 키를 fbEncKey 로 인코딩해 저장한다 — 평문으로 쓰면 같은 노드에 두 형태가 섞인다 */
     if(S.live&&FB.db)FB.db.ref('report/'+rm+'/'+sid+'/vac/'+field).update({[dfEncKey('미분양')]:mb,[dfEncKey('미키불출')]:mk})
-      .catch(()=>toast('저장 실패 · 권한을 확인하세요'));
+      .catch(()=>toast('저장하지 못했습니다 · 이 항목을 고칠 권한이 없습니다'));
     closeModal();rDefect();},
   'df.ax.site':el=>{S.dfAxSite=el.dataset.ax;S.dfAxSiteAll=false;window._dfSort={};dfSiteAxisOnly(S.dfSid);},
   'df.ax.siteAll':()=>{S.dfAxSiteAll=!S.dfAxSiteAll;dfSiteAxisOnly(S.dfSid);},
@@ -10762,11 +11053,15 @@ const ACT={
   'undo.redo':()=>{const t=$('#toast');t.classList.remove('show','has-btn');redoRun();},
   'toast.act':()=>{const f=TOAST_FN;TOAST_FN=null;$('#toast').classList.remove('show','has-btn');if(f)f();},
   'pick.clear':()=>pickClear(),
-  'pick.del':()=>{const{ok}=pickEditable();
+  'pick.del':()=>{const{ok,no}=pickEditable();
     if(!ok.length){denyTask();return;}
-    if(!confirm(ok.length+'건을 휴지통으로 보낼까요?'))return;
-    ok.forEach(({sid,iid})=>{const key=sid+'/'+iid;if(S.tkEdit===key)S.tkEdit=null;if(S.tkOpen===key)S.tkOpen=null;store.trashTask(sid,iid);});   /* 953차: tk.del 은 건마다 확인창을 띄워 마지막 한 건만 지워졌다 */
-    pickClear();if(!S.live)rTasks();else setTimeout(rTasks,220);refetchCal();toast(ok.length+'건을 휴지통으로 옮겼습니다');},
+    /* 970차(C5·C6): 브라우저 기본 확인창 대신 앱 확인창 — 복원 안내·권한 없어 건너뛰는 건수 포함 */
+    confirmModal('업무 '+ok.length+'건 삭제',ok.length+'건을 휴지통으로 옮깁니다. 30일 안에는 설정 > 휴지통에서 복원할 수 있습니다.'+(no&&no.length?' 고칠 권한이 없는 '+no.length+'건은 건너뜁니다.':''),()=>{
+      const list=ok.map(({sid,iid})=>{const key=sid+'/'+iid;if(S.tkEdit===key)S.tkEdit=null;if(S.tkOpen===key)S.tkOpen=null;
+        const it=_taskOf(sid,iid);return{sid,iid,it,pr:store.trashTask(sid,iid)};});   /* 953차: tk.del 은 건마다 확인창을 띄워 마지막 한 건만 지워졌다 */
+      pickClear();if(!S.live)rTasks();else setTimeout(rTasks,220);refetchCal();
+      trashDone(list,n=>n+'건을 휴지통으로 옮겼습니다');
+    },'휴지통으로 옮기기');},
   'tk.open':el=>{
     const key=el.dataset.sid+'/'+el.dataset.iid;
     S.tkOpen=S.tkOpen===key?null:key;rTasks();
@@ -10809,11 +11104,11 @@ const ACT={
       '"'+(it.text||'제목 없음')+'" 업무를 휴지통으로 옮깁니다. 30일 안에는 설정 > 휴지통에서 복원할 수 있습니다.',
       ()=>{
         if(S.tkEdit===key)S.tkEdit=null;   /* 폼부터 닫고 지운다 — 순서가 바뀌면 반영이 한 박자 늦다 */
-        store.trashTask(sid,iid);
+        const it0=_taskOf(sid,iid),pr=store.trashTask(sid,iid);
         if(S.tkOpen===key)S.tkOpen=null;
         if(!S.live)rTasks();else setTimeout(rTasks,220);
-        refetchCal();toast('휴지통으로 옮겼습니다');
-      });},
+        refetchCal();trashDone([{sid,iid,it:it0,pr}],'휴지통으로 옮겼습니다');   /* 970차(L6·U5) */
+      },'휴지통으로 옮기기');},
   'org.addTeam':()=>{if(!isEditor())return denyEdit();   /* 953차: 관리자만 */
     
     const id=uid();S.org.teams=(S.org.teams||[]).concat([{id,name:''}]);orgSave();
@@ -10893,7 +11188,7 @@ const ACT={
     if(!isEditor()){toast('관리자만 삭제할 수 있습니다');return;}
     if(id===authUid()){toast('본인은 명단에서 지울 수 없습니다');return;}
     const n=Object.keys((mergedTaskMaps()[id])||{}).length;
-    confirmModal('담당자 삭제','"'+(p.name||'')+'" 을(를) 팀 명단에서 뺍니다. 이 사람의 업무'+(n?'('+n+'건)':'')+'는 이름과 함께 남고, 담당 현장 배정만 풀립니다. 계정은 「미배정」에 남아 다시 배정할 수 있습니다.',()=>{
+    confirmModal('담당자 삭제','「'+(p.name||'')+'」'+josaP(p.name,'을','를')+' 팀 명단에서 뺍니다. 이 사람의 업무'+(n?'('+n+'건)':'')+'는 이름과 함께 남고, 담당 현장 배정만 풀립니다. 계정은 「미배정」에 남아 다시 배정할 수 있습니다.',()=>{
       /* 696차: 레코드를 지우면 그 사람 업무가 이름 없이 공통 그룹에 섞인다(tkOwnerName·tkRegionOf 가 명단에서 이름을 찾는다).
          → 팀·권역·담당 현장만 비워 「미배정」으로. 명단·업무 현황 탭에서 빠지고 업무엔 이름이 남는다(권역 미지정 그룹). 계정 목록에서 다시 배정 가능 */
       const cur=(S.people||{})[id]||{};
@@ -10963,7 +11258,7 @@ const ACT={
       region:cur.region||p.region||'',rank:rankOf(cur.rank||p.rank),sites});
     rosterBust();          /* ⚠ roster() 는 같은 틱 동안 캐시를 쓴다 — 비우지 않으면 옛 배정이 다시 그려진다 */
     if(!S.live)rOrg();
-    toast(siteName(sid)+' 을(를) 뺐습니다');
+    toast(josa(siteName(sid),'을','를')+' 뺐습니다');
   },
   'set.guide':()=>openReadme(),
   'offday.save':()=>{
@@ -10981,7 +11276,7 @@ const ACT={
   'set.copyErr':()=>{
     const txt='버전 v'+APP_VER+' · '+navigator.userAgent+'\n'+(ERRLOG.length?ERRLOG.join('\n'):'기록된 오류 없음');
     if(navigator.clipboard&&navigator.clipboard.writeText)
-      navigator.clipboard.writeText(txt).then(()=>toast('복사했습니다')).catch(()=>toast('복사 실패'));
+      navigator.clipboard.writeText(txt).then(()=>toast('복사했습니다')).catch(()=>toast('복사하지 못했습니다'));
     else toast('복사를 지원하지 않는 브라우저입니다');
   },
   /* 휴지통(383차) — 열기·복원·영구 삭제. 목록은 열 때마다 서버에서 읽는다 */
@@ -11104,6 +11399,8 @@ const ACT={
     if(i<0)cur.push(el.dataset.v);else cur.splice(i,1);
     st[g]=cur;mselApply(m);},
   'filt.mall':el=>{const m=el.closest('.msel');mselStore(m)[m.dataset.g]=[];mselApply(m);},
+  'filt.chipOff':el=>{S.filter[el.dataset.g]=[];filtSave();rFilter();refetchCal();rDay();rWidget();},   /* 970차(U1) */
+  'filt.chipAll':()=>{FILT_G.forEach(([g])=>{S.filter[g]=[];});filtSave();rFilter();refetchCal();rDay();rWidget();},
   'cal.pick':()=>openYMPick(),
   'cal.today':()=>{closeYMPop();if(CAL)CAL.today();selDate(todayStr());if(isMob()&&!WIDGET)rCalMini();calTodaySync();},   /* 773차: 오늘로 — 달력 이동 + 오늘 선택(폰 미니 격자도 다시 그림) */
   'nq.mob':()=>{nqOpen(true);const i=$('#nqQ');if(i)setTimeout(()=>i.focus(),120);},   /* 732차: 폰 검색 = 전체화면 */
@@ -11213,9 +11510,31 @@ function rFilter(){
     +'</div><div class="dp-frow">'
       +M('site','현장 전체',sites.map(x=>[x.id,x.name]))
     +'</div>';
+  rFiltChips(regs,list,sites);
 }
+/* 970차(U1): 걸린 필터 표시 — 깔때기 개수 점 + 달력 위 칩(항목 × · 모두 해제) */
+const FILT_G=[['kind','구분'],['st','상태'],['reg','권역'],['own','담당자'],['site','현장']];
+function rFiltChips(regs,list,sites){
+  const f=S.filter||{},box=$('#calFchips'),btn=document.querySelector('#calFiltWrap [data-act="day.fmore"]');
+  const nm={kind:v=>((TK_KIND.find(k=>(k[0]||'_gen')===v)||[])[1]||v),st:v=>((ST_PICK.find(k=>k[0]===v)||[])[1]||v),
+    reg:v=>((regs.find(r=>r.id===v)||{}).name||v),own:v=>((list.find(p=>p.id===v)||{}).name||v),
+    site:v=>(((S.org.sites||[]).find(x=>x.id===v)||{}).name||v)};
+  const on=FILT_G.filter(([g])=>(f[g]||[]).length);
+  const n=on.reduce((a,[g])=>a+f[g].length,0);
+  if(btn){btn.classList.toggle('f-on',n>0);if(n)btn.dataset.n=n;else delete btn.dataset.n;btn.setAttribute('aria-label',n?'필터 '+n+'개 걸림':'필터');}
+  if(!box)return;
+  const was=!box.hidden;
+  box.innerHTML=on.map(([g,lb])=>{const v=f[g].map(nm[g]);const t=v.length>2?v[0]+' 외 '+(v.length-1):v.join(', ');
+    return '<span class="cal-fchip" data-tip="'+esc(lb+': '+v.join(', '))+'"><span><b>'+esc(lb)+'</b> '+esc(t)+'</span><button type="button" data-act="filt.chipOff" data-g="'+g+'" aria-label="'+esc(lb)+' 필터 해제"><svg class="icn"><use href="#i-close"></use></svg></button></span>';}).join('')
+    +(on.length?'<button type="button" class="cal-fclr" data-act="filt.chipAll">모두 해제</button>':'');
+  box.hidden=!on.length;
+  if(was!==!box.hidden&&CAL)requestAnimationFrame(()=>CAL.updateSize());
+}
+/* 970차(C6): 브라우저 기본 confirm() 대신 앱 확인창을 기다린다 — 확인=true, 취소·Esc·바깥=false(closeModal 이 푼다) */
+function confirmAsk(title,msg,okLabel,danger){return new Promise(res=>{
+  confirmModal(title,msg,()=>{window.__ASKOK__=null;res(true);},okLabel,danger);window.__ASKOK__=res;});}
 function confirmModal(title,msg,cb,okLabel,danger){
-  openModal(title,'<div style="font-size:13px;color:var(--lbl2);line-height:1.6">'+esc(msg)+'</div>',
+  openModal(title,'<div style="font-size:13px;color:var(--lbl2);line-height:1.6;white-space:pre-line">'+esc(msg)+'</div>',
     '<button class="btn bg2 bsm" data-act="modal.close">취소</button>'
     +'<button class="btn '+((danger===false)?'bp':'btn-danger')+' bsm" data-act="modal.ok">'+esc(okLabel||'삭제')+'</button>');
   MODAL_CB={type:'confirm',ok:()=>{cb();closeModal();}};
@@ -11228,7 +11547,7 @@ document.addEventListener('click',e=>{
   if(!e.target.closest('.msel'))mselClose();
 
   /* 위젯 업무 팝업 — 달력 칸이나 팝업 자신이 아닌 곳을 누르면 닫는다 */
-  if(WIDGET&&S.widPop&&!e.target.closest('#widPop')&&!e.target.closest('#fcal td.fc-daygrid-day')){
+  if(WIDGET&&S.widPop&&e.target.isConnected&&!e.target.closest('#widPop')&&!e.target.closest('#fcal td.fc-daygrid-day')){   /* 970차(U11): 「외 N건」은 누르는 사이 칸이 다시 그려져 떨어져 나간 요소가 「바깥」으로 읽혔다 */
     S.widPop=false;rWidget();
   }
   /* 팝오버는 색 원 버튼 안에 들어 있다 — 여기서 막지 않으면 안쪽 클릭이 버튼까지 올라가 팝오버가 닫힌다 */
@@ -11334,11 +11653,15 @@ document.addEventListener('change',e=>{
   const live=box.querySelector('.pal-c.pal-live');if(live)live.classList.remove('pal-live');
 });
 /* 미처리 목록 — 필터행 입력·메뉴 검색은 input 이벤트로 듣는다(click 위임으로는 못 받는다) */
+let TL_FIN_T=null;
+document.addEventListener('change',e=>{const t=e.target;if(!t||(t.id!=='tnSite'&&t.id!=='tnSite2'))return;   /* 970차(U7): 두 현장 칸 맞추기 */
+  const o=$(t.id==='tnSite'?'#tnSite2':'#tnSite');if(o)o.value=t.value;});
 document.addEventListener('input',e=>{
   const t=e.target;
   if(t.classList&&t.classList.contains('tl-fin')){   /* 901차: 재하자·생산성 필터행 */
     const F=t.dataset.tl==='rd'?RD:PV,k=t.dataset.key,v=t.value;F.filters[k]=v;if(!String(v||'').trim())delete F.filters[k];
-    (F===RD?rRedo:rProd)();const el=document.querySelector('.tl-fin[data-tl="'+t.dataset.tl+'"][data-key="'+k+'"]');if(el){el.focus();el.setSelectionRange(v.length,v.length);}
+    /* 970차(P7): 0.15초 모아서 다시 그린다 — 키마다 표 전체를 그려 입력이 밀렸다 */
+    clearTimeout(TL_FIN_T);TL_FIN_T=setTimeout(()=>{if(F===PV)PV.lim=0;(F===RD?rRedo:rProd)();const el=document.querySelector('.tl-fin[data-tl="'+t.dataset.tl+'"][data-key="'+k+'"]');if(el){const n=el.value.length;el.focus();el.setSelectionRange(n,n);}},150);
     return;
   }
   if(t.classList&&t.classList.contains('rl-fin')){
@@ -11438,7 +11761,7 @@ document.addEventListener('input',e=>{
   const el=e.target;if(!el||el.dataset.act!=='df.plan')return;
   dfPlanFit(el);   /* 쓰는 만큼 칸이 자란다 — 원본 autoResize 와 동일 */
   clearTimeout(DF_PT);
-  DF_PT=setTimeout(()=>dfPlanSet(el.dataset.sid,el.dataset.f,S.dfRm,el.dataset.t,el.value),700);
+  DF_PT=setTimeout(()=>{Promise.resolve(dfPlanSet(el.dataset.sid,el.dataset.f,S.dfRm,el.dataset.t,el.value)).then(ok=>{if(ok!==false)dfSavedMark(el);});},700);
 });
 /* 현장 표 — 하자 관리 화면 표시 여부 토글. 마이너 현장은 목록에서 빼 둘 수 있다.
    ⚠ 업무·현장 자체는 그대로 남는다. 감추는 것은 하자 관리 화면의 현장 목록뿐이다.
@@ -11456,7 +11779,7 @@ document.addEventListener('change',e=>{
   S.cfg={...S.cfg,dfHide:m};
   if(S.dfSid===id&&hide)S.dfSid='';       /* 열어 둔 현장을 감추면 선택도 푼다 */
   rDefectNav();
-  toast('"'+(st.name||'이름 없음')+'" 을 하자 관리에서 '+(hide?'숨깁니다':'표시합니다'));
+  toast('「'+(st.name||'이름 없음')+'」'+josaP(st.name||'이름 없음','을','를')+' 하자 관리에서 '+(hide?'숨깁니다':'표시합니다'));
 });
 /* 현장 표 — 인수인계 토글(915차). 켜짐 = 인수 완료(cfg/dfPre 에 키 없음) · 꺼짐 = 인수 전(dfPre[id]=true).
    하자 화면의 「인수 전 현장」 묶음과 대시보드 집계 제외가 이 값을 본다 — 다른 화면(업무·D+60·캘린더)은 보지 않는다(사용자) */
@@ -11532,7 +11855,7 @@ document.addEventListener('change',e=>{
     const d=String(v||'').replace(/[^0-9]/g,'');
     if(!d){nv='';}
     else{const y=d.slice(0,4),m=d.slice(4,6),dd=d.slice(6,8);const dt=new Date(Number(y),Number(m)-1,Number(dd));
-      if(d.length!==8||y<'1900'||dt.getFullYear()!==Number(y)||dt.getMonth()!==Number(m)-1||dt.getDate()!==Number(dd)){toast('준공일은 YYYY-MM-DD 로 적어 주세요');el.value=String(((ORG_DRAFT[st.id]||{}).completionDate)??(st.completionDate||''));return;}   /* 되돌림은 저장 전 초안이 있으면 초안으로 */
+      if(d.length!==8||y<'1900'||dt.getFullYear()!==Number(y)||dt.getMonth()!==Number(m)-1||dt.getDate()!==Number(dd)){toast('준공일은 2026-09-26처럼 적어 주세요');el.value=String(((ORG_DRAFT[st.id]||{}).completionDate)??(st.completionDate||''));return;}   /* 되돌림은 저장 전 초안이 있으면 초안으로 */
       nv=y+'-'+m+'-'+dd;}
     el.value=nv;
   }else
@@ -11559,6 +11882,7 @@ document.addEventListener('input',e=>{
   if(e.target.id==='wgFz'){const c=widCfgLoad();c.fz=Number(e.target.value)/100;widCfgSave(c);widApply();return;}
   if(e.target.id==='wgNoti'){const c=widCfgLoad();c.noti=e.target.checked;widCfgSave(c);evePopHide();toast(c.noti?'오후 점검 알림을 켰습니다':'오후 점검 알림을 껐습니다');return;}
   if(e.target.id==='wgDbl'){const c=widCfgLoad();c.dbl=e.target.checked;widCfgSave(c);widApplyDbl();toast(c.dbl?'두 번 눌러 선택을 켰습니다':'두 번 눌러 선택을 껐습니다');return;}
+  if(e.target.id==='wgSoft'){const c=widCfgLoad();c.soft=e.target.checked;widCfgSave(c);WID_SOFT=c.soft;refetchCal();return;}   /* 971차 */
 });
 document.addEventListener('change',e=>{
 });
@@ -11705,6 +12029,8 @@ document.addEventListener('keydown',e=>{
 document.addEventListener('keydown',e=>{
   /* 958차: 로그인 칸의 Enter 는 <form id=cvForm> 의 기본 제출(=#cvBtn 클릭)이 맡는다 — 화면별로 로그인·가입·재설정 */
   if(e.key==='Enter'&&e.target.id==='peTitle'){e.preventDefault();savePlanInline();return;}
+  /* 970차(U3): 업무 현황 폼도 제목 칸 Enter = 저장하고 닫기(새 업무 포함) */
+  if(e.key==='Enter'&&e.target.id==='tnTitle'){e.preventDefault();const b=document.querySelector('[data-act="tk.formSave"]');if(b)b.click();return;}
   /* Ctrl/⌘+K 로 찾기 */
   if(e.key==='Escape'){
     /* 겹쳐 있는 것부터 하나씩 닫는다 — 한 번에 다 닫히면 되돌리기 번거롭다 */
@@ -11727,7 +12053,7 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'&&$('#nqPanel')&&$('#nqPanel').classList.contains('on')&&!$('#mo').classList.contains('open')){nqOpen(false);return;}
   if(e.key==='Escape'){
     if($('#mo').classList.contains('open')){closeModal();return;}
-    if(S.tkNew||S.tkEdit){tkFormClose();return;}
+    if(S.tkNew||S.tkEdit){tkFormEsc();return;}   /* 970차(U3): 저장하고 닫기 */
     if($('#colPop')){closeColPop();return;}
     if(S.planEdit){closePlanEdit();return;}
     mobClose();
@@ -11937,6 +12263,7 @@ function widApply(){
   const tl=$('#wgTV');if(tl)tl.textContent=Math.round(tint*100)+'%';
   const fv=$('#wgFontV');if(fv)fv.textContent=(WID_FONTS.find(f=>f[0]===font)||WID_FONTS[0])[1];
   const db=$('#wgDbl');if(db)db.checked=!!c.dbl;
+  WID_SOFT=!!c.soft;const sf=$('#wgSoft');if(sf)sf.checked=WID_SOFT;   /* 971차 */
   widApplyDbl();
 }
 /* 두 번 눌러 선택 — 위젯 창이 비활성 상태에서 클릭하면 첫 클릭은 활성화만 하고
@@ -12121,7 +12448,7 @@ async function tsSave(k){
 }
 function tsPersist(){if(TS.pers)return;TS.pers=true;try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});}catch(err){}}   /* 디스크가 빠듯해도 브라우저가 먼저 지우지 않게 청한다 */
 function tsFail(err){console.warn('[도구 저장]',err);if(TS.warned)return;TS.warned=true;
-  toast(/quota/i.test(String(err&&(err.name||err.message)))?'이 PC 저장 공간이 모자라 작업을 이어서 저장하지 못했습니다 · 이 창에서는 그대로 계속됩니다':'작업을 이 PC 에 저장하지 못했습니다 · 이 창에서는 그대로 계속됩니다',5000);}
+  toast(/quota/i.test(String(err&&(err.name||err.message)))?'이 PC 저장 공간이 모자라 작업을 이어서 저장하지 못했습니다 · 이 창에서는 그대로 계속됩니다':'작업을 이 PC에 저장하지 못했습니다 · 이 창에서는 그대로 계속됩니다',5000);}
 function tsNote(k){const m=TS.note[k];if(m){delete TS.note[k];setTimeout(()=>toast(m),60);}}
 const TS_SAVE={
   async pd(){
@@ -12772,7 +13099,7 @@ function pdAnnUI(){
           hs+='<i class="phs-h" data-h="'+k+'" style="left:'+px+'%;top:'+py+'%"></i>';
         });
         const [rx,ry]=pdRotPt(cx,b.y,cx,cy,deg,RW,RH);
-        if(a.t!=='mosaic')hs+='<button class="phs-arot" data-arot="'+i+'" style="left:'+rx+'%;top:'+ry+'%" aria-label="도형 돌리기" data-tip="끌어서 돌리기 · Shift 는 15°">'
+        if(a.t!=='mosaic')hs+='<button class="phs-arot" data-arot="'+i+'" style="left:'+rx+'%;top:'+ry+'%" aria-label="도형 돌리기" data-tip="끌어서 돌리기 · Shift는 15°">'
           +'<svg class="icn" aria-hidden="true"><use href="#i-expand"></use></svg></button>';
       }
     }
@@ -12956,7 +13283,7 @@ function pdRotHandle(){
   if(PD.tool!=='none'||PD.sel.size!==1)return;
   const id=[...PD.sel][0];
   $$('#pdView .phs-cell[data-id="'+id+'"] .phs-ph').forEach(box=>{
-    box.insertAdjacentHTML('beforeend','<button class="phs-rot" data-rot="'+id+'" aria-label="돌리기" data-tip="끌어서 돌리기 · Shift 는 90°"><svg class="icn" aria-hidden="true"><use href="#i-expand"></use></svg></button>');
+    box.insertAdjacentHTML('beforeend','<button class="phs-rot" data-rot="'+id+'" aria-label="돌리기" data-tip="끌어서 돌리기 · Shift는 90°"><svg class="icn" aria-hidden="true"><use href="#i-expand"></use></svg></button>');
   });
 }
 let _pdRot=null;
@@ -13121,7 +13448,7 @@ function pdDel(){
   const n=PD.sel.size;
   PD.photos=PD.photos.filter(p=>!PD.sel.has(p.id));
   PD.sel.clear();PD.anchor='';pdPages();pdGc();
-  toast(n+'장을 뺐습니다 · Ctrl+Z 로 되돌립니다');
+  toast(n+'장을 뺐습니다 · Ctrl+Z로 되돌립니다');
 }
 /* 953차: 도구·표시 선택·되돌리기·복사한 표시·불러오는 중 작업을 함께 비운다 — 초기화·D+60 넘기기 뒤에 그리기 도구가 켜진 채 남아 사진을 고를 수 없었다 */
 function pdToolReset(){if(PD.load)PD.load.dead=true;PD.load=null;PD.tool='none';PD.asel=null;PD.clip=null;document.body.classList.remove('pd-drawing');}
@@ -13919,7 +14246,7 @@ function dwWorker(){
   w.onmessage=e=>{if(e.data&&e.data.stage){DW.stage=e.data.stage;dwBusyTick();return;}dwLoaded(e.data);};
   /* 840차: 왜 안 열렸는지 화면에 남긴다 — 엔진 파일이 배포에 빠진 경우와 도면이 깨진 경우는 손볼 곳이 다르다 */
   w.onerror=e=>{dwBusyStop();DW_WORKER=null;
-    DW.err='도면 엔진을 불러오지 못했습니다 — vendor/libredwg 파일이 배포에 들어갔는지 확인해 주세요'+(e&&e.message?' ('+e.message+')':'');
+    DW.err='도면 엔진을 불러오지 못했습니다 · 창을 새로 고친 뒤 다시 열어 주세요. 계속되면 관리자에게 알려 주세요';
     toast('도면 엔진을 불러오지 못했습니다');console.warn('[도면] 워커',e&&e.message);rDwg();};
   DW_WORKER=w;return w;
 }
@@ -13940,7 +14267,7 @@ function dwAddRefs(files){
       DW.refs=(DW.refs||[]).filter(r=>!rs.some(x=>x.name===r.name)).concat(rs);
       dwSend(DW.buf.slice(0),DW.name);
     })
-    .catch(err=>{dwBusyStop();toast('참조 파일을 읽지 못했습니다'+(err&&err.message?' ('+err.message+')':''));rDwg();});
+    .catch(err=>{dwBusyStop();(console.warn('[도면] 참조 파일',err),toast('참조 파일을 읽지 못했습니다 · 파일을 다시 골라 주세요'));rDwg();});
 }
 function dwSend(buf,name){
   const refs=(DW.refs||[]).map(r=>({name:r.name,buf:r.buf.slice(0)}));
@@ -13973,12 +14300,12 @@ function dwOpen(file){
     if(gen!==DW.gen)return;
     /* DWG 는 앞 6글자가 AC10xx(예: AC1032). 아니면 엔진에 넘기기 전에 알려 준다 */
     const head=String.fromCharCode(...new Uint8Array(buf.slice(0,6)));
-    if(!/^AC10/.test(head)){dwBusyStop();if(DW._prev){Object.assign(DW,DW._prev);DW._prev=null;}DW.err='DWG 파일이 아닌 것 같습니다(앞머리 '+esc(head.replace(/[^\x20-\x7e]/g,'.'))+'). DXF·PDF 는 아직 읽지 못합니다';toast('DWG 파일이 아닙니다');rDwg();return;}
+    if(!/^AC10/.test(head)){dwBusyStop();if(DW._prev){Object.assign(DW,DW._prev);DW._prev=null;}DW.err='DWG 파일이 아닌 것 같습니다(앞머리 '+esc(head.replace(/[^\x20-\x7e]/g,'.'))+'). DXF·PDF는 아직 읽지 못합니다';toast('DWG 파일이 아닙니다');rDwg();return;}
     DW.buf=buf.slice(0);
     if(pend.length)DW.refs=await Promise.all(pend.map(f=>f.arrayBuffer().then(b=>({name:f.name,buf:b}))));   /* 955차: 함께 끌어다 놓은 참조 */
     if(gen!==DW.gen)return;
     dwSend(buf,file.name);
-  }).catch(err=>{if(gen!==DW.gen)return;dwBusyStop();if(DW._prev){Object.assign(DW,DW._prev);DW._prev=null;}DW.err='파일을 읽지 못했습니다'+(err&&err.message?' ('+err.message+')':'');toast('파일을 열지 못했습니다');rDwg();});
+  }).catch(err=>{if(gen!==DW.gen)return;dwBusyStop();if(DW._prev){Object.assign(DW,DW._prev);DW._prev=null;}console.warn('[도면] 파일',err);DW.err='파일을 읽지 못했습니다 · 도면(DWG) 파일인지 확인해 주세요';toast('파일을 열지 못했습니다');rDwg();});
 }
 function dwLoaded(d){
   dwBusyStop();
@@ -14328,7 +14655,7 @@ function rDwg(){
   const segMode=seg(DW.mode,[['auto','자동'],['frame','도면틀'],['cluster','오브젝트']],(k,l,a)=>'<button class="'+a+'" data-act="dwg.mode" data-m="'+k+'">'+l+'</button>');
   const segPaper=seg(DW.paper||'a3',[['a4','A4'],['a3','A3']],(k,l,a)=>'<button class="'+a+'" data-act="dwg.paper" data-p="'+k+'">'+l+'</button>');
   const segOri=seg(DW.orient,[['auto','자동'],['land','가로'],['por','세로']],(k,l,a)=>'<button class="'+a+'" data-act="dwg.orient" data-o="'+k+'">'+l+'</button>');
-  const segLw=seg(DW.lw?'on':'off',[['on','반영'],['off','일정']],(k,l,a)=>'<button class="'+a+'" data-act="dwg.lw" data-w="'+k+'">'+l+'</button>');
+  const segLw=seg(DW.lw?'on':'off',[['on','도면대로'],['off','모두 같게']],(k,l,a)=>'<button class="'+a+'" data-act="dwg.lw" data-w="'+k+'">'+l+'</button>');
   const segZoom=seg(DW.zoom,[['wf','쪽 맞춤'],['w1','폭 맞춤'],['w2','두 쪽'],['wg','여러 쪽']],(k,l,a)=>'<button class="'+a+'" data-act="dwg.zoom" data-z="'+k+'">'+l+'</button>');
   const st=DW.stat;
   const skip=st&&st.skipped?Object.entries(st.skipped).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k,v])=>k+' '+v).join(' · '):'';
@@ -14356,7 +14683,7 @@ function rDwg(){
       +'<div class="dw-b"><div class="dw-fr"><label>분리</label>'+segMode+'</div>'
       +'<div class="dw-fr"><label>용지</label>'+segPaper+'</div>'
       +'<div class="dw-fr"><label>방향</label>'+segOri+'</div>'
-      +'<div class="dw-fr"><label>선</label>'+segLw+'</div></div></div>':'')
+      +'<div class="dw-fr"><label>선 굵기</label>'+segLw+'</div></div></div>':'')
     +(DW.pages.length?'<div class="card"><div class="tm-h"><span>목록 <span class="tm-sub dw-cnt">'+dwOn().length+' / '+DW.pages.length+'장</span></span>'
       +'<span class="dw-hb"><button class="btn bo bxs" data-act="dwg.all" data-v="1">전체</button><button class="btn bo bxs" data-act="dwg.all" data-v="0">해제</button></span></div>'
       +'<div class="dw-list">'+list+'</div></div>':'')
@@ -14855,7 +15182,7 @@ async function tlOpen(f){
     let aoa;
     if(ext==='csv')aoa=csvToAoA(csvDecode(buf));
     else if(ext==='xlsx'||ext==='xls'){
-      try{await loadXlsx();}catch(e){return fail('엑셀 모듈 로드 실패 · 네트워크·CDN 차단 확인');}
+      try{await loadXlsx();}catch(e){return fail('엑셀 기능을 불러오지 못했습니다 · 사내망 연결을 확인한 뒤 다시 눌러 주세요');}
       const wb=readWorkbookSafe(buf,{type:'array',cellDates:true});
       aoa=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:'',raw:false,dateNF:'yyyy-mm-dd'});
     }else return fail('지원하지 않는 형식: '+ext);
@@ -14863,7 +15190,7 @@ async function tlOpen(f){
   }catch(err){
     console.error('[업무 도구] 목록 읽기',err);
     const msg=String(err&&err.message||err);
-    fail(/Encrypted|EncryptionInfo|ECMA-376/i.test(msg)?'암호(AIP)로 보호된 엑셀입니다 — CSV 로 저장해 올려 주세요':'읽기 실패: '+msg);
+    fail(/Encrypted|EncryptionInfo|ECMA-376/i.test(msg)?'암호(AIP)로 보호된 엑셀입니다 · CSV로 저장해 올려 주세요':'파일을 읽지 못했습니다 · 엑셀이나 CSV 파일인지 확인해 주세요');
   }
 }
 function tlReset(){TL.name='';TL.rows=[];TL.all=0;TL.unit=0;RD.groups=[];RD.filters={};PV.co='';PV.from='';PV.to='';PV.filters={};(S.view==='redo'?rRedo:rProd)();}
@@ -14980,7 +15307,7 @@ function rRedo(){
 }
 async function rdXlsx(){
   if(!RD.groups.length){toast('내보낼 후보가 없습니다');return;}
-  try{await loadXlsx();}catch(e){toast('엑셀 모듈 로드 실패');return;}
+  try{await loadXlsx();}catch(e){toast('엑셀 기능을 불러오지 못했습니다 · 사내망 연결을 확인한 뒤 다시 눌러 주세요');return;}
   const H=['재하자','동','호','공간','공종','차수','하자유형','접수내용','처리내용','접수일','처리일','처리상태','보수주체','보수업체','접수번호'];
   const aoa=[H];
   rdVisible().forEach(x=>x.rows.forEach((r,i)=>aoa.push([RD.yes.has(x.key)?'Y':'',x.base.dg,x.base.ho,x.base.sp,x.base.gj,(i+1)+'차',r.ty,r.memo,r.fix,r.rcv,r.fin,r.done?'완료':'미처리',r.own,r.co,r.no])));
@@ -15015,14 +15342,18 @@ function rProd(){
   const f2=v=>(Math.round(v*100)/100).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
   let body='';
   if(PV.tab==='day'){
-    body=days.map((d,i)=>{
+    /* 970차(P7): 처음엔 200행만 그리고 「더 보기」로 늘린다(날짜 묶음은 자르지 않는다) — 800행 넘게 한 번에 그려 화면 전환이 1초 가까이 걸렸다 */
+    const lim=PV.lim||200;let shown=0,cut=days.length;
+    days.some((d,i)=>{if(shown>=lim){cut=i;return true;}shown+=byDay[d].length;return false;});
+    const more=N-shown;
+    body=days.slice(0,cut).map((d,i)=>{
       const L=byDay[d],vis=L;
       const gjs=[...new Set(L.map(r=>r.gj).filter(Boolean))];
       const units=new Set(L.map(r=>r.dg+'|'+r.ho)).size;
       return '<tr class="sub top rd-g"><td class="n">'+(i+1)+'</td><td class="pv-d">'+d+'</td><td></td><td></td><td class="pv-g">'+esc(gjs.slice(0,3).join(' · ')+(gjs.length>3?' 외 '+(gjs.length-3):''))+'</td><td colspan="2"></td>'
         +'<td class="v">'+L.length+'</td><td class="v">'+units+'</td><td class="v">'+f1(md)+'</td><td class="v">'+f1(L.length/md)+'</td></tr>'
         +vis.map((r,j)=>'<tr class="rd-r"><td class="n">'+(j+1)+'</td><td></td><td class="rd-dg">'+esc(r.dg)+'</td><td class="rd-ho">'+esc(r.ho)+'</td><td class="pv-g">'+esc(r.gj)+'</td><td class="rd-memo">'+esc((r.sp?r.sp+' ':'')+r.memo)+'</td><td class="rd-memo">'+esc(r.fix)+'</td><td colspan="4"></td></tr>').join('');
-    }).join('');
+    }).join('')+(more>0?'<tr class="pv-more"><td colspan="11"><button type="button" class="btn bg2 bsm" data-act="pv.more">더 보기 · 남은 '+more.toLocaleString()+'건</button></td></tr>':'');
   }else if(PV.tab==='gj'){
     const c={};rows.forEach(r=>{const k=r.gj||'(공종 미기재)';const o=c[k]=c[k]||{n:0,u:new Set(),d:new Set()};o.n++;o.u.add(r.dg+'|'+r.ho);o.d.add(pvDay(r));});
     body=Object.keys(c).sort((a,b)=>c[b].n-c[a].n).map((k,i)=>'<tr><td class="n">'+(i+1)+'</td><td colspan="4">'+esc(k)+'</td><td colspan="2"></td><td class="v">'+c[k].n+'</td><td class="v">'+c[k].u.size+'</td><td class="v">'+c[k].d.size+'일</td><td class="v">'+(N?f1(c[k].n/N*100)+'%':'')+'</td></tr>').join('');
@@ -15058,7 +15389,7 @@ function rProd(){
 async function pvXlsx(){
   const rows=pvRowsF();if(!rows.length){toast('내보낼 실적이 없습니다');return;}   /* 955차: 화면에 건 열 필터 그대로 */
   const fdesc=Object.entries(PV.filters).map(([k,v])=>({day:'처리일',dg:'동',ho:'호',gj:'공종',memo:'접수내용',fix:'처리내용'}[k]||k)+' ∋ '+v).join(' · ');
-  try{await loadXlsx();}catch(e){toast('엑셀 모듈 로드 실패');return;}
+  try{await loadXlsx();}catch(e){toast('엑셀 기능을 불러오지 못했습니다 · 사내망 연결을 확인한 뒤 다시 눌러 주세요');return;}
   const md=Number(PV.md)>0?Number(PV.md):1;
   const byDay={};rows.forEach(r=>{const d=pvDay(r);(byDay[d]=byDay[d]||[]).push(r);});
   const days=Object.keys(byDay).sort(),N=rows.length,D=days.length,MD=D*md;
@@ -15097,6 +15428,7 @@ Object.assign(ACT,{
   'rd.st':el=>{if(RD.st===el.dataset.k)return;RD.st=el.dataset.k;rRedo();},
   'rd.ck':()=>{},   /* change 위임이 처리한다 */
   'pv.tab':el=>{if(PV.tab===el.dataset.t)return;PV.tab=el.dataset.t;rProd();},
+  'pv.more':()=>{const w=document.querySelector('#pvRoot .qc-wrap'),y=w?w.scrollTop:0;PV.lim=(PV.lim||200)+400;rProd();const w2=document.querySelector('#pvRoot .qc-wrap');if(w2)w2.scrollTop=y;},   /* 970차(P7) */
   'tl.frow':el=>{const F=el.dataset.tl==='rd'?RD:PV;   /* 955차: 필터 줄은 일별 표에만 있다 — 다른 탭이면 일별로 옮겨 연다 */
     if(F===PV&&PV.tab!=='day'){PV.tab='day';F.frow=true;}else F.frow=!F.frow;
     (F===RD?rRedo:rProd)();if(F.frow){const i=document.querySelector('.tl-fin[data-tl="'+el.dataset.tl+'"]');if(i)i.focus();}},
@@ -15327,6 +15659,20 @@ function d60Send(patch){   /* patch = {전체경로: 값} */
   }
   return FB.db.ref().update(patch).then(()=>{if(done)done();},err=>{if(done)done();fbErr(err);});
 }
+/* 970차(L10): 다시 보낼 것 중 서버 쪽이 더 새것은 뺀다 — 전엔 며칠 전 판정이 그 사이 다른 사람이 고친 기록을 덮었다.
+   판정(…/a·by·ts)은 같은 칸의 ts, 그 밖에 값에 ts 가 있으면 그 ts 를 적어 둔 시각(q.at)과 비교한다.
+   사진 장수·용량(increment)은 서버가 이미 더했는지 알 수 없어 다시 보내지 않는다 */
+function d60QFresh(q){
+  const out={};let n=0;
+  Object.keys(q.patch).forEach(k=>{const v=q.patch[k];
+    if(v&&typeof v==='object'&&v['.sv'])return;
+    const rel=k.replace(/^calapp\/d60\//,''),m=rel.match(/^(.*)\/(a|by|ts)$/);
+    const cur=d60Get(m?m[1]+'/ts':rel);
+    const sts=m?(Number(cur)||0):(cur&&typeof cur==='object'?(Number(cur.ts)||0):0);
+    if(sts>(q.at||0))return;
+    out[k]=v;n++;});
+  return n?out:null;
+}
 async function d60QReplay(){
   if(!TS.ok||!S.live||!FB.db||typeof indexedDB==='undefined')return;
   let keys;try{keys=(await tsReq('readonly',os=>os.getAllKeys())).filter(k=>String(k).startsWith('d60q:')).sort();}catch(err){return;}
@@ -15334,8 +15680,9 @@ async function d60QReplay(){
   for(const k of keys){
     const q=await tsGet(k).catch(()=>null);
     if(q&&q.at>=D60_BOOT)continue;   /* 이번에 연 창에서 쓴 것은 SDK 가 보내고 있다 */
-    if(q&&q.patch&&Date.now()-(q.at||0)<7*864e5&&(!q.uid||q.uid===me)){
-      try{await FB.db.ref().update(q.patch);n++;}catch(err){console.warn('[D+60] 다시 보내기',err);}}
+    const fresh=q&&q.patch&&Date.now()-(q.at||0)<7*864e5&&(!q.uid||q.uid===me)?d60QFresh(q):null;
+    if(fresh){
+      try{await FB.db.ref().update(fresh);n++;}catch(err){console.warn('[D+60] 다시 보내기',err);}}
     await tsDel(k).catch(()=>{});
   }
   if(n)toast('연결이 끊긴 동안 저장하지 못한 점검 '+n+'건을 올렸습니다',4000);
@@ -15884,7 +16231,7 @@ function d60CivilModal(){
 }
 async function d60Xlsx(){
   const st=S.d60,site=d60Sites().find(x=>x.id===st.sid);
-  try{await loadXlsx();}catch(e){toast('엑셀 모듈 로드 실패');return;}
+  try{await loadXlsx();}catch(e){toast('엑셀 기능을 불러오지 못했습니다 · 사내망 연결을 확인한 뒤 다시 눌러 주세요');return;}
   const wb=XLSX.utils.book_new();
   if(site){
     D60_TR.forEach(([tr,tl])=>{const aoa=[['구분','세대','공간','공종','점검항목','결과','조치사항']];
@@ -15983,7 +16330,7 @@ function d60ImpPlan(rows){   /* 지금 서식과 견줘 무엇이 새로 들어�
 }
 function d60Import(file,after){   /* after: 넣은 뒤 할 일(945차 설정에서 가져오면 서식 화면으로) */
   const rd=new FileReader();
-  rd.onload=()=>{let parsed;try{parsed=d60ImpParse(String(rd.result||''));}catch(e){toast(e.message);return;}
+  rd.onload=()=>{let parsed;try{parsed=d60ImpParse(String(rd.result||''));}catch(e){console.warn('[D+60] 서식 가져오기',e);toast('서식 파일을 읽지 못했습니다 · '+e.message);return;}
     const {rows,skip}=parsed;if(!rows.length){toast('넣을 줄이 없습니다');return;}
     const plan=d60ImpPlan(rows);
     const lines=Object.keys(plan.stat).map(k=>{const [tr,sc]=k.split('/');const v=plan.stat[k];return d60Nm(D60_TR,tr)+' · '+d60Nm(D60_SC,sc)+' — 공간 '+v.sp+' · 항목 '+v.it;}).join('\n');
@@ -16093,7 +16440,7 @@ Object.assign(ACT,{
     d60Write('forms/'+S.d60.tr+'/'+sc+'/'+id,{name:'새 공간',ord});
     setTimeout(()=>{const i=$('#d60Root .tm-nameinp[data-k="'+id+'"]');if(i){i.readOnly=false;i.classList.add('ed');i.focus();i.select();}},40);},
   'd60.spDel':el=>{const sc=el.dataset.sc,id=el.dataset.k;const sp=d60Forms(S.d60.tr,sc).find(x=>x.id===id);
-    confirmModal('공간 삭제','「'+((sp&&sp.name)||'')+'」과 안의 항목 '+(sp?sp.items.length:0)+'개를 지울까요? 이미 점검한 결과는 남습니다.',()=>d60Write('forms/'+S.d60.tr+'/'+sc+'/'+id,null),'삭제',true);},
+    confirmModal('공간 삭제','「'+((sp&&sp.name)||'')+'」'+josaP((sp&&sp.name)||'','과','와')+' 안의 항목 '+(sp?sp.items.length:0)+'개를 지울까요? 이미 점검한 결과는 남습니다.',()=>d60Write('forms/'+S.d60.tr+'/'+sc+'/'+id,null),'삭제',true);},
   'd60.spRen':el=>{if(!el.readOnly)return;const {sc,k}=el.dataset;if(S.d60.sc===sc&&S.d60.sp===k)return;S.d60.sc=sc;S.d60.sp=k;rD60();},   /* 931차: 한 번 = 고르기 · 두 번 = 이름 고치기(dblclick 아래) */
   'd60.seed':el=>{const sc=el.dataset.sc;if(!D60_SEED[sc]||d60Forms(S.d60.tr,sc).length)return;const o={};   /* 948차: 비어 있을 때만(set 이라 덮어쓴다) */D60_SEED[sc].forEach((nm,i)=>{o[uid()+i]={name:nm,ord:i+1};});d60Write('forms/'+S.d60.tr+'/'+sc,o);},
   /* 930차: 항목은 빈 줄을 바로 만들고 칸에 커서 — 편집 모드 없음 */
@@ -16206,9 +16553,12 @@ function verApply(){
   if(WIDGET){if(verIdle())location.reload();return;}
   if(!VER.told){VER.told=true;toast('새 버전(v'+VER.next+')이 나왔습니다 · 새로고침하면 적용됩니다',4000);}
 }
+let VER_AT=0;
 function verCheck(){
   if(S.snap||VER.next)return;
-  fetch('./index.html?vc='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():'').then(t=>{
+  /* 970차(P6): 5분에 한 번 · 캐시 재검증(no-cache) — 바뀐 게 없으면 304 로 끝난다. 전엔 탭에 돌아올 때마다 index.html 전체(152KB)를 새로 받았다 */
+  const now=Date.now();if(now-VER_AT<5*60*1000)return;VER_AT=now;
+  fetch('./index.html',{cache:'no-cache'}).then(r=>r.ok?r.text():'').then(t=>{
     const m=/app\.js\?v=(\d+)/.exec(t||'');if(m&&Number(m[1])>Number(APP_VER)){VER.next=m[1];verApply();}}).catch(()=>{});
 }
 function rAll(){rDay();rTasks();rOrg();rCfg();rFilter();rTeamSel();refetchCal();rWidget();}   /* 팀 선택기는 조직 화면 밖(사이드바)이라 rAll 에서도 그린다 */
@@ -16218,8 +16568,8 @@ function rAll(){rDay();rTasks();rOrg();rCfg();rFilter();rTeamSel();refetchCal();
   if(WIDGET)widApply();
   filtLoad();          /* 지난번에 고른 필터를 되살린다(계정별·이 브라우저) */
   LocalStore.init();
-  calInit();
-  bindCalResize();
+  /* 970차(P4): 달력 라이브러리를 못 받았어도 로그인·다른 화면은 뜨게 한다 — 전엔 여기서 예외로 부팅이 멈춰 로딩 점만 돌았다 */
+  try{calInit();bindCalResize();}catch(e){console.warn('[달력] 초기화 실패',e);}
   subVisibleMonths();
   rDay();rAcct();rFilter();rTeamSel();rWidget();   /* 팀 선택기는 사이드바 상시 요소 — 부팅 때부터 그린다 */
   mtabSync();   /* 903차(사용자): 첫 화면은 go() 를 거치지 않아 하단 탭이 안 켜지고 달력 칸 날짜도 비어 있었다 — 부팅 때 한 번 맞춘다 */
@@ -16228,7 +16578,7 @@ function rAll(){rDay();rTasks();rOrg();rCfg();rFilter();rTeamSel();refetchCal();
   else{
     fbInit();
     /* SDK가 아예 안 뜨거나(사내망 차단 등) 응답이 없으면 안내와 함께 로그인 폼을 연다 */
-    if(typeof firebase==='undefined'||!FB.auth){showGateForm();fbMsg('네트워크에 연결할 수 없습니다.');}
+    if(typeof firebase==='undefined'||!FB.auth){showGateForm();fbMsg('서버에 연결할 수 없습니다 · 연결을 확인해 주세요');}
     else FB._boot=setTimeout(()=>{if(!S.live)showGateForm();},2500);
   }
   /* 이전 버전에서 등록됐을 수 있는 서비스워커·캐시 제거 —

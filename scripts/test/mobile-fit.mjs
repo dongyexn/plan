@@ -101,6 +101,7 @@ const up=await pg.evaluate(async()=>{
   const csv='하자 리스트 추출본,,\n생성일: '+TODAYS+',,\n'+HS.join(',')+'\n'+rows.map(r=>HS.map(h=>cell(r[h])).join(',')).join('\n');
   /* 업로드 — 실제 onFile 경로(파일→rCSV→handleParsed→confirmUL→doSaveUL) */
   window.confirm=()=>true;   /* 이상 징후 확인·미래 게시월 정리 프롬프트는 자동 승인 */
+  window.confirmAsk=async()=>true;   /* 970차: confirm() 대신 앱 확인창(confirmAsk)을 기다린다 — 자동 승인 */
   const f=new File([new Blob(['\uFEFF'+csv],{type:'text/csv'})],'전체하자목록_'+TODAYS+'.csv',{type:'text/csv'});
   onFile(f);
   await new Promise(r=>{const t=setInterval(()=>{if(Object.keys(S.def).length>=7&&!S._importing){clearInterval(t);r();}},200);setTimeout(()=>{clearInterval(t);r();},30000);});
