@@ -3126,9 +3126,9 @@ body.wid.wid-nomore #fcal .fc-daygrid-day-bottom{display:none;}
 /* 노랑·연두처럼 밝은 막대는 글자를 어둡게 쓰고 그림자도 밝은 쪽으로 뒤집는다.
    ⚠ FullCalendar 의 textColor 옵션은 #fcal 규칙에 가려 먹지 않는다 — 색은 여기서 정한다 */
 #fcal .fc-event.on-light{color:var(--lbl);font-weight:600;}
-/* 971차: 위젯 「막대 옅게」 — 판은 app.js softOf(칸 색 쪽으로 섞은 색), 글자는 --sfg(eventDidMount). 완료는 회색 판 */
+/* 971차: 위젯 「막대 옅게」 — 판은 app.js softOf(976차: 옅은 파스텔 판), 글자는 --sfg(같은 계열 진한 색, eventDidMount). 완료는 옅은 회색 판 */
 body.wid #fcal .fc-event.ev-soft{color:var(--sfg);font-weight:600;}
-body.wid #fcal .fc-event.ev-soft.done{opacity:1;background-color:#4A505C!important;color:rgba(255,255,255,.5);}
+body.wid #fcal .fc-event.ev-soft.done{opacity:1;background-color:#EDEEF1!important;color:#8A909A;}
 #fcal .fc-event .fc-event-main{color:inherit;}
 /* ⚠ 글자를 키워도 달력이 창보다 커지면 안 된다 — 표는 창에 맞추고 칸 안에서만 줄인다 */
 body.wid #fcal .fc-daygrid-body,body.wid #fcal table{width:100%!important;}
@@ -5619,5 +5619,5 @@ td.d60-pc:hover{background:var(--fill)}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=975"></script>
+<script src="./app.js?v=976"></script>
 </body></html>

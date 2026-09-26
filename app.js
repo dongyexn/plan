@@ -10,7 +10,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='975';
+const APP_VER='976';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 docs/manual.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다(946차: README 는 요약만).
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -2185,7 +2185,8 @@ let WID_SOFT=false;
 function softOf(c){
   const m=/^#([0-9a-f]{6})$/i.exec(String(c||''));if(!m||isLightColor(c))return null;
   const n=parseInt(m[1],16),v=[n>>16,(n>>8)&255,n&255],mix=(to,t)=>'rgb('+v.map((x,i)=>Math.round(x+(to[i]-x)*t)).join(',')+')';
-  return{bg:mix([40,44,52],.62),fg:mix([255,255,255],.62)};
+  return{bg:mix([255,255,255],.84),fg:mix([0,0,0],.38)};   /* 976차(사용자, C안): 옅은 파스텔 판(업무 색 16%) + 같은 계열 진한 글자(검정 38%) — 기본 18색 글자 대비 5.4:1 이상, 칸 색과 무관.
+     ⚠ 971차는 판을 칸 색 쪽으로 어둡게 섞었다(칙칙한 막대 — 목적과 달랐다). 지정색 그대로 글자는 어두운 창에서 1.0~2.8:1 이라 쓰지 않는다 */
 }
 function planEvent(p,date){
   const span=p.end?daysBetween(p.date,p.end):0;
@@ -2193,7 +2194,7 @@ function planEvent(p,date){
   const own=p.owner?ownName(p.owner):'';
   /* 담당자 없는 팀 공통 업무는 제목 앞에 작은 흰 점을 찍어 가른다(점은 CSS 로 그린다) */
   const team=!planOwners(p).length;
-  /* 971차(사용자): 위젯 설정 「막대 옅게」 — 이 PC 위젯에서만, 저장 색은 그대로. 담당자 색(단색)을 칸 색 쪽으로 섞은 판 + 밝은 글자.
+  /* 971차(사용자): 위젯 설정 「막대 옅게」 — 이 PC 위젯에서만, 저장 색은 그대로. 담당자 색(단색)의 옅은 파스텔 판 + 같은 계열 진한 글자(976차).
      옅은 색·무지개·그라디언트·공통(속 빈 막대)은 고른 그대로 둔다(옅은 색을 더 옅게 하면 판이 칸에 묻힌다) */
   const soft=(WIDGET&&WID_SOFT&&!team)?softOf(planColor(p)):null;
   return{
