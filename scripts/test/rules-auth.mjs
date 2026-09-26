@@ -27,6 +27,8 @@ class N {
   }
   val() { return (this.v != null && typeof this.v === 'object') ? this.v : (this.v === undefined ? null : this.v); }
   exists() { return this.v !== null && this.v !== undefined; }
+  hasChild(k) { return this.child(k).exists(); }   /* 970차: tasks 필수 필드 검증(L7) */
+  hasChildren(ks) { return Array.isArray(ks) ? ks.every(k => this.child(k).exists()) : (this.v != null && typeof this.v === 'object' && Object.keys(this.v).length > 0); }
   isNumber() { return typeof this.v === 'number'; }
   isString() { return typeof this.v === 'string'; }
   isBoolean() { return typeof this.v === 'boolean'; }

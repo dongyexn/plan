@@ -101,6 +101,7 @@ const up=await pg.evaluate(async()=>{
   const csv='하자 리스트 추출본,,\n생성일: '+TODAYS+',,\n'+HS.join(',')+'\n'+rows.map(r=>HS.map(h=>cell(r[h])).join(',')).join('\n');
   /* 업로드 — 실제 onFile 경로(파일→rCSV→handleParsed→confirmUL→doSaveUL) */
   window.confirm=()=>true;   /* 이상 징후 확인·미래 게시월 정리 프롬프트는 자동 승인 */
+  window.confirmAsk=async()=>true;   /* 970차: confirm() 대신 앱 확인창(confirmAsk)을 기다린다 — 자동 승인 */
   const f=new File([new Blob(['\uFEFF'+csv],{type:'text/csv'})],'전체하자목록_'+TODAYS+'.csv',{type:'text/csv'});
   onFile(f);
   await new Promise(r=>{const t=setInterval(()=>{if(Object.keys(S.def).length>=7&&!S._importing){clearInterval(t);r();}},200);setTimeout(()=>{clearInterval(t);r();},30000);});
@@ -214,8 +215,10 @@ const mo2=await pg.evaluate(async()=>{
   const d=new Date(cur+'-01');d.setMonth(d.getMonth()-1);
   const prev=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
   window.confirm=()=>false;   /* 미래월 정리 프롬프트 — 과거월 수정 게시라 최신월을 지우면 안 된다 */
+  window.confirmAsk=async()=>false;
   S.dfPubRm=prev;await window.__pubWithOk();S.dfPubRm=cur;
   window.confirm=()=>true;
+  window.confirmAsk=async()=>true;
   return {prev,idx:Object.keys((window.__TREE.reportIndex)||{}).sort()};
 });
 ok('전월('+mo2.prev+') 추가 게시 · 색인 2개월',mo2.idx.length===2);
@@ -344,7 +347,7 @@ const atom=await pg.evaluate(async()=>{const site=dfSites().find(s=>S.def[s.id]&
   try{await doSaveUL({[site.name]:[{...(before&&before[0]||{}),receiptNo:'NEW1'}]},[{receiptDate:'2026-08-01'}]);}catch(e){err=String(e.message||e);}
   window.dbPut=orig;
   return {err,same:S.def[sid]===before,n:S.def[sid]?S.def[sid].length:0,beforeN,atSame:site.lastUploadedAt===beforeAt,metaSame:DFMETA.lastUp[sid]===beforeMeta};});
-ok('업로드 저장 실패 → 옛 원본·업로드 시각 유지('+atom.n+'건, '+atom.err.slice(0,30)+')',/저장 실패/.test(atom.err)&&atom.same&&atom.n===atom.beforeN&&atom.atSame&&atom.metaSame);
+ok('업로드 저장 실패 → 옛 원본·업로드 시각 유지('+atom.n+'건, '+atom.err.slice(0,30)+')',/저장하지 못했습니다/.test(atom.err)&&atom.same&&atom.n===atom.beforeN&&atom.atSame&&atom.metaSame);
 ok('페이지 오류 0'+(perr.length?' — '+perr[0]:''),perr.length===0);
 await br.close();srv.close();
 console.log(fail?('FAIL '+fail):'E2E ALL PASS');

@@ -15,12 +15,7 @@
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='12' fill='%23FBFBFB'/><g transform='translate(14.1,18.6) scale(0.4092)' fill='%232C2F34'><path d='M50.4577 0L44.6217 9.8733L11.3137 66.2533H11.3191H75.9297H87.2497L50.4577 0Z'/><path d='M39.1373 0L0 66.2533H7.62L42.8333 6.65331L39.1373 0Z'/></g></svg>">
 <script src="./boot-wid.js"></script>   <!-- 963차: 위젯이면 body 가 생기자마자 wid·glass — 첫 화면 깜빡임 방지(파일 안 주석) -->
-<script src="./vendor/fullcalendar.min.js"></script>
-<!-- Firebase SDK — vendor/ 자체 호스팅(181차). 사내망에서 CDN 이 막혀도 앱이 뜨도록 marked/purify 와 같은 방식 -->
-<script src="./vendor/firebase-app-compat.js"></script>
-<script src="./vendor/firebase-auth-compat.js"></script>
-<script src="./vendor/firebase-database-compat.js"></script>
-<script src="./vendor/firebase-app-check-compat.js"></script>
+<!-- 970차(P3): 달력·Firebase 스크립트는 body 끝(purify 앞)으로 옮겼다 — head 에서 받는 동안 첫 화면이 2~4초 비어 있었다 -->
 <!-- 폰트 2분할 서브셋(383차) — KS 2,350자 core(500KB)는 항상, 나머지 음절 rare 는 그 글자가 나올 때만 받는다.
      원본 2,058KB 단일 파일을 대체. 재생성은 scripts/font-subset.py -->
 <link rel="stylesheet" href="./vendor/pretendard.css">
@@ -85,6 +80,8 @@ input,textarea,select{font-family:inherit;outline:none;}
      동작 줄이기를 쓰는 사람을 위한 선택지는 고정 무지개('rainbow')로 따로 있다.
      ⚠ 위 전역 규칙이 !important 라 여기서도 !important 로 되돌려야 한다(구체성만으로는 안 이긴다). */
   #fcal .fc-event.ev-fx::after{animation-duration:8s!important;animation-iteration-count:infinite!important;}
+  /* 969차 예외 — 불러오는 중 점 세 개(.cv-dots). 유일한 기다림 표시라 멈추면 앱이 멈춘 것처럼 보인다(사용자 PC 는 동작 줄이기가 켜져 있다). 작은 점의 느린 밝기 변화 · 번쩍임·이동 없음 */
+  #cvLoading .cv-dots i{animation-duration:1.2s!important;animation-iteration-count:infinite!important;}
 }
 table{border-collapse:collapse;width:100%;}
 .hidden{display:none!important;}
@@ -577,6 +574,20 @@ body:not(.wid) #view-calendar .cal-head>.cal-ctl>.cal-nav{background:var(--fill)
 .cal-title:hover{background:var(--fill);}
 .cal-title .y{font-size:15px;font-weight:700;color:var(--lbl);}
 .cal-nav{display:flex;align-items:center;gap:4px;}
+/* 970차(U1): 필터가 걸려 있으면 깔때기에 파란 개수 점, 달력 위에 칩 줄 — 전엔 아이콘이 같아 남의 업무가 조용히 빠진 줄 몰랐다 */
+.cal-nb.f-on{position:relative;color:var(--b500);}
+.cal-nb.f-on::after{content:attr(data-n);position:absolute;top:1px;right:0;min-width:14px;height:14px;padding:0 3px;border-radius:7px;background:var(--b500);color:#fff;font-size:10px;font-weight:700;line-height:14px;text-align:center;box-sizing:border-box;}
+.cal-fchips{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:-4px 0 10px;}
+.cal-fchips[hidden]{display:none;}
+.cal-fchip{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 4px 0 10px;border-radius:12px;background:var(--fill);color:var(--lbl);font-size:12px;max-width:280px;}
+.cal-fchip>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cal-fchip>span b{font-weight:500;color:var(--lbl2);}
+.cal-fchip button{width:18px;height:18px;border:0;border-radius:50%;background:transparent;color:var(--lbl2);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;flex:0 0 auto;}
+.cal-fchip button:hover{background:var(--fill2,rgba(0,0,0,.08));color:var(--lbl);}
+.cal-fchip button .icn{width:10px;height:10px;}
+.cal-fclr{border:0;background:transparent;color:var(--b500);font-size:12px;cursor:pointer;padding:2px 4px;}
+.cal-fclr:hover{text-decoration:underline;}
+body.wid .cal-fchips{display:none;}
 .cal-nb{width:30px;height:30px;border-radius:3px;display:flex;align-items:center;justify-content:center;color:var(--lbl2);transition:background var(--tr),color var(--tr);}
 .cal-nb:hover{background:var(--fill);color:var(--bt1);}
 .cal-nb .icn{width:16px;height:16px;vertical-align:0;}   /* ⚠ .icn 기본 vertical-align:-.15em 이 남으면 아이콘이 아래로 쏠린다 */
@@ -646,6 +657,12 @@ body:not(.wid) #view-calendar .cal-head>.cal-ctl>.cal-nav{background:var(--fill)
 /* 여러 날 업무 막대는 옆 칸 위로 넘어가 그려진다 — 뒤에 오는 칸 배경이 덮지 않도록 위로 올린다 */
 #fcal .fc-daygrid-day-frame{position:relative;z-index:1;}
 #fcal .fc-daygrid-event-harness{z-index:2;}
+/* 970차(U2): 칸마다 z-index:1 이라 뒤 칸이 앞 칸에서 넘어온 막대 위에 쌓여, 여러 날 막대의 오른쪽을 누르면 뒤 칸 날짜만 골라졌다.
+   막대는 늘 오른쪽으로 뻗으므로 왼쪽 칸일수록 위에 둔다(막대가 없는 곳은 결과가 같다) */
+#fcal td.fc-daygrid-day:nth-child(1) .fc-daygrid-day-frame{z-index:8;}#fcal td.fc-daygrid-day:nth-child(2) .fc-daygrid-day-frame{z-index:7;}
+#fcal td.fc-daygrid-day:nth-child(3) .fc-daygrid-day-frame{z-index:6;}#fcal td.fc-daygrid-day:nth-child(4) .fc-daygrid-day-frame{z-index:5;}
+#fcal td.fc-daygrid-day:nth-child(5) .fc-daygrid-day-frame{z-index:4;}#fcal td.fc-daygrid-day:nth-child(6) .fc-daygrid-day-frame{z-index:3;}
+#fcal td.fc-daygrid-day:nth-child(7) .fc-daygrid-day-frame{z-index:2;}
 
 #fcal .fc-dayGridMonth-view td.fc-daygrid-day.fc-day-other{background-color:var(--surf3);}
 /* 주말·공휴일은 같은 톤 — 붉은 끼를 아주 옅게만 준다(공휴일이 유난히 진하던 것을 맞췄다) */
@@ -1260,6 +1277,16 @@ body.snap .sbsl:first-of-type{display:none;}
 #view-defect .dn-side .lg.lg-2col .pct{min-width:36px;}
 #view-defect .dn-side .lg.lg-2col{display:grid;grid-template-columns:1fr 1fr;column-gap:16px;row-gap:5px;min-width:0;flex:1;grid-auto-flow:column;grid-template-rows:repeat(var(--lgr,6),auto);}
 #view-defect .dn-empty{color:var(--lbl3);font-size:12px;}
+/* 970차(U10): 카드가 좁으면(1366 노트북 등) 범례를 도넛 아래로 — 옆에 2열로 두면 이름이 전부 「H…」로 잘렸다. 인쇄 미리보기 카드는 제외 */
+@media screen and (min-width:769px){
+  #view-defect .dn-card{container:dncard/inline-size;}
+  #view-defect #dfPrintPages .dn-card{container-type:normal;}
+  @container dncard (max-width:640px){
+    #view-defect .dn-side{flex-direction:column;gap:12px;height:auto;padding:6px 4px 10px;}
+    #view-defect .dn-side .lg{margin-left:0;width:100%;}
+    #view-defect .dn-side .lg.lg-2col{grid-auto-flow:row;grid-template-rows:none;}
+  }
+}
 /* 모바일 — 원본 768px 분기와 동일(도넛 세로 스택·2col은 row 흐름) */
 @media screen and (max-width:768px){
   #view-defect .dn-side{flex-direction:column;gap:14px;height:auto;padding:8px 4px;align-items:center;}
@@ -1427,7 +1454,10 @@ body.df-printing .axfold-h,#dfPrintPages .axfold-h{display:none!important;}   /*
 #view-defect .axseg button.on{background:var(--bg2);color:var(--bt1);box-shadow:var(--sh-1);}
 /* 처리계획 칸 — 지난달(읽기) 위 · 이번 달(입력) 아래 */
 #view-defect td.pp-cell{padding:8px 9px 8px 30px;text-align:left;vertical-align:top;}
-#view-defect .pp-stack{display:flex;gap:8px;align-items:flex-start;}
+#view-defect .pp-stack{display:flex;gap:8px;align-items:flex-start;position:relative;}
+#view-defect .pp-saved{position:absolute;right:6px;top:4px;font-size:11px;font-weight:700;color:var(--gn);background:var(--bg2);padding:0 4px;border-radius:3px;pointer-events:none;opacity:0;transition:opacity var(--t-fast);}   /* 970차(U13) */
+#view-defect .pp-saved.on{opacity:1;}
+@media print{#view-defect .pp-saved{display:none;}}
 #view-defect .pp-stack+.pp-stack{margin-top:7px;padding-top:7px;border-top:1px solid var(--sep);}
 #view-defect .pp-lab{flex:0 0 34px;font-size:11px;font-weight:700;color:var(--lbl3);letter-spacing:.02em;padding-top:3px;}
 #view-defect .pp-box{flex:1;min-width:0;font-size:11px;line-height:1.55;color:var(--lbl2);white-space:pre-wrap;}
@@ -1447,7 +1477,10 @@ body.df-printing .axfold-h,#dfPrintPages .axfold-h{display:none!important;}   /*
 #view-defect .vseg-v{font-size:22px;font-weight:700;line-height:1;color:var(--lbl);font-variant-numeric:tabular-nums;}
 #view-defect .vseg-v .vseg-u{font-size:12px;font-weight:400;color:var(--lbl2);margin-left:2px;}
 #view-defect .vseg-m{font-size:11px;color:var(--lbl2);margin-top:4px;}
-#view-defect .vseg .vph{color:var(--lbl3);font-weight:500;font-size:18px;}
+#view-defect .vseg .vph{color:var(--b500);font-weight:600;font-size:14px;border:1px dashed currentColor;border-radius:3px;padding:2px 10px;display:inline-block;line-height:1.4;}   /* 970차(U13): 「+ 입력」 — 눌리는 곳으로 보이게 */
+#view-defect .vseg-edit{cursor:pointer;}
+#view-defect #dfPrintPages .vseg .vph{border:0;padding:0;color:var(--lbl3);font-weight:500;}
+@media print{#view-defect .vseg .vph{border:0;padding:0;color:var(--lbl3);font-weight:500;}}
 /* ── 목록 모달 추가분 — 지연구간 칩(건수)·공가 칩·표시 건수 ── */
 .rl-band-bar{display:flex;align-items:center;gap:6px;flex:none;flex-wrap:wrap;margin-bottom:10px;}
 .rl-band{display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 11px;background:var(--bg2);color:var(--lbl2);border:1px solid var(--sep);border-radius:var(--rp);font:inherit;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;transition:background var(--t-fast),border-color var(--t-fast),color var(--t-fast);}
@@ -1677,7 +1710,7 @@ body :is(.dp-empty,.tk-empty,.nq-empty,.rec-none,.dfnone,.d60-empty,.set-empty,.
 .plan-t{font-size:13px;font-weight:700;color:var(--lbl);word-break:break-all;}
 .plan-hd .plan-t{flex:1;min-width:0;cursor:pointer;}
 /* 펼칠 내용이 없는 카드는 손가락 커서를 띄우지 않는다 — 눌러도 반응이 없는 헛손질 방지 */
-#dpList .plan:not(.has-det) .plan-t,.dp-list .plan:not(.has-det) .plan-t,#dpList .plan:not(.has-det) .plan-main,.dp-list .plan:not(.has-det) .plan-main{cursor:default;}
+body.wid #dpList .plan:not(.has-det) .plan-t,body.wid .dp-list .plan:not(.has-det) .plan-t,body.wid #dpList .plan:not(.has-det) .plan-main,body.wid .dp-list .plan:not(.has-det) .plan-main{cursor:default;}   /* 970차(U4): 앱은 본문 = 편집이라 늘 손 모양 */
 .plan.done .plan-t{color:var(--lbl3);}
 .plan-meta{display:flex;align-items:center;gap:8px;margin-top:4px;font-size:12px;color:var(--lbl3);font-weight:500;line-height:1.45;}
 .pm-l{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -1696,9 +1729,9 @@ body :is(.dp-empty,.tk-empty,.nq-empty,.rec-none,.dfnone,.d60-empty,.set-empty,.
 #dpList .plan-side,.dp-list .plan-side{position:relative;}
 #dpList .plan-t,.dp-list .plan-t{padding-right:26px;}   /* 겹쳐 뜨는 수정 버튼이 앉을 자리 — 제목이 길어도 글자를 덮지 않는다 */
 #dpList .plan .p-edit,.dp-list .plan .p-edit{position:absolute;right:20px;top:50%;transform:translateY(-50%);
-  opacity:0;pointer-events:none;transition:opacity var(--tr);}
+  opacity:.5;transition:opacity var(--tr);}   /* 970차(U4): 늘 옅게 보인다 — 마우스를 올려야 나타나 있는 줄 몰랐다 */
 #dpList .plan-side.has-lnk .p-edit,.dp-list .plan-side.has-lnk .p-edit{right:46px;}
-#dpList .plan:hover .p-edit,.dp-list .plan:hover .p-edit,#dpList .plan.open .p-edit,.dp-list .plan.open .p-edit{opacity:1;pointer-events:auto;}
+#dpList .plan:hover .p-edit,.dp-list .plan:hover .p-edit,#dpList .plan.open .p-edit,.dp-list .plan.open .p-edit{opacity:1;}
 @media (hover:none){#dpList .plan .p-edit{opacity:1;pointer-events:auto;}}
 .p-ico .icn{width:14px;height:14px;}
 /* 날짜 헤더 — 좌: 날짜(누르면 연·월 이동), 우: 달 넘기기·오늘 */
@@ -1854,7 +1887,7 @@ body:not(.wid) .btn.dp-add.on:hover{background:transparent;color:#7DA9EA;}   /* 
 /* ⚠ 팝오버 안에서는 확대 호버를 쓰지 않는다 — 좁은 격자에서 서로 겹쳐 보인다 */
 .pal-c{width:24px;height:24px;border-radius:3px;cursor:pointer;border:2px solid transparent;transition:border-color var(--t-fast),box-shadow var(--t-fast);}
 .pal-c:hover{box-shadow:0 0 0 2px var(--fill2);}
-.pal-c.sel{border-color:var(--lbl);}
+.pal-c.sel{outline:2px solid var(--lbl);outline-offset:2px;}   /* 972차: 고른 표시는 칩 **바깥** 고리 — 안쪽 2px 테두리는 칩 색을 먹어 그라디언트·무지개에서 검은 액자처럼 보였다 */
 .pal-auto{display:inline-flex;align-items:center;justify-content:center;background:var(--fill);color:var(--lbl2);}
 .pal-auto svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;}
 .pal-br{flex:1 0 100%;height:1px;background:var(--sep);margin:3px 0;}
@@ -1965,6 +1998,7 @@ body:not(.wid) .btn.dp-add.on:hover{background:transparent;color:#7DA9EA;}   /* 
   background:var(--surf2);border-bottom:1px solid var(--sep);}
 .tkwk-h b{font-size:13px;font-weight:700;color:var(--lbl);letter-spacing:.01em;}
 .tkwk-period{font-size:12px;font-weight:700;color:var(--lbl2);font-variant-numeric:tabular-nums;}
+.tkwk-undone{font-size:12px;font-weight:500;color:var(--rd);}   /* 970차(U8): 왼쪽 칸의 아직 안 끝난 업무 수 */
 .tkwk-h .c{margin-left:auto;font-size:11px;font-weight:700;color:var(--lbl2);background:var(--fill);border-radius:3px;padding:2px 8px;font-variant-numeric:tabular-nums;}   /* 770차: 주간 업무 열 머리 오른쪽 건수 배지(현장별 업무와 같은 꼴) */
 .tkwk-col .tk-list{padding:0;padding-bottom:4px;}   /* 표는 칸을 꽉 채운다 — 아래 여백을 두면 마지막 행만 떠 보인다(359차) */
 /* 칸이 절반이라 창이 좁으면 위아래로 세운다 */
@@ -2167,6 +2201,8 @@ body.pickmode #tkRoot .tk-item,body.pickmode .day-panel .plan{user-select:none;}
 .tk-item.editing .tk-row .tk-acts .tk-ico:nth-child(3){top:56px;}
 /* 아래 줄 끝 — 삭제는 완료 옆이 아니라 여기(364차) */
 .tk-erow label[hidden]{display:none;}
+.tk-esite{display:none;flex-direction:column;gap:4px;margin-bottom:var(--s2);font-size:11px;font-weight:700;color:var(--lbl3);line-height:14px;}
+.tk-esite select{font-size:12px;font-weight:400;background:var(--fill);border:1px solid transparent;}
 
 .tk-ebody{margin-top:var(--s2);}
 .tk-ebody .frow>label{font-size:11px;font-weight:700;color:var(--lbl3);}
@@ -2187,7 +2223,9 @@ body.pickmode #tkRoot .tk-item,body.pickmode .day-panel .plan{user-select:none;}
 .tkc-w,.tkc-s{font-weight:400;color:var(--lbl2);}
 .tkc-r{font-weight:400;color:var(--lbl);}   /* 615차: 권역은 검은색 */
 .tkc-w{display:flex;align-items:center;gap:6px;color:var(--lbl);}
-.tkc-w.dim{color:var(--lbl3);}                   /* 공통 업무 — 이름 대신 흐린 「공통」 */
+.tkc-w.dim{color:var(--lbl3);}
+.tkc-nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.tkc-x{font-size:11px;color:var(--lbl3);margin-left:1px;}   /* 970차(U7): 담당자가 여럿이면 「김민수+1」 — 이름 열(56px)에 「외 1」까지는 안 들어가 「김민수, 박」·「김민수 오」로 잘렸다. 전체 이름은 툴팁 */                   /* 공통 업무 — 이름 대신 흐린 「공통」 */
 .tkc-dot{width:6px;height:6px;border-radius:50%;flex:0 0 auto;}   /* 담당자 색은 글자가 아니라 이 점이 맡는다 */
 .tk-item.editing .tk-row .tkc-w{gap:6px;}   /* 편집 중에도 점 + 선택칸 — 읽기 때와 이름 시작 위치가 같아진다(389차) */
 .tk-item.editing .tk-row .tkc-w select{min-width:0;flex:1 1 auto;}
@@ -2200,6 +2238,9 @@ body.pickmode #tkRoot .tk-item,body.pickmode .day-panel .plan{user-select:none;}
   .tkl-s .tk-row{grid-template-columns:50px minmax(0,1fr) auto 26px;}
   .tkl-s-w .tk-row{grid-template-columns:50px 56px minmax(0,1fr) auto 26px;}
   .tkl-s .tkc-s,.tkl-s-w .tkc-s{display:none;}
+  /* 970차(U7): 현장 열이 접히면 편집 아래 줄에 현장 칸을 보이고, 구분·시간·반복·링크는 2열로 — 4열이면 「반복 없」처럼 잘렸다 */
+  .tkl-s .tk-esite,.tkl-s-w .tk-esite{display:flex;}
+  .tk-editrest .tk-erow{grid-template-columns:repeat(2,minmax(0,1fr));}
 }
 @container tkpanel (max-width:460px){
   /* 689차: 날짜 열 74px 고정 → 내용 폭(auto). 「9/1」이 대부분인데 74px 을 늘 비워 두고 업무 제목이 잘렸다. 좌우 여백 22→12, 틈 12→8 */
@@ -2209,6 +2250,7 @@ body.pickmode #tkRoot .tk-item,body.pickmode .day-panel .plan{user-select:none;}
   .tkl-nr .tk-row{grid-template-columns:minmax(0,1fr) auto 26px;}
   .tkl-nr-w .tk-row{grid-template-columns:52px minmax(0,1fr) auto 26px;}
   .tkc-r{display:none;}
+  .tkc-w .tkc-x{font-size:10px;margin-left:0;}.tkc-w .tkc-nm{letter-spacing:-.02em;}   /* 970차(U7): 폰 이름 열 52px — 「김민수+1」이 들어가게 */
   .tk-item+.tk-item>.tk-row::before{left:0;}
   .tk-item+.tk-item.gw>.tk-row::before{left:72px;}   /* 912차: 폰 열 기준(여백 12 + 이름 52 + 틈 8) — 데스크톱 값(152/90)이 그대로 걸려 제목 글자 한가운데에서 끊겼다 */
   .tkl-nr-w .tk-item+.tk-item.gw>.tk-row::before{left:72px;}   /* ⚠ 현장별 쪽 규칙이 더 구체적이라 여기서도 따로 덮어야 한다 */
@@ -2493,6 +2535,55 @@ body.pickmode #tkRoot .tk-item,body.pickmode .day-panel .plan{user-select:none;}
   height:41px;padding:0 var(--s4);margin:0;font-size:13px;font-weight:700;color:var(--lbl);letter-spacing:.01em;
   background:var(--surf2);border-bottom:1px solid var(--sep);}
 .share-row{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);padding:10px var(--s4);min-height:52px;}
+/* 973차: 게시 카드 — 조건(키-값) · 점검 한 줄 · 넓은 단추 / 진행·결과는 단계 목록(.st) + 결과(.rs). 오른쪽 한 칸이 상태: 도는 단계=배지, 끝난 단계=걸린 시간 */
+.pb{display:flex;flex-direction:column;gap:var(--s3);padding:var(--s3) var(--s4) var(--s4);}
+.pb[hidden]{display:none;}
+/* 973차 정리: 이 카드의 값은 앱에 이미 있는 규격을 가져온다 — 배지=하자 증감 배지(.ba) · 숫자 칸=KPI 카드(.kc/.kl/.kv) · 넓은 단추=.qc-run · 도는 표시=.uprog-spin · 단추 줄=모달 바닥(.mf2) · 모서리 --r · 간격 --s* */
+.pb-kv{display:grid;grid-template-columns:auto 1fr;gap:var(--s2) var(--s4);font-size:13px;align-items:center;margin:0;}
+.pb-kv dt{color:var(--lbl2);}
+.pb-kv dd{margin:0;text-align:right;color:var(--lbl);font-weight:600;font-variant-numeric:tabular-nums;}
+.pb-kv dd small{font-size:12px;font-weight:400;color:var(--lbl3);margin-right:var(--s2);}
+.pb-rm{display:flex;align-items:center;justify-content:flex-end;gap:var(--s2);}
+.pb-rm .inp{width:140px;text-align:right;}
+.pb-pend{font-size:12px;color:var(--bt1);line-height:1.5;}
+.pb-pend[hidden],.pb-ok[hidden]{display:none;}
+.pb-ok{display:flex;align-items:center;gap:var(--s2);padding:var(--s2) var(--s3);border-radius:var(--r);background:var(--fill);font-size:12px;color:var(--lbl2);line-height:1.5;word-break:keep-all;}
+.pb-ok svg{width:14px;height:14px;flex:none;stroke:var(--gn);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+.pb-ok.warn{background:rgba(217,119,6,.10);color:var(--am-ink);}
+.pb-ok.warn svg{stroke:var(--am);}
+.pb-go{width:100%;height:36px;justify-content:center;font-weight:700;}
+.pb-h{display:flex;align-items:center;justify-content:space-between;gap:var(--s2);}
+.pb-h b{font-size:13px;font-weight:700;}
+.pb-pill{display:inline-flex;align-items:center;font-size:11px;font-weight:600;padding:2px 8px;border-radius:var(--r);white-space:nowrap;font-variant-numeric:tabular-nums;}
+.pb-pill.run{background:var(--b100);color:var(--bt1);}
+.pb-pill.ok{background:var(--tint-gn);color:var(--gn);}
+.pb-pill.bad{background:var(--tint-rd);color:var(--rd);}
+.st{display:flex;flex-direction:column;border:1px solid var(--sep);border-radius:var(--r);}
+.st-r{display:grid;grid-template-columns:20px minmax(0,1fr) auto;align-items:center;gap:var(--s3);padding:var(--s2) var(--s3);}
+.st-r+.st-r{border-top:1px solid var(--sep);}
+.st-i{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;}
+.st-i svg{width:12px;height:12px;stroke:#fff;fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;}
+.st-r.ok .st-i{background:var(--gn);}.st-r.bad .st-i{background:var(--rd);}
+.st-r.run .st-i{border:2px solid var(--b100);border-top-color:var(--bt1);animation:uprogspin .8s linear infinite;}
+.st-r.wait .st-i{border:1.5px dashed var(--sepo);}
+.st-t{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.st-t b{font-size:13px;font-weight:600;color:var(--lbl);}
+.st-t span{font-size:12px;color:var(--lbl3);}
+.st-r.wait .st-t b{color:var(--lbl3);font-weight:500;}
+.st-r.bad .st-t span{color:var(--rd);}
+.st-c{font-size:11px;font-weight:600;padding:2px 8px;border-radius:var(--r);background:var(--fill);color:var(--lbl2);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.st-d{font-size:12px;color:var(--lbl3);text-align:right;min-width:48px;font-variant-numeric:tabular-nums;}
+.rs-sum{padding:var(--s3);border-radius:var(--r);background:var(--tint-gn);font-size:13px;line-height:1.6;color:var(--lbl);}
+.rs-sum.bad{background:var(--tint-rd);}
+.rs-sum b{display:block;font-size:12px;font-weight:700;color:var(--gn);margin-bottom:2px;}
+.rs-sum.bad b{color:var(--rd);}
+.rs-t{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s3);}
+.rs-t div{background:var(--surf2);border:1px solid var(--sep);border-radius:var(--r);padding:10px 12px;display:flex;flex-direction:column;min-width:0;}
+.rs-t span{font-size:13px;font-weight:500;opacity:.72;margin-bottom:4px;}
+.rs-t b{font-size:22px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums;}
+.rs-t .up{color:var(--rd);}.rs-t .dn{color:var(--gn);}
+@media (max-width:560px){.rs-t{grid-template-columns:repeat(2,minmax(0,1fr));}}   /* 폰: 숫자 네 칸은 2×2 */
+.pb-row{display:flex;justify-content:flex-end;gap:var(--s2);}
 .share-row+.share-row{box-shadow:inset 0 1px 0 var(--sep);}
 .set-card>.share-row:last-child{box-shadow:inset 0 -1px 0 var(--sep),inset 0 1px 0 var(--sep);}
 .set-card>.share-row:first-of-type:last-of-type{box-shadow:inset 0 -1px 0 var(--sep);}
@@ -2723,14 +2814,24 @@ select.mg-inp{cursor:pointer;-webkit-appearance:none;appearance:none;background-
 .myorg-f-wide .site-chk{min-height:34px;gap:6px;padding:0;}
 .myorg-f-wide .site-chk .site-on{height:26px;padding:0 9px;}
 .myorg-f-wide .site-chk .site-none{height:26px;}
-.myorg-f-wide .site-chk .site-pick{width:26px;height:26px;}
+.myorg-f-wide .site-chk .site-pick:not(.site-pick-txt){width:26px;height:26px;}   /* 972차: 글자 단추(「현장 추가」)까지 26px 폭으로 묶여 한 글자씩 세로로 쪼개졌다 — 아이콘 단추만 */
+.myorg-f-wide .site-chk .site-pick-txt{height:26px;white-space:nowrap;}
 .site-on.site-ro{cursor:default;}   /* 628차: 배정 권한이 없으면 칩은 보기만 */
 /* 633차 무지개 — 색 원과 FullCalendar 업무 막대 모두 rainbow 토큰을 CSS 그라디언트로 렌더링한다.
    공통 업무(team)는 흰 속을 유지하면서 그라디언트 테두리만 보여준다. */
 /* 677차: 흐름 무지개 칩 — 재생 삼각형으로 고정 무지개와 구분한다(둘 다 같은 그라디언트라 색으로는 못 나눈다) */
 /* 678차: 그라디언트는 단색과 성격이 달라 줄을 나눈다 — 위 칸들과 같은 간격·크기를 쓴다 */
 .pal-row.pal-grad{display:flex;flex-wrap:wrap;gap:7px;width:100%;margin-top:5px;padding-top:7px;box-shadow:inset 0 1px 0 var(--sep);}
-.pal-row.pal-grad2{margin-top:7px;padding-top:0;box-shadow:none;}   /* 679차: 흐름 줄은 고정 줄 바로 아래 — 구분선은 한 번만 */
+/* 971차: 그라디언트 줄 = 무지개 · 내 그라디언트 · 두 색 칸 · 흐름 체크(흐름 칩 줄은 없앴다) */
+.pal-row.pal-grad{align-items:center;}
+/* 972차: 내 그라디언트 막대 — 무지개 칩과 흐름 체크 사이를 채우고, 양 끝 동그라미(.pal-stop)가 색 고르기 */
+.pal-c.pal-gc{position:relative;flex:1;min-width:96px;}
+.pal-c.pal-gc,.pal-c.pal-rb{background-origin:border-box!important;}   /* 인라인 background 가 padding-box 로 되돌려 투명 테두리 칸에 반대쪽 색이 한 줄씩 비쳤다 */
+.pal-stop{position:absolute;top:50%;width:14px;height:14px;margin-top:-7px;border-radius:50%;box-shadow:0 0 0 2px #fff,0 1px 3px rgba(0,0,0,.35);cursor:pointer;overflow:hidden;z-index:1;}
+.pal-stop-a{left:5px;}.pal-stop-b{right:5px;}
+.pal-stop .pal-gin{position:absolute;inset:-6px;width:calc(100% + 12px);height:calc(100% + 12px);padding:0;border:0;opacity:0;cursor:pointer;}
+.pal-flow{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--lbl2);cursor:pointer;user-select:none;}
+.pal-flow .pal-fl{margin:0;accent-color:var(--b500);}
 .tk-new .pal-row.pal-grad{gap:6px;}
 .pal-c.pal-fx{position:relative;}
 .pal-c.pal-fx::after{content:'';position:absolute;left:50%;top:50%;transform:translate(-40%,-50%);
@@ -3025,6 +3126,9 @@ body.wid.wid-nomore #fcal .fc-daygrid-day-bottom{display:none;}
 /* 노랑·연두처럼 밝은 막대는 글자를 어둡게 쓰고 그림자도 밝은 쪽으로 뒤집는다.
    ⚠ FullCalendar 의 textColor 옵션은 #fcal 규칙에 가려 먹지 않는다 — 색은 여기서 정한다 */
 #fcal .fc-event.on-light{color:var(--lbl);font-weight:600;}
+/* 971차: 위젯 「막대 옅게」 — 판은 app.js softOf(칸 색 쪽으로 섞은 색), 글자는 --sfg(eventDidMount). 완료는 회색 판 */
+body.wid #fcal .fc-event.ev-soft{color:var(--sfg);font-weight:600;}
+body.wid #fcal .fc-event.ev-soft.done{opacity:1;background-color:#4A505C!important;color:rgba(255,255,255,.5);}
 #fcal .fc-event .fc-event-main{color:inherit;}
 /* ⚠ 글자를 키워도 달력이 창보다 커지면 안 된다 — 표는 창에 맞추고 칸 안에서만 줄인다 */
 body.wid #fcal .fc-daygrid-body,body.wid #fcal table{width:100%!important;}
@@ -3041,7 +3145,7 @@ body.wid .wid-pop.on{display:flex;}
 /* 안에 든 것은 앱의 일자 패널 그대로다 — 카드 테두리만 지우고 팝업에 맞춘다 */
 body.wid .wid-pop .day-panel{background:transparent;border:0;box-shadow:none;border-radius:0;padding:0;margin:0;
   flex:1;min-height:0;overflow:hidden;}
-body.wid .wid-pop .dp-lh{padding:0 12px 4px;margin:0;min-height:0;position:relative;}
+body.wid .wid-pop .dp-lh{padding:12px 36px 4px 12px;margin:0;min-height:0;position:relative;}   /* 970차(U11): 팝업의 첫 줄 — 위 12px · 오른쪽은 닫기 자리 */
 body.wid .wid-pop .dp-lh::after{left:12px;right:12px;}
 
 body.wid .wid-pop .dp-body{padding:8px 12px 10px;}
@@ -3050,7 +3154,7 @@ body.wid .wid-pop #dpList .plan{background:rgba(255,255,255,.08);border-color:rg
 /* 664차: 위 규칙(2766행)이 .plan.pick 보다 구체적이라 선택 음영이 먹히지 않았다 — 같은 자리에서 덮는다 */
 body.wid .wid-pop #dpList .plan.pick{background:rgba(62,113,210,.34);border-color:rgba(120,170,255,.55);}
 body.wid .wid-pop #dpList .dp-edit{background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.20);}
-body.wid .wid-pop .dp-lh-t{color:rgba(255,255,255,.75);}
+body.wid .wid-pop .dp-lh-t{color:#fff;}   /* 970차(U11): 제목 줄이 됐다(.75 → 흰색) */
 body.wid .wid-pop input.inp::placeholder,body.wid .wid-pop textarea.inp::placeholder{color:rgba(255,255,255,.42);}
 body.wid .wid-pop .p-ico,body.wid .wid-pop .pe-ic{color:rgba(255,255,255,.72);}
 body.wid .wid-pop .p-ico:hover,body.wid .wid-pop .pe-ic:hover{background:rgba(255,255,255,.14);color:#fff;}
@@ -3095,13 +3199,16 @@ body.wid .wid-pop select.inp option,body.wid #mb select.inp option{background:#2
 
 body.wid .wid-pop input[type=date].inp,body.wid .wid-pop input[type=time].inp{color-scheme:dark;}
 
-.wid-pop .wp-h{display:flex;align-items:center;gap:8px;padding:14px 12px 4px;margin-bottom:2px;}   /* 좌우 8px = 아래 '업무 N건'(.dp-lh)과 같은 자리 · 위 10→14px(521차 사용자 지시 — 상단에 3~5px 더) */
+.wid-pop .wp-h{display:flex;align-items:center;gap:8px;position:absolute;top:12px;right:8px;z-index:2;}   /* 970차(U11): 닫기만 오른쪽 위에 띄운다(날짜 줄은 아래 dp-lh 가 맡는다) · 예전: padding 14px 12px 4px(521차) */   /* 좌우 8px = 아래 '업무 N건'(.dp-lh)과 같은 자리 · 위 10→14px(521차 사용자 지시 — 상단에 3~5px 더) */
 .wid-pop .wp-d{font-size:13px;font-weight:700;color:#fff;line-height:22px;transform:translateY(1px);}
 .wid-pop .wp-w{font-size:12px;font-weight:600;color:rgba(255,255,255,.6);margin-left:auto;line-height:22px;transform:translateY(1px);}
 .wid-pop .wp-x{width:22px;height:22px;border-radius:3px;display:flex;align-items:center;justify-content:center;
   color:rgba(255,255,255,.7);flex:0 0 auto;margin-left:2px;}
 .wid-pop .wp-x:hover{background:rgba(255,255,255,.14);color:#fff;}
 .wid-pop .wp-x .icn{width:11px;height:11px;}
+/* 970차(U11): 머리 한 줄 — 「2026년 9월 15일 · 화요일」과 아래 「9월 15일 (화) · 업무 1건」이 같은 날짜를 두 번 말했다.
+   날짜 줄(wp-d·wp-w)을 걷고 닫기 단추만 오른쪽 위에 띄워 일자 패널 머리를 제목으로 쓴다 */
+.wid-pop .wp-d,.wid-pop .wp-w{display:none;}
 body.wid .plan .plan-t{font-size:calc(12.5px*var(--wfz));}
 /* 설정 팝업 */
 #wgSet{display:none;position:fixed;top:62px;right:10px;z-index:600;width:282px;   /* 연월 팝업(62px)과 같은 높이 — 230차 실측 정렬 */
@@ -3178,23 +3285,38 @@ body.wid #wgSet.on{display:block;}
 .cv-head{display:flex;flex-direction:column;align-items:flex-start;text-align:left;margin-bottom:28px;}
 /* 964차(사용자): 머리를 헤더 로고와 같은 짜임(CI 워드마크 | 주요업무현황)으로 — 「H ·」 는 뺐다. 로그인 화면은 이것이 제목이고, 가입·재설정·인증 화면은 아래에 제목(#cvTitle)이 붙는다 */
 /* 965차(사용자): 카드 머리는 제목 한 줄(로그인·계정 만들기·…) 왼쪽 정렬 — 로고 줄은 카드에서 뺐다.
-   CI 워드마크는 페이지 가운데 아래 서명(.cv-sig, 「주요업무현황」 없이) · 위젯엔 없음 · 불러오는 동안엔 서명 대신 카드 안 삼각 마크(.cv-mark)만.
+   CI 워드마크는 페이지 가운데 아래 서명(.cv-sig, 「주요업무현황」 없이) · 위젯엔 없음 · 불러오는 동안엔 서명 대신 한가운데 락업(.cv-lock)과 점 세 개(969차).
    966차(사용자): 카드는 모든 화면에서 화면 한가운데(965차의 윗선 고정은 기각) */
 .cv-title:empty{display:none;}
 .cv-head:has(#cvTitle:empty){display:none;}   /* 불러오는 중(제목 없음) — 머리 여백까지 걷는다 */
 .cv-sig{position:fixed;left:0;right:0;bottom:32px;display:flex;justify-content:center;pointer-events:none;}
 .cv-sig-logo{height:18px;width:auto;display:block;opacity:.5;}
 #coverGate:has(#cvBody[style*="none"]) .cv-sig{visibility:hidden;}   /* 불러오는 중엔 삼각 마크만 */
+#coverGate:has(#cvBody[style*="none"]){align-items:center;padding:24px;}   /* 969차: 불러오는 중은 어느 화면(데스크톱·위젯·폰 ≤480 의 위쪽 정렬 포함)에서든 정중앙 — 아이디 두 개라 폰 규칙(body:not(.wid) #coverGate)도 이긴다 */
 #coverGate:has(#cvBody[style*="none"]) .cv-head{display:none;}   /* 966차: 불러오는 중엔 제목을 숨긴다 — #cvTitle 은 처음부터 「로그인」(부팅 때 cvView 를 부르지 않아 빈 채로 떠 있었다) */
 body.wid .cv-sig{display:none;}
 @media (max-height:640px){.cv-sig{display:none;}}
-.cv-mark{height:32px;width:auto;display:block;overflow:visible;}
-.cv-mark path{fill:#fff;}   /* 967차(사용자): 불러오는 중 마크는 처음부터 채워진 채 — 965·966차 윤곽 그리기 애니메이션은 사용자 PC 에서 보이지 않아 뺐다 */
 .cv-title{margin:0;font-size:20px;font-weight:700;line-height:1.3;letter-spacing:-.01em;color:var(--cv-t1);}
 .cv-sub{margin:8px 0 0;font-size:14px;line-height:1.5;color:var(--cv-t3);word-break:keep-all;}
 .cv-sub:empty{display:none;}
-.cv-loading{display:flex;flex-direction:column;align-items:center;gap:16px;padding:24px 0;}
-.cv-loading-t{font-size:12px;color:var(--cv-t3);}
+.cv-loading{display:flex;flex-direction:column;align-items:center;gap:22px;padding:24px 0;}
+/* 969차(사용자, 시안 C): 불러오는 중 = 헤더와 같은 짜임의 락업(CI | 주요업무현황) + 점 세 개. 멈춘 첫 화면만으로 완성(점은 .4 로 보임), 점이 번갈아 밝아지는 건 덤.
+   락업 L22 — 대문자 L×0.63=13.9 · 이름 16px(헤더 비율 1:1.17) · 이름·구분선은 대문자 중심에 맞춰 top −3px(L×0.14) */
+.cv-lock{display:flex;align-items:center;gap:12px;}
+.cv-lock-logo{height:22px;width:auto;display:block;flex:0 0 auto;}
+.cv-lock b{position:relative;top:-3px;padding-left:12px;font-size:16px;font-weight:700;letter-spacing:-.01em;line-height:1;color:var(--cv-t1);white-space:nowrap;}
+.cv-lock b::before{content:"";position:absolute;left:0;top:50%;transform:translateY(-50%);width:1px;height:14px;background:rgba(255,255,255,.28);}
+.cv-dots{display:flex;gap:6px;}
+.cv-dots i{width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,.8);opacity:.4;animation:cvDot 1.2s ease-in-out infinite;will-change:opacity;}   /* ⚠ opacity 만 움직인다 — 합성 스레드에서 돌아 app.js 실행·Firebase 초기화로 메인 스레드가 막혀도 멈추지 않는다(965·966차 윤곽선 애니메이션은 stroke·fill 이라 메인 스레드에 묶여 멈췄다) */
+.cv-dots i:nth-child(2){animation-delay:.15s;}.cv-dots i:nth-child(3){animation-delay:.3s;}
+/* 970차(P4): 스크립트를 못 받았을 때 점 자리에 뜨는 안내(boot-wid.js) */
+.cv-fail[hidden]{display:none;}
+.cv-fail{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--cv-t3,#C9CED6);}
+.cv-fail button{font:inherit;font-size:13px;color:#fff;background:transparent;border:1px solid rgba(255,255,255,.3);border-radius:3px;padding:4px 12px;cursor:pointer;}
+.cv-fail button:hover{border-color:rgba(255,255,255,.6);}
+@keyframes cvDot{0%,80%,100%{opacity:.4;}40%{opacity:1;}}
+body:not(.wid) #coverGate:has(#cvBody[style*="none"]) .cv-card{background:transparent;border-color:transparent;box-shadow:none;padding-top:40px;padding-bottom:40px;}   /* 데스크톱 불러오는 중은 카드 없이 바탕 위에 — 위젯은 바탕화면이 무엇이든 읽히게 유리 카드를 둔다 */
+body.wid .cv-lock-logo{height:18px;}body.wid .cv-lock{gap:10px;}body.wid .cv-lock b{font-size:14px;top:-2px;padding-left:10px;}body.wid .cv-lock b::before{height:12px;}body.wid .cv-loading{gap:18px;}
 .cv-field{display:flex;flex-direction:column;gap:8px;}
 .cv-field+.cv-field{margin-top:24px;}
 .cv-field-pw{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:12px;row-gap:8px;align-items:baseline;}
@@ -3255,8 +3377,10 @@ body.wid .cv-sig{display:none;}
    카드는 위젯 설정 팝업(#wgSet)과 같은 유리 카드. 기본 창 620×520 · 최소 360×380 에 들어가게 압축 */
 body.wid #coverGate{background:rgba(16,20,30,.32);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);align-items:center;padding:24px;}   /* 로그인 전에도 달력 격자가 그려져 있어 그대로 비치면 산만하다 — 페이지 내용만 흐린다(투명 창 밖 바탕화면은 그대로 보임) */
 /* 963차: 위젯에서 게이트(시작·새로고침·로그인)가 떠 있는 동안 뒤쪽 앱(상단 버튼·달력)을 감춘다 — 카드만 바탕화면 위에 보인다.
-   게이트는 body 직계이고 showCover/hideCover 가 인라인 display 로 켜고 끈다(기본은 보임) */
-body.wid:has(>#coverGate:not([style*="none"]))>:not(#coverGate){visibility:hidden;}
+   970차(P1): 게이트 표시는 body.gate-on 으로 본다(boot-wid.js 가 처음에 달고 showCover/hideCover 가 켜고 끈다).
+   ⚠ 전엔 body.wid:has(>#coverGate:not([style*="none"])) 였는데, 달력이 인라인 style 을 바꿀 때마다 body 전체 스타일을
+   다시 계산하게 만들어 위젯이 아닌 화면까지 전환이 2배 느렸다 — body 에 거는 :has(속성 선택자)는 쓰지 않는다 */
+body.wid.gate-on>:not(#coverGate){visibility:hidden;}
 body.wid .cv-card{background:rgba(22,25,33,.94);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
   border:1px solid rgba(255,255,255,.16);border-radius:3px;box-shadow:0 10px 30px rgba(0,0,0,.45);}
 /* 964차(사용자): 위젯 로그인의 배치·간격·크기는 데스크톱과 같게 — 크기 덮어쓰기(카드 360·여백 24·칸 40·로고 18 등)를 걷었다. 유리 색(카드·게이트 흐림·테두리·그림자)만 위젯 것 */
@@ -3295,7 +3419,7 @@ body:not(.wid) .nq-panel{padding-top:6px;}}
 .nq-res{flex:1;min-height:0;overflow-y:auto;padding:10px 10px 14px 10px;}
 .nq-g{font-size:12px;font-weight:700;color:var(--lbl3);letter-spacing:.06em;text-transform:uppercase;padding:8px 6px 4px;}
 .nq-item{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:var(--rmd);cursor:pointer;}
-.nq-item:hover{background:var(--fill);}
+.nq-item:hover,.nq-item.kb-on{background:var(--fill);}   /* 970차(U9): 방향키로 고른 결과 */
 .nq-item .ic{flex-shrink:0;width:22px;height:22px;border-radius:3px;background:var(--fill);display:flex;align-items:center;justify-content:center;color:var(--lbl2);margin-top:1px;}
 .nq-item .ic .icn{width:12px;height:12px;}
 .nq-item .tt{font-size:13px;font-weight:600;color:var(--lbl);line-height:1.4;}
@@ -4918,6 +5042,7 @@ td.d60-pc:hover{background:var(--fill)}
 .rd-tbl tr.rd-r td.n,.pv-tbl tr.rd-r td.n{color:var(--lbl3);font-weight:600}
 .rd-ck{width:15px;height:15px;accent-color:var(--b600);vertical-align:-2px;cursor:pointer}
 .rd-tbl td.rd-none,.pv-tbl td.rd-none{text-align:center;color:var(--lbl3);padding:26px 10px}
+.pv-tbl tr.pv-more td{text-align:center;padding:12px 10px;}   /* 970차(P7): 「더 보기」 줄 */
 .rd-wrap .rl-frow td.rl-fc{top:34px}
 .qc-fr .inp{height:30px;padding-top:0;padding-bottom:0;font-size:13px}
 .pv-cond select.inp{min-width:0;max-width:100%}
@@ -5068,7 +5193,7 @@ td.d60-pc:hover{background:var(--fill)}
       <div class="cv-title" id="cvTitle">로그인</div>
       <p class="cv-sub" id="cvSub"></p>
     </div>
-    <div id="cvLoading" class="cv-loading"><svg class="cv-mark" viewBox="0 0 87 66" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M50.2456 0L44.4349 9.8333L11.2683 65.9786H11.2736H75.6123H86.8843L50.2456 0Z"/><path d="M38.9747 0L0 65.9786H7.58667L42.6533 6.62664L38.9747 0Z"/></svg><div class="cv-loading-t" role="status">연결하는 중…</div></div>
+    <div id="cvLoading" class="cv-loading" role="status" aria-label="연결하는 중"><div class="cv-lock"><svg class="cv-lock-logo" aria-hidden="true" viewBox="0 0 387 67" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M50.4577 -3.05176e-05L44.6217 9.8733L11.3137 66.2533H11.3191H75.9297H87.2497L50.4577 -3.05176e-05Z" fill="white"/><path d="M39.1373 -3.05176e-05L0 66.2533H7.62L42.8333 6.65331L39.1373 -3.05176e-05Z" fill="white"/><path d="M129.465 19.4517H109.661V2.90103H100.373V45.301H109.661V27.7424H129.465V45.301H138.759V2.90103H129.465V19.4517Z" fill="white"/><path d="M340.897 11.1848H358.254V23.4954H338.536V13.6061C338.565 13.1155 338.476 12.2408 338.885 11.7141C339.321 11.1634 340.025 11.2128 340.897 11.1848ZM331.329 5.31945C329.376 7.31412 329.304 10.2288 329.25 11.9208V45.3008H338.536V31.7714H358.254V45.3008H367.572V2.90078H338.596C335.848 2.92612 333.269 3.32478 331.329 5.31945Z" fill="white"/><path d="M265.587 2.90103H236.552V45.301H245.852V11.185H263.28C264.15 11.2117 264.86 11.1637 265.284 11.7144C265.702 12.241 265.622 13.1157 265.65 13.6064V45.301H274.935V11.921C274.89 10.229 274.814 7.31436 272.866 5.31836C270.92 3.32503 268.35 2.92636 265.587 2.90103Z" fill="white"/><path d="M219.038 34.5937C219.002 35.0871 219.086 35.9471 218.676 36.4751C218.236 37.0351 217.528 36.9844 216.664 37.0111H199.242V2.90042H189.936V45.3004H218.968C221.738 45.2804 224.312 44.8697 226.246 42.8764C228.202 40.8844 228.275 37.9764 228.332 36.2737V2.90042H219.038V34.5937Z" fill="white"/><path d="M312.282 34.5937C312.249 35.0871 312.333 35.9471 311.924 36.4751C311.492 37.0351 310.778 36.9844 309.916 37.0111H292.465V11.1844H309.916C310.778 11.2124 311.492 11.1644 311.924 11.7151C312.333 12.2404 312.249 13.1164 312.282 13.6071V34.5937ZM321.546 11.9204C321.497 10.2298 321.418 7.31375 319.476 5.31908C317.533 3.32575 314.957 2.92575 312.202 2.90042H292.465H283.176V45.3004H312.202C314.957 45.2804 317.533 44.8697 319.476 42.8764C321.418 40.8844 321.497 37.9764 321.546 36.2737V11.9204Z" fill="white"/><path d="M164.355 21.4517L153.083 2.90103H142.04L159.387 29.633V45.301H169.32V29.633L186.669 2.90103H175.617L164.355 21.4517Z" fill="white"/><path d="M376.884 45.3013H386.797V2.90121H376.884V45.3013Z" fill="white"/><path d="M232.598 63.8241C232.471 63.9348 232.346 63.9854 232.198 63.9854H230.49C230.314 63.9854 230.236 63.9481 230.236 63.7188V62.6668C230.236 62.4641 230.303 62.3228 230.451 62.2134L231.536 61.3694L233.275 63.0988L232.598 63.8241ZM238.259 61.0348L236.564 59.5601L234.856 61.3948L231.36 57.7948V56.9614C231.36 56.8468 231.372 56.8334 231.487 56.8334H233.051C233.144 56.8334 233.166 56.8334 233.166 56.9614V58.4561H235.572V56.7734C235.572 54.9494 234.488 54.5654 233.578 54.5654H230.959C229.666 54.5654 228.98 55.2708 228.98 56.6041V57.7121C228.98 58.4348 229.264 59.0934 229.83 59.6814L229.85 59.6988L228.639 60.6268C228.007 61.1241 227.684 61.7761 227.684 62.5654V63.8028C227.684 65.8294 228.916 66.2534 229.95 66.2534H232.442C233.218 66.2534 233.852 65.9748 234.33 65.4254L234.928 64.7468L236.446 66.2534H239.584L236.463 63.0414L238.259 61.0348Z" fill="white"/><path d="M137.28 66.2533H139.885V54.5599H137.28V66.2533Z" fill="white"/><path d="M191.121 66.2533H193.727V54.5599H191.121V66.2533Z" fill="white"/><path d="M120.038 62.746L114.734 54.5607H112.098V66.254H114.551V58.254L119.867 66.254H122.487V54.5607H120.038V62.746Z" fill="white"/><path d="M149.91 62.746L144.61 54.5607H141.974V66.254H144.426V58.254L149.743 66.254H152.362V54.5607H149.91V62.746Z" fill="white"/><path d="M203.765 62.746L198.464 54.5607H195.828V66.254H198.28V58.254L203.597 66.254H206.22V54.5607H203.765V62.746Z" fill="white"/><path d="M100.372 54.5612V56.8132V64.0172V66.2545H102.93H110.01V64.0172H102.93V61.5332H109.091V59.3438H102.93V56.8132H110.01V54.5612H102.93H100.372Z" fill="white"/><path d="M154.452 54.5612V56.8132V64.0172V66.2545H157.011H164.091V64.0172H157.011V61.5332H163.171V59.3438H157.011V56.8132H164.091V54.5612H157.011H154.452Z" fill="white"/><path d="M166.191 54.5612V56.8132V64.0172V66.2545H168.749H175.829V64.0172H168.749V61.5332H174.909V59.3438H168.749V56.8132H175.829V54.5612H168.749H166.191Z" fill="white"/><path d="M129.693 61.4883H132.725V63.295C132.725 63.7457 132.499 63.9697 132.053 63.9697H127.867C127.419 63.9697 127.194 63.7457 127.194 63.295V57.5043C127.194 57.075 127.413 56.859 127.851 56.859H134.749V54.5617H127.179C125.45 54.5617 124.589 55.4257 124.589 57.151V63.6643C124.589 65.391 125.45 66.2537 127.179 66.2537H132.618C134.326 66.243 135.177 65.379 135.177 63.6643V59.2963H129.693V61.4883Z" fill="white"/><path d="M213.42 61.4883H216.455V63.295C216.455 63.7457 216.229 63.9697 215.78 63.9697H211.596C211.149 63.9697 210.921 63.7457 210.921 63.295V57.5043C210.921 57.075 211.143 56.859 211.581 56.859H218.477V54.5617H210.907C209.177 54.5617 208.319 55.4257 208.319 57.151V63.6643C208.319 65.391 209.177 66.2537 210.907 66.2537H216.348C218.056 66.243 218.907 65.379 218.907 63.6643V59.2963H213.42V61.4883Z" fill="white"/><path d="M180.504 56.8659H184.959C185.399 56.8659 185.619 57.0792 185.619 57.5086V59.6979C185.619 60.1472 185.396 60.3726 184.945 60.3726H180.504V56.8659ZM188.16 60.0059V57.1566C188.16 55.4312 187.296 54.5686 185.572 54.5686H177.929V66.2539H180.504V62.5952H184.033L186.369 66.2539H189.019L186.608 62.4552C187.639 62.1526 188.16 61.3379 188.16 60.0059Z" fill="white"/><path d="M358.922 66.2533H361.528V54.5599H358.922V66.2533Z" fill="white"/><path d="M279.814 62.746L274.51 54.5607H271.874V66.254H274.327V58.254L279.642 66.254H282.265V54.5607H279.814V62.746Z" fill="white"/><path d="M247.473 57.1511V63.6645C247.473 65.3911 248.337 66.2538 250.061 66.2538H257.021V63.9698H250.751C250.303 63.9698 250.079 63.7458 250.079 63.2951V57.5045C250.079 57.0751 250.298 56.8591 250.738 56.8591H257.021V54.5618H250.061C248.337 54.5618 247.473 55.4258 247.473 57.1511Z" fill="white"/><path d="M334.582 57.1511V63.6645C334.582 65.3911 335.442 66.2538 337.169 66.2538H344.126V63.9698H337.857C337.41 63.9698 337.182 63.7458 337.182 63.2951V57.5045C337.182 57.0751 337.405 56.8591 337.841 56.8591H344.126V54.5618H337.169C335.442 54.5618 334.582 55.4258 334.582 57.1511Z" fill="white"/><path d="M267.215 63.3008C267.215 63.7515 266.993 63.9728 266.543 63.9728H262.352C261.905 63.9728 261.683 63.7515 261.683 63.3008V57.5195C261.683 57.0902 261.9 56.8755 262.337 56.8755H266.561C266.999 56.8755 267.215 57.0902 267.215 57.5195V63.3008ZM267.201 54.5795H261.693C259.971 54.5795 259.109 55.4422 259.109 57.1662V63.6675C259.109 65.3915 259.971 66.2542 261.693 66.2542H267.201C268.925 66.2542 269.791 65.3915 269.791 63.6675V57.1662C269.791 55.4422 268.925 54.5795 267.201 54.5795Z" fill="white"/><path d="M384.345 54.5612V62.7465L379.044 54.5612H376.408V66.2545H378.861V58.2545L384.176 66.2545H386.797V54.5612H384.345Z" fill="white"/><path d="M371.74 63.2943C371.74 63.7463 371.517 63.9689 371.066 63.9689H366.866C366.416 63.9689 366.193 63.7463 366.193 63.2943V57.4996C366.193 57.0703 366.41 56.8569 366.848 56.8569H371.082C371.522 56.8569 371.74 57.0703 371.74 57.4996V63.2943ZM371.726 54.5569H366.206C364.481 54.5569 363.616 55.4209 363.616 57.1463V63.6623C363.616 65.3903 364.481 66.2543 366.206 66.2543H371.726C373.454 66.2543 374.317 65.3903 374.317 63.6623V57.1463C374.317 55.4209 373.454 54.5569 371.726 54.5569Z" fill="white"/><path d="M312.234 56.8711H316.686C317.128 56.8711 317.348 57.0858 317.348 57.5138V59.7018C317.348 60.1498 317.122 60.3751 316.673 60.3751H312.234V56.8711ZM319.886 60.0071V57.1618C319.886 55.4378 319.022 54.5751 317.302 54.5751H309.661V66.2538H312.234V62.5951H315.762L318.097 66.2538H320.746L318.336 62.4551C319.365 62.1538 319.886 61.3418 319.886 60.0071Z" fill="white"/><path d="M292.428 59.3215H287.566C287.116 59.3215 286.891 59.0975 286.891 58.6469V57.4842C286.891 57.0562 287.111 56.8429 287.548 56.8429H294.251V54.5775H286.92C285.21 54.5775 284.352 55.4402 284.352 57.1642V59.1069C284.352 60.7109 285.172 61.5095 286.814 61.5095H291.682C292.119 61.5095 292.34 61.7255 292.34 62.1522V63.3309C292.34 63.7802 292.114 64.0055 291.664 64.0055H284.824V66.2535H292.308C294.024 66.2535 294.882 65.3922 294.882 63.6669V61.7069C294.882 60.1175 294.063 59.3215 292.428 59.3215Z" fill="white"/><path d="M296.968 54.5742V56.9315H300.994V66.2542H302.265H303.564V56.9315H307.576V54.5742H302.265H296.968Z" fill="white"/><path d="M346.221 54.5664V56.9264H350.249V66.2544H351.521H352.823V56.9264H356.835V54.5664H351.521H346.221Z" fill="white"/><path d="M329.913 63.3072C329.913 63.7526 329.687 63.9779 329.242 63.9779H325.209C324.758 63.9779 324.535 63.7526 324.535 63.3072V54.5952H321.966V63.6699C321.966 65.3952 322.827 66.2539 324.549 66.2539H329.897C331.621 66.2539 332.483 65.3952 332.483 63.6699V54.5952H329.913V63.3072Z" fill="white"/></svg><b>주요업무현황</b></div><span class="cv-dots" aria-hidden="true"><i></i><i></i><i></i></span><div class="cv-fail" id="cvFail" hidden>불러오지 못했습니다<button type="button" id="cvFailBtn">새로고침</button></div></div>
     <div id="cvBody" style="display:none">
       <form id="cvForm" class="cv-form" novalidate>
         <div class="cv-field">
@@ -5119,7 +5244,7 @@ td.d60-pc:hover{background:var(--fill)}
     <div class="tbr">
       <span class="ah-off" id="ahOff" hidden>연결 끊김 · 저장 대기</span><!-- 698차: 잠시 뜨는 상태는 줄 맨 왼쪽 — 기준월·검색처럼 늘 있는 것이 밀리지 않는다 -->
       <span class="tb-rm" id="tbRm" data-act="df.rm" role="button" tabindex="0" data-tip="기준월 변경 — 게시된 달을 고릅니다" hidden></span>
-      <span class="tb-loc" id="tbLoc" data-tip="이 PC 에 올린 원본이 마지막 게시보다 새것입니다 — 팀 화면은 [등록]을 눌러야 바뀝니다" hidden></span>
+      <span class="tb-loc" id="tbLoc" data-tip="이 PC에 올린 원본이 마지막 게시보다 새것입니다 — 팀 화면은 [게시]를 눌러야 바뀝니다" hidden></span>
       <div class="tb-nav" id="tbXlWrap" hidden>   <!-- 855차: 사진대지 엑셀 내보내기 — 인쇄 왼쪽 -->
         <button class="tb-ic tb-print" data-act="pd.xlsx" aria-label="엑셀로 내보내기" data-tip="지금 미리보기 그대로 엑셀로">
           <svg class="icn" aria-hidden="true"><use href="#i-sheet"></use></svg><span class="tb-ic-t">엑셀</span></button>
@@ -5209,7 +5334,7 @@ td.d60-pc:hover{background:var(--fill)}
       </div>
     </div>
     <div class="sb-foot">
-        <div class="sb-acct" id="sbAcct" data-act="acct.open" role="button" tabindex="0" aria-label="계정 설정">
+        <div class="sb-acct" id="sbAcct" data-act="acct.open" role="button" tabindex="0" aria-label="계정">
           <div class="sb-acct-av" id="sbAcctAv"><svg class="av-ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#av-person"></use></svg></div>
           <div class="sb-acct-info"><div class="sb-acct-name" id="sbAcctName">—</div></div>
           <span class="sb-acct-role" id="sbAcctRole"></span>
@@ -5220,8 +5345,8 @@ td.d60-pc:hover{background:var(--fill)}
 <main id="main">
   <header id="topbar">
     <div class="tbl">
-      <button class="mc mav" id="tbAcctAv" data-act="acct.open" aria-label="프로필"><svg class="av-ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#av-person"></use></svg></button>   <!-- 903차: 사이드바 계정 아바타와 같은 얼굴 — rAcct() 가 색·아이콘을 칠한다 -->   <!-- 909차(사용자): 프로필 원은 **프로필(계정)** 을 연다 — 드로어는 하단 탭 첫 칸(메뉴)이 맡는다 -->
-      <div class="tbt" id="tbt">업무 일정</div>
+      <button class="mc mav" id="tbAcctAv" data-act="acct.open" aria-label="계정"><svg class="av-ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#av-person"></use></svg></button>   <!-- 903차: 사이드바 계정 아바타와 같은 얼굴 — rAcct() 가 색·아이콘을 칠한다 -->   <!-- 909차(사용자): 프로필 원은 **프로필(계정)** 을 연다 — 드로어는 하단 탭 첫 칸(메뉴)이 맡는다 -->
+      <div class="tbt" id="tbt">캘린더</div>
     </div>
   </header>
   <div id="content">
@@ -5248,14 +5373,15 @@ td.d60-pc:hover{background:var(--fill)}
                 </div>
               </div>
               <div class="cal-nav wido">
-                <button class="cal-nb" data-act="wid.open" aria-label="브라우저로 열기" data-tip="브라우저로 열기"><svg class="icn" aria-hidden="true"><use href="#i-home"></use></svg></button>
+                <button class="cal-nb" data-act="wid.open" aria-label="브라우저로 열기" data-tip="브라우저로 열기"><svg class="icn" aria-hidden="true"><use href="#i-ext"></use></svg></button>   <!-- 970차(U11): 집 → ↗(바깥으로 열기) -->
                 <button class="cal-nb" data-act="wid.side" data-tab="mine" aria-label="내 업무" data-tip="내 업무"><svg class="icn" aria-hidden="true"><use href="#i-tasks"></use></svg></button>
-                <button class="cal-nb wid-acct" data-act="acct.open" aria-label="내 프로필" data-tip="내 프로필"><span class="av sb-acct-av" id="widAcctAv"><svg class="icn" aria-hidden="true"><use href="#i-me"></use></svg></span></button>
+                <button class="cal-nb wid-acct" data-act="acct.open" aria-label="계정" data-tip="계정"><span class="av sb-acct-av" id="widAcctAv"><svg class="icn" aria-hidden="true"><use href="#i-me"></use></svg></span></button>
                 <button class="cal-nb" data-act="wid.set" aria-label="위젯 설정" data-tip="위젯 설정"><svg class="icn" aria-hidden="true"><use href="#i-settings"></use></svg></button>
               </div>
             </div>
           </div>
           <div id="calMini" hidden></div>
+            <div class="cal-fchips" id="calFchips" hidden></div>   <!-- 970차(U1): 걸려 있는 필터 칩 · 모두 해제 -->
             <div id="fcal"></div>
         </div>
         <div class="wid-pop" id="widPop"></div>
@@ -5281,6 +5407,9 @@ td.d60-pc:hover{background:var(--fill)}
             <label class="wgs-sw"><input type="checkbox" id="wgNoti"><span class="sw-t"></span></label></div>
           <div class="wgs-r"><span>두 번 눌러 선택</span>
             <label class="wgs-sw"><input type="checkbox" id="wgDbl"><span class="sw-t"></span></label></div>
+          <!-- 971차: 막대 옅게 — 이 PC 위젯에서만. 저장된 색·다른 사람 화면은 그대로 -->
+          <div class="wgs-r"><span data-tip="담당자 색 막대를 어두운 판·밝은 글자로 · 이 PC 위젯에서만">막대 옅게</span>
+            <label class="wgs-sw"><input type="checkbox" id="wgSoft"><span class="sw-t"></span></label></div>
           <div class="wgs-sep"></div>
           <button class="wgs-full" data-act="wid.reload">새로고침</button>
           <button class="wgs-full" data-act="wid.moveOn">위치·크기 조정</button>
@@ -5373,14 +5502,20 @@ td.d60-pc:hover{background:var(--fill)}
               <div class="uzh">CSV · XLSX — HCS 전체 하자리스트</div>
             </div>
             <input type="file" id="dfFi" accept=".csv,.xlsx,.xls" style="display:none" aria-label="하자 데이터 파일 선택">
-            <!-- 615차: 데이터 상태 + 게시를 한 행으로 통합 — 좌 상태(굵게)·시각, 우 기준월+[등록] -->
-            <div class="share-row">
-              <div class="share-info"><b id="dfLocalStat">—</b><div id="dfPending" style="font-size:12.5px;color:var(--bl);margin:2px 0 4px" hidden></div><span id="dfPubSub">최신 등록 <span id="dfPubAt">—</span></span></div>
-              <div style="display:flex;gap:8px;align-items:center;flex:none">
-                <input class="inp" id="dfPubRm" type="month" style="width:150px" aria-label="게시 기준월" data-tip="업로드 시 자동 결정(전월 상한) · 직접 변경 가능">
-                <button class="btn bp bsm" id="dfPubBtn" data-act="dfp.publish">등록</button>
-              </div>
+            <!-- 973차(사용자): 게시 — 조건을 단추 위에(키-값) · 누르면 단계 목록(#dfPubRun)이 이 자리를 대신하고, 끝나면 결과 카드로 남는다.
+                 예전(615차): 한 줄에 상태 글자 + 기준월 + [게시] -->
+            <div class="pb" id="dfPubBox">
+              <dl class="pb-kv">
+                <dt>이 PC 원본</dt><dd id="dfLocalStat">—</dd>
+                <dt>대시보드 집계</dt><dd id="dfDashStat">—</dd>
+                <dt>최신 게시</dt><dd id="dfPubLast">—</dd>
+                <dt>기준월</dt><dd class="pb-rm"><input class="inp" id="dfPubRm" type="month" aria-label="게시 기준월" data-tip="업로드 시 자동 결정(전월 상한) · 직접 변경 가능"></dd>
+              </dl>
+              <div id="dfPending" class="pb-pend" hidden></div>
+              <div id="dfChk" class="pb-ok" hidden></div>
+              <button class="btn bp pb-go" id="dfPubBtn" data-act="dfp.publish">게시</button>
             </div>
+            <div class="pb" id="dfPubRun" hidden></div>
             <details class="dfadv">
               <summary>자세히 — 제외 키워드 · 업로드 이력</summary>
               <div class="ig2" style="margin-top:12px"><label class="il" for="dfExTk">제외 키워드 <span style="font-weight:400;color:var(--lbl3)">· 엔터로 추가</span></label>
@@ -5427,7 +5562,7 @@ td.d60-pc:hover{background:var(--fill)}
           <div class="card">
             <div class="set-h">도움말</div>
             <div class="share-row">
-              <div class="share-info"><b>사용 안내</b><span>화면별 사용 방법 — 저장소의 README 를 그대로 보여줍니다</span></div>
+              <div class="share-info"><b>사용 안내</b><span>화면별 사용 방법을 봅니다</span></div>
               <button class="btn bg2 bsm" data-act="set.guide"><svg class="icn" style="width:17px;height:17px"><use href="#i-help"></use></svg>열기</button>
             </div>
             <div class="share-row">
@@ -5462,7 +5597,7 @@ td.d60-pc:hover{background:var(--fill)}
 <div id="scrim" data-act="nav.mobClose"></div>
 <div id="tko" data-act="tk.formCancel"><div id="tkoCard" data-act="modal.stop"></div></div>
 <div id="mo" data-act="modal.close"><div id="mb" data-act="modal.stop" role="dialog" aria-modal="true" aria-labelledby="mt" tabindex="-1"><div class="mt2" id="mt"></div><button class="mo-x" data-act="modal.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button><div id="mbody"></div><div class="mf2" id="mf"></div></div></div>
-<div id="uprog" class="uprog"><div class="uprog-box"><div class="uprog-spin"></div><div class="uprog-msg" id="uprogMsg">처리 중...</div><div class="uprog-bar"><div class="uprog-fill" id="uprogFill" style="width:0%"></div></div><div class="uprog-sub" id="uprogSub"></div></div></div>
+<div id="uprog" class="uprog"><div class="uprog-box"><div class="uprog-spin"></div><div class="uprog-msg" id="uprogMsg">처리 중…</div><div class="uprog-bar"><div class="uprog-fill" id="uprogFill" style="width:0%"></div></div><div class="uprog-sub" id="uprogSub"></div></div></div>
 <!-- 902차: 폰 하단 탭 — 데스크톱·위젯은 CSS 로 숨긴다. 활성 표시는 mtabSync() -->
 <nav id="mtab" aria-label="주요 화면">   <!-- 909차(사용자): 첫 칸은 화면이 아니라 **사이드바 열기**(data-t 가 없어 켜지지 않는다) · 주간/현장별은 「업무 현황」 한 칸으로 합치고 전환은 화면 위 탭이 맡는다 -->
   <button data-act="nav.mob" aria-label="메뉴 열기"><svg class="icn" aria-hidden="true"><use href="#i-menu"></use></svg>메뉴</button>
@@ -5476,7 +5611,13 @@ td.d60-pc:hover{background:var(--fill)}
 <div id="toast" role="status"></div>
 
 <!-- 762차: chart.umd·datalabels·korea-geo·apt-geo 는 app.js 의 loadChart()/loadGeo() 가 필요할 때 읽는다(첫 로드 800KB 절감) -->
+<script src="./vendor/fullcalendar.min.js"></script>
+<!-- Firebase SDK — vendor/ 자체 호스팅(181차). 사내망에서 CDN 이 막혀도 앱이 뜨도록 marked/purify 와 같은 방식 -->
+<script src="./vendor/firebase-app-compat.js"></script>
+<script src="./vendor/firebase-auth-compat.js"></script>
+<script src="./vendor/firebase-database-compat.js"></script>
+<script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=968"></script>
+<script src="./app.js?v=975"></script>
 </body></html>
