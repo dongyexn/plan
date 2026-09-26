@@ -10,7 +10,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='976';
+const APP_VER='985';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 docs/manual.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다(946차: README 는 요약만).
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -2034,8 +2034,8 @@ function calInit(){
     /* ⚠ 609차: 끝을 `title` 로 두면 수정 중 제목을 칠 때마다 막대가 줄을 옮겨 다닌다 —
        만든 순(cre) → 업무 id(pid) 로 못 박는다. 둘 다 편집 중에 변하지 않는 값이다. */
     eventOrder:'-duration,ord,oky,start,allDay,cre,pid',
-    /* 971차: 인라인으로만 줄 수 있는 값 — 직접 고른 그라디언트(--gb)와 옅은 막대 글자색(--sfg) */
-    eventDidMount:info=>{const x=info.event.extendedProps||{};if(x.gb)info.el.style.setProperty('--gb',x.gb);if(x.sfg)info.el.style.setProperty('--sfg',x.sfg);},
+    /* 971차: 인라인으로만 줄 수 있는 값 — 직접 고른 그라디언트(--gb). 977차: 「막대 옅게」(--sfg) 삭제 */
+    eventDidMount:info=>{const x=info.event.extendedProps||{};if(x.gb)info.el.style.setProperty('--gb',x.gb);},
     headerToolbar:false,height:'100%',dayMaxEvents:maxEvOf(),
     moreLinkContent:a=>(isMob()&&!WIDGET&&document.body.classList.contains('mcal-full'))?'+'+a.num:'외 '+a.num+'건 ›',   /* 704차: 폰 큰 달력은 「+N」 */   /* 234차: 5안(우측 정렬 미니) — 조용하게 오른쪽 끝에 */
     /* 기본 더보기 팝오버 대신 그 날짜를 골라 업무 패널(위젯은 팝업)에서 전부 보게 한다 */
@@ -2181,22 +2181,12 @@ function evOwnKey(p){
   if(!own.length)return '';
   return own.map(id=>ownName(id)||id).sort((a,b)=>String(a).localeCompare(String(b),'ko')).join(',');
 }
-let WID_SOFT=false;
-function softOf(c){
-  const m=/^#([0-9a-f]{6})$/i.exec(String(c||''));if(!m||isLightColor(c))return null;
-  const n=parseInt(m[1],16),v=[n>>16,(n>>8)&255,n&255],mix=(to,t)=>'rgb('+v.map((x,i)=>Math.round(x+(to[i]-x)*t)).join(',')+')';
-  return{bg:mix([255,255,255],.84),fg:mix([0,0,0],.38)};   /* 976차(사용자, C안): 옅은 파스텔 판(업무 색 16%) + 같은 계열 진한 글자(검정 38%) — 기본 18색 글자 대비 5.4:1 이상, 칸 색과 무관.
-     ⚠ 971차는 판을 칸 색 쪽으로 어둡게 섞었다(칙칙한 막대 — 목적과 달랐다). 지정색 그대로 글자는 어두운 창에서 1.0~2.8:1 이라 쓰지 않는다 */
-}
 function planEvent(p,date){
   const span=p.end?daysBetween(p.date,p.end):0;
   const done=isDone(p,date);   /* 반복은 occSrc 로 원 회차일의 doneOn 을 본다 — 옮긴 회차의 완료 표시가 칩에서 빠지던 버그 */
   const own=p.owner?ownName(p.owner):'';
   /* 담당자 없는 팀 공통 업무는 제목 앞에 작은 흰 점을 찍어 가른다(점은 CSS 로 그린다) */
   const team=!planOwners(p).length;
-  /* 971차(사용자): 위젯 설정 「막대 옅게」 — 이 PC 위젯에서만, 저장 색은 그대로. 담당자 색(단색)의 옅은 파스텔 판 + 같은 계열 진한 글자(976차).
-     옅은 색·무지개·그라디언트·공통(속 빈 막대)은 고른 그대로 둔다(옅은 색을 더 옅게 하면 판이 칸에 묻힌다) */
-  const soft=(WIDGET&&WID_SOFT&&!team)?softOf(planColor(p)):null;
   return{
     id:p.id+'@'+date,
     title:(fmtSpan(p)?fmtSpan(p)+' ':'')+p.title+(own?' · '+own:''),
@@ -2205,17 +2195,17 @@ function planEvent(p,date){
     allDay:!p.time||!!p.end,
     /* 231차: 공통 업무는 **속 빈 막대(2안)** — 계정 업무는 전부 꽉 찬 막대라 색과 무관하게 갈린다.
        예전에 파랑으로 저장된 공통 업무도 여기서 함께 윤곽선형이 된다(색 지정 여부와 무관). */
-    backgroundColor:team?'transparent':(soft?soft.bg:planColor(p)),
+    backgroundColor:team?'transparent':planColor(p),
     borderColor:team?planColor(p):'transparent',
-    textColor:team||soft?'':(isLightBg(planColor(p))?'#1B1B1F':'#fff'),
+    textColor:team?'':(isLightBg(planColor(p))?'#1B1B1F':'#fff'),
     /* ⚠ display 를 지정하지 않으면 시간이 있는 업무는 FullCalendar 가 '점 형식'으로 그린다 —
        배경 없이 어두운 글자라 유리(어두운) 배경 위에서 거의 보이지 않는다. 전부 색 막대로 통일한다 */
     display:'block',
-    classNames:(done?['done']:[]).concat((!team&&isLightBg(planColor(p)))?['on-light']:[]).concat(team?['team']:[]).concat(isRisk(p.kind)?['risk']:[]).concat(isRainbow(planColor(p))?['ev-rb']:[]).concat(isFlow(planColor(p))?['ev-fx']:[]).concat(isGrad(planColor(p))?(gcParse(planColor(p))?['ev-gd']:['ev-gd','ev-g-'+gradBase(planColor(p)).slice(5)]):[]).concat(soft?['ev-soft']:[]),   /* 633차: 담당자/공통 모두 무지개 렌더링 경로를 통일 · 677차: 흐름은 ev-fx 가 켠다 */
+    classNames:(done?['done']:[]).concat((!team&&isLightBg(planColor(p)))?['on-light']:[]).concat(team?['team']:[]).concat(isRisk(p.kind)?['risk']:[]).concat(isRainbow(planColor(p))?['ev-rb']:[]).concat(isFlow(planColor(p))?['ev-fx']:[]).concat(isGrad(planColor(p))?(gcParse(planColor(p))?['ev-gd']:['ev-gd','ev-g-'+gradBase(planColor(p)).slice(5)]):[]),   /* 633차: 담당자/공통 모두 무지개 렌더링 경로를 통일 · 677차: 흐름은 ev-fx 가 켠다 */
     /* 칸 안 차례 — 공통(0) · 내 업무(1) · 팀장(2) · 나머지(3).
        칸이 넘쳐 '외 N건' 으로 접힐 때 나와 상관 있는 것이 먼저 남는다(eventOrder 참조) */
     extendedProps:{pid:p.id,occ:date,recur:!!(p.recur&&p.recur.f),ord:evOrd(p,team),oky:evOwnKey(p),cre:Number(p.createdAt)||0,
-      gb:gcParse(planColor(p))?gcBg(gcParse(planColor(p))):'',sfg:soft?soft.fg:''},   /* 971차: 직접 고른 그라디언트(--gb)·옅은 막대 글자색 — eventDidMount 가 칠한다 */
+      gb:gcParse(planColor(p))?gcBg(gcParse(planColor(p))):''},   /* 971차: 직접 고른 그라디언트(--gb) — eventDidMount 가 칠한다 */
     editable:!(p.recur&&p.recur.f)
   };
 }
@@ -2917,7 +2907,7 @@ function openModal(title,bodyHTML,footHTML){
   $('#mt').textContent=title;$('#mbody').innerHTML=bodyHTML;$('#mf').innerHTML=footHTML||'';
   /* 하단 버튼이 없는 모달(사용 안내 등)은 우상단 X 로 닫는다 — 참조 앱과 동일 */
   const mb=$('#mb');
-  mb.classList.remove('rdw','narrow','mlw','dfwide','wide-pick','kmw','rkm','pdcw','nott','d60-pvm','d60-hsm','mrv-md','mrv-wid');   /* 953차: 놓친 업무 창 폭이 다음 창에 남던 것 */   /* pdcw: 798차 사진 자르기 */   /* ⚠ 지난번 모달의 폭 설정이 남으면 다음 모달이 엉뚱한 크기로 뜬다 */
+  mb.classList.remove('mb-ask','rdw','narrow','mlw','dfwide','wide-pick','kmw','rkm','pdcw','nott','d60-pvm','d60-hsm','mrv-md','mrv-wid');   /* 953차: 놓친 업무 창 폭이 다음 창에 남던 것 */   /* pdcw: 798차 사진 자르기 */   /* ⚠ 지난번 모달의 폭 설정이 남으면 다음 모달이 엉뚱한 크기로 뜬다 */
   /* ⚠ 605차: 'kmw' 가 이 목록에서 빠져 있었다 — 조직 관리 지도 모달을 한 번 열면 그 뒤 **모든** 모달에 남는다.
      `#mb.kmw{width:auto;max-width:94vw}` 는 `#mb.dfwide{width:88vw;max-width:88vw}` 와 명시도가 같은데
      CSS 에서 더 뒤에 있어 이긴다 → 목록 모달 폭이 내용에 따라 정해지고, 목록↔피벗 전환 때 폭이 튄다
@@ -10662,7 +10652,6 @@ const ACT={
     clearTimeout(window.__navT);
     /* 상시 해제라 되돌릴 것이 없다(351차) — 타이머만 정리한다 */
   },
-  'nav.mob':()=>{$('#sidebar').classList.add('mob-open');$('#scrim').classList.add('on');},
   'nav.mobClose':mobClose,
   'cal.prev':()=>CAL&&CAL.prev(),
   'cal.next':()=>CAL&&CAL.next(),
@@ -11538,6 +11527,7 @@ function confirmModal(title,msg,cb,okLabel,danger){
   openModal(title,'<div style="font-size:13px;color:var(--lbl2);line-height:1.6;white-space:pre-line">'+esc(msg)+'</div>',
     '<button class="btn bg2 bsm" data-act="modal.close">취소</button>'
     +'<button class="btn '+((danger===false)?'bp':'btn-danger')+' bsm" data-act="modal.ok">'+esc(okLabel||'삭제')+'</button>');
+  $('#mb').classList.add('mb-ask');   /* 980차: 폰에서 짧은 확인창 모양(CSS 는 모바일 규칙에만) */
   MODAL_CB={type:'confirm',ok:()=>{cb();closeModal();}};
 }
 document.addEventListener('click',e=>{
@@ -11883,7 +11873,6 @@ document.addEventListener('input',e=>{
   if(e.target.id==='wgFz'){const c=widCfgLoad();c.fz=Number(e.target.value)/100;widCfgSave(c);widApply();return;}
   if(e.target.id==='wgNoti'){const c=widCfgLoad();c.noti=e.target.checked;widCfgSave(c);evePopHide();toast(c.noti?'오후 점검 알림을 켰습니다':'오후 점검 알림을 껐습니다');return;}
   if(e.target.id==='wgDbl'){const c=widCfgLoad();c.dbl=e.target.checked;widCfgSave(c);widApplyDbl();toast(c.dbl?'두 번 눌러 선택을 켰습니다':'두 번 눌러 선택을 껐습니다');return;}
-  if(e.target.id==='wgSoft'){const c=widCfgLoad();c.soft=e.target.checked;widCfgSave(c);WID_SOFT=c.soft;refetchCal();return;}   /* 971차 */
 });
 document.addEventListener('change',e=>{
 });
@@ -11948,7 +11937,16 @@ let fadeR=0;
 function fadeSoon(){if(fadeR)return;fadeR=requestAnimationFrame(()=>{fadeR=0;fadeScan();});}
 /* 화면을 다시 그릴 때마다 다시 재야 한다 — 렌더 함수마다 부르지 않고 한곳에서 지켜본다 */
 if(window.MutationObserver){
-  const mo=new MutationObserver(fadeSoon);
+  /* 983차(사용자: 「전환 때 페이드가 잠깐 사라진다」): 다시 그린 줄은 페이드 클래스 없이 한 프레임 그려졌다(다음 프레임에 재던 탓).
+     새로 붙은 칸은 관찰자에서 곧바로(그리기 전) 잰다 — 나머지는 지금처럼 다음 프레임 전체 재기로 */
+  const mo=new MutationObserver(recs=>{
+    for(const r of recs)for(const n of r.addedNodes){
+      if(n.nodeType!==1)continue;
+      if(n.matches(SB_SEL))fadeOne(n);
+      if(n.firstElementChild)n.querySelectorAll(SB_SEL).forEach(fadeOne);
+    }
+    fadeSoon();
+  });
   const start=()=>{const app=$('#app');if(app)mo.observe(app,{childList:true,subtree:true});fadeScan();};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);
   else start();
@@ -12264,7 +12262,6 @@ function widApply(){
   const tl=$('#wgTV');if(tl)tl.textContent=Math.round(tint*100)+'%';
   const fv=$('#wgFontV');if(fv)fv.textContent=(WID_FONTS.find(f=>f[0]===font)||WID_FONTS[0])[1];
   const db=$('#wgDbl');if(db)db.checked=!!c.dbl;
-  WID_SOFT=!!c.soft;const sf=$('#wgSoft');if(sf)sf.checked=WID_SOFT;   /* 971차 */
   widApplyDbl();
 }
 /* 두 번 눌러 선택 — 위젯 창이 비활성 상태에서 클릭하면 첫 클릭은 활성화만 하고
@@ -15493,11 +15490,87 @@ function mtabDateFit(t){
 function mtabSync(){
   const bar=$('#mtab');if(!bar)return;
   const cur=S.view==='calendar'?'calendar':S.view==='tasks'?'tasks':S.view==='defect'?'defect':/^(d60|photo|qc|dwg|redo|prod)$/.test(S.view)?'tools':'';
-  $$('#mtab button').forEach(b=>b.classList.toggle('act',b.dataset.t===cur));
+  mtabMark(cur);
   const d=$('#mtab .mtab-d');if(d){const n=String(Number(todayStr().slice(8,10)));
     if(d.textContent!==n)d.textContent=n;
     mtabDateFit(d);}
 }
+/* 978차(사용자): 켜진 칸 표시 — 칸마다 배경을 칠하던 것을 알약 하나(.mtab-ind)로 바꿔 옮긴다(iOS 처럼 미끄러짐 · 전환은 CSS).
+   처음 켤 때(꺼져 있다가)는 제자리에서 나타나야 한다 — 전환을 잠깐 끄고 자리를 잡는다. 칸이 없으면(설정 등) 알약을 숨긴다 */
+function mtabMark(t){
+  $$('#mtab button[data-t]').forEach(b=>b.classList.toggle('act',b.dataset.t===t));
+  const ind=$('#mtab .mtab-ind'),b=t&&$('#mtab button[data-t="'+t+'"]');if(!ind)return;
+  if(!b||!b.offsetWidth){ind.classList.remove('on');return;}
+  const fresh=!ind.classList.contains('on');
+  if(fresh)ind.style.transition='none';
+  ind.style.width=b.offsetWidth+'px';ind.style.transform='translateX('+b.offsetLeft+'px)';
+  if(fresh){void ind.offsetWidth;ind.style.transition='';}
+  ind.classList.add('on');
+}
+addEventListener('resize',()=>{const a=$('#mtab button.act');mtabMark(a?a.dataset.t:'');});
+/* 981차(사용자): 폰 화면 안의 「고르는」 줄도 켜진 표시가 미끄러진다 — 모양(모서리·색)은 그대로, 움직임만.
+   대상: 업무 현황 주간/현장별 전환(.tkv-seg) · 밑줄 탭(업무 현황·D+60 .rp-tabs) · 하자 현장 탭 줄(.tnav).
+   이 줄들은 누를 때마다 화면째 다시 그려지므로 CSS 전환만으론 안 움직인다 — 표시(.sl-ind)를 하나 얹고
+   마지막 자리를 선택자별로 기억(SL_MEM)했다가, 새로 그려진 줄에선 옛 자리에서 새 자리로 옮긴다.
+   모양은 켜진 칸에서 그대로 베낀다(채움 = 배경·모서리·그림자 / 밑줄 = ::after 의 자리·굵기·색) → 켜진 칸 자체의 칠은 .sl-on 일 때만 CSS 가 지운다.
+   폰(≤960px)·위젯 아님에서만 돈다. #content 변경을 한 프레임에 한 번 모아 맞춘다 */
+const SL_SPEC=[['#view-tasks .tkv-seg','fill','button','act'],['#view-tasks .rp-tabs','line','.rp-tab','on'],['#d60Root .rp-tabs','line','.rp-tab','on'],['#view-defect .tnav','fill','.tnav-i','act'],
+  /* 985차(사용자): 조직 관리 전환·권역 탭 · 민원 현황 탭 · 하자 공종별/업체별 · 업무 도구 선택 단추(견적·재하자·생산성·사진대지). D+60 판정 단추(줄마다 수백 개)는 넣지 않는다 */
+  ['#view-org .tkv-seg','fill','button','act'],['#view-org .rp-tabs','line','.rp-tab','on'],['#view-defect .rk-tabbar .rp-tabs','line','.rp-tab','on'],['#view-defect .axseg','fill','button','on'],
+  ['#view-qc .seg','fill','button','act'],['#view-redo .seg','fill','button','act'],['#view-prod .seg','fill','button','act'],['#view-photo .seg','fill','button','act']];
+const SL_MEM={};
+const SL_RM=matchMedia('(prefers-reduced-motion: reduce)');   /* 985차(사용자): 데스크톱에도 — 폰 전용 스위치(SL_MQ·SL_DESK)는 걷었다 */
+/* 984차: 움직임은 Web Animations(transform 만) — 합성 단계에서 돌아, 무거운 다시 그리기(데스크톱 하자 화면 100ms 안팎)에도 끊기지 않는다.
+   폭 차이는 width 전환(레이아웃) 대신 scaleX 로. 표시 요소(.sl-ind)는 SL_MEM 에 두고 **다시 그려진 새 줄로 옮겨 단다** —
+   스크립트 애니메이션은 요소가 문서에서 빠져도 멈추지 않으므로, 한 번 누름에 줄이 두세 번 다시 그려져도 처음 시작한 움직임이 그대로 이어진다
+   (전엔 다시 그릴 때마다 움직임이 처음부터/끝으로 튀어 덜그덕거렸다) */
+const SL_EASE={fill:['cubic-bezier(.34,1.36,.64,1)',420],line:['cubic-bezier(.25,.8,.25,1)',300]};
+/* ⚠ 985차: offset* 는 정수로 반올림된다 — 높이 43.5px 탭에서 밑줄이 0.5px 내려가 줄 밖으로 반이 잘렸다(2px → 1px). 소수 자리까지 rect 로 잰다 */
+function slGeom(kind,b,box){
+  const rb=b.getBoundingClientRect(),rc=box.getBoundingClientRect();
+  const bx=rb.left-rc.left-box.clientLeft+box.scrollLeft,by=rb.top-rc.top-box.clientTop+box.scrollTop;
+  if(kind==='fill')return{x:bx,y:by,w:rb.width,h:rb.height};
+  const a=getComputedStyle(b,'::after'),l=parseFloat(a.left)||0,r=parseFloat(a.right)||0,h=parseFloat(a.height)||2,bt=parseFloat(a.bottom)||0;
+  return{x:bx+l,y:by+rb.height-bt-h,w:rb.width-l-r,h};
+}
+function slSync(){
+  if(WIDGET)return;
+  SL_SPEC.forEach(([sel,kind,item,on])=>{
+    $$(sel).forEach((box,i)=>{
+      if(!box.offsetWidth)return;
+      const key=sel+'#'+i,rec=SL_MEM[key]||(SL_MEM[key]={});
+      const b=[...box.querySelectorAll(item)].find(x=>x.classList.contains(on)&&x.parentElement===box);
+      if(!b){if(rec.el&&rec.el.parentElement===box)rec.el.remove();box.classList.remove('sl-on');return;}
+      const g=slGeom(kind,b,box);
+      let ind=rec.el;
+      if(!ind){ind=rec.el=document.createElement('span');ind.className='sl-ind';ind.setAttribute('aria-hidden','true');}
+      if(ind.parentElement!==box){
+        const cs=kind==='fill'?getComputedStyle(b):getComputedStyle(b,'::after');   /* 켜진 칸의 칠을 베낀다 — .sl-on 을 달기 전에 */
+        ind.style.background=cs.backgroundColor;ind.style.borderRadius=cs.borderRadius;if(kind==='fill')ind.style.boxShadow=cs.boxShadow;
+        box.append(ind);box.classList.add('sl-on');   /* ⚠ 985차: 끝에 단다 — 앞에 달면 첫 칸이 :first-child 가 아니게 되어 첫 탭 밑줄 -14px 연장(391차)·전환 첫 단추 padding(336차)이 풀렸다(981차부터) */
+        if(ind._mv&&performance.now()<ind._mv){box.classList.add('sl-mv');setTimeout(()=>box.classList.remove('sl-mv'),ind._mv-performance.now());}   /* 움직이는 중에 다시 그려졌으면 글자 가림도 이어서 */
+      }
+      const t=rec.g;rec.g=g;
+      if(t&&t.x===g.x&&t.y===g.y&&t.w===g.w&&t.h===g.h)return;   /* 같은 자리 — 움직이던 것은 그대로 둔다 */
+      /* 지금 보이는 자리(움직이는 중이면 그 중간)에서 출발 */
+      /* 멈춘 자리는 left/top(레이아웃 — 화소에 맞춰 또렷하다), 움직임은 그 자리 기준 transform 차이만.
+         ⚠ 985차: 멈춘 자리까지 transform 으로 두면 부모가 소수 좌표(67.5px)일 때 2px 밑줄 윗줄이 반투명으로 번졌다 */
+      let fx=null,fy=0,fw=0;
+      if(t&&!SL_RM.matches){const m=new DOMMatrixReadOnly(getComputedStyle(ind).transform);fx=(parseFloat(ind.style.left)||0)+m.e;fy=(parseFloat(ind.style.top)||0)+m.f;fw=(parseFloat(ind.style.width)||t.w)*m.a;}
+      ind.getAnimations().forEach(a=>a.cancel());
+      ind.style.left=g.x+'px';ind.style.top=g.y+'px';ind.style.width=g.w+'px';ind.style.height=g.h+'px';
+      if(fx===null||(Math.abs(fx-g.x)<.5&&Math.abs(fw-g.w)<.5))return;
+      const [ease,dur]=SL_EASE[kind];
+      ind.animate([{transform:'translate('+(fx-g.x)+'px,'+(fy-g.y)+'px) scaleX('+(fw/g.w)+')'},{transform:'none'}],{duration:dur,easing:ease});
+      if(kind==='fill'){ind._mv=performance.now()+dur*.35;box.classList.add('sl-mv');setTimeout(()=>box.classList.remove('sl-mv'),dur*.35);}   /* 켜진 칸 글자가 표시보다 먼저 흰색이 되어 안 보이던 것 — 표시가 반쯤 올 때까지 회색 */
+    });
+  });
+}
+{let q=0;const kick=()=>{if(q)return;q=requestAnimationFrame(()=>{q=0;slSync();});};
+  /* 982차: 다시 그린 직후엔 **그리기 전에**(관찰자 = 마이크로태스크) 맞춘다 — 한 프레임 늦으면 새 칸의 원래 밑줄·흰 칸이 도착지에 먼저 보였다가
+     표시가 옛 자리에서 출발해 「튕기는」 것처럼 보였다 */
+  const c=document.getElementById('content');if(c)new MutationObserver(()=>slSync()).observe(c,{childList:true,subtree:true});
+  addEventListener('resize',kick);document.addEventListener('click',kick,true);}
 /* 903차(사용자): 시트를 슬라이드로 바꿨다 — .tools 는 **내려간 뒤에** 걷는다(바로 걷으면 bottom 이 튀어 탭바 위에서 사라진다) */
 function mssShow(box,tools){
   const sc=$('#mssScrim');if(!box)return;
@@ -15507,7 +15580,8 @@ function mssShow(box,tools){
   box.classList.add('on');if(sc)sc.classList.add('on');
 }
 function mssClose(){const s=$('#mss'),sc=$('#mssScrim');
-  if(s){s.classList.remove('on');s.classList.remove('tools');}if(sc){sc.classList.remove('on');sc.classList.remove('tools');}
+  if(s){s.classList.remove('on');s.classList.remove('tools');s.classList.remove('menu');}
+  const m=$('#mtab .mtab-m');if(m)m.classList.remove('on');if(sc){sc.classList.remove('on');sc.classList.remove('tools');}
   mtabSync();}
 /* 903차: 하단 탭 「업무 도구」 — 바로 가지 않고 시트에서 고른다(현장 시트와 같은 부품) */
 const MTOOLS=[['d60','i-ckboard','D+60 점검'],['photo','i-photo','사진대지 작성'],['qc','i-calc','견적 검토'],['dwg','i-frame','도면 인쇄'],['redo','i-redo','재하자 추적'],['prod','i-prod','생산성 검토']];
@@ -15515,7 +15589,32 @@ function mtoolsOpen(){
   const box=$('#mss');if(!box)return;
   box.innerHTML='<div class="mss-sc"><div class="mss-h">업무 도구</div>'+MTOOLS.map(([v,ic,l])=>'<div class="mss-i'+(S.view===v?' act':'')+'" data-act="mtab.tool" data-v="'+v+'"><svg class="icn" aria-hidden="true"><use href="#'+ic+'"></use></svg>'+l+'</div>').join('')+'</div>';
   mssShow(box,true);
-  $$('#mtab button').forEach(b=>b.classList.toggle('act',b.dataset.t==='tools'));   /* 시트가 열린 동안 칸을 켠다 */
+  mtabMark('tools');   /* 시트가 열린 동안 칸을 켠다 */
+}
+/* 978차(사용자 M2): 폰 메뉴 = 사이드바 대신 시트 — 사이드바의 나머지(캘린더·업무 현황·업무 도구·하자처리 현황·권역)는 하단 탭과 두 시트가 이미 한다.
+   남는 것만 둔다: 팀 선택 · 조직 관리 · 설정(계정은 왼쪽 위 프로필 원). 데스크톱·위젯 사이드바는 그대로 */
+function mmenuRow(ic,label,attrs,right){
+  return '<div class="mss-i"'+attrs+'><svg class="icn" aria-hidden="true"><use href="#'+ic+'"></use></svg>'+label
+    +(right!=null?'<span class="mss-r">'+right+'</span>':'')+'</div>';
+}
+function mmenuOpen(){
+  const box=$('#mss');if(!box)return;
+  const teams=(S.org.teams||[]).filter(t=>t.name),cur=teams.find(t=>t.id===S.tk.t)||teams[0];
+  const chev='<svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg>';
+  box.innerHTML='<div class="mss-sc"><div class="mss-h">메뉴</div>'
+    +(cur?mmenuRow('i-people','팀',teams.length>1?' data-act="mmenu.teams"':'',esc(cur.name)+(teams.length>1?chev:'')):'')   /* 팀이 하나면 이름만 보인다 */
+    +mmenuRow('i-org','조직 관리',' data-act="mmenu.go" data-view="org"')
+    +mmenuRow('i-settings','설정',' data-act="mmenu.go" data-view="settings"')
+    +'</div>';
+  mssShow(box,true);box.classList.add('menu');
+  const m=$('#mtab .mtab-m');if(m)m.classList.add('on');
+}
+function mmenuTeams(){
+  const box=$('#mss');if(!box)return;
+  const teams=(S.org.teams||[]).filter(t=>t.name);
+  const ck='<svg class="icn" aria-hidden="true"><use href="#i-check"></use></svg>';
+  box.querySelector('.mss-sc').innerHTML='<div class="mss-h">팀 선택</div>'
+    +teams.map(t=>'<div class="mss-i'+(t.id===S.tk.t?' act':'')+'" data-act="mmenu.team" data-tid="'+esc(t.id)+'"><span class="dot"></span>'+esc(t.name)+(t.id===S.tk.t?'<span class="mss-r">'+ck+'</span>':'')+'</div>').join('');
 }
 function mssOpen(){
   const box=$('#mss');if(!box)return;
@@ -15527,7 +15626,7 @@ function mssOpen(){
       +list.map(x=>'<div class="mss-i'+(S.dfSid===x.id?' act':'')+'" data-act="mss.site" data-sid="'+esc(x.id)+'"><span class="dot"></span>'+esc(x.name)+'</div>').join('')).join('')
     +'</div>';
   mssShow(box,false);
-  $$('#mtab button').forEach(b=>b.classList.toggle('act',b.dataset.t==='defect'));   /* 910차: 시트가 열린 동안 칸을 켠다 */
+  mtabMark('defect');   /* 910차: 시트가 열린 동안 칸을 켠다 */
 }
 /* 908차(사용자): 시트를 **아래로 끌어 닫는다**(잡이가 있는데 안 끌렸다).
    시트 안이 위로 다 굴러 있을 때만 잡는다 — 목록을 굴리는 중에 시트가 따라 내려가면 안 된다 */
@@ -15566,7 +15665,7 @@ Object.assign(ACT,{
     /* 910차(사용자): 하자처리 현황도 업무 도구와 같은 결 — 칸을 누르면 **현장 선택 시트**가 먼저 뜬다(첫 줄이 「팀 전체 대시보드」).
        열린 채 그 칸을 다시 누르면 닫고 끝난다 — 어떤 시트가 열려 있었는지 닫기 전에 기억해 둔다 */
     const t=el.dataset.t,box=$('#mss');
-    const wasOpen=(box&&box.classList.contains('on'))?(box.classList.contains('tools')?'tools':'site'):'';
+    const wasOpen=(box&&box.classList.contains('on'))?(box.classList.contains('menu')?'menu':box.classList.contains('tools')?'tools':'site'):'';
     mssClose();
     if(t==='tools'){if(wasOpen==='tools')return;mtoolsOpen();return;}
     if(t==='defect'){if(wasOpen==='site')return;mssOpen();return;}
@@ -15575,6 +15674,10 @@ Object.assign(ACT,{
       if(S.view==='tasks')rTasks();else go('tasks');mtabSync();return;}
   },
   'mtab.tool':el=>{mssClose();go(el.dataset.v);},
+  'mtab.menu':()=>{const box=$('#mss'),open=!!(box&&box.classList.contains('on')&&box.classList.contains('menu'));mssClose();if(!open)mmenuOpen();},   /* 978차: 다시 누르면 닫는다 */
+  'mmenu.go':el=>{mssClose();go(el.dataset.view);},
+  'mmenu.teams':()=>mmenuTeams(),
+  'mmenu.team':el=>{ACT['team.switch'](el);mssClose();},
   'tk.ym':()=>openTkPick(),   /* ⚠ 'tk.pick' 은 담당자·보류함 선택이 이미 쓴다 — 이름을 겹치면 그쪽이 죽는다 */
   'tk.pickY':el=>{const c=tkYmBase();YM_Y=(YM_Y===null?c.getFullYear():YM_Y)+Number(el.dataset.d);const box=$('#ymPop');if(box)box.innerHTML=ymPickHTML(c,'tk');},
   'tk.goYM':el=>{
