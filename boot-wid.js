@@ -1,10 +1,8 @@
-/* 963차: 위젯 첫 화면 깜빡임 방지 — app.js(1MB 남짓)가 다 받아져 boot() 가 body.wid 를 달기 전까지는
-   일반 화면의 불투명 로그인 게이트(#25282D 전면)가 투명 위젯 창에 그대로 그려졌다(실행·새로고침 때마다).
-   head 에서 가장 먼저 돌아 body 가 생기는 즉시 wid·glass 를 달아 첫 페인트부터 위젯 모양으로 그린다.
-   ⚠ CSP 가 인라인 스크립트를 막으므로 별도 파일이다. 판정식은 app.js 의 WIDGET·GLASS 와 같아야 한다. */
+/* 위젯 첫 화면 깜빡임 방지 — head 에서 가장 먼저 돌아 body 가 생기는 즉시 wid·glass 를 달아 첫 페인트부터 위젯 모양으로 그린다(없으면 불투명 로그인 게이트가 비친다).
+   ⚠ CSP 가 인라인 스크립트를 막으므로 별도 파일이다. 판정식은 app.js 의 WIDGET·GLASS 와 같아야 한다 */
 (function(){
-  /* 970차(P4): 처음 여는 동안 스크립트(달력·Firebase·app.js)를 못 받으면 로딩 점 대신 안내와 새로고침 단추를 띄운다.
-     전엔 안내 없이 점만 계속 돌았다. 다 뜬 뒤(load 이후)에 필요할 때 부르는 스크립트의 실패는 여기서 다루지 않는다 */
+  /* 처음 여는 동안 스크립트(달력·Firebase·app.js)를 못 받으면 로딩 점 대신 안내와 새로고침 단추를 띄운다.
+     load 이후 필요할 때 부르는 스크립트의 실패는 여기서 다루지 않는다 */
   var failShown = false;
   var showFail = function(){
     var l = document.getElementById('cvLoading');
@@ -23,15 +21,14 @@
   }, true);
 
   var q = location.search;
-  /* 998차: 로그인 배경화면 — 여기서(head) 먼저 받기 시작하고, 다 받으면 html.lgbg 로 서서히 드러낸다.
-     전엔 받는 동안 빈 셸 색이었다가 사진이 툭 바뀌었다. 위젯·로컬 모드는 배경화면을 쓰지 않는다 */
+  /* 로그인 배경화면 — head 에서 먼저 받기 시작하고, 다 받으면 html.lgbg 로 서서히 드러낸다. 위젯·로컬 모드는 쓰지 않는다 */
   if (!/[?&](w|local)=1\b/.test(q)) {
     var im = new Image();
     im.onload = function(){ document.documentElement.classList.add('lgbg'); };
     im.src = 'login-bg.jpg';
   }
   if (!/[?&]w=1\b/.test(q)) return;
-  var cls = ['wid', 'gate-on'].concat(/[?&]glass=1\b/.test(q) ? ['glass'] : []);   /* 970차: gate-on = 로그인 게이트가 떠 있음(처음엔 늘 뜸 — hideCover 가 뗀다) */
+  var cls = ['wid', 'gate-on'].concat(/[?&]glass=1\b/.test(q) ? ['glass'] : []);   /* gate-on = 로그인 게이트가 떠 있음(처음엔 늘 뜸 — hideCover 가 뗀다) */
   var put = function(){ cls.forEach(function(c){ document.body.classList.add(c); }); };
   if (document.body) { put(); return; }
   var mo = new MutationObserver(function(){ if (document.body) { mo.disconnect(); put(); } });

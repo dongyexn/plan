@@ -1,11 +1,9 @@
-/* ══════════ 규칙 침투 테스트(631차) — AUTH-01~10 ══════════
+/* ══════════ 규칙 침투 테스트(631차) — AUTH-01~18 ══════════
    Firebase 에뮬레이터(Java 의존)를 못 쓰는 환경이라, 이 앱의 규칙이 실제로 쓰는 표현 부분집합
    (child/val/exists/==/!=/&&/||/?:/auth/root/data/newData/$변수/matches)을 그대로 JS 로 평가한다.
 
    ⚠ 근사의 한계(정직하게):
-   - RTDB 의 '상위 .write 허용이 하위를 전부 연다' cascade 는 흉내내지 않는다 — 이 앱 규칙은
-     calapp 레벨에 .write 가 없어(각 노드가 자기 .write 를 가진다) 해당 시맨틱이 발동하지 않는다.
-     static-audit 와 별개로, 여기서도 상위 .write 부재를 검사해 전제가 깨지면 FAIL 로 알린다.
+   - 쓰기 cascade(경로 위 어느 층의 .write 든 참이면 허용)는 1012차부터 흉내낸다(tryWrite).
    - .validate 는 대상 노드와(와일드카드 포함) newData 가 실제로 건드리는 하위 필드에 대해 평가한다.
    판정 = .write 통과 AND 관련 .validate 전부 통과. 이름은 HANDOFF 권한 매트릭스의 AUTH-ID 와 연결. */
 import fs from 'fs';
@@ -61,19 +59,6 @@ function ruleNodeAt(pathArr) {
   return { node, vars };
 }
 
-/* 상위에 .write 가 있으면 cascade 근사 전제가 깨진다 — 검사 */
-function noAncestorWrite(pathArr) {
-  let node = rules;
-  for (const seg of pathArr) {
-    if (node['.write'] !== undefined && node !== rules) return false; /* 루트 .write:false 는 무시 */
-    if (node[seg]) { node = node[seg]; continue; }
-    const wc = Object.keys(node).find(k => k.startsWith('$'));
-    if (!wc) return true;
-    node = node[wc];
-  }
-  return true;
-}
-
 /* .validate 재귀 — newData 가 만드는 각 위치의 validate 를 전부 평가.
    ⚠ 필드의 .validate 안에서 data 는 **그 필드의 기존값**이다 — 재귀마다 data 도 함께 내린다
    (안 내리면 createdBy 불변 검사(newData.val()==data.val())가 엉뚱한 비교로 오판한다) */
@@ -98,14 +83,33 @@ function validateAll(node, vars, ctx, nd, dd) {
   return true;
 }
 
+/* 1012차: RTDB 쓰기 cascade — 경로 위 어느 층의 .write 든 참이면 허용(하위의 거부로 되돌릴 수 없다).
+   전엔 '상위 .write 없음' 전제로 대상 노드만 봤다(953차 d60 서식처럼 층층이 둔 규칙은 시험하지 못했다).
+   각 층의 newData 는 그 층 기존값에 새 값을 대상 경로에 끼운 결과다 */
+function withAt(base, rest, val) {
+  if (!rest.length) return val;
+  const o = (base != null && typeof base === 'object') ? { ...base } : {};
+  const v = withAt(o[rest[0]], rest.slice(1), val);
+  if (v === null || v === undefined) delete o[rest[0]]; else o[rest[0]] = v;
+  return Object.keys(o).length ? o : null;
+}
 function tryWrite(pathStr, auth, treeRoot, newVal) {
   const pathArr = pathStr.split('/').filter(Boolean);
   const found = ruleNodeAt(pathArr);
-  if (!found || found.node['.write'] === undefined) return { ok: false, why: '.write 없음' };
-  if (!noAncestorWrite(pathArr)) return { ok: false, why: '상위 .write 존재 — 근사 전제 붕괴' };
-  const ctx = { auth, root: new N(treeRoot), data: new N(pathArr.reduce((n, k) => (n || {})[k], treeRoot) ?? null), vars: found.vars };
+  if (!found) return { ok: false, why: '.write 없음' };
+  const at = sub => sub.reduce((n, k) => (n || {})[k], treeRoot) ?? null;
+  const ctx = { auth, root: new N(treeRoot), data: new N(at(pathArr)), vars: found.vars };
   const nd = new N(newVal === undefined ? null : newVal);
-  if (!evalExpr(found.node['.write'], { ...ctx, newData: nd })) return { ok: false, why: '.write 거부' };
+  let granted = false, anyWrite = false;
+  for (let i = 1; i <= pathArr.length && !granted; i++) {
+    const sub = pathArr.slice(0, i), f = ruleNodeAt(sub);
+    if (!f || f.node['.write'] === undefined || typeof f.node['.write'] !== 'string') continue;
+    anyWrite = true;
+    const cur = at(sub);
+    granted = evalExpr(f.node['.write'], { auth, root: ctx.root, vars: f.vars, data: new N(cur), newData: new N(withAt(cur, pathArr.slice(i), newVal === undefined ? null : newVal)) });
+  }
+  if (!anyWrite) return { ok: false, why: '.write 없음' };
+  if (!granted) return { ok: false, why: '.write 거부' };
   if (newVal != null && !validateAll(found.node, found.vars, ctx, nd, ctx.data)) return { ok: false, why: '.validate 거부' };
   return { ok: true };
 }
@@ -201,6 +205,24 @@ t('AUTH-14f', '휴지통에 든 남의 업무 지우기(복원)', false,
   tryWrite('calapp/trash/U5/far', A('U1'), { ...TREE, calapp: { ...TREE.calapp,
     trash: { U5: { far: { ...TR('U5','far'), createdBy: 'U5' } } } } }, null));
 t('AUTH-11', '메일 미검증 계정 → 자기 people 쓰기', false, tryWrite('calapp/people/U1', { uid: 'U1', token: { email: 'u1@hdec.co.kr', email_verified: false } }, TREE, { ...P('U1'), name: 'x' }));
+
+/* AUTH-15~18 (1012차 보안) — D+60 사진 값 꼴·현장 통째 삭제 · D+60 서식 공종 통째 삭제 · 옛 plans · 프로필 색 */
+const PH = 'data:image/webp;base64,UklGRiQAAABXRUJQVlA4IBgAAAAwAQCdASoBAAEAAwA0JaQAA3AA/vuUAAA=';
+const T15 = { ...TREE, calapp: { ...TREE.calapp, d60photo: { sA: { arch: { k1: { p1: { d: PH, by: 'U1', ts: 1 } } } } },
+  d60: { forms: { arch: { unit: { sp1: { name: '거실', ord: 1 } } } } } } };
+t('AUTH-15a', 'viewer → D+60 사진 값에 HTML 주입', false, tryWrite('calapp/d60photo/sA/arch/k1/p2', A('U1'), T15, { d: 'x"><input data-act="acct.role">', by: 'U1', ts: 2 }));
+t('AUTH-15b', 'viewer → D+60 사진(data:image/webp) 추가', true, tryWrite('calapp/d60photo/sA/arch/k1/p2', A('U1'), T15, { d: PH, by: 'U1', ts: 2 }));
+t('AUTH-15c', 'viewer → 현장 사진 통째 삭제', false, tryWrite('calapp/d60photo/sA', A('U1'), T15, null));
+t('AUTH-15d', 'viewer → 항목 사진 정리(세대 삭제)', true, tryWrite('calapp/d60photo/sA/arch/k1', A('U1'), T15, null));
+t('AUTH-15e', 'editor → 현장 사진 통째 삭제', true, tryWrite('calapp/d60photo/sA', A('E1'), T15, null));
+t('AUTH-16a', 'viewer → D+60 공종 서식 통째 삭제', false, tryWrite('calapp/d60/forms/arch', A('U1'), T15, null));
+t('AUTH-16b', 'viewer → D+60 공간 이름 고치기', true, tryWrite('calapp/d60/forms/arch/unit/sp1/name', A('U1'), T15, '안방'));
+t('AUTH-16c', 'editor → D+60 공종 서식 초기화', true, tryWrite('calapp/d60/forms/arch', A('E1'), T15, null));
+t('AUTH-17a', 'viewer → 옛 plans 쓰기', false, tryWrite('calapp/plans/2026-01/x1', A('U1'), TREE, { id: 'own', date: '2026-01-02', title: 'x', owners: { U2: 1 } }));
+t('AUTH-17b', 'editor → 옛 plans 정리(삭제)', true, tryWrite('calapp/plans/2026-01/x1', A('E1'), TREE, null));
+t('AUTH-18a', 'viewer → 자기 프로필 색에 CSS 덧붙이기', false, tryWrite('users/U1', A('U1'), TREE, { email: 'u1@hdec.co.kr', role: 'viewer', avColor: '0;scale:999' }));
+t('AUTH-18b', 'viewer → 자기 프로필 색(#3E71D2)', true, tryWrite('users/U1', A('U1'), TREE, { email: 'u1@hdec.co.kr', role: 'viewer', avColor: '#3E71D2' }));
+t('AUTH-18c', 'viewer → 자기 프로필 색(gf-그라디언트)', true, tryWrite('users/U1', A('U1'), TREE, { email: 'u1@hdec.co.kr', role: 'viewer', avColor: 'gf-3b82f6-ec4899' }));
 
 console.log(fail ? `\nFAIL ${fail}` : '\nRULES-AUTH ALL PASS');
 process.exit(fail ? 1 : 0);
