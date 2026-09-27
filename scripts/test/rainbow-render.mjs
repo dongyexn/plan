@@ -61,36 +61,38 @@ try{
   if(result.filled.exists&&result.filled.cls.includes('p-col-rainbow')&&result.filled.bg.includes('linear-gradient'))OK('일반 업무 색 원 — 무지개 그라디언트 렌더');
   else F('일반 업무 색 원 — 무지개 렌더 실패: '+JSON.stringify(result.filled));
 
+  /* 992차(사용자): 업무 색은 담당자 색으로 고정 — 업무에 남은 color 는 읽지 않는다.
+     무지개·그라디언트는 이제 **담당자 프로필 색**(S.accounts[uid].avColor)으로만 들어온다. 시험도 그 길로 넣는다 */
+  await page.evaluate(()=>{S.accounts=Object.assign(S.accounts||{},{
+    u1:{name:'무지개',avColor:'rainbow'},u2:{name:'흐름',avColor:'rainbow-anim'},
+    u3:{name:'파랑그라',avColor:'grad-bl'},u4:{name:'노랑흐름',avColor:'grad-yl-anim'}});});
   const ev=await page.evaluate((d)=>planEvent({id:'rb-e2e',title:'무지개 E2E',date:d,color:'rainbow',owners:{}},d),D0);
-  if(ev.classNames.includes('ev-rb')&&ev.classNames.includes('team'))OK('FullCalendar 공통 업무 — ev-rb + team 클래스');
-  else F('FullCalendar 공통 업무 클래스 누락: '+JSON.stringify(ev.classNames));
-  if(ev.borderColor==='rainbow'&&ev.backgroundColor==='transparent')OK('FullCalendar 공통 업무 — 원본 rainbow 토큰 유지');
-  else F('FullCalendar 공통 업무 색 토큰 이상: '+JSON.stringify({backgroundColor:ev.backgroundColor,borderColor:ev.borderColor}));
+  if(ev.classNames.includes('team')&&!ev.classNames.includes('ev-rb')&&ev.borderColor==='#3E71D2'&&ev.backgroundColor==='transparent')
+    OK('992차 색 고정 — 공통 업무는 업무 색(rainbow)을 무시하고 공통 파랑 고리');
+  else F('992차 색 고정 — 공통 업무가 업무 색을 따른다: '+JSON.stringify({cls:ev.classNames,bg:ev.backgroundColor,bd:ev.borderColor}));
 
-  const normal=await page.evaluate((d)=>planEvent({id:'rb-e2e2',title:'무지개 E2E',date:d,color:'rainbow',owners:{u1:1}},d),D0);
-  if(normal.classNames.includes('ev-rb')&&!normal.classNames.includes('team'))OK('FullCalendar 일반 업무 — ev-rb 클래스');
+  const normal=await page.evaluate((d)=>planEvent({id:'rb-e2e2',title:'무지개 E2E',date:d,color:'#DD3B30',owners:{u1:1}},d),D0);
+  if(normal.classNames.includes('ev-rb')&&!normal.classNames.includes('team'))OK('FullCalendar 일반 업무 — 담당자 무지개 색 → ev-rb 클래스(업무 색 #DD3B30 무시)');
   else F('FullCalendar 일반 업무 클래스 이상: '+JSON.stringify(normal.classNames));
 
   /* 저장 데이터 → 실제 FullCalendar DOM까지 한 번 통과시킨다. */
   await page.evaluate((d)=>{
     S.tasks=S.tasks||{}; S.tasks.team=S.tasks.team||{};
-    S.tasks.team.rbE2E={text:'637차 무지개 렌더 시험',date:d,end:'',color:'rainbow',assignees:{},st:1,createdAt:Date.now(),updatedAt:Date.now()};
+    S.tasks.team.rbE2E={text:'637차 무지개 렌더 시험',date:d,end:'',color:'',assignees:{u1:1},st:1,createdAt:Date.now(),updatedAt:Date.now()};   /* 992차: 담당자(u1) 무지개 */
     S.selDate=d;
     calRerender();
   },D0);
   await page.locator('.fc .ev-rb').first().waitFor({state:'attached', timeout:8000});
   /* 683차: 무지개는 막대의 배경이 아니라 ::after 한 겹이 그린다 — 판정 자리도 옮긴다.
-     공통(team)은 그 위에 흰 판(::before)을 덮어 테두리 칸만 남긴다. */
-  const domEv=await page.locator('.fc .ev-rb').first().evaluate(el=>({
+     992차: 공통 업무는 늘 공통 파랑이라 공통 무지개 막대(::before 흰 속)는 업무로는 더 나오지 않는다 — 꽉 찬 무지개 막대만 본다 */
+  const domEv=await page.locator('.fc .ev-rb',{hasText:'637차 무지개'}).first().evaluate(el=>({
     cls:el.className,
     bg:getComputedStyle(el,'::after').backgroundImage,
-    white:getComputedStyle(el,'::before').backgroundColor,
     clip:getComputedStyle(el).clipPath
   }));
-  if(domEv.cls.includes('team')&&domEv.bg.includes('linear-gradient')
-     &&domEv.white==='rgb(255, 255, 255)'&&domEv.clip.includes('inset'))
-    OK('실제 FullCalendar DOM — 공통 무지개 막대(::after 무지개 + ::before 흰 속 + border-box 자르기)');
-  else F('실제 FullCalendar DOM — 공통 무지개 막대 실패: '+JSON.stringify(domEv));
+  if(!domEv.cls.includes('team')&&domEv.bg.includes('linear-gradient'))
+    OK('실제 FullCalendar DOM — 담당자 무지개 막대(::after 무지개)');
+  else F('실제 FullCalendar DOM — 무지개 막대 실패: '+JSON.stringify(domEv));
 
   /* 676차: 그라디언트가 **흐르는지**까지 본다. rbflow 는 background-position 을 애니메이션하는데,
      어느 규칙이든 단축 background(=position 을 !important 로 초기화)를 쓰면 애니메이션이 조용히 죽는다.
@@ -100,11 +102,12 @@ try{
   /* ⚠ 한 칸에 몰아넣으면 FullCalendar 가 '+N 더보기'로 접어 막대가 안 보인다 — 날짜를 흩는다 */
   await page.evaluate((DD)=>{
     S.tasks=S.tasks||{};S.tasks.u1=S.tasks.u1||{};
-    const put=(k,t,c,d)=>{S.tasks.u1[k]={text:t,date:d,end:'',color:c,assignees:{u1:1},st:1,createdAt:Date.now(),updatedAt:Date.now()};};
-    put('rbFix','고정 무지개','rainbow',DD[3]);
-    put('rbAni','흐름 무지개','rainbow-anim',DD[2]);
-    put('gdFix','고정 그라디언트','grad-bl',DD[1]);
-    put('gdAni','흐름 그라디언트','grad-yl-anim',DD[0]);
+    /* 992차: 색은 담당자에게서 — u1 무지개 · u2 흐름 무지개 · u3 파랑 그라디언트 · u4 흐름 노랑 그라디언트 */
+    const put=(k,t,u,d)=>{S.tasks.u1[k]={text:t,date:d,end:'',color:'',assignees:{[u]:1},st:1,createdAt:Date.now(),updatedAt:Date.now()};};
+    put('rbFix','고정 무지개','u1',DD[3]);
+    put('rbAni','흐름 무지개','u2',DD[2]);
+    put('gdFix','고정 그라디언트','u3',DD[1]);
+    put('gdAni','흐름 그라디언트','u4',DD[0]);
     S.selDate=DD[0];calRerender();
   },DD);
   await page.locator('.fc .ev-rb.ev-fx').first().waitFor({state:'attached',timeout:8000});
@@ -164,8 +167,9 @@ try{
     else OK('흐름 그라디언트 — transform 으로 움직인다('+gani.anim+')');
     /* 밝은 그라디언트(노랑)는 흰 글자가 안 읽혀 어두운 글자로 넘어가야 한다 */
     const lg=await page.evaluate((DD)=>{
-      const a=planEvent({id:'l1',title:'노랑',date:DD[1],color:'grad-yl',owners:{u1:1}},DD[1]);
-      const b=planEvent({id:'l2',title:'파랑',date:DD[1],color:'grad-bl',owners:{u1:1}},DD[1]);
+      S.accounts.y1={name:'노랑',avColor:'grad-yl'};   /* 992차: 담당자 색으로 */
+      const a=planEvent({id:'l1',title:'노랑',date:DD[1],color:'',owners:{y1:1}},DD[1]);
+      const b=planEvent({id:'l2',title:'파랑',date:DD[1],color:'',owners:{u3:1}},DD[1]);
       return {y:a.textColor,b:b.textColor,ycls:a.classNames};
     },DD);
     if(lg.y==='#1B1B1F'&&lg.b==='#fff'&&lg.ycls.includes('on-light'))
@@ -216,12 +220,12 @@ try{
   {
     const r=await page.evaluate(async()=>{
       document.body.classList.add('dec');await new Promise(r=>setTimeout(r,60));
-      const rb=document.querySelector('#fcal .fc-event.ev-rb.team');
+      const rb=document.querySelector('#fcal .fc-event.ev-rb');   /* 992차: 공통 무지개 막대는 없어졌다 — 담당자 무지개 막대로 본다 */
       const kept=rb?getComputedStyle(rb,'::after').backgroundImage.includes('135deg'):'막대없음';
       document.body.classList.remove('dec');
       return {kept,skin:typeof window.SKINS};
     });
-    if(r.kept===true&&r.skin==='undefined')OK('12월 크리스마스를 켜도 무지개 공통 막대는 그대로(스킨 고르기 잔재 없음)');
+    if(r.kept===true&&r.skin==='undefined')OK('12월 크리스마스를 켜도 무지개 막대는 그대로(스킨 고르기 잔재 없음)');
     else F('크리스마스 규칙 이상: '+JSON.stringify(r));
   }
 
@@ -233,8 +237,9 @@ try{
     const cdp=await page.context().newCDPSession(page);
     await page.evaluate((DD)=>{
       S.tasks=S.tasks||{};S.tasks.u1=S.tasks.u1||{};
+      S.accounts=Object.assign(S.accounts||{},{u2:{name:'흐름',avColor:'rainbow-anim'}});   /* 992차: 흐름 무지개 = 담당자 색 */
       for(let i=0;i<30;i++){const d=DD[0].slice(0,8)+String(3+(i%20)).padStart(2,'0');
-        S.tasks.u1['perf'+i]={text:'흐름'+i,date:d,end:'',color:'rainbow-anim',assignees:{u1:1},st:1,createdAt:Date.now(),updatedAt:Date.now()};}
+        S.tasks.u1['perf'+i]={text:'흐름'+i,date:d,end:'',color:'',assignees:{u2:1},st:1,createdAt:Date.now(),updatedAt:Date.now()};}
       S.selDate=DD[0];calRerender();
     },DD);
     await page.waitForTimeout(1000);

@@ -107,8 +107,8 @@ try {
   if (stAfter !== stBefore.st) OK('토글 — 상태 변경 (' + stBefore.st + '→' + stAfter + ')');
   else F('토글 — 상태가 그대로');
 
-  /* ④ 삭제 → 휴지통 — 카드의 수정 버튼으로 폼을 열면 삭제 버튼이 나온다 */
-  await page.click('.plan [data-act="plan.edit"]');
+  /* ④ 삭제 → 휴지통 — 카드를 누르면 폼이 열리고 삭제 버튼이 나온다(991차: 수정 버튼 삭제) */
+  await page.click('.plan .plan-c[data-act="plan.body"]');   /* 992차: 누름 영역이 제목+요약 줄(.plan-c)로 */
   await page.waitForSelector('[data-act="plan.del"]', { timeout: 4000 });
   await page.click('[data-act="plan.del"]');
   await page.waitForSelector('[data-act="modal.ok"]', { timeout: 4000 });
@@ -198,7 +198,7 @@ try {
   await page.click('[data-act="plan.new"]');
   await page.waitForSelector('#peTitle', { timeout: 4000 });
   await page.fill('#peTitle', RT);
-  await page.click('#peMoreBtn');
+  /* 992차: 「자세히」 접기가 없어졌다 — 반복은 칩 안의 투명 select */
   await page.selectOption('#peRec', 'w');
   await page.click('[data-act="plan.cancel"]');   /* 저장하고 닫기 */
   await waitFor(page, t => {
@@ -215,7 +215,7 @@ try {
   if (occ2) OK('반복 — 다음 주 같은 요일에 회차가 뜬다');
   else F('반복 — 다음 주 회차가 안 보인다');
   /* 다음 주 회차를 열어 "이 날짜만 제외" */
-  await page.click('#dpList .plan [data-act="plan.edit"]');
+  await page.click('#dpList .plan .plan-c[data-act="plan.body"]');   /* 991차 · 992차 .plan-c */
   await page.waitForSelector('[data-act="plan.del"]', { timeout: 4000 });
   await page.click('[data-act="plan.del"]');           /* 반복 회차의 삭제 → 선택 모달 */
   await page.waitForSelector('[data-act="plan.skipOcc"]', { timeout: 4000 });
