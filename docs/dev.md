@@ -2,7 +2,7 @@
 
 > 쓰는 사람용 안내는 [manual.md](manual.md). 코드 구조·함정은 저장소의 HANDOFF.md.
 
-## 9. 개발·배포 전 검증
+## 1. 개발·배포 전 검증
 
 개발 도구는 앱 런타임과 분리되어 있습니다. 저장소에서 아래 명령으로 현재 기준 회귀 검사를 한 번에 실행할 수 있습니다.
 
@@ -12,10 +12,10 @@ npx playwright install chromium
 npm test
 ```
 
-`npm test`는 정적 감사 → Firebase Rules 감사 → 브라우저 스모크 → 무지개 렌더링 → 하자 전 구간 E2E 순서로 실행합니다. `LIVE_E2E_EMAIL`, `LIVE_E2E_PASSWORD`, `LIVE_E2E_SECOND_EMAIL`, `LIVE_E2E_SECOND_PASSWORD`가 모두 있으면 실제 Firebase 2계정 E2E도 자동으로 이어서 실행합니다. 모든 테스트 데이터와 검증 로직은 이 저장소 안에서 독립적으로 준비됩니다.
+`npm test`는 정적 감사 → Firebase Rules 감사 → 브라우저 스모크 → 무지개 렌더링 → 하자 전 구간 E2E → 민원 세대 레벨화 정답셋 → 모바일 맞춤(겹침·잘림) → 잘림 검사 순서로 실행합니다(`scripts/test/run-all.mjs`). `LIVE_E2E_EMAIL`, `LIVE_E2E_PASSWORD`, `LIVE_E2E_SECOND_EMAIL`, `LIVE_E2E_SECOND_PASSWORD`가 모두 있으면 실제 Firebase 2계정 E2E도 자동으로 이어서 실행합니다. 모든 테스트 데이터와 검증 로직은 이 저장소 안에서 독립적으로 준비됩니다.
 
 
-## 11. 시스템 개요
+## 2. 시스템 개요
 
 > 여기서부터(11~13)는 **시스템을 구축·배포하는 사람**을 위한 내용이다.
 
@@ -37,7 +37,7 @@ index.html                     화면·스타일 (CSS 전부 포함)
 app.js                         모든 로직
 database.rules.json            RTDB 보안 규칙 — 필드 추가 시 반드시 함께 수정
 build-single.mjs               단일 HTML 빌드
-vendor/                        FullCalendar · Chart.js · xlsx · Firebase SDK · Pretendard (자체 호스팅)
+vendor/                        FullCalendar · Chart.js(+datalabels) · xlsx · Firebase SDK · DOMPurify · marked · lz-string · Pretendard (자체 호스팅)
 vendor/libredwg/               DWG 읽기 엔진(GNU LibreDWG → WebAssembly, GPL-3.0) + 전용 워커 dwg-worker.js
                                ⚠ 용량이 10MB 다. 배포에서 빠지면 「도면 인쇄」가 파일을 못 연다
 scripts/test/static-audit.mjs  배포 전 정적 검사
@@ -59,7 +59,7 @@ widget-lite/                   바탕화면 위젯 (Tauri · WebView2)
 
 ---
 
-## 12. Firebase 세팅
+## 3. Firebase 세팅
 
 ### 1. 프로젝트
 
@@ -111,7 +111,7 @@ Realtime Database > 규칙에 `database.rules.json` **전체를 붙여넣는다.
 
 ---
 
-## 13. 배포
+## 4. 배포
 
 ### 최초 1회
 
@@ -126,7 +126,7 @@ npm test                              # 전체 회귀 게이트
 node scripts/test/static-audit.mjs   # FAIL 0 · WARN 0 이어야 함
 node scripts/test/risk-gold.mjs      # 민원 세대 레벨화 정답셋(60건)
 node scripts/test/mobile-fit.mjs     # 폰 폭 겹침·잘림 + 데스크톱 가로 스크롤
-node scripts/test/smoke.mjs          # 핵심 흐름 클릭 (CHROMIUM 환경변수 필요)
+node scripts/test/smoke.mjs          # 핵심 흐름 클릭 (CHROMIUM 은 선택 — 없으면 Playwright 기본 설치본)
 ```
 
 **버전 세 곳을 같은 숫자로 올린다.**

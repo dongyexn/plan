@@ -683,6 +683,20 @@ fn write_help_file() {
    ⚠ /releases/latest 는 '가장 최근 릴리스'라 Electron 릴리스가 최신이면 여기 파일이 없다 —
      그때는 확인 실패로 조용히 넘어간다(내려받기 전에 태그 이름으로 거른다). */
 fn new_exe_path() -> PathBuf { home_dir().join("HPlanWidgetLite.new.exe") }
+/* 1012차(보안): 업데이트는 이 저장소 릴리스에서만 받는다 — 전엔 앱 페이지(window.widInfo)가 준 주소를 따라가 받은 exe 를 크기만 보고 실행했다.
+   받은 파일은 같은 릴리스의 HPlanWidgetLite.exe.sha256(워크플로가 만든다)과 대조한다. 해시 파일이 없으면 받지 않는다 */
+const REL_BASE: &str = "https://github.com/dongyexn/plan/releases";
+fn sha256_hex(f: &Path) -> Option<String> {
+    use sha2::{Digest, Sha256};
+    let data = std::fs::read(f).ok()?;
+    Some(Sha256::digest(&data).iter().map(|b| format!("{:02x}", b)).collect())
+}
+fn fetch_text(url: &str) -> Option<String> {
+    let cli = reqwest::blocking::Client::builder().timeout(Duration::from_secs(20)).build().ok()?;
+    let r = cli.get(url).send().ok()?;
+    if !r.status().is_success() { return None; }
+    r.text().ok()
+}
 fn verify_exe(f: &Path) -> bool {
     /* ⚠ Electron 은 20MB 문턱 — 이 exe 는 수 MB 라 3MB 로 본다(받다 만 파일 걸러내기) */
     std::fs::metadata(f).map(|m| m.len() > 3 * 1024 * 1024).unwrap_or(false)
@@ -705,6 +719,7 @@ fn resolve_latest(url: &str) -> Option<(String, String)> {
     let r = cli.get(url).send().ok()?;
     if !r.status().is_redirection() { return None; }
     let to = r.headers().get("location")?.to_str().ok()?.to_string();
+    if !to.starts_with(&format!("{}/download/widget-lite-v", REL_BASE)) { return None; }   /* 1012차: 이 저장소의 위젯 릴리스로 넘어갈 때만 */
     /* ⚠ 태그가 widget-lite-v… 일 때만 우리 것 — widget-v…(Electron) 릴리스가 최신이면 여기서 걸러진다 */
     let m = to.split("/releases/download/widget-lite-v").nth(1)?;
     let ver: String = m.chars().take_while(|c| c.is_ascii_digit() || *c == '.').collect();
@@ -720,20 +735,8 @@ fn download(url: &str, dest: &Path) -> Result<(), String> {
     Ok(())
 }
 fn check_update(app: &AppHandle, loud: bool) {
-    let info = ask(app, "window.widInfo ? window.widInfo() : null", 8000);
-    let base = info.as_ref().and_then(|v| v.get("url")).and_then(|v| v.as_str()).map(String::from);
-    let Some(base) = base else {
-        if loud { msg_ok("업데이트", "최신 버전 정보를 읽지 못했습니다.", "앱 페이지가 아직 뜨지 않았을 수 있습니다."); }
-        return;
-    };
-    /* HPlanWidget.exe → HPlanWidgetLite.exe, /releases/download/태그/ → /releases/latest/download/ */
-    let mine = base.replace("HPlanWidget.exe", EXE_NAME);
-    let latest = if mine.contains("/releases/latest/download/") { mine.clone() } else {
-        match mine.split("/releases/download/").next() {
-            Some(pre) => format!("{}/releases/latest/download/{}", pre, EXE_NAME),
-            None => mine.clone(),
-        }
-    };
+    let _ = app;   /* 1012차: 주소는 페이지에서 받지 않는다(REL_BASE 고정) */
+    let latest = format!("{}/latest/download/{}", REL_BASE, EXE_NAME);
     let Some((ver, url)) = resolve_latest(&latest) else {
         if loud { msg_ok("업데이트", "최신 버전을 확인하지 못했습니다.",
             "릴리스에 위젯(HPlanWidgetLite) 판이 아직 없거나, 최신 릴리스가 옛 판입니다."); }
@@ -750,6 +753,14 @@ fn check_update(app: &AppHandle, loud: bool) {
         log(&format!("업데이트 내려받기 실패 {}", e)); return;
     }
     if !verify_exe(&part) { let _ = std::fs::remove_file(&part); log("받다 만 파일 — 버림"); return; }
+    let want = fetch_text(&format!("{}/download/widget-lite-v{}/{}.sha256", REL_BASE, ver, EXE_NAME))
+        .and_then(|t| t.split_whitespace().next().map(|h| h.to_ascii_lowercase()));
+    let got = sha256_hex(&part);
+    if want.is_none() || want != got {
+        let _ = std::fs::remove_file(&part);
+        if loud { msg_ok("업데이트", "새 버전 파일을 확인하지 못해 설치하지 않았습니다.", "릴리스의 해시 파일과 맞지 않습니다."); }
+        log(&format!("업데이트 해시 불일치·없음 — 버림 (기대 {:?}, 받음 {:?})", want, got)); return;
+    }
     let _ = std::fs::remove_file(new_exe_path());
     if std::fs::rename(&part, new_exe_path()).is_err() { return; }   /* 다 받은 뒤에야 정식 이름을 준다(147차) */
     *UPD.lock().unwrap() = Some((ver.clone(), new_exe_path()));
@@ -1017,7 +1028,11 @@ fn main() {
                 let res = text.strip_prefix("HPWENC1\n")
                     .and_then(b64_decode)
                     .and_then(|blob| dpapi_decrypt(&blob))
-                    .and_then(|raw| String::from_utf8(raw).ok());
+                    .and_then(|raw| String::from_utf8(raw).ok())
+                    /* 1012차(보안): 이 위젯의 백업(kind=hplan-backup)일 때만 돌려준다 — 아니면 같은 윈도우 계정으로 잠긴 남의 DPAPI 자료를 페이지가 풀어 볼 수 있었다 */
+                    .filter(|j| serde_json::from_str::<Value>(j).ok()
+                        .and_then(|v| v.get("kind").and_then(|k| k.as_str()).map(|k| k == "hplan-backup"))
+                        .unwrap_or(false));
                 let _ = match res {
                     Some(json) => hr.emit("hpw-restore-res", serde_json::json!({ "id": id, "json": json })),
                     None => { log("백업 복호 실패 — 다른 PC·계정의 파일이거나 손상");
@@ -1063,8 +1078,9 @@ fn main() {
                 }
             });
             handle.listen_any("hpw-open", move |ev| {
-                let u = ev.payload().trim_matches('"').to_string();
-                if u.starts_with("http") { open_url(&u); }
+                /* 1012차(보안): 머리글자('http')가 아니라 주소로 읽어 http·https 만 연다 */
+                let u = serde_json::from_str::<String>(ev.payload()).unwrap_or_default();
+                if let Ok(p) = tauri::Url::parse(&u) { if p.scheme() == "https" || p.scheme() == "http" { open_url(p.as_str()); } }
             });
 
             /* 창 — 저장된 자리(물리 픽셀)로 되돌리기 전까지 숨겨 두어 깜빡임을 없앤다 */
@@ -1076,6 +1092,12 @@ fn main() {
                 .inner_size(620.0, 520.0).min_inner_size(360.0, 380.0)   // 694: 300 에서는 월 제목·막대·팝업이 잘린다(693차 조사)
                 .visible(false)
                 .initialization_script(INIT_JS)
+                /* 1012차(보안): 테두리 없는 위젯 창은 앱 주소(같은 출처) 밖으로 이동하지 않는다 — 바깥 주소는 기본 브라우저로 */
+                .on_navigation(move |u| {
+                    let ok = tauri::Url::parse(&app_url()).map(|a| a.origin() == u.origin()).unwrap_or(true) || u.scheme() == "about";
+                    if !ok && (u.scheme() == "https" || u.scheme() == "http") { open_url(u.as_str()); }
+                    ok
+                })
                 .build()?;
 
             let want = STATE.lock().unwrap().bounds;

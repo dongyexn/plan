@@ -14,6 +14,8 @@ import fs from 'fs';
 import path from 'path';
 import { execFileSync } from 'child_process';
 import { fileURLToPath } from 'url';
+import vm from 'vm';
+import { stripJsComments, stripCssComments, stripHtmlComments } from './strip-comments.mjs';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const rd = f => fs.readFileSync(path.join(root, f), 'utf8');
@@ -23,7 +25,11 @@ const html = rd('index.html');
 const rules = rd('database.rules.json');
 const css = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map(m => m[1]).join('\n');
 const htmlNoStyle = html.replace(/<style[^>]*>[\s\S]*?<\/style>/g, '');
-const hay = htmlNoStyle + js + rd('boot-wid.js');   /* 998차: boot-wid.js 가 다는 클래스(html.lgbg)도 사용처다 */   /* 클래스·id 사용처를 찾는 건초 더미 (위젯은 같은 웹앱을 띄우므로 별도 소스 없음) */
+/* 1012차: 사용처 판정은 **주석을 걷은** 본문으로 한다 — 회차 이력 주석이 길어 주석에만 남은 이름이 '쓰는 중'으로 세어졌다.
+   걷은 결과가 파싱되지 않으면(어휘기 한계) 원문으로 되돌리고 경고한다 */
+let jsNC = stripJsComments(js);
+try { new vm.Script(jsNC); } catch (e) { jsNC = js; console.log('WARN  주석 걷기 결과가 파싱되지 않아 원문으로 판정 — ' + e.message); }
+const hay = stripHtmlComments(htmlNoStyle) + jsNC + stripJsComments(rd('boot-wid.js'));   /* 998차: boot-wid.js 가 다는 클래스(html.lgbg)도 사용처다 */   /* 클래스·id 사용처를 찾는 건초 더미 (위젯은 같은 웹앱을 띄우므로 별도 소스 없음) */
 
 let fail = 0, warn = 0;
 const F = m => { fail++; console.log('FAIL  ' + m); };
@@ -73,9 +79,29 @@ OK('구문 검사 (node --check)');
 {
   const all = hay;
   const decls = [...js.matchAll(/(?:^|\n)\s*(?:async\s+)?function\s+([A-Za-z_][\w$]*)\s*\(/g)].map(m => m[1]);
-  const dead = decls.filter(n => (all.match(new RegExp('\\b' + n + '\\b', 'g')) || []).length <= 1);
+  const CONSOLE_TOOLS = new Set(['riskAuditCSV']);   /* 1012차: 개발자 콘솔에서 부르는 도구(HANDOFF·docs 에 사용법) — 코드 안 호출이 없어도 둔다 */
+  const dead = decls.filter(n => !CONSOLE_TOOLS.has(n) && (all.match(new RegExp('\\b' + n + '\\b', 'g')) || []).length <= 1);
   if (dead.length) W('정의뿐인 함수 후보: ' + dead.join(', ') + '  (동적 호출이 아닌지 확인 후 제거)');
   else OK('죽은 함수 없음 (' + decls.length + '개 검사)');
+}
+
+/* ── 2-b. 죽은 최상위 상수·화살표 함수(1012차) — §2 는 function 선언만 봤다(mm2pt·XL_EMU·HIST_LBL 이 그렇게 남았다).
+   위젯(widget-lite)·시험 스크립트가 부르는 이름도 사용처로 본다. 콘솔 도구는 CONSOLE_TOOLS 에 둔다 ── */
+{
+  const ext = [path.join(root, 'widget-lite', 'src', 'main.rs')].concat(fs.readdirSync(path.join(root, 'scripts', 'test')).filter(f => f.endsWith('.mjs')).map(f => path.join(root, 'scripts', 'test', f)))
+    .map(f => { try { return fs.readFileSync(f, 'utf8'); } catch (e) { return ''; } }).join('\n');
+  const all = hay + ext;
+  const names = [...jsNC.matchAll(/(?:^|\n)(?:const|let)\s+([A-Za-z_$][\w$]*)\s*=/g)].map(m => m[1]);
+  const dead = names.filter(n => (all.match(new RegExp('(?<![\\w$])' + n.replace(/\$/g, '\\$') + '(?![\\w$])', 'g')) || []).length <= 1);
+  if (dead.length) W('정의뿐인 최상위 상수 후보: ' + dead.join(', '));
+  else OK('죽은 최상위 상수 없음 (' + names.length + '개 검사)');
+}
+/* ── 2-c. 안 쓰는 SVG 아이콘(1012차) — <symbol id> 를 href="#id" 나 문자열로 부르는 곳이 없으면 경고 ── */
+{
+  const ids = [...htmlNoStyle.matchAll(/<symbol id="([^"]+)"/g)].map(m => m[1]);
+  const dead = ids.filter(id => !hay.includes('#' + id) && !jsNC.includes("'" + id + "'") && !jsNC.includes('"' + id + '"'));   /* 'i-form' 처럼 이름만 넘겨 '#'+ic 로 조립하는 곳도 사용처 */
+  if (dead.length) W('쓰지 않는 SVG 아이콘: ' + dead.join(', '));
+  else OK('SVG 아이콘 모두 사용 (' + ids.length + '개)');
 }
 
 /* ── 3. data-act 짝 — 발신했는데 핸들러 없음(FAIL) / 핸들러만 있음(WARN) ── */
@@ -86,12 +112,13 @@ OK('구문 검사 (node --check)');
   /* 핸들러 존재는 문자열 유무로 본다 — ACT 맵 키('x.y':)뿐 아니라
      change/blur 위임(closest('[data-act="x.y"]'))으로 처리되는 것도 핸들러다(select 는 click 위임에 안 걸린다) */
   const orphanEmit = [...emitted].filter(a => a.includes('.')
-    && !js.includes("'" + a + "'") && !js.includes('"' + a + '"'));
-  const keys = new Set([...js.matchAll(/'([a-z][\w]*\.[\w]+)'\s*:\s*(?:async\s*)?(?:function|\(|[A-Za-z_$][\w$]*\s*=>)/g)].map(m => m[1]));
+    && !jsNC.includes("'" + a + "'") && !jsNC.includes('"' + a + '"'));
+  const keys = new Set([...jsNC.matchAll(/'([a-z][\w]*\.[\w]+)'\s*:\s*(?:async\s*)?(?:function|\(|[A-Za-z_$][\w$]*\s*=>)/g)].map(m => m[1]));
   /* change·input·mousedown 델리게이트가 dataset.act 로 직접 처리하는 액션도 '짝이 있는' 것으로 본다(442차) */
-  for (const m of js.matchAll(/dataset\.act\s*===\s*'([a-z][\w.]*)'/g)) keys.add(m[1]);
-  for (const m of js.matchAll(/data-act="([a-z][\w.]*)"\]/g)) keys.add(m[1]);
-  const DIRECT_CALL = new Set(['plan.moveOcc','org.delPerson','org.delSite','org.draftDropGo','plan.edit','tk.edit']);   /* 997차: tk.edit 는 행 누름(tk.open)·우클릭 메뉴가 ACT[] 로 부른다(펼침 연필 삭제) */   /* 991차: plan.edit 은 카드 연필을 뺀 뒤 우클릭 메뉴(ctxFor → ACT[...])로만 */   /* 695차: 조직 삭제 둘은 우클릭 메뉴(ctxFor → ACT[...]) 로만 */   /* change 델리게이트가 ACT[]로 직접 부르는 액션 — data-act 발신처가 없다(428차) */
+  for (const m of jsNC.matchAll(/dataset\.act\s*===\s*'([a-z][\w.]*)'/g)) keys.add(m[1]);
+  for (const m of jsNC.matchAll(/data-act="([a-z][\w.]*)"\]/g)) keys.add(m[1]);
+  const DIRECT_CALL = new Set(['d60.m','d60.pm','d60.step',   /* 1012차: 주석의 발신 표식 대신 여기 — d60.m·pm 은 act 변수로 조립(d60YearCard), d60.step 은 밀어 넘기기가 ACT[] 로 직접 */
+    'plan.moveOcc','org.delPerson','org.delSite','org.draftDropGo','plan.edit','tk.edit']);   /* 997차: tk.edit 는 행 누름(tk.open)·우클릭 메뉴가 ACT[] 로 부른다(펼침 연필 삭제) */   /* 991차: plan.edit 은 카드 연필을 뺀 뒤 우클릭 메뉴(ctxFor → ACT[...])로만 */   /* 695차: 조직 삭제 둘은 우클릭 메뉴(ctxFor → ACT[...]) 로만 */   /* change 델리게이트가 ACT[]로 직접 부르는 액션 — data-act 발신처가 없다(428차) */
   const orphanKey  = [...keys].filter(k => !emitted.has(k) && !DIRECT_CALL.has(k));
   if (orphanEmit.length) F('핸들러 없는 data-act: ' + orphanEmit.join(', '));
   if (orphanKey.length)  W('발신처 없는 핸들러(UI 를 지울 때 짝을 안 지운 흔적): ' + orphanKey.join(', '));
@@ -108,7 +135,7 @@ OK('구문 검사 (node --check)');
 /* ── 5. 죽은 CSS 클래스 ─────────────────────────────── */
 {
   const KEEP = /^(fc-|wf-|x-none$|r-blocked$|woff2$|s\d$|insight-block$|ib-body$|warn$|ev-g-\w+$)/;   /* 678차: ev-g-* 는 'ev-g-'+토큰 으로 조립한다(GRADS 대조는 아래에서 따로 한다) */   /* insight-*: 분석 의견 원문(DB 저장 HTML)의 클래스 — 마크업엔 없다(427차) */   /* 위 판정 원칙 + url(*.woff2) 오탐 + tk-item s${st} 동적 */
-  const cls = new Set([...css.matchAll(/\.([A-Za-z_][\w-]*)/g)].map(m => m[1]));
+  const cls = new Set([...stripCssComments(css).matchAll(/\.([A-Za-z_][\w-]*)/g)].map(m => m[1]));   /* 1012차: 주석 속 이름은 정의가 아니다 */
   const dead = [...cls].filter(c => !KEEP.test(c) &&
     !new RegExp('[\'"`\\s<>=.(]' + c.replace(/-/g, '\\-') + '[\'"`\\s<>.,)\\]}:$]').test(hay));
   if (dead.length) W('사용처 없는 CSS 클래스 후보: ' + dead.sort().join(', ') +
@@ -319,6 +346,12 @@ OK('구문 검사 (node --check)');
       i++;
     }
     if (inC) bad.push('style#' + si + ' 주석이 끝까지 안 닫힘(' + css.slice(0, start).split('\n').length + '행)');
+    /* 안 닫힌 주석이 다음 규칙을 삼킨 꼴 — 주석 안 둘째 줄부터 「셀렉터{속성:값}」 로 시작하는 줄이 있으면 (#fcal 사고) */
+    for (const m of css.matchAll(/\/\*[\s\S]*?\*\//g)) {
+      const body = m[0].slice(2, -2).split('\n').slice(1);
+      const hit = body.find(l => /^\s*[#.a-z*:\[][^{}]*\{[^{}]*:[^{}]*;[^{}]*\}/i.test(l));
+      if (hit) bad.push('style#' + si + ' ' + css.slice(0, m.index).split('\n').length + '행 주석 안에 규칙 — ' + hit.trim().slice(0, 60));
+    }
   });
   if (bad.length) F('CSS 주석이 뒤를 삼킨다 — ' + bad.join(' · '));
   else OK('CSS 주석 길이·URL 조각 정상 (' + styles.length + '개 style)');
@@ -336,134 +369,18 @@ OK('구문 검사 (node --check)');
   '.tkl-nr-w .tk-item+.tk-item.gw>.tk-row::before :: left',   /* 912차: 같은 이유(90 → 72) */
   '.tkl-nr .tk-row :: grid-template-columns',
   '.tkl-nr-w .tk-row :: grid-template-columns',
-  '#fcal .dhol.off :: color',
-  '#fcal .fc-day-today .dnum :: height',
-  '#fcal .fc-day-today .dnum :: margin',
-  '#fcal .fc-day-today .dnum :: min-width',
-  '#fcal .fc-day-today .dnum :: padding',
-  '#fcal .fc-day-today .dnum :: width',
-  '#fcal .fc-event :: border-radius',
-  '#fcal .fc-popover :: background',
-  '#fcal .fc-popover :: border-radius',
-  '#fcal .fc-popover :: box-shadow',
-  '#fcal .fc-popover-header :: background',
-  '#fcal .fc-popover-header :: color',
-  '#fcal .fc-popover-header :: font-size',
-  '#fcal .fc-popover-header :: font-weight',
-  '#fcal .fc-scrollgrid :: border-radius',
-  '#sidebar.mini .teamsel :: height',
-  '#sidebar.mini .teamsel :: justify-content',
-  '#sidebar.mini .teamsel :: padding',
-  '#view-defect #dfPrintPages .ait :: font-size',
-  '#view-defect #dfPrintPages .ait :: line-height',
-  '#view-defect #dfPrintPages .dn-side .canv :: align-self',
-  '#view-defect #dfPrintPages .dn-side .canv :: flex',
-  '#view-defect #dfPrintPages .dn-side .canv :: height',
-  '#view-defect #dfPrintPages .dn-side .canv :: max-height',
-  '#view-defect #dfPrintPages .dn-side .canv :: max-width',
-  '#view-defect #dfPrintPages .dn-side .canv :: width',
-  '#view-defect #dfPrintPages .dn-side .lg .cnt :: font-size',
-  '#view-defect #dfPrintPages .dn-side .lg .cnt :: padding',
-  '#view-defect #dfPrintPages .dn-side .lg .cnt :: text-align',
-  '#view-defect #dfPrintPages .dn-side .lg .cnt :: white-space',
-  '#view-defect #dfPrintPages .dn-side .lg .it :: gap',
-  '#view-defect #dfPrintPages .dn-side .lg .it :: grid-template-columns',
-  '#view-defect #dfPrintPages .dn-side .lg .it :: height',
-  '#view-defect #dfPrintPages .dn-side .lg .it :: line-height',
-  '#view-defect #dfPrintPages .dn-side .lg .nm :: font-size',
-  '#view-defect #dfPrintPages .dn-side .lg .nm :: min-width',
-  '#view-defect #dfPrintPages .dn-side .lg .nm :: overflow',
-  '#view-defect #dfPrintPages .dn-side .lg .nm :: text-overflow',
-  '#view-defect #dfPrintPages .dn-side .lg .nm :: white-space',
-  '#view-defect #dfPrintPages .dn-side .lg .pct :: font-size',
-  '#view-defect #dfPrintPages .dn-side .lg .pct :: min-width',
-  '#view-defect #dfPrintPages .dn-side .lg .pct :: padding',
-  '#view-defect #dfPrintPages .dn-side .lg .pct :: text-align',
-  '#view-defect #dfPrintPages .dn-side .lg .pct :: white-space',
-  '#view-defect #dfPrintPages .dn-side .lg :: align-self',
-  '#view-defect #dfPrintPages .dn-side .lg :: flex',
-  '#view-defect #dfPrintPages .dn-side .lg :: font-size',
-  '#view-defect #dfPrintPages .dn-side .lg :: min-width',
-  '#view-defect #dfPrintPages .dn-side .lg :: overflow',
-  '#view-defect #dfPrintPages .dn-side .lg.lg-2col :: column-gap',
-  '#view-defect #dfPrintPages .dn-side .lg.lg-2col :: display',
-  '#view-defect #dfPrintPages .dn-side .lg.lg-2col :: grid-auto-flow',
-  '#view-defect #dfPrintPages .dn-side .lg.lg-2col :: grid-template-columns',
-  '#view-defect #dfPrintPages .dn-side .lg.lg-2col :: grid-template-rows',
-  '#view-defect #dfPrintPages .dn-side .lg.lg-2col :: min-width',
-  '#view-defect #dfPrintPages .dn-side .lg.lg-2col :: row-gap',
-  '#view-defect #dfPrintPages .dn-side :: align-items',
-  '#view-defect #dfPrintPages .dn-side :: gap',
-  '#view-defect #dfPrintPages .dn-side :: height',
-  '#view-defect #dfPrintPages .dn-side :: justify-content',
-  '#view-defect #dfPrintPages .dn-side :: max-height',
-  '#view-defect #dfPrintPages .dn-side :: min-height',
-  '#view-defect #dfPrintPages .dn-side :: overflow',
-  '#view-defect #dfPrintPages .dn-side :: padding',
-  '#view-defect #dfPrintPages .main-chart-card :: aspect-ratio',
-  '#view-defect #dfPrintPages .main-chart-card :: height',
-  '#view-defect #dfPrintPages .main-chart-card :: min-height',
-  '.acct-btn :: height',
-  '.acct-pane :: min-height',
-  '.bp :: background',
-  '.day-panel :: min-height',
-  '.dp-edit .frow :: margin-bottom',
-  '.mc-d .dots i :: background',
-  '.mc-d.sel .dots i,.mc-d.today .dots i :: background',
-  '.mg-grid :: grid-template-columns',
-  '.mgtbl :: border-collapse',
-  '.mgtbl :: width',
-  '.mgtbl td :: padding',
-  '.mgtbl td :: vertical-align',
-  '.msel-b :: height',
-  '.nic :: border-radius',
-  '.nic :: height',
-  '.nic :: width',
-  '.nvi :: gap',
-  '.nvi :: margin-bottom',
-  '.nvi :: padding',
-  '.nvi.act .nic :: background',
-  '.nvi.act .nic svg :: color',
-  '.nvi:not(.act) .nic :: background',
-  '.pd-b :: color',
-  '.plan-side :: gap',
-  '.rpt .page :: box-shadow',
-  '.rpt .page :: margin',
-  '.rpt .page :: min-height',
-  '.tb-ic :: height',
-  '.tb-ic :: width',
-  '.tk-acts :: gap',
-  '.tk-ico .icn :: height',
-  '.tk-ico .icn :: width',
-  '.tk-ico.on :: color',
-  '.tk-ico.on :: opacity',
-  '.tk-ico:hover :: background',
-  '.tk-ico:hover :: color',
   '.tk-item+.tk-item>.tk-row::before :: left',
-  '.tk-item.editing .tk-row .cell-inp,.tk-item.editing .tk-row select :: margin-left',
-  '.tk-item.editing .tk-row .cell-inp,.tk-item.editing .tk-row select :: padding-left',
-  '.tk-item.editing .tk-row select :: padding-right',
-  '.tk-item.open :: background',
-  '.tk-list :: gap',
   '.tkl-s .tk-row :: grid-template-columns',
   '.tkl-s-w .tk-row :: grid-template-columns',
-  '.tkmain :: flex',
-  '.tkmain :: min-height',
-  '.tks-item .rk :: font-size',
-  '.tks-item :: font-size',
-  '.tks-item :: padding',
-  '.tks-item.sub :: font-size',
-  '.tkside :: display',
-  '.tkside :: flex-direction',
-  '.tkside :: gap',
-  '.tkside :: min-height',
-  '.tm-empty :: padding',
-  '100% :: transform',
-  'body.wid #fcal :: font-size',
-  'body.wid .cal-title :: font-size',
-  'body.wid.glass .cal-title,body.wid.glass .cal-title .y :: color',
-  'textarea.inp :: min-height',
-  'to :: transform'
+  /* 1012차: @media 안도 보게 되며 동결한 것 — 앞 선언이 !important 거나 dvh 등 폴백 값이라 기계 정리(scripts/css-dedup.py)에서 남긴 자리 */
+  '@media print | #view-defect .akpi :: gap',
+  '@media print | #view-defect .dt :: font-size',
+  '@media print | #view-defect .main-chart-card :: aspect-ratio',
+  '@media print | #view-defect .main-chart-card :: height',
+  '@media print | #view-defect .main-chart-card :: min-height',
+  '@media print | *,*::before,*::after :: -webkit-print-color-adjust',
+  '@media(max-width:960px) | body:not(.wid) #view-calendar .cal-wrap :: height',
+  '@media(max-width:960px) | body:not(.wid) #view-calendar .day-panel :: max-height',
   ]);
   let body = css.replace(/\/\*[\s\S]*?\*\//g, '');
   /* @keyframes 안의 from/to/0%… 는 셀렉터가 아니다 — 블록째 제외(440차) */
@@ -474,7 +391,8 @@ OK('구문 검사 (node --check)');
     while (depth > 0 && j < body.length) { if (body[j] === '{') depth++; else if (body[j] === '}') depth--; j++; }
     body = body.slice(0, km.index) + body.slice(j);
   }
-  /* @media 블록은 스코프가 달라 제외 */
+  /* 1012차: @media 안도 본다(전엔 통째로 뺐다 — 폰 규칙 안의 재선언 32건이 감시 밖이었다). 스코프 = 미디어 조건 글자(같은 조건끼리만 비교) */
+  const scopes = [['', '']];   /* [조건, 본문] — '' 는 최상위 */
   let flat = ''; let i = 0;
   for (;;) {
     const m = body.slice(i).match(/@media[^{]*\{/);
@@ -482,22 +400,29 @@ OK('구문 검사 (node --check)');
     flat += body.slice(i, i + m.index);
     let j = i + m.index + m[0].length, depth = 1;
     while (depth > 0 && j < body.length) { if (body[j] === '{') depth++; else if (body[j] === '}') depth--; j++; }
+    scopes.push([m[0].slice(0, -1).replace(/\s+/g, ' ').trim(), body.slice(i + m.index + m[0].length, j - 1)]);
     i = j;
   }
-  const seen = new Map();   /* sel → [props…] 목록 */
-  for (const m of flat.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-    const sel = m[1].trim().replace(/\s+/g, ' ');
-    if (!sel || sel.startsWith('@')) continue;
-    const props = new Set(m[2].split(';').map(p => p.split(':')[0].trim()).filter(Boolean));
-    if (!seen.has(sel)) seen.set(sel, []);
-    seen.get(sel).push(props);
+  scopes[0][1] = flat;
+  const seen = new Map();   /* 조건|sel → [props…] 목록 */
+  for (const [ctx, txt] of scopes) {
+    for (const m of txt.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      const sel = m[1].trim().replace(/\s+/g, ' ');
+      if (!sel || sel.startsWith('@')) continue;
+      const props = new Set(m[2].split(';').map(p => p.split(':')[0].trim()).filter(Boolean));
+      const key = (ctx ? ctx + ' | ' : '') + sel;
+      if (!seen.has(key)) seen.set(key, []);
+      seen.get(key).push(props);
+    }
   }
-  const fresh = [];
+  const fresh = [], live = new Set();
   for (const [sel, blocks] of seen) {
     if (blocks.length < 2) continue;
     for (let a = 0; a < blocks.length; a++) for (let b = a + 1; b < blocks.length; b++)
-      for (const p of blocks[a]) if (blocks[b].has(p) && !CSS_DUP_BASELINE.has(sel + ' :: ' + p)) fresh.push(sel + ' :: ' + p);
+      for (const p of blocks[a]) if (blocks[b].has(p)) { live.add(sel + ' :: ' + p); if (!CSS_DUP_BASELINE.has(sel + ' :: ' + p)) fresh.push(sel + ' :: ' + p); }
   }
+  const stale = [...CSS_DUP_BASELINE].filter(x => !live.has(x));
+  if (stale.length) W('CSS 재선언 베이스라인에 이미 없어진 항목 ' + stale.length + '건 — 목록에서 지울 것: ' + stale.slice(0, 5).join(' · '));
   if (fresh.length) F('CSS 재선언 신규 ' + fresh.length + '건 — 앞선 규칙을 말없이 덮는다: ' + [...new Set(fresh)].slice(0, 5).join(' · '));
   else OK('CSS 재선언 신규 없음 (베이스라인 ' + CSS_DUP_BASELINE.size + '건 동결)');
 }
