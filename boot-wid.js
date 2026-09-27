@@ -23,6 +23,13 @@
   }, true);
 
   var q = location.search;
+  /* 998차: 로그인 배경화면 — 여기서(head) 먼저 받기 시작하고, 다 받으면 html.lgbg 로 서서히 드러낸다.
+     전엔 받는 동안 빈 셸 색이었다가 사진이 툭 바뀌었다. 위젯·로컬 모드는 배경화면을 쓰지 않는다 */
+  if (!/[?&](w|local)=1\b/.test(q)) {
+    var im = new Image();
+    im.onload = function(){ document.documentElement.classList.add('lgbg'); };
+    im.src = 'login-bg.jpg';
+  }
   if (!/[?&]w=1\b/.test(q)) return;
   var cls = ['wid', 'gate-on'].concat(/[?&]glass=1\b/.test(q) ? ['glass'] : []);   /* 970차: gate-on = 로그인 게이트가 떠 있음(처음엔 늘 뜸 — hideCover 가 뗀다) */
   var put = function(){ cls.forEach(function(c){ document.body.classList.add(c); }); };

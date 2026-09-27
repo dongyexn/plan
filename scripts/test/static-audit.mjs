@@ -23,7 +23,7 @@ const html = rd('index.html');
 const rules = rd('database.rules.json');
 const css = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map(m => m[1]).join('\n');
 const htmlNoStyle = html.replace(/<style[^>]*>[\s\S]*?<\/style>/g, '');
-const hay = htmlNoStyle + js;   /* 클래스·id 사용처를 찾는 건초 더미 (위젯은 같은 웹앱을 띄우므로 별도 소스 없음) */
+const hay = htmlNoStyle + js + rd('boot-wid.js');   /* 998차: boot-wid.js 가 다는 클래스(html.lgbg)도 사용처다 */   /* 클래스·id 사용처를 찾는 건초 더미 (위젯은 같은 웹앱을 띄우므로 별도 소스 없음) */
 
 let fail = 0, warn = 0;
 const F = m => { fail++; console.log('FAIL  ' + m); };
@@ -91,7 +91,7 @@ OK('구문 검사 (node --check)');
   /* change·input·mousedown 델리게이트가 dataset.act 로 직접 처리하는 액션도 '짝이 있는' 것으로 본다(442차) */
   for (const m of js.matchAll(/dataset\.act\s*===\s*'([a-z][\w.]*)'/g)) keys.add(m[1]);
   for (const m of js.matchAll(/data-act="([a-z][\w.]*)"\]/g)) keys.add(m[1]);
-  const DIRECT_CALL = new Set(['plan.moveOcc','org.delPerson','org.delSite','org.draftDropGo']);   /* 695차: 조직 삭제 둘은 우클릭 메뉴(ctxFor → ACT[...]) 로만 */   /* change 델리게이트가 ACT[]로 직접 부르는 액션 — data-act 발신처가 없다(428차) */
+  const DIRECT_CALL = new Set(['plan.moveOcc','org.delPerson','org.delSite','org.draftDropGo','plan.edit','tk.edit']);   /* 997차: tk.edit 는 행 누름(tk.open)·우클릭 메뉴가 ACT[] 로 부른다(펼침 연필 삭제) */   /* 991차: plan.edit 은 카드 연필을 뺀 뒤 우클릭 메뉴(ctxFor → ACT[...])로만 */   /* 695차: 조직 삭제 둘은 우클릭 메뉴(ctxFor → ACT[...]) 로만 */   /* change 델리게이트가 ACT[]로 직접 부르는 액션 — data-act 발신처가 없다(428차) */
   const orphanKey  = [...keys].filter(k => !emitted.has(k) && !DIRECT_CALL.has(k));
   if (orphanEmit.length) F('핸들러 없는 data-act: ' + orphanEmit.join(', '));
   if (orphanKey.length)  W('발신처 없는 핸들러(UI 를 지울 때 짝을 안 지운 흔적): ' + orphanKey.join(', '));
@@ -190,8 +190,9 @@ OK('구문 검사 (node --check)');
       /* ⚠ 677차: 머리쪽 전역 규칙이 동작 줄이기에서 모든 애니메이션을 !important 로 죽인다.
          흐름 무지개는 그 안에서 되살려야 한다 — 예외가 사라지면 사용자 눈에는 '안 움직인다'로 보인다.
          ⚠ 683차: 애니메이션이 ::after 로 내려갔으므로 예외도 ::after 를 짚어야 한다. */
-      else if(!/#fcal \.fc-event\.ev-fx::after\{animation-duration:8s!important;animation-iteration-count:infinite!important;\}/.test(cssNC))
-        F('동작 줄이기 예외가 없다(또는 ::after 를 안 짚는다) — 전역 reduce 규칙이 흐름 무지개까지 멈춘다');
+      /* ⚠ 986차(사용자): 앱 움직임은 동작 줄이기와 상관없이 켠다 — 전역 reduce 규칙 자체가 없어야 한다(되살아나면 사용자 PC 에서 모든 움직임이 멈춘다) */
+      else if(/prefers-reduced-motion\s*:\s*reduce/.test(cssNC))
+        F('동작 줄이기(prefers-reduced-motion) 규칙이 되살아났다 — 986차: 앱 움직임은 OS 설정과 상관없이 켠다');
       else if(/ev-fx[^}]*animation\s*:\s*none/.test(cssNC)) F('흐름 무지개를 어딘가에서 끄고 있다');
       else if(!/body\.wid-await #fcal \.fc-event\.ev-fx::after\{animation-play-state:paused;\}/.test(cssNC))
         F('위젯 비활성 시 흐름을 멈추는 규칙이 없다(또는 ::after 를 안 짚는다)');
@@ -407,8 +408,6 @@ OK('구문 검사 (node --check)');
   '.bp :: background',
   '.day-panel :: min-height',
   '.dp-edit .frow :: margin-bottom',
-  '.dp-edit .frow2 :: display',
-  '.dp-edit .frow2 :: gap',
   '.mc-d .dots i :: background',
   '.mc-d.sel .dots i,.mc-d.today .dots i :: background',
   '.mg-grid :: grid-template-columns',
@@ -427,15 +426,6 @@ OK('구문 검사 (node --check)');
   '.nvi.act .nic svg :: color',
   '.nvi:not(.act) .nic :: background',
   '.pd-b :: color',
-  '.pe-bar :: padding',
-  '.pe-bar :: gap',
-  '.pe-bar::after :: left',
-  '.pe-bar::after :: right',
-  '.pe-body :: padding',
-  '.pe-side :: gap',
-  '.pe-ttl :: font-size',
-  '.pe-ttl :: line-height',
-  '.pe-ttl :: padding',
   '.plan-side :: gap',
   '.rpt .page :: box-shadow',
   '.rpt .page :: margin',

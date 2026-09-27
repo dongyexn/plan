@@ -10,7 +10,7 @@
 /* 이 웹앱의 버전 = 배포 회차. zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 **같은 숫자**다(390차).
    ⚠ 예전엔 semver(4.8.1)를 따로 뒀지만 회차와 무엇이 다른지 아무도 설명할 수 없었다 — 값 하나로 합쳤다.
      어긋나면 static-audit 이 FAIL 로 잡는다. 위젯 버전은 별개이며 트레이 메뉴에 나온다 */
-const APP_VER='985';
+const APP_VER='1003';
 /* ── 사용 안내(README) 뷰어 ───────────────────────────────────────
    저장소의 docs/manual.md 를 그대로 읽어 보여 준다 — 안내와 문서가 어긋날 일이 없다(946차: README 는 요약만).
    ⚠ 라이브러리는 사내망 CDN 차단에 대비해 `vendor/` 에 함께 둔다(지연 로드).
@@ -105,12 +105,6 @@ document.addEventListener('click',e=>{
   if(pr&&!e.target.closest('.tk-acts')&&!e.target.closest('.plan-acts')&&(e.ctrlKey||e.metaKey||e.shiftKey||PICK.mode)){
     e.preventDefault();e.stopPropagation();pickToggle(pr,e.shiftKey);return;
   }
-  /* 색상환 슬라이더 — 끌 때는 미리보기만, 놓을 때 확정한다(끌 때마다 저장하면 목록이 다시 그려져 팝오버가 사라진다) */
-  /* 팝오버에서 고르면 줄에 반영하고 닫는다 */
-  const ec=e.target.closest('#colPop .pal-c');
-  if(ec&&!ec.classList.contains('pal-add')){
-    setPlanColor(ec.dataset.c||'auto');closeColPop();return;
-  }
   const pc=e.target.closest('#pfPal .pal-c');
   if(pc&&!pc.classList.contains('pal-add')){const cv=pc.dataset.c||'';PF_SEL.color=cv;
     if(cv&&cv!=='auto'&&!isRainbow(cv)&&!isGrad(cv)&&PAL.indexOf(cv)<0)palAdd(cv);   /* 651차: 고른 색을 최근색으로 */
@@ -125,16 +119,6 @@ document.addEventListener('input',e=>{
   if(e.target.id==='acctName'||e.target.id==='acctNamePw'){acctAutoSave();return;}   /* 648차: 비밀번호 탭의 이름 칸도 같이 저장 */
   /* 451차: 배경 슬라이더는 끄는 동안 바로 보여야 한다(change 는 손을 뗄 때만 온다) */
   if(e.target.id==='bgAlpha'||e.target.id==='bgBri'){ACT[e.target.dataset.act](e.target);return;}
-  /* 색상 띠 — 끌 때는 미리보기만(끌 때마다 저장하면 목록이 다시 그려져 팝오버가 사라진다) */
-  if(e.target.classList&&e.target.classList.contains('cp-hue')){
-    const pop=$('#colPop');if(!pop)return;
-    const d=pop.querySelector('.cp-dot');
-    const [,sa,v]=hexHsv(rgbHex(d?d.style.background:''));
-    const hex=hsvHex(Number(e.target.value)||0,sa||.7,v||.85);
-    cpPaint(pop,hex);
-    const btn=pop.closest('.p-col');if(btn)btn.style.background=hex;
-    return;
-  }
   if(e.target.closest('#pfPal')&&e.target.classList.contains('pal-inp')){const v=e.target.value;PF_SEL.color=v;pfPaint(v);acctAutoSave();return;}   /* 971차: 그라디언트 두 색·흐름 체크는 따로 듣는다(gcSync) */
   if(e.target.id==='pfSrch'){
     const q=e.target.value.trim();
@@ -178,9 +162,8 @@ function colDotHTML(c,pid,team){
     ? (rb?'background:transparent;box-shadow:none;--gb:'+esc(colBg(c)):'background:transparent;box-shadow:inset 0 0 0 1.5px '+esc(c))   /* 687차: 링 그라디언트는 --gb 로 넘긴다(CSS 는 무지개를 기본값으로만 둔다) */
     : 'background:'+esc(colBg(c));
   const cls=(team?' p-col-team':'')+(rb?' p-col-rainbow':'')+(isFlow(c)?' p-col-fx':'');
-  return pid
-    ?'<span class="p-col p-col-ro'+cls+'" style="'+st+'"></span>'
-    :'<button class="p-col'+cls+'" data-act="plan.color" aria-label="색 고르기" data-tip="색 고르기" style="'+st+'"></button>';
+  /* 992차(사용자): 업무 색은 담당자 색으로 고정 — 어디서든 표시만 한다(색 고르기 단추·plan.color 걷음) */
+  return '<span class="p-col p-col-ro'+cls+'" style="'+st+'"></span>';
 }
 /* 담당자를 바꾸면 색 원도 곧바로 따라 바뀐다(609차 · 폼을 다시 그리지 않고 그 원만 고친다).
    ⚠ 판정은 `planColor` 에 맡긴다 — 직접 고른 색이면 담당자를 바꿔도 그대로다('auto' 일 때만 담당자 색).
@@ -188,13 +171,13 @@ function colDotHTML(c,pid,team){
    ⚠ 폼은 둘이고 규칙이 다르다: 달력 옆 인라인(#dpEdit·peOwners)은 속 빈 원을 쓰고,
      업무 현황 목록(#tkNew·tnAsg)은 원래부터 team 인자를 안 넘겨 늘 꽉 찬 원이다 — 그 차이를 지킨다. */
 function peColorSync(){
+  /* 996차: 업무 현황 행 수정의 담당자 점(#tnAsgDot)도 — 예전엔 담당자를 바꿔도 옛 색으로 남았다 */
+  {const rd=$('#tnAsgDot'),rs=$('#tnAsg');if(rd&&rs)rd.style.background=colBg(planColor({owners:rs.value?{[rs.value]:1}:{}}));}
   const inline=$('#dpEdit'),box=inline||$('#tkNew');if(!box)return;
   const dot=box.querySelector('.pe-bar .p-col');if(!dot)return;
   const sel=box.querySelector(inline?'#peOwners':'#tnAsg');
   const v=(sel&&sel.value)||'';
-  const color=inline?((S.planEdit&&S.planEdit.draft&&S.planEdit.draft.color)||'auto')
-                    :(($('#tnColor')&&$('#tnColor').value)||'');
-  const pp={color,owners:v?{[v]:1}:{}};
+  const pp={owners:v?{[v]:1}:{}};   /* 992차: 색은 담당자 색 고정 — 업무 color 는 보지 않는다 */
   const c=planColor(pp),team=!!inline&&!planOwners(pp).length,rb=isRainbow(c)||isGrad(c);
   dot.classList.toggle('p-col-team',team);
   dot.classList.toggle('p-col-rainbow',rb);
@@ -203,10 +186,8 @@ function peColorSync(){
     ? (rb?'background:transparent;box-shadow:none;--gb:'+colBg(c):'background:transparent;box-shadow:inset 0 0 0 1.5px '+c)
     : 'background:'+colBg(c);
 }
-/* 색 선택기 HTML — 기본 팔레트 + 임의 색 추가.
-   현재 값이 팔레트에 없으면(직접 고른 색) 맨 뒤에 칩으로 붙여 선택 상태를 유지한다. */
-/* 색 팝오버 — 1행은 기본색(담당자 색 + 빨·파·초·노·회), 2행부터는 직접 추가한 색.
-   맨 아래에 색상 팔레트(사각형 + 색상 띠)를 늘 펼쳐 둔다. 추가색은 우클릭으로 지운다. */
+/* 최근 쓴 색 저장소 — 프로필 색 팔레트(#pfPal)가 쓴다. PAL_BASE 에 든 색은 최근색에 쌓지 않는다.
+   996차: 업무 색 팝오버(colPopHTML·setPlanColor·cpPick…)는 색 고정(992차)으로 여는 곳이 없어 삭제 */
 const PAL_BASE=['#DD3B30','#3E71D2','#16A34A','#FACC15','#8B5CF6','#6B7280'];
 function palKey(){return 'calapp.pal.'+((S.user&&S.user.uid)||'local');}
 function palCustom(){try{return JSON.parse(localStorage.getItem(palKey())||'[]');}catch(e){return[];}}
@@ -215,36 +196,6 @@ function palAdd(c){
   const l=palCustom().filter(x=>x!==c);l.unshift(c);
   try{localStorage.setItem(palKey(),JSON.stringify(l.slice(0,7)));}catch(e){}   /* 최근 쓴 7개만 */
 }
-function palDel(c){
-  try{localStorage.setItem(palKey(),JSON.stringify(palCustom().filter(x=>x!==c)));}catch(e){}
-}
-function colPopHTML(cur){
-  const c=(!cur||cur==='auto')?'auto':cur;
-  const dot=(v,cls,style,title)=>'<button class="pal-c'+(v===c?' sel':'')+(cls?' '+cls:'')
-    +'" data-c="'+esc(v)+'"'+(style?' style="'+style+'"':'')+(title?' data-tip="'+esc(title)+'"':'')+'></button>';
-  const custom=palCustom().filter(x=>x&&!PAL_BASE.includes(x));
-  if(c!=='auto'&&!PAL_BASE.includes(c)&&!custom.includes(c))custom.unshift(c);
-  return '<div class="col-pop-h">색 고르기</div>'
-    +'<div class="pal">'
-      +'<button class="pal-c pal-auto'+(c==='auto'?' sel':'')+'" data-c="auto" data-tip="담당자 색">'
-        +'<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#av-person"></use></svg></button>'
-      +PAL_BASE.map(x=>dot(x,'','background:'+x)).join('')
-      +(custom.length?'<div class="pal-br"></div>'+custom.map(x=>dot(x,'pal-custom','background:'+esc(x),'우클릭으로 삭제')).join(''):'')
-    +'</div>'
-    +'<div class="cp">'
-      +'<div class="cp-sv"><span class="cp-dot"></span></div>'
-      +'<input type="range" class="cp-hue" min="0" max="359" value="215" aria-label="색상">'
-    +'</div>';
-}
-/* 팔레트 사각형·색상 띠를 지금 색에 맞춰 그린다 */
-function cpPaint(pop,hex){
-  const sv=pop.querySelector('.cp-sv'),hue=pop.querySelector('.cp-hue'),dot=pop.querySelector('.cp-dot');
-  if(!sv||!hue)return;
-  const [h,sa,v]=hexHsv(hex);
-  hue.value=Math.round(h);
-  sv.style.background='linear-gradient(to top,#000,rgba(0,0,0,0)),linear-gradient(to right,#fff,hsl('+Math.round(h)+',100%,50%))';
-  if(dot){dot.style.left=(sa*100)+'%';dot.style.top=((1-v)*100)+'%';dot.style.background=hex;}
-}
 /* 배경색이 밝으면 어두운 글자를 쓴다 — 노랑·연두 위의 흰 글자는 그림자로도 안 읽힌다 */
 function isLightColor(hex){
   const m=/^#?([\da-f]{6})$/i.exec(String(hex||''));
@@ -252,26 +203,6 @@ function isLightColor(hex){
   const n=parseInt(m[1],16);
   /* 사람 눈이 느끼는 밝기(녹색에 가중) */
   return (0.299*(n>>16)+0.587*((n>>8)&255)+0.114*(n&255))>150;   /* 연두(#84CC16≈162)도 어두운 글자로 — 실사용에서 안 읽혔다 */
-}
-function hsvHex(h,s,v){
-  const f=n=>{const k=(n+h/60)%6,x=v-v*s*Math.max(0,Math.min(k,4-k,1));
-    return Math.round(x*255).toString(16).padStart(2,'0').toUpperCase();};
-  return '#'+f(5)+f(3)+f(1);
-}
-/* style.background 는 rgb(...) 로 되돌아온다 — hex 로 바꿔 준다 */
-function rgbHex(v){
-  const m=/rgba?\((\d+)[,\s]+(\d+)[,\s]+(\d+)/.exec(String(v||''));
-  if(!m)return String(v||'').trim()||'#3E71D2';
-  return '#'+[1,2,3].map(i=>Number(m[i]).toString(16).padStart(2,'0')).join('').toUpperCase();
-}
-function hexHsv(hex){
-  const m=/^#?([\da-f]{6})$/i.exec(String(hex||''));
-  if(!m)return[215,.7,.85];
-  const n=parseInt(m[1],16),r=(n>>16)/255,g=((n>>8)&255)/255,b=(n&255)/255;
-  const mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn;
-  let h=0;
-  if(d){h=mx===r?((g-b)/d+(g<b?6:0)):mx===g?((b-r)/d+2):((r-g)/d+4);h*=60;}
-  return[h,mx?d/mx:0,mx];
 }
 function palHTML(id,cur,extraFirst){
   const c=cur||'';
@@ -431,8 +362,9 @@ function planOwners(p){
 /* 공통 업무(담당자 없음)의 기본색 — 232차: 구분은 **속 빈 막대(2안)** 가 담당하므로 색은 파랑으로 되돌린다.
    계정 업무는 전부 꽉 찬 막대라 같은 파랑이어도 채움 여부로 갈린다(사용자 지시). */
 const TEAM_COLOR='#3E71D2';
+/* 992차(사용자): 업무 색은 담당자 색으로 고정 — 다들 자기 지정색만 써서 따로 바꿀 일이 없다.
+   서버에 남은 p.color 는 지우지 않고 읽지만 않는다(되돌릴 때 그대로 살아난다) */
 function planColor(p){
-  if(p.color&&p.color!=='auto')return p.color;
   const o=planOwners(p);
   return o.length?ownColor(o[0]):TEAM_COLOR;
 }
@@ -527,31 +459,8 @@ function tkHold(){return shEditing()||tkFormOpen();}
    입력 중에는 PEND.org 로 미루고, 칸을 떠날 때 아래 focusout 이 몰아 그린다. */
 function orgHold(){const a=document.activeElement;return !!(a&&a.closest&&a.closest('#view-org')&&a.matches('input,select,textarea'));}
 const PEND={day:false,tasks:false,org:false};
-/* 수정 충돌 가드(383차) — 칸에 들어갈 때의 값을 기억해 둔다.
-   구독이 실시간이라 대개 최신이지만, 오래 입력하는 사이 남이 같은 칸을 고치면
-   focusout 저장이 그 내용을 소리 없이 덮어쓴다 — 그때만 물어보고 덮는다 */
-document.addEventListener('focusin',e=>{
-  const f=e.target&&e.target.closest&&e.target.closest('[data-act="tk.field"]');
-  if(f){const cur=(S.tasks[f.dataset.sid]||{})[f.dataset.iid];f.dataset.base=cur?(cur[f.dataset.f]||''):'';}
-});
-document.addEventListener('focusout',e=>{
-  const f=e.target&&e.target.closest&&e.target.closest('[data-act="tk.field"]');
-  if(f){
-    const sid=f.dataset.sid,iid=f.dataset.iid,cur=(S.tasks[sid]||{})[iid];
-    if(cur){
-      const v=f.innerText.replace(/\u00a0/g,' ').trim();
-      const now=cur[f.dataset.f]||'';
-      if(f.dataset.base!==undefined&&now!==f.dataset.base&&v!==now){
-        /* 입력하는 사이 남이 이 칸을 고쳤다 — 서버 값을 먼저 화면에 보이고, 덮을지 묻는다 */
-        rTasks();
-        confirmModal('수정이 겹쳤습니다',
-          '입력하는 사이 다른 사람이 이 칸을 고쳤습니다. 내 내용으로 덮어쓸까요?',
-          ()=>{const c2=(S.tasks[sid]||{})[iid];if(c2)store.putTask(sid,iid,histPush({...c2,[f.dataset.f]:v,updatedAt:Date.now()},'edit'));},
-          '덮어쓰기');
-      }
-      else if(now!==v)store.putTask(sid,iid,histPush({...cur,[f.dataset.f]:v,updatedAt:Date.now()},'edit'));
-    }
-  }
+/* 997차: 펼침의 「내용」 직접 쓰기 칸(tk.field · 383차 수정 충돌 가드)은 내용 폐지로 삭제 */
+document.addEventListener('focusout',()=>{
   setTimeout(()=>{if(tkHold())return;
   if(PEND.day){PEND.day=false;if(!S.planEdit)rDay();refetchCal();}
   if(PEND.tasks){PEND.tasks=false;if(!S.tkNew&&!S.tkEdit)rTasks();}
@@ -892,6 +801,7 @@ function bootCacheSave(){
   }catch(e){}},500);
 }
 function bootCacheClear(){try{localStorage.removeItem(BOOT_KEY);}catch(e){}}
+function bootCacheHas(){try{return localStorage.getItem(BOOT_KEY)!==null;}catch(e){return false;}}   /* 998차: 이 브라우저로 로그인한 적이 있는가(로그아웃하면 지워진다) */
 const FbStore={
   name:'fb',
   init(){},
@@ -1196,16 +1106,56 @@ let store=LocalStore;
 /* ═══════════ 로그인 게이트 — 하자처리 현황과 동일한 절차 ═══════════ */
 const DEV_LOCAL=/[?&]local=1\b/.test(location.search);   // 계정 없이 둘러보는 로컬 모드(개발·시연용)
 /* 970차(P1): 게이트가 떠 있는지를 body.gate-on 으로도 알린다 — 위젯 CSS 가 :has([style]) 로 보던 것을 대신한다(아래 index.html 주석) */
-function showCover(){const g=$('#coverGate');if(g)g.style.display='flex';document.body.classList.add('gate-on');}
-function hideCover(){const g=$('#coverGate');if(g)g.style.display='none';document.body.classList.remove('gate-on');}
-function showGateForm(){const ld=$('#cvLoading');if(ld)ld.style.display='none';const bd=$('#cvBody');if(bd)bd.style.display='';showCover();}
-function fbMsg(t,ok){const e=$(cvCur()==='verify'?'#cvVMsg':'#cvMsg');if(e){e.textContent=t||'';e.style.color=ok?'#7CFC9A':'';}}   /* 960차: 성공 색은 기존 로그인 값으로 되돌림, 오류는 CSS(--cv-err=#ff8a80). 958차: 인증 대기 화면은 자기 메시지 칸 */
+/* 998차(사용자, 시안 10): 로그인 화면은 앱 틀 자체를 옮겨 만든다 — 상태는 body 클래스(lg·lg-ld·lg-fx·lg-out·lg-in·lg-kb, index.html 998차 주석).
+   처음엔 index.html 이 body 에 lg lg-ld 를 달아 둔다(첫 페인트부터 로그인 화면). 들고 나는 움직임은 lg-fx 가 붙은 동안만 */
+let LG_T=0,LG_N=0,LG_OUT=false;
+function showCover(){
+  const g=$('#coverGate'),b=document.body;
+  LG_N++;LG_OUT=false;clearTimeout(LG_T);b.classList.remove('lg-out','lg-in');
+  if(!b.classList.contains('lg')&&!WIDGET){b.classList.add('lg-fx');const n=LG_N;LG_T=setTimeout(()=>{if(n===LG_N)b.classList.remove('lg-fx');},900);}   /* 들어와 있다가 다시 로그인 화면으로(로그아웃) — 들어올 때의 반대로 움직인다 */
+  b.classList.add('lg','gate-on');if(g)g.style.display='flex';
+}
+/* fx: 로그인해 들어가는 순간(enterLive)만 움직인다 — 로컬 모드·스냅샷 문서·위젯·숨은 탭은 바로 걷는다(동작 줄이기 설정은 보지 않는다 — 986차) */
+function hideCover(fx){
+  const g=$('#coverGate'),b=document.body;
+  if(LG_OUT)return;   /* 이미 나가는 중 — 두 번째 호출(onAuth 끝)이 움직임을 끊지 않게 */
+  b.classList.remove('gate-on','lg-kb');
+  const n=++LG_N;clearTimeout(LG_T);
+  const done=()=>{if(n!==LG_N)return;LG_OUT=false;b.classList.remove('lg','lg-ld','lg-out','lg-in','lg-fx');if(g)g.style.display='none';};
+  if(!fx||!b.classList.contains('lg')||WIDGET||document.hidden){done();return;}
+  LG_OUT=true;
+  /* 캐시로 그린 첫 화면(무거운 한 프레임)이 지나간 다음 프레임에서 움직이기 시작한다 — 첫 박자가 밀려 끊겨 보이지 않게 */
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    if(n!==LG_N)return;
+    b.classList.add('lg-fx','lg-out');
+    if(isMob()){LG_T=setTimeout(()=>{if(n!==LG_N)return;b.classList.remove('lg','lg-ld','lg-out');b.classList.add('lg-in');if(g)g.style.display='none';LG_T=setTimeout(done,1200);},300);}   /* 시트가 내려간 뒤 포개어지기 */
+    else{b.classList.remove('lg');LG_T=setTimeout(done,1300);}
+  }));
+}
+function showGateForm(){
+  const b=document.body,g=$('#coverGate');
+  /* 폰: 불러오는 중(로고 + 점) → 폼이면 로고가 위 영역 가운데로 옮겨 간다 — 레이아웃이 바뀌므로 전후 위치 차이만큼 transform 으로 잇는다 */
+  const br=(b.classList.contains('lg-ld')&&isMob()&&!WIDGET&&g&&g.style.display!=='none')?$('#cvBrand'):null,y0=br?br.getBoundingClientRect().top:0;
+  const ld=$('#cvLoading');if(ld)ld.style.display='none';const bd=$('#cvBody');if(bd)bd.style.display='';
+  b.classList.remove('lg-ld');showCover();
+  if(br&&br.animate){const dy=y0-br.getBoundingClientRect().top;if(Math.abs(dy)>1)br.animate([{transform:'translateY('+dy+'px)'},{transform:'none'}],{duration:500,easing:'cubic-bezier(.32,.72,0,1)'});}
+}
+/* 998차: 폰 로그인 키보드 — 아이폰은 보이는 창만 줄어 fixed 시트가 키보드 뒤에 깔린다. 키보드 높이만큼 게이트 아래를 띄운다(body.lg-kb).
+   높이 식은 업무 시트(mdsKbSync)와 같다 — 안드로이드는 창이 같이 줄어 0 이 나오고 시트는 저절로 올라온다 */
+function lgKbSync(){
+  const b=document.body,g=$('#coverGate');if(WIDGET||!g)return;
+  const a=document.activeElement,vv=window.visualViewport;
+  const kbh=(b.classList.contains('lg')&&isMob()&&vv&&a&&a.tagName==='INPUT'&&g.contains(a))?Math.max(0,Math.round(innerHeight-(vv.offsetTop+vv.height))):0;
+  if(kbh>80)g.style.setProperty('--lgkb',kbh+'px');
+  b.classList.toggle('lg-kb',kbh>80);
+}
+function fbMsg(t,ok){const e=$(cvCur()==='verify'?'#cvVMsg':'#cvMsg');if(e){e.textContent=t||'';e.classList.toggle('ok',!!ok);}}   /* 998차: 성공 색은 CSS(.cv-msg.ok · 칸 색 토큰) — 밝은 유리 위에서 #7CFC9A 가 안 읽혔다 */   /* 960차: 성공 색은 기존 로그인 값으로 되돌림, 오류는 CSS(--cv-err=#ff8a80). 958차: 인증 대기 화면은 자기 메시지 칸 */
 /* 958차: 사번만 쳐도 된다 — '@' 가 없으면 @hdec.co.kr 를 붙인다(칸 오른쪽에 도메인이 보인다) */
 function fbCreds(){let em=String(($('#fbEmail')||{}).value||'').trim();if(em&&!em.includes('@'))em+='@hdec.co.kr';return{email:em,pw:($('#fbPw')||{}).value||''};}
 /* ═══ 958차: 로그인 게이트 화면 전환 — login · signup · reset · verify ═══
    가입은 같은 칸을 쓰되 화면을 따로 연다(제목·버튼·안내가 바뀜). 인증 대기 화면은 4초마다·창으로 돌아올 때 인증 여부를 확인해 자동으로 넘어간다. */
 const CV_V={
-  login:{t:'로그인',s:'',b:'로그인',a:'auth.login'},   /* 965차: 카드 머리는 화면마다 제목 한 줄 — 로고는 페이지 아래 서명(.cv-sig) */
+  login:{t:'로그인',s:'회사 메일로 로그인하세요',b:'로그인',a:'auth.login'},   /* 998차: 부제 한 줄(시안 10) */   /* 965차: 카드 머리는 화면마다 제목 한 줄 — 로고는 페이지 아래 서명(.cv-sig) */
   signup:{t:'계정 만들기',s:'회사 메일로 가입하면 인증메일을 보내 드립니다',b:'가입하기',a:'auth.signup'},
   reset:{t:'비밀번호 재설정',s:'가입한 회사 메일로 재설정 링크를 보내 드립니다',b:'재설정 메일 보내기',a:'auth.reset'},
   verify:{t:'메일함을 확인해 주세요',s:'보낸 메일의 인증 링크를 누르면 가입이 끝납니다',b:'',a:''}
@@ -1354,14 +1304,15 @@ async function resolveRole(user){
     if(rec.name)next.name=rec.name;
     if(rec.avColor)next.avColor=rec.avColor;
     if(rec.avIcon)next.avIcon=rec.avIcon;
-    try{await ref.set(next);rec=next;}catch(e){console.warn('[FB] lastSeen',e);}
+    /* 998차(#2): 접속 기록(lastSeen) 쓰기는 기다리지 않는다 — 왕복 한 번만큼 진입이 늦었다. 역할은 방금 읽은 값으로 정하고, 쓰기가 끝나면 기록만 바꿔 둔다 */
+    ref.set(next).then(()=>{if(FB.userRec===rec)FB.userRec=next;},e=>console.warn('[FB] lastSeen',e));
   }
   FB.userRec=rec;
   const r=rec&&rec.role;
   return(r==='editor'||r==='viewer'||r==='blocked')?r:'viewer';
 }
 async function onAuth(user){
-  clearTimeout(FB._watch);
+  clearTimeout(FB._watch);FB._authSeen=true;   /* 998차: 부팅 대기(#1)가 '서버 응답 대기'와 '자동 로그인 대기'를 가른다 */
   if(!user){exitLive();if(cvCur()==='verify')cvView('login');showGateForm();return;}
   if(!fbDomainOk(user.email)){showGateForm();fbMsg('@hdec.co.kr 계정만 접근할 수 있습니다.');try{FB.auth.signOut();}catch(e){}return;}
   if(!user.emailVerified){
@@ -1381,7 +1332,7 @@ async function onAuth(user){
     showGateForm();
     fbMsg('로그인은 되었지만 데이터를 읽지 못했습니다 · 보안 확인(App Check) 토큰을 받지 못한 것으로 보입니다. 관리자에게 알려 주세요.');
   },20000);
-  hideCover();
+  hideCover(true);
 }
 function acctNick(){
   const u=S.user;if(!u)return'';
@@ -1754,7 +1705,7 @@ function bindConn(){
 }
 function enterLive(u){
   if(S.live)return;
-  clearTimeout(FB._boot);clearTimeout(FB._watch);clearTimeout(FB._dbWatch);hideCover();
+  clearTimeout(FB._boot);clearTimeout(FB._watch);clearTimeout(FB._dbWatch);
   S.live=true;S.user=u;store=FbStore;
   /* FB 첫 응답 전까지 마지막 캐시로 먼저 그린다 — 매일 여는 도구의 체감 속도.
      구독 값이 도착하면 그대로 덮어써서 캐시가 화면에 남는 일은 없다. */
@@ -1770,6 +1721,7 @@ function enterLive(u){
   bindConn();
   subVisibleMonths();
   rAcct();
+  hideCover(true);   /* 998차: 캐시로 첫 화면을 그린 뒤에 걷는다 — 판이 제자리에 닿을 때 달력이 이미 그려져 있다 */
 }
 function exitLive(){
   S.live=false;S.user=null;S.loading=false;S.conn=null;netPaint();
@@ -2056,15 +2008,15 @@ function calInit(){
       ok(buildEvents(dstr(info.start),dstr(end)));
     },
     dateClick:info=>{if(WIDGET&&info.jsEvent&&info.jsEvent.target&&info.jsEvent.target.closest&&info.jsEvent.target.closest('.fc-daygrid-more-link'))return;   /* 970차(U11): 「외 N건」은 moreLinkClick 이 연 팝업을 날짜 클릭이 도로 닫았다 */
-      S.selEnd='';selDate(String(info.dateStr).slice(0,10));if(isMob()&&!WIDGET){if(mcalIsLand()){const d=$('#view-calendar .dp-col');if(d)d.classList.add('on');}else mcalSet('mini');}},   /* 704차: 가로는 시트, 세로는 점 달력 */
+      S.selEnd='';selDate(String(info.dateStr).slice(0,10));if(isMob()&&!WIDGET){if(mcalIsLand()){const d=$('#view-calendar .dp-col');if(d)d.classList.add('on');}else mdsOpen();}},   /* 704차: 가로는 시트 · 987차: 세로도 업무 시트(점 달력 전환 없앰) */
     eventClick:info=>{info.jsEvent.preventDefault();
       const p=findPlan(info.event.extendedProps.pid);
       if(!p)return;
       const ds=info.event.extendedProps.occ||p.date;
-      /* 위젯: 막대를 누르면 바로 그 날 팝업을 열고 그 업무를 펼친다(수정 모드로는 들어가지 않는다) */
-      if(WIDGET){selDate(ds,true);S.planOpen=p.id;S.widPop=true;rDay();rWidget();return;}
-      /* 970차(L6): 고칠 권한이 없으면 편집기 대신 그 날 카드를 펼쳐 읽기만 */
-      if(!canEditTask(p,p.sid)){selDate(ds);S.planOpen=p.id;rDay();denyTask();return;}
+      /* 위젯: 막대를 누르면 바로 그 날 팝업을 연다(수정 모드로는 들어가지 않는다) */
+      if(WIDGET){selDate(ds,true);S.widPop=true;rDay();rWidget();return;}
+      /* 970차(L6): 고칠 권한이 없으면 편집기 대신 그 날로만 */
+      if(!canEditTask(p,p.sid)){selDate(ds);rDay();denyTask();return;}
       selDate(ds);openPlanEdit(p,null,null,info.event.extendedProps.occ);},
     eventDrop:info=>{const p=findPlan(info.event.extendedProps.pid);if(!p||(p.recur&&p.recur.f)){info.revert();return;}
       if(!canEditTask(p,p.sid)){info.revert();denyTask();return;}   /* 970차(L6) */
@@ -2324,7 +2276,7 @@ function mcalEvs(from,to){
 /* 한 칸에 담는 막대 수 — 셀 높이(mcalFullH)에서 위아래 여백 5·숫자 줄 16·막대 위 여백 2 를 빼고(=H-23) 막대 피치 17(15+틈 2)로 나눈다(+2 는 마지막 틈).
    넘치면 마지막 줄을 「+N」 으로 쓴다. ⚠ 값들은 CSS `.mc-d` 패딩·`.n` 16px·`.mc-bar` 15px·gap 2 와 짝 */
 function mcalCap(){return Math.max(1,Math.min(6,Math.floor((mcalFullH()-21)/17)));}
-function mcalPane(y,m,evs,dots){
+function mcalPane(y,m,evs){
   const first=new Date(y,m,1),days=new Date(y,m+1,0).getDate(),lead=first.getDay();
   const prevDays=new Date(y,m,0).getDate();
   const CAP=mcalCap();
@@ -2363,10 +2315,7 @@ function mcalPane(y,m,evs,dots){
       +(ho?' data-tip="'+esc(ho.n)+'"':'')+'>'
       +'<span class="n">'+d+'</span>'
       +(ho&&ho.n?'<span class="mc-ho">'+esc(ho.n)+'</span>':'')
-      +bars(ln)
-      +(dots[ds]&&dots[ds].length
-        ?'<span class="dots">'+dots[ds].slice(0,3).map(o=>'<i class="'+(o.done?'dn':'')+'" style="background:'+esc(o.c)+'"></i>').join('')+'</span>'
-        :'')+'</button>';
+      +bars(ln)+'</button>';   /* 988차: 점(점 달력 전용)은 걷었다 */
   }
   for(let i=lead+days;i<42;i++){const ds=addDays(gridStart,i);cells+='<div class="mc-d out"><span class="n">'+(i-lead-days+1)+'</span>'+bars(lanes[ds]||[])+'</div>';}
   return '<div class="mc-g" data-rows="'+Math.ceil((lead+days)/7)+'">'+cells+'</div>';   /* 902차: 폰 큰 달력은 5주 기본 — 6주 달만 6행 */
@@ -2379,25 +2328,20 @@ function calMiniHTML(){
   const from=addDays(dstr(pm),-6),to=addDays(dstr(new Date(nm.getFullYear(),nm.getMonth()+1,0)),42);
   const evs=mcalEvs(from,to);
   evs.sort((a,b)=>(a.st<b.st?-1:a.st>b.st?1:0)||((b.en>a.en)?1:-1));
-  const dots={};
-  evs.forEach(e=>{for(let d=e.st;d<=e.en;d=addDays(d,1))(dots[d]=dots[d]||[]).push({c:e.c,done:e.done});});
-  Object.keys(dots).forEach(d=>dots[d].sort((a,b)=>(a.done?1:0)-(b.done?1:0)));
   return '<div class="mini-cal cal-mini">'
     +'<div class="mc-w">'+DOW.map((w,i)=>'<span'+(i===0?' class="sun"':i===6?' class="sat"':'')+'>'+w+'</span>').join('')+'</div>'
     +'<div class="mc-slide"><div class="mc-track">'
-    +mcalPane(pm.getFullYear(),pm.getMonth(),evs,dots)
-    +mcalPane(y,m,evs,dots)
-    +mcalPane(nm.getFullYear(),nm.getMonth(),evs,dots)
+    +mcalPane(pm.getFullYear(),pm.getMonth(),evs)
+    +mcalPane(y,m,evs)
+    +mcalPane(nm.getFullYear(),nm.getMonth(),evs)
     +'</div></div></div>';
 }
-/* 704차: 모바일 달력 두 상태 — 'full'(큰 월 달력, 기본) ↔ 'mini'(점 달력 + 업무 패널). 네이버 캘린더 방식.
-   날짜 탭·위로 스와이프 → mini, 패널을 맨 위에서 아래로 당김·점 달력에서 아래로 스와이프 → full. 좌우 스와이프 = 월 이동.
-   가로 모드(높이 500 이하)는 늘 full 이고 패널은 아래에서 올라오는 시트(.dp-col.on). */
-S.mcal=S.mcal||'full';
+/* 폰 세로 달력 = 큰 월 달력(mcal-full) 하나 — 날짜를 누르면 업무 시트(987차 mdsOpen). 좌우 스와이프 = 월 이동.
+   988차(사용자): 704~986차의 두 상태('full' ↔ 'mini' 점 달력 + 붙은 패널)와 세로 끌기 전환을 걷었다.
+   가로 모드는 데스크톱 레이아웃(mcal-land) */
 /* 732차: 가로로 눕히면 폰이라도 데스크톱 레이아웃(달력 + 오른쪽 업무 패널)을 쓴다 */
 function mcalIsLand(){return isMob()&&!WIDGET&&matchMedia('(orientation:landscape)').matches&&innerWidth>=640;}
-/* 733차: 셀 높이 두 값 — ⚠ CSS(`.mcal-full … .mc-d{height:calc((100dvh - var(--th) - 78px) / 6)}` · `.mcal-mini … 46px`)와 같은 식.
-   손가락을 따라가는 전환(mcalDrag)이 이 값 사이를 보간하므로 한쪽을 바꾸면 다른 쪽도 함께. */
+/* 칸 높이의 바닥값 — 예전 점 달력 칸(46)을 최소로 둔다(아주 낮은 화면). ⚠ 큰 달력 식은 CSS `.mcal-full … .mc-d{height:var(--mch,…)}` 와 같다 */
 const MCAL_MINI_H=46;
 /* 905차(사용자): 칸 사이 선 몫 — 식에는 없고 mcalFit 이 실측해 빼던 값이다(5줄에 8px 남짓).
    ⚠ 이걸 기억해 두지 않으면 **끌어 내려 놓는 순간의 목표 높이**(mcalFullH)와 **끝난 뒤 보정값**(mcalFit)이 달라
@@ -2419,30 +2363,95 @@ function mcalFit(){
   if(!isMob()||WIDGET||S.view!=='calendar'||mcalIsLand()){wrap.style.removeProperty('height');return;}
   const bottom=mtabTop();
   const h=Math.round(bottom-wrap.getBoundingClientRect().top);if(h>200)wrap.style.height=h+'px';
-  if(S.mcal==='full'&&!S.mcalDrag){
-    let mch=mcalFullH();box.style.setProperty('--mch',mch.toFixed(2)+'px');
-    /* 칸 사이 선(1px 대) 몫은 식에 없다 — 한 번 재서 마지막 주 아래가 탭바 위 7px 에 오게 보정 */
-    const cells=$$('#calMini .mc-track>.mc-g:nth-child(2) .mc-d').filter(e=>getComputedStyle(e).display!=='none');
-    if(cells.length){const last=cells[cells.length-1].getBoundingClientRect().bottom,d=last-(bottom-7);const rows=Number($('#calMini .mc-track>.mc-g:nth-child(2)').dataset.rows)||5;
-      if(Math.abs(d)>0.5){const fix=d/rows*(rows===6?6/5:1);MCAL_FIX+=fix;mch-=fix;box.style.setProperty('--mch',mch.toFixed(2)+'px');}}
-  }
+  let mch=mcalFullH();box.style.setProperty('--mch',mch.toFixed(2)+'px');
+  /* 칸 사이 선(1px 대) 몫은 식에 없다 — 한 번 재서 마지막 주 아래가 탭바 위 7px 에 오게 보정 */
+  const cells=$$('#calMini .mc-track>.mc-g:nth-child(2) .mc-d').filter(e=>getComputedStyle(e).display!=='none');
+  const pg=$('#calMini .mc-track>.mc-g:nth-child(2)'),sh=pg?new DOMMatrixReadOnly(getComputedStyle(pg).transform).f:0;   /* 987차: 업무 시트로 올린 만큼은 빼고 잰다 — 안 빼면 칸이 커졌다 */
+  if(cells.length){const last=cells[cells.length-1].getBoundingClientRect().bottom-sh,d=last-(bottom-7);const rows=Number($('#calMini .mc-track>.mc-g:nth-child(2)').dataset.rows)||5;
+    if(Math.abs(d)>0.5){const fix=d/rows*(rows===6?6/5:1);MCAL_FIX+=fix;mch-=fix;box.style.setProperty('--mch',mch.toFixed(2)+'px');}}
 }
-function mcalSet(mode){
-  if(!isMob()||WIDGET){document.body.classList.remove('mcal-full','mcal-mini','mcal-land','mcal-drag');return;}
+function mcalSet(){
+  if(!isMob()||WIDGET){document.body.classList.remove('mcal-full','mcal-land');return;}
   const land=mcalIsLand();
   document.body.classList.toggle('mcal-land',land);
-  document.body.classList.remove('mcal-drag');
-  const box=$('#view-calendar');if(box){box.style.removeProperty('--mch');box.style.removeProperty('--mcp');}
-  if(land){   /* 가로 = 데스크톱 레이아웃(달력 + 오른쪽 패널). 확장/축소 없음 */
-    document.body.classList.remove('mcal-full','mcal-mini');
+  const box=$('#view-calendar');if(box)box.style.removeProperty('--mch');
+  if(land){   /* 가로 = 데스크톱 레이아웃(달력 + 오른쪽 패널) */
+    document.body.classList.remove('mcal-full');
     const d=$('#view-calendar .dp-col');if(d)d.classList.remove('on');
-    S.mcal='full';rCalMini();if(CAL)requestAnimationFrame(()=>{try{CAL.updateSize();}catch(e){}});return;
+    mdsClose();   /* 987차 */
+    rCalMini();if(CAL)requestAnimationFrame(()=>{try{CAL.updateSize();}catch(e){}});return;
   }
-  S.mcal=mode;
-  document.body.classList.toggle('mcal-full',mode==='full');
-  document.body.classList.toggle('mcal-mini',mode==='mini');
+  document.body.classList.add('mcal-full');
   rCalMini();
   mcalFit();requestAnimationFrame(mcalFit);   /* 903차: 셀 높이·패널 높이를 실측으로(첫 그리기 뒤 한 번 더 — 폰트·탭바가 늦게 잡힐 때) */
+}
+/* 987차(사용자): 폰 세로 — 날짜를 누르면 점 달력(mcal-mini)으로 접지 않고 업무 시트를 띄운다(.dp-col 을 #mss 같은 유리 카드로, body.mds-on).
+   시트 위에 **두 주**가 남도록 이번 달 판을 올리고(--mdy, #calMini) 시트 높이를 맞춘다(--mdsh, #view-calendar). 고른 주가 둘째 주 안이면 달력은 그대로.
+   988차(사용자): 세 주 → 두 주(시트가 목록을 더 보이게)
+   989차(사용자): 업무를 쓰는 동안에도 시트 크기는 그대로(987차의 머리 아래까지 키우기 걷음). 입력 중(body.kb — 키보드)에는 다시 재지 않는다.
+   닫기 = 같은 날짜 다시 · 시트를 아래로 끌기 · 캡슐의 캘린더 칸 · 다른 화면으로 · 가로로 눕힘 · 달 넘기기 */
+function mdsOn(){return document.body.classList.contains('mds-on');}
+function mdsOpen(){if(!isMob()||WIDGET||mcalIsLand()||S.view!=='calendar')return;document.body.classList.add('mds-on');mdsFit();requestAnimationFrame(mdsFit);}
+function mdsClose(){if(!mdsOn())return;document.body.classList.remove('mds-on','mds-kb');const b=$('#calMini');if(b)b.style.setProperty('--mdy','0px');}
+/* 판(pg) 안에서 날짜 칸(sel)이 둘째 줄 이하면 올릴 값 y 와, 올린 뒤 둘째 주 아래 끝(vis) — f 는 그 판에 지금 걸린 세로 이동 */
+function mdsRows(pg,sel,f){
+  const cells=[...pg.querySelectorAll('.mc-d')].filter(e=>getComputedStyle(e).display!=='none');if(!sel||!cells.length)return null;
+  const T=e=>Math.round((e.getBoundingClientRect().top-f)*2)/2;
+  const tops=[...new Set(cells.map(T))].sort((a,b)=>a-b);
+  const bot=Math.max(...cells.map(e=>e.getBoundingClientRect().bottom-f));
+  const i=tops.indexOf(T(sel)),from=Math.max(0,Math.min(i-1,tops.length-2));
+  const y=tops[from]-tops[0];return {y,vis:(tops[from+2]!==undefined?tops[from+2]:bot)-y};   /* 올린 뒤 둘째 주 아래 끝 */
+}
+function mdsFit(){
+  if(!mdsOn()||document.body.classList.contains('kb'))return;   /* 989차: 키보드가 올라와 화면이 줄어도 시트·달력을 흔들지 않는다 */
+  const box=$('#calMini'),col=$('#view-calendar .dp-col'),cv=$('#view-calendar'),pg=$('#calMini .mc-track>.mc-g:nth-child(2)');if(!box||!col||!cv||!pg)return;
+  const f=new DOMMatrixReadOnly(getComputedStyle(pg).transform).f;   /* 지금 올라가 있는 만큼(움직이는 중이면 그 순간 값) — 빼서 제자리 기준으로 잰다 */
+  const r=mdsRows(pg,pg.querySelector('.mc-d.sel'),f);if(!r){mdsClose();return;}   /* 고른 날이 이번 달 판에 없다(달을 넘겼다) */
+  const bottom=col.offsetTop+col.offsetHeight;   /* 시트는 아래 기준 — 높이가 움직이는 중이어도 합은 같다 */
+  const sl=$('#calMini .mc-slide');
+  box.style.setProperty('--mdy',(-r.y)+'px');
+  cv.style.setProperty('--mdsh',Math.max(180,Math.round(bottom-r.vis-8))+'px');
+  if(sl)cv.style.setProperty('--mdtop',Math.round(sl.getBoundingClientRect().top)+'px');   /* 989차: 시트 최대 높이의 위 끝(달력 머리 아래) — CSS max-height */
+}
+/* 991차(사용자): 시트 안에서 글을 쓰느라 키보드가 올라오면 — 시트는 키보드 바로 위로, 쓰고 있는 업무 하나(+ 날짜 머리)만 남기고 그 높이로 줄어든다(body.mds-kb).
+   키보드 높이 = 레이아웃 아래 끝 − 보이는 창 아래 끝(visualViewport) — 아이폰(창만 줄어듦)·안드로이드(레이아웃이 줄어듦) 모두 같은 식.
+   달력은 고른 주가 시트 바로 위에 오도록 올린다(가리지 않으면 그대로). 키보드가 내려가면 원래 시트(두 주 남김 · mdsFit)로 */
+function mdsKbSync(){
+  const cv=$('#view-calendar');if(!cv)return;
+  const a=document.activeElement;
+  const on=mdsOn()&&document.body.classList.contains('kb')&&!!(a&&a.closest&&a.closest('#view-calendar .dp-col'));
+  const was=document.body.classList.contains('mds-kb');
+  if(!on){if(was){document.body.classList.remove('mds-kb');cv.style.removeProperty('--mdkb');cv.style.removeProperty('--mdkbmax');mdsFit();}return;}
+  const vv=window.visualViewport,vb=vv?vv.offsetTop+vv.height:innerHeight,kbh=Math.max(0,Math.round(innerHeight-vb));
+  const top=parseFloat(cv.style.getPropertyValue('--mdtop'))||120;
+  cv.style.setProperty('--mdkb',(kbh+8)+'px');
+  cv.style.setProperty('--mdkbmax',Math.max(140,Math.round(vb-8-(top+8)))+'px');
+  document.body.classList.add('mds-kb');
+  if(!was){const b=$('#view-calendar .dp-body');if(b)b.scrollTop=0;}   /* 남은 한 장(폼)이 맨 위에 오게 */
+  requestAnimationFrame(()=>{
+    const col=$('#view-calendar .dp-col'),pg=$('#calMini .mc-track>.mc-g:nth-child(2)'),box=$('#calMini');if(!col||!pg||!box)return;
+    const sel=pg.querySelector('.mc-d.sel');if(!sel)return;
+    const f=new DOMMatrixReadOnly(getComputedStyle(pg).transform).f;
+    const sheetTop=innerHeight-(kbh+8)-col.offsetHeight;   /* 움직이는 중이어도 도착할 자리로 잰다 */
+    const r=sel.getBoundingClientRect(),hd=parseFloat(cv.style.getPropertyValue('--mdtop'))||0;
+    let y=Math.min(0,Math.round(sheetTop-8-(r.bottom-f)));
+    if(hd)y=Math.max(y,Math.round(hd-(r.top-f)));   /* 시트가 커서 한 주가 다 안 들어가면 날짜 줄(위)을 살린다 — 아래 막대는 시트 뒤로 */
+    box.style.setProperty('--mdy',y+'px');
+  });
+}
+/* 989차(사용자): 업무 시트를 밀어 **달이 바뀔 때** — 달력도 옆 달로 가로로 넘어간다(달 넘김 스와이프와 같은 트랙 움직임).
+   옆 판을 미리 새 날짜 자리만큼 올려 두고 넘긴 뒤 다시 그리므로, 세로로 튀지 않는다(예전: 새 달이 옛 올림 값에서 제자리로 미끄러져 내려왔다) */
+function mdsMonthSlide(nd,dir,done){
+  const tr=$('#calMini .mc-track'),box=$('#calMini'),pane=tr&&tr.children[dir>0?2:0];
+  const cell=pane&&pane.querySelector('.mc-d[data-date="'+nd+'"]');
+  const r=cell&&mdsRows(pane,cell,0);
+  if(!r){if(done)done();selDate(nd,true);rCalMini();return;}
+  pane.style.transition='none';pane.style.transform='translateY('+(-r.y)+'px)';
+  tr.classList.add('snap');tr.style.transform='translateX('+(dir>0?'-66.6667%':'0%')+')';
+  let fired=false;const fin=()=>{if(fired)return;fired=true;tr.removeEventListener('transitionend',fin);
+    box.style.setProperty('--mdy',(-r.y)+'px');   /* 다시 그린 이번 달 판이 처음부터 이 자리에 선다(새 요소라 전환 없음) */
+    selDate(nd,true);rCalMini();if(done)done();};
+  tr.addEventListener('transitionend',fin);setTimeout(fin,360);
 }
 function mcalTitle(){
   const t=$('#tbt');if(!t||!CAL)return;
@@ -2458,7 +2467,8 @@ function rCalMini(){
   box.hidden=!on;
   if(!on){box.innerHTML='';return;}
   paintHTML(box,calMiniHTML());
-  if(!S.mcalDrag)mcalFit();   /* 903차 */
+  mcalFit();   /* 903차 */
+  mdsFit();   /* 987차: 다시 그려도(업무 변경·달 이동) 시트·올림을 새 칸에 맞춘다 */
 }
 function rMonTitle(){
   if(!CAL)return;const c=CAL.view.currentStart;
@@ -2533,36 +2543,6 @@ function dpGhostHTML(ds){
     +'<button class="btn bo bxs dp-add" tabindex="-1" aria-hidden="true"><svg class="icn" aria-hidden="true"><use href="#i-plus"></use></svg></button></div>'
     +'<div class="dp-body"><div class="dp-list">'+(ps.length?ps.map(({p,occ})=>planCardHTML(p,occ)).join(''):'<div class="dp-empty">이 날짜에 등록된 업무가 없습니다.</div>')+'</div></div></div>';
 }
-/* 905차(사용자): 달력 **날짜 칸을 눌러** 날이 바뀔 때도 좌우로 미끄러진다(스와이프와 같은 결).
-   판은 dpGhostHTML 로 다시 만들지 않고 **지금 카드를 그대로 복제**해 쓴다 — 모양이 어긋날 여지가 없다.
-   순서: 옛 카드 복제 → selDate 로 진짜 패널을 새 날로 그림 → 새 카드는 옆에서, 복제본은 반대쪽으로 */
-let DP_SLIDING=false;
-function dpSlide(ds){
-  if(DP_SLIDING)return false;
-  if(!isMob()||WIDGET||mcalIsLand()||S.view!=='calendar'||S.mcal!=='mini')return false;
-  const cur=S.selDate||'';if(!cur||cur===ds)return false;
-  const col=$('#view-calendar .dp-col'),card=col&&col.querySelector('.day-panel:not(.dp-ghost)');
-  if(!col||!card)return false;
-  const top=card.offsetTop,left=card.offsetLeft,cw=card.offsetWidth,h=card.offsetHeight;
-  if(!(cw>0&&h>0))return false;
-  const w=cw+12,dir=ds>cur?1:-1;   /* 뒷날이면 오른쪽에서 들어온다 */
-  const g=card.cloneNode(true);
-  g.classList.add('dp-ghost');g.querySelectorAll('[id]').forEach(e=>e.removeAttribute('id'));g.removeAttribute('id');
-  g.style.cssText='top:'+top+'px;left:'+left+'px;right:auto;width:'+cw+'px;height:'+h+'px;transform:translateX(0px);';
-  col.appendChild(g);
-  DP_SLIDING=true;
-  selDate(ds,true);rCalMini&&rCalMini();
-  const now=col.querySelector('.day-panel:not(.dp-ghost)')||card;
-  now.style.transition='none';now.style.transform='translateX('+(dir*w)+'px)';
-  void now.offsetWidth;
-  const tr='transform .18s cubic-bezier(.22,.61,.36,1)';
-  now.style.transition=tr;now.style.transform='';
-  g.style.transition=tr;g.style.transform='translateX('+(-dir*w)+'px)';
-  let fired=false;const fin=()=>{if(fired)return;fired=true;
-    g.remove();now.style.transition='';now.style.transform='';DP_SLIDING=false;};
-  now.addEventListener('transitionend',fin,{once:true});setTimeout(fin,220);
-  return true;
-}
 /* 모바일 하단 시트 — 날짜를 누르면 일자 패널이 올라온다(캘린더 앱 UX) */
 const isMob=()=>matchMedia('(max-width:960px)').matches;
 function dpSheet(open){
@@ -2611,9 +2591,7 @@ function selDate(ds,quiet){
   /* 위젯: (970차 전) 첫 클릭은 날짜 선택까지만, 같은 칸을 한 번 더 눌러야 업무 팝업이 떴다 — 지금은 첫 클릭에 뜬다.
      quiet 는 '이동만'(오늘·연월 이동·업무 바 클릭 뒤 별도 처리) */
   if(WIDGET){
-    if(!same)S.planOpen='';
     S.widPop=quiet?false:(same?!S.widPop:true);   /* 970차(U11): 첫 클릭에 바로 연다(칩·「외 N건」과 같게) · 같은 칸을 다시 누르면 닫는다 */
-    if(!S.widPop)S.planOpen='';   /* 팝업을 닫으면 펼친 카드도 접는다 */
   }   /* 같은 칸: 안 떠 있으면 열고, 떠 있으면 닫는다 */
   setTimeout(rWidget,0);
   if(CAL&&ymOf(ds)!==CAL.view.currentStart.getFullYear()+'-'+pad(CAL.view.currentStart.getMonth()+1))CAL.gotoDate(ds);
@@ -2624,7 +2602,7 @@ function selDate(ds,quiet){
   if(S.planEdit&&$('#dpEdit')){
     /* 다른 날로 옮기면 열려 있던 폼은 닫는다. closePlanEdit 이 제목이 있을 때만 저장하므로
        빈 폼은 그대로 버려지고, 새 날짜의 팝업이 수정 상태로 열리는 일도 없다 */
-    if(S.planEdit.orig||!same){closePlanEdit();S.planOpen='';rDayHead();rDay();setTimeout(rWidget,0);return;}
+    if(S.planEdit.orig||!same){closePlanEdit();rDayHead();rDay();setTimeout(rWidget,0);return;}
     rDayHead();
     /* ⚠ 이미 있는 업무를 고치는 중이라면 날짜를 따라가지 않는다 —
        달력을 둘러보려고 다른 날을 눌렀을 뿐인데 업무가 그 날로 옮겨져 버렸다(실사용 지적).
@@ -2792,14 +2770,6 @@ function rangePlans(){
   }
   return sortPlans(out);
 }
-/* 펼쳐 보기 — 내용(진행경과·처리계획)을 읽기 전용으로 보여 준다.
-   링크는 여기 넣지 않는다 — 머리줄 옆 아이콘이 이미 있어 겹말이다(브라우저·위젯 동일, 319차) */
-function planDetHTML(p){
-  const sec=(h,v)=>v?'<div class="pd-sec"><div class="pd-h">'+h+'</div><div class="pd-b">'+esc(v)+'</div></div>':'';
-  const body=sec('내용',p.body);
-  /* 보여 줄 게 없으면 펼침 자체를 만들지 않는다 — 눌러도 아무 일이 없던 헛손질 방지 */
-  return body?'<div class="plan-det">'+body+'</div>':'';
-}
 /* 링크에 보일 이름 — 직접 적은 이름이 있으면 그것을, 없으면 주소에서 뽑는다.
    원드라이브·쉐어포인트 공유 주소는 무의미하게 길어 '원드라이브'로 줄여 쓴다 */
 function linkLabel(l){
@@ -2811,38 +2781,38 @@ function linkLabel(l){
 }
 /* 글자 칸이 아니면 커서 위치를 읽을 수 없다(날짜·색 칸은 읽기만 해도 오류) */
 function selOf(el,k){try{return el[k];}catch(e){return null;}}
+/* 카드 요약 줄 — [구분 칩(일반·고위험·공통 외)] 현장(「힐스테이트」 뗌) · 담당(없으면 공통) · 기간 · 시간 · 반복(992차).
+   994차: 보류함·놓친 업무 확인·찾기 결과도 같은 줄을 쓴다 — 날짜를 모르는 자리라 day 를 주면 하루짜리도 날짜를 적는다(없으면 day 글자 그대로, 예: 「기한 없음」) */
+function planMetaHTML(p,day){
+  const md=peMD;   /* 빈 날짜는 '' (toDate('') 는 NaN/NaN 이 됐다) */
+  const span=p.date&&p.end&&p.end!==p.date,rep=p.recur&&p.recur.f;
+  const k=kindOf(p.kind),kch=k&&k!=='risk'&&k!=='gather'?'<span class="pm-k">'+esc(kindLabel(k))+'</span>':'';
+  const short=n=>String(n||'').replace(/^힐스테이트\s+/,'');
+  /* 시작일 없이 종료일만 있는 업무(업무 현황은 그렇게도 저장된다)는 「~9/29」 */
+  const when=span?md(p.date)+'–'+md(p.end):(!p.date&&p.end?'~'+md(p.end):(day?(p.date?md(p.date):(day===true?'':day)):''));
+  const meta=[short(p.site?siteName(p.site):''),planOwners(p).map(o=>ownName(o)).join(', ')||'공통',
+    when,p.time||'',rep?REC_LBL[p.recur.f]:''].filter(Boolean).map(esc).join(' · ');
+  return '<div class="plan-meta">'+kch+'<span class="pm-l">'+meta+'</span></div>';
+}
+/* 업무의 색 원(표시만) — 공통(담당자 없음)은 속 빈 고리. 카드·보류함·놓친 업무·찾기·폼 공용 */
+function planDotHTML(p){return colDotHTML(planColor(p),'ro',!planOwners(p).length);}
 /* 903차: 업무 카드 한 장 — rDay 와 폰 패널 좌우 넘김(옆 날 미리보기)이 같이 쓴다 */
 function planCardHTML(p,occ){
-    const done=isDone(p,occ),rep=p.recur&&p.recur.f,span=p.end&&p.end!==p.date,st=planSt(p,occ);
-    const md=x=>{const t=toDate(x);return (t.getMonth()+1)+'/'+t.getDate();};
+    const done=isDone(p,occ),st=planSt(p,occ);
     const lnk=Object.values(p.links||{}).filter(l=>l&&l.url)[0];
-    const det=planDetHTML(p);
-    /* 펼침은 적어 둔 내용을 여는 용도다 — 내용이 없으면 펼치지 않는다(390차)
-       970차(U4): 앱에서는 카드 본문을 누르면 편집기가 열린다(달력 막대와 같게). 고칠 권한이 없거나 위젯이면 예전처럼 펼치기 */
-    const openAct=(!WIDGET||det)?' data-act="plan.body" data-pid="'+esc(p.id)+'" data-occ="'+esc(occ)+'"':'';
+    /* 970차(U4): 카드 본문을 누르면 편집기가 열린다(달력 막대와 같게) · 991차: 모든 환경 · 997차(사용자: 내용 폐지): 펼쳐 읽기(plan-det)도 삭제 */
+    const openAct=' data-act="plan.body" data-pid="'+esc(p.id)+'" data-occ="'+esc(occ)+'"';
+    /* 992차(사용자·A2): [색 원][제목 / 한 줄 요약][링크·상태] — 선 없이 옅은 판 하나. 상태 단추는 제목 줄에 붙는다(편집 폼의 ✓ 와 같은 자리). 요약 줄은 planMetaHTML */
     return `
-    <div class="plan${done?' done':''}${det?' has-det':''}${det&&S.planOpen===p.id?' open':''}" data-pid="${esc(p.id)}">
-      <div class="plan-hd">
-        ${colDotHTML(planColor(p),p.id,!planOwners(p).length)}
-        <div class="plan-t"${openAct}>${riskMark(p.kind)}${esc(p.title)}</div>
-        <div class="plan-side${lnk?' has-lnk':''}">
-          ${lnk?'<a class="p-ico" href="'+esc(lnk.url)+'" target="_blank" rel="noopener" aria-label="링크 열기" data-tip="'+esc(linkLabel(lnk))+'"><svg class="icn"><use href="#i-ext"></use></svg></a>':''}
-          <button class="p-ico p-edit" data-act="plan.edit" data-pid="${esc(p.id)}" data-occ="${esc(occ)}" aria-label="수정" data-tip="수정"><svg class="icn"><use href="#i-pen"></use></svg></button>
-          ${stIcon(st,' data-act="plan.stCycle" data-pid="'+esc(p.id)+'" data-occ="'+esc(occ)+'"')}
-        </div>
+    <div class="plan${done?' done':''}" data-pid="${esc(p.id)}">
+      ${planDotHTML(p)}
+      <div class="plan-c"${openAct}>
+        <div class="plan-t">${riskMark(p.kind)}${esc(p.title)}</div>
+        ${planMetaHTML(p)}
       </div>
-      <div class="plan-main"${openAct}>
-        <div class="plan-meta">
-          <span class="pm-l">${[
-            kindLabel(p.kind),
-            span?md(p.date)+'–'+md(p.end):md(p.date),
-            fmtSpan(p),
-            rep?REC_LBL[p.recur.f]:''
-          ].filter(Boolean).map(esc).join(' · ')}</span>
-          <span class="pm-r">${[p.site?siteName(p.site):'',planOwners(p).map(o=>ownName(o)).join(', ')||'공통']
-            .filter(Boolean).map(esc).join(' · ')}</span>
-        </div>
-        ${det}
+      <div class="plan-side">
+        ${lnk?'<a class="p-ico" href="'+esc(lnk.url)+'" target="_blank" rel="noopener" aria-label="링크 열기" data-tip="'+esc(linkLabel(lnk))+'"><svg class="icn"><use href="#i-ext"></use></svg></a>':''}
+        ${stIcon(st,' data-act="plan.stCycle" data-pid="'+esc(p.id)+'" data-occ="'+esc(occ)+'"')}
       </div>
     </div>`;
 }
@@ -2893,9 +2863,6 @@ function rDay(){
     kf.el.focus({preventScroll:true});
     if(kf.s!=null){try{kf.el.setSelectionRange(kf.s,kf.e);}catch(e){}}
   }
-  const rec=$('#peRec');
-  if(rec&&!rec.dataset.wired){rec.dataset.wired='1';
-    rec.addEventListener('change',()=>{const r=$('#peUntilRow');if(r)r.style.display=rec.value?'':'none';});}
   rHold();wireHoldDnD();   /* 일자 패널 아래 보류함 — 목록이 바뀔 때마다 함께 다시 그린다 */
 }
 
@@ -2924,38 +2891,25 @@ function closeModal(){mrvHoldRest();$('#mo').classList.remove('open');MODAL_CB=n
   if($('#mb').classList.contains('kmw'))kmModalClosed();   /* 552차: 지도 모달 — 카드 상태 복원 */
   {const r=MODAL_RET;MODAL_RET=null;const a=document.activeElement;if(r&&r.isConnected&&r.focus&&(a===document.body||$('#mo').contains(a)))r.focus({preventScroll:true});}}   /* 956차: 모달을 연 요소로 포커스 복귀 */
 /* 인라인 편집기 — 모달 대신 우측 일자 패널 안에서 작성·수정한다 */
+/* 992차(사용자): 카드 ↔ 폼 전환 모션 — 제목 줄(원·제목·상태/✓)이 두 모양에서 같은 자리라 높이만 늘고 줄면 된다.
+   카드 높이 → 폼 높이로 0.32초, 칩은 살짝 내려오며 나타난다. 닫을 땐 거꾸로(0.28초) */
+const PE_EASE='cubic-bezier(.32,.72,0,1)';
+function peCardEl(id){return id?document.querySelector('#dpList .plan[data-pid="'+CSS.escape(id)+'"]'):null;}
+function peGrow(el,h0,dur){
+  if(!el||!h0||!el.animate)return;
+  const h1=el.getBoundingClientRect().height;if(Math.abs(h1-h0)<1)return;
+  el.animate([{height:h0+'px',overflow:'hidden'},{height:h1+'px',overflow:'hidden'}],{duration:dur,easing:PE_EASE});
+}
 function openPlanEdit(p,startD,endD,occ){
+  const c0=peCardEl(p&&p.id),h0=c0?c0.getBoundingClientRect().height:0;
   S.planEdit={orig:p?{...p}:null,occ:occ||'',start:startD||S.selDate,end:endD||''};
   rDay();
+  {const f=$('#dpEdit');if(f&&h0){peGrow(f,h0,320);
+    const ch=f.querySelector('.pe-chips');if(ch&&ch.animate)ch.animate([{opacity:0,transform:'translateY(-6px)'},{opacity:1,transform:'none'}],{duration:220,delay:90,easing:'ease-out',fill:'backwards'});
+    const sd=f.querySelector('.pe-side');if(sd&&sd.animate)sd.animate([{opacity:0},{opacity:1}],{duration:180,easing:'ease-out'});}}
   /* 970차(L3): 연 순간 폼이 보여 준 값을 기준선으로 떠 둔다 — 저장할 때 이 기준선과 달라진 칸만 현재 서버 값 위에 얹는다 */
   if(S.planEdit&&S.planEdit.orig&&$('#peTitle'))S.planEdit.base0=PE_SNAP(planCollect({...S.planEdit.orig}));
   setTimeout(()=>{const t=$('#peTitle');if(t)t.focus();},30);
-}
-/* 고른 색 적용 — 읽기 카드에서 골랐으면 바로 저장, 편집 폼이면 draft 에 담고 자동 저장 */
-
-function setPlanColor(c){
-  /* 업무 목록 폼도 같은 팔레트를 쓴다 — 숨은 값과 색 원만 갱신하고 저장은 폼 저장 때 한다.
-     대상은 팝오버가 기록한 scope 가 정한다(위 plan.color 의 함정 참조) */
-  const pop=$('#colPop');
-  const scope=(pop&&pop.dataset.scope)||($('#tkNew')?'tk':'plan');
-  const tn=$('#tnColor');
-  if(scope==='tk'&&tn&&$('#tkNew')){
-    tn.value=(c==='auto')?'':c;
-    const dot=$('#tkNew .p-col');
-    if(dot)dot.style.background=colBg(planColor({color:tn.value,assignees:{}}));
-    return;
-  }
-  const pe=S.planEdit;if(!pe||!pe.draft)return;
-  pe.draft.color=c;
-  const btn=$('#dpEdit .p-col');
-  if(btn)btn.style.background=colBg(planColor(pe.draft));
-  planAutosave();
-}
-function colOutside(e){
-  const pop=$('#colPop');
-  if(!pop){document.removeEventListener('click',colOutside,true);return;}
-  if(pop.contains(e.target)||e.target.closest('.p-col'))return;
-  closeColPop();
 }
 function pfClosed(){const mo=$('#mo');if(mo)mo.classList.remove('pf-on');}
 /* 겹쳐 뜬 것들을 바깥 클릭으로 닫는다(상용 위젯의 기본 동작).
@@ -2974,62 +2928,70 @@ document.addEventListener('mousedown',e=>{
   const nq=$('#nqPanel');
   if(nq&&nq.classList.contains('on')&&!t.closest('#nqPanel')&&!t.closest('[data-act="nq.toggle"]'))nqOpen(false);
 },true);
-/* 색상 팔레트 사각형 — 가로는 채도, 세로는 밝기. 끌면서 고를 수 있고 고른 색은 추가색으로 쌓인다 */
-let CP_DRAG=false;
-function cpPick(e,commit){
-  const pop=$('#colPop');if(!pop)return;
-  const sv=pop.querySelector('.cp-sv');if(!sv)return;
-  const r=sv.getBoundingClientRect();
-  const x=Math.min(1,Math.max(0,(e.clientX-r.left)/r.width));
-  const y=Math.min(1,Math.max(0,(e.clientY-r.top)/r.height));
-  const h=Number(pop.querySelector('.cp-hue').value)||0;
-  const hex=hsvHex(h,x,1-y);
-  cpPaint(pop,hex);
-  setPlanColor(hex);
-  /* ⚠ 끄는 동안 목록에 쌓으면 비슷한 색이 수십 개 생긴다 — 손을 뗄 때 한 번만 담는다 */
-  if(commit)palAdd(hex);
-  CP_LAST=hex;
-}
-let CP_LAST='';
-document.addEventListener('mousedown',e=>{
-  if(!e.target.closest||!e.target.closest('#colPop .cp-sv'))return;
-  CP_DRAG=true;cpPick(e);e.preventDefault();
-});
-document.addEventListener('mousemove',e=>{if(CP_DRAG)cpPick(e);});
-document.addEventListener('mouseup',()=>{
-  if(!CP_DRAG)return;
-  CP_DRAG=false;
-  if(CP_LAST){palAdd(CP_LAST);const pop=$('#colPop');if(pop)cpRefresh(pop,CP_LAST);}
-});
-/* 색 줄만 다시 그린다 — 팔레트 사각형은 그대로 두어야 끌던 자리가 유지된다 */
-function cpRefresh(pop,cur){
-  const row=pop.querySelector('.pal');if(!row)return;
-  const tmp=document.createElement('div');tmp.innerHTML=colPopHTML(cur);
-  row.replaceWith(tmp.querySelector('.pal'));
-}
-function closeColPop(){
-  const pop=$('#colPop');if(pop)pop.remove();
-  document.removeEventListener('click',colOutside,true);
-}
 function closePlanEdit(){
   if(!S.planEdit)return;
   clearTimeout(PE_SAVE);
   const p=planCollect(S.planEdit.draft);   /* 자동 저장 대기 중인 입력을 확정한다 */
   if(p&&p.title)planCommit(p);
-  closeColPop();S.planEdit=null;rDay();
+  const f=$('#dpEdit'),h0=f?f.getBoundingClientRect().height:0,id=S.planEdit.orig&&S.planEdit.orig.id;
+  S.planEdit=null;rDay();
+  const c=peCardEl(id);if(c&&h0){c.classList.remove('fx-in');peGrow(c,h0,280);   /* 992차: 폼 → 카드 — 편집 중엔 목록에 없던 카드라 「새 카드」 등장 효과가 붙는데, 줄어드는 모션과 겹치므로 뗀다 */
+    const m=c.querySelector('.plan-meta');if(m&&m.animate)m.animate([{opacity:0},{opacity:1}],{duration:200,delay:80,fill:'backwards'});}
 }
-/* 본문 칸 — 업무 구분이 '일반'이면 진행경과·처리계획 두 칸(업무 목록 폼과 동일), 그 외는 한 칸 */
-function peBodyHTML(d,kind){
-  return `<div class="frow"><label>내용</label><textarea class="inp inp-sm" id="peProg" maxlength="2000" placeholder="${esc(kindLabel(kind))} 내용을 적으세요">${esc(d.body||'')}</textarea></div>`;
+/* 992차(사용자·F2): 작성 폼 = 제목 줄 + 칩 격자(4칸) — 「자세히」 접기를 없애고 모든 칸을 칩 하나씩으로.
+   1줄 기간(2칸: 시작 ~ 종료, 각자 반쪽 가운데) · 담당(2칸) / 2줄 현장(4칸, 이름 전체) / 3줄 구분·시간·반복·링크(각 1칸, 가운데)
+   칩 안의 입력은 칩 전체를 덮는 투명 입력이다 — 값은 기존 id(peDate…peLink) 그대로라 planCollect·자동 저장은 손대지 않는다.
+   칩 글자는 peChipSync 가 입력값에서 다시 쓴다 */
+const PE_IC=(()=>{const I=d=>'<svg class="pci" viewBox="0 0 24 24" aria-hidden="true">'+d+'</svg>';return {
+  cal:I('<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>'),
+  me:I('<circle cx="12" cy="8.3" r="3.8"/><path d="M4.5 20.5c1.2-3.9 4.2-5.8 7.5-5.8s6.3 1.9 7.5 5.8"/>'),
+  pin:I('<path d="M12 21s-6.5-5.7-6.5-11a6.5 6.5 0 0 1 13 0c0 5.3-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/>'),
+  clk:I('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>'),
+  rep:I('<path d="M16.5 3.5l3 3-3 3"/><path d="M4.5 11.5v-1a4 4 0 0 1 4-4h11"/><path d="M7.5 20.5l-3-3 3-3"/><path d="M19.5 12.5v1a4 4 0 0 1-4 4h-11"/>'),
+  lnk:I('<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>'),
+  kind:I('<path d="M3.5 12.3V4.5a1 1 0 0 1 1-1h7.8l8.2 8.2a1 1 0 0 1 0 1.4l-7.4 7.4a1 1 0 0 1-1.4 0z"/><circle cx="8.2" cy="8.2" r="1.4"/>')};})();
+const peMD=x=>{if(!x)return '';const t=toDate(x);return (t.getMonth()+1)+'/'+t.getDate();};
+/* 칩 글자 = 입력값. 비었으면 자리 글자(옅은 색 · .ph).
+   993차: 업무 현황 폼도 같은 칩을 쓴다 — 칩은 data-pk(무슨 칸) + data-pc(입력 id)로 적고, 폼 뿌리는 .pe-f2 */
+function peChipTxt(k,v,start,swap){
+  switch(k){
+    case 'date':return [peMD(v),'시작일'];   /* 업무 현황 새 업무는 시작일을 비워 둘 수 있다 */
+    case 'end':return v&&(v>start||(swap&&v<start))?[peMD(v),'']:['','종료일'];   /* 달력 폼은 시작일 이하 종료일을 버리고, 업무 현황은 저장 때 맞바꾼다(swap) */
+    case 'own':return [v?ownName(v):'공통',''];
+    case 'site':return [v?siteName(v):'','현장'];
+    case 'kind':return [v?kindLabel(v):'','구분'];
+    case 'time':return [v,'시간'];
+    case 'rec':return [v?REC_LBL[v]:'','반복'];
+    case 'until':return [v?peMD(v)+'까지':'','반복 종료'];
+    case 'occ':return [v?'이 회차 '+peMD(v):'','회차 이동'];
+    case 'link':return [v?'링크':'','링크'];
+  }
+  return [v,''];
 }
-/* 업무 구분을 바꾸면 본문 칸 구성이 달라진다 — 그 부분만 다시 그려 다른 입력을 지키지 않게 한다 */
-function peKindRefresh(){
-  const pe=S.planEdit,sec=$('#peBodySec');if(!pe||!sec)return;
-  planCollect(pe.draft);                       /* 지금 입력값을 draft 에 담아 두고 */
-  const kind=kindOf(($('#peKind')&&$('#peKind').value)||'');
-  sec.innerHTML=peBodyHTML(pe.draft,kind);     /* 본문 칸만 새 구성으로 */
-  planAutosave();
+function peChipPaint(root){
+  const val=id=>{const el=id&&root.querySelector('#'+id);return el?String(el.value||'').trim():'';};
+  const s0=root.querySelector('[data-pk="date"]'),start=s0?val(s0.dataset.pc):'',swap=!root.matches('#dpEdit');
+  root.querySelectorAll('[data-pk]').forEach(el=>{
+    const [t,ph]=peChipTxt(el.dataset.pk,val(el.dataset.pc),start,swap);
+    const tx=el.querySelector('.pc-t');if(tx)tx.textContent=t||ph;
+    el.classList.toggle('ph',!t);});
 }
+/* 그리기 전 HTML 에 칩 글자를 채워 돌려준다 */
+function peChipFill(html){const tmp=document.createElement('div');tmp.innerHTML=html;tmp.querySelectorAll('.pe-f2').forEach(peChipPaint);return tmp.innerHTML;}
+/* 코드로 값을 바꾼 곳(기간 끌기·구분→공통 등)은 input 이 안 울린다 — 자동 저장·change 에서 늘 같이 부른다 */
+function peChipSync(){document.querySelectorAll('.pe-f2').forEach(peChipPaint);}
+/* 칩 한 개 — [아이콘][글자][칩 전체를 덮는 투명 입력]. 글자는 peChipPaint 가 채운다 */
+function peChipHTML(cls,icon,pk,id,input,attrs){return '<label class="pe-chip '+cls+'" data-pk="'+pk+'" data-pc="'+id+'"'+(attrs||'')+'>'+icon+'<span class="pc-t"></span>'+input+'</label>';}
+/* 기간 칩 — 시작 ~ 종료, 각자 반쪽의 가운데 */
+function peDateChipHTML(idA,a,idB,b){
+  return '<div class="pe-chip c-date">'+PE_IC.cal+'<label class="pd" data-pk="date" data-pc="'+idA+'"><span class="pc-t"></span><input type="date" id="'+idA+'" aria-label="시작일" value="'+esc(a||'')+'"></label>'
+    +'<span class="pd-ar">~</span><label class="pd" data-pk="end" data-pc="'+idB+'"><span class="pc-t"></span><input type="date" id="'+idB+'" aria-label="종료일" value="'+esc(b||'')+'"></label></div>';
+}
+/* 링크 — 칩(누르면 펼침) + 칩 줄 아래 한 줄 주소 칸 */
+function peLinkChipHTML(id){return '<button type="button" class="pe-chip c-sm c-lnk" data-pk="link" data-pc="'+id+'" data-act="pe.link" aria-label="링크">'+PE_IC.lnk+'<span class="pc-t"></span></button>';}
+function peLinkRowHTML(id,url){return '<div class="pe-lnk" hidden>'+PE_IC.lnk+'<input id="'+id+'" maxlength="'+LINK_MAX+'" placeholder="https://…" aria-label="링크 주소" value="'+esc(url||'')+'"><button type="button" class="pe-lnk-x" data-act="pe.link" data-clr="1" aria-label="링크 지우기"><svg class="icn"><use href="#i-close"></use></svg></button></div>';}
+function peKindSelHTML(id,kind){return '<select id="'+id+'" aria-label="구분">'+TK_KIND.map(k=>'<option value="'+k[0]+'"'+(k[0]===kind?' selected':'')+'>'+esc(k[1])+'</option>').join('')+'</select>';}
+function peRecSelHTML(id,rc){return '<select id="'+id+'" aria-label="반복">'+Object.keys(REC_LBL).map(k=>'<option value="'+k+'"'+(k===rc?' selected':'')+'>'+REC_LBL[k]+'</option>').join('')+'</select>';}
 function planFormHTML(){
   const pe=S.planEdit;if(!pe)return'';
   /* 새 업무의 담당자는 로그인한 본인이 기본 — 대부분 자기 일을 쓴다(앱·위젯 공통) */
@@ -3041,9 +3003,11 @@ function planFormHTML(){
   const kind=kindOf(d.kind);
   /* (상태는 폼에서 바꾸지 않는다 — 카드의 상태 아이콘·아침 확인이 담당) */
   const lnk=Object.values(d.links||{}).filter(l=>l&&l.url)[0];
-  return `<div class="dp-edit" id="dpEdit">
+  const ic=PE_IC,chip=peChipHTML;
+  const occ=!!(pe.orig&&rc&&pe.occ);
+  const html=`<div class="dp-edit pe-f2" id="dpEdit">
     <div class="pe-bar">
-      ${colDotHTML(planColor(d),null,!planOwners(d).length)}
+      ${planDotHTML(d)}
       <input class="pe-ttl" id="peTitle" maxlength="80" placeholder="무엇을 하나요?" value="${esc(d.title)}">
       <div class="pe-side">
         ${pe.orig
@@ -3052,35 +3016,20 @@ function planFormHTML(){
         <button class="pe-ic pe-ok" data-act="plan.cancel" aria-label="저장하고 닫기 (Esc)" data-tip="저장하고 닫기"><svg class="icn"><use href="#i-check"></use></svg></button>
       </div>
     </div>
-    <div class="pe-body">
-      <div class="frow2">
-        <div class="frow"><label>시작일</label><input type="date" class="inp inp-sm" id="peDate" value="${esc(d.date)}"></div>
-        <div class="frow"><label>종료일</label><input type="date" class="inp inp-sm" id="peEnd" value="${esc(d.end||'')}"></div>
-      </div>
-      <div class="frow2">
-        <div class="frow"><label>구분</label>
-          <select class="inp inp-sm" id="peKind">${TK_KIND.map(k=>'<option value="'+k[0]+'"'+(k[0]===kind?' selected':'')+'>'+k[1]+'</option>').join('')}</select></div>
-        <div class="frow"><label>담당자</label>${ownSelHTML('peOwners',planOwners(d)[0]||'',people)}</div>
-      </div>
-      <div class="frow"><label>현장</label>${sitePickHTML('peSite',d.site||'')}</div>
-      <div class="pe-morerow">
-        <button class="pe-more" data-act="plan.more" id="peMoreBtn" aria-label="자세히"><svg class="icn"><use href="#i-chevr"></use></svg></button>
-      </div>
-      <div class="pe-adv" id="peAdv">
-        <div class="frow2">
-          <div class="frow"><label>시간</label><input type="time" class="inp inp-sm" id="peTime" value="${esc(d.time||'')}"></div>
-          <div class="frow"><label>반복</label><select class="inp inp-sm" id="peRec">${Object.keys(REC_LBL).map(k=>'<option value="'+k+'"'+(k===rc?' selected':'')+'>'+REC_LBL[k]+'</option>').join('')}</select></div>
-        </div>
-        ${(pe.orig&&rc&&pe.occ)?`<div class="frow2" id="peUntilRow">
-          <div class="frow"><label>반복 종료</label><input type="date" class="inp inp-sm" id="peUntil" value="${esc((d.recur&&d.recur.until)||'')}"></div>
-          <div class="frow"><label>회차 이동</label><input type="date" class="inp inp-sm" id="peOcc" data-pid="${esc(d.id)}" data-occ="${esc(pe.occ)}" value="${esc(pe.occ)}" data-tip="날짜를 고르면 이 회차만 옮깁니다 — 원래 날짜를 고르면 되돌립니다"></div>
-        </div>`:`<div class="frow" id="peUntilRow" style="${rc?'':'display:none'}"><label>반복 종료</label><input type="date" class="inp inp-sm" id="peUntil" value="${esc((d.recur&&d.recur.until)||'')}"></div>`}
-        <div class="frow"><label>링크</label><input class="inp inp-sm" id="peLink" maxlength="${LINK_MAX}" placeholder="https://…" value="${esc((lnk&&lnk.url)||'')}"></div>
-        <div id="peBodySec">${peBodyHTML(d,kind)}</div>
-
-      </div>
+    <div class="pe-chips">
+      ${peDateChipHTML('peDate',d.date,'peEnd',d.end)}
+      ${chip('c-own',ic.me,'own','peOwners',ownSelHTML('peOwners',planOwners(d)[0]||'',people))}
+      ${chip('c-site',ic.pin,'site','peSite',sitePickHTML('peSite',d.site||''))}
+      ${chip('c-sm',ic.kind,'kind','peKind',peKindSelHTML('peKind',kind))}
+      ${chip('c-sm',ic.clk,'time','peTime','<input type="time" id="peTime" aria-label="시간" value="'+esc(d.time||'')+'">')}
+      ${chip('c-sm',ic.rep,'rec','peRec',peRecSelHTML('peRec',rc))}
+      ${peLinkChipHTML('peLink')}
+      ${chip('c-half',ic.rep,'until','peUntil','<input type="date" id="peUntil" aria-label="반복 종료" value="'+esc((d.recur&&d.recur.until)||'')+'">',rc?'':' hidden')}
+      ${occ?chip('c-half',ic.cal,'occ','peOcc','<input type="date" id="peOcc" aria-label="회차 이동" data-pid="'+esc(d.id)+'" data-occ="'+esc(pe.occ)+'" value="'+esc(pe.occ)+'">',' data-tip="날짜를 고르면 이 회차만 옮깁니다 — 원래 날짜를 고르면 되돌립니다"'):''}
     </div>
+    ${peLinkRowHTML('peLink',lnk&&lnk.url)}
   </div>`;
+  return peChipFill(html);   /* 칩 글자를 미리 채워 둔다 */
 }
 /* 폼의 현재 입력을 draft 위에 얹어 저장할 업무 객체를 만든다(검증 없음) */
 function planCollect(base){
@@ -3103,7 +3052,7 @@ function planCollect(base){
     time:($('#peTime')&&$('#peTime').value)||'',
     site:($('#peSite')&&$('#peSite').value)||'',
     owners:(()=>{const v=($('#peOwners')&&$('#peOwners').value)||'';return v?{[v]:1}:{};})(),owner:'',
-    body:(($('#peProg')&&$('#peProg').value)||'').trim(),plan:'',
+    body:String((d&&d.body)||''),plan:'',   /* 997차(사용자): 내용 칸 폐지 — 있던 값은 그대로(서버 값을 지우지 않는다) */
     links,
     color:(d&&d.color)||'auto',
     recur:f?{f,until:(($('#peUntil')&&$('#peUntil').value)||'')}:{f:'',until:''},
@@ -3159,6 +3108,7 @@ function planAutosave(now){
   /* 저장(600ms)을 기다리지 않고 달력은 곧바로 갱신한다 — buildEvents 가 draft 를 읽는다
      970차(P2): 달력 다시 그리기는 0.25초 모아서 — 글자마다 달력 전체를 그려 업무가 많으면 입력이 밀렸다 */
   if(S.planEdit&&S.planEdit.draft&&$('#dpEdit')){planCollect(S.planEdit.draft);clearTimeout(PE_CAL);PE_CAL=setTimeout(refetchCal,250);}
+  {const f=$('#dpEdit');if(f)peChipPaint(f);}   /* 992차: 칩 글자 — 입력·코드로 바꾼 값(기간 끌기·날짜 누름) 모두 여기를 지난다(996차: 이 폼만) */
   const run=()=>{
     const pe=S.planEdit;if(!pe||!$('#dpEdit'))return;
     const p=planCollect(pe.draft);
@@ -3176,7 +3126,7 @@ function planAutosave(now){
         del.className='pe-ic pe-del';del.setAttribute('aria-label','삭제');del.setAttribute('data-tip','삭제');
         del.dataset.act='plan.del';del.dataset.pid=p.id;del.dataset.ym=ymOf(p.date);del.dataset.occ=pe.occ||'';
         del.innerHTML='<svg class="icn"><use href="#i-trash"></use></svg>';
-        side.insertBefore(del,side.querySelector('.pe-rem')||side.lastElementChild);
+        side.insertBefore(del,side.lastElementChild);   /* ✓ 앞 */
       }
     }
     if(!S.live){refetchCal();rDay();rWidget();}
@@ -3307,7 +3257,7 @@ function onSelDay(sid,iid,it,dsp){
   return d>=it.date&&d<=(it.end||it.date);
 }
 let _edShown=false;   /* 이번 렌더에서 수정 폼을 이미 그렸는지 */
-/* 615차: 행의 인라인 수정 버튼 제거(수정은 펼침의 체크 아래 .tk-det-ed) · 완료(st=2)면 날짜 지남(over)
+/* 615차: 행의 인라인 수정 버튼 제거 · 완료(st=2)면 날짜 지남(over)
    강조를 끈다 — 끝난 일이 붉게 남아 있었다. ⚠ 템플릿 리터럴 안에는 주석을 달 수 없다(그대로 렌더됨) */
 function taskItemHTML(sid,iid,it,withSubject,hideOwn,colsIn,occ){
   const cols=colsIn||{site:true,who:true};
@@ -3343,7 +3293,6 @@ function taskItemHTML(sid,iid,it,withSubject,hideOwn,colsIn,occ){
   const sub=[fmtSpan(it),(it.recur&&it.recur.f)?REC_LBL[it.recur.f]:''].filter(Boolean).join(' · ');
   const who=(asg.length>1?asg[0].name+' 외 '+(asg.length-1):asg.map(x=>x.name).join(', '))||(withSubject?subjName(sid):'');   /* 970차(U7): 여럿이면 「김민수 외 1」(목록 이름 칸은 56px 라 화면에는 「김민수+1」, 전체는 툴팁) — 「김민수, 박…」로 잘렸다 */
   /* 적힌 내용이 있으면 제목 뒤에 표시를 단다 — 어느 행에 진행사항·계획이 있는지 눌러 보지 않아도 안다(361차) */
-  const hasDet=!!taskBody(it).trim();
   const go=' data-act="tk.open" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"';
   return `
   <div class="tk-item s${st}${editing?' editing':''}${open?' open':''}${cols.grp?' grp':''}${cols.gw?' gw':''}${onSelDay(sid,iid,it,dsp)?' hl':''}" data-sid="${esc(sid)}" data-iid="${esc(iid)}"${rec?' data-occ="'+esc(dsp)+'"':''}>
@@ -3364,7 +3313,7 @@ function taskItemHTML(sid,iid,it,withSubject,hideOwn,colsIn,occ){
           +(cols.site?'<span class="tkc tkc-s"'+go+'>'+esc(sn)+'</span>':'')
           +'<span class="tk-ttl"'+go+'>'+riskMark(it.kind)+esc(it.text||'제목 없음')
             +(sub?'<i class="tk-sub-i">'+esc(sub)+'</i>':'')
-            +(hasDet?'<i class="tk-note" aria-label="적힌 내용 있음"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></i>':'')
+            
             +'</span>'
           +'<span class="tkc tkc-d'+(st!==2&&di.cls==='over'?' over':'')+'"'+go+'>'+esc(dcell)+'</span>'}
       <span class="tk-acts">
@@ -3375,7 +3324,7 @@ function taskItemHTML(sid,iid,it,withSubject,hideOwn,colsIn,occ){
           : stIcon(st,' data-act="tk.st" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" data-occ="'+esc(dsp||'')+'"')}
       </span>
     </div>
-    ${editing?tkEditRestHTML(sid,iid,it,cols.site):(open?taskDetailHTML(sid,iid,it,dsp):'')}
+    ${editing?tkEditRestHTML(sid,iid,it,cols.site):''}
   </div>`;
 }
 
@@ -3490,44 +3439,23 @@ function tkDateRefresh(){
 function tkEditRestHTML(sid,iid,it,hasSite){
   const kind=kindOf(it.kind),rc=(it.recur&&it.recur.f)||'';
   const lnk=Object.values(it.links||{})[0]||null;
+  const ic=PE_IC,chip=peChipHTML;
   /* 970차(U7): 칸이 좁아 행의 현장 열이 접히면(1366 노트북 등) 현장을 아래 줄에서 고친다 — 전엔 목록에서 현장을 못 고쳤다.
-     id 는 tnSite2 · 저장은 보이는 쪽을 읽고, 두 칸은 서로 값을 맞춘다 */
-  return `<div class="tk-editrest">
-    ${hasSite?'<label class="tk-esite">현장'+sitePickHTML('tnSite2',it.site||'')+'</label>':''}
-    <div class="tk-erow">
-      <label>구분<select class="inp cell-inp" id="tnKind" data-act="tk.kind">
-        ${TK_KIND.map(([v,l])=>'<option value="'+v+'"'+(v===kind?' selected':'')+'>'+esc(l)+'</option>').join('')}</select></label>
-      <label>시간<input type="time" class="inp cell-inp" id="tnTime" value="${esc(it.time||'')}"></label>
-      <label>반복<select class="inp cell-inp" id="tnRec">
-        ${Object.keys(REC_LBL).map(k=>'<option value="'+k+'"'+(k===rc?' selected':'')+'>'+REC_LBL[k]+'</option>').join('')}</select></label>
-      <label class="ru"${rc?'':' hidden'}>반복 종료<input type="date" class="inp cell-inp" id="tnUntil" value="${esc((it.recur&&it.recur.until)||'')}"></label>
-      <label class="gw">링크<input class="inp cell-inp" id="tnLink" maxlength="${LINK_MAX}" placeholder="https://…" value="${esc((lnk&&lnk.url)||'')}"></label>
+     id 는 tnSite2 · 저장은 보이는 쪽을 읽고, 두 칸은 서로 값을 맞춘다
+     993차(사용자): 아래 줄을 달력 폼과 같은 칩으로 — 현장(접혔을 때만) / 구분·시간·반복·링크 / 반복 종료. 값·id 는 그대로 */
+  return peChipFill(`<div class="tk-editrest pe-f2">
+    <div class="pe-chips">
+      ${hasSite?chip('c-site tk-esite',ic.pin,'site','tnSite2',sitePickHTML('tnSite2',it.site||'')):''}
+      ${chip('c-sm',ic.kind,'kind','tnKind',peKindSelHTML('tnKind',kind))}
+      ${chip('c-sm',ic.clk,'time','tnTime','<input type="time" id="tnTime" aria-label="시간" value="'+esc(it.time||'')+'">')}
+      ${chip('c-sm',ic.rep,'rec','tnRec',peRecSelHTML('tnRec',rc))}
+      ${peLinkChipHTML('tnLink')}
+      ${chip('c-half',ic.rep,'until','tnUntil','<input type="date" id="tnUntil" aria-label="반복 종료" value="'+esc((it.recur&&it.recur.until)||'')+'">',rc?'':' hidden')}
     </div>
-    <div id="tnBodySec" class="tk-ebody">${tkBodyHTML(taskBody(it),kind)}</div>
-
+    ${peLinkRowHTML('tnLink',lnk&&lnk.url)}
     <input type="hidden" id="tnColor" value="${esc(it.color||'')}">
-  </div>`;
+  </div>`);
 }
-function taskDetailHTML(sid,iid,it,occ){
-  /* ⚠ 비어 있어도 칸을 그린다(361차) — 예전에는 값이 없으면 펼침 자체가 열리지 않아
-     **새로 적을 방법이 수정 폼밖에** 없었다. 펼침은 읽기이자 쓰기 자리다 */
-  const box=(lbl,val,field)=>`<div class="tk-sec">
-      <div class="tk-sec-h">${lbl}</div>
-      <div class="tk-sec-b" contenteditable="true" data-act="tk.field" data-f="${field}" data-sid="${esc(sid)}" data-iid="${esc(iid)}"
-        data-ph="${lbl}를 입력하세요">${esc(val||'')}</div>
-    </div>`;
-  const hist=(Array.isArray(it.hist)?it.hist:[]).slice().reverse();
-  const histHTML=hist.length?`<details class="tk-hist"><summary>이력 ${hist.length}</summary><div class="tk-hist-l">${
-    hist.map(h=>{const d=new Date(h.t);
-      return '<div>'+esc((d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'))
-        +' · '+esc(h.u||'?')+' · '+esc(HIST_LBL[h.k]||h.k)+'</div>';}).join('')
-  }</div></details>`:'';
-  return `<div class="tk-detail">
-    ${canEditTask(it,sid)?`<button class="tk-ico tk-ed tk-det-ed" data-act="tk.edit" data-sid="${esc(sid)}" data-iid="${esc(iid)}" data-occ="${esc(occ||'')}" aria-label="수정" data-tip="수정"><svg class="icn"><use href="#i-pen"></use></svg></button>`:''}
-    ${box('내용',taskBody(it),'prog')}
-    ${histHTML}
-  </div>`;
-}   /* 615차: 수정 버튼을 펼침으로 — 행의 체크 버튼 바로 아래 자리(.tk-det-ed) */
 /* 보류함 — 아침 확인에서 넘긴 업무(st=3). 고른 팀의 공통·담당자 것을 모아 기한 오래된 순으로 */
 function holdItems(){
   const{team,mems}=tkSel();
@@ -3554,7 +3482,9 @@ function taskFormHTML(sid,iid,cur){
   const rc=(d.recur&&d.recur.f)||'';
   const lnk=Object.values(d.links||{}).filter(l=>l&&l.url)[0];
   const own=Object.keys(d.assignees||{}).find(k=>(d.assignees||{})[k])||'';
-  return `<div class="dp-edit tk-new" id="tkNew" data-sid="${esc(sid)}" data-iid="${esc(iid||'')}">
+  const ic=PE_IC,chip=peChipHTML;
+  /* 993차(사용자): 달력 폼(992차 F2)과 같은 칩 폼 — 제목 줄 + 칩 격자 4칸. 값·id(tn*)는 그대로라 저장(taskFormSave)·버리기 확인(tkFormVals)은 손대지 않았다 */
+  return peChipFill(`<div class="dp-edit tk-new pe-f2" id="tkNew" data-sid="${esc(sid)}" data-iid="${esc(iid||'')}">
     <div class="pe-bar">
       ${colDotHTML(planColor({color:d.color,owners:d.assignees||{}}))}
       <input type="hidden" id="tnColor" value="${esc(d.color||'')}">
@@ -3566,41 +3496,23 @@ function taskFormHTML(sid,iid,cur){
         <button class="pe-ic pe-ok" data-act="tk.formSave" data-sid="${esc(sid)}" data-iid="${esc(iid||'')}" aria-label="저장하고 닫기" data-tip="저장하고 닫기 (Enter · Esc)"><svg class="icn"><use href="#i-check"></use></svg></button>
       </div>
     </div>
-    <div class="pe-body">
-      <div class="frow4">
-        <div class="frow"><label>시작일</label><input type="date" class="inp inp-sm" id="tnDate" value="${esc(d.date||'')}"></div>
-        <div class="frow"><label>종료일</label><input type="date" class="inp inp-sm" id="tnEnd" value="${esc(d.end||'')}"></div>
-        <div class="frow"><label>시간</label><input type="time" class="inp inp-sm" id="tnTime" value="${esc(d.time||'')}"></div>
-        <div class="frow"><label>반복</label><select class="inp inp-sm" id="tnRec">${Object.keys(REC_LBL).map(k=>'<option value="'+k+'"'+(k===rc?' selected':'')+'>'+REC_LBL[k]+'</option>').join('')}</select></div>
-      </div>
-      <div class="frow" id="tnUntilRow" style="${rc?'':'display:none'}"><label>반복 종료</label><input type="date" class="inp inp-sm" id="tnUntil" value="${esc((d.recur&&d.recur.until)||'')}"></div>
-      <div class="frow4">
-        <div class="frow"><label>구분</label>
-          <select class="inp inp-sm" id="tnKind" data-act="tk.kind">
-            ${TK_KIND.map(([v,l])=>'<option value="'+v+'"'+(v===kind?' selected':'')+'>'+esc(l)+'</option>').join('')}
-          </select></div>
-        <div class="frow"><label>담당자</label>${ownSelHTML('tnAsg',own,people)}</div>
-        <div class="frow"><label>현장</label>${sitePickHTML('tnSite',d.site||'')}</div>
-        <div class="frow"><label>링크</label><input class="inp inp-sm" id="tnLink" maxlength="${LINK_MAX}" placeholder="https://…" value="${esc((lnk&&lnk.url)||'')}"></div>
-      </div>
-      <div id="tnBodySec">${tkBodyHTML(taskBody(d),kind)}</div>
+    <div class="pe-chips">
+      ${peDateChipHTML('tnDate',d.date,'tnEnd',d.end)}
+      ${chip('c-own',ic.me,'own','tnAsg',ownSelHTML('tnAsg',own,people))}
+      ${chip('c-site',ic.pin,'site','tnSite',sitePickHTML('tnSite',d.site||''))}
+      ${chip('c-sm',ic.kind,'kind','tnKind',peKindSelHTML('tnKind',kind))}
+      ${chip('c-sm',ic.clk,'time','tnTime','<input type="time" id="tnTime" aria-label="시간" value="'+esc(d.time||'')+'">')}
+      ${chip('c-sm',ic.rep,'rec','tnRec',peRecSelHTML('tnRec',rc))}
+      ${peLinkChipHTML('tnLink')}
+      ${chip('c-half',ic.rep,'until','tnUntil','<input type="date" id="tnUntil" aria-label="반복 종료" value="'+esc((d.recur&&d.recur.until)||'')+'">',rc?'':' hidden')}
     </div>
-  </div>`;
+    ${peLinkRowHTML('tnLink',lnk&&lnk.url)}
+  </div>`);
 }
-function tkBodyHTML(prog,kind){
-  return `<div class="frow"><label>내용</label><textarea class="inp inp-sm" id="tnProg" maxlength="2000" placeholder="${esc(kindLabel(kind))} 내용을 적으세요">${esc(prog)}</textarea></div>`;
-}
-/* 업무 구분을 바꾸면 본문 칸 구성이 달라진다 — 그 부분만 다시 그려 다른 입력을 지키지 않게 한다 */
 /* 업무 구분을 '공통'으로 고르면 담당자도 공통(빈 값)으로 — 공통 업무는 특정 담당자에게 걸지 않는다 */
 function kindOwnerSync(kindId,ownId){
   const k=$('#'+kindId),o=$('#'+ownId);
-  if(k&&o&&k.value==='gather'){o.value='';peColorSync();}   /* 609차: 값을 코드로 바꾸면 input 이 안 울린다 — 직접 부른다 */
-}
-function tkKindRefresh(){
-  const sec=$('#tnBodySec');if(!sec)return;
-  const kind=kindOf(($('#tnKind')&&$('#tnKind').value)||'');
-  const prog=($('#tnProg')&&$('#tnProg').value)||'';
-  sec.innerHTML=tkBodyHTML(prog,kind);
+  if(k&&o&&k.value==='gather'){o.value='';peColorSync();peChipSync();}   /* 609차: 값을 코드로 바꾸면 input 이 안 울린다 — 직접 부른다(993차: 담당 칩 글자도) */
 }
 function taskFormSave(sid,iid){
   S.tkDate={open:false,ym:'',a:'',b:''};const rp0=$('#tkRcPop');if(rp0)rp0.remove();
@@ -3629,7 +3541,7 @@ function taskFormSave(sid,iid){
   const _nu=!cur;   /* 627차: 신규 판별 — 신규면 소유·작성 이력, 기존이면 수정 이력 */
   store.putTask(sid,id,histPush({...(cur||{createdAt:Date.now(),...(S.live&&authUid()?{createdBy:authUid()}:{})}),
     text:t,kind:kindOf(($('#tnKind')&&$('#tnKind').value)||''),
-    prog:(($('#tnProg')&&$('#tnProg').value)||'').trim(),plan:'',
+    prog:String((cur&&cur.prog)||''),plan:String((cur&&cur.plan)||''),   /* 997차(사용자): 내용 칸 폐지 — 있던 값은 그대로 */   /* 991차: 칸이 없으면 있던 값 그대로 */
     site:siteV,
     date:dv,
     end:ev,
@@ -3664,7 +3576,7 @@ function tkFormDirty(){
   const cur=(key&&(S.tasks[sid]||{})[iid])||{};
   const v=id=>{const el=$('#'+id);return el?String(el.value||'').trim():'';};
   const was=x=>String(x||'').trim();
-  return v('tnTitle')!==was(cur.text)||v('tnProg')!==was(taskBody(cur));
+  return v('tnTitle')!==was(cur.text);
 }
 /* 970차(U3): Esc 는 달력 편집기와 같게 「저장하고 닫기」 — 바뀐 게 없으면 그냥 닫고, 제목이 비었으면 버릴지 묻는다 */
 function tkFormEsc(){
@@ -3757,7 +3669,7 @@ function tkMatch(sid,iid,it){
   const q=String(f.q||'').trim().toLowerCase();
   if(q){
     const asg=Object.keys(it.assignees||{}).map(id=>ownName(id)).join(' ');
-    const hay=[it.text,it.prog,it.body,it.plan,siteName(it.site),subjName(sid),asg,
+    const hay=[it.text,siteName(it.site),subjName(sid),asg,
       ].join(' ').toLowerCase();
     if(hay.indexOf(q)<0)return false;
   }
@@ -3953,8 +3865,19 @@ function rTasks(){
   restoreScroll();
   rTkNewOverlay();
   tkSnapTake();
+  tkEditAlign();
   if(S.tkNew){const t=$('#tnTitle');if(t&&document.activeElement!==t)t.focus();}   /* ⚠ 초점은 **새 업무**에서만 — 수정은 행 안에서 고치므로 자동 초점이 가면 그 칸만 면이 켜진 채 남는다(369차) */
 }
+/* 994차(사용자: 행 수정 배치 정돈): 아래 칩 줄을 **제목 칸 왼끝 ~ 날짜 칸 오른끝**에 맞춘다.
+   열 구성(권역·이름·현장 유무)과 칸 폭에 따라 두 자리가 달라져 고정 여백(72/61)으로는 칩이 이름 열 밑에서 시작하거나 날짜보다 모자랐다 — 그려진 칸을 재서 맞춘다 */
+function tkEditAlign(){
+  const it=$('.tk-item.editing');if(!it)return;
+  const rest=it.querySelector('.tk-editrest'),t=it.querySelector('.tk-row .tk-ttl .cell-inp'),d=it.querySelector('.tk-row .date-cell');
+  if(!rest||!t||!d)return;
+  const R=it.getBoundingClientRect(),a=t.getBoundingClientRect().left-R.left,b=R.right-d.getBoundingClientRect().right;
+  if(a>0&&b>0){rest.style.marginLeft=Math.round(a)+'px';rest.style.marginRight=Math.round(b)+'px';}
+}
+window.addEventListener('resize',()=>{if(S.tkEdit)requestAnimationFrame(tkEditAlign);});
 /* 새 업무 작성 모달 — 상태(S.tkNew)를 켜고 끄는 곳은 그대로 두고(핸들러·저장·닫기),
    rTasks 가 매번 여기서 오버레이를 상태에 맞춘다. 폼 로직은 인라인 시절과 동일(#tkNew·전역 위임).
    ⚠ 수정(S.tkEdit)은 지금처럼 목록 항목 자리에서 인라인으로 — 문맥을 잃지 않는다 */
@@ -3968,7 +3891,7 @@ function rTkNewOverlay(){
   /* 화면 한가운데 뜨는 모달이 아니라 **업무 추가 버튼에 붙는 팝업**으로 띄운다(327차).
      버튼이 없으면(보류함 등) 오른쪽 위에 붙인다 */
   const b=$('.tkq-add');
-  const W=Math.min(720,window.innerWidth-24);
+  const W=Math.min(380,window.innerWidth-24);   /* 993차: 칩 폼 — 달력 폼과 같은 폭(720 이면 칩이 늘어져 보인다) */
   let top=76,right=16;
   if(b){const r=b.getBoundingClientRect();top=Math.round(r.bottom+8);right=Math.round(window.innerWidth-r.right);}
   /* 아래로 넘치면 위쪽으로 붙인다 — 목록 끝 행을 고쳐도 폼이 화면 밖으로 나가지 않게 */
@@ -4306,7 +4229,7 @@ function nqSearch(q){
     const m=TM[sid]||{};
     Object.keys(m).forEach(iid=>{
       const it=m[iid];if(!it)return;
-      if(hit(it.text)||hit(it.body)||hit(it.prog)||hit(it.plan)||hit(siteName(it.site)))out.tasks.push({sid,iid,it});
+      if(hit(it.text)||hit(siteName(it.site)))out.tasks.push({sid,iid,it});
     });
   });
   (S.org.sites||[]).forEach(s=>{if(hit(s.name))out.sites.push(s);});
@@ -4323,7 +4246,7 @@ function subjName(sid){
 function rNq(){
   const box=$('#nqRes'),q=($('#nqQ')&&$('#nqQ').value||'').trim();
   if(!box)return;
-  if(!q){paintHTML(box,'<div class="nq-empty">업무 제목·진행경과·처리계획, 현장, 하자에서 찾습니다.</div>');return;}   /* ⚠ 615차: innerHTML 직접 대입은 paintHTML 서명과 어긋나 다음 렌더가 건너뛰어진다 */
+  if(!q){paintHTML(box,'<div class="nq-empty">업무 제목, 현장, 하자에서 찾습니다.</div>');return;}   /* ⚠ 615차: innerHTML 직접 대입은 paintHTML 서명과 어긋나 다음 렌더가 건너뛰어진다 */
   const r=nqSearch(q);
   /* 하자 절 — 자연어 해석(원본 NLQ · 생산자 ④): 현장·공종·지연·동호·공가를 조건 칩으로 풀고
      전 현장 미처리 목록에서 거른다. 뷰어는 첫 사용 때 목록을 받아 둔다(dfNqWarm). */
@@ -4343,10 +4266,11 @@ function rNq(){
     <div style="min-width:0"><div class="tt">${tt}</div><div class="sb">${esc(sb)}</div></div></div>`;
   const chipsHTML=dChips.length?'<div style="display:flex;flex-wrap:wrap;gap:4px;padding:4px 10px 2px">'+dChips.map(c=>'<span class="nq-chip">'+esc(c[0])+' · '+esc(c[1])+'</span>').join('')+'</div>':'';   /* ⚠ .ba 는 #view-defect 스코프 — 패널 전용 칩 클래스(615차) */
   paintHTML(box,
-    (r.tasks.length?'<div class="nq-g">업무 '+r.tasks.length+'</div>'+r.tasks.slice(0,20).map(({sid,iid,it})=>
-      item('i-tasks',nqMark(it.text,q),
-        subjName(sid)+(it.date?' · '+it.date+(it.end&&it.end!==it.date?'~'+it.end:''):''),
-        'data-act="nq.task" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" data-date="'+esc(it.date||'')+'"')).join(''):'')
+    (r.tasks.length?'<div class="nq-g">업무 '+r.tasks.length+'</div>'+r.tasks.slice(0,20).map(({sid,iid,it})=>{const p=taskAsPlan(sid,iid,it);
+      /* 994차(사용자): 업무 결과는 업무 카드와 같은 [색 원][제목 / 요약 줄][상태] — 날짜도 「9/22–9/29」 꼴 */
+      return '<div class="nq-item nq-task" data-act="nq.task" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" data-date="'+esc(it.date||'')+'">'
+        +planDotHTML(p)
+        +'<div class="nq-tc"><div class="tt">'+nqMark(it.text,q)+'</div>'+planMetaHTML(p,true)+'</div>'+stIcon(stEff(it))+'</div>';}).join(''):'')
     +(r.sites.length?'<div class="nq-g">하자처리 현황 · 현장 '+r.sites.length+'</div>'+r.sites.slice(0,10).map(s=>
       item('i-defect',nqMark(s.name,q),'하자처리 현황 보기',
         'data-act="nq.site" data-sid="'+esc(s.id)+'"')).join(''):'')
@@ -8053,7 +7977,7 @@ function recMenuHTML(){
     +'<div class="rl-menu-sep"></div>'
     +'<input class="rl-menu-q" placeholder="찾기" data-act="rec.menuSearch" value="'+esc(M.q||'')+'" autocomplete="off">'
     +'<div class="rl-menu-list" id="rlMenuList">'+recMenuListHTML()+'</div>'
-    +'<div class="rl-menu-foot"><button class="btn bg2 bsm" data-act="rec.menuClear">필터 해제</button><button class="btn bo bsm" data-act="rec.menuApply">적용</button></div>';
+    +'<div class="rl-menu-foot"><button class="btn bg2 bsm" data-act="rec.menuClear">필터 해제</button><button class="btn bp bsm" data-act="rec.menuApply">적용</button></div>';   /* 1000차: 적용 = 주 버튼(채움 칩) · 해제는 왼쪽 글자 */
 }
 function recMenuSyncAll(){
   const M=REC._menu;if(!M)return;
@@ -8439,13 +8363,14 @@ function rHold(){
   holdFit();
   if(!any){paintReset(box);box.innerHTML='';return;}   /* 953차: 비운 뒤 같은 목록이 다시 오면 paintHTML 이 건너뛰어 「1건」에 빈 목록이었다 */
   if(!list.length){paintReset(box);box.innerHTML='<div class="hold-empty">내 보류 업무가 없습니다.</div>';return;}
-  const md=x=>{if(!x)return '기한 없음';const t=toDate(x);return (t.getMonth()+1)+'/'+t.getDate();};
-  paintHTML(box,list.map(({sid,iid,it})=>
-    '<div class="hold-i" draggable="true" data-act="hold.go" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"'
+  /* 994차(사용자): 보류함도 일자 패널과 같은 업무 카드 — 끌기 손잡이 대신 상태 단추, 카드 자체를 끌어 달력 날짜에 놓는다.
+     누르면 업무로 이동(hold.go) · 상태 단추는 업무 현황과 같은 tk.st(보류 → 완료, Ctrl+Z 되돌리기) */
+  paintHTML(box,list.map(({sid,iid,it})=>{const p=taskAsPlan(sid,iid,it);
+    return '<div class="plan hold-i" draggable="true" data-act="hold.go" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"'
     +' data-tip="누르면 업무로 이동 · 달력 날짜로 끌어 놓으면 그 날짜로">'
-    +(x=>colDotHTML(planColor(x),'ro',!planOwners(x).length))(taskAsPlan(sid,iid,it))
-    +'<span class="t">'+esc(it.text||'제목 없음')+'</span>'
-    +'<span class="d">'+esc(md(it.date))+'</span></div>').join(''));
+    +planDotHTML(p)
+    +'<div class="plan-c"><div class="plan-t">'+riskMark(it.kind)+esc(it.text||'제목 없음')+'</div>'+planMetaHTML(p,'기한 없음')+'</div>'
+    +'<div class="plan-side">'+stIcon(stEff(it),' data-act="tk.st" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"')+'</div></div>';}).join(''));
 }
 /* 보류함 높이 — 옆 달력의 **날짜칸 두 개**를 넘지 않게 최대 높이만 준다(389차 지시).
    ⚠ 예전에는 height 로 못박아 보류가 2~3건뿐이어도 열 바닥까지 빈 칸이 남았다(실사용 지적).
@@ -8541,11 +8466,12 @@ function morningReview(){
   if(last===todayStr())return;                            /* 하루 한 번 */
   const list=mrvList(),holds=mineHolds();                 /* 919차: 보류 업무도 매일 같이 묻는다 — 보류함으로 넘어가면 다시 볼 일이 없어 쌓였다 */
   if(!list.length&&!holds.length){try{localStorage.setItem(mrvKey(),todayStr());}catch(e){}return;}
-  const md=x=>{const t=toDate(x);return (t.getMonth()+1)+'/'+t.getDate();};
   const row=({sid,iid,it},hold)=>{
-    const sub=[it.end&&it.end!==it.date?md(it.date)+'–'+md(it.end):(it.date?md(it.date):''),kindLabel(it.kind),siteName(it.site)].filter(Boolean).join(' · ');
+    /* 994차(사용자): 업무 카드와 같은 판·원·제목·요약 줄(planMetaHTML) — 예전엔 「일반」이 매번 찍히고 현장 이름을 다 썼다 */
+    const p=taskAsPlan(sid,iid,it);
     return '<div class="mrv-i" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"'+(hold?' data-hold="1"':'')+'>'
-      +'<div class="mrv-b"><div class="t">'+esc(it.text||'제목 없음')+'</div><div class="s">'+esc(sub)+'</div></div>'
+      +planDotHTML(p)
+      +'<div class="mrv-b"><div class="t">'+riskMark(it.kind)+esc(it.text||'제목 없음')+'</div>'+planMetaHTML(p,true)+'</div>'
       +'<div class="mrv-act">'
       +'<button class="mrv-ib" data-act="mrv.done" data-tip="완료" aria-label="완료"><svg class="icn"><use href="#i-check"></use></svg></button>'
       +'<button class="mrv-ib" data-act="mrv.today" data-tip="오늘로 이동" aria-label="오늘로 이동"><svg class="icn"><use href="#i-arr-in"></use></svg></button>'
@@ -9882,14 +9808,15 @@ function rBk(){
 /* ⚠ 달력 '칸'의 내용·클래스는 이벤트만 새로 받아서는 안 바뀐다 — 칸을 다시 그리게 한다 */
 function calRerender(){try{if(CAL){CAL.refetchEvents();CAL.render();}}catch(e){}}
 const mdLabel=ds=>{const t=toDate(ds);return (t.getMonth()+1)+'월 '+t.getDate()+'일';};
-let _ctxEl=null,_ctxEsc=null,_ctxDown=null;
+let _ctxEl=null,_ctxEsc=null,_ctxDown=null,_ctxScr=null;
 function closeCtx(){
   if(!_ctxEl)return;
+  if(_ctxEl._a)_ctxEl._a.classList.remove('dd-open');   /* 999차: 연 칸의 「열림」 테두리 */
   _ctxEl.remove();_ctxEl=null;
   if(_ctxDown){document.removeEventListener('mousedown',_ctxDown,true);_ctxDown=null;}
-  document.removeEventListener('scroll',closeCtx,true);
+  if(_ctxScr){document.removeEventListener('scroll',_ctxScr,true);_ctxScr=null;}
   removeEventListener('blur',closeCtx);
-  if(_ctxEsc){document.removeEventListener('keydown',_ctxEsc);_ctxEsc=null;}
+  if(_ctxEsc){document.removeEventListener('keydown',_ctxEsc,true);_ctxEsc=null;}   /* 999차: 캡처로 붙인다(↑↓ 가 select 의 기본 값 바꾸기보다 먼저) */
 }
 /* 표를 탭 구분 텍스트로 — 엑셀에 그대로 붙는다 */
 function tblText(tbl){
@@ -9897,24 +9824,32 @@ function tblText(tbl){
   return [...tbl.querySelectorAll('tr')].map(tr=>
     [...tr.querySelectorAll('th,td')].map(td=>String(td.textContent||'').trim()).join('\t')).join('\n');
 }
-function openCtx(x,y,items,anchor){
+function openCtx(x,y,items,anchor,o){
   /* anchor: 메뉴를 연 버튼. mousedown 닫기가 이 버튼 위에서 먼저 발동하면 click 의 토글 분기가
      '이미 닫힘'을 보고 다시 열어 — 아무리 눌러도 계속 열려 있게 된다(게시월 토글이 안 되던 원인).
-     anchor 위 mousedown 은 닫지 않고, click 쪽 토글이 닫는다. */
+     anchor 위 mousedown 은 닫지 않고, click 쪽 토글이 닫는다.
+     999차 o: {dd: 연 선택 상자 · minW: 최소 폭(칸 폭) · flip: 칸 사각형(아래 자리가 모자라면 위로 편다) · kb: 키보드로 열었다(현재 값에 초점)} */
   closeCtx();
   const list=items.filter(Boolean);
   if(!list.length)return;
+  o=o||{};
   const el=document.createElement('div');
   el.className='ctxmenu';el.setAttribute('role','menu');
   el.innerHTML=list.map((it,i)=>it.sep
     ?'<div class="ctx-sep"></div>'
-    :'<button class="ctx-it'+(it.danger?' dg':'')+(it.on?' on':'')+(it.check?' chk':'')+'" role="menuitem" data-ci="'+i+'">'
+    :'<button class="ctx-it'+(it.danger?' dg':'')+(it.on?' on':'')+(it.check?' chk':'')+'" role="menuitem" data-ci="'+i+'"'+(it.disabled?' disabled':'')+'>'
       +(it.check?'<span class="ctx-k"><svg class="icn" aria-hidden="true"><use href="#i-check"></use></svg></span>':'')
-      +esc(it.label)+'</button>').join('');   /* it.on: 현재 값(575차) · it.check: 체크 상자(602차) */
+      +'<span class="ctx-l">'+esc(it.label)+'</span>'
+      +(it.on&&!it.check?'<svg class="icn ctx-ck" aria-hidden="true"><use href="#i-check"></use></svg>':'')+'</button>').join('');   /* it.on: 현재 값(575차 · 999차 오른쪽 ✓) · it.check: 체크 상자(602차) */
+  if(o.minW)el.style.minWidth=Math.min(Math.max(150,o.minW),innerWidth-16)+'px';   /* 칸보다 좁지 않게 · 필터 목록 최소 폭 150 */
   document.body.appendChild(el);
   const r=el.getBoundingClientRect();
+  if(o.flip&&y+r.height>innerHeight-8&&o.flip.top-r.height-6>=8)y=o.flip.top-r.height-6;   /* 999차: 아래가 모자라면 칸 위로 */
+  if(o.flip&&x+r.width>innerWidth-8)x=Math.max(8,o.flip.right-r.width);   /* 1000차: 오른쪽이 모자라면 칸 오른쪽 끝에 맞춘다 — 화면 끝에 밀려 칸과 어긋나던 것(하자 연도) */
   el.style.left=Math.max(6,Math.min(x,innerWidth-r.width-8))+'px';
   el.style.top=Math.max(6,Math.min(y,innerHeight-r.height-8))+'px';
+  if(o.dd){el.classList.add('dd');el._dd=o.dd;el._a=anchor;if(anchor)anchor.classList.add('dd-open');
+    const on=el.querySelector('.ctx-it.on');if(on)on.scrollIntoView({block:'nearest'});}
   el.addEventListener('click',e=>{
     const b=e.target.closest('.ctx-it');if(!b)return;
     e.stopPropagation();
@@ -9930,11 +9865,46 @@ function openCtx(x,y,items,anchor){
     if(e.target.closest('.ctxmenu'))return;
     if(anchor&&(e.target===anchor||anchor.contains(e.target)))return;   /* 토글은 click 이 맡는다 */
     closeCtx();};
-  setTimeout(()=>{document.addEventListener('mousedown',_ctxDown,true);
-    document.addEventListener('scroll',closeCtx,true);addEventListener('blur',closeCtx);},0);
-  _ctxEsc=e=>{if(e.key==='Escape')closeCtx();};
-  document.addEventListener('keydown',_ctxEsc);
+  _ctxScr=e=>{if(e.target&&e.target.nodeType===1&&el.contains(e.target))return;closeCtx();};   /* 999차: 긴 목록은 메뉴 안에서 구른다 — 그 스크롤로는 닫지 않는다 */
+  setTimeout(()=>{if(_ctxEl!==el)return;document.addEventListener('mousedown',_ctxDown,true);
+    document.addEventListener('scroll',_ctxScr,true);addEventListener('blur',closeCtx);},0);
+  /* 999차: 키보드 — ↑↓·Home·End 로 항목 사이를 옮기고 Enter·Space(단추 기본)로 고른다 · Esc 는 닫고 연 칸으로 초점을 돌린다 · Tab 은 닫기 */
+  _ctxEsc=e=>{
+    if(e.key==='Escape'){e.preventDefault();e.stopPropagation();const a=o.dd;closeCtx();if(a&&a.isConnected)a.focus({preventScroll:true});return;}
+    if(e.key==='Tab'){closeCtx();return;}
+    if(!/^(ArrowDown|ArrowUp|Home|End)$/.test(e.key))return;
+    const bs=[...el.querySelectorAll('.ctx-it:not([disabled])')];if(!bs.length)return;
+    e.preventDefault();e.stopPropagation();
+    const i=bs.indexOf(document.activeElement),on=bs.findIndex(b=>b.classList.contains('on'));
+    const n=e.key==='Home'?0:e.key==='End'?bs.length-1:i<0?(on<0?0:on):(i+(e.key==='ArrowDown'?1:-1)+bs.length)%bs.length;
+    bs[n].focus({preventScroll:true});bs[n].scrollIntoView({block:'nearest'});};
+  document.addEventListener('keydown',_ctxEsc,true);
+  if(o.kb){const f=el.querySelector('.ctx-it.on:not([disabled])')||el.querySelector('.ctx-it:not([disabled])');if(f)f.focus({preventScroll:true});}
 }
+/* ═══ 999차(사용자): 드롭다운 통일 — 앱의 모든 선택 상자(select)는 OS 목록 대신 앱 메뉴(openCtx = 필터 목록과 같은 판)를 연다 ═══
+   select 는 그대로 둔다(값·change 이벤트·data-act 처리는 예전 그대로) — 여는 동작만 가로채 메뉴로 보여 주고, 고르면 값을 넣고 input·change 를 보낸다.
+   닫힌 칸은 CSS 가 필터 칩 모양으로(index.html 999차). 업무 폼 칩(.pe-chip) 안의 투명 select 는 칩이 곧 칸이다.
+   가로채는 곳: 마우스(mousedown) · 터치(touchend — 폰의 OS 선택창 대신) · 키보드(Space·Enter·F4·Alt+↑↓). ↑↓ 만 누르면 예전처럼 목록 없이 값이 바뀐다 */
+const ddSkip=s=>!(s instanceof HTMLSelectElement)||s.multiple||s.disabled;
+function ddOpen(s,kb){
+  if(_ctxEl&&_ctxEl._dd===s){closeCtx();return;}   /* 다시 누르면 닫기 */
+  const a=s.closest('.pe-chip')||s,r=a.getBoundingClientRect();
+  const items=[...s.options].map((op,i)=>({label:op.textContent,on:i===s.selectedIndex,disabled:op.disabled,act:()=>{
+    if(!s.isConnected)return;   /* 고르는 사이 다시 그려졌다 */
+    if(s.selectedIndex!==i){s.selectedIndex=i;s.dispatchEvent(new Event('input',{bubbles:true}));s.dispatchEvent(new Event('change',{bubbles:true}));}
+    if(kb)s.focus({preventScroll:true});}}));
+  openCtx(r.left,r.bottom+6,items,a,{dd:s,minW:r.width,flip:r,kb});
+}
+addEventListener('mousedown',e=>{const s=e.target;if(e.button!==0||ddSkip(s))return;e.preventDefault();ddOpen(s);},true);
+let _ddT=null;
+addEventListener('touchstart',e=>{const s=e.target,t=e.touches[0];_ddT=(!ddSkip(s)&&t&&e.touches.length===1)?{s,x:t.clientX,y:t.clientY}:null;},{capture:true,passive:true});
+addEventListener('touchend',e=>{const d=_ddT,t=e.changedTouches[0];_ddT=null;
+  if(!d||e.target!==d.s||!t||Math.hypot(t.clientX-d.x,t.clientY-d.y)>10)return;   /* 끌어서 구른 손가락은 여는 게 아니다 */
+  e.preventDefault();ddOpen(d.s);},{capture:true,passive:false});   /* 기본 동작(클릭·초점)을 막아야 OS 선택창이 안 뜬다 */
+addEventListener('keydown',e=>{const s=e.target;if(ddSkip(s))return;
+  if(e.key===' '||e.key==='Enter'||e.key==='F4'||(e.altKey&&(e.key==='ArrowDown'||e.key==='ArrowUp'))){e.preventDefault();ddOpen(s,true);}},true);
+/* 메뉴 위의 누름은 다른 '바깥 누르면 닫기'(필터 팝업·위젯 팝업·행 수정 등)에 닿지 않게 한다 — 메뉴는 body 에 붙어 있어 그들 눈엔 바깥이다 */
+['mousedown','pointerdown','touchstart'].forEach(t=>addEventListener(t,e=>{if(_ctxEl&&e.target&&e.target.nodeType===1&&_ctxEl.contains(e.target))e.stopPropagation();},{capture:true,passive:true}));
 function copyText(t,msg){
   const done=()=>toast(msg||'복사했습니다');
   if(navigator.clipboard&&navigator.clipboard.writeText)
@@ -10064,18 +10034,19 @@ function copyText(t,msg){
   document.addEventListener('touchcancel',finish,{passive:true});
 })();
 /* 우클릭 대상 — 달력 날짜 칸 · 업무 막대 · 업무 카드 · 미처리 목록(엑셀식 열 메뉴) */
-/* 704차: 모바일 달력 제스처 — 좌우 스와이프 = 월 이동(‹ › 없음), 위로 = 점 달력+패널, 아래로(패널 맨 위·점 달력) = 큰 달력.
-   편집 중(입력 상자)에는 안 잡는다. 700ms 넘는 느린 움직임·대각선은 무시
-   733차: 폰 세로(미니 격자)는 **손가락을 따라간다** — 가로는 3장 트랙(.mc-track)을 transform 으로 끌고, 세로는 셀 높이(--mch)를
-   46px↔전체 사이에서 보간하며 점↔막대·패널을 --mcp 로 섞는다. 놓으면 거리·속도로 스냅. 가로(mcal-land)·태블릿은 예전 방식 그대로. */
+/* 704차: 모바일 달력 제스처 — 좌우 스와이프 = 월 이동(‹ › 없음). 편집 중(입력 상자)에는 안 잡는다. 700ms 넘는 느린 움직임·대각선은 무시
+   733차: 폰 세로는 **손가락을 따라간다** — 3장 트랙(.mc-track)을 transform 으로 끌고 놓으면 거리·속도로 스냅.
+   업무 시트(987차): 좌우 = 하루 넘김(옆 날 미리보기) · 목록 맨 위에서 아래로 = 따라 내려와 닫기.
+   988차: 점 달력↔큰 달력 세로 끌기(셀 높이 --mch·--mcp 보간, 733~986차)는 걷었다. 가로(mcal-land)·태블릿은 예전 방식 그대로. */
 (function(){
   let sx=0,sy=0,st=0,tgt=null,dpTop=-1;
   /* ── 폰 미니 격자 드래그 상태 */
-  let drag=null;   /* {axis:'x'|'y', track, box, w, h0, from} */
+  let drag=null;   /* {axis:'x'|'dp'|'mds', …} */
   const phone=()=>isMob()&&!WIDGET&&!mcalIsLand()&&S.view==='calendar';
   const track=()=>$('#calMini .mc-track');
-  function dragEnd(){document.body.classList.remove('mcal-drag','mcal-settle');S.mcalDrag=false;const b=$('#view-calendar');if(b){b.style.removeProperty('--mch');b.style.removeProperty('--mcp');}
-    $$('#view-calendar .dp-ghost').forEach(g=>g.remove());const c=$('#view-calendar .dp-col .day-panel');if(c){c.style.transition='';c.style.transform='';}drag=null;}
+  function dragEnd(){
+    $$('#view-calendar .dp-ghost').forEach(g=>g.remove());const c=$('#view-calendar .dp-col .day-panel');if(c){c.style.transition='';c.style.transform='';}
+    const cc=$('#view-calendar .dp-col');if(cc){cc.style.transition='';cc.style.transform='';}drag=null;}   /* 987차: 업무 시트 끌기 */
   document.addEventListener('touchstart',e=>{
     tgt=null;if(WIDGET||S.view!=='calendar')return;   /* 705차: 태블릿(터치·넓은 화면)도 좌우 스와이프로 월 이동 — 상하 전환은 폰만 */
     const t=e.touches[0];sx=t.clientX;sy=t.clientY;st=Date.now();tgt=e.target;
@@ -10091,8 +10062,8 @@ function copyText(t,msg){
     if(!drag){
       if(Math.abs(dx)<8&&Math.abs(dy)<8)return;
       if(!inCal&&!inDp)return;
-      if(Math.abs(dx)>Math.abs(dy)){   /* 가로 = 월 트랙 끌기(격자 위에서만) · 903차: 점 달력의 업무 패널 위에서는 하루 넘김(옆 날 미리보기) */
-        if(inDp&&S.mcal==='mini'&&!tgt.closest('.dp-body [data-act],button,a,input,textarea,select')){
+      if(Math.abs(dx)>Math.abs(dy)){   /* 가로 = 월 트랙 끌기(격자 위에서만) · 903차: 업무 패널(987차부터 업무 시트) 위에서는 하루 넘김(옆 날 미리보기) */
+        if(inDp&&mdsOn()&&!tgt.closest('.dp-body [data-act],button,a,input,textarea,select')){
           const col=$('#view-calendar .dp-col'),card=col&&col.querySelector('.day-panel:not(.dp-ghost)');if(!col||!card)return;
           const cur=S.selDate||todayStr();
           col.insertAdjacentHTML('beforeend',dpGhostHTML(addDays(cur,-1)).replace('dp-ghost','dp-ghost prev')+dpGhostHTML(addDays(cur,1)).replace('dp-ghost','dp-ghost next'));
@@ -10105,17 +10076,16 @@ function copyText(t,msg){
           return;
         }
         if(!inCal)return;
+        if(mdsOn())mdsClose();   /* 987차: 달을 넘기면 시트는 닫는다(올려 둔 이번 달 판과 옆 판이 어긋나 보인다) */
         const tr=track();if(!tr)return;
         drag={axis:'x',track:tr,w:tr.parentElement.clientWidth};
-      }else{   /* 세로 = 셀 높이 보간. 큰 달력에서 위로 · 점 달력(또는 패널 맨 위)에서 아래로 */
-        const mode=S.mcal;
-        if(!(inCal&&((mode==='full'&&dy<0)||(mode==='mini'&&dy>0)))&&!(inDp&&mode==='mini'&&dy>0&&dpTop<=0))return;
-        const box=$('#view-calendar');if(!box)return;   /* 변수는 달력·패널 공통 조상에 — 패널(.dp-col)이 #calMini 의 형제라 거기 두면 안 닿는다 */
-        drag={axis:'y',box,from:mode,h0:mode==='full'?mcalFullH():MCAL_MINI_H};
-        document.body.classList.add('mcal-drag');S.mcalDrag=true;   /* redraw(resize) 가 mcalSet 으로 드래그 상태를 지우지 않게 — iOS 는 끌던 중 주소창 접힘으로 resize 가 온다 */
+      }else{   /* 세로 = 업무 시트 끌어내리기만(987차) — 목록이 맨 위일 때 아래로 끌면 따라 내려오고, 놓으면 닫히거나 제자리 */
+        if(!(inDp&&mdsOn()&&dy>0&&dpTop<=0))return;
+        const col=$('#view-calendar .dp-col');if(!col)return;col.style.transition='none';drag={axis:'mds',col};
       }
     }
     e.preventDefault();
+    if(drag.axis==='mds'){drag.col.style.transform='translateY('+Math.max(0,dy)+'px)';return;}
     if(drag.axis==='dp'){
       const x=Math.max(-drag.w,Math.min(drag.w,dx));
       drag.card.style.transform='translateX('+x+'px)';
@@ -10123,20 +10093,20 @@ function copyText(t,msg){
       if(pv)pv.style.transform='translateX('+(x-drag.w)+'px)';if(nx)nx.style.transform='translateX('+(x+drag.w)+'px)';
     }else if(drag.axis==='x'){
       drag.track.style.transform='translateX(calc(-33.3333% + '+Math.round(dx)+'px))';
-    }else{
-      const full=mcalFullH(),mini=MCAL_MINI_H;
-      const h=Math.max(mini,Math.min(full,drag.h0+dy/5));   /* 5줄(5행 단위)이 함께 늘므로 달력 전체 높이가 손가락과 1:1 로 따라간다(903차: 6→5) */
-      const p=(h-mini)/Math.max(1,full-mini);
-      drag.box.style.setProperty('--mch',h.toFixed(1)+'px');
-      drag.box.style.setProperty('--mcp',p.toFixed(3));
     }
   },{passive:false});
   document.addEventListener('touchend',e=>{
     if(!tgt||!tgt.closest)return;
     if(tgt.closest('input,textarea,select,[contenteditable],#ymPop,.pe-wrap,.plan-ed,#mo'))return;
     const t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy,dt=Date.now()-st;tgt0=tgt;tgt=null;
-    if(drag){   /* 폰 미니 격자 — 스냅 */
+    if(drag){   /* 폰 세로 — 스냅 */
       const d=drag;
+      if(d.axis==='mds'){   /* 987차: 80px 넘게 또는 빠르게 내리면 닫는다 */
+        drag=null;const v=dy/Math.max(1,dt);
+        d.col.style.transition='';d.col.style.transform='';
+        if(dy>80||v>0.35)mdsClose();
+        return;
+      }
       if(d.axis==='dp'){   /* 903차: 패널 하루 넘김 — 거리·속도로 스냅, 넘어가면 그날을 선택하고 진짜 패널로 갈아 끼운다 */
         const v=Math.abs(dx)/Math.max(1,dt);
         const go=(Math.abs(dx)>d.w*0.25||v>0.35)&&Math.abs(dx)>24?(dx<0?1:-1):0;
@@ -10148,9 +10118,11 @@ function copyText(t,msg){
         const pv=d.col.querySelector('.dp-ghost.prev'),nx=d.col.querySelector('.dp-ghost.next');
         if(pv)pv.style.transform='translateX('+(x-d.w)+'px)';if(nx)nx.style.transform='translateX('+(x+d.w)+'px)';
         let fired=false;const fin=()=>{if(fired)return;fired=true;
-          d.col.querySelectorAll('.dp-ghost').forEach(g=>g.remove());
-          d.card.style.transition='';d.card.style.transform='';
-          if(go){selDate(addDays(d.cur,go),true);rCalMini&&rCalMini();}   /* 달이 바뀌면 selDate 안에서 달력도 따라간다 */
+          const clean=()=>{d.col.querySelectorAll('.dp-ghost').forEach(g=>g.remove());d.card.style.transition='';d.card.style.transform='';};
+          if(go){const nd=addDays(d.cur,go);
+            if(mdsOn()&&ymOf(nd)!==ymOf(d.cur)){mdsMonthSlide(nd,go,clean);return;}   /* 989차: 시트에서 달이 바뀌면 달력이 옆 달로 넘어간다 — 옆 날 판은 새 날이 그려질 때까지 둔다(먼저 걷으면 옛 날이 잠깐 되돌아 보였다) */
+            clean();selDate(nd,true);rCalMini&&rCalMini();return;}   /* 달이 바뀌면 selDate 안에서 달력도 따라간다 */
+          clean();
         };
         d.card.addEventListener('transitionend',fin,{once:true});setTimeout(fin,220);
         return;
@@ -10168,36 +10140,10 @@ function copyText(t,msg){
         tr.addEventListener('transitionend',fin);setTimeout(fin,360);
         return;
       }
-      /* 세로 — 진행률·속도로 목표를 정하고 그 높이까지 애니메이션한 뒤 모드를 확정한다 */
-      const full=mcalFullH(),mini=MCAL_MINI_H;
-      const cur=parseFloat(d.box.style.getPropertyValue('--mch'))||d.h0;
-      const p=(cur-mini)/Math.max(1,full-mini);
-      const vy=dy/Math.max(1,dt);   /* px/ms — 0.35 넘으면 방향대로 */
-      let target=p>0.5?'full':'mini';
-      if(Math.abs(vy)>0.35)target=vy>0?'full':'mini';
-      const toH=target==='full'?full:mini;
-      document.body.classList.remove('mcal-drag');document.body.classList.add('mcal-settle');
-      d.box.style.setProperty('--mch',cur+'px');
-      requestAnimationFrame(()=>{d.box.style.setProperty('--mch',toH+'px');d.box.style.setProperty('--mcp',target==='full'?'1':'0');});
-      let fired=false;const fin=()=>{if(fired)return;fired=true;document.body.classList.remove('mcal-settle');drag=null;S.mcalDrag=false;mcalSet(target);};
-      setTimeout(fin,Math.abs(toH-cur)<1?0:340);
-      drag=null;
-      return;
     }
     if(dt>700||!CAL)return;
     const inCal=!!tgt0.closest('#view-calendar .cal-card'),inDp=!!tgt0.closest('#view-calendar .dp-col');
     if(!inCal&&!inDp)return;
-    /* 899차(사용자): 폰에서 업무 패널을 좌우로 밀면 **하루씩** 옮긴다 — 903차: 점 달력에서는 위 drag.axis==='dp' 트랙이 맡고, 여기는 가로 모드 시트만 */
-    if(phone()&&inDp&&S.mcal!=='mini'&&Math.abs(dx)>60&&Math.abs(dy)<40&&!tgt0.closest('.dp-body [data-act],button,a,input,textarea,select')){
-      const ds=addDays(S.selDate||todayStr(),dx<0?1:-1);
-      const col=$('#view-calendar .dp-col');
-      if(col){col.style.transition='none';col.style.transform='translateX('+(dx<0?12:-12)+'px)';col.style.opacity='.6';}
-      selDate(ds,true);   /* 달이 바뀌면 selDate 안에서 CAL.gotoDate 로 따라간다 */
-      rCalMini&&rCalMini();
-      if(col){requestAnimationFrame(()=>{col.style.transition='transform .18s ease-out,opacity .18s';col.style.transform='';col.style.opacity='';
-        setTimeout(()=>{col.style.transition='';},220);});}
-      return;
-    }
     if(phone())return;   /* 733차: 폰 세로는 위 드래그 경로가 전부 맡는다 */
     if(Math.abs(dx)>60&&Math.abs(dy)<40){if(dx<0)CAL.next();else CAL.prev();return;}
     if(!isMob())return;
@@ -10478,7 +10424,7 @@ function go(view){
   if(S.view==='calendar'&&view!=='calendar'&&S.planEdit)closePlanEdit();
   if(S.view==='tasks'&&view!=='tasks'&&(S.tkNew||S.tkEdit)&&!(typeof tkFormDirty==='function'&&tkFormDirty())){S.tkNew=null;S.tkEdit=null;S.tkEditOcc='';}   /* 적던 내용이 있으면 건드리지 않는다 */
   S.view=view;
-  S.planOpen='';S.tkOpen=null;   /* 펼쳐 둔 카드는 화면을 옮기면 접는다(일정·업무 목록 모두) */
+  S.tkOpen=null;   /* 짚어 둔 행은 화면을 옮기면 푼다 */
   pickClear();   /* 655차: 화면을 옮기면 골라 둔 업무도 푼다 — 안 그러면 돌아왔을 때 남은 선택에 일괄 적용된다 */
   if(S.dpSheet)dpSheet(false);  mselClose();
   $$('.view').forEach(v=>v.classList.toggle('act',v.id==='view-'+view));
@@ -10486,8 +10432,9 @@ function go(view){
   $('#tbt').textContent=VIEW_TTL[view];
   /* ⚠ 30ms 뒤에 크기를 맞추면 그 사이 **이전 화면 기준 폭**으로 한 번 그려졌다가 늘어난다 —
      화면이 바뀐 직후 곧바로 맞추고, 레이아웃이 잡힌 다음 프레임에 한 번 더 보정한다(355차) */
-  if(view==='calendar'&&isMob()&&!WIDGET)mcalSet(S.mcal||'full');   /* 704차 */
-  else{document.body.classList.remove('mcal-full','mcal-mini');}
+  if(view==='calendar'&&isMob()&&!WIDGET)mcalSet();   /* 704차 */
+  else{document.body.classList.remove('mcal-full');}
+  if(view!=='calendar')mdsClose();   /* 987차 */
   if(view==='calendar'&&CAL){
     /* ⚠ 숨겨져 있던 동안 달력은 크기를 모른다 — 그대로 보이면 **이전 화면 폭**으로 한 번 그려졌다가
        늘어나며 반짝인다. 크기를 맞출 때까지 감춰 두고, 다 맞춘 다음 프레임에 보인다(355차) */
@@ -10623,6 +10570,7 @@ function mobClose(){
   /* ⚠ 864차: 사이드바가 열려 있으면 그것부터 닫는다 — 시트를 먼저 닫느라 오른쪽 빈 곳을 눌러도 안 닫히는 것처럼 보였다 */
   const sb=$('#sidebar');
   if(sb&&sb.classList.contains('mob-open')){sb.classList.remove('mob-open');$('#scrim').classList.remove('on');return;}   /* 898차: 스크림은 사이드바 전용 — 패널이 열려 있어도 걷는다(음영이 남던 버그) */
+  if(mdsOn()){mdsClose();return;}   /* 987차 */
   if(S.dpSheet){dpSheet(false);return;}
   if(sb)sb.classList.remove('mob-open');$('#scrim').classList.remove('on');}
 
@@ -10661,35 +10609,18 @@ const ACT={
     if(pe&&!pe.orig){const t=$('#peTitle');if(t){t.focus();t.select();return;}}   /* 이미 새 업무 폼이면 제목으로 */
     openPlanEdit(null,S.selDate,S.selEnd||'');},
   'plan.cancel':closePlanEdit,
-  'plan.more':()=>{
-    const box=$('#dpEdit');if(!box)return;
-    box.classList.toggle('adv-on');},
-  /* 색 원 — 누르면 팔레트 팝오버. 읽기 카드에서 열면 data-pid 로 그 업무에 바로 적용된다 */
-  'plan.color':btn=>{
-    const old=$('#colPop');
-    if(old){closeColPop();return;}
-    /* ⚠ 화면을 오가면 안 보이는 화면의 업무 목록 폼(#tkNew)이 DOM 에 남는다 —
-       존재 여부가 아니라 '누른 색 원이 어느 폼 안인가'로 대상을 정한다 */
-    const inTk=!!btn.closest('#tkNew');
-    const cur=inTk?((($('#tnColor')&&$('#tnColor').value))||'auto')
-      :((S.planEdit&&S.planEdit.draft&&S.planEdit.draft.color)||'auto');
-    const pop=document.createElement('div');
-    pop.id='colPop';pop.className='col-pop';
-    pop.dataset.scope=inTk?'tk':'plan';
-    pop.innerHTML=colPopHTML(cur);
-    /* ⚠ 카드·목록에 overflow 가 걸려 있어 그 안에 넣으면 잘린다 — 화면 최상위에 띄우고 좌표만 맞춘다 */
-    document.body.appendChild(pop);
-    const r=btn.getBoundingClientRect(),w=pop.offsetWidth,h=pop.offsetHeight,M=8;
-    let x=Math.min(Math.max(M,r.left),Math.max(M,innerWidth-w-M));
-    let y=r.bottom+6;if(y+h>innerHeight-M)y=Math.max(M,r.top-h-6);
-    pop.style.left=Math.round(x)+'px';pop.style.top=Math.round(y)+'px';
-    cpPaint(pop,(cur&&cur!=='auto')?cur:'#3E71D2');
-    setTimeout(()=>document.addEventListener('click',colOutside,true),0);},
+  /* 992차: 링크 칩 — 칩 칸이 좁아 주소를 칩 안에 못 넣는다. 누르면 칩 줄 아래에 한 줄짜리 주소 칸을 펼치고(다시 누르면 접힘),
+     칸 끝 ✕ 는 주소를 비운다(data-clr). 주소가 있으면 칩은 「링크」로 채워진다(peChipSync) */
+  'pe.link':el=>{   /* 993차: 달력·업무 현황 폼 공용 — 누른 폼(.pe-f2) 안에서 찾는다 */
+    const root=el.closest('.pe-f2'),row=root&&root.querySelector('.pe-lnk'),inp=row&&row.querySelector('input');if(!inp)return;
+    if(el.dataset.clr){inp.value='';inp.focus();inp.dispatchEvent(new Event('input',{bubbles:true}));return;}   /* 자동 저장·칩 글자는 input 을 듣는다 */
+    row.hidden=!row.hidden;
+    const c=root.querySelector('.pe-chip.c-lnk');if(c)c.classList.toggle('on',!row.hidden);
+    if(!row.hidden)inp.focus();},
   /* 970차(U4): 카드 본문 클릭은 plan.body(앱=편집 · 위젯·권한 없음=펼쳐 보기) — 예전 plan.open 은 거기로 합쳤다 */
   'plan.body':el=>{const p=findPlan(el.dataset.pid);if(!p)return;
-    if(!WIDGET&&canEditTask(p,p.sid)){openPlanEdit(p,null,null,el.dataset.occ||'');return;}
-    const card=el.closest('.plan.has-det');if(!card)return;   /* 펼쳐 보기(예전 plan.open) */
-    const on=card.classList.toggle('open');S.planOpen=on?el.dataset.pid:'';},
+    if(canEditTask(p,p.sid)){openPlanEdit(p,null,null,el.dataset.occ||'');return;}   /* 991차: 위젯도 */
+    denyTask();},   /* 997차: 내용 폐지로 펼쳐 읽기도 없다 — 고칠 수 없는 이유를 알린다 */
   'plan.edit':el=>{const p=findPlan(el.dataset.pid);if(!p)return;if(!canEditTask(p,p.sid)){denyTask();return;}openPlanEdit(p,null,null,el.dataset.occ||'');},
   /* 상태 배지 — 누를 때마다 예정→진행→완료→보류 순환.
      편집 폼에서는 draft 만 바꾸고 배지 DOM 을 제자리에서 갈아 끼운다(폼을 다시 그리면 입력 중인 값이 날아간다) */
@@ -10803,8 +10734,8 @@ const ACT={
     if(el.dataset.zone==='rows')PIV.rows.splice(Number(el.dataset.i),1);else PIV.col=null;recRender();},
   'rec.pvVal':el=>{const r=el.getBoundingClientRect();
     openCtx(r.left,r.bottom+4,[
-      {label:(PIV.val==='count'?'✓ ':'')+'건수',act:()=>{PIV.val='count';recRender();}},
-      {label:(PIV.val==='avgDelay'?'✓ ':'')+'평균 지연일',act:()=>{PIV.val='avgDelay';recRender();}}]);},
+      {label:'건수',on:PIV.val==='count',act:()=>{PIV.val='count';recRender();}},
+      {label:'평균 지연일',on:PIV.val==='avgDelay',act:()=>{PIV.val='avgDelay';recRender();}}]);},   /* 999차: ✓ 는 메뉴가 오른쪽에 붙인다 */
   'rec.pvPct':()=>{PIV.pct=!PIV.pct;const b=$('#pvBody');if(b)b.innerHTML=pivTableHTML();const t=$('.pv-pct-tg');if(t){t.classList.toggle('on',PIV.pct);t.setAttribute('aria-pressed',PIV.pct?'true':'false');}},
   'rec.pvSort':el=>{const k=el.dataset.pk;
     if(PIV.sort.key===k){if(PIV.sort.dir===1)PIV.sort={key:'__total',dir:-1};else PIV.sort={key:k,dir:1};}
@@ -10887,7 +10818,7 @@ const ACT={
     const months=Object.keys(DF.rmIdx).filter(m=>/^\d{4}-\d{2}$/.test(m)).sort().reverse();
     if(!months.length){toast('게시된 달이 없습니다');return;}
     const cur=dfRm(),r=el.getBoundingClientRect();
-    openCtx(r.left,r.bottom+6,months.map(m=>({label:(m===cur?'✓ ':'')+m+(m===ORG_RM?' · 최신':''),
+    openCtx(r.left,r.bottom+6,months.map(m=>({label:m+(m===ORG_RM?' · 최신':''),on:m===cur,
       act:()=>{S.dfRmSel=(m===ORG_RM?'':m);rDefect();}})),el);},
   'hold.go':el=>gotoTask(el.dataset.sid,el.dataset.iid),
   'hold.mine':()=>{S.holdMine=!S.holdMine;rHold();},
@@ -10917,7 +10848,7 @@ const ACT={
     const d=el.dataset.date;
     if(!d){toast('기한이 없는 업무입니다 · 브라우저 앱의 업무 목록에서 볼 수 있습니다');return;}
     if(CAL)CAL.gotoDate(toDate(d));
-    selDate(d,true);S.planOpen=el.dataset.iid||'';S.widPop=true;
+    selDate(d,true);S.widPop=true;
     rMonTitle();refetchCal();rDay();rWidget();
   },
   /* 하자 현황 — 위젯에는 그 화면이 없다. 안내만 띄우고 마는 대신 브라우저를 그 현장으로 바로 연다.
@@ -10935,8 +10866,8 @@ const ACT={
   /* 날짜 클릭은 **강조만** 한다 — 주기 이동은 머리의 ‹ › 버튼 전용(320차, 사용자 지시) */
   /* 645차: 모바일 달력의 미니달력 — 날짜를 고르면 아래 상시 패널이 바뀐다 */
   'cal.day':el=>{const d=el.dataset.date;if(!d)return;
-    if(dpSlide(d))return;   /* 905차: 점 달력에서는 패널이 미끄러진다(그 안에서 selDate 를 부른다) */
-    selDate(d);if(isMob()&&!WIDGET&&!mcalIsLand()&&S.mcal==='full')mcalSet('mini');},   /* 733차: 큰 달력에서 날짜를 누르면 점 달력+패널로(704차 동작 복원 — 패널이 없어 업무를 볼 길이 없었다) */
+    if(isMob()&&!WIDGET&&!mcalIsLand()){if(mdsOn()&&S.selDate===d){mdsClose();return;}selDate(d);mdsOpen();return;}   /* 987차(사용자): 업무 시트 — 같은 날짜를 다시 누르면 닫는다 */
+    selDate(d);},   /* 733차: 큰 달력에서 날짜를 누르면 점 달력+패널로(704차 동작 복원) — 987차부터 폰 세로는 위 업무 시트 */
   'mine.day':el=>{const d=el.dataset.date;if(!d)return;
     S.mineSel=(S.mineSel===d?'':d);rTasksSoon();},
   /* ‹ 이전 주 · 집 이번 주 · › 다음 주 — 달력이 보는 달도 주기를 따라 옮긴다 */
@@ -11019,7 +10950,6 @@ const ACT={
     setTimeout(()=>{const t2=$('#tnTitle');if(t2)t2.focus();},S.live?260:20);
   },
   'tk.formCancel':()=>tkFormClose(),
-  'tk.kind':()=>tkKindRefresh(),
   /* 날짜 칸 — 한 칸 안에서 기간을 잡는다(365차) */
   'tk.dateOpen':()=>{const D=S.tkDate||{};
     /* 다시 누르면 닫는다 */
@@ -11053,10 +10983,18 @@ const ACT={
       trashDone(list,n=>n+'건을 휴지통으로 옮겼습니다');
     },'휴지통으로 옮기기');},
   'tk.open':el=>{
+    /* 994차(사용자): 고칠 수 있는 업무는 행을 누르면 바로 수정(달력 카드와 같은 규칙) — 펼침은 고칠 권한이 없을 때만 */
     const key=el.dataset.sid+'/'+el.dataset.iid;
-    S.tkOpen=S.tkOpen===key?null:key;rTasks();
+    const it0=(S.tasks[el.dataset.sid]||{})[el.dataset.iid],row=el.closest&&el.closest('.tk-item');
+    if(S.tkOpen===key){S.tkOpen=null;rTasks();return;}   /* 996차: 펼쳐진 행(저장 직후·보류함·찾기에서 온 것)은 누르면 접힌다 */
+    if(it0&&canEditTask(it0,el.dataset.sid)){
+      /* 996차: 고치던 행이 있으면 먼저 저장(Esc 와 같은 「저장하고 닫기」) — 다른 행을 누르면 확인 없이 날아갔다. 제목이 비었으면 버릴지 묻고 멈춘다 */
+      if(S.tkEdit&&S.tkEdit!==key&&tkFormDirty()){const t=$('#tnTitle');
+        if(!t||!String(t.value||'').trim()){tkFormClose();return;}
+        const [s0,i0]=S.tkEdit.split('/');taskFormSave(s0,i0);}
+      ACT['tk.edit']({dataset:{sid:el.dataset.sid,iid:el.dataset.iid,occ:(row&&row.dataset.occ)||''}});return;}
+    denyTask();   /* 997차: 내용 폐지로 펼쳐 읽기도 없다 */
   },
-  'tk.field':()=>{},
   'tk.edit':el=>{const _it=(S.tasks[el.dataset.sid]||{})[el.dataset.iid];
     if(_it&&!canEditTask(_it,el.dataset.sid)){denyTask();return;}
     S.tkNew=null;S.tkOpen=null;S.tkDate={open:false,ym:'',a:'',b:''};S.tkEdit=el.dataset.sid+'/'+el.dataset.iid;
@@ -11438,7 +11376,7 @@ const ACT={
     const el2=$('#widSide');if(el2)el2.classList.remove('on');S.widSide='';
     if(d){
       if(CAL)CAL.gotoDate(toDate(d));
-      selDate(d,true);S.planOpen=el.dataset.iid||'';S.widPop=true;
+      selDate(d,true);S.widPop=true;
       rMonTitle();refetchCal();rDay();rWidget();
     }else toast('기한이 없는 업무입니다 · 브라우저 앱의 업무 목록에서 볼 수 있습니다');
   },
@@ -11450,13 +11388,21 @@ const ACT={
    팀 - 권역 - 담당자 - 현장 계층이라 위 단계를 고르면 아래 목록이 함께 좁혀진다. */
 /* 다중 선택 선택창 — 생김새는 기존 select 와 같고, 누르면 체크 목록이 열린다.
    값은 배열이며 빈 배열이 곧 '전체'. scope 는 'cal'(업무 일정) 또는 'tk'(업무 목록) */
+/* 997차(사용자·F1): 필터 칸 = 업무 폼과 같은 칩 — [아이콘][글자]. 고른 게 없으면 항목 이름만 옅게(폼의 빈 칩과 같은 테두리),
+   고르면 옅은 파랑 판에 고른 이름(여럿이면 「김민수 외 1」). 목록(.msel-pop)은 그대로 */
+const MSEL_IC=(()=>{const I=d=>'<svg class="pci" viewBox="0 0 24 24" aria-hidden="true">'+d+'</svg>';return {
+  st:I('<circle cx="12" cy="12" r="8.5"/><path d="M10.4 8.8v6.4l5.2-3.2z"/>'),
+  reg:I('<path d="M12 3.5l8.5 4.7-8.5 4.7-8.5-4.7z"/><path d="M3.5 12.7l8.5 4.7 8.5-4.7"/>')};})();
+const MSEL_NM={kind:'구분',st:'상태',reg:'권역',own:'담당',site:'현장'};
 function mselHTML(scope,g,all,items,sel){
   const on=(sel||[]).map(String);
+  const short=l=>String(l).replace(/ \(나\)$/,'').replace(/^힐스테이트\s+/,'');
   const names=items.filter(([v])=>on.includes(String(v))).map(([,l])=>l);
-  const label=!names.length?all:(names.length===1?names[0]:names[0]+' 외 '+(names.length-1));
-  return '<div class="msel'+(on.length?' on':'')+'" data-g="'+g+'" data-scope="'+scope+'">'
+  const label=!names.length?(MSEL_NM[g]||all):(names.length===1?short(names[0]):short(names[0])+' 외 '+(names.length-1));
+  const ic={kind:PE_IC.kind,own:PE_IC.me,site:PE_IC.pin}[g]||MSEL_IC[g]||'';
+  return '<div class="msel c-'+g+(on.length?' on':'')+'" data-g="'+g+'" data-scope="'+scope+'">'
     +'<button class="msel-b" data-act="filt.msel" data-tip="'+esc(names.join(', ')||all)+'">'
-      +'<span>'+esc(label)+'</span><svg class="icn msel-c"><use href="#i-chevr"></use></svg></button>'
+      +ic+'<span>'+esc(label)+'</span></button>'
     +'<div class="msel-pop">'
       +'<button class="msel-all" data-act="filt.mall">전체</button>'
       +items.map(([v,l])=>'<button class="msel-o'+(on.includes(String(v))?' on':'')+'" data-act="filt.mopt" data-v="'+esc(v)+'">'
@@ -11499,7 +11445,10 @@ function rFilter(){
       +M('own','담당자 전체',meFirst(inReg).map(p=>[p.id,p.name+(me&&p.id===me.id?' (나)':'')]))
     +'</div><div class="dp-frow">'
       +M('site','현장 전체',sites.map(x=>[x.id,x.name]))
-    +'</div>';
+    +'</div>'
+    /* 997차: 아래 한 줄 — 걸린 상태와 모두 해제(달력 위 칩 줄의 「모두 해제」와 같은 동작) */
+    +(()=>{const any=['kind','st','reg','own','site'].some(g=>(f[g]||[]).length);
+      return '<div class="dp-ffoot"><span>'+(any?'필터 적용 중':'모든 업무')+'</span>'+(any?'<button data-act="filt.chipAll">모두 해제</button>':'')+'</div>';})();
   rFiltChips(regs,list,sites);
 }
 /* 970차(U1): 걸린 필터 표시 — 깔때기 개수 점 + 달력 위 칩(항목 × · 모두 해제) */
@@ -11541,8 +11490,6 @@ document.addEventListener('click',e=>{
   if(WIDGET&&S.widPop&&e.target.isConnected&&!e.target.closest('#widPop')&&!e.target.closest('#fcal td.fc-daygrid-day')){   /* 970차(U11): 「외 N건」은 누르는 사이 칸이 다시 그려져 떨어져 나간 요소가 「바깥」으로 읽혔다 */
     S.widPop=false;rWidget();
   }
-  /* 팝오버는 색 원 버튼 안에 들어 있다 — 여기서 막지 않으면 안쪽 클릭이 버튼까지 올라가 팝오버가 닫힌다 */
-  if(e.target.closest('#colPop'))return;
   /* 지도 안 클릭(시도·바다)은 549차부터 220ms 미룬다 — 더블클릭이면 버린다(kmClickDefer).
      범례·뒤로 같은 버튼은 지도(svg) 밖이라 바로 간다 */
   {const svg=e.target.closest('.okm');   /* 겹층의 점은 여기 안 걸린다 — 점 클릭은 아무 일도 하지 않는다 */
@@ -11589,15 +11536,6 @@ document.addEventListener('mousedown',e=>{
 document.addEventListener('contextmenu',e=>{
   const chip=e.target.closest('.pal-c.pal-custom');
   if(!chip)return;
-  if(chip.closest('#colPop')){        /* 업무 색 팝오버의 추가색 — 저장 목록에서도 지운다 */
-    e.preventDefault();
-    palDel(chip.dataset.c||'');
-    const pop=$('#colPop'),cur=(chip.classList.contains('sel'))?'auto':null;
-    if(cur)setPlanColor('auto');
-    if(pop)pop.innerHTML=colPopHTML(cur||chip.dataset.c);
-    if(pop)cpPaint(pop,'#3E71D2');
-    return;
-  }
   e.preventDefault();
   const box=chip.closest('.pal');
   const wasSel=chip.classList.contains('sel');
@@ -11608,7 +11546,6 @@ document.addEventListener('contextmenu',e=>{
     const c=first?(first.dataset.c||''):'';
     /* 화면 선택만 바꾸면 저장값이 지워진 색으로 남는다 — 실제 값도 함께 되돌린다 */
     if(box.id==='pfPal'){PF_SEL.color=c;pfPaint(c);acctAutoSave();}
-    else if(box.closest('#colPop'))setPlanColor(c||'auto');
   }
 });
 document.addEventListener('click',e=>{
@@ -11646,7 +11583,7 @@ document.addEventListener('change',e=>{
 /* 미처리 목록 — 필터행 입력·메뉴 검색은 input 이벤트로 듣는다(click 위임으로는 못 받는다) */
 let TL_FIN_T=null;
 document.addEventListener('change',e=>{const t=e.target;if(!t||(t.id!=='tnSite'&&t.id!=='tnSite2'))return;   /* 970차(U7): 두 현장 칸 맞추기 */
-  const o=$(t.id==='tnSite'?'#tnSite2':'#tnSite');if(o)o.value=t.value;});
+  const o=$(t.id==='tnSite'?'#tnSite2':'#tnSite');if(o)o.value=t.value;peChipSync();});   /* 996차: 맞춘 쪽 칩 글자도 */
 document.addEventListener('input',e=>{
   const t=e.target;
   if(t.classList&&t.classList.contains('tl-fin')){   /* 901차: 재하자·생산성 필터행 */
@@ -11669,16 +11606,18 @@ document.addEventListener('input',e=>{
 });
 /* 업무 폼은 자동 저장 — 입력이 멎으면 조용히 반영된다(저장 버튼 없음) */
 document.addEventListener('input',e=>{if(e.target.closest&&e.target.closest('#dpEdit'))planAutosave();});
+/* 992차: 칩 속 날짜·시간 칸은 투명하다 — 마우스(데스크톱)로는 글자 칸만 잡히고 달력이 안 떠서 눌린 자리에서 바로 띄운다.
+   손가락 기기는 누르면 원래 뜨므로 건드리지 않는다 */
+/* 993차: 칩 글자 — 업무 현황 폼은 자동 저장이 없어 여기서 듣는다(달력 폼은 planAutosave 가 이미 부른다) */
+['input','change'].forEach(t=>document.addEventListener(t,e=>{
+  const f=e.target.closest&&e.target.closest('.pe-f2:not(#dpEdit)');
+  if(f&&!e.target.classList.contains('pe-ttl'))peChipPaint(f);}));   /* 996차: 그 폼만 · 제목 입력은 칩과 무관 */
+document.addEventListener('click',e=>{
+  const i=e.target.closest&&e.target.closest('.pe-f2 .pe-chip input[type=date],.pe-f2 .pe-chip input[type=time]');
+  if(i&&i.showPicker&&matchMedia('(pointer:fine)').matches){try{i.showPicker();}catch(_){}}
+});
 document.addEventListener('change',e=>{
   if(e.target.id==='peOcc'){ACT['plan.moveOcc'](e.target);return;}   /* 428차: 날짜 고르면 즉시 회차 이동 */
-  if(e.target.classList&&e.target.classList.contains('cp-hue')){
-    const pop=$('#colPop');if(!pop)return;
-    const d=pop.querySelector('.cp-dot');
-    const [,sa,v]=hexHsv(rgbHex(d?d.style.background:''));
-    const hex=hsvHex(Number(e.target.value)||0,sa||.7,v||.85);
-    setPlanColor(hex);palAdd(hex);return;
-  }
-  if(e.target.id==='peKind'){peKindRefresh();return;}
   /* 609차: 담당자 → 색 원. ⚠ 이 자리는 `change` 리스너다(select 는 change 가 확실히 온다).
      input 리스너는 8104행의 한 줄짜리 하나뿐이라 여기 두는 편이 맞다 — 옮기지 말 것. */
   if(e.target.id==='peOwners'||e.target.id==='tnAsg')peColorSync();
@@ -11686,14 +11625,12 @@ document.addEventListener('change',e=>{
 });
 document.addEventListener('change',e=>{
   if(e.target.closest('[data-act="pf.org"]')){ACT['pf.org']();return;}
-  if(e.target.id==='tnRec'){
-    /* 반복 종료 칸 — 팝업 폼은 행(#tnUntilRow), 셀 편집은 라벨을 감춘다(364차) */
-    const r=$('#tnUntilRow');if(r)r.style.display=e.target.value?'':'none';
-    const u=$('#tnUntil'),l=u&&u.closest('label');if(l)l.hidden=!e.target.value;
-    return;}
-  if(e.target.id==='tnKind'){kindOwnerSync('tnKind','tnAsg');tkKindRefresh();return;}   /* 구분에 따라 내용 칸 구성이 달라진다 */
+  if(e.target.id==='tnRec'||e.target.id==='peRec'){
+    /* 반복 종료 칩 — 반복이 있을 때만(달력·업무 현황 폼 공용, 996차에 둘을 합침) */
+    const u=e.target.closest('.pe-f2'),c=u&&u.querySelector('[data-pk="until"]');if(c)c.hidden=!e.target.value;
+    if(e.target.id==='tnRec')return;}
+  if(e.target.id==='tnKind'){kindOwnerSync('tnKind','tnAsg');return;}
   if(e.target.id==='peKind'){kindOwnerSync('peKind','peOwners');return;}   /* 팝업 편집기도 동일 규칙 */
-  if(e.target.id==='peKind'){peKindRefresh();return;}
   const rl=e.target.closest('[data-act="acct.role"]');
   if(rl){ACT['acct.role'](rl);return;}
   const ren=e.target.closest('[data-act="org.ren"]');if(ren&&!isEditor()){denyEdit();return;}   /* 953차 */
@@ -11996,7 +11933,7 @@ document.addEventListener('keydown',e=>{
 document.addEventListener('click',e=>{
   const b=e.target&&e.target.closest&&e.target.closest('.seg>button');if(!b||b.classList.contains('act'))return;
   const sg=b.parentElement,old=sg.querySelector(':scope>button.act');if(!old)return;
-  if(matchMedia('(prefers-reduced-motion:reduce)').matches)return;
+  if(sg.classList.contains('sl-on'))return;   /* 986차: 미끄러짐 엔진(slSync)이 맡는 줄은 건너뛴다(겹쳐 돌면 투명 유령이 한 번 더 지나갔다) · 동작 줄이기 검사는 걷음(사용자) */
   const r0=old.getBoundingClientRect(),s0=sg.getBoundingClientRect(),br=b.getBoundingClientRect();
   const cx=br.left+br.width/2,cy=br.top+br.height/2;
   requestAnimationFrame(()=>{
@@ -12033,7 +11970,6 @@ document.addEventListener('keydown',e=>{
   /* Ctrl/⌘+K 로 찾기 */
   if(e.key==='Escape'){
     /* 겹쳐 있는 것부터 하나씩 닫는다 — 한 번에 다 닫히면 되돌리기 번거롭다 */
-    if($('#colPop')){closeColPop();return;}
     if(document.querySelector('.msel.open')){mselClose();return;}
     if($('#ymPop')){closeYMPop();return;}
     const wg=$('#wgSet');
@@ -12053,7 +11989,6 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
     if($('#mo').classList.contains('open')){closeModal();return;}
     if(S.tkNew||S.tkEdit){tkFormEsc();return;}   /* 970차(U3): 저장하고 닫기 */
-    if($('#colPop')){closeColPop();return;}
     if(S.planEdit){closePlanEdit();return;}
     mobClose();
   }
@@ -12166,7 +12101,7 @@ function bindCalResize(){
     if(!CAL)return;
     const nar=isNarrow();
     if(nar!==MOBILE_CAL){MOBILE_CAL=nar;_maxEv=null;CAL.setOption('dayMaxEvents',maxEvOf());}
-    if(S.view==='calendar'&&!S.mcalDrag){if(isMob()&&!WIDGET)mcalSet(S.mcal||'full');else document.body.classList.remove('mcal-full','mcal-mini');}   /* 704차: 회전·창 크기 · 733차: 드래그 중엔 손대지 않는다 */
+    if(S.view==='calendar'&&!(isMob()&&document.body.classList.contains('kb'))){if(isMob()&&!WIDGET)mcalSet();else document.body.classList.remove('mcal-full');}   /* 704차: 회전·창 크기 · 989차: 폰 입력 중(키보드로 화면이 줄 때)엔 달력을 다시 짜지 않는다 — 업무 시트가 흔들렸다. 키보드가 내려가며 오는 resize 에서 맞춘다 */
     CAL.updateSize();
     calFitApply();               /* 창 크기가 바뀌면 칸 높이도 바뀐다 — 다시 재서 맞춘다 */
   },120);};
@@ -15519,7 +15454,7 @@ const SL_SPEC=[['#view-tasks .tkv-seg','fill','button','act'],['#view-tasks .rp-
   ['#view-org .tkv-seg','fill','button','act'],['#view-org .rp-tabs','line','.rp-tab','on'],['#view-defect .rk-tabbar .rp-tabs','line','.rp-tab','on'],['#view-defect .axseg','fill','button','on'],
   ['#view-qc .seg','fill','button','act'],['#view-redo .seg','fill','button','act'],['#view-prod .seg','fill','button','act'],['#view-photo .seg','fill','button','act']];
 const SL_MEM={};
-const SL_RM=matchMedia('(prefers-reduced-motion: reduce)');   /* 985차(사용자): 데스크톱에도 — 폰 전용 스위치(SL_MQ·SL_DESK)는 걷었다 */
+/* 985차(사용자): 데스크톱에도 — 폰 전용 스위치(SL_MQ·SL_DESK)는 걷었다 · 986차(사용자): 동작 줄이기와 상관없이 움직인다(SL_RM 걷음) */
 /* 984차: 움직임은 Web Animations(transform 만) — 합성 단계에서 돌아, 무거운 다시 그리기(데스크톱 하자 화면 100ms 안팎)에도 끊기지 않는다.
    폭 차이는 width 전환(레이아웃) 대신 scaleX 로. 표시 요소(.sl-ind)는 SL_MEM 에 두고 **다시 그려진 새 줄로 옮겨 단다** —
    스크립트 애니메이션은 요소가 문서에서 빠져도 멈추지 않으므로, 한 번 누름에 줄이 두세 번 다시 그려져도 처음 시작한 움직임이 그대로 이어진다
@@ -15556,7 +15491,7 @@ function slSync(){
       /* 멈춘 자리는 left/top(레이아웃 — 화소에 맞춰 또렷하다), 움직임은 그 자리 기준 transform 차이만.
          ⚠ 985차: 멈춘 자리까지 transform 으로 두면 부모가 소수 좌표(67.5px)일 때 2px 밑줄 윗줄이 반투명으로 번졌다 */
       let fx=null,fy=0,fw=0;
-      if(t&&!SL_RM.matches){const m=new DOMMatrixReadOnly(getComputedStyle(ind).transform);fx=(parseFloat(ind.style.left)||0)+m.e;fy=(parseFloat(ind.style.top)||0)+m.f;fw=(parseFloat(ind.style.width)||t.w)*m.a;}
+      if(t){const m=new DOMMatrixReadOnly(getComputedStyle(ind).transform);fx=(parseFloat(ind.style.left)||0)+m.e;fy=(parseFloat(ind.style.top)||0)+m.f;fw=(parseFloat(ind.style.width)||t.w)*m.a;}
       ind.getAnimations().forEach(a=>a.cancel());
       ind.style.left=g.x+'px';ind.style.top=g.y+'px';ind.style.width=g.w+'px';ind.style.height=g.h+'px';
       if(fx===null||(Math.abs(fx-g.x)<.5&&Math.abs(fw-g.w)<.5))return;
@@ -15659,7 +15594,11 @@ function mssOpen(){
 })();
 /* 안드로이드 키보드 — 입력 중엔 탭바를 숨긴다(fixed 바가 키보드 위로 올라와 입력칸을 가린다) */
 document.addEventListener('focusin',e=>{const t=e.target;if(t&&t.matches&&t.matches('input:not([type=checkbox]):not([type=radio]):not([type=file]),textarea,select,[contenteditable="true"]'))document.body.classList.add('kb');});
-document.addEventListener('focusout',()=>{setTimeout(()=>{const a=document.activeElement;if(!a||!a.matches||!a.matches('input:not([type=checkbox]):not([type=radio]):not([type=file]),textarea,select,[contenteditable="true"]'))document.body.classList.remove('kb');},50);});
+document.addEventListener('focusout',()=>{setTimeout(()=>{const a=document.activeElement;if(!a||!a.matches||!a.matches('input:not([type=checkbox]):not([type=radio]):not([type=file]),textarea,select,[contenteditable="true"]'))document.body.classList.remove('kb');if(document.body.classList.contains('lg-kb'))lgKbSync();},50);});
+/* 991차: 업무 시트 키보드 자리 — kb 를 붙이고 뗀 다음(위 두 줄 뒤)에 맞춘다. 키보드가 올라오는 동안 창 크기가 바뀌면 다시 잰다 */
+document.addEventListener('focusin',()=>mdsKbSync());
+document.addEventListener('focusout',()=>setTimeout(mdsKbSync,60));
+if(window.visualViewport)visualViewport.addEventListener('resize',()=>{if(document.body.classList.contains('mds-kb')||document.body.classList.contains('kb'))mdsKbSync();if(document.body.classList.contains('lg'))lgKbSync();});   /* 998차: 로그인 키보드 */
 Object.assign(ACT,{
   'mtab.go':el=>{
     /* 910차(사용자): 하자처리 현황도 업무 도구와 같은 결 — 칸을 누르면 **현장 선택 시트**가 먼저 뜬다(첫 줄이 「팀 전체 대시보드」).
@@ -15669,11 +15608,12 @@ Object.assign(ACT,{
     mssClose();
     if(t==='tools'){if(wasOpen==='tools')return;mtoolsOpen();return;}
     if(t==='defect'){if(wasOpen==='site')return;mssOpen();return;}
-    if(t==='calendar'){if(S.view==='calendar'){ACT['cal.today']();return;}go('calendar');return;}   /* 캘린더에서 다시 누르면 오늘로 */
+    if(t==='calendar'){if(S.view==='calendar'){if(mdsOn()){mdsClose();return;}ACT['cal.today']();return;}go('calendar');return;}   /* 캘린더에서 다시 누르면 오늘로 · 987차: 업무 시트가 떠 있으면 먼저 닫는다 */
     if(t==='tasks'){S.tkNew=null;S.tk.m='teamall';   /* 909차: 주간/현장별은 화면 위 전환 탭(tk.view)이 고른다 — 여기선 화면만 연다 */
       if(S.view==='tasks')rTasks();else go('tasks');mtabSync();return;}
   },
   'mtab.tool':el=>{mssClose();go(el.dataset.v);},
+  'mds.close':()=>mdsClose(),   /* 990차: 업무 시트 잡이 */
   'mtab.menu':()=>{const box=$('#mss'),open=!!(box&&box.classList.contains('on')&&box.classList.contains('menu'));mssClose();if(!open)mmenuOpen();},   /* 978차: 다시 누르면 닫는다 */
   'mmenu.go':el=>{mssClose();go(el.dataset.view);},
   'mmenu.teams':()=>mmenuTeams(),
@@ -16683,7 +16623,18 @@ function rAll(){rDay();rTasks();rOrg();rCfg();rFilter();rTeamSel();refetchCal();
     fbInit();
     /* SDK가 아예 안 뜨거나(사내망 차단 등) 응답이 없으면 안내와 함께 로그인 폼을 연다 */
     if(typeof firebase==='undefined'||!FB.auth){showGateForm();fbMsg('서버에 연결할 수 없습니다 · 연결을 확인해 주세요');}
-    else FB._boot=setTimeout(()=>{if(!S.live)showGateForm();},2500);
+    else{
+      /* 998차(#1): 전에 이 브라우저로 로그인했으면(부팅 캐시가 남아 있으면) 로딩 화면인 채로 자동 로그인을 기다린다 —
+         2.5초 만에 폼을 띄우면 이미 로그인된 사람도 폼이 잠깐 비쳤다가 들어갔다. 로그아웃 상태면 onAuth(null)이 곧바로 폼을 연다.
+         10초가 지나도 못 들어가면 안내와 함께 폼. ⚠ 역할은 늘 서버에서 읽는다(캐시로 먼저 들이는 방식은 보안상 기각) */
+      const warm=bootCacheHas();
+      FB._boot=setTimeout(()=>{
+        if(S.live)return;
+        if(!warm){showGateForm();return;}
+        const ld=$('#cvLoading');if(ld&&ld.style.display==='none')return;   /* 이미 폼이 떠 있다(로그아웃 상태 등) — 쓰던 안내를 덮지 않는다 */
+        showGateForm();fbMsg(FB._authSeen?'서버 응답이 늦어지고 있습니다 · 연결을 확인해 주세요':'자동 로그인이 늦어지고 있습니다 · 직접 로그인해 주세요');
+      },warm?10000:2500);
+    }
   }
   /* 이전 버전에서 등록됐을 수 있는 서비스워커·캐시 제거 —
      캐시가 남아 있으면 배포해도 옛 코드가 계속 뜬다. (한동안 유지 후 삭제해도 됨) */
