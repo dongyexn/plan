@@ -15,7 +15,8 @@ on:
     # ⚠ tags 를 함께 쓰면 태그 푸시만 대상이 된다(widget.yml 과 같은 함정) — branches + paths 만
     # 소스만 고쳐 올려도 자동으로 돈다. 같은 버전 릴리스가 이미 있으면 아래 확인 단계가 건너뛰므로
     # (배포된 뒤에는) 버전을 올려야 새 exe 가 나온다 — Electron 판과 같은 규칙.
-    branches: ['**']
+    # 1012차(보안): 릴리스(=전 PC 자동 업데이트)는 main 에서만 — 전엔 아무 브랜치 push 가 /releases/latest 가 됐다
+    branches: [main]
     paths: ['widget-lite/**', '.github/workflows/widget-lite.yml']
 
 permissions:
@@ -25,7 +26,7 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: 버전 읽기
         id: ver
@@ -60,11 +61,14 @@ jobs:
       - name: 파일 이름 정하기
         if: steps.dup.outputs.skip == '0'
         shell: bash
-        run: cp widget-lite/target/release/hplan-widget-lite.exe HPlanWidgetLite.exe
+        run: |
+          cp widget-lite/target/release/hplan-widget-lite.exe HPlanWidgetLite.exe
+          # 1012차(보안): 위젯은 이 해시와 맞는 exe 만 설치한다(없으면 받지 않는다)
+          sha256sum HPlanWidgetLite.exe | cut -d' ' -f1 > HPlanWidgetLite.exe.sha256
 
       - name: 릴리스에 올리기
         if: steps.dup.outputs.skip == '0'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3   # 1012차: v2 는 Node 20 런타임(경고) — v3 는 Node 24, 입력은 같다
         with:
           tag_name: widget-lite-v${{ steps.ver.outputs.v }}
           name: 위젯 Lite v${{ steps.ver.outputs.v }} (파일럿)
@@ -73,4 +77,6 @@ jobs:
 
             ⚠ 파일럿 기간에는 기존 HPlanWidget.exe 와 **둘 중 하나만** 켜 두세요(알림·백업이 겹칩니다).
             문제가 있으면 트레이 > 진단 폴더 열기 > widget-lite-log.txt 를 관리자에게 보내 주세요.
-          files: HPlanWidgetLite.exe
+          files: |
+            HPlanWidgetLite.exe
+            HPlanWidgetLite.exe.sha256
