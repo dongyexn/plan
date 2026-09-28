@@ -3542,6 +3542,7 @@ body.wid #mb .mo-x{top:16px;right:13px;}   /* 위젯 창 안쪽 여백 20 */
   /* ⚠ 기간 업무 제목은 첫날 칸에서 다음 칸 위로 흐른다 — 뒤 칸이 나중에 그려져 덮으므로 제목 시작 칸을 위로 올린다(형제라 z-index 로 정리) */
   #calMini .mc-d{position:relative;}
   #calMini .mc-d:has(.mc-bars.hd){z-index:2;}
+  #calMini .mc-d:nth-child(7n+1):has(.mc-bars.hd){z-index:8;}#calMini .mc-d:nth-child(7n+2):has(.mc-bars.hd){z-index:7;}#calMini .mc-d:nth-child(7n+3):has(.mc-bars.hd){z-index:6;}#calMini .mc-d:nth-child(7n+4):has(.mc-bars.hd){z-index:5;}#calMini .mc-d:nth-child(7n+5):has(.mc-bars.hd){z-index:4;}#calMini .mc-d:nth-child(7n+6):has(.mc-bars.hd){z-index:3;}   /* 제목은 오른쪽으로 흐른다 — 머리 칸이 이웃하면 앞 칸이 위(같은 z 면 뒤 칸이 앞 칸 제목을 덮었다) */
   .mc-bar{display:block;height:15px;line-height:15px;border-radius:0;margin:0 -2px;min-width:0;font-style:normal;color:#fff;letter-spacing:-.02em;}
   .mc-bar.s{border-radius:3px 0 0 3px;margin-left:0;}
   .mc-bar.e{border-radius:0 3px 3px 0;margin-right:0;}
@@ -4169,7 +4170,7 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 .mc-d{position:relative;height:34px;border-radius:3px;background:none;display:flex;align-items:flex-start;justify-content:center;padding-top:6px;color:var(--lbl);}   /* 숫자를 위로 올려 붙이고 칸 높이를 줄인다 */
 .mc-d.out{pointer-events:none;}
 .mc-d.out .n{color:var(--lbl3);opacity:.45;}
-.mc-d.out .mc-bars{opacity:.55;}   /* 이웃 달 막대는 흐리게 */
+.mc-d.out .mc-bars>:not(.gw){opacity:.55;}.mc-d.out .mc-bar.dn:not(.gw){opacity:.4;}   /* 이웃 달 막대는 흐리게(완료는 .72×.55). 그라디언트 막대(.gw)는 마스크로 칸별로 흐린다 — 머리가 늘어나 이번 달 칸까지 덮기 때문 */
 .mc-d .n{font-size:12px;line-height:1;font-variant-numeric:tabular-nums;}
 /* 점은 칸 아래에 겹쳐 둔다 — 숫자 위치가 점 유무에 따라 흔들리지 않게 */
 .mc-d .dots{position:absolute;left:0;right:0;bottom:5px;display:flex;justify-content:center;gap:2px;pointer-events:none;}
@@ -5589,5 +5590,5 @@ td.d60-pc:hover{background:var(--fill)}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1027"></script>
+<script src="./app.js?v=1029"></script>
 </body></html>
