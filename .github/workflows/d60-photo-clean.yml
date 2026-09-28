@@ -1,0 +1,22 @@
+# D+60 점검 사진 자동 정리 — 매일 03:00 KST(18:00 UTC). 점검일 1년 지난 현장의 사진을 지운다(무료 요금제 저장 1GB).
+# 준비: Firebase 콘솔 → 프로젝트 설정 → 서비스 계정 → 새 비공개 키 → JSON 내용 전체를 리포 Secrets 의 FIREBASE_SERVICE_ACCOUNT 에.
+name: d60-photo-clean
+on:
+  schedule:
+    - cron: '0 18 * * *'
+  workflow_dispatch:
+jobs:
+  clean:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: firebase-admin 설치
+        run: npm i --no-save --ignore-scripts firebase-admin@13.10.0   # 1012차(보안): 시크릿이 있는 잡이라 정확한 버전으로 고정
+      - name: 사진 정리
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_DB_URL: https://report-c29a1-default-rtdb.asia-southeast1.firebasedatabase.app
+        run: node scripts/d60-photo-clean.mjs
