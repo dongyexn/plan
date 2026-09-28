@@ -357,6 +357,16 @@ OK('구문 검사 (node --check)');
   else OK('CSS 주석 길이·URL 조각 정상 (' + styles.length + '개 style)');
 }
 
+/* ── 10c. 앱 주석에 회차 표기 금지 — 이력은 HANDOFF 가 맡는다(1015차 사용자 결정). 세 자리 이상 「NNN차」만 본다(재접수 1차·2차 같은 업무 용어 제외) */
+{
+  const hits = [];
+  for (const [f, src] of [['app.js', js], ['index.html', html], ['boot-wid.js', rd('boot-wid.js')]]) {
+    src.split('\n').forEach((l, i) => { if (/(^|[^0-9])[1-9]\d{2,3}차/.test(l)) hits.push(f + ':' + (i + 1)); });
+  }
+  if (hits.length) W('앱 주석에 회차 표기 ' + hits.length + '곳 — ' + hits.slice(0, 6).join(', '));
+  else OK('앱 주석 회차 표기 없음');
+}
+
 /* ── 11. CSS 늦은 재선언 감시(422차) ──────────────────────────────
    같은 셀렉터를 파일 뒤쪽에서 다시 선언해 같은 프로퍼티를 덮으면, 앞의 수정이
    말없이 무효가 된다(§frow margin 사고). 기존 재선언은 베이스라인으로 동결하고
