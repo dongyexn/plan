@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1037';
+const APP_VER='1039';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -11178,6 +11178,8 @@ const ACT={
     p.classList.toggle('on',on);
     if(el&&el.setAttribute)el.setAttribute('aria-expanded',on?'true':'false');
     if(on)rFilter();
+    /* 위젯은 창이 좁다 — 오른쪽 맞춤이라 왼쪽이 창 밖으로 나가면 그만큼 안쪽(오른쪽 값을 줄여)으로 민다. 8px 여백 */
+    if(on&&WIDGET){p.style.right='';const op=p.offsetParent,L=(op?op.getBoundingClientRect().left:0)+p.offsetLeft;if(L<8)p.style.right=(-(8-L))+'px';}   /* offsetLeft — 여는 움직임(scale .96) 중에도 제자리 폭으로 잰다 */
   },
   'filt.msel':el=>{const m=el.closest('.msel'),was=m.classList.contains('open');mselClose();if(was)return;
     m.classList.remove('up');m.classList.add('open');
