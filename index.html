@@ -457,7 +457,7 @@ body.wid .tbr{display:none;}   /* 위젯에는 상단바가 없다 */
 /* 이동 화살표를 년월과 한 알약에 담는다 — 제목 채움은 알약으로. 연·월 선택은 년월 글자를 누른다 */
 .cal-move{display:flex;align-items:center;gap:0;min-width:0;}   /* margin-right:auto 없음 — 「오늘」이 옆에 붙도록(오른쪽 밀기는 .cal-ctl) */
 body:not(.wid) #view-calendar .cal-move{background:var(--fill);border-radius:var(--rmd);padding:2px;}
-body.wid .cal-move{background:rgba(16,20,30,.55);border-radius:999px;padding:2px;}   /* 폰 하단 탭과 같은 캡슐 */
+body.wid .cal-move{background:rgba(16,20,30,.55);border-radius:3px;padding:2px;}
 .seg{display:inline-flex;background:var(--fill);border-radius:var(--rp);padding:2px;}
 .seg button{padding:4px 13px;border-radius:var(--rp);font-size:12px;font-weight:700;color:var(--lbl2);transition:color var(--t-fast),background-color var(--t-fast),box-shadow var(--t-fast);}
 .seg button.act{background:var(--bg2);color:var(--bt1);box-shadow:var(--sh-1);}
@@ -1658,8 +1658,8 @@ body.wid #ymPop .ymp-m.sel{background:var(--b600);color:#fff;}
 body.wid #ymPop .cal-nb{color:rgba(255,255,255,.75);}
 body.wid #ymPop .cal-nb:hover{background:rgba(255,255,255,.14);color:#fff;}
 /* 4. 년월 제목·설정/프로필도 이동 버튼과 같은 알약 배경 위에 */
-body.wid .cal-title{background:transparent;border-radius:999px;padding:0 8px;height:30px;}
-body.wid .cal-nav{padding:2px;border-radius:999px;}
+body.wid .cal-title{background:transparent;border-radius:3px;padding:0 8px;height:30px;}
+body.wid .cal-nav{padding:2px;border-radius:3px;}
 /* 시스템 글꼴 — 맑은 고딕은 작은 크기 힌팅이 있어 투명 창에서 더 또렷하다.
    ⚠ 굵기는 400/700 만 실제 글꼴이 있다 — 500·600 은 억지로 굵혀 뭉개진다 */
 /* 라틴·숫자는 Segoe UI, 한글은 맑은 고딕 — 윈도우 기본 조합
@@ -1719,7 +1719,8 @@ body.wid #mb .mrv-ib:hover{background:rgba(255,255,255,.1);color:#B9D3F7;}   /* 
 .wl-none span{font-size:12px;}
 /* 읽은 부름 — 지우지 않고 흐리게만 둔다 */
 .wl.rd{opacity:.5;}
-body.wid .cal-filt-pop{position:absolute;z-index:640;top:calc(100% + 8px);right:0;width:306px;
+body.wid .cal-filt-pop{position:absolute;z-index:640;top:calc(100% + 8px);right:0;width:min(306px,calc(100vw - 20px));   /* 좁은 창에서 왼쪽이 창 밖으로 나가면 day.fmore 가 안쪽으로 민다(조상의 blur 때문에 fixed 는 창 기준이 아니다) */
+  
   background:rgba(24,27,36,.8);-webkit-backdrop-filter:blur(24px) saturate(1.6);backdrop-filter:blur(24px) saturate(1.6);
   border:1px solid rgba(255,255,255,.12);border-radius:18px;box-shadow:0 18px 50px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.08);padding:11px;
   --lbl:#fff;--lbl2:rgba(255,255,255,.80);--lbl3:rgba(255,255,255,.62);--sep:rgba(255,255,255,.20);
@@ -1777,6 +1778,12 @@ body.wid .ctx-k{background:transparent;border-color:rgba(255,255,255,.35);}
 body.wid .ctx-sep{background:rgba(255,255,255,.16);}
 /* 위젯(유리) — 목록도 어두운 카드로 */
 body.wid .cal-filt-pop::before{display:none;}   /* 꼬리 없음 — 둥근 유리 카드(폰 시트 결)는 떠 있는 판으로 둔다 */
+/* 머리 「필터 · 초기화」·아래 줄 숨김 — 데스크톱과 같은 구성(색만 어두운 판에 맞춤) */
+body.wid .cal-filt-pop .pf-h{display:flex;}
+body.wid .cal-filt-pop .pf-h b{color:#fff;}
+body.wid .cal-filt-pop .pf-h button{color:#8FB0EC;}
+body.wid .cal-filt-pop .pf-h button[disabled]{color:rgba(255,255,255,.4);}
+body.wid .cal-filt-pop .dp-ffoot{display:none;}
 /* 필터 단추 — 폰과 같은 규칙의 어두운 판: 빈 조건 = 옅은 흰 판·흰 글자·⌄ / 건 조건 = 파란 채움 (예전엔 회색 글자라 잘 안 보였다) */
 body.wid .cal-filt-pop .msel-b{height:34px;border-radius:17px;background:rgba(255,255,255,.1);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);color:#fff;font-weight:600;}
 body.wid .cal-filt-pop .msel-b::after{content:'';flex:0 0 auto;width:6px;height:6px;margin-right:2px;border-right:1.6px solid rgba(255,255,255,.6);border-bottom:1.6px solid rgba(255,255,255,.6);transform:translateY(-2px) rotate(45deg);}
@@ -2843,8 +2850,7 @@ body.wid.glass .card{background:transparent;border:0;box-shadow:none!important;b
 body.wid.glass .cal-head .seg,body.wid.glass .cal-head .cal-nav,body.wid.glass .cal-move{
   background:rgba(16,20,30,.5);border:1px solid rgba(255,255,255,.14);
   -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);}
-body.wid.glass .cal-head .cal-nav,body.wid.glass .cal-move{border-radius:999px;padding:2px;}   /* 캡슐(폰 하단 탭과 같은 결) */
-body.wid .cal-head .cal-nb{border-radius:999px;}   /* 캡슐 안 단추의 누름·호버 판도 둥글게 */
+body.wid.glass .cal-head .cal-nav,body.wid.glass .cal-move{border-radius:3px;padding:2px;}   /* 위젯 머리 단추 묶음은 각진 3px 유지(사용자 결정 — 캡슐 되돌림) */
 /* 알약 안의 제목은 면을 갖지 않는다 — 상자 안 상자 방지 */
 body.wid.glass .cal-title{background:transparent;}
 body.wid.glass .cal-title:hover{background:rgba(255,255,255,.12);}
@@ -5683,5 +5689,5 @@ td.d60-pc:hover{background:var(--fill)}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1037"></script>
+<script src="./app.js?v=1039"></script>
 </body></html>
