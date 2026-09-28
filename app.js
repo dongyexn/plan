@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1029';
+const APP_VER='1036';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -1663,6 +1663,7 @@ function enterLive(u){
   subVisibleMonths();
   rAcct();
   hideCover(true);   /* 캐시로 첫 화면을 그린 뒤에 걷는다 */
+  setTimeout(pwaCard,2500);   /* 홈 화면 추가·카카오톡 안내(한 번) — 첫 화면이 자리 잡은 뒤 */
 }
 function exitLive(){
   S.live=false;S.user=null;S.loading=false;S.conn=null;netPaint();
@@ -2218,7 +2219,6 @@ function mcalPane(y,m,evs){
   /* 이웃 달 칸에도 막대를 그린다 — 기간 업무가 달 경계에서 잘리지 않게(칸은 흐리게·누르지 않음) */
   /* 칸이 넘쳐 「+N」 이 되면 그 칸에선 뒷줄 막대가 빠진다 — 기간 막대의 끝·머리·제목 폭은 「실제로 보이는 칸」으로 다시 센다.
      (옛: 빠진 칸에서 막대가 끊겨 끝이 덜 차 보이고, 머리 칸 제목은 원래 길이대로 흘러 막대 밖으로 나갔다) */
-  const ym=y+'-'+pad(m+1),isOut=d=>d.slice(0,7)!==ym;
   const showOf=d=>{const l=lanes[d]||[];return l.length>CAP?CAP-1:Math.min(l.length,CAP);};
   const visAt=(d,k,e)=>{const l=lanes[d],o=l&&l[k];return !!o&&o.e===e&&k<showOf(d);};
   const piece=(o,k,ds)=>{
@@ -2230,14 +2230,9 @@ function mcalPane(y,m,evs){
     return '<span class="mc-bars'+(ps.some(o=>o&&o.head&&o.n>1)?' hd':'')+'">'+ps.map(o=>{if(!o)return '<i class="mc-bar sp"></i>';
             const e=o.e;
             /* ⚠ 그라디언트 기간 막대는 머리 조각 하나를 보이는 줄 길이만큼 늘려 그린다(조각별로 자르면 이음매가 보인다). 뒤 조각은 자리만 차지하고 투명.
-               폭 = n×100% + (4n−4)px — 칸 좌우 여백 2px 씩(칸 간격 100%+4px, 머리 왼쪽·꼬리 오른쪽 여백 2px 뺌). ⚠ `.mc-d` padding 과 짝
-               이웃 달 칸에 걸친 부분은 칸 흐림 대신 마스크로 흐린다(머리가 이웃 달 칸에 있으면 칸 흐림이 막대 전체에 걸린다) */
+               폭 = n×100% + (4n−4)px — 칸 좌우 여백 2px 씩(칸 간격 100%+4px, 머리 왼쪽·꼬리 오른쪽 여백 2px 뺌). ⚠ `.mc-d` padding 과 짝 */
             const isG=/gradient\(/.test(String(e.c)),grad=isG&&(!o.head||o.n>1);
-            let mk='';
-            if(grad&&o.head){const pos=k=>k===0?'0%':k===o.n?'100%':'calc((100% + 4px)*'+k+'/'+o.n+' - 2px)',segs=[];
-              for(let k=0;k<o.n;k++){const a=isOut(addDays(ds,k))?'.55':'1';if(segs.length&&segs[segs.length-1].a===a)segs[segs.length-1].b=k+1;else segs.push({a,s:k,b:k+1});}
-              if(segs.some(x=>x.a!=='1')){const g='linear-gradient(90deg,'+segs.map(x=>'rgba(0,0,0,'+x.a+') '+pos(x.s)+' '+pos(x.b)).join(',')+')';mk=';-webkit-mask-image:'+g+';mask-image:'+g;}}
-            const bg=(grad&&!o.head)?'background:transparent':('background:'+esc(e.c)+(grad?';width:calc('+o.n+'*100% + '+(4*o.n-4)+'px);position:relative;z-index:1;border-radius:3px'+mk:''));
+            const bg=(grad&&!o.head)?'background:transparent':('background:'+esc(e.c)+(grad?';width:calc('+o.n+'*100% + '+(4*o.n-4)+'px);position:relative;z-index:1;border-radius:3px':''));
             return '<i class="mc-bar'+(e.done?' dn':'')+(e.team?' tm':'')+(e.light?' lt':'')+(e.risk?' rk':'')+(o.s?' s':'')+(o.en?' e':'')+(grad?' gw':'')+'" style="'+bg+'">'
               +((o.head||e.team)?'<b'+((o.head&&o.n>1&&!grad)?' style="width:calc('+o.n+'*100% - '+(2*o.n+2)+'px)"':'')+'>'+(o.head?esc(e.t):'')+'</b>':'')+'</i>';}).join('')
           +(over?'<i class="mc-more">+'+(ln.filter(Boolean).length-show)+'</i>':'')+'</span>';};
@@ -2352,7 +2347,7 @@ function mdsFit(){
 function mdsKbSync(){
   const cv=$('#view-calendar');if(!cv)return;
   const a=document.activeElement;
-  const on=mdsOn()&&document.body.classList.contains('kb')&&kbH()>80&&!!(a&&a.closest&&a.closest('#view-calendar .dp-col'));   /* 키보드가 실제로 떠 있을 때만 — 없으면 시트는 하단 탭 위 제자리 */
+  const on=mdsOn()&&document.body.classList.contains('kb')&&(kbH()>80||KB_H0-innerHeight>120)&&!!(a&&a.closest&&a.closest('#view-calendar .dp-col'));   /* 키보드가 실제로 떠 있을 때만 — 없으면 시트는 하단 탭 위 제자리 */
   const was=document.body.classList.contains('mds-kb');
   if(!on){if(was){document.body.classList.remove('mds-kb');cv.style.removeProperty('--mdkb');cv.style.removeProperty('--mdkbmax');mdsFit();}return;}
   const vv=window.visualViewport,vb=vv?vv.offsetTop+vv.height:innerHeight,kbh=Math.max(0,Math.round(innerHeight-vb));
@@ -2438,7 +2433,8 @@ function ymPickHTML(cur,ax){   /* (기준 Date, 액션 접두) — 업무 현황
 }
 function openYMPick(){
   YM_Y=null;
-  const old=$('#ymPop');
+  document.querySelectorAll('#ymPop[data-out]').forEach(x=>x.remove());   /* 흐려지며 나가는 중인 것은 바로 걷고 새로 연다 */
+  const old=ymPopEl();
   if(old){old.remove();document.removeEventListener('click',ymOutside,true);return;}   /* 바깥 클릭 감시도 같이 풀어야 다음 탭이 먹힌다 */
   /* 연·월 버튼이 있는 달력 열 기준으로 붙인다(.cal-card 는 position:relative) */
   const host=$('#view-calendar .cal-card');if(!host)return;
@@ -2455,18 +2451,30 @@ function openYMPick(){
   }
   setTimeout(()=>{document.addEventListener('click',ymOutside,true);},0);
 }
+/* 폰: 떠 있는 팝업·메뉴를 바깥 탭으로 닫을 때 그 탭은 닫기만 한다(아래 달력 칸·단추까지 눌려 시트가 함께 열리지 않게).
+   하단 탭은 예외 — 늘 바로 먹는다. 데스크톱은 바깥 클릭이 그대로 동작하는 게 자연스러워 그대로 둔다 */
+function tapEatable(t){return isMob()&&!WIDGET&&!(t&&t.closest&&t.closest('#mtab'));}
+function eatNextClick(t){if(!tapEatable(t))return;const f=e=>{e.stopPropagation();e.preventDefault();};
+  document.addEventListener('click',f,{capture:true,once:true});setTimeout(()=>document.removeEventListener('click',f,true),450);}
 function ymOutside(e){
-  const pop=$('#ymPop');
+  const pop=ymPopEl();
   if(!pop){document.removeEventListener('click',ymOutside,true);return;}
   if(pop.contains(e.target)||e.target.closest('.cal-title,.tbt-ym'))return;   /* 여는 버튼 클릭은 토글이 처리 — 폰 상단바 버튼(.tbt-ym)도 예외(빠지면 캡처가 닫고 토글이 다시 연다) */
+  if(tapEatable(e.target)){e.stopPropagation();e.preventDefault();}
   closeYMPop();
 }
 /* 떠 있던 작은 창을 짧게 흐리며 걷는다 — 곧바로 id·클래스를 떼어 새로 여는 창·조회와 겹치지 않게 */
 function popOut(el){if(!el)return;el.removeAttribute('id');el.style.pointerEvents='none';
-  if(!el.animate||WIDGET){el.remove();return;}
+  if(!el.animate){el.remove();return;}   /* 위젯도 짧게 흐리며 닫는다(사용자: 위젯에도 모션) */
   el.animate([{opacity:1,scale:1},{opacity:0,scale:.97}],{duration:140,easing:'ease-in',fill:'forwards'}).finished.then(()=>el.remove(),()=>el.remove());}
+/* 연·월 팝업 — 스타일이 모두 #ymPop 에 걸려 있어 popOut(id 를 뗌)을 쓰면 흐려지는 동안 틀이 풀린다.
+   id 는 두고 data-out 으로 표시한 채 흐린 뒤 지운다. 찾을 때는 ymPopEl()(나가는 중인 것 제외) */
+function ymPopEl(){return document.querySelector('#ymPop:not([data-out])');}
 function closeYMPop(){
-  const pop=$('#ymPop');if(pop)popOut(pop);
+  const pop=ymPopEl();
+  if(pop){pop.dataset.out='1';pop.style.pointerEvents='none';
+    if(!pop.animate)pop.remove();
+    else pop.animate([{opacity:1,scale:1},{opacity:0,scale:.97}],{duration:140,easing:'ease-in',fill:'forwards'}).finished.then(()=>pop.remove(),()=>pop.remove());}
   document.removeEventListener('click',ymOutside,true);
 }
 function dpEmptyAdd(){return '<br><button class="btn bo bsm dp-empty-add" data-act="plan.new"><svg class="icn" aria-hidden="true"><use href="#i-plus"></use></svg>업무 추가</button>';}   /* 함수(끌어올림) — 부팅 중 rDay 가 먼저 불려도 된다 */
@@ -2797,12 +2805,13 @@ function rDay(){
 let MODAL_CB=null;
 let MODAL_RET=null;   /* 모달을 연 요소 — 닫으면 포커스를 돌려준다 */
 /* 폰 큰 창(아래 시트) 끌어내려 닫기 — 창 머리(위 56px)에서 아래로 끌면 따라오고 배경 어둠이 옅어진다.
-   놓을 때 100px 넘게 또는 빠르게 내렸으면 그 속도로 닫고, 아니면 제자리로 */
+   놓을 때 100px 넘게 또는 빠르게 내렸으면 그 속도로 닫고, 아니면 제자리로.
+   ⚠ 창 안이 굴러 내려가 있으면(scrollTop>0) 끌기가 아니라 위로 굴리기 — 머리가 이미 굴러 올라가 있다 */
 {const mo=document.getElementById('mo'),mb=document.getElementById('mb');
  if(mo&&mb){let st=null;
   const sheet=()=>isMob()&&!WIDGET&&mo.classList.contains('open')&&!mb.classList.contains('mb-ask');
   mb.addEventListener('touchstart',e=>{st=null;if(!sheet()||e.touches.length!==1)return;const p=e.touches[0],r=mb.getBoundingClientRect();
-    if(p.clientY-r.top>56||e.target.closest('input,textarea,select,[contenteditable]'))return;st={y:p.clientY,t:Date.now(),dy:0,on:false,h:r.height};},{passive:true});
+    if(mb.scrollTop>0||p.clientY-r.top>56||e.target.closest('input,textarea,select,[contenteditable]'))return;st={y:p.clientY,t:Date.now(),dy:0,on:false,h:r.height};},{passive:true});
   mb.addEventListener('touchmove',e=>{if(!st)return;const dy=e.touches[0].clientY-st.y;
     if(!st.on){if(dy<6)return;st.on=true;mb.style.transition='none';mo.style.transition='none';}
     e.preventDefault();st.dy=Math.max(0,dy);mb.style.transform='translateY('+st.dy+'px)';mo.style.backgroundColor='rgba(0,0,0,'+(.16*(1-Math.min(1,st.dy/st.h))).toFixed(3)+')';},{passive:false});
@@ -2813,6 +2822,7 @@ let MODAL_RET=null;   /* 모달을 연 요소 — 닫으면 포커스를 돌려�
     mb.style.transform='';mo.style.backgroundColor='';
     setTimeout(()=>{mb.style.transition='';mo.style.transition='';},dur*1000+50);
     if(close)closeModal();});
+  mb.addEventListener('touchcancel',()=>{const d=st;st=null;if(!d||!d.on)return;mb.style.transition='';mo.style.transition='';mb.style.transform='';mo.style.backgroundColor='';});   /* 시스템 몸짓에 끊기면 제자리 */
  }}
 function mbSnap(mb){mb.style.transition='none';void mb.offsetWidth;mb.style.transition='';}
 /* 방금 연 창을 짧은 확인창 모양(.mb-ask)으로 — 모양이 바뀐 닫힌 자리에서 다시 출발시킨다 */
@@ -2852,7 +2862,8 @@ function peGrow(el,h0,dur){
 }
 /* 지운 업무가 한 번에 사라지지 않고 접히며 빠진다 — 다시 그리기 전에 떠 둔 사본을 같은 자리에 넣어 접는다(데이터·다시 그리기 순서는 그대로) */
 function dpLeave(pid){
-  const L0=$('#dpList'),el=(S.planEdit&&$('#dpEdit'))||peCardEl(pid);
+  const ed=S.planEdit&&S.planEdit.orig&&S.planEdit.orig.id===pid;   /* 지우는 업무를 고치던 중일 때만 폼을 접는다 — 다른 카드를 지우면 그 카드를 */
+  const L0=$('#dpList'),el=(ed&&$('#dpEdit'))||peCardEl(pid);
   if(!L0||!el||!L0.contains(el)||!el.animate)return ()=>{};
   let nx=el.nextElementSibling;while(nx&&!(nx.dataset&&nx.dataset.pid))nx=nx.nextElementSibling;
   const nextPid=nx?nx.dataset.pid:null,h=el.getBoundingClientRect().height;
@@ -2860,7 +2871,11 @@ function dpLeave(pid){
   g.querySelectorAll('[id]').forEach(x=>x.removeAttribute('id'));g.querySelectorAll('[data-act]').forEach(x=>x.removeAttribute('data-act'));g.removeAttribute('data-pid');
   g.style.pointerEvents='none';g.setAttribute('aria-hidden','true');
   return ()=>{const L=$('#dpList');if(!L)return;
-    const ref=nextPid?L.querySelector('.plan[data-pid="'+CSS.escape(nextPid)+'"]'):null;L.insertBefore(g,ref&&ref.parentElement===L?ref:null);
+    const ref=nextPid?L.querySelector('.plan[data-pid="'+CSS.escape(nextPid)+'"]'):null;
+    /* 마지막 업무를 지워 빈 날이 되면 — 카드는 제자리(맨 위)에서 접히고, 빈 날 안내는 접힌 뒤에 나타난다(안내가 먼저 위에 뜨고 카드가 그 아래서 접히지 않게) */
+    const emp=L.querySelector(':scope>.dp-empty');
+    L.insertBefore(g,ref&&ref.parentElement===L?ref:(emp||null));
+    if(emp&&emp.animate)emp.animate([{opacity:0},{opacity:1}],{duration:180,delay:200,easing:'ease-out',fill:'backwards'});
     const gap=parseFloat(getComputedStyle(L).rowGap)||0;
     g.animate([{height:h+'px',opacity:1,marginBottom:'0px',overflow:'hidden'},{height:'0px',opacity:0,paddingTop:'0px',paddingBottom:'0px',marginBottom:(-gap)+'px',overflow:'hidden'}],{duration:260,easing:PE_EASE})
       .finished.then(()=>g.remove(),()=>g.remove());};
@@ -3604,6 +3619,7 @@ function tkFilterHTML(){
       </button>
     </div>
     ${open?`<div class="tkf-body">
+      <div class="pf-h"><b>필터</b><button type="button" data-act="tkf.clear"${on?'':' disabled'}>초기화</button></div>
       ${M('kind','업무 구분 전체',TK_KIND.map(k=>[k[0]||'_gen',k[1]]))}
       ${M('st','진행 상태 전체',ST_PICK)}
       ${M('own','담당자 전체',[['_none','공통(담당자 없음)']].concat(tkSel().mems.map(p=>[p.id,p.name])))}
@@ -3828,7 +3844,15 @@ function rTkNewOverlay(){
   const o=$('#tko');if(!o)return;
   const c=$('#tkoCard');
   /* 팝업은 새 업무만 맡는다 — 수정은 그 행 아래에서 펼쳐진다 */
-  if(!S.tkNew){o.classList.remove('open');c.innerHTML='';c.removeAttribute('style');return;}
+  const sheet=isMob()&&!WIDGET;   /* 폰은 아래에서 올라오는 유리 시트(날짜 시트와 같은 결) — 내려가는 동안 내용을 두었다가 비운다 */
+  if(!S.tkNew){const was=o.classList.contains('open');o.classList.remove('open');
+    if(sheet&&was&&c.classList.contains('sheet'))setTimeout(()=>{if(!S.tkNew)c.innerHTML='';},400);else c.innerHTML='';
+    c.removeAttribute('style');return;}
+  if(sheet){const opening=!o.classList.contains('open');c.removeAttribute('style');c.classList.add('sheet');
+    c.innerHTML='<button type="button" class="tko-grab" data-act="tk.formCancel" aria-label="닫기"></button>'+taskFormHTML(S.tkNew,null,null);
+    if(opening)void c.offsetWidth;   /* 닫힌 자리를 한 번 굳혀야 거기서부터 올라온다 */
+    o.classList.add('open');return;}
+  c.classList.remove('sheet');
   c.innerHTML=taskFormHTML(S.tkNew,null,null);
   o.classList.add('open');
   /* 가운데 모달이 아니라 업무 추가 버튼에 붙는 팝업으로 띄운다.
@@ -9697,7 +9721,7 @@ function openCtx(x,y,items,anchor,o){
   _ctxDown=e=>{if(!e.target.closest)return;
     if(e.target.closest('.ctxmenu'))return;
     if(anchor&&(e.target===anchor||anchor.contains(e.target)))return;   /* 토글은 click 이 맡는다 */
-    closeCtx();};
+    eatNextClick(e.target);closeCtx();};
   _ctxScr=e=>{if(e.target&&e.target.nodeType===1&&el.contains(e.target))return;closeCtx();};   /* 긴 목록은 메뉴 안에서 구른다 — 그 스크롤로는 닫지 않는다 */
   setTimeout(()=>{if(_ctxEl!==el)return;document.addEventListener('mousedown',_ctxDown,true);
     document.addEventListener('scroll',_ctxScr,true);addEventListener('blur',closeCtx);},0);
@@ -10256,6 +10280,7 @@ function go(view){
   /* 폼을 연 채 화면을 옮기면 tkHold 가 남아 실시간 갱신이 멈춘다 — 달력 폼은 확정하고 닫고, 업무 폼은 닫는다 */
   if(S.view==='calendar'&&view!=='calendar'&&S.planEdit)closePlanEdit();
   if(S.view==='tasks'&&view!=='tasks'&&(S.tkNew||S.tkEdit)&&!(typeof tkFormDirty==='function'&&tkFormDirty())){S.tkNew=null;S.tkEdit=null;S.tkEditOcc='';}   /* 적던 내용이 있으면 건드리지 않는다 */
+  const prevView=S.view;
   S.view=view;
   S.tkOpen=null;   /* 짚어 둔 행은 화면을 옮기면 푼다 */
   pickClear();   /* 화면을 옮기면 골라 둔 업무도 푼다 — 돌아왔을 때 남은 선택에 일괄 적용되지 않게 */
@@ -10271,10 +10296,15 @@ function go(view){
     /* ⚠ 숨겨져 있던 달력은 크기를 모른다 — 맞출 때까지 감춰 두고 다음 프레임에 보인다(이전 화면 폭으로 반짝이지 않게) */
     const cv=$('#view-calendar');if(cv)cv.classList.add('sizing');
     CAL.updateSize();
+    /* 곧바로 맞춰졌으면(보통 그렇다) 감추지 않는다 — 감추면 한두 프레임 빈 달력이 번쩍인다. 폭이 어긋날 때만 다음 프레임까지 감춘다 */
+    {const f=$('#fcal'),h=f&&f.querySelector('.fc-view-harness');if(cv&&h&&f.clientWidth>0&&Math.abs(h.getBoundingClientRect().width-f.clientWidth)<4)cv.classList.remove('sizing');}
     requestAnimationFrame(()=>{try{CAL.updateSize();}catch(e){}
       requestAnimationFrame(()=>{if(cv)cv.classList.remove('sizing');});});
   }
-  if(view==='tasks')rTasks();
+  if(view==='tasks'){rTasks();
+    /* 폰: 도구띠(보류·필터)는 상단바로 올린 fixed — 조상(#tkRoot)이 viewIn 으로 움직이면 그동안 본문 안에 그려졌다가 튀어 오른다.
+       #tkRoot 애니메이션은 끄고(CSS) 들어올 때 한 번 주간/현장별 전환·목록 칸만 올린다 */
+    if(prevView!=='tasks'&&isMob()&&!WIDGET)$$('#tkRoot .tkv-seg,#tkRoot .tkcol').forEach(e=>{if(e.animate)e.animate([{opacity:.5,transform:'translateY(6px)'},{opacity:1,transform:'none'}],{duration:200,easing:'cubic-bezier(.4,0,.2,1)'}).finished.then(fadeSoon,()=>{});});}
   if(view==='photo')rPhoto();
   if(view==='qc')rQc();
   if(view==='dwg')rDwg();
@@ -10391,7 +10421,9 @@ function toastAct(msg,label,fn,ms=5000){
     t.style.transform='translateX(calc(-50% + '+dx+'px)) translateY('+dy+'px)';t.style.opacity=String(Math.max(0,1-Math.max(Math.abs(dx),dy)/160));},{passive:true});
   t.addEventListener('touchend',e=>{if(!on)return;on=false;const p=e.changedTouches[0],far=Math.abs(p.clientX-sx)>60||p.clientY-sy>40;
     t.style.transition='';t.style.transform='';t.style.opacity='';
-    if(mv&&far){t.classList.remove('show','has-btn');TOAST_FN=null;}else toastT=setTimeout(()=>{t.classList.remove('show','has-btn');TOAST_FN=null;},1500);});}}   /* 손을 떼면 1.5초 뒤 닫힘 */
+    if(mv&&far){t.classList.remove('show','has-btn');TOAST_FN=null;}else toastT=setTimeout(()=>{t.classList.remove('show','has-btn');TOAST_FN=null;},1500);});
+  t.addEventListener('touchcancel',()=>{if(!on)return;on=false;t.style.transition='';t.style.transform='';t.style.opacity='';   /* 시스템 몸짓에 끊기면 제자리 · 타이머 다시 */
+    toastT=setTimeout(()=>{t.classList.remove('show','has-btn');TOAST_FN=null;},1500);});}}   /* 손을 떼면 1.5초 뒤 닫힘 */
 function toast(msg,duration=2400){
   const t=$('#toast');t.textContent=msg;t.classList.remove('has-btn');t.classList.add('show');
   clearTimeout(toastT);const ms=Math.max(1000,Number(duration)||2400);toastT=setTimeout(()=>t.classList.remove('show'),ms);
@@ -10514,7 +10546,7 @@ const ACT={
     (()=>{
       /* ⚠ 폼부터 닫고 지운다 — 반대 순서면 없는 업무의 폼이 남아 한 박자 늦게 보인다 */
       const leave=dpLeave(pid);
-      clearTimeout(PE_SAVE);S.planEdit=null;
+      if(S.planEdit&&S.planEdit.orig&&S.planEdit.orig.id===pid){clearTimeout(PE_SAVE);S.planEdit=null;}   /* 다른 업무를 고치던 중이면 그 폼·자동 저장은 그대로 */
       const it=p?_taskOf(p.sid,pid):null;
       const pr=store.delPlan(ym,pid);
       rDay();leave();refetchCal();rWidget();          /* 라이브에서도 즉시 반영(구독 값이 오면 덮어쓴다) */
@@ -10771,6 +10803,7 @@ const ACT={
   /* ⚠ id 로 찾으면 숨어 있는 다른 화면의 필터 카드를 잡는다 — 누른 버튼이 속한 카드를 토글한다 */
   /* 꺽쇠 — 펼치기/접기. 접을 때 걸린 필터를 함께 푼다(결과가 왜 적은지 모르게 되지 않게).
      별도 초기화 버튼은 두지 않는다 */
+  'tkf.clear':()=>{S.tkF={...(S.tkF||{}),st:[],kind:[],site:[],own:[]};rTasks();},   /* 폰 필터 카드 「초기화」 — 찾기 글자는 두고 조건만 */
   'tkf.toggle':()=>{
     const open=S.tkFOpen!==true;
     if(!open)S.tkF={...S.tkF,kind:[],st:[],site:[],own:[]};
@@ -11172,15 +11205,15 @@ const ACT={
   'nq.mob':()=>{nqOpen(true);const i=$('#nqQ');if(i)setTimeout(()=>i.focus(),120);},   /* 폰 검색 = 전체화면 */
   'cal.pickY':el=>{const c=CAL?CAL.view.currentStart:new Date();
     YM_Y=(YM_Y===null?c.getFullYear():YM_Y)+Number(el.dataset.d);
-    const box=$('#ymPop');if(box)box.innerHTML=ymPickHTML();},
+    const box=ymPopEl();if(box)box.innerHTML=ymPickHTML();},
   'cal.goYM':el=>{
     const y=Number(el.dataset.y),m=Number(el.dataset.m);
-    if(!$('#ymPop'))closeModal();   /* 팝업으로 열렸으면 그대로 둔다 — 연달아 옮겨 볼 수 있다 */
+    if(!ymPopEl())closeModal();   /* 팝업으로 열렸으면 그대로 둔다 — 연달아 옮겨 볼 수 있다 */
     if(!CAL)return;
     CAL.gotoDate(new Date(y,m-1,1));
     /* 달을 옮겨도 1일을 저절로 고르지 않는다 — 고른 날짜는 사용자가 누른 것만 */
     rMonTitle();subVisibleMonths();refetchCal();rCalMini&&rCalMini();
-    const yp=$('#ymPop');if(yp)yp.innerHTML=ymPickHTML();   /* 고른 달을 팝업에도 표시 */},
+    const yp=ymPopEl();if(yp)yp.innerHTML=ymPickHTML();   /* 고른 달을 팝업에도 표시 */},
   'wid.popClose':()=>{S.widPop=false;if(S.planEdit)closePlanEdit();rWidget();},
   /* 위젯 내려받기 — 늘 최신 릴리스를 가리키는 고정 주소.
      ⚠ 옛 cfg.widgetUrl 저장값이 남아 있어도 무시하고 상수만 쓴다 */
@@ -11273,8 +11306,10 @@ function rFilter(){
   }
   f.site=keep(f.site,sites.map(x=>x.id));
   const M=(g,all,items)=>mselHTML('cal',g,all,items,f[g]);
+  const anyF=['kind','st','reg','own','site'].some(g=>(f[g]||[]).length);
   box.innerHTML=
-    '<div class="dp-frow">'
+    '<div class="pf-h"><b>필터</b><button type="button" data-act="filt.chipAll"'+(anyF?'':' disabled')+'>초기화</button></div>'   /* 폰 유리 카드 머리(데스크톱·위젯은 CSS 로 숨김 — 아래 줄의 「모두 해제」가 맡는다) */
+    +'<div class="dp-frow">'
       +M('kind','업무 구분 전체',TK_KIND.map(k=>[k[0]||'_gen',k[1]]))
       +M('st','진행 상태 전체',ST_PICK)
     +'</div><div class="dp-frow">'
@@ -11387,7 +11422,7 @@ function calFiltClose(){
   const b=document.querySelector('[data-act="day.fmore"]');if(b)b.setAttribute('aria-expanded','false');
 }
 document.addEventListener('mousedown',e=>{
-  if(!(e.target.closest&&e.target.closest('#calFilt,#calFiltWrap [data-act="day.fmore"]')))calFiltClose();   /* 필터도 바깥 클릭으로 닫는다 · 안쪽은 팝업·필터 단추만(묶음 #calFiltWrap 전체가 아님 — 위젯 찾기와 두 팝업이 겹치지 않게) */
+  if(!(e.target.closest&&e.target.closest('#calFilt,#calFiltWrap [data-act="day.fmore"]'))){const cf=$('#calFilt');if(cf&&cf.classList.contains('on'))eatNextClick(e.target);calFiltClose();}   /* 필터도 바깥 클릭으로 닫는다 · 안쪽은 팝업·필터 단추만(묶음 #calFiltWrap 전체가 아님 — 위젯 찾기와 두 팝업이 겹치지 않게) */
   if(!(e.target.closest&&e.target.closest('#teamsel'))){const tp=$('#teamPop');
     if(tp&&tp.classList.contains('on')){tp.classList.remove('on');
       const tb=$('#teamSelEl');if(tb)tb.setAttribute('aria-expanded','false');}}
@@ -11744,6 +11779,8 @@ if(window.MutationObserver){
     fadeSoon();
   });
   const start=()=>{const app=$('#app');if(app)mo.observe(app,{childList:true,subtree:true});fadeScan();};
+  /* 들어오는 움직임(viewIn 6px) 동안엔 잠깐 넘쳐 보여 페이드가 걸린다 — 끝나면 다시 잰다(안 하면 본문 아래 26px 이 흐린 채 남고, 상단바로 올린 fixed 도구띠가 마스크에 잘려 사라진다) */
+  document.addEventListener('animationend',e=>{if(e.animationName==='viewIn')fadeSoon();},true);
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);
   else start();
 }
@@ -11829,7 +11866,7 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
     /* 겹쳐 있는 것부터 하나씩 닫는다 — 한 번에 다 닫히면 되돌리기 번거롭다 */
     if(document.querySelector('.msel.open')){mselClose();return;}
-    if($('#ymPop')){closeYMPop();return;}
+    if(ymPopEl()){closeYMPop();return;}
     const wg=$('#wgSet');
     if(wg&&wg.classList.contains('on')){wg.classList.remove('on');wg.setAttribute('aria-hidden','true');return;}
     if($('#calFilt')&&$('#calFilt').classList.contains('on')){calFiltClose();return;}
@@ -13872,7 +13909,7 @@ document.addEventListener('pointerdown',e=>{
   if(!matchMedia('(max-width:960px)').matches||WIDGET)return;
   const card=$('#tkFcard');if(!card||!card.classList.contains('open'))return;
   if(e.target.closest&&e.target.closest('#tkFcard,.msel-pop,.tb-pop,#mo'))return;
-  S.tkFOpen=false;rTasksSoon();
+  eatNextClick(e.target);S.tkFOpen=false;rTasksSoon();
 },true);
 /* ⚠ 스크림은 click 위임에만 기대지 않는다 — iOS 에서 click 이 안 올 때가 있어 touchend 에서 직접 닫는다.
    touchstart 에서 10px 넘게 움직였으면(끌기) 닫지 않는다 */
@@ -15168,7 +15205,8 @@ function tkYmBtnHTML(){
 }
 function openTkPick(){
   YM_Y=null;
-  const old=$('#ymPop');
+  document.querySelectorAll('#ymPop[data-out]').forEach(x=>x.remove());   /* 흐려지며 나가는 중인 것은 바로 걷고 새로 연다 */
+  const old=ymPopEl();
   if(old){old.remove();document.removeEventListener('click',ymOutside,true);return;}
   const btn=$('#topbar .tbt-ym');if(!btn)return;
   const pop=document.createElement('div');pop.id='ymPop';pop.className='ymp-tk';pop.innerHTML=ymPickHTML(tkYmBase(),'tk');
@@ -15308,6 +15346,60 @@ function mtoolsOpen(){
   mssShow(box,true);
   mtabMark('tools');   /* 시트가 열린 동안 칸을 켠다 */
 }
+/* 홈 화면에 추가 — 폰(위젯 아님)이고 이미 홈 화면 앱으로 연 게 아닐 때만.
+   안드로이드 크롬은 설치 창(beforeinstallprompt)을 쓰고, 못 받으면 순서 안내 시트. 아이폰은 설치 창이 없어 안내 시트뿐.
+   카카오톡 인앱은 추가가 안 돼 기본 브라우저로 넘긴다. 안내 카드는 닫거나 추가하면 그 기기에서 다시 안 뜬다.
+   ⚠ 서비스 워커는 넣지 않는다(옛 캐시 문제로 지우는 중) — 설치 창이 안 오면 안내 시트로 간다(안드로이드 실기기 미확인) */
+const PWA={ev:null,ua:navigator.userAgent};
+PWA.ios=/iP(hone|ad|od)/.test(PWA.ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+PWA.kko=/KAKAOTALK/i.test(PWA.ua);
+const PWA_OFF='calapp_pwa_off',KKO_OFF='calapp_kko_off';
+function pwaStand(){return matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;}
+function pwaIsOff(k){try{return localStorage.getItem(k)==='1';}catch(e){return false;}}
+function pwaSetOff(k){try{localStorage.setItem(k,'1');}catch(e){}}
+function pwaCan(){return !WIDGET&&isMob()&&!pwaStand();}
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();PWA.ev=e;});
+addEventListener('appinstalled',()=>{PWA.ev=null;pwaSetOff(PWA_OFF);pwaCardClose();});
+function pwaCardClose(){const c=$('#pwaCard');if(c)popOut(c);}
+function pwaCard(){
+  if(!pwaCan()||$('#pwaCard'))return;
+  const x=k=>'<button type="button" class="x" data-act="pwa.x" data-k="'+k+'" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button>';
+  let h;
+  if(PWA.kko){if(pwaIsOff(KKO_OFF))return;
+    h='<div class="pwa-card kko" id="pwaCard" role="status"><div class="tx"><b>카카오톡 브라우저입니다</b><span>홈 화면 추가는 기본 브라우저에서</span></div>'
+      +'<button type="button" class="go" data-act="kko.open">브라우저로 열기</button>'+x(KKO_OFF)+'</div>';}
+  else{if(pwaIsOff(PWA_OFF))return;
+    h='<div class="pwa-card" id="pwaCard" role="status"><i class="ap" aria-hidden="true"></i><div class="tx"><b>홈 화면에 추가</b><span>주소창 없이 앱처럼 열립니다</span></div>'
+      +'<button type="button" class="go" data-act="pwa.add">추가</button>'+x(PWA_OFF)+'</div>';}
+  document.body.insertAdjacentHTML('beforeend',h);
+}
+/* 추가 순서 — 아이폰(사파리·크롬) / 안드로이드. 아이콘은 실제 누를 단추 모양 */
+function pwaSteps(){
+  const box=$('#mss');if(!box)return;
+  const ic=id=>'<span class="ic"><svg class="icn" aria-hidden="true"><use href="#'+id+'"></use></svg></span>';
+  const st=(n,t)=>'<div class="pwa-st"><span class="n">'+n+'</span><span>'+t+'</span></div>';
+  const crios=/CriOS/.test(PWA.ua);
+  const body=PWA.ios
+    ?'<p class="intro">아이폰은 브라우저에서 직접 추가합니다.</p>'
+      +st(1,(crios?'주소창 오른쪽 ':'아래 가운데 ')+ic('i-share')+' <em>공유</em> 누르기')
+      +st(2,'목록을 내려 '+ic('i-addsq')+' <em>홈 화면에 추가</em>')
+      +st(3,'오른쪽 위 <em>추가</em> 누르기')
+    :'<p class="intro">브라우저 메뉴에서 추가합니다.</p>'
+      +st(1,'오른쪽 위 '+ic('i-dots')+' <em>메뉴</em> 누르기')
+      +st(2,'<em>홈 화면에 추가</em> 또는 <em>앱 설치</em>')
+      +st(3,'<em>추가</em>·<em>설치</em> 누르기');
+  box.innerHTML=MSS_GRAB+'<div class="mss-sc"><div class="mss-h">홈 화면에 추가</div><div class="pwa-steps">'+body
+    +'<p class="pwa-hint">추가한 뒤에는 홈 화면의 「주요업무」 아이콘으로 여세요.</p></div></div>';
+  box.classList.remove('menu');mssShow(box,true);
+}
+function pwaAdd(){
+  if(PWA.kko){kkoOpen();return;}
+  if(PWA.ev){const e=PWA.ev;PWA.ev=null;mssClose();e.prompt();
+    Promise.resolve(e.userChoice).then(r=>{if(r&&r.outcome==='accepted'){pwaSetOff(PWA_OFF);pwaCardClose();}}).catch(()=>{});return;}
+  pwaSteps();
+}
+/* 카카오톡 인앱 → 기본 브라우저(안드로이드 크롬 등·아이폰 사파리)로 같은 주소 열기 — 카카오톡이 여는 주소 형식(실기기 확인 필요) */
+function kkoOpen(){location.href='kakaotalk://web/openExternal?url='+encodeURIComponent(location.href);}
 /* 폰 메뉴 = 사이드바 대신 시트 — 나머지 메뉴는 하단 탭과 두 시트가 한다.
    팀 선택 · 조직 관리 · 설정만 둔다(계정은 왼쪽 위 프로필 원). 데스크톱·위젯 사이드바는 그대로 */
 function mmenuRow(ic,label,attrs,right){
@@ -15322,6 +15414,7 @@ function mmenuOpen(){
     +(cur?mmenuRow('i-people','팀',teams.length>1?' data-act="mmenu.teams"':'',esc(cur.name)+(teams.length>1?chev:'')):'')   /* 팀이 하나면 이름만 보인다 */
     +mmenuRow('i-org','조직 관리',' data-act="mmenu.go" data-view="org"')
     +mmenuRow('i-settings','설정',' data-act="mmenu.go" data-view="settings"')
+    +(pwaCan()?mmenuRow('i-addsq','홈 화면에 추가',' data-act="pwa.add"'):'')   /* 이미 홈 화면 앱으로 열었으면 빠진다 */
     +'</div>';
   mssShow(box,true);box.classList.add('menu');
   const m=$('#mtab .mtab-m');if(m)m.classList.add('on');
@@ -15381,9 +15474,14 @@ document.addEventListener('focusin',()=>mdsKbSync());
 document.addEventListener('focusout',()=>setTimeout(mdsKbSync,60));
 /* 키보드가 실제로 떠 있는지(body.kbv) — 입력칸에 초점만 있고 키보드가 없으면(하드웨어 키보드·안드로이드 뒤로 가기로 내린 경우·데스크톱 좁은 창) 하단 탭과 시트는 평소 자리 */
 function kbH(){const vv=window.visualViewport;return vv?Math.max(0,Math.round(innerHeight-(vv.offsetTop+vv.height))):0;}
-function kbvSync(){document.body.classList.toggle('kbv',document.body.classList.contains('kb')&&kbH()>80);}
+/* 키보드가 화면(레이아웃) 자체를 줄이는 브라우저(일부 인앱·옛 안드로이드)는 kbH 가 0 — 초점 없을 때의 높이(KB_H0)보다 크게 줄었는지로도 본다 */
+let KB_H0=innerHeight;
+addEventListener('resize',()=>{if(!document.body.classList.contains('kb'))KB_H0=innerHeight;kbvSync();});
+addEventListener('orientationchange',()=>{setTimeout(()=>{if(!document.body.classList.contains('kb'))KB_H0=innerHeight;},400);});
+function kbvSync(){const b=document.body,k=kbH();b.classList.toggle('kbv',b.classList.contains('kb')&&(k>80||KB_H0-innerHeight>120));
+  document.documentElement.style.setProperty('--kbh',(b.classList.contains('kbv')?k:0)+'px');}   /* --kbh: 키보드에 가린 높이 — 업무 현황 새 업무 시트가 그 위로 */
 document.addEventListener('focusin',()=>setTimeout(kbvSync,0));document.addEventListener('focusout',()=>setTimeout(kbvSync,60));
-if(window.visualViewport)visualViewport.addEventListener('resize',kbvSync);
+if(window.visualViewport){visualViewport.addEventListener('resize',kbvSync);visualViewport.addEventListener('scroll',kbvSync);}   /* iOS 는 키보드가 뜨면 보이는 창이 위로 밀린다(offsetTop) — 그때도 다시 잰다 */
 if(window.visualViewport)visualViewport.addEventListener('resize',()=>{if(document.body.classList.contains('mds-kb')||document.body.classList.contains('kb'))mdsKbSync();if(document.body.classList.contains('lg'))lgKbSync();});   /* 로그인 키보드 */
 Object.assign(ACT,{
   'mtab.go':el=>{
@@ -15391,7 +15489,7 @@ Object.assign(ACT,{
        열린 채 다시 누르면 닫고 끝 — 어떤 시트가 열려 있었는지 닫기 전에 기억한다 */
     if($('#mo').classList.contains('open'))closeModal();   /* 폰 큰 창 시트·검색은 탭을 가리지 않으므로 탭을 누르면 먼저 닫는다 */
     {const q=$('.nq-panel.on');if(q)nqOpen(false);}
-    if($('#tko.open'))ACT['tk.formCancel']();   /* 업무 현황 새 업무 폼 — 쓰던 게 있으면 버릴지 묻는다 */
+    if($('#tko.open')){const dirty=tkFormDirty();tkFormClose();if(dirty)return;}   /* 업무 현황 새 업무 폼 — 쓰던 게 있으면 버릴지 묻고 여기서 멈춘다(묻는 창 아래서 폼을 지우거나 화면을 옮기지 않게) */
     const t=el.dataset.t,box=$('#mss');
     const wasOpen=(box&&box.classList.contains('on'))?(box.classList.contains('menu')?'menu':box.classList.contains('tools')?'tools':'site'):'';
     mssClose();
@@ -15408,7 +15506,7 @@ Object.assign(ACT,{
   'mmenu.teams':()=>mmenuTeams(),
   'mmenu.team':el=>{ACT['team.switch'](el);mssClose();},
   'tk.ym':()=>openTkPick(),   /* ⚠ 'tk.pick' 은 담당자·보류함 선택이 이미 쓴다 — 이름을 겹치면 그쪽이 죽는다 */
-  'tk.pickY':el=>{const c=tkYmBase();YM_Y=(YM_Y===null?c.getFullYear():YM_Y)+Number(el.dataset.d);const box=$('#ymPop');if(box)box.innerHTML=ymPickHTML(c,'tk');},
+  'tk.pickY':el=>{const c=tkYmBase();YM_Y=(YM_Y===null?c.getFullYear():YM_Y)+Number(el.dataset.d);const box=ymPopEl();if(box)box.innerHTML=ymPickHTML(c,'tk');},
   'tk.goYM':el=>{
     const y=Number(el.dataset.y),m=Number(el.dataset.m);pickClear();
     const t=todayStr(),cur=t.slice(0,7)===(y+'-'+pad(m));
@@ -15417,6 +15515,9 @@ Object.assign(ACT,{
     closeYMPop();rTasks();},
   'mss.open':()=>mssOpen(),
   'mss.close':()=>mssClose(),
+  'pwa.add':()=>pwaAdd(),
+  'pwa.x':el=>{pwaSetOff(el.dataset.k);pwaCardClose();},
+  'kko.open':()=>kkoOpen(),
   'mss.dash':()=>{mssClose();S.dfSid='';go('defect');},
   'mss.site':el=>{mssClose();S.dfSid=el.dataset.sid||'';go('defect');},
 });
