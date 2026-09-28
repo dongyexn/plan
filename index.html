@@ -5182,6 +5182,28 @@ td.d60-pc:hover{background:var(--fill)}
   body:not(.wid) #tkoCard.sheet .tko-grab{display:block;position:relative;width:100%;height:16px;padding:0;margin:0;border:0;background:none;cursor:pointer;}
   body:not(.wid) #tkoCard.sheet .tko-grab::before{content:'';position:absolute;left:50%;top:7px;width:52px;height:5px;margin-left:-26px;border-radius:3px;background:rgba(60,60,67,.3);}
 }
+
+/* ══ 데스크톱 — 폰 하단 탭·시트의 디자인 언어를 같은 결로(폰·위젯에 이어) ══
+   떠 있는 판(필터·연·월·드롭다운 메뉴·찾기)은 밝은 유리 카드, 필터 단추는 빈 조건 = 흰 알약·진한 글자·⌄ / 건 조건 = 파란 채움, 알림은 캡슐 */
+@media(min-width:961px){
+  body:not(.wid) .cal-filt-pop.tb-pop,body:not(.wid) .nq-panel,body:not(.wid) #ymPop{background:var(--glass);-webkit-backdrop-filter:blur(20px) saturate(1.8);backdrop-filter:blur(20px) saturate(1.8);border:1px solid rgba(0,0,0,.06);box-shadow:0 16px 48px rgba(16,24,40,.18),0 1px 2px rgba(16,24,40,.08),inset 0 0 0 1px rgba(255,255,255,.7);border-radius:18px;}
+  body:not(.wid) #tkoCard .tk-new{background:var(--glass);-webkit-backdrop-filter:blur(20px) saturate(1.8);backdrop-filter:blur(20px) saturate(1.8);border:1px solid rgba(0,0,0,.06);box-shadow:0 16px 48px rgba(16,24,40,.18),0 1px 2px rgba(16,24,40,.08),inset 0 0 0 1px rgba(255,255,255,.7);border-radius:18px;}   /* 업무 현황 새 업무 팝업도 같은 유리 카드 */
+  body:not(.wid) .ctxmenu{background:var(--glass);-webkit-backdrop-filter:blur(20px) saturate(1.8);backdrop-filter:blur(20px) saturate(1.8);border:1px solid rgba(0,0,0,.06);box-shadow:0 16px 48px rgba(16,24,40,.18),0 1px 2px rgba(16,24,40,.08),inset 0 0 0 1px rgba(255,255,255,.7);border-radius:14px;}
+  body:not(.wid) .cal-filt-pop::before{display:none;}   /* 꼬리 없음 — 떠 있는 카드 */
+  body:not(.wid) #ymPop .ymp-m{border-radius:12px;}
+  body:not(.wid) :is(.cal-filt-pop,#tkFcard) .pf-h{display:flex;}
+  body:not(.wid) .cal-filt-pop .dp-ffoot{display:none;}
+  body:not(.wid) :is(.cal-filt-pop,#tkFcard) .msel-b{height:34px;border-radius:17px;background:#fff;box-shadow:inset 0 0 0 1px rgba(60,60,67,.14),0 1px 2px rgba(16,24,40,.04);color:var(--lbl);font-weight:600;}
+  body:not(.wid) :is(.cal-filt-pop,#tkFcard) .msel-b:hover{background:#F7F8FA;}
+  body:not(.wid) :is(.cal-filt-pop,#tkFcard) .msel-b .pci{color:var(--lbl2);}
+  body:not(.wid) :is(.cal-filt-pop,#tkFcard) .msel-b::after{content:'';flex:0 0 auto;width:6px;height:6px;margin-right:2px;border-right:1.6px solid var(--lbl3);border-bottom:1.6px solid var(--lbl3);transform:translateY(-2px) rotate(45deg);}
+  body:not(.wid) :is(.cal-filt-pop,#tkFcard) .msel.on .msel-b{background:var(--b600);color:#fff;box-shadow:none;}
+  body:not(.wid) :is(.cal-filt-pop,#tkFcard) .msel.on .msel-b .pci{color:#fff;}
+  body:not(.wid) :is(.cal-filt-pop,#tkFcard) .msel.on .msel-b::after{border-color:rgba(255,255,255,.85);}
+  body:not(.wid) :is(.cal-filt-pop,#tkFcard) .msel.open .msel-b{box-shadow:inset 0 0 0 1.5px var(--b600);}
+  body:not(.wid) :is(.cal-filt-pop,#tkFcard) .msel.on.open .msel-b{box-shadow:inset 0 0 0 1.5px var(--b300);}
+  body:not(.wid) #toast{border-radius:22px;padding:12px 18px;background:rgba(28,28,30,.78);-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6);box-shadow:0 10px 30px rgba(0,0,0,.22);}
+}
 </style>
 </head>
 <body class="lg lg-ld">   <!-- 처음부터 로그인 화면(불러오는 중) 상태 — hideCover 가 뗀다. 첫 페인트에 앱 틀이 비치지 않게 -->
@@ -5661,5 +5683,5 @@ td.d60-pc:hover{background:var(--fill)}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1036"></script>
+<script src="./app.js?v=1037"></script>
 </body></html>
