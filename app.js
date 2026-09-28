@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1027';
+const APP_VER='1029';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -762,7 +762,10 @@ function bootCacheSave(){
   bootT=setTimeout(()=>{try{
     /* accounts(계정 지정색)도 캐시 — 빠지면 부팅 때 색이 깜빡인다 */
     if(!S.live||!S.user)return;   /* 로그인한 사람 캐시로만 — uid 를 함께 적어 다른 계정이면 쓰지 않고 지운다 */
-    localStorage.setItem(BOOT_KEY,JSON.stringify({uid:S.user.uid,org:S.org,people:S.people,tasks:S.tasks,cfg:S.cfg,accounts:S.accounts,at:Date.now()}));
+    /* 계정은 첫 화면에 필요한 이름·색·아이콘·역할만 — 이메일·접속 시각은 남기지 않는다 */
+    const acc={};Object.keys(S.accounts||{}).forEach(k=>{const a=S.accounts[k]||{},o={name:a.name||String(a.email||'').split('@')[0]};
+      if(a.avColor)o.avColor=a.avColor;if(a.avIcon)o.avIcon=a.avIcon;if(a.role)o.role=a.role;acc[k]=o;});
+    localStorage.setItem(BOOT_KEY,JSON.stringify({uid:S.user.uid,org:S.org,people:S.people,tasks:S.tasks,cfg:S.cfg,accounts:acc,at:Date.now()}));
   }catch(e){}},500);
 }
 function bootCacheClear(){try{localStorage.removeItem(BOOT_KEY);}catch(e){}}
@@ -1846,7 +1849,7 @@ function widSideRender(){
           wd?dlab(wd):'기한 없음',
           (wd&&daysBetween(todayStr(),wd)<0)?'over':(wd&&daysBetween(todayStr(),wd)===0?'now':''),
           it.text||'제목 없음',
-          [kindLabel(it.kind),siteName(it.site)].filter(Boolean).join(' · '));}).join('')
+          [kindLabel(it.kind),dfShortSite(siteName(it.site))].filter(Boolean).join(' · '));}).join('')
         :empty('i-tasks','공통 업무가 없습니다'))
       +sec('미완료 업무','mine',tasks.length,1)   /* 위에 구분선 */
       /* 미완료 줄은 왼쪽 진행 아이콘으로 바로 완료 처리. 줄 클릭(이동)과 겹치지 않게 버튼을 줄 밖 한 칸에 둔다 */
@@ -1857,7 +1860,7 @@ function widSideRender(){
             ' data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" data-date="'+esc(wd||'')+'"',
             wd?dlab(wd):'기한 없음',late?'over':(wd&&daysBetween(todayStr(),wd)===0?'now':''),
             it.text||'제목 없음',
-            [kindLabel(it.kind),siteName(it.site)].filter(Boolean).join(' · '))   /* ⚠ 순서는 공통 줄·업무 목록과 같게 — 구분 → 현장 */
+            [kindLabel(it.kind),dfShortSite(siteName(it.site))].filter(Boolean).join(' · '))   /* ⚠ 순서는 공통 줄·업무 목록과 같게 — 구분 → 현장 */
           +stIcon(stEff(it),' data-act="wid.st" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"')
           +'</div>';}).join('')
         :empty('i-tasks','미완료 업무가 없습니다'))
@@ -1867,7 +1870,7 @@ function widSideRender(){
           ' data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" data-date="'+esc(wd||'')+'"',
           wd?dlab(wd):'기한 없음','hold',
           it.text||'제목 없음',
-          [kindLabel(it.kind),siteName(it.site)].filter(Boolean).join(' · '));}).join(''):'');
+          [kindLabel(it.kind),dfShortSite(siteName(it.site))].filter(Boolean).join(' · '));}).join(''):'');
     return;
   }
 
@@ -2215,6 +2218,7 @@ function mcalPane(y,m,evs){
   /* 이웃 달 칸에도 막대를 그린다 — 기간 업무가 달 경계에서 잘리지 않게(칸은 흐리게·누르지 않음) */
   /* 칸이 넘쳐 「+N」 이 되면 그 칸에선 뒷줄 막대가 빠진다 — 기간 막대의 끝·머리·제목 폭은 「실제로 보이는 칸」으로 다시 센다.
      (옛: 빠진 칸에서 막대가 끊겨 끝이 덜 차 보이고, 머리 칸 제목은 원래 길이대로 흘러 막대 밖으로 나갔다) */
+  const ym=y+'-'+pad(m+1),isOut=d=>d.slice(0,7)!==ym;
   const showOf=d=>{const l=lanes[d]||[];return l.length>CAP?CAP-1:Math.min(l.length,CAP);};
   const visAt=(d,k,e)=>{const l=lanes[d],o=l&&l[k];return !!o&&o.e===e&&k<showOf(d);};
   const piece=(o,k,ds)=>{
@@ -2225,12 +2229,17 @@ function mcalPane(y,m,evs){
     const ps=Array.from({length:show},(_,k)=>ln[k]?piece(ln[k],k,ds):null);
     return '<span class="mc-bars'+(ps.some(o=>o&&o.head&&o.n>1)?' hd':'')+'">'+ps.map(o=>{if(!o)return '<i class="mc-bar sp"></i>';
             const e=o.e;
-            /* ⚠ 그라디언트 기간 막대는 머리 조각 하나를 주 안 길이만큼 늘려 그린다(조각별로 자르면 이음매가 보인다). 뒤 조각은 자리만 차지하고 투명.
-               폭 = n×100% + (2n−4)px (머리·꼬리 2px 안쪽 여백 보정) */
-            const grad=/gradient\(/.test(String(e.c))&&o.n>1;
-            const bg=(grad&&!o.head)?'background:transparent':('background:'+esc(e.c)+(grad?';width:calc('+o.n+'*100% + '+(2*o.n-4)+'px);position:relative;z-index:1;border-radius:3px':''));
+            /* ⚠ 그라디언트 기간 막대는 머리 조각 하나를 보이는 줄 길이만큼 늘려 그린다(조각별로 자르면 이음매가 보인다). 뒤 조각은 자리만 차지하고 투명.
+               폭 = n×100% + (4n−4)px — 칸 좌우 여백 2px 씩(칸 간격 100%+4px, 머리 왼쪽·꼬리 오른쪽 여백 2px 뺌). ⚠ `.mc-d` padding 과 짝
+               이웃 달 칸에 걸친 부분은 칸 흐림 대신 마스크로 흐린다(머리가 이웃 달 칸에 있으면 칸 흐림이 막대 전체에 걸린다) */
+            const isG=/gradient\(/.test(String(e.c)),grad=isG&&(!o.head||o.n>1);
+            let mk='';
+            if(grad&&o.head){const pos=k=>k===0?'0%':k===o.n?'100%':'calc((100% + 4px)*'+k+'/'+o.n+' - 2px)',segs=[];
+              for(let k=0;k<o.n;k++){const a=isOut(addDays(ds,k))?'.55':'1';if(segs.length&&segs[segs.length-1].a===a)segs[segs.length-1].b=k+1;else segs.push({a,s:k,b:k+1});}
+              if(segs.some(x=>x.a!=='1')){const g='linear-gradient(90deg,'+segs.map(x=>'rgba(0,0,0,'+x.a+') '+pos(x.s)+' '+pos(x.b)).join(',')+')';mk=';-webkit-mask-image:'+g+';mask-image:'+g;}}
+            const bg=(grad&&!o.head)?'background:transparent':('background:'+esc(e.c)+(grad?';width:calc('+o.n+'*100% + '+(4*o.n-4)+'px);position:relative;z-index:1;border-radius:3px'+mk:''));
             return '<i class="mc-bar'+(e.done?' dn':'')+(e.team?' tm':'')+(e.light?' lt':'')+(e.risk?' rk':'')+(o.s?' s':'')+(o.en?' e':'')+(grad?' gw':'')+'" style="'+bg+'">'
-              +((o.head||e.team)?'<b'+((o.head&&o.n>1)?' style="width:calc('+o.n+'*100% - '+(2*o.n+2)+'px)"':'')+'>'+(o.head?esc(e.t):'')+'</b>':'')+'</i>';}).join('')
+              +((o.head||e.team)?'<b'+((o.head&&o.n>1&&!grad)?' style="width:calc('+o.n+'*100% - '+(2*o.n+2)+'px)"':'')+'>'+(o.head?esc(e.t):'')+'</b>':'')+'</i>';}).join('')
           +(over?'<i class="mc-more">+'+(ln.filter(Boolean).length-show)+'</i>':'')+'</span>';};
   for(let i=0;i<lead;i++){const ds=addDays(gridStart,i);cells+='<div class="mc-d out"><span class="n">'+(prevDays-lead+i+1)+'</span>'+bars(lanes[ds]||[],ds)+'</div>';}
   for(let d=1;d<=days;d++){
@@ -2701,13 +2710,13 @@ function linkLabel(l){
 }
 /* 글자 칸이 아니면 커서 위치를 읽을 수 없다(날짜·색 칸은 읽기만 해도 오류) */
 function selOf(el,k){try{return el[k];}catch(e){return null;}}
-/* 카드 요약 줄 — [구분 칩(일반·고위험·공통 외)] 현장(「힐스테이트」 뗌) · 담당(없으면 공통) · 기간 · 시간 · 반복.
+/* 카드 요약 줄 — [구분 칩(일반·고위험·공통 외)] 현장(힐스테이트→HS·디에이치→TH) · 담당(없으면 공통) · 기간 · 시간 · 반복.
    보류함·놓친 업무 확인·찾기 결과도 공용 — day 를 주면 하루짜리도 날짜를 적는다(날짜가 아니면 day 그대로, 예: 「기한 없음」) */
 function planMetaHTML(p,day){
   const md=peMD;   /* 빈 날짜는 '' (toDate('') 는 NaN/NaN) */
   const span=p.date&&p.end&&p.end!==p.date,rep=p.recur&&p.recur.f;
   const k=kindOf(p.kind),kch=k&&k!=='risk'&&k!=='gather'?'<span class="pm-k">'+esc(kindLabel(k))+'</span>':'';
-  const short=n=>String(n||'').replace(/^힐스테이트\s+/,'');
+  const short=n=>n?dfShortSite(n):'';
   /* 시작일 없이 종료일만 있는 업무(업무 현황은 그렇게도 저장된다)는 「~9/29」 */
   const when=span?md(p.date)+'–'+md(p.end):(!p.date&&p.end?'~'+md(p.end):(day?(p.date?md(p.date):(day===true?'':day)):''));
   const meta=[short(p.site?siteName(p.site):''),planOwners(p).map(o=>ownName(o)).join(', ')||'공통',
@@ -3253,7 +3262,7 @@ function taskItemHTML(sid,iid,it,withSubject,hideOwn,colsIn,occ){
         : (cols.who?(cols.gw?'<span class="tkc tkc-w"></span>'
             :'<span class="tkc tkc-w'+(who?'':' dim')+'"'+go+(asg.length>1?' data-tip="'+esc(asg.map(x=>x.name).join(', '))+'"':'')+'>'
               +'<i class="tkc-dot" style="background:'+esc(colBg(planColor(p0)))+'"></i>'+(asg.length>1?'<span class="tkc-nm">'+esc(asg[0].name)+'<span class="tkc-x">+'+(asg.length-1)+'</span></span>':(who?esc(who):'공통'))+'</span>'):'')
-          +(cols.site?'<span class="tkc tkc-s"'+go+'>'+esc(sn)+'</span>':'')
+          +(cols.site?'<span class="tkc tkc-s"'+go+(sn?' data-tip="'+esc(sn)+'"':'')+'>'+esc(dfShortSite(sn))+'</span>':'')
           +'<span class="tk-ttl"'+go+'>'+riskMark(it.kind)+esc(it.text||'제목 없음')
             +(sub?'<i class="tk-sub-i">'+esc(sub)+'</i>':'')
             
