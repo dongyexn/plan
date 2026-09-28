@@ -111,8 +111,10 @@ try {
   await page.click('.plan .plan-c[data-act="plan.body"]');   /* 992차: 누름 영역이 제목+요약 줄(.plan-c)로 */
   await page.waitForSelector('[data-act="plan.del"]', { timeout: 4000 });
   await page.click('[data-act="plan.del"]');
-  await page.waitForSelector('[data-act="modal.ok"]', { timeout: 4000 });
-  await page.click('[data-act="modal.ok"]');
+  /* 1026차: 되돌릴 수 있는 삭제는 확인창 없이 바로 휴지통 + 「되돌리기」 알림 */
+  if (await page.evaluate(() => document.getElementById('mo').classList.contains('open'))) F('삭제 — 확인창이 떴다(바로 휴지통이어야 한다)');
+  await page.waitForSelector('#toast.show .toast-undo', { timeout: 4000 });
+  OK('삭제 — 확인창 없이 되돌리기 알림');
   await waitFor(page, t => {
     const d = JSON.parse(localStorage.getItem('calapp.v1') || '{}');
     for (const sid in (d.trash || {})) for (const iid in d.trash[sid])
