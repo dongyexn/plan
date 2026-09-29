@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1039';
+const APP_VER='1050';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -143,7 +143,7 @@ function ownSelHTML(id,cur,people){
 }
 function sitePickHTML(id,cur){
   const sites=(S.org.sites||[]).filter(x=>x.name);
-  return `<select class="inp inp-sm" id="${id}">
+  return `<select class="inp inp-sm" id="${id}" aria-label="현장">
     <option value="">-</option>
     ${sites.map(x=>'<option value="'+esc(x.id)+'"'+(x.id===cur?' selected':'')+'>'+esc(x.name)+'</option>').join('')}
   </select>`;
@@ -440,12 +440,15 @@ function tkHold(){return shEditing()||tkFormOpen();}
    입력 중에는 PEND.org 로 미루고, 칸을 떠날 때 focusout 이 몰아 그린다 */
 function orgHold(){const a=document.activeElement;return !!(a&&a.closest&&a.closest('#view-org')&&a.matches('input,select,textarea'));}
 const PEND={day:false,tasks:false,org:false};
-document.addEventListener('focusout',()=>{
-  setTimeout(()=>{if(tkHold())return;
+function pendFlush(){
+  if(tkHold())return;
+  const any=PEND.day||PEND.tasks;
   if(PEND.day){PEND.day=false;if(!S.planEdit)rDay();refetchCal();}
   if(PEND.tasks){PEND.tasks=false;if(!S.tkNew&&!S.tkEdit)rTasks();}
   if(PEND.org){PEND.org=false;rOrg();}
-},60);});
+  if(any&&WIDGET)rWidget();   /* 위젯 알림창·팝업도 */
+}
+document.addEventListener('focusout',()=>{setTimeout(pendFlush,60);});
 
 /* DB 규칙이 스키마 외 키를 거부($other:false)하므로 저장 전에 필드를 정제한다(비반복 일정의 doneOn/skipOn 도 걸러진다) */
 /* 업무 소유·이력 — 소유는 새 업무만(createdBy 없음 = 레거시, 전원).
@@ -513,9 +516,13 @@ function bkDecrypt(text){
       .catch(()=>{toast('위젯과 연결하지 못했습니다 · 위젯 창을 다시 연 뒤 눌러 주세요');fin(null);});
   });
 }
-function cleanTask(t){
+/* iid 를 주면 있는 업무 저장 — createdAt 이 없던 옛 업무에 지금 시각을 새로 박지 않는다.
+   ⚠ 박으면 정렬 끝 기준(createdAt)이 0 → 지금으로 바뀌어 고치기·완료만 해도 그 업무가 목록·달력 칸 맨 아래로 튄다 */
+function cleanTask(t,iid){
+  const cre=Number(t.createdAt)||(iid?0:Date.now());   /* 객체 밖에서 — 정적 감사 8 이 객체 안 「x:」를 필드로 읽는다 */
   const o={text:String(t.text||'').slice(0,500),st:stOf(t.st),stKeep:!!t.stKeep,
-    createdAt:Number(t.createdAt)||Date.now(),updatedAt:Number(t.updatedAt)||Date.now()};
+    createdAt:cre,updatedAt:Number(t.updatedAt)||Date.now()};
+  if(!o.createdAt)delete o.createdAt;
   if(t.createdBy)o.createdBy=String(t.createdBy).slice(0,64);   /* 소유 — 없으면 레거시(전원 수정) */
   if(Array.isArray(t.hist)&&t.hist.length)o.hist=t.hist.slice(-20)
     .map(h=>({t:Number(h.t)||0,u:String(h.u||'').slice(0,30),k:String(h.k||'').slice(0,10)}));
@@ -727,7 +734,7 @@ const LocalStore={
   putTask(mid,iid,item){
     if(S.arch[mid]&&S.arch[mid][iid])delete S.arch[mid][iid];   /* 아카이브 사본 제거 */
     if(this._d.archive&&this._d.archive[mid])delete this._d.archive[mid][iid];
-    if(item)item=cleanTask(item);   /* 실서버와 같은 정리(cleanTask)를 거친다 */
+    if(item)item=cleanTask(item,iid);   /* 실서버와 같은 정리(cleanTask)를 거친다 */
     this._d.tasks[mid]=this._d.tasks[mid]||{};if(item)this._d.tasks[mid][iid]=item;else delete this._d.tasks[mid][iid];S.tasks=this._d.tasks;lsSave(this._d);},
   putCfg(k,v,cb){this._d.cfg[k]=v;S.cfg=this._d.cfg;lsSave(this._d);if(cb)cb(null);},
   putPref(k,v){this._d.prefs=this._d.prefs||{};if(v)this._d.prefs[k]=v;else delete this._d.prefs[k];S.prefs=this._d.prefs;lsSave(this._d);},
@@ -784,7 +791,7 @@ const FbStore={
     if(S.tasks[from])delete S.tasks[from][iid];
     S.tasks[to]=S.tasks[to]||{};S.tasks[to][iid]=item;
     rDay();rTasks();refetchCal();rWidget();
-    const up={['calapp/tasks/'+from+'/'+iid]:null,['calapp/tasks/'+to+'/'+iid]:cleanTask(item)};
+    const up={['calapp/tasks/'+from+'/'+iid]:null,['calapp/tasks/'+to+'/'+iid]:cleanTask(item,iid)};
     if(wasArch)up['calapp/archive/'+from+'/'+iid]=null;
     return FB.db.ref().update(up).catch(fbErr);},
   /* 사용자 삭제는 전부 여기로 — 휴지통 저장과 원본 제거를 multi-path update 한 번으로. 아카이브 사본도 함께 걷는다 */
@@ -817,7 +824,7 @@ const FbStore={
     rDay();rTasks();refetchCal();rWidget();
     const r=FB.db.ref('calapp/tasks/'+mid+'/'+iid);
     if(!item){r.remove().then(archDrop).catch(fbErr);return;}
-    const next=cleanTask(item),base=before?cleanTask(before):null;
+    const next=cleanTask(item,iid),base=before?cleanTask(before,iid):null;
     if(!base){const pr=r.set(next);pr.then(archDrop).catch(fbErr);return pr;}
     const patch={};
     const walk=(a,b,path='')=>{
@@ -854,7 +861,7 @@ const FbStore={
     const dueFix={};
     allTasks().forEach(({sid,iid,it,arch})=>{
       if(arch||!it||!it.due)return;   /* 아카이브 사본은 tasks 로 되쓰면 되살아난다 — 손대지 않는다 */
-      dueFix['calapp/tasks/'+sid+'/'+iid]=cleanTask({...it,date:it.date||it.due,due:undefined});
+      dueFix['calapp/tasks/'+sid+'/'+iid]=cleanTask({...it,date:it.date||it.due,due:undefined},iid);
     });
     if(Object.keys(dueFix).length){
       try{await FB.db.ref().update(dueFix);toast('기한을 날짜로 옮겼습니다');}
@@ -1091,6 +1098,7 @@ function showGateForm(){
   /* 폰: 불러오는 중(로고 + 점) → 폼이면 로고가 위로 옮겨 간다 — 전후 위치 차이만큼 transform 으로 잇는다 */
   const br=(b.classList.contains('lg-ld')&&isMob()&&!WIDGET&&g&&g.style.display!=='none')?$('#cvBrand'):null,y0=br?br.getBoundingClientRect().top:0;
   const ld=$('#cvLoading');if(ld)ld.style.display='none';const bd=$('#cvBody');if(bd)bd.style.display='';
+  {const n=$('#cvLdMsg');if(n)n.hidden=true;}
   b.classList.remove('lg-ld');showCover();
   if(br&&br.animate){const dy=y0-br.getBoundingClientRect().top;if(Math.abs(dy)>1)br.animate([{transform:'translateY('+dy+'px)'},{transform:'none'}],{duration:500,easing:'cubic-bezier(.32,.72,0,1)'});}
 }
@@ -1754,6 +1762,7 @@ function evePopShow(force){
   /* 알림창이 이미 열려 있으면 굳이 겹쳐 띄우지 않는다 */
   const side=$('#widSide');
   if(side&&side.classList.contains('on'))return;   /* 이미 열려 있으면 굳이 겹쳐 띄우지 않는다 */
+  if(layerBusy()){clearTimeout(evePopShow._t);evePopShow._t=setTimeout(()=>evePopShow(force),5000);return;}   /* 확인창 위에 겹치지 않게 — 닫힌 뒤 띄운다 */
   evePopHide();
   try{localStorage.setItem(evePopKey(),todayStr());}catch(e){}
   const n=eveList().length;
@@ -1771,6 +1780,7 @@ function evePopShow(force){
     el.style.setProperty('--ax','0px');
     requestAnimationFrame(()=>el.classList.add('on'));
     el.addEventListener('click',()=>{evePopHide();eveOpenPanel();});
+    setTimeout(()=>{if(el.isConnected){el.classList.remove('on');setTimeout(()=>el.remove(),200);}},10000);
     return;
   }
   let x=r.left+r.width/2-b.width/2;
@@ -1786,6 +1796,7 @@ function evePopShow(force){
   requestAnimationFrame(()=>el.classList.add('on'));
   /* 말풍선을 눌러도 알림창이 열린다 — 종을 겨냥하지 않아도 되게 */
   el.addEventListener('click',()=>{evePopHide();eveOpenPanel();});
+  setTimeout(()=>{if(el.isConnected){el.classList.remove('on');setTimeout(()=>el.remove(),200);}},10000);   /* 10초 뒤 접힌다 */
 }
 /* 오늘 걸린 '내 업무 + 공통 업무' 중 안 끝난 것.
    ⚠ teamTasks 는 완료만 빼므로 보류(3)를 여기서 거른다(mineTasks 는 이미 뺀다).
@@ -2126,7 +2137,7 @@ function planToTask(p){
     assignees:(()=>{const o={};owns.forEach(k=>{o[k]=1;});return o;})(),
     recur:(p.recur&&p.recur.f)?{f:p.recur.f,until:String(p.recur.until||'')}:{f:'',until:''},
     st:(p.st!==undefined?stOf(p.st):(p.done?2:stOf(base.st))),
-    createdAt:Number(base.createdAt||p.createdAt)||Date.now(),updatedAt:Date.now()};
+    createdAt:Number(base.createdAt||p.createdAt)||(prev?0:Date.now()),updatedAt:Date.now()};   /* 있던 업무에 createdAt 이 없으면 비운 채(cleanTask 가 뺀다) — 순서가 튀지 않게 */
   /* 달력으로 만든 업무에도 작성자를 남긴다 — 없으면 규칙이 「작성자 없는 옛 업무」로 보고 누구나 지울 수 있다 */
   if(!prev&&S.live&&authUid()&&!item.createdBy)item.createdBy=authUid();
   ['doneOn','skipOn','moveOn'].forEach(k=>{if(p[k])item[k]={...p[k]};else if(base[k])item[k]={...base[k]};});
@@ -2248,7 +2259,7 @@ function mcalPane(y,m,evs){
       +bars(ln,ds)+'</button>';
   }
   for(let i=lead+days;i<42;i++){const ds=addDays(gridStart,i);cells+='<div class="mc-d out"><span class="n">'+(i-lead-days+1)+'</span>'+bars(lanes[ds]||[],ds)+'</div>';}
-  return '<div class="mc-g" data-rows="'+Math.ceil((lead+days)/7)+'">'+cells+'</div>';   /* 폰 큰 달력은 5주 기본 — 6주 달만 6행 */
+  return '<div class="mc-g'+(m===11?' dec':'')+'" data-rows="'+Math.ceil((lead+days)/7)+'">'+cells+'</div>';   /* 폰 큰 달력은 5주 기본 — 6주 달만 6행 · 12월 판만 크리스마스(옆 판은 body.dec 가 아니라 판 자신이 가른다) */
 }
 function calMiniHTML(){
   if(!CAL)return '';
@@ -2435,7 +2446,7 @@ function openYMPick(){
   YM_Y=null;
   document.querySelectorAll('#ymPop[data-out]').forEach(x=>x.remove());   /* 흐려지며 나가는 중인 것은 바로 걷고 새로 연다 */
   const old=ymPopEl();
-  if(old){old.remove();document.removeEventListener('click',ymOutside,true);return;}   /* 바깥 클릭 감시도 같이 풀어야 다음 탭이 먹힌다 */
+  if(old){old.remove();return;}
   /* 연·월 버튼이 있는 달력 열 기준으로 붙인다(.cal-card 는 position:relative) */
   const host=$('#view-calendar .cal-card');if(!host)return;
   const pop=document.createElement('div');
@@ -2449,20 +2460,12 @@ function openYMPick(){
     const want=btn2.getBoundingClientRect().bottom+8;
     pop.style.top=(want-pop.getBoundingClientRect().top)+'px';
   }
-  setTimeout(()=>{document.addEventListener('click',ymOutside,true);},0);
 }
 /* 폰: 떠 있는 팝업·메뉴를 바깥 탭으로 닫을 때 그 탭은 닫기만 한다(아래 달력 칸·단추까지 눌려 시트가 함께 열리지 않게).
    하단 탭은 예외 — 늘 바로 먹는다. 데스크톱은 바깥 클릭이 그대로 동작하는 게 자연스러워 그대로 둔다 */
 function tapEatable(t){return isMob()&&!WIDGET&&!(t&&t.closest&&t.closest('#mtab'));}
 function eatNextClick(t){if(!tapEatable(t))return;const f=e=>{e.stopPropagation();e.preventDefault();};
   document.addEventListener('click',f,{capture:true,once:true});setTimeout(()=>document.removeEventListener('click',f,true),450);}
-function ymOutside(e){
-  const pop=ymPopEl();
-  if(!pop){document.removeEventListener('click',ymOutside,true);return;}
-  if(pop.contains(e.target)||e.target.closest('.cal-title,.tbt-ym'))return;   /* 여는 버튼 클릭은 토글이 처리 — 폰 상단바 버튼(.tbt-ym)도 예외(빠지면 캡처가 닫고 토글이 다시 연다) */
-  if(tapEatable(e.target)){e.stopPropagation();e.preventDefault();}
-  closeYMPop();
-}
 /* 떠 있던 작은 창을 짧게 흐리며 걷는다 — 곧바로 id·클래스를 떼어 새로 여는 창·조회와 겹치지 않게 */
 function popOut(el){if(!el)return;el.removeAttribute('id');el.style.pointerEvents='none';
   if(!el.animate){el.remove();return;}   /* 위젯도 짧게 흐리며 닫는다(사용자: 위젯에도 모션) */
@@ -2475,7 +2478,6 @@ function closeYMPop(){
   if(pop){pop.dataset.out='1';pop.style.pointerEvents='none';
     if(!pop.animate)pop.remove();
     else pop.animate([{opacity:1,scale:1},{opacity:0,scale:.97}],{duration:140,easing:'ease-in',fill:'forwards'}).finished.then(()=>pop.remove(),()=>pop.remove());}
-  document.removeEventListener('click',ymOutside,true);
 }
 function dpEmptyAdd(){return '<br><button class="btn bo bsm dp-empty-add" data-act="plan.new"><svg class="icn" aria-hidden="true"><use href="#i-plus"></use></svg>업무 추가</button>';}   /* 함수(끌어올림) — 부팅 중 rDay 가 먼저 불려도 된다 */
 /* 폰 업무 패널을 좌우로 밀면 옆 날이 손가락을 따라 미리 나온다.
@@ -2541,6 +2543,7 @@ function selDate(ds,quiet){
   if(CAL&&ymOf(ds)!==CAL.view.currentStart.getFullYear()+'-'+pad(CAL.view.currentStart.getMonth()+1))CAL.gotoDate(ds);
   markSel();
   if(isMob()&&S.view==='calendar')dpSheet(true);
+  if(WIDGET&&!S.widPop&&S.planEdit){closePlanEdit();rDayHead();rDay();return;}   /* 위젯: 같은 칸을 다시 눌러 팝업을 닫으면 쓰던 폼도 닫는다(숨은 폼이 실시간 반영을 멈춘다) */
   /* 편집기가 열려 있으면 — 새 업무는 날짜가 따라가고, 기존 업무 수정 중이면 폼을 닫는다(다른 날 목록 위에 남의 날 폼이 남지 않게) */
   if(S.planEdit&&$('#dpEdit')){
     /* 다른 날로 옮기면 열린 폼은 닫는다. closePlanEdit 은 제목이 있을 때만 저장하므로
@@ -2892,21 +2895,6 @@ function openPlanEdit(p,startD,endD,occ){
   if(!(p&&isMob()&&!WIDGET))setTimeout(()=>{const t=$('#peTitle');if(t)t.focus();},30);   /* 폰에서 있는 업무를 열 땐 키보드를 띄우지 않는다 — 제목을 눌러야 뜬다(시트가 키보드 모양으로 튀지 않게) */
 }
 function pfClosed(){const mo=$('#mo');if(mo)mo.classList.remove('pf-on');}
-/* 겹쳐 뜬 것들을 바깥 클릭으로 닫는다.
-   ⚠ click 이 아니라 mousedown 캡처 — FC 가 달력 칸의 click 을 삼킨다 */
-document.addEventListener('mousedown',e=>{
-  const t=e.target;
-  const wg=$('#wgSet');
-  if(wg&&wg.classList.contains('on')&&!t.closest('#wgSet')&&!t.closest('[data-act="wid.set"]')){
-    wg.classList.remove('on');wg.setAttribute('aria-hidden','true');
-  }  const sd=$('#widSide');
-  if(sd&&sd.classList.contains('on')&&!t.closest('#widSide')&&!t.closest('[data-act="wid.side"]')){
-    sd.classList.remove('on');S.widSide='';
-  }
-  /* 찾기 패널 — 앱(사이드바 버튼)·위젯(헤더 버튼) 둘 다 같은 규칙으로 닫는다 */
-  const nq=$('#nqPanel');
-  if(nq&&nq.classList.contains('on')&&!t.closest('#nqPanel')&&!t.closest('[data-act="nq.toggle"]'))nqOpen(false);
-},true);
 function closePlanEdit(){
   if(!S.planEdit)return;
   clearTimeout(PE_SAVE);
@@ -2914,6 +2902,7 @@ function closePlanEdit(){
   if(p&&p.title)planCommit(p);
   const f=$('#dpEdit'),h0=f?f.getBoundingClientRect().height:0,id=S.planEdit.orig&&S.planEdit.orig.id;
   S.planEdit=null;rDay();
+  setTimeout(pendFlush,0);   /* 보통 속도 클릭으로 닫으면 focusout 이 편집기가 닫히기 전에 지나가 미룬 반영이 남는다 */
   const c=peCardEl(id);if(c&&h0){c.classList.remove('fx-in');peGrow(c,h0,280);   /* 폼 → 카드 — 편집 중 붙은 「새 카드」 등장 효과는 줄어드는 모션과 겹치므로 뗀다 */
     const m=c.querySelector('.plan-meta');if(m&&m.animate)m.animate([{opacity:0},{opacity:1}],{duration:200,delay:80,fill:'backwards'});}
 }
@@ -3550,9 +3539,9 @@ function tkFormEsc(){
 /* 폼을 닫는 유일한 통로 — 취소 버튼과 Escape 가 함께 쓴다 */
 function tkFormClose(){
   S.tkDate={open:false,ym:'',a:'',b:''};const rp=$('#tkRcPop');if(rp)rp.remove();
-  if(!tkFormDirty()){S.tkNew=null;S.tkEdit=null;S.tkEditOcc='';rTasks();return;}
+  if(!tkFormDirty()){S.tkNew=null;S.tkEdit=null;S.tkEditOcc='';rTasks();setTimeout(pendFlush,0);return;}
   confirmModal('작성 중인 내용 버리기','적은 내용이 저장되지 않았습니다. 그대로 닫으면 사라집니다.',
-    ()=>{S.tkNew=null;S.tkEdit=null;S.tkEditOcc='';rTasks();},'버리고 닫기',true);
+    ()=>{S.tkNew=null;S.tkEdit=null;S.tkEditOcc='';rTasks();setTimeout(pendFlush,0);},'버리고 닫기',true);
 }
 /* ── 목록 보조 ── */
 function nextOrder(sid){
@@ -3749,7 +3738,7 @@ function pickSyncSt(el){
       next=histPush({...it,st:wantDone?2:1,stKeep:true,updatedAt:Date.now()},wantDone?'done':'undone');
     }
     S.tasks[sid][iid]=next;
-    if(S.live)patch['calapp/tasks/'+sid+'/'+iid]=cleanTask(next);
+    if(S.live)patch['calapp/tasks/'+sid+'/'+iid]=cleanTask(next,iid);
   });
   if(S.live&&FB.db){if(Object.keys(patch).length)FB.db.ref().update(patch).catch(fbErr);}
   else lsSave(LocalStore._d);
@@ -4165,6 +4154,7 @@ document.addEventListener('keydown',e=>{
 });
 function nqOpen(on){
   const p=$('#nqPanel');if(!p)return;  p.classList.toggle('on',!!on);
+  if(!on&&p.contains(document.activeElement))document.activeElement.blur();   /* 숨은(opacity 0) 입력칸에 초점이 남으면 tkHold 로 실시간 반영·자동 업데이트가 멈추고 ←→ 도 먹지 않는다 */
   p.setAttribute('aria-hidden',on?'false':'true');  if(on&&!nqFromHdr)setTimeout(()=>{const q=$('#nqQ');if(q){q.focus();q.select();}},60);   /* 헤더에서 칠 땐 포커스를 빼앗지 않는다 */
 }
 function nqMark(text,q){
@@ -8384,7 +8374,8 @@ function mrvList(){
 }
 function morningReview(){
   /* 위젯에서도 띄우되 모달에 wid 전용 클래스로 폭·글자만 줄인다(로직 동일) */
-  if($('#mo')&&$('#mo').classList.contains('open'))return;
+  clearTimeout(morningReview._t);
+  if(layerBusy()){morningReview._t=setTimeout(morningReview,60000);return;}   /* 다른 확인창이 닫힌 뒤 다시 본다 — 그날을 건너뛰지 않게 */
   let last='';try{last=localStorage.getItem(mrvKey())||'';}catch(e){}
   if(last===todayStr())return;                            /* 하루 한 번 */
   const list=mrvList(),holds=mineHolds();                 /* 보류 업무도 매일 같이 묻는다(보류함에 쌓이지 않게) */
@@ -8415,9 +8406,10 @@ function mrvHoldRest(){
   if(!MRV_ON)return;
   MRV_ON=false;
   let n=0;
+  const still=new Set(mrvList().map(x=>x.sid+'/'+x.iid));   /* 창을 띄운 뒤 다른 곳(브라우저·폰)에서 옮기거나 끝낸 업무는 건너뛴다 */
   $$('#mbody .mrv-i:not([data-hold])').forEach(row=>{   /* 보류 줄은 이미 보류 — 놓친 줄만 */
     const cur=(S.tasks[row.dataset.sid]||{})[row.dataset.iid];
-    if(!cur||stOf(cur.st)!==1)return;
+    if(!cur||!still.has(row.dataset.sid+'/'+row.dataset.iid))return;
     if(!canEditTask(cur,row.dataset.sid))return;   /* 권한 없는 업무는 일괄 보류에서 건너뛴다 */
     store.putTask(row.dataset.sid,row.dataset.iid,histPush({...cur,st:3,done:false,updatedAt:Date.now()},'hold'));n++;
   });
@@ -9749,7 +9741,24 @@ function ddOpen(s,kb){
     if(!s.isConnected)return;   /* 고르는 사이 다시 그려졌다 */
     if(s.selectedIndex!==i){s.selectedIndex=i;s.dispatchEvent(new Event('input',{bubbles:true}));s.dispatchEvent(new Event('change',{bubbles:true}));}
     if(kb)s.focus({preventScroll:true});}}));
+  /* 폰: 칸 옆에 뜨는 목록 대신 아래에서 올라오는 시트 — 긴 목록(현장 등)이 칸 위·아래 어디에도 안 들어가 화면 맨 위로 밀려 달력을 덮었다 */
+  if(isMob()&&!WIDGET&&!kb){const lb=s.id&&document.querySelector('label[for="'+CSS.escape(s.id)+'"]');
+    const t=s.getAttribute('aria-label')||(lb&&lb.textContent.replace(/\*/g,'').trim())||a.getAttribute('aria-label')||a.dataset.tip||s.dataset.tip||(a.closest('[data-tip]')&&a.closest('[data-tip]').dataset.tip)||'선택';
+    pickSheet(t,items);return;}
   openCtx(r.left,r.bottom+6,items,a,{dd:s,minW:r.width,flip:r,kb});
+}
+/* 폰 고르기 시트 — #mss 판(잡이·유리 카드·올라오는 움직임)을 그대로 쓴다. 고르면 닫고 act. 지금 값은 파란 줄 + ✓ */
+let PICK_LIST=null;
+function pickSheet(title,items){
+  const box=$('#mss');if(!box)return;
+  if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();   /* 키보드를 내리고 연다 */
+  PICK_LIST=items;
+  const ck='<svg class="icn" aria-hidden="true"><use href="#i-check"></use></svg>';
+  box.innerHTML=MSS_GRAB+'<div class="mss-sc"><div class="mss-h">'+esc(title)+'</div>'
+    +items.map((it,i)=>'<button type="button" class="mss-i'+(it.on?' act':'')+'" data-act="pick.opt" data-i="'+i+'"'+(it.disabled?' disabled':'')+'>'
+      +esc((it.label||'').trim()==='-'||!(it.label||'').trim()?'선택 안 함':it.label)+(it.on?'<span class="mss-r">'+ck+'</span>':'')+'</button>').join('')+'</div>';
+  box.classList.remove('menu');mssShow(box,true);box.classList.add('picker');const sc=$('#mssScrim');if(sc)sc.classList.add('picker');
+  const on=box.querySelector('.mss-i.act');if(on)requestAnimationFrame(()=>on.scrollIntoView({block:'center'}));
 }
 addEventListener('mousedown',e=>{const s=e.target;if(e.button!==0||ddSkip(s))return;e.preventDefault();ddOpen(s);},true);
 let _ddT=null;
@@ -10350,7 +10359,7 @@ function _applySnap(items,key){
     const v=o[key];
     if(!v){if(S.tasks[o.sid])delete S.tasks[o.sid][o.iid];if(S.live)patch['calapp/tasks/'+o.sid+'/'+o.iid]=null;return;}
     S.tasks[o.sid]=S.tasks[o.sid]||{};S.tasks[o.sid][o.iid]=v;
-    if(S.live)patch['calapp/tasks/'+o.sid+'/'+o.iid]=cleanTask(v);
+    if(S.live)patch['calapp/tasks/'+o.sid+'/'+o.iid]=cleanTask(v,o.iid);
   });
   /* ⚠ S.live 여도 FB.db 가 없을 수 있다(로그아웃 직후·초기화 실패) — 없으면 로컬로 */
   if(S.live&&FB.db){if(Object.keys(patch).length)FB.db.ref().update(patch).catch(fbErr);}
@@ -10360,7 +10369,7 @@ function _applySnap(items,key){
 /* 삭제 되돌리기 — 직전 값(it)으로 업무를 다시 쓰고, 저장 성공 뒤 휴지통 사본을 걷는다(trash.restore 와 같은 순서) */
 const _taskOf=(sid,iid)=>(S.tasks[sid]||{})[iid]||((S.arch[sid]||{})[iid])||null;
 function trashUndo(list){
-  Promise.all(list.map(({sid,iid,it})=>Promise.resolve(store.putTask(sid,iid,histPush(cleanTask(it),'restore'))).then(()=>trashDrop(sid,iid))))
+  Promise.all(list.map(({sid,iid,it})=>Promise.resolve(store.putTask(sid,iid,histPush(cleanTask(it,iid),'restore'))).then(()=>trashDrop(sid,iid))))
     .then(()=>{if(!S.live){rTasks();rDay();refetchCal();rWidget();}toast(list.length>1?list.length+'건을 되살렸습니다':'되살렸습니다');})
     .catch(()=>toast('되살리지 못했습니다 · 설정 > 휴지통에서 다시 복원해 주세요'));
 }
@@ -11085,7 +11094,7 @@ const ACT={
       let it=null;try{it=JSON.parse(LZString.decompressFromBase64(w.z)||'null');}catch(e){}
       if(!it){toast('복원할 수 없는 항목입니다');return;}
       if(!canEditTask(it,sid)){denyTask();return;}
-      const pr=store.putTask(sid,iid,histPush(cleanTask(it),'restore'));   /* cleanTask 를 다시 지나 tasks 스키마로 검증된다 */
+      const pr=store.putTask(sid,iid,histPush(cleanTask(it,iid),'restore'));   /* cleanTask 를 다시 지나 tasks 스키마로 검증된다 */
       /* 휴지통 사본은 저장이 성공한 뒤에만 지운다 — 거부되면 업무가 사라진다 */
       const ok=()=>{trashDrop(sid,iid);toast('복원했습니다');trashOpen();};
       if(pr&&pr.then)pr.then(ok).catch(()=>{toast('복원하지 못했습니다 · 이 업무를 복원할 권한이 없습니다');trashOpen();});else ok();});},
@@ -11381,13 +11390,7 @@ document.addEventListener('click',e=>{
   /* 선택 클릭은 여기까지 오지 않는다(위 91행 리스너가 막는다) — 순서가 바뀌어도 안전하게 한 번 더 */
   if(e.target.closest(PICK_SEL)&&!e.target.closest('.tk-acts')&&!e.target.closest('.plan-acts')
      &&(e.ctrlKey||e.metaKey||e.shiftKey||PICK.mode))return;
-  /* 다중 선택 목록은 바깥을 누르면 닫는다 */
-  if(!e.target.closest('.msel'))mselClose();
-
-  /* 위젯 업무 팝업 — 달력 칸이나 팝업 자신이 아닌 곳을 누르면 닫는다 */
-  if(WIDGET&&S.widPop&&e.target.isConnected&&!e.target.closest('#widPop')&&!e.target.closest('#fcal td.fc-daygrid-day')){   /* 「외 N건」은 누르는 사이 칸이 다시 그려져 떨어진 요소가 「바깥」으로 읽힌다 */
-    S.widPop=false;rWidget();
-  }
+  layerOutside(e,'click');   /* 다중 선택 목록·위젯 업무 팝업 — 바깥을 누르면 닫는다(층 목록) */
   /* 지도 안 클릭(시도·바다)은 220ms 미룬다 — 더블클릭이면 버린다(kmClickDefer).
      범례·뒤로 같은 버튼은 svg 밖이라 바로 간다 */
   {const svg=e.target.closest('.okm');   /* 겹층의 점은 여기 안 걸린다 — 점 클릭은 아무 일도 하지 않는다 */
@@ -11423,12 +11426,6 @@ function calFiltClose(){
   cf.classList.remove('on');
   const b=document.querySelector('[data-act="day.fmore"]');if(b)b.setAttribute('aria-expanded','false');
 }
-document.addEventListener('mousedown',e=>{
-  if(!(e.target.closest&&e.target.closest('#calFilt,#calFiltWrap [data-act="day.fmore"]'))){const cf=$('#calFilt');if(cf&&cf.classList.contains('on'))eatNextClick(e.target);calFiltClose();}   /* 필터도 바깥 클릭으로 닫는다 · 안쪽은 팝업·필터 단추만(묶음 #calFiltWrap 전체가 아님 — 위젯 찾기와 두 팝업이 겹치지 않게) */
-  if(!(e.target.closest&&e.target.closest('#teamsel'))){const tp=$('#teamPop');
-    if(tp&&tp.classList.contains('on')){tp.classList.remove('on');
-      const tb=$('#teamSelEl');if(tb)tb.setAttribute('aria-expanded','false');}}
-},true);
 
 /* 임의로 추가한 색 칩은 우클릭으로 지운다 — 지우면 첫 칩(자동)으로 되돌린다 */
 document.addEventListener('contextmenu',e=>{
@@ -11859,36 +11856,58 @@ document.addEventListener('keydown',e=>{
   }
   if(a===document.body||['#appHdr','#app','#mtab'].some(s=>{const r=$(s);return r&&r.contains(a);})){e.preventDefault();f[0].focus();}
 });
+/* ══ 떠 있는 층 목록 — Esc·바깥 클릭·「확인창이 떠 있나」를 한곳에서 ══
+   순서 = 위 → 아래. Esc 는 열린 것 중 맨 위 하나만 닫는다(한 번에 다 닫히면 되돌리기 번거롭다).
+   바깥 클릭은 on 단계에서 keep 밖을 누르면 그 층을 닫는다:
+     down  = mousedown 캡처(⚠ FC 가 달력 칸의 click 을 삼킨다)
+     cap   = click 캡처(여는 버튼 토글이 먼저 닫히지 않게 keep 에 둔다)
+     click = ACT 클릭(버블) — 선택 클릭·멈춘 전파는 닫지 않는 예전 동작 그대로
+   eat: 폰에서 닫는 탭이 아래 칸·단추까지 누르지 않게(next=다음 click 삼킴, now=이 click 을 멈춤).
+   block: 떠 있는 동안 말풍선·아침 확인·←→·새 판 적용을 미룬다.
+   ⚠ 목록 밖(우클릭 메뉴·기록 메뉴·사진대지·지도)은 각자 캡처 핸들러로 먼저 처리한다 */
+const LAYERS=[
+  {n:'msel',open:()=>!!document.querySelector('.msel.open'),close:mselClose,on:'click',keep:'.msel'},
+  {n:'mo',open:()=>$('#mo').classList.contains('open'),close:closeModal,block:true},   /* 바깥 클릭으로는 닫지 않는다 */
+  {n:'ym',open:()=>!!ymPopEl(),close:closeYMPop,on:'cap',keep:'#ymPop,.cal-title,.tbt-ym',eat:'now'},   /* 여는 버튼(폰 상단바 .tbt-ym 포함)은 토글이 처리 */
+  {n:'wgSet',open:()=>{const w=$('#wgSet');return !!(w&&w.classList.contains('on'));},
+    close:()=>{const w=$('#wgSet');if(w){w.classList.remove('on');w.setAttribute('aria-hidden','true');}},on:'down',keep:'#wgSet,[data-act="wid.set"]'},
+  {n:'filt',open:()=>{const c=$('#calFilt');return !!(c&&c.classList.contains('on'));},close:calFiltClose,on:'down',
+    keep:'#calFilt,#calFiltWrap [data-act="day.fmore"]',eat:'next'},   /* 안쪽은 팝업·필터 단추만(#calFiltWrap 전체가 아님 — 위젯 찾기와 두 팝업이 겹치지 않게) */
+  {n:'team',open:()=>{const p=$('#teamPop');return !!(p&&p.classList.contains('on'));},
+    close:()=>{const p=$('#teamPop');if(p)p.classList.remove('on');const b=$('#teamSelEl');if(b)b.setAttribute('aria-expanded','false');},on:'down',keep:'#teamsel'},
+  {n:'side',open:()=>{const d=$('#widSide');return !!(d&&d.classList.contains('on'));},
+    close:()=>{const d=$('#widSide');if(d)d.classList.remove('on');S.widSide='';},on:'down',keep:'#widSide,[data-act="wid.side"]'},
+  {n:'widPop',open:()=>WIDGET&&!!S.widPop,close:()=>{S.widPop=false;if(S.planEdit)closePlanEdit();rWidget();},   /* 쓰던 폼도 닫는다 — 남으면 tkHold 로 실시간 반영·자동 업데이트가 멈춘다 */
+    on:'click',keep:'#widPop,#fcal td.fc-daygrid-day,#mo,.ctxmenu,#toast',when:e=>e.target.isConnected},   /* 「외 N건」은 누르는 사이 칸이 다시 그려져 떨어진 요소가 「바깥」으로 읽힌다 */
+  {n:'nq',open:()=>{const q=$('#nqPanel');return !!(q&&q.classList.contains('on'));},close:()=>nqOpen(false),on:'down',keep:'#nqPanel,[data-act="nq.toggle"]'},   /* 앱(사이드바 버튼)·위젯(헤더 버튼) 같은 규칙 */
+  {n:'form',open:()=>!!(S.tkNew||S.tkEdit),close:tkFormEsc},   /* 저장하고 닫기 */
+  {n:'plan',open:()=>!!S.planEdit,close:closePlanEdit},
+];
+function layerEsc(){const L=LAYERS.find(l=>l.open());if(!L)return false;L.close();return true;}
+function layerBusy(){return LAYERS.some(l=>l.block&&l.open());}
+function layerOutside(e,on){
+  const t=e.target,inside=k=>!!(t&&t.closest&&t.closest(k));
+  for(const L of LAYERS){
+    if(L.on!==on||!L.open()||inside(L.keep)||(L.when&&!L.when(e)))continue;
+    if(L.eat==='next')eatNextClick(t);
+    else if(L.eat==='now'&&tapEatable(t)){e.stopPropagation();e.preventDefault();}
+    L.close();
+  }
+}
+document.addEventListener('mousedown',e=>layerOutside(e,'down'),true);
+document.addEventListener('click',e=>layerOutside(e,'cap'),true);
 document.addEventListener('keydown',e=>{
   /* 로그인 칸 Enter 는 <form id=cvForm> 기본 제출(=#cvBtn 클릭)이 맡는다 — 화면별로 로그인·가입·재설정 */
   if(e.key==='Enter'&&e.target.id==='peTitle'){e.preventDefault();savePlanInline();return;}
   /* 업무 현황 폼도 제목 칸 Enter = 저장하고 닫기(새 업무 포함) */
   if(e.key==='Enter'&&e.target.id==='tnTitle'){e.preventDefault();const b=document.querySelector('[data-act="tk.formSave"]');if(b)b.click();return;}
   /* Ctrl/⌘+K 로 찾기 */
-  if(e.key==='Escape'){
-    /* 겹쳐 있는 것부터 하나씩 닫는다 — 한 번에 다 닫히면 되돌리기 번거롭다 */
-    if(document.querySelector('.msel.open')){mselClose();return;}
-    if(ymPopEl()){closeYMPop();return;}
-    const wg=$('#wgSet');
-    if(wg&&wg.classList.contains('on')){wg.classList.remove('on');wg.setAttribute('aria-hidden','true');return;}
-    if($('#calFilt')&&$('#calFilt').classList.contains('on')){calFiltClose();return;}
-    {const tp=$('#teamPop');if(tp&&tp.classList.contains('on')){tp.classList.remove('on');return;}}
-    const sd=$('#widSide');
-    if(sd&&sd.classList.contains('on')){sd.classList.remove('on');S.widSide='';return;}
-    if(WIDGET&&S.widPop){S.widPop=false;if(S.planEdit)closePlanEdit();rWidget();return;}
-  }
+  if(e.key==='Escape'){if(!layerEsc())mobClose();return;}   /* 열린 층 중 맨 위 하나 — 없으면 폰 시트·사이드바 */
   /* 위젯에서 ←→ 로 달 넘기기 — 입력 중일 때는 방해하지 않는다 */
-  if(WIDGET&&(e.key==='ArrowLeft'||e.key==='ArrowRight')&&!/INPUT|TEXTAREA|SELECT/.test((e.target.tagName||''))){
+  if(WIDGET&&(e.key==='ArrowLeft'||e.key==='ArrowRight')&&!/INPUT|TEXTAREA|SELECT/.test((e.target.tagName||''))&&!layerBusy()){
     ACT[e.key==='ArrowLeft'?'cal.prev':'cal.next']();return;
   }
   if((e.ctrlKey||e.metaKey)&&(e.key==='k'||e.key==='K')){e.preventDefault();nqOpen(true);rNq();return;}
-  if(e.key==='Escape'&&$('#nqPanel')&&$('#nqPanel').classList.contains('on')&&!$('#mo').classList.contains('open')){nqOpen(false);return;}
-  if(e.key==='Escape'){
-    if($('#mo').classList.contains('open')){closeModal();return;}
-    if(S.tkNew||S.tkEdit){tkFormEsc();return;}   /* 저장하고 닫기 */
-    if(S.planEdit){closePlanEdit();return;}
-    mobClose();
-  }
   if(e.key==='Enter'&&$('#mo').classList.contains('open')&&e.target.tagName==='INPUT'){
     e.preventDefault();
     if(MODAL_CB&&MODAL_CB.ok)MODAL_CB.ok();
@@ -12171,6 +12190,8 @@ function widMount(){
 function rWidget(){
   if(!WIDGET)return;
   widMount();
+  /* 내 업무 팝오버가 열려 있으면 같이 새로 — 열 때만 그리면 다른 기기에서 끝낸 업무가 「진행」으로 남고, 그 ✓ 를 누르면 도로 진행으로 바뀌었다 */
+  {const sd=$('#widSide');if(sd&&sd.classList.contains('on')){const b=$('#widSideB'),st=b?b.scrollTop:0;widSideRender();if(b)b.scrollTop=st;}}
   const box=$('#widPop');if(!box)return;
   if(!S.widPop){box.classList.remove('on');return;}
   const ds=S.selDate,d=toDate(ds),ho=holOf(ds);
@@ -12189,6 +12210,7 @@ function rWidget(){
 window.widInfo=function(){
   return {ver:'',url:WIDGET_URL};
 };
+window.addEventListener('resize',()=>{if(WIDGET&&S.widPop)requestAnimationFrame(widPlace);});   /* 창 크기·배율이 바뀌면 칸 옆으로 다시 */
 /* 누른 칸 옆에 붙이되 창 밖으로 나가지 않게 한다 — 위젯은 창이 곧 화면이라 넘치면 잘려서 못 본다 */
 function widPlace(){
   const box=$('#widPop');if(!box||!box.classList.contains('on'))return;
@@ -15209,12 +15231,11 @@ function openTkPick(){
   YM_Y=null;
   document.querySelectorAll('#ymPop[data-out]').forEach(x=>x.remove());   /* 흐려지며 나가는 중인 것은 바로 걷고 새로 연다 */
   const old=ymPopEl();
-  if(old){old.remove();document.removeEventListener('click',ymOutside,true);return;}
+  if(old){old.remove();return;}
   const btn=$('#topbar .tbt-ym');if(!btn)return;
   const pop=document.createElement('div');pop.id='ymPop';pop.className='ymp-tk';pop.innerHTML=ymPickHTML(tkYmBase(),'tk');
   document.body.appendChild(pop);
   pop.style.top=(btn.getBoundingClientRect().bottom+8)+'px';
-  setTimeout(()=>{document.addEventListener('click',ymOutside,true);},0);
 }
 /* 달력 칸 날짜 숫자 가운데 맞춤 — text-anchor=middle 은 글자 상자(advance) 기준이라 잉크가 쏠린다.
    canvas measureText 의 actualBoundingBoxLeft/Right 로 잉크 폭을 재서 옮긴다 */
@@ -15338,6 +15359,7 @@ function mssShow(box,tools){
 const MSS_GRAB='<button type="button" class="mss-grab" data-act="mss.close" aria-label="닫기"></button>';   /* 폰 시트 잡이 — 누르거나 끌어내리면 닫힌다(닫기 단추 대신) */
 function mssClose(){const s=$('#mss'),sc=$('#mssScrim');
   if(s){s.classList.remove('on');s.classList.remove('tools');s.classList.remove('menu');}
+  setTimeout(()=>{if(s&&!s.classList.contains('on')){s.classList.remove('picker');if(sc)sc.classList.remove('picker');}},400);   /* 고르기 시트의 층(z)은 내려가는 동안 둔다 — 바로 떼면 업무 시트 뒤로 숨으며 내려간다 */
   const m=$('#mtab .mtab-m');if(m)m.classList.remove('on');if(sc){sc.classList.remove('on');sc.classList.remove('tools');}
   mtabSync();}
 /* 하단 탭 「업무 도구」 — 바로 가지 않고 시트에서 고른다(현장 시트와 같은 부품) */
@@ -15440,6 +15462,22 @@ function mssOpen(){
   mssShow(box,false);
   mtabMark('defect');   /* 시트가 열린 동안 칸을 켠다 */
 }
+/* 올라오는 중인 시트(#mss 0.5초)·확인창에서 줄을 누르면 손을 떼는 사이 판이 올라가 click 이 아래 줄에 떨어진다
+   (메뉴에서 「설정」을 빨리 누르면 「홈 화면에 추가」가 열리거나 아무 일도 없던 것). 누르기 시작한 단추로 돌려 준다.
+   ⚠ 손가락이 10px 넘게 움직였으면(끌기·굴리기) 건드리지 않는다 */
+(function(){
+  let st=null;
+  document.addEventListener('touchstart',e=>{const t=e.target,a=t&&t.closest&&t.closest('#mss [data-act],#mo [data-act]'),p=e.touches[0];
+    st=a&&p?{a,t:Date.now(),x:p.clientX,y:p.clientY}:null;},{passive:true,capture:true});
+  document.addEventListener('touchmove',e=>{const p=e.touches[0];if(st&&p&&(Math.abs(p.clientX-st.x)>10||Math.abs(p.clientY-st.y)>10))st=null;},{passive:true,capture:true});
+  document.addEventListener('click',e=>{
+    const s=st;st=null;if(!s||Date.now()-s.t>1000||!s.a.isConnected)return;
+    const a=e.target&&e.target.closest&&e.target.closest('[data-act]');
+    if(a===s.a)return;
+    e.preventDefault();e.stopImmediatePropagation();
+    s.a.click();
+  },true);
+})();
 /* 시트를 아래로 끌어 닫는다 — 시트 안이 위로 다 굴러 있을 때만 잡는다(목록을 굴리는 중 따라 내려가면 안 된다) */
 (function(){
   let d=null;
@@ -15484,7 +15522,10 @@ function kbvSync(){const b=document.body,k=kbH();b.classList.toggle('kbv',b.clas
   document.documentElement.style.setProperty('--kbh',(b.classList.contains('kbv')?k:0)+'px');}   /* --kbh: 키보드에 가린 높이 — 업무 현황 새 업무 시트가 그 위로 */
 document.addEventListener('focusin',()=>setTimeout(kbvSync,0));document.addEventListener('focusout',()=>setTimeout(kbvSync,60));
 if(window.visualViewport){visualViewport.addEventListener('resize',kbvSync);visualViewport.addEventListener('scroll',kbvSync);}   /* iOS 는 키보드가 뜨면 보이는 창이 위로 밀린다(offsetTop) — 그때도 다시 잰다 */
-if(window.visualViewport)visualViewport.addEventListener('resize',()=>{if(document.body.classList.contains('mds-kb')||document.body.classList.contains('kb'))mdsKbSync();if(document.body.classList.contains('lg'))lgKbSync();});   /* 로그인 키보드 */
+{const kbFollow=()=>{if(document.body.classList.contains('mds-kb')||document.body.classList.contains('kb'))mdsKbSync();if(document.body.classList.contains('lg'))lgKbSync();};
+ /* 로그인 키보드 · 업무 시트 — iOS 는 키보드가 뜬 뒤 보이는 창을 한 번 더 민다(scroll·offsetTop). resize 만 들으면 그 차이만큼 시트가 키보드 뒤로 내려간다 */
+ if(window.visualViewport){visualViewport.addEventListener('resize',kbFollow);visualViewport.addEventListener('scroll',kbFollow);}
+ document.addEventListener('focusin',e=>{if(!(e.target&&e.target.closest&&e.target.closest('#view-calendar .dp-col')))return;[120,320,650].forEach(ms=>setTimeout(kbFollow,ms));});}   /* 키보드가 다 올라온 뒤에도 한 번씩 맞춘다 */
 Object.assign(ACT,{
   'mtab.go':el=>{
     /* 하자처리 현황 칸을 누르면 현장 선택 시트가 먼저 뜬다(첫 줄 「팀 전체 대시보드」).
@@ -15517,6 +15558,7 @@ Object.assign(ACT,{
     closeYMPop();rTasks();},
   'mss.open':()=>mssOpen(),
   'mss.close':()=>mssClose(),
+  'pick.opt':el=>{const it=PICK_LIST&&PICK_LIST[+el.dataset.i];PICK_LIST=null;mssClose();if(it&&it.act)it.act();},
   'pwa.add':()=>pwaAdd(),
   'pwa.x':el=>{pwaSetOff(el.dataset.k);pwaCardClose();},
   'kko.open':()=>kkoOpen(),
@@ -16481,9 +16523,11 @@ document.addEventListener('mousedown',e=>{if(S.view!=='d60'||!S.d60.ed)return;
    위젯은 손을 놓고 있을 때 조용히 새로 부르고, 브라우저는 한 번 알린다(작업 중인 화면을 갑자기 바꾸지 않게) */
 const VER={next:'',told:false};
 function verIdle(){
-  const mo=$('#mo');if(mo&&mo.classList.contains('open'))return false;
+  if(layerBusy())return false;
   const a=document.activeElement;if(a&&(/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)||a.isContentEditable))return false;
   if(tkFormDirty()||S.planEdit||d60Editing())return false;
+  if(S.live&&S.conn===false)return false;   /* 끊긴 동안 고친 내용은 SDK 메모리에만 있다 — 새로 부르면 사라진다 */
+  if($('#widMove'))return false;   /* 위젯 이동 중 — 새로 부르면 이동 모드가 풀린 채 남는다 */
   return true;
 }
 function verApply(){
@@ -16524,6 +16568,13 @@ function rAll(){rDay();rTasks();rOrg();rCfg();rFilter();rTeamSel();refetchCal();
         if(S.live)return;
         if(!warm){showGateForm();return;}
         const ld=$('#cvLoading');if(ld&&ld.style.display==='none')return;   /* 이미 폼이 떠 있다(로그아웃 상태 등) — 쓰던 안내를 덮지 않는다 */
+        /* 로그인은 됐고 역할(DB)만 늦다 — 로그인 폼을 띄우면 곧 들어가면서 폼이 번쩍인다(사용자). 점 아래 안내만 두고 20초 더 기다린 뒤에야 폼 */
+        if(FB._authSeen&&FB.auth&&FB.auth.currentUser){
+          const n=$('#cvLdMsg');if(n){n.textContent='서버 응답이 늦어지고 있습니다 · 계속 연결하는 중';n.hidden=false;}
+          FB._boot=setTimeout(()=>{if(S.live)return;const l2=$('#cvLoading');if(l2&&l2.style.display==='none')return;
+            showGateForm();fbMsg('서버 응답이 늦어지고 있습니다 · 연결을 확인해 주세요');},20000);
+          return;
+        }
         showGateForm();fbMsg(FB._authSeen?'서버 응답이 늦어지고 있습니다 · 연결을 확인해 주세요':'자동 로그인이 늦어지고 있습니다 · 직접 로그인해 주세요');
       },warm?10000:2500);
     }
@@ -16534,7 +16585,8 @@ function rAll(){rDay();rTasks();rOrg();rCfg();rFilter();rTeamSel();refetchCal();
   tsInit();   /* 업무 도구 이어하기 — 남은 작업이 있는지만 본다 */
   setInterval(verCheck,30*60*1000);setInterval(verApply,60*1000);   /* 새 판 감지 · 위젯은 손 놓은 틈에 적용 */
   {let d0=todayStr();const dayTick=()=>{const d=todayStr();if(d===d0)return;d0=d;   /* 자정을 넘기면 폰의 '오늘'(점 달력·하단 탭 날짜)을 바로 넘긴다 */
-    try{mtabSync();if(S.view==='calendar'&&isMob())rCalMini();calTodaySync();}catch(e){}};
+    try{mtabSync();if(S.view==='calendar'&&isMob())rCalMini();calTodaySync();if(WIDGET){if(tkHold())PEND.day=true;else rWidget();}}catch(e){}   /* 위젯 알림창·팝업의 오늘/어제 딱지 */
+    if(FB._mrv)setTimeout(morningReview,800);};   /* 켜 둔 채 날을 넘긴 창(위젯)도 새 날의 아침 확인을 받는다 */
    setInterval(dayTick,60*1000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)dayTick();});}
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)verCheck();});
   if('serviceWorker' in navigator){

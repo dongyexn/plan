@@ -401,6 +401,8 @@ body.wid .tbr{display:none;}   /* 위젯에는 상단바가 없다 */
   body:not(.wid) .nq-panel{position:fixed;inset:0;width:auto;height:100dvh;max-width:none;max-height:none;border-radius:0;border:0;
     padding-top:env(safe-area-inset-top);padding-bottom:calc(var(--mtab) + 8px + env(safe-area-inset-bottom));z-index:369;transform:translateY(8px);}   /* 하단 탭(370) 아래 — 검색 중에도 탭은 보인다(키보드가 뜨면 탭은 숨는다) */
   body:not(.wid) .nq-panel.on{transform:none;}
+  body:not(.wid) .nq-panel .nq-cl{width:36px;height:36px;}   /* 폰 누름 칸 36(+ 와 같게) */
+  body:not(.wid) .nq-panel .nq-tt{font-size:15px;font-weight:700;}   /* 제목은 다른 시트·팝업과 같은 15 */
   body:not(.wid) .nq-panel .nq-in input{font-size:16px;height:44px;}   /* 16px 미만이면 iOS 가 화면을 확대한다 */
   body:not(.wid) .nq-panel .nq-res{max-height:none;flex:1 1 auto;min-height:0;}
   body:not(.wid) .nq-panel .nq-hd,body:not(.wid) .nq-panel .nq-in{flex:0 0 auto;}
@@ -1648,7 +1650,7 @@ body :is(.dp-empty,.tk-empty,.nq-empty,.rec-none,.dfnone,.d60-empty,.set-empty,.
 body:not(.wid) .cal-card{position:relative;}
 #ymPop{position:absolute;top:56px;left:-8px;z-index:60;width:272px;background:var(--bg2);border:1px solid var(--sep);border-radius:var(--rlg);box-shadow:var(--sh-2);padding:13px 14px;}
 /* 위젯에서는 설정 팝업(#wgSet)과 같은 유리 카드 — 왼쪽이 잘리지 않게 안쪽으로 붙인다 */
-body.wid #ymPop{left:0;top:48px;width:252px;background:rgba(24,27,36,.8);-webkit-backdrop-filter:blur(24px) saturate(1.6);backdrop-filter:blur(24px) saturate(1.6);   /* top 은 openYMPick 이 실측으로 덮는다 — 여기 값은 폴백. 유리 카드(18) — 폰 시트와 같은 결의 어두운 판 */
+body.wid #ymPop{left:0;top:48px;width:252px;background:rgba(24,27,36,.9);-webkit-backdrop-filter:blur(24px) saturate(1.6);backdrop-filter:blur(24px) saturate(1.6);   /* top 은 openYMPick 이 실측으로 덮는다 — 여기 값은 폴백. 유리 카드(18) — 폰 시트와 같은 결의 어두운 판 */
   border:1px solid rgba(255,255,255,.12);border-radius:18px;box-shadow:0 18px 50px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.08);
   color:rgba(255,255,255,.9);padding:12px 14px;}
 body.wid #ymPop .ymp-h b{color:#fff;}
@@ -1681,7 +1683,7 @@ body.wid .wid-side{position:absolute;z-index:620;top:62px;right:10px;width:330px
 body.wid .wid-side.on{display:flex;}
 body.wid .wid-side #widSideB{overflow-y:auto;padding:4px 8px 10px;}
 body.wid .wid-side .wp-h{position:static;padding:12px 14px 10px;border-bottom:1px solid rgba(255,255,255,.12);margin-bottom:0;}   /* .wid-pop .wp-h 의 absolute 배치를 여기선 풀어 제자리 머리 줄로 둔다 */
-body.wid .wid-side .wp-h b{font-size:13px;font-weight:800;color:#fff;}
+body.wid .wid-side .wp-h b{font-size:15px;font-weight:700;color:#fff;}   /* 팝업 제목은 필터 팝업 머리(15/700)와 같게 */
 .wid-pop .wp-n{margin-left:auto;font-size:12px;font-weight:700;color:rgba(255,255,255,.55);}
 body.wid [data-act="wid.side"]{position:relative;}
 /* ── 팝오버 목록 (위젯 옆 팝오버 · 앱 상단바 알림 공용) ──
@@ -1721,7 +1723,7 @@ body.wid #mb .mrv-ib:hover{background:rgba(255,255,255,.1);color:#B9D3F7;}   /* 
 .wl.rd{opacity:.5;}
 body.wid .cal-filt-pop{position:absolute;z-index:640;top:calc(100% + 8px);right:0;width:min(306px,calc(100vw - 20px));   /* 좁은 창에서 왼쪽이 창 밖으로 나가면 day.fmore 가 안쪽으로 민다(조상의 blur 때문에 fixed 는 창 기준이 아니다) */
   
-  background:rgba(24,27,36,.8);-webkit-backdrop-filter:blur(24px) saturate(1.6);backdrop-filter:blur(24px) saturate(1.6);
+  background:rgba(24,27,36,.9);-webkit-backdrop-filter:blur(24px) saturate(1.6);backdrop-filter:blur(24px) saturate(1.6);
   border:1px solid rgba(255,255,255,.12);border-radius:18px;box-shadow:0 18px 50px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.08);padding:11px;
   --lbl:#fff;--lbl2:rgba(255,255,255,.80);--lbl3:rgba(255,255,255,.62);--sep:rgba(255,255,255,.20);
   --fill:rgba(255,255,255,.12);--b200:rgba(255,255,255,.2);}
@@ -1769,7 +1771,7 @@ body.wid select:not([multiple]):not(.pe-chip>select){color:#fff;box-shadow:inset
 body.wid select:not([multiple]):not(.pe-chip>select):hover{background-color:rgba(255,255,255,.08);}
 body.wid select:not([multiple]):not(.pe-chip>select).dd-open{box-shadow:inset 0 0 0 1.5px #8FB0EC;}
 /* 위젯 — 앱 메뉴도 위젯 필터 목록과 같은 어두운 판 */
-body.wid .ctxmenu{background:rgba(24,27,36,.9);-webkit-backdrop-filter:blur(24px) saturate(1.6);backdrop-filter:blur(24px) saturate(1.6);border-color:rgba(255,255,255,.12);border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.08);}
+body.wid .ctxmenu{background:rgba(24,27,36,.94);-webkit-backdrop-filter:blur(24px) saturate(1.6);backdrop-filter:blur(24px) saturate(1.6);border-color:rgba(255,255,255,.12);border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.08);}
 body.wid .ctx-it{color:rgba(255,255,255,.85);}
 body.wid .ctx-it:hover,body.wid .ctx-it:focus-visible{background:rgba(255,255,255,.12);}
 body.wid .ctx-it.on{color:#9DC3FF;}
@@ -2517,7 +2519,7 @@ body.pickmode #tkRoot .tk-item,body.pickmode .day-panel .plan{user-select:none;}
 .okm-pin.none.hov{fill:var(--b50);}
 #mb.kmw{width:auto;max-width:94vw;padding:20px 22px 22px;}   /* 폭은 지도가 정한다(kmBigHTML) — 지도가 창 높이에 매여 모달 폭을 고정하면 양옆이 빈다 */
 #mb.kmw .mt2{margin-bottom:12px;}
-#mb.kmw .mo-x{top:11px;right:13px;}
+#mb.kmw .mo-x{top:10px;right:12px;}
 #mb.kmw .okm-wrap{margin-top:0;}
 .kmw-grid{display:grid;grid-template-columns:1fr 284px;gap:16px;align-items:start;}   /* 숫자 두 열이 생겨 284 */
 /* 모달 지도에는 오른쪽 페이드를 두지 않는다 */
@@ -2621,9 +2623,9 @@ body.pickmode #tkRoot .tk-item,body.pickmode .day-panel .plan{user-select:none;}
 .popbox.open{display:flex;}
 @media(max-width:900px){.popbox{width:min(336px,calc(100vw - 24px));}}
 .pop-h{display:flex;align-items:center;font-size:12px;font-weight:700;color:var(--lbl2);margin-bottom:9px;flex-shrink:0;}
-.pop-x{margin-left:auto;width:24px;height:24px;border-radius:3px;display:flex;align-items:center;justify-content:center;color:var(--lbl3);}
+.pop-x{margin-left:auto;width:32px;height:32px;margin-top:-4px;margin-bottom:-4px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--lbl3);}
 .pop-x:hover{background:var(--fill);color:var(--lbl);}
-.pop-x .icn{width:13px;height:13px;}
+.pop-x .icn{width:20px;height:20px;}   /* 닫기(×)는 + 와 같은 20 아이콘·32 누름 칸 — 데스크톱·위젯 공통(폰 36) */
 .pf-srch{width:100%;margin-bottom:9px;flex-shrink:0;}
 .pf-cats{display:flex;gap:2px;border-bottom:1px solid var(--sep);padding-bottom:7px;margin-bottom:7px;flex-shrink:0;}
 .pf-cat{flex:1;height:30px;border-radius:3px;font-size:15px;line-height:1;display:flex;align-items:center;
@@ -2681,10 +2683,10 @@ body.dec #fcal .fc-event.team:not(.ev-rb):not(.ev-gd){
   background:repeating-linear-gradient(45deg,#A8213A 0 9px,#256B3B 9px 18px)!important;
   border-color:transparent!important;color:#fff!important;}
 body.dec #fcal .fc-event.team:not(.ev-rb):not(.ev-gd) .fc-event-title{color:#fff!important;}
-/* 폰 미니 달력(#calMini)에도 같은 줄무늬 */
-body.dec #calMini .mc-bar.tm{background:repeating-linear-gradient(45deg,var(--rd-ink) 0 9px,var(--gn-ink) 9px 18px)!important;}
+/* 폰 미니 달력(#calMini)에도 같은 줄무늬 — ⚠ 판(.mc-g.dec) 기준: 스와이프 때 옆 달 판이 보이므로 body.dec 로 걸면 이웃 달에도 묻는다 */
+#calMini .mc-g.dec .mc-bar.tm{background:repeating-linear-gradient(45deg,var(--rd-ink) 0 9px,var(--gn-ink) 9px 18px)!important;}
 /* 줄무늬 위 흰 글자 — 속을 흰 판으로 덮으면 줄무늬가 테두리로만 보인다 */
-body.dec #calMini .mc-bar.tm b{background:transparent;color:#fff;text-shadow:0 0 2px rgba(0,0,0,.45);margin:0;height:15px;line-height:15px;}
+#calMini .mc-g.dec .mc-bar.tm b{background:transparent;color:#fff;text-shadow:0 0 2px rgba(0,0,0,.45);margin:0;height:15px;line-height:15px;}
 /* ══ 무지개 — 그리기와 흐름을 막대 자신이 아니라 ::after 한 겹에서 ══
    ⚠ background-position 애니메이션은 합성되지 않아 프레임마다 주 스레드가 다시 칠한다 — transform 만 쓴다
    ⚠ 자르기는 clip-path(border-box) — overflow:hidden 은 padding-box 라 공통 막대의 무지개 링이 잘린다
@@ -2799,16 +2801,16 @@ body.wid #wgSet{z-index:9100;}
    ⚠ 밝은 카드(--bg2)면 혼자 하얗게 뜬다 — wgSet 값에 맞춘다 */
 body.wid .nq-panel{position:fixed;top:62px;right:10px;left:auto;width:min(330px,calc(100vw - 20px));
   max-height:min(360px,calc(100dvh - 83px));z-index:620;border-radius:18px;
-  background:rgba(24,27,36,.8);-webkit-backdrop-filter:blur(24px) saturate(1.6);backdrop-filter:blur(24px) saturate(1.6);
+  background:rgba(24,27,36,.9);-webkit-backdrop-filter:blur(24px) saturate(1.6);backdrop-filter:blur(24px) saturate(1.6);
   border:1px solid rgba(255,255,255,.12);box-shadow:0 18px 50px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.08);
   --lbl:#fff;--lbl2:rgba(255,255,255,.80);--lbl3:rgba(255,255,255,.62);
   --sep:rgba(255,255,255,.20);--bg2:rgba(255,255,255,.08);--fill:rgba(255,255,255,.12);}
-/* 머리 — #wgSet·내 업무 팝오버와 같은 규격(12px 14px 10px · 13px/800 한 줄).
+/* 머리 — #wgSet·내 업무 팝오버와 같은 규격(12px 14px 10px · 15px/700 한 줄).
    ⚠ 부제 없이 한 줄이어야 구분선 높이가 같아진다 */
 body.wid .nq-hd{padding:12px 14px 10px;align-items:center;border-bottom-color:rgba(255,255,255,.12);}
-body.wid .nq-tt{font-size:13px;font-weight:800;color:#fff;}
+body.wid .nq-tt{font-size:15px;font-weight:700;color:#fff;}
 body.wid .nq-sb{display:none;}
-body.wid .nq-cl{width:24px;height:24px;margin-left:auto;}
+body.wid .nq-cl{width:32px;height:32px;margin:-4px -4px -4px auto;}
 body.wid .nq-in{padding:10px 12px 0;}
 body.wid .nq-in input{height:34px;font-size:13px;color:#fff;border-color:rgba(255,255,255,.22);}
 body.wid .nq-in input::placeholder{color:rgba(255,255,255,.42);}
@@ -2968,8 +2970,9 @@ body.wid .cal-card{min-height:0;overflow:hidden;}
 body.wid #fcal .fc-scroller{overflow:hidden!important;}   /* 글자를 키워도 스크롤바가 생기지 않게 */
 body.wid .cal-title{font-size:round(calc(15px*var(--wfz)),1px);}
 /* 날짜를 누르면 그 칸 옆에 뜨는 업무 팝업 — 위젯은 달력만 보이고 목록은 띄우지 않는다 */
-.wid-pop{display:none;position:fixed;z-index:620;width:360px;max-height:62vh;
-  background:rgba(24,27,36,.8);-webkit-backdrop-filter:blur(24px) saturate(1.6);backdrop-filter:blur(24px) saturate(1.6);
+.wid-pop{display:none;position:fixed;z-index:620;width:min(360px,calc(100vw - 16px));max-height:62vh;   /* 위젯 최소 폭 360 에서 오른쪽이 8px 창 밖으로 나갔다 */
+  
+  background:rgba(24,27,36,.9);-webkit-backdrop-filter:blur(24px) saturate(1.6);backdrop-filter:blur(24px) saturate(1.6);
   border:1px solid rgba(255,255,255,.12);border-radius:18px;overflow:hidden;padding:0;   /* 좌우 축은 wp-h·dp-lh·dp-body 가 12px 로 갖는다 (개편 7장) */
   box-shadow:0 18px 50px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.08);color:rgba(255,255,255,.92);
   display:none;flex-direction:column;min-height:0;}
@@ -3000,19 +3003,20 @@ body.wid .wid-pop #dpEdit .pe-chip select,body.wid .wid-pop #dpEdit .pe-chip inp
 body.wid .wid-pop #dpEdit .pe-lnk{height:30px;background:rgba(255,255,255,.08);box-shadow:none;}
 body.wid .wid-pop #dpEdit .pe-lnk input{color:#fff;}
 body.wid .wid-pop #dpEdit .pe-lnk input::placeholder{color:rgba(255,255,255,.42);}
-body.wid .wid-pop .dp-lh-t{color:#fff;}   /* 제목 줄이라 흰색 */
+body.wid .wid-pop .dp-lh-t{color:#fff;font-size:15px;}   /* 제목 줄이라 흰색 · 다른 팝업 제목과 같은 15 */
 body.wid .wid-pop input.inp::placeholder,body.wid .wid-pop textarea.inp::placeholder{color:rgba(255,255,255,.42);}
 body.wid .wid-pop .p-ico,body.wid .wid-pop .pe-ic{color:rgba(255,255,255,.72);}
 body.wid .wid-pop .p-ico:hover,body.wid .wid-pop .pe-ic:hover{background:rgba(255,255,255,.14);color:#fff;}
 
-body.wid .wid-pop .dp-add{background:transparent;border:0;color:#9DC3FF;font-weight:700;padding-top:2px;padding-bottom:2px;}
+body.wid .wid-pop .dp-add{background:transparent;border:0;color:#9DC3FF;font-weight:700;width:32px;height:32px;padding:0;justify-content:center;border-radius:8px;}   /* + 20 아이콘·32 칸 — 옆 닫기(×)와 같은 크기 */
+body.wid .wid-pop .dp-add .icn{width:20px;height:20px;}
 body.wid .wid-pop .dp-add:hover{background:transparent;color:#C4DAFF;}
 body.wid .wid-pop .btn.bg2{background:transparent;border-color:transparent;color:rgba(255,255,255,.75);}
 body.wid .wid-pop .btn.bg2:hover{background:transparent;color:#fff;}
 /* H. 프로필 등 모달도 위젯 유리 카드로 */
 /* 모달 — 유리 카드 위에서 또렷하게 토큰을 통째로 밝은 쪽으로 바꾼다.
    요소별로 칠하면 라벨·보조문구가 빠진다 */
-body.wid #mb{background:rgba(24,27,36,.86);-webkit-backdrop-filter:blur(24px) saturate(1.6);backdrop-filter:blur(24px) saturate(1.6);
+body.wid #mb{background:rgba(24,27,36,.92);-webkit-backdrop-filter:blur(24px) saturate(1.6);backdrop-filter:blur(24px) saturate(1.6);
   border:1px solid rgba(255,255,255,.12);border-radius:20px;box-shadow:0 18px 50px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.08);
   --lbl:#fff;--lbl2:rgba(255,255,255,.80);--lbl3:rgba(255,255,255,.62);
   --sep:rgba(255,255,255,.18);--sepo:rgba(255,255,255,.3);--bg2:transparent;--surf2:rgba(255,255,255,.07);
@@ -3043,24 +3047,24 @@ body.wid .wid-pop input[type=date].inp,body.wid .wid-pop input[type=time].inp{co
 
 /* 닫기 — + 와 같은 줄(세로 가운데 맞춤), 가로는 아래 카드 상태 단추 가운데.
    상태 단추 가운데 = 안쪽 오른끝 −31(12+8+1+10) → 닫기(26) right 18 · + 가운데 = 안쪽 위 27 → top 14 */
-.wid-pop .wp-h{display:flex;align-items:center;gap:8px;position:absolute;top:14px;right:18px;z-index:2;}   /* 닫기만 오른쪽 위에 띄운다(날짜 줄은 아래 dp-lh 가 맡는다) */
+.wid-pop .wp-h{display:flex;align-items:center;gap:8px;position:absolute;top:11px;right:15px;z-index:2;}   /* 닫기만 오른쪽 위에 띄운다(날짜 줄은 아래 dp-lh 가 맡는다) */
 .wid-pop .wp-d{font-size:13px;font-weight:700;color:#fff;line-height:22px;transform:translateY(1px);}
 .wid-pop .wp-w{font-size:12px;font-weight:600;color:rgba(255,255,255,.6);margin-left:auto;line-height:22px;transform:translateY(1px);}
-.wid-pop .wp-x{width:26px;height:26px;border-radius:3px;display:flex;align-items:center;justify-content:center;
+.wid-pop .wp-x{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;
   color:rgba(255,255,255,.7);flex:0 0 auto;margin-left:2px;}   /* 26 — + 단추와 같은 무게 */
 .wid-pop .wp-x:hover{background:rgba(255,255,255,.14);color:#fff;}
-.wid-pop .wp-x .icn{width:13px;height:13px;}
+.wid-pop .wp-x .icn{width:20px;height:20px;}
 /* 머리 한 줄 — 같은 날짜를 두 번 말하지 않게 날짜 줄(wp-d·wp-w)을 숨기고 일자 패널 머리를 제목으로 쓴다 */
 .wid-pop .wp-d,.wid-pop .wp-w{display:none;}
 
 /* 설정 팝업 */
 #wgSet{display:none;position:fixed;top:62px;right:10px;z-index:600;width:282px;   /* 연월 팝업(62px)과 같은 높이 */
-  background:rgba(24,27,36,.8);-webkit-backdrop-filter:blur(24px) saturate(1.6);backdrop-filter:blur(24px) saturate(1.6);
+  background:rgba(24,27,36,.9);-webkit-backdrop-filter:blur(24px) saturate(1.6);backdrop-filter:blur(24px) saturate(1.6);
   border:1px solid rgba(255,255,255,.12);border-radius:18px;overflow:hidden;padding:0;
   box-shadow:0 18px 50px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.08);color:rgba(255,255,255,.9);}
 body.wid #wgSet.on{display:block;}
 #wgSet .wp-h{display:flex;align-items:center;padding:12px 14px 10px;border-bottom:1px solid rgba(255,255,255,.12);}
-#wgSet .wp-h b{font-size:13px;font-weight:700;color:#fff;}
+#wgSet .wp-h b{font-size:15px;font-weight:700;color:#fff;}
 #wgSet .wgs-b{padding:6px 14px 12px;}
 #wgSet .pop-x{color:rgba(255,255,255,.7);}
 #wgSet .wgs-r{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:32px;font-size:12px;}
@@ -3139,7 +3143,8 @@ body.wid #wgSet.on{display:block;}
 .cv-dots i{width:6px;height:6px;border-radius:50%;background:var(--cv-dot,rgba(255,255,255,.8));opacity:.4;animation:cvDot 1.2s ease-in-out infinite;will-change:opacity;}   /* ⚠ opacity 만 움직인다 — 합성 스레드라 app.js·Firebase 초기화로 메인 스레드가 막혀도 멈추지 않는다 */
 .cv-dots i:nth-child(2){animation-delay:.15s;}.cv-dots i:nth-child(3){animation-delay:.3s;}
 /* 스크립트를 못 받았을 때 점 자리에 뜨는 안내(boot-wid.js) */
-.cv-fail[hidden]{display:none;}
+.cv-fail[hidden],.cv-ld-msg[hidden]{display:none;}
+.cv-ld-msg{margin:0;font-size:13px;line-height:1.5;color:var(--cv-t3,#C9CED6);text-align:center;}   /* 로그인은 됐는데 서버가 늦을 때 — 폼 대신 점 아래 한 줄 */
 .cv-fail{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--cv-t3,#C9CED6);}
 .cv-fail button{font:inherit;font-size:13px;color:inherit;background:transparent;border:1px solid color-mix(in srgb,currentColor 35%,transparent);border-radius:3px;padding:4px 12px;cursor:pointer;}
 .cv-fail button:hover{border-color:currentColor;}
@@ -3205,14 +3210,13 @@ body.wid #wgSet.on{display:block;}
 .cv-card[data-v="verify"] .cv-foot-verify{display:inline-flex;}
 /* 위젯 게이트(시작·새로고침·로그인) — 투명 창이라 바탕을 비우고 카드는 #wgSet 유리 카드.
    기본 창 620×520 · 최소 360×380 에 들어가게 압축 */
-body.wid #coverGate{background:rgba(16,20,30,.32);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);flex-direction:column;justify-content:flex-end;align-items:center;padding:12px;}   /* 로그인 전에도 달력 격자가 비쳐 산만하다 — 페이지 내용만 흐린다(창 밖 바탕화면은 그대로) */
+body.wid #coverGate{background:rgba(16,20,30,.32);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);flex-direction:column;justify-content:center;align-items:center;padding:12px;}   /* 로그인 전에도 달력 격자가 비쳐 산만하다 — 페이지 내용만 흐린다(창 밖 바탕화면은 그대로) */
 /* 위젯 게이트가 떠 있는 동안 뒤쪽 앱을 감춘다 — 표시는 body.gate-on(boot-wid.js 가 달고 showCover/hideCover 가 켜고 끈다).
    ⚠ body 에 :has(속성 선택자)를 걸지 않는다 — 인라인 style 이 바뀔 때마다 전체 스타일을 다시 계산해 전환이 2배 느려진다 */
 body.wid.gate-on>:not(#coverGate){visibility:hidden;}
 body.wid .cv-card{max-width:380px;padding:26px 22px 22px;background:rgba(22,25,33,.94);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
   border:1px solid rgba(255,255,255,.16);border-radius:24px;box-shadow:0 10px 30px rgba(0,0,0,.45);}
-/* 위젯 로그인 = 폰 로그인 시트의 위젯 색 판 — 아래에 붙고 폭 380 까지. 불러오는 중(락업+점)만 한가운데 */
-body.wid.lg-ld #coverGate{justify-content:center;}
+/* 위젯 로그인 = 폰 로그인 시트의 위젯 색 판 — 폭 380 까지, 불러오는 중(락업+점)과 같은 한가운데(사용자: 아래에 붙으면 로딩에서 폼으로 넘어갈 때 튄다) */
 /* ═══ 로그인 개편 ═══
    데스크톱 — 본문 판을 오른쪽 반 유리 판으로 밀고 그 위에 폼, 왼쪽 반은 배경화면 + 머리줄 로고. 들어가면 판은 제자리, 배경은 셸 색, 사이드바가 나온다.
    폰 — 배경화면 + 위 로고 + 아래 유리 시트(키보드 위로: lgKbSync). 들어가면 시트가 내려가고 머리줄 → 본문 → 캡슐이 차례로 포개어진다. 위젯 — 폰 시트의 어두운 유리판.
@@ -3256,7 +3260,7 @@ body:not(.wid) .cv-lock{display:none;}   /* 불러오는 중 락업은 위젯만
   body.lg-out:not(.wid) #coverGate{opacity:0;transform:translateX(-24px);pointer-events:none;transition:opacity .25s ease,transform .45s cubic-bezier(.32,.72,0,1);}
 }
 /* 자동 로그인 대기(lg-ld) 동안 오른쪽 판에 옅은 달력 뼈대, 점 셋은 그 위.
-   숨쉬기는 투명도만 · 불러오는 중에만 돈다 · 폼이 뜨면 걷힌다. 폰·위젯은 없음 */
+   숨쉬기는 투명도만 · 불러오는 중에만 돈다 · 폼이 뜨면 걷힌다. 폰은 없음 · 위젯은 아래 lgBreath 뒤 구획 */
 .cv-skel{display:none;}
 @media (min-width:961px){
   body:not(.wid) .cv-skel{display:grid;grid-template-rows:34px minmax(0,1fr);gap:12px;position:absolute;inset:0;z-index:0;padding:28px 32px;pointer-events:none;transition:opacity .3s ease,visibility 0s linear .3s;}
@@ -3273,6 +3277,22 @@ body:not(.wid) .cv-lock{display:none;}   /* 불러오는 중 락업은 위젯만
   body.lg-ld:not(.wid) .cv-skel-g,body.lg-ld:not(.wid) .cv-skel-h{animation:lgBreath 1.6s ease-in-out infinite;}
 }
 @keyframes lgBreath{0%,100%{opacity:.55;}50%{opacity:1;}}
+/* 위젯 부팅 뼈대(사용자: 시안 A — 뼈대 + 로고 카드) — 실제 위젯 머리줄 36 · 요일 줄 42 · 6주 칸과 같은 자리라 들어가면 그 자리에 진짜 달력이 앉는다.
+   칸은 실제(.85)보다 옅게(.6) — 투명 창이라 바탕화면이 비친다. 불러오는 중(lg-ld)에만 보이고 숨 쉰다 · 폼이 뜨면 걷힌다 */
+body.wid .cv-skel{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:36px minmax(0,1fr);gap:6px;position:absolute;inset:0;z-index:0;padding:12px 10px;pointer-events:none;transition:opacity .3s ease,visibility 0s linear .3s;}
+body.wid:not(.lg-ld) .cv-skel{opacity:0;visibility:hidden;}
+body.wid .cv-skel i{display:block;}
+body.wid .cv-skel-h{display:flex;gap:6px;min-width:0;}
+body.wid .cv-skel-h i{flex:0 1 160px;min-width:0;border-radius:3px;background:rgba(16,20,30,.65);}
+body.wid .cv-skel-h i+i{flex-basis:216px;margin-left:auto;}   /* 오른쪽 단추 두 묶음 자리 */
+body.wid .cv-skel-g{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:42px repeat(6,minmax(0,1fr));gap:1px;}
+body.wid .cv-skel-g i{background:rgba(24,28,38,.6);}
+body.wid .cv-skel-g .cv-sk-w{background:rgba(13,16,24,.8);}
+body.wid .cv-skel-g .cv-sk-e{position:relative;}
+body.wid .cv-skel-g .cv-sk-e::after{content:"";position:absolute;left:4px;right:4px;top:22px;height:14px;border-radius:3px;background:rgba(62,113,210,.35);}
+body.wid.lg-ld .cv-skel-g,body.wid.lg-ld .cv-skel-h{animation:lgBreath 1.6s ease-in-out infinite;}
+body.wid.lg-ld #coverGate{background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none;}   /* 불러오는 동안은 흐린 막 대신 뼈대 — 뒤 앱은 gate-on 이 감춘다 */
+body.wid #coverGate .cv-card{position:relative;z-index:1;}
 /* 로딩 점 6px·간격 8 — 데스크톱·폰·위젯 모두(위 .cv-dots 기본값) */
 /* 배경화면 위 로고·점에 옅은 그림자 — 밝은 배경에서 묻히지 않게.
    ⚠ 번짐 3px 까지 — 로고 아래 'ENGINEERING & CONSTRUCTION' 이 뭉개지지 않게. 들어가면 로고 filter 전환으로 걷힌다 */
@@ -3348,8 +3368,9 @@ body:not(.wid) .nq-panel{padding-top:6px;}}
 .nq-hd{display:flex;align-items:flex-start;gap:8px;padding:14px 14px 12px;border-bottom:1px solid var(--sep);}
 .nq-tt{font-size:13px;font-weight:700;}
 .nq-sb{font-size:12px;color:var(--lbl3);margin-top:2px;}
-.nq-cl{margin-left:auto;width:28px;height:28px;border:0;background:transparent;border-radius:3px;color:var(--lbl3);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:background var(--tr),color var(--tr);}
+.nq-cl{margin-left:auto;width:32px;height:32px;border:0;background:transparent;border-radius:8px;color:var(--lbl3);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:background var(--tr),color var(--tr);}
 .nq-cl:hover{background:var(--fill);color:var(--lbl);}
+.nq-cl .icn{width:20px;height:20px;}
 .nq-in{padding:12px 14px 0;position:relative;}
 .nq-in input{width:100%;height:42px;border:1px solid var(--sep);border-radius:3px;padding:0 38px 0 13px;font:inherit;font-size:14px;color:var(--lbl);background:var(--bg2);transition:border-color var(--tr);}
 .nq-in input:focus{border-color:var(--b600);outline:none;}
@@ -3392,12 +3413,12 @@ body:not(.wid) .nq-panel{padding-top:6px;}}
 .ah-srch-x::after,.pv-chip-x::after,.rl-qx::after,.dp-srch-x::after{content:"";position:absolute;inset:-3px;}   /* 지우기 × 보이는 크기 18px, 누르는 영역만 24px(WCAG 2.5.8) */
 .mt2{font-size:15px;font-weight:700;color:var(--lbl);margin-bottom:18px;}
 #mb.nott .mt2{display:none;}#mb.nott .d60-um{margin-top:4px;padding-right:32px;}   /* 제목 없는 모달(세대 팝업) — X 자리만 비운다 */
-.mo-x{display:none;position:absolute;top:24px;right:21px;width:30px;height:30px;border-radius:3px;align-items:center;justify-content:center;color:var(--lbl2);background:transparent;z-index:3;transition:background var(--tr),color var(--tr);}
+.mo-x{display:none;position:absolute;top:23px;right:20px;width:32px;height:32px;border-radius:8px;align-items:center;justify-content:center;color:var(--lbl2);background:transparent;z-index:3;transition:background var(--tr),color var(--tr);}
 .mo-x:hover{background:var(--fill);color:var(--lbl);}
 #mb.has-x .mo-x{display:inline-flex;}
-.mo-x .icn{width:17px;height:17px;}   /* 자리(top 24·right 21) = 창 안쪽 여백 28 에서 — 아이콘 가운데가 제목 줄 가운데, 아이콘 오른쪽 끝이 본문 오른쪽 끝 */
+.mo-x .icn{width:20px;height:20px;}   /* 자리(top 23·right 20 — 32 칸) = 창 안쪽 여백 28 에서 — 아이콘 가운데가 제목 줄 가운데, 아이콘 오른쪽 끝이 본문 오른쪽 끝 */
 .mo-grab{display:none;}   /* 폰 시트 잡이 — 폰 큰 창에서만 보인다 */
-body.wid #mb .mo-x{top:16px;right:13px;}   /* 위젯 창 안쪽 여백 20 */
+body.wid #mb .mo-x{top:15px;right:12px;}   /* 위젯 창 안쪽 여백 20 */
 .mf2{margin-top:22px;display:flex;justify-content:flex-end;gap:8px;}
 #toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(16px);white-space:normal;word-break:keep-all;text-wrap:pretty;text-align:center;width:max-content;max-width:calc(100vw - 24px);background:rgba(28,28,30,.92);color:#fff;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);padding:10px 20px;border-radius:var(--rp);font-size:13px;font-weight:500;z-index:9999;opacity:0;transition:opacity var(--t-base),transform var(--t-base);pointer-events:none;}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
@@ -5100,7 +5121,7 @@ td.d60-pc:hover{background:var(--fill)}
   body:not(.wid) :is(.pe-chip,.cal-nb,.tm-add,.pop-x,.mo-x,.nq-cl){transition:transform .35s cubic-bezier(.32,.72,0,1),background var(--ms),color var(--ms);}
   body:not(.wid) :is(.btn,.pe-chip,.cal-nb,.tm-add,.pop-x,.mo-x,.nq-cl):active{transform:scale(.96);transition-duration:.1s;}
   /* 「+」 단추 — 폰에선 아이콘 11~14px·누르는 곳 24px 이라 작고 누르기 어려웠다. 아이콘 18~20 · 누르는 곳 36 으로, 둘레 음수 여백으로 머리 줄 높이는 그대로 */
-  body:not(.wid) #view-calendar .btn.dp-add{width:36px;height:36px;padding:0;margin:-3px -8px -3px 0;justify-content:center;}
+  body:not(.wid) #view-calendar .btn.dp-add{width:36px;height:36px;padding:0;margin:-3px -8px -3px 0;justify-content:center;border-radius:8px;}
   body:not(.wid) #view-calendar .btn.dp-add .icn{width:20px;height:20px;}
   body:not(.wid) .tm-add{width:34px;height:34px;margin:-5px -7px -5px 0;}
   body:not(.wid) .tm-add .icn{width:18px;height:18px;}
@@ -5187,6 +5208,10 @@ td.d60-pc:hover{background:var(--fill)}
   .tko-grab{display:none;}
   body:not(.wid) #tkoCard.sheet .tko-grab{display:block;position:relative;width:100%;height:16px;padding:0;margin:0;border:0;background:none;cursor:pointer;}
   body:not(.wid) #tkoCard.sheet .tko-grab::before{content:'';position:absolute;left:50%;top:7px;width:52px;height:5px;margin-left:-26px;border-radius:3px;background:rgba(60,60,67,.3);}
+  /* ⑬ 폰 고르기 시트(pickSheet) — 칸 드롭다운을 아래 시트로. 업무 시트(369)·하단 탭(370) 위에 뜬다 */
+  #mss.picker{z-index:372;}
+  #mss button.mss-i{width:100%;border:0;background:none;font:inherit;text-align:left;}   /* 단추 줄도 판 폭 전체 — 지금 값의 파란 판이 글자 폭에서 끊기지 않게 */
+  #mssScrim.picker{z-index:371;}
 }
 
 /* ══ 데스크톱 — 폰 하단 탭·시트의 디자인 언어를 같은 결로(폰·위젯에 이어) ══
@@ -5208,6 +5233,8 @@ td.d60-pc:hover{background:var(--fill)}
   body:not(.wid) :is(.cal-filt-pop,#tkFcard) .msel.on .msel-b::after{border-color:rgba(255,255,255,.85);}
   body:not(.wid) :is(.cal-filt-pop,#tkFcard) .msel.open .msel-b{box-shadow:inset 0 0 0 1.5px var(--b600);}
   body:not(.wid) :is(.cal-filt-pop,#tkFcard) .msel.on.open .msel-b{box-shadow:inset 0 0 0 1.5px var(--b300);}
+  body:not(.wid) #view-calendar .btn.dp-add{width:32px;height:32px;padding:0;margin:-4px -6px -4px 0;justify-content:center;border-radius:8px;}   /* + 는 폰(36)과 같은 20 아이콘 — 데스크톱은 32 칸 */
+  body:not(.wid) #view-calendar .btn.dp-add .icn{width:20px;height:20px;}
   body:not(.wid) #toast{border-radius:22px;padding:12px 18px;background:rgba(28,28,30,.78);-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6);box-shadow:0 10px 30px rgba(0,0,0,.22);}
 }
 </style>
@@ -5265,7 +5292,7 @@ td.d60-pc:hover{background:var(--fill)}
       <div class="cv-title" id="cvTitle">로그인</div>
       <p class="cv-sub" id="cvSub">회사 메일로 로그인하세요</p>
     </div>
-    <div id="cvLoading" class="cv-loading" role="status" aria-label="연결하는 중"><div class="cv-lock"><svg class="cv-lock-logo" aria-hidden="true" viewBox="0 0 387 67" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M50.4577 -3.05176e-05L44.6217 9.8733L11.3137 66.2533H11.3191H75.9297H87.2497L50.4577 -3.05176e-05Z" fill="white"/><path d="M39.1373 -3.05176e-05L0 66.2533H7.62L42.8333 6.65331L39.1373 -3.05176e-05Z" fill="white"/><path d="M129.465 19.4517H109.661V2.90103H100.373V45.301H109.661V27.7424H129.465V45.301H138.759V2.90103H129.465V19.4517Z" fill="white"/><path d="M340.897 11.1848H358.254V23.4954H338.536V13.6061C338.565 13.1155 338.476 12.2408 338.885 11.7141C339.321 11.1634 340.025 11.2128 340.897 11.1848ZM331.329 5.31945C329.376 7.31412 329.304 10.2288 329.25 11.9208V45.3008H338.536V31.7714H358.254V45.3008H367.572V2.90078H338.596C335.848 2.92612 333.269 3.32478 331.329 5.31945Z" fill="white"/><path d="M265.587 2.90103H236.552V45.301H245.852V11.185H263.28C264.15 11.2117 264.86 11.1637 265.284 11.7144C265.702 12.241 265.622 13.1157 265.65 13.6064V45.301H274.935V11.921C274.89 10.229 274.814 7.31436 272.866 5.31836C270.92 3.32503 268.35 2.92636 265.587 2.90103Z" fill="white"/><path d="M219.038 34.5937C219.002 35.0871 219.086 35.9471 218.676 36.4751C218.236 37.0351 217.528 36.9844 216.664 37.0111H199.242V2.90042H189.936V45.3004H218.968C221.738 45.2804 224.312 44.8697 226.246 42.8764C228.202 40.8844 228.275 37.9764 228.332 36.2737V2.90042H219.038V34.5937Z" fill="white"/><path d="M312.282 34.5937C312.249 35.0871 312.333 35.9471 311.924 36.4751C311.492 37.0351 310.778 36.9844 309.916 37.0111H292.465V11.1844H309.916C310.778 11.2124 311.492 11.1644 311.924 11.7151C312.333 12.2404 312.249 13.1164 312.282 13.6071V34.5937ZM321.546 11.9204C321.497 10.2298 321.418 7.31375 319.476 5.31908C317.533 3.32575 314.957 2.92575 312.202 2.90042H292.465H283.176V45.3004H312.202C314.957 45.2804 317.533 44.8697 319.476 42.8764C321.418 40.8844 321.497 37.9764 321.546 36.2737V11.9204Z" fill="white"/><path d="M164.355 21.4517L153.083 2.90103H142.04L159.387 29.633V45.301H169.32V29.633L186.669 2.90103H175.617L164.355 21.4517Z" fill="white"/><path d="M376.884 45.3013H386.797V2.90121H376.884V45.3013Z" fill="white"/><path d="M232.598 63.8241C232.471 63.9348 232.346 63.9854 232.198 63.9854H230.49C230.314 63.9854 230.236 63.9481 230.236 63.7188V62.6668C230.236 62.4641 230.303 62.3228 230.451 62.2134L231.536 61.3694L233.275 63.0988L232.598 63.8241ZM238.259 61.0348L236.564 59.5601L234.856 61.3948L231.36 57.7948V56.9614C231.36 56.8468 231.372 56.8334 231.487 56.8334H233.051C233.144 56.8334 233.166 56.8334 233.166 56.9614V58.4561H235.572V56.7734C235.572 54.9494 234.488 54.5654 233.578 54.5654H230.959C229.666 54.5654 228.98 55.2708 228.98 56.6041V57.7121C228.98 58.4348 229.264 59.0934 229.83 59.6814L229.85 59.6988L228.639 60.6268C228.007 61.1241 227.684 61.7761 227.684 62.5654V63.8028C227.684 65.8294 228.916 66.2534 229.95 66.2534H232.442C233.218 66.2534 233.852 65.9748 234.33 65.4254L234.928 64.7468L236.446 66.2534H239.584L236.463 63.0414L238.259 61.0348Z" fill="white"/><path d="M137.28 66.2533H139.885V54.5599H137.28V66.2533Z" fill="white"/><path d="M191.121 66.2533H193.727V54.5599H191.121V66.2533Z" fill="white"/><path d="M120.038 62.746L114.734 54.5607H112.098V66.254H114.551V58.254L119.867 66.254H122.487V54.5607H120.038V62.746Z" fill="white"/><path d="M149.91 62.746L144.61 54.5607H141.974V66.254H144.426V58.254L149.743 66.254H152.362V54.5607H149.91V62.746Z" fill="white"/><path d="M203.765 62.746L198.464 54.5607H195.828V66.254H198.28V58.254L203.597 66.254H206.22V54.5607H203.765V62.746Z" fill="white"/><path d="M100.372 54.5612V56.8132V64.0172V66.2545H102.93H110.01V64.0172H102.93V61.5332H109.091V59.3438H102.93V56.8132H110.01V54.5612H102.93H100.372Z" fill="white"/><path d="M154.452 54.5612V56.8132V64.0172V66.2545H157.011H164.091V64.0172H157.011V61.5332H163.171V59.3438H157.011V56.8132H164.091V54.5612H157.011H154.452Z" fill="white"/><path d="M166.191 54.5612V56.8132V64.0172V66.2545H168.749H175.829V64.0172H168.749V61.5332H174.909V59.3438H168.749V56.8132H175.829V54.5612H168.749H166.191Z" fill="white"/><path d="M129.693 61.4883H132.725V63.295C132.725 63.7457 132.499 63.9697 132.053 63.9697H127.867C127.419 63.9697 127.194 63.7457 127.194 63.295V57.5043C127.194 57.075 127.413 56.859 127.851 56.859H134.749V54.5617H127.179C125.45 54.5617 124.589 55.4257 124.589 57.151V63.6643C124.589 65.391 125.45 66.2537 127.179 66.2537H132.618C134.326 66.243 135.177 65.379 135.177 63.6643V59.2963H129.693V61.4883Z" fill="white"/><path d="M213.42 61.4883H216.455V63.295C216.455 63.7457 216.229 63.9697 215.78 63.9697H211.596C211.149 63.9697 210.921 63.7457 210.921 63.295V57.5043C210.921 57.075 211.143 56.859 211.581 56.859H218.477V54.5617H210.907C209.177 54.5617 208.319 55.4257 208.319 57.151V63.6643C208.319 65.391 209.177 66.2537 210.907 66.2537H216.348C218.056 66.243 218.907 65.379 218.907 63.6643V59.2963H213.42V61.4883Z" fill="white"/><path d="M180.504 56.8659H184.959C185.399 56.8659 185.619 57.0792 185.619 57.5086V59.6979C185.619 60.1472 185.396 60.3726 184.945 60.3726H180.504V56.8659ZM188.16 60.0059V57.1566C188.16 55.4312 187.296 54.5686 185.572 54.5686H177.929V66.2539H180.504V62.5952H184.033L186.369 66.2539H189.019L186.608 62.4552C187.639 62.1526 188.16 61.3379 188.16 60.0059Z" fill="white"/><path d="M358.922 66.2533H361.528V54.5599H358.922V66.2533Z" fill="white"/><path d="M279.814 62.746L274.51 54.5607H271.874V66.254H274.327V58.254L279.642 66.254H282.265V54.5607H279.814V62.746Z" fill="white"/><path d="M247.473 57.1511V63.6645C247.473 65.3911 248.337 66.2538 250.061 66.2538H257.021V63.9698H250.751C250.303 63.9698 250.079 63.7458 250.079 63.2951V57.5045C250.079 57.0751 250.298 56.8591 250.738 56.8591H257.021V54.5618H250.061C248.337 54.5618 247.473 55.4258 247.473 57.1511Z" fill="white"/><path d="M334.582 57.1511V63.6645C334.582 65.3911 335.442 66.2538 337.169 66.2538H344.126V63.9698H337.857C337.41 63.9698 337.182 63.7458 337.182 63.2951V57.5045C337.182 57.0751 337.405 56.8591 337.841 56.8591H344.126V54.5618H337.169C335.442 54.5618 334.582 55.4258 334.582 57.1511Z" fill="white"/><path d="M267.215 63.3008C267.215 63.7515 266.993 63.9728 266.543 63.9728H262.352C261.905 63.9728 261.683 63.7515 261.683 63.3008V57.5195C261.683 57.0902 261.9 56.8755 262.337 56.8755H266.561C266.999 56.8755 267.215 57.0902 267.215 57.5195V63.3008ZM267.201 54.5795H261.693C259.971 54.5795 259.109 55.4422 259.109 57.1662V63.6675C259.109 65.3915 259.971 66.2542 261.693 66.2542H267.201C268.925 66.2542 269.791 65.3915 269.791 63.6675V57.1662C269.791 55.4422 268.925 54.5795 267.201 54.5795Z" fill="white"/><path d="M384.345 54.5612V62.7465L379.044 54.5612H376.408V66.2545H378.861V58.2545L384.176 66.2545H386.797V54.5612H384.345Z" fill="white"/><path d="M371.74 63.2943C371.74 63.7463 371.517 63.9689 371.066 63.9689H366.866C366.416 63.9689 366.193 63.7463 366.193 63.2943V57.4996C366.193 57.0703 366.41 56.8569 366.848 56.8569H371.082C371.522 56.8569 371.74 57.0703 371.74 57.4996V63.2943ZM371.726 54.5569H366.206C364.481 54.5569 363.616 55.4209 363.616 57.1463V63.6623C363.616 65.3903 364.481 66.2543 366.206 66.2543H371.726C373.454 66.2543 374.317 65.3903 374.317 63.6623V57.1463C374.317 55.4209 373.454 54.5569 371.726 54.5569Z" fill="white"/><path d="M312.234 56.8711H316.686C317.128 56.8711 317.348 57.0858 317.348 57.5138V59.7018C317.348 60.1498 317.122 60.3751 316.673 60.3751H312.234V56.8711ZM319.886 60.0071V57.1618C319.886 55.4378 319.022 54.5751 317.302 54.5751H309.661V66.2538H312.234V62.5951H315.762L318.097 66.2538H320.746L318.336 62.4551C319.365 62.1538 319.886 61.3418 319.886 60.0071Z" fill="white"/><path d="M292.428 59.3215H287.566C287.116 59.3215 286.891 59.0975 286.891 58.6469V57.4842C286.891 57.0562 287.111 56.8429 287.548 56.8429H294.251V54.5775H286.92C285.21 54.5775 284.352 55.4402 284.352 57.1642V59.1069C284.352 60.7109 285.172 61.5095 286.814 61.5095H291.682C292.119 61.5095 292.34 61.7255 292.34 62.1522V63.3309C292.34 63.7802 292.114 64.0055 291.664 64.0055H284.824V66.2535H292.308C294.024 66.2535 294.882 65.3922 294.882 63.6669V61.7069C294.882 60.1175 294.063 59.3215 292.428 59.3215Z" fill="white"/><path d="M296.968 54.5742V56.9315H300.994V66.2542H302.265H303.564V56.9315H307.576V54.5742H302.265H296.968Z" fill="white"/><path d="M346.221 54.5664V56.9264H350.249V66.2544H351.521H352.823V56.9264H356.835V54.5664H351.521H346.221Z" fill="white"/><path d="M329.913 63.3072C329.913 63.7526 329.687 63.9779 329.242 63.9779H325.209C324.758 63.9779 324.535 63.7526 324.535 63.3072V54.5952H321.966V63.6699C321.966 65.3952 322.827 66.2539 324.549 66.2539H329.897C331.621 66.2539 332.483 65.3952 332.483 63.6699V54.5952H329.913V63.3072Z" fill="white"/></svg><b>주요업무현황</b></div><span class="cv-dots" aria-hidden="true"><i></i><i></i><i></i></span><div class="cv-fail" id="cvFail" hidden>불러오지 못했습니다<button type="button" id="cvFailBtn">새로고침</button></div></div>
+    <div id="cvLoading" class="cv-loading" role="status" aria-label="연결하는 중"><div class="cv-lock"><svg class="cv-lock-logo" aria-hidden="true" viewBox="0 0 387 67" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M50.4577 -3.05176e-05L44.6217 9.8733L11.3137 66.2533H11.3191H75.9297H87.2497L50.4577 -3.05176e-05Z" fill="white"/><path d="M39.1373 -3.05176e-05L0 66.2533H7.62L42.8333 6.65331L39.1373 -3.05176e-05Z" fill="white"/><path d="M129.465 19.4517H109.661V2.90103H100.373V45.301H109.661V27.7424H129.465V45.301H138.759V2.90103H129.465V19.4517Z" fill="white"/><path d="M340.897 11.1848H358.254V23.4954H338.536V13.6061C338.565 13.1155 338.476 12.2408 338.885 11.7141C339.321 11.1634 340.025 11.2128 340.897 11.1848ZM331.329 5.31945C329.376 7.31412 329.304 10.2288 329.25 11.9208V45.3008H338.536V31.7714H358.254V45.3008H367.572V2.90078H338.596C335.848 2.92612 333.269 3.32478 331.329 5.31945Z" fill="white"/><path d="M265.587 2.90103H236.552V45.301H245.852V11.185H263.28C264.15 11.2117 264.86 11.1637 265.284 11.7144C265.702 12.241 265.622 13.1157 265.65 13.6064V45.301H274.935V11.921C274.89 10.229 274.814 7.31436 272.866 5.31836C270.92 3.32503 268.35 2.92636 265.587 2.90103Z" fill="white"/><path d="M219.038 34.5937C219.002 35.0871 219.086 35.9471 218.676 36.4751C218.236 37.0351 217.528 36.9844 216.664 37.0111H199.242V2.90042H189.936V45.3004H218.968C221.738 45.2804 224.312 44.8697 226.246 42.8764C228.202 40.8844 228.275 37.9764 228.332 36.2737V2.90042H219.038V34.5937Z" fill="white"/><path d="M312.282 34.5937C312.249 35.0871 312.333 35.9471 311.924 36.4751C311.492 37.0351 310.778 36.9844 309.916 37.0111H292.465V11.1844H309.916C310.778 11.2124 311.492 11.1644 311.924 11.7151C312.333 12.2404 312.249 13.1164 312.282 13.6071V34.5937ZM321.546 11.9204C321.497 10.2298 321.418 7.31375 319.476 5.31908C317.533 3.32575 314.957 2.92575 312.202 2.90042H292.465H283.176V45.3004H312.202C314.957 45.2804 317.533 44.8697 319.476 42.8764C321.418 40.8844 321.497 37.9764 321.546 36.2737V11.9204Z" fill="white"/><path d="M164.355 21.4517L153.083 2.90103H142.04L159.387 29.633V45.301H169.32V29.633L186.669 2.90103H175.617L164.355 21.4517Z" fill="white"/><path d="M376.884 45.3013H386.797V2.90121H376.884V45.3013Z" fill="white"/><path d="M232.598 63.8241C232.471 63.9348 232.346 63.9854 232.198 63.9854H230.49C230.314 63.9854 230.236 63.9481 230.236 63.7188V62.6668C230.236 62.4641 230.303 62.3228 230.451 62.2134L231.536 61.3694L233.275 63.0988L232.598 63.8241ZM238.259 61.0348L236.564 59.5601L234.856 61.3948L231.36 57.7948V56.9614C231.36 56.8468 231.372 56.8334 231.487 56.8334H233.051C233.144 56.8334 233.166 56.8334 233.166 56.9614V58.4561H235.572V56.7734C235.572 54.9494 234.488 54.5654 233.578 54.5654H230.959C229.666 54.5654 228.98 55.2708 228.98 56.6041V57.7121C228.98 58.4348 229.264 59.0934 229.83 59.6814L229.85 59.6988L228.639 60.6268C228.007 61.1241 227.684 61.7761 227.684 62.5654V63.8028C227.684 65.8294 228.916 66.2534 229.95 66.2534H232.442C233.218 66.2534 233.852 65.9748 234.33 65.4254L234.928 64.7468L236.446 66.2534H239.584L236.463 63.0414L238.259 61.0348Z" fill="white"/><path d="M137.28 66.2533H139.885V54.5599H137.28V66.2533Z" fill="white"/><path d="M191.121 66.2533H193.727V54.5599H191.121V66.2533Z" fill="white"/><path d="M120.038 62.746L114.734 54.5607H112.098V66.254H114.551V58.254L119.867 66.254H122.487V54.5607H120.038V62.746Z" fill="white"/><path d="M149.91 62.746L144.61 54.5607H141.974V66.254H144.426V58.254L149.743 66.254H152.362V54.5607H149.91V62.746Z" fill="white"/><path d="M203.765 62.746L198.464 54.5607H195.828V66.254H198.28V58.254L203.597 66.254H206.22V54.5607H203.765V62.746Z" fill="white"/><path d="M100.372 54.5612V56.8132V64.0172V66.2545H102.93H110.01V64.0172H102.93V61.5332H109.091V59.3438H102.93V56.8132H110.01V54.5612H102.93H100.372Z" fill="white"/><path d="M154.452 54.5612V56.8132V64.0172V66.2545H157.011H164.091V64.0172H157.011V61.5332H163.171V59.3438H157.011V56.8132H164.091V54.5612H157.011H154.452Z" fill="white"/><path d="M166.191 54.5612V56.8132V64.0172V66.2545H168.749H175.829V64.0172H168.749V61.5332H174.909V59.3438H168.749V56.8132H175.829V54.5612H168.749H166.191Z" fill="white"/><path d="M129.693 61.4883H132.725V63.295C132.725 63.7457 132.499 63.9697 132.053 63.9697H127.867C127.419 63.9697 127.194 63.7457 127.194 63.295V57.5043C127.194 57.075 127.413 56.859 127.851 56.859H134.749V54.5617H127.179C125.45 54.5617 124.589 55.4257 124.589 57.151V63.6643C124.589 65.391 125.45 66.2537 127.179 66.2537H132.618C134.326 66.243 135.177 65.379 135.177 63.6643V59.2963H129.693V61.4883Z" fill="white"/><path d="M213.42 61.4883H216.455V63.295C216.455 63.7457 216.229 63.9697 215.78 63.9697H211.596C211.149 63.9697 210.921 63.7457 210.921 63.295V57.5043C210.921 57.075 211.143 56.859 211.581 56.859H218.477V54.5617H210.907C209.177 54.5617 208.319 55.4257 208.319 57.151V63.6643C208.319 65.391 209.177 66.2537 210.907 66.2537H216.348C218.056 66.243 218.907 65.379 218.907 63.6643V59.2963H213.42V61.4883Z" fill="white"/><path d="M180.504 56.8659H184.959C185.399 56.8659 185.619 57.0792 185.619 57.5086V59.6979C185.619 60.1472 185.396 60.3726 184.945 60.3726H180.504V56.8659ZM188.16 60.0059V57.1566C188.16 55.4312 187.296 54.5686 185.572 54.5686H177.929V66.2539H180.504V62.5952H184.033L186.369 66.2539H189.019L186.608 62.4552C187.639 62.1526 188.16 61.3379 188.16 60.0059Z" fill="white"/><path d="M358.922 66.2533H361.528V54.5599H358.922V66.2533Z" fill="white"/><path d="M279.814 62.746L274.51 54.5607H271.874V66.254H274.327V58.254L279.642 66.254H282.265V54.5607H279.814V62.746Z" fill="white"/><path d="M247.473 57.1511V63.6645C247.473 65.3911 248.337 66.2538 250.061 66.2538H257.021V63.9698H250.751C250.303 63.9698 250.079 63.7458 250.079 63.2951V57.5045C250.079 57.0751 250.298 56.8591 250.738 56.8591H257.021V54.5618H250.061C248.337 54.5618 247.473 55.4258 247.473 57.1511Z" fill="white"/><path d="M334.582 57.1511V63.6645C334.582 65.3911 335.442 66.2538 337.169 66.2538H344.126V63.9698H337.857C337.41 63.9698 337.182 63.7458 337.182 63.2951V57.5045C337.182 57.0751 337.405 56.8591 337.841 56.8591H344.126V54.5618H337.169C335.442 54.5618 334.582 55.4258 334.582 57.1511Z" fill="white"/><path d="M267.215 63.3008C267.215 63.7515 266.993 63.9728 266.543 63.9728H262.352C261.905 63.9728 261.683 63.7515 261.683 63.3008V57.5195C261.683 57.0902 261.9 56.8755 262.337 56.8755H266.561C266.999 56.8755 267.215 57.0902 267.215 57.5195V63.3008ZM267.201 54.5795H261.693C259.971 54.5795 259.109 55.4422 259.109 57.1662V63.6675C259.109 65.3915 259.971 66.2542 261.693 66.2542H267.201C268.925 66.2542 269.791 65.3915 269.791 63.6675V57.1662C269.791 55.4422 268.925 54.5795 267.201 54.5795Z" fill="white"/><path d="M384.345 54.5612V62.7465L379.044 54.5612H376.408V66.2545H378.861V58.2545L384.176 66.2545H386.797V54.5612H384.345Z" fill="white"/><path d="M371.74 63.2943C371.74 63.7463 371.517 63.9689 371.066 63.9689H366.866C366.416 63.9689 366.193 63.7463 366.193 63.2943V57.4996C366.193 57.0703 366.41 56.8569 366.848 56.8569H371.082C371.522 56.8569 371.74 57.0703 371.74 57.4996V63.2943ZM371.726 54.5569H366.206C364.481 54.5569 363.616 55.4209 363.616 57.1463V63.6623C363.616 65.3903 364.481 66.2543 366.206 66.2543H371.726C373.454 66.2543 374.317 65.3903 374.317 63.6623V57.1463C374.317 55.4209 373.454 54.5569 371.726 54.5569Z" fill="white"/><path d="M312.234 56.8711H316.686C317.128 56.8711 317.348 57.0858 317.348 57.5138V59.7018C317.348 60.1498 317.122 60.3751 316.673 60.3751H312.234V56.8711ZM319.886 60.0071V57.1618C319.886 55.4378 319.022 54.5751 317.302 54.5751H309.661V66.2538H312.234V62.5951H315.762L318.097 66.2538H320.746L318.336 62.4551C319.365 62.1538 319.886 61.3418 319.886 60.0071Z" fill="white"/><path d="M292.428 59.3215H287.566C287.116 59.3215 286.891 59.0975 286.891 58.6469V57.4842C286.891 57.0562 287.111 56.8429 287.548 56.8429H294.251V54.5775H286.92C285.21 54.5775 284.352 55.4402 284.352 57.1642V59.1069C284.352 60.7109 285.172 61.5095 286.814 61.5095H291.682C292.119 61.5095 292.34 61.7255 292.34 62.1522V63.3309C292.34 63.7802 292.114 64.0055 291.664 64.0055H284.824V66.2535H292.308C294.024 66.2535 294.882 65.3922 294.882 63.6669V61.7069C294.882 60.1175 294.063 59.3215 292.428 59.3215Z" fill="white"/><path d="M296.968 54.5742V56.9315H300.994V66.2542H302.265H303.564V56.9315H307.576V54.5742H302.265H296.968Z" fill="white"/><path d="M346.221 54.5664V56.9264H350.249V66.2544H351.521H352.823V56.9264H356.835V54.5664H351.521H346.221Z" fill="white"/><path d="M329.913 63.3072C329.913 63.7526 329.687 63.9779 329.242 63.9779H325.209C324.758 63.9779 324.535 63.7526 324.535 63.3072V54.5952H321.966V63.6699C321.966 65.3952 322.827 66.2539 324.549 66.2539H329.897C331.621 66.2539 332.483 65.3952 332.483 63.6699V54.5952H329.913V63.3072Z" fill="white"/></svg><b>주요업무현황</b></div><span class="cv-dots" aria-hidden="true"><i></i><i></i><i></i></span><p class="cv-ld-msg" id="cvLdMsg" hidden></p><div class="cv-fail" id="cvFail" hidden>불러오지 못했습니다<button type="button" id="cvFailBtn">새로고침</button></div></div>
     <div id="cvBody" style="display:none">
       <form id="cvForm" class="cv-form" novalidate>
         <div class="cv-field">
@@ -5660,7 +5687,7 @@ td.d60-pc:hover{background:var(--fill)}
     <div><div class="nq-tt">무엇이든 찾기</div><div class="nq-sb">업무 · 현장 · 하자에서</div></div>
     <button class="nq-cl" data-act="nq.close" aria-label="닫기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button>
   </div>
-  <div class="nq-in"><input id="nqQ" autocomplete="off" placeholder="예: 두정역, 점검, 누수" aria-label="찾을 내용"></div>
+  <div class="nq-in"><input id="nqQ" autocomplete="off" placeholder="예: 현장명, 점검, 누수" aria-label="찾을 내용"></div>
   <div class="nq-res" id="nqRes"></div>
 </div>
 <div id="scrim" data-act="nav.mobClose"></div>
@@ -5689,5 +5716,5 @@ td.d60-pc:hover{background:var(--fill)}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1039"></script>
+<script src="./app.js?v=1050"></script>
 </body></html>
