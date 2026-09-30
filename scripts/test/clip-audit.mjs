@@ -145,7 +145,6 @@ for (const [W, H, tag] of [[1536, 864, '넓은 화면'], [1366, 768, '노트북'
     const b = document.querySelector('[data-act="qc.run"]'); if (b) b.click();
   });
   await pg.waitForTimeout(700); await sweep('견적 검토');
-  await go('dwg'); await sweep('도면 인쇄');
   await go('redo'); await sweep('재하자 추적');   /* 901차 */
   await go('prod'); await sweep('생산성 검토');
   await go('org', 1000); await sweep('조직 관리');
