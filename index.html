@@ -1585,6 +1585,10 @@ body.df-printing .axfold-h,#dfPrintPages .axfold-h{display:none!important;}   /*
 /* ⚠ .card 의 display 가 [hidden] 을 덮으면 0건에도 카드가 보인다 */
 /* 읽기 실패 카드 — 문구 끝에 「다시 시도」. 불러오는 중·없음 카드와 같은 틀 */
 .dfc-none.err b{color:var(--rd-ink);}
+/* 하자 빈 상태는 카드 틀 없이 점선 판만 — 도구 화면(.qc-empty)처럼 본문 아래까지 */
+#view-defect .card.dfc-none{border:0;background:none;box-shadow:none;padding:0;}   /* ⚠ #view-defect .card(카드 틀)보다 명시도가 높아야 한다 */
+.card.dfc-none .vw-empty{min-height:calc(100dvh - 92px);}
+@media(max-width:960px){.card.dfc-none .vw-empty{min-height:calc(100dvh - 67px - var(--mtab) - env(safe-area-inset-bottom));}}   /* 폰은 떠 있는 탭 위까지 */
 /* 불러오는 중 — 문구 앞 작은 돌이(12px). 빈 상태 문구와 같은 자리라 '없음'과 '기다리는 중'이 갈린다 */
 .ld::before{content:"";display:inline-block;width:12px;height:12px;margin-right:7px;vertical-align:-2px;border:1.6px solid currentColor;border-right-color:transparent;border-radius:50%;opacity:.75;animation:uprogspin .7s linear infinite;box-sizing:border-box;}
 /* 빈 상태 공통 — 목록·패널 안 「없음」 문구는 13px · --lbl3 · 가운데 · 위아래 24px
@@ -2597,13 +2601,12 @@ body.pickmode #tkRoot .tk-item,body.pickmode .day-panel .plan{user-select:none;}
 .fbu-av{flex:0 0 auto;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;}
 .fbu-av svg{width:18px;height:18px;display:block;fill:#fff;}
 /* 프로필 아이콘(선 그림) — 배경색 원 위에 흰 선으로 그린다 */
-.av-ic{fill:none!important;stroke:#fff;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;}
+.av-ic{fill:none!important;stroke:var(--avi,#fff);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;}
 .fbu-av.av-cus{background:var(--avc,var(--b600));}
-.fbu-av.av-cus .av-ic{stroke:#fff;}
+.fbu-av.av-cus .av-ic{stroke:var(--avi,#fff);}
 .acct-av.av-cus{background:var(--avc,var(--b600));}
 /* 프로필 편집 */
 /* 프로필 — 아바타 버튼 + 이모지 팝오버(애플 키보드식 분류) */
-.acct-head{position:relative;}
 .acct-av.av-btn{border:none;padding:0;cursor:pointer;position:relative;}
 .av-em{font-size:26px;line-height:1;}
 .acct-av .av-em{font-size:26px;}
@@ -2622,11 +2625,6 @@ body.pickmode #tkRoot .tk-item,body.pickmode .day-panel .plan{user-select:none;}
   flex-direction:column;min-height:0;}
 .popbox.open{display:flex;}
 @media(max-width:900px){.popbox{width:min(336px,calc(100vw - 24px));}}
-.pop-h{display:flex;align-items:center;font-size:12px;font-weight:700;color:var(--lbl2);margin-bottom:9px;flex-shrink:0;}
-.pop-x{margin-left:auto;width:32px;height:32px;margin-top:-4px;margin-bottom:-4px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--lbl3);}
-.pop-x:hover{background:var(--fill);color:var(--lbl);}
-.pop-x .icn{width:20px;height:20px;}   /* 닫기(×)는 + 와 같은 20 아이콘·32 누름 칸 — 데스크톱·위젯 공통(폰 36) */
-.pf-srch{width:100%;margin-bottom:9px;flex-shrink:0;}
 .pf-cats{display:flex;gap:2px;border-bottom:1px solid var(--sep);padding-bottom:7px;margin-bottom:7px;flex-shrink:0;}
 .pf-cat{flex:1;height:30px;border-radius:3px;font-size:15px;line-height:1;display:flex;align-items:center;
   justify-content:center;opacity:.55;transition:background var(--t-fast),opacity var(--t-fast);}
@@ -2638,24 +2636,8 @@ body.pickmode #tkRoot .tk-item,body.pickmode .day-panel .plan{user-select:none;}
 .pf-em:hover{background:var(--fill);}
 .pf-em.dflt svg{width:19px;height:19px;fill:none;stroke:var(--lbl2);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;}
 .pf-empty{grid-column:1/-1;font-size:13px;color:var(--lbl3);text-align:center;padding:18px 6px;line-height:1.5;}
-.pf-lab{font-size:12px;font-weight:700;color:var(--lbl3);letter-spacing:.04em;margin:11px 0 7px;flex-shrink:0;}
 .popbox .pal{flex:none;}   /* 팔레트는 줄이지 않는다 — 줄면 그라디언트 줄이 잘린다 */
 /* 내 소속 — 팀·직급 수정, 권역·현장 보기 전용 */
-.myorg{margin-top:16px;padding-top:14px;border-top:1px solid var(--sep);}
-.myorg-h{font-size:12px;font-weight:700;color:var(--lbl2);letter-spacing:.05em;margin-bottom:9px;}
-.myorg-g{display:grid;grid-template-columns:1fr 1fr;gap:10px 10px;margin-bottom:12px;}   /* 행 간격 12 */
-.myorg-g+.myorg-g{margin-bottom:0;}
-.myorg-f{display:flex;flex-direction:column;gap:5px;min-width:0;}
-.myorg-f label{font-size:12px;font-weight:600;color:var(--lbl2);}
-.myorg-f .inp-sm{width:100%;}
-.myorg-f-wide{grid-column:1/-1;}
-/* 담당 현장도 팀·직급·권역과 같은 상자 안에 */
-/* 담당 현장은 테두리 없이 — 칩 자체가 상자라 이중 상자가 된다. 대신 위 상자들과 같은 높이(34px) */
-.myorg-f-wide .site-chk{min-height:34px;gap:6px;padding:0;}
-.myorg-f-wide .site-chk .site-on{height:26px;padding:0 9px;}
-.myorg-f-wide .site-chk .site-none{height:26px;}
-.myorg-f-wide .site-chk .site-pick:not(.site-pick-txt){width:26px;height:26px;}   /* 26px 폭은 아이콘 단추만 — 글자 단추(「현장 추가」)를 묶으면 세로로 쪼개진다 */
-.myorg-f-wide .site-chk .site-pick-txt{height:26px;white-space:nowrap;}
 .site-on.site-ro{cursor:default;}   /* 배정 권한이 없으면 칩은 보기만 */
 /* 무지개 — 색 원과 업무 막대 모두 rainbow 토큰을 CSS 그라디언트로 그린다. 공통 업무(team)는 흰 속 + 그라디언트 테두리 */
 /* 흐름을 켠 칩(.pal-fx) — 재생 삼각형으로 고정 무지개·그라디언트와 구분한다(규칙은 아래) */
@@ -2725,12 +2707,6 @@ body.dec #fcal .fc-event.team:not(.ev-rb):not(.ev-gd) .fc-event-title{color:#fff
   animation:rbslide 8s steps(160) infinite;}
 /* 위젯이 비활성이면 멈춘다 — 늘 떠 있는 창이라 전력 절약 */
 body.wid-await #fcal .fc-event.ev-fx::after{animation-play-state:paused;}
-.myorg-fix{background:var(--surf2);border:1px solid var(--sep);border-radius:var(--rmd);
-  padding:7px 11px;font-size:13px;font-weight:600;color:var(--lbl);line-height:1.35;min-height:36px;
-  display:flex;flex-direction:column;justify-content:center;}
-.myorg-fix span{display:block;font-size:12px;font-weight:500;color:var(--lbl3);margin-top:1px;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.myorg-g3{grid-template-columns:1fr 1fr 1fr;}
 .acct-state{flex-shrink:0;font-size:12px;font-weight:600;color:var(--lbl3);white-space:nowrap;}
 .acct-state.err{color:var(--rd);}
 .acct-state.ok{color:var(--gn);}
@@ -2745,7 +2721,6 @@ body.wid-await #fcal .fc-event.ev-fx::after{animation-play-state:paused;}
   color:var(--lbl2);transition:background var(--tr),color var(--tr);}
 .acct-tab.act{background:var(--bg2);color:var(--bt1);box-shadow:var(--sh-1);}
 /* 탭 전환·팝오버에도 모달 크기가 흔들리지 않게 높이 고정 */
-.acct-pane{position:relative;}
 .fbu-av.r-editor{background:var(--b600);}
 .fbu-av.r-viewer{background:rgba(120,120,128,.2);}
 .fbu-av.r-viewer svg{fill:var(--lbl2);}
@@ -3066,7 +3041,6 @@ body.wid #wgSet.on{display:block;}
 #wgSet .wp-h{display:flex;align-items:center;padding:12px 14px 10px;border-bottom:1px solid rgba(255,255,255,.12);}
 #wgSet .wp-h b{font-size:15px;font-weight:700;color:#fff;}
 #wgSet .wgs-b{padding:6px 14px 12px;}
-#wgSet .pop-x{color:rgba(255,255,255,.7);}
 #wgSet .wgs-r{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:32px;font-size:12px;}
 #wgSet .wgs-r>span{white-space:nowrap;flex:0 0 112px;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:6px;}   /* 라벨 폭 고정 — 값(%)은 오른쪽 끝에 붙어 슬라이더와 맞닿는다 */
 /* 항목이 많으면 ◀ 이름 ▶ 로 넘긴다 — 좁은 팝업에서 자리 절약 */
@@ -3096,26 +3070,11 @@ body.wid #wgSet.on{display:block;}
 
 /* 계정 모달 — 참조 앱과 동일 */
 .il{font-size:12px;font-weight:600;color:var(--lbl2);margin-bottom:6px;display:block;}
-.acct-head{display:flex;align-items:center;gap:12px;margin-bottom:20px;}
 .acct-av{flex:0 0 auto;width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--b600);}
 .acct-av svg{width:24px;height:24px;display:block;}
-.acct-mail{font-size:13px;font-weight:600;color:var(--lbl);word-break:break-all;line-height:1.3;}
 .acct-rolebadge{display:inline-block;margin-top:5px;font-size:12px;font-weight:700;padding:3px 10px;border-radius:3px;}
 .acct-rolebadge.r-editor{background:var(--b-tint);color:var(--bt1);}
-.acct-rolebadge.r-viewer{background:var(--fill);color:var(--lbl2);}.acct-gap{margin-bottom:8px;}
-.acct-btn-sm{height:34px;padding:0 14px;font-size:13px;flex-shrink:0;}
-.acct-btn{display:inline-flex;align-items:center;justify-content:center;padding:0 18px;border-radius:var(--rmd);font-size:13px;font-weight:600;cursor:pointer;border:none;transition:filter var(--t-fast),background var(--t-fast);white-space:nowrap;}
-.acct-btn-primary{background:var(--b600);color:#fff;}
-.acct-btn-primary:hover{filter:brightness(1.07);}
-/* 이름 아래 구분선 — 프로필 탭 '소속'(.myorg)과 같은 간격·선 */
-.acct-sec{margin-top:16px;padding-top:14px;border-top:1px solid var(--sep);}
-.acct-sec .il-first{margin-top:0;}
-/* 변경·찾기를 반씩 — 두 탭 높이를 맞춘다 */
-.acct-pwrow{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.acct-btn-ghost{background:transparent;color:var(--lbl2);border:1px solid var(--sep);}
-.acct-btn-ghost:hover{background:var(--fill);color:var(--lbl);}
-.acct-btn-danger{background:transparent;color:var(--rd);border:1.5px solid rgba(220,38,38,.32);}
-.acct-btn-danger:hover{background:rgba(220,38,38,.06);}
+.acct-rolebadge.r-viewer{background:var(--fill);color:var(--lbl2);}
 /* 로그인 게이트 — 8px 격자 · 글자 12/14/16/20 · 굵기 700/600/500/400 · 로고 32. 폰(≤480px)은 카드 틀 없이 화면 전체.
    화면 넷(.cv-card[data-v] login·signup·reset·verify) — 보일 것만 data-v 로 켠다. 색은 앱 토큰(--shell 계열 · 주 버튼 .bp · 포커스 --b400+--ring).
    위젯(body.wid)은 바탕을 비우고 카드만 #wgSet 유리 카드 문법 — 아래 body.wid 블록 */
@@ -3959,9 +3918,6 @@ body.wid #mb .mo-x{top:15px;right:12px;}   /* 위젯 창 안쪽 여백 20 */
 @media(max-width:720px){
   /* 좁은 화면에선 이모지 칸이 28px 뿐이라 8열로 */
   .pf-emg{grid-template-columns:repeat(8,1fr);}
-  .acct-pane{min-height:392px;}
-  .myorg-g{grid-template-columns:1fr;}
-  .myorg-g3{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}   /* 팀·권역·직급은 폰에서도 한 줄 — 칸이 짧아 세 줄이면 자리만 먹는다 */
   .utbl thead{display:none;}
   .utbl tbody tr{display:flex;flex-wrap:wrap;align-items:center;gap:7px 10px;padding:12px 12px;border-bottom:1px solid var(--sep);}   /* 좌우 12px — 카드 테두리에 붙어 보이지 않게 */
   .utbl tbody tr:last-child{border-bottom:none;}
@@ -3991,7 +3947,6 @@ body.wid #mb .mo-x{top:15px;right:12px;}   /* 위젯 창 안쪽 여백 20 */
   display:inline-flex;align-items:center;justify-content:center;}
 .tm-add:hover{background:var(--fill);color:var(--bt1);}
 .tm-add .icn{width:14px;height:14px;}
-.acct-btn{height:30px;padding-top:0;padding-bottom:0;}
 /* 입력 높이 30px 통일 — 표 안(mg-inp)·여러 줄(textarea)은 제외, 로그인은 인라인이라 자동 예외 */
 .inp{height:30px;padding-top:0;padding-bottom:0;}
 textarea.inp{height:auto;min-height:64px;padding-top:7px;padding-bottom:7px;}
@@ -4035,10 +3990,6 @@ textarea.inp{height:auto;min-height:64px;padding-top:7px;padding-bottom:7px;}
 body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 #fcal .dnum{line-height:var(--dnh);}
 #fcal .fc-day-today .dnum{height:var(--dnh);}
-/* 계정 모달 — 두 탭을 같은 칸에 겹쳐 높이를 큰 쪽에 맞춘다(탭 전환 시 안 흔들림) */
-.acct-pane{min-height:0;display:grid;}
-.acct-pane>.acct-real,.acct-pane>.acct-ghost{grid-area:1/1;min-width:0;}
-.acct-ghost{visibility:hidden;pointer-events:none;}
 /* 사용 안내 — 장을 옮겨도 모달 높이가 일정하도록 본문에 고정 높이 */
 .rd-body{height:62dvh;overflow-y:auto;}
 /* 조직/현장 — 탭을 옮겨도 머리 높이가 같도록(현장 탭에만 있는 추가 버튼 때문) */
@@ -4165,16 +4116,15 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
 #fcal .fc-event.team .fc-event-title,#fcal .fc-event.team .fc-event-main{color:var(--bt2)!important;}
 /* ⚠ 다크 + 배경화면 — 위 hasbg 규칙과 명시도가 같아 뒤의 hasbg 가 이긴다(막대만 흰색, 글자는 연한 파랑).
    글자색은 두고 막대 배경을 다크 톤으로 되돌린다 */
-#fcal .fc-event.team .fc-event-title{display:flex;align-items:center;}
-#fcal .fc-event.team .fc-event-title::before{content:'';flex:none;width:0;height:0;margin-right:4px;
+/* ⚠ 제목을 flex 로 두면 글자가 익명 flex 항목이 되어 text-overflow(…)가 먹지 않는다 — 블록 + 인라인 블록 표식 */
+#fcal .fc-event.team .fc-event-title::before{content:'';display:inline-block;vertical-align:middle;position:relative;top:-1px;width:0;height:0;margin-right:4px;
   border-left:4px solid currentColor;border-top:2.5px solid transparent;border-bottom:2.5px solid transparent;}
 /* ── 고위험 업무 — 제목 앞 윤곽 원 안의 느낌표(2-C안) ──
    ⚠ 글자 '!' 대신 SVG 아이콘을 마스크로 깔고 색은 background-color 로 — 글리프는 원 안에서 위로 뜬다.
    ⚠ 색은 currentColor(막대 글자색을 따라 밝은 업무색에서도 대비 유지) · 공통 업무(.team) 삼각형보다 우선 */
 :root{--risk-ic:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.1'%3E%3Ccircle cx='12' cy='12' r='9.5'/%3E%3Cpath d='M12 6.9v6.4' stroke-linecap='round'/%3E%3Ccircle cx='12' cy='17.2' r='1.25' fill='%23000' stroke='none'/%3E%3C/svg%3E");}
-#fcal .fc-event.risk .fc-event-title{display:flex;align-items:center;}
 #fcal .fc-event.risk .fc-event-title::before,#fcal .fc-event.team.risk .fc-event-title::before{
-  content:'';flex:none;width:.92em;height:.92em;margin-right:.34em;border:0;border-radius:0;
+  content:'';display:inline-block;vertical-align:-.14em;top:0;width:.92em;height:.92em;margin-right:.34em;border:0;border-radius:0;
   background-color:currentColor;
   -webkit-mask:var(--risk-ic) center/contain no-repeat;mask:var(--risk-ic) center/contain no-repeat;}
 /* 목록·일자 패널·월별 현장 카드의 제목 앞 표식 — 배경이 늘 카드(흰·다크)라 색을 고정한다 */
@@ -5014,6 +4964,8 @@ td.d60-pc:hover{background:var(--fill)}
 .rd-wrap .rl-frow td.rl-fc{top:34px}
 .qc-fr .inp{height:30px;padding-top:0;padding-bottom:0;font-size:13px}
 .pv-cond select.inp{min-width:0;max-width:100%}
+#view-prod .pv-cond select.inp{height:30px;border:1px solid var(--sepo);border-radius:var(--rmd);box-shadow:none;background-color:var(--bg2);}   /* 아래 날짜·숫자 칸(.inp)과 같은 모양 */
+#view-redo .qc-fr .seg button{flex:1 0 auto;padding:0 9px}   /* 「시공업체」가 칸에 붙지 않게 글자 길이만큼(견적 검토는 균등 유지) */
 .pv-tbl .pv-d{width:104px;font-variant-numeric:tabular-nums;white-space:nowrap}.pv-tbl .pv-g{width:120px;color:var(--lbl2)}
 .pv-tbl td.v,.pv-tbl th.v{font-family:inherit;width:78px}.pv-tbl th.v{padding-right:10px}
 .pv-tbl tr.rd-g td.pv-d{font-weight:700;color:var(--lbl)}.pv-tbl tr.rd-g td.v{font-weight:600;color:var(--lbl)}
@@ -5118,8 +5070,8 @@ td.d60-pc:hover{background:var(--fill)}
   /* ③ 눌림 반응 — 단추·칩·아이콘은 살짝 줄고, 카드·목록 줄은 옅은 회색 판, 탭은 흐려진다(손을 떼면 되돌아온다) */
   /* 누를 땐 0.1초에 들어가고, 뗄 땐 0.35초에 걸쳐 돌아온다(튕김 없음) — :active 쪽 전환 시간이 들어갈 때 쓰인다 */
   body:not(.wid) .btn{transition:background var(--ms),color var(--ms),border-color var(--ms),transform .35s cubic-bezier(.32,.72,0,1);}
-  body:not(.wid) :is(.pe-chip,.cal-nb,.tm-add,.pop-x,.mo-x,.nq-cl){transition:transform .35s cubic-bezier(.32,.72,0,1),background var(--ms),color var(--ms);}
-  body:not(.wid) :is(.btn,.pe-chip,.cal-nb,.tm-add,.pop-x,.mo-x,.nq-cl):active{transform:scale(.96);transition-duration:.1s;}
+  body:not(.wid) :is(.pe-chip,.cal-nb,.tm-add,.mo-x,.nq-cl){transition:transform .35s cubic-bezier(.32,.72,0,1),background var(--ms),color var(--ms);}
+  body:not(.wid) :is(.btn,.pe-chip,.cal-nb,.tm-add,.mo-x,.nq-cl):active{transform:scale(.96);transition-duration:.1s;}
   /* 「+」 단추 — 폰에선 아이콘 11~14px·누르는 곳 24px 이라 작고 누르기 어려웠다. 아이콘 18~20 · 누르는 곳 36 으로, 둘레 음수 여백으로 머리 줄 높이는 그대로 */
   body:not(.wid) #view-calendar .btn.dp-add{width:36px;height:36px;padding:0;margin:-3px -8px -3px 0;justify-content:center;border-radius:8px;}
   body:not(.wid) #view-calendar .btn.dp-add .icn{width:20px;height:20px;}
@@ -5237,6 +5189,120 @@ td.d60-pc:hover{background:var(--fill)}
   body:not(.wid) #view-calendar .btn.dp-add .icn{width:20px;height:20px;}
   body:not(.wid) #toast{border-radius:22px;padding:12px 18px;background:rgba(28,28,30,.78);-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6);box-shadow:0 10px 30px rgba(0,0,0,.22);}
 }
+/* ── 계정 창(#mb.acx) — 폰 하단 탭의 유리·캡슐 언어. 데스크톱·폰·위젯 같은 구조, 위젯은 색만(어두운 유리) ──
+   평소: 아바타·이름·메일·소속 + 아래 한 줄(비밀번호 변경 › | 로그아웃 아이콘).
+   아바타를 누르면 .acx-ed — 아래 줄 대신 [이모지|배경색] 한 판씩, 닫기(×) 자리에 완료(✓) */
+#mb.acx{--T1:var(--lbl);--T2:var(--lbl2);--T3:var(--lbl3);--CAP:rgba(255,255,255,.72);--CAPL:rgba(0,0,0,.07);--TINT:var(--b-tint);--TR:var(--rd-ink);--TB:var(--bg2);
+  width:400px!important;max-width:calc(100vw - 24px);padding:0!important;overflow-x:hidden;border-radius:28px!important;
+  background:var(--glass)!important;-webkit-backdrop-filter:blur(24px) saturate(1.8);backdrop-filter:blur(24px) saturate(1.8);
+  border:1px solid rgba(0,0,0,.06)!important;box-shadow:0 24px 60px rgba(16,24,40,.22),0 2px 6px rgba(16,24,40,.08),inset 0 0 0 1px rgba(255,255,255,.7)!important;}
+body.wid #mb.acx{--T1:#fff;--T2:rgba(255,255,255,.75);--T3:rgba(255,255,255,.5);--CAP:rgba(255,255,255,.08);--CAPL:rgba(255,255,255,.1);--TR:#F87171;--TB:#1d2029;
+  background:rgba(24,27,36,.82)!important;border-color:rgba(255,255,255,.1)!important;box-shadow:0 24px 60px rgba(0,0,0,.45),inset 0 0 0 1px rgba(255,255,255,.06)!important;}
+#mb.acx .mt2,#mb.acx #mf{display:none!important;}
+#mb.acx .mo-x,#mb.acx .acx-ok{position:absolute;top:27px!important;right:25px!important;z-index:3;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;}
+#mb.acx .mo-x{background:var(--CAP);box-shadow:inset 0 0 0 1px var(--CAPL);color:var(--T2);}
+#mb.acx .mo-x .icn{width:16px;height:16px;}
+#mb.acx .acx-ok{display:none;background:var(--b600);color:#fff;box-shadow:0 4px 12px color-mix(in srgb,var(--b600) 35%,transparent);}
+#mb.acx .acx-ok .icn{width:17px;height:17px;stroke-width:2.6;}
+#mb.acx.acx-ed .mo-x{display:none!important;}
+#mb.acx.acx-ed .acx-ok{display:flex;}
+#mb.acx.acx-pw .mo-x{top:22px!important;}
+#mb.acx .acx-pz{position:relative;padding:0 24px;}
+#mb.acx .acx-hero{display:flex;align-items:center;gap:16px;padding:30px 44px 2px 0;}
+#mb.acx .acct-av{width:72px;height:72px;flex:none;box-shadow:0 0 0 4px var(--CAP);transition:outline-color .15s;outline:2px solid transparent;outline-offset:3px;}
+#mb.acx .acct-av .av-ic{width:46%;height:46%;}
+#mb.acx .av-pen{width:24px;height:24px;right:-1px;bottom:-1px;border:0;background:#fff;color:#1d2029;box-shadow:0 0 0 2px var(--TB),0 1px 4px rgba(0,0,0,.25);}   /* 위젯 어두운 창에서도 보이게 — 늘 흰 원 */
+#mb.acx .av-pen .icn{width:13px;height:13px;stroke-width:2.4;}
+#mb.acx.acx-ed .acct-av{outline-color:var(--b600);}
+#mb.acx .acx-id{min-width:0;flex:1;}
+#mb.acx .acx-nm{display:flex;align-items:center;gap:8px;min-width:0;}
+#mb.acx .acx-nmw{display:inline-flex;flex:0 1 auto;min-width:0;max-width:100%;margin-left:-5px;border-radius:8px;transition:background var(--t-fast);}
+#mb.acx .acx-nmw input{font:inherit;font-size:21px;font-weight:700;letter-spacing:-.01em;padding:1px 5px;max-width:100%;border:0;background:none;color:var(--T1);outline:none;border-radius:8px;box-sizing:border-box;min-width:0;text-overflow:ellipsis;}   /* 폭은 acxNameFit 이 글자 폭(+안쪽 여백)으로 맞춘다 */
+#mb.acx .acx-nmw:hover,#mb.acx .acx-nmw:focus-within{background:var(--CAP);box-shadow:inset 0 0 0 1px var(--CAPL);}
+#mb.acx .acct-rolebadge{margin:0;flex:none;border-radius:999px;padding:0 9px;background:var(--fill);color:var(--T2);}
+body.wid #mb.acx .acct-rolebadge{background:rgba(255,255,255,.12);}
+#mb.acx .acx-ml{font-size:13px;color:var(--T3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#mb.acx .acx-ml .acct-state{margin-left:6px;font-size:12px;}
+#mb.acx .acx-bio{font-size:13px;color:var(--T2);margin-top:4px;word-break:keep-all;}   /* 좁은 위젯에서 「담당/자」로 끊기지 않게 — 줄은 · 사이에서 */
+#mb.acx .acx-row{display:flex;align-items:center;gap:10px;margin:18px -24px 0;padding:10px 16px 10px 24px;box-shadow:inset 0 1px 0 var(--CAPL);}
+#mb.acx .acx-lk{flex:1;display:flex;align-items:center;gap:8px;height:38px;font-size:14px;color:var(--T1);font-weight:500;}
+#mb.acx .acx-lk .icn{width:16px;height:16px;color:var(--T2);}
+#mb.acx .acx-lk .acx-ch{margin-left:auto;margin-right:6px;width:15px;height:15px;color:var(--T3);}
+#mb.acx .acx-row i{width:1px;height:22px;background:var(--CAPL);}
+#mb.acx .acx-lo{width:38px;height:38px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;color:var(--TR);transition:background var(--t-fast);}
+#mb.acx .acx-lo:hover,#mb.acx .acx-lk:hover .acx-ch{background:color-mix(in srgb,#DC2626 9%,transparent);}
+#mb.acx .acx-lk:hover .acx-ch{background:none;color:var(--T1);}
+#mb.acx .acx-lo .icn{width:18px;height:18px;}
+/* 편집 판 */
+#mb.acx .acx-pick{display:none;}
+#mb.acx.acx-ed .acx-row{display:none;}
+#mb.acx.acx-ed .acx-pick{display:block;}
+#mb.acx .acx-seg{display:grid;grid-template-columns:1fr 1fr;height:40px;padding:4px;margin:20px 0 14px;border-radius:20px;background:var(--CAP);box-shadow:inset 0 0 0 1px var(--CAPL);}
+#mb.acx .acx-seg button{border-radius:16px;font-size:13.5px;font-weight:600;color:var(--T2);transition:background var(--t-fast),color var(--t-fast),box-shadow var(--t-fast);}
+#mb.acx .acx-seg button.on{color:var(--T1);background:var(--bg2);box-shadow:0 1px 3px rgba(16,24,40,.12),0 0 0 .5px rgba(16,24,40,.06);}
+body.wid #mb.acx .acx-seg button.on{background:rgba(255,255,255,.16);color:#fff;box-shadow:none;}
+#mb.acx #pfPop{position:static!important;left:auto!important;width:auto!important;height:auto!important;max-height:none;animation:none!important;background:none!important;border:0!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;padding:0 0 22px!important;margin:0;display:flex!important;flex-direction:column;gap:12px;}
+#mb.acx #pfPop .pf-cats{display:flex;justify-content:space-between;background:none;box-shadow:none;padding:0;border:0;}
+#mb.acx #pfPop .pf-cat{flex:0 0 34px;width:34px;height:34px;border-radius:50%!important;opacity:.5;background:none!important;font-size:16px;transition:opacity var(--t-fast);}
+#mb.acx #pfPop .pf-cat:hover{opacity:.85;}
+#mb.acx #pfPop .pf-cat.act{opacity:1;background:var(--CAP)!important;box-shadow:inset 0 0 0 1px var(--CAPL)!important;}
+#mb.acx #pfPop .pf-emg{height:168px;min-height:0;flex:none;grid-template-columns:repeat(8,1fr)!important;gap:2px;border-radius:18px;background:var(--CAP);box-shadow:inset 0 0 0 1px var(--CAPL);padding:8px;}
+#mb.acx #pfPop .pf-em{aspect-ratio:auto;height:38px;font-size:22px;border-radius:12px!important;}
+#mb.acx #pfPop .pf-em.on{background:var(--TINT);box-shadow:inset 0 0 0 1.5px var(--b600);}
+#mb.acx #pfPop .pf-em.dflt svg{stroke:var(--T2);}
+#mb.acx #pfPop .pal{display:grid!important;grid-template-columns:repeat(10,1fr);gap:10px 0;justify-items:center;padding:14px 8px;border-radius:18px;background:var(--CAP);box-shadow:inset 0 0 0 1px var(--CAPL);}
+#mb.acx #pfPop .pal>.pal-c{width:26px;height:26px;border-radius:50%!important;border:0;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08);}
+#mb.acx #pfPop .pal>.pal-c.sel{outline:2px solid var(--b600);outline-offset:2px;}
+#mb.acx #pfPop .pal-auto{background:var(--bg2);}
+body.wid #mb.acx #pfPop .pal-auto{background:rgba(255,255,255,.12);}
+#mb.acx #pfPop .pal-auto svg{stroke:var(--T2);}
+#mb.acx #pfPop .pal-add{background:transparent!important;border:1.5px dashed color-mix(in srgb,var(--T3) 50%,transparent)!important;box-shadow:none!important;color:var(--T3);}
+#mb.acx #pfPop .pal-row.pal-grad{grid-column:1/-1;width:100%;display:grid;grid-template-columns:26px 1fr 26px;gap:10px;align-items:center;margin:4px 0 0;padding:12px 6px 0;box-shadow:inset 0 1px 0 var(--CAPL);}
+#mb.acx #pfPop .pal-rb{width:26px;height:26px;border-radius:50%!important;}
+#mb.acx #pfPop .pal-rb.sel,#mb.acx #pfPop .pal-row .pal-c.pal-gc.sel{outline:2px solid var(--b600);outline-offset:2px;}
+#mb.acx #pfPop .pal-row .pal-c.pal-gc{width:auto!important;height:26px;min-width:0;border-radius:13px!important;justify-self:stretch;border:0;}
+#mb.acx #pfPop .pal-stop{width:16px;height:16px;margin-top:-8px;}
+#mb.acx #pfPop .pal-stop .pal-gin{pointer-events:none;}   /* 누르면 앱 안 판을 연다 — 기본 대화상자가 뜨지 않게 */
+/* 흐름 — 재생 원 단추(무지개 원과 대칭). 켜면 파랑 + 일시정지 */
+#mb.acx #pfPop .pal-flow{position:relative;display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;font-size:0;gap:0;cursor:pointer;background:var(--bg2);box-shadow:inset 0 0 0 1px var(--CAPL),0 1px 2px rgba(16,24,40,.08);color:var(--T2);transition:background var(--t-fast),color var(--t-fast),box-shadow var(--t-fast);}
+body.wid #mb.acx #pfPop .pal-flow{background:rgba(255,255,255,.12);}
+#mb.acx #pfPop .pal-flow .pal-fl{position:absolute;opacity:0;width:0;height:0;margin:0;}
+#mb.acx #pfPop .pal-flow::after{content:'';width:10px;height:10px;margin-left:2px;background:currentColor;
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2.2 1.2v7.6L8.8 5z' fill='%23000' stroke='%23000' stroke-width='1.2' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2.2 1.2v7.6L8.8 5z' fill='%23000' stroke='%23000' stroke-width='1.2' stroke-linejoin='round'/%3E%3C/svg%3E") center/contain no-repeat;}
+#mb.acx #pfPop .pal-flow.on{background:var(--b600);color:#fff;box-shadow:0 0 0 2px var(--TB),0 0 0 4px var(--b600);}
+#mb.acx #pfPop .pal-flow.on::after{margin-left:0;
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Crect x='1.8' y='1.3' width='2.2' height='7.4' rx='.8'/%3E%3Crect x='6' y='1.3' width='2.2' height='7.4' rx='.8'/%3E%3C/svg%3E") center/contain no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Crect x='1.8' y='1.3' width='2.2' height='7.4' rx='.8'/%3E%3Crect x='6' y='1.3' width='2.2' height='7.4' rx='.8'/%3E%3C/svg%3E") center/contain no-repeat;}
+#mb.acx.m-emo #pfPop .pal,#mb.acx.m-emo #pfPop .acx-cp{display:none!important;}
+#mb.acx.m-col #pfPop .pf-cats,#mb.acx.m-col #pfPop .pf-emg{display:none!important;}
+#mb.acx #pfPop .acx-cp{display:none;flex-direction:column;gap:12px;padding:14px;border-radius:18px;background:var(--CAP);box-shadow:inset 0 0 0 1px var(--CAPL);}
+#mb.acx.m-cus #pfPop .acx-cp{display:flex!important;}
+#mb.acx.m-cus #pfPop .pal{display:none!important;}
+#mb.acx .acx-cp-h{align-self:flex-start;display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:600;color:var(--T1);margin:-2px 0 0 -4px;}
+#mb.acx .acx-cp-h .icn{width:18px;height:18px;color:var(--T2);}
+#mb.acx .acx-sv{--hue:hsl(220 100% 50%);position:relative;height:132px;border-radius:14px;background:linear-gradient(to top,#000,transparent),linear-gradient(to right,#fff,var(--hue));touch-action:none;cursor:crosshair;}
+#mb.acx .acx-hue{position:relative;height:14px;border-radius:7px;background:linear-gradient(90deg,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00);touch-action:none;cursor:pointer;}
+#mb.acx .acx-sv i,#mb.acx .acx-hue i{position:absolute;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;box-shadow:0 0 0 2.5px #fff,0 1px 4px rgba(0,0,0,.4);pointer-events:none;}
+#mb.acx .acx-hue i{top:50%;}
+#mb.acx .acx-cpf{display:flex;align-items:center;gap:10px;}
+#mb.acx .acx-cpdot{width:26px;height:26px;border-radius:50%;flex:none;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08);}
+#mb.acx .acx-hex{flex:1;min-width:0;display:flex;align-items:center;height:34px;border-radius:17px;background:var(--bg2);box-shadow:inset 0 0 0 1px var(--CAPL);padding:0 14px;cursor:text;}
+body.wid #mb.acx .acx-hex{background:rgba(255,255,255,.08);}
+#mb.acx .acx-hex b{color:var(--T3);font-weight:500;margin-right:2px;font-size:13.5px;}
+#mb.acx #pfPop .pal-fx::after{display:none;}   /* 흐름 표시는 오른쪽 재생 원이 맡는다 */
+#mb.acx .acx-hex input{flex:1;width:0;min-width:0;height:auto;border:0!important;box-shadow:none!important;background:none!important;outline:none;font:inherit;font-size:13.5px;font-weight:600;color:var(--T1);font-variant-numeric:tabular-nums;letter-spacing:.02em;text-transform:uppercase;padding:0;}
+/* 비밀번호 판 */
+#mb.acx .acx-sub{padding:22px 24px 18px;}
+#mb.acx .acx-sub-h{display:flex;align-items:center;gap:4px;height:36px;margin:0 0 16px -8px;font-size:16px;font-weight:700;color:var(--T1);}
+#mb.acx .acx-back{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--T1);}
+#mb.acx .acx-back:hover{background:var(--CAP);}
+#mb.acx .acx-back .icn{width:20px;height:20px;}
+#mb.acx .acx-sub .inp{display:block;width:100%;height:44px;margin-bottom:8px;border-radius:22px;padding:0 18px;background:var(--CAP);border:0;box-shadow:inset 0 0 0 1px var(--CAPL);color:var(--T1);}
+#mb.acx .acx-sub .inp:focus{box-shadow:inset 0 0 0 1.5px var(--b600);}
+#mb.acx .acx-go{margin-top:6px;width:100%;height:48px;border-radius:24px;background:var(--b600);color:#fff;font-weight:700;font-size:14px;}
+#mb.acx .acx-fd{display:block;margin:12px auto 0;font-size:13px;color:var(--bt1);font-weight:600;}
+body.wid #mb.acx .acx-fd{color:#8FB0F0;}
 </style>
 </head>
 <body class="lg lg-ld">   <!-- 처음부터 로그인 화면(불러오는 중) 상태 — hideCover 가 뗀다. 첫 페인트에 앱 틀이 비치지 않게 -->
@@ -5716,5 +5782,5 @@ td.d60-pc:hover{background:var(--fill)}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1051"></script>
+<script src="./app.js?v=1055"></script>
 </body></html>
