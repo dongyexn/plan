@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1051';
+const APP_VER='1055';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -86,16 +86,19 @@ function josaP(w,a,b){w=String(w||'');const c=w.charCodeAt(w.length-1),k=c>=0xAC
   if(a==='으로')return k&&k!==8?'으로':'로';return k?a:b;}
 function josa(w,a,b){return String(w||'')+josaP(w,a,b);}
 const DOW=['일','월','화','수','목','금','토'];
-/* 기본 18색 = 팝업 두 줄(자동 + 18색 + 「+」 = 20칸). 색상환 순서 — 윗줄 빨강→하늘, 아랫줄 남색→회색 */
-const PAL=['#DC2626','#EA580C','#D97706','#CA8A04','#65A30D','#16A34A','#0D9488','#0891B2','#0EA5E9',
-           '#1E3A8A','#3E71D2','#4F46E5','#7C5CD6','#9333EA','#DB2777','#92400E','#6B7280','#4B5563'];
+/* 기본 18색(파스텔) = 팝업 두 줄(자동 + 18색 + 「+」 = 20칸). 색상환 순서 — 윗줄 빨강→하늘, 아랫줄 남색→회색.
+   전부 밝은 색이라 아바타 아이콘·달력 막대 글자는 어두운 색(avIcCol·isLightBg)으로 바뀐다 */
+const PAL=['#FCA5A5','#FDBA74','#FCD34D','#FEF08A','#BEF264','#86EFAC','#5EEAD4','#67E8F9','#7DD3FC',
+           '#A3B8E8','#93C5FD','#A5B4FC','#C4B5FD','#D8B4FE','#F9A8D4','#D7C0AE','#D1D5DB','#B8C2CF'];
 const PAL_FALLBACK='#6B7280';   /* 담당자를 모를 때의 색(회색) — PAL 순서를 바꿔도 흔들리지 않게 따로 둔다 */
 
 /* 아바타 배경색 즉시 반영 · 이모지 검색 */
 function pfPaint(c){
   const av=document.querySelector('.acct-av');
-  if(av&&c)av.style.setProperty('--avc',colBg(c));
+  if(av&&c){av.style.setProperty('--avc',colBg(c));av.style.setProperty('--avi',avIcCol(c));}
 }
+/* 밝은 배경(파스텔·노랑 그라디언트)의 기본 아이콘은 어두운 선 — 흰 선은 안 보인다 */
+function avIcCol(c){return isLightBg(c)?'rgba(0,0,0,.62)':'#fff';}
 document.addEventListener('click',e=>{
   /* 수식키(또는 선택 모드)로 행을 누르면 펼치기 대신 선택 */
   const pr=e.target.closest(PICK_SEL);
@@ -113,15 +116,10 @@ document.addEventListener('click',e=>{
 });
 document.addEventListener('input',e=>{
   if(e.target.id==='ahQ'){ahSrchSync(e.target.value);return;}
-  if(e.target.id==='acctName'||e.target.id==='acctNamePw'){acctAutoSave();return;}   /* 비밀번호 탭의 이름 칸도 같이 저장 */
+  if(e.target.id==='acctName'){acxNameFit(e.target);acctAutoSave();return;}
   /* 배경 슬라이더는 끄는 동안 바로 반영(change 는 손을 뗄 때만 온다) */
   if(e.target.id==='bgAlpha'||e.target.id==='bgBri'){ACT[e.target.dataset.act](e.target);return;}
   if(e.target.closest('#pfPal')&&e.target.classList.contains('pal-inp')){const v=e.target.value;PF_SEL.color=v;pfPaint(v);acctAutoSave();return;}   /* 그라디언트 두 색·흐름 체크는 gcSync 가 따로 듣는다 */
-  if(e.target.id==='pfSrch'){
-    const q=e.target.value.trim();
-    $$('#pfCats .pf-cat').forEach(x=>x.classList.remove('act'));
-    pfRenderEmg('smiley',q);
-  }
 });
 
 /* 고른 뒤 드롭다운 목록과 '지정 안 함' 문구를 다시 맞춘다 */
@@ -180,13 +178,15 @@ function peColorSync(){
     : 'background:'+colBg(c);
 }
 /* 최근 쓴 색 저장소 — 프로필 색 팔레트(#pfPal)가 쓴다. PAL_BASE 에 든 색은 최근색에 쌓지 않는다 */
+/* 직접 고른 색 칩 수 — 팝업 10칸 격자에서 자동 + 18색 + 「+」 = 20칸이라 10개면 딱 세 줄(네 줄로 넘지 않음) */
+const PAL_CUST_MAX=10;
 const PAL_BASE=['#DD3B30','#3E71D2','#16A34A','#FACC15','#8B5CF6','#6B7280'];
 function palKey(){return 'calapp.pal.'+((S.user&&S.user.uid)||'local');}
 function palCustom(){try{return JSON.parse(localStorage.getItem(palKey())||'[]');}catch(e){return[];}}
 function palAdd(c){
-  if(!c||PAL_BASE.includes(c))return;
+  if(!c||PAL_BASE.includes(c)||PAL.includes(c))return;   /* 기본 팔레트에 있는 색은 칸을 먹지 않게 */
   const l=palCustom().filter(x=>x!==c);l.unshift(c);
-  try{localStorage.setItem(palKey(),JSON.stringify(l.slice(0,7)));}catch(e){}   /* 최근 쓴 7개만 */
+  try{localStorage.setItem(palKey(),JSON.stringify(l.slice(0,PAL_CUST_MAX)));}catch(e){}   /* 이 브라우저에만 — 최근 쓴 것부터 */
 }
 /* 배경색이 밝으면 어두운 글자 — 노랑·연두 위 흰 글자는 안 읽힌다 */
 function isLightColor(hex){
@@ -201,6 +201,7 @@ function palHTML(id,cur,extraFirst){
   /* 직접 고른 색은 '최근 쓴 색' 목록(palCustom/palAdd)으로 */
   const cust=palCustom().filter(x=>x&&PAL.indexOf(x)<0);
   if(c&&c!=='auto'&&!isRainbow(c)&&!isGrad(c)&&PAL.indexOf(c)<0&&cust.indexOf(c)<0)cust.unshift(c);
+  cust.splice(PAL_CUST_MAX);   /* 지금 색(맨 앞)을 넣고도 세 줄 안 */
   return '<div class="pal" id="'+id+'">'+(extraFirst||'')
     +PAL.map(x=>'<div class="pal-c'+(x===c?' sel':'')+'" data-c="'+x+'" style="background:'+x+'"></div>').join('')
     +cust.map(x=>'<div class="pal-c pal-custom'+(x===c?' sel':'')+'" data-c="'+esc(x)+'" style="background:'+esc(x)+'" data-tip="우클릭으로 삭제"></div>').join('')
@@ -215,7 +216,7 @@ function palHTML(id,cur,extraFirst){
         +'<div class="pal-c pal-gc'+(fl?' pal-fx':'')+(gSel?' sel':'')+'" data-c="'+(gSel&&!gcParse(c)?esc(c):tok)+'" style="background:'+esc(gSel&&!gcParse(c)?colBg(c):gcBg({a:g.a,b:g.b}))+'" data-tip="내 그라디언트 · 양 끝을 눌러 색 바꾸기">'
           +'<label class="pal-stop pal-stop-a" style="background:'+g.a+'" data-tip="첫 색"><input type="color" class="pal-gin" data-k="a" value="'+g.a+'"></label>'
           +'<label class="pal-stop pal-stop-b" style="background:'+g.b+'" data-tip="둘째 색"><input type="color" class="pal-gin" data-k="b" value="'+g.b+'"></label></div>'
-        +'<label class="pal-flow"><input type="checkbox" class="pal-fl"'+(fl?' checked':'')+'>흐름</label>'
+        +'<label class="pal-flow'+(fl?' on':'')+'" data-tip="흐름"><input type="checkbox" class="pal-fl" aria-label="흐름"'+(fl?' checked':'')+'>흐름</label>'
         +'</div>';})()
     +'</div>';
 }
@@ -227,6 +228,7 @@ function gcRemember(tok){try{localStorage.setItem('calapp.gc.'+((S.user&&S.user.
 function gcSync(row,commit){
   const box=row.closest('.pal');if(!box)return;
   const fl=!!(row.querySelector('.pal-fl')||{}).checked;
+  const fw=row.querySelector('.pal-flow');if(fw)fw.classList.toggle('on',fl);
   const a=(row.querySelector('.pal-gin[data-k="a"]')||{}).value||'#3B82F6',b=(row.querySelector('.pal-gin[data-k="b"]')||{}).value||'#EC4899';
   const rb=row.querySelector('.pal-rb'),gc=row.querySelector('.pal-gc');
   if(rb){rb.dataset.c=fl?RB_ANIM:'rainbow';rb.classList.toggle('pal-fx',fl);}
@@ -272,7 +274,8 @@ const AV_DFLT='<svg class="av-ic" viewBox="0 0 24 24" aria-hidden="true"><use hr
 function avInner(icon){return icon?'<span class="av-em">'+esc(icon)+'</span>':AV_DFLT;}
 function avHTML(pid,cls){
   const{color,icon}=avOf(pid);
-  return '<div class="'+(cls||'fbu-av')+' av-cus" style="--avc:'+esc(colBg(color||ownColor(pid)))+'">'
+  const c=color||ownColor(pid);
+  return '<div class="'+(cls||'fbu-av')+' av-cus" style="--avc:'+esc(colBg(c))+';--avi:'+avIcCol(c)+'">'
     +avInner(icon)+'</div>';
 }
 /* 담당자 자동 색 — 명부 순서에 따라 안정적으로 배정 */
@@ -1298,19 +1301,62 @@ function acctNick(){
 function isEditor(){return !S.live||S.role==='editor';}   /* 로컬 모드는 제한 없음 */
 function denyEdit(){toast('보기 전용 · 변경은 관리자만 가능');return false;}
 function roleLabel(r){return r==='editor'?'관리자':(r==='blocked'?'차단':'사용자');}
-function acctHeadHTML(){
+/* 계정 창 — 아바타·이름·메일·소속 한 줄 + 아래 한 줄(비밀번호 변경 › | 로그아웃 아이콘).
+   아바타를 누르면 같은 창 안에서 이모지/배경색 판이 펼쳐지고(#mb.acx-ed), 닫기 자리가 완료(✓)로 바뀐다.
+   데스크톱·폰·위젯 모두 같은 구조 — 위젯은 색만 다르다 */
+function acxBio(){
   const u=S.user;if(!u)return '';
-  const av=avOf(u.uid),role=S.role||'viewer';
-  return `<div class="acct-head">
-      <button class="acct-av av-cus av-btn" data-act="pf.toggle" aria-label="아바타 변경" style="--avc:${esc(colBg(av.color||ownColor(u.uid)))}">
-        ${avInner(av.icon)}<span class="av-pen"><svg class="icn"><use href="#i-plus"></use></svg></span>
-      </button>
-      <div style="min-width:0;flex:1">
-        <div class="acct-mail">${esc(u.email||'')}</div>
-        <span class="acct-rolebadge ${role==='editor'?'r-editor':'r-viewer'}">${esc(roleLabel(role))}</span>
+  const me=roster().find(p=>p.id===u.uid)||{id:u.uid};
+  const uses=rankUses(me.rank);
+  const tName=((S.org.teams||[]).find(t=>t.id===me.team)||{}).name||'미배정';
+  const rName=(S.org.regions||[]).find(r=>r.id===me.region)?.name||(me.region?me.region:(uses.region?'미지정':''));
+  return [tName,rName,rankLabel(rankOf(me.rank))].filter(Boolean).join(' · ');
+}
+const ACX_OUT='<svg class="icn" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 12H4"/><path d="m8 8-4 4 4 4"/><path d="M13 4h5a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-5"/></svg>';
+function acxProfHTML(){
+  const u=S.user;if(!u)return '';
+  const av=avOf(u.uid),role=S.role||'viewer',c=av.color||ownColor(u.uid),nick=acctNick();
+  return `<button class="acx-ok" data-act="pf.done" aria-label="완료" data-tip="완료"><svg class="icn"><use href="#i-check"></use></svg></button>
+    <div class="acx-pz">
+      <div class="acx-hero">
+        <button class="acct-av av-cus av-btn" data-act="pf.toggle" aria-label="아바타 변경" style="--avc:${esc(colBg(c))};--avi:${avIcCol(c)}">
+          ${avInner(av.icon)}<span class="av-pen"><svg class="icn"><use href="#i-plus"></use></svg></span>
+        </button>
+        <div class="acx-id">
+          <div class="acx-nm"><label class="acx-nmw"><input id="acctName" size="1" maxlength="60" value="${esc(nick)}" placeholder="이름" aria-label="이름" autocomplete="off" spellcheck="false"></label><span class="acct-rolebadge ${role==='editor'?'r-editor':'r-viewer'}">${esc(roleLabel(role))}</span></div>
+          <div class="acx-ml">${esc(u.email||'')}<span class="acct-state" id="acctState"></span></div>
+          <div class="acx-bio">${esc(acxBio())}</div>
+        </div>
       </div>
-      <span class="acct-state" id="acctState"></span>
-      <button class="acct-btn acct-btn-danger acct-btn-sm" data-act="acct.signout">로그아웃</button>
+      <div class="acx-row">
+        <button class="acx-lk" data-act="acct.tab" data-tab="pw"><svg class="icn"><use href="#i-lock"></use></svg>비밀번호 변경<svg class="icn acx-ch"><use href="#i-chevr"></use></svg></button>
+        <i></i>
+        <button class="acx-lo" data-act="acct.signout" aria-label="로그아웃" data-tip="로그아웃">${ACX_OUT}</button>
+      </div>
+      <div class="acx-pick">
+        <div class="acx-seg"><button class="on" data-act="pf.mode" data-m="emo">이모지</button><button data-act="pf.mode" data-m="col">배경색</button></div>
+        ${emojiPickerHTML(av)}
+      </div>
+    </div>`;
+}
+/* 이름 칸 폭 = 글자 폭(빈 칸이면 자리 글자) — 권한 배지가 이름 바로 옆에 붙게 */
+let _acxCv=null;
+function acxNameFit(inp){
+  if(!inp)return;
+  const cs=getComputedStyle(inp);_acxCv=_acxCv||document.createElement('canvas');
+  const g=_acxCv.getContext('2d');g.font=cs.fontWeight+' '+cs.fontSize+' '+cs.fontFamily;
+  const ls=parseFloat(cs.letterSpacing)||0,t=inp.value||inp.placeholder||'';
+  inp.style.width=Math.ceil(g.measureText(t).width+ls*t.length+(parseFloat(cs.paddingLeft)||0)+(parseFloat(cs.paddingRight)||0))+2+'px';
+}
+
+function acxPwHTML(){
+  return `<div class="acx-pz acx-sub">
+      <div class="acx-sub-h"><button class="acx-back" data-act="acct.tab" data-tab="profile" aria-label="프로필로"><svg class="icn"><use href="#i-chevl"></use></svg></button>비밀번호 변경</div>
+      <input class="inp" id="acctPwCur" type="password" autocomplete="current-password" placeholder="현재 비밀번호">
+      <input class="inp" id="acctPwNew" type="password" autocomplete="new-password" placeholder="새 비밀번호 (6자 이상)">
+      <input class="inp" id="acctPwNew2" type="password" autocomplete="new-password" placeholder="새 비밀번호 확인">
+      <button class="acx-go" data-act="acct.changePw">변경</button>
+      <button class="acx-fd" data-act="acct.reset">비밀번호 찾기</button>
     </div>`;
 }
 /* 프로필의 비밀번호 찾기 — fbDoReset 은 로그인 폼(fbCreds)을 읽어 못 쓴다. 대상은 늘 내 계정이라 존재 여부 은폐가 필요 없다 */
@@ -1326,83 +1372,31 @@ async function acctResetPw(){
     toast('메일을 보내지 못했습니다 · 잠시 뒤 다시 눌러 주세요');
   }
 }
-function acctTabBody(tab){
-  const u=S.user;if(!u)return '';
-  const av=avOf(u.uid);
-  if(tab==='pw'){
-    /* 아바타는 두 탭 공통 — 비밀번호 탭에서도 눌러 바꿀 수 있다 */
-    return `${acctHeadHTML()}
-      <label class="il" for="acctNamePw">이름</label>
-      <input class="inp" id="acctNamePw" maxlength="60" value="${esc(acctNick())}" placeholder="표시할 이름">
-      <div class="acct-sec">
-      <label class="il il-first">비밀번호 변경</label>
-      <input class="inp acct-gap" id="acctPwCur" type="password" autocomplete="current-password" placeholder="현재 비밀번호">
-      <input class="inp acct-gap" id="acctPwNew" type="password" autocomplete="new-password" placeholder="새 비밀번호 (6자 이상)">
-      <input class="inp acct-gap" id="acctPwNew2" type="password" autocomplete="new-password" placeholder="새 비밀번호 확인">
-      <div class="acct-pwrow">
-        <button class="acct-btn acct-btn-primary" data-act="acct.changePw">비밀번호 변경</button>
-        <button class="acct-btn acct-btn-ghost" data-act="acct.reset">비밀번호 찾기</button>
-      </div>
-      </div>
-      ${emojiPickerHTML(av)}`;
-  }
-  return `${acctHeadHTML()}
-    <label class="il" for="acctName">이름</label>
-    <input class="inp" id="acctName" maxlength="60" value="${esc(acctNick())}" placeholder="표시할 이름">
-    ${myOrgHTML()}
-    ${emojiPickerHTML(av)}`;
-}
-/* 내 소속 — 팀·권역·직급은 조직 관리에서 배정(본인 읽기 전용). 본인은 이름·비밀번호·담당 현장만(sitesChkHTML 공용) */
-function myOrgHTML(){
-  const u=S.user;if(!u)return '';
-  const me=roster().find(p=>p.id===u.uid)||{id:u.uid};
-  const teams=(S.org.teams||[]);
-  const uses=rankUses(me.rank);
-  const rk=rankOf(me.rank);
-  const tName=(teams.find(t=>t.id===me.team)||{}).name||'미배정';
-  /* 권역은 id 가 아니라 이름으로 — 조직 관리 표와 같은 방식 */
-  const rName=(S.org.regions||[]).find(r=>r.id===me.region)?.name
-    || (me.region?me.region:(uses.region?'미지정':'해당 없음'));
-  const fix=v=>'<div class="myorg-fix">'+esc(v)+'</div>';
-  const sitesHTML=uses.sites?`
-      <div class="myorg-f myorg-f-wide"><label>담당 현장</label>${sitesChkHTML(me)}</div>`:'';
-  return `<div class="myorg">
-    <div class="myorg-h">소속</div>
-    <div class="myorg-g myorg-g3">
-      <div class="myorg-f"><label>팀</label>${fix(tName)}</div>
-      <div class="myorg-f"><label>권역</label>${fix(rName)}</div>
-      <div class="myorg-f"><label>직급</label>${fix(rankLabel(rk))}</div>
-    </div>
-    ${sitesHTML}
-  </div>`;
-}
 /* 직급·권역을 바꾸면 아래 칸 구성이 달라진다 — 소속 블록만 다시 그린다 */
 function pfScopeRefresh(){
-  const wrap=document.querySelector('.myorg');if(!wrap)return;
-  if(!S.user)return;
-  const tmp=document.createElement('div');tmp.innerHTML=myOrgHTML();
-  wrap.replaceWith(tmp.firstElementChild);
+  const el=document.querySelector('#mb .acx-bio');if(el&&S.user)el.textContent=acxBio();
 }
 /* 아바타 선택 팝오버 — 애플 키보드와 같은 8개 분류 + 검색 + 최근 사용 */
 function recentEmoji(){
   const v=(S.prefs&&S.prefs.emoji)||'';
   return String(v).split('|').filter(Boolean).slice(0,18);
 }
+function pfAutoChip(sel){return '<div class="pal-c pal-auto'+(sel?' sel':'')+'" data-c="" data-tip="자동 — 계정 기본 색"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#av-person"></use></svg></div>';}
 function emojiPickerHTML(av){
   const rec=recentEmoji();
   return `<div class="popbox" id="pfPop">
-    <div class="pop-h">아바타
-      <button class="pop-x" data-act="pf.close" aria-label="닫기"><svg class="icn"><use href="#i-close"></use></svg></button>
-    </div>
-    <input class="inp inp-sm pf-srch" id="pfSrch" placeholder="이모지 찾기(영문) · 직접 붙여넣기도 됩니다" autocomplete="off">
     <div class="pf-cats" id="pfCats">
-      <button class="pf-cat act" data-cat="${rec.length?'recent':'smiley'}" data-act="pf.cat">${rec.length?'🕘':'😀'}</button>
+      <button class="pf-cat act" data-cat="${rec.length?'recent':'smiley'}" data-act="pf.cat" data-tip="${rec.length?'최근':'표정·사람'}">${rec.length?'🕘':'😀'}</button>
       ${EMOJI_CATS.map((c,i)=>rec.length||i?'<button class="pf-cat" data-cat="'+c.id+'" data-act="pf.cat" data-tip="'+esc(c.label)+'">'+esc(c.s.slice(0,c.s.indexOf(' ')))+'</button>':'').join('')}
     </div>
     <div class="pf-emg" id="pfEmg"></div>
-    <div class="pf-lab">배경색</div>
-    ${palHTML('pfPal',av.color||'',
-      '<div class="pal-c pal-auto'+(av.color?'':' sel')+'" data-c="" data-tip="자동 — 계정 기본 색"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#av-person"></use></svg></div>')}
+    ${palHTML('pfPal',av.color||'',pfAutoChip(!av.color))}
+    <div class="acx-cp" id="acxCp">
+      <button class="acx-cp-h" data-act="pf.cpBack"><svg class="icn"><use href="#i-chevl"></use></svg>직접 고르기</button>
+      <div class="acx-sv" id="acxSv"><i></i></div>
+      <div class="acx-hue" id="acxHue"><i></i></div>
+      <div class="acx-cpf"><span class="acx-cpdot"></span><label class="acx-hex"><b>#</b><input id="acxHex" maxlength="7" spellcheck="false" autocomplete="off" aria-label="색 코드"></label></div>
+    </div>
   </div>`;
 }
 let PF_MORE=null;
@@ -1438,59 +1432,105 @@ document.addEventListener('scroll',e=>{
   if(!box||box.id!=='pfEmg'||!PF_MORE)return;
   if(box.scrollTop+box.clientHeight>=box.scrollHeight-80)pfRenderEmg(PF_MORE.cat,PF_MORE.q,true);
 },true);
-function pfDetach(){
-  const p=$('#pfPop');
-  /* #mb 에 transform 이 있어 그 안의 fixed 는 모달 기준이 된다 — body 직속으로 옮긴다 */
-  if(p&&p.parentElement!==document.body)document.body.appendChild(p);
-  return p;
-}
-/* 팝오버를 모달 오른쪽에 — 자리가 없으면 왼쪽, 그다음 아래. 아바타 미리보기를 가리지 않게 */
-function pfPlace(){
-  const p=pfDetach(),mb=$('#mb');if(!p||!mb)return;
-  /* 위젯은 옆에 세울 자리가 없다 — 모달 위에 겹쳐 띄운다(가로는 CSS 가 가운데로) */
-  if(WIDGET){
-    const h=p.offsetHeight||372;
-    p.style.top=Math.round(Math.max(8,Math.min((innerHeight-h)/2,innerHeight-h-8)))+'px';
-    p.style.left='';
-    return;
-  }
-  const m=mb.getBoundingClientRect();
-  const w=p.offsetWidth||336,h=p.offsetHeight||372,gap=12;
-  let left,top;
-  if(m.right+gap+w<=window.innerWidth-8){left=m.right+gap;top=m.top;}
-  else if(m.left-gap-w>=8){left=m.left-gap-w;top=m.top;}
-  else if(m.bottom+gap+h<=window.innerHeight-8){left=Math.max(8,m.left);top=m.bottom+gap;}
-  else{left=Math.max(8,Math.min(m.left+16,window.innerWidth-w-8));top=Math.max(8,m.top+16);}
-  /* 창이 좁으면 좌우 어디에도 못 붙는다 — 가로도 창 안으로 접는다 */
-  left=Math.max(8,Math.min(left,window.innerWidth-w-8));
-  top=Math.max(8,Math.min(top,window.innerHeight-h-8));
-  p.style.left=Math.round(left)+'px';
-  p.style.top=Math.round(top)+'px';
-}
-window.addEventListener('resize',()=>{const p=$('#pfPop');if(p&&p.classList.contains('open'))pfPlace();});
 function pfDrop(){const p=document.getElementById('pfPop');if(p&&p.parentElement===document.body)p.remove();pfClosed();}
 function renderAcctModal(tab){
   const u=S.user;if(!u)return;
   pfDrop();
-  if(!tab){const k='#mb .acct-tabs#0',r=SL_MEM[k];if(r){if(r.el)r.el.remove();delete SL_MEM[k];}}   /* 새로 열 때는 지난번 탭 자리에서 미끄러져 오지 않게 */
-  const t=tab||'profile';
-  $('#mbody').innerHTML=`
-    <div class="acct-tabs">
-      <button class="acct-tab${t==='profile'?' act':''}" data-act="acct.tab" data-tab="profile">프로필</button>
-      <button class="acct-tab${t==='pw'?' act':''}" data-act="acct.tab" data-tab="pw">비밀번호</button>
-    </div>
-    <div class="acct-pane">
-      <div class="acct-real">${acctTabBody(t)}</div>
-      <div class="acct-ghost" aria-hidden="true">${acctTabBody(t==='pw'?'profile':'pw').replace(/\sid="[^"]*"/g,'')}</div>
-    </div>`;
+  const t=tab||'profile',mb=$('#mb');
+  mb.classList.add('acx');mb.classList.remove('acx-ed','m-emo','m-col','m-cus','acx-pw');
+  mb.classList.toggle('acx-pw',t==='pw');
+  $('#mbody').innerHTML=t==='pw'?acxPwHTML():acxProfHTML();
   MODAL_CB={type:'acct',tab:t};
-  PF_MORE=null;   /* 이모지는 팝업을 열 때 그린다 — 모달 여는 속도를 늦추지 않게 */
+  PF_MORE=null;   /* 이모지는 판을 열 때 그린다 — 창 여는 속도를 늦추지 않게 */
+  acxNameFit($('#acctName'));
+  if(document.fonts&&document.fonts.status!=='loaded')document.fonts.ready.then(()=>acxNameFit($('#acctName')));   /* 글꼴이 늦게 오면 대체 글꼴 폭으로 잰 채 남는다 */
+  if(t==='pw')requestAnimationFrame(()=>{const f=$('#acctPwCur');if(f&&!isMob())f.focus({preventScroll:true});});
 }
 function openAcctModal(){
   const u=S.user;if(!u){toast('로그인이 필요합니다');return;}
-  openModal('계정','','');   /* 하단 버튼 없음 — 닫기는 우측 상단 X, 로그아웃은 헤더 우측 */
-  renderAcctModal();   /* 인자 없음 = 새로 열기(프로필 탭) */
+  openModal('계정','','');   /* 하단 버튼 없음 — 닫기는 우측 상단 X */
+  renderAcctModal();
 }
+/* 아바타 편집 — 같은 창 안에서 펼침(이모지/배경색 한 판씩) */
+function pfEdit(on){
+  const mb=$('#mb');if(!mb||!$('#pfPop'))return;
+  mb.classList.toggle('acx-ed',on);
+  if(on){if(!mb.classList.contains('m-col'))mb.classList.add('m-emo');if(!PF_MORE)pfRenderEmg(recentEmoji().length?'recent':'smiley','');}
+  else{if(mb.classList.contains('m-cus'))acxCpClose(true);mb.classList.remove('m-cus');}
+}
+function pfMode(m){
+  const mb=$('#mb');if(!mb)return;
+  if(mb.classList.contains('m-cus'))acxCpClose(true);
+  mb.classList.toggle('m-emo',m==='emo');mb.classList.toggle('m-col',m==='col');mb.classList.remove('m-cus');
+  $$('#mb .acx-seg button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
+}
+/* ── 직접 고르기 — 브라우저 기본 색 대화상자 대신 앱 안 판(채도·밝기 네모 + 색상 막대 + 색 코드) ──
+   대상: 'add'(「+」 새 색) · 'a'/'b'(내 그라디언트 양 끝) */
+var ACX_CP=null;   /* var — closeModal 이 부팅 중에 불려도 TDZ 에 걸리지 않게 */
+function hexToHsv(hex){const m=/^#?([\da-f]{6})$/i.exec(String(hex||''));if(!m)return{h:220,s:.7,v:.8};
+  const n=parseInt(m[1],16),r=(n>>16&255)/255,g=(n>>8&255)/255,b=(n&255)/255,mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn;
+  let h=0;if(d){h=mx===r?((g-b)/d)%6:mx===g?(b-r)/d+2:(r-g)/d+4;h*=60;if(h<0)h+=360;}
+  return{h,s:mx?d/mx:0,v:mx};}
+function hsvToHex(h,s,v){const f=k=>{const x=(k+h/60)%6;return v-v*s*Math.max(0,Math.min(x,4-x,1));};
+  return '#'+[f(5),f(3),f(1)].map(x=>Math.round(x*255).toString(16).padStart(2,'0')).join('').toUpperCase();}
+function acxCpOpen(t,hex){
+  const mb=$('#mb');if(!mb)return;
+  ACX_CP={t,...hexToHsv(hex),hex:String(hex||'#3E71D2').toUpperCase(),dirty:false};
+  mb.classList.add('m-cus');acxCpPaint(false);
+  const hx=$('#acxHex');if(hx)hx.value=ACX_CP.hex.slice(1);
+}
+function acxCpPaint(apply){
+  const c=ACX_CP;if(!c)return;
+  const sv=$('#acxSv'),hu=$('#acxHue');if(!sv||!hu)return;
+  c.hex=hsvToHex(c.h,c.s,c.v);
+  sv.style.setProperty('--hue','hsl('+Math.round(c.h)+' 100% 50%)');
+  const d=sv.querySelector('i');d.style.left=(c.s*100)+'%';d.style.top=((1-c.v)*100)+'%';d.style.background=c.hex;
+  const k=hu.querySelector('i');k.style.left=(c.h/360*100)+'%';k.style.background='hsl('+Math.round(c.h)+' 100% 50%)';
+  const dot=$('#mb .acx-cpdot');if(dot)dot.style.background=c.hex;
+  const hx=$('#acxHex');if(hx&&document.activeElement!==hx)hx.value=c.hex.slice(1);
+  if(apply)acxCpApply();
+}
+/* 고르는 동안 아바타에 바로 보이고 자동 저장 — 그라디언트 끝은 숨은 색 입력에 값을 넣어 기존 흐름(gcSync)을 태운다 */
+function acxCpApply(){
+  const c=ACX_CP;if(!c)return;c.dirty=true;
+  if(c.t==='add'){PF_SEL.color=c.hex;pfPaint(c.hex);acctAutoSave();return;}
+  const gin=$('#pfPal .pal-gin[data-k="'+c.t+'"]');
+  if(gin){gin.value=c.hex.toLowerCase();gin.dispatchEvent(new Event('input',{bubbles:true}));}
+}
+function acxCpClose(commit){
+  const c=ACX_CP;ACX_CP=null;const mb=$('#mb');if(mb)mb.classList.remove('m-cus');
+  if(!c||!c.dirty)return;
+  if(c.t==='add'){palAdd(c.hex);
+    const box=$('#pfPal');if(box){const t=document.createElement('div');t.innerHTML=palHTML('pfPal',c.hex,pfAutoChip(false));box.replaceWith(t.firstElementChild);}
+    return;}
+  const gin=$('#pfPal .pal-gin[data-k="'+c.t+'"]');if(gin)gin.dispatchEvent(new Event('change',{bubbles:true}));   /* 손을 뗀 것과 같게 — 기억·저장 */
+}
+/* 「+」·그라디언트 끝을 누르면 기본 대화상자 대신 앱 안 판을 연다 */
+document.addEventListener('click',e=>{
+  const add=e.target.closest('#pfPal .pal-add'),stop=e.target.closest('#pfPal .pal-stop');
+  if(!add&&!stop)return;
+  e.preventDefault();e.stopPropagation();
+  if(add){const sel=$('#pfPal .pal-c.sel');const cur=sel&&/^#[\da-f]{6}$/i.test(sel.dataset.c||'')?sel.dataset.c:(PF_SEL.color&&/^#/.test(PF_SEL.color)?PF_SEL.color:'#3E71D2');acxCpOpen('add',cur);return;}
+  const k=stop.classList.contains('pal-stop-a')?'a':'b',gin=stop.querySelector('.pal-gin');
+  acxCpOpen(k,gin?gin.value:'#3E71D2');
+},true);
+document.addEventListener('pointerdown',e=>{
+  const el=e.target.closest('#acxSv,#acxHue');if(!el||!ACX_CP)return;
+  e.preventDefault();
+  const move=ev=>{const r=el.getBoundingClientRect(),x=Math.max(0,Math.min(1,(ev.clientX-r.left)/r.width));
+    if(el.id==='acxHue')ACX_CP.h=x*360;
+    else{ACX_CP.s=x;ACX_CP.v=1-Math.max(0,Math.min(1,(ev.clientY-r.top)/r.height));}
+    acxCpPaint(true);};
+  try{el.setPointerCapture(e.pointerId);}catch(_){}
+  move(e);
+  const up=()=>{el.removeEventListener('pointermove',move);el.removeEventListener('pointerup',up);el.removeEventListener('pointercancel',up);};
+  el.addEventListener('pointermove',move);el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);
+});
+document.addEventListener('input',e=>{
+  if(e.target.id!=='acxHex'||!ACX_CP)return;
+  const v=e.target.value.replace(/[^\da-f]/gi,'').slice(0,6);if(e.target.value!==v)e.target.value=v;
+  if(v.length===6){Object.assign(ACX_CP,hexToHsv('#'+v));acxCpPaint(true);}
+});
 /* users/{uid} 는 부분 쓰기가 규칙에 막혀 늘 전체를 다시 쓴다 — 기존 값을 모아 patch 만 얹는다 */
 function userRecord(patch){
   const u=FB.auth&&FB.auth.currentUser;
@@ -1531,8 +1571,9 @@ function acctMark(state,msg){
 async function acctSave(silent){
   const u=FB.auth&&FB.auth.currentUser;
   /* 탭마다 이름 칸 id 가 다르다 — 지금 떠 있는 쪽을 읽는다 */
-  const nameInp=$('#acctName')||$('#acctNamePw');
-  const name=nameInp?nameInp.value.trim().slice(0,60):'';
+  const nameInp=$('#acctName');
+  /* 비밀번호 판엔 이름 칸이 없다 — 저장이 그 사이에 돌아도 이름을 지우지 않게 지금 이름을 싣는다 */
+  const name=nameInp?(nameInp.value.trim().slice(0,60)||acctNick()):acctNick();
   const cur=avOf((S.user||{}).uid||'');
   const icon=PF_SEL.icon===null?cur.icon:PF_SEL.icon;
   /* ⚠ 팔레트 .sel 을 fallback 으로 읽지 않는다 — 색을 고른 적 없는 계정의 자동 색이 avColor 로 박제된다. 만진 적 없으면(null) 저장값 유지 */
@@ -1589,10 +1630,13 @@ async function acctChangePw(){
   }catch(e){toast(fbAuthErr(e));}
 }
 function acctSignout(){
+  const fromAcct=!!(MODAL_CB&&MODAL_CB.type==='acct');
   confirmModal('로그아웃','로그아웃할까요?',()=>{
     bootCacheClear();   /* 공용 PC 대비 — 로그아웃하면 부팅 캐시도 지운다 */
     try{FB.auth.signOut();}catch(e){console.warn('[로그아웃]',e);toast('로그아웃하지 못했습니다 · 창을 새로 고친 뒤 다시 눌러 주세요');}
   },'로그아웃',false);
+  /* 계정 창에서 눌렀으면 「취소」는 계정 창으로 돌아간다(창을 통째로 닫지 않게) */
+  if(fromAcct){const c=document.querySelector('#mf [data-act="modal.close"]');if(c)c.dataset.act='acct.open';}
 }
 
 function fbInit(){
@@ -1905,7 +1949,7 @@ function rAcct(){
   const paint=el=>{
     if(!el||!a)return;
     el.classList.add('av-cus');
-    el.style.setProperty('--avc',colBg(a.color||ownColor(S.user.uid)));
+    el.style.setProperty('--avc',colBg(a.color||ownColor(S.user.uid)));el.style.setProperty('--avi',avIcCol(a.color||ownColor(S.user.uid)));
     el.innerHTML=avInner(a.icon);   /* 이모지·기본 아이콘 모두 처리 */
   };
   paint($('#sbAcctAv'));
@@ -2837,7 +2881,7 @@ function openModal(title,bodyHTML,footHTML){
   $('#mt').textContent=title;$('#mbody').innerHTML=bodyHTML;$('#mf').innerHTML=footHTML||'';
   /* 하단 버튼이 없는 모달(사용 안내 등)은 우상단 X 로 닫는다 — 참조 앱과 동일 */
   const mb=$('#mb');
-  mb.classList.remove('mb-ask','ask3','rdw','narrow','mlw','dfwide','wide-pick','kmw','rkm','pdcw','nott','d60-pvm','d60-hsm','mrv-md','mrv-wid');   /* 놓친 업무 창 폭 */   /* pdcw: 사진 자르기 */   /* ⚠ 지난번 모달의 폭 설정이 남으면 다음 모달이 엉뚱한 크기로 뜬다 */
+  mb.classList.remove('acx','acx-ed','acx-pw','m-emo','m-col','m-cus','mb-ask','ask3','rdw','narrow','mlw','dfwide','wide-pick','kmw','rkm','pdcw','nott','d60-pvm','d60-hsm','mrv-md','mrv-wid');   /* 놓친 업무 창 폭 */   /* pdcw: 사진 자르기 */   /* ⚠ 지난번 모달의 폭 설정이 남으면 다음 모달이 엉뚱한 크기로 뜬다 */
   /* ⚠ 폭 클래스를 새로 만들면 반드시 이 줄에 함께 넣을 것 — 빠지면 그 뒤 모든 모달에 남는다.
      예: #mb.kmw 가 명시도 같은 #mb.dfwide 보다 CSS 뒤에 있어 이겨 모달 폭이 튄다 */
   mb.classList.toggle('has-x',!footHTML);
@@ -2847,7 +2891,7 @@ function openModal(title,bodyHTML,footHTML){
   $('#mo').classList.add('open');
   requestAnimationFrame(()=>{if($('#mo').classList.contains('open')&&!mb.contains(document.activeElement))mb.focus({preventScroll:true});});   /* 호출부가 직접 칸에 포커스를 줬으면 그대로 둔다 */
 }
-function closeModal(){mrvHoldRest();$('#mo').classList.remove('open');MODAL_CB=null;pfDrop();
+function closeModal(){mrvHoldRest();if(ACX_CP)acxCpClose(true);$('#mo').classList.remove('open');MODAL_CB=null;pfDrop();
   if(window.__SNAPPICK__){const r=window.__SNAPPICK__;window.__SNAPPICK__=null;try{r(null);}catch(_){}}   /* 스냅샷 월 선택 대기 중 닫히면(Esc·배경) 취소로 종결 — 원본 app-core 641 과 동일 */
   if(window.__PUBOK__){const r=window.__PUBOK__;window.__PUBOK__=null;try{r(false);}catch(_){}}   /* 게시 확인 대기 중 닫히면 게시 중단 */
   if(window.__ASKOK__){const r=window.__ASKOK__;window.__ASKOK__=null;try{r(false);}catch(_){}}   /* confirmAsk 취소 */
@@ -10776,19 +10820,12 @@ const ACT={
   /* 오후 점검 알림 — 누르면 오늘로 이동해 남은 업무를 펼친다. x 는 그날만 닫는다 */
 
   'pf.org':()=>acctAutoSave(),
-  'pf.toggle':()=>{const p=$('#pfPop');if(!p)return;
-    const on=!p.classList.contains('open');
-    if(on){
-      /* 숨긴 채 열고 자리 잡은 뒤 보인다 — 한 프레임이라도 왼쪽 위(left:0 top:0)에 번쩍 뜨지 않게 */
-      p.style.visibility='hidden';p.classList.add('open');
-      if(!PF_MORE)pfRenderEmg(recentEmoji().length?'recent':'smiley','');
-      pfPlace();
-      requestAnimationFrame(()=>{p.style.visibility='';});
-    }else p.classList.remove('open');},
-  'pf.close':()=>{const p=$('#pfPop');if(p)p.classList.remove('open');pfClosed();},
+  'pf.toggle':()=>{const mb=$('#mb');if(mb)pfEdit(!mb.classList.contains('acx-ed'));},
+  'pf.done':()=>pfEdit(false),
+  'pf.mode':el=>pfMode(el.dataset.m),
+  'pf.cpBack':()=>acxCpClose(true),
   'pf.cat':el=>{
     $$('#pfCats .pf-cat').forEach(x=>x.classList.toggle('act',x===el));
-    const q=$('#pfSrch');if(q)q.value='';
     pfRenderEmg(el.dataset.cat,'');},
   'pf.pick':el=>{
     PF_SEL.icon=el.dataset.e||'';
@@ -10797,7 +10834,7 @@ const ACT={
     $$('#pfEmg .pf-em').forEach(x=>x.classList.toggle('on',x===el));   /* 닫지 않는다 — 여러 개 비교해 고를 수 있게 */
     acctAutoSave();
   },
-  'acct.tab':el=>renderAcctModal(el.dataset.tab),
+  'acct.tab':el=>{if(ACX_CP)acxCpClose(true);renderAcctModal(el.dataset.tab);},
   'acct.changePw':acctChangePw,
   'acct.signout':acctSignout,
   'modal.close':closeModal,
@@ -11435,6 +11472,8 @@ document.addEventListener('contextmenu',e=>{
   const box=chip.closest('.pal');
   const wasSel=chip.classList.contains('sel');
   chip.remove();
+  /* 저장된 최근색에서도 뺀다 — 화면에서만 지우면 다시 열 때 되살아나고 10칸 자리를 계속 차지한다 */
+  if(box&&box.id==='pfPal'){const v=String(chip.dataset.c||'').toUpperCase();try{localStorage.setItem(palKey(),JSON.stringify(palCustom().filter(x=>String(x).toUpperCase()!==v)));}catch(_){}}
   if(wasSel&&box){
     const first=box.querySelector('.pal-c');
     if(first)first.classList.add('sel');
@@ -15799,7 +15838,7 @@ function d60List(){
     +d60Tabs(st.reg,regTabs,'data-act="d60.reg" data-k','<div class="seg d60-mss">'+D60_MS.map(([k,l])=>'<button class="'+(ms===k?'act':'')+'" data-act="d60.ms" data-k="'+k+'">'+l+'<span class="d60-sn">'+msCnt[k]+'</span></button>').join('')+'</div>')
     +'<div class="card d60-flat"><div class="d60-tw" data-sbx="r" data-sbh><table class="mgtbl d60-tbl"><colgroup><col style="width:8%"><col style="width:15%"><col style="width:10%"><col style="width:10%"><col style="width:11%">'+D60_TR.map(()=>'<col style="width:11.5%">').join('')+'</colgroup>'
       +'<thead><tr>'+d60Th('reg','권역','c')+d60Th('site','현장','l')+d60Th('comp','준공일','c')+d60Th('date','점검일','c')+d60Th('own','담당자','c')+D60_TR.map(([k,l])=>d60Th(k,l,'c')).join('')+'</tr></thead>'
-      +'<tbody>'+(tr||'<tr><td colspan="9" class="d60-empty">'+(ms!=='all'&&msCnt.all?'이 상태의 현장이 없습니다':st.y+'년에 점검할 현장이 없습니다 — 조직 관리에서 현장 준공일을 채우면 준공일 + 2개월로 잡힙니다')+'</td></tr>')+'</tbody></table></div></div>'
+      +'<tbody>'+(tr||'<tr><td colspan="9" class="d60-empty">'+(ms!=='all'&&msCnt.all?'이 상태의 현장이 없습니다':st.y+'년에 점검할 현장이 없습니다')+'</td></tr>')+'</tbody></table></div></div>'
     +'</div></div>';
 }
 function d60RegNm(id){const r=(S.org.regions||[]).find(x=>x.id===id);return r?r.name:'—';}
