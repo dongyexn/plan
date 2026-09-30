@@ -3,12 +3,12 @@
       - 업무·조직·하자 관리를 하나의 앱에서 운영한다.
       - 데이터: 로그인 전 localStorage → 로그인 후 Firebase RTDB 실시간
       - 브라우저와 위젯은 같은 앱 주소와 인증 체계를 사용한다.
-      - 「업무 도구」(사진대지·견적 검토·도면 인쇄)는 서버·localStorage 에 남기지 않는다 — 이 PC IndexedDB 이어하기만
+      - 「업무 도구」(사진대지·견적 검토)는 서버·localStorage 에 남기지 않는다 — 이 PC IndexedDB 이어하기만
       ═══════════════════════════════════════════════════════════════ */
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1055';
+const APP_VER='1061';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -1451,14 +1451,106 @@ function openAcctModal(){
   openModal('계정','','');   /* 하단 버튼 없음 — 닫기는 우측 상단 X */
   renderAcctModal();
 }
+/* 계정 창 안 전환 모션 — 창 높이는 이전 높이에서 새 높이로 늘고 줄고(시트와 같은 곡선), 새로 보인 판은 살짝 밀려 들어온다.
+   dx/dy = 들어오는 판의 출발 위치(px). 겹쳐 불리면(판 전환 안의 직접 고르기 닫기 등) 바깥 한 번만 움직인다 */
+/* ───── 모션 한 벌(1060) — 곡선·시간은 CSS --mv-* 와 같다. 이동·펼침 = 시트 곡선, 0.22 팝업·목록 · 0.3 판 전환 · 0.36 높이 ───── */
+const MV_EASE='cubic-bezier(.32,.72,0,1)',MV_FAST=220,MV_MID=300,MV_SLOW=360;
+const mvOK=()=>!!(document.body&&document.body.animate)&&!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
+const mvVis=e=>!!(e&&e.isConnected&&e.getClientRects().length);
+/* 들어오기 — dx·dy 만큼 비켜 흐린 채로 → 제자리 */
+function mvIn(els,dx,dy,dur){if(!mvOK())return;(Array.isArray(els)?els:[els]).forEach(el=>{if(!mvVis(el))return;
+  el.animate([{opacity:0,transform:'translate('+(dx||0)+'px,'+(dy||0)+'px)'},{opacity:1,transform:'none'}],{duration:dur||MV_MID,easing:MV_EASE});});}
+/* 탭·전환 단추 — 누른 탭 쪽에서 새 판이 14px 밀려 들어온다. 값 = 바뀌는 판 */
+const MV_TAB={
+  'tk.view':'#tkRoot .tkcol','tk.tab':'#tkRoot .tkcol .tkmain',
+  'org.tab':'#view-org #acctPane,#view-org #sitePane',
+  'df.tab':'#view-defect .tnav~*',
+  'd60.tab':'.d60-grid>.as:not(:first-child),.d60-grid>.as:first-child>:not(.d60-sw)',
+  'pd.orient':'.phs-grid>.phs-col:not(.phs-left)',
+  'pv.tab':'#pvRoot .qc-right>:not(.tkbar)',
+  'readme.tab':'#mbody .rd-sec.act',
+  'org.mapTab':'.kml-b'};
+const mvOn=b=>b.classList.contains('act')||b.classList.contains('on')||b.getAttribute('aria-selected')==='true';
+function mvTabPre(el){
+  const act=el.dataset&&el.dataset.act,sel=MV_TAB[act];if(!sel||!mvOK())return null;
+  const g=el.parentElement?[...el.parentElement.children].filter(b=>b.dataset&&b.dataset.act===act):[];
+  const i0=g.findIndex(mvOn),i1=g.indexOf(el);if(i0<0||i1<0||i0===i1)return null;
+  return{sel,dir:i1>i0?1:-1,pre:new Set([...document.querySelectorAll(sel)].filter(mvVis))};
+}
+function mvTabPost(m){
+  const run=()=>{const els=[...document.querySelectorAll(m.sel)].filter(e=>mvVis(e)&&!m.pre.has(e));if(els.length)mvIn(els,14*m.dir,0,MV_MID);return els.length;};
+  if(!run())requestAnimationFrame(run);   /* 한 프레임 미뤄 그리는 곳(rTasksSoon) */
+}
+/* 펼침·접힘 — 남는 항목은 옛 자리에서 미끄러지고(높이가 바뀐 항목은 높이도), 새로 보이는 항목은 흐리게 내려앉는다 */
+function mvFlip(box,itemSel,keyFn,fn){
+  if(!box||!mvOK()){fn();return;}
+  const pre=new Map();box.querySelectorAll(itemSel).forEach(e=>{if(mvVis(e)){const r=e.getBoundingClientRect();pre.set(keyFn(e),[r.top,r.height]);}});
+  fn();
+  box.querySelectorAll(itemSel).forEach(e=>{if(!mvVis(e))return;const r=e.getBoundingClientRect(),o=pre.get(keyFn(e));
+    if(!o){e.animate([{opacity:0,transform:'translateY(-6px)'},{opacity:1,transform:'none'}],{duration:MV_SLOW,easing:MV_EASE});return;}
+    const dy=o[0]-r.top,dh=Math.abs(o[1]-r.height)>1;
+    if(Math.abs(dy)>1)e.animate([{transform:'translateY('+dy+'px)'},{transform:'none'}],{duration:MV_SLOW,easing:MV_EASE});
+    if(dh){const ov=e.style.overflow;e.style.overflow='clip';
+      const a=e.animate([{height:o[1]+'px'},{height:r.height+'px'}],{duration:MV_SLOW,easing:MV_EASE});a.onfinish=a.oncancel=()=>{e.style.overflow=ov;};}
+  });
+}
+/* 사라지는 항목 — 옛 노드를 제자리에 잠깐 되꽂아 높이·여백을 0 으로 접으며 흐린다(아래 항목이 자연스럽게 올라온다).
+   ⚠ 통째 교체(탭·날짜 바뀜)는 제외 — 빠진 게 3건 이하이고 남은 항목이 있을 때만 */
+function mvGone(box,itemSel,keyFn,paint){
+  const old=box&&mvOK()?[...box.querySelectorAll(itemSel)].filter(mvVis):[];
+  const res=paint();
+  if(!old.length||!res)return res;
+  const now=new Map();box.querySelectorAll(itemSel).forEach(e=>now.set(keyFn(e),e));
+  const gone=old.filter(e=>!now.has(keyFn(e)));
+  if(!now.size||!gone.length||gone.length>3)return res;
+  gone.forEach(g=>{
+    const i=old.indexOf(g);let at=null,aft=null;
+    for(let j=i+1;j<old.length&&!at;j++)at=now.get(keyFn(old[j]))||null;
+    if(!at)for(let j=i-1;j>=0&&!aft;j--)aft=now.get(keyFn(old[j]))||null;
+    const par=(at||aft).parentNode;if(!par)return;
+    g.removeAttribute('id');g.querySelectorAll('[id]').forEach(x=>x.removeAttribute('id'));
+    ['data-pid','data-act','data-sid','data-iid','data-occ','draggable'].forEach(a=>g.removeAttribute(a));
+    g.classList.remove('editing','open','hl','sel');g.classList.add('mv-gone');g.style.pointerEvents='none';g.style.overflow='clip';
+    par.insertBefore(g,at||aft.nextSibling);
+    const cs=getComputedStyle(g),gap=parseFloat(getComputedStyle(par).rowGap)||0;
+    const a=g.animate([{height:g.offsetHeight+'px',opacity:1,paddingTop:cs.paddingTop,paddingBottom:cs.paddingBottom,marginTop:cs.marginTop,marginBottom:cs.marginBottom},
+      {height:'0px',opacity:0,paddingTop:'0px',paddingBottom:'0px',marginTop:'0px',marginBottom:(-gap)+'px'}],{duration:MV_MID,easing:MV_EASE,fill:'forwards'});
+    a.onfinish=a.oncancel=()=>g.remove();
+  });
+  return res;
+}
+const ACX_EASE='cubic-bezier(.32,.72,0,1)';
+let _acxMorphing=false;
+function acxMorph(fn,enter,dx,dy){
+  const mb=$('#mb');
+  if(_acxMorphing||!mb||!mb.animate||!$('#mo').classList.contains('open')){fn();return;}
+  _acxMorphing=true;
+  (mb._acxA||[]).forEach(a=>{try{a.cancel();}catch(_){}});
+  const h0=mb.getBoundingClientRect().height;
+  try{fn();}finally{_acxMorphing=false;}
+  const h1=mb.getBoundingClientRect().height,A=[];
+  if(Math.abs(h1-h0)>1){
+    mb.style.overflowY='hidden';
+    const a=mb.animate([{height:h0+'px'},{height:h1+'px'}],{duration:360,easing:ACX_EASE});
+    a.onfinish=a.oncancel=()=>{mb.style.overflowY='';};A.push(a);
+  }
+  const els=typeof enter==='string'?[...mb.querySelectorAll(enter)]:(enter?[enter]:[]);
+  els.forEach(el=>{if(el.getClientRects().length)A.push(el.animate([{opacity:0,transform:'translate('+(dx||0)+'px,'+(dy||0)+'px)'},{opacity:1,transform:'none'}],{duration:300,easing:ACX_EASE}));});
+  mb._acxA=A;
+}
 /* 아바타 편집 — 같은 창 안에서 펼침(이모지/배경색 한 판씩) */
-function pfEdit(on){
+function pfEdit(on){acxMorph(()=>pfEditNow(on),on?'.acx-pick':'.acx-row',0,on?-8:4);}
+function pfEditNow(on){
   const mb=$('#mb');if(!mb||!$('#pfPop'))return;
   mb.classList.toggle('acx-ed',on);
   if(on){if(!mb.classList.contains('m-col'))mb.classList.add('m-emo');if(!PF_MORE)pfRenderEmg(recentEmoji().length?'recent':'smiley','');}
   else{if(mb.classList.contains('m-cus'))acxCpClose(true);mb.classList.remove('m-cus');}
 }
 function pfMode(m){
+  const mb=$('#mb');if(!mb||mb.classList.contains(m==='emo'?'m-emo':'m-col')&&!mb.classList.contains('m-cus'))return;
+  acxMorph(()=>pfModeNow(m),m==='emo'?'#pfCats,#pfEmg':'#pfPal',m==='emo'?-14:14,0);
+}
+function pfModeNow(m){
   const mb=$('#mb');if(!mb)return;
   if(mb.classList.contains('m-cus'))acxCpClose(true);
   mb.classList.toggle('m-emo',m==='emo');mb.classList.toggle('m-col',m==='col');mb.classList.remove('m-cus');
@@ -1473,7 +1565,8 @@ function hexToHsv(hex){const m=/^#?([\da-f]{6})$/i.exec(String(hex||''));if(!m)r
   return{h,s:mx?d/mx:0,v:mx};}
 function hsvToHex(h,s,v){const f=k=>{const x=(k+h/60)%6;return v-v*s*Math.max(0,Math.min(x,4-x,1));};
   return '#'+[f(5),f(3),f(1)].map(x=>Math.round(x*255).toString(16).padStart(2,'0')).join('').toUpperCase();}
-function acxCpOpen(t,hex){
+function acxCpOpen(t,hex){acxMorph(()=>acxCpOpenNow(t,hex),'#acxCp',14,0);}
+function acxCpOpenNow(t,hex){
   const mb=$('#mb');if(!mb)return;
   ACX_CP={t,...hexToHsv(hex),hex:String(hex||'#3E71D2').toUpperCase(),dirty:false};
   mb.classList.add('m-cus');acxCpPaint(false);
@@ -2030,7 +2123,7 @@ function calInit(){
       }
       /* 드래그는 '기간 선택' — 그 사이 업무를 패널에 보여 주고, 업무 추가를 누르면 이 기간으로 연다 */
       selRange(a,b);},
-    datesSet:()=>{rMonTitle();if(CAL_DS1){CAL_DS1=false;requestAnimationFrame(()=>requestAnimationFrame(calFitApply));}else subVisibleMonths();markSel();   /* 첫 datesSet 은 render 안에서 울린다 — render 가 이미 events() 로 막대를 만들었으니 다시 받지 않는다 */
+    datesSet:info=>{calMonSlide(info);rMonTitle();if(CAL_DS1){CAL_DS1=false;requestAnimationFrame(()=>requestAnimationFrame(calFitApply));}else subVisibleMonths();markSel();   /* 첫 datesSet 은 render 안에서 울린다 — render 가 이미 events() 로 막대를 만들었으니 다시 받지 않는다 */
      if(WIDGET)setTimeout(calFitApply,0);   /* 위젯은 달이 바뀔 때마다 칸 높이로 막대 단계 재계산 */
       requestAnimationFrame(holdFit);}   /* 주 수(5·6주)가 바뀌면 칸 높이도 바뀐다 — 보류함을 다시 맞춘다 */
   });
@@ -2038,6 +2131,13 @@ function calInit(){
   markSel();
   /* Pretendard 가 늦게 스왑되면 칩 높이가 바뀌어 FC 가 잰 기간 바 위치와 어긋난다(칩 겹침) — 폰트 로드 후 한 번 재계산 */
   if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{if(CAL)CAL.updateSize();mtabSync();});   /* 글꼴이 늦게 붙으면 탭 날짜 잉크 위치가 달라진다 — 다시 가운데로 */
+}
+/* 달 넘김 — 데스크톱·위젯 달력은 넘긴 쪽에서 격자가 14px 밀려 들어온다(폰 세로는 손가락 트랙이 맡는다) */
+let _calMon0=0;
+function calMonSlide(info){
+  const t=+info.view.currentStart,t0=_calMon0;_calMon0=t;
+  if(!t0||t===t0||(isMob()&&!WIDGET))return;
+  const g=$('#fcal .fc-daygrid-body');if(g)mvIn(g,t>t0?14:-14,0,MV_MID);
 }
 /* 반복 일정 전개 — 화면에 보이는 구간(from~to)의 발생일만 만든다 */
 function recurDates(p,from,to){
@@ -2816,12 +2916,14 @@ function rDay(){
   if(keep)keep.remove();
   /* 처음 여는 순간엔 draft 가 아직 없다(planFormHTML 이 만든다) — orig 로도 찾아야 자리를 지킨다 */
   const editingId=S.planEdit?(((S.planEdit.draft||{}).id)||((S.planEdit.orig||{}).id)||null):null;
+  const dKey=String(S.selDate||'')+'|'+String(S.selEnd||''),dNew=_cardKey!==dKey;   /* 날짜가 바뀌면 목록이 짧게 올라온다 */
   const cnt=$('#dpCount');if(cnt)cnt.textContent='업무 '+ps.length+'건';
   /* 머리에 날짜 — 「9월 9일 (수) · 업무 3건」, 공휴일·휴무일이면 이름도 */
   const dEl=$('#dpDate');if(dEl){const d=toDate(S.selDate),ho=holOf(S.selDate);dEl.textContent=(d.getMonth()+1)+'월 '+d.getDate()+'일 ('+DOW[d.getDay()]+')'+(ho&&ho.n?' · '+ho.n:'')+' · ';}
   if(!ps.length&&!S.planEdit){
     box.innerHTML='<div class="dp-empty">이 날짜에 등록된 업무가 없습니다.'+dpEmptyAdd()+'</div>';   /* 빈 날엔 다음 할 일(업무 추가)을 바로 아래에 */
     paintReset(box);   /* 빈 목록으로 갈아끼웠으니 서명도 비운다 — 안 그러면 다시 채워질 때 스킵된다 */
+    if(dNew){_cardKey=dKey;_cardSeen=new Set();mvIn(box,0,6,MV_FAST);}
     rHold();wireHoldDnD();return;}
   /* 폼은 원래 카드가 있던 자리에 그대로 들어간다 — 수정을 눌러도 목록이 위로 튀지 않는다 */
   let slot=false;
@@ -2833,9 +2935,10 @@ function rDay(){
   /* 내용이 같으면 DOM 을 통째로 갈지 않는다(저장 직후·리스너 에코로 두 번 그려 깜빡인다).
      폼이 떠 있으면 노드를 도로 꽂아야 하므로 건너뛰지 않는다 */
   if(S.planEdit)paintReset(box);   /* 폼이 뜰 땐 노드를 도로 꽂아야 하므로 항상 다시 그린다 */
-  else if(!paintHTML(box,html)){ rHold();wireHoldDnD();return; }
+  else if(!(dNew?paintHTML(box,html):mvGone(box,'.plan[data-pid]',e=>e.dataset.pid+'|'+(e.dataset.occ||''),()=>paintHTML(box,html)))){ rHold();wireHoldDnD();return; }
   if(S.planEdit)box.innerHTML=html;
   markNewCards(box);   /* 이번에 새로 생긴 카드만 등장 효과 */
+  if(dNew&&!S.planEdit)mvIn(box,0,6,MV_FAST);
   const sl=$('#peSlot');
   if(sl){
     if(keep)sl.replaceWith(keep);
@@ -3855,7 +3958,9 @@ function rTasks(){
     </div>
   </div>`;
   if(isMob()&&!WIDGET){const t=$('#tbt');if(t&&S.view==='tasks')t.innerHTML=tkYmBtnHTML();}   /* 폰은 달력처럼 「2026. 9. 4주차 ˅」 년월 버튼 */
-  if(!paintHTML(root,tkHTML)){restoreScroll();rTkNewOverlay();tkSnapTake();return;}   /* 같은 내용이면 다시 그리지 않는다 */
+  const mvCtx=S.tkView+'|'+S.tkTab+'|'+sel+'|'+scKey,mvSame=root.__mvCtx===mvCtx;root.__mvCtx=mvCtx;   /* 같은 판에서 빠진 행만 접힌다 — 탭·보기가 바뀐 교체는 제외 */
+  const tkKey=e=>e.dataset.sid+'/'+e.dataset.iid+'/'+(e.dataset.occ||'');
+  if(!(mvSame?mvGone(root,'.tk-item',tkKey,()=>paintHTML(root,tkHTML)):paintHTML(root,tkHTML))){restoreScroll();rTkNewOverlay();tkSnapTake();return;}   /* 같은 내용이면 다시 그리지 않는다 */
   restoreScroll();
   rTkNewOverlay();
   tkSnapTake();
@@ -8304,7 +8409,7 @@ function dfTopbar(){
   const fw=$('#tbFinWrap');if(fw){const on=S.view==='d60'&&!!S.d60.sid;fw.hidden=!on;if(on){const b=fw.querySelector('.tb-fin');b.classList.toggle('on',d60Fin(S.d60.sid,S.d60.tr));}}   /* 현장 점검 화면에서만 「점검 완료」 */
   const pw2=$('#tbPdWrap');if(pw2)pw2.hidden=!(S.view==='d60'&&!!S.d60.sid);   /* 「사진대지」도 상단바(데스크톱만 — 폰은 CSS 가 숨긴다) */   /* 재하자·생산성·D+60 도 엑셀 */
 
-  if(pw){pw.hidden=!(on||S.view==='photo'||S.view==='dwg'||S.view==='d60');   /* 인쇄 버튼 — 하자처리 현황 · 사진대지 · 도면 인쇄 · D+60 점검 */
+  if(pw){pw.hidden=!(on||S.view==='photo'||S.view==='d60');   /* 인쇄 버튼 — 하자처리 현황 · 사진대지 · D+60 점검 */
     /* 왼쪽에 보이는 것이 있을 때만 구분선 */
     let prev=false;if(!pw.hidden)for(let e=pw.previousElementSibling;e;e=e.previousElementSibling)if(!e.hidden&&e.offsetParent!==null){prev=true;break;}   /* 숨은 버튼이면 재지 않는다(강제 레이아웃 방지) */
     pw.classList.toggle('sep',prev);}
@@ -8327,12 +8432,12 @@ function rHold(){
   if(!list.length){paintReset(box);box.innerHTML='<div class="hold-empty">내 보류 업무가 없습니다.</div>';return;}
   /* 보류함도 일자 패널과 같은 업무 카드 — 카드를 끌어 달력 날짜에 놓는다.
      누르면 업무로 이동(hold.go) · 상태 단추는 tk.st(보류 → 완료, Ctrl+Z 되돌리기) */
-  paintHTML(box,list.map(({sid,iid,it})=>{const p=taskAsPlan(sid,iid,it);
+  mvGone(box,'.hold-i',e=>e.dataset.sid+'/'+e.dataset.iid,()=>paintHTML(box,list.map(({sid,iid,it})=>{const p=taskAsPlan(sid,iid,it);
     return '<div class="plan hold-i" draggable="true" data-act="hold.go" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"'
     +' data-tip="누르면 업무로 이동 · 달력 날짜로 끌어 놓으면 그 날짜로">'
     +planDotHTML(p)
     +'<div class="plan-c"><div class="plan-t">'+riskMark(it.kind)+esc(it.text||'제목 없음')+'</div>'+planMetaHTML(p,'기한 없음')+'</div>'
-    +'<div class="plan-side">'+stIcon(stEff(it),' data-act="tk.st" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"')+'</div></div>';}).join(''));
+    +'<div class="plan-side">'+stIcon(stEff(it),' data-act="tk.st" data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'"')+'</div></div>';}).join('')));
 }
 /* 보류함 높이 — 달력 날짜칸 두 개를 넘지 않게 max-height 만 준다(적으면 내용만큼, 많으면 스크롤).
    ⚠ 칸 높이는 창 크기·주 수(5·6주)에 따라 달라 그때그때 잰다 */
@@ -10320,7 +10425,7 @@ setInterval(()=>{
 },60000);
 
 /* ═══════════ 화면 전환 · 공통 UI ═══════════ */
-const VIEW_TTL={calendar:'캘린더',tasks:'업무 현황',d60:'D+60 점검',photo:'사진대지 작성',qc:'견적 검토',dwg:'도면 인쇄',redo:'재하자 추적',prod:'생산성 검토',defect:'하자처리 현황',org:'조직 관리',settings:'설정'};
+const VIEW_TTL={calendar:'캘린더',tasks:'업무 현황',d60:'D+60 점검',photo:'사진대지 작성',qc:'견적 검토',redo:'재하자 추적',prod:'생산성 검토',defect:'하자처리 현황',org:'조직 관리',settings:'설정'};
 function go(view){
   if(view==='report')view='tasks';
   if(TOAST_FN&&view!==S.view){TOAST_FN=null;const t=$('#toast');if(t)t.classList.remove('show','has-btn');}   /* 다른 화면에서 「되돌리기」가 앞 화면을 건드리지 않게 */   /* 주요 업무는 업무 현황으로 통합 — 옛 진입점은 넘겨 준다 */
@@ -10360,7 +10465,6 @@ function go(view){
     if(prevView!=='tasks'&&isMob()&&!WIDGET)$$('#tkRoot .tkv-seg,#tkRoot .tkcol').forEach(e=>{if(e.animate)e.animate([{opacity:.5,transform:'translateY(6px)'},{opacity:1,transform:'none'}],{duration:200,easing:'cubic-bezier(.4,0,.2,1)'}).finished.then(fadeSoon,()=>{});});}
   if(view==='photo')rPhoto();
   if(view==='qc')rQc();
-  if(view==='dwg')rDwg();
   if(view==='redo')rRedo();
   if(view==='prod')rProd();
   if(view==='d60')rD60();
@@ -10684,7 +10788,8 @@ const ACT={
     recCloseMenu();},
   'rec.menuAll':el=>{const M=REC._menu;if(!M)return;M.sel=el.checked?new Set(M.all):new Set();recMenuRenderList();},
   'rec.menuVal':el=>{const M=REC._menu;if(!M)return;const v=el.dataset.val;if(M.sel.has(v))M.sel.delete(v);else M.sel.add(v);recMenuSyncAll();},
-  'rec.menuTreeToggle':el=>{const M=REC._menu;if(!M)return;const n=el.dataset.node;if(M.expand.has(n))M.expand.delete(n);else M.expand.add(n);recMenuRenderList();},
+  'rec.menuTreeToggle':el=>{const M=REC._menu;if(!M)return;const n=el.dataset.node;if(M.expand.has(n))M.expand.delete(n);else M.expand.add(n);
+    mvFlip($('#rlMenuList'),'.rl-tree-row',e=>{const i=e.querySelector('input[data-node],input[data-val]');return i?(i.dataset.node||i.dataset.val):e.textContent;},recMenuRenderList);},
   'rec.menuTreeCheck':el=>{const M=REC._menu;if(!M||!M.dateTree)return;const leaves=recDateLeaves(M.dateTree,el.dataset.node);const st=recTri(leaves,M.sel);if(st==='all')leaves.forEach(v=>M.sel.delete(v));else leaves.forEach(v=>M.sel.add(v));recMenuRenderList();},
   'rec.menuApply':()=>{const M=REC._menu;if(!M)return;
     if(M.sel.size>=M.all.length)delete REC.vals[M.key];
@@ -10698,7 +10803,7 @@ const ACT={
     const btn=el.closest('.df-reg'),wasOpen=btn&&btn.classList.contains('open');
     $$('#dfNav .df-reg').forEach(b=>{S.dfFold[b.dataset.rid]=true;});   /* true=접힘 · false=펼침 (기존 저장값과 호환) */
     S.dfFold[k]=wasOpen?true:false;
-    rDefectNav();},
+    mvFlip($('#dfNav'),'.df-reg,.df-site',e=>e.dataset.rid?'r'+e.dataset.rid:'s'+e.dataset.sid,rDefectNav);},
   'df.vacEdit':el=>{if(!isEditor())return denyEdit();   /* 사용자는 서버가 거부한다 — 먼저 알린다 */
     const sid=el.dataset.sid,sangga=el.dataset.kind==='sangga';
     const vl=sangga?'공가상가':'공가세대',_u=sangga?'호실':'세대';
@@ -10816,14 +10921,14 @@ const ACT={
     const{nxt}=tkWeekCycles();S.mineYm=nxt.start.slice(0,7)+'-01';   /* 예정 주가 보이는 달로 */
     rTasks();},
   /* 인쇄 — 상단바 버튼(#tbPrintWrap) 하나가 하자·사진대지·도면·D+60 을 맡는다 */
-  'sb.print':()=>{if(S.view==='defect')openPrintPick();else if(S.view==='photo')pdPrint();else if(S.view==='dwg')dwPrint();else if(S.view==='d60')d60Print();},   /* D+60 점검 */
+  'sb.print':()=>{if(S.view==='defect')openPrintPick();else if(S.view==='photo')pdPrint();else if(S.view==='d60')d60Print();},   /* D+60 점검 */
   /* 오후 점검 알림 — 누르면 오늘로 이동해 남은 업무를 펼친다. x 는 그날만 닫는다 */
 
   'pf.org':()=>acctAutoSave(),
   'pf.toggle':()=>{const mb=$('#mb');if(mb)pfEdit(!mb.classList.contains('acx-ed'));},
   'pf.done':()=>pfEdit(false),
   'pf.mode':el=>pfMode(el.dataset.m),
-  'pf.cpBack':()=>acxCpClose(true),
+  'pf.cpBack':()=>acxMorph(()=>acxCpClose(true),'#pfPal',-14,0),
   'pf.cat':el=>{
     $$('#pfCats .pf-cat').forEach(x=>x.classList.toggle('act',x===el));
     pfRenderEmg(el.dataset.cat,'');},
@@ -10834,7 +10939,7 @@ const ACT={
     $$('#pfEmg .pf-em').forEach(x=>x.classList.toggle('on',x===el));   /* 닫지 않는다 — 여러 개 비교해 고를 수 있게 */
     acctAutoSave();
   },
-  'acct.tab':el=>{if(ACX_CP)acxCpClose(true);renderAcctModal(el.dataset.tab);},
+  'acct.tab':el=>{if(ACX_CP)acxCpClose(true);const pw=el.dataset.tab==='pw';acxMorph(()=>renderAcctModal(el.dataset.tab),'#mbody>*',pw?24:-24,0);},
   'acct.changePw':acctChangePw,
   'acct.signout':acctSignout,
   'modal.close':closeModal,
@@ -10908,7 +11013,7 @@ const ACT={
     /* 고칠 수 있는 업무는 행을 누르면 바로 수정(달력 카드와 같은 규칙) — 펼침은 권한이 없을 때만 */
     const key=el.dataset.sid+'/'+el.dataset.iid;
     const it0=(S.tasks[el.dataset.sid]||{})[el.dataset.iid],row=el.closest&&el.closest('.tk-item');
-    if(S.tkOpen===key){S.tkOpen=null;rTasks();return;}   /* 펼쳐진 행(저장 직후·보류함·찾기에서 온 것)은 누르면 접힌다 */
+    if(S.tkOpen===key){S.tkOpen=null;mvFlip($('#tkRoot'),'.tk-item',e=>e.dataset.sid+'/'+e.dataset.iid+'/'+(e.dataset.occ||''),rTasks);return;}   /* 펼쳐진 행(저장 직후·보류함·찾기에서 온 것)은 누르면 접힌다 */
     if(it0&&canEditTask(it0,el.dataset.sid)){
       /* 고치던 행이 있으면 먼저 저장(Esc 와 같은 「저장하고 닫기」). 제목이 비었으면 버릴지 묻고 멈춘다 */
       if(S.tkEdit&&S.tkEdit!==key&&tkFormDirty()){const t=$('#tnTitle');
@@ -11454,7 +11559,7 @@ document.addEventListener('click',e=>{
   if(!el)return;
   if(el.tagName==='SELECT')return;   /* select 는 change 에서만 처리 — 누르기만 해도 실행되지 않게 */
   const fn=ACT[el.dataset.act];
-  if(fn){if(el.dataset.act!=='modal.stop')e.stopPropagation();fn(el);}
+  if(fn){if(el.dataset.act!=='modal.stop')e.stopPropagation();const mv=mvTabPre(el);fn(el);if(mv)mvTabPost(mv);}
 });
 /* 달력 설정 팝업 닫기 — ⚠ click 이 아니라 mousedown 캡처로 듣는다.
    FullCalendar 가 칸의 click 을 삼킨다(openCtx 와 같은 함정) */
@@ -12274,10 +12379,10 @@ function widPlace(){
 }
 
 /* ═══════════ 업무 도구 이어하기 ═══════════
-   사진대지·견적 검토·도면 인쇄·재하자/생산성 작업을 이 PC 의 IndexedDB(calapp_tools_v1)에 둬 새로고침 뒤에도 잇는다. ⚠ 서버엔 아무것도 올리지 않는다. 지우는 길은 도구마다 「초기화」.
+   사진대지·견적 검토·재하자/생산성 작업을 이 PC 의 IndexedDB(calapp_tools_v1)에 둬 새로고침 뒤에도 잇는다. ⚠ 서버엔 아무것도 올리지 않는다. 지우는 길은 도구마다 「초기화」.
    불러오기는 그 도구 화면을 처음 열 때 — 그 전엔 저장도 미룬다(빈 상태로 덮어쓰지 않게). 용량이 넘치면 한 번 알리고 이 창 메모리로만 계속 */
-const TS_KINDS=['pd','qc','dw','tl'];
-const TS={db:null,ok:true,init:false,pend:{},rdy:{},prom:{},t:{},busy:{},again:{},note:{},warned:false,pers:false,pdImg:new Map(),dwBuf:null,dwSig:'',tlRows:null};
+const TS_KINDS=['pd','qc','tl'];
+const TS={db:null,ok:true,init:false,pend:{},rdy:{},prom:{},t:{},busy:{},again:{},note:{},warned:false,pers:false,pdImg:new Map(),tlRows:null};
 function tsOpen(){
   if(TS.db)return Promise.resolve(TS.db);
   return new Promise((res,rej)=>{let q;try{q=indexedDB.open('calapp_tools_v1',1);}catch(err){rej(err);return;}
@@ -12295,7 +12400,8 @@ function tsDel(k){return tsReq('readwrite',os=>os.delete(k));}
 async function tsInit(){
   if(WIDGET||S.snap||typeof indexedDB==='undefined'){TS.ok=false;return;}
   try{const keys=new Set(await tsReq('readonly',os=>os.getAllKeys()));
-    TS.pend={pd:keys.has('pd'),qc:keys.has('qc'),dw:keys.has('dwbuf'),tl:keys.has('tlrows')};
+    TS.pend={pd:keys.has('pd'),qc:keys.has('qc'),tl:keys.has('tlrows')};
+    ['dw','dwbuf'].forEach(k=>{if(keys.has(k))tsDel(k).catch(()=>{});});   /* 1061: 도면 인쇄 폐지 — 이 PC 에 남은 도면(원본 통째)을 치운다 */
     TS.orphan=[...keys].filter(k=>String(k).startsWith('pdimg:'));
   }catch(err){console.warn('[도구 저장] 열기',err);TS.ok=false;return;}
   TS.init=true;
@@ -12309,7 +12415,7 @@ function tsLazy(k){
   TS.pend[k]=false;
   TS.prom[k]=(TS_LOAD[k]()).catch(err=>{console.warn('[도구 저장] 불러오기 '+k,err);}).then(()=>{
     tsReady(k);TS.prom[k]=null;
-    const v=S.view;if(k==='pd'&&v==='photo')rPhoto();else if(k==='qc'&&v==='qc')rQc();else if(k==='dw'&&v==='dwg')rDwg();else if(k==='tl'&&(v==='redo'||v==='prod'))(v==='redo'?rRedo:rProd)();});
+    const v=S.view;if(k==='pd'&&v==='photo')rPhoto();else if(k==='qc'&&v==='qc')rQc();else if(k==='tl'&&(v==='redo'||v==='prod'))(v==='redo'?rRedo:rProd)();});
   return TS.prom[k];
 }
 function tsMark(k){
@@ -12338,12 +12444,6 @@ const TS_SAVE={
       photos:PD.photos.filter(p=>p.ob).map(p=>({id:p.id,name:p.name||'',path:p.path||'',ow:p.ow,oh:p.oh,rq:p.rq||0,crop:p.crop||null,fit:p.fit||'fill',loc:p.loc||'',desc:p.desc||'',ann:p.ann||null}))});
   },
   async qc(){if(!String(QC.txt||'').trim()){await tsDel('qc');return;}await tsPut('qc',{txt:QC.txt,rnd:QC.rnd,tol:QC.tol,filter:QC.filter,ran:QC.ran});},
-  async dw(){
-    if(!DW.buf){if(TS.dwBuf){await tsDel('dwbuf');TS.dwBuf=null;TS.dwSig='';}await tsDel('dw');return;}
-    const sig=DW.name+'|'+DW.buf.byteLength+'|'+(DW.refs||[]).map(r=>r.name+':'+r.buf.byteLength).join(',');
-    if(TS.dwBuf!==DW.buf||TS.dwSig!==sig){await tsPut('dwbuf',{name:DW.name,buf:DW.buf,refs:(DW.refs||[]).map(r=>({name:r.name,buf:r.buf}))});TS.dwBuf=DW.buf;TS.dwSig=sig;}
-    await tsPut('dw',{mode:DW.mode,paper:DW.paper,orient:DW.orient,lw:DW.lw,zoom:DW.zoom,n:DW.pages.length,off:[...DW.off],lhide:(DW.layers||[]).filter((l,i)=>DW.lhide.has(i)).map(l=>l.name)});
-  },
   async tl(){
     if(!TL.rows.length){if(TS.tlRows){await tsDel('tlrows');TS.tlRows=null;}await tsDel('tl');return;}
     if(TS.tlRows!==TL.rows){await tsPut('tlrows',{name:TL.name,rows:TL.rows,all:TL.all,unit:TL.unit});TS.tlRows=TL.rows;}
@@ -12382,16 +12482,6 @@ const TS_LOAD={
     if(q.ran){QC.rows=qcParse(QC.txt);QC.ran=true;}
     TS.note.qc='지난 검토 내용을 다시 불러왔습니다';
   },
-  async dw(){
-    const b=await tsGet('dwbuf'),s=await tsGet('dw');
-    if(!b||!b.buf||DW.buf||DW.busy)return;
-    if(s)Object.assign(DW,{mode:s.mode||'auto',paper:s.paper||'a3',orient:s.orient||'auto',lw:s.lw!==false,zoom:s.zoom||'w2'});
-    DW.name=b.name||'';DW.buf=b.buf;DW.refs=(b.refs||[]).map(r=>({name:r.name,buf:r.buf}));DW.err='';
-    TS.dwBuf=DW.buf;TS.dwSig=DW.name+'|'+DW.buf.byteLength+'|'+DW.refs.map(r=>r.name+':'+r.buf.byteLength).join(',');
-    DW._restore=s?{n:s.n,off:s.off||[],lhide:s.lhide||[]}:{};
-    dwBusyStart(DW.name);
-    dwSend(DW.buf.slice(0),DW.name);
-  },
   async tl(){
     const r=await tsGet('tlrows'),s=await tsGet('tl');
     if(!r||!Array.isArray(r.rows)||TL.rows.length||TL.busy)return;
@@ -12402,9 +12492,9 @@ const TS_LOAD={
     TS.note.tl='지난 하자 목록을 이어서 엽니다 · '+TL.name;
   },
 };
-/* 파일 끌어다 놓기 — 사진대지(사진·폴더) · 도면 인쇄(DWG) · 재하자/생산성(xlsx·csv).
+/* 파일 끌어다 놓기 — 사진대지(사진·폴더) · 재하자/생산성(xlsx·csv).
    ⚠ DataTransfer 는 drop 이 끝나면 비므로 폴더 항목(webkitGetAsEntry)은 그 자리에서 먼저 뽑아 둔다 */
-const TDROP={photo:'#pdRoot',dwg:'#dwgRoot',redo:'#rdRoot',prod:'#pvRoot'};
+const TDROP={photo:'#pdRoot',redo:'#rdRoot',prod:'#pvRoot'};
 function tdropZone(e){
   const sel=TDROP[S.view];if(!sel||!e.dataTransfer)return null;
   if(![...(e.dataTransfer.types||[])].includes('Files'))return null;
@@ -12421,13 +12511,6 @@ document.addEventListener('drop',e=>{
   if(S.view==='photo'){
     if(ents.some(x=>x.isDirectory))tdropWalk(ents).then(fl=>pdAdd(fl));else pdAdd(files);
     return;
-  }
-  if(S.view==='dwg'){
-    const dw=files.filter(f=>/\.dwg$/i.test(f.name));if(!dw.length){toast('DWG 파일만 열 수 있습니다');return;}
-    const miss=Object.keys((DW.stat&&DW.stat.missing)||{}).map(n=>n.replace(/\.dwg$/i,'').replace(/\s+/g,'').toLowerCase());
-    const isRef=f=>miss.includes(f.name.replace(/\.dwg$/i,'').replace(/\s+/g,'').toLowerCase());
-    if(DW.buf&&!DW.busy&&dw.every(isRef)){dwAddRefs(dw);return;}   /* 빠진 참조와 이름이 같으면 참조로 붙인다 */
-    DW._pendRefs=dw.slice(1);dwOpen(dw[0]);return;              /* 여러 개면 첫 파일이 본 도면, 나머지는 참조 */
   }
   const f=files.find(x=>/\.(xlsx|xls|csv)$/i.test(x.name));
   if(!f){toast('엑셀(xlsx)·CSV 파일만 열 수 있습니다');return;}
@@ -12696,7 +12779,7 @@ function pdVC(){
   if(v.scrollHeight<=v.clientHeight+1)v.classList.add('vc');
 }
 /* 보이는 쪽 번호 — 미리보기 칸 가운데에 걸친 쪽 */
-/* 사진대지·도면 인쇄 공용 쪽 표시·쪽 넘김.
+/* 사진대지 공용 쪽 표시·쪽 넘김.
    한 줄에 여러 쪽이 놓이므로 위에서부터 처음 보이는 쪽을 현재 쪽으로 삼는다 */
 function pgIndi(o){
   const v=$(o.v),t=$(o.t);if(!v||!t)return;
@@ -14096,558 +14179,6 @@ document.addEventListener('contextmenu',e=>{
   ]);
 });
 
-/* ═══════════ 업무 도구 — 도면 인쇄 ═══════════
-   DWG 를 읽어 도면틀(사각형)마다 한 장으로 나눠 인쇄한다(ZWCAD 없이). ⚠ 파일은 서버로 올라가지 않는다(이 PC IndexedDB 이어하기만).
-   ⚠ 읽기는 워커(vendor/libredwg/dwg-worker.js)가 한다 — 본체에서 부르면 CSP(script-src 'self')가 막는다.
-   나누기: ① 축에 나란한 닫힌 큰 네모(이중 테두리는 바깥 것만) ② 틀이 없으면 붙어 있는 도형 덩어리끼리(격자 칠하기 + 이웃 잇기) */
-const DW={name:'',polys:[],texts:[],styles:[],ext:null,pages:[],off:new Set(),mode:'auto',used:'',paper:'a3',orient:'auto',lw:true,zoom:'w2',pz:0,page:1,busy:'',stat:null,err:'',worker:null,
-  layers:[],lhide:new Set(),stage:'',t0:0,_svg:new WeakMap()};   /* layers=[{name,off,n}] · lhide=끈 레이어 번호 · stage=읽는 단계 · _svg=장마다 그린 SVG(다시 그리지 않게) */
-let DW_WORKER=null;
-const DW_PAPER={a4:[210,297],a3:[297,420]};   /* 실무에선 A4·A3 면 충분 */
-function dwWorker(){
-  if(DW_WORKER)return DW_WORKER;
-  const w=new Worker('./vendor/libredwg/dwg-worker.js',{type:'module'});
-  w.onmessage=e=>{if(e.data&&e.data.stage){DW.stage=e.data.stage;dwBusyTick();return;}dwLoaded(e.data);};
-  /* 왜 안 열렸는지 화면에 남긴다 — 엔진 파일 누락과 도면 손상은 손볼 곳이 다르다 */
-  w.onerror=e=>{dwBusyStop();DW_WORKER=null;
-    DW.err='도면 엔진을 불러오지 못했습니다 · 창을 새로 고친 뒤 다시 열어 주세요. 계속되면 관리자에게 알려 주세요';
-    toast('도면 기능을 불러오지 못했습니다 · 사내망 연결을 확인한 뒤 다시 눌러 주세요');console.warn('[도면] 워커',e&&e.message);rDwg();};
-  DW_WORKER=w;return w;
-}
-/* 외부 참조(XREF) — 본 도면에는 이름만 있고 알맹이가 없다.
-   못 찾은 참조를 알리고, 그 파일을 함께 올리면 그 자리에 끼워 다시 그린다 */
-function dwAddRefs(files){
-  const all=[...(files||[])];
-  const list=all.filter(f=>/\.dwg$/i.test(f.name));
-  if(!all.length)return;                                   /* 창만 닫은 경우 */
-  if(!list.length){toast('DWG 파일만 붙일 수 있습니다');return;}
-  if(!DW.buf){toast('원본 도면을 먼저 열어 주세요');return;}
-  DW._before=DW.polys.length;
-  toast('참조 '+list.length+'개 읽는 중…');
-  DW._prev={refs:DW.refs||[]};dwBusyStart(DW.name||'참조');
-  const gen=DW.gen=(DW.gen||0)+1;
-  Promise.all(list.map(f=>f.arrayBuffer().then(b=>({name:f.name,buf:b}))))
-    .then(rs=>{if(gen!==DW.gen)return;
-      DW.refs=(DW.refs||[]).filter(r=>!rs.some(x=>x.name===r.name)).concat(rs);
-      dwSend(DW.buf.slice(0),DW.name);
-    })
-    .catch(err=>{dwBusyStop();(console.warn('[도면] 참조 파일',err),toast('참조 파일을 읽지 못했습니다 · 파일을 다시 골라 주세요'));rDwg();});
-}
-function dwSend(buf,name){
-  const refs=(DW.refs||[]).map(r=>({name:r.name,buf:r.buf.slice(0)}));
-  dwWorker().postMessage({buf,name,refs},[buf,...refs.map(r=>r.buf)]);
-}
-/* 못 찾은 외부 참조를 알리고 그 파일을 받는 칸 */
-function dwRefHTML(){
-  const miss=Object.keys((DW.stat&&DW.stat.missing)||{});
-  const got=(DW.refs||[]).map(r=>r.name);
-  if(!miss.length&&!got.length)return '';
-  let h='<div class="dw-xr">';
-  if(miss.length){
-    h+='<div class="dw-xr-t">외부 참조 '+miss.length+'개가 빠져 있습니다</div>'
-      +'<div class="dw-xr-l">'+miss.map(n=>'<span>'+esc(n)+'.dwg</span>').join('')+'</div>'
-      +'<div class="dw-xr-s">이 파일을 함께 올리면 그 자리에 그려 넣습니다</div>';
-  }else{
-    h+='<div class="dw-xr-t dw-xr-ok">외부 참조를 모두 붙였습니다</div>';
-  }
-  if(got.length)h+='<div class="dw-xr-l dw-xr-got">'+got.map(n=>'<span>'+esc(n)+'</span>').join('')+'</div>';
-  h+='<button class="btn bo bxs" data-act="dwg.refFile">참조 파일 추가</button></div>';
-  return h;
-}
-function dwOpen(file){
-  if(!file)return;
-  DW._prev=DW.pages.length?{name:DW.name,buf:DW.buf,refs:DW.refs||[]}:null;   /* 취소·실패하면 보던 도면으로 돌아간다 */
-  const pend=DW._pendRefs||[];DW._pendRefs=null;
-  DW.name=file.name;DW.err='';DW.refs=[];DW.buf=null;DW._restore=null;dwBusyStart(file.name);
-  const gen=DW.gen=(DW.gen||0)+1;   /* 취소한 뒤 늦게 끝난 파일 읽기가 엔진을 다시 깨우지 않게 */
-  file.arrayBuffer().then(async buf=>{
-    if(gen!==DW.gen)return;
-    /* DWG 는 앞 6글자가 AC10xx(예: AC1032). 아니면 엔진에 넘기기 전에 알려 준다 */
-    const head=String.fromCharCode(...new Uint8Array(buf.slice(0,6)));
-    if(!/^AC10/.test(head)){dwBusyStop();if(DW._prev){Object.assign(DW,DW._prev);DW._prev=null;}DW.err='DWG 파일이 아닌 것 같습니다(앞머리 '+esc(head.replace(/[^\x20-\x7e]/g,'.'))+'). DXF·PDF는 아직 읽지 못합니다';toast('DWG 파일이 아닙니다');rDwg();return;}
-    DW.buf=buf.slice(0);
-    if(pend.length)DW.refs=await Promise.all(pend.map(f=>f.arrayBuffer().then(b=>({name:f.name,buf:b}))));   /* 함께 끌어다 놓은 참조 */
-    if(gen!==DW.gen)return;
-    dwSend(buf,file.name);
-  }).catch(err=>{if(gen!==DW.gen)return;dwBusyStop();if(DW._prev){Object.assign(DW,DW._prev);DW._prev=null;}console.warn('[도면] 파일',err);DW.err='파일을 읽지 못했습니다 · 도면(DWG) 파일인지 확인해 주세요';toast('파일을 열지 못했습니다 · 파일을 다시 골라 주세요');rDwg();});
-}
-function dwLoaded(d){
-  dwBusyStop();
-  if(!d||!d.ok){if(DW._prev){Object.assign(DW,DW._prev);DW._prev=null;}DW._restore=null;DW.err='도면을 읽지 못했습니다'+(d&&d.err?' — '+d.err:'');toast('도면을 읽지 못했습니다 · 파일을 다시 골라 주세요');rDwg();return;}
-  DW._prev=null;
-  DW.err='';DW._core=null;DW._coreN=-1;DW.polys=d.polys||[];DW.texts=d.texts||[];DW.styles=d.styles||[];DW.ext=d.ext;DW.off=new Set();DW.page=1;
-  DW.stat={n:DW.polys.length,t:DW.texts.length,ms:d.ms,skipped:d.skipped,layouts:d.layouts,missing:d.missing||{},refInfo:d.refInfo||{}};
-  DW.layers=d.layers||[];DW.lhide=new Set(DW.layers.map((l,i)=>l.off?i:-1).filter(i=>i>=0));   /* 도면에서 꺼 둔 레이어는 끈 채로 */
-  dwSplit();
-  const R=DW._restore;DW._restore=null;
-  if(R){if(R.lhide)DW.lhide=new Set(DW.layers.map((l,i)=>R.lhide.includes(l.name)?i:-1).filter(i=>i>=0));
-    if(R.off&&R.n===DW.pages.length)DW.off=new Set(R.off);
-    DW._svg=new WeakMap();toast('지난 도면을 다시 열었습니다 · '+DW.name);rDwg();return;}
-  /* 참조를 붙인 뒤엔 몇 개 늘었는지·왜 안 붙었는지를 반드시 알린다 */
-  if(DW._before!=null){
-    const add=DW.polys.length-DW._before;DW._before=null;
-    const info=DW.stat.refInfo||{};
-    const bad=Object.entries(info).filter(([,v])=>v&&v.err);
-    const emptyRef=Object.entries(info).filter(([,v])=>v&&!v.err&&!v.ents&&!v.blocks);
-    if(bad.length)toast('참조를 읽지 못했습니다 · '+bad[0][0]+' ('+bad[0][1].err+')');
-    else if(add>0)toast('참조를 붙였습니다 — 도형 '+add.toLocaleString()+'개 늘었습니다');
-    else if(emptyRef.length)toast('그 파일에는 그릴 도형이 없습니다 · '+emptyRef[0][0]);
-    else toast('바뀐 것이 없습니다 · 이 파일이 그 참조가 맞는지 확인해 주세요');
-  }else toast(DW.pages.length+'장으로 나눴습니다');
-  rDwg();
-}
-/* ── 도면틀 찾기 ── */
-/* 도면틀 찾기 — 닫힌 네모 + 선 네 개로 그린 네모.
-   ⚠ 크기 문턱을 「도면 전체의 몇 %」로 두면 작은 틀이 여러 개인 시트를 통째로 놓친다 — 후보들끼리 견주어 정한다 */
-function dwRects(){
-  if(!DW.ext)return [];
-  const C=dwCore(),W=C[2]-C[0],H=C[3]-C[1];
-  const MINW=W*0.01,MINH=H*0.01;              /* 글자 상자 같은 자잘한 네모는 거른다 */
-  const out=[];
-  const push=(x0,y0,x1,y1)=>{
-    const w=x1-x0,h=y1-y0;
-    if(w<MINW||h<MINH)return;
-    if(Math.max(w,h)/Math.min(w,h)>8)return;
-    out.push([x0,y0,x1,y1]);
-  };
-  DW.polys.forEach(p=>{
-    if(!p.c)return;
-    const n=p.p.length/2;if(n<4||n>6)return;
-    const w=p.b[2]-p.b[0],h=p.b[3]-p.b[1];
-    if(w<=0||h<=0)return;
-    /* 축에 나란한 네모인지 — 모든 점이 상자 모서리에 붙어 있어야 한다 */
-    const tol=Math.max(w,h)*0.02;let ok=true;
-    for(let i=0;i<p.p.length;i+=2){
-      const dx=Math.min(Math.abs(p.p[i]-p.b[0]),Math.abs(p.p[i]-p.b[2]));
-      const dy=Math.min(Math.abs(p.p[i+1]-p.b[1]),Math.abs(p.p[i+1]-p.b[3]));
-      if(dx>tol&&dy>tol){ok=false;break;}
-    }
-    if(ok)push(p.b[0],p.b[1],p.b[2],p.b[3]);
-  });
-  /* 선 네 개로 그린 네모 — 같은 x 구간을 덮는 가로선 두 개를 짝지어, 양끝을 잇는 세로선이 있는지 본다 */
-  /* 선 네 개로 그린 네모 찾기 — 기본은 선분 하나짜리 폴리선만 본다.
-     ⚠ 그걸로 한 장도 못 찾을 때만 폴리선 구간까지 넓힌다 — 늘 쓰면 도면 그림에서 가짜 변이 쏟아져 기존 도면이 망가진다 */
-  let hs=[],vx=new Map();
-  const collect=(useSeg)=>{
-    hs=[];vx=new Map();
-    DW.polys.forEach(p=>{
-      const q=p.p;
-      if(!useSeg){if(q.length!==4)return;}
-      else if(q.length>40)return;            /* 꼭짓점 20개까지 — 이 갈래는 「한 장도 못 찾았을 때」만 돈다 */
-      for(let i=0;i+3<q.length;i+=2){
-        const x1=q[i],y1=q[i+1],x2=q[i+2],y2=q[i+3];
-        const dx=Math.abs(x2-x1),dy=Math.abs(y2-y1);
-        if(dy<=dx*0.002&&dx>=MINW)hs.push({y:(y1+y2)/2,a:Math.min(x1,x2),b:Math.max(x1,x2)});
-        else if(dx<=dy*0.002&&dy>=MINH){
-          const x=(x1+x2)/2,k=Math.round(x/Math.max(1e-9,MINW*0.2));
-          if(!vx.has(k))vx.set(k,[]);
-          vx.get(k).push({x,a:Math.min(y1,y2),b:Math.max(y1,y2)});
-        }
-      }
-    });
-  };
-  collect(false);
-  const hasV=(x,y0,y1)=>{
-    const step=Math.max(1e-9,MINW*0.2),k0=Math.round(x/step);
-    for(let k=k0-1;k<=k0+1;k++){
-      const list=vx.get(k);if(!list)continue;
-      const pad=(y1-y0)*0.08;
-      for(const v of list)if(Math.abs(v.x-x)<=Math.max(MINW,(y1-y0))*0.02&&v.a<=y0+pad&&v.b>=y1-pad)return true;
-    }
-    return false;
-  };
-  const quads=()=>{
-    const hKey2=new Map();
-    hs.forEach(h=>{
-      const k=Math.round(h.a/Math.max(1e-9,MINW*0.2))+'|'+Math.round(h.b/Math.max(1e-9,MINW*0.2));
-      if(!hKey2.has(k))hKey2.set(k,[]);
-      hKey2.get(k).push(h);
-    });
-    hKey2.forEach(list=>{
-      if(list.length<2||list.length>40)return;
-      list.sort((a,b)=>a.y-b.y);
-      for(let i=0;i<list.length;i++)for(let j=i+1;j<list.length;j++){
-        const y0=list[i].y,y1=list[j].y,h=y1-y0;
-        if(h<MINH)continue;
-        const x0=Math.max(list[i].a,list[j].a),x1=Math.min(list[i].b,list[j].b);
-        if(x1-x0<MINW)continue;
-        if(hasV(x0,y0,y1)&&hasV(x1,y0,y1))push(x0,y0,x1,y1);
-      }
-    });
-  };
-  quads();
-  if(!out.length){collect(true);quads();}     /* 못 찾았을 때만 폴리선 구간까지 넓혀 다시 */
-  if(!out.length)return [];
-  /* 겹치는 틀 정리 — 이중 테두리·내부 상세 칸은 바깥 것만 남긴다.
-     ⚠ 늘어선 틀들을 감싼 큰 네모가 있으면 진짜 틀이 안쪽으로 몰려 사라진다 — 가장 흔한 크기(50 단위 반올림) 틀을 품은 네모는 껍데기로 보고 버린다(조건은 아래) */
-  const sizeKey=r=>Math.round((r[2]-r[0])/50)+'x'+Math.round((r[3]-r[1])/50);
-  const freq=new Map();
-  out.forEach(r=>{const k=sizeKey(r);freq.set(k,(freq.get(k)||0)+1);});
-  let domKey='',domN=0;
-  freq.forEach((n,k)=>{if(n>domN){domN=n;domKey=k;}});
-  const dom=domN>=2?out.filter(r=>sizeKey(r)===domKey):[];
-  /* ⚠ 껍데기 판정은 좁게 — 되풀이 틀이 넷 이상이고 네모 넓이의 60% 이상을 채울 때만 버린다(틀 안에 작은 네모가 두어 개인 도면의 바깥 틀을 잃지 않게) */
-  const area=r=>(r[2]-r[0])*(r[3]-r[1]);
-  const wraps=r=>{
-    if(dom.length<4||sizeKey(r)===domKey)return false;
-    let n=0,cov=0;
-    for(const d of dom){
-      if(d[0]>=r[0]-1&&d[1]>=r[1]-1&&d[2]<=r[2]+1&&d[3]<=r[3]+1){n++;cov+=area(d);}
-    }
-    return n>=2&&cov>=area(r)*0.6;
-  };
-  out.sort((a,b)=>((b[2]-b[0])*(b[3]-b[1]))-((a[2]-a[0])*(a[3]-a[1])));
-  let keep=[];
-  out.forEach(r=>{
-    if(wraps(r))return;                       /* 틀 여러 개를 감싼 껍데기 */
-    const inside=keep.some(k=>r[0]>=k[0]-1&&r[1]>=k[1]-1&&r[2]<=k[2]+1&&r[3]<=k[3]+1);
-    if(!inside)keep.push(r);
-  });
-  /* 후보들끼리 견준다 — 가장 큰 것의 2% 도 안 되는 네모(치수 칸·글자 상자)는 틀이 아니다 */
-  const A=r=>(r[2]-r[0])*(r[3]-r[1]);
-  const big=A(keep[0]);
-  keep=keep.filter(r=>A(r)>=big*0.02);
-  /* 안이 비어 있는 네모도 틀이 아니다 — 도형이 최소 6개는 들어 있어야 한다 */
-  const cnt=r=>{let n=0;for(const p of DW.polys){const cx=(p.b[0]+p.b[2])/2,cy=(p.b[1]+p.b[3])/2;
-    if(cx>=r[0]&&cx<=r[2]&&cy>=r[1]&&cy<=r[3]){n++;if(n>=6)return n;}}return n;};
-  const filled=keep.filter(r=>cnt(r)>=6);
-  if(filled.length)keep=filled;
-  /* 도면틀은 보통 같은 크기가 되풀이된다 — 같은 크기(3% 안) 무리가 후보의 절반을 넘으면 그 무리만 쓴다 */
-  if(keep.length>1){
-    const grp=[];
-    keep.forEach(r=>{
-      const w=r[2]-r[0],h=r[3]-r[1];
-      const g=grp.find(g=>Math.abs(g.w-w)<=g.w*0.03&&Math.abs(g.h-h)<=g.h*0.03);
-      if(g)g.list.push(r);else grp.push({w,h,list:[r]});
-    });
-    grp.sort((a,b)=>b.list.length-a.list.length||(b.w*b.h)-(a.w*a.h));
-    if(grp[0].list.length>1&&grp[0].list.length*2>=keep.length)keep=grp[0].list;
-  }
-  return keep;
-}
-
-/* 엉뚱한 좌표로 떨어진 도형이 섞이면 범위가 통째로 늘어 격자가 무의미해진다 → 도형 중심으로 실제 범위를 따로 잡는다. 그림은 그대로 그린다 */
-function dwCore(){
-  if(DW._core&&DW._coreN===DW.polys.length)return DW._core;
-  const xs=[],ys=[];
-  DW.polys.forEach(p=>{xs.push((p.b[0]+p.b[2])/2);ys.push((p.b[1]+p.b[3])/2);});
-  DW.texts.forEach(t=>{xs.push(t.x);ys.push(t.y);});
-  if(!xs.length)return DW.ext;
-  /* ⚠ 백분위(1~99%)로는 모자란다(튀는 도형이 0.2% 안팎) — 중앙값에서의 거리(MAD)를 재고 도형의 97% 가 들어올 때까지 범위를 넓힌다 */
-  const med=a=>{const b=a.slice().sort((x,y)=>x-y);return b[b.length>>1];};
-  const mx=med(xs),my=med(ys);
-  const dx=med(xs.map(v=>Math.abs(v-mx)))||1,dy=med(ys.map(v=>Math.abs(v-my)))||1;
-  const n=xs.length;let k=6;
-  for(const t of [6,10,20,40,80,200,1000]){
-    k=t;let inside=0;
-    for(let i=0;i<n;i++)if(Math.abs(xs[i]-mx)<=dx*t&&Math.abs(ys[i]-my)<=dy*t)inside++;
-    if(inside>=n*0.97)break;
-  }
-  let x0=mx-dx*k,x1=mx+dx*k,y0=my-dy*k,y1=my+dy*k;
-  /* 그 범위 안에 실제로 들어온 도형들의 상자로 좁힌다(여백 3%) */
-  let a0=Infinity,a1=-Infinity,b0=Infinity,b1=-Infinity;
-  DW.polys.forEach(p=>{const cx=(p.b[0]+p.b[2])/2,cy=(p.b[1]+p.b[3])/2;
-    if(cx<x0||cx>x1||cy<y0||cy>y1)return;
-    if(p.b[0]<a0)a0=p.b[0];if(p.b[1]<b0)b0=p.b[1];if(p.b[2]>a1)a1=p.b[2];if(p.b[3]>b1)b1=p.b[3];});
-  DW.texts.forEach(t=>{if(t.x<x0||t.x>x1||t.y<y0||t.y>y1)return;
-    if(t.x<a0)a0=t.x;if(t.y<b0)b0=t.y;if(t.x>a1)a1=t.x;if(t.y>b1)b1=t.y;});
-  const full=DW.ext||[x0,y0,x1,y1];
-  if(!isFinite(a0)||a1<=a0||b1<=b0){DW._core=full.slice();DW._coreN=DW.polys.length;return DW._core;}
-  const pad=Math.max(a1-a0,b1-b0)*0.03;
-  const core=[a0-pad,b0-pad,a1+pad,b1+pad];
-  DW._core=core;DW._coreN=DW.polys.length;
-  return core;
-}
-/* ── 틀이 없을 때: 붙어 있는 덩어리끼리 ── */
-function dwClusters(){
-  if(!DW.ext)return [];
-  const N=420,[X0,Y0,X1,Y1]=dwCore(),cw=(X1-X0)/N||1,ch=(Y1-Y0)/N||1;
-  const g=new Uint8Array(N*N);
-  const put=(x,y)=>{const i=Math.min(N-1,Math.max(0,Math.floor((x-X0)/cw))),j=Math.min(N-1,Math.max(0,Math.floor((y-Y0)/ch)));g[j*N+i]=1;};
-  DW.polys.forEach(p=>{const a=p.p;
-    for(let k=0;k<a.length;k+=2){put(a[k],a[k+1]);
-      if(k){const n=Math.min(200,Math.max(1,Math.ceil(Math.max(Math.abs(a[k]-a[k-2])/cw,Math.abs(a[k+1]-a[k-1])/ch))));
-        for(let t=1;t<n;t++)put(a[k-2]+(a[k]-a[k-2])*t/n,a[k-1]+(a[k+1]-a[k-1])*t/n);}}});
-  DW.texts.forEach(t=>put(t.x,t.y));
-  let cur=g;
-  for(let d=0;d<2;d++){const nx=new Uint8Array(N*N);
-    for(let j=0;j<N;j++)for(let i=0;i<N;i++){if(!cur[j*N+i])continue;
-      for(let dj=-1;dj<=1;dj++)for(let di=-1;di<=1;di++){const a=j+dj,b=i+di;if(a>=0&&a<N&&b>=0&&b<N)nx[a*N+b]=1;}}
-    cur=nx;}
-  const lab=new Int32Array(N*N).fill(-1),comps=[];let nl=0;
-  for(let s=0;s<N*N;s++){
-    if(!cur[s]||lab[s]>=0)continue;
-    const st=[s];lab[s]=nl;let mnx=N,mny=N,mxx=-1,mxy=-1,cnt=0;
-    while(st.length){const q=st.pop(),j=(q/N)|0,i=q%N;cnt++;
-      if(i<mnx)mnx=i;if(i>mxx)mxx=i;if(j<mny)mny=j;if(j>mxy)mxy=j;
-      for(let dj=-1;dj<=1;dj++)for(let di=-1;di<=1;di++){const a=j+dj,b=i+di;if(a<0||a>=N||b<0||b>=N)continue;
-        const t=a*N+b;if(cur[t]&&lab[t]<0){lab[t]=nl;st.push(t);}}}
-    comps.push({c:cnt,b:[X0+mnx*cw,Y0+mny*ch,X0+(mxx+1)*cw,Y0+(mxy+1)*ch]});nl++;}
-  comps.sort((a,b)=>b.c-a.c);
-  const big=comps.filter(c=>c.c>=Math.max(30,comps[0].c*0.02));
-  return big.map(c=>c.b);
-}
-/* 왼쪽 위 → 오른쪽 → 아래 순으로 */
-function dwSort(boxes){
-  if(!boxes.length)return boxes;
-  const h=boxes.reduce((s,b)=>s+(b[3]-b[1]),0)/boxes.length;
-  return boxes.slice().sort((a,b)=>{
-    const ra=Math.round((-a[3])/(h*0.6)),rb=Math.round((-b[3])/(h*0.6));
-    return ra!==rb?ra-rb:a[0]-b[0];
-  });
-}
-function dwSplit(){
-  let boxes=[],used='';
-  if(DW.mode!=='cluster'){
-    const fr=dwRects();
-    /* 자동일 때 틀이 30장을 넘으면 오검출로 보고 덩어리로 간다 — 「도면틀」을 직접 고르면 그대로 쓴다 */
-    if(fr.length&&(DW.mode==='frame'||fr.length<=30)){boxes=fr;used='틀';}
-  }
-  if(!boxes.length&&DW.mode!=='frame'){boxes=dwClusters();if(boxes.length)used='덩어리';}
-  if(!boxes.length&&DW.ext){boxes=[dwCore().slice()];used='전체';}
-  DW.used=used;DW._svg=new WeakMap();
-  DW.pages=dwSort(boxes).map(b=>{
-    const w=b[2]-b[0],h=b[3]-b[1],pad=Math.max(w,h)*0.01;
-    return {b:[b[0]-pad,b[1]-pad,b[2]+pad,b[3]+pad],w,h};
-  });
-  DW.off=new Set();
-}
-const dwOn=()=>DW.pages.filter((p,i)=>!DW.off.has(i));
-/* ── 한 장 그리기 ── */
-const DW_PX=96/25.4;   /* 1mm → px. 선 굵기는 vector-effect:non-scaling-stroke 라 화면·종이에서 같은 두께가 된다 */
-function dwStyleCSS(used){
-  if(!DW.lw)return '';
-  let css='';
-  used.forEach(i=>{const st=DW.styles[i];if(!st)return;
-    /* ⚠ 바깥 CSS(.dw-svg polyline)와 명시도를 맞춰야 이긴다 — 문서 뒤에 오는 이 규칙이 우선한다 */
-    css+='polyline.s'+i+'{stroke-width:'+(Math.round(st.w*DW_PX*100)/100)+'px'
-      +(st.d?';stroke-dasharray:'+st.d.split(',').map(n=>Math.round(Number(n)*DW_PX*100)/100).join(','):'')+'}';});
-  return css?'<style>'+css+'</style>':'';
-}
-function dwPageSVG(pg,forPrint){
-  const hit=DW._svg.get(pg);if(hit)return hit;   /* 한 번 그린 장은 다시 그리지 않는다(선 굵기·레이어가 바뀌면 비운다) */
-  const [x0,y0,x1,y1]=pg.b,w=x1-x0,h=y1-y0,LH=DW.lhide;
-  let d='';const used=new Set();
-  DW.polys.forEach(p=>{
-    const b=p.b;if(b[2]<x0||b[0]>x1||b[3]<y0||b[1]>y1)return;
-    if(LH.size&&LH.has(p.l))return;
-    const a=p.p;let s='';
-    for(let k=0;k<a.length;k+=2)s+=(k?' ':'')+(Math.round(a[k]*100)/100)+','+(Math.round(a[k+1]*100)/100);
-    if(DW.lw&&p.s!=null)used.add(p.s);
-    d+='<polyline'+(DW.lw&&p.s!=null?' class="s'+p.s+'"':'')+' points="'+s+'"/>';
-  });
-  DW.texts.forEach(t=>{
-    if(t.x<x0||t.x>x1||t.y<y0||t.y>y1)return;
-    if(LH.size&&LH.has(t.l))return;
-    /* ⚠ 글자도 도형과 같은 좌표계(y 위로)로 적는다 — -y 로 적으면 바깥 group 의 뒤집기와 겹쳐 위아래가 뒤바뀐다 */
-    const tx=Math.round(t.x*100)/100,ty=Math.round(t.y*100)/100;
-    d+='<text x="'+tx+'" y="'+ty+'" font-size="'+(Math.round(t.h*100)/100)+'"'
-      +(t.r?' transform="rotate('+(-t.r)+' '+tx+' '+ty+')"':'')
-      +'>'+esc(t.s)+'</text>';
-  });
-  const out='<svg class="dw-svg" viewBox="'+x0+' '+(-y1)+' '+w+' '+h+'" preserveAspectRatio="xMidYMid meet">'
-    +dwStyleCSS(used)+'<g class="dw-g" transform="scale(1,-1)">'+d.replace(/<text /g,'<text data-t="1" ')+'</g></svg>';
-  DW._svg.set(pg,out);return out;
-}
-/* 용지·방향은 인쇄 한 번에 하나로 고정 — 장마다 다르면 브라우저가 첫 장 기준으로 찍어 나머지가 어긋난다.
-   자동이면 장들의 가로세로 중 많은 쪽. 도면은 용지 안에 비율 그대로(contain) */
-function dwLand(){
-  if(DW.orient==='land')return true;
-  if(DW.orient==='por')return false;
-  const on=dwOn();if(!on.length)return true;
-  let l=0;on.forEach(p=>{if(p.w>=p.h)l++;});
-  return l*2>=on.length;
-}
-function dwPaperMM(){
-  const [a,b]=DW_PAPER[DW.paper||'a3']||DW_PAPER.a3;
-  return dwLand()?[b,a]:[a,b];
-}
-function dwPageHTML(i,n,mw,mh){return '<div class="dw-pw" data-i="'+i+'" data-p="'+n+'"><div class="dw-page" style="width:'+mw+'mm;height:'+mh+'mm">'+dwPageSVG(DW.pages[i],false)+'</div></div>';}
-function dwPagesHTML(forPrint){
-  if(!dwOn().length)return '';
-  const [mw,mh]=dwPaperMM();let n=0,h='';
-  DW.pages.forEach((pg,i)=>{if(!DW.off.has(i))h+=dwPageHTML(i,++n,mw,mh);});
-  return h;
-}
-/* 장 하나 켜고 끄기 — 그 장만 넣고 뺀다(방향이 「자동」이면 용지 크기만 고친다) */
-function dwToggle(i,on){
-  const v=$('#dwView'),before=dwLand();
-  if(on)DW.off.delete(i);else DW.off.add(i);
-  if(!v||!dwOn().length){rDwg();return;}
-  const [mw,mh]=dwPaperMM();
-  if(on){if(!v.querySelector('.dw-pw[data-i="'+i+'"]')){const next=[...v.querySelectorAll('.dw-pw')].find(x=>Number(x.dataset.i)>i);
-    if(next)next.insertAdjacentHTML('beforebegin',dwPageHTML(i,0,mw,mh));else v.insertAdjacentHTML('beforeend',dwPageHTML(i,0,mw,mh));}}
-  else{const el=v.querySelector('.dw-pw[data-i="'+i+'"]');if(el)el.remove();}
-  if(dwLand()!==before)v.querySelectorAll('.dw-page').forEach(p=>{p.style.width=mw+'mm';p.style.height=mh+'mm';});
-  [...v.querySelectorAll('.dw-pw')].forEach((x,n)=>{x.dataset.p=n+1;});
-  const lb=$('#dwgRoot .dw-pl input[data-act="dwg.toggle"][data-i="'+i+'"]');if(lb)lb.closest('.dw-pl').classList.toggle('off',!on);
-  const sub=$('#dwgRoot .dw-cnt');if(sub)sub.textContent=dwOn().length+' / '+DW.pages.length+'장';
-  dwZoom();tsMark('dw');
-}
-/* 읽는 동안 — 단계·걸린 시간·취소. 1분 넘으면 오래 걸린다고 알리고 5분이면 멈춘다 */
-function dwBusyStart(name){DW.busy=name;DW.stage='';DW.t0=Date.now();clearInterval(DW._bt);DW._bt=setInterval(dwBusyTick,1000);rDwg();}
-function dwBusyStop(){clearInterval(DW._bt);DW._bt=0;DW.busy='';DW.stage='';}
-function dwBusyText(){const s=Math.round((Date.now()-(DW.t0||Date.now()))/1000);
-  return esc(DW.busy)+' · '+({load:'엔진 준비 중',parse:'읽는 중',flat:'그리는 중'}[DW.stage]||'읽는 중')+'…'+(s>=3?' '+s+'초':'');}
-function dwBusyTick(){
-  if(!DW.busy)return;
-  const s=(Date.now()-DW.t0)/1000;
-  if(s>300){dwCancel('5분이 지나도 끝나지 않아 멈췄습니다 · 도면이 너무 크거나 손상됐을 수 있습니다');return;}
-  const t=$('#dwgRoot .dw-load span');if(t)t.innerHTML=dwBusyText();
-  const w=$('#dwgRoot .dw-slow');if(w)w.hidden=s<60;
-}
-function dwCancel(msg){
-  DW.gen=(DW.gen||0)+1;
-  if(DW_WORKER){try{DW_WORKER.terminate();}catch(err){}DW_WORKER=null;}
-  dwBusyStop();
-  if(DW._prev){Object.assign(DW,DW._prev);DW._prev=null;}else if(!DW.pages.length){DW.buf=null;DW.refs=[];DW.name='';}
-  DW._restore=null;DW._before=null;DW.err=msg||'';toast(msg?'도면 읽기를 멈췄습니다':'도면 읽기를 취소했습니다');rDwg();
-}
-function rDwg(){
-  const root=$('#dwgRoot');if(!root)return;
-  tsLazy('dw');tsMark('dw');
-  const seg=(cur,list,btn)=>'<span class="seg">'+list.map(([k,l])=>btn(k,l,String(cur)===String(k)?'act':'')).join('')+'</span>';
-  const segMode=seg(DW.mode,[['auto','자동'],['frame','도면틀'],['cluster','오브젝트']],(k,l,a)=>'<button class="'+a+'" data-act="dwg.mode" data-m="'+k+'">'+l+'</button>');
-  const segPaper=seg(DW.paper||'a3',[['a4','A4'],['a3','A3']],(k,l,a)=>'<button class="'+a+'" data-act="dwg.paper" data-p="'+k+'">'+l+'</button>');
-  const segOri=seg(DW.orient,[['auto','자동'],['land','가로'],['por','세로']],(k,l,a)=>'<button class="'+a+'" data-act="dwg.orient" data-o="'+k+'">'+l+'</button>');
-  const segLw=seg(DW.lw?'on':'off',[['on','도면대로'],['off','모두 같게']],(k,l,a)=>'<button class="'+a+'" data-act="dwg.lw" data-w="'+k+'">'+l+'</button>');
-  const segZoom=seg(DW.zoom,[['wf','한 쪽'],['w1','폭 맞춤'],['w2','두 쪽'],['wg','여러 쪽']],(k,l,a)=>'<button class="'+a+'" data-act="dwg.zoom" data-z="'+k+'">'+l+'</button>');
-  const st=DW.stat;
-  const skip=st&&st.skipped?Object.entries(st.skipped).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k,v])=>k+' '+v).join(' · '):'';
-  const list=DW.pages.map((p,i)=>'<label class="dw-pl'+(DW.off.has(i)?' off':'')+'"><input type="checkbox" data-act="dwg.toggle" data-i="'+i+'"'+(DW.off.has(i)?'':' checked')+'>'
-    +'<b>'+(i+1)+'</b><span>'+Math.round(p.w)+' × '+Math.round(p.h)+'</span></label>').join('');
-  /* 레이어 — 도형이 있는 것만, 이름 순 */
-  const lays=(DW.layers||[]).map((l,i)=>({l,i})).filter(x=>x.l.n>0).sort((a,b)=>a.l.name.localeCompare(b.l.name,'ko',{numeric:true}));
-  const lOn=lays.filter(x=>!DW.lhide.has(x.i)).length;
-  const layCard=lays.length>1?'<div class="card"><div class="tm-h"><span>레이어 <span class="tm-sub">'+lOn+' / '+lays.length+'</span></span>'+(lOn<lays.length?'<button class="btn bo bxs" data-act="dwg.layerAll">모두 켜기</button>':'')+'</div>'
-    +'<div class="dw-list">'+lays.map(x=>{const off=DW.lhide.has(x.i);return '<label class="dw-pl'+(off?' off':'')+'"><input type="checkbox" data-act="dwg.layer" data-i="'+x.i+'"'+(off?'':' checked')+'>'
-      +'<b class="dw-ln">'+esc(x.l.name)+'</b><span>'+x.l.n.toLocaleString()+'</span></label>';}).join('')+'</div></div>':'';
-  root.innerHTML='<div class="dw-grid"><div class="dw-col">'
-    +'<div class="card"><div class="tm-h"><span>도면 파일</span>'+(DW.pages.length?'<button class="btn bo bxs" data-act="dwg.reset">초기화</button>':'')+'</div>'
-      +'<div class="dw-b">'
-      +(DW.busy?'<div class="dw-load"><span>'+dwBusyText()+'</span><button class="btn bo bxs" data-act="dwg.cancel">취소</button></div>'
-        +'<div class="dw-warn dw-slow"'+((Date.now()-DW.t0)/1000<60?' hidden':'')+'>오래 걸리고 있습니다 · 큰 도면은 몇 분 걸리기도 합니다</div>'
-        :'<button class="dw-open" data-act="dwg.file"><svg class="icn" aria-hidden="true"><use href="#i-folder"></use></svg>'+(DW.name?'다른 도면 열기':'DWG 열기')+'</button>')
-      +(DW.name&&!DW.busy?'<div class="dw-file">'+esc(DW.name)+'</div>':'')
-      +(st?'<div class="dw-stat">도형 '+st.n.toLocaleString()+' · 글자 '+st.t.toLocaleString()+'</div>':'')
-      +(skip?'<div class="dw-warn">못 그린 것 '+esc(skip)+'</div>':'')
-      +dwRefHTML()
-      +(DW.err?'<div class="dw-warn dw-bad">'+esc(DW.err)+'</div>':'')
-      +'</div></div>'
-    +(DW.pages.length?'<div class="card"><div class="tm-h"><span>기준</span></div>'
-      +'<div class="dw-b"><div class="dw-fr"><label>분리</label>'+segMode+'</div>'
-      +'<div class="dw-fr"><label>용지</label>'+segPaper+'</div>'
-      +'<div class="dw-fr"><label>방향</label>'+segOri+'</div>'
-      +'<div class="dw-fr"><label>선 굵기</label>'+segLw+'</div></div></div>':'')
-    +(DW.pages.length?'<div class="card"><div class="tm-h"><span>목록 <span class="tm-sub dw-cnt">'+dwOn().length+' / '+DW.pages.length+'장</span></span>'
-      +'<span class="dw-hb"><button class="btn bo bxs" data-act="dwg.all" data-v="1">전체</button><button class="btn bo bxs" data-act="dwg.all" data-v="0">해제</button></span></div>'
-      +'<div class="dw-list">'+list+'</div></div>':'')
-    +layCard
-    +'</div><div class="dw-col dw-right"><div class="tkbar dw-bar"><span class="dw-t">미리보기'
-      +(DW.pages.length?'<span class="dw-pgn"><button data-act="dwg.pgGo" data-d="-1" aria-label="이전 장" data-tip="이전 장"><svg class="icn" aria-hidden="true"><use href="#i-chevl"></use></svg></button>'
-        +'<span class="dw-pgt" id="dwPgt">1 / '+dwOn().length+'</span>'
-        +'<button data-act="dwg.pgGo" data-d="1" aria-label="다음 장" data-tip="다음 장"><svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg></button></span>':'')+'</span>'
-      +(DW.pages.length?'<span class="dw-tools">'+segZoom+'</span>':'')
-    +'</div>'
-    +(DW.pages.length?'<div class="dw-view" id="dwView">'+dwPagesHTML(false)+'</div>'
-      :'<div class="dw-empty"><svg class="icn" aria-hidden="true"><use href="#i-frame"></use></svg>'
-       +'<p>DWG 파일을 열면 도면틀마다 한 장으로 나눠<br>미리보기와 인쇄를 할 수 있습니다.</p></div>')
-    +'</div></div>'
-    +'<input type="file" id="dwgFile" accept=".dwg" hidden>'
-    +'<input type="file" id="dwgRefFile" accept=".dwg" multiple hidden>';
-  dwZoom();
-}
-function dwZoom(){
-  const v=$('#dwView');if(!v)return;
-  v.classList.toggle('z1',DW.zoom==='w1'||DW.zoom==='free');
-  v.classList.toggle('zg',DW.zoom==='wg');
-  if(!DW.pages.length||!dwOn().length)return;
-  const [mw,mh]=dwPaperMM(),W=mw*96/25.4,H=mh*96/25.4;
-  const cw=v.clientWidth-24-2,ch=v.clientHeight-24-4;
-  let z;
-  if(DW.zoom==='free')z=DW.pz||1;
-  else if(DW.zoom==='w1')z=Math.min(1,cw/W);
-  else if(DW.zoom==='w2')z=dwOn().length<2?Math.min(cw/W,ch/H):Math.min((cw-24)/2/W,ch/H);
-  else if(DW.zoom==='wf')z=Math.min(cw/W,ch/H);
-  else z=Math.min((cw-3*10)/4/W,.3);
-  z=Math.max(.05,Math.min(4,z));DW.pz=z;
-  v.style.setProperty('--dz',z.toFixed(3));
-  v.classList.remove('vc');if(v.scrollHeight<=v.clientHeight+1)v.classList.add('vc');
-  dwSbSync();dwPgIndi();
-}
-/* 미리보기 세로 막대 — 사진대지와 같은 dwSb(늘 보이고 잡아끌 수 있다) */
-function dwSbSync(){dwSb($('#dwView'),'dw-sb');}
-const PG_DW={v:'#dwView',t:'#dwPgt',pw:'.dw-pw',bs:'#dwgRoot .dw-pgn button',gap:12,st:()=>DW};
-function dwPgIndi(){pgIndi(PG_DW);}
-function dwPgGo(d){pgGo(PG_DW,d);}
-document.addEventListener('scroll',e=>{if(e.target&&e.target.id==='dwView'){dwPgIndi();dwSbSync();}},true);
-let _dwRT=0;
-window.addEventListener('resize',()=>{if(S.view!=='dwg')return;clearTimeout(_dwRT);_dwRT=setTimeout(dwZoom,260);});
-document.addEventListener('wheel',e=>{
-  if(!(e.ctrlKey||e.metaKey)||!e.target.closest||!e.target.closest('#dwView'))return;
-  e.preventDefault();
-  const v=$('#dwView'),r=v.getBoundingClientRect(),before=DW.pz||1;
-  const px=(v.scrollLeft+e.clientX-r.left)/before,py=(v.scrollTop+e.clientY-r.top)/before;
-  DW.zoom='free';DW.pz=Math.max(.05,Math.min(4,before*Math.pow(1.0015,-e.deltaY)));dwZoom();
-  v.scrollTo({left:px*DW.pz-(e.clientX-r.left),top:py*DW.pz-(e.clientY-r.top),behavior:'instant'});
-},{passive:false});
-/* ── 인쇄 — 사진대지와 같은 방식(#dwPrint 를 붙이고 @page 를 뒤에 끼운다) ── */
-function dwPrintMount(){
-  dwPrintUnmount();
-  const list=dwOn();if(!list.length)return false;
-  const box=document.createElement('div');box.id='dwPrint';
-  const [mw,mh]=dwPaperMM();
-  box.innerHTML=list.map(pg=>'<div class="dw-page" style="width:'+mw+'mm;height:'+mh+'mm">'+dwPageSVG(pg,true)+'</div>').join('');
-  document.body.appendChild(box);
-  const st=document.createElement('style');st.id='dwPageCss';
-  st.textContent='@media print{@page{size:'+mw+'mm '+mh+'mm;margin:0}#dwPrint .dw-page{width:'+mw+'mm;height:'+(mh-.5)+'mm}}';
-  document.head.appendChild(st);
-  document.body.classList.add('dw-printing');
-  return true;
-}
-function dwPrintUnmount(){
-  const b=$('#dwPrint');if(b)b.remove();
-  const s=$('#dwPageCss');if(s)s.remove();
-  document.body.classList.remove('dw-printing');
-}
-function dwPrint(){
-  if(!dwPrintMount()){toast('인쇄할 장이 없습니다');return;}
-  let done=false;
-  const fin=()=>{if(done)return;done=true;window.removeEventListener('afterprint',fin);dwPrintUnmount();};
-  window.addEventListener('afterprint',fin);
-  window.print();
-  setTimeout(()=>{if(!done)fin();},60000);
-}
-let _dwAuto=false;
-window.addEventListener('beforeprint',()=>{if(S.view==='dwg'&&!document.body.classList.contains('dw-printing')&&dwPrintMount())_dwAuto=true;});
-window.addEventListener('afterprint',()=>{if(_dwAuto){_dwAuto=false;dwPrintUnmount();}});
-document.addEventListener('change',e=>{
-  const t=e.target;if(!t)return;
-  if(t.id==='dwgFile'){const f=(t.files||[])[0];t.value='';if(f)dwOpen(f);return;}
-  if(t.id==='dwgRefFile'){const fs=t.files;t.value='';dwAddRefs(fs);return;}
-  if(t.dataset&&t.dataset.act==='dwg.toggle'&&t.closest('#dwgRoot')){dwToggle(Number(t.dataset.i),t.checked);return;}
-  if(t.dataset&&t.dataset.act==='dwg.layer'&&t.closest('#dwgRoot')){   /* 레이어 켜고 끄기 — 모든 장을 다시 그린다 */
-    const i=Number(t.dataset.i);if(t.checked)DW.lhide.delete(i);else DW.lhide.add(i);DW._svg=new WeakMap();
-    const v=$('#dwView'),st=v?v.scrollTop:0;rDwg();const v2=$('#dwView');if(v2)v2.scrollTo({top:st,behavior:'instant'});
-  }
-});
-Object.assign(ACT,{
-  'dwg.file':()=>{const i=$('#dwgFile');if(i)i.click();},
-  'dwg.refFile':()=>{const i=$('#dwgRefFile');if(i)i.click();},
-  'dwg.reset':()=>{DW.polys=[];DW.texts=[];DW.styles=[];DW.ext=null;DW.pages=[];DW.off=new Set();DW.name='';DW.stat=null;DW.err='';DW.page=1;DW.buf=null;DW.refs=[];DW._before=null;DW._core=null;DW.layers=[];DW.lhide=new Set();DW._svg=new WeakMap();rDwg();},   /* 참조 파일·원본 버퍼도 비운다 — 안 비우면 초기화 뒤 참조 추가가 옛 도면을 되살린다 */
-  'dwg.mode':el=>{if(DW.mode===el.dataset.m)return;DW.mode=el.dataset.m;dwSplit();rDwg();
-    toast(DW.pages.length+'장 ('+(DW.used==='틀'?'도면틀 기준':DW.used==='덩어리'?'오브젝트 기준':'전체 1장')+')');},
-  'dwg.paper':el=>{if((DW.paper||'a3')===el.dataset.p)return;DW.paper=el.dataset.p;rDwg();},
-  'dwg.orient':el=>{if(DW.orient===el.dataset.o)return;DW.orient=el.dataset.o;rDwg();},
-  'dwg.lw':el=>{const on=el.dataset.w==='on';if(DW.lw===on)return;DW.lw=on;DW._svg=new WeakMap();rDwg();},
-  'dwg.all':el=>{const on=el.dataset.v==='1';DW.off=on?new Set():new Set(DW.pages.map((p,i)=>i));rDwg();},
-  'dwg.cancel':()=>dwCancel(''),
-  'dwg.layerAll':()=>{DW.lhide=new Set();DW._svg=new WeakMap();rDwg();},
-  'dwg.layer':()=>{},   /* change 위임이 처리한다 */
-  'dwg.zoom':el=>{if(DW.zoom===el.dataset.z)return;const keep=DW.page;DW.zoom=el.dataset.z;rDwg();DW.page=keep;dwPgGo(0);},
-  'dwg.pgGo':el=>dwPgGo(Number(el.dataset.d)),
-  'dwg.toggle':()=>{},   /* change 위임이 처리한다 */
-});
 
 /* 「오늘」은 지금 달이 아닐 때만 제목 옆에 나타나는 칩이다.
    연월 팝업 맨 위 「오늘로」와 단축키 T 도 같은 곳으로 간다 */
@@ -15310,7 +14841,7 @@ function mtabDateFit(t){
 }
 function mtabSync(){
   const bar=$('#mtab');if(!bar)return;
-  const cur=S.view==='calendar'?'calendar':S.view==='tasks'?'tasks':S.view==='defect'?'defect':/^(d60|photo|qc|dwg|redo|prod)$/.test(S.view)?'tools':'';
+  const cur=S.view==='calendar'?'calendar':S.view==='tasks'?'tasks':S.view==='defect'?'defect':/^(d60|photo|qc|redo|prod)$/.test(S.view)?'tools':'';
   mtabMark(cur);
   const d=$('#mtab .mtab-d');if(d){const n=String(Number(todayStr().slice(8,10)));
     if(d.textContent!==n)d.textContent=n;
@@ -15402,7 +14933,7 @@ function mssClose(){const s=$('#mss'),sc=$('#mssScrim');
   const m=$('#mtab .mtab-m');if(m)m.classList.remove('on');if(sc){sc.classList.remove('on');sc.classList.remove('tools');}
   mtabSync();}
 /* 하단 탭 「업무 도구」 — 바로 가지 않고 시트에서 고른다(현장 시트와 같은 부품) */
-const MTOOLS=[['d60','i-ckboard','D+60 점검'],['photo','i-photo','사진대지 작성'],['qc','i-calc','견적 검토'],['dwg','i-frame','도면 인쇄'],['redo','i-redo','재하자 추적'],['prod','i-prod','생산성 검토']];
+const MTOOLS=[['d60','i-ckboard','D+60 점검'],['photo','i-photo','사진대지 작성'],['qc','i-calc','견적 검토'],['redo','i-redo','재하자 추적'],['prod','i-prod','생산성 검토']];
 function mtoolsOpen(){
   const box=$('#mss');if(!box)return;
   box.innerHTML=MSS_GRAB+'<div class="mss-sc"><div class="mss-h">업무 도구</div>'+MTOOLS.map(([v,ic,l])=>'<div class="mss-i'+(S.view===v?' act':'')+'" data-act="mtab.tool" data-v="'+v+'"><svg class="icn" aria-hidden="true"><use href="#'+ic+'"></use></svg>'+l+'</div>').join('')+'</div>';

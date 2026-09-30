@@ -38,8 +38,6 @@ app.js                         모든 로직
 database.rules.json            RTDB 보안 규칙 — 필드 추가 시 반드시 함께 수정
 build-single.mjs               단일 HTML 빌드
 vendor/                        FullCalendar · Chart.js(+datalabels) · xlsx · Firebase SDK · DOMPurify · marked · lz-string · Pretendard (자체 호스팅)
-vendor/libredwg/               DWG 읽기 엔진(GNU LibreDWG → WebAssembly, GPL-3.0) + 전용 워커 dwg-worker.js
-                               ⚠ 용량이 10MB 다. 배포에서 빠지면 「도면 인쇄」가 파일을 못 연다
 scripts/test/static-audit.mjs  배포 전 정적 검사
 scripts/test/smoke.mjs         브라우저 스모크
 widget-lite/                   바탕화면 위젯 (Tauri · WebView2)
