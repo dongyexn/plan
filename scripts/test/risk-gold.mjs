@@ -18,9 +18,9 @@ const ok=(m,c)=>{console.log((c?'ok    ':'FAIL  ')+m);if(!c)fail++;};
 ok(`예문 ${rows.length}건 완전일치 ${(acc*100).toFixed(0)}% (${exact}/${rows.length})`,acc>=0.9);miss.forEach(m=>console.log('      · '+m));
 ok(`감지요소 정밀도 ${(prec*100).toFixed(0)}% · 재현율 ${(rec*100).toFixed(0)}%`,prec>=0.9&&rec>=0.9);
 /* 고위험 규칙: 중대 1개 → 고위험, 소프트(장기방치)만 → 주의 */
-const lv=await pg.evaluate(()=>[riskLevel(['안전위험'],1,0).level,riskLevel(['안전위험'],1,2).level,riskLevel(['처리지연·장기방치'],1,0).level,riskLevel(['응대·소통불만','생활불편','책임·형평성불만'],1,0).level,riskLevel(['응대·소통불만','생활불편','책임·형평성불만'],1,1).level,riskLevel(['응대·소통불만','처리지연·장기방치','생활불편'],1,0).level,riskLevel([],3,0).level,riskLevel([],4,0).level,riskLevel(['안전위험','보상요구'],1,0).level,riskLevel(['법적·외부확산'],1,0).level,riskLevel(['법적·외부확산'],1,1).level,riskLevel(['안전위험','보상요구','감정격화·위협표현'],1,0).level,riskLevel(['법적·외부확산'],1,1,0,3).level,riskLevel(['법적·외부확산','처리지연·장기방치'],4,1,0,7).level]);
+const lv=await pg.evaluate(()=>[riskLevel(['안전위험'],1,0).level,riskLevel(['안전위험'],1,2).level,riskLevel(['처리지연·장기방치'],1,0).level,riskLevel(['응대·소통불만','생활불편','책임·형평성불만'],1,0).level,riskLevel(['응대·소통불만','생활불편','책임·형평성불만'],1,1).level,riskLevel(['응대·소통불만','처리지연·장기방치','생활불편'],1,0).level,riskLevel([],3,0).level,riskLevel([],4,0).level,riskLevel([],5,0).level,riskLevel(['안전위험','보상요구'],1,0).level,riskLevel(['법적·외부확산'],1,0).level,riskLevel(['법적·외부확산'],1,1).level,riskLevel(['안전위험','보상요구','감정격화·위협표현'],1,0).level,riskLevel(['법적·외부확산'],1,1,0,3).level,riskLevel(['법적·외부확산','처리지연·장기방치'],4,1,0,7).level]);
 /* 734차: 긴급 = ★중대 2개 이상, 또는 법적·외부확산/외부확산 + 미처리 잔여(HANDOFF §민원 현황 규칙). 종전 「심각 + 미처리」 승격은 심각을 비우고 긴급으로 쏠리게 했다 */
-ok('5단계 — 긴급 = 중대3 · 외부/법적+미처리 · 장기방치만→주의 · 비중대3→심각 · 물리3→주의 · 물리4→경계',JSON.stringify(lv)==='["심각","심각","주의","심각","심각","경계","주의","경계","심각","심각","긴급","긴급","심각","긴급"]');   /* 745차: 외부+미처리는 점수 7 이상일 때만 긴급 */
+ok('5단계 — 긴급 = 중대3 · 외부/법적+미처리 · 장기방치만→주의 · 비중대3→심각 · 물리3→양호 · 물리4→주의(1063) · 누수·균열→경계(1064)',JSON.stringify(lv)==='["심각","심각","주의","심각","심각","경계","양호","주의","경계","심각","심각","긴급","긴급","심각","긴급"]');   /* 745차: 외부+미처리는 점수 7 이상일 때만 긴급 */
 /* 오탐 5종 */
 const fp5=await pg.evaluate(()=>['거실 스피커 방송 안들림','회장대 도배 불량','걷고 발디딜때마다 가라앉을까 무서울만큼요','101호와 같은 현상으로 민원','[소송미참여세대] 침1 전등스위치 작동불량','세면대 하부장 스크래치 / 자재발주'].map(t=>riskDetect(t).factors));
 ok('오탐 5종 — 방송·회장대·고발/발디딜·직원 민원 메모·소송 태그·자재발주',fp5[0].length===0&&fp5[1].length===0&&!fp5[2].includes('법적·외부확산')&&fp5[3].length===0&&fp5[4].length===0&&fp5[5].length===0);
@@ -45,6 +45,10 @@ const hh=await pg.evaluate(()=>{const rows=[
   {building:'101',unit:'101',receiptNo:'2',receiptContent:'연락이 없음',defectType:'오염',trade:'도배',space:'거실',status:'미처리',delayDays:5,receiptDate:'2026-08-01'}];
   const h=riskHH(rows).list[0];return [h.level,h.delay,h.maxDelay,h.sc];});
 ok('옛 완료건 400일은 이력(maxDelay)로만 — 현재 미처리 5일 세대는 경계(응대 1개), 점수 1',JSON.stringify(hh)==='["경계",5,400,1]');
+/* 1063: 물리는 미처리 건만 — 고친 파손 + 미처리 흠집 세대는 양호, 미처리 누수만 있는 세대는 주의(경계 아님) */
+const ph=await pg.evaluate(()=>{const R=(no,ty,st)=>({building:'103',unit:'303',receiptNo:no,receiptContent:'보수 요청',defectType:ty,trade:'설비',space:'욕실',status:st,delayDays:3,receiptDate:'2026-08-01'});
+  const a=riskHH([R('1','누수','처리'),R('2','흠집','미처리')]).list[0],b=riskHH([R('3','파손','미처리')]).list[0],c=riskHH([R('4','균열','미처리')]).list[0];return [a.level,a.types.length,b.level,c.level];});
+ok('물리는 미처리 건만 — 고친 누수+흠집 → 양호(칩 2개) · 미처리 파손 → 주의 · 미처리 균열 → 경계(1064)',JSON.stringify(ph)==='["양호",2,"주의","경계"]');
 const au=await pg.evaluate(()=>{const rows=[];for(let i=0;i<8;i++)rows.push({building:'102',unit:'202',receiptNo:String(i),receiptContent:'문의',defectType:'파손',trade:'가구',space:'주방',status:i<6?'처리':'미처리',delayDays:i<6?10:70,receiptDate:'2026-01-0'+(i+1)});
   const h=riskHH(rows).list[0];return h.evid.filter(e=>e.auto).map(e=>e.f[0]+':'+e.t);});
 ok('자동 요소 근거 — 반복(8건)·반복하자(주방/파손 8건)·장기방치(미처리 최장 70일)',JSON.stringify(au)==='["반복하자·반복민원:세대 접수 8건(8건 이상)","반복하자·반복민원:주방 / 파손 8건 반복","처리지연·장기방치:현재 미처리 최장 70일(60일 이상)"]');
