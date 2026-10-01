@@ -49,7 +49,15 @@ ok('옛 완료건 400일은 이력(maxDelay)로만 — 현재 미처리 5일 세
 const ph=await pg.evaluate(()=>{const R=(no,ty,st)=>({building:'103',unit:'303',receiptNo:no,receiptContent:'보수 요청',defectType:ty,trade:'설비',space:'욕실',status:st,delayDays:3,receiptDate:'2026-08-01'});
   const a=riskHH([R('1','누수','처리'),R('2','흠집','미처리')]).list[0],b=riskHH([R('3','파손','미처리')]).list[0],c=riskHH([R('4','균열','미처리')]).list[0];return [a.level,a.types.length,b.level,c.level];});
 ok('물리는 미처리 건만 — 고친 누수+흠집 → 양호(칩 2개) · 미처리 파손 → 주의 · 미처리 균열 → 경계(1064)',JSON.stringify(ph)==='["양호",2,"주의","경계"]');
-const au=await pg.evaluate(()=>{const rows=[];for(let i=0;i<8;i++)rows.push({building:'102',unit:'202',receiptNo:String(i),receiptContent:'문의',defectType:'파손',trade:'가구',space:'주방',status:i<6?'처리':'미처리',delayDays:i<6?10:70,receiptDate:'2026-01-0'+(i+1)});
+/* 1065: 문구 요소는 미처리 + 최근 183일 접수만 · 같은 유형은 처리 뒤 재접수만 · 화재감지기·마감재 탈락·조명 꺼짐·발코니는 안전위험 아님 */
+const rc=await pg.evaluate(()=>{const R=(no,c,st,rd,cd,ty,sp)=>({building:'104',unit:'404',receiptNo:no,receiptContent:c,defectType:ty||'오염',trade:'도배',space:sp||'거실',status:st,delayDays:3,receiptDate:rd,completionDate:cd||''});
+  const a=riskHH([R('1','보상을 요구합니다','처리','2025-01-05','2025-01-20'),R('2','보수 요청','미처리','2026-08-01','','흠집','안방')]).list[0];
+  const b=riskHH([R('3','보상을 요구합니다','처리','2026-06-01','2026-06-10'),R('4','보수 요청','미처리','2026-08-01','','흠집','안방')]).list[0];
+  const c=riskHH([R('5','흠집','처리','2026-03-01','2026-03-05','흠집','주방'),R('6','흠집','미처리','2026-03-01','','흠집','주방'),R('7','오염','미처리','2026-03-01','','오염','안방')]).list[0];
+  const d=['화재감지기 주변 크랙','발코니 몰딩 탈락','침1 천장 조명 켜졌다가 잠시후 꺼짐','콘센트 흔들림','실리콘 탈락 바닥','문 손잡이 뻑뻑 (9/29독촉.9/29 평일 가능)','주방 하단장 실리콘 처리안됨','본 접수건 종결처리 후 재접수'].map(t=>riskDetect(t).factors.length);
+  return [a.level,b.level,c.factors.length,d.join('')];});
+ok('최근·처리 후 재접수·오탐 7종(1065) — 2025 보상 문구는 양호 · 최근 보상은 심각 · 같은 날 흠집 2건은 반복 아님 · 오탐 0',JSON.stringify(rc)==='["양호","심각",0,"00000000"]');
+const au=await pg.evaluate(()=>{const rows=[];for(let i=0;i<8;i++)rows.push({building:'102',unit:'202',receiptNo:String(i),receiptContent:'문의',defectType:'파손',trade:'가구',space:'주방',status:i<6?'처리':'미처리',delayDays:i<6?10:70,receiptDate:'2026-01-0'+(i+1),completionDate:i<6?'2026-01-0'+(i+1):''});
   const h=riskHH(rows).list[0];return h.evid.filter(e=>e.auto).map(e=>e.f[0]+':'+e.t);});
-ok('자동 요소 근거 — 반복(8건)·반복하자(주방/파손 8건)·장기방치(미처리 최장 70일)',JSON.stringify(au)==='["반복하자·반복민원:세대 접수 8건(8건 이상)","반복하자·반복민원:주방 / 파손 8건 반복","처리지연·장기방치:현재 미처리 최장 70일(60일 이상)"]');
+ok('자동 요소 근거 — 반복(8건 · 현장 상위 5%)·반복하자(주방/파손 처리 후 재접수 7건)·장기방치(미처리 최장 70일)',JSON.stringify(au)==='["반복하자·반복민원:세대 접수 8건(현장 상위 5% · 8건 이상)","반복하자·반복민원:주방 / 파손 처리 후 재접수 7건","처리지연·장기방치:현재 미처리 최장 70일(60일 이상)"]');
 await br.close();srv.close();console.log(fail?'RISK FAIL '+fail:'RISK ALL PASS');process.exit(fail?1:0);
