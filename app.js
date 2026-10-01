@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1061';
+const APP_VER='1064';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -4725,12 +4725,13 @@ const RISK_RULES={
   },
   phys:{4:/누수|침수|역류|균열|크랙|파손|개폐|작동불량|미점등|감전|화재|탈락/,3:/들뜸|고정불량|틈새|단차|구배|수압/,2:/코킹|줄눈|바탕면|수직|수평|시공불량/,1:/흠집|오염|변색|주름|랩핑|기스|스크래치/},
   physTradeBoost:/방화문|창호|전기|설비|스프링클러|콘크리트/,
+  physHigh:/누수|균열|크랙/,   /* 1064(사용자): 누수·균열은 하자유형만으로도 경계 — riskPhys 가 5 를 돌려준다(그 밖의 물리4 는 주의) */
   /* 접수 데이터로 자동 붙이는 요소: 지연 60일+ → 장기방치(180일+·365일+ 는 점수 가산, 365일+ 는 등급 승격) / 세대 접수 N건+ → 반복민원 / 같은 공간·유형 M건+ → 보수품질·반복하자 */
   longDelayDays:60,delay180:180,delay365:365,autoRepeatN:8,autoRepeatN2:5,autoRepeatOpen:2,autoSameDefectN:2,
   urgentMinScore:7,   /* 「외부·법적 + 미처리」 경로의 긴급은 점수 7 이상일 때만 */   /* 90일 가중 없음, 180일 +1 · 365일 +2, 등급 승격은 365일 */
   /* 최종 민원 점수 — 태그 개수 대신 하나의 수(등급 안 정렬·우선순위). 상한 12 */
   score:{crit:3,hard:1,soft:1,d180:1,d365:2,phys4:2,phys3:1,cap:12},
-  levelNames:['','양호','주의','경계','심각'],
+  levelNames:['','양호','주의','경계','심각','누수·균열'],
 };
 
 function riskSegs(text){return String(text||'').replace(RISK_RULES.tags,' ').split(/\s*(?:\/\/|\/|\|| - |■|▶)\s*/).map(x=>x.trim()).filter(Boolean);}
@@ -4774,13 +4775,15 @@ function riskAuditCSV(sid){
   return out.length-1;
 }
 function riskPhys(dtype,trade){
+  if(RISK_RULES.physHigh.test(String(dtype||'')))return 5;
   let lv=1;for(const k of [4,3,2,1]){if(RISK_RULES.phys[k].test(String(dtype||''))){lv=k;break;}}
   if(lv===3&&RISK_RULES.physTradeBoost.test(String(trade||'')))lv=4;
   return lv;
 }
 /* 한 척도 5단계 — 양호 · 주의 · 경계 · 심각 · 긴급(즉시 대응).
    긴급 = ★중대 3개+, 또는 법적·외부기관/외부확산 + 미처리 잔여 · 심각 = ★중대 1~2개 또는 비중대 3개+
-   경계 = 비중대 1~2개 또는 물리 심각(누수·균열·파손 등) · 주의 = 장기방치만 또는 물리 경계 · 양호 = 나머지 */
+   경계 = 비중대 1~2개 또는 미처리 누수·균열 · 주의 = 장기방치만 또는 물리 심각(파손·작동불량 등) · 양호 = 나머지.
+   1063: 하자유형(물리)만으로는 최대 주의 — 경계부터는 접수내용에서 요소가 잡혀야 한다(물리가 경계를 74% 채우고 주의를 비우던 것). 물리는 미처리 건만 본다(지연일과 같은 원칙) */
 const RISK_LEVELS=['양호','주의','경계','심각','긴급'];
 function riskScore(factors,phys,delay){
   const F=RISK_RULES.factors,W=RISK_RULES.score;let sc=0;
@@ -4806,7 +4809,7 @@ function riskLevel(factors,phys,open,delay,sc){
   else if(lv===3&&ext&&hasOpen&&(sc===undefined||sc>=RISK_RULES.urgentMinScore)){lv=4;why='외부·법적 + 미처리 잔여 · '+why;}
   /* 1년(365일) 이상 방치는 한 단계 올린다(심각까지) */
   if((delay||0)>=RISK_RULES.delay365&&lv>=1&&lv<3){lv++;why='1년 이상 방치 · '+why;}
-  const pl=phys>=4?2:phys>=3?1:0;   /* 물리 심각 → 경계, 물리 경계 → 주의 */
+  const pl=phys>=5?2:phys>=4?1:0;   /* 누수·균열 → 경계(1064) · 그 밖의 물리 심각 → 주의(1063) · 물리 경계 이하는 올리지 않는다 */
   if(pl>lv){lv=pl;why=(why?why+' · ':'')+'물리 '+RISK_RULES.levelNames[phys];}
   return {lv,disp:RISK_LEVELS[lv],level:RISK_LEVELS[lv],why};
 }
@@ -4821,7 +4824,7 @@ function riskHH(items){
     const key=bu+'-'+un;let h=map.get(key);
     if(!h){h={bu,un,n:0,phys:1,factors:new Set(),evid:[],no:'',maxDelay:0,openDelay:0,open:0,types:new Map()};map.set(key,h);}
     h.n++;if(!h.no)h.no=String(r.receiptNo||'');
-    const pl=riskPhys(r.defectType,r.trade);h.phys=Math.max(h.phys,pl);
+    const pl=riskPhys(r.defectType,r.trade);if(r.status!=='처리')h.phys=Math.max(h.phys,pl);   /* 1063: 등급·점수의 물리는 미처리 건만 — 고친 옛 파손이 세대를 붙잡지 않게. 하자유형 칩은 전부 */
     {const t=String(r.defectType||'').trim();if(t){const cur=h.types.get(t)||{lv:pl,n:0};cur.n++;h.types.set(t,cur);}}   /* 하자유형 칩 */
     const d=riskDetect(r.receiptContent);
     d.factors.forEach(f=>h.factors.add(f));
@@ -5523,13 +5526,13 @@ function dfOrgToDashTeams(){
      · insightsHTML: dfInsightsBuild 가 문자열로 만든다(원본은 #d-insight DOM 캡처) · vac: calapp RTDB 리프에서 금월 → 전월 순으로 읽어 싣는다(이월)
      · fb2SeedPlansAnalysis 생략(처리계획·분석의견은 리프에 실시간으로 쓴다) · 미래 게시월 정리는 confirm ── */
 /* ═══ 게시 단계 목록 · 결과 카드 ═══
-   단계는 실제 순서대로 다섯 개. ⚠ 게시본은 FB.db.ref().update(upd) 한 번으로 쓴다 — 실패하면 아무것도 안 바뀐다(실패 문구가 여기에 기댄다).
+   단계는 실제 순서대로 다섯 개. ⚠ 1062부터 게시본은 현장씩 나눠 쓰고 대시보드·게시 기록을 맨 끝에 쓴다 — 중간 실패면 앞 현장만 바뀐다(실패 문구가 DFPUB.wrote 에 기댄다).
    결과 카드는 [결과 닫기] 또는 다음 업로드까지 남는다(세션 메모리) */
 const DFP_STEPS=[['src','원본 확인'],['keep','직전 게시본 확인'],['agg','집계'],['write','게시본 쓰기'],['stale','뒤 게시월 확인']];
 let DFPUB=null;
 let DF_LAST_PUB='';   /* 최신 게시월(reportIndex 최댓값) — 게시 카드가 채운다. 실패 문구 「팀 화면은 …그대로」용 */
 function dfpStart(rm){DFPUB={rm,state:'run',steps:{},cur:''};DFP_STEPS.forEach(([k])=>{DFPUB.steps[k]={st:'wait',sub:'',cnt:'',ms:null};});
-  const d={src:'이 PC 원본',keep:'원본 없는 현장의 유지값',agg:'대시보드 · 현장별 · 공종별 · 공가',write:'게시본 '+rm+' · 한 번에',stale:'기준월보다 뒤인 게시월이 있는지'};
+  const d={src:'이 PC 원본',keep:'원본 없는 현장의 유지값',agg:'대시보드 · 현장별 · 공종별 · 공가',write:'게시본 '+rm+' · 현장씩 나눠',stale:'기준월보다 뒤인 게시월이 있는지'};
   Object.keys(d).forEach(k=>{DFPUB.steps[k].sub=d[k];});rDfPub();}
 function dfpRun(k,sub,cnt){if(!DFPUB)return;const s=DFPUB.steps[k];s.st='run';s.t0=performance.now();if(sub!=null)s.sub=sub;s.cnt=cnt||'';DFPUB.cur=k;rDfPub();}
 function dfpCnt(k,cnt){if(!DFPUB)return;DFPUB.steps[k].cnt=cnt;rDfPub();}
@@ -5562,8 +5565,10 @@ function rDfPub(){
       +'<div class="pb-ok'+(r.warn?' warn':'')+'"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12.3 2.8 2.8L16 9.8"/></svg>'+esc(r.line)+'</div>';
     btns='<div class="pb-row"><button class="btn bg2" data-act="dfp.close">결과 닫기</button></div>';}
   else if(P.state==='fail'){
-    res='<div class="rs-sum bad"><b>게시하지 못했습니다 · 아무것도 바뀌지 않았습니다</b>게시본은 모든 현장을 한 번에 쓰므로 일부만 바뀌는 일은 없습니다.'
-      +(P.last?' 팀 화면은 '+esc(P.last)+' 게시본 그대로입니다.':'')+' 연결을 확인한 뒤 [다시 게시]를 눌러 주세요.</div>';
+    res=(P.wrote<0?'<div class="rs-sum bad"><b>게시본은 모두 썼습니다 · 마무리에서 멈췄습니다</b>팀 화면은 '+esc(P.rm)+' 기준으로 바뀌었습니다. 이 화면만 새로 고쳐 확인해 주세요.</div>'
+      :P.wrote>0
+      ?'<div class="rs-sum bad"><b>게시하지 못했습니다 · 현장 '+P.wrote+' / '+P.wroteN+'개만 새로 썼습니다</b>대시보드와 게시 기록은 쓰지 못해 그대로입니다. 연결을 확인한 뒤 [다시 게시]를 누르면 처음부터 다시 씁니다.</div>'
+      :'<div class="rs-sum bad"><b>게시하지 못했습니다 · 아무것도 바뀌지 않았습니다</b>'+(P.last?'팀 화면은 '+esc(P.last)+' 게시본 그대로입니다. ':'')+'연결을 확인한 뒤 [다시 게시]를 눌러 주세요.</div>');
     btns='<div class="pb-row"><button class="btn bg2" data-act="dfp.close">결과 닫기</button><button class="btn bp" data-act="dfp.publish">다시 게시</button></div>';}
   run.innerHTML='<div class="pb-h"><b>'+esc(P.rm)+' 게시</b>'+pill+'</div>'+res+'<div class="pb-st">'+rows+'</div>'+btns;   /* .pb-st 를 쓴다 — .st 는 하자 카드 제목(.st.cardttl)·견적/재하자 표 칸(td.st)과 겹친다 */
 }
@@ -5660,8 +5665,18 @@ async function dfPublish(){
     upd['reportIndex/'+rm]=Date.now();
     Object.keys(upd).forEach(function(p){upd[p]=deepEncKeys(upd[p]);}); // 중첩 맵 키(하자유형/공종/보수주체 등)에 '/'·'.' 등이 있으면 거부되므로 인코딩
     dfpOk('agg',_rows.length+'개 현장 · 대시보드 · 현장별 · 공종별 · 공가');
-    dfpRun('write','게시본 '+rm+' · '+_rows.length+'개 현장 한 번에');
-    await FB.db.ref().update(upd);
+    /* 1062: 한 번에 쓰면(실자료 수 MB) 소켓이 끊겼다 붙기를 되풀이하며 같은 쓰기를 처음부터 다시 보내 끝나지 않는다 —
+       현장씩 나눠 쓰고, 대시보드(_dash) → 게시 기록(_meta·reportIndex)을 맨 끝에 쓴다. 새 게시월은 색인이 마지막이라 다 쓰기 전엔 팀 화면에 안 뜬다 */
+    const _dk='report/'+rm+'/_dash',_mk='report/'+rm+'/_meta',_ik='reportIndex/'+rm;
+    const _sk=Object.keys(upd).filter(k=>k!==_dk&&k!==_mk&&k!==_ik);
+    const _mb=Object.keys(upd).reduce((a,k)=>a+JSON.stringify(upd[k]).length,0)/1048576;
+    DFPUB.wrote=0;DFPUB.wroteN=_sk.length;
+    dfpRun('write','게시본 '+rm+' · '+_rows.length+'개 현장 · '+_mb.toFixed(1)+'MB · 현장씩 나눠','현장 0 / '+_sk.length);
+    for(const k of _sk){await FB.db.ref().update({[k]:upd[k]});DFPUB.wrote++;dfpCnt('write','현장 '+DFPUB.wrote+' / '+_sk.length);}
+    dfpCnt('write','대시보드');
+    await FB.db.ref().update({[_dk]:upd[_dk]});
+    await FB.db.ref().update({[_mk]:upd[_mk],[_ik]:upd[_ik]});
+    DFPUB.wrote=-1;   /* 다 씀 — 이후 실패(뒤 게시월 확인)는 게시본과 무관 */
     dfpOk('write');
     /* 소비자 캐시 무효화 — 같은 화면에서 곧바로 새 게시본을 본다 */
     delete DF.cache[rm];
