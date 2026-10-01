@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1064';
+const APP_VER='1066';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -4689,10 +4689,10 @@ const RISK_RULES={
   tags:/\[?소송\s*미참여\s*세대\]?|소송현장\s*세대|\[탄성세대\]|\[?기접수건\]?/g,
   factors:{
     '안전위험':{crit:true,
-      rx:/다칠|다치|무섭|무서|화재|감전|추락|가라앉|붕괴|넘어[지질]|전도(?!율)/,
-      cond:/꺼[짐지집]|위험|불안|사고|삐그덕|디디|디딜|흔들|탈락|파편/,
-      ctx:/바닥|천장|발(?!주|송|생)|아이|아기|어린이|노인|다치|떨어|무너|기울|흔들|불안|위험|디디|디딜|가라앉|꺼[짐지집]|파편|깨|칼|뾰족/,
-      no:/위험\s*없|안전\s*확인|사고\s*없|이상\s*없|위험물/},
+      rx:/다칠|다치|무섭|무서|화재(?!\s*(감지|경보|수신|속보|표시|확인|대피))|감전|추락|가라앉|붕괴|넘어[지질]|전도(?!율)|난간\S{0,6}\s*흔들|(등기구|전등|조명|콘센트|감지기|분전반|차단기|스위치)[^/]{0,30}물\s*(떨어|흐르|흘러|샘|새)|물\s*(떨어|흐르|흘러|샘|새)\S*[^/]{0,20}(등기구|전등|조명|콘센트|분전반|차단기|스위치)/,   /* 1065: 화재감지기·경보기·수신기는 설비 이름 */
+      cond:/꺼[짐지집]|위험|불안|사고|삐그덕|디디|디딜|탈락|파편/,   /* 1065: 「흔들」 뺌 — 콘센트·서랍·보도블럭 흔들림이 안전위험으로 갔다(난간만 rx) */
+      ctx:/바닥|천장|발(?!주|송|생|코니)|아이|아기|어린이|노인|다치|떨어|무너|기울|흔들|불안|위험|디디|디딜|가라앉|꺼[짐지집]|파편|깨|칼|뾰족/,   /* 1065: 「발」이 발코니에 걸렸다 */
+      no:/위험\s*없|안전\s*확인|사고\s*없|이상\s*없|위험물|(실리콘|코킹|줄눈|몰딩|랩핑|시트|필름|도장|도배|스티커)\s*탈락|켜[졌지].*꺼[짐지졌]|꺼졌다\s*켜/},   /* 1065: 마감재 탈락·조명 켜졌다 꺼짐 */
     '보상요구':{crit:true,
       rx:/보상|배상|환불|손해배상|비용\s*청구|청구\s*하겠|청구하겠/,
       cond:/청구|비용|손실|손해|지급|정신적/,
@@ -4701,10 +4701,10 @@ const RISK_RULES={
     /* 법적·외부기관 + 외부확산 → 하나(★중대) */
     '법적·외부확산':{crit:true,rx:/소송|내용증명|국토부|하심위|하자\s*분쟁|분쟁조정|소비자원|국민신문고|본사(에|\s)|고발(?!디)|언론|투고|게시판|올리겠|커뮤니티|유튜브|인터넷|카페에|입주민.*공유|공론|(?<!안내)방송(?!\s*(안\s*들|설비|스피커))/,no:/고\s*발디|협력\s*업체|협력사|(업체|제조사|LG|삼성)\s*본사|스피커|안내방송|방송\s*안\s*들/},
     /* 처리지연·일정피해 + 장기방치 → 하나(soft: 단독이면 주의). 지연 60일+ 자동 태그도 여기 */
-    '처리지연·장기방치':{soft:true,rx:/재촉\s*반복|반복\s*재촉|입주\s*지연|일정\s*피해|지연\s*보상|(개월|달|주|년)째.*(안\s*됨|미처리|안됨|안\s*되|않)|(작년|재작년|지난해|오래\s*전)부터|수개월|계속\s*미처리|아직\s*(처리|조치|방문|보수)\s*(안|않|되지|못)|여태\s*(처리|조치|방문)|처리(가)?\s*안\s*(됨|되)|(방문|조치|처리)하지\s*않|(년|겨울|여름|봄|가을|월)부터.*(아직|여태|연락)|년\s*(다\s*)?됐|한달째|몇\s*달째|몇\s*개월째|아직도/},
+    '처리지연·장기방치':{soft:true,rx:/재촉\s*반복|반복\s*재촉|입주\s*지연|일정\s*피해|지연\s*보상|(개월|달|주|년)째.*(안\s*됨|미처리|안됨|안\s*되|않)|(작년|재작년|지난해|오래\s*전)부터|수개월|계속\s*미처리|아직\s*(처리|조치|방문|보수)\s*(안|않|되지|못)|여태\s*(처리|조치|방문)|(방문|조치|처리)하지\s*않|(년|겨울|여름|봄|가을|월)부터.*(아직|여태|연락)|년\s*(다\s*)?됐|한달째|몇\s*달째|몇\s*개월째|아직도/},
     /* 보수품질·반복하자 + 반복민원 → 하나(일반, 직원 메모에서도) */
     '반복하자·반복민원':{memoOk:true,
-      rx:/재하자|(?<!자)재발|재시공\s*(요구|요청)|여전히|미개선|[2-9]\s*번째\s*접수|[2-9]년차\s*재접수|이번에도|메꾸고\s*갔으나|처리\s*받고\s*싶다|보수(했으나|했지만|받았으나|를\s*받았으나|\s*이후에도|\s*후에도)|처리(했으나|했지만|\s*이후에도)|동일\s*(현상|부위|문제).*(반복|재발|발생)|재문의|재요청|다시\s*문의|다시\s*요청|재접수|여러\s*차례|여러\s*번|몇\s*번이나|몇\s*번을|지난번에도|이전에도|또\s*연락|계속\s*문의|계속\s*연락/},
+      rx:/재하자|(?<!자)재발|재시공\s*(요구|요청)|여전히|미개선|[2-9]\s*번째\s*접수|[2-9]년차\s*재접수|이번에도|메꾸고\s*갔으나|처리\s*받고\s*싶다|보수(했으나|했지만|받았으나|를\s*받았으나|\s*이후에도|\s*후에도)|처리(했으나|했지만|\s*이후에도)|동일\s*(현상|부위|문제).*(반복|재발|발생)|재문의|재요청|다시\s*문의|다시\s*요청|재접수\s*요청|여러\s*차례|여러\s*번|몇\s*번이나|몇\s*번을|지난번에도|이전에도|또\s*연락|계속\s*문의|계속\s*연락/},
     '응대·소통불만':{rx:/연락\s*(이\s*)?없|연락이없|연락\s*(요청|주세요|해라|하라|바람|바랍|달라|요망|부탁|줘)|회신\s*요청|회신요청|답변\s*(이\s*)?없|미루|기사\s*변경|담당\s*변경|연락안주|전화\s*(달라|주세요|요망|바람|해라|하라)|직접\s*(와서|방문|나와)|직접\s*확인\s*(해|하|바람|요청)|담당자\s*(대면|나와)/},   /* 「현대에서 직접 와서 봐라」「연락해라」 */
     '생활불편':{
       rx:/수면\s*장애|사용\s*불가|생활(에|\s*중).*(불편|지장|어려)|일상\s*생활|(지속|계속).*소음|소음.*(지속|계속|새벽)|처리불가(?!\s*안내)/,
@@ -4727,7 +4727,7 @@ const RISK_RULES={
   physTradeBoost:/방화문|창호|전기|설비|스프링클러|콘크리트/,
   physHigh:/누수|균열|크랙/,   /* 1064(사용자): 누수·균열은 하자유형만으로도 경계 — riskPhys 가 5 를 돌려준다(그 밖의 물리4 는 주의) */
   /* 접수 데이터로 자동 붙이는 요소: 지연 60일+ → 장기방치(180일+·365일+ 는 점수 가산, 365일+ 는 등급 승격) / 세대 접수 N건+ → 반복민원 / 같은 공간·유형 M건+ → 보수품질·반복하자 */
-  longDelayDays:60,delay180:180,delay365:365,autoRepeatN:8,autoRepeatN2:5,autoRepeatOpen:2,autoSameDefectN:2,
+  longDelayDays:60,delay180:180,delay365:365,autoRepeatN:8,autoRepeatN2:5,autoRepeatOpen:2,recentDays:183,
   urgentMinScore:7,   /* 「외부·법적 + 미처리」 경로의 긴급은 점수 7 이상일 때만 */   /* 90일 가중 없음, 180일 +1 · 365일 +2, 등급 승격은 365일 */
   /* 최종 민원 점수 — 태그 개수 대신 하나의 수(등급 안 정렬·우선순위). 상한 12 */
   score:{crit:3,hard:1,soft:1,d180:1,d365:2,phys4:2,phys3:1,cap:12},
@@ -4759,10 +4759,10 @@ function riskDetect(content,log){
     }
   }
   /* 여러 번 재촉(날짜 나열·독촉 2번+) → 반복민원 */
-  const txt=String(content||''),nd=(txt.match(/(^|[^\d])\d{1,2}\/\d{1,2}(?!\d)/g)||[]).length,nu=(txt.match(/독촉/g)||[]).length;
+  const txt=String(content||''),nd=new Set((txt.match(/(^|[^\d])\d{1,2}\/\d{1,2}(?!\d)/g)||[]).map(x=>x.replace(/^\D/,''))).size,nu=(txt.match(/독촉/g)||[]).length;
   /* 날짜 나열만으로는 안 잡는다 — 독촉·재촉·재문의·재연락·반복·다시 같은 행동어가 함께 있어야 */
-  const act=/독촉|재촉|재문의|재연락|반복|다시|또\s*연락|여러\s*번/.test(txt);
-  if(!hits['반복하자·반복민원']&&((nd>=2&&act)||nu>=2)){hits['반복하자·반복민원']=true;evid.push({f:'반복하자·반복민원',t:txt.slice(0,140),i:0});rec('반복하자·반복민원',nu>=2?'독촉 '+nu+'회':'날짜 '+nd+'회+행동어',txt,true,'재촉 횟수');}
+  const act=/독촉|재촉|재문의|재연락/.test(txt);   /* 1065: 「다시·반복」은 방문 일정 메모에도 흔해 뺐다 */
+  if(!hits['반복하자·반복민원']&&((nd>=3&&act)||nu>=2)){hits['반복하자·반복민원']=true;evid.push({f:'반복하자·반복민원',t:txt.slice(0,140),i:0});rec('반복하자·반복민원',nu>=2?'독촉 '+nu+'회':'날짜 '+nd+'회+행동어',txt,true,'재촉 횟수');}
   return {factors:Object.keys(hits),evid,log:log||null};
 }
 /* 판정 로그 CSV — 현장 원본 행 전부의 요소·검출어·원문·판정·사유. 콘솔에서 riskAuditCSV(sid) → 내려받기 */
@@ -4818,6 +4818,11 @@ function riskHH(items){
   const map=new Map();
   /* 「하자구분 = 세대」 접수만 다룬다(공용부·상가는 관리사무소 경로라 세대 민원 아님). 하자구분 열이 없는 자료면 전부 */
   const hasCls=(items||[]).some(r=>String(r.defectClass||'').trim());
+  /* 1065: 문구 요소는 미처리 건 + 최근 RISK_RULES.recentDays 일 접수만 — 몇 년 전 끝난 건의 문구가 세대를 붙잡지 않게.
+     기준일은 오늘이 아니라 자료의 가장 늦은 접수일(지난 달 게시·시험도 같은 결과) */
+  const D10=v=>{const t=String(v||'').slice(0,10);return /^\d{4}-\d{2}-\d{2}$/.test(t)?t:'';};
+  let ref='';for(const r of items||[]){const t=D10(r.receiptDate);if(t>ref)ref=t;}
+  const cut=ref?(()=>{const d=new Date(ref+'T00:00:00');d.setDate(d.getDate()-RISK_RULES.recentDays);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');})():'';
   for(const r of items||[]){
     if(hasCls&&String(r.defectClass||'').trim()!=='세대')continue;
     const bu=String(r.building||'').trim(),un=String(r.unit||'').trim();if(!bu&&!un)continue;
@@ -4826,24 +4831,29 @@ function riskHH(items){
     h.n++;if(!h.no)h.no=String(r.receiptNo||'');
     const pl=riskPhys(r.defectType,r.trade);if(r.status!=='처리')h.phys=Math.max(h.phys,pl);   /* 1063: 등급·점수의 물리는 미처리 건만 — 고친 옛 파손이 세대를 붙잡지 않게. 하자유형 칩은 전부 */
     {const t=String(r.defectType||'').trim();if(t){const cur=h.types.get(t)||{lv:pl,n:0};cur.n++;h.types.set(t,cur);}}   /* 하자유형 칩 */
-    const d=riskDetect(r.receiptContent);
+    const live=r.status!=='처리'||!cut||D10(r.receiptDate)>=cut;
+    const d=live?riskDetect(r.receiptContent):{factors:[]};
     d.factors.forEach(f=>h.factors.add(f));
     /* 근거는 접수건 단위 — 감지요소 + 접수일·공간·공종·하자유형·지연일 + 접수내용(마스킹·200자) */
     if(d.factors.length&&h.evid.length<6)h.evid.push({no:String(r.receiptNo||''),f:d.factors,d:String(r.receiptDate||'').slice(0,10),sp:String(r.space||''),tr:String(r.trade||''),ty:String(r.defectType||''),dl:Number(r.delayDays)||0,st:r.status==='처리'?'완료':'',t:maskPII(String(r.receiptContent||'').replace(/^\s*제목\s*[:：]\s*/,'')).slice(0,200)});   /* 게시본에 실리므로 마스킹 */
     const dl=Number(r.delayDays)||0;if(dl>h.maxDelay)h.maxDelay=dl;
     /* 등급·점수·장기방치 자동 태그는 현재 미처리 건의 지연일만 본다 — 끝난 옛 건이 새 민원을 방치 세대로 올리지 않게. maxDelay 는 이력용 */
     if(r.status!=='처리'){if(dl>h.openDelay)h.openDelay=dl;if(dl>=RISK_RULES.longDelayDays)h.factors.add('처리지연·장기방치');}
-    {const sk=String(r.space||'').trim()+'|'+String(r.defectType||'').trim();h.same=h.same||new Map();h.same.set(sk,(h.same.get(sk)||0)+1);}
+    {const sk=String(r.space||'').trim()+'|'+String(r.defectType||'').trim();h.same=h.same||new Map();const a=h.same.get(sk)||[];a.push({rd:D10(r.receiptDate),cd:r.status==='처리'?D10(r.completionDate):''});h.same.set(sk,a);}   /* 1065: 처리 뒤 재접수를 가리려고 날짜째 둔다 */
     if(r.status!=='처리')h.open++;   /* norm() 의 상태값은 '처리'/'미처리'('완료' 가 아니다) */
   }
   const cnt={양호:0,주의:0,경계:0,심각:0,긴급:0,total:map.size};const list=[];const fac={};
+  /* 1065: 「세대 접수 N건+」은 현장 안 상대 기준 — 신축은 세대당 8건이 평범해 거의 전 세대가 걸렸다. 상위 5% 접수 수 이상(최소 autoRepeatN) */
+  const ns=[...map.values()].map(h=>h.n).sort((a,b)=>a-b),nTop=Math.max(RISK_RULES.autoRepeatN,ns.length?ns[Math.min(ns.length-1,Math.ceil(ns.length*0.95)-1)]:0);
   for(const h of map.values()){
     /* 자동 요소 — 세대 접수 N건+ → 반복민원, 같은 공간·유형 M건+ → 보수품질·반복하자 */
     /* 자동 요소마다 산출 근거를 근거 표에 한 줄로(auto:true — 접수건 아님) */
     const autoEv=(f,why)=>{h.factors.add(f);h.evid.push({no:'',f:[f],d:'',sp:'',tr:'',ty:'',dl:0,st:'',t:why,auto:true});};
-    if(h.n>=RISK_RULES.autoRepeatN)autoEv('반복하자·반복민원','세대 접수 '+h.n+'건('+RISK_RULES.autoRepeatN+'건 이상)');
+    if(h.n>=nTop)autoEv('반복하자·반복민원','세대 접수 '+h.n+'건(현장 상위 5% · '+nTop+'건 이상)');
     else if(h.n>=RISK_RULES.autoRepeatN2&&h.open>=RISK_RULES.autoRepeatOpen)autoEv('반복하자·반복민원','세대 접수 '+h.n+'건 · 미처리 '+h.open+'건');   /* 8건+, 또는 5건+ 미처리 2건+ */
-    if(h.n>=3&&h.same){const top=[...h.same.entries()].filter(([k,v])=>v>=RISK_RULES.autoSameDefectN).sort((a,b)=>b[1]-a[1])[0];if(top)autoEv('반복하자·반복민원',top[0].replace('|',' / ')+' '+top[1]+'건 반복');}   /* 3건 이상 + 같은 공간·유형 반복 */
+    /* 1065: 같은 공간·유형이 처리 완료 뒤 다시 접수된 경우만(진짜 재하자) — 흠집 2건처럼 따로 적은 접수는 반복이 아니다 */
+    if(h.same){let top=null;for(const [k,a] of h.same){if(a.length<2)continue;let m=0;for(const x of a)if(x.rd&&a.some(y=>y.cd&&y!==x&&x.rd>y.cd))m++;if(m&&(!top||m>top[1]))top=[k,m];}
+      if(top)autoEv('반복하자·반복민원',top[0].replace('|',' / ')+' 처리 후 재접수 '+top[1]+'건');}
     if(h.factors.has('처리지연·장기방치')&&h.openDelay>=RISK_RULES.longDelayDays)h.evid.push({no:'',f:['처리지연·장기방치'],d:'',sp:'',tr:'',ty:'',dl:h.openDelay,st:'',t:'현재 미처리 최장 '+h.openDelay+'일('+RISK_RULES.longDelayDays+'일 이상)',auto:true});
     const FO=Object.keys(RISK_RULES.factors),F=RISK_RULES.factors;
     /* 감지요소는 중요한 순(★중대 → 일반 → 장기방치), 같은 급은 규칙 순 — 칩만 보고 등급 이유가 읽히게 */
@@ -6997,7 +7007,8 @@ function dfRiskMapHTML(all){
   const tip=h=>esc(hhN(h)+'\n'+h.level+' · '+(h.sc||0)+'점');
   const tipc=h=>' data-tipc="'+esc(C[h.level]||'')+'"';   /* 툴팁 둘째 줄(레벨) 글자색 */
   const key=x=>{const m=String(x).match(/\d+/);return m?Number(m[0]):9999;};
-  const blocks=[...by.values()].sort((a,b)=>key(a.bu)-key(b.bu)).map(b=>{
+  const grp=x=>/^\d/.test(String(x).trim())?0:1;   /* 1066(사용자): 숫자로 시작하는 동(101동)이 먼저 — 상가(s01동 등)는 뒤로 */
+  const blocks=[...by.values()].sort((a,b)=>grp(a.bu)-grp(b.bu)||key(a.bu)-key(b.bu)||String(a.bu).localeCompare(String(b.bu),'ko',{numeric:true})).map(b=>{
     const lns=Object.keys(b.top).map(Number).sort((x,y)=>x-y);const maxF=Math.max(...Object.values(b.top));
     let rows='';
     for(let f=maxF;f>=1;f--){
