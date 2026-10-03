@@ -50,7 +50,7 @@
   --ms:.12s;--mm:.2s;--ml:.3s;   /* 전환 시간 3단 — 빠름·보통·느림 */
   --ring:0 0 0 3px rgba(83,140,222,.35);   /* 키보드 포커스 링 */
   --s1:4px;--s2:8px;--s3:12px;--s4:16px;   /* 간격 격자 — 새 코드는 이 값만 쓴다 */
---pt:0px;--sw:240px;--swm:64px;--th:46px;--tr:var(--t-fast);--ct:rgba(60,60,67,.70);}
+--sw:240px;--swm:64px;--th:46px;--tr:var(--t-fast);--ct:rgba(60,60,67,.70);}
 :root{
   /* 개편 토큰 — 그림자 3 · 전환 3 · 모서리 3 (DESIGN-SPEC 1장) */
   --sh-1:0 1px 2px rgba(16,24,40,.06);
@@ -3490,7 +3490,7 @@ body.wid #mb .mo-x{top:15px;right:12px;}   /* 위젯 창 안쪽 여백 20 */
   /* 구르는 것은 시트가 아니라 안쪽 칸(.mss-sc) — 시트를 굴리면 스크롤 페이드(sb-fade-t)가 제목까지 흐린다 */
   /* 시트 = 캡슐 위에 뜬 유리 카드(양옆 12 · 캡슐 위 8), --glass · blur 20. 잡이 없음 — 닫기는 같은 칸 다시 누르기·바깥 누르기·끌어내리기 */
   #mss{position:fixed;left:12px;right:12px;bottom:calc(var(--mtab) + 8px + env(safe-area-inset-bottom));z-index:369;background:var(--glass);-webkit-backdrop-filter:blur(20px) saturate(1.8);backdrop-filter:blur(20px) saturate(1.8);
-    border:1px solid rgba(0,0,0,.06);border-radius:24px;box-shadow:0 16px 48px rgba(16,24,40,.22),0 1px 2px rgba(16,24,40,.08),inset 0 0 0 1px rgba(255,255,255,.7);padding:4px 8px 0;max-height:calc(100dvh - var(--pt) - var(--th) - 100px - env(safe-area-inset-bottom));overflow:hidden;display:flex;flex-direction:column;
+    border:1px solid rgba(0,0,0,.06);border-radius:24px;box-shadow:0 16px 48px rgba(16,24,40,.22),0 1px 2px rgba(16,24,40,.08),inset 0 0 0 1px rgba(255,255,255,.7);padding:4px 8px 0;max-height:calc(100dvh - var(--th) - 100px - env(safe-area-inset-bottom));overflow:hidden;display:flex;flex-direction:column;
     transform:translateY(calc(100% + 100px + env(safe-area-inset-bottom)));visibility:hidden;opacity:0;transition:transform .36s cubic-bezier(.32,.72,0,1),opacity .18s linear .1s,visibility 0s .36s;}   /* 닫기 — 업무 시트와 같은 감속 곡선. 뒤쪽 절반은 흐리며 — 떠 있는 탭 아래 틈으로 내려가는 시트 글자가 비쳐 보이지 않게 */
   #mss .mss-sc{flex:1 1 auto;min-height:0;overflow:auto;padding-bottom:8px;}   /* 카드가 캡슐 위에 떠서 탭 몫 여백이 필요 없다 */
   #mss .mss-h{font-size:15px;font-weight:700;color:var(--lbl);line-height:1.4;padding:20px 12px 8px;}   /* 제목 위아래 간격 — ⚠ body line-height:0 이라 줄 높이를 안 주면 padding 이 간격으로 안 먹는다 */
@@ -3511,7 +3511,7 @@ body.wid #mb .mo-x{top:15px;right:12px;}   /* 위젯 창 안쪽 여백 20 */
   /* ── 업무 일정: 달력을 화면 가득(캘린더 앱처럼), 일자 패널은 날짜를 누르면 올라오는 하단 시트 ── */
   /* ⚠ 위젯 창도 좁아 이 모바일 규칙에 걸린다 — 적용되면 달력이 창보다 넓어져 잘리므로 위젯은 전부 예외 */
   body:not(.wid) #view-calendar{margin:-9px -14px -14px;}         /* content 패딩 상쇄 — 풀블리드 */
-  body:not(.wid) #view-calendar .cal-wrap{height:calc(100dvh - var(--pt) - var(--th) - var(--mtab) - env(safe-area-inset-bottom));}   /* 하단 탭 몫 */
+  body:not(.wid) #view-calendar .cal-wrap{height:calc(100dvh - var(--th) - var(--mtab) - env(safe-area-inset-bottom));}   /* 하단 탭 몫 */
   body:not(.wid) #view-calendar .cal-card{min-width:0;box-shadow:none;}
   .cal-head{margin-bottom:6px;}
   .dp-col{position:fixed;left:0;right:0;bottom:calc(var(--mtab) + env(safe-area-inset-bottom));z-index:320;min-width:0;   /* 탭바 위 */
@@ -3522,12 +3522,12 @@ body.wid #mb .mo-x{top:15px;right:12px;}   /* 위젯 창 안쪽 여백 20 */
   .dp-col .card{box-shadow:0 -8px 32px rgba(0,0,0,.2);}
   /* 모바일 달력 = 미니달력 + 업무 패널. FullCalendar 는 숨긴다(업무 시트는 아래 mcal-full) */
   /* ⚠ .cal-wrap 바탕 규칙이 flex:1(basis 0)이라 height 가 무시된다 — mcalFit 실측 높이가 먹도록 폰에서는 높이가 이기게 둔다 */
-  body:not(.wid) #view-calendar .cal-wrap{display:flex;flex-direction:column;flex:0 0 auto;height:calc(100dvh - var(--pt) - var(--th) - var(--mtab) - env(safe-area-inset-bottom));}
+  body:not(.wid) #view-calendar .cal-wrap{display:flex;flex-direction:column;flex:0 0 auto;height:calc(100dvh - var(--th) - var(--mtab) - env(safe-area-inset-bottom));}
   body:not(.wid) #view-calendar .cal-card{flex:0 0 auto;height:auto;}
   /* 폰 세로 달력은 미니 달력 하나만(FullCalendar 숨김). mcal-full = 셀 큼(업무 막대) — 날짜를 누르면 업무 시트 */
   body:not(.wid) #view-calendar .cal-head{height:0;margin:0;overflow:visible;position:static;z-index:auto;}
   body:not(.wid) #view-calendar .cal-move{display:none;}
-  body.mcal-full:not(.wid) #view-calendar .cal-ctl{position:fixed;top:calc(var(--pt) + var(--th) / 2);right:54px;transform:translateY(-50%);z-index:101;}
+  body.mcal-full:not(.wid) #view-calendar .cal-ctl{position:fixed;top:calc(var(--th) / 2);right:54px;transform:translateY(-50%);z-index:101;}
   body:not(.wid) #view-calendar #fcal{display:none;}
   body:not(.wid) #view-calendar #calMini{display:block;}
 
@@ -3541,8 +3541,8 @@ body.wid #mb .mo-x{top:15px;right:12px;}   /* 위젯 창 안쪽 여백 20 */
     overflow:hidden;}   /* 높이 전환 없음 — 있으면 칸 높이가 바뀌는 동안 업무 시트가 칸을 잘못 잰다 */
   /* 5주 기본 · 6주 달만 6등분. --mch 는 언제나 5행 한 칸 높이((100dvh - th - 47 - 탭바)/5), 6행 달은 그 5/6.
      3장 트랙(앞·이·다음 달)의 격자 높이가 같아야 이달 격자가 늘어 아래 빈 줄이 생기지 않는다. app.js mcalFullH() 와 같은 식 */
-  body.mcal-full:not(.wid) #view-calendar .cal-mini .mc-d{height:var(--mch,calc((100dvh - var(--pt) - var(--th) - 47px - var(--mtab) - env(safe-area-inset-bottom)) / 5));overflow:visible;}   /* overflow: 머리 조각의 제목이 옆 칸으로 흐른다 — 큰 달력만 */
-  body.mcal-full:not(.wid) #view-calendar .cal-mini .mc-g[data-rows="6"] .mc-d{height:calc(var(--mch,calc((100dvh - var(--pt) - var(--th) - 47px - var(--mtab) - env(safe-area-inset-bottom)) / 5)) * 5 / 6);}
+  body.mcal-full:not(.wid) #view-calendar .cal-mini .mc-d{height:var(--mch,calc((100dvh - var(--th) - 47px - var(--mtab) - env(safe-area-inset-bottom)) / 5));overflow:visible;}   /* overflow: 머리 조각의 제목이 옆 칸으로 흐른다 — 큰 달력만 */
+  body.mcal-full:not(.wid) #view-calendar .cal-mini .mc-g[data-rows="6"] .mc-d{height:calc(var(--mch,calc((100dvh - var(--th) - 47px - var(--mtab) - env(safe-area-inset-bottom)) / 5)) * 5 / 6);}
   body:not(.wid) #view-calendar .cal-mini .mc-g[data-rows="5"] .mc-d:nth-child(n+36){display:none;}
   /* 숫자는 오른쪽 위(데스크톱과 동일) */
   body:not(.wid) #view-calendar .cal-mini .mc-d .n{align-self:auto;text-align:right;padding-right:3px;height:16px;line-height:16px;}
@@ -3739,7 +3739,7 @@ body.wid #mb .mo-x{top:15px;right:12px;}   /* 위젯 창 안쪽 여백 20 */
     background:var(--glass);-webkit-backdrop-filter:blur(20px) saturate(1.8);backdrop-filter:blur(20px) saturate(1.8);border:1px solid rgba(0,0,0,.06);border-radius:22px;box-shadow:0 16px 48px rgba(16,24,40,.22),0 1px 2px rgba(16,24,40,.08),inset 0 0 0 1px rgba(255,255,255,.7);padding:12px 12px 10px;}   /* 시트와 같은 유리 카드 */
   /* ── 폰에서는 도구띠(주차 ‹›·보류·찾기·필터)를 상단바로 올린다 — .cal-ctl 처럼 fixed, 카드는 없앤다.
      팝업(찾기 펼침·필터)은 도구띠 기준 absolute 라 상단바 아래로 떨어진다 */
-  body:not(.wid) #view-tasks .tkbar-wrap{top:calc(var(--pt) + var(--th) / 2);right:54px;left:auto;width:auto;height:auto;transform:translateY(-50%);z-index:101;   /* 달력 .cal-ctl 과 같은 자리 */
+  body:not(.wid) #view-tasks .tkbar-wrap{top:calc(var(--th) / 2);right:54px;left:auto;width:auto;height:auto;transform:translateY(-50%);z-index:101;   /* 달력 .cal-ctl 과 같은 자리 */
     margin:0;padding:0;border:0;background:transparent;border-radius:0;gap:4px;}
   body:not(.wid) #view-tasks .tkbar-wrap .mini-cal{display:none;}   /* ‹› 는 상단바 년월 버튼(월 그림)이 맡는다 */
   body:not(.wid) #view-tasks .tkbar-wrap .tkq-srch{display:none;}   /* 찾기는 전역(#appHdr) 하나만 */
@@ -5022,7 +5022,7 @@ td.d60-pc:hover{background:var(--fill)}
     transition:background-color .36s cubic-bezier(.32,.72,0,1),visibility 0s .36s;}
   body:not(.wid) #mo.open:has(>#mb:not(.mb-ask)){visibility:visible;background:rgba(0,0,0,.16);transition:background-color .5s cubic-bezier(.32,.72,0,1),visibility 0s;}
   body:not(.wid) #mb:not(.mb-ask){width:calc(100% - 24px);max-width:640px;margin:0 auto calc(var(--mtab) + 8px + env(safe-area-inset-bottom));border-radius:24px;opacity:1;
-    max-height:calc(100dvh - var(--pt) - var(--th) - var(--mtab) - 24px - env(safe-area-inset-bottom));
+    max-height:calc(100dvh - var(--th) - var(--mtab) - 24px - env(safe-area-inset-bottom));
     background:var(--glass);-webkit-backdrop-filter:blur(20px) saturate(1.8);backdrop-filter:blur(20px) saturate(1.8);border:1px solid rgba(0,0,0,.06);
     box-shadow:0 16px 48px rgba(16,24,40,.22),0 1px 2px rgba(16,24,40,.08),inset 0 0 0 1px rgba(255,255,255,.7);
     padding:26px 20px 20px;transform:translateY(calc(100% + 100px + env(safe-area-inset-bottom)));transition:transform .36s cubic-bezier(.32,.72,0,1);}
@@ -5078,11 +5078,11 @@ td.d60-pc:hover{background:var(--fill)}
   /* ⑫ 업무 현황 새 업무 — 아래 유리 시트(날짜 시트와 같은 곡선). 키보드가 뜨면 그 위(--kbh) */
   body:not(.wid) #tko{opacity:1;visibility:hidden;background:transparent;transition:background-color .36s cubic-bezier(.32,.72,0,1),visibility 0s .36s;}   /* 판 전체를 흐리면 시트도 같이 사라진다 — 어둠만 색으로 풀고 시트는 미끄러져 내려간다 */
   body:not(.wid) #tko.open{visibility:visible;background:rgba(0,0,0,.16);transition:background-color .36s cubic-bezier(.32,.72,0,1),visibility 0s;}
-  body:not(.wid) #tkoCard.sheet{position:fixed;left:12px;right:12px;top:auto;width:auto;bottom:calc(var(--mtab) + 8px + env(safe-area-inset-bottom));max-height:calc(100dvh - var(--pt) - var(--th) - var(--mtab) - 40px);overflow:auto;overscroll-behavior:contain;
+  body:not(.wid) #tkoCard.sheet{position:fixed;left:12px;right:12px;top:auto;width:auto;bottom:calc(var(--mtab) + 8px + env(safe-area-inset-bottom));max-height:calc(100dvh - var(--th) - var(--mtab) - 40px);overflow:auto;overscroll-behavior:contain;
     background:var(--glass);-webkit-backdrop-filter:blur(20px) saturate(1.8);backdrop-filter:blur(20px) saturate(1.8);border:1px solid rgba(0,0,0,.06);border-radius:24px;box-shadow:0 16px 48px rgba(16,24,40,.22),0 1px 2px rgba(16,24,40,.08),inset 0 0 0 1px rgba(255,255,255,.7);padding:0 4px 4px;
     opacity:1;transform:translateY(calc(100% + 100px + env(safe-area-inset-bottom)));transition:transform .36s cubic-bezier(.32,.72,0,1),bottom .25s cubic-bezier(.22,.61,.36,1);}
   body:not(.wid) #tko.open #tkoCard.sheet{transform:none;transition:transform .5s cubic-bezier(.32,.72,0,1),bottom .25s cubic-bezier(.22,.61,.36,1);}
-  body.kbv:not(.wid) #tkoCard.sheet{bottom:calc(var(--kbh,0px) + 8px);max-height:calc(100dvh - var(--kbh,0px) - var(--pt) - var(--th) - 24px);}
+  body.kbv:not(.wid) #tkoCard.sheet{bottom:calc(var(--kbh,0px) + 8px);max-height:calc(100dvh - var(--kbh,0px) - var(--th) - 24px);}
   body:not(.wid) #tkoCard.sheet .tk-new{background:transparent;border:0;box-shadow:none;}
   .tko-grab{display:none;}
   body:not(.wid) #tkoCard.sheet .tko-grab{display:block;position:relative;width:100%;height:16px;padding:0;margin:0;border:0;background:none;cursor:pointer;}
@@ -5256,14 +5256,12 @@ body.wid .tb-pop.tsel-pop,body.wid .msel-pop{border-radius:14px;}
 body.wid.glass{--mv-flash:#8FB4FF;}
 .mv-roll{display:inline-grid;overflow:hidden;vertical-align:top;height:1lh;}
 .mv-roll>span{grid-area:1/1;}
-/* 1074 iOS 홈 화면 앱(html.ios-pwa) — 상태 표시줄 아래 iOS 흐림 띠(~38pt, 끌 수 없음) 몫만큼 앱을 내린다. 띠 자리는 body 의 셸 색이 채운다 */
-@media(max-width:960px) and (orientation:portrait){html.ios-pwa{--pt:34px;}}
+/* 1078 iOS 홈 화면 앱(html.ios-pwa) — iOS 26 은 상단 가장자리에 고정(fixed·sticky)·불투명 배경 상자가 없으면 상태 표시줄 아래 ~40pt 를 흐린다(Liquid Glass scroll edge).
+   WebKit 은 맨 위를 짚어 그 조상 중 fixed 상자를 찾아 그 배경색으로 칠하고 흐림을 끈다 — 앱 틀(#app)을 fixed + 셸색 배경으로 둔다. 여백을 더하지 않는다 */
 @media(max-width:960px){
-  html.ios-pwa body:not(.wid) #app{padding-top:var(--pt);}
-  html.ios-pwa body:not(.wid) #appHdr{top:var(--pt);}
-  html.ios-pwa body:not(.wid) .nq-panel{padding-top:calc(env(safe-area-inset-top) + var(--pt));}
+  html.ios-pwa body:not(.wid) #app{position:fixed;inset:0;height:auto;background:var(--shell);}
   /* 폰 찾기 — 머리를 앱 상단바와 같은 짙은 띠로. 열릴 때 상단이 흰색으로 번쩍이지 않는다 */
-  body:not(.wid) .nq-panel{background:linear-gradient(var(--shell),var(--shell)) top/100% calc(env(safe-area-inset-top) + var(--pt)) no-repeat,var(--bg2);}
+  body:not(.wid) .nq-panel{background:linear-gradient(var(--bg2),var(--bg2)) bottom/100% calc(100% - env(safe-area-inset-top) - var(--th)) no-repeat,var(--shell);}   /* 배경색은 셸색(맨 위 fixed 판 — iOS 상단 색이 흰색이 되지 않게), 머리 아래만 흰 면 */
   body:not(.wid) .nq-panel .nq-hd{height:var(--th);align-items:center;padding:0 10px 0 16px;background:var(--shell);border-bottom:0;}
   body:not(.wid) .nq-panel .nq-tt{color:var(--shell-txt);}
   body:not(.wid) .nq-panel .nq-cl{color:var(--shell-icon);}
@@ -5743,5 +5741,5 @@ body.wid.glass{--mv-flash:#8FB4FF;}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1077"></script>
+<script src="./app.js?v=1078"></script>
 </body></html>
