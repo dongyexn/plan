@@ -20,7 +20,7 @@
     showFail();
   }, true);
 
-  /* 1074 iOS 홈 화면 앱 — iOS 26 이 상태 표시줄 아래 ~38pt 를 흐리게 덮는다(끌 수 없음). html.ios-pwa 로 머리를 그 아래로 내린다(index.html --pt) */
+  /* 1078 iOS 홈 화면 앱 — iOS 26 이 상태 표시줄 아래를 흐리게 덮는다. html.ios-pwa 면 index.html 이 앱 틀(#app)을 fixed·셸색으로 둬 WebKit 이 흐림 대신 그 색을 쓰게 한다 */
   if (navigator.standalone === true) document.documentElement.classList.add('ios-pwa');
   var q = location.search;
   /* 로그인 배경화면 — head 에서 먼저 받기 시작하고, 다 받으면 html.lgbg 로 서서히 드러낸다. 위젯·로컬 모드는 쓰지 않는다 */
