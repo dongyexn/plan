@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1074';
+const APP_VER='1077';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -2102,7 +2102,6 @@ function calInit(){
     eventOrder:'-duration,ord,oky,start,allDay,cre,pid',
     /* 인라인으로만 줄 수 있는 값 — 직접 고른 그라디언트(--gb) */
     eventDidMount:info=>{const x=info.event.extendedProps||{};if(x.gb)info.el.style.setProperty('--gb',x.gb);
-      else if(/^#[0-9a-f]{3,8}$/i.test(String(info.event.backgroundColor||'')))info.el.style.setProperty('--ec',info.event.backgroundColor);   /* 위젯 파스텔(1067) — 단색 막대만(.pz 는 classNames 에서 — FC 가 다시 칠할 때 class 를 덮어쓴다) */
       calLandMount(info);},
     headerToolbar:false,height:'100%',dayMaxEvents:maxEvOf(),
     moreLinkContent:a=>(isMob()&&!WIDGET&&document.body.classList.contains('mcal-full'))?'+'+a.num:'외 '+a.num+'건 ›',   /* 폰 큰 달력은 「+N」 */   /* 우측 정렬 미니 — 조용하게 오른쪽 끝에 */
@@ -2266,7 +2265,7 @@ function planEvent(p,date){
     textColor:team?'':(isLightBg(planColor(p))?'#1B1B1F':'#fff'),
     /* ⚠ display 를 지정하지 않으면 시간 있는 업무를 FC 가 점 형식(배경 없는 어두운 글자)으로 그려 유리 배경에서 안 보인다 — 전부 색 막대로 */
     display:'block',
-    classNames:(done?['done']:[]).concat((!team&&isLightBg(planColor(p)))?['on-light']:[]).concat(team?['team']:[]).concat((!team&&/^#[0-9a-f]{3,8}$/i.test(String(planColor(p))))?['pz']:[]).concat(isRisk(p.kind)?['risk']:[]).concat(isRainbow(planColor(p))?['ev-rb']:[]).concat(isFlow(planColor(p))?['ev-fx']:[]).concat(isGrad(planColor(p))?(gcParse(planColor(p))?['ev-gd']:['ev-gd','ev-g-'+gradBase(planColor(p)).slice(5)]):[]),   /* 담당자/공통 무지개 렌더링 경로 통일 · 흐름은 ev-fx 가 켠다 */
+    classNames:(done?['done']:[]).concat((!team&&isLightBg(planColor(p)))?['on-light']:[]).concat(team?['team']:[]).concat(isRisk(p.kind)?['risk']:[]).concat(isRainbow(planColor(p))?['ev-rb']:[]).concat(isFlow(planColor(p))?['ev-fx']:[]).concat(isGrad(planColor(p))?(gcParse(planColor(p))?['ev-gd']:['ev-gd','ev-g-'+gradBase(planColor(p)).slice(5)]):[]),   /* 담당자/공통 무지개 렌더링 경로 통일 · 흐름은 ev-fx 가 켠다 */
     /* 칸 안 차례 — 공통(0) · 내 업무(1) · 팀장(2) · 나머지(3).
        '외 N건'으로 접힐 때 나와 상관 있는 것이 먼저 남는다(eventOrder 참조) */
     extendedProps:{pid:p.id,occ:date,tp:fmtSpan(p)?fmtSpan(p).length+1:0,recur:!!(p.recur&&p.recur.f),ord:evOrd(p,team),oky:evOwnKey(p),cre:Number(p.createdAt)||0,
@@ -2382,7 +2381,7 @@ function mcalEvs(from,to){
     let en=ev.end?addDays(String(ev.end).slice(0,10),-1):st;if(en<st)en=st;   /* FullCalendar end 는 배타(다음 날) */
     const cn=ev.classNames||[],team=cn.indexOf('team')>=0;
     const raw=team?ev.borderColor:ev.backgroundColor;
-    return{k:String(ev.id||''),st,en,c:colBg(raw||'var(--lbl3)'),done:cn.indexOf('done')>=0,team,light:cn.indexOf('on-light')>=0,risk:cn.indexOf('risk')>=0,pz:cn.indexOf('pz')>=0,ec:cn.indexOf('pz')>=0?String(raw):'',t:String(ev.title||'').slice((ev.extendedProps&&ev.extendedProps.tp)||0)};   /* 폰 막대는 좁아 시간 글자를 뺀다 (v1072) */
+    return{k:String(ev.id||''),st,en,c:colBg(raw||'var(--lbl3)'),done:cn.indexOf('done')>=0,team,light:cn.indexOf('on-light')>=0,risk:cn.indexOf('risk')>=0,t:String(ev.title||'').slice((ev.extendedProps&&ev.extendedProps.tp)||0)};   /* 폰 막대는 좁아 시간 글자를 뺀다 (v1072) */
   });
 }
 /* 한 칸 막대 수 — 셀 높이(mcalFullH)에서 여백 5·숫자 줄 16·막대 위 2 를 뺀 값(H-23)을 피치 17(15+틈 2)로 나눈다(+2 는 마지막 틈). 넘치면 마지막 줄을 「+N」.
@@ -2424,7 +2423,7 @@ function mcalPane(y,m,evs){
                폭 = n×100% + (4n−4)px — 칸 좌우 여백 2px 씩(칸 간격 100%+4px, 머리 왼쪽·꼬리 오른쪽 여백 2px 뺌). ⚠ `.mc-d` padding 과 짝 */
             const isG=/gradient\(/.test(String(e.c)),grad=isG&&(!o.head||o.n>1);
             const bg=(grad&&!o.head)?'background:transparent':('background:'+esc(e.c)+(grad?';width:calc('+o.n+'*100% + '+(4*o.n-4)+'px);position:relative;z-index:1;border-radius:3px':''));
-            return '<i class="mc-bar'+(e.done?' dn':'')+(e.team?' tm':'')+(e.light?' lt':'')+(e.risk?' rk':'')+(o.s?' s':'')+(o.en?' e':'')+(grad?' gw':'')+(e.pz?' pz':'')+'" data-k="'+esc(e.k||'')+'" style="'+bg+(e.pz?';--ec:'+esc(e.ec):'')+'">'
+            return '<i class="mc-bar'+(e.done?' dn':'')+(e.team?' tm':'')+(e.light?' lt':'')+(e.risk?' rk':'')+(o.s?' s':'')+(o.en?' e':'')+(grad?' gw':'')+'" data-k="'+esc(e.k||'')+'" style="'+bg+'">'
               +((o.head||e.team)?'<b'+((o.head&&o.n>1&&!grad)?' style="width:calc('+o.n+'*100% - '+(2*o.n+2)+'px)"':'')+'>'+(o.head?esc(e.t):'')+'</b>':'')+'</i>';}).join('')
           +(over?'<i class="mc-more">+'+(ln.filter(Boolean).length-show)+'</i>':'')+'</span>';};
   for(let i=0;i<lead;i++){const ds=addDays(gridStart,i);cells+='<div class="mc-d out"><span class="n">'+(prevDays-lead+i+1)+'</span>'+bars(lanes[ds]||[],ds)+'</div>';}
@@ -3102,7 +3101,7 @@ const PE_IC=(()=>{const I=d=>'<svg class="pci" viewBox="0 0 24 24" aria-hidden="
   pin:I('<path d="M12 21s-6.5-5.7-6.5-11a6.5 6.5 0 0 1 13 0c0 5.3-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/>'),
   clk:I('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>'),
   rep:I('<path d="M16.5 3.5l3 3-3 3"/><path d="M4.5 11.5v-1a4 4 0 0 1 4-4h11"/><path d="M7.5 20.5l-3-3 3-3"/><path d="M19.5 12.5v1a4 4 0 0 1-4 4h-11"/>'),
-  lnk:I('<path d="M9.5 14.5l5-5"/><path d="M11 6.5l1.6-1.6a4 4 0 0 1 5.7 5.7L16.7 12.2"/><path d="M13 17.5l-1.6 1.6a4 4 0 0 1-5.7-5.7L7.3 11.8"/>'),
+  lnk:I('<g transform="rotate(-45 12 12)"><path d="M9 16H7.5a4 4 0 0 1 0-8H9"/><path d="M15 8h1.5a4 4 0 0 1 0 8H15"/><path d="M8.5 12h7"/></g>'),
   kind:I('<path d="M3.5 12.3V4.5a1 1 0 0 1 1-1h7.8l8.2 8.2a1 1 0 0 1 0 1.4l-7.4 7.4a1 1 0 0 1-1.4 0z"/><circle cx="8.2" cy="8.2" r="1.4"/>')};})();
 const peMD=x=>{if(!x)return '';const t=toDate(x);return (t.getMonth()+1)+'/'+t.getDate();};
 /* 칩 글자 = 입력값, 비었으면 자리 글자(옅은 색 · .ph).
@@ -3146,6 +3145,22 @@ document.addEventListener('change',e=>{const el=e.target;if(!el.classList||!el.c
   if(v===null){el.value=el.dataset.ok||'';toast('시간을 읽지 못했습니다 · 예: 930 · 14:30 · 오후 3시');}
   else{el.value=v;el.dataset.ok=v;}
   const f=el.closest('.pe-f2');if(f)peChipPaint(f);},true);   /* 캡처 — 폼의 자동 저장(change)보다 먼저 값을 바로잡는다 */
+/* 1076 시간 칸 폭 = 글자 폭 — 고정 폭(3.4em)이면 칩 오른쪽이 비어 다른 칩과 안쪽 정렬이 어긋났다.
+   폰(16px — iOS 입력 확대 방지)은 칩 글자 크기로 줄여 보인다(scale) — 확대 판단은 계산된 16px 그대로 */
+let _tinCv=null;
+function peTinFit(inp){
+  if(!inp||!inp.isConnected)return;
+  const cs=getComputedStyle(inp),fs=parseFloat(cs.fontSize)||13,ch=inp.parentElement?parseFloat(getComputedStyle(inp.parentElement).fontSize)||fs:fs;
+  _tinCv=_tinCv||document.createElement('canvas');const g=_tinCv.getContext('2d');g.font=cs.fontWeight+' '+cs.fontSize+' '+cs.fontFamily;
+  const w=Math.ceil(g.measureText(inp.value||inp.placeholder||'').width)+2,k=Math.min(1,ch/fs);
+  inp.style.width=w+'px';
+  if(k<1){inp.style.transform='scale('+k+')';inp.style.transformOrigin='left center';inp.style.marginRight=(-w*(1-k)).toFixed(1)+'px';}
+  else{inp.style.transform='';inp.style.marginRight='';}
+}
+document.addEventListener('input',e=>{if(e.target.classList&&e.target.classList.contains('pe-tin'))peTinFit(e.target);},true);
+new MutationObserver(ms=>{for(const m of ms)for(const n of m.addedNodes){if(n.nodeType!==1)continue;
+  if(n.matches&&n.matches('input.pe-tin'))peTinFit(n);else if(n.querySelector){const l=n.querySelectorAll('input.pe-tin');for(const i of l)peTinFit(i);}}})
+  .observe(document.documentElement,{childList:true,subtree:true});
 function peChipPaint(root){
   const val=id=>{const el=id&&root.querySelector('#'+id);return el?String(el.value||'').trim():'';};
   const s0=root.querySelector('[data-pk="date"]'),start=s0?val(s0.dataset.pc):'',swap=!root.matches('#dpEdit');
@@ -3153,6 +3168,7 @@ function peChipPaint(root){
     const [t,ph]=peChipTxt(el.dataset.pk,val(el.dataset.pc),start,swap);
     const tx=el.querySelector('.pc-t');if(tx)tx.textContent=t||ph;
     el.classList.toggle('ph',!t);});
+  root.querySelectorAll('input.pe-tin').forEach(peTinFit);   /* 값을 코드로 바꾼 뒤(바로잡기 등) 폭을 다시 맞춘다 */
 }
 /* 그리기 전 HTML 에 칩 글자를 채워 돌려준다 */
 function peChipFill(html){const tmp=document.createElement('div');tmp.innerHTML=html;tmp.querySelectorAll('.pe-f2').forEach(peChipPaint);return tmp.innerHTML;}
@@ -11949,8 +11965,6 @@ document.addEventListener('change',e=>{
 });
 document.addEventListener('click',e=>{
 
-  const bb=e.target.closest('#wgBar [data-bard]');
-  if(bb){const c=widCfgLoad(),ids=WID_BARS.map(f=>f[0]);const cur=Math.max(0,ids.indexOf(c.bar||'base'));c.bar=ids[(cur+Number(bb.dataset.bard)+ids.length)%ids.length];widCfgSave(c);widApply();return;}
   const fb=e.target.closest('#wgFont [data-fontd]');
   if(fb){
     const c=widCfgLoad(),ids=WID_FONTS.map(f=>f[0]);
@@ -12112,7 +12126,6 @@ const LAYERS=[
   {n:'ym',open:()=>!!ymPopEl(),close:closeYMPop,on:'cap',keep:'#ymPop,.cal-title,.tbt-ym',eat:'now'},   /* 여는 버튼(폰 상단바 .tbt-ym 포함)은 토글이 처리 */
   {n:'wgSet',open:()=>{const w=$('#wgSet');return !!(w&&w.classList.contains('on'));},
     close:()=>{const w=$('#wgSet');if(w){w.classList.remove('on');w.setAttribute('aria-hidden','true');}},on:'down',keep:'#wgSet,[data-act="wid.set"]'},
-  {n:'calSet',open:()=>{const p=$('#calSet');return !!(p&&p.classList.contains('on'));},close:()=>{const p=$('#calSet');if(p)p.classList.remove('on');const b=$('#calSetBtn');if(b)b.setAttribute('aria-expanded','false');},on:'down',keep:'#calSet,#calSetBtn',eat:'next'},
   {n:'filt',open:()=>{const c=$('#calFilt');return !!(c&&c.classList.contains('on'));},close:calFiltClose,on:'down',
     keep:'#calFilt,#calFiltWrap [data-act="day.fmore"]',eat:'next'},   /* 안쪽은 팝업·필터 단추만(#calFiltWrap 전체가 아님 — 위젯 찾기와 두 팝업이 겹치지 않게) */
   {n:'team',open:()=>{const p=$('#teamPop');return !!(p&&p.classList.contains('on'));},
@@ -12297,11 +12310,6 @@ const WID_KEY='calapp.wid';
 /* 위젯 글꼴 — 윈도우에 늘 있는 것만. 돋움은 작은 크기 비트맵이 있어 더 또렷할 수 있다.
    ⚠ 맑은 고딕의 라틴·숫자는 Segoe UI 계열 — '윈도우 기본'(win) 스택은 'Segoe UI' 를 먼저 둔다 */
 const WID_FONTS=[['app','기본'],['win','윈도우 기본'],['dotum','돋움']];
-const WID_BARS=[['base','기본'],['pastel','소프트']];   /* 1071: 화면 이름 「소프트」(저장값 키는 pastel 그대로 — 기존 설정 유지) */   /* 1067 바 컬러(1068 이름) — 파스텔 = 담당자 색의 옅은 면 + 시작 칸 왼쪽 띠(공통 업무 테두리 막대는 그대로) */
-/* 1072 앱(데스크톱·폰) 바 컬러 — 위젯 설정과 따로 저장(이 브라우저). 값은 WID_BARS 와 같은 키 */
-const APP_BAR_KEY='calapp.bar';
-function appBarGet(){try{return localStorage.getItem(APP_BAR_KEY)==='pastel'?'pastel':'base';}catch(e){return 'base';}}
-function appBarApply(){if(WIDGET)return;const b=appBarGet();document.body.classList.toggle('bar-pastel',b==='pastel');const v=$('#calBarV');if(v)v.textContent=(WID_BARS.find(f=>f[0]===b)||WID_BARS[0])[1];}
 /* 옛 저장값 → 지금 값. ⚠ 지우지 말 것 — PC 마다 localStorage 에 옛 값('sys'·'malgun'·'gulim')이 남아 있다.
    없으면 조용히 '기본'으로 떨어진다 */
 const WID_FONT_OLD={sys:'win',malgun:'win',gulim:'win'};
@@ -12354,8 +12362,6 @@ function widApply(){
   const tr=$('#wgT');if(tr)tr.value=Math.round(tint*100);
   const tl=$('#wgTV');if(tl)tl.textContent=Math.round(tint*100)+'%';
   const fv=$('#wgFontV');if(fv)fv.textContent=(WID_FONTS.find(f=>f[0]===font)||WID_FONTS[0])[1];
-  const bar=c.bar==='pastel'?'pastel':'base';document.body.classList.toggle('bar-pastel',bar==='pastel');
-  const bv=$('#wgBarV');if(bv)bv.textContent=(WID_BARS.find(f=>f[0]===bar)||WID_BARS[0])[1];
   const db=$('#wgDbl');if(db)db.checked=!!c.dbl;
   widApplyDbl();
 }
@@ -15218,8 +15224,6 @@ Object.assign(ACT,{
       if(S.view==='tasks')rTasks();else go('tasks');mtabSync();return;}
   },
   'mtab.tool':el=>{mssClose();go(el.dataset.v);},
-  'cal.set':el=>{const p=$('#calSet');if(!p)return;const on=!p.classList.contains('on');p.classList.toggle('on',on);if(el&&el.setAttribute)el.setAttribute('aria-expanded',on?'true':'false');if(on){calFiltClose();appBarApply();}},   /* 1072 앱 달력 설정 */
-  'cal.bar':el=>{const ids=WID_BARS.map(f=>f[0]),c=appBarGet(),i=Math.max(0,ids.indexOf(c));const nx=ids[(i+Number(el.dataset.d)+ids.length)%ids.length];try{localStorage.setItem(APP_BAR_KEY,nx);}catch(e){}appBarApply();},
   'mds.close':()=>mdsClose(),   /* 업무 시트 잡이 */
   'mtab.menu':()=>{if($('#mo').classList.contains('open'))closeModal();{const q=$('.nq-panel.on');if(q)nqOpen(false);}const box=$('#mss'),open=!!(box&&box.classList.contains('on')&&box.classList.contains('menu'));mssClose();if(!open){mdsClose();mmenuOpen();}},   /* 다시 누르면 닫는다 · 열 땐 업무 시트를 먼저 내린다(겹침, v1072) */
   'mmenu.go':el=>{mssClose();go(el.dataset.view);},
@@ -16224,7 +16228,7 @@ function rAll(){rDay();rTasks();rOrg();rCfg();rFilter();rTeamSel();refetchCal();
 (function boot(){
   if(WIDGET)document.body.classList.add('wid');
   if(WIDGET&&GLASS)document.body.classList.add('glass');
-  if(WIDGET)widApply();else appBarApply();
+  if(WIDGET)widApply();
   filtLoad();          /* 지난번에 고른 필터를 되살린다(계정별·이 브라우저) */
   LocalStore.init();
   /* 달력 라이브러리를 못 받았어도 로그인·다른 화면은 뜨게 한다 */
