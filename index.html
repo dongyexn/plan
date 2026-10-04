@@ -670,7 +670,7 @@ body.wid.glass #fcal .fc-daygrid-more-link{color:rgba(255,255,255,.85);backgroun
 
 .day-panel{padding:0;overflow:hidden;display:flex;flex-direction:column;flex:1;}
 /* date·time 은 브라우저 기본 위젯이라 같은 padding 이어도 선택창보다 높다 — 높이를 직접 맞춘다 */
-.inp-sm[type="date"],.inp-sm[type="time"]{height:31px;padding-top:0;padding-bottom:0;}
+.inp-sm[type="date"]{height:31px;padding-top:0;padding-bottom:0;}
 /* 날짜 머리 — 목록 카드 안에 한 줄로 */
 .dp-body{padding:12px 16px 16px 16px;display:flex;flex-direction:column;gap:8px;flex:1;min-height:0;overflow-y:auto;}
 .dp-empty{font-size:13px;color:var(--lbl3);text-align:center;padding:22px 0 14px;}
@@ -1636,7 +1636,13 @@ body :is(.dp-empty,.tk-empty,.nq-empty,.rec-none,.dfnone,.d60-empty,.set-empty,.
 .plan-c{flex:1;min-width:0;cursor:pointer;}
 .plan-t{font-size:13px;font-weight:700;color:var(--lbl);word-break:break-all;}
 /* 위젯도 카드를 누르면 편집 — 펼칠 내용 없는 카드의 cursor:default 는 걷었다 */
-.plan.done .plan-t{color:var(--lbl3);text-decoration:line-through;text-decoration-color:rgba(120,120,128,.6);}   /* 끝낸 일은 긋고 흐리게 */
+.plan.done .plan-t{color:var(--lbl3);}   /* 끝낸 일은 긋고 흐리게 */
+.plan.done .plan-t .ptx{background:linear-gradient(rgba(120,120,128,.6),rgba(120,120,128,.6)) 0 58%/100% 1.5px no-repeat;-webkit-box-decoration-break:clone;box-decoration-break:clone;}   /* 1082: 취소선을 배경 선으로 — 그어지는 움직임을 줄 수 있게(여러 줄도 줄마다) */
+.plan.stk .plan-t .ptx{animation:ptx-strike .34s var(--mv-ease) .14s backwards;}   /* 방금 완료 — 체크가 그려진 뒤 왼쪽부터 */
+.plan.stk .stx .stx-in{animation:stx-pop .26s cubic-bezier(.34,1.56,.64,1);}
+.plan.stk .stx .stx-done .cf{animation:stx-fill .22s ease-out;transform-origin:50% 50%;}
+.plan.stk .stx .stx-done .ck{stroke-dasharray:14;animation:stx-draw .28s .1s ease-out backwards;}
+@keyframes ptx-strike{from{background-size:0 1.5px;}}
 .plan-meta{display:flex;align-items:center;gap:6px;margin-top:2px;font-size:12px;color:var(--lbl2);font-weight:500;line-height:1.45;min-width:0;}
 .pm-l{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .pm-k{flex:0 0 auto;font-size:10.5px;font-weight:700;line-height:16px;padding:0 5px;border-radius:3px;background:rgba(120,120,128,.14);color:var(--lbl2);}   /* 구분 칩(출장·회의·기타) */
@@ -1749,6 +1755,13 @@ body.wid.glass .cal-title,body.wid.glass .cal-title .y{color:#fff;}
 .msel-o,.msel-all{width:100%;display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;
   font-size:13px;font-weight:500;color:var(--lbl);text-align:left;}
 .msel-o:hover,.msel-all:hover{background:var(--fill);}
+.msel-o.kb{background:var(--b-tint);box-shadow:inset 0 0 0 1px var(--b300);}   /* 1082 글자로 찾은 항목 */
+.msel-ta{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;left:0;top:0;border:0;padding:0;}
+/* 1082 당겨서 새로고침 고리(홈 화면 앱 폰) */
+#ptr{position:fixed;left:50%;top:calc(var(--th) - 30px);z-index:399;width:36px;height:36px;border-radius:50%;background:var(--bg2);box-shadow:0 4px 14px rgba(0,0,0,.16);display:flex;align-items:center;justify-content:center;opacity:0;transform:translate(-50%,0);pointer-events:none;}
+#ptr svg{width:20px;height:20px;fill:none;stroke:var(--lbl3);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;}
+#ptr.ready svg{stroke:var(--bt1);}
+#ptr.spin svg{stroke:var(--bt1);animation:uprogspin .7s linear infinite;}
 .msel-all{font-weight:700;color:var(--lbl2);margin-bottom:2px;}
 .msel-k{width:15px;height:15px;flex:0 0 auto;border:1px solid var(--sepo);border-radius:3px;
   display:flex;align-items:center;justify-content:center;color:transparent;background:var(--bg2);}
@@ -2097,7 +2110,8 @@ body.pickmode #tkRoot .tk-item,body.pickmode .day-panel .plan{user-select:none;}
    여백·음수 여백은 다른 칸과 같은 값이어야 글자 위치가 같다 */
 /* 기간 달력 — 날짜 칸을 누르면 뜬다 */
 .date-wrap{position:relative;overflow:visible;}
-.rc-pop{animation:popSc var(--mv-fast) var(--mv-pop);transform-origin:top left;position:fixed;z-index:1200;width:232px;padding:10px;text-align:left;
+.rc-pop:not(.rc-re){animation:popSc var(--mv-fast) var(--mv-pop);}
+.rc-pop{transform-origin:top left;position:fixed;z-index:1200;width:232px;padding:10px;text-align:left;
   background:var(--bg2);border:1px solid rgba(0,0,0,.06);border-radius:18px;box-shadow:0 16px 40px rgba(16,24,40,.16),0 2px 6px rgba(16,24,40,.06);}
 .rc-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;font-size:12px;font-weight:700;color:var(--lbl);}
 .rc-nb{width:24px;height:24px;border-radius:var(--rsm);color:var(--lbl2);}
@@ -2255,6 +2269,12 @@ body.pickmode #tkRoot .tk-item,body.pickmode .day-panel .plan{user-select:none;}
 .ctx-it.dg{color:var(--rd);}
 .ctx-it.dg:hover{background:rgba(220,38,38,.1);color:var(--rd);}
 .ctx-sep{height:1px;background:var(--sep);margin:4px 6px;}
+/* 1083 강조 미끄러짐(slHl) — 판 하나가 항목 사이를 옮겨 다닌다. 켜진 목록은 항목 자체의 hover 칠을 끈다 */
+.slhl-b{position:absolute;left:0;top:0;border-radius:8px;background:var(--fill);opacity:0;pointer-events:none;z-index:0;transition:transform .2s var(--mv-ease),height .2s var(--mv-ease),width .2s var(--mv-ease),opacity .12s;}
+.slhl-b.dg{background:rgba(220,38,38,.1);}
+.slhl>:not(.slhl-b):not(.msel-ta){position:relative;z-index:1;}
+.ctxmenu.slhl .ctx-it:hover:not(:focus-visible),.msel-pop.slhl .msel-o:hover,.msel-pop.slhl .msel-all:hover{background:transparent;}
+body.wid .slhl-b{background:rgba(255,255,255,.12);}
 /* ── 툴팁 — data-tip 이 있는 요소에 잠깐 머무르면 뜬다 ── */
 #chTip{position:fixed;left:0;top:0;z-index:3200;pointer-events:none;opacity:0;visibility:hidden;transition:opacity var(--t-fast);will-change:transform;
   background:rgba(28,32,42,.96);color:#fff;border-radius:8px;padding:11px 12px 12px;box-shadow:var(--sh-2);min-width:150px;font-size:12px;}   /* 추이 차트 툴팁(이름 왼쪽·값 오른쪽) */
@@ -2418,7 +2438,17 @@ body.pickmode #tkRoot .tk-item,body.pickmode .day-panel .plan{user-select:none;}
 .pb-pill.bad{background:var(--tint-rd);color:var(--rd);}
 .pb-st{display:flex;flex-direction:column;border:1px solid var(--sep);border-radius:var(--r);}   /* 게시 단계 목록 — .st 이름은 하자 카드 제목(.st.cardttl)·표 칸(td.st)과 겹쳐 쓰지 않는다 */
 .st-r{display:grid;grid-template-columns:20px minmax(0,1fr) auto;align-items:center;gap:var(--s3);padding:var(--s2) var(--s3);}
-.st-r+.st-r{border-top:1px solid var(--sep);}
+.st-r{position:relative;}
+/* 1082 단계 이음선 — 아이콘 사이를 잇는 세로선. 끝난 단계 아래·다음 단계 위는 초록, 방금 끝난 칸은 위에서 아래로 그어진다 */
+.st-r::before,.st-r::after{content:'';position:absolute;left:calc(var(--s3) + 9px);width:2px;background:var(--sep);}
+.st-r::before{top:0;height:calc(50% - 12px);}
+.st-r::after{top:calc(50% + 12px);bottom:0;}
+.st-r:first-child::before,.st-r:last-child::after{display:none;}
+.st-r.ok::after,.st-r.ok+.st-r::before{background:var(--gn);}
+.st-r.fresh::after,.st-r.fresh-in::before{transform-origin:top;animation:st-line .26s ease-out both;}
+.st-r.fresh-in::before{animation-delay:.24s;}
+.st-r.fresh .st-i{animation:stx-pop .26s cubic-bezier(.34,1.56,.64,1);}
+@keyframes st-line{from{transform:scaleY(0);}}
 .st-i{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;}
 .st-i svg{width:12px;height:12px;stroke:#fff;fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;}
 .st-r.ok .st-i{background:var(--gn);}.st-r.bad .st-i{background:var(--rd);}
@@ -3016,7 +3046,7 @@ body.wid .wid-pop{--lbl:#fff;--lbl2:rgba(255,255,255,.80);--lbl3:rgba(255,255,25
 body.wid .wid-pop .inp{background:transparent;border-color:transparent;color:#fff;}
 /* ⚠ select 의 펼친 목록은 OS 가 그린다 — color-scheme:dark 여야 글씨가 보인다 */
 
-body.wid .wid-pop input[type=date].inp,body.wid .wid-pop input[type=time].inp{color-scheme:dark;}
+body.wid .wid-pop input[type=date].inp{color-scheme:dark;}
 
 /* 닫기 — + 와 같은 줄(세로 가운데 맞춤), 가로는 아래 카드 상태 단추 가운데.
    상태 단추 가운데 = 안쪽 오른끝 −31(12+8+1+10) → 닫기(26) right 18 · + 가운데 = 안쪽 위 27 → top 14 */
@@ -4313,8 +4343,17 @@ body.wid #fcal{--dnh:round(calc(18px*var(--wfz)),1px);}
    원본 .uz 규칙은 두고 변형만 얹는다 */
 .uz.std{margin:14px var(--s4) 4px;padding:22px 16px 20px;border-width:1.5px;border-radius:3px;background:transparent;}   /* 카드 인셋 준수 — 제목 구분선·모서리에 점선이 닿지 않게 */
 .uz.std:hover,.uz.std.drag{background:var(--b50);border-color:var(--b500);}
-.uz.std .uz-ic{display:block;width:28px;height:28px;color:var(--lbl3);margin:0 auto 8px;transition:color .15s;}   /* 전역 svg 규칙이 블록·좌측으로 미는 것을 가운데로 고정 */
+.uz.std .uz-ic{display:block;width:28px;height:28px;color:var(--lbl3);margin:0 auto 8px;transition:color .15s,transform .35s cubic-bezier(.34,1.4,.5,1);}   /* 1082: 끌어오면 떠오름 */   /* 전역 svg 규칙이 블록·좌측으로 미는 것을 가운데로 고정 */
 .uz.std:hover .uz-ic,.uz.std.drag .uz-ic{color:var(--bt1);}
+/* 1082 끌어오는 동안 — 실선·아이콘이 떠오름 · 읽는 중 고리 · 저장 끝 초록 */
+.uz.std.drag{border-style:solid;}
+.uz.std.drag .uz-ic{transform:translateY(-5px) scale(1.08);}
+.uz.std.drag *{pointer-events:none;}   /* 안쪽 글자 위를 지날 때 dragleave 로 깜빡이지 않게 */
+.uz.std.busy{border-style:solid;border-color:var(--sep);background:transparent;cursor:default;}
+.uz.std.ok{border-style:solid;border-color:var(--gn);background:var(--tint-gn);}
+.uz.std.ok .uz-ic{color:var(--gn);}
+.uz-ring{display:block;width:28px;height:28px;margin:0 auto 8px;border-radius:50%;border:3px solid var(--b100);border-top-color:var(--bt1);animation:uprogspin .8s linear infinite;}
+.uz.std.busy .uzt,.uz.std.ok .uzt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .uz.std .uzt{font-size:13px;font-weight:500;color:var(--lbl);}
 .uz.std .uz-link{color:var(--bt1);font-weight:700;}
 .uz.std .uzh{font-size:12px;color:var(--lbl3);margin-top:4px;}
@@ -5257,9 +5296,10 @@ body.wid.glass{--mv-flash:#8FB4FF;}
 .mv-roll{display:inline-grid;overflow:hidden;vertical-align:top;height:1lh;}
 .mv-roll>span{grid-area:1/1;}
 /* 1078 iOS 홈 화면 앱(html.ios-pwa) — iOS 26 은 상단 가장자리에 고정(fixed·sticky)·불투명 배경 상자가 없으면 상태 표시줄 아래 ~40pt 를 흐린다(Liquid Glass scroll edge).
-   WebKit 은 맨 위를 짚어 그 조상 중 fixed 상자를 찾아 그 배경색으로 칠하고 흐림을 끈다 — 앱 틀(#app)을 fixed + 셸색 배경으로 둔다. 여백을 더하지 않는다 */
+   WebKit 은 맨 위를 짚어 그 조상 중 fixed 상자를 찾아 그 배경색으로 칠하고 흐림을 끈다 — 앱 틀(#app)을 fixed + 셸색 배경으로 둔다. 여백을 더하지 않는다.
+   ⚠ screen 한정 — 인쇄 경로(df-printing·rpt-on 등)에 fixed 틀이 남지 않게(1079) */
+@media screen and (max-width:960px){html.ios-pwa body:not(.wid) #app{position:fixed;inset:0;height:auto;background:var(--shell);}}
 @media(max-width:960px){
-  html.ios-pwa body:not(.wid) #app{position:fixed;inset:0;height:auto;background:var(--shell);}
   /* 폰 찾기 — 머리를 앱 상단바와 같은 짙은 띠로. 열릴 때 상단이 흰색으로 번쩍이지 않는다 */
   body:not(.wid) .nq-panel{background:linear-gradient(var(--bg2),var(--bg2)) bottom/100% calc(100% - env(safe-area-inset-top) - var(--th)) no-repeat,var(--shell);}   /* 배경색은 셸색(맨 위 fixed 판 — iOS 상단 색이 흰색이 되지 않게), 머리 아래만 흰 면 */
   body:not(.wid) .nq-panel .nq-hd{height:var(--th);align-items:center;padding:0 10px 0 16px;background:var(--shell);border-bottom:0;}
@@ -5741,5 +5781,5 @@ body.wid.glass{--mv-flash:#8FB4FF;}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1078"></script>
+<script src="./app.js?v=1083"></script>
 </body></html>

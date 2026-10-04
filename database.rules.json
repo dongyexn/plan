@@ -228,16 +228,7 @@
             "due":       { ".validate": "newData.isString() && (newData.val() == '' || newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/))" },
             "createdAt": { ".validate": "newData.isNumber()" },
             "updatedAt": { ".validate": "newData.isNumber()" },
-            "comments": {
-              "$cid": {
-                "by":   { ".validate": "newData.isString() && newData.val().length <= 60" },
-                "text": { ".validate": "newData.isString() && newData.val().length <= 500" },
-                "at":   { ".validate": "newData.isNumber()" },
-                "uid":  { ".validate": "newData.isString() && newData.val().length <= 60" },
-                "re":   { ".validate": "newData.isString() && newData.val().length <= 40" },
-                "$other": { ".validate": false }
-              }
-            },
+            // 1080: comments(댓글) 규칙 삭제 — 기능은 예전에 없앴고 작성자(uid·by)를 꾸밀 수 있었다. 이제 $other 로 거절된다
             "createdBy": { ".validate": "newData.isString() && newData.val().length <= 64 && (!data.exists() || newData.val() == data.val())" },
             "hist": { "$h": {
               "t": { ".validate": "newData.isNumber()" },
