@@ -43,8 +43,8 @@ function evalExpr(expr, ctx) {
   let e = expr;
   for (const [k, v] of Object.entries(ctx.vars || {})) e = e.split(k).join(JSON.stringify(v));
   e = e.replace(/\.matches\(/g, '.match(');            /* 규칙 matches → JS match(truthy 사용) */
-  const fn = new Function('auth', 'root', 'data', 'newData', 'return (' + e + ');');
-  return !!fn(ctx.auth, ctx.root, ctx.data, ctx.newData);
+  const fn = new Function('auth', 'root', 'data', 'newData', 'query', 'return (' + e + ');');
+  return !!fn(ctx.auth, ctx.root, ctx.data, ctx.newData, ctx.query || {});   /* 1085: 질의 규칙(query.orderByChild·equalTo) — 질의 없는 읽기는 빈 객체 */
 }
 
 /* 규칙 트리에서 경로의 노드 규칙 찾기 — 와일드카드($x)를 vars 로 수집 */
@@ -116,9 +116,9 @@ function tryWrite(pathStr, auth, treeRoot, newVal) {
 
 /* 671차: 읽기 판정 — RTDB 는 상위 .read 가 허용하면 하위가 전부 열린다(캐스케이드).
    경로를 따라가며 하나라도 참이면 ALLOW. aiConf 는 키를 담으므로 이 캐스케이드가 핵심이다. */
-function tryRead(pathStr, auth, treeRoot) {
+function tryRead(pathStr, auth, treeRoot, query) {
   const pathArr = pathStr.split('/').filter(Boolean);
-  const ctx0 = { auth, root: new N(treeRoot) };
+  const ctx0 = { auth, root: new N(treeRoot), query };
   for (let i = 0; i <= pathArr.length; i++) {
     const sub = pathArr.slice(0, i);
     const found = ruleNodeAt(sub);
@@ -223,6 +223,29 @@ t('AUTH-17b', 'editor → 옛 plans 정리(삭제)', true, tryWrite('calapp/plan
 t('AUTH-18a', 'viewer → 자기 프로필 색에 CSS 덧붙이기', false, tryWrite('users/U1', A('U1'), TREE, { email: 'u1@hdec.co.kr', role: 'viewer', avColor: '0;scale:999' }));
 t('AUTH-18b', 'viewer → 자기 프로필 색(#3E71D2)', true, tryWrite('users/U1', A('U1'), TREE, { email: 'u1@hdec.co.kr', role: 'viewer', avColor: '#3E71D2' }));
 t('AUTH-18c', 'viewer → 자기 프로필 색(gf-그라디언트)', true, tryWrite('users/U1', A('U1'), TREE, { email: 'u1@hdec.co.kr', role: 'viewer', avColor: 'gf-3b82f6-ec4899' }));
+
+/* AUTH-19 (1085) 휴지통 읽기 = 보이는 범위. calapp 통째 읽기 없앰(자식마다 같은 읽기) */
+const T19 = { ...TREE, users: { ...TREE.users, U6: { role: 'viewer' } }, calapp: { ...TREE.calapp,
+  people: { ...TREE.calapp.people, U6: { name: '남팀원', email: 'u6@hdec.co.kr', team: 't2', region: '중부1', rank: 'member', sites: {} } },
+  trash: { U1: { a: { text: 'x', createdBy: 'U1' } }, U2: { b: { text: 'y', createdBy: 'U2' } }, U5: { c: { text: 'z', createdBy: 'U5', site: 'sA' } }, t1: { d: { text: 'w', createdBy: 'U1' } }, U6: { e: { text: 'v', createdBy: 'U6' } } } } };
+const Q = (o, v) => ({ orderByChild: o, equalTo: v });
+t('AUTH-19a', 'viewer → calapp 통째 읽기', false, tryRead('calapp', A('U1'), T19));
+t('AUTH-19b', 'viewer → calapp/tasks 읽기', true, tryRead('calapp/tasks', A('U1'), T19));
+t('AUTH-19c', 'viewer → calapp/people 읽기', true, tryRead('calapp/people', A('U1'), T19));
+t('AUTH-19d', 'viewer → 휴지통 통째 읽기', false, tryRead('calapp/trash', A('U1'), T19));
+t('AUTH-19e', 'editor → 휴지통 통째 읽기', true, tryRead('calapp/trash', A('E1'), T19));
+t('AUTH-19f', '담당자 → 내 트리 휴지통', true, tryRead('calapp/trash/U1', A('U1'), T19));
+t('AUTH-19g', '담당자 → 남의 트리 휴지통', false, tryRead('calapp/trash/U2', A('U1'), T19));
+t('AUTH-19h', '담당자 → 팀 공통 트리에서 내가 만든 것(질의)', true, tryRead('calapp/trash/t1', A('U1'), T19, Q('createdBy', 'U1')));
+t('AUTH-19i', '담당자 → 남이 만든 것 질의', false, tryRead('calapp/trash/U2', A('U1'), T19, Q('createdBy', 'U2')));
+t('AUTH-19j', '공구장 → 같은 권역 사람 트리', true, tryRead('calapp/trash/U2', A('U4'), T19));
+t('AUTH-19k', '공구장 → 타권역 사람 트리', false, tryRead('calapp/trash/U5', A('U4'), T19));
+t('AUTH-19l', '공구장 → 타권역 트리에서 내 권역 현장(질의)', true, tryRead('calapp/trash/U5', A('U4'), T19, Q('site', 'sA')));
+t('AUTH-19m', '공구장 → 타권역 현장 질의', false, tryRead('calapp/trash/U5', A('U4'), T19, Q('site', 'sB')));
+t('AUTH-19n', '팀장 → 같은 팀 사람 트리', true, tryRead('calapp/trash/U5', A('U3'), T19));
+t('AUTH-19o', '팀장 → 팀 공통 트리', true, tryRead('calapp/trash/t1', A('U3'), T19));
+t('AUTH-19p', '팀장 → 다른 팀 사람 트리', false, tryRead('calapp/trash/U6', A('U3'), T19));
+t('AUTH-19q', '담당자 → 현장 질의(공구장 아님)', false, tryRead('calapp/trash/U5', A('U1'), T19, Q('site', 'sA')));
 
 console.log(fail ? `\nFAIL ${fail}` : '\nRULES-AUTH ALL PASS');
 process.exit(fail ? 1 : 0);

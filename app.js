@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1083';
+const APP_VER='1089';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -570,22 +570,52 @@ function trashWrap(it){return{text:String(it.text||'').slice(0,500),date:String(
   deletedAt:Date.now(),z:LZString.compressToBase64(JSON.stringify(cleanTask(it))),...ownMeta(it)};}
 function trashAll(cb){                 /* {sid:{iid:wrap}} — 구독하지 않고 열 때마다 읽는다 */
   if(!S.live){cb((LocalStore._d&&LocalStore._d.trash)||{});return;}
-  FB.db.ref('calapp/trash').get().then(s=>cb(s.val()||{})).catch(e=>{fbErr(e);cb({});});}
+  if(isEditor()){FB.db.ref('calapp/trash').get().then(s=>cb(s.val()||{})).catch(e=>{fbErr(e);cb({});});return;}
+  /* 1085: 휴지통 읽기 규칙이 보이는 범위와 같다 — 규칙은 거르개가 아니라 통째 읽기는 거절된다.
+     트리마다 통째(trashTreeOk) 또는 질의(내가 만든 것 · 공구장은 내 권역 현장)로 나눠 읽어 합친다 */
+  const me=authUid(),rg=myRank()==='lead'?myRegion():'',out={};
+  const put=(sid,v)=>{if(v)Object.keys(v).forEach(iid=>{(out[sid]=out[sid]||{})[iid]=v[iid];});};
+  const sts=rg?(S.org.sites||[]).filter(x=>x.id&&x.region===rg).map(x=>x.id):[];
+  const sids=[...new Set([me,...Object.keys(S.people||{}),...(S.org.teams||[]).map(t=>t.id),...Object.keys(S.tasks||{})].filter(Boolean))];
+  const jobs=[];
+  sids.forEach(sid=>{const r=FB.db.ref('calapp/trash/'+sid);
+    if(trashTreeOk(sid)){jobs.push(r.get().then(x=>put(sid,x.val())));return;}
+    jobs.push(r.orderByChild('createdBy').equalTo(me).get().then(x=>put(sid,x.val())));
+    sts.forEach(st=>jobs.push(r.orderByChild('site').equalTo(st).get().then(x=>put(sid,x.val()))));});
+  Promise.allSettled(jobs).then(rs=>{const bad=rs.filter(x=>x.status==='rejected');if(bad.length)console.warn('[FB] 휴지통 읽기 거절',bad.length,bad[0].reason);cb(out);});}
 function trashDrop(sid,iid){           /* 휴지통에서 한 건 제거(복원·영구 삭제 공용) */
   if(S.live)FB.db.ref('calapp/trash/'+sid+'/'+iid).remove().catch(fbErr);
   else{if(LocalStore._d.trash&&LocalStore._d.trash[sid])delete LocalStore._d.trash[sid][iid];lsSave(LocalStore._d);}}
 function trashPurge(){                 /* 30일 지난 항목 정리 — 부팅 뒤 한 번 */
   if(S.snap)return;   /* 스냅샷은 읽기 전용 — 정리를 건너뛴다 */
+  if(S.live&&!isEditor())return;   /* 1085: 휴지통 통째 읽기는 관리자만 — 정리도 관리자 접속 때 */
   trashAll(t=>{const lim=Date.now()-TRASH_KEEP,up={};let n=0;
     Object.keys(t).forEach(sid=>Object.keys(t[sid]||{}).forEach(iid=>{
       const w=t[sid][iid];if(w&&Number(w.deletedAt||0)<lim){n++;
         if(S.live)up['calapp/trash/'+sid+'/'+iid]=null;else delete LocalStore._d.trash[sid][iid];}}));
     if(!n)return;
     if(S.live)FB.db.ref().update(up).catch(()=>{});else lsSave(LocalStore._d);});}
+/* 휴지통 보이는 범위 = DB 읽기 규칙(trash/$sid .read)과 같다 — 관리자·로컬: 전부.
+   트리 통째: 내 트리 · 팀장: 내 팀 사람·팀 공통 트리(내 팀이 비면 전부) · 공구장: 내 권역 사람 트리.
+   그 밖 트리에선 내가 만든 것, 공구장은 업무 현장이 내 권역인 것까지. ⚠ 규칙을 바꾸면 여기도 함께 */
+function trashTreeOk(sid){
+  if(!S.live||isEditor())return true;
+  const me=authUid(),P=S.people||{},rk=myRank();
+  if(sid===me)return true;
+  if(rk==='head'){const tm=String((P[me]||{}).team||'');return !tm||sid===tm||(P[sid]||{}).team===tm;}
+  if(rk==='lead'){const rg=myRegion();return !!rg&&(P[sid]||{}).region===rg;}
+  return false;
+}
+function trashVisible(sid,w){
+  if(trashTreeOk(sid))return true;
+  if(w.createdBy&&w.createdBy===authUid())return true;
+  if(myRank()==='lead'&&myRegion()&&w.site){const st=(S.org.sites||[]).find(x=>x.id===w.site);return !!st&&st.region===myRegion();}
+  return false;
+}
 function trashOpen(){
   trashAll(t=>{
     const rows=[];
-    Object.keys(t).forEach(sid=>Object.keys(t[sid]||{}).forEach(iid=>rows.push({sid,iid,...t[sid][iid]})));
+    Object.keys(t).forEach(sid=>Object.keys(t[sid]||{}).forEach(iid=>{const w=t[sid][iid];if(w&&trashVisible(sid,w))rows.push({sid,iid,...w});}));
     rows.sort((a,b)=>(b.deletedAt||0)-(a.deletedAt||0));
     const body=rows.length?rows.map(r=>'<div class="share-row"><div class="share-info"><b>'+esc(r.text||'제목 없음')+'</b>'
       +'<span>'+(r.date?esc(r.date)+' · ':'')+'삭제 '+new Date(Number(r.deletedAt)||0).toLocaleDateString('ko-KR')+'</span></div>'
@@ -1166,12 +1196,16 @@ function fbAuthErr(e){
     'auth/operation-not-allowed':'지금은 이 방법으로 로그인할 수 없습니다 · 관리자에게 알려 주세요'
   }[c]||(console.warn('[인증]',e),'처리하지 못했습니다 · 잠시 뒤 다시 시도해 주세요. 계속되면 관리자에게 알려 주세요');   /* 영문 원문은 콘솔에 */
 }
+/* 1088 로그인 칸 흔들림 — 오류 코드로 칸을 고른다(비밀번호·계정 둘 다 모르면 비밀번호 칸) */
+function fbShake(code){const c=String(code||'');
+  const mail=c==='mail'||/user-not-found|invalid-email|email-already/.test(c),pw=c==='pw'||/wrong-password|invalid-credential|weak-password/.test(c);
+  if(!mail&&!pw)return;const i=$(mail?'#fbEmail':'#fbPw');mvShake(i&&(i.closest('.cv-in-wrap')||i));}
 /* 로그인·가입 공통 검증 — 통과하면 {email,pw}, 아니면 null(메시지는 여기서 띄운다) */
 function fbValidCreds(verb){
   if(!FB.auth){fbMsg('서버에 연결할 수 없습니다 · 연결을 확인해 주세요');return null;}
   const c=fbCreds(),email=c.email.trim().toLowerCase();
-  if(!fbDomainOk(email)){fbMsg('@hdec.co.kr 계정만 '+verb+'할 수 있습니다');return null;}
-  if((c.pw||'').length<6){fbMsg('비밀번호는 6자 이상이어야 합니다');return null;}
+  if(!fbDomainOk(email)){fbMsg('@hdec.co.kr 계정만 '+verb+'할 수 있습니다');fbShake('mail');return null;}
+  if((c.pw||'').length<6){fbMsg('비밀번호는 6자 이상이어야 합니다');fbShake('pw');return null;}
   return{email,pw:c.pw};
 }
 /* 로그인이 멈추면 어디가 막혔는지 알려 준다(사내망 도메인별 차단). no-cors 는 응답은 못 읽어도 닿았는지는 안다 */
@@ -1210,7 +1244,7 @@ async function fbDoLogin(){
     /* 가입 직후엔 onAuthStateChanged 가 다시 울리지 않는다 — reload 로 emailVerified 를 갱신한 뒤 진입 판정을 직접 부른다 */
     const u=FB.auth.currentUser;
     if(u){try{await u.reload();}catch(e){}onAuth(FB.auth.currentUser);}
-  }catch(e){clearTimeout(FB._watch);fbMsg(fbAuthErr(e));}
+  }catch(e){clearTimeout(FB._watch);fbMsg(fbAuthErr(e));fbShake(e&&e.code);}
 }
 async function fbDoSignup(){
   const c=fbValidCreds('가입');if(!c)return;
@@ -1540,6 +1574,38 @@ function mvNum(el,txt){
   el._mvT=setTimeout(()=>{if(el._mvTxt===txt){el._mvTxt=null;el.textContent=txt;}},1150);
 }
 /* 막대 착지(1067) — 새로 생기거나 옮긴 업무 막대가 위에서 내려앉으며 커지고, 둘레가 한 번 퍼진다 */
+/* 1088 사진이 그 자리에서 커져 열림 — 창(#mb)은 제자리에 세운 채(.pv-fly) 흐리게 들어오고, 사진 사본이 썸네일 자리에서 창 안 자리로 날아간다.
+   닫을 때 썸네일이 아직 화면에 있으면 거꾸로 돌아간다(closeModal → pvFlyBack) */
+let PV_FLY=null;
+/* 사진 실제 그려진 자리 — object-fit:contain 이라 상자보다 작을 수 있다 */
+function pvFit(img){const b=img.getBoundingClientRect(),nw=img.naturalWidth,nh=img.naturalHeight;
+  if(!nw||!nh||!b.width||!b.height)return b;const k=Math.min(b.width/nw,b.height/nh),w=nw*k,h=nh*k;
+  return {left:b.left+(b.width-w)/2,top:b.top+(b.height-h)/2,width:w,height:h};}
+/* 자리→자리 — 크기를 직접 바꾼다(transform 배율이면 정사각 썸네일과 비율이 달라 사진이 눌려 보인다). 사본은 object-fit:cover */
+function pvFlyRun(src,a,b,dur){const k=r=>({left:r.left+'px',top:r.top+'px',width:r.width+'px',height:r.height+'px'});
+  const c=document.createElement('img');c.src=src;c.className='pv-clone';Object.assign(c.style,k(b));document.body.appendChild(c);
+  const an=c.animate([k(a),k(b)],{duration:dur,easing:MV_EASE});return {c,an};}
+function pvFly(th,img){
+  if(!mvOK()||!th||!img)return;
+  const mb=$('#mb');mb.classList.add('pv-fly');img.style.visibility='hidden';
+  const go=()=>{const a=th.getBoundingClientRect(),b=pvFit(img);
+    if(!a.width||!b.width){img.style.visibility='';return;}
+    const {c,an}=pvFlyRun(img.src,a,b,MV_SLOW);
+    an.onfinish=an.oncancel=()=>{c.remove();img.style.visibility='';};
+    PV_FLY={th,img};};
+  (img.decode?img.decode().catch(()=>{}):Promise.resolve()).then(()=>requestAnimationFrame(go));
+}
+function pvFlyBack(){
+  const f=PV_FLY;PV_FLY=null;if(!f||!mvOK())return;
+  const a=f.th.getBoundingClientRect(),b=pvFit(f.img);
+  if(!f.th.isConnected||!a.width||!b.width||a.bottom<0||a.top>innerHeight)return;
+  f.img.style.visibility='hidden';
+  const {c,an}=pvFlyRun(f.img.src,b,a,MV_MID);
+  an.onfinish=an.oncancel=()=>c.remove();
+}
+/* 1088 못 읽는 값 — 칸이 좌우로 짧게 흔들리고 붉은 테두리(0.7초). el = 테두리를 그릴 칸(입력칸을 감싼 칩·틀) */
+function mvShake(el){if(!el)return;el.classList.remove('mv-shake');void el.offsetWidth;el.classList.add('mv-shake','mv-bad');
+  clearTimeout(el._mvBad);el._mvBad=setTimeout(()=>el.classList.remove('mv-bad','mv-shake'),700);}
 function mvLand(el){
   if(!mvOK()||!el||!el.animate)return;
   el.animate([{opacity:0,transform:'translateY(-10px) scale(.9)'},{opacity:1,transform:'none'}],{duration:360,easing:'cubic-bezier(.32,1.22,.5,1)',fill:'backwards'});
@@ -2003,6 +2069,7 @@ function widSideRender(){
   if(!WIDGET)return;
   const box=$('#widSideB'),ttl=$('#widSideT'),cnt=$('#widSideN');
   if(!box)return;
+  {const tb=$('#widSideTr');if(tb)tb.hidden=S.widSide!=='mine';}   /* 휴지통은 '내 업무' 머리에만 */
   const dlab=d=>{const n=daysBetween(todayStr(),d);
     return n===0?'오늘':n===1?'내일':n===-1?'어제':(toDate(d).getMonth()+1)+'/'+toDate(d).getDate();};
   /* 한 줄 — 왼쪽에 날짜 알약, 오른쪽에 제목·부제. 두 목록이 같은 모양을 쓴다 */
@@ -2131,6 +2198,9 @@ function calInit(){
       /* 고칠 권한이 없으면 편집기 대신 그 날로만 */
       if(!canEditTask(p,p.sid)){selDate(ds);rDay();denyTask();return;}
       selDate(ds);openPlanEdit(p,null,null,info.event.extendedProps.occ);},
+    /* 1088 막대 끌기 — 원래 막대는 흐리게(.ev-src), 달력엔 끄는 중 표시(.ev-drag → 놓을 칸 강조). 따라오는 막대(.fc-event-dragging)는 CSS 가 띄운다 */
+    eventDragStart:info=>{info.el.classList.add('ev-src');const c=$('#fcal');if(c)c.classList.add('ev-drag');},
+    eventDragStop:info=>{info.el.classList.remove('ev-src');const c=$('#fcal');if(c)c.classList.remove('ev-drag');},
     eventDrop:info=>{const p=findPlan(info.event.extendedProps.pid);if(!p||(p.recur&&p.recur.f)){info.revert();return;}
       if(!canEditTask(p,p.sid)){info.revert();denyTask();return;}
       if(p.sid&&p.id)undoSnap([{sid:p.sid,iid:p.id}],'날짜 이동');   /* 손이 스쳐 옮겨져도 되돌릴 수 있게 스냅샷.
@@ -3025,7 +3095,7 @@ function openModal(title,bodyHTML,footHTML){
   $('#mt').textContent=title;$('#mbody').innerHTML=bodyHTML;$('#mf').innerHTML=footHTML||'';
   /* 하단 버튼이 없는 모달(사용 안내 등)은 우상단 X 로 닫는다 — 참조 앱과 동일 */
   const mb=$('#mb');
-  mb.classList.remove('acx','acx-ed','acx-pw','m-emo','m-col','m-cus','mb-ask','ask3','rdw','narrow','mlw','dfwide','wide-pick','kmw','rkm','pdcw','nott','d60-pvm','d60-hsm','mrv-md','mrv-wid');   /* 놓친 업무 창 폭 */   /* pdcw: 사진 자르기 */   /* ⚠ 지난번 모달의 폭 설정이 남으면 다음 모달이 엉뚱한 크기로 뜬다 */
+  mb.classList.remove('acx','acx-ed','acx-pw','m-emo','m-col','m-cus','mb-ask','ask3','rdw','narrow','mlw','dfwide','wide-pick','kmw','rkm','pdcw','nott','d60-pvm','d60-hsm','mrv-md','mrv-wid','pv-fly');PV_FLY=null;   /* 놓친 업무 창 폭 */   /* pdcw: 사진 자르기 */   /* ⚠ 지난번 모달의 폭 설정이 남으면 다음 모달이 엉뚱한 크기로 뜬다 */
   /* ⚠ 폭 클래스를 새로 만들면 반드시 이 줄에 함께 넣을 것 — 빠지면 그 뒤 모든 모달에 남는다.
      예: #mb.kmw 가 명시도 같은 #mb.dfwide 보다 CSS 뒤에 있어 이겨 모달 폭이 튄다 */
   mb.classList.toggle('has-x',!footHTML);
@@ -3035,7 +3105,7 @@ function openModal(title,bodyHTML,footHTML){
   $('#mo').classList.add('open');
   requestAnimationFrame(()=>{if($('#mo').classList.contains('open')&&!mb.contains(document.activeElement))mb.focus({preventScroll:true});});   /* 호출부가 직접 칸에 포커스를 줬으면 그대로 둔다 */
 }
-function closeModal(){mrvHoldRest();if(ACX_CP)acxCpClose(true);$('#mo').classList.remove('open');MODAL_CB=null;pfDrop();
+function closeModal(){pvFlyBack();mrvHoldRest();if(ACX_CP)acxCpClose(true);$('#mo').classList.remove('open');MODAL_CB=null;pfDrop();
   if(window.__SNAPPICK__){const r=window.__SNAPPICK__;window.__SNAPPICK__=null;try{r(null);}catch(_){}}   /* 스냅샷 월 선택 대기 중 닫히면(Esc·배경) 취소로 종결 — 원본 app-core 641 과 동일 */
   if(window.__PUBOK__){const r=window.__PUBOK__;window.__PUBOK__=null;try{r(false);}catch(_){}}   /* 게시 확인 대기 중 닫히면 게시 중단 */
   if(window.__ASKOK__){const r=window.__ASKOK__;window.__ASKOK__=null;try{r(false);}catch(_){}}   /* confirmAsk 취소 */
@@ -3148,7 +3218,7 @@ function timeInVal(id){const el=$('#'+id);if(!el)return '';
   const v=timeParse(el.value);return v===null?(el.dataset.ok||''):v;}
 function peTinCommit(el){
   const v=timeParse(el.value);
-  if(v===null){el.value=el.dataset.ok||'';toast('시간을 읽지 못했습니다 · 예: 930 · 14:30 · 오후 3시');}
+  if(v===null){el.value=el.dataset.ok||'';mvShake(el.closest('.pe-chip')||el);toast('시간을 읽지 못했습니다 · 예: 930 · 14:30 · 오후 3시');}
   else{el.value=v;el.dataset.ok=v;}
   const f=el.closest('.pe-f2');if(f)peChipPaint(f);}
 let _peDetach=false;   /* rDay 가 폼을 떼었다 도로 꽂는 동안 — 그때 브라우저가 쏘는 change 는 무시 */
@@ -7803,15 +7873,14 @@ function rptThumb(kind){
 function rptFont(){try{return localStorage.getItem('calapp.rptFont')==='sys'?'sys':'brand';}catch(e){return 'brand';}}   /* 저장소 차단(프라이빗 모드 등)에서도 죽지 않게 */
 function openPrintPick(){
   const fSaved=rptFont();
-  const opt=(v,nm,ds,mt)=>`<div class="rpk-opt${v==='report'?' on':''}" data-act="print.pick" data-v="${v}">
+  const opt=(v,nm,_,mt)=>`<div class="rpk-opt${v==='report'?' on':''}" data-act="print.pick" data-v="${v}">
       ${rptThumb(v)}
       <div class="rpk-nm"><span class="rpk-rd"></span>${nm}</div>
-      <div class="rpk-ds">${ds}</div><div class="rpk-mt">${mt}</div></div>`;
+      <div class="rpk-mt">${mt}</div></div>`;
   openModal('인쇄',
-    `<div class="rpk-sub">어떤 형태로 인쇄할지 고르세요.</div>
-    <div class="rpk">
-      ${opt('screen','화면 그대로','지금 보고 계신 카드 배치를 그대로 인쇄합니다.','기존 방식')}
-      ${opt('report','보고서 양식','A4 문서 형태로 재구성해 인쇄합니다.',S.dfSid?'현황 · 추이 · 이슈 · 표 순 · 3쪽':'현황 · 추이 · 이슈 · 표 순 · 2쪽')}
+    `    <div class="rpk">
+      ${opt('screen','화면 그대로','','기존 방식')}
+      ${opt('report','보고서 양식','','현황 · 추이 · 이슈 · 표 순 · 2쪽')}
     </div>
     <div class="rpk-fnt" id="rpkFont"><span class="rpk-fnt-l">보고서 글꼴</span><div class="rpk-seg">
       ${[['brand','기본'],['sys','윈도우 기본']].map(([f,nm])=>
@@ -8535,6 +8604,7 @@ function dfUpdatePrintHdr(){
 }
 window.addEventListener('beforeprint',()=>{
   dfUpdatePrintHdr();
+  if(S.view==='calendar'&&typeof CAL!=='undefined'&&CAL&&CAL.updateSize)try{CAL.updateSize();}catch(e){}   /* 1089 인쇄 틀(달력 900px)에 맞춰 다시 잰다 */
   /* Ctrl+P 는 인쇄 미디어로 넘어가며 차트 카드가 줄어든다(.cw 140px) — 리사이즈 애니메이션 중간에 찍히면 추이가 빈다. 즉시 완성 상태로 다시 그린다 */
   if(S.view==='defect'&&!document.body.classList.contains('df-printing')){
     DF.noAnim=true;
@@ -8542,6 +8612,7 @@ window.addEventListener('beforeprint',()=>{
   }
 });
 window.addEventListener('afterprint',()=>{
+  if(S.view==='calendar'&&typeof CAL!=='undefined'&&CAL&&CAL.updateSize)setTimeout(()=>{try{CAL.updateSize();}catch(e){}},0);
   if(DF.noAnim&&!document.body.classList.contains('df-printing')){
     DF.noAnim=true;   /* 애니메이션 상시 해제 */
     try{Object.values(DF.ch||{}).forEach(c=>{if(c&&c.resize){c.resize();c.update('none');}});}catch(e){}
@@ -9975,6 +10046,12 @@ function tblText(tbl){
   return [...tbl.querySelectorAll('tr')].map(tr=>
     [...tr.querySelectorAll('th,td')].map(td=>String(td.textContent||'').trim()).join('\t')).join('\n');
 }
+/* 1088 고정 머리 그림자 — 굴리는 칸(스크롤 상자)이 맨 위에서 내려가면 그 칸에 바로 속한 고정 머리에 .stuck(아래 그림자).
+   중첩된 다른 스크롤 상자의 머리는 건드리지 않는다. 다시 그려져 클래스가 빠진 머리는 다음 굴림 때 다시 붙는다 */
+{const SEL='.tk-hrow,.pv-table,.rec-tbl,.rk-tbl',Q=new Set();let raf=0;
+  const scOf=el=>{for(let p=el.parentElement;p&&p!==document.body;p=p.parentElement){const o=getComputedStyle(p).overflowY;if(o==='auto'||o==='scroll')return p;}return null;};
+  document.addEventListener('scroll',e=>{const t=e.target;if(!t||t.nodeType!==1)return;Q.add(t);
+    if(!raf)raf=requestAnimationFrame(()=>{raf=0;Q.forEach(sc=>sc.querySelectorAll(SEL).forEach(h=>{if(scOf(h)===sc)h.classList.toggle('stuck',sc.scrollTop>0);}));Q.clear();});},true);}
 /* 1083 목록 강조 미끄러짐 — 마우스(정밀 포인터)에서 항목 위 강조 판 하나가 옮겨 다닌다. 키보드 초점(:focus-visible)은 원래 칠 그대로 */
 function slHl(box,sel){
   if(!box||box._slhl||!mvOK()||!matchMedia('(pointer:fine)').matches)return;box._slhl=1;
@@ -12565,6 +12642,9 @@ function widPlace(){
   const y=Math.min(Math.max(M,r.top),Math.max(M,innerHeight-ht-M));
   box.style.left=Math.round(x)+'px';box.style.top=Math.round(y)+'px';
   box.dataset.px=Math.round(x);box.dataset.py=Math.round(y);
+  /* 1088 팝업이 누른 칸 쪽에서 펼쳐진다 — 기준점 = 칸 가운데를 팝업 안으로 가둔 자리(옆에 서면 가까운 변, 좁은 창에서 겹치면 칸 위) */
+  const cx=r.left+((r.right-r.left)||0)/2,cy=r.top+(r.height||0)/2;
+  box.style.transformOrigin=Math.round(Math.min(Math.max(0,cx-x),w))+'px '+Math.round(Math.min(Math.max(0,cy-y),ht))+'px';
 }
 
 /* ═══════════ 업무 도구 이어하기 ═══════════
@@ -14955,7 +15035,7 @@ document.addEventListener('change',e=>{
     if(RD.st!=='all')rRedo();return;}
   if(t.id==='pvCo'||t.id==='pvFrom'||t.id==='pvTo'||t.id==='pvMd'){
     /* ⚠ 초점 있는 칸을 innerHTML 로 지우면 크롬이 blur→change 를 한 번 더 내어 NotFoundError 가 난다 — 초점을 뺀 뒤 그리고, 그린 뒤 같은 칸에 돌려 준다(숫자 칸 화살표는 누를 때마다 change) */
-    if(t.id==='pvMd'&&!(Number(t.value)>0)){toast('공수 / 일은 0 보다 큰 숫자로 넣어 주세요');t.value=PV.md;return;}   /* 비었거나 0 이하면 알리고 되돌린다 */
+    if(t.id==='pvMd'&&!(Number(t.value)>0)){toast('공수 / 일은 0 보다 큰 숫자로 넣어 주세요');t.value=PV.md;mvShake(t);return;}   /* 비었거나 0 이하면 알리고 되돌린다 */
     if(t.id==='pvCo'){PV.co=t.value;PV.from='';PV.to='';PV.filters={};}
     else if(t.id==='pvFrom')PV.from=t.value;else if(t.id==='pvTo')PV.to=t.value;else PV.md=t.value;
     t.blur();rProd();const el=$('#'+t.id);if(el&&t.id!=='pvCo')el.focus();return;}
@@ -15928,12 +16008,14 @@ function d60PhModal(k){   /* 데스크톱 사진 팝업 — 격자 + 추가 + �
   openModal('사진','<div class="d60-pvh"><b>'+esc(m.loc||m.sp)+'</b><span>·</span><span>'+esc(m.desc)+'</span><span class="rp-tcnt">'+n+'</span></div>'+grid,'<button class="btn bp" data-act="modal.close">닫기</button>');
   $('#mb').classList.add('d60-pvm');
 }
-function d60PhOne(k,pid){   /* 폰 — 한 장 크게 */
+function d60PhOne(k,pid,from){   /* 폰 — 한 장 크게. from = 누른 썸네일(있으면 그 자리에서 커진다) */
   const st=S.d60,sid=st.sid,tr=st.tr;const p=d60PhList(sid,tr,k).find(x=>x.id===pid);if(!p)return;
   const m=d60PhRowMeta(sid,tr,k);
+  const fromImg=from&&from.querySelector?from.querySelector('img'):null;
   openModal('','<div class="d60-pv1"><img src="'+esc(p.d)+'" alt=""><div class="cap"><b>'+esc(m.loc||m.sp)+'</b> '+esc(m.desc)+'<span class="who">'+esc(d60Who(p))+'</span></div></div>',
     '<button class="btn btn-danger bsm" data-act="d60.phDel" data-k="'+esc(k)+'" data-pid="'+esc(pid)+'" style="margin-right:auto">삭제</button><button class="btn bp" data-act="modal.close">닫기</button>');
   $('#mb').classList.add('nott','d60-pvm');
+  if(fromImg)pvFly(fromImg,$('#mbody .d60-pv1 img'));
 }
 /* 사진대지로 보내기 — 그 현장 사진 있는 항목을 전부 받아(현장 단위 한 번) 사진대지 편집기로 넘긴다. 위치 = 세대·공간, 내용 = 공종 · 점검항목 / 조치사항 */
 async function d60ToPd(){
@@ -16132,7 +16214,7 @@ Object.assign(ACT,{
     i.addEventListener('change',()=>{const v=i.value;if(/^\d{4}-\d{2}-\d{2}$/.test(v)){d60Write('insp/'+sid+'/dates/arch',v);}else rD60();});   /* 대표 = 건축 */
     i.addEventListener('blur',()=>setTimeout(rD60,120));},
   'd60.unitSave':el=>{const sid=S.d60.sid;if(!sid)return;const k=el.dataset.k,dg=(($('#d60Udg')||{}).value||'').trim().replace(/동$/,'').slice(0,10),ho=(($('#d60Uho')||{}).value||'').trim().replace(/호$/,'').slice(0,10);
-    if(!dg&&!ho){toast('동·호를 입력하세요');return;}closeModal();
+    if(!dg&&!ho){toast('동·호를 입력하세요');mvShake($('#d60Udg'));mvShake($('#d60Uho'));return;}closeModal();
     if(k){d60Write('insp/'+sid+'/units/'+k+'/dg',dg);d60Write('insp/'+sid+'/units/'+k+'/ho',ho);}
     else{const id=uid();S.d60.sc='unit';S.d60.un=id;d60Write('insp/'+sid+'/units/'+id,{dg,ho,ord:d60Units(sid).length+1});}},
   'd60.unitAdd':()=>{if(!S.d60.sid)return;if(isMob()&&!WIDGET){d60UnitModal(null);return;}   /* 폰은 팝업 */
@@ -16179,7 +16261,7 @@ Object.assign(ACT,{
   'd60.hideSheet':()=>d60HideSheet(),
   /* 사진 */
   'd60.phView':el=>d60PhModal(el.dataset.k),
-  'd60.phOne':el=>d60PhOne(el.dataset.k,el.dataset.pid),
+  'd60.phOne':el=>d60PhOne(el.dataset.k,el.dataset.pid,el),
   'd60.phDel':el=>{const {k,pid}=el.dataset;const wasPv=$('#mb').classList.contains('d60-pvm');confirmModal('사진 삭제','이 사진을 지울까요?',()=>{d60PhDel(S.d60.sid,S.d60.tr,k,pid);closeModal();if(wasPv&&!isMob())d60PhModal(k);},'삭제',true);},   /* confirm 이 #mb 클래스를 지우므로 미리 잡아 둔다 */
   'd60.toPd':()=>d60ToPd(),
   /* 서식 초기화 — 설정 · 관리자만. 서식 전체(공종·구분·공간·항목)를 지운다. 점검 결과는 남지만 항목과 연결이 끊긴다 */
