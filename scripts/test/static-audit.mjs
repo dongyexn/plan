@@ -389,8 +389,8 @@ OK('구문 검사 (node --check)');
   '@media print | #view-defect .main-chart-card :: height',
   '@media print | #view-defect .main-chart-card :: min-height',
   '@media print | *,*::before,*::after :: -webkit-print-color-adjust',
-  '@media(max-width:960px) | body:not(.wid) #view-calendar .cal-wrap :: height',
-  '@media(max-width:960px) | body:not(.wid) #view-calendar .day-panel :: max-height',
+  '@media screen and (max-width:960px) | body:not(.wid) #view-calendar .cal-wrap :: height',
+  '@media screen and (max-width:960px) | body:not(.wid) #view-calendar .day-panel :: max-height',
   ]);
   let body = css.replace(/\/\*[\s\S]*?\*\//g, '');
   /* @keyframes 안의 from/to/0%… 는 셀렉터가 아니다 — 블록째 제외(440차) */

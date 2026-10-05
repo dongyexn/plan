@@ -136,8 +136,8 @@ try {
 
   /* ⑤ 복원 — 설정 > 휴지통 > 복원, 새로고침 후 지속 */
   await page.click('[data-act="nav.go"][data-view="settings"], [data-view="settings"]');
-  await page.waitForSelector('[data-act="trash.open"]', { timeout: 4000 });
-  await page.click('[data-act="trash.open"]');
+  await page.waitForSelector('[data-act="trash.open"]:not(#widSideTr)', { timeout: 4000 });
+  await page.click('[data-act="trash.open"]:not(#widSideTr)');
   await page.waitForSelector('[data-act="trash.restore"]', { timeout: 4000 });
   await page.click('[data-act="trash.restore"]');
   await waitFor(page, t => {
