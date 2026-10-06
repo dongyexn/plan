@@ -247,5 +247,10 @@ t('AUTH-19o', '팀장 → 팀 공통 트리', true, tryRead('calapp/trash/t1', A
 t('AUTH-19p', '팀장 → 다른 팀 사람 트리', false, tryRead('calapp/trash/U6', A('U3'), T19));
 t('AUTH-19q', '담당자 → 현장 질의(공구장 아님)', false, tryRead('calapp/trash/U5', A('U1'), T19, Q('site', 'sA')));
 
+/* 1093: 관리자 → 타 계정 이름 고치기(계정 이름 · 명부 이름) / 일반 사용자는 거부 */
+t('AUTH-20a', 'editor → 타인 계정 이름', true, tryWrite('users/U2/name', A('E1'), TREE, '개명'));
+t('AUTH-20b', 'viewer → 타인 계정 이름', false, tryWrite('users/U2/name', A('U1'), TREE, '변조'));
+t('AUTH-20c', 'editor → 타인 명부 이름', true, tryWrite('calapp/people/U2', A('E1'), TREE, { ...P('U2'), name: '개명' }));
+
 console.log(fail ? `\nFAIL ${fail}` : '\nRULES-AUTH ALL PASS');
 process.exit(fail ? 1 : 0);
