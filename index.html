@@ -144,7 +144,7 @@ html,body{background:var(--shell);}
 html,body{overflow:hidden;}   /* 문서가 뷰포트를 넘지 않게 — 헤더가 fixed 라 스크롤바가 생긴다 */
 body>svg{position:absolute;width:0;height:0;overflow:hidden;}
 #app,#appHdr,#mo,#tko,#scrim,#toast,#nqPanel,#htip,
-#evePop,#dfNewPop,#rlMenu,#widMove,#pfPop,.ctxmenu{line-height:1.5;}   /* 본문 행간 복원(body line-height:0 함정) */
+#evePop,#dfNewPop,#rlMenu,#widMove,#pfPop,.ctxmenu,#mm{line-height:1.5;}   /* 본문 행간 복원(body line-height:0 함정) */
 /* ⚠ body 직속으로 붙는 요소(appendChild)는 이 목록에 빠짐없이 넣을 것 — body{line-height:0}(71행)이 상속돼 줄 상자가 0 이 되고 글자가 넘친다.
    #rptRoot 는 보고서 규격이 달라 .rpt{line-height:normal} 로 따로 처리한다 */
 /* 어두운 판 위의 사이드바 내부 색 */
@@ -1923,9 +1923,9 @@ body:not(.wid) .btn.dp-add.on:hover{background:transparent;color:#7DA9EA;}
    ⚠ 켜진 칸의 원래 칠에 전환을 두지 않는다 — 다시 그린 줄에서 도착지에 잠깐 비친다 ══ */
 .sl-ind{display:none;}
 body:not(.wid) .sl-ind{display:block;position:absolute;pointer-events:none;z-index:0;transform-origin:0 0;}
-body:not(.wid) .seg.sl-on,body:not(.wid) .rp-tabs.sl-on,body:not(.wid) #view-defect .axseg.sl-on,body:not(.wid) .acct-tabs.sl-on{position:relative;}
-body:not(.wid) .seg.sl-on>button,body:not(.wid) .tnav.sl-on>.tnav-i,body:not(.wid) .acct-tabs.sl-on>.acct-tab,body:not(.wid) .rp-tabs.sl-on>.rp-tab,body:not(.wid) #view-defect .axseg.sl-on>button{position:relative;z-index:1;-webkit-tap-highlight-color:transparent;}
-body:not(.wid) .seg.sl-on>button.act,body:not(.wid) .acct-tabs.sl-on>.acct-tab.act,body:not(.wid) #view-defect .axseg.sl-on>button.on,body:not(.wid) #view-defect .tnav.sl-on>.tnav-i.act{background:transparent;box-shadow:none;}
+body:not(.wid) .seg.sl-on,body:not(.wid) .rp-tabs.sl-on,body:not(.wid) #view-defect .axseg.sl-on,body:not(.wid) .acct-tabs.sl-on,body:not(.wid) :is(.acx-seg,.rpk-seg).sl-on{position:relative;}
+body:not(.wid) .seg.sl-on>button,body:not(.wid) .tnav.sl-on>.tnav-i,body:not(.wid) .acct-tabs.sl-on>.acct-tab,body:not(.wid) .rp-tabs.sl-on>.rp-tab,body:not(.wid) #view-defect .axseg.sl-on>button,body:not(.wid) :is(.acx-seg,.rpk-seg).sl-on>button{position:relative;z-index:1;-webkit-tap-highlight-color:transparent;}
+body:not(.wid) .seg.sl-on>button.act,body:not(.wid) .acct-tabs.sl-on>.acct-tab.act,body:not(.wid) #view-defect .axseg.sl-on>button.on,body:not(.wid) #view-defect .tnav.sl-on>.tnav-i.act,body:not(.wid) #mb .rpk-seg.sl-on>button.on,body:not(.wid) #mb.acx .acx-seg.sl-on>button.on{background:transparent;box-shadow:none;}
 body:not(.wid) .seg.sl-on>button,body:not(.wid) #view-defect .axseg.sl-on>button,body:not(.wid) .acct-tabs.sl-on>.acct-tab,body:not(.wid) .rp-tabs.sl-on>.rp-tab::after{transition:color var(--t-fast);}
 body:not(.wid) #view-defect .tnav.sl-on>.tnav-i{transition:color .15s;}
 body:not(.wid) #view-defect .tnav.sl-mv>.tnav-i.act{color:var(--lbl2);transition:none;}   /* 켜진 칸 흰 글자는 알약이 거의 올 때까지 회색(즉시) */
@@ -2254,9 +2254,11 @@ body.pickmode #tkRoot .tk-item,body.pickmode .day-panel .plan{user-select:none;}
 .sw{position:relative;display:inline-block;width:34px;height:20px;cursor:pointer;vertical-align:middle;}
 .sw input{opacity:0;width:0;height:0;position:absolute;}
 .sw .sw-t{position:absolute;inset:0;background:var(--fill2);border-radius:99px;transition:background var(--t-base);}
-.sw .sw-t::before{content:"";position:absolute;width:16px;height:16px;left:2px;top:2px;background:var(--bg2);border-radius:50%;transition:transform var(--t-base);box-shadow:var(--sh-1);}
+.sw .sw-t::before{content:"";position:absolute;width:16px;height:16px;left:2px;top:2px;background:var(--bg2);border-radius:99px;transition:transform .38s cubic-bezier(.34,1.56,.64,1),width .2s var(--mv-ease);box-shadow:var(--sh-1);}
 .sw input:checked + .sw-t{background:var(--gn);}
 .sw input:checked + .sw-t::before{transform:translateX(14px);}
+.sw:active input:not(:disabled) + .sw-t::before{width:21px;}   /* 누르는 동안 손잡이가 늘어나고(켜짐이면 왼쪽으로) 놓으면 튕기며 간다(1092) */
+.sw:active input:checked:not(:disabled) + .sw-t::before{transform:translateX(9px);}
 /* 칩을 누르면 그 현장만 바로 빠진다 */
 .site-on{cursor:pointer;transition:background var(--ms),color var(--ms);}
 .site-on:hover{background:var(--rd-bg,rgba(220,38,38,.12));color:var(--rd,#DC2626);text-decoration:line-through;}
@@ -2295,6 +2297,98 @@ body.pickmode #tkRoot .tk-item,body.pickmode .day-panel .plan{user-select:none;}
 body.wid.glass #fcal.ev-drag .fc-highlight{background:rgba(143,180,255,.16);box-shadow:inset 0 0 0 1.5px #8FB4FF;}
 /* 1088 못 읽는 값 — 좌우로 짧게 흔들림 + 붉은 테두리(mvShake) */
 @keyframes mvShake{10%,90%{transform:translateX(-1px)}20%,80%{transform:translateX(2px)}30%,50%,70%{transform:translateX(-4px)}40%,60%{transform:translateX(4px)}}
+/* ══ 회의 모드(1095, app.js mtgOpen) — 월간 회의용 한 장 화면 넷. 화면 전체를 덮고(#mo 창은 위로) 단추로만 넘긴다. 색은 파랑 계열 + 장기 빨강 하나 ══ */
+#mm{position:fixed;inset:0;z-index:900;background:var(--bg);display:flex;flex-direction:column;overflow:hidden;color:var(--lbl);}
+#mm .mm-top{display:flex;align-items:stretch;gap:40px;padding:0 48px;height:64px;border-bottom:1px solid var(--sep);background:var(--bg2);flex:none;}
+#mm .mm-brand{display:flex;flex-direction:column;justify-content:center;gap:2px;}
+#mm .mm-brand b{font-size:16px;font-weight:800;letter-spacing:-.01em;}#mm .mm-brand span{font-size:11.5px;color:var(--lbl3);font-weight:600;}
+#mm .mm-tabs{display:flex;gap:30px;position:relative;}
+#mm .mm-tab{position:relative;display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700;color:var(--lbl3);background:none;border:0;padding:0;cursor:pointer;font-family:inherit;}
+#mm .mm-tab i{font-style:normal;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;opacity:.8;}
+#mm .mm-tab:hover{color:var(--lbl2);}
+#mm .mm-tab.on{color:var(--lbl);}#mm .mm-tab.on i{color:var(--b500);opacity:1;}
+#mm .mm-tab::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:3px;border-radius:2px 2px 0 0;background:transparent;}
+#mm .mm-tab.on::after{background:var(--b500);}
+#mm .mm-tabs.sl-on>.mm-tab.on::after{background:transparent;}
+#mm .mm-x{margin-left:auto;align-self:center;font-size:13px;font-weight:600;color:var(--lbl2);background:none;border:0;display:inline-flex;align-items:center;gap:4px;cursor:pointer;font-family:inherit;}
+#mm .mm-x:hover{color:var(--lbl);}#mm .mm-x .icn{width:16px;height:16px;}
+#mm .mm-body{flex:1;min-height:0;padding:30px 48px 32px;display:flex;flex-direction:column;overflow:auto;}
+#mm .mm-h{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:20px;flex:none;}
+#mm .mm-h .eb{font-size:12px;font-weight:800;color:var(--b500);letter-spacing:.08em;margin-bottom:6px;}
+#mm .mm-h h2{font-size:28px;font-weight:800;letter-spacing:-.02em;margin:0;white-space:nowrap;}
+#mm .mm-h .meta{font-size:13px;color:var(--lbl3);text-align:right;line-height:1.6;}#mm .mm-h .meta b{color:var(--lbl2);font-weight:700;}
+#mm .mm-fill{flex:1;min-height:0;}
+#mm .ba{display:inline-flex;align-items:center;font-size:11px;font-weight:600;padding:2px 8px;border-radius:var(--rp);white-space:nowrap;font-variant-numeric:tabular-nums;}
+#mm .bgn{background:var(--tint-gn);color:var(--gn);}#mm .brd{background:var(--tint-rd);color:var(--rd);}#mm .bgr{background:var(--fill);color:var(--lbl3);}
+#mm .blue{color:var(--bt1);}#mm .red{color:var(--rd);}
+#mm .lk{cursor:pointer;}#mm .lk:hover{text-decoration:underline;text-underline-offset:3px;}
+#mm .mk>div.lk{transition:border-color var(--t-fast),box-shadow var(--t-fast);}#mm .mk>div.lk:hover{text-decoration:none;border-color:var(--b300);box-shadow:0 2px 10px rgba(16,24,40,.06);}
+/* 01 — 지표 5칸 · 추이(3칸 폭: 위 추이 2 · 아래 월간 접수·처리 1) · 비중 도넛(2칸) */
+#mm .mk{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:12px;flex:none;}
+#mm .mk>div{background:var(--bg2);border:1px solid var(--cardline);border-radius:var(--rxl);padding:16px 20px;}
+#mm .mk .t{display:flex;align-items:center;justify-content:space-between;font-size:15px;font-weight:700;}
+#mm .mk .v{font-size:32px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums;margin:6px 0 2px;}#mm .mk .v small{font-size:13px;font-weight:600;color:var(--lbl3);margin-left:3px;}
+#mm .mk .s{font-size:12px;color:var(--lbl3);}
+#mm .mm-g5{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;}
+#mm .mm-col3{grid-column:span 3;display:flex;flex-direction:column;gap:12px;min-height:0;}
+#mm .mm-col2{grid-column:span 2;}
+#mm .pn{background:var(--bg2);border:1px solid var(--cardline);border-radius:var(--rxl);padding:18px 22px 14px;display:flex;flex-direction:column;min-height:0;}
+#mm .pn .ph{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+#mm .pn .ph b{font-size:19px;font-weight:800;letter-spacing:-.01em;}
+#mm .pn .ph .seg button{font-size:12px;padding:4px 12px;}
+#mm .pn .cv{position:relative;flex:1;min-height:0;}
+#mm .lg{display:flex;gap:14px;font-size:12px;color:var(--lbl2);}#mm .lg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px;}
+/* 02 — 공구 카드 · 공구 소계 + 현장 표 */
+#mm .rgc{display:grid;gap:12px;margin-bottom:12px;flex:none;}   /* 열 수 = 공구 수(mtgP2 가 인라인으로) */
+#mm .rgc>div{background:var(--bg2);border:1px solid var(--cardline);border-radius:var(--rxl);padding:16px 20px;}
+#mm .rgc .h{display:flex;align-items:baseline;gap:8px;margin-bottom:10px;}#mm .rgc .h b{font-size:21px;}#mm .rgc .h span{font-size:13.5px;color:var(--lbl3);}
+#mm .rgc .ks{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+#mm .rgc .l{font-size:13.5px;color:var(--lbl2);font-weight:600;}#mm .rgc .v{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;margin:2px 0 4px;letter-spacing:-.02em;}
+#mm .mm-tw{padding:6px 20px;overflow:auto;}
+#mm table.g{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;}
+#mm table.g th{font-size:13px;color:var(--lbl2);font-weight:700;padding:10px 12px;text-align:right;border-bottom:1px solid var(--sep);white-space:nowrap;}#mm table.g th:first-child{text-align:left;}
+#mm table.g td{padding:9px 12px;text-align:right;border-bottom:1px solid var(--sep);font-size:13.5px;white-space:nowrap;}#mm table.g td:first-child{text-align:left;}
+#mm table.g tr.rg td{background:rgba(120,120,128,.045);font-weight:700;}
+#mm table.g tr.sr td:first-child{padding-left:30px;color:var(--lbl2);}
+#mm table.g tr.tot td{font-weight:800;border-bottom:0;background:rgba(120,120,128,.11);}
+#mm table.g td.lbc{width:24%;}
+#mm table.g .lb{display:flex;align-items:center;gap:8px;}
+#mm table.g .lb .bar{flex:1;min-width:120px;display:flex;height:8px;border-radius:99px;overflow:hidden;background:var(--fill2);}#mm table.g .lb .bar span{display:block;height:100%;}
+#mm table.g .lb .pv{width:52px;text-align:right;}
+/* 03·04 — 담당자 칩(공구별 묶음, 고른 칩은 연한 파랑) · 현장 카드(내용 높이) */
+#mm .mm-sub{display:flex;align-items:center;gap:16px;flex-wrap:wrap;justify-content:flex-end;}
+#mm .mm-sub .vr{width:1px;height:22px;background:var(--sep);}
+#mm .cg{display:flex;align-items:center;gap:8px;}#mm .cgl{font-size:12px;font-weight:700;color:var(--lbl3);margin-right:2px;}
+#mm .chip{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 13px 0 5px;border-radius:999px;background:var(--bg2);border:0;box-shadow:inset 0 0 0 1px var(--sep);font-size:13px;font-weight:600;color:var(--lbl2);cursor:pointer;font-family:inherit;}
+#mm .chip:hover{color:var(--lbl);}
+#mm .chip .fbu-av{width:23px;height:23px;font-size:12px;}#mm .chip .fbu-av svg{width:13px;height:13px;}
+#mm .chip .n{font-size:12px;color:var(--lbl3);}
+#mm .chip.on{background:var(--b-tint);box-shadow:inset 0 0 0 1.5px var(--b300);color:var(--b600);}#mm .chip.on .n{color:var(--b500);}
+#mm .sg{display:grid;gap:14px;align-items:start;align-content:start;}
+#mm .sc{background:var(--bg2);border:1px solid var(--cardline);border-radius:var(--rxl);padding:22px 26px 10px;display:flex;flex-direction:column;min-width:0;}
+#mm .sc .hd{display:flex;align-items:stretch;justify-content:space-between;gap:10px;padding-bottom:12px;border-bottom:1px solid var(--sep);}
+#mm .sc .hd>div:first-child{display:flex;flex-direction:column;justify-content:space-between;min-width:0;}
+#mm .sc .hd b{font-size:27px;font-weight:800;letter-spacing:-.02em;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#mm .sc .hd .who{font-size:14.5px;color:var(--lbl3);margin-top:6px;}#mm .sc .hd .who b{display:inline;font-size:inherit;color:var(--lbl);letter-spacing:0;}
+#mm .sc .hd .lt{display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;font-size:14px;color:var(--lbl3);flex:none;}
+#mm .sc .hd .lt .row{display:flex;align-items:center;gap:8px;}
+#mm .sc .hd .lt strong{font-size:27px;font-weight:800;color:var(--rd);font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1.1;}
+#mm .sc .it{padding:15px 0;border-bottom:1px solid var(--sep);}#mm .sc .it:last-child{border-bottom:0;}
+#mm .sc .r1{display:flex;align-items:center;gap:8px;font-size:15px;}
+#mm .sc .r1 .tr{font-size:19px;font-weight:800;color:var(--b600);}#mm .sc .r1 .co{color:var(--lbl3);font-size:14.5px;}
+#mm .sc .r1 .n{margin-left:auto;font-variant-numeric:tabular-nums;color:var(--lbl3);font-size:15px;}#mm .sc .r1 .n b{color:var(--lbl);font-size:19px;}
+#mm .sc .r1 .ba{font-size:12.5px;}
+#mm .sc .pl{font-size:16.5px;margin-top:8px;line-height:1.5;}#mm .sc .pl .no{color:var(--rd);font-weight:700;}
+@media print{#mm{display:none!important;}}
+/* ＋ → 폼 모핑 상자(1092, mvMorph) — 폼 칠 위에 파란 테 1.5 로 자리를 보인다. 업무 현황 폼(#tko 890) 위 · 모달(#mo 1000) 아래 */
+.mv-morph{position:fixed;z-index:895;pointer-events:none;box-shadow:0 0 0 1.5px var(--b500);}
+/* 글자 굴림(1092, mvRoll) — 옛 글자(::before)는 위로 흐려지며 나가고 새 글자는 아래에서 들어온다(--rd -1 이면 반대) */
+.mv-rl{display:inline-grid;overflow:hidden;vertical-align:bottom;}
+.mv-rl>.mv-rn,.mv-rl::before{grid-area:1/1;}
+.mv-rl::before{content:attr(data-o);animation:mvRlOut var(--mv-mid) var(--mv-ease) forwards;}
+.mv-rl>.mv-rn{animation:mvRlIn var(--mv-mid) var(--mv-ease) both;}
+@keyframes mvRlOut{to{transform:translateY(calc(var(--rd,1)*-100%));opacity:0;filter:blur(3px)}}
+@keyframes mvRlIn{from{transform:translateY(calc(var(--rd,1)*100%));opacity:0;filter:blur(3px)}}
 .mv-shake{animation:mvShake .42s cubic-bezier(.36,.07,.19,.97);}
 .mv-bad{box-shadow:inset 0 0 0 1.5px var(--rd)!important;}
 /* 1088 고정 머리 그림자 — 내용이 머리 밑으로 들어가면(.stuck) 아래로 옅은 그림자. 맨 위에선 원래 선만 */
@@ -2791,7 +2885,8 @@ body.wid-await #fcal .fc-event.ev-fx::after{animation-play-state:paused;}
 .fbu-av.r-viewer svg{fill:var(--lbl2);}
 .fbu-av.r-blocked{background:rgba(220,38,38,.16);}
 .fbu-av.r-blocked svg{fill:var(--rd);}
-.utbl-nick.me{color:var(--b600);}   /* 본인 계정 — 배지 대신 이름 파랑 */
+.utbl-nick.me{color:var(--b600);}
+.utbl-nin{display:block;height:24px;margin-left:-8px;width:calc(100% + 8px);font-weight:600;text-overflow:ellipsis;}   /* 관리자 이름 칸(1093) — 글자는 읽기 칸과 같은 자리(테 1 + 안쪽 7) */   /* 본인 계정 — 배지 대신 이름 파랑 */
 .fbu-sel:disabled{opacity:.65;cursor:default;}
 .fbu-sel{width:100%;min-width:0;max-width:112px;}   /* 모양은 선택 상자 칩 규칙 */
 .utbl th.utbl-r,.utbl td.utbl-r{text-align:right;}
@@ -3112,10 +3207,12 @@ body.wid #wgSet.on{display:block;}
 #wgSet .wgs-sw{position:relative;display:inline-flex;width:38px;height:21px;flex:0 0 auto;cursor:pointer;}
 #wgSet .wgs-sw input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer;}
 #wgSet .wgs-sw .sw-t{position:absolute;inset:0;border-radius:999px;background:rgba(255,255,255,.18);transition:background var(--tr);}
-#wgSet .wgs-sw .sw-t::after{content:'';position:absolute;top:2.5px;left:2.5px;width:16px;height:16px;border-radius:50%;
-  background:#fff;transition:transform var(--tr);}
+#wgSet .wgs-sw .sw-t::after{content:'';position:absolute;top:2.5px;left:2.5px;width:16px;height:16px;border-radius:99px;
+  background:#fff;transition:transform .38s cubic-bezier(.34,1.56,.64,1),width .2s var(--mv-ease);}
 #wgSet .wgs-sw input:checked+.sw-t{background:var(--b600);}
 #wgSet .wgs-sw input:checked+.sw-t::after{transform:translateX(17px);}
+#wgSet .wgs-sw:active .sw-t::after{width:21px;}
+#wgSet .wgs-sw:active input:checked+.sw-t::after{transform:translateX(12px);}
 #wgSet .wgs-cyc b{flex:1;min-width:0;width:74px;text-align:center;font-size:12px;font-weight:700;color:#fff;white-space:nowrap;}
 #wgSet .wgs-cb{width:24px;height:24px;border-radius:3px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.75);}
 #wgSet .wgs-cb:hover{background:rgba(255,255,255,.16);color:#fff;}
@@ -3496,7 +3593,7 @@ body.wid #mb .mo-x{top:15px;right:12px;}   /* 위젯 창 안쪽 여백 20 */
   body:not(.wid) #mtab .mtab-m .icn{width:22px;height:22px;}
   body:not(.wid) #mtab button.act{color:var(--b600);}
   body:not(.wid) #mtab .mtab-ind{position:absolute;top:5px;bottom:5px;left:0;width:0;border-radius:25px;background:var(--b-tint);opacity:0;pointer-events:none;
-    transition:transform .42s cubic-bezier(.34,1.36,.64,1),width .42s cubic-bezier(.34,1.36,.64,1),opacity var(--t-fast);}
+    transition:opacity var(--t-fast);}   /* 옮김은 mtabMark() 스프링(1092) */
   body:not(.wid) #mtab .mtab-ind.on{opacity:1;}
   body:not(.wid) #mtab .mtab-d{stroke:none;fill:currentColor;font-family:inherit;font-size:10px;font-weight:700;}   /* x·y 는 mtabDateFit() 이 잉크 상자로 맞춘다 — letter-spacing·tabular-nums 를 두면 캔버스 계측과 어긋난다 */   /* 틀 몸통(y 9~21) 한가운데 */
   body:not(.wid) #mtab button[data-t="calendar"] .icn{width:26px;height:26px;margin:-1px 0;}   /* 달력 칸만 한 단 크게 — 틀 안이 비어 작아 보인다 */
@@ -5452,6 +5549,10 @@ body.wid.glass{--mv-flash:#8FB4FF;}
         <button class="tb-ic tb-print" data-act="pd.xlsx" aria-label="엑셀로 내보내기" data-tip="지금 미리보기 그대로 엑셀로">
           <svg class="icn" aria-hidden="true"><use href="#i-sheet"></use></svg><span class="tb-ic-t">엑셀</span></button>
       </div>
+      <div class="tb-nav" id="tbMtgWrap" hidden>   <!-- 1095 회의 모드 — 하자처리 현황(데스크톱) -->
+        <button class="tb-ic tb-print" data-act="mtg.open" aria-label="회의 모드" data-tip="회의 모드 · 월간 회의용 화면">
+          <svg class="icn" aria-hidden="true"><use href="#i-people"></use></svg><span class="tb-ic-t">회의 모드</span></button>
+      </div>
       <div class="tb-nav" id="tbPrintWrap" hidden>
         <button class="tb-ic tb-print" data-act="sb.print" aria-label="인쇄" data-tip="인쇄 · PDF 저장">
           <svg class="icn" aria-hidden="true"><use href="#i-print"></use></svg><span class="tb-ic-t">인쇄</span></button>
@@ -5816,5 +5917,5 @@ body.wid.glass{--mv-flash:#8FB4FF;}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1089"></script>
+<script src="./app.js?v=1096"></script>
 </body></html>
