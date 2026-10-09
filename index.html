@@ -2307,8 +2307,8 @@ body.wid.glass #fcal.ev-drag .fc-highlight{background:rgba(143,180,255,.16);box-
 #mm .mm-brand{display:flex;flex-direction:column;justify-content:center;gap:2px;}
 #mm .mm-brand b{font-size:16px;font-weight:800;letter-spacing:-.01em;}#mm .mm-brand span{font-size:11.5px;color:var(--lbl3);font-weight:600;}
 #mm .mm-tabs{display:flex;gap:30px;position:relative;}
-#mm .mm-tab{position:relative;display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700;color:var(--lbl3);background:none;border:0;padding:0;cursor:pointer;font-family:inherit;}
-#mm .mm-tab i{font-style:normal;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;opacity:.8;}
+#mm .mm-tab{position:relative;display:flex;align-items:center;gap:8px;font-size:19px;font-weight:800;letter-spacing:-.01em;color:var(--lbl3);background:none;border:0;padding:0;cursor:pointer;font-family:inherit;}
+#mm .mm-tab i{font-style:normal;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;opacity:.8;}
 @media (hover:hover) and (pointer:fine){#mm .mm-tab:hover{color:var(--lbl2);}}@media not ((hover:hover) and (pointer:fine)){#mm .mm-tab:active{color:var(--lbl2);}}
 #mm .mm-tab.on{color:var(--lbl);}#mm .mm-tab.on i{color:var(--b500);opacity:1;}
 #mm .mm-tab::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:3px;border-radius:2px 2px 0 0;background:transparent;}
@@ -2316,7 +2316,7 @@ body.wid.glass #fcal.ev-drag .fc-highlight{background:rgba(143,180,255,.16);box-
 #mm .mm-tabs.sl-on>.mm-tab.on::after{background:transparent;}
 #mm .mm-x{margin-left:auto;align-self:center;font-size:13px;font-weight:600;color:var(--lbl2);background:none;border:0;display:inline-flex;align-items:center;gap:4px;cursor:pointer;font-family:inherit;}
 @media (hover:hover) and (pointer:fine){#mm .mm-x:hover{color:var(--lbl);}}@media not ((hover:hover) and (pointer:fine)){#mm .mm-x:active{color:var(--lbl);}}#mm .mm-x .icn{width:16px;height:16px;}
-#mm .mm-fs+.mm-x{margin-left:22px;}
+#mm .mm-fs+.mm-x{margin-left:-14px;}   /* 전체화면은 나가기 옆으로 — 줄 간격(40) 대신 26 */
 #mm .mm-rm{display:inline-flex;align-items:center;gap:2px;padding:0;border:0;background:none;font-family:inherit;font-size:11.5px;font-weight:700;color:var(--b600);cursor:pointer;}   /* 기준월 — 누르면 게시된 달 목록 */
 #mm .mm-rm .icn{width:13px;height:13px;}@media (hover:hover) and (pointer:fine){#mm .mm-rm:hover{color:var(--b500);}}@media not ((hover:hover) and (pointer:fine)){#mm .mm-rm:active{color:var(--b500);}}
 #mm .mm-body{flex:1;min-height:0;padding:30px 48px 32px;display:flex;flex-direction:column;overflow:auto;}
@@ -2387,6 +2387,27 @@ body.wid.glass #fcal.ev-drag .fc-highlight{background:rgba(143,180,255,.16);box-
 #mm .sc .r1 .tr{font-size:19px;font-weight:800;color:var(--b600);}#mm .sc .r1 .co{color:var(--lbl3);font-size:14.5px;}
 #mm .sc .r1 .n{margin-left:auto;font-variant-numeric:tabular-nums;color:var(--lbl3);font-size:15px;}#mm .sc .r1 .n b{color:var(--lbl);font-size:19px;}
 #mm .sc .r1 .ba{font-size:12.5px;}
+/* 03 넓은 카드 — 머리·본문 모두 반으로(7:5). 세로선은 따로(.vl) 두 줄을 관통, 양쪽 가로선은 세로선에서 26 떨어져 끊긴다(카드 안 여백과 같은 26) */
+#mm .sc.wide .wg{display:grid;grid-template-columns:minmax(0,7fr) 1px minmax(0,5fr);column-gap:26px;}
+#mm .sc.wide .vl{grid-column:2;grid-row:1/3;background:var(--sep);margin-bottom:12px;}
+#mm .sc.wide .hd{grid-column:1;grid-row:1;}#mm .sc.wide .pls{grid-column:1;grid-row:2;align-self:start;}
+#mm .sc.wide .ah{grid-column:3;grid-row:1;display:flex;flex-direction:column;justify-content:space-between;gap:12px;padding-bottom:12px;border-bottom:1px solid var(--sep);}
+#mm .sc.wide .ah .at{display:flex;align-items:center;justify-content:space-between;gap:12px;}#mm .sc.wide .ah .at b{font-size:19px;font-weight:800;color:var(--lbl2);letter-spacing:-.01em;}
+#mm .sc.wide .ah .seg button{font-size:12px;padding:4px 12px;}
+#mm .sc.wide .ag{grid-column:3;grid-row:2;display:grid;align-content:start;padding:12px 0 14px;}
+#mm .sc.wide .ar{display:grid;grid-template-columns:minmax(64px,88px) minmax(60px,96px) minmax(40px,1fr) 40px 36px 56px;align-items:center;gap:10px;min-height:34px;font-size:15px;}
+#mm .sc.wide .ar .sb{color:var(--lbl3);font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}#mm .sc.wide .ar .ba{justify-self:end;font-size:12.5px;}#mm .sc.wide .ar .bh{text-align:right;}
+#mm .sc.wide .ar .nm{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#mm .sc.wide .ar .bw{display:block;height:6px;border-radius:99px;background:var(--fill);}
+#mm .sc.wide .ar .bar{display:block;height:100%;border-radius:inherit;background:var(--ch-d0);overflow:hidden;min-width:6px;}#mm .sc.wide .ar .bar i{display:block;height:100%;background:var(--ch-d60);}
+#mm .sc.wide .ar .u,#mm .sc.wide .ar .l{text-align:right;font-variant-numeric:tabular-nums;}#mm .sc.wide .ar .u{color:var(--lbl3);font-weight:500;}#mm .sc.wide .ar .l{color:var(--lbl);font-weight:700;}
+#mm .sc.wide .ar.ac{font-size:14.5px;min-height:0;color:var(--lbl3);}#mm .sc.wide .ar.ac .nm,#mm .sc.wide .ar.ac .sb{font-weight:500;font-size:14.5px;}#mm .sc.wide .ar.ac .u{font-weight:500;}#mm .sc.wide .ar.ac .bw{background:none;}#mm .sc.wide .ar.ac .l{color:var(--rd);font-weight:600;}
+#mm .sc.wide .ar.lk{cursor:pointer;}
+#mm .sc.wide .ar.sm .bw{background:none;}#mm .sc.wide .ar.et .nm,#mm .sc.wide .ar.et .l{color:var(--lbl2);font-weight:600;}
+#mm .sc.wide .ar.tt .nm{font-weight:700;}#mm .sc.wide .ar.tt .u{color:var(--lbl2);font-weight:600;}
+@media (hover:hover) and (pointer:fine){#mm .sc.wide .ar.lk:hover .nm,#mm .sc.wide .ar .sb.lk:hover,#mm .sc .r1 .co.lk:hover{color:var(--b600);}}@media not ((hover:hover) and (pointer:fine)){#mm .sc.wide .ar.lk:active .nm,#mm .sc.wide .ar .sb.lk:active,#mm .sc .r1 .co.lk:active{color:var(--b600);}}
+#mm .sc .r1 .co.lk{cursor:pointer;}
+#mm .sc.wide .pls .it:first-child{padding-top:12px;}
 #mm .sc .pl{font-size:16.5px;margin-top:8px;line-height:1.5;}#mm .sc .pl .no{color:var(--rd);font-weight:700;}
 @media print{#mm{display:none!important;}}
 /* ＋ → 폼 모핑 상자(1092, mvMorph) — 폼 칠 위에 파란 테 1.5 로 자리를 보인다. 업무 현황 폼(#tko 890) 위 · 모달(#mo 1000) 아래 */
@@ -3566,11 +3587,13 @@ body.tst-x .toast-bk.has-btn{pointer-events:auto;}
   :root{view-transition-name:none;}
   html.vt-nav #content{view-transition-name:vmain;}
   ::view-transition-group(vmain){animation-duration:0s;}
-  ::view-transition-old(vmain){animation:vtOut .14s ease-out both;}
-  ::view-transition-new(vmain){animation:viewIn var(--mv-mid) var(--mv-ease) both;}
+  ::view-transition-old(vmain){animation:vtOut .09s ease-out both;}   /* 옛 화면은 빨리 걷고 */
+  ::view-transition-new(vmain){animation:vtIn .24s var(--mv-ease) both;}   /* 새 화면은 0 에서 — 반투명(.5)에서 시작하면 두 화면이 겹쳐 보여 덜컥인다 */
   html.vt-nav .view.act>*,html.vt-nav #view-calendar.act .dp-col{animation:none;}
+  .view.vt-done.act>*,#view-calendar.vt-done.act .dp-col{animation:none;}   /* 전환이 끝나 vt-nav 를 거둘 때 viewIn 이 다시 한 번 재생되던 것(두 번째 깜빡임) */
 }
 @keyframes vtOut{to{opacity:0;}}
+@keyframes vtIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
 @media (hover:hover) and (pointer:fine){.toast-undo:hover{background:rgba(255,255,255,.26);}}@media not ((hover:hover) and (pointer:fine)){.toast-undo:active{background:rgba(255,255,255,.26);}}
 
 /* 달력 헤더 — 좌 년·월(누르면 이동), 우 ‹·오늘·›.
@@ -5943,5 +5966,5 @@ body.wid.glass{--mv-flash:#8FB4FF;}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1107"></script>
+<script src="./app.js?v=1111"></script>
 </body></html>
