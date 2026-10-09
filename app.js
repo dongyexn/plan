@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1107';
+const APP_VER='1111';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -1520,7 +1520,11 @@ function mvMorph(btn,form,to,z){   /* to = 폼의 끝 자리(움직이는 중인
     kids.forEach((c,i)=>{if(c.isConnected)c.animate([{opacity:0,filter:'blur(4px)'},{opacity:1,filter:'none'}],{duration:MV_FAST,delay:i*40,easing:MV_EASE,fill:'backwards'});});},()=>{});}
 function mvMorphFrom(fr,btn,bg,r1,z){
   if(!mvOK()||!fr||!btn||!mvVis(btn))return;
-  const a=btn.getBoundingClientRect();mvMorphBox(fr,a,bg||'var(--bg2)',r1||'10px',Math.min(a.height/2,14)+'px',MV_MID,MV_EASE,z);}
+  const a=btn.getBoundingClientRect(),an=mvMorphBox(fr,a,bg||'var(--bg2)',r1||'10px',Math.min(a.height/2,14)+'px',MV_MID,MV_EASE,z);
+  /* 줄어드는 상자는 돌아가는 자리의 바탕색으로 물들며 흐려진다 — 어두운 사이드바로 흰 상자가 그대로 꽂히지 않게 */
+  const m=an&&an.effect&&an.effect.target;if(!m)return;
+  let p=btn,to='';while(p&&p!==document.documentElement){const c=getComputedStyle(p).backgroundColor;if(!/^rgba\(.*,\s*0\)$|^transparent$/.test(c)){to=c;break;}p=p.parentElement;}
+  m.animate([{opacity:1,backgroundColor:getComputedStyle(m).backgroundColor},{opacity:1,offset:.35},{opacity:0,backgroundColor:to||getComputedStyle(m).backgroundColor}],{duration:MV_MID,easing:'linear',fill:'forwards'});}
 /* ＋ 로 목록에 새 행을 넣으면 그 행이 ＋ 자리에서 펴진다(1092) — 저장 뒤 다시 그려져야 생기므로 0.8초까지 기다려 찾는다. sel = 새 행 안 입력칸 */
 function mvMorphNew(btn,sel){
   if(!mvOK()||!btn||!btn.isConnected||!mvVis(btn))return;const a=btn.getBoundingClientRect(),t0=performance.now();
@@ -3320,7 +3324,11 @@ function peTinFit(inp){
   if(!inp||!inp.isConnected)return;
   const cs=getComputedStyle(inp),fs=parseFloat(cs.fontSize)||13,ch=inp.parentElement?parseFloat(getComputedStyle(inp.parentElement).fontSize)||fs:fs;
   _tinCv=_tinCv||document.createElement('canvas');const g=_tinCv.getContext('2d');g.font=cs.fontWeight+' '+cs.fontSize+' '+cs.fontFamily;
-  const w=Math.ceil(g.measureText(inp.value||inp.placeholder||'').width)+2,k=Math.min(1,ch/fs);
+  const w0=Math.ceil(g.measureText(inp.value||inp.placeholder||'').width)+2,k=Math.min(1,ch/fs);
+  /* 칩 아이콘 자리까지 입력 칸으로 — 칸을 왼쪽으로 아이콘+간격만큼 늘리고 글자는 안쪽 여백으로 제자리(누르면 아이콘에서도 바로 입력 · 포커스 테두리가 아이콘까지) */
+  const ic=inp.parentElement&&inp.parentElement.querySelector('.pci');
+  const D=ic?((ic.getBoundingClientRect().width||parseFloat(getComputedStyle(ic).width)||0)+(parseFloat(getComputedStyle(inp.parentElement).columnGap)||0)):0,pad=D/k,w=w0+pad;
+  inp.style.paddingLeft=pad.toFixed(1)+'px';inp.style.marginLeft=(-D).toFixed(1)+'px';
   inp.style.width=w+'px';
   if(k<1){inp.style.transform='scale('+k+')';inp.style.transformOrigin='left center';inp.style.marginRight=(-w*(1-k)).toFixed(1)+'px';}
   else{inp.style.transform='';inp.style.marginRight='';}
@@ -3351,6 +3359,16 @@ function peDateChipHTML(idA,a,idB,b){
 }
 /* 링크 — 칩(누르면 펼침) + 칩 줄 아래 한 줄 주소 칸 */
 function peLinkChipHTML(id){return '<button type="button" class="pe-chip c-sm c-lnk" data-pk="link" data-pc="'+id+'" data-act="pe.link" aria-label="링크">'+PE_IC.lnk+'<span class="pc-t"></span></button>';}
+/* 링크 주소 줄 — 펼칠 땐 높이·위아래 여백이 0 에서 자라며 흐림이 걷히고, 접을 땐 거꾸로 줄어든 뒤 숨는다(아래 줄·카드가 함께 미끄러진다) */
+function peLnkAnim(row,open){
+  row.getAnimations().forEach(a=>a.cancel());row._closing=false;
+  if(!mvOK()){row.hidden=!open;return;}
+  row.hidden=false;const cs=getComputedStyle(row),h=row.offsetHeight,full={height:h+'px',marginTop:cs.marginTop,marginBottom:cs.marginBottom,opacity:1},zero={height:'0px',marginTop:'0px',marginBottom:'0px',opacity:0};
+  const ov=row.style.overflow;row.style.overflow='hidden';
+  if(open){const a=row.animate([zero,full],{duration:MV_MID,easing:MV_EASE});a.onfinish=a.oncancel=()=>{row.style.overflow=ov;};return;}
+  row._closing=true;const a=row.animate([full,zero],{duration:MV_FAST,easing:MV_EASE,fill:'forwards'});
+  a.onfinish=()=>{row._closing=false;row.hidden=true;row.style.overflow=ov;a.cancel();};a.oncancel=()=>{row.style.overflow=ov;};
+}
 function peLinkRowHTML(id,url){return '<div class="pe-lnk" hidden>'+PE_IC.lnk+'<input id="'+id+'" maxlength="'+LINK_MAX+'" placeholder="https://…" aria-label="링크 주소" value="'+esc(url||'')+'"><button type="button" class="pe-lnk-x" data-act="pe.link" data-clr="1" aria-label="링크 지우기"><svg class="icn"><use href="#i-close"></use></svg></button></div>';}
 function peKindSelHTML(id,kind){return '<select id="'+id+'" aria-label="구분">'+TK_KIND.map(k=>'<option value="'+k[0]+'"'+(k[0]===kind?' selected':'')+'>'+esc(k[1])+'</option>').join('')+'</select>';}
 function peRecSelHTML(id,rc){return '<select id="'+id+'" aria-label="반복">'+Object.keys(REC_LBL).map(k=>'<option value="'+k+'"'+(k===rc?' selected':'')+'>'+REC_LBL[k]+'</option>').join('')+'</select>';}
@@ -8445,7 +8463,7 @@ async function recOpen(sid,scope,opts){
   const site=sid?(S.org.sites||[]).find(x=>x.id===sid):null;
   const all=!sid;
   const scopeLbl=scope==='lul'?'장기미처리':'미처리';
-  const filtLbl=opts.trade?' · '+opts.trade:opts.co?' · '+opts.co:'';
+  const filtLbl=[opts.trade,opts.co].filter(Boolean).map(x=>' · '+x).join('');
   openModal('',  '<div class="rec-none ld">불러오는 중…</div>');
   const mb=$('#mb');if(mb)mb.classList.add('dfwide');
   REC.title=(site?site.name:'팀 전체')+' · '+scopeLbl+filtLbl;
@@ -8467,8 +8485,8 @@ async function recOpen(sid,scope,opts){
   {const re=((DF.kpi[dfRm()+'/'+(sid||((dfDashSites()[0]||{}).id||''))]||{}).rmEnd)||dfEnds(dfRm()).rmEnd,e=new Date(re);
    if(re&&!isNaN(e))rows=rows.map(r=>{if(!r.receiptDate)return r;const d=Math.max(0,Math.round((e-new Date(r.receiptDate))/86400000));return d===Number(r.delayDays)?r:{...r,delayDays:d};});}
   if(scope==='lul')rows=rows.filter(r=>(Number(r.delayDays)||0)>=30);
-  if(opts.trade)rows=rows.filter(r=>String(r.trade||'')===opts.trade);
-  if(opts.co)rows=rows.filter(r=>String(r.contractor||'')===opts.co);
+  if(opts.trade)rows=rows.filter(r=>String(r.trade||'기타')===opts.trade);   /* 빈 값은 집계와 같은 이름(기타·(미기재))으로 — 그 줄을 눌러도 목록이 빈다 */
+  if(opts.co)rows=rows.filter(r=>String(r.contractor||'(미기재)')===opts.co);
   /* 기본 정렬은 접수일 최신순 — 팀 전체는 현장별로 받아 오므로 그대로 두면 현장 순으로 묶인다 */
   rows.sort((a,b)=>String(b.receiptDate||'').localeCompare(String(a.receiptDate||'')));
   REC.rows=rows;REC.q='';REC.band='';REC.sort='';REC.desc=false;REC.limit=500;
@@ -9125,7 +9143,7 @@ const KM_VB0={x:232,y:8,w:2120,h:3222};   /* 오른쪽 여백 — 경북·울산
    x 를 8(=화면 1px) 늘려 지도를 왼쪽으로 1px 민다 */
 const KM_JD=[1506,-706];                           /* 제주 이동량 — 오른쪽 아래 모서리 */
 const KM_FR={x:1832,y:2906,w:496,h:324};           /* 제주 네모 — 보기 상자 우하단에 붙인다 */
-function krGeo(){if(!window.KRGEO){loadGeo().then(()=>{Object.keys(KM_XY).forEach(k=>{delete KM_XY[k];});if(S.view==='org')rOrg();}).catch(()=>{});}return window.KRGEO||null;}   /* 처음 부르면 지연 로드, 읽히면 조직 화면 재렌더 */
+function krGeo(){if(!window.KRGEO){loadGeo().then(()=>{Object.keys(KM_XY).forEach(k=>{delete KM_XY[k];});if(S.view==='org')rOrg();else if(S.view==='d60')rOrgMap();}).catch(()=>{});}return window.KRGEO||null;}   /* 처음 부르면 지연 로드, 읽히면 조직 화면 재렌더 */
 /* 현장 자리는 저장하지 않고 이름에서 그때그때 찾는다 — 못 찾은 현장은 지도에 안 나온다.
    ⚠ kmAuto 는 색인 전체를 훑으므로 이름 단위로 기억해 둔다 */
 const KM_XY={};
@@ -10795,7 +10813,7 @@ function navGo(view){
   d.documentElement.classList.add('vt-nav');
   const k=navGo.k=(navGo.k||0)+1;   /* 빠르게 두 번 옮기면 앞 전환이 건너뛰어진다 — 마지막 전환만 표시를 거둔다 */
   const vt=d.startViewTransition(()=>go(view));
-  vt.finished.finally(()=>{if(navGo.k===k)d.documentElement.classList.remove('vt-nav');});
+  vt.finished.finally(()=>{if(navGo.k!==k)return;const v=$('#view-'+S.view);if(v)v.classList.add('vt-done');d.documentElement.classList.remove('vt-nav');});
 }
 function go(view){
   if(view==='report')view='tasks';
@@ -10815,6 +10833,7 @@ function go(view){
   S.tkOpen=null;   /* 짚어 둔 행은 화면을 옮기면 푼다 */
   pickClear();   /* 화면을 옮기면 골라 둔 업무도 푼다 — 돌아왔을 때 남은 선택에 일괄 적용되지 않게 */
   if(S.dpSheet)dpSheet(false);  mselClose();
+  $$('.view.vt-done').forEach(v=>v.classList.remove('vt-done'));
   $$('.view').forEach(v=>v.classList.toggle('act',v.id==='view-'+view));
   $$('#sidebar .nvi[data-view]').forEach(n=>n.classList.toggle('act',n.dataset.view===view));
   $('#tbt').textContent=VIEW_TTL[view];
@@ -11058,9 +11077,10 @@ const ACT={
   'pe.link':el=>{   /* 달력·업무 현황 폼 공용 — 누른 폼(.pe-f2) 안에서 찾는다 */
     const root=el.closest('.pe-f2'),row=root&&root.querySelector('.pe-lnk'),inp=row&&row.querySelector('input');if(!inp)return;
     if(el.dataset.clr){inp.value='';inp.focus();inp.dispatchEvent(new Event('input',{bubbles:true}));return;}   /* 자동 저장·칩 글자는 input 을 듣는다 */
-    row.hidden=!row.hidden;
-    const c=root.querySelector('.pe-chip.c-lnk');if(c)c.classList.toggle('on',!row.hidden);
-    if(!row.hidden)inp.focus();},
+    const open=row.hidden||row._closing;
+    const c=root.querySelector('.pe-chip.c-lnk');if(c)c.classList.toggle('on',open);
+    peLnkAnim(row,open);
+    if(open)inp.focus({preventScroll:true});},
   /* 카드 본문 클릭은 plan.body(앱=편집 · 위젯·권한 없음=펼쳐 보기) */
   'plan.body':el=>{const p=findPlan(el.dataset.pid);if(!p)return;
     if(canEditTask(p,p.sid)){openPlanEdit(p,null,null,el.dataset.occ||'');return;}   /* 위젯도 */
@@ -11190,10 +11210,15 @@ const ACT={
     openCtx(r.left,r.bottom+6,months.map(m=>({label:m+(m===ORG_RM?' · 최신':''),on:m===cur,act:()=>{if(m!==cur)mtgSetRm(m);}})),el);},
   'mtg.p':el=>{const p=Number(el.dataset.p)||0;if(p===MTG.p)return;const d=p>MTG.p?1:-1;MTG.p=p;mtgRender(d,true);},   /* 넘긴 쪽에서 밀려 들어온다 */
   'mtg.don':el=>{if(MTG.don===el.dataset.k)return;MTG.don=el.dataset.k;$$('#mm [data-act="mtg.don"]').forEach(b=>b.classList.toggle('act',b.dataset.k===MTG.don));mtgDonut(dfDashSites(),true);},   /* 도넛만 다시 */
+  'mtg.agg':el=>{if((MTG.agg||'tr')===el.dataset.k)return;MTG.agg=el.dataset.k;
+    const old=$('#mm .sg'),t=document.createElement('div');t.innerHTML=mtgPlan(false,dfDashSites(),()=>'');const g=t.querySelector('.sg');
+    if(old&&g){[...old.querySelectorAll('.sc.wide .ah')].forEach((a,i)=>{const n=g.querySelectorAll('.sc.wide .ah')[i];if(n)a.innerHTML=n.innerHTML;});
+      [...old.querySelectorAll('.sc.wide .ag')].forEach((a,i)=>{const n=g.querySelectorAll('.sc.wide .ag')[i];if(n){a.innerHTML=n.innerHTML;mtgAggFit();
+      if(mvOK())a.querySelectorAll('.ar:not(.ac)').forEach((r,j)=>{r.animate([{opacity:0,transform:'translateY(4px)'},{opacity:1,transform:'none'}],{duration:MV_MID,delay:j*25,easing:MV_EASE,fill:'backwards'});const b=r.querySelector('.bar');if(b)b.animate([{clipPath:'inset(0 100% 0 0 round 99px)'},{clipPath:'inset(0 0 0 0 round 99px)'}],{duration:MV_STR,delay:80+j*25,easing:MV_EASE,fill:'backwards'});});}});}},
   'mtg.who':el=>{if(MTG.who===el.dataset.id)return;MTG.who=el.dataset.id;
     $$('#mm .chip[data-act="mtg.who"]').forEach(c=>c.classList.toggle('on',c.dataset.id===MTG.who));   /* 칩은 제자리에서 색만 바뀐다(전환) */
     const old=$('#mm .sg'),t=document.createElement('div');t.innerHTML=mtgPlan(MTG.p===3,dfDashSites(),()=>'');const g=t.querySelector('.sg');
-    if(old&&g)old.replaceWith(g);else mtgRender();
+    if(old&&g){old.replaceWith(g);mtgAggFit();}else mtgRender();
     if(g&&mvOK()){[...g.children].forEach((c,i)=>c.animate([{opacity:0,transform:'translateY(10px)'},{opacity:1,transform:'none'}],{duration:MV_SLOW+80,delay:i*45,easing:MV_EASE,fill:'backwards'}));g.querySelectorAll('.sc .hd strong').forEach(mtgCount);}},   /* 칩 → 카드만 차례로 */
   'rec.list':el=>recOpen(el.dataset.sid||'',el.dataset.scope||el.dataset.sc||'ul',{trade:el.dataset.trade,co:el.dataset.co,vac:el.dataset.vac}),
   'rec.limit':el=>{REC.limit=Number(el.dataset.n)||0;recRender();},
@@ -12562,7 +12587,7 @@ function mtgRender(dir,anim){
   else if(MTG.p===1)body=head(MTG_P[1],meta)+mtgP2(sites);
   else body=mtgPlan(MTG.p===3,sites,head);
   m.innerHTML=top+'<div class="mm-body">'+body+'</div>';
-  if(MTG.p===0)mtgCharts1(sites,anim);
+  if(MTG.p===0)mtgCharts1(sites,anim);else if(MTG.p===2)mtgAggFit();
   if(anim)mtgEnter(dir);
 }
 function mtgP1(a,sites){
@@ -12599,10 +12624,12 @@ function mtgCharts1(sites,anim){
     M.forEach(o=>{const p=o.mt.data[n-1];g.beginPath();g.arc(p.x,p.y,5,0,7);g.fillStyle='#fff';g.fill();g.lineWidth=3;g.strokeStyle=o.d.borderColor;g.stroke();});g.restore();}};
   const AN=anim&&mvOK()?{duration:900,easing:'easeOutQuart'}:false;
   /* 마우스를 올린 달 — 세로선 + 그 달 값(툴팁 대신 직접 그린다) */
-  const cross={id:'mmCross',afterDatasetsDraw(ch){const i=ch.$hx;if(i==null||i<0)return;const g=ch.ctx,a=ch.chartArea,m0=ch.getDatasetMeta(0).data[i];if(!m0)return;
-    const xs=ch.data.datasets.map((d,k)=>ch.getDatasetMeta(k).data[i]).filter(Boolean);const x=ch.config.type==='bar'?(xs[0].x+xs[xs.length-1].x)/2:m0.x;
-    g.save();g.strokeStyle='rgba(60,70,90,.35)';g.lineWidth=1;g.setLineDash([4,4]);g.beginPath();g.moveTo(x,a.top);g.lineTo(x,a.bottom);g.stroke();g.setLineDash([]);
-    if(ch.config.type==='line')ch.data.datasets.forEach((d,k)=>{const p=ch.getDatasetMeta(k).data[i];g.beginPath();g.arc(p.x,p.y,4.5,0,7);g.fillStyle=d.borderColor;g.fill();g.lineWidth=2;g.strokeStyle='#fff';g.stroke();});
+  /* 세로선·값 상자 — 마우스가 옮겨 가면 미끄러져 따라가고(지수 감속), 들어올 때 흐림에서 나타나고 나가면 흐려져 사라진다 */
+  const hxX=(ch,i)=>{const xs=ch.data.datasets.map((d,k)=>ch.getDatasetMeta(k).data[i]).filter(Boolean);if(!xs.length)return null;return ch.config.type==='bar'?(xs[0].x+xs[xs.length-1].x)/2:xs[0].x;};
+  const cross={id:'mmCross',afterDatasetsDraw(ch){const i=ch.$hx;if(i==null||i<0||!(ch.$ca>0))return;const g=ch.ctx,a=ch.chartArea,m0=ch.getDatasetMeta(0).data[i];if(!m0)return;
+    const x=ch.$cx!=null?ch.$cx:hxX(ch,i);
+    g.save();g.globalAlpha=Math.min(1,ch.$ca);g.strokeStyle='rgba(60,70,90,.35)';g.lineWidth=1;g.setLineDash([4,4]);g.beginPath();g.moveTo(x,a.top);g.lineTo(x,a.bottom);g.stroke();g.setLineDash([]);
+    if(ch.config.type==='line')ch.data.datasets.forEach((d,k)=>{const p=ch.getDatasetMeta(k).data[i];const py=mvLineY(ch,k,x)??p.y;g.beginPath();g.arc(x,py,4.5,0,7);g.fillStyle=d.borderColor;g.fill();g.lineWidth=2;g.strokeStyle='#fff';g.stroke();});
     const rows=ch.data.datasets.map(d=>[d.label,d.data[i],ch.config.type==='line'?d.borderColor:(d.label==='접수'?'rgba(62,113,210,.5)':d.backgroundColor)]);
     const head=ch.data.labels[i],FL='600 12px '+FONT,FV='800 12px '+FONT,FH='700 12px '+FONT,mw=f=>t=>{g.font=f;return g.measureText(t).width;};
     g.fillStyle='rgba(255,255,255,.96)';g.strokeStyle='rgba(16,24,40,.12)';g.lineWidth=1;
@@ -12620,14 +12647,18 @@ function mtgCharts1(sites,anim){
       rows.forEach((r,k)=>{const yy=by+P+10+(k+1)*LH;g.fillStyle=r[2];g.fillRect(bx+P,yy-8.5,8,8);g.font=FL;g.fillStyle='#4A5260';g.textAlign='left';g.fillText(r[0],bx+P+14,yy);g.font=FV;g.fillStyle='#1d2330';g.textAlign='right';g.fillText(mtgN(r[1]),bx+w-P,yy);});
     }
     g.restore();}};
-  const hov=(ev,els,ch)=>{const e=ch.getElementsAtEventForMode(ev,'index',{intersect:false},false),i=(e.length&&ev.type!=='mouseout')?e[0].index:-1;if(ch.$hx!==i){ch.$hx=i;ch.draw();}};
+  const hov=(ev,els,ch)=>{const e=ch.getElementsAtEventForMode(ev,'index',{intersect:false},false);mtgHx(ch,(e.length&&ev.type!=='mouseout')?e[0].index:-1);};
   new Chart($('#mmC1'),{type:'line',data:{labels:lbl,datasets:[
       {label:'미처리',data:U,borderColor:'#3E71D2',borderWidth:3,tension:.42,fill:'origin',backgroundColor:grad('62,113,210',.2),pointRadius:0,datalabels:{display:false}},
       {label:'장기미처리',data:L,borderColor:'#DA6A60',borderWidth:3,tension:.42,fill:'origin',backgroundColor:grad('218,106,96',.14),pointRadius:0,datalabels:{display:false}}]},
     options:{maintainAspectRatio:false,animation:AN,onHover:hov,layout:{padding:{top:24,right:34,left:6}},plugins:{legend:{display:false},tooltip:{enabled:false},datalabels:{display:false}},
       scales:{x:{grid:{display:false},border:{display:false},ticks:ax},y:{beginAtZero:true,grid:{color:'rgba(120,120,128,.10)'},border:{display:false},ticks:{font:{size:11},color:'#A0A8B4',maxTicksLimit:5}}}},plugins:[endLbl,cross]});
-  const barLbl={id:'mmBar',afterDatasetsDraw(ch){const g=ch.ctx;g.save();ch.data.datasets.forEach((d,i)=>{const mt=ch.getDatasetMeta(i),b=mt.data[mt.data.length-1];if(!b||d.data[d.data.length-1]==null)return;
-    g.font='800 12px '+FONT;g.textAlign='center';g.fillStyle=i?'#2E4F8F':'#5B7FC4';g.fillText(mtgN(d.data[d.data.length-1]),b.x,b.y-6);});g.restore();}};
+  /* 마지막 달 막대 위 값 — 두 막대가 좁아 글자가 겹치면 바깥쪽으로 비켜(왼쪽 값은 오른쪽 끝을, 오른쪽 값은 왼쪽 끝을 막대 가운데에) 맞댄다 */
+  const barLbl={id:'mmBar',afterDatasetsDraw(ch){const g=ch.ctx;g.save();g.font='800 12px '+FONT;
+    const L=ch.data.datasets.map((d,i)=>{const mt=ch.getDatasetMeta(i),b=mt.data[mt.data.length-1],v=d.data[d.data.length-1];return (!b||v==null||mt.hidden)?null:{i,b,t:mtgN(v),w:g.measureText(mtgN(v)).width};});
+    const [A,B]=L;const clash=A&&B&&(Math.abs(B.b.x-A.b.x)<(A.w+B.w)/2+6);
+    L.forEach(o=>{if(!o)return;let x=o.b.x,al='center';if(clash){if(o===A){al='right';x=(A.b.x+B.b.x)/2-3;}else{al='left';x=(A.b.x+B.b.x)/2+3;}}
+      g.textAlign=al;g.fillStyle=o.i?'#2E4F8F':'#5B7FC4';g.fillText(o.t,x,o.b.y-6);});g.restore();}};
   new Chart($('#mmC3'),{type:'bar',data:{labels:lbl,datasets:[
       {label:'접수',data:RC,backgroundColor:'rgba(62,113,210,.26)',borderRadius:{topLeft:2,topRight:2},barPercentage:.78,categoryPercentage:.6,datalabels:{display:false}},
       {label:'처리',data:DN,backgroundColor:'#2E4F8F',borderRadius:{topLeft:2,topRight:2},barPercentage:.78,categoryPercentage:.6,datalabels:{display:false}}]},
@@ -12636,6 +12667,26 @@ function mtgCharts1(sites,anim){
   mtgDonut(sites,anim);
 }
 /* 도넛 — 큰 것 5개만 선으로 이어 이름·건수·비중. 돌며 펼쳐진 뒤 표기가 나타난다 */
+/* 세로선 상태 — 목표 칸(i)로 x 를 지수 감속으로 옮기고, 보임(ca)을 0↔1 로 바꾼다. 떠나면(-1) 흐려진 뒤 지운다 */
+function mtgHx(ch,i){
+  if(!ch.$hxL){ch.$hxL=1;const cv=ch.canvas;cv.addEventListener('mouseleave',()=>mtgHx(ch,-1));}   /* 캔버스 밖으로 나가면 확실히 거둔다 */
+  if(i>=0){if(ch.$hx!==i||!(ch.$ca>0)){if(!(ch.$ca>0)||ch.$hx==null||ch.$hx<0)ch.$cx=null;ch.$hx=i;}ch.$tgt=1;}else ch.$tgt=0;
+  if(ch.$raf)return;let last=performance.now();
+  const tick=t=>{if(!ch.ctx){ch.$raf=0;return;}const dt=Math.min(64,t-last);last=t;
+    const ok=mvOK(),f=ok?1-Math.exp(-dt/55):1,fa=ok?1-Math.exp(-dt/(ch.$tgt?45:70)):1;
+    let busy=false;
+    if(ch.$hx>=0){const xs=ch.data.datasets.map((d,k)=>ch.getDatasetMeta(k).data[ch.$hx]).filter(Boolean);
+      if(xs.length){const tx=ch.config.type==='bar'?(xs[0].x+xs[xs.length-1].x)/2:xs[0].x;
+        if(ch.$cx==null)ch.$cx=tx;else{ch.$cx+=(tx-ch.$cx)*f;if(Math.abs(tx-ch.$cx)>.4)busy=true;else ch.$cx=tx;}}}
+    const ca=ch.$ca||0;ch.$ca=ca+(ch.$tgt-ca)*fa;if(Math.abs(ch.$tgt-ch.$ca)>.01)busy=true;else ch.$ca=ch.$tgt;
+    if(!ch.$tgt&&ch.$ca<=0){ch.$hx=-1;ch.$cx=null;}
+    ch.draw();ch.$raf=busy?requestAnimationFrame(tick):0;};
+  ch.$raf=requestAnimationFrame(tick);
+}
+/* 곡선 위 y — 미끄러지는 세로선이 지나는 자리의 선 높이(두 점 사이 직선 보간) */
+function mvLineY(ch,k,x){const d=ch.getDatasetMeta(k).data;if(!d.length)return null;
+  for(let j=0;j<d.length-1;j++){const a=d[j],b=d[j+1];if(x>=a.x&&x<=b.x){const t=(x-a.x)/((b.x-a.x)||1);return a.y+(b.y-a.y)*t;}}
+  return x<d[0].x?d[0].y:d[d.length-1].y;}
 function mtgDonut(sites,anim){
   const cv=$('#mmC2');if(!cv||!window.Chart)return;const old=Chart.getChart(cv);if(old)old.destroy();
   const rm=dfRm(),FONT='Pretendard Variable, sans-serif';
@@ -12677,7 +12728,43 @@ function mtgP2(sites){
   return cards+'<div class="card mm-tw"><table class="g"><thead><tr><th>공구 · 현장</th><th>세대수</th><th>전체 접수</th><th>처리</th><th>처리율</th><th>미처리</th><th>전월대비</th><th>장기미처리</th><th>장기미처리 비율</th><th>전월대비</th></tr></thead><tbody>'+body+'</tbody></table></div>';
 }
 /* 03·04 — 담당자 칩(공구별로 묶음) → 그 사람 담당 현장 카드(3곳까지 한 줄, 4곳 이상은 2열로 넓게 · 화면이 구른다). 칩이 없으면(명부 없음) 전 현장 */
+/* 공가세대 탭을 끈 현장(조직 관리 「공가세대」 스위치) — 04 공가세대 처리계획에서도 뺀다 */
+/* 03 카드 오른쪽 — 그 현장의 공종별/업체별 미처리(막대 길이)와 그중 장기미처리(빨강 — 열 머리 「장기」 색이 범례). 장기가 많은 순(최대 16 — 보이는 줄 수는 mtgAggFit), 줄을 누르면 그 목록. h=오른쪽 머리 · b=줄 */
+function mtgAggHTML(s,k){
+  const by=MTG.agg==='co'?'co':'tr',rows=((by==='tr'?k.trAgg:k.coAgg)||[]).filter(r=>(r.u||0)>0).sort((a,b)=>(b.lt||0)-(a.lt||0)||(b.u||0)-(a.u||0));
+  const mx=Math.max(1,...rows.map(r=>r.u||0));
+  const seg='<div class="seg"><button class="'+(by==='tr'?'act':'')+'" data-act="mtg.agg" data-k="tr">공종별</button><button class="'+(by==='co'?'act':'')+'" data-act="mtg.agg" data-k="co">업체별</button></div>';
+  const A=by==='tr'?'data-trade':'data-co',B=by==='tr'?'data-co':'data-trade';
+  const body=rows.map(r=>{const nm=by==='tr'?r.t:r.c,sb=by==='tr'?r.coTop:r.trTop,w=(r.u||0)/mx*100,f=v=>((v||0)/(r.u||1)*100).toFixed(1)+'%';
+    const L=(x,y)=>'data-act="rec.list" data-sid="'+esc(s.id)+'" data-scope="ul" '+x+(y||'');
+    return '<div class="ar dr lk" data-u="'+(r.u||0)+'" data-lt="'+(r.lt||0)+'" data-plt="'+(r.plt||0)+'" '+L(A+'="'+esc(nm)+'"')+'><span class="nm">'+esc(dfDash(nm))+'</span>'
+      +(sb&&sb!=='-'?'<span class="sb lk" '+L(A+'="'+esc(nm)+'" ',B+'="'+esc(sb)+'"')+'>'+esc(dfDash(sb))+'</span>':'<span class="sb">-</span>')
+      +'<span class="bw"><span class="bar" style="width:'+w.toFixed(1)+'%"><i style="width:'+f(r.lt)+'"></i></span></span>'
+      +'<span class="u">'+mtgN(r.u)+'</span><span class="l">'+mtgN(r.lt)+'</span>'+mtgBa((r.lt||0)-(r.plt||0),true)+'</div>';}).join('');
+  const sm=(f)=>rows.reduce((q,r)=>q+(r[f]||0),0),tu=sm('u'),tl=sm('lt');
+  /* 마지막 두 줄 — 그 외(mtgAggFit 이 숨긴 줄을 합쳐 채움)·계(전체, 누르면 그 현장 미처리 전부) */
+  const tail=rows.length?'<div class="ar sm et" data-k="'+(by==='tr'?'공종':'업체')+'"></div>'
+    +'<div class="ar sm tt lk" data-act="rec.list" data-sid="'+esc(s.id)+'" data-scope="ul"><span class="nm">계</span><span class="sb"></span><span class="bw"></span><span class="u">'+mtgN(tu)+'</span><span class="l">'+mtgN(tl)+'</span>'+mtgBa(tl-sm('plt'),true)+'</div>':'';
+  const body0=body;
+  return {h:'<div class="ah"><div class="at"><b>'+(by==='tr'?'공종별':'업체별')+' 처리현황</b>'+seg+'</div><div class="ar ac"><span class="nm">'+(by==='tr'?'공종':'시공업체')+'</span><span class="sb">'+(by==='tr'?'시공업체':'공종')+'</span><span class="bw"></span><span class="u">미처리</span><span class="l">장기</span><span class="bh">전월대비</span></div></div>',b:(body0||'<div class="ar"><span class="nm" style="color:var(--lbl3)">미처리 없음</span></div>')+tail};
+}
+/* 03 넓은 카드 — 현황 줄 수·높이를 왼쪽 계획 높이에 맞춘다. 끝 두 줄은 그 외·계: 다 들어가면 그 외 없이 계만, 넘치면 장기 적은 쪽부터 숨겨 그 외로 합친다(최소 3줄은 보임). 남는 높이는 줄 간격으로(52px 까지) */
+function mtgAggFit(){
+  $$('#mm .sc.wide').forEach(c=>{const pl=c.querySelector('.pls'),ag=c.querySelector('.ag');if(!pl||!ag)return;
+    const rs=[...ag.querySelectorAll('.ar.dr')],et=ag.querySelector('.ar.et'),tt=ag.querySelector('.ar.tt');
+    ag.querySelectorAll('.ar').forEach(r=>r.style.display='');ag.style.gridAutoRows='';
+    const cs=getComputedStyle(ag),av=pl.getBoundingClientRect().height-parseFloat(cs.paddingTop)-parseFloat(cs.paddingBottom),MIN=34,sl=Math.floor(av/MIN);
+    const n=!tt?rs.length:rs.length+1<=sl?rs.length:Math.min(rs.length,Math.max(3,sl-2)),hid=rs.slice(n);
+    hid.forEach(r=>r.style.display='none');
+    if(et){if(!hid.length)et.style.display='none';else{const q=f=>hid.reduce((a,r)=>a+(+r.dataset[f]||0),0),l=q('lt');
+      et.innerHTML='<span class="nm">그 외</span><span class="sb">'+et.dataset.k+' '+hid.length+'개</span><span class="bw"></span><span class="u">'+mtgN(q('u'))+'</span><span class="l">'+mtgN(l)+'</span>'+mtgBa(l-q('plt'),true);}}
+    const v=ag.querySelectorAll('.ar:not([style*="none"])').length;
+    if(v)ag.style.gridAutoRows=Math.max(MIN,Math.min(52,av/v))+'px';});
+}
+addEventListener('resize',()=>{if($('#mm .sc.wide'))mtgAggFit();});
+const mtgVacOn=s=>{const o=(S.org.sites||[]).find(x=>x.id===s.id);return (o?o.showVacant:s.showVacant)!==false;};
 function mtgPlan(vac,sites,head){
+  if(vac)sites=sites.filter(mtgVacOn);
   const rm=dfRm(),ids=new Set(sites.map(s=>s.id));
   const mem=roster().filter(p=>p.sites&&Object.keys(p.sites).some(k=>ids.has(k)));
   if(MTG.who&&!mem.some(p=>p.id===MTG.who))MTG.who='';
@@ -12691,7 +12778,7 @@ function mtgPlan(vac,sites,head){
   const cards=list.map(s=>{const k=DF.kpi[rm+'/'+s.id]||{};
     const src=vac?(k.vacU||{}):k,top=((vac?src.Top:k.topLt)||[]).filter(t=>!t.isT&&!t.isO),prev=(vac?src.TopPrev:k.topLtPrev)||{};
     const its=top.map(t=>{const p=dfPlanGet(s.id,field,rm,t.t),dd=t.c-(prev[t.t]||0);
-      return '<div class="it"><div class="r1"><span class="tr lk" data-act="rec.list" data-sid="'+esc(s.id)+'" data-scope="'+(vac?'ul':'lul')+'" data-trade="'+esc(t.t)+'"'+(vac?' data-vac="unit"':'')+'>'+esc(t.t)+'</span><span class="co">'+esc(dfDash(t.co))+'</span><span class="n">'+mtgN(prev[t.t]||0)+' → <b>'+mtgN(t.c)+'</b></span>'+mtgBa(dd,true)+'</div><div class="pl">'+(p?esc(p):'<span class="no">미작성</span>')+'</div></div>';}).join('')
+      return '<div class="it"><div class="r1"><span class="tr lk" data-act="rec.list" data-sid="'+esc(s.id)+'" data-scope="'+(vac?'ul':'lul')+'" data-trade="'+esc(t.t)+'"'+(vac?' data-vac="unit"':'')+'>'+esc(t.t)+'</span>'+(t.co&&t.co!=='-'?'<span class="co lk" data-act="rec.list" data-sid="'+esc(s.id)+'" data-scope="'+(vac?'ul':'lul')+'" data-trade="'+esc(t.t)+'" data-co="'+esc(t.co)+'"'+(vac?' data-vac="unit"':'')+'>'+esc(t.co)+'</span>':'<span class="co">'+esc(dfDash(t.co))+'</span>')+'<span class="n">'+mtgN(prev[t.t]||0)+' → <b>'+mtgN(t.c)+'</b></span>'+mtgBa(dd,true)+'</div><div class="pl">'+(p?esc(p):'<span class="no">미작성</span>')+'</div></div>';}).join('')
       ||'<div class="it"><div class="pl" style="color:var(--lbl3)">해당 없음</div></div>';
     let sub,right;
     if(vac){const sv=((DF.vac[rm+'/'+s.id]||{}).vacantStatus)||{},mb=parseInt(sv['미분양'],10)||0,mk=parseInt(sv['미키불출'],10)||0;
@@ -12701,8 +12788,12 @@ function mtgPlan(vac,sites,head){
     else{sub=esc(mtgRg(s.region))+' · '+mtgN(s.units)+'세대';
       const pv=Object.values(k.topLtPrev||{}).reduce((q,v)=>q+(Number(v)||0),0);
       right='<span>장기미처리 계</span><span class="row"><span class="pv">'+mtgN(pv)+' → </span><strong>'+mtgN(k.lt)+'</strong>'+mtgBa((k.lt||0)-pv,true)+'</span>';}
-    return '<div class="sc"><div class="hd"><div><b>'+esc(s.name)+'</b><div class="who">'+sub+'</div></div><div class="lt">'+right+'</div></div>'+its+'</div>';}).join('');
-  return head(MTG_P[MTG.p],chips?'<div class="mm-sub">'+chips+'</div>':'')+'<div class="sg mm-fill" style="grid-template-columns:repeat('+(list.length>3?2:Math.max(1,list.length))+',minmax(0,1fr))">'+cards+'</div>';
+    const hd='<div class="hd"><div><b>'+esc(s.name)+'</b><div class="who">'+sub+'</div></div><div class="lt">'+right+'</div></div>';
+    if(vac)return '<div class="sc">'+hd+its+'</div>';
+    const ag=mtgAggHTML(s,k);
+    return '<div class="sc wide"><div class="wg"><i class="vl"></i>'+hd+ag.h+'<div class="pls">'+its+'</div><div class="ag">'+ag.b+'</div></div></div>';}).join('');
+  const cols=vac?(list.length>3?2:Math.max(1,list.length)):1;   /* 03 은 현장마다 한 줄 전체 — 왼쪽 계획 · 오른쪽 공종/업체 현황 */
+  return head(MTG_P[MTG.p],chips?'<div class="mm-sub">'+chips+'</div>':'')+'<div class="sg mm-fill" style="grid-template-columns:repeat('+cols+',minmax(0,1fr))">'+cards+'</div>';
 }
 document.addEventListener('pointerdown',e=>{const a=document.querySelectorAll('.site-on.arm');if(!a.length)return;const t=e.target.closest&&e.target.closest('.site-on.arm');a.forEach(x=>{if(x!==t)x.classList.remove('arm');});},true);   /* 현장 칩 해제 대기 — 바깥을 누르면 취소 */
 const LAYERS=[
