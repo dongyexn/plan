@@ -1146,8 +1146,8 @@ body.snap .sbsl:first-of-type{display:none;}
 .rkh-r{padding:1px 0;}
 .rkh-body{display:flex;flex-direction:column;gap:2px;max-height:350px;overflow-y:auto;}   /* 행 22px × 16 = 352 — 16현장까지 스크롤 없이(옆 도넛 카드가 같이 늘어난다), 그 이상은 카드 안 스크롤 */
 .rkh-n{border:0;background:transparent;text-align:left;font-size:12px;font-weight:600;color:var(--lbl);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 2px;height:20px;font-family:inherit;cursor:pointer;border-radius:3px;}@media (hover:hover) and (pointer:fine){.rkh-n:hover{color:var(--bt1);}}@media not ((hover:hover) and (pointer:fine)){.rkh-n:active{color:var(--bt1);}}
-.rkh-c{display:block;width:100%;border:0;text-align:center;border-radius:3px;height:20px;line-height:20px;padding:0;font-size:12px;font-weight:600;font-family:inherit;font-variant-numeric:tabular-nums;cursor:pointer;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.45),0 0 1px rgba(0,0,0,.3);box-shadow:0 1px 2px rgba(20,30,50,.14);position:relative;will-change:transform;transition:transform var(--t-base),box-shadow var(--t-base);}   /* 글자 흰색 600 + 진한 그림자, 셀 그림자. position 은 늘 relative(호버 때만 주면 튄다) */
-@media (hover:hover) and (pointer:fine){.rkh-c:hover{transform:translateY(-1px) scale(1.04);box-shadow:0 5px 12px rgba(20,30,50,.20);z-index:1;}}@media not ((hover:hover) and (pointer:fine)){.rkh-c:active{transform:translateY(-1px) scale(1.04);box-shadow:0 5px 12px rgba(20,30,50,.20);z-index:1;}}   /* 살짝 뜨는 정도, 이징 부드럽게 */
+.rkh-c{display:block;width:100%;border:0;text-align:center;border-radius:3px;height:20px;line-height:20px;padding:0;font-size:12px;font-weight:600;font-family:inherit;font-variant-numeric:tabular-nums;cursor:pointer;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.45),0 0 1px rgba(0,0,0,.3);box-shadow:0 1px 2px rgba(20,30,50,.14);position:relative;z-index:0;will-change:transform;transition:transform .32s cubic-bezier(.32,.72,0,1),box-shadow .32s cubic-bezier(.32,.72,0,1),filter .32s cubic-bezier(.32,.72,0,1),z-index 0s .32s;}   /* 뜬 칸은 내려앉는 동안(.32s) 위층에 남는다 — 이웃 칸 밑으로 툭 꺼지지 않게 */   /* 글자 흰색 600 + 진한 그림자, 셀 그림자. position 은 늘 relative(호버 때만 주면 튄다) */
+@media (hover:hover) and (pointer:fine){.rkh-c:hover{transform:translateY(-2px) scale(1.035);box-shadow:0 2px 4px rgba(20,30,50,.10),0 8px 18px rgba(20,30,50,.16);filter:brightness(1.04);z-index:1;transition-delay:0s;}.rkh-c:hover:active{transform:translateY(0) scale(.98);box-shadow:0 1px 2px rgba(20,30,50,.14);transition-duration:.12s;}}@media not ((hover:hover) and (pointer:fine)){.rkh-c:active{transform:translateY(-2px) scale(1.035);box-shadow:0 2px 4px rgba(20,30,50,.10),0 8px 18px rgba(20,30,50,.16);filter:brightness(1.04);z-index:1;transition-delay:0s;}}   /* 살짝 뜨는 정도, 이징 부드럽게 */
 .rkh-ok{background:var(--band);}   /* 양호도 흰 글자 — 중간 회색 바탕 */
 .rk-th{cursor:pointer;user-select:none;}.rk-th.on{color:var(--lbl);}
 .rk-fr td{padding:4px 6px;background:var(--surf2);}.rk-q.cc{text-align:center;}
@@ -2307,8 +2307,8 @@ body.wid.glass #fcal.ev-drag .fc-highlight{background:rgba(143,180,255,.16);box-
 #mm .mm-brand{display:flex;flex-direction:column;justify-content:center;gap:2px;}
 #mm .mm-brand b{font-size:16px;font-weight:800;letter-spacing:-.01em;}#mm .mm-brand span{font-size:11.5px;color:var(--lbl3);font-weight:600;}
 #mm .mm-tabs{display:flex;gap:30px;position:relative;}
-#mm .mm-tab{position:relative;display:flex;align-items:center;gap:8px;font-size:19px;font-weight:800;letter-spacing:-.01em;color:var(--lbl3);background:none;border:0;padding:0;cursor:pointer;font-family:inherit;}
-#mm .mm-tab i{font-style:normal;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;opacity:.8;}
+#mm .mm-tab{position:relative;display:flex;align-items:center;gap:8px;font-size:18px;font-weight:800;letter-spacing:-.01em;color:var(--lbl3);background:none;border:0;padding:0;cursor:pointer;font-family:inherit;}
+#mm .mm-tab i{font-style:normal;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;opacity:.8;}
 @media (hover:hover) and (pointer:fine){#mm .mm-tab:hover{color:var(--lbl2);}}@media not ((hover:hover) and (pointer:fine)){#mm .mm-tab:active{color:var(--lbl2);}}
 #mm .mm-tab.on{color:var(--lbl);}#mm .mm-tab.on i{color:var(--b500);opacity:1;}
 #mm .mm-tab::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:3px;border-radius:2px 2px 0 0;background:transparent;}
@@ -2408,6 +2408,22 @@ body.wid.glass #fcal.ev-drag .fc-highlight{background:rgba(143,180,255,.16);box-
 @media (hover:hover) and (pointer:fine){#mm .sc.wide .ar.lk:hover .nm,#mm .sc.wide .ar .sb.lk:hover,#mm .sc .r1 .co.lk:hover{color:var(--b600);}}@media not ((hover:hover) and (pointer:fine)){#mm .sc.wide .ar.lk:active .nm,#mm .sc.wide .ar .sb.lk:active,#mm .sc .r1 .co.lk:active{color:var(--b600);}}
 #mm .sc .r1 .co.lk{cursor:pointer;}
 #mm .sc.wide .pls .it:first-child{padding-top:12px;}
+/* 05 민원 현황 — 레벨 타일(.mk) · 아래는 같은 5칸 격자: 히트맵 3칸 | 감지요소 2칸 */
+#mm .p5g{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;}#mm .p5g .p5h{grid-column:span 3;}#mm .p5g .p5f{grid-column:span 2;}
+#mm .pn .ph .u{font-size:14.5px;color:var(--lbl3);}
+#mm .p5f .fl{display:flex;flex-direction:column;justify-content:space-around;flex:1;min-height:0;}
+/* 히트맵은 대시보드 .rkh 그대로 — 회의 화면 크기로만 키운다(현장명 칸 = 대시보드 계산 폭 × 1.25) */
+#mm .p5h{border-radius:var(--rxl);padding:18px 22px 14px;margin:0;display:flex;flex-direction:column;}
+#mm .p5h .cardttl{font-size:19px;font-weight:800;letter-spacing:-.01em;margin-bottom:12px!important;}
+#mm .p5h .rkh-h,#mm .p5h .rkh-r{grid-template-columns:56px calc(var(--rkhn,200px)*1.25) repeat(5,minmax(0,1fr));column-gap:6px;}
+#mm .p5h .rkh-h{font-size:14.5px;padding-bottom:6px;}
+#mm .p5h .rkh-body{max-height:none;overflow:visible;flex:1;justify-content:space-around;gap:6px;}
+#mm .p5h .rkh-rg{font-size:14.5px;}#mm .p5h .rkh-n{font-size:15px;font-weight:700;height:36px;}
+#mm .p5h .rkh-c{height:36px;line-height:36px;font-size:15px;font-weight:700;border-radius:var(--rsm);}
+#mm .p5f .fr{display:grid;grid-template-columns:minmax(0,132px) minmax(0,1fr) 44px;align-items:center;gap:12px;min-height:32px;font-size:15px;}
+#mm .p5f .fr .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}#mm .p5f .fr.crit .nm{font-weight:700;}
+#mm .p5f .bw{display:block;height:6px;border-radius:99px;background:var(--fill);}#mm .p5f .bar{display:block;height:100%;border-radius:inherit;background:var(--ch-d0);min-width:6px;}#mm .p5f .crit .bar{background:var(--ch-d60);}
+#mm .p5f .n{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;}#mm .p5f .n.z{color:var(--lbl3);font-weight:500;}
 #mm .sc .pl{font-size:16.5px;margin-top:8px;line-height:1.5;}#mm .sc .pl .no{color:var(--rd);font-weight:700;}
 @media print{#mm{display:none!important;}}
 /* ＋ → 폼 모핑 상자(1092, mvMorph) — 폼 칠 위에 파란 테 1.5 로 자리를 보인다. 업무 현황 폼(#tko 890) 위 · 모달(#mo 1000) 아래 */
@@ -5966,5 +5982,5 @@ body.wid.glass{--mv-flash:#8FB4FF;}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1111"></script>
+<script src="./app.js?v=1115"></script>
 </body></html>

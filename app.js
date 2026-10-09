@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1111';
+const APP_VER='1115';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -2948,8 +2948,8 @@ function strHash(t){let h=5381;for(let i=0;i<t.length;i++)h=(h*33^t.charCodeAt(i
 function paintHTML(el,html){
   if(!el)return false;
   const sig=strHash(html);
-  if(el.__sig===sig)return false;
-  el.__sig=sig;el.innerHTML=html;
+  if(el.__sig===sig&&el.firstChild===el.__fc)return false;   /* 그 사이 다른 코드가 innerHTML 을 바꿨으면(예: openModal 의 「불러오는 중…」) 같은 내용이어도 다시 그린다 — 같은 목록을 다시 열면 로딩 문구에 멈추던 것 */
+  el.__sig=sig;el.innerHTML=html;el.__fc=el.firstChild;
   return true;
 }
 function paintReset(el){if(el)el.__sig=null;}
@@ -6096,7 +6096,7 @@ function dfProdWire(){
     'dfp.snapOk':()=>{const v=$$('#mbody .snap-mo:checked').map(c=>c.value);
       if(!v.length){toast('기준월을 한 개 이상 선택하세요');return;}
       const r=window.__SNAPPICK__;window.__SNAPPICK__=null;closeModal();if(r)r(v);},
-    'df.siteRisk':el=>{closeModal();S.dfSid=el.dataset.sid;S.dfTab='risk';S.dfRiskLv='';go('defect');},
+    'df.siteRisk':el=>{if($('#mm')&&!$('#mm')._out){dfRiskCellModal(el.dataset.sid,'');return;}closeModal();S.dfSid=el.dataset.sid;S.dfTab='risk';S.dfRiskLv='';go('defect');},
     'df.riskCell':el=>{dfRiskCellModal(el.dataset.sid,el.dataset.lv);},
     'df.riskLv':el=>{S.dfRiskLv=el.dataset.lv||'';rDefect();},
     'rec.qclear':()=>{REC.q='';const i=document.getElementById('recQ');if(i){i.value='';i.closest('.rl-q-wrap').classList.remove('has');i.focus();}const b=$('#mbody');if(b&&paintHTML(b,recBodyHTML()))ovsRefresh();recHeadSync(REC.view.length,REC.rows.length);},
@@ -7276,7 +7276,7 @@ async function dfRiskCellModal(sid,lv){
   openModal('','<div class="dfnone ld">불러오는 중…</div>','');
   const mb=$('#mb');if(mb){mb.classList.add('dfwide');mb.classList.add('rkm');}
   let k=null;try{k=await dfSiteData(sid);}catch(e){}
-  const list=k&&k.hh?(k.hh.list||[]).filter(h=>h.level===lv):[];
+  const list=k&&k.hh?(k.hh.list||[]).filter(h=>lv?h.level===lv:h.lv>=1):[];   /* lv '' = 주의 이상 전부(회의 모드 히트맵 현장명) */
   S.rk=S.rk||{};S.rk.modal={q:{},sort:{k:'lv',d:-1},limit:100};S.rkModal={sid,lv,list,name:st.name};
   dfRiskModalBody();
 }
@@ -7284,7 +7284,7 @@ function dfRiskModalBody(){
   const m=S.rkModal;if(!m)return;
   /* 머리 = 제목 + 검색창. 입력은 input 위임(rk-search)이라 본문만 다시 그려 커서가 산다 */
   const st=rkState('modal');
-  const t=$('#mt');if(t&&!$('#rkN'))t.innerHTML='<div class="rl-head"><span class="rl-ttl">'+esc(m.name+' · '+m.lv+' '+m.list.length.toLocaleString()+'세대')+'</span><span class="rec-n" id="rkN"></span>'
+  const t=$('#mt');if(t&&!$('#rkN'))t.innerHTML='<div class="rl-head"><span class="rl-ttl">'+esc(m.name+' · '+(m.lv||'주의 이상')+' '+m.list.length.toLocaleString()+'세대')+'</span><span class="rec-n" id="rkN"></span>'
     +'<div class="rl-acts"><span class="rl-q-wrap'+(st.search?' has':'')+'"><svg class="icn icn-sm" aria-hidden="true"><use href="#i-search"></use></svg><input id="rkQ" class="rl-q" placeholder="세대 · 감지요소 · 유형 · 접수내용" value="'+esc(st.search||'')+'" autocomplete="off"><button class="rl-qx" data-act="df.riskQClear" data-ns="modal" aria-label="지우기">×</button></span>'
     +'<button class="btn bg2 bsm" data-act="modal.close">닫기</button></div></div>';
   /* 검색창은 머리(닫기 옆) — 머리는 한 번만 그려 입력해도 본문만 다시 그린다 */
@@ -11214,7 +11214,7 @@ const ACT={
     const old=$('#mm .sg'),t=document.createElement('div');t.innerHTML=mtgPlan(false,dfDashSites(),()=>'');const g=t.querySelector('.sg');
     if(old&&g){[...old.querySelectorAll('.sc.wide .ah')].forEach((a,i)=>{const n=g.querySelectorAll('.sc.wide .ah')[i];if(n)a.innerHTML=n.innerHTML;});
       [...old.querySelectorAll('.sc.wide .ag')].forEach((a,i)=>{const n=g.querySelectorAll('.sc.wide .ag')[i];if(n){a.innerHTML=n.innerHTML;mtgAggFit();
-      if(mvOK())a.querySelectorAll('.ar:not(.ac)').forEach((r,j)=>{r.animate([{opacity:0,transform:'translateY(4px)'},{opacity:1,transform:'none'}],{duration:MV_MID,delay:j*25,easing:MV_EASE,fill:'backwards'});const b=r.querySelector('.bar');if(b)b.animate([{clipPath:'inset(0 100% 0 0 round 99px)'},{clipPath:'inset(0 0 0 0 round 99px)'}],{duration:MV_STR,delay:80+j*25,easing:MV_EASE,fill:'backwards'});});}});}},
+      if(mvOK())[...a.querySelectorAll('.ar:not(.ac)')].filter(r=>r.style.display!=='none').forEach((r,j)=>{r.animate([{opacity:0,transform:'translateY(4px)'},{opacity:1,transform:'none'}],{duration:MV_MID,delay:j*25,easing:MV_EASE,fill:'backwards'});const b=r.querySelector('.bar');if(b)b.animate([{clipPath:'inset(0 100% 0 0 round 99px)'},{clipPath:'inset(0 0 0 0 round 99px)'}],{duration:MV_STR,delay:80+j*25,easing:MV_EASE,fill:'backwards'});});}});}},
   'mtg.who':el=>{if(MTG.who===el.dataset.id)return;MTG.who=el.dataset.id;
     $$('#mm .chip[data-act="mtg.who"]').forEach(c=>c.classList.toggle('on',c.dataset.id===MTG.who));   /* 칩은 제자리에서 색만 바뀐다(전환) */
     const old=$('#mm .sg'),t=document.createElement('div');t.innerHTML=mtgPlan(MTG.p===3,dfDashSites(),()=>'');const g=t.querySelector('.sg');
@@ -12507,7 +12507,7 @@ document.addEventListener('keydown',e=>{
 /* ───── 회의 모드(1095) — 하자처리 현황 머리 「회의 모드」. 월간 회의용 한 장짜리 화면 넷(스크롤 없이 단추로만 전환).
    01 대시보드(지표·추이·비중) · 02 공구·현장 표 · 03 장기미처리 처리계획 · 04 공가세대 처리계획(담당자 칩으로 고름).
    자료는 게시본(DF.kpi)·처리계획(DF.plans)·공가 입력(DF.vac) — 화면에서 고치지 않는다. 숫자를 누르면 그 목록(recOpen)이 위에 뜬다 ───── */
-const MTG_P=['하자처리 대시보드','하자처리 현황','장기미처리 처리계획','공가세대 처리계획'];
+const MTG_P=['하자처리 대시보드','하자처리 현황','장기미처리 처리계획','공가세대 처리계획','민원 현황'];
 let MTG={p:0,don:'site',who:''};
 const mtgN=v=>(Number(v)||0).toLocaleString();
 /* 증감 배지 — badUp: 늘면 나쁜 값(빨강) */
@@ -12535,6 +12535,34 @@ async function mtgLoad(){
   try{await loadChart();}catch(e){}
   try{await dfAllKpi();}catch(e){}
   for(const s of dfDashSites()){try{await dfLoadPlans(s.id);}catch(e){}}
+  try{await mtgRkPrevLoad();}catch(e){}
+}
+/* 05 민원 현황 — 전월 레벨 세대 수(report/전월/현장/kpi/hh/cnt). 현장 민원 탭과 같은 캐시(DF.rkPrev) */
+const mtgPm=()=>{const[y,m]=dfRm().split('-').map(Number);return m===1?(y-1)+'-12':y+'-'+pad(m-1);};
+async function mtgRkPrevLoad(){const py=mtgPm(),P=DF.rkPrev||(DF.rkPrev={});
+  await Promise.all(dfDashSites().filter(s=>!Object.prototype.hasOwnProperty.call(P,py+'/'+s.id)).map(async s=>{let c=null;try{if(S.live&&FB.db)c=await dfRef('report/'+py+'/'+s.id+'/kpi/hh/cnt');}catch(e){}P[py+'/'+s.id]=c||null;}));}
+/* 05 민원 현황 — 게시 kpi.hh(세대 레벨: cnt·list). ① 레벨별 세대 수(전월대비) ② 현장 × 레벨 히트맵(대시보드 것 그대로 · KPI 3칸 폭) ③ 감지요소 전부(KPI 2칸 폭, 주의 이상 세대 기준) */
+function mtgP5(sites){
+  const rm=dfRm(),py=mtgPm(),P=DF.rkPrev||{},LV=['긴급','심각','경계','주의'];
+  const hs=sites.map(s=>({s,h:(DF.kpi[rm+'/'+s.id]||{}).hh||null})).filter(x=>x.h&&x.h.cnt);
+  if(!hs.length)return '<div class="card" style="padding:40px;text-align:center;color:var(--lbl3)">이 게시본에는 세대 레벨 정보가 없습니다</div>';
+  const cur=k=>hs.reduce((a,x)=>a+(x.h.cnt[k]||0),0);
+  const pk=hs.every(x=>P[py+'/'+x.s.id]),prv=k=>hs.reduce((a,x)=>a+((P[py+'/'+x.s.id]||{})[k]||0),0);
+  const sumL=c=>LV.reduce((a,k)=>a+((c||{})[k]||0),0);
+  const tl=hs.reduce((a,x)=>a+sumL(x.h.cnt),0),tp=pk?hs.reduce((a,x)=>a+sumL(P[py+'/'+x.s.id]),0):0;
+  const units=hs.reduce((a,x)=>a+(+x.s.units||0),0);
+  const tile=(t,v,cls,b,s)=>'<div><div class="t"><span>'+t+'</span>'+(b||'')+'</div><div class="v'+(cls?' '+cls:'')+'">'+mtgN(v)+'<small>세대</small></div><div class="s">'+s+'</div></div>';
+  const kp='<div class="mk">'+tile('주의 이상',tl,'',pk?mtgBa(tl-tp,true):'','관리세대의 '+mtgPct(tl,units)+'%')
+    +LV.map(k=>tile(k,cur(k),k==='긴급'?'red':'',pk?mtgBa(cur(k)-prv(k),true):'','주의 이상의 '+mtgPct(cur(k),tl)+'%')).join('')+'</div>';
+  /* 현장 × 레벨 — 대시보드 히트맵(dfRiskDashHTML) 그대로. 셀 → 그 현장·레벨 세대 목록, 현장명 → 그 현장 주의 이상 세대 목록(회의 중엔 화면을 옮기지 않는다) */
+  const hhm={};hs.forEach(({s,h})=>{hhm[s.id]=h.cnt;});
+  const st=dfRiskDashHTML(hs.map(x=>x.s),hhm).replace('class="card rkh"','class="card rkh p5h"');
+  /* 감지요소 — 주의 이상 세대 기준, 중대 요소는 빨강 */
+  const F=RISK_RULES.factors,fc={};hs.forEach(({h})=>(h.list||[]).forEach(r=>{if(r.lv>=1)(r.factors||[]).forEach(f=>{fc[f]=(fc[f]||0)+1;});}));
+  const FO=Object.keys(F),fl=FO.map(f=>[f,fc[f]||0]).concat(Object.keys(fc).filter(f=>!F[f]).map(f=>[f,fc[f]])).sort((a,b)=>(b[1]-a[1])||(FO.indexOf(a[0])-FO.indexOf(b[0]))),fm=Math.max(1,...fl.map(x=>x[1]));   /* 감지요소 전부(0 포함) — 많은 순, 같으면 규칙 순 */
+  const fa='<div class="pn p5f"><div class="ph"><b>감지요소</b><span class="u">주의 이상 세대</span></div><div class="fl">'
+    +(fl.map(([f,n])=>{const c=F[f]&&F[f].crit;return '<div class="fr'+(c?' crit':'')+'"><span class="nm">'+esc(f)+'</span><span class="bw">'+(n?'<span class="bar" style="width:'+(n/fm*100).toFixed(1)+'%"></span>':'')+'</span><span class="n'+(n?'':' z')+'">'+mtgN(n)+'</span></div>';}).join(''))+'</div></div>';
+  return kp+'<div class="p5g mm-fill">'+st+fa+'</div>';
 }
 /* 기준월 바꾸기(1098) — 게시된 달 목록(하자처리 현황 상단바와 같은 목록·같은 상태 S.dfRmSel) → 그 달 자료를 받아 다시 그린다 */
 async function mtgSetRm(m){S.dfRmSel=(m===ORG_RM?'':m);rDefect();
@@ -12585,6 +12613,7 @@ function mtgRender(dir,anim){
   let body='';
   if(MTG.p===0)body=head(MTG_P[0],meta)+mtgP1(a,sites);
   else if(MTG.p===1)body=head(MTG_P[1],meta)+mtgP2(sites);
+  else if(MTG.p===4)body=head(MTG_P[4],meta)+mtgP5(sites);
   else body=mtgPlan(MTG.p===3,sites,head);
   m.innerHTML=top+'<div class="mm-body">'+body+'</div>';
   if(MTG.p===0)mtgCharts1(sites,anim);else if(MTG.p===2)mtgAggFit();
