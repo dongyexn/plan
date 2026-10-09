@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1096';
+const APP_VER='1107';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -361,14 +361,16 @@ const ST_PICK=[['1','진행'],['2','완료'],['3','보류']];
    ⚠ 바꾸면 database.rules.json 의 links/url 한도(<=2000)도 같이 바꾼다 */
 const LINK_MAX=2000;
 const WIDGET_URL='https://github.com/dongyexn/plan/releases/latest/download/HPlanWidgetLite.exe';   /* 늘 최신 릴리스를 가리킨다(버전 불필요). Lite(WebView2) 판 */
-/* ── 한국 공휴일(대체공휴일 포함, 2025~2030) — 임시공휴일 등 변동 시 이 표만 수정 ── */
+/* ── 한국 공휴일(대체공휴일 포함, 2025~2030) — 임시공휴일 등 변동 시 이 표만 수정 ──
+   2027년까지는 hyunbinseo/holidays-kr(월력요항 가공, MIT)와 대조해 맞춤. 노동절·제헌절은 2026년부터 공휴일(관공서 공휴일 규정 개정).
+   2028~2030 의 선거일·임시공휴일은 발표되면 추가 */
 const HOLI={
 '2025-01-01':'신정','2025-01-27':'임시공휴일','2025-01-28':'설날 연휴','2025-01-29':'설날','2025-01-30':'설날 연휴','2025-03-01':'삼일절','2025-03-03':'대체공휴일','2025-05-05':'어린이날·석가탄신일','2025-05-06':'대체공휴일','2025-06-03':'임시공휴일','2025-06-06':'현충일','2025-08-15':'광복절','2025-10-03':'개천절','2025-10-05':'추석 연휴','2025-10-06':'추석','2025-10-07':'추석 연휴','2025-10-08':'대체공휴일','2025-10-09':'한글날','2025-12-25':'성탄절',
-'2026-01-01':'신정','2026-02-16':'설날 연휴','2026-02-17':'설날','2026-02-18':'설날 연휴','2026-03-01':'삼일절','2026-03-02':'대체공휴일','2026-05-05':'어린이날','2026-05-24':'석가탄신일','2026-05-25':'대체공휴일','2026-06-06':'현충일','2026-08-15':'광복절','2026-08-17':'대체공휴일','2026-09-24':'추석 연휴','2026-09-25':'추석','2026-09-26':'추석 연휴','2026-10-03':'개천절','2026-10-05':'대체공휴일','2026-10-09':'한글날','2026-12-25':'성탄절',
-'2027-01-01':'신정','2027-02-06':'설날 연휴','2027-02-07':'설날','2027-02-08':'설날 연휴','2027-02-09':'대체공휴일','2027-03-01':'삼일절','2027-05-05':'어린이날','2027-05-13':'석가탄신일','2027-06-06':'현충일','2027-08-15':'광복절','2027-08-16':'대체공휴일','2027-09-14':'추석 연휴','2027-09-15':'추석','2027-09-16':'추석 연휴','2027-10-03':'개천절','2027-10-04':'대체공휴일','2027-10-09':'한글날','2027-10-11':'대체공휴일','2027-12-25':'성탄절','2027-12-27':'대체공휴일',
-'2028-01-01':'신정','2028-01-26':'설날 연휴','2028-01-27':'설날','2028-01-28':'설날 연휴','2028-03-01':'삼일절','2028-05-02':'석가탄신일','2028-05-05':'어린이날','2028-06-06':'현충일','2028-08-15':'광복절','2028-10-02':'추석 연휴','2028-10-03':'추석·개천절','2028-10-04':'추석 연휴','2028-10-05':'대체공휴일','2028-10-09':'한글날','2028-12-25':'성탄절',
-'2029-01-01':'신정','2029-02-12':'설날 연휴','2029-02-13':'설날','2029-02-14':'설날 연휴','2029-03-01':'삼일절','2029-05-05':'어린이날','2029-05-07':'대체공휴일','2029-05-20':'석가탄신일','2029-05-21':'대체공휴일','2029-06-06':'현충일','2029-08-15':'광복절','2029-09-21':'추석 연휴','2029-09-22':'추석','2029-09-23':'추석 연휴','2029-09-24':'대체공휴일','2029-10-03':'개천절','2029-10-09':'한글날','2029-12-25':'성탄절',
-'2030-01-01':'신정','2030-02-02':'설날 연휴','2030-02-03':'설날','2030-02-04':'설날 연휴','2030-02-05':'대체공휴일','2030-03-01':'삼일절','2030-05-05':'어린이날','2030-05-06':'대체공휴일','2030-05-09':'석가탄신일','2030-06-06':'현충일','2030-08-15':'광복절','2030-09-11':'추석 연휴','2030-09-12':'추석','2030-09-13':'추석 연휴','2030-10-03':'개천절','2030-10-09':'한글날','2030-12-25':'성탄절'};
+'2026-01-01':'신정','2026-02-16':'설날 연휴','2026-02-17':'설날','2026-02-18':'설날 연휴','2026-03-01':'삼일절','2026-03-02':'대체공휴일','2026-05-01':'노동절','2026-05-05':'어린이날','2026-05-24':'석가탄신일','2026-05-25':'대체공휴일','2026-06-03':'지방선거','2026-06-06':'현충일','2026-07-17':'제헌절','2026-08-15':'광복절','2026-08-17':'대체공휴일','2026-09-24':'추석 연휴','2026-09-25':'추석','2026-09-26':'추석 연휴','2026-10-03':'개천절','2026-10-05':'대체공휴일','2026-10-09':'한글날','2026-12-25':'성탄절',
+'2027-01-01':'신정','2027-02-06':'설날 연휴','2027-02-07':'설날','2027-02-08':'설날 연휴','2027-02-09':'대체공휴일','2027-03-01':'삼일절','2027-05-01':'노동절','2027-05-03':'대체공휴일','2027-05-05':'어린이날','2027-05-13':'석가탄신일','2027-06-06':'현충일','2027-07-17':'제헌절','2027-07-19':'대체공휴일','2027-08-15':'광복절','2027-08-16':'대체공휴일','2027-09-14':'추석 연휴','2027-09-15':'추석','2027-09-16':'추석 연휴','2027-10-03':'개천절','2027-10-04':'대체공휴일','2027-10-09':'한글날','2027-10-11':'대체공휴일','2027-12-25':'성탄절','2027-12-27':'대체공휴일',
+'2028-01-01':'신정','2028-01-26':'설날 연휴','2028-01-27':'설날','2028-01-28':'설날 연휴','2028-03-01':'삼일절','2028-05-01':'노동절','2028-05-02':'석가탄신일','2028-05-05':'어린이날','2028-06-06':'현충일','2028-07-17':'제헌절','2028-08-15':'광복절','2028-10-02':'추석 연휴','2028-10-03':'추석·개천절','2028-10-04':'추석 연휴','2028-10-05':'대체공휴일','2028-10-09':'한글날','2028-12-25':'성탄절',
+'2029-01-01':'신정','2029-02-12':'설날 연휴','2029-02-13':'설날','2029-02-14':'설날 연휴','2029-03-01':'삼일절','2029-05-01':'노동절','2029-05-05':'어린이날','2029-05-07':'대체공휴일','2029-05-20':'석가탄신일','2029-05-21':'대체공휴일','2029-06-06':'현충일','2029-07-17':'제헌절','2029-08-15':'광복절','2029-09-21':'추석 연휴','2029-09-22':'추석','2029-09-23':'추석 연휴','2029-09-24':'대체공휴일','2029-10-03':'개천절','2029-10-09':'한글날','2029-12-25':'성탄절',
+'2030-01-01':'신정','2030-02-02':'설날 연휴','2030-02-03':'설날','2030-02-04':'설날 연휴','2030-02-05':'대체공휴일','2030-03-01':'삼일절','2030-05-01':'노동절','2030-05-05':'어린이날','2030-05-06':'대체공휴일','2030-05-09':'석가탄신일','2030-06-06':'현충일','2030-07-17':'제헌절','2030-08-15':'광복절','2030-09-11':'추석 연휴','2030-09-12':'추석','2030-09-13':'추석 연휴','2030-10-03':'개천절','2030-10-09':'한글날','2030-12-25':'성탄절'};
 /* 매년 반복 기념일(비공휴일 — 회색 표기) */
 const ANNIV={'04-05':'식목일','05-01':'근로자의날','05-08':'어버이날','05-15':'스승의날','07-17':'제헌절','10-01':'국군의날'};
 function holOf(ds){
@@ -1608,12 +1610,13 @@ function mvGone(box,itemSel,keyFn,paint){
     if(!at)for(let j=i-1;j>=0&&!aft;j--)aft=now.get(keyFn(old[j]))||null;
     const ref=at||aft;if(!ref)return;const par=ref.parentNode;if(!par)return;   /* 1072: 옛 줄이 전부 바뀐 경우(남은 이웃 없음) — 사라짐 효과 없이 넘긴다 */
     g.removeAttribute('id');g.querySelectorAll('[id]').forEach(x=>x.removeAttribute('id'));
-    ['data-pid','data-act','data-sid','data-iid','data-occ','draggable'].forEach(a=>g.removeAttribute(a));
+    g.dataset.gpid=g.dataset.pid||'';['data-pid','data-act','data-sid','data-iid','data-occ','draggable'].forEach(a=>g.removeAttribute(a));
     g.classList.remove('editing','open','hl','sel');g.classList.add('mv-gone');g.style.pointerEvents='none';g.style.overflow='clip';
     par.insertBefore(g,at||aft.nextSibling);
-    const cs=getComputedStyle(g),gap=parseFloat(getComputedStyle(par).rowGap)||0;
+    const cs=getComputedStyle(g),gap=parseFloat(getComputedStyle(par).rowGap)||0,nx=g.nextElementSibling;
+    const nm=(!g.previousElementSibling&&nx)?(parseFloat(getComputedStyle(nx).marginTop)||0):0;   /* 1101: 맨 위 유령이면 다음 항목의 위 여백(형제 선택자 여백)도 함께 접는다 */
     const a=g.animate([{height:g.offsetHeight+'px',opacity:1,paddingTop:cs.paddingTop,paddingBottom:cs.paddingBottom,marginTop:cs.marginTop,marginBottom:cs.marginBottom},
-      {height:'0px',opacity:0,paddingTop:'0px',paddingBottom:'0px',marginTop:'0px',marginBottom:(-gap)+'px'}],{duration:MV_MID,easing:MV_EASE,fill:'forwards'});
+      {height:'0px',opacity:0,paddingTop:'0px',paddingBottom:'0px',marginTop:'0px',marginBottom:(-gap-nm)+'px'}],{duration:MV_MID,easing:MV_EASE,fill:'forwards'});
     a.onfinish=a.oncancel=()=>g.remove();
   });
   return res;
@@ -3127,6 +3130,9 @@ function rDay(){
     kf.el.focus({preventScroll:true});
     if(kf.s!=null){try{kf.el.setSelectionRange(kf.s,kf.e);}catch(e){}}
   }
+  if(_peShrink&&!S.planEdit){const z=_peShrink,c=peCardEl(z.id);   /* 1101: Enter 로 저장한 폼 → 그 카드로 줄어든다(라이브는 구독 값이 온 뒤의 그리기에서) */
+    if(c){_peShrink=null;c.classList.remove('fx-in');peGrow(c,z.h,280);const m=c.querySelector('.plan-meta');if(m&&m.animate)m.animate([{opacity:0},{opacity:1}],{duration:200,delay:80,fill:'backwards'});}
+    else if(performance.now()-z.t>1500)_peShrink=null;}
   rHold();wireHoldDnD();   /* 일자 패널 아래 보류함 — 목록이 바뀔 때마다 함께 다시 그린다 */
 }
 
@@ -3199,23 +3205,32 @@ function dpLeave(pid){
   if(!L0||!el||!L0.contains(el)||!el.animate)return ()=>{};
   let nx=el.nextElementSibling;while(nx&&!(nx.dataset&&nx.dataset.pid))nx=nx.nextElementSibling;
   const nextPid=nx?nx.dataset.pid:null,h=el.getBoundingClientRect().height;
-  const g=el.cloneNode(true);g.removeAttribute('id');g.classList.remove('fx-in');
+  const g=el.cloneNode(true);g.removeAttribute('id');g.classList.remove('fx-in');g.dataset.gpid=pid||'';
   g.querySelectorAll('[id]').forEach(x=>x.removeAttribute('id'));g.querySelectorAll('[data-act]').forEach(x=>x.removeAttribute('data-act'));g.removeAttribute('data-pid');
   g.style.pointerEvents='none';g.setAttribute('aria-hidden','true');
   return ()=>{const L=$('#dpList');if(!L)return;
     const ref=nextPid?L.querySelector('.plan[data-pid="'+CSS.escape(nextPid)+'"]'):null;
     /* 마지막 업무를 지워 빈 날이 되면 — 카드는 제자리(맨 위)에서 접히고, 빈 날 안내는 접힌 뒤에 나타난다(안내가 먼저 위에 뜨고 카드가 그 아래서 접히지 않게) */
     const emp=L.querySelector(':scope>.dp-empty');
+    L.querySelectorAll(':scope>.mv-gone').forEach(x=>{if(x.dataset.gpid!==String(pid))return;x.getAnimations().forEach(a=>a.cancel());x.remove();});   /* 같은 카드의 유령만(다른 카드가 접히는 중이면 그대로) */   /* 1101: rDay 의 mvGone 이 같은 카드를 또 접고 있으면 걷는다 — 유령 둘이면 아래 카드가 한 칸 내려갔다 두 칸 올라왔다 */
     L.insertBefore(g,ref&&ref.parentElement===L?ref:(emp||null));
     if(emp&&emp.animate)emp.animate([{opacity:0},{opacity:1}],{duration:180,delay:200,easing:'ease-out',fill:'backwards'});
-    const gap=parseFloat(getComputedStyle(L).rowGap)||0;
-    g.animate([{height:h+'px',opacity:1,marginBottom:'0px',overflow:'hidden'},{height:'0px',opacity:0,paddingTop:'0px',paddingBottom:'0px',marginBottom:(-gap)+'px',overflow:'hidden'}],{duration:260,easing:PE_EASE})
+    const gap=parseFloat(getComputedStyle(L).rowGap)||0,mt=getComputedStyle(g).marginTop,nx=g.nextElementSibling;
+    const nm=(!g.previousElementSibling&&nx)?(parseFloat(getComputedStyle(nx).marginTop)||0):0;   /* 1101: 맨 위 유령이면 다음 카드의 위 여백(.plan+.plan 6px)도 함께 접는다 — 안 그러면 끝에 6px 튄다 */
+    g.animate([{height:h+'px',opacity:1,marginTop:mt,marginBottom:'0px',overflow:'hidden'},{height:'0px',opacity:0,paddingTop:'0px',paddingBottom:'0px',marginTop:'0px',marginBottom:(-gap-nm)+'px',overflow:'hidden'}],{duration:260,easing:PE_EASE})
       .finished.then(()=>g.remove(),()=>g.remove());};
 }
+/* 1101: 폼이 새로 끼거나(새 업무) 빠질 때(빈 폼 닫기) 아래 카드가 한 번에 튀지 않게 — 옛 자리에서 미끄러진다 */
+const dpKey=e=>e.dataset.pid+'|'+(e.dataset.occ||'');
+function dpFlipPre(){const L=$('#dpList'),m=new Map();if(L&&mvOK())L.querySelectorAll(':scope>.plan[data-pid]').forEach(e=>{if(mvVis(e))m.set(dpKey(e),e.getBoundingClientRect().top);});return m;}
+function dpFlipRun(m,dur){if(!m||!m.size)return;const L=$('#dpList');if(!L)return;
+  L.querySelectorAll(':scope>.plan[data-pid]').forEach(e=>{const t=m.get(dpKey(e));if(t==null)return;const dy=t-e.getBoundingClientRect().top;
+    if(Math.abs(dy)>1)e.animate([{transform:'translateY('+dy+'px)'},{transform:'none'}],{duration:dur,easing:PE_EASE});});}
 function openPlanEdit(p,startD,endD,occ){
   const c0=peCardEl(p&&p.id),h0=c0?c0.getBoundingClientRect().height:0;
+  const fl=(!p&&!$('#dpEdit'))?dpFlipPre():null;   /* 새 업무 폼 — 맨 위에 끼며 카드들을 밀어 내린다 */
   S.planEdit={orig:p?{...p}:null,occ:occ||'',start:startD||S.selDate,end:endD||''};
-  rDay();
+  rDay();dpFlipRun(fl,320);
   {const f=$('#dpEdit');if(f&&h0){peGrow(f,h0,320);
     const ch=f.querySelector('.pe-chips');if(ch&&ch.animate)ch.animate([{opacity:0,transform:'translateY(-6px)'},{opacity:1,transform:'none'}],{duration:220,delay:90,easing:'ease-out',fill:'backwards'});
     const sd=f.querySelector('.pe-side');if(sd&&sd.animate)sd.animate([{opacity:0},{opacity:1}],{duration:180,easing:'ease-out'});}}
@@ -3229,9 +3244,10 @@ function closePlanEdit(){
   clearTimeout(PE_SAVE);
   const p=planCollect(S.planEdit.draft);   /* 자동 저장 대기 중인 입력을 확정한다 */
   if(p&&p.title)planCommit(p);
-  const f=$('#dpEdit'),h0=f?f.getBoundingClientRect().height:0,id=S.planEdit.orig&&S.planEdit.orig.id;
+  const f=$('#dpEdit'),h0=f?f.getBoundingClientRect().height:0,id=(S.planEdit.orig&&S.planEdit.orig.id)||(p&&p.title&&p.id)||null;   /* 1101: 자동 저장 전에 닫은 새 업무도 폼 → 카드로 줄어든다(예전엔 카드가 따로 떠오르고 아래 카드는 튀었다) */
   const fr=!S.planEdit.orig&&!(p&&p.title)&&f?f.getBoundingClientRect():null,fbg=f&&mvMorphBg(f),frr=f&&getComputedStyle(f).borderTopLeftRadius;   /* 1092: 비운 채 닫는 새 업무 폼은 ＋ 로 줄어든다 */
-  S.planEdit=null;rDay();
+  const fl=fr?dpFlipPre():null;
+  S.planEdit=null;rDay();dpFlipRun(fl,280);
   setTimeout(pendFlush,0);   /* 보통 속도 클릭으로 닫으면 focusout 이 편집기가 닫히기 전에 지나가 미룬 반영이 남는다 */
   if(fr){const ad=[...$$('.dp-add,.dp-empty-add')].find(mvVis);if(ad)mvMorphFrom(fr,ad,fbg,frr);}
   const c=peCardEl(id);if(c&&h0){c.classList.remove('fx-in');peGrow(c,h0,280);   /* 폼 → 카드 — 편집 중 붙은 「새 카드」 등장 효과는 줄어드는 모션과 겹치므로 뗀다 */
@@ -3476,12 +3492,14 @@ function planAutosave(now){
   };
   if(now)run();else PE_SAVE=setTimeout(run,600);
 }
+let _peShrink=null;
 function savePlanInline(){
   const pe=S.planEdit;if(!pe)return;
   clearTimeout(PE_SAVE);
   const p=planCollect(pe.draft);
   if(!p)return;
   if(!p.title){closePlanEdit();return;}     /* 제목 없이 닫으면 저장하지 않는다 */
+  {const f=$('#dpEdit');_peShrink=(f&&mvOK()&&p.id&&p.date===S.selDate)?{id:p.id,h:f.getBoundingClientRect().height,t:performance.now()}:null;}   /* 같은 날에 남는 업무만 */
   planCommit(p);
   S.planEdit=null;
   /* 위젯에서 제목 입력 중 Enter 로 팝업이 닫히지 않게 — selDate() 는 '같은 칸 다시 누름'으로 보고 토글하므로 저장 전 상태를 지켜 준다 */
@@ -10770,9 +10788,19 @@ setInterval(()=>{
 
 /* ═══════════ 화면 전환 · 공통 UI ═══════════ */
 const VIEW_TTL={calendar:'캘린더',tasks:'업무 현황',d60:'D+60 점검',photo:'사진대지 작성',qc:'견적 검토',redo:'재하자 추적',prod:'생산성 검토',defect:'하자처리 현황',org:'조직 관리',settings:'설정'};
+/* 사이드바 이동만 화면 전환(View Transitions) — 본문(#content)만 옛 모습이 빠지고 새 화면이 올라온다. 코드에서 부르는 go() 는 그대로 즉시 */
+function navGo(view){
+  const d=document;
+  if(!d.startViewTransition||view===S.view||!mvOK()||WIDGET||(S.view==='org'&&orgDraftN())){go(view);return;}
+  d.documentElement.classList.add('vt-nav');
+  const k=navGo.k=(navGo.k||0)+1;   /* 빠르게 두 번 옮기면 앞 전환이 건너뛰어진다 — 마지막 전환만 표시를 거둔다 */
+  const vt=d.startViewTransition(()=>go(view));
+  vt.finished.finally(()=>{if(navGo.k===k)d.documentElement.classList.remove('vt-nav');});
+}
 function go(view){
   if(view==='report')view='tasks';
-  if(TOAST_FN&&view!==S.view){TOAST_FN=null;const t=$('#toast');if(t)t.classList.remove('show','has-btn');}   /* 다른 화면에서 「되돌리기」가 앞 화면을 건드리지 않게 */   /* 주요 업무는 업무 현황으로 통합 — 옛 진입점은 넘겨 준다 */
+  if(TOAST_FN&&view!==S.view){TOAST_FN=null;const t=$('#toast');if(t)t.classList.remove('show','has-btn');}
+  if(view!==S.view&&TST.length)tstClear();   /* 뒤 알림의 되돌리기도 앞 화면 것 — 함께 치운다 */   /* 다른 화면에서 「되돌리기」가 앞 화면을 건드리지 않게 */   /* 주요 업무는 업무 현황으로 통합 — 옛 진입점은 넘겨 준다 */
   if(S.view==='org'&&view!=='org'&&orgDraftN()){   /* 현장 표 초안을 버리고 나가지 않도록 */
     const n=orgDraftN();
     confirmModal('저장하지 않은 현장 변경','현장 표에 저장하지 않은 변경 '+n+'건이 있습니다. 저장하고 이동할까요?',()=>{orgDraftApply();go(view);},'저장하고 이동',false);
@@ -10904,34 +10932,77 @@ document.addEventListener('keydown',e=>{
 });
 /* 토스트에 되돌리기 버튼을 달아 낸다 — 누르지 않으면 그냥 사라진다 */
 function toastUndo(msg,ms=4000){
-  const t=$('#toast');
+  tstPush();const t=$('#toast');t._end=performance.now()+ms;t._fn=null;
   t.innerHTML='<span>'+esc(msg)+'</span><button class="toast-undo" data-act="undo.redo">다시 실행</button>';
   t.classList.add('show','has-btn');
-  clearTimeout(toastT);toastT=setTimeout(()=>{t.classList.remove('show','has-btn');},ms);
+  clearTimeout(toastT);toastT=setTimeout(()=>{t.classList.remove('show','has-btn');tstLayout();},ms);tstLayout();
 }
 /* 알림 + 단추 하나(되돌리기 등) — 누르면 fn */
 let TOAST_FN=null;
 function toastAct(msg,label,fn,ms=5000){
-  const t=$('#toast');t.innerHTML='<span>'+esc(msg)+'</span><button class="toast-undo" data-act="toast.act">'+esc(label)+'</button>';
-  t.classList.add('show','has-btn');TOAST_FN=fn;
-  clearTimeout(toastT);toastT=setTimeout(()=>{t.classList.remove('show','has-btn');TOAST_FN=null;},ms);
+  tstPush();const t=$('#toast');t._end=performance.now()+ms;t.innerHTML='<span>'+esc(msg)+'</span><button class="toast-undo" data-act="toast.act">'+esc(label)+'</button>';
+  t.classList.add('show','has-btn');TOAST_FN=fn;t._fn=fn;
+  clearTimeout(toastT);toastT=setTimeout(()=>{t.classList.remove('show','has-btn');TOAST_FN=null;tstLayout();},ms);tstLayout();
 }
+/* 알림 쌓기 — 앞 알림(#toast)이 떠 있으면 그 사본을 뒤 알림(.toast-bk)으로 남긴다(단추·동작·남은 시간까지). 최대 2장, 넘치면 오래된 것부터 치운다 */
+const TST=[];
+function tstPush(){
+  const t=$('#toast');if(!t||!t.classList.contains('show'))return;
+  if(t._sw){t._swc=1;t.style.transition='';t.style.transform='';t.style.opacity='';}   /* 밀던 알림이 뒤로 간다 — 손을 떼도 새 알림은 남는다 */
+  const b=t.cloneNode(true);b.removeAttribute('id');b.removeAttribute('role');b.classList.remove('show');b.classList.add('toast-bk');b.style.transition='none';
+  b._fn=t._fn||null;if(t._fn&&TOAST_FN===t._fn)TOAST_FN=null;   /* 단추 동작은 뒤 알림이 가져간다 */
+  const left=Math.max(1200,(t._end||0)-performance.now());
+  b._end=performance.now()+left;b._t=setTimeout(()=>tstDrop(b),left);
+  document.body.appendChild(b);TST.unshift(b);
+  while(TST.length>2)tstDrop(TST[TST.length-1],true);
+  if(!t.__tsx){t.__tsx=1;t.addEventListener('mouseenter',()=>tstHover(true));t.addEventListener('mouseleave',()=>tstHover(false));}
+  b.addEventListener('mouseenter',()=>tstHover(true));b.addEventListener('mouseleave',()=>tstHover(false));
+  t.classList.remove('show');void t.offsetWidth;   /* 앞 알림은 새 글로 다시 올라온다 */
+  requestAnimationFrame(()=>{b.style.transition='';tstLayout();});
+}
+/* 앞 알림이 어떤 길로 닫히든(시간·밀어 치우기·단추·화면 이동) 뒤 알림 자리를 다시 잡는다 */
+{const t=document.getElementById('toast');if(t&&window.MutationObserver)new MutationObserver(()=>{if(TST.length)tstLayout();}).observe(t,{attributes:true,attributeFilter:['class']});}
+function tstDrop(b,now){const i=TST.indexOf(b);if(i<0)return;TST.splice(i,1);clearTimeout(b._t);b.style.opacity='';   /* 인라인 opacity 가 .out(흐려짐)을 막지 않게 */
+  if(document.body.classList.contains('tst-x'))setTimeout(()=>{if(!document.querySelector('#toast:hover,.toast-bk:not(.out):hover'))tstHover(false);},280);   /* 눌러 닫힌 알림엔 mouseleave 가 오지 않는다 — 펼침·멈춘 시간을 풀어 준다 */
+  if(now||!mvOK()){b.remove();tstLayout();return;}
+  b.classList.add('out');setTimeout(()=>b.remove(),260);tstLayout();}
+function tstClear(){TST.slice().forEach(b=>tstDrop(b,true));document.body.classList.remove('tst-x');}
+/* 접힘: 뒤 알림은 위로 8px씩 · 5%씩 작게 · 흐리게. 펼침(올렸을 때): 제 높이만큼 위로 늘어선다 */
+function tstLayout(){
+  const t=$('#toast'),front=t&&t.classList.contains('show'),x=document.body.classList.contains('tst-x');
+  /* 쌓인 동안은 폭을 가장 넓은 것에 맞춘다 — 폭이 제각각이면 뒤 알림이 양옆으로 삐져나와 어지럽다 */
+  const live=TST.filter(b=>!b.classList.contains('out'));document.body.classList.toggle('tst-on',live.length>0);
+  const all=(front?[t]:[]).concat(live);all.concat(TST).forEach(e=>{e.style.minWidth='';});if(t)t.style.minWidth='';
+  if(live.length){const w=Math.max(...all.map(e=>e.offsetWidth));all.forEach(e=>{e.style.minWidth=w+'px';});}
+  let k=front?1:0,y=front&&x?t.offsetHeight+8:0;
+  TST.forEach(b=>{if(b.classList.contains('out'))return;
+    if(x){b.style.transform='translateX(-50%) translateY('+(-y)+'px)';b.style.opacity='1';y+=b.offsetHeight+8;}
+    else{b.style.transform='translateX(-50%) translateY('+(-8*k)+'px) scale('+(1-.05*k)+')';b.style.opacity=k?String(1-.25*k):'1';}
+    k++;});
+}
+function tstHover(on){clearTimeout(tstHover._t);
+  const go=()=>{document.body.classList.toggle('tst-x',on&&TST.length>0);
+    const now=performance.now();
+    TST.forEach(b=>{clearTimeout(b._t);if(on){b._left=Math.max(1000,b._end-now);}else{b._end=now+(b._left||1500);b._t=setTimeout(()=>tstDrop(b),b._left||1500);}});
+    tstLayout();};
+  if(on)go();else tstHover._t=setTimeout(go,120);}
 {const t=document.getElementById('toast');if(t){let sx=0,sy=0,mv=false,on=false,lx=0,ly=0;
-  t.addEventListener('touchstart',e=>{if(!t.classList.contains('show'))return;const p=e.touches[0];sx=p.clientX;sy=p.clientY;mv=false;on=true;clearTimeout(toastT);t.style.transition='none';},{passive:true});
+  t.addEventListener('touchstart',e=>{if(!t.classList.contains('show'))return;const p=e.touches[0];sx=p.clientX;sy=p.clientY;mv=false;on=true;t._sw=1;clearTimeout(toastT);t.style.transition='none';},{passive:true});
   t.addEventListener('touchmove',e=>{if(!on)return;const p=e.touches[0],dx=p.clientX-sx,dy=Math.max(0,p.clientY-sy);if(Math.abs(dx)>6||dy>6)mv=true;lx=dx;ly=dy;
     t.style.transform='translateX(calc(-50% + '+dx+'px)) translateY('+dy+'px)';t.style.opacity=String(Math.max(0,1-Math.max(Math.abs(dx),dy)/160));},{passive:true});
-  t.addEventListener('touchend',e=>{if(!on)return;on=false;const p=e.changedTouches[0],far=Math.abs(p.clientX-sx)>60||p.clientY-sy>40;
+  t.addEventListener('touchend',e=>{if(!on)return;on=false;t._sw=0;if(t._swc){t._swc=0;t.style.transition='';t.style.transform='';t.style.opacity='';return;}   /* 밀던 중에 새 알림으로 바뀌었다 — 새 알림은 치우지 않는다 */
+  const p=e.changedTouches[0],far=Math.abs(p.clientX-sx)>60||p.clientY-sy>40;
     const back=!(mv&&far)&&mv&&mvOK()&&t.classList.contains('show');
     t.style.transition=back?'none':'';t.style.transform='';t.style.opacity='';
     if(back){   /* 1092: 제자리로는 튕기며(시트와 같은 스프링) */
       t.animate(mvFrames(tt=>{const q=1-mvSpring(tt,220,20);return{transform:'translateX(calc(-50% + '+(lx*q).toFixed(2)+'px)) translateY('+(ly*q).toFixed(2)+'px)'};},600),{duration:600});
       setTimeout(()=>{t.style.transition='';},20);}
     if(mv&&far){t.classList.remove('show','has-btn');TOAST_FN=null;}else toastT=setTimeout(()=>{t.classList.remove('show','has-btn');TOAST_FN=null;},1500);});
-  t.addEventListener('touchcancel',()=>{if(!on)return;on=false;t.style.transition='';t.style.transform='';t.style.opacity='';   /* 시스템 몸짓에 끊기면 제자리 · 타이머 다시 */
+  t.addEventListener('touchcancel',()=>{if(!on)return;on=false;t._sw=0;t._swc=0;t.style.transition='';t.style.transform='';t.style.opacity='';   /* 시스템 몸짓에 끊기면 제자리 · 타이머 다시 */
     toastT=setTimeout(()=>{t.classList.remove('show','has-btn');TOAST_FN=null;},1500);});}}   /* 손을 떼면 1.5초 뒤 닫힘 */
 function toast(msg,duration=2400){
-  const t=$('#toast');t.textContent=msg;t.classList.remove('has-btn');t.classList.add('show');
-  clearTimeout(toastT);const ms=Math.max(1000,Number(duration)||2400);toastT=setTimeout(()=>t.classList.remove('show'),ms);
+  tstPush();const t=$('#toast');t._fn=null;t._end=performance.now()+Math.max(1000,Number(duration)||2400);t.textContent=msg;t.classList.remove('has-btn');t.classList.add('show');
+  clearTimeout(toastT);const ms=Math.max(1000,Number(duration)||2400);toastT=setTimeout(()=>{t.classList.remove('show');tstLayout();},ms);tstLayout();
   /* 마우스를 올리면 남고, 떼면 1초 뒤 닫힘 */
   if(!t.__hold){t.__hold=true;t.addEventListener('mouseenter',()=>clearTimeout(toastT));t.addEventListener('mouseleave',()=>{clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),1000);});}
 }
@@ -10961,7 +11032,7 @@ function mobClose(){
 
 /* ═══════════ 액션 위임 ═══════════ */
 const ACT={
-  'nav.go':el=>{if(el.dataset.view==='defect')S.dfSid='';go(el.dataset.view);},
+  'nav.go':el=>{if(el.dataset.view==='defect')S.dfSid='';navGo(el.dataset.view);},
   'nav.toggle':()=>{
     S.sbUser=true;   /* 직접 접었다 폈으면 태블릿 자동 접기(sbAuto)가 손대지 않는다 */
     tipHide();   /* 사이드바가 움직이면 툴팁은 제자리에 남는다 */
@@ -11108,9 +11179,21 @@ const ACT={
     (an?an.ready.catch(()=>{}):Promise.resolve()).then(()=>requestAnimationFrame(()=>{DF._tabT=0;if(S.view==='defect')rDefect();}));},
   'mtg.open':()=>mtgOpen(),
   'mtg.close':()=>mtgClose(),
+  'mtg.fs':()=>mtgFs(),
+  'mtg.rm':async el=>{
+    if(document.querySelector('.ctxmenu:not(.out)')){closeCtx();return;}
+    if(!S.live||!FB.db)return;
+    if(!DF.rmIdx){try{DF.rmIdx=(await FB.db.ref('reportIndex').once('value')).val()||{};}catch(e){DF.rmIdx={};}}
+    const months=Object.keys(DF.rmIdx).filter(m=>/^\d{4}-\d{2}$/.test(m)).sort().reverse();
+    if(!months.length){toast('게시된 달이 없습니다');return;}
+    const cur=dfRm(),r=el.getBoundingClientRect();
+    openCtx(r.left,r.bottom+6,months.map(m=>({label:m+(m===ORG_RM?' · 최신':''),on:m===cur,act:()=>{if(m!==cur)mtgSetRm(m);}})),el);},
   'mtg.p':el=>{const p=Number(el.dataset.p)||0;if(p===MTG.p)return;const d=p>MTG.p?1:-1;MTG.p=p;mtgRender(d,true);},   /* 넘긴 쪽에서 밀려 들어온다 */
   'mtg.don':el=>{if(MTG.don===el.dataset.k)return;MTG.don=el.dataset.k;$$('#mm [data-act="mtg.don"]').forEach(b=>b.classList.toggle('act',b.dataset.k===MTG.don));mtgDonut(dfDashSites(),true);},   /* 도넛만 다시 */
-  'mtg.who':el=>{if(MTG.who===el.dataset.id)return;MTG.who=el.dataset.id;mtgRender();const g=$('#mm .sg');
+  'mtg.who':el=>{if(MTG.who===el.dataset.id)return;MTG.who=el.dataset.id;
+    $$('#mm .chip[data-act="mtg.who"]').forEach(c=>c.classList.toggle('on',c.dataset.id===MTG.who));   /* 칩은 제자리에서 색만 바뀐다(전환) */
+    const old=$('#mm .sg'),t=document.createElement('div');t.innerHTML=mtgPlan(MTG.p===3,dfDashSites(),()=>'');const g=t.querySelector('.sg');
+    if(old&&g)old.replaceWith(g);else mtgRender();
     if(g&&mvOK()){[...g.children].forEach((c,i)=>c.animate([{opacity:0,transform:'translateY(10px)'},{opacity:1,transform:'none'}],{duration:MV_SLOW+80,delay:i*45,easing:MV_EASE,fill:'backwards'}));g.querySelectorAll('.sc .hd strong').forEach(mtgCount);}},   /* 칩 → 카드만 차례로 */
   'rec.list':el=>recOpen(el.dataset.sid||'',el.dataset.scope||el.dataset.sc||'ul',{trade:el.dataset.trade,co:el.dataset.co,vac:el.dataset.vac}),
   'rec.limit':el=>{REC.limit=Number(el.dataset.n)||0;recRender();},
@@ -11353,8 +11436,9 @@ const ACT={
     const i=$('#tnDate'),j=$('#tnEnd');if(i)i.value=a;if(j)j.value=b;
     tkDateRefresh();},
   'tk.formSave':el=>taskFormSave(el.dataset.sid,el.dataset.iid||null),
-  'undo.redo':()=>{const t=$('#toast');t.classList.remove('show','has-btn');redoRun();},
-  'toast.act':()=>{const f=TOAST_FN;TOAST_FN=null;$('#toast').classList.remove('show','has-btn');if(f)f();},
+  'undo.redo':el=>{const bk=el&&el.closest&&el.closest('.toast-bk');if(bk)tstDrop(bk);else $('#toast').classList.remove('show','has-btn');redoRun();},   /* 뒤 알림의 단추면 그 알림을 닫는다 */
+  'toast.act':el=>{const bk=el&&el.closest&&el.closest('.toast-bk');if(bk){const f=bk._fn;bk._fn=null;tstDrop(bk);if(f)f();return;}
+    const f=TOAST_FN;TOAST_FN=null;$('#toast').classList.remove('show','has-btn');if(f)f();},
   'pick.clear':()=>pickClear(),
   'pick.del':()=>{const{ok,no}=pickEditable();
     if(!ok.length){denyTask();return;}
@@ -11559,6 +11643,8 @@ const ACT={
     const id=el.dataset.id,sid=el.dataset.sid;
     const p=roster().find(x=>x.id===id);if(!p)return;
     if(!canAssignSites(id)){toast('담당 현장을 바꿀 권한이 없습니다');return;}
+    /* 터치(마우스 hover 없음) — 첫 탭은 해제 대기(.arm)만, 같은 칩을 한 번 더 누르면 해제. 다른 곳을 누르면 대기 취소(아래 pointerdown) */
+    if(!matchMedia('(hover:hover) and (pointer:fine)').matches&&!el.classList.contains('arm')){$$('.site-on.arm').forEach(x=>x.classList.remove('arm'));el.classList.add('arm');return;}
     const cur=(S.people||{})[id]||{};
     const sites={...(cur.sites||p.sites||{})};delete sites[sid];
     store.putPerson(id,{name:p.name||'',email:p.email||'',team:cur.team||p.team||'',
@@ -12102,9 +12188,10 @@ document.addEventListener('input',e=>{if(e.target.id==='recQ')e.target.closest('
   if(e.target.id==='recQ'){REC.q=e.target.value;
   const b=$('#mbody');if(!b)return;if(paintHTML(b,recBodyHTML()))ovsRefresh();recHeadSync(REC.view.length,REC.rows.length);}});
 /* 처리계획 — 입력을 멈추면 저장한다(하자처리 현황과 같은 노드를 쓰므로 그쪽 화면에도 바로 반영된다) */
-function dfPlanFit(el){if(!el||el.offsetParent===null)return;el.style.height='auto';el.style.height=el.scrollHeight+'px';}
+function dfFS(){if(dfFS.v==null)dfFS.v=!!(window.CSS&&CSS.supports&&CSS.supports('field-sizing','content'));return dfFS.v;}   /* 칸 높이를 CSS(field-sizing)가 맞추면 재고 넣는 일을 건너뛴다 — 안 되는 브라우저만 아래 방식 */
+function dfPlanFit(el){if(dfFS()||!el||el.offsetParent===null)return;el.style.height='auto';el.style.height=el.scrollHeight+'px';}
 /* 칸 높이를 모두 풀고, 한 번에 재고, 한 번에 넣는다 — 칸마다 쓰기/읽기를 번갈아 하면 레이아웃이 칸 수만큼 돈다 */
-function dfPlanFitAll(){const els=$$('#view-defect .plan-ta').filter(el=>el.offsetParent!==null);
+function dfPlanFitAll(){if(dfFS())return;const els=$$('#view-defect .plan-ta').filter(el=>el.offsetParent!==null);
   els.forEach(el=>{el.style.height='auto';});const hs=els.map(el=>el.scrollHeight);els.forEach((el,i)=>{el.style.height=hs[i]+'px';});}
 let DF_PT=null;
 document.addEventListener('input',e=>{
@@ -12407,18 +12494,37 @@ function mtgAg(ss){const rm=dfRm(),o={u:0,tR:0,res:0,unr:0,lt:0,pR:0,pRes:0,pu:0
 const mtgRgOrd=arr=>{const o=(S.org.regions||[]).map(r=>r.id);return arr.sort((a,b)=>((o.indexOf(a)+1)||999)-((o.indexOf(b)+1)||999));};   /* 공구 순서 = 조직 관리 권역 순서 */
 const mtgPct=(a,b)=>b?(a/b*100).toFixed(1):'0.0';
 async function mtgOpen(){
-  if(S.view!=='defect'||isMob())return;
+  if(S.view!=='defect'||isMob()||MTG.ld)return;
+  {const o=$('#mm');if(o&&!o._out)return;}   /* 이미 열림 */
   const sites=dfDashSites();if(!sites.length){toast('게시된 현장 자료가 없습니다');return;}
-  try{await loadChart();}catch(e){}
-  try{await dfAllKpi();}catch(e){}
-  for(const s of sites){try{await dfLoadPlans(s.id);}catch(e){}}
+  const bt=$('#tbMtgWrap button');MTG.ld=1;if(bt){bt.style.transition='opacity var(--t-fast)';bt.style.opacity='.5';bt.style.cursor='progress';}   /* 받는 동안 — 단추를 흐리게 */
+  try{await mtgLoad();}finally{MTG.ld=0;if(bt){bt.style.opacity='';bt.style.cursor='';}}
   if(S.view!=='defect')return;
-  let m=$('#mm');if(!m){m=document.createElement('div');m.id='mm';m.setAttribute('role','dialog');m.setAttribute('aria-label','회의 모드');document.body.appendChild(m);}
-  document.body.classList.add('mtg-on');mtgRender(0,true);
+  {const o=$('#mm');if(o&&o._out)o.remove();}   /* 닫히는 중인 것은 바로 걷는다(닫힘 끝에 새 창이 같이 지워지지 않게) */
+  const m=document.createElement('div');m.id='mm';m.setAttribute('role','dialog');m.setAttribute('aria-label','회의 모드');m.tabIndex=-1;document.body.appendChild(m);
+  MTG.ret=document.activeElement;
+  document.body.classList.add('mtg-on');mtgRender(0,true);slSync();m.focus({preventScroll:true});
   if(mvOK())m.animate([{opacity:0,transform:'scale(.985)'},{opacity:1,transform:'none'}],{duration:MV_MID,easing:MV_EASE});
 }
+async function mtgLoad(){
+  try{await loadChart();}catch(e){}
+  try{await dfAllKpi();}catch(e){}
+  for(const s of dfDashSites()){try{await dfLoadPlans(s.id);}catch(e){}}
+}
+/* 기준월 바꾸기(1098) — 게시된 달 목록(하자처리 현황 상단바와 같은 목록·같은 상태 S.dfRmSel) → 그 달 자료를 받아 다시 그린다 */
+async function mtgSetRm(m){S.dfRmSel=(m===ORG_RM?'':m);rDefect();
+  const b=$('#mm .mm-body');if(b){b.style.transition='opacity '+MV_FAST+'ms';b.style.opacity='.4';}   /* 받는 동안 본문을 흐리게 */
+  await mtgLoad();const mm=$('#mm');if(mm&&!mm._out)mtgRender(0,true);}
+/* 전체화면(1098) — 회의 모드에서 켠 것만 나갈 때 함께 끈다 */
+function mtgFs(){const d=document;
+  if(d.fullscreenElement){if(d.exitFullscreen)d.exitFullscreen().catch(()=>{});return;}
+  const el=d.documentElement;if(el.requestFullscreen)el.requestFullscreen().then(()=>{MTG.fs=true;},()=>toast('전체화면을 켤 수 없습니다'));}
+document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement)MTG.fs=false;const b=$('#mm .mm-fs');if(b)b.innerHTML=mtgFsBtn();});
+const mtgFsBtn=()=>document.fullscreenElement?'<svg class="icn" aria-hidden="true"><use href="#i-arr-in"></use></svg>화면 복귀':'<svg class="icn" aria-hidden="true"><use href="#i-expand"></use></svg>전체화면';
 function mtgClose(){const m=$('#mm');if(!m||m._out)return;m._out=1;document.body.classList.remove('mtg-on');
+  if(MTG.fs&&document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen().catch(()=>{});MTG.fs=false;
   const done=()=>{mtgCharts(m);m.remove();};
+  {let r=MTG.ret;MTG.ret=null;if(!(r&&r!==document.body&&r.isConnected&&r.focus&&!r.closest('#mm')))r=$('#tbMtgWrap button');if(r&&!r.closest('[hidden]'))r.focus({preventScroll:true});}   /* 초점은 열기 전 자리(없으면 회의 모드 단추)로 */
   if(!mvOK()){done();return;}
   m.animate([{opacity:1,transform:'none'},{opacity:0,transform:'scale(.985)'}],{duration:MV_FAST,easing:MV_EASE,fill:'forwards'}).finished.then(done,done);}
 /* 들어오는 모션 — 제목 → 카드들이 차례로(넘긴 쪽에서 살짝 밀려) · 큰 숫자는 0 에서 세어 오른다. dir: 1 다음 · -1 이전 · 0 제자리 */
@@ -12429,7 +12535,8 @@ function mtgEnter(dir,root){
   [...b.children].forEach(e=>{if(e.classList.contains('mm-h'))return;
     if(e.matches('.mk,.rgc,.sg'))items.push(...e.children);else if(e.matches('.mm-g5'))items.push(...e.querySelectorAll('.pn'));else items.push(e);});
   items.forEach((el,i)=>el.animate([{opacity:0,transform:'translate('+dx+'px,10px)'},{opacity:1,transform:'none'}],{duration:MV_SLOW+80,delay:i*45,easing:MV_EASE,fill:'backwards'}));
-  b.querySelectorAll('.mm-tw tbody tr').forEach((tr,i)=>{if(i<24)tr.animate([{opacity:0},{opacity:1}],{duration:MV_MID,delay:160+i*22,easing:'ease-out',fill:'backwards'});});
+  b.querySelectorAll('.mm-tw tbody tr').forEach((tr,i)=>{if(i<24)tr.animate([{opacity:0},{opacity:1}],{duration:MV_MID,delay:160+i*22,easing:'ease-out',fill:'backwards'});
+    const bar=tr.querySelector('.lb .bar');if(bar)bar.animate([{clipPath:'inset(0 100% 0 0 round 99px)'},{clipPath:'inset(0 0 0 0 round 99px)'}],{duration:MV_STR+180,delay:220+Math.min(i,24)*22,easing:MV_EASE,fill:'backwards'});});   /* 비율 막대는 왼쪽에서 차오른다 */
   b.querySelectorAll('.mk .v,.rgc .v,.sc .hd strong').forEach(mtgCount);
 }
 function mtgCount(el){
@@ -12445,9 +12552,10 @@ function mtgRender(dir,anim){
   const rm=dfRm(),sites=dfDashSites(),a=mtgAg(sites),[y,mo]=String(rm).split('-');
   const end=((DF.kpi[rm+'/'+(sites[0]||{}).id]||{}).rmEnd||dfEnds(rm).rmEnd||rm).replace(/-/g,'. ')+'.';
   const meta=end+' 기준<br>관리대상현장 <b>'+sites.length+'개</b> · 관리세대 <b>'+mtgN(a.u)+'세대</b>';
-  const top='<div class="mm-top"><div class="mm-brand"><b>하자처리 현황</b><span>'+(+y)+'년 '+(+mo)+'월 · 월간 회의</span></div><div class="mm-tabs">'
+  const ym=(+y)+'년 '+(+mo)+'월';
+  const top='<div class="mm-top"><div class="mm-brand"><b>하자처리 현황</b>'+(S.live&&FB.db?'<button class="mm-rm" data-act="mtg.rm" data-tip="기준월 바꾸기">'+ym+'<svg class="icn" aria-hidden="true"><use href="#i-chevd"></use></svg></button>':'<span>'+ym+' · 월간 회의</span>')+'</div><div class="mm-tabs">'
     +MTG_P.map((t,k)=>'<button class="mm-tab'+(k===MTG.p?' on':'')+'" data-act="mtg.p" data-p="'+k+'"><i>0'+(k+1)+'</i>'+t+'</button>').join('')
-    +'</div><button class="mm-x" data-act="mtg.close"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg>나가기</button></div>';
+    +'</div><button class="mm-x mm-fs" data-act="mtg.fs">'+mtgFsBtn()+'</button><button class="mm-x" data-act="mtg.close"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg>나가기</button></div>';
   const head=(t,right)=>'<div class="mm-h"><div><div class="eb">0'+(MTG.p+1)+'</div><h2>'+t+'</h2></div><div class="meta">'+right+'</div></div>';
   let body='';
   if(MTG.p===0)body=head(MTG_P[0],meta)+mtgP1(a,sites);
@@ -12480,22 +12588,51 @@ function mtgCharts1(sites,anim){
   const FONT='Pretendard Variable, sans-serif',ax={font:{size:12},color:'#8A94A3'};
   /* 아래로 갈수록 투명 — 바닥은 0 */
   const grad=(rgb,a)=>ctx=>{const{ctx:g,chartArea:ar}=ctx.chart;if(!ar)return null;const gr=g.createLinearGradient(0,ar.top,0,ar.bottom);gr.addColorStop(0,'rgba('+rgb+','+a+')');gr.addColorStop(1,'rgba('+rgb+',0)');return gr;};
-  const endLbl={id:'mmEnd',afterDatasetsDraw(ch){const g=ch.ctx;g.save();ch.data.datasets.forEach((d,i)=>{const mt=ch.getDatasetMeta(i),n=mt.data.length;if(!n)return;
-    [0,n-1].forEach(j=>{const p=mt.data[j];g.font=(j===n-1?'800 15px ':'600 12px ')+FONT;g.fillStyle=d.borderColor;g.textAlign=j===0?'left':'right';g.fillText(mtgN(d.data[j]),p.x+(j===0?-4:6),p.y-12);});
-    const p=mt.data[n-1];g.beginPath();g.arc(p.x,p.y,5,0,7);g.fillStyle='#fff';g.fill();g.lineWidth=3;g.strokeStyle=d.borderColor;g.stroke();});g.restore();}};
+  /* 처음·끝 값 — 두 선이 가까우면(28px 안) 아래 선의 값은 점 밑에 단다 */
+  const endLbl={id:'mmEnd',afterDatasetsDraw(ch){const g=ch.ctx,M=ch.data.datasets.map((d,i)=>({d,mt:ch.getDatasetMeta(i)})).filter(o=>o.mt.data.length);if(!M.length)return;g.save();
+    const n=M[0].mt.data.length;
+    [0,n-1].forEach(j=>{const ys=M.map(o=>o.mt.data[j].y);
+      M.forEach((o,k)=>{const p=o.mt.data[j],other=ys.filter((_,q)=>q!==k),near=other.some(y=>Math.abs(y-p.y)<28),below=near&&other.every(y=>y<=p.y);
+        g.font=(j===n-1?'800 15px ':'600 12px ')+FONT;g.fillStyle=o.d.borderColor;g.textAlign=j===0?'left':'right';g.textBaseline=below?'top':'alphabetic';
+        g.fillText(mtgN(o.d.data[j]),p.x+(j===0?-4:6),below?p.y+(j===n-1?11:7):p.y-(j===n-1?12:9));});});
+    g.textBaseline='alphabetic';
+    M.forEach(o=>{const p=o.mt.data[n-1];g.beginPath();g.arc(p.x,p.y,5,0,7);g.fillStyle='#fff';g.fill();g.lineWidth=3;g.strokeStyle=o.d.borderColor;g.stroke();});g.restore();}};
   const AN=anim&&mvOK()?{duration:900,easing:'easeOutQuart'}:false;
+  /* 마우스를 올린 달 — 세로선 + 그 달 값(툴팁 대신 직접 그린다) */
+  const cross={id:'mmCross',afterDatasetsDraw(ch){const i=ch.$hx;if(i==null||i<0)return;const g=ch.ctx,a=ch.chartArea,m0=ch.getDatasetMeta(0).data[i];if(!m0)return;
+    const xs=ch.data.datasets.map((d,k)=>ch.getDatasetMeta(k).data[i]).filter(Boolean);const x=ch.config.type==='bar'?(xs[0].x+xs[xs.length-1].x)/2:m0.x;
+    g.save();g.strokeStyle='rgba(60,70,90,.35)';g.lineWidth=1;g.setLineDash([4,4]);g.beginPath();g.moveTo(x,a.top);g.lineTo(x,a.bottom);g.stroke();g.setLineDash([]);
+    if(ch.config.type==='line')ch.data.datasets.forEach((d,k)=>{const p=ch.getDatasetMeta(k).data[i];g.beginPath();g.arc(p.x,p.y,4.5,0,7);g.fillStyle=d.borderColor;g.fill();g.lineWidth=2;g.strokeStyle='#fff';g.stroke();});
+    const rows=ch.data.datasets.map(d=>[d.label,d.data[i],ch.config.type==='line'?d.borderColor:(d.label==='접수'?'rgba(62,113,210,.5)':d.backgroundColor)]);
+    const head=ch.data.labels[i],FL='600 12px '+FONT,FV='800 12px '+FONT,FH='700 12px '+FONT,mw=f=>t=>{g.font=f;return g.measureText(t).width;};
+    g.fillStyle='rgba(255,255,255,.96)';g.strokeStyle='rgba(16,24,40,.12)';g.lineWidth=1;
+    if(ch.config.type==='bar'){   /* 낮은 칸 — 한 줄: 「8월  ■접수 552  ■처리 310」 */
+      const P=16,parts=rows.map(r=>({r,lw:mw(FL)(r[0]),vw:mw(FV)(mtgN(r[1]))}));const w=P*2+mw(FH)(head)+parts.reduce((q,o)=>q+22+o.lw+7+o.vw,0),h=32;
+      let bx=x+14;if(bx+w>a.right)bx=x-14-w;const by=a.top-h-4<2?a.top+2:a.top-h-4;
+      g.beginPath();g.roundRect(bx,by,w,h,9);g.fill();g.stroke();
+      let cx=bx+P;const ty=by+h/2+4.5;g.textAlign='left';g.font=FH;g.fillStyle='#1d2330';g.fillText(head,cx,ty);cx+=mw(FH)(head);
+      parts.forEach(o=>{cx+=22;g.fillStyle=o.r[2];g.fillRect(cx-11,ty-8.5,8,8);g.font=FL;g.fillStyle='#4A5260';g.fillText(o.r[0],cx+1,ty);cx+=o.lw+7;g.font=FV;g.fillStyle='#1d2330';g.fillText(mtgN(o.r[1]),cx+1,ty);cx+=o.vw;});
+    }else{
+      const P=16,LH=23,lw=Math.max(...rows.map(r=>mw(FL)(r[0]))),vw=Math.max(...rows.map(r=>mw(FV)(mtgN(r[1])))),w=Math.max(mw(FH)(head),14+lw+26+vw)+P*2,h=P*2+14+rows.length*LH-4;
+      let bx=x+14;if(bx+w>a.right)bx=x-14-w;const by=a.top+2;
+      g.beginPath();g.roundRect(bx,by,w,h,10);g.fill();g.stroke();
+      g.textAlign='left';g.font=FH;g.fillStyle='#1d2330';g.fillText(head,bx+P,by+P+10);
+      rows.forEach((r,k)=>{const yy=by+P+10+(k+1)*LH;g.fillStyle=r[2];g.fillRect(bx+P,yy-8.5,8,8);g.font=FL;g.fillStyle='#4A5260';g.textAlign='left';g.fillText(r[0],bx+P+14,yy);g.font=FV;g.fillStyle='#1d2330';g.textAlign='right';g.fillText(mtgN(r[1]),bx+w-P,yy);});
+    }
+    g.restore();}};
+  const hov=(ev,els,ch)=>{const e=ch.getElementsAtEventForMode(ev,'index',{intersect:false},false),i=(e.length&&ev.type!=='mouseout')?e[0].index:-1;if(ch.$hx!==i){ch.$hx=i;ch.draw();}};
   new Chart($('#mmC1'),{type:'line',data:{labels:lbl,datasets:[
       {label:'미처리',data:U,borderColor:'#3E71D2',borderWidth:3,tension:.42,fill:'origin',backgroundColor:grad('62,113,210',.2),pointRadius:0,datalabels:{display:false}},
       {label:'장기미처리',data:L,borderColor:'#DA6A60',borderWidth:3,tension:.42,fill:'origin',backgroundColor:grad('218,106,96',.14),pointRadius:0,datalabels:{display:false}}]},
-    options:{maintainAspectRatio:false,animation:AN,layout:{padding:{top:24,right:34,left:6}},plugins:{legend:{display:false},datalabels:{display:false}},
-      scales:{x:{grid:{display:false},border:{display:false},ticks:ax},y:{beginAtZero:true,grid:{color:'rgba(120,120,128,.10)'},border:{display:false},ticks:{font:{size:11},color:'#A0A8B4',maxTicksLimit:5}}}},plugins:[endLbl]});
+    options:{maintainAspectRatio:false,animation:AN,onHover:hov,layout:{padding:{top:24,right:34,left:6}},plugins:{legend:{display:false},tooltip:{enabled:false},datalabels:{display:false}},
+      scales:{x:{grid:{display:false},border:{display:false},ticks:ax},y:{beginAtZero:true,grid:{color:'rgba(120,120,128,.10)'},border:{display:false},ticks:{font:{size:11},color:'#A0A8B4',maxTicksLimit:5}}}},plugins:[endLbl,cross]});
   const barLbl={id:'mmBar',afterDatasetsDraw(ch){const g=ch.ctx;g.save();ch.data.datasets.forEach((d,i)=>{const mt=ch.getDatasetMeta(i),b=mt.data[mt.data.length-1];if(!b||d.data[d.data.length-1]==null)return;
     g.font='800 12px '+FONT;g.textAlign='center';g.fillStyle=i?'#2E4F8F':'#5B7FC4';g.fillText(mtgN(d.data[d.data.length-1]),b.x,b.y-6);});g.restore();}};
   new Chart($('#mmC3'),{type:'bar',data:{labels:lbl,datasets:[
       {label:'접수',data:RC,backgroundColor:'rgba(62,113,210,.26)',borderRadius:{topLeft:2,topRight:2},barPercentage:.78,categoryPercentage:.6,datalabels:{display:false}},
       {label:'처리',data:DN,backgroundColor:'#2E4F8F',borderRadius:{topLeft:2,topRight:2},barPercentage:.78,categoryPercentage:.6,datalabels:{display:false}}]},
-    options:{maintainAspectRatio:false,animation:AN&&{duration:700,easing:'easeOutQuart',delay:c=>c.type==='data'?120+c.dataIndex*35:0},layout:{padding:{top:20,right:34,left:6}},plugins:{legend:{display:false},datalabels:{display:false}},
-      scales:{x:{grid:{display:false},border:{display:false},ticks:ax},y:{beginAtZero:true,grid:{color:'rgba(120,120,128,.10)'},border:{display:false},ticks:{font:{size:11},color:'#A0A8B4',maxTicksLimit:3}}}},plugins:[barLbl]});
+    options:{maintainAspectRatio:false,animation:AN&&{duration:700,easing:'easeOutQuart',delay:c=>c.type==='data'?120+c.dataIndex*35:0},onHover:hov,layout:{padding:{top:20,right:34,left:6}},plugins:{legend:{display:false},tooltip:{enabled:false},datalabels:{display:false}},
+      scales:{x:{grid:{display:false},border:{display:false},ticks:ax},y:{beginAtZero:true,grid:{color:'rgba(120,120,128,.10)'},border:{display:false},ticks:{font:{size:11},color:'#A0A8B4',maxTicksLimit:3}}}},plugins:[barLbl,cross]});
   mtgDonut(sites,anim);
 }
 /* 도넛 — 큰 것 5개만 선으로 이어 이름·건수·비중. 돌며 펼쳐진 뒤 표기가 나타난다 */
@@ -12509,18 +12646,21 @@ function mtgDonut(sites,anim){
   rows=rows.filter(r=>r.v>0);if(MTG.don==='site')rows.sort((x,y)=>y.v-x.v);
   const T=rows.reduce((q,r)=>q+r.v,0)||1;
   const PAL=['#1F2B4C','#2E4F8F','#3E71D2','#7FA3E3','#B7CBEF','#DCE5F6','#E6ECF7','#ECF0F8','#F0F3F9','#F2F5FA','#F4F6FB','#F6F8FC'];
-  const callout={id:'mmCall',afterDraw(ch){const g=ch.ctx,mt=ch.getDatasetMeta(0);if(!mt.data.length)return;const al=ch.$mmA==null?1:ch.$mmA;if(!al)return;g.save();g.globalAlpha=al;
+  const callout={id:'mmCall',afterDraw(ch){const g=ch.ctx,mt=ch.getDatasetMeta(0);if(!mt.data.length)return;const al=ch.$mmA==null?1:ch.$mmA;g.save();g.globalAlpha=al;
     const L=mt.data.slice(0,5).map((arc,i)=>{const{x,y,startAngle:s0,endAngle:e0,outerRadius:R}=arc;const an=(s0+e0)/2,cx=Math.cos(an),cy=Math.sin(an);return{i,x,y,R,cx,right:cx>=0,x1:x+cx*(R+3),y1:y+cy*(R+3),y2:y+cy*(R+26)};});
     [true,false].forEach(sd=>{const s=L.filter(l=>l.right===sd).sort((p,q)=>p.y2-q.y2);for(let k=1;k<s.length;k++)if(s[k].y2-s[k-1].y2<50)s[k].y2=s[k-1].y2+50;});
     L.forEach(l=>{const x2=l.x+l.cx*(l.R+26),xe=l.right?ch.width-14:14;
       g.strokeStyle='#A3ABB7';g.lineWidth=1.2;g.beginPath();g.moveTo(l.x1,l.y1);g.lineTo(x2,l.y2);g.lineTo(xe,l.y2);g.stroke();
       g.fillStyle='#A3ABB7';g.beginPath();g.arc(l.x1,l.y1,2.6,0,7);g.fill();
-      g.textAlign=l.right?'right':'left';g.fillStyle='#1d2330';g.font='800 14px '+FONT;g.fillText(rows[l.i].n,xe,l.y2-8);
-      g.font='600 13px '+FONT;g.fillStyle='#6B7480';g.fillText(mtgN(rows[l.i].v)+'건 · '+(rows[l.i].v/T*100).toFixed(1)+'%',xe,l.y2+18);});
-    const c=mt.data[0];g.textAlign='center';g.fillStyle='#8A94A3';g.font='600 13px '+FONT;g.fillText('미처리',c.x,c.y-14);g.fillStyle='#1d2330';g.font='800 32px '+FONT;g.fillText(mtgN(T),c.x,c.y+22);g.restore();}};
-  new Chart($('#mmC2'),{type:'doughnut',data:{labels:rows.map(r=>r.n),datasets:[{data:rows.map(r=>r.v),backgroundColor:rows.map((r,i)=>PAL[i]||PAL[PAL.length-1]),borderColor:'#fff',borderWidth:2,datalabels:{display:false}}]},
+      g.textAlign=l.right?'right':'left';g.fillStyle='#1d2330';g.font='800 15.5px '+FONT;g.fillText(rows[l.i].n,xe,l.y2-9);
+      g.font='600 14px '+FONT;g.fillStyle='#6B7480';g.fillText(mtgN(rows[l.i].v)+'건 · '+(rows[l.i].v/T*100).toFixed(1)+'%',xe,l.y2+19);});
+    g.globalAlpha=1;const c=mt.data[0],h=ch.$hov>=0?rows[ch.$hov]:null;   /* 가운데 — 조각에 올리면 그 항목(원본 도넛과 같게) */
+    g.textAlign='center';g.fillStyle='#8A94A3';g.font='600 13px '+FONT;g.fillText(h?h.n:'미처리',c.x,c.y-14);g.fillStyle='#1d2330';g.font='800 32px '+FONT;g.fillText(mtgN(h?h.v:T)+(h?'건':''),c.x,c.y+22);g.restore();}};
+  new Chart($('#mmC2'),{type:'doughnut',data:{labels:rows.map(r=>r.n),datasets:[{data:rows.map(r=>r.v),backgroundColor:rows.map((r,i)=>PAL[i]||PAL[PAL.length-1]),borderColor:cvar('--bg2','#fff'),borderWidth:3,hoverOffset:12,hoverBorderWidth:3,datalabels:{display:false}}]},
     options:{maintainAspectRatio:false,animation:(anim&&mvOK())?{duration:900,easing:'easeOutQuart',onComplete:({chart:c})=>{if(c.$mmA!==0)return;const t0=performance.now();const f=t=>{if(!c.ctx)return;c.$mmA=Math.min(1,(t-t0)/280);c.draw();if(c.$mmA<1)requestAnimationFrame(f);};requestAnimationFrame(f);}}:false,
-      cutout:'64%',layout:{padding:{top:4,bottom:44,left:128,right:128}},plugins:{legend:{display:false},datalabels:{display:false}}},plugins:[callout,{id:'mmA0',beforeInit:c=>{c.$mmA=(anim&&mvOK())?0:1;}}]});
+      cutout:'64%',layout:{padding:{top:22,bottom:62,left:158,right:158}},
+      onHover:(ev,els,ch)=>{const i=els&&els.length?els[0].index:-1;if(ch.$hov!==i){ch.$hov=i;ch.draw();}},
+      plugins:{legend:{display:false},tooltip:{enabled:false},datalabels:{display:false}}},plugins:[callout,{id:'mmA0',beforeInit:c=>{c.$mmA=(anim&&mvOK())?0:1;c.$hov=-1;}}]});
 }
 function mtgP2(sites){
   const rgs=mtgRgOrd([...new Set(sites.map(s=>s.region||''))]);
@@ -12534,9 +12674,9 @@ function mtgP2(sites){
     +'<td class="lbc"><div class="lb"><div class="bar"><span style="width:'+(a.unr?a.d60/a.unr*100:0)+'%;background:var(--ch-d60,#DA6A60)"></span><span style="width:'+(a.unr?a.d30/a.unr*100:0)+'%;background:var(--ch-d30,#E89C9A)"></span><span style="flex:1;background:var(--ch-d0,#B3C7DD)"></span></div><span class="pv">'+mtgPct(a.lt,a.unr)+'%</span></div></td><td>'+mtgBa(a.lt-a.plt,true)+'</td></tr>';
   let body='';rgs.forEach(r=>{body+=row('rg',esc(mtgRg(r)||'권역 없음'),mtgAg(of(r)));of(r).forEach(s=>{body+=row('sr',esc(s.name),mtgAg([s]),s.id);});});
   body+=row('tot','합계',mtgAg(sites),'');
-  return cards+'<div class="card mm-fill mm-tw"><table class="g"><thead><tr><th>공구 · 현장</th><th>세대수</th><th>전체 접수</th><th>처리</th><th>처리율</th><th>미처리</th><th>전월대비</th><th>장기미처리</th><th>장기미처리 비율</th><th>전월대비</th></tr></thead><tbody>'+body+'</tbody></table></div>';
+  return cards+'<div class="card mm-tw"><table class="g"><thead><tr><th>공구 · 현장</th><th>세대수</th><th>전체 접수</th><th>처리</th><th>처리율</th><th>미처리</th><th>전월대비</th><th>장기미처리</th><th>장기미처리 비율</th><th>전월대비</th></tr></thead><tbody>'+body+'</tbody></table></div>';
 }
-/* 03·04 — 담당자 칩(공구별로 묶음) → 그 사람 담당 현장 카드. 칩이 없으면(명부 없음) 전 현장 */
+/* 03·04 — 담당자 칩(공구별로 묶음) → 그 사람 담당 현장 카드(3곳까지 한 줄, 4곳 이상은 2열로 넓게 · 화면이 구른다). 칩이 없으면(명부 없음) 전 현장 */
 function mtgPlan(vac,sites,head){
   const rm=dfRm(),ids=new Set(sites.map(s=>s.id));
   const mem=roster().filter(p=>p.sites&&Object.keys(p.sites).some(k=>ids.has(k)));
@@ -12556,12 +12696,15 @@ function mtgPlan(vac,sites,head){
     let sub,right;
     if(vac){const sv=((DF.vac[rm+'/'+s.id]||{}).vacantStatus)||{},mb=parseInt(sv['미분양'],10)||0,mk=parseInt(sv['미키불출'],10)||0;
       sub='공가 <b>'+mtgN(mb+mk)+'세대</b> · 미분양 '+mtgN(mb)+' · 미키불출 '+mtgN(mk);
-      right='<span>미처리</span><span class="row"><strong>'+mtgN(src.Unr)+'</strong><span class="ba bgr">장기 '+mtgN(src.Lt)+'</span></span>';}
+      const pv=Object.values(src.TopPrev||{}).reduce((q,v)=>q+(Number(v)||0),0);   /* 계 전월 = 원본 상위 공종 표 「합계」 줄과 같은 식 */
+      right='<span>미처리 계 · 장기 '+mtgN(src.Lt)+'</span><span class="row"><span class="pv">'+mtgN(pv)+' → </span><strong>'+mtgN(src.Unr)+'</strong>'+mtgBa((src.Unr||0)-pv,true)+'</span>';}
     else{sub=esc(mtgRg(s.region))+' · '+mtgN(s.units)+'세대';
-      right='<span>장기미처리</span><span class="row"><strong>'+mtgN(k.lt)+'</strong>'+mtgBa((k.lt||0)-((k.prev&&k.prev.lt)||0),true)+'</span>';}
+      const pv=Object.values(k.topLtPrev||{}).reduce((q,v)=>q+(Number(v)||0),0);
+      right='<span>장기미처리 계</span><span class="row"><span class="pv">'+mtgN(pv)+' → </span><strong>'+mtgN(k.lt)+'</strong>'+mtgBa((k.lt||0)-pv,true)+'</span>';}
     return '<div class="sc"><div class="hd"><div><b>'+esc(s.name)+'</b><div class="who">'+sub+'</div></div><div class="lt">'+right+'</div></div>'+its+'</div>';}).join('');
-  return head(MTG_P[MTG.p],chips?'<div class="mm-sub">'+chips+'</div>':'')+'<div class="sg mm-fill" style="grid-template-columns:repeat('+Math.max(1,Math.min(3,list.length))+',minmax(0,1fr))">'+cards+'</div>';
+  return head(MTG_P[MTG.p],chips?'<div class="mm-sub">'+chips+'</div>':'')+'<div class="sg mm-fill" style="grid-template-columns:repeat('+(list.length>3?2:Math.max(1,list.length))+',minmax(0,1fr))">'+cards+'</div>';
 }
+document.addEventListener('pointerdown',e=>{const a=document.querySelectorAll('.site-on.arm');if(!a.length)return;const t=e.target.closest&&e.target.closest('.site-on.arm');a.forEach(x=>{if(x!==t)x.classList.remove('arm');});},true);   /* 현장 칩 해제 대기 — 바깥을 누르면 취소 */
 const LAYERS=[
   {n:'msel',open:()=>!!document.querySelector('.msel.open'),close:mselClose,on:'click',keep:'.msel'},
   {n:'mo',open:()=>$('#mo').classList.contains('open'),close:closeModal,block:true},   /* 바깥 클릭으로는 닫지 않는다 */
@@ -12576,7 +12719,7 @@ const LAYERS=[
     close:()=>{const d=$('#widSide');if(d)d.classList.remove('on');S.widSide='';},on:'down',keep:'#widSide,[data-act="wid.side"]'},
   {n:'widPop',open:()=>WIDGET&&!!S.widPop,close:()=>{S.widPop=false;if(S.planEdit)closePlanEdit();rWidget();},   /* 쓰던 폼도 닫는다 — 남으면 tkHold 로 실시간 반영·자동 업데이트가 멈춘다 */
     on:'click',keep:'#widPop,#fcal td.fc-daygrid-day,#mo,.ctxmenu,#toast',when:e=>e.target.isConnected},   /* 「외 N건」은 누르는 사이 칸이 다시 그려져 떨어진 요소가 「바깥」으로 읽힌다 */
-  {n:'mtg',open:()=>!!$('#mm'),close:mtgClose},   /* 1095 회의 모드 — 창(mo)이 떠 있으면 창이 먼저 닫힌다 */
+  {n:'mtg',open:()=>!!$('#mm'),close:mtgClose,block:true},   /* block — 저녁 알림·아침 확인 창이 회의 화면 위로 뜨지 않게 기다린다 */   /* 1095 회의 모드 — 창(mo)이 떠 있으면 창이 먼저 닫힌다 */
   {n:'nq',open:()=>{const q=$('#nqPanel');return !!(q&&q.classList.contains('on'));},close:()=>nqOpen(false),on:'down',keep:'#nqPanel,[data-act="nq.toggle"]'},   /* 앱(사이드바 버튼)·위젯(헤더 버튼) 같은 규칙 */
   {n:'form',open:()=>!!(S.tkNew||S.tkEdit),close:tkFormEsc},   /* 저장하고 닫기 */
   {n:'plan',open:()=>!!S.planEdit,close:closePlanEdit},
@@ -12596,7 +12739,7 @@ document.addEventListener('mousedown',e=>layerOutside(e,'down'),true);
 document.addEventListener('click',e=>layerOutside(e,'cap'),true);
 document.addEventListener('keydown',e=>{
   /* 1095 회의 모드 — ←/→ 로 화면 넘김(창이 떠 있거나 입력 중이면 아님) */
-  if((e.key==='ArrowLeft'||e.key==='ArrowRight')&&$('#mm')&&!$('#mo').classList.contains('open')&&!(e.target.closest&&e.target.closest('input,textarea,select,[contenteditable]'))){
+  if((e.key==='ArrowLeft'||e.key==='ArrowRight')&&$('#mm')&&!$('#mm')._out&&!$('#mo').classList.contains('open')&&!document.querySelector('.ctxmenu:not(.out)')&&!(e.target.closest&&e.target.closest('input,textarea,select,[contenteditable]'))){
     const p=Math.max(0,Math.min(MTG_P.length-1,MTG.p+(e.key==='ArrowRight'?1:-1)));if(p!==MTG.p){e.preventDefault();ACT['mtg.p']({dataset:{p}});slSync();}return;}
   /* 로그인 칸 Enter 는 <form id=cvForm> 기본 제출(=#cvBtn 클릭)이 맡는다 — 화면별로 로그인·가입·재설정 */
   if(e.key==='Enter'&&e.target.id==='peTitle'){e.preventDefault();savePlanInline();return;}
@@ -12608,7 +12751,7 @@ document.addEventListener('keydown',e=>{
   if(WIDGET&&(e.key==='ArrowLeft'||e.key==='ArrowRight')&&!/INPUT|TEXTAREA|SELECT/.test((e.target.tagName||''))&&!layerBusy()){
     ACT[e.key==='ArrowLeft'?'cal.prev':'cal.next']();return;
   }
-  if((e.ctrlKey||e.metaKey)&&(e.key==='k'||e.key==='K')){e.preventDefault();nqOpen(true);rNq();return;}
+  if((e.ctrlKey||e.metaKey)&&(e.key==='k'||e.key==='K')){e.preventDefault();if($('#mm'))return;nqOpen(true);rNq();return;}   /* 회의 모드 위에선 찾기를 열지 않는다(뒤에 숨는다) */
   if(e.key==='Enter'&&$('#mo').classList.contains('open')&&e.target.tagName==='INPUT'){
     e.preventDefault();
     if(MODAL_CB&&MODAL_CB.ok)MODAL_CB.ok();
