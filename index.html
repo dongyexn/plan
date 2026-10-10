@@ -2351,8 +2351,8 @@ body.wid.glass #fcal.ev-drag .fc-highlight{background:rgba(143,180,255,.16);box-
 #mm .rgc{display:grid;gap:12px;margin-bottom:12px;flex:none;}   /* 열 수 = 공구 수(mtgP2 가 인라인으로) */
 #mm .rgc>div{background:var(--bg2);border:1px solid var(--cardline);border-radius:var(--rxl);padding:16px 20px;}
 #mm .rgc .h{display:flex;align-items:baseline;gap:8px;margin-bottom:10px;}#mm .rgc .h b{font-size:21px;}#mm .rgc .h span{font-size:13.5px;color:var(--lbl3);}
-#mm .rgc .ks{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
-#mm .rgc .l{font-size:13.5px;color:var(--lbl2);font-weight:600;}#mm .rgc .v{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;margin:2px 0 4px;letter-spacing:-.02em;}
+#mm .rgc .ks{display:grid;grid-template-columns:repeat(3,auto);justify-content:space-between;gap:8px;}
+#mm .rgc .l{font-size:13.5px;color:var(--lbl2);font-weight:600;white-space:nowrap;}#mm .rgc .v{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;margin:2px 0 4px;letter-spacing:-.02em;}
 #mm .mm-tw{padding:6px 20px;flex:none;}   /* 표는 카드째 늘고 화면(.mm-body)이 구른다 — 머리줄은 붙어 따라온다 */
 #mm table.g thead th{position:sticky;top:-30px;background:var(--bg2);z-index:1;box-shadow:inset 0 -1px 0 var(--sep);}
 #mm table.g{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;}
@@ -2375,6 +2375,20 @@ body.wid.glass #fcal.ev-drag .fc-highlight{background:rgba(143,180,255,.16);box-
 #mm .chip .n{font-size:12px;color:var(--lbl3);}
 #mm .chip.on{background:var(--b-tint);box-shadow:inset 0 0 0 1.5px var(--b300);color:var(--b600);}#mm .chip.on .n{color:var(--b500);}
 #mm .sg{display:grid;gap:14px;align-items:start;align-content:start;}
+#mm .sg.deck{flex:none;display:grid;padding-bottom:92px;transition:height .45s cubic-bezier(.32,.72,0,1);}
+#mm .sg.deck>.sc{position:relative;grid-area:1/1;align-self:start;transform-origin:50% 100%;transition:transform .5s cubic-bezier(.32,.72,0,1),opacity .3s ease,box-shadow .5s ease;}
+#mm .sg.deck.na,#mm .sg.deck.na>.sc,#mm .sg.deck.na .dk-t{transition:none;}
+#mm .sg.deck>.sc[data-k="0"]{z-index:5;box-shadow:0 12px 32px -14px rgba(20,30,50,.22);}
+#mm .sg.deck>.sc[data-k="1"]{z-index:4;transform:translateY(calc(var(--dy) + 44px)) scale(.985);clip-path:inset(calc(100% - 44px) 0 0 0);cursor:pointer;background:color-mix(in srgb,var(--bg2) 95%,#7D828C);}
+#mm .sg.deck>.sc[data-k="2"]{z-index:3;transform:translateY(calc(var(--dy) + 84px)) scale(.97);clip-path:inset(calc(100% - 40px) 0 0 0);cursor:pointer;background:color-mix(in srgb,var(--bg2) 90%,#7D828C);}
+#mm .sg.deck>.sc[data-k="3"]{z-index:2;transform:translateY(calc(var(--dy) + 84px)) scale(.97);clip-path:inset(calc(100% - 40px) 0 0 0);opacity:0;pointer-events:none;}
+#mm .sg.deck>.sc[data-k="-1"]{z-index:6;transform:translateY(-48px) scale(1.01);opacity:0;pointer-events:none;transition:transform .45s cubic-bezier(.32,.72,0,1),opacity .2s ease;}
+#mm .dk-t{position:absolute;z-index:3;left:0;right:0;bottom:0;height:48px;display:flex;align-items:center;padding:4px 26px 0;background:inherit;border-radius:0 0 var(--rxl) var(--rxl);font-size:15px;font-weight:700;color:var(--lbl2);opacity:0;transition:opacity .3s ease;pointer-events:none;}
+#mm .sg.deck>.sc[data-k="1"] .dk-t,#mm .sg.deck>.sc[data-k="2"] .dk-t{opacity:1;}#mm .sg.deck>.sc:is([data-k="1"],[data-k="2"],[data-k="3"])>:not(.dk-t){visibility:hidden;}   /* 뒤 카드 본문은 숨김 — 이름 줄만 */
+#mm .sg.deck>.sc[data-k="2"] .dk-t{height:44px;color:var(--lbl3);}
+@media (hover:hover) and (pointer:fine){#mm .sg.deck>.sc[data-k="1"]:hover .dk-t,#mm .sg.deck>.sc[data-k="2"]:hover .dk-t{color:var(--lbl);}}
+@media not ((hover:hover) and (pointer:fine)){#mm .sg.deck>.sc[data-k="1"]:active .dk-t,#mm .sg.deck>.sc[data-k="2"]:active .dk-t{color:var(--lbl);}}
+#mm .mm-h .meta:has(.dk-n){display:flex;align-items:center;}#mm .dk-n{font-size:15px;color:var(--lbl3);font-variant-numeric:tabular-nums;margin-right:18px;align-self:center;}#mm .dk-n b{color:var(--lbl);font-weight:800;font-size:18px;}
 #mm .sc{background:var(--bg2);border:1px solid var(--cardline);border-radius:var(--rxl);padding:22px 26px 10px;display:flex;flex-direction:column;min-width:0;}
 #mm .sc .hd{display:flex;align-items:stretch;justify-content:space-between;gap:10px;padding-bottom:12px;border-bottom:1px solid var(--sep);}
 #mm .sc .hd>div:first-child{display:flex;flex-direction:column;justify-content:space-between;min-width:0;}
@@ -2397,7 +2411,7 @@ body.wid.glass #fcal.ev-drag .fc-highlight{background:rgba(143,180,255,.16);box-
 #mm .sc.wide .ah .at{display:flex;align-items:center;justify-content:space-between;gap:12px;}#mm .sc.wide .ah .at b{font-size:19px;font-weight:800;color:var(--lbl2);letter-spacing:-.01em;}
 #mm .sc.wide .ah .seg button{font-size:12px;padding:4px 12px;}
 #mm .sc.wide .ag{grid-column:3;grid-row:2;display:grid;align-content:start;padding:12px 0 14px;}
-#mm .sc.wide .ar{display:grid;grid-template-columns:minmax(64px,88px) minmax(60px,96px) minmax(40px,1fr) 40px 36px 56px;align-items:center;gap:10px;min-height:34px;font-size:15px;}
+#mm .sc.wide .ar{display:grid;grid-template-columns:minmax(72px,104px) minmax(72px,120px) minmax(72px,1fr) 40px 36px 56px;align-items:center;gap:10px;min-height:34px;font-size:15px;}
 #mm .sc.wide .ar .sb{color:var(--lbl3);font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}#mm .sc.wide .ar .ba{justify-self:end;font-size:12.5px;}#mm .sc.wide .ar .bh{text-align:right;}
 #mm .sc.wide .ar .nm{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 #mm .sc.wide .ar .bw{display:block;height:6px;border-radius:99px;background:var(--fill);}
@@ -2411,7 +2425,7 @@ body.wid.glass #fcal.ev-drag .fc-highlight{background:rgba(143,180,255,.16);box-
 #mm .sc .r1 .co.lk{cursor:pointer;}
 #mm .sc.wide .pls .it:first-child{padding-top:12px;}
 /* 05 민원 현황 — 레벨 타일(.mk) · 아래는 같은 5칸 격자: 히트맵 3칸 | 감지요소 2칸 */
-#mm .p5g{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;}#mm .p5g .p5h{grid-column:span 3;}#mm .p5g .p5f{grid-column:span 2;}
+#mm .p5g{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;}#mm .p5g .p5h{grid-column:span 3;}
 #mm .pn .ph .u{font-size:14.5px;color:var(--lbl3);}
 #mm .p5f .fl{display:flex;flex-direction:column;justify-content:space-around;flex:1;min-height:0;}
 /* 히트맵은 대시보드 .rkh 그대로 — 회의 화면 크기로만 키운다(현장명 칸 = 대시보드 계산 폭 × 1.25) */
@@ -2422,15 +2436,17 @@ body.wid.glass #fcal.ev-drag .fc-highlight{background:rgba(143,180,255,.16);box-
 #mm .p5h .rkh-body{max-height:none;overflow:visible;flex:1;gap:3px;}#mm .p5h .rkh-r{flex:1;min-height:28px;align-items:stretch;}#mm .p5h .rkh-r>*{align-self:center;}#mm .p5h .rkh-r>.rkh-c{align-self:stretch;height:auto;min-height:28px;line-height:1;display:flex;align-items:center;justify-content:center;}   /* 칸 사이 3px — 줄이 남는 높이를 나눠 가져 칸이 커진다(빈틈 대신 칸으로 채움) */
 #mm .p5h .rkh-rg{font-size:14.5px;}#mm .p5h .rkh-n{font-size:15px;font-weight:700;height:28px;}
 #mm .p5h .rkh-c{height:36px;line-height:36px;font-size:15px;border-radius:7px;}#mm .p5h .rkh-r{padding:0 4px;}#mm .p5h .rkh-h{padding:0 4px 6px;}
-#mm .p5f .fr{display:grid;grid-template-columns:minmax(0,132px) minmax(0,1fr) 44px 52px;align-items:center;gap:12px;min-height:30px;font-size:15px;}
+#mm .p5f .fr{display:grid;grid-template-columns:minmax(0,132px) minmax(0,1fr) 44px 52px;align-items:center;gap:12px;min-height:26px;font-size:15px;}
 #mm .p5f .fr .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}#mm .p5f .fr.crit .nm{font-weight:700;}
 #mm .p5f .bw{display:block;height:6px;border-radius:99px;background:var(--fill);}#mm .p5f .bar{display:block;height:100%;border-radius:inherit;background:var(--ch-d0);min-width:6px;}#mm .p5f .crit .bar{background:var(--ch-d60);}
 #mm .p5f .n{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;}#mm .p5f .n.z{color:var(--lbl3);font-weight:500;}
 /* 05 오른쪽 2칸 — 민원 세대 추이(위) · 중대 감지요소(아래) */
-#mm .p5c{min-height:280px;}#mm .p5c .ph .lg{display:flex;gap:14px;font-size:13px;color:var(--lbl3);}#mm .p5c .ph .lg i{display:inline-block;width:10px;height:3px;border-radius:2px;margin-right:6px;vertical-align:3px;}
-#mm .p5g .p5r{grid-column:span 2;display:flex;flex-direction:column;gap:12px;}#mm .p5r>.pn{flex:1 0 auto;}
+#mm .p5c{min-height:0;}#mm .p5c .ph .lg{display:flex;gap:14px;font-size:13px;color:var(--lbl3);}#mm .p5c .ph .lg i{display:inline-block;width:10px;height:3px;border-radius:2px;margin-right:6px;vertical-align:3px;}
+#mm .p5g .p5r{grid-column:span 2;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,2fr) minmax(max-content,1fr);gap:12px;min-height:0;}   /* 추이 : 감지요소 = 2 : 1(카드 바깥 높이) — 화면이 낮으면 감지요소 4줄이 다 보이는 만큼은 지킨다 */
 #mm .p5f .fr .ba{justify-self:end;font-size:12.5px;}
-#mm .sc .pl{font-size:16.5px;margin-top:8px;line-height:1.5;}#mm .sc .pl .no{color:var(--rd);font-weight:700;}
+#mm .sc .pl{font-size:16.5px;margin-top:8px;line-height:1.5;}#mm .sc .pl .no{color:var(--lbl3);font-weight:500;font-size:15px;}
+#mm .sc .hd .pc{display:inline-flex;align-items:center;margin-left:12px;padding:3px 10px;border-radius:99px;font-size:13px;font-weight:700;vertical-align:5px;background:var(--fill);color:var(--lbl2);letter-spacing:0;}#mm .sc .hd .pc.miss{background:var(--tint-rd);color:var(--rd);}
+#mm .lg.ln i{width:12px;height:3px;border-radius:2px;vertical-align:3px;}
 @media print{#mm{display:none!important;}}
 /* ＋ → 폼 모핑 상자(1092, mvMorph) — 폼 칠 위에 파란 테 1.5 로 자리를 보인다. 업무 현황 폼(#tko 890) 위 · 모달(#mo 1000) 아래 */
 .mv-morph{position:fixed;z-index:895;pointer-events:none;box-shadow:0 0 0 1.5px var(--b500);}
@@ -5988,5 +6004,5 @@ body.wid.glass{--mv-flash:#8FB4FF;}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1121"></script>
+<script src="./app.js?v=1128"></script>
 </body></html>
