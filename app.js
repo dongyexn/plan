@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1115';
+const APP_VER='1121';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -7201,16 +7201,24 @@ function dfRiskDashHTML(sites,hh){
   if(!rows.length)return '';
   rows.sort((a,b)=>(((b.c.긴급||0)+(b.c.심각||0))-((a.c.긴급||0)+(a.c.심각||0)))||((b.c.긴급||0)-(a.c.긴급||0)));
   /* 히트맵 — 현장 × 레벨, 셀 농도 = 열 최대값 대비 세대 수. 행 클릭 → 그 현장 민원 현황 */
-  const LV=['긴급','심각','경계','주의','양호'];const RGB={긴급:'218,106,96',심각:'232,156,154',경계:'179,199,221',주의:'120,128,140'};   /* 긴급·심각·경계 = 장기미처리 차트 3단(--ch-d60/d30/d0)과 같은 색. 농도 범위도 갈라(긴급 .45~.95 · 심각 .15~.70) 긴급이 늘 진하다 */
+  const LV=['긴급','심각','경계','주의','양호'];const RGB={긴급:'218,106,96',심각:'232,156,154',경계:'179,199,221',주의:'120,128,140',양호:'164,176,196'};   /* 긴급·심각·경계 = 장기미처리 차트 3단(--ch-d60/d30/d0)과 같은 색. 농도 범위도 갈라(긴급 .45~.95 · 심각 .15~.70) 긴급이 늘 진하다 */
   const mx={};LV.forEach(k=>{mx[k]=Math.max(1,...rows.map(({c})=>c[k]||0));});
   /* 세대 열 없음(표 자체가 세대 수). 셀 → 그 현장·레벨 세대 목록 모달, 현장명 → 현장 페이지 */
-  const cell=(sid,k,v)=>{const n=(v||0).toLocaleString();if(k==='양호')return `<button class="rkh-c rkh-ok" data-act="df.riskCell" data-sid="${esc(sid)}" data-lv="${k}">${n}</button>`;const AR={긴급:[0.55,0.45],심각:[0.5,0.5]}[k]||[0.5,0.45];   /* 최소 농도 .5~.55 — 흰 글자 가독성 */const a=v?AR[0]+AR[1]*v/mx[k]:0;return `<button class="rkh-c" data-act="df.riskCell" data-sid="${esc(sid)}" data-lv="${k}" style="background:rgba(${RGB[k]},${a.toFixed(2)})">${n}</button>`;};   /* 글자는 전부 흰색(그림자로 가독성) */
+  /* 셀 — 열마다 0→최대를 옅게→진하게(.14~.92). 글자는 바탕 농도로 갈라 진한 칸은 흰색, 옅은 칸은 같은 계열의 진한 글자(그림자 없음). 0 은 빈 칸 · 양호도 같은 방식(회청색) */
+  const INK={긴급:[122,31,26],심각:[122,31,26],경계:[38,62,96],주의:[38,44,54],양호:[38,44,54]};
+  const lum=c=>{const f=v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4);};return .2126*f(c[0])+.7152*f(c[1])+.0722*f(c[2]);},crt=(x,y)=>(Math.max(x,y)+.05)/(Math.min(x,y)+.05);
+  /* 글자색 = 흰색과 같은 계열 진한 글자 중 바탕(흰 위에 농도 a 로 깐 색)과 대비가 큰 쪽(WCAG 대비식) */
+  const ink=(k,a)=>{const c=RGB[k].split(',').map(Number),bg=c.map(v=>255*(1-a)+v*a),L=lum(bg),w=crt(1,L),d=crt(lum(INK[k]),L);return w>=d?'#fff':'rgb('+INK[k].join(',')+')';};
+  const cell=(sid,k,v)=>{const n=(v||0).toLocaleString(),at=x=>`class="rkh-c${x}" data-act="df.riskCell" data-sid="${esc(sid)}" data-lv="${k}"`;
+    if(!v)return `<button ${at(' rkh-z')}>–</button>`;
+    const a=.14+.78*v/mx[k];
+    return `<button ${at('')} style="background:rgba(${RGB[k]},${a.toFixed(2)});color:${ink(k,a)}">${n}</button>`;};
   /* 권역을 앞에 작게(현장명 폭은 내용 폭까지만) */
   const tr=({s,c})=>`<div class="rkh-r"><span class="rkh-rg">${esc(s.region||'')}</span><button class="rkh-n" data-act="df.siteRisk" data-sid="${esc(s.id)}" data-tip="${esc(s.name)}">${esc((isMob()&&!WIDGET)?dfShortSite(s.name):s.name)}</button>${LV.map(k=>cell(s.id,k,c[k])).join('')}</div>`;
   /* 현장명 칸 폭 = 가장 긴 이름 기준(한 글자 ≈ 12.5px, 최대 240) — 행마다 격자가 따로라 max-content 로는 열이 안 맞는다 */
   const nameW=Math.min(240,Math.max(120,Math.round(Math.max(...rows.map(({s})=>String(s.name||'').length))*12.5+12)));
   return `<div class="card rkh" style="--rkhn:${nameW}px"><div class="ct cardttl">현장별 민원 현황</div>
-    <div class="rkh-h"><span></span><span></span>${LV.map(k=>`<span>${k}</span>`).join('')}</div>
+    <div class="rkh-h"><span></span><span></span>${LV.map(k=>`<span><i style="background:rgb(${RGB[k]})"></i>${k}</span>`).join('')}</div>
     <div class="rkh-body">${rows.map(tr).join('')}</div></div>`;
 }
 /* 세대 표 공용 렌더러 — 현장 페이지(ns='site')·히트맵 셀 모달(ns='modal').
@@ -12540,12 +12548,19 @@ async function mtgLoad(){
 /* 05 민원 현황 — 전월 레벨 세대 수(report/전월/현장/kpi/hh/cnt). 현장 민원 탭과 같은 캐시(DF.rkPrev) */
 const mtgPm=()=>{const[y,m]=dfRm().split('-').map(Number);return m===1?(y-1)+'-12':y+'-'+pad(m-1);};
 async function mtgRkPrevLoad(){const py=mtgPm(),P=DF.rkPrev||(DF.rkPrev={});
-  await Promise.all(dfDashSites().filter(s=>!Object.prototype.hasOwnProperty.call(P,py+'/'+s.id)).map(async s=>{let c=null;try{if(S.live&&FB.db)c=await dfRef('report/'+py+'/'+s.id+'/kpi/hh/cnt');}catch(e){}P[py+'/'+s.id]=c||null;}));}
+  /* 최근 12개월 레벨 세대 수(05 민원 세대 추이) — 게시 목록(reportIndex)에 있는 달만, 기준월 이전 11개월. 전월 값은 P 와 같이 쓴다 */
+  if(S.live&&FB.db){if(!DF.rmIdx){try{DF.rmIdx=(await FB.db.ref('reportIndex').once('value')).val()||{};}catch(e){DF.rmIdx={};}}
+    const ms=Object.keys(DF.rmIdx).filter(m=>/^\d{4}-\d{2}$/.test(m)&&m<dfRm()).sort().slice(-11);
+    await Promise.all(ms.flatMap(m=>dfDashSites().filter(s=>!Object.prototype.hasOwnProperty.call(P,m+'/'+s.id)).map(async s=>{let c=null;try{c=await dfRef('report/'+m+'/'+s.id+'/kpi/hh/cnt');}catch(e){}P[m+'/'+s.id]=c||null;})));}
+  await Promise.all(dfDashSites().filter(s=>!Object.prototype.hasOwnProperty.call(P,py+'/'+s.id)).map(async s=>{let c=null;try{if(S.live&&FB.db)c=await dfRef('report/'+py+'/'+s.id+'/kpi/hh/cnt');}catch(e){}P[py+'/'+s.id]=c||null;}));
+  const Fp=DF.rkFacPrev||(DF.rkFacPrev={});   /* 전월 감지요소 세대 수(kpi/hh/fac — 작다) */
+  await Promise.all(dfDashSites().filter(s=>!Object.prototype.hasOwnProperty.call(Fp,py+'/'+s.id)).map(async s=>{let c=null;try{if(S.live&&FB.db)c=await dfRef('report/'+py+'/'+s.id+'/kpi/hh/fac');}catch(e){}Fp[py+'/'+s.id]=c||null;}));}
 /* 05 민원 현황 — 게시 kpi.hh(세대 레벨: cnt·list). ① 레벨별 세대 수(전월대비) ② 현장 × 레벨 히트맵(대시보드 것 그대로 · KPI 3칸 폭) ③ 감지요소 전부(KPI 2칸 폭, 주의 이상 세대 기준) */
-function mtgP5(sites){
-  const rm=dfRm(),py=mtgPm(),P=DF.rkPrev||{},LV=['긴급','심각','경계','주의'];
+function mtgP5(all,head,meta){
+  const rm=dfRm(),py=mtgPm(),P=DF.rkPrev||{},Fp=DF.rkFacPrev||{},LV=['긴급','심각','경계','주의'];
+  const sites=all,hd=head(MTG_P[4],meta);
   const hs=sites.map(s=>({s,h:(DF.kpi[rm+'/'+s.id]||{}).hh||null})).filter(x=>x.h&&x.h.cnt);
-  if(!hs.length)return '<div class="card" style="padding:40px;text-align:center;color:var(--lbl3)">이 게시본에는 세대 레벨 정보가 없습니다</div>';
+  if(!hs.length)return hd+'<div class="card" style="padding:40px;text-align:center;color:var(--lbl3)">이 게시본에는 세대 레벨 정보가 없습니다</div>';
   const cur=k=>hs.reduce((a,x)=>a+(x.h.cnt[k]||0),0);
   const pk=hs.every(x=>P[py+'/'+x.s.id]),prv=k=>hs.reduce((a,x)=>a+((P[py+'/'+x.s.id]||{})[k]||0),0);
   const sumL=c=>LV.reduce((a,k)=>a+((c||{})[k]||0),0);
@@ -12554,15 +12569,21 @@ function mtgP5(sites){
   const tile=(t,v,cls,b,s)=>'<div><div class="t"><span>'+t+'</span>'+(b||'')+'</div><div class="v'+(cls?' '+cls:'')+'">'+mtgN(v)+'<small>세대</small></div><div class="s">'+s+'</div></div>';
   const kp='<div class="mk">'+tile('주의 이상',tl,'',pk?mtgBa(tl-tp,true):'','관리세대의 '+mtgPct(tl,units)+'%')
     +LV.map(k=>tile(k,cur(k),k==='긴급'?'red':'',pk?mtgBa(cur(k)-prv(k),true):'','주의 이상의 '+mtgPct(cur(k),tl)+'%')).join('')+'</div>';
-  /* 현장 × 레벨 — 대시보드 히트맵(dfRiskDashHTML) 그대로. 셀 → 그 현장·레벨 세대 목록, 현장명 → 그 현장 주의 이상 세대 목록(회의 중엔 화면을 옮기지 않는다) */
+  /* ① 현장 × 레벨 — 대시보드 히트맵 그대로 */
   const hhm={};hs.forEach(({s,h})=>{hhm[s.id]=h.cnt;});
   const st=dfRiskDashHTML(hs.map(x=>x.s),hhm).replace('class="card rkh"','class="card rkh p5h"');
-  /* 감지요소 — 주의 이상 세대 기준, 중대 요소는 빨강 */
-  const F=RISK_RULES.factors,fc={};hs.forEach(({h})=>(h.list||[]).forEach(r=>{if(r.lv>=1)(r.factors||[]).forEach(f=>{fc[f]=(fc[f]||0)+1;});}));
-  const FO=Object.keys(F),fl=FO.map(f=>[f,fc[f]||0]).concat(Object.keys(fc).filter(f=>!F[f]).map(f=>[f,fc[f]])).sort((a,b)=>(b[1]-a[1])||(FO.indexOf(a[0])-FO.indexOf(b[0]))),fm=Math.max(1,...fl.map(x=>x[1]));   /* 감지요소 전부(0 포함) — 많은 순, 같으면 규칙 순 */
-  const fa='<div class="pn p5f"><div class="ph"><b>감지요소</b><span class="u">주의 이상 세대</span></div><div class="fl">'
-    +(fl.map(([f,n])=>{const c=F[f]&&F[f].crit;return '<div class="fr'+(c?' crit':'')+'"><span class="nm">'+esc(f)+'</span><span class="bw">'+(n?'<span class="bar" style="width:'+(n/fm*100).toFixed(1)+'%"></span>':'')+'</span><span class="n'+(n?'':' z')+'">'+mtgN(n)+'</span></div>';}).join(''))+'</div></div>';
-  return kp+'<div class="p5g mm-fill">'+st+fa+'</div>';
+  /* ② 민원 세대 추이 — 최근 12개월(게시된 달) 주의 이상 · 긴급·심각. 그림은 mtgCharts5(01 추이 차트와 같은 모양) */
+  const ms=Object.keys(P).map(k=>k.split('/')[0]).filter((m,i,a)=>a.indexOf(m)===i&&m<rm).sort().slice(-11).concat([rm]);
+  const at=m=>{if(m===rm)return LV.reduce((o,k)=>(o[k]=cur(k),o),{});const o={};let ok=false;hs.forEach(({s})=>{const c=P[m+'/'+s.id];if(c){ok=true;LV.forEach(k=>{o[k]=(o[k]||0)+(c[k]||0);});}});return ok?o:null;};
+  const md=ms.map(m=>({m,c:at(m)})).filter(x=>x.c);
+  MTG._p5={lbl:md.map(x=>(+x.m.slice(5))+'월'),all:md.map(x=>sumL(x.c)),hi:md.map(x=>(x.c.긴급||0)+(x.c.심각||0))};
+  const uh='<div class="pn p5c"><div class="ph"><b>민원 세대 추이</b><span class="lg"><span><i style="background:#3E71D2"></i>주의 이상</span><span><i style="background:#DA6A60"></i>긴급·심각</span></span></div><div class="cv"><canvas id="mmC5"></canvas></div></div>';
+  /* ④ 중대 감지요소 — 세대 수 + 전월대비(kpi/hh/fac 기준) */
+  const F=RISK_RULES.factors,cf=Object.keys(F).filter(f=>F[f].crit),fc=f=>hs.reduce((a,{h})=>a+(((h.fac||{})[f])||0),0),fpk=hs.every(x=>Fp[py+'/'+x.s.id]),fp=f=>hs.reduce((a,x)=>a+(((Fp[py+'/'+x.s.id]||{})[f])||0),0);
+  const fm=Math.max(1,...cf.map(fc));
+  const fa='<div class="pn p5f"><div class="ph"><b>중대 감지요소</b></div><div class="fl">'
+    +cf.map(f=>{const n=fc(f);return '<div class="fr crit"><span class="nm">'+esc(f)+'</span><span class="bw">'+(n?'<span class="bar" style="width:'+(n/fm*100).toFixed(1)+'%"></span>':'')+'</span><span class="n'+(n?'':' z')+'">'+mtgN(n)+'</span>'+(fpk?mtgBa(n-fp(f),true):'<span></span>')+'</div>';}).join('')+'</div></div>';
+  return hd+kp+'<div class="p5g mm-fill">'+st+'<div class="p5r">'+uh+fa+'</div></div>';
 }
 /* 기준월 바꾸기(1098) — 게시된 달 목록(하자처리 현황 상단바와 같은 목록·같은 상태 S.dfRmSel) → 그 달 자료를 받아 다시 그린다 */
 async function mtgSetRm(m){S.dfRmSel=(m===ORG_RM?'':m);rDefect();
@@ -12572,11 +12593,13 @@ async function mtgSetRm(m){S.dfRmSel=(m===ORG_RM?'':m);rDefect();
 function mtgFs(){const d=document;
   if(d.fullscreenElement){if(d.exitFullscreen)d.exitFullscreen().catch(()=>{});return;}
   const el=d.documentElement;if(el.requestFullscreen)el.requestFullscreen().then(()=>{MTG.fs=true;},()=>toast('전체화면을 켤 수 없습니다'));}
-document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement)MTG.fs=false;const b=$('#mm .mm-fs');if(b)b.innerHTML=mtgFsBtn();});
+/* 회의 모드 뒤(본 페이지) 차트를 지금 칸 크기로 다시 맞춘다 — 전체화면에서 바로 나가면 창 크기가 회의 화면이 걷히는 중에 바뀌어 차트가 전체화면 때 크기·비율로 남는 일이 있다 */
+function mtgRefitPage(){if(!window.Chart||!Chart.instances)return;Object.values(Chart.instances).forEach(c=>{const v=c&&c.canvas;if(v&&v.isConnected&&!v.closest('#mm'))try{c.resize();}catch(e){}});}
+document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement){MTG.fs=false;requestAnimationFrame(mtgRefitPage);setTimeout(mtgRefitPage,400);}const b=$('#mm .mm-fs');if(b)b.innerHTML=mtgFsBtn();});
 const mtgFsBtn=()=>document.fullscreenElement?'<svg class="icn" aria-hidden="true"><use href="#i-arr-in"></use></svg>화면 복귀':'<svg class="icn" aria-hidden="true"><use href="#i-expand"></use></svg>전체화면';
 function mtgClose(){const m=$('#mm');if(!m||m._out)return;m._out=1;document.body.classList.remove('mtg-on');
   if(MTG.fs&&document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen().catch(()=>{});MTG.fs=false;
-  const done=()=>{mtgCharts(m);m.remove();};
+  const done=()=>{mtgCharts(m);m.remove();requestAnimationFrame(mtgRefitPage);setTimeout(mtgRefitPage,400);};
   {let r=MTG.ret;MTG.ret=null;if(!(r&&r!==document.body&&r.isConnected&&r.focus&&!r.closest('#mm')))r=$('#tbMtgWrap button');if(r&&!r.closest('[hidden]'))r.focus({preventScroll:true});}   /* 초점은 열기 전 자리(없으면 회의 모드 단추)로 */
   if(!mvOK()){done();return;}
   m.animate([{opacity:1,transform:'none'},{opacity:0,transform:'scale(.985)'}],{duration:MV_FAST,easing:MV_EASE,fill:'forwards'}).finished.then(done,done);}
@@ -12586,10 +12609,13 @@ function mtgEnter(dir,root){
   const items=[];
   if(!root){const h=b.querySelector('.mm-h');if(h)items.push(h);}
   [...b.children].forEach(e=>{if(e.classList.contains('mm-h'))return;
-    if(e.matches('.mk,.rgc,.sg'))items.push(...e.children);else if(e.matches('.mm-g5'))items.push(...e.querySelectorAll('.pn'));else items.push(e);});
+    if(e.matches('.mk,.rgc,.sg'))items.push(...e.children);else if(e.matches('.mm-g5'))items.push(...e.querySelectorAll('.pn'));else if(e.matches('.p5g'))items.push(...e.querySelectorAll(':scope>.card,:scope>.p5r>.pn'));else items.push(e);});
   items.forEach((el,i)=>el.animate([{opacity:0,transform:'translate('+dx+'px,10px)'},{opacity:1,transform:'none'}],{duration:MV_SLOW+80,delay:i*45,easing:MV_EASE,fill:'backwards'}));
   b.querySelectorAll('.mm-tw tbody tr').forEach((tr,i)=>{if(i<24)tr.animate([{opacity:0},{opacity:1}],{duration:MV_MID,delay:160+i*22,easing:'ease-out',fill:'backwards'});
     const bar=tr.querySelector('.lb .bar');if(bar)bar.animate([{clipPath:'inset(0 100% 0 0 round 99px)'},{clipPath:'inset(0 0 0 0 round 99px)'}],{duration:MV_STR+180,delay:220+Math.min(i,24)*22,easing:MV_EASE,fill:'backwards'});});   /* 비율 막대는 왼쪽에서 차오른다 */
+  /* 05 — 히트맵 줄이 차례로 · 감지요소 막대가 펴진다(02 표 줄·비율 막대와 같은 박자) */
+  b.querySelectorAll('.p5h .rkh-r').forEach((r,i)=>r.animate([{opacity:0,transform:'translateY(4px)'},{opacity:1,transform:'none'}],{duration:MV_MID,delay:160+i*28,easing:MV_EASE,fill:'backwards'}));
+  b.querySelectorAll('.p5f .bar').forEach((x,i)=>x.animate([{clipPath:'inset(0 100% 0 0 round 99px)'},{clipPath:'inset(0 0 0 0 round 99px)'}],{duration:MV_STR+180,delay:260+i*60,easing:MV_EASE,fill:'backwards'}));
   b.querySelectorAll('.mk .v,.rgc .v,.sc .hd strong').forEach(mtgCount);
 }
 function mtgCount(el){
@@ -12613,10 +12639,10 @@ function mtgRender(dir,anim){
   let body='';
   if(MTG.p===0)body=head(MTG_P[0],meta)+mtgP1(a,sites);
   else if(MTG.p===1)body=head(MTG_P[1],meta)+mtgP2(sites);
-  else if(MTG.p===4)body=head(MTG_P[4],meta)+mtgP5(sites);
+  else if(MTG.p===4)body=mtgP5(sites,head,meta);
   else body=mtgPlan(MTG.p===3,sites,head);
   m.innerHTML=top+'<div class="mm-body">'+body+'</div>';
-  if(MTG.p===0)mtgCharts1(sites,anim);else if(MTG.p===2)mtgAggFit();
+  if(MTG.p===0)mtgCharts1(sites,anim);else if(MTG.p===2)mtgAggFit();else if(MTG.p===4)mtgCharts5(anim);
   if(anim)mtgEnter(dir);
 }
 function mtgP1(a,sites){
@@ -12632,13 +12658,8 @@ function mtgP1(a,sites){
     +'<div class="pn" style="flex:1"><div class="ph"><b>월간 접수 · 처리</b><span class="lg"><span><i style="background:rgba(62,113,210,.3)"></i>접수</span><span><i style="background:#2E4F8F"></i>처리</span></span></div><div class="cv"><canvas id="mmC3"></canvas></div></div>'
     +'</div><div class="pn mm-col2"><div class="ph"><b>미처리 비중</b><div class="seg"><button class="'+(MTG.don==='site'?'act':'')+'" data-act="mtg.don" data-k="site">현장별</button><button class="'+(MTG.don==='tr'?'act':'')+'" data-act="mtg.don" data-k="tr">공종별</button></div></div><div class="cv"><canvas id="mmC2"></canvas></div></div></div>';
 }
-function mtgCharts1(sites,anim){
-  if(!window.Chart)return;
-  const rm=dfRm(),wb={};sites.forEach(s=>{wb[s.id]=(DF.kpi[rm+'/'+s.id]||{}).weekly||[];});
-  const MS=dfMoSnapsDash(wb),mon=MS.map,ks=MS.keys.slice(-12),all=MS.keys;
-  const prevOf=(m,f)=>{const i=all.indexOf(m);return i>0?mon[m][f]-mon[all[i-1]][f]:null;};
-  const U=ks.map(m=>mon[m].u),L=ks.map(m=>mon[m].d30+mon[m].d60),lbl=ks.map(m=>(+m.slice(5))+'월');
-  const RC=ks.map(m=>prevOf(m,'r')),DN=ks.map(m=>prevOf(m,'res'));
+/* 회의 모드 차트 공용 — 글꼴·축·아래로 옅어지는 채움·처음/끝 값·세로선 값 상자·호버(01 추이 차트와 05 민원 추이가 같이 쓴다) */
+function mtgKit(anim){
   const FONT='Pretendard Variable, sans-serif',ax={font:{size:12},color:'#8A94A3'};
   /* 아래로 갈수록 투명 — 바닥은 0 */
   const grad=(rgb,a)=>ctx=>{const{ctx:g,chartArea:ar}=ctx.chart;if(!ar)return null;const gr=g.createLinearGradient(0,ar.top,0,ar.bottom);gr.addColorStop(0,'rgba('+rgb+','+a+')');gr.addColorStop(1,'rgba('+rgb+',0)');return gr;};
@@ -12677,6 +12698,26 @@ function mtgCharts1(sites,anim){
     }
     g.restore();}};
   const hov=(ev,els,ch)=>{const e=ch.getElementsAtEventForMode(ev,'index',{intersect:false},false);mtgHx(ch,(e.length&&ev.type!=='mouseout')?e[0].index:-1);};
+  return {FONT,ax,grad,endLbl,AN,cross,hov};
+}
+/* 05 민원 세대 추이 — 주의 이상 · 긴급·심각 두 선(01 「미처리 · 장기미처리 추이」와 같은 그림) */
+function mtgCharts5(anim){
+  const d=MTG._p5,cv=$('#mmC5');if(!window.Chart||!d||!cv)return;
+  const {grad,endLbl,AN,cross,hov,ax}=mtgKit(anim);
+  new Chart(cv,{type:'line',data:{labels:d.lbl,datasets:[
+      {label:'주의 이상',data:d.all,borderColor:'#3E71D2',borderWidth:3,tension:.42,fill:'origin',backgroundColor:grad('62,113,210',.18),pointRadius:0,datalabels:{display:false}},
+      {label:'긴급·심각',data:d.hi,borderColor:'#DA6A60',borderWidth:3,tension:.42,fill:'origin',backgroundColor:grad('218,106,96',.14),pointRadius:0,datalabels:{display:false}}]},
+    options:{maintainAspectRatio:false,animation:AN,onHover:hov,layout:{padding:{top:24,right:40,left:6}},plugins:{legend:{display:false},tooltip:{enabled:false},datalabels:{display:false}},
+      scales:{x:{grid:{display:false},border:{display:false},ticks:ax},y:{beginAtZero:true,grid:{color:'rgba(120,120,128,.10)'},border:{display:false},ticks:{font:{size:11},color:'#A0A8B4',maxTicksLimit:4}}}},plugins:[endLbl,cross]});
+}
+function mtgCharts1(sites,anim){
+  if(!window.Chart)return;
+  const rm=dfRm(),wb={};sites.forEach(s=>{wb[s.id]=(DF.kpi[rm+'/'+s.id]||{}).weekly||[];});
+  const MS=dfMoSnapsDash(wb),mon=MS.map,ks=MS.keys.slice(-12),all=MS.keys;
+  const prevOf=(m,f)=>{const i=all.indexOf(m);return i>0?mon[m][f]-mon[all[i-1]][f]:null;};
+  const U=ks.map(m=>mon[m].u),L=ks.map(m=>mon[m].d30+mon[m].d60),lbl=ks.map(m=>(+m.slice(5))+'월');
+  const RC=ks.map(m=>prevOf(m,'r')),DN=ks.map(m=>prevOf(m,'res'));
+  const {FONT,ax,grad,endLbl,AN,cross,hov}=mtgKit(anim);
   new Chart($('#mmC1'),{type:'line',data:{labels:lbl,datasets:[
       {label:'미처리',data:U,borderColor:'#3E71D2',borderWidth:3,tension:.42,fill:'origin',backgroundColor:grad('62,113,210',.2),pointRadius:0,datalabels:{display:false}},
       {label:'장기미처리',data:L,borderColor:'#DA6A60',borderWidth:3,tension:.42,fill:'origin',backgroundColor:grad('218,106,96',.14),pointRadius:0,datalabels:{display:false}}]},
