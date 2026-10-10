@@ -51,6 +51,7 @@ struct St {
     #[serde(default)] noted_mentions: Vec<String>,
     #[serde(default)] last_backup: String,
     #[serde(default)] pending_ver: String,   /* 받아 둔 새 버전 — 다음 부팅 때 갈아탄다 */
+    #[serde(default)] desk_icon: Option<bool>, /* 1121차: 바탕화면 바로가기 — None=아직 안 만듦(처음 한 번 만든다), 그 뒤로는 트레이에서 켜고 끈다 */
 }
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq)]
 struct Bounds { x: i32, y: i32, w: u32, h: u32 }
@@ -458,7 +459,76 @@ fn set_auto_start(on: bool) {
             else { let _ = run.delete_value(RUN_KEY_NAME); }
         }
     }
+    sync_startup_lnk(on);   /* 1121차: 두 번째 자동 실행 경로 — 켜고 끌 때 함께 */
 }
+/* ══════════ 바로가기(1121차) ══════════
+   로그상 "부팅 때 0줄"(프로세스가 시작조차 안 됨)인 날이 있다 — Run 키·시작 앱 승인은 멀쩡한데 실행이 조용히 빠진다.
+   ① 시작프로그램 폴더 바로가기: Run 키와 따로 도는 두 번째 자동 실행 경로(관리자 권한 불필요). 둘 다 실행돼도 단일 인스턴스가 하나만 남긴다.
+      인자 --autostart-s 로 로그에서 어느 경로로 떴는지 가른다. 자동 실행을 켜 둔 동안 매 시작 확인해 없으면 다시 만든다.
+   ② 바탕화면 바로가기: 그래도 안 떴을 때 사용자가 한 번에 다시 켜는 길(이미 떠 있으면 기존 창이 앞으로 나온다).
+      처음 한 번만 만든다 — 사용자가 지우면 다시 만들지 않는다(트레이 「바탕화면 아이콘」으로 켜고 끈다).
+   둘 다 문서 폴더의 고정 exe 를 가리킨다(146차). 형식을 직접 쓰지 않고 셸 COM(IShellLinkW)으로 만든다 — 한글 경로·아이콘을 셸이 처리 */
+const LNK_NAME: &str = "H 주요업무현황 위젯.lnk";
+fn desk_lnk() -> Option<PathBuf> { dirs::desktop_dir().map(|d| d.join(LNK_NAME)) }
+fn startup_lnk() -> Option<PathBuf> {
+    dirs::config_dir().map(|d| d.join("Microsoft").join("Windows").join("Start Menu").join("Programs").join("Startup").join(LNK_NAME))
+}
+#[cfg(windows)]
+fn make_lnk(at: &Path, args: &str) -> bool {
+    use windows::core::{Interface, HSTRING};
+    use windows::Win32::System::Com::{CoCreateInstance, CoInitializeEx, IPersistFile, CLSCTX_INPROC_SERVER, COINIT_APARTMENTTHREADED};
+    use windows::Win32::UI::Shell::{IShellLinkW, ShellLink};
+    let exe = home_exe();
+    let dir = home_dir();
+    let r: windows::core::Result<()> = unsafe {
+        let _ = CoInitializeEx(None, COINIT_APARTMENTTHREADED);   /* 이미 초기화된 스레드면 S_FALSE·모드 불일치 — 어느 쪽이든 아래 생성은 시도한다 */
+        (|| {
+            let sl: IShellLinkW = CoCreateInstance(&ShellLink, None, CLSCTX_INPROC_SERVER)?;
+            sl.SetPath(&HSTRING::from(exe.as_os_str()))?;
+            sl.SetArguments(&HSTRING::from(args))?;
+            sl.SetWorkingDirectory(&HSTRING::from(dir.as_os_str()))?;
+            sl.SetIconLocation(&HSTRING::from(exe.as_os_str()), 0)?;
+            sl.SetDescription(&HSTRING::from("H 주요업무현황 위젯"))?;
+            let pf: IPersistFile = sl.cast()?;
+            pf.Save(&HSTRING::from(at.as_os_str()), true)
+        })()
+    };
+    match r {
+        Ok(()) => { log(&format!("바로가기 만듦 {}", at.display())); true }
+        Err(e) => { log(&format!("바로가기 만들기 실패 {} ({})", at.display(), e)); false }
+    }
+}
+#[cfg(not(windows))]
+fn make_lnk(_at: &Path, _args: &str) -> bool { false }
+fn sync_startup_lnk(on: bool) {
+    let Some(p) = startup_lnk() else { return };
+    if on { if !p.exists() { make_lnk(&p, "--autostart-s"); } }
+    else if p.exists() { let _ = std::fs::remove_file(&p); log("시작프로그램 바로가기 지움"); }
+}
+fn desk_icon_on() -> bool { desk_lnk().map(|p| p.exists()).unwrap_or(false) }
+fn toggle_desk_icon() {
+    let Some(p) = desk_lnk() else { return };
+    let now = if p.exists() { let _ = std::fs::remove_file(&p); log("바탕화면 바로가기 지움"); false } else { make_lnk(&p, "") };
+    STATE.lock().unwrap().desk_icon = Some(now);
+    save_state();
+}
+/* 1121차: 부팅 표식 — 문서 폴더 밖(%LOCALAPPDATA%)에도 시작 한 줄. 문서 폴더가 로그온 직후 준비 안 된 날(OneDrive·리디렉션)엔
+   위젯 로그(문서 폴더)가 0줄이라 "아예 안 떴다"와 "떴는데 문서 폴더를 못 썼다"가 갈리지 않았다 */
+fn boot_mark(msg: &str) {
+    let Some(d) = dirs::data_local_dir() else { return };
+    let d = d.join("HPlanWidgetLite");
+    let _ = std::fs::create_dir_all(&d);
+    let f = d.join("boot-log.txt");
+    let old = std::fs::read_to_string(&f).unwrap_or_default();
+    let mut lines: Vec<&str> = old.lines().collect();
+    let keep = lines.len().saturating_sub(100);
+    lines.drain(..keep);
+    let mut out = lines.join("\n");
+    if !out.is_empty() { out.push('\n'); }
+    out.push_str(&format!("{}  {} · 문서폴더={} · 있음={}", chrono_lite_now(), msg, home_dir().display(), home_exe().exists()));
+    let _ = std::fs::write(&f, out);
+}
+
 /* 629차: 작업관리자·설정의 '시작 앱 사용 안 함'은 Run 키를 지우지 않고
    Explorer\StartupApproved\Run 의 같은 이름 값(12바이트, 첫 바이트 홀수=사용 안 함)으로만 막는다.
    그래서 8-26·27처럼 **Run 키는 멀쩡한데 부팅 때 아무 로그도 없는** 증상이 된다.
@@ -882,6 +952,7 @@ fn rebuild_tray(app: &AppHandle) {
         .item(&PredefinedMenuItem::separator(app).unwrap())
         .item(&CheckMenuItem::with_id(app, "top", "항상 위에 표시", true, mode_top, None::<&str>).unwrap())
         .item(&CheckMenuItem::with_id(app, "autostart", "윈도우 시작 시 자동 실행", true, is_auto_start(), None::<&str>).unwrap())
+        .item(&CheckMenuItem::with_id(app, "deskicon", "바탕화면 아이콘", true, desk_icon_on(), None::<&str>).unwrap())
         .item(&PredefinedMenuItem::separator(app).unwrap())
         .item(&match &upd {
             Some((v, _)) => mk("applyupd", &format!("지금 업데이트 (v{})", v)),
@@ -910,6 +981,7 @@ fn on_menu(app: &AppHandle, id: &str) {
             rebuild_tray(app);
         }
         "autostart" => { set_auto_start(!is_auto_start()); rebuild_tray(app); }
+        "deskicon" => { toggle_desk_icon(); rebuild_tray(app); }
         "checkupd" => { let a = app.clone(); std::thread::spawn(move || check_update(&a, true)); }
         "applyupd" => {
             let a = app.clone();
@@ -957,8 +1029,8 @@ fn on_menu(app: &AppHandle, id: &str) {
                정작 알고 싶은 건 Run 키에 든 값이라 진단에 아무 쓸모가 없었다. 실물을 보여 준다. */
             let regv = run_key_value().unwrap_or_else(|| "(레지스트리에 값 없음)".into());
             msg_ok("자동 실행", &format!("윈도우 시작 시 자동 실행: {}", reg),
-                &format!("레지스트리에 등록된 값\n{}\n\n지금 돌고 있는 파일\n{}\n\n설정 파일\n{}\n저장된 자리·크기: {}\n버전: {}\n\n⚠ 이 경로에 파일이 그대로 있어야 재부팅 뒤에도 뜹니다.",
-                    regv, exe_path().display(), state_file().display(),
+                &format!("레지스트리에 등록된 값\n{}\n\n시작프로그램 바로가기: {}\n\n지금 돌고 있는 파일\n{}\n\n설정 파일\n{}\n저장된 자리·크기: {}\n버전: {}\n\n⚠ 이 경로에 파일이 그대로 있어야 재부팅 뒤에도 뜹니다.",
+                    regv, if startup_lnk().map(|p| p.exists()).unwrap_or(false) { "있음" } else { "없음" }, exe_path().display(), state_file().display(),
                     b.map(|b| format!("{},{},{},{}", b.x, b.y, b.w, b.h)).unwrap_or_else(|| "(없음)".into()),
                     cur_ver()));
         }
@@ -1003,15 +1075,19 @@ fn main() {
     }
     { *STATE.lock().unwrap() = load_state(); }          /* ⚠ 준비된 뒤 맨 앞에서 읽는다(146차) */
     self_heal();
-    let booted = std::env::args().any(|a| a == "--autostart");
+    let via_s = std::env::args().any(|a| a == "--autostart-s");
+    let booted = via_s || std::env::args().any(|a| a == "--autostart");
+    let how = if via_s { "자동·시작프로그램" } else if booted { "자동" } else { "수동" };
+    boot_mark(&format!("시작({}) v{}", how, cur_ver()));
     log(&format!("시작({}) · 설정파일={} · 실행파일={} · 버전={}",
-        if booted { "자동" } else { "수동" }, state_file().display(), exe_path().display(), cur_ver()));
+        how, state_file().display(), exe_path().display(), cur_ver()));
     if take_update_on_boot() { return; }                /* 카톡처럼 — 창을 만들기 전에 갈아탄다(157차) */
     if hand_over_to_home() { return; }                  /* 다른 자리에서 실행됐으면 문서 폴더 판에 넘긴다 */
 
     tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            /* 중복 실행 — 이미 떠 있으면 기존 창을 보여준다 */
+        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            /* 중복 실행 — 이미 떠 있으면 기존 창을 보여준다. 1121차: Run 키·시작프로그램이 둘 다 떠도 이 길로 하나만 남는다 — 어느 쪽이 늦었는지 기록 */
+            log(&format!("중복 실행 → 기존 창 표시 ({})", args.iter().skip(1).cloned().collect::<Vec<_>>().join(" ")));
             if let Some(w) = app.get_webview_window("main") { USER_HIDDEN.store(false, Ordering::SeqCst); let _ = w.show(); let _ = w.set_focus(); }
         }))
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
@@ -1159,6 +1235,12 @@ fn main() {
                 write_help_file();
                 let first = STATE.lock().unwrap().auto_start.is_none();
                 let want_auto = STATE.lock().unwrap().auto_start.unwrap_or(false);
+                /* 1121차: 바탕화면 바로가기 — 처음 한 번 */
+                if STATE.lock().unwrap().desk_icon.is_none() {
+                    let ok = desk_lnk().map(|p| p.exists() || make_lnk(&p, "")).unwrap_or(false);
+                    STATE.lock().unwrap().desk_icon = Some(ok);
+                    save_state(); rebuild_tray(&h8);
+                }
                 if first { set_auto_start(true); rebuild_tray(&h8); }
                 else if want_auto {
                     /* ⚠ 609차: 예전에는 **저장해 둔 경로(auto_path)** 끼리만 견줬다. 그러면 사내 정책·정리 도구가
@@ -1172,8 +1254,10 @@ fn main() {
                         set_auto_start(true);
                     }
                     /* 629차: Run 키가 있어도 '시작 앱 사용 안 함'이면 부팅 때 실행되지 않는다 — 점검·복구·기록 */
-                    log(&format!("자동 실행 점검 · Run={} · 시작 앱={}",
-                        if run_key_value().is_some() { "있음" } else { "없음" }, startup_approved_state()));
+                    sync_startup_lnk(true);   /* 1121차: 정리 도구가 지웠으면 다시 */
+                    log(&format!("자동 실행 점검 · Run={} · 시작 앱={} · 시작프로그램 바로가기={}",
+                        if run_key_value().is_some() { "있음" } else { "없음" }, startup_approved_state(),
+                        if startup_lnk().map(|p| p.exists()).unwrap_or(false) { "있음" } else { "없음" }));
                 }
             });
 
