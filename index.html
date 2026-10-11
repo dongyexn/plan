@@ -2683,6 +2683,22 @@ body.wid .slhl-b{background:rgba(255,255,255,.12);}
 .set-card>.share-row:last-child{box-shadow:inset 0 -1px 0 var(--sep),inset 0 1px 0 var(--sep);}
 .set-card>.share-row:first-of-type:last-of-type{box-shadow:inset 0 -1px 0 var(--sep);}
 .share-row>.share-info{flex:1;}
+.bgp{display:grid;grid-template-columns:minmax(220px,300px) minmax(0,1fr);gap:22px;align-items:start;padding:16px var(--s4) 18px;box-shadow:inset 0 1px 0 var(--sep);}
+.bgp-scr{position:relative;aspect-ratio:16/10;border-radius:12px;overflow:hidden;background:#3A3F47 url(login-bg.jpg) center 40%/cover no-repeat;box-shadow:0 1px 2px rgba(16,24,40,.08),0 8px 24px -10px rgba(16,24,40,.35);transition:background-image .4s ease;}
+.bgp-scr::before{content:'';position:absolute;inset:0;background:rgba(10,14,22,.12);}
+.bgp-scr .g{position:absolute;top:9%;bottom:9%;right:6%;width:38%;border-radius:7px;background:rgba(255,255,255,.72);box-shadow:0 4px 14px rgba(0,0,0,.18);backdrop-filter:blur(6px);}   /* 로그인 창 자리 — 미리보기 */
+.bgp-scr .g::before,.bgp-scr .g::after{content:'';position:absolute;left:16%;right:16%;height:7%;border-radius:3px;background:rgba(60,70,90,.18);top:38%;}.bgp-scr .g::after{top:52%;background:#3E71D2;opacity:.85;}
+.bgp-cr{margin-top:8px;font-size:11.5px;color:var(--lbl3);min-height:16px;}.bgp-cr a{color:inherit;text-decoration:underline;text-underline-offset:2px;}
+.bgp-top{display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;}.bgp-top .seg button{height:30px;min-height:30px;padding:4px 16px;}
+.bgp-note{font-size:12.5px;color:var(--lbl3);}
+.bgp-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
+.bgp-t{position:relative;aspect-ratio:16/10;border:0;border-radius:10px;background:var(--fill) center/cover no-repeat;cursor:pointer;padding:0;outline:2px solid transparent;outline-offset:2px;box-shadow:inset 0 0 0 1px rgba(16,24,40,.08);transition:transform .25s cubic-bezier(.32,.72,0,1),box-shadow .25s cubic-bezier(.32,.72,0,1),outline-color .2s ease;}
+.bgp-t.on{outline-color:var(--b500);}
+.bgp-t .ck{position:absolute;top:6px;right:6px;width:20px;height:20px;border-radius:50%;background:var(--b500);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.25);transform:scale(.4);opacity:0;transition:transform .3s cubic-bezier(.32,.72,0,1),opacity .2s ease;}.bgp-t .ck .icn{width:12px;height:12px;stroke-width:3;}
+.bgp-t.on .ck{transform:none;opacity:1;}
+.bgp-t .nw{position:absolute;left:6px;bottom:6px;font-size:10.5px;font-weight:700;color:#fff;background:rgba(20,24,32,.45);backdrop-filter:blur(4px);border-radius:99px;padding:2px 8px;}
+@media (hover:hover) and (pointer:fine){.bgp-t:hover{transform:translateY(-2px);box-shadow:inset 0 0 0 1px rgba(16,24,40,.08),0 8px 18px -8px rgba(16,24,40,.45);}}@media not ((hover:hover) and (pointer:fine)){.bgp-t:active{transform:scale(.97);}}
+@media (max-width:760px){.bgp{grid-template-columns:minmax(0,1fr);}}
 .share-info{min-width:0;display:flex;flex-direction:column;gap:2px;}
 /* 설정의 조절칸(버튼·슬라이더)은 한 규격 — .share-row 의 min-height 52px 안에서 같은 높이로 선다 */
 /* 연속 글자 버튼 사이 구분점 — 간격 14px 의 가운데에 · */
@@ -5924,6 +5940,16 @@ body.wid.glass{--mv-flash:#8FB4FF;}
               <button class="btn bo bsm" data-act="set.dfsnap">내보내기</button>
             </div>
           </div>
+          <div class="card" id="bgCard">   <!-- 배경 사진(로그인 · 회의 표지) — bgPickRender 가 채운다. 왼쪽 칸 — 사용자(하자 데이터 카드 없음)도 왼쪽이 비지 않게 -->
+            <div class="set-h">배경 사진</div>
+            <div class="bgp">
+              <div class="bgp-pv"><div class="bgp-scr" id="bgPv"><i class="g"></i></div><div class="bgp-cr" id="bgPvCr"></div></div>
+              <div class="bgp-sd">
+                <div class="bgp-top"><div class="seg" id="bgMode" role="group" aria-label="배경 사진 방식"></div><span class="bgp-note" id="bgPickNote"></span></div>
+                <div id="bgPickRow" class="bgp-row"></div>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="set-col set-col-stack">
           <div class="card" id="bkCard">
@@ -6017,5 +6043,5 @@ body.wid.glass{--mv-flash:#8FB4FF;}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1131"></script>
+<script src="./app.js?v=1134"></script>
 </body></html>

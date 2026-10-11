@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1131';
+const APP_VER='1134';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -11228,7 +11228,9 @@ const ACT={
     const cur=dfRm(),r=el.getBoundingClientRect();
     openCtx(r.left,r.bottom+6,months.map(m=>({label:m+(m===ORG_RM?' · 최신':''),on:m===cur,act:()=>{if(m!==cur)mtgSetRm(m);}})),el);},
   'mtg.cv':()=>mtgCoverOff(),
-  'bg.link':()=>{},   /* 사진 출처 링크 — 새 탭으로 열리기만(표지를 걷지 않게 클릭을 여기서 받는다) */
+  'bg.link':()=>{},
+  'bg.pick':el=>{const L=window.BG_LIST||[],p=L[Number(el.dataset.i)];if(p)bgSetPin(p.u);},
+  'bg.mode':el=>{if(el.dataset.m==='auto'){bgSetPin('');return;}const c=bgPick();if(c)bgSetPin(c.u);},   /* 고정 — 지금 걸린 사진으로 */   /* 사진 출처 링크 — 새 탭으로 열리기만(표지를 걷지 않게 클릭을 여기서 받는다) */
   'mtg.p':el=>{const p=Number(el.dataset.p)||0;if(p===MTG.p)return;const d=p>MTG.p?1:-1;MTG.p=p;mtgRender(d,true);},   /* 넘긴 쪽에서 밀려 들어온다 */
   'mtg.don':el=>{if(MTG.don===el.dataset.k)return;MTG.don=el.dataset.k;$$('#mm [data-act="mtg.don"]').forEach(b=>b.classList.toggle('act',b.dataset.k===MTG.don));mtgDonut(dfDashSites(),true);},   /* 도넛만 다시 */
   'mtg.agg':el=>{if((MTG.agg||'tr')===el.dataset.k)return;MTG.agg=el.dataset.k;
@@ -13105,14 +13107,28 @@ const bgUrl=p=>p.u+(p.u.includes('?')?'&':'?')+'w=2560&q=80&fm=jpg&fit=crop';
 /* RTDB bg/l(GitHub 작업 bg-sync 가 하루 한 번 컬렉션에서 채움) — 로그인 전에도 읽힌다. 받으면 이 브라우저에 목록을 두어 다음 첫 화면(boot-wid.js)부터 그 목록 */
 function bgSub(){if(WIDGET||!FB.db)return;try{FB.db.ref('bg/l').on('value',sn=>{const l=sn.val();if(!Array.isArray(l)||!l.length)return;
   window.BG_LIST=l.filter(x=>x&&x.u);try{localStorage.setItem('calapp.bgl',JSON.stringify(window.BG_LIST));}catch(e){}bgApply();},()=>{});}catch(e){}}
-function bgPick(){const L=window.BG_LIST;return Array.isArray(L)&&L.length?L[Math.floor(Date.now()/3600000)%L.length]:null;}
+const bgHour=()=>Math.floor(Date.now()/3600000);
+/* 설정 「배경 사진」 — 자동(한 시간마다) / 고정(고른 사진을 계속). 이 브라우저에만(calapp.bgpin {u}). 고른 사진이 컬렉션에서 빠지면 자동으로 */
+function bgPin(){try{const o=JSON.parse(localStorage.getItem('calapp.bgpin')||'null');return o&&o.u?o.u:'';}catch(e){return '';}}
+function bgPick(){const L=window.BG_LIST;if(!Array.isArray(L)||!L.length)return null;const pu=bgPin(),pp=pu&&L.find(x=>x.u===pu);return pp||L[bgHour()%L.length];}
+function bgSetPin(u){try{if(u)localStorage.setItem('calapp.bgpin',JSON.stringify({u}));else localStorage.removeItem('calapp.bgpin');}catch(e){}bgApply(true);}
+function bgPickRender(){const w=$('#bgPickRow');if(!w)return;const L=Array.isArray(window.BG_LIST)?window.BG_LIST:[],pu=bgPin(),fix=!!(pu&&L.some(x=>x.u===pu)),cur=bgPick();
+  const m=$('#bgMode');if(m)m.innerHTML='<button data-act="bg.mode" data-m="auto" class="'+(fix?'':'act')+'" aria-pressed="'+!fix+'">자동</button><button data-act="bg.mode" data-m="fix" class="'+(fix?'act':'')+'" aria-pressed="'+fix+'">고정</button>';
+  const th=p=>p.u+(p.u.includes('?')?'&':'?')+'w=360&q=70&fm=jpg&fit=crop';
+  w.innerHTML=L.map((p,i)=>{const on=cur&&cur.u===p.u;return '<button class="bgp-t'+(on&&fix?' on':'')+'" data-act="bg.pick" data-i="'+i+'" aria-pressed="'+(fix&&on)+'" aria-label="'+esc(p.n)+' 사진으로 고정" style="background-image:url(&quot;'+esc(th(p))+'&quot;)"><span class="ck"><svg class="icn" aria-hidden="true"><use href="#i-check"></use></svg></span>'+(on&&!fix?'<span class="nw">지금</span>':'')+'</button>';}).join('');
+  const pv=$('#bgPv');if(pv&&cur)pv.style.backgroundImage='url("'+bgUrl(cur).replace('w=2560','w=900')+'")';
+  const pc=$('#bgPvCr');if(pc)pc.innerHTML=bgCreditHTML(cur);
+  const nx=new Date((bgHour()+1)*3600000),hh=String(nx.getHours()).padStart(2,'0')+':00';
+  const n=$('#bgPickNote');if(n)n.textContent=fix?'고른 사진을 계속 씁니다':'한 시간마다 바뀝니다 · 다음 '+hh;}
 function bgCreditHTML(p){return p?'Photo by <a data-act="bg.link" href="'+esc(p.h+BG_UTM)+'" target="_blank" rel="noopener">'+esc(p.n)+'</a> on <a data-act="bg.link" href="https://unsplash.com/'+BG_UTM+'" target="_blank" rel="noopener">Unsplash</a>':'';}
 let BG_CUR='';
-function bgApply(){
-  if(WIDGET)return;const p=bgPick(),k=p?p.u:'';
+function bgApply(force){
+  if(WIDGET)return;
+  if(!force&&$('#mm .mm-cv'))return;   /* 회의 표지가 떠 있는 동안은 정각이 지나도 바꾸지 않는다 */
+  const p=bgPick(),k=p?p.u:'';bgPickRender();
   if(k===BG_CUR)return;
   const set=q=>{BG_CUR=q?q.u:'';const r=document.documentElement;if(q)r.style.setProperty('--bg-img','url("'+bgUrl(q)+'")');else r.style.removeProperty('--bg-img');
-    const c=$('#bgCredit');if(c)c.innerHTML=bgCreditHTML(q);const cc=$('#mm .mm-cv .cr');if(cc)cc.innerHTML=bgCreditHTML(q);};
+    const c=$('#bgCredit');if(c)c.innerHTML=bgCreditHTML(q);const cc=$('#mm .mm-cv .cr');if(cc)cc.innerHTML=bgCreditHTML(q);bgPickRender();};
   if(!p){set(null);return;}
   const im=new Image();im.onload=()=>set(p);im.onerror=()=>{if(!BG_CUR)set(null);};im.src=bgUrl(p);   /* 다 받은 뒤 갈아 끼운다 — 안 열리면 지금 것 유지 */
 }
