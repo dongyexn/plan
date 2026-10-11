@@ -2393,6 +2393,7 @@ body.wid.glass #fcal.ev-drag .fc-highlight{background:rgba(143,180,255,.16);box-
 #mm .sg.deck>.sc[data-k="2"]{z-index:3;transform:translateY(calc(var(--dy) + 84px)) scale(.97);clip-path:inset(calc(100% - 40px) 0 0 0);cursor:pointer;background:color-mix(in srgb,var(--bg2) 90%,#7D828C);}
 #mm .sg.deck>.sc[data-k="3"]{z-index:2;transform:translateY(calc(var(--dy) + 84px)) scale(.97);clip-path:inset(calc(100% - 40px) 0 0 0);opacity:0;pointer-events:none;}
 #mm .sg.deck>.sc[data-k="-1"]{z-index:6;transform:translateY(-48px) scale(1.01);opacity:0;pointer-events:none;transition:transform .45s cubic-bezier(.32,.72,0,1),opacity .2s ease;}
+#mm .sg.deck.na>.sc[data-k]{transition:none;}   /* 처음 그릴 때(na)는 바로 빠진 카드(-1)의 자체 전환도 끈다 — 명시도가 같아 위 na 규칙을 이기던 것 */
 #mm .dk-t{position:absolute;z-index:3;left:0;right:0;bottom:0;height:48px;display:flex;align-items:center;padding:4px 26px 0;background:inherit;border-radius:0 0 var(--rxl) var(--rxl);font-size:15px;font-weight:700;color:var(--lbl2);opacity:0;transition:opacity .3s ease;pointer-events:none;}
 #mm .sg.deck>.sc[data-k="1"] .dk-t,#mm .sg.deck>.sc[data-k="2"] .dk-t{opacity:1;}#mm .sg.deck>.sc:is([data-k="1"],[data-k="2"],[data-k="3"])>:not(.dk-t){visibility:hidden;}   /* 뒤 카드 본문은 숨김 — 이름 줄만 */
 #mm .sg.deck>.sc[data-k="2"] .dk-t{height:44px;color:var(--lbl3);}
@@ -3453,8 +3454,9 @@ body.wid .cv-card{max-width:380px;padding:26px 22px 22px;background:rgba(22,25,3
 body:is(.lg,.lg-fx):not(.wid){background:transparent;}   /* 배경화면(z -1)은 body 판 아래 — 그 밑은 html 의 셸 색(나갈 때 드러나는 챠콜) */
 body:is(.lg,.lg-fx):not(.wid) #lgBg{display:block;position:fixed;inset:0;z-index:-1;pointer-events:none;background:#3A3F47 var(--bg-img,url(login-bg.jpg)) center 40%/cover no-repeat;}   /* --bg-img: Unsplash 컬렉션 BG 사진(한 시간마다) — 없으면 기본 사진 */
 #lgBg::after{content:"";position:absolute;inset:0;background:rgba(10,14,22,.18);}
-#bgCredit{display:none;}@media (max-width:960px){body.lg:not(.wid):not(.lg-out) #bgCredit:not(:empty){left:0;right:0;bottom:calc(10px + env(safe-area-inset-bottom));text-align:center;}body.lg:not(.wid):not(.lg-ld):not(.lg-kb):has(#bgCredit:not(:empty)) #coverGate{padding-bottom:calc(34px + env(safe-area-inset-bottom));}body.lg-kb #bgCredit,body.kb #bgCredit{display:none!important;}}   /* 폰 — 판을 조금 띄우고 그 아래 가운데에 표기(키보드가 뜨면 숨김) */
+#bgCredit{display:none;}
 body.lg:not(.wid):not(.lg-out) #bgCredit:not(:empty){display:block;position:fixed;left:20px;bottom:14px;z-index:1;font-size:11.5px;color:rgba(255,255,255,.72);text-shadow:0 1px 2px rgba(0,0,0,.35);}   /* Unsplash 규정 — 작가·출처 표기 */
+@media (max-width:960px){body.lg:not(.wid):not(.lg-out) #bgCredit:not(:empty){left:0;right:0;bottom:calc(10px + env(safe-area-inset-bottom));text-align:center;z-index:100000;}body.lg:not(.wid):not(.lg-ld):not(.lg-kb):has(#bgCredit:not(:empty)) #coverGate{padding-bottom:calc(34px + env(safe-area-inset-bottom));}body.lg-kb #bgCredit,body.kb #bgCredit{display:none!important;}}   /* 폰 — 판을 조금 띄우고 그 아래 가운데에 표기(키보드가 뜨면 숨김) */
 #bgCredit a,#mm .mm-cv .cr a{color:inherit;text-decoration:underline;text-underline-offset:2px;}
 body.lg-out #lgBg,body:not(.lg) #lgBg,html:not(.lgbg) #lgBg{opacity:0;}   /* 사진을 다 받기 전(html.lgbg 없음)엔 셸 색 — 받으면 서서히 */
 /* 밝은 유리 위 폼 — 칸 색 토큰만 바꾼다(위젯은 위의 어두운 값 그대로) */
@@ -6041,5 +6043,5 @@ body.wid.glass{--mv-flash:#8FB4FF;}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1138"></script>
+<script src="./app.js?v=1140"></script>
 </body></html>
