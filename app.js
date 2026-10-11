@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1138';
+const APP_VER='1140';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -12561,7 +12561,7 @@ async function mtgOpen(){
   {const o=$('#mm');if(o&&o._out)o.remove();}   /* 닫히는 중인 것은 바로 걷는다(닫힘 끝에 새 창이 같이 지워지지 않게) */
   const m=document.createElement('div');m.id='mm';m.setAttribute('role','dialog');m.setAttribute('aria-label','회의 모드');m.tabIndex=-1;document.body.appendChild(m);
   MTG.ret=document.activeElement;
-  document.body.classList.add('mtg-on');mtgRender(0,false);mtgCover();slSync();m.focus({preventScroll:true});
+  MTG.p=0;document.body.classList.add('mtg-on');mtgRender(0,false);mtgCover();   /* 표지 뒤는 늘 01 */slSync();m.focus({preventScroll:true});
   if(mvOK())m.animate([{opacity:0,transform:'scale(.985)'},{opacity:1,transform:'none'}],{duration:MV_MID,easing:MV_EASE});
 }
 async function mtgLoad(){
@@ -12634,7 +12634,7 @@ function mtgEnter(dir,root){
   const items=[];
   if(!root){const h=b.querySelector('.mm-h');if(h)items.push(h);}
   [...b.children].forEach(e=>{if(e.classList.contains('mm-h'))return;
-    if(e.matches('.mk,.rgc,.sg'))items.push(...e.children);else if(e.matches('.mm-g5'))items.push(...e.querySelectorAll('.pn'));else if(e.matches('.p5g'))items.push(...e.querySelectorAll(':scope>.card,:scope>.p5r>.pn'));else items.push(e);});
+    if(e.matches('.sg.deck'))items.push(...e.querySelectorAll(':scope>[data-k="0"]'));else if(e.matches('.mk,.rgc,.sg'))items.push(...e.children);   /* 03 겹친 묶음은 앞 카드만 — 뒤 카드에 모션을 걸면 CSS 위치·투명도를 덮어 잠깐 앞을 가린다 */else if(e.matches('.mm-g5'))items.push(...e.querySelectorAll('.pn'));else if(e.matches('.p5g'))items.push(...e.querySelectorAll(':scope>.card,:scope>.p5r>.pn'));else items.push(e);});
   items.forEach((el,i)=>el.animate([{opacity:0,transform:'translate('+dx+'px,10px)'},{opacity:1,transform:'none'}],{duration:MV_SLOW+80,delay:i*45,easing:MV_EASE,fill:'backwards'}));
   b.querySelectorAll('.mm-tw tbody tr').forEach((tr,i)=>{if(i<24)tr.animate([{opacity:0},{opacity:1}],{duration:MV_MID,delay:160+i*22,easing:'ease-out',fill:'backwards'});
     const bar=tr.querySelector('.lb .bar');if(bar)bar.animate([{clipPath:'inset(0 100% 0 0 round 99px)'},{clipPath:'inset(0 0 0 0 round 99px)'}],{duration:MV_STR+180,delay:220+Math.min(i,24)*22,easing:MV_EASE,fill:'backwards'});});   /* 비율 막대는 왼쪽에서 차오른다 */
@@ -12654,7 +12654,7 @@ function mtgCount(el){
    위 현장 목록은 스크롤을 따라 지금 보는 현장을 표시한다 */
 function mtgDeck(i,anim){const d=$('#mm .sg.deck');if(!d)return;const cs=[...d.children],n=cs.length;if(!n)return;   /* 03 — 현장 카드를 겹쳐 쌓고 한 장씩 넘긴다 */
   i=((i%n)+n)%n;d._i=i;   /* 순환 — 끝 다음은 처음, 처음 이전은 끝 */d.classList.toggle('na',!anim||!mvOK());
-  cs.forEach(c=>{if(c.querySelector(':scope>.dk-t'))return;const h=c.querySelector('.hd b');c.insertAdjacentHTML('beforeend','<div class="dk-t">'+esc(h?h.firstChild.textContent:'')+'</div>');});   /* 뒤로 깔렸을 때 보이는 현장명 줄 */
+  cs.forEach(c=>{if(c.querySelector(':scope>.dk-t'))return;const h=c.querySelector('.hd b'),t=h&&h.firstChild&&h.firstChild.nodeType===3?h.firstChild.nodeValue:'';c.insertAdjacentHTML('beforeend','<div class="dk-t">'+esc(t)+'</div>');});   /* 뒤로 깔렸을 때 보이는 현장명 줄 */
   const fh=cs[i].offsetHeight;
   cs.forEach((c,k)=>{const o=(k-i+n)%n,v=o===0?'0':(o<=2&&o<n)?String(o):(o===n-1&&n>3)?'-1':'3';   /* 바로 앞 차례(끝)는 위에 숨겨 두어 ↑ 때 위에서 내려온다 */
     c.dataset.k=v;c.style.setProperty('--dy',(fh-c.offsetHeight)+'px');c.onclick=(v==='1'||v==='2')?()=>mtgDeck(i+o,true):null;});   /* 뒤 카드는 앞 카드 아래 끝에 맞춰 이름 줄만 비친다 */
@@ -12780,7 +12780,7 @@ function mtgCharts1(sites,anim){
 /* 도넛 — 큰 것 5개만 선으로 이어 이름·건수·비중. 돌며 펼쳐진 뒤 표기가 나타난다 */
 /* 세로선 상태 — 목표 칸(i)로 x 를 지수 감속으로 옮기고, 보임(ca)을 0↔1 로 바꾼다. 떠나면(-1) 흐려진 뒤 지운다 */
 function mtgHx(ch,i){
-  if(!ch.$hxL){ch.$hxL=1;const cv=ch.canvas;cv.addEventListener('mouseleave',()=>mtgHx(ch,-1));}   /* 캔버스 밖으로 나가면 확실히 거둔다 */
+  {const cv=ch.canvas;if(cv&&!cv._hxL){cv._hxL=1;cv.addEventListener('mouseleave',()=>{const c=window.Chart&&Chart.getChart(cv);if(c)mtgHx(c,-1);});}}   /* 표시는 캔버스에 — 같은 캔버스에 차트를 새로 만들어도 리스너가 쌓이지 않게 */   /* 캔버스 밖으로 나가면 확실히 거둔다 */
   if(i>=0){if(ch.$hx!==i||!(ch.$ca>0)){if(!(ch.$ca>0)||ch.$hx==null||ch.$hx<0)ch.$cx=null;ch.$hx=i;}ch.$tgt=1;}else ch.$tgt=0;
   if(ch.$raf)return;let last=performance.now();
   const tick=t=>{if(!ch.ctx){ch.$raf=0;return;}const dt=Math.min(64,t-last);last=t;
@@ -12943,7 +12943,7 @@ document.addEventListener('mousedown',e=>layerOutside(e,'down'),true);
 document.addEventListener('click',e=>layerOutside(e,'cap'),true);
 document.addEventListener('keydown',e=>{
   /* 1095 회의 모드 — ←/→ 로 화면 넘김(창이 떠 있거나 입력 중이면 아님) */
-  if($('#mm .mm-cv:not([style])')&&!$('#mm')._out&&['ArrowRight','Enter',' ','PageDown','ArrowDown'].includes(e.key)){e.preventDefault();mtgCoverOff();return;}   /* 표지가 떠 있으면 넘기는 키는 표지만 걷는다 */
+  if($('#mm .mm-cv:not([style])')&&!$('#mm')._out&&!$('#mo').classList.contains('open')){if(['ArrowRight','Enter',' ','PageDown','ArrowDown'].includes(e.key)){e.preventDefault();mtgCoverOff();return;}if(['ArrowLeft','ArrowUp','PageUp','Home','End'].includes(e.key)){e.preventDefault();return;}}   /* 표지가 떠 있으면 넘기는 키는 표지만 걷는다 */
   if((e.key==='ArrowLeft'||e.key==='ArrowRight')&&$('#mm')&&!$('#mm')._out&&!$('#mo').classList.contains('open')&&!document.querySelector('.ctxmenu:not(.out)')&&!(e.target.closest&&e.target.closest('input,textarea,select,[contenteditable]'))){
     const p=Math.max(0,Math.min(MTG_P.length-1,MTG.p+(e.key==='ArrowRight'?1:-1)));if(p!==MTG.p){e.preventDefault();ACT['mtg.p']({dataset:{p}});slSync();}return;}
   /* 03 — 위아래 방향키로 현장 하나씩 */
@@ -13108,14 +13108,17 @@ const BG_UTM='?utm_source=calapp&utm_medium=referral';
 const bgUrl=p=>p.u+(p.u.includes('?')?'&':'?')+'w=2560&q=80&fm=jpg&fit=crop';
 /* RTDB bg/l(GitHub 작업 bg-sync 가 하루 한 번 컬렉션에서 채움) — 로그인 전에도 읽힌다. 받으면 이 브라우저에 목록을 두어 다음 첫 화면(boot-wid.js)부터 그 목록 */
 function bgSub(){if(WIDGET||!FB.db)return;try{FB.db.ref('bg').on('value',sn=>{const v=sn.val()||{},l=v.l;if(!Array.isArray(l)||!l.length)return;
-  window.BG_LIST=l.filter(x=>x&&x.u);window.BG_AT=Number(v.at)||0;try{localStorage.setItem('calapp.bgl',JSON.stringify(window.BG_LIST));localStorage.setItem('calapp.bgat',String(window.BG_AT));}catch(e){}bgApply(true);},()=>{});}catch(e){}}
+  const prev=BG_CUR?bgPick():null;   /* 목록이 새로 오면(첫 방문·컬렉션 변경) 순번이 달라져 보던 사진이 바뀐다 — 이번 시간대는 보던 것 그대로 */
+  window.BG_LIST=l.filter(x=>x&&x.u);if(prev&&prev.u===BG_CUR&&!bgPin())BG_HOLD={p:prev,h:bgHour()};window.BG_AT=Number(v.at)||0;try{localStorage.setItem('calapp.bgl',JSON.stringify(window.BG_LIST));localStorage.setItem('calapp.bgat',String(window.BG_AT));}catch(e){}bgApply(true);},()=>{});}catch(e){}}
 const BG_SYNC_URL='https://github.com/dongyexn/plan/actions/workflows/bg-sync.yml';   /* 관리자 「동기화」 — GitHub 실행 화면(Run workflow) 새 탭. 앱에 GitHub 토큰을 두지 않으려고 바로 실행하지 않는다 */
 const BG_SHOW=6;   /* 카드에는 두 줄(6장)까지 — 나머지는 「모두 보기」 창 */
 const bgHour=()=>Math.floor(Date.now()/3600000);
 /* 설정 「배경 사진」 — 자동(한 시간마다) / 고정(고른 사진을 계속). 이 브라우저에만(calapp.bgpin {u}). 고른 사진이 컬렉션에서 빠지면 자동으로 */
 function bgPin(){try{const o=JSON.parse(localStorage.getItem('calapp.bgpin')||'null');return o&&o.u?o.u:'';}catch(e){return '';}}
-function bgPick(){const L=window.BG_LIST;if(!Array.isArray(L)||!L.length)return null;const pu=bgPin(),pp=pu&&L.find(x=>x.u===pu);return pp||L[bgHour()%L.length];}
-function bgSetPin(u){try{if(u)localStorage.setItem('calapp.bgpin',JSON.stringify({u}));else localStorage.removeItem('calapp.bgpin');}catch(e){}bgApply(true);}
+let BG_HOLD=null;
+function bgPick(){const L=window.BG_LIST;if(!Array.isArray(L)||!L.length)return null;const pu=bgPin(),pp=pu&&L.find(x=>x.u===pu);if(pp)return pp;
+  if(BG_HOLD&&BG_HOLD.h===bgHour())return BG_HOLD.p;BG_HOLD=null;return L[bgHour()%L.length];}
+function bgSetPin(u){BG_HOLD=null;try{if(u)localStorage.setItem('calapp.bgpin',JSON.stringify({u}));else localStorage.removeItem('calapp.bgpin');}catch(e){}bgApply(true);}
 function bgThumbHTML(p,i,cur,fix,big){const on=cur&&cur.u===p.u,th=p.u+(p.u.includes('?')?'&':'?')+'w=360&q=70&fm=jpg&fit=crop';
   return '<button class="bgp-t'+(on&&fix?' on':'')+'" data-act="bg.pick" data-i="'+i+'" aria-pressed="'+(fix&&on)+'" aria-label="'+esc(p.n)+' 배경화면으로 고정" style="background-image:url(&quot;'+esc(th)+'&quot;)"><span class="ck"><svg class="icn" aria-hidden="true"><use href="#i-check"></use></svg></span>'+(on&&!fix?'<span class="nw">지금</span>':'')+(big?'<span class="nm">'+esc(p.n)+'</span>':'')+'</button>';}
 function bgPickRender(){const w=$('#bgPickRow');if(!w)return;const L=Array.isArray(window.BG_LIST)?window.BG_LIST:[],pu=bgPin(),fix=!!(pu&&L.some(x=>x.u===pu)),cur=bgPick();
@@ -13136,12 +13139,13 @@ let BG_CUR='';
 function bgApply(force){
   if(WIDGET)return;
   if(!force&&$('#mm .mm-cv'))return;   /* 회의 표지가 떠 있는 동안은 정각이 지나도 바꾸지 않는다 */
-  const p=bgPick(),k=p?p.u:'';bgPickRender();
-  if(k===BG_CUR)return;
+  const p=bgPick(),k=p?p.u:'';
+  if(k===BG_CUR){if(force)bgPickRender();return;}   /* 그대로면 1분 갱신에 썸네일을 다시 그리지 않는다(초점·호버 유지) */
+  bgPickRender();
   const set=q=>{BG_CUR=q?q.u:'';const r=document.documentElement;if(q)r.style.setProperty('--bg-img','url("'+bgUrl(q)+'")');else r.style.removeProperty('--bg-img');
     const c=$('#bgCredit');if(c)c.innerHTML=bgCreditHTML(q);const cc=$('#mm .mm-cv .cr');if(cc)cc.innerHTML=bgCreditHTML(q);bgPickRender();};
   if(!p){set(null);return;}
-  const im=new Image();im.onload=()=>set(p);im.onerror=()=>{if(!BG_CUR)set(null);};im.src=bgUrl(p);   /* 다 받은 뒤 갈아 끼운다 — 안 열리면 지금 것 유지 */
+  const im=new Image();im.onload=()=>{const q=bgPick();if(q&&q.u!==p.u)return;set(p);};im.onerror=()=>{if(!BG_CUR)set(null);};im.src=bgUrl(p);   /* 다 받은 뒤 갈아 끼운다 — 안 열리면 지금 것 유지 */
 }
 if(!WIDGET){bgApply();setInterval(bgApply,60000);}   /* 1분마다 — 정각이 지나면 다음 사진 */
 const GLASS=/[?&]glass=1\b/.test(location.search);   /* 위젯 유리(반투명) 모드 — 배경을 비운다 */
