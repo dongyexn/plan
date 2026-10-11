@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1140';
+const APP_VER='1143';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -141,7 +141,7 @@ function ownSelHTML(id,cur,people){
 }
 function sitePickHTML(id,cur){
   const sites=(S.org.sites||[]).filter(x=>x.name);
-  return `<select class="inp inp-sm" id="${id}" aria-label="현장">
+  return `<select class="inp inp-sm" id="${id}" aria-label="현장" data-pick="site">
     <option value="">-</option>
     ${sites.map(x=>'<option value="'+esc(x.id)+'"'+(x.id===cur?' selected':'')+'>'+esc(x.name)+'</option>').join('')}
   </select>`;
@@ -10226,9 +10226,11 @@ function openCtx(x,y,items,anchor,o){
   o=o||{};
   const el=document.createElement('div');
   el.className='ctxmenu';el.setAttribute('role','menu');
-  el.innerHTML=list.map((it,i)=>it.sep
+  if(o.cls)el.classList.add(o.cls);
+  el.innerHTML=(o.search?'<div class="ctx-q"><label class="ctx-qf"><svg class="icn" aria-hidden="true"><use href="#i-search"></use></svg><input type="text" placeholder="'+esc(o.search)+'" aria-label="'+esc(o.search)+'" autocomplete="off" spellcheck="false"></label></div>':'')+list.map((it,i)=>it.sep
     ?'<div class="ctx-sep"></div>'
-    :'<button class="ctx-it'+(it.danger?' dg':'')+(it.on?' on':'')+(it.check?' chk':'')+'" role="menuitem" data-ci="'+i+'"'+(it.disabled?' disabled':'')+'>'
+    :it.hd?'<div class="ctx-hd">'+esc(it.hd)+'</div>'   /* 묶음 머리(누르지 않음) */
+    :'<button class="ctx-it'+(it.danger?' dg':'')+(it.on?' on':'')+(it.check?' chk':'')+(it.dim?' dim':'')+'" role="menuitem" data-ci="'+i+'"'+(it.disabled?' disabled':'')+'>'
       +(it.check?'<span class="ctx-k"><svg class="icn" aria-hidden="true"><use href="#i-check"></use></svg></span>':'')
       +'<span class="ctx-l">'+esc(it.label)+'</span>'
       +(it.on&&!it.check?'<svg class="icn ctx-ck" aria-hidden="true"><use href="#i-check"></use></svg>':'')+'</button>').join('');   /* it.on: 현재 값(오른쪽 ✓) · it.check: 체크 상자 */
@@ -10251,6 +10253,15 @@ function openCtx(x,y,items,anchor,o){
     if(it&&it.act)it.act();
   });
   slHl(el,'.ctx-it');   /* 1083 강조 판이 마우스를 따라 미끄러진다 */
+  const q=o.search&&el.querySelector('.ctx-q input');
+  if(q){   /* 찾기 — 글자를 포함한 줄만, 빈 묶음 머리는 숨김. Enter = 첫 줄, ↓ = 목록으로 */
+    q.addEventListener('input',()=>{const t=q.value.trim().toLowerCase();let hd=null,any=false;
+      el.querySelectorAll('.ctx-hd,.ctx-it').forEach(n=>{if(n.classList.contains('ctx-hd')){if(hd)hd.hidden=!any;hd=n;any=false;return;}
+        const it=list[Number(n.dataset.ci)],m=!t||(it&&it.q&&it.q.toLowerCase().includes(t));n.hidden=!m||(!!t&&!(it&&it.q));if(!n.hidden)any=true;});
+      if(hd)hd.hidden=!any;fadeOne(el);});
+    q.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();const b=el.querySelector('.ctx-it:not([hidden]):not(.dim)')||el.querySelector('.ctx-it:not([hidden])');if(b)b.click();}});
+    fadeOne(el);   /* 열자마자 아래 흐림 — 메뉴는 #app 밖이라 관찰자가 못 잰다 */
+    setTimeout(()=>{if(_ctxEl===el&&!o.kb)q.focus({preventScroll:true});},0);}
   el.addEventListener('contextmenu',e=>e.preventDefault());
   _ctxEl=el;
   /* ⚠ 닫기는 click 이 아니라 mousedown 캡처로 — FullCalendar 가 달력 칸의 click 을 삼킨다.
@@ -10267,7 +10278,7 @@ function openCtx(x,y,items,anchor,o){
     if(e.key==='Escape'){e.preventDefault();e.stopPropagation();const a=o.dd;closeCtx();if(a&&a.isConnected)a.focus({preventScroll:true});return;}
     if(e.key==='Tab'){closeCtx();return;}
     if(!/^(ArrowDown|ArrowUp|Home|End)$/.test(e.key))return;
-    const bs=[...el.querySelectorAll('.ctx-it:not([disabled])')];if(!bs.length)return;
+    const bs=[...el.querySelectorAll('.ctx-it:not([disabled]):not([hidden])')];if(!bs.length)return;
     e.preventDefault();e.stopPropagation();
     const i=bs.indexOf(document.activeElement),on=bs.findIndex(b=>b.classList.contains('on'));
     const n=e.key==='Home'?0:e.key==='End'?bs.length-1:i<0?(on<0?0:on):(i+(e.key==='ArrowDown'?1:-1)+bs.length)%bs.length;
@@ -10282,10 +10293,19 @@ const ddSkip=s=>!(s instanceof HTMLSelectElement)||s.multiple||s.disabled;
 function ddOpen(s,kb){
   if(_ctxEl&&_ctxEl._dd===s){closeCtx();return;}   /* 다시 누르면 닫기 */
   const a=s.closest('.pe-chip')||s,r=a.getBoundingClientRect();
-  const items=[...s.options].map((op,i)=>({label:op.textContent,on:i===s.selectedIndex,disabled:op.disabled,act:()=>{
+  const pick=i=>()=>{
     if(!s.isConnected)return;   /* 고르는 사이 다시 그려졌다 */
     if(s.selectedIndex!==i){s.selectedIndex=i;s.dispatchEvent(new Event('input',{bubbles:true}));s.dispatchEvent(new Event('change',{bubbles:true}));}
-    if(kb)s.focus({preventScroll:true});}}));
+    if(kb)s.focus({preventScroll:true});};
+  const items=[...s.options].map((op,i)=>({label:op.textContent,on:i===s.selectedIndex,disabled:op.disabled,act:pick(i)}));
+  if(s.dataset.pick==='site'&&!(isMob()&&!WIDGET&&!kb)){   /* 현장 — 권역별로 묶고, 많으면 찾기 칸 */
+    const ix={};[...s.options].forEach((op,i)=>{ix[op.value]=i;});
+    const it=(id,lab)=>({label:lab,on:ix[id]===s.selectedIndex,act:pick(ix[id]),q:lab});
+    const sites=(S.org.sites||[]).filter(x=>x.name&&ix[x.id]!=null),out=[{label:'현장 없음',on:!s.value,act:pick(ix['']??0),dim:1}];
+    const rg=(S.org.regions||[]),seen=new Set();
+    rg.forEach(r=>{const g=sites.filter(x=>x.region===r.id);if(!g.length)return;out.push({hd:r.name});g.forEach(x=>{seen.add(x.id);out.push(it(x.id,x.name));});});
+    const rest=sites.filter(x=>!seen.has(x.id));if(rest.length){if(seen.size)out.push({hd:'권역 없음'});rest.forEach(x=>out.push(it(x.id,x.name)));}
+    openCtx(r.left,r.bottom+6,out,a,{dd:s,minW:Math.max(r.width,240),flip:r,kb,search:sites.length>8?'현장 찾기':'',cls:'site'});return;}
   /* 폰: 칸 옆에 뜨는 목록 대신 아래에서 올라오는 시트 — 긴 목록(현장 등)이 칸 위·아래 어디에도 안 들어가 화면 맨 위로 밀려 달력을 덮었다 */
   if(isMob()&&!WIDGET&&!kb){const lb=s.id&&document.querySelector('label[for="'+CSS.escape(s.id)+'"]');
     const t=s.getAttribute('aria-label')||(lb&&lb.textContent.replace(/\*/g,'').trim())||a.getAttribute('aria-label')||a.dataset.tip||s.dataset.tip||(a.closest('[data-tip]')&&a.closest('[data-tip]').dataset.tip)||'선택';

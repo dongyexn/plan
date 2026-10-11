@@ -1818,7 +1818,7 @@ body.wid .ctx-it.on{color:#9DC3FF;}
 body.wid .ctx-it.dg{color:#F87171;}   /* 삭제 등 — 데스크톱·폰처럼 빨강 */
 body.wid .ctx-ck{color:#8FB0EC;}
 body.wid .ctx-k{background:transparent;border-color:rgba(255,255,255,.35);}
-body.wid .ctx-sep{background:rgba(255,255,255,.16);}
+body.wid .ctx-sep{background:rgba(255,255,255,.16);}body.wid .ctx-hd,body.wid .ctx-it.dim,body.wid .ctx-qf .icn,body.wid .ctx-qf input::placeholder{color:rgba(255,255,255,.5);}body.wid .ctx-qf{background:rgba(255,255,255,.08);}body.wid .ctxmenu .ctx-qf input{color:#fff;}
 /* 위젯(유리) — 목록도 어두운 카드로 */
 body.wid .cal-filt-pop::before{display:none;}   /* 꼬리 없음 — 둥근 유리 카드(폰 시트 결)는 떠 있는 판으로 둔다 */
 /* 머리 「필터 · 초기화」·아래 줄 숨김 — 데스크톱과 같은 구성(색만 어두운 판에 맞춤) */
@@ -2296,6 +2296,22 @@ body.pickmode #tkRoot .tk-item,body.pickmode .day-panel .plan{user-select:none;}
 .ctx-it.dg{color:var(--rd);}
 @media (hover:hover) and (pointer:fine){.ctx-it.dg:hover{background:rgba(220,38,38,.1);color:var(--rd);}}@media not ((hover:hover) and (pointer:fine)){.ctx-it.dg:active{background:rgba(220,38,38,.1);color:var(--rd);}}
 .ctx-sep{height:1px;background:var(--sep);margin:4px 6px;}
+.ctx-hd{position:relative;flex:0 0 auto;padding:10px 8px 4px;font-size:11px;font-weight:700;letter-spacing:.02em;line-height:14px;color:var(--lbl3);}   /* 왼쪽 8 = 항목 글자(.ctx-it 8)와 같은 선 */
+.ctx-it.dim{color:var(--lbl3);}
+.ctx-q,.ctxmenu.slhl>.ctx-q:not(.slhl-b){position:sticky;top:0;z-index:2;flex:0 0 auto;margin:0 -6px 2px;padding:6px 6px 4px;}.ctx-q{border-radius:11px 11px 0 0;}   /* 굴러도 위에 붙는 찾기 줄 — 메뉴 위 여백은 이 줄이 맡는다(.site padding-top 0) · 모서리는 메뉴 둥근 테 안쪽에 맞춤 */
+body.wid .ctx-q{border-radius:13px 13px 0 0;}@media(min-width:961px){body:not(.wid) .ctx-q{border-radius:13px 13px 0 0;}}
+/* 찾기 줄 붙은 메뉴는 판을 불투명 한 색(--mbg)으로 — 마스크로 판째 지우면 뒤 달력이 비치고 테두리가 사라진다. 흐림은 판 색 덮개로만 */
+.ctxmenu.site:has(.ctx-q){--mbg:var(--bg2);background:var(--mbg);-webkit-mask-image:none;mask-image:none;}
+@media(min-width:961px){body:not(.wid) .ctxmenu.site:has(.ctx-q){--mbg:#fff;}}body.wid .ctxmenu.site:has(.ctx-q){--mbg:#1A1D26;}
+.ctx-q{background:var(--mbg,var(--bg2));}
+.ctx-q::after{content:'';position:absolute;left:0;right:0;top:100%;height:18px;background:linear-gradient(var(--mbg,var(--bg2)),transparent);pointer-events:none;opacity:0;transition:opacity .15s;}.ctxmenu.sb-fade-t>.ctx-q::after{opacity:1;}
+.ctxmenu.site:has(.ctx-q)::after{content:'';position:sticky;bottom:-6px;z-index:2;display:block;flex:0 0 auto;height:22px;margin-top:-22px;background:linear-gradient(transparent,var(--mbg));pointer-events:none;opacity:0;transition:opacity .15s;}.ctxmenu.site:has(.ctx-q).sb-fade-b::after{opacity:1;}
+.ctx-qf{display:flex;align-items:center;gap:8px;height:32px;padding:0 8px;border-radius:8px;background:var(--fill);cursor:text;}   /* 돋보기 = 항목 글자 시작선 */
+.ctx-qf .icn{width:14px;height:14px;color:var(--lbl3);flex:none;}
+.ctxmenu .ctx-qf input{flex:1;min-width:0;height:32px;padding:0;margin:0;border:0!important;border-radius:0;background:transparent!important;box-shadow:none!important;outline:0!important;font:inherit;font-size:13px;line-height:18px;color:var(--lbl);}
+.ctx-qf input::placeholder{color:var(--lbl3);}
+.ctxmenu.site{max-height:min(340px,calc(100dvh - 24px));}.ctxmenu.site:has(.ctx-q){padding-top:0;scroll-padding-top:46px;}   /* 지금 값으로 스크롤할 때 찾기 줄 밑에 숨지 않게 */   /* 재기 전에 붙어야 위로 뒤집히지 않는다(dd 는 잰 뒤에 붙음) */
+.ctx-it[hidden],.ctx-hd[hidden]{display:none;}
 /* 1088 막대 끌기 — 따라오는 막대(FC .fc-event-dragging, body 아래 fixed)는 손에 든 듯 떠오르고, 원래 막대는 흐리게, 놓을 칸(.fc-highlight)은 파란 테두리 */
 .fc-event.fc-event-dragging{opacity:1!important;box-shadow:0 8px 20px rgba(0,0,0,.22);transform:scale(1.04) rotate(-1.2deg);}
 #fcal .fc-event.ev-src{opacity:.3;}
@@ -6043,5 +6059,5 @@ body.wid.glass{--mv-flash:#8FB4FF;}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1140"></script>
+<script src="./app.js?v=1143"></script>
 </body></html>
