@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1137';
+const APP_VER='1138';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -13120,8 +13120,10 @@ function bgThumbHTML(p,i,cur,fix,big){const on=cur&&cur.u===p.u,th=p.u+(p.u.incl
   return '<button class="bgp-t'+(on&&fix?' on':'')+'" data-act="bg.pick" data-i="'+i+'" aria-pressed="'+(fix&&on)+'" aria-label="'+esc(p.n)+' 배경화면으로 고정" style="background-image:url(&quot;'+esc(th)+'&quot;)"><span class="ck"><svg class="icn" aria-hidden="true"><use href="#i-check"></use></svg></span>'+(on&&!fix?'<span class="nw">지금</span>':'')+(big?'<span class="nm">'+esc(p.n)+'</span>':'')+'</button>';}
 function bgPickRender(){const w=$('#bgPickRow');if(!w)return;const L=Array.isArray(window.BG_LIST)?window.BG_LIST:[],pu=bgPin(),fix=!!(pu&&L.some(x=>x.u===pu)),cur=bgPick();
   document.querySelectorAll('[data-act="bg.auto"]').forEach(x=>{x.checked=!fix;});
-  let idx=L.map((_,i)=>i).slice(0,BG_SHOW);const ci=cur?L.findIndex(x=>x.u===cur.u):-1;if(ci>=BG_SHOW)idx[BG_SHOW-1]=ci;   /* 지금(고정) 사진은 늘 카드 안에 */
-  w.innerHTML=idx.map(i=>bgThumbHTML(L[i],i,cur,fix)).join('')+(L.length>BG_SHOW?'<button class="bgp-all" data-act="bg.all">모두 보기<b>'+L.length+'</b></button>':'');
+  const more=L.length>BG_SHOW,k=more?BG_SHOW-1:BG_SHOW;   /* 넘치면 여섯째 칸은 「+N 모두 보기」 */
+  let idx=L.map((_,i)=>i).slice(0,k);const ci=cur?L.findIndex(x=>x.u===cur.u):-1;if(ci>=k)idx[k-1]=ci;   /* 지금(고정) 사진은 늘 카드 안에 */
+  const mi=L.findIndex((_,i)=>!idx.includes(i)),mp=L[mi];
+  w.innerHTML=idx.map(i=>bgThumbHTML(L[i],i,cur,fix)).join('')+(more?'<button class="bgp-more" data-act="bg.all" aria-label="배경화면 모두 보기" style="background-image:url(&quot;'+esc(mp.u+(mp.u.includes('?')?'&':'?')+'w=360&q=60&fm=jpg&fit=crop')+'&quot;)"><span><b>+'+(L.length-k)+'</b>모두 보기</span></button>':'');
   const pv=$('#bgPv');if(pv&&cur)pv.style.backgroundImage='url("'+bgUrl(cur).replace('w=2560','w=900')+'")';
   const pc=$('#bgPvCr');if(pc)pc.innerHTML=bgCreditHTML(cur);
   const at=Number(window.BG_AT)||(()=>{try{return Number(localStorage.getItem('calapp.bgat'))||0;}catch(e){return 0;}})(),d=at?new Date(at):null;
