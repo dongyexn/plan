@@ -2689,8 +2689,20 @@ body.wid .slhl-b{background:rgba(255,255,255,.12);}
 .bgp-scr .g{position:absolute;top:9%;bottom:9%;right:6%;width:38%;border-radius:7px;background:rgba(255,255,255,.72);box-shadow:0 4px 14px rgba(0,0,0,.18);backdrop-filter:blur(6px);}   /* 로그인 창 자리 — 미리보기 */
 .bgp-scr .g::before,.bgp-scr .g::after{content:'';position:absolute;left:16%;right:16%;height:7%;border-radius:3px;background:rgba(60,70,90,.18);top:38%;}.bgp-scr .g::after{top:52%;background:#3E71D2;opacity:.85;}
 .bgp-cr{margin-top:8px;font-size:11.5px;color:var(--lbl3);min-height:16px;}.bgp-cr a{color:inherit;text-decoration:underline;text-underline-offset:2px;}
-.bgp-top{display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;}.bgp-top .seg button{height:30px;min-height:30px;padding:4px 16px;}
-.bgp-note{font-size:12.5px;color:var(--lbl3);}
+.bgp-auto{display:flex;align-items:center;justify-content:space-between;gap:12px;height:40px;padding:0 4px 0 2px;margin:-4px 0 10px;font-size:13.5px;font-weight:600;color:var(--lbl);cursor:pointer;}
+.bgp-hd{display:flex;align-items:center;gap:10px;}.bgp-meta{margin-left:auto;display:flex;align-items:center;}
+.bgp-sync{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;color:var(--lbl2);text-decoration:none;background:transparent;transition:background-color .2s cubic-bezier(.32,.72,0,1);}.bgp-sync .icn{width:15px;height:15px;}
+.bgp-all{grid-column:1/-1;display:flex;align-items:center;justify-content:center;gap:6px;height:34px;border:0;border-radius:8px;background:transparent;box-shadow:inset 0 0 0 1px var(--sep);font:inherit;font-size:12.5px;font-weight:600;color:var(--lbl2);cursor:pointer;transition:background-color .2s cubic-bezier(.32,.72,0,1);}.bgp-all b{font-weight:700;color:var(--lbl3);}
+#mb.bgw{width:min(1120px,94vw);max-width:none;}
+.bgp-all-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;padding:4px 4px 10px;max-height:min(68vh,720px);overflow-y:auto;}
+.bgp-all-grid .bgp-t{border-radius:12px;}
+.bgp-all-grid .bgp-t .nm{position:absolute;left:0;right:0;bottom:0;padding:22px 12px 9px;border-radius:0 0 12px 12px;background:linear-gradient(180deg,transparent,rgba(10,14,22,.62));color:#fff;font-size:12px;font-weight:600;text-align:left;opacity:0;transition:opacity .25s ease;}
+@media (hover:hover) and (pointer:fine){.bgp-all-grid .bgp-t:hover .nm{opacity:1;}}@media not ((hover:hover) and (pointer:fine)){.bgp-all-grid .bgp-t .nm{opacity:1;}}
+.bgp-all-grid .bgp-t .ck{width:24px;height:24px;top:10px;right:10px;}.bgp-all-grid .bgp-t .nw{left:10px;bottom:auto;top:10px;}
+@media (max-width:760px){.bgp-all-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}}
+.tb-ver{font-size:12px;color:rgba(255,255,255,.55);font-variant-numeric:tabular-nums;padding:4px 8px;border-radius:6px;cursor:pointer;transition:background-color .2s cubic-bezier(.32,.72,0,1),color .2s;}
+@media (hover:hover) and (pointer:fine){.bgp-sync:hover{background:var(--fill);color:var(--lbl);}.bgp-all:hover{background:var(--fill2,rgba(120,120,128,.18));}.tb-ver:hover{background:rgba(255,255,255,.1);color:rgba(255,255,255,.9);}}
+@media not ((hover:hover) and (pointer:fine)){.bgp-sync:active{background:var(--fill);color:var(--lbl);}.bgp-all:active{background:var(--fill2,rgba(120,120,128,.18));}.tb-ver:active{background:rgba(255,255,255,.1);color:rgba(255,255,255,.9);}}
 .bgp-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
 .bgp-t{position:relative;aspect-ratio:16/10;border:0;border-radius:10px;background:var(--fill) center/cover no-repeat;cursor:pointer;padding:0;outline:2px solid transparent;outline-offset:2px;box-shadow:inset 0 0 0 1px rgba(16,24,40,.08);transition:transform .25s cubic-bezier(.32,.72,0,1),box-shadow .25s cubic-bezier(.32,.72,0,1),outline-color .2s ease;}
 .bgp-t.on{outline-color:var(--b500);}
@@ -3441,12 +3453,12 @@ body.wid .cv-card{max-width:380px;padding:26px 22px 22px;background:rgba(22,25,3
 body:is(.lg,.lg-fx):not(.wid){background:transparent;}   /* 배경화면(z -1)은 body 판 아래 — 그 밑은 html 의 셸 색(나갈 때 드러나는 챠콜) */
 body:is(.lg,.lg-fx):not(.wid) #lgBg{display:block;position:fixed;inset:0;z-index:-1;pointer-events:none;background:#3A3F47 var(--bg-img,url(login-bg.jpg)) center 40%/cover no-repeat;}   /* --bg-img: Unsplash 컬렉션 BG 사진(한 시간마다) — 없으면 기본 사진 */
 #lgBg::after{content:"";position:absolute;inset:0;background:rgba(10,14,22,.18);}
-#bgCredit{display:none;}
+#bgCredit{display:none;}@media (max-width:960px){body.lg:not(.wid):not(.lg-out) #bgCredit:not(:empty){left:0;right:0;bottom:calc(10px + env(safe-area-inset-bottom));text-align:center;}body.lg:not(.wid):not(.lg-ld):not(.lg-kb):has(#bgCredit:not(:empty)) #coverGate{padding-bottom:calc(34px + env(safe-area-inset-bottom));}body.lg-kb #bgCredit,body.kb #bgCredit{display:none!important;}}   /* 폰 — 판을 조금 띄우고 그 아래 가운데에 표기(키보드가 뜨면 숨김) */
 body.lg:not(.wid):not(.lg-out) #bgCredit:not(:empty){display:block;position:fixed;left:20px;bottom:14px;z-index:1;font-size:11.5px;color:rgba(255,255,255,.72);text-shadow:0 1px 2px rgba(0,0,0,.35);}   /* Unsplash 규정 — 작가·출처 표기 */
 #bgCredit a,#mm .mm-cv .cr a{color:inherit;text-decoration:underline;text-underline-offset:2px;}
 body.lg-out #lgBg,body:not(.lg) #lgBg,html:not(.lgbg) #lgBg{opacity:0;}   /* 사진을 다 받기 전(html.lgbg 없음)엔 셸 색 — 받으면 서서히 */
 /* 밝은 유리 위 폼 — 칸 색 토큰만 바꾼다(위젯은 위의 어두운 값 그대로) */
-body:not(.wid) #coverGate{--cv-t1:#1B1B1F;--cv-t2:#374151;--cv-t3:#4B5563;--cv-t4:#9CA3AF;--cv-in:rgba(255,255,255,.9);--cv-in-bd:rgba(120,120,128,.24);--cv-in-bd-h:rgba(120,120,128,.42);--cv-dom:#6B7280;--cv-acc:#3E71D2;--cv-err:#D93025;--cv-ok:#1E8E3E;--cv-line:rgba(120,120,128,.18);--cv-hv:rgba(0,0,0,.04);--cv-spin:rgba(0,0,0,.12);background:transparent;}
+body:not(.wid) #coverGate{--cv-t1:#111317;--cv-t2:#2B323C;--cv-t3:#353C47;--cv-t4:#5B6370;--cv-in:rgba(255,255,255,.9);--cv-in-bd:rgba(120,120,128,.24);--cv-in-bd-h:rgba(120,120,128,.42);--cv-dom:#6B7280;--cv-acc:#3E71D2;--cv-err:#D93025;--cv-ok:#1E8E3E;--cv-line:rgba(120,120,128,.18);--cv-hv:rgba(0,0,0,.04);--cv-spin:rgba(0,0,0,.12);background:transparent;}
 body:not(.wid) .cv-lock{display:none;}   /* 불러오는 중 락업은 위젯만 — 데스크톱은 머리줄 로고, 폰은 .cv-brand 가 그 자리에 있다 */
 .cv-brand{display:none;}
 .cv-brand-logo{height:19px;width:auto;display:block;flex:0 0 auto;}   /* 머리줄 로고(.ah-logo)와 같은 크기 */
@@ -3460,7 +3472,7 @@ body:not(.wid) .cv-lock{display:none;}   /* 불러오는 중 락업은 위젯만
 @media (min-width:961px){
   body:not(.wid) #coverGate{--cv-dot:#6B7280;left:50vw;top:48px;bottom:8px;padding:24px;}   /* 게이트 = 오른쪽 반(밀려난 본문 판 자리) · 판은 #main 이 유리로 */
   body:not(.wid) .cv-card{max-width:388px;padding:24px;background:transparent;border:0;box-shadow:none;}
-  body.lg:not(.wid) #main{transform:translateX(calc(50vw - var(--sw) - 8px));background:rgba(255,255,255,.88);-webkit-backdrop-filter:blur(20px) saturate(1.8);backdrop-filter:blur(20px) saturate(1.8);box-shadow:-24px 0 60px rgba(0,0,0,.22);}   /* 업무 시트와 같은 유리(--glass 값 · 테마와 무관하게 밝게) */
+  body.lg:not(.wid) #main{transform:translateX(calc(50vw - var(--sw) - 8px));background:rgba(255,255,255,.4);-webkit-backdrop-filter:blur(30px) saturate(1.6) brightness(1.06);backdrop-filter:blur(30px) saturate(1.6) brightness(1.06);box-shadow:inset 1.5px 1.5px 0 rgba(255,255,255,.85),inset -1px -1px 0 rgba(255,255,255,.3),inset 0 0 0 1px rgba(255,255,255,.28),inset 0 0 90px rgba(255,255,255,.22),-24px 0 60px rgba(0,0,0,.22);}   /* 리퀴드 글래스 — 옅은 흰 막 + 강한 흐림·채도 · 왼위 가장자리 반사광 */   /* 업무 시트와 같은 유리(--glass 값 · 테마와 무관하게 밝게) */
   body.lg:not(.wid) #sidebar.mini~#main{transform:translateX(calc(50vw - var(--swm) - 8px));}
   body.lg:not(.wid) #sidebar{transform:translateX(calc(-100% - 12px));opacity:0;visibility:hidden;}
   body.lg:not(.wid) #content,body.lg:not(.wid) #appHdr .ah-right{opacity:0;visibility:hidden;}
@@ -3520,7 +3532,7 @@ body.lg:not(.wid) #appHdr .ah-name{text-shadow:0 1px 3px rgba(0,0,0,.4);color:rg
   body.lg:not(.wid) :is(#app,#appHdr,#mtab){visibility:hidden;}
   body:not(.wid) #coverGate{flex-direction:column;align-items:stretch;justify-content:flex-end;padding:0 12px calc(12px + env(safe-area-inset-bottom));transition:padding-bottom .25s cubic-bezier(.22,.61,.36,1);}
   body:not(.wid) .cv-brand{flex:1 0 auto;min-height:96px;display:flex;align-items:center;justify-content:center;gap:12px;padding-top:env(safe-area-inset-top);transition:opacity .3s ease;}
-  body:not(.wid) .cv-card{flex:0 0 auto;max-width:none;margin:0;padding:28px 22px 22px;border:0;border-radius:24px;background:rgba(255,255,255,.88);-webkit-backdrop-filter:blur(20px) saturate(1.8);backdrop-filter:blur(20px) saturate(1.8);box-shadow:0 -8px 32px rgba(0,0,0,.18);}
+  body:not(.wid) .cv-card{flex:0 0 auto;max-width:none;margin:0;padding:28px 22px 22px;border:0;border-radius:24px;background:rgba(255,255,255,.44);-webkit-backdrop-filter:blur(30px) saturate(1.6) brightness(1.06);backdrop-filter:blur(30px) saturate(1.6) brightness(1.06);box-shadow:inset 1.5px 1.5px 0 rgba(255,255,255,.85),inset -1px -1px 0 rgba(255,255,255,.3),inset 0 0 0 1px rgba(255,255,255,.28),inset 0 0 60px rgba(255,255,255,.2),0 -8px 32px rgba(0,0,0,.18);}
   body.lg:not(.lg-ld):not(.wid) .cv-card{animation:lgUp .5s cubic-bezier(.32,.72,0,1);}   /* 폼이 뜰 때 시트가 아래에서 올라온다(채우기 없음 — 나갈 때의 transform 을 막지 않게) */
   /* 불러오는 중 — 시트 없이 로고 바로 아래에 점 세 개 */
   body.lg-ld:not(.wid) .cv-brand{flex:1 1 0;align-items:flex-end;padding-bottom:6px;}   /* 점은 로고 바로 아래 가운데 — 로고–점 12 */
@@ -5658,7 +5670,7 @@ body.wid.glass{--mv-flash:#8FB4FF;}
   </div>
   <div class="ah-right">
     <div class="tbr">
-      <span class="ah-off" id="ahOff" hidden>연결 끊김 · 저장 대기</span><!-- 잠시 뜨는 상태는 줄 맨 왼쪽 — 늘 있는 기준월·검색이 밀리지 않게 -->
+      <span class="tb-ver" id="tbVer" data-act="set.copyErr" role="button" tabindex="0" data-tip="누르면 버전·오류 기록을 복사합니다" hidden></span><span class="ah-off" id="ahOff" hidden>연결 끊김 · 저장 대기</span><!-- 잠시 뜨는 상태는 줄 맨 왼쪽 — 늘 있는 기준월·검색이 밀리지 않게 -->
       <span class="tb-rm" id="tbRm" data-act="df.rm" role="button" tabindex="0" data-tip="기준월 변경 — 게시된 달을 고릅니다" hidden></span>
       <span class="tb-loc" id="tbLoc" data-tip="이 PC에 올린 원본이 마지막 게시보다 새것입니다 — 팀 화면은 [게시]를 눌러야 바뀝니다" hidden></span>
       <div class="tb-nav" id="tbXlWrap" hidden>   <!-- 사진대지 엑셀 내보내기 — 인쇄 왼쪽 -->
@@ -5941,11 +5953,11 @@ body.wid.glass{--mv-flash:#8FB4FF;}
             </div>
           </div>
           <div class="card" id="bgCard">   <!-- 배경 사진(로그인 · 회의 표지) — bgPickRender 가 채운다. 왼쪽 칸 — 사용자(하자 데이터 카드 없음)도 왼쪽이 비지 않게 -->
-            <div class="set-h">배경 사진</div>
+            <div class="set-h bgp-hd">배경화면<span class="bgp-meta" id="bgMeta"></span></div>
             <div class="bgp">
               <div class="bgp-pv"><div class="bgp-scr" id="bgPv"><i class="g"></i></div><div class="bgp-cr" id="bgPvCr"></div></div>
               <div class="bgp-sd">
-                <div class="bgp-top"><div class="seg" id="bgMode" role="group" aria-label="배경 사진 방식"></div><span class="bgp-note" id="bgPickNote"></span></div>
+                <label class="bgp-auto"><span>한 시간마다 자동으로 바꾸기</span><span class="sw"><input type="checkbox" id="bgAuto" data-act="bg.auto" aria-label="한 시간마다 자동으로 바꾸기"><span class="sw-t"></span></span></label>
                 <div id="bgPickRow" class="bgp-row"></div>
               </div>
             </div>
@@ -5982,16 +5994,6 @@ body.wid.glass{--mv-flash:#8FB4FF;}
               <button class="btn btn-danger bsm" data-act="d60.formReset">초기화</button>
             </div>
           </div>
-          <div class="card">
-            <div class="set-h">도움말</div>
-            <div class="share-row">
-              <div class="share-info"><b>사용 안내</b><span>화면별 사용 방법을 봅니다</span></div>
-              <button class="btn bo bsm" data-act="set.guide">열기</button>
-            </div>
-            <div class="share-row">
-              <div class="share-info"><b>버전 · 오류 기록</b><span id="buildInfo">—</span></div>
-              <button class="btn bo bsm" data-act="set.copyErr">복사</button>
-            </div>
           </div>
                     <div class="set-card card">
             <div class="set-h">바탕화면 위젯</div>
@@ -6043,5 +6045,5 @@ body.wid.glass{--mv-flash:#8FB4FF;}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1134"></script>
+<script src="./app.js?v=1137"></script>
 </body></html>

@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1134';
+const APP_VER='1137';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -3176,7 +3176,7 @@ function openModal(title,bodyHTML,footHTML){
   $('#mt').textContent=title;$('#mbody').innerHTML=bodyHTML;$('#mf').innerHTML=footHTML||'';
   /* 하단 버튼이 없는 모달(사용 안내 등)은 우상단 X 로 닫는다 — 참조 앱과 동일 */
   const mb=$('#mb');
-  mb.classList.remove('acx','acx-ed','acx-pw','m-emo','m-col','m-cus','mb-ask','ask3','rdw','narrow','mlw','dfwide','wide-pick','kmw','rkm','pdcw','nott','d60-pvm','d60-hsm','mrv-md','mrv-wid','pv-fly');PV_FLY=null;   /* 놓친 업무 창 폭 */   /* pdcw: 사진 자르기 */   /* ⚠ 지난번 모달의 폭 설정이 남으면 다음 모달이 엉뚱한 크기로 뜬다 */
+  mb.classList.remove('bgw','acx','acx-ed','acx-pw','m-emo','m-col','m-cus','mb-ask','ask3','rdw','narrow','mlw','dfwide','wide-pick','kmw','rkm','pdcw','nott','d60-pvm','d60-hsm','mrv-md','mrv-wid','pv-fly');PV_FLY=null;   /* 놓친 업무 창 폭 */   /* pdcw: 사진 자르기 */   /* ⚠ 지난번 모달의 폭 설정이 남으면 다음 모달이 엉뚱한 크기로 뜬다 */
   /* ⚠ 폭 클래스를 새로 만들면 반드시 이 줄에 함께 넣을 것 — 빠지면 그 뒤 모든 모달에 남는다.
      예: #mb.kmw 가 명시도 같은 #mb.dfwide 보다 CSS 뒤에 있어 이겨 모달 폭이 튄다 */
   mb.classList.toggle('has-x',!footHTML);
@@ -10856,6 +10856,7 @@ function go(view){
   $$('.view').forEach(v=>v.classList.toggle('act',v.id==='view-'+view));
   $$('#sidebar .nvi[data-view]').forEach(n=>n.classList.toggle('act',n.dataset.view===view));
   $('#tbt').textContent=VIEW_TTL[view];
+  {const v=$('#tbVer');if(v)v.hidden=view!=='settings';}   /* 버전 — 설정 화면에서만 머리 줄에(누르면 오류 기록 복사) */
   /* ⚠ 화면이 바뀐 직후 곧바로 크기를 맞추고, 다음 프레임에 한 번 더 보정한다 — 늦추면 이전 화면 폭으로 한 번 그려진다 */
   if(view==='calendar'&&isMob()&&!WIDGET)mcalSet();
   else{document.body.classList.remove('mcal-full');}
@@ -10886,12 +10887,12 @@ function go(view){
     rOrg();
   }
   if(view==='settings'){
-    rCfg();
-    const b=$('#buildInfo');
+    rCfg();bgPickRender();
+    const b=$('#tbVer');
     if(b){
       const sc=[...document.scripts].map(x=>x.src).find(x=>/app\.js\?v=/.test(x))||'';
       const cv=(sc.match(/v=(\d+)/)||[])[1]||'?';
-      b.textContent='버전 v'+(cv!=='?'?cv:APP_VER)+' · 기록된 오류 '+ERRLOG.length+'건';
+      b.textContent='v'+(cv!=='?'?cv:APP_VER)+(ERRLOG.length?' · 오류 '+ERRLOG.length+'건':'');
     }
     /* 위젯은 별도 파일이라 버전이 따로 논다 — 설정에서 같이 보이게 적는다 */
   }
@@ -11228,9 +11229,10 @@ const ACT={
     const cur=dfRm(),r=el.getBoundingClientRect();
     openCtx(r.left,r.bottom+6,months.map(m=>({label:m+(m===ORG_RM?' · 최신':''),on:m===cur,act:()=>{if(m!==cur)mtgSetRm(m);}})),el);},
   'mtg.cv':()=>mtgCoverOff(),
-  'bg.link':()=>{},
+  'bg.link':()=>{},   /* 사진 출처·동기화 링크 — 새 탭으로 열리기만(표지를 걷지 않게 클릭을 여기서 받는다) */
   'bg.pick':el=>{const L=window.BG_LIST||[],p=L[Number(el.dataset.i)];if(p)bgSetPin(p.u);},
-  'bg.mode':el=>{if(el.dataset.m==='auto'){bgSetPin('');return;}const c=bgPick();if(c)bgSetPin(c.u);},   /* 고정 — 지금 걸린 사진으로 */   /* 사진 출처 링크 — 새 탭으로 열리기만(표지를 걷지 않게 클릭을 여기서 받는다) */
+  'bg.all':()=>{openModal('배경화면','<div class="bgp-all-grid" id="bgAllGrid"></div>','');$('#mb').classList.add('bgw');bgPickRender();},   /* 모두 보기 — 고르면 창은 그대로, 체크만 옮겨 간다 */
+  'bg.auto':el=>{if(el.checked){bgSetPin('');return;}const c=bgPick();if(c)bgSetPin(c.u);},   /* 끄면 지금 사진으로 고정 */
   'mtg.p':el=>{const p=Number(el.dataset.p)||0;if(p===MTG.p)return;const d=p>MTG.p?1:-1;MTG.p=p;mtgRender(d,true);},   /* 넘긴 쪽에서 밀려 들어온다 */
   'mtg.don':el=>{if(MTG.don===el.dataset.k)return;MTG.don=el.dataset.k;$$('#mm [data-act="mtg.don"]').forEach(b=>b.classList.toggle('act',b.dataset.k===MTG.don));mtgDonut(dfDashSites(),true);},   /* 도넛만 다시 */
   'mtg.agg':el=>{if((MTG.agg||'tr')===el.dataset.k)return;MTG.agg=el.dataset.k;
@@ -13105,21 +13107,28 @@ const WIDGET=/[?&]w=1\b/.test(location.search);
 const BG_UTM='?utm_source=calapp&utm_medium=referral';
 const bgUrl=p=>p.u+(p.u.includes('?')?'&':'?')+'w=2560&q=80&fm=jpg&fit=crop';
 /* RTDB bg/l(GitHub 작업 bg-sync 가 하루 한 번 컬렉션에서 채움) — 로그인 전에도 읽힌다. 받으면 이 브라우저에 목록을 두어 다음 첫 화면(boot-wid.js)부터 그 목록 */
-function bgSub(){if(WIDGET||!FB.db)return;try{FB.db.ref('bg/l').on('value',sn=>{const l=sn.val();if(!Array.isArray(l)||!l.length)return;
-  window.BG_LIST=l.filter(x=>x&&x.u);try{localStorage.setItem('calapp.bgl',JSON.stringify(window.BG_LIST));}catch(e){}bgApply();},()=>{});}catch(e){}}
+function bgSub(){if(WIDGET||!FB.db)return;try{FB.db.ref('bg').on('value',sn=>{const v=sn.val()||{},l=v.l;if(!Array.isArray(l)||!l.length)return;
+  window.BG_LIST=l.filter(x=>x&&x.u);window.BG_AT=Number(v.at)||0;try{localStorage.setItem('calapp.bgl',JSON.stringify(window.BG_LIST));localStorage.setItem('calapp.bgat',String(window.BG_AT));}catch(e){}bgApply(true);},()=>{});}catch(e){}}
+const BG_SYNC_URL='https://github.com/dongyexn/plan/actions/workflows/bg-sync.yml';   /* 관리자 「동기화」 — GitHub 실행 화면(Run workflow) 새 탭. 앱에 GitHub 토큰을 두지 않으려고 바로 실행하지 않는다 */
+const BG_SHOW=6;   /* 카드에는 두 줄(6장)까지 — 나머지는 「모두 보기」 창 */
 const bgHour=()=>Math.floor(Date.now()/3600000);
 /* 설정 「배경 사진」 — 자동(한 시간마다) / 고정(고른 사진을 계속). 이 브라우저에만(calapp.bgpin {u}). 고른 사진이 컬렉션에서 빠지면 자동으로 */
 function bgPin(){try{const o=JSON.parse(localStorage.getItem('calapp.bgpin')||'null');return o&&o.u?o.u:'';}catch(e){return '';}}
 function bgPick(){const L=window.BG_LIST;if(!Array.isArray(L)||!L.length)return null;const pu=bgPin(),pp=pu&&L.find(x=>x.u===pu);return pp||L[bgHour()%L.length];}
 function bgSetPin(u){try{if(u)localStorage.setItem('calapp.bgpin',JSON.stringify({u}));else localStorage.removeItem('calapp.bgpin');}catch(e){}bgApply(true);}
+function bgThumbHTML(p,i,cur,fix,big){const on=cur&&cur.u===p.u,th=p.u+(p.u.includes('?')?'&':'?')+'w=360&q=70&fm=jpg&fit=crop';
+  return '<button class="bgp-t'+(on&&fix?' on':'')+'" data-act="bg.pick" data-i="'+i+'" aria-pressed="'+(fix&&on)+'" aria-label="'+esc(p.n)+' 배경화면으로 고정" style="background-image:url(&quot;'+esc(th)+'&quot;)"><span class="ck"><svg class="icn" aria-hidden="true"><use href="#i-check"></use></svg></span>'+(on&&!fix?'<span class="nw">지금</span>':'')+(big?'<span class="nm">'+esc(p.n)+'</span>':'')+'</button>';}
 function bgPickRender(){const w=$('#bgPickRow');if(!w)return;const L=Array.isArray(window.BG_LIST)?window.BG_LIST:[],pu=bgPin(),fix=!!(pu&&L.some(x=>x.u===pu)),cur=bgPick();
-  const m=$('#bgMode');if(m)m.innerHTML='<button data-act="bg.mode" data-m="auto" class="'+(fix?'':'act')+'" aria-pressed="'+!fix+'">자동</button><button data-act="bg.mode" data-m="fix" class="'+(fix?'act':'')+'" aria-pressed="'+fix+'">고정</button>';
-  const th=p=>p.u+(p.u.includes('?')?'&':'?')+'w=360&q=70&fm=jpg&fit=crop';
-  w.innerHTML=L.map((p,i)=>{const on=cur&&cur.u===p.u;return '<button class="bgp-t'+(on&&fix?' on':'')+'" data-act="bg.pick" data-i="'+i+'" aria-pressed="'+(fix&&on)+'" aria-label="'+esc(p.n)+' 사진으로 고정" style="background-image:url(&quot;'+esc(th(p))+'&quot;)"><span class="ck"><svg class="icn" aria-hidden="true"><use href="#i-check"></use></svg></span>'+(on&&!fix?'<span class="nw">지금</span>':'')+'</button>';}).join('');
+  document.querySelectorAll('[data-act="bg.auto"]').forEach(x=>{x.checked=!fix;});
+  let idx=L.map((_,i)=>i).slice(0,BG_SHOW);const ci=cur?L.findIndex(x=>x.u===cur.u):-1;if(ci>=BG_SHOW)idx[BG_SHOW-1]=ci;   /* 지금(고정) 사진은 늘 카드 안에 */
+  w.innerHTML=idx.map(i=>bgThumbHTML(L[i],i,cur,fix)).join('')+(L.length>BG_SHOW?'<button class="bgp-all" data-act="bg.all">모두 보기<b>'+L.length+'</b></button>':'');
   const pv=$('#bgPv');if(pv&&cur)pv.style.backgroundImage='url("'+bgUrl(cur).replace('w=2560','w=900')+'")';
   const pc=$('#bgPvCr');if(pc)pc.innerHTML=bgCreditHTML(cur);
-  const nx=new Date((bgHour()+1)*3600000),hh=String(nx.getHours()).padStart(2,'0')+':00';
-  const n=$('#bgPickNote');if(n)n.textContent=fix?'고른 사진을 계속 씁니다':'한 시간마다 바뀝니다 · 다음 '+hh;}
+  const at=Number(window.BG_AT)||(()=>{try{return Number(localStorage.getItem('calapp.bgat'))||0;}catch(e){return 0;}})(),d=at?new Date(at):null;
+  const st=d?(d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'):'';
+  const mt=$('#bgMeta');if(mt)mt.innerHTML=(()=>{try{return isEditor();}catch(e){return false;}})()?'<a class="bgp-sync" data-act="bg.link" href="'+BG_SYNC_URL+'" target="_blank" rel="noopener" aria-label="컬렉션 동기화" data-tip="컬렉션 동기화'+(st?' · 마지막 '+st:'')+' — GitHub 에서 Run workflow"><svg class="icn" aria-hidden="true"><use href="#i-rotr"></use></svg></a>':'';
+  const g=$('#bgAllGrid');if(g)g.innerHTML=L.map((p,i)=>bgThumbHTML(p,i,cur,fix,1)).join('');
+}
 function bgCreditHTML(p){return p?'Photo by <a data-act="bg.link" href="'+esc(p.h+BG_UTM)+'" target="_blank" rel="noopener">'+esc(p.n)+'</a> on <a data-act="bg.link" href="https://unsplash.com/'+BG_UTM+'" target="_blank" rel="noopener">Unsplash</a>':'';}
 let BG_CUR='';
 function bgApply(force){
