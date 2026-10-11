@@ -1,0 +1,24 @@
+# 배경 사진 목록 동기화 — 매일 05:00 KST(20:00 UTC). Unsplash 컬렉션 「BG」 → RTDB bg(바뀌었을 때만 쓴다).
+# 준비: 리포 Settings → Secrets and variables → Actions 에 UNSPLASH_ACCESS_KEY(Unsplash 개발자 앱 calapp 의 Access Key).
+#       FIREBASE_SERVICE_ACCOUNT 는 d60-photo-clean 과 같은 것을 쓴다. 바로 반영하려면 Actions 탭에서 Run workflow.
+name: bg-sync
+on:
+  schedule:
+    - cron: '0 20 * * *'
+  workflow_dispatch:
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: firebase-admin 설치
+        run: npm i --no-save --ignore-scripts firebase-admin@13.10.0   # 시크릿이 있는 잡이라 정확한 버전으로 고정(d60 과 같은 판)
+      - name: 컬렉션 → bg
+        env:
+          UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_DB_URL: https://report-c29a1-default-rtdb.asia-southeast1.firebasedatabase.app
+        run: node scripts/bg-sync.mjs
