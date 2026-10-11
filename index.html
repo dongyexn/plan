@@ -2,7 +2,7 @@
 <html lang="ko"><head>
 <meta charset="UTF-8">
 <!-- CSP: 개발은 외부 app.js('self'), 단일 파일 배포는 build-single.mjs가 인라인 스크립트 해시를 넣는다 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://www.gstatic.com https://www.google.com; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; script-src 'self' https://www.gstatic.com https://www.google.com https://www.recaptcha.net https://recaptcha.google.com https://apis.google.com https://*.firebasedatabase.app; frame-src https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; connect-src 'self' https://*.googleapis.com https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.firebaseio.com wss://*.firebaseio.com https://www.gstatic.com https://www.google.com https://www.recaptcha.net https://recaptcha.google.com">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://www.gstatic.com https://www.google.com https://images.unsplash.com; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; script-src 'self' https://www.gstatic.com https://www.google.com https://www.recaptcha.net https://recaptcha.google.com https://apis.google.com https://*.firebasedatabase.app; frame-src https://www.google.com https://recaptcha.google.com https://www.recaptcha.net; connect-src 'self' https://*.googleapis.com https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.firebaseio.com wss://*.firebaseio.com https://www.gstatic.com https://www.google.com https://www.recaptcha.net https://recaptcha.google.com">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -2322,6 +2322,16 @@ body.wid.glass #fcal.ev-drag .fc-highlight{background:rgba(143,180,255,.16);box-
 #mm .mm-rm{display:inline-flex;align-items:center;gap:2px;padding:0;border:0;background:none;font-family:inherit;font-size:11.5px;font-weight:700;color:var(--b600);cursor:pointer;}   /* 기준월 — 누르면 게시된 달 목록 */
 #mm .mm-rm .icn{width:13px;height:13px;}@media (hover:hover) and (pointer:fine){#mm .mm-rm:hover{color:var(--b500);}}@media not ((hover:hover) and (pointer:fine)){#mm .mm-rm:active{color:var(--b500);}}
 #mm .mm-body{flex:1;min-height:0;padding:30px 48px 32px;display:flex;flex-direction:column;overflow:auto;}
+#mm .mm-cv{position:absolute;inset:0;z-index:60;overflow:hidden;background:#2B3038 var(--bg-img,url(login-bg.jpg)) center 40%/cover no-repeat;color:#fff;display:flex;flex-direction:column;justify-content:flex-end;padding:0 88px 84px;cursor:pointer;}   /* 회의 표지 — 열 때 한 번, → · Enter · 클릭으로 넘긴다 */
+#mm .mm-cv::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(12,16,24,.05) 0%,rgba(12,16,24,.12) 45%,rgba(12,16,24,.72) 100%);}
+#mm .mm-cv>*{position:relative;}
+#mm .mm-cv .tp{position:absolute;top:44px;left:88px;right:88px;display:flex;justify-content:space-between;font-size:15px;font-weight:700;opacity:.9;}
+#mm .mm-cv .eb{font-size:15px;font-weight:700;letter-spacing:.14em;opacity:.85;margin-bottom:14px;}
+#mm .mm-cv h1{font-size:64px;font-weight:800;letter-spacing:-.02em;margin:0 0 18px;line-height:1.1;}
+#mm .mm-cv .mt{font-size:18px;opacity:.85;display:flex;gap:22px;}#mm .mm-cv .mt b{font-weight:800;}
+#mm .mm-cv .go{position:absolute;right:88px;bottom:84px;font-size:15px;opacity:.75;display:flex;align-items:center;gap:10px;}
+#mm .mm-cv .go kbd{font:inherit;font-weight:700;border:1px solid rgba(255,255,255,.5);border-radius:6px;padding:2px 8px;}
+#mm .mm-cv .cr{position:absolute;right:88px;bottom:44px;font-size:12px;opacity:.6;}
 #mm .mm-h{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:20px;flex:none;}
 #mm .mm-h .eb{font-size:12px;font-weight:800;color:var(--b500);letter-spacing:.08em;margin-bottom:6px;}
 #mm .mm-h h2{font-size:28px;font-weight:800;letter-spacing:-.02em;margin:0;white-space:nowrap;}
@@ -3413,8 +3423,11 @@ body.wid .cv-card{max-width:380px;padding:26px 22px 22px;background:rgba(22,25,3
    ⚠ #content 엔 transform 금지 — 안의 fixed 필터 묶음(#calFiltWrap)이 끌려간다. 투명도만 */
 #lgBg{display:none;transition:opacity .8s ease;}
 body:is(.lg,.lg-fx):not(.wid){background:transparent;}   /* 배경화면(z -1)은 body 판 아래 — 그 밑은 html 의 셸 색(나갈 때 드러나는 챠콜) */
-body:is(.lg,.lg-fx):not(.wid) #lgBg{display:block;position:fixed;inset:0;z-index:-1;pointer-events:none;background:#3A3F47 url(login-bg.jpg) center 40%/cover no-repeat;}
+body:is(.lg,.lg-fx):not(.wid) #lgBg{display:block;position:fixed;inset:0;z-index:-1;pointer-events:none;background:#3A3F47 var(--bg-img,url(login-bg.jpg)) center 40%/cover no-repeat;}   /* --bg-img: Unsplash 컬렉션 BG 사진(한 시간마다) — 없으면 기본 사진 */
 #lgBg::after{content:"";position:absolute;inset:0;background:rgba(10,14,22,.18);}
+#bgCredit{display:none;}
+body.lg:not(.wid):not(.lg-out) #bgCredit:not(:empty){display:block;position:fixed;left:20px;bottom:14px;z-index:1;font-size:11.5px;color:rgba(255,255,255,.72);text-shadow:0 1px 2px rgba(0,0,0,.35);}   /* Unsplash 규정 — 작가·출처 표기 */
+#bgCredit a,#mm .mm-cv .cr a{color:inherit;text-decoration:underline;text-underline-offset:2px;}
 body.lg-out #lgBg,body:not(.lg) #lgBg,html:not(.lgbg) #lgBg{opacity:0;}   /* 사진을 다 받기 전(html.lgbg 없음)엔 셸 색 — 받으면 서서히 */
 /* 밝은 유리 위 폼 — 칸 색 토큰만 바꾼다(위젯은 위의 어두운 값 그대로) */
 body:not(.wid) #coverGate{--cv-t1:#1B1B1F;--cv-t2:#374151;--cv-t3:#4B5563;--cv-t4:#9CA3AF;--cv-in:rgba(255,255,255,.9);--cv-in-bd:rgba(120,120,128,.24);--cv-in-bd-h:rgba(120,120,128,.42);--cv-dom:#6B7280;--cv-acc:#3E71D2;--cv-err:#D93025;--cv-ok:#1E8E3E;--cv-line:rgba(120,120,128,.18);--cv-hv:rgba(0,0,0,.04);--cv-spin:rgba(0,0,0,.12);background:transparent;}
@@ -5529,7 +5542,7 @@ body.wid.glass{--mv-flash:#8FB4FF;}
 </style>
 </head>
 <body class="lg lg-ld">   <!-- 처음부터 로그인 화면(불러오는 중) 상태 — hideCover 가 뗀다. 첫 페인트에 앱 틀이 비치지 않게 -->
-<div id="lgBg" aria-hidden="true"></div>   <!-- 로그인 배경화면(login-bg.jpg — 사용자 원본 그대로, 줄이거나 다시 압축하지 않는다) — 로그인 화면일 때만 그린다 -->
+<div id="lgBg" aria-hidden="true"></div><div id="bgCredit"></div>   <!-- 로그인 배경화면(login-bg.jpg — 사용자 원본 그대로, 줄이거나 다시 압축하지 않는다) — 로그인 화면일 때만 그린다 -->
 <!-- 배경화면 위 정적 필름 그레인 — 배경을 켤 때만 보인다 -->
 <!-- 아이콘: Lucide (ISC) — 24 그리드 · stroke 2 -->
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true" focusable="false">
@@ -6004,5 +6017,5 @@ body.wid.glass{--mv-flash:#8FB4FF;}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1128"></script>
+<script src="./app.js?v=1131"></script>
 </body></html>

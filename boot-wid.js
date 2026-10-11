@@ -23,11 +23,23 @@
   /* 1078 iOS 홈 화면 앱 — iOS 26 이 상태 표시줄 아래를 흐리게 덮는다. html.ios-pwa 면 index.html 이 앱 틀(#app)을 fixed·셸색으로 둬 WebKit 이 흐림 대신 그 색을 쓰게 한다 */
   if (navigator.standalone === true) document.documentElement.classList.add('ios-pwa');
   var q = location.search;
+  /* 배경 사진 목록 — 사용자 Unsplash 컬렉션 「BG」(V1rR9aIWwDE)의 사진 주소·작가만(사진 파일은 저장하지 않고 images.unsplash.com 을 그대로 쓴다).
+     ⚠ 키는 앱에 넣지 않는다(Unsplash 약관 — Access Key 비공개). 컬렉션은 GitHub 작업 bg-sync 가 하루 한 번 RTDB bg/l 로 옮기고 app.js(bgSub)가 읽어
+     이 브라우저(calapp.bgl)에 둔다 — 아래 목록은 그것도 없을 때(첫 방문)의 기본값. app.js(bgPick)·로그인 배경·회의 표지가 같은 목록을 쓴다 */
+  window.BG_LIST = [
+    {u:'https://images.unsplash.com/photo-1791133052453-aaa8d29a2840?ixid=NHwxMjA3fDA&ixlib=rb-4.1.0',n:'Serge Taeymans',h:'https://unsplash.com/@poseidonx'},
+    {u:'https://images.unsplash.com/photo-1778423136174-5d564de2a947?ixid=NHwxMjA3fDA&ixlib=rb-4.1.0',n:'Claudio Schwarz',h:'https://unsplash.com/@purzlbaum'},
+    {u:'https://images.unsplash.com/photo-1790892956551-2cb46f88431a?ixid=NHwxMjA3fDA&ixlib=rb-4.1.0',n:'George Cox',h:'https://unsplash.com/@georgeallancox'}
+  ];
   /* 로그인 배경화면 — head 에서 먼저 받기 시작하고, 다 받으면 html.lgbg 로 서서히 드러낸다. 위젯·로컬 모드는 쓰지 않는다 */
   if (!/[?&](w|local)=1\b/.test(q)) {
-    var im = new Image();
-    im.onload = function(){ document.documentElement.classList.add('lgbg'); };
-    im.src = 'login-bg.jpg';
+    var L = window.BG_LIST;
+    try { var cl = JSON.parse(localStorage.getItem('calapp.bgl') || 'null'); if (cl && cl.length) L = window.BG_LIST = cl; } catch (e) {}   /* 지난번 RTDB 에서 받은 목록(컬렉션 최신)이 있으면 그것 */
+    var im = new Image(), pk = L && L.length ? L[Math.floor(Date.now() / 3600000) % L.length] : null;   /* 이 시각(한 시간 단위)의 사진 — 못 받으면 기본 사진 */
+    var bu = pk && pk.u ? pk.u + (pk.u.indexOf('?') < 0 ? '?' : '&') + 'w=2560&q=80&fm=jpg&fit=crop' : '';
+    im.onload = function(){ if (bu) document.documentElement.style.setProperty('--bg-img', 'url("' + bu + '")'); document.documentElement.classList.add('lgbg'); };
+    im.onerror = function(){ if (!bu) return; bu = ''; im.src = 'login-bg.jpg'; };
+    im.src = bu || 'login-bg.jpg';
   }
   if (!/[?&]w=1\b/.test(q)) return;
   var cls = ['wid', 'gate-on'].concat(/[?&]glass=1\b/.test(q) ? ['glass'] : []);   /* gate-on = 로그인 게이트가 떠 있음(처음엔 늘 뜸 — hideCover 가 뗀다) */

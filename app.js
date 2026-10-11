@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1128';
+const APP_VER='1131';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -1918,7 +1918,7 @@ function fbInit(){
       catch(e){console.warn('[FB] appCheck',e);}
       /* 토큰 발급이 막히면(403·throttled) 콘솔에만 경고가 남는다 — 위 감시가 사용자에게 알린다 */
     }
-    FB.auth=firebase.auth();FB.db=firebase.database();
+    FB.auth=firebase.auth();FB.db=firebase.database();bgSub();
     FB.auth.onAuthStateChanged(onAuth);
   }catch(e){console.warn('[FB] init',e);showGateForm();fbMsg('서버에 연결할 수 없습니다 · 연결을 확인해 주세요');}
 }
@@ -11227,6 +11227,8 @@ const ACT={
     if(!months.length){toast('게시된 달이 없습니다');return;}
     const cur=dfRm(),r=el.getBoundingClientRect();
     openCtx(r.left,r.bottom+6,months.map(m=>({label:m+(m===ORG_RM?' · 최신':''),on:m===cur,act:()=>{if(m!==cur)mtgSetRm(m);}})),el);},
+  'mtg.cv':()=>mtgCoverOff(),
+  'bg.link':()=>{},   /* 사진 출처 링크 — 새 탭으로 열리기만(표지를 걷지 않게 클릭을 여기서 받는다) */
   'mtg.p':el=>{const p=Number(el.dataset.p)||0;if(p===MTG.p)return;const d=p>MTG.p?1:-1;MTG.p=p;mtgRender(d,true);},   /* 넘긴 쪽에서 밀려 들어온다 */
   'mtg.don':el=>{if(MTG.don===el.dataset.k)return;MTG.don=el.dataset.k;$$('#mm [data-act="mtg.don"]').forEach(b=>b.classList.toggle('act',b.dataset.k===MTG.don));mtgDonut(dfDashSites(),true);},   /* 도넛만 다시 */
   'mtg.agg':el=>{if((MTG.agg||'tr')===el.dataset.k)return;MTG.agg=el.dataset.k;
@@ -12537,6 +12539,14 @@ function mtgAg(ss){const rm=dfRm(),o={u:0,tR:0,res:0,unr:0,lt:0,pR:0,pRes:0,pu:0
     o.pR+=p.total||0;o.pRes+=p.res||0;o.pu+=p.unr||0;o.plt+=p.lt||0;o.d30+=dd[1]||0;o.d60+=dd[2]||0;});return o;}
 const mtgRgOrd=arr=>{const o=(S.org.regions||[]).map(r=>r.id);return arr.sort((a,b)=>((o.indexOf(a)+1)||999)-((o.indexOf(b)+1)||999));};   /* 공구 순서 = 조직 관리 권역 순서 */
 const mtgPct=(a,b)=>b?(a/b*100).toFixed(1):'0.0';
+/* 회의 표지 — 열 때 한 장(배경 사진 + 기준월). → · Enter · Space · 클릭이면 걷고 01 이 들어온다 */
+function mtgCover(){const m=$('#mm');if(!m)return;
+  const rm=dfRm(),[y,mo]=String(rm).split('-').map(Number),sites=dfDashSites(),a=mtgAg(sites),end=((DF.kpi[rm+'/'+(sites[0]||{}).id]||{}).rmEnd||dfEnds(rm).rmEnd||rm).replace(/-/g,'. ')+'.';
+  m.insertAdjacentHTML('beforeend','<div class="mm-cv" data-act="mtg.cv"><div class="tp"><span>하자처리 현황</span><span>월간회의</span></div><div class="eb">MONTHLY REVIEW</div><h1>'+y+'년 '+mo+'월<br>하자처리 현황</h1><div class="mt"><span>'+end+' 기준</span><span>관리현장 <b>'+sites.length+'</b>개</span><span>관리세대 <b>'+mtgN(a.u)+'</b>세대</span></div><div class="go"><kbd>→</kbd> 또는 클릭하여 시작</div><div class="cr">'+bgCreditHTML(BG_CUR?bgPick():null)+'</div></div>');const c=m.lastElementChild;
+  if(mvOK())c.animate([{opacity:0},{opacity:1}],{duration:900,easing:MV_EASE});}
+function mtgCoverOff(){const c=$('#mm .mm-cv');if(!c||c._out)return false;c._out=1;mtgRender(0,true);const cv=$('#mm .mm-cv');(cv||c).remove();   /* 다시 그리며 01 이 들어오는 모션 */
+  const n=document.createElement('div');n.className='mm-cv';n.style.pointerEvents='none';n.innerHTML=c.innerHTML;$('#mm').appendChild(n);
+  const end=()=>n.remove();if(mvOK())n.animate([{opacity:1},{opacity:0,transform:'scale(1.02)'}],{duration:MV_SLOW+140,easing:MV_EASE,fill:'forwards'}).finished.then(end,end);else end();return true;}
 async function mtgOpen(){
   if(S.view!=='defect'||isMob()||MTG.ld)return;
   {const o=$('#mm');if(o&&!o._out)return;}   /* 이미 열림 */
@@ -12547,7 +12557,7 @@ async function mtgOpen(){
   {const o=$('#mm');if(o&&o._out)o.remove();}   /* 닫히는 중인 것은 바로 걷는다(닫힘 끝에 새 창이 같이 지워지지 않게) */
   const m=document.createElement('div');m.id='mm';m.setAttribute('role','dialog');m.setAttribute('aria-label','회의 모드');m.tabIndex=-1;document.body.appendChild(m);
   MTG.ret=document.activeElement;
-  document.body.classList.add('mtg-on');mtgRender(0,true);slSync();m.focus({preventScroll:true});
+  document.body.classList.add('mtg-on');mtgRender(0,false);mtgCover();slSync();m.focus({preventScroll:true});
   if(mvOK())m.animate([{opacity:0,transform:'scale(.985)'},{opacity:1,transform:'none'}],{duration:MV_MID,easing:MV_EASE});
 }
 async function mtgLoad(){
@@ -12929,6 +12939,7 @@ document.addEventListener('mousedown',e=>layerOutside(e,'down'),true);
 document.addEventListener('click',e=>layerOutside(e,'cap'),true);
 document.addEventListener('keydown',e=>{
   /* 1095 회의 모드 — ←/→ 로 화면 넘김(창이 떠 있거나 입력 중이면 아님) */
+  if($('#mm .mm-cv:not([style])')&&!$('#mm')._out&&['ArrowRight','Enter',' ','PageDown','ArrowDown'].includes(e.key)){e.preventDefault();mtgCoverOff();return;}   /* 표지가 떠 있으면 넘기는 키는 표지만 걷는다 */
   if((e.key==='ArrowLeft'||e.key==='ArrowRight')&&$('#mm')&&!$('#mm')._out&&!$('#mo').classList.contains('open')&&!document.querySelector('.ctxmenu:not(.out)')&&!(e.target.closest&&e.target.closest('input,textarea,select,[contenteditable]'))){
     const p=Math.max(0,Math.min(MTG_P.length-1,MTG.p+(e.key==='ArrowRight'?1:-1)));if(p!==MTG.p){e.preventDefault();ACT['mtg.p']({dataset:{p}});slSync();}return;}
   /* 03 — 위아래 방향키로 현장 하나씩 */
@@ -13086,6 +13097,26 @@ function dfLinkOpen(){
   try{history.replaceState(null,'',location.pathname+location.search.replace(/([?&])df=[\w-]+&?/,'$1').replace(/[?&]$/,''));}catch(e){}
 }
 const WIDGET=/[?&]w=1\b/.test(location.search);
+/* ── 배경 사진(로그인 · 회의 표지) — 목록은 boot-wid.js 의 window.BG_LIST(사용자 Unsplash 컬렉션 「BG」 주소·작가). 한 시간마다 다음 사진(시각 ÷ 1시간 → 순번, 모두 같은 사진).
+   사진 파일은 저장하지 않고 Unsplash 주소를 그대로 쓴다. 안 열리면 기본 login-bg.jpg. 규정: 작가·Unsplash 표기(#bgCredit · 표지 .cr)
+   목록 우선순위: RTDB bg/l(컬렉션 자동 반영, bgSub) → 지난번 받은 목록(localStorage calapp.bgl) → boot-wid.js 에 적힌 목록 */
+const BG_UTM='?utm_source=calapp&utm_medium=referral';
+const bgUrl=p=>p.u+(p.u.includes('?')?'&':'?')+'w=2560&q=80&fm=jpg&fit=crop';
+/* RTDB bg/l(GitHub 작업 bg-sync 가 하루 한 번 컬렉션에서 채움) — 로그인 전에도 읽힌다. 받으면 이 브라우저에 목록을 두어 다음 첫 화면(boot-wid.js)부터 그 목록 */
+function bgSub(){if(WIDGET||!FB.db)return;try{FB.db.ref('bg/l').on('value',sn=>{const l=sn.val();if(!Array.isArray(l)||!l.length)return;
+  window.BG_LIST=l.filter(x=>x&&x.u);try{localStorage.setItem('calapp.bgl',JSON.stringify(window.BG_LIST));}catch(e){}bgApply();},()=>{});}catch(e){}}
+function bgPick(){const L=window.BG_LIST;return Array.isArray(L)&&L.length?L[Math.floor(Date.now()/3600000)%L.length]:null;}
+function bgCreditHTML(p){return p?'Photo by <a data-act="bg.link" href="'+esc(p.h+BG_UTM)+'" target="_blank" rel="noopener">'+esc(p.n)+'</a> on <a data-act="bg.link" href="https://unsplash.com/'+BG_UTM+'" target="_blank" rel="noopener">Unsplash</a>':'';}
+let BG_CUR='';
+function bgApply(){
+  if(WIDGET)return;const p=bgPick(),k=p?p.u:'';
+  if(k===BG_CUR)return;
+  const set=q=>{BG_CUR=q?q.u:'';const r=document.documentElement;if(q)r.style.setProperty('--bg-img','url("'+bgUrl(q)+'")');else r.style.removeProperty('--bg-img');
+    const c=$('#bgCredit');if(c)c.innerHTML=bgCreditHTML(q);const cc=$('#mm .mm-cv .cr');if(cc)cc.innerHTML=bgCreditHTML(q);};
+  if(!p){set(null);return;}
+  const im=new Image();im.onload=()=>set(p);im.onerror=()=>{if(!BG_CUR)set(null);};im.src=bgUrl(p);   /* 다 받은 뒤 갈아 끼운다 — 안 열리면 지금 것 유지 */
+}
+if(!WIDGET){bgApply();setInterval(bgApply,60000);}   /* 1분마다 — 정각이 지나면 다음 사진 */
 const GLASS=/[?&]glass=1\b/.test(location.search);   /* 위젯 유리(반투명) 모드 — 배경을 비운다 */
 /* 위젯 설정 — 진하기·글자 크기·오늘 목록. 위젯 창(PC)별 로컬 저장 */
 const WID_KEY='calapp.wid';

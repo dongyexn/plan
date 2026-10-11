@@ -1,5 +1,17 @@
 # 변경 이력 (읽기 전용) — 현재 상태는 HANDOFF.md
 
+## 마지막 기록 기준 v1131
+### 1131차 BG 컬렉션 자동 반영
+**1131차(사용자: 컬렉션에 넣으면 자동 반영 — 하루 한 번이면 됨)** — GitHub 작업 bg-sync(.github/workflows/bg-sync.yml, 매일 05:00 KST + 수동 Run workflow) — scripts/bg-sync.mjs 가 Unsplash API 로 컬렉션 「BG」(V1rR9aIWwDE, 공개)의 가로 사진을 읽어 RTDB bg {l:[{u,n,h}],at} 에 쓴다(바뀌었을 때만). 키는 리포 Secrets UNSPLASH_ACCESS_KEY(앱에 없음), Firebase 는 d60 과 같은 FIREBASE_SERVICE_ACCOUNT. 규칙 bg: .read true(로그인 전 화면) · .write false(앱에서 아무도 못 씀 — 서비스 계정만) + rules-auth AUTH-21a~c. 앱: FB 초기화 직후 bgSub — bg/l 을 실시간으로 받아 window.BG_LIST 교체·localStorage calapp.bgl 저장·bgApply. boot-wid.js 는 calapp.bgl → 적어 둔 기본 목록 순. 1130 의 「BG 갱신」 수작업은 이제 필요 없음(작업이 안 돌 때의 기본값으로만 남김). ⚠ 사용자가 리포 Secrets 에 UNSPLASH_ACCESS_KEY 를 넣어야 작업이 돈다(이 세션의 GitHub 프록시는 Actions Secrets 경로를 막음). 검증: bg-sync DRY(fetch 가짜 — 가로 1·세로 1 → 가로만 1), 앱 bgSub 가짜 FB.db 로 목록 교체·저장·배경·표기 반영, 새로고침 때 저장 목록 사용, rules-auth 21a~c. 실제 Unsplash·RTDB 호출은 이 환경에서 막혀 미검증.
+
+## 마지막 기록 기준 v1130
+### 1130차 배경 사진 = 컬렉션 BG
+**1130차(사용자: 배경 사진을 내 Unsplash 컬렉션 「BG」에서)** — 1129 의 API 키 방식(UNSPLASH_KEY·bgRefresh·localStorage calapp.bg·connect-src api.unsplash.com) 삭제 — Unsplash 약관상 Access Key 는 비공개여야 해서 앱에 넣지 않는다. 대신 사용자 컬렉션 「BG」(V1rR9aIWwDE, 지금 3장)의 사진 주소·작가 목록을 boot-wid.js 의 window.BG_LIST 에 적고, 시각 ÷ 1시간으로 고른 사진을 로그인 배경·회의 표지에 쓴다(사진 파일 저장 없음 — images.unsplash.com 직접, CSP img-src 만). 작가·Unsplash 표기 유지. 【BG 갱신】 컬렉션에 사진을 넣으면: 사용자 브라우저에서 unsplash.com 을 연 채 fetch('/napi/collections/V1rR9aIWwDE/photos?per_page=30&page=N') 로 id·urls.raw·user.name·user.username 을 받아 BG_LIST 를 다시 쓴다(가로 사진만). Unsplash 개발자 앱 「calapp」(Demo)은 사용자 계정에 만들어 두었으나 지금은 쓰지 않음. 검증: 사진 요청을 가짜로 바꿔 로그인 --bg-img·표기(Claudio Schwarz)·새로고침 유지·표지 표기 확인, API 요청 0. 사용자 브라우저에서 2560px 사진 0.85MB·약 1초에 열림. pageerror 0.
+
+## 마지막 기록 기준 v1129
+### 1129차 회의 표지 · Unsplash 배경
+**1129차(사용자: 회의 표지 A · 배경 사진을 Unsplash 자연 주제에서 한 시간마다)** — 회의모드를 열면 표지 한 장(mtgCover — 배경 사진 위 「2026년 9월 하자처리 현황」·기준일·관리현장·관리세대, → · Enter · Space · ↓ · 클릭으로 걷고 01 이 들어옴). 배경 사진(로그인 #lgBg · 회의 표지): UNSPLASH_KEY 가 있으면 Unsplash 「nature」 주제 가로 사진 30장 목록을 하루 한 번 받아 localStorage(calapp.bg)에 목록만 두고(사진 파일 저장 없음, 주소 직접 사용 — API 규정), 시각 ÷ 1시간으로 고른 사진을 --bg-img 로. 1분마다 시각·날짜 확인. 키 없음·받기 실패·사진 안 열림이면 login-bg.jpg. boot-wid.js 가 캐시 목록으로 첫 화면부터 그 사진을 먼저 받는다. 작가·Unsplash 표기(#bgCredit 로그인 왼쪽 아래 · 표지 오른쪽 아래, utm 포함) 필수. CSP img-src images.unsplash.com · connect-src api.unsplash.com 추가. ⚠ UNSPLASH_KEY 는 아직 비어 있음 — 사용자 Unsplash 개발자 앱의 Access Key 를 넣어야 동작. 테스트 고침: widget-layers 의 「편집 중 미룬 실시간 반영」 단계가 앞 단계에서 넘긴 달에 머물러, 달 그리드 밖 날짜(2026-10-11)에 오늘 칸이 없어 깨지던 것 — 그 단계 앞에서 cal.today. 검증: Unsplash 응답·사진을 가짜로 바꿔(Playwright route) 키 있음 — API 2회(topic·random) 뒤 목록 저장, --bg-img·표기 반영, 새로고침 때 API 0회로 캐시 사진. 키 없음 — 기본 사진·표기 없음. 표지 표시 → → 키로 걷힘 · 01 진입, pageerror 0.
+
 ## 마지막 기록 기준 v1128
 ### 1128차 03 열 폭·재점검
 **1128차(사용자: 03 처리현황 공종·시공업체 열 넓힘 + 버그 재점검)** — 03 처리현황 줄 열 폭 — 공종 minmax(64,88)→(72,104), 시공업체 (60,96)→(72,120), 막대 칸 최소 40→72(1280 에서 막대가 43px 로 눌리던 것). 재점검 중 고침: ① 대시보드 히트맵 줄 등장이 차트 모듈을 받은 직후 다시 그릴 때 두 번 나던 것 — 1.5초 안 재호출은 생략(DF._hmAt) ② 추이 차트 세로선은 마우스 환경에서만(터치는 mouseleave 가 없어 선이 남음). 검증: 1600·1280 캡처, 히트맵 재호출 1.7초 간격 6→(0.2초)0→(1.7초)6, 회의 01~05·03 묶음 넘기기/순환/업체별/크기 변경·대시보드 세로선 pageerror 0.

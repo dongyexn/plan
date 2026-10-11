@@ -90,6 +90,12 @@
 
 
 
+    // 배경 사진 목록(1131) — 사용자 Unsplash 컬렉션 BG 의 사진 주소·작가뿐. 로그인 전 화면도 읽는다.
+    // 쓰기는 GitHub 작업(bg-sync, 서비스 계정 — 규칙을 거치지 않음)만 — 앱에서는 아무도 못 쓴다
+    "bg": {
+      ".read": true,
+      ".write": false
+    },
     "siteConfig": {
       ".read": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
       "$sid": {
