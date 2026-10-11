@@ -1,10 +1,10 @@
-# 배경 사진 목록 동기화 — 매일 05:00 KST(20:00 UTC). Unsplash 컬렉션 「BG」 → RTDB bg(바뀌었을 때만 쓴다).
+# 배경 사진 목록 동기화 — 매시 7분(정각은 GitHub 예약 작업이 몰려 늦어진다). Unsplash 컬렉션 「BG」 → RTDB bg(바뀌었을 때만 쓴다).
 # 준비: 리포 Settings → Secrets and variables → Actions 에 UNSPLASH_ACCESS_KEY(Unsplash 개발자 앱 calapp 의 Access Key).
 #       FIREBASE_SERVICE_ACCOUNT 는 d60-photo-clean 과 같은 것을 쓴다. 바로 반영하려면 Actions 탭에서 Run workflow.
 name: bg-sync
 on:
   schedule:
-    - cron: '0 20 * * *'
+    - cron: '7 * * * *'
   workflow_dispatch:
 jobs:
   sync:
