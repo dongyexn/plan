@@ -252,5 +252,9 @@ t('AUTH-20a', 'editor → 타인 계정 이름', true, tryWrite('users/U2/name',
 t('AUTH-20b', 'viewer → 타인 계정 이름', false, tryWrite('users/U2/name', A('U1'), TREE, '변조'));
 t('AUTH-20c', 'editor → 타인 명부 이름', true, tryWrite('calapp/people/U2', A('E1'), TREE, { ...P('U2'), name: '개명' }));
 
+/* AUTH-21 배경 사진 목록 — 누구나 읽기(로그인 전) · 앱에서는 아무도 쓰기 못 함 */
+t('AUTH-21a', '비로그인 → bg 읽기', true, tryRead('bg', null, TREE));
+t('AUTH-21b', '비로그인 → bg 쓰기', false, tryWrite('bg', null, TREE, { l: [] }));
+t('AUTH-21c', 'editor → bg 쓰기', false, tryWrite('bg', A('E1'), TREE, { l: [] }));
 console.log(fail ? `\nFAIL ${fail}` : '\nRULES-AUTH ALL PASS');
 process.exit(fail ? 1 : 0);
