@@ -1,45 +1,27 @@
 # H · 주요업무현황
 
-> 배포 기준 버전은 `app.js` 의 `APP_VER`(= `index.html` 의 `app.js?v=`) · 주소 `https://dongyexn.github.io/plan/` · 회사 메일(`@hdec.co.kr`)로 로그인
-> 사용 안내 **[docs/manual.md](docs/manual.md)** · 시스템·배포 **[docs/dev.md](docs/dev.md)** · 코드 구조·함정 **HANDOFF.md**, 회차 이력은 **HANDOFF-log.md**.
+팀 업무 일정 · 업무 현황 · 하자처리 현황 · D+60 점검을 한곳에서 공유하는 웹앱. 브라우저 · 바탕화면 위젯 · 휴대전화(홈 화면에 추가)에서 같은 화면.
 
-팀 업무 일정·담당자별 현황·하자처리 현황·현장 점검을 한 앱에서 공유한다. 브라우저·바탕화면 위젯·휴대전화(홈 화면에 추가) 어디서나 같다.
-
-## 무엇이 있나
-
-| 메뉴 | 한 줄 |
-|---|---|
-| 캘린더 · 업무 현황 | 팀 일정과 담당자별 업무. 완료·보류·반복. |
-| D+60 점검 | 준공 두 달 뒤 점검. 폰으로 찍고 체크, 데스크톱에서 보고 엑셀·사진대지로 낸다. 팀 공유 기록(서버). |
-| 사진대지 · 견적 검토 · 재하자 추적 · 생산성 검토 | 이 창 메모리에서만 도는 도구 — 올린 파일은 서버로 가지 않는다. |
-| 하자처리 현황 · 민원 현황 | 현장별 하자 접수·처리 대시보드. |
-| 조직 관리 · 설정 | 팀·권역·현장·계정, 백업, D+60 서식 관리(관리자). |
-
-## D+60 점검 — 꼭 알 것
-
-- **폰 첫 화면**은 년·달 카드(달을 누르면 그 달만) + 「전체 · 예정 · 진행 중 · 완료」 탭. 완료는 항목을 다 누른 게 아니라 **상단바 「점검 완료」를 누른 공종**이다(미확인이 남아도 된다).
-- **사진**은 항목당 4장, 앱에는 800px 사본만 남는다. 안드로이드는 찍는 즉시 원본이 갤러리로, 아이폰은 찍고 판정(양호·지적·N/A)을 누르면 공유 시트가 떠서 「이미지 저장」 한 번(판정을 안 누르면 위 「원본 n」에서). 사진은 엑셀·점검표에 안 들어가고 **「사진대지」 단추**로 꺼낸다. 점검일 1년 지난 현장 사진은 자동으로 지운다.
-- **서식**(공간·점검항목)은 데스크톱에서만 고친다. 현장에 없는 공간은 점검 화면에서 그 현장만 **숨기기**.
-- 서식을 갈아엎을 때: 설정 → D+60 점검 서식 → 내보내기 → 초기화 → 가져오기(관리자).
+- 주소: https://dongyexn.github.io/plan/ (회사 메일 로그인)
+- 사용 안내: 앱 머리 줄 「?」 — 장마다 화면 그림으로 안내. 글은 [docs/manual.md](docs/manual.md), 그림은 `node scripts/guide-shots.mjs` 로 다시 만든다
+- 시스템 · Firebase · 배포: [docs/dev.md](docs/dev.md)
+- 코드 구조 · 함정: [HANDOFF.md](HANDOFF.md) · 회차 이력: [HANDOFF-log.md](HANDOFF-log.md)
 
 ## 배포
 
-버전 세 곳을 같은 숫자로: zip 이름 `calapp-vNNN` · `index.html` 의 `app.js?v=NNN` · `app.js` 의 `APP_VER`. push 하면 GitHub Pages 가 배포한다.
-
 ```bash
 npm ci && npx playwright install chromium
-npm test        # static-audit FAIL 0 · WARN 0 → 규칙 감사 → 브라우저 회귀. 통과해야 배포
+npm test    # 전부 PASS 여야 배포
 ```
 
-**`database.rules.json` 을 바꿨으면 push 전에 Firebase 콘솔 → Realtime Database → 규칙에 먼저 붙여넣는다.** 안 하면 저장이 거부된다.
+1. 버전 세 곳을 같은 숫자로: `app.js` 의 `APP_VER` · `index.html` 의 `app.js?v=` · zip 이름 `calapp-vNNNN`
+2. push 하면 GitHub Pages 가 배포
+3. `database.rules.json` 을 바꿨으면 **push 전에** Firebase 콘솔 → Realtime Database → 규칙에 먼저 게시(안 하면 저장 거부)
 
-리포 Secrets: `LIVE_E2E_*`(실서버 E2E, 선택) · `FIREBASE_SERVICE_ACCOUNT`(D+60 사진 자동 정리 — Firebase 콘솔 → 서비스 계정 → 새 비공개 키 JSON 전체).
+리포 Secrets
 
-## 문제가 생기면
-
-| 증상 | 조치 |
+| 이름 | 용도 |
 |---|---|
-| 저장이 안 됨 | 계정 권한(관리자) 또는 Firebase 규칙 반영 확인 |
-| 화면이 옛 모습 | `Ctrl+Shift+R`, 폰은 홈 화면 아이콘을 지웠다가 다시 추가 |
-| 위젯이 안 뜸 | `문서\H 주요업무현황\HPlanWidgetLite.exe` 실행 |
-| 원인을 알릴 때 | 설정 → 백업·기록 → **복사** → 관리자에게 |
+| `FIREBASE_SERVICE_ACCOUNT` | D+60 사진 자동 정리 · 배경화면 동기화(bg-sync) |
+| `UNSPLASH_ACCESS_KEY` | 배경화면 동기화 — Unsplash 컬렉션 「BG」를 매시간 읽음 |
+| `LIVE_E2E_*` | 실서버 E2E(선택) |

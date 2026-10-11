@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1143';
+const APP_VER='1148';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -27,12 +27,62 @@ function loadMarked(){
   ]).catch(e=>{_mdPromise=null;throw e;});
   return _mdPromise;
 }
+/* 사용 안내 그림 단계 — docs/guide/guide.json(scripts/guide-shots.mjs 가 앱 화면을 찍어 만든다).
+   장 이름이 같으면 글 대신 그림 단계: 그림 위 번호 점 ↔ 아래 설명 줄이 서로 강조(비춤), ‹ › · ←→ · 옆으로 밀기로 단계 이동 */
+let GUIDE=null;
+async function guideLoad(){if(GUIDE)return GUIDE;try{const r=await fetch('docs/guide/guide.json',{cache:'no-cache'});if(r.ok)GUIDE=await r.json();}catch(e){}return GUIDE;}
+function guideSecHTML(steps){
+  const cl=(v,a,b)=>Math.max(a,Math.min(b,v));
+  /* 번호 점 자리 — 대상 오른쪽 위가 기본, 앞 점과 겹치면 왼쪽 위·위 가운데·오른쪽 가운데… 순으로 비킨다(그림 px 로 계산) */
+  const place=st=>{const E=Math.min(700,360*st.w/st.h),k=st.w/E,R=28*k,o=14*k,m=12*k,out=[];   /* k = 그림 px / 화면 px — 간격은 화면에서 28px */
+    const B=st.spots.map(p=>{const x=p.x*st.w/100,y=p.y*st.h/100;return [x-10*k,y-10*k,x+p.w*st.w/100+10*k,y+p.h*st.h/100+10*k];});   /* 점 반지름만큼 넓혀 잰다 */
+    st.spots.forEach((p,i)=>{const x=p.x*st.w/100,y=p.y*st.h/100,w=p.w*st.w/100,h=p.h*st.h/100;
+    const sm=h<44*k&&w<st.w*.5;   /* 작은 단추는 점이 가리지 않게 바깥(아래·위·왼쪽·오른쪽)부터 — 옆은 이웃 단추 글자를 덮기 쉽다 */
+    const c=(sm?[[x+w/2,y+h+o],[x+w/2,y-o],[x-o,y+h/2],[x+w+o,y+h/2]]:[]).concat([[x,y],[x+w,y],[x-o,y+h/2],[x+w+o,y+h/2],[x+w/2,y+h+o],[x+w/2,y-o],[x,y+h],[x+w,y+h]]).map(([u,v])=>[cl(u,m,st.w-m),cl(v,m,st.h-m)]);
+    const inB=(u,v,j)=>{const b=B[j];return u>b[0]&&u<b[2]&&v>b[1]&&v<b[3];};   /* 점이 다른 칸(작으면 제 칸도)의 글자를 덮지 않게 */
+    const okP=([u,v])=>out.every(q=>Math.hypot(q[0]-u,q[1]-v)>=R)&&B.every((b,j)=>(j===i&&!sm)||((b[2]-b[0])*(b[3]-b[1])>st.w*st.h*.04&&j!==i)||!inB(u,v,j));   /* 넓은 칸 위는 덮어도 된다 — 작은 단추 글자만 지킨다 */
+    out.push(c.find(okP)||c.find(([u,v])=>out.every(q=>Math.hypot(q[0]-u,q[1]-v)>=R))||c[0]);});
+    return out.map(([u,v])=>[Math.round(u/st.w*1000)/10,Math.round(v/st.h*1000)/10]);};
+  const n=steps.length;
+  return '<div class="gd">'+steps.map((st,i)=>{const pts=place(st),wide=st.w/st.h>1.9;
+    return '<div class="gd-st'+(i?'':' act')+(wide?' gd-wide':'')+'" data-i="'+i+'">'
+    +'<div class="gd-h"><b>'+esc(st.t)+'</b>'+(n>1?'<span>'+(i+1)+' / '+n+'</span>':'')+'</div><div class="gd-b">'
+    +'<div class="gd-fig" style="--gw:'+st.w+';--gh:'+st.h+'"><div class="gd-im"><img src="docs/guide/'+esc(st.img)+'" alt="'+esc(st.t)+'" draggable="false">'
+    +st.spots.map((p,k)=>'<i class="gd-box'+(k?'':' on')+'" data-k="'+k+'" style="left:'+p.x+'%;top:'+p.y+'%;width:'+p.w+'%;height:'+p.h+'%"></i>').join('')+'</div>'
+    +pts.map((q,k)=>'<button class="gd-dot'+(k?'':' on')+'" data-act="gd.spot" data-k="'+k+'" aria-label="'+(k+1)+'" style="left:'+q[0]+'%;top:'+q[1]+'%">'+(k+1)+'</button>').join('')
+    +'</div><ol class="gd-l">'+st.spots.map((p,k)=>'<li class="'+(k?'':'on')+'" data-act="gd.spot" data-k="'+k+'"><span>'+(k+1)+'</span>'+esc(p.t)+'</li>').join('')+'</ol></div></div>';}).join('')
+    +'<div class="gd-nav"><button class="gd-pv" data-act="gd.go" data-d="-1" aria-label="이전" disabled><svg class="icn" aria-hidden="true"><use href="#i-chevl"></use></svg></button><span class="gd-pg">'+steps.map((_,i)=>'<i'+(i?'':' class="on"')+'></i>').join('')+'</span><button class="gd-nx" data-act="gd.go" data-d="1" aria-label="다음"><svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg></button></div></div>';
+}
+function guideSpot(st,k){
+  if(!st)return;st.querySelectorAll('[data-k]').forEach(e=>e.classList.toggle('on',Number(e.dataset.k)===k));guideNav(st.closest('.gd'));
+}
+/* ‹ › 는 번호를 하나씩 — 단계 끝에서 다음 단계 첫 번호로(뒤로 가면 앞 단계 끝 번호로) */
+function guideGo(g,d){
+  if(!g)return;const sts=[...g.querySelectorAll('.gd-st')],i=sts.findIndex(x=>x.classList.contains('act')),st=sts[i];
+  const nk=st.querySelectorAll('.gd-l li').length,k=Number((st.querySelector('.gd-l li.on')||{dataset:{}}).dataset.k)||0;
+  if(k+d>=0&&k+d<nk){guideSpot(st,k+d);return;}
+  const j=i+d;if(j<0||j>=sts.length)return;
+  sts.forEach((x,q)=>x.classList.toggle('act',q===j));g.querySelectorAll('.gd-pg>i').forEach((x,q)=>x.classList.toggle('on',q===j));
+  guideSpot(sts[j],d>0?0:sts[j].querySelectorAll('.gd-l li').length-1);const sc=g.closest('.rd-body');if(sc)sc.scrollTop=0;
+}
+function guideNav(g){
+  if(!g)return;const sts=[...g.querySelectorAll('.gd-st')],i=sts.findIndex(x=>x.classList.contains('act')),st=sts[i];if(!st)return;
+  const nk=st.querySelectorAll('.gd-l li').length,k=Number((st.querySelector('.gd-l li.on')||{dataset:{}}).dataset.k)||0;
+  const pv=g.querySelector('.gd-pv'),nx=g.querySelector('.gd-nx');if(pv)pv.disabled=i===0&&k===0;if(nx)nx.disabled=i===sts.length-1&&k===nk-1;
+}
+/* 마우스는 올리기만 해도 비춘다 · ←→ 로 단계 · 손가락은 그림을 옆으로 밀어 단계 */
+if(window.matchMedia&&matchMedia('(hover:hover) and (pointer:fine)').matches)document.addEventListener('mouseover',e=>{const t=e.target.closest&&e.target.closest('.gd [data-act="gd.spot"]');if(t)guideSpot(t.closest('.gd-st'),Number(t.dataset.k)||0);});
+document.addEventListener('keydown',e=>{if(e.key!=='ArrowLeft'&&e.key!=='ArrowRight')return;if(e.altKey||e.ctrlKey||e.metaKey||e.shiftKey)return;
+  const mo=$('#mo'),mb=$('#mb');if(!mo||!mo.classList.contains('open')||!mb||!mb.classList.contains('rdw'))return;   /* 닫은 뒤에도 #mbody 가 남는다 — 안내 창이 열려 있을 때만 */
+  const g=document.querySelector('#mbody .rd-sec.act .gd');if(!g||(e.target.closest&&e.target.closest('input,textarea,select,[contenteditable]')))return;e.preventDefault();guideGo(g,e.key==='ArrowRight'?1:-1);});
+{let gx=null;document.addEventListener('touchstart',e=>{const f=e.target.closest&&e.target.closest('.gd-fig');gx=f?{x:e.touches[0].clientX,y:e.touches[0].clientY,g:f.closest('.gd')}:null;},{passive:true});
+ document.addEventListener('touchend',e=>{if(!gx)return;const t=e.changedTouches[0],dx=t.clientX-gx.x,dy=t.clientY-gx.y;if(Math.abs(dx)>40&&Math.abs(dx)>Math.abs(dy)*1.5)guideGo(gx.g,dx<0?1:-1);gx=null;},{passive:true});}
 async function openReadme(){
   try{
     const res=await fetch('docs/manual.md',{cache:'no-cache'});   /* 사용 안내 전문은 docs/manual.md */
     if(!res.ok)throw new Error('HTTP '+res.status);
     const md=await res.text();
-    await loadMarked();
+    await Promise.all([loadMarked(),guideLoad()]);
     const src=document.createElement('div');
     src.innerHTML=DOMPurify.sanitize(marked.parse(md,{breaks:true}));   /* 원문의 줄바꿈을 그대로 살린다 */
     src.querySelectorAll('img[src^="img/"]').forEach(im=>{im.setAttribute('src','docs/'+im.getAttribute('src'));im.style.maxWidth='100%';im.style.height='auto';});   /* 매뉴얼 그림은 docs/img — 문서 기준 상대 경로를 앱 기준으로 */
@@ -47,8 +97,11 @@ async function openReadme(){
     const nav=document.createElement('nav');nav.className='rd-nav';nav.setAttribute('aria-label','사용 안내 목차');
     nav.innerHTML=secs.map((x,i)=>'<button class="rd-navi'+(i===0?' act':'')+'" data-act="readme.tab" data-i="'+i+'">'+esc(x.t)+'</button>').join('');
     const body=document.createElement('div');body.className='rd-body md-doc';
+    const gk=isMob()?'m':'d';
     secs.forEach((x,i)=>{
       const d=document.createElement('div');d.className='rd-sec'+(i===0?' act':'');
+      const gs=GUIDE&&GUIDE.sec&&GUIDE.sec[x.t]&&GUIDE.sec[x.t][gk];
+      if(gs&&gs.length){d.innerHTML=guideSecHTML(gs);d.classList.add('gd-sec');body.appendChild(d);return;}   /* 그림 단계가 있는 장은 글 대신 그림 */
       x.nodes.forEach(n=>d.appendChild(n));
       d.querySelectorAll('table').forEach(tb=>{      /* 좁은 화면에서 표만 가로 스크롤 */
         const w=document.createElement('div');w.className='md-tw';
@@ -60,6 +113,7 @@ async function openReadme(){
     openModal('사용 안내','<div class="md-scroll"></div>','');
     const mb=$('#mb');if(mb)mb.classList.add('rdw');
     $('#mbody').firstChild.appendChild(wrap);
+    wrap.querySelectorAll('.gd').forEach(guideNav);   /* 번호·단계가 하나뿐이면 「다음」도 처음부터 꺼 둔다 */
   }catch(e){
     console.warn('[README] 열기 실패',e);
     /* 문서·라이브러리를 못 읽으면(단일 파일 빌드 등) 다시 눌러 보라고만 안내한다 */
@@ -10258,8 +10312,13 @@ function openCtx(x,y,items,anchor,o){
     q.addEventListener('input',()=>{const t=q.value.trim().toLowerCase();let hd=null,any=false;
       el.querySelectorAll('.ctx-hd,.ctx-it').forEach(n=>{if(n.classList.contains('ctx-hd')){if(hd)hd.hidden=!any;hd=n;any=false;return;}
         const it=list[Number(n.dataset.ci)],m=!t||(it&&it.q&&it.q.toLowerCase().includes(t));n.hidden=!m||(!!t&&!(it&&it.q));if(!n.hidden)any=true;});
-      if(hd)hd.hidden=!any;fadeOne(el);});
-    q.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();const b=el.querySelector('.ctx-it:not([hidden]):not(.dim)')||el.querySelector('.ctx-it:not([hidden])');if(b)b.click();}});
+      if(hd)hd.hidden=!any;
+      const none=!el.querySelector('.ctx-it:not([hidden])');el.classList.toggle('nores',none);   /* 찾은 것이 없으면 한 줄로 알린다 */
+      let nn=el.querySelector('.ctx-none');if(none&&!nn){nn=document.createElement('div');nn.className='ctx-none';nn.textContent='찾는 현장이 없습니다';el.appendChild(nn);}if(nn)nn.hidden=!none;
+      fadeOne(el);});
+    q.addEventListener('keydown',e=>{if(e.key!=='Enter'||e.isComposing)return;e.preventDefault();
+      if(!q.value.trim()){const a=o.dd;closeCtx();if(a&&a.isConnected)a.focus({preventScroll:true});return;}   /* 빈 칸 Enter 는 값을 바꾸지 않고 닫는다 */
+      const b=el.querySelector('.ctx-it:not([hidden]):not(.dim)')||el.querySelector('.ctx-it:not([hidden])');if(b)b.click();});
     fadeOne(el);   /* 열자마자 아래 흐림 — 메뉴는 #app 밖이라 관찰자가 못 잰다 */
     setTimeout(()=>{if(_ctxEl===el&&!o.kb)q.focus({preventScroll:true});},0);}
   el.addEventListener('contextmenu',e=>e.preventDefault());
@@ -10278,6 +10337,7 @@ function openCtx(x,y,items,anchor,o){
     if(e.key==='Escape'){e.preventDefault();e.stopPropagation();const a=o.dd;closeCtx();if(a&&a.isConnected)a.focus({preventScroll:true});return;}
     if(e.key==='Tab'){closeCtx();return;}
     if(!/^(ArrowDown|ArrowUp|Home|End)$/.test(e.key))return;
+    if((e.key==='Home'||e.key==='End')&&e.target.closest&&e.target.closest('.ctx-q'))return;   /* 찾기 칸에선 글자 커서 이동 */
     const bs=[...el.querySelectorAll('.ctx-it:not([disabled]):not([hidden])')];if(!bs.length)return;
     e.preventDefault();e.stopPropagation();
     const i=bs.indexOf(document.activeElement),on=bs.findIndex(b=>b.classList.contains('on'));
@@ -11736,6 +11796,8 @@ const ACT={
     $$('#mbody .rd-sec').forEach((d,k)=>d.classList.toggle('act',k===i));
     const sc=$('#mbody .md-scroll');if(sc)sc.scrollTop=0;
   },
+  'gd.spot':el=>guideSpot(el.closest('.gd-st'),Number(el.dataset.k)||0),
+  'gd.go':el=>guideGo(el.closest('.gd'),Number(el.dataset.d)||0),
   'set.copyErr':()=>{
     const txt='버전 v'+APP_VER+' · '+navigator.userAgent+'\n'+(ERRLOG.length?ERRLOG.join('\n'):'기록된 오류 없음');
     copyText(txt);   /* copyText 로(대체 경로도 같이 탄다) */
@@ -13126,7 +13188,7 @@ const WIDGET=/[?&]w=1\b/.test(location.search);
    목록 우선순위: RTDB bg/l(컬렉션 자동 반영, bgSub) → 지난번 받은 목록(localStorage calapp.bgl) → boot-wid.js 에 적힌 목록 */
 const BG_UTM='?utm_source=calapp&utm_medium=referral';
 const bgUrl=p=>p.u+(p.u.includes('?')?'&':'?')+'w=2560&q=80&fm=jpg&fit=crop';
-/* RTDB bg/l(GitHub 작업 bg-sync 가 하루 한 번 컬렉션에서 채움) — 로그인 전에도 읽힌다. 받으면 이 브라우저에 목록을 두어 다음 첫 화면(boot-wid.js)부터 그 목록 */
+/* RTDB bg/l(GitHub 작업 bg-sync 가 매시간 컬렉션에서 채움) — 로그인 전에도 읽힌다. 받으면 이 브라우저에 목록을 두어 다음 첫 화면(boot-wid.js)부터 그 목록 */
 function bgSub(){if(WIDGET||!FB.db)return;try{FB.db.ref('bg').on('value',sn=>{const v=sn.val()||{},l=v.l;if(!Array.isArray(l)||!l.length)return;
   const prev=BG_CUR?bgPick():null;   /* 목록이 새로 오면(첫 방문·컬렉션 변경) 순번이 달라져 보던 사진이 바뀐다 — 이번 시간대는 보던 것 그대로 */
   window.BG_LIST=l.filter(x=>x&&x.u);if(prev&&prev.u===BG_CUR&&!bgPin())BG_HOLD={p:prev,h:bgHour()};window.BG_AT=Number(v.at)||0;try{localStorage.setItem('calapp.bgl',JSON.stringify(window.BG_LIST));localStorage.setItem('calapp.bgat',String(window.BG_AT));}catch(e){}bgApply(true);},()=>{});}catch(e){}}
