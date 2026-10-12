@@ -5530,7 +5530,7 @@ body.wid #mb.acx .acct-rolebadge{background:rgba(255,255,255,.12);}
 #mb.acx .acx-pick{display:none;}
 #mb.acx.acx-ed .acx-row{display:none;}
 #mb.acx.acx-ed .acx-pick{display:block;}
-#mb.acx .acx-seg{display:grid;grid-template-columns:1fr 1fr;height:40px;padding:4px;margin:20px 0 14px;border-radius:20px;background:var(--CAP);box-shadow:inset 0 0 0 1px var(--CAPL);}
+#mb.acx .acx-seg{display:grid;grid-template-columns:1fr 1fr;height:40px;padding:4px;margin:20px 0 14px;border-radius:20px;background:var(--CAP);box-shadow:inset 0 0 0 1px var(--CAPL);will-change:transform;}   /* 한 층으로 묶는다 — 배경색으로 바꾸며 창 높이·색 판이 움직인 뒤 켜진 칸만 다른 합성 층에 남아 1px 아래에 그려졌다(배치 값은 위아래 4px 그대로) */
 #mb.acx .acx-seg button{border-radius:16px;font-size:13.5px;font-weight:600;color:var(--T2);transition:background var(--t-fast),color var(--t-fast),box-shadow var(--t-fast);}
 #mb.acx .acx-seg button.on{color:var(--T1);background:var(--bg2);box-shadow:0 1px 3px rgba(16,24,40,.12),0 0 0 .5px rgba(16,24,40,.06);}
 body.wid #mb.acx .acx-seg button.on{background:rgba(255,255,255,.16);color:#fff;box-shadow:none;}
@@ -6108,5 +6108,5 @@ body.wid.glass{--mv-flash:#8FB4FF;}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1155"></script>
+<script src="./app.js?v=1156"></script>
 </body></html>
