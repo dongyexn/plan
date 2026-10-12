@@ -443,7 +443,7 @@ OK('구문 검사 (node --check)');
    임시 파일에 쓰는 이름꼴만 잡는다(오탐이 나면 이름을 바꾸는 편이 낫다). */
 {
   const JUNK = /(^_|\.(tmp|bak|orig|rej)$|^snap.*\.html$|^test.*\.html$|~$)/;
-  const SKIP = new Set(['node_modules', 'dist', '.git']);
+  const SKIP = new Set(['node_modules', 'dist', '_site', '.git']);
   const found = [];
   const walk = (rel) => {
     for (const e of fs.readdirSync(path.join(root, rel), { withFileTypes: true })) {
