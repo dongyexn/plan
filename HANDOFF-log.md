@@ -1,5 +1,37 @@
 # 변경 이력 (읽기 전용) — 현재 상태는 HANDOFF.md
 
+## 마지막 기록 기준 v1164
+### 1164차 지워도 되는 파일
+**사용자: 「이번엔 너가 올려줄수있니 / 지워도 되는 파일 있으면 지워주고」** — 저장소 dongyexn/plan(마지막 커밋 v1156)을 내려받아 로컬과 대조: 저장소에만 있는 파일 없음(vendor/libredwg·dwg-split·dwg 시험 자료는 사용자가 이미 지움). 로컬에만 있는 것: .gitignore · .github/workflows/pages.yml · scripts/build-min.mjs(1163). 참조 전수 확인 후 삭제: `scripts/coast-land.mjs`(608차 점검표에 「지워도 되는 유일한 파일」로 적힌 폐기 접근), `scripts/test/shot-prod.mjs`(설정 게시 카드 일회용 스크린샷 — run-all·package.json·문서 어디서도 안 부름). 남긴 것: site-geo-check(진단 도구, kmFind 복사본), apt-index·geo2026(지도 자료 재생성), font-subset·css-dedup(재사용 도구). push: 저장소 쓰기 권한 요청이 이 세션에서 거부돼 올리지 못함 — 사용자가 zip 으로 올림. 검증: 전체 테스트 PASS.
+
+## 마지막 기록 기준 v1163
+### 1163차 전체 점검 · 배포본 경량화
+**사용자: 「전체적으로 버그 데드코드 중복 오류 수정 / 경량화 실시」** — 점검 결과: ESLint 9(no-undef·no-unreachable·no-dupe-keys·no-redeclare·no-self-assign·no-fallthrough 등) — 미정의는 vendor 전역(LZString·DOMPurify·ChartDataLabels)뿐, 안 쓰는 값 2(riskAuditCSV 는 콘솔 도구라 유지). CSS: css-dedup 죽은 선언 0, 완전 중복 규칙 0(인쇄 @page 두 벌은 문맥이 달라 둠), 안 쓰는 keyframes·id 0, 안 쓰는 변수는 --aifs(아래)·--band·--mv-slow(토큰이라 둠)·--fc-*(FullCalendar 가 읽음). 같은 선언을 가진 규칙 묶음 105개 중 합쳐도 캐스케이드가 같은 44개를 합쳐 보니 1.5KB(0.2%)뿐이고 지운 규칙 옆 주석이 떠돌게 돼 하지 않음. 화면 순회: 모든 화면의 보이는 data-act 를 눌러 봄(삭제·내보내기·업로드·로그아웃 등 제외) — 데스크톱 341 · 폰 296 · 위젯 8, pageerror·console.error 0. 고침: ① rptFit 끝의 `.ai` 글자 줄이기 — 보고서에 .ai 요소가 없어(AI 의견 칸 폐지) 늘 null, --aifs 를 읽는 CSS 도 없음 → 두 줄 삭제. ② mvMorph 의 안 쓰는 X. ③ 1159~1161 에 단 주석의 회차 숫자 제거(규칙). ④ 툴팁 정리 타이머 setInterval(700) 이 늘 돌던 것 → tipShow 가 걸고 tipHide 가 푼다(위젯이 0.7초마다 깨지 않게). 경량화: 실행 부하는 이미 지연 로드(차트·지도·엑셀·marked)라, 남은 큰 몫은 주석(app.js 의 23%·index.html 의 26%). 원본은 그대로 두고 배포본만 걷는다 — scripts/build-min.mjs(static-audit 와 같은 걷기 함수, 걷은 JS 는 vm.Script 로 구문 확인 후 쓰기, 개발 파일 제외) + .github/workflows/pages.yml(upload-pages-artifact@v5·deploy-pages@v5). 걷은 배포본으로 전체 시험을 돌려 브라우저 시험 전부 PASS(정적 감사 2건은 주석을 표지로 쓰는 감사라 걷은 본에선 당연히 실패 — 원본 기준 PASS). 저장소 Settings → Pages → Source 를 GitHub Actions 로 바꿔야 쓰인다. 루트 .gitignore(node_modules·_site·dist·widget-lite/target), static-audit §12 SKIP 에 _site. 검증: 전체 테스트 PASS.
+
+## 마지막 기록 기준 v1162
+### 1162차 내 업무 휴지통 단추 1px
+**사용자: 「내업무 휴지통 버튼이 좀 밑으로 쳐진듯」** — 잰 값(위젯 460, 3배 화면): 줄 상자 가운데는 제목 86.0 · 단추 86.25 로 같았으나 화면 글자 잉크 가운데가 제목 22.5 · 단추 23.5(머리 줄 위에서) — 단추 글자가 작아(12.5 vs 15) 위쪽 잉크가 낮다. `.wid-side .wp-tr` margin -6px -6px -6px 0 → -7px -6px -5px 0. 고친 뒤 22.5 · 22.5. 검증: 전체 테스트 PASS.
+
+## 마지막 기록 기준 v1161
+### 1161차 iOS 27식 리퀴드 글래스 — 앱·위젯 전체
+**사용자: 「시안 모두 적용 앱 전체적으로 리퀴드글래스 적용 / 위젯도 66% 정도 어떨지 / 조절 기능은 넣지 않는다 / Os 설정과 무관하게 앱은 일관된 모습을 보여준다」** — :root 토큰: `--glass` .88→.66(= `--lq-fill`), `--lq-blur` blur(22px) saturate(1.5) brightness(1.04), `--lq-hi` 위 .95·아래 .4·테 .5, 새 `--lq-line`(테두리 rgba(16,24,40,.13))·`--lq-edge`(0 0 0 .5px rgba(16,24,40,.18)), `--lqd-hi` 위 .32, 새 `--lqd-fill` rgba(26,29,38,.66)·`--lqd-blur` blur(40px) saturate(1.4)·`--lqd-edge` 0 0 0 1px rgba(0,0,0,.5). 밝은 판: `background:var(--glass)` 를 쓰는 13개 규칙(폰 시트·창·확인창·새 업무 시트·일자 시트·필터·연월·찾기·tkbulk·pwa 카드·계정 창 등)의 흐림을 --lq-blur, 테두리를 --lq-line, 그림자 앞에 --lq-hi. 하단 탭 테두리 --lq-line, 데스크톱 우클릭 바탕 --lq-fill+--lq-edge, 로그인 판·카드 바탕 --lq-fill. 어두운 판: 위젯 연월·필터·드롭다운·우클릭·찾기·설정·일자/내 업무(.wid-pop)·창(#mb, 다시 흐림)·알림 3종(앱·폰·위젯)을 --lqd-fill/--lqd-blur, 흰 테두리는 투명으로 두고 그림자 앞에 --lqd-edge,--lqd-hi. 위젯 머리 단추 묶음은 바탕(사용자 투명도 값)은 그대로, 테두리를 --lqd-edge·--lqd-hi 로. 내 업무 머리 줄에 rgba(20,23,31,.72) 띠(스크롤 가장자리). 조절 슬라이더 없음, prefers-reduced-transparency·prefers-contrast 대응 없음(사용자 결정: OS 설정과 무관하게 일관). 손대지 않음: 사용 안내 말풍선(그늘 위라 유리면 탁함), 데스크톱 드롭다운 목록(.msel-pop — 유리 판 안에 다시 유리), #htip 툴팁, 위젯 #pfPop. 검증: 전체 테스트 PASS, 위젯·데스크톱·폰 7장면 pageerror 0·눈으로 확인(헤드리스는 흐림 40px 를 못 그려 12px 로 찍음). 실제 WebView2 미확인.
+
+## 마지막 기록 기준 v1160
+### 1160차 내 업무 빈 칸 한 줄 · iOS 27식 유리 시안
+**사용자: 「개선안 5만 적용하고 / 리퀴드 글래스의 가장 큰 단점은 가독성이 안좋아지는건데 최근애플은 이걸 개선해서 ios27을 내놧어 / 이걸 좀 반영해보는게 어때?」** — 적용: `.wl-none` 를 가로 한 줄(아이콘 숨김, padding 6px 10px 10px). 개선안 1(「+N」)·2(5주 5줄)는 채택 안 됨. 시안(미적용): iOS 27 보도(MacRumors·9to5Mac)의 가독성 처리 — 뒤 내용 확산 강화·가장자리 어둡게·반사광 밝게·스크롤 가장자리 띠·투명도 줄이기/대비 높이기 대응·맑게↔진하게 조절 — 를 우리 판에 옮긴 값: 어두운 판 rgba(26,29,38,.7)·saturate 1.4·바깥 1px rgba(0,0,0,.5)·안 반사광 위 .32/테 .1, 밝은 판 rgba(255,255,255,.66)·saturate 1.5·바깥 .5px rgba(16,24,40,.18)·안 반사광 .95/.5, 내 업무 머리 줄 띠 rgba(20,23,31,.72). 잰 값(헤드리스, 흐림은 두 쪽 모두 12px): 판 뒤 얼룩(밝기 표준편차) 위젯 내 업무 20.7→13.8 · 일자 팝업 7.3→4.9 · 데스크톱 우클릭 18.4→14.7 · 폰 탭 13.9→10.6, 글자 최악 1% 대비 4.8→7.6 · 9.2→11.9 · 9.7→10.7 · 8.2→11.4. 검증: 전체 테스트 PASS.
+
+## 마지막 기록 기준 v1159
+### 1159차 위젯 디테일 모션 · 블러 A · Esc
+**사용자: 「프로필 이모지 배경색 전환탭도 모션 빠짐 / 이런 디테일 부분도 보고 / 리퀴드 글래스 적용할만한 부분 찾아보고 / 난 A가 맞다고 본다 / 개선안은 미리보기 먼저하고 / 3은 적용하고 / 4는 기각」** — ① A안: `body.wid #mo{backdrop-filter:none;background:rgba(0,0,0,.28)}`, 위젯 #mb 의 blur(24px) 제거(92% 판이라 안 보임). ② Esc: LAYERS 에 widPlan(위젯 팝업 안 폼이 열려 있으면 폼만 닫기, on 없음 — 바깥 누르기 규칙엔 안 낌)을 widPop 앞에. ③ 고르는 줄 미끄러짐이 위젯에선 통째로 꺼져 있었다(slSync `if(WIDGET)return` · CSS body:not(.wid)) — 위젯은 SL_SPEC 중 '#mb' 로 시작하는 것만 돌리고, 창 안 규칙(.acct-tabs·.acx-seg·.rpk-seg)은 body:not(.wid) 를 뗌. 위젯 켜진 칸 칠은 별도 규칙으로 투명. 이모지 분류(.pf-cats)도 SL_SPEC 에 + MV_TAB 'pf.cat':'#pfEmg>*'(판 자체는 그대로라 자식에). ④ 디테일: pf.pick 얼굴 scale .6→1, .pf-em 칠 전환, .pal-c 고리 outline-offset 5→2, .acct-av 바탕 전환, 위젯 글꼴 이름 mvRoll, .cal-nb.f-on::after popSc, .msel-pop 닫힘 opacity+display allow-discrete. 측정: 위젯 디테일 17동작 프레임 차분 — 고친 것 모두 여러 프레임. 남김: 찾기 결과 표시, 필터 고른 뒤 달력 다시 그리기, 이모지 분류 판 교체 앞 ~100ms 빈 판(mvIn 공용 결). ⑤ 미리보기만: 리퀴드 글래스 후보(위젯 설정·연월·머리 단추 반사광 / 앱 연월·필터·폰 메뉴 시트, 사용 안내 말풍선은 그늘 위라 비권장), 개선안 1(「+N」)·2(5주 달 5줄 — 예전 「항상 6주」 결정(fixedWeekCount:true)과 충돌)·5(빈 칸 한 줄). ⚠ 헤드리스 크로뮴은 큰 흐림(40px)을 제대로 그리지 못해 미리보기는 12px 로 찍었다. 테스트 widget-layers 「편집기 Esc」 기대치를 새 동작(폼만 → 다음 Esc 에 팝업)으로 바꿈. 검증: 전체 테스트 PASS, pageerror 0. 실제 WebView2 미확인.
+
+## 마지막 기록 기준 v1158
+### 1158차 위젯 모션 보강
+**사용자: 「위젯에 모션 적용 덜된 부분들이 있음 / 위젯 부팅시 나오는 놓친업무때 뒤에 블러가 과한게 아닌지 / 위젯에서 사용성 개선할만한 부분 검토」** — 위젯(460×760, glass) 동작 30여 개를 CDP 화면 녹화로 찍고 연속 프레임 차분(바뀐 화소 비율)으로 「한 프레임에 다 바뀜 = 모션 없음」을 골랐다. 걸린 것: 일자 팝업 다른 날 옮기기(자리 점프)·폼 열고 닫기(판 높이 점프 — 닫을 때 줄어든 판 밖으로 목록이 잘려 잠깐 빈 판), 놓친 업무 ✓·→·날짜(줄 즉시 삭제·창 높이 점프), 내 업무 ✓(줄 즉시 삭제 — rWidget 과 widSideRender 가 연달아 그려 mvGone 유령을 지움)·더 보기(판 높이 점프), 연·월 팝업을 단추로 닫기(openYMPick/openTkPick 이 remove — 바깥 누르기는 이미 흐림). 고침: widGlide(translate·height WAAPI, 옮기는 중 RO 무시·끝나고 다시 잡기·중간에 바뀌면 보이는 자리에서 이어감), mvFold(줄·구분 접기, 첫 구분이 접히면 다음 구분 윗선도), mrv 남은 줄 셀 때 .mv-gone 제외(닫을 때 보류로 넘기는 대상에서도), widSideRender 같은 html 이면 생략 + 팝오버 높이 애니메이션, closeYMPop. 놓친 업무 뒤 #mo(blur 4px·34%)는 위젯이 투명 창 위 떠 있는 조각들이라 창 전체 사각이 흐리고 어두워진다 — 미리보기(현재/흐림 없음 28%/없음)만 전달, 미적용. 검증: 같은 계측 재실행 — 위 항목 모두 여러 프레임에 걸쳐 바뀜, pageerror 0. 전체 테스트 PASS. 실제 WebView2 화면은 미확인.
+
+## 마지막 기록 기준 v1157
+### 1157차 사용 안내 → 실제 화면 투어
+**사용자: 「사용 안내 기능을 4번으로 바꾸는 것도 괜찮을듯 / 따로 보기보단 실제로 바로 네비게이션 역할 해주는게」** — 모달 그림 안내 대신 실제 화면 위 스포트라이트. #tour(body 직속, z 9500, line-height 자체 지정) = .tr-hole(box-shadow 200vmax 그늘) · .tr-ring(맥박) · .tr-tip. 단계 {c 장, v 화면, s 선택자(쉼표=처음 보이는 것), all 한 틀로, t 설명} — 문구는 scripts/guide-shots.mjs 와 같은 줄기. 장 안 n/m 은 적지 않음(없는 단추를 건너뛰면 수가 어긋남). 투어 중 알림(#toast·.toast-bk)은 숨김. 폰은 아래 탭에 가리면 가운데로 스크롤. 위젯은 openReadme 유지. 검증: 데스크톱 1440·폰 390 전 단계 스크린샷 — 구멍이 대상에 사방 6px(뷰포트 가장자리는 4px 묶음), 말풍선이 구멍과 겹치지 않고 화면 안, pageerror 0; 짚은 자리 클릭=다음·바깥 클릭 무시·장 칩·이전·첫 단계에서 ←·마치기·글 안내 동작 확인. 오늘 업무가 없으면 「업무 고치기 · 완료」 단계는 건너뛴다(정상).
+
 ## 마지막 기록 기준 v1156
 ### 1156차 프로필 전환 탭 1px · 배포본 크기 · 디자인 참고 미리보기
 **사용자: 「위젯 프로필 전환탭 버튼이 살짝 아래로 / 배경색을 눌러야 밑으로 내려가네」 + static-audit 「배포본 20.4MB — vendor/ 14.0MB」 + Lucian UX/UI Prompt 쓸 만한 것 미리보기**

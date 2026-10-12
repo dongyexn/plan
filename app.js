@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1156';
+const APP_VER='1164';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -119,6 +119,145 @@ async function openReadme(){
     /* 문서·라이브러리를 못 읽으면(단일 파일 빌드 등) 다시 눌러 보라고만 안내한다 */
     toast('사용 안내를 열지 못했습니다 · 잠시 뒤 다시 눌러 주세요');
   }
+}
+/* 사용 안내 투어 — 설명서를 따로 띄우지 않고 실제 화면을 옮겨 다니며 그 단추를 짚는다.
+   단계: c 장 · v 화면 · s 짚을 요소(쉼표로 여럿, 처음 보이는 것) · all 보이는 것 모두를 한 틀로 · t 설명.
+   요소가 없으면(자료 없음 · 권한) 그 단계는 건너뛴다. 설치 · 문제 해결 같은 글은 끝 카드에서 openReadme 로 */
+const TOUR_D=[
+  {c:'캘린더',v:'calendar',s:'#fcal td.fc-day-today',t:'날짜를 누르면 오른쪽에 그날 업무가 나옵니다. 여러 날은 끌어서 고릅니다'},
+  {c:'캘린더',v:'calendar',s:'.dp-col [data-act="plan.new"]',t:'새 업무 추가'},
+  {c:'캘린더',v:'calendar',s:'.dp-col .plan',t:'업무를 누르면 그 자리에서 고칩니다. 우클릭하면 완료 · 복사 · 삭제'},
+  {c:'캘린더',v:'calendar',s:'.dp-col [data-act="plan.stCycle"]',t:'누르면 완료 · 다시 누르면 해제'},
+  {c:'캘린더',v:'calendar',s:'[data-act="day.fmore"]',t:'담당자 · 현장 · 구분으로 걸러 보기'},
+  {c:'캘린더',v:'calendar',s:'input.ah-srch-in',t:'업무 · 현장 · 하자 찾기 (Ctrl+K) — 어느 화면에서나'},
+  {c:'업무 현황',v:'tasks',s:'#view-tasks [data-act="tk.view"]',all:1,t:'주간 업무 ↔ 현장별 업무'},
+  {c:'업무 현황',v:'tasks',s:'.mc-lbl[data-act="mine.mon"]',t:'보고 주기는 목요일 ~ 수요일. 달력에서 주를 고릅니다'},
+  {c:'업무 현황',v:'tasks',s:'[data-act="tk.pick"]',t:'보류한 업무 — 날짜를 정하면 되살아납니다'},
+  {c:'업무 현황',v:'tasks',s:'[data-act="tk.qopen"],[data-act="tkf.toggle"]',all:1,t:'찾기 · 걸러 보기'},
+  {c:'업무 현황',v:'tasks',s:'[data-act="tk.tab"]',all:1,t:'권역별로 보기'},
+  {c:'업무 현황',v:'tasks',s:'[data-act="tk.newOpen"]',t:'업무 추가'},
+  {c:'업무 현황',v:'tasks',s:'.tk-ttl[data-act="tk.open"]',t:'줄을 누르면 그 자리에서 고칩니다'},
+  {c:'업무 현황',v:'tasks',s:'[data-act="tk.st"]',t:'누르면 완료 · 다시 누르면 해제'},
+  {c:'업무 도구',v:'d60',s:'#sidebar .nvi[data-view="d60"],#sidebar .nvi[data-view="photo"],#sidebar .nvi[data-view="qc"],#sidebar .nvi[data-view="redo"],#sidebar .nvi[data-view="prod"]',all:1,t:'D+60 점검 · 사진대지 · 견적 검토 · 재하자 추적 · 생산성 검토'},
+  {c:'업무 도구',v:'d60',s:'[data-act="d60.m"]',all:1,t:'D+60 점검 — 달을 누르면 그 달 점검만'},
+  {c:'업무 도구',v:'d60',s:'tr[data-act="d60.open"]',t:'현장을 누르면 점검표'},
+  {c:'업무 도구',v:'photo',s:'[data-act="pd.files"],[data-act="pd.dir"]',all:1,t:'사진대지 — 사진 · 폴더 넣기. 화면에 끌어다 놓아도 됩니다'},
+  {c:'업무 도구',v:'photo',s:'[data-act="pd.orient"],[data-act="pd.per"]',all:1,t:'세로 · 가로 · 한 장에 2 · 4 · 6칸'},
+  {c:'업무 도구',v:'qc',s:'#view-qc textarea',t:'견적 검토 — 업체 산출서의 산출 근거 열을 붙여 넣기'},
+  {c:'업무 도구',v:'qc',s:'[data-act="qc.run"]',t:'검토 — 줄마다 계산식을 검산'},
+  {c:'하자처리 현황',v:'defect',s:'[data-act="df.rm"]',t:'기준월 — 숫자는 모두 기준월 말일 기준'},
+  {c:'하자처리 현황',v:'defect',s:'.kc',all:1,t:'팀 합계 — 「목록」을 누르면 그 하자 목록'},
+  {c:'하자처리 현황',v:'defect',s:'[data-act="df.fold"]',all:1,t:'권역을 펼쳐 현장을 고르면 현장 화면'},
+  {c:'하자처리 현황',v:'defect',s:'[data-act="mtg.open"]',t:'회의 모드 — 월간 회의용 화면'},
+  {c:'설정',v:'settings',s:'.bgp-auto',t:'배경 자동 변경 — 켜 두면 사진이 바뀝니다. 끄고 사진을 고르면 그 사진으로 고정'},
+  {c:'설정',v:'settings',s:'[data-act="wid.dl"]',t:'바탕화면 위젯 받기'},
+  {c:'설정',v:'settings',s:'#sbAcct,#tbAcctAv',t:'계정 — 이름 · 색 · 로그아웃'},
+];
+const TOUR_M=[
+  {c:'캘린더',v:'calendar',s:'.mc-d.today',t:'날짜를 누르면 그날 업무가 아래에서 올라옵니다'},
+  {c:'캘린더',v:'calendar',s:'.tbt-ym',t:'눌러서 년 · 달 바꾸기. 달력을 옆으로 밀어도 됩니다'},
+  {c:'캘린더',v:'calendar',s:'#mtab [data-act="mtab.go"]',all:1,t:'캘린더 · 업무 현황 · 업무 도구 · 하자처리 현황'},
+  {c:'캘린더',v:'calendar',s:'#mtab .mtab-m',t:'메뉴 — 조직 관리 · 설정 · 이 안내'},
+  {c:'업무 현황',v:'tasks',s:'[data-act="tk.ym"]',t:'주 바꾸기 · 옆으로 밀어도 됩니다'},
+  {c:'업무 현황',v:'tasks',s:'[data-act="tk.pick"]',t:'보류한 업무'},
+  {c:'업무 현황',v:'tasks',s:'[data-act="tk.view"]',all:1,t:'주간 업무 ↔ 현장별 업무'},
+  {c:'업무 현황',v:'tasks',s:'[data-act="tk.newOpen"]',t:'업무 추가'},
+  {c:'업무 현황',v:'tasks',s:'.tk-ttl[data-act="tk.open"]',t:'줄을 누르면 그 자리에서 고칩니다'},
+  {c:'업무 현황',v:'tasks',s:'[data-act="tk.st"]',t:'완료 표시'},
+  {c:'하자처리 현황',v:'defect',s:'[data-act="df.rm"]',t:'기준월'},
+  {c:'하자처리 현황',v:'defect',s:'.kc',t:'눌러서 현장 고르기'},
+  {c:'하자처리 현황',v:'defect',s:'[data-act="rec.list"]',all:1,t:'눌러서 그 하자 목록'},
+  {c:'설정',v:'settings',s:'.bgp-auto',t:'배경 자동 변경 — 끄고 사진을 고르면 그 사진으로 고정'},
+  {c:'설정',v:'settings',s:'#tbAcctAv',t:'계정 — 이름 · 색 · 로그아웃'},
+];
+let TOUR=null;
+function tourVis(e){const r=e.getBoundingClientRect();if(!r.width||!r.height)return false;const cs=getComputedStyle(e);return cs.visibility!=='hidden'&&+cs.opacity>0.05;}
+function tourEls(st){const a=$$(st.s).filter(tourVis);return st.all?a:a.slice(0,1);}
+function tourStart(){
+  if(WIDGET){openReadme();return;}
+  if($('#mo').classList.contains('open'))closeModal();
+  if(isMob())mssClose();
+  const L=isMob()?TOUR_M:TOUR_D;
+  let i=L.findIndex(x=>x.v===S.view);if(i<0)i=0;
+  let o=$('#tour');
+  if(!o){o=document.createElement('div');o.id='tour';
+    o.innerHTML='<div class="tr-hole"></div><div class="tr-ring"></div>'
+      +'<div class="tr-tip" role="dialog" aria-label="사용 안내"><div class="tr-h"><b class="tr-c"></b>'
+      +'<button type="button" class="tr-x" data-act="tour.end" aria-label="안내 끝내기"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></button></div>'
+      +'<p class="tr-t"></p><div class="tr-chs"></div>'
+      +'<div class="tr-ft"><button type="button" class="btn bg2 bsm" data-act="tour.prev">이전</button><button type="button" class="btn bp bsm" data-act="tour.next">다음</button></div></div>';
+    document.body.appendChild(o);
+    o.addEventListener('click',e=>{if(e.target.closest('.tr-tip'))return;   /* 짚은 자리를 누르면 다음, 나머지는 막는다(화면이 투어 몰래 바뀌지 않게) */
+      const h=TOUR&&TOUR.r;if(h&&e.clientX>=h.x&&e.clientX<=h.x+h.w&&e.clientY>=h.y&&e.clientY<=h.y+h.h)tourStep(1);});
+  }
+  TOUR={L,i:-1,r:null,tm:0};
+  o.classList.remove('end');o.classList.add('on');document.body.classList.add('tour-on');
+  addEventListener('keydown',tourKey,true);addEventListener('resize',tourPaint);document.addEventListener('scroll',tourPaint,true);
+  tourGo(i,1);
+}
+function tourKey(e){if(!TOUR)return;
+  const k=e.key;if(k==='Escape'){tourEnd();}else if(k==='ArrowRight'||k==='Enter'){tourStep(1);}else if(k==='ArrowLeft'){tourStep(-1);}else return;
+  e.preventDefault();e.stopImmediatePropagation();}
+function tourStep(d){if(!TOUR)return;if(TOUR.i>=TOUR.L.length){if(d<0)tourGo(TOUR.L.length-1,-1);return;}tourGo(TOUR.i+d,d);}
+function tourGo(i,d){
+  const T=TOUR;if(!T)return;clearTimeout(T.tm);
+  if(i>=T.L.length){tourFin();return;}
+  if(i<0){i=0;d=1;}
+  const st=T.L[i];
+  const show=()=>{if(TOUR!==T)return;
+    if(!tourEls(st).length){   /* 없는 단추는 건너뛴다 — 처음 단계 앞이면 앞으로 */
+      const n=i+d;if(n<0)return tourGo(i+1,1);return tourGo(n,d);}
+    T.i=i;tourPaint(true);};
+  if(S.view!==st.v){if($('#mo').classList.contains('open'))closeModal();go(st.v);T.tm=setTimeout(show,380);}
+  else show();
+}
+function tourPaint(scroll){
+  const T=TOUR,o=$('#tour');if(!T||!o||T.i<0||T.i>=T.L.length)return;
+  const st=T.L[T.i],els=tourEls(st);if(!els.length)return;
+  if(scroll===true){const b=els[0].getBoundingClientRect(),mt=$('#mtab'),bot=innerHeight-(mt&&mt.offsetHeight&&isMob()?mt.offsetHeight+8:8);   /* 폰 아래 탭에 가리지 않게 — 띠 밖이면 가운데로 */
+    if(b.top<56||b.bottom>bot)els[0].scrollIntoView({block:'center',inline:'nearest'});}
+  let x1=1e9,y1=1e9,x2=-1e9,y2=-1e9;
+  els.forEach(e=>{const r=e.getBoundingClientRect();x1=Math.min(x1,r.left);y1=Math.min(y1,r.top);x2=Math.max(x2,r.right);y2=Math.max(y2,r.bottom);});
+  const P=6,vw=innerWidth,vh=innerHeight;
+  x1=Math.max(4,x1-P);y1=Math.max(4,y1-P);x2=Math.min(vw-4,x2+P);y2=Math.min(vh-4,y2+P);
+  const r={x:x1,y:y1,w:x2-x1,h:y2-y1};T.r=r;
+  const rad=Math.min(12,r.h/2);
+  [o.querySelector('.tr-hole'),o.querySelector('.tr-ring')].forEach(b=>{b.style.transform='translate('+r.x+'px,'+r.y+'px)';b.style.width=r.w+'px';b.style.height=r.h+'px';b.style.borderRadius=rad+'px';});
+  const chs=[...new Set(T.L.map(s=>s.c))];   /* 장 안 몇째인지는 적지 않는다 — 없는 단추를 건너뛰면 수가 어긋난다 */
+  o.querySelector('.tr-c').textContent=st.c;
+  o.querySelector('.tr-t').textContent=st.t;
+  o.querySelector('.tr-chs').innerHTML=chs.map(c=>'<button type="button" class="tr-ch'+(c===st.c?' on':'')+'" data-act="tour.ch" data-c="'+esc(c)+'">'+esc(c)+'</button>').join('');
+  const nx=T.L[T.i+1],nb=o.querySelector('[data-act="tour.next"]');
+  nb.textContent=!nx?'마치기':nx.c!==st.c?'다음: '+nx.c:'다음';
+  o.querySelector('[data-act="tour.prev"]').disabled=T.i===0;
+  /* 말풍선 — 아래 · 위 · 옆 · 안 순으로 들어갈 자리를 찾고 화면 안에 묶는다 */
+  const tip=o.querySelector('.tr-tip'),G=12,M=8,tw=tip.offsetWidth,th=tip.offsetHeight;
+  let tx,ty;
+  if(r.y+r.h+G+th<=vh-M){ty=r.y+r.h+G;tx=r.x;}
+  else if(r.y-G-th>=M){ty=r.y-G-th;tx=r.x;}
+  else if(r.x+r.w+G+tw<=vw-M){tx=r.x+r.w+G;ty=r.y;}
+  else if(r.x-G-tw>=M){tx=r.x-G-tw;ty=r.y;}
+  else{tx=r.x+M;ty=r.y+r.h-th-M;}
+  tx=Math.max(M,Math.min(vw-M-tw,tx));ty=Math.max(M,Math.min(vh-M-th,ty));
+  tip.style.transform='translate('+Math.round(tx)+'px,'+Math.round(ty)+'px)';
+}
+/* 끝 카드 — 짚을 자리 없이 가운데에. 설치 · 문제 해결은 글 안내로 */
+function tourFin(){
+  const T=TOUR,o=$('#tour');if(!T||!o)return;T.i=T.L.length;T.r=null;o.classList.add('end');
+  o.querySelector('.tr-c').textContent='끝';
+  o.querySelector('.tr-t').textContent='설치 · 문제 해결 같은 자세한 내용은 글 안내에 있습니다';
+  o.querySelector('.tr-chs').innerHTML='';
+  const p=o.querySelector('[data-act="tour.prev"]');p.disabled=false;
+  const nb=o.querySelector('[data-act="tour.next"]');nb.textContent='닫기';
+  if(!o.querySelector('[data-act="tour.readme"]'))nb.insertAdjacentHTML('beforebegin','<button type="button" class="btn bo bsm" data-act="tour.readme">글 안내</button>');
+  const tip=o.querySelector('.tr-tip');
+  tip.style.transform='translate('+Math.round((innerWidth-tip.offsetWidth)/2)+'px,'+Math.round((innerHeight-tip.offsetHeight)/2)+'px)';
+}
+function tourEnd(){
+  const o=$('#tour');TOUR&&clearTimeout(TOUR.tm);TOUR=null;
+  removeEventListener('keydown',tourKey,true);removeEventListener('resize',tourPaint);document.removeEventListener('scroll',tourPaint,true);
+  document.body.classList.remove('tour-on');
+  if(o){o.classList.remove('on','end');const b=o.querySelector('[data-act="tour.readme"]');if(b)b.remove();}
 }
 const ERRLOG=[];
 window.addEventListener('error',e=>{ERRLOG.unshift(new Date().toLocaleString('ko-KR')+' · '+(e.message||'')+' @'+(e.filename||'').split('/').pop()+':'+(e.lineno||0));ERRLOG.length=Math.min(ERRLOG.length,20);});
@@ -1591,7 +1730,7 @@ function mvMorph(btn,form,to,z){   /* to = 폼의 끝 자리(움직이는 중인
   const el=btn&&btn.nodeType===1;if(!mvOK()||!btn||!form||(el&&!mvVis(btn))||!mvVis(form))return;
   const a=el?btn.getBoundingClientRect():btn,b=to||form.getBoundingClientRect(),kids=[...form.children];   /* btn 은 요소 또는 단추가 있던 자리(다시 그려져 사라진 경우) */
   /* 상자가 거의 다 펴지면(MV_MORPH_R) 상자는 흐려지고 폼이 같은 자리에서 드러난다 — 다 펴질 때까지 빈 상자로 기다리지 않는다(예전 0.15초 빈 판) */
-  const D=MV_MORPH,t0=Math.round(D*MV_MORPH_R),X=MV_MORPH_X;
+  const D=MV_MORPH,t0=Math.round(D*MV_MORPH_R);
   form.animate([{opacity:.01},{opacity:.01}],{duration:t0});   /* 펴지는 동안 폼은 숨는다(포커스는 그대로) — 0 이 아니라 0.01: 투명도 0 인 층은 그려 두지 않아, 드러나는 순간 무거운 창(사용 안내)이 몇 프레임 비어 뒤가 비쳤다. t0 에 폼은 다 보이고 그 위의 상자가 흐려지며 속이 드러난다 — 둘 다 반투명인 순간이 없어 뒤 화면이 비치지 않는다 */
   mvMorphBox(a,b,mvSkin(form),Math.min(a.height/2,14)+'px',getComputedStyle(form).borderTopLeftRadius,D,MV_MORPH_EASE,z,t0);
   kids.forEach((c,i)=>{if(c.isConnected)c.animate([{opacity:0,filter:'blur(3px)'},{opacity:1,filter:'none'}],{duration:180,delay:t0+i*30,easing:MV_EASE,fill:'backwards'});});}
@@ -1656,7 +1795,8 @@ const MV_TAB={
   'pd.orient':'.phs-grid>.phs-col:not(.phs-left)',
   'pv.tab':'#pvRoot .qc-right>:not(.tkbar)',
   'readme.tab':'#mbody .rd-sec.act',
-  'org.mapTab':'.kml-b'};
+  'org.mapTab':'.kml-b',
+  'pf.cat':'#pfEmg>*'};   /* 이모지 분류 — 판이 고른 쪽에서 밀려 들어온다 */
 const mvOn=b=>b.classList.contains('act')||b.classList.contains('on')||b.getAttribute('aria-selected')==='true';
 function mvTabPre(el){
   const act=el.dataset&&el.dataset.act,sel=MV_TAB[act];if(!sel||!mvOK())return null;
@@ -1706,6 +1846,15 @@ function mvGone(box,itemSel,keyFn,paint){
     a.onfinish=a.oncancel=()=>g.remove();
   });
   return res;
+}
+/* 처리한 줄 하나를 제자리에서 접어 지운다 — 높이·안팎 여백·테를 0 으로 흐리며(아래 줄이 따라 올라오고 창도 같이 준다) */
+function mvFold(el){
+  if(!el)return;if(!mvOK()){el.remove();return;}
+  const cs=getComputedStyle(el),par=el.parentElement,gap=par?(parseFloat(getComputedStyle(par).rowGap)||0):0,last=!el.nextElementSibling;
+  el.style.pointerEvents='none';el.style.overflow='clip';
+  const a=el.animate([{height:el.offsetHeight+'px',opacity:1,paddingTop:cs.paddingTop,paddingBottom:cs.paddingBottom,marginTop:cs.marginTop,marginBottom:cs.marginBottom,borderTopWidth:cs.borderTopWidth},
+    {height:'0px',opacity:0,paddingTop:'0px',paddingBottom:'0px',marginTop:last&&el.previousElementSibling?(-gap)+'px':'0px',marginBottom:last?'0px':(-gap)+'px',borderTopWidth:'0px'}],{duration:MV_MID,easing:MV_EASE,fill:'forwards'});
+  a.onfinish=a.oncancel=()=>el.remove();
 }
 /* 숫자 굴림(1067) — 글자 속 첫 숫자만 바뀌면 옛 숫자는 빠지고 새 숫자가 들어온다(늘면 아래에서·줄면 위에서) + 새 숫자를 잠깐 파랗게.
    ⚠ 굴리는 동안 textContent 가 두 숫자를 다 품는다 — 다음 비교는 el._mvTxt(목표 글자)로 한다 */
@@ -2237,7 +2386,7 @@ function widSideRender(){
   if(S.widSide==='mine'){
     if(ttl)ttl.textContent='내 업무';
     const me=myId();
-    if(!me){box.innerHTML=empty('i-me','로그인하면 내 업무를 모아 볼 수 있습니다');if(cnt)cnt.textContent='';return;}
+    if(!me){box._html='';box.innerHTML=empty('i-me','로그인하면 내 업무를 모아 볼 수 있습니다');if(cnt)cnt.textContent='';return;}
     const commons=teamTasks(),tasks=mineTasks();
     const holds=mineHolds();
     if(cnt)cnt.textContent='';
@@ -2248,7 +2397,7 @@ function widSideRender(){
         +' aria-label="'+(S.widMore[key]?'접기':'더 보기')+'"><svg class="icn"><use href="#i-chevr"></use></svg></button>':'')
       +'</div>';
     const cut=(list,key)=>S.widMore[key]?list:list.slice(0,MIN);
-    box.innerHTML=
+    const html=
       sec('공통 업무','com',commons.length)
       +(commons.length?cut(commons,'com').map(({sid,iid,it})=>{const wd=taskDate(sid,iid,it);return row('wid.goTask',
           ' data-sid="'+esc(sid)+'" data-iid="'+esc(iid)+'" data-date="'+esc(wd||'')+'"',
@@ -2277,6 +2426,15 @@ function widSideRender(){
           wd?dlab(wd):'기한 없음','hold',
           it.text||'제목 없음',
           [kindLabel(it.kind),dfShortSite(siteName(it.site))].filter(Boolean).join(' · '));}).join(''):'');
+    /* 완료한 줄은 접히고 아래 줄이 올라온다 · 「더 보기」로 늘어난 줄은 흐리며 들어온다 — 팝오버를 막 열 때는 등장 모션만(통째로 그린다) */
+    if(box._fresh||!mvOK()){box._fresh=false;box._html=html;box.innerHTML=html;return;}
+    if(box._html===html)return;   /* 같은 내용으로 다시 그리지 않는다 — 접히는 줄(유령)을 바로 다음 그리기가 지워 툭 사라졌다 */
+    box._html=html;
+    const IT=':scope>*',K=e=>{const t=e.matches('[data-iid]')?e:e.querySelector('[data-iid]');return t?t.dataset.sid+'/'+t.dataset.iid:e.className+'|'+e.textContent;};
+    const pane=$('#widSide'),h0=pane?pane.offsetHeight:0;
+    mvFlip(box,IT,K,()=>mvGone(box,IT,K,()=>{box.innerHTML=html;return true;}));
+    const h1=pane?pane.offsetHeight:0;   /* 팝오버 높이도 같이 늘고 준다 — 판이 먼저 툭 커지고 빈 유리 위로 줄이 들어오던 것 */
+    if(pane&&Math.abs(h1-h0)>=2)pane.animate([{height:h0+'px'},{height:h1+'px'}],{duration:MV_SLOW,easing:MV_EASE});
     return;
   }
 
@@ -2286,7 +2444,7 @@ function widSideOpen(tab){
   const same=el.classList.contains('on')&&S.widSide===tab;
   S.widSide=same?'':tab;
   el.classList.toggle('on',!same);
-  if(!same)widSideRender();
+  if(!same){const b=$('#widSideB');if(b)b._fresh=true;widSideRender();}
 }
 function rAcct(){
   const nm=$('#sbAcctName'),rb=$('#sbAcctRole');
@@ -2856,7 +3014,7 @@ function openYMPick(){
   YM_Y=null;
   document.querySelectorAll('#ymPop[data-out]').forEach(x=>x.remove());   /* 흐려지며 나가는 중인 것은 바로 걷고 새로 연다 */
   const old=ymPopEl();
-  if(old){old.remove();return;}
+  if(old){closeYMPop();return;}   /* 다시 누르면 닫힘도 흐리며(바깥 누르기와 같게) */
   /* 연·월 버튼이 있는 달력 열 기준으로 붙인다(.cal-card 는 position:relative) */
   const host=$('#view-calendar .cal-card');if(!host)return;
   const pop=document.createElement('div');
@@ -8062,8 +8220,6 @@ function rptFit(root){
       pg.querySelectorAll('.sec').forEach(s2=>{b=Math.max(b,s2.getBoundingClientRect().bottom);});return b>lim;};
     if(over())pg.classList.add('dense');
     if(over())pg.classList.add('dense2');
-    const ai=pg.querySelector('.ai');
-    if(ai)for(let fs=8.25;over()&&fs>=6.25;fs-=0.25)ai.style.setProperty('--aifs',fs+'px');
   });
 }
 /* 분석 원문을 보고서 서식으로 — HTML 이면 스타일 걷어내고 재서식, 평문이면 소제목/목록 */
@@ -9011,7 +9167,7 @@ function mrvHoldRest(){
   MRV_ON=false;
   let n=0;
   const still=new Set(mrvList().map(x=>x.sid+'/'+x.iid));   /* 창을 띄운 뒤 다른 곳(브라우저·폰)에서 옮기거나 끝낸 업무는 건너뛴다 */
-  $$('#mbody .mrv-i:not([data-hold])').forEach(row=>{   /* 보류 줄은 이미 보류 — 놓친 줄만 */
+  $$('#mbody .mrv-i:not([data-hold]):not(.mv-gone)').forEach(row=>{   /* 보류 줄은 이미 보류 — 놓친 줄만 */
     const cur=(S.tasks[row.dataset.sid]||{})[row.dataset.iid];
     if(!cur||!still.has(row.dataset.sid+'/'+row.dataset.iid))return;
     if(!canEditTask(cur,row.dataset.sid))return;   /* 권한 없는 업무는 일괄 보류에서 건너뛴다 */
@@ -9028,9 +9184,12 @@ function mrvApply(el,patch,msg){
   const sid=row.dataset.sid,iid=row.dataset.iid,cur=(S.tasks[sid]||{})[iid];
   if(cur&&patch.date&&patch.end===''&&cur.end&&cur.date&&cur.end>cur.date)patch={...patch,end:addDays(patch.date,daysBetween(cur.date,cur.end))};   /* 기간 업무는 길이를 지켜 옮긴다 */
   if(cur)store.putTask(sid,iid,histPush({...cur,...patch,updatedAt:Date.now()},patch.st===2?'done':(patch.date?'move':'edit')));
-  const sec=row.closest('.mrv-sec');row.remove();
-  if(sec){const k=sec.querySelectorAll('.mrv-i').length;if(!k)sec.remove();else{const c=sec.querySelector('.rp-tcnt');if(c)c.textContent=k;}}   /* 구분 수 갱신 · 비면 구분 제거 */
-  const left=$$('#mbody .mrv-i').length;
+  const sec=row.closest('.mrv-sec');row.classList.add('mv-gone');   /* 접히는 동안 남은 줄로 세지 않는다(창을 닫을 때 보류로 넘기지 않게) */
+  const k=sec?sec.querySelectorAll('.mrv-i:not(.mv-gone)').length:1;
+  if(sec&&!k){sec.classList.add('mv-gone');const nx=!sec.previousElementSibling&&sec.nextElementSibling;   /* 첫 구분이 접히면 다음 구분의 윗선·여백(.mrv-sec+.mrv-sec)도 같이 걷는다 */
+    if(nx&&mvOK()){const c=getComputedStyle(nx),a=nx.animate([{marginTop:c.marginTop,paddingTop:c.paddingTop,borderTopWidth:c.borderTopWidth},{marginTop:'0px',paddingTop:'0px',borderTopWidth:'0px'}],{duration:MV_MID,easing:MV_EASE,fill:'forwards'});a.onfinish=()=>a.cancel();}
+    mvFold(sec);}else{mvFold(row);const c=sec&&sec.querySelector('.rp-tcnt');if(c)mvNum(c,k);}   /* 구분 수 갱신 · 비면 구분째 접는다 */
+  const left=$$('#mbody .mrv-i:not(.mv-gone)').length;
   if(!S.live){rTasks();rDay();rWidget();}
   refetchCal();
   if(!left){MRV_ON=false;closeModal();toast('놓친 업무를 모두 정리했습니다');}
@@ -10860,8 +11019,8 @@ function offdayAsk(ds){
 }
 
 /* ── 툴팁 — data-tip 이 있는 요소에 잠깐 머무르면 뜬다 ── */
-let _tipT=null,_tipFor=null,_tipWarm=0;   /* warm: 방금까지 툴팁이 떠 있던 시각 — 인접 이동은 즉시 띄운다 */
-function tipHide(){clearTimeout(_tipT);if(_tipFor)_tipWarm=Date.now();_tipFor=null;const el=$('#htip');if(el)el.classList.remove('on');}
+let _tipT=null,_tipFor=null,_tipWarm=0,_tipGone=0;   /* warm: 방금까지 툴팁이 떠 있던 시각 — 인접 이동은 즉시 띄운다 */
+function tipHide(){clearTimeout(_tipT);clearInterval(_tipGone);_tipGone=0;if(_tipFor)_tipWarm=Date.now();_tipFor=null;const el=$('#htip');if(el)el.classList.remove('on');}
 /* 대상이 움직이거나 사라지면 툴팁을 따라 옮기거나 지운다(사이드바 접기·뷰 전환 등) */
 function tipSync(){
   if(!_tipFor)return;
@@ -10882,6 +11041,7 @@ function tipShow(target){
   if(!target.isConnected||!target.matches(':hover'))return;
   const txt=target.dataset.tip;if(!txt)return;
   _tipFor=target;
+  if(!_tipGone)_tipGone=setInterval(()=>{if(_tipFor&&!_tipFor.isConnected)tipHide();},700);   /* 떠 있는 동안만 본다 — 늘 돌면 위젯이 0.7초마다 깨어난다 */
   /* data-tipc 가 있으면 둘째 줄(레벨)만 그 색으로 — 세대 현황도 칸 */
   const tc=target.dataset.tipc;
   if(tc){const ln=txt.split('\n');
@@ -10924,8 +11084,7 @@ function tipHideCold(){tipHide();_tipWarm=0;}
 document.addEventListener('mousedown',tipHideCold,true);
 document.addEventListener('scroll',tipHideCold,true);
 window.addEventListener('blur',tipHideCold);
-/* ⚠ 다시 그리면 툴팁 대상이 사라져 툴팁만 남는다 — 주기로 확인해 치운다 */
-setInterval(()=>{if(_tipFor&&!_tipFor.isConnected)tipHide();},700);
+/* ⚠ 다시 그리면 툴팁 대상이 사라져 툴팁만 남는다 — 떠 있는 동안 주기로 확인해 치운다(tipShow 가 걸고 tipHide 가 푼다) */
 /* 오후 점검 알림 — 창을 켜 둔 채 5시를 넘기는 일이 흔해 1분마다 조건을 본다.
    ⚠ 상태가 바뀔 때만 다시 그린다 — 매번 그리면 스크롤·포커스가 튄다 */
 let _eveWas=null;
@@ -11545,7 +11704,8 @@ const ACT={
   'pf.pick':el=>{
     PF_SEL.icon=el.dataset.e||'';
     const av=document.querySelector('.acct-av');
-    if(av)av.innerHTML=avInner(PF_SEL.icon)+'<span class="av-pen"><svg class="icn"><use href="#i-plus"></use></svg></span>';
+    if(av){av.innerHTML=avInner(PF_SEL.icon)+'<span class="av-pen"><svg class="icn"><use href="#i-plus"></use></svg></span>';
+      const f=av.firstElementChild;if(f&&f.animate&&mvOK())f.animate([{scale:.6,opacity:.3},{scale:1,opacity:1}],{duration:MV_MID,easing:'cubic-bezier(.32,1.22,.5,1)'});}   /* 고른 얼굴이 톡 들어앉는다 */
     $$('#pfEmg .pf-em').forEach(x=>x.classList.toggle('on',x===el));   /* 닫지 않는다 — 여러 개 비교해 고를 수 있게 */
     acctAutoSave();
   },
@@ -11824,7 +11984,12 @@ const ACT={
     if(!S.live)rOrg();
     toast(josa(siteName(sid),'을','를')+' 뺐습니다');
   },
-  'set.guide':()=>openReadme(),
+  'set.guide':()=>tourStart(),
+  'tour.next':()=>{if(TOUR&&TOUR.i>=TOUR.L.length)tourEnd();else tourStep(1);},
+  'tour.prev':()=>tourStep(-1),
+  'tour.end':()=>tourEnd(),
+  'tour.ch':el=>{if(!TOUR)return;const i=TOUR.L.findIndex(s=>s.c===el.dataset.c);if(i>=0)tourGo(i,1);},
+  'tour.readme':()=>{tourEnd();openReadme();},
   'offday.save':()=>{
     const i=$('#offName'),ds=$('[data-act="offday.save"]').dataset.ds;
     const n=String((i&&i.value)||'').trim().slice(0,12);
@@ -12501,7 +12666,9 @@ document.addEventListener('click',e=>{
     const c=widCfgLoad(),ids=WID_FONTS.map(f=>f[0]);
     const cur=Math.max(0,ids.indexOf(widFontId(c.font)));
     c.font=ids[(cur+Number(fb.dataset.fontd)+ids.length)%ids.length];
+    const fv=$('#wgFontV'),old=fv&&fv.textContent;
     widCfgSave(c);widApply();
+    if(fv&&old!==fv.textContent){const t=fv.textContent;fv.textContent=old;mvRoll(fv,t,Number(fb.dataset.fontd));}   /* 글꼴 이름이 누른 쪽으로 굴러 바뀐다 */
   }
 });
 document.addEventListener('input',e=>{
@@ -13045,6 +13212,7 @@ const LAYERS=[
     close:()=>{const p=$('#teamPop');if(p)p.classList.remove('on');const b=$('#teamSelEl');if(b)b.setAttribute('aria-expanded','false');},on:'down',keep:'#teamsel'},
   {n:'side',open:()=>{const d=$('#widSide');return !!(d&&d.classList.contains('on'));},
     close:()=>{const d=$('#widSide');if(d)d.classList.remove('on');S.widSide='';},on:'down',keep:'#widSide,[data-act="wid.side"]'},
+  {n:'widPlan',open:()=>WIDGET&&!!S.widPop&&!!S.planEdit,close:closePlanEdit},   /* 위젯 Esc — 쓰던 폼만 먼저 닫고 팝업은 남긴다(다음 Esc 에 팝업). on 이 없어 바깥 누르기엔 안 낀다 */
   {n:'widPop',open:()=>WIDGET&&!!S.widPop,close:()=>{S.widPop=false;if(S.planEdit)closePlanEdit();rWidget();},   /* 쓰던 폼도 닫는다 — 남으면 tkHold 로 실시간 반영·자동 업데이트가 멈춘다 */
     on:'click',keep:'#widPop,#fcal td.fc-daygrid-day,#mo,.ctxmenu,#toast',when:e=>e.target.isConnected},   /* 「외 N건」은 누르는 사이 칸이 다시 그려져 떨어진 요소가 「바깥」으로 읽힌다 */
   {n:'mtg',open:()=>!!$('#mm'),close:mtgClose,block:true},   /* block — 저녁 알림·아침 확인 창이 회의 화면 위로 뜨지 않게 기다린다 */   /* 1095 회의 모드 — 창(mo)이 떠 있으면 창이 먼저 닫힌다 */
@@ -13423,7 +13591,7 @@ function rWidget(){
   /* 내 업무 팝오버가 열려 있으면 같이 새로 — 열 때만 그리면 다른 기기에서 끝낸 업무가 「진행」으로 남고, 그 ✓ 를 누르면 도로 진행으로 바뀌었다 */
   {const sd=$('#widSide');if(sd&&sd.classList.contains('on')){const b=$('#widSideB'),st=b?b.scrollTop:0;widSideRender();if(b)b.scrollTop=st;}}
   const box=$('#widPop');if(!box)return;
-  if(!S.widPop){box.classList.remove('on');return;}
+  if(!S.widPop){box.classList.remove('on');box._r=null;if(box._mv){const a=box._mv;box._mv=null;a.cancel();}return;}
   const ds=S.selDate,d=toDate(ds),ho=holOf(ds);
   const h=$('#wpDate');
   if(h)h.textContent=d.getFullYear()+'년 '+(d.getMonth()+1)+'월 '+d.getDate()+'일';
@@ -13433,7 +13601,7 @@ function rWidget(){
   box.classList.add('on');
   widPlace();
   /* 폼이 열리고 닫힐 때마다 팝업 높이가 달라진다 — 내용이 바뀌면 자리를 다시 잡는다 */
-  if(!box.dataset.ro&&window.ResizeObserver){box.dataset.ro='1';new ResizeObserver(widPlace).observe(box);}
+  if(!box.dataset.ro&&window.ResizeObserver){box.dataset.ro='1';new ResizeObserver(()=>{if(!box._mv)widPlace();}).observe(box);}   /* 높이를 옮기는 동안의 크기 변화는 제 것이라 듣지 않는다 */
 }
 /* 위젯이 최신 파일 주소를 묻는 훅 — GitHub API 를 안 써 사내망에서도 막히지 않는다.
    주소는 고정, 버전은 위젯이 그 주소의 넘어가는 곳에서 스스로 읽는다 */
@@ -13444,13 +13612,14 @@ window.addEventListener('resize',()=>{if(WIDGET&&S.widPop)requestAnimationFrame(
 /* 누른 칸 옆에 붙이되 창 밖으로 나가지 않게 한다 — 위젯은 창이 곧 화면이라 넘치면 잘려서 못 본다 */
 function widPlace(){
   const box=$('#widPop');if(!box||!box.classList.contains('on'))return;
+  if(box._mv){const r=box.getBoundingClientRect();box._r={x:r.left,y:r.top,h:r.height};const a=box._mv;box._mv=null;a.cancel();}   /* 옮기는 중에 또 바뀌면 지금 보이는 자리에서 이어 간다 */
   const M=8;
   /* 업무를 쓰는 동안엔 자리를 고정한다 — 폼이 커질 때마다 움직이면 글을 못 쓴다.
      ⚠ 화면 밖으로 나갈 때만 다시 잡는다 */
   if(S.planEdit&&box.dataset.px){
     const px=+box.dataset.px,py=+box.dataset.py,hh=box.offsetHeight,ww=box.offsetWidth;
     if(px>=M&&py>=M&&px+ww<=innerWidth-M&&py+hh<=innerHeight-M){
-      box.style.left=px+'px';box.style.top=py+'px';return;
+      box.style.left=px+'px';box.style.top=py+'px';widGlide(box,px,py);return;
     }
   }
   box.style.maxHeight=Math.max(160,innerHeight-M*2)+'px';
@@ -13465,6 +13634,20 @@ function widPlace(){
   /* 1088 팝업이 누른 칸 쪽에서 펼쳐진다 — 기준점 = 칸 가운데를 팝업 안으로 가둔 자리(옆에 서면 가까운 변, 좁은 창에서 겹치면 칸 위) */
   const cx=r.left+((r.right-r.left)||0)/2,cy=r.top+(r.height||0)/2;
   box.style.transformOrigin=Math.round(Math.min(Math.max(0,cx-x),w))+'px '+Math.round(Math.min(Math.max(0,cy-y),ht))+'px';
+  widGlide(box,Math.round(x),Math.round(y));
+}
+/* 일자 팝업이 커지고 줄거나(폼 열고 닫기 · 업무 수 변화) 다른 날로 옮길 때 — 옛 자리·높이에서 새 자리·높이로 미끄러진다.
+   전엔 한 프레임에 툭 바뀌어, 폼을 닫으면 줄어든 판 밖으로 목록이 잘려 잠깐 비어 보였다. translate 개별 속성이라 등장(scale)과 겹치지 않는다 */
+function widGlide(box,x,y){
+  const h=box.offsetHeight,o=box._r;box._r={x,y,h};
+  if(!o||!mvOK())return;
+  const dx=o.x-x,dy=o.y-y,dh=o.h-h,mv=Math.abs(dx)>=2||Math.abs(dy)>=2,rs=Math.abs(dh)>=2;
+  if(!mv&&!rs)return;
+  const k0={},k1={};
+  if(mv){k0.translate=dx+'px '+dy+'px';k1.translate='0px 0px';}
+  if(rs){k0.height=o.h+'px';k1.height=h+'px';}
+  const a=box.animate([k0,k1],{duration:MV_MID,easing:MV_EASE});box._mv=a;
+  a.onfinish=()=>{if(box._mv!==a)return;box._mv=null;if(box.offsetHeight!==box._r.h)widPlace();};   /* 옮기는 사이 내용이 또 바뀌었으면 한 번 더 */
 }
 
 /* ═══════════ 업무 도구 이어하기 ═══════════
@@ -15898,7 +16081,7 @@ function openTkPick(){
   YM_Y=null;
   document.querySelectorAll('#ymPop[data-out]').forEach(x=>x.remove());   /* 흐려지며 나가는 중인 것은 바로 걷고 새로 연다 */
   const old=ymPopEl();
-  if(old){old.remove();return;}
+  if(old){closeYMPop();return;}   /* 다시 누르면 닫힘도 흐리며(바깥 누르기와 같게) */
   const btn=$('#topbar .tbt-ym');if(!btn)return;
   const pop=document.createElement('div');pop.id='ymPop';pop.className='ymp-tk';pop.innerHTML=ymPickHTML(tkYmBase(),'tk');
   document.body.appendChild(pop);
@@ -15967,7 +16150,7 @@ const SL_SPEC=[['#view-tasks .tkv-seg','fill','button','act'],['#view-tasks .rp-
   /* 대상 추가: 조직 관리 전환·권역 탭 · 민원 현황 탭 · 하자 공종별/업체별 · 업무 도구 선택 단추. D+60 판정 단추(줄마다 수백 개)는 넣지 않는다 */
   ['#view-org .tkv-seg','fill','button','act'],['#view-org .rp-tabs','line','.rp-tab','on'],['#view-defect .rk-tabbar .rp-tabs','line','.rp-tab','on'],['#view-defect .axseg','fill','button','on'],
   ['#view-qc .seg','fill','button','act'],['#view-redo .seg','fill','button','act'],['#view-prod .seg','fill','button','act'],['#view-photo .seg','fill','button','act'],
-  ['#d60Root .d60-sw','fill','button','act'],['#d60Root .d60-mss','fill','button','act'],['#mb .acct-tabs','fill','.acct-tab','act'],['#mb .acx-seg','fill','button','on'],['#mb .rpk-seg','fill','button','on'],['#mm .mm-tabs','line','.mm-tab','on']];   /* 1092: 계정 이모지/배경색 · 보고서 글꼴 */   /* 계정 창 프로필/비밀번호 */   /* D+60 점검/서식 전환도 이 엔진으로(유령 알약 대신) */
+  ['#d60Root .d60-sw','fill','button','act'],['#d60Root .d60-mss','fill','button','act'],['#mb .acct-tabs','fill','.acct-tab','act'],['#mb .acx-seg','fill','button','on'],['#mb.acx #pfPop .pf-cats','fill','.pf-cat','act'],['#mb .rpk-seg','fill','button','on'],['#mm .mm-tabs','line','.mm-tab','on']];   /* 1092: 계정 이모지/배경색 · 보고서 글꼴 */   /* 계정 창 프로필/비밀번호 */   /* D+60 점검/서식 전환도 이 엔진으로(유령 알약 대신) */
 const SL_MEM={};
 /* 데스크톱에서도, 동작 줄이기 설정과 상관없이 움직인다 */
 /* 움직임은 Web Animations(transform 만) — 합성 단계라 무거운 다시 그리기에도 안 끊긴다. 폭 차이는 scaleX 로.
@@ -15981,8 +16164,7 @@ function slGeom(kind,b,box){
   return{x:bx+l,y:by+rb.height-bt-h,w:rb.width-l-r,h};
 }
 function slSync(){
-  if(WIDGET)return;
-  SL_SPEC.forEach(([sel,kind,item,on])=>{
+  (WIDGET?SL_SPEC.filter(x=>x[0].startsWith('#mb')):SL_SPEC).forEach(   /* 위젯은 창(#mb) 안 고르는 줄만 — 계정 이모지/배경색 등 */([sel,kind,item,on])=>{
     $$(sel).forEach((box,i)=>{
       if(!box.offsetWidth)return;
       const key=sel+'#'+i,rec=SL_MEM[key]||(SL_MEM[key]={});
@@ -16126,6 +16308,7 @@ function mmenuOpen(){
     +(cur?mmenuRow('i-people','팀',teams.length>1?' data-act="mmenu.teams"':'',esc(cur.name)+(teams.length>1?chev:'')):'')   /* 팀이 하나면 이름만 보인다 */
     +mmenuRow('i-org','조직 관리',' data-act="mmenu.go" data-view="org"')
     +mmenuRow('i-settings','설정',' data-act="mmenu.go" data-view="settings"')
+    +mmenuRow('i-help','사용 안내',' data-act="mmenu.guide"')
     +(pwaCan()?mmenuRow('i-addsq','홈 화면에 추가',' data-act="pwa.add"'):'')   /* 이미 홈 화면 앱으로 열었으면 빠진다 */
     +'</div>';
   mssShow(box,true);box.classList.add('menu');
@@ -16236,6 +16419,7 @@ Object.assign(ACT,{
   'mds.close':()=>mdsClose(),   /* 업무 시트 잡이 */
   'mtab.menu':()=>{if($('#mo').classList.contains('open'))closeModal();{const q=$('.nq-panel.on');if(q)nqOpen(false);}const box=$('#mss'),open=!!(box&&box.classList.contains('on')&&box.classList.contains('menu'));mssClose();if(!open){mdsClose();mmenuOpen();}},   /* 다시 누르면 닫는다 · 열 땐 업무 시트를 먼저 내린다(겹침, v1072) */
   'mmenu.go':el=>{mssClose();go(el.dataset.view);},
+  'mmenu.guide':()=>{mssClose();setTimeout(tourStart,260);},
   'mmenu.teams':()=>mmenuTeams(),
   'mmenu.team':el=>{ACT['team.switch'](el);mssClose();},
   'tk.ym':()=>openTkPick(),   /* ⚠ 'tk.pick' 은 담당자·보류함 선택이 이미 쓴다 — 이름을 겹치면 그쪽이 죽는다 */

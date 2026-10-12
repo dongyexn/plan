@@ -92,7 +92,8 @@ const dayCell=(pg,i=2)=>pg.locator('#fcal td.fc-daygrid-day').nth(i);
   /* 팝업 편집기 — 어떻게 닫아도 편집기가 남지 않는다 */
   const plan=async()=>{await reset(pg);await L.pop.open();await W(400);await pg.click('#widPop [data-act="plan.new"]');await W(400);};
   await plan();s=await ST(pg);ok('편집기 열림',s.pop&&s.plan,s);
-  await pg.keyboard.press('Escape');await W(350);s=await ST(pg);ok('편집기 Esc — 팝업·편집기 함께 닫힘',!s.pop&&!s.plan,s);
+  await pg.keyboard.press('Escape');await W(350);s=await ST(pg);ok('편집기 Esc — 편집기만 닫히고 팝업은 남음',s.pop&&!s.plan,s);   /* 사용자: 첫 Esc 는 쓰던 폼만 */
+  await pg.keyboard.press('Escape');await W(350);s=await ST(pg);ok('다음 Esc — 팝업 닫힘',!s.pop&&!s.plan,s);
   await plan();await clickOutside(pg);s=await ST(pg);ok('편집기 바깥 클릭 — 편집기 남지 않음',!s.pop&&!s.plan,s);
   await plan();await pg.click('#widPop [data-act="wid.popClose"]');await W(400);s=await ST(pg);ok('편집기 ✕ — 편집기 남지 않음',!s.pop&&!s.plan,s);
   /* 알림창은 데이터가 바뀌면 다시 그린다 */
