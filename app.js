@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1164';
+const APP_VER='1166';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -2541,7 +2541,7 @@ function calInit(){
       /* 드래그는 '기간 선택' — 그 사이 업무를 패널에 보여 주고, 업무 추가를 누르면 이 기간으로 연다 */
       selRange(a,b);},
     datesSet:info=>{calMonSlide(info);_evSeen=null;_evQuiet=performance.now()+1500;rMonTitle();if(CAL_DS1){CAL_DS1=false;requestAnimationFrame(()=>requestAnimationFrame(calFitApply));}else subVisibleMonths();markSel();   /* 첫 datesSet 은 render 안에서 울린다 — render 가 이미 events() 로 막대를 만들었으니 다시 받지 않는다 */
-     if(WIDGET)setTimeout(calFitApply,0);   /* 위젯은 달이 바뀔 때마다 칸 높이로 막대 단계 재계산 */
+     if(WIDGET&&calFitKey()!==_calFitK)setTimeout(calFitApply,0);   /* 위젯은 달이 바뀔 때마다 칸 높이로 막대 단계 재계산 */
       requestAnimationFrame(holdFit);}   /* 주 수(5·6주)가 바뀌면 칸 높이도 바뀐다 — 보류함을 다시 맞춘다 */
   });
   CAL.render();
@@ -13292,8 +13292,12 @@ function maxEvOf(){
 }
 /* 첫 렌더·달 이동 뒤에 다시 재서 맞춘다 — 값이 그대로면 건드리지 않는다(무한 재렌더 방지) */
 let _maxEv=null;
+/* 위젯 칸 크기를 정하는 값(창 크기·글자 크기·글꼴) — 그대로면 달을 넘겨도 다시 재지 않는다(강제 배치 계산 한 번을 아낀다). 6주 고정이라 달마다 칸 높이는 같다 */
+let _calFitK='';
+function calFitKey(){return innerWidth+'x'+innerHeight+'|'+document.body.className.replace(/\bwid-(tight|nomore)\b/g,'')+'|'+(document.body.style.cssText||'');}
 function calFitApply(){
-  if(!CAL||(isNarrow()&&!WIDGET))return;   /* 위젯은 폭이 좁아도 칸 높이 기준으로 맞춘다 */
+  if(!CAL||(isNarrow()&&!WIDGET))return;
+  if(WIDGET)_calFitK=calFitKey();   /* 위젯은 폭이 좁아도 칸 높이 기준으로 맞춘다 */
   let n=calFitRows();
   /* 위젯은 칸 높이에 따라 막대를 단계별로 줄인다 — ① 보통 ② 촘촘(막대 14px·숫자 여백 축소, .wid-tight) ③ 「외 N건」 줄 없이 1줄(.wid-nomore).
      최소 크기에서도 막대·더보기가 날짜 칸을 넘지 않게 */

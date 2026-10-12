@@ -39,12 +39,12 @@
 --gn:#16A34A;--rd:#DC2626;--am:#D97706;
 --surf2:#F0F3F7;--surf3:#EAECF1;   /* 제목 띠(surf2) — 카드 머리·표 머리 등 30곳이 이 토큰 하나를 따른다 */
 --bt1:var(--b600);--bt2:#1F2B4C;
---glass:rgba(255,255,255,.66);   /* iOS 27식 — 판을 진하게(66%)·채도 강조는 낮춰 뒤 내용을 더 확산(가독성). 앱의 떠 있는 판 전부가 이 한 벌을 쓴다 */
---lq-fill:var(--glass);--lq-blur:blur(22px) saturate(1.5) brightness(1.04);   /* 리퀴드 글래스 — 얇은 반투명 판 + 강한 흐림 + 테두리 반사광(lq-hi) */
---lq-hi:inset 0 1px 0 rgba(255,255,255,.95),inset 0 -1px 0 rgba(255,255,255,.4),inset 0 0 0 1px rgba(255,255,255,.5);   /* 반사광 — 더 밝게 */
---lq-line:rgba(16,24,40,.13);--lq-edge:0 0 0 .5px rgba(16,24,40,.18);   /* 가장자리 — 어둡게 둘러 뒤 내용과 판을 가른다 */
---lqd-hi:inset 0 1px 0 rgba(255,255,255,.32),inset 0 -1px 0 rgba(255,255,255,.08),inset 0 0 0 1px rgba(255,255,255,.1);   /* 어두운 판용 반사광 */
---lqd-fill:rgba(26,29,38,.66);--lqd-blur:blur(40px) saturate(1.4);--lqd-edge:0 0 0 1px rgba(0,0,0,.5);   /* 어두운 판(위젯·알림) 한 벌 — 66%·바깥 어두운 테 */
+--glass:rgba(255,255,255,.76);   /* 떠 있는 판 한 벌 — 예전(88%)과 리퀴드(66%)의 중간, 플랫한 결(사용자). 앱의 떠 있는 판 전부가 이 한 벌을 쓴다 */
+--lq-fill:var(--glass);--lq-blur:blur(20px) saturate(1.6);   /* 리퀴드 글래스 — 얇은 반투명 판 + 강한 흐림 + 테두리 반사광(lq-hi) */
+--lq-hi:inset 0 1px 0 rgba(255,255,255,.6);   /* 반사광 — 위 한 줄만(플랫) */
+--lq-line:rgba(16,24,40,.09);--lq-edge:0 0 0 .5px rgba(16,24,40,.1);   /* 가장자리 — 예전(.06)과 리퀴드(.13)의 중간 */
+--lqd-hi:inset 0 1px 0 rgba(255,255,255,.12);   /* 어두운 판용 반사광 — 위 한 줄만(플랫) */
+--lqd-fill:rgba(26,29,38,.7);--lqd-blur:blur(20px) saturate(1.3);--lqd-edge:0 0 0 1px rgba(0,0,0,.25);   /* 어두운 판(위젯·알림) 한 벌 — 70%(사용자). 흐림 40→20px: 판이 진해 차이가 거의 없고 위젯 그리기 부담이 반 이하 */
 --tint-rd:#FDEAEA;--tint-gn:#E9F6EE;
 --st-res:var(--b600);--st-unr:var(--lbl);--st-lt:var(--ch-d60h);   /* 하자처리 현황 상태 색 — 처리 파랑 · 미처리 기본 글자(중립) · 장기미처리 차트 60일+ 빨강(표·KPI·카드 공통) */
 --ch-d60:#DA6A60;--ch-d30:#E89C9A;--ch-d0:#B3C7DD;--ch-recv:#3E71D2;--ch-done:#F0B144;
@@ -3183,7 +3183,7 @@ body.wid.glass #fcal .fc-scrollgrid{border:0!important;}   /* FC 자체 외곽�
 body.wid.glass .card{background:transparent;border:0;box-shadow:none!important;border-radius:0;padding:6px 4px;}
 
 body.wid.glass .cal-head .seg,body.wid.glass .cal-head .cal-nav,body.wid.glass .cal-move{
-  background:rgba(16,20,30,.5);border:1px solid transparent;box-shadow:var(--lqd-edge),var(--lqd-hi);
+  background:rgba(16,20,30,.5);border:1px solid rgba(255,255,255,.14);   /* 위젯 머리 단추는 유리 테두리 없이(사용자) */
   -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);}
 body.wid.glass .cal-head .cal-nav,body.wid.glass .cal-move{border-radius:3px;padding:2px;}   /* 위젯 머리 단추 묶음은 각진 3px 유지(사용자 결정 — 캡슐 되돌림) */
 /* 알약 안의 제목은 면을 갖지 않는다 — 상자 안 상자 방지 */
@@ -3674,7 +3674,7 @@ body.wid #mb.mb-ask .mf2 .btn.bg2{background:rgba(255,255,255,.12);color:#fff;}
 body.wid #mb.mb-ask .mf2 .btn-danger{background:rgba(239,68,68,.22);color:#FF8A80;}
 body.wid #mb.mb-ask .mf2 .btn.bo{background:rgba(62,113,210,.3);color:#CFE0FF;}
 /* 위젯 알림 — 폰과 같은 유리 캡슐 */
-body.wid #toast,body.wid .toast-bk{border-radius:22px;padding:11px 18px;background:var(--lqd-fill);-webkit-backdrop-filter:var(--lqd-blur);backdrop-filter:var(--lqd-blur);border:1px solid transparent;box-shadow:var(--lqd-edge),var(--lqd-hi),0 10px 30px rgba(0,0,0,.3);}
+body.wid #toast,body.wid .toast-bk{border-radius:22px;padding:11px 18px;background:var(--lqd-fill);-webkit-backdrop-filter:var(--lqd-blur);backdrop-filter:var(--lqd-blur);border:1px solid transparent;box-shadow:0 10px 30px rgba(0,0,0,.3);}
 .popbox{animation:popIn var(--tr);}
 
 /* 찾기 — 상단바 검색 버튼과 패널. 패널은 버튼 바로 아래(헤더 밑 우측)에 뜬다 */
@@ -3743,7 +3743,7 @@ body:not(.wid) .nq-panel{padding-top:6px;}}
 .mo-grab{display:none;}   /* 폰 시트 잡이 — 폰 큰 창에서만 보인다 */
 body.wid #mb .mo-x{top:15px;right:12px;}   /* 위젯 창 안쪽 여백 20 */
 .mf2{margin-top:22px;display:flex;justify-content:flex-end;gap:8px;}
-#toast,.toast-bk{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(16px);white-space:normal;word-break:keep-all;text-wrap:pretty;text-align:center;width:max-content;max-width:calc(100vw - 24px);background:var(--lqd-fill);color:#fff;-webkit-backdrop-filter:var(--lqd-blur);backdrop-filter:var(--lqd-blur);box-shadow:var(--lqd-edge),var(--lqd-hi),0 12px 32px rgba(0,0,0,.28);padding:10px 20px;border-radius:22px;font-size:13px;font-weight:500;z-index:9999;opacity:0;transition:opacity var(--t-base),transform var(--t-base);pointer-events:none;}
+#toast,.toast-bk{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(16px);white-space:normal;word-break:keep-all;text-wrap:pretty;text-align:center;width:max-content;max-width:calc(100vw - 24px);background:var(--lqd-fill);color:#fff;-webkit-backdrop-filter:var(--lqd-blur);backdrop-filter:var(--lqd-blur);box-shadow:0 12px 32px rgba(0,0,0,.28);padding:10px 20px;border-radius:22px;font-size:13px;font-weight:500;z-index:9999;opacity:0;transition:opacity var(--t-base),transform var(--t-base);pointer-events:none;}
 #toast.show,.toast-bk{opacity:1;transform:translateX(-50%) translateY(0);}
 /* 되돌리기 토스트 — 버튼이 있을 때만 pointer-events 를 켠다 */
 #toast.has-btn,.toast-bk.has-btn{display:flex;align-items:center;gap:14px;padding:8px 10px 8px 18px;pointer-events:auto;}
@@ -3823,7 +3823,7 @@ body.tst-x .toast-bk.has-btn{pointer-events:auto;}
   body:not(.wid) #mtab button[data-t="calendar"] .icn{width:26px;height:26px;margin:-1px 0;}   /* 달력 칸만 한 단 크게 — 틀 안이 비어 작아 보인다 */
   body:not(.wid) #tko{z-index:369;}   /* 업무 현황 폼의 바깥 누르기 판도 하단 탭(370) 아래 — 탭이 보이고 눌린다 */
   body.kbv:not(.wid) #mtab{display:none;}   /* 키보드가 실제로 떠 있을 때만 숨긴다(안드로이드는 fixed 바가 키보드를 따라 올라와 입력칸을 가린다). 초점만 있고 키보드가 없으면 늘 보인다 */
-  body:not(.wid) #toast,body:not(.wid) .toast-bk{bottom:calc(var(--mtab) + 4px + env(safe-area-inset-bottom));border-radius:22px;padding:12px 18px;background:var(--lqd-fill);-webkit-backdrop-filter:var(--lqd-blur);backdrop-filter:var(--lqd-blur);box-shadow:var(--lqd-edge),var(--lqd-hi),0 12px 32px rgba(0,0,0,.28);}   /* 알림은 캡슐 위에 — 하단 탭과 같은 유리 캡슐 */
+  body:not(.wid) #toast,body:not(.wid) .toast-bk{bottom:calc(var(--mtab) + 4px + env(safe-area-inset-bottom));border-radius:22px;padding:12px 18px;background:var(--lqd-fill);-webkit-backdrop-filter:var(--lqd-blur);backdrop-filter:var(--lqd-blur);box-shadow:0 12px 32px rgba(0,0,0,.28);}   /* 알림은 캡슐 위에 — 하단 탭과 같은 유리 캡슐 */
   /* 폰 누름 반응 — 눌러서 여는 줄·칸에 옅은 회색 판을 덧깐다(카드 색·테두리 유지) */
   body:not(.wid) #view-tasks .tk-item .tk-row:active,body:not(.wid) #view-calendar .mc-d:active,body:not(.wid) #d60Root .d60-mrow:active,body:not(.wid) #view-defect .kc-click:active{background-image:linear-gradient(rgba(120,120,128,.14),rgba(120,120,128,.14));}
   body:not(.wid) #view-tasks .tk-item .tk-row,body:not(.wid) #view-calendar .mc-d,body:not(.wid) #d60Root .d60-mrow,body:not(.wid) #view-defect .kc-click{-webkit-tap-highlight-color:transparent;}
@@ -5510,7 +5510,7 @@ td.d60-pc.has{color:var(--bt1);font-weight:700}
   body:not(.wid) :is(.cal-filt-pop,#tkFcard) .msel.on.open .msel-b{box-shadow:inset 0 0 0 1.5px var(--b300);}
   body:not(.wid) #view-calendar .btn.dp-add{width:32px;height:32px;padding:0;margin:-4px 3px -4px 0;justify-content:center;border-radius:8px;}   /* + 는 폰(36)과 같은 20 아이콘 — 데스크톱은 32 칸 · 가운데 = 완료 표시(.stx) 가운데 */
   body:not(.wid) #view-calendar .btn.dp-add .icn{width:20px;height:20px;}
-  body:not(.wid) #toast,body:not(.wid) .toast-bk{border-radius:22px;padding:12px 18px;background:var(--lqd-fill);-webkit-backdrop-filter:var(--lqd-blur);backdrop-filter:var(--lqd-blur);box-shadow:var(--lqd-edge),var(--lqd-hi),0 12px 32px rgba(0,0,0,.28);}
+  body:not(.wid) #toast,body:not(.wid) .toast-bk{border-radius:22px;padding:12px 18px;background:var(--lqd-fill);-webkit-backdrop-filter:var(--lqd-blur);backdrop-filter:var(--lqd-blur);box-shadow:0 12px 32px rgba(0,0,0,.28);}
 }
 /* ── 계정 창(#mb.acx) — 폰 하단 탭의 유리·캡슐 언어. 데스크톱·폰·위젯 같은 구조, 위젯은 색만(어두운 유리) ──
    평소: 아바타·이름·메일·소속 + 아래 한 줄(비밀번호 변경 › | 로그아웃 아이콘).
@@ -6142,5 +6142,5 @@ body.wid.glass{--mv-flash:#8FB4FF;}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1164"></script>
+<script src="./app.js?v=1166"></script>
 </body></html>
