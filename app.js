@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1148';
+const APP_VER='1155';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -721,14 +721,17 @@ function archMigrate(){
     }
   })();
 }
+/* 보관함 원본(압축) → {sid:{iid:it}} · 소유 정보가 빠진 옛 사본의 채울 값 */
+function archDecode(v){const out={},fill={};
+  Object.keys(v||{}).forEach(sid=>Object.keys(v[sid]||{}).forEach(iid=>{
+    try{const w=v[sid][iid]||{},it=JSON.parse(LZString.decompressFromBase64(w.z||'')||'null');
+      if(it){(out[sid]=out[sid]||{})[iid]=it;
+        /* 소유 정보 없이 옮겨진 옛 사본 — 관리자가 읽을 때 한 번 채운다(규칙 소유 검사용) */
+        if(!w.createdBy&&!w.assignees&&!w.site){const m=ownMeta(it);Object.keys(m).forEach(k=>{fill['calapp/archive/'+sid+'/'+iid+'/'+k]=m[k];});}}}catch(e){}}));
+  return {out,fill};}
 function archLoad(cb){
   if(ARCH.loaded){if(cb)cb();return;}
-  const unpack=v=>{S.arch={};const fill={};
-    Object.keys(v||{}).forEach(sid=>Object.keys(v[sid]||{}).forEach(iid=>{
-      try{const w=v[sid][iid]||{},it=JSON.parse(LZString.decompressFromBase64(w.z||'')||'null');
-        if(it){(S.arch[sid]=S.arch[sid]||{})[iid]=it;
-          /* 소유 정보 없이 옮겨진 옛 사본 — 관리자가 읽을 때 한 번 채운다(규칙 소유 검사용) */
-          if(!w.createdBy&&!w.assignees&&!w.site){const m=ownMeta(it);Object.keys(m).forEach(k=>{fill['calapp/archive/'+sid+'/'+iid+'/'+k]=m[k];});}}}catch(e){}}));
+  const unpack=v=>{const r=archDecode(v);S.arch=r.out;const fill=r.fill;
     if(S.live&&isEditor()&&Object.keys(fill).length)FB.db.ref().update(fill).catch(e=>console.warn('[FB] 보관함 소유 채우기',e));
     ARCH.loaded=true;ARCH.loading=false;if(cb)cb();};
   if(!S.live){unpack((LocalStore._d&&LocalStore._d.archive)||{});return;}
@@ -1027,7 +1030,7 @@ const FbStore={
   },
   bindShared(){
     this.migrateRemote();
-    setTimeout(trashPurge,5000);   /* 휴지통 30일 정리 — 부팅 통신이 잦아든 뒤 한 번 */
+    if(!WIDGET)setTimeout(trashPurge,5000);   /* 휴지통 30일 정리 — 부팅 통신이 잦아든 뒤 한 번. 위젯은 하지 않는다(브라우저 앱이 한다 — 휴지통 전체를 위젯 메모리에 올리지 않게) */
 
     /* ⚠ calapp/org 가 팀·권역·현장의 원본이다.
        hasCommercial/showVacant 는 규칙상 org 에 없다 — siteConfig 채널(dfSubSiteCfg)이 진실이므로 org 스냅샷이 S.org 를 갈아끼운 직후 마지막 siteConfig 를 다시 입힌다 */
@@ -1042,7 +1045,7 @@ const FbStore={
       /* 첫 스냅샷이 온 뒤 한 번 — 놓친 담당자 업무를 아침 확인으로 묻는다 */
       if(!FB._mrv){FB._mrv=true;setTimeout(morningReview,WIDGET?1400:800);   /* 위젯은 첫 렌더가 조금 늦다 */
         setTimeout(archMigrate,8000);   /* 오래 끝난 업무를 구독 밖으로 — 부팅 통신이 잦아든 뒤 */
-        setTimeout(()=>{if(isEditor())archNeed();},14000);   /* 관리자는 보관함을 미리 읽는다 — 백업에 담고 옛 사본에 소유 정보를 채운다 */
+        if(!WIDGET)setTimeout(()=>{if(isEditor())archNeed();},14000);   /* 관리자는 보관함을 미리 읽는다 — 백업에 담고 옛 사본에 소유 정보를 채운다. 위젯은 늘 들고 있지 않고 백업 때만 읽는다(bkExport) */
         /* 5시 지나 PC 를 켠 경우 — 놓친 업무 확인 모달이 지나간 뒤 띄운다(겹치면 가린다) */
         setTimeout(()=>{if(!$('#mo')||!$('#mo').classList.contains('open'))evePopShow();},WIDGET?4200:3600);}
       if(tkHold()){PEND.tasks=true;PEND.day=true;return;}
@@ -1064,7 +1067,8 @@ const FbStore={
       e=>{S.accounts={};S.acctDenied=true;console.warn('[FB] users 읽기 권한 없음',e);rOrg();rTasks();});
     /* cfg 에는 하자 감춘 현장(dfHide)도 있다 — 목록·현장 표도 다시 그린다 */
     this._on('calapp/cfg',v=>{S.cfg=v||{};bootCacheSave();rCfg();rDefectNav();if(S.view==='org')rOrg();});
-    this._on('calapp/d60',v=>{S.d60d=v||{};if(!FB._d60q){FB._d60q=true;setTimeout(d60QReplay,1500);}   /* 지난번에 못 보낸 점검 */if(S.view==='d60'){if(d60Editing())S.d60._stale=true;else rD60();}});   /* D+60 점검 — 서식·점검 결과. 입력 중이면 다시 그리기를 미룬다 */
+    /* 위젯엔 D+60 화면이 없다 — 구독하지 않는다(백업은 bkExport 가 그때 한 번 읽는다) */
+    if(!WIDGET)this._on('calapp/d60',v=>{S.d60d=v||{};if(!FB._d60q){FB._d60q=true;setTimeout(d60QReplay,1500);}   /* 지난번에 못 보낸 점검 */if(S.view==='d60'){if(d60Editing())S.d60._stale=true;else rD60();}});   /* D+60 점검 — 서식·점검 결과. 입력 중이면 다시 그리기를 미룬다 */
     const uid=S.user&&S.user.uid;
     if(uid){
         this._on('calapp/prefs/'+uid,v=>{S.prefs=v||{};});   /* 최근 이모지 등 개인 설정 */
@@ -1561,24 +1565,44 @@ function mvRoll(el,text,dir){if(!el)return;const old=el.textContent;
 function mvRollFrom(el,old){if(!el||old==null)return;const t=el.textContent;if(old===t)return;el.textContent=old;mvRoll(el,t);}
 /* ＋ → 폼 모핑(1092) — 누른 단추 자리의 상자가 폼 자리·크기로 늘어나고(살짝 넘침), 다 펴지면 폼 속이 흐림에서 또렷이 들어온다.
    닫을 땐 mvMorphFrom(폼이 있던 자리, 단추) — 상자가 단추로 줄어든다. 상자는 폼 칠(배경)을 베낀다 */
-function mvMorphBox(a,b,bg,r0,r1,dur,ease,z){
-  const m=document.createElement('div');m.className='mv-morph';m.style.background=bg;if(z)m.style.zIndex=z;document.body.appendChild(m);
-  const box=(r,rad)=>({left:r.left+'px',top:r.top+'px',width:r.width+'px',height:r.height+'px',borderRadius:rad});
-  const an=m.animate([box(a,r0),box(b,r1)],{duration:dur,easing:ease,fill:'forwards'});an.finished.then(()=>m.remove(),()=>m.remove());return an;}
-const mvMorphBg=el=>{const c=getComputedStyle(el).backgroundColor;return /^rgba\(.*,\s*0\)$/.test(c)?'var(--bg2)':c;};
+const MV_MORPH=340,MV_MORPH_EASE='cubic-bezier(.3,.9,.3,1.04)',MV_MORPH_R=.62,MV_MORPH_X=140;   /* 펴짐 0.34초 · 끝에 0.6% 넘침 · 62%(0.21초)면 크기 99.5% — 그때부터 0.14초 동안 상자 → 폼. 더 이르면 덜 펴진 상자 테가 폼 테 안쪽에 겹쳐 보이고, 곡선이 더 급하면 첫 0.07초에 78%까지 튀어 「툭」 나온다 */
+/* 상자 겉모습 = 폼의 칠·그림자·테·유리 그대로 — 상자가 폼으로 바뀌는 순간 그림자·테가 툭 생기지 않게. bg 문자열만 오면 칠만 */
+function mvSkin(el){const c=getComputedStyle(el),bf=c.backdropFilter&&c.backdropFilter!=='none'?c.backdropFilter:'';let bg=c.backgroundColor;
+  if(/^rgba\(.*,\s*0\)$|^transparent$/.test(bg))bg='var(--bg2)';
+  return {background:bg,boxShadow:c.boxShadow==='none'?'':c.boxShadow,backdropFilter:bf,webkitBackdropFilter:bf,border:parseFloat(c.borderTopWidth)>0?c.borderTopWidth+' solid '+c.borderTopColor:''};}
+/* 상자는 큰 쪽 자리에 두고 transform(이동·배율)으로 줄였다 늘린다 — 합성기에서 돌아 창 내용을 그리느라 메인 스레드가 바빠도 끊기지 않는다
+   (예전엔 left·top·width·height 를 움직여 사용 안내처럼 무거운 창은 단추 크기로 멈췄다가 78% 크기로 건너뛰었다). 모서리는 배율을 되갚아 눈에 보이는 반경을 지킨다 */
+function mvMorphBox(a,b,skin,r0,r1,dur,ease,z,fadeAt){
+  const m=document.createElement('div');m.className='mv-morph';Object.assign(m.style,typeof skin==='string'?{background:skin}:skin);if(z)m.style.zIndex=z;
+  const big=a.width*a.height>=b.width*b.height?a:b;
+  Object.assign(m.style,{left:big.left+'px',top:big.top+'px',width:big.width+'px',height:big.height+'px',transformOrigin:'0 0'});document.body.appendChild(m);
+  const sx=r=>Math.max(.001,r.width/big.width),sy=r=>Math.max(.001,r.height/big.height);
+  const tf=r=>({transform:'translate('+(r.left-big.left)+'px,'+(r.top-big.top)+'px) scale('+sx(r)+','+sy(r)+')'});
+  const an=m.animate([tf(a),tf(b)],{duration:dur,easing:ease,fill:'forwards'});
+  /* 모서리는 큰 쪽 반경 그대로 둔다 — 반경을 따로 움직이면 메인 스레드에서 돌아, 무거운 창을 그리는 동안 배율만 앞서 가 상자가 타원으로 부풀었다.
+     작을 때는 반경도 같이 작아 보이지만 그 순간은 0.1초가 안 된다 */
+  m.style.borderRadius=big===a?r0:r1;
+  /* fadeAt — 그 지점부터 상자는 흐려지고 아래 진짜 폼이 드러난다(끝까지 펴지는 동안 겹쳐 넘긴다) */
+  const fa=fadeAt?m.animate([{opacity:1},{opacity:1,offset:fadeAt/(fadeAt+MV_MORPH_X)},{opacity:0}],{duration:fadeAt+MV_MORPH_X,fill:'forwards'}):null;   /* fadeAt = ms */
+  Promise.all([an.finished,fa?fa.finished:0]).then(()=>m.remove(),()=>m.remove());return an;}
+const mvMorphBg=el=>mvSkin(el);
+
 function mvMorph(btn,form,to,z){   /* to = 폼의 끝 자리(움직이는 중인 창은 변형 전 자리를 넘긴다) · z = 상자 층 */
   const el=btn&&btn.nodeType===1;if(!mvOK()||!btn||!form||(el&&!mvVis(btn))||!mvVis(form))return;
   const a=el?btn.getBoundingClientRect():btn,b=to||form.getBoundingClientRect(),kids=[...form.children];   /* btn 은 요소 또는 단추가 있던 자리(다시 그려져 사라진 경우) */
-  form.animate([{opacity:0},{opacity:0}],{duration:380});   /* 상자가 펴지는 동안 폼은 숨는다(포커스는 그대로) */
-  mvMorphBox(a,b,mvMorphBg(form),Math.min(a.height/2,14)+'px',getComputedStyle(form).borderTopLeftRadius,380,'cubic-bezier(.32,1.12,.5,1)',z).finished.then(()=>{
-    kids.forEach((c,i)=>{if(c.isConnected)c.animate([{opacity:0,filter:'blur(4px)'},{opacity:1,filter:'none'}],{duration:MV_FAST,delay:i*40,easing:MV_EASE,fill:'backwards'});});},()=>{});}
+  /* 상자가 거의 다 펴지면(MV_MORPH_R) 상자는 흐려지고 폼이 같은 자리에서 드러난다 — 다 펴질 때까지 빈 상자로 기다리지 않는다(예전 0.15초 빈 판) */
+  const D=MV_MORPH,t0=Math.round(D*MV_MORPH_R),X=MV_MORPH_X;
+  form.animate([{opacity:.01},{opacity:.01}],{duration:t0});   /* 펴지는 동안 폼은 숨는다(포커스는 그대로) — 0 이 아니라 0.01: 투명도 0 인 층은 그려 두지 않아, 드러나는 순간 무거운 창(사용 안내)이 몇 프레임 비어 뒤가 비쳤다. t0 에 폼은 다 보이고 그 위의 상자가 흐려지며 속이 드러난다 — 둘 다 반투명인 순간이 없어 뒤 화면이 비치지 않는다 */
+  mvMorphBox(a,b,mvSkin(form),Math.min(a.height/2,14)+'px',getComputedStyle(form).borderTopLeftRadius,D,MV_MORPH_EASE,z,t0);
+  kids.forEach((c,i)=>{if(c.isConnected)c.animate([{opacity:0,filter:'blur(3px)'},{opacity:1,filter:'none'}],{duration:180,delay:t0+i*30,easing:MV_EASE,fill:'backwards'});});}
 function mvMorphFrom(fr,btn,bg,r1,z){
   if(!mvOK()||!fr||!btn||!mvVis(btn))return;
   const a=btn.getBoundingClientRect(),an=mvMorphBox(fr,a,bg||'var(--bg2)',r1||'10px',Math.min(a.height/2,14)+'px',MV_MID,MV_EASE,z);
+  if(an&&an.effect&&an.effect.target&&typeof bg==='object')an.effect.target.animate([{boxShadow:bg.boxShadow||'none'},{boxShadow:'none'}],{duration:MV_MID*.6,easing:MV_EASE,fill:'forwards'});   /* 줄며 그림자도 거둔다 — 단추 둘레에 그림자가 남지 않게 */
   /* 줄어드는 상자는 돌아가는 자리의 바탕색으로 물들며 흐려진다 — 어두운 사이드바로 흰 상자가 그대로 꽂히지 않게 */
   const m=an&&an.effect&&an.effect.target;if(!m)return;
   let p=btn,to='';while(p&&p!==document.documentElement){const c=getComputedStyle(p).backgroundColor;if(!/^rgba\(.*,\s*0\)$|^transparent$/.test(c)){to=c;break;}p=p.parentElement;}
-  m.animate([{opacity:1,backgroundColor:getComputedStyle(m).backgroundColor},{opacity:1,offset:.35},{opacity:0,backgroundColor:to||getComputedStyle(m).backgroundColor}],{duration:MV_MID,easing:'linear',fill:'forwards'});}
+  m.animate([{opacity:1,backgroundColor:getComputedStyle(m).backgroundColor},{opacity:1,offset:.3},{opacity:0,offset:.75,backgroundColor:to||getComputedStyle(m).backgroundColor},{opacity:0}],{duration:MV_MID,easing:'linear',fill:'forwards'});}   /* 단추 크기에 닿기 전에 다 흐려진다 — 늦게까지 남으면 단추 위에 흰 막이 끼어 단추가 바랜 듯 보였다 */
 /* ＋ 로 목록에 새 행을 넣으면 그 행이 ＋ 자리에서 펴진다(1092) — 저장 뒤 다시 그려져야 생기므로 0.8초까지 기다려 찾는다. sel = 새 행 안 입력칸 */
 function mvMorphNew(btn,sel){
   if(!mvOK()||!btn||!btn.isConnected||!mvVis(btn))return;const a=btn.getBoundingClientRect(),t0=performance.now();
@@ -1594,8 +1618,12 @@ function mbMorphOpen(mb){
   const c=MV_CLK;if(!c||performance.now()-c.t>1500||!c.el||!c.el.closest)return;
   const b=c.el.closest('button,[data-act]');if(!b||b.closest('#mo,.ctxmenu')||!mvVis(b))return;
   const r=b.getBoundingClientRect();if(r.width>420||r.height>120)return;   /* 표 행처럼 큰 것에서는 펴지 않는다 */
-  requestAnimationFrame(()=>{
-    if(!$('#mo').classList.contains('open')||(isMob()&&!WIDGET)||mb.classList.contains('mb-ask')||mb.classList.contains('pv-fly'))return;
+  if(isMob()&&!WIDGET)return;
+  mb.style.transition='none';mb.style.transform='none';setTimeout(()=>{mb.style.transition='';mb.style.transform='';},MV_MORPH+MV_MORPH_X+60);   /* 창 자체의 0.96→1 확대는 끈다 — 상자가 이미 펴 주므로 드러난 뒤에도 창이 한 번 더 커지며 움찔했다 */
+  mb.style.visibility='hidden';   /* 다음 프레임에 펴기 전까지 — 창이 제자리에 먼저 비쳤다가 사라지고 단추에서 다시 펴지던 깜빡임 */
+  {const mo=$('#mo');mo.style.transition='opacity .12s';setTimeout(()=>{mo.style.transition='';},400);}   /* 어두운 막이 상자가 다 펴지기 전에(0.14초) 다 깔리게 — 늦으면 드러나는 창이 막과 함께 반투명해 뒤가 비쳤다 */
+  requestAnimationFrame(()=>{mb.style.visibility='';
+    if(!$('#mo').classList.contains('open')||mb.classList.contains('mb-ask')||mb.classList.contains('pv-fly'))return;
     mb._mvFrom=b;mvMorph(b,mb,mbRest(mb),1001);});}
 function mbMorphClose(mb){
   const b=mb._mvFrom;mb._mvFrom=null;
@@ -3281,14 +3309,14 @@ function dpLeave(pid){
 /* 1101: 폼이 새로 끼거나(새 업무) 빠질 때(빈 폼 닫기) 아래 카드가 한 번에 튀지 않게 — 옛 자리에서 미끄러진다 */
 const dpKey=e=>e.dataset.pid+'|'+(e.dataset.occ||'');
 function dpFlipPre(){const L=$('#dpList'),m=new Map();if(L&&mvOK())L.querySelectorAll(':scope>.plan[data-pid]').forEach(e=>{if(mvVis(e))m.set(dpKey(e),e.getBoundingClientRect().top);});return m;}
-function dpFlipRun(m,dur){if(!m||!m.size)return;const L=$('#dpList');if(!L)return;
+function dpFlipRun(m,dur,ease){if(!m||!m.size)return;const L=$('#dpList');if(!L)return;
   L.querySelectorAll(':scope>.plan[data-pid]').forEach(e=>{const t=m.get(dpKey(e));if(t==null)return;const dy=t-e.getBoundingClientRect().top;
-    if(Math.abs(dy)>1)e.animate([{transform:'translateY('+dy+'px)'},{transform:'none'}],{duration:dur,easing:PE_EASE});});}
+    if(Math.abs(dy)>1)e.animate([{transform:'translateY('+dy+'px)'},{transform:'none'}],{duration:dur,easing:ease||PE_EASE});});}
 function openPlanEdit(p,startD,endD,occ){
   const c0=peCardEl(p&&p.id),h0=c0?c0.getBoundingClientRect().height:0;
   const fl=(!p&&!$('#dpEdit'))?dpFlipPre():null;   /* 새 업무 폼 — 맨 위에 끼며 카드들을 밀어 내린다 */
   S.planEdit={orig:p?{...p}:null,occ:occ||'',start:startD||S.selDate,end:endD||''};
-  rDay();dpFlipRun(fl,320);
+  rDay();dpFlipRun(fl,MV_MORPH,MV_MORPH_EASE);   /* 새 폼이 ＋ 에서 펴지는 상자와 같은 곡선 — 카드가 먼저 내려가 빈 틈이 생기지 않게 */
   {const f=$('#dpEdit');if(f&&h0){peGrow(f,h0,320);
     const ch=f.querySelector('.pe-chips');if(ch&&ch.animate)ch.animate([{opacity:0,transform:'translateY(-6px)'},{opacity:1,transform:'none'}],{duration:220,delay:90,easing:'ease-out',fill:'backwards'});
     const sd=f.querySelector('.pe-side');if(sd&&sd.animate)sd.animate([{opacity:0},{opacity:1}],{duration:180,easing:'ease-out'});}}
@@ -4321,7 +4349,7 @@ function rTkNewOverlay(){
     c.removeAttribute('style');return;}
   if(sheet){const opening=!o.classList.contains('open');c.removeAttribute('style');c.classList.add('sheet');
     c.innerHTML='<button type="button" class="tko-grab" data-act="tk.formCancel" aria-label="닫기"></button>'+taskFormHTML(S.tkNew,null,null);
-    if(opening)void c.offsetWidth;   /* 닫힌 자리를 한 번 굳혀야 거기서부터 올라온다 */
+    if(opening){c.style.transition='none';void c.offsetWidth;c.style.removeProperty('transition');}   /* 닫힌 자리(화면 아래)를 전이 없이 한 번 굳혀야 거기서부터 올라온다 — 전이를 둔 채 굳히면 팝업용 0.97 배율에서 출발해 제자리에서 살짝 커지기만 했다(올라오지 않음) */
     o.classList.add('open');return;}
   c.classList.remove('sheet');
   const opening=!o.classList.contains('open');
@@ -10189,7 +10217,9 @@ function bkStamp(d){
   const t=d||new Date();
   return String(t.getFullYear()).slice(2)+pad(t.getMonth()+1)+pad(t.getDate());
 }
-function bkData(){
+function bkData(x){   /* x — 위젯이 백업 때만 읽어 온 보관함·D+60({archive,d60}) */
+  if(x)return JSON.stringify({kind:'hplan-backup',ver:APP_VER,savedAt:new Date().toISOString(),
+    org:S.org,people:S.people,tasks:S.tasks,cfg:S.cfg,archive:x.archive,d60:x.d60},null,1);
   return JSON.stringify({
     kind:'hplan-backup',ver:APP_VER,savedAt:new Date().toISOString(),
     org:S.org,people:S.people,tasks:S.tasks,cfg:S.cfg,
@@ -10214,7 +10244,10 @@ window.newMentions=function(){return[];};
 window.bkExport=function(){
   if(!S.live||!isEditor())return null;
   if(!S.tasks||!Object.keys(S.tasks).length)return null;   /* 아직 안 받았으면 빈 백업을 만들지 않는다 */
-  return {name:'hplan_'+bkStamp()+'.json',text:bkData()};
+  if(!WIDGET)return {name:'hplan_'+bkStamp()+'.json',text:bkData()};
+  /* 위젯 — 보관함·D+60 을 늘 들고 있지 않는다. 백업 때만 한 번 읽어 담고 버린다(못 읽으면 이번 백업은 건너뛰고 다음 주기에 다시) */
+  return Promise.all([ARCH.loaded?null:FB.db.ref('calapp/archive').get(),FB.db.ref('calapp/d60').get()]).then(([a,d])=>
+    ({name:'hplan_'+bkStamp()+'.json',text:bkData({archive:ARCH.loaded?S.arch:archDecode(a.val()||{}).out,d60:d.val()||null})})).catch(e=>{console.warn('[백업] 보관함·D+60 읽기',e);return null;});
 };
 /* 위젯이 저장을 마치면 알려 준다 */
 window.bkNote=function(name){
@@ -11095,6 +11128,7 @@ function tstLayout(){
   if(live.length){const w=Math.max(...all.map(e=>e.offsetWidth));all.forEach(e=>{e.style.minWidth=w+'px';});}
   let k=front?1:0,y=front&&x?t.offsetHeight+8:0;
   TST.forEach(b=>{if(b.classList.contains('out'))return;
+    b.classList.toggle('bk-under',!x&&k>0);   /* 접혀 앞 알림 밑에 깔린 동안은 글을 감춘다 — 앞 판이 반투명이라 뒤 글이 겹쳐 읽혔다 */
     if(x){b.style.transform='translateX(-50%) translateY('+(-y)+'px)';b.style.opacity='1';y+=b.offsetHeight+8;}
     else{b.style.transform='translateX(-50%) translateY('+(-8*k)+'px) scale('+(1-.05*k)+')';b.style.opacity=k?String(1-.25*k):'1';}
     k++;});
@@ -11311,6 +11345,13 @@ const ACT={
   'mtg.cv':()=>mtgCoverOff(),
   'bg.link':()=>{},   /* 사진 출처·동기화 링크 — 새 탭으로 열리기만(표지를 걷지 않게 클릭을 여기서 받는다) */
   'bg.pick':el=>{const L=window.BG_LIST||[],p=L[Number(el.dataset.i)];if(p)bgSetPin(p.u);},
+  'bg.sync':()=>{
+    if(bgSyncIng()){toast('이미 요청했습니다 — 보통 5~15분 안에 반영됩니다');return;}
+    if(!(S.live&&FB.db)){toast('로컬 모드에서는 동기화할 수 없습니다');return;}
+    FB.db.ref('bg/req').set(firebase.database.ServerValue.TIMESTAMP)
+      .then(()=>{window.BG_REQ=Date.now();bgPickRender();toast('동기화를 요청했습니다 — 보통 5~15분 안에 반영됩니다');})
+      .catch(()=>toast('동기화를 요청하지 못했습니다 · 관리자 권한을 확인해 주세요'));
+  },
   'bg.all':()=>{openModal('배경화면','<div class="bgp-all-grid" id="bgAllGrid"></div>','');$('#mb').classList.add('bgw');bgPickRender();},   /* 모두 보기 — 고르면 창은 그대로, 체크만 옮겨 간다 */
   'bg.auto':el=>{if(el.checked){bgSetPin('');return;}const c=bgPick();if(c)bgSetPin(c.u);},   /* 끄면 지금 사진으로 고정 */
   'mtg.p':el=>{const p=Number(el.dataset.p)||0;if(p===MTG.p)return;const d=p>MTG.p?1:-1;MTG.p=p;mtgRender(d,true);},   /* 넘긴 쪽에서 밀려 들어온다 */
@@ -11819,11 +11860,11 @@ const ACT={
       trashDrop(sid,iid);toast('완전히 지웠습니다');trashOpen();});},
   'bk.now':()=>{
     if(!isEditor())return toast('관리자만 내보낼 수 있습니다');
-    const d=window.bkExport&&window.bkExport();
+    Promise.resolve(window.bkExport&&window.bkExport()).then(d=>{   /* 위젯이면 보관함·D+60 을 읽는 동안 기다린다 */
     if(!d)return toast('아직 자료를 다 받지 못했습니다 · 잠시 뒤 다시 눌러 주세요');
     bkDownload(d.name,d.text);
     try{localStorage.setItem(bkKey(),JSON.stringify({at:new Date().toISOString(),name:d.name,by:'수동'}));}catch(e){}
-    rBk();toast('내려받기 폴더에 저장했습니다 · '+d.name);
+    rBk();toast('내려받기 폴더에 저장했습니다 · '+d.name);});
   },
   /* 암호화 백업 복호 — 위젯 안에서만 가능(DPAPI 는 그 PC·그 계정 귀속).
      브라우저 단독이면 같은 PC 의 위젯 화면에서 되돌리라고 안내한다 */
@@ -12640,6 +12681,7 @@ async function mtgOpen(){
   const bt=$('#tbMtgWrap button');MTG.ld=1;if(bt){bt.style.transition='opacity var(--t-fast)';bt.style.opacity='.5';bt.style.cursor='progress';}   /* 받는 동안 — 단추를 흐리게 */
   try{await mtgLoad();}finally{MTG.ld=0;if(bt){bt.style.opacity='';bt.style.cursor='';}}
   if(S.view!=='defect')return;
+  if(!dfRm()){toast('게시된 하자 자료가 없습니다');return;}   /* 기준월이 없으면 머리가 「0년 NaN월」로 그려졌다 */
   {const o=$('#mm');if(o&&o._out)o.remove();}   /* 닫히는 중인 것은 바로 걷는다(닫힘 끝에 새 창이 같이 지워지지 않게) */
   const m=document.createElement('div');m.id='mm';m.setAttribute('role','dialog');m.setAttribute('aria-label','회의 모드');m.tabIndex=-1;document.body.appendChild(m);
   MTG.ret=document.activeElement;
@@ -13189,10 +13231,16 @@ const WIDGET=/[?&]w=1\b/.test(location.search);
 const BG_UTM='?utm_source=calapp&utm_medium=referral';
 const bgUrl=p=>p.u+(p.u.includes('?')?'&':'?')+'w=2560&q=80&fm=jpg&fit=crop';
 /* RTDB bg/l(GitHub 작업 bg-sync 가 매시간 컬렉션에서 채움) — 로그인 전에도 읽힌다. 받으면 이 브라우저에 목록을 두어 다음 첫 화면(boot-wid.js)부터 그 목록 */
-function bgSub(){if(WIDGET||!FB.db)return;try{FB.db.ref('bg').on('value',sn=>{const v=sn.val()||{},l=v.l;if(!Array.isArray(l)||!l.length)return;
+function bgSub(){if(WIDGET||!FB.db)return;try{FB.db.ref('bg').on('value',sn=>{const v=sn.val()||{},l=v.l;
+  const wasIng=bgSyncIng();window.BG_REQ=Number(v.req)||0;window.BG_CHK=Number(v.chk)||0;
+  if(wasIng&&!bgSyncIng()&&window.BG_CHK)toast('배경화면 목록을 다시 가져왔습니다');   /* 요청한 동기화가 끝났다 */
+  if(!Array.isArray(l)||!l.length){bgPickRender();return;}
+  if(Array.isArray(window.BG_LIST)&&window.BG_AT===(Number(v.at)||0)&&JSON.stringify(window.BG_LIST)===JSON.stringify(l.filter(x=>x&&x.u))){bgPickRender();return;}   /* 요청·확인 시각만 바뀐 경우 — 사진은 그대로 */
   const prev=BG_CUR?bgPick():null;   /* 목록이 새로 오면(첫 방문·컬렉션 변경) 순번이 달라져 보던 사진이 바뀐다 — 이번 시간대는 보던 것 그대로 */
   window.BG_LIST=l.filter(x=>x&&x.u);if(prev&&prev.u===BG_CUR&&!bgPin())BG_HOLD={p:prev,h:bgHour()};window.BG_AT=Number(v.at)||0;try{localStorage.setItem('calapp.bgl',JSON.stringify(window.BG_LIST));localStorage.setItem('calapp.bgat',String(window.BG_AT));}catch(e){}bgApply(true);},()=>{});}catch(e){}}
-const BG_SYNC_URL='https://github.com/dongyexn/plan/actions/workflows/bg-sync.yml';   /* 관리자 「동기화」 — GitHub 실행 화면(Run workflow) 새 탭. 앱에 GitHub 토큰을 두지 않으려고 바로 실행하지 않는다 */
+/* 관리자 「동기화」 — 앱은 RTDB bg/req 에 요청 시각만 쓰고, GitHub 작업 bg-sync(5분마다 확인)가 req > chk 이면 컬렉션을 다시 읽는다.
+   앱에 GitHub·Unsplash 키를 두지 않으려는 구조라 즉시가 아니라 다음 확인(보통 5~15분) 때 반영된다 */
+function bgSyncIng(){const r=Number(window.BG_REQ)||0;return r>(Number(window.BG_CHK)||0)&&Date.now()-r<30*60000;}
 const BG_SHOW=6;   /* 카드에는 두 줄(6장)까지 — 나머지는 「모두 보기」 창 */
 const bgHour=()=>Math.floor(Date.now()/3600000);
 /* 설정 「배경 사진」 — 자동(한 시간마다) / 고정(고른 사진을 계속). 이 브라우저에만(calapp.bgpin {u}). 고른 사진이 컬렉션에서 빠지면 자동으로 */
@@ -13202,18 +13250,19 @@ function bgPick(){const L=window.BG_LIST;if(!Array.isArray(L)||!L.length)return 
   if(BG_HOLD&&BG_HOLD.h===bgHour())return BG_HOLD.p;BG_HOLD=null;return L[bgHour()%L.length];}
 function bgSetPin(u){BG_HOLD=null;try{if(u)localStorage.setItem('calapp.bgpin',JSON.stringify({u}));else localStorage.removeItem('calapp.bgpin');}catch(e){}bgApply(true);}
 function bgThumbHTML(p,i,cur,fix,big){const on=cur&&cur.u===p.u,th=p.u+(p.u.includes('?')?'&':'?')+'w=360&q=70&fm=jpg&fit=crop';
-  return '<button class="bgp-t'+(on&&fix?' on':'')+'" data-act="bg.pick" data-i="'+i+'" aria-pressed="'+(fix&&on)+'" aria-label="'+esc(p.n)+' 배경화면으로 고정" style="background-image:url(&quot;'+esc(th)+'&quot;)"><span class="ck"><svg class="icn" aria-hidden="true"><use href="#i-check"></use></svg></span>'+(on&&!fix?'<span class="nw">지금</span>':'')+(big?'<span class="nm">'+esc(p.n)+'</span>':'')+'</button>';}
+  return '<button class="bgp-t'+(on?' on':'')+'" data-act="bg.pick" data-i="'+i+'" aria-pressed="'+(fix&&on)+'" aria-label="'+esc(p.n)+' 배경화면으로 고정" style="background-image:url(&quot;'+esc(th)+'&quot;)"><span class="ck"><svg class="icn" aria-hidden="true"><use href="#i-check"></use></svg></span>'+(big?'<span class="nm">'+esc(p.n)+'</span>':'')+'</button>';}
 function bgPickRender(){const w=$('#bgPickRow');if(!w)return;const L=Array.isArray(window.BG_LIST)?window.BG_LIST:[],pu=bgPin(),fix=!!(pu&&L.some(x=>x.u===pu)),cur=bgPick();
   document.querySelectorAll('[data-act="bg.auto"]').forEach(x=>{x.checked=!fix;});
   const more=L.length>BG_SHOW,k=more?BG_SHOW-1:BG_SHOW;   /* 넘치면 여섯째 칸은 「+N 모두 보기」 */
   let idx=L.map((_,i)=>i).slice(0,k);const ci=cur?L.findIndex(x=>x.u===cur.u):-1;if(ci>=k)idx[k-1]=ci;   /* 지금(고정) 사진은 늘 카드 안에 */
   const mi=L.findIndex((_,i)=>!idx.includes(i)),mp=L[mi];
   w.innerHTML=idx.map(i=>bgThumbHTML(L[i],i,cur,fix)).join('')+(more?'<button class="bgp-more" data-act="bg.all" aria-label="배경화면 모두 보기" style="background-image:url(&quot;'+esc(mp.u+(mp.u.includes('?')?'&':'?')+'w=360&q=60&fm=jpg&fit=crop')+'&quot;)"><span><b>+'+(L.length-k)+'</b>모두 보기</span></button>':'');
-  const pv=$('#bgPv');if(pv&&cur)pv.style.backgroundImage='url("'+bgUrl(cur).replace('w=2560','w=900')+'")';
+  const pv=$('#bgPv');if(pv&&!pv.querySelector('.lg')){const b=$('#cvBrand');if(b){const lg=document.createElement('i');lg.className='lg';lg.setAttribute('aria-hidden','true');lg.innerHTML=b.innerHTML;pv.insertBefore(lg,pv.firstChild);}}   /* 로그인 화면처럼 왼쪽에 로고(폰 로그인 로고를 복사) */
+  if(pv&&cur)pv.style.backgroundImage='url("'+bgUrl(cur).replace('w=2560','w=900')+'")';
   const pc=$('#bgPvCr');if(pc)pc.innerHTML=bgCreditHTML(cur);
-  const at=Number(window.BG_AT)||(()=>{try{return Number(localStorage.getItem('calapp.bgat'))||0;}catch(e){return 0;}})(),d=at?new Date(at):null;
+  const at=Number(window.BG_CHK)||Number(window.BG_AT)||(()=>{try{return Number(localStorage.getItem('calapp.bgat'))||0;}catch(e){return 0;}})(),d=at?new Date(at):null;
   const st=d?(d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'):'';
-  const mt=$('#bgMeta');if(mt)mt.innerHTML=(()=>{try{return isEditor();}catch(e){return false;}})()?'<a class="bgp-sync" data-act="bg.link" href="'+BG_SYNC_URL+'" target="_blank" rel="noopener" aria-label="컬렉션 동기화" data-tip="컬렉션 동기화'+(st?' · 마지막 '+st:'')+' — GitHub 에서 Run workflow"><svg class="icn" aria-hidden="true"><use href="#i-rotr"></use></svg></a>':'';
+  const mt=$('#bgMeta');if(mt)mt.innerHTML=(()=>{try{return isEditor();}catch(e){return false;}})()?'<button class="bgp-sync'+(bgSyncIng()?' ing':'')+'" data-act="bg.sync" aria-label="컬렉션 다시 가져오기" data-tip="'+(bgSyncIng()?'가져오는 중 — 보통 5~15분':'컬렉션 다시 가져오기'+(st?' · 마지막 확인 '+st:''))+'"><svg class="icn" aria-hidden="true"><use href="#i-rotr"></use></svg></button>':'';
   const g=$('#bgAllGrid');if(g)g.innerHTML=L.map((p,i)=>bgThumbHTML(p,i,cur,fix,1)).join('');
 }
 function bgCreditHTML(p){return p?'Photo by <a data-act="bg.link" href="'+esc(p.h+BG_UTM)+'" target="_blank" rel="noopener">'+esc(p.n)+'</a> on <a data-act="bg.link" href="https://unsplash.com/'+BG_UTM+'" target="_blank" rel="noopener">Unsplash</a>':'';}
@@ -17178,6 +17227,16 @@ function verApply(){
   if(WIDGET){if(verIdle())location.reload();return;}
   if(!VER.told){VER.told=true;toast('새 버전(v'+VER.next+')이 나왔습니다 · 새로고침하면 적용됩니다',4000);}
 }
+/* 위젯 하루 한 번 새로 부르기 — 며칠씩 켜 두면 달력 라이브러리 내부 기록 등이 조금씩 쌓인다(갱신 1회당 약 2.5KB).
+   새벽 3~6시에 20시간 넘게 켜져 있었거나, 이틀 넘게 켜져 있고 30분 넘게 손대지 않았을 때 — 어느 쪽이든 10분 넘게 손 놓았고 쓰는 중이 아닐 때만(verIdle) */
+const WID_BOOT=Date.now();let WID_ACT=Date.now();
+if(WIDGET)['pointerdown','keydown','wheel','mousemove'].forEach(k=>addEventListener(k,()=>{WID_ACT=Date.now();},{capture:true,passive:true}));
+function widDaily(){
+  if(!WIDGET||VER.next)return;   /* 새 판이 있으면 verApply 가 새로 부른다 */
+  const now=Date.now(),age=now-WID_BOOT,idle=now-WID_ACT,h=new Date().getHours();
+  if(idle<10*60e3)return;
+  if((age>20*3600e3&&h>=3&&h<6)||(age>48*3600e3&&idle>30*60e3)){if(verIdle())location.reload();}
+}
 let VER_AT=0;
 function verCheck(){
   if(S.snap||VER.next)return;
@@ -17227,6 +17286,7 @@ function rAll(){rDay();rTasks();rOrg();rCfg();rFilter();rTeamSel();refetchCal();
   netWatch();   /* 브라우저 온라인 여부는 로컬 모드에서도 본다 */
   tsInit();   /* 업무 도구 이어하기 — 남은 작업이 있는지만 본다 */
   setInterval(verCheck,30*60*1000);setInterval(verApply,60*1000);   /* 새 판 감지 · 위젯은 손 놓은 틈에 적용 */
+  if(WIDGET)setInterval(widDaily,5*60*1000);
   {let d0=todayStr();const dayTick=()=>{const d=todayStr();if(d===d0)return;d0=d;   /* 자정을 넘기면 폰의 '오늘'(점 달력·하단 탭 날짜)을 바로 넘긴다 */
     try{mtabSync();if(S.view==='calendar'&&isMob())rCalMini();calTodaySync();if(WIDGET){if(tkHold())PEND.day=true;else rWidget();}}catch(e){}   /* 위젯 알림창·팝업의 오늘/어제 딱지 */
     if(FB._mrv)setTimeout(morningReview,800);};   /* 켜 둔 채 날을 넘긴 창(위젯)도 새 날의 아침 확인을 받는다 */

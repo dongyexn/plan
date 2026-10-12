@@ -23,5 +23,5 @@ npm test    # 전부 PASS 여야 배포
 | 이름 | 용도 |
 |---|---|
 | `FIREBASE_SERVICE_ACCOUNT` | D+60 사진 자동 정리 · 배경화면 동기화(bg-sync) |
-| `UNSPLASH_ACCESS_KEY` | 배경화면 동기화 — Unsplash 컬렉션 「BG」를 매시간 읽음 |
+| `UNSPLASH_ACCESS_KEY` | 배경화면 동기화 — Unsplash 컬렉션 「BG」를 매일 06:00·12:00 + 앱 「다시 가져오기」 요청 때 읽음(5분마다 확인) |
 | `LIVE_E2E_*` | 실서버 E2E(선택) |
