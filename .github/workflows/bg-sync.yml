@@ -1,24 +1,48 @@
-# 배경 사진 목록 동기화 — 매시 7분(정각은 GitHub 예약 작업이 몰려 늦어진다). Unsplash 컬렉션 「BG」 → RTDB bg(바뀌었을 때만 쓴다).
+# 배경 사진 목록 동기화 — 5분마다 확인만 하고(몇 초), 앱의 「다시 가져오기」 요청(bg/req)이 있거나 정기 시각(매일 06:00·12:00 KST)이 지나고 아직 안 돌았을 때만
+# Unsplash 컬렉션 「BG」 → RTDB bg 를 돌린다(목록이 바뀌었을 때만 l·at 를 쓰고, chk 는 늘 쓴다).
 # 준비: 리포 Settings → Secrets and variables → Actions 에 UNSPLASH_ACCESS_KEY(Unsplash 개발자 앱 calapp 의 Access Key).
-#       FIREBASE_SERVICE_ACCOUNT 는 d60-photo-clean 과 같은 것을 쓴다. 바로 반영하려면 Actions 탭에서 Run workflow.
+#       FIREBASE_SERVICE_ACCOUNT 는 d60-photo-clean 과 같은 것을 쓴다. 바로 반영하려면 Actions 탭에서 Run workflow 도 된다.
+# 주의: GitHub 예약 실행은 5분이 최소이고 붐비면 늦어진다. 비공개 리포면 실행마다 1분씩 사용량이 잡힌다.
 name: bg-sync
 on:
   schedule:
-    - cron: '7 * * * *'
+    - cron: '*/5 * * * *'
   workflow_dispatch:
+env:
+  FIREBASE_DB_URL: https://report-c29a1-default-rtdb.asia-southeast1.firebasedatabase.app
 jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - name: 할 일이 있는지(bg 는 누구나 읽기)
+        id: due
+        run: |
+          req=$(curl -fsS "$FIREBASE_DB_URL/bg/req.json" || echo null)
+          chk=$(curl -fsS "$FIREBASE_DB_URL/bg/chk.json" || echo null)
+          [ "$req" = "null" ] && req=0
+          [ "$chk" = "null" ] && chk=0
+          now=$(( $(date +%s) * 1000 ))
+          run=0
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then run=1; fi
+          if [ "$req" -gt "$chk" ]; then run=1; fi
+          # 정기: 가장 최근에 지난 06:00·12:00 KST(=21:00·03:00 UTC) 이후로 한 번도 안 돌았으면 — 예약이 늦게 와도 빠뜨리지 않는다
+          h=$(TZ=Asia/Seoul date +%-H); d0=$(TZ=Asia/Seoul date -d 'today 00:00' +%s)
+          if [ "$h" -ge 12 ]; then slot=$(( d0 + 43200 )); elif [ "$h" -ge 6 ]; then slot=$(( d0 + 21600 )); else slot=$(( d0 - 43200 )); fi
+          if [ "$chk" -lt $(( slot * 1000 )) ]; then run=1; fi
+          echo "req=$req chk=$chk run=$run"
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+      - if: steps.due.outputs.run == '1'
+        uses: actions/checkout@v7
+      - if: steps.due.outputs.run == '1'
+        uses: actions/setup-node@v7
         with:
           node-version: 24
       - name: firebase-admin 설치
+        if: steps.due.outputs.run == '1'
         run: npm i --no-save --ignore-scripts firebase-admin@13.10.0   # 시크릿이 있는 잡이라 정확한 버전으로 고정(d60 과 같은 판)
       - name: 컬렉션 → bg
+        if: steps.due.outputs.run == '1'
         env:
           UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY }}
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          FIREBASE_DB_URL: https://report-c29a1-default-rtdb.asia-southeast1.firebasedatabase.app
         run: node scripts/bg-sync.mjs
