@@ -39,12 +39,12 @@
 --gn:#16A34A;--rd:#DC2626;--am:#D97706;
 --surf2:#F0F3F7;--surf3:#EAECF1;   /* 제목 띠(surf2) — 카드 머리·표 머리 등 30곳이 이 토큰 하나를 따른다 */
 --bt1:var(--b600);--bt2:#1F2B4C;
---glass:rgba(255,255,255,.66);   /* iOS 27식 — 판을 진하게(66%)·채도 강조는 낮춰 뒤 내용을 더 확산(가독성). 앱의 떠 있는 판 전부가 이 한 벌을 쓴다 */
---lq-fill:var(--glass);--lq-blur:blur(22px) saturate(1.5) brightness(1.04);   /* 리퀴드 글래스 — 얇은 반투명 판 + 강한 흐림 + 테두리 반사광(lq-hi) */
---lq-hi:inset 0 1px 0 rgba(255,255,255,.95),inset 0 -1px 0 rgba(255,255,255,.4),inset 0 0 0 1px rgba(255,255,255,.5);   /* 반사광 — 더 밝게 */
---lq-line:rgba(16,24,40,.13);--lq-edge:0 0 0 .5px rgba(16,24,40,.18);   /* 가장자리 — 어둡게 둘러 뒤 내용과 판을 가른다 */
---lqd-hi:inset 0 1px 0 rgba(255,255,255,.32),inset 0 -1px 0 rgba(255,255,255,.08),inset 0 0 0 1px rgba(255,255,255,.1);   /* 어두운 판용 반사광 */
---lqd-fill:rgba(26,29,38,.66);--lqd-blur:blur(40px) saturate(1.4);--lqd-edge:0 0 0 1px rgba(0,0,0,.5);   /* 어두운 판(위젯·알림) 한 벌 — 66%·바깥 어두운 테 */
+--glass:rgba(255,255,255,.76);   /* 떠 있는 판 한 벌 — 예전(88%)과 리퀴드(66%)의 중간, 플랫한 결(사용자). 앱의 떠 있는 판 전부가 이 한 벌을 쓴다 */
+--lq-fill:var(--glass);--lq-blur:blur(20px) saturate(1.6);   /* 리퀴드 글래스 — 얇은 반투명 판 + 강한 흐림 + 테두리 반사광(lq-hi) */
+--lq-hi:inset 0 1px 0 rgba(255,255,255,.6);   /* 반사광 — 위 한 줄만(플랫) */
+--lq-line:rgba(16,24,40,.09);--lq-edge:0 0 0 .5px rgba(16,24,40,.1);   /* 가장자리 — 예전(.06)과 리퀴드(.13)의 중간 */
+--lqd-hi:inset 0 1px 0 rgba(255,255,255,.12);   /* 어두운 판용 반사광 — 위 한 줄만(플랫) */
+--lqd-fill:rgba(26,29,38,.7);--lqd-blur:blur(20px) saturate(1.3);--lqd-edge:0 0 0 1px rgba(0,0,0,.25);   /* 어두운 판(위젯·알림) 한 벌 — 70%(사용자). 흐림 40→20px: 판이 진해 차이가 거의 없고 위젯 그리기 부담이 반 이하 */
 --tint-rd:#FDEAEA;--tint-gn:#E9F6EE;
 --st-res:var(--b600);--st-unr:var(--lbl);--st-lt:var(--ch-d60h);   /* 하자처리 현황 상태 색 — 처리 파랑 · 미처리 기본 글자(중립) · 장기미처리 차트 60일+ 빨강(표·KPI·카드 공통) */
 --ch-d60:#DA6A60;--ch-d30:#E89C9A;--ch-d0:#B3C7DD;--ch-recv:#3E71D2;--ch-done:#F0B144;
@@ -3183,7 +3183,7 @@ body.wid.glass #fcal .fc-scrollgrid{border:0!important;}   /* FC 자체 외곽�
 body.wid.glass .card{background:transparent;border:0;box-shadow:none!important;border-radius:0;padding:6px 4px;}
 
 body.wid.glass .cal-head .seg,body.wid.glass .cal-head .cal-nav,body.wid.glass .cal-move{
-  background:rgba(16,20,30,.5);border:1px solid transparent;box-shadow:var(--lqd-edge),var(--lqd-hi);
+  background:rgba(16,20,30,.5);border:1px solid rgba(255,255,255,.14);   /* 위젯 머리 단추는 유리 테두리 없이(사용자) */
   -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);}
 body.wid.glass .cal-head .cal-nav,body.wid.glass .cal-move{border-radius:3px;padding:2px;}   /* 위젯 머리 단추 묶음은 각진 3px 유지(사용자 결정 — 캡슐 되돌림) */
 /* 알약 안의 제목은 면을 갖지 않는다 — 상자 안 상자 방지 */
@@ -6142,5 +6142,5 @@ body.wid.glass{--mv-flash:#8FB4FF;}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1164"></script>
+<script src="./app.js?v=1165"></script>
 </body></html>
