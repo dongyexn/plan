@@ -94,7 +94,11 @@
     // 쓰기는 GitHub 작업(bg-sync, 서비스 계정 — 규칙을 거치지 않음)만 — 앱에서는 아무도 못 쓴다
     "bg": {
       ".read": true,
-      ".write": false
+      ".write": false,
+      "req": {
+        ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'",
+        ".validate": "newData.isNumber() && newData.val() == now"
+      }
     },
     "siteConfig": {
       ".read": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",

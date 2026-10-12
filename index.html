@@ -40,6 +40,9 @@
 --surf2:#F0F3F7;--surf3:#EAECF1;   /* 제목 띠(surf2) — 카드 머리·표 머리 등 30곳이 이 토큰 하나를 따른다 */
 --bt1:var(--b600);--bt2:#1F2B4C;
 --glass:rgba(255,255,255,.88);
+--lq-fill:rgba(255,255,255,.42);--lq-blur:blur(22px) saturate(1.9) brightness(1.06);   /* 리퀴드 글래스 — 얇은 반투명 판 + 강한 흐림 + 테두리 반사광(lq-hi) */
+--lq-hi:inset 0 1px 0 rgba(255,255,255,.85),inset 0 -1px 0 rgba(255,255,255,.28),inset 1px 0 0 rgba(255,255,255,.35),inset -1px 0 0 rgba(255,255,255,.35);
+--lqd-hi:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(255,255,255,.06),inset 0 0 0 1px rgba(255,255,255,.08);   /* 어두운 판용 반사광 */
 --tint-rd:#FDEAEA;--tint-gn:#E9F6EE;
 --st-res:var(--b600);--st-unr:var(--lbl);--st-lt:var(--ch-d60h);   /* 하자처리 현황 상태 색 — 처리 파랑 · 미처리 기본 글자(중립) · 장기미처리 차트 60일+ 빨강(표·KPI·카드 공통) */
 --ch-d60:#DA6A60;--ch-d30:#E89C9A;--ch-d0:#B3C7DD;--ch-recv:#3E71D2;--ch-done:#F0B144;
@@ -145,7 +148,7 @@ html,body{background:var(--shell);}
 #app{display:flex;height:100vh;height:100dvh;overflow:hidden;gap:8px;padding:48px 0 8px 0;background:transparent;}   /* 헤더 48px · 아래 8px(판 사이 간격과 같은 값) — 참조 화면(CS 업무관리시스템) 기준 */
 html,body{overflow:hidden;}   /* 문서가 뷰포트를 넘지 않게 — 헤더가 fixed 라 스크롤바가 생긴다 */
 body>svg{position:absolute;width:0;height:0;overflow:hidden;}
-#app,#appHdr,#mo,#tko,#scrim,#toast,#nqPanel,#htip,
+#app,#appHdr,#mo,#tko,#scrim,#toast,.toast-bk,#nqPanel,#htip,
 #evePop,#dfNewPop,#rlMenu,#widMove,#pfPop,.ctxmenu,#mm{line-height:1.5;}   /* 본문 행간 복원(body line-height:0 함정) */
 /* ⚠ body 직속으로 붙는 요소(appendChild)는 이 목록에 빠짐없이 넣을 것 — body{line-height:0}(71행)이 상속돼 줄 상자가 0 이 되고 글자가 넘친다.
    #rptRoot 는 보고서 규격이 달라 .rpt{line-height:normal} 로 따로 처리한다 */
@@ -2123,7 +2126,7 @@ body.pickmode #tkRoot .tk-item,body.pickmode .day-panel .plan{user-select:none;}
    ⚠ 여백과 음수 여백은 늘 같은 값이어야 한다 — 한쪽만 고치면 열이 어긋난다 */
 .tk-item.editing .tk-row .cell-inp,.tk-item.editing .tk-row select{padding-left:4px;margin-left:-4px;}
 .tk-item.editing .tk-row .cell-inp{padding-right:4px;margin-right:-4px;}
-.tk-item.editing .tk-row select{height:28px;border-radius:14px;padding:0 8px;margin:0 -8px;background-image:none;}   /* 표 칩(28) — 글자는 읽기 때 자리 그대로(여백 8 = 음수 여백 8) · 꺾쇠 없음(이름 열 56 이 좁다) */
+.tk-item.editing .tk-row select{height:28px;border-radius:var(--rsm);padding:0 4px;margin:1px -4px 0;background-image:none;box-shadow:none;}   /* 칩 테두리 없이 옆 작성 칸과 같은 면 — 테두리·음수 여백 8 이 점·업무명에 닿아 겹쳐 보였다. 글자는 읽기 때 자리 그대로(여백 4 = 음수 여백 4) · 꺾쇠 없음(이름 열 56 이 좁다) */
 /* 작성 칸 자체의 호버는 남긴다 — 어느 칸을 누르는지 알린다.
    ⚠ 끈 것은 줄 전체의 호버 음영(.tk-item.editing)이다 — 되살리지 말 것 */
 @media (hover:hover) and (pointer:fine){.tk-item.editing .tk-row .cell-inp:hover,.tk-item.editing .tk-row select:hover{background-color:var(--fill);}}@media not ((hover:hover) and (pointer:fine)){.tk-item.editing .tk-row .cell-inp:active,.tk-item.editing .tk-row select:active{background-color:var(--fill);}}
@@ -2160,7 +2163,7 @@ body.pickmode #tkRoot .tk-item,body.pickmode .day-panel .plan{user-select:none;}
 /* 편집 중 조작 열 — 저장·취소·삭제를 세로로 쌓고 진행 아이콘과 같은 축
    ⚠ 앞의 .tk-row .tk-acts 를 이기려면 두 클래스로 적어야 한다 */
 /* 편집 조작 — 세로로 쌓되 행 높이를 키우지 않는다. 자리는 첫 아이콘 하나만 잡고 나머지는 아래로 흘린다 */
-.tk-item.editing .tk-row .tk-acts{position:relative;align-self:start;height:28px;margin-right:-3px;}
+.tk-item.editing .tk-row .tk-acts{position:relative;align-self:start;height:28px;margin:2px -3px 0 0;}   /* 위 2 — 첫 줄(작성 칸 30)의 가운데에 ✓ 를 맞춘다(아이콘 26) */
 .tk-item.editing .tk-row .tk-acts .tk-ico{position:absolute;right:0;}
 .tk-item.editing .tk-row .tk-acts .tk-ico:nth-child(1){top:0;}
 .tk-item.editing .tk-row .tk-acts .tk-ico:nth-child(2){top:28px;}
@@ -2478,7 +2481,7 @@ body.wid.glass #fcal.ev-drag .fc-highlight{background:rgba(143,180,255,.16);box-
 #mm .lg.ln i{width:12px;height:3px;border-radius:2px;vertical-align:3px;}
 @media print{#mm{display:none!important;}}
 /* ＋ → 폼 모핑 상자(1092, mvMorph) — 폼 칠 위에 파란 테 1.5 로 자리를 보인다. 업무 현황 폼(#tko 890) 위 · 모달(#mo 1000) 아래 */
-.mv-morph{position:fixed;z-index:895;pointer-events:none;box-shadow:0 0 0 1.5px var(--b500);}
+.mv-morph{position:fixed;z-index:895;pointer-events:none;box-sizing:border-box;}   /* 겉모습은 mvSkin 이 폼에서 베낀다 — 파란 테를 두르면 상자가 폼으로 바뀌는 순간 테가 툭 사라졌다 */
 /* 글자 굴림(1092, mvRoll) — 옛 글자(::before)는 위로 흐려지며 나가고 새 글자는 아래에서 들어온다(--rd -1 이면 반대) */
 .mv-rl{display:inline-grid;overflow:hidden;vertical-align:bottom;}
 .mv-rl>.mv-rn,.mv-rl::before{grid-area:1/1;}
@@ -2744,28 +2747,32 @@ body.wid .gd-nav{background:rgba(24,27,36,.96);}
 .bgp-scr{position:relative;aspect-ratio:16/10;border-radius:12px;align-self:start;overflow:hidden;background:#3A3F47 url(login-bg.jpg) center 40%/cover no-repeat;box-shadow:0 1px 2px rgba(16,24,40,.08),0 8px 24px -10px rgba(16,24,40,.35);transition:background-image .4s ease;}
 .bgp-scr::before{content:'';position:absolute;inset:0;background:rgba(10,14,22,.12);}
 .bgp-scr .g{position:absolute;top:9%;bottom:9%;right:6%;width:38%;border-radius:7px;background:rgba(255,255,255,.72);box-shadow:0 4px 14px rgba(0,0,0,.18);backdrop-filter:blur(6px);}   /* 로그인 창 자리 — 미리보기 */
+.bgp-scr .lg{position:absolute;left:25%;top:50%;transform:translate(-50%,-50%);display:flex;align-items:center;gap:4px;font-style:normal;pointer-events:none;}   /* 로그인 화면 왼쪽 로고 자리(왼쪽 판 가운데) */
+.bgp-scr .lg svg{height:5.5px;width:auto;display:block;filter:drop-shadow(0 1px 2px rgba(0,0,0,.45));}
+.bgp-scr .lg b{position:relative;padding-left:4px;font-size:5.5px;font-weight:700;line-height:1;white-space:nowrap;color:rgba(255,255,255,.9);text-shadow:0 1px 2px rgba(0,0,0,.45);}
+.bgp-scr .lg b::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:1px;height:6px;background:rgba(255,255,255,.35);}
 .bgp-scr .g::before,.bgp-scr .g::after{content:'';position:absolute;left:16%;right:16%;height:7%;border-radius:3px;background:rgba(60,70,90,.18);top:38%;}.bgp-scr .g::after{top:52%;background:#3E71D2;opacity:.85;}
 .bgp-cr{position:absolute;left:0;right:0;bottom:0;padding:22px 12px 8px;font-size:11px;color:rgba(255,255,255,.88);background:linear-gradient(180deg,transparent,rgba(10,14,22,.45));text-shadow:0 1px 2px rgba(0,0,0,.35);}.bgp-cr:empty{display:none;}.bgp-cr a{color:inherit;text-decoration:underline;text-underline-offset:2px;}
 .bgp-auto{margin-left:auto;display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--lbl2);cursor:pointer;}
 .bgp-hd{display:flex;align-items:center;gap:10px;}.bgp-meta{display:flex;align-items:center;}.bgp-meta:empty{display:none;}
-.bgp-sync{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;color:var(--lbl2);text-decoration:none;background:transparent;transition:background-color .2s cubic-bezier(.32,.72,0,1);}.bgp-sync .icn{width:15px;height:15px;}
+.bgp-sync{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:0;border-radius:8px;color:var(--lbl2);text-decoration:none;background:transparent;cursor:pointer;font:inherit;transition:background-color .2s cubic-bezier(.32,.72,0,1);}.bgp-sync .icn{width:15px;height:15px;}.bgp-sync.ing{color:var(--bt1);}.bgp-sync.ing .icn{animation:cvspin 1.1s linear infinite;}
 .bgp-more{position:relative;border:0;padding:0;border-radius:10px;overflow:hidden;cursor:pointer;background:#2B3038 center/cover no-repeat;color:#fff;font:inherit;}.bgp-more::before{content:"";position:absolute;inset:0;background:rgba(14,18,26,.55);backdrop-filter:blur(3px);transition:background-color .25s cubic-bezier(.32,.72,0,1);}.bgp-more span{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:2px;font-size:12px;font-weight:600;}.bgp-more b{font-size:18px;font-weight:800;letter-spacing:-.01em;}
 #mb.bgw{width:min(1120px,94vw);max-width:none;}
 .bgp-all-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;padding:4px 4px 10px;max-height:min(68vh,720px);overflow-y:auto;}
 .bgp-all-grid .bgp-t{border-radius:12px;aspect-ratio:16/10;}
 .bgp-all-grid .bgp-t .nm{position:absolute;left:0;right:0;bottom:0;padding:22px 12px 9px;border-radius:0 0 12px 12px;background:linear-gradient(180deg,transparent,rgba(10,14,22,.62));color:#fff;font-size:12px;font-weight:600;text-align:left;opacity:0;transition:opacity .25s ease;}
 @media (hover:hover) and (pointer:fine){.bgp-all-grid .bgp-t:hover .nm{opacity:1;}}@media not ((hover:hover) and (pointer:fine)){.bgp-all-grid .bgp-t .nm{opacity:1;}}
-.bgp-all-grid .bgp-t .ck{width:24px;height:24px;top:10px;right:10px;}.bgp-all-grid .bgp-t .nw{left:10px;bottom:auto;top:10px;}
+.bgp-all-grid .bgp-t .ck{width:32px;height:32px;margin:-16px 0 0 -16px;}
 @media (max-width:760px){.bgp-all-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}}
-.tb-ver{font-size:12px;color:rgba(255,255,255,.55);font-variant-numeric:tabular-nums;padding:4px 8px;border-radius:6px;cursor:pointer;transition:background-color .2s cubic-bezier(.32,.72,0,1),color .2s;}
+.tb-ver{font-size:12px;font-weight:700;color:rgba(255,255,255,.6);font-variant-numeric:tabular-nums;padding:4px 8px;border-radius:6px;cursor:pointer;transition:background-color .2s cubic-bezier(.32,.72,0,1),color .2s;}
 @media (hover:hover) and (pointer:fine){.bgp-sync:hover{background:var(--fill);color:var(--lbl);}.bgp-more:hover::before{background:rgba(14,18,26,.42);}.tb-ver:hover{background:rgba(255,255,255,.1);color:rgba(255,255,255,.9);}}
 @media not ((hover:hover) and (pointer:fine)){.bgp-sync:active{background:var(--fill);color:var(--lbl);}.bgp-more:active::before{background:rgba(14,18,26,.42);}.tb-ver:active{background:rgba(255,255,255,.1);color:rgba(255,255,255,.9);}}
 .bgp-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:10px;}
 .bgp-t{position:relative;border:0;border-radius:10px;background:var(--fill) center/cover no-repeat;cursor:pointer;padding:0;outline:2px solid transparent;outline-offset:2px;box-shadow:inset 0 0 0 1px rgba(16,24,40,.08);transition:transform .25s cubic-bezier(.32,.72,0,1),box-shadow .25s cubic-bezier(.32,.72,0,1),outline-color .2s ease;}
 .bgp-t.on{outline-color:var(--b500);}
-.bgp-t .ck{position:absolute;top:6px;right:6px;width:20px;height:20px;border-radius:50%;background:var(--b500);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.25);transform:scale(.4);opacity:0;transition:transform .3s cubic-bezier(.32,.72,0,1),opacity .2s ease;}.bgp-t .ck .icn{width:12px;height:12px;stroke-width:3;}
+.bgp-t .ck{position:absolute;top:50%;left:50%;margin:-14px 0 0 -14px;width:28px;height:28px;border-radius:50%;background:var(--b500);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.25);transform:scale(.4);opacity:0;transition:transform .3s cubic-bezier(.32,.72,0,1),opacity .2s ease;}.bgp-t .ck .icn{width:15px;height:15px;stroke-width:3;}
 .bgp-t.on .ck{transform:none;opacity:1;}
-.bgp-t .nw{position:absolute;left:6px;bottom:6px;font-size:10.5px;font-weight:700;color:#fff;background:rgba(20,24,32,.45);backdrop-filter:blur(4px);border-radius:99px;padding:2px 8px;}
+
 @media (hover:hover) and (pointer:fine){.bgp-t:hover{transform:translateY(-2px);box-shadow:inset 0 0 0 1px rgba(16,24,40,.08),0 8px 18px -8px rgba(16,24,40,.45);}}@media not ((hover:hover) and (pointer:fine)){.bgp-t:active{transform:scale(.97);}}
 @media (max-width:760px){.bgp{grid-template-columns:minmax(0,1fr);}.bgp-row{grid-template-rows:none;}.bgp-row>*{aspect-ratio:16/10;}}
 .share-info{min-width:0;display:flex;flex-direction:column;gap:2px;}
@@ -3268,9 +3275,9 @@ body.wid .cal-title{font-size:round(calc(15px*var(--wfz)),1px);}
 /* 날짜를 누르면 그 칸 옆에 뜨는 업무 팝업 — 위젯은 달력만 보이고 목록은 띄우지 않는다 */
 .wid-pop{display:none;position:fixed;z-index:620;width:min(360px,calc(100vw - 16px));max-height:62vh;   /* 위젯 최소 폭 360 에서 오른쪽이 8px 창 밖으로 나갔다 */
   
-  background:rgba(24,27,36,.9);-webkit-backdrop-filter:blur(24px) saturate(1.6);backdrop-filter:blur(24px) saturate(1.6);
-  border:1px solid rgba(255,255,255,.12);border-radius:18px;overflow:hidden;padding:0;   /* 좌우 축은 wp-h·dp-lh·dp-body 가 12px 로 갖는다 (개편 7장) */
-  box-shadow:0 18px 50px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.08);color:rgba(255,255,255,.92);
+  background:rgba(30,33,42,.55);-webkit-backdrop-filter:blur(40px) saturate(1.8);backdrop-filter:blur(40px) saturate(1.8);
+  border:1px solid transparent;border-radius:18px;overflow:hidden;padding:0;   /* 좌우 축은 wp-h·dp-lh·dp-body 가 12px 로 갖는다 (개편 7장) */
+  box-shadow:var(--lqd-hi),0 18px 48px rgba(0,0,0,.4);color:rgba(255,255,255,.92);
   display:none;flex-direction:column;min-height:0;}
 body.wid .wid-pop.on{display:flex;}
 /* 안은 앱의 일자 패널 그대로 — 카드 테두리만 지워 팝업에 맞춘다 */
@@ -3343,7 +3350,7 @@ body.wid .wid-pop input[type=date].inp{color-scheme:dark;}
 
 /* 닫기 — + 와 같은 줄(세로 가운데 맞춤), 가로는 아래 카드 상태 단추 가운데.
    상태 단추 가운데 = 안쪽 오른끝 −31(12+8+1+10) → 닫기(26) right 18 · + 가운데 = 안쪽 위 27 → top 14 */
-.wid-pop .wp-h{display:flex;align-items:center;gap:8px;position:absolute;top:11px;right:15px;z-index:2;}   /* 닫기만 오른쪽 위에 띄운다(날짜 줄은 아래 dp-lh 가 맡는다) */
+.wid-pop .wp-h{display:flex;align-items:center;gap:8px;position:absolute;top:12px;right:15px;z-index:2;}   /* 닫기만 오른쪽 위에 띄운다(날짜 줄은 아래 dp-lh 가 맡는다) */
 .wid-pop .wp-d{font-size:13px;font-weight:700;color:#fff;line-height:22px;transform:translateY(1px);}
 .wid-pop .wp-w{font-size:12px;font-weight:600;color:rgba(255,255,255,.6);margin-left:auto;line-height:22px;transform:translateY(1px);}
 .wid-pop .wp-x{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;
@@ -3706,7 +3713,7 @@ body:not(.wid) .nq-panel{padding-top:6px;}}
 .mo-grab{display:none;}   /* 폰 시트 잡이 — 폰 큰 창에서만 보인다 */
 body.wid #mb .mo-x{top:15px;right:12px;}   /* 위젯 창 안쪽 여백 20 */
 .mf2{margin-top:22px;display:flex;justify-content:flex-end;gap:8px;}
-#toast,.toast-bk{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(16px);white-space:normal;word-break:keep-all;text-wrap:pretty;text-align:center;width:max-content;max-width:calc(100vw - 24px);background:rgba(28,28,30,.92);color:#fff;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);padding:10px 20px;border-radius:var(--rp);font-size:13px;font-weight:500;z-index:9999;opacity:0;transition:opacity var(--t-base),transform var(--t-base);pointer-events:none;}
+#toast,.toast-bk{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(16px);white-space:normal;word-break:keep-all;text-wrap:pretty;text-align:center;width:max-content;max-width:calc(100vw - 24px);background:rgba(28,31,38,.62);color:#fff;-webkit-backdrop-filter:blur(22px) saturate(1.8);backdrop-filter:blur(22px) saturate(1.8);box-shadow:var(--lqd-hi),0 12px 32px rgba(0,0,0,.28);padding:10px 20px;border-radius:22px;font-size:13px;font-weight:500;z-index:9999;opacity:0;transition:opacity var(--t-base),transform var(--t-base);pointer-events:none;}
 #toast.show,.toast-bk{opacity:1;transform:translateX(-50%) translateY(0);}
 /* 되돌리기 토스트 — 버튼이 있을 때만 pointer-events 를 켠다 */
 #toast.has-btn,.toast-bk.has-btn{display:flex;align-items:center;gap:14px;padding:8px 10px 8px 18px;pointer-events:auto;}
@@ -3714,11 +3721,12 @@ body.wid #mb .mo-x{top:15px;right:12px;}   /* 위젯 창 안쪽 여백 20 */
   border-radius:8px;font:700 13px/1 inherit;cursor:pointer;transition:background var(--t-fast);}
 
 /* 알림 쌓기 — 앞 알림이 떠 있는데 새 알림이 오면 앞 것은 뒤로 물러나 위에 살짝 겹친다(최대 2장). 올리면 펼쳐진다. 자리는 app.js tstLayout 이 transform 으로 */
-.toast-bk{z-index:9998;transform-origin:50% 100%;transition:opacity .25s,transform .4s var(--mv-ease);pointer-events:none;}
+.toast-bk{z-index:9998;transform-origin:50% 100%;transition:opacity .25s,transform .4s var(--mv-ease),color .2s;pointer-events:none;}
 .toast-bk.has-btn{pointer-events:none;}
 body.tst-x .toast-bk.has-btn{pointer-events:auto;}
 @media (hover:hover) and (pointer:fine){body.tst-on #toast{pointer-events:auto;}}   /* 쌓였을 때만 — 올려서 펼칠 수 있게(마우스 환경만 · 폰에선 아래 화면 누름을 막지 않게) */
 .toast-bk.out{opacity:0!important;}
+.toast-bk.bk-under{color:transparent;}.toast-bk.bk-under>*{visibility:hidden;}   /* 밑에 깔린 뒤 알림은 판만 — 글은 펼치면(tst-x) 다시 보인다 */
 /* 화면 전환(사이드바 이동) — 본문만 옛 화면이 흐려지며 빠지고 새 화면이 올라온다(View Transitions). 상단바·사이드바는 그대로 살아 있다 */
 @supports (view-transition-name:none){
   :root{view-transition-name:none;}
@@ -3761,12 +3769,12 @@ body.tst-x .toast-bk.has-btn{pointer-events:auto;}
   /* 접기 버튼은 드로어에선 무의미 — 숨긴다 */
   .sb-title-tg{display:none;}
   /* ── 떠 있는 하단 탭 — 왼쪽 둥근 메뉴 단추(.mtab-m) + 네 칸 캡슐(#mtab::before). 아이콘만(이름은 aria-label).
-     판 = --glass · blur 20(.tnav 와 같은 값). 켜진 칸 알약(.mtab-ind)은 mtabMark() 가 옮긴다.
+     판 = --lq-fill · --lq-blur(리퀴드 글래스). 켜진 칸 알약(.mtab-ind)은 mtabMark() 가 옮긴다.
      모서리 30(캡슐)·50%(단추)는 3px 규칙의 예외(폰 전용 부품) ── */
   :root{--mtab:calc(68px + max(8px, env(safe-area-inset-bottom) - 10px) - env(safe-area-inset-bottom));}   /* 탭 몫 = 캡슐 60 + 위 여유 8 + 아래 틈 — 쓰는 곳이 env() 를 더하므로 여기서 빼 둔다. 아래 틈 = 안전영역 − 10(최소 8) */
   body:not(.wid) #mtab{display:flex;position:fixed;left:12px;right:12px;bottom:max(8px, env(safe-area-inset-bottom) - 10px);height:60px;z-index:370;gap:0;padding:0;align-items:stretch;}
-  body:not(.wid) #mtab::before,body:not(.wid) #mtab .mtab-m{background:var(--glass);-webkit-backdrop-filter:blur(20px) saturate(1.8);backdrop-filter:blur(20px) saturate(1.8);
-    border:1px solid rgba(0,0,0,.06);box-shadow:0 8px 28px rgba(16,24,40,.16),0 1px 2px rgba(16,24,40,.08),inset 0 0 0 1px rgba(255,255,255,.7);}
+  body:not(.wid) #mtab::before,body:not(.wid) #mtab .mtab-m{background:var(--lq-fill);-webkit-backdrop-filter:var(--lq-blur);backdrop-filter:var(--lq-blur);
+    border:1px solid rgba(0,0,0,.06);box-shadow:var(--lq-hi),0 10px 30px rgba(16,24,40,.16),0 1px 2px rgba(16,24,40,.08);}
   body:not(.wid) #mtab::before{content:'';position:absolute;top:0;bottom:0;left:68px;right:0;border-radius:30px;}
   body:not(.wid) #mtab button{flex:1;display:flex;align-items:center;justify-content:center;background:none;border:0;padding:0;margin:5px 0;font:inherit;color:var(--lbl2);position:relative;z-index:1;-webkit-tap-highlight-color:transparent;transition:color var(--t-fast);}
   body:not(.wid) #mtab .mtab-m{flex:0 0 60px;margin:0 8px 0 0;border-radius:50%;color:var(--lbl);transition:background var(--t-fast),color var(--t-fast),transform .18s cubic-bezier(.34,1.36,.64,1);}
@@ -3778,14 +3786,14 @@ body.tst-x .toast-bk.has-btn{pointer-events:auto;}
   body:not(.wid) #mtab button[data-t]:active .icn{transform:scale(.86);}
   body:not(.wid) #mtab .mtab-m .icn{width:22px;height:22px;}
   body:not(.wid) #mtab button.act{color:var(--b600);}
-  body:not(.wid) #mtab .mtab-ind{position:absolute;top:5px;bottom:5px;left:0;width:0;border-radius:25px;background:var(--b-tint);opacity:0;pointer-events:none;
+  body:not(.wid) #mtab .mtab-ind{position:absolute;top:5px;bottom:5px;left:0;width:0;border-radius:25px;background:linear-gradient(180deg,rgba(255,255,255,.75),rgba(255,255,255,.35));box-shadow:inset 0 1px 0 rgba(255,255,255,.95),inset 0 -1px 1px rgba(62,113,210,.12),0 2px 8px rgba(16,24,40,.12);opacity:0;pointer-events:none;
     transition:opacity var(--t-fast);}   /* 옮김은 mtabMark() 스프링(1092) */
   body:not(.wid) #mtab .mtab-ind.on{opacity:1;}
   body:not(.wid) #mtab .mtab-d{stroke:none;fill:currentColor;font-family:inherit;font-size:10px;font-weight:700;}   /* x·y 는 mtabDateFit() 이 잉크 상자로 맞춘다 — letter-spacing·tabular-nums 를 두면 캔버스 계측과 어긋난다 */   /* 틀 몸통(y 9~21) 한가운데 */
   body:not(.wid) #mtab button[data-t="calendar"] .icn{width:26px;height:26px;margin:-1px 0;}   /* 달력 칸만 한 단 크게 — 틀 안이 비어 작아 보인다 */
   body:not(.wid) #tko{z-index:369;}   /* 업무 현황 폼의 바깥 누르기 판도 하단 탭(370) 아래 — 탭이 보이고 눌린다 */
   body.kbv:not(.wid) #mtab{display:none;}   /* 키보드가 실제로 떠 있을 때만 숨긴다(안드로이드는 fixed 바가 키보드를 따라 올라와 입력칸을 가린다). 초점만 있고 키보드가 없으면 늘 보인다 */
-  body:not(.wid) #toast,body:not(.wid) .toast-bk{bottom:calc(var(--mtab) + 4px + env(safe-area-inset-bottom));border-radius:22px;padding:12px 18px;background:rgba(28,28,30,.78);-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6);box-shadow:0 10px 30px rgba(0,0,0,.22);}   /* 알림은 캡슐 위에 — 하단 탭과 같은 유리 캡슐 */
+  body:not(.wid) #toast,body:not(.wid) .toast-bk{bottom:calc(var(--mtab) + 4px + env(safe-area-inset-bottom));border-radius:22px;padding:12px 18px;background:rgba(28,31,38,.62);-webkit-backdrop-filter:blur(22px) saturate(1.8);backdrop-filter:blur(22px) saturate(1.8);box-shadow:var(--lqd-hi),0 12px 32px rgba(0,0,0,.28);}   /* 알림은 캡슐 위에 — 하단 탭과 같은 유리 캡슐 */
   /* 폰 누름 반응 — 눌러서 여는 줄·칸에 옅은 회색 판을 덧깐다(카드 색·테두리 유지) */
   body:not(.wid) #view-tasks .tk-item .tk-row:active,body:not(.wid) #view-calendar .mc-d:active,body:not(.wid) #d60Root .d60-mrow:active,body:not(.wid) #view-defect .kc-click:active{background-image:linear-gradient(rgba(120,120,128,.14),rgba(120,120,128,.14));}
   body:not(.wid) #view-tasks .tk-item .tk-row,body:not(.wid) #view-calendar .mc-d,body:not(.wid) #d60Root .d60-mrow,body:not(.wid) #view-defect .kc-click{-webkit-tap-highlight-color:transparent;}
@@ -5357,7 +5365,7 @@ td.d60-pc.has{color:var(--bt1);font-weight:700}
   body:not(.wid) :is(.pe-chip,.cal-nb,.tm-add,.mo-x,.nq-cl){transition:transform .35s cubic-bezier(.32,.72,0,1),background var(--ms),color var(--ms);}
   body:not(.wid) :is(.btn,.pe-chip,.cal-nb,.tm-add,.mo-x,.nq-cl):active{transform:scale(.96);transition-duration:.1s;}
   /* 「+」 단추 — 폰에선 아이콘 11~14px·누르는 곳 24px 이라 작고 누르기 어려웠다. 아이콘 18~20 · 누르는 곳 36 으로, 둘레 음수 여백으로 머리 줄 높이는 그대로 */
-  body:not(.wid) #view-calendar .btn.dp-add{width:36px;height:36px;padding:0;margin:-3px -8px -3px 0;justify-content:center;border-radius:8px;}
+  body:not(.wid) #view-calendar .btn.dp-add{width:36px;height:36px;padding:0;margin:-3px -1px -3px 0;justify-content:center;border-radius:8px;}   /* + 가운데 = 아래 카드의 완료 표시(.stx) 가운데 — 위젯 팝업과 같은 축 */
   body:not(.wid) #view-calendar .btn.dp-add .icn{width:20px;height:20px;}
   body:not(.wid) .tm-add{width:34px;height:34px;margin:-5px -7px -5px 0;}
   body:not(.wid) .tm-add .icn{width:18px;height:18px;}
@@ -5456,7 +5464,7 @@ td.d60-pc.has{color:var(--bt1);font-weight:700}
 @media(min-width:961px){
   body:not(.wid) .cal-filt-pop.tb-pop,body:not(.wid) .nq-panel,body:not(.wid) #ymPop{background:var(--glass);-webkit-backdrop-filter:blur(20px) saturate(1.8);backdrop-filter:blur(20px) saturate(1.8);border:1px solid rgba(0,0,0,.06);box-shadow:0 16px 48px rgba(16,24,40,.18),0 1px 2px rgba(16,24,40,.08),inset 0 0 0 1px rgba(255,255,255,.7);border-radius:18px;}
   body:not(.wid) #tkoCard .tk-new{background:var(--glass);-webkit-backdrop-filter:blur(20px) saturate(1.8);backdrop-filter:blur(20px) saturate(1.8);border:1px solid rgba(0,0,0,.06);box-shadow:0 16px 48px rgba(16,24,40,.18),0 1px 2px rgba(16,24,40,.08),inset 0 0 0 1px rgba(255,255,255,.7);border-radius:18px;}   /* 업무 현황 새 업무 팝업도 같은 유리 카드 */
-  body:not(.wid) .ctxmenu{background:var(--glass);-webkit-backdrop-filter:blur(20px) saturate(1.8);backdrop-filter:blur(20px) saturate(1.8);border:1px solid rgba(0,0,0,.06);box-shadow:0 16px 48px rgba(16,24,40,.18),0 1px 2px rgba(16,24,40,.08),inset 0 0 0 1px rgba(255,255,255,.7);border-radius:14px;}
+  body:not(.wid) .ctxmenu{background:rgba(255,255,255,.58);-webkit-backdrop-filter:var(--lq-blur);backdrop-filter:var(--lq-blur);border:0;box-shadow:var(--lq-hi),0 18px 48px rgba(16,24,40,.22);border-radius:18px;}
   body:not(.wid) .cal-filt-pop::before{display:none;}   /* 꼬리 없음 — 떠 있는 카드 */
   body:not(.wid) #ymPop .ymp-m{border-radius:12px;}
   body:not(.wid) :is(.cal-filt-pop,#tkFcard) .pf-h{display:flex;}
@@ -5470,9 +5478,9 @@ td.d60-pc.has{color:var(--bt1);font-weight:700}
   body:not(.wid) :is(.cal-filt-pop,#tkFcard) .msel.on .msel-b::after{border-color:rgba(255,255,255,.85);}
   body:not(.wid) :is(.cal-filt-pop,#tkFcard) .msel.open .msel-b{box-shadow:inset 0 0 0 1.5px var(--b600);}
   body:not(.wid) :is(.cal-filt-pop,#tkFcard) .msel.on.open .msel-b{box-shadow:inset 0 0 0 1.5px var(--b300);}
-  body:not(.wid) #view-calendar .btn.dp-add{width:32px;height:32px;padding:0;margin:-4px -6px -4px 0;justify-content:center;border-radius:8px;}   /* + 는 폰(36)과 같은 20 아이콘 — 데스크톱은 32 칸 */
+  body:not(.wid) #view-calendar .btn.dp-add{width:32px;height:32px;padding:0;margin:-4px 3px -4px 0;justify-content:center;border-radius:8px;}   /* + 는 폰(36)과 같은 20 아이콘 — 데스크톱은 32 칸 · 가운데 = 완료 표시(.stx) 가운데 */
   body:not(.wid) #view-calendar .btn.dp-add .icn{width:20px;height:20px;}
-  body:not(.wid) #toast,body:not(.wid) .toast-bk{border-radius:22px;padding:12px 18px;background:rgba(28,28,30,.78);-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6);box-shadow:0 10px 30px rgba(0,0,0,.22);}
+  body:not(.wid) #toast,body:not(.wid) .toast-bk{border-radius:22px;padding:12px 18px;background:rgba(28,31,38,.62);-webkit-backdrop-filter:blur(22px) saturate(1.8);backdrop-filter:blur(22px) saturate(1.8);box-shadow:var(--lqd-hi),0 12px 32px rgba(0,0,0,.28);}
 }
 /* ── 계정 창(#mb.acx) — 폰 하단 탭의 유리·캡슐 언어. 데스크톱·폰·위젯 같은 구조, 위젯은 색만(어두운 유리) ──
    평소: 아바타·이름·메일·소속 + 아래 한 줄(비밀번호 변경 › | 로그아웃 아이콘).
@@ -5509,7 +5517,7 @@ body.wid #mb.acx .acct-rolebadge{background:rgba(255,255,255,.12);}
 #mb.acx .acx-ml{font-size:13px;color:var(--T3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 #mb.acx .acx-ml .acct-state{margin-left:6px;font-size:12px;}
 #mb.acx .acx-bio{font-size:13px;color:var(--T2);margin-top:4px;word-break:keep-all;}   /* 좁은 위젯에서 「담당/자」로 끊기지 않게 — 줄은 · 사이에서 */
-#mb.acx .acx-row{display:flex;align-items:center;gap:10px;margin:18px -24px 0;padding:10px 16px 10px 24px;box-shadow:inset 0 1px 0 var(--CAPL);}
+#mb.acx .acx-row{display:flex;align-items:center;gap:10px;margin:18px -24px 0;padding:10px 24px 10px 24px;box-shadow:inset 0 1px 0 var(--CAPL);}   /* 오른쪽 24 — 로그아웃 원의 가운데를 위 닫기(×) 가운데와 같은 세로 줄에 */
 #mb.acx .acx-lk{flex:1;display:flex;align-items:center;gap:8px;height:38px;font-size:14px;color:var(--T1);font-weight:500;}
 #mb.acx .acx-lk .icn{width:16px;height:16px;color:var(--T2);}
 #mb.acx .acx-lk .acx-ch{margin-left:auto;margin-right:6px;width:15px;height:15px;color:var(--T3);}
@@ -6100,5 +6108,5 @@ body.wid.glass{--mv-flash:#8FB4FF;}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1148"></script>
+<script src="./app.js?v=1155"></script>
 </body></html>

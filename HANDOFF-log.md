@@ -1,5 +1,48 @@
 # 변경 이력 (읽기 전용) — 현재 상태는 HANDOFF.md
 
+## 마지막 기록 기준 v1155
+### 1155차 모션 손질 — 모핑(작은 것 → 큰 것)·시트
+**사용자: 「앱에 들어간 각종 모션들 부자연스러운 부분 확인 / 특히 팝업 열고 닫을 때 / 업무 추가할 때 / 작은 것에서 큰 게 나오는 모션들」**
+계측: Playwright 화면 녹화(screencast) + 매 프레임 rAF 로 상자·폼·막의 자리·크기·투명도·진행률 기록(데스크톱 달력 ＋·업무 현황 업무 추가·사용 안내 창·닫기, 폰 일자 시트·＋·업무 추가 시트·메뉴, 위젯 팝업·설정, 우클릭 메뉴·연월).
+찾은 것: ① 모핑 상자에 파란 1.5px 테 — 상자가 폼으로 바뀌는 순간 테가 툭 사라지고 그림자가 툭 생김, 업무 현황 상자는 유리색만 베껴 뒤 목록이 비침 ② 상자는 시간 50%에 크기 90%인데 속은 100%(0.38초) 끝나야 나와 빈 상자 0.15초 대기 + 속 페이드 — 내용까지 약 0.6초(사용 안내 0.7초) ③ 사용 안내처럼 무거운 창은 left·top·width·height 애니메이션이 메인 스레드라 단추 크기로 멈췄다 78% 로 건너뜀, 창이 제자리에 먼저 비쳤다 사라짐(rAF 미룸 사이 CSS 전이), 상자·창이 둘 다 반투명인 순간 뒤가 비침, 투명도 0 층은 미리 그려 두지 않아 드러날 때 빈 프레임 ④ 달력 새 폼 아래 카드는 PE_EASE(빠른 출발)로 내려가 상자와 사이에 빈 틈 ⑤ 닫힘: 상자가 단추 크기에 닿은 뒤까지 흐려지며 단추 위에 흰 막 ⑥ 폰 업무 추가 시트: sheet 클래스를 열 때 붙이며 전이를 켠 채 닫힌 자리를 굳혀 0.97 배율에서 출발 — 올라오지 않고 제자리에서 커짐.
+고침: `mvSkin`(칠·그림자·테·backdrop-filter 베낌, `.mv-morph` 파란 테 삭제·border-box). `mvMorphBox` 는 큰 쪽 자리에 상자를 두고 transform(translate+scale, transform-origin 0 0)만 움직인다 — 합성기. 모서리는 큰 쪽 반경 고정(반경을 따로 움직이면 메인 스레드라 무거운 창에서 타원으로 부풂 — 시도 후 뺌). `MV_MORPH`=340ms · `cubic-bezier(.3,.9,.3,1.04)` · `MV_MORPH_R`=.62(크기 99.5%) 에서 폼은 0.01 투명도 유지를 끝내고 다 보이며, 상자만 `MV_MORPH_X`=140ms 동안 흐려진다. 속 칸은 그때부터 30ms 간격 180ms 흐림→또렷. `mbMorphOpen`: 펴기 전 한 프레임 visibility:hidden, #mb 전이·0.96 확대 끔(펴기 끝까지), #mo 막 전이 0.12초. `openPlanEdit` 새 폼 FLIP 은 `dpFlipRun(fl,MV_MORPH,MV_MORPH_EASE)`. `mvMorphFrom`: 그림자를 줄이며 거두고, 흐림은 30%→75% 사이에 끝. 폰 시트: `rTkNewOverlay` 에서 열 때 transition:none 으로 닫힌 자리를 굳힌 뒤 열기.
+검증: 같은 장면 재녹화 — 내용이 다 보이기까지 달력 ＋ 약 0.6→0.4초, 사용 안내 0.7→0.45초(그림 그리는 0.1초 출발 지연은 남음), 빈 상자·파란 테·제자리 깜빡임·타원·반투명 비침 없음, 폰 업무 추가 시트가 아래에서 0.5초에 올라옴. 프레임 간 자리 급변 자동 검사(80px·투명도 0.5 넘는 변화) — 남은 것은 의도된 것(폼 0.01→1 은 불투명 상자 아래, 시트 첫 프레임). 페이지 오류 0, 전체 테스트. 녹화에서만 본 것: 위젯 팝업 유리 흐림(blur 40)이 헤드리스에선 안 걸린다(12px 는 걸림) — 윈도우 WebView2(GPU)에서는 미확인.
+
+## 마지막 기록 기준 v1154
+### 1154차 위젯 메모리 절감 — 위젯 1.6.0
+**사용자: 「메모리를 생각보다 많이 먹는데 확인해서 절감안」 → 「1,2,3,4 진행」** (작업 관리자 WebView2 관리자(7) 264MB)
+계측(리눅스 Chromium, 절대값은 윈도우와 다름): 빈 페이지 프로세스 묶음 260MB · 위젯 335MB — 대부분 런타임 몫. 페이지 안은 DOM 7.5 · JS 5 · 스크립트 캐시 3 · 디코드 5 · 타일 4MB. 흐림 끄기 차이 2~3MB(원인 아님). 갱신 500회에 JS 6.4→7.4MB — FullCalendar 내부(segHeights·depths 키 누적, 1회 약 2.5KB). 업무 3천 건 JS 14MB·1만 건 36MB. 부팅 때 reCAPTCHA(App Check)가 www.google.com 틀을 띄운다 — 사이트 격리로 렌더러가 따로 뜬다(교차 출처 틀 실험: 기본 렌더러 3개 → `--disable-site-isolation-trials` 1개).
+- ① widget-lite: INIT_JS 가 mousemove·mousedown·keydown·wheel·touchstart 를 보고 60초 무입력이면 `hpw-mem`='low', 다시 입력하면 'normal'. Rust `set_mem_level` → `with_webview` → `controller().CoreWebView2()` → `cast::<ICoreWebView2_19>()` → `SetMemoryUsageTargetLevel(LOW/NORMAL)`. 런타임이 낮아 _19 가 없으면 조용히 넘어간다. 의존성 webview2-com 0.39(tauri·wry 와 같은 판).
+- ② `additional_browser_args`: 기본값(msWebOOUI·msPdfOOUI·msSmartScreenProtection 끔)을 그대로 적고 `SpareRendererForSitePerProcess` 끔 + `--disable-site-isolation-trials`. 위젯은 on_navigation 으로 앱 주소 밖에 못 나가 격리 해제 위험이 작다.
+- ③ app.js: 위젯이면 `calapp/d60` 구독 안 함 · 관리자 보관함 미리 읽기(archNeed 14초) 안 함 · 휴지통 정리(trashPurge) 안 함. 위젯 백업 `bkExport` 는 Promise — 보관함(이미 읽혀 있으면 그것)·D+60 을 get 으로 읽어 담고 버린다(못 읽으면 null → 다음 주기). `archLoad` 의 풀기를 `archDecode` 로 떼어 함께 쓴다. `bk.now` 는 Promise.resolve 로 받는다. Rust 백업 대기 15→60초.
+- ④ `widDaily`(위젯, 5분마다): 10분+ 손 놓았고 새 판 대기 아님 · (20시간+ 켜짐 & 3~6시) 또는 (48시간+ & 30분+ 손 놓음) · verIdle 이면 새로 부른다. 아침 확인은 하루 한 번 키라 다시 뜨지 않는다.
+검증: 위젯/웹 구독 경로 비교(위젯에 calapp/d60 없음), 위젯 bkExport 가 보관함 압축 풀어 담고 ARCH.loaded 그대로 false · 웹은 동기 객체, 시계 고정으로 widDaily(17h 23시 유지 · 03:30 방금 만짐 유지 · 03:45 15분 손 놓음 새로고침), cargo check(리눅스) 통과 · 윈도우 전용 코드는 webview2-com-sys 0.39.1 바인딩(ICoreWebView2_19::SetMemoryUsageTargetLevel · COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_LOW/NORMAL · ICoreWebView2Controller::CoreWebView2)과 시그니처 대조 — 첫 컴파일은 Actions. 실제 절감량은 윈도우에서 미확인(README 점검 12번).
+
+## 마지막 기록 기준 v1153
+### 1153차 업무 현황 편집 행 담당자 칩 제거
+**사용자: 「업무현황에 담당자에 칩 입히니까 주변이랑 겹쳐서 불쾌함」** — 편집 중 행의 select(담당자·현장)에 전역 `select:not([multiple])` 의 칩 테두리(inset 1px)가 그대로 붙고, `.tk-item.editing .tk-row select` 가 여백 8·음수 여백 8 로 칸 밖으로 8px 나가 담당자 점(오른끝 561)을 2px 덮고 업무명(왼끝 615)에 맞닿았다. → `box-shadow:none` · `border-radius:var(--rsm)` · `padding:0 4px; margin:1px -4px 0`(작성 칸과 같은 4/−4). 읽기 때 글자 자리는 그대로. 검증: 1440·1100·폰에서 점→칸 2px · 칸→업무명/현장 4px, 평상·호버 전후 화면 비교, 전체 테스트.
+
+## 마지막 기록 기준 v1152
+### 1152차 정렬 감사 · 버그 수정
+**사용자: 「이렇게 정렬 아다리 안 맞는 부분 찾아보고 버그 수정도 하고」** — 자동 계측 스크립트(scratchpad)로 데스크톱 1440·1100, 폰 390, 위젯(일반·유리) 각 화면·팝업·시트·메뉴·편집 상태를 열고 ① 같은 줄 같은 높이 단추의 세로 중심 ② 단추 안 아이콘 중심 ③ 머리 글자와 같은 줄 단추 ④ 줄 높이 0 글자 ⑤ 아이콘+글자 ⑥ 세로로 늘어선 아이콘 단추 열의 가로 중심을 쟀다(0.75~12px 어긋남만).
+- 업무 현황 편집 행: `.tk-acts` 높이 28 이 위에 붙어 ✓(26) 중심이 첫 줄(작성 칸 30)보다 2px 위, 담당자·현장 select(28)도 1px 위 → `.tk-acts` margin-top 2 · select margin-top 1. 편집 행 높이 36 그대로.
+- 캘린더 일자 패널 + : 폰 margin-right -8·데스크톱 -6 으로 카드 오른쪽 끝에 붙어 아래 완료 표시(.stx) 열보다 7·9px 오른쪽 → -1 · +3 으로 가운데를 .stx 가운데에(위젯 팝업은 이미 같은 축).
+- 계정 창: `.acx-row` 오른쪽 여백 16 → 24, 로그아웃 원 가운데 = 닫기(×) 가운데.
+- 폰 상단 연·월 단추 0.8px 은 주석에 적힌 의도(눈맞춤)라 그대로.
+버그: ① `.toast-bk`(앞 알림 사본, body 직속)가 151행 줄 높이 복원 목록에 없어 line-height 0 → 높이 24, 펼침 때 글이 넘침 → 목록에 추가. ② 접힌 뒤 알림 글이 반투명 앞 알림 너머로 겹쳐 보임(1150 이전부터) → `tstLayout` 이 밑에 깔린 것에 `.bk-under`, 글자 투명·자식 숨김, 펼치면 다시 보임. ③ 게시된 기준월 없이 회의 모드를 열면 머리 「0년 NaN월」 → `mtgOpen` 에서 `dfRm()` 없으면 알림 후 중단. 검증: 계측 재실행 0건(의도된 0.8px 제외), 펼침·접힘 알림 화면, 회의 모드 자료 없음/있음, 페이지 오류 0, 전체 테스트.
+
+## 마지막 기록 기준 v1151
+### 1151차 리퀴드 글래스 적용 · 위젯 팝업 + × 정렬
+**사용자: 「폰 상단빼고 적용 / 회의모드 머리는 본문이 겹칠 일이 없다 / 업무팝업에서 + x 정렬」** — 1150 미리보기(scratchpad glass.css)의 값을 본 규칙에 옮김(!important 없이 기존 규칙 값 교체). 하단 탭 `#mtab::before`·`.mtab-m` = --lq-fill·--lq-blur·--lq-hi, `.mtab-ind` = 흰 렌즈 그라데이션. 데스크톱 `body:not(.wid) .ctxmenu` = rgba(255,255,255,.58)·테두리 없음·18. 알림은 기본 `#toast,.toast-bk` 와 폰·데스크톱의 `body:not(.wid) #toast` 두 규칙이 따로 칠하므로 셋 다 .62·blur 22·--lqd-hi(위젯 알림은 그대로). `.wid-pop` = .55·blur 40·테두리 투명. 회의 모드 머리(5)·폰 상단바(2)는 넣지 않음. 위젯 팝업 머리: 닫기 묶음(.wp-h)이 top 11 이라 + (dp-lh 위 12)보다 1px 높았다 → 12, 제목·+·× 중심 모두 같은 y 로 계측. 검증: 적용본 화면과 미리보기 화면 픽셀 비교 — 탭·메뉴·알림 차이 0, 위젯은 × 1px 이동분만, 전체 테스트.
+
+## 마지막 기록 기준 v1150
+### 1150차 롤백 · 가운데 체크 · 하루 두 번 동기화
+**사용자: 「4는 롤백 / 선택한 사진은 지금이 아니라 사진 중간에 체크 표시로 / 자동동기화를 6시, 12시 하루 두 번」** — `.bgp-more` 를 1148 모양(+N 18px · ::before blur 막)으로 복원, clip-path 제거. `bgThumbHTML` 의 「지금」(.nw) 삭제, `.ck` 를 top/left 50% 가운데(28px, 모두 보기 32px). bg-sync.yml 의 55분 규칙 → KST 06:00·12:00 슬롯(05:59 → 전날 12:00, 06:03 → 06:00, 12:20 → 12:00 로 셸 확인). README·HANDOFF·bg-sync.mjs 문구 맞춤. 검증: 썸네일·모두 보기 창(데스크톱 4열·폰 2열) 체크 중심 오차 0px, 이름 줄과 겹침 없음 확인, 전체 테스트.
+
+## 마지막 기록 기준 v1149
+### 1149차 앱에서 동기화 요청 외
+**사용자: 동기화 단추를 눌러도 GitHub 안 들어가게 · 미리보기 왼쪽 로고 · 설정 머리 버전 굵게 · +N 숫자 기준 가운데** — ① bg.sync: FB.db.ref('bg/req').set(ServerValue.TIMESTAMP)(editor 만 — database.rules.json bg/req, validate newData == now; AUTH-21d~g, 시험기에 now 고정값 지원). bgSub 가 req·chk 를 읽어 req>chk(30분 안)이면 단추 회전·툴팁 「가져오는 중」, 끝나면 토스트. 목록·at 가 그대로면 사진 다시 고르지 않음. bg-sync.yml: */5 확인 단계(curl 공개 읽기 bg/req·bg/chk, 수동 실행·req>chk·55분 경과일 때만 설치·실행), bg-sync.mjs 는 set → update{chk, (l, at)}. 앱에 GitHub/Unsplash 키 없음 — 즉시가 아니라 다음 확인 때(보통 5~15분). ② #bgPv 에 .lg(#cvBrand innerHTML 복사) — 왼쪽 판 가운데(25%/50%), 로고 5.5px. ③ .tb-ver 700. ④ .bgp-more b i{position:absolute;right:100%} — 실측 숫자 중심 = 타일 중심(781.8/781.8). ⑤ 그 타일 ::before backdrop-filter 가 둥근 모서리 밖으로 번져(크로뮴) 제거, 어둡기 .58. 검증: 전체 테스트 PASS, 데스크톱·폰 설정 카드 캡처·모서리 픽셀 확인. 실제 Actions·규칙 게시는 이 환경에서 확인 불가.
+
 ## 마지막 기록 기준 v1148
 ### 1148차 배경화면 매시간 동기화
 **사용자: 동기화 주기 1시간** — .github/workflows/bg-sync.yml cron 매시 7분(정각 혼잡 회피). 요청 수: 컬렉션 30장마다 API 1회 → 시간당 1~2회로 Unsplash 데모 한도(시간당 50) 여유. 주석·README·HANDOFF 문구 「하루 한 번」→「매시간」. 성탄절 리스(Pixabay 10482042, 흰 구멍 제거·크기 46/44/36%)는 시안까지 하고 사용자 결정으로 접음 — 코드 반영 없음. 검증: 전체 테스트 PASS. 실제 Actions 실행은 이 환경에서 확인 불가.

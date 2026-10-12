@@ -261,12 +261,35 @@ const INIT_JS: &str = r#"
     try { if (u) ev.emit('hpw-open', new URL(u, location.href).href); } catch (e) {}
     return null;
   };
+  /* 메모리 — 손을 뗀 지 60초면 'low', 다시 만지면 'normal'. Rust 가 WebView2 메모리 목표를 바꾼다 */
+  var memLow = false, memT = 0;
+  function memAct(){
+    if (memLow) { memLow = false; ev.emit('hpw-mem', 'normal'); }
+    clearTimeout(memT); memT = setTimeout(function(){ memLow = true; ev.emit('hpw-mem', 'low'); }, 60000);
+  }
+  ['mousemove','mousedown','keydown','wheel','touchstart'].forEach(function(k){ addEventListener(k, memAct, { capture: true, passive: true }); });
+  memAct();
   ev.emit('hpw-ready', location.pathname);
 })();
 "#;
 
 /* ══════════ 창 · 표시 모드 ══════════ */
 fn win_of(app: &AppHandle) -> Option<WebviewWindow> { app.get_webview_window("main") }
+
+/* WebView2 메모리 목표 — 쉬는 동안 Low(캐시를 덜어 냄), 만지면 Normal. 런타임이 오래돼 ICoreWebView2_19 가 없으면 조용히 넘어간다 */
+#[cfg(windows)]
+fn set_mem_level(w: &WebviewWindow, low: bool) {
+    let _ = w.with_webview(move |wv| unsafe {
+        use webview2_com::Microsoft::Web::WebView2::Win32::{ICoreWebView2_19,
+            COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_LOW, COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_NORMAL};
+        use windows::core::Interface;
+        let Ok(core) = wv.controller().CoreWebView2() else { return };
+        let Ok(c19) = core.cast::<ICoreWebView2_19>() else { return };
+        let _ = c19.SetMemoryUsageTargetLevel(if low { COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_LOW } else { COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_NORMAL });
+    });
+}
+#[cfg(not(windows))]
+fn set_mem_level(_w: &WebviewWindow, _low: bool) {}
 
 fn apply_mode(app: &AppHandle, mode: &str) {
     { let mut s = STATE.lock().unwrap(); s.mode = mode.to_string(); }
@@ -647,7 +670,7 @@ fn run_backup(app: &AppHandle, force: bool) -> bool {
         let n = 10.min(last.len());
         if !last.is_empty() && &last[..n] >= today_minus_days(7).as_str() { return false; }
     }
-    let Some(d) = ask(app, "window.bkExport ? window.bkExport() : null", 15000) else { return false };
+    let Some(d) = ask(app, "window.bkExport ? window.bkExport() : null", 60000) else { return false };
     let (Some(name), Some(text)) = (d.get("name").and_then(|v| v.as_str()), d.get("text").and_then(|v| v.as_str())) else { return false };
     let _ = std::fs::create_dir_all(backup_dir());
     let f = backup_dir().join(name);
@@ -1153,6 +1176,11 @@ fn main() {
                     _ => {}
                 }
             });
+            let h4 = app.handle().clone();
+            handle.listen_any("hpw-mem", move |ev| {
+                let low = ev.payload().trim_matches('"') == "low";
+                if let Some(w) = win_of(&h4) { set_mem_level(&w, low); }
+            });
             handle.listen_any("hpw-open", move |ev| {
                 /* 1012차(보안): 머리글자('http')가 아니라 주소로 읽어 http·https 만 연다 */
                 let u = serde_json::from_str::<String>(ev.payload()).unwrap_or_default();
@@ -1168,6 +1196,11 @@ fn main() {
                 .inner_size(620.0, 520.0).min_inner_size(360.0, 380.0)   // 694: 300 에서는 월 제목·막대·팝업이 잘린다(693차 조사)
                 .visible(false)
                 .initialization_script(INIT_JS)
+                /* 메모리 — 기본값(msWebOOUI·msPdfOOUI·msSmartScreenProtection 끔)을 그대로 두고 두 가지를 더한다.
+                   ① 사이트 격리 끔: 앱 화면과 reCAPTCHA(App Check) 틀이 렌더러 하나를 같이 쓴다 — 위젯은 앱 주소 밖으로 가지 않는다(on_navigation)
+                   ② 예비 렌더러 끔: 쓰지도 않는 빈 렌더러를 미리 띄워 두지 않는다
+                   ⚠ 인자가 다른 WebView2 는 같은 데이터 폴더를 함께 못 쓴다 — 단일 인스턴스라 문제없다 */
+                .additional_browser_args("--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,SpareRendererForSitePerProcess --disable-site-isolation-trials")
                 /* 1012차(보안): 테두리 없는 위젯 창은 앱 주소(같은 출처) 밖으로 이동하지 않는다 — 바깥 주소는 기본 브라우저로 */
                 .on_navigation(move |u| {
                     let ok = tauri::Url::parse(&app_url()).map(|a| a.origin() == u.origin()).unwrap_or(true) || u.scheme() == "about";

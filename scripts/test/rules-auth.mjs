@@ -39,12 +39,13 @@ class N {
   }
 }
 
+const NOW = 1790000000000;
 function evalExpr(expr, ctx) {
   let e = expr;
   for (const [k, v] of Object.entries(ctx.vars || {})) e = e.split(k).join(JSON.stringify(v));
   e = e.replace(/\.matches\(/g, '.match(');            /* 규칙 matches → JS match(truthy 사용) */
-  const fn = new Function('auth', 'root', 'data', 'newData', 'query', 'return (' + e + ');');
-  return !!fn(ctx.auth, ctx.root, ctx.data, ctx.newData, ctx.query || {});   /* 1085: 질의 규칙(query.orderByChild·equalTo) — 질의 없는 읽기는 빈 객체 */
+  const fn = new Function('auth', 'root', 'data', 'newData', 'query', 'now', 'return (' + e + ');');
+  return !!fn(ctx.auth, ctx.root, ctx.data, ctx.newData, ctx.query || {}, NOW);   /* now = 서버 시각 — 시험에선 고정값(서버값 쓰기도 이 값으로 들어온다고 본다) */   /* 1085: 질의 규칙(query.orderByChild·equalTo) — 질의 없는 읽기는 빈 객체 */
 }
 
 /* 규칙 트리에서 경로의 노드 규칙 찾기 — 와일드카드($x)를 vars 로 수집 */
@@ -256,5 +257,9 @@ t('AUTH-20c', 'editor → 타인 명부 이름', true, tryWrite('calapp/people/U
 t('AUTH-21a', '비로그인 → bg 읽기', true, tryRead('bg', null, TREE));
 t('AUTH-21b', '비로그인 → bg 쓰기', false, tryWrite('bg', null, TREE, { l: [] }));
 t('AUTH-21c', 'editor → bg 쓰기', false, tryWrite('bg', A('E1'), TREE, { l: [] }));
+t('AUTH-21d', 'editor → bg/req(동기화 요청) 쓰기', true, tryWrite('bg/req', A('E1'), TREE, NOW));
+t('AUTH-21e', 'viewer → bg/req 쓰기', false, tryWrite('bg/req', A('V1'), TREE, NOW));
+t('AUTH-21f', '비로그인 → bg/req 쓰기', false, tryWrite('bg/req', null, TREE, NOW));
+t('AUTH-21g', 'editor → bg/l 쓰기', false, tryWrite('bg/l', A('E1'), TREE, []));
 console.log(fail ? `\nFAIL ${fail}` : '\nRULES-AUTH ALL PASS');
 process.exit(fail ? 1 : 0);
