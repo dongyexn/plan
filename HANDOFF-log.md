@@ -1,5 +1,9 @@
 # 변경 이력 (읽기 전용) — 현재 상태는 HANDOFF.md
 
+## 마지막 기록 기준 v1165
+### 1165차 위젯 반응 · 유리 플랫하게
+**사용자: 「위젯 빠릿하질 못한데 / 모션이 렉을 유발하는거 아닌지 / 위젯 헤더쪽은 리퀴드글래스 적용하지 말자 / 위젯은 66에서 70으로 / 전체적으로 너무 리퀴드글래스 스러워졋는데 테두리 부분이라던지 좀 예전하고 중간쯤 / 플랫한 느낌으로」** — 계측(헤드리스, 위젯 460×760, 동작 7개 × 흐림 켬/끔 × 모션 켬/끔, 최대 프레임·34ms 넘는 프레임·긴 작업): 흐림 40px 켬일 때만 팝업 옮기기 57ms·달 넘김 75ms(긴 작업 57ms) 튐 — 모션을 꺼도 달 넘김(FullCalendar 다시 그리기 ≈50ms)·업무 추가(폼 그리기 ≈40ms)는 그대로라 모션 자체보다 큰 흐림이 부담. 프로파일: 달 넘김 = cal.next 53ms 중 calFitApply 9.7ms(강제 배치), 업무 추가 = openPlanEdit 16ms·fadeScan 14ms. 조치: --lqd-blur 40→20px(판이 70%라 눈차이 거의 없음) → 다시 재니 흐림 켬/끔 차이 사라짐. 위젯 달 넘김은 칸 크기 열쇠(창 크기·body 클래스·인라인 스타일)가 같으면 calFitApply 를 건너뜀. ⚠ 실제 GPU(WebView2)는 헤드리스와 달라 체감은 미확인 — 남은 의심: 1154 의 손 놓은 60초 뒤 메모리 목표 Low(캐시를 비워 첫 조작이 무거울 수 있음). 모양: :root 토큰만 바꿔 앱·위젯 전체에 — --glass .66→.76, --lq-blur blur(20px) saturate(1.6), --lq-hi 위 한 줄 .6, --lq-line .13→.09, --lq-edge .18→.1, --lqd-fill .66→.70, --lqd-hi 위 한 줄 .12, --lqd-edge .5→.25. 위젯 머리 단추(.cal-move·.cal-nav·.seg) 테두리 1px rgba(255,255,255,.14)로 되돌리고 그림자 뺌. 검증: 전체 테스트 PASS.
+
 ## 마지막 기록 기준 v1164
 ### 1164차 지워도 되는 파일
 **사용자: 「이번엔 너가 올려줄수있니 / 지워도 되는 파일 있으면 지워주고」** — 저장소 dongyexn/plan(마지막 커밋 v1156)을 내려받아 로컬과 대조: 저장소에만 있는 파일 없음(vendor/libredwg·dwg-split·dwg 시험 자료는 사용자가 이미 지움). 로컬에만 있는 것: .gitignore · .github/workflows/pages.yml · scripts/build-min.mjs(1163). 참조 전수 확인 후 삭제: `scripts/coast-land.mjs`(608차 점검표에 「지워도 되는 유일한 파일」로 적힌 폐기 접근), `scripts/test/shot-prod.mjs`(설정 게시 카드 일회용 스크린샷 — run-all·package.json·문서 어디서도 안 부름). 남긴 것: site-geo-check(진단 도구, kmFind 복사본), apt-index·geo2026(지도 자료 재생성), font-subset·css-dedup(재사용 도구). push: 저장소 쓰기 권한 요청이 이 세션에서 거부돼 올리지 못함 — 사용자가 zip 으로 올림. 검증: 전체 테스트 PASS.
