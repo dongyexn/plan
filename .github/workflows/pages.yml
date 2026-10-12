@@ -1,0 +1,37 @@
+# 배포본 경량화 — 원본은 주석을 그대로 두고, GitHub Pages 에는 주석·빈 줄을 걷은 사본(_site)을 올린다.
+# ⚠ 저장소 Settings → Pages → Build and deployment → Source 를 「GitHub Actions」로 바꿔야 이 배포가 쓰인다
+#   (「Deploy from a branch」인 동안엔 지금처럼 원본이 그대로 올라가고, 이 작업은 배포 단계에서 실패로 끝난다).
+name: pages
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: 주석 걷은 배포본 만들기
+        run: node scripts/build-min.mjs _site
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.d.outputs.page_url }}
+    steps:
+      - id: d
+        uses: actions/deploy-pages@v5
