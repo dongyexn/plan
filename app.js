@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1166';
+const APP_VER='1167';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -984,9 +984,6 @@ const FB={
     measurementId:"G-YT6MVSE221"
   },
   APPCHECK_KEY:"6Lcl5zctAAAAAPgvPJKKLxBwgENnAmogtVTqf61f",
-  /* 위젯(Electron)에서 reCAPTCHA 토큰이 막힐 때(403 → 24시간 차단) 대비 — 여기 디버그 토큰을 넣고 Firebase 콘솔 App Check 디버그 토큰에 같은 값을 등록하면 위젯만 통과한다. 비우면 reCAPTCHA.
-     ⚠ 이 값은 배포 파일에 그대로 들어간다 — App Check 보호가 그만큼 약해진다 */
-  APPCHECK_DEBUG:"",
   app:null,db:null,auth:null,_subs:[]
 };
 function fbDomainOk(email){return /@hdec\.co\.kr$/i.test(String(email||'').trim());}
@@ -2141,9 +2138,9 @@ function fbInit(){
   if(typeof firebase==='undefined'||!firebase.initializeApp)return;
   try{
     FB.app=firebase.apps&&firebase.apps.length?firebase.app():firebase.initializeApp(FB.cfg);
-    if(FB.APPCHECK_KEY&&firebase.appCheck){
-      /* 위젯에서만 디버그 토큰으로 바꿔 끼운다 — activate 보다 먼저 세워야 적용된다 */
-      if(WIDGET&&FB.APPCHECK_DEBUG)self.FIREBASE_APPCHECK_DEBUG_TOKEN=FB.APPCHECK_DEBUG;
+    /* 위젯은 App Check 를 켜지 않는다 — reCAPTCHA 가 숨은 google.com 창(약 30MB)을 띄운다. DB·로그인의 App Check 강제는 꺼 둔 상태(사용자 확인)이고
+       App Check 필수인 AI 중계는 위젯이 부르지 않는다. ⚠ 콘솔에서 강제를 다시 켜면 위젯이 데이터를 못 읽는다(_dbWatch 가 알림) — 그때는 이 조건을 되돌린다 */
+    if(FB.APPCHECK_KEY&&firebase.appCheck&&!WIDGET){
       try{const EP=firebase.appCheck.ReCaptchaEnterpriseProvider;
         firebase.appCheck().activate(EP?new EP(FB.APPCHECK_KEY):FB.APPCHECK_KEY,true);}
       catch(e){console.warn('[FB] appCheck',e);}
