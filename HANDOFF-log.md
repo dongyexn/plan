@@ -1,5 +1,9 @@
 # 변경 이력 (읽기 전용) — 현재 상태는 HANDOFF.md
 
+## 마지막 기록 기준 v1167
+### 1167차 위젯 App Check 끄기
+**사용자: 「구글은 빼도 되는지 확인해봐 / 앱체크 그때 이후로 꺼두고잇어」** — 작업 관리자의 「WebView2 서브프레임: https://google.com/」(30.1MB, 위젯 132.6MB 중) = App Check 의 reCAPTCHA Enterprise 숨은 창. 근거: 127~128차에 RTDB·Auth 의 App Check 강제를 끄고 그대로 두기로 했고 사용자가 지금도 꺼 둔 상태라고 확인. App Check 필수였던 AI 중계(703차)는 앱에서 이미 빠짐(app.js 에 호출 없음). → fbInit 에서 `WIDGET` 이면 appCheck().activate 를 하지 않는다. 위젯 전용 디버그 토큰 경로(FB.APPCHECK_DEBUG·FIREBASE_APPCHECK_DEBUG_TOKEN)는 쓸 곳이 없어 삭제. ⚠ 콘솔에서 RTDB/Auth 강제를 다시 켜면 위젯이 데이터를 못 읽는다(FB._dbWatch 가 「보안 확인(App Check) 토큰 문제」로 알림) — 그때는 `&&!WIDGET` 를 되돌린다. vendor/firebase-app-check-compat.js 는 index.html 고정 태그라 위젯도 받지만 activate 전엔 창·통신 없음. 검증: 전체 테스트 PASS. 실제 위젯 메모리 감소는 사용자 작업 관리자로 확인 필요.
+
 ## 마지막 기록 기준 v1166
 ### 1166차 알림 유리 테 빼기
 **사용자: 「토스트 윗부분 글래스 효과가 어색 여기는 빼는게 어떤지」** — 알림 캡슐의 위쪽 흰 반사광 줄(--lqd-hi)과 바깥 어두운 테(--lqd-edge)를 4개 규칙(#toast,.toast-bk 기본 · body.wid · 폰 · 데스크톱)에서 제거, box-shadow 는 아래 그림자만. 판(--lqd-fill)·흐림(--lqd-blur)은 유지. 검증: 전체 테스트 PASS.
