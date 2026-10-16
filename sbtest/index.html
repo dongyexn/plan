@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="상단 시험">
+<meta name="theme-color" content="#25282D">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="../icon-192.png">
+<title>상단 시험</title>
+<!-- 시험용 페이지 — 홈 화면 앱에서 상태 표시줄 밑까지 그리기(black-translucent) 확인. 본 앱과 무관, 확인 뒤 지운다 -->
+<style>
+:root{--shell:#25282D;--shell-txt:#F2F5F9;--shell-dim:rgba(242,245,249,.72);--bg:#FBFBFB;--bg2:#fff;--line:#DDE3E9;--th:46px;--sat:env(safe-area-inset-top);}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;background:var(--shell);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard",sans-serif;-webkit-tap-highlight-color:transparent;}
+button{font:inherit;border:0;cursor:pointer;}
+#bg{position:fixed;inset:0;background:#3A3F47 url(../login-bg.jpg) center 40%/cover no-repeat;}
+#bg::after{content:"";position:absolute;inset:0;background:rgba(10,14,22,.18);}
+#login{position:fixed;inset:0;display:flex;flex-direction:column;justify-content:flex-end;padding:0 12px calc(12px + env(safe-area-inset-bottom));}
+.brand{flex:1;display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;font-weight:700;text-shadow:0 1px 8px rgba(0,0,0,.35);}
+.card{background:rgba(255,255,255,.86);-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6);border-radius:24px;padding:18px;display:grid;gap:10px;}
+.card p{font-size:13px;color:#4D515A;line-height:1.5;}
+.btn{height:48px;border-radius:14px;background:#3E71D2;color:#fff;font-size:16px;font-weight:600;}
+#app{position:fixed;inset:0;background:var(--shell);display:none;flex-direction:column;}
+body.in #app{display:flex;}body.in #login,body.in #bg{display:none;}
+.hdr{flex:0 0 auto;padding-top:var(--sat);height:calc(var(--th) + var(--sat));display:flex;align-items:center;gap:10px;padding-left:16px;padding-right:10px;color:var(--shell-txt);}
+.hdr b{font-size:16px;flex:1;}
+.hdr button{height:34px;padding:0 12px;border-radius:10px;background:rgba(255,255,255,.10);color:var(--shell-txt);font-size:13px;}
+.body{flex:1;overflow-y:auto;background:var(--bg);border-radius:14px 14px 0 0;padding:12px 12px calc(12px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch;}
+.row{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:8px;font-size:14px;color:#1B1B1F;}
+.row small{display:block;color:#6B7079;font-size:12px;margin-top:3px;}
+.diag{font:12px/1.5 ui-monospace,Menlo,monospace;color:#1B1B1F;background:#EEF2F7;border-radius:10px;padding:10px 12px;margin-bottom:10px;}
+#probe{position:fixed;top:0;left:0;width:1px;height:var(--sat);visibility:hidden;pointer-events:none;}
+</style>
+</head>
+<body>
+<div id="bg"></div>
+<div id="login">
+  <div class="brand">H 주요업무현황</div>
+  <div class="card">
+    <p>① 시계·배터리 뒤까지 배경 사진이 깔려 있는지 봐 주세요.<br>② 아래 단추로 본 화면으로 넘어가 머리 줄 글자가 흐려지지 않는지 봐 주세요.</p>
+    <button class="btn" id="go">본 화면으로</button>
+  </div>
+</div>
+<div id="app">
+  <div class="hdr"><b>업무 현황</b><button id="back">로그인 화면</button></div>
+  <div class="body" id="list"></div>
+</div>
+<div id="probe"></div>
+<script>
+const $=s=>document.querySelector(s);
+$('#go').onclick=()=>{document.body.classList.add('in');diag();};
+$('#back').onclick=()=>document.body.classList.remove('in');
+function diag(){
+  const sat=$('#probe').getBoundingClientRect().height;
+  const st=window.navigator.standalone===true||matchMedia('(display-mode: standalone)').matches;
+  $('#list').querySelector('.diag').innerHTML='홈 화면 앱: '+(st?'예':'아니오 — 홈 화면에 추가해서 열어 주세요')+'<br>상단 안전영역: '+Math.round(sat)+'px<br>화면 높이: '+innerHeight+'px';
+}
+let h='<div class="diag"></div>';
+for(let i=1;i<=30;i++)h+='<div class="row">업무명'+i+'<small>현장명'+(i%12+1)+' · 담당자'+(i%5+1)+'</small></div>';
+$('#list').innerHTML=h;diag();
+</script>
+</body>
+</html>
