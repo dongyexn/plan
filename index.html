@@ -842,14 +842,11 @@ body.wid.glass #fcal .fc-daygrid-more-link{color:rgba(255,255,255,.85);backgroun
 .rpt .two>div{min-width:0;padding-right:11px;}
 .rpt .two>div+div{padding:0 0 0 11px;border-left:.75px solid var(--rp-lines);}
 .rpt .two svg{display:block;width:100%;height:auto;}
-/* 처리계획 칸 — 지난달(기록)·이번 달(기입란)을 라벨+본문 2단으로. 늘어난 행 높이(--g)는 이번 달 기입란이 받는다 */
+/* 처리계획 칸 — 이번 달 계획만, 행 가운데 정렬. 늘어난 행 높이(--g)만큼 기입란이 넓어진다 */
 .rpt table.plan-tbl{font-size:7.5px;}   /* 처리계획 표는 값도 머리와 같은 크기 */
 .rpt table.plan-tbl td{vertical-align:middle;}
-.rpt td.plan{text-align:left;padding:0;vertical-align:top;display:table-cell;border:0;border-radius:0;background:transparent;gap:0;align-items:normal;position:static;transition:none;}   /* ⚠ 앱의 전역 .plan(일정 카드)이 새어 들어오면 좌우로 깨진다 */
+.rpt td.plan{text-align:left;padding:0;vertical-align:middle;display:table-cell;border:0;border-bottom:.75px solid var(--rp-lines);border-radius:0;background:transparent;gap:0;align-items:normal;position:static;transition:none;}   /* ⚠ 앱의 전역 .plan(일정 카드)이 새어 들어오면 좌우로 깨진다 */
 .rpt .plan>div{display:flex;align-items:baseline;gap:6px;padding:3px 6px;min-height:15px;}
-.rpt .plan>.cur{padding-bottom:calc(3px + var(--g));}
-.rpt .plan .prev{border-bottom:.75px dotted #cfd5dc;}   /* .5px 는 축소 인쇄에서 사라진다 */
-.rpt .plan .lb{flex:0 0 22px;font-size:6.5px;font-weight:700;color:var(--rp-label);line-height:1.5;letter-spacing:-.02em;white-space:nowrap;}
 .rpt .plan .tx{flex:1;min-width:0;font-size:7.5px;line-height:1.5;white-space:pre-wrap;word-break:break-word;}
 /* 주요 이슈 — 같은 틀의 칸 넷(2×2): 왼쪽(분류 · 핵심 숫자) 옅은 음영, 오른쪽(결론 · 근거). 좌우 제목은 같은 줄·같은 크기 */
 .rpt .sec:has(>.iss){display:grid;grid-template-columns:1fr 1fr;}
@@ -6152,5 +6149,5 @@ body.wid.glass{--mv-flash:#8FB4FF;}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1168"></script>
+<script src="./app.js?v=1169"></script>
 </body></html>
