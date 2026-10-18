@@ -759,105 +759,115 @@ body.wid.glass #fcal .fc-daygrid-more-link{color:rgba(255,255,255,.85);backgroun
 /* ══════════ 보고서 양식(rpt) — 원본 CSS 이식(문서 전용 고정 색·토큰 무관) ══════════ */
 #rptRoot{position:fixed;left:-10000px;top:0;}   /* 화면 밖에서 조립·실측하고 인쇄 때만 본문이 된다 */
 /* ⚠ 보고서 색은 app.js 의 RP_COL 이 정한다 — 색을 바꾸려면 RP_COL 을 고칠 것 */
-.rpt{--rp-navy:#08213f; --rp-text:#1a202c; --rp-gray:#4a5568; --rp-label:#6b7280;  --rp-line:#c8cdd4; --rp-lines:#e4e7eb; --rp-bg:#f7f8fa;}
+.rpt{--rp-navy:#08213f; --rp-text:#1a202c; --rp-gray:#4a5568; --rp-label:#6b7280;  --rp-line:#c8cdd4; --rp-lines:#e3e6ea; --rp-bg:#f7f8fa; --rp-head:#f1f3f6;}
 .rpt *{box-sizing:border-box;margin:0;padding:0;}
 .rpt{font-family:'HDharmony','Pretendard Variable','Pretendard',-apple-system,BlinkMacSystemFont,sans-serif;color:var(--rp-text);-webkit-font-smoothing:antialiased;line-height:normal;}
 /* ⚠ line-height:normal 필수 — body{line-height:0}이 #rptRoot(rptPrint() 가 body 에 직접 붙임)에 상속돼 줄 상자가 0 이 되고 행이 겹친다.
    원본 rpt 는 브라우저 기본값 전제라 1.5 가 아니라 normal */
 /* ↑ 기본 글꼴을 앱 화면과 같게 고정 — 'Pretendard'만 쓰면 @font-face 이름('Pretendard Variable')과 달라 OS 기본으로 떨어진다 */
-/* 보고서 글꼴 — 인쇄 모달에서 고른다. 글꼴마다 표 높이가 달라 넘침은 rptFit() 이 인쇄 직전 실측해 밀도로 흡수한다. */
+/* 보고서 글꼴 — 인쇄 모달에서 고른다. 글꼴마다 높이가 달라 쪽 채움·넘침은 rptFit() 이 인쇄 직전 실측해 맞춘다. */
 /* ⚠ 맑은 고딕의 라틴·숫자는 Segoe UI 계열이라 앞에 두기만 하면 화면 기본과 인상이 비슷하다 — 라틴·숫자는 Arial, 한글만 맑은 고딕으로 넘긴다.
    ⚠ Arial 은 엑셀 기본이 아니다(2007~2021 Calibri, 365 Aptos) — 가장 중립적인 문서 글꼴이라 골랐다. 바꾸려면 이 줄만. */
 .rpt.f-sys{font-family:Arial,'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto Sans KR','Noto Sans CJK KR',Helvetica,sans-serif;}
-.rpt .page{width:794px;background:#fff;position:relative;}
-.rpt .sheet{width:595px;min-height:842px;padding:0 36px;position:relative;zoom:1.333333;}
+/* 쪽 — A4(595×842pt)를 zoom 으로 794px 에 맞춘다. --g(표 행) · --sg(절 간격)는 rptFit 이 쪽마다 정한다 */
+.rpt .page{width:794px;background:#fff;position:relative;--g:0px;--sg:0px;}
+.rpt .sheet{width:595px;min-height:842px;padding:0 40px;position:relative;zoom:1.333333;}
 /* 인쇄 — break-after 와 옛 이름(page-break-after)을 한 규칙에 함께 둔다(엔진별 지원 차이) */
 .rpt .page{break-after:page;page-break-after:always;box-shadow:none;margin:0;min-height:1123px}
 .rpt .page:last-child{break-after:auto;page-break-after:auto}
-.rpt .brand{font-size:10px;font-weight:700;letter-spacing:.16em;color:var(--rp-navy);}
-.rpt .brand small{display:block;font-size:7.5px;font-weight:400;letter-spacing:.06em;color:var(--rp-label);margin-top:3px;}
+/* 머리 — 첫 쪽: 제목 · 기준일 + 개요(칸 구분선) / 둘째 쪽부터: 한 줄 띠 */
 .rpt .thead-row{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;}
 .rpt .asof{text-align:right;font-size:8px;color:var(--rp-label);line-height:1.5;white-space:nowrap;}
 .rpt .asof b{display:block;font-size:10px;font-weight:700;color:var(--rp-navy);letter-spacing:-.01em;}
 .rpt .titlewrap{padding:32px 0 4px;border-bottom:1px solid var(--rp-line);}
 .rpt h1{font-size:18px;font-weight:700;letter-spacing:-.02em;color:var(--rp-navy);line-height:1.25;}
-.rpt .subject{display:flex;gap:22px;margin-top:8px;font-size:8.5px;color:var(--rp-gray);}
-.rpt .subject b{color:var(--rp-navy);font-weight:600;}
-.rpt .sec{margin-top:16px;}
-.rpt .page:first-of-type .sec{margin-top:7px;}
-.rpt .page:first-of-type .sheet>.sec:nth-child(2){margin-top:18px;}
-.rpt .page:first-of-type .sheet>.sec:nth-child(3){margin-top:13px;}
-.rpt .page:first-of-type .sheet>.sec:nth-child(4),.rpt .page:first-of-type .sheet>.sec:nth-child(5){margin-top:12px;}
-.rpt .sec-h{display:flex;align-items:baseline;gap:8px;padding-bottom:3px;
-  border-bottom:1px solid var(--rp-navy);margin-bottom:5px;}
+.rpt .subject{display:flex;margin-top:8px;font-size:8.5px;color:var(--rp-gray);}
+.rpt .subject>div{padding-right:14px;margin-right:14px;border-right:.75px solid var(--rp-lines);}
+.rpt .subject>div:last-child{border-right:0;}
+.rpt .subject b{color:var(--rp-navy);font-weight:600;margin-left:3px;}
+.rpt .page+.page .titlewrap{padding-top:26px;padding-bottom:5px;border-bottom:.75px solid var(--rp-navy);}
+.rpt .page+.page .thead-row{align-items:baseline;}
+.rpt .page+.page h1{font-size:10px;letter-spacing:-.01em;}
+.rpt .page+.page .asof{display:flex;align-items:baseline;gap:5px;line-height:1;}
+.rpt .page+.page .asof b{display:inline;font-size:8.5px;}
+/* 절 — 간격 하나로(남는 자리는 --sg), 제목 옆 설명 문구 없음 */
+.rpt .sec{margin-top:calc(19px + var(--sg));}
+.rpt .titlewrap+.sec{margin-top:calc(16px + var(--sg));}
+.rpt .sec-h{display:flex;align-items:baseline;gap:6px;padding-bottom:4px;border-bottom:1px solid var(--rp-navy);margin-bottom:8px;}
 .rpt .sec-n{font-size:11px;font-weight:700;color:var(--rp-navy);letter-spacing:.02em;}
+.rpt .sec-n::after{content:".";}
 .rpt .sec-t{font-size:12px;font-weight:700;color:var(--rp-navy);letter-spacing:-.01em;}
-.rpt .sec-note{margin-left:auto;font-size:7.5px;color:var(--rp-label);}
-.rpt .kpis{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--rp-lines);}
-.rpt .kpi{padding:9px 11px 8px;border-bottom:1px solid var(--rp-lines);border-right:1px solid var(--rp-lines);}
+/* 종합 현황 — 칸 사이 세로선(마지막 칸 없음)은 아래 선에서 띄운다 */
+.rpt .kpis{display:grid;grid-template-columns:repeat(4,1fr);padding-bottom:6px;border-bottom:.75px solid var(--rp-line);}
+.rpt .kpi{padding:3px 12px 3px;border-right:.75px solid var(--rp-lines);}
+.rpt .kpi:first-child{padding-left:0;}
 .rpt .kpi:last-child{border-right:0}
-.rpt .kpi .k{font-size:7.5px;color:var(--rp-label);}
-.rpt .kpi .v{font-size:18px;font-weight:700;color:var(--rp-navy);letter-spacing:-.03em;line-height:1.1;margin-top:4px;
+.rpt .kpi .k{font-size:7.5px;font-weight:600;color:var(--rp-label);}
+.rpt .kpi .v{font-size:18px;font-weight:700;color:var(--rp-navy);letter-spacing:-.03em;line-height:1.1;margin-top:5px;
   font-variant-numeric:tabular-nums;}
 .rpt .kpi .v span{font-size:8.5px;font-weight:500;color:var(--rp-gray);margin-left:2px;}
 .rpt .kpi .d{font-size:7.5px;color:var(--rp-gray);margin-top:3px;font-variant-numeric:tabular-nums;}
 .rpt .kpi .d b{font-weight:700;color:var(--rp-navy);}
-.rpt table{width:100%;border-collapse:collapse;font-size:8.5px;font-variant-numeric:tabular-nums;table-layout:fixed;}
-.rpt th{font-size:7.5px;font-weight:600;color:var(--rp-label);text-align:center;padding:5px 4px;
-  border-bottom:1px solid var(--rp-line);white-space:nowrap;}
+/* 표 — 숫자 오른쪽 정렬, 머리 옅은 채움, 합계는 위아래 선. 행 높이는 --g 만큼 늘거나 준다 */
+.rpt table{width:100%;border-collapse:collapse;font-size:8px;font-variant-numeric:tabular-nums;table-layout:fixed;}
+.rpt th{font-size:7px;font-weight:700;color:var(--rp-navy);background:var(--rp-head);text-align:center;padding:5px 6px;
+  border-bottom:.75px solid var(--rp-line);white-space:nowrap;}
+.rpt td{padding:calc(4px + var(--g)/2) 6px;text-align:center;border-bottom:.75px solid var(--rp-lines);}
 .rpt th.l,.rpt td.l{text-align:left}
-.rpt td{padding:2.75px 4px;text-align:center;border-bottom:1px solid var(--rp-lines);}
-.rpt tbody tr:last-child td{border-bottom:1px solid var(--rp-line);}
-.rpt tfoot td{padding:5.5px 4px;font-weight:700;color:var(--rp-navy);background:var(--rp-bg);border-bottom:0;}
+.rpt :is(th,td):not(.l):not(.plan):not(:first-child){text-align:right;}
+.rpt tbody tr:last-child td{border-bottom:.75px solid var(--rp-line);}
+.rpt table:has(tfoot) tbody tr:last-child td{border-bottom:0;}
+.rpt tfoot td{padding:5px 6px;font-weight:700;color:var(--rp-navy);border-top:.75px solid var(--rp-navy);border-bottom:.75px solid var(--rp-navy);}
 .rpt .dim{color:var(--rp-label)}
 .rpt .dn{font-weight:600}
-.rpt /* 차트 공통 */
-.cap{font-size:7.5px;font-weight:700;color:var(--rp-navy);margin-bottom:1px;}
-.rpt .lg{display:flex;gap:13px;flex-wrap:wrap;font-size:7.5px;color:var(--rp-gray);margin-top:1px;}
+/* 현장별 표 — 권역 묶음: 이름은 첫 줄에만, 그 칸의 줄 구분선 없이, 묶음 사이만 선 */
+.rpt td.rgc{color:var(--rp-navy);font-weight:600;}
+.rpt td.rgm{border-bottom-color:transparent;}
+.rpt tr.rge td{border-bottom-color:var(--rp-line);}
+/* 표 밀도 — 쪽을 넘칠 때 rptFit 이 .page 에 붙인다 */
+.rpt .dense th{padding:4px 6px;}
+.rpt .dense td{padding:2px 6px;}
+.rpt .dense2 table{font-size:7.5px;}
+.rpt .dense2 th{font-size:6.8px;padding:3px 5px;}
+.rpt .dense2 td{padding:1px 5px;}
+/* 추이 — 그림은 본문 폭, 범례 작게, 절 아래 옅은 선 */
+.rpt .rp-tr svg{display:block;width:100%;height:auto;}
+.rpt .lg{display:flex;gap:11px;flex-wrap:wrap;font-size:6.5px;color:var(--rp-gray);margin-top:3px;}
 .rpt .lg span{display:inline-flex;align-items:center;gap:4px}
-.rpt .lg i{width:8px;height:8px;display:inline-block}
-.rpt .lg i.ln{height:2px;width:12px}
-.rpt .two{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
-.rpt /* 도넛 범례 */
-.dl{font-size:7.5px;color:var(--rp-gray);}
-.rpt .dl .r{display:flex;align-items:center;gap:5px;padding:2px 0;border-bottom:1px solid var(--rp-lines);}
-.rpt .dl .r:last-child{border-bottom:0}
-.rpt .dl i{width:7px;height:7px;flex:0 0 auto}
-.rpt .dl .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rpt .dl .vl{font-variant-numeric:tabular-nums;font-weight:600;color:var(--rp-text)}
-.rpt .dl .pc{width:34px;text-align:right;color:var(--rp-label);font-variant-numeric:tabular-nums}
-/* 처리계획 칸 — 지난달(기록)·이번 달(기입란)을 라벨+본문 2단으로 분리(없으면 가운데정렬로 뭉친다).
-   본문은 표 기본(8.5px)보다 한 단 작게. */
+.rpt .lg i{width:6.5px;height:6.5px;display:inline-block}
+.rpt .lg i.ln{height:1.5px;width:10px}
+.rpt .sec:has(.rp-tr),.rpt .sec:has(>.two){padding-bottom:8px;border-bottom:.75px solid var(--rp-lines);}
+/* 미처리 분포 — 회의 모드 도넛 둘, 사이에 옅은 세로선 */
+.rpt .two{display:grid;grid-template-columns:1fr 1fr;}
+.rpt .two>div{min-width:0;padding-right:11px;}
+.rpt .two>div+div{padding:0 0 0 11px;border-left:.75px solid var(--rp-lines);}
+.rpt .two svg{display:block;width:100%;height:auto;}
+/* 처리계획 칸 — 지난달(기록)·이번 달(기입란)을 라벨+본문 2단으로. 늘어난 행 높이(--g)는 이번 달 기입란이 받는다 */
 .rpt table.plan-tbl{font-size:7.5px;}   /* 처리계획 표는 값도 머리와 같은 크기 */
+.rpt table.plan-tbl td{vertical-align:middle;}
 .rpt td.plan{text-align:left;padding:0;vertical-align:top;display:table-cell;border:0;border-radius:0;background:transparent;gap:0;align-items:normal;position:static;transition:none;}   /* ⚠ 앱의 전역 .plan(일정 카드)이 새어 들어오면 좌우로 깨진다 */
-.rpt .plan>div{display:flex;align-items:flex-start;gap:6px;padding:2.5px 6px;}
-.rpt .plan .prev{border-bottom:1px dotted #cfd5dc;}   /* .5px 는 축소 인쇄에서 사라진다 */
-.rpt .plan .lb{flex:0 0 24px;font-size:6px;font-weight:700;color:var(--rp-label);
-  line-height:1.6;letter-spacing:-.02em;white-space:nowrap;}
+.rpt .plan>div{display:flex;align-items:baseline;gap:6px;padding:3px 6px;min-height:15px;}
+.rpt .plan>.cur{padding-bottom:calc(3px + var(--g));}
+.rpt .plan .prev{border-bottom:.75px dotted #cfd5dc;}   /* .5px 는 축소 인쇄에서 사라진다 */
+.rpt .plan .lb{flex:0 0 22px;font-size:6.5px;font-weight:700;color:var(--rp-label);line-height:1.5;letter-spacing:-.02em;white-space:nowrap;}
 .rpt .plan .tx{flex:1;min-width:0;font-size:7.5px;line-height:1.5;white-space:pre-wrap;word-break:break-word;}
-.rpt /* 이슈 */
-.iss{border-left:3px solid var(--rp-navy);background:var(--rp-bg);padding:5px 10px;margin-bottom:3px;}
-.rpt .iss:last-child{margin-bottom:0}
-.rpt .iss .t{font-size:7.5px;font-weight:700;color:var(--rp-navy);margin-bottom:2px;}
-.rpt .iss .m{font-size:7.5px;line-height:1.5;color:var(--rp-gray);}
+/* 주요 이슈 — 같은 틀의 칸 넷(2×2): 왼쪽(분류 · 핵심 숫자) 옅은 음영, 오른쪽(결론 · 근거). 좌우 제목은 같은 줄·같은 크기 */
+.rpt .sec:has(>.iss){display:grid;grid-template-columns:1fr 1fr;}
+.rpt .sec:has(>.iss)>.sec-h{grid-column:1/-1;margin-bottom:0;}
+.rpt .iss{display:flex;align-items:stretch;gap:10px;padding:7px 14px 7px 0;border-bottom:.75px solid var(--rp-lines);}
+.rpt .sec>.iss:nth-child(odd){padding:7px 0 7px 14px;border-left:.75px solid var(--rp-lines);}
+.rpt .iss .kL{flex:0 0 76px;padding:6px 8px 7px;background:#f3f5f8;}
+.rpt .iss .kR{flex:1;min-width:0;padding-top:6px;}
+.rpt .iss :is(.kc,.kt){height:12px;line-height:12px;font-size:8.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rpt .iss .kc{color:var(--rp-gray);}
+.rpt .iss .kt{color:var(--rp-navy);}
+.rpt .iss .kv{margin-top:3px;font-size:15px;font-weight:700;color:var(--rp-navy);letter-spacing:-.03em;line-height:1.1;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.rpt .iss .kv small{font-size:7.5px;font-weight:500;color:var(--rp-gray);margin-left:1px;letter-spacing:0;}
+.rpt .iss .m{margin-top:4px;font-size:7px;line-height:1.5;color:var(--rp-gray);}
 .rpt .iss .m b{color:var(--rp-navy);font-weight:600;}
-
 /* ⚠ nowrap 은 행간 복원과 한 짝 — 없으면 합계 행(굵은 글씨)에서 '▼'와 숫자가 두 줄로 갈라진다 */
 .rpt .up{color:#C0392B;white-space:nowrap;} .rpt .dn2{color:#1E8449;white-space:nowrap;}
-.rpt .dl{overflow:hidden;flex:1 1 auto;min-width:0;}
-/* 보고서 본문 규격 — 표·문단 공통 */
-   (규칙이 없으면 브라우저 기본 16px + .sheet zoom 1.333이 겹쳐 다른 항목의 2배로 출력됨) */
-/* 표 밀도 — 행이 많아 한 쪽을 넘길 때 rptDashboard가 .page에 부여 */
-.rpt .dense th{padding:4px 4px;}
-.rpt .dense td{padding:1.5px 4px;}
-.rpt .dense tfoot td{padding:4px 4px;}
-.rpt .dense2 table{font-size:7.5px;}
-.rpt .dense2 th{font-size:6.8px;padding:3px 3px;}
-.rpt .dense2 td{padding:0.5px 3px;}
-.rpt .dense2 tfoot td{padding:3px 3px;}
-.rpt .dwrap{display:flex;align-items:center;gap:9px;}
-.rpt .dnut{flex:0 0 auto;}
-.rpt .pgn{position:absolute;right:36px;bottom:14px;font-size:7pt;color:var(--rp-label);}
+.rpt .pgn{position:absolute;right:40px;bottom:14px;font-size:7pt;color:var(--rp-label);}
 
 /* rpt 인쇄 — 문서 본문만 남긴다(원본과 동일) */
 @media print{
@@ -6142,5 +6152,5 @@ body.wid.glass{--mv-flash:#8FB4FF;}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1167"></script>
+<script src="./app.js?v=1168"></script>
 </body></html>
