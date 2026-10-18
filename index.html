@@ -3572,13 +3572,14 @@ body:not(.wid) .cv-lock{display:none;}   /* 불러오는 중 락업은 위젯만
 @keyframes lgDrop{from{opacity:0;transform:translateY(-14px);}to{opacity:1;transform:none;}}
 @keyframes lgRise{from{opacity:0;transform:translateY(28px);}to{opacity:1;transform:none;}}
 @media (min-width:961px){
-  body:not(.wid) #coverGate{--cv-dot:#6B7280;left:50vw;top:48px;bottom:8px;padding:24px;}   /* 게이트 = 오른쪽 반(밀려난 본문 판 자리) · 판은 #main 이 유리로 */
+  :root{--lgx:64vw;}   /* 로그인 화면 — 왼쪽 배경 64% · 오른쪽 유리 판 36%. 판·폼 자리·로고 가운데가 모두 이 값을 따른다 */
+  body:not(.wid) #coverGate{--cv-dot:#6B7280;left:var(--lgx);top:48px;bottom:8px;padding:24px;}   /* 게이트 = 오른쪽 판(밀려난 본문 판 자리) · 판은 #main 이 유리로 */
   body:not(.wid) .cv-card{max-width:388px;padding:24px;background:transparent;border:0;box-shadow:none;}
-  body.lg:not(.wid) #main{transform:translateX(calc(50vw - var(--sw) - 8px));background:var(--lq-fill);-webkit-backdrop-filter:blur(30px) saturate(1.6) brightness(1.06);backdrop-filter:blur(30px) saturate(1.6) brightness(1.06);box-shadow:inset 1.5px 1.5px 0 rgba(255,255,255,.85),inset -1px -1px 0 rgba(255,255,255,.3),inset 0 0 0 1px rgba(255,255,255,.28),inset 0 0 90px rgba(255,255,255,.22),-24px 0 60px rgba(0,0,0,.22);}   /* 리퀴드 글래스 — 옅은 흰 막 + 강한 흐림·채도 · 왼위 가장자리 반사광 */   /* 업무 시트와 같은 유리(--glass 값 · 테마와 무관하게 밝게) */
-  body.lg:not(.wid) #sidebar.mini~#main{transform:translateX(calc(50vw - var(--swm) - 8px));}
+  body.lg:not(.wid) #main{transform:translateX(calc(var(--lgx) - var(--sw) - 8px));background:var(--lq-fill);-webkit-backdrop-filter:blur(30px) saturate(1.6) brightness(1.06);backdrop-filter:blur(30px) saturate(1.6) brightness(1.06);box-shadow:inset 1.5px 1.5px 0 rgba(255,255,255,.85),inset -1px -1px 0 rgba(255,255,255,.3),inset 0 0 0 1px rgba(255,255,255,.28),inset 0 0 90px rgba(255,255,255,.22),-24px 0 60px rgba(0,0,0,.22);}   /* 리퀴드 글래스 — 옅은 흰 막 + 강한 흐림·채도 · 왼위 가장자리 반사광 */   /* 업무 시트와 같은 유리(--glass 값 · 테마와 무관하게 밝게) */
+  body.lg:not(.wid) #sidebar.mini~#main{transform:translateX(calc(var(--lgx) - var(--swm) - 8px));}
   body.lg:not(.wid) #sidebar{transform:translateX(calc(-100% - 12px));opacity:0;visibility:hidden;}
   body.lg:not(.wid) #content,body.lg:not(.wid) #appHdr .ah-right{opacity:0;visibility:hidden;}
-  body.lg:not(.wid) #appHdr .ah-brand{transform:translate(calc(25vw - 16px - 50%),calc(50vh - 24px));pointer-events:none;}   /* 머리줄 로고를 왼쪽 영역 한가운데로 — JS 없이 CSS 만(첫 페인트부터 제자리) */
+  body.lg:not(.wid) #appHdr .ah-brand{transform:translate(calc(var(--lgx) / 2 - 16px - 50%),calc(50vh - 24px));pointer-events:none;}   /* 머리줄 로고를 왼쪽 영역 한가운데로 — JS 없이 CSS 만(첫 페인트부터 제자리) */
   body.lg-fx:not(.wid) #main{transition:transform .75s cubic-bezier(.32,.72,0,1),background-color .5s ease,box-shadow .5s ease;}
   body.lg-fx:not(.wid) #appHdr .ah-brand{transition:transform .8s cubic-bezier(.32,.72,0,1);}
   body.lg-fx:not(.lg):not(.wid) #sidebar{transition:transform .7s cubic-bezier(.32,.72,0,1) .12s,opacity .5s ease .12s,visibility 0s linear .12s;}
@@ -6149,5 +6150,5 @@ body.wid.glass{--mv-flash:#8FB4FF;}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1172"></script>
+<script src="./app.js?v=1173"></script>
 </body></html>
