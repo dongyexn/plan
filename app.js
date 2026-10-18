@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1170';
+const APP_VER='1171';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -7942,14 +7942,14 @@ function rpTrend(wks,H){   /* H — 쪽 채움(rptFit)이 남는 높이만큼 �
    maxN 이 있으면 그 뒤는 「기타」 한 조각. H — 쪽 채움(rptFit)이 정한다 */
 const RP_DN=['#08213f','#1d4170','#3a6f9f','#7fa3c7','#b3c6da','#cfdbe7','#dbe4ed','#e3eaf1','#e9eef4','#eef2f7'];
 function rpDonut(list,cap,maxN,H){
-  H=H||120;const W=247,Ro=Math.round(Math.min(H*.42,70)),Ri=Math.round(Ro*.64),cx=W/2,cy=H/2;
+  H=H||108;const W=247,Ro=Math.round(Math.min(H*.4,48)),Ri=Math.round(Ro*.64),cx=W/2,cy=H/2;
   let rows=list.slice();if(maxN&&rows.length>maxN){const r=rows.slice(maxN);rows=rows.slice(0,maxN).concat([{n:'기타',v:r.reduce((a,x)=>a+x.v,0)}]);}
   rows=rows.filter(r=>r.v>0);const T=rows.reduce((a,r)=>a+r.v,0)||1;
   let a0=-Math.PI/2,s='';const L=[],P=(r,a)=>[cx+r*Math.cos(a),cy+r*Math.sin(a)],f=v=>v.toFixed(2);
   rows.forEach((r,i)=>{const a1=a0+r.v/T*Math.PI*2,big=a1-a0>Math.PI?1:0,[x0,y0]=P(Ro,a0),[x1,y1]=P(Ro,a1),[x2,y2]=P(Ri,a1),[x3,y3]=P(Ri,a0);
     s+=`<path d="M${f(x0)},${f(y0)}A${Ro},${Ro} 0 ${big} 1 ${f(x1)},${f(y1)}L${f(x2)},${f(y2)}A${Ri},${Ri} 0 ${big} 0 ${f(x3)},${f(y3)}Z" fill="${RP_DN[Math.min(i,RP_DN.length-1)]}" stroke="#fff" stroke-width="1"/>`;
     if(i<5){const am=(a0+a1)/2;L.push({i,am,right:Math.cos(am)>=0,y:cy+Math.sin(am)*(Ro+10)});}a0=a1;});
-  const GAP=Math.max(23,Math.min(28,H/5)),nL=Math.max(1,Math.min(L.length,Math.floor((H-12)/GAP)+1));L.splice(nL);   /* 이름표 두 줄이 겹치지 않을 만큼만 — 낮은 도넛은 큰 것부터 줄인다 */
+  const GAP=Math.max(23,Math.min(28,H/5)),nL=Math.max(1,Math.min(L.length,Math.floor((H-22)/GAP)+1));L.splice(nL);   /* 이름표 두 줄이 겹치지 않을 만큼만 — 낮은 도넛은 큰 것부터 줄인다 */
   [true,false].forEach(sd=>{const q=L.filter(l=>l.right===sd).sort((p,r)=>p.y-r.y);   /* 이름표끼리 겹치지 않게 아래로 밀고, 넘치면 위로 당긴다 */
     for(let k=1;k<q.length;k++)if(q[k].y-q[k-1].y<GAP)q[k].y=q[k-1].y+GAP;
     const over=q.length?q[q.length-1].y-(H-11):0;if(over>0)q.forEach(l=>{l.y-=over;});
@@ -8188,13 +8188,13 @@ function rptFit(root){
   root.querySelectorAll('.page').forEach(pg=>{
     const pgn=pg.querySelector('.pgn'),sh=pg.querySelector('.sheet');if(!pgn||!sh)return;
     const z=parseFloat(getComputedStyle(sh).zoom)||1,set=(k,v)=>pg.style.setProperty(k,v+'px');
-    const slack=()=>{let b=0;pg.querySelectorAll('.sec').forEach(s2=>{b=Math.max(b,s2.getBoundingClientRect().bottom);});return (pgn.getBoundingClientRect().top-14-b)/z;};
+    const slack=()=>{let b=0;pg.querySelectorAll('.sec').forEach(s2=>{b=Math.max(b,s2.getBoundingClientRect().bottom);});return (pgn.getBoundingClientRect().top-30-b)/z;};   /* 쪽 번호 위 여유 30px — 인쇄 때 글자 높이가 화면 실측보다 조금 커져(윈도우 엣지·HDharmony 실측) 합계 줄이 쪽 번호에 닿았다 */
     pg.classList.remove('dense','dense2');set('--g',0);set('--sg',0);
     const tr=pg.querySelector('.rp-tr'),dn=pg.querySelector('.two');let gSet=false;
-    if(tr&&RPT_FIT.trend){tr.innerHTML=RPT_FIT.trend(84);tr.innerHTML=RPT_FIT.trend(Math.max(68,Math.min(180,84+slack())));}   /* 추이 84~180 */
-    if(dn&&RPT_FIT.dn){const rn=pg.querySelectorAll('tbody tr').length||1;dn.innerHTML=RPT_FIT.dn(120);let s=slack();   /* 도넛 104~150 */
-      if(s>0)dn.innerHTML=RPT_FIT.dn(Math.min(150,120+s));
-      else{set('--g',Math.max(-2,s/rn-.1));gSet=true;s=slack();if(s<0)dn.innerHTML=RPT_FIT.dn(Math.max(104,120+s-1.5));}}
+    if(tr&&RPT_FIT.trend){tr.innerHTML=RPT_FIT.trend(84);tr.innerHTML=RPT_FIT.trend(Math.max(68,Math.min(110,84+slack())));}   /* 추이 84~110 */
+    if(dn&&RPT_FIT.dn){const rn=pg.querySelectorAll('tbody tr').length||1;dn.innerHTML=RPT_FIT.dn(108);let s=slack();   /* 도넛 100~120 */
+      if(s>0)dn.innerHTML=RPT_FIT.dn(Math.min(120,108+s));
+      else{set('--g',Math.max(-2,s/rn-.1));gSet=true;s=slack();if(s<0)dn.innerHTML=RPT_FIT.dn(Math.max(100,108+s-1.5));}}
     let s=slack();
     if(s<-.5){pg.classList.add('dense');if(slack()<0)pg.classList.add('dense2');s=slack();if(s<0)return;}
     const rows=pg.querySelectorAll('tbody tr').length;
