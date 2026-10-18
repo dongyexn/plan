@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1171';
+const APP_VER='1172';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -8000,8 +8000,8 @@ function rpIss(ss,mo,team){   /* ss=[{name,c}] c=게시본 kpi · mo=월말 누�
   const T={};ss.forEach(x=>(x.c.trAgg||[]).forEach(r=>{const o=T[r.t]=T[r.t]||{t:r.t,lt:0,plt:0,d60:0,u:0,co:{}};
     o.lt+=r.lt||0;o.plt+=r.plt||0;o.d60+=r.d60||0;o.u+=r.u||0;if(r.coTop&&r.coTop!=='-')o.co[r.coTop]=(o.co[r.coTop]||0)+(r.lt||0);}));
   const tr=Object.values(T);
-  /* ① 장기 고착 — 60일 넘긴 미처리 */
-  if(unr){const t=tr.slice().sort((a,b)=>b.d60-a.d60)[0],s1=team?ss.slice().sort((a,b)=>dd(b)[2]-dd(a)[2])[0]:null;
+  /* ① 장기 고착 — 60일 넘긴 미처리(없으면 칸 없음) */
+  if(d60){const t=tr.slice().sort((a,b)=>b.d60-a.d60)[0],s1=team?ss.slice().sort((a,b)=>dd(b)[2]-dd(a)[2])[0]:null;
     out.push({c:'장기 고착 (60일+)',v:rpN(d60),t:`전월 대비 ${rpSg(d60-pd60)}건 · 장기의 ${rpPct(d60,lt)}`,
       m:`미처리 ${rpN(unr)}건 중 ${B(rpPct(d60,unr))}${s1?` · 최다 ${B(esc(dfShortSite(s1.name)))} ${rpN(dd(s1)[2])}건`:''}${t&&t.d60?` · 공종 ${B(esc(t.t))} ${rpN(t.d60)}건`:''}`});}
   /* ② 장기 증가 1위 — 팀은 현장(그 현장의 증가 공종), 현장은 공종(그 공종의 시공업체) */
