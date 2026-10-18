@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1168';
+const APP_VER='1169';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -8160,13 +8160,10 @@ function rptSite(sid){
   const planTbl=(rows,prevMap,field,num)=>{
     const body=rows.map((x,i)=>{
       const pc=(prevMap&&prevMap[x.t])||0,d=(x.c||0)-pc;
-      const prev=dfPlanGet(sid,field,dfPrevMonth(S.dfRm),x.t),cur=dfPlanGet(sid,field,S.dfRm,x.t);
-      const cell=v=>v?esc(v):'';
+      const cur=dfPlanGet(sid,field,S.dfRm,x.t);   /* 보고서엔 이번 달 계획만 — 지난달 기록·소제목 없이 */
       return `<tr><td>${i+1}</td><td class="l">${esc(x.t)}</td><td class="l">${esc(dfDash(x.co))}</td>`+
         `<td>${rpN(pc)}</td><td class="dn">${rpN(x.c)}</td><td>${rpDelta(d)}</td>`+
-        `<td>${num?rpPct(x.c,num):'-'}</td><td class="plan">`+
-        `<div class="prev"><span class="lb">전월</span><span class="tx">${cell(prev)}</span></div>`+
-        `<div class="cur"><span class="lb">금월</span><span class="tx">${cell(cur)}</span></div></td></tr>`;}).join('');
+        `<td>${num?rpPct(x.c,num):'-'}</td><td class="plan"><div class="cur"><span class="tx">${cur?esc(cur):''}</span></div></td></tr>`;}).join('');
     return `<table class="plan-tbl"><thead><tr>
       <th style="width:4%">순위</th><th class="l" style="width:9%">공종</th><th class="l" style="width:14%">시공업체</th>
       <th style="width:6.5%">전월</th><th style="width:6.5%">금월</th><th style="width:7%">전월대비</th><th style="width:7%">비율</th>
