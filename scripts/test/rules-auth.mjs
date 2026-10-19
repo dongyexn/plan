@@ -261,5 +261,15 @@ t('AUTH-21d', 'editor → bg/req(동기화 요청) 쓰기', true, tryWrite('bg/r
 t('AUTH-21e', 'viewer → bg/req 쓰기', false, tryWrite('bg/req', A('V1'), TREE, NOW));
 t('AUTH-21f', '비로그인 → bg/req 쓰기', false, tryWrite('bg/req', null, TREE, NOW));
 t('AUTH-21g', 'editor → bg/l 쓰기', false, tryWrite('bg/l', A('E1'), TREE, []));
+/* AUTH-22 주요 현안 — MEMBER 누구나 쓰고 지움 · 꼴 검사 · 현장 통째 삭제는 관리자 */
+const T22 = { ...TREE, calapp: { ...TREE.calapp, iss: { sA: { i1: { t: '현안', at: 1, by: 'U2' } } } } };
+t('AUTH-22a', 'viewer → 현안 추가', true, tryWrite('calapp/iss/sA/i2', A('U1'), T22, { t: '새 현안', at: 2, by: 'U1' }));
+t('AUTH-22b', 'viewer → 남이 쓴 현안 해결 표시', true, tryWrite('calapp/iss/sA/i1', A('U1'), T22, { t: '현안', at: 1, by: 'U2', dt: 3 }));
+t('AUTH-22c', 'viewer → 남이 쓴 현안 지우기', true, tryWrite('calapp/iss/sA/i1', A('U1'), T22, null));
+t('AUTH-22d', 'viewer → 현장 현안 통째 삭제', false, tryWrite('calapp/iss/sA', A('U1'), T22, null));
+t('AUTH-22e', '미등록 계정 → 현안 추가', false, tryWrite('calapp/iss/sA/i2', A('V1'), T22, { t: 'x', at: 2, by: 'V1' }));
+t('AUTH-22f', 'viewer → 빈 내용', false, tryWrite('calapp/iss/sA/i2', A('U1'), T22, { t: '', at: 2, by: 'U1' }));
+t('AUTH-22g', 'viewer → 모르는 칸', false, tryWrite('calapp/iss/sA/i2', A('U1'), T22, { t: 'x', at: 2, by: 'U1', z: 1 }));
+t('AUTH-22h', 'viewer → 현안 읽기', true, tryRead('calapp/iss', A('U1'), T22));
 console.log(fail ? `\nFAIL ${fail}` : '\nRULES-AUTH ALL PASS');
 process.exit(fail ? 1 : 0);

@@ -5724,6 +5724,82 @@ body.wid.glass{--mv-flash:#8FB4FF;}
   body:not(.wid) .nq-panel .nq-cl{color:var(--shell-icon);}
   @media (hover:hover) and (pointer:fine){body:not(.wid) .nq-panel .nq-cl:hover{background:var(--shell-act);color:#fff;}}@media not ((hover:hover) and (pointer:fine)){body:not(.wid) .nq-panel .nq-cl:active{background:var(--shell-act);color:#fff;}}
 }
+
+/* ═══ 주요 현안 — 현장별 카드(화이트보드). 데스크톱 화면 · 위젯 가운데 창 · 위젯 3주 아래 칸이 같은 카드를 쓴다 ═══ */
+#issRoot{flex:1;min-height:0;display:flex;flex-direction:column;}
+.iss-tabs{margin-bottom:8px;}   /* 탭 줄 아래 카드까지 — D+60(탭 -2 + 칸 사이 10)과 같은 8px */
+.iss-sc{flex:1;min-height:0;overflow-y:auto;}
+.iss-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:10px;align-items:stretch;}
+.iss-c{display:flex;flex-direction:column;min-width:0;}
+.card.iss-c{padding:0;overflow:hidden;min-height:150px;}
+.iss-c .tm-h>span{display:flex;align-items:baseline;gap:6px;min-width:0;}
+.iss-c .tm-h .tm-sub{font-size:12px;font-weight:700;}
+.iss-ul{list-style:none;margin:0;padding:6px 8px 8px;display:flex;flex-direction:column;}
+.iss-i{display:flex;align-items:flex-start;gap:8px;padding:6px 8px;border-radius:var(--r);font-size:13px;line-height:1.45;}
+.iss-ck{flex:none;width:16px;height:16px;margin-top:1.5px;padding:0;border-radius:50%;border:1.5px solid #B9C0CA;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.iss-i.done .iss-ck{background:var(--b600);border-color:var(--b600);}
+.iss-i.done .iss-ck::after{content:"";width:7px;height:4px;border:1.6px solid #fff;border-top:0;border-right:0;transform:rotate(-45deg) translate(1px,-1px);}
+.iss-tx{flex:1;min-width:0;word-break:keep-all;overflow-wrap:anywhere;cursor:text;}
+.iss-i.done .iss-tx{color:var(--lbl3);text-decoration:line-through;}
+.iss-m{flex:none;margin-top:1.5px;font-size:11.5px;color:var(--lbl3);font-variant-numeric:tabular-nums;}
+.iss-m.old{color:var(--am-ink);font-weight:600;}
+.iss-x{flex:none;width:18px;height:18px;margin-top:1px;padding:0;border:0;border-radius:var(--r);background:none;color:var(--lbl3);cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;}
+.iss-x .icn{width:12px;height:12px;}
+.iss-i:focus-within .iss-x{opacity:1;}
+.iss-new{padding:8px 8px 0;}
+.iss-in,.iss-ed{width:100%;height:30px;padding:0 8px;border:1px solid var(--b400);border-radius:var(--r);background:#fff;font:inherit;font-size:13px;color:var(--lbl);outline:0;box-shadow:var(--ring);}
+.iss-ed{flex:1;min-width:0;height:24px;margin:-3px 0;}
+.iss-empty{padding:14px 16px;font-size:12px;color:var(--lbl3);}
+@media (hover:hover) and (pointer:fine){.iss-i:hover{background:var(--surf2);}.iss-i:hover .iss-x{opacity:1;}.iss-ck:hover{border-color:var(--b600);}.iss-x:hover{color:var(--rd);}}
+@media not ((hover:hover) and (pointer:fine)){.iss-x{opacity:1;}.iss-i:active{background:var(--surf2);}}
+/* 위젯 — 어두운 유리. 창은 가운데, 바깥은 비치게(창 밖을 누르면 닫힌다) */
+#issWin{display:none;position:fixed;inset:0;z-index:9000;align-items:center;justify-content:center;}
+#issWin.on{display:flex;}
+.iss-win{width:calc(100vw - 32px);max-width:760px;height:calc(100dvh - 32px);display:flex;flex-direction:column;overflow:hidden;border-radius:18px;
+  background:rgba(26,29,38,.9);-webkit-backdrop-filter:var(--lqd-blur);backdrop-filter:var(--lqd-blur);box-shadow:var(--lqd-edge),var(--lqd-hi),0 18px 48px rgba(0,0,0,.45);color:rgba(255,255,255,.92);
+  animation:popSc .22s cubic-bezier(.32,1.22,.5,1);}
+.iss-wh{display:flex;align-items:center;gap:10px;padding:12px 10px 0 16px;}
+.iss-wh b{font-size:15px;font-weight:700;color:#fff;}
+.iss-wh .n{font-size:12px;font-weight:700;color:rgba(255,255,255,.55);}
+.iss-wx{margin-left:auto;width:30px;height:30px;padding:0;border:0;border-radius:8px;background:none;color:rgba(255,255,255,.7);cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.iss-wx .icn{width:16px;height:16px;}
+.iss-wt{display:flex;gap:2px;padding:8px 14px 0;border-bottom:1px solid rgba(255,255,255,.12);overflow-x:auto;scrollbar-width:none;}
+.iss-wt button{flex:none;height:32px;margin-bottom:-1px;padding:0 10px;border:0;border-bottom:2px solid transparent;background:none;font:inherit;font-size:13px;font-weight:600;color:rgba(255,255,255,.55);cursor:pointer;display:flex;align-items:center;gap:5px;}
+.iss-wt button span{font-size:11px;color:rgba(255,255,255,.4);}
+.iss-wt button.on{color:#fff;border-bottom-color:var(--b400);}
+.iss-win .iss-sc{padding:12px 14px 14px;}
+.iss-win .iss-grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px;}
+body.wid .iss-c:not(.card){border-radius:10px;background:rgba(255,255,255,.07);min-height:110px;}
+body.wid .iss-ch{display:flex;align-items:center;gap:6px;height:38px;padding:0 6px 0 12px;border-bottom:1px solid rgba(255,255,255,.1);}
+body.wid .iss-ch b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:700;color:#fff;}
+body.wid .iss-ch .n{font-size:11.5px;font-weight:700;color:rgba(255,255,255,.5);}
+body.wid .iss-ad{margin-left:auto;width:26px;height:26px;padding:0;border:0;border-radius:6px;background:none;color:rgba(255,255,255,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;}
+body.wid .iss-ad .icn{width:15px;height:15px;}
+body.wid .iss-c .iss-ul{padding:4px 4px 6px;}
+body.wid .iss-c .iss-i{padding:5px 8px;}
+body.wid .iss-c .iss-ck{border-color:rgba(255,255,255,.4);background:transparent;}
+body.wid .iss-c .iss-i.done .iss-ck{background:var(--b600);border-color:var(--b600);}
+body.wid .iss-c .iss-i.done .iss-tx{color:rgba(255,255,255,.4);}
+body.wid .iss-c .iss-m,body.wid .iss-c .iss-x{color:rgba(255,255,255,.42);}
+body.wid .iss-c .iss-m.old{color:#FFC27A;}
+body.wid .iss-c .iss-empty{padding:12px;color:rgba(255,255,255,.4);}
+body.wid .iss-c .iss-new{padding:6px 6px 0;}
+body.wid .iss-c :is(.iss-in,.iss-ed){border-color:rgba(143,180,255,.6);border-radius:8px;background:rgba(255,255,255,.06);color:#fff;box-shadow:none;}
+@media (hover:hover) and (pointer:fine){body.wid .iss-c .iss-i:hover{background:rgba(255,255,255,.06);}body.wid :is(.iss-wx,.iss-ad):hover{background:rgba(255,255,255,.1);color:#fff;}body.wid .iss-wt button:hover{color:#fff;}body.wid .iss-c .iss-x:hover{color:#FF9C9C;}}
+/* 위젯 「3주 + 현안」 — 달력 3주와 아래 카드가 반씩 */
+body.wid.iss3 #fcal{flex:1 1 0;}
+#issStrip:not([hidden]){color:rgba(255,255,255,.92);flex:1 1 0;min-height:0;margin-top:6px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:max-content;gap:6px;align-content:start;overflow-y:auto;}
+#issStrip .iss-c{min-height:0;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);}
+#issStrip .iss-i{gap:6px;padding:4px 6px;font-size:12.5px;}
+#issStrip .iss-none{grid-column:1/-1;padding:16px;text-align:center;font-size:12.5px;color:rgba(255,255,255,.6);}
+@media (max-width:540px){#issStrip:not([hidden]){grid-template-columns:repeat(2,minmax(0,1fr));}}   /* 좁은 위젯 — 두 장씩 */
+@media (max-width:460px){body.wid .cal-head .cal-nb{width:26px;}}   /* 좁은 위젯 — 머리 단추가 하나 늘어 설정 단추가 잘리지 않게 칸을 좁힌다 */
+@media screen and (max-width:960px){
+  body:not(.wid) #view-iss{margin-bottom:calc(-12px - var(--mtab) - env(safe-area-inset-bottom));}   /* 안쪽 칸이 구르는 화면 — 여백은 구르는 칸에 */
+  body:not(.wid) #view-iss .iss-sc{padding-bottom:calc(12px + var(--mtab) + env(safe-area-inset-bottom));}
+  body:not(.wid) #view-iss .rp-tabs{overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;}
+  body:not(.wid) #view-iss .rp-tab{flex:0 0 auto;}
+}
 </style>
 </head>
 <body class="lg lg-ld">   <!-- 처음부터 로그인 화면(불러오는 중) 상태 — hideCover 가 뗀다. 첫 페인트에 앱 틀이 비치지 않게 -->
@@ -5737,6 +5813,7 @@ body.wid.glass{--mv-flash:#8FB4FF;}
 <symbol id="i-warn" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
 <symbol id="i-home" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
 <symbol id="i-grid4" viewBox="0 0 24 24"><rect width="7" height="7" x="3" y="3" rx="1" /> <rect width="7" height="7" x="14" y="3" rx="1" /> <rect width="7" height="7" x="14" y="14" rx="1" /> <rect width="7" height="7" x="3" y="14" rx="1" /></symbol>
+<symbol id="i-board" viewBox="0 0 24 24"><path d="M2 3h20"/><path d="M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3"/><path d="m7 21 5-5 5 5"/></symbol>
 <symbol id="i-build" viewBox="0 0 24 24"><path d="M10 12h4" /> <path d="M10 8h4" /> <path d="M14 21v-3a2 2 0 0 0-4 0v3" /> <path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2" /> <path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16" /></symbol>
 <symbol id="i-trend" viewBox="0 0 24 24"><path d="M16 7h6v6" /> <path d="m22 7-8.5 8.5-5-5L2 17" /></symbol>
 <symbol id="i-cal" viewBox="0 0 24 24"><path d="M8 2v3" /> <path d="M16 2v3" /> <rect x="3" y="3" width="18" height="18" rx="2" /> <path d="M3 9h18" /></symbol>
@@ -5879,6 +5956,10 @@ body.wid.glass{--mv-flash:#8FB4FF;}
       <div class="nic"><svg class="icn" aria-hidden="true"><use href="#i-tasks"></use></svg></div>
       <span class="nil">업무 현황</span>
     </div>
+    <div class="nvi" role="button" tabindex="0" data-view="iss" data-act="nav.go">   <!-- 주요 현안 — 현장별 화이트보드(팀 공유) -->
+      <div class="nic"><svg class="icn" aria-hidden="true"><use href="#i-board"></use></svg></div>
+      <span class="nil">주요 현안</span>
+    </div>
     <div class="sbsl"><span class="sbsl-long">업무 도구</span><span class="sbsl-short">도구</span></div>
     <div class="nvi" role="button" tabindex="0" data-view="d60" data-act="nav.go">   <!-- D+60 점검(팀 공유 · RTDB) -->
       <div class="nic"><svg class="icn" aria-hidden="true"><use href="#i-ckboard"></use></svg></div>
@@ -5961,6 +6042,7 @@ body.wid.glass{--mv-flash:#8FB4FF;}
               <div class="cal-nav wido">
                 <button class="cal-nb" data-act="wid.open" aria-label="브라우저로 열기" data-tip="브라우저로 열기"><svg class="icn" aria-hidden="true"><use href="#i-home"></use></svg></button>   <!-- 집 아이콘(사용자 결정) — 앱 본체로 가기 -->
                 <button class="cal-nb" data-act="wid.side" data-tab="mine" aria-label="내 업무" data-tip="내 업무"><svg class="icn" aria-hidden="true"><use href="#i-tasks"></use></svg></button>
+                <button class="cal-nb" data-act="iss.open" aria-label="주요 현안" data-tip="주요 현안"><svg class="icn" aria-hidden="true"><use href="#i-board"></use></svg></button>   <!-- 가운데 창 -->
                 <button class="cal-nb wid-acct" data-act="acct.open" aria-label="계정" data-tip="계정"><span class="av sb-acct-av" id="widAcctAv"><svg class="icn" aria-hidden="true"><use href="#i-me"></use></svg></span></button>
                 <button class="cal-nb" data-act="wid.set" aria-label="위젯 설정" data-tip="위젯 설정"><svg class="icn" aria-hidden="true"><use href="#i-settings"></use></svg></button>
               </div>
@@ -5969,6 +6051,7 @@ body.wid.glass{--mv-flash:#8FB4FF;}
           <div id="calMini" hidden></div>
             <div class="cal-fchips" id="calFchips" hidden></div>   <!-- 걸려 있는 필터 칩 · 모두 해제 -->
             <div id="fcal"></div>
+            <div id="issStrip" data-sb hidden></div>   <!-- 위젯 「3주 + 현안」 — 내 담당 현장 카드 -->
         </div>
         <div class="wid-pop" id="widPop"></div>
         <div class="wid-pop wid-side" id="widSide">
@@ -5997,11 +6080,14 @@ body.wid.glass{--mv-flash:#8FB4FF;}
             <label class="wgs-sw"><input type="checkbox" id="wgNoti"><span class="sw-t"></span></label></div>
           <div class="wgs-r"><span>두 번 눌러 선택</span>
             <label class="wgs-sw"><input type="checkbox" id="wgDbl"><span class="sw-t"></span></label></div>
+          <div class="wgs-r"><span data-tip="달력은 전주·금주·다음주만, 아래에 내 담당 현장의 주요 현안">3주 + 주요 현안</span>
+            <label class="wgs-sw"><input type="checkbox" id="wgIss3"><span class="sw-t"></span></label></div>
           <div class="wgs-sep"></div>
           <button class="wgs-full" data-act="wid.reload">새로고침</button>
           <button class="wgs-full" data-act="wid.moveOn">위치·크기 조정</button>
           </div>
         </div>
+        <div id="issWin" aria-hidden="true"></div>   <!-- 위젯 주요 현안 창 — 가운데 -->
         <div class="dp-col">
           <button type="button" class="dp-grab" data-act="mds.close" aria-label="업무 시트 닫기"></button>   <!-- 폰 업무 시트 잡이(누르거나 끌어내리면 닫힘) — 다른 화면에선 숨김 -->
           <div class="card day-panel">
@@ -6032,6 +6118,7 @@ body.wid.glass{--mv-flash:#8FB4FF;}
     <div id="view-tasks" class="view">
       <div id="tkRoot"></div>
     </div>
+    <div id="view-iss" class="view"><div id="issRoot"></div></div>   <!-- 주요 현안 -->
     <div id="view-photo" class="view"><div id="pdRoot"></div></div>
     <div id="view-qc" class="view"><div id="qcRoot"></div></div>
     <div id="view-d60" class="view"><div id="d60Root"></div></div>   <!-- 업무 도구 — D+60 점검(팀 공유) -->
@@ -6202,5 +6289,5 @@ body.wid.glass{--mv-flash:#8FB4FF;}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1176"></script>
+<script src="./app.js?v=1177"></script>
 </body></html>
