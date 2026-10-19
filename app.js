@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1180';
+const APP_VER='1181';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -13392,12 +13392,14 @@ const PET=(()=>{let el,bd,img,bub,ballEl,cfg=null,x=0,dir=1,mode='idle',anim=nul
     return[l+8,r-w-8];};
   const set=m=>{const g=cfg.g[m]||cfg.g.idle||cfg.g.walk;mode=cfg.g[m]?m:'idle';
     if(img.dataset.m!==mode){img.dataset.m=mode;img.src=petUrl(g.f);img.style.width=g.w+'px';img.style.height=g.h+'px';}};   /* 그림 위아래 빈 줄을 잘라 둔 크기 — 발이 늘 같은 바닥선 */
-  const turn=d=>{if(d!==dir){dir=d;img.style.transform='scaleX('+d+')';}};
+  const face=()=>{img.style.transform='scaleX('+(cfg&&cfg.fl?-dir:dir)+')';};   /* fl — 그림이 왼쪽을 보고 그려진 펫 */
+  const turn=d=>{if(d!==dir){dir=d;face();}};
   /* 지금 자리 — 걷는 중이면 진행률로 계산(레이아웃을 읽지 않는다) */
   const pos=()=>{if(anim&&anim.playState==='running'){const k=Math.min(1,(anim.currentTime||0)/anim._d);return anim._a+(anim._b-anim._a)*k;}return x;};
   const stop=()=>{x=pos();if(anim){anim.onfinish=null;anim.cancel();anim=null;}el.style.transform='translateX('+Math.round(x)+'px)';};
   const later=(f,ms)=>{clearTimeout(tm);tm=setTimeout(f,ms);};
-  const moveTo=(tx,v,m,done)=>{stop();turn(tx>=x?1:-1);set(m);const a=x,d=Math.max(1,Math.abs(tx-a)/v*1000);
+  const moveTo=(tx,v,m,done)=>{if(cfg.st){stop();turn(tx>=x?1:-1);set('idle');later(done||next,1500);return;}   /* st — 걷는 그림이 없는 펫은 제자리에서(공도 그 자리에서 받는다) */
+    stop();turn(tx>=x?1:-1);set(m);const a=x,d=Math.max(1,Math.abs(tx-a)/v*1000);
     anim=el.animate([{transform:'translateX('+Math.round(a)+'px)'},{transform:'translateX('+Math.round(tx)+'px)'}],{duration:d,easing:'steps('+Math.max(1,Math.round(Math.abs(tx-a)/2))+')',fill:'forwards'});   /* 2px 씩 끊어 간다 — 화면을 다시 그리는 횟수가 줄어 걷는 동안 CPU 약 절반(사용자 비교 후 결정) */
     anim._a=a;anim._b=tx;anim._d=d;anim.onfinish=()=>{x=tx;anim=null;el.style.transform='translateX('+Math.round(x)+'px)';(done||next)();};};
   const say=(t,ms=1800)=>{bub.textContent=t;bub.classList.toggle('emo',!/[\p{L}\p{N}]/u.test(t));
@@ -13449,7 +13451,7 @@ const PET=(()=>{let el,bd,img,bub,ballEl,cfg=null,x=0,dir=1,mode='idle',anim=nul
         el.addEventListener('mouseleave',()=>{clearTimeout(hvTm);if(!ball&&!sleeping&&mode==='idle')later(next,600);});
         el.addEventListener('click',e=>{e.stopPropagation();react();});}
       if(el.parentNode!==h)h.appendChild(el);
-      if(fresh){img.dataset.m='';if(bob){bob.cancel();bob=null;}
+      if(fresh){img.dataset.m='';if(bob){bob.cancel();bob=null;}img.style.imageRendering=c.sm?'auto':'';face();   /* sm — 픽셀 격자가 아닌 그림은 매끈하게 */
         if(c.fly)bob=bd.animate([{transform:'translateY(-4px)'},{transform:'translateY(-16px)'}],{duration:900,iterations:Infinity,direction:'alternate',easing:'ease-in-out'});   /* 나는 펫 — 떠서 둥실 */
         set(sleeping?'lie':'idle');if(!x)x=bounds()[0]+20;stop();if(!sleeping)later(next,400);}
       document.body.classList.add('pet-on');
@@ -13476,7 +13478,7 @@ function petSync(){
   const o=k&&P?P[k]:null;
   o?PET.mount(o):PET.unmount();
   const b=$('#wgPetB');if(b){b.setAttribute('aria-expanded',PET_PICK?'true':'false');
-    b.innerHTML=(o?'<img src="'+petUrl(o.t.f)+'" alt="" style="width:'+o.t.w+'px;height:'+o.t.h+'px">':'')+'<b>'+(o?esc(o.n):'없음')+'</b><svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg>';}
+    b.innerHTML=(o?'<img src="'+petUrl(o.t.f)+'" alt="" style="width:'+o.t.w+'px;height:'+o.t.h+'px'+(o.sm?';image-rendering:auto':'')+'">':'')+'<b>'+(o?esc(o.n):'없음')+'</b><svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg>';}
   petPickRender();
 }
 function petPickRender(){
@@ -13485,7 +13487,7 @@ function petPickRender(){
   if(!p){p=document.createElement('div');p.id='wgPick';p.setAttribute('role','dialog');p.setAttribute('aria-label','미니펫 고르기');document.body.appendChild(p);}
   const k=widCfgLoad().pet||'',g=p.querySelector('.pk-g'),top=g?g.scrollTop:0;
   p.innerHTML='<div class="pk-g"><button class="pk-i pk-none'+(k?'':' on')+'" data-act="wid.pet" data-k=""><i class="pk-pic"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></i><span>없음</span></button>'
-    +Object.entries(window.CALAPP_PETS).map(([id,o])=>'<button class="pk-i'+(id===k?' on':'')+'" data-act="wid.pet" data-k="'+id+'" title="'+esc(o.n)+'"><i class="pk-pic"><img src="'+petUrl(o.t.f)+'" alt="" loading="lazy" style="width:'+Math.round(o.t.w*1.2)+'px;height:'+Math.round(o.t.h*1.2)+'px"></i><span>'+esc(o.n)+'</span></button>').join('')+'</div>';
+    +Object.entries(window.CALAPP_PETS).map(([id,o])=>'<button class="pk-i'+(id===k?' on':'')+'" data-act="wid.pet" data-k="'+id+'" title="'+esc(o.n)+'"><i class="pk-pic"><img src="'+petUrl(o.t.f)+'" alt="" loading="lazy" style="width:'+o.t.w+'px;height:'+o.t.h+'px'+(o.sm?';image-rendering:auto':'')+'"></i><span>'+esc(o.n)+'</span></button>').join('')+'</div>';
   p.querySelector('.pk-g').scrollTop=top;   /* 고를 때 스크롤 자리 유지 */
 }
 function widApply(){
