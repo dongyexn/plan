@@ -528,6 +528,25 @@
         "$other": { ".validate": false }
       },
 
+      // 주요 현안 — calapp/iss/{현장id}/{id} = {t 내용, at 등록 시각, by 등록자 uid, dt 해결 시각(없으면 진행)}.
+      // 팀 화이트보드라 MEMBER 누구나 쓰고 지운다(처리계획과 같은 결정). 현장 통째 삭제는 관리자만
+      "iss": {
+        ".read": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
+        "$sid": {
+          ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'",
+          ".validate": "$sid.matches(/^[A-Za-z0-9_-]{1,40}$/)",
+          "$iid": {
+            ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
+            ".validate": "$iid.matches(/^[A-Za-z0-9_-]{1,40}$/) && newData.hasChildren(['t','at','by'])",
+            "t":  { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 200" },
+            "at": { ".validate": "newData.isNumber()" },
+            "by": { ".validate": "newData.isString() && newData.val().length <= 60" },
+            "dt": { ".validate": "newData.isNumber()" },
+            "$other": { ".validate": false }
+          }
+        }
+      },
+
       "$other": { ".validate": false }
     }
   }
