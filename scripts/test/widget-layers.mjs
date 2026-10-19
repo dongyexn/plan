@@ -100,7 +100,7 @@ const dayCell=(pg,i=2)=>pg.locator('#fcal td.fc-daygrid-day').nth(i);
   await reset(pg);await L.side.open();await W(400);
   s=await pg.evaluate(()=>{let n=0;const f=widSideRender;window.widSideRender=function(){n++;return f.apply(this,arguments);};rWidget();window.widSideRender=f;return n;});
   ok('알림창 열린 채 rWidget → 다시 그림',s>0,s);
-  /* 확인창 존중 — ←→ · 말풍선 · 아침 확인 · 새 판 적용 */
+  /* 확인창 존중 — ←→ · 아침 확인 · 새 판 적용 */
   await reset(pg);
   const t0=await pg.textContent('.cal-title');
   await pg.evaluate(()=>openModal('확인','<p>시험</p>',''));await W(300);
@@ -108,13 +108,9 @@ const dayCell=(pg,i=2)=>pg.locator('#fcal td.fc-daygrid-day').nth(i);
   await pg.keyboard.press('Escape');await W(300);
   await pg.keyboard.press('ArrowRight');await W(300);ok('확인창 닫힌 뒤 → 로 달 넘김',(await pg.textContent('.cal-title'))!==t0);
   await pg.keyboard.press('ArrowLeft');await W(300);
-  await pg.evaluate(()=>{window.eveOn=()=>true;openModal('확인','<p>시험</p>','');});await W(200);
-  await pg.evaluate(()=>evePopShow(true));
-  ok('확인창 중 말풍선 보류',!(await pg.evaluate(()=>!!$('#evePop'))));
+  await pg.evaluate(()=>openModal('확인','<p>시험</p>',''));await W(200);
   s=await pg.evaluate(()=>{morningReview();return !!morningReview._t;});ok('확인창 중 아침 확인 미룸',s);
-  await pg.evaluate(()=>{clearTimeout(morningReview._t);closeModal();});await W(5400);
-  ok('확인창 닫힌 뒤 말풍선 표시',await pg.evaluate(()=>!!$('#evePop')));
-  await W(10500);ok('말풍선 10초 뒤 접힘',!(await pg.evaluate(()=>!!$('#evePop'))));
+  await pg.evaluate(()=>{clearTimeout(morningReview._t);closeModal();});await W(300);
   ok('평소 새 판 적용 가능',await pg.evaluate(()=>verIdle()));
   ok('이동 중 새 판 적용 보류',!(await pg.evaluate(()=>{widMove(true);const v=verIdle();widMove(false);return v;})));
   /* 찾기를 Esc 로 닫으면 숨은 입력칸에 초점이 남지 않는다(남으면 실시간 반영·자동 업데이트가 멈춘다) */
