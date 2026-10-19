@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1177';
+const APP_VER='1178';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -16646,9 +16646,9 @@ function issBoard(kind){
   if(kind==='pg')return '<div class="tkbar rk-tabbar iss-tabs"><div class="rp-tabs tkm-tabs tkbar-tabs" data-sbx>'
       +tabs.map(([k,n,l])=>'<button class="rp-tab'+(S.issUI.rg===k?' on':'')+'" data-act="iss.rg" data-rg="'+esc(k)+'">'+esc(n)+'<span class="rp-tcnt">'+cnt(l)+'</span></button>').join('')
       +'</div></div><div class="iss-sc" data-sb>'+body+'</div>';
-  return '<div class="iss-win" role="dialog" aria-label="주요 현안"><div class="iss-wh"><b>주요 현안</b><span class="n">진행 '+cnt(sites)+'</span><button class="iss-wx" data-act="iss.close" aria-label="닫기">'+issIcn('close')+'</button></div>'
+  return '<div class="iss-wh"><b>주요 현안</b><button class="iss-wx" data-act="iss.close" aria-label="닫기">'+issIcn('close')+'</button></div>'
     +'<div class="iss-wt">'+tabs.map(([k,n,l])=>'<button class="'+(S.issUI.rg===k?'on':'')+'" data-act="iss.rg" data-rg="'+esc(k)+'">'+esc(n)+'<span>'+cnt(l)+'</span></button>').join('')+'</div>'
-    +'<div class="iss-sc" data-sb>'+body+'</div></div>';}
+    +'<div class="iss-sc" data-sb>'+body+'</div>';}
 /* 위젯 3주 아래 칸 — 내 담당 현장만(로컬 모드는 전부) */
 function issStripHTML(){
   const my=mySites(),sites=issSites().filter(s=>!S.user||my[s.id]);
@@ -16661,7 +16661,9 @@ function rIss(force){
   const keep=el=>{const sc=el&&(el.matches('.iss-sc,#issStrip')?el:el.querySelector('.iss-sc'));return sc?sc.scrollTop:0;};
   const put=(el,h)=>{const y=keep(el);el.innerHTML=h;const sc=el.id==='issStrip'?el:el.querySelector('.iss-sc');if(sc)sc.scrollTop=y;};
   const pg=$('#issRoot');if(pg&&!WIDGET&&S.view==='iss'){put(pg,issBoard('pg'));slSync();}
-  const w=$('#issWin');if(w&&w.classList.contains('on'))put(w,issBoard('w'));
+  const w=$('#issWin');if(w&&w.classList.contains('on')){let b=w.querySelector('.iss-win');
+    if(!b){w.innerHTML='<div class="iss-win" role="dialog" aria-label="주요 현안"></div>';b=w.firstChild;}   /* 틀은 열 때 한 번만 — 다시 만들면 여는 애니메이션이 매번 돌아 깜빡인다 */
+    put(b,issBoard('w'));}
   const st=$('#issStrip');if(st&&!st.hidden)put(st,issStripHTML());
   const f=document.querySelector('.iss-in,.iss-ed');if(f&&force){f.focus();if(f.classList.contains('iss-ed'))f.select();}
 }
