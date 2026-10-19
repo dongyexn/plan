@@ -5744,13 +5744,16 @@ body.wid.glass{--mv-flash:#8FB4FF;}
 @media not ((hover:hover) and (pointer:fine)){.iss-x{opacity:1;}.iss-i:active{background:var(--surf2);}}
 /* 위젯 — 머리 단추로 달력 자리(머리 줄 아래)를 주요 현안으로 바꿔 낀다. 판은 날짜 칸과 같은 유리(wgDyn) */
 body.wid.iss-on :is(#fcal,#calFchips,#issStrip){display:none!important;}
-#issPane:not([hidden]){flex:1;min-height:0;display:flex;flex-direction:column;border-radius:var(--r);overflow:hidden;color:rgba(255,255,255,.92);line-height:1.45;animation:viewIn var(--mv-mid) var(--mv-ease);}
+#issPane:not([hidden]){flex:1;min-height:0;display:flex;flex-direction:column;gap:6px;color:rgba(255,255,255,.92);line-height:1.45;animation:viewIn var(--mv-mid) var(--mv-ease);}   /* 판 배경 없음 — 탭 줄·카드가 각자 유리 */
+#issPane .iss-wt{border-radius:var(--r);border-bottom:0;padding:0 8px;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);}   /* 요일 머리처럼 따로 띠 */
+#issPane .iss-wt button{height:42px;margin-bottom:0;}   /* 요일 머리 높이 */
+#issPane .iss-c{aspect-ratio:1/1;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);}   /* 기본은 정사각형 — 줄이 많으면 늘어난다 */
 body.wid .cal-nb[aria-pressed="true"]{background:var(--b600);color:#fff;}
 .iss-wt{flex:none;display:flex;gap:2px;padding:4px 12px 0;border-bottom:1px solid rgba(255,255,255,.12);overflow-x:auto;scrollbar-width:none;}
 .iss-wt button{flex:none;height:32px;margin-bottom:-1px;padding:0 10px;border:0;border-bottom:2px solid transparent;background:none;font:inherit;font-size:13px;font-weight:600;color:rgba(255,255,255,.55);cursor:pointer;display:flex;align-items:center;gap:5px;}
 .iss-wt button span{font-size:11px;color:rgba(255,255,255,.4);}
 .iss-wt button.on{color:#fff;border-bottom-color:var(--b400);}
-#issPane .iss-sc{padding:10px 12px 12px;}
+#issPane .iss-sc{padding:0;}
 #issPane .iss-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
 @media (max-width:560px){#issPane .iss-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
 body.wid .iss-c:not(.card){border-radius:10px;background:rgba(255,255,255,.07);min-height:110px;}
@@ -6060,7 +6063,6 @@ body.wid.iss3 #fcal{flex:1 1 0;}
           <!-- 강조색 — 오늘 숫자·고른 날·켜진 단추 색. 미니펫 — 머리 줄을 걷는 픽셀 펫(누르면 옆에 고르기 창) -->
           <div class="wgs-r"><span>강조색</span><div class="wgs-acc" id="wgAcc"></div></div>
           <div class="wgs-r"><span>미니펫</span><button class="wgs-pet" id="wgPetB" data-act="wid.petPick" aria-haspopup="true" aria-expanded="false"><b>없음</b><svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg></button></div>
-          <div class="wgs-sep"></div>
           <div class="wgs-r"><span>두 번 눌러 선택</span>
             <label class="wgs-sw"><input type="checkbox" id="wgDbl"><span class="sw-t"></span></label></div>
           <div class="wgs-r"><span data-tip="달력은 전주·금주·다음주만, 아래에 내 담당 현장의 주요 현안">3주 + 주요 현안</span>
@@ -6271,5 +6273,5 @@ body.wid.iss3 #fcal{flex:1 1 0;}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1179"></script>
+<script src="./app.js?v=1180"></script>
 </body></html>
