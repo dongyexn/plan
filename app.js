@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1178';
+const APP_VER='1179';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -1184,8 +1184,7 @@ const FbStore={
       if(!FB._mrv){FB._mrv=true;setTimeout(morningReview,WIDGET?1400:800);   /* 위젯은 첫 렌더가 조금 늦다 */
         setTimeout(archMigrate,8000);   /* 오래 끝난 업무를 구독 밖으로 — 부팅 통신이 잦아든 뒤 */
         if(!WIDGET)setTimeout(()=>{if(isEditor())archNeed();},14000);   /* 관리자는 보관함을 미리 읽는다 — 백업에 담고 옛 사본에 소유 정보를 채운다. 위젯은 늘 들고 있지 않고 백업 때만 읽는다(bkExport) */
-        /* 5시 지나 PC 를 켠 경우 — 놓친 업무 확인 모달이 지나간 뒤 띄운다(겹치면 가린다) */
-        setTimeout(()=>{if(!$('#mo')||!$('#mo').classList.contains('open'))evePopShow();},WIDGET?4200:3600);}
+        }
       if(tkHold()){PEND.tasks=true;PEND.day=true;return;}
       rTasks();refetchCal();rDay();rWidget();});   /* 업무가 곧 일정 — 달력도 함께 갱신 */
     this._on('calapp/offdays',v=>{S.offdays=v||{};bootCacheSave();calRerender();rDay();rWidget();});
@@ -2245,28 +2244,7 @@ function rTeamSel(){
       +'</button>').join('')
     +'</div>';
 }
-/* ═══════════ 오후 점검 알림 — 그날 안 끝낸 업무를 알림창에 ═══════════
-      ⚠ 저장하지 않는 '가상 줄'이다 — 업무를 끝내면 사라지고, 닫으면 그날은 다시 안 뜬다. */
-const EVE_HOUR=17;                       /* 오후 5시 */
-
-/* ── 종 아이콘 옆 미니 말풍선 ──
-      하루 한 번 스스로 뜨고 10초 뒤 접힌다 — 빨간 점은 남는다 */
-const EVE_POP_KEY='calapp.evePop';
-function evePopKey(){return EVE_POP_KEY+'.'+((S.user&&S.user.uid)||'local');}
-function evePopDone(){try{return localStorage.getItem(evePopKey())===todayStr();}catch(e){return false;}}
-function evePopHide(){const el=$('#evePop');if(el)el.remove();}
-/* 말풍선을 누르면 '내 업무' 를 연다 — 말풍선은 알리기만, 내 업무는 보여 주기만 맡는다 */
-function eveOpenPanel(){
-  if(WIDGET){widSideOpen('mine');return;}
-  go('tasks');   /* 말풍선이 붙은 사이드바 항목과 같은 곳으로 */
-}
-/* 말풍선이 붙는 곳 — 위젯은 '내 업무' 아이콘, 앱은 사이드바의 업무 목록 항목 */
-function eveBell(){
-  return WIDGET?document.querySelector('[data-act="wid.side"][data-tab="mine"]')
-              :document.querySelector('#sidebar .nvi[data-view="tasks"]');
-}
-/* 위젯 새 게시월 말풍선 — evePop 과 같은 결(한 번 뜨고 10초 뒤 접힘). 누르면 브라우저 대시보드(?df=dash).
-   꼬리는 톱니를 가리키고 색은 차콜(--lbl) — 파란 저녁 말풍선과 구분 */
+/* 위젯 새 게시월 말풍선 — 한 번 뜨고 10초 뒤 접힘. 누르면 브라우저 대시보드(?df=dash). 꼬리는 톱니를 가리키고 색은 차콜(--lbl) */
 const DFPOP_KEY='calapp.dfSeenRm';
 function dfNewPopMaybe(){
   if(!WIDGET||!ORG_RM)return;
@@ -2278,16 +2256,13 @@ function dfNewPopMaybe(){
   const old=$('#dfNewPop');if(old)old.remove();
   const el=document.createElement('div');
   el.id='dfNewPop';
-  el.innerHTML='<b>하자처리현황 '+Number(ORG_RM.slice(5))+'월 게시</b>';   /* evePop 과 동일 체급 — 굵은 한 줄 */
+  el.innerHTML='<b>하자처리현황 '+Number(ORG_RM.slice(5))+'월 게시</b>';   /* 굵은 한 줄 */
   document.body.appendChild(el);
   const r=gear.getBoundingClientRect(),b=el.getBoundingClientRect();
   let x=r.left+r.width/2-b.width/2;
   x=Math.max(6,Math.min(x,innerWidth-b.width-6));
   el.style.left=Math.round(x)+'px';
-  let ty=r.bottom+8;
-  const eve=document.getElementById('evePop');   /* 저녁 말풍선과 앵커가 68px 차라 포개진다 — 떠 있으면 아래로 쌓는다 */
-  if(eve&&eve.classList.contains('on'))ty=Math.max(ty,eve.getBoundingClientRect().bottom+6);
-  el.style.top=Math.round(ty)+'px';
+  el.style.top=Math.round(r.bottom+8)+'px';
   const ax=Math.max(14,Math.min(r.left+r.width/2-x,b.width-14));
   el.style.setProperty('--ax',Math.round(ax)+'px');
   requestAnimationFrame(()=>el.classList.add('on'));
@@ -2295,76 +2270,6 @@ function dfNewPopMaybe(){
     window.open(location.origin+location.pathname+'?df=dash','_blank','noopener');
     toast('브라우저에서 하자처리 현황을 엽니다');});
   setTimeout(()=>{if(el.isConnected){el.classList.remove('on');setTimeout(()=>el.remove(),200);}},10000);
-}
-function evePopShow(force){
-  if(!eveOn())return;
-  if(isMob()&&!WIDGET)return;   /* 폰에서는 「오늘 남은 업무」 말풍선을 띄우지 않는다(종 아이콘 없음) */
-  if(!force&&evePopDone())return;
-  const bell=eveBell();if(!bell||!bell.isConnected)return;
-  /* 알림창이 이미 열려 있으면 굳이 겹쳐 띄우지 않는다 */
-  const side=$('#widSide');
-  if(side&&side.classList.contains('on'))return;   /* 이미 열려 있으면 굳이 겹쳐 띄우지 않는다 */
-  if(layerBusy()){clearTimeout(evePopShow._t);evePopShow._t=setTimeout(()=>evePopShow(force),5000);return;}   /* 확인창 위에 겹치지 않게 — 닫힌 뒤 띄운다 */
-  evePopHide();
-  try{localStorage.setItem(evePopKey(),todayStr());}catch(e){}
-  const n=eveList().length;
-  const el=document.createElement('div');
-  el.id='evePop';
-  el.innerHTML='<b>오늘 남은 업무 '+n+'건</b>';
-  document.body.appendChild(el);
-  const r=bell.getBoundingClientRect(),b=el.getBoundingClientRect();
-  /* 사이드바가 접혀 있으면 아이콘 오른쪽 옆에 붙인다(툴팁 자리) */
-  const sbMini=!WIDGET&&document.querySelector('#sidebar')&&document.querySelector('#sidebar').classList.contains('mini');
-  if(sbMini){
-    el.classList.add('side');
-    el.style.left=Math.round(r.right+10)+'px';
-    el.style.top=Math.round(r.top+r.height/2-b.height/2)+'px';
-    el.style.setProperty('--ax','0px');
-    requestAnimationFrame(()=>el.classList.add('on'));
-    el.addEventListener('click',()=>{evePopHide();eveOpenPanel();});
-    setTimeout(()=>{if(el.isConnected){el.classList.remove('on');setTimeout(()=>el.remove(),200);}},10000);
-    return;
-  }
-  let x=r.left+r.width/2-b.width/2;
-  x=Math.max(6,Math.min(x,innerWidth-b.width-6));       /* 위젯은 창이 곧 화면 — 넘치면 잘린다 */
-  el.style.left=Math.round(x)+'px';
-  let ty2=r.bottom+8;
-  const dnp=document.getElementById('dfNewPop');   /* 새 게시월 말풍선이 먼저 떠 있으면 그 아래로 */
-  if(dnp)ty2=Math.max(ty2,dnp.getBoundingClientRect().bottom+6);
-  el.style.top=Math.round(ty2)+'px';
-  /* 꼬리는 종 한가운데를 가리키되, 둥근 모서리(10px) 밖으로 나가지 않게 안쪽으로 물린다 */
-  const ax=Math.max(14,Math.min(r.left+r.width/2-x,b.width-14));
-  el.style.setProperty('--ax',Math.round(ax)+'px');
-  requestAnimationFrame(()=>el.classList.add('on'));
-  /* 말풍선을 눌러도 알림창이 열린다 — 종을 겨냥하지 않아도 되게 */
-  el.addEventListener('click',()=>{evePopHide();eveOpenPanel();});
-  setTimeout(()=>{if(el.isConnected){el.classList.remove('on');setTimeout(()=>el.remove(),200);}},10000);   /* 10초 뒤 접힌다 */
-}
-/* 오늘 걸린 '내 업무 + 공통 업무' 중 안 끝난 것.
-   ⚠ teamTasks 는 완료만 빼므로 보류(3)를 여기서 거른다(mineTasks 는 이미 뺀다).
-   ⚠ 두 목록에 겹친 업무는 sid/iid 로 한 번만 센다 */
-function eveList(){
-  const today=todayStr();
-  const onToday=({it})=>{
-    if(!it||!it.date)return false;
-    const span=it.end&&it.end>it.date;
-    return span?(it.date<=today&&today<=it.end):(it.date===today);
-  };
-  const seen=new Set(),out=[];
-  mineTasks().concat(teamTasks().filter(({it})=>stEff(it)!==3))
-    .filter(onToday)
-    .forEach(x=>{const k=x.sid+'/'+x.iid;if(seen.has(k))return;seen.add(k);out.push(x);});
-  return out;
-}
-function eveOn(){
-  if(!S.live||!notiOn()||!myId())return false;
-  const today=todayStr();
-  const d=toDate(today).getDay();
-  if(d===0||d===6)return false;                    /* 주말에는 띄우지 않는다 */
-  const ho=holOf(today);
-  if(ho&&ho.h)return false;                        /* 공휴일·팀 휴무일도 제외 */
-  if(new Date().getHours()<EVE_HOUR)return false;  /* 5시 전에는 조용히 */
-  return eveList().length>0;
 }
 /* ═══════════ 위젯 — 알림 · 내 업무 팝오버 ═══════════
       위젯에는 사이드바가 없다 — 알림과 내 업무를 헤더에서 바로 본다 */
@@ -10383,13 +10288,8 @@ function bkData(x){   /* x — 위젯이 백업 때만 읽어 온 보관함·D+6
 /* ═══════════ 위젯 창구 ═══════════
    위젯(트레이)이 부르는 함수 — 윈도우 알림은 폐지(껍데기만), 백업(bkExport·bkNote).
    ⚠ 로그인 전·자료 수신 전에는 아무것도 내주지 않는다 */
-/* 알림 켜짐 여부 — 이제 앱 알림창의 오후 점검만 제어한다.
-   ⚠ 저장 키(c.noti)는 그대로 둔다 — 이미 꺼 둔 사람의 설정이 살아 있어야 한다 */
-function notiOn(){
-  try{const c=JSON.parse(localStorage.getItem(WID_KEY)||'{}');return c.noti!==false;}catch(e){return true;}
-}
 /* ═══════════ 윈도우 알림 폐지 ═══════════
-   업무 알림은 앱 알림창(오후 점검)이 맡는다.
+   업무 알림은 앱 알림창(위젯 「내 업무」)이 맡는다.
    ⚠ 아래 두 껍데기는 지우지 않는다 — 깔린 위젯(Rust)이 bootBrief(부팅 뒤 45·150초)·newMentions(30초마다)를 계속 부른다. null/빈 배열이면 조용히 넘어간다. 다음 위젯 빌드 때 함께 걷힌다 */
 window.bootBrief=function(){return null;};
 window.newMentions=function(){return[];};
@@ -11079,15 +10979,6 @@ document.addEventListener('mousedown',tipHideCold,true);
 document.addEventListener('scroll',tipHideCold,true);
 window.addEventListener('blur',tipHideCold);
 /* ⚠ 다시 그리면 툴팁 대상이 사라져 툴팁만 남는다 — 떠 있는 동안 주기로 확인해 치운다(tipShow 가 걸고 tipHide 가 푼다) */
-/* 오후 점검 알림 — 창을 켜 둔 채 5시를 넘기는 일이 흔해 1분마다 조건을 본다.
-   ⚠ 상태가 바뀔 때만 다시 그린다 — 매번 그리면 스크롤·포커스가 튄다 */
-let _eveWas=null;
-setInterval(()=>{
-  const now=eveOn();
-  if(now===_eveWas)return;
-  _eveWas=now;
-  if(now)evePopShow();else evePopHide();   /* 5시를 넘기는 순간 말풍선을 한 번 띄운다 */
-},60000);
 
 /* ═══════════ 화면 전환 · 공통 UI ═══════════ */
 const VIEW_TTL={calendar:'캘린더',tasks:'업무 현황',iss:'주요 현안',d60:'D+60 점검',photo:'사진대지 작성',qc:'견적 검토',redo:'재하자 추적',prod:'생산성 검토',defect:'하자처리 현황',org:'조직 관리',settings:'설정'};
@@ -11686,7 +11577,6 @@ const ACT={
     rTasks();},
   /* 인쇄 — 상단바 버튼(#tbPrintWrap) 하나가 하자·사진대지·도면·D+60 을 맡는다 */
   'sb.print':()=>{if(S.view==='defect')openPrintPick();else if(S.view==='photo')pdPrint();else if(S.view==='d60')d60Print();},   /* D+60 점검 */
-  /* 오후 점검 알림 — 누르면 오늘로 이동해 남은 업무를 펼친다. x 는 그날만 닫는다 */
 
   'pf.org':()=>acctAutoSave(),
   'pf.toggle':()=>{const mb=$('#mb');if(mb)pfEdit(!mb.classList.contains('acx-ed'));},
@@ -12152,7 +12042,7 @@ const ACT={
   'wid.open':()=>{window.open(location.origin+location.pathname,'_blank','noopener');},
   'wid.reload':()=>location.reload(),
   'app.reload':()=>location.reload(),   /* 헤더 로고 클릭 — 새로고침 */
-  'wid.side':el=>{evePopHide();widSideOpen(el.dataset.tab||'mine');},   /* 누르면 말풍선은 할 일을 다했다 */
+  'wid.side':el=>widSideOpen(el.dataset.tab||'mine'),
   /* 위젯 내 업무에서 바로 완료/진행 전환 — 애니메이션을 보여 주고 목록을 다시 그린다 */
   'wid.st':el=>{
     const sid=el.dataset.sid,iid=el.dataset.iid;
@@ -12653,7 +12543,6 @@ document.addEventListener('input',e=>{
   if(e.target.id==='wgA'){const c=widCfgLoad();c.a=100-Number(e.target.value);widCfgSave(c);widApply();return;}   /* 슬라이더는 '투명도' — 값이 클수록 투명하다 */
   if(e.target.id==='wgT'){const c=widCfgLoad();c.tint=Number(e.target.value);widCfgSave(c);widApply();return;}    /* 유리 톤 — 100%가 기존 색, 낮추면 진하고 올리면 연하다 */
   if(e.target.id==='wgFz'){const c=widCfgLoad();c.fz=Number(e.target.value)/100;widCfgSave(c);widApply();return;}
-  if(e.target.id==='wgNoti'){const c=widCfgLoad();c.noti=e.target.checked;widCfgSave(c);evePopHide();toast(c.noti?'오후 점검 알림을 켰습니다':'오후 점검 알림을 껐습니다');return;}
   if(e.target.id==='wgDbl'){const c=widCfgLoad();c.dbl=e.target.checked;widCfgSave(c);widApplyDbl();toast(c.dbl?'두 번 눌러 선택을 켰습니다':'두 번 눌러 선택을 껐습니다');return;}
 });
 document.addEventListener('change',e=>{
@@ -13205,7 +13094,6 @@ document.addEventListener('pointerdown',e=>{const a=document.querySelectorAll('.
 const LAYERS=[
   {n:'msel',open:()=>!!document.querySelector('.msel.open'),close:mselClose,on:'click',keep:'.msel'},
   {n:'mo',open:()=>$('#mo').classList.contains('open'),close:closeModal,block:true},   /* 바깥 클릭으로는 닫지 않는다 */
-  {n:'iss',open:()=>{const w=$('#issWin');return !!(w&&w.classList.contains('on'));},close:()=>issWinOpen(false),on:'down',keep:'#issWin .iss-win,[data-act="iss.open"],#mo,#toast',eat:'next'},   /* 주요 현안 창 — 밖을 누른 클릭이 밑의 달력 칸을 고르지 않게 삼킨다 */
   {n:'ym',open:()=>!!ymPopEl(),close:closeYMPop,on:'cap',keep:'#ymPop,.cal-title,.tbt-ym',eat:'now'},   /* 여는 버튼(폰 상단바 .tbt-ym 포함)은 토글이 처리 */
   {n:'wgSet',open:()=>{const w=$('#wgSet');return !!(w&&w.classList.contains('on'));},
     close:()=>{const w=$('#wgSet');if(w){w.classList.remove('on');w.setAttribute('aria-hidden','true');}PET_PICK=false;petSync();},on:'down',keep:'#wgSet,#wgPick,[data-act="wid.set"]'},
@@ -13643,7 +13531,8 @@ function widApply(){
       +'\nbody.wid #fcal td.fc-daygrid-day.sel-day{background-image:linear-gradient(rgba('+rg(al)+',.30),rgba('+rg(al)+',.30))!important;}'
       +'\nbody.wid #fcal .fc-dayGridMonth-view td.fc-daygrid-day.sel-day .fc-daygrid-day-frame::after{border-color:'+ac+'!important;}'
       +'\nbody.wid .cal-head .seg .act{background:'+ac+';}';}
-  if(GLASS)dyn.textContent+='\nbody.wid.glass #issStrip .iss-c{background:rgba('+B+','+f(a+.1)+');}';   /* 3주 아래 카드 — 날짜 칸과 같은 유리, 조금 진하게 */
+  if(GLASS)dyn.textContent+='\nbody.wid.glass #issStrip .iss-c{background:rgba('+B+','+f(a+.1)+');}';
+  if(GLASS)dyn.textContent+='\nbody.wid.glass #issPane{background:rgba('+B+','+f(a+.1)+');}';   /* 주요 현안 판 — 날짜 칸과 같은 유리 */   /* 3주 아래 카드 — 날짜 칸과 같은 유리, 조금 진하게 */
   const aw=$('#wgAcc');if(aw){const k=acc?acc[0]:'blue';
     if(!aw.children.length)aw.innerHTML=WID_ACC.map(x=>'<button data-act="wid.acc" data-k="'+x[0]+'" title="'+x[1]+'" aria-label="강조색 '+x[1]+'" style="--c:'+x[2]+'"></button>').join('');
     [...aw.children].forEach(b=>b.classList.toggle('on',b.dataset.k===k));}
@@ -13655,7 +13544,6 @@ function widApply(){
   const av=$('#wgAV');if(av)av.textContent=Math.round(100-a*100)+'%';
   const fr=$('#wgFz');if(fr)fr.value=Math.round(fz*100);
   const fl=$('#wgFzV');if(fl)fl.textContent=Math.round(fz*100)+'%';
-  const nt=$('#wgNoti');if(nt)nt.checked=c.noti!==false;
   const tr=$('#wgT');if(tr)tr.value=Math.round(tint*100);
   const tl=$('#wgTV');if(tl)tl.textContent=Math.round(tint*100)+'%';
   const fv=$('#wgFontV');if(fv)fv.textContent=(WID_FONTS.find(f=>f[0]===font)||WID_FONTS[0])[1];
@@ -16646,8 +16534,7 @@ function issBoard(kind){
   if(kind==='pg')return '<div class="tkbar rk-tabbar iss-tabs"><div class="rp-tabs tkm-tabs tkbar-tabs" data-sbx>'
       +tabs.map(([k,n,l])=>'<button class="rp-tab'+(S.issUI.rg===k?' on':'')+'" data-act="iss.rg" data-rg="'+esc(k)+'">'+esc(n)+'<span class="rp-tcnt">'+cnt(l)+'</span></button>').join('')
       +'</div></div><div class="iss-sc" data-sb>'+body+'</div>';
-  return '<div class="iss-wh"><b>주요 현안</b><button class="iss-wx" data-act="iss.close" aria-label="닫기">'+issIcn('close')+'</button></div>'
-    +'<div class="iss-wt">'+tabs.map(([k,n,l])=>'<button class="'+(S.issUI.rg===k?'on':'')+'" data-act="iss.rg" data-rg="'+esc(k)+'">'+esc(n)+'<span>'+cnt(l)+'</span></button>').join('')+'</div>'
+  return '<div class="iss-wt">'+tabs.map(([k,n,l])=>'<button class="'+(S.issUI.rg===k?'on':'')+'" data-act="iss.rg" data-rg="'+esc(k)+'">'+esc(n)+'<span>'+cnt(l)+'</span></button>').join('')+'</div>'
     +'<div class="iss-sc" data-sb>'+body+'</div>';}
 /* 위젯 3주 아래 칸 — 내 담당 현장만(로컬 모드는 전부) */
 function issStripHTML(){
@@ -16661,9 +16548,7 @@ function rIss(force){
   const keep=el=>{const sc=el&&(el.matches('.iss-sc,#issStrip')?el:el.querySelector('.iss-sc'));return sc?sc.scrollTop:0;};
   const put=(el,h)=>{const y=keep(el);el.innerHTML=h;const sc=el.id==='issStrip'?el:el.querySelector('.iss-sc');if(sc)sc.scrollTop=y;};
   const pg=$('#issRoot');if(pg&&!WIDGET&&S.view==='iss'){put(pg,issBoard('pg'));slSync();}
-  const w=$('#issWin');if(w&&w.classList.contains('on')){let b=w.querySelector('.iss-win');
-    if(!b){w.innerHTML='<div class="iss-win" role="dialog" aria-label="주요 현안"></div>';b=w.firstChild;}   /* 틀은 열 때 한 번만 — 다시 만들면 여는 애니메이션이 매번 돌아 깜빡인다 */
-    put(b,issBoard('w'));}
+  const w=$('#issPane');if(w&&!w.hidden)put(w,issBoard('w'));
   const st=$('#issStrip');if(st&&!st.hidden)put(st,issStripHTML());
   const f=document.querySelector('.iss-in,.iss-ed');if(f&&force){f.focus();if(f.classList.contains('iss-ed'))f.select();}
 }
@@ -16686,10 +16571,14 @@ function issEditDone(inp,save){
 function issDel(sid,iid){const x=issGet(sid,iid);if(!x)return;
   issWrite(sid,iid,null);rIss(true);
   toastAct('현안을 지웠습니다','되돌리기',()=>{issWrite(sid,iid,issRec(x));rIss(true);});}
-function issWinOpen(on){const w=$('#issWin');if(!w)return;
-  if(on){const p=$('#wgSet');if(p&&p.classList.contains('on'))ACT['wid.set']();}
-  w.classList.toggle('on',on);w.setAttribute('aria-hidden',on?'false':'true');
-  if(on)rIss(true);else{w.innerHTML='';S.issUI.add='';S.issUI.ed='';}}
+/* 위젯 — 머리 단추로 달력 자리를 주요 현안으로 바꿔 낀다(다시 누르거나 달 이동·필터·찾기를 쓰면 달력으로) */
+const issOn=()=>{const w=$('#issPane');return !!(w&&!w.hidden);};
+function issPaneSet(on){const w=$('#issPane');if(!w||issOn()===on)return;
+  w.hidden=!on;document.body.classList.toggle('iss-on',on);
+  const b=$('[data-act="iss.open"]');if(b)b.setAttribute('aria-pressed',on?'true':'false');
+  if(on){if(S.widPop){S.widPop=false;rWidget();}rIss(true);}
+  else{w.innerHTML='';S.issUI.add='';S.issUI.ed='';
+    requestAnimationFrame(()=>{if(CAL){CAL.updateSize();calFitApply();}});}}
 /* 위젯 「3주 + 주요 현안」 — 달력을 전주·금주·다음주(3주)로, 아래 칸에 내 담당 현장 카드 */
 function widIss3(){
   if(!WIDGET)return;
@@ -16702,8 +16591,7 @@ function widIss3(){
   requestAnimationFrame(()=>{if(CAL){CAL.updateSize();calFitApply();}});
 }
 Object.assign(ACT,{
-  'iss.open':()=>{const w=$('#issWin');issWinOpen(!(w&&w.classList.contains('on')));},
-  'iss.close':()=>issWinOpen(false),
+  'iss.open':()=>issPaneSet(!issOn()),
   'iss.rg':el=>{S.issUI.rg=el.dataset.rg||'';rIss(true);},
   'iss.add':el=>{const sid=el.dataset.sid;S.issUI.ed='';S.issUI.add=S.issUI.add===sid?'':sid;rIss(true);},
   'iss.ck':el=>{const li=el.closest('.iss-i');if(!li)return;const sid=li.dataset.sid,iid=li.dataset.iid,x=issGet(sid,iid);if(!x)return;
@@ -16711,6 +16599,7 @@ Object.assign(ACT,{
   'iss.edit':el=>{const li=el.closest('.iss-i');if(!li)return;S.issUI.add='';S.issUI.ed=li.dataset.sid+'/'+li.dataset.iid;rIss(true);},
   'iss.del':el=>{const li=el.closest('.iss-i');if(li)issDel(li.dataset.sid,li.dataset.iid);},
 });
+['cal.prev','cal.next','cal.pick','cal.today','day.fmore','nq.toggle'].forEach(k=>{const f=ACT[k];if(f)ACT[k]=el=>{issPaneSet(false);return f(el);};});   /* 달력을 다루는 단추는 달력으로 돌아가서 */
 /* 입력 — Enter 로 넣고 칸은 열어 둔다(이어 쓰기) · Esc 는 입력만 닫는다(창은 그대로) */
 document.addEventListener('keydown',e=>{
   const t=e.target;if(!t||!t.matches||!t.matches('.iss-in,.iss-ed'))return;

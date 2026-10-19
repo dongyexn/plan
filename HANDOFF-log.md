@@ -1,5 +1,9 @@
 # 변경 이력 (읽기 전용) — 현재 상태는 HANDOFF.md
 
+## 마지막 기록 기준 v1179
+### 1179차 위젯 주요 현안 자리 바꾸기 · 오후 점검 알림 폐지 · 설정 순서
+**사용자: 「위젯에서 주요 현안 누르면 팝업을 띄우는게 아니라 그냥 헤더 밑으로를 주요 현안으로 스위칭 / 오후 점검 알림 이거 기능은 없애자 / 강조색, 미니펫은 글꼴 밑으로 보내자 그리고 구분선도 같이」** — 가운데 창(#issWin, LAYERS iss, .iss-win/.iss-wh/.iss-wx) 삭제 → cal-card 안 #issPane: body.iss-on 이면 #fcal·#calFchips·#issStrip 숨김, 판 = 권역 탭(.iss-wt) + 카드 3열(560↓ 2열), 배경은 wgDyn 의 날짜 칸 유리색. 머리 단추 aria-pressed 로 켜짐 표시(강조색). 달력 조작 ACT(cal.prev/next/pick/today, day.fmore, nq.toggle)는 먼저 달력으로 돌린다. 켤 때 날짜 팝업(widPop)은 닫고, 끌 때 CAL.updateSize·calFitApply. 오후 점검: evePop 말풍선·eveList·eveOn·notiOn·1분 setInterval·부팅 호출·설정 스위치(#wgNoti)·CSS(#evePop)·widget-layers 말풍선 시험 삭제(dfNewPop 의 겹침 회피 코드도 정리). 설정: 강조색·미니펫(+구분선)을 글꼴 아래로.
+
 ## 마지막 기록 기준 v1178
 ### 1178차 주요 현안 창 깜빡임 · 높이 · 3열
 **사용자: 위젯 창 캡처 — 「+누를때마다 화면 깜빡이고 / 밑에 여백 불쾌함 3열로 바꾸고 하단은 카드에 맞춰서 높이 조정 / 제목에 진행 0 없어도 될듯 / 아이콘 바꾸고 싶은데 적절한거 내와봐」** — 깜빡임 원인: rIss 가 #issWin 안을 통째로 바꿔 .iss-win 이 새로 생기고 popSc 가 매번 재생. 틀은 열 때 한 번 만들고 안쪽만 바꾼다(재현 스크립트로 + · Enter 뒤 getAnimations 0 확인). .iss-win height → max-height, .iss-sc flex:0 1 auto. 카드 격자 3열 고정(560px↓ 2열). 아이콘은 후보 9종(Lucide — 화이트보드·클립보드·메모장·포스트잇·칸반·할 일·주의 말풍선·깃발·핀)을 실제 위젯 머리 줄·사이드바에 끼운 시안 → 「포스트잇으로 하자」 → i-board = sticky-note(사이드바·위젯 머리·폰 메뉴 공용).
