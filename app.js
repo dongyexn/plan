@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1179';
+const APP_VER='1180';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -13531,8 +13531,9 @@ function widApply(){
       +'\nbody.wid #fcal td.fc-daygrid-day.sel-day{background-image:linear-gradient(rgba('+rg(al)+',.30),rgba('+rg(al)+',.30))!important;}'
       +'\nbody.wid #fcal .fc-dayGridMonth-view td.fc-daygrid-day.sel-day .fc-daygrid-day-frame::after{border-color:'+ac+'!important;}'
       +'\nbody.wid .cal-head .seg .act{background:'+ac+';}';}
-  if(GLASS)dyn.textContent+='\nbody.wid.glass #issStrip .iss-c{background:rgba('+B+','+f(a+.1)+');}';
-  if(GLASS)dyn.textContent+='\nbody.wid.glass #issPane{background:rgba('+B+','+f(a+.1)+');}';   /* 주요 현안 판 — 날짜 칸과 같은 유리 */   /* 3주 아래 카드 — 날짜 칸과 같은 유리, 조금 진하게 */
+  /* 주요 현안 카드(3주 아래 · 달력 자리) — 날짜 칸과 같은 유리, 조금 진하게. 권역 탭 줄은 요일 머리와 같은 유리 */
+  if(GLASS)dyn.textContent+='\nbody.wid.glass :is(#issStrip,#issPane) .iss-c{background:rgba('+B+','+f(a+.1)+');}'
+    +'\nbody.wid.glass #issPane .iss-wt{background:rgba('+H+','+f(a+.12)+');}';
   const aw=$('#wgAcc');if(aw){const k=acc?acc[0]:'blue';
     if(!aw.children.length)aw.innerHTML=WID_ACC.map(x=>'<button data-act="wid.acc" data-k="'+x[0]+'" title="'+x[1]+'" aria-label="강조색 '+x[1]+'" style="--c:'+x[2]+'"></button>').join('');
     [...aw.children].forEach(b=>b.classList.toggle('on',b.dataset.k===k));}
