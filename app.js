@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1175';
+const APP_VER='1176';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -13468,6 +13468,7 @@ const PET_LINES={tap:['허거덩','허걱스','하이','제가요?','이걸요?'
   wake:['Zzz..','까꿍','데헷','흥','😪'],
   pet:['야르릉','💕']};
 const petPick=a=>a[Math.floor(Math.random()*a.length)];
+const petUrl=f=>'./vendor/pets/'+f+'?v='+APP_VER;   /* 그림 파일 — 쓰는 것만 받고 브라우저가 캐시한다 */
 const petSlot=()=>{const d=new Date(),v=d.getHours()*60+d.getMinutes();return v>=660&&v<=690?'lunch':v>=1020?'leave':'';};
 let PET_LOADING=null;
 function petLoad(){   /* 그림 묶음 — 한 번만 받는다 */
@@ -13488,14 +13489,14 @@ const PET=(()=>{let el,bd,img,bub,ballEl,cfg=null,x=0,dir=1,mode='idle',anim=nul
     h.querySelectorAll('.cal-fchips:not([hidden]),.cal-ctl').forEach(e=>{const b=e.getBoundingClientRect();if(b.width)r=Math.min(r,b.left-hr.left);});
     return[l+8,r-w-8];};
   const set=m=>{const g=cfg.g[m]||cfg.g.idle||cfg.g.walk;mode=cfg.g[m]?m:'idle';
-    if(img.dataset.m!==mode){img.dataset.m=mode;img.src=g.u;img.style.width=g.w+'px';img.style.height=g.h+'px';}};   /* 그림 위아래 빈 줄을 잘라 둔 크기 — 발이 늘 같은 바닥선 */
+    if(img.dataset.m!==mode){img.dataset.m=mode;img.src=petUrl(g.f);img.style.width=g.w+'px';img.style.height=g.h+'px';}};   /* 그림 위아래 빈 줄을 잘라 둔 크기 — 발이 늘 같은 바닥선 */
   const turn=d=>{if(d!==dir){dir=d;img.style.transform='scaleX('+d+')';}};
   /* 지금 자리 — 걷는 중이면 진행률로 계산(레이아웃을 읽지 않는다) */
   const pos=()=>{if(anim&&anim.playState==='running'){const k=Math.min(1,(anim.currentTime||0)/anim._d);return anim._a+(anim._b-anim._a)*k;}return x;};
   const stop=()=>{x=pos();if(anim){anim.onfinish=null;anim.cancel();anim=null;}el.style.transform='translateX('+Math.round(x)+'px)';};
   const later=(f,ms)=>{clearTimeout(tm);tm=setTimeout(f,ms);};
   const moveTo=(tx,v,m,done)=>{stop();turn(tx>=x?1:-1);set(m);const a=x,d=Math.max(1,Math.abs(tx-a)/v*1000);
-    anim=el.animate([{transform:'translateX('+Math.round(a)+'px)'},{transform:'translateX('+Math.round(tx)+'px)'}],{duration:d,easing:'linear',fill:'forwards'});
+    anim=el.animate([{transform:'translateX('+Math.round(a)+'px)'},{transform:'translateX('+Math.round(tx)+'px)'}],{duration:d,easing:'steps('+Math.max(1,Math.round(Math.abs(tx-a)/2))+')',fill:'forwards'});   /* 2px 씩 끊어 간다 — 화면을 다시 그리는 횟수가 줄어 걷는 동안 CPU 약 절반(사용자 비교 후 결정) */
     anim._a=a;anim._b=tx;anim._d=d;anim.onfinish=()=>{x=tx;anim=null;el.style.transform='translateX('+Math.round(x)+'px)';(done||next)();};};
   const say=(t,ms=1800)=>{bub.textContent=t;bub.classList.toggle('emo',!/[\p{L}\p{N}]/u.test(t));
     const R=bounds()[1];bub.classList.toggle('l',pos()+bub.offsetWidth+12>R);   /* 오른쪽 단추에 닿으면 말풍선을 왼쪽으로 */
@@ -13504,11 +13505,18 @@ const PET=(()=>{let el,bd,img,bub,ballEl,cfg=null,x=0,dir=1,mode='idle',anim=nul
   const todayN=()=>{const td=document.querySelector('#fcal td.fc-day-today');if(!td)return 0;let n=td.querySelectorAll('.fc-daygrid-event-harness:not(.fc-daygrid-event-harness-abs)').length;
     const m=td.querySelector('.fc-daygrid-more-link');if(m)n+=parseInt(m.textContent.replace(/\D/g,''))||0;return n;};
   /* 다음 행동 — 걷기(55%)·쉬기·눕기·낮잠. 좁아서 걸을 자리가 없으면 숨는다 */
-  const next=()=>{if(!cfg||!el.isConnected||sleeping||ball)return;const[L,R]=bounds(),hid=R<L;el.hidden=hid;
+  /* 깊은 잠 — 위젯 위에서 3분 동안 마우스가 없으면 멈춘 그림(z)으로 잔다. 그동안 그림·애니메이션이 모두 서서 CPU 를 거의 안 쓴다.
+     위젯 안으로 마우스가 다시 들어오면(pointermove) 깬다 */
+  const IDLE_MS=180000;let deep=false;
+  const deepOn=()=>{deep=true;stop();clearTimeout(tm);clearTimeout(nap);sleeping=false;el.classList.remove('sleep','hop');img.dataset.m='z';
+    img.src=petUrl(cfg.z.f);img.style.width=cfg.z.w+'px';img.style.height=cfg.z.h+'px';if(bob)bob.pause();};
+  const deepOff=()=>{if(!deep)return;deep=false;if(bob)bob.play();set('idle');later(next,300);};
+  const next=()=>{if(!cfg||!el.isConnected||sleeping||ball||deep)return;
+    if(performance.now()-petAct>IDLE_MS){deepOn();return;}const[L,R]=bounds(),hid=R<L;el.hidden=hid;
     if(hid){later(next,3000);return;}
     x=Math.min(Math.max(pos(),L),R);
     const r=Math.random();
-    if(r<.55){let tx=L+Math.random()*(R-L);if(Math.abs(tx-x)<30)tx=x<(L+R)/2?R:L;moveTo(tx,22,'walk');}
+    if(r<.4){let tx=L+Math.random()*(R-L);if(Math.abs(tx-x)<30)tx=x<(L+R)/2?R:L;moveTo(tx,22,'walk');}
     else if(r<.85||!cfg.g.lie){stop();set('idle');later(next,2500+Math.random()*2500);}
     else if(r<.96){stop();set('lie');later(next,4000);}
     else napNow();};
@@ -13522,7 +13530,7 @@ const PET=(()=>{let el,bd,img,bub,ballEl,cfg=null,x=0,dir=1,mode='idle',anim=nul
     ballEl.style.transform='translate('+Math.round(ball.x-5)+'px,'+Math.round(ball.y-10)+'px)';
     if(!ball.vy&&!ball.vx&&!ball.go){ball.go=1;cancelAnimationFrame(braf);const tx=Math.min(Math.max(ball.x-el.offsetWidth/2,ball.lo-6),ball.hi-el.offsetWidth+6);
       moveTo(tx,95,'run',()=>{const b=ball;ball=null;if(b)ballEl.remove();hop();set('with_ball');say(petPick(PET_LINES.ball));later(next,2600);});}};
-  const react=()=>{if(sleeping){sleep(false);hop();say(petPick(PET_LINES.wake));return;}
+  const react=()=>{if(deep)deepOff();if(sleeping){sleep(false);hop();say(petPick(PET_LINES.wake));return;}
     clicks++;hop();const r=clicks%5,sl=petSlot();
     if(r===1)say(sl&&Math.random()<.5?petPick(PET_LINES[sl]):Math.random()<.5?(cfg.lines?petPick(cfg.lines):cfg.say):petPick(PET_LINES.tap));
     else if(r===2){stop();set('swipe');say(petPick(PET_LINES.tap));later(next,1400);}
@@ -13543,18 +13551,21 @@ const PET=(()=>{let el,bd,img,bub,ballEl,cfg=null,x=0,dir=1,mode='idle',anim=nul
         if(c.fly)bob=bd.animate([{transform:'translateY(-4px)'},{transform:'translateY(-16px)'}],{duration:900,iterations:Infinity,direction:'alternate',easing:'ease-in-out'});   /* 나는 펫 — 떠서 둥실 */
         set(sleeping?'lie':'idle');if(!x)x=bounds()[0]+20;stop();if(!sleeping)later(next,400);}
       document.body.classList.add('pet-on');
-      if(!talk)talk=setInterval(()=>{const sl=petSlot();if(sl&&cfg&&!sleeping&&!document.hidden&&Math.random()<.2)say(petPick(PET_LINES[sl]),2600);},30000);},   /* 시간 대사 — 30초마다 20% (평균 2~3분에 한 번) */
-    unmount(){clearTimeout(tm);clearTimeout(nap);clearTimeout(hvTm);clearInterval(talk);talk=0;cancelAnimationFrame(braf);
+      if(!talk)talk=setInterval(()=>{const sl=petSlot();if(sl&&cfg&&!sleeping&&!deep&&!document.hidden&&Math.random()<.2)say(petPick(PET_LINES[sl]),2600);},30000);},   /* 시간 대사 — 30초마다 20% (평균 2~3분에 한 번) */
+    wake:()=>{if(cfg&&el&&el.isConnected)deepOff();},
+    unmount(){deep=false;clearTimeout(tm);clearTimeout(nap);clearTimeout(hvTm);clearInterval(talk);talk=0;cancelAnimationFrame(braf);
       if(anim){anim.onfinish=null;anim.cancel();anim=null;}if(bob){bob.cancel();bob=null;}if(el)el.remove();if(ballEl)ballEl.remove();ball=null;cfg=null;sleeping=false;document.body.classList.remove('pet-on');},
-    throwBall(cx){if(!cfg||!el||!el.isConnected||el.hidden)return;if(sleeping){sleeping=false;clearTimeout(nap);el.classList.remove('sleep');}
+    throwBall(cx){if(!cfg||!el||!el.isConnected||el.hidden)return;if(deep){deep=false;if(bob)bob.play();}if(sleeping){sleeping=false;clearTimeout(nap);el.classList.remove('sleep');}
       const h=head(),hr=h.getBoundingClientRect(),[L,R]=bounds();stop();clearTimeout(tm);set('idle');
       if(!ballEl){ballEl=document.createElement('div');ballEl.id='wgBall';}h.appendChild(ballEl);
       const floor=h.clientHeight/2+17;ball={x:cx-hr.left,y:floor-4,vx:(Math.random()<.5?-1:1)*(60+Math.random()*60),vy:-260,floor,lo:L+6,hi:R+el.offsetWidth-6};
       cancelAnimationFrame(braf);braf=requestAnimationFrame(ballStep);},
-    done(){if(!cfg||!el||!el.isConnected)return;if(sleeping){sleeping=false;clearTimeout(nap);el.classList.remove('sleep');}hop();say(petPick(PET_LINES.done),2500);
+    done(){if(!cfg||!el||!el.isConnected)return;if(deep){deep=false;if(bob)bob.play();}if(sleeping){sleeping=false;clearTimeout(nap);el.classList.remove('sleep');}hop();say(petPick(PET_LINES.done),2500);
       const[L,R]=bounds();moveTo(dir>0?R:L,75,'run');},
     on:()=>!!cfg};})();
 let PET_PICK=false;   /* 펫 고르기 창 열림 */
+let petAct=performance.now();   /* 위젯 위 마지막 마우스 움직임 — 깊은 잠 판단 */
+document.addEventListener('pointermove',()=>{petAct=performance.now();if(WIDGET)PET.wake();},{passive:true});
 /* 설정의 펫(cfg.pet) → 머리 줄 펫·설정 단추·고르기 창을 맞춘다 */
 function petSync(){
   if(!WIDGET)return;
@@ -13563,7 +13574,7 @@ function petSync(){
   const o=k&&P?P[k]:null;
   o?PET.mount(o):PET.unmount();
   const b=$('#wgPetB');if(b){b.setAttribute('aria-expanded',PET_PICK?'true':'false');
-    b.innerHTML=(o?'<img src="'+o.t.u+'" alt="" style="width:'+o.t.w+'px;height:'+o.t.h+'px">':'')+'<b>'+(o?esc(o.n):'없음')+'</b><svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg>';}
+    b.innerHTML=(o?'<img src="'+petUrl(o.t.f)+'" alt="" style="width:'+o.t.w+'px;height:'+o.t.h+'px">':'')+'<b>'+(o?esc(o.n):'없음')+'</b><svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg>';}
   petPickRender();
 }
 function petPickRender(){
@@ -13572,7 +13583,7 @@ function petPickRender(){
   if(!p){p=document.createElement('div');p.id='wgPick';p.setAttribute('role','dialog');p.setAttribute('aria-label','미니펫 고르기');document.body.appendChild(p);}
   const k=widCfgLoad().pet||'',g=p.querySelector('.pk-g'),top=g?g.scrollTop:0;
   p.innerHTML='<div class="pk-g"><button class="pk-i pk-none'+(k?'':' on')+'" data-act="wid.pet" data-k=""><i class="pk-pic"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></i><span>없음</span></button>'
-    +Object.entries(window.CALAPP_PETS).map(([id,o])=>'<button class="pk-i'+(id===k?' on':'')+'" data-act="wid.pet" data-k="'+id+'" title="'+esc(o.n)+'"><i class="pk-pic"><img src="'+o.t.u+'" alt="" style="width:'+Math.round(o.t.w*1.2)+'px;height:'+Math.round(o.t.h*1.2)+'px"></i><span>'+esc(o.n)+'</span></button>').join('')+'</div>';
+    +Object.entries(window.CALAPP_PETS).map(([id,o])=>'<button class="pk-i'+(id===k?' on':'')+'" data-act="wid.pet" data-k="'+id+'" title="'+esc(o.n)+'"><i class="pk-pic"><img src="'+petUrl(o.t.f)+'" alt="" loading="lazy" style="width:'+Math.round(o.t.w*1.2)+'px;height:'+Math.round(o.t.h*1.2)+'px"></i><span>'+esc(o.n)+'</span></button>').join('')+'</div>';
   p.querySelector('.pk-g').scrollTop=top;   /* 고를 때 스크롤 자리 유지 */
 }
 function widApply(){
