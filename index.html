@@ -5760,7 +5760,7 @@ body.wid .iss-c:not(.card){border-radius:10px;background:rgba(255,255,255,.07);m
 body.wid .iss-ch{display:flex;align-items:center;gap:6px;height:38px;padding:0 6px 0 12px;border-bottom:1px solid rgba(255,255,255,.1);}
 body.wid .iss-ch b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:700;color:#fff;}
 body.wid .iss-ch .n{font-size:11.5px;font-weight:700;color:rgba(255,255,255,.5);}
-body.wid .iss-ad{margin-left:auto;width:26px;height:26px;padding:0;border:0;border-radius:6px;background:none;color:rgba(255,255,255,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;}
+body.wid .iss-ad{width:26px;height:26px;padding:0;border:0;border-radius:6px;background:none;color:rgba(255,255,255,.6);cursor:pointer;display:flex;align-items:center;justify-content:center;}
 body.wid .iss-ad .icn{width:15px;height:15px;}
 body.wid .iss-c .iss-ul{padding:4px 4px 6px;}
 body.wid .iss-c .iss-i{padding:5px 8px;}
@@ -5773,6 +5773,24 @@ body.wid .iss-c .iss-empty{padding:12px;color:rgba(255,255,255,.4);}
 body.wid .iss-c .iss-new{padding:6px 6px 0;}
 body.wid .iss-c :is(.iss-in,.iss-ed){border-color:rgba(143,180,255,.6);border-radius:8px;background:rgba(255,255,255,.06);color:#fff;box-shadow:none;}
 @media (hover:hover) and (pointer:fine){body.wid .iss-c .iss-i:hover{background:rgba(255,255,255,.06);}body.wid .iss-ad:hover{background:rgba(255,255,255,.1);color:#fff;}body.wid .iss-wt button:hover{color:#fff;}body.wid .iss-c .iss-x:hover{color:#FF9C9C;}}
+/* 담당자 — 머리 띠를 지정색으로 옅게(그라디언트·무지개 색도 그대로), 이름 앞 프로필, + 앞 이름 */
+.iss-ch.own,.iss-c .tm-h.own{position:relative;isolation:isolate;}
+.iss-ch.own::before,.iss-c .tm-h.own::before{content:"";position:absolute;inset:0;z-index:-1;background:var(--itc);opacity:.28;pointer-events:none;}
+.iss-c .tm-h.own::before{opacity:.16;}
+body.wid .iss-ch.own::before{border-radius:10px 10px 0 0;}   /* 위젯 카드 둥근 모서리 밖으로 칠이 비치지 않게 */
+.iss-avs{display:inline-flex;flex:none;}
+.iss-c .tm-h .iss-avs{margin-right:6px;}
+.iss-av{flex:none;width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--avc,var(--b600));box-shadow:0 0 0 1.5px var(--card-bg,rgba(26,29,38,.9));}
+.iss-c.card .iss-av{box-shadow:0 0 0 1.5px #fff;}
+.iss-av+.iss-av{margin-left:-7px;}
+.iss-av .av-ic{width:13px;height:13px;}
+.iss-av .av-em{font-size:12px;line-height:1;}
+.iss-own{flex:1 1 0;text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;font-weight:500;color:rgba(255,255,255,.5);}
+.iss-c .tm-h .iss-own{color:var(--lbl3);}
+.iss-ch .iss-own+.iss-ad{margin-left:2px;}
+.iss-ch .n+.iss-ad{margin-left:auto;}
+.iss-c .tm-h .iss-hr{flex:1 1 0;display:flex;align-items:center;justify-content:flex-end;gap:6px;min-width:0;}
+.iss-c .tm-h>span:first-child{align-items:center;}
 /* 위젯 「3주 + 현안」 — 달력 3주와 아래 카드가 반씩 */
 body.wid.iss3 #fcal{flex:1 1 0;}
 #issStrip:not([hidden]){color:rgba(255,255,255,.92);flex:1 1 0;min-height:0;margin-top:6px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:max-content;gap:6px;align-content:start;overflow-y:auto;}
@@ -6273,5 +6291,5 @@ body.wid.iss3 #fcal{flex:1 1 0;}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1182"></script>
+<script src="./app.js?v=1183"></script>
 </body></html>

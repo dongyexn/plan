@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1182';
+const APP_VER='1183';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -16516,11 +16516,21 @@ function issItem(sid,x){const ed=S.issUI.ed===sid+'/'+x.iid;
     +issTail(x)
     +'<button class="iss-x" data-act="iss.del" aria-label="지우기" data-tip="지우기">'+issIcn('close')+'</button></li>';}
 /* kind — 'pg' 데스크톱(앱 카드·머리 띠) · 'w' 위젯(어두운 판) */
+/* 현장 담당자 — 명부에서 그 현장을 맡은 사람(조직 관리의 담당 현장) */
+function issOwners(sid){return roster().filter(p=>p.sites&&p.sites[sid]);}
+/* 카드 머리 — 담당자 지정색으로 옅게 칠하고(첫 사람), 이름 앞엔 프로필, + 앞엔 담당자 이름 */
+function issHead(s,n,pg){
+  const ow=issOwners(s.id),c0=ow.length?ownColor(ow[0].id):'';
+  const avs=ow.length?'<span class="iss-avs">'+ow.slice(0,3).map(p=>{const a=avOf(p.id),c=ownColor(p.id);
+      return '<span class="iss-av" style="--avc:'+esc(colBg(c))+';--avi:'+avIcCol(c)+'" data-tip="'+esc(p.name)+'">'+avInner(a.icon)+'</span>';}).join('')+'</span>':'';
+  const who=ow.length?'<span class="iss-own">'+esc(ow.map(p=>p.name).join(' · '))+'</span>':'';
+  const add='<button class="'+(pg?'btn tm-add':'iss-ad')+'" data-act="iss.add" data-sid="'+esc(s.id)+'" aria-label="현안 추가" data-tip="현안 추가">'+issIcn('plus')+'</button>';
+  const tint=c0?' own" style="--itc:'+esc(colBg(c0)):'';
+  return pg?'<div class="tm-h'+tint+'"><span>'+avs+esc(s.name)+'<span class="tm-sub">'+(n||'')+'</span></span><span class="iss-hr">'+who+add+'</span></div>'
+    :'<div class="iss-ch'+tint+'">'+avs+'<b>'+esc(s.name)+'</b><span class="n">'+(n||'')+'</span>'+who+add+'</div>';}
 function issCard(s,kind){
   const rows=issRows(s.id),n=issOpenN(s.id),pg=kind==='pg';
-  const head=pg
-    ?'<div class="tm-h"><span>'+esc(s.name)+'<span class="tm-sub">'+(n||'')+'</span></span><button class="btn tm-add" data-act="iss.add" data-sid="'+esc(s.id)+'" aria-label="현안 추가" data-tip="현안 추가">'+issIcn('plus')+'</button></div>'
-    :'<div class="iss-ch"><b>'+esc(s.name)+'</b><span class="n">'+(n||'')+'</span><button class="iss-ad" data-act="iss.add" data-sid="'+esc(s.id)+'" aria-label="현안 추가" data-tip="현안 추가">'+issIcn('plus')+'</button></div>';
+  const head=issHead(s,n,pg);
   return '<div class="iss-c'+(pg?' card':'')+'" data-sid="'+esc(s.id)+'">'+head
     +(S.issUI.add===s.id?'<div class="iss-new"><input class="iss-in" data-sid="'+esc(s.id)+'" maxlength="200" placeholder="현안 입력 후 Enter" aria-label="현안 입력"></div>':'')
     +(rows.length?'<ul class="iss-ul">'+rows.map(x=>issItem(s.id,x)).join('')+'</ul>':'<div class="iss-empty">진행 중인 현안이 없습니다.</div>')
