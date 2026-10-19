@@ -1,5 +1,9 @@
 # 변경 이력 (읽기 전용) — 현재 상태는 HANDOFF.md
 
+## 마지막 기록 기준 v1180
+### 1180차 위젯 주요 현안 유리 · 설정 구분선
+**사용자: 「위젯 주요 현안 유리 적용해주고 배경 없애줘 / 권역 탭은 헤더처럼 별도 영역으로 배경 넣어주고 유리처리 / 각 현장 카드 기본 높이를 줘서 정사각형에 가깝게 / 위젯 설정에서 미니펫 아래 구분선 빼자, 간격도 너무 넓은듯 / 미니펫 추가 소스 미리보기」** — #issPane: 판 배경(wgDyn) 삭제, gap 6. .iss-wt 는 요일 머리와 같은 유리(wgDyn H 톤, blur 14) 띠, 버튼 높이 42(요일 머리). 카드: wgDyn 의 날짜 칸 유리(a+.1) + blur, aspect-ratio 1/1. 설정: 미니펫 아래 .wgs-sep 삭제(그 자리 12px 여백도 함께 빠짐). 미니펫 후보 — 받아 온 zip(꼬마냥 꾸미기 14 feb 11종·겨울 4종 — 장식만 든 시트라 꼬마냥·회색 위에 겹침, Bunny, Bunbun, 주황 작은 고양이, 말티즈, 닭 4색, 젖소(GHAP 데모: 비상업·개인 프로젝트만), Carysaurus 검정·흰색, CatPackFree·Halloween 제자리 그림, 마녀 고양이 비행)를 GIF 로 잘라 비교 시안. Free pack cat 1·1.6·1.9 는 이미 꼬마냥 1~3.
+
 ## 마지막 기록 기준 v1179
 ### 1179차 위젯 주요 현안 자리 바꾸기 · 오후 점검 알림 폐지 · 설정 순서
 **사용자: 「위젯에서 주요 현안 누르면 팝업을 띄우는게 아니라 그냥 헤더 밑으로를 주요 현안으로 스위칭 / 오후 점검 알림 이거 기능은 없애자 / 강조색, 미니펫은 글꼴 밑으로 보내자 그리고 구분선도 같이」** — 가운데 창(#issWin, LAYERS iss, .iss-win/.iss-wh/.iss-wx) 삭제 → cal-card 안 #issPane: body.iss-on 이면 #fcal·#calFchips·#issStrip 숨김, 판 = 권역 탭(.iss-wt) + 카드 3열(560↓ 2열), 배경은 wgDyn 의 날짜 칸 유리색. 머리 단추 aria-pressed 로 켜짐 표시(강조색). 달력 조작 ACT(cal.prev/next/pick/today, day.fmore, nq.toggle)는 먼저 달력으로 돌린다. 켤 때 날짜 팝업(widPop)은 닫고, 끌 때 CAL.updateSize·calFitApply. 오후 점검: evePop 말풍선·eveList·eveOn·notiOn·1분 setInterval·부팅 호출·설정 스위치(#wgNoti)·CSS(#evePop)·widget-layers 말풍선 시험 삭제(dfNewPop 의 겹침 회피 코드도 정리). 설정: 강조색·미니펫(+구분선)을 글꼴 아래로.
