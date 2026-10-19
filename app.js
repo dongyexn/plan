@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1173';
+const APP_VER='1174';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -694,7 +694,8 @@ function canAssignSites(pid){
 function denyTask(){toast('이 업무는 작성자·담당자·팀장·공구장(같은 권역)·현장 담당자만 고칠 수 있습니다');}   /* canEditTask 판정과 같은 범위 */
 function histName(){const u=authUid();
   return String(((S.people||{})[u]||{}).name||String((S.user||{}).email||'').split('@')[0]||'?').slice(0,30);}
-function histPush(it,k){if(!S.live)return it;
+function histPush(it,k){if(k==='done'&&WIDGET)PET.done();   /* 위젯 미니펫 — 완료 축하 */
+  if(!S.live)return it;
   const h=(Array.isArray(it.hist)?it.hist:[]).slice(-19);
   h.push({t:Date.now(),u:histName(),k:String(k)});it.hist=h;return it;}
 /* 암호화 백업 복호 — 위젯 브리지(hpw-restore-req/res) 왕복. 실패·비위젯이면 안내하고 null */
@@ -12167,7 +12168,10 @@ const ACT={
   },
   'wid.moveOn':()=>{const p=$('#wgSet');if(p){p.classList.remove('on');p.setAttribute('aria-hidden','true');}widMove(true);},
   'wid.moveOff':()=>widMove(false),
-  'wid.set':()=>{const p=$('#wgSet');if(!p)return;p.classList.toggle('on');p.setAttribute('aria-hidden',p.classList.contains('on')?'false':'true');widApply();}
+  'wid.set':()=>{const p=$('#wgSet');if(!p)return;p.classList.toggle('on');p.setAttribute('aria-hidden',p.classList.contains('on')?'false':'true');if(!p.classList.contains('on'))PET_PICK=false;widApply();},
+  'wid.acc':el=>{const c=widCfgLoad();c.acc=el.dataset.k;widCfgSave(c);widApply();},
+  'wid.petPick':()=>{PET_PICK=!PET_PICK;if(PET_PICK&&!window.CALAPP_PETS)petLoad().then(petSync,()=>toast('펫 그림을 불러오지 못했습니다'));petSync();},
+  'wid.pet':el=>{const c=widCfgLoad();c.pet=el.dataset.k||'';widCfgSave(c);petSync();}
 };
 /* 필터 = 업무 구분 · 진행 상태 · 권역 · 담당자 · 현장.
    팀 - 권역 - 담당자 - 현장 계층이라 위 단계를 고르면 아래 목록이 함께 좁혀진다. */
@@ -13181,13 +13185,16 @@ function mtgPlan(vac,sites,head){
   const cols=vac?(list.length>3?2:Math.max(1,list.length)):1;   /* 03 은 현장마다 한 줄 전체 — 왼쪽 계획 · 오른쪽 공종/업체 현황 */
   return head(MTG_P[MTG.p],(vac?'':'<span class="dk-n"></span>')+(chips?'<div class="mm-sub">'+chips+'</div>':''))+'<div class="sg mm-fill'+(vac?'':' deck')+'" style="grid-template-columns:repeat('+cols+',minmax(0,1fr))">'+cards+'</div>';
 }
+/* 위젯 미니펫 공 던지기 — 머리 줄 빈 곳(단추·팝업 밖)을 누르면. 위치·크기 조정 중에는 하지 않는다 */
+document.addEventListener('click',e=>{if(!WIDGET||!PET.on()||$('#widMove'))return;const h=e.target.closest&&e.target.closest('#view-calendar .cal-head');
+  if(!h||e.target.closest('button,a,input,label,.cal-filt-pop,.tb-pop,#wgPet'))return;PET.throwBall(e.clientX);});
 document.addEventListener('pointerdown',e=>{const a=document.querySelectorAll('.site-on.arm');if(!a.length)return;const t=e.target.closest&&e.target.closest('.site-on.arm');a.forEach(x=>{if(x!==t)x.classList.remove('arm');});},true);   /* 현장 칩 해제 대기 — 바깥을 누르면 취소 */
 const LAYERS=[
   {n:'msel',open:()=>!!document.querySelector('.msel.open'),close:mselClose,on:'click',keep:'.msel'},
   {n:'mo',open:()=>$('#mo').classList.contains('open'),close:closeModal,block:true},   /* 바깥 클릭으로는 닫지 않는다 */
   {n:'ym',open:()=>!!ymPopEl(),close:closeYMPop,on:'cap',keep:'#ymPop,.cal-title,.tbt-ym',eat:'now'},   /* 여는 버튼(폰 상단바 .tbt-ym 포함)은 토글이 처리 */
   {n:'wgSet',open:()=>{const w=$('#wgSet');return !!(w&&w.classList.contains('on'));},
-    close:()=>{const w=$('#wgSet');if(w){w.classList.remove('on');w.setAttribute('aria-hidden','true');}},on:'down',keep:'#wgSet,[data-act="wid.set"]'},
+    close:()=>{const w=$('#wgSet');if(w){w.classList.remove('on');w.setAttribute('aria-hidden','true');}PET_PICK=false;petSync();},on:'down',keep:'#wgSet,#wgPick,[data-act="wid.set"]'},
   {n:'filt',open:()=>{const c=$('#calFilt');return !!(c&&c.classList.contains('on'));},close:calFiltClose,on:'down',
     keep:'#calFilt,#calFiltWrap [data-act="day.fmore"]',eat:'next'},   /* 안쪽은 팝업·필터 단추만(#calFiltWrap 전체가 아님 — 위젯 찾기와 두 팝업이 겹치지 않게) */
   {n:'team',open:()=>{const p=$('#teamPop');return !!(p&&p.classList.contains('on'));},
@@ -13445,6 +13452,108 @@ const WID_FONT_OLD={sys:'win',malgun:'win',gulim:'win'};
 function widFontId(v){const f=String(v||'');return WID_FONTS.some(x=>x[0]===f)?f:(WID_FONT_OLD[f]||'app');}
 function widCfgLoad(){try{return JSON.parse(localStorage.getItem(WID_KEY))||{};}catch(e){return{};}}
 function widCfgSave(c){try{localStorage.setItem(WID_KEY,JSON.stringify(c));}catch(e){}}
+/* 강조색 — [키, 이름, 진한 색, 밝은 색]. 진한 색은 면(오늘 숫자·켜진 단추), 밝은 색은 테·선택 표시 */
+const WID_ACC=[['blue','블루','#3E71D2','#8FB4FF'],['indigo','인디고','#5B5BD6','#A9A9FF'],['teal','틸','#0E8F8A','#6FD6CF'],
+  ['green','그린','#2F8F55','#7FD6A0'],['amber','앰버','#C9771E','#FFC27A'],['rose','로즈','#C9456A','#FF9AB4']];
+/* ── 미니펫 ── 위젯 머리 줄의 빈자리(년월 묶음 ~ 단추 묶음)를 걷는 픽셀 펫. 그림은 vendor/pets.js(1MB)라 펫을 고를 때만 불러온다.
+   걷다가 가끔 쉬거나 눕고 낮잠을 잔다(누르면 깸). 끝에서는 좌우만 뒤집는다. 올려 두면 멈추고 1.5초 넘으면 대사.
+   누르기: 울음소리·전용 멘트 → 앞발질 → 공놀이 → 오늘 업무 수 → 달리기 차례로. 머리 줄 빈 곳을 누르면 공을 던진다.
+   시간 대사: 11:00~11:30 점심, 17시 이후 퇴근(가끔 혼잣말). 업무 완료 때 축하(histPush 'done').
+   ⚠ 대사는 글자만 또는 이모지만 — 한 대사에 섞지 않는다(사용자) */
+const PET_LINES={tap:['허거덩','허걱스','하이','제가요?','이걸요?','왜요?','😮','🤔','👀'],
+  ball:['집중?해서 딴짓 중','월급 좀도둑','⚽','😎'],
+  done:['업무 완료!','오늘도 내가 해냄','🎉','👍'],
+  lunch:['맛점','점심 뭐먹냐','배고프다','🍚','🍜'],
+  leave:['칼퇴 좀','퇴근해요','집에 보내죠','🏃','🏠'],
+  wake:['Zzz..','까꿍','데헷','흥','😪'],
+  pet:['야르릉','💕']};
+const petPick=a=>a[Math.floor(Math.random()*a.length)];
+const petSlot=()=>{const d=new Date(),v=d.getHours()*60+d.getMinutes();return v>=660&&v<=690?'lunch':v>=1020?'leave':'';};
+let PET_LOADING=null;
+function petLoad(){   /* 그림 묶음 — 한 번만 받는다 */
+  if(window.CALAPP_PETS)return Promise.resolve(window.CALAPP_PETS);
+  if(!PET_LOADING)PET_LOADING=new Promise((ok,no)=>{const sc=document.createElement('script');sc.src='./vendor/pets.js?v='+APP_VER;
+    sc.onload=()=>ok(window.CALAPP_PETS||{});sc.onerror=()=>{PET_LOADING=null;no(new Error('pets'));};document.head.appendChild(sc);});
+  return PET_LOADING;
+}
+const PET=(()=>{let el,img,bub,ballEl,cfg=null,x=0,dir=1,mode='walk',until=0,hover=0,raf=0,last=0,bt=0,clicks=0,sleeping=false,nap=0,ball=null,nextTalk=0;
+  const head=()=>document.querySelector('#view-calendar .cal-head');
+  /* 걸을 수 있는 폭 — 왼쪽은 년월 묶음(「오늘」이 보이면 그 뒤), 오른쪽은 필터 칩·단추 묶음 중 먼저 오는 것 */
+  const bounds=()=>{const h=head();if(!h)return[0,-1];const hr=h.getBoundingClientRect(),w=el?el.offsetWidth:40;
+    let l=0,r=hr.width;
+    h.querySelectorAll('.cal-move,.cal-todayw:not(.off)').forEach(e=>{const b=e.getBoundingClientRect();if(b.width)l=Math.max(l,b.right-hr.left);});
+    h.querySelectorAll('.cal-fchips:not([hidden]),.cal-ctl').forEach(e=>{const b=e.getBoundingClientRect();if(b.width)r=Math.min(r,b.left-hr.left);});
+    return[l+8,r-w-8-(bub&&bub.classList.contains('on')?bub.offsetWidth+10:0)];};
+  const set=(m,ms)=>{const g=cfg.g[m]||cfg.g.idle||cfg.g.walk;mode=cfg.g[m]?m:'idle';until=ms?performance.now()+ms:0;
+    if(img.dataset.m!==mode){img.dataset.m=mode;img.src=g.u;}img.style.width=g.w+'px';img.style.height=g.h+'px';};   /* 그림 위아래 빈 줄을 잘라 둔 크기 — 발이 늘 같은 바닥선 */
+  const face=()=>{const t=performance.now(),fy=cfg.fly?Math.round(-10+Math.sin(t/380)*6+Math.sin(t/970)*3):0;   /* 나는 펫 — 떠서 위아래로 둥실 */
+    el.style.transform='translate('+Math.round(x)+'px,'+fy+'px)';img.style.transform='scaleX('+dir+')';};
+  const say=(t,ms=1800)=>{bub.textContent=t;bub.classList.toggle('emo',!/[\p{L}\p{N}]/u.test(t));bub.classList.add('on');clearTimeout(bt);bt=setTimeout(()=>bub.classList.remove('on'),ms);};
+  const hop=()=>{el.classList.remove('hop');void el.offsetWidth;el.classList.add('hop');};
+  const todayN=()=>{const td=document.querySelector('#fcal td.fc-day-today');if(!td)return 0;let n=td.querySelectorAll('.fc-daygrid-event-harness:not(.fc-daygrid-event-harness-abs)').length;
+    const m=td.querySelector('.fc-daygrid-more-link');if(m)n+=parseInt(m.textContent.replace(/\D/g,''))||0;return n;};
+  const sleep=on=>{sleeping=on;clearTimeout(nap);el.classList.toggle('sleep',on);set(on?'lie':'walk');};
+  const napNow=()=>{sleep(true);nap=setTimeout(()=>{if(sleeping)sleep(false);},20000+Math.random()*20000);};   /* 낮잠 20~40초 */
+  const tick=t=>{raf=requestAnimationFrame(tick);if(!el||!el.isConnected)return;const dt=Math.min(.05,(t-(last||t))/1000);last=t;const[L,R]=bounds();
+    el.hidden=R<L;if(el.hidden)return;   /* 머리 줄이 좁으면 숨는다 */
+    if(ball)ballStep(dt,L,R);
+    if(sleeping){face();return;}
+    if(until&&t>until){until=0;set('walk');}
+    if(ball){if(mode!=='run')set('run');const tx=ball.x-el.offsetWidth/2;dir=tx>x?1:-1;x+=dir*95*dt;if(Math.abs(tx-x)<8&&ball.y>=ball.floor-2)catchBall();}
+    else if(hover&&mode!=='swipe'&&mode!=='with_ball'&&mode!=='run'){if(mode!=='idle')set('idle');if(hover>0&&t-hover>1500){hover=-1;say(petPick(PET_LINES.pet),1400);hop();}}
+    else if(mode==='walk'||mode==='run'||mode==='with_ball'){x+=dir*(mode==='walk'?22:mode==='run'?75:45)*dt;
+      if(x<L){x=L;dir=1;}if(x>R){x=R;dir=-1;}
+      if(mode==='walk'&&Math.random()<dt/9){const r=Math.random();r<.55||!cfg.g.lie?set('idle',2500+Math.random()*2500):r<.85?set('lie',4000):napNow();}
+      const sl=petSlot();if(sl&&t>nextTalk){nextTalk=t+120000+Math.random()*120000;say(petPick(PET_LINES[sl]),2600);}}
+    x=Math.min(Math.max(x,L),Math.max(L,R));face();};
+  const ballStep=(dt,L,R)=>{ball.vy+=900*dt;ball.x+=ball.vx*dt;ball.y+=ball.vy*dt;
+    const lo=L+6,hi=R+el.offsetWidth-6;if(ball.x<lo){ball.x=lo;ball.vx=-ball.vx*.6;}if(ball.x>hi){ball.x=hi;ball.vx=-ball.vx*.6;}
+    if(ball.y>ball.floor){ball.y=ball.floor;ball.vy=-ball.vy*.45;ball.vx*=.7;if(Math.abs(ball.vy)<40)ball.vy=0;}
+    ballEl.style.transform='translate('+Math.round(ball.x-5)+'px,'+Math.round(ball.y-10)+'px)';};
+  const catchBall=()=>{ball=null;if(ballEl)ballEl.remove();hop();set('with_ball',2600);say(petPick(PET_LINES.ball));};
+  const react=()=>{if(sleeping){sleep(false);hop();say(petPick(PET_LINES.wake));return;}
+    clicks++;hop();const r=clicks%5,sl=petSlot();
+    if(r===1)say(sl&&Math.random()<.5?petPick(PET_LINES[sl]):Math.random()<.5?(cfg.lines?petPick(cfg.lines):cfg.say):petPick(PET_LINES.tap));
+    else if(r===2){set('swipe',1400);say(petPick(PET_LINES.tap));}
+    else if(r===3)set('with_ball',3200);
+    else if(r===4){const n=todayN();say(n?'오늘 업무 '+n+'건':'일 안하농');}
+    else{dir=-dir;set('run',1600);}};
+  return{
+    mount(c){const h=head();if(!h)return;if(cfg!==c){cfg=c;if(img)img.dataset.m='';}
+      if(!el){el=document.createElement('div');el.id='wgPet';el.title='눌러 보세요';
+        img=document.createElement('img');img.alt='';bub=document.createElement('div');bub.className='bub';
+        const z=document.createElement('div');z.className='z';z.textContent='z';el.append(img,bub,z);
+        el.addEventListener('mouseenter',()=>hover=performance.now());el.addEventListener('mouseleave',()=>hover=0);
+        el.addEventListener('click',e=>{e.stopPropagation();react();});}
+      if(el.parentNode!==h)h.appendChild(el);set(sleeping?'lie':'walk');if(!x)x=bounds()[0]+20;nextTalk=performance.now()+20000;
+      document.body.classList.add('pet-on');if(!raf)raf=requestAnimationFrame(tick);},
+    unmount(){if(el)el.remove();if(ballEl)ballEl.remove();ball=null;cfg=null;cancelAnimationFrame(raf);raf=0;document.body.classList.remove('pet-on');},
+    throwBall(cx){if(!cfg||!el||!el.isConnected||el.hidden)return;if(sleeping)sleep(false);const h=head(),hr=h.getBoundingClientRect();
+      if(!ballEl){ballEl=document.createElement('div');ballEl.id='wgBall';}h.appendChild(ballEl);
+      const floor=h.clientHeight/2+17;ball={x:cx-hr.left,y:floor-4,vx:(Math.random()<.5?-1:1)*(60+Math.random()*60),vy:-260,floor};},
+    done(){if(!cfg||!el||!el.isConnected)return;sleep(false);hop();set('run',1800);say(petPick(PET_LINES.done),2500);},
+    on:()=>!!cfg};})();
+let PET_PICK=false;   /* 펫 고르기 창 열림 */
+/* 설정의 펫(cfg.pet) → 머리 줄 펫·설정 단추·고르기 창을 맞춘다 */
+function petSync(){
+  if(!WIDGET)return;
+  const k=widCfgLoad().pet||'',P=window.CALAPP_PETS;
+  if(k&&!P){petLoad().then(petSync,()=>{});return;}   /* 그림이 오면 다시 */
+  const o=k&&P?P[k]:null;
+  o?PET.mount(o):PET.unmount();
+  const b=$('#wgPetB');if(b){b.setAttribute('aria-expanded',PET_PICK?'true':'false');
+    b.innerHTML=(o?'<img src="'+o.t.u+'" alt="" style="width:'+o.t.w+'px;height:'+o.t.h+'px">':'')+'<b>'+(o?esc(o.n):'없음')+'</b><svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg>';}
+  petPickRender();
+}
+function petPickRender(){
+  let p=$('#wgPick');const w=$('#wgSet');
+  if(!PET_PICK||!w||!w.classList.contains('on')||!window.CALAPP_PETS){if(p)p.remove();return;}
+  if(!p){p=document.createElement('div');p.id='wgPick';p.setAttribute('role','dialog');p.setAttribute('aria-label','미니펫 고르기');document.body.appendChild(p);}
+  const k=widCfgLoad().pet||'',g=p.querySelector('.pk-g'),top=g?g.scrollTop:0;
+  p.innerHTML='<div class="pk-g"><button class="pk-i pk-none'+(k?'':' on')+'" data-act="wid.pet" data-k=""><i class="pk-pic"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></i><span>없음</span></button>'
+    +Object.entries(window.CALAPP_PETS).map(([id,o])=>'<button class="pk-i'+(id===k?' on':'')+'" data-act="wid.pet" data-k="'+id+'" title="'+esc(o.n)+'"><i class="pk-pic"><img src="'+o.t.u+'" alt="" style="width:'+Math.round(o.t.w*1.2)+'px;height:'+Math.round(o.t.h*1.2)+'px"></i><span>'+esc(o.n)+'</span></button>').join('')+'</div>';
+  p.querySelector('.pk-g').scrollTop=top;   /* 고를 때 스크롤 자리 유지 */
+}
 function widApply(){
   if(!WIDGET)return;
   const c=widCfgLoad();
@@ -13480,6 +13589,18 @@ function widApply(){
     'body.wid.glass .cal-head .seg,body.wid.glass .cal-head .cal-nav,body.wid.glass .cal-move{background:rgba('+N+','+f(a*.9)+');}',
     'body.wid.glass .cal-title{background:transparent;}'
   ].join('\n'):'';
+  /* 강조색 — 기본(블루)은 그대로. 바꾸면 변수와 FullCalendar 셀 리터럴(오늘 숫자·고른 날)을 함께 덮는다 */
+  const acc=WID_ACC.find(x=>x[0]===c.acc);
+  if(acc&&acc[0]!=='blue'){const[,,ac,al]=acc,rg=h=>{const n=parseInt(h.slice(1),16);return (n>>16)+','+((n>>8)&255)+','+(n&255);};
+    dyn.textContent+='\nbody.wid{--b600:'+ac+';--b500:'+ac+';--b400:'+al+';}'
+      +'\nbody.wid #fcal .fc-day-today .dnum{background:'+ac+'!important;}'
+      +'\nbody.wid #fcal td.fc-daygrid-day.sel-day{background-image:linear-gradient(rgba('+rg(al)+',.30),rgba('+rg(al)+',.30))!important;}'
+      +'\nbody.wid #fcal .fc-dayGridMonth-view td.fc-daygrid-day.sel-day .fc-daygrid-day-frame::after{border-color:'+ac+'!important;}'
+      +'\nbody.wid .cal-head .seg .act{background:'+ac+';}';}
+  const aw=$('#wgAcc');if(aw){const k=acc?acc[0]:'blue';
+    if(!aw.children.length)aw.innerHTML=WID_ACC.map(x=>'<button data-act="wid.acc" data-k="'+x[0]+'" title="'+x[1]+'" aria-label="강조색 '+x[1]+'" style="--c:'+x[2]+'"></button>').join('');
+    [...aw.children].forEach(b=>b.classList.toggle('on',b.dataset.k===k));}
+  petSync();
   /* 글자 크기 — 85~140% 사이에서 자유롭게. 여백·막대 높이도 이 값에 함께 묶여 있다 */
   const fz=Math.min(1.4,Math.max(.85,Number(c.fz)||1));
   document.body.style.setProperty('--wfz',String(fz));
