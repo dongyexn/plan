@@ -2795,6 +2795,10 @@ body.wid .gd-nav{background:rgba(24,27,36,.96);}
 .bgp-more{position:relative;border:0;padding:0;border-radius:10px;overflow:hidden;cursor:pointer;background:#2B3038 center/cover no-repeat;color:#fff;font:inherit;}.bgp-more::before{content:"";position:absolute;inset:0;background:rgba(14,18,26,.55);backdrop-filter:blur(3px);transition:background-color .25s cubic-bezier(.32,.72,0,1);}.bgp-more span{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:2px;font-size:12px;font-weight:600;}.bgp-more b{font-size:18px;font-weight:800;letter-spacing:-.01em;}
 #mb.bgw{width:min(1120px,94vw);max-width:none;}
 .bgp-all-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;padding:4px 4px 10px;max-height:min(68vh,720px);overflow-y:auto;}
+.bgp-all-grid{scrollbar-width:thin;scrollbar-color:var(--sepo) transparent;padding-right:8px;}   /* 세로 스크롤바 표시 — 사진이 많아 스크롤 신호가 필요하다(rk-wrap 과 같은 예외) */
+.bgp-all-grid::-webkit-scrollbar{display:block;width:8px;height:0;}
+.bgp-all-grid::-webkit-scrollbar-thumb{background:var(--sepo);border-radius:4px;}
+.bgp-all-grid::-webkit-scrollbar-track{background:transparent;}
 .bgp-all-grid .bgp-t{border-radius:12px;aspect-ratio:16/10;}
 .bgp-all-grid .bgp-t .nm{position:absolute;left:0;right:0;bottom:0;padding:22px 12px 9px;border-radius:0 0 12px 12px;background:linear-gradient(180deg,transparent,rgba(10,14,22,.62));color:#fff;font-size:12px;font-weight:600;text-align:left;opacity:0;transition:opacity .25s ease;}
 @media (hover:hover) and (pointer:fine){.bgp-all-grid .bgp-t:hover .nm{opacity:1;}}@media not ((hover:hover) and (pointer:fine)){.bgp-all-grid .bgp-t .nm{opacity:1;}}
@@ -3420,6 +3424,47 @@ body.wid #wgSet.on{display:block;}
 #wgSet .wgs-sw input:checked+.sw-t::after{transform:translateX(17px);}
 #wgSet .wgs-sw:active .sw-t::after{width:21px;}
 #wgSet .wgs-sw:active input:checked+.sw-t::after{transform:translateX(12px);}
+/* 강조색 점 · 미니펫 단추(고른 펫 그림 + 이름 ›) */
+#wgSet .wgs-acc{display:flex;gap:6px;align-items:center;}
+#wgSet .wgs-acc button{width:16px;height:16px;border-radius:50%;padding:0;background:var(--c);box-shadow:inset 0 0 0 1px rgba(255,255,255,.25);}
+#wgSet .wgs-acc button.on{box-shadow:0 0 0 2px rgba(20,22,28,.9),0 0 0 3.5px #fff;}
+#wgSet .wgs-pet{display:flex;align-items:center;gap:2px;height:30px;padding:0 2px 0 8px;border-radius:3px;color:#fff;font-size:12px;}
+#wgSet .wgs-pet img{display:block;image-rendering:pixelated;margin-right:4px;}
+#wgSet .wgs-pet b{font-weight:600;}
+#wgSet .wgs-pet .icn{width:14px;height:14px;opacity:.7;}
+@media (hover:hover) and (pointer:fine){#wgSet .wgs-pet:hover{background:rgba(255,255,255,.1);}}
+#wgSet .wgs-pet[aria-expanded="true"]{background:rgba(255,255,255,.1);}
+/* 미니펫 고르기 — 위젯 설정 창 왼쪽 옆, 같은 유리 카드. 좁은 창에선 설정 창 위로 겹친다 */
+#wgPick{position:fixed;top:62px;right:max(10px,min(300px,calc(100vw - 326px)));z-index:9101;width:316px;
+  background:var(--lqd-fill);-webkit-backdrop-filter:var(--lqd-blur);backdrop-filter:var(--lqd-blur);
+  border:1px solid transparent;border-radius:18px;box-shadow:var(--lqd-edge),var(--lqd-hi),0 18px 50px rgba(0,0,0,.45);color:rgba(255,255,255,.9);overflow:hidden;}
+#wgPick .pk-g{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;padding:8px;max-height:min(420px,calc(100vh - 80px));overflow-y:auto;}
+#wgPick .pk-i{display:grid;justify-items:center;align-items:end;grid-template-rows:34px 14px;gap:3px;height:60px;min-width:0;overflow:hidden;padding:4px 2px;
+  border-radius:8px;background:rgba(255,255,255,.04);color:rgba(255,255,255,.82);font-size:10.5px;}
+@media (hover:hover) and (pointer:fine){#wgPick .pk-i:hover{background:rgba(255,255,255,.1);}}
+#wgPick .pk-i.on{background:rgba(255,255,255,.14);box-shadow:inset 0 0 0 1.5px var(--b400);color:#fff;}
+#wgPick .pk-pic{display:flex;align-items:flex-end;justify-content:center;width:100%;height:34px;}
+#wgPick .pk-pic img{display:block;image-rendering:pixelated;max-width:100%;}   /* 위아래 빈 줄을 잘라 둔 썸네일 — 위젯과 같은 비율, 바닥 맞춤 */
+#wgPick .pk-none .pk-pic{align-items:center;opacity:.6;}
+#wgPick .pk-none .icn{width:18px;height:18px;}
+#wgPick .pk-i span{display:block;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+/* 미니펫 — 머리 줄 빈자리(년월 묶음 ~ 단추 묶음)를 걷는다. 발은 단추 아래선에 맞춘다 */
+#wgPet{position:absolute;z-index:31;left:0;top:50%;margin-top:-27px;height:44px;display:flex;align-items:flex-end;cursor:pointer;user-select:none;}
+#wgPet[hidden]{display:none;}
+#wgPet img{display:block;image-rendering:pixelated;pointer-events:none;}
+#wgPet .bub{position:absolute;left:100%;bottom:30%;transform:translate(2px,0);padding:3px 8px;border-radius:10px;background:#fff;color:#1f2329;font-size:11.5px;font-weight:700;white-space:nowrap;
+  box-shadow:0 2px 6px rgba(0,0,0,.3);opacity:0;transition:opacity .15s,transform .15s;pointer-events:none;}
+#wgPet .bub.emo{font-size:16px;padding:2px 7px;line-height:1.3;}
+#wgPet .bub.on{opacity:1;transform:translate(6px,0);}
+#wgPet .bub::after{content:'';position:absolute;right:100%;bottom:6px;border:4px solid transparent;border-right-color:#fff;}
+#wgPet.hop{animation:wgPetHop .45s cubic-bezier(.3,1.6,.5,1);}
+@keyframes wgPetHop{0%,100%{translate:0 0}40%{translate:0 -12px}}
+#wgPet .z{position:absolute;left:60%;bottom:80%;font-size:11px;font-weight:800;color:#cfe0ff;opacity:0;pointer-events:none;}
+#wgPet.sleep .z{animation:wgPetZ 2.4s ease-in-out infinite;}
+@keyframes wgPetZ{0%{opacity:0;transform:translate(0,0)}30%{opacity:1}100%{opacity:0;transform:translate(10px,-14px)}}
+#wgBall{position:absolute;z-index:30;left:0;top:0;width:10px;height:10px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff 0 18%,#FF6B6B 22% 100%);box-shadow:0 1px 2px rgba(0,0,0,.4);pointer-events:none;}
+body.wid.pet-on .cal-head{cursor:crosshair;}   /* 머리 줄 빈 곳을 누르면 공을 던진다 */
+body.wid.pet-on .cal-head :is(.cal-filt-pop,.tb-pop){cursor:auto;}   /* 머리 줄 안 팝업은 보통 커서 — 단추는 원래 pointer */
 #wgSet .wgs-cyc b{flex:1;min-width:0;width:74px;text-align:center;font-size:12px;font-weight:700;color:#fff;white-space:nowrap;}
 #wgSet .wgs-cb{width:24px;height:24px;border-radius:3px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.75);}
 @media (hover:hover) and (pointer:fine){#wgSet .wgs-cb:hover{background:rgba(255,255,255,.16);color:#fff;}}@media not ((hover:hover) and (pointer:fine)){#wgSet .wgs-cb:active{background:rgba(255,255,255,.16);color:#fff;}}
@@ -5930,6 +5975,10 @@ body.wid.glass{--mv-flash:#8FB4FF;}
         <div id="wgSet" aria-hidden="true">
           <div class="wp-h"><b>위젯 설정</b></div>
           <div class="wgs-b">
+          <!-- 강조색 — 오늘 숫자·고른 날·켜진 단추 색. 미니펫 — 머리 줄을 걷는 픽셀 펫(누르면 옆에 고르기 창) -->
+          <div class="wgs-r"><span>강조색</span><div class="wgs-acc" id="wgAcc"></div></div>
+          <div class="wgs-r"><span>미니펫</span><button class="wgs-pet" id="wgPetB" data-act="wid.petPick" aria-haspopup="true" aria-expanded="false"><b>없음</b><svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg></button></div>
+          <div class="wgs-sep"></div>
           <div class="wgs-r"><span>투명도 <b id="wgAV" class="wgs-v">15%</b></span><input type="range" id="wgA" min="0" max="85" step="5"></div>
           <!-- 유리 톤 — 칸·카드의 어두운 유리색 농도. 100%가 기존 색, 낮추면 진해지고 올리면 연해진다 -->
           <div class="wgs-r"><span>유리 톤 <b id="wgTV" class="wgs-v">100%</b></span><input type="range" id="wgT" min="50" max="160" step="5"></div>
@@ -6150,5 +6199,5 @@ body.wid.glass{--mv-flash:#8FB4FF;}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1173"></script>
+<script src="./app.js?v=1174"></script>
 </body></html>
