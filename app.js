@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1186';
+const APP_VER='1187';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -13398,12 +13398,13 @@ const PET=(()=>{let el,bd,img,bub,ballEl,cfg=null,x=0,dir=1,mode='idle',anim=nul
   const turn=d=>{if(d!==dir){dir=d;face();}};
   /* 지금 자리 — 걷는 중이면 진행률로 계산(레이아웃을 읽지 않는다) */
   const pos=()=>{if(anim&&anim.playState==='running'){const k=Math.min(1,(anim.currentTime||0)/anim._d);return anim._a+(anim._b-anim._a)*k;}return x;};
-  const stop=()=>{x=pos();if(anim){anim.onfinish=null;anim.cancel();anim=null;}el.style.transform='translateX('+Math.round(x)+'px)';};
+  const stop=()=>{x=pos();if(anim){anim.onfinish=null;anim.cancel();anim=null;}el.style.transform='translateX('+Math.round(x)+'px)';el.classList.remove('wad');};
   const later=(f,ms)=>{clearTimeout(tm);tm=setTimeout(f,ms);};
-  const moveTo=(tx,v,m,done)=>{if(cfg.st){stop();turn(tx>=x?1:-1);set('idle');later(done||next,1500);return;}   /* st — 걷는 그림이 없는 펫은 제자리에서(공도 그 자리에서 받는다) */
-    stop();turn(tx>=x?1:-1);set(m);const a=x,d=Math.max(1,Math.abs(tx-a)/v*1000);
-    anim=el.animate([{transform:'translateX('+Math.round(a)+'px)'},{transform:'translateX('+Math.round(tx)+'px)'}],{duration:d,easing:'steps('+Math.max(1,Math.round(Math.abs(tx-a)/2))+')',fill:'forwards'});   /* 2px 씩 끊어 간다 — 화면을 다시 그리는 횟수가 줄어 걷는 동안 CPU 약 절반(사용자 비교 후 결정) */
-    anim._a=a;anim._b=tx;anim._d=d;anim.onfinish=()=>{x=tx;anim=null;el.style.transform='translateX('+Math.round(x)+'px)';(done||next)();};};
+  const moveTo=(tx,v,m,done)=>{stop();turn(tx>=x?1:-1);
+    const sl=!!cfg.st;if(sl){set('idle');v=v>=95?16:10;el.classList.add('wad');}else set(m);   /* st — 걷는 그림이 없는 펫은 쉬는 그림으로 천천히(초당 10px · 공은 16px), 1px 씩 콩콩 */
+    const a=x,d=Math.max(1,Math.abs(tx-a)/v*1000);
+    anim=el.animate([{transform:'translateX('+Math.round(a)+'px)'},{transform:'translateX('+Math.round(tx)+'px)'}],{duration:d,easing:'steps('+Math.max(1,Math.round(Math.abs(tx-a)/(sl?1:2)))+')',fill:'forwards'});   /* 2px 씩 끊어 간다 — 화면을 다시 그리는 횟수가 줄어 걷는 동안 CPU 약 절반(사용자 비교 후 결정) */
+    anim._a=a;anim._b=tx;anim._d=d;anim.onfinish=()=>{x=tx;anim=null;el.classList.remove('wad');el.style.transform='translateX('+Math.round(x)+'px)';(done||next)();};};
   const say=(t,ms=1800)=>{bub.textContent=t;bub.classList.toggle('emo',!/[\p{L}\p{N}]/u.test(t));
     const R=bounds()[1];bub.classList.toggle('l',pos()+bub.offsetWidth+12>R);   /* 오른쪽 단추에 닿으면 말풍선을 왼쪽으로 */
     bub.classList.add('on');clearTimeout(bt);bt=setTimeout(()=>bub.classList.remove('on'),ms);};
@@ -13422,25 +13423,21 @@ const PET=(()=>{let el,bd,img,bub,ballEl,cfg=null,x=0,dir=1,mode='idle',anim=nul
     if(hid){later(next,3000);return;}
     x=Math.min(Math.max(pos(),L),R);
     const r=Math.random();
-    if(r<.4){let tx=L+Math.random()*(R-L);if(Math.abs(tx-x)<30)tx=x<(L+R)/2?R:L;moveTo(tx,22,'walk');}
+    if(r<(cfg.st?.15:.4)){let tx=L+Math.random()*(R-L);if(Math.abs(tx-x)<30)tx=x<(L+R)/2?R:L;moveTo(tx,22,'walk');}
     else if(r<.85||!cfg.g.lie){stop();set('idle');later(next,2500+Math.random()*2500);}
     else if(r<.96){stop();set('lie');later(next,4000);}
     else napNow();};
   const sleep=on=>{sleeping=on;clearTimeout(nap);el.classList.toggle('sleep',on);if(on){stop();clearTimeout(tm);set('lie');}else next();};
   const napNow=()=>{sleep(true);nap=setTimeout(()=>{if(sleeping)sleep(false);},20000+Math.random()*20000);};   /* 낮잠 20~40초 */
-  /* 공 — 날아가는 동안만 프레임 루프. 바닥에 멎으면 펫이 달려가 문다 */
+  /* 공 — 날아가는 동안만 프레임 루프. 바닥에 멎으면 펫이 달려가 문다. 펫마다 던지는 것(cfg.it — 먹이 그림)이 있으면 그것을 던진다: 덜 튀고 바로 멎는다 */
   const ballStep=t=>{if(!ball)return;braf=requestAnimationFrame(ballStep);const dt=Math.min(.05,(t-(ball.t||t))/1000);ball.t=t;
     ball.vy+=900*dt;ball.x+=ball.vx*dt;ball.y+=ball.vy*dt;
     if(ball.x<ball.lo){ball.x=ball.lo;ball.vx=-ball.vx*.6;}if(ball.x>ball.hi){ball.x=ball.hi;ball.vx=-ball.vx*.6;}
-    if(ball.y>ball.floor){ball.y=ball.floor;ball.vy=-ball.vy*.45;ball.vx*=.7;if(Math.abs(ball.vy)<40){ball.vy=0;if(Math.abs(ball.vx)<8)ball.vx=0;}}
-    ballEl.style.transform='translate('+Math.round(ball.x-5)+'px,'+Math.round(ball.y-10)+'px)';
+    const it=ball.it;if(ball.y>ball.floor){ball.y=ball.floor;ball.vy=-ball.vy*(it?.25:.45);ball.vx*=it?.3:.7;if(Math.abs(ball.vy)<40){ball.vy=0;if(Math.abs(ball.vx)<(it?30:8))ball.vx=0;}}
+    ballEl.style.transform='translate('+Math.round(ball.x-(it?8:5))+'px,'+Math.round(ball.y-(it?16:10))+'px)';
     if(!ball.vy&&!ball.vx&&!ball.go){ball.go=1;cancelAnimationFrame(braf);
-      if(cfg.st){   /* 걷지 못하는 펫 — 공이 펫 앞으로 굴러와 받는다 */
-        const px=pos()+el.offsetWidth/2,d=Math.abs(px-ball.x),b=ball;turn(px>=b.x?-1:1);
-        const a=ballEl._roll=ballEl.animate([{transform:ballEl.style.transform},{transform:'translate('+Math.round(px-5)+'px,'+Math.round(b.y-10)+'px)'}],{duration:Math.max(300,d/120*1000),easing:'cubic-bezier(.2,.7,.3,1)',fill:'forwards'});
-        a.onfinish=()=>{if(ball!==b)return;ball=null;ballEl.remove();a.cancel();hop();set('with_ball');say(petPick(PET_LINES.ball));later(next,2600);};return;}
       const tx=Math.min(Math.max(ball.x-el.offsetWidth/2,ball.lo-6),ball.hi-el.offsetWidth+6);
-      moveTo(tx,95,'run',()=>{const b=ball;ball=null;if(b)ballEl.remove();hop();set('with_ball');say(petPick(PET_LINES.ball));later(next,2600);});}};
+      moveTo(tx,95,'run',()=>{const b=ball;ball=null;if(b)ballEl.remove();hop();set(b&&b.it?'idle':'with_ball');say(b&&b.it?'😋':petPick(PET_LINES.ball));later(next,2600);});}};   /* 먹이는 공을 문 그림 대신 쉬는 그림 */
   const react=()=>{if(deep)deepOff();if(sleeping){sleep(false);hop();say(petPick(PET_LINES.wake));return;}
     clicks++;hop();const r=clicks%5,sl=petSlot();
     if(r===1)say(sl&&Math.random()<.5?petPick(PET_LINES[sl]):Math.random()<.5?(cfg.lines?petPick(cfg.lines):cfg.say):petPick(PET_LINES.tap));
@@ -13468,8 +13465,8 @@ const PET=(()=>{let el,bd,img,bub,ballEl,cfg=null,x=0,dir=1,mode='idle',anim=nul
       if(anim){anim.onfinish=null;anim.cancel();anim=null;}if(bob){bob.cancel();bob=null;}if(el)el.remove();if(ballEl)ballEl.remove();ball=null;cfg=null;sleeping=false;document.body.classList.remove('pet-on');},
     throwBall(cx){if(!cfg||!el||!el.isConnected||el.hidden)return;if(deep){deep=false;if(bob)bob.play();}if(sleeping){sleeping=false;clearTimeout(nap);el.classList.remove('sleep');}
       const h=head(),hr=h.getBoundingClientRect(),[L,R]=bounds();stop();clearTimeout(tm);set('idle');
-      if(!ballEl){ballEl=document.createElement('div');ballEl.id='wgBall';}if(ballEl._roll){ballEl._roll.cancel();ballEl._roll=null;}h.appendChild(ballEl);
-      const floor=h.clientHeight/2+17;ball={x:cx-hr.left,y:floor-4,vx:(Math.random()<.5?-1:1)*(60+Math.random()*60),vy:-260,floor,lo:L+6,hi:R+el.offsetWidth-6};
+      if(!ballEl){ballEl=document.createElement('div');ballEl.id='wgBall';}const it=cfg.it||'';ballEl.classList.toggle('it',!!it);ballEl.style.backgroundImage=it?'url('+petUrl('it-'+it+'.png')+')':'';h.appendChild(ballEl);
+      const floor=h.clientHeight/2+17;ball={x:cx-hr.left,y:floor-4,vx:(Math.random()<.5?-1:1)*(60+Math.random()*60),vy:-260,floor,lo:L+6,hi:R+el.offsetWidth-6,it};
       cancelAnimationFrame(braf);braf=requestAnimationFrame(ballStep);},
     done(){if(!cfg||!el||!el.isConnected)return;if(deep){deep=false;if(bob)bob.play();}if(sleeping){sleeping=false;clearTimeout(nap);el.classList.remove('sleep');}hop();say(petPick(PET_LINES.done),2500);
       const[L,R]=bounds();moveTo(dir>0?R:L,75,'run');},
