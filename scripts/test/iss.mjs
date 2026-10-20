@@ -1,6 +1,6 @@
 /* 주요 현안 회귀 — 데스크톱 화면 · 위젯 판(머리 단추) · 위젯 「4주 + 주요 현안」 아래 칸.
    검사: 추가(Enter 이어 쓰기)·해결/취소·고치기(빈 칸이면 지움)·지우기+되돌리기 · 해결 7일 뒤 숨김 · D+N(30일↑ 주황) ·
-   권역 탭 · 담당자 표시 · 판 켜면 아래 칸 숨고 초점은 보이는 입력 칸 · 달력 단추로 판 끔 · 4주 뷰 한 주씩 · 아래 칸 한 줄 · 카드 기본 높이 현안 4줄 · 백업에 현안.
+   권역 탭 · 담당자 표시 · 판 켜면 아래 칸 숨고 초점은 보이는 입력 칸 · 달력 단추로 판 끔 · 우클릭 빼기·+ 다시 넣기 · 4주 뷰 한 주씩 · 아래 칸 한 줄 · 카드 기본 높이 현안 4줄 · 백업에 현안.
    사용: node scripts/test/iss.mjs (CHROMIUM 경로를 줄 수 있다) */
 import { chromium } from 'playwright';
 import http from 'http';
@@ -76,6 +76,13 @@ const txt=(pg,sel)=>pg.evaluate(s=>[...document.querySelectorAll(s)].map(e=>e.te
   await pg.keyboard.type('위젯 추가');await pg.keyboard.press('Enter');await pg.keyboard.press('Escape');
   await pg.click('[data-act="cal.prev"]');await pg.waitForTimeout(300);
   ok('달력 단추 → 판 끔 · 아래 칸 다시 그림',await pg.evaluate(()=>!issOn()&&$('#issStrip').innerHTML.includes('위젯 추가')));
+  await pg.click('[data-act="iss.open"]');await pg.waitForTimeout(300);
+  await pg.click('#issPane .iss-c[data-sid="s2"] .iss-ch b',{button:'right'});await pg.click('.ctxmenu .ctx-it');await pg.waitForTimeout(200);
+  ok('우클릭 → 보드에서 빼기(팀 공통 저장)',await pg.evaluate(()=>!$('#issPane .iss-c[data-sid="s2"]')&&!!JSON.parse(localStorage.getItem('calapp.v1')).issHide.s2));
+  await pg.click('#issPane [data-act="iss.more"]');
+  ok('+ → 뺀 현장 목록',await pg.evaluate(()=>$('.ctxmenu').innerText.includes('현장명2')));
+  await pg.click('.ctxmenu .ctx-it');await pg.waitForTimeout(200);
+  ok('다시 넣기',await pg.evaluate(()=>!!$('#issPane .iss-c[data-sid="s2"]')&&!JSON.parse(localStorage.getItem('calapp.v1')).issHide.s2));
   ok('위젯 오류 없음',!perr.length,perr);await ctx.close();}
 
 await br.close();srv.close();
