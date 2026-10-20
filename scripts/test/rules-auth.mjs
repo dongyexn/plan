@@ -279,5 +279,9 @@ t('AUTH-23g', 'viewer → 문자 값', false, tryWrite('calapp/issHide/sA', A('U
 t('AUTH-23d', '미등록 계정 → 현장 빼기', false, tryWrite('calapp/issHide/sA', A('V1'), T22, true));
 t('AUTH-23e', 'viewer → 통째 지우기', false, tryWrite('calapp/issHide', A('U1'), T22, null));
 t('AUTH-23f', 'viewer → 읽기', true, tryRead('calapp/issHide', A('U1'), T22));
+/* AUTH-24 주요 현안 내 화면 설정 — 본인 prefs 만 */
+t('AUTH-24a', 'viewer → 내 정렬·순서·접기', true, tryWrite('calapp/prefs/U1/iss', A('U1'), T22, { sort: 'mine', order: 'sA,sB', fold: 'sB', fe: true }));
+t('AUTH-24b', 'viewer → 모르는 정렬', false, tryWrite('calapp/prefs/U1/iss', A('U1'), T22, { sort: 'x' }));
+t('AUTH-24c', 'viewer → 남의 설정', false, tryWrite('calapp/prefs/U2/iss', A('U1'), T22, { sort: 'open' }));
 console.log(fail ? `\nFAIL ${fail}` : '\nRULES-AUTH ALL PASS');
 process.exit(fail ? 1 : 0);
