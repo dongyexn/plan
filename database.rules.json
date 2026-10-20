@@ -547,12 +547,12 @@
         }
       },
 
-      // 주요 현안 보드에서 뺀 현장 — 팀 공통. MEMBER 누구나 빼고 넣는다(현안 쓰기와 같은 단계). 값은 true 만(넣으면 지운다)
+      // 주요 현안 보드에 보일 현장 덧씀 — 팀 공통. MEMBER 누구나 빼고 넣는다(현안 쓰기와 같은 단계). true 뺌 · false 넣음(하자 화면에서 꺼 둔 현장) · 기본과 같으면 지운다
       "issHide": {
         ".read": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
         "$sid": {
           ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
-          ".validate": "$sid.length >= 1 && $sid.length <= 80 && newData.isBoolean() && newData.val() == true"
+          ".validate": "$sid.length >= 1 && $sid.length <= 80 && newData.isBoolean()"
         }
       },
 
