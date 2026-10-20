@@ -5803,7 +5803,8 @@ body.wid .iss-ch.own::before{border-radius:10px 10px 0 0;}   /* 위젯 카드 �
 .iss-c .tm-h .iss-hr{flex:1 1 0;display:flex;align-items:center;justify-content:flex-end;gap:6px;min-width:0;}
 /* 위젯 「4주 + 현안」 — 달력 4주 아래에 카드 한 줄(현안 4줄 높이, 넘치면 카드 안에서 구른다 · 카드가 많으면 옆으로) */
 body.wid.iss3 #fcal{flex:1 1 0;}
-#issStrip:not([hidden]){color:rgba(255,255,255,.92);flex:none;height:calc(48px + 4*(8px + max(1.45*12.5px,19px)));margin-top:6px;display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 12px)/3);gap:6px;overflow-x:auto;overflow-y:hidden;}
+#issStrip:not([hidden]){color:rgba(255,255,255,.92);flex:none;height:calc(48px + 4*(8px + max(1.45*12.5px,19px)));margin-top:6px;display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 12px)/3);gap:6px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scroll-behavior:smooth;overscroll-behavior-x:contain;}
+#issStrip .iss-c{scroll-snap-align:start;}   /* 넘길 때 카드 단위로 부드럽게 멈춘다 */
 #issStrip .iss-c{min-height:0;overflow:hidden;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);}
 #issStrip .iss-c :is(.iss-ul,.iss-empty){flex:1 1 0;min-height:0;overflow-y:auto;}
 #issStrip .iss-i{gap:6px;padding:4px 6px;font-size:12.5px;}
@@ -6302,5 +6303,5 @@ body.wid.iss3 #fcal{flex:1 1 0;}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1196"></script>
+<script src="./app.js?v=1197"></script>
 </body></html>
