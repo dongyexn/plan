@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1193';
+const APP_VER='1194';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -13411,7 +13411,7 @@ const PET=(()=>{let drg=false,shd=null,land=null,el,bd,img,bub,ballEl,cfg=null,x
     const sl=!!cfg.st;if(sl){set('idle');v=v>=95?16:10;el.classList.add('wad');}else set(m);   /* st — 걷는 그림이 없는 펫은 쉬는 그림으로 천천히(초당 10px · 공은 16px), 1px 씩 콩콩 */
     const a=x,d=Math.max(1,Math.abs(tx-a)/v*1000);
     anim=el.animate([{transform:'translateX('+Math.round(a)+'px)'},{transform:'translateX('+Math.round(tx)+'px)'}],{duration:d,easing:'steps('+Math.max(1,Math.round(Math.abs(tx-a)/(sl?1:2)))+')',fill:'forwards'});   /* 2px 씩 끊어 간다 — 화면을 다시 그리는 횟수가 줄어 걷는 동안 CPU 약 절반(사용자 비교 후 결정) */
-    anim._a=a;anim._b=tx;anim._d=d;anim.onfinish=()=>{x=tx;anim=null;el.classList.remove('wad');el.style.transform='translateX('+Math.round(x)+'px)';(done||next)();};};
+    anim._a=a;anim._b=tx;anim._d=d;anim.onfinish=()=>{x=tx;const f=anim;anim=null;el.classList.remove('wad');el.style.transform='translateX('+Math.round(x)+'px)';if(f)f.cancel();(done||next)();};};   /* ⚠ fill:forwards 는 끝나도 transform 을 계속 쥔다 — 자리를 인라인으로 옮겨 적고 지운다(안 지우면 그 뒤 끌기가 그림자만 움직였다) */
   const say=(t,ms=1800)=>{bub.textContent=t;bub.classList.toggle('emo',!/[\p{L}\p{N}]/u.test(t));
     const R=bounds()[1];bub.classList.toggle('l',pos()+bub.offsetWidth+12>R);   /* 오른쪽 단추에 닿으면 말풍선을 왼쪽으로 */
     bub.classList.add('on');clearTimeout(bt);bt=setTimeout(()=>bub.classList.remove('on'),ms);};
@@ -13476,15 +13476,23 @@ const PET=(()=>{let drg=false,shd=null,land=null,el,bd,img,bub,ballEl,cfg=null,x
             if(deep){deep=false;if(bob)bob.play();}if(sleeping){sleeping=false;clearTimeout(nap);el.classList.remove('sleep');}
             if(land){land.onfinish=null;land.cancel();land=null;drg=true;}   /* 떨어지는 중에 다시 잡으면 — 그 애니메이션이 transform 을 쥐고 있어 그림자만 끌려왔다 */
             stop();set('idle');el.classList.add('held');
-            if(!shd){shd=document.createElement('div');shd.id='wgPetSh';}el.parentNode.appendChild(shd);}
-          const h=head(),hr=h.getBoundingClientRect(),w=el.offsetWidth,t0=el.offsetTop;
-          const nx=Math.min(Math.max(e.clientX-g.gx-hr.left,0),hr.width-w),ny=-6;   /* 머리 줄 안에서 가로로만 — 세로는 6px 들린 채 고정 */
+            if(!shd){shd=document.createElement('div');shd.id='wgPetSh';}el.parentNode.appendChild(shd);
+            /* 잡을 때 한 번만 잰다 — 움직일 때마다 재면 이 문서는 스타일 재계산이 비싸 끄는 동안 CPU 가 높았다 */
+            const hr=head().getBoundingClientRect(),w=el.offsetWidth,[L,R]=bounds();g.hx=hr.left;g.max=hr.width-w;g.L=L;g.R=R;g.w=w;
+            shd.style.width=Math.round(w*.7)+'px';shd.style.top=(el.offsetTop+el.offsetHeight-2)+'px';shd.classList.add('on');
+            /* 움직임은 멈춰 둔 애니메이션의 시점(currentTime)만 바꿔 그린다 — 인라인 style 을 매번 바꾸면 이 문서는 스타일 재계산이 비싸다 */
+            const mx=Math.max(1,g.max),o={duration:1000,fill:'forwards'};
+            g.ax=el.animate([{transform:'translate(0px,-6px)'},{transform:'translate('+mx+'px,-6px)'}],o);g.ax.pause();
+            g.ar=bd.animate([{rotate:'-25deg'},{rotate:'25deg'}],o);g.ar.pause();g.ar.currentTime=500;
+            g.as=shd.animate([{transform:'translateX('+Math.round(L+w*.15)+'px)'},{transform:'translateX('+Math.round(Math.max(L,R)+w*.15)+'px)'}],o);g.as.pause();g.mx=mx;}
           const now=performance.now(),vx=(e.clientX-g.px)/Math.max(8,now-g.pt);g.px=e.clientX;g.pt=now;
-          g.rot=Math.max(-25,Math.min(25,g.rot*.6-vx*14));bd.style.rotate=g.rot.toFixed(1)+'deg';if(Math.abs(vx)>.05)turn(vx>0?1:-1);
-          x=nx;g.y=ny;el.style.transform='translate('+Math.round(nx)+'px,'+Math.round(ny)+'px)';
-          const[L,R]=bounds(),fx=Math.min(Math.max(nx,L),R);shd.style.left=Math.round(fx+w*.15)+'px';shd.style.width=Math.round(w*.7)+'px';shd.style.top=(t0+el.offsetHeight-2)+'px';shd.classList.toggle('on',ny<-2);});
-        const drop=()=>{const g=held;held=null;if(!g||!g.on)return;el._drg=true;setTimeout(()=>{el._drg=false;},0);
-          if(shd)shd.remove();bd.style.rotate='';el.classList.remove('held');
+          g.rot=Math.max(-25,Math.min(25,g.rot*.6-vx*14));if(Math.abs(vx)>.05)turn(vx>0?1:-1);
+          x=Math.min(Math.max(e.clientX-g.gx-g.hx,0),g.max);g.y=-6;   /* 머리 줄 안에서 가로로만 — 세로는 6px 들린 채 고정 */
+          if(!g.raf)g.raf=requestAnimationFrame(()=>{g.raf=0;if(held!==g)return;   /* 한 프레임에 한 번만 그린다 */
+            g.ax.currentTime=1000*Math.round(x)/g.mx;g.ar.currentTime=(g.rot+25)*20;
+            g.as.currentTime=g.R>g.L?1000*(Math.min(Math.max(x,g.L),g.R)-g.L)/(g.R-g.L):0;});});
+        const drop=()=>{const g=held;held=null;if(!g||!g.on)return;if(g.raf)cancelAnimationFrame(g.raf);[g.ax,g.ar,g.as].forEach(a=>{if(a)a.cancel();});el._drg=true;setTimeout(()=>{el._drg=false;},0);
+          if(shd){shd.remove();shd.classList.remove('on');}bd.style.rotate='';el.classList.remove('held');
           const[L,R]=bounds(),fx=Math.min(Math.max(x,L),R),y0=g.y||0;
           const p0='translate('+Math.round(x)+'px,'+Math.round(y0)+'px)',p1='translate('+Math.round(fx)+'px,0px)';
           const a=land=el.animate([{transform:p0},{transform:p1}],{duration:Math.max(160,Math.min(520,Math.sqrt(Math.abs(y0)/900)*1000+120)),easing:'cubic-bezier(.5,0,1,.6)'});   /* 떨어지듯(점점 빠르게) */
