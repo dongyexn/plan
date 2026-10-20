@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1190';
+const APP_VER='1191';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -13446,10 +13446,11 @@ const PET=(()=>{let drg=false,el,bd,img,bub,ballEl,cfg=null,x=0,dir=1,mode='idle
       const tx=Math.min(Math.max(ball.x-el.offsetWidth/2,ball.lo-6),ball.hi-el.offsetWidth+6);
       moveTo(tx,95,'run',()=>{const b=ball;ball=null;if(b)ballEl.remove();hop();set(b&&b.it?'idle':'with_ball');say(b&&b.it?'😋':petPick(PET_LINES.ball));later(next,2600);});}};   /* 먹이는 공을 문 그림 대신 쉬는 그림 */
   const react=()=>{if(deep)deepOff();if(sleeping){sleep(false);hop();say(petPick(PET_LINES.wake));return;}
+    if(ball){hop();say(petPick(PET_LINES.tap));return;}   /* 공을 가지러 가는 중 — 멈추거나 딴 데로 가면 공이 바닥에 남고 펫이 굳었다 */
     clicks++;hop();const r=clicks%5,sl=petSlot();
     if(r===1)say(sl&&Math.random()<.5?petPick(PET_LINES[sl]):Math.random()<.5?(cfg.lines?petPick(cfg.lines):cfg.say):petPick(PET_LINES.tap));
     else if(r===2){stop();set('swipe');say(petPick(PET_LINES.tap));later(next,1400);}
-    else if(r===3){stop();set('with_ball');later(next,3200);}
+    else if(r===3){stop();set(cfg.it?'swipe':'with_ball');later(next,3200);}   /* 먹이 펫의 「공 문 그림」은 공을 물고 있어 안 맞는다 */
     else if(r===4){const n=todayN();say(n?'오늘 업무 '+n+'건':'일 안하농');}
     else{const[L,R]=bounds();moveTo(dir>0?L:R,75,'run');}};
   return{
@@ -13457,8 +13458,10 @@ const PET=(()=>{let drg=false,el,bd,img,bub,ballEl,cfg=null,x=0,dir=1,mode='idle
       if(!el){el=document.createElement('div');el.id='wgPet';el.setAttribute('aria-label','미니펫 — 눌러 보세요');bd=document.createElement('div');bd.className='bd';
         img=document.createElement('img');img.alt='';bub=document.createElement('div');bub.className='bub';
         const z=document.createElement('div');z.className='z';z.textContent='z';bd.append(img);el.append(bd,bub,z);
-        el.addEventListener('mouseenter',()=>{if(ball||sleeping||mode==='swipe'||mode==='with_ball')return;stop();clearTimeout(tm);set('idle');
-          hvTm=setTimeout(()=>{say(petPick(PET_LINES.pet),1400);hop();},1500);});
+        /* 쓰다듬기 — 마우스를 펫 위로 가져왔을 때만(가만히 있는 커서 밑으로 펫이 걸어 들어온 건 아니다 — 그러면 커서를 움직일 때까지 굳어 있었다).
+           반응 뒤엔 커서가 그대로 있어도 다시 돌아다닌다 */
+        el.addEventListener('mouseenter',()=>{if(ball||sleeping||drg||mode==='swipe'||mode==='with_ball'||performance.now()-petAct>400)return;stop();clearTimeout(tm);set('idle');
+          hvTm=setTimeout(()=>{say(petPick(PET_LINES.pet),1400);hop();later(next,3000);},1500);});
         el.addEventListener('mouseleave',()=>{clearTimeout(hvTm);if(!ball&&!sleeping&&mode==='idle')later(next,600);});
         el.addEventListener('click',e=>{e.stopPropagation();if(el._drg){el._drg=false;return;}react();});
         /* 잡아 끌기 — 4px 넘게 움직이면 끌기(누르기 반응은 건너뛴다). 걸을 수 있는 폭 안에서만, 놓으면 깡총 */
@@ -13490,7 +13493,7 @@ const PET=(()=>{let drg=false,el,bd,img,bub,ballEl,cfg=null,x=0,dir=1,mode='idle
       const floor=h.clientHeight/2+17;ball={x:cx-hr.left,y:floor-4,vx:(Math.random()<.5?-1:1)*(60+Math.random()*60),vy:-260,floor,lo:L+6,hi:R+el.offsetWidth-6,it};
       cancelAnimationFrame(braf);braf=requestAnimationFrame(ballStep);},
     done(){if(!cfg||!el||!el.isConnected)return;if(deep){deep=false;if(bob)bob.play();}if(sleeping){sleeping=false;clearTimeout(nap);el.classList.remove('sleep');}hop();say(petPick(PET_LINES.done),2500);
-      const[L,R]=bounds();moveTo(dir>0?R:L,75,'run');},
+      if(ball)return;const[L,R]=bounds();moveTo(dir>0?R:L,75,'run');},   /* 공을 가지러 가는 중이면 자리 이동은 건너뛴다 */
     on:()=>!!cfg};})();
 let PET_PICK=false;   /* 펫 고르기 창 열림 */
 let petAct=performance.now();   /* 위젯 위 마지막 마우스 움직임 — 깊은 잠 판단 */
@@ -13578,6 +13581,7 @@ function widApply(){
   const fv=$('#wgFontV');if(fv)fv.textContent=(WID_FONTS.find(f=>f[0]===font)||WID_FONTS[0])[1];
   const db=$('#wgDbl');if(db)db.checked=!!c.dbl;
   const i3=$('#wgIss3');if(i3)i3.checked=!!c.iss3;
+  const vr=$('#wgVer');if(vr)vr.textContent='v'+APP_VER;
   widApplyDbl();
   widIss3();
 }
