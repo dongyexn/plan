@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1197';
+const APP_VER='1198';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -13394,7 +13394,7 @@ function petLoad(){   /* 그림 묶음 — 한 번만 받는다 */
 /* ⚠ 성능 — 걷기·둥실은 Web Animations(합성기)로 돌린다. 매 프레임 JS 로 transform 을 쓰면
    이 문서는 스타일 재계산이 비싸(:has 규칙) 펫 하나에 메인 스레드 4~5%를 먹었다. 판단은 타이머로 띄엄띄엄,
    프레임 루프는 공이 날아갈 때만 잠깐 돈다 */
-const PET=(()=>{let drg=false,shd=null,land=null,el,bd,img,bub,ballEl,cfg=null,x=0,dir=1,mode='idle',anim=null,tm=0,hvTm=0,bt=0,clicks=0,sleeping=false,nap=0,ball=null,braf=0,talk=0,bob=null;
+const PET=(()=>{let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl,cfg=null,x=0,dir=1,mode='idle',anim=null,tm=0,hvTm=0,bt=0,clicks=0,sleeping=false,nap=0,ball=null,braf=0,talk=0,bob=null;
   const head=()=>document.querySelector('#view-calendar .cal-head');
   /* 걸을 수 있는 폭 — 왼쪽은 년월 묶음(「오늘」이 보이면 그 뒤), 오른쪽은 필터 칩·단추 묶음 중 먼저 오는 것. 판단할 때만 잰다 */
   const bounds=()=>{const h=head();if(!h)return[0,-1];const hr=h.getBoundingClientRect(),w=el?el.offsetWidth:40;
@@ -13403,7 +13403,7 @@ const PET=(()=>{let drg=false,shd=null,land=null,el,bd,img,bub,ballEl,cfg=null,x
     h.querySelectorAll('.cal-fchips:not([hidden]),.cal-ctl').forEach(e=>{const b=e.getBoundingClientRect();if(b.width)r=Math.min(r,b.left-hr.left);});
     return[l+8,r-w-8];};
   const set=m=>{const g=cfg.g[m]||cfg.g.idle||cfg.g.walk;mode=cfg.g[m]?m:'idle';
-    if(img.dataset.m!==mode){img.dataset.m=mode;img.src=petUrl(g.f);img.style.width=g.w+'px';img.style.height=g.h+'px';}};   /* 그림 위아래 빈 줄을 잘라 둔 크기 — 발이 늘 같은 바닥선 */
+    if(img.dataset.m!==mode){img.dataset.m=mode;img.src=petUrl(g.f);img.style.width=g.w+'px';img.style.height=g.h+'px';if(sh)sh.style.width=Math.round(g.w*(cfg.fly?.42:.62))+'px';}};   /* 그림자 폭 = 그림 폭의 62%(나는 펫은 작게) */   /* 그림 위아래 빈 줄을 잘라 둔 크기 — 발이 늘 같은 바닥선 */
   const face=()=>{img.style.transform='scaleX('+(cfg&&cfg.fl?-dir:dir)+')';};   /* fl — 그림이 왼쪽을 보고 그려진 펫 */
   const turn=d=>{if(d!==dir){dir=d;face();}};
   /* 지금 자리 — 걷는 중이면 진행률로 계산(레이아웃을 읽지 않는다) */
@@ -13432,7 +13432,7 @@ const PET=(()=>{let drg=false,shd=null,land=null,el,bd,img,bub,ballEl,cfg=null,x
      위젯 안으로 마우스가 다시 들어오면(pointermove) 깬다 */
   const IDLE_MS=180000;let deep=false;
   const deepOn=()=>{deep=true;stop();clearTimeout(tm);clearTimeout(nap);sleeping=false;el.classList.remove('sleep','hop');img.dataset.m='z';
-    img.src=petUrl(cfg.z.f);img.style.width=cfg.z.w+'px';img.style.height=cfg.z.h+'px';if(bob)bob.pause();};
+    img.src=petUrl(cfg.z.f);img.style.width=cfg.z.w+'px';img.style.height=cfg.z.h+'px';if(sh)sh.style.width=Math.round(cfg.z.w*.62)+'px';if(bob)bob.pause();};
   const deepOff=()=>{if(!deep)return;deep=false;if(bob)bob.play();set('idle');later(next,300);};
   const next=()=>{if(!cfg||!el.isConnected||sleeping||ball||deep)return;
     if(performance.now()-petAct>IDLE_MS){deepOn();return;}const[L,R]=bounds(),hid=R<L;el.hidden=hid;
@@ -13466,7 +13466,7 @@ const PET=(()=>{let drg=false,shd=null,land=null,el,bd,img,bub,ballEl,cfg=null,x
     mount(c){const h=head();if(!h)return;const fresh=cfg!==c;cfg=c;
       if(!el){el=document.createElement('div');el.id='wgPet';el.setAttribute('aria-label','미니펫 — 눌러 보세요');bd=document.createElement('div');bd.className='bd';
         img=document.createElement('img');img.alt='';bub=document.createElement('div');bub.className='bub';
-        const z=document.createElement('div');z.className='z';z.textContent='z';bd.append(img);el.append(bd,bub,z);
+        const z=document.createElement('div');z.className='z';z.textContent='z';sh=document.createElement('i');sh.className='sh';bd.append(img);el.append(sh,bd,bub,z);   /* sh — 발밑 그림자(바닥에 남고, 깡총·둥실은 .bd 만) */
         /* 쓰다듬기 — 마우스를 펫 위로 가져왔을 때만(가만히 있는 커서 밑으로 펫이 걸어 들어온 건 아니다 — 그러면 커서를 움직일 때까지 굳어 있었다).
            반응 뒤엔 커서가 그대로 있어도 다시 돌아다닌다 */
         el.addEventListener('mouseenter',()=>{if(ball||sleeping||drg||mode==='swipe'||mode==='with_ball'||performance.now()-petAct>400)return;stop();clearTimeout(tm);set('idle');
@@ -13512,7 +13512,7 @@ const PET=(()=>{let drg=false,shd=null,land=null,el,bd,img,bub,ballEl,cfg=null,x
         el.addEventListener('pointerup',drop);el.addEventListener('pointercancel',drop);}
       if(el.parentNode!==h)h.appendChild(el);
       bd.style.width=Math.max(...Object.values(c.g).map(g=>g.w))+'px';   /* 동작마다 그림 폭이 달라(달리기 39 · 쉬기 33 …) 바꿀 때 몸이 5~10px 튀었다 — 가장 넓은 폭의 칸 가운데에 둔다 */
-      if(fresh){img.dataset.m='';if(bob){bob.cancel();bob=null;}img.style.imageRendering=c.sm?'auto':'';face();   /* sm — 픽셀 격자가 아닌 그림은 매끈하게 */
+      if(fresh){img.dataset.m='';el.classList.toggle('fly',!!c.fly);if(bob){bob.cancel();bob=null;}img.style.imageRendering=c.sm?'auto':'';face();   /* sm — 픽셀 격자가 아닌 그림은 매끈하게 */
         if(c.fly){const fy=c.fy||16;bob=bd.animate([{transform:'translateY(-'+Math.round(fy/4)+'px)'},{transform:'translateY(-'+fy+'px)'}],{duration:900,iterations:Infinity,direction:'alternate',easing:'ease-in-out'});}   /* 나는 펫 — 떠서 둥실. fy = 위쪽 끝(큰 그림은 낮게) */
         set(sleeping?'lie':'idle');if(!x)x=bounds()[0]+20;stop();if(!sleeping)later(next,400);}
       document.body.classList.add('pet-on');
@@ -16614,7 +16614,7 @@ function issCard(s,kind){
   const head=issHead(s,n,pg);
   return '<div class="iss-c'+(pg?' card':'')+'" data-sid="'+esc(s.id)+'">'+head
     +(S.issUI.add===s.id?'<div class="iss-new"><input class="iss-in" data-sid="'+esc(s.id)+'" maxlength="200" placeholder="현안 입력 후 Enter" aria-label="현안 입력"></div>':'')
-    +(rows.length?'<ul class="iss-ul">'+rows.map(x=>issItem(s.id,x)).join('')+'</ul>':'<div class="iss-empty">진행 중인 현안이 없습니다.</div>')
+    +(rows.length?'<ul class="iss-ul">'+rows.map(x=>issItem(s.id,x)).join('')+'</ul>':S.issUI.add===s.id?'':'<div class="iss-empty">진행 중인 현안이 없습니다.</div>')   /* 적는 중엔 빈 카드 문구를 뺀다 */
     +'</div>';}
 /* 권역 탭 + 카드 — 데스크톱 화면과 위젯 판이 같은 구성 */
 function issBoard(kind){
