@@ -85,6 +85,8 @@ const txt=(pg,sel)=>pg.evaluate(s=>[...document.querySelectorAll(s)].map(e=>e.te
   await pg.click('.ctxmenu .ctx-it');await pg.waitForTimeout(200);
   ok('다시 넣기',await pg.evaluate(()=>!!$('#issPane .iss-c[data-sid="s2"]')&&!JSON.parse(localStorage.getItem('calapp.v1')).issHide.s2));
   await pg.click('#issPane [data-act="iss.sort"]');await pg.click('.ctxmenu .ctx-it:has-text("진행 많은 순")');await pg.waitForTimeout(200);
+  await pg.click('#issPane [data-act="iss.sort"]');await pg.waitForTimeout(150);await pg.click('#issPane [data-act="iss.sort"]');await pg.waitForTimeout(300);
+  ok('정렬 단추 다시 누르면 닫힘',await pg.evaluate(()=>!document.querySelector('.ctxmenu:not(.out)')));
   ok('정렬 — 진행 많은 순(내 설정 저장)',await pg.evaluate(()=>S.prefs.iss&&S.prefs.iss.sort==='open'&&document.querySelector('#issPane .iss-c').dataset.sid==='s1'));
   await pg.dblclick('#issPane .iss-c[data-sid="s1"] .iss-ch b');await pg.waitForTimeout(200);
   ok('머리 두 번 → 접기',await pg.evaluate(()=>$('#issPane .iss-c[data-sid="s1"]').classList.contains('fold')&&S.prefs.iss.fold==='s1'));
