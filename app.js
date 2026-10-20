@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1194';
+const APP_VER='1195';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -13377,7 +13377,9 @@ const PET_LINES={tap:['허거덩','허걱스','하이','제가요?','이걸요?'
   lunch:['맛점','점심 뭐먹냐','배고프다','🍚','🍜'],
   leave:['칼퇴 좀','퇴근해요','집에 보내죠','🏃','🏠'],
   wake:['Zzz..','까꿍','데헷','흥','😪'],
-  pet:['야르릉','💕']};
+  pet:['야르릉','💕'],
+  food:['😋'],drop:['😵'],idle:['일 안하농'],
+  today:['오늘 업무 {n}건'],com:['오늘 공통: {t}'],comMore:['외 {n}건']};   /* {n}·{t} 는 숫자·업무 이름으로 바뀐다 */
 const petPick=a=>a[Math.floor(Math.random()*a.length)];
 const petUrl=f=>'./vendor/pets/'+f+'?v='+APP_VER;   /* 그림 파일 — 쓰는 것만 받고 브라우저가 캐시한다 */
 const petSlot=()=>{const d=new Date(),v=d.getHours()*60+d.getMinutes();return v>=660&&v<=690?'lunch':v>=1020?'leave':'';};
@@ -13416,8 +13418,14 @@ const PET=(()=>{let drg=false,shd=null,land=null,el,bd,img,bub,ballEl,cfg=null,x
     const R=bounds()[1];bub.classList.toggle('l',pos()+bub.offsetWidth+12>R);   /* 오른쪽 단추에 닿으면 말풍선을 왼쪽으로 */
     bub.classList.add('on');clearTimeout(bt);bt=setTimeout(()=>bub.classList.remove('on'),ms);};
   const hop=()=>{el.classList.remove('hop');void el.offsetWidth;el.classList.add('hop');};
-  const todayN=()=>{const td=document.querySelector('#fcal td.fc-day-today');if(!td)return 0;let n=td.querySelectorAll('.fc-daygrid-event-harness:not(.fc-daygrid-event-harness-abs)').length;
-    const m=td.querySelector('.fc-daygrid-more-link');if(m)n+=parseInt(m.textContent.replace(/\D/g,''))||0;return n;};
+  /* 하트 — 쓰다듬기(3개)·먹이(1개). 머리 위로 떠올라 사라진다(CSS 애니메이션, 끝나면 지움). 그림: Fluent Emoji ❤️(MIT) */
+  const hearts=n=>{const h=head();if(!h||!el)return;const cx=pos()+el.offsetWidth/2;
+    for(let i=0;i<n;i++)setTimeout(()=>{const o=document.createElement('i');o.className='wgHt';o.style.left=Math.round(cx-6+Math.random()*14-7)+'px';
+      o.style.setProperty('--dx',Math.round(Math.random()*12-6)+'px');o.style.backgroundImage='url('+petUrl('it-heart.png')+')';h.appendChild(o);o.addEventListener('animationend',()=>o.remove());},i*220);};
+  /* 오늘 달력 막대 — 그려진 칸을 세면 기간 업무(여러 날 막대)가 빠졌다. 달력과 같은 자료(buildEvents · 필터 포함)에서 오늘에 걸친 것 */
+  const todayEvs=()=>{const t=todayStr();return buildEvents(t,t).filter(e=>{const s=String(e.start).slice(0,10);return e.end?(s<=t&&t<e.end):s===t;});};
+  const todayN=()=>todayEvs().length;
+  const todayCom=()=>todayEvs().filter(e=>(e.classNames||[]).includes('team')).map(e=>{const p=findPlan(e.extendedProps.pid);return p?p.title:'';}).filter(Boolean);
   /* 다음 행동 — 걷기(55%)·쉬기·눕기·낮잠. 좁아서 걸을 자리가 없으면 숨는다 */
   /* 깊은 잠 — 위젯 위에서 3분 동안 마우스가 없으면 멈춘 그림(z)으로 잔다. 그동안 그림·애니메이션이 모두 서서 CPU 를 거의 안 쓴다.
      위젯 안으로 마우스가 다시 들어오면(pointermove) 깬다 */
@@ -13444,14 +13452,14 @@ const PET=(()=>{let drg=false,shd=null,land=null,el,bd,img,bub,ballEl,cfg=null,x
     ballEl.style.transform='translate('+Math.round(ball.x-(it?8:5))+'px,'+Math.round(ball.y-(it?16:10))+'px)';
     if(!ball.vy&&!ball.vx&&!ball.go){cancelAnimationFrame(braf);if(drg)return;ball.go=1;   /* 끄는 중이면 놓을 때까지 기다린다 */
       const tx=Math.min(Math.max(ball.x-el.offsetWidth/2,ball.lo-6),ball.hi-el.offsetWidth+6);
-      moveTo(tx,95,'run',()=>{const b=ball;ball=null;if(b)ballEl.remove();hop();set(b&&b.it?'idle':'with_ball');say(b&&b.it?'😋':petPick(PET_LINES.ball));later(next,2600);});}};   /* 먹이는 공을 문 그림 대신 쉬는 그림 */
+      moveTo(tx,95,'run',()=>{const b=ball;ball=null;if(b)ballEl.remove();hop();set(b&&b.it?'idle':'with_ball');say(b&&b.it?petPick(PET_LINES.food):petPick(PET_LINES.ball));if(b&&b.it)hearts(1);later(next,2600);});}};   /* 먹이는 공을 문 그림 대신 쉬는 그림 */
   const react=()=>{if(deep)deepOff();if(sleeping){sleep(false);hop();say(petPick(PET_LINES.wake));return;}
     if(ball){hop();say(petPick(PET_LINES.tap));return;}   /* 공을 가지러 가는 중 — 멈추거나 딴 데로 가면 공이 바닥에 남고 펫이 굳었다 */
     clicks++;hop();const r=clicks%5,sl=petSlot();
     if(r===1)say(sl&&Math.random()<.5?petPick(PET_LINES[sl]):Math.random()<.5?(cfg.lines?petPick(cfg.lines):cfg.say):petPick(PET_LINES.tap));
     else if(r===2){stop();set('swipe');say(petPick(PET_LINES.tap));later(next,1400);}
     else if(r===3){stop();set(cfg.it?'swipe':'with_ball');later(next,3200);}   /* 먹이 펫의 「공 문 그림」은 공을 물고 있어 안 맞는다 */
-    else if(r===4){const n=todayN();say(n?'오늘 업무 '+n+'건':'일 안하농');}
+    else if(r===4){const n=todayN();say(n?PET_LINES.today[0].replace('{n}',n):petPick(PET_LINES.idle));}
     else{const[L,R]=bounds();moveTo(dir>0?L:R,75,'run');}};
   return{
     mount(c){const h=head();if(!h)return;const fresh=cfg!==c;cfg=c;
@@ -13461,7 +13469,7 @@ const PET=(()=>{let drg=false,shd=null,land=null,el,bd,img,bub,ballEl,cfg=null,x
         /* 쓰다듬기 — 마우스를 펫 위로 가져왔을 때만(가만히 있는 커서 밑으로 펫이 걸어 들어온 건 아니다 — 그러면 커서를 움직일 때까지 굳어 있었다).
            반응 뒤엔 커서가 그대로 있어도 다시 돌아다닌다 */
         el.addEventListener('mouseenter',()=>{if(ball||sleeping||drg||mode==='swipe'||mode==='with_ball'||performance.now()-petAct>400)return;stop();clearTimeout(tm);set('idle');
-          hvTm=setTimeout(()=>{say(petPick(PET_LINES.pet),1400);hop();later(next,3000);},1500);});
+          hvTm=setTimeout(()=>{say(petPick(PET_LINES.pet),1400);hop();hearts(3);later(next,3000);},1500);});
         el.addEventListener('mouseleave',()=>{clearTimeout(hvTm);if(!ball&&!sleeping&&mode==='idle')later(next,600);});
         el.addEventListener('click',e=>{e.stopPropagation();if(el._drg){el._drg=false;return;}react();});
         /* 잡아 끌기 — 누른 채 4px 넘게 움직이면 잡는다. 잡은 자리 그대로 커서를 가로로 따라오고 머리 줄 안에서만, 6px 들린 채(세로로 달력 위까지 끌면
@@ -13497,7 +13505,7 @@ const PET=(()=>{let drg=false,shd=null,land=null,el,bd,img,bub,ballEl,cfg=null,x
           const p0='translate('+Math.round(x)+'px,'+Math.round(y0)+'px)',p1='translate('+Math.round(fx)+'px,0px)';
           const a=land=el.animate([{transform:p0},{transform:p1}],{duration:Math.max(160,Math.min(520,Math.sqrt(Math.abs(y0)/900)*1000+120)),easing:'cubic-bezier(.5,0,1,.6)'});   /* 떨어지듯(점점 빠르게) */
           x=fx;el.style.transform='translateX('+Math.round(x)+'px)';
-          a.onfinish=()=>{land=null;drg=false;hop();say('😵',900);
+          a.onfinish=()=>{land=null;drg=false;hop();say(petPick(PET_LINES.drop),900);
             if(ball&&!ball.vx&&!ball.vy){ball.go=0;cancelAnimationFrame(braf);braf=requestAnimationFrame(ballStep);}   /* 끄는 동안 멎은 공 — 놓은 자리에서 가지러 간다 */
             else if(!ball)later(next,3000);};};
         el.addEventListener('pointerup',drop);el.addEventListener('pointercancel',drop);}
@@ -13507,7 +13515,10 @@ const PET=(()=>{let drg=false,shd=null,land=null,el,bd,img,bub,ballEl,cfg=null,x
         if(c.fly){const fy=c.fy||16;bob=bd.animate([{transform:'translateY(-'+Math.round(fy/4)+'px)'},{transform:'translateY(-'+fy+'px)'}],{duration:900,iterations:Infinity,direction:'alternate',easing:'ease-in-out'});}   /* 나는 펫 — 떠서 둥실. fy = 위쪽 끝(큰 그림은 낮게) */
         set(sleeping?'lie':'idle');if(!x)x=bounds()[0]+20;stop();if(!sleeping)later(next,400);}
       document.body.classList.add('pet-on');
-      if(!talk)talk=setInterval(()=>{const sl=petSlot();if(sl&&cfg&&!sleeping&&!deep&&!document.hidden&&Math.random()<.2)say(petPick(PET_LINES[sl]),2600);},30000);},   /* 시간 대사 — 30초마다 20% (평균 2~3분에 한 번) */
+      if(!talk)talk=setInterval(()=>{if(!cfg||sleeping||deep||drg||ball||document.hidden)return;const sl=petSlot();
+        if(sl){if(Math.random()<.2)say(petPick(PET_LINES[sl]),2600);return;}   /* 시간 대사 — 30초마다 20% (평균 2~3분에 한 번) */
+        if(Math.random()<.08){const c=todayCom();if(c.length){const t=petPick(c),tt=t.length>14?t.slice(0,14)+'…':t;
+          say(petPick(PET_LINES.com).replace('{t}',tt)+(c.length>1?' '+PET_LINES.comMore[0].replace('{n}',c.length-1):''),3200);}}},30000);},   /* 오늘 공통 업무 — 30초마다 8%(평균 6분에 한 번), 없으면 말 안 함 */
     wake:()=>{if(cfg&&el&&el.isConnected)deepOff();},
     unmount(){deep=false;clearTimeout(tm);clearTimeout(nap);clearTimeout(hvTm);clearInterval(talk);talk=0;cancelAnimationFrame(braf);
       if(anim){anim.onfinish=null;anim.cancel();anim=null;}if(bob){bob.cancel();bob=null;}if(el)el.remove();if(ballEl)ballEl.remove();ball=null;cfg=null;sleeping=false;document.body.classList.remove('pet-on');},
@@ -16618,7 +16629,9 @@ function issBoard(kind){
     +'<div class="iss-sc" data-sb>'+body+'</div>';}
 /* 위젯 4주 아래 칸 — 내 담당 현장만(로컬 모드는 전부) */
 function issStripHTML(){
-  const my=mySites(),sites=issSites().filter(s=>!S.user||my[s.id]);
+  /* 팀장(팀 단위 직급)은 모든 현장, 공구장은 담당 공구(내 권역)의 모든 현장, 담당자는 내 담당 현장 */
+  const my=mySites(),rk=myRank(),me=(S.people||{})[authUid()]||{};
+  const sites=issSites().filter(s=>!S.user||isTeamRank(rk)||(rk==='lead'&&me.region&&s.region===me.region)||my[s.id]);
   return sites.length?sites.map(s=>issCard(s,'w')).join(''):'<div class="iss-none">담당 현장이 없습니다. 조직 관리에서 담당 현장을 배정하세요.</div>';}
 /* 다시 그리기 — 입력 중이면 미뤘다가 입력을 떠날 때(focusout) 그린다. force 는 이쪽 조작(입력 칸을 새로 다는 경우) */
 function issTyping(){const a=document.activeElement;return !!(a&&a.matches&&a.matches('.iss-in,.iss-ed'));}
