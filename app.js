@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1191';
+const APP_VER='1192';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -13391,7 +13391,7 @@ function petLoad(){   /* 그림 묶음 — 한 번만 받는다 */
 /* ⚠ 성능 — 걷기·둥실은 Web Animations(합성기)로 돌린다. 매 프레임 JS 로 transform 을 쓰면
    이 문서는 스타일 재계산이 비싸(:has 규칙) 펫 하나에 메인 스레드 4~5%를 먹었다. 판단은 타이머로 띄엄띄엄,
    프레임 루프는 공이 날아갈 때만 잠깐 돈다 */
-const PET=(()=>{let drg=false,el,bd,img,bub,ballEl,cfg=null,x=0,dir=1,mode='idle',anim=null,tm=0,hvTm=0,bt=0,clicks=0,sleeping=false,nap=0,ball=null,braf=0,talk=0,bob=null;
+const PET=(()=>{let drg=false,shd=null,el,bd,img,bub,ballEl,cfg=null,x=0,dir=1,mode='idle',anim=null,tm=0,hvTm=0,bt=0,clicks=0,sleeping=false,nap=0,ball=null,braf=0,talk=0,bob=null;
   const head=()=>document.querySelector('#view-calendar .cal-head');
   /* 걸을 수 있는 폭 — 왼쪽은 년월 묶음(「오늘」이 보이면 그 뒤), 오른쪽은 필터 칩·단추 묶음 중 먼저 오는 것. 판단할 때만 잰다 */
   const bounds=()=>{const h=head();if(!h)return[0,-1];const hr=h.getBoundingClientRect(),w=el?el.offsetWidth:40;
@@ -13464,18 +13464,35 @@ const PET=(()=>{let drg=false,el,bd,img,bub,ballEl,cfg=null,x=0,dir=1,mode='idle
           hvTm=setTimeout(()=>{say(petPick(PET_LINES.pet),1400);hop();later(next,3000);},1500);});
         el.addEventListener('mouseleave',()=>{clearTimeout(hvTm);if(!ball&&!sleeping&&mode==='idle')later(next,600);});
         el.addEventListener('click',e=>{e.stopPropagation();if(el._drg){el._drg=false;return;}react();});
-        /* 잡아 끌기 — 4px 넘게 움직이면 끌기(누르기 반응은 건너뛴다). 걸을 수 있는 폭 안에서만, 놓으면 깡총 */
-        el.addEventListener('pointerdown',e=>{if(e.button!==0)return;const sx=e.clientX;let x0=0,on=false;
-          const mv=ev=>{const dx=ev.clientX-sx;
-            if(!on){if(Math.abs(dx)<4)return;on=drg=true;clearTimeout(hvTm);clearTimeout(tm);
-              if(deep){deep=false;if(bob)bob.play();}if(sleeping){sleeping=false;clearTimeout(nap);el.classList.remove('sleep');}
-              stop();x0=x;set('idle');el.classList.add('drag');}
-            const[L,R]=bounds();x=Math.min(Math.max(x0+dx,L),R);turn(dx>=0?1:-1);el.style.transform='translateX('+Math.round(x)+'px)';};
-          const up=()=>{removeEventListener('pointermove',mv);removeEventListener('pointerup',up);removeEventListener('pointercancel',up);
-            if(!on)return;drg=false;el._drg=true;setTimeout(()=>{el._drg=false;},0);el.classList.remove('drag');hop();
+        /* 잡아 끌기 — 누른 채 4px 넘게 움직이면 잡는다. 잡은 자리 그대로 커서를 따라 위젯 어디로든(가로·세로) 오고,
+           위가 축인 채 끄는 쪽으로 흔들린다(±25°). 머리 줄 바닥엔 놓일 자리 그림자. 놓으면 그 아래 바닥(걸을 수 있는 칸 안)으로 —
+           바닥 높이면 떨어지고, 달력 위(아래쪽)면 폴짝 뛰어 올라와 앉는다. 끈 뒤 click 은 누르기 반응·공 던지기 둘 다 건너뛴다 */
+        let held=null;
+        el.addEventListener('pointerdown',e=>{if(e.button!==0)return;const r=el.getBoundingClientRect();
+          held={sx:e.clientX,sy:e.clientY,gx:e.clientX-r.left,gy:e.clientY-r.top,on:false,px:e.clientX,pt:performance.now(),rot:0,y:0};
+          try{el.setPointerCapture(e.pointerId);}catch(_){}});
+        el.addEventListener('pointermove',e=>{const g=held;if(!g)return;
+          if(!g.on){if(Math.hypot(e.clientX-g.sx,e.clientY-g.sy)<4)return;g.on=drg=true;clearTimeout(hvTm);clearTimeout(tm);
+            if(deep){deep=false;if(bob)bob.play();}if(sleeping){sleeping=false;clearTimeout(nap);el.classList.remove('sleep');}
+            stop();set('idle');el.classList.add('held');
+            if(!shd){shd=document.createElement('div');shd.id='wgPetSh';}el.parentNode.appendChild(shd);}
+          const h=head(),hr=h.getBoundingClientRect(),w=el.offsetWidth,t0=el.offsetTop;
+          const nx=Math.min(Math.max(e.clientX-g.gx-hr.left,-hr.left),innerWidth-hr.left-w),ny=Math.min(Math.max(e.clientY-g.gy-hr.top-t0,-hr.top-t0),innerHeight-hr.top-t0-el.offsetHeight);
+          const now=performance.now(),vx=(e.clientX-g.px)/Math.max(8,now-g.pt);g.px=e.clientX;g.pt=now;
+          g.rot=Math.max(-25,Math.min(25,g.rot*.6-vx*14));bd.style.rotate=g.rot.toFixed(1)+'deg';if(Math.abs(vx)>.05)turn(vx>0?1:-1);
+          x=nx;g.y=ny;el.style.transform='translate('+Math.round(nx)+'px,'+Math.round(ny)+'px)';
+          const[L,R]=bounds(),fx=Math.min(Math.max(nx,L),R);shd.style.left=Math.round(fx+w*.15)+'px';shd.style.width=Math.round(w*.7)+'px';shd.style.top=(t0+el.offsetHeight-2)+'px';shd.classList.toggle('on',ny>4);});
+        const drop=()=>{const g=held;held=null;if(!g||!g.on)return;el._drg=true;setTimeout(()=>{el._drg=false;},0);
+          if(shd)shd.remove();bd.style.rotate='';el.classList.remove('held');
+          const[L,R]=bounds(),fx=Math.min(Math.max(x,L),R),y0=g.y||0;
+          const p0='translate('+Math.round(x)+'px,'+Math.round(y0)+'px)',p1='translate('+Math.round(fx)+'px,0px)';
+          const a=y0>8?el.animate([{transform:p0,easing:'cubic-bezier(.2,.6,.4,1)'},{transform:'translate('+Math.round(fx)+'px,-14px)',offset:.72,easing:'cubic-bezier(.5,0,1,.6)'},{transform:p1}],{duration:Math.max(380,Math.min(700,y0*1.4+260))})   /* 바닥보다 아래 — 폴짝 뛰어 올라온다 */
+            :el.animate([{transform:p0},{transform:p1}],{duration:Math.max(160,Math.min(520,Math.sqrt(Math.abs(y0)/900)*1000+120)),easing:'cubic-bezier(.5,0,1,.6)'});   /* 바닥 위 — 떨어지듯 */
+          x=fx;el.style.transform='translateX('+Math.round(x)+'px)';
+          a.onfinish=()=>{drg=false;hop();say('😵',900);
             if(ball&&!ball.vx&&!ball.vy){ball.go=0;cancelAnimationFrame(braf);braf=requestAnimationFrame(ballStep);}   /* 끄는 동안 멎은 공 — 놓은 자리에서 가지러 간다 */
-            else if(!ball)later(next,3000);};
-          addEventListener('pointermove',mv);addEventListener('pointerup',up);addEventListener('pointercancel',up);});}
+            else if(!ball)later(next,3000);};};
+        el.addEventListener('pointerup',drop);el.addEventListener('pointercancel',drop);}
       if(el.parentNode!==h)h.appendChild(el);
       bd.style.width=Math.max(...Object.values(c.g).map(g=>g.w))+'px';   /* 동작마다 그림 폭이 달라(달리기 39 · 쉬기 33 …) 바꿀 때 몸이 5~10px 튀었다 — 가장 넓은 폭의 칸 가운데에 둔다 */
       if(fresh){img.dataset.m='';if(bob){bob.cancel();bob=null;}img.style.imageRendering=c.sm?'auto':'';face();   /* sm — 픽셀 격자가 아닌 그림은 매끈하게 */
