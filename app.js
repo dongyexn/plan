@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1198';
+const APP_VER='1199';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -16569,7 +16569,16 @@ function issVis(s){const v=(S.issHide||{})[s.id];return v===true?false:v===false
 /* 카드 순서 — 권역 순서(조직 관리 권역 → 권역 미지정 → 인수 전) 안에서 담당자 순서(명부 순서, 첫 담당자 기준 · 담당자 없는 현장은 뒤) */
 function issOrder(list){const R=roster(),ix=id=>{const i=R.findIndex(p=>p.id===id);return i<0?1e6:i;},rk=s=>{const o=issOwners(s.id);return o.length?Math.min(...o.map(p=>ix(p.id))):1e6;};
   return issGroups(list).flatMap(g=>g[2].map((s,i)=>[s,rk(s),i]).sort((a,b)=>a[1]-b[1]||a[2]-b[2]).map(x=>x[0]));}
-function issSites(){return issOrder(issBase().filter(issVis));}
+/* 내 화면 설정(calapp/prefs/{uid}/iss) — 정렬 sort(base·open·old·me·mine) · 내 순서 order(현장 id 쉼표) · 접은 카드 fold · 현안 없는 카드 접기 fe */
+function issPref(){const p=(S.prefs&&S.prefs.iss)||{};return{sort:p.sort||'base',order:String(p.order||'').split(',').filter(Boolean),fold:String(p.fold||'').split(',').filter(Boolean),fe:!!p.fe};}
+function issPrefSet(o){const p={...issPref(),...o},v={};if(p.sort!=='base')v.sort=p.sort;if(p.order.length)v.order=p.order.join(',').slice(0,4000);if(p.fold.length)v.fold=p.fold.join(',').slice(0,4000);if(p.fe)v.fe=true;
+  S.prefs=S.prefs||{};S.prefs.iss=Object.keys(v).length?v:undefined;store.putPref('iss',Object.keys(v).length?v:null);}
+function issOld(sid){const t=todayStr();return Math.max(0,...issAll(sid).filter(x=>!x.dt).map(x=>daysBetween(dstr(new Date(x.at||0)),t)));}
+function issSorted(list){const p=issPref(),bi=new Map(list.map((s,i)=>[s.id,i])),b=s=>bi.get(s.id);
+  if(p.sort==='mine'&&p.order.length){const oi=new Map(p.order.map((id,i)=>[id,i]));return list.slice().sort((x,y)=>((oi.has(x.id)?oi.get(x.id):1e6+b(x))-(oi.has(y.id)?oi.get(y.id):1e6+b(y))));}
+  const my=mySites(),k={open:s=>-issOpenN(s.id),old:s=>-issOld(s.id),me:s=>my[s.id]?0:1}[p.sort];
+  return k?list.slice().sort((x,y)=>k(x)-k(y)||b(x)-b(y)):list;}
+function issSites(){return issSorted(issOrder(issBase().filter(issVis)));}
 function issHidden(){return issBase().filter(s=>!issVis(s));}
 function issHideSet(sid,on){   /* on = 뺀다 · 기본과 같아지면 지운다 */
   const v=on===dfIsHidden(sid)?null:on;
@@ -16591,7 +16600,7 @@ function issTail(x){const who=issWho(x.by),tip=issMD(x.at)+' 등록'+(who?' · '
   const n=daysBetween(dstr(new Date(x.at||0)),todayStr());
   return '<span class="iss-m'+(n>=ISS_OLD?' old':'')+'" data-tip="'+tip+'">'+(n<=0?'오늘':'D+'+n)+'</span>';}
 function issItem(sid,x){const ed=S.issUI.ed===sid+'/'+x.iid;
-  return '<li class="iss-i'+(x.dt?' done':'')+'" data-sid="'+esc(sid)+'" data-iid="'+esc(x.iid)+'">'
+  return '<li class="iss-i'+(x.dt?' done':(Date.now()-(x.at||0)<864e5?' nw':''))+'" data-sid="'+esc(sid)+'" data-iid="'+esc(x.iid)+'">'
     +'<button class="iss-ck" data-act="iss.ck" aria-label="'+(x.dt?'해결 취소':'해결')+'" aria-pressed="'+(x.dt?'true':'false')+'"></button>'
     +(ed?'<input class="iss-ed" value="'+esc(x.t)+'" maxlength="200" aria-label="현안 고치기">':'<span class="iss-tx" data-act="iss.edit">'+esc(x.t)+'</span>')
     +issTail(x)
@@ -16612,7 +16621,8 @@ function issHead(s,n,pg){
 function issCard(s,kind){
   const rows=issRows(s.id),n=issOpenN(s.id),pg=kind==='pg';
   const head=issHead(s,n,pg);
-  return '<div class="iss-c'+(pg?' card':'')+'" data-sid="'+esc(s.id)+'">'+head
+  const p=issPref(),fold=p.fold.includes(s.id)||(p.fe&&!n);   /* 접기 — 내가 접은 카드 · 「현안 없는 현장 접기」 */
+  return '<div class="iss-c'+(pg?' card':'')+(fold?' fold':'')+'" data-sid="'+esc(s.id)+'">'+head
     +(S.issUI.add===s.id?'<div class="iss-new"><input class="iss-in" data-sid="'+esc(s.id)+'" maxlength="200" placeholder="현안 입력 후 Enter" aria-label="현안 입력"></div>':'')
     +(rows.length?'<ul class="iss-ul">'+rows.map(x=>issItem(s.id,x)).join('')+'</ul>':S.issUI.add===s.id?'':'<div class="iss-empty">진행 중인 현안이 없습니다.</div>')   /* 적는 중엔 빈 카드 문구를 뺀다 */
     +'</div>';}
@@ -16627,9 +16637,9 @@ function issBoard(kind){
     :'<div class="iss-empty">등록된 현장이 없습니다. 조직 관리에서 현장을 등록하세요.</div>';
   if(kind==='pg')return '<div class="tkbar rk-tabbar iss-tabs"><div class="rp-tabs tkm-tabs tkbar-tabs" data-sbx>'
       +tabs.map(([k,n,l])=>'<button class="rp-tab'+(S.issUI.rg===k?' on':'')+'" data-act="iss.rg" data-rg="'+esc(k)+'">'+esc(n)+'<span class="rp-tcnt">'+cnt(l)+'</span></button>').join('')
-      +'</div><button class="btn bo bsm tkq-add" data-act="iss.more" aria-label="현장 추가" aria-haspopup="menu">'+issIcn('plus')+'<span class="tkq-t">현장 추가</span></button></div><div class="iss-sc" data-sb>'+body+'</div>';
+      +'</div><button class="btn bo bsm tkq-add" data-act="iss.sort" aria-label="정렬" aria-haspopup="menu"><svg class="icn" aria-hidden="true"><use href="#i-sort"></use></svg><span class="tkq-t">정렬</span></button><button class="btn bo bsm tkq-add" data-act="iss.more" aria-label="현장 추가" aria-haspopup="menu">'+issIcn('plus')+'<span class="tkq-t">현장 추가</span></button></div><div class="iss-sc" data-sb>'+body+'</div>';
   return '<div class="iss-wt">'+tabs.map(([k,n,l])=>'<button class="'+(S.issUI.rg===k?'on':'')+'" data-act="iss.rg" data-rg="'+esc(k)+'">'+esc(n)+'<span>'+cnt(l)+'</span></button>').join('')
-    +'<button class="iss-more" data-act="iss.more" aria-label="현장 추가" data-tip="현장 추가" aria-haspopup="menu">'+issIcn('plus')+'</button></div>'
+    +'<button class="iss-srt" data-act="iss.sort" aria-label="정렬" data-tip="정렬" aria-haspopup="menu">'+issIcn('sort')+'</button><button class="iss-more" data-act="iss.more" aria-label="현장 추가" data-tip="현장 추가" aria-haspopup="menu">'+issIcn('plus')+'</button></div>'
     +'<div class="iss-sc" data-sb>'+body+'</div>';}
 /* 위젯 4주 아래 칸 — 내 담당 현장만(로컬 모드는 전부) */
 function issStripHTML(){
@@ -16690,6 +16700,12 @@ function widIss3(){
 Object.assign(ACT,{
   'iss.open':()=>issPaneSet(!issOn()),
   /* 탭 줄 + — 보드에서 뺀 현장을 다시 넣는다(권역별 묶음) */
+  /* 정렬 — 내 화면만(내 계정에 저장) */
+  'iss.sort':el=>{const p=issPref(),r=el.getBoundingClientRect(),go=k=>()=>{issPrefSet({sort:k});rIss(true);};
+    openCtx(r.left,r.bottom+4,[{hd:'정렬 — 내 화면만'},{label:'기본(권역 · 담당자)',on:p.sort==='base',act:go('base')},{label:'진행 많은 순',on:p.sort==='open',act:go('open')},
+      {label:'오래된 현안 순',on:p.sort==='old',act:go('old')},{label:'내 현장 먼저',on:p.sort==='me',act:go('me')},p.order.length?{label:'내가 놓은 순서',on:p.sort==='mine',act:go('mine')}:null,
+      {sep:true},{label:'현안 없는 현장 접기',check:true,on:p.fe,act:()=>{issPrefSet({fe:!p.fe});rIss(true);}},
+      p.order.length||p.fold.length?{label:'내 순서 · 접기 지우기',act:()=>{issPrefSet({sort:p.sort==='mine'?'base':p.sort,order:[],fold:[]});rIss(true);}}:null],el,{flip:r});},
   'iss.more':el=>{const l=issHidden();if(!l.length){toast('뺀 현장이 없습니다');return;}
     const r=el.getBoundingClientRect(),items=[];
     issGroups(l).forEach(g=>{items.push({hd:g[1]});g[2].forEach(s=>items.push({label:s.name,act:()=>{issHideSet(s.id,false);toast('넣었습니다 · '+s.name);}}));});
@@ -16727,6 +16743,32 @@ document.addEventListener('wheel',e=>{const st=e.target.closest&&e.target.closes
   const ul=e.target.closest('.iss-ul');if(ul&&Math.abs(e.deltaY)>=Math.abs(e.deltaX)&&(d>0?ul.scrollTop+ul.clientHeight<ul.scrollHeight-1:ul.scrollTop>0))return;
   e.preventDefault();const now=performance.now();if(now-(st._wt||0)<260)return;st._wt=now;   /* 휠 한 번(트랙패드 연속 신호)에 한 칸 */
   const c=st.querySelector('.iss-c');const w=c?c.getBoundingClientRect().width+6:st.clientWidth/3;st.scrollBy({left:(d>0?1:-1)*w,behavior:'smooth'});},{passive:false});
+/* 카드 끌어서 자리 바꾸기(내 화면만) — 머리 줄을 잡고 6px 넘게. 판 위로 뜬 복제본이 커서를 따라가고, 원래 카드는 흐린 채 자리를 옮겨 다니며
+   다른 카드는 미끄러져 비켜 준다(앱 모션 곡선). 놓으면 정렬이 「내가 놓은 순서」가 되고, 지금 보이는 카드끼리의 순서만 바꾼다(다른 권역은 그대로) */
+let ISS_DR=null;
+function issFlip(par,fn){const cs=[...par.querySelectorAll(':scope>.iss-c:not(.iss-drag)')],r0=new Map(cs.map(c=>[c,c.getBoundingClientRect()]));fn();
+  if(!mvOK())return;cs.forEach(c=>{const a=r0.get(c),b=c.getBoundingClientRect();const dx=a.left-b.left,dy=a.top-b.top;if(dx||dy)c.animate([{transform:'translate('+dx+'px,'+dy+'px)'},{transform:'none'}],{duration:MV_MID,easing:MV_EASE});});}
+document.addEventListener('pointerdown',e=>{if(e.button!==0)return;const h=e.target.closest&&e.target.closest('.iss-c>:is(.iss-ch,.tm-h)');if(!h||e.target.closest('button,input,a'))return;
+  const c=h.parentNode;ISS_DR={c,par:c.parentNode,sx:e.clientX,sy:e.clientY,on:false};});
+document.addEventListener('pointermove',e=>{const d=ISS_DR;if(!d)return;
+  if(!d.on){if(Math.hypot(e.clientX-d.sx,e.clientY-d.sy)<6)return;d.on=true;const r=d.c.getBoundingClientRect();
+    d.g=d.c.cloneNode(true);d.g.classList.add('iss-drag');d.g.style.left=r.left+'px';d.g.style.top=r.top+'px';d.g.style.width=r.width+'px';d.g.style.height=r.height+'px';
+    d.ox=e.clientX-r.left;d.oy=e.clientY-r.top;d.par.appendChild(d.g);   /* 같은 칸 안에 붙여야 그 칸의 카드 꾸밈(위젯 유리 등)을 그대로 받는다 — fixed 라 스크롤 칸에 잘리지 않는다 */d.c.classList.add('iss-ph');document.body.classList.add('iss-dragging');}
+  d.g.style.left=(e.clientX-d.ox)+'px';d.g.style.top=(e.clientY-d.oy)+'px';
+  const t=document.elementFromPoint(e.clientX,e.clientY),o=t&&t.closest&&t.closest('.iss-c');
+  if(o&&o!==d.c&&o.parentNode===d.par){const rr=o.getBoundingClientRect(),one=d.par.id!=='issStrip'&&getComputedStyle(d.par).gridTemplateColumns.split(' ').length<2,after=one?(e.clientY-rr.top)>rr.height/2:(e.clientX-rr.left)>rr.width/2;   /* 줄로 흐르는 판은 좌우 반, 한 줄짜리(폰)는 위아래 반 */
+    const before=after?o.nextElementSibling:o;if(before!==d.c&&before!==d.c.nextElementSibling)issFlip(d.par,()=>d.par.insertBefore(d.c,before));}},{passive:true});
+document.addEventListener('pointerup',()=>{const d=ISS_DR;ISS_DR=null;if(!d||!d.on)return;
+  const r=d.c.getBoundingClientRect(),g=d.g,end=()=>{g.remove();d.c.classList.remove('iss-ph');};document.body.classList.remove('iss-dragging');
+  if(mvOK()){const a=g.animate([{left:g.style.left,top:g.style.top},{left:r.left+'px',top:r.top+'px'}],{duration:MV_FAST,easing:MV_EASE});a.onfinish=end;}else end();
+  const vis=[...d.par.querySelectorAll(':scope>.iss-c:not(.iss-drag)')].map(c=>c.dataset.sid),full=issSites().map(s=>s.id),set=new Set(vis);let k=0;
+  issPrefSet({sort:'mine',order:full.map(id=>set.has(id)?vis[k++]:id)});setTimeout(()=>rIss(),MV_FAST+20);});
+document.addEventListener('pointercancel',()=>{const d=ISS_DR;ISS_DR=null;if(d&&d.on){d.g.remove();d.c.classList.remove('iss-ph');document.body.classList.remove('iss-dragging');rIss();}});
+/* 카드 접기(내 화면만) — 머리 줄 두 번 */
+document.addEventListener('dblclick',e=>{const h=e.target.closest&&e.target.closest('.iss-c>:is(.iss-ch,.tm-h)');if(!h||e.target.closest('button,input,a'))return;
+  const sid=h.parentNode.dataset.sid,p=issPref(),on=h.parentNode.classList.contains('fold');
+  issPrefSet({fold:on?p.fold.filter(x=>x!==sid):[...p.fold,sid]});if(on&&p.fe&&!issOpenN(sid))toast('현안 없는 현장은 정렬 메뉴의 「현안 없는 현장 접기」를 끄면 펼쳐집니다');
+  rIss(true);});
 document.addEventListener('change',e=>{
   if(e.target.id!=='wgIss3')return;
   const c=widCfgLoad();c.iss3=e.target.checked;widCfgSave(c);widIss3();
