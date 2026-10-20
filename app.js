@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1200';
+const APP_VER='1201';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -907,8 +907,8 @@ function isTeamRank(v){const r=rankOf(v);return r==='head'||r==='safety'||r==='c
 /* 직급별로 쓰는 칸이 다르다 — 팀장은 권역·현장이 없다 */
 function rankUses(v){
   const r=rankOf(v);
-  /* 팀장·안전·원가는 팀 전체를 보므로 권역·현장을 두지 않는다. 공구장은 권역만, 담당자는 둘 다 */
-  return{region:r==='member'||r==='lead',sites:r==='member'};
+  /* 팀장·안전·원가는 팀 전체를 보므로 권역·현장을 두지 않는다. 공구장·담당자는 둘 다(공구장도 직접 맡는 현장이 있다) */
+  return{region:r==='member'||r==='lead',sites:r==='member'||r==='lead'};
 }
 /* 팀장·공구장 지정은 관리자 또는 이미 팀장·공구장인 사람만 */
 
@@ -9252,7 +9252,7 @@ function regRows(){
    ⚠ 보여 주기만 한다. 배정은 계정 보기의 '담당 현장 선택'에서만 */
 function siteOwnersHTML(sid){
   const t=curTeam();
-  /* ⚠ 현장 담당 직급은 '담당자'뿐(rankUses) — 계정 표에서 배정 못 하는 직급이 여기 나오면 두 화면이 어긋난다 */
+  /* ⚠ 현장 담당 직급은 담당자·공구장(rankUses) — 계정 표에서 배정 못 하는 직급이 여기 나오면 두 화면이 어긋난다 */
   const list=roster().filter(p=>(t?p.team===t.id:true)&&rankUses(p.rank).sites&&(p.sites||{})[sid]);
   /* 현장 쪽 [+] 제거 — 담당자는 계정 탭에서 사람별로 지정 */
   if(!list.length)return '<span class="site-none">미지정</span>';
