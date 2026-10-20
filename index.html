@@ -3419,7 +3419,8 @@ body.wid #wgSet.on{display:block;}
 #wgSet .wgs-acc button{width:16px;height:16px;border-radius:50%;padding:0;background:var(--c);box-shadow:inset 0 0 0 1px rgba(255,255,255,.25);}
 #wgSet .wgs-acc button.on{box-shadow:0 0 0 2px rgba(20,22,28,.9),0 0 0 3.5px #fff;}
 #wgSet .wgs-pet{display:flex;align-items:center;gap:2px;height:30px;padding:0 2px 0 8px;border-radius:3px;color:#fff;font-size:12px;}
-#wgSet .wgs-pet img{display:block;image-rendering:pixelated;margin-right:4px;}
+#wgSet .wgs-pt{display:flex;align-items:flex-end;justify-content:flex-end;}   /* 펫 그림 — 투명도 % 와 같은 자리(라벨 칸 오른쪽 끝) */
+#wgSet .wgs-pt img{display:block;image-rendering:pixelated;}
 #wgSet .wgs-pet b{font-weight:600;}
 #wgSet .wgs-pet .icn{width:14px;height:14px;opacity:.7;}
 @media (hover:hover) and (pointer:fine){#wgSet .wgs-pet:hover{background:rgba(255,255,255,.1);}}
@@ -3441,6 +3442,7 @@ body.wid #wgSet.on{display:block;}
 /* 미니펫 — 머리 줄 빈자리(년월 묶음 ~ 단추 묶음)를 걷는다. 발은 단추 아래선에 맞춘다 */
 #wgPet{position:absolute;z-index:31;left:0;top:50%;margin-top:-27px;height:44px;display:flex;align-items:flex-end;cursor:pointer;user-select:none;}
 #wgPet[hidden]{display:none;}
+#wgPet{touch-action:none;}#wgPet.drag{cursor:grabbing;}   /* 잡아 끌기 */
 #wgPet img{display:block;image-rendering:pixelated;pointer-events:none;}
 #wgPet .bub{position:absolute;left:100%;bottom:30%;transform:translate(2px,0);padding:3px 8px;border-radius:10px;background:#fff;color:#1f2329;font-size:11.5px;font-weight:700;white-space:nowrap;
   box-shadow:0 2px 6px rgba(0,0,0,.3);opacity:0;transition:opacity .15s,transform .15s;pointer-events:none;}
@@ -6083,7 +6085,7 @@ body.wid.iss3 #fcal{flex:1 1 0;}
             </div></div>
           <!-- 강조색 — 오늘 숫자·고른 날·켜진 단추 색. 미니펫 — 머리 줄을 걷는 픽셀 펫(누르면 옆에 고르기 창) -->
           <div class="wgs-r"><span>강조색</span><div class="wgs-acc" id="wgAcc"></div></div>
-          <div class="wgs-r"><span>미니펫</span><button class="wgs-pet" id="wgPetB" data-act="wid.petPick" aria-haspopup="true" aria-expanded="false"><b>없음</b><svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg></button></div>
+          <div class="wgs-r"><span>미니펫 <i id="wgPetT" class="wgs-pt"></i></span><button class="wgs-pet" id="wgPetB" data-act="wid.petPick" aria-haspopup="true" aria-expanded="false"><b>없음</b><svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg></button></div>
           <div class="wgs-r"><span>두 번 눌러 선택</span>
             <label class="wgs-sw"><input type="checkbox" id="wgDbl"><span class="sw-t"></span></label></div>
           <div class="wgs-r"><span data-tip="달력은 전주·금주·담주·다담주만, 아래에 내 담당 현장의 주요 현안">4주 + 주요 현안</span>
@@ -6294,5 +6296,5 @@ body.wid.iss3 #fcal{flex:1 1 0;}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1189"></script>
+<script src="./app.js?v=1190"></script>
 </body></html>
