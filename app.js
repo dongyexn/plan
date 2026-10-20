@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1201';
+const APP_VER='1202';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -16702,11 +16702,12 @@ Object.assign(ACT,{
   'iss.open':()=>issPaneSet(!issOn()),
   /* 탭 줄 + — 보드에서 뺀 현장을 다시 넣는다(권역별 묶음) */
   /* 정렬 — 내 화면만(내 계정에 저장) */
-  'iss.sort':el=>{const p=issPref(),r=el.getBoundingClientRect(),go=k=>()=>{issPrefSet({sort:k});rIss(true);};
+  'iss.sort':el=>{if(_ctxEl&&document.contains(_ctxEl)&&_ctxEl.dataset.for==='issSort'){closeCtx();return;}   /* 열려 있으면 다시 눌러 닫는다 */
+    const p=issPref(),r=el.getBoundingClientRect(),go=k=>()=>{issPrefSet({sort:k});rIss(true);};
     openCtx(r.left,r.bottom+4,[{hd:'정렬 — 내 화면만'},{label:'기본(권역 · 담당자)',on:p.sort==='base',act:go('base')},{label:'진행 많은 순',on:p.sort==='open',act:go('open')},
       {label:'오래된 현안 순',on:p.sort==='old',act:go('old')},{label:'내 현장 먼저',on:p.sort==='me',act:go('me')},p.order.length?{label:'내가 놓은 순서',on:p.sort==='mine',act:go('mine')}:null,
       {sep:true},{label:'현안 없는 현장 접기',check:true,on:p.fe,act:()=>{issPrefSet({fe:!p.fe});rIss(true);}},
-      p.order.length||p.fold.length?{label:'내 순서 · 접기 지우기',act:()=>{issPrefSet({sort:p.sort==='mine'?'base':p.sort,order:[],fold:[]});rIss(true);}}:null],el,{flip:r});},
+      p.order.length||p.fold.length?{label:'내 순서 · 접기 지우기',act:()=>{issPrefSet({sort:p.sort==='mine'?'base':p.sort,order:[],fold:[]});rIss(true);}}:null],el,{flip:r});if(_ctxEl)_ctxEl.dataset.for='issSort';},
   'iss.more':el=>{const l=issHidden();if(!l.length){toast('뺀 현장이 없습니다');return;}
     const r=el.getBoundingClientRect(),items=[];
     issGroups(l).forEach(g=>{items.push({hd:g[1]});g[2].forEach(s=>items.push({label:s.name,act:()=>{issHideSet(s.id,false);toast('넣었습니다 · '+s.name);}}));});
