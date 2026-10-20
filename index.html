@@ -3399,6 +3399,7 @@ body.wid .wid-pop input[type=date].inp{color-scheme:dark;}
 body.wid #wgSet.on{display:block;}
 #wgSet .wp-h{display:flex;align-items:center;padding:12px 14px 10px;border-bottom:1px solid rgba(255,255,255,.12);}
 #wgSet .wp-h b{font-size:15px;font-weight:700;color:#fff;}
+#wgSet .wgs-ver{margin-left:auto;font-size:12px;font-weight:600;color:rgba(255,255,255,.45);font-variant-numeric:tabular-nums;}   /* 앱 버전 */
 #wgSet .wgs-b{padding:6px 14px 12px;}
 #wgSet .wgs-r{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:32px;font-size:12px;}
 #wgSet .wgs-r>span{white-space:nowrap;flex:0 0 112px;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:6px;}   /* 라벨 폭 고정 — 값(%)은 오른쪽 끝에 붙어 슬라이더와 맞닿는다 */
@@ -6070,7 +6071,7 @@ body.wid.iss3 #fcal{flex:1 1 0;}
           <div id="widSideB" data-sb></div>
         </div>
         <div id="wgSet" aria-hidden="true">
-          <div class="wp-h"><b>위젯 설정</b></div>
+          <div class="wp-h"><b>위젯 설정</b><span id="wgVer" class="wgs-ver"></span></div>
           <div class="wgs-b">
           <div class="wgs-r"><span>투명도 <b id="wgAV" class="wgs-v">15%</b></span><input type="range" id="wgA" min="0" max="85" step="5"></div>
           <!-- 유리 톤 — 칸·카드의 어두운 유리색 농도. 100%가 기존 색, 낮추면 진해지고 올리면 연해진다 -->
@@ -6296,5 +6297,5 @@ body.wid.iss3 #fcal{flex:1 1 0;}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1190"></script>
+<script src="./app.js?v=1191"></script>
 </body></html>
