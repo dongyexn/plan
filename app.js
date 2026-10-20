@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1199';
+const APP_VER='1200';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -16615,8 +16615,9 @@ function issHead(s,n,pg){
   const who=ow.length?'<span class="iss-own">'+esc(ow.map(p=>p.name).join(' · '))+'</span>':'';
   const add='<button class="'+(pg?'btn tm-add':'iss-ad')+'" data-act="iss.add" data-sid="'+esc(s.id)+'" aria-label="현안 추가" data-tip="현안 추가">'+issIcn('plus')+'</button>';
   const tint=c0?' own" style="--itc:'+esc(colBg(c0)):'';
-  return pg?'<div class="tm-h'+tint+'"><span>'+avs+esc(s.name)+'<span class="tm-sub">'+(n||'')+'</span></span><span class="iss-hr">'+who+add+'</span></div>'
-    :'<div class="iss-ch'+tint+'">'+avs+'<b>'+esc(s.name)+'</b><span class="n">'+(n||'')+'</span>'+who+add+'</div>';}
+  const nm=esc(dfShortSite(s.name));   /* 현장명은 줄임말(힐스테이트 → HS · 디에이치 → TH) — 하자 화면과 같은 규칙 */
+  return pg?'<div class="tm-h'+tint+'"><span>'+avs+nm+'<span class="tm-sub">'+(n||'')+'</span></span><span class="iss-hr">'+who+add+'</span></div>'
+    :'<div class="iss-ch'+tint+'">'+avs+'<b>'+nm+'</b><span class="n">'+(n||'')+'</span>'+who+add+'</div>';}
 /* kind — 'pg' 데스크톱(앱 카드·머리 띠) · 'w' 위젯(어두운 판) */
 function issCard(s,kind){
   const rows=issRows(s.id),n=issOpenN(s.id),pg=kind==='pg';
