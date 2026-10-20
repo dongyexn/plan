@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1195';
+const APP_VER='1196';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -13371,15 +13371,15 @@ const WID_ACC=[['blue','블루','#3E71D2','#8FB4FF'],['indigo','인디고','#5B5
    누르기: 울음소리·전용 멘트 → 앞발질 → 공놀이 → 오늘 업무 수 → 달리기 차례로. 머리 줄 빈 곳을 누르면 공을 던진다.
    시간 대사: 11:00~11:30 점심, 17시 이후 퇴근(가끔 혼잣말). 업무 완료 때 축하(histPush 'done').
    ⚠ 대사는 글자만 또는 이모지만 — 한 대사에 섞지 않는다(사용자) */
-const PET_LINES={tap:['허거덩','허걱스','하이','제가요?','이걸요?','왜요?','😮','🤔','👀'],
-  ball:['집중?해서 딴짓 중','월급 좀도둑','⚽','😎'],
+const PET_LINES={tap:['허거덩','허걱스','하이','왜요?','😮','🤔','👀'],
+  ball:['일 안하농','월급루팡','⚽','😎'],
   done:['업무 완료!','오늘도 내가 해냄','🎉','👍'],
-  lunch:['맛점','점심 뭐먹냐','배고프다','🍚','🍜'],
-  leave:['칼퇴 좀','퇴근해요','집에 보내죠','🏃','🏠'],
+  lunch:['맛점','점심 뭐먹냐','배고프다','🍚','🍜','🍕','🍔','🍙','🍖'],
+  leave:['칼퇴 좀','퇴근해요','집에 보내죠','집에 가자'],
   wake:['Zzz..','까꿍','데헷','흥','😪'],
   pet:['야르릉','💕'],
   food:['😋'],drop:['😵'],idle:['일 안하농'],
-  today:['오늘 업무 {n}건'],com:['오늘 공통: {t}'],comMore:['외 {n}건']};   /* {n}·{t} 는 숫자·업무 이름으로 바뀐다 */
+  today:['오늘 업무 {n}건'],com:['{t} 하자!']};   /* {n}·{t} 는 숫자·업무 이름으로 바뀐다 · 사용자가 대사 편집 폼에서 고친 값 */
 const petPick=a=>a[Math.floor(Math.random()*a.length)];
 const petUrl=f=>'./vendor/pets/'+f+'?v='+APP_VER;   /* 그림 파일 — 쓰는 것만 받고 브라우저가 캐시한다 */
 const petSlot=()=>{const d=new Date(),v=d.getHours()*60+d.getMinutes();return v>=660&&v<=690?'lunch':v>=1020?'leave':'';};
@@ -13518,7 +13518,7 @@ const PET=(()=>{let drg=false,shd=null,land=null,el,bd,img,bub,ballEl,cfg=null,x
       if(!talk)talk=setInterval(()=>{if(!cfg||sleeping||deep||drg||ball||document.hidden)return;const sl=petSlot();
         if(sl){if(Math.random()<.2)say(petPick(PET_LINES[sl]),2600);return;}   /* 시간 대사 — 30초마다 20% (평균 2~3분에 한 번) */
         if(Math.random()<.08){const c=todayCom();if(c.length){const t=petPick(c),tt=t.length>14?t.slice(0,14)+'…':t;
-          say(petPick(PET_LINES.com).replace('{t}',tt)+(c.length>1?' '+PET_LINES.comMore[0].replace('{n}',c.length-1):''),3200);}}},30000);},   /* 오늘 공통 업무 — 30초마다 8%(평균 6분에 한 번), 없으면 말 안 함 */
+          say(petPick(PET_LINES.com).replace('{t}',tt),3200);}}},30000);},   /* 오늘 공통 업무 중 하나(무작위) — 30초마다 8%(평균 6분에 한 번), 없으면 말 안 함 */
     wake:()=>{if(cfg&&el&&el.isConnected)deepOff();},
     unmount(){deep=false;clearTimeout(tm);clearTimeout(nap);clearTimeout(hvTm);clearInterval(talk);talk=0;cancelAnimationFrame(braf);
       if(anim){anim.onfinish=null;anim.cancel();anim=null;}if(bob){bob.cancel();bob=null;}if(el)el.remove();if(ballEl)ballEl.remove();ball=null;cfg=null;sleeping=false;document.body.classList.remove('pet-on');},
