@@ -534,7 +534,7 @@
         ".read": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
         "$sid": {
           ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'",
-          ".validate": "$sid.matches(/^[A-Za-z0-9_-]{1,40}$/)",
+          ".validate": "$sid.length >= 1 && $sid.length <= 80",
           "$iid": {
             ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
             ".validate": "$iid.matches(/^[A-Za-z0-9_-]{1,40}$/) && newData.hasChildren(['t','at','by'])",
