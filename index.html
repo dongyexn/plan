@@ -3443,7 +3443,10 @@ body.wid #wgSet.on{display:block;}
 /* 미니펫 — 머리 줄 빈자리(년월 묶음 ~ 단추 묶음)를 걷는다. 발은 단추 아래선에 맞춘다 */
 #wgPet{position:absolute;z-index:31;left:0;top:50%;margin-top:-27px;height:44px;display:flex;align-items:flex-end;cursor:pointer;user-select:none;}
 #wgPet[hidden]{display:none;}
-#wgPet{touch-action:none;}#wgPet.drag{cursor:grabbing;}   /* 잡아 끌기 */
+#wgPet{touch-action:none;}   /* 잡아 끌기 */
+#wgPet .bd{transform-origin:50% 0;transition:rotate .25s cubic-bezier(.3,1.6,.5,1);}   /* 잡힘 — 위가 축(목덜미) */
+#wgPet.held{z-index:60;cursor:grabbing;}#wgPet.held .bd{transition:rotate .12s linear;}#wgPet.held img{filter:drop-shadow(0 6px 4px rgba(0,0,0,.35));}
+#wgPetSh{position:absolute;z-index:30;left:0;height:4px;border-radius:50%;background:rgba(0,0,0,.35);opacity:0;pointer-events:none;transition:opacity .15s;}#wgPetSh.on{opacity:1;}   /* 들고 있는 동안 바닥에 놓일 자리 */
 #wgPet img{display:block;image-rendering:pixelated;pointer-events:none;}
 #wgPet .bub{position:absolute;left:100%;bottom:30%;transform:translate(2px,0);padding:3px 8px;border-radius:10px;background:#fff;color:#1f2329;font-size:11.5px;font-weight:700;white-space:nowrap;
   box-shadow:0 2px 6px rgba(0,0,0,.3);opacity:0;transition:opacity .15s,transform .15s;pointer-events:none;}
@@ -6297,5 +6300,5 @@ body.wid.iss3 #fcal{flex:1 1 0;}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1191"></script>
+<script src="./app.js?v=1192"></script>
 </body></html>
