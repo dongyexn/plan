@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1196';
+const APP_VER='1197';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -1797,7 +1797,8 @@ const MV_TAB={
   'pv.tab':'#pvRoot .qc-right>:not(.tkbar)',
   'readme.tab':'#mbody .rd-sec.act',
   'org.mapTab':'.kml-b',
-  'pf.cat':'#pfEmg>*'};   /* 이모지 분류 — 판이 고른 쪽에서 밀려 들어온다 */
+  'pf.cat':'#pfEmg>*',
+  'iss.rg':'.iss-grid'};   /* 주요 현안 권역 탭 — 카드 묶음이 고른 쪽에서 */   /* 이모지 분류 — 판이 고른 쪽에서 밀려 들어온다 */
 const mvOn=b=>b.classList.contains('act')||b.classList.contains('on')||b.getAttribute('aria-selected')==='true';
 function mvTabPre(el){
   const act=el.dataset&&el.dataset.act,sel=MV_TAB[act];if(!sel||!mvOK())return null;
@@ -16565,7 +16566,10 @@ const issIcn=n=>'<svg class="icn" aria-hidden="true"><use href="#i-'+n+'"></use>
    issHide[sid] = true 뺌 · false 넣음(하자 화면에서 꺼 둔 현장도) · 없음 = 기본. 데스크톱·위젯 판·4주 아래 칸 모두 같다 */
 function issBase(){const{team}=tkSel();return (S.org.sites||[]).filter(x=>x.name&&(!team||!x.team||x.team===team.id));}
 function issVis(s){const v=(S.issHide||{})[s.id];return v===true?false:v===false?true:!dfIsHidden(s.id);}
-function issSites(){return issBase().filter(issVis);}
+/* 카드 순서 — 권역 순서(조직 관리 권역 → 권역 미지정 → 인수 전) 안에서 담당자 순서(명부 순서, 첫 담당자 기준 · 담당자 없는 현장은 뒤) */
+function issOrder(list){const R=roster(),ix=id=>{const i=R.findIndex(p=>p.id===id);return i<0?1e6:i;},rk=s=>{const o=issOwners(s.id);return o.length?Math.min(...o.map(p=>ix(p.id))):1e6;};
+  return issGroups(list).flatMap(g=>g[2].map((s,i)=>[s,rk(s),i]).sort((a,b)=>a[1]-b[1]||a[2]-b[2]).map(x=>x[0]));}
+function issSites(){return issOrder(issBase().filter(issVis));}
 function issHidden(){return issBase().filter(s=>!issVis(s));}
 function issHideSet(sid,on){   /* on = 뺀다 · 기본과 같아지면 지운다 */
   const v=on===dfIsHidden(sid)?null:on;
@@ -16717,6 +16721,12 @@ document.addEventListener('focusout',e=>{
     if(t.isConnected&&t.classList.contains('iss-in')&&!t.value.trim()){S.issUI.add='';rIss(true);return;}
     if(S.issUI.pend)rIss();},0);
 });
+/* 4주 아래 칸 — 마우스 휠로 옆 카드로 넘긴다(한 칸씩, 부드럽게). 카드 안 목록이 그쪽으로 더 구를 수 있으면 목록이 먼저 */
+document.addEventListener('wheel',e=>{const st=e.target.closest&&e.target.closest('#issStrip');if(!st||st.scrollWidth<=st.clientWidth+1)return;
+  const d=Math.abs(e.deltaX)>Math.abs(e.deltaY)?e.deltaX:e.deltaY;if(!d)return;
+  const ul=e.target.closest('.iss-ul');if(ul&&Math.abs(e.deltaY)>=Math.abs(e.deltaX)&&(d>0?ul.scrollTop+ul.clientHeight<ul.scrollHeight-1:ul.scrollTop>0))return;
+  e.preventDefault();const now=performance.now();if(now-(st._wt||0)<260)return;st._wt=now;   /* 휠 한 번(트랙패드 연속 신호)에 한 칸 */
+  const c=st.querySelector('.iss-c');const w=c?c.getBoundingClientRect().width+6:st.clientWidth/3;st.scrollBy({left:(d>0?1:-1)*w,behavior:'smooth'});},{passive:false});
 document.addEventListener('change',e=>{
   if(e.target.id!=='wgIss3')return;
   const c=widCfgLoad();c.iss3=e.target.checked;widCfgSave(c);widIss3();
