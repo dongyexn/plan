@@ -3456,6 +3456,9 @@ body.wid #wgSet.on{display:block;}
 #wgPet.sleep .z{animation:wgPetZ 2.4s ease-in-out infinite;}
 @keyframes wgPetZ{0%{opacity:0;transform:translate(0,0)}30%{opacity:1}100%{opacity:0;transform:translate(10px,-14px)}}
 #wgBall{position:absolute;z-index:30;left:0;top:0;width:10px;height:10px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff 0 18%,#FF6B6B 22% 100%);box-shadow:0 1px 2px rgba(0,0,0,.4);pointer-events:none;}
+#wgBall.it{width:16px;height:16px;border-radius:0;background:center/contain no-repeat;box-shadow:none;filter:drop-shadow(0 1px 1px rgba(0,0,0,.45));}   /* 펫마다 먹이 그림(32px 를 16px 로) */
+#wgPet.wad img{animation:wgPetWad .5s steps(1,end) infinite;}   /* 걷는 그림이 없는 펫이 움직일 때 — 1px 콩콩 */
+@keyframes wgPetWad{0%{translate:0 0}50%{translate:0 -1px}}
 body.wid.pet-on .cal-head{cursor:crosshair;}   /* 머리 줄 빈 곳을 누르면 공을 던진다 */
 body.wid.pet-on .cal-head :is(.cal-filt-pop,.tb-pop){cursor:auto;}   /* 머리 줄 안 팝업은 보통 커서 — 단추는 원래 pointer */
 #wgSet .wgs-cyc b{flex:1;min-width:0;width:74px;text-align:center;font-size:12px;font-weight:700;color:#fff;white-space:nowrap;}
@@ -6289,5 +6292,5 @@ body.wid.iss3 #fcal{flex:1 1 0;}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1186"></script>
+<script src="./app.js?v=1187"></script>
 </body></html>
