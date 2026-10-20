@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1183';
+const APP_VER='1184';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -10277,12 +10277,12 @@ function bkStamp(d){
 }
 function bkData(x){   /* x — 위젯이 백업 때만 읽어 온 보관함·D+60({archive,d60}) */
   if(x)return JSON.stringify({kind:'hplan-backup',ver:APP_VER,savedAt:new Date().toISOString(),
-    org:S.org,people:S.people,tasks:S.tasks,cfg:S.cfg,archive:x.archive,d60:x.d60},null,1);
+    org:S.org,people:S.people,tasks:S.tasks,cfg:S.cfg,archive:x.archive,d60:x.d60,iss:S.iss||null},null,1);
   return JSON.stringify({
     kind:'hplan-backup',ver:APP_VER,savedAt:new Date().toISOString(),
     org:S.org,people:S.people,tasks:S.tasks,cfg:S.cfg,
     /* 보관함(읽혀 있을 때 — 관리자는 부팅 뒤 미리 읽는다)과 D+60 서식·점검 결과. 점검 사진(d60photo)은 크기 때문에 뺀다 */
-    archive:ARCH.loaded?S.arch:null,d60:S.d60d||null
+    archive:ARCH.loaded?S.arch:null,d60:S.d60d||null,iss:S.iss||null   /* 주요 현안 — 위젯도 구독해 들고 있다 */
   },null,1);
 }
 /* ═══════════ 위젯 창구 ═══════════
@@ -11942,8 +11942,9 @@ const ACT={
           if(!(hot[sid]&&hot[sid][iid])&&!((S.arch||{})[sid]&&S.arch[sid][iid])&&!((d.tasks||{})[sid]&&d.tasks[sid][iid]))arcAdd.push([sid,iid,arc[sid][iid]]);}));
         const dF=(d.d60&&d.d60.forms)||{},dI=(d.d60&&d.d60.insp)||{};
         const nF=Object.keys(dF).length,nI=Object.keys(dI).length;
+        const isu=[];Object.keys(d.iss||{}).forEach(sid=>Object.keys(d.iss[sid]||{}).forEach(iid=>{const x=d.iss[sid][iid];if(x&&x.t)isu.push([sid,iid,issRec(x)]);}));   /* 주요 현안 */
         confirmModal('백업으로 되돌리기',
-          (d.savedAt||'').slice(0,10)+' 시점의 업무 '+n+'건과 담당자 '+Object.keys(d.people||{}).length+'명'+(arcAdd.length?', 보관함 '+arcAdd.length+'건':'')+(nF||nI?', D+60 서식 '+nF+'개 공종과 점검 '+nI+'개 현장':'')+'을 그때 값으로 되돌립니다. 그 뒤에 새로 만든 업무는 그대로 남고, 팀·권역·현장과 점검 사진은 되돌리지 않습니다. 되돌리기 전에 한 번 더 백업해 두세요.',()=>{   /* 실제 동작대로 적는다 · confirmModal 은 글자로 찍혀 <br>·<b> 가 그대로 보인다 */
+          (d.savedAt||'').slice(0,10)+' 시점의 업무 '+n+'건과 담당자 '+Object.keys(d.people||{}).length+'명'+(arcAdd.length?', 보관함 '+arcAdd.length+'건':'')+(nF||nI?', D+60 서식 '+nF+'개 공종과 점검 '+nI+'개 현장':'')+(isu.length?', 주요 현안 '+isu.length+'건':'')+'을 그때 값으로 되돌립니다. 그 뒤에 새로 만든 업무는 그대로 남고, 팀·권역·현장과 점검 사진은 되돌리지 않습니다. 되돌리기 전에 한 번 더 백업해 두세요.',()=>{   /* 실제 동작대로 적는다 · confirmModal 은 글자로 찍혀 <br>·<b> 가 그대로 보인다 */
             /* ⚠ 팀·권역·현장은 하자처리 현황이 원본이라 되돌리지 않는다 — 되돌려도 곧 덮어써진다 */
             if(d.people)Object.keys(d.people).forEach(k=>store.putPerson(k,d.people[k]));   /* 한 명씩 되돌린다 */
             if(d.tasks)Object.keys(d.tasks).forEach(sid=>Object.keys(d.tasks[sid]||{}).forEach(iid=>store.putTask(sid,iid,d.tasks[sid][iid])));
@@ -11953,6 +11954,7 @@ const ACT={
               ARCH.loaded=false;}
             Object.keys(dF).forEach(tr=>d60Write('forms/'+tr,dF[tr]));
             Object.keys(dI).forEach(sid=>d60Write('insp/'+sid,dI[sid]));
+            isu.forEach(([sid,iid,x])=>issWrite(sid,iid,x));
             toast('되돌렸습니다 · 화면을 새로고침해 주세요');
           },'되돌리기',true);
       };
@@ -13443,7 +13445,7 @@ const PET=(()=>{let el,bd,img,bub,ballEl,cfg=null,x=0,dir=1,mode='idle',anim=nul
     else{const[L,R]=bounds();moveTo(dir>0?L:R,75,'run');}};
   return{
     mount(c){const h=head();if(!h)return;const fresh=cfg!==c;cfg=c;
-      if(!el){el=document.createElement('div');el.id='wgPet';el.title='눌러 보세요';bd=document.createElement('div');bd.className='bd';
+      if(!el){el=document.createElement('div');el.id='wgPet';el.setAttribute('aria-label','미니펫 — 눌러 보세요');bd=document.createElement('div');bd.className='bd';
         img=document.createElement('img');img.alt='';bub=document.createElement('div');bub.className='bub';
         const z=document.createElement('div');z.className='z';z.textContent='z';bd.append(img);el.append(bd,bub,z);
         el.addEventListener('mouseenter',()=>{if(ball||sleeping||mode==='swipe'||mode==='with_ball')return;stop();clearTimeout(tm);set('idle');
@@ -13487,7 +13489,7 @@ function petPickRender(){
   if(!p){p=document.createElement('div');p.id='wgPick';p.setAttribute('role','dialog');p.setAttribute('aria-label','미니펫 고르기');document.body.appendChild(p);}
   const k=widCfgLoad().pet||'',g=p.querySelector('.pk-g'),top=g?g.scrollTop:0;
   p.innerHTML='<div class="pk-g"><button class="pk-i pk-none'+(k?'':' on')+'" data-act="wid.pet" data-k=""><i class="pk-pic"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></i><span>없음</span></button>'
-    +Object.entries(window.CALAPP_PETS).map(([id,o])=>'<button class="pk-i'+(id===k?' on':'')+'" data-act="wid.pet" data-k="'+id+'" title="'+esc(o.n)+'"><i class="pk-pic"><img src="'+petUrl(o.t.f)+'" alt="" loading="lazy" style="width:'+o.t.w+'px;height:'+o.t.h+'px'+(o.sm?';image-rendering:auto':'')+'"></i><span>'+esc(o.n)+'</span></button>').join('')+'</div>';
+    +Object.entries(window.CALAPP_PETS).map(([id,o])=>'<button class="pk-i'+(id===k?' on':'')+'" data-act="wid.pet" data-k="'+id+'" aria-label="'+esc(o.n)+'"><i class="pk-pic"><img src="'+petUrl(o.t.f)+'" alt="" loading="lazy" style="width:'+o.t.w+'px;height:'+o.t.h+'px'+(o.sm?';image-rendering:auto':'')+'"></i><span>'+esc(o.n)+'</span></button>').join('')+'</div>';
   p.querySelector('.pk-g').scrollTop=top;   /* 고를 때 스크롤 자리 유지 */
 }
 function widApply(){
@@ -13537,7 +13539,7 @@ function widApply(){
   if(GLASS)dyn.textContent+='\nbody.wid.glass :is(#issStrip,#issPane) .iss-c{background:rgba('+B+','+f(a+.1)+');}'
     +'\nbody.wid.glass #issPane .iss-wt{background:rgba('+H+','+f(a+.12)+');}';
   const aw=$('#wgAcc');if(aw){const k=acc?acc[0]:'blue';
-    if(!aw.children.length)aw.innerHTML=WID_ACC.map(x=>'<button data-act="wid.acc" data-k="'+x[0]+'" title="'+x[1]+'" aria-label="강조색 '+x[1]+'" style="--c:'+x[2]+'"></button>').join('');
+    if(!aw.children.length)aw.innerHTML=WID_ACC.map(x=>'<button data-act="wid.acc" data-k="'+x[0]+'" data-tip="'+x[1]+'" aria-label="강조색 '+x[1]+'" style="--c:'+x[2]+'"></button>').join('');
     [...aw.children].forEach(b=>b.classList.toggle('on',b.dataset.k===k));}
   petSync();
   /* 글자 크기 — 85~140% 사이에서 자유롭게. 여백·막대 높이도 이 값에 함께 묶여 있다 */
@@ -16490,7 +16492,7 @@ Object.assign(ACT,{
 /* ═══════════ 주요 현안(팀 공유 · RTDB calapp/iss) ═══════════
    사무실 화이트보드를 옮긴 것 — 현장마다 카드 하나, 현안은 한 줄씩. 동그라미로 해결, 해결한 줄은 7일 뒤 보드에서 빠진다(자료는 남는다).
    저장 calapp/iss/{현장id}/{id} = {t 내용, at 등록 시각, by 등록자 uid, dt 해결 시각}. MEMBER 누구나 쓰고 지운다.
-   데스크톱 「주요 현안」 화면 · 위젯 머리 단추의 가운데 창 · 위젯 「3주 + 주요 현안」 아래 칸(내 담당 현장만)이 같은 카드(issCard)를 쓴다 */
+   데스크톱 「주요 현안」 화면 · 위젯 머리 단추로 바꿔 끼는 달력 자리(#issPane) · 위젯 「3주 + 주요 현안」 아래 칸(내 담당 현장만)이 같은 카드(issCard)를 쓴다 */
 const ISS_KEEP=7,ISS_OLD=30;
 S.iss=S.iss||{};
 S.issUI={rg:'',add:'',ed:'',pend:false};
@@ -16515,7 +16517,6 @@ function issItem(sid,x){const ed=S.issUI.ed===sid+'/'+x.iid;
     +(ed?'<input class="iss-ed" value="'+esc(x.t)+'" maxlength="200" aria-label="현안 고치기">':'<span class="iss-tx" data-act="iss.edit">'+esc(x.t)+'</span>')
     +issTail(x)
     +'<button class="iss-x" data-act="iss.del" aria-label="지우기" data-tip="지우기">'+issIcn('close')+'</button></li>';}
-/* kind — 'pg' 데스크톱(앱 카드·머리 띠) · 'w' 위젯(어두운 판) */
 /* 현장 담당자 — 명부에서 그 현장을 맡은 사람(조직 관리의 담당 현장) */
 function issOwners(sid){return roster().filter(p=>p.sites&&p.sites[sid]);}
 /* 카드 머리 — 담당자 지정색으로 옅게 칠하고(첫 사람), 이름 앞엔 프로필, + 앞엔 담당자 이름 */
@@ -16528,6 +16529,7 @@ function issHead(s,n,pg){
   const tint=c0?' own" style="--itc:'+esc(colBg(c0)):'';
   return pg?'<div class="tm-h'+tint+'"><span>'+avs+esc(s.name)+'<span class="tm-sub">'+(n||'')+'</span></span><span class="iss-hr">'+who+add+'</span></div>'
     :'<div class="iss-ch'+tint+'">'+avs+'<b>'+esc(s.name)+'</b><span class="n">'+(n||'')+'</span>'+who+add+'</div>';}
+/* kind — 'pg' 데스크톱(앱 카드·머리 띠) · 'w' 위젯(어두운 판) */
 function issCard(s,kind){
   const rows=issRows(s.id),n=issOpenN(s.id),pg=kind==='pg';
   const head=issHead(s,n,pg);
@@ -16535,7 +16537,7 @@ function issCard(s,kind){
     +(S.issUI.add===s.id?'<div class="iss-new"><input class="iss-in" data-sid="'+esc(s.id)+'" maxlength="200" placeholder="현안 입력 후 Enter" aria-label="현안 입력"></div>':'')
     +(rows.length?'<ul class="iss-ul">'+rows.map(x=>issItem(s.id,x)).join('')+'</ul>':'<div class="iss-empty">진행 중인 현안이 없습니다.</div>')
     +'</div>';}
-/* 권역 탭 + 카드 — 데스크톱 화면과 위젯 창이 같은 구성 */
+/* 권역 탭 + 카드 — 데스크톱 화면과 위젯 판이 같은 구성 */
 function issBoard(kind){
   const sites=issSites(),gs=issGroups(sites);
   if(S.issUI.rg&&!gs.some(g=>g[0]===S.issUI.rg))S.issUI.rg='';
@@ -16562,8 +16564,8 @@ function rIss(force){
   const put=(el,h)=>{const y=keep(el);el.innerHTML=h;const sc=el.id==='issStrip'?el:el.querySelector('.iss-sc');if(sc)sc.scrollTop=y;};
   const pg=$('#issRoot');if(pg&&!WIDGET&&S.view==='iss'){put(pg,issBoard('pg'));slSync();}
   const w=$('#issPane');if(w&&!w.hidden)put(w,issBoard('w'));
-  const st=$('#issStrip');if(st&&!st.hidden)put(st,issStripHTML());
-  const f=document.querySelector('.iss-in,.iss-ed');if(f&&force){f.focus();if(f.classList.contains('iss-ed'))f.select();}
+  const st=$('#issStrip');if(st&&!st.hidden&&!issOn())put(st,issStripHTML());   /* 판이 켜지면 아래 칸은 숨는다 — 숨은 칸에 입력 칸이 생기면 초점을 가져간다 */
+  const f=[...document.querySelectorAll('.iss-in,.iss-ed')].find(e=>e.offsetParent);if(f&&force){f.focus();if(f.classList.contains('iss-ed'))f.select();}
 }
 /* 쓰기 — 화면 먼저, 서버(또는 로컬)는 뒤. 실패하면 구독이 서버 값으로 되돌린다 */
 function issWrite(sid,iid,val){
@@ -16590,7 +16592,7 @@ function issPaneSet(on){const w=$('#issPane');if(!w||issOn()===on)return;
   w.hidden=!on;document.body.classList.toggle('iss-on',on);
   const b=$('[data-act="iss.open"]');if(b)b.setAttribute('aria-pressed',on?'true':'false');
   if(on){if(S.widPop){S.widPop=false;rWidget();}rIss(true);}
-  else{w.innerHTML='';S.issUI.add='';S.issUI.ed='';
+  else{w.innerHTML='';S.issUI.add='';S.issUI.ed='';rIss();   /* 3주 아래 칸은 판이 켜진 동안 안 그렸다 */
     requestAnimationFrame(()=>{if(CAL){CAL.updateSize();calFitApply();}});}}
 /* 위젯 「3주 + 주요 현안」 — 달력을 전주·금주·다음주(3주)로, 아래 칸에 내 담당 현장 카드 */
 function widIss3(){
@@ -16605,12 +16607,12 @@ function widIss3(){
 }
 Object.assign(ACT,{
   'iss.open':()=>issPaneSet(!issOn()),
-  'iss.rg':el=>{S.issUI.rg=el.dataset.rg||'';rIss(true);},
+  'iss.rg':el=>{S.issUI.rg=el.dataset.rg||'';S.issUI.ed='';S.issUI.add='';rIss(true);},
   'iss.add':el=>{const sid=el.dataset.sid;S.issUI.ed='';S.issUI.add=S.issUI.add===sid?'':sid;rIss(true);},
   'iss.ck':el=>{const li=el.closest('.iss-i');if(!li)return;const sid=li.dataset.sid,iid=li.dataset.iid,x=issGet(sid,iid);if(!x)return;
-    const y=issRec(x);if(x.dt)delete y.dt;else y.dt=Date.now();issWrite(sid,iid,y);rIss(true);},
+    const y=issRec(x);if(x.dt)delete y.dt;else y.dt=Date.now();S.issUI.ed='';issWrite(sid,iid,y);rIss(true);},
   'iss.edit':el=>{const li=el.closest('.iss-i');if(!li)return;S.issUI.add='';S.issUI.ed=li.dataset.sid+'/'+li.dataset.iid;rIss(true);},
-  'iss.del':el=>{const li=el.closest('.iss-i');if(li)issDel(li.dataset.sid,li.dataset.iid);},
+  'iss.del':el=>{const li=el.closest('.iss-i');if(li){S.issUI.ed='';issDel(li.dataset.sid,li.dataset.iid);}},
 });
 ['cal.prev','cal.next','cal.pick','cal.today','day.fmore','nq.toggle'].forEach(k=>{const f=ACT[k];if(f)ACT[k]=el=>{issPaneSet(false);return f(el);};});   /* 달력을 다루는 단추는 달력으로 돌아가서 */
 /* 입력 — Enter 로 넣고 칸은 열어 둔다(이어 쓰기) · Esc 는 입력만 닫는다(창은 그대로) */
