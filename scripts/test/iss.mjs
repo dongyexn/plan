@@ -72,6 +72,7 @@ const txt=(pg,sel)=>pg.evaluate(s=>[...document.querySelectorAll(s)].map(e=>e.te
   ok('판 카드 기본 높이 = 현안 4줄',await pg.evaluate(()=>{const c=document.querySelector('#issPane .iss-c[data-sid="s2"]');return Math.abs(c.getBoundingClientRect().height-parseFloat(getComputedStyle(c).minHeight))<1&&parseFloat(getComputedStyle(c).minHeight)>150;}));
   ok('판 켬 — 아래 칸 숨음 · 단추 눌림',await pg.evaluate(()=>issOn()&&getComputedStyle($('#issStrip')).display==='none'&&$('[data-act="iss.open"]').getAttribute('aria-pressed')==='true'));
   await pg.click('#issPane .iss-c[data-sid="s3"] [data-act="iss.add"]');
+  ok('빈 카드에 적을 땐 빈 문구 없음',await pg.evaluate(()=>!document.querySelector('#issPane .iss-c[data-sid="s3"] .iss-empty')));
   ok('초점은 보이는 입력 칸',await pg.evaluate(()=>!!document.activeElement.closest('#issPane')));
   await pg.keyboard.type('위젯 추가');await pg.keyboard.press('Enter');await pg.keyboard.press('Escape');
   await pg.click('[data-act="cal.prev"]');await pg.waitForTimeout(300);
