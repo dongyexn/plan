@@ -373,6 +373,14 @@
         "$uid": {
           ".write": "auth != null && auth.uid == $uid && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/)",
           "emoji": { ".validate": "newData.isString() && newData.val().length <= 300" },
+          // 주요 현안 — 내 화면 정렬·순서·접기
+          "iss": {
+            "sort":  { ".validate": "newData.isString() && newData.val().matches(/^(base|open|old|me|mine)$/)" },
+            "order": { ".validate": "newData.isString() && newData.val().length <= 4000" },
+            "fold":  { ".validate": "newData.isString() && newData.val().length <= 4000" },
+            "fe":    { ".validate": "newData.isBoolean()" },
+            "$other": { ".validate": false }
+          },
           "favs": {
             "$fid": {
               "name":  { ".validate": "newData.isString() && newData.val().length <= 40" },

@@ -5764,7 +5764,10 @@ body.wid .cal-nb[aria-pressed="true"]{background:var(--b600);color:#fff;}
 .iss-wt button{flex:none;height:42px;padding:0 10px;border:0;border-bottom:2px solid transparent;background:none;font:inherit;font-size:13px;font-weight:600;color:rgba(255,255,255,.55);cursor:pointer;display:flex;align-items:center;gap:5px;}
 .iss-wt button span{font-size:11px;color:rgba(255,255,255,.4);}
 .iss-wt button.on{color:#fff;border-bottom-color:var(--b400);}
-.iss-wt .iss-more{margin-left:auto;width:42px;padding:0;justify-content:center;border-bottom:0;color:rgba(255,255,255,.6);}   /* 탭 줄 오른쪽 + — 보드에서 뺀 현장 다시 넣기 */
+.iss-wt :is(.iss-more,.iss-srt){width:42px;flex:none;display:flex;align-items:center;}
+.iss-wt .iss-srt{margin-left:auto;}   /* 정렬 · + — 탭 줄 오른쪽 */
+.iss-wt .iss-srt .icn{width:15px;height:15px;}
+.iss-wt .iss-more{padding:0;justify-content:center;border-bottom:0;color:rgba(255,255,255,.6);}   /* 탭 줄 오른쪽 + — 보드에서 뺀 현장 다시 넣기 */
 .iss-wt .iss-more .icn{width:16px;height:16px;}
 #issPane .iss-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
 @media (max-width:560px){#issPane .iss-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
@@ -5795,6 +5798,16 @@ body.wid .iss-ch.own::before{border-radius:10px 10px 0 0;}   /* 위젯 카드 �
 .iss-c .tm-h .iss-avs{margin-right:6px;}
 .iss-av{flex:none;width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--avc,var(--b600));box-shadow:0 0 0 1.5px rgba(26,29,38,.9);}
 .iss-c.card .iss-av{box-shadow:0 0 0 1.5px #fff;}
+/* 새 현안(등록 하루) — 줄 앞 파란 점 */
+.iss-i.nw .iss-tx::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:#4C8DF6;margin:0 6px 1px 0;vertical-align:middle;}
+/* 끌어서 자리 바꾸기(내 화면만) — 머리 줄을 잡는다. 끄는 동안 카드는 판 위로 뜬 복제본, 원래 자리는 흐리게 */
+.iss-c :is(.iss-ch,.tm-h){cursor:grab;}
+.iss-c.iss-ph{opacity:.25;}
+.iss-drag{position:fixed;z-index:9500;margin:0!important;pointer-events:none;box-shadow:0 14px 34px rgba(0,0,0,.45)!important;scale:1.02;cursor:grabbing;transition:scale .15s;}
+body.iss-dragging,body.iss-dragging *{cursor:grabbing!important;user-select:none;}
+/* 접기(내 화면만) — 머리만 남는다 */
+.iss-c.fold :is(.iss-ul,.iss-empty,.iss-new){display:none;}
+.iss-c.fold{min-height:0!important;align-self:start;}
 .iss-av+.iss-av{margin-left:-7px;}
 .iss-av .av-ic{width:13px;height:13px;}
 .iss-av .av-em{font-size:12px;line-height:1;}
@@ -5832,6 +5845,7 @@ body.wid.iss3 #fcal{flex:1 1 0;}
 <symbol id="i-warn" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
 <symbol id="i-home" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
 <symbol id="i-grid4" viewBox="0 0 24 24"><rect width="7" height="7" x="3" y="3" rx="1" /> <rect width="7" height="7" x="14" y="3" rx="1" /> <rect width="7" height="7" x="14" y="14" rx="1" /> <rect width="7" height="7" x="3" y="14" rx="1" /></symbol>
+<symbol id="i-sort" viewBox="0 0 24 24"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></symbol>   <!-- 정렬 — Lucide arrow-up-down -->
 <symbol id="i-board" viewBox="0 0 24 24"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/><path d="M14 4h7"/><path d="M14 9h7"/><path d="M14 15h7"/><path d="M14 20h7"/></symbol>   <!-- 주요 현안 — Lucide layout-list(목록 판) -->
 <symbol id="i-build" viewBox="0 0 24 24"><path d="M10 12h4" /> <path d="M10 8h4" /> <path d="M14 21v-3a2 2 0 0 0-4 0v3" /> <path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2" /> <path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16" /></symbol>
 <symbol id="i-trend" viewBox="0 0 24 24"><path d="M16 7h6v6" /> <path d="m22 7-8.5 8.5-5-5L2 17" /></symbol>
@@ -6305,5 +6319,5 @@ body.wid.iss3 #fcal{flex:1 1 0;}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1198"></script>
+<script src="./app.js?v=1199"></script>
 </body></html>
