@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1189';
+const APP_VER='1190';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -946,7 +946,7 @@ const LocalStore={
     S.org=this._d.org;S.tasks=this._d.tasks;S.cfg=this._d.cfg;S.people=this._d.people;S.prefs=this._d.prefs;S.offdays=this._d.offdays;S.accounts={};
     this._d.d60=this._d.d60||{};S.d60d=this._d.d60;   /* D+60 점검 */
     this._d.iss=this._d.iss||{};S.iss=this._d.iss;   /* 주요 현안 */
-    this._d.issHide=this._d.issHide||{};S.issHide=this._d.issHide;   /* 주요 현안 보드에서 뺀 현장 */
+    this._d.issHide=this._d.issHide||{};S.issHide=this._d.issHide;   /* 주요 현안 보드에 보일 현장 덧씀 */
     setTimeout(trashPurge,1500);   /* 휴지통 30일 정리 */
     setTimeout(archMigrate,1800);  /* 오래 끝난 업무를 보관함으로 */},
   putPlan(p){const{sid,iid,item,prevSid}=planToTask(p);
@@ -1207,8 +1207,8 @@ const FbStore={
     this._on('calapp/cfg',v=>{S.cfg=v||{};bootCacheSave();rCfg();rDefectNav();if(S.view==='org')rOrg();});
     /* 위젯엔 D+60 화면이 없다 — 구독하지 않는다(백업은 bkExport 가 그때 한 번 읽는다) */
     if(!WIDGET)this._on('calapp/d60',v=>{S.d60d=v||{};if(!FB._d60q){FB._d60q=true;setTimeout(d60QReplay,1500);}   /* 지난번에 못 보낸 점검 */if(S.view==='d60'){if(d60Editing())S.d60._stale=true;else rD60();}});   /* D+60 점검 — 서식·점검 결과. 입력 중이면 다시 그리기를 미룬다 */
-    this._on('calapp/iss',v=>{S.iss=v||{};rIss();});
-    this._on('calapp/issHide',v=>{S.issHide=v||{};rIss();});   /* 보드에서 뺀 현장 — 팀 공통 */   /* 주요 현안 — 위젯도 쓴다(머리 단추 창 · 4주 아래 칸) */
+    this._on('calapp/iss',v=>{S.iss=v||{};rIss();});   /* 주요 현안 — 위젯도 쓴다(머리 단추 창 · 4주 아래 칸) */
+    this._on('calapp/issHide',v=>{S.issHide=v||{};rIss();});   /* 보드에 보일 현장 덧씀 — 팀 공통 */
     const uid=S.user&&S.user.uid;
     if(uid){
         this._on('calapp/prefs/'+uid,v=>{S.prefs=v||{};});   /* 최근 이모지 등 개인 설정 */
@@ -11961,7 +11961,7 @@ const ACT={
             Object.keys(dF).forEach(tr=>d60Write('forms/'+tr,dF[tr]));
             Object.keys(dI).forEach(sid=>d60Write('insp/'+sid,dI[sid]));
             isu.forEach(([sid,iid,x])=>issWrite(sid,iid,x));
-            Object.keys(d.issHide||{}).forEach(sid=>{if(d.issHide[sid])issHideSet(sid,true);});
+            Object.keys(d.issHide||{}).forEach(sid=>{if(typeof d.issHide[sid]==='boolean')issHideSet(sid,d.issHide[sid]);});
             toast('되돌렸습니다 · 화면을 새로고침해 주세요');
           },'되돌리기',true);
       };
@@ -13098,7 +13098,7 @@ function mtgPlan(vac,sites,head){
 }
 /* 위젯 미니펫 공 던지기 — 머리 줄 빈 곳(단추·팝업 밖)을 누르면. 위치·크기 조정 중에는 하지 않는다 */
 document.addEventListener('click',e=>{if(!WIDGET||!PET.on()||$('#widMove'))return;const h=e.target.closest&&e.target.closest('#view-calendar .cal-head');
-  if(!h||e.target.closest('button,a,input,label,.cal-filt-pop,.tb-pop,#wgPet'))return;PET.throwBall(e.clientX);});
+  if(!h||PET.dragged()||e.target.closest('button,a,input,label,.cal-filt-pop,.tb-pop,#wgPet'))return;PET.throwBall(e.clientX);});
 document.addEventListener('pointerdown',e=>{const a=document.querySelectorAll('.site-on.arm');if(!a.length)return;const t=e.target.closest&&e.target.closest('.site-on.arm');a.forEach(x=>{if(x!==t)x.classList.remove('arm');});},true);   /* 현장 칩 해제 대기 — 바깥을 누르면 취소 */
 const LAYERS=[
   {n:'msel',open:()=>!!document.querySelector('.msel.open'),close:mselClose,on:'click',keep:'.msel'},
@@ -13391,7 +13391,7 @@ function petLoad(){   /* 그림 묶음 — 한 번만 받는다 */
 /* ⚠ 성능 — 걷기·둥실은 Web Animations(합성기)로 돌린다. 매 프레임 JS 로 transform 을 쓰면
    이 문서는 스타일 재계산이 비싸(:has 규칙) 펫 하나에 메인 스레드 4~5%를 먹었다. 판단은 타이머로 띄엄띄엄,
    프레임 루프는 공이 날아갈 때만 잠깐 돈다 */
-const PET=(()=>{let el,bd,img,bub,ballEl,cfg=null,x=0,dir=1,mode='idle',anim=null,tm=0,hvTm=0,bt=0,clicks=0,sleeping=false,nap=0,ball=null,braf=0,talk=0,bob=null;
+const PET=(()=>{let drg=false,el,bd,img,bub,ballEl,cfg=null,x=0,dir=1,mode='idle',anim=null,tm=0,hvTm=0,bt=0,clicks=0,sleeping=false,nap=0,ball=null,braf=0,talk=0,bob=null;
   const head=()=>document.querySelector('#view-calendar .cal-head');
   /* 걸을 수 있는 폭 — 왼쪽은 년월 묶음(「오늘」이 보이면 그 뒤), 오른쪽은 필터 칩·단추 묶음 중 먼저 오는 것. 판단할 때만 잰다 */
   const bounds=()=>{const h=head();if(!h)return[0,-1];const hr=h.getBoundingClientRect(),w=el?el.offsetWidth:40;
@@ -13442,7 +13442,7 @@ const PET=(()=>{let el,bd,img,bub,ballEl,cfg=null,x=0,dir=1,mode='idle',anim=nul
     if(ball.x<ball.lo){ball.x=ball.lo;ball.vx=-ball.vx*.6;}if(ball.x>ball.hi){ball.x=ball.hi;ball.vx=-ball.vx*.6;}
     const it=ball.it;if(ball.y>ball.floor){ball.y=ball.floor;ball.vy=-ball.vy*(it?.25:.45);ball.vx*=it?.3:.7;if(Math.abs(ball.vy)<40){ball.vy=0;if(Math.abs(ball.vx)<(it?30:8))ball.vx=0;}}
     ballEl.style.transform='translate('+Math.round(ball.x-(it?8:5))+'px,'+Math.round(ball.y-(it?16:10))+'px)';
-    if(!ball.vy&&!ball.vx&&!ball.go){ball.go=1;cancelAnimationFrame(braf);
+    if(!ball.vy&&!ball.vx&&!ball.go){cancelAnimationFrame(braf);if(drg)return;ball.go=1;   /* 끄는 중이면 놓을 때까지 기다린다 */
       const tx=Math.min(Math.max(ball.x-el.offsetWidth/2,ball.lo-6),ball.hi-el.offsetWidth+6);
       moveTo(tx,95,'run',()=>{const b=ball;ball=null;if(b)ballEl.remove();hop();set(b&&b.it?'idle':'with_ball');say(b&&b.it?'😋':petPick(PET_LINES.ball));later(next,2600);});}};   /* 먹이는 공을 문 그림 대신 쉬는 그림 */
   const react=()=>{if(deep)deepOff();if(sleeping){sleep(false);hop();say(petPick(PET_LINES.wake));return;}
@@ -13460,7 +13460,19 @@ const PET=(()=>{let el,bd,img,bub,ballEl,cfg=null,x=0,dir=1,mode='idle',anim=nul
         el.addEventListener('mouseenter',()=>{if(ball||sleeping||mode==='swipe'||mode==='with_ball')return;stop();clearTimeout(tm);set('idle');
           hvTm=setTimeout(()=>{say(petPick(PET_LINES.pet),1400);hop();},1500);});
         el.addEventListener('mouseleave',()=>{clearTimeout(hvTm);if(!ball&&!sleeping&&mode==='idle')later(next,600);});
-        el.addEventListener('click',e=>{e.stopPropagation();react();});}
+        el.addEventListener('click',e=>{e.stopPropagation();if(el._drg){el._drg=false;return;}react();});
+        /* 잡아 끌기 — 4px 넘게 움직이면 끌기(누르기 반응은 건너뛴다). 걸을 수 있는 폭 안에서만, 놓으면 깡총 */
+        el.addEventListener('pointerdown',e=>{if(e.button!==0)return;const sx=e.clientX;let x0=0,on=false;
+          const mv=ev=>{const dx=ev.clientX-sx;
+            if(!on){if(Math.abs(dx)<4)return;on=drg=true;clearTimeout(hvTm);clearTimeout(tm);
+              if(deep){deep=false;if(bob)bob.play();}if(sleeping){sleeping=false;clearTimeout(nap);el.classList.remove('sleep');}
+              stop();x0=x;set('idle');el.classList.add('drag');}
+            const[L,R]=bounds();x=Math.min(Math.max(x0+dx,L),R);turn(dx>=0?1:-1);el.style.transform='translateX('+Math.round(x)+'px)';};
+          const up=()=>{removeEventListener('pointermove',mv);removeEventListener('pointerup',up);removeEventListener('pointercancel',up);
+            if(!on)return;drg=false;el._drg=true;setTimeout(()=>{el._drg=false;},0);el.classList.remove('drag');hop();
+            if(ball&&!ball.vx&&!ball.vy){ball.go=0;cancelAnimationFrame(braf);braf=requestAnimationFrame(ballStep);}   /* 끄는 동안 멎은 공 — 놓은 자리에서 가지러 간다 */
+            else if(!ball)later(next,3000);};
+          addEventListener('pointermove',mv);addEventListener('pointerup',up);addEventListener('pointercancel',up);});}
       if(el.parentNode!==h)h.appendChild(el);
       bd.style.width=Math.max(...Object.values(c.g).map(g=>g.w))+'px';   /* 동작마다 그림 폭이 달라(달리기 39 · 쉬기 33 …) 바꿀 때 몸이 5~10px 튀었다 — 가장 넓은 폭의 칸 가운데에 둔다 */
       if(fresh){img.dataset.m='';if(bob){bob.cancel();bob=null;}img.style.imageRendering=c.sm?'auto':'';face();   /* sm — 픽셀 격자가 아닌 그림은 매끈하게 */
@@ -13471,6 +13483,7 @@ const PET=(()=>{let el,bd,img,bub,ballEl,cfg=null,x=0,dir=1,mode='idle',anim=nul
     wake:()=>{if(cfg&&el&&el.isConnected)deepOff();},
     unmount(){deep=false;clearTimeout(tm);clearTimeout(nap);clearTimeout(hvTm);clearInterval(talk);talk=0;cancelAnimationFrame(braf);
       if(anim){anim.onfinish=null;anim.cancel();anim=null;}if(bob){bob.cancel();bob=null;}if(el)el.remove();if(ballEl)ballEl.remove();ball=null;cfg=null;sleeping=false;document.body.classList.remove('pet-on');},
+    dragged:()=>!!(el&&el._drg),   /* 방금 끌었음 — 놓은 자리가 머리 줄이어도 공을 던지지 않게 */
     throwBall(cx){if(!cfg||!el||!el.isConnected||el.hidden)return;if(deep){deep=false;if(bob)bob.play();}if(sleeping){sleeping=false;clearTimeout(nap);el.classList.remove('sleep');}
       const h=head(),hr=h.getBoundingClientRect(),[L,R]=bounds();stop();clearTimeout(tm);set('idle');
       if(!ballEl){ballEl=document.createElement('div');ballEl.id='wgBall';}const it=cfg.it||'';ballEl.classList.toggle('it',!!it);ballEl.style.backgroundImage=it?'url('+petUrl('it-'+it+'.png')+')':'';h.appendChild(ballEl);
@@ -13490,7 +13503,8 @@ function petSync(){
   const o=k&&P?P[k]:null;
   o?PET.mount(o):PET.unmount();
   const b=$('#wgPetB');if(b){b.setAttribute('aria-expanded',PET_PICK?'true':'false');
-    b.innerHTML=(o?'<img src="'+petUrl(o.t.f)+'" alt="" style="width:'+o.t.w+'px;height:'+o.t.h+'px'+(o.sm?';image-rendering:auto':'')+'">':'')+'<b>'+(o?esc(o.n):'없음')+'</b><svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg>';}
+    b.innerHTML='<b>'+(o?esc(o.n):'없음')+'</b><svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg>';}
+  const th=$('#wgPetT');if(th)th.innerHTML=o?'<img src="'+petUrl(o.t.f)+'" alt="" style="width:'+o.t.w+'px;height:'+o.t.h+'px'+(o.sm?';image-rendering:auto':'')+'">':'';   /* 그림은 라벨 칸 오른쪽(투명도 % 자리) */
   petPickRender();
 }
 function petPickRender(){
@@ -16507,11 +16521,16 @@ const ISS_KEEP=7,ISS_OLD=30;
 S.iss=S.iss||{};
 S.issUI={rg:'',add:'',ed:'',pend:false};
 const issIcn=n=>'<svg class="icn" aria-hidden="true"><use href="#i-'+n+'"></use></svg>';
-function issSites(){const h=S.issHide||{};return dfSites().filter(s=>!h[s.id]);}   /* 보드에서 뺀 현장(팀 공통)은 데스크톱·위젯 판·4주 아래 칸 모두에서 빠진다 */
-function issHidden(){const h=S.issHide||{};return dfSites().filter(s=>h[s.id]);}
-function issHideSet(sid,on){
-  if(on)(S.issHide=S.issHide||{})[sid]=true;else if(S.issHide)delete S.issHide[sid];
-  if(S.live&&FB.db)FB.db.ref('calapp/issHide/'+sid).set(on?true:null).catch(fbErr);
+/* 보드에 보일 현장 — 팀의 모든 현장 중, 기본은 하자 화면 표시(조직 관리 토글)를 따르고 issHide 가 덧쓴다(팀 공통).
+   issHide[sid] = true 뺌 · false 넣음(하자 화면에서 꺼 둔 현장도) · 없음 = 기본. 데스크톱·위젯 판·4주 아래 칸 모두 같다 */
+function issBase(){const{team}=tkSel();return (S.org.sites||[]).filter(x=>x.name&&(!team||!x.team||x.team===team.id));}
+function issVis(s){const v=(S.issHide||{})[s.id];return v===true?false:v===false?true:!dfIsHidden(s.id);}
+function issSites(){return issBase().filter(issVis);}
+function issHidden(){return issBase().filter(s=>!issVis(s));}
+function issHideSet(sid,on){   /* on = 뺀다 · 기본과 같아지면 지운다 */
+  const v=on===dfIsHidden(sid)?null:on;
+  if(v===null){if(S.issHide)delete S.issHide[sid];}else (S.issHide=S.issHide||{})[sid]=v;
+  if(S.live&&FB.db)FB.db.ref('calapp/issHide/'+sid).set(v).catch(fbErr);
   else{LocalStore._d.issHide=S.issHide;lsSave(LocalStore._d);}
   rIss(true);}
 function issGroups(sites){return dfSiteGroups(sites,(S.org.regions||[]).filter(r=>r&&r.name));}

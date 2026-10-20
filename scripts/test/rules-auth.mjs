@@ -271,10 +271,11 @@ t('AUTH-22e', '미등록 계정 → 현안 추가', false, tryWrite('calapp/iss/
 t('AUTH-22f', 'viewer → 빈 내용', false, tryWrite('calapp/iss/sA/i2', A('U1'), T22, { t: '', at: 2, by: 'U1' }));
 t('AUTH-22g', 'viewer → 모르는 칸', false, tryWrite('calapp/iss/sA/i2', A('U1'), T22, { t: 'x', at: 2, by: 'U1', z: 1 }));
 t('AUTH-22h', 'viewer → 현안 읽기', true, tryRead('calapp/iss', A('U1'), T22));
-/* AUTH-23 주요 현안 보드에서 뺀 현장 — 팀 공통 · MEMBER 누구나 · true 만 */
+/* AUTH-23 주요 현안 보드에 보일 현장 덧씀 — 팀 공통 · MEMBER 누구나 · 참거짓만 */
 t('AUTH-23a', 'viewer → 현장 빼기', true, tryWrite('calapp/issHide/sA', A('U1'), T22, true));
 t('AUTH-23b', 'viewer → 다시 넣기(지움)', true, tryWrite('calapp/issHide/sA', A('U1'), { ...T22, calapp: { ...T22.calapp, issHide: { sA: true } } }, null));
-t('AUTH-23c', 'viewer → false 값', false, tryWrite('calapp/issHide/sA', A('U1'), T22, false));
+t('AUTH-23c', 'viewer → 넣기(false)', true, tryWrite('calapp/issHide/sA', A('U1'), T22, false));
+t('AUTH-23g', 'viewer → 문자 값', false, tryWrite('calapp/issHide/sA', A('U1'), T22, 'x'));
 t('AUTH-23d', '미등록 계정 → 현장 빼기', false, tryWrite('calapp/issHide/sA', A('V1'), T22, true));
 t('AUTH-23e', 'viewer → 통째 지우기', false, tryWrite('calapp/issHide', A('U1'), T22, null));
 t('AUTH-23f', 'viewer → 읽기', true, tryRead('calapp/issHide', A('U1'), T22));
