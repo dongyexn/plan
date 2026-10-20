@@ -5,7 +5,7 @@
                      · 토끼(Bunny 16x16 · Bunbun) · 작은 고양이(Cat) · 말티즈(pet1_free) · 닭(Chicken Sprite Sheet) · 크림·드라큘라·상자 고양이(CatPackFree) · 마녀 고양이(CatPackHalloweenFREE)
          Green Heart Farm Animal Pack 데모(Helm3t) — 젖소(데모 라이선스: 비상업·개인 프로젝트)
          pixelfood(npm, frangeris, CC BY-NC-SA 4.0 — 비상업) — 던지는 먹이 그림 it-*.png(32px)
-         Fluent Emoji(Microsoft, MIT) 🐟 — 고양이 먹이 it-fish.png(32px 로 줄임)
+         Fluent Emoji(Microsoft, MIT) 🐟 ❤️ — 고양이 먹이 it-fish.png · 쓰다듬기 하트 it-heart.png(32px 로 줄임)
    그림 파일은 vendor/pets/ — 원래 픽셀 격자 크기로 둔다(확대해 둔 원본은 줄였다). 표시 크기(w,h)는 그 정수 배 — 소수 배율은 픽셀이 뭉갠다. 예외(사용자 지정): 꼬마냥 회색·흰색·산타, 토끼·회색 1.5배 · 젖소 34/19배.
    꼬마냥 셋의 idle 은 원본(계속 한 바퀴 도는 6장)에서 정면 장만 추린 그림.
    t 는 위젯 크기 비율 그대로(고르기 칸 높이 34 를 넘으면 줄인다).
