@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1185';
+const APP_VER='1186';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -1190,7 +1190,7 @@ const FbStore={
     this._on('calapp/offdays',v=>{S.offdays=v||{};bootCacheSave();calRerender();rDay();rWidget();});
     this._on('calapp/people',v=>{S.people=v||{};bootCacheSave();
       if(tkHold()){PEND.org=true;PEND.tasks=true;return;}
-      rOrg();rTasks();rIss();});   /* 담당 현장이 바뀌면 위젯 3주 아래 칸도 */
+      rOrg();rTasks();rIss();});   /* 담당 현장이 바뀌면 위젯 4주 아래 칸도 */
     /* 하자처리 현황과 공용인 users 노드 — 계정 목록을 가져온다. 읽기가 막히면 조용히 수동 명부로 대체 */
     this._on('users',v=>{S.accounts=v||{};S.acctDenied=false;bootCacheSave();
       const me=S.user&&S.accounts[S.user.uid];
@@ -1206,7 +1206,7 @@ const FbStore={
     this._on('calapp/cfg',v=>{S.cfg=v||{};bootCacheSave();rCfg();rDefectNav();if(S.view==='org')rOrg();});
     /* 위젯엔 D+60 화면이 없다 — 구독하지 않는다(백업은 bkExport 가 그때 한 번 읽는다) */
     if(!WIDGET)this._on('calapp/d60',v=>{S.d60d=v||{};if(!FB._d60q){FB._d60q=true;setTimeout(d60QReplay,1500);}   /* 지난번에 못 보낸 점검 */if(S.view==='d60'){if(d60Editing())S.d60._stale=true;else rD60();}});   /* D+60 점검 — 서식·점검 결과. 입력 중이면 다시 그리기를 미룬다 */
-    this._on('calapp/iss',v=>{S.iss=v||{};rIss();});   /* 주요 현안 — 위젯도 쓴다(머리 단추 창 · 3주 아래 칸) */
+    this._on('calapp/iss',v=>{S.iss=v||{};rIss();});   /* 주요 현안 — 위젯도 쓴다(머리 단추 창 · 4주 아래 칸) */
     const uid=S.user&&S.user.uid;
     if(uid){
         this._on('calapp/prefs/'+uid,v=>{S.prefs=v||{};});   /* 최근 이모지 등 개인 설정 */
@@ -2373,18 +2373,18 @@ function rAcct(){
 /* ═══════════ 달력 (FullCalendar) ═══════════ */
 let CAL=null,MOBILE_CAL=null,CAL_DS1=true;
 function calIss3(){return WIDGET&&!!widCfgLoad().iss3;}
-/* 달력이 「보고 있는 달」 — 3주 뷰는 가운데 주(금주) 기준 */
-function calRef(){if(!CAL)return new Date();const c=CAL.view.currentStart;return CAL.view.type==='dayGrid3w'?new Date(c.getFullYear(),c.getMonth(),c.getDate()+7):c;}
-/* 3주 뷰 이동 — ⚠ gotoDate 는 보이는 범위 안 날짜면 움직이지 않고, prev/next 는 범위 시작이 아니라 currentDate 기준이다. 같은 뷰로 changeView 하면 그 날짜의 주부터 다시 짠다 */
-function cal3Go(ds){if(CAL)CAL.changeView('dayGrid3w',ds);}
-const cal3=()=>!!CAL&&CAL.view.type==='dayGrid3w';
+/* 달력이 「보고 있는 달」 — 4주 뷰는 둘째 주(금주) 기준 */
+function calRef(){if(!CAL)return new Date();const c=CAL.view.currentStart;return CAL.view.type==='dayGrid4w'?new Date(c.getFullYear(),c.getMonth(),c.getDate()+7):c;}
+/* 4주 뷰 이동 — ⚠ gotoDate 는 보이는 범위 안 날짜면 움직이지 않고, prev/next 는 범위 시작이 아니라 currentDate 기준이다. 같은 뷰로 changeView 하면 그 날짜의 주부터 다시 짠다 */
+function cal3Go(ds){if(CAL)CAL.changeView('dayGrid4w',ds);}
+const cal3=()=>!!CAL&&CAL.view.type==='dayGrid4w';
 function calInit(){
   MOBILE_CAL=isNarrow();
   CAL=new FullCalendar.Calendar($('#fcal'),{
-    initialView:calIss3()?'dayGrid3w':'dayGridMonth',
+    initialView:calIss3()?'dayGrid4w':'dayGridMonth',
     initialDate:calIss3()?addDays(todayStr(),-7):S.selDate,
-    /* 위젯 「3주 + 주요 현안」 — 전주·금주·다음주. 한 주씩 넘긴다. 월 뷰 규칙(.fc-dayGridMonth-view)을 그대로 쓰게 같은 이름표를 단다 */
-    views:{dayGrid3w:{type:'dayGrid',duration:{weeks:3},dateIncrement:{weeks:1},fixedWeekCount:false,viewClassNames:['fc-dayGridMonth-view']}},   /* ⚠ fixedWeekCount 는 월이 아니어도 6주로 늘린다 — 끈다 */
+    /* 위젯 「4주 + 주요 현안」 — 전주·금주·담주·다담주. 한 주씩 넘긴다. 월 뷰 규칙(.fc-dayGridMonth-view)을 그대로 쓰게 같은 이름표를 단다 */
+    views:{dayGrid4w:{type:'dayGrid',duration:{weeks:4},dateIncrement:{weeks:1},fixedWeekCount:false,viewClassNames:['fc-dayGridMonth-view']}},   /* ⚠ fixedWeekCount 는 월이 아니어도 6주로 늘린다 — 끈다 */
     firstDay:0,fixedWeekCount:true,showNonCurrentDates:true,   /* 항상 6주 — 달마다 칸 높이가 달라지지 않게 */
     /* 시간은 제목 안의 fmtSpan 이 담당 — FC 기본 표기("10a")를 켜 두면 이중으로 찍힌다 */
     displayEventTime:false,
@@ -3021,7 +3021,7 @@ function selDate(ds,quiet){
     S.widPop=quiet?false:(same?!S.widPop:true);   /* 첫 클릭에 바로 연다(칩·「외 N건」과 같게) · 같은 칸을 다시 누르면 닫는다 */
   }   /* 같은 칸: 안 떠 있으면 열고, 떠 있으면 닫는다 */
   setTimeout(rWidget,0);
-  if(cal3()){if(ds<dstr(CAL.view.currentStart)||ds>=dstr(CAL.view.currentEnd))cal3Go(addDays(ds,-7));}   /* 3주 뷰는 보이는 범위 밖일 때만 — 그 날이 가운데 주로 */
+  if(cal3()){if(ds<dstr(CAL.view.currentStart)||ds>=dstr(CAL.view.currentEnd))cal3Go(addDays(ds,-7));}   /* 4주 뷰는 보이는 범위 밖일 때만 — 그 날이 둘째 주로 */
   else if(CAL&&ymOf(ds)!==CAL.view.currentStart.getFullYear()+'-'+pad(CAL.view.currentStart.getMonth()+1))CAL.gotoDate(ds);
   markSel();
   if(isMob()&&S.view==='calendar')dpSheet(true);
@@ -13540,7 +13540,7 @@ function widApply(){
       +'\nbody.wid #fcal td.fc-daygrid-day.sel-day{background-image:linear-gradient(rgba('+rg(al)+',.30),rgba('+rg(al)+',.30))!important;}'
       +'\nbody.wid #fcal .fc-dayGridMonth-view td.fc-daygrid-day.sel-day .fc-daygrid-day-frame::after{border-color:'+ac+'!important;}'
       +'\nbody.wid .cal-head .seg .act{background:'+ac+';}';}
-  /* 주요 현안 카드(3주 아래 · 달력 자리) — 날짜 칸과 같은 유리, 조금 진하게. 권역 탭 줄은 요일 머리와 같은 유리 */
+  /* 주요 현안 카드(4주 아래 · 달력 자리) — 날짜 칸과 같은 유리, 조금 진하게. 권역 탭 줄은 요일 머리와 같은 유리 */
   if(GLASS)dyn.textContent+='\nbody.wid.glass :is(#issStrip,#issPane) .iss-c{background:rgba('+B+','+f(a+.1)+');}'
     +'\nbody.wid.glass #issPane .iss-wt{background:rgba('+H+','+f(a+.12)+');}';
   const aw=$('#wgAcc');if(aw){const k=acc?acc[0]:'blue';
@@ -15511,7 +15511,7 @@ document.addEventListener('contextmenu',e=>{
 function calTodaySync(){
   const wrap=$('#calTodayWrap');if(!wrap)return;
   const c=calRef(),now=new Date();
-  const same=cal3()?(now>=CAL.view.currentStart&&now<CAL.view.currentEnd):(c.getFullYear()===now.getFullYear()&&c.getMonth()===now.getMonth());   /* 3주 뷰는 오늘이 보이면 */
+  const same=cal3()?(now>=CAL.view.currentStart&&now<CAL.view.currentEnd):(c.getFullYear()===now.getFullYear()&&c.getMonth()===now.getMonth());   /* 4주 뷰는 오늘이 보이면 */
   wrap.classList.toggle('off',same);
   calTodayPlace();
 }
@@ -16497,7 +16497,7 @@ Object.assign(ACT,{
 /* ═══════════ 주요 현안(팀 공유 · RTDB calapp/iss) ═══════════
    사무실 화이트보드를 옮긴 것 — 현장마다 카드 하나, 현안은 한 줄씩. 동그라미로 해결, 해결한 줄은 7일 뒤 보드에서 빠진다(자료는 남는다).
    저장 calapp/iss/{현장id}/{id} = {t 내용, at 등록 시각, by 등록자 uid, dt 해결 시각}. MEMBER 누구나 쓰고 지운다.
-   데스크톱 「주요 현안」 화면 · 위젯 머리 단추로 바꿔 끼는 달력 자리(#issPane) · 위젯 「3주 + 주요 현안」 아래 칸(내 담당 현장만)이 같은 카드(issCard)를 쓴다 */
+   데스크톱 「주요 현안」 화면 · 위젯 머리 단추로 바꿔 끼는 달력 자리(#issPane) · 위젯 「4주 + 주요 현안」 아래 칸(내 담당 현장만)이 같은 카드(issCard)를 쓴다 */
 const ISS_KEEP=7,ISS_OLD=30;
 S.iss=S.iss||{};
 S.issUI={rg:'',add:'',ed:'',pend:false};
@@ -16556,7 +16556,7 @@ function issBoard(kind){
       +'</div></div><div class="iss-sc" data-sb>'+body+'</div>';
   return '<div class="iss-wt">'+tabs.map(([k,n,l])=>'<button class="'+(S.issUI.rg===k?'on':'')+'" data-act="iss.rg" data-rg="'+esc(k)+'">'+esc(n)+'<span>'+cnt(l)+'</span></button>').join('')+'</div>'
     +'<div class="iss-sc" data-sb>'+body+'</div>';}
-/* 위젯 3주 아래 칸 — 내 담당 현장만(로컬 모드는 전부) */
+/* 위젯 4주 아래 칸 — 내 담당 현장만(로컬 모드는 전부) */
 function issStripHTML(){
   const my=mySites(),sites=issSites().filter(s=>!S.user||my[s.id]);
   return sites.length?sites.map(s=>issCard(s,'w')).join(''):'<div class="iss-none">담당 현장이 없습니다. 조직 관리에서 담당 현장을 배정하세요.</div>';}
@@ -16597,16 +16597,16 @@ function issPaneSet(on){const w=$('#issPane');if(!w||issOn()===on)return;
   w.hidden=!on;document.body.classList.toggle('iss-on',on);
   const b=$('[data-act="iss.open"]');if(b)b.setAttribute('aria-pressed',on?'true':'false');
   if(on){if(S.widPop){S.widPop=false;rWidget();}rIss(true);}
-  else{w.innerHTML='';S.issUI.add='';S.issUI.ed='';rIss();   /* 3주 아래 칸은 판이 켜진 동안 안 그렸다 */
+  else{w.innerHTML='';S.issUI.add='';S.issUI.ed='';rIss();   /* 4주 아래 칸은 판이 켜진 동안 안 그렸다 */
     requestAnimationFrame(()=>{if(CAL){CAL.updateSize();calFitApply();}});}}
-/* 위젯 「3주 + 주요 현안」 — 달력을 전주·금주·다음주(3주)로, 아래 칸에 내 담당 현장 카드 */
+/* 위젯 「4주 + 주요 현안」 — 달력을 전주·금주·담주·다담주(4주)로, 아래 칸에 내 담당 현장 카드 */
 function widIss3(){
   if(!WIDGET)return;
   const on=!!widCfgLoad().iss3,st=$('#issStrip');
   document.body.classList.toggle('iss3',on);
   if(st){st.hidden=!on;if(on)rIss();else st.innerHTML='';}
   if(!CAL)return;
-  const want=on?'dayGrid3w':'dayGridMonth';
+  const want=on?'dayGrid4w':'dayGridMonth';
   if(CAL.view.type!==want)CAL.changeView(want,on?addDays(todayStr(),-7):(S.selDate||todayStr()));
   requestAnimationFrame(()=>{if(CAL){CAL.updateSize();calFitApply();}});
 }
@@ -16642,7 +16642,7 @@ document.addEventListener('focusout',e=>{
 document.addEventListener('change',e=>{
   if(e.target.id!=='wgIss3')return;
   const c=widCfgLoad();c.iss3=e.target.checked;widCfgSave(c);widIss3();
-  toast(c.iss3?'3주 + 주요 현안으로 바꿨습니다':'한 달 달력으로 바꿨습니다');
+  toast(c.iss3?'4주 + 주요 현안으로 바꿨습니다':'한 달 달력으로 바꿨습니다');
 });
 /* ═══════════ 업무 도구 — D+60 점검(팀 공유 · RTDB calapp/d60) ═══════════
    준공일 + 2개월이 점검일. 대공종(건축·설비·전기·조경)별 따로 점검, 구분은 전유부·공용부·민원사항.
