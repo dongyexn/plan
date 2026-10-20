@@ -5715,14 +5715,14 @@ body.wid.glass{--mv-flash:#8FB4FF;}
   @media (hover:hover) and (pointer:fine){body:not(.wid) .nq-panel .nq-cl:hover{background:var(--shell-act);color:#fff;}}@media not ((hover:hover) and (pointer:fine)){body:not(.wid) .nq-panel .nq-cl:active{background:var(--shell-act);color:#fff;}}
 }
 
-/* ═══ 주요 현안 — 현장별 카드(화이트보드). 데스크톱 화면 · 위젯 가운데 창 · 위젯 3주 아래 칸이 같은 카드를 쓴다 ═══ */
+/* ═══ 주요 현안 — 현장별 카드(화이트보드). 데스크톱 화면 · 위젯 달력 자리(#issPane) · 위젯 3주 아래 칸이 같은 카드를 쓴다 ═══ */
 #issRoot{flex:1;min-height:0;display:flex;flex-direction:column;}
 .iss-tabs{margin-bottom:8px;}   /* 탭 줄 아래 카드까지 — D+60(탭 -2 + 칸 사이 10)과 같은 8px */
 .iss-sc{flex:1;min-height:0;overflow-y:auto;}
 .iss-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:10px;align-items:stretch;}
 .iss-c{display:flex;flex-direction:column;min-width:0;}
 .card.iss-c{padding:0;overflow:hidden;min-height:150px;}
-.iss-c .tm-h>span{display:flex;align-items:baseline;gap:6px;min-width:0;}
+.iss-c .tm-h>span{display:flex;align-items:center;gap:6px;min-width:0;}
 .iss-c .tm-h .tm-sub{font-size:12px;font-weight:700;}
 .iss-ul{list-style:none;margin:0;padding:6px 8px 8px;display:flex;flex-direction:column;}
 .iss-i{display:flex;align-items:flex-start;gap:8px;padding:6px 8px;border-radius:var(--r);font-size:13px;line-height:1.45;}
@@ -5745,15 +5745,12 @@ body.wid.glass{--mv-flash:#8FB4FF;}
 /* 위젯 — 머리 단추로 달력 자리(머리 줄 아래)를 주요 현안으로 바꿔 낀다. 판은 날짜 칸과 같은 유리(wgDyn) */
 body.wid.iss-on :is(#fcal,#calFchips,#issStrip){display:none!important;}
 #issPane:not([hidden]){flex:1;min-height:0;display:flex;flex-direction:column;gap:6px;color:rgba(255,255,255,.92);line-height:1.45;animation:viewIn var(--mv-mid) var(--mv-ease);}   /* 판 배경 없음 — 탭 줄·카드가 각자 유리 */
-#issPane .iss-wt{border-radius:var(--r);border-bottom:0;padding:0 8px;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);}   /* 요일 머리처럼 따로 띠 */
-#issPane .iss-wt button{height:42px;margin-bottom:0;}   /* 요일 머리 높이 */
 #issPane .iss-c{aspect-ratio:1/1;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);}   /* 기본은 정사각형 — 줄이 많으면 늘어난다 */
 body.wid .cal-nb[aria-pressed="true"]{background:var(--b600);color:#fff;}
-.iss-wt{flex:none;display:flex;gap:2px;padding:4px 12px 0;border-bottom:1px solid rgba(255,255,255,.12);overflow-x:auto;scrollbar-width:none;}
-.iss-wt button{flex:none;height:32px;margin-bottom:-1px;padding:0 10px;border:0;border-bottom:2px solid transparent;background:none;font:inherit;font-size:13px;font-weight:600;color:rgba(255,255,255,.55);cursor:pointer;display:flex;align-items:center;gap:5px;}
+.iss-wt{flex:none;display:flex;gap:2px;padding:0 8px;border-radius:var(--r);overflow-x:auto;scrollbar-width:none;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);}   /* 권역 탭 — 요일 머리처럼 따로 띠(색은 wgDyn) */
+.iss-wt button{flex:none;height:42px;padding:0 10px;border:0;border-bottom:2px solid transparent;background:none;font:inherit;font-size:13px;font-weight:600;color:rgba(255,255,255,.55);cursor:pointer;display:flex;align-items:center;gap:5px;}
 .iss-wt button span{font-size:11px;color:rgba(255,255,255,.4);}
 .iss-wt button.on{color:#fff;border-bottom-color:var(--b400);}
-#issPane .iss-sc{padding:0;}
 #issPane .iss-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
 @media (max-width:560px){#issPane .iss-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
 body.wid .iss-c:not(.card){border-radius:10px;background:rgba(255,255,255,.07);min-height:110px;}
@@ -5780,7 +5777,7 @@ body.wid .iss-c :is(.iss-in,.iss-ed){border-color:rgba(143,180,255,.6);border-ra
 body.wid .iss-ch.own::before{border-radius:10px 10px 0 0;}   /* 위젯 카드 둥근 모서리 밖으로 칠이 비치지 않게 */
 .iss-avs{display:inline-flex;flex:none;}
 .iss-c .tm-h .iss-avs{margin-right:6px;}
-.iss-av{flex:none;width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--avc,var(--b600));box-shadow:0 0 0 1.5px var(--card-bg,rgba(26,29,38,.9));}
+.iss-av{flex:none;width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--avc,var(--b600));box-shadow:0 0 0 1.5px rgba(26,29,38,.9);}
 .iss-c.card .iss-av{box-shadow:0 0 0 1.5px #fff;}
 .iss-av+.iss-av{margin-left:-7px;}
 .iss-av .av-ic{width:13px;height:13px;}
@@ -5790,7 +5787,6 @@ body.wid .iss-ch.own::before{border-radius:10px 10px 0 0;}   /* 위젯 카드 �
 .iss-ch .iss-own+.iss-ad{margin-left:2px;}
 .iss-ch .n+.iss-ad{margin-left:auto;}
 .iss-c .tm-h .iss-hr{flex:1 1 0;display:flex;align-items:center;justify-content:flex-end;gap:6px;min-width:0;}
-.iss-c .tm-h>span:first-child{align-items:center;}
 /* 위젯 「3주 + 현안」 — 달력 3주와 아래 카드가 반씩 */
 body.wid.iss3 #fcal{flex:1 1 0;}
 #issStrip:not([hidden]){color:rgba(255,255,255,.92);flex:1 1 0;min-height:0;margin-top:6px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:max-content;gap:6px;align-content:start;overflow-y:auto;}
@@ -5818,7 +5814,7 @@ body.wid.iss3 #fcal{flex:1 1 0;}
 <symbol id="i-warn" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
 <symbol id="i-home" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
 <symbol id="i-grid4" viewBox="0 0 24 24"><rect width="7" height="7" x="3" y="3" rx="1" /> <rect width="7" height="7" x="14" y="3" rx="1" /> <rect width="7" height="7" x="14" y="14" rx="1" /> <rect width="7" height="7" x="3" y="14" rx="1" /></symbol>
-<symbol id="i-board" viewBox="0 0 24 24"><path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8Z"/><path d="M15 3v4a2 2 0 0 0 2 2h4"/></symbol>
+<symbol id="i-board" viewBox="0 0 24 24"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/><path d="M14 4h7"/><path d="M14 9h7"/><path d="M14 15h7"/><path d="M14 20h7"/></symbol>   <!-- 주요 현안 — Lucide layout-list(목록 판) -->
 <symbol id="i-build" viewBox="0 0 24 24"><path d="M10 12h4" /> <path d="M10 8h4" /> <path d="M14 21v-3a2 2 0 0 0-4 0v3" /> <path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2" /> <path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16" /></symbol>
 <symbol id="i-trend" viewBox="0 0 24 24"><path d="M16 7h6v6" /> <path d="m22 7-8.5 8.5-5-5L2 17" /></symbol>
 <symbol id="i-cal" viewBox="0 0 24 24"><path d="M8 2v3" /> <path d="M16 2v3" /> <rect x="3" y="3" width="18" height="18" rx="2" /> <path d="M3 9h18" /></symbol>
@@ -6291,5 +6287,5 @@ body.wid.iss3 #fcal{flex:1 1 0;}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1183"></script>
+<script src="./app.js?v=1184"></script>
 </body></html>
