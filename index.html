@@ -3456,7 +3456,9 @@ body.wid #wgSet.on{display:block;}
 #wgPet .bub.l{left:auto;right:100%;transform:translate(-2px,0);}#wgPet .bub.l.on{transform:translate(-6px,0);}
 #wgPet .bub.l::after{right:auto;left:100%;border-right-color:transparent;border-left-color:#fff;}
 #wgPet .bd{display:flex;justify-content:center;align-items:flex-end;}
-#wgPet.hop{animation:wgPetHop .45s cubic-bezier(.3,1.6,.5,1);}
+#wgPet .sh{position:absolute;left:50%;bottom:-1px;height:4px;translate:-50% 0;border-radius:50%;background:rgba(0,0,0,.3);pointer-events:none;}   /* 발밑 그림자 — 폭은 그림마다(set) */
+#wgPet.fly .sh{opacity:.55;}#wgPet.held .sh{display:none;}   /* 나는 펫은 옅게 · 들고 있을 땐 바닥 그림자(#wgPetSh)가 대신 */
+#wgPet.hop .bd{animation:wgPetHop .45s cubic-bezier(.3,1.6,.5,1);}   /* 깡총은 몸만 — 그림자는 바닥에 */
 @keyframes wgPetHop{0%,100%{translate:0 0}40%{translate:0 -12px}}
 #wgPet .z{position:absolute;left:60%;bottom:80%;font-size:11px;font-weight:800;color:#cfe0ff;opacity:0;pointer-events:none;}
 #wgPet.sleep .z{animation:wgPetZ 2.4s ease-in-out infinite;}
@@ -6303,5 +6305,5 @@ body.wid.iss3 #fcal{flex:1 1 0;}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1197"></script>
+<script src="./app.js?v=1198"></script>
 </body></html>
