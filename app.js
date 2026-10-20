@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1187';
+const APP_VER='1188';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -13455,6 +13455,7 @@ const PET=(()=>{let el,bd,img,bub,ballEl,cfg=null,x=0,dir=1,mode='idle',anim=nul
         el.addEventListener('mouseleave',()=>{clearTimeout(hvTm);if(!ball&&!sleeping&&mode==='idle')later(next,600);});
         el.addEventListener('click',e=>{e.stopPropagation();react();});}
       if(el.parentNode!==h)h.appendChild(el);
+      bd.style.width=Math.max(...Object.values(c.g).map(g=>g.w))+'px';   /* 동작마다 그림 폭이 달라(달리기 39 · 쉬기 33 …) 바꿀 때 몸이 5~10px 튀었다 — 가장 넓은 폭의 칸 가운데에 둔다 */
       if(fresh){img.dataset.m='';if(bob){bob.cancel();bob=null;}img.style.imageRendering=c.sm?'auto':'';face();   /* sm — 픽셀 격자가 아닌 그림은 매끈하게 */
         if(c.fly){const fy=c.fy||16;bob=bd.animate([{transform:'translateY(-'+Math.round(fy/4)+'px)'},{transform:'translateY(-'+fy+'px)'}],{duration:900,iterations:Infinity,direction:'alternate',easing:'ease-in-out'});}   /* 나는 펫 — 떠서 둥실. fy = 위쪽 끝(큰 그림은 낮게) */
         set(sleeping?'lie':'idle');if(!x)x=bounds()[0]+20;stop();if(!sleeping)later(next,400);}
