@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1203';
+const APP_VER='1204';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -12582,6 +12582,14 @@ document.addEventListener('change',e=>{
 });
 document.addEventListener('click',e=>{
 
+  /* 4주 아래 현안 카드 열 수 — 3열 ↔ 4열 */
+  const cb=e.target.closest('#wgCol [data-cold]');
+  if(cb){
+    const c=widCfgLoad(),nv=c.issCol===4?3:4,cv=$('#wgColV'),old=cv&&cv.textContent;
+    c.issCol=nv;widCfgSave(c);widApply();
+    if(cv&&old!==cv.textContent){const t=cv.textContent;cv.textContent=old;mvRoll(cv,t,Number(cb.dataset.cold));}
+    return;
+  }
   const fb=e.target.closest('#wgFont [data-fontd]');
   if(fb){
     const c=widCfgLoad(),ids=WID_FONTS.map(f=>f[0]);
@@ -13644,6 +13652,7 @@ function widApply(){
   const fv=$('#wgFontV');if(fv)fv.textContent=(WID_FONTS.find(f=>f[0]===font)||WID_FONTS[0])[1];
   const db=$('#wgDbl');if(db)db.checked=!!c.dbl;
   const i3=$('#wgIss3');if(i3)i3.checked=!!c.iss3;
+  const cr=$('#wgColR');if(cr)cr.hidden=!c.iss3;const cv=$('#wgColV');if(cv)cv.textContent=(c.issCol===4?4:3)+'열';
   const vr=$('#wgVer');if(vr)vr.textContent='v'+APP_VER;
   widApplyDbl();
   widIss3();
@@ -16719,6 +16728,7 @@ function widIss3(){
   if(!WIDGET)return;
   const on=!!widCfgLoad().iss3,st=$('#issStrip');
   document.body.classList.toggle('iss3',on);
+  document.body.classList.toggle('iss4',on&&widCfgLoad().issCol===4);
   if(st){st.hidden=!on;if(on)rIss();else st.innerHTML='';}
   if(!CAL)return;
   const want=on?'dayGrid4w':'dayGridMonth';
@@ -16801,6 +16811,7 @@ document.addEventListener('dblclick',e=>{const h=e.target.closest&&e.target.clos
 document.addEventListener('change',e=>{
   if(e.target.id!=='wgIss3')return;
   const c=widCfgLoad();c.iss3=e.target.checked;widCfgSave(c);widIss3();
+  const cr=$('#wgColR');if(cr)cr.hidden=!c.iss3;
   toast(c.iss3?'4주 + 주요 현안으로 바꿨습니다':'한 달 달력으로 바꿨습니다');
 });
 /* ═══════════ 업무 도구 — D+60 점검(팀 공유 · RTDB calapp/d60) ═══════════
