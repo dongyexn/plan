@@ -5832,6 +5832,8 @@ body.wid.iss3 #fcal{flex:1 1 0;}
   body:not(.wid) #view-iss .rp-tabs{overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;}
   body:not(.wid) #view-iss .rp-tab{flex:0 0 auto;}
 }
+body.mcal-full #fcal .mlP{display:none}
+body.mcal-full #fcal .mlN::before{content:'+'}
 </style>
 </head>
 <body class="lg lg-ld">   <!-- 처음부터 로그인 화면(불러오는 중) 상태 — hideCover 가 뗀다. 첫 페인트에 앱 틀이 비치지 않게 -->
@@ -6319,5 +6321,5 @@ body.wid.iss3 #fcal{flex:1 1 0;}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1202"></script>
+<script src="./app.js?v=1203"></script>
 </body></html>
