@@ -1,5 +1,16 @@
 # 변경 이력 (읽기 전용) — 현재 상태는 HANDOFF.md
 
+## 마지막 기록 기준 v1203
+### 1203차 렉·속도 최적화
+**사용자: 「버그랑 렉 속도 최적화 개선 실시」**
+- 측정(현장 15 · 사람 20 · 업무 1500(기간·반복 포함) · 현안 45, 크로미움): 달 넘김 위젯 564→377ms · 위젯 4주 434→272ms · 데스크톱 560→413ms, D+60 화면 전환 821→470ms, 위젯 부팅 1050→901ms.
+- 원인: FullCalendar 는 dayMaxEvents 로 숨길 막대까지 전부 그리고 줄마다 getBoundingClientRect 로 잰다 — 한 달 350여 개. CSS(:has·backdrop·그림자) 제거 실험은 효과 없음.
+- calTrim: FC events 에 넘기기 전, 하루짜리 막대를 날짜별로 eventOrder(-duration·ord·oky·start·allDay·cre·pid) 차례로 정렬해 (dayMaxEvents+1)개만 남긴다. 뺀 수 _evDrop[날짜] → moreLinkContent 의 .mlN(data-n) 에 #fcal MutationObserver(mlFix)가 더한다. 기간 막대는 줄 배치 때문에 그대로. dayMaxEvents 가 true(잴 수 없음)면 자르지 않는다. 칸 수 변경은 calMaxSet(batchRendering 안 setOption+refetchEvents).
+- 검증: 위젯·데스크톱·폰 3달씩, 자른 것/전부 넘긴 것의 날짜별 보이는 막대(pid·위치)와 「외 N건」 숫자 일치(차이 0). 폰 큰 달력 「+N」은 그리는 시점에 mcal-full 이 없으면 「외 N건」이 남던 문제 → .mlP 를 CSS(body.mcal-full)로 숨기고 ::before '+'.
+- fadeCalc/fadeMany: 페이드 칸을 모두 잰 뒤 한꺼번에 class 를 바꾼다(칸마다 읽고 쓰며 배치 계산을 다시 강제하던 것). 조직 화면 전환 fadeOne 104→58ms(4회).
+- dfTopbar 구분선 판정 offsetParent → checkVisibility. mtabSync 는 위젯·넓은 화면에서 건너뛰고, 좁아질 때 창 크기 처리에서 부른다.
+- 펫 34종 먹이 던진 뒤 끌기 점검: 오류·어긋남 없음.
+
 ## 마지막 기록 기준 v1202
 ### 1202차 정렬 단추 다시 눌러 닫기
 **사용자: 「주요현안 정렬 버튼 한번 눌러서 팝업 뜬뒤에 다시 한번 누르면 팝업 닫히도록」**
