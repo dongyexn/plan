@@ -3401,6 +3401,7 @@ body.wid #wgSet.on{display:block;}
 #wgSet .wp-h b{font-size:15px;font-weight:700;color:#fff;}
 #wgSet .wgs-ver{margin-left:auto;font-size:12px;font-weight:600;color:rgba(255,255,255,.45);font-variant-numeric:tabular-nums;}   /* 앱 버전 */
 #wgSet .wgs-b{padding:6px 14px 12px;}
+#wgSet .wgs-r[hidden]{display:none;}
 #wgSet .wgs-r{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:32px;font-size:12px;}
 #wgSet .wgs-r>span{white-space:nowrap;flex:0 0 112px;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:6px;}   /* 라벨 폭 고정 — 값(%)은 오른쪽 끝에 붙어 슬라이더와 맞닿는다 */
 /* 항목이 많으면 ◀ 이름 ▶ 로 넘긴다 — 좁은 팝업에서 자리 절약 */
@@ -5824,6 +5825,7 @@ body.wid.iss3 #fcal{flex:1 1 0;}
 #issStrip .iss-c :is(.iss-ul,.iss-empty){flex:1 1 0;min-height:0;overflow-y:auto;}
 #issStrip .iss-i{gap:6px;padding:4px 6px;font-size:12.5px;}
 #issStrip .iss-none{grid-column:span 3;padding:16px;text-align:center;font-size:12.5px;color:rgba(255,255,255,.6);}
+body.iss4 #issStrip:not([hidden]){grid-auto-columns:calc((100% - 18px)/4);}body.iss4 #issStrip .iss-none{grid-column:span 4;}   /* 4열 — 위젯 설정 「현안 카드 열」 */
 @media (max-width:540px){#issStrip:not([hidden]){grid-auto-columns:calc((100% - 6px)/2);}#issStrip .iss-none{grid-column:span 2;}}   /* 좁은 위젯 — 두 장씩 */
 @media (max-width:460px){body.wid .cal-head .cal-nb{width:26px;}}   /* 좁은 위젯 — 머리 단추가 하나 늘어 설정 단추가 잘리지 않게 칸을 좁힌다 */
 @media screen and (max-width:960px){
@@ -6115,6 +6117,12 @@ body.mcal-full #fcal .mlN::before{content:'+'}
             <label class="wgs-sw"><input type="checkbox" id="wgDbl"><span class="sw-t"></span></label></div>
           <div class="wgs-r"><span data-tip="달력은 전주·금주·담주·다담주만, 아래에 내 담당 현장의 주요 현안">4주 + 주요 현안</span>
             <label class="wgs-sw"><input type="checkbox" id="wgIss3"><span class="sw-t"></span></label></div>
+          <div class="wgs-r" id="wgColR" hidden><span>현안 카드 열</span>
+            <div class="wgs-cyc" id="wgCol">
+              <button class="wgs-cb" data-cold="-1" aria-label="열 줄이기"><svg class="icn"><use href="#i-chevl"></use></svg></button>
+              <b id="wgColV">3열</b>
+              <button class="wgs-cb" data-cold="1" aria-label="열 늘리기"><svg class="icn"><use href="#i-chevr"></use></svg></button>
+            </div></div>
           <div class="wgs-sep"></div>
           <button class="wgs-full" data-act="wid.reload">새로고침</button>
           <button class="wgs-full" data-act="wid.moveOn">위치·크기 조정</button>
@@ -6321,5 +6329,5 @@ body.mcal-full #fcal .mlN::before{content:'+'}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1203"></script>
+<script src="./app.js?v=1204"></script>
 </body></html>
