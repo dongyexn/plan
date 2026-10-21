@@ -83,10 +83,10 @@ const dayCell=(pg,i=2)=>pg.locator('#fcal td.fc-daygrid-day').nth(i);
     await pg.keyboard.press('Escape');await W(350);s=await ST(pg);ok('위젯 '+k+' 위 확인창 — Esc 2회에 아래 층',!s[k],s);
   }
   /* 필터 안 다중 선택 목록 — Esc·바깥(필터 안 다른 곳) 모두 목록만 닫는다 */
-  await reset(pg);await L.filt.open();await W(400);await pg.click('#calFilt .msel-b');await W(300);
+  await reset(pg);await L.filt.open();await W(400);await pg.click('#calFilt .msel[data-g] .msel-b');await W(300);
   let s=await ST(pg);ok('필터 목록 열림',s.msel&&s.filt,s);
   await pg.keyboard.press('Escape');await W(300);s=await ST(pg);ok('필터 목록 Esc 는 목록만',!s.msel&&s.filt,s);
-  await pg.click('#calFilt .msel-b');await W(300);
+  await pg.click('#calFilt .msel[data-g] .msel-b');await W(300);
   {const r=await pg.locator('#calFilt').boundingBox();await pg.mouse.click(r.x+r.width-6,r.y+6);await W(300);}
   s=await ST(pg);ok('필터 목록 바깥(필터 안) 클릭은 목록만',!s.msel&&s.filt,s);
   /* 팝업 편집기 — 어떻게 닫아도 편집기가 남지 않는다 */
@@ -149,6 +149,41 @@ const dayCell=(pg,i=2)=>pg.locator('#fcal td.fc-daygrid-day').nth(i);
   ok('창을 줄여도 팝업이 창 안',s[0]<=s[3]&&s[1]<=s[2],s);
   await pg.setViewportSize({width:460,height:820});await W(400);
   ok('위젯 460 페이지 오류 없음',!perr.length,perr);
+  await ctx.close();
+}
+/* ═══ 작성·수정 중 자리 고정 · 팝업 ‹ › · 「내 업무만」 (위젯 460) ═══ */
+{
+  const {ctx,pg,perr}=await open(460,820,'local=1&w=1&glass=1');
+  /* 저장하면 로컬 저장소에서 다시 읽으므로 업무는 저장소에 넣고 다시 연다 */
+  await pg.evaluate(()=>{const t=todayStr(),tasks={me:{},u2:{},t1:{}};
+    ['가','나','다'].forEach((n,i)=>tasks.me['m'+i]={text:n+'업무',date:t,site:'s0',assignees:{me:1},st:1,createdAt:2000+i,updatedAt:1});
+    tasks.u2.o1={text:'라업무',date:t,site:'s0',assignees:{u2:1},st:1,createdAt:3000,updatedAt:1};
+    tasks.t1.c1={text:'마공통',date:t,site:'s0',st:1,createdAt:4000,updatedAt:1};
+    localStorage.setItem('calapp.v1',JSON.stringify({org:{teams:[{id:'t1',name:'테스트팀'}],regions:[{id:'r1',name:'권역1'}],sites:[{id:'s0',name:'테스트현장0',team:'t1',region:'r1'}]},
+      people:{me:{name:'직원0',team:'t1',region:'r1',rank:'member'},u2:{name:'직원2',team:'t1',region:'r1',rank:'member'}},tasks}));
+    try{localStorage.setItem(mrvKey(),t);}catch(e){}});
+  await pg.reload();await W(1800);
+  await pg.evaluate(()=>{if($('#mo').classList.contains('open'))closeModal();selDate(todayStr());if(!S.widPop)S.widPop=true;rDay();rWidget();});await W(500);
+  const at=()=>pg.evaluate(()=>[...document.querySelectorAll('#dpList > *')].findIndex(e=>e.id==='peSlot'||e.id==='dpEdit'||e.querySelector('#dpEdit')));
+  const own=v=>pg.evaluate(v=>{const s=$('#peOwners');s.value=v;s.dispatchEvent(new Event('input',{bubbles:true}));s.dispatchEvent(new Event('change',{bubbles:true}));},v);
+  await pg.click('#widPop [data-act="plan.new"]');await W(300);
+  const a0=await at();await pg.keyboard.type('새업무',{delay:40});await W(1000);const a1=await at();
+  await own('me');await W(900);const a2=await at();await own('u2');await W(900);const a3=await at();
+  ok('새 업무 — 첫 저장·담당 바꿔도 폼 자리 그대로',a0===0&&a1===0&&a2===0&&a3===0,[a0,a1,a2,a3]);
+  await pg.keyboard.press('Escape');await W(500);
+  await pg.click('#dpList .plan[data-pid="m0"] .plan-c');await W(400);
+  const b0=await at();await own('u2');await W(900);const b1=await at();await own('');await W(900);const b2=await at();
+  ok('수정 — 담당·공통 바꿔도 폼 자리 그대로',b0>=0&&b0===b1&&b1===b2,[b0,b1,b2]);
+  await pg.keyboard.press('Escape');await W(400);
+  const bx=()=>pg.evaluate(()=>{const r=$('#widPop').getBoundingClientRect();return [S.selDate,Math.round(r.left),!!S.widPop];});
+  const s0=await bx();await pg.click('#widPop [data-act="day.step"][data-d="1"]');await W(400);const s1=await bx();
+  await pg.keyboard.press('ArrowLeft');await W(400);const s2=await bx();
+  ok('팝업 ‹ › · ←→ 하루씩, 자리 그대로',s1[0]===await pg.evaluate(d=>addDays(d,1),s0[0])&&s2[0]===s0[0]&&s1[1]===s0[1]&&s1[2],[s0,s1,s2]);
+  await reset(pg);await pg.click('[data-act="day.fmore"]');await W(300);
+  await pg.click('[data-act="filt.me"]');await W(400);const f1=await pg.evaluate(()=>JSON.stringify(S.filter.own));
+  await pg.click('[data-act="filt.me"]');await W(400);const f2=await pg.evaluate(()=>JSON.stringify(S.filter.own));
+  ok('필터 「내 업무만」 켜고 끄기',f1==='["me"]'&&f2==='[]',[f1,f2]);
+  ok('자리 고정 검사 페이지 오류 없음',!perr.length,perr);
   await ctx.close();
 }
 /* ═══ 데스크톱 1560×1000 — 같은 층 목록을 쓰는 앱 화면 ═══ */
