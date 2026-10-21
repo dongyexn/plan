@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1204';
+const APP_VER='1205';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -2670,8 +2670,11 @@ function buildEvents(rFrom,rTo){
     else evs.push(planEvent(p,it.date));
   });
   if(dr&&dr.date){
-    if(dr.recur&&dr.recur.f)recurDates(dr,from,to).forEach(d=>evs.push(planEvent(dr,d)));
-    else evs.push(planEvent(dr,dr.date));
+    /* 칸 안 차례(ord·oky·cre)는 폼을 연 순간 값으로 고정 — 쓰는 중에 담당자를 바꾸거나 첫 저장(만든 시각이 생김)을 해도 막대가 줄을 옮기지 않는다 */
+    if(!pe.ek){const b=pe.orig||dr,x=planEvent(b,b.date||dr.date).extendedProps;pe.ek={ord:pe.orig?x.ord:-1,oky:x.oky,cre:x.cre};}   /* 새 업무는 일자 목록처럼 칸 맨 위 */
+    const fix=e=>{Object.assign(e.extendedProps,pe.ek);return e;};
+    if(dr.recur&&dr.recur.f)recurDates(dr,from,to).forEach(d=>evs.push(fix(planEvent(dr,d))));
+    else evs.push(fix(planEvent(dr,dr.date)));
   }
   return evs;
 }
@@ -3035,8 +3038,9 @@ function selRange(a,b){
   S.selEnd=(b&&b>a)?b:'';
   selDate(a);
 }
-function selDate(ds,quiet){
+function selDate(ds,quiet,stick){
   ds=String(ds||'').slice(0,10);
+  {const wp=WIDGET&&$('#widPop');if(wp)wp._stick=!!stick;}   /* ‹ › 로 넘길 때만 팝업 자리를 그대로 둔다(단추가 손 밑에 남게) — 칸을 누르면 다시 그 칸 옆으로 */
   if(!/^\d{4}-\d{2}-\d{2}$/.test(ds))return;   /* 잘못된 값이 들어오면 무시 — NaN 표시 방지 */
   const same=S.selDate===ds;
   S.selDate=ds;
@@ -3190,34 +3194,45 @@ function rDayHead(){   /* 기간 업무 계산만 한다(이름은 호출부 유
 /* 선택 기간(하루면 그날)에 걸친 업무 — 날짜순 */
 /* 목록 정렬 — 완료는 아래로, 그다음 공통·내 업무 순(달력 막대와 같은 등급),
    그 안에서 시간 있는 업무가 먼저(시간순), 나머지는 날짜순 */
-function sortPlans(list){
-  return list.slice().sort((x,y)=>{
-    const dx=isDone(x.p,x.occ)?1:0, dy=isDone(y.p,y.occ)?1:0;
-    if(dx!==dy)return dx-dy;
-    const ox=evOrd(x.p), oy=evOrd(y.p);
-    if(ox!==oy)return ox-oy;
-    const kx=evOwnKey(x.p), ky=evOwnKey(y.p);        /* 같은 등급 안에서는 담당자끼리 묶는다 */
-    if(kx!==ky)return kx.localeCompare(ky,'ko');
-    const tx=x.p.time||'', ty=y.p.time||'';
-    if(!!tx!==!!ty)return tx?-1:1;
-    if(tx&&ty&&tx!==ty)return tx<ty?-1:1;
-    const ax=x.p.date||'', ay=y.p.date||'';
-    if(ax!==ay)return ax<ay?-1:1;
-    /* ⚠ 마지막 기준을 제목으로 두면 입력 때마다 카드가 튄다(planAutosave 가 다시 그린다) — 만든 순서로 고정.
-       createdAt 이 없는 옛 업무는 id 로 — uid() 가 Date.now() 로 시작해 대체로 만든 순 */
-    const cx=Number(x.p.createdAt)||0, cy=Number(y.p.createdAt)||0;
-    if(cx!==cy)return cx-cy;
-    return String(x.p.id||'').localeCompare(String(y.p.id||''));
-  });
+function planSortKey(x){
+  const p=x.p;
+  return {d:isDone(p,x.occ)?1:0,o:evOrd(p),k:evOwnKey(p),t:p.time||'',a:p.date||'',c:Number(p.createdAt)||0,i:String(p.id||'')};
+}
+function planKeyCmp(x,y){
+  if(x==='top'||y==='top')return x===y?0:x==='top'?-1:1;
+  if(x.d!==y.d)return x.d-y.d;
+  if(x.o!==y.o)return x.o-y.o;
+  if(x.k!==y.k)return x.k.localeCompare(y.k,'ko');            /* 같은 등급 안에서는 담당자끼리 묶는다 */
+  if(!!x.t!==!!y.t)return x.t?-1:1;
+  if(x.t&&y.t&&x.t!==y.t)return x.t<y.t?-1:1;
+  if(x.a!==y.a)return x.a<y.a?-1:1;
+  /* ⚠ 마지막 기준을 제목으로 두면 입력 때마다 카드가 튄다(planAutosave 가 다시 그린다) — 만든 순서로 고정.
+     createdAt 이 없는 옛 업무는 id 로 — uid() 가 Date.now() 로 시작해 대체로 만든 순 */
+  if(x.c!==y.c)return x.c-y.c;
+  return x.i.localeCompare(y.i);
+}
+/* fz = {id, k} — 쓰는 중인 업무는 폼을 연 순간의 자리(k)로 고정한다 */
+function sortPlans(list,fz){
+  const ks=new Map(list.map(x=>[x,(fz&&x.p.id===fz.id)?fz.k:planSortKey(x)]));
+  return list.slice().sort((x,y)=>planKeyCmp(ks.get(x),ks.get(y)));
+}
+/* 작성·수정 중에는 그 업무의 자리를 폼을 연 순간에 고정한다 — 첫 저장(새 업무가 목록에 생김)·담당자·상태를 바꿔도 폼이 위아래로 튀지 않는다.
+   새 업무는 맨 위(폼이 처음 나타난 자리), 고치는 업무는 원래 자리. 폼을 닫으면 제자리로 간다 */
+function planFreeze(list){
+  const pe=S.planEdit;if(!pe)return null;
+  const id=((pe.draft||{}).id)||((pe.orig||{}).id)||null;
+  if(pe.sk===undefined){const hit=id&&list.find(x=>x.p.id===id);pe.sk=hit?planSortKey(hit):(pe.orig?null:'top');}
+  return pe.sk&&id?{id,k:pe.sk}:null;
 }
 function rangePlans(){
   const a=S.selDate,b=S.selEnd||S.selDate;
-  if(!S.selEnd)return sortPlans(dayPlans(a));
-  const seen={},out=[];
-  for(let d=a;d<=b;d=addDays(d,1)){
-    dayPlans(d).forEach(x=>{const k=x.p.id+'@'+x.occ;if(seen[k])return;seen[k]=1;out.push(x);});
-  }
-  return sortPlans(out);
+  let out=[];
+  if(!S.selEnd)out=dayPlans(a);
+  else{const seen={};
+    for(let d=a;d<=b;d=addDays(d,1)){
+      dayPlans(d).forEach(x=>{const k=x.p.id+'@'+x.occ;if(seen[k])return;seen[k]=1;out.push(x);});
+    }}
+  return sortPlans(out,planFreeze(out));
 }
 /* 링크 표시 이름 — 직접 적은 이름, 없으면 주소에서 뽑는다. 원드라이브·쉐어포인트 공유 주소는 '원드라이브'로 줄인다 */
 function linkLabel(l){
@@ -3431,7 +3446,9 @@ function closePlanEdit(){
   const f=$('#dpEdit'),h0=f?f.getBoundingClientRect().height:0,id=(S.planEdit.orig&&S.planEdit.orig.id)||(p&&p.title&&p.id)||null;   /* 1101: 자동 저장 전에 닫은 새 업무도 폼 → 카드로 줄어든다(예전엔 카드가 따로 떠오르고 아래 카드는 튀었다) */
   const fr=!S.planEdit.orig&&!(p&&p.title)&&f?f.getBoundingClientRect():null,fbg=f&&mvMorphBg(f),frr=f&&getComputedStyle(f).borderTopLeftRadius;   /* 1092: 비운 채 닫는 새 업무 폼은 ＋ 로 줄어든다 */
   const fl=fr?dpFlipPre():null;
+  const fz=!!S.planEdit.ek;
   S.planEdit=null;rDay();dpFlipRun(fl,280);
+  if(fz)refetchCal();   /* 쓰는 동안 고정해 둔 막대 차례를 풀어 제자리로 */
   setTimeout(pendFlush,0);   /* 보통 속도 클릭으로 닫으면 focusout 이 편집기가 닫히기 전에 지나가 미룬 반영이 남는다 */
   if(fr){const ad=[...$$('.dp-add,.dp-empty-add')].find(mvVis);if(ad)mvMorphFrom(fr,ad,fbg,frr);}
   const c=peCardEl(id);if(c&&h0){c.classList.remove('fx-in');peGrow(c,h0,280);   /* 폼 → 카드 — 편집 중 붙은 「새 카드」 등장 효과는 줄어드는 모션과 겹치므로 뗀다 */
@@ -12051,6 +12068,10 @@ const ACT={
   'filt.mall':el=>{const m=el.closest('.msel');mselStore(m)[m.dataset.g]=[];mselApply(m);},
   'filt.chipOff':el=>{S.filter[el.dataset.g]=[];filtSave();rFilter();refetchCal();rDay();rWidget();},
   'filt.reg':el=>{const f=S.filter,v=el.dataset.v,a=(f.reg||[]).map(String);f.reg=a.includes(v)?a.filter(x=>x!==v):[...a,v];filtSave();rFilter();refetchCal();rDay();rWidget();},   /* 머리 권역 칩 켜고 끄기 */
+  /* 위젯 팝업 ‹ › — 하루씩. 쓰던 폼은 저장하고 닫는다 */
+  'day.step':el=>{const d=Number(el&&el.dataset&&el.dataset.d)||0;if(!d||!S.selDate)return;if(S.planEdit)closePlanEdit();selDate(addDays(S.selDate,d),false,true);},
+  'filt.me':()=>{const me=roster().find(p=>p.id===myId());if(!me)return;const f=S.filter,on=(f.own||[]).length===1&&String(f.own[0])===String(me.id);
+    f.own=on?[]:[me.id];filtSave();rFilter();refetchCal();rDay();rWidget();},
   'filt.chipAll':()=>{FILT_G.forEach(([g])=>{S.filter[g]=[];});filtSave();rFilter();refetchCal();rDay();rWidget();},
   'cal.pick':()=>openYMPick(),
   'cal.today':()=>{closeYMPop();if(CAL){if(cal3())cal3Go(addDays(todayStr(),-7));else CAL.today();}selDate(todayStr());if(isMob()&&!WIDGET)rCalMini();calTodaySync();},   /* 오늘로 — 달력 이동 + 오늘 선택(폰 미니 격자도 다시 그림) */
@@ -12183,6 +12204,9 @@ function rFilter(){
   const anyF=['kind','st','reg','own','site'].some(g=>(f[g]||[]).length);
   box.innerHTML=
     '<div class="pf-h"><b>필터</b><button type="button" data-act="filt.chipAll"'+(anyF?'':' disabled')+'>초기화</button></div>'   /* 폰 유리 카드 머리(데스크톱·위젯은 CSS 로 숨김 — 아래 줄의 「모두 해제」가 맡는다) */
+    /* 위젯 — 「내 업무만」 한 번에(담당 필터 = 나 하나). 담당 목록에서 나만 고른 것과 같다 */
+    +(()=>{const mi=WIDGET&&list.find(p=>p.id===myId());if(!mi)return '';const on=f.own.length===1&&f.own[0]===String(mi.id);
+      return '<div class="dp-frow dp-fme"><div class="msel'+(on?' on':'')+'"><button type="button" class="msel-b" data-act="filt.me" aria-pressed="'+on+'">'+PE_IC.me+'<span>내 업무만</span></button></div></div>';})()
     +'<div class="dp-frow">'
       +M('kind','업무 구분 전체',TK_KIND.map(k=>[k[0]||'_gen',k[1]]))
       +M('st','진행 상태 전체',ST_PICK)
@@ -13182,6 +13206,9 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Enter'&&e.target.id==='tnTitle'){e.preventDefault();const b=document.querySelector('[data-act="tk.formSave"]');if(b)b.click();return;}
   /* Ctrl/⌘+K 로 찾기 */
   if(e.key==='Escape'){if(!layerEsc())mobClose();return;}   /* 열린 층 중 맨 위 하나 — 없으면 폰 시트·사이드바 */
+  /* 위젯 날짜 팝업이 맨 위면 ←→ 는 하루씩 */
+  if(WIDGET&&S.widPop&&!S.planEdit&&(e.key==='ArrowLeft'||e.key==='ArrowRight')&&!/INPUT|TEXTAREA|SELECT/.test((e.target.tagName||''))&&(LAYERS.find(l=>l.open())||{}).n==='widPop'){
+    e.preventDefault();ACT['day.step']({dataset:{d:e.key==='ArrowLeft'?-1:1}});return;}
   /* 위젯에서 ←→ 로 달 넘기기 — 입력 중일 때는 방해하지 않는다 */
   if(WIDGET&&(e.key==='ArrowLeft'||e.key==='ArrowRight')&&!/INPUT|TEXTAREA|SELECT/.test((e.target.tagName||''))&&!layerBusy()){
     ACT[e.key==='ArrowLeft'?'cal.prev':'cal.next']();return;
@@ -13772,6 +13799,8 @@ function widPlace(){
     }
   }
   box.style.maxHeight=Math.max(160,innerHeight-M*2)+'px';
+  if(box._stick&&box.dataset.px){const px=+box.dataset.px,py=Math.max(M,Math.min(+box.dataset.py,innerHeight-box.offsetHeight-M));
+    box.style.left=px+'px';box.style.top=py+'px';return;}   /* 날짜 넘기기 — 건수가 달라 높이가 바뀌어도 왼쪽·위는 그대로(아래로 넘칠 때만 올린다) */
   const td=document.querySelector('#fcal td[data-date="'+S.selDate+'"]');
   const r=td?td.getBoundingClientRect():{left:20,right:20,top:60};
   const w=box.offsetWidth,ht=box.offsetHeight;
