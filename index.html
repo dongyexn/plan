@@ -1767,10 +1767,12 @@ body.wid #mb .mrv-ib{color:rgba(255,255,255,.55);}
 .wl.rd{opacity:.5;}
 body.wid .cal-filt-pop{position:absolute;z-index:640;top:calc(100% + 8px);right:0;width:min(306px,calc(100vw - 20px));   /* 좁은 창에서 왼쪽이 창 밖으로 나가면 day.fmore 가 안쪽으로 민다(조상의 blur 때문에 fixed 는 창 기준이 아니다) */
   
-  background:var(--lqd-fill);-webkit-backdrop-filter:var(--lqd-blur);backdrop-filter:var(--lqd-blur);
+  background:rgba(20,23,31,.9);-webkit-backdrop-filter:var(--lqd-blur);backdrop-filter:var(--lqd-blur);   /* 필터는 칩이 비쳐 뒤 달력 글자와 겹쳐 읽혔다 — 다른 어두운 판(70%)보다 진하게 */
   border:1px solid transparent;border-radius:18px;box-shadow:var(--lqd-edge),var(--lqd-hi),0 18px 50px rgba(0,0,0,.45);padding:11px;
   --lbl:#fff;--lbl2:rgba(255,255,255,.80);--lbl3:rgba(255,255,255,.62);--sep:rgba(255,255,255,.20);
   --fill:rgba(255,255,255,.12);--b200:rgba(255,255,255,.2);}
+.dp-fme .msel-b::after{display:none;}   /* 「내 업무만」 — 펼침 꺾쇠 없는 켜고 끄기 단추, 한 줄 전체 */
+.dp-frow.dp-fme{grid-template-columns:minmax(0,1fr);}
 body.wid.glass .cal-title,body.wid.glass .cal-title .y{color:#fff;}
 /* 필터 카드 — 1행 업무 구분·진행 상태, 2행 권역·담당자, 3행 현장, 4행 검색·업무 추가 */
 /* 필터 칸 = 업무 폼 칩 규격(높이 32 · 둥글기 16 · 아이콘 15 · 글자 13) — 고른 게 없으면 테두리만, 고르면 옅은 파랑 판 */
@@ -3336,7 +3338,12 @@ body.wid .wid-pop #dpEdit .pe-chip select,body.wid .wid-pop #dpEdit .pe-chip inp
 body.wid .wid-pop #dpEdit .pe-lnk{height:30px;background:rgba(255,255,255,.08);box-shadow:none;}
 body.wid .wid-pop #dpEdit .pe-lnk input{color:#fff;}
 body.wid .wid-pop #dpEdit .pe-lnk input::placeholder{color:rgba(255,255,255,.42);}
-body.wid .wid-pop .dp-lh-t{color:#fff;font-size:15px;}   /* 제목 줄이라 흰색 · 다른 팝업 제목과 같은 15 */
+body.wid .wid-pop .dp-lh-t{color:#fff;font-size:15px;}
+.dp-nv{display:none;}   /* 날짜 넘기기 ‹ › — 위젯 팝업만 */
+body.wid .wid-pop .dp-lh .dp-nv{display:flex;flex:none;width:28px;height:28px;margin:0 -4px;}
+body.wid .wid-pop .dp-lh .dp-nv:first-child{margin-left:-8px;}
+body.wid .wid-pop .dp-lh .dp-lh-t{flex:0 1 auto;min-width:0;}
+body.wid .wid-pop .dp-lh .dp-add{margin-left:auto;}   /* 제목 줄이라 흰색 · 다른 팝업 제목과 같은 15 */
 body.wid .wid-pop input.inp::placeholder,body.wid .wid-pop textarea.inp::placeholder{color:rgba(255,255,255,.42);}
 body.wid .wid-pop .p-ico,body.wid .wid-pop .pe-ic{color:rgba(255,255,255,.72);}
 @media (hover:hover) and (pointer:fine){body.wid .wid-pop .p-ico:hover,body.wid .wid-pop .pe-ic:hover{background:rgba(255,255,255,.14);color:#fff;}}@media not ((hover:hover) and (pointer:fine)){body.wid .wid-pop .p-ico:active,body.wid .wid-pop .pe-ic:active{background:rgba(255,255,255,.14);color:#fff;}}
@@ -6132,7 +6139,9 @@ body.mcal-full #fcal .mlN::before{content:'+'}
           <button type="button" class="dp-grab" data-act="mds.close" aria-label="업무 시트 닫기"></button>   <!-- 폰 업무 시트 잡이(누르거나 끌어내리면 닫힘) — 다른 화면에선 숨김 -->
           <div class="card day-panel">
             <div class="dp-lh">
+              <button type="button" class="wp-x dp-nv" data-act="day.step" data-d="-1" aria-label="전날"><svg class="icn" aria-hidden="true"><use href="#i-chevl"></use></svg></button>   <!-- 위젯 팝업에서만 보인다 -->
               <span class="dp-lh-t"><span id="dpDate"></span><span id="dpCount">업무 0건</span></span>
+              <button type="button" class="wp-x dp-nv" data-act="day.step" data-d="1" aria-label="다음 날"><svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg></button>
               <button class="btn bo bxs dp-add" data-act="plan.new" aria-label="업무 추가" data-tip="업무 추가"><svg class="icn" aria-hidden="true"><use href="#i-plus"></use></svg></button>
             </div>
             <div class="dp-body">
@@ -6329,5 +6338,5 @@ body.mcal-full #fcal .mlN::before{content:'+'}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1204"></script>
+<script src="./app.js?v=1205"></script>
 </body></html>
