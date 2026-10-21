@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1202';
+const APP_VER='1203';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -1918,6 +1918,26 @@ function mvLand(el){
 }
 /* 달력(FC) 막대 착지 — 보이는 사건 id(업무@날짜) 집합과 비교해 새 id 만. 한 번에 8개 넘게 새로 생기면(첫 불러오기·필터·달 이동 직후) 착지 없이 집합만 갱신 */
 let _evSeen=null,_evQ=[],_evRaf=0,_evQuiet=0;
+/* 칸에 못 담는 하루짜리 막대는 FullCalendar 에 넘기지 않는다 — FC 는 숨길 막대까지 전부 그리고 재서, 막대가 많으면 달 넘김이 느려진다.
+   날마다 칸 차례(eventOrder)로 앞의 (최대+1)개만 넘기고 뺀 수는 「외 N건」에 더한다. 기간 막대는 줄 배치가 걸려 있어 그대로 둔다 */
+let _evDrop={};
+function evCmpV(a,b){if(a==null&&b==null)return 0;if(b==null)return -1;if(a==null)return 1;if(typeof a==='string'||typeof b==='string')return String(a).localeCompare(String(b));return a-b;}
+function evCmpDay(a,b){const x=a.extendedProps,y=b.extendedProps;
+  return (a.allDay?0:1)-(b.allDay?0:1)||evCmpV(x.ord,y.ord)||evCmpV(x.oky,y.oky)||evCmpV(a.start,b.start)||evCmpV(x.cre,y.cre)||evCmpV(x.pid,y.pid);}
+function calTrim(evs){
+  _evDrop={};
+  const n=CAL&&CAL.getOption('dayMaxEvents');
+  if(!(typeof n==='number'&&n>0))return evs;
+  const by={},out=[];
+  evs.forEach(e=>{if(e.end){out.push(e);return;}const d=String(e.start).slice(0,10);(by[d]||(by[d]=[])).push(e);});
+  for(const d in by){const l=by[d];if(l.length>n+1){l.sort(evCmpDay);_evDrop[d]=l.length-n-1;l.length=n+1;}for(const e of l)out.push(e);}
+  return out;
+}
+function mlFix(){
+  document.querySelectorAll('#fcal .mlN').forEach(b=>{const c=b.closest('[data-date]');const t=String(+b.dataset.n+((c&&_evDrop[c.dataset.date])||0));if(b.textContent!==t)b.textContent=t;});
+}
+/* 칸에 담을 수가 바뀌면 넘길 막대도 달라진다 — 한 번에 다시 그린다 */
+function calMaxSet(n){CAL.batchRendering(()=>{CAL.setOption('dayMaxEvents',n);CAL.refetchEvents();});}
 function calLandMount(info){
   if(!(isMob()&&!WIDGET))_evQ.push(info);else return;
   if(!_evRaf)_evRaf=requestAnimationFrame(()=>{_evRaf=0;const q=_evQ;_evQ=[];if(!CAL)return;
@@ -2399,7 +2419,8 @@ function calInit(){
     eventDidMount:info=>{const x=info.event.extendedProps||{};if(x.gb)info.el.style.setProperty('--gb',x.gb);if(x.pid){info.el.dataset.pid=x.pid;info.el.dataset.occ=x.occ||'';}   /* 1083: 막대 우클릭 메뉴가 업무를 찾는다 */
       calLandMount(info);},
     headerToolbar:false,height:'100%',dayMaxEvents:maxEvOf(),
-    moreLinkContent:a=>(isMob()&&!WIDGET&&document.body.classList.contains('mcal-full'))?'+'+a.num:'외 '+a.num+'건 ›',   /* 폰 큰 달력은 「+N」 */   /* 우측 정렬 미니 — 조용하게 오른쪽 끝에 */
+    /* 폰 큰 달력(.mcal-full)은 「+N」 — 그리는 시점이 아니라 CSS 로 가른다(첫 렌더 뒤에 큰 달력이 켜져도 맞게). 숫자는 calTrim 이 뺀 막대 수를 더해 mlFix 가 고친다 */
+    moreLinkContent:a=>({html:'<span class="mlP">외 </span><span class="mlN" data-n="'+a.num+'">'+a.num+'</span><span class="mlP">건 ›</span>'}),   /* 폰 큰 달력은 「+N」 */   /* 우측 정렬 미니 — 조용하게 오른쪽 끝에 */
     /* 기본 더보기 팝오버 대신 그 날짜를 골라 업무 패널(위젯은 팝업)에서 전부 보게 한다 */
     moreLinkClick:a=>{const ds=dstr(a.date);selDate(ds,true);
       if(WIDGET){S.widPop=true;rWidget();}
@@ -2413,7 +2434,7 @@ function calInit(){
       return{html:(o?'<span class="'+cls+'">'+esc(o.n)+'</span>':'')+'<span class="dnum">'+a.date.getDate()+'</span>'};},
     events:(info,ok)=>{
       const end=new Date(info.end);end.setDate(end.getDate()-1);   /* FullCalendar 의 end 는 다음 날(배타적) */
-      ok(buildEvents(dstr(info.start),dstr(end)));
+      ok(calTrim(buildEvents(dstr(info.start),dstr(end))));
     },
     dateClick:info=>{if(WIDGET&&info.jsEvent&&info.jsEvent.target&&info.jsEvent.target.closest&&info.jsEvent.target.closest('.fc-daygrid-more-link'))return;   /* 「외 N건」은 moreLinkClick 이 연 팝업을 날짜 클릭이 도로 닫지 않게 건너뛴다 */
       S.selEnd='';selDate(String(info.dateStr).slice(0,10));if(isMob()&&!WIDGET){if(mcalIsLand()){const d=$('#view-calendar .dp-col');if(d)d.classList.add('on');}else mdsOpen();}},   /* 가로는 시트, 세로도 업무 시트(mdsOpen) */
@@ -2461,6 +2482,7 @@ function calInit(){
       requestAnimationFrame(holdFit);}   /* 주 수(5·6주)가 바뀌면 칸 높이도 바뀐다 — 보류함을 다시 맞춘다 */
   });
   CAL.render();
+  new MutationObserver(mlFix).observe($('#fcal'),{childList:true,subtree:true});
   markSel();
   /* Pretendard 가 늦게 스왑되면 칩 높이가 바뀌어 FC 가 잰 기간 바 위치와 어긋난다(칩 겹침) — 폰트 로드 후 한 번 재계산 */
   if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{if(CAL)CAL.updateSize();mtabSync();});   /* 글꼴이 늦게 붙으면 탭 날짜 잉크 위치가 달라진다 — 다시 가운데로 */
@@ -2640,11 +2662,12 @@ function buildEvents(rFrom,rTo){
   allTasks().forEach(({sid,iid,it})=>{
     if(dr&&iid===dr.id)return;
     if(!taskFilterOk(sid,it))return;
+    if(!it.date)return;
+    /* 보이는 범위 밖의 한 번짜리 업무는 건너뛴다 — 예전엔 달을 넘길 때마다 전 기간 업무(수천 건)를 막대로 만들어 넘겨 FullCalendar 가 다시 걸렀다 */
+    if(!(it.recur&&it.recur.f)&&(it.date>to||(it.end&&it.end>it.date?it.end:it.date)<from))return;
     const p=taskAsPlan(sid,iid,it);
-    if(it.date){
-      if(it.recur&&it.recur.f)recurDates(p,from,to).forEach(d=>evs.push(planEvent(p,d)));
-      else evs.push(planEvent(p,it.date));
-    }
+    if(it.recur&&it.recur.f)recurDates(p,from,to).forEach(d=>evs.push(planEvent(p,d)));
+    else evs.push(planEvent(p,it.date));
   });
   if(dr&&dr.date){
     if(dr.recur&&dr.recur.f)recurDates(dr,from,to).forEach(d=>evs.push(planEvent(dr,d)));
@@ -8924,7 +8947,7 @@ function dfTopbar(){
 
   if(pw){pw.hidden=!(on||S.view==='photo'||S.view==='d60');   /* 인쇄 버튼 — 하자처리 현황 · 사진대지 · D+60 점검 */
     /* 왼쪽에 보이는 것이 있을 때만 구분선 */
-    let prev=false;if(!pw.hidden)for(let e=pw.previousElementSibling;e;e=e.previousElementSibling)if(!e.hidden&&e.offsetParent!==null){prev=true;break;}   /* 숨은 버튼이면 재지 않는다(강제 레이아웃 방지) */
+    let prev=false;if(!pw.hidden)for(let e=pw.previousElementSibling;e;e=e.previousElementSibling)if(!e.hidden&&(e.checkVisibility?e.checkVisibility():e.offsetParent!==null)){prev=true;break;}   /* 숨은 버튼이면 재지 않는다 · checkVisibility 는 배치 계산 없이 스타일만 본다 */
     pw.classList.toggle('sep',prev);}
 }
 
@@ -12578,42 +12601,43 @@ document.addEventListener('input',e=>{
 /* 아래에 더 있다는 표시 — 스크롤이 남아 있으면 칸 아래쪽을 서서히 지운다(끝에 닿으면 없앤다).
    ⚠ 덧칠이 아니라 mask 라 카드 배경색과 무관하게 어울린다 */
 const SB_SEL='#content,.dp-body,.tk-list,.nq-res,.pf-emg,.rd-body,.mss-sc,[data-sb],[data-sbx],[data-sbh]';
-function fadeOne(el){
-  if(!el||!el.classList)return;
+/* 재기(읽기)와 칠하기(쓰기)를 나눈다 — 여러 칸을 한꺼번에 잴 때 칸마다 읽고 쓰면 그때마다 배치 계산을 다시 강제한다 */
+function fadeCalc(el){
+  if(!el||!el.classList)return null;
+  const cl=el.classList;
   /* 글 입력칸에는 페이드를 걸지 않는다 — 마스크가 테두리까지 흐린다 */
-  if(el.tagName==='TEXTAREA'||el.tagName==='INPUT'){el.classList.remove('sb-fade-t','sb-fade-b','sb-fade-l','sb-fade-r');return;}
+  if(el.tagName==='TEXTAREA'||el.tagName==='INPUT')return ()=>cl.remove('sb-fade-t','sb-fade-b','sb-fade-l','sb-fade-r');
   /* 머리 붙박이 표 칸(data-sbh). 위 페이드는 머리 줄 아래에서 시작(--sbh = thead 높이).
      가로로도 넘치는 칸(data-sbx)은 여기서 함께 재고 CSS 가 두 판을 교차한다 — sb-fade-* 를 쓰면 한쪽 마스크가 다른 쪽을 덮는다 */
   if(el.hasAttribute('data-sbh')){
     const th=el.querySelector('thead'),h=(th?th.offsetHeight:0)+'px';
-    if(el.style.getPropertyValue('--sbh')!==h)el.style.setProperty('--sbh',h);
-    const ov=el.scrollHeight>el.clientHeight+2,mv=el.scrollHeight-el.clientHeight-el.scrollTop;
-    const sx=el.getAttribute('data-sbx'),oh=sx!==null&&el.scrollWidth>el.clientWidth+2,mh=el.scrollWidth-el.clientWidth-el.scrollLeft;
-    el.classList.toggle('sbh-t',ov&&el.scrollTop>4);
-    el.classList.toggle('sbh-b',ov&&mv>4);
-    el.classList.toggle('sbh-l',oh&&sx!=='r'&&el.scrollLeft>4);
-    el.classList.toggle('sbh-r',oh&&mh>4);
-    return;
+    const ov=el.scrollHeight>el.clientHeight+2,mv=el.scrollHeight-el.clientHeight-el.scrollTop,st=el.scrollTop;
+    const sx=el.getAttribute('data-sbx'),oh=sx!==null&&el.scrollWidth>el.clientWidth+2,mh=el.scrollWidth-el.clientWidth-el.scrollLeft,sl=el.scrollLeft;
+    return ()=>{
+      if(el.style.getPropertyValue('--sbh')!==h)el.style.setProperty('--sbh',h);
+      cl.toggle('sbh-t',ov&&st>4);
+      cl.toggle('sbh-b',ov&&mv>4);
+      cl.toggle('sbh-l',oh&&sx!=='r'&&sl>4);
+      cl.toggle('sbh-r',oh&&mh>4);};
   }
   /* 가로 스크롤 요소(data-sbx) — 탭 줄·상세표. 스크롤바는 숨기고 잘린 쪽만 페이드로 알린다.
      data-sbx="r" 는 오른쪽만 — 붙박이 첫 열(sticky)을 흐리지 않게 */
   if(el.hasAttribute('data-sbx')){
-    const over=el.scrollWidth>el.clientWidth+2,more=el.scrollWidth-el.clientWidth-el.scrollLeft;
-    el.classList.toggle('sb-fade-l',over&&el.scrollLeft>4&&el.getAttribute('data-sbx')!=='r');
-    el.classList.toggle('sb-fade-r',over&&more>4);
-    return;
+    const over=el.scrollWidth>el.clientWidth+2,more=el.scrollWidth-el.clientWidth-el.scrollLeft,l=over&&el.scrollLeft>4&&el.getAttribute('data-sbx')!=='r';
+    return ()=>{cl.toggle('sb-fade-l',l);cl.toggle('sb-fade-r',over&&more>4);};
   }
   /* 미처리 보기(목록 rec-wrap·피벗 pv-scroll)에는 페이드를 걸지 않는다 */
   /* 업무 목록(.tk-list)도 제외 — 줄 높이 40px 라 26px 페이드가 마지막 줄을 반쯤 지운다 */
-  if(el.classList.contains('rec-wrap')||el.classList.contains('pv-scroll')||el.classList.contains('tk-list')){
-    el.classList.remove('sb-fade-t','sb-fade-b');return;
-  }
+  if(cl.contains('rec-wrap')||cl.contains('pv-scroll')||cl.contains('tk-list'))return ()=>cl.remove('sb-fade-t','sb-fade-b');
   const over=el.scrollHeight>el.clientHeight+2;
-  const more=el.scrollHeight-el.clientHeight-el.scrollTop;
-  el.classList.toggle('sb-fade-t',over&&el.scrollTop>4);      /* 위로 더 있음 */
-  el.classList.toggle('sb-fade-b',over&&more>4);              /* 아래로 더 있음 */
+  const more=el.scrollHeight-el.clientHeight-el.scrollTop,t=over&&el.scrollTop>4;
+  return ()=>{
+    cl.toggle('sb-fade-t',t);      /* 위로 더 있음 */
+    cl.toggle('sb-fade-b',over&&more>4);};             /* 아래로 더 있음 */
 }
-function fadeScan(){$$(SB_SEL).forEach(fadeOne);}
+function fadeOne(el){const w=fadeCalc(el);if(w)w();}
+function fadeMany(list){const ws=[];for(const el of list)ws.push(fadeCalc(el));for(const w of ws)if(w)w();}
+function fadeScan(){fadeMany($$(SB_SEL));}
 /* ⚠ 지연을 두면 다시 그리는 사이 페이드가 풀려 깜빡인다 — 다음 프레임에 바로 잰다 */
 let fadeR=0;
 function fadeSoon(){if(fadeR)return;fadeR=requestAnimationFrame(()=>{fadeR=0;fadeScan();});}
@@ -12621,11 +12645,13 @@ function fadeSoon(){if(fadeR)return;fadeR=requestAnimationFrame(()=>{fadeR=0;fad
 if(window.MutationObserver){
   /* 새로 붙은 칸은 관찰자에서 곧바로(그리기 전) 잰다 — 페이드 없는 한 프레임을 막는다. 나머지는 다음 프레임 전체 재기 */
   const mo=new MutationObserver(recs=>{
+    const l=new Set();
     for(const r of recs)for(const n of r.addedNodes){
       if(n.nodeType!==1)continue;
-      if(n.matches(SB_SEL))fadeOne(n);
-      if(n.firstElementChild)n.querySelectorAll(SB_SEL).forEach(fadeOne);
+      if(n.matches(SB_SEL))l.add(n);
+      if(n.firstElementChild)n.querySelectorAll(SB_SEL).forEach(x=>l.add(x));
     }
+    if(l.size)fadeMany(l);
     fadeSoon();
   });
   const start=()=>{const app=$('#app');if(app)mo.observe(app,{childList:true,subtree:true});fadeScan();};
@@ -13209,7 +13235,7 @@ function calFitApply(){
     if(n===null){b.classList.add('wid-nomore');n=1;}else b.classList.remove('wid-nomore');
   }
   if(n===null||n===_maxEv)return;
-  _maxEv=n;CAL.setOption('dayMaxEvents',n);
+  _maxEv=n;calMaxSet(n);
 }
 
 function bindCalResize(){
@@ -13264,7 +13290,7 @@ function bindCalResize(){
     sbAuto();
     if(!CAL)return;
     const nar=isNarrow();
-    if(nar!==MOBILE_CAL){MOBILE_CAL=nar;_maxEv=null;CAL.setOption('dayMaxEvents',maxEvOf());}
+    if(nar!==MOBILE_CAL){MOBILE_CAL=nar;_maxEv=null;calMaxSet(maxEvOf());mtabSync();}
     if(S.view==='calendar'&&!(isMob()&&document.body.classList.contains('kb'))){if(isMob()&&!WIDGET)mcalSet();else document.body.classList.remove('mcal-full');}   /* 회전·창 크기 대응 · 폰 입력 중(키보드로 화면이 줄 때)엔 달력을 다시 짜지 않는다 — 키보드가 내려가며 오는 resize 에서 맞춘다 */
     CAL.updateSize();
     calFitApply();               /* 창 크기가 바뀌면 칸 높이도 바뀐다 — 다시 재서 맞춘다 */
@@ -16235,6 +16261,7 @@ function mtabDateFit(t){
 }
 function mtabSync(){
   const bar=$('#mtab');if(!bar)return;
+  if(WIDGET||!isNarrow())return;   /* 데스크톱·위젯은 하단 탭을 CSS 가 숨긴다 — 재지 않는다(좁아지면 창 크기 처리에서 다시 맞춘다) */
   const cur=S.view==='calendar'?'calendar':S.view==='tasks'?'tasks':S.view==='defect'?'defect':/^(d60|photo|qc|redo|prod)$/.test(S.view)?'tools':'';
   mtabMark(cur);
   const d=$('#mtab .mtab-d');if(d){const n=String(Number(todayStr().slice(8,10)));
