@@ -1,5 +1,14 @@
 # 변경 이력 (읽기 전용) — 현재 상태는 HANDOFF.md
 
+## 마지막 기록 기준 v1212
+### 1212차 가입 승인 대기
+**사용자: 「앱 로그인 돌파, 취약점이나 파이어베이스 데이터 유출 등 보안 심각사항 검토」 → 최우선 지적(회사 메일만 있으면 누구나 스스로 viewer 등록 → 하자·D+60 세대 사진·민원·전 직원 메일 열람) → 「승인대기 미리보기부터」(pvpend) → 「그래 하자 · 승인 대기 탭은 가장 마지막, 대기자가 있어야 탭이 보이게 · 한번 거절되면 다시는 가입 못하나?」**
+- 규칙: users/$uid 본인 최초 쓰기 role 은 'pending' 만(이전 'viewer'). role 검증에 pending. MEMBER(editor·viewer) 정의는 그대로라 pending 은 users/본인 읽기 말고 전부 거부. people 본인 줄·prefs 쓰기에도 MEMBER 를 붙였다(차단·대기 계정이 명부·설정을 쓰던 것). 시험 AUTH-25a~k. **Firebase 콘솔 게시 필요** — 게시 전엔 새 가입자가 pending 기록을 못 써 계속 실패하고, 게시 후 기존 계정은 그대로(이미 viewer).
+- 가입자: resolveRole 이 새 기록을 pending 으로. onAuth 에서 pending 이면 bootCacheClear → 게이트 cvView('wait')(인증 대기 칸 재사용 · 제목 「승인을 기다리고 있습니다」 · 「가입한 계정」 · 다시 보내기·스팸 안내 숨김) → pendWatch(users/{uid}/role on value). viewer·editor 가 되면 pendStop 후 onAuth 재진입(규칙이 DB 의 role 을 보므로 토큰 갱신 불필요). blocked 면 로그인 화면 「승인되지 않은 계정입니다」. 로그아웃·다른 계정·user null 에서 pendStop.
+- 관리자: pendList(관리자·라이브만) · rosterBuild 는 pending 을 명부에 안 넣는다(담당자 고르기 등에 안 나옴). rOrgBar 탭 맨 끝 「승인 대기 N」(N>0 일 때만) · 고른 탭이 가로 스크롤 밖이면 밀어 보이게. 표(freeCard 자리): 이름 260 · 가입 시각 · 거절/승인(acct.pend → acct.role 재사용, 거절은 confirmModal). pendSync(users 구독마다): 사이드바 조직 관리·폰 메뉴 단추 .nv-bdg 숫자, 수가 늘면 toastAct 「가입 승인 대기 N명 · 보기」(위젯 포함 — 위젯 「보기」는 앱을 ?go=pend 로 열고 앱이 관리자 확인 뒤 조직 관리 승인 대기 탭으로).
+- 거절 = blocked. 같은 계정은 다시 가입할 수 없지만(메일 하나에 계정 하나 — 이미 있는 계정) 관리자가 「차단」 탭에서 사용자로 바꾸면 들어온다. users 기록을 지우면 다음 로그인 때 다시 승인 대기로 등록된다.
+- 설명서 시작하기에 승인 단계.
+
 ## 마지막 기록 기준 v1211
 ### 1211차 잠 zz 잘림
 **사용자: 「펫 잠잘때 zz가 너무 높게 떠서 짤림」**

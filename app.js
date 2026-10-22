@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1211';
+const APP_VER='1212';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -1199,6 +1199,7 @@ const FbStore={
         /* 접속 중 role 이 바뀌면(관리자 지정) 새로고침 없이 반영한다 */
         if(['editor','viewer','blocked'].includes(me.role)&&me.role!==S.role)S.role=me.role;}
       rAcct();                                   /* 사이드바 아바타·이름도 함께 갱신 */
+      pendSync();                                /* 가입 승인 대기 — 관리자 배지·알림 */
       /* ⚠ 담당자 색(avColor)이 바뀌면 업무 색도 바뀐다 — 카드뿐 아니라 달력·일자 패널·위젯도 다시 그린다 */
       if(tkHold()){PEND.org=true;PEND.tasks=true;PEND.day=true;return;}
       rOrg();rTasks();rFilter();rDay();refetchCal();rWidget();rDefectNav();},
@@ -1353,7 +1354,8 @@ const CV_V={
   login:{t:'로그인',s:'회사 메일로 로그인하세요',b:'로그인',a:'auth.login'},   /* 부제 한 줄 */   /* 카드 머리는 화면마다 제목 한 줄 — 로고는 페이지 아래 서명(.cv-sig) */
   signup:{t:'계정 만들기',s:'회사 메일로 가입하면 인증메일을 보내 드립니다',b:'가입하기',a:'auth.signup'},
   reset:{t:'비밀번호 재설정',s:'가입한 회사 메일로 재설정 링크를 보내 드립니다',b:'재설정 메일 보내기',a:'auth.reset'},
-  verify:{t:'메일함을 확인해 주세요',s:'보낸 메일의 인증 링크를 누르면 가입이 끝납니다',b:'',a:''}
+  verify:{t:'메일함을 확인해 주세요',s:'보낸 메일의 인증 링크를 누르면 가입이 끝납니다',b:'',a:''},
+  wait:{t:'승인을 기다리고 있습니다',s:'관리자가 승인하면 바로 들어갈 수 있습니다',b:'',a:''}   /* 가입 승인 대기 — 인증 대기 칸을 같이 쓴다 */
 };
 function cvCur(){const c=$('#cvCard');return c?c.dataset.v:'login';}
 function cvView(v,email){
@@ -1362,7 +1364,8 @@ function cvView(v,email){
   const b=$('#cvBtn');if(d.a){b.textContent=d.b;b.dataset.act=d.a;}
   const pw=$('#fbPw');if(pw)pw.setAttribute('autocomplete',v==='signup'?'new-password':'current-password');
   $('#cvMsg').textContent='';$('#cvVMsg').textContent='';
-  if(v==='verify'){$('#cvVerifyTo').textContent=email||(FB.auth&&FB.auth.currentUser&&FB.auth.currentUser.email)||'';cvPollStart();}
+  {const w=v==='wait',l=$('#cvMailL'),t=$('#cvWaitT');if(l)l.textContent=w?'가입한 계정':'받는 주소';if(t)t.textContent=w?'승인되면 이 화면이 자동으로 넘어갑니다':'인증을 마치면 이 화면이 자동으로 넘어갑니다';}
+  if(v==='verify'||v==='wait'){$('#cvVerifyTo').textContent=email||(FB.auth&&FB.auth.currentUser&&FB.auth.currentUser.email)||'';if(v==='verify')cvPollStart();else cvPollStop();}
   else{cvPollStop();const f=$('#fbEmail');if(f&&!f.value)f.focus({preventScroll:true});else if(v!=='reset'&&pw&&$('#cvBody').style.display!=='none')pw.focus({preventScroll:true});}
 }
 let CV_POLL=null,CV_CD=null,CV_CDN=0;
@@ -1480,7 +1483,7 @@ async function fbDoReset(){
     fbMsg(same,true);   /* 그 밖의 오류도 은폐 쪽으로 — 정보 노출보다 안전 */
   }
 }
-/* 역할 해석 — users/{uid}. 최초 로그인 시 본인을 viewer로 자기 등록(하자처리 현황과 동일 규칙) */
+/* 역할 해석 — users/{uid}. 최초 로그인 시 본인을 pending(가입 승인 대기)으로 자기 등록 — 관리자가 조직 관리에서 승인하면 viewer */
 async function resolveRole(user){
   const uid=user.uid,email=String(user.email||'').toLowerCase();
   const ref=FB.db.ref('users/'+uid);
@@ -1490,7 +1493,7 @@ async function resolveRole(user){
   /* 읽기 실패를 기록 없음으로 단정하지 않는다 — 기존 관리자 기록을 viewer 로 덮어쓸 수 있다 */
   if(!rec&&!readOk){FB.userRec=null;return 'viewer';}
   if(!rec){
-    rec={email,role:'viewer',createdAt:Date.now(),lastSeen:Date.now()};
+    rec={email,role:'pending',createdAt:Date.now(),lastSeen:Date.now()};
     try{await ref.set(rec);}catch(e){console.warn('[FB] self-register',e);}
   }else{
     /* 규칙상 users/{uid} 는 email 일치 + role 유지 조건으로 전체 레코드를 써야 통과한다(lastSeen 만 부분 쓰기는 거부) */
@@ -1504,11 +1507,18 @@ async function resolveRole(user){
   }
   FB.userRec=rec;
   const r=rec&&rec.role;
-  return(r==='editor'||r==='viewer'||r==='blocked')?r:'viewer';
+  return(r==='editor'||r==='viewer'||r==='blocked'||r==='pending')?r:'viewer';
 }
+/* 승인 대기 — 내 role 만 지켜보다가 승인(viewer·editor)되면 바로 들어가고, 거절(blocked)되면 로그인 화면에 알린다 */
+let PEND_REF=null;
+function pendStop(){if(PEND_REF){try{PEND_REF.off();}catch(e){}PEND_REF=null;}}
+function pendWatch(user){pendStop();PEND_REF=FB.db.ref('users/'+user.uid+'/role');
+  PEND_REF.on('value',sn=>{const r=sn.val();if(r==='pending')return;pendStop();
+    if(r==='viewer'||r==='editor'){onAuth(user);return;}
+    cvView('login');fbMsg(r==='blocked'?'승인되지 않은 계정입니다. 관리자에게 문의하세요.':'계정 정보를 확인할 수 없습니다. 다시 로그인해 주세요.');},()=>pendStop());}
 async function onAuth(user){
   clearTimeout(FB._watch);FB._authSeen=true;   /* 부팅 대기가 '서버 응답 대기'와 '자동 로그인 대기'를 가른다 */
-  if(!user){exitLive();if(cvCur()==='verify')cvView('login');showGateForm();return;}
+  if(!user){pendStop();exitLive();if(cvCur()==='verify'||cvCur()==='wait')cvView('login');showGateForm();return;}
   if(!fbDomainOk(user.email)){showGateForm();fbMsg('@hdec.co.kr 계정만 접근할 수 있습니다.');try{FB.auth.signOut();}catch(e){}return;}
   if(!user.emailVerified){
     showGateForm();cvView('verify',user.email);   /* 인증 대기 화면 — 자동 확인 · 다시 보내기 · 다른 계정 */
@@ -1516,6 +1526,7 @@ async function onAuth(user){
   }
   const role=await resolveRole(user);
   if(role==='blocked'){bootCacheClear();showGateForm();fbMsg('이 계정은 접근이 차단되었습니다. 관리자에게 문의하세요.');return;}
+  if(role==='pending'){bootCacheClear();showGateForm();cvView('wait',user.email);pendWatch(user);return;}   /* 가입 승인 대기 — 자료는 규칙이 막는다 */
   S.role=role;
   enterLive(user);
   filtLoad();          /* 계정마다 저장해 둔 필터로 바꿔 읽는다 */
@@ -1534,7 +1545,20 @@ function acctNick(){
 }
 function isEditor(){return !S.live||S.role==='editor';}   /* 로컬 모드는 제한 없음 */
 function denyEdit(){toast('보기 전용 · 변경은 관리자만 가능');return false;}
-function roleLabel(r){return r==='editor'?'관리자':(r==='blocked'?'차단':'사용자');}
+function roleLabel(r){return r==='editor'?'관리자':(r==='blocked'?'차단':(r==='pending'?'승인 대기':'사용자'));}
+/* 가입 승인 대기 계정 — 관리자에게만 */
+function pendList(){if(!S.live||S.role!=='editor')return[];return Object.keys(S.accounts||{}).filter(k=>(S.accounts[k]||{}).role==='pending').map(id=>{const a=S.accounts[id]||{};return{id,email:a.email||'',name:a.name||String(a.email||'').split('@')[0]||'이름없음',at:Number(a.createdAt)||0};}).sort((a,b)=>a.at-b.at);}
+/* 숫자 배지(사이드바 조직 관리 · 폰 메뉴 단추) · 늘면 알림(위젯도) */
+let PEND_N=0,PEND_GO=new URLSearchParams(location.search).get('go')==='pend';
+function pendSync(){
+  const n=pendList().length;
+  document.querySelectorAll('.nvi[data-view="org"],#mtab .mtab-m').forEach(el=>{let b=el.querySelector('.nv-bdg');
+    if(!n){if(b)b.remove();return;}if(!b){b=document.createElement('i');b.className='nv-bdg';el.appendChild(b);}b.textContent=String(n);});
+  if(n>PEND_N)toastAct('가입 승인 대기 '+n+'명','보기',pendOpen,8000);
+  PEND_N=n;
+  if(PEND_GO&&n&&!WIDGET){PEND_GO=false;pendOpen();try{history.replaceState(null,'',location.pathname);}catch(e){}}
+}
+function pendOpen(){if(WIDGET){window.open(location.origin+location.pathname+'?go=pend','_blank','noopener');return;}S.orgTab='acct';S.orgReg='_pending';go('org');rOrg();}
 /* 계정 창 — 아바타·이름·메일·소속 한 줄 + 아래 한 줄(비밀번호 변경 › | 로그아웃 아이콘).
    아바타를 누르면 같은 창 안에서 이모지/배경색 판이 펼쳐지고(#mb.acx-ed), 닫기 자리가 완료(✓)로 바뀐다.
    데스크톱·폰·위젯 모두 같은 구조 — 위젯은 색만 다르다 */
@@ -3742,6 +3766,7 @@ function rosterBuild(){
   const out={};
   Object.keys(S.accounts||{}).forEach(uid=>{
     const a=S.accounts[uid]||{};
+    if(a.role==='pending')return;   /* 가입 승인 대기는 명부에 넣지 않는다 — 조직 관리 「승인 대기」 탭에서만 */
     /* 차단 계정도 담는다 — '차단' 탭에서만 보여 준다 */
     out[uid]={id:uid,name:a.name||String(a.email||'').split('@')[0]||'이름없음',email:a.email||'',team:'',region:'',rank:'member',role:a.role||'viewer',acct:true};
   });
@@ -10127,6 +10152,7 @@ function rOrgBar(tab){
     const t=curTeam();
     /* 미배정은 팀에 속하지 않은 계정이라 팀 필터를 태우지 않는다 */
     if(rid==='_blocked')return roster().filter(p=>p.role==='blocked').length;   /* 팀과 무관하게 전부 */
+    if(rid==='_pending')return pendList().length;
     if(rid==='_free')return roster().filter(p=>p.role!=='blocked'&&teamless(p)).length;
     const n=roster().filter(p=>(t?p.team===t.id:true)&&orgTabHit(p,rid)).length;
     return rid===''?n+roster().filter(p=>p.role!=='blocked'&&teamless(p)&&!(t&&p.team===t.id)).length:n;   /* 「전체」는 아래 미배정 묶음까지 센다 */
@@ -10147,11 +10173,15 @@ function rOrgBar(tab){
   if(cnt('_none'))tabs.push(['_none','권역 미지정']);
   if(tab!=='site'&&cnt('_free'))tabs.push(['_free','미배정']);   /* 팀에 아직 넣지 않은 계정 */
   if(tab!=='site'&&cnt('_blocked'))tabs.push(['_blocked','차단']);
+  if(tab!=='site'&&cnt('_pending'))tabs.push(['_pending','승인 대기']);   /* 맨 끝 · 대기자가 있을 때만 */
   if(!tabs.some(x=>x[0]===S.orgReg))S.orgReg='';
   bar.innerHTML='<div class="rp-tabs tkm-tabs tkbar-tabs" data-sbx>'+tabs.map(([id,nm])=>
       '<button class="rp-tab'+(id===S.orgReg?' on':'')+'" data-act="org.reg" data-id="'+esc(id)+'">'
       +esc(nm)+'<span class="rp-tcnt">'+cnt(id)+'</span></button>').join('')+'</div>'
     +(tab==='site'?'<button class="btn bo bsm tkq-add" data-act="org.addSite"><svg class="icn"><use href="#i-plus"></use></svg> 현장 추가</button>':'');
+  /* 고른 탭이 가로 스크롤 밖이면(폰 — 맨 끝 「승인 대기」로 바로 왔을 때) 보이게 민다 */
+  const sc=bar.querySelector('.rp-tabs'),on=sc&&sc.querySelector('.rp-tab.on');
+  if(on&&on.offsetLeft+on.offsetWidth>sc.scrollLeft+sc.clientWidth)sc.scrollLeft=on.offsetLeft+on.offsetWidth-sc.clientWidth+12;
 }
 /* 권역 탭 적중 — ''(전체) · 권역 id · '_none'(등록된 권역이 없는 것) */
 function orgRegHit(rid,tab){
@@ -10209,8 +10239,9 @@ function rOrg(){
   }
   /* 팀은 사이드바에서 고르므로 표에 팀 열은 없다 — 선택한 팀 소속과 팀 없는 계정만 보여 주고, 소속은 버튼으로 넣고 뺀다 */
   /* 탭 적용. '미배정' 탭이면 팀 소속은 감추고 아래 미배정 묶음만 남긴다 */
-  const mine=(S.orgReg==='_free'||S.orgReg==='_blocked')?[]:(t?all.filter(p=>p.team===t.id||p.local):[]).filter(p=>orgTabHit(p,S.orgReg));
-  const free=(S.orgReg==='_blocked')
+  const PEND=S.orgReg==='_pending';
+  const mine=(S.orgReg==='_free'||S.orgReg==='_blocked'||PEND)?[]:(t?all.filter(p=>p.team===t.id||p.local):[]).filter(p=>orgTabHit(p,S.orgReg));
+  const free=PEND?pendList():(S.orgReg==='_blocked')
     ? all.filter(p=>p.role==='blocked')   /* 차단 탭 — 팀과 무관하게 모아 본다 */
     : all.filter(p=>!p.local&&p.role!=='blocked'&&(!p.team||!(S.org.teams||[]).some(x=>x.id===p.team)));
   const myUid=S.user?S.user.uid:'';
@@ -10267,7 +10298,7 @@ function rOrg(){
     </tr>`;
   };
   /* '미배정' 탭이면 팀 소속 표는 아예 감춘다 */
-  const freeOnly=(S.orgReg==='_free'||S.orgReg==='_blocked');
+  const freeOnly=(S.orgReg==='_free'||S.orgReg==='_blocked'||PEND);
   /* ⚠ 안(#acctRoot)만 비우면 빈 카드 테두리가 가로선으로 남는다 — 카드째 감춘다 */
   const acard=ar.closest('.card');if(acard)acard.style.display=freeOnly?'none':'';
   ar.style.display=freeOnly?'none':'';
@@ -10279,8 +10310,17 @@ function rOrg(){
   const fc=$('#freeCard'),fr=$('#freeRoot');
   if(fc&&fr){
     /* 미배정 계정은 '미배정' 탭에서만 보여 준다 */
-    fc.style.display=(free.length&&(S.orgTab||'acct')==='acct'&&(S.orgReg==='_free'||S.orgReg==='_blocked'))?'':'none';   /* 차단 탭도 이 자리에 그린다 */
-    paintHTML(fr,free.length
+    fc.style.display=(free.length&&(S.orgTab||'acct')==='acct'&&(S.orgReg==='_free'||S.orgReg==='_blocked'||PEND))?'':'none';   /* 차단 탭도 이 자리에 그린다 */
+    const pmd=t=>{if(!t)return '';const d=new Date(t);return (d.getMonth()+1)+'/'+d.getDate()+' '+pad(d.getHours())+':'+pad(d.getMinutes())+' 가입';};
+    paintHTML(fr,PEND&&free.length
+      ?'<table class="utbl"><thead><tr><th style="width:260px">이름</th><th>가입</th><th class="utbl-r" style="width:150px">권한</th></tr></thead><tbody>'   /* 승인 대기 — 승인(사용자) · 거절(차단) */
+        +free.map(p=>`<tr>
+          <td><div class="utbl-name">${avHTML(p.id)}
+            <div style="min-width:0"><div class="utbl-nick">${esc(p.name)}</div><div class="utbl-mail">${esc(p.email)}</div></div></div></td>
+          <td><span class="pend-at">${esc(pmd(p.at))}</span></td>
+          <td class="utbl-r"><span class="pend-act"><button class="btn bo bsm" data-act="acct.pend" data-v="blocked" data-id="${esc(p.id)}">거절</button><button class="btn bp bsm" data-act="acct.pend" data-v="viewer" data-id="${esc(p.id)}">승인</button></span></td>
+        </tr>`).join('')+'</tbody></table>'
+      :free.length
       ?'<table class="utbl"><thead><tr><th style="width:176px">이름</th><th style="width:142px">팀</th><th></th><th class="utbl-r" style="width:120px">권한</th></tr></thead><tbody>'
         +free.map(p=>`<tr>
           <td><div class="utbl-name">${avHTML(p.id)}
@@ -11412,7 +11452,7 @@ const ACT={
   'auth.resend':fbDoResend,
   'auth.reset':fbDoReset,
   'auth.view':el=>cvView(el.dataset.v),
-  'auth.other':()=>{cvPollStop();cvView('login');try{FB.auth.signOut();}catch(e){}},
+  'auth.other':()=>{cvPollStop();pendStop();cvView('login');try{FB.auth.signOut();}catch(e){}},
   'df.retry':()=>{DF.lerr=false;const rm=dfRm();Object.keys(DF.kerr||{}).forEach(k=>{if(k.startsWith(rm+'/')){delete DF.kerr[k];delete DF.kpi[k];}});rDefect();},   /* 읽기 실패 카드의 다시 시도 */
   'auth.eye':el=>{const i=$('#fbPw'),on=i.type==='password';i.type=on?'text':'password';el.setAttribute('aria-pressed',on?'true':'false');el.setAttribute('aria-label',on?'비밀번호 숨기기':'비밀번호 보기');},
   'acct.reset':acctResetPw,
@@ -12030,6 +12070,10 @@ const ACT={
     if(S.view==='settings')rOrg();
     rIss();   /* 주요 현안은 고른 팀의 현장 */
   },
+  /* 가입 승인 대기 — 승인(사용자) · 거절(차단, 나중에 차단 탭에서 되돌릴 수 있다) */
+  'acct.pend':el=>{const v=el.dataset.v,id=el.dataset.id,a=(S.accounts||{})[id]||{};
+    const run=()=>ACT['acct.role']({dataset:{id},value:v});
+    if(v==='blocked')confirmModal('가입 거절',(a.email||'이 계정')+' 의 가입을 거절합니다. 차단 탭에서 언제든 사용자로 바꿀 수 있습니다.',run,'거절');else run();},
   'acct.role':el=>{
     if(!isEditor())return denyEdit();
     const uid=el.dataset.id,v=el.value;
