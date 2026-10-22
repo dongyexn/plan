@@ -13508,7 +13508,7 @@ const PET_LINES={tap:['허거덩','허걱스','하이','왜요?','😮','🤔','
   food:['😋'],drop:['😵'],idle:['일 안하농'],
   today:['오늘 업무 {n}건'],com:['{t} 하자!']};   /* {n}·{t} 는 숫자·업무 이름으로 바뀐다 · 사용자가 대사 편집 폼에서 고친 값 */
 const petPick=a=>a[Math.floor(Math.random()*a.length)];
-const PET_IT_SZ={strawberry:18};   /* 던지는 그림 크기 예외(px, 기본 16) — 딸기는 그림이 좁아 살짝 크게(사용자) */
+const PET_IT_SZ={strawberry:18,carrot:18,taiyaki:18};   /* 던지는 그림 크기 예외(px, 기본 16) — 사용자가 살짝 키움 */
 const petUrl=f=>'./vendor/pets/'+f+'?v='+APP_VER;   /* 그림 파일 — 쓰는 것만 받고 브라우저가 캐시한다 */
 const petSlot=()=>{const d=new Date(),v=d.getHours()*60+d.getMinutes();return v>=660&&v<=690?'lunch':v>=1020?'leave':'';};
 let PET_LOADING=null;
