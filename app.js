@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1217';
+const APP_VER='1218';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -13584,7 +13584,7 @@ const PET=(()=>{let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl,cf
   const react=()=>{if(deep)deepOff();if(sleeping){sleep(false);hop();say(petPick(PET_LINES.wake));return;}
     if(ball){hop();say(petPick(PET_LINES.tap));return;}   /* 공을 가지러 가는 중 — 멈추거나 딴 데로 가면 공이 바닥에 남고 펫이 굳었다 */
     clicks++;hop();const r=clicks%5,sl=petSlot();
-    if(r===1)say(sl&&Math.random()<.5?petPick(PET_LINES[sl]):Math.random()<.5?(cfg.lines?petPick(cfg.lines):cfg.say):petPick(PET_LINES.tap));
+    if(r===1)say(sl&&Math.random()<.5?petPick(PET_LINES[sl]):Math.random()<.5?(cfg.lines&&cfg.lines.length?petPick(cfg.lines):cfg.say):petPick(PET_LINES.tap));
     else if(r===2){stop();set('swipe');say(petPick(PET_LINES.tap));later(next,1400);}
     else if(r===3){stop();set(cfg.it?'swipe':'with_ball');later(next,3200);}   /* 먹이 펫의 「공 문 그림」은 공을 물고 있어 안 맞는다 */
     else if(r===4){const n=todayN();say(n?PET_LINES.today[0].replace('{n}',n):petPick(PET_LINES.idle));}
