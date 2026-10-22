@@ -35,7 +35,8 @@
   if (!/[?&](w|local)=1\b/.test(q)) {
     var L = window.BG_LIST;
     try { var cl = JSON.parse(localStorage.getItem('calapp.bgl') || 'null'); if (cl && cl.length) L = window.BG_LIST = cl; } catch (e) {}   /* 지난번 RTDB 에서 받은 목록(컬렉션 최신)이 있으면 그것 */
-    var pk = L && L.length ? L[Math.floor(Date.now() / 3600000) % L.length] : null;   /* 이 시각(한 시간 단위)의 사진 — 못 받으면 기본 사진 */
+    var pk = null;   /* 들어올 때마다 무작위 — 지난번 사진은 빼고 고른다. 고른 것은 app.js bgPick 이 이어 쓴다(window.BG_RND) */
+    try { if (L && L.length) { var last = localStorage.getItem('calapp.bglast') || '', cand = L.length > 1 ? L.filter(function(x){ return x.u !== last; }) : L; pk = cand[Math.floor(Math.random() * cand.length)]; window.BG_RND = pk.u; localStorage.setItem('calapp.bglast', pk.u); } } catch (e) {}
     try { var pn = JSON.parse(localStorage.getItem('calapp.bgpin') || 'null'); if (pn && pn.u && L) for (var k = 0; k < L.length; k++) if (L[k].u === pn.u) pk = L[k]; } catch (e) {}   /* 설정에서 고정한 사진 — app.js bgPick 과 같은 규칙(첫 화면부터 그 사진, 중간에 바뀌지 않게) */
     var im = new Image();
     var bu = pk && pk.u ? pk.u + (pk.u.indexOf('?') < 0 ? '?' : '&') + 'w=2560&q=80&fm=jpg&fit=crop' : '';

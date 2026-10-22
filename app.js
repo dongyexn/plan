@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1206';
+const APP_VER='1207';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -13360,7 +13360,7 @@ function dfLinkOpen(){
   try{history.replaceState(null,'',location.pathname+location.search.replace(/([?&])df=[\w-]+&?/,'$1').replace(/[?&]$/,''));}catch(e){}
 }
 const WIDGET=/[?&]w=1\b/.test(location.search);
-/* ── 배경 사진(로그인 · 회의 표지) — 목록은 boot-wid.js 의 window.BG_LIST(사용자 Unsplash 컬렉션 「BG」 주소·작가). 한 시간마다 다음 사진(시각 ÷ 1시간 → 순번, 모두 같은 사진).
+/* ── 배경 사진(로그인 · 회의 표지) — 목록은 boot-wid.js 의 window.BG_LIST(사용자 Unsplash 컬렉션 「BG」 주소·작가). 들어올 때마다 무작위(지난번 사진 빼고 — boot-wid.js 가 골라 window.BG_RND).
    사진 파일은 저장하지 않고 Unsplash 주소를 그대로 쓴다. 안 열리면 기본 login-bg.jpg. 규정: 작가·Unsplash 표기(#bgCredit · 표지 .cr)
    목록 우선순위: RTDB bg/l(컬렉션 자동 반영, bgSub) → 지난번 받은 목록(localStorage calapp.bgl) → boot-wid.js 에 적힌 목록 */
 const BG_UTM='?utm_source=calapp&utm_medium=referral';
@@ -13371,19 +13371,20 @@ function bgSub(){if(WIDGET||!FB.db)return;try{FB.db.ref('bg').on('value',sn=>{co
   if(wasIng&&!bgSyncIng()&&window.BG_CHK)toast('배경화면 목록을 다시 가져왔습니다');   /* 요청한 동기화가 끝났다 */
   if(!Array.isArray(l)||!l.length){bgPickRender();return;}
   if(Array.isArray(window.BG_LIST)&&window.BG_AT===(Number(v.at)||0)&&JSON.stringify(window.BG_LIST)===JSON.stringify(l.filter(x=>x&&x.u))){bgPickRender();return;}   /* 요청·확인 시각만 바뀐 경우 — 사진은 그대로 */
-  const prev=BG_CUR?bgPick():null;   /* 목록이 새로 오면(첫 방문·컬렉션 변경) 순번이 달라져 보던 사진이 바뀐다 — 이번 시간대는 보던 것 그대로 */
-  window.BG_LIST=l.filter(x=>x&&x.u);if(prev&&prev.u===BG_CUR&&!bgPin())BG_HOLD={p:prev,h:bgHour()};window.BG_AT=Number(v.at)||0;try{localStorage.setItem('calapp.bgl',JSON.stringify(window.BG_LIST));localStorage.setItem('calapp.bgat',String(window.BG_AT));}catch(e){}bgApply(true);},()=>{});}catch(e){}}
+  /* 목록이 새로 와도 보던 사진이 목록에 있으면 그대로(bgPick 이 BG_RND 를 찾는다) */
+  window.BG_LIST=l.filter(x=>x&&x.u);window.BG_AT=Number(v.at)||0;try{localStorage.setItem('calapp.bgl',JSON.stringify(window.BG_LIST));localStorage.setItem('calapp.bgat',String(window.BG_AT));}catch(e){}bgApply(true);},()=>{});}catch(e){}}
 /* 관리자 「동기화」 — 앱은 RTDB bg/req 에 요청 시각만 쓰고, GitHub 작업 bg-sync(5분마다 확인)가 req > chk 이면 컬렉션을 다시 읽는다.
    앱에 GitHub·Unsplash 키를 두지 않으려는 구조라 즉시가 아니라 다음 확인(보통 5~15분) 때 반영된다 */
 function bgSyncIng(){const r=Number(window.BG_REQ)||0;return r>(Number(window.BG_CHK)||0)&&Date.now()-r<30*60000;}
 const BG_SHOW=6;   /* 카드에는 두 줄(6장)까지 — 나머지는 「모두 보기」 창 */
-const bgHour=()=>Math.floor(Date.now()/3600000);
-/* 설정 「배경 사진」 — 자동(한 시간마다) / 고정(고른 사진을 계속). 이 브라우저에만(calapp.bgpin {u}). 고른 사진이 컬렉션에서 빠지면 자동으로 */
+/* 설정 「배경 사진」 — 자동(들어올 때마다 무작위) / 고정(고른 사진을 계속). 이 브라우저에만(calapp.bgpin {u}). 고른 사진이 컬렉션에서 빠지면 자동으로 */
 function bgPin(){try{const o=JSON.parse(localStorage.getItem('calapp.bgpin')||'null');return o&&o.u?o.u:'';}catch(e){return '';}}
-let BG_HOLD=null;
 function bgPick(){const L=window.BG_LIST;if(!Array.isArray(L)||!L.length)return null;const pu=bgPin(),pp=pu&&L.find(x=>x.u===pu);if(pp)return pp;
-  if(BG_HOLD&&BG_HOLD.h===bgHour())return BG_HOLD.p;BG_HOLD=null;return L[bgHour()%L.length];}
-function bgSetPin(u){BG_HOLD=null;try{if(u)localStorage.setItem('calapp.bgpin',JSON.stringify({u}));else localStorage.removeItem('calapp.bgpin');}catch(e){}bgApply(true);}
+  let p=window.BG_RND&&L.find(x=>x.u===window.BG_RND);   /* 이번에 들어올 때 고른 사진 — 목록에서 빠졌거나 아직 안 골랐으면 새로 고른다 */
+  if(!p){const last=(()=>{try{return localStorage.getItem('calapp.bglast')||'';}catch(e){return '';}})(),c=L.length>1?L.filter(x=>x.u!==last):L;
+    p=c[Math.floor(Math.random()*c.length)];window.BG_RND=p.u;try{localStorage.setItem('calapp.bglast',p.u);}catch(e){}}
+  return p;}
+function bgSetPin(u){try{if(u)localStorage.setItem('calapp.bgpin',JSON.stringify({u}));else localStorage.removeItem('calapp.bgpin');}catch(e){}bgApply(true);}
 function bgThumbHTML(p,i,cur,fix,big){const on=cur&&cur.u===p.u,th=p.u+(p.u.includes('?')?'&':'?')+'w=360&q=70&fm=jpg&fit=crop';
   return '<button class="bgp-t'+(on?' on':'')+'" data-act="bg.pick" data-i="'+i+'" aria-pressed="'+(fix&&on)+'" aria-label="'+esc(p.n)+' 배경화면으로 고정" style="background-image:url(&quot;'+esc(th)+'&quot;)"><span class="ck"><svg class="icn" aria-hidden="true"><use href="#i-check"></use></svg></span>'+(big?'<span class="nm">'+esc(p.n)+'</span>':'')+'</button>';}
 function bgPickRender(){const w=$('#bgPickRow');if(!w)return;const L=Array.isArray(window.BG_LIST)?window.BG_LIST:[],pu=bgPin(),fix=!!(pu&&L.some(x=>x.u===pu)),cur=bgPick();
@@ -13404,16 +13405,16 @@ function bgCreditHTML(p){return p?'Photo by <a data-act="bg.link" href="'+esc(p.
 let BG_CUR='';
 function bgApply(force){
   if(WIDGET)return;
-  if(!force&&$('#mm .mm-cv'))return;   /* 회의 표지가 떠 있는 동안은 정각이 지나도 바꾸지 않는다 */
+  if(!force&&$('#mm .mm-cv'))return;   /* 회의 표지가 떠 있는 동안은 바꾸지 않는다 */
   const p=bgPick(),k=p?p.u:'';
-  if(k===BG_CUR){if(force)bgPickRender();return;}   /* 그대로면 1분 갱신에 썸네일을 다시 그리지 않는다(초점·호버 유지) */
+  if(k===BG_CUR){if(force)bgPickRender();return;}   /* 그대로면 썸네일을 다시 그리지 않는다(초점·호버 유지) */
   bgPickRender();
   const set=q=>{BG_CUR=q?q.u:'';const r=document.documentElement;if(q)r.style.setProperty('--bg-img','url("'+bgUrl(q)+'")');else r.style.removeProperty('--bg-img');
     const c=$('#bgCredit');if(c)c.innerHTML=bgCreditHTML(q);const cc=$('#mm .mm-cv .cr');if(cc)cc.innerHTML=bgCreditHTML(q);bgPickRender();};
   if(!p){set(null);return;}
   const im=new Image();im.onload=()=>{const q=bgPick();if(q&&q.u!==p.u)return;set(p);};im.onerror=()=>{if(!BG_CUR)set(null);};im.src=bgUrl(p);   /* 다 받은 뒤 갈아 끼운다 — 안 열리면 지금 것 유지 */
 }
-if(!WIDGET){bgApply();setInterval(bgApply,60000);}   /* 1분마다 — 정각이 지나면 다음 사진 */
+if(!WIDGET)bgApply();
 const GLASS=/[?&]glass=1\b/.test(location.search);   /* 위젯 유리(반투명) 모드 — 배경을 비운다 */
 /* 위젯 설정 — 진하기·글자 크기·오늘 목록. 위젯 창(PC)별 로컬 저장 */
 const WID_KEY='calapp.wid';
@@ -16707,7 +16708,7 @@ function issBoard(kind){
   if(kind==='pg')return '<div class="tkbar rk-tabbar iss-tabs"><div class="rp-tabs tkm-tabs tkbar-tabs" data-sbx>'
       +tabs.map(([k,n,l])=>'<button class="rp-tab'+(S.issUI.rg===k?' on':'')+'" data-act="iss.rg" data-rg="'+esc(k)+'">'+esc(n)+'<span class="rp-tcnt">'+cnt(l)+'</span></button>').join('')
       +'</div><button class="btn bo bsm tkq-add" data-act="iss.sort" aria-label="정렬" aria-haspopup="menu"><svg class="icn" aria-hidden="true"><use href="#i-sort"></use></svg><span class="tkq-t">정렬</span></button><button class="btn bo bsm tkq-add" data-act="iss.more" aria-label="현장 추가" aria-haspopup="menu">'+issIcn('plus')+'<span class="tkq-t">현장 추가</span></button></div><div class="iss-sc" data-sb>'+body+'</div>';
-  return '<div class="iss-wt">'+tabs.map(([k,n,l])=>'<button class="'+(S.issUI.rg===k?'on':'')+'" data-act="iss.rg" data-rg="'+esc(k)+'">'+esc(n)+'<span>'+cnt(l)+'</span></button>').join('')
+  return '<div class="iss-wt">'+tabs.map(([k,n,l])=>'<button class="'+(S.issUI.rg===k?'on':'')+'" data-act="iss.rg" data-rg="'+esc(k)+'">'+esc(n)+'<span class="rp-tcnt">'+cnt(l)+'</span></button>').join('')
     +'<button class="iss-srt" data-act="iss.sort" aria-label="정렬" data-tip="정렬" aria-haspopup="menu">'+issIcn('sort')+'</button><button class="iss-more" data-act="iss.more" aria-label="현장 추가" data-tip="현장 추가" aria-haspopup="menu">'+issIcn('plus')+'</button></div>'
     +'<div class="iss-sc" data-sb>'+body+'</div>';}
 /* 위젯 4주 아래 칸 — 내 담당 현장만(로컬 모드는 전부) */
