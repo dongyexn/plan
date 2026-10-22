@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1210';
+const APP_VER='1211';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -13468,7 +13468,7 @@ const PET=(()=>{let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl,cf
     h.querySelectorAll('.cal-fchips:not([hidden]),.cal-ctl').forEach(e=>{const b=e.getBoundingClientRect();if(b.width)r=Math.min(r,b.left-hr.left);});
     return[l+8,r-w-8];};
   const set=m=>{const g=cfg.g[m]||cfg.g.idle||cfg.g.walk;mode=cfg.g[m]?m:'idle';
-    if(img.dataset.m!==mode){img.dataset.m=mode;img.src=petUrl(g.f);img.style.width=g.w+'px';img.style.height=g.h+'px';if(sh)sh.style.width=Math.round(g.w*(cfg.fly?.42:.62))+'px';}};   /* 그림자 폭 = 그림 폭의 62%(나는 펫은 작게) */   /* 그림 위아래 빈 줄을 잘라 둔 크기 — 발이 늘 같은 바닥선 */
+    if(img.dataset.m!==mode){img.dataset.m=mode;img.src=petUrl(g.f);img.style.width=g.w+'px';img.style.height=g.h+'px';el.style.setProperty('--ph',g.h+'px');if(sh)sh.style.width=Math.round(g.w*(cfg.fly?.42:.62))+'px';}};   /* 그림자 폭 = 그림 폭의 62%(나는 펫은 작게) */   /* 그림 위아래 빈 줄을 잘라 둔 크기 — 발이 늘 같은 바닥선 */
   const face=()=>{img.style.transform='scaleX('+(cfg&&cfg.fl?-dir:dir)+')';};   /* fl — 그림이 왼쪽을 보고 그려진 펫 */
   const turn=d=>{if(d!==dir){dir=d;face();}};
   /* 지금 자리 — 걷는 중이면 진행률로 계산(레이아웃을 읽지 않는다) */
