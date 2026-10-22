@@ -5753,7 +5753,16 @@ body.wid.glass{--mv-flash:#8FB4FF;}
 .iss-tx{flex:1;min-width:0;word-break:keep-all;overflow-wrap:anywhere;cursor:text;position:relative;top:1.5px;}   /* 한글 잉크가 줄 상자 위쪽에 붙어 원·날짜보다 1.5px 남짓 높아 보였다 — 자리는 그대로 두고 그림만 내린다 */
 .iss-i.done .iss-tx{color:var(--lbl3);text-decoration:line-through;}
 .iss-m{flex:none;margin-top:1.5px;font-size:11.5px;color:var(--lbl3);font-variant-numeric:tabular-nums;}
-.iss-m.old{color:var(--am-ink);font-weight:600;}
+.iss-m:has(.iss-due){position:relative;border-radius:4px;cursor:pointer;}   /* 목표일 — 숫자 위 투명 date 칸(누르면 달력) */
+.iss-due{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;padding:0;border:0;}
+.iss-m.pd1{color:var(--am-ink);font-weight:600;}   /* 7~4일 남음 */
+.iss-m.pd2{color:#E8590C;font-weight:700;}   /* 3~1일 */
+.iss-m.pd3{color:var(--rd);font-weight:700;}   /* 당일 */
+.iss-m.pd4{color:#fff;background:var(--rd);font-weight:700;padding:0 5px;}   /* 지남 — 빨간 배지 */
+.iss-m.nd{display:flex;align-items:center;opacity:0;transition:opacity .15s;}   /* 목표일 없음 — 평소엔 비우고 줄에 올렸을 때만 옅은 달력 */
+.iss-m.nd .icn{width:13px;height:13px;}
+@media (hover:hover) and (pointer:fine){.iss-i:hover .iss-m.nd{opacity:.7;}}
+.iss-i:focus-within .iss-m.nd{opacity:.7;}
 .iss-new{padding:8px 8px 0;}
 .iss-in,.iss-ed{width:100%;height:30px;padding:0 8px;border:1px solid var(--b400);border-radius:var(--r);background:#fff;font:inherit;font-size:13px;color:var(--lbl);outline:0;box-shadow:var(--ring);}
 .iss-ed{flex:1;min-width:0;height:24px;margin:-3px 0;}
@@ -5790,7 +5799,7 @@ body.wid .iss-c .iss-ck{border-color:rgba(255,255,255,.4);background:transparent
 body.wid .iss-c .iss-i.done .iss-ck{background:var(--b600);border-color:var(--b600);}
 body.wid .iss-c .iss-i.done .iss-tx{color:rgba(255,255,255,.4);}
 body.wid .iss-c .iss-m{color:rgba(255,255,255,.42);}
-body.wid .iss-c .iss-m.old{color:#FFC27A;}
+body.wid .iss-c .iss-m.pd1{color:#FFC27A;}body.wid .iss-c .iss-m.pd2{color:#FF9A5C;}body.wid .iss-c .iss-m.pd3{color:#FF7B7B;}body.wid .iss-c .iss-m.pd4{color:#fff;background:#E5484D;}   /* 어두운 판 — 같은 단계, 밝은 색 */
 body.wid .iss-c .iss-empty{padding:12px;color:rgba(255,255,255,.4);}
 body.wid .iss-c .iss-new{padding:6px 6px 0;}
 body.wid .iss-c :is(.iss-in,.iss-ed){border-color:rgba(143,180,255,.6);border-radius:8px;background:rgba(255,255,255,.06);color:#fff;box-shadow:none;}
@@ -6336,5 +6345,5 @@ body.mcal-full #fcal .mlN::before{content:'+'}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1208"></script>
+<script src="./app.js?v=1209"></script>
 </body></html>

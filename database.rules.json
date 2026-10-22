@@ -536,7 +536,7 @@
         "$other": { ".validate": false }
       },
 
-      // 주요 현안 — calapp/iss/{현장id}/{id} = {t 내용, at 등록 시각, by 등록자 uid, dt 해결 시각(없으면 진행)}.
+      // 주요 현안 — calapp/iss/{현장id}/{id} = {t 내용, at 등록 시각, by 등록자 uid, dt 해결 시각(없으면 진행), due 목표일}.
       // 팀 화이트보드라 MEMBER 누구나 쓰고 지운다(처리계획과 같은 결정). 현장 통째 삭제는 관리자만
       "iss": {
         ".read": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
@@ -550,6 +550,8 @@
             "at": { ".validate": "newData.isNumber()" },
             "by": { ".validate": "newData.isString() && newData.val().length <= 60" },
             "dt": { ".validate": "newData.isNumber()" },
+            // 목표일 YYYY-MM-DD(없으면 정하지 않음)
+            "due": { ".validate": "newData.isString() && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)" },
             "$other": { ".validate": false }
           }
         }
