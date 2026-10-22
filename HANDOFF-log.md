@@ -1,5 +1,14 @@
 # 변경 이력 (읽기 전용) — 현재 상태는 HANDOFF.md
 
+## 마지막 기록 기준 v1214
+### 1214차 새 펫 8종
+**사용자: 펫 자료 zip → 「미리보기로 제공해봐」 → 시안(pvpet4, 후보 26종·라이선스 정리) → 「토끼 흰색, 고양이 치즈 회색 회백 해적2, 골든 리트리버, 펭귄, 슬라임 추가 · 기존 애들 정리 미리보기」**
+- 추가(id · 출처 · 표시 배율): bunny-white(32PixelBunny · 1.5) · cat-ginger/cat-grey/cat-greywhite(Cat 85 Animations · 2) · cat-pirate(FreePiratePack PirateCat2 — 쉬는 3장뿐이라 st · 1.5) · dog-golden(Goldie pack · 1.5) · penguin(Spritesheets/GIFs · 1.5) · slime(Tiny Questers · 1.5).
+- 자른 줄: 32PixelBunny Run 시트 5장=걷기·달리기, Idle·Sleep gif. Cat85 32px 칸 2행(걷기 8)·6행(달리기)·0행(쉬기 4)·11행 끝 장(눕기). Goldie 32x40 칸 6행 걷기·7행 달리기·3행 앉기. 펭귄 64px Walk 6·Idle 2. 슬라임 walk_right·idle_down gif.
+- GIF 저장: 프레임 전체를 한 팔레트로 양자화하고 알파<128 을 255번(투명)으로 — Pillow 기본 저장은 검은 고양이(오레오)의 검정이 투명색과 겹쳐 배경이 까맣게 나왔다.
+- 넣지 않은 것: 오레오(재배포·수정 금지) · Paws & Whiskers(비상업·재배포 금지) · 꼬마냥 소품(14 feb) · 곰 · 박쥐 · 버섯 · 해적1 · 고양이 용품 공/쥐.
+- 출처 주석에 32PixelBunny · Cat 85 Animations · FreePiratePack · Goldie pack · Spritesheets/GIFs · Tiny Questers 추가, 1.5배 예외 목록 갱신.
+
 ## 마지막 기록 기준 v1213
 ### 1213차 계정 삭제
 **사용자: 「계정 삭제는 진짜로 어떻게든 앱 내에서 할수없는건가?」 → 방법 3가지(앱 기록 정리 · GitHub 작업으로 로그인 계정까지 · 본인 탈퇴) 중 1+2 권고 → 「미리보기부터 · 업무는 남겨둬야지」(pvdel) → 「그래 진행하자」**
