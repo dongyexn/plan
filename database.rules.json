@@ -354,7 +354,7 @@
           // 팀장(head): 전원의 권역·담당 현장(이름·이메일·팀·직급 불변). 공구장(lead): 자기 권역 사람의
           // 담당 현장만(권역도 불변). 현장의 권역 검증은 sites/$sid .validate(orgSiteRegion 미러 참조).
           // ⚠ $pid 변수는 이 층에서만 유효 — people 레벨 .write 에 두면 규칙 컴파일이 깨진다
-          ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || ($pid == auth.uid && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer') && (data.exists() ? (newData.child('team').val() == data.child('team').val() && newData.child('region').val() == data.child('region').val() && newData.child('rank').val() == data.child('rank').val()) : (newData.child('team').val() == '' && newData.child('region').val() == '' && newData.child('rank').val() == 'member'))) || ($pid != auth.uid && data.exists() && root.child('calapp/people').child(auth.uid).child('rank').val() == 'head' && newData.child('name').val() == data.child('name').val() && newData.child('email').val() == data.child('email').val() && newData.child('team').val() == data.child('team').val() && newData.child('rank').val() == data.child('rank').val()) || ($pid != auth.uid && data.exists() && root.child('calapp/people').child(auth.uid).child('rank').val() == 'lead' && root.child('calapp/people').child(auth.uid).child('region').val() != '' && data.child('region').val() == root.child('calapp/people').child(auth.uid).child('region').val() && newData.child('region').val() == data.child('region').val() && newData.child('name').val() == data.child('name').val() && newData.child('email').val() == data.child('email').val() && newData.child('team').val() == data.child('team').val() && newData.child('rank').val() == data.child('rank').val()))",
+          ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || ($pid == auth.uid && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer') && (data.exists() ? (newData.child('team').val() == data.child('team').val() && newData.child('region').val() == data.child('region').val() && newData.child('rank').val() == data.child('rank').val() && newData.child('gone').val() == data.child('gone').val()) : (newData.child('team').val() == '' && newData.child('region').val() == '' && newData.child('rank').val() == 'member'))) || ($pid != auth.uid && data.exists() && root.child('calapp/people').child(auth.uid).child('rank').val() == 'head' && newData.child('name').val() == data.child('name').val() && newData.child('email').val() == data.child('email').val() && newData.child('team').val() == data.child('team').val() && newData.child('rank').val() == data.child('rank').val() && newData.child('gone').val() == data.child('gone').val()) || ($pid != auth.uid && data.exists() && root.child('calapp/people').child(auth.uid).child('rank').val() == 'lead' && root.child('calapp/people').child(auth.uid).child('region').val() != '' && data.child('region').val() == root.child('calapp/people').child(auth.uid).child('region').val() && newData.child('region').val() == data.child('region').val() && newData.child('name').val() == data.child('name').val() && newData.child('email').val() == data.child('email').val() && newData.child('team').val() == data.child('team').val() && newData.child('rank').val() == data.child('rank').val() && newData.child('gone').val() == data.child('gone').val()))",
           "name":   { ".validate": "newData.isString() && newData.val().length <= 60" },
           "email":  { ".validate": "newData.isString() && newData.val().length <= 200" },
           "team":   { ".validate": "newData.isString() && newData.val().length <= 40" },
@@ -362,6 +362,8 @@
           "rank":   { ".validate": "newData.isString() && (newData.val() == 'member' || newData.val() == 'lead' || newData.val() == 'head' || newData.val() == 'safety' || newData.val() == 'cost')" },
           // 630차: 현장 권역 강제 — 관리자·팀장 외에는 orgSiteRegion 미러의 권역이 내 권역과 같을 때만.
           // 미러 값이 아직 없으면(이행기 — 관리자가 조직 저장을 한 번 하면 채워진다) 허용.
+          // 계정 삭제한 사람(1213) — 이름만 남긴다. 관리자만 붙인다(위 .write 에서 본인·팀장·공구장은 바꾸지 못함)
+          "gone":   { ".validate": "newData.val() == 1" },
           "sites":  { "$sid": { ".validate": "newData.val() == 1 && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('calapp/people').child(auth.uid).child('rank').val() == 'head' || !root.child('calapp/orgSiteRegion').child($sid).exists() || root.child('calapp/orgSiteRegion').child($sid).val() == root.child('calapp/people').child(auth.uid).child('region').val())" } },
           "$other": { ".validate": false }
         }
@@ -534,6 +536,18 @@
           }
         },
         "$other": { ".validate": false }
+      },
+
+      // 계정 삭제 요청(1213) — 관리자가 적고 GitHub 작업 acct-del(서비스 계정 — 규칙을 거치지 않음)이 로그인 계정을 지운 뒤 비운다
+      "acctDel": {
+        ".read": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'",
+        "$uid": {
+          ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && root.child('users').child(auth.uid).child('role').val() == 'editor'",
+          "at":    { ".validate": "newData.isNumber()" },
+          "by":    { ".validate": "newData.isString() && newData.val().length <= 64" },
+          "email": { ".validate": "newData.isString() && newData.val().length <= 200" },
+          "$other": { ".validate": false }
+        }
       },
 
       // 주요 현안 — calapp/iss/{현장id}/{id} = {t 내용, at 등록 시각, by 등록자 uid, dt 해결 시각(없으면 진행), due 목표일}.
