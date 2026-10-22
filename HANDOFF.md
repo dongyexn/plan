@@ -1,12 +1,12 @@
 # 인수인계 — H · 주요업무현황 (calapp)
 
-**현재 기준: v1215.**
+**현재 기준: v1216.**
 
+- **1216차(사용자: 둘째 펫 자료 시안(pvpet6) → 「넣기 전사 · 아기 오리 / 빼기 거북이 / 새로 넣은 애들 그림자·높이 조정 동일하게」)** — warrior(Tiny Questers walk_right 4·idle_down 5, 1.5배, 먹이 닭다리) · duckling(Duck run_aside 13·idle 24, 1.5배, 먹이 빵) 추가, turtle-green 과 it-lettuce.png 삭제(33→34). 그림자는 set() 이 그림 폭 ×.62 로 자동, 아래 빈 줄을 잘라 발이 바닥선. 1214·1216 새 10종 동작별 잉크 높이 실측 — 걷기·쉬기 차 2px 이하.
 - **1215차(사용자: 정리 시안(pvpet5) → 「고양이·흰색 · 고양이·검정 · 턱시도 · 마녀 · 꼬마냥·회색 · 꼬마냥·흰색 · 토끼·얼룩 · 토끼·회색 · 산타 고양이」 빼기)** — vendor/pets.js 9종 삭제(42→33), 쓰지 않게 된 그림 55개 git rm. 출처 주석에서 Carysaurus·XmasCatFree·Bunny 16x16·CatPackHalloweenFREE 빼고 배율 예외 정리. 그 펫을 고른 사용자는 위젯 펫이 「없음」으로 보인다(petSync 가 목록에 없는 키면 내림). 전사(Tiny Questers warrior) 시안 제공 — 결정 대기.
 - **1214차(사용자: 업로드한 펫 자료 → 시안(pvpet4) → 「토끼 흰색, 고양이 치즈·회색·회백, 해적2, 골든 리트리버, 펭귄, 슬라임 추가」)** — vendor/pets.js 8종 추가(34→42): bunny-white · cat-ginger · cat-grey · cat-greywhite · cat-pirate(쉬는 그림만, st) · dog-golden · penguin · slime. 그림은 원래 픽셀 격자로 잘라 GIF(투명 255번 고정 — 검은 고양이가 투명색과 섞여 배경이 까맣게 나왔다), t=idle 복사, z=lie(없으면 idle) 첫 장. 표시 1.5배(고양이 셋 2배). 먹이: 토끼 당근 · 고양이·해적·펭귄 생선 · 리트리버 닭다리 · 슬라임 공. 출처 주석 갱신. 기존 펫 정리 시안(pvpet5) 제공 — 사용자 결정 대기.
 - **1213차(사용자: 「계정 삭제는 앱 내에서 할 수 없나」 → 시안(pvdel) → 「진행 · 업무는 남겨둬야지」)** — 조직 관리 계정 줄 우클릭 「계정 삭제」(관리자 · 본인·관리자 계정 제외): users/{uid} 삭제 + people 은 이름만 남김(gone:1, 담당 현장 비움 — 조직 관리·담당자 고르기·필터에서 빠지고 업무 이름은 그대로) + calapp/acctDel/{uid} 요청 → GitHub 작업 acct-del(10분마다, FIREBASE_SERVICE_ACCOUNT)이 로그인 계정 삭제. 규칙 acctDel(관리자)·people.gone(관리자만). **규칙 다시 게시 필요.**
 - **1212차(사용자: 보안 검토 → 「승인대기 미리보기」(pvpend) → 「하자 · 승인 대기 탭은 맨 끝, 대기자가 있을 때만」)** — users role 에 pending 추가: 새 계정은 스스로 pending 으로만 등록(viewer 자기 등록 폐지), pending 은 MEMBER 가 아니라 본인 users 기록 말고 아무것도 못 읽음. 앱: 게이트 cvView('wait')(인증 대기 칸 재사용) + 내 role 구독(pendWatch) → 승인 즉시 onAuth, 거절(blocked)이면 안내. 관리자: 조직 관리 계정 탭 맨 끝 「승인 대기」(있을 때만)·승인(viewer)/거절(blocked, 확인창)·사이드바·폰 메뉴 숫자·늘면 알림(위젯 「보기」→ 앱 ?go=pend). 규칙: people 본인 쓰기·prefs 쓰기에 MEMBER 조건(차단·대기 계정 쓰기 막음). **규칙 다시 게시 필요.**
-- **1211차(사용자: 「펫 잠잘 때 zz 가 너무 높게 떠서 잘림」)** — .z 기준을 44px 칸 80% → 지금 그림 높이(--ph, set() 이 넣음) 머리 위 min(ph-10, 22px), line-height 1, 오르는 폭 14→8px. 34종 잠 그림(lie·없으면 idle) 기준 끝 위치 창 위 6px 이상.
 
 회차별 자세한 내용·결정 경위는 **HANDOFF-log.md**(최신이 위). 회차를 올릴 때마다 위 목록 맨 위에 한 줄, 로그에 한 블록을 더하고, 목록은 최근 5개만 둔다.
 
