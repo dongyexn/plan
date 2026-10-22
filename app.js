@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1216';
+const APP_VER='1217';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -13576,7 +13576,7 @@ const PET=(()=>{let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl,cf
     ball.vy+=900*dt;ball.x+=ball.vx*dt;ball.y+=ball.vy*dt;
     if(ball.x<ball.lo){ball.x=ball.lo;ball.vx=-ball.vx*.6;}if(ball.x>ball.hi){ball.x=ball.hi;ball.vx=-ball.vx*.6;}
     const it=ball.it;if(ball.y>ball.floor){ball.y=ball.floor;ball.vy=-ball.vy*(it?.25:.45);ball.vx*=it?.3:.7;if(Math.abs(ball.vy)<40){ball.vy=0;if(Math.abs(ball.vx)<(it?30:8))ball.vx=0;}}
-    ballEl.style.transform='translate('+Math.round(ball.x-(it?8:5))+'px,'+Math.round(ball.y-(it?16:10))+'px)';
+    ballEl.style.transform='translate('+Math.round(ball.x-8)+'px,'+Math.round(ball.y-16)+'px)';   /* 공·먹이 모두 16px 그림(32px 를 줄임) */
     if(!ball.vy&&!ball.vx&&!ball.go){cancelAnimationFrame(braf);if(drg)return;ball.go=1;   /* 끄는 중이면 놓을 때까지 기다린다 */
       const tx=Math.min(Math.max(ball.x-el.offsetWidth/2,ball.lo-6),ball.hi-el.offsetWidth+6);
       moveTo(tx,95,'run',()=>{const b=ball;ball=null;if(b)ballEl.remove();hop();set(b&&b.it?'idle':'with_ball');say(b&&b.it?petPick(PET_LINES.food):petPick(PET_LINES.ball));if(b&&b.it)hearts(1);later(next,2600);});}};   /* 먹이는 공을 문 그림 대신 쉬는 그림 */
@@ -13652,7 +13652,7 @@ const PET=(()=>{let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl,cf
     dragged:()=>!!(el&&el._drg),   /* 방금 끌었음 — 놓은 자리가 머리 줄이어도 공을 던지지 않게 */
     throwBall(cx){if(!cfg||!el||!el.isConnected||el.hidden)return;if(deep){deep=false;if(bob)bob.play();}if(sleeping){sleeping=false;clearTimeout(nap);el.classList.remove('sleep');}
       const h=head(),hr=h.getBoundingClientRect(),[L,R]=bounds();stop();clearTimeout(tm);set('idle');
-      if(!ballEl){ballEl=document.createElement('div');ballEl.id='wgBall';}const it=cfg.it||'';ballEl.classList.toggle('it',!!it);ballEl.style.backgroundImage=it?'url('+petUrl('it-'+it+'.png')+')':'';h.appendChild(ballEl);
+      if(!ballEl){ballEl=document.createElement('div');ballEl.id='wgBall';}const it=cfg.it||'';ballEl.style.backgroundImage='url('+petUrl('it-'+(it||'ball')+'.png')+')';h.appendChild(ballEl);
       const floor=h.clientHeight/2+17;ball={x:cx-hr.left,y:floor-4,vx:(Math.random()<.5?-1:1)*(60+Math.random()*60),vy:-260,floor,lo:L+6,hi:R+el.offsetWidth-6,it};
       cancelAnimationFrame(braf);braf=requestAnimationFrame(ballStep);},
     done(){if(!cfg||!el||!el.isConnected)return;if(deep){deep=false;if(bob)bob.play();}if(sleeping){sleeping=false;clearTimeout(nap);el.classList.remove('sleep');}hop();say(petPick(PET_LINES.done),2500);
