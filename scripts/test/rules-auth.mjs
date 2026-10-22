@@ -299,5 +299,14 @@ t('AUTH-25h', '승인 대기 → 내 화면 설정', false, tryWrite('calapp/pre
 t('AUTH-25i', '관리자 → 승인(사용자로)', true, tryWrite('users/N1/role', A('E1'), T25, 'viewer'));
 t('AUTH-25j', '사용자 → 남을 승인', false, tryWrite('users/N1/role', A('U1'), T25, 'viewer'));
 t('AUTH-25k', '사용자 → 내 명부 쓰기(그대로 됨)', true, tryWrite('calapp/people/U1', A('U1'), T25, { ...P('U1'), name:'김담당2' }));
+/* 계정 삭제(1213) — 관리자만 요청·gone 표시, 다른 사람은 gone 을 못 바꾼다 */
+t('AUTH-26a', '관리자 → 계정 삭제 요청', true, tryWrite('calapp/acctDel/U2', A('E1'), T22, { at:1, by:'E1', email:'u2@hdec.co.kr' }));
+t('AUTH-26b', '사용자 → 계정 삭제 요청', false, tryWrite('calapp/acctDel/U2', A('U1'), T22, { at:1, by:'U1', email:'u2@hdec.co.kr' }));
+t('AUTH-26c', '사용자 → 삭제 요청 읽기', false, tryRead('calapp/acctDel', A('U1'), T22));
+t('AUTH-26d', '관리자 → 계정 기록 지우기', true, tryWrite('users/U2', A('E1'), T22, null));
+t('AUTH-26e', '관리자 → 명부 gone', true, tryWrite('calapp/people/U2', A('E1'), T22, { ...P('U2'), sites:{}, gone:1 }));
+t('AUTH-26f', '팀장 → 남의 명부 gone', false, tryWrite('calapp/people/U2', A('U3'), T22, { ...P('U2'), gone:1 }));
+t('AUTH-26g', '본인 → 내 명부 gone', false, tryWrite('calapp/people/U1', A('U1'), T22, { ...P('U1'), gone:1 }));
+t('AUTH-26h', '팀장 → 남의 현장 배정(그대로 됨)', true, tryWrite('calapp/people/U2', A('U3'), T22, { ...P('U2'), sites:{ sA:1 } }));
 console.log(fail ? `\nFAIL ${fail}` : '\nRULES-AUTH ALL PASS');
 process.exit(fail ? 1 : 0);

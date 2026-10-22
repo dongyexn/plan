@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1212';
+const APP_VER='1213';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -329,7 +329,7 @@ function ownSelHTML(id,cur,people){
   const uid=(S.user||{}).uid||'';
   return `<select class="inp inp-sm" id="${id}" aria-label="담당자">
     <option value="">공통</option>
-    ${meFirst(people).map(p=>'<option value="'+esc(p.id)+'"'+(p.id===cur?' selected':'')+'>'+esc(p.name)+(p.id===uid?' (나)':'')+'</option>').join('')}
+    ${meFirst(people.filter(p=>!p.gone||p.id===cur)).map(p=>'<option value="'+esc(p.id)+'"'+(p.id===cur?' selected':'')+'>'+esc(p.name)+(p.id===uid?' (나)':'')+'</option>').join('')}
   </select>`;
 }
 function sitePickHTML(id,cur){
@@ -916,6 +916,7 @@ function cleanPerson(p){
   const o={name:String(p.name||'').slice(0,60),email:String(p.email||'').slice(0,200),
     team:String(p.team||''),region:String(p.region||''),rank:rankOf(p.rank)};
   if(p.sites&&Object.keys(p.sites).length){o.sites={};Object.keys(p.sites).forEach(k=>{if(p.sites[k])o.sites[k]=1;});}
+  if(p.gone)o.gone=1;   /* 계정을 지운 사람 — 업무 이름만 남긴다 */
   return o;
 }
 function cleanOrg(org){
@@ -1546,6 +1547,19 @@ function acctNick(){
 function isEditor(){return !S.live||S.role==='editor';}   /* 로컬 모드는 제한 없음 */
 function denyEdit(){toast('보기 전용 · 변경은 관리자만 가능');return false;}
 function roleLabel(r){return r==='editor'?'관리자':(r==='blocked'?'차단':(r==='pending'?'승인 대기':'사용자'));}
+/* 계정 삭제 — 앱의 계정 기록(users)은 바로 지우고, 명부(people)는 이름만 남겨 업무에 이름이 그대로 보이게(gone, 담당 현장은 비움).
+     로그인 계정(Firebase 인증)은 앱에서 지울 수 없어 calapp/acctDel 에 요청만 적고 GitHub 작업 acct-del 이 몇 분 안에 지운다 */
+function acctDel(id){const a=(S.accounts||{})[id];
+    if(!isEditor())return denyEdit();if(!S.live||!a)return;
+    if(id===authUid()){toast('본인 계정은 지울 수 없습니다');return;}
+    if(a.role==='editor'){toast('관리자 계정은 먼저 권한을 사용자로 바꾼 뒤 지울 수 있습니다');return;}
+    const p=(S.people||{})[id],nm=(p&&p.name)||a.name||String(a.email||'').split('@')[0]||'계정';
+    confirmModal('계정 삭제','「'+nm+'」('+(a.email||'')+') 계정을 삭제합니다.\n맡은 업무는 이름과 함께 그대로 남습니다.\n로그인 계정은 몇 분 안에 자동으로 정리되고, 다시 쓰려면 새로 가입해 승인을 받아야 합니다.',()=>{
+      const own=Object.keys((mergedTaskMaps()[id])||{}).length||allTasks().some(({it})=>it&&it.assignees&&it.assignees[id]);
+      const up={['users/'+id]:null,['calapp/acctDel/'+id]:{at:Date.now(),by:authUid(),email:String(a.email||'').slice(0,200)}};
+      if(p||own)up['calapp/people/'+id]=cleanPerson({...(p||{}),name:nm,email:a.email||(p&&p.email)||'',sites:{},gone:1});
+      FB.db.ref().update(up).then(()=>{toast(nm+' 계정을 삭제했습니다 · 로그인 계정은 몇 분 안에 정리됩니다');},e=>{fbErr(e);});
+    },'삭제');}
 /* 가입 승인 대기 계정 — 관리자에게만 */
 function pendList(){if(!S.live||S.role!=='editor')return[];return Object.keys(S.accounts||{}).filter(k=>(S.accounts[k]||{}).role==='pending').map(id=>{const a=S.accounts[id]||{};return{id,email:a.email||'',name:a.name||String(a.email||'').split('@')[0]||'이름없음',at:Number(a.createdAt)||0};}).sort((a,b)=>a.at-b.at);}
 /* 숫자 배지(사이드바 조직 관리 · 폰 메뉴 단추) · 늘면 알림(위젯도) */
@@ -3777,7 +3791,7 @@ function rosterBuild(){
       email:(prev&&prev.email)||p.email||'',
       team:p.team||'',region:p.region||'',sites:p.sites||{},rank:rankOf(p.rank),
       role:(prev&&prev.role)||'viewer',
-      acct:!!(prev&&prev.acct)};
+      acct:!!(prev&&prev.acct),gone:!!p.gone};   /* gone — 계정 삭제(이름은 업무에 남고 조직 관리·담당자 고르기에선 빠진다) */
   });
   return Object.values(out).sort((a,b)=>String(a.name).localeCompare(String(b.name),'ko'));
 }
@@ -9289,7 +9303,7 @@ function teamRows(){
   return list.map(t=>{
     const site=(S.orgTab||'acct')==='site';
     const act=t.id===S.tk.t;
-    const cnt=site?(S.org.sites||[]).length:roster().filter(p=>p.team===t.id).length;
+    const cnt=site?(S.org.sites||[]).length:roster().filter(p=>p.team===t.id&&!p.gone).length;
     return `<div class="tm-row${act?' act':''}">
       <button class="tm-pick" data-act="team.switch" data-tid="${esc(t.id)}" aria-label="이 팀 선택">${act?ICON_RADIO_ON:ICON_RADIO_OFF}</button>
       <input class="mg-inp tm-nameinp" value="${esc(t.name)}" data-act="org.ren" data-kind="Team" data-id="${esc(t.id)}" placeholder="팀 이름" aria-label="팀 이름">
@@ -9303,7 +9317,7 @@ function regRows(){
   const site=(S.orgTab||'acct')==='site';   /* 현장 탭이면 계정 수가 아니라 현장 수를 보여 준다 */
   return list.map(r=>{
     const used=site?(S.org.sites||[]).filter(x=>x.region===r.id).length
-                   :roster().filter(p=>p.region===r.id).length;
+                   :roster().filter(p=>p.region===r.id&&!p.gone).length;
     return `<div class="tm-row">
       <input class="mg-inp tm-nameinp" value="${esc(r.name)}" data-act="org.ren" data-kind="Reg" data-id="${esc(r.id)}" placeholder="권역 이름" aria-label="권역 이름">
       <span class="tm-cnt">${used}</span>
@@ -10151,11 +10165,12 @@ function rOrgBar(tab){
     if(tab==='site')return (S.org.sites||[]).filter(x=>x.name&&orgRegHit(x.region,rid)).length;
     const t=curTeam();
     /* 미배정은 팀에 속하지 않은 계정이라 팀 필터를 태우지 않는다 */
-    if(rid==='_blocked')return roster().filter(p=>p.role==='blocked').length;   /* 팀과 무관하게 전부 */
+    const R=roster().filter(p=>!p.gone);   /* 계정 삭제한 사람은 조직 관리에 없다 */
+    if(rid==='_blocked')return R.filter(p=>p.role==='blocked').length;   /* 팀과 무관하게 전부 */
     if(rid==='_pending')return pendList().length;
-    if(rid==='_free')return roster().filter(p=>p.role!=='blocked'&&teamless(p)).length;
-    const n=roster().filter(p=>(t?p.team===t.id:true)&&orgTabHit(p,rid)).length;
-    return rid===''?n+roster().filter(p=>p.role!=='blocked'&&teamless(p)&&!(t&&p.team===t.id)).length:n;   /* 「전체」는 아래 미배정 묶음까지 센다 */
+    if(rid==='_free')return R.filter(p=>p.role!=='blocked'&&teamless(p)).length;
+    const n=R.filter(p=>(t?p.team===t.id:true)&&orgTabHit(p,rid)).length;
+    return rid===''?n+R.filter(p=>p.role!=='blocked'&&teamless(p)&&!(t&&p.team===t.id)).length:n;   /* 「전체」는 아래 미배정 묶음까지 센다 */
   };
   /* 계정 보기에는 '인수 전 현장' 권역이 없다(사람을 배정하지 않는 자리).
      대신 직급 탭(팀장·원가 등)을 앞에 둔다 */
@@ -10164,7 +10179,7 @@ function rOrgBar(tab){
   const tabs=[['','전체']];
   if(tab!=='site'){
     const t0=curTeam();
-    const heads=roster().filter(p=>(t0?p.team===t0.id:true)&&isTeamRank(p.rank))
+    const heads=roster().filter(p=>!p.gone&&(t0?p.team===t0.id:true)&&isTeamRank(p.rank))
       .sort((a,b)=>rankOrd(a.rank)-rankOrd(b.rank)||String(a.name).localeCompare(String(b.name),'ko'));
     const rk={};heads.forEach(p=>{const r=rankLabel(p.rank)||'담당';rk[r]=(rk[r]||0)+1;});
     heads.forEach(p=>{const r=rankLabel(p.rank)||'담당';tabs.push(['rank:'+p.id,rk[r]>1?r+' '+p.name:r]);});
@@ -10218,7 +10233,7 @@ function rOrg(){
   rTeamSel();
 
   const ar=$('#acctRoot');if(!ar)return;
-  const all=roster();
+  const all=roster().filter(p=>!p.gone);
   /* 차단 계정도 이 표에는 남긴다 — roster() 는 차단을 빼지만, 여기서도 빠지면 차단을 UI 에서 되돌릴 길이 없다.
      관리자에게만 보인다 */
   if(isEditor())Object.keys(S.accounts||{}).forEach(bid=>{
@@ -10314,7 +10329,7 @@ function rOrg(){
     const pmd=t=>{if(!t)return '';const d=new Date(t);return (d.getMonth()+1)+'/'+d.getDate()+' '+pad(d.getHours())+':'+pad(d.getMinutes())+' 가입';};
     paintHTML(fr,PEND&&free.length
       ?'<table class="utbl"><thead><tr><th style="width:260px">이름</th><th>가입</th><th class="utbl-r" style="width:150px">권한</th></tr></thead><tbody>'   /* 승인 대기 — 승인(사용자) · 거절(차단) */
-        +free.map(p=>`<tr>
+        +free.map(p=>`<tr data-pid="${esc(p.id)}">
           <td><div class="utbl-name">${avHTML(p.id)}
             <div style="min-width:0"><div class="utbl-nick">${esc(p.name)}</div><div class="utbl-mail">${esc(p.email)}</div></div></div></td>
           <td><span class="pend-at">${esc(pmd(p.at))}</span></td>
@@ -10322,7 +10337,7 @@ function rOrg(){
         </tr>`).join('')+'</tbody></table>'
       :free.length
       ?'<table class="utbl"><thead><tr><th style="width:176px">이름</th><th style="width:142px">팀</th><th></th><th class="utbl-r" style="width:120px">권한</th></tr></thead><tbody>'
-        +free.map(p=>`<tr>
+        +free.map(p=>`<tr data-pid="${esc(p.id)}">
           <td><div class="utbl-name">${avHTML(p.id)}
             <div style="min-width:0">${nickCtl(p,false)}<div class="utbl-mail">${esc(p.email||'')}</div></div></div></td>
           <td>${teamCtl(p)}</td>
@@ -10965,10 +10980,12 @@ function ctxFor(t){
   }
   /* ② 달력 날짜 칸 */
   /* 조직 관리 — 삭제는 우클릭으로만(표에 휴지통 없음). 둘 다 확인 모달을 거친다 */
-  const ptr=t.closest('#acctRoot .utbl tr[data-pid]');
+  const ptr=t.closest('#acctRoot .utbl tr[data-pid],#freeRoot .utbl tr[data-pid]');
   if(ptr&&isEditor()){
-    const pid=ptr.dataset.pid,p=roster().find(x=>x.id===pid);
-    if(p)return[{label:'담당자 삭제 — '+(p.name||''),danger:true,act:()=>ACT['org.delPerson']({dataset:{id:pid}})}];
+    const pid=ptr.dataset.pid,p=roster().find(x=>x.id===pid),a=(S.accounts||{})[pid],nm=(p&&p.name)||(a&&(a.name||String(a.email||'').split('@')[0]))||'';
+    const del=S.live&&a&&pid!==authUid()&&a.role!=='editor'?{label:'계정 삭제 — '+nm,danger:true,act:()=>acctDel(pid)}:null;   /* 관리자 계정은 먼저 권한을 내려야 지운다 */
+    const out=[p&&ptr.closest('#acctRoot')?{label:'담당자 삭제 — '+(p.name||''),danger:true,act:()=>ACT['org.delPerson']({dataset:{id:pid}})}:null,del&&p&&ptr.closest('#acctRoot')?{sep:true}:null,del].filter(Boolean);
+    if(out.length)return out;
   }
   const str=t.closest('#siteRoot .mgtbl tr[data-sid]');
   if(str&&isEditor()){
@@ -12229,7 +12246,7 @@ function mselType(m){
 function mselClose(){document.querySelectorAll('.msel.open').forEach(x=>x.classList.remove('open'));}
 function rFilter(){
   const box=$('#dpFadv');if(!box)return;
-  const list=roster(),me=S.user?list.find(p=>p.id===(S.user.uid||'')):null;
+  const list=roster().filter(p=>!p.gone),me=S.user?list.find(p=>p.id===(S.user.uid||'')):null;
   const regs=(S.org.regions||[]).filter(r=>r.name);
   const f=S.filter;
   /* 값은 모두 배열 — 빈 배열이 '전체'다. 없어진 항목은 걸러 낸다 */
