@@ -47,7 +47,8 @@ const txt=(pg,sel)=>pg.evaluate(s=>[...document.querySelectorAll(s)].map(e=>e.te
   const setDue=n=>pg.evaluate(n=>{const i=document.querySelector('#issRoot .iss-c[data-sid="s2"] .iss-i .iss-due');i.value=addDays(todayStr(),n);i.dispatchEvent(new Event('change',{bubbles:true}));},n);
   const tail=()=>pg.evaluate(()=>{const m=document.querySelector('#issRoot .iss-c[data-sid="s2"] .iss-i .iss-m');return m.className.replace('iss-m','').trim()+':'+m.textContent.trim();});
   const tl=[];for(const n of [10,5,2,0,-3]){await setDue(n);await pg.waitForTimeout(80);tl.push(await tail());}
-  ok('목표일 단계 — D-10 회색 · D-5 · D-2 · D-day · D+3 배지',tl.join('|')==='pd0:D-10|pd1:D-5|pd2:D-2|pd3:D-day|pd4:D+3',tl);
+  const mdOf=n=>pg.evaluate(n=>{const d=toDate(addDays(todayStr(),n));return (d.getMonth()+1)+'/'+d.getDate();},n);const exp=[];for(const [c,n] of [['pd0',10],['pd1',5],['pd2',2],['pd3',0],['pd4',-3]])exp.push(c+':'+await mdOf(n));
+  ok('목표일 — 월/일 · 단계 색(회색·노랑·주황·당일 파랑·지남 빨강)',tl.join('|')===exp.join('|'),[tl,exp]);
   ok('목표일 저장',await pg.evaluate(()=>Object.values(S.iss.s2).some(x=>x.due===addDays(todayStr(),-3))));
   await pg.click('#issRoot .iss-c[data-sid="s2"] .iss-i:first-child .iss-tx',{button:'right'});await pg.click('.ctxmenu .ctx-it:has-text("목표일 지우기")');await pg.waitForTimeout(100);
   ok('우클릭 → 목표일 지우기',await pg.evaluate(()=>!Object.values(S.iss.s2).some(x=>x.due))&&(await tail()).startsWith('nd'));
