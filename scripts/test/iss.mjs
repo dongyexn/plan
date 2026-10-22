@@ -1,5 +1,5 @@
 /* 주요 현안 회귀 — 데스크톱 화면 · 위젯 판(머리 단추) · 위젯 「4주 + 주요 현안」 아래 칸.
-   검사: 추가(Enter 이어 쓰기)·해결/취소·고치기(빈 칸이면 지움)·지우기+되돌리기 · 해결 7일 뒤 숨김 · D+N(30일↑ 주황) ·
+   검사: 추가(Enter 이어 쓰기)·해결/취소·고치기(빈 칸이면 지움)·지우기+되돌리기 · 해결 7일 뒤 숨김 · 목표일(남은 날수·단계 색·우클릭 지우기) ·
    권역 탭 · 담당자 표시 · 판 켜면 아래 칸 숨고 초점은 보이는 입력 칸 · 달력 단추로 판 끔 · 우클릭 빼기·+ 다시 넣기 · 정렬·접기 · 4주 뷰 한 주씩 · 아래 칸 한 줄 · 카드 기본 높이 현안 4줄 · 백업에 현안.
    사용: node scripts/test/iss.mjs (CHROMIUM 경로를 줄 수 있다) */
 import { chromium } from 'playwright';
@@ -36,12 +36,21 @@ const txt=(pg,sel)=>pg.evaluate(s=>[...document.querySelectorAll(s)].map(e=>e.te
   ok('카드 3장',(await pg.$$('#issRoot .iss-c')).length===3);
   const rows=await txt(pg,'#issRoot .iss-c[data-sid="s1"] .iss-tx');
   ok('진행 등록순 → 해결 · 7일 지난 해결 숨김',JSON.stringify(rows)===JSON.stringify(['현안1','현안2','최근 해결']),rows);
-  ok('D+N · 30일↑ 주황',await pg.evaluate(()=>{const m=document.querySelector('#issRoot .iss-c[data-sid="s1"] .iss-m');return /^D\+40$/.test(m.textContent)&&m.classList.contains('old');}));
+  ok('목표일 없는 현안 — 꼬리 숫자 없음',await pg.evaluate(()=>{const m=document.querySelector('#issRoot .iss-c[data-sid="s1"] .iss-m');return m.classList.contains('nd')&&!m.textContent.trim();}));
   ok('담당자 — 음영·프로필·이름',await pg.evaluate(()=>{const h=document.querySelector('#issRoot .iss-c[data-sid="s1"] .tm-h');return h.classList.contains('own')&&!!h.querySelector('.iss-av')&&h.querySelector('.iss-own').textContent==='담당자1';}));
   ok('담당자 없는 현장은 그대로',await pg.evaluate(()=>!document.querySelector('#issRoot .iss-c[data-sid="s2"] .tm-h').classList.contains('own')));
   await pg.click('#issRoot .iss-c[data-sid="s2"] [data-act="iss.add"]');await pg.keyboard.type('추가1');await pg.keyboard.press('Enter');await pg.keyboard.type('추가2');await pg.keyboard.press('Enter');
   ok('Enter 이어 쓰기 · 입력 칸 유지',(await txt(pg,'#issRoot .iss-c[data-sid="s2"] .iss-tx')).length===2&&await pg.evaluate(()=>document.activeElement.matches('.iss-in')));
   await pg.keyboard.press('Escape');
+  /* 목표일 — 없으면 꼬리 비움(말풍선에 등록일) · 고르면 남은 날수 · 단계 색 · 우클릭으로 지우기 */
+  ok('목표일 없음 — 숫자 없음 · 등록 말풍선',await pg.evaluate(()=>{const li=document.querySelector('#issRoot .iss-c[data-sid="s2"] .iss-i');return !li.querySelector('.iss-m').textContent.trim()&&li.querySelector('.iss-m').classList.contains('nd')&&/등록/.test(li.querySelector('.iss-tx').dataset.tip);}));
+  const setDue=n=>pg.evaluate(n=>{const i=document.querySelector('#issRoot .iss-c[data-sid="s2"] .iss-i .iss-due');i.value=addDays(todayStr(),n);i.dispatchEvent(new Event('change',{bubbles:true}));},n);
+  const tail=()=>pg.evaluate(()=>{const m=document.querySelector('#issRoot .iss-c[data-sid="s2"] .iss-i .iss-m');return m.className.replace('iss-m','').trim()+':'+m.textContent.trim();});
+  const tl=[];for(const n of [10,5,2,0,-3]){await setDue(n);await pg.waitForTimeout(80);tl.push(await tail());}
+  ok('목표일 단계 — D-10 회색 · D-5 · D-2 · D-day · D+3 배지',tl.join('|')==='pd0:D-10|pd1:D-5|pd2:D-2|pd3:D-day|pd4:D+3',tl);
+  ok('목표일 저장',await pg.evaluate(()=>Object.values(S.iss.s2).some(x=>x.due===addDays(todayStr(),-3))));
+  await pg.click('#issRoot .iss-c[data-sid="s2"] .iss-i:first-child .iss-tx',{button:'right'});await pg.click('.ctxmenu .ctx-it:has-text("목표일 지우기")');await pg.waitForTimeout(100);
+  ok('우클릭 → 목표일 지우기',await pg.evaluate(()=>!Object.values(S.iss.s2).some(x=>x.due))&&(await tail()).startsWith('nd'));
   await pg.click('#issRoot .iss-c[data-sid="s2"] .iss-i:first-child [data-act="iss.ck"]');
   ok('해결 표시',await pg.evaluate(()=>Object.values(S.iss.s2).some(x=>x.t==='추가1'&&x.dt)));
   await pg.click('#issRoot .iss-c[data-sid="s2"] .iss-tx');await pg.keyboard.press('Control+A');await pg.keyboard.type('고침');await pg.keyboard.press('Enter');
