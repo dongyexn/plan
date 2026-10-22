@@ -5742,7 +5742,7 @@ body.wid.glass{--mv-flash:#8FB4FF;}
 .iss-sc{flex:1;min-height:0;overflow-y:auto;}
 .iss-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:10px;align-items:stretch;}
 .iss-c{display:flex;flex-direction:column;min-width:0;}
-.card.iss-c{padding:0;overflow:hidden;min-height:calc(57px + 5*(12px + max(1.45*13px,19px)));}   /* 기본은 현안 5줄 높이(머리 42·테두리 + 목록 여백 14 + 줄 5) */
+.card.iss-c{padding:0;overflow:hidden;min-height:calc(57px + 4*(12px + max(1.45*13px,19px)));}   /* 기본은 현안 4줄 높이(머리 42·테두리 + 목록 여백 14 + 줄 4) */
 .iss-c .tm-h>span{display:flex;align-items:center;gap:6px;min-width:0;}
 .iss-c .tm-h .tm-sub{font-size:12px;font-weight:700;}
 .iss-ul{list-style:none;margin:0;padding:6px 8px 8px;display:flex;flex-direction:column;}
@@ -5750,7 +5750,7 @@ body.wid.glass{--mv-flash:#8FB4FF;}
 .iss-ck{flex:none;width:16px;height:16px;margin-top:1.5px;padding:0;border-radius:50%;border:1.5px solid #B9C0CA;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;}
 .iss-i.done .iss-ck{background:var(--b600);border-color:var(--b600);}
 .iss-i.done .iss-ck::after{content:"";width:7px;height:4px;border:1.6px solid #fff;border-top:0;border-right:0;transform:rotate(-45deg) translate(1px,-1px);}
-.iss-tx{flex:1;min-width:0;word-break:keep-all;overflow-wrap:anywhere;cursor:text;}
+.iss-tx{flex:1;min-width:0;word-break:keep-all;overflow-wrap:anywhere;cursor:text;position:relative;top:1.5px;}   /* 한글 잉크가 줄 상자 위쪽에 붙어 원·날짜보다 1.5px 남짓 높아 보였다 — 자리는 그대로 두고 그림만 내린다 */
 .iss-i.done .iss-tx{color:var(--lbl3);text-decoration:line-through;}
 .iss-m{flex:none;margin-top:1.5px;font-size:11.5px;color:var(--lbl3);font-variant-numeric:tabular-nums;}
 .iss-m.old{color:var(--am-ink);font-weight:600;}
@@ -5763,11 +5763,12 @@ body.wid.glass{--mv-flash:#8FB4FF;}
 /* 위젯 — 머리 단추로 달력 자리(머리 줄 아래)를 주요 현안으로 바꿔 낀다. 판은 날짜 칸과 같은 유리(wgDyn) */
 body.wid.iss-on :is(#fcal,#calFchips,#issStrip){display:none!important;}
 #issPane:not([hidden]){flex:1;min-height:0;display:flex;flex-direction:column;gap:6px;color:rgba(255,255,255,.92);line-height:1.45;animation:viewIn var(--mv-mid) var(--mv-ease);}   /* 판 배경 없음 — 탭 줄·카드가 각자 유리 */
-#issPane .iss-c{min-height:calc(48px + 5*(10px + max(1.45*13px,19px)));-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);}   /* 기본은 현안 5줄 높이(머리 38 + 목록 여백 10 + 줄 5) — 줄이 많으면 늘어난다 */
+#issPane .iss-c{min-height:calc(48px + 4*(10px + max(1.45*13px,19px)));-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);}   /* 기본은 현안 4줄 높이(머리 38 + 목록 여백 10 + 줄 4) — 줄이 많으면 늘어난다 */
 body.wid .cal-nb[aria-pressed="true"]{background:var(--b600);color:#fff;}
 .iss-wt{flex:none;display:flex;gap:2px;padding:0 8px;border-radius:var(--r);overflow-x:auto;scrollbar-width:none;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);}   /* 권역 탭 — 요일 머리처럼 따로 띠(색은 wgDyn) */
 .iss-wt button{flex:none;height:42px;padding:0 10px;border:0;border-bottom:2px solid transparent;background:none;font:inherit;font-size:13px;font-weight:600;color:rgba(255,255,255,.55);cursor:pointer;display:flex;align-items:center;gap:5px;}
-.iss-wt button span{font-size:11px;color:rgba(255,255,255,.4);}
+.iss-wt .rp-tcnt{margin-left:0;background:rgba(255,255,255,.1);color:rgba(255,255,255,.6);}   /* 숫자는 데스크톱 탭과 같은 배지 — 어두운 판 색 */
+.iss-wt button.on .rp-tcnt{background:color-mix(in srgb,var(--b400) 20%,transparent);color:var(--b400);}
 .iss-wt button.on{color:#fff;border-bottom-color:var(--b400);}
 .iss-wt :is(.iss-more,.iss-srt){width:42px;flex:none;display:flex;align-items:center;}
 .iss-wt .iss-srt{margin-left:auto;}   /* 정렬 · + — 탭 줄 오른쪽 */
@@ -5823,7 +5824,7 @@ body.iss-dragging,body.iss-dragging *{cursor:grabbing!important;user-select:none
 .iss-c .tm-h .iss-hr{flex:1 1 0;display:flex;align-items:center;justify-content:flex-end;gap:6px;min-width:0;}
 /* 위젯 「4주 + 현안」 — 달력 4주 아래에 카드 한 줄(현안 4줄 높이, 넘치면 카드 안에서 구른다 · 카드가 많으면 옆으로) */
 body.wid.iss3 #fcal{flex:1 1 0;}
-#issStrip:not([hidden]){color:rgba(255,255,255,.92);flex:none;height:calc(48px + 5*(8px + max(1.45*12.5px,19px)));margin-top:6px;display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 12px)/3);gap:6px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scroll-behavior:smooth;overscroll-behavior-x:contain;}
+#issStrip:not([hidden]){color:rgba(255,255,255,.92);flex:none;height:calc(48px + 4*(8px + max(1.45*12.5px,19px)));margin-top:6px;display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 12px)/3);gap:6px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scroll-behavior:smooth;overscroll-behavior-x:contain;}
 #issStrip .iss-c{scroll-snap-align:start;}   /* 넘길 때 카드 단위로 부드럽게 멈춘다 */
 #issStrip .iss-c{min-height:0;overflow:hidden;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);}
 #issStrip .iss-c :is(.iss-ul,.iss-empty){flex:1 1 0;min-height:0;overflow-y:auto;}
@@ -6247,7 +6248,7 @@ body.mcal-full #fcal .mlN::before{content:'+'}
             </div>
           </div>
           <div class="card" id="bgCard">   <!-- 배경 사진(로그인 · 회의 표지) — bgPickRender 가 채운다. 왼쪽 칸 — 사용자(하자 데이터 카드 없음)도 왼쪽이 비지 않게 -->
-            <div class="set-h bgp-hd">배경화면<label class="bgp-auto" data-tip="한 시간마다 컬렉션 사진으로 바꿉니다"><span>자동 변경</span><span class="sw"><input type="checkbox" id="bgAuto" data-act="bg.auto" aria-label="한 시간마다 자동으로 바꾸기"><span class="sw-t"></span></span></label><span class="bgp-meta" id="bgMeta"></span></div>
+            <div class="set-h bgp-hd">배경화면<label class="bgp-auto" data-tip="들어올 때마다 컬렉션 사진 중 하나로 바꿉니다"><span>자동 변경</span><span class="sw"><input type="checkbox" id="bgAuto" data-act="bg.auto" aria-label="한 시간마다 자동으로 바꾸기"><span class="sw-t"></span></span></label><span class="bgp-meta" id="bgMeta"></span></div>
             <div class="bgp">
               <div class="bgp-scr" id="bgPv"><i class="g"></i><div class="bgp-cr" id="bgPvCr"></div></div>
               <div id="bgPickRow" class="bgp-row"></div>
@@ -6335,5 +6336,5 @@ body.mcal-full #fcal .mlN::before{content:'+'}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1206"></script>
+<script src="./app.js?v=1207"></script>
 </body></html>

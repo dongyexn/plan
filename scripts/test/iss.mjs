@@ -66,10 +66,10 @@ const txt=(pg,sel)=>pg.evaluate(s=>[...document.querySelectorAll(s)].map(e=>e.te
   ok('한 주씩',await pg.evaluate(s=>daysBetween(s,dstr(CAL.view.currentStart))===7,s0));
   await pg.click('[data-act="cal.today"]').catch(()=>{});await pg.waitForTimeout(300);
   ok('아래 칸 카드(로컬 = 전부)',(await pg.$$('#issStrip .iss-c')).length===3);
-  ok('아래 칸 한 줄 · 현안 5줄 높이',await pg.evaluate(()=>{const c=[...document.querySelectorAll('#issStrip .iss-c')].map(e=>e.getBoundingClientRect());
+  ok('아래 칸 한 줄 · 현안 4줄 높이',await pg.evaluate(()=>{const c=[...document.querySelectorAll('#issStrip .iss-c')].map(e=>e.getBoundingClientRect());
     const u=document.querySelector('#issStrip .iss-c[data-sid="s1"] .iss-ul');return c.every(r=>Math.abs(r.top-c[0].top)<1)&&u.scrollHeight<=u.clientHeight+1&&u.querySelectorAll('.iss-i').length===3;}));
   await pg.click('[data-act="iss.open"]');await pg.waitForTimeout(300);
-  ok('판 카드 기본 높이 = 현안 5줄',await pg.evaluate(()=>{const c=document.querySelector('#issPane .iss-c[data-sid="s2"]');return Math.abs(c.getBoundingClientRect().height-parseFloat(getComputedStyle(c).minHeight))<1&&parseFloat(getComputedStyle(c).minHeight)>150;}));
+  ok('판 카드 기본 높이 = 현안 4줄',await pg.evaluate(()=>{const c=document.querySelector('#issPane .iss-c[data-sid="s2"]');return Math.abs(c.getBoundingClientRect().height-parseFloat(getComputedStyle(c).minHeight))<1&&parseFloat(getComputedStyle(c).minHeight)>150;}));
   ok('판 켬 — 아래 칸 숨음 · 단추 눌림',await pg.evaluate(()=>issOn()&&getComputedStyle($('#issStrip')).display==='none'&&$('[data-act="iss.open"]').getAttribute('aria-pressed')==='true'));
   await pg.click('#issPane .iss-c[data-sid="s3"] [data-act="iss.add"]');
   ok('빈 카드에 적을 땐 빈 문구 없음',await pg.evaluate(()=>!document.querySelector('#issPane .iss-c[data-sid="s3"] .iss-empty')));
@@ -80,7 +80,7 @@ const txt=(pg,sel)=>pg.evaluate(s=>[...document.querySelectorAll(s)].map(e=>e.te
   await pg.click('[data-act="iss.open"]');await pg.waitForTimeout(300);
   await pg.click('#issPane .iss-c[data-sid="s2"] .iss-ch b',{button:'right'});await pg.click('.ctxmenu .ctx-it');await pg.waitForTimeout(200);
   ok('우클릭 → 보드에서 빼기(팀 공통 저장)',await pg.evaluate(()=>!$('#issPane .iss-c[data-sid="s2"]')&&!!JSON.parse(localStorage.getItem('calapp.v1')).issHide.s2));
-  await pg.click('#issPane [data-act="iss.more"]');
+  await pg.click('#issPane [data-act="iss.more"]');await pg.waitForSelector('.ctxmenu:not(.out)',{timeout:3000}).catch(()=>{});
   ok('+ → 뺀 현장 목록',await pg.evaluate(()=>$('.ctxmenu').innerText.includes('현장명2')));
   await pg.click('#issPane [data-act="iss.more"]');await pg.waitForTimeout(300);
   ok('+ 다시 누르면 닫힘',await pg.evaluate(()=>!document.querySelector('.ctxmenu:not(.out)')));
