@@ -13508,6 +13508,7 @@ const PET_LINES={tap:['허거덩','허걱스','하이','왜요?','😮','🤔','
   food:['😋'],drop:['😵'],idle:['일 안하농'],
   today:['오늘 업무 {n}건'],com:['{t} 하자!']};   /* {n}·{t} 는 숫자·업무 이름으로 바뀐다 · 사용자가 대사 편집 폼에서 고친 값 */
 const petPick=a=>a[Math.floor(Math.random()*a.length)];
+const PET_IT_SZ={strawberry:18};   /* 던지는 그림 크기 예외(px, 기본 16) — 딸기는 그림이 좁아 살짝 크게(사용자) */
 const petUrl=f=>'./vendor/pets/'+f+'?v='+APP_VER;   /* 그림 파일 — 쓰는 것만 받고 브라우저가 캐시한다 */
 const petSlot=()=>{const d=new Date(),v=d.getHours()*60+d.getMinutes();return v>=660&&v<=690?'lunch':v>=1020?'leave':'';};
 let PET_LOADING=null;
@@ -13576,7 +13577,7 @@ const PET=(()=>{let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl,cf
     ball.vy+=900*dt;ball.x+=ball.vx*dt;ball.y+=ball.vy*dt;
     if(ball.x<ball.lo){ball.x=ball.lo;ball.vx=-ball.vx*.6;}if(ball.x>ball.hi){ball.x=ball.hi;ball.vx=-ball.vx*.6;}
     const it=ball.it;if(ball.y>ball.floor){ball.y=ball.floor;ball.vy=-ball.vy*(it?.25:.45);ball.vx*=it?.3:.7;if(Math.abs(ball.vy)<40){ball.vy=0;if(Math.abs(ball.vx)<(it?30:8))ball.vx=0;}}
-    ballEl.style.transform='translate('+Math.round(ball.x-8)+'px,'+Math.round(ball.y-16)+'px)';   /* 공·먹이 모두 16px 그림(32px 를 줄임) */
+    ballEl.style.transform='translate('+Math.round(ball.x-ball.sz/2)+'px,'+Math.round(ball.y-ball.sz)+'px)';   /* 공·먹이 그림 16px(32px 를 줄임) — 몇 개만 PET_IT_SZ */
     if(!ball.vy&&!ball.vx&&!ball.go){cancelAnimationFrame(braf);if(drg)return;ball.go=1;   /* 끄는 중이면 놓을 때까지 기다린다 */
       const tx=Math.min(Math.max(ball.x-el.offsetWidth/2,ball.lo-6),ball.hi-el.offsetWidth+6);
       moveTo(tx,95,'run',()=>{const b=ball;ball=null;if(b)ballEl.remove();hop();set(b&&b.it?'idle':'with_ball');say(b&&b.it?petPick(PET_LINES.food):petPick(PET_LINES.ball));if(b&&b.it)hearts(1);later(next,2600);});}};   /* 먹이는 공을 문 그림 대신 쉬는 그림 */
@@ -13652,8 +13653,8 @@ const PET=(()=>{let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl,cf
     dragged:()=>!!(el&&el._drg),   /* 방금 끌었음 — 놓은 자리가 머리 줄이어도 공을 던지지 않게 */
     throwBall(cx){if(!cfg||!el||!el.isConnected||el.hidden)return;if(deep){deep=false;if(bob)bob.play();}if(sleeping){sleeping=false;clearTimeout(nap);el.classList.remove('sleep');}
       const h=head(),hr=h.getBoundingClientRect(),[L,R]=bounds();stop();clearTimeout(tm);set('idle');
-      if(!ballEl){ballEl=document.createElement('div');ballEl.id='wgBall';}const it=cfg.it||'';ballEl.style.backgroundImage='url('+petUrl('it-'+(it||'ball')+'.png')+')';h.appendChild(ballEl);
-      const floor=h.clientHeight/2+17;ball={x:cx-hr.left,y:floor-4,vx:(Math.random()<.5?-1:1)*(60+Math.random()*60),vy:-260,floor,lo:L+6,hi:R+el.offsetWidth-6,it};
+      if(!ballEl){ballEl=document.createElement('div');ballEl.id='wgBall';}const it=cfg.it||'';ballEl.style.backgroundImage='url('+petUrl('it-'+(it||'ball')+'.png')+')';const sz=PET_IT_SZ[it]||16;ballEl.style.width=ballEl.style.height=sz+'px';h.appendChild(ballEl);
+      const floor=h.clientHeight/2+17;ball={x:cx-hr.left,y:floor-4,vx:(Math.random()<.5?-1:1)*(60+Math.random()*60),vy:-260,floor,lo:L+6,hi:R+el.offsetWidth-6,it,sz};
       cancelAnimationFrame(braf);braf=requestAnimationFrame(ballStep);},
     done(){if(!cfg||!el||!el.isConnected)return;if(deep){deep=false;if(bob)bob.play();}if(sleeping){sleeping=false;clearTimeout(nap);el.classList.remove('sleep');}hop();say(petPick(PET_LINES.done),2500);
       if(ball)return;const[L,R]=bounds();moveTo(dir>0?R:L,75,'run');},   /* 공을 가지러 가는 중이면 자리 이동은 건너뛴다 */
