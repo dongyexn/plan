@@ -271,6 +271,8 @@ t('AUTH-22e', '미등록 계정 → 현안 추가', false, tryWrite('calapp/iss/
 t('AUTH-22f', 'viewer → 빈 내용', false, tryWrite('calapp/iss/sA/i2', A('U1'), T22, { t: '', at: 2, by: 'U1' }));
 t('AUTH-22g', 'viewer → 모르는 칸', false, tryWrite('calapp/iss/sA/i2', A('U1'), T22, { t: 'x', at: 2, by: 'U1', z: 1 }));
 t('AUTH-22h', 'viewer → 현안 읽기', true, tryRead('calapp/iss', A('U1'), T22));
+t('AUTH-22i', 'viewer → 목표일', true, tryWrite('calapp/iss/sA/i1', A('U1'), T22, { t: '현안', at: 1, by: 'U2', due: '2026-10-30' }));
+t('AUTH-22j', 'viewer → 목표일 모양 틀림', false, tryWrite('calapp/iss/sA/i1', A('U1'), T22, { t: '현안', at: 1, by: 'U2', due: '10/30' }));
 /* AUTH-23 주요 현안 보드에 보일 현장 덧씀 — 팀 공통 · MEMBER 누구나 · 참거짓만 */
 t('AUTH-23a', 'viewer → 현장 빼기', true, tryWrite('calapp/issHide/sA', A('U1'), T22, true));
 t('AUTH-23b', 'viewer → 다시 넣기(지움)', true, tryWrite('calapp/issHide/sA', A('U1'), { ...T22, calapp: { ...T22.calapp, issHide: { sA: true } } }, null));
