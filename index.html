@@ -5742,7 +5742,7 @@ body.wid.glass{--mv-flash:#8FB4FF;}
 .iss-sc{flex:1;min-height:0;overflow-y:auto;}
 .iss-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:10px;align-items:stretch;}
 .iss-c{display:flex;flex-direction:column;min-width:0;}
-.card.iss-c{padding:0;overflow:hidden;min-height:calc(57px + 4*(12px + max(1.45*13px,19px)));}   /* 기본은 현안 4줄 높이(머리 42·테두리 + 목록 여백 14 + 줄 4) */
+.card.iss-c{padding:0;overflow:hidden;min-height:calc(57px + 5*(12px + max(1.45*13px,19px)));}   /* 기본은 현안 5줄 높이(머리 42·테두리 + 목록 여백 14 + 줄 5) */
 .iss-c .tm-h>span{display:flex;align-items:center;gap:6px;min-width:0;}
 .iss-c .tm-h .tm-sub{font-size:12px;font-weight:700;}
 .iss-ul{list-style:none;margin:0;padding:6px 8px 8px;display:flex;flex-direction:column;}
@@ -5754,19 +5754,16 @@ body.wid.glass{--mv-flash:#8FB4FF;}
 .iss-i.done .iss-tx{color:var(--lbl3);text-decoration:line-through;}
 .iss-m{flex:none;margin-top:1.5px;font-size:11.5px;color:var(--lbl3);font-variant-numeric:tabular-nums;}
 .iss-m.old{color:var(--am-ink);font-weight:600;}
-.iss-x{flex:none;width:18px;height:18px;margin-top:1px;padding:0;border:0;border-radius:var(--r);background:none;color:var(--lbl3);cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;}
-.iss-x .icn{width:12px;height:12px;}
-.iss-i:focus-within .iss-x{opacity:1;}
 .iss-new{padding:8px 8px 0;}
 .iss-in,.iss-ed{width:100%;height:30px;padding:0 8px;border:1px solid var(--b400);border-radius:var(--r);background:#fff;font:inherit;font-size:13px;color:var(--lbl);outline:0;box-shadow:var(--ring);}
 .iss-ed{flex:1;min-width:0;height:24px;margin:-3px 0;}
 .iss-empty{padding:14px 16px;font-size:12px;color:var(--lbl3);}
-@media (hover:hover) and (pointer:fine){.iss-i:hover{background:var(--surf2);}.iss-i:hover .iss-x{opacity:1;}.iss-ck:hover{border-color:var(--b600);}.iss-x:hover{color:var(--rd);}}
-@media not ((hover:hover) and (pointer:fine)){.iss-x{opacity:1;}.iss-i:active{background:var(--surf2);}}
+@media (hover:hover) and (pointer:fine){.iss-i:hover{background:var(--surf2);}.iss-ck:hover{border-color:var(--b600);}}
+@media not ((hover:hover) and (pointer:fine)){.iss-i:active{background:var(--surf2);}}
 /* 위젯 — 머리 단추로 달력 자리(머리 줄 아래)를 주요 현안으로 바꿔 낀다. 판은 날짜 칸과 같은 유리(wgDyn) */
 body.wid.iss-on :is(#fcal,#calFchips,#issStrip){display:none!important;}
 #issPane:not([hidden]){flex:1;min-height:0;display:flex;flex-direction:column;gap:6px;color:rgba(255,255,255,.92);line-height:1.45;animation:viewIn var(--mv-mid) var(--mv-ease);}   /* 판 배경 없음 — 탭 줄·카드가 각자 유리 */
-#issPane .iss-c{min-height:calc(48px + 4*(10px + max(1.45*13px,19px)));-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);}   /* 기본은 현안 4줄 높이(머리 38 + 목록 여백 10 + 줄 4) — 줄이 많으면 늘어난다 */
+#issPane .iss-c{min-height:calc(48px + 5*(10px + max(1.45*13px,19px)));-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);}   /* 기본은 현안 5줄 높이(머리 38 + 목록 여백 10 + 줄 5) — 줄이 많으면 늘어난다 */
 body.wid .cal-nb[aria-pressed="true"]{background:var(--b600);color:#fff;}
 .iss-wt{flex:none;display:flex;gap:2px;padding:0 8px;border-radius:var(--r);overflow-x:auto;scrollbar-width:none;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);}   /* 권역 탭 — 요일 머리처럼 따로 띠(색은 wgDyn) */
 .iss-wt button{flex:none;height:42px;padding:0 10px;border:0;border-bottom:2px solid transparent;background:none;font:inherit;font-size:13px;font-weight:600;color:rgba(255,255,255,.55);cursor:pointer;display:flex;align-items:center;gap:5px;}
@@ -5791,12 +5788,12 @@ body.wid .iss-c .iss-i{padding:5px 8px;}
 body.wid .iss-c .iss-ck{border-color:rgba(255,255,255,.4);background:transparent;}
 body.wid .iss-c .iss-i.done .iss-ck{background:var(--b600);border-color:var(--b600);}
 body.wid .iss-c .iss-i.done .iss-tx{color:rgba(255,255,255,.4);}
-body.wid .iss-c .iss-m,body.wid .iss-c .iss-x{color:rgba(255,255,255,.42);}
+body.wid .iss-c .iss-m{color:rgba(255,255,255,.42);}
 body.wid .iss-c .iss-m.old{color:#FFC27A;}
 body.wid .iss-c .iss-empty{padding:12px;color:rgba(255,255,255,.4);}
 body.wid .iss-c .iss-new{padding:6px 6px 0;}
 body.wid .iss-c :is(.iss-in,.iss-ed){border-color:rgba(143,180,255,.6);border-radius:8px;background:rgba(255,255,255,.06);color:#fff;box-shadow:none;}
-@media (hover:hover) and (pointer:fine){body.wid .iss-c .iss-i:hover{background:rgba(255,255,255,.06);}body.wid .iss-ad:hover{background:rgba(255,255,255,.1);color:#fff;}body.wid .iss-wt button:hover{color:#fff;}body.wid .iss-c .iss-x:hover{color:#FF9C9C;}}
+@media (hover:hover) and (pointer:fine){body.wid .iss-c .iss-i:hover{background:rgba(255,255,255,.06);}body.wid .iss-ad:hover{background:rgba(255,255,255,.1);color:#fff;}body.wid .iss-wt button:hover{color:#fff;}}
 /* 담당자 — 머리 띠를 지정색으로 옅게(그라디언트·무지개 색도 그대로), 이름 앞 프로필, + 앞 이름 */
 .iss-ch.own,.iss-c .tm-h.own{position:relative;isolation:isolate;}
 .iss-ch.own::before,.iss-c .tm-h.own::before{content:"";position:absolute;inset:0;z-index:-1;background:var(--itc);opacity:.28;pointer-events:none;}
@@ -5826,7 +5823,7 @@ body.iss-dragging,body.iss-dragging *{cursor:grabbing!important;user-select:none
 .iss-c .tm-h .iss-hr{flex:1 1 0;display:flex;align-items:center;justify-content:flex-end;gap:6px;min-width:0;}
 /* 위젯 「4주 + 현안」 — 달력 4주 아래에 카드 한 줄(현안 4줄 높이, 넘치면 카드 안에서 구른다 · 카드가 많으면 옆으로) */
 body.wid.iss3 #fcal{flex:1 1 0;}
-#issStrip:not([hidden]){color:rgba(255,255,255,.92);flex:none;height:calc(48px + 4*(8px + max(1.45*12.5px,19px)));margin-top:6px;display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 12px)/3);gap:6px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scroll-behavior:smooth;overscroll-behavior-x:contain;}
+#issStrip:not([hidden]){color:rgba(255,255,255,.92);flex:none;height:calc(48px + 5*(8px + max(1.45*12.5px,19px)));margin-top:6px;display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 12px)/3);gap:6px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scroll-behavior:smooth;overscroll-behavior-x:contain;}
 #issStrip .iss-c{scroll-snap-align:start;}   /* 넘길 때 카드 단위로 부드럽게 멈춘다 */
 #issStrip .iss-c{min-height:0;overflow:hidden;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);}
 #issStrip .iss-c :is(.iss-ul,.iss-empty){flex:1 1 0;min-height:0;overflow-y:auto;}
@@ -6338,5 +6335,5 @@ body.mcal-full #fcal .mlN::before{content:'+'}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1205"></script>
+<script src="./app.js?v=1206"></script>
 </body></html>

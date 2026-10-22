@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1205';
+const APP_VER='1206';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -10805,8 +10805,9 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&REC._menu){e.stopIm
 function ctxFor(t){
   /* 주요 현안 카드 — 보드에서 빼기(팀 공통 · 탭 줄 + 로 다시 넣는다) */
   const ic=t.closest('.iss-c[data-sid]');
-  if(ic&&!t.closest('.iss-in,.iss-ed')){const sid=ic.dataset.sid,s=(S.org.sites||[]).find(x=>x.id===sid);
-    return[{label:'보드에서 빼기',act:()=>{issHideSet(sid,true);toastAct('보드에서 뺐습니다'+(s?' · '+s.name:''),'되돌리기',()=>issHideSet(sid,false));}}];}
+  if(ic&&!t.closest('.iss-in,.iss-ed')){const sid=ic.dataset.sid,s=(S.org.sites||[]).find(x=>x.id===sid),li=t.closest('.iss-i[data-iid]');
+    const out=li?[{label:'현안 지우기',danger:true,act:()=>{S.issUI.ed='';issDel(li.dataset.sid,li.dataset.iid);}},{sep:true}]:[];   /* 현안 줄 위 — 지우기 */
+    return out.concat([{label:'보드에서 빼기',act:()=>{issHideSet(sid,true);toastAct('보드에서 뺐습니다'+(s?' · '+s.name:''),'되돌리기',()=>issHideSet(sid,false));}}]);}
   /* 재하자·생산성 표 열 머리 — 필터행 표시/숨기기 */
   const tth=t.closest('#rdRoot .rd-tbl thead,#pvRoot .pv-tbl thead');
   if(tth){const F=tth.closest('#rdRoot')?RD:PV,r=F===RD?rRedo:rProd;
@@ -16640,7 +16641,10 @@ function issPrefSet(o){const p={...issPref(),...o},v={};if(p.sort!=='base')v.sor
   S.prefs=S.prefs||{};S.prefs.iss=Object.keys(v).length?v:undefined;store.putPref('iss',Object.keys(v).length?v:null);}
 function issOld(sid){const t=todayStr();return Math.max(0,...issAll(sid).filter(x=>!x.dt).map(x=>daysBetween(dstr(new Date(x.at||0)),t)));}
 function issSorted(list){const p=issPref(),bi=new Map(list.map((s,i)=>[s.id,i])),b=s=>bi.get(s.id);
-  if(p.sort==='mine'&&p.order.length){const oi=new Map(p.order.map((id,i)=>[id,i]));return list.slice().sort((x,y)=>((oi.has(x.id)?oi.get(x.id):1e6+b(x))-(oi.has(y.id)?oi.get(y.id):1e6+b(y))));}
+  /* 내 순서 — 순서에 없는 현장(다시 넣은 현장·새 현장)은 맨 끝이 아니라 기본 순서(권역·담당자)에서 바로 앞 현장 뒤에 끼운다 */
+  if(p.sort==='mine'&&p.order.length){const oi=new Map(p.order.map((id,i)=>[id,i])),out=list.filter(s=>oi.has(s.id)).sort((x,y)=>oi.get(x.id)-oi.get(y.id));
+    list.forEach((s,i)=>{if(oi.has(s.id))return;let at=0;for(let j=i-1;j>=0;j--){const k=out.indexOf(list[j]);if(k>=0){at=k+1;break;}}out.splice(at,0,s);});
+    return out;}
   const my=mySites(),k={open:s=>-issOpenN(s.id),old:s=>-issOld(s.id),me:s=>my[s.id]?0:1}[p.sort];
   return k?list.slice().sort((x,y)=>k(x)-k(y)||b(x)-b(y)):list;}
 function issSites(){return issSorted(issOrder(issBase().filter(issVis)));}
@@ -16668,8 +16672,7 @@ function issItem(sid,x){const ed=S.issUI.ed===sid+'/'+x.iid;
   return '<li class="iss-i'+(x.dt?' done':(Date.now()-(x.at||0)<864e5?' nw':''))+'" data-sid="'+esc(sid)+'" data-iid="'+esc(x.iid)+'">'
     +'<button class="iss-ck" data-act="iss.ck" aria-label="'+(x.dt?'해결 취소':'해결')+'" aria-pressed="'+(x.dt?'true':'false')+'"></button>'
     +(ed?'<input class="iss-ed" value="'+esc(x.t)+'" maxlength="200" aria-label="현안 고치기">':'<span class="iss-tx" data-act="iss.edit">'+esc(x.t)+'</span>')
-    +issTail(x)
-    +'<button class="iss-x" data-act="iss.del" aria-label="지우기" data-tip="지우기">'+issIcn('close')+'</button></li>';}
+    +issTail(x)+'</li>';}   /* 지우기는 줄 우클릭(폰은 길게 누르기) — 줄 끝 × 가 날짜를 가운데로 밀었다 */
 /* 현장 담당자 — 명부에서 그 현장을 맡은 사람(조직 관리의 담당 현장) */
 function issOwners(sid){return roster().filter(p=>p.sites&&p.sites[sid]);}
 /* 카드 머리 — 담당자 지정색으로 옅게 칠하고(첫 사람), 이름 앞엔 프로필, + 앞엔 담당자 이름 */
@@ -16774,10 +16777,11 @@ Object.assign(ACT,{
       {label:'오래된 현안 순',on:p.sort==='old',act:go('old')},{label:'내 현장 먼저',on:p.sort==='me',act:go('me')},p.order.length?{label:'내가 놓은 순서',on:p.sort==='mine',act:go('mine')}:null,
       {sep:true},{label:'현안 없는 현장 접기',check:true,on:p.fe,act:()=>{issPrefSet({fe:!p.fe});rIss(true);}},
       p.order.length||p.fold.length?{label:'내 순서 · 접기 지우기',act:()=>{issPrefSet({sort:p.sort==='mine'?'base':p.sort,order:[],fold:[]});rIss(true);}}:null],el,{flip:r});if(_ctxEl)_ctxEl.dataset.for='issSort';},
-  'iss.more':el=>{const l=issHidden();if(!l.length){toast('뺀 현장이 없습니다');return;}
+  'iss.more':el=>{if(_ctxEl&&document.contains(_ctxEl)&&_ctxEl.dataset.for==='issMore'){closeCtx();return;}   /* 열려 있으면 다시 눌러 닫는다 */
+    const l=issHidden();if(!l.length){toast('뺀 현장이 없습니다');return;}
     const r=el.getBoundingClientRect(),items=[];
     issGroups(l).forEach(g=>{items.push({hd:g[1]});g[2].forEach(s=>items.push({label:s.name,act:()=>{issHideSet(s.id,false);toast('넣었습니다 · '+s.name);}}));});
-    openCtx(r.left,r.bottom+4,items,el,{flip:r,search:l.length>8?'현장 찾기':''});},
+    openCtx(r.left,r.bottom+4,items,el,{flip:r,search:l.length>8?'현장 찾기':'',cls:'site'});if(_ctxEl)_ctxEl.dataset.for='issMore';},   /* site — 찾기 줄이 있는 현장 목록 판(위젯은 어두운 판) */
   'iss.rg':el=>{S.issUI.rg=el.dataset.rg||'';S.issUI.ed='';S.issUI.add='';rIss(true);},
   'iss.add':el=>{const sid=el.dataset.sid;S.issUI.ed='';S.issUI.add=S.issUI.add===sid?'':sid;rIss(true);},
   'iss.ck':el=>{const li=el.closest('.iss-i');if(!li)return;const sid=li.dataset.sid,iid=li.dataset.iid,x=issGet(sid,iid);if(!x)return;
