@@ -5765,9 +5765,9 @@ body.wid.iss-on :is(#fcal,#calFchips,#issStrip){display:none!important;}
 #issPane:not([hidden]){flex:1;min-height:0;display:flex;flex-direction:column;gap:6px;color:rgba(255,255,255,.92);line-height:1.45;animation:viewIn var(--mv-mid) var(--mv-ease);}   /* 판 배경 없음 — 탭 줄·카드가 각자 유리 */
 #issPane .iss-c{min-height:calc(48px + 4*(10px + max(1.45*13px,19px)));-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);}   /* 기본은 현안 4줄 높이(머리 38 + 목록 여백 10 + 줄 4) — 줄이 많으면 늘어난다 */
 body.wid .cal-nb[aria-pressed="true"]{background:var(--b600);color:#fff;}
-.iss-wt{flex:none;display:flex;gap:2px;padding:0 8px;border-radius:var(--r);overflow-x:auto;scrollbar-width:none;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);}   /* 권역 탭 — 요일 머리처럼 따로 띠(색은 wgDyn) */
-.iss-wt button{flex:none;height:42px;padding:0 10px;border:0;border-bottom:2px solid transparent;background:none;font:inherit;font-size:13px;font-weight:600;color:rgba(255,255,255,.55);cursor:pointer;display:flex;align-items:center;gap:5px;}
-.iss-wt .rp-tcnt{margin-left:0;background:rgba(255,255,255,.1);color:rgba(255,255,255,.6);}   /* 숫자는 데스크톱 탭과 같은 배지 — 어두운 판 색 */
+.iss-wt{flex:none;display:flex;gap:0;padding:0 8px;border-radius:var(--r);overflow-x:auto;scrollbar-width:none;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);}   /* 권역 탭 — 요일 머리처럼 따로 띠(색은 wgDyn) */
+.iss-wt button{flex:none;height:42px;padding:0 15px;border:0;border-bottom:2px solid transparent;background:none;font:inherit;font-size:13px;font-weight:600;color:rgba(255,255,255,.55);cursor:pointer;display:flex;align-items:center;gap:6px;}   /* 좌우 15 · 글자-배지 11(간격 6 + 배지 5) — 데스크톱 탭과 같은 값 */
+.iss-wt .rp-tcnt{background:rgba(255,255,255,.1);color:rgba(255,255,255,.6);}   /* 숫자는 데스크톱 탭과 같은 배지 — 어두운 판 색 */
 .iss-wt button.on .rp-tcnt{background:color-mix(in srgb,var(--b400) 20%,transparent);color:var(--b400);}
 .iss-wt button.on{color:#fff;border-bottom-color:var(--b400);}
 .iss-wt :is(.iss-more,.iss-srt){width:42px;flex:none;display:flex;align-items:center;}
@@ -5805,7 +5805,7 @@ body.wid .iss-ch.own::before{border-radius:10px 10px 0 0;}   /* 위젯 카드 �
 .iss-av{flex:none;width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--avc,var(--b600));box-shadow:0 0 0 1.5px rgba(26,29,38,.9);}
 .iss-c.card .iss-av{box-shadow:0 0 0 1.5px #fff;}
 /* 새 현안(등록 하루) — 줄 앞 파란 점 */
-.iss-i.nw .iss-tx::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:#4C8DF6;margin:0 6px 1px 0;vertical-align:middle;}
+.iss-i.nw .iss-tx::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:#4C8DF6;margin:0 6px 3px 0;vertical-align:middle;}   /* 아래 3 — 글자를 1.5px 내린 만큼 점이 원보다 1px 처져 보였다(원 중심에 맞춤) */
 /* 끌어서 자리 바꾸기(내 화면만) — 머리 줄을 잡는다. 끄는 동안 카드는 판 위로 뜬 복제본, 원래 자리는 흐리게 */
 .iss-c :is(.iss-ch,.tm-h){cursor:grab;}
 .iss-c.iss-ph{opacity:.25;}
@@ -6336,5 +6336,5 @@ body.mcal-full #fcal .mlN::before{content:'+'}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1207"></script>
+<script src="./app.js?v=1208"></script>
 </body></html>
