@@ -285,5 +285,19 @@ t('AUTH-23f', 'viewer → 읽기', true, tryRead('calapp/issHide', A('U1'), T22)
 t('AUTH-24a', 'viewer → 내 정렬·순서·접기', true, tryWrite('calapp/prefs/U1/iss', A('U1'), T22, { sort: 'mine', order: 'sA,sB', fold: 'sB', fe: true }));
 t('AUTH-24b', 'viewer → 모르는 정렬', false, tryWrite('calapp/prefs/U1/iss', A('U1'), T22, { sort: 'x' }));
 t('AUTH-24c', 'viewer → 남의 설정', false, tryWrite('calapp/prefs/U2/iss', A('U1'), T22, { sort: 'open' }));
+/* 가입 승인 대기(1212) — 새 계정은 pending 으로만 스스로 등록, 승인 전엔 본인 기록 말고 못 읽음 */
+const NW = { uid:'N1', token:{ email:'n1@hdec.co.kr', email_verified:true } };
+const T25 = { ...T22, users:{ ...T22.users, N1:{ email:'n1@hdec.co.kr', role:'pending' } } };
+t('AUTH-25a', '새 계정 → 스스로 승인 대기 등록', true, tryWrite('users/N1', NW, T22, { email:'n1@hdec.co.kr', role:'pending' }));
+t('AUTH-25b', '새 계정 → 스스로 사용자 등록', false, tryWrite('users/N1', NW, T22, { email:'n1@hdec.co.kr', role:'viewer' }));
+t('AUTH-25c', '승인 대기 → 스스로 사용자로', false, tryWrite('users/N1', NW, T25, { email:'n1@hdec.co.kr', role:'viewer' }));
+t('AUTH-25d', '승인 대기 → 내 기록 읽기', true, tryRead('users/N1', NW, T25));
+t('AUTH-25e', '승인 대기 → 업무 읽기', false, tryRead('calapp/tasks', NW, T25));
+t('AUTH-25f', '승인 대기 → 계정 목록 읽기', false, tryRead('users', NW, T25));
+t('AUTH-25g', '승인 대기 → 내 명부 쓰기', false, tryWrite('calapp/people/N1', NW, T25, { name:'n', email:'n1@hdec.co.kr', team:'', region:'', rank:'member' }));
+t('AUTH-25h', '승인 대기 → 내 화면 설정', false, tryWrite('calapp/prefs/N1/iss', NW, T25, { sort:'open' }));
+t('AUTH-25i', '관리자 → 승인(사용자로)', true, tryWrite('users/N1/role', A('E1'), T25, 'viewer'));
+t('AUTH-25j', '사용자 → 남을 승인', false, tryWrite('users/N1/role', A('U1'), T25, 'viewer'));
+t('AUTH-25k', '사용자 → 내 명부 쓰기(그대로 됨)', true, tryWrite('calapp/people/U1', A('U1'), T25, { ...P('U1'), name:'김담당2' }));
 console.log(fail ? `\nFAIL ${fail}` : '\nRULES-AUTH ALL PASS');
 process.exit(fail ? 1 : 0);
