@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1209';
+const APP_VER='1210';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -16666,7 +16666,7 @@ function issRows(sid){const now=Date.now();
   return issAll(sid).filter(x=>!x.dt||now-x.dt<ISS_KEEP*864e5).sort((a,b)=>(!!a.dt-!!b.dt)||(a.dt&&b.dt?a.dt-b.dt:(a.at||0)-(b.at||0)));}
 const issMD=ts=>{const d=new Date(ts||0);return (d.getMonth()+1)+'/'+d.getDate();};
 function issWho(uid){return ownName(uid)||(((S.accounts||{})[uid]||{}).name)||'';}
-/* 오른쪽 꼬리 — 해결은 해결일. 진행은 목표일이 있으면 남은 날수(8일 이상 회색 · 7~4 노랑 · 3~1 주황 · 당일 빨강 · 지나면 빨간 배지),
+/* 오른쪽 꼬리 — 해결은 해결일. 진행은 목표일이 있으면 목표 월/일(8일 이상 회색 · 7~4 노랑 · 3~1 주황 · 당일 파랑 · 지나면 빨강),
    없으면 비워 두고 줄에 올렸을 때만 옅은 달력(누르면 목표일). 등록일·등록자는 글자 말풍선(issRegTip) */
 const ISS_DUE=/^\d{4}-\d{2}-\d{2}$/;
 function issRegTip(x){const who=issWho(x.by);return issMD(x.at)+' 등록'+(who?' · '+who:'');}
@@ -16675,7 +16675,7 @@ function issTail(x){
   const due=ISS_DUE.test(x.due||'')?x.due:'',inp='<input type="date" class="iss-due" value="'+esc(due)+'" aria-label="목표일" tabindex="-1">';
   if(!due)return '<span class="iss-m nd" data-tip="목표일 정하기">'+issIcn('cal')+inp+'</span>';
   const n=daysBetween(todayStr(),due),k=n<0?4:n===0?3:n<=3?2:n<=7?1:0;
-  return '<span class="iss-m '+['pd0','pd1','pd2','pd3','pd4'][k]+'" data-tip="목표 '+issMD(Date.parse(due+'T00:00:00'))+'">'+(n>0?'D-'+n:n===0?'D-day':'D+'+(-n))+inp+'</span>';}
+  return '<span class="iss-m '+['pd0','pd1','pd2','pd3','pd4'][k]+'" data-tip="목표일 · '+(n>0?n+'일 남음':n===0?'오늘':(-n)+'일 지남')+'">'+issMD(Date.parse(due+'T00:00:00'))+inp+'</span>';}   /* 표기는 늘 월/일 — 남은 정도는 색으로 */
 function issItem(sid,x){const ed=S.issUI.ed===sid+'/'+x.iid;
   return '<li class="iss-i'+(x.dt?' done':(Date.now()-(x.at||0)<864e5?' nw':''))+'" data-sid="'+esc(sid)+'" data-iid="'+esc(x.iid)+'">'
     +'<button class="iss-ck" data-act="iss.ck" aria-label="'+(x.dt?'해결 취소':'해결')+'" aria-pressed="'+(x.dt?'true':'false')+'"></button>'
