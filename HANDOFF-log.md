@@ -6,6 +6,7 @@
 - vendor/pets.js 를 저장본 순서로 다시 씀(객체 키 순서 = 고르기 창 순서). 이름·울음소리·전용 대사 그대로, 빈 대사 줄은 버림, 대사가 없으면 lines 키 자체를 지움.
 - 버그: 시바(dog-akita)는 lines:[] 였는데 react 1번째 반응이 `cfg.lines?petPick(cfg.lines):cfg.say` 라 빈 배열에서 undefined 를 말할 수 있었다 → `cfg.lines&&cfg.lines.length`.
 - 고르기 창 확인(위젯 620px): 5열, 「골든 리트리버」만 칸에서 말줄임(골든 리트…).
+- 이어서 사용자: 「누렁이는 리트리버 뒤로 · 흑구 크림냥 치즈냥 북극여우 황계 삭제 · 골든 리트리버 골든 생략」 → dog-black·cat-cream·cat-ginger·fox-white·chick-lbrown 삭제(34→29, 동작·t·z 그림 30개), dog-golden 이름 「리트리버」, dog-brown 을 dog-golden 뒤로. 출처 주석에서 크림·드라큘라·치즈 언급 정리.
 
 ## 마지막 기록 기준 v1217
 ### 1217차 던지는 것 새 그림
