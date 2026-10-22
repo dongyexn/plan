@@ -1,0 +1,23 @@
+# 계정 삭제 마무리 — 10분마다. 앱에서 관리자가 「계정 삭제」한 계정의 Firebase 로그인 계정을 지운다(scripts/acct-del.mjs).
+# 준비: d60-photo-clean·bg-sync 와 같은 리포 Secrets 의 FIREBASE_SERVICE_ACCOUNT 를 쓴다(추가 설정 없음). 바로 돌리려면 Actions 탭에서 Run workflow.
+name: acct-del
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+concurrency: acct-del
+jobs:
+  del:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: firebase-admin 설치
+        run: npm i --no-save --ignore-scripts firebase-admin@13.10.0   # 시크릿이 있는 잡이라 정확한 버전으로 고정(d60 과 같은 판)
+      - name: 로그인 계정 삭제
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_DB_URL: https://report-c29a1-default-rtdb.asia-southeast1.firebasedatabase.app
+        run: node scripts/acct-del.mjs

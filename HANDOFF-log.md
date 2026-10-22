@@ -1,5 +1,14 @@
 # 변경 이력 (읽기 전용) — 현재 상태는 HANDOFF.md
 
+## 마지막 기록 기준 v1213
+### 1213차 계정 삭제
+**사용자: 「계정 삭제는 진짜로 어떻게든 앱 내에서 할수없는건가?」 → 방법 3가지(앱 기록 정리 · GitHub 작업으로 로그인 계정까지 · 본인 탈퇴) 중 1+2 권고 → 「미리보기부터 · 업무는 남겨둬야지」(pvdel) → 「그래 진행하자」**
+- 앱: ctxFor 계정 줄(#acctRoot · #freeRoot — 미배정·차단·승인 대기 표 줄에도 data-pid)에 「계정 삭제 — 이름」(danger). 담당자 삭제와 구분선. 본인·관리자 계정은 메뉴 없음(acct.del 에서도 막음 — 관리자는 먼저 사용자로). 확인창 뒤 루트 update 한 번: users/{uid}=null · calapp/acctDel/{uid}={at,by,email} · (명부가 있거나 맡은 업무가 있으면) calapp/people/{uid}=cleanPerson({…,sites:{},gone:1}) — 팀·권역·직급은 그대로라 업무 현황에서 그 사람 업무 묶음이 남는다.
+- gone: rosterBuild 가 gone 표시 → ownName·tkOwnerName 은 그대로 이름을 찾고, 조직 관리 표·탭 숫자·팀/권역 숫자·직급 탭·필터 담당·담당자 고르기(ownSelHTML — 지금 그 업무의 담당이면 남김)에서는 뺀다. cleanPerson 이 gone 을 보존.
+- 로그인 계정: 앱(브라우저)은 남의 Firebase 인증 계정을 못 지운다 → scripts/acct-del.mjs + .github/workflows/acct-del.yml(10분마다·수동 실행, firebase-admin 13.10.0 고정, 기존 FIREBASE_SERVICE_ACCOUNT). 요청자가 지금도 editor 인지 · 대상이 editor 가 아닌지 다시 확인 → auth.deleteUser(없으면 통과) → users/{uid}(그 사이 다시 로그인해 승인 대기로 생긴 기록) · 요청 지움. 실제 실행은 운영 환경에서만 확인 가능(이 환경 미검증).
+- 규칙: calapp/acctDel 읽기·쓰기 관리자, people.gone 은 1 만 · 본인/팀장/공구장 쓰기에서 gone 불변(관리자만 붙임). 시험 AUTH-26a~h. **콘솔 게시 필요.**
+- 설명서 위젯·설정 장에 계정 삭제 줄.
+
 ## 마지막 기록 기준 v1212
 ### 1212차 가입 승인 대기
 **사용자: 「앱 로그인 돌파, 취약점이나 파이어베이스 데이터 유출 등 보안 심각사항 검토」 → 최우선 지적(회사 메일만 있으면 누구나 스스로 viewer 등록 → 하자·D+60 세대 사진·민원·전 직원 메일 열람) → 「승인대기 미리보기부터」(pvpend) → 「그래 하자 · 승인 대기 탭은 가장 마지막, 대기자가 있어야 탭이 보이게 · 한번 거절되면 다시는 가입 못하나?」**
