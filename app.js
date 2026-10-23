@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1227';
+const APP_VER='1228';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -12192,7 +12192,7 @@ const ACT={
   'wid.set':()=>{const p=$('#wgSet');if(!p)return;p.classList.toggle('on');p.setAttribute('aria-hidden',p.classList.contains('on')?'false':'true');if(!p.classList.contains('on'))PET_PICK=false;widApply();},
   'wid.acc':el=>{const c=widCfgLoad();c.acc=el.dataset.k;widCfgSave(c);widApply();},
   'wid.petPick':()=>{PET_PICK=!PET_PICK;if(PET_PICK&&!window.CALAPP_PETS)petLoad().then(petSync,()=>toast('펫 그림을 불러오지 못했습니다'));petSync();},
-  'wid.pet':el=>{const c=widCfgLoad();c.pet=el.dataset.k||'';widCfgSave(c);petSync();}
+  'wid.pet':el=>petToggle(el.dataset.k||'')
 };
 /* 필터 = 업무 구분 · 진행 상태 · 권역 · 담당자 · 현장.
    팀 - 권역 - 담당자 - 현장 계층이라 위 단계를 고르면 아래 목록이 함께 좁혀진다. */
@@ -13221,7 +13221,7 @@ function mtgPlan(vac,sites,head){
 }
 /* 위젯 미니펫 공 던지기 — 머리 줄 빈 곳(단추·팝업 밖)을 누르면. 위치·크기 조정 중에는 하지 않는다 */
 document.addEventListener('click',e=>{if(!WIDGET||!PET.on()||$('#widMove'))return;const h=e.target.closest&&e.target.closest('#view-calendar .cal-head');
-  if(!h||PET.dragged()||e.target.closest('button,a,input,label,.cal-filt-pop,.tb-pop,#wgPet'))return;PET.throwBall(e.clientX);});
+  if(!h||PET.dragged()||e.target.closest('button,a,input,label,.cal-filt-pop,.tb-pop,.wgPet'))return;PET.throwBall(e.clientX);});
 document.addEventListener('pointerdown',e=>{const a=document.querySelectorAll('.site-on.arm');if(!a.length)return;const t=e.target.closest&&e.target.closest('.site-on.arm');a.forEach(x=>{if(x!==t)x.classList.remove('arm');});},true);   /* 현장 칩 해제 대기 — 바깥을 누르면 취소 */
 const LAYERS=[
   {n:'msel',open:()=>!!document.querySelector('.msel.open'),close:mselClose,on:'click',keep:'.msel'},
@@ -13521,7 +13521,8 @@ function petLoad(){   /* 그림 묶음 — 한 번만 받는다 */
 /* ⚠ 성능 — 걷기·둥실은 Web Animations(합성기)로 돌린다. 매 프레임 JS 로 transform 을 쓰면
    이 문서는 스타일 재계산이 비싸(:has 규칙) 펫 하나에 메인 스레드 4~5%를 먹었다. 판단은 타이머로 띄엄띄엄,
    프레임 루프는 공이 날아갈 때만 잠깐 돈다 */
-const PET=(()=>{let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl,cfg=null,x=0,dir=1,mode='idle',anim=null,tm=0,hvTm=0,bt=0,clicks=0,sleeping=false,nap=0,ball=null,braf=0,talk=0,bob=null;
+/* 펫 하나 — 위젯 머리 줄에 최대 3마리(PET 가 묶는다). busy: 상호작용 중(혼자 다음 행동을 고르지 않음) */
+function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl,cfg=null,x=0,dir=1,mode='idle',anim=null,tm=0,hvTm=0,bt=0,clicks=0,sleeping=false,nap=0,ball=null,braf=0,talk=0,bob=null,busy=false;
   const head=()=>document.querySelector('#view-calendar .cal-head');
   /* 걸을 수 있는 폭 — 왼쪽은 년월 묶음(「오늘」이 보이면 그 뒤), 오른쪽은 필터 칩·단추 묶음 중 먼저 오는 것. 판단할 때만 잰다 */
   const bounds=()=>{const h=head();if(!h)return[0,-1];const hr=h.getBoundingClientRect(),w=el?el.offsetWidth:40;
@@ -13561,7 +13562,7 @@ const PET=(()=>{let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl,cf
   const deepOn=()=>{deep=true;stop();clearTimeout(tm);clearTimeout(nap);sleeping=false;el.classList.remove('sleep','hop');img.dataset.m='z';
     img.src=petUrl(cfg.z.f);img.style.width=cfg.z.w+'px';img.style.height=cfg.z.h+'px';if(sh)sh.style.width=Math.round(cfg.z.w*.62)+'px';if(bob)bob.pause();};
   const deepOff=()=>{if(!deep)return;deep=false;if(bob)bob.play();set('idle');later(next,300);};
-  const next=()=>{if(!cfg||!el.isConnected||sleeping||ball||deep)return;
+  const next=()=>{if(!cfg||!el.isConnected||sleeping||ball||deep||busy)return;
     if(performance.now()-petAct>IDLE_MS){deepOn();return;}const[L,R]=bounds(),hid=R<L;el.hidden=hid;
     if(hid){later(next,3000);return;}
     x=Math.min(Math.max(pos(),L),R);
@@ -13582,7 +13583,7 @@ const PET=(()=>{let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl,cf
       const tx=Math.min(Math.max(ball.x-el.offsetWidth/2,ball.lo-6),ball.hi-el.offsetWidth+6);
       moveTo(tx,95,'run',()=>{const b=ball;ball=null;if(b)ballEl.remove();hop();set(b&&b.it?(cfg.g.eat?'eat':'idle'):'with_ball');say(b&&b.it?petPick(cfg.fd&&cfg.fd.length?cfg.fd:PET_LINES.food):petPick(PET_LINES.ball));if(b&&b.it)hearts(1);later(next,2600);});}};   /* 먹이는 공을 문 그림 대신 쉬는 그림(eat 그림이 있으면 그것) · fd 는 먹이 받았을 때 전용 멘트 */
   const react=()=>{if(deep)deepOff();if(sleeping){sleep(false);hop();say(petPick(PET_LINES.wake));return;}
-    if(ball){hop();say(petPick(PET_LINES.tap));return;}   /* 공을 가지러 가는 중 — 멈추거나 딴 데로 가면 공이 바닥에 남고 펫이 굳었다 */
+    if(ball||busy){hop();say(petPick(PET_LINES.tap));return;}   /* 상호작용 중엔 깡총·대사만 */   /* 공을 가지러 가는 중 — 멈추거나 딴 데로 가면 공이 바닥에 남고 펫이 굳었다 */
     clicks++;hop();const r=clicks%5,sl=petSlot();
     if(r===1)say(sl&&Math.random()<.5?petPick(PET_LINES[sl]):Math.random()<.5?(cfg.lines&&cfg.lines.length?petPick(cfg.lines):cfg.say):petPick(PET_LINES.tap));
     else if(r===2){stop();set('swipe');say(petPick(PET_LINES.tap));later(next,1400);}
@@ -13590,13 +13591,13 @@ const PET=(()=>{let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl,cf
     else if(r===4){const n=todayN();say(n?PET_LINES.today[0].replace('{n}',n):petPick(PET_LINES.idle));}
     else{const[L,R]=bounds();moveTo(dir>0?L:R,75,'run');}};
   return{
-    mount(c){const h=head();if(!h)return;const fresh=cfg!==c;cfg=c;
-      if(!el){el=document.createElement('div');el.id='wgPet';el.setAttribute('aria-label','미니펫 — 눌러 보세요');bd=document.createElement('div');bd.className='bd';
+    mount(c,o){o=o||{};const h=head();if(!h)return;const fresh=cfg!==c;cfg=c;
+      if(!el){el=document.createElement('div');el.className='wgPet';el.setAttribute('aria-label','미니펫 — 눌러 보세요');bd=document.createElement('div');bd.className='bd';
         img=document.createElement('img');img.alt='';bub=document.createElement('div');bub.className='bub';
         const z=document.createElement('div');z.className='z';z.textContent='z';sh=document.createElement('i');sh.className='sh';bd.append(img);el.append(sh,bd,bub,z);   /* sh — 발밑 그림자(바닥에 남고, 깡총·둥실은 .bd 만) */
         /* 쓰다듬기 — 마우스를 펫 위로 가져왔을 때만(가만히 있는 커서 밑으로 펫이 걸어 들어온 건 아니다 — 그러면 커서를 움직일 때까지 굳어 있었다).
            반응 뒤엔 커서가 그대로 있어도 다시 돌아다닌다 */
-        el.addEventListener('mouseenter',()=>{if(ball||sleeping||drg||mode==='swipe'||mode==='with_ball'||performance.now()-petAct>400)return;stop();clearTimeout(tm);set('idle');
+        el.addEventListener('mouseenter',()=>{if(ball||busy||sleeping||drg||mode==='swipe'||mode==='with_ball'||performance.now()-petAct>400)return;stop();clearTimeout(tm);set('idle');
           hvTm=setTimeout(()=>{say(petPick(PET_LINES.pet),1400);hop();hearts(3);later(next,3000);},1500);});
         el.addEventListener('mouseleave',()=>{clearTimeout(hvTm);if(!ball&&!sleeping&&mode==='idle')later(next,600);});
         el.addEventListener('click',e=>{e.stopPropagation();if(el._drg){el._drg=false;return;}react();});
@@ -13641,46 +13642,133 @@ const PET=(()=>{let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl,cf
       bd.style.width=Math.max(...Object.values(c.g).map(g=>g.w))+'px';   /* 동작마다 그림 폭이 달라(달리기 39 · 쉬기 33 …) 바꿀 때 몸이 5~10px 튀었다 — 가장 넓은 폭의 칸 가운데에 둔다 */
       if(fresh){img.dataset.m='';el.classList.toggle('fly',!!c.fly);if(bob){bob.cancel();bob=null;}img.style.imageRendering=c.sm?'auto':'';face();   /* sm — 픽셀 격자가 아닌 그림은 매끈하게 */
         if(c.fly){const fy=c.fy||16;bob=bd.animate([{transform:'translateY(-'+Math.round(fy/4)+'px)'},{transform:'translateY(-'+fy+'px)'}],{duration:900,iterations:Infinity,direction:'alternate',easing:'ease-in-out'});}   /* 나는 펫 — 떠서 둥실. fy = 위쪽 끝(큰 그림은 낮게) */
-        set(sleeping?'lie':'idle');if(!x)x=bounds()[0]+20;stop();if(!sleeping)later(next,400);}
-      document.body.classList.add('pet-on');
-      if(!talk)talk=setInterval(()=>{if(!cfg||sleeping||deep||drg||ball||document.hidden)return;const sl=petSlot();
+        set(sleeping?'lie':'idle');if(!x){const[L,R]=bounds();x=o.x0!=null?L+Math.max(0,R-L)*o.x0:L+20;}stop();if(!sleeping)later(next,400+(o.x0||0)*900);}
+      if(!o.talk&&talk){clearInterval(talk);talk=0;}   /* 혼잣말(시간·공통 업무)은 첫 펫만 — 셋이 다 하면 시끄럽다 */
+      if(o.talk&&!talk)talk=setInterval(()=>{if(!cfg||sleeping||deep||drg||ball||document.hidden)return;const sl=petSlot();
         if(sl){if(Math.random()<.2)say(petPick(PET_LINES[sl]),2600);return;}   /* 시간 대사 — 30초마다 20% (평균 2~3분에 한 번) */
         if(Math.random()<.08){const c=todayCom();if(c.length){const t=petPick(c),tt=t.length>14?t.slice(0,14)+'…':t;
           say(petPick(PET_LINES.com).replace('{t}',tt),3200);}}},30000);},   /* 오늘 공통 업무 중 하나(무작위) — 30초마다 8%(평균 6분에 한 번), 없으면 말 안 함 */
     wake:()=>{if(cfg&&el&&el.isConnected)deepOff();},
     unmount(){deep=false;clearTimeout(tm);clearTimeout(nap);clearTimeout(hvTm);clearInterval(talk);talk=0;cancelAnimationFrame(braf);
-      if(anim){anim.onfinish=null;anim.cancel();anim=null;}if(bob){bob.cancel();bob=null;}if(el)el.remove();if(ballEl)ballEl.remove();ball=null;cfg=null;sleeping=false;document.body.classList.remove('pet-on');},
+      if(anim){anim.onfinish=null;anim.cancel();anim=null;}if(bob){bob.cancel();bob=null;}if(el)el.remove();if(ballEl)ballEl.remove();ball=null;cfg=null;sleeping=false;busy=false;},
     dragged:()=>!!(el&&el._drg),   /* 방금 끌었음 — 놓은 자리가 머리 줄이어도 공을 던지지 않게 */
     throwBall(cx){if(!cfg||!el||!el.isConnected||el.hidden)return;if(deep){deep=false;if(bob)bob.play();}if(sleeping){sleeping=false;clearTimeout(nap);el.classList.remove('sleep');}
       const h=head(),hr=h.getBoundingClientRect(),[L,R]=bounds();stop();clearTimeout(tm);set('idle');
-      if(!ballEl){ballEl=document.createElement('div');ballEl.id='wgBall';}const it=cfg.it||'';ballEl.style.backgroundImage='url('+petUrl('it-'+(it||'ball')+'.png')+')';const sz=PET_IT_SZ[it]||16;ballEl.style.width=ballEl.style.height=sz+'px';h.appendChild(ballEl);
+      if(!ballEl){ballEl=document.createElement('div');ballEl.className='wgBall';}const it=cfg.it||'';ballEl.style.backgroundImage='url('+petUrl('it-'+(it||'ball')+'.png')+')';const sz=PET_IT_SZ[it]||16;ballEl.style.width=ballEl.style.height=sz+'px';h.appendChild(ballEl);
       const floor=h.clientHeight/2+17;ball={x:cx-hr.left,y:floor-4,vx:(Math.random()<.5?-1:1)*(60+Math.random()*60),vy:-260,floor,lo:L+6,hi:R+el.offsetWidth-6,it,sz};
       cancelAnimationFrame(braf);braf=requestAnimationFrame(ballStep);},
     done(){if(!cfg||!el||!el.isConnected)return;if(deep){deep=false;if(bob)bob.play();}if(sleeping){sleeping=false;clearTimeout(nap);el.classList.remove('sleep');}hop();say(petPick(PET_LINES.done),2500);
       if(ball)return;const[L,R]=bounds();moveTo(dir>0?R:L,75,'run');},   /* 공을 가지러 가는 중이면 자리 이동은 건너뛴다 */
-    on:()=>!!cfg};})();
+    on:()=>!!cfg,
+    /* 상호작용(PET)용 */
+    get cfg(){return cfg;},get el(){return el;},pos:()=>pos(),w:()=>el?el.offsetWidth:40,mid:()=>pos()+(el?el.offsetWidth:40)/2,bounds:()=>bounds(),
+    say,hop,set,turn,stop,moveTo,hearts,later:(f,ms)=>later(f,ms),next:()=>next(),
+    free:()=>!!(cfg&&el&&el.isConnected&&!el.hidden&&!sleeping&&!deep&&!drg&&!ball&&!busy&&!held0()),
+    ok:()=>!!(cfg&&el&&el.isConnected&&!el.hidden&&!sleeping&&!deep&&!drg),
+    busy:v=>{busy=!!v;if(v){stop();clearTimeout(tm);}},isBusy:()=>busy};
+  function held0(){return !!(el&&el.classList.contains('held'));}}
+/* ── 미니펫 묶음 — 고른 순서대로 최대 3마리. 공은 누른 자리에서 가장 가까운 펫에게, 완료 축하·깨우기는 모두에게.
+   상호작용: 가끔(6초마다 15%) 비어 있는 두 펫이 다가가 대사를 주고받는다 — 짝마다 정해 둔 장면(RULES), 없으면 인사.
+   라바콘·안전모·경광등 요정이 다 있으면 셋이 모여 TBM(작업 전 안전 회의)을 한다. 한 마리라도 잡히거나 자면 그만둔다 */
+const PET_MAX=3;
+const PET=(()=>{let L=[],tick=0,act=false;   /* L: [{k,p}] */
+  const PPL=new Set(['worker','painter','tiler','floorer','paperer','caulker']),EQ=new Set(['excavator','dump','mixer','ladder','forklift','gondola','bosun','scissor','roller','crane']),FAIRY=new Set(['cone','helm','beacon']);
+  const kind=k=>k==='manager'?'mgr':k==='signal'?'sig':k==='angry'||k==='cs'?k:PPL.has(k)?'ppl':EQ.has(k)?'eq':FAIRY.has(k)?'fairy':'ani';
+  const wait=ms=>new Promise(r=>setTimeout(r,ms));
+  const moveP=(p,tx,v=30)=>new Promise(res=>{const[l,r]=p.bounds();tx=Math.min(Math.max(tx,l),Math.max(l,r));let fin=false;
+    const end=()=>{if(fin)return;fin=true;if(p.ok()){p.stop();p.set('idle');}res();};
+    if(Math.abs(tx-p.pos())<2){end();return;}p.moveTo(tx,v,'walk',end);setTimeout(end,Math.abs(tx-p.pos())/v*1000+800);});   /* 끌기 등으로 끊겨도 기다리다 굳지 않게 */
+  const face=(a,b)=>{a.turn(a.mid()<=b.mid()?1:-1);b.turn(b.mid()<a.mid()?-1:1);};
+  const near=(a,b)=>{const side=a.mid()<b.mid()?-1:1;return moveP(a,b.pos()+(side<0?-(a.w()-6):b.w()-6));};
+  const glad=p=>{p.set(p.cfg.g.eat?'eat':'idle');p.hop();};
+  /* 장면 — m(앞 펫 종류, 뒤 펫 종류). 대사는 글자만 또는 이모지만(섞지 않음) */
+  const RULES=[
+    {m:(a,b)=>a==='cs'&&b==='angry',run:async(A,B,st)=>{B.say(petPick(['하자 언제 고쳐요!','책임자 나와!']));await st(1400);await near(A,B);face(A,B);
+      A.hop();A.say('고객님, 바로 확인해 드릴게요',2000);await st(1900);glad(B);B.hearts(1);B.say(petPick(['…그럼 믿어볼게요','이제야 말이 통하네~']),2000);await st(2300);}},
+    {m:(a,b)=>a==='mgr'&&['ppl','sig','fairy'].includes(b),run:async(A,B,st)=>{await near(A,B);face(A,B);A.say(petPick(['점검 나왔습니다','안전모 착용 확인!','작업 중지권 발동!']));await st(1600);
+      glad(B);B.say(petPick(['안전 제일!','이상 없습니다!','넵!']),1700);await st(1900);}},
+    {m:(a,b)=>a==='sig'&&b==='eq',run:async(A,B,st)=>{await near(A,B);face(A,B);A.say(petPick(['정지!','서행!','오라이~']),1600);await st(1500);B.hop();B.say(petPick(['빵빵!','멈춥니다','👍']),1500);await st(1700);}},
+    {m:(a,b)=>a==='angry'&&['ppl','mgr','sig'].includes(b),run:async(A,B,st)=>{await near(A,B);face(A,B);A.say(petPick(['하자 언제 고쳐요!','이게 집이에요?']));await st(1700);
+      B.hop();B.say(petPick(['죄송합니다, 바로 하겠습니다!','오늘 중으로 처리할게요!']),2000);await st(2100);}},
+    {m:(a,b)=>a==='cs'&&b==='ppl',run:async(A,B,st)=>{await near(A,B);face(A,B);A.say(petPick(['101동 하자 접수됐어요','세대 방문 일정 잡혔어요']),1900);await st(1800);B.hop();B.say(petPick(['바로 가겠습니다!','자재 챙겨 갈게요']),1700);await st(1900);}},
+    {m:(a,b)=>a==='cs'&&b==='mgr',run:async(A,B,st)=>{await near(A,B);face(A,B);A.say('오늘 접수 정리했어요',1700);await st(1600);B.say(petPick(['수고했어요!','회의 때 공유해 주세요']),1700);await st(1900);}},
+    {m:(a,b)=>a==='beacon'&&b==='angry',run:async(A,B,st)=>{await near(A,B);face(A,B);A.hop();A.say('민원 경보!',1500);await st(1400);B.say(petPick(['…흥','뭘 봐요?']),1500);await st(1700);}},
+    {m:(a,b)=>a==='helm'&&['ppl','sig'].includes(b),run:async(A,B,st)=>{await near(A,B);face(A,B);A.hop();A.say('안전모 착용!',1500);await st(1400);glad(B);B.say('착용 완료!',1500);await st(1700);}},
+    {m:(a,b)=>a==='fairy'&&b==='eq',run:async(A,B,st)=>{await near(A,B);face(A,B);A.say(petPick(['통제 구역입니다!','위험 구역이에요!']),1600);await st(1500);B.say('빵!',1200);await st(1500);}},
+    {m:(a,b)=>a==='ppl'&&b==='eq',run:async(A,B,st)=>{await near(A,B);face(A,B);A.say(petPick(['자재 왔다!','오라이~ 오라이~']),1600);await st(1500);B.say(petPick(['빵빵!','🚚']),1300);await st(1600);}},
+    {m:(a,b)=>a==='ppl'&&b==='ppl',run:async(A,B,st)=>{await near(A,B);face(A,B);A.say(petPick(['수고하십니다!','자재 좀 같이 들어요','점심 뭐 먹지']),1700);await st(1600);B.say(petPick(['수고 많으세요!','좋아요!','👍']),1500);await st(1700);}},
+    {m:(a,b)=>a==='fairy'&&b==='fairy',run:async(A,B,st)=>{await near(A,B);face(A,B);A.hop();await st(300);B.hop();A.say(petPick(['안전 제일!','같이 순찰 가요']),1500);await st(1400);B.say(petPick(['좋아요!','🙌']),1400);await st(1600);}},
+    {m:(a,b)=>a==='eq'&&b==='eq',run:async(A,B,st)=>{await near(A,B);face(A,B);A.say('빵!',1200);await st(1100);B.say('빵빵!',1200);await st(1500);}},
+    {m:(a,b)=>a==='ani'&&b==='ani',run:async(A,B,st)=>{await near(A,B);face(A,B);A.hop();A.hearts(1);await st(500);B.hop();B.hearts(1);await st(1200);}},
+    {m:(a,b)=>a!=='ani'&&a!=='eq'&&b==='ani',run:async(A,B,st)=>{await near(A,B);face(A,B);A.say(petPick(['어? 귀엽다','여기 왜 왔어?']),1600);await st(1400);B.hop();B.hearts(1);await st(1600);}},
+    {m:()=>true,run:async(A,B,st)=>{await near(A,B);face(A,B);A.say(petPick(['안녕?','👋']),1500);await st(1300);B.say(petPick(['안녕!','😊']),1500);await st(1700);}}];
+  const RK=(a,b)=>{const ka=kind(a),kb=kind(b),x=k=>k==='cone'||k==='helm'||k==='beacon'?k:'';
+    return RULES.findIndex(R=>R.m(ka,kb)||(x(a)&&R.m(x(a),kb)));};   /* 요정은 종류(fairy)와 이름(helm 등) 둘 다로 맞춘다 */
+  async function tbm(T){const[C,H,B]=T;const st=async ms=>{await wait(ms);if(!T.every(p=>p.ok()))throw 0;};
+    const tot=C.w()+H.w()+B.w()-6,[l,r]=H.bounds();let x0=Math.round((C.mid()+H.mid()+B.mid())/3-tot/2);x0=Math.min(Math.max(x0,l),Math.max(l,r+H.w()-tot));
+    await Promise.all([moveP(C,x0),moveP(H,x0+C.w()-3),moveP(B,x0+C.w()+H.w()-6)]);if(!T.every(p=>p.ok()))throw 0;
+    C.turn(1);H.turn(1);B.turn(-1);
+    H.hop();H.say('TBM 시작합니다!',1600);await st(1700);H.say('오늘 작업: 외벽 보수',1600);await st(1700);
+    B.hop();B.say('위험 요인! 고소 작업',1800);await st(1900);C.hop();C.say('작업 구역 통제 완료!',1700);await st(1800);
+    H.say('안전모·안전대 착용 확인!',1700);await st(1800);H.say('구호 하겠습니다!',1300);await st(1400);
+    H.say('무재해로 가자!',1500);C.hop();B.hop();await st(1600);
+    for(const t of ['좋아!','좋아! 좋아!','좋아! 좋아! 좋아!']){T.forEach(glad);H.say(t,800);await st(700);}
+    T.forEach(p=>p.hearts(1));await st(1200);}
+  async function play(force){if(act||L.length<2||document.hidden)return;const F=L.map(o=>o.p).filter(p=>p.free());if(F.length<2)return;
+    const by=k=>{const o=L.find(o=>o.k===k);return o&&o.p.free()?o.p:null;};
+    let T=null,run=null;
+    if(['cone','helm','beacon'].every(by)&&(force||Math.random()<.3)){T=[by('cone'),by('helm'),by('beacon')];run=()=>tbm(T);}
+    else{let best=null;for(const a of L)for(const b of L){if(a===b||!a.p.free()||!b.p.free())continue;const r=RK(a.k,b.k),sc=r*1000+Math.abs(a.p.mid()-b.p.mid());if(!best||sc<best.sc)best={a,b,r,sc};}
+      if(!best)return;T=[best.a.p,best.b.p];const R=RULES[best.r];run=()=>R.run(T[0],T[1],async ms=>{await wait(ms);if(!T.every(p=>p.ok()))throw 0;});}
+    act=true;T.forEach(p=>p.busy(true));
+    try{await run();}catch(e){if(e)console.warn('pet play',e);}
+    T.forEach((p,i)=>{p.busy(false);if(p.ok()){p.set('idle');p.later(()=>p.next(),500+i*500);}});act=false;}
+  const keys=()=>L.map(o=>o.k);
+  return{
+    sync(list){   /* list: [[키, 설정]] — 고른 순서 */
+      L=L.filter(o=>{const keep=list.some(([k])=>k===o.k);if(!keep)o.p.unmount();return keep;});
+      const n=list.length;
+      L=list.map(([k,c],i)=>{let o=L.find(o=>o.k===k);if(!o)o={k,p:petMake(),x0:n>1?i/(n-1)*.9:null};o.p.mount(c,{talk:i===0,x0:o.x0});return o;});
+      document.body.classList.toggle('pet-on',L.length>0);
+      if(L.length>1&&!tick)tick=setInterval(()=>{if(Math.random()<.15)play(false);},6000);
+      if(L.length<2&&tick){clearInterval(tick);tick=0;}},
+    play:()=>{play(true);},   /* 바로 상호작용(시험용) */
+    keys,
+    done:()=>L.forEach(o=>o.p.done()),
+    wake:()=>L.forEach(o=>o.p.wake()),
+    dragged:()=>L.some(o=>o.p.dragged()),
+    on:()=>L.length>0,
+    throwBall(cx){const h=document.querySelector('#view-calendar .cal-head');if(!h||!L.length)return;const x=cx-h.getBoundingClientRect().left;
+      let best=null;for(const o of L){if(!o.p.el||!o.p.el.isConnected||o.p.el.hidden||o.p.isBusy())continue;   /* 상호작용 중인 펫은 건너뛴다 */const d=Math.abs(o.p.mid()-x);if(!best||d<best.d)best={o,d};}
+      if(best)best.o.p.throwBall(cx);}};})();
 let PET_PICK=false;   /* 펫 고르기 창 열림 */
 let petAct=performance.now();   /* 위젯 위 마지막 마우스 움직임 — 깊은 잠 판단 */
 document.addEventListener('pointermove',()=>{petAct=performance.now();if(WIDGET)PET.wake();},{passive:true});
-/* 설정의 펫(cfg.pet) → 머리 줄 펫·설정 단추·고르기 창을 맞춘다 */
+/* 설정의 펫(cfg.pets — 고른 순서, 최대 3 · 예전 cfg.pet 한 마리도 읽는다) → 머리 줄 펫·설정 단추·고르기 창을 맞춘다 */
+function petKeys(){const c=widCfgLoad();return (Array.isArray(c.pets)?c.pets:(c.pet?[c.pet]:[])).filter(Boolean).slice(0,PET_MAX);}
 function petSync(){
   if(!WIDGET)return;
-  const k=widCfgLoad().pet||'',P=window.CALAPP_PETS;
-  if(k&&!P){petLoad().then(petSync,()=>{});return;}   /* 그림이 오면 다시 */
-  const o=k&&P?P[k]:null;
-  o?PET.mount(o):PET.unmount();
+  const P=window.CALAPP_PETS;let ks=petKeys();
+  if(ks.length&&!P){petLoad().then(petSync,()=>{});return;}   /* 그림이 오면 다시 */
+  ks=P?ks.filter(k=>P[k]):[];   /* 목록에서 빠진 펫은 내린다 */
+  PET.sync(ks.map(k=>[k,P[k]]));
+  const o=ks.length?P[ks[0]]:null;
   const b=$('#wgPetB');if(b){b.setAttribute('aria-expanded',PET_PICK?'true':'false');
-    b.innerHTML='<b>'+(o?esc(o.n):'없음')+'</b><svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg>';}
-  const th=$('#wgPetT');if(th)th.innerHTML=o?'<img src="'+petUrl(o.t.f)+'" alt="" style="width:'+o.t.w+'px;height:'+o.t.h+'px'+(o.sm?';image-rendering:auto':'')+'">':'';   /* 그림은 라벨 칸 오른쪽(투명도 % 자리) */
+    b.innerHTML='<b>'+(o?esc(o.n)+(ks.length>1?' 외 '+(ks.length-1):''):'없음')+'</b><svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg>';}
+  const th=$('#wgPetT');if(th)th.innerHTML=o?'<img src="'+petUrl(o.t.f)+'" alt="" style="width:'+o.t.w+'px;height:'+o.t.h+'px'+(o.sm?';image-rendering:auto':'')+'">':'';   /* 그림은 라벨 칸 오른쪽(투명도 % 자리) — 첫 펫 */
   petPickRender();
 }
+/* 고르기 — 누르면 올리고 다시 누르면 내린다. 3마리가 차 있으면 가장 먼저 올린 펫이 내려간다. 「없음」은 모두 내림 */
+function petToggle(k){const c=widCfgLoad();let ks=petKeys();
+  if(!k)ks=[];else if(ks.includes(k))ks=ks.filter(x=>x!==k);else{ks.push(k);if(ks.length>PET_MAX)ks=ks.slice(-PET_MAX);}
+  c.pets=ks;c.pet=ks[0]||'';widCfgSave(c);petSync();}
 function petPickRender(){
   let p=$('#wgPick');const w=$('#wgSet');
   if(!PET_PICK||!w||!w.classList.contains('on')||!window.CALAPP_PETS){if(p)p.remove();return;}
-  if(!p){p=document.createElement('div');p.id='wgPick';p.setAttribute('role','dialog');p.setAttribute('aria-label','미니펫 고르기');document.body.appendChild(p);}
-  const k=widCfgLoad().pet||'',g=p.querySelector('.pk-g'),top=g?g.scrollTop:0;
-  p.innerHTML='<div class="pk-g"><button class="pk-i pk-none'+(k?'':' on')+'" data-act="wid.pet" data-k=""><i class="pk-pic"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></i><span>없음</span></button>'
-    +Object.entries(window.CALAPP_PETS).map(([id,o])=>'<button class="pk-i'+(id===k?' on':'')+'" data-act="wid.pet" data-k="'+id+'" aria-label="'+esc(o.n)+'"><i class="pk-pic"><img src="'+petUrl(o.t.f)+'" alt="" loading="lazy" style="width:'+o.t.w+'px;height:'+o.t.h+'px'+(o.sm?';image-rendering:auto':'')+'"></i><span>'+esc(o.n)+'</span></button>').join('')+'</div>';
+  if(!p){p=document.createElement('div');p.id='wgPick';p.setAttribute('role','dialog');p.setAttribute('aria-label','미니펫 고르기 — 최대 '+PET_MAX+'마리');document.body.appendChild(p);}
+  const ks=petKeys(),g=p.querySelector('.pk-g'),top=g?g.scrollTop:0;
+  p.innerHTML='<div class="pk-g"><button class="pk-i pk-none'+(ks.length?'':' on')+'" data-act="wid.pet" data-k=""><i class="pk-pic"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></i><span>없음</span></button>'
+    +Object.entries(window.CALAPP_PETS).map(([id,o])=>{const n=ks.indexOf(id);return '<button class="pk-i'+(n>=0?' on':'')+'" data-act="wid.pet" data-k="'+id+'" aria-label="'+esc(o.n)+'" aria-pressed="'+(n>=0)+'">'+(n>=0&&ks.length>1?'<i class="pk-no">'+(n+1)+'</i>':'')+'<i class="pk-pic"><img src="'+petUrl(o.t.f)+'" alt="" loading="lazy" style="width:'+o.t.w+'px;height:'+o.t.h+'px'+(o.sm?';image-rendering:auto':'')+'"></i><span>'+esc(o.n)+'</span></button>';}).join('')+'</div>';
   p.querySelector('.pk-g').scrollTop=top;   /* 고를 때 스크롤 자리 유지 */
 }
 function widApply(){
