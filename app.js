@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1225';
+const APP_VER='1226';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -13580,7 +13580,7 @@ const PET=(()=>{let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl,cf
     ballEl.style.transform='translate('+Math.round(ball.x-ball.sz/2)+'px,'+Math.round(ball.y-ball.sz)+'px)';   /* 공·먹이 그림 16px(32px 를 줄임) — 몇 개만 PET_IT_SZ */
     if(!ball.vy&&!ball.vx&&!ball.go){cancelAnimationFrame(braf);if(drg)return;ball.go=1;   /* 끄는 중이면 놓을 때까지 기다린다 */
       const tx=Math.min(Math.max(ball.x-el.offsetWidth/2,ball.lo-6),ball.hi-el.offsetWidth+6);
-      moveTo(tx,95,'run',()=>{const b=ball;ball=null;if(b)ballEl.remove();hop();set(b&&b.it?'idle':'with_ball');say(b&&b.it?petPick(PET_LINES.food):petPick(PET_LINES.ball));if(b&&b.it)hearts(1);later(next,2600);});}};   /* 먹이는 공을 문 그림 대신 쉬는 그림 */
+      moveTo(tx,95,'run',()=>{const b=ball;ball=null;if(b)ballEl.remove();hop();set(b&&b.it?(cfg.g.eat?'eat':'idle'):'with_ball');say(b&&b.it?petPick(cfg.fd&&cfg.fd.length?cfg.fd:PET_LINES.food):petPick(PET_LINES.ball));if(b&&b.it)hearts(1);later(next,2600);});}};   /* 먹이는 공을 문 그림 대신 쉬는 그림(eat 그림이 있으면 그것) · fd 는 먹이 받았을 때 전용 멘트 */
   const react=()=>{if(deep)deepOff();if(sleeping){sleep(false);hop();say(petPick(PET_LINES.wake));return;}
     if(ball){hop();say(petPick(PET_LINES.tap));return;}   /* 공을 가지러 가는 중 — 멈추거나 딴 데로 가면 공이 바닥에 남고 펫이 굳었다 */
     clicks++;hop();const r=clicks%5,sl=petSlot();
