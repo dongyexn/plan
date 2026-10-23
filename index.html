@@ -3450,7 +3450,7 @@ body.wid #wgSet.on{display:block;}
 #wgPick .pk-i{position:relative;}#wgPick .pk-no{position:absolute;top:3px;left:3px;width:15px;height:15px;border-radius:50%;background:var(--b400);color:#fff;font-size:10px;font-weight:700;line-height:15px;text-align:center;font-style:normal;}   /* 여러 마리 — 올린 순서 */
 #wgPick .pk-i span{display:block;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
 /* 미니펫 — 머리 줄 빈자리(년월 묶음 ~ 단추 묶음)를 걷는다. 발은 단추 아래선에 맞춘다 */
-.wgPet{position:absolute;z-index:31;left:0;top:50%;margin-top:-27px;height:44px;display:flex;align-items:flex-end;cursor:pointer;user-select:none;}
+.wgPet{position:absolute;z-index:31;left:0;top:50%;margin-top:-24px;height:44px;display:flex;align-items:flex-end;cursor:pointer;user-select:none;}   /* 발 = 머리 줄 가운데 +20px(머리 줄 아래 끝보다 2px 아래 — 사용자: 3px 내림) · 공 바닥(throwBall floor)과 같이 */
 .wgPet[hidden]{display:none;}
 .wgPet{touch-action:none;}   /* 잡아 끌기 */
 .wgPet .bd{transform-origin:50% 0;transition:rotate .25s cubic-bezier(.3,1.6,.5,1);}   /* 잡힘 — 위가 축(목덜미) */
@@ -6350,5 +6350,5 @@ body.mcal-full #fcal .mlN::before{content:'+'}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1230"></script>
+<script src="./app.js?v=1231"></script>
 </body></html>
