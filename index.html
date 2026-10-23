@@ -3461,9 +3461,9 @@ body.wid #wgSet.on{display:block;}
   box-shadow:0 2px 6px rgba(0,0,0,.3);opacity:0;transition:opacity .15s,transform .15s;pointer-events:none;}
 .wgPet .bub.emo{font-size:16px;padding:2px 7px;line-height:1.3;}
 .wgPet .bub.on{opacity:1;transform:translate(6px,0);}
-.wgPet .bub::after{content:'';position:absolute;right:100%;bottom:6px;border:4px solid transparent;border-right-color:#fff;}
+.wgPet .bub::after{content:'';position:absolute;right:calc(100% - 2px);bottom:calc(50% - 4px);border:4px solid transparent;border-right-color:#fff;}   /* 꼬리는 둥근 끝의 가운데(가장 바깥)에 2px 겹쳐 붙임 — 아래쪽에 두면 둥근 모서리와 틈이 생김 */
 .wgPet .bub.l{left:auto;right:100%;transform:translate(-2px,0);}.wgPet .bub.l.on{transform:translate(-6px,0);}
-.wgPet .bub.l::after{right:auto;left:100%;border-right-color:transparent;border-left-color:#fff;}
+.wgPet .bub.l::after{right:auto;left:calc(100% - 2px);border-right-color:transparent;border-left-color:#fff;}
 .wgPet .bd{display:flex;justify-content:center;align-items:flex-end;}
 .wgPet .sh{position:absolute;left:50%;bottom:-1px;height:4px;translate:-50% 0;border-radius:50%;background:rgba(0,0,0,.3);pointer-events:none;}   /* 발밑 그림자 — 폭은 그림마다(set) */
 .wgPet.fly .sh{opacity:.55;}.wgPet.held .sh{display:none;}   /* 나는 펫은 옅게 · 들고 있을 땐 바닥 그림자(#wgPetSh)가 대신 */
@@ -6350,5 +6350,5 @@ body.mcal-full #fcal .mlN::before{content:'+'}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1231"></script>
+<script src="./app.js?v=1232"></script>
 </body></html>
