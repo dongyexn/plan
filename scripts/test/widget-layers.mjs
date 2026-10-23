@@ -120,7 +120,7 @@ const dayCell=(pg,i=2)=>pg.locator('#fcal td.fc-daygrid-day').nth(i);
   ok('찾기 Esc 뒤 초점·보류 풀림',!s.inNq&&!s.hold,s);
   /* 편집 중 미룬 실시간 반영 — 보통 속도(110ms) 바깥 클릭으로 닫아도 몰아 그린다 */
   await reset(pg);
-  await pg.evaluate(()=>ACT['cal.today']());await W(300);   /* 앞 단계가 → 로 달을 넘겨 두므로 오늘이 든 달로 — 달 마지막 주 이후(예: 10/11)엔 오늘 칸이 없어 날짜에 따라 깨지던 것 */
+  await pg.evaluate(()=>{ACT['cal.today']();S.widPop=false;rWidget();});await W(300);   /* 팝업은 닫아 둔다 — 열린 채 오늘(이미 고른 날)을 누르면 닫혀서 날짜에 따라 깨진다(10/24 토) · 앞 단계가 → 로 달을 넘겨 두므로 오늘이 든 달로 — 달 마지막 주 이후(예: 10/11)엔 오늘 칸이 없어 날짜에 따라 깨지던 것 */
   {const c=await pg.evaluate(()=>{const td=document.querySelector('#fcal td[data-date="'+todayStr()+'"]');const r=td.getBoundingClientRect();return [r.x+r.width/2,r.y+r.height-6];});
    await pg.mouse.click(c[0],c[1]);await W(400);}
   await pg.click('#widPop [data-act="plan.new"]');await W(400);
