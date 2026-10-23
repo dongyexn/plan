@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1229';
+const APP_VER='1230';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -13673,7 +13673,7 @@ function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl
 const PET_MAX=3;
 const PET=(()=>{let L=[],tick=0,act=false;   /* L: [{k,p}] */
   const PPL=new Set(['worker','painter','tiler','floorer','paperer','caulker']),EQ=new Set(['excavator','dump','mixer','ladder','forklift','gondola','bosun','scissor','roller','crane']),FAIRY=new Set(['cone','helm','beacon']);
-  const kind=k=>k==='manager'?'mgr':k==='signal'?'sig':k==='angry'||k==='cs'?k:PPL.has(k)?'ppl':EQ.has(k)?'eq':FAIRY.has(k)?'fairy':'ani';
+  const kind=k=>k==='manager'?'mgr':k==='signal'?'sig':k==='angry'||k==='cs'||k==='lead'?k:PPL.has(k)?'ppl':EQ.has(k)?'eq':FAIRY.has(k)?'fairy':'ani';
   const wait=ms=>new Promise(r=>setTimeout(r,ms));
   const moveP=(p,tx,v=30)=>new Promise(res=>{const[l,r]=p.bounds();tx=Math.min(Math.max(tx,l),Math.max(l,r));let fin=false;
     const end=()=>{if(fin)return;fin=true;if(p.ok()){p.stop();p.set('idle');}res();};
@@ -13685,6 +13685,15 @@ const PET=(()=>{let L=[],tick=0,act=false;   /* L: [{k,p}] */
   const RULES=[
     {m:(a,b)=>a==='cs'&&b==='angry',run:async(A,B,st)=>{B.say(petPick(['하자 언제 고쳐요!','책임자 나와!']));await st(1400);await near(A,B);face(A,B);
       A.hop();A.say('고객님, 바로 확인해 드릴게요',2000);await st(1900);glad(B);B.hearts(1);B.say(petPick(['…그럼 믿어볼게요','이제야 말이 통하네~']),2000);await st(2300);}},
+    {m:(a,b)=>a==='lead'&&b==='ppl',run:async(A,B,st)=>{await near(A,B);face(A,B);A.say(petPick(['자, 오늘 작업 지시합니다!','여기 먼저 끝냅시다','점심 전에 마무리!']),1800);await st(1700);
+      glad(B);B.say(petPick(['넵, 반장님!','알겠습니다!','💪']),1600);await st(1800);}},
+    {m:(a,b)=>a==='lead'&&b==='mgr',run:async(A,B,st)=>{await near(A,B);face(A,B);A.hop();A.say(petPick(['오늘 인원 12명 투입입니다','작업 이상 없습니다!']),1800);await st(1700);
+      B.say(petPick(['수고 많으십니다','안전하게 부탁드려요']),1700);await st(1900);}},
+    {m:(a,b)=>a==='lead'&&b==='sig',run:async(A,B,st)=>{A.say('치익- 장비 들어갑니다, 신호 부탁!',1900);await st(1600);await near(B,A);face(A,B);B.hop();B.say(petPick(['오라이~','신호 들어갑니다!']),1600);await st(1800);}},
+    {m:(a,b)=>a==='lead'&&b==='eq',run:async(A,B,st)=>{await near(A,B);face(A,B);A.say(petPick(['치익- 장비 잠깐 정지!','치익- 천천히 들어오세요']),1800);await st(1700);B.say(petPick(['멈춥니다','👍','빵빵!']),1500);await st(1700);}},
+    {m:(a,b)=>a==='lead'&&b==='angry',run:async(A,B,st)=>{await near(A,B);face(A,B);B.say(petPick(['하자 언제 고쳐요!','왜 아직이에요!']),1700);await st(1500);
+      A.hop();A.say('오늘 바로 보수 들어가겠습니다!',2000);await st(1900);glad(B);B.hearts(1);B.say('…빨리 해주세요',1600);await st(1900);}},
+    {m:(a,b)=>a==='lead'&&b==='fairy',run:async(A,B,st)=>{await near(A,B);face(A,B);A.say('통제 구역 확인!',1500);await st(1300);B.hop();B.say(petPick(['통제 완료!','🚧']),1400);await st(1600);}},
     {m:(a,b)=>a==='mgr'&&['ppl','sig','fairy'].includes(b),run:async(A,B,st)=>{await near(A,B);face(A,B);A.say(petPick(['점검 나왔습니다','안전모 착용 확인!','작업 중지권 발동!']));await st(1600);
       glad(B);B.say(petPick(['안전 제일!','이상 없습니다!','넵!']),1700);await st(1900);}},
     {m:(a,b)=>a==='sig'&&b==='eq',run:async(A,B,st)=>{await near(A,B);face(A,B);A.say(petPick(['정지!','서행!','오라이~']),1600);await st(1500);B.hop();B.say(petPick(['빵빵!','멈춥니다','👍']),1500);await st(1700);}},
