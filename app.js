@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1232';
+const APP_VER='1233';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -13522,7 +13522,7 @@ function petLoad(){   /* 그림 묶음 — 한 번만 받는다 */
    이 문서는 스타일 재계산이 비싸(:has 규칙) 펫 하나에 메인 스레드 4~5%를 먹었다. 판단은 타이머로 띄엄띄엄,
    프레임 루프는 공이 날아갈 때만 잠깐 돈다 */
 /* 펫 하나 — 위젯 머리 줄에 최대 3마리(PET 가 묶는다). busy: 상호작용 중(혼자 다음 행동을 고르지 않음) */
-function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl,cfg=null,x=0,dir=1,mode='idle',anim=null,tm=0,hvTm=0,bt=0,clicks=0,sleeping=false,nap=0,ball=null,braf=0,talk=0,bob=null,busy=false;
+function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl,cfg=null,x=0,dir=1,mode='idle',anim=null,tm=0,hvTm=0,bt=0,clicks=0,sleeping=false,nap=0,ball=null,braf=0,talk=0,bob=null,busy=false,pal=null;
   const head=()=>document.querySelector('#view-calendar .cal-head');
   /* 걸을 수 있는 폭 — 왼쪽은 년월 묶음(「오늘」이 보이면 그 뒤), 오른쪽은 필터 칩·단추 묶음 중 먼저 오는 것. 판단할 때만 잰다 */
   const bounds=()=>{const h=head();if(!h)return[0,-1];const hr=h.getBoundingClientRect(),w=el?el.offsetWidth:40;
@@ -13544,8 +13544,10 @@ function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl
     anim=el.animate([{transform:'translateX('+Math.round(a)+'px)'},{transform:'translateX('+Math.round(tx)+'px)'}],{duration:d,easing:'steps('+Math.max(1,Math.round(Math.abs(tx-a)/(sl?1:2)))+')',fill:'forwards'});   /* 2px 씩 끊어 간다 — 화면을 다시 그리는 횟수가 줄어 걷는 동안 CPU 약 절반(사용자 비교 후 결정) */
     anim._a=a;anim._b=tx;anim._d=d;anim.onfinish=()=>{x=tx;const f=anim;anim=null;el.classList.remove('wad');el.style.transform='translateX('+Math.round(x)+'px)';if(f)f.cancel();(done||next)();};};   /* ⚠ fill:forwards 는 끝나도 transform 을 계속 쥔다 — 자리를 인라인으로 옮겨 적고 지운다(안 지우면 그 뒤 끌기가 그림자만 움직였다) */
   const say=(t,ms=1800)=>{bub.textContent=t;bub.classList.toggle('emo',!/[\p{L}\p{N}]/u.test(t));
-    const R=bounds()[1];bub.classList.toggle('l',pos()+bub.offsetWidth+12>R);   /* 오른쪽 단추에 닿으면 말풍선을 왼쪽으로 */
-    bub.classList.add('on');clearTimeout(bt);bt=setTimeout(()=>bub.classList.remove('on'),ms);};
+    const[L,R]=bounds(),bw=bub.offsetWidth+12;let lf=pos()+bw>R;   /* 오른쪽 단추에 닿으면 말풍선을 왼쪽으로 */
+    if(pal&&pal.ok()){const w=el?el.offsetWidth:40,hw=(head()||{clientWidth:9999}).clientWidth;lf=pal.mid()>pos()+w/2;if(lf&&pos()-bw<0)lf=false;else if(!lf&&pos()+w+bw>hw)lf=true;}   /* 상호작용 중엔 짝 반대쪽으로 — 옆 펫에 가리지 않게(단추 위로 잠깐 겹치는 건 괜찮다, 머리 줄 밖으로만 안 나가게) */
+    bub.classList.toggle('l',lf);el.classList.add('talk');
+    bub.classList.add('on');clearTimeout(bt);bt=setTimeout(()=>{bub.classList.remove('on');el.classList.remove('talk');},ms);};
   const hop=()=>{el.classList.remove('hop');void el.offsetWidth;el.classList.add('hop');};
   /* 하트 — 쓰다듬기(3개)·먹이(1개). 머리 위로 떠올라 사라진다(CSS 애니메이션, 끝나면 지움). 그림: Fluent Emoji ❤️(MIT) */
   const hearts=n=>{const h=head();if(!h||!el)return;const cx=pos()+el.offsetWidth/2;
@@ -13655,7 +13657,7 @@ function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl
     throwBall(cx){if(!cfg||!el||!el.isConnected||el.hidden)return;if(deep){deep=false;if(bob)bob.play();}if(sleeping){sleeping=false;clearTimeout(nap);el.classList.remove('sleep');}
       const h=head(),hr=h.getBoundingClientRect(),[L,R]=bounds();stop();clearTimeout(tm);set('idle');
       if(!ballEl){ballEl=document.createElement('div');ballEl.className='wgBall';}const it=cfg.it||'';ballEl.style.backgroundImage='url('+petUrl('it-'+(it||'ball')+'.png')+')';const sz=PET_IT_SZ[it]||16;ballEl.style.width=ballEl.style.height=sz+'px';h.appendChild(ballEl);
-      const floor=h.clientHeight/2+20;ball={x:cx-hr.left,y:floor-4,vx:(Math.random()<.5?-1:1)*(60+Math.random()*60),vy:-260,floor,lo:L+6,hi:R+el.offsetWidth-6,it,sz};
+      const floor=h.clientHeight/2+22;ball={x:cx-hr.left,y:floor-4,vx:(Math.random()<.5?-1:1)*(60+Math.random()*60),vy:-260,floor,lo:L+6,hi:R+el.offsetWidth-6,it,sz};
       cancelAnimationFrame(braf);braf=requestAnimationFrame(ballStep);},
     done(){if(!cfg||!el||!el.isConnected)return;if(deep){deep=false;if(bob)bob.play();}if(sleeping){sleeping=false;clearTimeout(nap);el.classList.remove('sleep');}hop();say(petPick(PET_LINES.done),2500);
       if(ball)return;const[L,R]=bounds();moveTo(dir>0?R:L,75,'run');},   /* 공을 가지러 가는 중이면 자리 이동은 건너뛴다 */
@@ -13665,7 +13667,7 @@ function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl
     say,hop,set,turn,stop,moveTo,hearts,later:(f,ms)=>later(f,ms),next:()=>next(),
     free:()=>!!(cfg&&el&&el.isConnected&&!el.hidden&&!sleeping&&!deep&&!drg&&!ball&&!busy&&!held0()),
     ok:()=>!!(cfg&&el&&el.isConnected&&!el.hidden&&!sleeping&&!deep&&!drg),
-    busy:v=>{busy=!!v;if(v){stop();clearTimeout(tm);}},isBusy:()=>busy};
+    busy:v=>{busy=!!v;if(v){stop();clearTimeout(tm);}},isBusy:()=>busy,pal:o=>{pal=o||null;}};
   function held0(){return !!(el&&el.classList.contains('held'));}}
 /* ── 미니펫 묶음 — 고른 순서대로 최대 3마리. 공은 누른 자리에서 가장 가까운 펫에게, 완료 축하·깨우기는 모두에게.
    상호작용: 가끔(6초마다 15%) 비어 있는 두 펫이 다가가 대사를 주고받는다 — 짝마다 정해 둔 장면(RULES), 없으면 인사.
@@ -13729,9 +13731,9 @@ const PET=(()=>{let L=[],tick=0,act=false;   /* L: [{k,p}] */
     if(['cone','helm','beacon'].every(by)&&(force||Math.random()<.3)){T=[by('cone'),by('helm'),by('beacon')];run=()=>tbm(T);}
     else{let best=null;for(const a of L)for(const b of L){if(a===b||!a.p.free()||!b.p.free())continue;const r=RK(a.k,b.k),sc=r*1000+Math.abs(a.p.mid()-b.p.mid());if(!best||sc<best.sc)best={a,b,r,sc};}
       if(!best)return;T=[best.a.p,best.b.p];const R=RULES[best.r];run=()=>R.run(T[0],T[1],async ms=>{await wait(ms);if(!T.every(p=>p.ok()))throw 0;});}
-    act=true;T.forEach(p=>p.busy(true));
+    act=true;T.forEach(p=>p.busy(true));T.forEach((p,i)=>p.pal(T.length===2?T[1-i]:T[1]===p?null:T[1]));   /* 말풍선은 짝 반대쪽(TBM 은 가운데 안전모 요정 반대쪽) */
     try{await run();}catch(e){if(e)console.warn('pet play',e);}
-    T.forEach((p,i)=>{p.busy(false);if(p.ok()){p.set('idle');p.later(()=>p.next(),500+i*500);}});act=false;}
+    T.forEach((p,i)=>{p.busy(false);p.pal(null);if(p.ok()){p.set('idle');p.later(()=>p.next(),500+i*500);}});act=false;}
   const keys=()=>L.map(o=>o.k);
   return{
     sync(list){   /* list: [[키, 설정]] — 고른 순서 */
