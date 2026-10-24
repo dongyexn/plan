@@ -13688,9 +13688,9 @@ const PET=(()=>{let L=[],tick=0,act=false;   /* L: [{k,p}] */
   const glad=p=>{p.set(p.cfg.g.eat?'eat':'idle');p.hop();};
   /* 장면 — m(앞 펫 종류, 뒤 펫 종류). 대사는 글자만 또는 이모지만(섞지 않음) */
   const RULES=[
-    {m:(a,b)=>a==='cs'&&b==='angry',run:async(A,B,st)=>{B.say(petPick(['접수한 지가 언젠데 아직이에요!','몇 번을 말해야 돼요?','또 물 새요!']),1800);await st(1600);await near(A,B);face(A,B);
-      A.say('불편 드려 죄송합니다, 접수 내역 확인할게요',2200);await st(2100);A.say('내일 오전에 기사님 방문 잡아 드릴게요',2200);await st(2100);
-      B.say(petPick(['시간 문자로 꼭 주세요!','이번엔 진짜 와요?']),1800);await st(1700);A.hop();A.say('네, 바로 보내 드리겠습니다',2000);await st(2200);}},
+    {m:(a,b)=>a==='cs'&&b==='angry',run:async(A,B,st)=>{B.say(petPick(['아직이에요?!','몇 번째예요!','또 새요!']),1500);await st(1400);await near(A,B);face(A,B);
+      A.say('내일 오전 방문할게요!',1700);await st(1700);
+      B.say(petPick(['문자 꼭 줘요!','이번엔 진짜죠?']),1500);await st(1500);A.hop();A.say('네, 꼭 드릴게요!',1500);await st(1700);}},
     {m:(a,b)=>a==='lead'&&b==='ppl',run:async(A,B,st)=>{await near(A,B);face(A,B);A.say(petPick(['자, 오늘 작업 지시합니다!','여기 먼저 끝냅시다','점심 전에 마무리!']),1800);await st(1700);
       glad(B);B.say(petPick(['넵, 반장님!','알겠습니다!','💪']),1600);await st(1800);}},
     {m:(a,b)=>a==='lead'&&b==='mgr',run:async(A,B,st)=>{await near(A,B);face(A,B);A.hop();A.say(petPick(['오늘 인원 12명 투입입니다','작업 이상 없습니다!']),1800);await st(1700);
