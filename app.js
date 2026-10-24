@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1242';
+const APP_VER='1243';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -12674,7 +12674,8 @@ document.addEventListener('click',e=>{
   /* 4주 아래 현안 카드 열 수 — 3열 ↔ 4열 */
   const cb=e.target.closest('#wgCol [data-cold]');
   if(cb){
-    const c=widCfgLoad(),nv=c.issCol===4?3:4,cv=$('#wgColV'),old=cv&&cv.textContent;
+    const c=widCfgLoad(),nv=Math.min(5,Math.max(1,widIssCol(c)+Number(cb.dataset.cold))),cv=$('#wgColV'),old=cv&&cv.textContent;
+    if(nv===widIssCol(c))return;
     c.issCol=nv;widCfgSave(c);widApply();
     if(cv&&old!==cv.textContent){const t=cv.textContent;cv.textContent=old;mvRoll(cv,t,Number(cb.dataset.cold));}
     return;
@@ -13679,7 +13680,7 @@ function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl
 const PET_MAX=3;
 const PET=(()=>{let L=[],tick=0,act=false;   /* L: [{k,p}] */
   const PPL=new Set(['worker','painter','tiler','floorer','paperer','caulker','plaster','glazier']),EQ=new Set(['excavator','dump','mixer','ladder','forklift','gondola','bosun','scissor','roller','crane']),FAIRY=new Set(['cone','helm','beacon','sf-sboot','sf-svest']);
-  const kind=k=>k==='manager'?'mgr':k==='signal'||k==='guide'?'sig':k==='angry'||k==='cs'||k==='lead'?k:PPL.has(k)?'ppl':EQ.has(k)?'eq':FAIRY.has(k)?'fairy':k.startsWith('tr-')?'tr':'ani';   /* tr — 공종 펫 */
+  const kind=k=>k==='manager'?'mgr':k==='signal'||k==='guide'?'sig':k==='angry'||k==='cs'||k==='lead'?k:PPL.has(k)?'ppl':EQ.has(k)?'eq':FAIRY.has(k)?'fairy':k.startsWith('tr-')?'tr':k.startsWith('of-')?'of':'ani';   /* tr — 공종 펫 · of — 사무 펫 */
   const NK={'dog-akita':'dog','cat-greywhite':'cat','rat-gray':'rat','chicken-white':'chick','el-baby1':'baby'};   /* 동물 짝 장면용 이름 */
   const wait=ms=>new Promise(r=>setTimeout(r,ms));
   const moveP=(p,tx,v=30)=>new Promise(res=>{const[l,r]=p.bounds();tx=Math.min(Math.max(tx,l),Math.max(l,r));let fin=false;
@@ -13729,6 +13730,8 @@ const PET=(()=>{let L=[],tick=0,act=false;   /* L: [{k,p}] */
       const[l,r]=B.bounds();await runP(B,A.mid()<B.mid()?r:l,100);A.say('멍?',1100);await st(1300);}},
     {m:(a,b)=>a==='baby'&&(b==='dog'||b==='cat'),run:async(A,B,st)=>{const dg=!!window.CALAPP_PETS&&B.cfg===window.CALAPP_PETS['dog-akita'];await near(A,B);face(A,B);A.say(dg?'멍멍이~':'냐옹이~',1300);await st(1100);
       A.hop();A.hearts(1);await st(400);B.hop();B.hearts(1);B.say(dg?'멍!':'그르릉',1300);await st(900);A.say('까르르',1200);await st(1500);}},
+    {m:(a,b)=>a==='of'&&b==='of',run:async(A,B,st)=>{await near(A,B);face(A,B);A.hop();A.say(petPick(['업무 시작!','오늘도 서류 정리']),1500);await st(1400);B.hop();B.say(petPick(['화이팅!','📎']),1400);await st(1600);}},
+    {m:(a,b)=>['mgr','lead','cs','ppl'].includes(a)&&b==='of',run:async(A,B,st)=>{await near(A,B);face(A,B);A.say(petPick(['사무실 왔어요','서류 좀 볼게요']),1500);await st(1400);glad(B);B.say(petPick(['여기 있어요!','😊']),1400);await st(1600);}},
     {m:(a,b)=>a==='ani'&&b==='ani',run:async(A,B,st)=>{await near(A,B);face(A,B);A.hop();A.hearts(1);await st(500);B.hop();B.hearts(1);await st(1200);}},
     {m:(a,b)=>a!=='ani'&&a!=='eq'&&b==='ani',run:async(A,B,st)=>{await near(A,B);face(A,B);A.say(petPick(['어? 귀엽다','여기 왜 왔어?']),1600);await st(1400);B.hop();B.hearts(1);await st(1600);}},
     {m:()=>true,run:async(A,B,st)=>{await near(A,B);face(A,B);A.say(petPick(['안녕?','👋']),1500);await st(1300);B.say(petPick(['안녕!','😊']),1500);await st(1700);}}];
@@ -13759,6 +13762,24 @@ const PET=(()=>{let L=[],tick=0,act=false;   /* L: [{k,p}] */
     ['cow','chicken-white',[[0,'음메~',1200,1],[1,'꼬꼬~',1200,1]]],
     ['bunny-white','dog-akita',[[0,'깡총!',1100,1],[1,'멍?',1100],[0,'깡총깡총!',1200,1]]],
     ['cat-greywhite','duckling',[[0,'냥?',1100],[1,'삐약!',1100,1]]],
+    ['cs','of-stamp',[[0,'서류 결재 올립니다',1600],[1,'쾅! 승인!',1300,2]]],
+    ['manager','of-stamp',[[1,'결재 부탁드려요!',1500,1],[0,'검토하고 찍을게요',1600],[1,'쾅!',1100,2]]],
+    ['manager','of-mix',[[0,'커피 한 잔 할까요',1500],[1,'달달하게 타 드릴게요',1600,2]]],
+    ['lead','of-mix',[[0,'점심 먹고 한 잔!',1500],[1,'☕',1100,2]]],
+    ['of-note','of-staple',[[0,'메모 붙여 둘게요',1500],[1,'찰칵! 같이 묶어요',1500,1]]],
+    ['of-mix','of-note',[[1,'커피 마실 시간!',1500,1],[0,'잠깐 쉬어요~',1500,2]]],
+    ['of-stamp','of-staple',[[0,'승인 났어요!',1400,1],[1,'찰칵! 묶었습니다',1500,1]]],
+    ['angry','of-note',[[0,'접수 언제 돼요!',1500],[1,'메모해 뒀어요!',1500,1]]],
+    ['of-print','of-env',[[0,'출력했어요!',1400,1],[1,'봉투에 담을게요',1500,1]]],
+    ['of-phone','cs',[[0,'따르릉! 민원 전화요',1600,1],[1,'네, 상담실입니다~',1600]]],
+    ['of-laptop','of-calc',[[0,'공사비 계산해 줄래?',1600],[1,'삑삑… 딱 맞아요!',1600,1]]],
+    ['of-env','of-shred',[[1,'그 서류 파쇄할까요?',1600,1],[0,'안 돼요! 등기로 보낼 거예요',1800]]],
+    ['of-print','of-shred',[[0,'잘못 뽑았어요…',1500],[1,'드르륵! 맡겨 주세요',1600,1]]],
+    ['of-board','manager',[[0,'회의 시작합니다!',1500,1],[1,'이번 달 하자 현황 봅시다',1800]]],
+    ['of-mug','of-mix',[[0,'나는 원두 커피!',1500,1],[1,'나는 믹스! 달달해',1600,1]]],
+    ['of-cal','of-mug',[[0,'3시! 커피 타임',1500,1],[1,'☕',1100,2]]],
+    ['of-cal','manager',[[0,'이번 주 점검 일정이에요!',1700,1],[1,'달력에 표시해 둘게요',1700]]],
+    ['of-phone','angry',[[0,'따르릉~',1200,1],[1,'왜 이렇게 안 받아요!',1600]]],
     ['el-bee','tr-tree',[[0,'꽃 있나요?',1400],[1,'살랑~ 여기요',1500,1],[0,'🍯',1000,2]]]];
   for(const[w,t]of Object.entries(JOB))PAIR.push([w,t,[[0,['오늘 너 보수한다!','깔끔하게 고쳐 줄게'],1600],[1,['살살 해주세요~','잘 부탁해요!'],1500,1],[0,'💪',1000,2]]]);
   for(const[g,t]of [['sf-sboot','안전화 신었나요?'],['sf-svest','조끼 입어야 잘 보여요!']])for(const b of ['ppl','sig','lead'])PAIR.push([g,'@'+b,[[0,t,1600,1],[1,['착용 완료!','넵!'],1400,2]]]);
@@ -13814,7 +13835,7 @@ const PET=(()=>{let L=[],tick=0,act=false;   /* L: [{k,p}] */
       let best=null;for(const o of L){if(!o.p.el||!o.p.el.isConnected||o.p.el.hidden||o.p.isBusy())continue;   /* 상호작용 중인 펫은 건너뛴다 */const d=Math.abs(o.p.mid()-x);if(!best||d<best.d)best={o,d};}
       if(best)best.o.p.throwBall(cx);}};})();
 let PET_PICK=false;   /* 펫 고르기 창 열림 */
-const PET_CATS=[['p','사람'],['s','안전'],['t','공종'],['a','동물']];let PET_CAT='';   /* 고르기 창 분류 칩 — '' 는 전체(분류 제목을 붙여 이어서) */
+const PET_CATS=[['p','사람'],['s','안전'],['t','공종'],['o','사무'],['a','동물']];let PET_CAT='';   /* 고르기 창 분류 칩 — '' 는 전체(분류 제목을 붙여 이어서) */
 let petAct=performance.now();   /* 위젯 위 마지막 마우스 움직임 — 깊은 잠 판단 */
 document.addEventListener('pointermove',()=>{petAct=performance.now();if(WIDGET)PET.wake();},{passive:true});
 /* 설정의 펫(cfg.pets — 고른 순서, 최대 3 · 예전 cfg.pet 한 마리도 읽는다) → 머리 줄 펫·설정 단추·고르기 창을 맞춘다 */
@@ -13913,7 +13934,7 @@ function widApply(){
   const fv=$('#wgFontV');if(fv)fv.textContent=(WID_FONTS.find(f=>f[0]===font)||WID_FONTS[0])[1];
   const db=$('#wgDbl');if(db)db.checked=!!c.dbl;
   const i3=$('#wgIss3');if(i3)i3.checked=!!c.iss3;
-  const cr=$('#wgColR');if(cr)cr.hidden=!c.iss3;const cv=$('#wgColV');if(cv)cv.textContent=(c.issCol===4?4:3)+'열';
+  const cr=$('#wgColR');if(cr)cr.hidden=!c.iss3;const cv=$('#wgColV');if(cv)cv.textContent=widIssCol(c)+'열';
   const vr=$('#wgVer');if(vr)vr.textContent='v'+APP_VER;
   widApplyDbl();
   widIss3();
@@ -16997,11 +17018,12 @@ function issPaneSet(on){const w=$('#issPane');if(!w||issOn()===on)return;
   else{w.innerHTML='';S.issUI.add='';S.issUI.ed='';rIss();   /* 4주 아래 칸은 판이 켜진 동안 안 그렸다 */
     requestAnimationFrame(()=>{if(CAL){CAL.updateSize();calFitApply();}});}}
 /* 위젯 「4주 + 주요 현안」 — 달력을 전주·금주·담주·다담주(4주)로, 아래 칸에 내 담당 현장 카드 */
+function widIssCol(c){const n=Number(c&&c.issCol);return n>=1&&n<=5?Math.round(n):3;}   /* 위젯 4주 아래 현안 카드 열 — 기본 3 */
 function widIss3(){
   if(!WIDGET)return;
   const on=!!widCfgLoad().iss3,st=$('#issStrip');
   document.body.classList.toggle('iss3',on);
-  document.body.classList.toggle('iss4',on&&widCfgLoad().issCol===4);
+  document.body.style.setProperty('--issc',widIssCol(widCfgLoad()));   /* 현안 카드 열 1~5 */
   if(st){st.hidden=!on;if(on)rIss();else st.innerHTML='';}
   if(!CAL)return;
   const want=on?'dayGrid4w':'dayGridMonth';
