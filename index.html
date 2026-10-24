@@ -3427,10 +3427,10 @@ body.wid #wgSet.on{display:block;}
 #wgSet .wgs-acc{display:flex;gap:6px;align-items:center;}
 #wgSet .wgs-acc button{width:16px;height:16px;border-radius:50%;padding:0;background:var(--c);box-shadow:inset 0 0 0 1px rgba(255,255,255,.25);}
 #wgSet .wgs-acc button.on{box-shadow:0 0 0 2px rgba(20,22,28,.9),0 0 0 3.5px #fff;}
-#wgSet .wgs-pet{display:flex;align-items:center;gap:2px;height:30px;padding:0 2px 0 8px;border-radius:3px;color:#fff;font-size:12px;}
+#wgSet .wgs-pet{flex:1 1 auto;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:2px;height:30px;padding:0 2px 0 8px;border-radius:3px;color:#fff;font-size:12px;}   /* 위 슬라이더와 같은 폭 */
 #wgSet .wgs-pt{display:flex;align-items:flex-end;justify-content:flex-end;}   /* 펫 그림 — 투명도 % 와 같은 자리(라벨 칸 오른쪽 끝) */
 #wgSet .wgs-pt img{display:block;image-rendering:pixelated;}
-#wgSet .wgs-pet b{font-weight:600;}
+#wgSet .wgs-pet b{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 #wgSet .wgs-pet .icn{width:14px;height:14px;opacity:.7;}
 @media (hover:hover) and (pointer:fine){#wgSet .wgs-pet:hover{background:rgba(255,255,255,.1);}}
 #wgSet .wgs-pet[aria-expanded="true"]{background:rgba(255,255,255,.1);}
@@ -3438,15 +3438,19 @@ body.wid #wgSet.on{display:block;}
 #wgPick{position:fixed;top:62px;right:max(10px,min(300px,calc(100vw - 326px)));z-index:9101;width:316px;
   background:var(--lqd-fill);-webkit-backdrop-filter:var(--lqd-blur);backdrop-filter:var(--lqd-blur);
   border:1px solid transparent;border-radius:18px;box-shadow:var(--lqd-edge),var(--lqd-hi),0 18px 50px rgba(0,0,0,.45);color:rgba(255,255,255,.9);overflow:hidden;}
-#wgPick .pk-g{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;padding:8px;max-height:min(420px,calc(100vh - 80px));overflow-y:auto;}
+#wgPick{display:flex;flex-direction:column;}   /* 높이는 설정 창과 같게(petPickRender) */
+#wgPick .pk-tb{display:flex;gap:4px;padding:8px 8px 0;flex:0 0 auto;}   /* 분류 칩 */
+#wgPick .pk-c{flex:1 1 0;min-width:0;height:26px;line-height:26px;padding:0;border-radius:999px;background:rgba(255,255,255,.07);color:rgba(255,255,255,.72);font-size:11.5px;font-weight:600;white-space:nowrap;}
+@media (hover:hover) and (pointer:fine){#wgPick .pk-c:hover{background:rgba(255,255,255,.12);}}
+#wgPick .pk-c[aria-selected="true"]{background:var(--b400);color:#fff;}
+#wgPick .pk-g{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;padding:8px;flex:1 1 auto;min-height:0;align-content:start;overflow-y:auto;}
+#wgPick .pk-hd{grid-column:1/-1;padding:6px 2px 0;font-size:10.5px;font-weight:700;color:rgba(255,255,255,.55);}   /* 전체 — 분류 제목 */
 #wgPick .pk-i{display:grid;justify-items:center;align-items:end;grid-template-rows:34px 14px;gap:3px;height:60px;min-width:0;overflow:hidden;padding:4px 2px;
   border-radius:8px;background:rgba(255,255,255,.04);color:rgba(255,255,255,.82);font-size:10.5px;}
 @media (hover:hover) and (pointer:fine){#wgPick .pk-i:hover{background:rgba(255,255,255,.1);}}
 #wgPick .pk-i.on{background:rgba(255,255,255,.14);box-shadow:inset 0 0 0 1.5px var(--b400);color:#fff;}
 #wgPick .pk-pic{display:flex;align-items:flex-end;justify-content:center;width:100%;height:34px;}
 #wgPick .pk-pic img{display:block;image-rendering:pixelated;max-width:100%;}   /* 위아래 빈 줄을 잘라 둔 썸네일 — 위젯과 같은 비율, 바닥 맞춤 */
-#wgPick .pk-none .pk-pic{align-items:center;opacity:.6;}
-#wgPick .pk-none .icn{width:18px;height:18px;}
 #wgPick .pk-i{position:relative;}#wgPick .pk-no{position:absolute;top:3px;left:3px;width:15px;height:15px;border-radius:50%;background:var(--b400);color:#fff;font-size:10px;font-weight:700;line-height:15px;text-align:center;font-style:normal;}   /* 여러 마리 — 올린 순서 */
 #wgPick .pk-i span{display:block;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
 /* 미니펫 — 머리 줄 빈자리(년월 묶음 ~ 단추 묶음)를 걷는다. 발은 단추 아래선에 맞춘다 */
@@ -6351,5 +6355,5 @@ body.mcal-full #fcal .mlN::before{content:'+'}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1239"></script>
+<script src="./app.js?v=1240"></script>
 </body></html>
