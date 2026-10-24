@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1233';
+const APP_VER='1234';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -13671,7 +13671,7 @@ function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl
   function held0(){return !!(el&&el.classList.contains('held'));}}
 /* ── 미니펫 묶음 — 고른 순서대로 최대 3마리. 공은 누른 자리에서 가장 가까운 펫에게, 완료 축하·깨우기는 모두에게.
    상호작용: 가끔(6초마다 15%) 비어 있는 두 펫이 다가가 대사를 주고받는다 — 짝마다 정해 둔 장면(RULES), 없으면 인사.
-   라바콘·안전모·경광등 요정이 다 있으면 셋이 모여 TBM(작업 전 안전 회의)을 한다. 한 마리라도 잡히거나 자면 그만둔다 */
+   라바콘·안전모·경광등 요정이 다 있으면 셋이 모여 TBM(작업 전 안전 회의)을 한다. 사람 셋(관리자·기능공·신호수 / 작업반장·기능공·신호수 / 관리자·작업반장·기능공)도 같다. 한 마리라도 잡히거나 자면 그만둔다 */
 const PET_MAX=3;
 const PET=(()=>{let L=[],tick=0,act=false;   /* L: [{k,p}] */
   const PPL=new Set(['worker','painter','tiler','floorer','paperer','caulker']),EQ=new Set(['excavator','dump','mixer','ladder','forklift','gondola','bosun','scissor','roller','crane']),FAIRY=new Set(['cone','helm','beacon']);
@@ -13715,23 +13715,30 @@ const PET=(()=>{let L=[],tick=0,act=false;   /* L: [{k,p}] */
     {m:()=>true,run:async(A,B,st)=>{await near(A,B);face(A,B);A.say(petPick(['안녕?','👋']),1500);await st(1300);B.say(petPick(['안녕!','😊']),1500);await st(1700);}}];
   const RK=(a,b)=>{const ka=kind(a),kb=kind(b),x=k=>k==='cone'||k==='helm'||k==='beacon'?k:'';
     return RULES.findIndex(R=>R.m(ka,kb)||(x(a)&&R.m(x(a),kb)));};   /* 요정은 종류(fairy)와 이름(helm 등) 둘 다로 맞춘다 */
-  async function tbm(T){const[C,H,B]=T;const st=async ms=>{await wait(ms);if(!T.every(p=>p.ok()))throw 0;};
+  /* TBM — T=[왼쪽, 가운데(진행), 오른쪽]. S: [말하는 자리, 대사, ms, 폴짝(1 자기 · 2 나머지 둘)] 뒤 「좋아!」 세 번 */
+  const TBM_JOB={worker:'자재 반입',painter:'세대 도장 보수',tiler:'욕실 타일 교체',floorer:'마루 들뜸 보수',paperer:'도배 재시공',caulker:'실리콘 재시공'};
+  const TBM_S={
+    fairy:()=>[[1,'TBM 시작합니다!',1600,1],[1,'오늘 작업: 외벽 보수',1600],[2,'위험 요인! 고소 작업',1800,1],[0,'작업 구역 통제 완료!',1700,1],[1,'안전모·안전대 착용 확인!',1700],[1,'구호 하겠습니다!',1300],[1,'무재해로 가자!',1500,2]],
+    mgr:j=>[[1,'TBM 시작합니다!',1600,1],[1,'오늘 작업: '+j,1700],[2,'장비 동선은 제가 통제합니다',1900,1],[0,'보호구 착용 완료!',1700,1],[1,'안전모·안전대 착용 확인!',1700],[1,'구호 하겠습니다!',1300],[1,'무재해로 가자!',1500,2]],
+    lead:j=>[[1,'자, TBM 합시다!',1600,1],[1,'오늘 작업: '+j,1700],[2,'장비 신호 제가 맡습니다',1800,1],[0,'공구 점검 완료!',1600,1],[1,'치익- 작업 전 안전 확인!',1800],[1,'구호 하겠습니다!',1300],[1,'무재해로 가자!',1500,2]],
+    both:j=>[[1,'TBM 시작합니다!',1600,1],[0,'오늘 인원 12명, 이상 없습니다!',1900,1],[1,'오늘 작업: '+j,1700],[2,'보호구 착용 완료!',1600,1],[1,'안전모·안전대 착용 확인!',1700],[1,'구호 하겠습니다!',1300],[1,'무재해로 가자!',1500,2]]};
+  async function tbm(T,S){const[C,H,B]=T;const st=async ms=>{await wait(ms);if(!T.every(p=>p.ok()))throw 0;};
     const tot=C.w()+H.w()+B.w()-6,[l,r]=H.bounds();let x0=Math.round((C.mid()+H.mid()+B.mid())/3-tot/2);x0=Math.min(Math.max(x0,l),Math.max(l,r+H.w()-tot));
     await Promise.all([moveP(C,x0),moveP(H,x0+C.w()-3),moveP(B,x0+C.w()+H.w()-6)]);if(!T.every(p=>p.ok()))throw 0;
     C.turn(1);H.turn(1);B.turn(-1);
-    H.hop();H.say('TBM 시작합니다!',1600);await st(1700);H.say('오늘 작업: 외벽 보수',1600);await st(1700);
-    B.hop();B.say('위험 요인! 고소 작업',1800);await st(1900);C.hop();C.say('작업 구역 통제 완료!',1700);await st(1800);
-    H.say('안전모·안전대 착용 확인!',1700);await st(1800);H.say('구호 하겠습니다!',1300);await st(1400);
-    H.say('무재해로 가자!',1500);C.hop();B.hop();await st(1600);
+    for(const[i,t,ms,hp] of S){const p=T[i];if(hp===1)p.hop();if(hp===2)T.forEach(q=>{if(q!==p)q.hop();});p.say(t,ms);await st(ms+100);}
     for(const t of ['좋아!','좋아! 좋아!','좋아! 좋아! 좋아!']){T.forEach(glad);H.say(t,800);await st(700);}
     T.forEach(p=>p.hearts(1));await st(1200);}
   async function play(force){if(act||L.length<2||document.hidden)return;const F=L.map(o=>o.p).filter(p=>p.free());if(F.length<2)return;
     const by=k=>{const o=L.find(o=>o.k===k);return o&&o.p.free()?o.p:null;};
     let T=null,run=null;
-    if(['cone','helm','beacon'].every(by)&&(force||Math.random()<.3)){T=[by('cone'),by('helm'),by('beacon')];run=()=>tbm(T);}
-    else{let best=null;for(const a of L)for(const b of L){if(a===b||!a.p.free()||!b.p.free())continue;const r=RK(a.k,b.k),sc=r*1000+Math.abs(a.p.mid()-b.p.mid());if(!best||sc<best.sc)best={a,b,r,sc};}
+    if(['cone','helm','beacon'].every(by)&&(force||Math.random()<.3)){T=[by('cone'),by('helm'),by('beacon')];run=()=>tbm(T,TBM_S.fairy());}
+    else{const bk=kd=>L.find(o=>kind(o.k)===kd&&o.p.free())||null;const m=bk('mgr'),sg=bk('sig'),ld=bk('lead'),w=bk('ppl');   /* 사람 셋 TBM — 작업자 자리는 다른 기능공도 */
+      const pl=m&&w&&sg?[[w,m,sg],'mgr']:ld&&w&&sg?[[w,ld,sg],'lead']:m&&ld&&w?[[ld,m,w],'both']:null;
+      if(pl&&(force||Math.random()<.3)){T=pl[0].map(o=>o.p);const S=TBM_S[pl[1]](TBM_JOB[w.k]||'하자 보수');run=()=>tbm(T,S);}}
+    if(!run){let best=null;for(const a of L)for(const b of L){if(a===b||!a.p.free()||!b.p.free())continue;const r=RK(a.k,b.k),sc=r*1000+Math.abs(a.p.mid()-b.p.mid());if(!best||sc<best.sc)best={a,b,r,sc};}
       if(!best)return;T=[best.a.p,best.b.p];const R=RULES[best.r];run=()=>R.run(T[0],T[1],async ms=>{await wait(ms);if(!T.every(p=>p.ok()))throw 0;});}
-    act=true;T.forEach(p=>p.busy(true));T.forEach((p,i)=>p.pal(T.length===2?T[1-i]:T[1]===p?null:T[1]));   /* 말풍선은 짝 반대쪽(TBM 은 가운데 안전모 요정 반대쪽) */
+    act=true;T.forEach(p=>p.busy(true));T.forEach((p,i)=>p.pal(T.length===2?T[1-i]:T[1]===p?null:T[1]));   /* 말풍선은 짝 반대쪽(TBM 은 가운데 진행자 반대쪽) */
     try{await run();}catch(e){if(e)console.warn('pet play',e);}
     T.forEach((p,i)=>{p.busy(false);p.pal(null);if(p.ok()){p.set('idle');p.later(()=>p.next(),500+i*500);}});act=false;}
   const keys=()=>L.map(o=>o.k);
