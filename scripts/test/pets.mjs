@@ -40,7 +40,8 @@ ok('분류 c 지정',keys.every(k=>'pstoa'.includes(P[k].c||'a')),keys.filter(k=
 
 /* 3) 짝 대본 */
 const PAIRS=[['sf-bell','beacon','띵동! 호출 눌렀어요','삐뽀삐뽀! 장비 정지!'],['excavator','dump','흙 퍼 담습니다~','덜컹! 반출 갑니다'],['of-mouse','of-kbd','나 없으면 클릭 못 해요','나 없으면 글자 못 쳐요'],
-  ['sf-wind','crane','풍속 10m/s 넘었어요!','인양 작업 중지합니다'],['capybara','duckling','삐약?','…올라와'],['capybara','angry','하자 언제 고쳐요!','…진정해요']];
+  ['sf-wind','crane','풍속 10m/s 넘었어요!','인양 작업 중지합니다'],['capybara','duckling','삐약?','…올라와'],['capybara','angry','하자 언제 고쳐요!','…진정해요'],
+  ['cs','angry','불편 드려 죄송합니다, 접수 내역 확인할게요','네, 바로 보내 드리겠습니다']];
 for(const [a,b,t1,t2] of PAIRS){const{ctx,pg,perr,nf}=await page({pets:[b,a]});await pg.evaluate(()=>PET.play());const log=await bubbles(pg,30,t2);
   ok('짝 '+a+'↔'+b,log.some(x=>x.includes(t1))&&log.some(x=>x.includes(t2))&&!perr.length&&!nf.length,{log,perr,nf});await ctx.close();}
 
