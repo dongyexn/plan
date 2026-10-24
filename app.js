@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1241';
+const APP_VER='1242';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -13512,7 +13512,7 @@ const PET_LINES={tap:['허거덩','허걱스','하이','왜요?','😮','🤔','
   food:['😋'],drop:['😵'],idle:['일 안하농'],
   today:['오늘 업무 {n}건'],com:['{t} 하자!']};   /* {n}·{t} 는 숫자·업무 이름으로 바뀐다 · 사용자가 대사 편집 폼에서 고친 값 */
 const petPick=a=>a[Math.floor(Math.random()*a.length)];
-const PET_IT_SZ={strawberry:18,carrot:18,taiyaki:18};   /* 던지는 그림 크기 예외(px, 기본 16) — 사용자가 살짝 키움 */
+const PET_IT_SZ={ball:14,apple:15,cheddar:15,honey:15,tile:15,taiyaki:17,coffee:17,cone:17,paste:17,plank:17,carrot:18,cart:18,hammer:18,spanner:18,battery:19};   /* 던지는 그림 크기(px, 기본 16) — 눈으로 맞춤: 꽉 찬 둥근 것은 작게, 가늘거나 비스듬한 것은 크게 */
 const petUrl=f=>'./vendor/pets/'+f+'?v='+APP_VER;   /* 그림 파일 — 쓰는 것만 받고 브라우저가 캐시한다 */
 const petSlot=()=>{const d=new Date(),v=d.getHours()*60+d.getMinutes();return v>=660&&v<=690?'lunch':v>=1020?'leave':'';};
 let PET_LOADING=null;
@@ -13828,7 +13828,7 @@ function petSync(){
   const o=ks.length?P[ks[0]]:null;
   const b=$('#wgPetB');if(b){b.setAttribute('aria-expanded',PET_PICK?'true':'false');
     b.innerHTML='<b>'+(o?esc(o.n)+(ks.length>1?' 외 '+(ks.length-1):''):'없음')+'</b><svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg>';}
-  const th=$('#wgPetT');if(th)th.innerHTML=o?'<img src="'+petUrl(o.t.f)+'" alt="" style="width:'+o.t.w+'px;height:'+o.t.h+'px'+(o.sm?';image-rendering:auto':'')+'">':'';   /* 그림은 라벨 칸 오른쪽(투명도 % 자리) — 첫 펫 */
+  const th=$('#wgPetT');if(th)th.innerHTML=o?'<img src="'+petUrl(o.g.idle.f)+'" alt="" style="width:'+o.t.w+'px;height:'+o.t.h+'px'+(o.sm?';image-rendering:auto':'')+'">':'';   /* 그림은 라벨 칸 오른쪽(투명도 % 자리) — 첫 펫 */
   petPickRender();
 }
 /* 고르기 — 누르면 올리고 다시 누르면 내린다. 3마리가 차 있으면 가장 먼저 올린 펫이 내려간다. 「없음」은 모두 내림 */
@@ -13838,9 +13838,12 @@ function petToggle(k){const c=widCfgLoad();let ks=petKeys();
 function petPickRender(){
   let p=$('#wgPick');const w=$('#wgSet');
   if(!PET_PICK||!w||!w.classList.contains('on')||!window.CALAPP_PETS){if(p)p.remove();return;}
-  if(!p){p=document.createElement('div');p.id='wgPick';p.setAttribute('role','dialog');p.setAttribute('aria-label','미니펫 고르기 — 최대 '+PET_MAX+'마리');document.body.appendChild(p);}
+  if(!p){p=document.createElement('div');p.id='wgPick';p.setAttribute('role','dialog');p.setAttribute('aria-label','미니펫 고르기 — 최대 '+PET_MAX+'마리');document.body.appendChild(p);
+    /* 썸네일은 멈춘 그림(t, png) — 올린 펫과 마우스를 올린 칸만 움직이는 그림(idle). 65칸이 다 움직이면 창이 열린 동안 래스터가 계속 돈다 */
+    const sw=(e,on)=>{const b=e.target.closest&&e.target.closest('.pk-i');if(!b||b.contains(e.relatedTarget))return;const im=b.querySelector('img');if(im&&!b.classList.contains('on'))im.src=on?im.dataset.a:im.dataset.s;};
+    p.addEventListener('pointerover',e=>sw(e,true));p.addEventListener('pointerout',e=>sw(e,false));}
   const ks=petKeys(),g=p.querySelector('.pk-g'),top=g?g.scrollTop:0,P=window.CALAPP_PETS;
-  const item=([id,o])=>{const n=ks.indexOf(id);return '<button class="pk-i'+(n>=0?' on':'')+'" data-act="wid.pet" data-k="'+id+'" aria-label="'+esc(o.n)+'" aria-pressed="'+(n>=0)+'">'+(n>=0&&ks.length>1?'<i class="pk-no">'+(n+1)+'</i>':'')+'<i class="pk-pic"><img src="'+petUrl(o.t.f)+'" alt="" loading="lazy" style="width:'+o.t.w+'px;height:'+o.t.h+'px'+(o.sm?';image-rendering:auto':'')+'"></i><span>'+esc(o.n)+'</span></button>';};
+  const item=([id,o])=>{const n=ks.indexOf(id);return '<button class="pk-i'+(n>=0?' on':'')+'" data-act="wid.pet" data-k="'+id+'" aria-label="'+esc(o.n)+'" aria-pressed="'+(n>=0)+'">'+(n>=0&&ks.length>1?'<i class="pk-no">'+(n+1)+'</i>':'')+'<i class="pk-pic"><img src="'+petUrl(n>=0?o.g.idle.f:o.t.f)+'" data-s="'+petUrl(o.t.f)+'" data-a="'+petUrl(o.g.idle.f)+'" alt="" loading="lazy" style="width:'+o.t.w+'px;height:'+o.t.h+'px'+(o.sm?';image-rendering:auto':'')+'"></i><span>'+esc(o.n)+'</span></button>';};
   const cats=PET_CATS.map(([c,n])=>[c,n,Object.entries(P).filter(([,o])=>(o.c||'a')===c)]);   /* 분류는 pets.js 의 c */
   const sel=PET_CAT;
   p.innerHTML='<div class="pk-tb" role="tablist">'+[['','전체'],...PET_CATS].map(([c,n])=>'<button class="pk-c" role="tab" data-act="wid.petCat" data-k="'+c+'" aria-selected="'+(c===sel)+'">'+n+'</button>').join('')+'</div><div class="pk-g">'
