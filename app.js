@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1240';
+const APP_VER='1241';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -13732,11 +13732,45 @@ const PET=(()=>{let L=[],tick=0,act=false;   /* L: [{k,p}] */
     {m:(a,b)=>a==='ani'&&b==='ani',run:async(A,B,st)=>{await near(A,B);face(A,B);A.hop();A.hearts(1);await st(500);B.hop();B.hearts(1);await st(1200);}},
     {m:(a,b)=>a!=='ani'&&a!=='eq'&&b==='ani',run:async(A,B,st)=>{await near(A,B);face(A,B);A.say(petPick(['어? 귀엽다','여기 왜 왔어?']),1600);await st(1400);B.hop();B.hearts(1);await st(1600);}},
     {m:()=>true,run:async(A,B,st)=>{await near(A,B);face(A,B);A.say(petPick(['안녕?','👋']),1500);await st(1300);B.say(petPick(['안녕!','😊']),1500);await st(1700);}}];
-  const RK=(a,b)=>{const ka=kind(a),kb=kind(b),x=k=>k==='cone'||k==='helm'||k==='beacon'?k:'';
-    return RULES.findIndex(R=>(NK[a]&&NK[b]&&R.m(NK[a],NK[b]))||R.m(ka,kb)||(x(a)&&R.m(x(a),kb)));};   /* 요정은 종류(fairy)와 이름(helm 등), 동물은 이름(NK)으로도 맞춘다 */
+  /* 펫 키로 정한 짝 대본 — [앞 펫, 뒤 펫, [[말하는 쪽(0 앞·1 뒤), 대사(배열이면 하나 고름), ms, 1 폴짝 · 2 웃으며 폴짝]…]] */
+  const JOB={paperer:'tr-paper',tiler:'tr-tile',floorer:'tr-plank',painter:'tr-paint',caulker:'tr-caulk',plaster:'tr-conc',glazier:'tr-window'};
+  const PAIR=[
+    ['tr-tile','tr-caulk',[[0,'줄눈 마감 부탁해!',1600],[1,'실리콘 쭉~',1400,1]]],
+    ['tr-window','tr-caulk',[[0,'창틀에 틈이 생겼어',1600],[1,'코킹으로 꽉!',1400,1]]],
+    ['tr-paper','tr-paint',[[0,'벽은 내 담당이야',1500],[1,'아니 내 담당인데?',1500,1],[0,'…같이 하자',1400]]],
+    ['tr-elec','tr-lamp',[[0,'전기 들어갑니다!',1500],[1,'반짝!',1300,2]]],
+    ['tr-pipe','tr-toilet',[[0,'배관 연결 완료!',1500],[1,'쏴아~ 잘 내려가요',1600,2]]],
+    ['tr-pipe','tr-drain',[[0,'물 보냅니다!',1400],[1,'꼴깍꼴깍',1400,1]]],
+    ['tr-fire','tr-elec',[[0,'합선 조심!',1400,1],[1,'찌릿… 조심할게요',1600]]],
+    ['tr-aircon','tr-louver',[[0,'바람 나갑니다~',1500],[1,'솨아 잘 빠져요!',1500,1]]],
+    ['tr-hood','tr-vent',[[0,'연기 빨아들여요!',1500],[1,'밖으로 내보낼게요',1600,1]]],
+    ['tr-wpad','tr-elev',[[0,'엘리베이터 호출!',1500],[1,'딩동 도착했습니다',1600,1]]],
+    ['tr-fdoor','tr-fire',[[0,'방화문은 닫아 두세요!',1700],[1,'소화기도 준비 완료!',1600,1]]],
+    ['tr-wdoor','tr-fdoor',[[0,'나는 나무문',1400],[1,'나는 철문! 불에 강해요',1700,1]]],
+    ['tr-tree','tr-paver',[[0,'뿌리가 자꾸 자라요',1500],[1,'…그래서 블럭이 들떴구나',1800,1]]],
+    ['tr-stone','tr-tile',[[0,'대리석 광 좀 봐',1500],[1,'타일도 반짝해요!',1500,1]]],
+    ['angry','tr-elev',[[0,'엘리베이터 또 고장이에요!',1700],[1,'점검 중입니다…',1500,1]]],
+    ['angry','tr-wpad',[[0,'관리사무소 연결해 줘요!',1700],[1,'띵동 연결합니다',1500,1]]],
+    ['angry','tr-drain',[[0,'배수구에서 냄새나요!',1700],[1,'트랩 교체할게요!',1500,1]]],
+    ['angry','tr-aircon',[[0,'에어컨에서 물 새요!',1700],[1,'배수 호스 확인!',1500,1]]],
+    ['cs','tr-wpad',[[0,'세대 호출 들어갑니다',1600],[1,'📟',1200,1]]],
+    ['sf-sboot','sf-svest',[[0,'보호구 둘이 모였네',1500,1],[1,'안전모만 오면 완벽!',1600,1]]],
+    ['chicken-white','duckling',[[1,'엄마?',1200,1],[0,'…난 닭인데',1500],[1,'💛',1000,2]]],
+    ['cow','chicken-white',[[0,'음메~',1200,1],[1,'꼬꼬~',1200,1]]],
+    ['bunny-white','dog-akita',[[0,'깡총!',1100,1],[1,'멍?',1100],[0,'깡총깡총!',1200,1]]],
+    ['cat-greywhite','duckling',[[0,'냥?',1100],[1,'삐약!',1100,1]]],
+    ['el-bee','tr-tree',[[0,'꽃 있나요?',1400],[1,'살랑~ 여기요',1500,1],[0,'🍯',1000,2]]]];
+  for(const[w,t]of Object.entries(JOB))PAIR.push([w,t,[[0,['오늘 너 보수한다!','깔끔하게 고쳐 줄게'],1600],[1,['살살 해주세요~','잘 부탁해요!'],1500,1],[0,'💪',1000,2]]]);
+  for(const[g,t]of [['sf-sboot','안전화 신었나요?'],['sf-svest','조끼 입어야 잘 보여요!']])for(const b of ['ppl','sig','lead'])PAIR.push([g,'@'+b,[[0,t,1600,1],[1,['착용 완료!','넵!'],1400,2]]]);
+  const talk=S=>async(A,B,st)=>{await near(A,B);face(A,B);for(const[i,t,ms,hp]of S){const p=i?B:A;if(hp===2)glad(p);if(hp)p.hop();p.say(Array.isArray(t)?petPick(t):t,ms);await st(ms+100);}await st(400);};
+  const PR=PAIR.map(([a,b,S])=>({m:(x,y)=>x===a&&(b[0]==='@'?kind(y)===b.slice(1):y===b),run:talk(S)}));
+  const ALL=[...PR,...RULES];
+  const RK=(a,b)=>{const i=PR.findIndex(R=>R.m(a,b));if(i>=0)return i;const ka=kind(a),kb=kind(b),x=k=>k==='cone'||k==='helm'||k==='beacon'?k:'';
+    return PR.length+RULES.findIndex(R=>(NK[a]&&NK[b]&&R.m(NK[a],NK[b]))||R.m(ka,kb)||(x(a)&&R.m(x(a),kb)));};   /* 요정은 종류(fairy)와 이름(helm 등), 동물은 이름(NK)으로도 맞춘다 */
   /* TBM — T=[왼쪽, 가운데(진행), 오른쪽]. S: [말하는 자리, 대사, ms, 폴짝(1 자기 · 2 나머지 둘)] 뒤 「좋아!」 세 번 */
   const TBM_JOB={worker:'자재 반입',painter:'세대 도장 보수',tiler:'욕실 타일 교체',floorer:'마루 들뜸 보수',paperer:'도배 재시공',caulker:'실리콘 재시공',plaster:'벽 균열 미장',glazier:'창호 교체'};
   const TBM_S={
+    gear:()=>[[1,'보호구 점검 시작!',1600,1],[0,'안전화 신었나요!',1600,1],[2,'조끼는 밝게 입고!',1600,1],[1,'턱끈 꽉 조이고!',1500],[1,'구호 하겠습니다!',1300],[1,'무재해로 가자!',1500,2]],
     fairy:()=>[[1,'TBM 시작합니다!',1600,1],[1,'오늘 작업: 외벽 보수',1600],[2,'위험 요인! 고소 작업',1800,1],[0,'작업 구역 통제 완료!',1700,1],[1,'안전모·안전대 착용 확인!',1700],[1,'구호 하겠습니다!',1300],[1,'무재해로 가자!',1500,2]],
     mgr:j=>[[1,'TBM 시작합니다!',1600,1],[1,'오늘 작업: '+j,1700],[2,'장비 동선은 제가 통제합니다',1900,1],[0,'보호구 착용 완료!',1700,1],[1,'안전모·안전대 착용 확인!',1700],[1,'구호 하겠습니다!',1300],[1,'무재해로 가자!',1500,2]],
     lead:j=>[[1,'자, TBM 합시다!',1600,1],[1,'오늘 작업: '+j,1700],[2,'장비 신호 제가 맡습니다',1800,1],[0,'공구 점검 완료!',1600,1],[1,'치익- 작업 전 안전 확인!',1800],[1,'구호 하겠습니다!',1300],[1,'무재해로 가자!',1500,2]],
@@ -13752,11 +13786,12 @@ const PET=(()=>{let L=[],tick=0,act=false;   /* L: [{k,p}] */
     const by=k=>{const o=L.find(o=>o.k===k);return o&&o.p.free()?o.p:null;};
     let T=null,run=null;
     if(['cone','helm','beacon'].every(by)&&(force||Math.random()<.3)){T=[by('cone'),by('helm'),by('beacon')];run=()=>tbm(T,TBM_S.fairy());}
+    else if(['sf-sboot','helm','sf-svest'].every(by)&&(force||Math.random()<.3)){T=[by('sf-sboot'),by('helm'),by('sf-svest')];run=()=>tbm(T,TBM_S.gear());}   /* 안전모·안전화·안전조끼 — 보호구 점검 */
     else{const bk=kd=>L.find(o=>kind(o.k)===kd&&o.p.free())||null;const m=bk('mgr'),sg=bk('sig'),ld=bk('lead'),w=bk('ppl');   /* 사람 셋 TBM — 작업자 자리는 다른 기능공도 */
       const pl=m&&w&&sg?[[w,m,sg],'mgr']:ld&&w&&sg?[[w,ld,sg],'lead']:m&&ld&&w?[[ld,m,w],'both']:null;
       if(pl&&(force||Math.random()<.3)){T=pl[0].map(o=>o.p);const S=TBM_S[pl[1]](TBM_JOB[w.k]||'하자 보수');run=()=>tbm(T,S);}}
     if(!run){let best=null;for(const a of L)for(const b of L){if(a===b||!a.p.free()||!b.p.free())continue;const r=RK(a.k,b.k),sc=r*1000+Math.abs(a.p.mid()-b.p.mid());if(!best||sc<best.sc)best={a,b,r,sc};}
-      if(!best)return;T=[best.a.p,best.b.p];const R=RULES[best.r];run=()=>R.run(T[0],T[1],async ms=>{await wait(ms);if(!T.every(p=>p.ok()))throw 0;});}
+      if(!best)return;T=[best.a.p,best.b.p];const R=ALL[best.r];run=()=>R.run(T[0],T[1],async ms=>{await wait(ms);if(!T.every(p=>p.ok()))throw 0;});}
     act=true;T.forEach(p=>p.busy(true));T.forEach((p,i)=>p.pal(T.length===2?T[1-i]:T[1]===p?null:T[1]));   /* 말풍선은 짝 반대쪽(TBM 은 가운데 진행자 반대쪽) */
     try{await run();}catch(e){if(e)console.warn('pet play',e);}
     T.forEach((p,i)=>{p.busy(false);p.pal(null);if(p.ok()){p.set('idle');p.later(()=>p.next(),500+i*500);}});act=false;}
@@ -13779,7 +13814,7 @@ const PET=(()=>{let L=[],tick=0,act=false;   /* L: [{k,p}] */
       let best=null;for(const o of L){if(!o.p.el||!o.p.el.isConnected||o.p.el.hidden||o.p.isBusy())continue;   /* 상호작용 중인 펫은 건너뛴다 */const d=Math.abs(o.p.mid()-x);if(!best||d<best.d)best={o,d};}
       if(best)best.o.p.throwBall(cx);}};})();
 let PET_PICK=false;   /* 펫 고르기 창 열림 */
-const PET_CATS=[['p','사람'],['t','공종'],['s','안전·장비'],['a','동물']];let PET_CAT='';   /* 고르기 창 분류 칩 — '' 는 전체(분류 제목을 붙여 이어서) */
+const PET_CATS=[['p','사람'],['s','안전'],['t','공종'],['a','동물']];let PET_CAT='';   /* 고르기 창 분류 칩 — '' 는 전체(분류 제목을 붙여 이어서) */
 let petAct=performance.now();   /* 위젯 위 마지막 마우스 움직임 — 깊은 잠 판단 */
 document.addEventListener('pointermove',()=>{petAct=performance.now();if(WIDGET)PET.wake();},{passive:true});
 /* 설정의 펫(cfg.pets — 고른 순서, 최대 3 · 예전 cfg.pet 한 마리도 읽는다) → 머리 줄 펫·설정 단추·고르기 창을 맞춘다 */

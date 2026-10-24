@@ -3444,7 +3444,8 @@ body.wid #wgSet.on{display:block;}
 @media (hover:hover) and (pointer:fine){#wgPick .pk-c:hover{background:rgba(255,255,255,.12);}}
 #wgPick .pk-c[aria-selected="true"]{background:var(--b400);color:#fff;}
 #wgPick .pk-g{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;padding:8px;flex:1 1 auto;min-height:0;align-content:start;overflow-y:auto;}
-#wgPick .pk-hd{grid-column:1/-1;padding:6px 2px 0;font-size:10.5px;font-weight:700;color:rgba(255,255,255,.55);}   /* 전체 — 분류 제목 */
+#wgPick .pk-hd{grid-column:1/-1;padding:10px 2px 3px;font-size:10.5px;font-weight:700;color:rgba(255,255,255,.55);}   /* 전체 — 분류 제목(위아래 살짝 띄움) */
+#wgPick .pk-hd:first-child{padding-top:2px;}
 #wgPick .pk-i{display:grid;justify-items:center;align-items:end;grid-template-rows:34px 14px;gap:3px;height:60px;min-width:0;overflow:hidden;padding:4px 2px;
   border-radius:8px;background:rgba(255,255,255,.04);color:rgba(255,255,255,.82);font-size:10.5px;}
 @media (hover:hover) and (pointer:fine){#wgPick .pk-i:hover{background:rgba(255,255,255,.1);}}
@@ -6355,5 +6356,5 @@ body.mcal-full #fcal .mlN::before{content:'+'}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1240"></script>
+<script src="./app.js?v=1241"></script>
 </body></html>
