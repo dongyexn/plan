@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1237';
+const APP_VER='1238';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -13442,18 +13442,21 @@ function bgSyncIng(){const r=Number(window.BG_REQ)||0;return r>(Number(window.BG
 const BG_SHOW=6;   /* 카드에는 두 줄(6장)까지 — 나머지는 「모두 보기」 창 */
 /* 설정 「배경 사진」 — 자동(들어올 때마다 무작위) / 고정(고른 사진을 계속). 이 브라우저에만(calapp.bgpin {u}). 고른 사진이 컬렉션에서 빠지면 자동으로 */
 function bgPin(){try{const o=JSON.parse(localStorage.getItem('calapp.bgpin')||'null');return o&&o.u?o.u:'';}catch(e){return '';}}
-function bgPick(){const L=window.BG_LIST;if(!Array.isArray(L)||!L.length)return null;const pu=bgPin(),pp=pu&&L.find(x=>x.u===pu);if(pp)return pp;
-  let p=window.BG_RND&&L.find(x=>x.u===window.BG_RND);   /* 이번에 들어올 때 고른 사진 — 목록에서 빠졌거나 아직 안 골랐으면 새로 고른다 */
-  if(!p){const last=(()=>{try{return localStorage.getItem('calapp.bglast')||'';}catch(e){return '';}})(),c=L.length>1?L.filter(x=>x.u!==last):L;
+/* 사진은 주소 앞부분(? 앞)으로 같은지 본다 — 컬렉션을 다시 받으면 뒤에 붙는 값이 바뀌어도 같은 사진(그때마다 다른 사진으로 갈아 끼우던 원인) */
+const bgId=u=>String(u||'').split('?')[0];
+function bgPick(){const L=window.BG_LIST;if(!Array.isArray(L)||!L.length)return null;const pu=bgId(bgPin()),pp=pu&&L.find(x=>bgId(x.u)===pu);if(pp)return pp;
+  let p=window.BG_RND&&L.find(x=>bgId(x.u)===bgId(window.BG_RND));   /* 이번에 들어올 때 고른 사진 */
+  if(!p&&window.BG_RNDO&&window.BG_RNDO.u)p=window.BG_RNDO;   /* 이번 방문 중엔 목록에서 빠져도 그 사진 그대로 — 새 목록은 다음에 들어올 때부터 */
+  if(!p){const last=(()=>{try{return bgId(localStorage.getItem('calapp.bglast')||'');}catch(e){return '';}})(),c=L.length>1?L.filter(x=>bgId(x.u)!==last):L;
     p=c[Math.floor(Math.random()*c.length)];window.BG_RND=p.u;try{localStorage.setItem('calapp.bglast',p.u);}catch(e){}}
-  return p;}
-function bgSetPin(u){try{if(u)localStorage.setItem('calapp.bgpin',JSON.stringify({u}));else localStorage.removeItem('calapp.bgpin');}catch(e){}bgApply(true);}
-function bgThumbHTML(p,i,cur,fix,big){const on=cur&&cur.u===p.u,th=p.u+(p.u.includes('?')?'&':'?')+'w=360&q=70&fm=jpg&fit=crop';
+  window.BG_RNDO=p;return p;}
+function bgSetPin(u){window.BG_RNDO=null;try{if(u)localStorage.setItem('calapp.bgpin',JSON.stringify({u}));else localStorage.removeItem('calapp.bgpin');}catch(e){}bgApply(true);}
+function bgThumbHTML(p,i,cur,fix,big){const on=cur&&bgId(cur.u)===bgId(p.u),th=p.u+(p.u.includes('?')?'&':'?')+'w=360&q=70&fm=jpg&fit=crop';
   return '<button class="bgp-t'+(on?' on':'')+'" data-act="bg.pick" data-i="'+i+'" aria-pressed="'+(fix&&on)+'" aria-label="'+esc(p.n)+' 배경화면으로 고정" style="background-image:url(&quot;'+esc(th)+'&quot;)"><span class="ck"><svg class="icn" aria-hidden="true"><use href="#i-check"></use></svg></span>'+(big?'<span class="nm">'+esc(p.n)+'</span>':'')+'</button>';}
-function bgPickRender(){const w=$('#bgPickRow');if(!w)return;const L=Array.isArray(window.BG_LIST)?window.BG_LIST:[],pu=bgPin(),fix=!!(pu&&L.some(x=>x.u===pu)),cur=bgPick();
+function bgPickRender(){const w=$('#bgPickRow');if(!w)return;const L=Array.isArray(window.BG_LIST)?window.BG_LIST:[],pu=bgId(bgPin()),fix=!!(pu&&L.some(x=>bgId(x.u)===pu)),cur=bgPick();
   document.querySelectorAll('[data-act="bg.auto"]').forEach(x=>{x.checked=!fix;});
   const more=L.length>BG_SHOW,k=more?BG_SHOW-1:BG_SHOW;   /* 넘치면 여섯째 칸은 「+N 모두 보기」 */
-  let idx=L.map((_,i)=>i).slice(0,k);const ci=cur?L.findIndex(x=>x.u===cur.u):-1;if(ci>=k)idx[k-1]=ci;   /* 지금(고정) 사진은 늘 카드 안에 */
+  let idx=L.map((_,i)=>i).slice(0,k);const ci=cur?L.findIndex(x=>bgId(x.u)===bgId(cur.u)):-1;if(ci>=k)idx[k-1]=ci;   /* 지금(고정) 사진은 늘 카드 안에 */
   const mi=L.findIndex((_,i)=>!idx.includes(i)),mp=L[mi];
   w.innerHTML=idx.map(i=>bgThumbHTML(L[i],i,cur,fix)).join('')+(more?'<button class="bgp-more" data-act="bg.all" aria-label="배경화면 모두 보기" style="background-image:url(&quot;'+esc(mp.u+(mp.u.includes('?')?'&':'?')+'w=360&q=60&fm=jpg&fit=crop')+'&quot;)"><span><b>+'+(L.length-k)+'</b>모두 보기</span></button>':'');
   const pv=$('#bgPv');if(pv&&!pv.querySelector('.lg')){const b=$('#cvBrand');if(b){const lg=document.createElement('i');lg.className='lg';lg.setAttribute('aria-hidden','true');lg.innerHTML=b.innerHTML;pv.insertBefore(lg,pv.firstChild);}}   /* 로그인 화면처럼 왼쪽에 로고(폰 로그인 로고를 복사) */
@@ -13470,12 +13473,12 @@ function bgApply(force){
   if(WIDGET)return;
   if(!force&&$('#mm .mm-cv'))return;   /* 회의 표지가 떠 있는 동안은 바꾸지 않는다 */
   const p=bgPick(),k=p?p.u:'';
-  if(k===BG_CUR){if(force)bgPickRender();return;}   /* 그대로면 썸네일을 다시 그리지 않는다(초점·호버 유지) */
+  if(bgId(k)===bgId(BG_CUR)){if(force)bgPickRender();return;}   /* 그대로면 썸네일을 다시 그리지 않는다(초점·호버 유지) */
   bgPickRender();
   const set=q=>{BG_CUR=q?q.u:'';const r=document.documentElement;if(q)r.style.setProperty('--bg-img','url("'+bgUrl(q)+'")');else r.style.removeProperty('--bg-img');
     const c=$('#bgCredit');if(c)c.innerHTML=bgCreditHTML(q);const cc=$('#mm .mm-cv .cr');if(cc)cc.innerHTML=bgCreditHTML(q);bgPickRender();};
   if(!p){set(null);return;}
-  const im=new Image();im.onload=()=>{const q=bgPick();if(q&&q.u!==p.u)return;set(p);};im.onerror=()=>{if(!BG_CUR)set(null);};im.src=bgUrl(p);   /* 다 받은 뒤 갈아 끼운다 — 안 열리면 지금 것 유지 */
+  const im=new Image();im.onload=()=>{const q=bgPick();if(q&&bgId(q.u)!==bgId(p.u))return;set(p);};im.onerror=()=>{if(!BG_CUR)set(null);};im.src=bgUrl(p);   /* 다 받은 뒤 갈아 끼운다 — 안 열리면 지금 것 유지 */
 }
 if(!WIDGET)bgApply();
 const GLASS=/[?&]glass=1\b/.test(location.search);   /* 위젯 유리(반투명) 모드 — 배경을 비운다 */
