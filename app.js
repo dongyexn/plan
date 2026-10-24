@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1249';
+const APP_VER='1250';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -13509,7 +13509,6 @@ const PET_LINES={tap:['허거덩','허걱스','하이','왜요?','😮','🤔','
   lunch:['맛점','점심 뭐먹냐','배고프다','🍚','🍜','🍕','🍔','🍙','🍖'],
   leave:['칼퇴 좀','퇴근해요','집에 보내죠','집에 가자'],
   wake:['Zzz..','까꿍','데헷','흥','😪'],
-  pet:['야르릉','💕'],
   food:['😋'],drop:['😵'],idle:['일 안하농'],
   today:['오늘 업무 {n}건'],com:['{t} 하자!']};   /* {n}·{t} 는 숫자·업무 이름으로 바뀐다 · 사용자가 대사 편집 폼에서 고친 값 */
 const petPick=a=>a[Math.floor(Math.random()*a.length)];
@@ -13554,7 +13553,7 @@ function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl
     bub.classList.toggle('l',lf);el.classList.add('talk');
     bub.classList.add('on');clearTimeout(bt);bt=setTimeout(()=>{bub.classList.remove('on');el.classList.remove('talk');},ms);};
   const hop=()=>{el.classList.remove('hop');void el.offsetWidth;el.classList.add('hop');};
-  /* 하트 — 쓰다듬기(3개)·먹이(1개). 머리 위로 떠올라 사라진다(CSS 애니메이션, 끝나면 지움). 그림: Fluent Emoji ❤️(MIT) */
+  /* 하트 — 먹이(1개). 머리 위로 떠올라 사라진다(CSS 애니메이션, 끝나면 지움). 그림: Fluent Emoji ❤️(MIT) */
   const hearts=n=>{const h=head();if(!h||!el)return;const cx=pos()+el.offsetWidth/2;
     for(let i=0;i<n;i++)setTimeout(()=>{const o=document.createElement('i');o.className='wgHt';o.style.left=Math.round(cx-6+Math.random()*14-7)+'px';
       o.style.setProperty('--dx',Math.round(Math.random()*12-6)+'px');o.style.backgroundImage='url('+petUrl('it-heart.png')+')';h.appendChild(o);o.addEventListener('animationend',()=>o.remove());},i*220);};
@@ -13602,11 +13601,6 @@ function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl
       if(!el){el=document.createElement('div');el.className='wgPet';el.setAttribute('aria-label','미니펫 — 눌러 보세요');bd=document.createElement('div');bd.className='bd';
         img=document.createElement('img');img.alt='';bub=document.createElement('div');bub.className='bub';
         const z=document.createElement('div');z.className='z';z.textContent='z';sh=document.createElement('i');sh.className='sh';bd.append(img);el.append(sh,bd,bub,z);   /* sh — 발밑 그림자(바닥에 남고, 깡총·둥실은 .bd 만) */
-        /* 쓰다듬기 — 마우스를 펫 위로 가져왔을 때만(가만히 있는 커서 밑으로 펫이 걸어 들어온 건 아니다 — 그러면 커서를 움직일 때까지 굳어 있었다).
-           반응 뒤엔 커서가 그대로 있어도 다시 돌아다닌다 */
-        el.addEventListener('mouseenter',()=>{if(ball||busy||sleeping||drg||mode==='swipe'||mode==='with_ball'||performance.now()-petAct>400)return;stop();clearTimeout(tm);set('idle');
-          hvTm=setTimeout(()=>{say(petPick(PET_LINES.pet),1400);hop();hearts(3);later(next,3000);},1500);});
-        el.addEventListener('mouseleave',()=>{clearTimeout(hvTm);if(!ball&&!sleeping&&mode==='idle')later(next,600);});
         el.addEventListener('click',e=>{e.stopPropagation();if(el._drg){el._drg=false;return;}react();});
         /* 잡아 끌기 — 누른 채 4px 넘게 움직이면 잡는다. 잡은 자리 그대로 커서를 가로로 따라오고 머리 줄 안에서만, 6px 들린 채(세로로 달력 위까지 끌면
            그림자만 위에 남아 어색했다). 위가 축인 채 끄는 쪽으로 흔들린다(±25°), 바닥엔 놓일 자리 그림자.
@@ -13694,8 +13688,9 @@ const PET=(()=>{let L=[],tick=0,act=false;   /* L: [{k,p}] */
   const glad=p=>{p.set(p.cfg.g.eat?'eat':'idle');p.hop();};
   /* 장면 — m(앞 펫 종류, 뒤 펫 종류). 대사는 글자만 또는 이모지만(섞지 않음) */
   const RULES=[
-    {m:(a,b)=>a==='cs'&&b==='angry',run:async(A,B,st)=>{B.say(petPick(['하자 언제 고쳐요!','책임자 나와!']));await st(1400);await near(A,B);face(A,B);
-      A.hop();A.say('고객님, 바로 확인해 드릴게요',2000);await st(1900);glad(B);B.hearts(1);B.say(petPick(['…그럼 믿어볼게요','이제야 말이 통하네~']),2000);await st(2300);}},
+    {m:(a,b)=>a==='cs'&&b==='angry',run:async(A,B,st)=>{B.say(petPick(['아직이에요?!','몇 번째예요!','또 새요!']),1500);await st(1400);await near(A,B);face(A,B);
+      A.say('내일 오전 방문할게요!',1700);await st(1700);
+      B.say(petPick(['문자 꼭 줘요!','이번엔 진짜죠?']),1500);await st(1500);A.hop();A.say('네, 꼭 드릴게요!',1500);await st(1700);}},
     {m:(a,b)=>a==='lead'&&b==='ppl',run:async(A,B,st)=>{await near(A,B);face(A,B);A.say(petPick(['자, 오늘 작업 지시합니다!','여기 먼저 끝냅시다','점심 전에 마무리!']),1800);await st(1700);
       glad(B);B.say(petPick(['넵, 반장님!','알겠습니다!','💪']),1600);await st(1800);}},
     {m:(a,b)=>a==='lead'&&b==='mgr',run:async(A,B,st)=>{await near(A,B);face(A,B);A.hop();A.say(petPick(['오늘 인원 12명 투입입니다','작업 이상 없습니다!']),1800);await st(1700);
