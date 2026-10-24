@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1243';
+const APP_VER='1244';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -13679,7 +13679,7 @@ function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl
    라바콘·안전모·경광등 요정이 다 있으면 셋이 모여 TBM(작업 전 안전 회의)을 한다. 사람 셋(관리자·기능공·신호수 / 작업반장·기능공·신호수 / 관리자·작업반장·기능공)도 같다. 한 마리라도 잡히거나 자면 그만둔다 */
 const PET_MAX=3;
 const PET=(()=>{let L=[],tick=0,act=false;   /* L: [{k,p}] */
-  const PPL=new Set(['worker','painter','tiler','floorer','paperer','caulker','plaster','glazier']),EQ=new Set(['excavator','dump','mixer','ladder','forklift','gondola','bosun','scissor','roller','crane']),FAIRY=new Set(['cone','helm','beacon','sf-sboot','sf-svest']);
+  const PPL=new Set(['worker','painter','tiler','floorer','paperer','caulker','plaster','glazier']),EQ=new Set(['excavator','dump','mixer','ladder','forklift','gondola','bosun','scissor','roller','crane']),FAIRY=new Set(['cone','helm','sf-hhelm','beacon','sf-sboot','sf-svest','sf-radio','sf-bell','sf-wind','sf-board']);
   const kind=k=>k==='manager'?'mgr':k==='signal'||k==='guide'?'sig':k==='angry'||k==='cs'||k==='lead'?k:PPL.has(k)?'ppl':EQ.has(k)?'eq':FAIRY.has(k)?'fairy':k.startsWith('tr-')?'tr':k.startsWith('of-')?'of':'ani';   /* tr — 공종 펫 · of — 사무 펫 */
   const NK={'dog-akita':'dog','cat-greywhite':'cat','rat-gray':'rat','chicken-white':'chick','el-baby1':'baby'};   /* 동물 짝 장면용 이름 */
   const wait=ms=>new Promise(r=>setTimeout(r,ms));
@@ -13780,6 +13780,18 @@ const PET=(()=>{let L=[],tick=0,act=false;   /* L: [{k,p}] */
     ['of-cal','of-mug',[[0,'3시! 커피 타임',1500,1],[1,'☕',1100,2]]],
     ['of-cal','manager',[[0,'이번 주 점검 일정이에요!',1700,1],[1,'달력에 표시해 둘게요',1700]]],
     ['of-phone','angry',[[0,'따르릉~',1200,1],[1,'왜 이렇게 안 받아요!',1600]]],
+    ['of-mouse','of-kbd',[[0,'나 없으면 클릭 못 해요',1600,1],[1,'나 없으면 글자 못 쳐요',1600,1]]],
+    ['of-mouse','of-laptop',[[0,'블루투스 연결 완료!',1500,1],[1,'딸깍 잘 돼요',1400,2]]],
+    ['of-kbd','of-laptop',[[0,'보고서 같이 써요!',1500,1],[1,'타다닥!',1200,2]]],
+    ['sf-radio','signal',[[0,'인양 준비, 신호 주세요!',1600,1],[1,'수신 양호! 인양 시작',1600,1]]],
+    ['sf-radio','crane',[[0,'천천히 올려 주세요~',1500],[1,'들어 올립니다~',1500,1]]],
+    ['sf-wind','crane',[[0,'풍속 10m/s 넘었어요!',1600,1],[1,'인양 작업 중지합니다',1600]]],
+    ['sf-wind','gondola',[[0,'바람이 세요! 곤돌라 내려요',1700,1],[1,'내려갑니다~',1400]]],
+    ['sf-bell','cs',[[0,'띵동! 호출이요',1300,1],[1,'네, 바로 갑니다!',1500,2]]],
+    ['sf-bell','manager',[[0,'띵동! 현장 호출',1300,1],[1,'무슨 일이에요?',1500]]],
+    ['sf-hhelm','helm',[[0,'나는 강화형!',1300,1],[1,'턱끈은 똑같이 매요~',1600,1]]],
+    ['lead','sf-board',[[0,'오늘 작업 현황 적읍시다',1600],[1,'작업 위치 확인!',1400,2]]],
+    ['manager','sf-board',[[0,'작업현황 확인합니다',1600],[1,'오늘 세대 세 곳 보수 중이에요',1800,1]]],
     ['el-bee','tr-tree',[[0,'꽃 있나요?',1400],[1,'살랑~ 여기요',1500,1],[0,'🍯',1000,2]]]];
   for(const[w,t]of Object.entries(JOB))PAIR.push([w,t,[[0,['오늘 너 보수한다!','깔끔하게 고쳐 줄게'],1600],[1,['살살 해주세요~','잘 부탁해요!'],1500,1],[0,'💪',1000,2]]]);
   for(const[g,t]of [['sf-sboot','안전화 신었나요?'],['sf-svest','조끼 입어야 잘 보여요!']])for(const b of ['ppl','sig','lead'])PAIR.push([g,'@'+b,[[0,t,1600,1],[1,['착용 완료!','넵!'],1400,2]]]);
