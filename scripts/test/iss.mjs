@@ -78,6 +78,8 @@ const txt=(pg,sel)=>pg.evaluate(s=>[...document.querySelectorAll(s)].map(e=>e.te
   ok('아래 칸 카드(로컬 = 전부)',(await pg.$$('#issStrip .iss-c')).length===3);
   ok('아래 칸 한 줄 · 현안 4줄 높이',await pg.evaluate(()=>{const c=[...document.querySelectorAll('#issStrip .iss-c')].map(e=>e.getBoundingClientRect());
     const u=document.querySelector('#issStrip .iss-c[data-sid="s1"] .iss-ul');return c.every(r=>Math.abs(r.top-c[0].top)<1)&&u.scrollHeight<=u.clientHeight+1&&u.querySelectorAll('.iss-i').length===3;}));
+  ok('현안 카드 열 1~5(위젯 설정)',await pg.evaluate(async()=>{const r=[];for(const n of [1,5,3]){const c=widCfgLoad();c.issCol=n;widCfgSave(c);widApply();await new Promise(z=>setTimeout(z,150));
+    const s=document.querySelector('#issStrip'),w=document.querySelector('#issStrip .iss-c').getBoundingClientRect().width;r.push(Math.round(s.clientWidth/w));}return r.join()==='1,5,3';}));
   await pg.click('[data-act="iss.open"]');await pg.waitForTimeout(300);
   ok('판 카드 기본 높이 = 현안 4줄',await pg.evaluate(()=>{const c=document.querySelector('#issPane .iss-c[data-sid="s2"]');return Math.abs(c.getBoundingClientRect().height-parseFloat(getComputedStyle(c).minHeight))<1&&parseFloat(getComputedStyle(c).minHeight)>150;}));
   ok('판 켬 — 아래 칸 숨음 · 단추 눌림',await pg.evaluate(()=>issOn()&&getComputedStyle($('#issStrip')).display==='none'&&$('[data-act="iss.open"]').getAttribute('aria-pressed')==='true'));
