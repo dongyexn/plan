@@ -12193,8 +12193,7 @@ const ACT={
   'wid.acc':el=>{const c=widCfgLoad();c.acc=el.dataset.k;widCfgSave(c);widApply();},
   'wid.petPick':()=>{PET_PICK=!PET_PICK;if(PET_PICK&&!window.CALAPP_PETS)petLoad().then(petSync,()=>toast('펫 그림을 불러오지 못했습니다'));petSync();},
   'wid.petCat':el=>{PET_CAT=el.dataset.k||'';petPickRender();const g=$('#wgPick .pk-g');if(g)g.scrollTop=0;},
-  'wid.pet':el=>petToggle(el.dataset.k||''),
-  'wid.petHelp':()=>{PET_HELP=!PET_HELP;petPickRender();}
+  'wid.pet':el=>petToggle(el.dataset.k||'')
 };
 /* 필터 = 업무 구분 · 진행 상태 · 권역 · 담당자 · 현장.
    팀 - 권역 - 담당자 - 현장 계층이라 위 단계를 고르면 아래 목록이 함께 좁혀진다. */
@@ -13786,7 +13785,7 @@ const PET=(()=>{let L=[],tick=0,act=false;   /* L: [{k,p}] */
     ['of-kbd','of-laptop',[[0,'보고서 같이 써요!',1500,1],[1,'타다닥!',1200,2]]],
     ['sf-radio','signal',[[0,'인양 준비, 신호 주세요!',1600,1],[1,'수신 양호! 인양 시작',1600,1]]],
     ['sf-radio','crane',[[0,'천천히 올려 주세요~',1500],[1,'들어 올립니다~',1500,1]]],
-    ['sf-wind','crane',[[0,'작업계획 기준 풍속 넘었어요!',1700,1],[1,'인양 작업 중지합니다',1600]]],
+    ['sf-wind','crane',[[0,'풍속 10m/s 넘었어요!',1600,1],[1,'인양 작업 중지합니다',1600]]],
     ['sf-wind','gondola',[[0,'바람이 세요! 곤돌라 내려요',1700,1],[1,'내려갑니다~',1400]]],
     ['sf-bell','cs',[[0,'띵동! 호출이요',1300,1],[1,'네, 바로 갑니다!',1500,2]]],
     ['sf-bell','manager',[[0,'띵동! 현장 호출',1300,1],[1,'무슨 일이에요?',1500]]],
@@ -13875,10 +13874,8 @@ function petSync(){
   petPickRender();
 }
 /* 고르기 — 누르면 올리고 다시 누르면 내린다. 3마리가 차 있으면 가장 먼저 올린 펫이 내려간다. 「없음」은 모두 내림 */
-let PET_MSG='',PET_MSG_T=0,PET_HELP=false;   /* 고르기 창 아래 줄 — 바꿔 끼운 안내(잠깐) · 사용법 펼침 */
 function petToggle(k){const c=widCfgLoad();let ks=petKeys();
-  if(!k)ks=[];else if(ks.includes(k))ks=ks.filter(x=>x!==k);else{ks.push(k);if(ks.length>PET_MAX){const out=ks[0],P=window.CALAPP_PETS||{};ks=ks.slice(-PET_MAX);
-    PET_MSG='「'+((P[out]||{}).n||out)+'」 내리고 「'+((P[k]||{}).n||k)+'」 올렸어요';clearTimeout(PET_MSG_T);PET_MSG_T=setTimeout(()=>{PET_MSG='';petPickRender();},2600);}}   /* 넷째를 고르면 가장 먼저 올린 펫이 내려감 — 알려 준다 */
+  if(!k)ks=[];else if(ks.includes(k))ks=ks.filter(x=>x!==k);else{ks.push(k);if(ks.length>PET_MAX)ks=ks.slice(-PET_MAX);}
   c.pets=ks;c.pet=ks[0]||'';widCfgSave(c);petSync();}
 function petPickRender(){
   let p=$('#wgPick');const w=$('#wgSet');
@@ -13890,13 +13887,9 @@ function petPickRender(){
   const ks=petKeys(),g=p.querySelector('.pk-g'),top=g?g.scrollTop:0,P=window.CALAPP_PETS;
   const item=([id,o])=>{const n=ks.indexOf(id);return '<button class="pk-i'+(n>=0?' on':'')+'" data-act="wid.pet" data-k="'+id+'" aria-label="'+esc(o.n)+'" aria-pressed="'+(n>=0)+'">'+(n>=0&&ks.length>1?'<i class="pk-no">'+(n+1)+'</i>':'')+'<i class="pk-pic"><img src="'+petUrl(n>=0?o.g.idle.f:o.t.f)+'" data-s="'+petUrl(o.t.f)+'" data-a="'+petUrl(o.g.idle.f)+'" alt="" loading="lazy" style="width:'+o.t.w+'px;height:'+o.t.h+'px'+(o.sm?';image-rendering:auto':'')+'"></i><span>'+esc(o.n)+'</span></button>';};
   const cats=PET_CATS.map(([c,n])=>[c,n,Object.entries(P).filter(([,o])=>(o.c||'a')===c)]);   /* 분류는 pets.js 의 c */
-  const sel=PET_CAT,fa=document.activeElement,fk=fa&&p.contains(fa)?(fa.dataset.act||'')+'|'+(fa.dataset.k||''):'';   /* 다시 그려도 키보드 초점 자리 유지 */
-  const msg=PET_MSG||(ks.length>=PET_MAX?'더 고르면 1번이 내려가요':'최대 '+PET_MAX+'마리 · 둘 이상이면 서로 대화');
-  const help=PET_HELP?'<dl class="pk-hl"><dt>누르기</dt><dd>반응과 대사</dd><dt>위에서 문지르기</dt><dd>쓰다듬기</dd><dt>끌기</dt><dd>자리 옮기기</dd><dt>머리 줄 빈 곳 누르기</dt><dd>먹이 던지기</dd><dt>2~3마리</dt><dd>서로 대화·장면</dd></dl>':'';
+  const sel=PET_CAT;
   p.innerHTML='<div class="pk-tb" role="tablist">'+[['','전체'],...PET_CATS].map(([c,n])=>'<button class="pk-c" role="tab" data-act="wid.petCat" data-k="'+c+'" aria-selected="'+(c===sel)+'">'+n+'</button>').join('')+'</div><div class="pk-g">'
-    +(sel?((cats.find(x=>x[0]===sel)||[,,[]])[2].map(item).join('')):cats.filter(x=>x[2].length).map(([,n,a])=>'<div class="pk-hd">'+n+'</div>'+a.map(item).join('')).join(''))+'</div>'+help
-    +'<div class="pk-ft"><b class="pk-cnt">'+ks.length+'/'+PET_MAX+'</b><span class="pk-msg'+(PET_MSG?' on':'')+'" role="status" aria-live="polite">'+esc(msg)+'</span><button class="pk-hb" data-act="wid.petHelp" aria-expanded="'+PET_HELP+'">사용법</button></div>';
-  if(fk){const[a,k]=fk.split('|');const f=[...p.querySelectorAll('[data-act="'+a+'"]')].find(b=>(b.dataset.k||'')===k);if(f)f.focus({preventScroll:true});}
+    +(sel?((cats.find(x=>x[0]===sel)||[,,[]])[2].map(item).join('')):cats.filter(x=>x[2].length).map(([,n,a])=>'<div class="pk-hd">'+n+'</div>'+a.map(item).join('')).join(''))+'</div>';
   const ws=$('#wgSet');if(ws)p.style.height=ws.offsetHeight+'px';   /* 설정 창과 같은 높이 — 넘치면 안에서 스크롤 */
   p.querySelector('.pk-g').scrollTop=top;   /* 고를 때 스크롤 자리 유지 */
 }
