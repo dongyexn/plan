@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1239';
+const APP_VER='1240';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -12192,6 +12192,7 @@ const ACT={
   'wid.set':()=>{const p=$('#wgSet');if(!p)return;p.classList.toggle('on');p.setAttribute('aria-hidden',p.classList.contains('on')?'false':'true');if(!p.classList.contains('on'))PET_PICK=false;widApply();},
   'wid.acc':el=>{const c=widCfgLoad();c.acc=el.dataset.k;widCfgSave(c);widApply();},
   'wid.petPick':()=>{PET_PICK=!PET_PICK;if(PET_PICK&&!window.CALAPP_PETS)petLoad().then(petSync,()=>toast('펫 그림을 불러오지 못했습니다'));petSync();},
+  'wid.petCat':el=>{PET_CAT=el.dataset.k||'';petPickRender();const g=$('#wgPick .pk-g');if(g)g.scrollTop=0;},
   'wid.pet':el=>petToggle(el.dataset.k||'')
 };
 /* 필터 = 업무 구분 · 진행 상태 · 권역 · 담당자 · 현장.
@@ -13677,13 +13678,17 @@ function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl
    라바콘·안전모·경광등 요정이 다 있으면 셋이 모여 TBM(작업 전 안전 회의)을 한다. 사람 셋(관리자·기능공·신호수 / 작업반장·기능공·신호수 / 관리자·작업반장·기능공)도 같다. 한 마리라도 잡히거나 자면 그만둔다 */
 const PET_MAX=3;
 const PET=(()=>{let L=[],tick=0,act=false;   /* L: [{k,p}] */
-  const PPL=new Set(['worker','painter','tiler','floorer','paperer','caulker']),EQ=new Set(['excavator','dump','mixer','ladder','forklift','gondola','bosun','scissor','roller','crane']),FAIRY=new Set(['cone','helm','beacon']);
-  const kind=k=>k==='manager'?'mgr':k==='signal'?'sig':k==='angry'||k==='cs'||k==='lead'?k:PPL.has(k)?'ppl':EQ.has(k)?'eq':FAIRY.has(k)?'fairy':'ani';
+  const PPL=new Set(['worker','painter','tiler','floorer','paperer','caulker','plaster','glazier']),EQ=new Set(['excavator','dump','mixer','ladder','forklift','gondola','bosun','scissor','roller','crane']),FAIRY=new Set(['cone','helm','beacon','sf-sboot','sf-svest']);
+  const kind=k=>k==='manager'?'mgr':k==='signal'||k==='guide'?'sig':k==='angry'||k==='cs'||k==='lead'?k:PPL.has(k)?'ppl':EQ.has(k)?'eq':FAIRY.has(k)?'fairy':k.startsWith('tr-')?'tr':'ani';   /* tr — 공종 펫 */
+  const NK={'dog-akita':'dog','cat-greywhite':'cat','rat-gray':'rat','chicken-white':'chick','el-baby1':'baby'};   /* 동물 짝 장면용 이름 */
   const wait=ms=>new Promise(r=>setTimeout(r,ms));
   const moveP=(p,tx,v=30)=>new Promise(res=>{const[l,r]=p.bounds();tx=Math.min(Math.max(tx,l),Math.max(l,r));let fin=false;
     const end=()=>{if(fin)return;fin=true;if(p.ok()){p.stop();p.set('idle');}res();};
     if(Math.abs(tx-p.pos())<2){end();return;}p.moveTo(tx,v,'walk',end);setTimeout(end,Math.abs(tx-p.pos())/v*1000+800);});   /* 끌기 등으로 끊겨도 기다리다 굳지 않게 */
   const face=(a,b)=>{a.turn(a.mid()<=b.mid()?1:-1);b.turn(b.mid()<a.mid()?-1:1);};
+  const runP=(p,tx,v)=>new Promise(res=>{const[l,r]=p.bounds();tx=Math.min(Math.max(tx,l),Math.max(l,r));let fin=false;   /* 달려서 — 쫓기·도망 */
+    const end=()=>{if(fin)return;fin=true;if(p.ok()){p.stop();p.set('idle');}res();};
+    if(Math.abs(tx-p.pos())<2){end();return;}p.moveTo(tx,v,'run',end);setTimeout(end,Math.abs(tx-p.pos())/v*1000+800);});
   const near=(a,b)=>{const side=a.mid()<b.mid()?-1:1;return moveP(a,b.pos()+(side<0?-(a.w()-6):b.w()-6));};
   const glad=p=>{p.set(p.cfg.g.eat?'eat':'idle');p.hop();};
   /* 장면 — m(앞 펫 종류, 뒤 펫 종류). 대사는 글자만 또는 이모지만(섞지 않음) */
@@ -13713,13 +13718,24 @@ const PET=(()=>{let L=[],tick=0,act=false;   /* L: [{k,p}] */
     {m:(a,b)=>a==='ppl'&&b==='ppl',run:async(A,B,st)=>{await near(A,B);face(A,B);A.say(petPick(['수고하십니다!','자재 좀 같이 들어요','점심 뭐 먹지']),1700);await st(1600);B.say(petPick(['수고 많으세요!','좋아요!','👍']),1500);await st(1700);}},
     {m:(a,b)=>a==='fairy'&&b==='fairy',run:async(A,B,st)=>{await near(A,B);face(A,B);A.hop();await st(300);B.hop();A.say(petPick(['안전 제일!','같이 순찰 가요']),1500);await st(1400);B.say(petPick(['좋아요!','🙌']),1400);await st(1600);}},
     {m:(a,b)=>a==='eq'&&b==='eq',run:async(A,B,st)=>{await near(A,B);face(A,B);A.say('빵!',1200);await st(1100);B.say('빵빵!',1200);await st(1500);}},
+    {m:(a,b)=>(a==='mgr'||a==='lead')&&b==='tr',run:async(A,B,st)=>{await near(A,B);face(A,B);A.say(petPick(['하자 보수 상태 점검!','마감 확인합니다']),1700);await st(1600);glad(B);B.say(petPick(['완벽합니다!','✨']),1500);await st(1800);}},
+    {m:(a,b)=>a==='angry'&&b==='tr',run:async(A,B,st)=>{await near(A,B);face(A,B);A.say(petPick(['이거 하자 아니에요?','여기 또 문제예요!']),1700);await st(1600);B.hop();B.say('바로 고쳐 드릴게요!',1700);await st(1900);}},
+    {m:(a,b)=>a==='ppl'&&b==='tr',run:async(A,B,st)=>{await near(A,B);face(A,B);A.say(petPick(['같이 마무리합시다','오늘 안에 끝내자']),1700);await st(1600);B.hop();B.say(petPick(['좋아요!','👍']),1400);await st(1700);}},
+    {m:(a,b)=>a==='tr'&&b==='tr',run:async(A,B,st)=>{await near(A,B);face(A,B);A.hop();A.say(petPick(['우리 단지 최고!','하자 없는 집!']),1600);await st(1400);B.hop();B.say(petPick(['좋아요!','🙌']),1400);await st(1700);}},
+    {m:(a,b)=>a==='cat'&&b==='rat',run:async(A,B,st)=>{await near(A,B);face(A,B);A.say('냥!',1200);B.say('찍!',1200);B.hop();await st(700);   /* 고양이가 쥐를 쫓는다 */
+      const[l,r]=B.bounds(),far=A.mid()<B.mid()?r:l;await Promise.all([runP(B,far,110),(async()=>{await wait(250);await runP(A,far+(far===r?-(A.w()-4):B.w()-4),95);})()]);
+      face(A,B);B.say('찍찍…',1200);A.hop();A.say('놓쳤다냥',1400);await st(1600);}},
+    {m:(a,b)=>a==='dog'&&b==='chick',run:async(A,B,st)=>{await near(A,B);face(A,B);A.hop();A.say('멍멍!',1200);await st(800);B.hop();B.say('꼬꼬댁!',1300);   /* 닭이 놀라 달아난다 */
+      const[l,r]=B.bounds();await runP(B,A.mid()<B.mid()?r:l,100);A.say('멍?',1100);await st(1300);}},
+    {m:(a,b)=>a==='baby'&&(b==='dog'||b==='cat'),run:async(A,B,st)=>{const dg=!!window.CALAPP_PETS&&B.cfg===window.CALAPP_PETS['dog-akita'];await near(A,B);face(A,B);A.say(dg?'멍멍이~':'냐옹이~',1300);await st(1100);
+      A.hop();A.hearts(1);await st(400);B.hop();B.hearts(1);B.say(dg?'멍!':'그르릉',1300);await st(900);A.say('까르르',1200);await st(1500);}},
     {m:(a,b)=>a==='ani'&&b==='ani',run:async(A,B,st)=>{await near(A,B);face(A,B);A.hop();A.hearts(1);await st(500);B.hop();B.hearts(1);await st(1200);}},
     {m:(a,b)=>a!=='ani'&&a!=='eq'&&b==='ani',run:async(A,B,st)=>{await near(A,B);face(A,B);A.say(petPick(['어? 귀엽다','여기 왜 왔어?']),1600);await st(1400);B.hop();B.hearts(1);await st(1600);}},
     {m:()=>true,run:async(A,B,st)=>{await near(A,B);face(A,B);A.say(petPick(['안녕?','👋']),1500);await st(1300);B.say(petPick(['안녕!','😊']),1500);await st(1700);}}];
   const RK=(a,b)=>{const ka=kind(a),kb=kind(b),x=k=>k==='cone'||k==='helm'||k==='beacon'?k:'';
-    return RULES.findIndex(R=>R.m(ka,kb)||(x(a)&&R.m(x(a),kb)));};   /* 요정은 종류(fairy)와 이름(helm 등) 둘 다로 맞춘다 */
+    return RULES.findIndex(R=>(NK[a]&&NK[b]&&R.m(NK[a],NK[b]))||R.m(ka,kb)||(x(a)&&R.m(x(a),kb)));};   /* 요정은 종류(fairy)와 이름(helm 등), 동물은 이름(NK)으로도 맞춘다 */
   /* TBM — T=[왼쪽, 가운데(진행), 오른쪽]. S: [말하는 자리, 대사, ms, 폴짝(1 자기 · 2 나머지 둘)] 뒤 「좋아!」 세 번 */
-  const TBM_JOB={worker:'자재 반입',painter:'세대 도장 보수',tiler:'욕실 타일 교체',floorer:'마루 들뜸 보수',paperer:'도배 재시공',caulker:'실리콘 재시공'};
+  const TBM_JOB={worker:'자재 반입',painter:'세대 도장 보수',tiler:'욕실 타일 교체',floorer:'마루 들뜸 보수',paperer:'도배 재시공',caulker:'실리콘 재시공',plaster:'벽 균열 미장',glazier:'창호 교체'};
   const TBM_S={
     fairy:()=>[[1,'TBM 시작합니다!',1600,1],[1,'오늘 작업: 외벽 보수',1600],[2,'위험 요인! 고소 작업',1800,1],[0,'작업 구역 통제 완료!',1700,1],[1,'안전모·안전대 착용 확인!',1700],[1,'구호 하겠습니다!',1300],[1,'무재해로 가자!',1500,2]],
     mgr:j=>[[1,'TBM 시작합니다!',1600,1],[1,'오늘 작업: '+j,1700],[2,'장비 동선은 제가 통제합니다',1900,1],[0,'보호구 착용 완료!',1700,1],[1,'안전모·안전대 착용 확인!',1700],[1,'구호 하겠습니다!',1300],[1,'무재해로 가자!',1500,2]],
@@ -13763,6 +13779,7 @@ const PET=(()=>{let L=[],tick=0,act=false;   /* L: [{k,p}] */
       let best=null;for(const o of L){if(!o.p.el||!o.p.el.isConnected||o.p.el.hidden||o.p.isBusy())continue;   /* 상호작용 중인 펫은 건너뛴다 */const d=Math.abs(o.p.mid()-x);if(!best||d<best.d)best={o,d};}
       if(best)best.o.p.throwBall(cx);}};})();
 let PET_PICK=false;   /* 펫 고르기 창 열림 */
+const PET_CATS=[['p','사람'],['t','공종'],['s','안전·장비'],['a','동물']];let PET_CAT='';   /* 고르기 창 분류 칩 — '' 는 전체(분류 제목을 붙여 이어서) */
 let petAct=performance.now();   /* 위젯 위 마지막 마우스 움직임 — 깊은 잠 판단 */
 document.addEventListener('pointermove',()=>{petAct=performance.now();if(WIDGET)PET.wake();},{passive:true});
 /* 설정의 펫(cfg.pets — 고른 순서, 최대 3 · 예전 cfg.pet 한 마리도 읽는다) → 머리 줄 펫·설정 단추·고르기 창을 맞춘다 */
@@ -13787,9 +13804,13 @@ function petPickRender(){
   let p=$('#wgPick');const w=$('#wgSet');
   if(!PET_PICK||!w||!w.classList.contains('on')||!window.CALAPP_PETS){if(p)p.remove();return;}
   if(!p){p=document.createElement('div');p.id='wgPick';p.setAttribute('role','dialog');p.setAttribute('aria-label','미니펫 고르기 — 최대 '+PET_MAX+'마리');document.body.appendChild(p);}
-  const ks=petKeys(),g=p.querySelector('.pk-g'),top=g?g.scrollTop:0;
-  p.innerHTML='<div class="pk-g"><button class="pk-i pk-none'+(ks.length?'':' on')+'" data-act="wid.pet" data-k=""><i class="pk-pic"><svg class="icn" aria-hidden="true"><use href="#i-close"></use></svg></i><span>없음</span></button>'
-    +Object.entries(window.CALAPP_PETS).map(([id,o])=>{const n=ks.indexOf(id);return '<button class="pk-i'+(n>=0?' on':'')+'" data-act="wid.pet" data-k="'+id+'" aria-label="'+esc(o.n)+'" aria-pressed="'+(n>=0)+'">'+(n>=0&&ks.length>1?'<i class="pk-no">'+(n+1)+'</i>':'')+'<i class="pk-pic"><img src="'+petUrl(o.t.f)+'" alt="" loading="lazy" style="width:'+o.t.w+'px;height:'+o.t.h+'px'+(o.sm?';image-rendering:auto':'')+'"></i><span>'+esc(o.n)+'</span></button>';}).join('')+'</div>';
+  const ks=petKeys(),g=p.querySelector('.pk-g'),top=g?g.scrollTop:0,P=window.CALAPP_PETS;
+  const item=([id,o])=>{const n=ks.indexOf(id);return '<button class="pk-i'+(n>=0?' on':'')+'" data-act="wid.pet" data-k="'+id+'" aria-label="'+esc(o.n)+'" aria-pressed="'+(n>=0)+'">'+(n>=0&&ks.length>1?'<i class="pk-no">'+(n+1)+'</i>':'')+'<i class="pk-pic"><img src="'+petUrl(o.t.f)+'" alt="" loading="lazy" style="width:'+o.t.w+'px;height:'+o.t.h+'px'+(o.sm?';image-rendering:auto':'')+'"></i><span>'+esc(o.n)+'</span></button>';};
+  const cats=PET_CATS.map(([c,n])=>[c,n,Object.entries(P).filter(([,o])=>(o.c||'a')===c)]);   /* 분류는 pets.js 의 c */
+  const sel=PET_CAT;
+  p.innerHTML='<div class="pk-tb" role="tablist">'+[['','전체'],...PET_CATS].map(([c,n])=>'<button class="pk-c" role="tab" data-act="wid.petCat" data-k="'+c+'" aria-selected="'+(c===sel)+'">'+n+'</button>').join('')+'</div><div class="pk-g">'
+    +(sel?((cats.find(x=>x[0]===sel)||[,,[]])[2].map(item).join('')):cats.filter(x=>x[2].length).map(([,n,a])=>'<div class="pk-hd">'+n+'</div>'+a.map(item).join('')).join(''))+'</div>';
+  const ws=$('#wgSet');if(ws)p.style.height=ws.offsetHeight+'px';   /* 설정 창과 같은 높이 — 넘치면 안에서 스크롤 */
   p.querySelector('.pk-g').scrollTop=top;   /* 고를 때 스크롤 자리 유지 */
 }
 function widApply(){
