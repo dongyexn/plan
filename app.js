@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1246';
+const APP_VER='1247';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -13759,7 +13759,9 @@ const PET=(()=>{let L=[],tick=0,act=false;   /* L: [{k,p}] */
     ['cs','tr-wpad',[[0,'세대 호출 들어갑니다',1600],[1,'📟',1200,1]]],
     ['sf-sboot','sf-svest',[[0,'보호구 둘이 모였네',1500,1],[1,'안전모만 오면 완벽!',1600,1]]],
     ['chicken-white','duckling',[[1,'엄마?',1200,1],[0,'…난 닭인데',1500],[1,'💛',1000,2]]],
-    ['cow','chicken-white',[[0,'음메~',1200,1],[1,'꼬꼬~',1200,1]]],
+    ['capybara','bunny-white',[[1,'당근 같이 먹자!',1500,1],[0,'…좋아',1400,2]]],
+    ['capybara','duckling',[[1,'삐약?',1200,1],[0,'…올라와',1400],[1,'삐약!',1200,2]]],
+    ['capybara','angry',[[1,'하자 언제 고쳐요!',1500],[0,'…진정해요',1600],[1,'…네',1200]]],
     ['bunny-white','dog-akita',[[0,'깡총!',1100,1],[1,'멍?',1100],[0,'깡총깡총!',1200,1]]],
     ['cat-greywhite','duckling',[[0,'냥?',1100],[1,'삐약!',1100,1]]],
     ['cs','of-stamp',[[0,'서류 결재 올립니다',1600],[1,'쾅! 승인!',1300,2]]],

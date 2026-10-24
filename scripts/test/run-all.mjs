@@ -22,6 +22,7 @@ const jobs=[
   ['잘림 검사(스크롤로 못 닿는 내용)',['scripts/test/clip-audit.mjs']],   /* 845차 */
   ['위젯 겹침·닫기',['scripts/test/widget-layers.mjs']],
   ['주요 현안',['scripts/test/iss.mjs']],
+  ['위젯 미니펫',['scripts/test/pets.mjs']],
 ];
 let failed=0;
 for(const [name,args] of jobs){ if(run(name,args)!==0) failed++; }
