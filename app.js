@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1255';
+const APP_VER='1256';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -1028,7 +1028,8 @@ const FbStore={
     if(S.tasks[from])delete S.tasks[from][iid];
     S.tasks[to]=S.tasks[to]||{};S.tasks[to][iid]=item;
     rDay();rTasks();refetchCal();rWidget();
-    const up={['calapp/tasks/'+from+'/'+iid]:null,['calapp/tasks/'+to+'/'+iid]:cleanTask(item,iid)};
+    const nx=cleanTask(item,iid);if(!nx.createdBy&&!isEditor()&&authUid())nx.createdBy=authUid();   /* 옮긴 자리는 새로 만드는 것 — 작성자 없는 옛 업무는 옮긴 사람이 맡는다 */
+    const up={['calapp/tasks/'+from+'/'+iid]:null,['calapp/tasks/'+to+'/'+iid]:nx};
     if(wasArch)up['calapp/archive/'+from+'/'+iid]=null;
     return FB.db.ref().update(up).catch(fbErr);},
   /* 사용자 삭제는 전부 여기로 — 휴지통 저장과 원본 제거를 multi-path update 한 번으로. 아카이브 사본도 함께 걷는다 */
@@ -1062,6 +1063,7 @@ const FbStore={
     const r=FB.db.ref('calapp/tasks/'+mid+'/'+iid);
     if(!item){r.remove().then(archDrop).catch(fbErr);return;}
     const next=cleanTask(item,iid),base=before?cleanTask(before,iid):null;
+    if(!base&&!next.createdBy&&!isEditor()&&authUid())next.createdBy=authUid();   /* 새로 만드는 자리(신규·보관함에서 되살림)는 작성자가 있어야 한다 — 규칙이 주인 없는 업무 생성을 막는다 */
     if(!base){const pr=r.set(next);pr.then(archDrop).catch(fbErr);return pr;}
     const patch={};
     const walk=(a,b,path='')=>{
@@ -6163,8 +6165,12 @@ async function dfPublish(){
     {const _ids=Object.keys(S.def||{}).filter(id=>(S.def[id]||[]).length);let _n=0;_ids.forEach(id=>{_n+=S.def[id].length;});
      dfpOk('src','이 PC 원본 '+_ids.length+'개 현장 · '+_n.toLocaleString()+'건');}
     dfpRun('keep');
+    /* 다른 PC 가 이 PC 업로드보다 나중에 같은 달을 게시했으면, 그 현장은 이 PC 의 옛 원본으로 덮지 않고 서버 게시본을 유지한다 */
+    let _srv=null;try{_srv=(await FB.db.ref('report/'+rm+'/_meta').once('value')).val();}catch(e){}
+    const _me=String((S.user&&S.user.email)||''),_srvAt=_srv&&_srv.publishedBy&&_srv.publishedBy!==_me?Number(_srv.publishedAt)||0:0;
+    const _stale=new Set(_srvAt?Object.keys(S.def||{}).filter(id=>(S.def[id]||[]).length&&(Date.parse((DFMETA.lastUp||{})[id]||'')||0)<_srvAt):[]);
     /* ⚠ 이 PC 에 원본이 있는 현장만 새로 계산해 쓰고, 없는 현장은 직전 게시본을 그대로 남긴다 — 빈 배열로 계산하면 0 으로 덮인다 */
-    const _hasRows=id=>((S.def||{})[id]||[]).length>0;
+    const _hasRows=id=>((S.def||{})[id]||[]).length>0&&!_stale.has(id);
     const _keepSites=dfSites().filter(s=>!_hasRows(s.id));
     const _keepKpi={};
     for(const s2 of _keepSites){
@@ -6198,7 +6204,7 @@ async function dfPublish(){
         const tag=dfIsPre(s2)?' <span style="font-size:11px;color:var(--lbl3)">인수 전</span>':'';
         /* ⚠ 이 PC 에 원본이 없는 현장은 「유지」로 표시 — 0 으로 덮이지 않는다는 걸 게시 전에 알린다 */
         if(!k)return _row(esc(s2.name)+tag+' <span style="font-size:11px;color:var(--lbl3)">원본 없음 · 게시 제외</span>','—','—','—',false,false);
-        return _row(esc(s2.name)+tag+(isNew?'':' <span style="font-size:11px;color:var(--bl)">직전 게시본 유지</span>'),
+        return _row(esc(s2.name)+tag+(isNew?'':_stale.has(s2.id)?' <span style="font-size:11px;color:var(--rd)">서버가 더 새것 · 유지</span>':' <span style="font-size:11px;color:var(--bl)">직전 게시본 유지</span>'),
           k.tR.toLocaleString(),k.unr.toLocaleString(),(k.tR>0?(k.res/k.tR*100).toFixed(1):'0.0')+'%',false,k.unr>0);}).join('');
       /* 원본 없이 유지되는 현장이 있으면 경고 — 대시보드 추이(wks)·공종 집계(am)는 이 PC 원본으로만 계산돼 KPI 합과 어긋난다.
          운영은 월초에 전 현장을 한 번에 넣으므로 합산 대신 경고로 둔다 */
@@ -6246,12 +6252,17 @@ async function dfPublish(){
     const _dk='report/'+rm+'/_dash',_mk='report/'+rm+'/_meta',_ik='reportIndex/'+rm;
     const _sk=Object.keys(upd).filter(k=>k!==_dk&&k!==_mk&&k!==_ik);
     const _mb=Object.keys(upd).reduce((a,k)=>a+JSON.stringify(upd[k]).length,0)/1048576;
+    /* 두 관리자가 같은 달을 동시에 게시하면 서로의 현장 값으로 합계를 낸다 — 쓰는 동안 _meta/lock 을 잡는다(10분 지난 잠금은 끊긴 것으로 보고 넘겨받는다).
+       마지막 _meta 쓰기가 잠금 없는 기록으로 통째 바뀌므로 성공하면 저절로 풀린다 */
+    {const _lk=await FB.db.ref('report/'+rm+'/_meta/lock').transaction(c=>(c&&c.by!==_me&&Date.now()-(Number(c.at)||0)<600000)?undefined:{by:_me,at:Date.now()});
+     if(!_lk.committed){const c=_lk.snapshot.val()||{};dfpFail('다른 관리자('+String(c.by||'').split('@')[0]+')가 게시하는 중입니다');toast('다른 관리자가 이 달을 게시하는 중입니다 · 끝난 뒤 다시 눌러 주세요',4500);return;}
+     DFPUB.lock=rm;}
     DFPUB.wrote=0;DFPUB.wroteN=_sk.length;DFPUB.dashOk=false;
     dfpRun('write','게시본 '+rm+' · '+_rows.length+'개 현장 · '+_mb.toFixed(1)+'MB · 현장씩 나눠','현장 0 / '+_sk.length);
     for(const k of _sk){await FB.db.ref().update({[k]:upd[k]});DFPUB.wrote++;dfpCnt('write','현장 '+DFPUB.wrote+' / '+_sk.length);}
     dfpCnt('write','대시보드');
     await FB.db.ref().update({[_dk]:upd[_dk]});DFPUB.dashOk=true;
-    await FB.db.ref().update({[_mk]:upd[_mk],[_ik]:upd[_ik]});
+    await FB.db.ref().update({[_mk]:upd[_mk],[_ik]:upd[_ik]});DFPUB.lock='';   /* _meta 를 통째 써서 잠금도 풀렸다 */
     DFPUB.wrote=-1;   /* 다 씀 — 이후 실패(뒤 게시월 확인)는 게시본과 무관 */
     dfpOk('write');
     /* 소비자 캐시 무효화 — 같은 화면에서 곧바로 새 게시본을 본다 */
@@ -6278,7 +6289,8 @@ async function dfPublish(){
     DFPUB.res={at:Date.now(),n:_n,k:_k,tR,tU,pR,warn:_warn,line:'오류 없음 · '+(_k?'유지한 현장 '+_k+'개':'유지한 현장 없음')+' · '+_staleLine};
     rDfPub();
   }catch(e){console.error('[게시] 실패',e);dfpFail(navigator.onLine===false?'연결이 끊겨 하지 못했습니다':'하지 못했습니다 · 연결을 확인해 주세요');toast('게시하지 못했습니다 · 연결을 확인한 뒤 다시 눌러 주세요');}   /* 원문은 콘솔에 */
-  finally{if(btn)btn.disabled=false;}
+  finally{if(btn)btn.disabled=false;
+    if(DFPUB&&DFPUB.lock){const rm=DFPUB.lock;DFPUB.lock='';FB.db.ref('report/'+rm+'/_meta/lock').remove().catch(()=>{});}}   /* 중간에 실패하면 잠금을 푼다 */
 }
 
 /* ── 게시 카드(설정 화면 · 관리자 전용) 상태 채우기 + 배선 ── */
