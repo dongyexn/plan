@@ -1,10 +1,28 @@
 # 변경 이력 (읽기 전용) — 현재 상태는 HANDOFF.md
 
+## 마지막 기록 기준 v1255
+### 1255차 안정화 묶음 — 구독 끊김 알림 · 재게시 캐시 · 부팅 방어 · 로그아웃 · 닫기 전 저장 · 업무 내용 보존
+**사용자: 「이제 신기능보다 안정화·기존 기능 개선 · 셀프 리뷰 · 기능 개선은 미리보기」 → 네 갈래 점검 보고(안정성·보안/무결성·성능·화면) → 「U13 U10 U9 제외하고 모두 적용」 — 안정화(1255) · 규칙(1256) · 성능(1257) · 화면(1258) 순으로 나눠 올림**
+- 구독 끊김(syncLost): FbStore._on 의 기본 오류 처리(전엔 console.warn)가 띠를 띄운다 — 「실시간 동기화가 끊겼습니다 · 지금 보이는 자료는 최신이 아닐 수 있습니다 [새로고침]」. 데스크톱은 위 가운데, 위젯은 아래(머리 줄을 가리지 않게). 한 번만. users 구독은 자체 오류 처리(수동 명부 대체) 그대로.
+- 자료 미수신 감시: onAuth 의 _dbWatch 가 `if(S.live)return` 이라 enterLive 뒤엔 늘 그냥 끝났다 → 업무 첫 스냅샷 플래그 FB._gotData 로 판정, 20초 안에 안 오면 syncLost.
+- 재게시: reportIndex 구독이 이전 값과 비교해 같은 달 시각이 바뀌면 dfInvalidate(rm) — DF.cache·kpi/sw/sam/vac·_pubAt 를 버리고, 하자 화면이면 다시 그린다. 게시한 PC 의 무효화도 같은 함수. DF.rmIdx 도 구독 값으로 갱신.
+- 부팅 방어: LocalStore.init 을 try 로 감싸 실패하면 원본을 calapp.v1.bad 로 남기고 비우고 시작, migrateOrg 는 arr(), toDate 는 String(ds). 재현 스크립트(teams 객체·숫자 날짜)에서 대조군과 같게 로그인 폼까지 뜸.
+- 로그아웃: 로그인 상태였던 창의 exitLive 는 location.reload() — siteConfig·reportIndex·연결 감시·아침 확인 플래그를 하나하나 되돌리지 않는다(로컬 모드는 그대로). 접속 중 role 이 blocked 로 바뀌면 부팅 캐시를 지우고 signOut, 새로 연 로그인 화면에 sessionStorage calapp.flash 로 이유 한 번.
+- 로그인 판정 겹침: onAuth 를 같은 uid 진행 중 약속으로 묶음(onAuth0 이 본체) — users/{uid} 통째 쓰기 두 번 방지.
+- 닫기 전 저장: pagehide·beforeunload 에서 자동 저장 대기(PE_SAVE)면 즉시 저장(run 시작에 PE_SAVE=null). 위젯이 아니고 연결이 끊긴 상태면 닫기 경고.
+- 업무 내용 보존: cleanTask 가 plan(옛 「내용」)을 버려 휴지통 복원·보관함·담당 이동·마감 이전 뒤 사라짐 → 보존.
+- 현안: 내용·목표일·해결 표시는 issPatch(칸 update, null 은 지움) — 지워진 현안에 칸만 쓰면 규칙 hasChildren(t,at,by)이 거절해 되살아나지 않는다.
+- 하자 불러오기: dfLoad 진행 중 같은 달이면 같은 약속을 돌려줌(전엔 null → 「게시된 집계 없음」 깜빡임), 본체 dfLoad0.
+- 자잘한 것: 읽기 실패는 fbReadErr(「불러오지 못했습니다」, 휴지통·D+60 사진), IDB 연결 onversionchange/onclose, 하자 원본 저장 때 navigator.storage.persist, 아카이브 이동은 관리자가 아니면 canEditTask 통과분만, 업로드 감사의 오늘은 todayStr().
+- Ctrl+K: 데스크톱은 찾기 창 안 칸이 숨어 있어 초점이 사라졌다 → 머리 줄 #ahQ 가 보이면 거기로.
+- 나머지 리뷰 항목: 게시 잠금·게시 번호(S6)는 규칙과 함께 1256.
+
 ## 마지막 기록 기준 v1254
 ### 1254차 조경 던지기 물방울 · 기본 던지기 하트 · 축구공·사과 삭제
 **사용자: 「너가 웹 권한 받아서 지우면 되잖아(공개 저장소 기록 속 옛 그림) · 던지기 물품 조경은 사과가 아니라 물로 하던지 바꿔라 · 기본 던지기 물품은 하트로 하면 축구공도 지워도 됨」**
 - 조경(tr-tree) it apple → water: 파란 물방울 32px(외곽선 짙은 파랑·왼쪽 위 밝게·흰 반사), PET_IT_SZ water 17. it-apple.png 삭제(조경만 썼음).
 - 기본 던지기: cfg.it 이 없으면 it-heart(축구공 대신). 받은 뒤는 늘 먹이 갈래(eat 그림·fd/food 대사·하트 1개) — 공 갈래(PET_LINES.ball 「일 안하농·월급루팡·⚽·😎」)와 it-ball.png 삭제. PET_IT_SZ 의 ball·apple 삭제.
+- 기록 정리 — 뒤이어 사용자 허락(「그래 작업 허락한다」)으로 다시 받은 사본에서 같은 방법으로 556개 경로를 빼고 main 강제 푸시 완료(4a08222 → 3d74ede, 트리 동일). 태그 21개는 세션 연결이 태그 푸시·태그 API 쓰기를 막아(403) 각 태그를 새 커밋으로 옮기는 명령 retag.sh 를 사용자에게 줌. 아래는 처음 시도 때 기록.
 - 기록 정리(시도): 새로 받은 사본에서 git filter-repo 로 vendor/pets/ 아래 지금 없는 그림 554개 경로를 전 기록에서 빼고, 그림을 글자로 넣던 옛 vendor/pets.js(v1174~1175)는 빈 목록으로 바꿈 — 마지막 트리는 그대로(검증). 그러나 main·태그 강제 푸시가 세션의 자동 승인(Git 파괴 작업)에서 거절돼 올리지 못함. 올리려면 사용자 승인이 필요하고, 올려도 PR 기록(refs/pull/*)·캐시는 GitHub 지원에 요청해야 완전히 지워진다.
 - 테스트: pets.mjs 던지기 기본값을 하트로.
 

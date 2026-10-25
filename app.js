@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1254';
+const APP_VER='1255';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -572,7 +572,7 @@ function holOf(ds){
   if(HOLI[ds])return{n:HOLI[ds],h:true};
   const a=ANNIV[ds.slice(5)];return a?{n:a,h:false}:null;
 }
-function toDate(ds){const[a,b,c]=ds.split('-').map(Number);return new Date(a,b-1,c);}
+function toDate(ds){const[a,b,c]=String(ds).split('-').map(Number);return new Date(a,b-1,c);}
 function addDays(ds,n){const d=toDate(ds);d.setDate(d.getDate()+n);return dstr(d);}
 function addMonths(ds,n){const d=toDate(ds);const day=d.getDate();d.setDate(1);d.setMonth(d.getMonth()+n);
   const last=mDays(d.getFullYear(),d.getMonth()+1);d.setDate(Math.min(day,last));return dstr(d);}
@@ -738,6 +738,7 @@ function cleanTask(t,iid){
   }
   if(t.body)o.body=String(t.body).slice(0,2000);
   if(t.prog)o.prog=String(t.prog).slice(0,2000);
+  if(t.plan)o.plan=String(t.plan).slice(0,2000);   /* 옛 「내용」 칸 — 입력은 없어졌지만 있던 값은 보여 준다. 빠뜨리면 복원·이동 때 사라진다 */
   if(t.site)o.site=String(t.site).slice(0,40);
   if(kindOf(t.kind))o.kind=kindOf(t.kind);
   if(t.color)o.color=String(t.color).slice(0,16);
@@ -766,7 +767,7 @@ function trashWrap(it){return{text:String(it.text||'').slice(0,500),date:String(
   deletedAt:Date.now(),z:LZString.compressToBase64(JSON.stringify(cleanTask(it))),...ownMeta(it)};}
 function trashAll(cb){                 /* {sid:{iid:wrap}} — 구독하지 않고 열 때마다 읽는다 */
   if(!S.live){cb((LocalStore._d&&LocalStore._d.trash)||{});return;}
-  if(isEditor()){FB.db.ref('calapp/trash').get().then(s=>cb(s.val()||{})).catch(e=>{fbErr(e);cb({});});return;}
+  if(isEditor()){FB.db.ref('calapp/trash').get().then(s=>cb(s.val()||{})).catch(e=>{fbReadErr(e);cb({});});return;}
   /* 1085: 휴지통 읽기 규칙이 보이는 범위와 같다 — 규칙은 거르개가 아니라 통째 읽기는 거절된다.
      트리마다 통째(trashTreeOk) 또는 질의(내가 만든 것 · 공구장은 내 권역 현장)로 나눠 읽어 합친다 */
   const me=authUid(),rg=myRank()==='lead'?myRegion():'',out={};
@@ -845,7 +846,7 @@ function archMigrate(){
   if(S.snap)return;   /* 스냅샷은 읽기 전용 */
   const cut=archCutStr(),cutMs=Date.now()-ARCH_AFTER,moves=[];
   Object.keys(S.tasks||{}).forEach(sid=>Object.keys(S.tasks[sid]||{}).forEach(iid=>{
-    const it=S.tasks[sid][iid];if(archDue(it,cut,cutMs))moves.push({sid,iid,it});}));
+    const it=S.tasks[sid][iid];if(archDue(it,cut,cutMs)&&(!S.live||isEditor()||canEditTask(it,sid)))moves.push({sid,iid,it});}));   /* 고칠 수 없는 업무가 섞이면 묶음 전체가 거부된다 — 내가 옮길 수 있는 것만 */
   if(!moves.length)return;
   if(!S.live){
     const d=LocalStore._d;d.archive=d.archive||{};
@@ -939,7 +940,11 @@ function lsSave(d){try{localStorage.setItem(LS_KEY,JSON.stringify(d));}catch(e){
 const LocalStore={
   name:'local',
   _d:null,
-  init(){this._d=lsLoad();this._d.plans=this._d.plans||{};this._d.recur=this._d.recur||{};this._d.org=this._d.org||{teams:[],regions:[],sites:[]};this._d.tasks=this._d.tasks||{};this._d.cfg=this._d.cfg||{};this._d.people=this._d.people||{};this._d.prefs=this._d.prefs||{};this._d.offdays=this._d.offdays||{};
+  init(){try{this._init();}catch(e){   /* 이 PC 저장 자료가 깨져도 로그인 화면까지는 뜨게 — 깨진 원본은 옆에 남기고 빈 자료로 시작 */
+    console.warn('[로컬 자료] 읽지 못해 비우고 시작합니다',e);
+    try{localStorage.setItem(LS_KEY+'.bad',localStorage.getItem(LS_KEY)||'');localStorage.removeItem(LS_KEY);}catch(_){}
+    this._init();}},
+  _init(){this._d=lsLoad();this._d.plans=this._d.plans||{};this._d.recur=this._d.recur||{};this._d.org=this._d.org||{teams:[],regions:[],sites:[]};this._d.tasks=this._d.tasks||{};this._d.cfg=this._d.cfg||{};this._d.people=this._d.people||{};this._d.prefs=this._d.prefs||{};this._d.offdays=this._d.offdays||{};
     migrateOrg(this._d);
     const moved=migratePlans(this._d)|migrateDue(this._d);
     normOrg(this._d.org);
@@ -1012,7 +1017,7 @@ function bootCacheHas(){try{return localStorage.getItem(BOOT_KEY)!==null;}catch(
 const FbStore={
   name:'fb',
   init(){},
-  _on(path,cb,onErr){const r=FB.db.ref(path);r.on('value',s=>cb(s.val()),e=>{if(onErr)onErr(e);else console.warn('[FB] read',path,e);});FB._subs.push(r);},
+  _on(path,cb,onErr){const r=FB.db.ref(path);r.on('value',s=>cb(s.val()),e=>{if(onErr)onErr(e);else syncLost(path,e);});FB._subs.push(r);},   /* 서버가 구독을 끊으면(권한·보안 확인) 다시 붙지 않는다 — 알린다 */
   putPlan(p){const{sid,iid,item,prevSid}=planToTask(p);
     /* 소속(sid) 이동은 옛 자리 삭제·새 자리 쓰기를 multi-path update 한 번으로.
        ⚠ 따로 보내면 규칙이 새 자리 쓰기만 거부해 업무가 사라진다 — 한 번에 보내면 하나라도 거부될 때 둘 다 반영되지 않는다 */
@@ -1151,8 +1156,11 @@ const FbStore={
     };
     /* 최신 게시월 따라가기 */
     FB.db.ref('reportIndex').on('value',snap=>{
-      const ks=Object.keys(snap.val()||{}).sort();
+      const v=snap.val()||{},ks=Object.keys(v).sort(),prev=FB._rIdx;FB._rIdx=v;DF.rmIdx=v;
+      /* 같은 달을 다시 게시하면 그 달 시각만 바뀐다 — 다른 PC 도 그 달 캐시를 버리고 새 게시본을 읽는다(회의 직전 정정 대비) */
+      let re=false;if(prev)ks.forEach(m=>{if(prev[m]!==undefined&&prev[m]!==v[m]){dfInvalidate(m);re=true;}});
       if(ks.length)attach(ks[ks.length-1]);
+      if(re&&S.view==='defect'&&!tkHold())rDefect();
     },()=>{
       /* 인덱스를 못 읽으면 이번 달부터 거슬러 24개월을 훑어 한 번만 붙인다 */
       (async()=>{
@@ -1181,7 +1189,7 @@ const FbStore={
     /* siteConfig 구독은 부팅 때 건다 — 하자 화면을 안 연 세션도 토글값이 맞아야 dfSiteCfgWrite 가 공가세대를 잘못 덮지 않는다 */
     dfSubSiteCfg();
     this.bindReportOrg();
-    this._on('calapp/tasks',v=>{S.tasks=v||{};S.loading=false;bootCacheSave();
+    this._on('calapp/tasks',v=>{S.tasks=v||{};S.loading=false;FB._gotData=true;bootCacheSave();
       /* 첫 스냅샷이 온 뒤 한 번 — 놓친 담당자 업무를 아침 확인으로 묻는다 */
       if(!FB._mrv){FB._mrv=true;setTimeout(morningReview,WIDGET?1400:800);   /* 위젯은 첫 렌더가 조금 늦다 */
         setTimeout(archMigrate,8000);   /* 오래 끝난 업무를 구독 밖으로 — 부팅 통신이 잦아든 뒤 */
@@ -1198,7 +1206,9 @@ const FbStore={
       const me=S.user&&S.accounts[S.user.uid];
       if(me){FB.userRec={...(FB.userRec||{}),...me};
         /* 접속 중 role 이 바뀌면(관리자 지정) 새로고침 없이 반영한다 */
-        if(['editor','viewer','blocked'].includes(me.role)&&me.role!==S.role)S.role=me.role;}
+        if(['editor','viewer','blocked'].includes(me.role)&&me.role!==S.role)S.role=me.role;
+        /* 접속 중 차단되면 바로 내보낸다 — 남아 있으면 구독은 끊기고 쓰기만 거부돼 헷갈린다. 새로 연 로그인 화면에 이유를 보인다 */
+        if(me.role==='blocked'){bootCacheClear();try{sessionStorage.setItem('calapp.flash','이 계정은 접근이 차단되었습니다. 관리자에게 문의하세요.');}catch(_){}try{FB.auth.signOut();}catch(_){}return;}}
       rAcct();                                   /* 사이드바 아바타·이름도 함께 갱신 */
       pendSync();                                /* 가입 승인 대기 — 관리자 배지·알림 */
       /* ⚠ 담당자 색(avColor)이 바뀌면 업무 색도 바뀐다 — 카드뿐 아니라 달력·일자 패널·위젯도 다시 그린다 */
@@ -1218,6 +1228,8 @@ const FbStore={
   }
 };
 let fbErrT=0,fbErrMsg='';
+/* 읽기 실패 — 「저장하지 못했습니다」가 아니라 못 불러왔다고 말한다(빈 목록을 「자료 없음」으로 오해하지 않게) */
+function fbReadErr(e){console.warn('[FB] 읽기',e);toast('불러오지 못했습니다 · 연결을 확인한 뒤 다시 열어 주세요',4000);}
 function fbErr(e){
   console.warn('[FB]',e);
   const c=String((e&&e.code)||'');
@@ -1286,7 +1298,7 @@ function migratePlans(d){
   return true;
 }
 function migrateOrg(d){
-  const t=(d.org&&d.org.teams)||[];
+  const t=arr(d.org&&d.org.teams);   /* 배열이 아닌 모양(객체)으로 저장돼 있어도 부팅이 멈추지 않게 */
   if(!t.some(x=>x&&x.ggs))return;
   d.people=d.people||{};
   t.forEach(tm=>arr(tm.ggs).forEach(g=>arr(g.members).forEach(m=>{
@@ -1517,9 +1529,15 @@ function pendWatch(user){pendStop();PEND_REF=FB.db.ref('users/'+user.uid+'/role'
   PEND_REF.on('value',sn=>{const r=sn.val();if(r==='pending')return;pendStop();
     if(r==='viewer'||r==='editor'){onAuth(user);return;}
     cvView('login');fbMsg(r==='blocked'?'승인되지 않은 계정입니다. 관리자에게 문의하세요.':'계정 정보를 확인할 수 없습니다. 다시 로그인해 주세요.');},()=>pendStop());}
-async function onAuth(user){
+/* 로그인 판정이 겹쳐 돌지 않게 — 로그인 단추(fbDoLogin)와 onAuthStateChanged 가 같은 사용자로 거의 동시에 부른다(계정 기록을 두 번 통째로 쓴다) */
+let _authP=null,_authU;
+function onAuth(user){const u=user?user.uid:null;if(_authP&&_authU===u)return _authP;
+  _authU=u;const p=_authP=Promise.resolve().then(()=>onAuth0(user)).finally(()=>{if(_authP===p)_authP=null;});return p;}
+async function onAuth0(user){
   clearTimeout(FB._watch);FB._authSeen=true;   /* 부팅 대기가 '서버 응답 대기'와 '자동 로그인 대기'를 가른다 */
-  if(!user){pendStop();exitLive();if(cvCur()==='verify'||cvCur()==='wait')cvView('login');showGateForm();return;}
+  if(!user){pendStop();exitLive();if(cvCur()==='verify'||cvCur()==='wait')cvView('login');showGateForm();
+    try{const m=sessionStorage.getItem('calapp.flash');if(m){sessionStorage.removeItem('calapp.flash');fbMsg(m);}}catch(_){}   /* 접속 중 차단 등 — 새로 연 뒤 한 번 */
+    return;}
   if(!fbDomainOk(user.email)){showGateForm();fbMsg('@hdec.co.kr 계정만 접근할 수 있습니다.');try{FB.auth.signOut();}catch(e){}return;}
   if(!user.emailVerified){
     showGateForm();cvView('verify',user.email);   /* 인증 대기 화면 — 자동 확인 · 다시 보내기 · 다른 계정 */
@@ -1534,9 +1552,8 @@ async function onAuth(user){
   /* ⚠ 로그인은 됐는데 데이터가 안 오면 App Check 토큰 문제일 가능성이 크다 — 토큰이 없으면 DB 가 읽기를 거부하고 앱은 말없이 기다린다 */
   clearTimeout(FB._dbWatch);
   FB._dbWatch=setTimeout(()=>{
-    if(S.live)return;
-    showGateForm();
-    fbMsg('로그인은 되었지만 데이터를 읽지 못했습니다 · 보안 확인(App Check) 토큰을 받지 못한 것으로 보입니다. 관리자에게 알려 주세요.');
+    if(FB._gotData||!S.live)return;   /* 업무 자료를 한 번이라도 받았으면 정상 — S.live 는 들어가자마자 켜지므로 판정에 못 쓴다 */
+    syncLost('calapp/tasks',{code:'no-data'});
   },20000);
   hideCover(true);
 }
@@ -2213,6 +2230,16 @@ function fbInit(){
     FB.auth.onAuthStateChanged(onAuth);
   }catch(e){console.warn('[FB] init',e);showGateForm();fbMsg('서버에 연결할 수 없습니다 · 연결을 확인해 주세요');}
 }
+/* 실시간 구독이 끊김 — 서버가 리스너를 취소하면(보안 확인 강제·규칙 변경·권한 변경) SDK 는 다시 붙지 않는다.
+   지금 보이는 자료가 최신이 아닐 수 있음을 띠로 알리고 새로 고치게 한다(한 번만) */
+function syncLost(path,e){
+  console.warn('[FB] 구독 끊김',path,e);
+  if(!S.live||FB._lost)return;FB._lost=true;
+  const d=document.createElement('div');d.id='syncLost';d.setAttribute('role','alert');
+  d.innerHTML='<span>실시간 동기화가 끊겼습니다 · 지금 보이는 자료는 최신이 아닐 수 있습니다</span><button type="button" class="toast-undo">새로고침</button>';
+  d.querySelector('button').addEventListener('click',()=>location.reload());
+  document.body.appendChild(d);
+}
 /* ═══════════ 연결 끊김 ═══════════
       RTDB 는 끊겨도 쓰기를 큐에 쌓았다가 다시 붙으면 보낸다 — 상태를 눈에 보이게만 한다.
       ⚠ navigator.onLine 은 사내망에서 인터넷만 끊긴 경우를 못 잡는다 → .info/connected 를 함께 본다 */
@@ -2276,6 +2303,8 @@ function enterLive(u){
   setTimeout(pwaCard,2500);   /* 홈 화면 추가·카카오톡 안내(한 번) — 첫 화면이 자리 잡은 뒤 */
 }
 function exitLive(){
+  /* 로그인 중이던 창에서 로그아웃(또는 세션 만료)하면 새로 연다 — 구독·플래그(siteConfig·연결 감시·아침 확인)를 하나하나 되돌리지 않는다 */
+  if(S.live&&!DEV_LOCAL){S.live=false;try{location.reload();}catch(e){}return;}
   S.live=false;S.user=null;S.loading=false;S.conn=null;netPaint();
   FB._subs.forEach(r=>{try{r.off();}catch(e){}});FB._subs=[];
   store=LocalStore;LocalStore.init();
@@ -3721,7 +3750,7 @@ function planAutosave(now){
      달력 다시 그리기는 0.25초 모아서 */
   if(S.planEdit&&S.planEdit.draft&&$('#dpEdit')){planCollect(S.planEdit.draft);clearTimeout(PE_CAL);PE_CAL=setTimeout(refetchCal,250);}
   {const f=$('#dpEdit');if(f)peChipPaint(f);}   /* 칩 글자 — 입력·코드로 바꾼 값(기간 끌기·날짜 누름) 모두 여기를 지난다(이 폼만) */
-  const run=()=>{
+  const run=()=>{PE_SAVE=null;
     const pe=S.planEdit;if(!pe||!$('#dpEdit'))return;
     const p=planCollect(pe.draft);
     if(!p||!p.title)return;                 /* 제목이 없으면 아직 만들지 않는다 */
@@ -4821,7 +4850,7 @@ document.addEventListener('keydown',e=>{
 function nqOpen(on){
   const p=$('#nqPanel');if(!p)return;  p.classList.toggle('on',!!on);
   if(!on&&p.contains(document.activeElement))document.activeElement.blur();   /* 숨은(opacity 0) 입력칸에 초점이 남으면 tkHold 로 실시간 반영·자동 업데이트가 멈추고 ←→ 도 먹지 않는다 */
-  p.setAttribute('aria-hidden',on?'false':'true');  if(on&&!nqFromHdr)setTimeout(()=>{const q=$('#nqQ');if(q){q.focus();q.select();}},60);   /* 헤더에서 칠 땐 포커스를 빼앗지 않는다 */
+  p.setAttribute('aria-hidden',on?'false':'true');  if(on&&!nqFromHdr)setTimeout(()=>{const h=$('#ahQ'),q=(h&&h.offsetWidth)?h:$('#nqQ');if(q){q.focus();q.select();}},60);   /* 헤더에서 칠 땐 포커스를 빼앗지 않는다 · 데스크톱은 창 안 칸이 숨어 있다 — 머리 줄 찾기 칸으로(Ctrl+K) */
 }
 function nqMark(text,q){
   const t=String(text||'');
@@ -5444,7 +5473,10 @@ function dbOpen(){
       if(!db.objectStoreNames.contains('meta'))db.createObjectStore('meta',{keyPath:'id'});
       if(!db.objectStoreNames.contains('defects'))db.createObjectStore('defects',{keyPath:'sid'});
     };
-    req.onsuccess=()=>{clearTimeout(to);_db=req.result;done(res,_db);};
+    req.onsuccess=()=>{clearTimeout(to);_db=req.result;
+      _db.onversionchange=()=>{try{_db.close();}catch(e){}_db=null;};   /* 새 판(DB_VER)이 열리려 하면 비켜 준다 — 안 비키면 새 탭이 막혀 원본이 조용히 안 보인다 */
+      _db.onclose=()=>{_db=null;};   /* 브라우저가 닫으면 다음에 다시 연다 */
+      done(res,_db);};
     req.onerror=()=>{clearTimeout(to);done(rej,req.error);};
     req.onblocked=()=>{clearTimeout(to);done(rej,new Error('indexedDB.open blocked'));};
   });
@@ -5477,6 +5509,7 @@ function defDecode(row){
   }catch(e){console.warn('defDecode failed',e);return null;}
 }
 async function defSave(sid,items){
+  try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});}catch(e){}   /* 하자 원본은 이 PC 에만 있다 — 디스크가 빠듯해도 먼저 지우지 않게 청한다 */
   try{
     const json=JSON.stringify(items||[]);
     const{data,enc}=defEncode(json);
@@ -5624,7 +5657,7 @@ function handleParsed(rowsRaw,hs){
   go();
 }
 function auditUpload(items){
-  const today=new Date(Date.now()+9*36e5).toISOString().slice(0,10); // KST 기준 오늘 YYYY-MM-DD
+  const today=todayStr();   /* 앱 전체와 같은 「오늘」(이 PC 날짜) */
   let futR=0,futC=0,noDate=0;const rn=new Map();
   for(const i of items){
     if(!i.receiptDate)noDate++;else if(i.receiptDate>today)futR++;
@@ -6222,8 +6255,7 @@ async function dfPublish(){
     DFPUB.wrote=-1;   /* 다 씀 — 이후 실패(뒤 게시월 확인)는 게시본과 무관 */
     dfpOk('write');
     /* 소비자 캐시 무효화 — 같은 화면에서 곧바로 새 게시본을 본다 */
-    delete DF.cache[rm];
-    Object.keys(DF.kpi).forEach(k=>{if(k.indexOf(rm+'/')===0){delete DF.kpi[k];delete DF.sw[k];delete DF.sam[k];delete DF.vac[k];}});
+    dfInvalidate(rm);
     {const _now=new Date().toISOString();DFMETA.pubAt=DFMETA.pubAt||{};dfSites().forEach(s2=>{if(_hasRows(s2.id))DFMETA.pubAt[s2.id]=_now;});DF._pubAt[rm]=_now;dfMetaSave();dfTopbar();if(S.view==='settings')dfProdCardFill();}   /* 미게시 현장 목록도 갱신 */   /* 게시 도장 — 이후 원본이 안 바뀌면 「미게시 변경」이 꺼진다 */
     dfProdCardFill();
     const _n=_rows.length,_k=_keepSites.filter(s2=>_keepKpi[s2.id]).length;
@@ -6670,7 +6702,11 @@ async function dfLoad(){
   if(!S.live||!FB.db||!rm){S.dfRm='';return null;}
   S.dfRm=rm;
   if(DF.cache[rm])return DF.cache[rm];
-  if(DF.busy)return null;
+  if(DF._ld&&DF._ld.rm===rm)return DF._ld.p;   /* 불러오는 중에 또 부르면 같은 결과를 기다린다(null 을 주면 「게시된 집계 없음」이 잠깐 뜬다) */
+  const p=dfLoad0(rm);DF._ld={rm,p};
+  try{return await p;}finally{if(DF._ld&&DF._ld.p===p)DF._ld=null;}
+}
+async function dfLoad0(rm){
   DF.busy=true;DF.lerr=false;
   try{
     const sites=dfSites();
@@ -6697,6 +6733,11 @@ function dfLocalRows(sid){const a=(S.def||{})[sid];return (a&&a.length)?a:null;}
 /* 게시 시각은 서버(report/{rm}/_meta/publishedAt)도 본다 — 로컬 도장만 보면 다른 PC 가 나중에 게시해도 옛 원본이 「미게시 변경」으로 남는다.
    DF._pubAt[rm] 은 dfPubAtLoad() 가 비동기로 채운다. 아직 없으면 로컬 도장만으로 판정 */
 DF._pubAt={};
+/* 그 달 게시본 캐시를 버린다 — 이 PC 가 게시했을 때와 다른 PC 가 같은 달을 다시 게시했을 때(reportIndex 시각이 바뀜) */
+function dfInvalidate(rm){
+  delete DF.cache[rm];delete DF._pubAt[rm];
+  Object.keys(DF.kpi).forEach(k=>{if(k.indexOf(rm+'/')===0){delete DF.kpi[k];delete DF.sw[k];delete DF.sam[k];delete DF.vac[k];}});
+}
 async function dfPubAtLoad(rm){
   rm=rm||dfRm();if(!rm||!S.live||!FB.db)return '';
   if(DF._pubAt[rm]!==undefined)return DF._pubAt[rm];
@@ -16621,16 +16662,24 @@ function issWrite(sid,iid,val){
   if(S.live&&FB.db)FB.db.ref('calapp/iss/'+sid+'/'+iid).set(val||null).catch(fbErr);
   else{LocalStore._d.iss=S.iss;lsSave(LocalStore._d);}
 }
+/* 고친 칸만 보낸다 — 레코드 통째 set 은 동시에 다른 사람이 고친 칸(해결·내용)을 되돌리고, 방금 지운 현안을 되살린다.
+   지워진 현안에 칸만 쓰면 규칙(필수 칸 t·at)이 거절한다 */
+function issPatch(sid,iid,p){
+  const x=issGet(sid,iid);if(!x)return;
+  Object.keys(p).forEach(k=>{if(p[k]==null)delete x[k];else x[k]=p[k];});
+  if(S.live&&FB.db)FB.db.ref('calapp/iss/'+sid+'/'+iid).update(p).catch(fbErr);
+  else{LocalStore._d.iss=S.iss;lsSave(LocalStore._d);}
+}
 const issGet=(sid,iid)=>(((S.iss||{})[sid]||{})[iid])||null;
 function issRec(x){const o={t:x.t,at:x.at,by:x.by||''};if(x.dt)o.dt=x.dt;if(ISS_DUE.test(x.due||''))o.due=x.due;return o;}   /* 규칙이 받는 칸만 */
 /* 목표일 — v 가 빈 값이면 지운다 */
-function issDueSet(sid,iid,v){const x=issGet(sid,iid);if(!x)return;const y=issRec(x);if(ISS_DUE.test(v||''))y.due=v;else delete y.due;issWrite(sid,iid,y);rIss(true);}
+function issDueSet(sid,iid,v){if(!issGet(sid,iid))return;issPatch(sid,iid,{due:ISS_DUE.test(v||'')?v:null});rIss(true);}
 function issDuePick(li){const i=li&&li.querySelector('.iss-due');if(!i)return;try{if(i.showPicker){i.showPicker();return;}}catch(e){}i.focus();i.click();}
 function issAdd(sid,t){t=String(t||'').trim().slice(0,200);if(!t)return;issWrite(sid,uid(),{t,at:Date.now(),by:authUid()});}
 function issEditDone(inp,save){
   const li=inp.closest('.iss-i');S.issUI.ed='';
   if(save&&li){const sid=li.dataset.sid,iid=li.dataset.iid,x=issGet(sid,iid),t=inp.value.trim().slice(0,200);
-    if(x&&t&&t!==x.t)issWrite(sid,iid,issRec({...x,t}));
+    if(x&&t&&t!==x.t)issPatch(sid,iid,{t});
     else if(x&&!t)issDel(sid,iid);}
   rIss(true);}
 function issDel(sid,iid){const x=issGet(sid,iid);if(!x)return;
@@ -16675,7 +16724,7 @@ Object.assign(ACT,{
   'iss.rg':el=>{S.issUI.rg=el.dataset.rg||'';S.issUI.ed='';S.issUI.add='';rIss(true);},
   'iss.add':el=>{const sid=el.dataset.sid;S.issUI.ed='';S.issUI.add=S.issUI.add===sid?'':sid;rIss(true);},
   'iss.ck':el=>{const li=el.closest('.iss-i');if(!li)return;const sid=li.dataset.sid,iid=li.dataset.iid,x=issGet(sid,iid);if(!x)return;
-    const y=issRec(x);if(x.dt)delete y.dt;else y.dt=Date.now();S.issUI.ed='';issWrite(sid,iid,y);rIss(true);},
+    S.issUI.ed='';issPatch(sid,iid,{dt:x.dt?null:Date.now()});rIss(true);},
   'iss.edit':el=>{const li=el.closest('.iss-i');if(!li)return;S.issUI.add='';S.issUI.ed=li.dataset.sid+'/'+li.dataset.iid;rIss(true);},
   'iss.del':el=>{const li=el.closest('.iss-i');if(li){S.issUI.ed='';issDel(li.dataset.sid,li.dataset.iid);}},
 });
@@ -17203,7 +17252,7 @@ function d60PhLoad(sid,tr,k,cb){   /* 한 번만 받는다 — 같은 창에서 
   D60_PHC[key]='loading';if(cb)(D60_PHW[key]=D60_PHW[key]||[]).push(cb);
   const fin=()=>{const w=D60_PHW[key]||[];delete D60_PHW[key];if(w.length)w.forEach(f=>{try{f();}catch(e){}});else rD60();};
   const done=v=>{const cur=D60_PHC[key];D60_PHC[key]={...(v||{}),...(cur&&cur!=='loading'?cur:{})};fin();};   /* 받는 사이 찍어 넣은 사진을 잃지 않는다 */
-  if(S.live&&FB.db)FB.db.ref('calapp/d60photo/'+sid+'/'+tr+'/'+k).get().then(s=>done(s.val())).catch(e=>{fbErr(e);D60_PHC[key]=null;fin();});
+  if(S.live&&FB.db)FB.db.ref('calapp/d60photo/'+sid+'/'+tr+'/'+k).get().then(s=>done(s.val())).catch(e=>{fbReadErr(e);D60_PHC[key]=null;fin();});
   else setTimeout(()=>done((((d60PhLocal()[sid]||{})[tr]||{})[k])||{}),0);
 }
 function d60PhBlob(d){const i=d.indexOf(',');const mime=(d.slice(0,i).match(/data:([^;]+)/)||[])[1]||'image/jpeg';const bin=atob(d.slice(i+1));const u=new Uint8Array(bin.length);for(let j=0;j<bin.length;j++)u[j]=bin.charCodeAt(j);return new Blob([u],{type:mime});}
@@ -17739,6 +17788,9 @@ function rAll(){rDay();rTasks();rOrg();rCfg();rFilter();rTeamSel();refetchCal();
   if(WIDGET&&GLASS)document.body.classList.add('glass');
   if(WIDGET)widApply();
   filtLoad();          /* 지난번에 고른 필터를 되살린다(계정별·이 브라우저) */
+  /* 창을 닫을 때 — 자동 저장 대기(0.6초) 중인 입력은 바로 보낸다. 브라우저는 연결이 끊긴 동안 고친 내용이 있으면 닫기 전에 묻는다(위젯은 묻지 않는다) */
+  window.addEventListener('pagehide',()=>{if(PE_SAVE)try{planAutosave(true);}catch(e){}});
+  if(!WIDGET)window.addEventListener('beforeunload',e=>{if(PE_SAVE)try{planAutosave(true);}catch(_){}if(S.live&&S.conn===false){e.preventDefault();e.returnValue='';}});
   LocalStore.init();
   /* 달력 라이브러리를 못 받았어도 로그인·다른 화면은 뜨게 한다 */
   try{calInit();bindCalResize();}catch(e){console.warn('[달력] 초기화 실패',e);}   /* subVisibleMonths() 는 부르지 않는다 — calInit 의 render 가 이미 막대를 만든다 */
