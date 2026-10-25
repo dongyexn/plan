@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1256';
+const APP_VER='1257';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -572,6 +572,8 @@ function holOf(ds){
   if(HOLI[ds])return{n:HOLI[ds],h:true};
   const a=ANNIV[ds.slice(5)];return a?{n:a,h:false}:null;
 }
+/* 인쇄 상태 클래스는 body 와 html 에 같이 단다 — CSS 가 html:has(body.…) 대신 html 클래스를 본다(:has 는 문서가 바뀔 때마다 다시 재 비싸다) */
+function prCls(c,on){document.body.classList.toggle(c,on);document.documentElement.classList.toggle(c,on);}
 function toDate(ds){const[a,b,c]=String(ds).split('-').map(Number);return new Date(a,b-1,c);}
 function addDays(ds,n){const d=toDate(ds);d.setDate(d.getDate()+n);return dstr(d);}
 function addMonths(ds,n){const d=toDate(ds);const day=d.getDate();d.setDate(1);d.setMonth(d.getMonth()+n);
@@ -1211,6 +1213,9 @@ const FbStore={
         if(['editor','viewer','blocked'].includes(me.role)&&me.role!==S.role)S.role=me.role;
         /* 접속 중 차단되면 바로 내보낸다 — 남아 있으면 구독은 끊기고 쓰기만 거부돼 헷갈린다. 새로 연 로그인 화면에 이유를 보인다 */
         if(me.role==='blocked'){bootCacheClear();try{sessionStorage.setItem('calapp.flash','이 계정은 접근이 차단되었습니다. 관리자에게 문의하세요.');}catch(_){}try{FB.auth.signOut();}catch(_){}return;}}
+      /* 누가 로그인할 때마다 그 사람의 접속 시각(lastSeen)이 바뀌어 모든 PC 가 전부 다시 그렸다 — 화면에 쓰는 칸(이름·메일·색·아이콘·권한)이 같으면 건너뛴다 */
+      {const a=S.accounts,sig=JSON.stringify(Object.keys(a).sort().map(k=>{const x=a[k]||{};return[k,x.name||'',x.email||'',x.avColor||'',x.avIcon||'',x.role||''];}));
+       if(sig===FB._usig)return;FB._usig=sig;}
       rAcct();                                   /* 사이드바 아바타·이름도 함께 갱신 */
       pendSync();                                /* 가입 승인 대기 — 관리자 배지·알림 */
       /* ⚠ 담당자 색(avColor)이 바뀌면 업무 색도 바뀐다 — 카드뿐 아니라 달력·일자 패널·위젯도 다시 그린다 */
@@ -2503,7 +2508,9 @@ function calInit(){
       return{html:(o?'<span class="'+cls+'">'+esc(o.n)+'</span>':'')+'<span class="dnum">'+a.date.getDate()+'</span>'};},
     events:(info,ok)=>{
       const end=new Date(info.end);end.setDate(end.getDate()-1);   /* FullCalendar 의 end 는 다음 날(배타적) */
-      ok(calTrim(buildEvents(dstr(info.start),dstr(end))));
+      const k=dstr(info.start)+'~'+dstr(end),evs=(CAL_PRE&&CAL_PRE.k===k)?CAL_PRE.evs:calTrim(buildEvents(dstr(info.start),dstr(end)));   /* refetchCal 이 막 계산한 것이면 그대로 */
+      CAL_PRE=null;CAL_EVS={k,evs};   /* 지금 그려진 막대 — 다음 refetchCal 이 견준다 */
+      ok(evs);
     },
     dateClick:info=>{if(WIDGET&&info.jsEvent&&info.jsEvent.target&&info.jsEvent.target.closest&&info.jsEvent.target.closest('.fc-daygrid-more-link'))return;   /* 「외 N건」은 moreLinkClick 이 연 팝업을 날짜 클릭이 도로 닫지 않게 건너뛴다 */
       S.selEnd='';selDate(String(info.dateStr).slice(0,10));if(isMob()&&!WIDGET){if(mcalIsLand()){const d=$('#view-calendar .dp-col');if(d)d.classList.add('on');}else mdsOpen();}},   /* 가로는 시트, 세로도 업무 시트(mdsOpen) */
@@ -2747,8 +2754,21 @@ function buildEvents(rFrom,rTo){
   }
   return evs;
 }
+/* 달력 다시 그리기 — 보이는 범위의 막대가 그대로면 건너뛰고, 제목만 바뀌었으면 그 막대 제목만 고친다.
+   업무 하나만 바뀌어도(다른 팀·보이는 달 밖 포함) FullCalendar 전체를 다시 그리던 비용(위젯 60~80ms)과 편집 창에 제목을 칠 때 글자마다 다시 그리던 비용을 던다.
+   계산한 막대는 events 콜백이 그대로 쓴다(CAL_PRE) */
+let CAL_EVS=null,CAL_PRE=null;
 function refetchCal(){
   if(!CAL)return;
+  try{const v=CAL.view,s=v&&v.activeStart,e=v&&v.activeEnd;
+    if(s&&e){const end=new Date(e);end.setDate(end.getDate()-1);const k=dstr(s)+'~'+dstr(end);
+      const evs=calTrim(buildEvents(dstr(s),dstr(end))),prev=CAL_EVS;CAL_EVS={k,evs};
+      const strip=x=>JSON.stringify({...x,title:''});
+      if(prev&&prev.k===k&&prev.evs.length===evs.length&&evs.every((x,i)=>strip(x)===strip(prev.evs[i]))){
+        let ok=true;evs.forEach((x,i)=>{if(x.title!==prev.evs[i].title){const ev=CAL.getEventById(x.id);if(ev)ev.setProp('title',x.title);else ok=false;}});
+        if(ok)return;}
+      CAL_PRE={k,evs};}}
+  catch(err){CAL_EVS=null;CAL_PRE=null;}
   CAL.refetchEvents();
   /* 막대가 그려진 뒤라야 칸을 잴 수 있다 — 한 박자 뒤에 맞춘다 */
   requestAnimationFrame(()=>requestAnimationFrame(calFitApply));
@@ -8350,11 +8370,11 @@ async function dfPrintReport(){
   const _rp=d.querySelector('.rpt');
   if(_rp)_rp.classList.add(rptFont()==='sys'?'f-sys':'f-brand');
   document.body.appendChild(d);
-  document.body.classList.add('rpt-on');
+  prCls('rpt-on',true);
   try{rptFit(d);}catch(e){console.warn('rptFit',e);}
   let _rdone=false;
   const done=()=>{if(_rdone)return;_rdone=true;
-    document.body.classList.remove('rpt-on');
+    prCls('rpt-on',false);
     const r=document.getElementById('rptRoot');if(r)r.remove();
     const st=document.getElementById('rptPageCSS');if(st)st.remove();
     window.removeEventListener('afterprint',done);};
@@ -8444,7 +8464,7 @@ async function dfPrint(){
    pgs.forEach((el,i)=>{const n=document.createElement('div');n.className='sp-pgn';
      n.textContent=(i+1)+' / '+pgs.length;el.appendChild(n);});}
   $('#view-defect').appendChild(box);
-  document.body.classList.add('df-printing');
+  prCls('df-printing',true);
   /* 처리계획 textarea → 인쇄용 텍스트(plan-print). 빈 단은 통째로 숨긴다 — 원본 규칙 */
   box.querySelectorAll('textarea.plan-ta').forEach(ta=>{
     const div=document.createElement('div');div.className='plan-print';div.textContent=ta.value||ta.textContent||'';
@@ -8482,7 +8502,7 @@ async function dfPrint(){
   await new Promise(r=>setTimeout(r,260));   /* noAnim 이라 차트는 즉시 앉는다 — 라벨 플러그인 여유만 */
   let _done=false;
   const done=()=>{if(_done)return;_done=true;window.removeEventListener('afterprint',done);
-    document.body.classList.remove('df-printing');
+    prCls('df-printing',false);
     if(box.parentNode)box.parentNode.removeChild(box);
     ['prTrend','prMx','prSx','prMom'].forEach(dfC);
     DF.noAnim=true;   /* 애니메이션 상시 해제 */};
@@ -8967,7 +8987,7 @@ let _xlsxPromise=null;
 function loadXlsx(){
   if(typeof XLSX!=='undefined')return Promise.resolve(true);
   if(_xlsxPromise)return _xlsxPromise;
-  _xlsxPromise=loadScriptOnce('./vendor/xlsx.full.min.js?v='+APP_VER).catch(e=>{_xlsxPromise=null;throw e;});
+  _xlsxPromise=loadScriptOnce('./vendor/xlsx.full.min.js?v=0.20.3').catch(e=>{_xlsxPromise=null;throw e;});
   return _xlsxPromise;
 }
 async function recWriteXlsx(filename,aoa,sheet){
@@ -10268,6 +10288,8 @@ function orgTabHit(p,tab){
   return orgRegHit(p.region,tab);
 }
 function rOrg(){
+  /* 조직 화면(표·지도)은 보고 있을 때만 그린다 — 다른 화면·위젯에서 org·people·users 가 바뀔 때마다 16~29ms 씩 들었다. 들어올 때 go('org') 가 그린다 */
+  if(S.view!=='org'){rTeamSel();rFilter();return;}
   const t=curTeam();
   /* 제목 옆 팀명은 사이드바 팀 선택기와 겹쳐 비운다 — t 는 아래에서 계속 쓴다 */
   ['#regTeamLbl','#siteTeamLbl','#acctTeamLbl'].forEach(id=>{const e=$(id);if(e)e.textContent='';});
@@ -11397,7 +11419,7 @@ const ACT={
     /* 접기/펼치기 동안 차트가 다시 솟는 모션(520ms)을 막는다 — duration 이 DF.noAnim 을 읽는 함수라
        플래그를 세우면 ResizeObserver 가 발화해도 즉시 상태로만 그려진다. 폭 전환(0.22s) 뒤 되돌린다 */
     DF.noAnim=true;
-    $('#sidebar').classList.toggle('mini');
+    document.body.classList.toggle('sb-mini',$('#sidebar').classList.toggle('mini'));   /* body.sb-mini — CSS 가 body:has(#sidebar.mini) 대신 본다 */
     clearTimeout(window.__navT);
     /* 상시 해제라 되돌릴 것이 없다 — 타이머만 정리한다 */
   },
@@ -13366,7 +13388,9 @@ function calFitRows(){
 function maxEvOf(){
   if(isNarrow()&&!WIDGET)return (typeof mcalIsLand==='function'&&mcalIsLand())?1:(document.body.classList.contains('mcal-full')?3:2);   /* 폰 큰 달력 3줄 · 가로 1줄 */
   const n=calFitRows();
-  return n===null?true:n;
+  if(n!==null)return n;
+  const c=calNGet();if(c){_maxEv=c;return c;}   /* 아직 못 잼 — 같은 창 크기에서 지난번 값 */
+  return true;
 }
 /* 첫 렌더·달 이동 뒤에 다시 재서 맞춘다 — 값이 그대로면 건드리지 않는다(무한 재렌더 방지) */
 let _maxEv=null;
@@ -13385,9 +13409,14 @@ function calFitApply(){
     else if(n!==null&&n>=2&&b.classList.contains('wid-tight')){b.classList.remove('wid-tight');const n2=calFitRows();if(n2===null)b.classList.add('wid-tight');else n=n2;}
     if(n===null){b.classList.add('wid-nomore');n=1;}else b.classList.remove('wid-nomore');
   }
+  if(n!==null)calNSet(n);
   if(n===null||n===_maxEv)return;
   _maxEv=n;calMaxSet(n);
 }
+/* 지난번에 잰 칸당 막대 수 — 첫 렌더는 칸을 잴 수 없어(dayMaxEvents:true) 그린 뒤 재서 한 번 더 그렸다. 같은 창 크기면 지난 값으로 바로 그린다 */
+const calNKey=()=>'calapp.calN.'+(WIDGET?'w':'d')+innerWidth+'x'+innerHeight;
+function calNGet(){try{return Number(localStorage.getItem(calNKey()))||0;}catch(e){return 0;}}
+function calNSet(n){try{localStorage.setItem(calNKey(),String(n));}catch(e){}}
 
 function bindCalResize(){
   const sb=$('#sidebar');
@@ -13434,7 +13463,7 @@ function bindCalResize(){
   }
   /* 태블릿 가로(901~1280px)는 사이드바를 아이콘 레일(.mini)로 자동 접는다(달력 + 업무 패널 3단). 그 밖에선 펼친다.
      사용자가 한 번이라도 직접 토글했으면(S.sbUser) 자동 조정 안 함 */
-  const sbAuto=()=>{const sb=$('#sidebar');if(!sb||S.sbUser||WIDGET)return;const w=innerWidth;const want=w>900&&w<=1280;if(sb.classList.contains('mini')!==want){sb.classList.toggle('mini',want);}};
+  const sbAuto=()=>{const sb=$('#sidebar');if(!sb||S.sbUser||WIDGET)return;const w=innerWidth;const want=w>900&&w<=1280;if(sb.classList.contains('mini')!==want){sb.classList.toggle('mini',want);document.body.classList.toggle('sb-mini',want);}};
   sbAuto();
   let rt=null;
   const redraw=()=>{clearTimeout(rt);rt=setTimeout(()=>{
@@ -13528,7 +13557,7 @@ function bgApply(force){
   if(bgId(k)===bgId(BG_CUR)){if(force)bgPickRender();return;}   /* 그대로면 썸네일을 다시 그리지 않는다(초점·호버 유지) */
   bgPickRender();
   const set=q=>{BG_CUR=q?q.u:'';const r=document.documentElement;if(q)r.style.setProperty('--bg-img','url("'+bgUrl(q)+'")');else r.style.removeProperty('--bg-img');
-    const c=$('#bgCredit');if(c)c.innerHTML=bgCreditHTML(q);const cc=$('#mm .mm-cv .cr');if(cc)cc.innerHTML=bgCreditHTML(q);bgPickRender();};
+    const c=$('#bgCredit');if(c)c.innerHTML=bgCreditHTML(q);document.body.classList.toggle('bg-cr',!!(c&&c.innerHTML));const cc=$('#mm .mm-cv .cr');if(cc)cc.innerHTML=bgCreditHTML(q);bgPickRender();};
   if(!p){set(null);return;}
   const im=new Image();im.onload=()=>{const q=bgPick();if(q&&bgId(q.u)!==bgId(p.u))return;set(p);};im.onerror=()=>{if(!BG_CUR)set(null);};im.src=bgUrl(p);   /* 다 받은 뒤 갈아 끼운다 — 안 열리면 지금 것 유지 */
 }
@@ -15015,12 +15044,12 @@ function pdPrintMount(){
   const [pw2,ph2]=pdPaperMM();
   st.textContent='@media print{@page{size:'+pw2+'mm '+ph2+'mm;margin:0}#pdPrint .phs-page{width:'+pw2+'mm;height:'+(ph2-.5)+'mm}}';   /* 전역 @page(A4 세로·8mm)보다 뒤에 붙여 이긴다 */
   document.head.appendChild(st);
-  document.body.classList.add('phs-printing');
+  prCls('phs-printing',true);
 }
 function pdPrintUnmount(){
   const b=$('#pdPrint');if(b)b.remove();
   const s=$('#pdPageCss');if(s)s.remove();
-  document.body.classList.remove('phs-printing');
+  prCls('phs-printing',false);
 }
 async function pdPrint(){
   if(_pdDrag)return;
@@ -17505,8 +17534,8 @@ function d60PrintHTML(){
       +D60_TR.map(([k])=>{const c=d60Cnt(s.id,k);return '<td class="c">'+(c?c.ok+' / <b>'+c.ng+'</b> / '+c.na:'—')+'</td>';}).join('')+'</tr>').join('')
     +'</tbody></table>';
 }
-function d60PrintMount(){d60PrintUnmount();const box=document.createElement('div');box.id='d60Print';box.innerHTML=d60PrintHTML();document.body.appendChild(box);document.body.classList.add('d60-printing');}
-function d60PrintUnmount(){const b=$('#d60Print');if(b)b.remove();document.body.classList.remove('d60-printing');}
+function d60PrintMount(){d60PrintUnmount();const box=document.createElement('div');box.id='d60Print';box.innerHTML=d60PrintHTML();document.body.appendChild(box);prCls('d60-printing',true);}
+function d60PrintUnmount(){const b=$('#d60Print');if(b)b.remove();prCls('d60-printing',false);}
 function d60Print(){
   d60PrintMount();
   let done=false;const fin=()=>{if(done)return;done=true;window.removeEventListener('afterprint',fin);d60PrintUnmount();};
