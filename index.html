@@ -5689,7 +5689,11 @@ body.wid #mb.acx #pfPop .pal-flow{background:rgba(255,255,255,.12);}
 #mb.acx.m-col #pfPop .pf-cats,#mb.acx.m-col #pfPop .pf-emg{display:none!important;}
 /* 캐릭터 판 — 사람 15종(5×3). 이모지 판과 같은 칸 모양 */
 .pf-chr{display:none;}
-#mb.acx.m-chr #pfPop .pf-chr{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;border-radius:18px;background:var(--CAP);box-shadow:inset 0 0 0 1px var(--CAPL);padding:8px;}
+#mb.acx.m-chr #pfPop .pf-chr{display:flex;flex-direction:column;gap:6px;border-radius:18px;background:var(--CAP);box-shadow:inset 0 0 0 1px var(--CAPL);padding:8px;}
+#mb.acx #pfPop .pf-ccats{display:flex;gap:4px;}   /* 분류 — 사람·안전·장비·공종·사무 */
+#mb.acx #pfPop .pf-ccats button{flex:1;height:28px;border-radius:14px;font-size:12px;font-weight:600;color:var(--T2);}
+#mb.acx #pfPop .pf-ccats button.on{color:var(--b600);background:var(--TINT);}
+#mb.acx #pfPop .pf-cg{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;height:154px;overflow-y:auto;align-content:start;}   /* 3줄 높이 — 넘치면 굴림(공종 25종) */
 #mb.acx #pfPop .pf-chr .pf-em{height:46px;}
 #mb.acx #pfPop .pf-chr img{max-height:34px;max-width:40px;}
 #mb.acx.m-chr #pfPop :is(.pf-cats,.pf-emg,.pal,.acx-cp){display:none!important;}
@@ -6373,5 +6377,5 @@ body.mcal-full #fcal .mlN::before{content:'+'}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1262"></script>
+<script src="./app.js?v=1263"></script>
 </body></html>

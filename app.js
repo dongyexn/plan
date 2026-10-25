@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1262';
+const APP_VER='1263';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -460,13 +460,21 @@ function emojiList(cid){
 function avOf(pid){
   const a=(S.accounts||{})[pid]||{};
   const ic=String(a.avIcon||'');
-  return{color:AV_COL_RE.test(String(a.avColor||''))?a.avColor:'',icon:(ic&&ic!=='person'&&ic.length<=12)?ic:''};   /* 빈 값 = 기본 사람 아이콘 */
+  return{color:AV_COL_RE.test(String(a.avColor||''))?a.avColor:'',icon:(ic&&ic!=='person'&&(ic.length<=12||avPetKey(ic)))?ic:''};   /* 빈 값 = 기본 사람 아이콘 */
 }
 const AV_COL_RE=/^(#[0-9A-Fa-f]{6}|rainbow(-anim)?|grad-[a-z]{2}(-anim)?|g[cf]-[0-9a-f]{6}-[0-9a-f]{6})$/;   /* 프로필 색은 이 꼴만 허용 — style 에 들어가므로 ';' 로 다른 속성을 덧붙이지 못하게 한다(규칙도 같은 식) */
 const AV_DFLT='<svg class="av-ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#av-person"></use></svg>';
-/* 프로필 캐릭터 — 위젯 펫의 사람 15종 정지 그림(vendor/pets/<키>-t.png, 모두 직접 그림). avIcon 에 「pet:<키>」 로 둔다(규칙은 24자 이하 문자열 그대로) */
-const AV_PETS=['manager','lead','worker','signal','guide','paperer','floorer','tiler','painter','caulker','plaster','glazier','plumber','angry','cs'];
-const avPetKey=icon=>{const m=/^pet:([a-z-]+)$/.exec(String(icon||''));return m&&AV_PETS.includes(m[1])?m[1]:'';};
+/* 프로필 캐릭터 — 위젯 펫 75종(사람·안전·공종·사무)의 정지 그림(vendor/pets/<키>-t.png, 모두 직접 그림). avIcon 에 「pet:<키>」 로 둔다(규칙은 24자 이하 문자열 그대로).
+   목록(vendor/pets.js)은 캐릭터 탭을 열 때만 받는다 — 받기 전엔 키 모양만 보고, 받은 뒤엔 목록에 있는 키만 */
+const avPetKey=icon=>{const m=/^pet:([a-z][a-z0-9-]{0,15})$/.exec(String(icon||''));return m&&(!window.CALAPP_PETS||window.CALAPP_PETS[m[1]])?m[1]:'';};
+const AV_PCATS=[['p','사람'],['s','안전·장비'],['t','공종'],['o','사무']];let PF_CCAT='';
+function pfChrRender(){
+  const box=$('#pfChr');if(!box)return;const P=window.CALAPP_PETS;
+  if(!P){box.innerHTML='<div class="pf-empty">불러오는 중…</div>';loadScriptOnce('vendor/pets.js?v='+APP_VER).then(pfChrRender,()=>{box.innerHTML='<div class="pf-empty">그림 목록을 불러오지 못했습니다.</div>';});return;}
+  const cur=PF_SEL.icon!=null?PF_SEL.icon:(avOf((S.user||{}).uid||'').icon||''),ck=avPetKey(cur);
+  if(!PF_CCAT)PF_CCAT=(ck&&P[ck]&&P[ck].c)||'p';
+  box.innerHTML='<div class="pf-ccats">'+AV_PCATS.map(([c,n])=>'<button class="'+(c===PF_CCAT?'on':'')+'" data-act="pf.ccat" data-c="'+c+'">'+n+'</button>').join('')+'</div>'
+    +'<div class="pf-cg">'+Object.keys(P).filter(k=>P[k].c===PF_CCAT).map(k=>'<button class="pf-em'+(ck===k?' on':'')+'" data-e="pet:'+esc(k)+'" data-act="pf.pick" data-tip="'+esc(P[k].n||'')+'"><img src="vendor/pets/'+esc(P[k].t.f)+'" alt="" draggable="false"></button>').join('')+'</div>';}
 function avInner(icon){const k=avPetKey(icon);if(k)return '<img class="av-pet" src="vendor/pets/'+k+'-t.png" alt="" draggable="false">';
   return icon?'<span class="av-em">'+esc(icon)+'</span>':AV_DFLT;}
 function avHTML(pid,cls){
@@ -1690,7 +1698,7 @@ function emojiPickerHTML(av){
       ${EMOJI_CATS.map((c,i)=>rec.length||i?'<button class="pf-cat" data-cat="'+c.id+'" data-act="pf.cat" data-tip="'+esc(c.label)+'">'+esc(c.s.slice(0,c.s.indexOf(' ')))+'</button>':'').join('')}
     </div>
     <div class="pf-emg" id="pfEmg"></div>
-    <div class="pf-chr" id="pfChr">${AV_PETS.map(k=>'<button class="pf-em'+(avPetKey(av.icon)===k?' on':'')+'" data-e="pet:'+k+'" data-act="pf.pick"><img src="vendor/pets/'+k+'-t.png" alt="" draggable="false"></button>').join('')}</div>
+    <div class="pf-chr" id="pfChr"></div>
     ${palHTML('pfPal',av.color||'',pfAutoChip(!av.color))}
     <div class="acx-cp" id="acxCp">
       <button class="acx-cp-h" data-act="pf.cpBack"><svg class="icn"><use href="#i-chevl"></use></svg>직접 고르기</button>
@@ -2037,7 +2045,7 @@ function pfEdit(on){acxMorph(()=>pfEditNow(on),on?'.acx-pick':'.acx-row',0,on?-8
 function pfEditNow(on){
   const mb=$('#mb');if(!mb||!$('#pfPop'))return;
   mb.classList.toggle('acx-ed',on);
-  if(on){if(!mb.classList.contains('m-col')&&!mb.classList.contains('m-chr'))mb.classList.add(avPetKey((avOf((S.user||{}).uid)||{}).icon)?'m-chr':'m-emo');   /* 캐릭터를 쓰고 있으면 캐릭터 판부터 */if(!PF_MORE)pfRenderEmg(recentEmoji().length?'recent':'smiley','');}
+  if(on){if(!mb.classList.contains('m-col')&&!mb.classList.contains('m-chr'))mb.classList.add(avPetKey((avOf((S.user||{}).uid)||{}).icon)?'m-chr':'m-emo');   /* 캐릭터를 쓰고 있으면 캐릭터 판부터 */if(mb.classList.contains('m-chr'))pfChrRender();if(!PF_MORE)pfRenderEmg(recentEmoji().length?'recent':'smiley','');}
   else{if(mb.classList.contains('m-cus'))acxCpClose(true);mb.classList.remove('m-cus');}
 }
 function pfMode(m){
@@ -2049,6 +2057,7 @@ function pfModeNow(m){
   const mb=$('#mb');if(!mb)return;
   if(mb.classList.contains('m-cus'))acxCpClose(true);
   mb.classList.toggle('m-emo',m==='emo');mb.classList.toggle('m-chr',m==='chr');mb.classList.toggle('m-col',m==='col');mb.classList.remove('m-cus');
+  if(m==='chr')pfChrRender();
   $$('#mb .acx-seg button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
 }
 /* ── 직접 고르기 — 브라우저 기본 색 대화상자 대신 앱 안 판(채도·밝기 네모 + 색상 막대 + 색 코드) ──
@@ -11772,6 +11781,7 @@ const ACT={
   'pf.toggle':()=>{const mb=$('#mb');if(mb)pfEdit(!mb.classList.contains('acx-ed'));},
   'pf.done':()=>pfEdit(false),
   'pf.mode':el=>pfMode(el.dataset.m),
+  'pf.ccat':el=>{PF_CCAT=el.dataset.c;pfChrRender();},
   'pf.cpBack':()=>acxMorph(()=>acxCpClose(true),'#pfPal',-14,0),
   'pf.cat':el=>{
     $$('#pfCats .pf-cat').forEach(x=>x.classList.toggle('act',x===el));
