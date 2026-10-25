@@ -3815,6 +3815,8 @@ body.wid #mb .mo-x{top:15px;right:12px;}   /* 위젯 창 안쪽 여백 20 */
 #toast,.toast-bk{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(16px);white-space:normal;word-break:keep-all;text-wrap:pretty;text-align:center;width:max-content;max-width:calc(100vw - 24px);background:var(--lqd-fill);color:#fff;-webkit-backdrop-filter:var(--lqd-blur);backdrop-filter:var(--lqd-blur);box-shadow:0 12px 32px rgba(0,0,0,.28);padding:10px 20px;border-radius:22px;font-size:13px;font-weight:500;z-index:9999;opacity:0;transition:opacity var(--t-base),transform var(--t-base);pointer-events:none;}
 #toast.show,.toast-bk{opacity:1;transform:translateX(-50%) translateY(0);}
 /* 되돌리기 토스트 — 버튼이 있을 때만 pointer-events 를 켠다 */
+#syncLost{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:9998;display:flex;align-items:center;gap:14px;width:max-content;max-width:calc(100vw - 24px);padding:8px 10px 8px 18px;border-radius:22px;background:var(--lqd-fill);-webkit-backdrop-filter:var(--lqd-blur);backdrop-filter:var(--lqd-blur);box-shadow:0 12px 32px rgba(0,0,0,.28);color:#fff;font-size:13px;font-weight:500;word-break:keep-all;text-wrap:pretty;}   /* 실시간 구독이 끊김(syncLost) — 새로 고칠 때까지 남는다 */
+body.wid #syncLost{top:auto;bottom:calc(12px + env(safe-area-inset-bottom,0px));}   /* 위젯은 머리 줄(달 이동·단추)을 가리지 않게 아래로 */
 #toast.has-btn,.toast-bk.has-btn{display:flex;align-items:center;gap:14px;padding:8px 10px 8px 18px;pointer-events:auto;}
 .toast-undo{border:0;background:rgba(255,255,255,.14);color:#fff;height:28px;padding:0 12px;
   border-radius:8px;font:700 13px/1 inherit;cursor:pointer;transition:background var(--t-fast);}
@@ -6350,5 +6352,5 @@ body.mcal-full #fcal .mlN::before{content:'+'}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1254"></script>
+<script src="./app.js?v=1255"></script>
 </body></html>
