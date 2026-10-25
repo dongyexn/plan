@@ -1,13 +1,12 @@
 # 변경 이력 (읽기 전용) — 현재 상태는 HANDOFF.md
 
 ## 마지막 기록 기준 v1267
-### 1267차 폰 — 주요 현안을 업무 현황 탭 안으로
-**사용자: 「모바일에서 주요 현안을 하단 탭 주요 업무에서 선택해서 들어갈 수 있도록 배치」**
-- tkvSegHTML(on): 업무 현황 전환 탭을 함수로(주간 · 현장별 + isNarrow()&&!WIDGET 일 때 「주요 현안」 .tkv-iss, data-v="iss"). rTasks 의 인라인 탭을 이 함수로 바꿈.
-- rIss: 폰이면 #issRoot 맨 위에 tkvSegHTML('iss'). CSS 폰 tkv-seg 규칙(44px)을 #view-iss 에도.
-- tk.view: v=iss → go('iss'), 주간·현장별은 화면이 업무 현황이 아니면 go('tasks'). mtabSync: iss 도 tasks 칸.
-- 메뉴 시트(mmenuOpen)의 「주요 현안」 줄 삭제 — 들어가는 길은 업무 현황 탭 하나.
-- 확인(390px): 업무 현황 → 주요 현안 칸 → S.view iss · 하단 탭 업무 현황 켜짐, 주요 현안 위 탭에서 현장별·주간 → 업무 현황.
+### 1267차 폰 하단 탭 「업무 현황」 — 업무 도구처럼 시트에서 고르기(주요 현안 포함)
+**사용자: 「모바일에서 주요 현안을 하단 탭 주요 업무에서 선택해서 들어갈 수 있도록 배치」 → (업무 현황 화면 위 전환 탭에 「주요 현안」 칸을 넣던 안을 보고) 「주요 업무 페이지 내 탭으로 접근하는게 아니라 업무도구와 같은 방식으로 적용」**
+- mtasksOpen(): #mss 시트(머리 「업무 현황」) — MTK 주간 업무(i-cal-ck) · 현장별 업무(i-layers) · 주요 현안(i-board), 지금 보고 있는 것에 act. 시트에 tk 클래스(mssClose 가 뗌) — mtab.go 의 wasOpen 이 'tk' 를 구분해 열린 채 다시 누르면 닫고 끝.
+- mtab.tk: iss → go('iss'), week/month → S.tkView·tkNew·tk.m 을 tk.view 와 같게(주간은 예정 주가 든 달) 맞추고 업무 현황으로.
+- mtabSync: S.view iss 도 tasks 칸. 메뉴 시트(mmenuOpen)의 「주요 현안」 줄 삭제.
+- 확인(390px): 업무 현황 칸 → 시트 → 주요 현안(S.view iss · 칸 켜짐) / 현장별(tasks month) / 열린 채 다시 누르면 닫힘 / 업무 도구 시트와 오가기.
 
 ## 마지막 기록 기준 v1266
 ### 1266차 프로필 미니펫 — 이름 표기 · 판 높이 고정
