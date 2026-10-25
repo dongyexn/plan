@@ -50,7 +50,7 @@ for(const k of ['plumber','sf-radio','of-kbd','tr-tree']){const{ctx,pg,perr,nf}=
   const cx=await pg.$eval('.wgPet',e=>{const r=e.getBoundingClientRect();return r.left+r.width/2+120;});
   await pg.evaluate(x=>PET.throwBall(x),cx);await W(250);
   const bg=await pg.$eval('.wgBall',e=>e.style.backgroundImage).catch(()=>'');await W(6000);
-  ok('던지기 '+k,bg.includes('it-'+(P[k].it||'ball')+'.png')&&!perr.length&&!nf.length,{bg,perr,nf});await ctx.close();}
+  ok('던지기 '+k,bg.includes('it-'+(P[k].it||'heart')+'.png')&&!perr.length&&!nf.length,{bg,perr,nf});await ctx.close();}
 
 /* 5) 전체 — 한 창에서 세 마리씩 바꿔 올려 놀고 던짐(창을 매번 새로 열지 않아 빠르다) */
 const bad=[];{const{ctx,pg,perr,nf}=await page({pets:[]});
