@@ -18,6 +18,7 @@ const jobs=[
   ['무지개 렌더링 E2E',['scripts/test/rainbow-render.mjs']],
   ['하자 전 구간 E2E',['scripts/test/e2e-defect.mjs']],
   ['민원 세대 레벨화 정답셋',['scripts/test/risk-gold.mjs']],
+  ['견적 검토 계산식 읽기',['scripts/test/qc-parse.mjs']],
   ['모바일 맞춤(겹침·잘림)',['scripts/test/mobile-fit.mjs']],
   ['잘림 검사(스크롤로 못 닿는 내용)',['scripts/test/clip-audit.mjs']],   /* 845차 */
   ['위젯 겹침·닫기',['scripts/test/widget-layers.mjs']],

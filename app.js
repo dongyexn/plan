@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1260';
+const APP_VER='1261';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -15123,11 +15123,16 @@ function qcRound(v,d){if(d==null||d<0)return v;const m=Math.pow(10,d);return Mat
 function qcFmt(v){if(v==null||!isFinite(v))return '—';return String(Math.round(v*1e6)/1e6);}
 /* 사칙연산·괄호·숫자만 직접 읽어 계산한다.
    ⚠ eval·new Function 은 못 쓴다 — CSP(script-src 'self')가 막는다 */
+/* 식 앞손질 — 중괄호·대괄호·전각 괄호를 ( ) 로, 식 중간의 라벨 낱말(「-PD 0.6*0.6」 「+AD:0.2*0.2」)을 걷는다.
+   ⚠ 단위는 qcEval 이 숫자 뒤에서 먼저 걷는다 · 한 글자 x 는 곱하기라 두 글자 이상 영문·한글만 라벨로 본다 */
+function qcPre(s){return String(s).replace(/[｛［（{\[]/g,'(').replace(/[｝］）}\]]/g,')').replace(/(?:[A-Za-z]{2,}|[가-힣]+)\s*:?\s*/g,' ');}   /* 빈칸으로 — 「3세대 2」 가 「32」 로 붙지 않게(qcEval 이 숫자 사이 빈칸을 거른다) */
 function qcEval(ex){
   /* 「1.2㎡ × 1.2㎡ = 1.44㎡」처럼 식 안에 섞인 단위도 읽는다 — 숫자 뒤 단위 낱말만 걷는다 */
-  const t=String(ex).replace(/[×xX]/g,'*').replace(/÷/g,'/')
-    .replace(/(\d)\s*(㎡|㎥|m2|m3|M2|M3|㎜|mm|cm|㎝|평|m|M|EA|ea|개|인|본|매|식)(?![0-9.])/g,'$1')
-    .replace(/\s+/g,'');
+  const t0=qcPre(String(ex).replace(/(\d)\s*(㎡|㎥|m2|m3|M2|M3|㎜|mm|cm|㎝|평|m|M|EA|ea|개|인|본|매|식)(?![0-9.])/g,'$1'))
+    .replace(/[×xX]/g,'*').replace(/÷/g,'/');
+  if(/[0-9.]\s+[0-9.]/.test(t0))return null;   /* 연산자 없이 떨어진 두 수 — 붙여 읽지 않는다 */
+  const t=t0.replace(/\s+/g,'')
+    .replace(/\)\(/g,')*(').replace(/(\d)\(/g,'$1*(').replace(/\)(\d)/g,')*$1');   /* 「2(…)」 「(…)(…)」 「(…)2」 — 곱하기가 빠진 괄호 */
   if(!t||!/^[0-9.+\-*/()]+$/.test(t)||!/\d/.test(t))return null;
   let i=0,bad=false;
   const peek=()=>t[i];
@@ -15157,7 +15162,8 @@ function qcEval(ex){
    a·b·c·d 는 숫자·괄호식 모두 qcEval 로 읽는다. a:b=c:d ⇔ a·d = b·c */
 function qcClean(t){return String(t).replace(/[①-⑳]/g,'').replace(/\(\s*[^()]*?[^\d\s.:()=]\s*:\s*(?=[-+(\d])/g,'(');}   /* 동그라미 번호·괄호 안 라벨 걷기 */
 function qcRatio(ex){
-  const s=String(ex).replace(/\s+/g,' ').trim();
+  const s=String(ex).replace(/∴|→|=>/g,' ').replace(/\s+/g,' ').trim()
+    .replace(/(:\s*[Xx?□])\s*=\s*(?=-?\d)/,'$1, X=');   /* 「a:b=c:X=5.74」 처럼 X 뒤에 바로 값 · 「∴ x=12」 「→ X=4」 */
   const m=s.match(/^(?:[^:=]*?[^\d\s.):=]\s*:\s*)?([^:=\s]+)\s*:\s*([^:=\s]+)\s*=\s*([^:=\s]+)\s*:\s*([^:=\s,;]+)\s*(?:[,;\s]+[Xx?□]\s*=\s*(-?\d+(?:\.\d+)?)\s*(\S*)?)?\s*$/);
   if(!m)return null;
   const slots=[m[1],m[2],m[3],m[4]],isX=v=>/^[Xx?□]$/.test(v);
@@ -15268,19 +15274,20 @@ function qcParse(text){
       return;
     }
     if(/^=/.test(s)&&pend){pend.expr+=' '+s;return;}
-    if(pend&&/:/.test(pend.expr)&&/^[Xx?□]\s*=/.test(s)){pend.expr+=' '+s;return;}   /* 비례식 다음 줄 「X=6」 */
+    if(pend&&/:/.test(pend.expr)&&/^(?:∴|→|=>)?\s*[Xx?□]\s*=/.test(s)){pend.expr+=' '+s;return;}   /* 비례식 다음 줄 「X=6」 */
     if(/^[0-9.(][0-9.+\-*/() ]*:\s*[0-9.(Xx?□]/.test(s)&&/=/.test(s)){   /* 「:」 없이 바로 온 「1:3=4:X」 — 항목 줄 아래면 그 항목의 식, 아니면 한 줄짜리 */
       if(pend&&!pend.expr.trim()){pend.expr=s;return;}
       flush();pend={unit:unit||1,place:sumMode?'합계':place,item:'',expr:s,sum:sumMode};return;
     }
-    if(pend&&/^[0-9.+\-*/()= ]+$/.test(qcClean(s))){pend.expr+=' '+s;return;}   /* 식이 여러 줄로 이어진 경우 */
+    if(pend&&/^[0-9.+\-*/()= ]+$/.test(qcPre(qcClean(s)))){pend.expr+=' '+s;return;}   /* 식이 여러 줄로 이어진 경우 */
     /* ⚠ 엑셀 칸에서 긴 식은 줄이 넘어간다 — 연산자로 시작하거나 앞줄이 연산자로 끝나면 단위가 붙어도 이어 붙인다(안 하면 토막만 읽어 오답) */
     if(pend&&(/^[+\-*/×÷]/.test(s)||/[+\-*/×÷(]$/.test(String(pend.expr).trim()))
-       &&/^[0-9.,+\-*/()=×÷xX\s]*(?:㎡|㎥|m2|m3|평|EA|ea|개|인|본|매|식|mm|cm|m|M)?\s*$/.test(qcClean(s))){   /* 라벨이 든 이어진 줄(「-(2.6*2.6)-(AC : 1.4*0.5)=21.9m2」)도 */
+       &&/^[0-9.,+\-*/()=×÷xX\s]*(?:㎡|㎥|m2|m3|평|EA|ea|개|인|본|매|식|mm|cm|m|M)?\s*$/.test(qcPre(qcClean(s)))){   /* 라벨이 든 이어진 줄(「-(2.6*2.6)-(AC : 1.4*0.5)=21.9m2」)도 */
       pend.expr+=' '+s;return;
     }
     /* 항목 줄 없이 식만 적힌 줄(「1+1=3」)도 한 줄로 본다 */
-    if(/=/.test(s)&&/^[0-9.+\-*/()=×÷xX ]+$/.test(qcClean(s).replace(/(㎡|㎥|m2|m3|평|EA|ea|개|인|본|매|식|mm|cm|m|M)/g,''))){
+    if(/=/.test(s)&&/^[0-9.+\-*/()=×÷xX ]+$/.test(qcPre(qcClean(s).replace(/(\d)\s*(㎡|㎥|m2|m3|평|EA|ea|개|인|본|매|식|mm|cm|m|M)/g,'$1')))){
+      if(pend&&!pend.expr.trim()){pend.expr=s;flush();return;}   /* 「- 타일」 아래 「:」 없이 바로 온 식은 그 항목의 식 */
       flush();pend={unit:unit||1,place:sumMode?'합계':place,item:'',expr:s,sum:sumMode};flush();return;
     }
   };
