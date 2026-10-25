@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1265';
+const APP_VER='1266';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -474,7 +474,7 @@ function pfChrRender(){
   const cur=PF_SEL.icon!=null?PF_SEL.icon:(avOf((S.user||{}).uid||'').icon||''),ck=avPetKey(cur);
   if(!PF_CCAT)PF_CCAT=(ck&&P[ck]&&P[ck].c)||'p';
   box.innerHTML='<div class="pf-ccats">'+AV_PCATS.map(([c,n])=>'<button class="'+(c===PF_CCAT?'on':'')+'" data-act="pf.ccat" data-c="'+c+'">'+n+'</button>').join('')+'</div>'
-    +'<div class="pf-cg">'+Object.keys(P).filter(k=>P[k].c===PF_CCAT).map(k=>'<button class="pf-em'+(ck===k?' on':'')+'" data-e="pet:'+esc(k)+'" data-act="pf.pick" data-tip="'+esc(P[k].n||'')+'"><img src="vendor/pets/'+esc(P[k].t.f)+'" alt="" draggable="false"></button>').join('')+'</div>';}
+    +'<div class="pf-cg">'+Object.keys(P).filter(k=>P[k].c===PF_CCAT).map(k=>'<button class="pf-em'+(ck===k?' on':'')+'" data-e="pet:'+esc(k)+'" data-act="pf.pick" data-tip="'+esc(P[k].n||'')+'"><img src="vendor/pets/'+esc(P[k].t.f)+'" alt="" draggable="false"><span>'+esc(P[k].n||'')+'</span></button>').join('')+'</div>';}
 function avInner(icon){const k=avPetKey(icon);if(k)return '<img class="av-pet" src="vendor/pets/av-'+k+'.png" alt="" draggable="false">';   /* av-<키>.png — 시각 중심을 한가운데 둔 정사각형(scripts/pet-av.py) */
   return icon?'<span class="av-em">'+esc(icon)+'</span>':AV_DFLT;}
 function avHTML(pid,cls){
@@ -1642,7 +1642,7 @@ function acxProfHTML(){
         <button class="acx-lo" data-act="acct.signout" aria-label="로그아웃" data-tip="로그아웃">${ACX_OUT}</button>
       </div>
       <div class="acx-pick">
-        <div class="acx-seg"><button class="${avPetKey(av.icon)?'':'on'}" data-act="pf.mode" data-m="emo">이모지</button><button class="${avPetKey(av.icon)?'on':''}" data-act="pf.mode" data-m="chr">캐릭터</button><button data-act="pf.mode" data-m="col">배경색</button></div>
+        <div class="acx-seg"><button class="${avPetKey(av.icon)?'':'on'}" data-act="pf.mode" data-m="emo">이모지</button><button class="${avPetKey(av.icon)?'on':''}" data-act="pf.mode" data-m="chr">미니펫</button><button data-act="pf.mode" data-m="col">배경색</button></div>
         ${emojiPickerHTML(av)}
       </div>
     </div>`;

@@ -5693,9 +5693,10 @@ body.wid #mb.acx #pfPop .pal-flow{background:rgba(255,255,255,.12);}
 #mb.acx #pfPop .pf-ccats{display:flex;gap:4px;}   /* 분류 — 사람·안전·장비·공종·사무 */
 #mb.acx #pfPop .pf-ccats button{flex:1;height:28px;border-radius:14px;font-size:12px;font-weight:600;color:var(--T2);}
 #mb.acx #pfPop .pf-ccats button.on{color:var(--b600);background:var(--TINT);}
-#mb.acx #pfPop .pf-cg{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;height:154px;overflow-y:auto;align-content:start;}   /* 3줄 높이 — 넘치면 굴림(공종 25종) */
-#mb.acx #pfPop .pf-chr .pf-em{height:46px;}
+#mb.acx #pfPop .pf-cg{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;height:130px;overflow-y:auto;align-content:start;}   /* 이름 붙은 칸 2줄 — 판 전체 높이가 이모지·배경색 판과 같게(202px), 넘치면 굴림 */
+#mb.acx #pfPop .pf-chr .pf-em{height:63px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:0;}
 #mb.acx #pfPop .pf-chr img{max-height:34px;max-width:40px;}
+#mb.acx #pfPop .pf-chr .pf-em span{max-width:100%;padding:0 2px;font-size:10.5px;line-height:13px;font-weight:600;color:var(--T2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}   /* 펫 이름 */
 #mb.acx.m-chr #pfPop :is(.pf-cats,.pf-emg,.pal,.acx-cp){display:none!important;}
 .av-pet{display:block;width:80%;height:80%;object-fit:contain;pointer-events:none;}   /* 캐릭터 아바타 — 동그라미 크기에 맞춰 줄어든다 */
 #mb.acx #pfPop .acx-cp{display:none;flex-direction:column;gap:12px;padding:14px;border-radius:18px;background:var(--CAP);box-shadow:inset 0 0 0 1px var(--CAPL);}
@@ -6377,5 +6378,5 @@ body.mcal-full #fcal .mlN::before{content:'+'}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1265"></script>
+<script src="./app.js?v=1266"></script>
 </body></html>
