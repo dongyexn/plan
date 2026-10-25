@@ -3429,7 +3429,7 @@ body.wid #wgSet.on{display:block;}
 #wgSet .wgs-acc button.on{box-shadow:0 0 0 2px rgba(20,22,28,.9),0 0 0 3.5px #fff;}
 #wgSet .wgs-pet{position:relative;flex:1 1 auto;min-width:0;display:flex;align-items:center;justify-content:center;gap:2px;height:30px;padding:0 20px;border-radius:3px;color:#fff;font-size:12px;}   /* 위 슬라이더와 같은 폭 */
 #wgSet .wgs-pt{display:flex;align-items:flex-end;justify-content:flex-end;}   /* 펫 그림 — 투명도 % 와 같은 자리(라벨 칸 오른쪽 끝) */
-#wgSet .wgs-pt img{display:block;image-rendering:pixelated;}
+#wgSet .wgs-pt img{display:block;}
 #wgSet .wgs-pet b{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 #wgSet .wgs-pet .icn{position:absolute;right:4px;top:50%;margin-top:-7px;width:14px;height:14px;opacity:.7;}   /* 글자는 가운데, 화살표는 오른쪽 끝 */
 @media (hover:hover) and (pointer:fine){#wgSet .wgs-pet:hover{background:rgba(255,255,255,.1);}}
@@ -3451,7 +3451,7 @@ body.wid #wgSet.on{display:block;}
 @media (hover:hover) and (pointer:fine){#wgPick .pk-i:hover{background:rgba(255,255,255,.1);}}
 #wgPick .pk-i.on{background:rgba(255,255,255,.14);box-shadow:inset 0 0 0 1.5px var(--b400);color:#fff;}
 #wgPick .pk-pic{display:flex;align-items:flex-end;justify-content:center;width:100%;height:34px;}
-#wgPick .pk-pic img{display:block;image-rendering:pixelated;max-width:100%;}   /* 위아래 빈 줄을 잘라 둔 썸네일 — 위젯과 같은 비율, 바닥 맞춤 */
+#wgPick .pk-pic img{display:block;max-width:100%;}   /* 위아래 빈 줄을 잘라 둔 썸네일 — 위젯과 같은 비율, 바닥 맞춤 · 4배 그림을 매끈하게 줄임 */
 #wgPick .pk-i{position:relative;}#wgPick .pk-no{position:absolute;top:3px;left:3px;width:15px;height:15px;border-radius:50%;background:var(--b400);color:#fff;font-size:10px;font-weight:700;line-height:15px;text-align:center;font-style:normal;}   /* 여러 마리 — 올린 순서 */
 #wgPick .pk-i span{display:block;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
 /* 미니펫 — 머리 줄 빈자리(년월 묶음 ~ 단추 묶음)를 걷는다. 발은 단추 아래선에 맞춘다 */
@@ -3462,7 +3462,7 @@ body.wid #wgSet.on{display:block;}
 .wgPet.talk{z-index:33;}   /* 말하는 펫이 옆 펫 위로 — 말풍선이 가리지 않게 */
 .wgPet.held{z-index:60;cursor:grabbing;}.wgPet.held img{filter:drop-shadow(0 6px 4px rgba(0,0,0,.35));}
 #wgPetSh{position:absolute;z-index:30;left:0;height:4px;border-radius:50%;background:rgba(0,0,0,.35);opacity:0;pointer-events:none;transition:opacity .15s;}#wgPetSh.on{opacity:1;}   /* 들고 있는 동안 바닥에 놓일 자리 */
-.wgPet img{display:block;image-rendering:pixelated;pointer-events:none;}
+.wgPet img{display:block;pointer-events:none;}   /* 4배로 키운 그림을 매끈하게 줄인다(최근접 소수 배율은 걷는 동안 픽셀 굵기가 들쭉날쭉) */
 .wgPet .bub{position:absolute;left:100%;bottom:30%;transform:translate(2px,0);padding:3px 8px;border-radius:10px;background:#fff;color:#1f2329;font-size:11.5px;font-weight:700;white-space:nowrap;
   box-shadow:0 2px 6px rgba(0,0,0,.3);opacity:0;transition:opacity .15s,transform .15s;pointer-events:none;}
 .wgPet .bub.emo{font-size:16px;padding:2px 7px;line-height:1.3;}
@@ -3475,14 +3475,9 @@ body.wid #wgSet.on{display:block;}
 .wgPet.fly .sh{opacity:.55;}.wgPet.held .sh{display:none;}   /* 나는 펫은 옅게 · 들고 있을 땐 바닥 그림자(#wgPetSh)가 대신 */
 .wgPet.hop .bd{animation:wgPetHop .45s cubic-bezier(.3,1.6,.5,1);}   /* 깡총은 몸만 — 그림자는 바닥에 */
 @keyframes wgPetHop{0%,100%{translate:0 0}40%{translate:0 -12px}}
-.wgPet .z{position:absolute;left:60%;bottom:min(calc(var(--ph,30px) - 10px),22px);line-height:1;font-size:11px;font-weight:800;color:#cfe0ff;opacity:0;pointer-events:none;}
-.wgPet.sleep .z{animation:wgPetZ 2.4s ease-in-out infinite;}
-@keyframes wgPetZ{0%{opacity:0;transform:translate(0,0)}30%{opacity:1}100%{opacity:0;transform:translate(8px,-8px)}}   /* z 는 지금 그림 머리 바로 위(--ph)에서 8px 만 오른다 — 44px 칸 위쪽 기준이면 창 위로 잘렸다 */
 .wgBall{position:absolute;z-index:30;left:0;top:0;width:16px;height:16px;background:center/contain no-repeat;filter:drop-shadow(0 1px 1px rgba(0,0,0,.45));pointer-events:none;}   /* 공 = it-ball.png(축구공) */
-#view-calendar .cal-head .wgHt{position:absolute;z-index:32;top:6px;width:12px;height:12px;background:center/contain no-repeat;pointer-events:none;animation:wgHt 1.1s cubic-bezier(.2,.7,.3,1) forwards;}   /* 쓰다듬기·먹이 하트 */
+#view-calendar .cal-head .wgHt{position:absolute;z-index:32;top:6px;width:12px;height:12px;background:center/contain no-repeat;pointer-events:none;animation:wgHt 1.1s cubic-bezier(.2,.7,.3,1) forwards;}   /* 먹이 하트 */
 @keyframes wgHt{0%{opacity:0;transform:translate(0,4px) scale(.6)}20%{opacity:1;transform:translate(0,-4px) scale(1)}100%{opacity:0;transform:translate(var(--dx),-26px) scale(.9)}}
-.wgPet.wad img{animation:wgPetWad .5s steps(1,end) infinite;}   /* 걷는 그림이 없는 펫이 움직일 때 — 1px 콩콩 */
-@keyframes wgPetWad{0%{translate:0 0}50%{translate:0 -1px}}
 body.wid.pet-on .cal-head{cursor:crosshair;}   /* 머리 줄 빈 곳을 누르면 공을 던진다 */
 body.wid.pet-on .cal-head :is(.cal-filt-pop,.tb-pop){cursor:auto;}   /* 머리 줄 안 팝업은 보통 커서 — 단추는 원래 pointer */
 #wgSet .wgs-cyc b{flex:1;min-width:0;width:74px;text-align:center;font-size:12px;font-weight:700;color:#fff;white-space:nowrap;}
@@ -6355,5 +6350,5 @@ body.mcal-full #fcal .mlN::before{content:'+'}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1252"></script>
+<script src="./app.js?v=1253"></script>
 </body></html>

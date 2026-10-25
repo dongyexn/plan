@@ -28,7 +28,7 @@ const src=fs.readFileSync(path.join(root,'vendor/pets.js'),'utf8');const s=src.i
 const P=JSON.parse(src.slice(s,src.lastIndexOf('}')+1));const keys=Object.keys(P);
 const miss=keys.flatMap(k=>{const v=P[k];return [...Object.values(v.g).map(g=>g.f),v.t.f,v.z.f,...(v.it?['it-'+v.it+'.png']:[])].filter(f=>!fs.existsSync(path.join(root,'vendor/pets',f))).map(f=>k+':'+f);});
 ok('그림 파일 누락 없음('+keys.length+'종)',!miss.length,miss);
-ok('분류 c 지정',keys.every(k=>'pstoa'.includes(P[k].c||'a')),keys.filter(k=>!'pstoa'.includes(P[k].c||'a')));
+ok('분류 c 지정(사람·안전·공종·사무)',keys.every(k=>'psto'.includes(P[k].c||'-')),keys.filter(k=>!'psto'.includes(P[k].c||'-')));
 
 /* 2) 3마리 제한 */
 {const{ctx,pg,perr}=await page({pets:['manager','worker','cone']});
@@ -40,24 +40,31 @@ ok('분류 c 지정',keys.every(k=>'pstoa'.includes(P[k].c||'a')),keys.filter(k=
 
 /* 3) 짝 대본 */
 const PAIRS=[['sf-bell','beacon','띵동! 호출 눌렀어요','삐뽀삐뽀! 장비 정지!'],['excavator','dump','흙 퍼 담습니다~','덜컹! 반출 갑니다'],['of-mouse','of-kbd','나 없으면 클릭 못 해요','나 없으면 글자 못 쳐요'],
-  ['sf-wind','crane','풍속 10m/s 넘었어요!','인양 작업 중지합니다'],['capybara','duckling','삐약?','…올라와'],['capybara','angry','하자 언제 고쳐요!','…진정해요'],
+  ['sf-wind','crane','풍속 10m/s 넘었어요!','인양 작업 중지합니다'],['plumber','tr-pipe','💪','💪'],
   ['cs','angry','내일 오전 방문할게요!','네, 꼭 드릴게요!']];
 for(const [a,b,t1,t2] of PAIRS){const{ctx,pg,perr,nf}=await page({pets:[b,a]});await pg.evaluate(()=>PET.play());const log=await bubbles(pg,30,t2);
   ok('짝 '+a+'↔'+b,log.some(x=>x.includes(t1))&&log.some(x=>x.includes(t2))&&!perr.length&&!nf.length,{log,perr,nf});await ctx.close();}
 
 /* 4) 던지기 — 펫별 먹이 그림 */
-for(const k of ['capybara','sf-radio','of-kbd','raccoon-gray','rat-gray']){const{ctx,pg,perr,nf}=await page({pets:[k]});
+for(const k of ['plumber','sf-radio','of-kbd','tr-tree']){const{ctx,pg,perr,nf}=await page({pets:[k]});
   const cx=await pg.$eval('.wgPet',e=>{const r=e.getBoundingClientRect();return r.left+r.width/2+120;});
   await pg.evaluate(x=>PET.throwBall(x),cx);await W(250);
   const bg=await pg.$eval('.wgBall',e=>e.style.backgroundImage).catch(()=>'');await W(6000);
   ok('던지기 '+k,bg.includes('it-'+(P[k].it||'ball')+'.png')&&!perr.length&&!nf.length,{bg,perr,nf});await ctx.close();}
 
-/* 5) 전체 — 세 마리씩 올려 놀고 던짐 */
-const bad=[];for(let i=0;i<keys.length;i+=3){const ks=keys.slice(i,i+3);const{ctx,pg,perr,nf}=await page({pets:ks});
-  const n=await pg.$$eval('.wgPet',a=>a.length);await pg.evaluate(()=>PET.play());await W(2500);
-  const cx=await pg.$eval('.wgPet',e=>{const r=e.getBoundingClientRect();return r.left+r.width/2+100;});await pg.evaluate(x=>PET.throwBall(x),cx);await W(3000);
-  if(perr.length||nf.length||n!==ks.length)bad.push({ks,n,perr,nf});await ctx.close();}
+/* 5) 전체 — 한 창에서 세 마리씩 바꿔 올려 놀고 던짐(창을 매번 새로 열지 않아 빠르다) */
+const bad=[];{const{ctx,pg,perr,nf}=await page({pets:[]});
+  for(let i=0;i<keys.length;i+=3){const ks=keys.slice(i,i+3),e0=perr.length,n0=nf.length;
+    await pg.evaluate(ks=>{const c=widCfgLoad();c.pets=ks;widCfgSave(c);petSync();},ks);await W(700);
+    const n=await pg.$$eval('.wgPet',a=>a.length);await pg.evaluate(()=>PET.play());await W(1500);
+    const cx=await pg.$eval('.wgPet',e=>{const r=e.getBoundingClientRect();return r.left+r.width/2+100;});await pg.evaluate(x=>PET.throwBall(x),cx);await W(1800);
+    if(perr.length>e0||nf.length>n0||n!==ks.length)bad.push({ks,n,perr:perr.slice(e0),nf:nf.slice(n0)});}
+  await ctx.close();}
 ok('전체 '+keys.length+'종 올림·놀기·던지기 오류 없음',!bad.length,bad);
+
+/* 6) 본편(위젯 아님)은 pet.js 를 받지 않는다 */
+{const ctx=await br.newContext({viewport:{width:900,height:700}});const pg=await ctx.newPage();const got=[];pg.on('request',r=>{if(/\/pet\.js|pets\.js/.test(r.url()))got.push(r.url());});
+  await pg.goto('http://localhost:'+PORT+'/index.html?local=1');await W(2500);ok('본편은 pet.js·pets.js 를 받지 않음',!got.length,got);await ctx.close();}
 
 await br.close();srv.close();
 console.log(fail?'FAIL '+fail:'PASS');process.exitCode=fail?1:0;

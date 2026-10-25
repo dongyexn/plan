@@ -1,5 +1,17 @@
 # 변경 이력 (읽기 전용) — 현재 상태는 HANDOFF.md
 
+## 마지막 기록 기준 v1253
+### 1253차 펫 정리 — 동물·아기 삭제 · 배관공 · pet.js 분리 · 표시 기준 통일 · 경량화
+**사용자: 「펫 기능에 대해 다각도로 자체 리뷰 · 위젯 전용으로 남겨 두는 게 좋은가」 → 리뷰(위젯 전용 유지 + 라이선스·코드 위치·그림 기준·유지비) → 「1~4 수용 · 고양이는 대표 펫이니 있어야 · 토끼는 없어도 · 써도 되는 고양이 찾아 미리보기 · 유지비 경량화」 → 후보(LuizMelo Pet Cats Pack CC0 등) → 「그냥 동물 분류를 다 날릴까? 사람 한 칸 비는 건 뭐로 넣을지 미리보기」 → 후보 설비공·전기공·콘크리트공·용접공 → 「배관공이란 이름으로 설비공을 창호공 뒤에 · 동물이랑 아기 전부 삭제 · 나머지 2~4도 함께」**
+- 삭제: 동물 분류 10종(dog-akita·cat-greywhite·fox-red·raccoon-gray·rat-gray·chicken-white·duckling·capybara·bunny-white·el-bee) + 사람 분류 el-baby1. 그림 79개(동작 gif·t·z), 동물만 쓰던 먹이 it-bottle·carrot·cheddar·corn·honey·meat·taiyaki. 짝 대본(닭↔병아리·카피바라 3쌍·토끼↔강아지·고양이↔병아리·꿀벌↔조경), 장면(고양이→쥐 쫓기·강아지→닭·아기↔강아지/고양이·동물끼리·사람→동물), 동물 이름 맞춤표(NK)·kind 'ani'·runP. 분류 칩 「동물」. 사과 it-apple(조경)·축구공 it-ball(기본)은 남김.
+- 라이선스 이유: 고양이 Bow.Pixel·토끼 ToffeeCraft 는 재배포 금지인데 저장소가 공개. Elthen(여우·꿀벌·아기)은 CC 비상업+상업 허용 댓글만 있고 재배포 조건 미기재, vscode-pets 그림(시바·너구리·쥐·닭)은 MIT 가 그림에도 적용되는지 미기재 — 확인 못 한 그림은 두지 않기로.
+- 배관공 plumber(c p, 창호공 다음): 예전 공종 사람 시안(설비공 — 노란 안전모·하늘 셔츠·남색 멜빵·빨간 파이프렌치)을 같은 내보내기(4배 gif, 표시 1.5배)로 — walk 39×42 · idle 39×40 · eat 39×42 · t 33×34, it spanner, say 「꽉 조여요!」, lines 「누수 잡자!」·🔧. PPL·JOB(plumber→tr-pipe 짝)·TBM_JOB(배관 누수 보수). 전체 75종(사람 15·안전 20·공종 25·사무 15).
+- pet.js 분리: app.js 의 미니펫 묶음(대사·그림 경로·petLoad·petMake·PET·고르기 창·공 던지기 클릭·pointermove)을 pet.js 로. app.js 에는 petM()(window.PETM)·petBoot()(WIDGET 일 때 ./pet.js?v= 를 한 번 받음)만. 부르는 곳 — histPush(done)·wid.set(pick false)·wid.petPick(pickToggle)·wid.petCat(cat)·wid.pet(toggle)·설정 닫기(pick false + sync)·widApply(petBoot + sync). pet.js 끝에서 PETM 을 걸고 petSync() 한 번. app.js 1,503,518 → 1,453,721 바이트. build-min·static-audit(구문·회차 표기)에 pet.js 추가.
+- 표시 통일·경량화: 남은 펫이 모두 sm 이라 sm 플래그 삭제, .wgPet img·고르기 썸네일·설정 썸네일의 pixelated 삭제(매끈 표시가 기본). 동물만 쓰던 동작 코드 삭제 — 눕기·낮잠(sleeping·nap·sleep·napNow·'lie')·앞발질/공 물기 그림(swipe·with_ball → idle)·st(쉬는 그림으로 콩콩, .wad CSS)·fl(왼쪽 그림 뒤집기)·z 글자 요소(.z CSS·--ph)·PET_LINES.wake. 깊은 잠(z 그림)·공 던지기·끌기·짝·TBM 은 그대로. 누르기 2·3번째(예전 앞발질·공 문 그림)는 쉬는 그림으로.
+- 기준 문서: vendor/pets.js 머리 주석에 출처(모두 직접 그림 + Fluent ❤️)와 새 펫 표시 기준(4배 그림·표시 1.5배·t 크기식·동작 장수·분류) 정리.
+- static-audit: 구문 검사·회차 표기 검사에 pet.js, 핸들러 짝·CSS 클래스 사용처를 찾는 jsNC 에 pet.js 를 이어 붙임(안 그러면 wid.petCat·wid.pet·펫 CSS 가 「사용처 없음」 WARN).
+- 테스트: pets.mjs — 분류 psto, 짝 plumber↔tr-pipe 추가(동물 짝 빼고), 던지기 plumber·sf-radio·of-kbd·tr-tree, 전체 순회는 한 창에서 설정만 바꿔 세 마리씩(창을 매번 새로 열지 않음), 본편(?w 없음)에서 pet.js·pets.js 요청이 없는지 확인.
+
 ## 마지막 기록 기준 v1252
 ### 1252차 카피바라 등 외곽선 한 칸 손질(사용자 그림판 수정 반영)
 **사용자: 「등에 픽셀 한 칸이 밀려 있어서 그림판으로 조금 고쳐봤어」(잠 자세 그림 첨부)**
