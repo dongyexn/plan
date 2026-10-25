@@ -5644,7 +5644,7 @@ body.wid #mb.acx .acct-rolebadge{background:rgba(255,255,255,.12);}
 #mb.acx .acx-pick{display:none;}
 #mb.acx.acx-ed .acx-row{display:none;}
 #mb.acx.acx-ed .acx-pick{display:block;}
-#mb.acx .acx-seg{display:grid;grid-template-columns:1fr 1fr;height:40px;padding:4px;margin:20px 0 14px;border-radius:20px;background:var(--CAP);box-shadow:inset 0 0 0 1px var(--CAPL);will-change:transform;}   /* 한 층으로 묶는다 — 배경색으로 바꾸며 창 높이·색 판이 움직인 뒤 켜진 칸만 다른 합성 층에 남아 1px 아래에 그려졌다(배치 값은 위아래 4px 그대로) */
+#mb.acx .acx-seg{display:grid;grid-template-columns:1fr 1fr 1fr;height:40px;padding:4px;margin:20px 0 14px;border-radius:20px;background:var(--CAP);box-shadow:inset 0 0 0 1px var(--CAPL);will-change:transform;}   /* 한 층으로 묶는다 — 배경색으로 바꾸며 창 높이·색 판이 움직인 뒤 켜진 칸만 다른 합성 층에 남아 1px 아래에 그려졌다(배치 값은 위아래 4px 그대로) */
 #mb.acx .acx-seg button{border-radius:16px;font-size:13.5px;font-weight:600;color:var(--T2);transition:background var(--t-fast),color var(--t-fast),box-shadow var(--t-fast);}
 #mb.acx .acx-seg button.on{color:var(--T1);background:var(--bg2);box-shadow:0 1px 3px rgba(16,24,40,.12),0 0 0 .5px rgba(16,24,40,.06);}
 body.wid #mb.acx .acx-seg button.on{background:rgba(255,255,255,.16);color:#fff;box-shadow:none;}
@@ -5687,6 +5687,13 @@ body.wid #mb.acx #pfPop .pal-flow{background:rgba(255,255,255,.12);}
   mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Crect x='1.8' y='1.3' width='2.2' height='7.4' rx='.8'/%3E%3Crect x='6' y='1.3' width='2.2' height='7.4' rx='.8'/%3E%3C/svg%3E") center/contain no-repeat;}
 #mb.acx.m-emo #pfPop .pal,#mb.acx.m-emo #pfPop .acx-cp{display:none!important;}
 #mb.acx.m-col #pfPop .pf-cats,#mb.acx.m-col #pfPop .pf-emg{display:none!important;}
+/* 캐릭터 판 — 사람 15종(5×3). 이모지 판과 같은 칸 모양 */
+.pf-chr{display:none;}
+#mb.acx.m-chr #pfPop .pf-chr{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;border-radius:18px;background:var(--CAP);box-shadow:inset 0 0 0 1px var(--CAPL);padding:8px;}
+#mb.acx #pfPop .pf-chr .pf-em{height:46px;}
+#mb.acx #pfPop .pf-chr img{max-height:34px;max-width:40px;}
+#mb.acx.m-chr #pfPop :is(.pf-cats,.pf-emg,.pal,.acx-cp){display:none!important;}
+.av-pet{display:block;width:80%;height:80%;object-fit:contain;pointer-events:none;}   /* 캐릭터 아바타 — 동그라미 크기에 맞춰 줄어든다 */
 #mb.acx #pfPop .acx-cp{display:none;flex-direction:column;gap:12px;padding:14px;border-radius:18px;background:var(--CAP);box-shadow:inset 0 0 0 1px var(--CAPL);}
 #mb.acx.m-cus #pfPop .acx-cp{display:flex!important;}
 #mb.acx.m-cus #pfPop .pal{display:none!important;}
@@ -6366,5 +6373,5 @@ body.mcal-full #fcal .mlN::before{content:'+'}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1261"></script>
+<script src="./app.js?v=1262"></script>
 </body></html>

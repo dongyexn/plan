@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1261';
+const APP_VER='1262';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -464,7 +464,11 @@ function avOf(pid){
 }
 const AV_COL_RE=/^(#[0-9A-Fa-f]{6}|rainbow(-anim)?|grad-[a-z]{2}(-anim)?|g[cf]-[0-9a-f]{6}-[0-9a-f]{6})$/;   /* 프로필 색은 이 꼴만 허용 — style 에 들어가므로 ';' 로 다른 속성을 덧붙이지 못하게 한다(규칙도 같은 식) */
 const AV_DFLT='<svg class="av-ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#av-person"></use></svg>';
-function avInner(icon){return icon?'<span class="av-em">'+esc(icon)+'</span>':AV_DFLT;}
+/* 프로필 캐릭터 — 위젯 펫의 사람 15종 정지 그림(vendor/pets/<키>-t.png, 모두 직접 그림). avIcon 에 「pet:<키>」 로 둔다(규칙은 24자 이하 문자열 그대로) */
+const AV_PETS=['manager','lead','worker','signal','guide','paperer','floorer','tiler','painter','caulker','plaster','glazier','plumber','angry','cs'];
+const avPetKey=icon=>{const m=/^pet:([a-z-]+)$/.exec(String(icon||''));return m&&AV_PETS.includes(m[1])?m[1]:'';};
+function avInner(icon){const k=avPetKey(icon);if(k)return '<img class="av-pet" src="vendor/pets/'+k+'-t.png" alt="" draggable="false">';
+  return icon?'<span class="av-em">'+esc(icon)+'</span>':AV_DFLT;}
 function avHTML(pid,cls){
   const{color,icon}=avOf(pid);
   const c=color||ownColor(pid);
@@ -1630,7 +1634,7 @@ function acxProfHTML(){
         <button class="acx-lo" data-act="acct.signout" aria-label="로그아웃" data-tip="로그아웃">${ACX_OUT}</button>
       </div>
       <div class="acx-pick">
-        <div class="acx-seg"><button class="on" data-act="pf.mode" data-m="emo">이모지</button><button data-act="pf.mode" data-m="col">배경색</button></div>
+        <div class="acx-seg"><button class="${avPetKey(av.icon)?'':'on'}" data-act="pf.mode" data-m="emo">이모지</button><button class="${avPetKey(av.icon)?'on':''}" data-act="pf.mode" data-m="chr">캐릭터</button><button data-act="pf.mode" data-m="col">배경색</button></div>
         ${emojiPickerHTML(av)}
       </div>
     </div>`;
@@ -1686,6 +1690,7 @@ function emojiPickerHTML(av){
       ${EMOJI_CATS.map((c,i)=>rec.length||i?'<button class="pf-cat" data-cat="'+c.id+'" data-act="pf.cat" data-tip="'+esc(c.label)+'">'+esc(c.s.slice(0,c.s.indexOf(' ')))+'</button>':'').join('')}
     </div>
     <div class="pf-emg" id="pfEmg"></div>
+    <div class="pf-chr" id="pfChr">${AV_PETS.map(k=>'<button class="pf-em'+(avPetKey(av.icon)===k?' on':'')+'" data-e="pet:'+k+'" data-act="pf.pick"><img src="vendor/pets/'+k+'-t.png" alt="" draggable="false"></button>').join('')}</div>
     ${palHTML('pfPal',av.color||'',pfAutoChip(!av.color))}
     <div class="acx-cp" id="acxCp">
       <button class="acx-cp-h" data-act="pf.cpBack"><svg class="icn"><use href="#i-chevl"></use></svg>직접 고르기</button>
@@ -1733,7 +1738,7 @@ function renderAcctModal(tab){
   const u=S.user;if(!u)return;
   pfDrop();
   const t=tab||'profile',mb=$('#mb');
-  mb.classList.add('acx');mb.classList.remove('acx-ed','m-emo','m-col','m-cus','acx-pw');
+  mb.classList.add('acx');mb.classList.remove('acx-ed','m-emo','m-chr','m-col','m-cus','acx-pw');
   mb.classList.toggle('acx-pw',t==='pw');
   $('#mbody').innerHTML=t==='pw'?acxPwHTML():acxProfHTML();
   MODAL_CB={type:'acct',tab:t};
@@ -2032,17 +2037,18 @@ function pfEdit(on){acxMorph(()=>pfEditNow(on),on?'.acx-pick':'.acx-row',0,on?-8
 function pfEditNow(on){
   const mb=$('#mb');if(!mb||!$('#pfPop'))return;
   mb.classList.toggle('acx-ed',on);
-  if(on){if(!mb.classList.contains('m-col'))mb.classList.add('m-emo');if(!PF_MORE)pfRenderEmg(recentEmoji().length?'recent':'smiley','');}
+  if(on){if(!mb.classList.contains('m-col')&&!mb.classList.contains('m-chr'))mb.classList.add(avPetKey((avOf((S.user||{}).uid)||{}).icon)?'m-chr':'m-emo');   /* 캐릭터를 쓰고 있으면 캐릭터 판부터 */if(!PF_MORE)pfRenderEmg(recentEmoji().length?'recent':'smiley','');}
   else{if(mb.classList.contains('m-cus'))acxCpClose(true);mb.classList.remove('m-cus');}
 }
 function pfMode(m){
-  const mb=$('#mb');if(!mb||mb.classList.contains(m==='emo'?'m-emo':'m-col')&&!mb.classList.contains('m-cus'))return;
-  acxMorph(()=>pfModeNow(m),m==='emo'?'#pfCats,#pfEmg':'#pfPal',m==='emo'?-14:14,0);
+  const mb=$('#mb');if(!mb||mb.classList.contains('m-'+m)&&!mb.classList.contains('m-cus'))return;
+  const was=['emo','chr','col'].findIndex(k=>mb.classList.contains('m-'+k)),to=['emo','chr','col'].indexOf(m);
+  acxMorph(()=>pfModeNow(m),m==='emo'?'#pfCats,#pfEmg':m==='chr'?'#pfChr':'#pfPal',to<was?-14:14,0);
 }
 function pfModeNow(m){
   const mb=$('#mb');if(!mb)return;
   if(mb.classList.contains('m-cus'))acxCpClose(true);
-  mb.classList.toggle('m-emo',m==='emo');mb.classList.toggle('m-col',m==='col');mb.classList.remove('m-cus');
+  mb.classList.toggle('m-emo',m==='emo');mb.classList.toggle('m-chr',m==='chr');mb.classList.toggle('m-col',m==='col');mb.classList.remove('m-cus');
   $$('#mb .acx-seg button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
 }
 /* ── 직접 고르기 — 브라우저 기본 색 대화상자 대신 앱 안 판(채도·밝기 네모 + 색상 막대 + 색 코드) ──
@@ -2190,7 +2196,7 @@ async function acctSave(silent){
     await FB.db.ref('users/'+u.uid).set(userRecord({name,avColor:color,avIcon:icon}));
     FB.userRec=FB.userRec||{};FB.userRec.name=name;FB.userRec.avColor=color;FB.userRec.avIcon=icon;
     S.accounts[u.uid]={...(S.accounts[u.uid]||{}),name,avColor:color,avIcon:icon};
-    if(icon)store.putPref('emoji',[icon].concat(recentEmoji().filter(x=>x!==icon)).slice(0,18).join('|'));
+    if(icon&&!avPetKey(icon))store.putPref('emoji',[icon].concat(recentEmoji().filter(x=>x!==icon)).slice(0,18).join('|'));
     S.user=u;PF_SEL={icon:null,color:null};
     rAcct();rOrg();if(S.view==='tasks')rTasks();
     acctMark('ok');
@@ -3460,7 +3466,7 @@ function openModal(title,bodyHTML,footHTML){
   $('#mt').textContent=title;$('#mbody').innerHTML=bodyHTML;$('#mf').innerHTML=footHTML||'';
   /* 하단 버튼이 없는 모달(사용 안내 등)은 우상단 X 로 닫는다 — 참조 앱과 동일 */
   const mb=$('#mb');
-  mb.classList.remove('bgw','acx','acx-ed','acx-pw','m-emo','m-col','m-cus','mb-ask','ask3','rdw','narrow','mlw','dfwide','wide-pick','kmw','rkm','pdcw','nott','d60-pvm','d60-hsm','mrv-md','mrv-wid','pv-fly');PV_FLY=null;   /* 놓친 업무 창 폭 */   /* pdcw: 사진 자르기 */   /* ⚠ 지난번 모달의 폭 설정이 남으면 다음 모달이 엉뚱한 크기로 뜬다 */
+  mb.classList.remove('bgw','acx','acx-ed','acx-pw','m-emo','m-chr','m-col','m-cus','mb-ask','ask3','rdw','narrow','mlw','dfwide','wide-pick','kmw','rkm','pdcw','nott','d60-pvm','d60-hsm','mrv-md','mrv-wid','pv-fly');PV_FLY=null;   /* 놓친 업무 창 폭 */   /* pdcw: 사진 자르기 */   /* ⚠ 지난번 모달의 폭 설정이 남으면 다음 모달이 엉뚱한 크기로 뜬다 */
   /* ⚠ 폭 클래스를 새로 만들면 반드시 이 줄에 함께 넣을 것 — 빠지면 그 뒤 모든 모달에 남는다.
      예: #mb.kmw 가 명시도 같은 #mb.dfwide 보다 CSS 뒤에 있어 이겨 모달 폭이 튄다 */
   mb.classList.toggle('has-x',!footHTML);
@@ -11775,7 +11781,7 @@ const ACT={
     const av=document.querySelector('.acct-av');
     if(av){av.innerHTML=avInner(PF_SEL.icon)+'<span class="av-pen"><svg class="icn"><use href="#i-plus"></use></svg></span>';
       const f=av.firstElementChild;if(f&&f.animate&&mvOK())f.animate([{scale:.6,opacity:.3},{scale:1,opacity:1}],{duration:MV_MID,easing:'cubic-bezier(.32,1.22,.5,1)'});}   /* 고른 얼굴이 톡 들어앉는다 */
-    $$('#pfEmg .pf-em').forEach(x=>x.classList.toggle('on',x===el));   /* 닫지 않는다 — 여러 개 비교해 고를 수 있게 */
+    $$('#pfEmg .pf-em,#pfChr .pf-em').forEach(x=>x.classList.toggle('on',x===el));   /* 닫지 않는다 — 여러 개 비교해 고를 수 있게 */
     acctAutoSave();
   },
   'acct.tab':el=>{if(ACX_CP)acxCpClose(true);const pw=el.dataset.tab==='pw';acxMorph(()=>renderAcctModal(el.dataset.tab),'#mbody>*',pw?24:-24,0);},
