@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1266';
+const APP_VER='1267';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -4510,10 +4510,7 @@ function rTasks(){
 
   const tkHTML=`<div class="tkwrap">
     <div class="tkside">
-      <div class="seg tkv-seg">
-        <button class="${S.tkView==='month'?'':'act'}" data-act="tk.view" data-v="week"><svg class="icn" aria-hidden="true"><use href="#i-cal-ck"></use></svg>주간 업무</button>
-        <button class="${S.tkView==='month'?'act':''}" data-act="tk.view" data-v="month"><svg class="icn" aria-hidden="true"><use href="#i-layers"></use></svg>현장별 업무</button>
-      </div>
+      ${tkvSegHTML(S.tkView==='month'?'month':'week')}
       <div class="tkbar-wrap">
         ${miniCalHTML()}
         <div class="card tks-card tks-hold">
@@ -11815,11 +11812,12 @@ const ACT={
     if(!open)S.tkF={...S.tkF,kind:[],st:[],site:[],own:[]};
     S.tkFOpen=open;filtSave();rTasks();},
   'tk.view':el=>{
+    if(el.dataset.v==='iss'){if(S.view!=='iss')go('iss');mtabSync();return;}   /* 폰 — 주요 현안 */
     S.tkView=el.dataset.v==='month'?'month':'week';S.tkNew=null;
     S.tk.m='teamall';   /* 보류함을 보던 중이면 함께 빠져나온다 — 안 그러면 버튼이 안 먹는 것처럼 보인다 */
     /* 주간으로 돌아오면 달력을 예정 주가 든 달로 맞춘다 — 월간에서 달을 넘긴 채면 주기 띠가 안 보인다 */
     if(S.tkView==='week'){const{nxt}=tkWeekCycles();S.mineYm=nxt.start.slice(0,7)+'-01';}
-    rTasks();mtabSync();},
+    if(S.view!=='tasks')go('tasks');else rTasks();mtabSync();},   /* 주요 현안 화면 위 탭에서 오면 업무 현황으로 */
   'tk.tab':el=>{S.tkTab=el.dataset.id||'';S.tkNew=null;rTasksSoon();},
   'tk.newOpen':el=>{
     /* 새 업무 자리 — 개인 탭(팀장 등)이면 그 사람 밑, 그 외(전체·공통·권역·보류함)는 팀 공통. 담당자는 폼(모달)에서 고른다 */
@@ -16296,7 +16294,7 @@ function mtabDateFit(t){
 function mtabSync(){
   const bar=$('#mtab');if(!bar)return;
   if(WIDGET||!isNarrow())return;   /* 데스크톱·위젯은 하단 탭을 CSS 가 숨긴다 — 재지 않는다(좁아지면 창 크기 처리에서 다시 맞춘다) */
-  const cur=S.view==='calendar'?'calendar':S.view==='tasks'?'tasks':S.view==='defect'?'defect':/^(d60|photo|qc|redo|prod)$/.test(S.view)?'tools':'';
+  const cur=S.view==='calendar'?'calendar':S.view==='tasks'||S.view==='iss'?'tasks':S.view==='defect'?'defect':/^(d60|photo|qc|redo|prod)$/.test(S.view)?'tools':'';
   mtabMark(cur);
   const d=$('#mtab .mtab-d');if(d){const n=String(Number(todayStr().slice(8,10)));
     if(d.textContent!==n)d.textContent=n;
@@ -16481,7 +16479,6 @@ function mmenuOpen(){
   const chev='<svg class="icn" aria-hidden="true"><use href="#i-chevr"></use></svg>';
   box.innerHTML=MSS_GRAB+'<div class="mss-sc"><div class="mss-h">메뉴</div>'
     +(cur?mmenuRow('i-people','팀',teams.length>1?' data-act="mmenu.teams"':'',esc(cur.name)+(teams.length>1?chev:'')):'')   /* 팀이 하나면 이름만 보인다 */
-    +mmenuRow('i-board','주요 현안',' data-act="mmenu.go" data-view="iss"')
     +mmenuRow('i-org','조직 관리',' data-act="mmenu.go" data-view="org"')
     +mmenuRow('i-settings','설정',' data-act="mmenu.go" data-view="settings"')
     +mmenuRow('i-help','사용 안내',' data-act="mmenu.guide"')
@@ -16719,12 +16716,16 @@ function issStripHTML(){
   return sites.length?sites.map(s=>issCard(s,'w')).join(''):'<div class="iss-none">담당 현장이 없습니다. 조직 관리에서 담당 현장을 배정하세요.</div>';}
 /* 다시 그리기 — 입력 중이면 미뤘다가 입력을 떠날 때(focusout) 그린다. force 는 이쪽 조작(입력 칸을 새로 다는 경우) */
 function issTyping(){const a=document.activeElement;return !!(a&&a.matches&&a.matches('.iss-in,.iss-ed,.iss-due'));}   /* 날짜 고르는 중에도 다시 그리지 않는다 */
+/* 업무 현황 전환 탭 — 주간 · 현장별, 폰은 「주요 현안」 칸이 하나 더(하단 탭 「업무 현황」 안에서 고른다 · 주요 현안 화면 위에도 같은 탭) */
+function tkvSegHTML(on){
+  const b=(v,ic,t)=>'<button class="'+(on===v?'act':'')+(v==='iss'?' tkv-iss':'')+'" data-act="tk.view" data-v="'+v+'"><svg class="icn" aria-hidden="true"><use href="#'+ic+'"></use></svg>'+t+'</button>';
+  return '<div class="seg tkv-seg">'+b('week','i-cal-ck','주간 업무')+b('month','i-layers','현장별 업무')+(isNarrow()&&!WIDGET?b('iss','i-board','주요 현안'):'')+'</div>';}
 function rIss(force){
   if(!force&&issTyping()){S.issUI.pend=true;return;}
   S.issUI.pend=false;
   const keep=el=>{const sc=el&&(el.matches('.iss-sc,#issStrip')?el:el.querySelector('.iss-sc'));return sc?sc.scrollTop:0;};
   const put=(el,h)=>{const y=keep(el);el.innerHTML=h;const sc=el.id==='issStrip'?el:el.querySelector('.iss-sc');if(sc)sc.scrollTop=y;};
-  const pg=$('#issRoot');if(pg&&!WIDGET&&S.view==='iss'){put(pg,issBoard('pg'));slSync();}
+  const pg=$('#issRoot');if(pg&&!WIDGET&&S.view==='iss'){put(pg,(isNarrow()?tkvSegHTML('iss'):'')+issBoard('pg'));slSync();}   /* 폰 — 위에 업무 현황 전환 탭 */
   const w=$('#issPane');if(w&&!w.hidden)put(w,issBoard('w'));
   const st=$('#issStrip');if(st&&!st.hidden&&!issOn())put(st,issStripHTML());   /* 판이 켜지면 아래 칸은 숨는다 — 숨은 칸에 입력 칸이 생기면 초점을 가져간다 */
   const f=[...document.querySelectorAll('.iss-in,.iss-ed')].find(e=>e.offsetParent);if(f&&force){f.focus();if(f.classList.contains('iss-ed'))f.select();}
