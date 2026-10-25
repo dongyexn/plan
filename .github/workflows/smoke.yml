@@ -1,12 +1,18 @@
 # 배포 전 자동 검증 — npm test 한 번으로 정적·권한·브라우저 회귀를 순서대로 실행한다.
 # 로컬: npm ci && npx playwright install chromium && npm test
 name: smoke
-on: [push, pull_request]
+# 브랜치 push 와 PR 이 같은 커밋을 두 번 시험하지 않게 — PR 과 main 반영 때만
+on:
+  push:
+    branches: [main]
+  pull_request:
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0   # pets.mjs 가 main 과 비교해 펫 파일이 바뀐 PR 만 75종 전부 돈다
       - uses: actions/setup-node@v7
         with:
           node-version: 24

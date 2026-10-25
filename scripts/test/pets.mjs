@@ -19,7 +19,10 @@ const br=await chromium.launch(Object.assign({args:['--no-sandbox']},exe?{execut
 async function page(cfg,w=620,h=700){const ctx=await br.newContext({viewport:{width:w,height:h}});const pg=await ctx.newPage();const perr=[],nf=[];
   pg.on('pageerror',e=>perr.push(e.message));pg.on('response',r=>{if(r.status()>=400)nf.push(r.url());});
   await pg.addInitScript(c=>{localStorage.setItem('calapp.wid',JSON.stringify(c));},cfg);
-  await pg.goto('http://localhost:'+PORT+'/index.html?local=1&w=1&glass=1');await W(2000);return{ctx,pg,perr,nf};}
+  await pg.goto('http://localhost:'+PORT+'/index.html?local=1&w=1&glass=1');
+  await pg.waitForFunction(n=>window.PETM&&document.querySelectorAll('.wgPet').length===n,(cfg.pets||[]).length,{timeout:15000}).catch(()=>{});await W(300);return{ctx,pg,perr,nf};}   /* 고정 2초 대신 펫이 다 올라올 때까지 */
+/* 던진 먹이를 펫이 집을 때까지(그림이 사라짐) + 먹는 동작 */
+const ballGone=async pg=>{await pg.waitForFunction(()=>!document.querySelector('.wgBall'),null,{timeout:9000}).catch(()=>{});await W(600);};
 const bubbles=async(pg,n,until)=>{const log=[];for(let i=0;i<n;i++){await W(400);const t=(await pg.$$eval('.wgPet .bub.on',x=>x.map(y=>y.textContent))).join('|');
   if(t&&log[log.length-1]!==t)log.push(t);if(until&&log.some(x=>x.includes(until)))break;}return log;};
 
@@ -49,18 +52,26 @@ for(const [a,b,t1,t2] of PAIRS){const{ctx,pg,perr,nf}=await page({pets:[b,a]});a
 for(const k of ['plumber','sf-radio','of-kbd','tr-tree']){const{ctx,pg,perr,nf}=await page({pets:[k]});
   const cx=await pg.$eval('.wgPet',e=>{const r=e.getBoundingClientRect();return r.left+r.width/2+120;});
   await pg.evaluate(x=>PET.throwBall(x),cx);await W(250);
-  const bg=await pg.$eval('.wgBall',e=>e.style.backgroundImage).catch(()=>'');await W(6000);
+  const bg=await pg.$eval('.wgBall',e=>e.style.backgroundImage).catch(()=>'');await ballGone(pg);
   ok('던지기 '+k,bg.includes('it-'+(P[k].it||'heart')+'.png')&&!perr.length&&!nf.length,{bg,perr,nf});await ctx.close();}
 
-/* 5) 전체 — 한 창에서 세 마리씩 바꿔 올려 놀고 던짐(창을 매번 새로 열지 않아 빠르다) */
+/* 5) 전체 — 한 창에서 세 마리씩 바꿔 올려 놀고 던짐(창을 매번 새로 열지 않아 빠르다).
+   펫 코드·그림(pet.js · vendor/pets*)이 main 과 달라졌거나 PETS_FULL=1 이면 75종 전부, 아니면 묶음 5개 표본(처음·끝 포함) */
+let full=process.env.PETS_FULL==='1';
+if(!full){try{const {execSync}=await import('child_process');
+  const d=execSync('git diff --name-only origin/main...HEAD; git diff --name-only HEAD',{cwd:root,stdio:['ignore','pipe','ignore']}).toString();
+  full=/(^|\n)(pet\.js|vendor\/pets)/.test(d);}catch(e){full=true;}}   /* 비교 못 하면 전부(안전 쪽) */
+const grp=[];for(let i=0;i<keys.length;i+=3)grp.push(keys.slice(i,i+3));
+const pick=full?grp:grp.filter((g,i)=>i===0||i===grp.length-1||i%6===3);
 const bad=[];{const{ctx,pg,perr,nf}=await page({pets:[]});
-  for(let i=0;i<keys.length;i+=3){const ks=keys.slice(i,i+3),e0=perr.length,n0=nf.length;
-    await pg.evaluate(ks=>{const c=widCfgLoad();c.pets=ks;widCfgSave(c);petSync();},ks);await W(700);
+  for(const ks of pick){const e0=perr.length,n0=nf.length;
+    await pg.evaluate(ks=>{const c=widCfgLoad();c.pets=ks;widCfgSave(c);petSync();},ks);
+    await pg.waitForFunction(n=>document.querySelectorAll('.wgPet').length===n,ks.length,{timeout:5000}).catch(()=>{});await W(200);
     const n=await pg.$$eval('.wgPet',a=>a.length);await pg.evaluate(()=>PET.play());await W(1500);
-    const cx=await pg.$eval('.wgPet',e=>{const r=e.getBoundingClientRect();return r.left+r.width/2+100;});await pg.evaluate(x=>PET.throwBall(x),cx);await W(1800);
+    const cx=await pg.$eval('.wgPet',e=>{const r=e.getBoundingClientRect();return r.left+r.width/2+100;});await pg.evaluate(x=>PET.throwBall(x),cx);await ballGone(pg);
     if(perr.length>e0||nf.length>n0||n!==ks.length)bad.push({ks,n,perr:perr.slice(e0),nf:nf.slice(n0)});}
   await ctx.close();}
-ok('전체 '+keys.length+'종 올림·놀기·던지기 오류 없음',!bad.length,bad);
+ok((full?'전체 '+keys.length+'종':'표본 '+pick.length+'묶음('+keys.length+'종 중 · 전체는 PETS_FULL=1)')+' 올림·놀기·던지기 오류 없음',!bad.length,bad);
 
 /* 6) 본편(위젯 아님)은 pet.js 를 받지 않는다 */
 {const ctx=await br.newContext({viewport:{width:900,height:700}});const pg=await ctx.newPage();const got=[];pg.on('request',r=>{if(/\/pet\.js|pets\.js/.test(r.url()))got.push(r.url());});
