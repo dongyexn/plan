@@ -29,7 +29,7 @@ const bubbles=async(pg,n,until)=>{const log=[];for(let i=0;i<n;i++){await W(400)
 /* 1) 목록 — 쓰는 그림이 모두 있는지 */
 const src=fs.readFileSync(path.join(root,'vendor/pets.js'),'utf8');const s=src.indexOf('{',src.indexOf('CALAPP_PETS'));
 const P=JSON.parse(src.slice(s,src.lastIndexOf('}')+1));const keys=Object.keys(P);
-const miss=keys.flatMap(k=>{const v=P[k];return [...Object.values(v.g).map(g=>g.f),v.t.f,v.z.f,...(v.it?['it-'+v.it+'.png']:[])].filter(f=>!fs.existsSync(path.join(root,'vendor/pets',f))).map(f=>k+':'+f);});
+const miss=keys.flatMap(k=>{const v=P[k];return [...Object.values(v.g).map(g=>g.f),v.t.f,v.z.f,'av-'+k+'.png',...(v.it?['it-'+v.it+'.png']:[])].filter(f=>!fs.existsSync(path.join(root,'vendor/pets',f))).map(f=>k+':'+f);});
 ok('그림 파일 누락 없음('+keys.length+'종)',!miss.length,miss);
 ok('분류 c 지정(사람·안전·공종·사무)',keys.every(k=>'psto'.includes(P[k].c||'-')),keys.filter(k=>!'psto'.includes(P[k].c||'-')));
 

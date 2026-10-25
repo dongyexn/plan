@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1263';
+const APP_VER='1264';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -475,7 +475,7 @@ function pfChrRender(){
   if(!PF_CCAT)PF_CCAT=(ck&&P[ck]&&P[ck].c)||'p';
   box.innerHTML='<div class="pf-ccats">'+AV_PCATS.map(([c,n])=>'<button class="'+(c===PF_CCAT?'on':'')+'" data-act="pf.ccat" data-c="'+c+'">'+n+'</button>').join('')+'</div>'
     +'<div class="pf-cg">'+Object.keys(P).filter(k=>P[k].c===PF_CCAT).map(k=>'<button class="pf-em'+(ck===k?' on':'')+'" data-e="pet:'+esc(k)+'" data-act="pf.pick" data-tip="'+esc(P[k].n||'')+'"><img src="vendor/pets/'+esc(P[k].t.f)+'" alt="" draggable="false"></button>').join('')+'</div>';}
-function avInner(icon){const k=avPetKey(icon);if(k)return '<img class="av-pet" src="vendor/pets/'+k+'-t.png" alt="" draggable="false">';
+function avInner(icon){const k=avPetKey(icon);if(k)return '<img class="av-pet" src="vendor/pets/av-'+k+'.png" alt="" draggable="false">';   /* av-<키>.png — 시각 중심을 한가운데 둔 정사각형(scripts/pet-av.py) */
   return icon?'<span class="av-em">'+esc(icon)+'</span>':AV_DFLT;}
 function avHTML(pid,cls){
   const{color,icon}=avOf(pid);
@@ -1232,7 +1232,7 @@ const FbStore={
       pendSync();                                /* 가입 승인 대기 — 관리자 배지·알림 */
       /* ⚠ 담당자 색(avColor)이 바뀌면 업무 색도 바뀐다 — 카드뿐 아니라 달력·일자 패널·위젯도 다시 그린다 */
       if(tkHold()){PEND.org=true;PEND.tasks=true;PEND.day=true;return;}
-      rOrg();rTasks();rFilter();rDay();refetchCal();rWidget();rDefectNav();},
+      rOrg();rTasks();rFilter();rDay();refetchCal();rWidget();rDefectNav();rIss();},   /* 주요 현안 카드 머리의 아바타도 */
       e=>{S.accounts={};S.acctDenied=true;console.warn('[FB] users 읽기 권한 없음',e);rOrg();rTasks();});
     /* cfg 에는 하자 감춘 현장(dfHide)도 있다 — 목록·현장 표도 다시 그린다 */
     this._on('calapp/cfg',v=>{S.cfg=v||{};bootCacheSave();rCfg();rDefectNav();if(S.view==='org')rOrg();});
@@ -2207,7 +2207,7 @@ async function acctSave(silent){
     S.accounts[u.uid]={...(S.accounts[u.uid]||{}),name,avColor:color,avIcon:icon};
     if(icon&&!avPetKey(icon))store.putPref('emoji',[icon].concat(recentEmoji().filter(x=>x!==icon)).slice(0,18).join('|'));
     S.user=u;PF_SEL={icon:null,color:null};
-    rAcct();rOrg();if(S.view==='tasks')rTasks();
+    rAcct();rOrg();if(S.view==='tasks')rTasks();rIss();   /* 바꾼 아바타를 현안 카드 머리에도 바로 */
     acctMark('ok');
   }catch(e){console.warn('[계정 저장]',e);acctMark('err','저장하지 못했습니다');}
 }
