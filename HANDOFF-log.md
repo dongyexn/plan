@@ -1,5 +1,12 @@
 # 변경 이력 (읽기 전용) — 현재 상태는 HANDOFF.md
 
+## 마지막 기록 기준 v1259
+### 1259차 테스트 경량화 — CI 중복 실행 정리 · 펫/위젯 시험 대기 줄이기
+**사용자: 「테스트도 경량화할 필욘 없을까」 → 측정(전체 약 8분: pets 186초 · widget-layers 91초 · clip 48 · iss 47 · mobile-fit 45 · e2e-defect 27 · 나머지 36) 뒤 제안 1·3 「진행하자」. 제안 2(로컬 전체 생략)는 보류**
+- smoke.yml: on push(main) + pull_request — 전엔 [push, pull_request] 라 PR 브랜치 push·PR·main 병합 push 로 배포 한 번에 3회. checkout fetch-depth 0(pets.mjs 의 main 비교용).
+- pets.mjs: page() 는 .wgPet 수가 맞을 때까지(최대 15초) + 300ms. 던지기는 .wgBall 이 사라질 때까지(최대 9초) + 600ms(먹기). 5) 전체 순회는 git diff origin/main...HEAD + 작업 트리에 pet.js·vendor/pets 가 있거나 PETS_FULL=1 이면 25묶음 전부, 아니면 처음·끝·i%6===3 묶음(6개). git 비교가 실패하면 전부.
+- widget-layers.mjs: until(pg,f) — ST 를 40ms 마다 보며 최대 1.5초. 위젯·데스크톱 층 루프와 편집기 바깥 클릭에 적용, clickOutside 의 350ms 고정 대기 삭제. 「Esc 1회는 확인창만」은 확인창이 닫힌 뒤 120ms 더 보고 아래 층이 남았는지 확인.
+
 ## 마지막 기록 기준 v1258
 ### 1258차 셀프 리뷰 적용 4 — UX
 **사용자: 셀프 리뷰 「U13 U10 U9 제외하고 모두 적용」 — UX 묶음(전후 캡처로 확인, 미리보기 전달)**

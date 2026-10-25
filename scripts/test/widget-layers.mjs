@@ -43,6 +43,8 @@ const ST=pg=>pg.evaluate(()=>({
   side:!!($('#widSide')&&$('#widSide').classList.contains('on')),nq:!!($('#nqPanel')&&$('#nqPanel').classList.contains('on')),
   pop:!!S.widPop,plan:!!S.planEdit}));
 const W=ms=>new Promise(r=>setTimeout(r,ms));
+/* 고정 대기 대신 상태가 될 때까지 40ms 간격으로 본다(최대 1.5초) — 닫힘·열림 확인이 즉시 끝난다 */
+const until=async(pg,f,ms=1500)=>{let s;for(let t=0;t<ms;t+=40){s=await ST(pg);if(f(s))return s;await W(40);}return s;};
 /* 층을 모두 걷는다 — 각 검사를 깨끗한 상태에서 시작 */
 const reset=async pg=>{await pg.evaluate(()=>{
   if($('#mo').classList.contains('open'))closeModal();mselClose();closeYMPop();calFiltClose();
@@ -56,7 +58,7 @@ const outsideXY=pg=>pg.evaluate(()=>{
   for(const c of document.querySelectorAll('.fc-col-header-cell')){const r=c.getBoundingClientRect();
     const x=r.x+r.width/2,y=r.y+r.height/2,h=document.elementFromPoint(x,y);if(h&&c.contains(h))return [x,y];}
   return [4,innerHeight-4];});
-const clickOutside=async pg=>{const [x,y]=await outsideXY(pg);await pg.mouse.click(x,y);await W(350);};
+const clickOutside=async pg=>{const [x,y]=await outsideXY(pg);await pg.mouse.click(x,y);};
 const dayCell=(pg,i=2)=>pg.locator('#fcal td.fc-daygrid-day').nth(i);
 
 /* ═══ 위젯 460×820 ═══ */
@@ -71,16 +73,16 @@ const dayCell=(pg,i=2)=>pg.locator('#fcal td.fc-daygrid-day').nth(i);
     pop: {open:()=>dayCell(pg).click(),toggle:false},   /* 460 폭에선 팝업이 칸을 덮어 같은 칸을 다시 누를 수 없다 */
   };
   for(const [k,o] of Object.entries(L)){
-    await reset(pg);await o.open();await W(400);
-    let s=await ST(pg);ok('위젯 '+k+' 열림',s[k],s);
-    await pg.keyboard.press('Escape');await W(350);s=await ST(pg);ok('위젯 '+k+' Esc 로 닫힘',!s[k],s);
-    await o.open();await W(400);await clickOutside(pg);s=await ST(pg);ok('위젯 '+k+' 바깥 클릭으로 닫힘',!s[k],s);
-    if(o.toggle){await o.open();await W(400);await o.open();await W(400);s=await ST(pg);ok('위젯 '+k+' 여는 버튼 다시 누르면 닫힘',!s[k],s);}
+    await reset(pg);await o.open();
+    let s=await until(pg,x=>x[k]);ok('위젯 '+k+' 열림',s[k],s);
+    await pg.keyboard.press('Escape');s=await until(pg,x=>!x[k]);ok('위젯 '+k+' Esc 로 닫힘',!s[k],s);
+    await o.open();await until(pg,x=>x[k]);await clickOutside(pg);s=await until(pg,x=>!x[k]);ok('위젯 '+k+' 바깥 클릭으로 닫힘',!s[k],s);
+    if(o.toggle){await o.open();await until(pg,x=>x[k]);await o.open();s=await until(pg,x=>!x[k]);ok('위젯 '+k+' 여는 버튼 다시 누르면 닫힘',!s[k],s);}
     /* 확인창이 위에 있으면 Esc 는 확인창만 닫고, 다음 Esc 가 아래 층을 닫는다 */
-    await reset(pg);await o.open();await W(400);
-    await pg.evaluate(()=>openModal('확인','<p>시험</p>',''));await W(300);
-    await pg.keyboard.press('Escape');await W(350);s=await ST(pg);ok('위젯 '+k+' 위 확인창 — Esc 1회는 확인창만',!s.mo&&s[k],s);
-    await pg.keyboard.press('Escape');await W(350);s=await ST(pg);ok('위젯 '+k+' 위 확인창 — Esc 2회에 아래 층',!s[k],s);
+    await reset(pg);await o.open();await until(pg,x=>x[k]);
+    await pg.evaluate(()=>openModal('확인','<p>시험</p>',''));await until(pg,x=>x.mo);
+    await pg.keyboard.press('Escape');s=await until(pg,x=>!x.mo);await W(120);s=await ST(pg);ok('위젯 '+k+' 위 확인창 — Esc 1회는 확인창만',!s.mo&&s[k],s);
+    await pg.keyboard.press('Escape');s=await until(pg,x=>!x[k]);ok('위젯 '+k+' 위 확인창 — Esc 2회에 아래 층',!s[k],s);
   }
   /* 필터 안 다중 선택 목록 — Esc·바깥(필터 안 다른 곳) 모두 목록만 닫는다 */
   await reset(pg);await L.filt.open();await W(400);await pg.click('#calFilt .msel[data-g] .msel-b');await W(300);
@@ -94,7 +96,7 @@ const dayCell=(pg,i=2)=>pg.locator('#fcal td.fc-daygrid-day').nth(i);
   await plan();s=await ST(pg);ok('편집기 열림',s.pop&&s.plan,s);
   await pg.keyboard.press('Escape');await W(350);s=await ST(pg);ok('편집기 Esc — 편집기만 닫히고 팝업은 남음',s.pop&&!s.plan,s);   /* 사용자: 첫 Esc 는 쓰던 폼만 */
   await pg.keyboard.press('Escape');await W(350);s=await ST(pg);ok('다음 Esc — 팝업 닫힘',!s.pop&&!s.plan,s);
-  await plan();await clickOutside(pg);s=await ST(pg);ok('편집기 바깥 클릭 — 편집기 남지 않음',!s.pop&&!s.plan,s);
+  await plan();await clickOutside(pg);s=await until(pg,x=>!x.pop&&!x.plan);ok('편집기 바깥 클릭 — 편집기 남지 않음',!s.pop&&!s.plan,s);
   await plan();await pg.click('#widPop [data-act="wid.popClose"]');await W(400);s=await ST(pg);ok('편집기 ✕ — 편집기 남지 않음',!s.pop&&!s.plan,s);
   /* 알림창은 데이터가 바뀌면 다시 그린다 */
   await reset(pg);await L.side.open();await W(400);
@@ -195,10 +197,10 @@ const dayCell=(pg,i=2)=>pg.locator('#fcal td.fc-daygrid-day').nth(i);
     nq:  ()=>pg.keyboard.press('Control+k'),
   };
   for(const [k,o] of Object.entries(D)){
-    await reset(pg);await o();await W(400);
-    let s=await ST(pg);ok('데스크톱 '+k+' 열림',s[k],s);
-    await pg.keyboard.press('Escape');await W(350);s=await ST(pg);ok('데스크톱 '+k+' Esc 로 닫힘',!s[k],s);
-    await o();await W(400);await clickOutside(pg);s=await ST(pg);ok('데스크톱 '+k+' 바깥 클릭으로 닫힘',!s[k],s);
+    await reset(pg);await o();
+    let s=await until(pg,x=>x[k]);ok('데스크톱 '+k+' 열림',s[k],s);
+    await pg.keyboard.press('Escape');s=await until(pg,x=>!x[k]);ok('데스크톱 '+k+' Esc 로 닫힘',!s[k],s);
+    await o();await until(pg,x=>x[k]);await clickOutside(pg);s=await until(pg,x=>!x[k]);ok('데스크톱 '+k+' 바깥 클릭으로 닫힘',!s[k],s);
   }
   await reset(pg);await pg.click('#view-calendar [data-act="plan.new"]');await W(400);
   let s=await ST(pg);ok('데스크톱 편집기 열림',s.plan,s);
