@@ -43,17 +43,20 @@ ok('분류 c 지정(사람·안전·공종·사무)',keys.every(k=>'psto'.includ
 
 /* 3) 짝 대본 */
 const PAIRS=[['sf-bell','beacon','띵동! 호출 눌렀어요','삐뽀삐뽀! 장비 정지!'],['excavator','dump','흙 퍼 담습니다~','덜컹! 반출 갑니다'],['of-mouse','of-kbd','나 없으면 클릭 못 해요','나 없으면 글자 못 쳐요'],
-  ['sf-wind','crane','풍속 10m/s 넘었어요!','인양 작업 중지합니다'],['plumber','tr-pipe','💪','💪'],
+  ['sf-wind','crane','풍속 10m/s 넘었어요!','인양 작업 중지합니다'],['plumber','tr-pipe','배관 손볼게!','뻥 뚫렸다!'],
   ['cs','angry','내일 오전 방문할게요!','네, 꼭 드릴게요!']];
-for(const [a,b,t1,t2] of PAIRS){const{ctx,pg,perr,nf}=await page({pets:[b,a]});await pg.evaluate(()=>PET.play());const log=await bubbles(pg,30,t2);
-  ok('짝 '+a+'↔'+b,log.some(x=>x.includes(t1))&&log.some(x=>x.includes(t2))&&!perr.length&&!nf.length,{log,perr,nf});await ctx.close();}
+/* 짝 6쌍·던지기 4종은 창을 따로 띄워 한꺼번에 돌린다(대사·먹기 시간은 앱 속도라 줄일 수 없어 기다림을 겹친다) — 결과는 순서대로 적는다 */
+const pairRes=await Promise.all(PAIRS.map(async([a,b,t1,t2])=>{const{ctx,pg,perr,nf}=await page({pets:[b,a]});await pg.evaluate(()=>PET.play());const log=await bubbles(pg,40,t2);
+  await ctx.close();return ['짝 '+a+'↔'+b,log.some(x=>x.includes(t1))&&log.some(x=>x.includes(t2))&&!perr.length&&!nf.length,{log,perr,nf}];}));
+pairRes.forEach(r=>ok(...r));
 
 /* 4) 던지기 — 펫별 먹이 그림 */
-for(const k of ['plumber','sf-radio','of-kbd','tr-tree']){const{ctx,pg,perr,nf}=await page({pets:[k]});
+const thrRes=await Promise.all(['plumber','sf-radio','of-kbd','tr-tree'].map(async k=>{const{ctx,pg,perr,nf}=await page({pets:[k]});
   const cx=await pg.$eval('.wgPet',e=>{const r=e.getBoundingClientRect();return r.left+r.width/2+120;});
   await pg.evaluate(x=>PET.throwBall(x),cx);await W(250);
   const bg=await pg.$eval('.wgBall',e=>e.style.backgroundImage).catch(()=>'');await ballGone(pg);
-  ok('던지기 '+k,bg.includes('it-'+(P[k].it||'heart')+'.png')&&!perr.length&&!nf.length,{bg,perr,nf});await ctx.close();}
+  await ctx.close();return ['던지기 '+k,bg.includes('it-'+(P[k].it||'heart')+'.png')&&!perr.length&&!nf.length,{bg,perr,nf}];}));
+thrRes.forEach(r=>ok(...r));
 
 /* 5) 전체 — 한 창에서 세 마리씩 바꿔 올려 놀고 던짐(창을 매번 새로 열지 않아 빠르다).
    펫 코드·그림(pet.js · vendor/pets*)이 main 과 달라졌거나 PETS_FULL=1 이면 75종 전부, 아니면 묶음 5개 표본(처음·끝 포함) */
@@ -63,14 +66,15 @@ if(!full){try{const {execSync}=await import('child_process');
   full=/(^|\n)(pet\.js|vendor\/pets)/.test(d);}catch(e){full=true;}}   /* 비교 못 하면 전부(안전 쪽) */
 const grp=[];for(let i=0;i<keys.length;i+=3)grp.push(keys.slice(i,i+3));
 const pick=full?grp:grp.filter((g,i)=>i===0||i===grp.length-1||i%6===3);
-const bad=[];{const{ctx,pg,perr,nf}=await page({pets:[]});
-  for(const ks of pick){const e0=perr.length,n0=nf.length;
+const bad=[];const sweep=async part=>{const{ctx,pg,perr,nf}=await page({pets:[]});   /* 창 4개에 나눠 동시에 */
+  for(const ks of part){const e0=perr.length,n0=nf.length;
     await pg.evaluate(ks=>{const c=widCfgLoad();c.pets=ks;widCfgSave(c);petSync();},ks);
     await pg.waitForFunction(n=>document.querySelectorAll('.wgPet').length===n,ks.length,{timeout:5000}).catch(()=>{});await W(200);
     const n=await pg.$$eval('.wgPet',a=>a.length);await pg.evaluate(()=>PET.play());await W(1500);
     const cx=await pg.$eval('.wgPet',e=>{const r=e.getBoundingClientRect();return r.left+r.width/2+100;});await pg.evaluate(x=>PET.throwBall(x),cx);await ballGone(pg);
     if(perr.length>e0||nf.length>n0||n!==ks.length)bad.push({ks,n,perr:perr.slice(e0),nf:nf.slice(n0)});}
-  await ctx.close();}
+  await ctx.close();};
+await Promise.all([0,1,2,3].map(j=>sweep(pick.filter((_,i)=>i%4===j))));
 ok((full?'전체 '+keys.length+'종':'표본 '+pick.length+'묶음('+keys.length+'종 중 · 전체는 PETS_FULL=1)')+' 올림·놀기·던지기 오류 없음',!bad.length,bad);
 
 /* 6) 본편(위젯 아님)은 pet.js 를 받지 않는다 */

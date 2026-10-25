@@ -276,7 +276,8 @@ const PET=(()=>{let L=[],tick=0,act=false;   /* L: [{k,p}] */
     ['sf-hhelm','helm',[[0,'나는 강화형!',1300,1],[1,'턱끈은 똑같이 매요~',1600,1]]],
     ['lead','sf-board',[[0,'오늘 작업 현황 적읍시다',1600],[1,'작업 위치 확인!',1400,2]]],
     ['manager','sf-board',[[0,'작업현황 확인합니다',1600],[1,'오늘 세대 세 곳 보수 중이에요',1800,1]]]];
-  for(const[w,t]of Object.entries(JOB))PAIR.push([w,t,[[0,['오늘 너 보수한다!','깔끔하게 고쳐 줄게'],1600],[1,['살살 해주세요~','잘 부탁해요!'],1500,1],[0,'💪',1000,2]]]);
+  PAIR.push(['plumber','tr-pipe',[[0,'배관 손볼게!',1300],[1,'뻥 뚫렸다!',1200,2]]]);   /* 배관공은 짧게 두 줄 */
+  for(const[w,t]of Object.entries(JOB))if(w!=='plumber')PAIR.push([w,t,[[0,['오늘 너 보수한다!','깔끔하게 고쳐 줄게'],1600],[1,['살살 해주세요~','잘 부탁해요!'],1500,1],[0,'💪',1000,2]]]);
   for(const[g,t]of [['sf-sboot','안전화 신었나요?'],['sf-svest','조끼 입어야 잘 보여요!']])for(const b of ['ppl','sig','lead'])PAIR.push([g,'@'+b,[[0,t,1600,1],[1,['착용 완료!','넵!'],1400,2]]]);
   const talk=S=>async(A,B,st)=>{await near(A,B);face(A,B);for(const[i,t,ms,hp]of S){const p=i?B:A;if(hp===2)glad(p);if(hp)p.hop();p.say(Array.isArray(t)?petPick(t):t,ms);await st(ms+100);}await st(400);};
   const PR=PAIR.map(([a,b,S])=>({m:(x,y)=>x===a&&(b[0]==='@'?kind(y)===b.slice(1):y===b),run:talk(S)}));
