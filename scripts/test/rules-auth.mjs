@@ -308,5 +308,26 @@ t('AUTH-26e', '관리자 → 명부 gone', true, tryWrite('calapp/people/U2', A(
 t('AUTH-26f', '팀장 → 남의 명부 gone', false, tryWrite('calapp/people/U2', A('U3'), T22, { ...P('U2'), gone:1 }));
 t('AUTH-26g', '본인 → 내 명부 gone', false, tryWrite('calapp/people/U1', A('U1'), T22, { ...P('U1'), gone:1 }));
 t('AUTH-26h', '팀장 → 남의 현장 배정(그대로 됨)', true, tryWrite('calapp/people/U2', A('U3'), T22, { ...P('U2'), sites:{ sA:1 } }));
+/* AUTH-20~28 (1256 셀프 리뷰) — D+60 현장 통째 삭제 · 담당 현장으로 영구 삭제 · 휴지통 가짜 사본 · 미러 없는 현장 · 주인 없는 새 업무 · 현안 작성자 · 계정 삭제 보호 · 개인 설정 읽기 · 이력 키 */
+const T20 = { ...TREE, calapp: { ...TREE.calapp, d60: { insp: { sA: { date: '2026-08-01', res: { arch: { k1: { a: 'ok', by: 'U1', ts: 1 } } }, units: { u1: { dg: '101', ho: '101', ord: 1 } } } } },
+  trash: { U2: { siteT: { ...TR('U2','siteT'), createdBy: 'U2', site: 'sA' } } }, prefs: { U2: { emoji: 'x' } } } };
+t('AUTH-20a', 'viewer → D+60 현장 점검 통째 지우기', false, tryWrite('calapp/d60/insp/sA', A('U1'), T20, null));
+t('AUTH-20b', 'viewer → D+60 판정 한 칸', true, tryWrite('calapp/d60/insp/sA/res/arch/k2', A('U1'), T20, { a: 'ng', by: 'U1', ts: 2 }));
+t('AUTH-20c', 'viewer → D+60 세대 한 줄 지우기', true, tryWrite('calapp/d60/insp/sA/units/u1', A('U1'), T20, null));
+t('AUTH-20d', 'editor → D+60 현장 통째(백업 복원)', true, tryWrite('calapp/d60/insp/sA', A('E1'), T20, { date: '2026-08-02' }));
+t('AUTH-21a', '담당 현장만 겹치는 viewer → 남의 휴지통 영구 삭제', false, tryWrite('calapp/trash/U2/siteT', A('U1'), T20, null));
+t('AUTH-21b', '작성자 → 자기 휴지통 영구 삭제', true, tryWrite('calapp/trash/U2/siteT', A('U2'), T20, null));
+t('AUTH-22', 'viewer → 원본 없는 휴지통 사본 심기', false, tryWrite('calapp/trash/U2/ghost', A('U1'), T20, { text: '가짜', date: '2026-08-01', deletedAt: 1, z: 'x' }));
+t('AUTH-23', 'viewer → 미러에 없는 현장(sZ)을 담당에', false, tryWrite('calapp/people/U1', A('U1'), TREE, { ...P('U1'), sites: { sA: 1, sZ: 1 } }));
+t('AUTH-24a', 'viewer → 작성자 없는 새 업무', false, tryWrite('calapp/tasks/U2/n1', A('U1'), TREE, { text: '새것', st: 1, createdAt: 1, updatedAt: 1 }));
+t('AUTH-24b', 'viewer → 작성자=나 인 새 업무', true, tryWrite('calapp/tasks/U2/n1', A('U1'), TREE, { text: '새것', st: 1, createdAt: 1, updatedAt: 1, createdBy: 'U1' }));
+t('AUTH-25a', 'viewer → 남 이름(by)으로 현안 만들기', false, tryWrite('calapp/iss/sA/i1', A('U1'), TREE, { t: '현안', at: 1, by: 'U2' }));
+t('AUTH-25b', 'viewer → 내 이름으로 현안 만들기', true, tryWrite('calapp/iss/sA/i1', A('U1'), TREE, { t: '현안', at: 1, by: 'U1' }));
+t('AUTH-25c', 'viewer → 없는 현장(sZ)에 현안', false, tryWrite('calapp/iss/sZ/i1', A('U1'), TREE, { t: '현안', at: 1, by: 'U1' }));
+t('AUTH-26a', 'editor → 관리자 계정 삭제 요청', false, tryWrite('calapp/acctDel/E1', A('E1'), TREE, { at: 1, by: 'E1', email: 'e1@hdec.co.kr' }));
+t('AUTH-26b', 'editor → 일반 계정 삭제 요청', true, tryWrite('calapp/acctDel/U1', A('E1'), TREE, { at: 1, by: 'E1', email: 'u1@hdec.co.kr' }));
+t('AUTH-27a', 'viewer → 남의 개인 설정 읽기', false, tryRead('calapp/prefs/U2', A('U1'), T20));
+t('AUTH-27b', 'viewer → 내 개인 설정 읽기', true, tryRead('calapp/prefs/U1', A('U1'), T20));
+t('AUTH-28', '작성자 → 이력 키 25(앱은 0~19)', false, tryWrite('calapp/tasks/U2/own/hist/25', A('U2'), TREE, { t: 1, u: 'x', k: 'a' }));
 console.log(fail ? `\nFAIL ${fail}` : '\nRULES-AUTH ALL PASS');
 process.exit(fail ? 1 : 0);

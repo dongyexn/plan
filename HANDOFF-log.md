@@ -1,5 +1,20 @@
 # 변경 이력 (읽기 전용) — 현재 상태는 HANDOFF.md
 
+## 마지막 기록 기준 v1256
+### 1256차 셀프 리뷰 적용 2 — 규칙 좁히기 · 게시 무결성 · CSP
+**사용자: 셀프 리뷰 「U13 U10 U9 제외하고 모두 적용」 — 보안·무결성 묶음. ⚠ database.rules.json 을 Firebase 콘솔에 먼저 게시해야 한다(규칙과 앱 변경은 양쪽 순서 모두 호환)**
+- D+60 insp/$sid: .write 를 관리자(ED)로, 멤버 쓰기는 date · dates/$tr · phb · fin/$tr · hide/$tr · units/$u · res/$tr/$k · civil/$tr/$id 에 둠. 앱은 늘 칸 경로(d60Write·d60WriteMany·d60Inc)로 쓰고, 현장 통째 쓰기는 백업 복원(관리자)뿐.
+- 휴지통·보관함: null(영구 삭제·복원 뒤 걷기) 분기에서 「사본의 현장이 내 담당」 조건을 뺐다 — 작성자·담당자(assignees)·팀장·같은 권역 공구장·관리자만. 휴지통 새 사본은 원본 업무가 없으면 보관 사본이나 기존 사본이 있을 때만(원본 없는 트리에 가짜 사본을 심어 복원 때 남의 업무로 만드는 것 차단) — 원본이 있으면 전과 같은 소유 검사.
+- people.sites: orgSiteRegion 에 없는 현장 id 는 거절(전엔 「미러가 없으면 허용」). 업무 assignees `$pid` 와 links `$lid` 키 형식, hist `$h` 는 0~19(앱이 20개로 자른 배열).
+- 업무 생성: 관리자 외 신규는 createdBy == auth.uid. 앱(putTask 신규 set·moveTask 새 자리)은 작성자가 없는 옛 업무를 되살리거나 옮길 때 나로 채운다.
+- 현안: $iid validate 에 현장 미러 존재 + 새로 만들 때 by == 나(관리자 외). ⚠ 부모($sid) validate 는 자식 쓰기 때 돌지 않아 $iid 에 둔다.
+- 계정 삭제 요청: acctDel/$uid validate 에 users/$uid/role != editor — 같은 쓰기에서 users 를 지워도 root 는 쓰기 전 값.
+- 개인 설정 prefs: 상위 읽기(MEMBER)를 지우고 $uid 에 본인만 읽기.
+- 게시: 시작 때 report/{rm}/_meta 를 읽어 다른 사람이 게시한 시각보다 이 PC 업로드(DFMETA.lastUp)가 오래된 현장은 _hasRows 에서 빼 서버 게시본 유지 — 확인창에 빨간 「서버가 더 새것 · 유지」. 쓰기 전에 _meta/lock 트랜잭션(다른 사람 잠금이 10분 안이면 중단·안내), 마지막 _meta 통째 쓰기로 풀리고 실패하면 finally 에서 지움. 게시 번호로 읽는 쪽에서 섞임을 알리는 것(pubId)은 하지 않음 — 잠금으로 동시 게시는 막고, 중간 실패는 다시 게시하면 맞춰진다.
+- CSP: script-src 의 https://www.google.com → https://www.google.com/recaptcha/(App Check 엔터프라이즈 스크립트 경로). *.firebasedatabase.app 는 RTDB 롱폴링(JSONP) 대비 유지.
+- 보류: 위젯 원격 허용 주소를 /plan/* 로 좁히기 — 위젯 판을 올리면 전 PC 자동 업데이트라 실기(Tauri)에서 이벤트 브리지 확인 뒤에.
+- 테스트: rules-auth AUTH-20a~28(18건). 가짜 Firebase(e2e-defect·mobile-fit·guide-shots)에 remove·transaction. e2e-defect·mobile-fit 의 게시 승인 헬퍼는 이번 게시의 확인창(__PUBOK__ 새로 걸림)이 뜰 때까지 기다린다 — 게시 앞에 await(서버 _meta 읽기)가 하나 늘자 닫히는 중인 앞 확인창 단추를 눌러 이번 게시가 영영 기다리던 시험 경합이 드러났다.
+
 ## 마지막 기록 기준 v1255
 ### 1255차 안정화 묶음 — 구독 끊김 알림 · 재게시 캐시 · 부팅 방어 · 로그아웃 · 닫기 전 저장 · 업무 내용 보존
 **사용자: 「이제 신기능보다 안정화·기존 기능 개선 · 셀프 리뷰 · 기능 개선은 미리보기」 → 네 갈래 점검 보고(안정성·보안/무결성·성능·화면) → 「U13 U10 U9 제외하고 모두 적용」 — 안정화(1255) · 규칙(1256) · 성능(1257) · 화면(1258) 순으로 나눠 올림**

@@ -108,7 +108,7 @@ async function seedDefect(pg){
     await new Promise(r=>{const t=setInterval(()=>{if(Object.keys(S.def).length>=S.org.sites.length&&!S._importing){clearInterval(t);r();}},200);setTimeout(()=>{clearInterval(t);r();},30000);});
     const tree={};const get=p=>{let n=tree;for(const k of p.split('/').filter(Boolean)){if(n==null||typeof n!=='object')return null;n=n[k];}return n==null?null:n;};
     const set=(p,v)=>{const ks=p.split('/').filter(Boolean);let n=tree;for(let i=0;i<ks.length-1;i++)n=n[ks[i]]=n[ks[i]]||{};if(v==null)delete n[ks[ks.length-1]];else n[ks[ks.length-1]]=JSON.parse(JSON.stringify(v));};
-    FB.db={ref:(p='')=>({once:async()=>({val:()=>get(p)}),get:async()=>({val:()=>get(p),exists:()=>get(p)!=null}),set:async v=>set(p,v),update:async u=>{Object.keys(u).forEach(k=>set((p?p+'/':'')+k,u[k]));},on:()=>{},off:()=>{}})};
+    FB.db={ref:(p='')=>({once:async()=>({val:()=>get(p)}),get:async()=>({val:()=>get(p),exists:()=>get(p)!=null}),set:async v=>set(p,v),update:async u=>{Object.keys(u).forEach(k=>set((p?p+'/':'')+k,u[k]));},remove:async()=>set(p,null),transaction:async fn=>{const cur=get(p),nv=fn(cur);if(nv===undefined)return{committed:false,snapshot:{val:()=>cur}};set(p,nv);return{committed:true,snapshot:{val:()=>nv}};},on:()=>{},off:()=>{}})};
     S.live=true;S.role='editor';S.user={email:'editor@hdec.co.kr'};
     const p=dfPublish();for(let i=0;i<60&&!document.querySelector('[data-act="dfp.pubOk"]');i++)await new Promise(r=>setTimeout(r,100));
     const b=document.querySelector('[data-act="dfp.pubOk"]');if(b)b.click();await p;

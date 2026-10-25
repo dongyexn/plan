@@ -123,18 +123,20 @@ const pub=await pg.evaluate(async()=>{
     get:async()=>({val:()=>get(p),exists:()=>get(p)!=null}),
     set:async v=>set(p,v),
     update:async u=>{Object.keys(u).forEach(k=>set((p?p+'/':'')+k,u[k]));},
+    remove:async()=>set(p,null),   /* 1256: 게시 잠금 풀기 */
+    transaction:async fn=>{const cur=get(p),nv=fn(cur);if(nv===undefined)return{committed:false,snapshot:{val:()=>cur}};set(p,nv);return{committed:true,snapshot:{val:()=>nv}};},   /* 1256: 게시 잠금 */
     on:()=>{},off:()=>{},
   })};
   S.live=true;S.role='editor';S.user={email:'editor@hdec.co.kr'};   /* isEditor()=!live||role — live 전환 시 role 필요 */
-  const pubWithOk=async()=>{const p=dfPublish();   /* 게시 전 검토 모달(637차 기준 회귀 스위트) — [게시]를 눌러 승인 */
-    for(let i=0;i<50&&!document.querySelector('[data-act="dfp.pubOk"]');i++)await new Promise(r=>setTimeout(r,100));
+  const pubWithOk=async()=>{window.__PUBOK__=null;const p=dfPublish();   /* 게시 전 검토 모달(637차 기준 회귀 스위트) — [게시]를 눌러 승인 */
+    for(let i=0;i<100&&!(window.__PUBOK__&&document.querySelector('[data-act="dfp.pubOk"]'));i++)await new Promise(r=>setTimeout(r,100));
     const b=document.querySelector('[data-act="dfp.pubOk"]');if(b)b.click();
     await p;};
   window.__pubWithOk=pubWithOk;
   /* 검토 모달 취소 경로 — 요약이 뜨고, 취소하면 아무것도 안 쓴다 */
   let cancelOk=false;
-  {const p=dfPublish();
-   for(let i=0;i<50&&!document.querySelector('[data-act="dfp.pubCancel"]');i++)await new Promise(r=>setTimeout(r,100));
+  {window.__PUBOK__=null;const p=dfPublish();
+   for(let i=0;i<100&&!(window.__PUBOK__&&document.querySelector('[data-act="dfp.pubCancel"]'));i++)await new Promise(r=>setTimeout(r,100));
    const sum=document.querySelector('#mbody')?document.querySelector('#mbody').textContent:'';
    const b=document.querySelector('[data-act="dfp.pubCancel"]');if(b)b.click();
    await p;
