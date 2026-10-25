@@ -27,7 +27,7 @@ const css = [...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map(m => m[1]
 const htmlNoStyle = html.replace(/<style[^>]*>[\s\S]*?<\/style>/g, '');
 /* 1012차: 사용처 판정은 **주석을 걷은** 본문으로 한다 — 회차 이력 주석이 길어 주석에만 남은 이름이 '쓰는 중'으로 세어졌다.
    걷은 결과가 파싱되지 않으면(어휘기 한계) 원문으로 되돌리고 경고한다 */
-let jsNC = stripJsComments(js);
+let jsNC = stripJsComments(js + '\n' + rd('pet.js'));   /* 미니펫 코드(pet.js, 위젯에서만 받음)도 앱 코드 — 핸들러·클래스 사용처를 함께 본다 */
 try { new vm.Script(jsNC); } catch (e) { jsNC = js; console.log('WARN  주석 걷기 결과가 파싱되지 않아 원문으로 판정 — ' + e.message); }
 const hay = stripHtmlComments(htmlNoStyle) + jsNC + stripJsComments(rd('boot-wid.js'));   /* 998차: boot-wid.js 가 다는 클래스(html.lgbg)도 사용처다 */   /* 클래스·id 사용처를 찾는 건초 더미 (위젯은 같은 웹앱을 띄우므로 별도 소스 없음) */
 
@@ -37,7 +37,7 @@ const W = m => { warn++; console.log('WARN  ' + m); };
 const OK = m => console.log('ok    ' + m);
 
 /* ── 1. 구문 ─────────────────────────────────────────── */
-for (const f of ['app.js', 'build-single.mjs']) {
+for (const f of ['app.js', 'pet.js', 'build-single.mjs']) {
   try { execFileSync(process.execPath, ['--check', path.join(root, f)], { stdio: 'pipe' }); }
   catch (e) { F(f + ' 구문 오류\n' + String(e.stderr).slice(0, 400)); }
 }
@@ -360,7 +360,7 @@ OK('구문 검사 (node --check)');
 /* ── 10c. 앱 주석에 회차 표기 금지 — 이력은 HANDOFF 가 맡는다(1015차 사용자 결정). 세 자리 이상 「NNN차」만 본다(재접수 1차·2차 같은 업무 용어 제외) */
 {
   const hits = [];
-  for (const [f, src] of [['app.js', js], ['index.html', html], ['boot-wid.js', rd('boot-wid.js')]]) {
+  for (const [f, src] of [['app.js', js], ['pet.js', rd('pet.js')], ['index.html', html], ['boot-wid.js', rd('boot-wid.js')]]) {
     src.split('\n').forEach((l, i) => { if (/(^|[^0-9])[1-9]\d{2,3}차/.test(l)) hits.push(f + ':' + (i + 1)); });
   }
   if (hits.length) W('앱 주석에 회차 표기 ' + hits.length + '곳 — ' + hits.slice(0, 6).join(', '));
