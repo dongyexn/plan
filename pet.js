@@ -65,7 +65,7 @@ function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl
   /* 다음 행동 — 걷기(40%)·쉬기. 좁아서 걸을 자리가 없으면 숨는다 */
   /* 깊은 잠 — 위젯 위에서 3분 동안 마우스가 없으면 멈춘 그림(z)으로 잔다. 그동안 그림·애니메이션이 모두 서서 CPU 를 거의 안 쓴다.
      위젯 안으로 마우스가 다시 들어오면(pointermove) 깬다 */
-  const IDLE_MS=180000;let deep=false;
+  const IDLE_MS=60000;let deep=false;
   const deepOn=()=>{deep=true;stop();clearTimeout(tm);el.classList.remove('hop');img.dataset.m='z';
     img.src=petUrl(cfg.z.f);img.style.width=cfg.z.w+'px';img.style.height=cfg.z.h+'px';if(sh)sh.style.width=Math.round(cfg.z.w*.62)+'px';if(bob)bob.pause();};
   const deepOff=()=>{if(!deep)return;deep=false;if(bob)bob.play();set('idle');later(next,300);};

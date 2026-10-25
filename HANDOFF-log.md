@@ -1,5 +1,14 @@
 # 변경 이력 (읽기 전용) — 현재 상태는 HANDOFF.md
 
+## 마지막 기록 기준 v1257
+### 1257차 셀프 리뷰 적용 3 — 성능
+**사용자: 셀프 리뷰 「U13 U10 U9 제외하고 모두 적용」 — 성능 묶음(화면 변화 없음)**
+- `:has()` 상태 선택자 → 클래스: 유리 위젯 html.wid-glass(boot-wid.js), 인쇄 html.rpt-on·df-printing·phs-printing·d60-printing(prCls 한곳), 사이드바 접힘 body.sb-mini, 로그인 배경 출처 body.bg-cr.
+- refetchCal: 일정 서명이 지난번과 같으면 건너뜀, 제목만 바뀐 일정은 setProp. 계산한 목록은 CAL_EVS·CAL_PRE 로 events 콜백과 공유.
+- users 구독: 이름·메일·avColor·avIcon·역할 서명이 같으면 다시 그리지 않음. rOrg 는 조직 화면일 때만(아니면 들어갈 때 그림).
+- 달력 칸당 일정 수 calN 을 localStorage 에 두어 첫 그림부터 dayMaxEvents 맞춤(calFitApply 가 갱신).
+- xlsx 지연 로드 주소 ?v=0.20.3 고정(캐시). 펫 깊은 잠 진입 IDLE_MS 60초.
+
 ## 마지막 기록 기준 v1256
 ### 1256차 셀프 리뷰 적용 2 — 규칙 좁히기 · 게시 무결성 · CSP
 **사용자: 셀프 리뷰 「U13 U10 U9 제외하고 모두 적용」 — 보안·무결성 묶음. ⚠ database.rules.json 을 Firebase 콘솔에 먼저 게시해야 한다(규칙과 앱 변경은 양쪽 순서 모두 호환)**

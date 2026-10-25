@@ -46,6 +46,7 @@
   }
   if (!/[?&]w=1\b/.test(q)) return;
   var cls = ['wid', 'gate-on'].concat(/[?&]glass=1\b/.test(q) ? ['glass'] : []);   /* gate-on = 로그인 게이트가 떠 있음(처음엔 늘 뜸 — hideCover 가 뗀다) */
+  if (/[?&]glass=1\b/.test(q)) document.documentElement.classList.add('wid-glass');   /* 유리 위젯의 투명 루트 — CSS 가 html:has(body…) 대신 이 클래스를 본다(:has 는 바뀔 때마다 다시 재는 값이 비싸다) */
   var put = function(){ cls.forEach(function(c){ document.body.classList.add(c); }); };
   if (document.body) { put(); return; }
   var mo = new MutationObserver(function(){ if (document.body) { mo.disconnect(); put(); } });
