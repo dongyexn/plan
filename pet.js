@@ -8,14 +8,13 @@
    시간 대사: 11:00~11:30 점심, 17시 이후 퇴근(가끔 혼잣말). 업무 완료 때 축하(histPush 'done').
    ⚠ 대사는 글자만 또는 이모지만 — 한 대사에 섞지 않는다(사용자) */
 const PET_LINES={tap:['허거덩','허걱스','하이','왜요?','😮','🤔','👀'],
-  ball:['일 안하농','월급루팡','⚽','😎'],
   done:['업무 완료!','오늘도 내가 해냄','🎉','👍'],
   lunch:['맛점','점심 뭐먹냐','배고프다','🍚','🍜','🍕','🍔','🍙','🍖'],
   leave:['칼퇴 좀','퇴근해요','집에 보내죠','집에 가자'],
   food:['😋'],drop:['😵'],idle:['일 안하농'],
   today:['오늘 업무 {n}건'],com:['{t} 하자!']};   /* {n}·{t} 는 숫자·업무 이름으로 바뀐다 · 사용자가 대사 편집 폼에서 고친 값 */
 const petPick=a=>a[Math.floor(Math.random()*a.length)];
-const PET_IT_SZ={ball:14,apple:15,tile:15,coffee:17,cone:17,paste:17,plank:17,cart:18,hammer:18,spanner:18,battery:19};   /* 던지는 그림 크기(px, 기본 16) — 눈으로 맞춤: 꽉 찬 둥근 것은 작게, 가늘거나 비스듬한 것은 크게 */
+const PET_IT_SZ={tile:15,water:17,coffee:17,cone:17,paste:17,plank:17,cart:18,hammer:18,spanner:18,battery:19};   /* 던지는 그림 크기(px, 기본 16) — 눈으로 맞춤: 꽉 찬 둥근 것은 작게, 가늘거나 비스듬한 것은 크게 */
 const petUrl=f=>'./vendor/pets/'+f+'?v='+APP_VER;   /* 그림 파일 — 쓰는 것만 받고 브라우저가 캐시한다 */
 const petSlot=()=>{const d=new Date(),v=d.getHours()*60+d.getMinutes();return v>=660&&v<=690?'lunch':v>=1020?'leave':'';};
 let PET_LOADING=null;
@@ -82,10 +81,10 @@ function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl
     ball.vy+=900*dt;ball.x+=ball.vx*dt;ball.y+=ball.vy*dt;
     if(ball.x<ball.lo){ball.x=ball.lo;ball.vx=-ball.vx*.6;}if(ball.x>ball.hi){ball.x=ball.hi;ball.vx=-ball.vx*.6;}
     const it=ball.it;if(ball.y>ball.floor){ball.y=ball.floor;ball.vy=-ball.vy*(it?.25:.45);ball.vx*=it?.3:.7;if(Math.abs(ball.vy)<40){ball.vy=0;if(Math.abs(ball.vx)<(it?30:8))ball.vx=0;}}
-    ballEl.style.transform='translate('+Math.round(ball.x-ball.sz/2)+'px,'+Math.round(ball.y-ball.sz)+'px)';   /* 공·먹이 그림 16px(32px 를 줄임) — 몇 개만 PET_IT_SZ */
+    ballEl.style.transform='translate('+Math.round(ball.x-ball.sz/2)+'px,'+Math.round(ball.y-ball.sz)+'px)';   /* 먹이 그림 16px(32px 를 줄임) — 몇 개만 PET_IT_SZ */
     if(!ball.vy&&!ball.vx&&!ball.go){cancelAnimationFrame(braf);if(drg)return;ball.go=1;   /* 끄는 중이면 놓을 때까지 기다린다 */
       const tx=Math.min(Math.max(ball.x-el.offsetWidth/2,ball.lo-6),ball.hi-el.offsetWidth+6);
-      moveTo(tx,95,'run',()=>{const b=ball;ball=null;if(b)ballEl.remove();hop();set(b&&b.it&&cfg.g.eat?'eat':'idle');say(b&&b.it?petPick(cfg.fd&&cfg.fd.length?cfg.fd:PET_LINES.food):petPick(PET_LINES.ball));if(b&&b.it)hearts(1);later(next,2600);});}};   /* 먹이면 eat 그림(있으면) · fd 는 먹이 받았을 때 전용 멘트 */
+      moveTo(tx,95,'run',()=>{const b=ball;ball=null;if(b)ballEl.remove();hop();set(b&&cfg.g.eat?'eat':'idle');say(petPick(cfg.fd&&cfg.fd.length?cfg.fd:PET_LINES.food));if(b)hearts(1);later(next,2600);});}};   /* 먹이면 eat 그림(있으면) · fd 는 먹이 받았을 때 전용 멘트 */
   const react=()=>{if(deep)deepOff();
     if(ball||busy){hop();say(petPick(PET_LINES.tap));return;}   /* 상호작용 중엔 깡총·대사만 */   /* 공을 가지러 가는 중 — 멈추거나 딴 데로 가면 공이 바닥에 남고 펫이 굳었다 */
     clicks++;hop();const r=clicks%5,sl=petSlot();
@@ -153,7 +152,7 @@ function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl
     dragged:()=>!!(el&&el._drg),   /* 방금 끌었음 — 놓은 자리가 머리 줄이어도 공을 던지지 않게 */
     throwBall(cx){if(!cfg||!el||!el.isConnected||el.hidden)return;if(deep){deep=false;if(bob)bob.play();}
       const h=head(),hr=h.getBoundingClientRect(),[L,R]=bounds();stop();clearTimeout(tm);set('idle');
-      if(!ballEl){ballEl=document.createElement('div');ballEl.className='wgBall';}const it=cfg.it||'';ballEl.style.backgroundImage='url('+petUrl('it-'+(it||'ball')+'.png')+')';const sz=PET_IT_SZ[it]||16;ballEl.style.width=ballEl.style.height=sz+'px';h.appendChild(ballEl);
+      if(!ballEl){ballEl=document.createElement('div');ballEl.className='wgBall';}const it=cfg.it||'heart';ballEl.style.backgroundImage='url('+petUrl('it-'+it+'.png')+')';   /* 먹이가 없는 펫은 하트 */const sz=PET_IT_SZ[it]||16;ballEl.style.width=ballEl.style.height=sz+'px';h.appendChild(ballEl);
       const floor=h.clientHeight/2+22;ball={x:cx-hr.left,y:floor-4,vx:(Math.random()<.5?-1:1)*(60+Math.random()*60),vy:-260,floor,lo:L+6,hi:R+el.offsetWidth-6,it,sz};
       cancelAnimationFrame(braf);braf=requestAnimationFrame(ballStep);},
     done(){if(!cfg||!el||!el.isConnected)return;if(deep){deep=false;if(bob)bob.play();}hop();say(petPick(PET_LINES.done),2500);
