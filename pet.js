@@ -14,7 +14,7 @@ const PET_LINES={tap:['허거덩','허걱스','하이','왜요?','😮','🤔','
   food:['😋'],drop:['😵'],idle:['일 안하농'],
   today:['오늘 업무 {n}건'],com:['{t} 하자!']};   /* {n}·{t} 는 숫자·업무 이름으로 바뀐다 · 사용자가 대사 편집 폼에서 고친 값 */
 const petPick=a=>a[Math.floor(Math.random()*a.length)];
-const PET_IT_SZ={tile:15,water:17,coffee:17,cone:17,paste:17,plank:17,cart:18,hammer:18,spanner:18,battery:19};   /* 던지는 그림 크기(px, 기본 16) — 눈으로 맞춤: 꽉 찬 둥근 것은 작게, 가늘거나 비스듬한 것은 크게 */
+const PET_IT_SZ={tile:15,report:18,water:17,coffee:17,cone:17,paste:17,plank:17,cart:18,hammer:18,spanner:18,battery:19};   /* 던지는 그림 크기(px, 기본 16) — 눈으로 맞춤: 꽉 찬 둥근 것은 작게, 가늘거나 비스듬한 것은 크게 */
 const petUrl=f=>'./vendor/pets/'+f+'?v='+APP_VER;   /* 그림 파일 — 쓰는 것만 받고 브라우저가 캐시한다 */
 const petSlot=()=>{const d=new Date(),v=d.getHours()*60+d.getMinutes();return v>=660&&v<=690?'lunch':v>=1020?'leave':'';};
 let PET_LOADING=null;
@@ -170,8 +170,8 @@ function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl
    라바콘·안전모·경광등 요정이 다 있으면 셋이 모여 TBM(작업 전 안전 회의)을 한다. 사람 셋(관리자·기능공·신호수 / 작업반장·기능공·신호수 / 관리자·작업반장·기능공)도 같다. 한 마리라도 잡히거나 자면 그만둔다 */
 const PET_MAX=3;
 const PET=(()=>{let L=[],tick=0,act=false;   /* L: [{k,p}] */
-  const PPL=new Set(['worker','painter','tiler','floorer','paperer','caulker','plaster','glazier','plumber']),EQ=new Set(['excavator','dump','mixer','ladder','forklift','gondola','bosun','scissor','roller','crane']),FAIRY=new Set(['cone','helm','sf-hhelm','beacon','sf-sboot','sf-svest','sf-radio','sf-bell','sf-wind','sf-board']);
-  const kind=k=>k==='manager'?'mgr':k==='signal'||k==='guide'?'sig':k==='angry'||k==='cs'||k==='lead'?k:PPL.has(k)?'ppl':EQ.has(k)?'eq':FAIRY.has(k)?'fairy':k.startsWith('tr-')?'tr':k.startsWith('of-')?'of':'';   /* tr — 공종 펫 · of — 사무 펫 */
+  const PPL=new Set(['worker','painter','tiler','floorer','paperer','caulker','plaster','glazier','plumber']),OFC=new Set(['rookie','office','senior','teamlead','exec']),EQ=new Set(['excavator','dump','mixer','ladder','forklift','gondola','bosun','scissor','roller','crane']),FAIRY=new Set(['cone','helm','sf-hhelm','beacon','sf-sboot','sf-svest','sf-radio','sf-bell','sf-wind','sf-board']);
+  const kind=k=>k==='manager'?'mgr':k==='signal'||k==='guide'?'sig':k==='angry'||k==='cs'||k==='lead'?k:PPL.has(k)?'ppl':OFC.has(k)?'ofc':EQ.has(k)?'eq':FAIRY.has(k)?'fairy':k.startsWith('tr-')?'tr':k.startsWith('of-')?'of':'';   /* tr — 공종 펫 · of — 사무 펫 · ofc — 사내 인물 */
   const wait=ms=>new Promise(r=>setTimeout(r,ms));
   const moveP=(p,tx,v=30)=>new Promise(res=>{const[l,r]=p.bounds();tx=Math.min(Math.max(tx,l),Math.max(l,r));let fin=false;
     const end=()=>{if(fin)return;fin=true;if(p.ok()){p.stop();p.set('idle');}res();};
@@ -212,7 +212,8 @@ const PET=(()=>{let L=[],tick=0,act=false;   /* L: [{k,p}] */
     {m:(a,b)=>a==='ppl'&&b==='tr',run:async(A,B,st)=>{await near(A,B);face(A,B);A.say(petPick(['같이 마무리합시다','오늘 안에 끝내자']),1700);await st(1600);B.hop();B.say(petPick(['좋아요!','👍']),1400);await st(1700);}},
     {m:(a,b)=>a==='tr'&&b==='tr',run:async(A,B,st)=>{await near(A,B);face(A,B);A.hop();A.say(petPick(['우리 단지 최고!','하자 없는 집!']),1600);await st(1400);B.hop();B.say(petPick(['좋아요!','🙌']),1400);await st(1700);}},
     {m:(a,b)=>a==='of'&&b==='of',run:async(A,B,st)=>{await near(A,B);face(A,B);A.hop();A.say(petPick(['업무 시작!','오늘도 서류 정리']),1500);await st(1400);B.hop();B.say(petPick(['화이팅!','📎']),1400);await st(1600);}},
-    {m:(a,b)=>['mgr','lead','cs','ppl'].includes(a)&&b==='of',run:async(A,B,st)=>{await near(A,B);face(A,B);A.say(petPick(['사무실 왔어요','서류 좀 볼게요']),1500);await st(1400);glad(B);B.say(petPick(['여기 있어요!','😊']),1400);await st(1600);}},
+    {m:(a,b)=>a==='ofc'&&['ppl','lead','mgr','sig'].includes(b),run:async(A,B,st)=>{await near(A,B);face(A,B);A.say(petPick(['현장 고생 많아요','안전 꼭 챙겨요']),1600);await st(1500);B.hop();B.say(petPick(['감사합니다!','👍']),1400);await st(1600);}},
+    {m:(a,b)=>['mgr','lead','cs','ppl','ofc'].includes(a)&&b==='of',run:async(A,B,st)=>{await near(A,B);face(A,B);A.say(petPick(['사무실 왔어요','서류 좀 볼게요']),1500);await st(1400);glad(B);B.say(petPick(['여기 있어요!','😊']),1400);await st(1600);}},
     {m:()=>true,run:async(A,B,st)=>{await near(A,B);face(A,B);A.say(petPick(['안녕?','👋']),1500);await st(1300);B.say(petPick(['안녕!','😊']),1500);await st(1700);}}];
   /* 펫 키로 정한 짝 대본 — [앞 펫, 뒤 펫, [[말하는 쪽(0 앞·1 뒤), 대사(배열이면 하나 고름), ms, 1 폴짝 · 2 웃으며 폴짝]…]] */
   const JOB={paperer:'tr-paper',tiler:'tr-tile',floorer:'tr-plank',painter:'tr-paint',caulker:'tr-caulk',plaster:'tr-conc',glazier:'tr-window',plumber:'tr-pipe'};
@@ -276,6 +277,22 @@ const PET=(()=>{let L=[],tick=0,act=false;   /* L: [{k,p}] */
     ['sf-hhelm','helm',[[0,'나는 강화형!',1300,1],[1,'턱끈은 똑같이 매요~',1600,1]]],
     ['lead','sf-board',[[0,'오늘 작업 현황 적읍시다',1600],[1,'작업 위치 확인!',1400,2]]],
     ['manager','sf-board',[[0,'작업현황 확인합니다',1600],[1,'오늘 세대 세 곳 보수 중이에요',1800,1]]]];
+  PAIR.push(   /* 사내 인물 — 두 줄씩 */
+    ['teamlead','rookie',[[0,['신입, 적응은 좀 했나?','오늘 첫 현장이지?'],1700],[1,['넵! 열심히 하겠습니다!','많이 배우겠습니다!'],1600,1]]],
+    ['exec','teamlead',[[0,['요즘 현장 분위기 어떤가?','하자 처리율은 좀 올랐나?'],1800],[1,['계속 오르고 있습니다!','이번 달 목표 달성합니다!'],1700,1]]],
+    ['exec','rookie',[[0,['자네가 이번 신입인가?','힘든 건 없나?'],1700],[1,['네! 반갑습니다!','괜찮습니다!'],1500,2]]],
+    ['exec','senior',[[0,['이번 건 수고 많았네','다음 달 계획은?'],1700],[1,['감사합니다, 상무님','정리해서 보고드리겠습니다'],1800]]],
+    ['teamlead','senior',[[0,['올린 결재 봤어요','현장 일정 다시 잡아 봅시다'],1700],[1,['수정해서 다시 올리겠습니다','네, 맞춰 보겠습니다'],1700]]],
+    ['teamlead','office',[[0,['보고서 잘 봤어요','오늘 회의 몇 시죠?'],1600],[1,['감사합니다!','3시입니다!'],1400,1]]],
+    ['teamlead','manager',[[0,'현장 안전 이상 없죠?',1600],[1,'이상 없습니다, 팀장님!',1600,1]]],
+    ['senior','office',[[0,['이 자료 오늘까지 될까요?','회의 자료 같이 봐요'],1700],[1,['퇴근 전까지 드릴게요','네, 바로 갈게요'],1600]]],
+    ['office','rookie',[[0,['모르는 거 있으면 물어봐요','점심 같이 먹을래요?'],1700],[1,['감사합니다 선배님!','좋아요!'],1500,2]]],
+    ['exec','cs',[[0,'민원은 좀 줄었나?',1500],[1,'많이 줄었습니다!',1500,1]]],
+    ['rookie','of-mix',[[0,'커피 타 드릴까요?',1500,1],[1,'달달하게~',1300,2]]],
+    ['rookie','of-print',[[0,'복사 몇 부 할까요?',1500],[1,'위잉~ 출력 중',1400,1]]],
+    ['teamlead','of-stamp',[[0,'결재 들어갑니다',1500],[1,'쾅! 승인!',1300,2]]],
+    ['senior','of-laptop',[[0,'공사비 다시 검토해 볼게요',1700],[1,'타다닥!',1200,1]]],
+    ['of-board','office',[[0,'회의 시작합니다!',1500,1],[1,'이번 달 실적 공유드릴게요',1800]]]);
   PAIR.push(['plumber','tr-pipe',[[0,'배관 손볼게!',1300],[1,'뻥 뚫렸다!',1200,2]]]);   /* 배관공은 짧게 두 줄 */
   for(const[w,t]of Object.entries(JOB))if(w!=='plumber')PAIR.push([w,t,[[0,['오늘 너 보수한다!','깔끔하게 고쳐 줄게'],1600],[1,['살살 해주세요~','잘 부탁해요!'],1500,1],[0,'💪',1000,2]]]);
   for(const[g,t]of [['sf-sboot','안전화 신었나요?'],['sf-svest','조끼 입어야 잘 보여요!']])for(const b of ['ppl','sig','lead'])PAIR.push([g,'@'+b,[[0,t,1600,1],[1,['착용 완료!','넵!'],1400,2]]]);
