@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1257';
+const APP_VER='1258';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -6323,7 +6323,7 @@ function dfProdCardFill(){
   const _sm=t=>t?'<small>'+esc(t)+'</small>':'';   /* 회색 설명은 앞, 검정 값은 뒤(오른쪽 끝) */
   const st=$('#dfLocalStat');
   if(st){const h0=(DFMETA.hist||[])[0];
-    st.innerHTML=sids.length?_sm(h0?dfFmtDT(h0.at)+' 업로드':'')+'<b class="dfls-v">'+esc(sids.length+'개 현장 · '+n.toLocaleString()+'건')+'</b>':_sm('이 PC가 마스터가 아니면 정상')+'<b class="dfls-v">업로드된 데이터 없음</b>';}   /* 값은 한 덩어리로(폰에서 끊기지 않게) — 설명만 줄바꿈 */
+    st.innerHTML=sids.length?_sm(h0?dfFmtDT(h0.at)+' 업로드':'')+'<b class="dfls-v">'+esc(sids.length+'개 현장 · '+n.toLocaleString()+'건')+'</b>':_sm('이 PC가 마스터가 아니면 정상')+'<b class="dfls-v">업로드된 자료 없음</b>';}   /* 값은 한 덩어리로(폰에서 끊기지 않게) — 설명만 줄바꿈 */
   const ds=$('#dfDashStat');
   if(ds){const pre=dfSites().filter(x=>dfIsPre(x)).length;ds.innerHTML=_sm(pre?'인수 전 '+pre+'개 제외':'')+esc(dfDashSites().length+'개 현장');}
   const rm=dfPubRm();
@@ -7023,11 +7023,11 @@ function dfTrendDraw(key,cid,wks){
     {type:'bar',label:'30~59일',data:rows.map(x=>(Number(x.lt)||0)-(Number(x.lt60)||0)),backgroundColor:cvar('--ch-d30','#E89C9A'),hoverBackgroundColor:cvar('--ch-d30h','#C76F6D'),pointStyle:'rectRounded',stack:'u',borderRadius:0,borderSkipped:false,yAxisID:'y',order:3,animations:barAnim,datalabels:innerDl(cvar('--ch-lbl2','#7A3434'))},
     {type:'bar',label:'30일 미만',data:rows.map(x=>(Number(x.u)||0)-(Number(x.lt)||0)),backgroundColor:cvar('--ch-d0','#B3C7DD'),hoverBackgroundColor:cvar('--ch-d0h','#7E9BBC'),pointStyle:'rectRounded',stack:'u',borderRadius:0,borderSkipped:false,yAxisID:'y',order:3,animations:barAnim,
       datalabels:{labels:{value:innerDl(cvar('--ch-lbl','#1F2B4C')),
-        total:{display:ctx=>{if(window.innerWidth<=768)return false;const t=rows[ctx.dataIndex]?Number(rows[ctx.dataIndex].u)||0:0;if(t<=0)return false;const c=dfMoDLCfg(ctx),n=ctx.chart.data.labels.length;return c.totalEvery===1||ctx.dataIndex%c.totalEvery===0||ctx.dataIndex===n-1;},opacity:op,anchor:'end',align:'end',offset:2,clip:false,color:ink,font:ctx=>({size:dfMoDLCfg(ctx).size,weight:700}),textStrokeColor:stroke,textStrokeWidth:4,formatter:(v,ctx)=>{const t=Number(rows[ctx.dataIndex].u)||0;return t>0?t.toLocaleString():'';}}}}},
+        total:{display:ctx=>{if(window.innerWidth<=768)return false;const t=rows[ctx.dataIndex]?Number(rows[ctx.dataIndex].u)||0:0;if(t<=0)return false;const c=dfMoDLCfg(ctx),n=ctx.chart.data.labels.length;if(n>3&&(ctx.dataIndex===1||ctx.dataIndex===n-2))return false;   /* 양 끝 꺾은선 값 자리 — 바로 옆 막대 합계는 뺀다(겹침) */return c.totalEvery===1||ctx.dataIndex%c.totalEvery===0||ctx.dataIndex===n-1;},opacity:op,anchor:'end',align:'end',offset:2,clip:false,color:ink,font:ctx=>({size:dfMoDLCfg(ctx).size,weight:700}),textStrokeColor:stroke,textStrokeWidth:4,formatter:(v,ctx)=>{const t=Number(rows[ctx.dataIndex].u)||0;return t>0?t.toLocaleString():'';}}}}},
     {type:'line',label:'전체 접수',data:cumR,borderColor:cvar('--ch-recv','#3E71D2'),backgroundColor:stroke,pointBackgroundColor:stroke,pointBorderColor:cvar('--ch-recv','#3E71D2'),pointBorderWidth:_pr?1.2:(_mb?1:2),tension:.4,pointRadius:_pr?2.2:(_mb?1.6:4),pointHoverRadius:8,pointHoverBorderWidth:3,pointHoverBackgroundColor:cvar('--ch-recv','#3E71D2'),pointHoverBorderColor:'#fff',hoverBorderWidth:3.5,borderWidth:2.5,fill:false,yAxisID:'y1',order:1,animations:lineAnim,
-      datalabels:{display:ctx=>window.innerWidth>768&&(ctx.dataIndex===0||ctx.dataIndex===ctx.dataset.data.length-1),opacity:op,anchor:'center',align:ctx=>ctx.dataIndex===0?'right':'left',offset:8,clip:false,color:cvar('--ch-dlr','#2C437C'),font:{size:11,weight:700},textStrokeColor:stroke,textStrokeWidth:4,textShadowColor:'rgba(0,0,0,.2)',textShadowBlur:3,formatter:v=>v.toLocaleString()}},
+      datalabels:{display:ctx=>window.innerWidth>768&&(ctx.dataIndex===0||ctx.dataIndex===ctx.dataset.data.length-1),opacity:op,anchor:'center',align:ctx=>ctx.dataIndex===0?-35:-145,offset:8,clip:false,color:cvar('--ch-dlr','#2C437C'),font:{size:11,weight:700},textStrokeColor:stroke,textStrokeWidth:4,textShadowColor:'rgba(0,0,0,.2)',textShadowBlur:3,formatter:v=>v.toLocaleString()}},
     {type:'line',label:'처리 완료',data:cumRes,borderColor:cvar('--ch-done','#F0B144'),backgroundColor:stroke,pointBackgroundColor:stroke,pointBorderColor:cvar('--ch-done','#F0B144'),pointBorderWidth:_pr?1.2:(_mb?1:2),tension:.4,pointRadius:_pr?2.2:(_mb?1.6:4),pointHoverRadius:8,pointHoverBorderWidth:3,pointHoverBackgroundColor:cvar('--ch-done','#F0B144'),pointHoverBorderColor:'#fff',hoverBorderWidth:3.5,borderWidth:2.5,fill:false,yAxisID:'y1',order:0,animations:lineAnim,
-      datalabels:{display:ctx=>window.innerWidth>768&&(ctx.dataIndex===0||ctx.dataIndex===ctx.dataset.data.length-1),opacity:op,anchor:'center',align:ctx=>ctx.dataIndex===0?'right':'left',offset:8,clip:false,color:cvar('--ch-dld','#A0590A'),font:{size:11,weight:700},textStrokeColor:stroke,textStrokeWidth:4,textShadowColor:'rgba(0,0,0,.2)',textShadowBlur:3,formatter:v=>v.toLocaleString()}}];
+      datalabels:{display:ctx=>window.innerWidth>768&&(ctx.dataIndex===0||ctx.dataIndex===ctx.dataset.data.length-1),opacity:op,anchor:'center',align:ctx=>ctx.dataIndex===0?35:145,offset:8,clip:false,color:cvar('--ch-dld','#A0590A'),font:{size:11,weight:700},textStrokeColor:stroke,textStrokeWidth:4,textShadowColor:'rgba(0,0,0,.2)',textShadowBlur:3,formatter:v=>v.toLocaleString()}}];
   DF.ch[key]=new Chart(el,{data:{labels:rows.map(x=>`${Number(x.m)||0}월\n${Number(x.w)||0}주`),datasets:ds},
     options:{responsive:true,maintainAspectRatio:false,
       onHover:(_pr||!matchMedia('(hover:hover) and (pointer:fine)').matches)?undefined:(ev,els,ch)=>{const e=ch.getElementsAtEventForMode(ev,'index',{intersect:false},false);mtgHx(ch,(e.length&&ev.type!=='mouseout')?e[0].index:-1);},   /* 회의 추이 차트처럼 세로선이 미끄러져 따라간다 */
@@ -7323,7 +7323,7 @@ function dfDashMonthTable(d){
   const eq='6.5%',ltrW='16%';
   const colgroup=`<colgroup><col style="width:9%">${('<col style="width:'+eq+'">').repeat(9)}<col style="width:${ltrW}"><col style="width:${eq}"></colgroup>`;
   const thead=`<thead><tr>${dfTh('','월')}${dfThG('','전체 접수')}${dfTh('recv-sub','월간 접수')}${dfThG('','전체 처리')}${dfTh('rate-col','처리율')}${dfTh('','월간 처리')}${dfTh('','전월대비')}${dfThG('','전체 미처리')}${dfTh('','전월대비')}${dfTh('tl-grp-ltr','장기미처리')}<th class="cc tl-grp-ltr">장기미처리 비율</th><th class="cc">전월대비</th></tr></thead>`;
-  tbl.innerHTML=colgroup+thead+`<tbody>${body||'<tr><td colspan="12" style="text-align:center;padding:14px;color:var(--lbl3)">데이터 없음</td></tr>'}</tbody>`;
+  tbl.innerHTML=colgroup+thead+`<tbody>${body||'<tr><td colspan="12" style="text-align:center;padding:14px;color:var(--lbl3)">자료 없음</td></tr>'}</tbody>`;
 }
 function rDefectDash(root,d){
   const sites=dfDashSites();
@@ -7435,7 +7435,7 @@ function dfAxParts(sid,k){
   }
   const rows=list.map((x,i)=>dfAggRowHTML(x,i,ax,sid,!!(x.fold||x.key==='(미기재)'),false,!!x.fold)).join('')
     +(!folded&&named.length>DF_SITE_TOP_N?`<tr class="axfold" data-act="df.ax.siteAll"><td colspan="11">접기 — 상위 ${DF_SITE_TOP_N}${unit}만 보기</td></tr>`:'');
-  const msg=(S.dfAxSite==='co'&&!(k.coAgg||[]).length)?'이 게시본에는 업체별 자료가 없습니다 · 재게시하면 보입니다':'데이터 없음';
+  const msg=(S.dfAxSite==='co'&&!(k.coAgg||[]).length)?'이 게시본에는 업체별 자료가 없습니다 · 재게시하면 보입니다':'자료 없음';
   return{ax,rows,emptyRow:'<tr><td colspan="11" style="text-align:center;padding:14px;color:var(--lbl3)">'+esc(msg)+'</td></tr>'};
 }
 function dfSiteAxisOnly(sid){
@@ -7510,7 +7510,7 @@ function dfMonthCardHTML(st,curYear,pickerHTML){
     .filter(x=>x.yr===curYear&&x.k<=S.dfRm)
     .map(x=>{const{w,m,first}=x;
       return`<tr${x.k===S.dfRm?' class="cur-row"':''}><td class="cc mcell">${w.m}월</td><td class="cc recv-total tl-grp">${dfNF(m.tR)}</td><td class="cc recv-weekly">${dfNF(m.recvW)}</td><td class="cc st-res tl-grp">${dfNF(m.cumRes)}</td><td class="rate-col">${m.rate.toFixed(1)}%</td><td class="cc st-res">${dfNF(m.resW)}</td><td class="cc">${dfDlt(m.resWDlt,first,m.resW,'월',true)}</td><td class="cc st-unr tl-grp">${dfNF(m.unr)}</td><td class="cc">${dfDlt(m.unrDlt,first,m.unr,'월')}</td>${dfLtrCells(m.d0,m.d30,m.d60,m.unr,m.ltDlt,first,'월')}</tr>`;}).join('');
-  return `<div class="card" data-print="tl-month"><div class="sh"><div class="st cardttl">월별 현황</div>${pickerHTML||''}</div><div style="overflow-x:auto" data-sbx="r"><table class="dt dt-detail" style="table-layout:fixed">${moColgroup}${moThead}<tbody>${moBody||'<tr><td colspan="12" style="text-align:center;padding:14px;color:var(--lbl3)">데이터 없음</td></tr>'}</tbody></table></div></div>`;
+  return `<div class="card" data-print="tl-month"><div class="sh"><div class="st cardttl">월별 현황</div>${pickerHTML||''}</div><div style="overflow-x:auto" data-sbx="r"><table class="dt dt-detail" style="table-layout:fixed">${moColgroup}${moThead}<tbody>${moBody||'<tr><td colspan="12" style="text-align:center;padding:14px;color:var(--lbl3)">자료 없음</td></tr>'}</tbody></table></div></div>`;
 }
 /* 공가 탭 — 현재 앱 게시본의 공가 수(미분양·미키불출)를 표시한다. */
 /* 민원 세대 탭 — 레벨별 세대 수 + 주의 이상 세대 목록(근거 펼침) */
@@ -7578,7 +7578,7 @@ function dfRiskTableHTML(all,ns){
     +'';
   const inp=(k,ph,cls)=>`<td><input class="rk-q${cls?' '+cls:''}" data-act="df.riskQ" data-ns="${ns}" data-q="${k}" value="${esc(q[k]||'')}" placeholder="${ph}"></td>`;
   const filt=st.filt?`<tr class="rk-fr">${inp('lv','레벨','cc')}<td></td>${inp('bu','동','cc')}${inp('un','호','cc')}<td></td><td></td><td></td>${inp('fac','감지요소')}${inp('ty','하자 유형')}</tr>`:'';
-  const tbl=`<table class="dt rk-tbl"><thead><tr>${th('lv','레벨','cc')}${th('sc','점수','cc')}${th('bu','동','cc')}${th('un','호','cc')}${th('n','접수','cc')}${th('done','처리완료','cc')}${th('open','미처리','cc')}${th('fac','감지요소')}${th('ty','하자 유형')}</tr>${filt}</thead><tbody>${rows||'<tr><td colspan="9"><div class="dfnone">해당 세대가 없습니다</div></td></tr>'}</tbody></table>`;
+  const tbl=`<table class="dt rk-tbl"><thead><tr>${th('lv','레벨','cc')}${th('sc','점수','cc')}${th('bu','동','cc')}${th('un','호','cc')}${th('n','접수','cc')}${th('done','처리완료','cc')}${th('open','미처리','cc')}${th('fac','감지요소')}${th('ty','하자 유형')}</tr>${filt}</thead><tbody>${rows||'<tr><td colspan="9"><div class="dfnone">해당 세대가 없습니다.</div></td></tr>'}</tbody></table>`;
   /* 모달·현장 공통: 머리와 표 사이에 감지요소·하자유형 칩(누르면 ';' OR 필터) + 표시 건수, 표는 세로·가로 스크롤 */
   const tok=v=>String(v||'').split(/[;,]/).map(z=>z.trim()).filter(Boolean);
   const on=(k,x)=>tok(q[k]).includes(x);
@@ -7743,7 +7743,7 @@ function rDefectSite(root,site){
   if(!k){root.innerHTML=(DF.kerr&&DF.kerr[key])?dfNoneHTML('현장 자료를 불러오지 못했습니다. 네트워크를 확인한 뒤 다시 시도하세요.','err'):dfNoneHTML('이 현장의 게시 자료가 없습니다.');return;}   /* 읽기 실패를 「자료 없음」과 가른다 */
   const st=k;
   const units=site.units||0;
-  const compDate=site.completionDate?` · ${site.completionDate}`:'';
+  const compDate=site.completionDate?` · 준공 ${site.completionDate}`:'';
   const kpis=dfKcHTML([
     {cls:'bl kc-site',label:esc(site.region||'-'),pick:isMob()&&!WIDGET,   /* 폰은 이 카드를 눌러 현장을 바꾼다(꺽쇠). 「이 PC 원본」 표시는 상단바(#tbLoc) */valHTML:`<span class="kc-site-nm">${esc(site.name||'-')}</span>`,meta:`${units.toLocaleString()}세대 · ${site.buildings||0}개동${compDate}`},
     {cls:'sk',label:'전체 접수',val:st.tR||0,unit:'건',meta:`세대당 ${units>0?((st.tR||0)/units).toFixed(1):'0.0'}건`},
@@ -7810,7 +7810,7 @@ function rDefectSite(root,site){
     const wkThead=`<thead><tr>${dfTh('','월')}${dfTh('','주차')}${dfThG('','전체 접수')}${dfTh('recv-sub','주간 접수')}${dfThG('','전체 처리')}${dfTh('rate-col','처리율')}${dfTh('','주간 처리')}${dfTh('','전주대비')}${dfThG('','전체 미처리')}${dfTh('','전주대비')}${dfTh('tl-grp-ltr','장기미처리')}<th class="cc tl-grp-ltr">장기미처리 비율</th><th class="cc">전주대비</th></tr></thead>`;
     body=`<div class="as">
       ${dfMonthCardHTML(st,curYear,yrPicker)}
-      <div class="card"><div class="sh"><div class="st cardttl">주차별 현황</div></div><div style="overflow-x:auto" data-sbx="r"><table class="dt dt-detail" style="table-layout:fixed">${wkColgroup}${wkThead}<tbody>${wkBody||'<tr><td colspan="13" style="text-align:center;padding:14px;color:var(--lbl3)">데이터 없음</td></tr>'}</tbody></table></div></div>
+      <div class="card"><div class="sh"><div class="st cardttl">주차별 현황</div></div><div style="overflow-x:auto" data-sbx="r"><table class="dt dt-detail" style="table-layout:fixed">${wkColgroup}${wkThead}<tbody>${wkBody||'<tr><td colspan="13" style="text-align:center;padding:14px;color:var(--lbl3)">자료 없음</td></tr>'}</tbody></table></div></div>
     </div>`;
   }
   /* 같은 현장의 탭 줄이면 옛 줄 요소를 그대로 되꽂는다 — 새로 갈면 미끄럼 표시(.sl-ind)가 문서에서 빠졌다 들어가며 움직임이 처음부터 다시 시작된다.
@@ -8412,7 +8412,7 @@ async function dfPrint(){
   let html='';
   if(site){
     const st=k;
-    const units=site.units||0,compDate=site.completionDate?` · ${site.completionDate}`:'';
+    const units=site.units||0,compDate=site.completionDate?` · 준공 ${site.completionDate}`:'';
     const kpis=dfKcHTML([
       {cls:'bl',label:'현장규모',valHTML:`${units.toLocaleString()}<span class="u">세대</span>`,meta:`${site.buildings||0}개동${compDate}`},
       {cls:'sk',label:'전체 접수',val:st.tR||0,unit:'건',meta:`세대당 ${units>0?((st.tR||0)/units).toFixed(1):'0.0'}건`},
@@ -8628,7 +8628,7 @@ function recBodyHTML(){
     +'</div>'
     +(PIV.on?pivHTML()
       /* ⚠ 0건이어도 표(머리·필터행)는 유지한다(원본과 동일) — 없애면 열 머리 우클릭으로 필터를 해제할 길이 사라진다 */
-      :'<div class="rec-wrap"><table class="rec-tbl"><thead>'+head+'</thead><tbody>'
+      :'<div class="rec-wrap"><table class="rec-tbl" style="min-width:'+Math.max(1180,46+cols.reduce((s,c)=>s+(REC.w[c.k]||c.w||(c.wide?260:0)),0))+'px"><thead>'   /* 접수내용(폭 없음)이 늘 260px 이상 남게 — 모자라면 가로 스크롤 */+head+'</thead><tbody>'
         +(v.length?body:'<tr><td colspan="'+(cols.length+1)+'" class="rec-none-td">조건에 맞는 건이 없습니다.</td></tr>')
         +'</tbody></table></div>');
 }
@@ -8867,7 +8867,7 @@ function pivSortNodes(nodes,sort){
 }
 function pivTableHTML(){
   const D=pivData();
-  if(!D.grand)return '<div class="pv-empty">표시할 데이터가 없습니다</div>';
+  if(!D.grand)return '<div class="pv-empty">표시할 자료가 없습니다.</div>';
   const cd=cv=>cv==='(빈값)'?'(빈값)':esc(cv);
   const arr=k=>D.sort.key===k?(D.sort.dir>0?' ▲':' ▼'):'';
   const dsp=(c,sm)=>{
@@ -10488,7 +10488,8 @@ function dlBlob(name,blob){
   setTimeout(()=>URL.revokeObjectURL(a.href),4000);
 }
 function rBk(){
-  const card=$('#bkCard');if(card)card.style.display=isEditor()?'':'none';
+  /* 카드는 모두에게(휴지통은 누구나 자기 범위를 본다) · 내보내기·되돌리기 줄과 제목의 「백업」은 관리자만 */
+  const ed=isEditor();$$('#bkCard .bk-ed').forEach(x=>{x.style.display=ed?'':'none';});const h=$('#bkCard .set-h');if(h)h.textContent=ed?'백업 · 기록':'휴지통';
   const fc=$('#d60FormCard');if(fc)fc.style.display=isEditor()?'':'none';   /* D+60 서식 초기화는 관리자만 */
 }
 /* ═══════════ 우클릭 메뉴 · 툴팁 ═══════════
@@ -11413,6 +11414,7 @@ function mobClose(){
 /* ═══════════ 액션 위임 ═══════════ */
 const ACT={
   'nav.go':el=>{if(el.dataset.view==='defect')S.dfSid='';navGo(el.dataset.view);},
+  'nav.tools':()=>{const off=!document.body.classList.contains('sb-tools-off');document.body.classList.toggle('sb-tools-off',off);try{localStorage.setItem('calapp.sbTools',off?'0':'1');}catch(e){}},
   'nav.toggle':()=>{
     S.sbUser=true;   /* 직접 접었다 폈으면 태블릿 자동 접기(sbAuto)가 손대지 않는다 */
     tipHide();   /* 사이드바가 움직이면 툴팁은 제자리에 남는다 */
@@ -12973,7 +12975,7 @@ function mtgP5(all,head,meta){
   const rm=dfRm(),py=mtgPm(),P=DF.rkPrev||{},Fp=DF.rkFacPrev||{},LV=['긴급','심각','경계','주의'];
   const sites=all,hd=head(MTG_P[4],meta);
   const hs=sites.map(s=>({s,h:(DF.kpi[rm+'/'+s.id]||{}).hh||null})).filter(x=>x.h&&x.h.cnt);
-  if(!hs.length)return hd+'<div class="card" style="padding:40px;text-align:center;color:var(--lbl3)">이 게시본에는 세대 레벨 정보가 없습니다</div>';
+  if(!hs.length)return hd+'<div class="card" style="padding:40px;text-align:center;color:var(--lbl3)">이 게시본에는 세대 레벨 정보가 없습니다.</div>';
   const cur=k=>hs.reduce((a,x)=>a+(x.h.cnt[k]||0),0);
   const pk=hs.every(x=>P[py+'/'+x.s.id]),prv=k=>hs.reduce((a,x)=>a+((P[py+'/'+x.s.id]||{})[k]||0),0);
   const sumL=c=>LV.reduce((a,k)=>a+((c||{})[k]||0),0);
@@ -13337,7 +13339,11 @@ document.addEventListener('keydown',e=>{
     const p=Math.max(0,Math.min(MTG_P.length-1,MTG.p+(e.key==='ArrowRight'?1:-1)));if(p!==MTG.p){e.preventDefault();ACT['mtg.p']({dataset:{p}});slSync();}return;}
   /* 03 — 위아래 방향키로 현장 하나씩 */
   if((e.key==='ArrowDown'||e.key==='ArrowUp')&&MTG.p===2&&$('#mm')&&!$('#mm')._out&&!$('#mo').classList.contains('open')&&!(e.target.closest&&e.target.closest('input,textarea,select,[contenteditable]'))){
-    const dd=$('#mm .sg.deck'),L=$$('#mm .sc.wide').length,i=(dd&&dd._i)||0;if(L>1){e.preventDefault();mtgGoSite(i+(e.key==='ArrowDown'?1:-1));}return;}
+    const dd=$('#mm .sg.deck'),L=$$('#mm .sc.wide').length,i=(dd&&dd._i)||0,dn=e.key==='ArrowDown';
+    /* 끝 현장에서 ↓ = 다음 담당자 첫 현장 · 첫 현장에서 ↑ = 앞 담당자 끝 현장(담당자가 하나면 그 안에서 돈다) */
+    const ch=$$('#mm .chip[data-act="mtg.who"]'),ci=ch.findIndex(c=>c.classList.contains('on'));
+    if(ci>=0&&(dn?(i>=L-1&&ci<ch.length-1):(i<=0&&ci>0))){e.preventDefault();ACT['mtg.who'](ch[ci+(dn?1:-1)]);if(!dn){const d2=$('#mm .sg.deck');if(d2&&d2.children.length)mtgDeck(d2.children.length-1,false);}return;}
+    if(L>1){e.preventDefault();mtgGoSite(i+(dn?1:-1));}return;}
   /* 로그인 칸 Enter 는 <form id=cvForm> 기본 제출(=#cvBtn 클릭)이 맡는다 — 화면별로 로그인·가입·재설정 */
   if(e.key==='Enter'&&e.target.id==='peTitle'){e.preventDefault();savePlanInline();return;}
   /* 업무 현황 폼도 제목 칸 Enter = 저장하고 닫기(새 업무 포함) */
@@ -13465,6 +13471,9 @@ function bindCalResize(){
      사용자가 한 번이라도 직접 토글했으면(S.sbUser) 자동 조정 안 함 */
   const sbAuto=()=>{const sb=$('#sidebar');if(!sb||S.sbUser||WIDGET)return;const w=innerWidth;const want=w>900&&w<=1280;if(sb.classList.contains('mini')!==want){sb.classList.toggle('mini',want);document.body.classList.toggle('sb-mini',want);}};
   sbAuto();
+  /* 사이드바 「업무 도구」 묶음 접기 — 직접 고른 값(calapp.sbTools)이 없으면 낮은 화면(높이 < 820)에서 접는다. 지금 보는 도구는 접혀도 남는다 */
+  const sbTools=()=>{let v=null;try{v=localStorage.getItem('calapp.sbTools');}catch(e){}document.body.classList.toggle('sb-tools-off',innerWidth>960&&(v?v==='0':innerHeight<820));};   /* 폰 서랍은 접지 않는다 */
+  sbTools();addEventListener('resize',sbTools);
   let rt=null;
   const redraw=()=>{clearTimeout(rt);rt=setTimeout(()=>{
     sbAuto();
@@ -15383,7 +15392,7 @@ function qcRowsHTML(){
     const nos=[...new Set(QC.rows.map(r=>r.no))];
     nos.forEach(n=>{h+=qcSumRow(n);});
     h=qcNumberCells(h);
-    return h||'<tr><td colspan="8" style="padding:22px;text-align:center;color:var(--lbl3)">합계를 낼 줄이 없습니다</td></tr>';
+    return h||'<tr><td colspan="8" style="padding:22px;text-align:center;color:var(--lbl3)">합계를 낼 줄이 없습니다.</td></tr>';
   }
   const all=QC.filter==='all';
   qcView().forEach((r,i)=>{
@@ -15402,7 +15411,7 @@ function qcRowsHTML(){
   });
   if(all&&cur!==null)h+=qcSumRow(cur);
   h=qcNumberCells(h);
-  return h||'<tr><td colspan="8" style="padding:22px;text-align:center;color:var(--lbl3)">해당하는 줄이 없습니다</td></tr>';
+  return h||'<tr><td colspan="8" style="padding:22px;text-align:center;color:var(--lbl3)">해당하는 줄이 없습니다.</td></tr>';
 }
 function rQc(){
   const root=$('#qcRoot');if(!root)return;
@@ -16065,7 +16074,7 @@ function rRedo(){
     +(TL.rows.length
       ?(G.length?'<div class="qc-wrap rd-wrap"><table class="qc-tbl rd-tbl"><thead><tr>'
         +'<th class="n">재하자</th><th class="rd-dg">동</th><th class="rd-ho">호</th><th class="pl">공간</th><th class="it">공종</th><th class="rd-ty">하자유형</th><th>접수내용</th><th>처리내용</th><th class="rd-d">접수일</th><th class="rd-d">처리일</th><th class="st">처리상태</th><th class="st">보수주체</th><th class="rd-co">보수업체</th></tr>'
-        +tlFrow(RD_COLS,RD,'rd')+'</thead><tbody>'+(rows||'<tr><td colspan="13" class="rd-none">조건에 맞는 묶음이 없습니다</td></tr>')+'</tbody></table></div>'
+        +tlFrow(RD_COLS,RD,'rd')+'</thead><tbody>'+(rows||'<tr><td colspan="13" class="rd-none">조건에 맞는 묶음이 없습니다.</td></tr>')+'</tbody></table></div>'
         :tlEmpty('완료 후 같은 세대·공간·공종으로 다시 접수된 건이 없습니다.'))
       :tlEmpty('전체 하자 목록(xlsx·csv)을 열면<br>완료 후 같은 세대·공간·공종으로 다시 접수된 건을 찾습니다.'))
   +'</div></div>';
@@ -16146,7 +16155,7 @@ function rProd(){
     +'<div class="tkbar qc-bar"><span class="qc-t">투입 실적<span>'+(PV.co?esc(PV.co)+(PV.from||PV.to?' · '+tlDot(PV.from)+' ~ '+tlDot(PV.to):''):'')+(nF?' · 필터 '+nF+'개':'')+'</span></span>'
       +'<span class="tl-br">'+(TL.rows.length&&cos.length?tlFbtn(PV,'pv'):'')+tlSeg(PV.tab,[['day','일별'],['gj','공종별'],['wk','주차별']],'data-act="pv.tab" data-t')+'</span></div>'
     +(TL.rows.length
-      ?(N||nF?'<div class="qc-wrap rd-wrap"><table class="qc-tbl pv-tbl"><thead><tr>'+head+'</thead><tbody>'+(body||'<tr><td colspan="11" class="rd-none">조건에 맞는 건이 없습니다</td></tr>')+'</tbody></table></div>'
+      ?(N||nF?'<div class="qc-wrap rd-wrap"><table class="qc-tbl pv-tbl"><thead><tr>'+head+'</thead><tbody>'+(body||'<tr><td colspan="11" class="rd-none">조건에 맞는 건이 없습니다.</td></tr>')+'</tbody></table></div>'
         :tlEmpty(cos.length?'조건에 맞는 외주 처리 건이 없습니다.':'보수주체가 「외주」이고 처리일이 있는 건이 없습니다.'))
       :tlEmpty('전체 하자 목록(xlsx·csv)을 열면<br>보수주체 외주 건의 업체별 투입 실적을 냅니다.'))
   +'</div></div>';
@@ -16468,7 +16477,8 @@ function mmenuTeams(){
 function mssOpen(){
   const box=$('#mss');if(!box)return;
   const{regions}=tkSel(),sites=dfSites();
-  const groups=dfSiteGroups(sites,regions).map(([,rn,l])=>[rn,l]);   /* 사이드바와 같은 묶음(인수 전 현장 따로) */
+  const ms=mySites(),mine=sites.filter(x=>ms[x.id]);   /* 내 담당 현장을 맨 위에 따로 — 아래 권역 묶음에서는 뺀다 */
+  const groups=(mine.length?[['내 담당 현장',mine]]:[]).concat(dfSiteGroups(sites.filter(x=>!ms[x.id]),regions).map(([,rn,l])=>[rn,l]).filter(g=>g[1].length));   /* 사이드바와 같은 묶음(인수 전 현장 따로) */
   box.innerHTML=MSS_GRAB+'<div class="mss-sc"><div class="mss-h">현장 선택</div>'
     +'<div class="mss-i'+(S.dfSid?'':' act')+'" data-act="mss.dash"><svg class="icn" aria-hidden="true"><use href="#i-grid4"></use></svg>팀 전체 대시보드</div>'
     +groups.map(([rn,list])=>'<div class="mss-g">'+esc(rn)+'</div>'
@@ -16659,7 +16669,7 @@ function issCard(s,kind){
   const rows=issRows(s.id),n=issOpenN(s.id),pg=kind==='pg';
   const head=issHead(s,n,pg);
   const p=issPref(),fold=p.fold.includes(s.id)||(p.fe&&!n);   /* 접기 — 내가 접은 카드 · 「현안 없는 현장 접기」 */
-  return '<div class="iss-c'+(pg?' card':'')+(fold?' fold':'')+'" data-sid="'+esc(s.id)+'">'+head
+  return '<div class="iss-c'+(pg?' card':'')+(fold?' fold':'')+(!rows.length&&S.issUI.add!==s.id?' emp':'')+'" data-sid="'+esc(s.id)+'">'+head
     +(S.issUI.add===s.id?'<div class="iss-new"><input class="iss-in" data-sid="'+esc(s.id)+'" maxlength="200" placeholder="현안 입력 후 Enter" aria-label="현안 입력"></div>':'')
     +(rows.length?'<ul class="iss-ul">'+rows.map(x=>issItem(s.id,x)).join('')+'</ul>':S.issUI.add===s.id?'':'<div class="iss-empty">진행 중인 현안이 없습니다.</div>')   /* 적는 중엔 빈 카드 문구를 뺀다 */
     +'</div>';}
@@ -17052,10 +17062,10 @@ function d60List(){
     if(fin){const d=new Date(fin);return '<td class="d60-stc fin" data-tip="'+tip+'"><span>완료</span><small>'+d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'</small></td>';}
     if(d60Done(s.id,k))return '<td class="d60-stc prog" data-tip="'+tip+'"><span>진행 중</span></td>';
     return '<td class="d60-stc" data-tip="'+tip+'"><span>예정</span></td>';};
-  const tr=rows.map(({s,date})=>{const set=d60DateSet(s),o=d60Owner(s),hi=st.m&&Number(date.slice(5,7))===st.m,late=!set&&date<today;   /* 예정일이 지났는데 손 안 댄 현장 */
+  const tr=rows.map(({s,date,st:x})=>{const set=d60DateSet(s),o=d60Owner(s),hi=st.m&&Number(date.slice(5,7))===st.m,late=!set&&date<today;   /* 예정일이 지났는데 손 안 댄 현장 */
     return '<tr class="d60-r'+(hi?' hi':'')+'" data-act="d60.open" data-sid="'+esc(s.id)+'">'
       +'<td class="c"><span class="d60-ba">'+esc(d60RegNm(s.region))+'</span></td><td class="l">'+esc(s.name)+'</td><td class="num">'+esc(s.completionDate)+'</td>'
-      +'<td class="num'+(set?'':late?' late':d60Soon(date)?' soon':' dim')+'" data-act="d60.date" data-sid="'+esc(s.id)+'" data-tip="'+(late?'예정일 경과 · ':d60Soon(date)&&!set?'7일 안 · ':'')+'점검일 고치기">'+esc(date)+'</td>'
+      +'<td class="num'+(set?'':late?' late':d60Soon(date)?' soon':' dim')+'" data-act="d60.date" data-sid="'+esc(s.id)+'" data-tip="'+(late?'예정일 경과 · ':d60Soon(date)&&!set?'7일 안 · ':'')+'점검일 고치기">'+esc(date)+(x.fin||x.prog?'':'<small class="d60-dd'+(x.dd<0?' late':'')+'">'+(x.dd<0?'D+'+(-x.dd):x.dd===0?'D-DAY':'D-'+x.dd)+'</small>')+'</td>'   /* 예정 현장만 폰과 같은 D-n / D+n */
       +'<td>'+(o.name?'<span class="d60-nm"><i style="background:'+esc(o.color)+'"></i>'+esc(o.name)+'</span>':'—')+'</td>'
       +D60_TR.map(([k])=>cell(s,k)).join('')+'</tr>';}).join('');
   const regTabs=[['','전체',inYear.length]].concat(regs.map(r=>[r.id,r.name,inYear.filter(x=>x.s.region===r.id).length]));
@@ -17065,7 +17075,7 @@ function d60List(){
     +'<div class="card d60-flat"><div class="tm-h"><span>현장 지도</span><button class="btn tm-add" data-act="org.mapBig" aria-label="크게 보기" data-tip="크게 보기"><svg class="icn" aria-hidden="true"><use href="#i-expand"></use></svg></button></div><div id="d60Map"></div></div>'
     +'</div><div class="as">'
     +d60Tabs(st.reg,regTabs,'data-act="d60.reg" data-k','<div class="seg d60-mss">'+D60_MS.map(([k,l])=>'<button class="'+(ms===k?'act':'')+'" data-act="d60.ms" data-k="'+k+'">'+l+'<span class="d60-sn">'+msCnt[k]+'</span></button>').join('')+'</div>')
-    +'<div class="card d60-flat"><div class="d60-tw" data-sbx="r" data-sbh><table class="mgtbl d60-tbl"><colgroup><col style="width:8%"><col style="width:15%"><col style="width:10%"><col style="width:10%"><col style="width:11%">'+D60_TR.map(()=>'<col style="width:11.5%">').join('')+'</colgroup>'
+    +'<div class="card d60-flat"><div class="d60-tw" data-sbx="r" data-sbh><table class="mgtbl d60-tbl"><colgroup><col style="width:8%"><col style="width:12%"><col style="width:11%"><col style="width:15%"><col style="width:12%">'+D60_TR.map(()=>'<col style="width:10.5%">').join('')+'</colgroup>'
       +'<thead><tr>'+d60Th('reg','권역','c')+d60Th('site','현장','l')+d60Th('comp','준공일','c')+d60Th('date','점검일','c')+d60Th('own','담당자','c')+D60_TR.map(([k,l])=>d60Th(k,l,'c')).join('')+'</tr></thead>'
       +'<tbody>'+(tr||'<tr><td colspan="9" class="d60-empty">'+(ms!=='all'&&msCnt.all?'이 상태의 현장이 없습니다':st.y+'년에 점검할 현장이 없습니다')+'</td></tr>')+'</tbody></table></div></div>'
     +'</div></div>';
@@ -17089,7 +17099,7 @@ function d60Detail(){
       body+='<div class="d60-zone'+(st.sc===sc&&!st.sp?' on':'')+'" data-act="d60.sc" data-k="'+sc+'"><span class="n">전체</span><span class="c">'+tot[0]+'/'+tot[1]+'</span></div>'
         +sps.map(s=>{const [n,t]=d60SpCnt(site.id,st.tr,sc,s,st.un);return '<div class="d60-zone'+(st.sc===sc&&st.sp===s.id?' on':'')+'" data-act="d60.sp" data-sc="'+sc+'" data-k="'+esc(s.id)+'"><span class="n">'+esc(s.name)+'</span><span class="c">'+n+'/'+t+'</span><button class="tm-x d60-zh" data-act="d60.spHide" data-sc="'+sc+'" data-k="'+esc(s.id)+'" aria-label="이 현장에서 숨기기" data-tip="이 현장에서 숨기기"><svg class="icn"><use href="#i-eye-off"></use></svg></button></div>';}).join('')
         +(cv?'<div class="d60-zone'+(st.sc===sc&&st.sp===D60_RCV?' on':'')+'" data-act="d60.sp" data-sc="civil" data-k="'+D60_RCV+'"><span class="n">현장 접수</span><span class="c">'+cv.filter(x=>x.a).length+'/'+cv.length+'</span></div>':'')
-        +(sps.length||cv?'':'<div class="d60-zone d60-zone-empty">서식에 공간이 없습니다</div>')
+        +(sps.length||cv?'':'<div class="d60-zone d60-zone-empty">서식에 공간이 없습니다.</div>')
         +(hid.length?'<div class="d60-zone d60-zone-hx'+(st.hx&&st.hx[sc]?' open':'')+'" data-act="d60.hxTog" data-sc="'+sc+'"><span class="n">숨긴 공간</span><span class="c">'+hid.length+'</span><svg class="icn chev"><use href="#i-chevd"></use></svg></div>'
           +(st.hx&&st.hx[sc]?hid.map(s=>'<div class="d60-zone d60-zone-hid"><span class="n">'+esc(s.name)+'</span><button class="tm-x d60-zh on" data-act="d60.spShow" data-sc="'+sc+'" data-k="'+esc(s.id)+'" aria-label="다시 보이기" data-tip="다시 보이기"><svg class="icn"><use href="#i-eye"></use></svg></button></div>').join(''):''):'');   /* 숨긴 공간은 카드 맨 아래 접힌 줄 */
     }
@@ -17148,7 +17158,7 @@ function d60Form(){
       +'<div class="tm-list" data-sc="'+sc+'">'+(list.length?list.map(s=>'<div class="tm-row d60-row'+(!all&&st.sc===sc&&st.sp===s.id?' act':'')+'" draggable="true" data-drag="sp" data-act="d60.spPick" data-sc="'+sc+'" data-k="'+esc(s.id)+'">'
         +'<input class="mg-inp tm-nameinp" value="'+esc(s.name)+'" readonly data-act="d60.spRen" data-sc="'+sc+'" data-k="'+esc(s.id)+'" placeholder="공간 이름" aria-label="공간 이름">'
         +'<span class="tm-cnt">'+s.items.length+'</span><button class="tm-x tm-del" data-act="d60.spDel" data-sc="'+sc+'" data-k="'+esc(s.id)+'" aria-label="삭제"><svg class="icn"><use href="#i-trash"></use></svg></button></div>').join('')
-        :'<div class="tm-empty d60-te">공간이 없습니다</div>')+'</div></div>';   /* 「기본 공간 넣기」 없음 · 가운데 */
+        :'<div class="tm-empty d60-te">공간이 없습니다.</div>')+'</div></div>';   /* 「기본 공간 넣기」 없음 · 가운데 */
   }).join('');
   const trTabs=D60_TR.map(([k,l])=>[k,l,(d60HasUnit(k)?['unit','common','civil']:['common','civil']).reduce((n,sc)=>n+d60Forms(k,sc).reduce((m,s)=>m+s.items.length,0),0)]);
   /* 보이는 줄: (구분, 공간, 항목) — 고른 범위에 따라 */
@@ -17525,7 +17535,7 @@ function d60PrintHTML(){
         +'</tbody></table>').join('')+'</section>';}).join('');
     return '<div class="d60p-hd"><div class="t">'+esc(team)+' D+60 점검</div><div class="s">'+esc(site.name)+'</div>'
       +'<div class="m"><span>권역 '+esc(d60RegNm(site.region))+'</span><span>준공일 '+esc(site.completionDate||'—')+'</span><span>점검일 '+esc(d60Date(site)||'—')+'</span><span>담당자 '+esc(o.name||'—')+'</span></div></div>'
-      +(secs||'<p class="d60p-none">점검 결과가 없습니다</p>');
+      +(secs||'<p class="d60p-none">점검 결과가 없습니다.</p>');
   }
   const rows=d60Sites().map(s=>({s,date:d60Date(s)})).filter(x=>x.date&&x.date.slice(0,4)===String(st.y)).sort((a,b)=>a.date.localeCompare(b.date));
   return '<div class="d60p-hd"><div class="t">'+esc(team)+' D+60 점검</div><div class="s">'+st.y+'년 점검 현황</div></div>'
