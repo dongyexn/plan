@@ -134,7 +134,7 @@ OK('구문 검사 (node --check)');
 
 /* ── 5. 죽은 CSS 클래스 ─────────────────────────────── */
 {
-  const KEEP = /^(fc-|wf-|x-none$|r-blocked$|woff2$|s\d$|insight-block$|ib-body$|warn$|ev-g-\w+$)/;   /* 678차: ev-g-* 는 'ev-g-'+토큰 으로 조립한다(GRADS 대조는 아래에서 따로 한다) */   /* insight-*: 분석 의견 원문(DB 저장 HTML)의 클래스 — 마크업엔 없다(427차) */   /* 위 판정 원칙 + url(*.woff2) 오탐 + tk-item s${st} 동적 */
+  const KEEP = /^(fc-|wf-|x-none$|r-blocked$|woff2$|s\d$|insight-block$|ib-body$|warn$|ev-g-\w+$|al-[lcr]$|va-[tm]$|bd-(all|out|none)$|k-\w+$|mg-[snw]$)/;   /* 1269: 보고서 작성 블록·표 칸·용지 클래스는 'k-'+종류 · 'al-'+맞춤 처럼 조립한다 */   /* 678차: ev-g-* 는 'ev-g-'+토큰 으로 조립한다(GRADS 대조는 아래에서 따로 한다) */   /* insight-*: 분석 의견 원문(DB 저장 HTML)의 클래스 — 마크업엔 없다(427차) */   /* 위 판정 원칙 + url(*.woff2) 오탐 + tk-item s${st} 동적 */
   const cls = new Set([...stripCssComments(css).matchAll(/\.([A-Za-z_][\w-]*)/g)].map(m => m[1]));   /* 1012차: 주석 속 이름은 정의가 아니다 */
   const dead = [...cls].filter(c => !KEEP.test(c) &&
     !new RegExp('[\'"`\\s<>=.(]' + c.replace(/-/g, '\\-') + '[\'"`\\s<>.,)\\]}:$]').test(hay));
