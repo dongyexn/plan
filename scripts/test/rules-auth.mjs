@@ -207,7 +207,7 @@ t('AUTH-14f', '휴지통에 든 남의 업무 지우기(복원)', false,
     trash: { U5: { far: { ...TR('U5','far'), createdBy: 'U5' } } } } }, null));
 t('AUTH-11', '메일 미검증 계정 → 자기 people 쓰기', false, tryWrite('calapp/people/U1', { uid: 'U1', token: { email: 'u1@hdec.co.kr', email_verified: false } }, TREE, { ...P('U1'), name: 'x' }));
 
-/* AUTH-15~18 (1012차 보안) — D+60 사진 값 꼴·현장 통째 삭제 · D+60 서식 공종 통째 삭제 · 옛 plans · 프로필 색 */
+/* AUTH-15~18 (1012차 보안) — D+60 사진 값 꼴·현장 통째 삭제 · D+60 서식 직무 통째 삭제 · 옛 plans · 프로필 색 */
 const PH = 'data:image/webp;base64,UklGRiQAAABXRUJQVlA4IBgAAAAwAQCdASoBAAEAAwA0JaQAA3AA/vuUAAA=';
 const T15 = { ...TREE, calapp: { ...TREE.calapp, d60photo: { sA: { arch: { k1: { p1: { d: PH, by: 'U1', ts: 1 } } } } },
   d60: { forms: { arch: { unit: { sp1: { name: '거실', ord: 1 } } } } } } };
@@ -216,9 +216,9 @@ t('AUTH-15b', 'viewer → D+60 사진(data:image/webp) 추가', true, tryWrite('
 t('AUTH-15c', 'viewer → 현장 사진 통째 삭제', false, tryWrite('calapp/d60photo/sA', A('U1'), T15, null));
 t('AUTH-15d', 'viewer → 항목 사진 정리(세대 삭제)', true, tryWrite('calapp/d60photo/sA/arch/k1', A('U1'), T15, null));
 t('AUTH-15e', 'editor → 현장 사진 통째 삭제', true, tryWrite('calapp/d60photo/sA', A('E1'), T15, null));
-t('AUTH-16a', 'viewer → D+60 공종 서식 통째 삭제', false, tryWrite('calapp/d60/forms/arch', A('U1'), T15, null));
+t('AUTH-16a', 'viewer → D+60 직무 서식 통째 삭제', false, tryWrite('calapp/d60/forms/arch', A('U1'), T15, null));
 t('AUTH-16b', 'viewer → D+60 공간 이름 고치기', true, tryWrite('calapp/d60/forms/arch/unit/sp1/name', A('U1'), T15, '안방'));
-t('AUTH-16c', 'editor → D+60 공종 서식 초기화', true, tryWrite('calapp/d60/forms/arch', A('E1'), T15, null));
+t('AUTH-16c', 'editor → D+60 직무 서식 초기화', true, tryWrite('calapp/d60/forms/arch', A('E1'), T15, null));
 t('AUTH-17a', 'viewer → 옛 plans 쓰기', false, tryWrite('calapp/plans/2026-01/x1', A('U1'), TREE, { id: 'own', date: '2026-01-02', title: 'x', owners: { U2: 1 } }));
 t('AUTH-17b', 'editor → 옛 plans 정리(삭제)', true, tryWrite('calapp/plans/2026-01/x1', A('E1'), TREE, null));
 t('AUTH-18a', 'viewer → 자기 프로필 색에 CSS 덧붙이기', false, tryWrite('users/U1', A('U1'), TREE, { email: 'u1@hdec.co.kr', role: 'viewer', avColor: '0;scale:999' }));
@@ -329,5 +329,14 @@ t('AUTH-26b', 'editor → 일반 계정 삭제 요청', true, tryWrite('calapp/a
 t('AUTH-27a', 'viewer → 남의 개인 설정 읽기', false, tryRead('calapp/prefs/U2', A('U1'), T20));
 t('AUTH-27b', 'viewer → 내 개인 설정 읽기', true, tryRead('calapp/prefs/U1', A('U1'), T20));
 t('AUTH-28', '작성자 → 이력 키 25(앱은 0~19)', false, tryWrite('calapp/tasks/U2/own/hist/25', A('U2'), TREE, { t: 1, u: 'x', k: 'a' }));
+/* 1268: 직무(trade) — 관리자만 정한다. 권역 「전체」(*) 인 사람은 자기 담당 현장을 모든 권역에서 고른다 */
+t('AUTH-29a', '관리자 → 남의 직무 설비', true, tryWrite('calapp/people/U2', A('E1'), TREE, { ...P('U2'), trade: 'mech' }));
+t('AUTH-29b', '사용자 → 내 직무 바꾸기', false, tryWrite('calapp/people/U1', A('U1'), TREE, { ...P('U1'), trade: 'elec' }));
+t('AUTH-29c', '팀장 → 남의 직무 바꾸기', false, tryWrite('calapp/people/U2', A('U3'), TREE, { ...P('U2'), trade: 'mech' }));
+t('AUTH-29d', '관리자 → 없는 직무 값', false, tryWrite('calapp/people/U2', A('E1'), TREE, { ...P('U2'), trade: 'xx' }));
+{ const T29 = JSON.parse(JSON.stringify(TREE)); T29.calapp.people.U1 = { ...P('U1'), region: '*', trade: 'elec' };
+  t('AUTH-29e', '권역 전체(설비·전기) → 내 sites 에 타권역(sB) 추가', true, tryWrite('calapp/people/U1', A('U1'), T29, { ...T29.calapp.people.U1, sites: { sA: 1, sB: 1 } }));
+  t('AUTH-29f', '권역 전체 → 직무 그대로 이름 바꾸기', true, tryWrite('calapp/people/U1', A('U1'), T29, { ...T29.calapp.people.U1, name: '개명' }));
+  t('AUTH-29g', '권역 전체 → 직무 지우기', false, tryWrite('calapp/people/U1', A('U1'), T29, { name: '김담당', email: 'u1@hdec.co.kr', team: 't1', region: '*', rank: 'member', sites: { sA: 1 } })); }
 console.log(fail ? `\nFAIL ${fail}` : '\nRULES-AUTH ALL PASS');
 process.exit(fail ? 1 : 0);
