@@ -5418,8 +5418,9 @@ td.d60-pc.has{color:var(--bt1);font-weight:700}
 }
 .qc-fr .inp{height:30px;padding-top:0;padding-bottom:0;font-size:13px}
 /* ═══ 1269 업무 도구 — 보고서 작성(#rwRoot) · 물가정보(#prRoot) ═══ */
+#view-rw,#view-pr{overflow:hidden}
 #rwRoot,#prRoot{flex:1;min-height:0;display:flex;flex-direction:column}
-@media screen and (max-width:960px){body:not(.wid) #rwRoot,body:not(.wid) #prRoot{flex:none}}
+@media screen and (max-width:980px){body:not(.wid) :is(#view-rw,#view-pr){overflow-y:auto}body:not(.wid) #rwRoot,body:not(.wid) #prRoot{flex:none}}
 /* 양식 · 자료 · 블록 */
 .rw-list{display:flex;flex-direction:column;padding:2px 0 8px}
 .rw-tp{display:flex;align-items:center;gap:9px;padding:8px var(--s4);font-size:13px;color:var(--lbl);text-align:left;width:100%}
@@ -5665,7 +5666,7 @@ td.d60-pc.has{color:var(--bt1);font-weight:700}
 .pc-ap .rd{width:14px;height:14px;border-radius:50%;box-shadow:inset 0 0 0 1.5px var(--sepo)}
 .pc-c.on .pc-ap{color:var(--b600)}.pc-c.on .pc-ap .rd{box-shadow:inset 0 0 0 4.5px var(--b600)}
 @media (hover:hover) and (pointer:fine){.pc-ap:hover{background:var(--fill)}}
-@media screen and (max-width:960px){
+@media screen and (max-width:980px){
   body:not(.wid) .pc-cs{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
   body:not(.wid) .pc-c{flex:0 0 78%;scroll-snap-align:start}
   body:not(.wid) .pc-h dl{gap:12px;flex-wrap:wrap}
@@ -6603,5 +6604,5 @@ body.mcal-full #fcal .mlN::before{content:'+'}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1268"></script>
+<script src="./app.js?v=1269"></script>
 </body></html>

@@ -338,5 +338,25 @@ t('AUTH-29d', '관리자 → 없는 직무 값', false, tryWrite('calapp/people/
   t('AUTH-29e', '권역 전체(설비·전기) → 내 sites 에 타권역(sB) 추가', true, tryWrite('calapp/people/U1', A('U1'), T29, { ...T29.calapp.people.U1, sites: { sA: 1, sB: 1 } }));
   t('AUTH-29f', '권역 전체 → 직무 그대로 이름 바꾸기', true, tryWrite('calapp/people/U1', A('U1'), T29, { ...T29.calapp.people.U1, name: '개명' }));
   t('AUTH-29g', '권역 전체 → 직무 지우기', false, tryWrite('calapp/people/U1', A('U1'), T29, { name: '김담당', email: 'u1@hdec.co.kr', team: 't1', region: '*', rank: 'member', sites: { sA: 1 } })); }
+/* 1269 물가정보 — 단가는 MEMBER 누구나 넣고, 고치기·지우기는 넣은 사람·관리자. 찜 폴더도 같은 규칙, 찜은 있는 폴더(또는 미분류 '_')로만 */
+{ const IT = { n: '석고보드', sp: '9.5T', u: '장', p: 3720, s: 'g2b', m: '2026-10', by: 'U1', at: 1 };
+  const T30 = JSON.parse(JSON.stringify(TREE)); T30.calapp.price = { items: { p1: IT }, memo: { p1: { m1: { t: '메모', by: 'U1', at: 1 } } }, fold: { f1: { n: '방수', by: 'U1', at: 1 } }, pin: {} };
+  t('AUTH-30a', '팀원 → 단가 넣기', true, tryWrite('calapp/price/items/p2', A('U2'), T30, { ...IT, by: 'U2' }));
+  t('AUTH-30b', '팀원 → 남의 이름(by)으로 넣기', false, tryWrite('calapp/price/items/p2', A('U2'), T30, { ...IT }));
+  t('AUTH-30c', '팀원 → 남이 넣은 단가 지우기', false, tryWrite('calapp/price/items/p1', A('U2'), T30, null));
+  t('AUTH-30d', '넣은 사람 → 지우기', true, tryWrite('calapp/price/items/p1', A('U1'), T30, null));
+  t('AUTH-30e', '관리자 → 남의 단가 지우기', true, tryWrite('calapp/price/items/p1', A('E1'), T30, null));
+  t('AUTH-30f', '기준월 형식 틀림', false, tryWrite('calapp/price/items/p2', A('U2'), T30, { ...IT, by: 'U2', m: '2026.10' }));
+  t('AUTH-30g', '새 출처 키(영문 소문자)', true, tryWrite('calapp/price/items/p2', A('U2'), T30, { ...IT, by: 'U2', s: 'gm' }));
+  t('AUTH-30h', '출처 키에 한글', false, tryWrite('calapp/price/items/p2', A('U2'), T30, { ...IT, by: 'U2', s: '지마켓' }));
+  t('AUTH-30i', '원본 주소가 http 아님', false, tryWrite('calapp/price/items/p2', A('U2'), T30, { ...IT, by: 'U2', url: 'javascript:1' }));
+  t('AUTH-30j', '팀원 → 남의 메모 지우기', false, tryWrite('calapp/price/memo/p1/m1', A('U2'), T30, null));
+  t('AUTH-30k', '팀원 → 메모 달기', true, tryWrite('calapp/price/memo/p1/m2', A('U2'), T30, { t: '확인', by: 'U2', at: 1 }));
+  t('AUTH-30l', '팀원 → 폴더 만들기', true, tryWrite('calapp/price/fold/f2', A('U2'), T30, { n: '도배', by: 'U2', at: 1 }));
+  t('AUTH-30m', '팀원 → 남의 폴더 이름 바꾸기', false, tryWrite('calapp/price/fold/f1', A('U2'), T30, { n: '바꿈', by: 'U1', at: 1 }));
+  t('AUTH-30n', '팀원 → 있는 폴더에 찜', true, tryWrite('calapp/price/pin/p1', A('U2'), T30, 'f1'));
+  t('AUTH-30o', '팀원 → 미분류 찜', true, tryWrite('calapp/price/pin/p1', A('U2'), T30, '_'));
+  t('AUTH-30p', '없는 폴더에 찜', false, tryWrite('calapp/price/pin/p1', A('U2'), T30, 'zz'));
+  t('AUTH-30q', '가입 대기(역할 없음) → 단가 넣기', false, tryWrite('calapp/price/items/p3', { uid: 'X9', token: { email: 'x9@hdec.co.kr', email_verified: true } }, T30, { ...IT, by: 'X9' })); }
 console.log(fail ? `\nFAIL ${fail}` : '\nRULES-AUTH ALL PASS');
 process.exit(fail ? 1 : 0);
