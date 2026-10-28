@@ -1255,7 +1255,7 @@ const FbStore={
     if(!WIDGET)this._on('calapp/d60',v=>{S.d60d=v||{};if(!FB._d60q){FB._d60q=true;setTimeout(d60QReplay,1500);}   /* 지난번에 못 보낸 점검 */if(S.view==='d60'){if(d60Editing())S.d60._stale=true;else rD60();}});   /* D+60 점검 — 서식·점검 결과. 입력 중이면 다시 그리기를 미룬다 */
     this._on('calapp/iss',v=>{S.iss=v||{};rIss();});   /* 주요 현안 — 위젯도 쓴다(머리 단추 창 · 4주 아래 칸) */
     this._on('calapp/issHide',v=>{S.issHide=v||{};rIss();});   /* 보드에 보일 현장 덧씀 — 팀 공통 */
-    this._on('calapp/price',v=>{S.price={items:{},memo:{},pin:{},...(v||{})};if(S.view==='pr'&&!prTyping())rPr();});   /* 1269 물가정보 — 팀 공유 */
+    this._on('calapp/price',v=>{S.price={items:{},memo:{},pin:{},...(v||{})};PR._pm=null;if(S.view==='pr'&&!prTyping())rPr();});   /* 1269 물가정보 — 팀 공유 */
     const uid=S.user&&S.user.uid;
     if(uid){
         this._on('calapp/prefs/'+uid,v=>{S.prefs=v||{};});   /* 최근 이모지 등 개인 설정 */
@@ -16430,11 +16430,12 @@ function rwTop(o){const T=rwTsel(),b=rwBlk(RW.sel);if(!b||b.k!=='tbl'){toast('�
 /* ═══════════ 업무 도구 — 물가정보(1269) ═══════════
    팀이 찾은 단가를 모아 두고(RTDB calapp/price · 팀 공유), 원본으로 바로 가서 확인하고, 출처별로 나란히 놓아 단가 비교 자료를 만든다.
    저장 calapp/price/items/{id} = {n 자재명, sp 규격, u 단위, p 단가, s 출처, m 기준월 YYYY-MM, url 원본 주소, nt 비고, by, at}
-        calapp/price/memo/{itemId}/{mid} = {t, by, at} · calapp/price/pin/{itemId} = true(팀 저장)
+        calapp/price/memo/{itemId}/{mid} = {t, by, at}
+        calapp/price/fold/{fid} = {n 폴더 이름, by, at} · calapp/price/pin/{itemId} = 폴더 id(미분류 '_') — 찜 목록
    ⚠ 앱이 남의 사이트를 대신 긁어오지 않는다 — 사람이 원본에서 확인한 값만 넣는다. 비교 화면 캡처는 이 창 안에서만 */
-const PR_SRC={g2b:['조달청 가격정보','조달청'],nv:['네이버 쇼핑','네이버'],cp:['쿠팡','쿠팡'],kpi:['물가정보지','물가지'],etc:['견적 · 기타','기타']};
+const PR_SRC={g2b:['조달청 가격정보','조달청'],kpi:['물가정보(한국물가정보)','물가정보'],kprc:['물가자료(한국물가협회)','물가자료'],nv:['네이버 쇼핑','네이버'],cp:['쿠팡','쿠팡'],dn:['다나와','다나와'],etc:['견적 · 기타','기타']};
 const PR_SK=Object.keys(PR_SRC);
-const PR={q:'',src:{g2b:1,nv:1,cp:1,kpi:1,etc:1},sort:'',view:'list',open:'',pin:0,add:false,cmp:new Set(),cap:{},pick:{},_qf:false};
+const PR={q:'',src:{g2b:1,kpi:1,kprc:1,nv:1,cp:1,dn:1,etc:1},sort:'',view:'list',open:'',fd:'',fe:'',fadd:false,add:false,cmp:new Set(),cap:{},pick:{},_qf:false};
 S.price=S.price||{items:{},memo:{},pin:{}};
 /* es-hangul — 초성(ㄷㅈ) · 치는 중인 글자 · 한영 안 바꾸고 친 글자(gltmxp)도 맞춘다. 못 불러오면 그냥 글자 포함 */
 function hgMatch(text,q){text=String(text||'');q=String(q||'').trim();if(!q)return true;const lo=text.toLowerCase(),ql=q.toLowerCase();if(lo.includes(ql))return true;const H=window.esHangul;if(!H)return false;
@@ -16445,23 +16446,33 @@ const prMon=m=>String(m||'').replace('-','. ')+'.';
 const prCurMon=()=>todayStr().slice(0,7);
 function prItems(){const o=(S.price||{}).items||{};return Object.keys(o).filter(k=>o[k]&&o[k].n).map(id=>({id,...o[id]}));}
 const prMemo=id=>{const o=((S.price||{}).memo||{})[id]||{};return Object.keys(o).map(k=>({mid:k,...o[k]})).filter(x=>x.t).sort((a,b)=>(a.at||0)-(b.at||0));};
-const prPinned=id=>!!(((S.price||{}).pin||{})[id]);
+const prPinned=id=>!!prFoldOf(id);
+/* 찜 폴더 — 값이 폴더 id. 옛 값(true)·지워진 폴더는 미분류('_') */
+const prFolds=()=>{const o=(S.price||{}).fold||{};return Object.keys(o).filter(k=>o[k]&&o[k].n).map(id=>({id,...o[id]})).sort((a,b)=>String(a.n).localeCompare(String(b.n),'ko',{numeric:true}));};
+/* 찜은 자재 · 규격 · 출처 단위 — 달이 바뀌어 새 기록이 생겨도 같은 찜으로 본다 */
+function prPinMap(){if(PR._pm)return PR._pm;const P=(S.price||{}).pin||{},F=(S.price||{}).fold||{},I=((S.price||{}).items)||{},m={},im={};
+  Object.keys(I).forEach(id=>{const r=I[id];if(r&&r.n)im[id]=prKey(r);});
+  Object.keys(P).forEach(id=>{const k=im[id],v=P[id];if(!k||!v)return;(m[k]=m[k]||[]).push([id,typeof v==='string'&&v!=='_'&&F[v]?v:'_']);});
+  return PR._pm={m,im};}
+function prFoldOf(id){const M=prPinMap(),k=M.im[id],L=k&&M.m[k];return L&&L.length?L[L.length-1][1]:'';}
+function prPinSet(id,f){const M=prPinMap(),k=M.im[id];((k&&M.m[k])||[]).forEach(([pid])=>{if(pid!==id)prWrite('pin/'+pid,null);});prWrite('pin/'+id,f||null);}
 const prKey=r=>r.n+'|'+(r.sp||'')+'|'+r.s;
 /* 같은 자재 · 규격 · 출처의 달별 기록 — 추이 */
 function prHist(r){const m={};prItems().forEach(x=>{if(prKey(x)===prKey(r)&&x.m)m[x.m]=x.p;});return Object.keys(m).sort().slice(-12).map(k=>[k,m[k]]);}
 /* 원본 — 넣어 둔 주소가 먼저. 없으면 검색 결과 · 조달청 · 물가정보지 첫 화면 */
 const prQ=r=>encodeURIComponent((r.n+' '+(r.sp||'')).replace(/[·×]/g,' ').replace(/\s+/g,' ').trim());
-function prUrl(r){if(r.url)return r.url;if(r.s==='nv')return 'https://search.shopping.naver.com/search/all?query='+prQ(r);if(r.s==='cp')return 'https://www.coupang.com/np/search?q='+prQ(r);if(r.s==='g2b')return 'https://www.g2b.go.kr/';if(r.s==='kpi')return 'https://www.kpi.or.kr/';return '';}
-const PR_FIND=[['nv','네이버 쇼핑',q=>'https://search.shopping.naver.com/search/all?query='+q],['cp','쿠팡',q=>'https://www.coupang.com/np/search?q='+q],['g2b','조달청 나라장터',()=>'https://www.g2b.go.kr/'],['kpi','한국물가정보',()=>'https://www.kpi.or.kr/']];
+function prUrl(r){if(r.url)return r.url;if(r.s==='nv')return 'https://search.shopping.naver.com/search/all?query='+prQ(r);if(r.s==='cp')return 'https://www.coupang.com/np/search?q='+prQ(r);if(r.s==='g2b')return 'https://www.g2b.go.kr/';if(r.s==='kpi')return 'https://www.kpi.or.kr/';if(r.s==='kprc')return 'https://www.kprc.or.kr/';if(r.s==='dn')return 'https://search.danawa.com/dsearch.php?query='+prQ(r);return '';}
+const PR_FIND=[['nv','네이버 쇼핑',q=>'https://search.shopping.naver.com/search/all?query='+q],['cp','쿠팡',q=>'https://www.coupang.com/np/search?q='+q],['dn','다나와',q=>'https://search.danawa.com/dsearch.php?query='+q],['g2b','조달청 나라장터',()=>'https://www.g2b.go.kr/'],['kpi','한국물가정보',()=>'https://www.kpi.or.kr/'],['kprc','한국물가협회',()=>'https://www.kprc.or.kr/']];
 function prRows(){const q=PR.q.trim();let L=prItems().filter(r=>PR.src[r.s]&&(!q||hgMatch(r.n+' '+(r.sp||'')+' '+(r.nt||''),q)));
-  if(PR.pin)L=L.filter(r=>prPinned(r.id));
+  if(PR.fd)L=L.filter(r=>{const f=prFoldOf(r.id);return f&&(PR.fd==='*'||f===PR.fd);});
   /* 같은 자재 · 규격 · 출처는 가장 최근 달만 목록에 */
   const last={};L.forEach(r=>{const k=prKey(r),o=last[k];if(!o||(r.m||'')>(o.m||'')||((r.m||'')===(o.m||'')&&(r.at||0)>(o.at||0)))last[k]=r;});L=Object.values(last);
   L.sort(PR.sort?(a,b)=>PR.sort==='p'?a.p-b.p:b.p-a.p:(a,b)=>String(a.n).localeCompare(String(b.n),'ko',{numeric:true})||PR_SK.indexOf(a.s)-PR_SK.indexOf(b.s));
   return L;}
 function prTyping(){const a=document.activeElement;return !!(a&&a.closest&&a.closest('#prRoot')&&a.matches('input,select,textarea')&&a.id!=='prQ');}   /* 입력 중엔 남의 저장으로 다시 그리지 않는다 */
+function prFoldEd(k){const f=((S.price||{}).fold||{})[k];return !S.live||isEditor()||(f&&f.by===authUid());}
 function prCanEdit(r){return !S.live||isEditor()||r.by===authUid();}
-function prWrite(path,val){const seg=path.split('/');let o=S.price;for(let i=0;i<seg.length-1;i++)o=o[seg[i]]=o[seg[i]]||{};if(val==null)delete o[seg[seg.length-1]];else o[seg[seg.length-1]]=val;
+function prWrite(path,val){PR._pm=null;const seg=path.split('/');let o=S.price;for(let i=0;i<seg.length-1;i++)o=o[seg[i]]=o[seg[i]]||{};if(val==null)delete o[seg[seg.length-1]];else o[seg[seg.length-1]]=val;
   if(S.live&&FB.db)FB.db.ref('calapp/price/'+path).set(val==null?null:val).catch(fbErr);else{LocalStore._d.price=S.price;lsSave(LocalStore._d);}}
 function prSpark(h){if(h.length<2)return '<div class="pr-sp0">한 달치 기록만 있습니다</div>';const v=h.map(x=>x[1]),W=300,H=92,pl=6,pr=6,pt=14,pb=16,mn=Math.min(...v),mx=Math.max(...v),rg=Math.max(1,mx-mn);
   const x=i=>pl+(W-pl-pr)*i/(h.length-1),y=p=>pt+(H-pt-pb)*(1-(p-mn)/rg),an=i=>i===0?'start':i===h.length-1?'end':'middle';
@@ -16505,7 +16516,7 @@ document.addEventListener('drop',e=>{const c=e.target.closest&&e.target.closest(
 
 function rPr(){
   const root=$('#prRoot');if(!root)return;xlib('hg').catch(()=>{});
-  const L=prRows(),all=prItems(),cnt=k=>all.filter(r=>r.s===k).length,pins=all.filter(r=>prPinned(r.id)).length,ng=new Set([...PR.cmp].map(id=>{const r=all.find(x=>x.id===id);return r?r.n+'|'+(r.sp||''):'';}).filter(Boolean)).size;
+  const L=prRows(),all=prItems(),cnt=k=>all.filter(r=>r.s===k).length,PM=Object.values(prPinMap().m).map(L=>L[L.length-1][1]),pins=PM.length,fcnt=f=>PM.filter(x=>x===f).length,FD=prFolds(),fdName=f=>f==='*'?'찜 목록':f==='_'?'미분류':((FD.find(x=>x.id===f)||{}).n||''),ng=new Set([...PR.cmp].map(id=>{const r=all.find(x=>x.id===id);return r?r.n+'|'+(r.sp||''):'';}).filter(Boolean)).size;
   const q=PR.q.trim(),qe=encodeURIComponent(q);
   const nr=PR.add?'<tr class="pr-new"><td class="n">'+rwIc('i-plus')+'</td><td><input class="inp inp-sm" id="prNn" placeholder="자재명" value="'+esc(q)+'"><input class="inp inp-sm" id="prNs" placeholder="규격"></td><td><input class="inp inp-sm" id="prNu" placeholder="단위"></td><td><input class="inp inp-sm" id="prNp" placeholder="단가" inputmode="numeric" style="text-align:right"></td>'
      +'<td><select class="inp inp-sm" id="prNsrc">'+PR_SK.map(k=>'<option value="'+k+'">'+PR_SRC[k][1]+'</option>').join('')+'</select></td><td><input class="inp inp-sm" id="prNm" type="month" value="'+prCurMon()+'"></td><td><input class="inp inp-sm" id="prNt" placeholder="비고 · 쪽"><input class="inp inp-sm" id="prNl" placeholder="원본 주소(선택)"></td><td><button class="btn bp bxs" data-act="pr.addok">저장</button></td></tr>':'';
@@ -16515,22 +16526,27 @@ function rPr(){
        return '<tr class="pr-r'+(op?' open':'')+'" data-act="pr.open" data-id="'+r.id+'"><td class="n">'+(i+1)+'</td><td class="pr-nm"><b>'+esc(r.n)+'</b><span>'+esc(r.sp||'')+'</span></td><td>'+esc(r.u||'')+'</td><td class="r pr-pr">'+rwN(r.p)+'</td><td><span class="pr-tg '+r.s+'">'+PR_SRC[r.s][1]+'</span></td><td>'+prMon(r.m)+'</td><td class="pr-nt">'+esc(r.nt||'')+(ms.length?'<em>메모 '+ms.length+'</em>':'')+'</td>'
         +'<td class="pr-ac">'+(u?'<a class="pr-ib" href="'+esc(u)+'" target="_blank" rel="noopener" data-tip="원본 열기" aria-label="원본 열기">'+rwIc('i-ext')+'</a>':'<span class="pr-ib"></span>')
         +'<button class="pr-ib pr-cb'+(PR.cmp.has(r.id)?' on':'')+'" data-act="pr.cmpt" data-id="'+r.id+'" data-tip="'+(PR.cmp.has(r.id)?'비교에서 빼기':'비교에 담기')+'" aria-label="비교에 담기">'+rwIc(PR.cmp.has(r.id)?'i-check':'i-plus')+'</button>'
-        +'<button class="pr-st'+(pn?' on':'')+'" data-act="pr.star" data-id="'+r.id+'" data-tip="'+(pn?'팀 저장 해제':'팀 저장')+'" aria-label="팀 저장">'+rwIc('i-star')+'</button></td></tr>'
+        +'<button class="pr-st'+(pn?' on':'')+'" data-act="pr.star" data-id="'+r.id+'" data-tip="'+(pn?'찜 해제 · '+esc(fdName(prFoldOf(r.id))):'찜하기')+'" aria-label="찜">'+rwIc('i-star')+'</button></td></tr>'
        +(op?'<tr class="pr-dt"><td colspan="8"><div class="pr-dw"><div><div class="pr-dh"><span>달별 기록</span>'+(()=>{const h=prHist(r);return h.length>1?'<span class="pr-dd">'+(h[h.length-1][1]>=h[0][1]?'+':'')+((h[h.length-1][1]/h[0][1]-1)*100).toFixed(1)+'%</span>':'';})()+'</div><div class="pr-sp">'+prSpark(prHist(r))+'</div>'
+          +'<div class="pr-fdm"><span>찜 폴더</span><select class="inp inp-sm" data-prfd="'+r.id+'"><option value="">찜 안 함</option><option value="_"'+(prFoldOf(r.id)==='_'?' selected':'')+'>미분류</option>'+FD.map(f=>'<option value="'+f.id+'"'+(prFoldOf(r.id)===f.id?' selected':'')+'>'+esc(f.n)+'</option>').join('')+'</select></div>'
           +'<div class="pr-by">'+esc([issWho(r.by),r.at?issMD(r.at)+' 등록':''].filter(Boolean).join(' · '))+(prCanEdit(r)?'<button class="rw-bb pr-del" data-act="pr.del" data-id="'+r.id+'">'+rwIc('i-trash')+'지우기</button>':'')+'</div></div>'
          +'<div><div class="pr-dh"><span>팀 메모</span></div><div class="pr-ms">'+(ms.map(m=>'<div class="pr-m"><span>'+esc(m.t)+'</span><small>'+esc([issWho(m.by),issMD(m.at)].filter(Boolean).join(' · '))+'</small>'+(!S.live||isEditor()||m.by===authUid()?'<button class="pr-ib" data-act="pr.mdel" data-id="'+r.id+'" data-m="'+m.mid+'" aria-label="메모 지우기">'+rwIc('i-close')+'</button>':'')+'</div>').join('')||'<div class="pr-m pr-m0">메모 없음</div>')
          +'<div class="pr-min"><input class="inp inp-sm" id="prMi" maxlength="200" placeholder="어디에 썼는지, 주의할 점" data-id="'+r.id+'"><button class="btn bp bxs" data-act="pr.memo" data-id="'+r.id+'">추가</button></div></div></div></div></td></tr>':'');}).join('')
-       :'<tr><td colspan="8" class="rd-none">'+(all.length?'찾는 자재가 없습니다':'아직 모아 둔 단가가 없습니다')+(q?'<div class="pr-find">'+PR_FIND.map(([k,n,f])=>'<a class="rw-bb" href="'+esc(f(qe))+'" target="_blank" rel="noopener">'+rwIc('i-ext')+n+'</a>').join('')+'</div>':'')+'</td></tr>')+'</tbody></table></div>'
+       :'<tr><td colspan="8" class="rd-none">'+(!all.length?'아직 모아 둔 단가가 없습니다':PR.fd&&!q?'찜한 자재가 없습니다':'찾는 자재가 없습니다')+(q?'<div class="pr-find">'+PR_FIND.map(([k,n,f])=>'<a class="rw-bb" href="'+esc(f(qe))+'" target="_blank" rel="noopener">'+rwIc('i-ext')+n+'</a>').join('')+'</div>':'')+'</td></tr>')+'</tbody></table></div>'
    :prCmpHTML();
   root.innerHTML='<div class="qc-grid"><div class="qc-col">'
    +'<div class="card"><div class="tm-h"><span>검색</span></div><div class="qc-b pr-qb"><label class="pr-q">'+rwIc('i-search')+'<input id="prQ" value="'+esc(PR.q)+'" placeholder="자재명 · 규격 · 초성" autocomplete="off"></label>'
-     +'<div class="pr-fd"><span>원본에서 찾기</span>'+PR_FIND.map(([k,n,f])=>q?'<a href="'+esc(f(qe))+'" target="_blank" rel="noopener">'+n+'</a>':'<a class="off" aria-disabled="true">'+n+'</a>').join('')+'</div></div></div>'
+     +'<div class="pr-lk"><span>원본에서 찾기</span>'+PR_FIND.map(([k,n,f])=>q?'<a href="'+esc(f(qe))+'" target="_blank" rel="noopener">'+n+'</a>':'<a class="off" aria-disabled="true">'+n+'</a>').join('')+'</div></div></div>'
    +'<div class="card"><div class="tm-h"><span>출처</span><span class="tm-sub">'+all.length+'</span></div><div class="qc-b pr-sb"><div class="pr-src">'
      +PR_SK.map(k=>'<button class="pr-s'+(PR.src[k]?' on':'')+'" data-act="pr.src" data-k="'+k+'"><span class="ck">'+rwIc('i-check')+'</span><span>'+PR_SRC[k][0]+'</span><small>'+cnt(k)+'</small></button>').join('')+'</div></div></div>'
-   +'<div class="card"><div class="tm-h"><span>팀 저장</span><span class="tm-sub">'+pins+'</span></div><div class="qc-b pr-sb">'
-     +'<button class="pr-s'+(PR.pin?' on':'')+'" data-act="pr.pin"><span class="ck">'+rwIc('i-check')+'</span><span>팀 저장만 보기</span><small>'+pins+'</small></button></div></div>'
+   +'<div class="card"><div class="tm-h"><span>찜 목록</span><span class="tm-sub">'+pins+'</span><button class="tm-add pr-fa" data-act="pr.fadd" data-tip="폴더 만들기" aria-label="폴더 만들기">'+rwIc('i-plus')+'</button></div><div class="qc-b pr-sb"><div class="pr-fds">'
+     +[['*','전체 찜',pins]].concat(FD.map(f=>[f.id,f.n,fcnt(f.id)]),fcnt('_')||FD.length?[['_','미분류',fcnt('_')]]:[]).map(([k,n,c])=>PR.fe===k
+       ?'<div class="pr-fd pr-fdin"><input class="inp inp-sm" id="prFe" maxlength="30" value="'+esc(n)+'" data-id="'+k+'"></div>'
+       :'<div class="pr-fd'+(PR.fd===k?' on':'')+'" data-act="pr.fd" data-k="'+k+'">'+rwIc(k==='*'?'i-star':'i-folder')+'<span>'+esc(n)+'</span><small>'+c+'</small>'
+         +(k!=='*'&&k!=='_'&&prFoldEd(k)?'<button class="pr-ib" data-act="pr.fren" data-k="'+k+'" data-tip="이름 바꾸기" aria-label="이름 바꾸기">'+rwIc('i-pen')+'</button><button class="pr-ib" data-act="pr.fdel" data-k="'+k+'" data-tip="폴더 지우기" aria-label="폴더 지우기">'+rwIc('i-trash')+'</button>':'')+'</div>').join('')
+     +(PR.fadd?'<div class="pr-fd pr-fdin"><input class="inp inp-sm" id="prFn" maxlength="30" placeholder="폴더 이름 · Enter"></div>':'')+'</div></div></div>'
   +'</div><div class="qc-col qc-right">'
-   +'<div class="tkbar qc-bar"><span class="qc-t">'+(PR.view==='cmp'?'단가 비교<span>'+ng+'종</span>':(PR.pin?'팀 저장':q?'「'+esc(q)+'」':'전체 자재')+'<span>'+L.length+'건</span>')+'</span><span class="tl-br">'
+   +'<div class="tkbar qc-bar"><span class="qc-t">'+(PR.view==='cmp'?'단가 비교<span>'+ng+'종</span>':(PR.fd?esc(fdName(PR.fd)):q?'「'+esc(q)+'」':'전체 자재')+'<span>'+L.length+'건</span>')+'</span><span class="tl-br">'
      +(PR.view==='cmp'?(PR.cmp.size?'<button class="rw-bb" data-act="pr.torw">'+rwIc('i-doc')+'보고서로 보내기</button>':''):'<button class="rw-bb'+(PR.add?' on':'')+'" data-act="pr.add">'+rwIc('i-plus')+'단가 입력</button>')
      +tlSeg(PR.view,[['list','목록'],['cmp','단가 비교'+(ng?' '+ng:'')]],'data-act="pr.view" data-k')+'</span></div>'+body
   +'</div></div>';
@@ -16538,10 +16554,20 @@ function rPr(){
   if(PR.add&&!PR._af){PR._af=true;setTimeout(()=>{const i=$('#prNn');if(i){i.focus();if(i.value)($('#prNs')||i).focus();}},0);}
 }
 document.addEventListener('input',e=>{if(e.target.id==='prQ'){PR.q=e.target.value;PR.open='';PR._qf=true;rPr();}});
-document.addEventListener('keydown',e=>{if(e.key!=='Enter'||e.isComposing)return;if(e.target.id==='prMi')ACT['pr.memo'](e.target);else if(e.target.closest&&e.target.closest('#prRoot .pr-new'))ACT['pr.addok']();});
+function prFoldSave(inp){const v=inp.value.trim().slice(0,30),k=inp.dataset.id;PR.fadd=false;PR.fe='';
+  if(v){if(prFolds().some(f=>f.n===v&&f.id!==k)){toast('같은 이름의 폴더가 있습니다');}else if(k){const f=((S.price||{}).fold||{})[k];if(f&&f.n!==v)prWrite('fold/'+k,{...f,n:v});}else{const id=uid();prWrite('fold/'+id,{n:v,by:authUid()||myId(),at:Date.now()});PR.fd=id;}}
+  rPr();}
+document.addEventListener('focusout',e=>{const t=e.target;if(t&&(t.id==='prFn'||t.id==='prFe')&&!PR._fs)prFoldSave(t);});
+document.addEventListener('change',e=>{const t=e.target;if(t&&t.dataset&&t.dataset.prfd){prPinSet(t.dataset.prfd,t.value||null);rPr();}});
+document.addEventListener('keydown',e=>{if((e.target.id==='prFn'||e.target.id==='prFe')&&(e.key==='Enter'||e.key==='Escape')&&!e.isComposing){e.preventDefault();PR._fs=1;if(e.key==='Enter')prFoldSave(e.target);else{PR.fadd=false;PR.fe='';rPr();}PR._fs=0;return;}
+  if(e.key!=='Enter'||e.isComposing)return;if(e.target.id==='prMi')ACT['pr.memo'](e.target);else if(e.target.closest&&e.target.closest('#prRoot .pr-new'))ACT['pr.addok']();});
 Object.assign(ACT,{
   'pr.src':el=>{PR.src[el.dataset.k]=PR.src[el.dataset.k]?0:1;rPr();},
-  'pr.pin':()=>{PR.pin=PR.pin?0:1;PR.view='list';rPr();},
+  'pr.fd':el=>{PR.fd=PR.fd===el.dataset.k?'':el.dataset.k;PR.view='list';PR.open='';rPr();},
+  'pr.fadd':()=>{PR.fadd=!PR.fadd;PR.fe='';rPr();setTimeout(()=>{const i=$('#prFn');if(i)i.focus();},0);},
+  'pr.fren':el=>{PR.fe=el.dataset.k;PR.fadd=false;rPr();setTimeout(()=>{const i=$('#prFe');if(i){i.focus();i.select();}},0);},
+  'pr.fdel':el=>{const k=el.dataset.k,f=prFolds().find(x=>x.id===k);if(!f)return;const n=Object.values(prPinMap().m).filter(L=>L[L.length-1][1]===k).length;
+    confirmModal('폴더 지우기','「'+f.n+'」 폴더를 지울까요?'+(n?' 안의 찜 '+n+'건은 미분류로 옮깁니다.':''),()=>{Object.keys((S.price||{}).pin||{}).forEach(pid=>{if(S.price.pin[pid]===k)prWrite('pin/'+pid,'_');});prWrite('fold/'+k,null);if(PR.fd===k)PR.fd='';rPr();},'지우기',true);},
   'pr.sort':()=>{PR.sort=PR.sort===''?'p':PR.sort==='p'?'d':'';rPr();},
   'pr.view':el=>{PR.view=el.dataset.k;PR.add=false;rPr();},
   'pr.cmpt':el=>{const id=el.dataset.id;if(PR.cmp.has(id))PR.cmp.delete(id);else PR.cmp.add(id);rPr();},
@@ -16550,10 +16576,10 @@ Object.assign(ACT,{
   'pr.capx':el=>{delete PR.cap[el.dataset.id];rPr();},
   'pr.torw':()=>{RW.tpl='pc';RW.blocks=prBlocks();RW.sel=null;RW.edit=true;RW.hist=[];RW.fut=[];go('rw');toast('단가 비교를 보고서로 보냈습니다');},
   'pr.open':(el,e)=>{if(e&&e.target&&e.target.closest&&e.target.closest('.pr-ac'))return;PR.open=PR.open===el.dataset.id?'':el.dataset.id;rPr();},
-  'pr.star':el=>{const id=el.dataset.id;prWrite('pin/'+id,prPinned(id)?null:true);rPr();},
+  'pr.star':el=>{const id=el.dataset.id;prPinSet(id,prPinned(id)?null:(PR.fd&&PR.fd!=='*'?PR.fd:'_'));rPr();},   /* 폴더를 보고 있으면 그 폴더로 */
   'pr.memo':el=>{const id=el.dataset.id,i=$('#prMi'),v=i&&i.value.trim().slice(0,200);if(!v)return;prWrite('memo/'+id+'/'+uid(),{t:v,by:authUid()||myId(),at:Date.now()});rPr();setTimeout(()=>{const n=$('#prMi');if(n)n.focus();},0);},
   'pr.mdel':el=>{prWrite('memo/'+el.dataset.id+'/'+el.dataset.m,null);rPr();},
-  'pr.del':el=>{const id=el.dataset.id,r=prItems().find(x=>x.id===id);if(!r)return;confirmModal('단가 지우기','「'+r.n+'」 '+PR_SRC[r.s][1]+' '+prMon(r.m)+' 단가와 팀 메모를 지울까요?',()=>{prWrite('items/'+id,null);prMemo(id).forEach(m=>{if(!S.live||isEditor()||m.by===authUid())prWrite('memo/'+id+'/'+m.mid,null);});if(prPinned(id))prWrite('pin/'+id,null);PR.cmp.delete(id);PR.open='';rPr();toast('지웠습니다');},'지우기',true);},
+  'pr.del':el=>{const id=el.dataset.id,r=prItems().find(x=>x.id===id);if(!r)return;confirmModal('단가 지우기','「'+r.n+'」 '+PR_SRC[r.s][1]+' '+prMon(r.m)+' 단가와 팀 메모를 지울까요?',()=>{prWrite('items/'+id,null);prMemo(id).forEach(m=>{if(!S.live||isEditor()||m.by===authUid())prWrite('memo/'+id+'/'+m.mid,null);});{const v=(S.price.pin||{})[id];if(v){const o=prItems().find(x=>x.id!==id&&prKey(x)===prKey(r));if(o&&!(S.price.pin||{})[o.id])prWrite('pin/'+o.id,v);prWrite('pin/'+id,null);}}   /* 같은 자재의 다른 달 기록에 찜을 넘긴다 */PR.cmp.delete(id);PR.open='';rPr();toast('지웠습니다');},'지우기',true);},
   'pr.add':()=>{PR.add=!PR.add;PR._af=false;PR.view='list';rPr();},
   'pr.addok':()=>{const v=id=>(($(id)||{}).value||'').trim();const n=v('#prNn').slice(0,60),p=+v('#prNp').replace(/[^0-9.]/g,''),m=v('#prNm'),url=v('#prNl');
     if(!n||!p){toast('자재명과 단가를 넣어 주세요');return;}if(!/^\d{4}-\d{2}$/.test(m)){toast('기준월을 골라 주세요');return;}if(url&&!/^https?:\/\//i.test(url)){toast('원본 주소는 http 로 시작해야 합니다');return;}
