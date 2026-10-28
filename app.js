@@ -912,28 +912,41 @@ function mergedTaskMaps(){
 }
 
 /* 선택 목록과 정렬 순서를 같게 — 팀장 · 공구장 · 담당자 · 안전 · 원가 */
-const RANKS=[['head','팀장'],['lead','공구장'],['member','담당자'],['safety','안전'],['cost','원가']];
+const RANKS=[['head','팀장'],['lead','공구장'],['member','담당자']];
+/* 1268: 공종 — 직급과 따로. 원가·안전은 예전엔 직급(rank)이었다 → 담당자 + 공종으로(옛 값은 tradeOf 가 읽고, 관리자 접속 때 옮긴다) */
+const TRADES=[['arch','건축'],['mech','설비'],['elec','전기'],['land','조경'],['cost','원가'],['safety','안전']];
+const REG_ALL='*';   /* 권역 「전체」 — 팀 안 모든 권역을 맡는 사람(설비·전기 등). 권역 탭마다 함께 나온다 */
 function rankOrd(v){const i=RANKS.findIndex(r=>r[0]===rankOf(v));return i<0?2:i;}
 function rankOf(v){return RANKS.some(r=>r[0]===v)?v:'member';}
+function tradeOf(p){p=p||{};if(TRADES.some(t=>t[0]===p.trade))return p.trade;return p.rank==='safety'||p.rank==='cost'?p.rank:'arch';}
+function tradeLabel(p){const t=tradeOf(p);return (TRADES.find(x=>x[0]===t)||TRADES[0])[1];}
+function tradeOrd(p){return TRADES.findIndex(x=>x[0]===tradeOf(p));}
+/* 팀 단위 사람 — 팀장, 공종 원가·안전. 권역·현장 없이 팀 전체를 본다 */
+function isTeamP(p){p=p||{};return rankOf(p.rank)==='head'||tradeOf(p)==='cost'||tradeOf(p)==='safety';}
+function teamLabel(p){return rankOf(p.rank)==='head'?'팀장':tradeLabel(p);}
+function usesOf(p){const t=!isTeamP(p);return{region:t,sites:t};}
+/* 그 사람이 권역 rid 에 드는지 — 「전체」는 모든 권역 */
+function inRegion(p,rid){return !!p&&(p.region===rid||(p.region===REG_ALL&&!!rid));}
 function rankLabel(v){const r=RANKS.find(x=>x[0]===rankOf(v));return r?r[1]:'담당자';}
-/* 팀 단위 직급 — 권역에 매이지 않고 팀 전체를 본다(rankUses 와 같은 기준).
-   ⚠ 권역으로 묶으면 '권역 미지정' 으로 떨어진다 — 팀 묶음 안 팀장 아래에 둔다 */
-function isTeamRank(v){const r=rankOf(v);return r==='head'||r==='safety'||r==='cost';}
-/* 직급별로 쓰는 칸이 다르다 — 팀장은 권역·현장이 없다 */
-function rankUses(v){
-  const r=rankOf(v);
-  /* 팀장·안전·원가는 팀 전체를 보므로 권역·현장을 두지 않는다. 공구장·담당자는 둘 다(공구장도 직접 맡는 현장이 있다) */
-  return{region:r==='member'||r==='lead',sites:r==='member'||r==='lead'};
-}
+
 /* 팀장·공구장 지정은 관리자 또는 이미 팀장·공구장인 사람만 */
 
 function cleanPerson(p){
   const o={name:String(p.name||'').slice(0,60),email:String(p.email||'').slice(0,200),
-    team:String(p.team||''),region:String(p.region||''),rank:rankOf(p.rank)};
+    team:String(p.team||''),region:String(p.region||''),rank:/^(head|lead|member|safety|cost)$/.test(p.rank)?p.rank:'member'};   /* 옛 safety·cost 는 옮기기 전까지 그대로(본인 저장이 직급을 바꾸면 규칙이 거절) */
+  if(TRADES.some(t=>t[0]===p.trade)&&p.trade!=='arch')o.trade=p.trade;   /* 건축은 기본값 — 적지 않는다 */
   if(p.sites&&Object.keys(p.sites).length){o.sites={};Object.keys(p.sites).forEach(k=>{if(p.sites[k])o.sites[k]=1;});}
   if(p.gone)o.gone=1;   /* 계정을 지운 사람 — 업무 이름만 남긴다 */
   return o;
 }
+/* 사람 레코드는 통째로 쓴다 — 공종을 넘기지 않은 저장(담당 현장·권역 고치기 등)이 공종을 지우지 않게, 옛 직급(원가·안전)도 그대로 */
+/* 1268: 옛 직급 원가·안전 → 담당자 + 공종. 관리자 접속 때 한 번(규칙상 직급은 관리자만 바꾼다) */
+function peopleMigrate(){if(!S.live||!isEditor()||peopleMigrate.done)return;peopleMigrate.done=true;
+  Object.keys(S.people||{}).forEach(id=>{const p=S.people[id];if(p&&(p.rank==='safety'||p.rank==='cost'))store.putPerson(id,{...p,rank:'member',trade:p.rank});});}
+function keepPerson(id,p){const o=(S.people||{})[id];if(!p||!o)return p;const q={...p};
+  if(!('trade' in q)&&o.trade)q.trade=o.trade;
+  if((o.rank==='safety'||o.rank==='cost')&&(!q.rank||q.rank==='member')&&!('trade' in p))q.rank=o.rank;
+  return q;}
 function cleanOrg(org){
   const nm=x=>({id:String(x.id),name:String(x.name||'').slice(0,60)});
   return{
@@ -984,7 +997,7 @@ const LocalStore={
   putOffday(ds,name){this._d.offdays=this._d.offdays||{};
     if(name)this._d.offdays[ds]=name;else delete this._d.offdays[ds];
     S.offdays=this._d.offdays;lsSave(this._d);calRerender();rDay();rWidget();},
-  putPerson(id,p){if(p)this._d.people[id]=p;else delete this._d.people[id];S.people=this._d.people;lsSave(this._d);},
+  putPerson(id,p){if(p)this._d.people[id]=keepPerson(id,p);else delete this._d.people[id];S.people=this._d.people;lsSave(this._d);},
   putTask(mid,iid,item){
     if(S.arch[mid]&&S.arch[mid][iid])delete S.arch[mid][iid];   /* 아카이브 사본 제거 */
     if(this._d.archive&&this._d.archive[mid])delete this._d.archive[mid][iid];
@@ -1062,7 +1075,7 @@ const FbStore={
     const mir={};(o.sites||[]).forEach(x=>{if(x&&x.id)mir[x.id]=String(x.region||'');});
     FB.db.ref().update({'calapp/org':o,'calapp/orgSiteRegion':mir}).catch(fbErr);},
   putOffday(ds,name){FB.db.ref('calapp/offdays/'+ds)[name?'set':'remove'](name||null).catch(fbErr);},
-  putPerson(id,p){const r=FB.db.ref('calapp/people/'+id);(p?r.set(cleanPerson(p)):r.remove()).catch(fbErr);},
+  putPerson(id,p){const r=FB.db.ref('calapp/people/'+id);(p?r.set(cleanPerson(keepPerson(id,p))):r.remove()).catch(fbErr);},
   putTask(mid,iid,item){
     /* 화면에 먼저 반영하고 서버 값이 오면 덮는다(실패하면 구독이 되돌린다).
        기존 화면값과 diff 해 바뀐 필드만 경로별 update() — 남이 바꾼 필드를 덮지 않는다. 신규는 set(), 삭제는 remove() */
@@ -1208,13 +1221,14 @@ const FbStore={
     this._on('calapp/tasks',v=>{S.tasks=v||{};S.loading=false;FB._gotData=true;bootCacheSave();
       /* 첫 스냅샷이 온 뒤 한 번 — 놓친 담당자 업무를 아침 확인으로 묻는다 */
       if(!FB._mrv){FB._mrv=true;setTimeout(morningReview,WIDGET?1400:800);   /* 위젯은 첫 렌더가 조금 늦다 */
-        setTimeout(archMigrate,8000);   /* 오래 끝난 업무를 구독 밖으로 — 부팅 통신이 잦아든 뒤 */
+        setTimeout(archMigrate,8000);
+        setTimeout(peopleMigrate,9000);   /* 관리자 권한이 늦게 들어와도 한 번 더 */   /* 오래 끝난 업무를 구독 밖으로 — 부팅 통신이 잦아든 뒤 */
         if(!WIDGET)setTimeout(()=>{if(isEditor())archNeed();},14000);   /* 관리자는 보관함을 미리 읽는다 — 백업에 담고 옛 사본에 소유 정보를 채운다. 위젯은 늘 들고 있지 않고 백업 때만 읽는다(bkExport) */
         }
       if(tkHold()){PEND.tasks=true;PEND.day=true;return;}
       rTasks();refetchCal();rDay();rWidget();});   /* 업무가 곧 일정 — 달력도 함께 갱신 */
     this._on('calapp/offdays',v=>{S.offdays=v||{};bootCacheSave();calRerender();rDay();rWidget();});
-    this._on('calapp/people',v=>{S.people=v||{};bootCacheSave();
+    this._on('calapp/people',v=>{S.people=v||{};bootCacheSave();peopleMigrate();
       if(tkHold()){PEND.org=true;PEND.tasks=true;return;}
       rOrg();rTasks();rIss();});   /* 담당 현장이 바뀌면 위젯 4주 아래 칸도 */
     /* 하자처리 현황과 공용인 users 노드 — 계정 목록을 가져온다. 읽기가 막히면 조용히 수동 명부로 대체 */
@@ -1615,10 +1629,10 @@ function pendOpen(){if(WIDGET){window.open(location.origin+location.pathname+'?g
 function acxBio(){
   const u=S.user;if(!u)return '';
   const me=roster().find(p=>p.id===u.uid)||{id:u.uid};
-  const uses=rankUses(me.rank);
+  const uses=usesOf(me);
   const tName=((S.org.teams||[]).find(t=>t.id===me.team)||{}).name||'미배정';
-  const rName=(S.org.regions||[]).find(r=>r.id===me.region)?.name||(me.region?me.region:(uses.region?'미지정':''));
-  return [tName,rName,rankLabel(rankOf(me.rank))].filter(Boolean).join(' · ');
+  const rName=me.region===REG_ALL?'전체 권역':(S.org.regions||[]).find(r=>r.id===me.region)?.name||(me.region?me.region:(uses.region?'미지정':''));
+  return [tName,rName,rankOf(me.rank)==='head'?'팀장':tradeLabel(me)+' '+rankLabel(me.rank)].filter(Boolean).join(' · ');
 }
 const ACX_OUT='<svg class="icn" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 12H4"/><path d="m8 8-4 4 4 4"/><path d="M13 4h5a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-5"/></svg>';
 function acxProfHTML(){
@@ -2181,8 +2195,8 @@ async function acctSave(silent){
     const me=roster().find(p=>p.id===myUid)||{};
     const pcur=(S.people||{})[myUid]||{};
     /* 팀·권역·직급은 관리자 배정 — 본인 저장은 기존값을 그대로 싣는다(규칙도 강제). 최초 등록은 빈 팀·빈 권역·member */
-    const rank=rankOf(pcur.rank);
-    const uses=rankUses(rank);
+    const rank=pcur.rank||'member';
+    const uses=usesOf(pcur);
     const sites=uses.sites?(pcur.sites||{}):{};   /* 담당 현장은 선택창(acct.sitePick)이 putPerson 으로 직접 반영 */
     store.putPerson(myUid,{
       name:name||me.name||'',email:String((S.user||{}).email||me.email||'').toLowerCase(),
@@ -3855,7 +3869,7 @@ function rosterBuild(){
     out[id]={id,
       name:(prev&&prev.acct&&prev.name)||p.name||'이름없음',
       email:(prev&&prev.email)||p.email||'',
-      team:p.team||'',region:p.region||'',sites:p.sites||{},rank:rankOf(p.rank),
+      team:p.team||'',region:p.region||'',sites:p.sites||{},rank:rankOf(p.rank),trade:tradeOf(p),
       role:(prev&&prev.role)||'viewer',
       acct:!!(prev&&prev.acct),gone:!!p.gone};   /* gone — 계정 삭제(이름은 업무에 남고 조직 관리·담당자 고르기에선 빠진다) */
   });
@@ -4141,8 +4155,8 @@ function holdItems(){
   return out.sort((a,b)=>String(taskDate(a.sid,a.iid,a.it)||'9999').localeCompare(String(taskDate(b.sid,b.iid,b.it)||'9999')));   /* 반복은 회차 기준 */
 }
 function regionMembers(mems,regions,rid){
-  return rid===''?mems.filter(p=>!p.region||!regions.some(r=>r.id===p.region))
-                 :mems.filter(p=>p.region===rid);
+  return rid===''?mems.filter(p=>!p.region||(p.region!==REG_ALL&&!regions.some(r=>r.id===p.region)))
+                 :mems.filter(p=>inRegion(p,rid));
 }
 /* 작성·수정 공용 폼 — 작성창과 수정 폼이 같은 골격을 쓴다(일관성) */
 function taskFormHTML(sid,iid,cur){
@@ -4623,8 +4637,8 @@ function tkTabHit(it,tab,R){
   if(tab==='team')return !asg.length;
   if(tab.indexOf('reg:')===0){
     const rid=tab.slice(4);
-    return asg.some(id=>{const p=R[id];return p&&!isTeamRank(p.rank)
-      &&(rid===''?(!p.region||!(S.org.regions||[]).some(r=>r.id===p.region)):p.region===rid);});
+    return asg.some(id=>{const p=R[id];return p&&!isTeamP(p)
+      &&(rid===''?(!p.region||(p.region!==REG_ALL&&!(S.org.regions||[]).some(r=>r.id===p.region))):inRegion(p,rid));});
   }
   return asg.includes(tab);
 }
@@ -4667,9 +4681,12 @@ function tkRegionOf(it){
   const R=roster();
   const p=asg.map(id=>R.find(x=>x.id===id)).filter(Boolean)[0];
   if(!p)return{name:'공통',ord:0};
-  if(isTeamRank(p.rank))return{name:'팀',ord:1};
+  if(isTeamP(p))return{name:'팀',ord:1};
   const regs=(S.org.regions||[]).filter(r=>r.name);
-  const i=regs.findIndex(r=>r.id===p.region);
+  /* 권역 「전체」인 사람의 업무는 그 업무 현장의 권역으로 */
+  const rid=p.region===REG_ALL?(((S.org.sites||[]).find(x=>x.id===it.site)||{}).region||''):p.region;
+  if(p.region===REG_ALL&&!rid)return{name:'팀',ord:1};
+  const i=regs.findIndex(r=>r.id===rid);
   return i<0?{name:'권역 미지정',ord:9}:{name:regs[i].name,ord:2+i};
 }
 function tkOwnerName(it){
@@ -4682,17 +4699,17 @@ function tkOwnerName(it){
 function tkWeekNo(ds){return Math.floor((toDate(ds).getDate()-1)/7)+1;}
 /* ── 통합 탭 — 전체 · 공통 · 팀 직급 · 권역(담당자 있는 것만). 주간·월간이 함께 쓴다 ── */
 function tkTabsHTML(team,mems,regions,mode){
-  const rest=mems.filter(p=>!isTeamRank(p.rank));
+  const rest=mems.filter(p=>!isTeamP(p));
   const tabs=[['','전체']];
   /* 월간 업무는 현장이 주인공이라 권역 탭만 둔다(공통·팀장·원가 없음) */
   if(mode!=='month'){
-    const heads=mems.filter(p=>isTeamRank(p.rank))
-      .sort((a,b)=>rankOrd(a.rank)-rankOrd(b.rank)||String(a.name).localeCompare(String(b.name),'ko'));
-    const rkCnt={};heads.forEach(p=>{const r=rankLabel(p.rank)||'담당';rkCnt[r]=(rkCnt[r]||0)+1;});
+    const heads=mems.filter(p=>isTeamP(p))
+      .sort((a,b)=>rankOrd(a.rank)-rankOrd(b.rank)||tradeOrd(a)-tradeOrd(b)||String(a.name).localeCompare(String(b.name),'ko'));
+    const rkCnt={};heads.forEach(p=>{const r=teamLabel(p);rkCnt[r]=(rkCnt[r]||0)+1;});
     tabs.push(['team','공통 업무']);
-    heads.forEach(p=>{const r=rankLabel(p.rank)||'담당';tabs.push([p.id,rkCnt[r]>1?r+' '+p.name:r]);});
+    heads.forEach(p=>{const r=teamLabel(p);tabs.push([p.id,rkCnt[r]>1?r+' '+p.name:r]);});
   }
-  regions.forEach(r=>{if(rest.some(p=>p.region===r.id))tabs.push(['reg:'+r.id,r.name]);});
+  regions.forEach(r=>{if(rest.some(p=>inRegion(p,r.id)))tabs.push(['reg:'+r.id,r.name]);});
   if(mode!=='month'&&regionMembers(rest,regions,'').length)tabs.push(['reg:','권역 미지정']);
   if(!tabs.some(t=>t[0]===S.tkTab))S.tkTab='';
   /* ⚠ 탭마다 전체 업무를 다시 훑지 않는다 — 전체 탭 목록을 한 번 훑어 건수를 한꺼번에 센다 */
@@ -9405,7 +9422,7 @@ function regRows(){
   const site=(S.orgTab||'acct')==='site';   /* 현장 탭이면 계정 수가 아니라 현장 수를 보여 준다 */
   return list.map(r=>{
     const used=site?(S.org.sites||[]).filter(x=>x.region===r.id).length
-                   :roster().filter(p=>p.region===r.id&&!p.gone).length;
+                   :roster().filter(p=>inRegion(p,r.id)&&!isTeamP(p)&&!p.gone).length;   /* 권역 「전체」도 — 위 탭 건수와 같게 */
     return `<div class="tm-row">
       <input class="mg-inp tm-nameinp" value="${esc(r.name)}" data-act="org.ren" data-kind="Reg" data-id="${esc(r.id)}" placeholder="권역 이름" aria-label="권역 이름">
       <span class="tm-cnt">${used}</span>
@@ -9419,11 +9436,11 @@ function regRows(){
    ⚠ 보여 주기만 한다. 배정은 계정 보기의 '담당 현장 선택'에서만 */
 function siteOwnersHTML(sid){
   const t=curTeam();
-  /* ⚠ 현장 담당 직급은 담당자·공구장(rankUses) — 계정 표에서 배정 못 하는 직급이 여기 나오면 두 화면이 어긋난다 */
-  const list=roster().filter(p=>(t?p.team===t.id:true)&&rankUses(p.rank).sites&&(p.sites||{})[sid]);
+  /* ⚠ 현장 담당 직급은 담당자·공구장(usesOf) — 계정 표에서 배정 못 하는 직급이 여기 나오면 두 화면이 어긋난다 */
+  const list=roster().filter(p=>(t?p.team===t.id:true)&&usesOf(p).sites&&(p.sites||{})[sid]).sort((a,b)=>tradeOrd(a)-tradeOrd(b));
   /* 현장 쪽 [+] 제거 — 담당자는 계정 탭에서 사람별로 지정 */
   if(!list.length)return '<span class="site-none">미지정</span>';
-  return list.map(p=>'<span class="own-chip"><i style="background:'+esc(colBg(ownColor(p.id)))+'"></i>'+esc(p.name)+'</span>').join('');
+  return list.map(p=>'<span class="own-chip"><i style="background:'+esc(colBg(ownColor(p.id)))+'"></i>'+esc(p.name)+(tradeOf(p)!=='arch'?'<em class="own-tr">'+esc(tradeLabel(p))+'</em>':'')+'</span>').join('');
 }
 /* 그 현장 권역의 공구장(rank=lead) 이름 — 담당자 앞 열 */
 function siteLeadHTML(x){
@@ -9503,9 +9520,11 @@ function kmSiteXY(st){
 /* 그 현장의 담당자 색 — 여러 명이면 첫 사람. 배정이 없으면 회색 */
 /* 담당자 색. 배정 없으면 null — 속 빈 원으로 그린다.
    ⚠ TEAM_COLOR 와 OWN_PAL[0] 이 같은 파랑이라 색만으로는 안 갈린다 — 달력의 속 빈 막대와 같은 문법 */
+/* 현장의 대표 담당자 — 건축 담당 먼저, 없으면 다른 공종 */
+function siteArchOwner(t,sid){const L=roster().filter(x=>(t?x.team===t.id:true)&&usesOf(x).sites&&(x.sites||{})[sid]);return L.find(x=>tradeOf(x)==='arch')||L[0]||null;}
 function kmSiteColor(sid){
   const t=curTeam();
-  const p=roster().find(x=>(t?x.team===t.id:true)&&rankUses(x.rank).sites&&(x.sites||{})[sid]);
+  const p=siteArchOwner(t,sid);
   return p?ownColor(p.id):null;
 }
 function kmHit(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;}
@@ -9894,7 +9913,7 @@ function kmBigHTML(put){
    ⚠ 범례는 모달에만, 필터는 카드와 공유 — 모달을 열 때 초기화한다 */
 function kmOwnOf(sid){
   const t=curTeam();
-  const p=roster().find(x=>(t?x.team===t.id:true)&&rankUses(x.rank).sites&&(x.sites||{})[sid]);
+  const p=siteArchOwner(t,sid);
   return p?p.id:'';
 }
 /* 준공 년차 — 담보책임기간 경과 기준. 준공일부터 오늘까지 경과 연수 y:
@@ -10267,10 +10286,10 @@ function rOrgBar(tab){
   const tabs=[['','전체']];
   if(tab!=='site'){
     const t0=curTeam();
-    const heads=roster().filter(p=>!p.gone&&(t0?p.team===t0.id:true)&&isTeamRank(p.rank))
-      .sort((a,b)=>rankOrd(a.rank)-rankOrd(b.rank)||String(a.name).localeCompare(String(b.name),'ko'));
-    const rk={};heads.forEach(p=>{const r=rankLabel(p.rank)||'담당';rk[r]=(rk[r]||0)+1;});
-    heads.forEach(p=>{const r=rankLabel(p.rank)||'담당';tabs.push(['rank:'+p.id,rk[r]>1?r+' '+p.name:r]);});
+    const heads=roster().filter(p=>!p.gone&&(t0?p.team===t0.id:true)&&isTeamP(p))
+      .sort((a,b)=>rankOrd(a.rank)-rankOrd(b.rank)||tradeOrd(a)-tradeOrd(b)||String(a.name).localeCompare(String(b.name),'ko'));
+    const rk={};heads.forEach(p=>{const r=teamLabel(p);rk[r]=(rk[r]||0)+1;});
+    heads.forEach(p=>{const r=teamLabel(p);tabs.push(['rank:'+p.id,rk[r]>1?r+' '+p.name:r]);});
   }
   useRegs.forEach(r=>tabs.push([r.id,r.name]));
   if(cnt('_none'))tabs.push(['_none','권역 미지정']);
@@ -10299,7 +10318,8 @@ function orgTabHit(p,tab){
   if(p.role==='blocked')return false;   /* 차단 계정은 다른 탭에 섞이지 않는다 */
   if(!tab)return true;
   if(String(tab).indexOf('rank:')===0)return p.id===tab.slice(5);
-  if(isTeamRank(p.rank))return false;   /* 팀장·원가는 권역 탭에 섞지 않는다 */
+  if(isTeamP(p))return false;   /* 팀장·원가·안전은 권역 탭에 섞지 않는다 */
+  if(p.region===REG_ALL)return tab!=='_none'&&!String(tab).startsWith('_');   /* 권역 「전체」는 권역 탭마다 */
   return orgRegHit(p.region,tab);
 }
 function rOrg(){
@@ -10332,7 +10352,7 @@ function rOrg(){
     const bp=(S.people||{})[bid]||{};
     all.push({id:bid,name:a.name||bp.name||String(a.email||'').split('@')[0]||'이름없음',
       email:a.email||bp.email||'',team:bp.team||'',region:bp.region||'',sites:bp.sites||{},
-      rank:rankOf(bp.rank),role:'blocked',acct:true});
+      rank:rankOf(bp.rank),trade:tradeOf(bp),role:'blocked',acct:true});
   });
   if(!all.length){
     ar.innerHTML='<div class="set-empty">'+(!S.live
@@ -10356,9 +10376,10 @@ function rOrg(){
   const sortFn=(a,b)=>{
     const ra=rankOrd[rankOf(a.rank)]??2,rb=rankOrd[rankOf(b.rank)]??2;
     if(ra!==rb)return ra-rb;
+    if(tradeOrd(a)!==tradeOrd(b))return tradeOrd(a)-tradeOrd(b);   /* 같은 직급 안에서는 공종 순(건축·설비·전기·조경·원가·안전) */
     return String(a.name||'').localeCompare(String(b.name||''),'ko');};
   mine.sort(sortFn);free.sort(sortFn);
-  const regOpt=sel=>'<option value="">미배정</option>'+(S.org.regions||[]).map(x=>'<option value="'+esc(x.id)+'"'+(x.id===sel?' selected':'')+'>'+esc(x.name)+'</option>').join('');
+  const regOpt=sel=>'<option value="">미배정</option>'+(S.org.regions||[]).map(x=>'<option value="'+esc(x.id)+'"'+(x.id===sel?' selected':'')+'>'+esc(x.name)+'</option>').join('')+'<option value="'+REG_ALL+'"'+(sel===REG_ALL?' selected':'')+'>전체</option>';
   const roleOpt=(v,txt,cur)=>'<option value="'+v+'"'+(cur===v?' selected':'')+'>'+txt+'</option>';
   const sitesOf=p=>sitesChkHTML(p);   /* 내 계정과 공용 — 전역 함수 */
   const roleCtl=p=>{
@@ -10382,21 +10403,25 @@ function rOrg(){
   const rankCtl=p=>canRank
     ? '<select class="mg-inp" data-act="acct.set" data-f="rank" data-id="'+esc(p.id)+'" aria-label="직급">'+rankOpt(p.rank)+'</select>'
     : '<span class="rk-fix">'+esc(rankLabel(p.rank))+'</span>';
+  const tradeCtl=p=>canRank
+    ? '<select class="mg-inp" data-act="acct.set" data-f="trade" data-id="'+esc(p.id)+'" aria-label="공종">'+TRADES.map(([v,l])=>'<option value="'+v+'"'+(v===tradeOf(p)?' selected':'')+'>'+l+'</option>').join('')+'</select>'
+    : '<span class="rk-fix">'+esc(tradeLabel(p))+'</span>';
   /* 1093: 이름 — 관리자는 칸에서 바로 고친다(계정 이름 users/{uid}/name 과 명부 people/{id}/name 둘 다) */
   const nickCtl=(p,me)=>isEditor()
     ?'<input class="mg-inp utbl-nick utbl-nin'+(me?' me':'')+'" value="'+esc(p.name)+'" maxlength="60" data-act="acct.set" data-f="name" data-id="'+esc(p.id)+'" aria-label="이름" autocomplete="off">'
     :'<div class="utbl-nick'+(me?' me':'')+'">'+esc(p.name)+'</div>';
   const row=p=>{
-    const u=rankUses(p.rank);
+    const u=usesOf(p);
     return `<tr data-pid="${esc(p.id)}">
       <td><div class="utbl-name">${avHTML(p.id)}
         <div style="min-width:0">${nickCtl(p,p.id===myUid)}<div class="utbl-mail">${esc(p.email||'')}</div></div></div></td>
       <td>${teamCtl(p)}</td>
+      <td>${tradeCtl(p)}</td>
       <td>${rankCtl(p)}</td>
       <td>${u.region
         ?(canAssignRegion()
           ?'<select class="mg-inp" data-act="acct.set" data-f="region" data-id="'+esc(p.id)+'" aria-label="권역">'+regOpt(p.region)+'</select>'
-          :'<span class="rk-fix">'+esc((S.org.regions||[]).find(r=>r.id===p.region)?.name||'미배정')+'</span>')   /* 빈 값 표기는 팀과 같이 「미배정」 */
+          :'<span class="rk-fix">'+esc(p.region===REG_ALL?'전체':(S.org.regions||[]).find(r=>r.id===p.region)?.name||'미배정')+'</span>')   /* 빈 값 표기는 팀과 같이 「미배정」 */
         :''}</td>
       <td>${u.sites?sitesOf(p):''}</td>
       <td class="utbl-r">${roleCtl(p)}</td>
@@ -10407,9 +10432,9 @@ function rOrg(){
   /* ⚠ 안(#acctRoot)만 비우면 빈 카드 테두리가 가로선으로 남는다 — 카드째 감춘다 */
   const acard=ar.closest('.card');if(acard)acard.style.display=freeOnly?'none':'';
   ar.style.display=freeOnly?'none':'';
-  paintHTML(ar,freeOnly?'':'<table class="utbl"><thead><tr><th style="width:200px">이름</th><th style="width:142px">팀</th><th style="width:96px">직급</th><th style="width:106px">권역</th><th>담당 현장</th><th class="utbl-r" style="width:120px">권한</th></tr></thead><tbody>'
+  paintHTML(ar,freeOnly?'':'<table class="utbl"><thead><tr><th style="width:200px">이름</th><th style="width:142px">팀</th><th style="width:88px">공종</th><th style="width:96px">직급</th><th style="width:106px">권역</th><th>담당 현장</th><th class="utbl-r" style="width:120px">권한</th></tr></thead><tbody>'
     +(mine.length?mine.map(row).join('')
-      :'<tr><td colspan="6" style="font-size:12px;color:var(--lbl3);padding:10px">이 팀에 배정된 계정이 없습니다.</td></tr>')
+      :'<tr><td colspan="7" style="font-size:12px;color:var(--lbl3);padding:10px">이 팀에 배정된 계정이 없습니다.</td></tr>')
     +'</tbody></table>');
   /* 팀 미배정 계정은 별도 카드로 분리 */
   const fc=$('#freeCard'),fr=$('#freeRoot');
@@ -12025,7 +12050,7 @@ const ACT={
     if(!canAssignSites(id)){toast('담당 현장을 바꿀 권한이 없습니다');return;}
     /* 자기 권역 현장만 고른다 — 규칙 orgSiteRegion 검증과 맞춰 저장 거부 혼란을 막는다. 타권역 기존 배정은 숨긴 채 보존.
        관리자·팀장만 전 그룹 */
-    const selfLtd=!isEditor()&&myRank()!=='head';
+    const selfLtd=!isEditor()&&myRank()!=='head'&&myRegion()!==REG_ALL;   /* 권역 「전체」인 사람은 팀 모든 권역 */
     const regsAll=(S.org.regions||[]).filter(r=>r.name);
     const regs=selfLtd?regsAll.filter(r=>r.id===myRegion()):regsAll;
     const sites=S.org.sites||[];
@@ -12587,7 +12612,7 @@ document.addEventListener('change',e=>{
   if(!el)return;
   const id=el.dataset.id,f=el.dataset.f;
   /* 권역 배정은 관리자·팀장, 팀·직급은 관리자만 — 규칙도 거부하지만 여기서 먼저 끊어 값이 바뀐 듯하다 원복되는 혼란을 막는다 */
-  if(f==='region'?!canAssignRegion():!isEditor()){toast(f==='region'?'권역 배정은 관리자·팀장만 바꿀 수 있습니다':f==='name'?'이름은 관리자만 바꿀 수 있습니다':'팀·직급은 관리자만 바꿀 수 있습니다');rOrg();return;}
+  if(f==='region'?!canAssignRegion():!isEditor()){toast(f==='region'?'권역 배정은 관리자·팀장만 바꿀 수 있습니다':f==='name'?'이름은 관리자만 바꿀 수 있습니다':'팀·공종·직급은 관리자만 바꿀 수 있습니다');rOrg();return;}
   if(f==='name'){   /* 1093: 관리자 이름 고치기 — 화면 이름은 계정(users) 이름이 앞서므로 계정이 있으면 거기도 쓴다. 명부에 없는 계정(미배정)은 명부를 새로 만들지 않는다 */
     const nm=el.value.trim().slice(0,60),pc=(S.people||{})[id],acct=(S.accounts||{})[id];
     if(!nm){rOrg();return;}
@@ -12598,7 +12623,8 @@ document.addEventListener('change',e=>{
   const cur=(S.people||{})[id]||{};
   const base=roster().find(p=>p.id===id)||{};
   const rank=f==='rank'?rankOf(el.value):rankOf(cur.rank);
-  const uses=rankUses(rank);
+  const trade=f==='trade'?(TRADES.some(t=>t[0]===el.value)?el.value:'arch'):tradeOf(cur);
+  const uses=usesOf({rank,trade});
   /* 담당 현장을 함께 넘기지 않으면 다른 칸만 바꿔도 배정이 지워진다 */
   store.putPerson(id,{
     name:base.name||cur.name||'',
@@ -12606,7 +12632,7 @@ document.addEventListener('change',e=>{
     team:f==='team'?el.value:(cur.team||''),
     /* ⚠ 팀을 옮기면 이전 팀의 권역·현장은 남기지 않는다 — 다른 팀 항목이 붙어 있으면 목록이 어긋난다 */
     region:(f==='team')?'':(uses.region?(f==='region'?el.value:(cur.region||'')):''),
-    rank,
+    rank,...(isEditor()?{trade}:{}),   /* 공종은 관리자만 — 팀장의 권역 배정은 공종을 싣지 않는다(keepPerson 이 보존) */
     sites:(f==='team')?{}:(uses.sites?(cur.sites||{}):{})});
   if(f==='team')toast('팀을 옮겼습니다 · 권역과 담당 현장을 다시 지정해 주세요');
   if(!S.live){rOrg();rTasks();}
@@ -16726,7 +16752,7 @@ function issBoard(kind){
 function issStripHTML(){
   /* 팀장(팀 단위 직급)은 모든 현장, 공구장은 담당 공구(내 권역)의 모든 현장, 담당자는 내 담당 현장 */
   const my=mySites(),rk=myRank(),me=(S.people||{})[authUid()]||{};
-  const sites=issSites().filter(s=>!S.user||isTeamRank(rk)||(rk==='lead'&&me.region&&s.region===me.region)||my[s.id]);
+  const sites=issSites().filter(s=>!S.user||isTeamP(me)||(rk==='lead'&&me.region&&(me.region===REG_ALL||s.region===me.region))||my[s.id]);
   return sites.length?sites.map(s=>issCard(s,'w')).join(''):'<div class="iss-none">담당 현장이 없습니다. 조직 관리에서 담당 현장을 배정하세요.</div>';}
 /* 다시 그리기 — 입력 중이면 미뤘다가 입력을 떠날 때(focusout) 그린다. force 는 이쪽 조작(입력 칸을 새로 다는 경우) */
 function issTyping(){const a=document.activeElement;return !!(a&&a.matches&&a.matches('.iss-in,.iss-ed,.iss-due'));}   /* 날짜 고르는 중에도 다시 그리지 않는다 */
@@ -17116,7 +17142,7 @@ function d60List(){
 }
 function d60RegNm(id){const r=(S.org.regions||[]).find(x=>x.id===id);return r?r.name:'—';}
 /* 담당자 = 그 현장을 맡은 명부 사람 중 첫째(공구장·팀장 제외) */
-function d60Owner(site){const p=roster().find(x=>x.sites&&x.sites[site.id]&&rankOf(x.rank)==='member')||roster().find(x=>x.sites&&x.sites[site.id]);
+function d60Owner(site){const L=roster().filter(x=>x.sites&&x.sites[site.id]);const p=L.find(x=>rankOf(x.rank)==='member'&&tradeOf(x)==='arch')||L.find(x=>rankOf(x.rank)==='member')||L[0];
   return p?{name:p.name,color:colBg((avOf(p.id).color)||ownColor(p.id))}:{name:'',color:''};}
 
 /* ── 상세(데스크톱) ── */

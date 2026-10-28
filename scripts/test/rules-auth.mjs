@@ -329,5 +329,14 @@ t('AUTH-26b', 'editor → 일반 계정 삭제 요청', true, tryWrite('calapp/a
 t('AUTH-27a', 'viewer → 남의 개인 설정 읽기', false, tryRead('calapp/prefs/U2', A('U1'), T20));
 t('AUTH-27b', 'viewer → 내 개인 설정 읽기', true, tryRead('calapp/prefs/U1', A('U1'), T20));
 t('AUTH-28', '작성자 → 이력 키 25(앱은 0~19)', false, tryWrite('calapp/tasks/U2/own/hist/25', A('U2'), TREE, { t: 1, u: 'x', k: 'a' }));
+/* 1268: 공종(trade) — 관리자만 정한다. 권역 「전체」(*) 인 사람은 자기 담당 현장을 모든 권역에서 고른다 */
+t('AUTH-29a', '관리자 → 남의 공종 설비', true, tryWrite('calapp/people/U2', A('E1'), TREE, { ...P('U2'), trade: 'mech' }));
+t('AUTH-29b', '사용자 → 내 공종 바꾸기', false, tryWrite('calapp/people/U1', A('U1'), TREE, { ...P('U1'), trade: 'elec' }));
+t('AUTH-29c', '팀장 → 남의 공종 바꾸기', false, tryWrite('calapp/people/U2', A('U3'), TREE, { ...P('U2'), trade: 'mech' }));
+t('AUTH-29d', '관리자 → 없는 공종 값', false, tryWrite('calapp/people/U2', A('E1'), TREE, { ...P('U2'), trade: 'xx' }));
+{ const T29 = JSON.parse(JSON.stringify(TREE)); T29.calapp.people.U1 = { ...P('U1'), region: '*', trade: 'elec' };
+  t('AUTH-29e', '권역 전체(설비·전기) → 내 sites 에 타권역(sB) 추가', true, tryWrite('calapp/people/U1', A('U1'), T29, { ...T29.calapp.people.U1, sites: { sA: 1, sB: 1 } }));
+  t('AUTH-29f', '권역 전체 → 공종 그대로 이름 바꾸기', true, tryWrite('calapp/people/U1', A('U1'), T29, { ...T29.calapp.people.U1, name: '개명' }));
+  t('AUTH-29g', '권역 전체 → 공종 지우기', false, tryWrite('calapp/people/U1', A('U1'), T29, { name: '김담당', email: 'u1@hdec.co.kr', team: 't1', region: '*', rank: 'member', sites: { sA: 1 } })); }
 console.log(fail ? `\nFAIL ${fail}` : '\nRULES-AUTH ALL PASS');
 process.exit(fail ? 1 : 0);
