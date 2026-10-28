@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1270';
+const APP_VER='1271';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -1255,7 +1255,7 @@ const FbStore={
     if(!WIDGET)this._on('calapp/d60',v=>{S.d60d=v||{};if(!FB._d60q){FB._d60q=true;setTimeout(d60QReplay,1500);}   /* 지난번에 못 보낸 점검 */if(S.view==='d60'){if(d60Editing())S.d60._stale=true;else rD60();}});   /* D+60 점검 — 서식·점검 결과. 입력 중이면 다시 그리기를 미룬다 */
     this._on('calapp/iss',v=>{S.iss=v||{};rIss();});   /* 주요 현안 — 위젯도 쓴다(머리 단추 창 · 4주 아래 칸) */
     this._on('calapp/issHide',v=>{S.issHide=v||{};rIss();});   /* 보드에 보일 현장 덧씀 — 팀 공통 */
-    this._on('calapp/price',v=>{S.price={items:{},pin:{},...(v||{})};PR._pm=null;if(S.view==='pr'&&!prTyping())rPr();});   /* 1269 물가정보 — 팀 공유 */
+    this._on('calapp/price',v=>{PR.denied=false;S.price={items:{},pin:{},...(v||{})};PR._pm=null;if(S.view==='pr'&&!prTyping())rPr();},e=>{console.warn('[FB] 물가정보 읽기 거절',e);PR.denied=true;if(S.view==='pr')rPr();});   /* ⚠ 규칙을 게시하기 전엔 거절된다 — 앱 전체 동기화 끊김(syncLost)으로 번지지 않게 따로 받는다 */   /* 1269 물가정보 — 팀 공유 */
     const uid=S.user&&S.user.uid;
     if(uid){
         this._on('calapp/prefs/'+uid,v=>{S.prefs=v||{};});   /* 최근 이모지 등 개인 설정 */
@@ -16526,7 +16526,7 @@ function rPr(){
         +'<button class="pr-st'+(pn?' on':'')+'" data-act="pr.star" data-id="'+r.id+'" data-tip="'+(pn?esc(fdName(prFoldOf(r.id)))+' · 이름·폴더':'찜하기')+'" aria-label="찜">'+rwIc('i-star')+'</button>'
         +(prCanEdit(r)?'<button class="pr-ib pr-del" data-act="pr.del" data-id="'+r.id+'" data-tip="지우기" aria-label="지우기">'+rwIc('i-trash')+'</button>':'<span class="pr-ib"></span>')+'</td></tr>'
        ;}).join('')
-       :'<tr><td colspan="8" class="rd-none">'+(!all.length?'아직 모아 둔 단가가 없습니다':PR.fd&&!q?'찜한 자재가 없습니다':'찾는 자재가 없습니다')+(q?'<div class="pr-find">'+PR_FIND.map(([k,n,f])=>'<a class="rw-bb" href="'+esc(f(qe))+'" target="_blank" rel="noopener">'+rwIc('i-ext')+n+'</a>').join('')+'</div>':'')+'</td></tr>')+'</tbody></table></div>'
+       :'<tr><td colspan="8" class="rd-none">'+(PR.denied?'서버 저장 규칙이 아직 게시되지 않아 물가정보를 읽을 수 없습니다':!all.length?'아직 모아 둔 단가가 없습니다':PR.fd&&!q?'찜한 자재가 없습니다':'찾는 자재가 없습니다')+(q?'<div class="pr-find">'+PR_FIND.map(([k,n,f])=>'<a class="rw-bb" href="'+esc(f(qe))+'" target="_blank" rel="noopener">'+rwIc('i-ext')+n+'</a>').join('')+'</div>':'')+'</td></tr>')+'</tbody></table></div>'
    :prCmpHTML();
   root.innerHTML='<div class="qc-grid"><div class="qc-col">'
    +'<div class="card"><div class="tm-h"><span>검색</span></div><div class="qc-b pr-qb"><label class="pr-q">'+rwIc('i-search')+'<input id="prQ" value="'+esc(PR.q)+'" placeholder="자재명 · 규격 · 초성" autocomplete="off"></label>'
