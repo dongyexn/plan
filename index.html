@@ -5584,8 +5584,6 @@ td.d60-pc.has{color:var(--bt1);font-weight:700}
 .pr-tbl th.r,.pr-tbl td.r{text-align:right}
 .pr-tbl th.pr-so{cursor:pointer}
 .pr-tbl td{vertical-align:middle}
-.pr-tbl tbody tr.pr-r{cursor:pointer}
-@media (hover:hover) and (pointer:fine){.pr-tbl tbody tr.pr-r:hover td{background:var(--fill)}}
 .pr-tbl tr.open td{background:var(--b-tint)}
 .pr-nm b{display:block;font-weight:600}
 .pr-nm span{display:block;font-size:12px;color:var(--lbl3);margin-top:1px}
@@ -5615,17 +5613,11 @@ td.d60-pc.has{color:var(--bt1);font-weight:700}
 .pr-st .icn{width:16px;height:16px}
 .pr-st.on{color:#E8A317}.pr-st.on .icn{fill:#E8A317}
 @media (hover:hover) and (pointer:fine){.pr-st:hover{background:var(--fill)}}
-.pr-dt td{padding:0!important;background:var(--surf2)!important;cursor:default}
-.pr-dw{display:grid;grid-template-columns:300px minmax(0,1fr);gap:22px;padding:14px 18px 16px 56px}
-.pr-dh{font-size:12px;font-weight:700;color:var(--lbl2);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
-.pr-dd{font-weight:500;color:var(--lbl3)}
-.pr-sp svg{display:block;width:100%;height:92px;overflow:visible}
-.pr-sp text{font-size:10px;fill:var(--lbl3);font-variant-numeric:tabular-nums}
-.pr-sp0{font-size:12px;color:var(--lbl3);padding:8px 0}
-.pr-pin{display:flex;flex-direction:column;gap:8px;max-width:360px}
-.pr-pin label{display:grid;grid-template-columns:40px minmax(0,1fr);align-items:center;gap:8px;font-size:12px;font-weight:700;color:var(--lbl2)}
-.pr-by{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;font-size:11.5px;color:var(--lbl3)}
-@media (hover:hover) and (pointer:fine){.pr-del:hover{color:var(--rd)}}
+@media (hover:hover) and (pointer:fine){.pr-tbl .pr-del{opacity:0}.pr-tbl tr:hover .pr-del,.pr-tbl .pr-del:focus-visible{opacity:1}.pr-tbl .pr-del:hover{color:var(--rd)}}   /* 지우기는 줄에 올렸을 때만 */
+.pr-pop{position:fixed;z-index:900;width:280px;display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:var(--rmd);background:var(--bg2);box-shadow:0 0 0 1px var(--cardline),0 10px 28px rgba(15,23,42,.18)}
+.pr-pop label{display:grid;grid-template-columns:34px minmax(0,1fr);align-items:center;gap:8px;font-size:12px;font-weight:700;color:var(--lbl2)}
+.pr-pf{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:2px}
+.pr-pf small{font-size:11.5px;color:var(--lbl3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pr-new td{background:var(--b-tint)!important;vertical-align:top!important}
 .pr-new input,.pr-new select{width:100%}
 .pr-new input+input{margin-top:4px}
@@ -5668,12 +5660,10 @@ td.d60-pc.has{color:var(--bt1);font-weight:700}
   body:not(.wid) #rwRoot .qc-bar,body:not(.wid) #prRoot .qc-bar{flex-wrap:wrap;gap:8px}
   body:not(.wid) .rw-cv{min-height:70vh;padding:12px 0 24px}
   body:not(.wid) .rw-sel{font-size:16px}
-  body:not(.wid) .pr-dw{grid-template-columns:minmax(0,1fr);padding:12px 14px}
   body:not(.wid) .pr-tbl{min-width:0;table-layout:auto}
   body:not(.wid) .pr-tbl col{width:auto!important}
   body:not(.wid) .pr-tbl :is(th,td):is(:nth-child(3),:nth-child(6),:nth-child(7)){display:none}
   body:not(.wid) .pr-tbl .n{width:34px;padding-left:4px;padding-right:4px}
-  body:not(.wid) .pr-dt td{display:table-cell!important}
   body:not(.wid) .pr-nm span{white-space:normal}
 }
 /* ═══════════ 업무 도구 — 파일 카드(1061 도면 인쇄 폐지 후 남은 것) ═══════════ */
