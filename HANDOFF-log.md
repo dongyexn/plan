@@ -1,5 +1,17 @@
 # 변경 이력 (읽기 전용) — 현재 상태는 HANDOFF.md
 
+## 마지막 기록 기준 v1269
+### 1269차 업무 도구 — 재하자 추적·생산성 검토 삭제 · 보고서 작성 · 물가정보
+**사용자: 「재하자추적하고 생산성검토 도구를 삭제하고 보고서 작성과 물가정보를 추가하자 / 공문 대장은 여기서 할일은 아니다 / 보고서 작성은 폰트 변경, 크기, 굵게 등 서식기능을 강화 · 블록카드 세분화 · 한글이나 엑셀에서 쓸만한 기능은 다 넣으면 된다 / 둘다 외부로 자료를 추출하는 버튼은 헤더쪽에」 → 「팀 저장 > 찜 목록 · 분류별 폴더 · 출처 더 넣을 곳」 → 「일단 커밋하고 추후에 출처를 추가할 수 있게」**
+- 삭제: 재하자 추적·생산성 검토 코드·화면·CSS·아이콘(i-redo·i-prod)·TS 저장 키(tl). 공용은 tlSeg·tlEmpty·tlSaveWb 만 남김.
+- 보고서 작성 RW={tpl,files,open,blocks,sel,edit,uid,pg:{or,mg,num,band,font},hist,fut,ts,range,ce}. 블록 {id,k,d}: hdr·sec·h2·p·box·note·two·kpi·tbl·chart·img·sign·hr·pb. 쪽은 .rpt 양식(1px=1pt) — rwPaginate 가 높이를 재서 A4 에 나눈다(절 제목 홀로 남지 않게 · pb 는 새 쪽). 서버 저장 없음.
+- 서식: execCommand(styleWithCSS) + 크기는 fontSize 7 → span px 로 바꿔 pt. 띠 mousedown 은 preventDefault 로 편집 칸 선택을 지키고, select·팔레트는 RW.range 로 선택을 되살린다. ⚠ 다시 그릴 때 초점 칸이 지워지며 오는 focusout 이 옛 글로 값을 되덮는다 — RW.drawing 동안 무시.
+- 표 d={rows[[{h,cs,rs,m,bg,al,va}]],head,bd(h·all·out·none),w(%),num(열),agg(sum·avg)}. 칸 끌기·Shift 로 범위(RW.ts). 병합은 이미 병합된 칸이 섞이면 거절. 행·열 넣기/빼기는 rwAnchor 로 병합 범위를 지킨다. 숫자 판정 rwNum 은 끝 단위(원·건·%…)를 떼고 본다.
+- 내보내기: 인쇄 #rwPrint + body.rw-printing(@page 가로/세로) · HTML(.rpt·.rw- CSS 를 시트에서 모아 넣음) · 한글 hwpxjs.htmlToHwpx(문단·표, 차트는 값 표).
+- 물가정보 calapp/price: items/{id}{n,sp,u,p,s,m,url,nt,by,at} · memo/{id}/{mid}{t,by,at} · fold/{fid}{n,by,at} · pin/{id}=폴더 id 또는 '_'. 찜은 자재·규격·출처 단위(prPinMap — 달이 바뀐 기록도 같은 찜). 출처 PR_SRC 7종, prSrc(k) 는 목록에 없는 키도 키 이름으로 보인다 → 출처를 늘릴 땐 PR_SRC 한 줄(규칙은 /^[a-z0-9]{1,12}$/).
+- 규칙 price: 읽기 MEMBER · 단가·메모·폴더는 넣은 사람·관리자만 고치고 지움 · 찜은 있는 폴더나 '_'. rules-auth AUTH-30a~q. ⚠ 배포 뒤 Firebase 콘솔에 database.rules.json 게시.
+- 조달청 나라장터 가격정보현황서비스(OpenAPI)는 인증키가 필요 — 사용자가 공공데이터포털에서 받아 저장소 Secret 에 넣으면 GitHub Actions 월 1회 수집으로 붙인다(다음 회차).
+
 ## 마지막 기록 기준 v1268
 ### 1268차 조직 — 직무(건축·설비·전기·조경·원가·안전) · 권역 「전체」
 **사용자: 「지금까지 팀원을 다 건축 담당자만 넣었는데 설비나 전기 담당자도 있어서 — 직급이나 권역으로 분리하긴 어렵고 따로 분류를 줘야 할 듯. 건축 설비 전기 조경, 원가 안전도 그 분류로, 직급은 다른 곳과 동일하게 팀장 공구장 담당자」 → 묻기: 설비·전기의 권역·현장 = 「팀마다 나뉘기도, 한 사람이 팀 전체를 맡기도」 · 업무 탭 = 「권역 탭에 섞기」 → 시안(아티팩트, 실제 앱 로컬 모드) → 「공종 > 직무로 해서 적용」**
