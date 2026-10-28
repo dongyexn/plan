@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1269';
+const APP_VER='1270';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -980,7 +980,7 @@ const LocalStore={
     this._d.d60=this._d.d60||{};S.d60d=this._d.d60;   /* D+60 점검 */
     this._d.iss=this._d.iss||{};S.iss=this._d.iss;   /* 주요 현안 */
     this._d.issHide=this._d.issHide||{};S.issHide=this._d.issHide;   /* 주요 현안 보드에 보일 현장 덧씀 */
-    this._d.price=this._d.price||{items:{},memo:{},pin:{}};S.price=this._d.price;   /* 1269 물가정보 */
+    this._d.price=this._d.price||{items:{},pin:{}};S.price=this._d.price;   /* 1269 물가정보 */
     setTimeout(trashPurge,1500);   /* 휴지통 30일 정리 */
     setTimeout(archMigrate,1800);  /* 오래 끝난 업무를 보관함으로 */},
   putPlan(p){const{sid,iid,item,prevSid}=planToTask(p);
@@ -1255,7 +1255,7 @@ const FbStore={
     if(!WIDGET)this._on('calapp/d60',v=>{S.d60d=v||{};if(!FB._d60q){FB._d60q=true;setTimeout(d60QReplay,1500);}   /* 지난번에 못 보낸 점검 */if(S.view==='d60'){if(d60Editing())S.d60._stale=true;else rD60();}});   /* D+60 점검 — 서식·점검 결과. 입력 중이면 다시 그리기를 미룬다 */
     this._on('calapp/iss',v=>{S.iss=v||{};rIss();});   /* 주요 현안 — 위젯도 쓴다(머리 단추 창 · 4주 아래 칸) */
     this._on('calapp/issHide',v=>{S.issHide=v||{};rIss();});   /* 보드에 보일 현장 덧씀 — 팀 공통 */
-    this._on('calapp/price',v=>{S.price={items:{},memo:{},pin:{},...(v||{})};PR._pm=null;if(S.view==='pr'&&!prTyping())rPr();});   /* 1269 물가정보 — 팀 공유 */
+    this._on('calapp/price',v=>{S.price={items:{},pin:{},...(v||{})};PR._pm=null;if(S.view==='pr'&&!prTyping())rPr();});   /* 1269 물가정보 — 팀 공유 */
     const uid=S.user&&S.user.uid;
     if(uid){
         this._on('calapp/prefs/'+uid,v=>{S.prefs=v||{};});   /* 최근 이모지 등 개인 설정 */
@@ -11256,6 +11256,7 @@ function go(view){
   if(view==='qc')rQc();
   if(view==='rw')rRw();
   if(view==='pr')rPr();
+  else if(typeof PR!=='undefined'&&PR.pop){PR.pop='';prPopDraw();}   /* 찜 창은 물가정보 밖에선 닫는다 */
   if(view==='d60')rD60();
   if(view==='iss')rIss();
   mtabSync();
@@ -16430,14 +16431,13 @@ function rwTop(o){const T=rwTsel(),b=rwBlk(RW.sel);if(!b||b.k!=='tbl'){toast('�
 /* ═══════════ 업무 도구 — 물가정보(1269) ═══════════
    팀이 찾은 단가를 모아 두고(RTDB calapp/price · 팀 공유), 원본으로 바로 가서 확인하고, 출처별로 나란히 놓아 단가 비교 자료를 만든다.
    저장 calapp/price/items/{id} = {n 자재명, sp 규격, u 단위, p 단가, s 출처, m 기준월 YYYY-MM, url 원본 주소, nt 비고, by, at}
-        calapp/price/memo/{itemId}/{mid} = {t, by, at}
-        calapp/price/fold/{fid} = {n 폴더 이름, by, at} · calapp/price/pin/{itemId} = 폴더 id(미분류 '_') — 찜 목록
+        calapp/price/fold/{fid} = {n 폴더 이름, by, at} · calapp/price/pin/{itemId} = {f 폴더 id(미분류 '_'), t 찜 이름} — 찜 목록
    ⚠ 앱이 남의 사이트를 대신 긁어오지 않는다 — 사람이 원본에서 확인한 값만 넣는다. 비교 화면 캡처는 이 창 안에서만 */
 const PR_SRC={g2b:['조달청 가격정보','조달청'],kpi:['물가정보(한국물가정보)','물가정보'],kprc:['물가자료(한국물가협회)','물가자료'],nv:['네이버 쇼핑','네이버'],cp:['쿠팡','쿠팡'],dn:['다나와','다나와'],etc:['견적 · 기타','기타']};
 const prSrc=k=>PR_SRC[k]||[k,k];   /* 규칙은 영문 소문자 출처 키를 받는다 — 이 목록에 없는 출처(새로 넣는 출처)도 키 이름 그대로 보인다 */
 const PR_SK=Object.keys(PR_SRC);
 const PR={q:'',src:{g2b:1,kpi:1,kprc:1,nv:1,cp:1,dn:1,etc:1},sort:'',view:'list',open:'',fd:'',fe:'',fadd:false,add:false,cmp:new Set(),cap:{},pick:{},_qf:false};
-S.price=S.price||{items:{},memo:{},pin:{}};
+S.price=S.price||{items:{},pin:{}};
 /* es-hangul — 초성(ㄷㅈ) · 치는 중인 글자 · 한영 안 바꾸고 친 글자(gltmxp)도 맞춘다. 못 불러오면 그냥 글자 포함 */
 function hgMatch(text,q){text=String(text||'');q=String(q||'').trim();if(!q)return true;const lo=text.toLowerCase(),ql=q.toLowerCase();if(lo.includes(ql))return true;const H=window.esHangul;if(!H)return false;
   try{if(/^[ㄱ-ㅎ\s]+$/.test(q))return H.getChoseong(text).replace(/\s/g,'').includes(q.replace(/\s/g,''));
@@ -16446,41 +16446,37 @@ function hgMatch(text,q){text=String(text||'');q=String(q||'').trim();if(!q)retu
 const prMon=m=>String(m||'').replace('-','. ')+'.';
 const prCurMon=()=>todayStr().slice(0,7);
 function prItems(){const o=(S.price||{}).items||{};return Object.keys(o).filter(k=>o[k]&&o[k].n).map(id=>({id,...o[id]}));}
-const prMemo=id=>{const o=((S.price||{}).memo||{})[id]||{};return Object.keys(o).map(k=>({mid:k,...o[k]})).filter(x=>x.t).sort((a,b)=>(a.at||0)-(b.at||0));};
 const prPinned=id=>!!prFoldOf(id);
 /* 찜 폴더 — 값이 폴더 id. 옛 값(true)·지워진 폴더는 미분류('_') */
 const prFolds=()=>{const o=(S.price||{}).fold||{};return Object.keys(o).filter(k=>o[k]&&o[k].n).map(id=>({id,...o[id]})).sort((a,b)=>String(a.n).localeCompare(String(b.n),'ko',{numeric:true}));};
 /* 찜은 자재 · 규격 · 출처 단위 — 달이 바뀌어 새 기록이 생겨도 같은 찜으로 본다 */
 function prPinMap(){if(PR._pm)return PR._pm;const P=(S.price||{}).pin||{},F=(S.price||{}).fold||{},I=((S.price||{}).items)||{},m={},im={};
   Object.keys(I).forEach(id=>{const r=I[id];if(r&&r.n)im[id]=prKey(r);});
-  Object.keys(P).forEach(id=>{const k=im[id],v=P[id];if(!k||!v)return;(m[k]=m[k]||[]).push([id,typeof v==='string'&&v!=='_'&&F[v]?v:'_']);});
+  Object.keys(P).forEach(id=>{const k=im[id],v=prPv(P[id]);if(!k||!v)return;(m[k]=m[k]||[]).push([id,v.f!=='_'&&F[v.f]?v.f:'_',v.t||'']);});
   return PR._pm={m,im};}
+const prPv=v=>!v?null:typeof v==='string'?{f:v}:v.f?v:null;   /* 옛 값(폴더 id 글자)도 읽는다 */
+function prTitle(id){const M=prPinMap(),k=M.im[id],L=k&&M.m[k];return L&&L.length?L[L.length-1][2]:'';}
+function prFoldName(f){return f==='_'?'미분류':((((S.price||{}).fold||{})[f])||{}).n||'';}
 function prFoldOf(id){const M=prPinMap(),k=M.im[id],L=k&&M.m[k];return L&&L.length?L[L.length-1][1]:'';}
-function prPinSet(id,f){const M=prPinMap(),k=M.im[id];((k&&M.m[k])||[]).forEach(([pid])=>{if(pid!==id)prWrite('pin/'+pid,null);});prWrite('pin/'+id,f||null);}
+function prPinSet(id,f,t){const M=prPinMap(),k=M.im[id];if(t===undefined)t=prTitle(id);((k&&M.m[k])||[]).forEach(([pid])=>{if(pid!==id)prWrite('pin/'+pid,null);});
+  prWrite('pin/'+id,f?{f,...(t?{t:String(t).slice(0,40)}:{})}:null);}
 const prKey=r=>r.n+'|'+(r.sp||'')+'|'+r.s;
 /* 같은 자재 · 규격 · 출처의 달별 기록 — 추이 */
-function prHist(r){const m={};prItems().forEach(x=>{if(prKey(x)===prKey(r)&&x.m)m[x.m]=x.p;});return Object.keys(m).sort().slice(-12).map(k=>[k,m[k]]);}
 /* 원본 — 넣어 둔 주소가 먼저. 없으면 검색 결과 · 조달청 · 물가정보지 첫 화면 */
 const prQ=r=>encodeURIComponent((r.n+' '+(r.sp||'')).replace(/[·×]/g,' ').replace(/\s+/g,' ').trim());
 function prUrl(r){if(r.url)return r.url;if(r.s==='nv')return 'https://search.shopping.naver.com/search/all?query='+prQ(r);if(r.s==='cp')return 'https://www.coupang.com/np/search?q='+prQ(r);if(r.s==='g2b')return 'https://www.g2b.go.kr/';if(r.s==='kpi')return 'https://www.kpi.or.kr/';if(r.s==='kprc')return 'https://www.kprc.or.kr/';if(r.s==='dn')return 'https://search.danawa.com/dsearch.php?query='+prQ(r);return '';}
 const PR_FIND=[['nv','네이버 쇼핑',q=>'https://search.shopping.naver.com/search/all?query='+q],['cp','쿠팡',q=>'https://www.coupang.com/np/search?q='+q],['dn','다나와',q=>'https://search.danawa.com/dsearch.php?query='+q],['g2b','조달청 나라장터',()=>'https://www.g2b.go.kr/'],['kpi','한국물가정보',()=>'https://www.kpi.or.kr/'],['kprc','한국물가협회',()=>'https://www.kprc.or.kr/']];
-function prRows(){const q=PR.q.trim();let L=prItems().filter(r=>PR.src[r.s]!==0&&(!q||hgMatch(r.n+' '+(r.sp||'')+' '+(r.nt||''),q)));
+function prRows(){const q=PR.q.trim();let L=prItems().filter(r=>PR.src[r.s]!==0&&(!q||hgMatch(r.n+' '+(r.sp||'')+' '+(r.nt||'')+' '+prTitle(r.id),q)));
   if(PR.fd)L=L.filter(r=>{const f=prFoldOf(r.id);return f&&(PR.fd==='*'||f===PR.fd);});
   /* 같은 자재 · 규격 · 출처는 가장 최근 달만 목록에 */
   const last={};L.forEach(r=>{const k=prKey(r),o=last[k];if(!o||(r.m||'')>(o.m||'')||((r.m||'')===(o.m||'')&&(r.at||0)>(o.at||0)))last[k]=r;});L=Object.values(last);
   L.sort(PR.sort?(a,b)=>PR.sort==='p'?a.p-b.p:b.p-a.p:(a,b)=>String(a.n).localeCompare(String(b.n),'ko',{numeric:true})||PR_SK.indexOf(a.s)-PR_SK.indexOf(b.s));
   return L;}
-function prTyping(){const a=document.activeElement;return !!(a&&a.closest&&a.closest('#prRoot')&&a.matches('input,select,textarea')&&a.id!=='prQ');}   /* 입력 중엔 남의 저장으로 다시 그리지 않는다 */
+function prTyping(){const a=document.activeElement;return !!(a&&a.closest&&a.closest('#prRoot,#prPop')&&a.matches('input,select,textarea')&&a.id!=='prQ');}   /* 입력 중엔 남의 저장으로 다시 그리지 않는다 */
 function prFoldEd(k){const f=((S.price||{}).fold||{})[k];return !S.live||isEditor()||(f&&f.by===authUid());}
 function prCanEdit(r){return !S.live||isEditor()||r.by===authUid();}
 function prWrite(path,val){PR._pm=null;const seg=path.split('/');let o=S.price;for(let i=0;i<seg.length-1;i++)o=o[seg[i]]=o[seg[i]]||{};if(val==null)delete o[seg[seg.length-1]];else o[seg[seg.length-1]]=val;
   if(S.live&&FB.db)FB.db.ref('calapp/price/'+path).set(val==null?null:val).catch(fbErr);else{LocalStore._d.price=S.price;lsSave(LocalStore._d);}}
-function prSpark(h){if(h.length<2)return '<div class="pr-sp0">한 달치 기록만 있습니다</div>';const v=h.map(x=>x[1]),W=300,H=92,pl=6,pr=6,pt=14,pb=16,mn=Math.min(...v),mx=Math.max(...v),rg=Math.max(1,mx-mn);
-  const x=i=>pl+(W-pl-pr)*i/(h.length-1),y=p=>pt+(H-pt-pb)*(1-(p-mn)/rg),an=i=>i===0?'start':i===h.length-1?'end':'middle';
-  return '<svg viewBox="0 0 '+W+' '+H+'"><polyline fill="none" stroke="var(--b600)" stroke-width="2" stroke-linejoin="round" points="'+v.map((p,i)=>x(i)+','+y(p)).join(' ')+'"/>'
-   +v.map((p,i)=>'<circle cx="'+x(i)+'" cy="'+y(p)+'" r="'+(i===v.length-1?3.5:2.5)+'" fill="'+(i===v.length-1?'var(--b600)':'var(--bg2)')+'" stroke="var(--b600)" stroke-width="1.5"/>'+(i===0||i===v.length-1||p===mx||p===mn?'<text x="'+x(i)+'" y="'+(y(p)-6)+'" text-anchor="'+an(i)+'">'+rwN(p)+'</text>':'')).join('')
-   +h.map((d,i)=>'<text x="'+x(i)+'" y="'+(H-2)+'" text-anchor="'+an(i)+'">'+(+d[0].slice(5))+'월</text>').join('')+'</svg>';}
-
 /* ── 단가 비교 — 자재(자재명·규격)별로 묶어 출처 카드를 나란히. 적용 단가는 기본 최저 ── */
 function prCmpGroups(){const g={},all=prItems();[...PR.cmp].forEach(id=>{const r=all.find(x=>x.id===id);if(!r){PR.cmp.delete(id);return;}const k=r.n+'|'+(r.sp||'');(g[k]=g[k]||[]).push(r);});
   return Object.entries(g).map(([k,R])=>{R.sort((a,b)=>PR_SK.indexOf(a.s)-PR_SK.indexOf(b.s)||a.p-b.p);const mn=R.reduce((a,b)=>b.p<a.p?b:a);const ap=R.find(r=>r.id===PR.pick[k])||mn;
@@ -16522,17 +16518,14 @@ function rPr(){
   const nr=PR.add?'<tr class="pr-new"><td class="n">'+rwIc('i-plus')+'</td><td><input class="inp inp-sm" id="prNn" placeholder="자재명" value="'+esc(q)+'"><input class="inp inp-sm" id="prNs" placeholder="규격"></td><td><input class="inp inp-sm" id="prNu" placeholder="단위"></td><td><input class="inp inp-sm" id="prNp" placeholder="단가" inputmode="numeric" style="text-align:right"></td>'
      +'<td><select class="inp inp-sm" id="prNsrc">'+PR_SK.map(k=>'<option value="'+k+'">'+prSrc(k)[1]+'</option>').join('')+'</select></td><td><input class="inp inp-sm" id="prNm" type="month" value="'+prCurMon()+'"></td><td><input class="inp inp-sm" id="prNt" placeholder="비고 · 쪽"><input class="inp inp-sm" id="prNl" placeholder="원본 주소(선택)"></td><td><button class="btn bp bxs" data-act="pr.addok">저장</button></td></tr>':'';
   const body=PR.view==='list'
-   ?'<div class="qc-wrap"><table class="qc-tbl pr-tbl"><colgroup><col style="width:46px"><col style="width:26%"><col style="width:7%"><col style="width:12%"><col style="width:10%"><col style="width:10%"><col><col style="width:104px"></colgroup><thead><tr><th class="n">NO</th><th>자재명 · 규격</th><th>단위</th><th class="r pr-so" data-act="pr.sort">단가'+(PR.sort?(PR.sort==='p'?' ↑':' ↓'):'')+'</th><th>출처</th><th>기준월</th><th>비고</th><th></th></tr></thead><tbody>'+nr
-     +(L.length?L.map((r,i)=>{const op=PR.open===r.id,ms=prMemo(r.id),u=prUrl(r),pn=prPinned(r.id);
-       return '<tr class="pr-r'+(op?' open':'')+'" data-act="pr.open" data-id="'+r.id+'"><td class="n">'+(i+1)+'</td><td class="pr-nm"><b>'+esc(r.n)+'</b><span>'+esc(r.sp||'')+'</span></td><td>'+esc(r.u||'')+'</td><td class="r pr-pr">'+rwN(r.p)+'</td><td><span class="pr-tg '+r.s+'">'+prSrc(r.s)[1]+'</span></td><td>'+prMon(r.m)+'</td><td class="pr-nt">'+esc(r.nt||'')+(ms.length?'<em>메모 '+ms.length+'</em>':'')+'</td>'
+   ?'<div class="qc-wrap"><table class="qc-tbl pr-tbl"><colgroup><col style="width:46px"><col style="width:26%"><col style="width:7%"><col style="width:12%"><col style="width:10%"><col style="width:10%"><col><col style="width:136px"></colgroup><thead><tr><th class="n">NO</th><th>자재명 · 규격</th><th>단위</th><th class="r pr-so" data-act="pr.sort">단가'+(PR.sort?(PR.sort==='p'?' ↑':' ↓'):'')+'</th><th>출처</th><th>기준월</th><th>비고</th><th></th></tr></thead><tbody>'+nr
+     +(L.length?L.map((r,i)=>{const u=prUrl(r),pn=prPinned(r.id),tt=prTitle(r.id);
+       return '<tr class="pr-r'+(PR.pop===r.id?' open':'')+'" data-id="'+r.id+'"><td class="n">'+(i+1)+'</td><td class="pr-nm"><b>'+esc(tt||r.n)+'</b><span>'+esc(tt?[r.n,r.sp].filter(Boolean).join(' · '):(r.sp||''))+'</span></td><td>'+esc(r.u||'')+'</td><td class="r pr-pr">'+rwN(r.p)+'</td><td><span class="pr-tg '+r.s+'">'+prSrc(r.s)[1]+'</span></td><td>'+prMon(r.m)+'</td><td class="pr-nt">'+esc(r.nt||'')+'</td>'
         +'<td class="pr-ac">'+(u?'<a class="pr-ib" href="'+esc(u)+'" target="_blank" rel="noopener" data-tip="원본 열기" aria-label="원본 열기">'+rwIc('i-ext')+'</a>':'<span class="pr-ib"></span>')
         +'<button class="pr-ib pr-cb'+(PR.cmp.has(r.id)?' on':'')+'" data-act="pr.cmpt" data-id="'+r.id+'" data-tip="'+(PR.cmp.has(r.id)?'비교에서 빼기':'비교에 담기')+'" aria-label="비교에 담기">'+rwIc(PR.cmp.has(r.id)?'i-check':'i-plus')+'</button>'
-        +'<button class="pr-st'+(pn?' on':'')+'" data-act="pr.star" data-id="'+r.id+'" data-tip="'+(pn?'찜 해제 · '+esc(fdName(prFoldOf(r.id))):'찜하기')+'" aria-label="찜">'+rwIc('i-star')+'</button></td></tr>'
-       +(op?'<tr class="pr-dt"><td colspan="8"><div class="pr-dw"><div><div class="pr-dh"><span>달별 기록</span>'+(()=>{const h=prHist(r);return h.length>1?'<span class="pr-dd">'+(h[h.length-1][1]>=h[0][1]?'+':'')+((h[h.length-1][1]/h[0][1]-1)*100).toFixed(1)+'%</span>':'';})()+'</div><div class="pr-sp">'+prSpark(prHist(r))+'</div>'
-          +'<div class="pr-fdm"><span>찜 폴더</span><select class="inp inp-sm" data-prfd="'+r.id+'"><option value="">찜 안 함</option><option value="_"'+(prFoldOf(r.id)==='_'?' selected':'')+'>미분류</option>'+FD.map(f=>'<option value="'+f.id+'"'+(prFoldOf(r.id)===f.id?' selected':'')+'>'+esc(f.n)+'</option>').join('')+'</select></div>'
-          +'<div class="pr-by">'+esc([issWho(r.by),r.at?issMD(r.at)+' 등록':''].filter(Boolean).join(' · '))+(prCanEdit(r)?'<button class="rw-bb pr-del" data-act="pr.del" data-id="'+r.id+'">'+rwIc('i-trash')+'지우기</button>':'')+'</div></div>'
-         +'<div><div class="pr-dh"><span>팀 메모</span></div><div class="pr-ms">'+(ms.map(m=>'<div class="pr-m"><span>'+esc(m.t)+'</span><small>'+esc([issWho(m.by),issMD(m.at)].filter(Boolean).join(' · '))+'</small>'+(!S.live||isEditor()||m.by===authUid()?'<button class="pr-ib" data-act="pr.mdel" data-id="'+r.id+'" data-m="'+m.mid+'" aria-label="메모 지우기">'+rwIc('i-close')+'</button>':'')+'</div>').join('')||'<div class="pr-m pr-m0">메모 없음</div>')
-         +'<div class="pr-min"><input class="inp inp-sm" id="prMi" maxlength="200" placeholder="어디에 썼는지, 주의할 점" data-id="'+r.id+'"><button class="btn bp bxs" data-act="pr.memo" data-id="'+r.id+'">추가</button></div></div></div></div></td></tr>':'');}).join('')
+        +'<button class="pr-st'+(pn?' on':'')+'" data-act="pr.star" data-id="'+r.id+'" data-tip="'+(pn?esc(fdName(prFoldOf(r.id)))+' · 이름·폴더':'찜하기')+'" aria-label="찜">'+rwIc('i-star')+'</button>'
+        +(prCanEdit(r)?'<button class="pr-ib pr-del" data-act="pr.del" data-id="'+r.id+'" data-tip="지우기" aria-label="지우기">'+rwIc('i-trash')+'</button>':'<span class="pr-ib"></span>')+'</td></tr>'
+       ;}).join('')
        :'<tr><td colspan="8" class="rd-none">'+(!all.length?'아직 모아 둔 단가가 없습니다':PR.fd&&!q?'찜한 자재가 없습니다':'찾는 자재가 없습니다')+(q?'<div class="pr-find">'+PR_FIND.map(([k,n,f])=>'<a class="rw-bb" href="'+esc(f(qe))+'" target="_blank" rel="noopener">'+rwIc('i-ext')+n+'</a>').join('')+'</div>':'')+'</td></tr>')+'</tbody></table></div>'
    :prCmpHTML();
   root.innerHTML='<div class="qc-grid"><div class="qc-col">'
@@ -16552,23 +16545,25 @@ function rPr(){
      +tlSeg(PR.view,[['list','목록'],['cmp','단가 비교'+(ng?' '+ng:'')]],'data-act="pr.view" data-k')+'</span></div>'+body
   +'</div></div>';
   const qi=$('#prQ');if(qi&&PR._qf){qi.focus();qi.setSelectionRange(qi.value.length,qi.value.length);PR._qf=false;}
+  prPopDraw();
   if(PR.add&&!PR._af){PR._af=true;setTimeout(()=>{const i=$('#prNn');if(i){i.focus();if(i.value)($('#prNs')||i).focus();}},0);}
 }
-document.addEventListener('input',e=>{if(e.target.id==='prQ'){PR.q=e.target.value;PR.open='';PR._qf=true;rPr();}});
+document.addEventListener('input',e=>{if(e.target.id==='prQ'){PR.q=e.target.value;PR.pop='';PR._qf=true;rPr();}});
 function prFoldSave(inp){const v=inp.value.trim().slice(0,30),k=inp.dataset.id;PR.fadd=false;PR.fe='';
   if(v){if(prFolds().some(f=>f.n===v&&f.id!==k)){toast('같은 이름의 폴더가 있습니다');}else if(k){const f=((S.price||{}).fold||{})[k];if(f&&f.n!==v)prWrite('fold/'+k,{...f,n:v});}else{const id=uid();prWrite('fold/'+id,{n:v,by:authUid()||myId(),at:Date.now()});PR.fd=id;}}
   rPr();}
 document.addEventListener('focusout',e=>{const t=e.target;if(t&&(t.id==='prFn'||t.id==='prFe')&&!PR._fs)prFoldSave(t);});
-document.addEventListener('change',e=>{const t=e.target;if(t&&t.dataset&&t.dataset.prfd){prPinSet(t.dataset.prfd,t.value||null);rPr();}});
+document.addEventListener('change',e=>{const t=e.target;if(t&&t.dataset&&t.dataset.prfd){prPinSet(t.dataset.prfd,t.value||null);rPr();}
+  else if(t&&t.dataset&&t.dataset.prt){const id=t.dataset.prt,v=t.value.trim().slice(0,40);if(v===prTitle(id))return;prPinSet(id,prFoldOf(id)||(v?(PR.fd&&PR.fd!=='*'?PR.fd:'_'):''),v);rPr();}   /* 이름을 적으면 찜도 된다 */});
 document.addEventListener('keydown',e=>{if((e.target.id==='prFn'||e.target.id==='prFe')&&(e.key==='Enter'||e.key==='Escape')&&!e.isComposing){e.preventDefault();PR._fs=1;if(e.key==='Enter')prFoldSave(e.target);else{PR.fadd=false;PR.fe='';rPr();}PR._fs=0;return;}
-  if(e.key!=='Enter'||e.isComposing)return;if(e.target.id==='prMi')ACT['pr.memo'](e.target);else if(e.target.closest&&e.target.closest('#prRoot .pr-new'))ACT['pr.addok']();});
+  if(e.key!=='Enter'||e.isComposing)return;if(e.target.dataset&&e.target.dataset.prt){e.target.blur();return;}if(e.target.closest&&e.target.closest('#prRoot .pr-new'))ACT['pr.addok']();});
 Object.assign(ACT,{
   'pr.src':el=>{PR.src[el.dataset.k]=PR.src[el.dataset.k]?0:1;rPr();},
-  'pr.fd':el=>{PR.fd=PR.fd===el.dataset.k?'':el.dataset.k;PR.view='list';PR.open='';rPr();},
+  'pr.fd':el=>{PR.fd=PR.fd===el.dataset.k?'':el.dataset.k;PR.view='list';PR.pop='';rPr();},
   'pr.fadd':()=>{PR.fadd=!PR.fadd;PR.fe='';rPr();setTimeout(()=>{const i=$('#prFn');if(i)i.focus();},0);},
   'pr.fren':el=>{PR.fe=el.dataset.k;PR.fadd=false;rPr();setTimeout(()=>{const i=$('#prFe');if(i){i.focus();i.select();}},0);},
   'pr.fdel':el=>{const k=el.dataset.k,f=prFolds().find(x=>x.id===k);if(!f)return;const n=Object.values(prPinMap().m).filter(L=>L[L.length-1][1]===k).length;
-    confirmModal('폴더 지우기','「'+f.n+'」 폴더를 지울까요?'+(n?' 안의 찜 '+n+'건은 미분류로 옮깁니다.':''),()=>{Object.keys((S.price||{}).pin||{}).forEach(pid=>{if(S.price.pin[pid]===k)prWrite('pin/'+pid,'_');});prWrite('fold/'+k,null);if(PR.fd===k)PR.fd='';rPr();},'지우기',true);},
+    confirmModal('폴더 지우기','「'+f.n+'」 폴더를 지울까요?'+(n?' 안의 찜 '+n+'건은 미분류로 옮깁니다.':''),()=>{Object.keys((S.price||{}).pin||{}).forEach(pid=>{const v=prPv(S.price.pin[pid]);if(v&&v.f===k)prWrite('pin/'+pid,{...v,f:'_'});});prWrite('fold/'+k,null);if(PR.fd===k)PR.fd='';rPr();},'지우기',true);},
   'pr.sort':()=>{PR.sort=PR.sort===''?'p':PR.sort==='p'?'d':'';rPr();},
   'pr.view':el=>{PR.view=el.dataset.k;PR.add=false;rPr();},
   'pr.cmpt':el=>{const id=el.dataset.id;if(PR.cmp.has(id))PR.cmp.delete(id);else PR.cmp.add(id);rPr();},
@@ -16576,19 +16571,29 @@ Object.assign(ACT,{
   'pr.capf':el=>pickIn('image/*',false,f=>prCapSet(el.dataset.id,f[0])),
   'pr.capx':el=>{delete PR.cap[el.dataset.id];rPr();},
   'pr.torw':()=>{RW.tpl='pc';RW.blocks=prBlocks();RW.sel=null;RW.edit=true;RW.hist=[];RW.fut=[];go('rw');toast('단가 비교를 보고서로 보냈습니다');},
-  'pr.open':(el,e)=>{if(e&&e.target&&e.target.closest&&e.target.closest('.pr-ac'))return;PR.open=PR.open===el.dataset.id?'':el.dataset.id;rPr();},
-  'pr.star':el=>{const id=el.dataset.id;prPinSet(id,prPinned(id)?null:(PR.fd&&PR.fd!=='*'?PR.fd:'_'));rPr();},   /* 폴더를 보고 있으면 그 폴더로 */
-  'pr.memo':el=>{const id=el.dataset.id,i=$('#prMi'),v=i&&i.value.trim().slice(0,200);if(!v)return;prWrite('memo/'+id+'/'+uid(),{t:v,by:authUid()||myId(),at:Date.now()});rPr();setTimeout(()=>{const n=$('#prMi');if(n)n.focus();},0);},
-  'pr.mdel':el=>{prWrite('memo/'+el.dataset.id+'/'+el.dataset.m,null);rPr();},
-  'pr.del':el=>{const id=el.dataset.id,r=prItems().find(x=>x.id===id);if(!r)return;confirmModal('단가 지우기','「'+r.n+'」 '+prSrc(r.s)[1]+' '+prMon(r.m)+' 단가와 팀 메모를 지울까요?',()=>{prWrite('items/'+id,null);prMemo(id).forEach(m=>{if(!S.live||isEditor()||m.by===authUid())prWrite('memo/'+id+'/'+m.mid,null);});{const v=(S.price.pin||{})[id];if(v){const o=prItems().find(x=>x.id!==id&&prKey(x)===prKey(r));if(o&&!(S.price.pin||{})[o.id])prWrite('pin/'+o.id,v);prWrite('pin/'+id,null);}}   /* 같은 자재의 다른 달 기록에 찜을 넘긴다 */PR.cmp.delete(id);PR.open='';rPr();toast('지웠습니다');},'지우기',true);},
+  'pr.star':el=>{const id=el.dataset.id;if(PR.pop===id){PR.pop='';rPr();return;}if(!prPinned(id))prPinSet(id,PR.fd&&PR.fd!=='*'?PR.fd:'_');PR.pop=id;rPr();},   /* 찜하고(보고 있는 폴더로) 이름·폴더 창을 연다 */
+  'pr.unpin':el=>{prPinSet(el.dataset.id,null);PR.pop='';rPr();},
+  'pr.del':el=>{const id=el.dataset.id,r=prItems().find(x=>x.id===id);if(!r)return;confirmModal('단가 지우기','「'+r.n+'」 '+prSrc(r.s)[1]+' '+prMon(r.m)+' 단가를 지울까요?',()=>{prWrite('items/'+id,null);{const v=(S.price.pin||{})[id];if(v){const o=prItems().find(x=>x.id!==id&&prKey(x)===prKey(r));if(o&&!(S.price.pin||{})[o.id])prWrite('pin/'+o.id,v);prWrite('pin/'+id,null);}}   /* 같은 자재의 다른 달 기록에 찜을 넘긴다 */PR.cmp.delete(id);PR.pop='';rPr();toast('지웠습니다');},'지우기',true);},
   'pr.add':()=>{PR.add=!PR.add;PR._af=false;PR.view='list';rPr();},
   'pr.addok':()=>{const v=id=>(($(id)||{}).value||'').trim();const n=v('#prNn').slice(0,60),p=+v('#prNp').replace(/[^0-9.]/g,''),m=v('#prNm'),url=v('#prNl');
     if(!n||!p){toast('자재명과 단가를 넣어 주세요');return;}if(!/^\d{4}-\d{2}$/.test(m)){toast('기준월을 골라 주세요');return;}if(url&&!/^https?:\/\//i.test(url)){toast('원본 주소는 http 로 시작해야 합니다');return;}
     const o={n,p:Math.round(p*100)/100,s:v('#prNsrc')||'etc',m,by:authUid()||myId(),at:Date.now()};const sp=v('#prNs').slice(0,60),u=v('#prNu').slice(0,10),nt=v('#prNt').slice(0,100);if(sp)o.sp=sp;if(u)o.u=u;if(nt)o.nt=nt;if(url)o.url=url.slice(0,500);
     prWrite('items/'+uid(),o);PR.add=false;rPr();toast('단가를 팀에 저장했습니다');},
 });
-/* 줄 클릭은 펼치기 — 줄 안 단추(원본·비교·별)는 제 일만 */
-document.addEventListener('click',e=>{const t=e.target.closest&&e.target.closest('#prRoot .pr-r .pr-ac button,#prRoot .pr-r .pr-ac a');if(!t)return;e.stopPropagation();if(t.tagName!=='A')ACT[t.dataset.act](t);},true);
+/* 찜 창 — 별 옆에 뜨는 작은 창(이름 · 폴더 · 찜 해제). 창 밖을 누르거나 Esc 면 닫힌다 */
+function prPopDraw(){let el=$('#prPop');const id=PR.pop,b=id&&S.view==='pr'&&document.querySelector('#prRoot .pr-r[data-id="'+id+'"] .pr-st');
+  if(!b||!prPinned(id)){if(el)el.remove();if(id&&!b)PR.pop='';return;}
+  const r=prItems().find(x=>x.id===id),FD=prFolds(),f=prFoldOf(id);
+  if(!el){el=document.createElement('div');el.id='prPop';el.className='pr-pop';document.body.appendChild(el);}
+  el.innerHTML='<label><span>이름</span><input class="inp inp-sm" data-prt="'+id+'" maxlength="40" value="'+esc(prTitle(id))+'" placeholder="'+esc(r.n)+'"></label>'
+    +'<label><span>폴더</span><select class="inp inp-sm" data-prfd="'+id+'"><option value="_"'+(f==='_'?' selected':'')+'>미분류</option>'+FD.map(x=>'<option value="'+x.id+'"'+(f===x.id?' selected':'')+'>'+esc(x.n)+'</option>').join('')+'</select></label>'
+    +'<div class="pr-pf"><small>'+esc([issWho(r.by),r.at?issMD(r.at)+' 등록':''].filter(Boolean).join(' · '))+'</small><button class="rw-bb" data-act="pr.unpin" data-id="'+id+'">찜 해제</button></div>';
+  const q=b.getBoundingClientRect(),w=280;el.style.left=Math.max(8,Math.min(innerWidth-w-8,q.right-w))+'px';
+  const h=el.offsetHeight;el.style.top=(q.bottom+6+h>innerHeight-8?q.top-6-h:q.bottom+6)+'px';}
+document.addEventListener('mousedown',e=>{if(!PR.pop)return;const t=e.target;if(t.closest&&(t.closest('#prPop')||t.closest('#prRoot .pr-st')))return;const ae=document.activeElement;if(ae&&ae.dataset&&ae.dataset.prt)ae.blur();   /* 이름 칸을 먼저 저장 */
+  PR.pop='';prPopDraw();$$('#prRoot .pr-r.open').forEach(x=>x.classList.remove('open'));},true);
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&PR.pop){PR.pop='';prPopDraw();$$('#prRoot .pr-r.open').forEach(x=>x.classList.remove('open'));}});
+document.addEventListener('scroll',e=>{if(PR.pop&&e.target.closest&&e.target.closest('#prRoot'))prPopDraw();},true);
 
 /* ── 엑셀(머리줄) — ExcelJS: 머리 칸 색 · 테두리 · 열 너비 · 틀 고정 · 자동 필터. 비교 화면이면 비교표 + 가격 근거(캡처) ── */
 const PR_XB={top:{style:'thin',color:{argb:'FFB8C0CC'}},left:{style:'thin',color:{argb:'FFB8C0CC'}},bottom:{style:'thin',color:{argb:'FFB8C0CC'}},right:{style:'thin',color:{argb:'FFB8C0CC'}}};
@@ -16610,9 +16615,9 @@ async function prXlsx(){try{await xlib('xl');}catch(e){toast('엑셀 도구를 �
         const m=/^data:image\/(png|jpe?g);base64,(.*)$/.exec(PR.cap[r.id]);if(m){const id=wb.addImage({base64:m[2],extension:m[1]==='png'?'png':'jpeg'});w2.addImage(id,{tl:{col:col,row:row},ext:{width:420,height:300}});}});}
     name='자재단가비교_'+todayStr().replace(/-/g,'')+'.xlsx';}
   else{const L=prRows();if(!L.length){toast('내보낼 단가가 없습니다');return;}
-    const ws=wb.addWorksheet('물가정보',{views:[{state:'frozen',ySplit:3}],pageSetup:ps}),C=[['NO',6],['자재명',22],['규격',22],['단위',7],['단가',12],['출처',14],['기준월',10],['비고',28],['원본',40],['팀 메모',40]];
+    const ws=wb.addWorksheet('물가정보',{views:[{state:'frozen',ySplit:3}],pageSetup:ps}),C=[['NO',6],['자재명',22],['규격',22],['단위',7],['단가',12],['출처',14],['기준월',10],['비고',28],['원본',40],['찜',24]];
     prXlTitle(ws,'자재 물가정보',C.length,'작성 '+td+(PR.q.trim()?' · 검색 「'+PR.q.trim()+'」':''));prXlHead(ws,3,C);
-    prXlBody(ws,4,L.map((r,i)=>[i+1,r.n,r.sp||'',r.u||'',r.p,prSrc(r.s)[0],prMon(r.m),r.nt||'',prUrl(r),prMemo(r.id).map(m=>m.t).join('\n')]),['center','left','left','center','right','center','center','left','left','left']);
+    prXlBody(ws,4,L.map((r,i)=>[i+1,r.n,r.sp||'',r.u||'',r.p,prSrc(r.s)[0],prMon(r.m),r.nt||'',prUrl(r),prPinned(r.id)?[prTitle(r.id),prFoldName(prFoldOf(r.id))].filter(Boolean).join(' · '):'']),['center','left','left','center','right','center','center','left','left','left']);
     L.forEach((r,i)=>{const u=prUrl(r);if(u){const c=ws.getCell(4+i,9);c.value={text:u,hyperlink:u};c.font={size:10,color:{argb:'FF2F5FB3'},underline:true};}});
     ws.autoFilter={from:{row:3,column:1},to:{row:3,column:C.length}};name='물가정보_'+todayStr().replace(/-/g,'')+'.xlsx';}
   const buf=await wb.xlsx.writeBuffer();dlBlob(name,new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));toast(name+' 을 만들었습니다');}
