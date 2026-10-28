@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1267';
+const APP_VER='1268';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -913,7 +913,7 @@ function mergedTaskMaps(){
 
 /* 선택 목록과 정렬 순서를 같게 — 팀장 · 공구장 · 담당자 · 안전 · 원가 */
 const RANKS=[['head','팀장'],['lead','공구장'],['member','담당자']];
-/* 1268: 공종 — 직급과 따로. 원가·안전은 예전엔 직급(rank)이었다 → 담당자 + 공종으로(옛 값은 tradeOf 가 읽고, 관리자 접속 때 옮긴다) */
+/* 1268: 직무(trade) — 직급과 따로. 원가·안전은 예전엔 직급(rank)이었다 → 담당자 + 직무로(옛 값은 tradeOf 가 읽고, 관리자 접속 때 옮긴다) */
 const TRADES=[['arch','건축'],['mech','설비'],['elec','전기'],['land','조경'],['cost','원가'],['safety','안전']];
 const REG_ALL='*';   /* 권역 「전체」 — 팀 안 모든 권역을 맡는 사람(설비·전기 등). 권역 탭마다 함께 나온다 */
 function rankOrd(v){const i=RANKS.findIndex(r=>r[0]===rankOf(v));return i<0?2:i;}
@@ -921,7 +921,7 @@ function rankOf(v){return RANKS.some(r=>r[0]===v)?v:'member';}
 function tradeOf(p){p=p||{};if(TRADES.some(t=>t[0]===p.trade))return p.trade;return p.rank==='safety'||p.rank==='cost'?p.rank:'arch';}
 function tradeLabel(p){const t=tradeOf(p);return (TRADES.find(x=>x[0]===t)||TRADES[0])[1];}
 function tradeOrd(p){return TRADES.findIndex(x=>x[0]===tradeOf(p));}
-/* 팀 단위 사람 — 팀장, 공종 원가·안전. 권역·현장 없이 팀 전체를 본다 */
+/* 팀 단위 사람 — 팀장, 직무 원가·안전. 권역·현장 없이 팀 전체를 본다 */
 function isTeamP(p){p=p||{};return rankOf(p.rank)==='head'||tradeOf(p)==='cost'||tradeOf(p)==='safety';}
 function teamLabel(p){return rankOf(p.rank)==='head'?'팀장':tradeLabel(p);}
 function usesOf(p){const t=!isTeamP(p);return{region:t,sites:t};}
@@ -939,8 +939,8 @@ function cleanPerson(p){
   if(p.gone)o.gone=1;   /* 계정을 지운 사람 — 업무 이름만 남긴다 */
   return o;
 }
-/* 사람 레코드는 통째로 쓴다 — 공종을 넘기지 않은 저장(담당 현장·권역 고치기 등)이 공종을 지우지 않게, 옛 직급(원가·안전)도 그대로 */
-/* 1268: 옛 직급 원가·안전 → 담당자 + 공종. 관리자 접속 때 한 번(규칙상 직급은 관리자만 바꾼다) */
+/* 사람 레코드는 통째로 쓴다 — 직무를 넘기지 않은 저장(담당 현장·권역 고치기 등)이 직무를 지우지 않게, 옛 직급(원가·안전)도 그대로 */
+/* 1268: 옛 직급 원가·안전 → 담당자 + 직무. 관리자 접속 때 한 번(규칙상 직급은 관리자만 바꾼다) */
 function peopleMigrate(){if(!S.live||!isEditor()||peopleMigrate.done)return;peopleMigrate.done=true;
   Object.keys(S.people||{}).forEach(id=>{const p=S.people[id];if(p&&(p.rank==='safety'||p.rank==='cost'))store.putPerson(id,{...p,rank:'member',trade:p.rank});});}
 function keepPerson(id,p){const o=(S.people||{})[id];if(!p||!o)return p;const q={...p};
@@ -9520,7 +9520,7 @@ function kmSiteXY(st){
 /* 그 현장의 담당자 색 — 여러 명이면 첫 사람. 배정이 없으면 회색 */
 /* 담당자 색. 배정 없으면 null — 속 빈 원으로 그린다.
    ⚠ TEAM_COLOR 와 OWN_PAL[0] 이 같은 파랑이라 색만으로는 안 갈린다 — 달력의 속 빈 막대와 같은 문법 */
-/* 현장의 대표 담당자 — 건축 담당 먼저, 없으면 다른 공종 */
+/* 현장의 대표 담당자 — 건축 담당 먼저, 없으면 다른 직무 */
 function siteArchOwner(t,sid){const L=roster().filter(x=>(t?x.team===t.id:true)&&usesOf(x).sites&&(x.sites||{})[sid]);return L.find(x=>tradeOf(x)==='arch')||L[0]||null;}
 function kmSiteColor(sid){
   const t=curTeam();
@@ -10376,7 +10376,7 @@ function rOrg(){
   const sortFn=(a,b)=>{
     const ra=rankOrd[rankOf(a.rank)]??2,rb=rankOrd[rankOf(b.rank)]??2;
     if(ra!==rb)return ra-rb;
-    if(tradeOrd(a)!==tradeOrd(b))return tradeOrd(a)-tradeOrd(b);   /* 같은 직급 안에서는 공종 순(건축·설비·전기·조경·원가·안전) */
+    if(tradeOrd(a)!==tradeOrd(b))return tradeOrd(a)-tradeOrd(b);   /* 같은 직급 안에서는 직무 순(건축·설비·전기·조경·원가·안전) */
     return String(a.name||'').localeCompare(String(b.name||''),'ko');};
   mine.sort(sortFn);free.sort(sortFn);
   const regOpt=sel=>'<option value="">미배정</option>'+(S.org.regions||[]).map(x=>'<option value="'+esc(x.id)+'"'+(x.id===sel?' selected':'')+'>'+esc(x.name)+'</option>').join('')+'<option value="'+REG_ALL+'"'+(sel===REG_ALL?' selected':'')+'>전체</option>';
@@ -10404,7 +10404,7 @@ function rOrg(){
     ? '<select class="mg-inp" data-act="acct.set" data-f="rank" data-id="'+esc(p.id)+'" aria-label="직급">'+rankOpt(p.rank)+'</select>'
     : '<span class="rk-fix">'+esc(rankLabel(p.rank))+'</span>';
   const tradeCtl=p=>canRank
-    ? '<select class="mg-inp" data-act="acct.set" data-f="trade" data-id="'+esc(p.id)+'" aria-label="공종">'+TRADES.map(([v,l])=>'<option value="'+v+'"'+(v===tradeOf(p)?' selected':'')+'>'+l+'</option>').join('')+'</select>'
+    ? '<select class="mg-inp" data-act="acct.set" data-f="trade" data-id="'+esc(p.id)+'" aria-label="직무">'+TRADES.map(([v,l])=>'<option value="'+v+'"'+(v===tradeOf(p)?' selected':'')+'>'+l+'</option>').join('')+'</select>'
     : '<span class="rk-fix">'+esc(tradeLabel(p))+'</span>';
   /* 1093: 이름 — 관리자는 칸에서 바로 고친다(계정 이름 users/{uid}/name 과 명부 people/{id}/name 둘 다) */
   const nickCtl=(p,me)=>isEditor()
@@ -10432,7 +10432,7 @@ function rOrg(){
   /* ⚠ 안(#acctRoot)만 비우면 빈 카드 테두리가 가로선으로 남는다 — 카드째 감춘다 */
   const acard=ar.closest('.card');if(acard)acard.style.display=freeOnly?'none':'';
   ar.style.display=freeOnly?'none':'';
-  paintHTML(ar,freeOnly?'':'<table class="utbl"><thead><tr><th style="width:200px">이름</th><th style="width:142px">팀</th><th style="width:88px">공종</th><th style="width:96px">직급</th><th style="width:106px">권역</th><th>담당 현장</th><th class="utbl-r" style="width:120px">권한</th></tr></thead><tbody>'
+  paintHTML(ar,freeOnly?'':'<table class="utbl"><thead><tr><th style="width:200px">이름</th><th style="width:142px">팀</th><th style="width:88px">직무</th><th style="width:96px">직급</th><th style="width:106px">권역</th><th>담당 현장</th><th class="utbl-r" style="width:120px">권한</th></tr></thead><tbody>'
     +(mine.length?mine.map(row).join('')
       :'<tr><td colspan="7" style="font-size:12px;color:var(--lbl3);padding:10px">이 팀에 배정된 계정이 없습니다.</td></tr>')
     +'</tbody></table>');
@@ -12612,7 +12612,7 @@ document.addEventListener('change',e=>{
   if(!el)return;
   const id=el.dataset.id,f=el.dataset.f;
   /* 권역 배정은 관리자·팀장, 팀·직급은 관리자만 — 규칙도 거부하지만 여기서 먼저 끊어 값이 바뀐 듯하다 원복되는 혼란을 막는다 */
-  if(f==='region'?!canAssignRegion():!isEditor()){toast(f==='region'?'권역 배정은 관리자·팀장만 바꿀 수 있습니다':f==='name'?'이름은 관리자만 바꿀 수 있습니다':'팀·공종·직급은 관리자만 바꿀 수 있습니다');rOrg();return;}
+  if(f==='region'?!canAssignRegion():!isEditor()){toast(f==='region'?'권역 배정은 관리자·팀장만 바꿀 수 있습니다':f==='name'?'이름은 관리자만 바꿀 수 있습니다':'팀·직무·직급은 관리자만 바꿀 수 있습니다');rOrg();return;}
   if(f==='name'){   /* 1093: 관리자 이름 고치기 — 화면 이름은 계정(users) 이름이 앞서므로 계정이 있으면 거기도 쓴다. 명부에 없는 계정(미배정)은 명부를 새로 만들지 않는다 */
     const nm=el.value.trim().slice(0,60),pc=(S.people||{})[id],acct=(S.accounts||{})[id];
     if(!nm){rOrg();return;}
@@ -12632,7 +12632,7 @@ document.addEventListener('change',e=>{
     team:f==='team'?el.value:(cur.team||''),
     /* ⚠ 팀을 옮기면 이전 팀의 권역·현장은 남기지 않는다 — 다른 팀 항목이 붙어 있으면 목록이 어긋난다 */
     region:(f==='team')?'':(uses.region?(f==='region'?el.value:(cur.region||'')):''),
-    rank,...(isEditor()?{trade}:{}),   /* 공종은 관리자만 — 팀장의 권역 배정은 공종을 싣지 않는다(keepPerson 이 보존) */
+    rank,...(isEditor()?{trade}:{}),   /* 직무는 관리자만 — 팀장의 권역 배정은 직무를 싣지 않는다(keepPerson 이 보존) */
     sites:(f==='team')?{}:(uses.sites?(cur.sites||{}):{})});
   if(f==='team')toast('팀을 옮겼습니다 · 권역과 담당 현장을 다시 지정해 주세요');
   if(!S.live){rOrg();rTasks();}

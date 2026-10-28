@@ -362,7 +362,7 @@
           "team":   { ".validate": "newData.isString() && newData.val().length <= 40" },
           "region": { ".validate": "newData.isString() && newData.val().length <= 40" },
           "rank":   { ".validate": "newData.isString() && (newData.val() == 'member' || newData.val() == 'lead' || newData.val() == 'head' || newData.val() == 'safety' || newData.val() == 'cost')" },
-          // 1268: 공종 — 건축(arch)은 적지 않는다(없음 = 건축). 옛 직급 safety·cost 는 관리자 접속 때 공종으로 옮긴다
+          // 1268: 직무(trade) — 건축(arch)은 적지 않는다(없음 = 건축). 옛 직급 safety·cost 는 관리자 접속 때 직무로 옮긴다
           "trade":  { ".validate": "newData.isString() && (newData.val() == 'mech' || newData.val() == 'elec' || newData.val() == 'land' || newData.val() == 'cost' || newData.val() == 'safety')" },
           // 630차: 현장 권역 강제 — 관리자·팀장 외에는 orgSiteRegion 미러의 권역이 내 권역과 같을 때만.
           // 1256: 미러에 없는 현장 id(지운 현장·임의 키)는 거절 — 이행기 허용을 닫았다.
