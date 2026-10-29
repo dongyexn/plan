@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1274';
+const APP_VER='1275';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -16599,7 +16599,8 @@ function rPr(){
   const qNow=$('#prQ');
   if((PR._qonly||document.activeElement===qNow)&&qNow&&root.querySelector('.qc-right')){   /* 치는 중에 온 저장 알림으로 다시 그릴 때도 */const t=document.createElement('div');t.innerHTML=H;
     root.querySelector('.qc-right').replaceWith(t.querySelector('.qc-right'));const lk=root.querySelector('.pr-lk');if(lk)lk.replaceWith(t.querySelector('.pr-lk'));PR._qonly=false;prPopDraw();prSbSync();return;}
-  PR._qonly=false;root.innerHTML=H;
+  const keep=(($('#prWrap')||{}).scrollTop)||0;PR._qonly=false;root.innerHTML=H;
+  {const w=$('#prWrap');if(w&&keep)w.scrollTop=keep;}   /* 더 보기 · 담기 · 별 등으로 다시 그려도 보던 자리 그대로(검색어가 바뀌면 위 갈래라 맨 위) */
   const qi=$('#prQ');if(qi&&PR._qf){qi.focus();qi.setSelectionRange(qi.value.length,qi.value.length);PR._qf=false;}
   prPopDraw();prSbSync();
   if(PR.add&&!PR._af){PR._af=true;setTimeout(()=>{const i=$('#prNn');if(i){i.focus();if(i.value)($('#prNs')||i).focus();}},0);}
