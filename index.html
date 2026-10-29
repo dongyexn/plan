@@ -5585,7 +5585,8 @@ td.d60-pc.has{color:var(--bt1);font-weight:700}
 .pr-tbl th.pr-so{cursor:pointer}
 .pr-tbl td{vertical-align:middle}
 .pr-tbl tr.open td{background:var(--b-tint)}
-.pr-nm b{display:block;font-weight:600}
+.pr-nm b{display:block;font-weight:600;word-break:keep-all;overflow-wrap:anywhere}
+.pr-nm .pr-tgm{display:none}
 .pr-nm span{display:block;font-size:12px;color:var(--lbl3);margin-top:1px}
 .pr-pr{font-weight:700;font-variant-numeric:tabular-nums}
 .pr-nt{color:var(--lbl2);font-size:12.5px}
@@ -5624,8 +5625,9 @@ td.d60-pc.has{color:var(--bt1);font-weight:700}
 .pr-tbl tr.pr-gh td{padding:14px 12px 6px;background:var(--surf2);border-top:1px solid var(--sep);font-size:12.5px;color:var(--lbl3)}
 .pr-tbl tr.pr-gh b{color:var(--lbl);font-weight:700;margin-right:8px}
 .pr-tbl tr.pr-g td{color:var(--lbl2)}
+.pr-tbl tr.pr-g .pr-nm b{font-weight:600}
+.pr-ga{color:var(--b600)}
 .pr-tbl td.pr-gm{text-align:center;padding:6px}
-.pr-had{color:var(--b600)}
 .pr-find{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;margin-top:10px}
 .pc-wrap{flex:1;min-height:0;margin-top:8px;overflow:auto;display:flex;flex-direction:column;gap:12px;scrollbar-width:none}
 .pc-g{border:1px solid var(--cardline);border-radius:var(--rxl);background:var(--bg2);overflow:hidden;flex-shrink:0}
@@ -5667,9 +5669,13 @@ td.d60-pc.has{color:var(--bt1);font-weight:700}
   body:not(.wid) .rw-sel{font-size:16px}
   body:not(.wid) .pr-tbl{min-width:0;table-layout:auto}
   body:not(.wid) .pr-tbl col{width:auto!important}
-  body:not(.wid) .pr-tbl :is(th,td):is(:nth-child(3),:nth-child(6),:nth-child(7)){display:none}
+  body:not(.wid) .pr-tbl :is(th,td):is(:nth-child(3),:nth-child(5),:nth-child(6),:nth-child(7)){display:none}
+  body:not(.wid) .pr-tbl .pr-nm .pr-tgm{display:inline-flex;height:18px;margin-top:4px;font-style:normal;font-size:10.5px}   /* 폰은 출처 칸을 접고 이름 아래에 */
   body:not(.wid) .pr-tbl .n{width:34px;padding-left:4px;padding-right:4px}
   body:not(.wid) .pr-nm span{white-space:normal}
+  body:not(.wid) .pr-tbl .pr-nm{word-break:keep-all}
+  body:not(.wid) .pr-tbl .pr-ac span.pr-ib{display:none}   /* 폰은 빈 자리를 접어 이름 칸을 넓힌다 */
+  body:not(.wid) .pr-tbl .pr-ac .pr-ib,body:not(.wid) .pr-tbl .pr-ac .pr-st{width:30px}
 }
 /* ═══════════ 업무 도구 — 파일 카드(1061 도면 인쇄 폐지 후 남은 것) ═══════════ */
 .dw-open{width:100%;height:36px;display:flex;align-items:center;justify-content:center;gap:7px;border-radius:var(--rmd);background:var(--b600);color:#fff;font-size:13px;font-weight:700}
