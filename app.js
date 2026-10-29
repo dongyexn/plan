@@ -16498,9 +16498,9 @@ function g2bVisible(GL){const mine=new Set(prItems().filter(r=>r.s==='g2b').map(
   if(PR.sort)V=V.slice().sort((a,b)=>PR.sort==='p'?G2B.d[a][2]-G2B.d[b][2]:G2B.d[b][2]-G2B.d[a][2]);return V;}
 function g2bRowsHTML(V){if(!V.length)return '';const N=40+G2B.more*80,D=G2B.d;
   return '<tr class="pr-gh"><td colspan="8"><b>조달청 가격정보</b><span>'+V.length+(V.length>=500?'+':'')+'건 · '+esc(prMon((G2B.at||'').slice(0,7)))+' 갱신 · VAT 별도</span></td></tr>'
-    +V.slice(0,N).map(i=>{const r=D[i],[n,sp]=g2bName(r);
-      return '<tr class="pr-g"><td class="n"></td><td class="pr-nm"><b>'+esc(n)+'</b><span>'+esc(sp)+'</span><i class="pr-tg pr-tgm g2b">조달청</i></td><td class="pr-u">'+esc(r[1])+'</td><td class="r pr-pr">'+rwN(r[2])+'</td><td><span class="pr-tg g2b">조달청</span></td><td>'+prMon(r[3])+'</td><td class="pr-nt">'+esc(r[7]||'')+'</td>'
-        +'<td class="pr-ac"><span class="pr-ib"></span><button class="pr-ib pr-cb" data-act="pr.gcmp" data-i="'+i+'" data-tip="비교에 담기 · 목록에도 담긴다" aria-label="비교에 담기">'+rwIc('i-plus')+'</button><button class="pr-ib pr-ga" data-act="pr.gadd" data-i="'+i+'" data-tip="목록에 담기" aria-label="목록에 담기">'+rwIc('i-addsq')+'</button><span class="pr-ib"></span></td></tr>';}).join('')
+    +V.slice(0,N).map((i,k)=>{const r=D[i],[n,sp]=g2bName(r);
+      return '<tr class="pr-g"><td class="n">'+(k+1)+'</td><td class="pr-nm"><b>'+esc(n)+'</b><span>'+esc(sp)+'</span><i class="pr-tg pr-tgm g2b">조달청</i></td><td class="pr-u">'+esc(r[1])+'</td><td class="r pr-pr">'+rwN(r[2])+'</td><td><span class="pr-tg g2b">조달청</span></td><td>'+prMon(r[3])+'</td><td class="pr-nt">'+esc(r[7]||'')+'</td>'
+        +'<td class="pr-ac"><span class="pr-ib0"></span><button class="pr-ib pr-cb" data-act="pr.gcmp" data-i="'+i+'" data-tip="비교에 담기 · 목록에도 담긴다" aria-label="비교에 담기">'+rwIc('i-plus')+'</button><button class="pr-ib pr-ga" data-act="pr.gadd" data-i="'+i+'" data-tip="목록에 담기" aria-label="목록에 담기">'+rwIc('i-addsq')+'</button><span class="pr-ib0"></span></td></tr>';}).join('')
     +(V.length>N?'<tr class="pr-g"><td colspan="8" class="pr-gm"><button class="rw-bb" data-act="pr.gmore">'+rwIc('i-chevd')+'더 보기 · '+(V.length-N)+'건</button></td></tr>':'');}
 function prRows(){const q=PR.q.trim();let L=prItems().filter(r=>PR.src[r.s]!==0&&(!q||q.split(/\s+/).every(t=>hgMatch(r.n+' '+(r.sp||'')+' '+(r.nt||'')+' '+prTitle(r.id),t))));
   if(PR.fd)L=L.filter(r=>{const f=prFoldOf(r.id);return f&&(PR.fd==='*'||f===PR.fd);});
@@ -16558,10 +16558,10 @@ function rPr(){
    ?'<div class="qc-wrap"><table class="qc-tbl pr-tbl"><colgroup><col style="width:48px"><col><col style="width:56px"><col style="width:96px"><col style="width:80px"><col style="width:80px"><col style="width:15%"><col style="width:128px"></colgroup><thead><tr><th class="n">NO</th><th>자재명 · 규격</th><th>단위</th><th class="r pr-so" data-act="pr.sort">단가'+(PR.sort?(PR.sort==='p'?' ↑':' ↓'):'')+'</th><th>출처</th><th>기준월</th><th>비고</th><th></th></tr></thead><tbody>'+nr
      +(L.length?L.map((r,i)=>{const u=prUrl(r),pn=prPinned(r.id),tt=prTitle(r.id);
        return '<tr class="pr-r'+(PR.pop===r.id?' open':'')+'" data-id="'+r.id+'"><td class="n">'+(i+1)+'</td><td class="pr-nm"><b>'+esc(tt||r.n)+'</b><span>'+esc(tt?[r.n,r.sp].filter(Boolean).join(' · '):(r.sp||''))+'</span><i class="pr-tg pr-tgm '+r.s+'">'+prSrc(r.s)[1]+'</i></td><td>'+esc(r.u||'')+'</td><td class="r pr-pr">'+rwN(r.p)+'</td><td><span class="pr-tg '+r.s+'">'+prSrc(r.s)[1]+'</span></td><td>'+prMon(r.m)+'</td><td class="pr-nt">'+esc(r.nt||'')+'</td>'
-        +'<td class="pr-ac">'+(u?'<a class="pr-ib" href="'+esc(u)+'" target="_blank" rel="noopener" data-tip="원본 열기" aria-label="원본 열기">'+rwIc('i-ext')+'</a>':'<span class="pr-ib"></span>')
+        +'<td class="pr-ac">'+(u?'<a class="pr-ib" href="'+esc(u)+'" target="_blank" rel="noopener" data-tip="원본 열기" aria-label="원본 열기">'+rwIc('i-ext')+'</a>':'<span class="pr-ib0"></span>')
         +'<button class="pr-ib pr-cb'+(PR.cmp.has(r.id)?' on':'')+'" data-act="pr.cmpt" data-id="'+r.id+'" data-tip="'+(PR.cmp.has(r.id)?'비교에서 빼기':'비교에 담기')+'" aria-label="비교에 담기">'+rwIc(PR.cmp.has(r.id)?'i-check':'i-plus')+'</button>'
         +'<button class="pr-st'+(pn?' on':'')+'" data-act="pr.star" data-id="'+r.id+'" data-tip="'+(pn?esc(fdName(prFoldOf(r.id)))+' · 이름·폴더':'찜하기')+'" aria-label="찜">'+rwIc('i-star')+'</button>'
-        +(prCanEdit(r)?'<button class="pr-ib pr-del" data-act="pr.del" data-id="'+r.id+'" data-tip="지우기" aria-label="지우기">'+rwIc('i-trash')+'</button>':'<span class="pr-ib"></span>')+'</td></tr>'
+        +(prCanEdit(r)?'<button class="pr-ib pr-del" data-act="pr.del" data-id="'+r.id+'" data-tip="지우기" aria-label="지우기">'+rwIc('i-trash')+'</button>':'<span class="pr-ib0"></span>')+'</td></tr>'
        ;}).join('')
        :GL.length?'':'<tr><td colspan="8" class="rd-none">'+(PR.denied?'서버 저장 규칙이 아직 게시되지 않아 물가정보를 읽을 수 없습니다':!all.length?'아직 모아 둔 단가가 없습니다':PR.fd&&!q?'찜한 자재가 없습니다':'찾는 자재가 없습니다')+(q?'<div class="pr-find">'+PR_FIND.map(([k,n,f])=>'<a class="rw-bb" href="'+esc(f(qe))+'" target="_blank" rel="noopener">'+rwIc('i-ext')+n+'</a>').join('')+'</div>':'')+'</td></tr>')+g2bRowsHTML(GL)+'</tbody></table></div>'
    :prCmpHTML();
@@ -16570,7 +16570,7 @@ function rPr(){
      +'<div class="pr-lk"><span>원본에서 찾기</span>'+PR_FIND.map(([k,n,f])=>q?'<a href="'+esc(f(qe))+'" target="_blank" rel="noopener">'+n+'</a>':'<a class="off" aria-disabled="true">'+n+'</a>').join('')+'</div></div></div>'
    +'<div class="card"><div class="tm-h"><span>출처</span><span class="tm-sub">'+all.length+'</span></div><div class="qc-b pr-sb"><div class="pr-src">'
      +PR_SK.map(k=>'<button class="pr-s'+(PR.src[k]?' on':'')+'" data-act="pr.src" data-k="'+k+'"><span class="ck">'+rwIc('i-check')+'</span><span>'+prSrc(k)[0]+'</span><small>'+cnt(k)+'</small></button>').join('')+'</div></div></div>'
-   +'<div class="card"><div class="tm-h"><span>찜 목록</span><span class="tm-sub">'+pins+'</span><button class="tm-add pr-fa" data-act="pr.fadd" data-tip="폴더 만들기" aria-label="폴더 만들기">'+rwIc('i-plus')+'</button></div><div class="qc-b pr-sb"><div class="pr-fds">'
+   +'<div class="card"><div class="tm-h"><span>찜 목록</span><button class="tm-add" data-act="pr.fadd" data-tip="폴더 만들기" aria-label="폴더 만들기">'+rwIc('i-plus')+'</button></div><div class="qc-b pr-sb"><div class="pr-fds">'
      +[['*','전체 찜',pins]].concat(FD.map(f=>[f.id,f.n,fcnt(f.id)]),fcnt('_')||FD.length?[['_','미분류',fcnt('_')]]:[]).map(([k,n,c])=>PR.fe===k
        ?'<div class="pr-fd pr-fdin"><input class="inp inp-sm" id="prFe" maxlength="30" value="'+esc(n)+'" data-id="'+k+'"></div>'
        :'<div class="pr-fd'+(PR.fd===k?' on':'')+'" data-act="pr.fd" data-k="'+k+'">'+rwIc(k==='*'?'i-star':'i-folder')+'<span>'+esc(n)+'</span><small>'+c+'</small>'

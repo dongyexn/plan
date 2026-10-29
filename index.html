@@ -5593,7 +5593,6 @@ td.d60-pc.has{color:var(--bt1);font-weight:700}
 .pr-nt em{font-style:normal;color:var(--b600);font-weight:600;margin-left:6px;font-size:12px}
 .pr-tg{display:inline-flex;align-items:center;height:20px;padding:0 7px;border-radius:3px;font-size:11px;font-weight:700;white-space:nowrap}
 .pr-tg.g2b{background:#E8F0FB;color:#2F5FB3}.pr-tg.nv{background:#E6F6EC;color:#1D8048}.pr-tg.cp{background:#FDECEC;color:#B4232A}.pr-tg.kpi{background:#FFF1E0;color:#B5650D}.pr-tg.kprc{background:#F6EEDC;color:#8A6412}.pr-tg.dn{background:#E6F4F8;color:#1F7A93}.pr-tg.etc{background:var(--fill);color:var(--lbl2)}
-.pr-fa{margin-left:6px}
 .pr-fds{display:flex;flex-direction:column;margin:0 calc(-1*var(--s4))}
 .pr-fd{display:grid;grid-template-columns:16px minmax(0,1fr) auto;align-items:center;gap:8px;min-height:34px;padding:0 var(--s4);font-size:13px;color:var(--lbl);cursor:pointer}
 .pr-fd>.icn{width:15px;height:15px;color:var(--lbl3)}
@@ -5608,6 +5607,7 @@ td.d60-pc.has{color:var(--bt1);font-weight:700}
 .pr-ac{white-space:nowrap;text-align:right}
 .pr-ib{width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--rsm);color:var(--lbl3);vertical-align:middle}
 .pr-ib .icn{width:15px;height:15px}
+.pr-ib0{display:inline-block;width:28px;height:28px;vertical-align:middle}   /* 빈 단추 자리 — 줄 사이 단추 위치만 맞춘다 */
 @media (hover:hover) and (pointer:fine){.pr-ib:hover{background:var(--fill);color:var(--lbl)}}
 .pr-cb.on{color:var(--b600)}
 .pr-st{width:28px;height:28px;vertical-align:middle;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--rsm);color:var(--lbl3)}
@@ -5622,7 +5622,7 @@ td.d60-pc.has{color:var(--bt1);font-weight:700}
 .pr-new td{background:var(--b-tint)!important;vertical-align:top!important}
 .pr-new input,.pr-new select{width:100%}
 .pr-new input+input{margin-top:4px}
-.pr-tbl tr.pr-gh td{padding:14px 12px 6px;background:var(--surf2);border-top:1px solid var(--sep);font-size:12.5px;color:var(--lbl3)}
+.pr-tbl tr.pr-gh td{padding:10px 12px;vertical-align:middle;background:var(--surf2);border-top:1px solid var(--sep);font-size:12.5px;line-height:1.4;color:var(--lbl3)}
 .pr-tbl tr.pr-gh b{color:var(--lbl);font-weight:700;margin-right:8px}
 .pr-tbl tr.pr-g td{color:var(--lbl2)}
 .pr-tbl tr.pr-g .pr-nm b{font-weight:600}
@@ -5674,7 +5674,7 @@ td.d60-pc.has{color:var(--bt1);font-weight:700}
   body:not(.wid) .pr-tbl .n{width:34px;padding-left:4px;padding-right:4px}
   body:not(.wid) .pr-nm span{white-space:normal}
   body:not(.wid) .pr-tbl .pr-nm{word-break:keep-all}
-  body:not(.wid) .pr-tbl .pr-ac span.pr-ib{display:none}   /* 폰은 빈 자리를 접어 이름 칸을 넓힌다 */
+  body:not(.wid) .pr-tbl .pr-ac .pr-ib0{display:none}   /* 폰은 빈 자리를 접어 이름 칸을 넓힌다 */
   body:not(.wid) .pr-tbl .pr-ac .pr-ib,body:not(.wid) .pr-tbl .pr-ac .pr-st{width:30px}
 }
 /* ═══════════ 업무 도구 — 파일 카드(1061 도면 인쇄 폐지 후 남은 것) ═══════════ */
