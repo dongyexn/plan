@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1274';
+const APP_VER='1275';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -16514,6 +16514,10 @@ function prCtx(tr){
       {label:prPinned(id)?'찜 이름 · 폴더':'찜하기',act:()=>{const b=document.querySelector('#prRoot .pr-r[data-id="'+id+'"] .pr-st');if(b)ACT['pr.star'](b);}},
       prCanEdit(r)?{sep:true}:null,prCanEdit(r)?{label:'지우기',danger:true,act:()=>prDel(id)}:null].filter(Boolean);}
   const i=tr.dataset.i;return[{label:'비교에 담기',act:()=>ACT['pr.gcmp']({dataset:{i}})},{label:'목록에 담기',act:()=>ACT['pr.gadd']({dataset:{i}})}];}
+/* 표 세로 막대 — 카드 오른쪽 바깥 여백에(잡아끌 수 있다). 붙박이 머리 줄 아래 높이만큼. 폰은 손가락 스크롤이라 CSS 가 숨긴다 */
+function prSbSync(){const w=$('#prWrap');if(!w){return;}const th=w.querySelector('thead');w.__sb=w.__sb&&w.__sb.isConnected?w.__sb:null;dwSb(w,'pr-vsb',th?th.offsetHeight:0);}
+document.addEventListener('scroll',e=>{if(e.target&&e.target.id==='prWrap')prSbSync();},true);
+addEventListener('resize',()=>{if(S.view==='pr')prSbSync();});
 function prRows(){const q=PR.q.trim();let L=prItems().filter(r=>PR.src[r.s]!==0&&(!q||q.split(/\s+/).every(t=>hgMatch(r.n+' '+(r.sp||'')+' '+(r.nt||'')+' '+prTitle(r.id),t))));
   if(PR.fd)L=L.filter(r=>{const f=prFoldOf(r.id);return f&&(PR.fd==='*'||f===PR.fd);});
   /* 같은 자재 · 규격 · 출처는 가장 최근 달만 목록에 */
@@ -16567,7 +16571,7 @@ function rPr(){
      +'<td><select class="inp inp-sm" id="prNsrc">'+PR_SK.map(k=>'<option value="'+k+'">'+prSrc(k)[1]+'</option>').join('')+'</select></td><td><input class="inp inp-sm" id="prNm" type="month" value="'+prCurMon()+'"></td><td><input class="inp inp-sm" id="prNt" placeholder="비고 · 쪽"><input class="inp inp-sm" id="prNl" placeholder="원본 주소(선택)"></td><td><button class="btn bp bxs" data-act="pr.addok">저장</button></td></tr>':'';
   const GL=PR.view==='list'&&q&&PR.src.g2b!==0&&!PR.fd?g2bVisible(g2bFind(q)):[];   /* 조달청 가격정보(매달 자동 갱신) — 팀 목록 아래에 */
   const body=PR.view==='list'
-   ?'<div class="qc-wrap"><table class="qc-tbl pr-tbl"><colgroup><col style="width:48px"><col><col style="width:56px"><col style="width:96px"><col style="width:80px"><col style="width:80px"><col style="width:18%"><col style="width:76px"></colgroup><thead><tr><th class="n">NO</th><th>자재명 · 규격</th><th>단위</th><th class="r pr-so" data-act="pr.sort">단가'+(PR.sort?(PR.sort==='p'?' ↑':' ↓'):'')+'</th><th>출처</th><th>기준월</th><th>비고</th><th></th></tr></thead><tbody>'+nr
+   ?'<div class="qc-wrap" id="prWrap" data-sbh><table class="qc-tbl pr-tbl"><colgroup><col style="width:48px"><col><col style="width:56px"><col style="width:96px"><col style="width:80px"><col style="width:80px"><col style="width:18%"><col style="width:76px"></colgroup><thead><tr><th class="n">NO</th><th>자재명 · 규격</th><th>단위</th><th class="r pr-so" data-act="pr.sort">단가'+(PR.sort?(PR.sort==='p'?' ↑':' ↓'):'')+'</th><th>출처</th><th>기준월</th><th>비고</th><th></th></tr></thead><tbody>'+nr
      +(L.length?L.map((r,i)=>{const u=prUrl(r),pn=prPinned(r.id),tt=prTitle(r.id);
        return '<tr class="pr-r'+(PR.pop===r.id?' open':'')+'" data-id="'+r.id+'"><td class="n">'+(i+1)+'</td><td class="pr-nm"><b>'+esc(tt||r.n)+'</b><span>'+esc(tt?[r.n,r.sp].filter(Boolean).join(' · '):(r.sp||''))+'</span><i class="pr-tg pr-tgm '+r.s+'">'+prSrc(r.s)[1]+'</i></td><td>'+esc(r.u||'')+'</td><td class="r pr-pr">'+rwN(r.p)+'</td><td>'+prTagHTML(r.s,u)+'</td><td>'+prMon(r.m)+'</td><td class="pr-nt">'+esc(r.nt||'')+'</td>'
         +'<td class="pr-ac"><button class="pr-ib pr-cb'+(PR.cmp.has(r.id)?' on':'')+'" data-act="pr.cmpt" data-id="'+r.id+'" data-tip="'+(PR.cmp.has(r.id)?'비교에서 빼기':'비교에 담기')+'" aria-label="비교에 담기">'+rwIc(PR.cmp.has(r.id)?'i-check':'i-plus')+'</button>'
@@ -16594,10 +16598,11 @@ function rPr(){
   /* ⚠ 검색어를 칠 때는 검색 칸을 다시 만들지 않는다 — 칸을 바꾸면 한글 조합(ㅅ+ㅓ→서)이 끊겨 자모가 따로 들어간다. 목록 쪽과 「원본에서 찾기」만 바꾼다 */
   const qNow=$('#prQ');
   if((PR._qonly||document.activeElement===qNow)&&qNow&&root.querySelector('.qc-right')){   /* 치는 중에 온 저장 알림으로 다시 그릴 때도 */const t=document.createElement('div');t.innerHTML=H;
-    root.querySelector('.qc-right').replaceWith(t.querySelector('.qc-right'));const lk=root.querySelector('.pr-lk');if(lk)lk.replaceWith(t.querySelector('.pr-lk'));PR._qonly=false;prPopDraw();return;}
-  PR._qonly=false;root.innerHTML=H;
+    root.querySelector('.qc-right').replaceWith(t.querySelector('.qc-right'));const lk=root.querySelector('.pr-lk');if(lk)lk.replaceWith(t.querySelector('.pr-lk'));PR._qonly=false;prPopDraw();prSbSync();return;}
+  const keep=(($('#prWrap')||{}).scrollTop)||0;PR._qonly=false;root.innerHTML=H;
+  {const w=$('#prWrap');if(w&&keep)w.scrollTop=keep;}   /* 더 보기 · 담기 · 별 등으로 다시 그려도 보던 자리 그대로(검색어가 바뀌면 위 갈래라 맨 위) */
   const qi=$('#prQ');if(qi&&PR._qf){qi.focus();qi.setSelectionRange(qi.value.length,qi.value.length);PR._qf=false;}
-  prPopDraw();
+  prPopDraw();prSbSync();
   if(PR.add&&!PR._af){PR._af=true;setTimeout(()=>{const i=$('#prNn');if(i){i.focus();if(i.value)($('#prNs')||i).focus();}},0);}
 }
 document.addEventListener('input',e=>{if(e.target.id==='prQ'){PR.q=e.target.value;PR.pop='';G2B.more=0;PR._qonly=true;rPr();}});
