@@ -10953,7 +10953,7 @@ function copyText(t,msg){
 /* 모바일엔 우클릭이 없어 조직 관리 행을 550ms 길게 누르면 같은 메뉴. 손가락이 8px 넘게 움직이면 취소(스크롤) */
 let _orgLpT=0,_orgLpXY=null;
 document.addEventListener('touchstart',e=>{
-  const t=e.target;if(!t.closest||!t.closest('#acctRoot .utbl tr[data-pid],#siteRoot .mgtbl tr[data-sid]')||t.closest('input,select,button,label'))return;
+  const t=e.target;if(!t.closest||!t.closest('#acctRoot .utbl tr[data-pid],#siteRoot .mgtbl tr[data-sid],#prRoot tr.pr-r[data-id],#prRoot tr.pr-g[data-i]')||t.closest('input,select,button,label,a'))return;
   const p=e.touches[0];_orgLpXY=[p.clientX,p.clientY];clearTimeout(_orgLpT);
   _orgLpT=setTimeout(()=>{const items=ctxFor(t);if(!items||!items.length)return;if(navigator.vibrate)navigator.vibrate(10);openCtx(_orgLpXY[0],_orgLpXY[1],items);},550);
 },{passive:true});
@@ -10976,6 +10976,7 @@ document.addEventListener('contextmenu',e=>{
 document.addEventListener('mousedown',e=>{if(REC._menu&&!e.target.closest('#rlMenu'))recCloseMenu();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&REC._menu){e.stopImmediatePropagation();e.preventDefault();recCloseMenu();}},true);
 function ctxFor(t){
+  const prt=t.closest('#prRoot tr.pr-r[data-id],#prRoot tr.pr-g[data-i]');if(prt&&!t.closest('a,button'))return prCtx(prt);   /* 물가정보 줄 */
   /* 주요 현안 카드 — 보드에서 빼기(팀 공통 · 탭 줄 + 로 다시 넣는다) */
   const ic=t.closest('.iss-c[data-sid]');
   if(ic&&!t.closest('.iss-in,.iss-ed')){const sid=ic.dataset.sid,s=(S.org.sites||[]).find(x=>x.id===sid),li=t.closest('.iss-i[data-iid]');
@@ -16499,9 +16500,20 @@ function g2bVisible(GL){const mine=new Set(prItems().filter(r=>r.s==='g2b').map(
 function g2bRowsHTML(V){if(!V.length)return '';const N=40+G2B.more*80,D=G2B.d;
   return '<tr class="pr-gh"><td colspan="8"><b>조달청 가격정보</b><span>'+V.length+(V.length>=500?'+':'')+'건 · '+esc(prMon((G2B.at||'').slice(0,7)))+' 갱신 · VAT 별도</span></td></tr>'
     +V.slice(0,N).map((i,k)=>{const r=D[i],[n,sp]=g2bName(r);
-      return '<tr class="pr-g"><td class="n">'+(k+1)+'</td><td class="pr-nm"><b>'+esc(n)+'</b><span>'+esc(sp)+'</span><i class="pr-tg pr-tgm g2b">조달청</i></td><td class="pr-u">'+esc(r[1])+'</td><td class="r pr-pr">'+rwN(r[2])+'</td><td><span class="pr-tg g2b">조달청</span></td><td>'+prMon(r[3])+'</td><td class="pr-nt">'+esc(r[7]||'')+'</td>'
-        +'<td class="pr-ac"><span class="pr-ib0"></span><button class="pr-ib pr-cb" data-act="pr.gcmp" data-i="'+i+'" data-tip="비교에 담기 · 목록에도 담긴다" aria-label="비교에 담기">'+rwIc('i-plus')+'</button><button class="pr-ib pr-ga" data-act="pr.gadd" data-i="'+i+'" data-tip="목록에 담기" aria-label="목록에 담기">'+rwIc('i-addsq')+'</button><span class="pr-ib0"></span></td></tr>';}).join('')
+      return '<tr class="pr-g" data-i="'+i+'"><td class="n">'+(k+1)+'</td><td class="pr-nm"><b>'+esc(n)+'</b><span>'+esc(sp)+'</span><i class="pr-tg pr-tgm g2b">조달청</i></td><td class="pr-u">'+esc(r[1])+'</td><td class="r pr-pr">'+rwN(r[2])+'</td><td>'+prTagHTML('g2b','')+'</td><td>'+prMon(r[3])+'</td><td class="pr-nt">'+esc(r[7]||'')+'</td>'
+        +'<td class="pr-ac"><button class="pr-ib pr-cb" data-act="pr.gcmp" data-i="'+i+'" data-tip="비교에 담기 · 목록에도 담긴다" aria-label="비교에 담기">'+rwIc('i-plus')+'</button><button class="pr-ib pr-ga" data-act="pr.gadd" data-i="'+i+'" data-tip="목록에 담기" aria-label="목록에 담기">'+rwIc('i-addsq')+'</button></td></tr>';}).join('')
     +(V.length>N?'<tr class="pr-g"><td colspan="8" class="pr-gm"><button class="rw-bb" data-act="pr.gmore">'+rwIc('i-chevd')+'더 보기 · '+(V.length-N)+'건</button></td></tr>':'');}
+/* 출처 표 — 원본 주소가 있으면 누르면 원본(작은 ↗) */
+function prTagHTML(k,u){const t=esc(prSrc(k)[1]);return u?'<a class="pr-tg pr-tl '+k+'" href="'+esc(u)+'" target="_blank" rel="noopener" data-tip="원본 열기">'+t+rwIc('i-ext')+'</a>':'<span class="pr-tg '+k+'">'+t+'</span>';}
+/* 줄 메뉴(우클릭 · 폰은 길게 누르기) — 자주 안 쓰는 원본 열기 · 지우기는 여기로. 줄 끝엔 비교 · 찜(담기) 두 단추만 */
+function prDel(id){const r=prItems().find(x=>x.id===id);if(!r)return;confirmModal('단가 지우기','「'+r.n+'」 '+prSrc(r.s)[1]+' '+prMon(r.m)+' 단가를 지울까요?',()=>{prWrite('items/'+id,null);{const v=(S.price.pin||{})[id];if(v){const o=prItems().find(x=>x.id!==id&&prKey(x)===prKey(r));if(o&&!(S.price.pin||{})[o.id])prWrite('pin/'+o.id,v);prWrite('pin/'+id,null);}}   /* 같은 자재의 다른 달 기록에 찜을 넘긴다 */PR.cmp.delete(id);PR.pop='';rPr();toast('지웠습니다');},'지우기',true);}
+function prCtx(tr){
+  if(tr.dataset.id){const r=prItems().find(x=>x.id===tr.dataset.id);if(!r)return [];const u=prUrl(r),id=r.id;
+    return[u?{label:'원본 열기',act:()=>window.open(u,'_blank','noopener')}:null,
+      {label:PR.cmp.has(id)?'비교에서 빼기':'비교에 담기',act:()=>ACT['pr.cmpt']({dataset:{id}})},
+      {label:prPinned(id)?'찜 이름 · 폴더':'찜하기',act:()=>{const b=document.querySelector('#prRoot .pr-r[data-id="'+id+'"] .pr-st');if(b)ACT['pr.star'](b);}},
+      prCanEdit(r)?{sep:true}:null,prCanEdit(r)?{label:'지우기',danger:true,act:()=>prDel(id)}:null].filter(Boolean);}
+  const i=tr.dataset.i;return[{label:'비교에 담기',act:()=>ACT['pr.gcmp']({dataset:{i}})},{label:'목록에 담기',act:()=>ACT['pr.gadd']({dataset:{i}})}];}
 function prRows(){const q=PR.q.trim();let L=prItems().filter(r=>PR.src[r.s]!==0&&(!q||q.split(/\s+/).every(t=>hgMatch(r.n+' '+(r.sp||'')+' '+(r.nt||'')+' '+prTitle(r.id),t))));
   if(PR.fd)L=L.filter(r=>{const f=prFoldOf(r.id);return f&&(PR.fd==='*'||f===PR.fd);});
   /* 같은 자재 · 규격 · 출처는 가장 최근 달만 목록에 */
@@ -16555,13 +16567,11 @@ function rPr(){
      +'<td><select class="inp inp-sm" id="prNsrc">'+PR_SK.map(k=>'<option value="'+k+'">'+prSrc(k)[1]+'</option>').join('')+'</select></td><td><input class="inp inp-sm" id="prNm" type="month" value="'+prCurMon()+'"></td><td><input class="inp inp-sm" id="prNt" placeholder="비고 · 쪽"><input class="inp inp-sm" id="prNl" placeholder="원본 주소(선택)"></td><td><button class="btn bp bxs" data-act="pr.addok">저장</button></td></tr>':'';
   const GL=PR.view==='list'&&q&&PR.src.g2b!==0&&!PR.fd?g2bVisible(g2bFind(q)):[];   /* 조달청 가격정보(매달 자동 갱신) — 팀 목록 아래에 */
   const body=PR.view==='list'
-   ?'<div class="qc-wrap"><table class="qc-tbl pr-tbl"><colgroup><col style="width:48px"><col><col style="width:56px"><col style="width:96px"><col style="width:80px"><col style="width:80px"><col style="width:15%"><col style="width:128px"></colgroup><thead><tr><th class="n">NO</th><th>자재명 · 규격</th><th>단위</th><th class="r pr-so" data-act="pr.sort">단가'+(PR.sort?(PR.sort==='p'?' ↑':' ↓'):'')+'</th><th>출처</th><th>기준월</th><th>비고</th><th></th></tr></thead><tbody>'+nr
+   ?'<div class="qc-wrap"><table class="qc-tbl pr-tbl"><colgroup><col style="width:48px"><col><col style="width:56px"><col style="width:96px"><col style="width:80px"><col style="width:80px"><col style="width:18%"><col style="width:76px"></colgroup><thead><tr><th class="n">NO</th><th>자재명 · 규격</th><th>단위</th><th class="r pr-so" data-act="pr.sort">단가'+(PR.sort?(PR.sort==='p'?' ↑':' ↓'):'')+'</th><th>출처</th><th>기준월</th><th>비고</th><th></th></tr></thead><tbody>'+nr
      +(L.length?L.map((r,i)=>{const u=prUrl(r),pn=prPinned(r.id),tt=prTitle(r.id);
-       return '<tr class="pr-r'+(PR.pop===r.id?' open':'')+'" data-id="'+r.id+'"><td class="n">'+(i+1)+'</td><td class="pr-nm"><b>'+esc(tt||r.n)+'</b><span>'+esc(tt?[r.n,r.sp].filter(Boolean).join(' · '):(r.sp||''))+'</span><i class="pr-tg pr-tgm '+r.s+'">'+prSrc(r.s)[1]+'</i></td><td>'+esc(r.u||'')+'</td><td class="r pr-pr">'+rwN(r.p)+'</td><td><span class="pr-tg '+r.s+'">'+prSrc(r.s)[1]+'</span></td><td>'+prMon(r.m)+'</td><td class="pr-nt">'+esc(r.nt||'')+'</td>'
-        +'<td class="pr-ac">'+(u?'<a class="pr-ib" href="'+esc(u)+'" target="_blank" rel="noopener" data-tip="원본 열기" aria-label="원본 열기">'+rwIc('i-ext')+'</a>':'<span class="pr-ib0"></span>')
-        +'<button class="pr-ib pr-cb'+(PR.cmp.has(r.id)?' on':'')+'" data-act="pr.cmpt" data-id="'+r.id+'" data-tip="'+(PR.cmp.has(r.id)?'비교에서 빼기':'비교에 담기')+'" aria-label="비교에 담기">'+rwIc(PR.cmp.has(r.id)?'i-check':'i-plus')+'</button>'
-        +'<button class="pr-st'+(pn?' on':'')+'" data-act="pr.star" data-id="'+r.id+'" data-tip="'+(pn?esc(fdName(prFoldOf(r.id)))+' · 이름·폴더':'찜하기')+'" aria-label="찜">'+rwIc('i-star')+'</button>'
-        +(prCanEdit(r)?'<button class="pr-ib pr-del" data-act="pr.del" data-id="'+r.id+'" data-tip="지우기" aria-label="지우기">'+rwIc('i-trash')+'</button>':'<span class="pr-ib0"></span>')+'</td></tr>'
+       return '<tr class="pr-r'+(PR.pop===r.id?' open':'')+'" data-id="'+r.id+'"><td class="n">'+(i+1)+'</td><td class="pr-nm"><b>'+esc(tt||r.n)+'</b><span>'+esc(tt?[r.n,r.sp].filter(Boolean).join(' · '):(r.sp||''))+'</span><i class="pr-tg pr-tgm '+r.s+'">'+prSrc(r.s)[1]+'</i></td><td>'+esc(r.u||'')+'</td><td class="r pr-pr">'+rwN(r.p)+'</td><td>'+prTagHTML(r.s,u)+'</td><td>'+prMon(r.m)+'</td><td class="pr-nt">'+esc(r.nt||'')+'</td>'
+        +'<td class="pr-ac"><button class="pr-ib pr-cb'+(PR.cmp.has(r.id)?' on':'')+'" data-act="pr.cmpt" data-id="'+r.id+'" data-tip="'+(PR.cmp.has(r.id)?'비교에서 빼기':'비교에 담기')+'" aria-label="비교에 담기">'+rwIc(PR.cmp.has(r.id)?'i-check':'i-plus')+'</button>'
+        +'<button class="pr-st'+(pn?' on':'')+'" data-act="pr.star" data-id="'+r.id+'" data-tip="'+(pn?esc(fdName(prFoldOf(r.id)))+' · 이름·폴더':'찜하기')+'" aria-label="찜">'+rwIc('i-star')+'</button></td></tr>'
        ;}).join('')
        :GL.length?'':'<tr><td colspan="8" class="rd-none">'+(PR.denied?'서버 저장 규칙이 아직 게시되지 않아 물가정보를 읽을 수 없습니다':!all.length?'아직 모아 둔 단가가 없습니다':PR.fd&&!q?'찜한 자재가 없습니다':'찾는 자재가 없습니다')+(q?'<div class="pr-find">'+PR_FIND.map(([k,n,f])=>'<a class="rw-bb" href="'+esc(f(qe))+'" target="_blank" rel="noopener">'+rwIc('i-ext')+n+'</a>').join('')+'</div>':'')+'</td></tr>')+g2bRowsHTML(GL)+'</tbody></table></div>'
    :prCmpHTML();
@@ -16618,7 +16628,6 @@ Object.assign(ACT,{
   'pr.gcmp':el=>{const o=g2bItem(+el.dataset.i);if(!o)return;const id=uid();prWrite('items/'+id,o);PR.cmp.add(id);rPr();toast('목록에 담고 비교에 넣었습니다');},
   'pr.gmore':()=>{G2B.more++;rPr();},
   'pr.unpin':el=>{prPinSet(el.dataset.id,null);PR.pop='';rPr();},
-  'pr.del':el=>{const id=el.dataset.id,r=prItems().find(x=>x.id===id);if(!r)return;confirmModal('단가 지우기','「'+r.n+'」 '+prSrc(r.s)[1]+' '+prMon(r.m)+' 단가를 지울까요?',()=>{prWrite('items/'+id,null);{const v=(S.price.pin||{})[id];if(v){const o=prItems().find(x=>x.id!==id&&prKey(x)===prKey(r));if(o&&!(S.price.pin||{})[o.id])prWrite('pin/'+o.id,v);prWrite('pin/'+id,null);}}   /* 같은 자재의 다른 달 기록에 찜을 넘긴다 */PR.cmp.delete(id);PR.pop='';rPr();toast('지웠습니다');},'지우기',true);},
   'pr.add':()=>{PR.add=!PR.add;PR._af=false;PR.view='list';rPr();},
   'pr.addok':()=>{const v=id=>(($(id)||{}).value||'').trim();const n=v('#prNn').slice(0,60),p=+v('#prNp').replace(/[^0-9.]/g,''),m=v('#prNm'),url=v('#prNl');
     if(!n||!p){toast('자재명과 단가를 넣어 주세요');return;}if(!/^\d{4}-\d{2}$/.test(m)){toast('기준월을 골라 주세요');return;}if(url&&!/^https?:\/\//i.test(url)){toast('원본 주소는 http 로 시작해야 합니다');return;}

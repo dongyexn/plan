@@ -5587,6 +5587,9 @@ td.d60-pc.has{color:var(--bt1);font-weight:700}
 .pr-tbl tr.open td{background:var(--b-tint)}
 .pr-nm b{display:block;font-weight:600;word-break:keep-all;overflow-wrap:anywhere}
 .pr-nm .pr-tgm{display:none}
+a.pr-tl{gap:3px;text-decoration:none}
+a.pr-tl .icn{width:10px;height:10px;opacity:.55}
+@media (hover:hover) and (pointer:fine){a.pr-tl:hover{filter:brightness(.95)}a.pr-tl:hover .icn{opacity:1}}
 .pr-nm span{display:block;font-size:12px;color:var(--lbl3);margin-top:1px}
 .pr-pr{font-weight:700;font-variant-numeric:tabular-nums}
 .pr-nt{color:var(--lbl2);font-size:12.5px}
@@ -5607,14 +5610,12 @@ td.d60-pc.has{color:var(--bt1);font-weight:700}
 .pr-ac{white-space:nowrap;text-align:right}
 .pr-ib{width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--rsm);color:var(--lbl3);vertical-align:middle}
 .pr-ib .icn{width:15px;height:15px}
-.pr-ib0{display:inline-block;width:28px;height:28px;vertical-align:middle}   /* 빈 단추 자리 — 줄 사이 단추 위치만 맞춘다 */
 @media (hover:hover) and (pointer:fine){.pr-ib:hover{background:var(--fill);color:var(--lbl)}}
 .pr-cb.on{color:var(--b600)}
 .pr-st{width:28px;height:28px;vertical-align:middle;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--rsm);color:var(--lbl3)}
 .pr-st .icn{width:16px;height:16px}
 .pr-st.on{color:#E8A317}.pr-st.on .icn{fill:#E8A317}
 @media (hover:hover) and (pointer:fine){.pr-st:hover{background:var(--fill)}}
-@media (hover:hover) and (pointer:fine){.pr-tbl .pr-del{opacity:0}.pr-tbl tr:hover .pr-del,.pr-tbl .pr-del:focus-visible{opacity:1}.pr-tbl .pr-del:hover{color:var(--rd)}}   /* 지우기는 줄에 올렸을 때만 */
 .pr-pop{position:fixed;z-index:900;width:280px;display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:var(--rmd);background:var(--bg2);box-shadow:0 0 0 1px var(--cardline),0 10px 28px rgba(15,23,42,.18)}
 .pr-pop label{display:grid;grid-template-columns:34px minmax(0,1fr);align-items:center;gap:8px;font-size:12px;font-weight:700;color:var(--lbl2)}
 .pr-pf{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:2px}
@@ -5664,7 +5665,8 @@ td.d60-pc.has{color:var(--bt1);font-weight:700}
   body:not(.wid) .pc-c{flex:0 0 78%;scroll-snap-align:start}
   body:not(.wid) .pc-h dl{gap:12px;flex-wrap:wrap}
   body:not(.wid) .pc-wrap{overflow:visible}
-  body:not(.wid) #rwRoot .qc-bar,body:not(.wid) #prRoot .qc-bar{flex-wrap:wrap;gap:8px}
+  body:not(.wid) #rwRoot .qc-bar,body:not(.wid) #prRoot .qc-bar{flex-wrap:wrap;gap:8px;height:auto;min-height:var(--th);padding-top:6px;padding-bottom:8px}   /* 두 줄로 접히면 높이를 풀어 밑줄이 단추를 지나지 않게 */
+  body:not(.wid) #prRoot .qc-bar .tl-br{margin-left:auto}
   body:not(.wid) .rw-cv{min-height:70vh;padding:12px 0 24px}
   body:not(.wid) .rw-sel{font-size:16px}
   body:not(.wid) .pr-tbl{min-width:0;table-layout:auto}
@@ -5674,7 +5676,6 @@ td.d60-pc.has{color:var(--bt1);font-weight:700}
   body:not(.wid) .pr-tbl .n{width:34px;padding-left:4px;padding-right:4px}
   body:not(.wid) .pr-nm span{white-space:normal}
   body:not(.wid) .pr-tbl .pr-nm{word-break:keep-all}
-  body:not(.wid) .pr-tbl .pr-ac .pr-ib0{display:none}   /* 폰은 빈 자리를 접어 이름 칸을 넓힌다 */
   body:not(.wid) .pr-tbl .pr-ac .pr-ib,body:not(.wid) .pr-tbl .pr-ac .pr-st{width:30px}
 }
 /* ═══════════ 업무 도구 — 파일 카드(1061 도면 인쇄 폐지 후 남은 것) ═══════════ */
