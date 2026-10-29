@@ -1364,7 +1364,7 @@ function hideCover(fx){
   if(LG_OUT)return;   /* 이미 나가는 중 — 두 번째 호출(onAuth 끝)이 움직임을 끊지 않게 */
   b.classList.remove('gate-on','lg-kb');
   const n=++LG_N;clearTimeout(LG_T);
-  const done=()=>{if(n!==LG_N)return;LG_OUT=false;b.classList.remove('lg','lg-ld','lg-out','lg-in','lg-fx');if(g)g.style.display='none';};
+  const done=()=>{if(n!==LG_N)return;LG_OUT=false;b.classList.remove('lg','lg-ld','lg-out','lg-in','lg-fx');if(g)g.style.display='none';shellTintRefresh();};
   if(!fx||!b.classList.contains('lg')||WIDGET||document.hidden){done();return;}
   LG_OUT=true;
   /* 캐시로 그린 첫 화면(무거운 프레임) 다음 프레임에서 움직이기 시작한다 — 끊겨 보이지 않게 */
@@ -1375,6 +1375,11 @@ function hideCover(fx){
     else{b.classList.remove('lg');LG_T=setTimeout(done,1300);}
   }));
 }
+/* 아이폰 — 로그인 화면(배경화면 사진)일 때 칠해진 상태 표시줄 위 색이 들어온 뒤에도 남는다. 사파리는 맨 위 고정 요소·theme-color 로 그 색을 정하고
+   바뀐 것을 늦게(또는 스크롤해야) 다시 읽는다 → 들어간 직후 theme-color 를 떼었다 다시 달고, 셸 색을 한 번 다시 칠해 새로 읽게 한다 */
+function shellTintRefresh(){if(WIDGET)return;
+  const m=document.querySelector('meta[name="theme-color"]');if(m){const c=m.getAttribute('content'),n=m.cloneNode();m.remove();requestAnimationFrame(()=>{n.setAttribute('content',c);document.head.appendChild(n);});}
+  const r=document.documentElement;r.style.backgroundColor='var(--shell)';requestAnimationFrame(()=>requestAnimationFrame(()=>{r.style.backgroundColor='';}));}
 function showGateForm(){
   const b=document.body,g=$('#coverGate');
   /* 폰: 불러오는 중(로고 + 점) → 폼이면 로고가 위로 옮겨 간다 — 전후 위치 차이만큼 transform 으로 잇는다 */
@@ -1882,7 +1887,6 @@ function mvIn(els,dx,dy,dur){if(!mvOK())return;(Array.isArray(els)?els:[els]).fo
 const MV_TAB={
   'tk.view':'#tkRoot .tkcol','tk.tab':'#tkRoot .tkcol .tkmain',
   'org.tab':'#view-org #acctPane,#view-org #sitePane',
-  'df.tab':'#view-defect .tnav~*',
   'd60.tab':'.d60-grid>.as:not(:first-child),.d60-grid>.as:first-child>:not(.d60-sw)',
   'pd.orient':'.phs-grid>.phs-col:not(.phs-left)',
   'readme.tab':'#mbody .rd-sec.act',
@@ -11595,11 +11599,18 @@ const ACT={
   /* 탭 전환 — 켜진 탭·미끄럼 표시(slSync, 합성 단계 애니메이션)를 먼저 움직이고 무거운 다시 그리기는 다음 프레임에.
      빠르게 여러 번 눌러도 다시 그리기는 한 번으로 모은다 */
   'df.tab':el=>{const t=el.dataset.t;if(!t||S.dfTab===t)return;S.dfTab=t;
-    const nav=el.closest('.tnav');if(nav){nav.querySelectorAll('.tnav-i').forEach(b=>b.classList.toggle('act',b===el));slSync();}
+    const nav=el.closest('.tnav');
+    /* 판 밀려 들어오기 — 그리기를 한두 프레임 미루므로(아래) 공용 mvTabPost 는 새 판을 못 찾는다 → 그린 직후 여기서 */
+    if(nav){const bs=[...nav.querySelectorAll('.tnav-i')],i0=bs.findIndex(b=>b.classList.contains('act')),i1=bs.indexOf(el);DF._tabDir=i1>i0?1:-1;}
+    if(nav){nav.querySelectorAll('.tnav-i').forEach(b=>b.classList.toggle('act',b===el));slSync();
+      /* 폰 — 탭 줄이 가로로 잘려 있으면 누른 탭이 다 보이게 */
+      const nr=nav.getBoundingClientRect(),er=el.getBoundingClientRect();
+      if(er.left<nr.left+8||er.right>nr.right-8)nav.scrollTo({left:nav.scrollLeft+(er.left+er.width/2)-(nr.left+nr.width/2),behavior:mvOK()?'smooth':'auto'});}
     /* ⚠ 표시 움직임의 출발 시각이 정해진 뒤(animation.ready)에 그린다 — 먼저 무거운 작업이 돌면 표시가 처음 자리로 돌아가 다시 미끄러진다 */
     if(DF._tabT)return;DF._tabT=1;
     const ind=nav&&nav.querySelector('.sl-ind'),an=ind&&ind.getAnimations()[0];
-    (an?an.ready.catch(()=>{}):Promise.resolve()).then(()=>requestAnimationFrame(()=>{DF._tabT=0;if(S.view==='defect')rDefect();}));},
+    (an?an.ready.catch(()=>{}):Promise.resolve()).then(()=>requestAnimationFrame(()=>{DF._tabT=0;if(S.view!=='defect')return;rDefect();
+      const els=[...document.querySelectorAll('#view-defect .tnav~*')].filter(mvVis);if(els.length)mvIn(els,14*(DF._tabDir||1),0,MV_MID);}));},
   'mtg.open':()=>mtgOpen(),
   'mtg.close':()=>mtgClose(),
   'mtg.fs':()=>mtgFs(),
@@ -12272,6 +12283,16 @@ const ACT={
   'wid.popClose':()=>{S.widPop=false;if(S.planEdit)closePlanEdit();rWidget();},
   /* 위젯 내려받기 — 늘 최신 릴리스를 가리키는 고정 주소.
      ⚠ 옛 cfg.widgetUrl 저장값이 남아 있어도 무시하고 상수만 쓴다 */
+  /* 1276 앱 정보 — 사내 업무용이라 약관·환불·쿠키 배너는 두지 않는다. 저장하는 것 · 바깥 서비스 · 지우는 길만 적는다 */
+  'set.privacy':()=>openModal('개인정보 처리 안내','<div class="ai-doc">'
+    +'<h4>저장하는 정보</h4><ul><li>계정 — 회사 이메일(@hdec.co.kr), 이름, 권한, 가입·마지막 접속 시각, 프로필 그림·색</li><li>조직 — 팀 · 권역 · 직급 · 직무 · 담당 현장</li><li>업무 기록 — 일정 · 업무 · 주요 현안 · D+60 점검 · 물가정보를 누가 언제 적었는지</li></ul>'
+    +'<h4>하자 원본</h4><ul><li>올린 하자 목록 원본은 올린 사람의 이 PC 브라우저에만 남고 서버로 보내지 않습니다</li><li>팀에 게시하는 것은 현장별 집계와 미처리 목록이며, 접수 내용의 전화번호 · 이메일 · 이름은 가린 뒤 올립니다</li><li>보고서 작성 · 사진대지 · 견적 검토에 넣은 파일도 이 PC 안에서만 읽습니다</li></ul>'
+    +'<h4>바깥 서비스</h4><ul><li>Google Firebase — 로그인 · 자료 저장(싱가포르 리전)</li><li>Google reCAPTCHA — 자동 접속 차단</li><li>Unsplash — 로그인 화면 배경 사진</li><li>GitHub Pages — 앱 파일 제공</li></ul>'
+    +'<h4>보관과 삭제</h4><ul><li>퇴사 · 이동 등으로 계정이 필요 없으면 관리자가 계정을 삭제합니다 — 계정 기록과 로그인 계정이 지워지고, 이름은 맡았던 업무에만 남습니다</li><li>이 PC 에 남은 자료는 브라우저 사이트 데이터를 지우면 함께 지워집니다</li></ul>'
+    +'<h4>문의</h4><p>팀 관리자</p></div>','<button class="btn bp bsm" data-act="modal.close">닫기</button>'),
+  'set.oss':()=>{const R=[['Firebase JS SDK','Apache-2.0'],['FullCalendar','MIT'],['Chart.js · chartjs-plugin-datalabels','MIT'],['SheetJS Community Edition','Apache-2.0'],['ExcelJS','MIT'],['DOMPurify','Apache-2.0 / MPL-2.0'],['lz-string','MIT'],['marked','MIT'],['PDF.js','Apache-2.0'],['es-hangul','MIT'],['msgreader','MIT'],['hwpxjs','MIT · Zlib'],
+      ['Pretendard 글꼴','SIL Open Font License 1.1'],['Lucide 아이콘','ISC'],['Unsplash 사진','Unsplash License — 작가 · 출처 표기'],['조달청 가격정보 · 공공데이터','공공데이터포털 이용허락 범위'],['미니펫 그림','각 제작자 배포 조건 — 확인 필요']];
+    openModal('오픈소스 · 리소스','<table class="ai-tbl">'+R.map(([a,b])=>'<tr><td>'+esc(a)+'</td><td>'+esc(b)+'</td></tr>').join('')+'</table>','<button class="btn bp bsm" data-act="modal.close">닫기</button>');},
   'wid.dl':()=>{
     window.open(WIDGET_URL,'_blank','noopener');
   },

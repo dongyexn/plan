@@ -2779,6 +2779,13 @@ body.wid .gd-nav{background:rgba(24,27,36,.96);}
 @media screen and (max-width:560px){.rs-t{grid-template-columns:repeat(2,minmax(0,1fr));}}   /* 폰: 숫자 네 칸은 2×2 */
 .pb-row{display:flex;justify-content:flex-end;gap:var(--s2);}
 .share-row+.share-row{box-shadow:inset 0 1px 0 var(--sep);}
+.ai-doc{font-size:13px;line-height:1.65;color:var(--lbl)}
+.ai-doc h4{font-size:13px;font-weight:700;margin:14px 0 4px}.ai-doc h4:first-child{margin-top:0}
+.ai-doc ul{margin:0;padding-left:18px}.ai-doc li+li{margin-top:2px}
+.ai-doc p{margin:0;color:var(--lbl2)}
+.ai-tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.ai-tbl td{padding:7px 4px;border-bottom:1px solid var(--sep);vertical-align:top}
+.ai-tbl td:first-child{font-weight:600;color:var(--lbl);width:42%}.ai-tbl td:last-child{color:var(--lbl2)}
 .set-card>.share-row:last-child{box-shadow:inset 0 -1px 0 var(--sep),inset 0 1px 0 var(--sep);}
 .set-card>.share-row:first-of-type:last-of-type{box-shadow:inset 0 -1px 0 var(--sep);}
 .share-row>.share-info{flex:1;}
@@ -6098,6 +6105,7 @@ body.wid.iss3 #fcal{flex:1 1 0;}
   body:not(.wid) #view-iss .iss-sc{padding-bottom:calc(12px + var(--mtab) + env(safe-area-inset-bottom));}
   body:not(.wid) #view-iss .rp-tabs{overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;}
   body:not(.wid) #view-iss .rp-tab{flex:0 0 auto;}
+  body:not(.wid) #view-iss .card.iss-c{min-height:0;}   /* 폰은 한 줄에 카드 하나 — 4줄 기본 높이 대신 현안 수만큼 */
 }
 body.mcal-full #fcal .mlP{display:none}
 body.mcal-full #fcal .mlN::before{content:'+'}
@@ -6561,6 +6569,17 @@ body.mcal-full #fcal .mlN::before{content:'+'}
             <div class="share-row">
               <div class="share-info"><b>위젯 다운로드</b><span>다운로드 시 &quot;유지&quot; 선택 후 &quot;삭제 옆 옵션&quot;에서 &quot;그래도 계속&quot; 선택</span></div>
               <button class="btn bo bsm" data-act="wid.dl">다운로드</button>
+            </div>
+          </div>
+          <div class="set-card card">   <!-- 1276 앱 정보 — 개인정보 처리 안내 · 사용한 오픈소스와 리소스 -->
+            <div class="set-h">앱 정보</div>
+            <div class="share-row">
+              <div class="share-info"><b>개인정보 처리 안내</b><span>앱이 저장하는 정보와 보관 · 삭제 방법</span></div>
+              <button class="btn bo bsm" data-act="set.privacy">보기</button>
+            </div>
+            <div class="share-row">
+              <div class="share-info"><b>오픈소스 · 리소스</b><span>앱에 쓴 프로그램 · 글꼴 · 아이콘 · 그림과 사용 조건</span></div>
+              <button class="btn bo bsm" data-act="set.oss">보기</button>
             </div>
           </div>
         </div>
