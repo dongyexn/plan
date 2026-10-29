@@ -1,5 +1,15 @@
 # 변경 이력 (읽기 전용) — 현재 상태는 HANDOFF.md
 
+## 마지막 기록 기준 v1272
+### 1272차 물가정보 — 조달청 가격정보 자동 연동
+**사용자: 「조달청 키는 내가 직접 받아야하나?」 → 「액션에 키 넣었어」(리포 Secrets G2B_KEY)**
+- API: https://apis.data.go.kr/1230000/ao/PriceInfoService/{op}?serviceKey&type=json&pageNo&numOfRows. 오퍼레이션(공공데이터포털 페이지에서 확인): getPriceInfoListFcltyCmmnMtrilBildng·MchnEqp·ElctyIrmc·Engrk(시설공통자재), getPriceInfoListMrktCnstrctPcBildng·Engrk·MchnEqp(시장시공가격), getPriceInfoListFcltyCmmnMtrilTotal(inqryDiv=1·inqryBgnDate/EndDate YYYYMMDD), getCnsttyClsfcInfoList, getNetRsceinfoList, getStdMarkUprcinfoList.
+- 응답 항목: prceNticeNo, nticeDt(고시일), bsnsDivNm, prdctClsfcNo·prdctClsfcNoNm(물품분류), prdctIdntNo, krnPrdctNm(품명, 규격 포함), unit, prce(글자), vatYnNm, dlvryCndtnNm(현장도착도) 등. 오래된 고시가 앞(오름차순) — 2024-10 · 2025-04 · 2025-10 · 2026-04 · 2026-10 이 섞여 온다. 시장시공가격 일부 고시는 prce 0.
+- ⚠ 이 작업 환경(클라우드)은 data.go.kr 에 직접 닿지 않는다 — Actions 러너에서만 부른다. 확인은 임시 워크플로가 결과를 브랜치에 커밋하는 방식으로 했다(지움).
+- scripts/g2b-price.mjs: 6개 오퍼레이션 전부(쪽당 500) → 품명·단위(비교 키는 nk 로 * x × · ㎜ mm · 괄호 정규화)·분류별 최신 고시만, 0원 제외, 최신 고시월에서 12개월 넘게 재고시 없는 품목 제외 → data/g2b-price.json {at, c[분류 6], d[[품명, 단위, 단가, 고시월, 분류, 물품분류명]]}. 첫 수집: 호출 77 · 행 36,920 · 5,877건 · 약 0.5MB(gzip 약 0.1MB).
+- .github/workflows/g2b-price.yml: 매달 3일 20:17 UTC + 수동. 파일이 바뀌었을 때만 main 에 커밋. GITHUB_TOKEN 커밋은 push 로 다른 워크플로를 깨우지 않아 pages.yml 에 workflow_run(g2b-price 성공) 을 더했다.
+- 앱: G2B 상태 · g2bLoad(처음 검색 때 fetch, cache no-cache) · g2bFind(띄어 쓴 낱말 AND, 초성은 getChoseong 미리 계산, 한영 convertQwertyToHangul, 최대 500) · g2bRowsHTML(팀 목록 아래 「조달청 가격정보 n건 · 갱신월」, 40줄 + 더 보기 80줄씩) · pr.gadd(품명을 첫 「, 」에서 자재명/규격으로 나눠 팀 목록에 s:'g2b'). 이미 담은 것은 ✓. 출처 필터 조달청을 끄거나 찜 폴더를 보고 있으면 숨김. 팀 목록 검색도 낱말 AND(hgMatch 를 낱말마다).
+
 ## 마지막 기록 기준 v1271
 ### 1271차 동기화 끊김 띠 — 물가정보 구독 거절 · 띠 글 겹침
 **사용자: 폰 달력 위 띠(새로고침 단추) 글자가 겹친 화면 + 「버그 확인 필요」**

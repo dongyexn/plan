@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1271';
+const APP_VER='1272';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -16466,7 +16466,28 @@ const prKey=r=>r.n+'|'+(r.sp||'')+'|'+r.s;
 const prQ=r=>encodeURIComponent((r.n+' '+(r.sp||'')).replace(/[·×]/g,' ').replace(/\s+/g,' ').trim());
 function prUrl(r){if(r.url)return r.url;if(r.s==='nv')return 'https://search.shopping.naver.com/search/all?query='+prQ(r);if(r.s==='cp')return 'https://www.coupang.com/np/search?q='+prQ(r);if(r.s==='g2b')return 'https://www.g2b.go.kr/';if(r.s==='kpi')return 'https://www.kpi.or.kr/';if(r.s==='kprc')return 'https://www.kprc.or.kr/';if(r.s==='dn')return 'https://search.danawa.com/dsearch.php?query='+prQ(r);return '';}
 const PR_FIND=[['nv','네이버 쇼핑',q=>'https://search.shopping.naver.com/search/all?query='+q],['cp','쿠팡',q=>'https://www.coupang.com/np/search?q='+q],['dn','다나와',q=>'https://search.danawa.com/dsearch.php?query='+q],['g2b','조달청 나라장터',()=>'https://www.g2b.go.kr/'],['kpi','한국물가정보',()=>'https://www.kpi.or.kr/'],['kprc','한국물가협회',()=>'https://www.kprc.or.kr/']];
-function prRows(){const q=PR.q.trim();let L=prItems().filter(r=>PR.src[r.s]!==0&&(!q||hgMatch(r.n+' '+(r.sp||'')+' '+(r.nt||'')+' '+prTitle(r.id),q)));
+/* 조달청 가격정보 — GitHub Actions(g2b-price)가 매달 data/g2b-price.json 을 새로 만든다(공공데이터포털 나라장터 가격정보현황서비스).
+   검색할 때 처음 한 번 받는다. 한 줄 = [품명(규격 포함), 단위, 단가, 고시월, 분류 차례, 물품분류명] */
+const G2B={st:'',at:'',c:[],d:[],k:null,ch:null,more:0};
+function g2bLoad(){if(G2B.st)return;G2B.st='load';
+  fetch('./data/g2b-price.json',{cache:'no-cache'}).then(r=>{if(!r.ok)throw new Error(r.status);return r.json();})
+    .then(j=>{G2B.at=j.at||'';G2B.c=j.c||[];G2B.d=j.d||[];G2B.st='ok';if(S.view==='pr'&&!prTyping())rPr();})
+    .catch(e=>{console.warn('[조달청 가격]',e);G2B.st='err';});}
+/* 띄어 쓴 낱말이 모두 들어간 줄 — 초성(ㅅㄱㅂㄷ) · 한영 안 바꾸고 친 글자도 */
+function g2bFind(q){g2bLoad();if(G2B.st!=='ok')return [];const H=window.esHangul,D=G2B.d;
+  if(!G2B.k)G2B.k=D.map(r=>(r[0]+' '+r[5]).toLowerCase().replace(/\s/g,''));
+  const T=q.toLowerCase().split(/\s+/).filter(Boolean).map(t=>{if(/^[ㄱ-ㅎ]+$/.test(t)&&H)return{c:t};let a=t;if(/^[a-z]+$/.test(t)&&H){try{a=H.convertQwertyToHangul(t)||t;}catch(e){}}return{t,a};});
+  if(T.some(x=>x.c)&&!G2B.ch)G2B.ch=D.map(r=>H.getChoseong(r[0]).replace(/\s/g,''));
+  const out=[];for(let i=0;i<D.length&&out.length<500;i++){const k=G2B.k[i];if(T.every(x=>x.c?G2B.ch[i].includes(x.c):(k.includes(x.t)||k.includes(x.a))))out.push(i);}
+  return out;}
+function g2bSplit(n){const i=n.indexOf(', ');return i<0?[n,'']:[n.slice(0,i),n.slice(i+2)];}
+function g2bRowsHTML(GL,q){if(!GL.length)return '';const N=40+G2B.more*80,D=G2B.d,mine=new Set(prItems().filter(r=>r.s==='g2b').map(r=>r.n+'|'+(r.sp||'')+'|'+(r.u||'')+'|'+r.m));
+  return '<tr class="pr-gh"><td colspan="8"><b>조달청 가격정보</b><span>'+GL.length+(GL.length>=500?'+':'')+'건 · '+esc(prMon((G2B.at||'').slice(0,7)))+' 갱신</span></td></tr>'
+    +GL.slice(0,N).map(i=>{const r=D[i],[n,sp]=g2bSplit(r[0]),has=mine.has(n.slice(0,60)+'|'+sp.slice(0,60)+'|'+r[1].slice(0,10)+'|'+r[3]);
+      return '<tr class="pr-g"><td class="n"></td><td class="pr-nm"><b>'+esc(n)+'</b><span>'+esc(sp)+'</span></td><td>'+esc(r[1])+'</td><td class="r pr-pr">'+rwN(r[2])+'</td><td><span class="pr-tg g2b">조달청</span></td><td>'+prMon(r[3])+'</td><td class="pr-nt">'+esc([G2B.c[r[4]],r[5]].filter(Boolean).join(' · '))+'</td>'
+        +'<td class="pr-ac">'+(has?'<span class="pr-ib pr-had" data-tip="목록에 있음">'+rwIc('i-check')+'</span>':'<button class="pr-ib" data-act="pr.gadd" data-i="'+i+'" data-tip="목록에 담기" aria-label="목록에 담기">'+rwIc('i-plus')+'</button>')+'</td></tr>';}).join('')
+    +(GL.length>N?'<tr class="pr-g"><td colspan="8" class="pr-gm"><button class="rw-bb" data-act="pr.gmore">'+rwIc('i-chevd')+'더 보기 · '+(GL.length-N)+'건</button></td></tr>':'');}
+function prRows(){const q=PR.q.trim();let L=prItems().filter(r=>PR.src[r.s]!==0&&(!q||q.split(/\s+/).every(t=>hgMatch(r.n+' '+(r.sp||'')+' '+(r.nt||'')+' '+prTitle(r.id),t))));
   if(PR.fd)L=L.filter(r=>{const f=prFoldOf(r.id);return f&&(PR.fd==='*'||f===PR.fd);});
   /* 같은 자재 · 규격 · 출처는 가장 최근 달만 목록에 */
   const last={};L.forEach(r=>{const k=prKey(r),o=last[k];if(!o||(r.m||'')>(o.m||'')||((r.m||'')===(o.m||'')&&(r.at||0)>(o.at||0)))last[k]=r;});L=Object.values(last);
@@ -16517,6 +16538,7 @@ function rPr(){
   const q=PR.q.trim(),qe=encodeURIComponent(q);
   const nr=PR.add?'<tr class="pr-new"><td class="n">'+rwIc('i-plus')+'</td><td><input class="inp inp-sm" id="prNn" placeholder="자재명" value="'+esc(q)+'"><input class="inp inp-sm" id="prNs" placeholder="규격"></td><td><input class="inp inp-sm" id="prNu" placeholder="단위"></td><td><input class="inp inp-sm" id="prNp" placeholder="단가" inputmode="numeric" style="text-align:right"></td>'
      +'<td><select class="inp inp-sm" id="prNsrc">'+PR_SK.map(k=>'<option value="'+k+'">'+prSrc(k)[1]+'</option>').join('')+'</select></td><td><input class="inp inp-sm" id="prNm" type="month" value="'+prCurMon()+'"></td><td><input class="inp inp-sm" id="prNt" placeholder="비고 · 쪽"><input class="inp inp-sm" id="prNl" placeholder="원본 주소(선택)"></td><td><button class="btn bp bxs" data-act="pr.addok">저장</button></td></tr>':'';
+  const GL=PR.view==='list'&&q&&PR.src.g2b!==0&&!PR.fd?g2bFind(q):[];   /* 조달청 가격정보(매달 자동 갱신) — 팀 목록 아래에 */
   const body=PR.view==='list'
    ?'<div class="qc-wrap"><table class="qc-tbl pr-tbl"><colgroup><col style="width:46px"><col style="width:26%"><col style="width:7%"><col style="width:12%"><col style="width:10%"><col style="width:10%"><col><col style="width:136px"></colgroup><thead><tr><th class="n">NO</th><th>자재명 · 규격</th><th>단위</th><th class="r pr-so" data-act="pr.sort">단가'+(PR.sort?(PR.sort==='p'?' ↑':' ↓'):'')+'</th><th>출처</th><th>기준월</th><th>비고</th><th></th></tr></thead><tbody>'+nr
      +(L.length?L.map((r,i)=>{const u=prUrl(r),pn=prPinned(r.id),tt=prTitle(r.id);
@@ -16526,7 +16548,7 @@ function rPr(){
         +'<button class="pr-st'+(pn?' on':'')+'" data-act="pr.star" data-id="'+r.id+'" data-tip="'+(pn?esc(fdName(prFoldOf(r.id)))+' · 이름·폴더':'찜하기')+'" aria-label="찜">'+rwIc('i-star')+'</button>'
         +(prCanEdit(r)?'<button class="pr-ib pr-del" data-act="pr.del" data-id="'+r.id+'" data-tip="지우기" aria-label="지우기">'+rwIc('i-trash')+'</button>':'<span class="pr-ib"></span>')+'</td></tr>'
        ;}).join('')
-       :'<tr><td colspan="8" class="rd-none">'+(PR.denied?'서버 저장 규칙이 아직 게시되지 않아 물가정보를 읽을 수 없습니다':!all.length?'아직 모아 둔 단가가 없습니다':PR.fd&&!q?'찜한 자재가 없습니다':'찾는 자재가 없습니다')+(q?'<div class="pr-find">'+PR_FIND.map(([k,n,f])=>'<a class="rw-bb" href="'+esc(f(qe))+'" target="_blank" rel="noopener">'+rwIc('i-ext')+n+'</a>').join('')+'</div>':'')+'</td></tr>')+'</tbody></table></div>'
+       :GL.length?'':'<tr><td colspan="8" class="rd-none">'+(PR.denied?'서버 저장 규칙이 아직 게시되지 않아 물가정보를 읽을 수 없습니다':!all.length?'아직 모아 둔 단가가 없습니다':PR.fd&&!q?'찜한 자재가 없습니다':'찾는 자재가 없습니다')+(q?'<div class="pr-find">'+PR_FIND.map(([k,n,f])=>'<a class="rw-bb" href="'+esc(f(qe))+'" target="_blank" rel="noopener">'+rwIc('i-ext')+n+'</a>').join('')+'</div>':'')+'</td></tr>')+g2bRowsHTML(GL,q)+'</tbody></table></div>'
    :prCmpHTML();
   root.innerHTML='<div class="qc-grid"><div class="qc-col">'
    +'<div class="card"><div class="tm-h"><span>검색</span></div><div class="qc-b pr-qb"><label class="pr-q">'+rwIc('i-search')+'<input id="prQ" value="'+esc(PR.q)+'" placeholder="자재명 · 규격 · 초성" autocomplete="off"></label>'
@@ -16548,7 +16570,7 @@ function rPr(){
   prPopDraw();
   if(PR.add&&!PR._af){PR._af=true;setTimeout(()=>{const i=$('#prNn');if(i){i.focus();if(i.value)($('#prNs')||i).focus();}},0);}
 }
-document.addEventListener('input',e=>{if(e.target.id==='prQ'){PR.q=e.target.value;PR.pop='';PR._qf=true;rPr();}});
+document.addEventListener('input',e=>{if(e.target.id==='prQ'){PR.q=e.target.value;PR.pop='';G2B.more=0;PR._qf=true;rPr();}});
 function prFoldSave(inp){const v=inp.value.trim().slice(0,30),k=inp.dataset.id;PR.fadd=false;PR.fe='';
   if(v){if(prFolds().some(f=>f.n===v&&f.id!==k)){toast('같은 이름의 폴더가 있습니다');}else if(k){const f=((S.price||{}).fold||{})[k];if(f&&f.n!==v)prWrite('fold/'+k,{...f,n:v});}else{const id=uid();prWrite('fold/'+id,{n:v,by:authUid()||myId(),at:Date.now()});PR.fd=id;}}
   rPr();}
@@ -16572,6 +16594,10 @@ Object.assign(ACT,{
   'pr.capx':el=>{delete PR.cap[el.dataset.id];rPr();},
   'pr.torw':()=>{RW.tpl='pc';RW.blocks=prBlocks();RW.sel=null;RW.edit=true;RW.hist=[];RW.fut=[];go('rw');toast('단가 비교를 보고서로 보냈습니다');},
   'pr.star':el=>{const id=el.dataset.id;if(PR.pop===id){PR.pop='';rPr();return;}if(!prPinned(id))prPinSet(id,PR.fd&&PR.fd!=='*'?PR.fd:'_');PR.pop=id;rPr();},   /* 찜하고(보고 있는 폴더로) 이름·폴더 창을 연다 */
+  'pr.gadd':el=>{const r=G2B.d[+el.dataset.i];if(!r)return;const[n,sp]=g2bSplit(r[0]);
+    const o={n:n.slice(0,60),p:r[2],s:'g2b',m:r[3],by:authUid()||myId(),at:Date.now()};if(sp)o.sp=sp.slice(0,60);if(r[1])o.u=r[1].slice(0,10);const nt=[G2B.c[r[4]],r[5]].filter(Boolean).join(' · ').slice(0,100);if(nt)o.nt=nt;
+    prWrite('items/'+uid(),o);rPr();toast('조달청 단가를 목록에 담았습니다');},
+  'pr.gmore':()=>{G2B.more++;rPr();},
   'pr.unpin':el=>{prPinSet(el.dataset.id,null);PR.pop='';rPr();},
   'pr.del':el=>{const id=el.dataset.id,r=prItems().find(x=>x.id===id);if(!r)return;confirmModal('단가 지우기','「'+r.n+'」 '+prSrc(r.s)[1]+' '+prMon(r.m)+' 단가를 지울까요?',()=>{prWrite('items/'+id,null);{const v=(S.price.pin||{})[id];if(v){const o=prItems().find(x=>x.id!==id&&prKey(x)===prKey(r));if(o&&!(S.price.pin||{})[o.id])prWrite('pin/'+o.id,v);prWrite('pin/'+id,null);}}   /* 같은 자재의 다른 달 기록에 찜을 넘긴다 */PR.cmp.delete(id);PR.pop='';rPr();toast('지웠습니다');},'지우기',true);},
   'pr.add':()=>{PR.add=!PR.add;PR._af=false;PR.view='list';rPr();},
