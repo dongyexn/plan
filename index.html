@@ -5418,7 +5418,8 @@ td.d60-pc.has{color:var(--bt1);font-weight:700}
 }
 .qc-fr .inp{height:30px;padding-top:0;padding-bottom:0;font-size:13px}
 /* ═══ 1269 업무 도구 — 보고서 작성(#rwRoot) · 물가정보(#prRoot) ═══ */
-#view-rw,#view-pr{overflow:hidden}
+#view-rw{overflow:hidden}
+#view-pr{overflow:visible}   /* 표 막대(.pr-vsb)가 카드 바깥 오른쪽 여백에 놓인다 — 숨기면 잘린다. 안쪽 칸은 제각기 스크롤한다 */
 #rwRoot,#prRoot{flex:1;min-height:0;display:flex;flex-direction:column}
 @media screen and (max-width:980px){body:not(.wid) :is(#view-rw,#view-pr){overflow-y:auto}body:not(.wid) #rwRoot,body:not(.wid) #prRoot{flex:none}}
 /* 양식 · 자료 · 블록 */
@@ -5581,6 +5582,10 @@ td.d60-pc.has{color:var(--bt1);font-weight:700}
 .pr-s small{font-size:11.5px;color:var(--lbl3);font-variant-numeric:tabular-nums}
 @media (hover:hover) and (pointer:fine){.pr-s:hover{background:var(--fill)}}
 .pr-tbl{min-width:860px}
+.pr-vsb{position:absolute;right:-11px;width:6px;border-radius:3px;background:var(--sepo);opacity:0;pointer-events:none;z-index:6;cursor:grab;transition:background var(--t-fast),opacity .2s ease}   /* 카드 바깥 오른쪽 여백 — 표를 가리지 않는다 */
+.pr-vsb.on{opacity:1;pointer-events:auto}
+.pr-vsb.drag{background:var(--lbl3);cursor:grabbing}@media (hover:hover) and (pointer:fine){.pr-vsb:hover{background:var(--lbl3)}}
+.pr-vsb::before{content:"";position:absolute;inset:-4px -5px}   /* 잡는 자리를 막대보다 넓게 */
 .pr-tbl th.r,.pr-tbl td.r{text-align:right}
 .pr-tbl th.pr-so{cursor:pointer}
 .pr-tbl td{vertical-align:middle}
@@ -5661,6 +5666,7 @@ a.pr-tl .icn{width:10px;height:10px;opacity:.55}
 .pc-c.on .pc-ap{color:var(--b600)}.pc-c.on .pc-ap .rd{box-shadow:inset 0 0 0 4.5px var(--b600)}
 @media (hover:hover) and (pointer:fine){.pc-ap:hover{background:var(--fill)}}
 @media screen and (max-width:980px){
+  body:not(.wid) .pr-vsb{display:none}
   body:not(.wid) .pc-cs{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
   body:not(.wid) .pc-c{flex:0 0 78%;scroll-snap-align:start}
   body:not(.wid) .pc-h dl{gap:12px;flex-wrap:wrap}
