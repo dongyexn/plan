@@ -6128,6 +6128,7 @@ body.wid.iss3 #fcal{flex:1 1 0;}
 #issStrip .iss-none{grid-column:span var(--issc,3);padding:16px;text-align:center;font-size:12.5px;color:rgba(255,255,255,.6);}
 @media (max-width:540px){#issStrip:not([hidden]){grid-auto-columns:calc((100% - (min(var(--issc,3),2) - 1)*6px)/min(var(--issc,3),2));}#issStrip .iss-none{grid-column:span min(var(--issc,3),2);}}   /* 좁은 위젯 — 많아야 두 장씩 · 열 수는 위젯 설정 「현안 카드 열」(1~5, --issc) */
 @media (max-width:460px){body.wid .cal-head .cal-nb{width:26px;}}   /* 좁은 위젯 — 머리 단추가 하나 늘어 설정 단추가 잘리지 않게 칸을 좁힌다 */
+@media (max-width:419px){body.wid .cal-head{gap:4px;}body.wid .cal-ctl{gap:3px;}body.wid .cal-head .cal-nb{width:22px;min-width:22px;}body.wid .cal-head [data-act="cal.pick"]{padding-left:2px;padding-right:2px;}}   /* 1280 머리 단추가 늘어 좁은 위젯(옛 exe 최소 360)에서 설정이 밖으로 밀렸다 — 새 exe 는 최소 420 */
 @media screen and (max-width:960px){
   body:not(.wid) #view-iss{margin-bottom:calc(-12px - var(--mtab) - env(safe-area-inset-bottom));}   /* 안쪽 칸이 구르는 화면 — 여백은 구르는 칸에 */
   body:not(.wid) #view-iss .iss-sc{padding-bottom:calc(12px + var(--mtab) + env(safe-area-inset-bottom));}
@@ -6653,5 +6654,5 @@ body.mcal-full #fcal .mlN::before{content:'+'}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1279"></script>
+<script src="./app.js?v=1280"></script>
 </body></html>
