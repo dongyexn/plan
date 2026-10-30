@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1281';
+const APP_VER='1282';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -16470,7 +16470,7 @@ const prMon=m=>String(m||'').replace('-','. ')+'.';
 const prCurMon=()=>todayStr().slice(0,7);
 /* 물가정보 구독 — 처음 물가정보 화면을 열 때 한 번(rPr). 구독을 다 끊으면(로그아웃 · 다시 붙기) FB._prOn 도 내려 다시 붙게 */
 function prSub(){if(FB._prOn||!S.live||!FB.db||WIDGET)return;FB._prOn=true;PR.got=false;
-  FB._on('calapp/price',v=>{PR.got=true;PR.denied=false;S.price={items:{},pin:{},...(v||{})};PR._pm=null;if(S.view==='pr'&&!prTyping())rPr();},e=>{console.warn('[FB] 물가정보 읽기 거절',e);PR.denied=true;if(S.view==='pr')rPr();});   /* ⚠ 규칙을 게시하기 전엔 거절된다 — 앱 전체 동기화 끊김(syncLost)으로 번지지 않게 따로 받는다 */   /* 1269 물가정보 — 팀 공유 */
+  FbStore._on('calapp/price',v=>{PR.got=true;PR.denied=false;S.price={items:{},pin:{},...(v||{})};PR._pm=null;if(S.view==='pr'&&!prTyping())rPr();},e=>{console.warn('[FB] 물가정보 읽기 거절',e);PR.denied=true;if(S.view==='pr')rPr();});   /* ⚠ 규칙을 게시하기 전엔 거절된다 — 앱 전체 동기화 끊김(syncLost)으로 번지지 않게 따로 받는다 */   /* 1269 물가정보 — 팀 공유 */
 }
 function prItems(){const o=(S.price||{}).items||{};return Object.keys(o).filter(k=>o[k]&&o[k].n).map(id=>({id,...o[id]}));}
 const prPinned=id=>!!prFoldOf(id);
