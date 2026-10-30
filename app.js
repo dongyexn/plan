@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1278';
+const APP_VER='1279';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -1364,7 +1364,7 @@ function hideCover(fx){
   if(LG_OUT)return;   /* 이미 나가는 중 — 두 번째 호출(onAuth 끝)이 움직임을 끊지 않게 */
   b.classList.remove('gate-on','lg-kb');
   const n=++LG_N;clearTimeout(LG_T);
-  const done=()=>{if(n!==LG_N)return;LG_OUT=false;b.classList.remove('lg','lg-ld','lg-out','lg-in','lg-fx');if(g)g.style.display='none';shellTintRefresh();prBmIn();};
+  const done=()=>{if(n!==LG_N)return;LG_OUT=false;b.classList.remove('lg','lg-ld','lg-out','lg-in','lg-fx');if(g)g.style.display='none';shellTintRefresh();};
   if(!fx||!b.classList.contains('lg')||WIDGET||document.hidden){done();return;}
   LG_OUT=true;
   /* 캐시로 그린 첫 화면(무거운 프레임) 다음 프레임에서 움직이기 시작한다 — 끊겨 보이지 않게 */
@@ -16459,7 +16459,7 @@ const PR_SRC={g2b:['조달청 가격정보','조달청'],nv:['네이버 쇼핑',
 const PR_OLD={kpi:['물가정보(한국물가정보)','물가정보'],kprc:['물가자료(한국물가협회)','물가자료'],cp:['쿠팡','쿠팡'],dn:['다나와','다나와']};   /* 1276 자동으로 띄울 수 없어 출처에서 뺀 것 — 이미 저장된 줄의 이름만 */
 const prSrc=k=>PR_SRC[k]||PR_OLD[k]||[k,k],prSk=k=>PR_SRC[k]?k:'etc';   /* 뺀 출처로 저장된 줄은 출처 고르기 · 숫자에서 「견적 · 기타」로 묶는다 */   /* 규칙은 영문 소문자 출처 키를 받는다 — 이 목록에 없는 출처(새로 넣는 출처)도 키 이름 그대로 보인다 */
 const PR_SK=Object.keys(PR_SRC),PR_SKA=[...PR_SK,...Object.keys(PR_OLD)];   /* 비교 칸은 뺀 출처로 저장된 줄도 보여야 한다 */
-const PR={q:'',src:{g2b:1,nv:1,sms:1,wage:1,etc:1},sort:'',view:'list',open:'',fd:'',fe:'',fadd:false,add:false,cmp:new Set(),cap:{},pick:{},_qf:false};
+const PR={ff:{},fr:false,pst:false,q:'',src:{g2b:1,nv:1,sms:1,wage:1,etc:1},sort:'',view:'list',open:'',fd:'',fe:'',fadd:false,add:false,cmp:new Set(),cap:{},pick:{},_qf:false};
 S.price=S.price||{items:{},pin:{}};
 /* es-hangul — 초성(ㄷㅈ) · 치는 중인 글자 · 한영 안 바꾸고 친 글자(gltmxp)도 맞춘다. 못 불러오면 그냥 글자 포함 */
 function hgMatch(text,q){text=String(text||'');q=String(q||'').trim();if(!q)return true;const lo=text.toLowerCase(),ql=q.toLowerCase();if(lo.includes(ql))return true;const H=window.esHangul;if(!H)return false;
@@ -16488,7 +16488,7 @@ const prKey=r=>r.n+'|'+(r.sp||'')+'|'+r.s;
 /* 원본 — 넣어 둔 주소가 먼저. 없으면 검색 결과 · 조달청 · 물가정보지 첫 화면 */
 const prQ=r=>encodeURIComponent((r.n+' '+(r.sp||'')).replace(/[·×]/g,' ').replace(/\s+/g,' ').trim());
 function prUrl(r){if(r.url)return r.url;if(r.s==='nv')return 'https://search.shopping.naver.com/search/all?query='+prQ(r);if(r.s==='cp')return 'https://www.coupang.com/np/search?q='+prQ(r);if(PUB[r.s])return PUB[r.s].url;if(r.s==='kpi')return 'https://www.kpi.or.kr/';if(r.s==='kprc')return 'https://www.kprc.or.kr/';if(r.s==='dn')return 'https://search.danawa.com/dsearch.php?query='+prQ(r);return '';}
-const PR_FIND=[['nv','네이버 쇼핑',q=>'https://search.shopping.naver.com/search/all?query='+q],['cp','쿠팡',q=>'https://www.coupang.com/np/search?q='+q],['g2b','조달청 나라장터',()=>'https://www.g2b.go.kr/'],['kpi','한국물가정보',()=>'https://www.kpi.or.kr/'],['kprc','한국물가협회',()=>'https://www.kprc.or.kr/']];
+const PR_FIND=[['nv','네이버 쇼핑',q=>'https://search.shopping.naver.com/search/all?query='+q],['g2b','조달청 나라장터',()=>'https://www.g2b.go.kr/']];   /* 1279 쓸 수 없는 출처(쿠팡 · 물가정보 · 물가자료)는 뺐다 */
 /* 공공 단가 — GitHub Actions(price-data)가 매달 data/*.json 을 새로 만든다. 검색할 때 처음 한 번 받는다.
    한 줄 = [품명, 단위, 단가, 기준월, 분류 차례, 분류명, VAT(1 별도 · 0 포함), 비고, 규격(있으면)]
    g2b 조달청 가격정보(나라장터 가격정보현황) · sms 표준시장단가(건설연 공사비원가관리센터) · wage 시중노임(대한건설협회) */
@@ -16524,17 +16524,17 @@ function pubItem(k,i){const r=(PUB[k]||{}).d&&PUB[k].d[i];if(!r)return null;cons
   const o={n:n.slice(0,60),p:r[2],s:k,m:r[3],by:authUid()||myId(),at:Date.now()};if(sp)o.sp=sp.slice(0,60);if(r[1])o.u=String(r[1]).slice(0,10);const nt=g2bNote(r).slice(0,100);if(nt)o.nt=nt;return o;}
 /* 팀 목록에 이미 담은 품목은 공공 단가 칸에서 뺀다 */
 function pubVisible(k,GL){const P=PUB[k],mine=new Set(prItems().filter(r=>r.s===k).map(r=>g2bKey(r.n,r.sp||'',r.u,r.m)));
-  let V=GL.filter(i=>{const r=P.d[i],[n,sp]=g2bName(r);return !mine.has(g2bKey(n,sp,r[1],r[3]));});
+  const ff=prFfOn(),tg=prSrc(k).join(' ');let V=GL.filter(i=>{const r=P.d[i],[n,sp]=g2bName(r);return !mine.has(g2bKey(n,sp,r[1],r[3]))&&(!ff||prFfOk({n,sp,u:r[1],p:r[2],s:tg,m:prMon(r[3]),nt:r[7]}));});
   if(PR.sort)V=V.slice().sort((a,b)=>PR.sort==='p'?P.d[a][2]-P.d[b][2]:P.d[b][2]-P.d[a][2]);return V;}
 /* 검색 중 보이는 공공 단가 — 묶음마다 [k, 줄 번호들] (출처를 끈 묶음 · 폴더 보는 중 · 비교 화면은 없음) */
 const pubLists=q=>q&&!PR.fd?PUB_K.filter(k=>PR.src[k]!==0).map(k=>[k,pubVisible(k,pubFind(k,q))]).filter(x=>x[1].length):[];
 const pubMonTxt=P=>P.pub?prMon(P.pub)+' '+(P.pw||'공표'):prMon((P.at||'').slice(0,7))+' 갱신';
 function pubRowsHTML(k,V){if(!V.length)return '';const P=PUB[k],N=40+P.more*80,D=P.d,tg=prSrc(k);
-  return '<tr class="pr-gh"><td colspan="8"><b>'+esc(tg[0])+'</b><span>'+V.length+(V.length>=500?'+':'')+'건 · '+esc(pubMonTxt(P))+(P.sub?' · '+esc(P.sub):'')+'</span></td></tr>'
+  return '<tr class="pr-gh"><td colspan="9"><b>'+esc(tg[0])+'</b><span>'+V.length+(V.length>=500?'+':'')+'건 · '+esc(pubMonTxt(P))+(P.sub?' · '+esc(P.sub):'')+'</span></td></tr>'
     +V.slice(0,N).map((i,n)=>{const r=D[i],[nm,sp]=g2bName(r);
-      return '<tr class="pr-g" data-k="'+k+'" data-i="'+i+'"><td class="n">'+(n+1)+'</td><td class="pr-nm"><b>'+esc(nm)+'</b><span>'+esc(sp)+'</span><i class="pr-tg pr-tgm '+k+'">'+esc(tg[1])+'</i></td><td class="pr-u">'+esc(r[1])+'</td><td class="r pr-pr">'+rwN(r[2])+'</td><td>'+prTagHTML(k,'')+'</td><td>'+prMon(r[3])+'</td><td class="pr-nt">'+esc(r[7]||'')+'</td>'
+      return '<tr class="pr-g" data-k="'+k+'" data-i="'+i+'"><td class="n">'+(n+1)+'</td><td class="pr-nm"><b>'+esc(nm)+'</b><span>'+esc(sp)+'</span><i class="pr-tg pr-tgm '+k+'">'+esc(tg[1])+'</i></td><td class="pr-spc">'+esc(sp)+'</td><td class="pr-u">'+esc(r[1])+'</td><td class="r pr-pr">'+rwN(r[2])+'</td><td>'+prTagHTML(k,'')+'</td><td>'+prMon(r[3])+'</td><td class="pr-nt">'+esc(r[7]||'')+'</td>'
         +'<td class="pr-ac"><a class="pr-ib" href="'+esc(P.url)+'" target="_blank" rel="noopener" data-tip="원본 열기 · '+esc(P.ul)+'" aria-label="원본 열기">'+rwIc('i-ext')+'</a><button class="pr-ib pr-cb" data-act="pr.gcmp" data-k="'+k+'" data-i="'+i+'" data-tip="비교에 담기 · 목록에도 담긴다" aria-label="비교에 담기">'+rwIc('i-plus')+'</button><button class="pr-ib pr-ga" data-act="pr.gadd" data-k="'+k+'" data-i="'+i+'" data-tip="목록에 담기" aria-label="목록에 담기">'+rwIc('i-addsq')+'</button></td></tr>';}).join('')
-    +(V.length>N?'<tr class="pr-g"><td colspan="8" class="pr-gm"><button class="rw-bb" data-act="pr.gmore" data-k="'+k+'">'+rwIc('i-chevd')+'더 보기 · '+(V.length-N)+'건</button></td></tr>':'');}
+    +(V.length>N?'<tr class="pr-g"><td colspan="9" class="pr-gm"><button class="rw-bb" data-act="pr.gmore" data-k="'+k+'">'+rwIc('i-chevd')+'더 보기 · '+(V.length-N)+'건</button></td></tr>':'');}
 /* 출처 표 — 원본 주소가 있으면 누르면 원본(작은 ↗) */
 function prTagHTML(k,u){const t=esc(prSrc(k)[1]);return u?'<a class="pr-tg pr-tl '+k+'" href="'+esc(u)+'" target="_blank" rel="noopener" data-tip="원본 열기">'+t+rwIc('i-ext')+'</a>':'<span class="pr-tg '+k+'">'+t+'</span>';}
 /* 줄 메뉴(우클릭 · 폰은 길게 누르기) — 자주 안 쓰는 원본 열기 · 지우기는 여기로. 줄 끝엔 비교 · 찜(담기) 두 단추만 */
@@ -16547,37 +16547,35 @@ function prCtx(tr){
       prCanEdit(r)?{sep:true}:null,prCanEdit(r)?{label:'지우기',danger:true,act:()=>prDel(id)}:null].filter(Boolean);}
   const i=tr.dataset.i,k=tr.dataset.k||'g2b',u=(PUB[k]||{}).url;return[u?{label:'원본 열기',act:()=>window.open(u,'_blank','noopener')}:null,{label:'비교에 담기',act:()=>ACT['pr.gcmp']({dataset:{i,k}})},{label:'목록에 담기',act:()=>ACT['pr.gadd']({dataset:{i,k}})}].filter(Boolean);}
 /* 표 세로 막대 — 카드 오른쪽 바깥 여백에(잡아끌 수 있다). 붙박이 머리 줄 아래 높이만큼. 폰은 손가락 스크롤이라 CSS 가 숨긴다 */
-function prSbSync(){const w=$('#prWrap');if(!w){return;}const th=w.querySelector('thead');w.__sb=w.__sb&&w.__sb.isConnected?w.__sb:null;dwSb(w,'pr-vsb',th?th.offsetHeight:0);}
+function prSbSync(){const w=$('#prWrap');if(!w){return;}const th=w.querySelector('thead'),h1=th&&th.rows[0];if(h1)w.style.setProperty('--prth',h1.offsetHeight+'px');   /* 필터행은 머리 줄 바로 아래 붙박이 */w.__sb=w.__sb&&w.__sb.isConnected?w.__sb:null;dwSb(w,'pr-vsb',th?th.offsetHeight:0);}
 document.addEventListener('scroll',e=>{if(e.target&&e.target.id==='prWrap')prSbSync();},true);
 addEventListener('resize',()=>{if(S.view==='pr')prSbSync();});
-/* 「담기 단추」 — 즐겨찾기 막대에 끌어다 둔 북마클릿. 네이버 쇼핑 등 상품 페이지에서 누르면 그 페이지의 상품명 · 가격 · 주소를 읽어
-   이 앱을 #pradd?n=&p=&u=&s= 로 새 탭에 열고, 앱은 단가 입력 줄을 채워 둔다(저장은 사람이 확인하고).
-   네이버 쇼핑 검색 API 는 2026-07-31 종료 · 페이지는 CORS 로 앱이 직접 못 읽는다 → 사람이 보고 있는 페이지에서 사람이 누르는 방식만 쓴다.
-   읽는 차례: 상품 구조화 데이터(JSON-LD Product) → product:price:amount 메타 → 드래그해 고른 글(「12,300원」) → og:title · 문서 제목 */
-function prBmCode(){const app=location.origin+location.pathname;
-  return "(function(){var A="+JSON.stringify(app)+",d=document,s=String(getSelection()||'').trim(),n='',p='',q=function(x){var e=d.querySelector(x);return e?(e.content||e.textContent||'').trim():''};"
-   +"try{[].some.call(d.querySelectorAll('script[type=\"application/ld+json\"]'),function(e){var j=JSON.parse(e.textContent);return [].concat(j['@graph']||j).some(function(o){if(o&&/Product/.test(o['@type'])){n=o.name||n;var f=[].concat(o.offers||[])[0];if(f)p=f.price||f.lowPrice||p;return 1}})})}catch(e){}"
-   +"p=p||q('meta[property=\"product:price:amount\"]')||q('meta[property=\"og:price:amount\"]');"
-   +"if(s){var m=s.match(/([0-9][0-9,]{2,})\\s*원/)||s.match(/[0-9]{1,3}(,[0-9]{3})+/);if(m&&!p)p=m[1]&&m[0].indexOf('원')>0?m[1]:m[0];if(!n)n=s.split(/\\n/).map(function(t){return t.trim()}).filter(function(t){return t&&!/^[0-9,\\s]+원?$/.test(t)&&!/원$/.test(t)})[0]||''}"
-   +"n=n||q('meta[property=\"og:title\"]')||d.title;"
-   +"open(A+'#pradd?'+new URLSearchParams({n:String(n).slice(0,60),p:String(p).replace(/[^0-9.]/g,''),u:location.href.slice(0,500),s:/naver\\./.test(location.hostname)?'nv':'etc'}),'_blank')})()";}
-/* 담기 단추로 열렸을 때 — 로그인 뒤 한 번(hideCover done) · 이미 열려 있으면 hashchange */
-function prBmIn(){if(WIDGET)return;const h=location.hash;if(!/^#pradd\?/.test(h))return;
-  history.replaceState(null,'',location.pathname+location.search);
-  const q=new URLSearchParams(h.slice(7)),u=q.get('u')||'',b={n:(q.get('n')||'').replace(/\s+/g,' ').trim().slice(0,60),p:(q.get('p')||'').replace(/[^0-9.]/g,''),u:/^https?:\/\//i.test(u)?u.slice(0,500):'',s:PR_SRC[q.get('s')]?q.get('s'):'etc'};
-  if(S.view!=='pr')go('pr');PR.add=true;PR.view='list';PR.fd='';rPr();
-  setTimeout(()=>{const f=(id,v)=>{const e=$(id);if(e&&v)e.value=v;};f('#prNn',b.n);f('#prNp',b.p);f('#prNl',b.u);f('#prNsrc',b.s);const e=$(b.p?'#prNs':'#prNp');if(e)e.focus();toast(b.p?'담아 온 상품을 확인하고 저장하세요':'가격을 읽지 못했습니다 · 단가를 넣고 저장하세요');},0);}
-addEventListener('hashchange',()=>{if(!document.body.classList.contains('gate-on')&&!document.body.classList.contains('lg')&&/^#pradd\?/.test(location.hash))prBmIn();});
-document.addEventListener('click',e=>{const a=e.target.closest&&e.target.closest('a.pr-bm');if(!a)return;e.preventDefault();toast('누르지 말고 즐겨찾기 막대로 끌어다 놓으세요');},true);
-/* 「네이버에서 담기」 사용법 창 — 담기 단추(북마클릿)를 여기서 즐겨찾기 막대로 끌어다 둔다 */
-function prBmOpen(){const q=PR.q.trim(),nv='https://search.shopping.naver.com/search/all?query='+encodeURIComponent(q);
-  openModal('네이버에서 담기','<div class="ai-doc pr-bmd">'
-    +'<h4>1. 아래 단추를 즐겨찾기 막대로 끌어다 놓기</h4><p>처음 한 번만. 막대가 안 보이면 Ctrl+Shift+B</p>'
-    +'<div class="pr-bmw"><a class="pr-bm" href="'+esc('javascript:'+encodeURIComponent(prBmCode()))+'" draggable="true">'+rwIc('i-addsq')+'calapp 담기</a></div>'
-    +'<h4>2. 네이버 쇼핑에서 상품 열기</h4><p>상품 페이지를 연다. 검색 결과 목록이면 담을 상품의 이름과 가격을 마우스로 끌어 고른다</p>'
-    +'<div class="pr-bmw"><a class="rw-bb" href="'+esc(nv)+'" target="_blank" rel="noopener">'+rwIc('i-ext')+'네이버 쇼핑'+(q?' · 「'+esc(q)+'」':'')+'</a></div>'
-    +'<h4>3. 즐겨찾기의 「calapp 담기」 누르기</h4><p>새 탭에 단가 입력이 상품명 · 가격 · 주소로 채워져 열린다. 확인하고 저장</p></div>','<button class="btn bp bsm" data-act="modal.close">닫기</button>');}
-function prRows(){const q=PR.q.trim();let L=prItems().filter(r=>PR.src[prSk(r.s)]!==0&&(!q||q.split(/\s+/).every(t=>hgMatch(r.n+' '+(r.sp||'')+' '+(r.nt||'')+' '+prTitle(r.id),t))));
+/* 네이버에서 담기 — 네이버 쇼핑 검색 API 는 2026-07-31 종료 · 페이지는 CORS 로 앱이 직접 못 읽는다(1277 검토).
+   그래서 사람이 네이버 쇼핑에서 상품 이름 · 가격을 끌어 복사(Ctrl+C)하고 물가정보 화면에서 붙여넣기(Ctrl+V) → 단가 입력 줄을 채운다(저장은 사람이).
+   글(text/plain)에서 이름 · 가격, 함께 온 HTML 의 첫 링크에서 원본 주소를 읽는다 */
+const PR_NOISE=/^(광고|최저|최저가|판매처|찜|리뷰|구매|구매건수|등록일|배송|배송비|무료배송|오늘출발|도착|적립|할인|쿠폰|카드|N\s?페이|네이버페이|톡톡|정보 수정요청|신고하기|판매자|브랜드|제조사|스토어|[0-9.]+%?)\b|원$|^\d[\d,.\s]*$/;
+function prPasteParse(txt,html){const L=String(txt||'').split(/\r?\n/).map(t=>t.replace(/\s+/g,' ').trim()).filter(Boolean);
+  let p='',n='',u='';
+  for(const l of L){if(/배송|적립|할인|쿠폰|카드|포인트|혜택/.test(l))continue;const m=l.match(/([0-9][0-9,]{2,})\s*원/);if(m){p=m[1].replace(/,/g,'');break;}}
+  n=L.find(l=>l.length>=4&&!PR_NOISE.test(l)&&!/[0-9][0-9,]{2,}\s*원/.test(l))||'';
+  if(html){try{const d=new DOMParser().parseFromString(html,'text/html');const a=[...d.querySelectorAll('a[href]')].map(x=>x.getAttribute('href')).find(h=>/^https?:\/\//i.test(h));if(a)u=a;}catch(e){}}
+  return{n:n.slice(0,60),p,u:u.slice(0,500),s:/naver\.(com|net)/.test(u)||/naver/i.test(html||'')?'nv':'etc'};}
+function prPasteFill(b){if(S.view!=='pr')go('pr');PR.add=true;PR.pst=false;PR.view='list';PR.fd='';rPr();
+  setTimeout(()=>{const f=(id,v)=>{const e=$(id);if(e&&v)e.value=v;};f('#prNn',b.n);f('#prNp',b.p);f('#prNl',b.u);f('#prNsrc',b.s);const e=$(!b.n?'#prNn':b.p?'#prNs':'#prNp');if(e)e.focus();
+    toast(b.p?'붙여 넣은 상품을 확인하고 저장하세요':'가격을 찾지 못했습니다 · 단가를 넣고 저장하세요');},0);}
+document.addEventListener('paste',e=>{if(S.view!=='pr'||PR.view!=='list')return;const a=document.activeElement;if(a&&(/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)||a.isContentEditable))return;
+  const cd=e.clipboardData;if(!cd)return;const t=cd.getData('text/plain');if(!t||!t.trim())return;e.preventDefault();prPasteFill(prPasteParse(t,cd.getData('text/html')));});
+/* 필터행(데스크톱) — 열마다 부분 일치. 단가는 「>=1000」 「<5000」 「1000~5000」도 */
+const PR_FK=['n','sp','u','p','s','m','nt'];
+function prFfOk(o){for(const k of PR_FK){const v=String(PR.ff[k]||'').trim();if(!v)continue;
+    if(k==='p'){const x=+o.p||0,r=v.replace(/[, ]/g,''),a=r.match(/^([<>]=?)(\d+(?:\.\d+)?)$/),b=r.match(/^(\d+(?:\.\d+)?)[~\-](\d+(?:\.\d+)?)$/);
+      if(a){const y=+a[2];if(!(a[1]==='>'?x>y:a[1]==='>='?x>=y:a[1]==='<'?x<y:x<=y))return false;continue;}
+      if(b){if(x<+b[1]||x>+b[2])return false;continue;}
+      if(!String(x).includes(r)&&!rwN(x).includes(v))return false;continue;}
+    if(!hgMatch(String(o[k]||''),v))return false;}
+  return true;}
+const prFfOn=()=>PR_FK.some(k=>String(PR.ff[k]||'').trim());
+function prRows(){const q=PR.q.trim();let L=prItems().filter(r=>PR.src[prSk(r.s)]!==0&&(!prFfOn()||prFfOk({n:prTitle(r.id)||r.n,sp:r.sp,u:r.u,p:r.p,s:prSrc(r.s)[0]+' '+prSrc(r.s)[1],m:prMon(r.m),nt:r.nt}))&&(!q||q.split(/\s+/).every(t=>hgMatch(r.n+' '+(r.sp||'')+' '+(r.nt||'')+' '+prTitle(r.id),t))));
   if(PR.fd)L=L.filter(r=>{const f=prFoldOf(r.id);return f&&(PR.fd==='*'||f===PR.fd);});
   /* 같은 자재 · 규격 · 출처는 가장 최근 달만 목록에 */
   const last={};L.forEach(r=>{const k=prKey(r),o=last[k];if(!o||(r.m||'')>(o.m||'')||((r.m||'')===(o.m||'')&&(r.at||0)>(o.at||0)))last[k]=r;});L=Object.values(last);
@@ -16626,20 +16624,22 @@ function rPr(){
   const root=$('#prRoot');if(!root)return;xlib('hg').catch(()=>{});
   const L=prRows(),all=prItems(),qa=PR.q.trim(),QM=qa?all.filter(r=>qa.split(/\s+/).every(t=>hgMatch(r.n+' '+(r.sp||'')+' '+(r.nt||'')+' '+prTitle(r.id),t))):all,PN=Object.fromEntries(qa?PUB_K.map(k=>[k,pubVisible(k,pubFind(k,qa)).length]):[]),cnt=k=>QM.filter(r=>prSk(r.s)===k).length+(PN[k]||0),PM=Object.values(prPinMap().m).map(L=>L[L.length-1][1]),pins=PM.length,fcnt=f=>PM.filter(x=>x===f).length,FD=prFolds(),fdName=f=>f==='*'?'찜 목록':f==='_'?'미분류':((FD.find(x=>x.id===f)||{}).n||''),ng=new Set([...PR.cmp].map(id=>{const r=all.find(x=>x.id===id);return r?r.n+'|'+(r.sp||''):'';}).filter(Boolean)).size;
   const q=PR.q.trim(),qe=encodeURIComponent(q);
-  const nr=PR.add?'<tr class="pr-new"><td class="n">'+rwIc('i-plus')+'</td><td><input class="inp inp-sm" id="prNn" placeholder="자재명" value="'+esc(q)+'"><input class="inp inp-sm" id="prNs" placeholder="규격"></td><td><input class="inp inp-sm" id="prNu" placeholder="단위"></td><td><input class="inp inp-sm" id="prNp" placeholder="단가" inputmode="numeric" style="text-align:right"></td>'
+  const nr=PR.add?'<tr class="pr-new"><td class="n">'+rwIc('i-plus')+'</td><td><input class="inp inp-sm" id="prNn" placeholder="자재명" value="'+esc(q)+'"></td><td><input class="inp inp-sm" id="prNs" placeholder="규격"></td><td><input class="inp inp-sm" id="prNu" placeholder="단위"></td><td><input class="inp inp-sm" id="prNp" placeholder="단가" inputmode="numeric" style="text-align:right"></td>'
      +'<td><select class="inp inp-sm" id="prNsrc">'+PR_SK.map(k=>'<option value="'+k+'">'+prSrc(k)[1]+'</option>').join('')+'</select></td><td><input class="inp inp-sm" id="prNm" type="month" value="'+prCurMon()+'"></td><td><input class="inp inp-sm" id="prNt" placeholder="비고 · 쪽"><input class="inp inp-sm" id="prNl" placeholder="원본 주소(선택)"></td><td><div class="pr-nb"><button class="btn bp bxs" data-act="pr.addok">저장</button><button class="btn bg2 bxs" data-act="pr.add">취소</button></div></td></tr>':'';
   const GS=PR.view==='list'?pubLists(q):[];   /* 공공 단가(매달 자동 갱신) — 팀 목록 아래에 묶음별로 */
   const body=PR.view==='list'
-   ?'<div class="qc-wrap" id="prWrap" data-sbh><table class="qc-tbl pr-tbl"><colgroup><col style="width:48px"><col><col style="width:56px"><col style="width:96px"><col style="width:80px"><col style="width:80px"><col style="width:16%"><col style="width:104px"></colgroup><thead><tr><th class="n">NO</th><th>자재명 · 규격</th><th>단위</th><th class="r pr-so" data-act="pr.sort">단가'+(PR.sort?(PR.sort==='p'?' ↑':' ↓'):'')+'</th><th>출처</th><th>기준월</th><th>비고</th><th></th></tr></thead><tbody>'+nr
+   ?'<div class="qc-wrap" id="prWrap" data-sbh><table class="qc-tbl pr-tbl"><colgroup><col style="width:40px"><col><col style="width:20%"><col style="width:48px"><col style="width:84px"><col style="width:66px"><col style="width:80px"><col style="width:12.5%"><col style="width:96px"></colgroup><thead><tr><th class="n">NO</th><th>자재명</th><th class="pr-spc">규격</th><th>단위</th><th class="r pr-so" data-act="pr.sort">단가'+(PR.sort?(PR.sort==='p'?' ↑':' ↓'):'')+'</th><th>출처</th><th>기준월</th><th>비고</th><th class="pr-fth"><button class="pr-ib'+(PR.fr||prFfOn()?' on':'')+'" data-act="pr.fr" data-tip="'+(PR.fr?'필터행 닫기':'필터행')+'" aria-label="필터행">'+rwIc('i-filter')+'</button></th></tr>'
+     +(PR.fr?'<tr class="pr-frow"><th></th>'+PR_FK.map(k=>'<th><input class="pr-fin" data-k="'+k+'" value="'+esc(PR.ff[k]||'')+'" autocomplete="off" placeholder="'+(k==='p'?'>=1000 · 1000~5000':'')+'" aria-label="필터"></th>').join('')+'<th>'+(prFfOn()?'<button class="pr-ib" data-act="pr.ffx" data-tip="필터 지우기" aria-label="필터 지우기">'+rwIc('i-close')+'</button>':'')+'</th></tr>':'')
+     +'</thead><tbody>'+(PR.pst?'<tr class="pr-pst"><td colspan="9">'+rwIc('i-paste')+'<span>네이버 쇼핑에서 상품 이름 · 가격을 끌어 복사(Ctrl+C)한 뒤 이 화면에서 <b>Ctrl+V</b></span><button class="pr-ib" data-act="pr.pstx" aria-label="닫기">'+rwIc('i-close')+'</button></td></tr>':'')+nr
      +(L.length?L.map((r,i)=>{const u=prUrl(r),pn=prPinned(r.id),tt=prTitle(r.id);
-       return '<tr class="pr-r'+(PR.pop===r.id?' open':'')+'" data-id="'+r.id+'"><td class="n">'+(i+1)+'</td><td class="pr-nm"><b>'+esc(tt||r.n)+'</b><span>'+esc(tt?[r.n,r.sp].filter(Boolean).join(' · '):(r.sp||''))+'</span><i class="pr-tg pr-tgm '+r.s+'">'+prSrc(r.s)[1]+'</i></td><td>'+esc(r.u||'')+'</td><td class="r pr-pr">'+rwN(r.p)+'</td><td>'+prTagHTML(r.s,'')+'</td><td>'+prMon(r.m)+'</td><td class="pr-nt">'+esc(r.nt||'')+'</td>'
+       return '<tr class="pr-r'+(PR.pop===r.id?' open':'')+'" data-id="'+r.id+'"><td class="n">'+(i+1)+'</td><td class="pr-nm"><b>'+esc(tt||r.n)+'</b><span>'+esc(tt?[r.n,r.sp].filter(Boolean).join(' · '):(r.sp||''))+'</span><i class="pr-tg pr-tgm '+r.s+'">'+prSrc(r.s)[1]+'</i></td><td class="pr-spc">'+esc(tt?[r.n,r.sp].filter(Boolean).join(' · '):(r.sp||''))+'</td><td>'+esc(r.u||'')+'</td><td class="r pr-pr">'+rwN(r.p)+'</td><td>'+prTagHTML(r.s,'')+'</td><td>'+prMon(r.m)+'</td><td class="pr-nt">'+esc(r.nt||'')+'</td>'
         +'<td class="pr-ac">'+(u?'<a class="pr-ib" href="'+esc(u)+'" target="_blank" rel="noopener" data-tip="원본 열기 · '+esc(prSrc(r.s)[0])+'" aria-label="원본 열기">'+rwIc('i-ext')+'</a>':'<span class="pr-ib0"></span>')+'<button class="pr-ib pr-cb'+(PR.cmp.has(r.id)?' on':'')+'" data-act="pr.cmpt" data-id="'+r.id+'" data-tip="'+(PR.cmp.has(r.id)?'비교에서 빼기':'비교에 담기')+'" aria-label="비교에 담기">'+rwIc(PR.cmp.has(r.id)?'i-check':'i-plus')+'</button>'
         +'<button class="pr-st'+(pn?' on':'')+'" data-act="pr.star" data-id="'+r.id+'" data-tip="'+(pn?esc(fdName(prFoldOf(r.id)))+' · 이름·폴더':'찜하기')+'" aria-label="찜">'+rwIc('i-star')+'</button></td></tr>'
        ;}).join('')
-       :GS.length?'':'<tr><td colspan="8" class="rd-none">'+(PR.denied?'서버 저장 규칙이 아직 게시되지 않아 물가정보를 읽을 수 없습니다':!all.length?'아직 모아 둔 단가가 없습니다':PR.fd&&!q?'찜한 자재가 없습니다':'찾는 자재가 없습니다')+(q?'<div class="pr-find">'+PR_FIND.map(([k,n,f])=>'<a class="rw-bb" href="'+esc(f(qe))+'" target="_blank" rel="noopener">'+rwIc('i-ext')+n+'</a>').join('')+'</div>':'')+'</td></tr>')+GS.map(([k,V])=>pubRowsHTML(k,V)).join('')+'</tbody></table></div>'
+       :GS.length?'':'<tr><td colspan="9" class="rd-none">'+(PR.denied?'서버 저장 규칙이 아직 게시되지 않아 물가정보를 읽을 수 없습니다':!all.length?'아직 모아 둔 단가가 없습니다':PR.fd&&!q?'찜한 자재가 없습니다':'찾는 자재가 없습니다')+(q?'<div class="pr-find">'+PR_FIND.map(([k,n,f])=>'<a class="rw-bb" href="'+esc(f(qe))+'" target="_blank" rel="noopener">'+rwIc('i-ext')+n+'</a>').join('')+'</div>':'')+'</td></tr>')+GS.map(([k,V])=>pubRowsHTML(k,V)).join('')+'</tbody></table></div>'
    :prCmpHTML();
   const H='<div class="qc-grid"><div class="qc-col">'
-   +'<div class="card"><div class="tm-h"><span>검색</span></div><div class="qc-b pr-qb"><label class="pr-q">'+rwIc('i-search')+'<input id="prQ" value="'+esc(PR.q)+'" placeholder="자재명 · 규격 · 초성" autocomplete="off"></label>'
+   +'<div class="card"><div class="tm-h"><span>검색</span></div><div class="qc-b pr-qb"><label class="pr-q">'+rwIc('i-search')+'<input id="prQ" value="'+esc(PR.q)+'" placeholder="자재명 · 규격 · 초성" autocomplete="off"><button class="pr-qx" data-act="pr.qx" aria-label="검색어 지우기">'+rwIc('i-close')+'</button></label>'
      +'<div class="pr-lk"><span>원본에서 찾기</span>'+PR_FIND.map(([k,n,f])=>q?'<a href="'+esc(f(qe))+'" target="_blank" rel="noopener">'+n+'</a>':'<a class="off" aria-disabled="true">'+n+'</a>').join('')+'</div></div></div>'
    +'<div class="card pr-srcc"><div class="tm-h"><span>출처</span><span class="tm-sub">'+(QM.length+PUB_K.reduce((a,k)=>a+(PN[k]||0),0))+'</span></div><div class="qc-b pr-sb"><div class="pr-src">'
      +PR_SK.map(k=>'<button class="pr-s'+(PR.src[k]?' on':'')+'" data-act="pr.src" data-k="'+k+'"><span class="ck">'+rwIc('i-check')+'</span><span>'+prSrc(k)[0]+'</span><small>'+cnt(k)+'</small></button>').join('')+'</div></div></div>'
@@ -16655,6 +16655,10 @@ function rPr(){
      +tlSeg(PR.view,[['list','목록'],['cmp','단가 비교'+(ng?' '+ng:'')]],'data-act="pr.view" data-k')+'</span></div>'+body
   +'</div></div>';
   /* ⚠ 검색어를 칠 때는 검색 칸을 다시 만들지 않는다 — 칸을 바꾸면 한글 조합(ㅅ+ㅓ→서)이 끊겨 자모가 따로 들어간다. 목록 쪽과 「원본에서 찾기」만 바꾼다 */
+  if(PR._fonly&&root.querySelector('#prWrap tbody')){PR._fonly=false;const t=document.createElement('div');t.innerHTML=H;
+    root.querySelector('#prWrap tbody').replaceWith(t.querySelector('#prWrap tbody'));const qt=root.querySelector('.qc-t');if(qt)qt.replaceWith(t.querySelector('.qc-t'));
+    const fx=root.querySelector('.pr-frow th:last-child'),fy=t.querySelector('.pr-frow th:last-child');if(fx&&fy)fx.innerHTML=fy.innerHTML;const fb=root.querySelector('.pr-fth .pr-ib');if(fb)fb.classList.toggle('on',PR.fr||prFfOn());
+    const sc=root.querySelector('.pr-srcc');if(sc)sc.replaceWith(t.querySelector('.pr-srcc'));prPopDraw();prSbSync();return;}
   const qNow=$('#prQ');
   if((PR._qonly||document.activeElement===qNow)&&qNow&&root.querySelector('.qc-right')){   /* 치는 중에 온 저장 알림으로 다시 그릴 때도 */const t=document.createElement('div');t.innerHTML=H;
     root.querySelector('.qc-right').replaceWith(t.querySelector('.qc-right'));const lk=root.querySelector('.pr-lk');if(lk)lk.replaceWith(t.querySelector('.pr-lk'));const sc=root.querySelector('.pr-srcc');if(sc)sc.replaceWith(t.querySelector('.pr-srcc'));PR._qonly=false;prPopDraw();prSbSync();return;}
@@ -16664,7 +16668,7 @@ function rPr(){
   prPopDraw();prSbSync();
   if(PR.add&&!PR._af){PR._af=true;setTimeout(()=>{const i=$('#prNn');if(i){i.focus();if(i.value)($('#prNs')||i).focus();}},0);}
 }
-document.addEventListener('input',e=>{if(e.target.id==='prQ'){PR.q=e.target.value;PR.pop='';PUB_K.forEach(k=>PUB[k].more=0);PR._qonly=true;rPr();}});
+document.addEventListener('input',e=>{const f=e.target.closest&&e.target.closest('#prRoot .pr-fin');if(f){PR.ff[f.dataset.k]=f.value;PR._fonly=true;rPr();return;}if(e.target.id==='prQ'){PR.q=e.target.value;PR.pop='';PUB_K.forEach(k=>PUB[k].more=0);PR._qonly=true;rPr();}});
 function prFoldSave(inp){const v=inp.value.trim().slice(0,30),k=inp.dataset.id;PR.fadd=false;PR.fe='';
   if(v){if(prFolds().some(f=>f.n===v&&f.id!==k)){toast('같은 이름의 폴더가 있습니다');}else if(k){const f=((S.price||{}).fold||{})[k];if(f&&f.n!==v)prWrite('fold/'+k,{...f,n:v});}else{const id=uid();prWrite('fold/'+id,{n:v,by:authUid()||myId(),at:Date.now()});PR.fd=id;}}
   rPr();}
@@ -16692,7 +16696,11 @@ Object.assign(ACT,{
   'pr.gcmp':el=>{const o=pubItem(el.dataset.k||'g2b',+el.dataset.i);if(!o)return;const id=uid();prWrite('items/'+id,o);PR.cmp.add(id);rPr();toast('목록에 담고 비교에 넣었습니다');},
   'pr.gmore':el=>{const P=PUB[(el&&el.dataset.k)||'g2b'];if(P)P.more++;rPr();},
   'pr.unpin':el=>{prPinSet(el.dataset.id,null);PR.pop='';rPr();},
-  'pr.bm':()=>prBmOpen(),
+  'pr.bm':()=>{const q=PR.q.trim();window.open('https://search.shopping.naver.com/search/all?query='+encodeURIComponent(q),'_blank','noopener');PR.pst=true;rPr();},
+  'pr.pstx':()=>{PR.pst=false;rPr();},
+  'pr.qx':()=>{PR.q='';PR.pop='';PUB_K.forEach(k=>PUB[k].more=0);const i=$('#prQ');if(i)i.value='';PR._qf=true;rPr();},
+  'pr.fr':()=>{PR.fr=!PR.fr;if(!PR.fr)PR.ff={};rPr();if(PR.fr)setTimeout(()=>{const i=document.querySelector('#prRoot .pr-fin');if(i)i.focus();},0);},
+  'pr.ffx':()=>{PR.ff={};rPr();},
   'pr.add':()=>{PR.add=!PR.add;PR._af=false;PR.view='list';rPr();},
   'pr.addok':()=>{const v=id=>(($(id)||{}).value||'').trim();const n=v('#prNn').slice(0,60),p=+v('#prNp').replace(/[^0-9.]/g,''),m=v('#prNm'),url=v('#prNl');
     if(!n||!p){toast('자재명과 단가를 넣어 주세요');return;}if(!/^\d{4}-\d{2}$/.test(m)){toast('기준월을 골라 주세요');return;}if(url&&!/^https?:\/\//i.test(url)){toast('원본 주소는 http 로 시작해야 합니다');return;}
