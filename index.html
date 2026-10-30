@@ -5578,6 +5578,9 @@ td.d60-pc.has{color:var(--bt1);font-weight:700}
 .pr-lk span{color:var(--lbl3);margin-right:2px}
 .pr-lk a{color:var(--b600);font-weight:600;text-decoration:none}
 .pr-lk a.off{color:var(--lbl4,var(--lbl3));opacity:.55;pointer-events:none}
+.pr-lk a.pr-bm{display:inline-flex;align-items:center;gap:3px;margin-left:auto;padding:1px 7px;border:1px dashed var(--sep2,var(--sep));border-radius:var(--rsm);color:var(--lbl2);cursor:grab}   /* 담기 단추(북마클릿) — 즐겨찾기 막대로 끌어다 둔다 */
+.pr-lk a.pr-bm .icn{width:12px;height:12px}
+@media (max-width:760px){.pr-lk a.pr-bm{display:none}}
 @media (hover:hover) and (pointer:fine){.pr-lk a:hover{text-decoration:underline}}
 .pr-sb{padding-top:2px;padding-bottom:8px}
 .pr-src{display:flex;flex-direction:column;margin:0 calc(-1*var(--s4))}
@@ -6628,5 +6631,5 @@ body.mcal-full #fcal .mlN::before{content:'+'}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1276"></script>
+<script src="./app.js?v=1277"></script>
 </body></html>
