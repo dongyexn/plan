@@ -5599,6 +5599,8 @@ td.d60-pc.has{color:var(--bt1);font-weight:700}
 .pr-tbl tr.open td{background:var(--b-tint)}
 .pr-nm b{display:block;font-weight:600;word-break:keep-all;overflow-wrap:anywhere}
 .pr-nm .pr-tgm{display:none}
+.pr-ib0{display:inline-block;width:28px;height:28px;vertical-align:middle}   /* 원본 주소가 없는 줄 — 단추 자리만(눌리지 않음) */
+.pr-nb{display:flex;flex-direction:column;gap:4px}
 a.pr-tl{gap:3px;text-decoration:none}
 a.pr-tl .icn{width:10px;height:10px;opacity:.55}
 @media (hover:hover) and (pointer:fine){a.pr-tl:hover{filter:brightness(.95)}a.pr-tl:hover .icn{opacity:1}}
@@ -5690,6 +5692,7 @@ a.pr-tl .icn{width:10px;height:10px;opacity:.55}
   body:not(.wid) .pr-nm span{white-space:normal}
   body:not(.wid) .pr-tbl .pr-nm{word-break:keep-all}
   body:not(.wid) .pr-tbl .pr-ac .pr-ib,body:not(.wid) .pr-tbl .pr-ac .pr-st{width:30px}
+  body:not(.wid) .pr-tbl .pr-ac .pr-ib0{display:none}
 }
 /* ═══════════ 업무 도구 — 파일 카드(1061 도면 인쇄 폐지 후 남은 것) ═══════════ */
 .dw-open{width:100%;height:36px;display:flex;align-items:center;justify-content:center;gap:7px;border-radius:var(--rmd);background:var(--b600);color:#fff;font-size:13px;font-weight:700}
