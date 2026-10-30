@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1277';
+const APP_VER='1278';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -16568,7 +16568,15 @@ function prBmIn(){if(WIDGET)return;const h=location.hash;if(!/^#pradd\?/.test(h)
   if(S.view!=='pr')go('pr');PR.add=true;PR.view='list';PR.fd='';rPr();
   setTimeout(()=>{const f=(id,v)=>{const e=$(id);if(e&&v)e.value=v;};f('#prNn',b.n);f('#prNp',b.p);f('#prNl',b.u);f('#prNsrc',b.s);const e=$(b.p?'#prNs':'#prNp');if(e)e.focus();toast(b.p?'담아 온 상품을 확인하고 저장하세요':'가격을 읽지 못했습니다 · 단가를 넣고 저장하세요');},0);}
 addEventListener('hashchange',()=>{if(!document.body.classList.contains('gate-on')&&!document.body.classList.contains('lg')&&/^#pradd\?/.test(location.hash))prBmIn();});
-document.addEventListener('click',e=>{const a=e.target.closest&&e.target.closest('a.pr-bm');if(!a)return;e.preventDefault();toast('즐겨찾기 막대로 끌어다 두고 상품 페이지에서 누르세요');},true);
+document.addEventListener('click',e=>{const a=e.target.closest&&e.target.closest('a.pr-bm');if(!a)return;e.preventDefault();toast('누르지 말고 즐겨찾기 막대로 끌어다 놓으세요');},true);
+/* 「네이버에서 담기」 사용법 창 — 담기 단추(북마클릿)를 여기서 즐겨찾기 막대로 끌어다 둔다 */
+function prBmOpen(){const q=PR.q.trim(),nv='https://search.shopping.naver.com/search/all?query='+encodeURIComponent(q);
+  openModal('네이버에서 담기','<div class="ai-doc pr-bmd">'
+    +'<h4>1. 아래 단추를 즐겨찾기 막대로 끌어다 놓기</h4><p>처음 한 번만. 막대가 안 보이면 Ctrl+Shift+B</p>'
+    +'<div class="pr-bmw"><a class="pr-bm" href="'+esc('javascript:'+encodeURIComponent(prBmCode()))+'" draggable="true">'+rwIc('i-addsq')+'calapp 담기</a></div>'
+    +'<h4>2. 네이버 쇼핑에서 상품 열기</h4><p>상품 페이지를 연다. 검색 결과 목록이면 담을 상품의 이름과 가격을 마우스로 끌어 고른다</p>'
+    +'<div class="pr-bmw"><a class="rw-bb" href="'+esc(nv)+'" target="_blank" rel="noopener">'+rwIc('i-ext')+'네이버 쇼핑'+(q?' · 「'+esc(q)+'」':'')+'</a></div>'
+    +'<h4>3. 즐겨찾기의 「calapp 담기」 누르기</h4><p>새 탭에 단가 입력이 상품명 · 가격 · 주소로 채워져 열린다. 확인하고 저장</p></div>','<button class="btn bp bsm" data-act="modal.close">닫기</button>');}
 function prRows(){const q=PR.q.trim();let L=prItems().filter(r=>PR.src[prSk(r.s)]!==0&&(!q||q.split(/\s+/).every(t=>hgMatch(r.n+' '+(r.sp||'')+' '+(r.nt||'')+' '+prTitle(r.id),t))));
   if(PR.fd)L=L.filter(r=>{const f=prFoldOf(r.id);return f&&(PR.fd==='*'||f===PR.fd);});
   /* 같은 자재 · 규격 · 출처는 가장 최근 달만 목록에 */
@@ -16632,7 +16640,7 @@ function rPr(){
    :prCmpHTML();
   const H='<div class="qc-grid"><div class="qc-col">'
    +'<div class="card"><div class="tm-h"><span>검색</span></div><div class="qc-b pr-qb"><label class="pr-q">'+rwIc('i-search')+'<input id="prQ" value="'+esc(PR.q)+'" placeholder="자재명 · 규격 · 초성" autocomplete="off"></label>'
-     +'<div class="pr-lk"><span>원본에서 찾기</span>'+PR_FIND.map(([k,n,f])=>q?'<a href="'+esc(f(qe))+'" target="_blank" rel="noopener">'+n+'</a>':'<a class="off" aria-disabled="true">'+n+'</a>').join('')+'<a class="pr-bm" href="'+esc('javascript:'+encodeURIComponent(prBmCode()))+'" draggable="true" data-tip="즐겨찾기 막대로 끌어다 두기 · 상품 페이지에서 누르면 단가 입력에 담긴다">'+rwIc('i-addsq')+'담기 단추</a>'+'</div></div></div>'
+     +'<div class="pr-lk"><span>원본에서 찾기</span>'+PR_FIND.map(([k,n,f])=>q?'<a href="'+esc(f(qe))+'" target="_blank" rel="noopener">'+n+'</a>':'<a class="off" aria-disabled="true">'+n+'</a>').join('')+'</div></div></div>'
    +'<div class="card pr-srcc"><div class="tm-h"><span>출처</span><span class="tm-sub">'+(QM.length+PUB_K.reduce((a,k)=>a+(PN[k]||0),0))+'</span></div><div class="qc-b pr-sb"><div class="pr-src">'
      +PR_SK.map(k=>'<button class="pr-s'+(PR.src[k]?' on':'')+'" data-act="pr.src" data-k="'+k+'"><span class="ck">'+rwIc('i-check')+'</span><span>'+prSrc(k)[0]+'</span><small>'+cnt(k)+'</small></button>').join('')+'</div></div></div>'
    +'<div class="card"><div class="tm-h"><span>찜 목록</span><button class="tm-add" data-act="pr.fadd" data-tip="폴더 만들기" aria-label="폴더 만들기">'+rwIc('i-plus')+'</button></div><div class="qc-b pr-sb"><div class="pr-fds">'
@@ -16643,7 +16651,7 @@ function rPr(){
      +(PR.fadd?'<div class="pr-fd pr-fdin"><input class="inp inp-sm" id="prFn" maxlength="30" placeholder="폴더 이름 · Enter"></div>':'')+'</div></div></div>'
   +'</div><div class="qc-col qc-right">'
    +'<div class="tkbar qc-bar"><span class="qc-t">'+(PR.view==='cmp'?'단가 비교<span>'+ng+'종</span>':(PR.fd?esc(fdName(PR.fd)):q?'「'+esc(q)+'」':'전체 자재')+'<span>'+L.length+'건'+GS.map(([k,V])=>' · '+prSrc(k)[1]+' '+V.length+(V.length>=500?'+':'')+'건').join('')+'</span>')+'</span><span class="tl-br">'
-     +(PR.view==='cmp'?(PR.cmp.size?'<button class="rw-bb" data-act="pr.torw">'+rwIc('i-doc')+'보고서로 보내기</button>':''):'<button class="rw-bb'+(PR.add?' on':'')+'" data-act="pr.add">'+rwIc('i-plus')+'단가 입력</button>')
+     +(PR.view==='cmp'?(PR.cmp.size?'<button class="rw-bb" data-act="pr.torw">'+rwIc('i-doc')+'보고서로 보내기</button>':''):'<button class="rw-bb pr-bmb" data-act="pr.bm">'+rwIc('i-ext')+'네이버에서 담기</button><button class="rw-bb'+(PR.add?' on':'')+'" data-act="pr.add">'+rwIc('i-plus')+'단가 입력</button>')
      +tlSeg(PR.view,[['list','목록'],['cmp','단가 비교'+(ng?' '+ng:'')]],'data-act="pr.view" data-k')+'</span></div>'+body
   +'</div></div>';
   /* ⚠ 검색어를 칠 때는 검색 칸을 다시 만들지 않는다 — 칸을 바꾸면 한글 조합(ㅅ+ㅓ→서)이 끊겨 자모가 따로 들어간다. 목록 쪽과 「원본에서 찾기」만 바꾼다 */
@@ -16684,6 +16692,7 @@ Object.assign(ACT,{
   'pr.gcmp':el=>{const o=pubItem(el.dataset.k||'g2b',+el.dataset.i);if(!o)return;const id=uid();prWrite('items/'+id,o);PR.cmp.add(id);rPr();toast('목록에 담고 비교에 넣었습니다');},
   'pr.gmore':el=>{const P=PUB[(el&&el.dataset.k)||'g2b'];if(P)P.more++;rPr();},
   'pr.unpin':el=>{prPinSet(el.dataset.id,null);PR.pop='';rPr();},
+  'pr.bm':()=>prBmOpen(),
   'pr.add':()=>{PR.add=!PR.add;PR._af=false;PR.view='list';rPr();},
   'pr.addok':()=>{const v=id=>(($(id)||{}).value||'').trim();const n=v('#prNn').slice(0,60),p=+v('#prNp').replace(/[^0-9.]/g,''),m=v('#prNm'),url=v('#prNl');
     if(!n||!p){toast('자재명과 단가를 넣어 주세요');return;}if(!/^\d{4}-\d{2}$/.test(m)){toast('기준월을 골라 주세요');return;}if(url&&!/^https?:\/\//i.test(url)){toast('원본 주소는 http 로 시작해야 합니다');return;}
