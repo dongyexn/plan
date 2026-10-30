@@ -1,0 +1,43 @@
+# 공공 단가 — 매달 3일 05:17(KST) 세 곳에서 받아 data/*.json 을 새로 쓴다. 앱 물가정보 검색이 이 파일들을 읽는다.
+#   g2b-price.json  조달청 가격정보(공공데이터포털 나라장터 가격정보현황서비스 · 키 G2B_KEY)
+#   std-price.json  표준시장단가(국토교통부 공고 · 건설연 공사비원가관리센터 자료실 PDF)
+#   wage.json       건설업 시중노임단가(대한건설협회 건설업 임금실태조사 보고서 PDF)
+# 하나가 실패해도 나머지는 반영한다(continue-on-error). 값이 바뀐 파일만 main 에 커밋하고, 그 뒤 pages 가 다시 배포한다(workflow_run).
+# 바로 반영하려면 Actions 탭에서 Run workflow.
+name: price-data
+on:
+  schedule:
+    - cron: '17 20 2 * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: price-data
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: PDF 읽기 도구
+        run: sudo apt-get install -y -qq poppler-utils >/dev/null
+      - name: 조달청 가격정보
+        continue-on-error: true
+        env:
+          G2B_KEY: ${{ secrets.G2B_KEY }}
+        run: node scripts/g2b-price.mjs
+      - name: 표준시장단가
+        continue-on-error: true
+        run: node scripts/std-price.mjs
+      - name: 시중노임단가
+        continue-on-error: true
+        run: node scripts/wage-price.mjs
+      - name: 바뀌었으면 커밋
+        run: |
+          git add -A data/g2b-price.json data/std-price.json data/wage.json 2>/dev/null || true
+          if git diff --cached --quiet; then echo "바뀐 값 없음"; exit 0; fi
+          git config user.name "price-data"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "공공 단가 갱신 $(TZ=Asia/Seoul date +%Y-%m-%d)"
+          git push

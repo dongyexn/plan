@@ -2779,6 +2779,13 @@ body.wid .gd-nav{background:rgba(24,27,36,.96);}
 @media screen and (max-width:560px){.rs-t{grid-template-columns:repeat(2,minmax(0,1fr));}}   /* 폰: 숫자 네 칸은 2×2 */
 .pb-row{display:flex;justify-content:flex-end;gap:var(--s2);}
 .share-row+.share-row{box-shadow:inset 0 1px 0 var(--sep);}
+.ai-doc{font-size:13px;line-height:1.65;color:var(--lbl)}
+.ai-doc h4{font-size:13px;font-weight:700;margin:14px 0 4px}.ai-doc h4:first-child{margin-top:0}
+.ai-doc ul{margin:0;padding-left:18px}.ai-doc li+li{margin-top:2px}
+.ai-doc p{margin:0;color:var(--lbl2)}
+.ai-tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.ai-tbl td{padding:7px 4px;border-bottom:1px solid var(--sep);vertical-align:top}
+.ai-tbl td:first-child{font-weight:600;color:var(--lbl);width:42%}.ai-tbl td:last-child{color:var(--lbl2)}
 .set-card>.share-row:last-child{box-shadow:inset 0 -1px 0 var(--sep),inset 0 1px 0 var(--sep);}
 .set-card>.share-row:first-of-type:last-of-type{box-shadow:inset 0 -1px 0 var(--sep);}
 .share-row>.share-info{flex:1;}
@@ -5592,6 +5599,8 @@ td.d60-pc.has{color:var(--bt1);font-weight:700}
 .pr-tbl tr.open td{background:var(--b-tint)}
 .pr-nm b{display:block;font-weight:600;word-break:keep-all;overflow-wrap:anywhere}
 .pr-nm .pr-tgm{display:none}
+.pr-ib0{display:inline-block;width:28px;height:28px;vertical-align:middle}   /* 원본 주소가 없는 줄 — 단추 자리만(눌리지 않음) */
+.pr-nb{display:flex;flex-direction:column;gap:4px}
 a.pr-tl{gap:3px;text-decoration:none}
 a.pr-tl .icn{width:10px;height:10px;opacity:.55}
 @media (hover:hover) and (pointer:fine){a.pr-tl:hover{filter:brightness(.95)}a.pr-tl:hover .icn{opacity:1}}
@@ -5600,7 +5609,7 @@ a.pr-tl .icn{width:10px;height:10px;opacity:.55}
 .pr-nt{color:var(--lbl2);font-size:12.5px}
 .pr-nt em{font-style:normal;color:var(--b600);font-weight:600;margin-left:6px;font-size:12px}
 .pr-tg{display:inline-flex;align-items:center;height:20px;padding:0 7px;border-radius:3px;font-size:11px;font-weight:700;white-space:nowrap}
-.pr-tg.g2b{background:#E8F0FB;color:#2F5FB3}.pr-tg.nv{background:#E6F6EC;color:#1D8048}.pr-tg.cp{background:#FDECEC;color:#B4232A}.pr-tg.kpi{background:#FFF1E0;color:#B5650D}.pr-tg.kprc{background:#F6EEDC;color:#8A6412}.pr-tg.dn{background:#E6F4F8;color:#1F7A93}.pr-tg.etc{background:var(--fill);color:var(--lbl2)}
+.pr-tg.g2b{background:#E8F0FB;color:#2F5FB3}.pr-tg.nv{background:#E6F6EC;color:#1D8048}.pr-tg.cp{background:#FDECEC;color:#B4232A}.pr-tg.kpi{background:#FFF1E0;color:#B5650D}.pr-tg.kprc{background:#F6EEDC;color:#8A6412}.pr-tg.dn{background:#E6F4F8;color:#1F7A93}.pr-tg.etc{background:var(--fill);color:var(--lbl2)}.pr-tg.mall{background:#E6F4F8;color:#1F7A93}.pr-tg.sms{background:#FFF1E0;color:#B5650D}.pr-tg.wage{background:#F1ECFB;color:#6A43B5}
 .pr-fds{display:flex;flex-direction:column;margin:0 calc(-1*var(--s4))}
 .pr-fd{display:grid;grid-template-columns:16px minmax(0,1fr) auto;align-items:center;gap:8px;min-height:34px;padding:0 var(--s4);font-size:13px;color:var(--lbl);cursor:pointer}
 .pr-fd>.icn{width:15px;height:15px;color:var(--lbl3)}
@@ -5683,6 +5692,7 @@ a.pr-tl .icn{width:10px;height:10px;opacity:.55}
   body:not(.wid) .pr-nm span{white-space:normal}
   body:not(.wid) .pr-tbl .pr-nm{word-break:keep-all}
   body:not(.wid) .pr-tbl .pr-ac .pr-ib,body:not(.wid) .pr-tbl .pr-ac .pr-st{width:30px}
+  body:not(.wid) .pr-tbl .pr-ac .pr-ib0{display:none}
 }
 /* ═══════════ 업무 도구 — 파일 카드(1061 도면 인쇄 폐지 후 남은 것) ═══════════ */
 .dw-open{width:100%;height:36px;display:flex;align-items:center;justify-content:center;gap:7px;border-radius:var(--rmd);background:var(--b600);color:#fff;font-size:13px;font-weight:700}
@@ -6098,6 +6108,7 @@ body.wid.iss3 #fcal{flex:1 1 0;}
   body:not(.wid) #view-iss .iss-sc{padding-bottom:calc(12px + var(--mtab) + env(safe-area-inset-bottom));}
   body:not(.wid) #view-iss .rp-tabs{overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;}
   body:not(.wid) #view-iss .rp-tab{flex:0 0 auto;}
+  body:not(.wid) #view-iss .card.iss-c{min-height:0;}   /* 폰은 한 줄에 카드 하나 — 4줄 기본 높이 대신 현안 수만큼 */
 }
 body.mcal-full #fcal .mlP{display:none}
 body.mcal-full #fcal .mlN::before{content:'+'}
@@ -6563,6 +6574,17 @@ body.mcal-full #fcal .mlN::before{content:'+'}
               <button class="btn bo bsm" data-act="wid.dl">다운로드</button>
             </div>
           </div>
+          <div class="set-card card">   <!-- 1276 앱 정보 — 개인정보 처리 안내 · 사용한 오픈소스와 리소스 -->
+            <div class="set-h">앱 정보</div>
+            <div class="share-row">
+              <div class="share-info"><b>개인정보 처리 안내</b><span>앱이 저장하는 정보와 보관 · 삭제 방법</span></div>
+              <button class="btn bo bsm" data-act="set.privacy">보기</button>
+            </div>
+            <div class="share-row">
+              <div class="share-info"><b>오픈소스 · 리소스</b><span>앱에 쓴 프로그램 · 글꼴 · 아이콘 · 그림과 사용 조건</span></div>
+              <button class="btn bo bsm" data-act="set.oss">보기</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -6606,5 +6628,5 @@ body.mcal-full #fcal .mlN::before{content:'+'}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1275"></script>
+<script src="./app.js?v=1276"></script>
 </body></html>

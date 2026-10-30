@@ -1,5 +1,18 @@
 # 변경 이력 (읽기 전용) — 현재 상태는 HANDOFF.md
 
+## 마지막 기록 기준 v1276
+### 1276차 폰 손질 · 앱 정보 · 물가정보 공공 단가 셋
+**사용자: 첨부 화면 + 「폰 현장 탭 전환 모션 · 로그인 뒤 헤더 위 배경색 남음 · 주요 현안 카드 높이 · 느낀 점 미리보기」 → 「손질 시안 수용 · 미니펫 해당 없음 · 남은 건 굳이 · 물가정보 다른 출처 왜 안 뜨는지 · 출처 숫자 · 원본 링크 · 단가 입력 취소」 → 「다나와 빼고 · 네이버 방안」 → 「띄울 수 없는 출처는 빼고 공신력 있는 출처」 → 「1·2·3 다 넣어」**
+- 폰 df.tab: MV_TAB 에서 빼고 DF._tabDir 로 표(.tnav~*)만 mvIn(14*dir). 활성 탭은 nav.scrollTo 로 보이게. 로그인 뒤 상단 색: hideCover done() → shellTintRefresh(theme-color meta 다시 붙이기 + html 바탕 한 번 칠하기) — iOS 실기 미확인. #view-iss .card.iss-c 폰 min-height 0.
+- 설정 「앱 정보」: set.privacy(Firebase 싱가포르 리전 등) · set.oss(라이선스 표 — 미니펫은 직접 그린 것이라 뺌).
+- 외부 출처 조사: 네이버 검색 API 의 쇼핑 검색은 2026-07-31 종료(대체 없음 — 외부 정리 글·GitHub 두 곳 확인, 네이버 공지 직접 확인 못 함). 쿠팡 파트너스 API 는 누적 판매 15만 원 뒤 최종 승인(외부 글 기준) · 내부 조회 용도 약관 미확인. 다나와 공개 API 없음. 한국물가정보·한국물가협회는 유료 구독 자료 · 공개 API 못 찾음 → 출처에서 뺌. PR_OLD 에 이름만 남겨 저장된 줄은 원래 이름으로 보이고 prSk 로 「견적·기타」에 묶인다(출처 고르기·숫자). 비교 칸은 PR_SKA.
+- 출처 숫자: 검색어 기준(QM) + 공공 단가 검색 결과 수(PN). 머리 합계도. 출처 카드는 .pr-srcc 로 검색어 갈래에서 같이 갈아 끼움.
+- 줄 끝 단추: 원본(i-ext) · 비교 · 찜/담기. 원본 주소가 없으면 .pr-ib0 빈 자리(폰은 숨김). 출처 표는 표시만. 열 너비 마지막 104px · 비고 16%.
+- PUB(공공 단가 묶음): PUB_K=['g2b','sms','wage'], 파일 data/g2b-price.json · std-price.json · wage.json. 한 줄 = [이름, 단위, 단가, 기준월, 분류 차례, 분류명, VAT, 비고, 규격(있으면 g2bName 이 그대로 씀)]. pubFind/pubVisible/pubRowsHTML/pubItem · pubLists(q) · 줄 data-k. 엑셀은 묶음마다 시트.
+- 수집(.github/workflows/price-data.yml, 매달 3일 05:17 KST, 하나가 실패해도 나머지 반영): scripts/std-price.mjs — cost.kict.re.kr: GET / → /getCsrfToken(쿠키 XSRF-TOKEN) → POST /archive/list {sortData:'price'} → 최근 「표준시장단가 적용공종 및 단가」 글 → GET /file/download?fileId=&fileSeq=(1부터, fileName 쉼표 순서) → pdftotext -layout. 공종 줄은 코드 줄 위아래로 쪼개져 있어 두 코드 사이 줄을 반씩 나눠 붙이고 머리 줄 「규격」 위치로 이름·규격을 가른다. 2026 하반기 1,849공종. scripts/wage-price.mjs — cak.or.kr 건설임금 게시판 최근 「…적용 건설업 임금실태조사 보고서」 PDF, Ⅲ 개별직종 표, 「-」는 이전 공표 값 + 비고. 2026.9.1 공표 116직종. 국토부 누리집은 Actions 러너에서 접속 안 됨.
+- 종합쇼핑몰 계약단가(조달청_나라장터 종합쇼핑몰 품목정보 서비스, /1230000/at/ShoppingMallPrdctInfoService): 지금 키로 SERVICE_KEY_IS_NOT_REGISTERED → 사용자 활용신청 뒤 응답 필드 확인하고 mall 묶음으로 넣는다.
+- 탐색용 브랜치 probe-src(임시 워크플로 probe.yml) — 지워야 함.
+
 ## 마지막 기록 기준 v1275
 ### 1275차 물가정보 표 — 바깥 막대 · 머리 줄 페이드
 **사용자: 「물가정보 테이블카드 오른쪽 외부에 스크롤바 만들어줘 만질수있게 · 테이블 헤더 상단에 페이드 걸리는데 그렇지 않도록」 → 「그래 진행해 · 버그 없는지 확인해보고」**
