@@ -34,7 +34,7 @@ function scope(){
     const head=g('rev-parse','HEAD');let b='';try{b=g('rev-parse',base);}catch(e){return['full','기준 '+base+' 없음'];}
     if(b===head)base='HEAD^1';   /* main 에 합친 직후(push) — 바로 앞 커밋과 비교 */
     const files=g('diff','--name-only',base+'...HEAD').split('\n').filter(Boolean);
-    const dirty=g('status','--porcelain').split('\n').filter(Boolean).map(l=>l.slice(3));
+    const dirty=g('status','--porcelain').split('\n').filter(Boolean).map(l=>l.trim().replace(/^\S+\s+/,''));   /* ⚠ g() 가 전체를 trim 해 첫 줄 앞 칸이 사라진다 — 상태 글자를 낱말로 뗀다 */
     const all=[...new Set([...files,...dirty])];
     if(!all.length)return['full','바뀐 파일 없음 — 전부'];
     const app=all.filter(f=>!NOAPP.test(f));
