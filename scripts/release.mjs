@@ -94,12 +94,13 @@ if(opt.dry){console.log('\n✓ --dry: 파일 수정과 점검까지 끝. git · 
 step('커밋 · 푸시');
 git('add','-A');
 const trailer=opt.trailer&&fs.existsSync(opt.trailer)?'\n\n'+read(opt.trailer).trim():'';
-git('commit','-q','-m',opt.title+trailer);
+if(git('status','--porcelain'))git('commit','-q','-m',opt.title+trailer);else console.log('  새로 커밋할 것 없음(이미 커밋됨)');   /* 시안 단계에서 먼저 커밋해 둔 경우 */
 git('push','-q','-u','origin',br);
 const sha=git('rev-parse','HEAD');console.log('  '+sha.slice(0,7));
 step('PR');
 const prBody=`${ver}차 — HANDOFF-log.md 참고.`+(trailer?'\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)':'');
-const pr=JSON.parse(gh('api',`repos/${REPO}/pulls`,'-f',`title=${opt.title}`,'-f',`head=${br}`,'-f','base=main','-f',`body=${prBody}`));
+const open=JSON.parse(gh('api',`repos/${REPO}/pulls?state=open&head=${REPO.split('/')[0]}:${br}`));   /* 검사 실패로 다시 돌릴 때 — 이미 연 PR 을 그대로 */
+const pr=open[0]||JSON.parse(gh('api',`repos/${REPO}/pulls`,'-f',`title=${opt.title}`,'-f',`head=${br}`,'-f','base=main','-f',`body=${prBody}`));
 console.log('  #'+pr.number+' '+pr.html_url);
 
 /* ── 5. 검사 대기 ── */
