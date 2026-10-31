@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1282';
+const APP_VER='1283';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -6927,7 +6927,7 @@ function dfSubSite(sid){
 }
 /* ── 차트 공통 — 원본과 같은 구성, 색은 토큰에서 읽는다 ── */
 function cvar(n,f){try{const v=getComputedStyle(document.documentElement).getPropertyValue(n).trim();return v||f;}catch(e){return f;}}
-function dfC(k){if(DF.ch[k]){DF.ch[k].$destroyed=true;try{DF.ch[k].destroy();}catch(e){}delete DF.ch[k];}}
+function dfC(k){if(DF.ch[k]){chTipHide();DF.ch[k].$destroyed=true;try{DF.ch[k].destroy();}catch(e){}delete DF.ch[k];}}
 /* 무거운 vendor 는 첫 화면에서 안 읽는다 — Chart.js 는 하자 화면 첫 진입 때, 지도(korea-geo·apt-geo)는 조직 관리 지도를 처음 그릴 때. 읽히면 그 화면을 다시 그린다 */
 let _chartP=null,_geoP=null;
 function loadScriptOnce(src){return new Promise((res,rej)=>{const el=document.createElement('script');el.src=src;el.onload=()=>res(true);el.onerror=()=>rej(new Error(src));document.head.appendChild(el);});}
@@ -6955,9 +6955,11 @@ function chTipDraw(ctx){
       /* 같은 주차 안에서 위아래로만 움직이면 Chart 가 external 을 다시 부르지 않는다 → 자리만 직접 옮긴다 */
       const t=document.getElementById('chTip');if(t&&t.classList.contains('on')&&t.__pos)t.__pos();});
     chart.canvas.addEventListener('mouseleave',chTipHide);
-    document.addEventListener('mousemove',e=>{const t=document.getElementById('chTip');if(!t||!t.classList.contains('on'))return;
-      const b=chart.canvas.getBoundingClientRect();
-      if(e.clientX<b.left-4||e.clientX>b.right+4||e.clientY<b.top-4||e.clientY>b.bottom+4)chTipHide();},true);}
+    /* ⚠ 차트를 지우면(destroy) chart.canvas 가 null 이 된다 — 캔버스를 따로 쥐고, 캔버스가 문서에서 빠지면 이 감시를 스스로 뗀다(1283: 하자 화면을 다시 그릴 때마다 감시가 쌓여 mousemove 마다 오류) */
+    const cv=chart.canvas,mm=e=>{if(!cv.isConnected){document.removeEventListener('mousemove',mm,true);return;}const t=document.getElementById('chTip');if(!t||!t.classList.contains('on'))return;
+      const b=cv.getBoundingClientRect();
+      if(e.clientX<b.left-4||e.clientX>b.right+4||e.clientY<b.top-4||e.clientY>b.bottom+4)chTipHide();};
+    document.addEventListener('mousemove',mm,true);}
   let el=document.getElementById('chTip');
   if(!el){el=document.createElement('div');el.id='chTip';document.body.appendChild(el);}
   if(!tooltip||tooltip.opacity===0){chTipHide();return;}
@@ -6977,7 +6979,7 @@ function chTipDraw(ctx){
   x=Math.max(6,Math.min(x,innerWidth-b.width-6));
   if(y+b.height>innerHeight-6)y=my-b.height-15;
   /* 자리 계산을 함수로 두고 mousemove 마다 부른다(transform 만 바꿔 레이아웃 비용 없음) */
-  el.__pos=()=>{const cb2=chart.canvas.getBoundingClientRect(),b2=el.getBoundingClientRect();
+  el.__pos=()=>{if(!chart.canvas){chTipHide();return;}const cb2=chart.canvas.getBoundingClientRect(),b2=el.getBoundingClientRect();
     const my2=chart.canvas.__my!=null?chart.canvas.__my:(cb2.top+tooltip.caretY);
     let x2=cb2.left+tooltip.caretX-b2.width/2, y2=my2+15;
     x2=Math.max(6,Math.min(x2,innerWidth-b2.width-6));
