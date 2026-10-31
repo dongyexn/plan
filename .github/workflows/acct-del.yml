@@ -6,6 +6,9 @@ on:
     - cron: '*/10 * * * *'
   workflow_dispatch:
 concurrency: acct-del
+permissions:
+  contents: read   # 1287(보안 감사): 기본 토큰 권한을 읽기로
+
 jobs:
   del:
     runs-on: ubuntu-latest

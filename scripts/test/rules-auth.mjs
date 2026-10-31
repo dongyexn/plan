@@ -358,5 +358,14 @@ t('AUTH-29d', '관리자 → 없는 직무 값', false, tryWrite('calapp/people/
   t('AUTH-30j', '찜 이름 41자', false, tryWrite('calapp/price/pin/p1', A('U2'), T30, { f: '_', t: 'ㄱ'.repeat(41) }));
   t('AUTH-30k', '찜에 다른 칸', false, tryWrite('calapp/price/pin/p1', A('U2'), T30, { f: '_', z: 1 }));
   t('AUTH-30q', '가입 대기(역할 없음) → 단가 넣기', false, tryWrite('calapp/price/items/p3', { uid: 'X9', token: { email: 'x9@hdec.co.kr', email_verified: true } }, T30, { ...IT, by: 'X9' })); }
+/* 1287 보안 감사 — 원본 없는 보관 사본에 남 이름 심기 · 차단된 팀장·공구장의 조직 쓰기 */
+t('AUTH-31a', 'viewer → 원본 없는 보관 사본(남 이름)', false, tryWrite('calapp/archive/U2/ghost', A('U1'), TREE, { text: '가짜', date: '2026-08-01', archivedAt: 1, createdBy: 'U2', z: 'x' }));
+t('AUTH-31b', 'viewer → 원본 없는 보관 사본(작성자 없음)', false, tryWrite('calapp/archive/U2/ghost', A('U1'), TREE, { text: '가짜', date: '2026-08-01', archivedAt: 1, z: 'x' }));
+t('AUTH-31c', 'viewer → 원본 없는 보관 사본(내 이름)', true, tryWrite('calapp/archive/U2/ghost', A('U1'), TREE, { text: '내것', date: '2026-08-01', archivedAt: 1, createdBy: 'U1', z: 'x' }));
+t('AUTH-31d', 'editor → 계정 삭제 요청자(by)를 남으로', false, tryWrite('calapp/acctDel/U1', A('E1'), TREE, { at: 1, by: 'U2', email: 'u1@hdec.co.kr' }));
+{ const TB = { ...TREE, users: { ...TREE.users, U3: { role: 'blocked' }, U4: { role: 'blocked' } } };
+  t('AUTH-32a', '차단된 팀장 → 남의 권역 바꾸기', false, tryWrite('calapp/people/U2', A('U3'), TB, { ...P('U2'), region: '중부2' }));
+  t('AUTH-32b', '차단된 팀장 → 남의 현장 배정', false, tryWrite('calapp/people/U2', A('U3'), TB, { ...P('U2'), sites: { sA: 1 } }));
+  t('AUTH-32c', '차단된 공구장 → 같은 권역 현장 배정', false, tryWrite('calapp/people/U2', A('U4'), TB, { ...P('U2'), sites: { sC: 1, sA: 1 } })); }
 console.log(fail ? `\nFAIL ${fail}` : '\nRULES-AUTH ALL PASS');
 process.exit(fail ? 1 : 0);

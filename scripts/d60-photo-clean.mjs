@@ -17,7 +17,7 @@ for(const s of sites){
   const date=((i.dates||{}).arch)||i.date||(s.completionDate?addMonths(s.completionDate,2):'');
   if(!date||date>=ls)continue;
   if(!(i.phb>0)&&!photos[s.id])continue;
-  n++;console.log('정리:',s.name,date,'phb',i.phb||0);
+  n++;console.log('정리: #'+n,date,'phb',i.phb||0);   /* 1287: 공개 저장소 로그 — 현장 이름은 찍지 않는다 */
   patch['calapp/d60photo/'+s.id]=null;patch['calapp/d60/insp/'+s.id+'/phb']=null;
   for(const tr of TR){for(const [k,r] of Object.entries((i.res||{})[tr]||{}))if(r&&r.ph)patch['calapp/d60/insp/'+s.id+'/res/'+tr+'/'+k+'/ph']=null;
     for(const [k,r] of Object.entries((i.civil||{})[tr]||{}))if(r&&r.ph)patch['calapp/d60/insp/'+s.id+'/civil/'+tr+'/'+k+'/ph']=null;}
