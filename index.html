@@ -5036,6 +5036,33 @@ body.phs-dragging,body.phs-dragging *{cursor:grabbing!important;user-select:none
 .qc-sc.no b{color:var(--rd)}
 .qc-sc.sk b{color:var(--lbl3)}
 .qc-sc b.na{color:var(--lbl3)}   /* 값 없음은 어느 칸이든 회색 */
+/* 1286 견적 검토 — 방식 고르기 · 단가 대조 · 노무비 */
+.qc-mode .qc-b{padding:10px}.qc-mode .seg{width:100%;display:flex}.qc-mode .seg button{flex:1}
+.qc-sum.qc-sum4{grid-template-columns:repeat(4,1fr)}
+.qc-sc.lo b{color:var(--am)}
+.qc-note{margin:10px 0 0;font-size:12px;line-height:1.55;color:var(--lbl3)}
+.qc-tbl:is(.qp-tbl,.ql-tbl){min-width:760px}   /* 계산식 표(1040)보다 좁게 — 데스크톱 폭에선 가로 막대 없이 */
+:is(.qp-tbl,.ql-tbl) th.v{padding-right:10px}
+:is(.qp-tbl,.ql-tbl) td{vertical-align:middle}
+.qp-tbl td small{display:block;font-size:11.5px;color:var(--lbl3);margin-top:1px}
+.qp-tbl .qp-mn{font-weight:600;margin-left:4px}
+.qp-tbl .qp-none{color:var(--lbl3)}
+.qp-sel{display:block;width:100%;margin-top:4px;height:26px;font:inherit;font-size:11.5px;color:var(--lbl2);border:1px solid var(--sep);border-radius:var(--rsm);background:var(--bg2);padding:0 4px}
+.qp-v{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:11px;font-size:11.5px;font-weight:700}
+.qp-v.hi{background:var(--rd-t,#FDECEC);color:var(--rd)}.qp-v.ok{background:var(--gn-t,#E6F6EC);color:var(--gn)}.qp-v.lo{background:#FFF1E0;color:var(--am)}
+.qp-tbl tr.qp-hi .qp-d{color:var(--rd);font-weight:700}.qp-tbl tr.qp-lo .qp-d{color:var(--am);font-weight:700}
+.ql-tbl input.ql-in,.ql-tbl select.ql-in{width:100%;box-sizing:border-box;height:30px;font:inherit;font-size:12.5px;border:1px solid var(--sep);border-radius:var(--rsm);background:var(--bg2);color:var(--lbl);padding:0 7px}
+.ql-tbl input.ql-in{text-align:right;font-variant-numeric:tabular-nums}.ql-tbl input.ql-u{text-align:left}
+.ql-tbl .ql-in:focus{outline:none;border-color:var(--b400)}
+.ql-tbl small{display:block;font-size:11px;color:var(--lbl3);margin-top:2px}
+.ql-tbl td.v small{font-family:'Pretendard Variable',Pretendard,system-ui,'Malgun Gothic',sans-serif}
+.ql-tbl tr.ql-add td{text-align:left;padding:8px 10px}
+.ql-tot{display:flex;align-items:baseline;gap:10px;justify-content:flex-end;padding:12px 14px;border-top:1px solid var(--sep);font-size:13px;color:var(--lbl2)}
+.ql-tot b{font-size:20px;color:var(--lbl);font-variant-numeric:tabular-nums}.ql-tot small{color:var(--lbl3)}
+/* 1286 물가정보 — 담아 둔 공공 단가가 새 고시에서 바뀜 */
+.pr-chg{display:inline-block;margin-left:6px;font-style:normal;font-size:11px;font-weight:700;padding:1px 5px;border-radius:3px;vertical-align:1px}
+.pr-chg.up{background:#FDECEC;color:#B4232A}.pr-chg.dn{background:#E6F4F8;color:#1F7A93}
+.pr-chg[data-act]{cursor:pointer}
 .qc-bar{align-items:center;justify-content:space-between;padding:0 2px 0 4px;gap:var(--s3)}
 .qc-bar .qc-t{font-size:13px;font-weight:700;color:var(--lbl)}
 .qc-bar .qc-t span{margin-left:6px;font-weight:500;color:var(--lbl3)}
@@ -6654,5 +6681,5 @@ body.mcal-full #fcal .mlN::before{content:'+'}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1285"></script>
+<script src="./app.js?v=1286"></script>
 </body></html>

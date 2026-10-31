@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1285';
+const APP_VER='1286';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -13925,7 +13925,7 @@ const TS_SAVE={
     await tsPut('pd',{v:1,orient:PD.orient,per:PD.per,title:PD.title,site:PD.site,split:PD.split,seq:PD.seq,
       photos:PD.photos.filter(p=>p.ob).map(p=>({id:p.id,name:p.name||'',path:p.path||'',ow:p.ow,oh:p.oh,rq:p.rq||0,crop:p.crop||null,fit:p.fit||'fill',loc:p.loc||'',desc:p.desc||'',ann:p.ann||null}))});
   },
-  async qc(){if(!String(QC.txt||'').trim()){await tsDel('qc');return;}await tsPut('qc',{txt:QC.txt,rnd:QC.rnd,tol:QC.tol,filter:QC.filter,ran:QC.ran});},
+  async qc(){if(!String(QC.txt||'').trim()&&!String(QC.ptxt||'').trim()&&!QC.lab&&QC.mode==='calc'){await tsDel('qc');return;}await tsPut('qc',{txt:QC.txt,rnd:QC.rnd,tol:QC.tol,filter:QC.filter,ran:QC.ran,mode:QC.mode,ptxt:QC.ptxt,ptol:QC.ptol,pk:QC.pk,pran:QC.pran,lab:QC.lab,lround:QC.lround});},
 };
 const TS_LOAD={
   async pd(){
@@ -13955,7 +13955,8 @@ const TS_LOAD={
   },
   async qc(){
     const q=await tsGet('qc');if(!q||QC.txt)return;
-    Object.assign(QC,{txt:q.txt||'',rnd:q.rnd==null?1:q.rnd,tol:q.tol||0,filter:q.filter||'all'});
+    Object.assign(QC,{txt:q.txt||'',rnd:q.rnd==null?1:q.rnd,tol:q.tol||0,filter:q.filter||'all',mode:['calc','cmp','lab'].includes(q.mode)?q.mode:'calc',ptxt:q.ptxt||'',ptol:q.ptol||10,pk:q.pk||{},lab:Array.isArray(q.lab)?q.lab:null,lround:q.lround==null?0.5:q.lround});
+    if(q.pran&&QC.ptxt)qcPRun(true);
     if(q.ran){QC.rows=qcParse(QC.txt);QC.ran=true;}
     TS.note.qc='지난 검토 내용을 다시 불러왔습니다';
   },
@@ -15160,7 +15161,7 @@ Object.assign(ACT,{
 /* ═══════════ 업무 도구 — 견적 검토 ═══════════
    업체 산출서 「산출 근거」 열을 붙여넣으면 줄마다 계산식을 확인한다. ⚠ 서버·localStorage 에 쓰지 않는다(이 PC IndexedDB 이어하기만).
    읽기: 번호가 1 로 다시 시작하면 다음 세대(2·3 은 같은 세대 다른 공간) · 「- 타일(벽체)」 은 항목, 아래 「 : (…)=1.8m2」 가 식 · 다음 줄로 넘어간 「 = 11.1m」 은 이어 읽기 · 수량 없는 항목은 1식 · 식 없는 수량은 제외 */
-const QC={txt:'',rows:[],rnd:1,tol:0,filter:'all',ran:false};
+const QC={txt:'',rows:[],rnd:1,tol:0,filter:'all',ran:false,mode:'calc',ptxt:'',prows:[],pk:{},ptol:10,pran:false,pwait:false,lab:null,lround:0.5};   /* 1286 mode: calc 계산식 · cmp 단가 대조 · lab 노무비 */
 const QC_UNIT={'m2':'㎡','M2':'㎡','m²':'㎡','sqm':'㎡'};
 function qcRound(v,d){if(d==null||d<0)return v;const m=Math.pow(10,d);return Math.sign(v)*Math.round((Math.abs(v)*m).toFixed(6)*1)/m;}   /* 음수(감액)는 엑셀 ROUND 처럼 0 에서 먼 쪽으로 */
 function qcFmt(v){if(v==null||!isFinite(v))return '—';return String(Math.round(v*1e6)/1e6);}
@@ -15463,8 +15464,134 @@ function qcRowsHTML(){
   h=qcNumberCells(h);
   return h||'<tr><td colspan="8" style="padding:22px;text-align:center;color:var(--lbl3)">해당하는 줄이 없습니다.</td></tr>';
 }
+/* ═══════════ 견적 검토 — 단가 대조 · 노무비(1286) ═══════════
+   단가 대조: 업체 산출서의 단가표(품명 · 규격 · 단위 · 단가)를 붙여 넣으면 줄마다 공공 단가(조달청 · 표준시장단가 · 시중노임)에서
+     가장 비슷한 것을 찾아 차이를 보인다. 짝은 사람이 고칠 수 있다(QC.pk). 허용 범위 밖만 「높음」「낮음」.
+   노무비: 직종(시중노임) · 작업량 · 1인 1일 작업량(생산성) · 인원 → 일수 → 노무비 · 단위당 노무비. 생산성을 비우면 일수를 직접 넣는다.
+   ⚠ 서버에 쓰지 않는다 — 계산식 검토와 같이 이 PC IndexedDB 이어하기만(TS_SAVE.qc) */
+const QC_UN=u=>String(u||'').trim().replace(/㎡|m²|M2|m2|sqm/gi,'m2').replace(/㎥|m³|M3|m3/gi,'m3').replace(/^(ea|EA|개소|nr\(개소\)|개)$/,'개').replace(/^(명|인)$/,'인').replace(/^(ℓ|l)$/,'L').toLowerCase();
+const QC_UNITS=/^(㎡|m2|M2|m²|㎥|m3|M3|m|M|㎜|mm|cm|㎝|개|개소|EA|ea|인|명|본|매|식|L|ℓ|kg|t|ton|톤|대|조|SET|set|롤|권|포|통|장|평|일|월|회|kg당)$/;
+/* 단가표 읽기 — 머리 줄(품명 · 규격 · 단위 · 단가)이 있으면 그 열을, 없으면 글 칸 첫째 = 품명 · 둘째 = 규격 · 단위 모양 칸 = 단위 · 마지막 숫자 = 단가 */
+function qcPParse(txt){
+  const L=String(txt||'').split(/\r?\n/).map(l=>l.replace(/\s+$/,'')).filter(l=>l.trim());
+  const cells=l=>(l.includes('\t')?l.split('\t'):l.trim().split(/\s{2,}/)).map(c=>c.trim());
+  const num=c=>{const t=String(c).replace(/[,₩원\s]/g,'');return /^-?\d+(\.\d+)?$/.test(t)?+t:null;};
+  let col=null;const out=[];
+  for(const l of L){const C=cells(l);
+    if(!col&&C.some(c=>/품\s*명|명\s*칭|항\s*목|공\s*종/.test(c))&&C.some(c=>/단\s*가/.test(c))){
+      const f=re=>C.findIndex(c=>re.test(c));
+      col={n:f(/품\s*명|명\s*칭|항\s*목|공\s*종/),sp:f(/규\s*격/),u:f(/단\s*위/),p:(()=>{const a=f(/합\s*계.*단\s*가|단\s*가.*합\s*계/);return a>=0?a:f(/단\s*가/);})()};continue;}
+    let n='',sp='',u='',p=null;
+    if(col){n=C[col.n]||'';sp=col.sp>=0?C[col.sp]||'':'';u=col.u>=0?C[col.u]||'':'';p=col.p>=0?num(C[col.p]):null;}
+    else{const tx=C.filter(c=>c&&num(c)==null);u=tx.find(c=>QC_UNITS.test(c))||'';const t2=tx.filter(c=>c!==u);n=t2[0]||'';sp=t2[1]||'';
+      const ns=C.map(num).filter(v=>v!=null&&v>0);p=ns.length?ns[ns.length-1]:null;}
+    if(!n||!(p>0))continue;
+    out.push({n:n.slice(0,60),sp:sp.slice(0,80),u:u.slice(0,10),p});}
+  return out;}
+/* 짝 찾기 — 세 출처에서 품명 낱말로 거른 뒤 점수: 단위 같음 3 · 규격 낱말 겹침(숫자 2 · 글 1) · 품명 낱말 */
+function qcPCand(r){const tok=s=>String(s||'').toLowerCase().replace(/[(),/·\-_]/g,' ').split(/\s+/).filter(t=>t.length>=1);
+  const nt=tok(r.n).filter(t=>t.length>=2||/\d/.test(t)),st=tok(r.sp),un=QC_UN(r.u),C=[];
+  for(const k of PUB_K){const P=PUB[k];pubLoad(P);if(P.st!=='ok')continue;
+    let ix=[];for(let m=Math.min(nt.length,3);m>=1&&!ix.length;m--)ix=pubFind(k,nt.slice(0,m).join(' '));
+    for(const i of ix.slice(0,300)){const x=P.d[i],[xn,xs]=g2bName(x),hay=(xn+' '+xs).toLowerCase();
+      let sc=0;if(un&&QC_UN(x[1])===un)sc+=3;
+      for(const t of st)if(hay.includes(t))sc+=/\d/.test(t)?2:1;
+      for(const t of nt)if(hay.includes(t))sc+=1;
+      C.push({k,i,sc});}}
+  return C.sort((a,b)=>b.sc-a.sc||PUB[a.k].d[a.i][2]-PUB[b.k].d[b.i][2]).slice(0,6);}
+function qcPRun(keep){const ta=$('#qcPta');if(ta)QC.ptxt=ta.value;QC.prows=qcPParse(QC.ptxt);if(!keep)QC.pk={};QC.pran=true;
+  const miss=PUB_K.filter(k=>PUB[k].st!=='ok');miss.forEach(k=>pubLoad(PUB[k]));
+  if(miss.length){QC.pwait=true;const t=setInterval(()=>{if(PUB_K.every(k=>PUB[k].st==='ok'||PUB[k].st==='err')){clearInterval(t);QC.pwait=false;qcPMatch();rQc();}},150);}
+  else qcPMatch();
+  if(!keep){rQc();tsMark('qc');}}
+function qcPMatch(){QC.prows.forEach(r=>{r.c=qcPCand(r);});}
+/* 줄의 짝 — 사람이 고른 것(QC.pk: 'k:i' · 'none') 먼저, 없으면 1등 */
+function qcPPick(r,j){const v=QC.pk[j];if(v==='none')return null;if(v){const[k,i]=v.split(':');const x=PUB[k]&&PUB[k].d[+i];return x?{k,i:+i,x}:null;}
+  const c=(r.c||[])[0];return c&&c.sc>=3?{k:c.k,i:c.i,x:PUB[c.k].d[c.i]}:null;}   /* 점수 3 미만(단위도 안 맞고 규격도 안 겹침)은 짝 없음으로 */
+function qcPRows(){return(QC.prows||[]).map((r,j)=>{const m=qcPPick(r,j);if(!m)return{r,j,m:null};const d=(r.p-m.x[2])/m.x[2]*100,t=QC.ptol;
+  return{r,j,m,d,v:d>t?'hi':d<-t?'lo':'ok'};});}
+function qcPHTML(){const R=qcPRows(),cnt={hi:0,ok:0,lo:0,no:0};let over=0;R.forEach(o=>{if(!o.m)cnt.no++;else{cnt[o.v]++;if(o.v==='hi')over+=o.r.p-o.m.x[2];}});
+  const tag=k=>'<span class="pr-tg '+k+'">'+esc(prSrc(k)[1])+'</span>';
+  const left='<div class="card" id="qcRes"><div class="tm-h"><span>결과</span></div><div class="qc-sum qc-sum4">'
+      +'<div class="qc-sc no"><span>높음</span>'+qcB(QC.pran,cnt.hi)+'</div><div class="qc-sc ok"><span>적정</span>'+qcB(QC.pran,cnt.ok)+'</div>'
+      +'<div class="qc-sc lo"><span>낮음</span>'+qcB(QC.pran,cnt.lo)+'</div><div class="qc-sc sk"><span>짝 없음</span>'+qcB(QC.pran,cnt.no)+'</div></div></div>'
+    +'<div class="card"><div class="tm-h"><span>단가표 붙여넣기</span><button class="btn bo bxs" data-act="qc.pclear">초기화</button></div>'
+      +'<div class="qc-b"><textarea id="qcPta" class="qc-ta" spellcheck="false" placeholder="품명 · 규격 · 단위 · 단가 열을 엑셀에서 복사">'+esc(QC.ptxt||'')+'</textarea>'
+      +'<button class="qc-run" data-act="qc.prun">'+rwIc('i-check')+'대조</button></div></div>'
+    +'<div class="card"><div class="tm-h"><span>기준</span></div><div class="qc-b"><div class="qc-fr"><label>허용 범위</label>'
+      +'<span class="seg">'+[5,10,15,20].map(t=>'<button class="'+(QC.ptol===t?'act':'')+'" data-act="qc.ptol" data-t="'+t+'">±'+t+'%</button>').join('')+'</span></div></div></div>';
+  const body=!QC.pran?'<div class="qc-empty">'+rwIc('i-paste')+'<p>산출서의 단가표(품명 · 규격 · 단위 · 단가)를 붙여넣고<br>[대조]를 누르면 공공 단가와 견줍니다.</p></div>'
+    :QC.pwait?'<div class="qc-empty"><p>공공 단가를 불러오는 중</p></div>'
+    :!R.length?'<div class="qc-empty"><p>읽을 수 있는 줄이 없습니다 · 품명과 단가(숫자)가 있는 줄만 읽습니다</p></div>'
+    :'<div class="qc-wrap" id="qcWrap"><table class="qc-tbl qp-tbl"><colgroup><col style="width:42px"><col><col style="width:56px"><col style="width:96px"><col style="width:30%"><col style="width:96px"><col style="width:76px"><col style="width:64px"></colgroup>'
+      +'<thead><tr><th class="n">NO</th><th>항목 · 규격</th><th>단위</th><th class="v">견적 단가</th><th>공공 기준</th><th class="v">기준 단가</th><th class="v">차이</th><th class="st">판정</th></tr></thead><tbody>'
+      +R.map(o=>{const r=o.r,c=r.c||[],cur=QC.pk[o.j]||(o.m?o.m.k+':'+o.m.i:'none');
+        const opts=c.map(x=>{const y=PUB[x.k].d[x.i],[yn,ys]=g2bName(y);return'<option value="'+x.k+':'+x.i+'"'+(cur===x.k+':'+x.i?' selected':'')+'>'+esc(prSrc(x.k)[1]+' · '+yn+(ys?' · '+ys:'')+' · '+y[1]+' · '+rwN(y[2])+'원')+'</option>';}).join('')
+          +'<option value="none"'+(cur==='none'?' selected':'')+'>대조 안 함</option>';
+        const[mn,ms]=o.m?g2bName(o.m.x):['',''];
+        return '<tr class="qp-'+(o.m?o.v:'no')+'"><td class="n">'+(o.j+1)+'</td><td><b>'+esc(r.n)+'</b>'+(r.sp?'<small>'+esc(r.sp)+'</small>':'')+'</td><td>'+esc(r.u)+'</td><td class="v">'+rwN(r.p)+'</td>'
+          +'<td>'+(o.m?tag(o.m.k)+' <span class="qp-mn">'+esc(mn)+'</span><small>'+esc([ms,o.m.x[7]].filter(Boolean).join(' · '))+' · '+esc(prMon(o.m.x[3]))+'</small>':'<span class="qp-none">짝 없음</span>')
+          +(c.length?'<select class="qp-sel" data-qpk="'+o.j+'" aria-label="공공 기준 고르기">'+opts+'</select>':'')+'</td>'
+          +'<td class="v">'+(o.m?rwN(o.m.x[2]):'—')+'</td><td class="v qp-d">'+(o.m?(o.d>0?'+':'')+o.d.toFixed(1)+'%':'')+'</td>'
+          +'<td class="st">'+(o.m?'<span class="qp-v '+o.v+'">'+(o.v==='hi'?'높음':o.v==='lo'?'낮음':'적정')+'</span>':'')+'</td></tr>';}).join('')
+      +'</tbody></table></div>';
+  const bar='<div class="tkbar qc-bar"><span class="qc-t">단가 대조'+(QC.pran&&R.length?'<span>'+R.length+'줄 · 높은 줄 단가 차이 합 '+rwN(over)+'원</span>':'')+'</span>'
+    +'<span class="tl-br">'+(QC.pran&&R.length?'<button class="rw-bb" data-act="qc.prw">'+rwIc('i-doc')+'보고서로 보내기</button>':'')+'</span></div>';
+  return [left,'<div class="qc-col qc-right">'+bar+body+'</div>'];}
+function qcPBlocks(){const R=qcPRows().filter(o=>o.m);const n={hi:0,ok:0,lo:0};R.forEach(o=>n[o.v]++);
+  const B=[rwHdr('견적 단가 대조',['허용 범위 <b>±'+QC.ptol+'%</b>','대조 <b>'+R.length+'항목</b>']),rwMk('sec',{t:'단가 대조'})];
+  B.push(rwMk('tbl',rwTbl(['항목','규격','단위','견적 단가','공공 기준','기준 단가','차이','판정'],
+    R.map(o=>{const[mn,ms]=g2bName(o.m.x);return[o.r.n,o.r.sp,o.r.u,o.r.p,prSrc(o.m.k)[1]+' · '+mn+(ms?' '+ms:'')+' ('+prMon(o.m.x[3])+')',o.m.x[2],(o.d>0?'+':'')+o.d.toFixed(1)+'%',o.v==='hi'?'높음':o.v==='lo'?'낮음':'적정'];}),[3,5])));
+  B.push(rwMk('p',{h:rwTxt('대조 '+R.length+'항목 중 높음 '+n.hi+' · 적정 '+n.ok+' · 낮음 '+n.lo+'(허용 ±'+QC.ptol+'%). 기준은 조달청 가격정보 · 표준시장단가(국토교통부) · 시중노임(대한건설협회) 최신 공표값입니다.')}));
+  return B;}
+/* ── 노무비 · 생산성 ── */
+const QC_LAB0=()=>[{w:'타일공',q:120,u:'m2',pr:16,n:2,d:''},{w:'보통인부',q:120,u:'m2',pr:40,n:1,d:''}];
+function qcLabWage(name){const P=PUB.wage;pubLoad(P);if(P.st!=='ok')return null;const x=P.d.find(r=>r[0]===name);return x||null;}
+function qcLabCalc(L){const x=qcLabWage(L.w),v=x?x[2]:0,q=+L.q||0,pr=+L.pr||0,n=Math.max(0,+L.n||0),st=QC.lround;
+  let raw=null,d=+L.d||0;if(pr>0&&n>0&&q>0){raw=q/(pr*n);d=st>0?Math.ceil(raw/st-1e-9)*st:raw;}
+  const amt=v*n*d;return{x,v,q,pr,n,d,raw,amt,per:q>0?amt/q:null};}
+function qcLabHTML(){const P=PUB.wage;pubLoad(P);if(!QC.lab)QC.lab=QC_LAB0();
+  const W=P.st==='ok'?P.d:[],pub=P.pub?prMon(P.pub)+' 공표':'';
+  const left='<div class="card"><div class="tm-h"><span>기준</span></div><div class="qc-b">'
+      +'<div class="qc-fr"><label>일수 올림</label><span class="seg">'+[[0,'안 함'],[0.5,'0.5일'],[1,'1일']].map(([k,l])=>'<button class="'+(QC.lround===k?'act':'')+'" data-act="qc.lround" data-r="'+k+'">'+l+'</button>').join('')+'</span></div>'
+      +'<p class="qc-note">노임 '+esc(pub||'불러오는 중')+' · 1일 8시간 · 직접노무비(제경비 · 부가세 별도). 1인 1일 작업량을 넣으면 일수를 계산하고, 비우면 일수를 직접 넣습니다.</p></div></div>';
+  const rows=QC.lab.map((L,i)=>{const c=qcLabCalc(L);
+    return '<tr data-ql="'+i+'"><td class="n">'+(i+1)+'</td>'
+      +'<td><select class="ql-in" data-k="w" aria-label="직종">'+(W.length?W.map(r=>'<option'+(r[0]===L.w?' selected':'')+'>'+esc(r[0])+'</option>').join(''):'<option>'+esc(L.w)+'</option>')+'</select><small class="ql-wv">'+(c.x?rwN(c.v)+'원 / 인·일':'')+'</small></td>'
+      +'<td><input class="ql-in" data-k="q" inputmode="decimal" value="'+esc(L.q)+'" aria-label="작업량"></td>'
+      +'<td><input class="ql-in ql-u" data-k="u" value="'+esc(L.u)+'" aria-label="단위"></td>'
+      +'<td><input class="ql-in" data-k="pr" inputmode="decimal" value="'+esc(L.pr)+'" aria-label="1인 1일 작업량"></td>'
+      +'<td><input class="ql-in" data-k="n" inputmode="numeric" value="'+esc(L.n)+'" aria-label="인원"></td>'
+      +'<td class="v ql-d">'+qcLabDays(c,L)+'</td><td class="v ql-a">'+rwN(Math.round(c.amt))+'</td><td class="v ql-p">'+(c.per!=null?rwN(Math.round(c.per)):'—')+'</td>'
+      +'<td class="st"><button class="pr-ib" data-act="qc.ldel" data-i="'+i+'" aria-label="줄 지우기">'+rwIc('i-close')+'</button></td></tr>';}).join('');
+  const T=QC.lab.map(qcLabCalc),tot=T.reduce((a,c)=>a+c.amt,0),md=T.reduce((a,c)=>a+c.n*c.d,0);
+  const body='<div class="qc-wrap" id="qcWrap"><table class="qc-tbl ql-tbl"><colgroup><col style="width:42px"><col><col style="width:84px"><col style="width:60px"><col style="width:92px"><col style="width:60px"><col style="width:96px"><col style="width:112px"><col style="width:96px"><col style="width:44px"></colgroup>'
+    +'<thead><tr><th class="n">NO</th><th>직종</th><th class="v">작업량</th><th>단위</th><th class="v">1인 1일</th><th class="v">인원</th><th class="v">일수</th><th class="v">노무비</th><th class="v">단위당</th><th></th></tr></thead><tbody>'+rows
+    +'<tr class="ql-add"><td colspan="10"><button class="rw-bb" data-act="qc.ladd">'+rwIc('i-plus')+'직종 더하기</button></td></tr></tbody></table></div>'
+    +'<div class="ql-tot"><span>합계</span><b id="qlTot">'+rwN(Math.round(tot))+'원</b><small id="qlMd">'+(md?'연인원 '+(+md.toFixed(1))+'인':'')+'</small></div>';
+  const bar='<div class="tkbar qc-bar"><span class="qc-t">노무비 · 생산성</span><span class="tl-br"><button class="rw-bb" data-act="qc.lrw">'+rwIc('i-doc')+'보고서로 보내기</button></span></div>';
+  return [left,'<div class="qc-col qc-right">'+bar+body+'</div>'];}
+function qcLabDays(c,L){if(c.raw!=null)return (+c.d.toFixed(2))+'일<small>하루 '+(+(c.pr*c.n).toFixed(2))+' '+esc(L.u||'')+(QC.lround>0&&Math.abs(c.raw-c.d)>1e-9?' · '+(+c.raw.toFixed(2))+'일 올림':'')+'</small>';
+  return '<input class="ql-in" data-k="d" inputmode="decimal" value="'+esc(L.d)+'" aria-label="일수">';}
+function qcLabSync(tr){const i=+tr.dataset.ql,L=QC.lab[i];if(!L)return;const c=qcLabCalc(L);
+  const dc=tr.querySelector('.ql-d');if(dc&&!dc.contains(document.activeElement))dc.innerHTML=qcLabDays(c,L);
+  tr.querySelector('.ql-a').textContent=rwN(Math.round(c.amt));tr.querySelector('.ql-p').textContent=c.per!=null?rwN(Math.round(c.per)):'—';
+  const wv=tr.querySelector('.ql-wv');if(wv)wv.textContent=c.x?rwN(c.v)+'원 / 인·일':'';
+  const T=QC.lab.map(qcLabCalc),tot=T.reduce((a,c)=>a+c.amt,0),md=T.reduce((a,c)=>a+c.n*c.d,0);
+  const t=$('#qlTot');if(t)t.textContent=rwN(Math.round(tot))+'원';const m=$('#qlMd');if(m)m.textContent=md?'연인원 '+(+md.toFixed(1))+'인':'';}
+function qcLabBlocks(){const T=QC.lab.map(L=>({L,c:qcLabCalc(L)})).filter(o=>o.c.x),tot=T.reduce((a,o)=>a+o.c.amt,0),P=PUB.wage;
+  const B=[rwHdr('노무비 산출',['노임 <b>'+esc(prMon(P.pub||''))+' 공표</b>','합계 <b>'+rwN(Math.round(tot))+'원</b>']),rwMk('sec',{t:'직종별 노무비'})];
+  B.push(rwMk('tbl',rwTbl(['직종','노임(인·일)','작업량','1인 1일','인원','일수','노무비','단위당'],
+    T.map(({L,c})=>[L.w,c.v,c.q?c.q+' '+L.u:'',c.pr?c.pr+' '+L.u:'',c.n,+c.d.toFixed(2),Math.round(c.amt),c.per!=null?Math.round(c.per):''])
+      .concat([['합계','','','','','',Math.round(tot),'']]),[1,6,7])));
+  B.push(rwMk('p',{h:rwTxt('시중노임(대한건설협회 '+prMon(P.pub||'')+' 공표, 1일 8시간)으로 계산한 직접노무비입니다. 제경비 · 부가세는 별도입니다.'+(QC.lround>0?' 일수는 '+QC.lround+'일 단위로 올렸습니다.':''))}));
+  return B;}
+const QC_MODES=[['calc','계산식'],['cmp','단가 대조'],['lab','노무비']];
+const qcModeHTML=()=>'<div class="card qc-mode"><div class="qc-b"><span class="seg">'+QC_MODES.map(([k,l])=>'<button class="'+(QC.mode===k?'act':'')+'" data-act="qc.mode" data-k="'+k+'">'+l+'</button>').join('')+'</span></div></div>';
 function rQc(){
   const root=$('#qcRoot');if(!root)return;
+  if(QC.mode!=='calc'){tsLazy('qc');tsNote('qc');const[l,r]=QC.mode==='cmp'?qcPHTML():qcLabHTML();
+    root.innerHTML='<div class="qc-grid"><div class="qc-col">'+qcModeHTML()+l+'</div>'+r+'</div>';qcFade();const w=$('#qcWrap');if(w)ovsAttach(w);return;}
   const c=qcCount();
   /* ⚠ data-act 는 문자열 그대로 적는다 — 붙여 만들면 정적 감사가 발신처를 못 찾아 경고한다 */
   const seg=(cur,list,btn)=>'<span class="seg">'+list.map(([k,l])=>btn(k,l,String(cur)===String(k)?' act':'')).join('')+'</span>';
@@ -15472,7 +15599,7 @@ function rQc(){
   const segTol=seg(QC.tol,[[0,'없음'],[0.1,'±0.1'],[0.5,'±0.5']],(k,l,a)=>'<button class="'+a.trim()+'" data-act="qc.tol" data-t="'+k+'">'+l+'</button>');
   const segFil=seg(QC.filter,[['all','전체'],['ok','정답'],['no','오답'],['sk','제외'],['sum','합계']],(k,l,a)=>'<button class="'+a.trim()+'" data-act="qc.filter" data-k="'+k+'">'+l+'</button>');
   tsLazy('qc');tsNote('qc');
-  root.innerHTML='<div class="qc-grid"><div class="qc-col">'
+  root.innerHTML='<div class="qc-grid"><div class="qc-col">'+qcModeHTML()
     +qcResHTML(c)
     +'<div class="card"><div class="tm-h"><span>산출 근거 붙여넣기</span><button class="btn bo bxs" data-act="qc.clear">초기화</button></div>'
       +'<div class="qc-b"><textarea id="qcTa" class="qc-ta" spellcheck="false">'+esc(QC.txt)+'</textarea>'
@@ -15501,6 +15628,12 @@ function qcRightHTML(c,segFil){
         +'<p>엑셀의 산출 근거 열을 붙여넣고<br>[검토]를 누르면 줄마다 맞는지 확인합니다.</p></div>')
     +'</div>';
 }
+/* 1286 노무비 칸 입력 — 다시 그리지 않고 그 줄 계산 칸과 합계만 바꾼다(초점 · 한글 조합 유지) · 단가 대조 짝 고르기 */
+document.addEventListener('input',e=>{const f=e.target.closest&&e.target.closest('#qcRoot .ql-in');if(!f)return;const tr=f.closest('tr[data-ql]');if(!tr)return;
+  const L=QC.lab[+tr.dataset.ql];if(!L)return;L[f.dataset.k]=f.value;qcLabSync(tr);tsMark('qc');});
+document.addEventListener('change',e=>{const t=e.target;if(!t||!t.closest)return;
+  if(t.matches('#qcRoot .qp-sel')){QC.pk[t.dataset.qpk]=t.value;const pa=$('#qcPta');if(pa)QC.ptxt=pa.value;rQc();tsMark('qc');return;}
+  if(t.matches('#qcRoot .ql-in')){const tr=t.closest('tr[data-ql]');const L=tr&&QC.lab[+tr.dataset.ql];if(L){L[t.dataset.k]=t.value;if(t.dataset.k==='pr'||t.dataset.k==='w')rQc();else qcLabSync(tr);tsMark('qc');}}});
 /* 원문을 고치는 동안 — 붙여넣기 칸(초점·커서)은 두고 결과 카드와 오른쪽 표만 바꾼다 */
 function qcRefresh(scroll){
   const root=$('#qcRoot');if(!root)return;
@@ -15571,6 +15704,15 @@ function qcTsv(list,cols){
 }
 Object.assign(ACT,{
   'qc.run':()=>qcRun(),
+  'qc.mode':el=>{if(QC.mode===el.dataset.k)return;const ta=$('#qcTa');if(ta)QC.txt=ta.value;const pa=$('#qcPta');if(pa)QC.ptxt=pa.value;QC.mode=el.dataset.k;rQc();tsMark('qc');},
+  'qc.prun':()=>qcPRun(),
+  'qc.pclear':()=>{QC.ptxt='';QC.prows=[];QC.pk={};QC.pran=false;rQc();tsMark('qc');const t=$('#qcPta');if(t)t.focus();},
+  'qc.ptol':el=>{const v=+el.dataset.t;if(QC.ptol===v)return;const pa=$('#qcPta');if(pa)QC.ptxt=pa.value;QC.ptol=v;rQc();tsMark('qc');},
+  'qc.prw':()=>{RW.tpl='pc';RW.blocks=qcPBlocks();RW.sel=null;RW.edit=true;RW.hist=[];RW.fut=[];go('rw');toast('단가 대조를 보고서로 보냈습니다');},
+  'qc.lround':el=>{const v=+el.dataset.r;if(QC.lround===v)return;QC.lround=v;rQc();tsMark('qc');},
+  'qc.ladd':()=>{const last=(QC.lab||[]).slice(-1)[0]||{};QC.lab=(QC.lab||[]).concat([{w:'보통인부',q:last.q||'',u:last.u||'',pr:'',n:1,d:''}]);rQc();tsMark('qc');},
+  'qc.ldel':el=>{QC.lab.splice(+el.dataset.i,1);rQc();tsMark('qc');},
+  'qc.lrw':()=>{RW.tpl='pc';RW.blocks=qcLabBlocks();RW.sel=null;RW.edit=true;RW.hist=[];RW.fut=[];go('rw');toast('노무비를 보고서로 보냈습니다');},
   'qc.clear':()=>{QC.txt='';QC.rows=[];QC.ran=false;QC.hl=null;rQc();const t=$('#qcTa');if(t)t.focus();},
   'qc.rnd':el=>{const v=Number(el.dataset.r);if(QC.rnd===v)return;QC.rnd=v;if(QC.ran)qcRun0();else rQc();},
   'qc.tol':el=>{const v=Number(el.dataset.t);if(QC.tol===v)return;QC.tol=v;if(QC.ran)qcRun0();else rQc();},
@@ -16528,12 +16670,28 @@ const g2bNote=r=>[r[6]===1?'VAT 별도':r[6]===0?'VAT 포함':'',r[7]||''].filte
 const g2bKey=(n,sp,u,m)=>n.slice(0,60)+'|'+sp.slice(0,60)+'|'+String(u||'').slice(0,10)+'|'+m;
 function pubItem(k,i){const r=(PUB[k]||{}).d&&PUB[k].d[i];if(!r)return null;const[n,sp]=g2bName(r);
   const o={n:n.slice(0,60),p:r[2],s:k,m:r[3],by:authUid()||myId(),at:Date.now()};if(sp)o.sp=sp.slice(0,60);if(r[1])o.u=String(r[1]).slice(0,10);const nt=g2bNote(r).slice(0,100);if(nt)o.nt=nt;return o;}
+/* 1286 담아 둔 공공 단가가 새 고시(매달 갱신)에서 바뀌었는가 — 같은 이름 · 규격 · 단위 줄의 지금 값과 비교한다(기준월은 안 본다).
+   팀 목록 단가 칸에 ▲▼ 와 최신값, 고칠 수 있는 사람에겐 「최신값으로」. 받은 파일이 없으면 아무것도 안 한다(물가정보 화면에서만 받는다) */
+const prChgKey=(n,sp,u)=>String(n||'').slice(0,60)+'|'+String(sp||'').slice(0,60)+'|'+String(u||'').slice(0,10);
+function prLatest(r){const P=PUB[r.s];if(!P)return null;pubLoad(P);if(P.st!=='ok')return null;
+  if(!P.kx){P.kx=new Map();P.d.forEach((x,i)=>{const[n,sp]=g2bName(x);const k=prChgKey(n.slice(0,60),sp.slice(0,60),String(x[1]||'').slice(0,10));const o=P.kx.get(k);if(o==null||String(P.d[o][3])<String(x[3]))P.kx.set(k,i);});}
+  const i=P.kx.get(prChgKey(r.n,r.sp,r.u));if(i==null)return null;const x=P.d[i];return x[2]!==r.p?{p:x[2],m:x[3]}:null;}
+function prChgHTML(r){const L=prLatest(r);if(!L)return '';const d=(L.p-r.p)/r.p*100;
+  return '<em class="pr-chg '+(d>0?'up':'dn')+'" data-tip="최신 '+rwN(L.p)+'원 · '+esc(prMon(L.m))+(prCanEdit(r)?' · 누르면 최신값으로':'')+'"'+(prCanEdit(r)?' data-act="pr.upd" data-id="'+r.id+'" role="button" tabindex="0"':'')+'>'+(d>0?'▲':'▼')+Math.abs(d).toFixed(1)+'%</em>';}
+/* 한 달에 한 번 — 담아 둔 단가 중 바뀐 것이 있으면 알린다(이 브라우저 기준) */
+function prChgToast(){const n=prItems().filter(r=>PUB[r.s]&&prLatest(r)).length;if(!n)return;
+  const k=prCurMon()+':'+n;let seen='';try{seen=localStorage.getItem('calapp.prchg')||'';}catch(e){}
+  if(seen===k)return;try{localStorage.setItem('calapp.prchg',k);}catch(e){}
+  toast('공공 단가 갱신 · 담아 둔 단가 '+n+'건이 바뀌었습니다',4000);}
 /* 팀 목록에 이미 담은 품목은 공공 단가 칸에서 뺀다 */
 function pubVisible(k,GL){const P=PUB[k],mine=new Set(prItems().filter(r=>r.s===k).map(r=>g2bKey(r.n,r.sp||'',r.u,r.m)));
   const ff=prFfOn(),tg=prSrc(k).join(' ');let V=GL.filter(i=>{const r=P.d[i],[n,sp]=g2bName(r);return !mine.has(g2bKey(n,sp,r[1],r[3]))&&(!ff||prFfOk({n,sp,u:r[1],p:r[2],s:tg,m:prMon(r[3]),nt:r[7]}));});
   if(PR.sort)V=V.slice().sort((a,b)=>PR.sort==='p'?P.d[a][2]-P.d[b][2]:P.d[b][2]-P.d[a][2]);return V;}
 /* 검색 중 보이는 공공 단가 — 묶음마다 [k, 줄 번호들] (출처를 끈 묶음 · 폴더 보는 중 · 비교 화면은 없음) */
 const pubLists=q=>q&&!PR.fd?PUB_K.filter(k=>PR.src[k]!==0).map(k=>[k,pubVisible(k,pubFind(k,q))]).filter(x=>x[1].length):[];
+/* 담아 둔 공공 단가가 있으면 그 출처 파일만 받는다 — 다 받으면 다시 그리고 한 번 알린다 */
+function prChgLoad(){const ks=[...new Set(prItems().map(r=>r.s).filter(k=>PUB[k]))];if(!ks.length)return;const need=ks.filter(k=>PUB[k].st!=='ok');
+  if(!need.length){if(!PR._chgT){PR._chgT=1;setTimeout(prChgToast,300);}return;}need.forEach(k=>pubLoad(PUB[k]));}
 const pubMonTxt=P=>P.pub?prMon(P.pub)+' '+(P.pw||'공표'):prMon((P.at||'').slice(0,7))+' 갱신';
 function pubRowsHTML(k,V){if(!V.length)return '';const P=PUB[k],N=40+P.more*80,D=P.d,tg=prSrc(k);
   return '<tr class="pr-gh"><td colspan="9"><b>'+esc(tg[0])+'</b><span>'+V.length+(V.length>=500?'+':'')+'건 · '+esc(pubMonTxt(P))+(P.sub?' · '+esc(P.sub):'')+'</span></td></tr>'
@@ -16627,7 +16785,7 @@ document.addEventListener('dragover',e=>{if(e.target.closest&&e.target.closest('
 document.addEventListener('drop',e=>{const c=e.target.closest&&e.target.closest('#prRoot .pc-cap');if(!c)return;e.preventDefault();e.stopPropagation();prCapSet(c.dataset.cap,e.dataTransfer.files[0]);},true);
 
 function rPr(){
-  const root=$('#prRoot');if(!root)return;prSub();xlib('hg').catch(()=>{});
+  const root=$('#prRoot');if(!root)return;prSub();prChgLoad();xlib('hg').catch(()=>{});
   const L=prRows(),all=prItems(),qa=PR.q.trim(),QM=qa?all.filter(r=>qa.split(/\s+/).every(t=>hgMatch(r.n+' '+(r.sp||'')+' '+(r.nt||'')+' '+prTitle(r.id),t))):all,PN=Object.fromEntries(qa?PUB_K.map(k=>[k,pubVisible(k,pubFind(k,qa)).length]):[]),cnt=k=>QM.filter(r=>prSk(r.s)===k).length+(PN[k]||0),PM=Object.values(prPinMap().m).map(L=>L[L.length-1][1]),pins=PM.length,fcnt=f=>PM.filter(x=>x===f).length,FD=prFolds(),fdName=f=>f==='*'?'찜 목록':f==='_'?'미분류':((FD.find(x=>x.id===f)||{}).n||''),ng=new Set([...PR.cmp].map(id=>{const r=all.find(x=>x.id===id);return r?r.n+'|'+(r.sp||''):'';}).filter(Boolean)).size;
   const q=PR.q.trim(),qe=encodeURIComponent(q);
   const nr=PR.add?'<tr class="pr-new"><td class="n">'+rwIc('i-plus')+'</td><td><input class="inp inp-sm" id="prNn" placeholder="자재명" value="'+esc(q)+'"></td><td><input class="inp inp-sm" id="prNs" placeholder="규격"></td><td><input class="inp inp-sm" id="prNu" placeholder="단위"></td><td><input class="inp inp-sm" id="prNp" placeholder="단가" inputmode="numeric" style="text-align:right"></td>'
@@ -16638,7 +16796,7 @@ function rPr(){
      +(PR.fr?'<tr class="pr-frow"><th></th>'+PR_FK.map(k=>'<th><input class="pr-fin" data-k="'+k+'" value="'+esc(PR.ff[k]||'')+'" autocomplete="off" placeholder="'+(k==='p'?'>=1000 · 1000~5000':'')+'" aria-label="필터"></th>').join('')+'<th>'+(prFfOn()?'<button class="pr-ib" data-act="pr.ffx" data-tip="필터 지우기" aria-label="필터 지우기">'+rwIc('i-close')+'</button>':'')+'</th></tr>':'')
      +'</thead><tbody>'+(PR.pst?'<tr class="pr-pst"><td colspan="9">'+rwIc('i-paste')+'<span>네이버 쇼핑에서 상품 이름 · 가격을 끌어 복사(Ctrl+C)한 뒤 이 화면에서 <b>Ctrl+V</b></span><button class="pr-ib" data-act="pr.pstx" aria-label="닫기">'+rwIc('i-close')+'</button></td></tr>':'')+nr
      +(L.length?L.map((r,i)=>{const u=prUrl(r),pn=prPinned(r.id),tt=prTitle(r.id);
-       return '<tr class="pr-r'+(PR.pop===r.id?' open':'')+'" data-id="'+r.id+'"><td class="n">'+(i+1)+'</td><td class="pr-nm"><b>'+esc(tt||r.n)+'</b><span>'+esc(tt?[r.n,r.sp].filter(Boolean).join(' · '):(r.sp||''))+'</span><i class="pr-tg pr-tgm '+r.s+'">'+prSrc(r.s)[1]+'</i></td><td class="pr-spc">'+esc(tt?[r.n,r.sp].filter(Boolean).join(' · '):(r.sp||''))+'</td><td>'+esc(r.u||'')+'</td><td class="r pr-pr">'+rwN(r.p)+'</td><td>'+prTagHTML(r.s,'')+'</td><td>'+prMon(r.m)+'</td><td class="pr-nt">'+esc(r.nt||'')+'</td>'
+       return '<tr class="pr-r'+(PR.pop===r.id?' open':'')+'" data-id="'+r.id+'"><td class="n">'+(i+1)+'</td><td class="pr-nm"><b>'+esc(tt||r.n)+'</b><span>'+esc(tt?[r.n,r.sp].filter(Boolean).join(' · '):(r.sp||''))+'</span><i class="pr-tg pr-tgm '+r.s+'">'+prSrc(r.s)[1]+'</i></td><td class="pr-spc">'+esc(tt?[r.n,r.sp].filter(Boolean).join(' · '):(r.sp||''))+'</td><td>'+esc(r.u||'')+'</td><td class="r pr-pr">'+rwN(r.p)+prChgHTML(r)+'</td><td>'+prTagHTML(r.s,'')+'</td><td>'+prMon(r.m)+'</td><td class="pr-nt">'+esc(r.nt||'')+'</td>'
         +'<td class="pr-ac">'+(u?'<a class="pr-ib" href="'+esc(u)+'" target="_blank" rel="noopener" data-tip="원본 열기 · '+esc(prSrc(r.s)[0])+'" aria-label="원본 열기">'+rwIc('i-ext')+'</a>':'<span class="pr-ib0"></span>')+'<button class="pr-ib pr-cb'+(PR.cmp.has(r.id)?' on':'')+'" data-act="pr.cmpt" data-id="'+r.id+'" data-tip="'+(PR.cmp.has(r.id)?'비교에서 빼기':'비교에 담기')+'" aria-label="비교에 담기">'+rwIc(PR.cmp.has(r.id)?'i-check':'i-plus')+'</button>'
         +'<button class="pr-st'+(pn?' on':'')+'" data-act="pr.star" data-id="'+r.id+'" data-tip="'+(pn?esc(fdName(prFoldOf(r.id)))+' · 이름·폴더':'찜하기')+'" aria-label="찜">'+rwIc('i-star')+'</button></td></tr>'
        ;}).join('')
@@ -16704,6 +16862,7 @@ Object.assign(ACT,{
   'pr.unpin':el=>{prPinSet(el.dataset.id,null);PR.pop='';rPr();},
   'pr.bm':()=>{const q=PR.q.trim();window.open('https://search.shopping.naver.com/search/all?query='+encodeURIComponent(q),'_blank','noopener');PR.pst=true;rPr();},
   'pr.pstx':()=>{PR.pst=false;rPr();},
+  'pr.upd':el=>{const r=prItems().find(x=>x.id===el.dataset.id),L=r&&prLatest(r);if(!r||!L||!prCanEdit(r))return;const{id,...o}=r;prWrite('items/'+id,{...o,p:L.p,m:L.m,at:Date.now()});rPr();toast('「'+r.n+'」 단가를 '+rwN(L.p)+'원('+prMon(L.m)+')으로 바꿨습니다');},
   'pr.qx':()=>{PR.q='';PR.pop='';PUB_K.forEach(k=>PUB[k].more=0);const i=$('#prQ');if(i)i.value='';PR._qf=true;rPr();},
   'pr.fr':()=>{PR.fr=!PR.fr;if(!PR.fr)PR.ff={};rPr();if(PR.fr)setTimeout(()=>{const i=document.querySelector('#prRoot .pr-fin');if(i)i.focus();},0);},
   'pr.ffx':()=>{PR.ff={};rPr();},
