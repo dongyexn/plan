@@ -15536,7 +15536,7 @@ function qcPHTML(){const R=qcPRows(),cnt={hi:0,ok:0,lo:0,no:0};let over=0;R.forE
           +'<td class="st">'+(o.m?'<span class="qp-v '+o.v+'">'+(o.v==='hi'?'높음':o.v==='lo'?'낮음':'적정')+'</span>':'')+'</td></tr>';}).join('')
       +'</tbody></table></div>';
   const bar='<div class="tkbar qc-bar"><span class="qc-t">단가 대조'+(QC.pran&&R.length?'<span>'+R.length+'줄 · 높은 줄 단가 차이 합 '+rwN(over)+'원</span>':'')+'</span>'
-    +'<span class="tl-br">'+(QC.pran&&R.length?'<button class="rw-bb" data-act="qc.prw">'+rwIc('i-doc')+'보고서로 보내기</button>':'')+'</span></div>';
+    +'<span class="tl-br">'+(QC.pran&&R.length?'<button class="rw-bb" data-act="qc.prw">'+rwIc('i-doc')+'보고서로 보내기</button>':'')+qcModeSeg()+'</span></div>';
   return [left,'<div class="qc-col qc-right">'+bar+body+'</div>'];}
 function qcPBlocks(){const R=qcPRows().filter(o=>o.m);const n={hi:0,ok:0,lo:0};R.forEach(o=>n[o.v]++);
   const B=[rwHdr('견적 단가 대조',['허용 범위 <b>±'+QC.ptol+'%</b>','대조 <b>'+R.length+'항목</b>']),rwMk('sec',{t:'단가 대조'})];
@@ -15569,7 +15569,7 @@ function qcLabHTML(){const P=PUB.wage;pubLoad(P);if(!QC.lab)QC.lab=QC_LAB0();
     +'<thead><tr><th class="n">NO</th><th>직종</th><th class="v">작업량</th><th>단위</th><th class="v">1인 1일</th><th class="v">인원</th><th class="v">일수</th><th class="v">노무비</th><th class="v">단위당</th><th></th></tr></thead><tbody>'+rows
     +'<tr class="ql-add"><td colspan="10"><button class="rw-bb" data-act="qc.ladd">'+rwIc('i-plus')+'직종 더하기</button></td></tr></tbody></table></div>'
     +'<div class="ql-tot"><span>합계</span><b id="qlTot">'+rwN(Math.round(tot))+'원</b><small id="qlMd">'+(md?'연인원 '+(+md.toFixed(1))+'인':'')+'</small></div>';
-  const bar='<div class="tkbar qc-bar"><span class="qc-t">노무비 · 생산성</span><span class="tl-br"><button class="rw-bb" data-act="qc.lrw">'+rwIc('i-doc')+'보고서로 보내기</button></span></div>';
+  const bar='<div class="tkbar qc-bar"><span class="qc-t">노무비 · 생산성</span><span class="tl-br"><button class="rw-bb" data-act="qc.lrw">'+rwIc('i-doc')+'보고서로 보내기</button>'+qcModeSeg()+'</span></div>';
   return [left,'<div class="qc-col qc-right">'+bar+body+'</div>'];}
 function qcLabDays(c,L){if(c.raw!=null)return (+c.d.toFixed(2))+'일<small>하루 '+(+(c.pr*c.n).toFixed(2))+' '+esc(L.u||'')+(QC.lround>0&&Math.abs(c.raw-c.d)>1e-9?' · '+(+c.raw.toFixed(2))+'일 올림':'')+'</small>';
   return '<input class="ql-in" data-k="d" inputmode="decimal" value="'+esc(L.d)+'" aria-label="일수">';}
@@ -15587,19 +15587,19 @@ function qcLabBlocks(){const T=QC.lab.map(L=>({L,c:qcLabCalc(L)})).filter(o=>o.c
   B.push(rwMk('p',{h:rwTxt('시중노임(대한건설협회 '+prMon(P.pub||'')+' 공표, 1일 8시간)으로 계산한 직접노무비입니다. 제경비 · 부가세는 별도입니다.'+(QC.lround>0?' 일수는 '+QC.lround+'일 단위로 올렸습니다.':''))}));
   return B;}
 const QC_MODES=[['calc','계산식'],['cmp','단가 대조'],['lab','노무비']];
-const qcModeHTML=()=>'<div class="card qc-mode"><div class="qc-b"><span class="seg">'+QC_MODES.map(([k,l])=>'<button class="'+(QC.mode===k?'act':'')+'" data-act="qc.mode" data-k="'+k+'">'+l+'</button>').join('')+'</span></div></div>';
+const qcModeSeg=()=>tlSeg(QC.mode,QC_MODES,'data-act="qc.mode" data-k');   /* 물가정보 「목록 · 단가 비교」처럼 오른쪽 막대 끝 탭 */
 function rQc(){
   const root=$('#qcRoot');if(!root)return;
   if(QC.mode!=='calc'){tsLazy('qc');tsNote('qc');const[l,r]=QC.mode==='cmp'?qcPHTML():qcLabHTML();
-    root.innerHTML='<div class="qc-grid"><div class="qc-col">'+qcModeHTML()+l+'</div>'+r+'</div>';qcFade();const w=$('#qcWrap');if(w)ovsAttach(w);return;}
+    root.innerHTML='<div class="qc-grid"><div class="qc-col">'+l+'</div>'+r+'</div>';qcFade();const w=$('#qcWrap');if(w)ovsAttach(w);return;}
   const c=qcCount();
   /* ⚠ data-act 는 문자열 그대로 적는다 — 붙여 만들면 정적 감사가 발신처를 못 찾아 경고한다 */
   const seg=(cur,list,btn)=>'<span class="seg">'+list.map(([k,l])=>btn(k,l,String(cur)===String(k)?' act':'')).join('')+'</span>';
   const segRnd=seg(QC.rnd,[[0,'정수'],[1,'0.0'],[2,'0.00'],[-1,'안 함']],(k,l,a)=>'<button class="'+a.trim()+'" data-act="qc.rnd" data-r="'+k+'">'+l+'</button>');
   const segTol=seg(QC.tol,[[0,'없음'],[0.1,'±0.1'],[0.5,'±0.5']],(k,l,a)=>'<button class="'+a.trim()+'" data-act="qc.tol" data-t="'+k+'">'+l+'</button>');
-  const segFil=seg(QC.filter,[['all','전체'],['ok','정답'],['no','오답'],['sk','제외'],['sum','합계']],(k,l,a)=>'<button class="'+a.trim()+'" data-act="qc.filter" data-k="'+k+'">'+l+'</button>');
+  const segFil=seg(QC.filter,[['all','전체'],['ok','정답'],['no','오답'],['sk','제외'],['sum','합계']],(k,l,a)=>'<button class="'+a.trim()+'" data-act="qc.filter" data-k="'+k+'">'+l+'</button>').replace('<span class="seg">','<span class="seg" data-qf>');   /* qcRefresh 가 이 탭만 다시 집는다 */
   tsLazy('qc');tsNote('qc');
-  root.innerHTML='<div class="qc-grid"><div class="qc-col">'+qcModeHTML()
+  root.innerHTML='<div class="qc-grid"><div class="qc-col">'
     +qcResHTML(c)
     +'<div class="card"><div class="tm-h"><span>산출 근거 붙여넣기</span><button class="btn bo bxs" data-act="qc.clear">초기화</button></div>'
       +'<div class="qc-b"><textarea id="qcTa" class="qc-ta" spellcheck="false">'+esc(QC.txt)+'</textarea>'
@@ -15620,7 +15620,7 @@ function qcResHTML(c){
 }
 function qcRightHTML(c,segFil){
   return '<div class="qc-col qc-right"><div class="tkbar qc-bar"><span class="qc-t">검토 결과'+(QC.ran?'<span>'+c.unit+'세대 · '+QC.rows.length+'줄</span>':'')+'</span>'
-      +'<span>'+segFil+'</span></div>'
+      +'<span class="tl-br">'+segFil+qcModeSeg()+'</span></div>'
     +(QC.ran
       ?'<div class="qc-wrap" id="qcWrap"><table class="qc-tbl"><thead><tr><th class="n">NO</th><th class="pl">공간</th><th class="it">항목</th><th>계산식</th>'
         +'<th class="v">계산값</th><th class="v">적힌 값</th><th class="st">판정</th><th class="rs">사유</th></tr></thead><tbody>'+qcRowsHTML()+'</tbody></table></div>'
@@ -15639,9 +15639,10 @@ function qcRefresh(scroll){
   const root=$('#qcRoot');if(!root)return;
   const c=qcCount(),w0=$('#qcWrap'),st=w0?w0.scrollTop:0;
   const rc=$('#qcRes');if(rc)rc.outerHTML=qcResHTML(c);
-  const segFil=root.querySelector('.qc-right .qc-bar>span:last-child');
+  const segFil=root.querySelector('.qc-right .qc-bar .tl-br>.seg[data-qf]');
   const right=root.querySelector('.qc-right');if(!right){rQc();return;}
-  right.outerHTML=qcRightHTML(c,segFil?segFil.innerHTML:'');
+  const sf=segFil&&segFil.cloneNode(true);if(sf){sf.querySelectorAll('.sl-ind').forEach(x=>x.remove());sf.classList.remove('sl-on');}   /* 미끄럼 표시는 slSync 가 다시 단다 — 옮겨 담으면 겹친다 */
+  right.outerHTML=qcRightHTML(c,sf?sf.outerHTML:'');
   const w=$('#qcWrap');if(w){w.scrollTop=st;ovsAttach(w);}
   qcFade();qcHlPaint(scroll);
 }
@@ -16792,7 +16793,7 @@ function rPr(){
      +'<td><select class="inp inp-sm" id="prNsrc">'+PR_SK.map(k=>'<option value="'+k+'">'+prSrc(k)[1]+'</option>').join('')+'</select></td><td><input class="inp inp-sm" id="prNm" type="month" value="'+prCurMon()+'"></td><td><input class="inp inp-sm" id="prNt" placeholder="비고 · 쪽"><input class="inp inp-sm" id="prNl" placeholder="원본 주소(선택)"></td><td><div class="pr-nb"><button class="btn bp bxs" data-act="pr.addok">저장</button><button class="btn bg2 bxs" data-act="pr.add">취소</button></div></td></tr>':'';
   const GS=PR.view==='list'?pubLists(q):[];   /* 공공 단가(매달 자동 갱신) — 팀 목록 아래에 묶음별로 */
   const body=PR.view==='list'
-   ?'<div class="qc-wrap" id="prWrap" data-sbh><table class="qc-tbl pr-tbl"><colgroup><col style="width:40px"><col><col style="width:20%"><col style="width:48px"><col style="width:84px"><col style="width:66px"><col style="width:80px"><col style="width:12.5%"><col style="width:96px"></colgroup><thead><tr><th class="n">NO</th><th>자재명</th><th class="pr-spc">규격</th><th>단위</th><th class="r pr-so" data-act="pr.sort">단가'+(PR.sort?(PR.sort==='p'?' ↑':' ↓'):'')+'</th><th>출처</th><th>기준월</th><th>비고</th><th class="pr-fth"><button class="pr-ib'+(PR.fr||prFfOn()?' on':'')+'" data-act="pr.fr" data-tip="'+(PR.fr?'필터행 닫기':'필터행')+'" aria-label="필터행">'+rwIc('i-filter')+'</button></th></tr>'
+   ?'<div class="qc-wrap" id="prWrap" data-sbh><table class="qc-tbl pr-tbl"><colgroup><col style="width:40px"><col><col style="width:20%"><col style="width:48px"><col style="width:124px"><col style="width:66px"><col style="width:80px"><col style="width:12.5%"><col style="width:96px"></colgroup><thead><tr><th class="n">NO</th><th>자재명</th><th class="pr-spc">규격</th><th>단위</th><th class="r pr-so" data-act="pr.sort">단가'+(PR.sort?(PR.sort==='p'?' ↑':' ↓'):'')+'</th><th>출처</th><th>기준월</th><th>비고</th><th class="pr-fth"><button class="pr-ib'+(PR.fr||prFfOn()?' on':'')+'" data-act="pr.fr" data-tip="'+(PR.fr?'필터행 닫기':'필터행')+'" aria-label="필터행">'+rwIc('i-filter')+'</button></th></tr>'
      +(PR.fr?'<tr class="pr-frow"><th></th>'+PR_FK.map(k=>'<th><input class="pr-fin" data-k="'+k+'" value="'+esc(PR.ff[k]||'')+'" autocomplete="off" placeholder="'+(k==='p'?'>=1000 · 1000~5000':'')+'" aria-label="필터"></th>').join('')+'<th>'+(prFfOn()?'<button class="pr-ib" data-act="pr.ffx" data-tip="필터 지우기" aria-label="필터 지우기">'+rwIc('i-close')+'</button>':'')+'</th></tr>':'')
      +'</thead><tbody>'+(PR.pst?'<tr class="pr-pst"><td colspan="9">'+rwIc('i-paste')+'<span>네이버 쇼핑에서 상품 이름 · 가격을 끌어 복사(Ctrl+C)한 뒤 이 화면에서 <b>Ctrl+V</b></span><button class="pr-ib" data-act="pr.pstx" aria-label="닫기">'+rwIc('i-close')+'</button></td></tr>':'')+nr
      +(L.length?L.map((r,i)=>{const u=prUrl(r),pn=prPinned(r.id),tt=prTitle(r.id);
