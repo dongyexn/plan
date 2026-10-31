@@ -10,6 +10,9 @@ on:
   workflow_dispatch:
 env:
   FIREBASE_DB_URL: https://report-c29a1-default-rtdb.asia-southeast1.firebasedatabase.app
+permissions:
+  contents: read   # 1287(보안 감사): 기본 토큰 권한을 읽기로
+
 jobs:
   sync:
     runs-on: ubuntu-latest

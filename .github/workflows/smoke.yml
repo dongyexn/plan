@@ -6,6 +6,9 @@ on:
   push:
     branches: [main]
   pull_request:
+permissions:
+  contents: read   # 1287(보안 감사): 기본 토큰 권한을 읽기로
+
 jobs:
   test:
     runs-on: ubuntu-latest

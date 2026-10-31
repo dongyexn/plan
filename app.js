@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1286';
+const APP_VER='1287';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -16697,7 +16697,7 @@ const pubMonTxt=P=>P.pub?prMon(P.pub)+' '+(P.pw||'공표'):prMon((P.at||'').slic
 function pubRowsHTML(k,V){if(!V.length)return '';const P=PUB[k],N=40+P.more*80,D=P.d,tg=prSrc(k);
   return '<tr class="pr-gh"><td colspan="9"><b>'+esc(tg[0])+'</b><span>'+V.length+(V.length>=500?'+':'')+'건 · '+esc(pubMonTxt(P))+(P.sub?' · '+esc(P.sub):'')+'</span></td></tr>'
     +V.slice(0,N).map((i,n)=>{const r=D[i],[nm,sp]=g2bName(r);
-      return '<tr class="pr-g" data-k="'+k+'" data-i="'+i+'"><td class="n">'+(n+1)+'</td><td class="pr-nm"><b>'+esc(nm)+'</b><span>'+esc(sp)+'</span><i class="pr-tg pr-tgm '+k+'">'+esc(tg[1])+'</i></td><td class="pr-spc">'+esc(sp)+'</td><td class="pr-u">'+esc(r[1])+'</td><td class="r pr-pr">'+rwN(r[2])+'</td><td>'+prTagHTML(k,'')+'</td><td>'+prMon(r[3])+'</td><td class="pr-nt">'+esc(r[7]||'')+'</td>'
+      return '<tr class="pr-g" data-k="'+k+'" data-i="'+i+'"><td class="n">'+(n+1)+'</td><td class="pr-nm"><b>'+esc(nm)+'</b><span>'+esc(sp)+'</span><i class="pr-tg pr-tgm '+k+'">'+esc(tg[1])+'</i></td><td class="pr-spc">'+esc(sp)+'</td><td class="pr-u">'+esc(r[1])+'</td><td class="r pr-pr">'+rwN(r[2])+'</td><td>'+prTagHTML(k,'')+'</td><td>'+esc(prMon(r[3]))+'</td><td class="pr-nt">'+esc(r[7]||'')+'</td>'
         +'<td class="pr-ac"><a class="pr-ib" href="'+esc(P.url)+'" target="_blank" rel="noopener" data-tip="원본 열기 · '+esc(P.ul)+'" aria-label="원본 열기">'+rwIc('i-ext')+'</a><button class="pr-ib pr-cb" data-act="pr.gcmp" data-k="'+k+'" data-i="'+i+'" data-tip="비교에 담기 · 목록에도 담긴다" aria-label="비교에 담기">'+rwIc('i-plus')+'</button><button class="pr-ib pr-ga" data-act="pr.gadd" data-k="'+k+'" data-i="'+i+'" data-tip="목록에 담기" aria-label="목록에 담기">'+rwIc('i-addsq')+'</button></td></tr>';}).join('')
     +(V.length>N?'<tr class="pr-g"><td colspan="9" class="pr-gm"><button class="rw-bb" data-act="pr.gmore" data-k="'+k+'">'+rwIc('i-chevd')+'더 보기 · '+(V.length-N)+'건</button></td></tr>':'');}
 /* 출처 표 — 원본 주소가 있으면 누르면 원본(작은 ↗) */

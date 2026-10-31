@@ -672,6 +672,8 @@ fn run_backup(app: &AppHandle, force: bool) -> bool {
     }
     let Some(d) = ask(app, "window.bkExport ? window.bkExport() : null", 60000) else { return false };
     let (Some(name), Some(text)) = (d.get("name").and_then(|v| v.as_str()), d.get("text").and_then(|v| v.as_str())) else { return false };
+    /* 1287(보안 감사): 이름은 페이지가 준다 — hplan_NNNNNN.json 만 받는다(절대 경로·..·구분자로 backup 폴더 밖에 쓰지 못하게) */
+    if !is_backup_name(name) { log("백업 이름 거절"); return false; }
     let _ = std::fs::create_dir_all(backup_dir());
     let f = backup_dir().join(name);
     /* 629차: DPAPI 로 잠근다 — 실패(이론상 희귀)하면 백업이 아예 없는 것보다 평문이 낫다 */
@@ -699,12 +701,14 @@ fn today_minus_days(n: i64) -> String {
     let mut mo = 0usize; while d >= ml[mo] { d -= ml[mo]; mo += 1; }
     format!("{:04}-{:02}-{:02}", y, mo + 1, d + 1)
 }
+fn is_backup_name(n: &str) -> bool {
+    n.len() == 17 && n.starts_with("hplan_") && n.ends_with(".json") && n.as_bytes()[6..12].iter().all(|c| c.is_ascii_digit())   /* 바이트로 본다 — 한글 섞인 이름에서 글자 경계 패닉 없음 */
+}
 fn prune_backups() {
     /* 오래된 것부터 지워 최근 12개만(163차). ⚠ hplan_ 패턴만 지운다 — 다른 파일 안전 */
     let Ok(rd) = std::fs::read_dir(backup_dir()) else { return };
     let mut names: Vec<String> = rd.filter_map(|e| e.ok()).map(|e| e.file_name().to_string_lossy().into_owned())
-        .filter(|n| n.len() == 17 && n.starts_with("hplan_") && n.ends_with(".json")
-            && n[6..12].chars().all(|c| c.is_ascii_digit()))
+        .filter(|n| is_backup_name(n))
         .collect();
     names.sort();
     while names.len() > 12 { let _ = std::fs::remove_file(backup_dir().join(names.remove(0))); }

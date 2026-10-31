@@ -1,5 +1,17 @@
 # 변경 이력 (읽기 전용) — 현재 상태는 HANDOFF.md
 
+## 마지막 기록 기준 v1287
+### 1287차 보안 감사(cloudflare security-audit-skill, quick) 반영
+- 감사: 소스만 읽음(정찰 4 · 사냥 5 · 범위 점검 1 · 검증 5). 확인 1(낮음) · 검증 필요 3 · 기각 1. 미점검으로 남김: 파일 가져오기·붙여넣기 렌더링, price-data 토큰→위젯 릴리즈 경로, 위젯 같은 출처 이동·eval 채널.
+- 규칙 calapp/people/$pid .write: 맨 앞에 MEMBER(editor·viewer) — 팀장·공구장 분기가 직급만 봐서 차단·삭제된 사람도 남의 권역·담당 현장을 바꿀 수 있었다(rules-auth AUTH-32a~c 로 재현 → 수정 후 통과).
+- 규칙 calapp/archive/$sid/$iid .write: 원본 업무가 없을 때는 (기존 사본이 있거나) createdBy=나 일 때만 — 남 이름·작성자 없는 가짜 보관 사본을 심고 그걸 근거로 휴지통 사본까지 만들 수 있었다(AUTH-31a·b 재현 → 수정).
+- 규칙 calapp/acctDel/$uid/by == auth.uid (AUTH-31d).
+- ⚠ database.rules.json 은 콘솔에 손으로 게시 — 게시해야 위 규칙이 적용된다.
+- acct-del.mjs: 공개 저장소라 Actions 로그도 공개 — 삭제한 계정 uid·이메일 대신 순번만. d60-photo-clean.mjs: 현장 이름 대신 순번.
+- 위젯(1.6.2): 백업 파일 이름을 페이지가 주는 대로 쓰던 것 → hplan_NNNNNN.json(바이트 검사)만 받는다. 이름 검사 함수를 정리(prune)와 함께 쓴다.
+- 물가정보 표 기준월 칸 esc. acct-del · bg-sync · d60-photo-clean · smoke 워크플로에 permissions: contents: read.
+- 남긴 보강: 위젯 capability·이동 범위를 /plan/ 으로 좁히기(Windows 실행 확인 불가로 보류), 액션 SHA 고정, dfInsightHTML 허용목록, CSP firebasedatabase 호스트 고정.
+
 ## 마지막 기록 기준 v1286
 ### 1286차 견적 검토 「단가 대조」 · 「노무비」 · 물가정보 단가 변동 표시
 **사용자: 「최근 도입한 기능으로 사용자가 체감할 업데이트 제안 · 미리보기」 → 제안 셋(단가 대조 · 노무비 계산기 · 찜 단가 변동 알림) → 「셋 다 괜찮다 시안 · 노무비 계산기는 생산성도 — 하루 몇 건 → 며칠 → 노임으로 얼마」**
