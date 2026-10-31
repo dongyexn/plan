@@ -8,7 +8,7 @@
      --trailer <파일>    커밋 메시지 끝에 붙일 줄(공동 작성자 · 세션 주소 등). 없으면 붙이지 않는다
      --no-merge          PR 검사까지만(병합 · 반영본 없음)
      --dry               파일만 고치고 점검까지 — git · GitHub 는 건드리지 않는다
-     --skip-test         npm test 를 건너뛴다(⚠ 문서만 바뀐 경우에만)
+     --test              npm test 도 여기서 돌린다(기본은 안 돌림 — 같은 시험을 GitHub 검사(smoke)가 PR 에서 돌리고, 실패하면 병합하지 않는다 · 1285)
    전제: 지금 브랜치가 calapp-v<회차>(main 이면 새로 만든다) · 코드 수정은 이미 끝남 · gh 가 저장소에 쓸 수 있음.
    로그 블록 파일은 '### <회차>차 제목' 부터 쓴다(맨 위 '## 마지막 기록 기준 v<회차>' 는 이 스크립트가 붙인다). */
 import fs from 'node:fs';
@@ -22,7 +22,7 @@ process.chdir(root);
 /* ── 인자 ── */
 const argv=process.argv.slice(2),opt={};let ver='';
 for(let i=0;i<argv.length;i++){const a=argv[i];
-  if(a.startsWith('--')){const k=a.slice(2);if(['no-merge','dry','skip-test'].includes(k))opt[k]=true;else opt[k]=argv[++i];}
+  if(a.startsWith('--')){const k=a.slice(2);if(['no-merge','dry','test'].includes(k))opt[k]=true;else opt[k]=argv[++i];}
   else if(!ver)ver=a;}
 const die=m=>{console.error('✗ '+m);process.exit(1);};
 if(!/^\d{3,5}$/.test(ver))die('회차 번호가 없다 — node scripts/release.mjs 1284 --title … --line … --log …');
@@ -82,13 +82,13 @@ step('정적 점검');
   const r=(o.match(/결과: FAIL (\d+) · WARN (\d+)/)||[]);
   if(r[1]!=='0'||r[2]!=='0'){console.log(o.split('\n').filter(l=>!/^ok\b/.test(l)).join('\n'));die('정적 점검 FAIL '+r[1]+' · WARN '+r[2]);}
   console.log('  FAIL 0 · WARN 0');}
-if(!opt['skip-test']){
+if(opt.test){
   step('전체 테스트(npm test)');
   let o='';try{o=sh('npm',['test'],{quiet:true,timeout:15*60e3});}catch(e){o=String(e.stdout||'')+String(e.stderr||'');}
   const bad=o.split('\n').filter(l=>/^✗|FAIL [1-9]/.test(l));
   if(!/전체 결과: PASS/.test(o)){console.log(bad.join('\n'));die('테스트 실패 — 앱 문제인지 테스트 문제인지 먼저 가린다');}
   console.log('  전체 결과 PASS');}
-if(opt.dry){console.log('\n✓ --dry: 파일 수정과 점검까지 끝. git · GitHub 는 건드리지 않았다');process.exit(0);}
+if(opt.dry){console.log('\n✓ --dry: 파일 수정과 점검까지 끝. git · GitHub 는 건드리지 않았다'+(opt.test?'':' · 전체 테스트는 --test 일 때만'));process.exit(0);}
 
 /* ── 4. 커밋 · 푸시 · PR ── */
 step('커밋 · 푸시');

@@ -26,13 +26,21 @@ jobs:
           done
           echo "확인 완료"
 
+      # 1285: 브라우저 파일은 캐시(playwright 버전 = package-lock 이 같으면 다시 받지 않음) · 시스템 라이브러리는 매번(apt)
+      - name: 브라우저 캐시
+        id: pwc
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: pw-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - name: 의존성·브라우저 준비
         run: |
           npm ci
-          npx playwright install --with-deps chromium
+          if [ "${{ steps.pwc.outputs.cache-hit }}" = "true" ]; then npx playwright install-deps chromium; else npx playwright install --with-deps chromium; fi
 
       - name: 전체 회귀 게이트
         env:
+          TEST_JOBS: 3   # 1285: 러너 4코어 — 브라우저 시험 셋을 동시에(시험마다 포트가 다르다)
           LIVE_E2E_EMAIL: ${{ secrets.LIVE_E2E_EMAIL }}
           LIVE_E2E_PASSWORD: ${{ secrets.LIVE_E2E_PASSWORD }}
           LIVE_E2E_SECOND_EMAIL: ${{ secrets.LIVE_E2E_SECOND_EMAIL }}
