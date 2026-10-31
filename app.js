@@ -15529,7 +15529,7 @@ function qcPHTML(){const R=qcPRows(),cnt={hi:0,ok:0,lo:0,no:0};let over=0;R.forE
         const opts=c.map(x=>{const y=PUB[x.k].d[x.i],[yn,ys]=g2bName(y);return'<option value="'+x.k+':'+x.i+'"'+(cur===x.k+':'+x.i?' selected':'')+'>'+esc(prSrc(x.k)[1]+' · '+yn+(ys?' · '+ys:'')+' · '+y[1]+' · '+rwN(y[2])+'원')+'</option>';}).join('')
           +'<option value="none"'+(cur==='none'?' selected':'')+'>대조 안 함</option>';
         const[mn,ms]=o.m?g2bName(o.m.x):['',''];
-        return '<tr class="qp-'+(o.m?o.v:'no')+'"><td class="n">'+(o.j+1)+'</td><td><b>'+esc(r.n)+'</b>'+(r.sp?'<small>'+esc(r.sp)+'</small>':'')+'</td><td>'+esc(r.u)+'</td><td class="v">'+rwN(r.p)+'</td>'
+        return '<tr class="'+(o.m?{hi:'qp-hi',lo:'qp-lo',ok:'qp-ok'}[o.v]:'qp-no')+'"><td class="n">'+(o.j+1)+'</td><td><b>'+esc(r.n)+'</b>'+(r.sp?'<small>'+esc(r.sp)+'</small>':'')+'</td><td>'+esc(r.u)+'</td><td class="v">'+rwN(r.p)+'</td>'
           +'<td>'+(o.m?tag(o.m.k)+' <span class="qp-mn">'+esc(mn)+'</span><small>'+esc([ms,o.m.x[7]].filter(Boolean).join(' · '))+' · '+esc(prMon(o.m.x[3]))+'</small>':'<span class="qp-none">짝 없음</span>')
           +(c.length?'<select class="qp-sel" data-qpk="'+o.j+'" aria-label="공공 기준 고르기">'+opts+'</select>':'')+'</td>'
           +'<td class="v">'+(o.m?rwN(o.m.x[2]):'—')+'</td><td class="v qp-d">'+(o.m?(o.d>0?'+':'')+o.d.toFixed(1)+'%':'')+'</td>'
