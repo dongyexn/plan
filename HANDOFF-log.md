@@ -7,6 +7,7 @@
 - 원인: chTipDraw 가 캔버스마다 document mousemove(캡처) 감시를 붙이고 떼지 않았다. 하자 화면을 다시 그리면 dfC 가 차트를 destroy → Chart.js 가 chart.canvas 를 null 로 → 툴팁(#chTip.on)이 켜진 채 마우스를 움직이면 쌓인 감시 수만큼 TypeError(한 번에 10줄 = 감시 10개).
 - 고침: 캔버스를 cv 로 쥐고, cv 가 문서에서 빠지면 감시를 removeEventListener 로 스스로 뗀다 · el.__pos 는 chart.canvas 가 없으면 툴팁을 닫는다 · dfC 에서 chTipHide().
 - 시험: 차트 3개를 띄워 툴팁을 켠 뒤 지우고 마우스 이동 — 옛 배포본은 오류, 고친 판은 0.
+- 테스트 고침: e2e-defect · mobile-fit 의 「기준월 자동 결정(전월 상한)」 기대값이 31일에 new Date().setMonth(-1) 로 이번 달이 되어 실패(10-31 → 10-01). setDate(1) 먼저. 앱 쪽 계산(6651행 부근)은 1일 기준이라 문제없음.
 
 ## 마지막 기록 기준 v1282
 ### 1282차 물가정보 첫 진입 안 뜸(1281 회귀)
