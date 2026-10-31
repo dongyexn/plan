@@ -54,7 +54,10 @@ const run=([name,args])=>new Promise(res=>{const s=Date.now();let out='';
   const p=spawn(process.execPath,args,{env:process.env});
   p.stdout.on('data',d=>out+=d);p.stderr.on('data',d=>out+=d);
   p.on('error',e=>{out+=String(e);});
-  p.on('close',code=>{console.log(`\n=== ${name} === (${((Date.now()-s)/1000).toFixed(1)}초)\n`+out.trimEnd());res(code===0?0:1);});});
+  p.on('close',code=>{console.log(`\n=== ${name} === (${((Date.now()-s)/1000).toFixed(1)}초)\n`+out.trimEnd());
+    /* GitHub 에선 실패한 시험의 ✗ 줄을 주석(annotation)으로도 남긴다 — 로그 파일을 못 받아도 API 로 읽힌다 */
+    if(code!==0&&process.env.GITHUB_ACTIONS){const bad=out.split('\n').filter(l=>/✗|FAIL|Error|오류/.test(l)).slice(0,8).join(' ⏎ ').replace(/[\r\n%]/g,' ').slice(0,900);console.log(`::error title=${name}::${bad||'종료 코드 '+code}`);}
+    res(code===0?0:1);});});
 let failed=0,i=0;
 await Promise.all(Array.from({length:Math.min(N,todo.length)},async()=>{while(i<todo.length){const j=todo[i++];const r=await run(j);failed+=r;}   /* ⚠ failed+=await … 는 await 전의 값을 읽어 동시 실행에서 실패 수를 잃는다 */}));
 
