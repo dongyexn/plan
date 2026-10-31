@@ -109,7 +109,7 @@ const up=await pg.evaluate(async()=>{
     perSite:Object.fromEntries(Object.keys(S.def).map(k=>[k,S.def[k].length]))};
 });
 ok('업로드→저장: 7개 현장 '+up.rows.toLocaleString()+'행',up.sites===7);
-const wantRm=(()=>{const d=new Date();d.setMonth(d.getMonth()-1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');})();
+const wantRm=(()=>{const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-1);   /* ⚠ 31일에 setMonth(-1) 하면 30일 없는 달을 넘겨 이번 달로 돌아온다 — 1일로 먼저 */return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');})();
 ok('기준월 자동 결정(전월 상한): '+up.pubRm+' = '+wantRm,up.pubRm===wantRm);
 
 /* ── 2) 가짜 Firebase 주입 + [등록] ── */
