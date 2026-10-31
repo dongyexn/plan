@@ -7,6 +7,7 @@
   },
   "scripts": {
     "test": "node scripts/test/run-all.mjs",
+    "release": "node scripts/release.mjs",
     "test:static": "node scripts/test/static-audit.mjs",
     "test:auth": "node scripts/test/rules-auth.mjs",
     "test:browser": "node scripts/test/smoke.mjs && node scripts/test/rainbow-render.mjs && node scripts/test/e2e-defect.mjs && node scripts/test/risk-gold.mjs && node scripts/test/mobile-fit.mjs && node scripts/test/clip-audit.mjs"

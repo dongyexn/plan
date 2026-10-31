@@ -1,5 +1,14 @@
 # 변경 이력 (읽기 전용) — 현재 상태는 HANDOFF.md
 
+## 마지막 기록 기준 v1284
+### 1284차 릴리즈 스크립트(scripts/release.mjs)
+**사용자: 「그래프 엔지니어링 시대 — 우리는 무엇을」 → 정답이 하나인 단계는 코드로(릴리즈부터) → 「한번 해봐」**
+- `node scripts/release.mjs <회차> --title "PR 제목" --line "HANDOFF.md 한 줄" --log <블록 파일> [--widget x.y.z] [--trailer <파일>] [--no-merge] [--dry] [--skip-test]` (npm run release -- … 도 같다).
+- 순서: 브랜치(main 이면 calapp-v<회차> 새로) → APP_VER · index.html app.js?v= (· 위젯 Cargo.toml · tauri.conf.json · Cargo.lock) → HANDOFF.md 맨 위 한 줄(최근 5개만) · HANDOFF-log.md 블록 → static-audit(FAIL 0 · WARN 0) → npm test(전체 결과 PASS) → 커밋(--trailer 줄 붙임) · 푸시 · PR → check-runs 모두 completed 까지 15초 간격(25분 넘으면 멈춤) → 하나라도 success 가 아니면 멈춤 → 병합 → /home/claude/out/calapp-v<회차>.zip.
+- 어느 단계든 실패하면 그 자리에서 멈춘다(✗ 이유). 같은 회차로 다시 돌리면 이미 넣은 인수인계 줄 · 로그 블록은 건너뛴다(버전은 같은 값으로 다시 씀).
+- ⚠ 화면 시안 · 사용자 수용 · 코드 검토(calapp-review 1번) · 서버 흉내 QA(calapp-qa)는 사람 판단이라 스크립트 밖 — 스크립트는 그 뒤 「내보내기」만.
+- 시험: 저장소 사본에서 --dry(두 번 연속 · --widget 포함) — 버전 · 인수인계 · 위젯 세 파일 확인. 이번 v1284 자체를 이 스크립트로 냈다.
+
 ## 마지막 기록 기준 v1283
 ### 1283차 차트 툴팁 감시 누수 — getBoundingClientRect null 오류
 **사용자: 오류 기록(v1282, Edge 156) 「Uncaught TypeError: Cannot read properties of null (reading 'getBoundingClientRect') @app.js?v=1282:5961」 10줄씩 두 번**
