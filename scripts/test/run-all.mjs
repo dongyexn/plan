@@ -19,7 +19,7 @@ const jobs=[
   ['견적 검토 계산식 읽기',['scripts/test/qc-parse.mjs'],'light'],
   ['모바일 맞춤(겹침·잘림)',['scripts/test/mobile-fit.mjs']],
   ['잘림 검사(스크롤로 못 닿는 내용)',['scripts/test/clip-audit.mjs']],   /* 845차 */
-  ['위젯 겹침·닫기',['scripts/test/widget-layers.mjs']],
+  ['위젯 겹침·닫기',['scripts/test/widget-layers.mjs'],'solo'],   /* 1286: 「메뉴 올라오는 중 설정 한 번에」처럼 0.1초 단위 타이밍을 재는 시험 — GitHub 러너에서 다른 시험과 함께 돌면 늦어 실패. 혼자 돈다 */
   ['주요 현안',['scripts/test/iss.mjs']],
   ['위젯 미니펫',['scripts/test/pets.mjs']],
 ];
@@ -45,7 +45,7 @@ const [mode,why]=scope();
 const N=Math.max(1,Math.min(4,+process.env.TEST_JOBS||os.cpus().length-1));
 /* 오래 걸리는 것부터 — 동시 실행 칸을 고르게 채운다(1285 측정 초: 위젯 65 · 현안 46 · 잘림 45 · 모바일 43 · 펫 30 · 하자 23 · 무지개 13 · smoke 8) */
 const W={'위젯 겹침·닫기':65,'주요 현안':46,'잘림 검사(스크롤로 못 닿는 내용)':45,'모바일 맞춤(겹침·잘림)':43,'위젯 미니펫':30,'하자 전 구간 E2E':23,'무지개 렌더링 E2E':13,'브라우저 smoke':8};
-const todo=jobs.filter(j=>mode==='full'||j[2]==='light').sort((a,b)=>(W[b[0]]||1)-(W[a[0]]||1));
+const todo=jobs.filter(j=>(mode==='full'||j[2]==='light')&&j[2]!=='solo').sort((a,b)=>(W[b[0]]||1)-(W[a[0]]||1));
 console.log(`범위: ${mode==='full'?'전부':'가벼운 시험만'} (${why}) · 동시 ${N}개`);
 if(mode!=='full')console.log('건너뜀: '+jobs.filter(j=>j[2]!=='light').map(j=>j[0]).join(' · '));
 
@@ -60,6 +60,7 @@ const run=([name,args])=>new Promise(res=>{const s=Date.now();let out='';
     res(code===0?0:1);});});
 let failed=0,i=0;
 await Promise.all(Array.from({length:Math.min(N,todo.length)},async()=>{while(i<todo.length){const j=todo[i++];const r=await run(j);failed+=r;}   /* ⚠ failed+=await … 는 await 전의 값을 읽어 동시 실행에서 실패 수를 잃는다 */}));
+for(const j of jobs.filter(j=>j[2]==='solo'&&mode==='full')){const r=await run(j);failed+=r;}   /* 타이밍 시험은 다른 시험이 다 끝난 뒤 혼자 */
 
 const live=['LIVE_E2E_EMAIL','LIVE_E2E_PASSWORD','LIVE_E2E_SECOND_EMAIL','LIVE_E2E_SECOND_PASSWORD'];
 if(mode==='full'&&live.every(k=>process.env[k])){

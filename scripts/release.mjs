@@ -99,7 +99,8 @@ git('push','-q','-u','origin',br);
 const sha=git('rev-parse','HEAD');console.log('  '+sha.slice(0,7));
 step('PR');
 const prBody=`${ver}차 — HANDOFF-log.md 참고.`+(trailer?'\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)':'');
-const pr=JSON.parse(gh('api',`repos/${REPO}/pulls`,'-f',`title=${opt.title}`,'-f',`head=${br}`,'-f','base=main','-f',`body=${prBody}`));
+const open=JSON.parse(gh('api',`repos/${REPO}/pulls?state=open&head=${REPO.split('/')[0]}:${br}`));   /* 검사 실패로 다시 돌릴 때 — 이미 연 PR 을 그대로 */
+const pr=open[0]||JSON.parse(gh('api',`repos/${REPO}/pulls`,'-f',`title=${opt.title}`,'-f',`head=${br}`,'-f','base=main','-f',`body=${prBody}`));
 console.log('  #'+pr.number+' '+pr.html_url);
 
 /* ── 5. 검사 대기 ── */
