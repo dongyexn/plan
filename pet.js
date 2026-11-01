@@ -7,11 +7,11 @@
    누르기: 울음소리·전용 멘트 → 대사 → 잠깐 멈춤 → 오늘 업무 수 → 달리기 차례로. 머리 줄 빈 곳을 누르면 공(먹이)을 던진다.
    시간 대사: 11:00~11:30 점심, 17시 이후 퇴근(가끔 혼잣말). 업무 대사: 공통(팀 색 테)·내 업무(내 막대 색). 업무 완료 때 축하(histPush 'done').
    ⚠ 대사는 글자만 또는 이모지만 — 한 대사에 섞지 않는다(사용자) */
-const PET_LINES={tap:['허거덩','허걱스','하이','왜요?','😮','🤔','👀'],
+const PET_LINES={   /* 누르기·잡기의 당황 말풍선(tap·drop)은 1295 에 당황 표정으로 바꿔 뺐다 */
   done:['업무 완료!','오늘도 내가 해냄','🎉','👍'],
   lunch:['맛점','점심 뭐먹냐','배고프다','🍚','🍜','🍕','🍔','🍙','🍖'],
   leave:['칼퇴 좀','퇴근해요','집에 보내죠','집에 가자'],
-  food:['😋'],drop:['😵'],idle:['일 안하농'],
+  food:['😋'],idle:['일 안하농'],
   today:['오늘 업무 {n}건'],com:['{t} 하자!'],mine:['{t} 해야지','{t} 잊지 마!'],late:['{t} 기한 지났어!']};   /* {n}·{t} 는 숫자·업무 이름으로 바뀐다 · 사용자가 대사 편집 폼에서 고친 값 */
 const petPick=a=>a[Math.floor(Math.random()*a.length)];
 /* 펫 기분(1294) — 내 업무 기준. 기한 지난 미완료가 있으면 'worry', 오늘까지 할 것이 없고 오늘 날짜 업무를 하나라도 끝냈으면 'happy' */
@@ -68,7 +68,7 @@ function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl
     if(pal&&pal.ok()){const w=el?el.offsetWidth:40,hw=(head()||{clientWidth:9999}).clientWidth;lf=pal.mid()>pos()+w/2;if(lf&&pos()-bw<0)lf=false;else if(!lf&&pos()+w+bw>hw)lf=true;}   /* 상호작용 중엔 짝 반대쪽으로 — 옆 펫에 가리지 않게(단추 위로 잠깐 겹치는 건 괜찮다, 머리 줄 밖으로만 안 나가게) */
     bub.classList.toggle('l',lf);el.classList.add('talk');
     bub.classList.add('on');clearTimeout(bt);bt=setTimeout(bubOff,ms);};
-  /* 당황 표정(1295 사용자) — 누르기·잡기의 당황 말풍선(허거덩·😵 등) 대신 걱정 표정을 잠깐. ms 0 = 풀 때까지(잡는 동안). 표정 그림이 없는 펫은 false → 말풍선 그대로 */
+  /* 당황 표정(1295 사용자) — 누르기·잡기의 당황 말풍선(허거덩·😵 등) 대신 걱정 표정을 잠깐. ms 0 = 풀 때까지(잡는 동안). 표정 그림이 없는 펫(장비류)은 아무것도 띄우지 않는다(1295 사용자) */
   const surp=ms=>{if(!cfg||!String(cfg.mo||'').includes('w')||deep)return false;clearTimeout(suT);if(!su){su=true;set(mode);}if(ms)suT=setTimeout(()=>{su=false;if(cfg&&!deep)set(mode);},ms);return true;};
   const bubOff=()=>{bub.classList.remove('on');el.classList.remove('talk');bub._tk=null;};
   /* 기분(1294) — 'worry' 기한 지난 내 업무 · 'happy' 오늘 내 업무를 다 끝냄. 표정(눈) 그림이 있는 펫은 표정이 바뀌고, 7초마다 땀방울 / 반짝이(가끔 깡총). 잠·끌기·상호작용·숨김 중엔 쉰다 */
@@ -115,10 +115,10 @@ function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl
       const tx=Math.min(Math.max(ball.x-el.offsetWidth/2,ball.lo-6),ball.hi-el.offsetWidth+6);
       moveTo(tx,95,'run',()=>{const b=ball;ball=null;if(b)ballEl.remove();hop();set(b&&cfg.g.eat?'eat':'idle');say(petPick(cfg.fd&&cfg.fd.length?cfg.fd:PET_LINES.food));if(b)hearts(1);later(next,2600);});}};   /* 먹이면 eat 그림(있으면) · fd 는 먹이 받았을 때 전용 멘트 */
   const react=()=>{if(deep)deepOff();
-    if(ball||busy){hop();if(!surp(1200))say(petPick(PET_LINES.tap));return;}   /* 상호작용 중엔 깡총·대사만 */   /* 공을 가지러 가는 중 — 멈추거나 딴 데로 가면 공이 바닥에 남고 펫이 굳었다 */
+    if(ball||busy){hop();surp(1200);return;}   /* 상호작용 중엔 깡총·대사만 */   /* 공을 가지러 가는 중 — 멈추거나 딴 데로 가면 공이 바닥에 남고 펫이 굳었다 */
     clicks++;hop();const r=clicks%5,sl=petSlot();
-    if(r===1){const t=sl&&Math.random()<.5?petPick(PET_LINES[sl]):Math.random()<.5?(cfg.lines&&cfg.lines.length?petPick(cfg.lines):cfg.say):'';if(t)say(t);else if(!surp(1200))say(petPick(PET_LINES.tap));}
-    else if(r===2){stop();set('idle');if(!surp(1400))say(petPick(PET_LINES.tap));later(next,1400);}
+    if(r===1){const t=sl&&Math.random()<.5?petPick(PET_LINES[sl]):Math.random()<.5?(cfg.lines&&cfg.lines.length?petPick(cfg.lines):cfg.say):'';if(t)say(t);else surp(1200);}
+    else if(r===2){stop();set('idle');surp(1400);later(next,1400);}
     else if(r===3){stop();set('idle');later(next,3200);}
     else if(r===4){const n=todayN();say(n?PET_LINES.today[0].replace('{n}',n):petPick(PET_LINES.idle));}
     else{const[L,R]=bounds();moveTo(dir>0?L:R,75,'run');}};
@@ -164,7 +164,7 @@ function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl
           const p0='translate('+Math.round(x)+'px,'+Math.round(y0)+'px)',p1='translate('+Math.round(fx)+'px,0px)';
           const a=land=el.animate([{transform:p0},{transform:p1}],{duration:Math.max(160,Math.min(520,Math.sqrt(Math.abs(y0)/900)*1000+120)),easing:'cubic-bezier(.5,0,1,.6)'});   /* 떨어지듯(점점 빠르게) */
           x=fx;el.style.transform='translateX('+Math.round(x)+'px)';
-          a.onfinish=()=>{land=null;drg=false;hop();if(!surp(1200))say(petPick(PET_LINES.drop),900);
+          a.onfinish=()=>{land=null;drg=false;hop();surp(1200);
             if(ball&&!ball.vx&&!ball.vy){ball.go=0;cancelAnimationFrame(braf);braf=requestAnimationFrame(ballStep);}   /* 끄는 동안 멎은 공 — 놓은 자리에서 가지러 간다 */
             else if(!ball)later(next,3000);};};
         el.addEventListener('pointerup',drop);el.addEventListener('pointercancel',drop);}
