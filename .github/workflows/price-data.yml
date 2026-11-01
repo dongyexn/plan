@@ -18,6 +18,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false   # 1288(보안 감사): 바깥 PDF·JSON 을 읽는 동안 쓰기 토큰을 .git/config 에 두지 않는다 — 푸시 단계에서만 쓴다
       - uses: actions/setup-node@v7
         with:
           node-version: 24
@@ -35,9 +37,11 @@ jobs:
         continue-on-error: true
         run: node scripts/wage-price.mjs
       - name: 바뀌었으면 커밋
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           git add -A data/g2b-price.json data/std-price.json data/wage.json 2>/dev/null || true
           if git diff --cached --quiet; then echo "바뀐 값 없음"; exit 0; fi
           git config user.name "price-data"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "공공 단가 갱신 $(TZ=Asia/Seoul date +%Y-%m-%d)"
-          git push
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:main
