@@ -48,4 +48,4 @@ jobs:
         env:
           UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY }}
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        run: node scripts/bg-sync.mjs
+        run: node scripts/jobs/bg-sync.mjs

@@ -49,3 +49,9 @@ jobs:
           LIVE_E2E_SECOND_EMAIL: ${{ secrets.LIVE_E2E_SECOND_EMAIL }}
           LIVE_E2E_SECOND_PASSWORD: ${{ secrets.LIVE_E2E_SECOND_PASSWORD }}
         run: npm test
+
+      # 1289: 배포본(주석 걷기 + terser)으로 한 번 더 — 줄인 판에서만 깨지는 것을 병합 전에 잡는다
+      - name: 배포본 회귀
+        env:
+          TEST_JOBS: 3
+        run: node scripts/test/run-built.mjs

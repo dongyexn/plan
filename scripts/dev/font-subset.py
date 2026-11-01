@@ -10,7 +10,7 @@ KS X 1001 완성형 2,350자(core·512KB)만 항상 받고, 나머지 8,822음�
 실행(원본 폰트가 필요하다 — https://github.com/orioncactus/pretendard 릴리스의
 PretendardVariable.woff2 를 이 저장소 루트에 두고):
   pip install fonttools brotli
-  python3 scripts/font-subset.py PretendardVariable.woff2
+  python3 scripts/dev/font-subset.py PretendardVariable.woff2
 
 CSS 동작 원리 — 같은 family 를 두 @font-face 로 선언하면, 글자마다
 unicode-range 가 맞는 **나중 선언**이 이긴다. rare 를 먼저 U+AC00-D7A3 전체로,
@@ -50,7 +50,7 @@ def subset(src, dst, unicodes):
 
 def main():
     src = sys.argv[1] if len(sys.argv) > 1 else 'PretendardVariable.woff2'
-    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     ven = os.path.join(root, 'vendor')
     ks = ks2350()
     rest = [c for c in range(0xAC00, 0xD7A4) if c not in ks]
@@ -58,7 +58,7 @@ def main():
     rare = os.path.join(ven, 'Pretendard.rare.woff2')
     subset(src, core, SYM + ',' + ranges(ks))
     subset(src, rare, ranges(rest))
-    css = ("/* 생성 파일 — 손으로 고치지 말 것. scripts/font-subset.py 가 만든다.\n"
+    css = ("/* 생성 파일 — 손으로 고치지 말 것. scripts/dev/font-subset.py 가 만든다.\n"
            "   core = KS 2,350자 + 기호(항상 로드) · rare = 나머지 음절(해당 글자가 나올 때만 로드).\n"
            "   같은 family 는 나중 @font-face 가 이기므로 core 를 뒤에 둔다. */\n"
            "@font-face{font-family:'Pretendard Variable';font-weight:45 920;font-style:normal;font-display:swap;"

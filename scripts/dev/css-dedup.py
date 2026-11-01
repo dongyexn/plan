@@ -1,4 +1,4 @@
-# 1012차: CSS 죽은 선언 정리 도구 — python3 scripts/css-dedup.py index.html 새파일.html  (지운 목록은 새파일.html.removed.json)
+# 1012차: CSS 죽은 선언 정리 도구 — python3 scripts/dev/css-dedup.py index.html 새파일.html  (지운 목록은 새파일.html.removed.json)
 # ⚠ 돌린 뒤엔 반드시 계산된 스타일을 전후 대조한다(1012차 방식: 보이는 요소 전부 · 데스크톱·폰·인쇄·위젯). 규칙만 믿고 바로 쓰지 말 것
 # 같은 선택자·같은 문맥(@media 등 중첩 머리)에서 뒤 규칙이 같은 속성을 다시 선언하면 앞 선언은 죽은 값이다 — 앞 선언만 지운다.
 # 안전 조건: 서로 다른 규칙 사이만(같은 규칙 안 중복은 폴백일 수 있음), 뒤가 !important 가 아니고 앞이 !important 면 유지,

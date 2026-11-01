@@ -2,7 +2,7 @@
    docs/guide/*.webp 와 docs/guide/guide.json(장 → 데스크톱 d / 폰 m → 단계[제목·그림·번호 칸])을 만든다.
    번호 칸 자리는 실제 요소 위치를 재서 % 로 적는다 — 화면이 바뀌면 이 스크립트만 다시 돌리면 된다.
    날짜는 고정(GUIDE_NOW)이라 몇 번을 돌려도 같은 그림이 나온다.
-   사용: CHROMIUM=/path/to/chrome node scripts/guide-shots.mjs   (PROBE=1 이면 화면 전체 캡처만 /tmp 에) */
+   사용: CHROMIUM=/path/to/chrome node scripts/dev/guide-shots.mjs   (PROBE=1 이면 화면 전체 캡처만 /tmp 에) */
 import { chromium } from 'playwright';
 import http from 'http';
 import fs from 'fs';
@@ -10,7 +10,7 @@ import path from 'path';
 import os from 'os';
 import { fileURLToPath } from 'url';
 
-const root=path.join(path.dirname(fileURLToPath(import.meta.url)),'..');
+const root=path.join(path.dirname(fileURLToPath(import.meta.url)),'../..');
 const OUT=path.join(root,'docs','guide');
 const PROBE=process.env.PROBE?path.join(os.tmpdir(),'guide-probe'):'';
 const GUIDE_NOW='2026-10-14T10:00:00+09:00';

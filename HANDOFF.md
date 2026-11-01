@@ -2,11 +2,11 @@
 
 **현재 기준: v1264.**
 
+- **1289차(사용자: 「코드량·폴더 정리 전부 진행」)** — HANDOFF-log 1.48→0.31MB(옛 기록 git 이력) · widget-lite/gen 추적 해제 · scripts/price·jobs·dev · 펫 그림 assets/ · 배포본 terser(app.js 1.22→1.08MB) + run-built 배포본 회귀.
 - **1288차(사용자: 「이어서 진행」)** — 보안 감사 2차(미점검 3범위) 취약점 0. 보강: 위젯 1.6.3 업데이트 태그 엄격·이동 실패 시 거부, price-data 토큰 푸시 단계만, 위젯 릴리스 main 만, 가져오기 readWorkbookSafe·그림 src esc·D+60 표 null 프로토.
 - **1287차(사용자: 「보안 감사 결과 진행해」)** — 규칙: people 팀장·공구장 분기 MEMBER · archive 원본 없을 때 createdBy=나 · acctDel.by=나(⚠ 콘솔 게시 필요). acct-del·d60 로그에서 uid·이메일·현장 이름 뺌. 위젯 1.6.2 백업 이름 hplan_NNNNNN.json 만. 워크플로 contents: read.
 - **1286차(사용자: 「체감할 업데이트 제안」 → 「셋 다 · 노무비는 생산성도」)** — 견적 검토에 방식 고르기: 계산식 · 단가 대조(산출서 단가표 ↔ 조달청 · 표준시장단가 · 노임 자동 짝, ±% 판정, 짝 고치기, 보고서) · 노무비(직종 · 작업량 · 1인 1일 · 인원 → 일수 · 노무비 · 단위당). 물가정보는 담아 둔 공공 단가가 새 고시에서 바뀌면 ▲▼ · 최신값으로 · 달마다 한 번 알림.
 - **1285차(사용자: 「너무 오래 걸리는 건 해소할 방안?」 → 「다 해봐」)** — 릴리즈 스크립트는 npm test 를 안 돌림(GitHub 검사가 같은 시험) · run-all 동시 실행(TEST_JOBS, 로컬 2개 320→149초) · 앱 밖 파일만 바뀌면 가벼운 시험만 · CI 브라우저 캐시 · TEST_JOBS=3. 배경 자동 변경은 원래 기본(고정 없으면 무작위).
-- **1284차(사용자: 「그래프 엔지니어링 — 우리는 무엇을」 → 「한번 해봐」)** — 릴리즈를 코드로: scripts/release.mjs(npm run release) 가 버전 · 인수인계 · 점검 · 테스트 · PR · 검사 대기 · 병합 · 반영본을 순서대로, 실패하면 그 자리에서 멈춤. 이 판부터 스크립트로 냄.
 
 회차별 자세한 내용·결정 경위는 **HANDOFF-log.md**(최신이 위). 회차를 올릴 때마다 위 목록 맨 위에 한 줄, 로그에 한 블록을 더하고, 목록은 최근 5개만 둔다.
 
@@ -40,13 +40,15 @@ H건설 서비스중부팀(중부1·중부2·광주)의 내부 웹앱. 업무 �
 | `scripts/test/iss.mjs` | 주요 현안 — 데스크톱·위젯 판·3주 아래 칸(추가·해결·고치기·지우기·숨김·담당자·3주 이동·백업) |
 | `scripts/test/firebase-live-e2e.mjs` | 실제 Firebase 2계정 E2E(Secret 있을 때만) |
 | `scripts/test/strip-comments.mjs` | 감사용 주석 걷기 |
-| `scripts/css-dedup.py` | CSS 죽은 선언 정리(돌린 뒤 계산 스타일 전후 대조 필수) |
-| `scripts/guide-shots.mjs` | 사용 안내 그림 만들기 — `?local=1` 에 가짜 자료(현장명N·업무명N·담당자N·권역N·업체N, 하자는 가짜 HCS 업로드→가짜 Firebase 게시)를 넣고 날짜를 2026-10-14 로 고정해 찍는다 → `docs/guide/*.webp` + `guide.json` |
-| `scripts/bg-sync.mjs` | Unsplash 컬렉션 「BG」 → RTDB `bg`(Actions 전용) |
-| `scripts/font-subset.py` | 폰트 서브셋(거의 안 만짐) |
-| `vendor/` | FullCalendar · Chart.js · xlsx · Firebase SDK · DOMPurify · marked · lz-string · Pretendard · 지도 자료 |
+| `scripts/dev/css-dedup.py` | CSS 죽은 선언 정리(돌린 뒤 계산 스타일 전후 대조 필수) |
+| `scripts/dev/guide-shots.mjs` | 사용 안내 그림 만들기 — `?local=1` 에 가짜 자료(현장명N·업무명N·담당자N·권역N·업체N, 하자는 가짜 HCS 업로드→가짜 Firebase 게시)를 넣고 날짜를 2026-10-14 로 고정해 찍는다 → `docs/guide/*.webp` + `guide.json` |
+| `scripts/jobs/bg-sync.mjs` | Unsplash 컬렉션 「BG」 → RTDB `bg`(Actions 전용) |
+| `scripts/dev/font-subset.py` | 폰트 서브셋(거의 안 만짐) |
+| `vendor/` | 외부 라이브러리만 — FullCalendar · Chart.js · xlsx · Firebase SDK · DOMPurify · marked · lz-string · Pretendard · 지도 자료 |
+| `assets/` | 직접 그린 펫·프로필 그림(`pets/`)과 목록(`pets.js`) |
+| `scripts/price` · `jobs` · `dev` | 단가 수집 · 서비스 계정 정기 작업 · 손으로 돌리는 개발 도구 |
 | `widget-lite/` | Tauri 위젯(Rust) |
-| `build-single.mjs` | 단일 HTML 묶기 |
+| `scripts/build-single.mjs` | 단일 HTML 묶기 |
 | `.github/workflows/` | smoke · 위젯 exe 빌드 · D+60 사진 정리 · bg-sync(5분마다 확인 — 요청·06:00·12:00 KST 정기 때만 실행) |
 
 ## 3. 검증 · 배포
@@ -108,7 +110,7 @@ CHROMIUM=/path/to/chrome node scripts/test/run-all.mjs   # 끝에 「전체 결�
 ### 민원 현황 (세대 레벨)
 - 규칙은 `RISK_RULES` 한 곳 · 감지 `riskDetect` · 점수 `riskScore` · 레벨 `riskLevel`(긴급·심각·경계·주의·양호). 세대 접수만 본다. 판정 근거는 콘솔 `riskAuditCSV(sid)`.
 - **규칙을 바꾸면 정답셋(`scripts/test/fixtures/risk-gold.md`)도 같이** — 코드를 정답셋에 맞추지 않는다. 레벨은 게시본에 실리므로 재등록해야 화면이 바뀐다.
-- 자세한 감지요소·점수표는 `docs/dev.md` 부록 A 와 HANDOFF-log 734~764차.
+- 자세한 감지요소·점수표는 `docs/dev.md` 부록 A 와 HANDOFF-log 734~764차(1289차부터 git 이력 — `git show a446e34:HANDOFF-log.md`).
 
 ### 업무 도구
 - D+60 점검만 팀 공유(RTDB). 나머지는 로컬 전용(IndexedDB). D+60 규칙 경로를 늘리면 **규칙 배포 없이는 저장이 거부된다**(`calapp` 의 `$other:false`).
@@ -122,7 +124,7 @@ CHROMIUM=/path/to/chrome node scripts/test/run-all.mjs   # 끝에 「전체 결�
 ### 사용 안내
 - `openReadme` 가 `docs/manual.md` 를 ## 장으로 쪼개고, `docs/guide/guide.json` 의 `sec[장 이름][d|m]` 이 있으면 그 장은 글 대신 그림 단계(`guideSecHTML`)로 그린다 — 장 이름이 manual.md 제목과 같아야 한다.
 - 번호 점 자리는 그리는 쪽(`place`)이 정한다: 작은 단추는 아래·위·옆 바깥, 다른 작은 단추 글자 위는 피함. 칸 위치(%)는 스크립트가 실제 요소를 재서 적는다.
-- **화면이 바뀌면 `node scripts/guide-shots.mjs` 를 다시 돌린다**(그림 밖으로 나간 칸·못 찾은 칸은 ✗ 로 찍힌다). 이름은 드라이하게(사용자 지시) — 실제 현장명·가상 브랜드명 금지.
+- **화면이 바뀌면 `node scripts/dev/guide-shots.mjs` 를 다시 돌린다**(그림 밖으로 나간 칸·못 찾은 칸은 ✗ 로 찍힌다). 이름은 드라이하게(사용자 지시) — 실제 현장명·가상 브랜드명 금지.
 
 ### 조직 관리
 - 현장 표 편집은 초안(`ORG_DRAFT`) → 「저장」 한 번. 지도(`kmSVG`)는 통계청 경계 SVG, 외부 API 없음.

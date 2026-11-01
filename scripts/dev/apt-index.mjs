@@ -12,8 +12,8 @@
  *   2) 법정동 좌표      : vendor/korea-geo.js 의 bjd 색인을 그대로 쓴다.
  *
  * 쓰는 법
- *   node scripts/apt-index.mjs <건물DB폴더> [시도코드...]
- *   예) node scripts/apt-index.mjs ./build_db 44 43 30 36 41
+ *   node scripts/dev/apt-index.mjs <건물DB폴더> [시도코드...]
+ *   예) node scripts/dev/apt-index.mjs ./build_db 44 43 30 36 41
  *   → vendor/apt-geo.js 를 만든다. index.html 의 korea-geo.js 다음에 끼워 넣으면
  *     app.js 의 kmAuto 가 이 표를 먼저 본다(window.KRAPT).
  *
@@ -31,7 +31,7 @@ const SEP = '|';
 
 const [, , dir, ...sidoArgs] = process.argv;
 if (!dir) {
-  console.error('사용법: node scripts/apt-index.mjs <건물DB폴더> [시도코드...]');
+  console.error('사용법: node scripts/dev/apt-index.mjs <건물DB폴더> [시도코드...]');
   process.exit(1);
 }
 const wantSido = new Set(sidoArgs);
@@ -75,7 +75,7 @@ for (const f of fs.readdirSync(dir)) {
 }
 const out = {};
 for (const k in seen) { const [pc, x, y] = seen[k]; (out[pc] = out[pc] || []).push([k.split('|')[1], x, y]); }
-const body = '/* 공동주택명 → 법정동 좌표. scripts/apt-index.mjs 가 만든다 — 손으로 고치지 말 것 */\n'
+const body = '/* 공동주택명 → 법정동 좌표. scripts/dev/apt-index.mjs 가 만든다 — 손으로 고치지 말 것 */\n'
   + 'window.KRAPT=' + JSON.stringify(out) + ';\n';
 fs.writeFileSync(path.join('vendor', 'apt-geo.js'), body);
 console.log(`읽은 줄 ${rows.toLocaleString()} · 담은 단지 ${hit.toLocaleString()} · ${(body.length / 1024).toFixed(0)}KB`);

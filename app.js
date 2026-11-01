@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1288';
+const APP_VER='1289';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -27,7 +27,7 @@ function loadMarked(){
   ]).catch(e=>{_mdPromise=null;throw e;});
   return _mdPromise;
 }
-/* 사용 안내 그림 단계 — docs/guide/guide.json(scripts/guide-shots.mjs 가 앱 화면을 찍어 만든다).
+/* 사용 안내 그림 단계 — docs/guide/guide.json(scripts/dev/guide-shots.mjs 가 앱 화면을 찍어 만든다).
    장 이름이 같으면 글 대신 그림 단계: 그림 위 번호 점 ↔ 아래 설명 줄이 서로 강조(비춤), ‹ › · ←→ · 옆으로 밀기로 단계 이동 */
 let GUIDE=null;
 async function guideLoad(){if(GUIDE)return GUIDE;try{const r=await fetch('docs/guide/guide.json',{cache:'no-cache'});if(r.ok)GUIDE=await r.json();}catch(e){}return GUIDE;}
@@ -464,18 +464,18 @@ function avOf(pid){
 }
 const AV_COL_RE=/^(#[0-9A-Fa-f]{6}|rainbow(-anim)?|grad-[a-z]{2}(-anim)?|g[cf]-[0-9a-f]{6}-[0-9a-f]{6})$/;   /* 프로필 색은 이 꼴만 허용 — style 에 들어가므로 ';' 로 다른 속성을 덧붙이지 못하게 한다(규칙도 같은 식) */
 const AV_DFLT='<svg class="av-ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#av-person"></use></svg>';
-/* 프로필 캐릭터 — 위젯 펫 75종(사람·안전·공종·사무)의 정지 그림(vendor/pets/<키>-t.png, 모두 직접 그림). avIcon 에 「pet:<키>」 로 둔다(규칙은 24자 이하 문자열 그대로).
-   목록(vendor/pets.js)은 캐릭터 탭을 열 때만 받는다 — 받기 전엔 키 모양만 보고, 받은 뒤엔 목록에 있는 키만 */
+/* 프로필 캐릭터 — 위젯 펫 75종(사람·안전·공종·사무)의 정지 그림(assets/pets/<키>-t.png, 모두 직접 그림). avIcon 에 「pet:<키>」 로 둔다(규칙은 24자 이하 문자열 그대로).
+   목록(assets/pets.js)은 캐릭터 탭을 열 때만 받는다 — 받기 전엔 키 모양만 보고, 받은 뒤엔 목록에 있는 키만 */
 const avPetKey=icon=>{const m=/^pet:([a-z][a-z0-9-]{0,15})$/.exec(String(icon||''));return m&&(!window.CALAPP_PETS||window.CALAPP_PETS[m[1]])?m[1]:'';};
 const AV_PCATS=[['p','사람'],['s','안전·장비'],['t','공종'],['o','사무']];let PF_CCAT='';
 function pfChrRender(){
   const box=$('#pfChr');if(!box)return;const P=window.CALAPP_PETS;
-  if(!P){box.innerHTML='<div class="pf-empty">불러오는 중…</div>';loadScriptOnce('vendor/pets.js?v='+APP_VER).then(pfChrRender,()=>{box.innerHTML='<div class="pf-empty">그림 목록을 불러오지 못했습니다.</div>';});return;}
+  if(!P){box.innerHTML='<div class="pf-empty">불러오는 중…</div>';loadScriptOnce('assets/pets.js?v='+APP_VER).then(pfChrRender,()=>{box.innerHTML='<div class="pf-empty">그림 목록을 불러오지 못했습니다.</div>';});return;}
   const cur=PF_SEL.icon!=null?PF_SEL.icon:(avOf((S.user||{}).uid||'').icon||''),ck=avPetKey(cur);
   if(!PF_CCAT)PF_CCAT=(ck&&P[ck]&&P[ck].c)||'p';
   box.innerHTML='<div class="pf-ccats">'+AV_PCATS.map(([c,n])=>'<button class="'+(c===PF_CCAT?'on':'')+'" data-act="pf.ccat" data-c="'+c+'">'+n+'</button>').join('')+'</div>'
-    +'<div class="pf-cg">'+Object.keys(P).filter(k=>P[k].c===PF_CCAT).map(k=>'<button class="pf-em'+(ck===k?' on':'')+'" data-e="pet:'+esc(k)+'" data-act="pf.pick" data-tip="'+esc(P[k].n||'')+'"><img src="vendor/pets/'+esc(P[k].t.f)+'" alt="" draggable="false"><span>'+esc(P[k].n||'')+'</span></button>').join('')+'</div>';}
-function avInner(icon){const k=avPetKey(icon);if(k)return '<img class="av-pet" src="vendor/pets/av-'+k+'.png" alt="" draggable="false">';   /* av-<키>.png — 시각 중심을 한가운데 둔 정사각형(scripts/pet-av.py) */
+    +'<div class="pf-cg">'+Object.keys(P).filter(k=>P[k].c===PF_CCAT).map(k=>'<button class="pf-em'+(ck===k?' on':'')+'" data-e="pet:'+esc(k)+'" data-act="pf.pick" data-tip="'+esc(P[k].n||'')+'"><img src="assets/pets/'+esc(P[k].t.f)+'" alt="" draggable="false"><span>'+esc(P[k].n||'')+'</span></button>').join('')+'</div>';}
+function avInner(icon){const k=avPetKey(icon);if(k)return '<img class="av-pet" src="assets/pets/av-'+k+'.png" alt="" draggable="false">';   /* av-<키>.png — 시각 중심을 한가운데 둔 정사각형(scripts/dev/pet-av.py) */
   return icon?'<span class="av-em">'+esc(icon)+'</span>':AV_DFLT;}
 function avHTML(pid,cls){
   const{color,icon}=avOf(pid);
