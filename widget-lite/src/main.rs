@@ -798,6 +798,10 @@ fn verify_exe(f: &Path) -> bool {
     /* ⚠ Electron 은 20MB 문턱 — 이 exe 는 수 MB 라 3MB 로 본다(받다 만 파일 걸러내기) */
     std::fs::metadata(f).map(|m| m.len() > 3 * 1024 * 1024).unwrap_or(false)
 }
+fn is_semver3(v: &str) -> bool {
+    let p: Vec<&str> = v.split('.').collect();
+    p.len() == 3 && p.iter().all(|x| !x.is_empty() && x.len() <= 5 && x.bytes().all(|c| c.is_ascii_digit()))
+}
 fn is_newer(a: &str, b: &str) -> bool {
     let n = |v: &str| -> Vec<u64> { v.split('.').map(|x| x.parse().unwrap_or(0)).collect() };
     let (x, y) = (n(a), n(b));
@@ -820,7 +824,9 @@ fn resolve_latest(url: &str) -> Option<(String, String)> {
     /* ⚠ 태그가 widget-lite-v… 일 때만 우리 것 — widget-v…(Electron) 릴리스가 최신이면 여기서 걸러진다 */
     let m = to.split("/releases/download/widget-lite-v").nth(1)?;
     let ver: String = m.chars().take_while(|c| c.is_ascii_digit() || *c == '.').collect();
-    if ver.is_empty() { return None; }
+    /* 1288(보안 감사): 태그가 정확히 widget-lite-vX.Y.Z 이고 그 뒤가 /exe 이름일 때만 — 「v9.9.9-x」 같은 태그로
+       exe 는 한 릴리스, 해시(.sha256)는 다른 릴리스에서 가져오게 되는 틈을 막는다 */
+    if !is_semver3(&ver) || m != format!("{}/{}", ver, EXE_NAME) { return None; }
     Some((ver, to))
 }
 fn download(url: &str, dest: &Path) -> Result<(), String> {
@@ -1207,7 +1213,7 @@ fn main() {
                 .additional_browser_args("--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,SpareRendererForSitePerProcess --disable-site-isolation-trials")
                 /* 1012차(보안): 테두리 없는 위젯 창은 앱 주소(같은 출처) 밖으로 이동하지 않는다 — 바깥 주소는 기본 브라우저로 */
                 .on_navigation(move |u| {
-                    let ok = tauri::Url::parse(&app_url()).map(|a| a.origin() == u.origin()).unwrap_or(true) || u.scheme() == "about";
+                    let ok = tauri::Url::parse(&app_url()).map(|a| a.origin() == u.origin()).unwrap_or(false) || u.scheme() == "about";
                     if !ok && (u.scheme() == "https" || u.scheme() == "http") { open_url(u.as_str()); }
                     ok
                 })

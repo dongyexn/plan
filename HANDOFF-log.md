@@ -1,5 +1,13 @@
 # 변경 이력 (읽기 전용) — 현재 상태는 HANDOFF.md
 
+## 마지막 기록 기준 v1288
+### 1288차 보안 감사 2차(1287 에서 못 본 3범위) — 찾은 취약점 없음, 보강만
+- 감사: price-data 토큰→위젯 릴리즈 · 파일 가져오기·붙여넣기 렌더링 · 위젯 같은 출처 이동·eval 채널. 세 범위 모두 후보 0.
+- 위젯 1.6.3: 업데이트 태그가 정확히 widget-lite-vX.Y.Z/HPlanWidgetLite.exe 일 때만(「v9.9.9-x」 꼴 태그로 exe 와 해시를 서로 다른 릴리스에서 가져오는 틈). on_navigation 주소 파싱 실패 시 거부(unwrap_or(false)).
+- price-data.yml: checkout persist-credentials false — 쓰기 토큰은 푸시 단계 env 에만. widget-lite.yml: 수동 실행도 main 에서만 릴리스.
+- app.js: 보고서 작성기 엑셀 읽기도 readWorkbookSafe, 그림 블록 src esc, D+60 가져오기 공종·구분 표는 Object.create(null).
+- 남김: 위젯 브리지·이동 범위를 /plan/ 으로(같은 출처의 다른 Pages — report 저장소 등 — 가 브리지 범위에 든다, Windows 확인 필요), 액션 SHA 고정, 업데이트 서명(공개키).
+
 ## 마지막 기록 기준 v1287
 ### 1287차 보안 감사(cloudflare security-audit-skill, quick) 반영
 - 감사: 소스만 읽음(정찰 4 · 사냥 5 · 범위 점검 1 · 검증 5). 확인 1(낮음) · 검증 필요 3 · 기각 1. 미점검으로 남김: 파일 가져오기·붙여넣기 렌더링, price-data 토큰→위젯 릴리즈 경로, 위젯 같은 출처 이동·eval 채널.

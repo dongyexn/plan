@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1287';
+const APP_VER='1288';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -16277,7 +16277,7 @@ function rwBlockHTML(b){const d=b.d,ed=RW.edit,st=(d.lh?'line-height:'+d.lh+';':
     +'<div class="v">'+rwCE('v'+i,esc(rwN(c[1])),'0','rw-kv')+rwCE('u'+i,esc(c[2]||''),'','rw-ku')+'</div>'+rwCE('d'+i,c[3]||'','설명','d')+'</div>').join('')+'</div>';break;
   case'tbl':h=rwTblHTML(b,ed);break;
   case'chart':h=(d.ttl?'<div class="rw-cttl">'+esc(d.ttl)+'</div>':'')+'<div class="rw-ch">'+rwChart(d)+'</div>'+(ed&&RW.sel===b.id?rwChartEd(d):'');break;
-  case'img':h='<div class="rw-img'+(d.src?' has':'')+'" style="width:'+(d.w||100)+'%">'+(d.src?'<img src="'+d.src+'" alt="">':(ed?'<button class="rw-imgp" data-act="rw.imgPick">'+rwIc('i-photo')+'사진 넣기</button>':''))+'</div>'+rwCE('cap',esc(d.cap||''),'사진 설명','rw-cap','width:'+(d.w||100)+'%');break;
+  case'img':h='<div class="rw-img'+(d.src?' has':'')+'" style="width:'+(d.w||100)+'%">'+(d.src?'<img src="'+esc(d.src)+'" alt="">':(ed?'<button class="rw-imgp" data-act="rw.imgPick">'+rwIc('i-photo')+'사진 넣기</button>':''))+'</div>'+rwCE('cap',esc(d.cap||''),'사진 설명','rw-cap','width:'+(d.w||100)+'%');break;
   case'sign':h='<table class="rw-sign"><tr>'+d.cols.map((c,i)=>'<th'+(ed?' contenteditable="true" data-f="g'+i+'"':'')+'>'+esc(c)+'</th>').join('')+'</tr><tr>'+d.cols.map(()=>'<td></td>').join('')+'</tr></table>';break;
   case'hr':h='<hr class="rw-hr">';break;
   case'pb':h=ed?'<div class="rw-pb"><span>쪽 나누기</span></div>':'';break;}
@@ -16474,7 +16474,7 @@ async function rwRead(file){
   const paras=t=>String(t||'').split(/\n+/).map(s=>s.replace(/\s+/g,' ').trim()).filter(s=>s.length>1).slice(0,20).map(s=>({k:'p',t:s.slice(0,24)+(s.length>24?'…':''),d:{h:rwTxt(s)}}));
   const tbl=(t,rows)=>{const w=Math.min(10,Math.max(...rows.slice(0,40).map(r=>r.length)));const cols=(rows[0]||[]).slice(0,w).map(String),body=rows.slice(1,31).map(r=>[...Array(w).keys()].map(j=>r[j]==null?'':r[j]));
     const num=[...Array(w).keys()].filter(j=>body.length&&body.every(r=>r[j]===''||typeof r[j]==='number'||rwNum(r[j])!=null)&&body.some(r=>r[j]!==''));return{k:'tbl',t,d:rwTbl(cols,body,num)};};
-  if(/^(xlsx|xlsm|xls|csv)$/.test(ext)){await loadXlsx();const wb=XLSX.read(buf,{type:'array',codepage:949});
+  if(/^(xlsx|xlsm|xls|csv)$/.test(ext)){await loadXlsx();const wb=readWorkbookSafe(buf,{type:'array',codepage:949});
     return{ty:'xls',items:wb.SheetNames.slice(0,6).map(sn=>{const a=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:true,defval:''}).filter(r=>r.some(v=>v!==''));return a.length?tbl(sn+' · '+(a.length-1)+'행',a):null;}).filter(Boolean)};}
   if(ext==='docx'){await loadXlsx();const z=XLSX.CFB.read(buf,{type:'array'}),e=XLSX.CFB.find(z,'/word/document.xml');const d=new DOMParser().parseFromString(e?new TextDecoder().decode(e.content):'','application/xml');
     const T=[...d.getElementsByTagName('w:tbl')].slice(0,6).map((t,i)=>tbl('표 '+(i+1),[...t.getElementsByTagName('w:tr')].map(r=>[...r.getElementsByTagName('w:tc')].map(c=>c.textContent.trim())))).filter(x=>x.d.rows.length>1);
@@ -16513,7 +16513,7 @@ function rwBlocksHTML(){let n=0;const td=v=>v;   /* 한글(hwpx)용 — 쪽 꾸�
     case'kpi':return '<table><tr>'+d.cards.map(c=>'<th>'+esc(c[0])+'</th>').join('')+'</tr><tr>'+d.cards.map(c=>'<td>'+rwN(c[1])+esc(c[2]||'')+'</td>').join('')+'</tr></table>';
     case'tbl':return '<table>'+d.rows.map((r,i)=>'<tr>'+r.map(c=>c.m?'':'<'+(d.head&&!i?'th':'td')+(c.cs>1?' colspan="'+c.cs+'"':'')+(c.rs>1?' rowspan="'+c.rs+'"':'')+'>'+td(rwSan(c.h))+'</'+(d.head&&!i?'th':'td')+'>').join('')+'</tr>').join('')+'</table>';
     case'chart':return '<table><tr><th>구분</th>'+(d.ser||['값']).map(s=>'<th>'+esc(s)+'</th>').join('')+'</tr>'+d.data.map(r=>'<tr><td>'+esc(r[0])+'</td>'+r.slice(1).map(v=>'<td>'+rwN(v)+'</td>').join('')+'</tr>').join('')+'</table>';
-    case'img':return (d.src?'<p><img src="'+d.src+'"></p>':'')+'<p>'+esc(d.cap||'')+'</p>';
+    case'img':return (d.src?'<p><img src="'+esc(d.src)+'"></p>':'')+'<p>'+esc(d.cap||'')+'</p>';
     case'sign':return '<table><tr>'+d.cols.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr><tr>'+d.cols.map(()=>'<td> </td>').join('')+'</tr></table>';
     case'hr':return '<hr>';default:return '';}}).join('')+'</body></html>';}
 
@@ -18290,7 +18290,7 @@ function d60WriteMany(patch){   /* {상대경로:값} 을 한 번에 — 로컬 
 function d60ImpParse(text){
   let arr;try{arr=JSON.parse(text);}catch(e){throw new Error('JSON 이 아닙니다');}
   if(!Array.isArray(arr))throw new Error('배열([{…},…])이어야 합니다');
-  const TR={},SC={};D60_TR.forEach(([k,l])=>TR[l]=k);D60_SC.forEach(([k,l])=>SC[l]=k);
+  const TR=Object.create(null),SC=Object.create(null);D60_TR.forEach(([k,l])=>TR[l]=k);D60_SC.forEach(([k,l])=>SC[l]=k);   /* 1288: __proto__ 같은 이름이 상속값으로 잡히지 않게 */
   const rows=[],skip={civil:0,bad:0};
   arr.forEach(r=>{if(!r||typeof r!=='object'){skip.bad++;return;}
     const tr=TR[String(r['대공종']||'').trim()],sc=SC[String(r['구분']||'').trim()],sp=String(r['공간']||'').trim().slice(0,40),q=String(r['점검사항']||'').trim().slice(0,120);

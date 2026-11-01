@@ -24,6 +24,7 @@ permissions:
 
 jobs:
   build:
+    if: github.ref == 'refs/heads/main'   # 1288(보안 감사): 수동 실행도 main 에서만 릴리스
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
