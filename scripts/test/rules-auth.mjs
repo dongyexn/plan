@@ -381,6 +381,10 @@ t('AUTH-31d', 'editor → 계정 삭제 요청자(by)를 남으로', false, tryW
   t('AUTH-33h', '결과 링크가 http 아님', false, tryWrite('calapp/nvc/kabc12', A('U1'), TN, { ...NC, d: [{ t: 'x', p: 1, u: 'javascript:alert(1)' }] }));
   t('AUTH-33l', '팀원 → 검색 기록 목록 읽기', true, tryRead('calapp/nvc', A('U1'), TN));
   t('AUTH-33m', '가입 대기 → 검색 기록 읽기', false, tryRead('calapp/nvc', { uid: 'X9', token: { email: 'x9@hdec.co.kr', email_verified: true } }, TN));
+  { const TC = { ...TN, calapp: { ...TN.calapp, nvc: { kabc12: { ...NC, at: 100, by: 'U2' } } } };
+    t('AUTH-33n', '남의 결과를 옛것으로 덮기', false, tryWrite('calapp/nvc/kabc12', A('U1'), TC, { ...NC, at: 50 }));
+    t('AUTH-33o', '남의 결과를 더 새것으로 덮기', true, tryWrite('calapp/nvc/kabc12', A('U1'), TC, { ...NC, at: 200 }));
+    t('AUTH-33p', '검색 결과 지우기', false, tryWrite('calapp/nvc/kabc12', A('U1'), TC, null)); }
   t('AUTH-33i', '횟수 +1', true, tryWrite('calapp/nvu/2026-11', A('U1'), TN, 4));
   t('AUTH-33j', '횟수 되돌리기', false, tryWrite('calapp/nvu/2026-11', A('U1'), TN, 0));
   t('AUTH-33k', '새 달 첫 횟수', true, tryWrite('calapp/nvu/2026-12', A('U1'), TN, 1)); }

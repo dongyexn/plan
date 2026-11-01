@@ -592,7 +592,7 @@
         }
       },
 
-      // 1290 네이버 쇼핑 검색(Apify) — sec/apify 토큰(팀원 읽기 · 관리자 쓰기) · nvc 검색어별 결과 7일 공유 · nvu 달마다 부른 횟수(+1 만)
+      // 1290 네이버 쇼핑 검색(Apify) — sec/apify 토큰(팀원 읽기 · 관리자 쓰기) · nvc 검색어별 결과 7일 공유(1291: 더 새것으로만 덮고 지우지 못함) · nvu 달마다 부른 횟수(+1 만)
       "sec": {
         "apify": {
           ".read": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
@@ -605,8 +605,8 @@
         ".indexOn": ["at"],
         "$k": {
           ".read": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
-          ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
-          ".validate": "$k.matches(/^k[a-z0-9]{1,8}$/) && newData.hasChildren(['q','at','by']) && newData.child('by').val() == auth.uid",
+          ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer') && newData.exists()",
+          ".validate": "$k.matches(/^k[a-z0-9]{1,8}$/) && newData.hasChildren(['q','at','by']) && newData.child('by').val() == auth.uid && (!data.exists() || newData.child('at').val() > data.child('at').val())",
           "q":  { ".validate": "newData.isString() && newData.val().length >= 2 && newData.val().length <= 60" },
           "at": { ".validate": "newData.isNumber() && newData.val() <= now + 60000" },
           "by": { ".validate": "newData.isString()" },
