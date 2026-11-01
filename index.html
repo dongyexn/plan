@@ -18,6 +18,7 @@
 <!-- 달력·Firebase 스크립트는 body 끝(purify 앞) — head 에 두면 받는 동안 첫 화면이 빈다 -->
 <!-- 폰트 2분할 서브셋 — KS 2,350자 core(500KB)는 항상, 나머지 음절 rare 는 그 글자가 나올 때만 받는다.
      재생성은 scripts/dev/font-subset.py -->
+<link rel="preload" href="./vendor/Pretendard.core.woff2" as="font" type="font/woff2" crossorigin>   <!-- 1292 core 를 CSS 해석 전에 받기 시작 — 로그인 첫 화면 글꼴 바뀜(대체 글꼴 → Pretendard) 줄이기 -->
 <link rel="stylesheet" href="./vendor/pretendard.css">
 <style>
 /* ═══════════════════════════════════════════════════════════════════
@@ -3539,6 +3540,10 @@ body.wid.pet-on .cal-head :is(.cal-filt-pop,.tb-pop){cursor:auto;}   /* 머리 �
 .cv-loading{display:flex;flex-direction:column;align-items:center;gap:22px;padding:24px 0;}
 /* 불러오는 중 = 헤더 짜임의 락업(CI | 주요업무현황) + 점 셋. 멈춘 첫 화면만으로 완성(점 .4), 번갈아 밝아지는 건 덤.
    락업 L22 — 대문자 L×0.63=13.9 · 이름 16px · 이름·구분선은 대문자 중심에 맞춰 top −3px */
+/* 1292 로고 옆 이름 전용 글꼴 — core 와 같은 파일, font-display:block. 대체 글꼴(넓음)로 먼저 그렸다가 Pretendard 로 바뀌며 글자 폭이 88→84px 로 줄던 것 —
+   이름은 글꼴이 올 때까지(최대 약 3초) 비워 두고 처음부터 제 크기로 그린다 */
+@font-face{font-family:'PretendardBrand';font-weight:45 920;font-style:normal;font-display:block;src:url('./vendor/Pretendard.core.woff2') format('woff2-variations');}
+.cv-lock b,.cv-brand b,#appHdr .ah-name{font-family:'PretendardBrand','Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,sans-serif;}
 .cv-lock{display:flex;align-items:center;gap:12px;}
 .cv-lock-logo{height:22px;width:auto;display:block;flex:0 0 auto;}
 .cv-lock b{position:relative;top:-3px;padding-left:12px;font-size:16px;font-weight:700;letter-spacing:-.01em;line-height:1;color:var(--cv-t1);white-space:nowrap;}
@@ -6695,5 +6700,5 @@ body.mcal-full #fcal .mlN::before{content:'+'}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1291"></script>
+<script src="./app.js?v=1292"></script>
 </body></html>
