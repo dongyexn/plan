@@ -601,6 +601,8 @@
         }
       },
       "nvc": {
+        ".read": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
+        ".indexOn": ["at"],
         "$k": {
           ".read": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",
           ".write": "auth != null && auth.token.email_verified == true && auth.token.email.matches(/@hdec[.]co[.]kr$/) && (root.child('users').child(auth.uid).child('role').val() == 'editor' || root.child('users').child(auth.uid).child('role').val() == 'viewer')",

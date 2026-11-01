@@ -1,5 +1,17 @@
 # 변경 이력 (읽기 전용) — 현재 상태는 HANDOFF.md
 
+## 마지막 기록 기준 v1290
+### 1290차 물가정보 네이버 쇼핑 검색(Apify)
+- 사용자: 「네이버쇼핑 수집용 기획 → 통합검색 용도 · 가볍게 넣기」. 네이버 쇼핑 검색 API 는 2026-07-31 종료라 Apify 수집기 johnvc/naver-search-api(네이버 통합검색, 결과 1건마다 과금)를 앱에서 직접 부른다(CORS *).
+- 시험(probe-apify 브랜치 · Actions): searchapi 수집기는 고장(즉시 실패) · khadinakbar 는 무료라면서 johnvc 를 불러 회당 ~0.29달러에 3건 · parsebird 는 브랜드스토어 전용 · automation-lab 은 건당 0.03달러. johnvc 를 결과 10건(maxResultsPerQuery)으로 — 「석고보드 9.5t」 6초 · 0.064달러 · 쇼핑 5건(웹 문서 3~5건 뒤에 쇼핑 블록). ⚠ 시험 작업이 `ls -t` 로 파일을 골라 2단계가 한 번 더 돌았다(0.58달러) → 실행 파일을 probe/NEXT 로 고정.
+- 무료 플랜: 카드 없음 · 월 5달러 · 다 쓰면 다음 결제 주기까지 막힘(종량 과금 없음, 공식 요금 페이지) — 계정 limits 의 maxMonthlyUsageUsd=5 확인.
+- 앱: 검색어(2자 이상) 표 맨 아래 「네이버 쇼핑」 묶음 — 「네이버에서 불러오기」(누를 때만 · 자동 아님), 불러오는 동안 지난 결과는 흐리게(.dim) · 작은 원(.pr-nvsp, i 요소 — span 이면 머리 줄 flex:1 로 늘어나 막대가 됐다). 줄: 상품명을 nvSplit 로 자재명 · 규격(숫자 규격 · 모델명 · 색 · ~용) · 단위(수량, 「1박스(25EA)」 → 박스 + 규격 25EA)로 나눈다. 원본 열기 · 목록에 담기(s:'nv', sp · u 까지).
+- 결과는 calapp/nvc/{k}(k = 띄어쓰기 뺀 소문자 검색어의 FNV 해시) 에 팀 공유 — 같은 검색어는 다시 받지 않는다. 7일 안 결과를 「새로 불러오기」하면 1회 쓴다고 확인. 왼쪽 「네이버 검색 기록」 카드(최근 30개, orderByChild('at') · .indexOn at) — 누르면 저장된 결과를 횟수 없이. 출처 카드 · 상단 건수에 네이버 결과 포함.
+- 부른 횟수 calapp/nvu/{YYYY-MM}(+1 만, transaction). 한도 소진(402 · limit · usage 문구)은 「이번 달 한도를 다 썼습니다」.
+- 토큰: calapp/sec/apify(팀원 읽기 · 관리자 쓰기 · apify_api_ 형식) — 설정 › 외부 연결(관리자만 · #nvCard). CSP connect-src 에 https://api.apify.com.
+- 「네이버에서 담기」(붙여넣기)는 상단 막대에서 네이버 쇼핑 묶음 머리 「직접 담기」로(토큰 없어도 보임).
+- 규칙 시험 AUTH-33a~m. ⚠ database.rules.json 콘솔 게시 필요 · 게시 뒤 설정 › 외부 연결에 토큰.
+
 ## 마지막 기록 기준 v1289
 ### 1289차 저장소 정리 · 배포본 줄이기
 - HANDOFF-log.md 1.48MB → 0.31MB: 999차 이전·초기 설명 절은 걷고 git 이력 안내(`git show a446e34:HANDOFF-log.md`). HANDOFF.md 의 734~764차 참조도 그 안내로.

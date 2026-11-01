@@ -379,6 +379,8 @@ t('AUTH-31d', 'editor → 계정 삭제 요청자(by)를 남으로', false, tryW
   t('AUTH-33f', '팀원 → 검색 결과 공유', true, tryWrite('calapp/nvc/kabc12', A('U1'), TN, NC));
   t('AUTH-33g', '팀원 → 남 이름으로 공유', false, tryWrite('calapp/nvc/kabc12', A('U1'), TN, { ...NC, by: 'U2' }));
   t('AUTH-33h', '결과 링크가 http 아님', false, tryWrite('calapp/nvc/kabc12', A('U1'), TN, { ...NC, d: [{ t: 'x', p: 1, u: 'javascript:alert(1)' }] }));
+  t('AUTH-33l', '팀원 → 검색 기록 목록 읽기', true, tryRead('calapp/nvc', A('U1'), TN));
+  t('AUTH-33m', '가입 대기 → 검색 기록 읽기', false, tryRead('calapp/nvc', { uid: 'X9', token: { email: 'x9@hdec.co.kr', email_verified: true } }, TN));
   t('AUTH-33i', '횟수 +1', true, tryWrite('calapp/nvu/2026-11', A('U1'), TN, 4));
   t('AUTH-33j', '횟수 되돌리기', false, tryWrite('calapp/nvu/2026-11', A('U1'), TN, 0));
   t('AUTH-33k', '새 달 첫 횟수', true, tryWrite('calapp/nvu/2026-12', A('U1'), TN, 1)); }
