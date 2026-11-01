@@ -1,0 +1,147 @@
+{
+ "runs": [
+  {
+   "act": "j4OJsjSUT8rK1REX6",
+   "status": "SUCCEEDED",
+   "secs": 3.823,
+   "usd": 0.10885,
+   "charged": {
+    "apify-default-dataset-item": 19,
+    "actor_start": 1,
+    "result_scraped": 19,
+    "apify-actor-start": 1,
+    "query_searched": 1
+   }
+  },
+  {
+   "act": "KASji2ndlEKCPv6MM",
+   "status": "SUCCEEDED",
+   "secs": 9.975,
+   "usd": 0.18005,
+   "charged": {
+    "apify-actor-start": 1,
+    "product-result": 3
+   }
+  },
+  {
+   "act": "j4OJsjSUT8rK1REX6",
+   "status": "SUCCEEDED",
+   "secs": 3.356,
+   "usd": 0.10383999999999999,
+   "charged": {
+    "apify-default-dataset-item": 18,
+    "actor_start": 1,
+    "result_scraped": 18,
+    "apify-actor-start": 1,
+    "query_searched": 1
+   }
+  },
+  {
+   "act": "KASji2ndlEKCPv6MM",
+   "status": "SUCCEEDED",
+   "secs": 5.743,
+   "usd": 0.18005,
+   "charged": {
+    "apify-actor-start": 1,
+    "product-result": 3
+   }
+  },
+  {
+   "act": "j4OJsjSUT8rK1REX6",
+   "status": "SUCCEEDED",
+   "secs": 4.667,
+   "usd": 0.11886999999999999,
+   "charged": {
+    "apify-default-dataset-item": 21,
+    "actor_start": 1,
+    "result_scraped": 21,
+    "apify-actor-start": 1,
+    "query_searched": 1
+   }
+  },
+  {
+   "act": "KASji2ndlEKCPv6MM",
+   "status": "SUCCEEDED",
+   "secs": 27.18,
+   "usd": 0.18005,
+   "charged": {
+    "apify-actor-start": 1,
+    "product-result": 3
+   }
+  },
+  {
+   "act": "j4OJsjSUT8rK1REX6",
+   "status": "SUCCEEDED",
+   "secs": 6.785,
+   "usd": 0.10885,
+   "charged": {
+    "apify-default-dataset-item": 19,
+    "actor_start": 1,
+    "result_scraped": 19,
+    "apify-actor-start": 1,
+    "query_searched": 1
+   }
+  },
+  {
+   "act": "KASji2ndlEKCPv6MM",
+   "status": "SUCCEEDED",
+   "secs": 47.8,
+   "usd": 0.18005,
+   "charged": {
+    "apify-actor-start": 1,
+    "product-result": 3
+   }
+  },
+  {
+   "act": "j4OJsjSUT8rK1REX6",
+   "status": "SUCCEEDED",
+   "secs": 6.2,
+   "usd": 0.10383999999999999,
+   "charged": {
+    "apify-default-dataset-item": 18,
+    "actor_start": 1,
+    "result_scraped": 18,
+    "apify-actor-start": 1,
+    "query_searched": 1
+   }
+  },
+  {
+   "act": "KASji2ndlEKCPv6MM",
+   "status": "SUCCEEDED",
+   "secs": 31.201,
+   "usd": 0.18005,
+   "charged": {
+    "apify-actor-start": 1,
+    "product-result": 3
+   }
+  }
+ ],
+ "sa": {
+  "status": "FAILED",
+  "secs": 25,
+  "usd": 0.0010557216352969408,
+  "usage": {
+   "ACTOR_COMPUTE_UNITS": 0,
+   "DATASET_READS": 0,
+   "DATASET_WRITES": 0,
+   "KEY_VALUE_STORE_READS": 0.000005,
+   "KEY_VALUE_STORE_WRITES": 0.00005,
+   "KEY_VALUE_STORE_LISTS": 0,
+   "REQUEST_QUEUE_READS": 0,
+   "REQUEST_QUEUE_WRITES": 0,
+   "DATA_TRANSFER_INTERNAL_GBYTES": 1.8184073269367218e-7,
+   "DATA_TRANSFER_EXTERNAL_GBYTES": 5.397945642471314e-7,
+   "PROXY_RESIDENTIAL_TRANSFER_GBYTES": 0,
+   "PROXY_SERPS": 0,
+   "PROXY_UNBLOCKER_UNITS": 0
+  },
+  "charged": {
+   "apify-actor-start": 1,
+   "apify-default-dataset-item": 0
+  },
+  "n": 0,
+  "keys": [],
+  "sample": []
+ },
+ "used": 1.7445055054626732
+}
