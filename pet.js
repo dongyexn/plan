@@ -15,9 +15,11 @@ const PET_LINES={   /* 누르기·잡기의 당황 말풍선(tap·drop)은 1295 
   today:['오늘 업무 {n}건'],com:['{t} 하자!'],mine:['{t} 해야지','{t} 잊지 마!'],late:['{t} 기한 지났어!']};   /* {n}·{t} 는 숫자·업무 이름으로 바뀐다 · 사용자가 대사 편집 폼에서 고친 값 */
 const petPick=a=>a[Math.floor(Math.random()*a.length)];
 /* 펫 기분(1294) — 내 업무 기준. 기한 지난 미완료가 있으면 'worry', 오늘까지 할 것이 없고 오늘 날짜 업무를 하나라도 끝냈으면 'happy' */
+/* 마감일 — 기간 업무(시작~끝)는 끝나는 날. 시작일로 보면 진행 중인 기간 업무가 「지남」이 됐다(1295 사용자) */
+function petEnd(sid,iid,it){const d=taskDate(sid,iid,it)||'';return !(it.recur&&it.recur.f)&&it.end&&it.end>d?it.end:d;}
 function petMood(){const me=myId(),t=todayStr();if(!me)return '';
-  const due=mineTasks().map(x=>taskDate(x.sid,x.iid,x.it)||'').filter(d=>d&&d<=t);
-  if(due.some(d=>d<t))return 'worry';if(due.length)return '';
+  const M=mineTasks().map(x=>({d:taskDate(x.sid,x.iid,x.it)||'',e:petEnd(x.sid,x.iid,x.it)})).filter(x=>x.d&&x.d<=t);   /* d 시작(오늘 할 것인지) · e 마감(지났는지) */
+  if(M.some(x=>x.e<t))return 'worry';if(M.length)return '';
   let n=0;Object.keys(S.tasks||{}).forEach(sid=>{const m=S.tasks[sid]||{};Object.keys(m).forEach(iid=>{const it=m[iid];if(!it||!(sid===me||(it.assignees&&it.assignees[me])))return;
     if(it.recur&&it.recur.f){if(it.doneOn&&it.doneOn[t])n++;}else if(stOf(it.st)===2&&it.date<=t&&t<=(it.end||it.date))n++;});});
   return n?'happy':'';}
@@ -37,7 +39,7 @@ function petLoad(){   /* 그림 묶음 — 한 번만 받는다 */
    이 문서는 스타일 재계산이 비싸(:has 규칙) 펫 하나에 메인 스레드 4~5%를 먹었다. 판단은 타이머로 띄엄띄엄,
    프레임 루프는 공이 날아갈 때만 잠깐 돈다 */
 /* 펫 하나 — 위젯 머리 줄에 최대 3마리(PET 가 묶는다). busy: 상호작용 중(혼자 다음 행동을 고르지 않음) */
-function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl,cfg=null,x=0,dir=1,mode='idle',anim=null,tm=0,bt=0,clicks=0,ball=null,braf=0,talk=0,bob=null,busy=false,pal=null,md='',mt=0,su=false,suT=0;
+function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl,cfg=null,x=0,dir=1,mode='idle',anim=null,tm=0,bt=0,clicks=0,ball=null,braf=0,talk=0,bob=null,busy=false,pal=null,md='',mt=0,fmo='',suT=0;
   const head=()=>document.querySelector('#view-calendar .cal-head');
   /* 걸을 수 있는 폭 — 왼쪽은 년월 묶음(「오늘」이 보이면 그 뒤), 오른쪽은 필터 칩·단추 묶음 중 먼저 오는 것. 판단할 때만 잰다 */
   const bounds=()=>{const h=head();if(!h)return[0,-1];const hr=h.getBoundingClientRect(),w=el?el.offsetWidth:40;
@@ -46,7 +48,7 @@ function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl
     h.querySelectorAll('.cal-fchips:not([hidden]),.cal-ctl').forEach(e=>{const b=e.getBoundingClientRect();if(b.width)r=Math.min(r,b.left-hr.left);});
     return[l+8,r-w-8];};
   const set=m=>{const g=cfg.g[m]||cfg.g.idle||cfg.g.walk;mode=cfg.g[m]?m:'idle';
-    const mm=su?'worry':md,ml=mm==='worry'?'w':'h',fm=mm&&mode!=='eat'&&String(cfg.mo||'').includes(ml)?'-'+ml:'';   /* 기분 표정 그림(1294 — scripts/dev/pet-mood.py · 걱정 O△O 입 · 신남 ^_^ 눈). cfg.mo = 가진 기분(w·h) */
+    const mm=fmo,ml=mm==='worry'?'w':'h',fm=mm&&mode!=='eat'&&String(cfg.mo||'').includes(ml)?'-'+ml:'';   /* 기분 표정 그림(1294 — scripts/dev/pet-mood.py · 걱정 O△O 입 · 신남 ^_^ 눈). cfg.mo = 가진 기분(w·h) */
     if(img.dataset.m!==mode+fm){img.dataset.m=mode+fm;img.src=petUrl(fm?g.f.replace(/\.gif$/,fm+'.gif'):g.f);img.style.width=g.w+'px';img.style.height=g.h+'px';if(sh)sh.style.width=Math.round(g.w*(cfg.fly?.42:.62))+'px';}};   /* 그림자 폭 = 그림 폭의 62%(나는 펫은 작게) */   /* 그림 위아래 빈 줄을 잘라 둔 크기 — 발이 늘 같은 바닥선 */
   const face=()=>{img.style.transform='scaleX('+dir+')';};
   const turn=d=>{if(d!==dir){dir=d;face();}};
@@ -69,15 +71,18 @@ function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl
     bub.classList.toggle('l',lf);el.classList.add('talk');
     bub.classList.add('on');clearTimeout(bt);bt=setTimeout(bubOff,ms);};
   /* 당황 표정(1295 사용자) — 누르기·잡기의 당황 말풍선(허거덩·😵 등) 대신 걱정 표정을 잠깐. ms 0 = 풀 때까지(잡는 동안). 표정 그림이 없는 펫(장비류)은 아무것도 띄우지 않는다(1295 사용자) */
-  const surp=ms=>{if(!cfg||!String(cfg.mo||'').includes('w')||deep)return false;clearTimeout(suT);if(!su){su=true;set(mode);}if(ms)suT=setTimeout(()=>{su=false;if(cfg&&!deep)set(mode);},ms);return true;};
+  /* 표정은 잠깐만(1295 사용자: 너무 오래 유지) — look(기분, ms): ms 동안 그 표정, 0 = 풀 때까지(잡는 동안). 그림 없는 펫은 false */
+  const look=(m,ms)=>{if(!cfg||!m||!String(cfg.mo||'').includes(m==='worry'?'w':'h')||deep)return false;clearTimeout(suT);if(fmo!==m){fmo=m;set(mode);}
+    if(ms)suT=setTimeout(()=>{fmo='';if(cfg&&!deep)set(mode);},ms);return true;};
+  const surp=ms=>look('worry',ms);
   const bubOff=()=>{bub.classList.remove('on');el.classList.remove('talk');bub._tk=null;};
-  /* 기분(1294) — 'worry' 기한 지난 내 업무 · 'happy' 오늘 내 업무를 다 끝냄. 표정(눈) 그림이 있는 펫은 표정이 바뀌고, 7초마다 땀방울 / 반짝이(가끔 깡총). 잠·끌기·상호작용·숨김 중엔 쉰다 */
+  /* 기분(1294) — 'worry' 기한 지난 내 업무 · 'happy' 오늘 내 업무를 다 끝냄. 15초마다 잠깐(2.5초) 그 표정 + 땀방울 / 반짝이(가끔 깡총). 잠·끌기·상호작용·숨김 중엔 쉰다 */
   const fx=k=>{if(!el||!img)return;const o=document.createElement('i');o.className='wgFx '+k;const w=el.offsetWidth,top=Math.max(0,el.offsetHeight-img.offsetHeight);
     if(k==='sw'){o.style.top=Math.round(top+img.offsetHeight*.22)+'px';o.style.left=Math.round(w*(dir>0?.78:.1))+'px';}
     else{o.style.top=Math.round(top-4+Math.random()*10)+'px';o.style.left=Math.round(Math.random()*(w-6))+'px';o.style.animationDelay=Math.round(Math.random()*250)+'ms';}
     el.appendChild(o);o.addEventListener('animationend',()=>o.remove());};
-  const mood=m=>{m=m||'';const ch=m!==md;md=m;if(ch&&cfg&&el&&!deep&&img.dataset.m!=='z')set(mode);   /* 표정 바로 바꿈 */if(md&&!mt)mt=setInterval(()=>{if(!cfg||!el||el.hidden||deep||drg||busy||document.hidden)return;
-      if(md==='worry')fx('sw');else if(md==='happy'){fx('st');fx('st');fx('st');if(Math.random()<.4)hop();}},7000);
+  const mood=m=>{md=m||'';if(md&&!mt)mt=setInterval(()=>{if(!cfg||!el||el.hidden||deep||drg||busy||document.hidden)return;   /* 기분 — 15초마다 2.5초 표정 + 땀방울/반짝이 */
+      if(md==='worry'){fx('sw');look('worry',2500);}else if(md==='happy'){fx('st');fx('st');fx('st');look('happy',2500);if(Math.random()<.4)hop();}},15000);
     if(!md&&mt){clearInterval(mt);mt=0;}};
   const hop=()=>{el.classList.remove('hop');void el.offsetWidth;el.classList.add('hop');};
   /* 하트 — 먹이(1개). 머리 위로 떠올라 사라진다(CSS 애니메이션, 끝나면 지움). 그림: Fluent Emoji ❤️(MIT) */
@@ -88,7 +93,7 @@ function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl
   const todayEvs=()=>{const t=todayStr();return buildEvents(t,t).filter(e=>{const s=String(e.start).slice(0,10);return e.end?(s<=t&&t<e.end):s===t;});};
   const todayN=()=>todayEvs().length;
   /* 업무 대사 후보(f = 담당자 있음 → 채운 말풍선, 달력 막대와 같은 판정) — 위젯 「내 업무」 팝업과 같은 목록: 공통(담당자 없는 미완료) · 내 미완료(보류 제외). 오늘·기한 지난 것을 70% 로 먼저 */
-  const taskPick=()=>{const t=todayStr(),m=(a,k)=>a.map(x=>({k,t:x.it.text||'',d:taskDate(x.sid,x.iid,x.it)||'',c:planColor(taskAsPlan(x.sid,x.iid,x.it)),f:Object.keys(x.it.assignees||{}).length>0})).filter(x=>x.t);
+  const taskPick=()=>{const t=todayStr(),m=(a,k)=>a.map(x=>({k,t:x.it.text||'',d:taskDate(x.sid,x.iid,x.it)||'',e:petEnd(x.sid,x.iid,x.it),c:planColor(taskAsPlan(x.sid,x.iid,x.it)),f:Object.keys(x.it.assignees||{}).length>0})).filter(x=>x.t);
     const A=[...m(teamTasks(),'com'),...m(mineTasks(),'mine')];if(!A.length)return null;
     const due=A.filter(x=>x.d&&x.d<=t);return petPick(due.length&&(Math.random()<.7||due.length===A.length)?due:A);};
   /* 다음 행동 — 걷기(40%)·쉬기. 좁아서 걸을 자리가 없으면 숨는다 */
@@ -176,11 +181,11 @@ function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl
       if(!o.talk&&talk){clearInterval(talk);talk=0;}   /* 혼잣말(시간·업무)은 첫 펫만 — 셋이 다 하면 시끄럽다 */
       if(o.talk&&!talk)talk=setInterval(()=>{if(!cfg||deep||drg||ball||document.hidden)return;const sl=petSlot();
         if(sl&&Math.random()<.2){say(petPick(PET_LINES[sl]),2600);return;}   /* 시간 대사 — 30초마다 20% */
-        if(Math.random()<.3){let c=null;try{c=taskPick();}catch(_){}if(c){const late=!!(c.d&&c.d<todayStr()),tt=c.t.length>14?c.t.slice(0,14)+'…':c.t;
-          say(petPick(PET_LINES[late?'late':c.k]).replace('{t}',tt),4000,{k:c.f?'mine':'com',c:c.c,d:c.d});}}},30000);},   /* 업무 대사(1293) — 30초마다 30%(평균 약 1분 40초), 없으면 말 안 함 */
+        if(Math.random()<.3){let c=null;try{c=taskPick();}catch(_){}if(c){const late=!!(c.e&&c.e<todayStr()),tt=c.t.length>14?c.t.slice(0,14)+'…':c.t;
+          say(petPick(PET_LINES[late?'late':c.k]).replace('{t}',tt),4000,{k:c.f?'mine':'com',c:c.c,d:c.d});if(late)look('worry',4000);}}},30000);},   /* 업무 대사(1293) — 30초마다 30%(평균 약 1분 40초), 없으면 말 안 함 */
     wake:()=>{if(cfg&&el&&el.isConnected)deepOff();},
     mood,
-    unmount(){deep=false;clearTimeout(tm);clearInterval(talk);talk=0;clearInterval(mt);mt=0;md='';clearTimeout(suT);su=false;cancelAnimationFrame(braf);
+    unmount(){deep=false;clearTimeout(tm);clearInterval(talk);talk=0;clearInterval(mt);mt=0;md='';clearTimeout(suT);fmo='';cancelAnimationFrame(braf);
       if(anim){anim.onfinish=null;anim.cancel();anim=null;}if(bob){bob.cancel();bob=null;}if(el)el.remove();if(ballEl)ballEl.remove();ball=null;cfg=null;busy=false;},
     dragged:()=>!!(el&&el._drg),   /* 방금 끌었음 — 놓은 자리가 머리 줄이어도 공을 던지지 않게 */
     throwBall(cx){if(!cfg||!el||!el.isConnected||el.hidden)return;if(deep){deep=false;if(bob)bob.play();}
@@ -188,7 +193,7 @@ function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl
       if(!ballEl){ballEl=document.createElement('div');ballEl.className='wgBall';}const it=cfg.it||'heart';ballEl.style.backgroundImage='url('+petUrl('it-'+it+'.png')+')';   /* 먹이가 없는 펫은 하트 */const sz=PET_IT_SZ[it]||16;ballEl.style.width=ballEl.style.height=sz+'px';h.appendChild(ballEl);
       const floor=h.clientHeight/2+22;ball={x:cx-hr.left,y:floor-4,vx:(Math.random()<.5?-1:1)*(60+Math.random()*60),vy:-260,floor,lo:L+6,hi:R+el.offsetWidth-6,it,sz};
       cancelAnimationFrame(braf);braf=requestAnimationFrame(ballStep);},
-    done(){if(!cfg||!el||!el.isConnected)return;if(deep){deep=false;if(bob)bob.play();}hop();say(petPick(PET_LINES.done),2500);
+    done(){if(!cfg||!el||!el.isConnected)return;if(deep){deep=false;if(bob)bob.play();}hop();say(petPick(PET_LINES.done),2500);look('happy',2500);
       if(ball)return;const[L,R]=bounds();moveTo(dir>0?R:L,75,'run');},   /* 공을 가지러 가는 중이면 자리 이동은 건너뛴다 */
     on:()=>!!cfg,
     /* 상호작용(PET)용 */
