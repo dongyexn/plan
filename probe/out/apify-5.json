@@ -1,0 +1,726 @@
+{
+ "title": "Naver Search API | Web, News, Image, Video, Shopping (Korea)",
+ "modified": "2026-10-27T16:49:49.445Z",
+ "stats": {
+  "users30": 20,
+  "runs": 1733
+ },
+ "pricing": [
+  {
+   "minimalMaxTotalChargeUsd": null,
+   "pricingModel": "PAY_PER_EVENT",
+   "pricingPerEvent": {
+    "actorChargeEvents": {
+     "apify-default-dataset-item": {
+      "eventTitle": "Dataset item stored",
+      "eventDescription": "Platform accounting charge, applied per row stored in the dataset.",
+      "isOneTimeEvent": false,
+      "eventPriceUsd": 0.00001,
+      "isPrimaryEvent": false
+     },
+     "actor_start": {
+      "eventTitle": "Actor start",
+      "eventDescription": "One-time start fee per Actor run, charged at startup to cover provisioning.",
+      "isOneTimeEvent": false,
+      "eventPriceUsd": 0.00005,
+      "isPrimaryEvent": false
+     },
+     "result_scraped": {
+      "eventTitle": "Result scraped",
+      "eventDescription": "Charged per Naver result row returned (web, news, image, video, shopping, or ad). A query with no matching results returns a single no_results row, billed as one result.",
+      "isOneTimeEvent": false,
+      "eventTieredPricingUsd": {
+       "FREE": {
+        "tieredEventPriceUsd": 0.005
+       },
+       "BRONZE": {
+        "tieredEventPriceUsd": 0.004
+       },
+       "SILVER": {
+        "tieredEventPriceUsd": 0.0035
+       },
+       "GOLD": {
+        "tieredEventPriceUsd": 0.003
+       },
+       "PLATINUM": {
+        "tieredEventPriceUsd": 0.003
+       },
+       "DIAMOND": {
+        "tieredEventPriceUsd": 0.003
+       }
+      },
+      "isPrimaryEvent": true
+     },
+     "apify-actor-start": {
+      "eventTitle": "Actor Start",
+      "eventDescription": "Charged when the Actor starts running. Number of events charged depends on Actor memory (one event per GB, minimum one event).",
+      "isOneTimeEvent": true,
+      "eventPriceUsd": 0.00001,
+      "isPrimaryEvent": false
+     },
+     "query_searched": {
+      "eventTitle": "Query searched",
+      "eventDescription": "Flat fee charged once per executed search query, regardless of pages fetched or results returned. Queries that fail with an upstream error are not billed.",
+      "isOneTimeEvent": false,
+      "eventPriceUsd": 0.0136
+     }
+    }
+   },
+   "reasonForChange": "Added a flat per-query search fee (query_searched, $0.0136) that covers the underlying per-search cost. Per-result and start-fee prices are unchanged.",
+   "startedAt": "2026-09-13T00:00:00.000Z",
+   "createdAt": "2026-08-30T01:54:10.239Z",
+   "apifyMarginPercentage": 0.2,
+   "notifiedAboutFutureChangeAt": "2026-08-30T01:54:31.129Z",
+   "notifiedAboutChangeAt": "2026-09-13T00:05:48.898Z"
+  }
+ ],
+ "schema": {
+  "query": {
+   "type": "string",
+   "title": "Search Query",
+   "desc": "Enter a single search query, in Korean or any language, for example '서울 맛집' (Seoul restaurants). Provide this, `queries`, or both.",
+   "def": "서울 맛집",
+   "req": false
+  },
+  "queries": {
+   "type": "array",
+   "title": "Search Queries",
+   "desc": "Provide a list of search queries to run in one batch (up to 100 per run). Merged with `query` and de-duplicated. Use this for bulk lookups.",
+   "req": false
+  },
+  "where": {
+   "type": "string",
+   "title": "Vertical",
+   "desc": "Choose which Naver vertical to search. 'nexearch' is the integrated results page and returns multiple blocks at once (ads, web, shopping, news). 'web', 'news', ",
+   "def": "nexearch",
+   "enum": [
+    "nexearch",
+    "web",
+    "news",
+    "image",
+    "video"
+   ],
+   "req": false
+  },
+  "maxResultsPerQuery": {
+   "type": "integer",
+   "title": "Maximum Results Per Query",
+   "desc": "How many result rows to return per query. The Actor paginates as needed, then stops early when a query runs out of results. Default 30, maximum 300.",
+   "def": 30,
+   "min": 1,
+   "max": 300,
+   "req": false
+  }
+ },
+ "lastInput": "{\"query\":\"도어락\",\"where\":\"nexearch\",\"maxResultsPerQuery\":65}",
+ "n": 19,
+ "sample": [
+  {
+   "result_type": "web_organic",
+   "query": "도어락",
+   "where": "nexearch",
+   "position": 1,
+   "title": "디지털 도어락 - 나무위키",
+   "link": "https://namu.wiki/w/%EB%94%94%EC%A7%80%ED%84%B8%20%EB%8F%84%EC%96%B4%EB%9D%BD",
+   "snippet": "Digital Door Lock / Electronic Door Lock 기존의 기계식 도어락을 대체하는 전자식 도어락이다. 기존 기계식 도어락에 불안함을 느껴서 비싼 돈 들여서 교체하는 경우가 많다.",
+   "source": "나무위키새 창 열림",
+   "thumbnail": "https://search.pstatic.net/sunny?src=https%3A%2F%2Fi.namu.wiki%2Fi%2F24dgoruMHdjShlm9ry1N8WH_z78xwO5HCbxm0bGW3kHnfz_alFVNquNS_1IxDZffSsY9oZ3ybV4I02PU37UEqg.webp&type=fff208_208_ar",
+   "fetched_at": "2026-11-01T06:56:49.058839+00:00"
+  },
+  {
+   "result_type": "web_organic",
+   "query": "도어락",
+   "where": "nexearch",
+   "position": 2,
+   "title": "디지털도어락 - 다나와",
+   "link": "https://prod.danawa.com/list/?cate=102293",
+   "snippet": "가전/TV>이미용/소형가전>디지털도어락 가격비교 리스트 입니다. 다나와의 가격비교 서비스로 한눈에 비교하고 저렴하게 구매하세요.",
+   "source": "다나와새 창 열림",
+   "fetched_at": "2026-11-01T06:56:49.169918+00:00"
+  },
+  {
+   "result_type": "web_organic",
+   "query": "도어락",
+   "where": "nexearch",
+   "position": 3,
+   "title": "도어락 - 공기청정기/생활가전",
+   "link": "https://www.coupang.com/np/categories/416164",
+   "snippet": "쿠팡에서 도어락 특가를 살펴보세요. 다양한 공기청정기/생활가전 제품을 원하는 조건별로 확인할 수 있습니다. 와우회원은 무료 배송 혜택도 누릴 수 있어요.",
+   "source": "쿠팡새 창 열림",
+   "fetched_at": "2026-11-01T06:56:49.251740+00:00"
+  },
+  {
+   "result_type": "shopping",
+   "query": "도어락",
+   "where": "nexearch",
+   "position": 4,
+   "title": "게이트맨 AS2년 즉시잠김 초슬림 푸시풀도어락 IoT 스마트도어락 카드번호키 GP-500R",
+   "link": "https://cr3.shopping.naver.com/v2/bridge/searchGate?nv_mid=85560937465&cat_id=50002359&query=%EB%8F%84%EC%96%B4%EB%9D%BD&t=mvxh6za5&h=b7c2421fe55804c0ae1f9f5a6c59d8ae5c0b6cd2&frm=NVSCSPE",
+   "price": 330280,
+   "rating": 4.83,
+   "reviews": 2331,
+   "stores": "게이트맨 공식브랜드스토어",
+   "thumbnail": "https://shopping-phinf.pstatic.net/main_8556093/85560937465.7.jpg?type=f300",
+   "fetched_at": "2026-11-01T06:56:49.303603+00:00"
+  },
+  {
+   "result_type": "shopping",
+   "query": "도어락",
+   "where": "nexearch",
+   "position": 5,
+   "title": "코콤 현관문 도어락 아파트 현관 무타공도어락 디지털 번호키 교체 설치 NH310",
+   "link": "https://cr3.shopping.naver.com/v2/bridge/searchGate?nv_mid=89586731467&cat_id=50002359&query=%EB%8F%84%EC%96%B4%EB%9D%BD&t=mvxh6za4&h=2101511db7ae912d091ee971999788cfd1959737&frm=NVSCDIG",
+   "price": 54000,
+   "rating": 4.8,
+   "reviews": 1532,
+   "stores": "진성홈테크",
+   "additional": [
+    {
+     "title": "형태",
+     "value": "주키형"
+    },
+    {
+     "title": "용도",
+     "value": "주택,아파트용"
+    },
+    {
+     "title": "사용전원",
+     "value": "AA건전지(4개)"
+    },
+    {
+     "title": "키패드 타입",
+     "value": "터치식"
+    },
+    {
+     "title": "보안방식",
+     "value": "비밀번호 외 8건"
+    },
+    {
+     "title": "보안/안전기능",
+     "value": "화재경보 외 13건"
+    },
+    {
+     "title": "구성",
+     "value": "리모컨 외 2건"
+    },
+    {
+     "title": "부가기능",
+     "value": "무타공 외 12건"
+    },
+    {
+     "title": "색상",
+     "value": "블랙 외 1건"
+    },
+    {
+     "title": "안전",
+     "value": "1등급"
+    },
+    {
+     "title": "재질",
+     "value": "ABS 외 1건"
+    },
+    {
+     "title": "음량조절",
+     "value": "7단계"
+    },
+    {
+     "title": "벨소리",
+     "value": "전자음"
+    },
+    {
+     "title": "알림",
+     "value": "80dB"
+    }
+   ],
+   "thumbnail": "https://shopping-phinf.pstatic.net/main_8958673/89586731467.3.jpg?type=f300",
+   "fetched_at": "2026-11-01T06:56:49.383659+00:00"
+  },
+  {
+   "result_type": "shopping",
+   "query": "도어락",
+   "where": "nexearch",
+   "position": 6,
+   "title": "게이트맨 지문인식도어락 2026년 무타공 현관문도어락 즉시잠김 푸시풀 현관 번호키 330",
+   "link": "https://cr3.shopping.naver.com/v2/bridge/searchGate?nv_mid=91016542296&cat_id=50002359&query=%EB%8F%84%EC%96%B4%EB%9D%BD&t=mvxh6za4&h=ebf884ee5883cf3dddff47cb0493d70d57b441c8&frm=NVSCDIG",
+   "price": 179000,
+   "rating": 4.85,
+   "reviews": 1164,
+   "stores": "문지기닷컴",
+   "additional": [
+    {
+     "title": "형태",
+     "value": "푸시풀(Push-Pull)"
+    },
+    {
+     "title": "용도",
+     "value": "주택,아파트용"
+    },
+    {
+     "title": "사용전원",
+     "value": "AA건전지(4개)"
+    },
+    {
+     "title": "키패드 타입",
+     "value": "터치식"
+    },
+    {
+     "title": "보안방식",
+     "value": "비밀번호 외 4건"
+    },
+    {
+     "title": "보안/안전기능",
+     "value": "화재경보 외 8건"
+    },
+    {
+     "title": "구성",
+     "value": "리모컨 외 3건"
+    },
+    {
+     "title": "부가기능",
+     "value": "무타공 외 9건"
+    },
+    {
+     "title": "색상",
+     "value": "블랙 외 1건"
+    },
+    {
+     "title": "안전",
+     "value": "1등급"
+    },
+    {
+     "title": "재질",
+     "value": "ABS 외 1건"
+    },
+    {
+     "title": "음량조절",
+     "value": "7단계"
+    },
+    {
+     "title": "음성안내",
+     "value": "반복"
+    },
+    {
+     "title": "벨소리",
+     "value": "전자음"
+    },
+    {
+     "title": "알림",
+     "value": "80dB"
+    }
+   ],
+   "thumbnail": "https://shopping-phinf.pstatic.net/main_9101654/91016542296.5.jpg?type=f300",
+   "fetched_at": "2026-11-01T06:56:49.462234+00:00"
+  },
+  {
+   "result_type": "shopping",
+   "query": "도어락",
+   "where": "nexearch",
+   "position": 7,
+   "title": "솔리티 무타공도어락 현관문도어락 즉시잠김 디지털 현관 번호키 설치 교체 700",
+   "link": "https://cr3.shopping.naver.com/v2/bridge/searchGate?nv_mid=83227652369&cat_id=50002359&query=%EB%8F%84%EC%96%B4%EB%9D%BD&t=mvxh6za5&h=3acd9648239e1be99b0f364346023908d4136444&frm=NVSCDIG",
+   "price": 59800,
+   "rating": 4.8,
+   "reviews": 30000,
+   "stores": "문지기닷컴",
+   "additional": [
+    {
+     "title": "형태",
+     "value": "주키(손잡이○)"
+    },
+    {
+     "title": "용도",
+     "value": "주택,아파트용"
+    },
+    {
+     "title": "사용전원",
+     "value": "AA건전지(4개)"
+    },
+    {
+     "title": "키패드 타입",
+     "value": "터치식"
+    },
+    {
+     "title": "보안방식",
+     "value": "비밀번호 외 5건"
+    },
+    {
+     "title": "보안/안전기능",
+     "value": "화재경보 외 10건"
+    },
+    {
+     "title": "구성",
+     "value": "리모컨 외 2건"
+    },
+    {
+     "title": "부가기능",
+     "value": "무타공 외 8건"
+    },
+    {
+     "title": "색상",
+     "value": "블랙"
+    },
+    {
+     "title": "안전",
+     "value": "1등급"
+    },
+    {
+     "title": "재질",
+     "value": "ABS 외 1건"
+    },
+    {
+     "title": "음량조절",
+     "value": "가능"
+    },
+    {
+     "title": "벨소리",
+     "value": "전자음"
+    },
+    {
+     "title": "알림",
+     "value": "80dB"
+    }
+   ],
+   "thumbnail": "https://shopping-phinf.pstatic.net/main_8322765/83227652369.17.jpg?type=f300",
+   "fetched_at": "2026-11-01T06:56:49.507448+00:00"
+  },
+  {
+   "result_type": "shopping",
+   "query": "도어락",
+   "where": "nexearch",
+   "position": 8,
+   "title": "링크 지문인식도어락 무타공도어락 현관문 즉시잠김 디지털 푸시풀 번호키 GALAXIA-F",
+   "link": "https://cr3.shopping.naver.com/v2/bridge/searchGate?nv_mid=86765993879&cat_id=50002359&query=%EB%8F%84%EC%96%B4%EB%9D%BD&t=mvxh6za5&h=109cd0836cc4c554a06e61304e30975ac2e458aa&frm=NVSCDIG",
+   "price": 129000,
+   "rating": 4.89,
+   "reviews": 4074,
+   "stores": "KMplus",
+   "additional": [
+    {
+     "title": "형태",
+     "value": "푸시풀(Push-Pull)"
+    },
+    {
+     "title": "용도",
+     "value": "주택,아파트용"
+    },
+    {
+     "title": "사용전원",
+     "value": "AA건전지(4개)"
+    },
+    {
+     "title": "키패드 타입",
+     "value": "터치식"
+    },
+    {
+     "title": "보안방식",
+     "value": "비밀번호 외 6건"
+    },
+    {
+     "title": "보안/안전기능",
+     "value": "화재경보 외 15건"
+    },
+    {
+     "title": "구성",
+     "value": "손잡이 외 1건"
+    },
+    {
+     "title": "부가기능",
+     "value": "무타공 외 11건"
+    },
+    {
+     "title": "색상",
+     "value": "메탈그레이 외 1건"
+    },
+    {
+     "title": "재질",
+     "value": "ABS 외 2건"
+    },
+    {
+     "title": "음량조절",
+     "value": "가능"
+    },
+    {
+     "title": "알림",
+     "value": "80dB"
+    }
+   ],
+   "thumbnail": "https://shopping-phinf.pstatic.net/main_8676599/86765993879.7.jpg?type=f300",
+   "fetched_at": "2026-11-01T06:56:49.573334+00:00"
+  },
+  {
+   "result_type": "news",
+   "query": "도어락",
+   "where": "nexearch",
+   "position": 9,
+   "title": "“짐 다 뺐는데 문을 못 연다”…집주인, 열쇠공 불러 들어가면 안 될까...",
+   "link": "https://www.donga.com/news/Economy/article/all/20261030/134933513/2",
+   "snippet": "하지만 카드키와 도어락 스마트패드는 돌려주지 않았고, 집 안에도 일부 물건이 남아 있었다. 집주인은 직접 문을 열지 않고 건물인도소송을 계속했고... 사례에서도 카드키와 도어락 스마트패드가 반환되지 않았고 집 안에도 물건이 일부 남아 있었다. 세입자가 이삿짐을 뺐다는 사실만으로 집주인이 집을 완전히... 새 창 열림",
+   "news_info": {
+    "name": "동아일보새 창 열림",
+    "icon": "https://search.pstatic.net/common/?src=https%3A%2F%2Fmimgnews.pstatic.net%2Fimage%2Fupload%2Foffice_logo%2F020%2F2025%2F03%2F07%2Flogo_020_100_20250307145700.png&type=f54_54&expire=24&refresh=true",
+    "date": "5시간 전"
+   },
+   "thumbnail": "https://search.pstatic.net/common/?src=https%3A%2F%2Fimgnews.pstatic.net%2Fimage%2Forigin%2F020%2F2026%2F11%2F01%2F3759140.jpg&type=fface200_200&expire=2&refresh=true",
+   "fetched_at": "2026-11-01T06:56:49.607722+00:00"
+  },
+  {
+   "result_type": "news",
+   "query": "도어락",
+   "where": "nexearch",
+   "position": 10,
+   "title": "현관 센서등에 숨긴 몰카로 비번 털렸다…도어락 안전하게 쓰는 법",
+   "link": "https://www.newsis.com/view/NISX20261028_0003844030",
+   "snippet": "장인혜 인턴 기자 = 도어락 비밀번호를 노린 침입을 막기 위해 입력할 때 손으로 키패드를 가리고, 월패드와 공유기의 기본 비밀번호를 변경해야 한다는 전문가들의 조언이 나왔다. 지난 26일 유튜브 채널 '지식쇼츠'에 공개된 영상에서 권일용 교수와 노말틱 해커는 도어락 범죄 수법과 예방법을 소개했다. 권... 새 창 열림",
+   "news_info": {
+    "name": "뉴시스새 창 열림",
+    "icon": "https://search.pstatic.net/common/?src=https%3A%2F%2Fmimgnews.pstatic.net%2Fimage%2Fupload%2Foffice_logo%2F003%2F2025%2F03%2F07%2Flogo_003_100_20250307145615.png&type=f54_54&expire=24&refresh=true",
+    "date": "4일 전"
+   },
+   "thumbnail": "https://search.pstatic.net/common/?src=https%3A%2F%2Fimgnews.pstatic.net%2Fimage%2Forigin%2F003%2F2026%2F10%2F28%2F14284852.jpg&type=fface200_200&expire=2&refresh=true",
+   "fetched_at": "2026-11-01T06:56:49.648651+00:00"
+  },
+  {
+   "result_type": "news",
+   "query": "도어락",
+   "where": "nexearch",
+   "position": 11,
+   "title": "대전세종범죄피해자지원센터, 피해가정 주거환경 개선",
+   "link": "https://www.daejonilbo.com/news/articleView.html?idxno=2310677",
+   "snippet": "이후 가정별 여건에 맞춰 현관 도어락 교체와 방범시설 보강, 노후 시설물 정비, 생활공간 정리 등을 진행했다. 사업에는 관계기관과 자원봉사자, 전문 시공업체 등이 참여했다. 지원 과정에서는 피해자의 사생활과 개인정보를 보호하고 외부 노출에 따른 2차 피해를 방지하기 위한 보안 조치도 병행했다. 센터는... 새 창 열림",
+   "news_info": {
+    "name": "대전일보새 창 열림",
+    "icon": "https://search.pstatic.net/common/?src=https%3A%2F%2Fmimgnews.pstatic.net%2Fimage%2Fupload%2Foffice_logo%2F656%2F2025%2F03%2F07%2Flogo_656_100_20250307145652.png&type=f54_54&expire=24&refresh=true",
+    "date": "2시간 전"
+   },
+   "thumbnail": "https://search.pstatic.net/common/?src=https%3A%2F%2Fimgnews.pstatic.net%2Fimage%2Forigin%2F656%2F2026%2F11%2F01%2F191139.jpg&type=fface200_200&expire=2&refresh=true",
+   "fetched_at": "2026-11-01T06:56:49.702463+00:00"
+  },
+  {
+   "result_type": "ad",
+   "query": "도어락",
+   "where": "nexearch",
+   "position": 12,
+   "title": "LG 스마트 도어락",
+   "link": "https://ader.naver.com/v1/ivqXaXMsohWt8IS2Xk9BEwZMNqg7cSG_Edm0ZJ9rJIom3pxdFg_kpxL4e-j5MOyiyfc8FaE19hbAWgjyHwXghTfOwSLE2Ebz4KYtep2J_ynkPAmBqNjR6vo_IbdTTl9LQ8CRTP23M80eTgMSijFaV0LKZ4hLGX8Ce-RA0_4ZHSCYpnq0ubXOuVUDQ1Bsr6bCS_UNXDXlELSSlhjV_wh0UHm9fYdZcoTBPTt9ZEkBNAd-w90RYqRnYGXgjl-1HzQn50NKAI9oc_QDCY_JE-0InySomolgl261OD90ZuAzzT-yj0MVkU8bkvIYNK5Cp_MSueuqJ6eyh6rk5pt2Oc9LMdIEC9-gV607rCbh9N1Z51fupLMYh_LwtG4qfzqFG8eUtPGXhwl5VpfljgqhzGrBsw==?c=naver.search.pc.plsearch&t=0",
+   "description": "도어락 설치부터 앱 연동까지 원스톱, 믿을 수 있는 LG 스마트 도어락",
+   "sub_title": "24시간 콜센터 운영",
+   "site": "lge.co.kr",
+   "thumbnail": "https://searchad-phinf.pstatic.net/MjAyNjA4MDZfMTcz/MDAxNzg1OTk0NTM4NTkx.lwDQtGOJrcvgHnMdeu6rg5Z1_CCtCPtQpQYGBRg3_WIg.fw-nhPpvV9EVMu5GMdUg-Wxlx67EugNJPFmjggMnjOog.PNG/466748-25c2ef3f-767f-43b0-8275-dab56589fdf9.png?type=f160_160",
+   "link_list": [
+    {
+     "title": "전문기사설치",
+     "link": "https://ader.naver.com/v1/kS3296az52rHf0aWhJNQz1haAyscPdzTU0sn9WePukLraOO6HvxBNsddSx6HSe2fbz4tB5ja_auAVdP1LDjVVOp8V9QcJdQWJPRqvwidx2RDqY9ByQe1BsczNmVsn0pDVHfzI4JQQGLxDjom2uJQN45f3Pkz5vrjpBWcEbE8xMkYOC_gHBADfZYV68AR2qr57xHuQppLjfzrYGtHAVNTR4VUTpUkY3Og88rpx_QNsTO7TmrpKf0HAtUu60rlcyK_CCw-4l2-4cAP0mIZaSGH6ryTCbT6bFicaMISGHAoPzMjbPlYMUT2MRk23Nk1wYhs_cFtoPYJE3lIOukLtCCvgEO-hFYm5ErF-ZygIUUwuWKUZ4zLAU1mRiUWYxxzNA-A-fmaVDnlcv1o34GNnMfGymgq9Nnqgdj0JNRRsmLFXQg=?c=naver.search.pc.plsearch&t=0"
+    },
+    {
+     "title": "외출안심모드",
+     "link": "https://ader.naver.com/v1/kS3296az52rHf0aWhJNQz1haAyscPdzTU0sn9WePukLraOO6HvxBNsddSx6HSe2fbz4tB5ja_auAVdP1LDjVVOp8V9QcJdQWJPRqvwidx2RDqY9ByQe1BsczNmVsn0pDVHfzI4JQQGLxDjom2uJQN45f3Pkz5vrjpBWcEbE8xMkYOC_gHBADfZYV68AR2qr57xHuQppLjfzrYGtHAVNTR4VUTpUkY3Og88rpx_QNsTO7TmrpKf0HAtUu60rlcyK_CCw-4l2-4cAP0mIZaSGH6ryTCbT6bFicaMISGHAoPzMjbPlYMUT2MRk23Nk1wYhs_cFtoPYJE3lIOukLtCCvgEO-hFYm5ErF-ZygIUUwuWKUZ4zLAU1mRiUWYxxzNA-A-fmaVDnlcv1o34GNnMfGymgq9Nnqgdj0JNRRsmLFXQg=?c=naver.search.pc.plsearch&t=0"
+    },
+    {
+     "title": "앱 연동기능",
+     "link": "https://ader.naver.com/v1/kS3296az52rHf0aWhJNQz1haAyscPdzTU0sn9WePukLraOO6HvxBNsddSx6HSe2fbz4tB5ja_auAVdP1LDjVVOp8V9QcJdQWJPRqvwidx2RDqY9ByQe1BsczNmVsn0pDVHfzI4JQQGLxDjom2uJQN45f3Pkz5vrjpBWcEbE8xMkYOC_gHBADfZYV68AR2qr57xHuQppLjfzrYGtHAVNTR4VUTpUkY3Og88rpx_QNsTO7TmrpKf0HAtUu60rlcyK_CCw-4l2-4cAP0mIZaSGH6ryTCbT6bFicaMISGHAoPzMjbPlYMUT2MRk23Nk1wYhs_cFtoPYJE3lIOukLtCCvgEO-hFYm5ErF-ZygIUUwuWKUZ4zLAU1mRiUWYxxzNA-A-fmaVDnlcv1o34GNnMfGymgq9Nnqgdj0JNRRsmLFXQg=?c=naver.search.pc.plsearch&t=0"
+    },
+    {
+     "title": "AI가전경험",
+     "link": "https://ader.naver.com/v1/aDTXcFUUGyrCG1XPwdelDrMMcCF_5bToXElhCFJrU0492o-Ix25xI15XgJQFJv_-SXxojO8AdSnDaSzNbOmNS56adW-RXNd1SOvuuNvXbtvMd_EJI5y347xue2RkkxkQXH5QjusHncZI6oh_OImDtVLXDYLdsw8v1rMo5uKCE5lIiXI0x0507eXRSMjsMYe6j4yzmIqAmS-GRXgtLKlgoRcaXrGgP3G_2C3GQ6QgTPTXC1JHs3lyoJDaMzLQt9e8pdU8d6AdAotwXAFCR5VbsM8u7WeY4Lj6spFqQHgA7zJmtbjmDuk6vKwMo2OU7r2SPk7lKvakJGegZBJRVhE3igWe2yPrt5pxSGBcDIqMDuUok_E5vdbMTolZWXiNqd7aIEjr7kMD_kGpDFzvrk1Mi_S3PG0mo4HjiB1T0HZoue8=?c=naver.search.pc.plsearch&t=0"
+    }
+   ],
+   "fetched_at": "2026-11-01T06:56:49.763082+00:00"
+  },
+  {
+   "result_type": "ad",
+   "query": "도어락",
+   "where": "nexearch",
+   "position": 13,
+   "title": "언제 어디서나 이용 가능",
+   "link": "https://ader.naver.com/v1/l7txcNUYRmPAi3uCgYxni9jZFd3tawkQg-yxDnTTMAvAq3yacS4qHwLG-zdCpbhyRjZ7dCryjG_HPwu6iTOkot7J3hVKYSqdFyHrIMG7og7ESgOQtfUzS_nLM7Yeom8XTa3AAPnR9hFMaS_faNInBFaZn-Yfv0WbKGb29HEZuG_JUN512aeBMtL3xObvVZutinvRWejWn8JOL6OBUj2xjorDRIcQy-mspWZ1v3_NeboBtCxXdKa-UPANzE0reeQfj_OpsV4Id0Wz5DQzIESsKHcPZat08QRIGU-WY9e9miRH0zNOI7HApH4i_ZuAiquBjDPbOlZinjKnSjRywW2nSaTVY58Lrf_03IVDV6MelkeKFAJ2RWP9BtVfUj_td6poLAod9xTgEkFf5Aiw54hJtFykRrHFjxpDfqrWb64RkRvOsSGzBCNIFGl6SgnSuAfSOrz_mPnhHbV5xawWvLssGQ6kuSI5P3iHVYHwJ2xuc3uG4zG1WKguC30LLjQaui0bBiK_8QxhBXqIW2o8qE55Ofy0Lqd0V3umV9B5r7fdcbg=?c=naver.search.pc.plsearch&t=0",
+   "description": "더 안전하게, 더 편리하게 편리하게 만나는 우리 동네 도어락 전문가",
+   "site": "map.naver.com/p",
+   "thumbnail": "https://search.pstatic.net/common/?src=https%3A%2F%2Fldb-phinf.pstatic.net%2F20260906_117%2F17886753734100Vg4s_JPEG%2F15_%25BA%25B9%25BB%25E7_2.jpg&type=a380",
+   "link_list": [
+    {
+     "title": "무파손개문",
+     "link": "https://ader.naver.com/v1/nFOF055cPG7iGdJZb1dyhqk9ScLQCZSqUK-YEpK4dGutzn-96MUHAOFgedRGO5m9kzQ4LY5qwKMKpQvFgBi5RgyiE8CST79LJkgRtq6K_oMW5Y5JNCc9geOxVloMPUKhx5h4A7cWDvJM3sZIm2pDwwrIuWWDQ8jqnUUH7k8oiSiOq42YQfDcec8J3FTAP6TySmjTHn6beMzTk3c-oLEGrwPWKaB2Rv4rEBctST9eQ64DYAVYPxe2SVBhDoGpyW6dgxZur70HyaPhSxjGA0yXrKvQiqGHk5N6J7mrAyyudLlEhW0mgGRP8XQtvhvhlSmTrrlWczkU38kVTKmKOkZWmOH6N_P4JNtoDODyFX7KD-nDDWk8wnFUNFAF0_tg8eshdeqFgiruEq4P8Y_N8lLRB-2jXuDezKSd7-t9kS88aiAQhLWX-zXUawhPDDQdCaTkh2SUYBdXTRY3W9WbdsRNCzcVfRvbmhyQKiMlY0P0J4U3IlwUjVpvOJ_qOrErCOw2tQdJiw21WQMhIamI1vzgzMxprYr3dzrP_aqBczx4HIkZIq-BkaTvY3AR73mGbz4Q?c=naver.search.pc.plsearch&t=0"
+    },
+    {
+     "title": "도어락설치",
+     "link": "https://ader.naver.com/v1/nFOF055cPG7iGdJZb1dyhqk9ScLQCZSqUK-YEpK4dGutzn-96MUHAOFgedRGO5m9kzQ4LY5qwKMKpQvFgBi5RgyiE8CST79LJkgRtq6K_oMW5Y5JNCc9geOxVloMPUKhx5h4A7cWDvJM3sZIm2pDwwrIuWWDQ8jqnUUH7k8oiSiOq42YQfDcec8J3FTAP6TySmjTHn6beMzTk3c-oLEGrwPWKaB2Rv4rEBctST9eQ64DYAVYPxe2SVBhDoGpyW6dgxZur70HyaPhSxjGA0yXrKvQiqGHk5N6J7mrAyyudLlEhW0mgGRP8XQtvhvhlSmTrrlWczkU38kVTKmKOkZWmOH6N_P4JNtoDODyFX7KD-nDDWk8wnFUNFAF0_tg8eshdeqFgiruEq4P8Y_N8lLRB-2jXuDezKSd7-t9kS88aiAQhLWX-zXUawhPDDQdCaTkh2SUYBdXTRY3W9WbdsRNCzcVfRvbmhyQKiMlY0P0J4U3IlwUjVpvOJ_qOrErCOw2tQdJiw21WQMhIamI1vzgzMxprYr3dzrP_aqBczx4HIkZIq-BkaTvY3AR73mGbz4Q?c=naver.search.pc.plsearch&t=0"
+    },
+    {
+     "title": "도어락수리",
+     "link": "https://ader.naver.com/v1/nFOF055cPG7iGdJZb1dyhqk9ScLQCZSqUK-YEpK4dGutzn-96MUHAOFgedRGO5m9kzQ4LY5qwKMKpQvFgBi5RgyiE8CST79LJkgRtq6K_oMW5Y5JNCc9geOxVloMPUKhx5h4A7cWDvJM3sZIm2pDwwrIuWWDQ8jqnUUH7k8oiSiOq42YQfDcec8J3FTAP6TySmjTHn6beMzTk3c-oLEGrwPWKaB2Rv4rEBctST9eQ64DYAVYPxe2SVBhDoGpyW6dgxZur70HyaPhSxjGA0yXrKvQiqGHk5N6J7mrAyyudLlEhW0mgGRP8XQtvhvhlSmTrrlWczkU38kVTKmKOkZWmOH6N_P4JNtoDODyFX7KD-nDDWk8wnFUNFAF0_tg8eshdeqFgiruEq4P8Y_N8lLRB-2jXuDezKSd7-t9kS88aiAQhLWX-zXUawhPDDQdCaTkh2SUYBdXTRY3W9WbdsRNCzcVfRvbmhyQKiMlY0P0J4U3IlwUjVpvOJ_qOrErCOw2tQdJiw21WQMhIamI1vzgzMxprYr3dzrP_aqBczx4HIkZIq-BkaTvY3AR73mGbz4Q?c=naver.search.pc.plsearch&t=0"
+    },
+    {
+     "title": "긴급출동",
+     "link": "https://ader.naver.com/v1/nFOF055cPG7iGdJZb1dyhqk9ScLQCZSqUK-YEpK4dGutzn-96MUHAOFgedRGO5m9kzQ4LY5qwKMKpQvFgBi5RgyiE8CST79LJkgRtq6K_oMW5Y5JNCc9geOxVloMPUKhx5h4A7cWDvJM3sZIm2pDwwrIuWWDQ8jqnUUH7k8oiSiOq42YQfDcec8J3FTAP6TySmjTHn6beMzTk3c-oLEGrwPWKaB2Rv4rEBctST9eQ64DYAVYPxe2SVBhDoGpyW6dgxZur70HyaPhSxjGA0yXrKvQiqGHk5N6J7mrAyyudLlEhW0mgGRP8XQtvhvhlSmTrrlWczkU38kVTKmKOkZWmOH6N_P4JNtoDODyFX7KD-nDDWk8wnFUNFAF0_tg8eshdeqFgiruEq4P8Y_N8lLRB-2jXuDezKSd7-t9kS88aiAQhLWX-zXUawhPDDQdCaTkh2SUYBdXTRY3W9WbdsRNCzcVfRvbmhyQKiMlY0P0J4U3IlwUjVpvOJ_qOrErCOw2tQdJiw21WQMhIamI1vzgzMxprYr3dzrP_aqBczx4HIkZIq-BkaTvY3AR73mGbz4Q?c=naver.search.pc.plsearch&t=0"
+    }
+   ],
+   "fetched_at": "2026-11-01T06:56:49.807927+00:00"
+  },
+  {
+   "result_type": "ad",
+   "query": "도어락",
+   "where": "nexearch",
+   "position": 14,
+   "title": "포동24시출장도어락전문",
+   "link": "https://ader.naver.com/v1/eb8eTAbdIDSCbo7mfRF4MJewEJ-nH_MXfKXGIHNW2CDnVLACadZwAhFjplIQUcL1jyxlksX2n6Tfyxn0rqPG12KQP4M4kTM6jkFaTkw9MwqUirKWBaBqEhoCXg8FR98xurVHeAVhXgFy3wnhPaIf2uKAWvva4tMY0yAZjLVcU_qbeLFu-jto2hGZ04c4u1xLk3Tk0_6W1KBTO7WKt1v5qgYXG2RdR7qlGej4VPXqc0Q90I6v1INI38tz6zUralfZv91PuYAhOUhBHqOd0jsrSqcXdRsVGgfT6f92OGD-8Slo_K2hrReH3T1k-UhqixLSn0CA-s7LcdzMCa4UGI5D0BT_pKwy8_K_QxNMZPLak6r3ASAXbSv26yVXtqucyRdaG_NUHsrwyEaMeF_Du07OWaMUtQP0wZOiqRJHJPlyc6W2NlO6Y4g2virCKNaa0GiaWk8OBkxp-_sA6ZrtlfFmD6jqwSNDIpKivz4gVk8Um2v9skBHuX7B3vIyWaW5mJpe_kK8g38BQaRj6E-LV01FHfruiDl_QqeWXJHx4TXVeW4=?c=naver.search.pc.plsearch&t=0",
+   "description": "시흥 전지역 언제 어디든 20분내 당일방문!. 24시간 빠른 대응, 해결약속 시간 상관없는 빠른 설치 도어락 긴급출동 서비스",
+   "sub_title": "밤낮없이 출동! 정확한일처리 도어락손상없는 무파손개문",
+   "site": "map.naver.com/p",
+   "thumbnail": "https://search.pstatic.net/common/?src=https%3A%2F%2Fldb-phinf.pstatic.net%2F20261013_299%2F1791866593880z6JKh_JPEG%2F8-_%25BA%25B9%25BB%25E7.jpg&type=a380",
+   "link_list": [
+    {
+     "title": "무파손개문",
+     "link": "https://ader.naver.com/v1/QCYRDpvao1KysdgaEty2Jm9xyiL-XW9U9o9QIC1BG-vrVaXG5xL_V6BUsUwINUwqPWTpNWemduPk5hwGbG_J-Nq3mW9cccb8j8vg8JJO-pGHC8cDZhX__m9cqAT1477a37_gxZEOWiOCQAxa1UOatTN_-si980_CdyLzcfabmr5KzwVjVq6OOylE8XS2UQs0u7-yyFjox14lYIAFTBxP9P634jtHuOAOT5V2-7P1nKy13peLaPZINP9KA88_oX6iIa4qrpR4oX8JXyh1_cwNAZ-lNvKP_ou1Sk903K4Ar5nDt5v9UZA3F0Q81d8HedLG1FI4waGHMV4rg5xyXH0UXefui9H2D12T73CTxkFwpqFGSd78XSzi0vYI4YAtXZ89wWvJx8xz8lQKCqWuZ_irAZ2Xjg_runMAmUrtn9Xwt80tEgdRxg36dArJ7kMjuFTFhPOO6wuIwT0dkR4zAkmVk6v56DaGYejeVO7wxoC1rqt0ntQXbJiwYhNgof_Ztgy7GBq4xCsvRrpCG4NNvUim_HU0VMmDp_KwuKfwavU6BD6FkNTeEoHjQ9ZBQpV6CUcv?c=naver.search.pc.plsearch&t=0"
+    },
+    {
+     "title": "도어락설치",
+     "link": "https://ader.naver.com/v1/QCYRDpvao1KysdgaEty2Jm9xyiL-XW9U9o9QIC1BG-vrVaXG5xL_V6BUsUwINUwqPWTpNWemduPk5hwGbG_J-Nq3mW9cccb8j8vg8JJO-pGHC8cDZhX__m9cqAT1477a37_gxZEOWiOCQAxa1UOatTN_-si980_CdyLzcfabmr5KzwVjVq6OOylE8XS2UQs0u7-yyFjox14lYIAFTBxP9P634jtHuOAOT5V2-7P1nKy13peLaPZINP9KA88_oX6iIa4qrpR4oX8JXyh1_cwNAZ-lNvKP_ou1Sk903K4Ar5nDt5v9UZA3F0Q81d8HedLG1FI4waGHMV4rg5xyXH0UXefui9H2D12T73CTxkFwpqFGSd78XSzi0vYI4YAtXZ89wWvJx8xz8lQKCqWuZ_irAZ2Xjg_runMAmUrtn9Xwt80tEgdRxg36dArJ7kMjuFTFhPOO6wuIwT0dkR4zAkmVk6v56DaGYejeVO7wxoC1rqt0ntQXbJiwYhNgof_Ztgy7GBq4xCsvRrpCG4NNvUim_HU0VMmDp_KwuKfwavU6BD6FkNTeEoHjQ9ZBQpV6CUcv?c=naver.search.pc.plsearch&t=0"
+    },
+    {
+     "title": "도어락수리",
+     "link": "https://ader.naver.com/v1/QCYRDpvao1KysdgaEty2Jm9xyiL-XW9U9o9QIC1BG-vrVaXG5xL_V6BUsUwINUwqPWTpNWemduPk5hwGbG_J-Nq3mW9cccb8j8vg8JJO-pGHC8cDZhX__m9cqAT1477a37_gxZEOWiOCQAxa1UOatTN_-si980_CdyLzcfabmr5KzwVjVq6OOylE8XS2UQs0u7-yyFjox14lYIAFTBxP9P634jtHuOAOT5V2-7P1nKy13peLaPZINP9KA88_oX6iIa4qrpR4oX8JXyh1_cwNAZ-lNvKP_ou1Sk903K4Ar5nDt5v9UZA3F0Q81d8HedLG1FI4waGHMV4rg5xyXH0UXefui9H2D12T73CTxkFwpqFGSd78XSzi0vYI4YAtXZ89wWvJx8xz8lQKCqWuZ_irAZ2Xjg_runMAmUrtn9Xwt80tEgdRxg36dArJ7kMjuFTFhPOO6wuIwT0dkR4zAkmVk6v56DaGYejeVO7wxoC1rqt0ntQXbJiwYhNgof_Ztgy7GBq4xCsvRrpCG4NNvUim_HU0VMmDp_KwuKfwavU6BD6FkNTeEoHjQ9ZBQpV6CUcv?c=naver.search.pc.plsearch&t=0"
+    },
+    {
+     "title": "24긴급출동",
+     "link": "https://ader.naver.com/v1/QCYRDpvao1KysdgaEty2Jm9xyiL-XW9U9o9QIC1BG-vrVaXG5xL_V6BUsUwINUwqPWTpNWemduPk5hwGbG_J-Nq3mW9cccb8j8vg8JJO-pGHC8cDZhX__m9cqAT1477a37_gxZEOWiOCQAxa1UOatTN_-si980_CdyLzcfabmr5KzwVjVq6OOylE8XS2UQs0u7-yyFjox14lYIAFTBxP9P634jtHuOAOT5V2-7P1nKy13peLaPZINP9KA88_oX6iIa4qrpR4oX8JXyh1_cwNAZ-lNvKP_ou1Sk903K4Ar5nDt5v9UZA3F0Q81d8HedLG1FI4waGHMV4rg5xyXH0UXefui9H2D12T73CTxkFwpqFGSd78XSzi0vYI4YAtXZ89wWvJx8xz8lQKCqWuZ_irAZ2Xjg_runMAmUrtn9Xwt80tEgdRxg36dArJ7kMjuFTFhPOO6wuIwT0dkR4zAkmVk6v56DaGYejeVO7wxoC1rqt0ntQXbJiwYhNgof_Ztgy7GBq4xCsvRrpCG4NNvUim_HU0VMmDp_KwuKfwavU6BD6FkNTeEoHjQ9ZBQpV6CUcv?c=naver.search.pc.plsearch&t=0"
+    }
+   ],
+   "fetched_at": "2026-11-01T06:56:49.894703+00:00"
+  },
+  {
+   "result_type": "ad",
+   "query": "도어락",
+   "where": "nexearch",
+   "position": 15,
+   "title": "시흥24시출장도어락전문",
+   "link": "https://ader.naver.com/v1/inarNugWkGRtj9rOtP2f1ahhOmTZFpCBg7RtqpcwJoZEYAvHuOnIFQBoJt4omOvFNlAL3WUXEzdzN1TKh1XnR6zUFddfiT-RWI1BplCNFlnVsg0ghnjXMUlN0XplFzg1doMEqTNF96AUyTm4fnLRtpu2f32TJwc8SF9xF6_6uFgzXcZyizTcVY3b2CC7Zk7h7hQasN3ciQ3vdFkKjZWzc9M1rXWBPMMMh5md6Z-tuR1870GsNn1k_j0B4OPoBE3yltZnam3FpeJ8o33aMHD4TPEU2TVr-T8upXnIULYEu5ERa73A-RSvnAqaVMZ8Yf-T6Evhj6JAzVxctTyav8Muav6bEEF1ejAIuV7X_qgFX8rGS1RBBhjZQuKxNSCPUOz217CLkD9vIWLFPfjtNYZ1egpx4dt9dSFC3hzvt2b6DiIZqprI9hHl8LgKg7qJaR_ceLVNAU2hQE21e31uMhIavhd4DrjDG_23H30Cj20YRBX-KTrgCy98ti-V409qTMGbQUluRwlGy_ZY_erA7op6OzqFqP_uXoIWX9tZYLG7ASo=?c=naver.search.pc.plsearch&t=0",
+   "description": "시흥24시 출장도어락! 내 집처럼 꼼꼼히 설치해드립니다 더 안전하게, 더 편리하게 편리하게 만나는 우리 동네 도어락 전문가",
+   "site": "map.naver.com/p",
+   "thumbnail": "https://searchad-phinf.pstatic.net/MjAyNjEwMDZfOSAg/MDAxNzkxMjgzMDQ0OTIz.wkwnGeRIaleBxwsmJOysaxyQ7gIrk4QjE35hptyOw4wg.SSjaF4GOyErU3xEkkKVUKmBhiIg1Y_hig6H-gY9BK0gg.PNG/4300910-af228917-6b77-4f7f-8876-c5061710685a.png?type=f160_160",
+   "link_list": [
+    {
+     "title": "무파손개문",
+     "link": "https://ader.naver.com/v1/kYI0pRTHGV2_xBF63FxA4Z970q_aS2zBdmU6c7DBitpCpCRmx5dAho145bTNBklWlRyfW--B2W3s7-yZr0L4zLEsdL8W55E-vurQ7lWtCz_wrhZYvE7SAFaxN3A_1PwvqsY_FGEhR7Iu-9v4cRDYQXCETZjXmwBiC2Lp1AIO_nILrOQ7x8x50L3bKLRDpBSNzCNSoMkPPgR-9D1xOVubVAiKo837naN8u9Z-XD-M5dSRQTkms974_Bm6UbwEZbBqyiUWdkmuT3j0hwdoVSRjcWqN6dzd28PsVm_FBWgIKPv743-sfDd6x-5eveKBf1GQDVahedQIY_4Gvu0NlJSlBNio8U94voqvk1ILlLP4OtAHhyaNmEsoTCxZas565670R1wC9Q9-Is1ZpVdFxjK2Kla0h0lMHyK2lZzySjqDBkDn1ilBUmBh_RVpvM-PPvdFii3LFxx9EtzLpkV9v1g4elFhyBcEwiR9nKGRn_g2ZMTSNe0PaEykTxi63VVkvVX3eA_oJuVnamMbtUhrImUpWUl57yTDAle-ffUj9XuLBfpK1ZqbRyys2BHQ1j8ZVetQ?c=naver.search.pc.plsearch&t=0"
+    },
+    {
+     "title": "도어락설치",
+     "link": "https://ader.naver.com/v1/kYI0pRTHGV2_xBF63FxA4Z970q_aS2zBdmU6c7DBitpCpCRmx5dAho145bTNBklWlRyfW--B2W3s7-yZr0L4zLEsdL8W55E-vurQ7lWtCz_wrhZYvE7SAFaxN3A_1PwvqsY_FGEhR7Iu-9v4cRDYQXCETZjXmwBiC2Lp1AIO_nILrOQ7x8x50L3bKLRDpBSNzCNSoMkPPgR-9D1xOVubVAiKo837naN8u9Z-XD-M5dSRQTkms974_Bm6UbwEZbBqyiUWdkmuT3j0hwdoVSRjcWqN6dzd28PsVm_FBWgIKPv743-sfDd6x-5eveKBf1GQDVahedQIY_4Gvu0NlJSlBNio8U94voqvk1ILlLP4OtAHhyaNmEsoTCxZas565670R1wC9Q9-Is1ZpVdFxjK2Kla0h0lMHyK2lZzySjqDBkDn1ilBUmBh_RVpvM-PPvdFii3LFxx9EtzLpkV9v1g4elFhyBcEwiR9nKGRn_g2ZMTSNe0PaEykTxi63VVkvVX3eA_oJuVnamMbtUhrImUpWUl57yTDAle-ffUj9XuLBfpK1ZqbRyys2BHQ1j8ZVetQ?c=naver.search.pc.plsearch&t=0"
+    },
+    {
+     "title": "도어락수리",
+     "link": "https://ader.naver.com/v1/kYI0pRTHGV2_xBF63FxA4Z970q_aS2zBdmU6c7DBitpCpCRmx5dAho145bTNBklWlRyfW--B2W3s7-yZr0L4zLEsdL8W55E-vurQ7lWtCz_wrhZYvE7SAFaxN3A_1PwvqsY_FGEhR7Iu-9v4cRDYQXCETZjXmwBiC2Lp1AIO_nILrOQ7x8x50L3bKLRDpBSNzCNSoMkPPgR-9D1xOVubVAiKo837naN8u9Z-XD-M5dSRQTkms974_Bm6UbwEZbBqyiUWdkmuT3j0hwdoVSRjcWqN6dzd28PsVm_FBWgIKPv743-sfDd6x-5eveKBf1GQDVahedQIY_4Gvu0NlJSlBNio8U94voqvk1ILlLP4OtAHhyaNmEsoTCxZas565670R1wC9Q9-Is1ZpVdFxjK2Kla0h0lMHyK2lZzySjqDBkDn1ilBUmBh_RVpvM-PPvdFii3LFxx9EtzLpkV9v1g4elFhyBcEwiR9nKGRn_g2ZMTSNe0PaEykTxi63VVkvVX3eA_oJuVnamMbtUhrImUpWUl57yTDAle-ffUj9XuLBfpK1ZqbRyys2BHQ1j8ZVetQ?c=naver.search.pc.plsearch&t=0"
+    },
+    {
+     "title": "24긴급출동",
+     "link": "https://ader.naver.com/v1/kYI0pRTHGV2_xBF63FxA4Z970q_aS2zBdmU6c7DBitpCpCRmx5dAho145bTNBklWlRyfW--B2W3s7-yZr0L4zLEsdL8W55E-vurQ7lWtCz_wrhZYvE7SAFaxN3A_1PwvqsY_FGEhR7Iu-9v4cRDYQXCETZjXmwBiC2Lp1AIO_nILrOQ7x8x50L3bKLRDpBSNzCNSoMkPPgR-9D1xOVubVAiKo837naN8u9Z-XD-M5dSRQTkms974_Bm6UbwEZbBqyiUWdkmuT3j0hwdoVSRjcWqN6dzd28PsVm_FBWgIKPv743-sfDd6x-5eveKBf1GQDVahedQIY_4Gvu0NlJSlBNio8U94voqvk1ILlLP4OtAHhyaNmEsoTCxZas565670R1wC9Q9-Is1ZpVdFxjK2Kla0h0lMHyK2lZzySjqDBkDn1ilBUmBh_RVpvM-PPvdFii3LFxx9EtzLpkV9v1g4elFhyBcEwiR9nKGRn_g2ZMTSNe0PaEykTxi63VVkvVX3eA_oJuVnamMbtUhrImUpWUl57yTDAle-ffUj9XuLBfpK1ZqbRyys2BHQ1j8ZVetQ?c=naver.search.pc.plsearch&t=0"
+    }
+   ],
+   "fetched_at": "2026-11-01T06:56:49.935783+00:00"
+  },
+  {
+   "result_type": "ad",
+   "query": "도어락",
+   "where": "nexearch",
+   "position": 16,
+   "title": "부평24시출장 도어락전문",
+   "link": "https://ader.naver.com/v1/inarNugWkGRtj9rOtP2f1UmPs7C4gJEaHaox1cZDeTxlYVRNUnQ6kT1GmvKq7t8kSiJxQZraBZVXc5E7zCxi8pd8OW75abTGwXy5Wd3pBhz8ql1RKCX4HinKfXRCrfXDpC3aXf_Kck5oUVe0jN6ueXMIUFLg555m6t_avunRLgkeprFSj--JKh3uLzGJC8j1BmHgW4aPitvKTVsyCG1zeQumrT-Zv6kLDtUSEAw2OfnnFRNze4uzcNvk-VkiQh17429R2Q-VV5gqaCHrmGdHhuKKq8TGIyiAX0pcweT8_B-c4AR7hRriIy0OdLbg38yhyVun9MO7KFqbkFEIVuhO68lmqA2IH_6tFa-68epUXuoL75OYCXbqwEprdyR1UqtbLPk0KhrIwycaHfVi6hIz3F3r6JCbzb8ZBC_7Lzcrbss_s9SUZWh5hzo54vA6nQ5tqXTQYna2yMvhrgHxSjRZUhVITL3ztrYi6Gsyvc2Ln_pXD8z8ps_gn_qhJv9NCEz-MVCeICN2RwBzaGxOX9IUYk6AKUoqK-Aya7AZIMoe9ik=?c=naver.search.pc.plsearch&t=0",
+   "description": "밤낮없이 출동! 빠른 대응과 안전한 해결 정확한일처리, 도어락손상없는 무파손개문",
+   "sub_title": "부평24시도어락 출장전문 무파손개문 잠긴문 즉시출동!",
+   "site": "map.naver.com/p",
+   "thumbnail": "https://searchad-phinf.pstatic.net/MjAyNjA4MjFfNTEg/MDAxNzg3MjQzODk0MzM3.YNMNZ71VSAJM-L_wVxIAvtXO9Cc7G3iXzaWCiphpLLEg.TxPc55C6-BTtzLCe5_dbbSKzy-P917FYk6YXD_W3WwMg.PNG/4317475-1c13bb10-ec04-4b0b-8b03-5931025b5c19.png?type=f160_160",
+   "link_list": [
+    {
+     "title": "무파손개문",
+     "link": "https://ader.naver.com/v1/kYI0pRTHGV2_xBF63FxA4QFVNdwQ-8y2e916zjkNA0YyQbFg6H8yZU8M2hXT_aaZqhG82b-pSreSPKibYBPkEJPv-uxIlaPuWpZ4S2Al2qdM3n0n5EXFlm7D9Ta1gqJSdedBT0M3aaNAjyB08tik4y0N8mb2DbwanhKhwd6XZcesHr8xbMHaFcqxkCnJVdeMeMN7E6j6xNF6VuJ3f38D4GEtSH7EZjO0vGsjYjl466VUXAcW5uF_cihtO3u2VUobFb0ZwZCkYWK0-or7Dc1p3NezZ6FTQxChBn7j9CkGZ5knVRffQ4ZWyOSIdrkFpJGX2SjLd9l6jqkIwtiDnGo-gJP8KWKtuAI_DZzy6qT03rerRIsSjZuKIKuepCJ8nmy1i9HI7BRv_ZEaVaPqJbN6gtdkcAh4dx22iG5TMJzb4kG6MBlRu0cI46IaIVBWlqByk3gIW9K2EEUDsRUeL0d2vFS_d3D5qxP6vjX2gtsAQLRAIE7VfgYb7clytkpwCZwoEi4kEqRtU8xD71GMCc39BE9XfxLKdNYvmqly9JVRIysDnzIpoZzAHnOcjwAkdBB5?c=naver.search.pc.plsearch&t=0"
+    },
+    {
+     "title": "도어락설치",
+     "link": "https://ader.naver.com/v1/kYI0pRTHGV2_xBF63FxA4QFVNdwQ-8y2e916zjkNA0YyQbFg6H8yZU8M2hXT_aaZqhG82b-pSreSPKibYBPkEJPv-uxIlaPuWpZ4S2Al2qdM3n0n5EXFlm7D9Ta1gqJSdedBT0M3aaNAjyB08tik4y0N8mb2DbwanhKhwd6XZcesHr8xbMHaFcqxkCnJVdeMeMN7E6j6xNF6VuJ3f38D4GEtSH7EZjO0vGsjYjl466VUXAcW5uF_cihtO3u2VUobFb0ZwZCkYWK0-or7Dc1p3NezZ6FTQxChBn7j9CkGZ5knVRffQ4ZWyOSIdrkFpJGX2SjLd9l6jqkIwtiDnGo-gJP8KWKtuAI_DZzy6qT03rerRIsSjZuKIKuepCJ8nmy1i9HI7BRv_ZEaVaPqJbN6gtdkcAh4dx22iG5TMJzb4kG6MBlRu0cI46IaIVBWlqByk3gIW9K2EEUDsRUeL0d2vFS_d3D5qxP6vjX2gtsAQLRAIE7VfgYb7clytkpwCZwoEi4kEqRtU8xD71GMCc39BE9XfxLKdNYvmqly9JVRIysDnzIpoZzAHnOcjwAkdBB5?c=naver.search.pc.plsearch&t=0"
+    },
+    {
+     "title": "도어락수리",
+     "link": "https://ader.naver.com/v1/kYI0pRTHGV2_xBF63FxA4QFVNdwQ-8y2e916zjkNA0YyQbFg6H8yZU8M2hXT_aaZqhG82b-pSreSPKibYBPkEJPv-uxIlaPuWpZ4S2Al2qdM3n0n5EXFlm7D9Ta1gqJSdedBT0M3aaNAjyB08tik4y0N8mb2DbwanhKhwd6XZcesHr8xbMHaFcqxkCnJVdeMeMN7E6j6xNF6VuJ3f38D4GEtSH7EZjO0vGsjYjl466VUXAcW5uF_cihtO3u2VUobFb0ZwZCkYWK0-or7Dc1p3NezZ6FTQxChBn7j9CkGZ5knVRffQ4ZWyOSIdrkFpJGX2SjLd9l6jqkIwtiDnGo-gJP8KWKtuAI_DZzy6qT03rerRIsSjZuKIKuepCJ8nmy1i9HI7BRv_ZEaVaPqJbN6gtdkcAh4dx22iG5TMJzb4kG6MBlRu0cI46IaIVBWlqByk3gIW9K2EEUDsRUeL0d2vFS_d3D5qxP6vjX2gtsAQLRAIE7VfgYb7clytkpwCZwoEi4kEqRtU8xD71GMCc39BE9XfxLKdNYvmqly9JVRIysDnzIpoZzAHnOcjwAkdBB5?c=naver.search.pc.plsearch&t=0"
+    },
+    {
+     "title": "24긴급출동",
+     "link": "https://ader.naver.com/v1/kYI0pRTHGV2_xBF63FxA4QFVNdwQ-8y2e916zjkNA0YyQbFg6H8yZU8M2hXT_aaZqhG82b-pSreSPKibYBPkEJPv-uxIlaPuWpZ4S2Al2qdM3n0n5EXFlm7D9Ta1gqJSdedBT0M3aaNAjyB08tik4y0N8mb2DbwanhKhwd6XZcesHr8xbMHaFcqxkCnJVdeMeMN7E6j6xNF6VuJ3f38D4GEtSH7EZjO0vGsjYjl466VUXAcW5uF_cihtO3u2VUobFb0ZwZCkYWK0-or7Dc1p3NezZ6FTQxChBn7j9CkGZ5knVRffQ4ZWyOSIdrkFpJGX2SjLd9l6jqkIwtiDnGo-gJP8KWKtuAI_DZzy6qT03rerRIsSjZuKIKuepCJ8nmy1i9HI7BRv_ZEaVaPqJbN6gtdkcAh4dx22iG5TMJzb4kG6MBlRu0cI46IaIVBWlqByk3gIW9K2EEUDsRUeL0d2vFS_d3D5qxP6vjX2gtsAQLRAIE7VfgYb7clytkpwCZwoEi4kEqRtU8xD71GMCc39BE9XfxLKdNYvmqly9JVRIysDnzIpoZzAHnOcjwAkdBB5?c=naver.search.pc.plsearch&t=0"
+    }
+   ],
+   "fetched_at": "2026-11-01T06:56:49.980635+00:00"
+  },
+  {
+   "result_type": "ad",
+   "query": "도어락",
+   "where": "nexearch",
+   "position": 17,
+   "title": "연수구24시출장 도어락전문",
+   "link": "https://ader.naver.com/v1/inarNugWkGRtj9rOtP2f1Va51y0aih0sSTSz1onUdDVSKc8vjOwS5zLCGR04SQTxaKj5czEiModVFroHns8P_dAiQNLdIcqDZ6sb8oPh6cOP5Uv8MwkL3l60xXiO_jsC1Cb7dmjoUqZxkhwrEMjjQUlHA_dBIuqiXEldfgoGg5HorwW426VphNlUO4mO9wkt3XhiOpmFGIOrpMxb1QWBirG_CeMr-SxNu116N3C9FvaqUotMcrS2juPCTw72a-Gv-_VDGejOP1mJjwtFG41rqJQCY9Wlp2ST5Iv0AG0xZ422CXBzKq2v3OBoufiFxseMlIMIMKd15_Z-JF_sGDsUczK6iIttg8_B_mK64yYw7GDzbINw8SqQ4KBz6KHZjafdeb1T3lN6o6Vo_wCCbRgauJqfzCqWXBwL1paPQSUi2-hxFq-1oUEQ72-3esE_tg4942i4npG770UyEls4gT2IvHFoPEpAlAaQo24UYoFCVM6UElvXuerbVUlkZPG9HAt8APkOl9-9EE7e4Qj9uD8GkHPR6OaM4cbdtNLmR8Lgeg0=?c=naver.search.pc.plsearch&t=0",
+   "description": "밤낮없이 출동! 빠른 대응과 안전한 해결 정확한일처리, 도어락손상없는 무파손개문 빠른대응, 빠른진단, 정확한해결, 인천전지역 출동",
+   "sub_title": "연수구도어락 24시출장수리 무파손개문 잠긴문 즉시출동!",
+   "site": "map.naver.com/p",
+   "thumbnail": "https://searchad-phinf.pstatic.net/MjAyNjAzMjJfODMg/MDAxNzc0MTU5NjU3OTIy.8OksmN8MeXH7_LYQjrDLd0Uv-H2IQu2psqNLUhZxCL0g.6sZi4EJ3tjrTpeDy4lyg6xHJuK6BgQM_R0vrOhESxF0g.PNG/4324382-eccbd195-dc76-4e1e-8c57-809de0140a8b.png?type=f160_160",
+   "link_list": [
+    {
+     "title": "무파손개문",
+     "link": "https://ader.naver.com/v1/ICGsqLOPSR_D5biFHFJCR6muJItCjEHxwFpzTuuRfACPpQtqyNVcVhz4d4VjJrO1_AoesBu2_V74sqsYyrApBNG_L_0huKZfvjWrnL-_Ds9GaWj1rO3WzYV4cO-7bpKEj5PkKbfPaHeVC19hWQD-XkWZ4PU-Txm0OAbUm33gZo1lbcB6yQQGSeHgMxOA6Z7MZw9iTOkiGwZQwM6Ufd_UevWlc4P2JiEYaHTFrZcBJb7FulqSguGkZtWJeeI9VRlPGiAmVQNRWydmhZY38vWcZIrfE3KVSeRSuF2HNfzYqLZ_O8C_UCK7N-_HJDrncQFsRwB0KYBMyW4hfCTFQOUqgAskSQmH6zos0vViRDbjEGAjCjP6mrf9jKhQU3u22tJFXq-d4oCMW2ohLk-kCs21suyalxWBuH-LJHMSuZg-V7xSb8act-guigD-wE1M0KE0rUtHr1bLO7KpC6EHBWABplJU2XITQTFoh2rIAVEMON91ZlD9m7LsT06D8rhTdmMq3WY_gG_hRqJKcRomHLqBjhBVwJHzKaVcRH8Q3ZMRSKVx0vXhBZY2Njcxrc6ZTtSJ?c=naver.search.pc.plsearch&t=0"
+    },
+    {
+     "title": "도어락설치",
+     "link": "https://ader.naver.com/v1/ICGsqLOPSR_D5biFHFJCR6muJItCjEHxwFpzTuuRfACPpQtqyNVcVhz4d4VjJrO1_AoesBu2_V74sqsYyrApBNG_L_0huKZfvjWrnL-_Ds9GaWj1rO3WzYV4cO-7bpKEj5PkKbfPaHeVC19hWQD-XkWZ4PU-Txm0OAbUm33gZo1lbcB6yQQGSeHgMxOA6Z7MZw9iTOkiGwZQwM6Ufd_UevWlc4P2JiEYaHTFrZcBJb7FulqSguGkZtWJeeI9VRlPGiAmVQNRWydmhZY38vWcZIrfE3KVSeRSuF2HNfzYqLZ_O8C_UCK7N-_HJDrncQFsRwB0KYBMyW4hfCTFQOUqgAskSQmH6zos0vViRDbjEGAjCjP6mrf9jKhQU3u22tJFXq-d4oCMW2ohLk-kCs21suyalxWBuH-LJHMSuZg-V7xSb8act-guigD-wE1M0KE0rUtHr1bLO7KpC6EHBWABplJU2XITQTFoh2rIAVEMON91ZlD9m7LsT06D8rhTdmMq3WY_gG_hRqJKcRomHLqBjhBVwJHzKaVcRH8Q3ZMRSKVx0vXhBZY2Njcxrc6ZTtSJ?c=naver.search.pc.plsearch&t=0"
+    },
+    {
+     "title": "도어락수리",
+     "link": "https://ader.naver.com/v1/ICGsqLOPSR_D5biFHFJCR6muJItCjEHxwFpzTuuRfACPpQtqyNVcVhz4d4VjJrO1_AoesBu2_V74sqsYyrApBNG_L_0huKZfvjWrnL-_Ds9GaWj1rO3WzYV4cO-7bpKEj5PkKbfPaHeVC19hWQD-XkWZ4PU-Txm0OAbUm33gZo1lbcB6yQQGSeHgMxOA6Z7MZw9iTOkiGwZQwM6Ufd_UevWlc4P2JiEYaHTFrZcBJb7FulqSguGkZtWJeeI9VRlPGiAmVQNRWydmhZY38vWcZIrfE3KVSeRSuF2HNfzYqLZ_O8C_UCK7N-_HJDrncQFsRwB0KYBMyW4hfCTFQOUqgAskSQmH6zos0vViRDbjEGAjCjP6mrf9jKhQU3u22tJFXq-d4oCMW2ohLk-kCs21suyalxWBuH-LJHMSuZg-V7xSb8act-guigD-wE1M0KE0rUtHr1bLO7KpC6EHBWABplJU2XITQTFoh2rIAVEMON91ZlD9m7LsT06D8rhTdmMq3WY_gG_hRqJKcRomHLqBjhBVwJHzKaVcRH8Q3ZMRSKVx0vXhBZY2Njcxrc6ZTtSJ?c=naver.search.pc.plsearch&t=0"
+    },
+    {
+     "title": "즉시출동",
+     "link": "https://ader.naver.com/v1/ICGsqLOPSR_D5biFHFJCR6muJItCjEHxwFpzTuuRfACPpQtqyNVcVhz4d4VjJrO1_AoesBu2_V74sqsYyrApBNG_L_0huKZfvjWrnL-_Ds9GaWj1rO3WzYV4cO-7bpKEj5PkKbfPaHeVC19hWQD-XkWZ4PU-Txm0OAbUm33gZo1lbcB6yQQGSeHgMxOA6Z7MZw9iTOkiGwZQwM6Ufd_UevWlc4P2JiEYaHTFrZcBJb7FulqSguGkZtWJeeI9VRlPGiAmVQNRWydmhZY38vWcZIrfE3KVSeRSuF2HNfzYqLZ_O8C_UCK7N-_HJDrncQFsRwB0KYBMyW4hfCTFQOUqgAskSQmH6zos0vViRDbjEGAjCjP6mrf9jKhQU3u22tJFXq-d4oCMW2ohLk-kCs21suyalxWBuH-LJHMSuZg-V7xSb8act-guigD-wE1M0KE0rUtHr1bLO7KpC6EHBWABplJU2XITQTFoh2rIAVEMON91ZlD9m7LsT06D8rhTdmMq3WY_gG_hRqJKcRomHLqBjhBVwJHzKaVcRH8Q3ZMRSKVx0vXhBZY2Njcxrc6ZTtSJ?c=naver.search.pc.plsearch&t=0"
+    }
+   ],
+   "fetched_at": "2026-11-01T06:56:50.040268+00:00"
+  },
+  {
+   "result_type": "ad",
+   "query": "도어락",
+   "where": "nexearch",
+   "position": 18,
+   "title": "보라동24시출장 도어락전문",
+   "link": "https://ader.naver.com/v1/h3pzPJcfwzhyoH9eVL3nXJ_VqAlX-4R5nFkhdCppcy7NicfzqrsvLiAN3qWE0TST4epFe9rzvX0Z3xUnJ1HIxYJ11rl11ZUCSZd92oMDpUx07kTq-awmPXS-nnUnHfBSTyF11X5Fk5svFPPav_Am2KxQJ7Mc4fU5fngz598wZDrfdsSHE7DV6quV-cW_T6LovkGQFv8RsQBGLQiNe28NEef7JImPox0jp0xmcz6znBMz1IhB9S3BSMFxgZKKws1dTBnwODUY9QnbC4XtR22SpTF4PJinkT8FkY3kQrT4rcJ8ZkBonWYntrSn7sOYpGdYb3r-2zRqm1A1snHtI6Fa74AWWubQtvS69K1jfuJiQOxM8JbKL8U5ULqSMy-56c7kmGgBYt-di_j8yvWTIo6vzMdmDsnhJKapXJV3oBRXPGf2wEQ3eoeAW3hndpTcL3oasM86JmWuez9-6Qp6MgFWOlhmeVDDJ_yewc35AOn7bCZJHbgZGAl06ysGFrgAapfqXqDfuMT9EqCCyk27QbtDHia4bm9DKz9QxGJfcTINzEM=?c=naver.search.pc.plsearch&t=0",
+   "description": "밤낮없이 출동! 빠른 대응과 안전한 해결 정확한일처리, 도어락손상없는 무파손개문",
+   "sub_title": "보라동24시도어락 출장전문",
+   "site": "map.naver.com/p",
+   "thumbnail": "https://searchad-phinf.pstatic.net/MjAyNjA5MjlfMjY4/MDAxNzkwNjczMzU2NjYw.Xa7bdRh7C0mfpnYBsEpevAwlnSNbhMS8K_uc-TImnuwg.SN9Q2--u_y-idfzJUAhoUXdX8vsMrjC1ljyx294brPwg.JPEG/4479853-282194d3-5ee3-4d17-9dcb-304ee4ae9f92.jpg?type=f160_160",
+   "link_list": [
+    {
+     "title": "무파손개문",
+     "link": "https://ader.naver.com/v1/7BdCKzPKBt3GLXZ8XRZRIYplV6G77mG52d5Z4-F1MDfUAO1ahHiiJ-Z7bzQNlsb2H6V387a0JcDq85ZL14FBqjvSzbClwZE3BluOMZkmdwtwhFSbPpXz7M6DiYCGFHy12_tCIkjcU17bOxNAXBXWIDP5scF1ukLCCB4a34-0Ut1bMOq_jCmdNE6pQNapt8FLRTR0rURtvsrP_PBywZ0JkMeNB7qR9apTC5yLtsZKWpEodmMtnslUxswHCWOVHMWI70PR15COez6Lws-31sPw7U25pLj9h_Y3AUSDDq3EszusP1tW3ix3K6VFOiGDNH9sn5vkVPPed7UifrnY5fLtstOlQ2X56jcTofh4ULsDPkrOkDiWPOQArMyvHiXXK5DSxDgMvUORLsPZ0ujaL4-rQVOkXeC4_W1ShxZuimaEjJE7i4DaSiHrOk3PWeTibh2RnWFpS8mjGOn8CTBHrJfDKU30Zb9RrdCw3V-87loAz-zm314pGmsT1g2fPivYIqluqa77s9Q8DLpV9UTQLLEmsq5jPLssVsae7zqgOW9nSScf6-U6uZACdF6EGW2Go0xq?c=naver.search.pc.plsearch&t=0"
+    },
+    {
+     "title": "도어락설치",
+     "link": "https://ader.naver.com/v1/7BdCKzPKBt3GLXZ8XRZRIYplV6G77mG52d5Z4-F1MDfUAO1ahHiiJ-Z7bzQNlsb2H6V387a0JcDq85ZL14FBqjvSzbClwZE3BluOMZkmdwtwhFSbPpXz7M6DiYCGFHy12_tCIkjcU17bOxNAXBXWIDP5scF1ukLCCB4a34-0Ut1bMOq_jCmdNE6pQNapt8FLRTR0rURtvsrP_PBywZ0JkMeNB7qR9apTC5yLtsZKWpEodmMtnslUxswHCWOVHMWI70PR15COez6Lws-31sPw7U25pLj9h_Y3AUSDDq3EszusP1tW3ix3K6VFOiGDNH9sn5vkVPPed7UifrnY5fLtstOlQ2X56jcTofh4ULsDPkrOkDiWPOQArMyvHiXXK5DSxDgMvUORLsPZ0ujaL4-rQVOkXeC4_W1ShxZuimaEjJE7i4DaSiHrOk3PWeTibh2RnWFpS8mjGOn8CTBHrJfDKU30Zb9RrdCw3V-87loAz-zm314pGmsT1g2fPivYIqluqa77s9Q8DLpV9UTQLLEmsq5jPLssVsae7zqgOW9nSScf6-U6uZACdF6EGW2Go0xq?c=naver.search.pc.plsearch&t=0"
+    },
+    {
+     "title": "도어락수리",
+     "link": "https://ader.naver.com/v1/7BdCKzPKBt3GLXZ8XRZRIYplV6G77mG52d5Z4-F1MDfUAO1ahHiiJ-Z7bzQNlsb2H6V387a0JcDq85ZL14FBqjvSzbClwZE3BluOMZkmdwtwhFSbPpXz7M6DiYCGFHy12_tCIkjcU17bOxNAXBXWIDP5scF1ukLCCB4a34-0Ut1bMOq_jCmdNE6pQNapt8FLRTR0rURtvsrP_PBywZ0JkMeNB7qR9apTC5yLtsZKWpEodmMtnslUxswHCWOVHMWI70PR15COez6Lws-31sPw7U25pLj9h_Y3AUSDDq3EszusP1tW3ix3K6VFOiGDNH9sn5vkVPPed7UifrnY5fLtstOlQ2X56jcTofh4ULsDPkrOkDiWPOQArMyvHiXXK5DSxDgMvUORLsPZ0ujaL4-rQVOkXeC4_W1ShxZuimaEjJE7i4DaSiHrOk3PWeTibh2RnWFpS8mjGOn8CTBHrJfDKU30Zb9RrdCw3V-87loAz-zm314pGmsT1g2fPivYIqluqa77s9Q8DLpV9UTQLLEmsq5jPLssVsae7zqgOW9nSScf6-U6uZACdF6EGW2Go0xq?c=naver.search.pc.plsearch&t=0"
+    },
+    {
+     "title": "24긴급출동",
+     "link": "https://ader.naver.com/v1/7BdCKzPKBt3GLXZ8XRZRIYplV6G77mG52d5Z4-F1MDfUAO1ahHiiJ-Z7bzQNlsb2H6V387a0JcDq85ZL14FBqjvSzbClwZE3BluOMZkmdwtwhFSbPpXz7M6DiYCGFHy12_tCIkjcU17bOxNAXBXWIDP5scF1ukLCCB4a34-0Ut1bMOq_jCmdNE6pQNapt8FLRTR0rURtvsrP_PBywZ0JkMeNB7qR9apTC5yLtsZKWpEodmMtnslUxswHCWOVHMWI70PR15COez6Lws-31sPw7U25pLj9h_Y3AUSDDq3EszusP1tW3ix3K6VFOiGDNH9sn5vkVPPed7UifrnY5fLtstOlQ2X56jcTofh4ULsDPkrOkDiWPOQArMyvHiXXK5DSxDgMvUORLsPZ0ujaL4-rQVOkXeC4_W1ShxZuimaEjJE7i4DaSiHrOk3PWeTibh2RnWFpS8mjGOn8CTBHrJfDKU30Zb9RrdCw3V-87loAz-zm314pGmsT1g2fPivYIqluqa77s9Q8DLpV9UTQLLEmsq5jPLssVsae7zqgOW9nSScf6-U6uZACdF6EGW2Go0xq?c=naver.search.pc.plsearch&t=0"
+    }
+   ],
+   "fetched_at": "2026-11-01T06:56:50.082097+00:00"
+  },
+  {
+   "result_type": "ad",
+   "query": "도어락",
+   "where": "nexearch",
+   "position": 19,
+   "title": "남양주 24시출장 열쇠도어락",
+   "link": "https://ader.naver.com/v1/sZg59bV5_T-ITzkFIN6YgpJFPlxoYf6oBCpqxC3w6aPI2YCWKMIBa2jRHTqZ6ZHFRfXF8CnrnTL9EvIx1IJC92TGyRT1wmE3MISAKn0EYyn604IAE6utRBlpVVfch5AX2NwKdog4DXBpM6qnN0shpSe_W6w8VsVaHx1bzP9JX3-mN_915H2S6Rsz7h-W8rC9Mwd5g14iwImmP-34jROnNYiqEBaOO7yQKX0VfKRkJWMxwVmVrBs6hA6VDODcb-EInelht4mdd8R0V2ZnOROyWP1QxxN3BgkNrDbpX3MJX598r60c8O6G-GOBx21r2MT9L8R2m3PC3pBqFvQ6ve1dn2dcjOYjtWG-xnzdp2cm7q-CDTKtnbYrg-5rQSXd1IoDyFTi2n_I6PMklDDhTQYAHuV62e3iNAd3BPfH_UA2Y7c5bKZAWT4U9RQfHLO7eCvvdKPWwyRxd39M-4-1t6QPEh8sZGg28w6-RVQw04w7wdKmwUP1O39Kbn_UrTSAOTzb1fQlRitMIIUm-ZJFEcZzcWrQ9wTIFUqojkNW17nSgYM=?c=naver.search.pc.plsearch&t=0",
+   "description": "빠른 대응과 안전한 해결 정확한 일처리, 도어락손상없는 무파손개문",
+   "sub_title": "무파손개문 잠긴문 별내24시 남양주도어락 출장수리",
+   "site": "map.naver.com/p",
+   "fetched_at": "2026-11-01T06:56:50.135122+00:00"
+  }
+ ]
+}
