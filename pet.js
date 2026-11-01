@@ -1,19 +1,21 @@
 /* 위젯 미니펫 — app.js 에서 떼어 낸 묶음. 위젯(?w=1)일 때만 app.js(petBoot)가 이 파일을 받는다 — 본편·폰은 받지 않는다.
-   app.js 의 전역($·esc·toast·APP_VER·WIDGET·widCfgLoad·widCfgSave·todayStr·buildEvents·findPlan)을 그대로 쓴다.
+   app.js 의 전역($·esc·toast·APP_VER·WIDGET·widCfgLoad·widCfgSave·todayStr·buildEvents·findPlan·teamTasks·mineTasks·taskDate·taskAsPlan·planColor·colBg·isLightBg·TEAM_COLOR 등)을 그대로 쓴다.
    app.js 쪽 창구는 window.PETM 하나(sync·done·pick·pickToggle·cat·toggle) — 이 파일이 늦게 와도 app.js 는 PETM 이 있을 때만 부른다 */
 'use strict';
 /* ── 미니펫 ── 위젯 머리 줄의 빈자리(년월 묶음 ~ 단추 묶음)를 걷는 픽셀 펫. 목록은 assets/pets.js 라 펫을 고를 때만 불러온다.
    걷다가 가끔 쉰다. 끝에서는 좌우만 뒤집는다.
    누르기: 울음소리·전용 멘트 → 대사 → 잠깐 멈춤 → 오늘 업무 수 → 달리기 차례로. 머리 줄 빈 곳을 누르면 공(먹이)을 던진다.
-   시간 대사: 11:00~11:30 점심, 17시 이후 퇴근(가끔 혼잣말). 업무 완료 때 축하(histPush 'done').
+   시간 대사: 11:00~11:30 점심, 17시 이후 퇴근(가끔 혼잣말). 업무 대사: 공통(팀 색 테)·내 업무(내 막대 색). 업무 완료 때 축하(histPush 'done').
    ⚠ 대사는 글자만 또는 이모지만 — 한 대사에 섞지 않는다(사용자) */
 const PET_LINES={tap:['허거덩','허걱스','하이','왜요?','😮','🤔','👀'],
   done:['업무 완료!','오늘도 내가 해냄','🎉','👍'],
   lunch:['맛점','점심 뭐먹냐','배고프다','🍚','🍜','🍕','🍔','🍙','🍖'],
   leave:['칼퇴 좀','퇴근해요','집에 보내죠','집에 가자'],
   food:['😋'],drop:['😵'],idle:['일 안하농'],
-  today:['오늘 업무 {n}건'],com:['{t} 하자!']};   /* {n}·{t} 는 숫자·업무 이름으로 바뀐다 · 사용자가 대사 편집 폼에서 고친 값 */
+  today:['오늘 업무 {n}건'],com:['{t} 하자!'],mine:['{t} 해야지','{t} 잊지 마!'],late:['{t} 기한 지났어!']};   /* {n}·{t} 는 숫자·업무 이름으로 바뀐다 · 사용자가 대사 편집 폼에서 고친 값 */
 const petPick=a=>a[Math.floor(Math.random()*a.length)];
+/* 말풍선 꼬리 색 — 꼬리는 한 색이라 그라디언트·무지개는 첫 색(1293) */
+const petTail=c=>{if(isRainbow(c))return '#F43F5E';const g=gcParse(c);if(g)return g.a;if(isGrad(c)){const m=/#[0-9A-Fa-f]{6}/.exec(GRADS[gradBase(c)]||'');return m?m[0]:TEAM_COLOR;}return c;};
 const PET_IT_SZ={tile:15,report:18,water:17,coffee:17,cone:17,paste:17,plank:17,cart:18,hammer:18,spanner:18,battery:19};   /* 던지는 그림 크기(px, 기본 16) — 눈으로 맞춤: 꽉 찬 둥근 것은 작게, 가늘거나 비스듬한 것은 크게 */
 const petUrl=f=>'./assets/pets/'+f+'?v='+APP_VER;   /* 그림 파일 — 쓰는 것만 받고 브라우저가 캐시한다 */
 const petSlot=()=>{const d=new Date(),v=d.getHours()*60+d.getMinutes();return v>=660&&v<=690?'lunch':v>=1020?'leave':'';};
@@ -48,7 +50,11 @@ function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl
     const a=x,d=Math.max(1,Math.abs(tx-a)/v*1000);
     anim=el.animate([{transform:'translateX('+Math.round(a)+'px)'},{transform:'translateX('+Math.round(tx)+'px)'}],{duration:d,easing:'steps('+Math.max(1,Math.round(Math.abs(tx-a)/2))+')',fill:'forwards'});   /* 2px 씩 끊어 간다 — 화면을 다시 그리는 횟수가 줄어 걷는 동안 CPU 약 절반(사용자 비교 후 결정) */
     anim._a=a;anim._b=tx;anim._d=d;anim.onfinish=()=>{x=tx;const f=anim;anim=null;el.style.transform='translateX('+Math.round(x)+'px)';if(f)f.cancel();(done||next)();};};   /* ⚠ fill:forwards 는 끝나도 transform 을 계속 쥔다 — 자리를 인라인으로 옮겨 적고 지운다(안 지우면 그 뒤 끌기가 그림자만 움직였다) */
-  const say=(t,ms=1800)=>{bub.textContent=t;bub.classList.toggle('emo',!/[\p{L}\p{N}]/u.test(t));
+  /* tk = 업무 대사 {k:'com'|'mine',c} — 달력 막대처럼: 공통 = 흰 바탕 + 팀 색 테 · 내 업무 = 내 막대 색 채움(1293). c = planColor */
+  const say=(t,ms=1800,tk)=>{bub.textContent=t;
+    bub.classList.toggle('emo',!tk&&!/[\p{L}\p{N}]/u.test(t));bub.classList.toggle('tk',!!tk);bub.classList.toggle('tk-mine',!!tk&&tk.k==='mine');
+    if(tk){const c=tk.c||TEAM_COLOR;bub.style.setProperty('--tb',tk.k==='mine'?colBg(c):c);bub.style.setProperty('--tt',isLightBg(c)?'#1B1B1F':'#fff');bub.style.setProperty('--tc',petTail(c));}
+    else['--tb','--tt','--tc'].forEach(v=>bub.style.removeProperty(v));
     const[L,R]=bounds(),bw=bub.offsetWidth+12;let lf=pos()+bw>R;   /* 오른쪽 단추에 닿으면 말풍선을 왼쪽으로 */
     if(pal&&pal.ok()){const w=el?el.offsetWidth:40,hw=(head()||{clientWidth:9999}).clientWidth;lf=pal.mid()>pos()+w/2;if(lf&&pos()-bw<0)lf=false;else if(!lf&&pos()+w+bw>hw)lf=true;}   /* 상호작용 중엔 짝 반대쪽으로 — 옆 펫에 가리지 않게(단추 위로 잠깐 겹치는 건 괜찮다, 머리 줄 밖으로만 안 나가게) */
     bub.classList.toggle('l',lf);el.classList.add('talk');
@@ -61,7 +67,10 @@ function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl
   /* 오늘 달력 막대 — 그려진 칸을 세면 기간 업무(여러 날 막대)가 빠졌다. 달력과 같은 자료(buildEvents · 필터 포함)에서 오늘에 걸친 것 */
   const todayEvs=()=>{const t=todayStr();return buildEvents(t,t).filter(e=>{const s=String(e.start).slice(0,10);return e.end?(s<=t&&t<e.end):s===t;});};
   const todayN=()=>todayEvs().length;
-  const todayCom=()=>todayEvs().filter(e=>(e.classNames||[]).includes('team')).map(e=>{const p=findPlan(e.extendedProps.pid);return p?p.title:'';}).filter(Boolean);
+  /* 업무 대사 후보(f = 담당자 있음 → 채운 말풍선, 달력 막대와 같은 판정) — 위젯 「내 업무」 팝업과 같은 목록: 공통(담당자 없는 미완료) · 내 미완료(보류 제외). 오늘·기한 지난 것을 70% 로 먼저 */
+  const taskPick=()=>{const t=todayStr(),m=(a,k)=>a.map(x=>({k,t:x.it.text||'',d:taskDate(x.sid,x.iid,x.it)||'',c:planColor(taskAsPlan(x.sid,x.iid,x.it)),f:Object.keys(x.it.assignees||{}).length>0})).filter(x=>x.t);
+    const A=[...m(teamTasks(),'com'),...m(mineTasks(),'mine')];if(!A.length)return null;
+    const due=A.filter(x=>x.d&&x.d<=t);return petPick(due.length&&(Math.random()<.7||due.length===A.length)?due:A);};
   /* 다음 행동 — 걷기(40%)·쉬기. 좁아서 걸을 자리가 없으면 숨는다 */
   /* 깊은 잠 — 위젯 위에서 3분 동안 마우스가 없으면 멈춘 그림(z)으로 잔다. 그동안 그림·애니메이션이 모두 서서 CPU 를 거의 안 쓴다.
      위젯 안으로 마우스가 다시 들어오면(pointermove) 깬다 */
@@ -141,11 +150,11 @@ function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl
       if(fresh){img.dataset.m='';el.classList.toggle('fly',!!c.fly);if(bob){bob.cancel();bob=null;}face();
         if(c.fly){const fy=c.fy||16;bob=bd.animate([{transform:'translateY(-'+Math.round(fy/4)+'px)'},{transform:'translateY(-'+fy+'px)'}],{duration:900,iterations:Infinity,direction:'alternate',easing:'ease-in-out'});}   /* 나는 펫 — 떠서 둥실. fy = 위쪽 끝(큰 그림은 낮게) */
         set('idle');if(!x){const[L,R]=bounds();x=o.x0!=null?L+Math.max(0,R-L)*o.x0:L+20;}stop();later(next,400+(o.x0||0)*900);}
-      if(!o.talk&&talk){clearInterval(talk);talk=0;}   /* 혼잣말(시간·공통 업무)은 첫 펫만 — 셋이 다 하면 시끄럽다 */
+      if(!o.talk&&talk){clearInterval(talk);talk=0;}   /* 혼잣말(시간·업무)은 첫 펫만 — 셋이 다 하면 시끄럽다 */
       if(o.talk&&!talk)talk=setInterval(()=>{if(!cfg||deep||drg||ball||document.hidden)return;const sl=petSlot();
-        if(sl){if(Math.random()<.2)say(petPick(PET_LINES[sl]),2600);return;}   /* 시간 대사 — 30초마다 20% (평균 2~3분에 한 번) */
-        if(Math.random()<.08){const c=todayCom();if(c.length){const t=petPick(c),tt=t.length>14?t.slice(0,14)+'…':t;
-          say(petPick(PET_LINES.com).replace('{t}',tt),3200);}}},30000);},   /* 오늘 공통 업무 중 하나(무작위) — 30초마다 8%(평균 6분에 한 번), 없으면 말 안 함 */
+        if(sl&&Math.random()<.2){say(petPick(PET_LINES[sl]),2600);return;}   /* 시간 대사 — 30초마다 20% */
+        if(Math.random()<.3){let c=null;try{c=taskPick();}catch(_){}if(c){const late=!!(c.d&&c.d<todayStr()),tt=c.t.length>14?c.t.slice(0,14)+'…':c.t;
+          say(petPick(PET_LINES[late?'late':c.k]).replace('{t}',tt),4000,{k:c.f?'mine':'com',c:c.c});}}},30000);},   /* 업무 대사(1293) — 30초마다 30%(평균 약 1분 40초), 없으면 말 안 함 */
     wake:()=>{if(cfg&&el&&el.isConnected)deepOff();},
     unmount(){deep=false;clearTimeout(tm);clearInterval(talk);talk=0;cancelAnimationFrame(braf);
       if(anim){anim.onfinish=null;anim.cancel();anim=null;}if(bob){bob.cancel();bob=null;}if(el)el.remove();if(ballEl)ballEl.remove();ball=null;cfg=null;busy=false;},

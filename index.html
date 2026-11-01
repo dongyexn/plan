@@ -3489,6 +3489,10 @@ body.wid #wgSet.on{display:block;}
 .wgPet .bub::after{content:'';position:absolute;right:calc(100% - 2px);bottom:calc(50% - 4px);border:4px solid transparent;border-right-color:#fff;}   /* 꼬리는 둥근 끝의 가운데(가장 바깥)에 2px 겹쳐 붙임 — 아래쪽에 두면 둥근 모서리와 틈이 생김 */
 .wgPet .bub.l{left:auto;right:100%;transform:translate(-2px,0);}.wgPet .bub.l.on{transform:translate(-6px,0);}
 .wgPet .bub.l::after{right:auto;left:calc(100% - 2px);border-right-color:transparent;border-left-color:#fff;}
+/* 1293 업무 대사 — 달력 막대 모양: 공통 = 흰 바탕 + 팀 색 테(속 빈 막대) · 내 업무 = 내 막대 색 채움. --tb 칠 · --tt 글자 · --tc 꼬리(pet.js) */
+.wgPet .bub.tk{background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.3),inset 0 0 0 1.5px var(--tb);}
+.wgPet .bub.tk-mine{background:var(--tb);color:var(--tt);box-shadow:0 2px 6px rgba(0,0,0,.3);}
+.wgPet .bub.tk::after{border-right-color:var(--tc);}.wgPet .bub.tk.l::after{border-right-color:transparent;border-left-color:var(--tc);}
 .wgPet .bd{display:flex;justify-content:center;align-items:flex-end;}
 .wgPet .sh{position:absolute;left:50%;bottom:-1px;height:4px;translate:-50% 0;border-radius:50%;background:rgba(0,0,0,.3);pointer-events:none;}   /* 발밑 그림자 — 폭은 그림마다(set) */
 .wgPet.fly .sh{opacity:.55;}.wgPet.held .sh{display:none;}   /* 나는 펫은 옅게 · 들고 있을 땐 바닥 그림자(#wgPetSh)가 대신 */
@@ -6700,5 +6704,5 @@ body.mcal-full #fcal .mlN::before{content:'+'}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1292"></script>
+<script src="./app.js?v=1293"></script>
 </body></html>
