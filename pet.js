@@ -28,6 +28,9 @@ function petMood(){const me=myId(),t=todayStr();if(!me)return '';
 const petTail=c=>{if(isRainbow(c))return '#F43F5E';const g=gcParse(c);if(g)return g.a;if(isGrad(c)){const m=/#[0-9A-Fa-f]{6}/.exec(GRADS[gradBase(c)]||'');return m?m[0]:TEAM_COLOR;}return c;};
 const PET_IT_SZ={tile:15,report:18,water:17,coffee:17,cone:17,paste:17,plank:17,cart:18,hammer:18,spanner:18,battery:19};   /* 던지는 그림 크기(px, 기본 16) — 눈으로 맞춤: 꽉 찬 둥근 것은 작게, 가늘거나 비스듬한 것은 크게 */
 const petUrl=f=>'./assets/pets/'+f+'?v='+APP_VER;   /* 그림 파일 — 쓰는 것만 받고 브라우저가 캐시한다 */
+/* 표정 그림 미리 받기(1299) — 처음 표정이 바뀔 때 그림을 그제야 받아 늦게 붙지 않게. 그 펫·그 기분의 쉬기·걷기 두 장만(한 장 약 5KB), 한 번만 */
+const PET_PRE=new Set();
+const petPre=(c,ml)=>{if(!c||!String(c.mo||'').includes(ml))return;['idle','walk'].forEach(a=>{const g=c.g[a];if(!g)return;const f=g.f.replace(/\.gif$/,'-'+ml+'.gif');if(PET_PRE.has(f))return;PET_PRE.add(f);const i=new Image();i.src=petUrl(f);});};
 const petSlot=()=>{const d=new Date(),v=d.getHours()*60+d.getMinutes();return v>=660&&v<=690?'lunch':v>=1020?'leave':'';};
 let PET_LOADING=null;
 function petLoad(){   /* 그림 묶음 — 한 번만 받는다 */
@@ -82,7 +85,7 @@ function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl
     if(k==='sw'){o.style.top=Math.round(top+img.offsetHeight*.22)+'px';o.style.left=Math.round(w*(dir>0?.78:.1))+'px';}
     else{o.style.top=Math.round(top-4+Math.random()*10)+'px';o.style.left=Math.round(Math.random()*(w-6))+'px';o.style.animationDelay=Math.round(Math.random()*250)+'ms';}
     el.appendChild(o);o.addEventListener('animationend',()=>o.remove());};
-  const mood=m=>{md=m||'';if(md&&!mt)mt=setInterval(()=>{if(!cfg||!el||el.hidden||deep||drg||busy||document.hidden)return;   /* 기분 — 15초마다 2.5초 표정 + 땀방울/반짝이 */
+  const mood=m=>{md=m||'';if(md)petPre(cfg,md==='worry'?'w':'h');if(md&&!mt)mt=setInterval(()=>{if(!cfg||!el||el.hidden||deep||drg||busy||document.hidden)return;   /* 기분 — 15초마다 2.5초 표정 + 땀방울/반짝이 */
       if(md==='worry'){fx('sw');look('worry',2500);}else if(md==='happy'){fx('st');fx('st');fx('st');look('happy',2500);if(Math.random()<.4)hop();}},15000);
     if(!md&&mt){clearInterval(mt);mt=0;}};
   const hop=()=>{el.classList.remove('hop');void el.offsetWidth;el.classList.add('hop');};
@@ -105,10 +108,10 @@ function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl
   /* 업무 대사 후보(f = 담당자 있음 → 채운 말풍선, 달력 막대와 같은 판정) — 위젯 「내 업무」 팝업과 같은 목록: 공통(담당자 없는 미완료) · 내 미완료(보류 제외).
      1297(사용자): 순서 = 기한 지남(late) → 오늘 할 것(today) → 내일 마감(soon) → 나머지. 한 번 말한 업무는 30분 쉰다(PET_SAID) — 앞 묶음이 다 쉬면 다음 묶음, 다 쉬면 null */
   const taskPick=()=>{const t=todayStr(),t1=addDays(t,1),now=Date.now();
-    const m=(a,k)=>a.map(x=>({k,id:x.sid+'|'+x.iid,t:x.it.text||'',d:taskDate(x.sid,x.iid,x.it)||'',e:petEnd(x.sid,x.iid,x.it),c:planColor(taskAsPlan(x.sid,x.iid,x.it)),f:Object.keys(x.it.assignees||{}).length>0})).filter(x=>x.t);
+    const m=(a,k)=>a.map(x=>({k,x,id:x.sid+'|'+x.iid,t:x.it.text||'',d:taskDate(x.sid,x.iid,x.it)||'',e:petEnd(x.sid,x.iid,x.it),f:Object.keys(x.it.assignees||{}).length>0})).filter(x=>x.t);   /* 색(planColor)은 고른 하나만 — 업무 수천 건이어도 가볍게(1299) */
     const t7=addDays(t,-PET_LATE),A=[...m(teamTasks(),'com'),...m(mineTasks(),'mine')].filter(x=>!(now-(PET_SAID[x.id]||0)<PET_COOL)&&!(x.e&&x.e<t7));
     const B=x=>x.e&&x.e<t?0:x.e===t?1:x.e===t1?2:x.d&&x.d<=t?1:3;   /* 마감이 내일이면 진행 중인 기간 업무도 「내일까지」 */
-    for(let b=0;b<4;b++){const L=A.filter(x=>B(x)===b);if(L.length){const c=petPick(L);c.b=['late','today','soon','rest'][b];PET_SAID[c.id]=now;return c;}}
+    for(let b=0;b<4;b++){const L=A.filter(x=>B(x)===b);if(L.length){const c=petPick(L);c.b=['late','today','soon','rest'][b];c.c=planColor(taskAsPlan(c.x.sid,c.x.iid,c.x.it));PET_SAID[c.id]=now;return c;}}
     return null;};
   /* 다음 행동 — 걷기(40%)·쉬기. 좁아서 걸을 자리가 없으면 숨는다 */
   /* 깊은 잠 — 위젯 위에서 3분 동안 마우스가 없으면 멈춘 그림(z)으로 잔다. 그동안 그림·애니메이션이 모두 서서 CPU 를 거의 안 쓴다.
@@ -190,7 +193,7 @@ function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl
         el.addEventListener('pointerup',drop);el.addEventListener('pointercancel',drop);}
       if(el.parentNode!==h)h.appendChild(el);
       bd.style.width=Math.max(...Object.values(c.g).map(g=>g.w))+'px';   /* 동작마다 그림 폭이 달라(달리기 39 · 쉬기 33 …) 바꿀 때 몸이 5~10px 튀었다 — 가장 넓은 폭의 칸 가운데에 둔다 */
-      if(fresh){img.dataset.m='';el.classList.toggle('fly',!!c.fly);if(bob){bob.cancel();bob=null;}face();
+      if(fresh){img.dataset.m='';petPre(c,'w');   /* 누르기·잡기 당황 표정 */el.classList.toggle('fly',!!c.fly);if(bob){bob.cancel();bob=null;}face();
         if(c.fly){const fy=c.fy||16;bob=bd.animate([{transform:'translateY(-'+Math.round(fy/4)+'px)'},{transform:'translateY(-'+fy+'px)'}],{duration:900,iterations:Infinity,direction:'alternate',easing:'ease-in-out'});}   /* 나는 펫 — 떠서 둥실. fy = 위쪽 끝(큰 그림은 낮게) */
         set('idle');if(!x){const[L,R]=bounds();x=o.x0!=null?L+Math.max(0,R-L)*o.x0:L+20;}stop();later(next,400+(o.x0||0)*900);}
       if(!o.talk&&talk){clearTimeout(talk);talk=0;}   /* 혼잣말(시간·업무)은 첫 펫만 — 셋이 다 하면 시끄럽다 */
@@ -380,7 +383,7 @@ const PET=(()=>{let L=[],tick=0,act=false;   /* L: [{k,p}] */
     try{await run();}catch(e){if(e)console.warn('pet play',e);}
     T.forEach((p,i)=>{p.busy(false);p.pal(null);if(p.ok()){p.set('idle');p.later(()=>p.next(),500+i*500);}});act=false;}
   const keys=()=>L.map(o=>o.k);
-  let mtick=0;const petMoodSync=()=>{let m='';try{m=petMood();}catch(_){}L.forEach(o=>o.p.mood(m));};
+  let mtick=0;const petMoodSync=()=>{if(document.hidden&&mtick)return;let m='';try{m=petMood();}catch(_){}L.forEach(o=>o.p.mood(m));};   /* 숨은 창에선 판정을 쉰다(1299) */
   return{
     sync(list){   /* list: [[키, 설정]] — 고른 순서 */
       L=L.filter(o=>{const keep=list.some(([k])=>k===o.k);if(!keep)o.p.unmount();return keep;});
