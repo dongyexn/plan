@@ -1,4 +1,4 @@
-# 펫 기분 표정(1294) — 걷기·쉬기 GIF 의 눈만 바꿔 <그림>-w.gif(걱정 O△O — 입만 삼각형) · <그림>-h.gif(신남 ^_^ — 눈) 를 만든다.
+# 펫 기분 표정(1294) — 걷기·쉬기 GIF 의 눈만 바꿔 <그림>-w.gif(걱정 — 동그란 눈 · 처진 눈썹 · 벌린 입) · <그림>-h.gif(신남 ^_^ — 눈) 를 만든다.
 # 눈 = 같은 줄에 3~8칸 떨어진 같은 모양의 작은 어두운 덩어리 둘(1×1 · 1×2). 눈 감은(깜빡임) 프레임 하나까지는 이웃 프레임으로 채우고, 그 밖에 못 찾은 펫은 표정 없이 둔다.
 # 그림은 4배 픽셀(한 칸 = 4px). 바꾼 칸이 얼굴 밖(투명·윤곽)에 닿으면 그 펫은 건너뛴다.
 # 사용: python3 scripts/dev/pet-mood.py .   (새 펫을 넣거나 그림을 고치면 다시 돌린다 — pets.js 의 "mo"(가진 기분 w·h) 도 다시 맞춘다)
@@ -35,17 +35,32 @@ def face(P,x,y):return P[x,y]
 def draw(g,e,mood):
   g=g.copy();P=g.load();W,H=g.size
   ok=lambda a,b:0<=a<W and 0<=b<H and P[a,b][3]>=128
-  if mood=='w':   # 걱정 = 눈은 그대로(O) · 입이 삼각형(△) — 사용자 O△O
+  if mood=='w':   # 걱정 = 동그란 눈(O) · 처진 눈썹(자리 있을 때) · 벌린 입(테두리 + 빨간 속) — 사용자 그림 O△O
     (xl,y0,y1),(xr,_,_)=e;col=P[xl,y0];fc=P[xl-1,y0] if not dark(P[xl-1,y0]) else P[xl+1,y0];lf=lum(fc)
-    for yy in range(y1+1,y1+4):   # 옛 입 지우기 — 얼굴색보다 어둡고 위아래가 얼굴(줄무늬·홈 같은 세로 무늬는 남긴다)
+    for yy in range(y1+1,y1+5):   # 옛 입 지우기 — 얼굴색보다 어둡고 위아래가 얼굴(줄무늬·홈 같은 세로 무늬는 남긴다)
       for xx in range(xl+1,xr):
-        q=P[xx,yy]
-        if q!=fc and q[3]>=128 and lum(q)<lf-15 and P[xx,yy-1] in (fc,q) and P[xx,y1]==fc:P[xx,yy]=fc
-    c0=(xl+xr)//2;odd=(xr-xl)%2;ym=y1+2
-    px=[(c0,ym)]+([(c0+1,ym)] if odd else [])+[(x,ym+1) for x in range(c0-1,c0+2+odd)]
-    for a,b in px:
-      if not ok(a,b) or dark(P[a,b]):return None
-      P[a,b]=(150,52,62,255)   # 벌린 입 색 — 검정이면 콧수염처럼 보였다
+        q=P[xx,yy] if yy<H else None
+        if q and q!=fc and q[3]>=128 and lum(q)<lf-15 and P[xx,yy-1] in (fc,q) and P[xx,y1]==fc:P[xx,yy]=fc
+    put={}
+    for i,(x,a0,a1) in enumerate(e):   # 눈 = 3칸 폭 둥근 고리(모서리 뺌), 속은 흰색
+      for yy in range(a0-1,a1+2):
+        for xx in (x-1,x,x+1):
+          inner=xx==x and a0<=yy<=a1
+          if xx!=x and yy in (a0-1,a1+1):continue   # 모서리는 비워 둥글게(네모면 안경처럼 보였다)
+          put[(xx,yy)]=(255,255,255,255) if inner else col
+    ring=set(put)
+    for i,(x,a0,a1) in enumerate(e):   # 눈썹 — 바깥이 낮고 안쪽(가운데 쪽)이 높게. 두 줄이 얼굴일 때만
+      s_=1 if i==0 else -1;bp=[(x-s_,a0-3),(x,a0-3),(x+s_,a0-4)]
+      if all(ok(a,b) and P[a,b]==fc for a,b in bp):
+        for q in bp:put[q]=col
+    c0=(xl+xr)//2;odd=(xr-xl)%2;ym=y1+2   # 입 — 위 테두리 · 아래 줄 양끝 테두리 + 가운데 빨강
+    mw=list(range(c0-1,c0+2+odd))
+    for x in range(c0,c0+1+odd):put[(x,ym)]=col
+    for x in mw:put[(x,ym+1)]=col if x in (mw[0],mw[-1]) else (214,58,64,255)
+    for (a,b),v in put.items():
+      if not ok(a,b):return None
+      if dark(P[a,b]) and (a,b) not in ring:return None
+    for (a,b),v in put.items():P[a,b]=v
     return g
   for i,(x,y0,y1) in enumerate(e):   # 신남 = 눈 ^_^
     col=P[x,y0];fc=P[x-1,y0] if not dark(P[x-1,y0]) else P[x+1,y0]
@@ -64,11 +79,12 @@ def save(fs,dur,loop,fn):
   fs[0].save(fn,save_all=True,append_images=fs[1:],duration=dur,loop=loop,disposal=2,optimize=False)
 src=open(os.path.join(root,'assets/pets.js'),encoding='utf-8').read()
 i0=src.index('{',src.index('CALAPP_PETS'));P=json.loads(src[i0:src.rindex('}')+1])
+NO_W={'senior'}   # 안경 — 동그란 눈이 안경테와 겹친다(눈으로 확인)
 ok={};skip=[]
 for k,v in P.items():
   files=sorted({v['g'][m]['f'] for m in ('idle','walk','run') if m in v['g']})
   have=''
-  for m in 'wh':   # 기분마다 따로 — 한쪽만 되는 펫은 그쪽만(pets.js "mo":"h" 등)
+  for m in ('h' if k in NO_W else 'wh'):   # 기분마다 따로 — 한쪽만 되는 펫은 그쪽만(pets.js "mo":"h" 등)
     res={};good=True
     for f in files:
       fr,loop=frames(os.path.join(D,f));gs=[]
