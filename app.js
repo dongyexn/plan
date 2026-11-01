@@ -12270,7 +12270,7 @@ const ACT={
     f.own=on?[]:[me.id];filtSave();rFilter();refetchCal();rDay();rWidget();},
   'filt.chipAll':()=>{FILT_G.forEach(([g])=>{S.filter[g]=[];});filtSave();rFilter();refetchCal();rDay();rWidget();},
   'cal.pick':()=>openYMPick(),
-  'cal.today':()=>{closeYMPop();if(CAL){if(cal3())cal3Go(addDays(todayStr(),-7));else CAL.today();}selDate(todayStr());if(isMob()&&!WIDGET)rCalMini();calTodaySync();},   /* 오늘로 — 달력 이동 + 오늘 선택(폰 미니 격자도 다시 그림) */
+  'cal.today':()=>{closeYMPop();if(CAL){if(cal3())cal3Go(addDays(todayStr(),-7));else CAL.today();}selDate(todayStr(),WIDGET);if(isMob()&&!WIDGET)rCalMini();calTodaySync();},   /* 오늘로 — 달력 이동 + 오늘 선택(폰 미니 격자도 다시 그림) · 위젯은 업무 팝업을 열지 않는다(1294 사용자) */
   'nq.mob':()=>{nqOpen(true);const i=$('#nqQ');if(i)setTimeout(()=>i.focus(),120);},   /* 폰 검색 = 전체화면 */
   'cal.pickY':el=>{const c=calRef();
     YM_Y=(YM_Y===null?c.getFullYear():YM_Y)+Number(el.dataset.d);
