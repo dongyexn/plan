@@ -35,7 +35,7 @@ def face(P,x,y):return P[x,y]
 def draw(g,e,mood):
   g=g.copy();P=g.load();W,H=g.size
   ok=lambda a,b:0<=a<W and 0<=b<H and P[a,b][3]>=128
-  if mood=='w':   # 걱정 = 동그란 눈(O) · 처진 눈썹(자리 있을 때) · 벌린 입(테두리 + 빨간 속) — 사용자 그림 O△O
+  if mood=='w':   # 걱정 = 동그란 눈(O) · 처진 눈썹(자리 있을 때) · 네모로 벌린 입(테두리 + 빨간 속) — 사용자 그림 O△O
     (xl,y0,y1),(xr,_,_)=e;col=P[xl,y0];fc=P[xl-1,y0] if not dark(P[xl-1,y0]) else P[xl+1,y0];lf=lum(fc)
     for yy in range(y1+1,y1+5):   # 옛 입 지우기 — 얼굴색보다 어둡고 위아래가 얼굴(줄무늬·홈 같은 세로 무늬는 남긴다)
       for xx in range(xl+1,xr):
@@ -53,10 +53,10 @@ def draw(g,e,mood):
       s_=1 if i==0 else -1;bp=[(x-s_,a0-3),(x,a0-3),(x+s_,a0-4)]
       if all(ok(a,b) and P[a,b]==fc for a,b in bp):
         for q in bp:put[q]=col
-    c0=(xl+xr)//2;odd=(xr-xl)%2;ym=y1+2   # 입 — 위 테두리 · 아래 줄 양끝 테두리 + 가운데 빨강
-    mw=list(range(c0-1,c0+2+odd))
-    for x in range(c0,c0+1+odd):put[(x,ym)]=col
-    for x in mw:put[(x,ym+1)]=col if x in (mw[0],mw[-1]) else (214,58,64,255)
+    c0=(xl+xr)//2;odd=(xr-xl)%2;ym=y1+2   # 입 — 네모로 크게 벌린 입(사용자 그림): 테두리로 두르고 속은 빨강. 아래 테두리 줄이 얼굴 밖이면 두 줄로
+    mw=list(range(c0-1,c0+2+odd));tall=all(ok(x,ym+2) and not dark(P[x,ym+2]) for x in mw)
+    for r in range(3 if tall else 2):
+      for x in mw:put[(x,ym+r)]=col if r==0 or r==2 or x in (mw[0],mw[-1]) else (214,58,64,255)
     for (a,b),v in put.items():
       if not ok(a,b):return None
       if dark(P[a,b]) and (a,b) not in ring:return None
