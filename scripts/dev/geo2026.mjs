@@ -144,7 +144,7 @@ pcs.forEach(pc=>{
   if(pc==='36'){out.gj=linePath(clipGeo(tjc.merge(topo,mine.filter(g=>g.properties.gj))));}
 });
 const head=`/* 대한민국 행정 경계 — vuski/admdongkor HangJeongDong_ver20260701 (행정동, CC BY 4.0 · 원자료 통계청/행안부) 기준으로
-   scripts/geo2026.mjs 가 만든다(585차). 이전 버전은 SGIS 2018 이었다.
+   scripts/dev/geo2026.mjs 가 만든다(585차). 이전 버전은 SGIS 2018 이었다.
    투영: 메르카토르. x = k·(s·lon(rad) + t[0]), y = k·(t[1] − s·ln tan(π/4 + lat/2)). 단위 ≈ 150m.
    prov: [코드(SGIS식), 약칭, 정식, 라벨x, 라벨y, bx0,by0,bx1,by1, path]   mesh: 시도 안 시군구 경계(중복 없는 선)
    sub: 광역시·광주 안 행정동 경계   subl: 그 행정동 라벨 [이름,x,y,크기]   muni: [이름,x,y,크기,bbox…] (구는 시로 합침, 광역시는 구)

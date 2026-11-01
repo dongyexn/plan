@@ -45,6 +45,8 @@ const [mode,why]=scope();
 const N=Math.max(1,Math.min(4,+process.env.TEST_JOBS||os.cpus().length-1));
 /* 오래 걸리는 것부터 — 동시 실행 칸을 고르게 채운다(1285 측정 초: 위젯 65 · 현안 46 · 잘림 45 · 모바일 43 · 펫 30 · 하자 23 · 무지개 13 · smoke 8) */
 const W={'위젯 겹침·닫기':65,'주요 현안':46,'잘림 검사(스크롤로 못 닿는 내용)':45,'모바일 맞춤(겹침·잘림)':43,'위젯 미니펫':30,'하자 전 구간 E2E':23,'무지개 렌더링 E2E':13,'브라우저 smoke':8};
+const SKIPJ=process.env.TEST_SKIP?new RegExp(process.env.TEST_SKIP):null;   /* 1289: 배포본 회귀(run-built)는 원본 글자를 보는 정적 감사를 뺀다 */
+if(SKIPJ)for(let k=jobs.length-1;k>=0;k--)if(SKIPJ.test(jobs[k][0]))jobs.splice(k,1);
 const todo=jobs.filter(j=>(mode==='full'||j[2]==='light')&&j[2]!=='solo').sort((a,b)=>(W[b[0]]||1)-(W[a[0]]||1));
 console.log(`범위: ${mode==='full'?'전부':'가벼운 시험만'} (${why}) · 동시 ${N}개`);
 if(mode!=='full')console.log('건너뜀: '+jobs.filter(j=>j[2]!=='light').map(j=>j[0]).join(' · '));

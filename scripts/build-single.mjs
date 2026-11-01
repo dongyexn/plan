@@ -9,7 +9,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 
-const dir = path.dirname(fileURLToPath(import.meta.url));
+const dir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');   /* 1289: scripts/ 로 옮김 — 저장소 루트 */
 const html = fs.readFileSync(path.join(dir, 'index.html'), 'utf8');
 const js = fs.readFileSync(path.join(dir, 'app.js'), 'utf8');
 
@@ -47,6 +47,9 @@ for (const f of fs.readdirSync(path.join(dir, 'vendor'))) {
   if (fs.statSync(src).isDirectory()) { fs.cpSync(src, dst, { recursive: true }); continue; }   /* 815차: vendor/libredwg 처럼 폴더도 있다 */
   fs.copyFileSync(src, dst);
 }
+
+/* 1289: 직접 만든 그림(펫)은 assets/ 로 옮겼다 */
+if (fs.existsSync(path.join(dir, 'assets'))) fs.cpSync(path.join(dir, 'assets'), path.join(dir, 'dist', 'assets'), { recursive: true });
 
 /* PWA 매니페스트·아이콘(383차) — index.html 옆에 있어야 설치 버튼이 뜬다 */
 for (const f of ['manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'boot-wid.js', 'login-bg.jpg'])   /* 963차: boot-wid.js 는 head 에서 따로 읽는다 · 998차: 로그인 배경화면 */

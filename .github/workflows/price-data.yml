@@ -29,13 +29,13 @@ jobs:
         continue-on-error: true
         env:
           G2B_KEY: ${{ secrets.G2B_KEY }}
-        run: node scripts/g2b-price.mjs
+        run: node scripts/price/g2b-price.mjs
       - name: 표준시장단가
         continue-on-error: true
-        run: node scripts/std-price.mjs
+        run: node scripts/price/std-price.mjs
       - name: 시중노임단가
         continue-on-error: true
-        run: node scripts/wage-price.mjs
+        run: node scripts/price/wage-price.mjs
       - name: 바뀌었으면 커밋
         env:
           GH_TOKEN: ${{ github.token }}

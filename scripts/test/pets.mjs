@@ -27,9 +27,9 @@ const bubbles=async(pg,n,until)=>{const log=[];for(let i=0;i<n;i++){await W(400)
   if(t&&log[log.length-1]!==t)log.push(t);if(until&&log.some(x=>x.includes(until)))break;}return log;};
 
 /* 1) 목록 — 쓰는 그림이 모두 있는지 */
-const src=fs.readFileSync(path.join(root,'vendor/pets.js'),'utf8');const s=src.indexOf('{',src.indexOf('CALAPP_PETS'));
+const src=fs.readFileSync(path.join(root,'assets/pets.js'),'utf8');const s=src.indexOf('{',src.indexOf('CALAPP_PETS'));
 const P=JSON.parse(src.slice(s,src.lastIndexOf('}')+1));const keys=Object.keys(P);
-const miss=keys.flatMap(k=>{const v=P[k];return [...Object.values(v.g).map(g=>g.f),v.t.f,v.z.f,'av-'+k+'.png',...(v.it?['it-'+v.it+'.png']:[])].filter(f=>!fs.existsSync(path.join(root,'vendor/pets',f))).map(f=>k+':'+f);});
+const miss=keys.flatMap(k=>{const v=P[k];return [...Object.values(v.g).map(g=>g.f),v.t.f,v.z.f,'av-'+k+'.png',...(v.it?['it-'+v.it+'.png']:[])].filter(f=>!fs.existsSync(path.join(root,'assets/pets',f))).map(f=>k+':'+f);});
 ok('그림 파일 누락 없음('+keys.length+'종)',!miss.length,miss);
 ok('분류 c 지정(사람·안전·공종·사무)',keys.every(k=>'psto'.includes(P[k].c||'-')),keys.filter(k=>!'psto'.includes(P[k].c||'-')));
 
@@ -59,11 +59,11 @@ const thrRes=await Promise.all(['plumber','sf-radio','of-kbd','tr-tree'].map(asy
 thrRes.forEach(r=>ok(...r));
 
 /* 5) 전체 — 한 창에서 세 마리씩 바꿔 올려 놀고 던짐(창을 매번 새로 열지 않아 빠르다).
-   펫 코드·그림(pet.js · vendor/pets*)이 main 과 달라졌거나 PETS_FULL=1 이면 75종 전부, 아니면 묶음 5개 표본(처음·끝 포함) */
+   펫 코드·그림(pet.js · assets/pets*)이 main 과 달라졌거나 PETS_FULL=1 이면 75종 전부, 아니면 묶음 5개 표본(처음·끝 포함) */
 let full=process.env.PETS_FULL==='1';
 if(!full){try{const {execSync}=await import('child_process');
   const d=execSync('git diff --name-only origin/main...HEAD; git diff --name-only HEAD',{cwd:root,stdio:['ignore','pipe','ignore']}).toString();
-  full=/(^|\n)(pet\.js|vendor\/pets)/.test(d);}catch(e){full=true;}}   /* 비교 못 하면 전부(안전 쪽) */
+  full=/(^|\n)(pet\.js|assets\/pets)/.test(d);}catch(e){full=true;}}   /* 비교 못 하면 전부(안전 쪽) */
 const grp=[];for(let i=0;i<keys.length;i+=3)grp.push(keys.slice(i,i+3));
 const pick=full?grp:grp.filter((g,i)=>i===0||i===grp.length-1||i%6===3);
 const bad=[];const sweep=async part=>{const{ctx,pg,perr,nf}=await page({pets:[]});   /* 창 4개에 나눠 동시에 */

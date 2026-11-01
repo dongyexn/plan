@@ -22,4 +22,4 @@ jobs:
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           FIREBASE_DB_URL: https://report-c29a1-default-rtdb.asia-southeast1.firebasedatabase.app
-        run: node scripts/d60-photo-clean.mjs
+        run: node scripts/jobs/d60-photo-clean.mjs

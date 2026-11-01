@@ -1,4 +1,4 @@
-/* 생성 파일 — 손으로 고치지 말 것. scripts/font-subset.py 가 만든다.
+/* 생성 파일 — 손으로 고치지 말 것. scripts/dev/font-subset.py 가 만든다.
    core = KS 2,350자 + 기호(항상 로드) · rare = 나머지 음절(해당 글자가 나올 때만 로드).
    같은 family 는 나중 @font-face 가 이기므로 core 를 뒤에 둔다. */
 @font-face{font-family:'Pretendard Variable';font-weight:45 920;font-style:normal;font-display:swap;src:url('./Pretendard.rare.woff2') format('woff2-variations');unicode-range:U+AC00-D7A3;}

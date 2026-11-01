@@ -37,7 +37,7 @@ const W = m => { warn++; console.log('WARN  ' + m); };
 const OK = m => console.log('ok    ' + m);
 
 /* ── 1. 구문 ─────────────────────────────────────────── */
-for (const f of ['app.js', 'pet.js', 'build-single.mjs']) {
+for (const f of ['app.js', 'pet.js', 'scripts/build-single.mjs']) {
   try { execFileSync(process.execPath, ['--check', path.join(root, f)], { stdio: 'pipe' }); }
   catch (e) { F(f + ' 구문 오류\n' + String(e.stderr).slice(0, 400)); }
 }
@@ -289,7 +289,7 @@ OK('구문 검사 (node --check)');
 
 /* ── 9. 단일 파일 빌드 시험 — 태그 정규식이 어긋나면 여기서 잡힌다 ── */
 {
-  try { execFileSync(process.execPath, [path.join(root, 'build-single.mjs')], { stdio: 'pipe' });
+  try { execFileSync(process.execPath, [path.join(root, 'scripts/build-single.mjs')], { stdio: 'pipe' });
         fs.rmSync(path.join(root, 'dist'), { recursive: true, force: true });
         OK('build-single.mjs 정상'); }
   catch (e) { F('build-single.mjs 실패: ' + String(e.stderr || e).slice(0, 300)); }
@@ -382,7 +382,7 @@ OK('구문 검사 (node --check)');
   '.tk-item+.tk-item>.tk-row::before :: left',
   '.tkl-s .tk-row :: grid-template-columns',
   '.tkl-s-w .tk-row :: grid-template-columns',
-  /* 1012차: @media 안도 보게 되며 동결한 것 — 앞 선언이 !important 거나 dvh 등 폴백 값이라 기계 정리(scripts/css-dedup.py)에서 남긴 자리 */
+  /* 1012차: @media 안도 보게 되며 동결한 것 — 앞 선언이 !important 거나 dvh 등 폴백 값이라 기계 정리(scripts/dev/css-dedup.py)에서 남긴 자리 */
   '@media print | #view-defect .akpi :: gap',
   '@media print | #view-defect .dt :: font-size',
   '@media print | #view-defect .main-chart-card :: aspect-ratio',

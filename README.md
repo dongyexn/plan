@@ -3,7 +3,7 @@
 팀 업무 일정 · 업무 현황 · 하자처리 현황 · D+60 점검을 한곳에서 공유하는 웹앱. 브라우저 · 바탕화면 위젯 · 휴대전화(홈 화면에 추가)에서 같은 화면.
 
 - 주소: https://dongyexn.github.io/plan/ (회사 메일 로그인)
-- 사용 안내: 앱 머리 줄 「?」(폰은 메뉴 「사용 안내」) — 실제 화면을 장마다 옮겨 다니며 단추를 짚어 안내(← → · Esc, 짚은 자리를 눌러도 다음). 끝 카드의 「글 안내」가 예전 그림 안내. 글은 [docs/manual.md](docs/manual.md), 그림은 `node scripts/guide-shots.mjs` 로 다시 만든다
+- 사용 안내: 앱 머리 줄 「?」(폰은 메뉴 「사용 안내」) — 실제 화면을 장마다 옮겨 다니며 단추를 짚어 안내(← → · Esc, 짚은 자리를 눌러도 다음). 끝 카드의 「글 안내」가 예전 그림 안내. 글은 [docs/manual.md](docs/manual.md), 그림은 `node scripts/dev/guide-shots.mjs` 로 다시 만든다
 - 시스템 · Firebase · 배포: [docs/dev.md](docs/dev.md)
 - 코드 구조 · 함정: [HANDOFF.md](HANDOFF.md) · 회차 이력: [HANDOFF-log.md](HANDOFF-log.md)
 

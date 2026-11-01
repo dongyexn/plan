@@ -10,7 +10,7 @@
  * 쓰는 법
  *   1) 아래 SITES 에 현장을 적는다. name 은 필수, addr·region 은 있으면 적는다.
  *      (앱과 같은 규칙 — 주소가 있으면 주소를 먼저 쓰고, region 은 권역 이름 힌트로 쓴다)
- *   2) node scripts/site-geo-check.mjs
+ *   2) node scripts/dev/site-geo-check.mjs
  *
  * 읽는 법
  *   찍힘   … 어느 색인에서 어떤 이름으로 걸렸는지. 등급이 '시군구'·'시도' 면 그 지역 어딘가라는 뜻이라
@@ -29,7 +29,7 @@ const SITES = [
 ];
 /* ────────────────────────────────────────────────── */
 
-const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../..');
 const src = fs.readFileSync(path.join(root, 'vendor', 'korea-geo.js'), 'utf8');
 const KRGEO = JSON.parse(src.slice(src.indexOf('window.KRGEO=') + 13, src.lastIndexOf(';')));
 let KRAPT = null;

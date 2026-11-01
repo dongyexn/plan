@@ -2,7 +2,7 @@
    app.js 의 전역($·esc·toast·APP_VER·WIDGET·widCfgLoad·widCfgSave·todayStr·buildEvents·findPlan)을 그대로 쓴다.
    app.js 쪽 창구는 window.PETM 하나(sync·done·pick·pickToggle·cat·toggle) — 이 파일이 늦게 와도 app.js 는 PETM 이 있을 때만 부른다 */
 'use strict';
-/* ── 미니펫 ── 위젯 머리 줄의 빈자리(년월 묶음 ~ 단추 묶음)를 걷는 픽셀 펫. 목록은 vendor/pets.js 라 펫을 고를 때만 불러온다.
+/* ── 미니펫 ── 위젯 머리 줄의 빈자리(년월 묶음 ~ 단추 묶음)를 걷는 픽셀 펫. 목록은 assets/pets.js 라 펫을 고를 때만 불러온다.
    걷다가 가끔 쉰다. 끝에서는 좌우만 뒤집는다.
    누르기: 울음소리·전용 멘트 → 대사 → 잠깐 멈춤 → 오늘 업무 수 → 달리기 차례로. 머리 줄 빈 곳을 누르면 공(먹이)을 던진다.
    시간 대사: 11:00~11:30 점심, 17시 이후 퇴근(가끔 혼잣말). 업무 완료 때 축하(histPush 'done').
@@ -15,12 +15,12 @@ const PET_LINES={tap:['허거덩','허걱스','하이','왜요?','😮','🤔','
   today:['오늘 업무 {n}건'],com:['{t} 하자!']};   /* {n}·{t} 는 숫자·업무 이름으로 바뀐다 · 사용자가 대사 편집 폼에서 고친 값 */
 const petPick=a=>a[Math.floor(Math.random()*a.length)];
 const PET_IT_SZ={tile:15,report:18,water:17,coffee:17,cone:17,paste:17,plank:17,cart:18,hammer:18,spanner:18,battery:19};   /* 던지는 그림 크기(px, 기본 16) — 눈으로 맞춤: 꽉 찬 둥근 것은 작게, 가늘거나 비스듬한 것은 크게 */
-const petUrl=f=>'./vendor/pets/'+f+'?v='+APP_VER;   /* 그림 파일 — 쓰는 것만 받고 브라우저가 캐시한다 */
+const petUrl=f=>'./assets/pets/'+f+'?v='+APP_VER;   /* 그림 파일 — 쓰는 것만 받고 브라우저가 캐시한다 */
 const petSlot=()=>{const d=new Date(),v=d.getHours()*60+d.getMinutes();return v>=660&&v<=690?'lunch':v>=1020?'leave':'';};
 let PET_LOADING=null;
 function petLoad(){   /* 그림 묶음 — 한 번만 받는다 */
   if(window.CALAPP_PETS)return Promise.resolve(window.CALAPP_PETS);
-  if(!PET_LOADING)PET_LOADING=new Promise((ok,no)=>{const sc=document.createElement('script');sc.src='./vendor/pets.js?v='+APP_VER;
+  if(!PET_LOADING)PET_LOADING=new Promise((ok,no)=>{const sc=document.createElement('script');sc.src='./assets/pets.js?v='+APP_VER;
     sc.onload=()=>ok(window.CALAPP_PETS||{});sc.onerror=()=>{PET_LOADING=null;no(new Error('pets'));};document.head.appendChild(sc);});
   return PET_LOADING;
 }

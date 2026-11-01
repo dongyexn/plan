@@ -36,8 +36,15 @@ Firebase RTDB ← 데이터 · 인증 · 보안 규칙
 index.html                     화면·스타일 (CSS 전부 포함)
 app.js                         모든 로직
 database.rules.json            RTDB 보안 규칙 — 필드 추가 시 반드시 함께 수정
-build-single.mjs               단일 HTML 빌드
-vendor/                        FullCalendar · Chart.js(+datalabels) · xlsx · Firebase SDK · DOMPurify · marked · lz-string · Pretendard (자체 호스팅)
+vendor/                        외부 라이브러리만 — FullCalendar · Chart.js(+datalabels) · xlsx · Firebase SDK · DOMPurify · marked · lz-string · Pretendard (자체 호스팅)
+assets/pets/ · assets/pets.js  직접 그린 펫·프로필 그림과 목록
+data/                          공공 단가 JSON (scripts/price 가 매달 만든다)
+scripts/build-min.mjs          배포본(주석 걷기 + terser) — scripts/test/run-built.mjs 가 이 판으로 전체 시험
+scripts/build-single.mjs       단일 HTML 빌드
+scripts/release.mjs            릴리즈 한 번에
+scripts/price/                 공공 단가 수집(조달청 · 표준시장단가 · 시중노임) — price-data.yml
+scripts/jobs/                  서비스 계정 정기 작업(계정 삭제 · 배경 · D+60 사진 정리) — Actions 전용
+scripts/dev/                   손으로 가끔 돌리는 개발 도구(지도 자료 · 폰트 · 펫 정지 그림 · 안내 그림 · CSS 정리)
 scripts/test/static-audit.mjs  배포 전 정적 검사
 scripts/test/smoke.mjs         브라우저 스모크
 widget-lite/                   바탕화면 위젯 (Tauri · WebView2)
@@ -141,7 +148,7 @@ push 하면 GitHub Pages 가 자동 배포한다.
 ⚠ 규칙을 바꿨다면 **먼저** Firebase 콘솔에 붙여넣는다.
 
 ```bash
-node build-single.mjs    # dist/ — 단일 파일 배포용
+node scripts/build-single.mjs# dist/ — 단일 파일 배포용
 ```
 
 ### 위젯 배포
