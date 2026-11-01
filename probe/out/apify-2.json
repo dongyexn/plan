@@ -1,5 +1,5 @@
 {
- "at": "2026-11-01T06:53:36.144Z",
+ "at": "2026-11-01T06:56:05.850Z",
  "runs": [
   {
    "id": "searchapi~naver-shopping-scraper",
@@ -45,7 +45,7 @@
    "q": "석고보드 9.5T",
    "http": 201,
    "status": "SUCCEEDED",
-   "secs": 33,
+   "secs": 28,
    "usd": 0.00005,
    "charged": {
     "apify-actor-start": 1,
@@ -122,7 +122,7 @@
    "q": "실리콘 실란트",
    "http": 201,
    "status": "SUCCEEDED",
-   "secs": 32,
+   "secs": 6,
    "usd": 0.00005,
    "charged": {
     "apify-actor-start": 1,
@@ -199,7 +199,7 @@
    "q": "도어락",
    "http": 201,
    "status": "SUCCEEDED",
-   "secs": 48,
+   "secs": 11,
    "usd": 0.00005,
    "charged": {
     "apify-actor-start": 1,
@@ -272,5 +272,5 @@
    ]
   }
  ],
- "used": 0.5828783937888383
+ "used": 1.170761617180264
 }
