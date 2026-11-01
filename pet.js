@@ -79,6 +79,12 @@ function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl
   const look=(m,ms)=>{if(!cfg||!m||!String(cfg.mo||'').includes(m==='worry'?'w':'h')||deep)return false;clearTimeout(suT);if(fmo!==m){fmo=m;set(mode);}
     if(ms)suT=setTimeout(()=>{fmo='';if(cfg&&!deep)set(mode);},ms);return true;};
   const surp=ms=>look('worry',ms);
+  /* 장비류(표정 없음) 반응(1300) — 차체가 들썩(img scale, 바닥 기준)하고 뒤쪽 위에서 배기 연기 네모 셋. 말풍선·표정 없음 */
+  const rumble=()=>{if(!el||!img||!mvOK())return;img.style.transformOrigin='50% 100%';
+    img.animate([{scale:'1 1'},{scale:'1.06 .9'},{scale:'.97 1.05'},{scale:'1 1'}],{duration:500,easing:'cubic-bezier(.3,1.6,.5,1)'});
+    const w=el.offsetWidth,top=Math.max(0,el.offsetHeight-img.offsetHeight);
+    for(let i=0;i<3;i++)setTimeout(()=>{if(!el)return;const o=document.createElement('i');o.className='wgFx pf';o.style.top=(top+1)+'px';o.style.left=Math.round(dir>0?w*.18:w*.82-6)+'px';
+      o.style.setProperty('--dx',Math.round((dir>0?-1:1)*(4+Math.random()*6))+'px');el.appendChild(o);o.addEventListener('animationend',()=>o.remove());},i*140);};
   const bubOff=()=>{bub.classList.remove('on');el.classList.remove('talk');bub._tk=null;};
   /* 기분(1294) — 'worry' 기한 지난 내 업무 · 'happy' 오늘 내 업무를 다 끝냄. 15초마다 잠깐(2.5초) 그 표정 + 땀방울 / 반짝이(가끔 깡총). 잠·끌기·상호작용·숨김 중엔 쉰다 */
   const fx=k=>{if(!el||!img)return;const o=document.createElement('i');o.className='wgFx '+k;const w=el.offsetWidth,top=Math.max(0,el.offsetHeight-img.offsetHeight);
@@ -117,10 +123,12 @@ function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl
   /* 깊은 잠 — 위젯 위에서 3분 동안 마우스가 없으면 멈춘 그림(z)으로 잔다. 그동안 그림·애니메이션이 모두 서서 CPU 를 거의 안 쓴다.
      위젯 안으로 마우스가 다시 들어오면(pointermove) 깬다 */
   const IDLE_MS=60000;let deep=false;
-  const deepOn=()=>{deep=true;stop();clearTimeout(tm);el.classList.remove('hop');img.dataset.m='z';
-    img.src=petUrl(cfg.z.f);img.style.width=cfg.z.w+'px';img.style.height=cfg.z.h+'px';if(sh)sh.style.width=Math.round(cfg.z.w*.62)+'px';if(bob)bob.pause();};
-  const rouse=()=>{if(deep){deep=false;if(bob)bob.play();}};   /* 잠만 깬다(그림은 부르는 쪽이 set 으로 바꾼다) */
-  const deepOff=()=>{if(!deep)return;deep=false;if(bob)bob.play();set('idle');later(next,300);};
+  /* 1300(사용자): 잠자는 그림(cfg.s — 사람은 커비처럼 앉아 꾸벅, 그 밖은 바닥에 내려앉아 숨, 눈 -_-) + Z 셋(.zz). 장비류는 멈춘 그림(z) + Z.
+     GIF 두 프레임(1.3초씩)과 CSS Z 만 돈다 — 걷기·판단 타이머는 모두 쉼 */
+  const deepOn=()=>{deep=true;stop();clearTimeout(tm);el.classList.remove('hop');img.dataset.m='z';const z=cfg.s||cfg.z;
+    img.src=petUrl(z.f);img.style.width=z.w+'px';img.style.height=z.h+'px';if(sh)sh.style.width=Math.round(z.w*.62)+'px';if(bob)bob.pause();el.classList.add('zz');};
+  const rouse=()=>{if(deep){deep=false;el.classList.remove('zz');if(bob)bob.play();}};   /* 잠만 깬다(그림은 부르는 쪽이 set 으로 바꾼다) */
+  const deepOff=()=>{if(!deep)return;deep=false;el.classList.remove('zz');if(bob)bob.play();set('idle');later(next,300);};
   const next=()=>{if(!cfg||!el.isConnected||ball||deep||busy)return;
     if(performance.now()-petAct>IDLE_MS){deepOn();return;}const[L,R]=bounds(),hid=R<L;el.hidden=hid;
     if(hid){later(next,3000);return;}
@@ -138,10 +146,10 @@ function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl
       const tx=Math.min(Math.max(ball.x-el.offsetWidth/2,ball.lo-6),ball.hi-el.offsetWidth+6);
       moveTo(tx,95,'run',()=>{const b=ball;ball=null;if(b)ballEl.remove();hop();set(b&&cfg.g.eat?'eat':'idle');say(petPick(cfg.fd&&cfg.fd.length?cfg.fd:PET_LINES.food));if(b)hearts(1);later(next,2600);});}};   /* 먹이면 eat 그림(있으면) · fd 는 먹이 받았을 때 전용 멘트 */
   const react=()=>{if(deep)deepOff();
-    if(ball||busy){hop();surp(1200);return;}   /* 상호작용 중엔 깡총·대사만 */   /* 공을 가지러 가는 중 — 멈추거나 딴 데로 가면 공이 바닥에 남고 펫이 굳었다 */
+    if(ball||busy){hop();if(!surp(1200))rumble();return;}   /* 상호작용 중엔 깡총·대사만 */   /* 공을 가지러 가는 중 — 멈추거나 딴 데로 가면 공이 바닥에 남고 펫이 굳었다 */
     clicks++;hop();const r=clicks%5,sl=petSlot();
-    if(r===1){const t=sl&&Math.random()<.5?petPick(PET_LINES[sl]):Math.random()<.5?(cfg.lines&&cfg.lines.length?petPick(cfg.lines):cfg.say):'';if(t)say(t);else surp(1200);}
-    else if(r===2){stop();set('idle');surp(1400);later(next,1400);}
+    if(r===1){const t=sl&&Math.random()<.5?petPick(PET_LINES[sl]):Math.random()<.5?(cfg.lines&&cfg.lines.length?petPick(cfg.lines):cfg.say):'';if(t)say(t);else if(!surp(1200))rumble();}
+    else if(r===2){stop();set('idle');if(!surp(1400))rumble();later(next,1400);}
     else if(r===3){stop();set('idle');later(next,3200);}
     else if(r===4){const n=todayN();say(n?PET_LINES.today[0].replace('{n}',n):petPick(PET_LINES.idle));}
     else{const[L,R]=bounds();moveTo(dir>0?L:R,75,'run');}};
@@ -149,7 +157,8 @@ function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl
     mount(c,o){o=o||{};const h=head();if(!h)return;const fresh=cfg!==c;cfg=c;
       if(!el){el=document.createElement('div');el.className='wgPet';el.setAttribute('aria-label','미니펫 — 눌러 보세요');bd=document.createElement('div');bd.className='bd';
         img=document.createElement('img');img.alt='';bub=document.createElement('div');bub.className='bub';
-        sh=document.createElement('i');sh.className='sh';bd.append(img);el.append(sh,bd,bub);   /* sh — 발밑 그림자(바닥에 남고, 깡총·둥실은 .bd 만) */
+        sh=document.createElement('i');sh.className='sh';bd.append(img);el.append(sh,bd,bub);
+        [['z','wgZ'],['z','wgZ z1'],['Z','wgZ z2']].forEach(([t,c])=>{const z=document.createElement('i');z.className=c;z.textContent=t;el.append(z);});   /* 잘 때만 보이는 Z(.zz) */   /* sh — 발밑 그림자(바닥에 남고, 깡총·둥실은 .bd 만) */
         el.addEventListener('click',e=>{e.stopPropagation();if(el._drg){el._drg=false;return;}
           if(e.target.closest('.bub')){const t=bub._tk;if(t){bubOff();ACT['wid.goTask']({dataset:{date:t.d||''}});}return;}   /* 업무 말풍선 → 그 날 업무 팝업(1294) */
           react();});

@@ -1,6 +1,7 @@
 # 펫 기분 표정(1294) — 걷기·쉬기 GIF 의 눈만 바꿔 <그림>-w.gif(걱정 — 동그란 눈 · 처진 눈썹 · 벌린 입) · <그림>-h.gif(신남 ^_^ — 눈) 를 만든다.
 # 눈 = 같은 줄에 3~8칸 떨어진 같은 모양의 작은 어두운 덩어리 둘(1×1 · 1×2). 눈을 못 찾은 프레임(깜빡임 등)은 가장 닮은 프레임의 눈 자리에 그린다. 절반 넘게 못 찾으면 표정 없이 둔다.
 # 그림은 4배 픽셀(한 칸 = 4px). 바꾼 칸이 얼굴 밖(투명·윤곽)에 닿으면 그 펫은 건너뛴다.
+# 잠자는 그림(<쉬기>-s.gif, 1300)도 같이 만든다.
 # 사용: python3 scripts/dev/pet-mood.py .   (새 펫을 넣거나 그림을 고치면 다시 돌린다 — pets.js 의 "mo"(가진 기분 w·h) 도 다시 맞춘다)
 import json,sys,os,re
 from PIL import Image
@@ -155,6 +156,72 @@ for k,v in P.items():
 for k,v in P.items():
   v.pop('mo',None)
   if k in ok:v['mo']=ok[k]
+# ── 잠자는 그림(1300) — <쉬기그림>-s.gif · pets.js "s":{f,w,h}. 눈은 -_-(가로 3칸), 두 프레임(1.3초씩)으로 숨/꾸벅
+#   사람(c='p') — 커비처럼 앉기: 다리 줄을 빼고 몸을 바닥에 내려앉힌 뒤 두 발을 가운데로 모아 몸 아래 앞쪽에(사용자 「조신하게」), 고개 꾸벅
+#   그 밖 — 발(아래쪽 갈라진 줄)을 빼고 바닥에 내려앉기, 위 절반이 1칸 내려앉았다 올라옴. 장비류·눈 못 찾은 펫은 없음(멈춘 그림 z)
+A_=(34,26,30,255)
+def spans(g):
+  W,H=g.size;Q=g.load();r=[]
+  for y in range(H):
+    xs=[x for x in range(W) if Q[x,y][3]>=128];r.append((min(xs),max(xs)) if xs else None)
+  return r
+def inner(g,y):
+  Q=g.load();c=[Q[x,y] for x in range(g.width) if Q[x,y][3]>=128 and Q[x,y][:3]!=A_[:3]];return max(set(c),key=c.count) if c else A_
+def sleepy(g,e):   # -_- — 눈 자리를 얼굴색으로 지우고 아래 줄에 가로 3칸. 눈 바로 위가 눈썹(어두움)이면 1칸 내려 그린다(붙으면 선글라스처럼 보였다)
+  g=g.copy();Q=g.load()
+  for (x,y0,y1) in e:
+    col=Q[x,y0];r=[Q[x-1,t] for t in range(y0,y1+1)]+[Q[x+1,t] for t in range(y0,y1+1)];fc=max(set(r),key=r.count)
+    for yy in range(y0,y1+1):Q[x,yy]=fc
+    ly=y1+1 if dark(Q[x,y0-1]) and Q[x,y1+1][3]>=128 else y1
+    for xx in (x-1,x,x+1):Q[xx,ly]=col
+  return g
+def kirby(g,e,nod):
+  W,H=g.size;Q=g.load();sp=spans(g);rows=[y for y in range(H) if sp[y]];bot=rows[-1];ly=bot-3
+  shoe=inner(g,bot-1);hi=tuple(min(255,c+70) for c in shoe[:3])+(255,);L,R=sp[ly]
+  OH=ly+3;out=Image.new('RGBA',(W+4,OH),(0,0,0,0));O=out.load()
+  out.alpha_composite(g.crop((0,0,W,ly+1)),(2,1))
+  for x in range(L+2,R+3):
+    if O[x,OH-1][3]<128:O[x,OH-1]=A_
+  cx=(L+R)//2+2
+  for fx in (cx-4,cx+1):
+    for yy in range(OH-3,OH):
+      for xx in range(fx,fx+4):
+        if xx in (fx,fx+3) and yy in (OH-3,OH-1):continue
+        O[xx,yy]=A_ if (yy in (OH-3,OH-1) or xx in (fx,fx+3)) else (hi if yy==OH-2 else shoe)
+  if nod:
+    hb=e[0][2]+5;head=out.crop((0,0,out.width,hb+1));o2=out.copy();o2.paste(Image.new('RGBA',(out.width,hb+1),(0,0,0,0)),(0,0));o2.alpha_composite(head,(0,1));out=o2
+  return out
+def settle(g,br):
+  W,H=g.size;Q=g.load()
+  def runs(y):
+    n=0;inr=False
+    for x in range(W):
+      o=Q[x,y][3]>=128
+      if o and not inr:n+=1;inr=True
+      elif not o:inr=False
+    return n
+  rows=[y for y in range(H) if any(Q[x,y][3]>=128 for x in range(W))];bot=rows[-1];k=0;y=bot
+  while y>0 and runs(y)>=2:k+=1;y-=1
+  out=Image.new('RGBA',g.size,(0,0,0,0))
+  if k:top=g.crop((0,0,W,bot-k+1));out.alpha_composite(top,(0,k))
+  else:out=g.copy()
+  if br:
+    bb=out.getbbox();mid=(bb[1]+bb[3])//2;t=out.crop((0,0,W,mid));o2=out.copy();o2.paste(Image.new('RGBA',(W,mid),(0,0,0,0)),(0,0));o2.alpha_composite(t,(0,1));out=o2
+  return out
+SL=[]
+for k,v in P.items():
+  v.pop('s',None)
+  if k in EQUIP:continue
+  f=v['g']['idle']['f'];im=Image.open(os.path.join(D,f));im.seek(0);fr=im.convert('RGBA');g=fr.resize((fr.width//S,fr.height//S),Image.NEAREST)
+  e=find(g) or find2(g)
+  if not e:continue
+  s_=sleepy(g,e)
+  fs=[kirby(s_,e,0),kirby(s_,e,1)] if v.get('c')=='p' else [settle(s_,0),settle(s_,1)]
+  big=[x.resize((x.width*S,x.height*S),Image.NEAREST) for x in fs]
+  out=f[:-4]+'-s.gif';save(big,[1300,1300],0,os.path.join(D,out))
+  kz=v['g']['idle']['w']/fr.width   # 화면 배율(쉬기 그림과 같게)
+  v['s']={'f':out,'w':round(big[0].width*kz),'h':round(big[0].height*kz)};SL.append(k)
+print('잠',len(SL))
 src=src[:i0]+json.dumps(P,ensure_ascii=False,separators=(',',':'))+src[src.rindex('}')+1:]
 open(os.path.join(root,'assets/pets.js'),'w',encoding='utf-8').write(src)
 print('표정',len(ok),' '.join(k+('' if m=='wh' else '('+m+')') for k,m in ok.items()));print('없음',len(skip),' '.join(skip));print('2차',' '.join(via2))

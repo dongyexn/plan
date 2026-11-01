@@ -3489,6 +3489,18 @@ body.wid #wgSet.on{display:block;}
 .wgPet .bub::after{content:'';position:absolute;right:calc(100% - 2px);bottom:calc(50% - 4px);border:4px solid transparent;border-right-color:#fff;}   /* 꼬리는 둥근 끝의 가운데(가장 바깥)에 2px 겹쳐 붙임 — 아래쪽에 두면 둥근 모서리와 틈이 생김 */
 .wgPet .bub.l{left:auto;right:100%;transform:translate(-2px,0);}.wgPet .bub.l.on{transform:translate(-6px,0);}
 .wgPet .bub.l::after{right:auto;left:calc(100% - 2px);border-right-color:transparent;border-left-color:#fff;}
+/* 1300 말풍선 등장 — 꼬리 쪽에서 작게 시작해 톡 튀며 커진다(끝 자리는 .on 의 translate 그대로) */
+.wgPet .bub{transform-origin:0 70%;}.wgPet .bub.l{transform-origin:100% 70%;}
+.wgPet .bub.on{animation:wgPop .32s cubic-bezier(.3,1.6,.5,1);}.wgPet .bub.l.on{animation-name:wgPopL;}
+@keyframes wgPop{0%{opacity:0;transform:translate(0,2px) scale(.4)}60%{opacity:1}100%{opacity:1;transform:translate(6px,0) scale(1)}}
+@keyframes wgPopL{0%{opacity:0;transform:translate(0,2px) scale(.4)}60%{opacity:1}100%{opacity:1;transform:translate(-6px,0) scale(1)}}
+/* 1300 잠 — Z 셋이 차례로 떠오름(.zz 일 때만) · 장비류 배기 연기(.pf) */
+.wgPet .wgZ{display:none;position:absolute;z-index:2;right:12%;top:-2px;font-style:normal;font-weight:800;font-size:8px;line-height:1;color:#7d8db0;text-shadow:0 0 2px #fff,0 0 1px #fff;pointer-events:none;opacity:0;}
+.wgPet.zz .wgZ{display:block;animation:wgZ 3s linear infinite;}
+.wgPet.zz .wgZ.z1{font-size:10px;right:4%;top:-6px;animation-delay:1s;}.wgPet.zz .wgZ.z2{font-size:12px;right:-4%;top:-10px;animation-delay:2s;}
+@keyframes wgZ{0%{opacity:0;transform:translate(0,4px)}15%{opacity:1}80%{opacity:.9}100%{opacity:0;transform:translate(8px,-14px)}}
+.wgPet .wgFx.pf{width:5px;height:5px;background:#c9ced6;box-shadow:0 0 0 1px #8b929c;animation:wgPf 1s ease-out forwards;}
+@keyframes wgPf{0%{opacity:0;transform:translate(0,0) scale(.5)}20%{opacity:1}100%{opacity:0;transform:translate(var(--dx),-16px) scale(1.4)}}
 /* 1293 업무 대사 — 달력 막대 모양: 공통 = 흰 바탕 + 팀 색 테(속 빈 막대) · 내 업무 = 내 막대 색 채움. --tb 칠 · --tt 글자 · --tc 꼬리(pet.js) */
 .wgPet .bub.tk{background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.3),inset 0 0 0 1.5px var(--tb);}
 .wgPet .bub.tk-mine{background:var(--tb);color:var(--tt);box-shadow:0 2px 6px rgba(0,0,0,.3);}
@@ -6711,5 +6723,5 @@ body.mcal-full #fcal .mlN::before{content:'+'}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1299"></script>
+<script src="./app.js?v=1300"></script>
 </body></html>
