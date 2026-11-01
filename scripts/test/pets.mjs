@@ -32,7 +32,8 @@ const P=JSON.parse(src.slice(s,src.lastIndexOf('}')+1));const keys=Object.keys(P
 const miss=keys.flatMap(k=>{const v=P[k];return [...Object.values(v.g).map(g=>g.f),v.t.f,v.z.f,'av-'+k+'.png',...(v.it?['it-'+v.it+'.png']:[])].filter(f=>!fs.existsSync(path.join(root,'assets/pets',f))).map(f=>k+':'+f);});
 ok('그림 파일 누락 없음('+keys.length+'종)',!miss.length,miss);
 {const mm=keys.flatMap(k=>{const v=P[k];return [...String(v.mo||'')].flatMap(m=>[...new Set(['idle','walk','run'].filter(a=>v.g[a]).map(a=>v.g[a].f))].map(f=>f.replace(/\.gif$/,'-'+m+'.gif'))).filter(f=>!fs.existsSync(path.join(root,'assets/pets',f))).map(f=>k+':'+f);});
- ok('표정 그림 누락 없음(mo '+keys.filter(k=>P[k].mo).length+'종)',!mm.length,mm);}   /* 1298 — pets.js 의 mo(w·h)가 가리키는 기분 그림 */
+ ok('표정 그림 누락 없음(mo '+keys.filter(k=>P[k].mo).length+'종)',!mm.length,mm);}
+{const sm=keys.filter(k=>P[k].s&&!fs.existsSync(path.join(root,'assets/pets',P[k].s.f)));ok('잠자는 그림 누락 없음(s '+keys.filter(k=>P[k].s).length+'종)',!sm.length,sm);}   /* 1300 */   /* 1298 — pets.js 의 mo(w·h)가 가리키는 기분 그림 */
 ok('분류 c 지정(사람·안전·공종·사무)',keys.every(k=>'psto'.includes(P[k].c||'-')),keys.filter(k=>!'psto'.includes(P[k].c||'-')));
 
 /* 2) 3마리 제한 */
@@ -102,6 +103,12 @@ ok((full?'전체 '+keys.length+'종':'표본 '+pick.length+'묶음('+keys.length
   const mood=await pg.evaluate(()=>{const me=myId(),k=S.tasks[me];const r1=petMood();S.tasks[me]={o:k.o,q:k.q};const r2=petMood();S.tasks[me]=k;return [r1,r2];});
   ok('기분 — 3일 지난 업무 걱정 · 10일 지난 업무와 진행 중 기간 업무만이면 걱정 아님',mood[0]==='worry'&&mood[1]==='',mood);
   const ds=await pg.evaluate(()=>window.__talk.slice(1));ok('다음 대사 2.5~3.5분',ds.length>=6&&ds.every(m=>m>=150000&&m<=210000),ds);
+  /* 1300 잠 — 1분 넘게 마우스가 없으면 잠자는 그림 + Z, 마우스가 오면 깸 */
+  await pg.evaluate(()=>{petAct=performance.now()-70000;});
+  const zz=await pg.waitForFunction(()=>{const e=document.querySelector('.wgPet');return e&&e.classList.contains('zz')&&/-s\.gif/.test(e.querySelector('img').src);},null,{timeout:12000}).then(()=>true,()=>false);
+  ok('잠 — 잠자는 그림(-s.gif) + Z',zz);
+  await pg.mouse.move(5,300);await pg.mouse.move(40,320);await W(400);
+  ok('잠 — 마우스가 오면 깸',await pg.evaluate(()=>{const e=document.querySelector('.wgPet');return !e.classList.contains('zz')&&!/-s\.gif|-z\.png/.test(e.querySelector('img').src);}));
   ok('대사 규칙 시험 페이지 오류 없음',!perr.length,perr);await ctx.close();}
 
 await br.close();srv.close();
