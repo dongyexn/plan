@@ -1,5 +1,5 @@
 /* 위젯 미니펫 — app.js 에서 떼어 낸 묶음. 위젯(?w=1)일 때만 app.js(petBoot)가 이 파일을 받는다 — 본편·폰은 받지 않는다.
-   app.js 의 전역($·esc·toast·APP_VER·WIDGET·widCfgLoad·widCfgSave·todayStr·buildEvents·findPlan·teamTasks·mineTasks·taskDate·taskAsPlan·planColor·colBg·isLightBg·TEAM_COLOR 등)을 그대로 쓴다.
+   app.js 의 전역($·esc·toast·APP_VER·WIDGET·widCfgLoad·widCfgSave·todayStr·buildEvents·teamTasks·mineTasks·taskDate·taskAsPlan·planColor·colBg·isLightBg·TEAM_COLOR 등)을 그대로 쓴다.
    app.js 쪽 창구는 window.PETM 하나(sync·done·pick·pickToggle·cat·toggle) — 이 파일이 늦게 와도 app.js 는 PETM 이 있을 때만 부른다 */
 'use strict';
 /* ── 미니펫 ── 위젯 머리 줄의 빈자리(년월 묶음 ~ 단추 묶음)를 걷는 픽셀 펫. 목록은 assets/pets.js 라 펫을 고를 때만 불러온다.
@@ -70,8 +70,8 @@ function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl
     if(pal&&pal.ok()){const w=el?el.offsetWidth:40,hw=(head()||{clientWidth:9999}).clientWidth;lf=pal.mid()>pos()+w/2;if(lf&&pos()-bw<0)lf=false;else if(!lf&&pos()+w+bw>hw)lf=true;}   /* 상호작용 중엔 짝 반대쪽으로 — 옆 펫에 가리지 않게(단추 위로 잠깐 겹치는 건 괜찮다, 머리 줄 밖으로만 안 나가게) */
     bub.classList.toggle('l',lf);el.classList.add('talk');
     bub.classList.add('on');clearTimeout(bt);bt=setTimeout(bubOff,ms);};
-  /* 당황 표정(1295 사용자) — 누르기·잡기의 당황 말풍선(허거덩·😵 등) 대신 걱정 표정을 잠깐. ms 0 = 풀 때까지(잡는 동안). 표정 그림이 없는 펫(장비류)은 아무것도 띄우지 않는다(1295 사용자) */
-  /* 표정은 잠깐만(1295 사용자: 너무 오래 유지) — look(기분, ms): ms 동안 그 표정, 0 = 풀 때까지(잡는 동안). 그림 없는 펫은 false */
+  /* 표정은 잠깐만(1295 사용자) — look(기분, ms): ms 동안 그 표정, 0 = 풀 때까지(잡는 동안). 그림 없는 펫(장비류)은 false — 아무것도 띄우지 않는다.
+     surp = 당황(걱정) 표정 — 누르기·잡기의 당황 말풍선(허거덩·😵 등) 대신 */
   const look=(m,ms)=>{if(!cfg||!m||!String(cfg.mo||'').includes(m==='worry'?'w':'h')||deep)return false;clearTimeout(suT);if(fmo!==m){fmo=m;set(mode);}
     if(ms)suT=setTimeout(()=>{fmo='';if(cfg&&!deep)set(mode);},ms);return true;};
   const surp=ms=>look('worry',ms);
@@ -102,6 +102,7 @@ function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl
   const IDLE_MS=60000;let deep=false;
   const deepOn=()=>{deep=true;stop();clearTimeout(tm);el.classList.remove('hop');img.dataset.m='z';
     img.src=petUrl(cfg.z.f);img.style.width=cfg.z.w+'px';img.style.height=cfg.z.h+'px';if(sh)sh.style.width=Math.round(cfg.z.w*.62)+'px';if(bob)bob.pause();};
+  const rouse=()=>{if(deep){deep=false;if(bob)bob.play();}};   /* 잠만 깬다(그림은 부르는 쪽이 set 으로 바꾼다) */
   const deepOff=()=>{if(!deep)return;deep=false;if(bob)bob.play();set('idle');later(next,300);};
   const next=()=>{if(!cfg||!el.isConnected||ball||deep||busy)return;
     if(performance.now()-petAct>IDLE_MS){deepOn();return;}const[L,R]=bounds(),hid=R<L;el.hidden=hid;
@@ -144,8 +145,8 @@ function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl
           held={sx:e.clientX,sy:e.clientY,gx:e.clientX-r.left,gy:e.clientY-r.top,on:false,px:e.clientX,pt:performance.now(),rot:0,y:0};
           try{el.setPointerCapture(e.pointerId);}catch(_){}});
         el.addEventListener('pointermove',e=>{const g=held;if(!g)return;
-          if(!g.on){if(Math.hypot(e.clientX-g.sx,e.clientY-g.sy)<4)return;g.on=drg=true;clearTimeout(tm);surp(0);   /* 잡히면 당황 표정(놓을 때까지) */
-            if(deep){deep=false;if(bob)bob.play();}
+          if(!g.on){if(Math.hypot(e.clientX-g.sx,e.clientY-g.sy)<4)return;g.on=drg=true;clearTimeout(tm);
+            rouse();surp(0);   /* 잡히면 당황 표정(놓을 때까지) — 자던 펫도(먼저 깨워야 표정이 붙는다) */
             if(land){land.onfinish=null;land.cancel();land=null;drg=true;}   /* 떨어지는 중에 다시 잡으면 — 그 애니메이션이 transform 을 쥐고 있어 그림자만 끌려왔다 */
             stop();set('idle');el.classList.add('held');
             if(!shd){shd=document.createElement('div');shd.id='wgPetSh';}el.parentNode.appendChild(shd);
@@ -188,12 +189,12 @@ function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl
     unmount(){deep=false;clearTimeout(tm);clearInterval(talk);talk=0;clearInterval(mt);mt=0;md='';clearTimeout(suT);fmo='';cancelAnimationFrame(braf);
       if(anim){anim.onfinish=null;anim.cancel();anim=null;}if(bob){bob.cancel();bob=null;}if(el)el.remove();if(ballEl)ballEl.remove();ball=null;cfg=null;busy=false;},
     dragged:()=>!!(el&&el._drg),   /* 방금 끌었음 — 놓은 자리가 머리 줄이어도 공을 던지지 않게 */
-    throwBall(cx){if(!cfg||!el||!el.isConnected||el.hidden)return;if(deep){deep=false;if(bob)bob.play();}
+    throwBall(cx){if(!cfg||!el||!el.isConnected||el.hidden)return;rouse();
       const h=head(),hr=h.getBoundingClientRect(),[L,R]=bounds();stop();clearTimeout(tm);set('idle');
       if(!ballEl){ballEl=document.createElement('div');ballEl.className='wgBall';}const it=cfg.it||'heart';ballEl.style.backgroundImage='url('+petUrl('it-'+it+'.png')+')';   /* 먹이가 없는 펫은 하트 */const sz=PET_IT_SZ[it]||16;ballEl.style.width=ballEl.style.height=sz+'px';h.appendChild(ballEl);
       const floor=h.clientHeight/2+22;ball={x:cx-hr.left,y:floor-4,vx:(Math.random()<.5?-1:1)*(60+Math.random()*60),vy:-260,floor,lo:L+6,hi:R+el.offsetWidth-6,it,sz};
       cancelAnimationFrame(braf);braf=requestAnimationFrame(ballStep);},
-    done(){if(!cfg||!el||!el.isConnected)return;if(deep){deep=false;if(bob)bob.play();}hop();say(petPick(PET_LINES.done),2500);look('happy',2500);
+    done(){if(!cfg||!el||!el.isConnected)return;rouse();hop();say(petPick(PET_LINES.done),2500);look('happy',2500);
       if(ball)return;const[L,R]=bounds();moveTo(dir>0?R:L,75,'run');},   /* 공을 가지러 가는 중이면 자리 이동은 건너뛴다 */
     on:()=>!!cfg,
     /* 상호작용(PET)용 */
