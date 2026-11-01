@@ -3493,6 +3493,13 @@ body.wid #wgSet.on{display:block;}
 .wgPet .bub.tk{background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.3),inset 0 0 0 1.5px var(--tb);}
 .wgPet .bub.tk-mine{background:var(--tb);color:var(--tt);box-shadow:0 2px 6px rgba(0,0,0,.3);}
 .wgPet .bub.tk::after{border-right-color:var(--tc);}.wgPet .bub.tk.l::after{border-right-color:transparent;border-left-color:var(--tc);}
+.wgPet .bub.tk.on{pointer-events:auto;cursor:pointer;}   /* 1294 업무 말풍선 누르면 그 업무 날 팝업 */
+/* 1294 기분 — 땀방울(기한 지난 내 업무) · 반짝이(오늘 다 끝냄). 모양은 rotate, 움직임은 transform 이라 서로 안 겹친다 */
+.wgPet .wgFx{position:absolute;z-index:2;pointer-events:none;}
+.wgPet .wgFx.sw{width:8px;height:8px;background:#6FBFFF;border-radius:50% 0 50% 50%;rotate:-45deg;box-shadow:inset -1.5px 1.5px 0 rgba(255,255,255,.75),0 0 0 1px rgba(30,90,160,.35);animation:wgSw 1.5s ease-in forwards;}
+@keyframes wgSw{0%{opacity:0;transform:translate(1.5px,-1.5px)}20%{opacity:1}75%{opacity:1}100%{opacity:0;transform:translate(-4px,4px)}}   /* rotate(-45°) 안의 좌표 — 화면에선 곧장 아래로 */
+.wgPet .wgFx.st{width:10px;height:10px;background:#FFC531;clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%);animation:wgSt .9s ease-out backwards;}
+@keyframes wgSt{0%{opacity:0;transform:scale(.2)}35%{opacity:1;transform:translateY(-3px) scale(1.15)}100%{opacity:0;transform:translateY(-8px) scale(.6)}}
 .wgPet .bd{display:flex;justify-content:center;align-items:flex-end;}
 .wgPet .sh{position:absolute;left:50%;bottom:-1px;height:4px;translate:-50% 0;border-radius:50%;background:rgba(0,0,0,.3);pointer-events:none;}   /* 발밑 그림자 — 폭은 그림마다(set) */
 .wgPet.fly .sh{opacity:.55;}.wgPet.held .sh{display:none;}   /* 나는 펫은 옅게 · 들고 있을 땐 바닥 그림자(#wgPetSh)가 대신 */
@@ -6704,5 +6711,5 @@ body.mcal-full #fcal .mlN::before{content:'+'}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1293"></script>
+<script src="./app.js?v=1294"></script>
 </body></html>

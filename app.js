@@ -8,7 +8,7 @@
 'use strict';
 /* 앱 버전 = 배포 회차 — zip 이름(calapp-vNNN)·index.html 의 app.js?v=NNN 과 같은 숫자다.
    ⚠ 어긋나면 static-audit 이 FAIL. 위젯 버전은 별개(트레이 메뉴) */
-const APP_VER='1293';
+const APP_VER='1294';
 /* iOS 는 16px 미만 입력칸에 초점이 가면 화면을 확대한다 — iOS 에만 maximum-scale=1 을 붙여 막는다.
    iOS 10+ 는 이 값이 있어도 두 손가락 확대는 그대로 되고, 안드로이드는 초점 확대가 없어 손대지 않는다(확대 기능 유지) */
 (()=>{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -12270,7 +12270,7 @@ const ACT={
     f.own=on?[]:[me.id];filtSave();rFilter();refetchCal();rDay();rWidget();},
   'filt.chipAll':()=>{FILT_G.forEach(([g])=>{S.filter[g]=[];});filtSave();rFilter();refetchCal();rDay();rWidget();},
   'cal.pick':()=>openYMPick(),
-  'cal.today':()=>{closeYMPop();if(CAL){if(cal3())cal3Go(addDays(todayStr(),-7));else CAL.today();}selDate(todayStr());if(isMob()&&!WIDGET)rCalMini();calTodaySync();},   /* 오늘로 — 달력 이동 + 오늘 선택(폰 미니 격자도 다시 그림) */
+  'cal.today':()=>{closeYMPop();if(CAL){if(cal3())cal3Go(addDays(todayStr(),-7));else CAL.today();}selDate(todayStr(),WIDGET);if(isMob()&&!WIDGET)rCalMini();calTodaySync();},   /* 오늘로 — 달력 이동 + 오늘 선택(폰 미니 격자도 다시 그림) · 위젯은 업무 팝업을 열지 않는다(1294 사용자) */
   'nq.mob':()=>{nqOpen(true);const i=$('#nqQ');if(i)setTimeout(()=>i.focus(),120);},   /* 폰 검색 = 전체화면 */
   'cal.pickY':el=>{const c=calRef();
     YM_Y=(YM_Y===null?c.getFullYear():YM_Y)+Number(el.dataset.d);
