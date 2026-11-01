@@ -367,5 +367,22 @@ t('AUTH-31d', 'editor → 계정 삭제 요청자(by)를 남으로', false, tryW
   t('AUTH-32a', '차단된 팀장 → 남의 권역 바꾸기', false, tryWrite('calapp/people/U2', A('U3'), TB, { ...P('U2'), region: '중부2' }));
   t('AUTH-32b', '차단된 팀장 → 남의 현장 배정', false, tryWrite('calapp/people/U2', A('U3'), TB, { ...P('U2'), sites: { sA: 1 } }));
   t('AUTH-32c', '차단된 공구장 → 같은 권역 현장 배정', false, tryWrite('calapp/people/U2', A('U4'), TB, { ...P('U2'), sites: { sC: 1, sA: 1 } })); }
+/* 1290 네이버 쇼핑(Apify) — 토큰은 팀원 읽기 · 관리자 쓰기 · 결과 공유는 내 이름으로만 · 횟수는 +1 만 */
+{ const TK = 'apify_api_' + 'a'.repeat(36);
+  const TN = { ...TREE, calapp: { ...TREE.calapp, sec: { apify: TK }, nvu: { '2026-11': 3 } } };
+  t('AUTH-33a', '팀원 → 토큰 읽기', true, tryRead('calapp/sec/apify', A('U1'), TN));
+  t('AUTH-33b', '팀원 → 토큰 바꾸기', false, tryWrite('calapp/sec/apify', A('U1'), TN, TK));
+  t('AUTH-33c', '관리자 → 토큰 넣기', true, tryWrite('calapp/sec/apify', A('E1'), TN, TK));
+  t('AUTH-33d', '관리자 → 토큰 모양 아님', false, tryWrite('calapp/sec/apify', A('E1'), TN, 'abc'));
+  t('AUTH-33e', '가입 대기 → 토큰 읽기', false, tryRead('calapp/sec/apify', { uid: 'X9', token: { email: 'x9@hdec.co.kr', email_verified: true } }, TN));
+  const NC = { q: '석고보드 9.5t', at: 1, by: 'U1', d: [{ t: 'KCC 석고보드 9.5T', p: 4250, m: '극동씨앤씨', u: 'https://shopping.naver.com/x' }] };
+  t('AUTH-33f', '팀원 → 검색 결과 공유', true, tryWrite('calapp/nvc/kabc12', A('U1'), TN, NC));
+  t('AUTH-33g', '팀원 → 남 이름으로 공유', false, tryWrite('calapp/nvc/kabc12', A('U1'), TN, { ...NC, by: 'U2' }));
+  t('AUTH-33h', '결과 링크가 http 아님', false, tryWrite('calapp/nvc/kabc12', A('U1'), TN, { ...NC, d: [{ t: 'x', p: 1, u: 'javascript:alert(1)' }] }));
+  t('AUTH-33l', '팀원 → 검색 기록 목록 읽기', true, tryRead('calapp/nvc', A('U1'), TN));
+  t('AUTH-33m', '가입 대기 → 검색 기록 읽기', false, tryRead('calapp/nvc', { uid: 'X9', token: { email: 'x9@hdec.co.kr', email_verified: true } }, TN));
+  t('AUTH-33i', '횟수 +1', true, tryWrite('calapp/nvu/2026-11', A('U1'), TN, 4));
+  t('AUTH-33j', '횟수 되돌리기', false, tryWrite('calapp/nvu/2026-11', A('U1'), TN, 0));
+  t('AUTH-33k', '새 달 첫 횟수', true, tryWrite('calapp/nvu/2026-12', A('U1'), TN, 1)); }
 console.log(fail ? `\nFAIL ${fail}` : '\nRULES-AUTH ALL PASS');
 process.exit(fail ? 1 : 0);
