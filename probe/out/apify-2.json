@@ -1,0 +1,276 @@
+{
+ "at": "2026-11-01T06:53:36.144Z",
+ "runs": [
+  {
+   "id": "searchapi~naver-shopping-scraper",
+   "q": "석고보드 9.5T",
+   "http": 400,
+   "status": {
+    "type": "max-total-charge-usd-below-minimum",
+    "message": "Maximum cost per run is less than the allowed minimum of $0.50"
+   },
+   "secs": 0,
+   "n": 0,
+   "keys": [],
+   "sample": []
+  },
+  {
+   "id": "searchapi~naver-shopping-scraper",
+   "q": "실리콘 실란트",
+   "http": 400,
+   "status": {
+    "type": "max-total-charge-usd-below-minimum",
+    "message": "Maximum cost per run is less than the allowed minimum of $0.50"
+   },
+   "secs": 0,
+   "n": 0,
+   "keys": [],
+   "sample": []
+  },
+  {
+   "id": "searchapi~naver-shopping-scraper",
+   "q": "도어락",
+   "http": 400,
+   "status": {
+    "type": "max-total-charge-usd-below-minimum",
+    "message": "Maximum cost per run is less than the allowed minimum of $0.50"
+   },
+   "secs": 0,
+   "n": 0,
+   "keys": [],
+   "sample": []
+  },
+  {
+   "id": "khadinakbar~naver-product-shopping-scraper",
+   "q": "석고보드 9.5T",
+   "http": 201,
+   "status": "SUCCEEDED",
+   "secs": 33,
+   "usd": 0.00005,
+   "charged": {
+    "apify-actor-start": 1,
+    "product-result": 0
+   },
+   "n": 3,
+   "keys": [
+    "productId",
+    "title",
+    "productUrl",
+    "imageUrl",
+    "priceKrw",
+    "originalPriceKrw",
+    "discountPercent",
+    "sellerName",
+    "sellerUrl",
+    "brand",
+    "manufacturer",
+    "categoryPath",
+    "rating",
+    "reviewCount",
+    "deliveryFeeKrw",
+    "availability",
+    "sourceUrl",
+    "scrapedAt"
+   ],
+   "sample": [
+    {
+     "title": "크나우프 일반석고보드 9.5T 900x1800mm 벽체 천장용",
+     "productUrl": "https://ader.naver.com/v1/lOY52iC_TkUcIAPd224SzNtDN4KW24U7e2nw8WMrRWdEnQazLphH4kWlK65_Sh1d",
+     "imageUrl": "https://shopping-phinf.pstatic.net/main_8817714/88177142054.jpg?type=f300",
+     "priceKrw": 5000,
+     "originalPriceKrw": null,
+     "sellerName": "대림우드",
+     "sellerUrl": null,
+     "brand": null,
+     "categoryPath": [],
+     "reviewCount": null,
+     "deliveryFeeKrw": null,
+     "sourceUrl": "https://search.shopping.naver.com/search/all?query=%EC%84%9D%EA%B3%A0%EB%B3%B4%EB%93%9C%20"
+    },
+    {
+     "title": "KCC 방수 석고보드 9.5T 445x445 10개",
+     "productUrl": "https://ader.naver.com/v1/Ar5JRqu2yN15zWciDLxAyU6pL1fgMZ1FoP695gO2m3zUzyFpi_i7pNOE-_241zy2",
+     "imageUrl": "https://shopping-phinf.pstatic.net/main_5508958/55089587334.3.jpg?type=f300",
+     "priceKrw": 26990,
+     "originalPriceKrw": null,
+     "sellerName": "쿠팡",
+     "sellerUrl": null,
+     "brand": null,
+     "categoryPath": [],
+     "reviewCount": null,
+     "deliveryFeeKrw": null,
+     "sourceUrl": "https://search.shopping.naver.com/search/all?query=%EC%84%9D%EA%B3%A0%EB%B3%B4%EB%93%9C%20"
+    },
+    {
+     "title": "KCC 석고보드 9.5T 900 X 1800",
+     "productUrl": "https://ader.naver.com/v1/6wXpcbnZ95wOogzmrts7r-Tn-Tk0MJ8wNbWxYO-LQ2Rg0GZHdZUJMEHPCqiJgyc6",
+     "imageUrl": "https://shopping-phinf.pstatic.net/main_8575213/85752132532.jpg?type=f300",
+     "priceKrw": 4250,
+     "originalPriceKrw": null,
+     "sellerName": "극동씨앤씨",
+     "sellerUrl": null,
+     "brand": null,
+     "categoryPath": [],
+     "reviewCount": 3,
+     "deliveryFeeKrw": null,
+     "sourceUrl": "https://search.shopping.naver.com/search/all?query=%EC%84%9D%EA%B3%A0%EB%B3%B4%EB%93%9C%20"
+    }
+   ]
+  },
+  {
+   "id": "khadinakbar~naver-product-shopping-scraper",
+   "q": "실리콘 실란트",
+   "http": 201,
+   "status": "SUCCEEDED",
+   "secs": 32,
+   "usd": 0.00005,
+   "charged": {
+    "apify-actor-start": 1,
+    "product-result": 0
+   },
+   "n": 3,
+   "keys": [
+    "productId",
+    "title",
+    "productUrl",
+    "imageUrl",
+    "priceKrw",
+    "originalPriceKrw",
+    "discountPercent",
+    "sellerName",
+    "sellerUrl",
+    "brand",
+    "manufacturer",
+    "categoryPath",
+    "rating",
+    "reviewCount",
+    "deliveryFeeKrw",
+    "availability",
+    "sourceUrl",
+    "scrapedAt"
+   ],
+   "sample": [
+    {
+     "title": "외장용 실리콘 백색 실외용 외부용 샷시용 렉산용 판넬용 창호 실란트 다우실792 낱개 1개",
+     "productUrl": "https://ader.naver.com/v1/cRTyycru82VS-Zh-38uqqGIiWbHRyhm6htRSvlo-thhi1pXAFunFRHLpdiSnGd9R",
+     "imageUrl": "https://shopping-phinf.pstatic.net/main_8772505/87725059258.2.jpg?type=f300",
+     "priceKrw": 2460,
+     "originalPriceKrw": null,
+     "sellerName": "아주접착몰",
+     "sellerUrl": null,
+     "brand": null,
+     "categoryPath": [],
+     "reviewCount": 219,
+     "deliveryFeeKrw": null,
+     "sourceUrl": "https://search.shopping.naver.com/search/all?query=%EC%8B%A4%EB%A6%AC%EC%BD%98%20%EC%8B%A4"
+    },
+    {
+     "title": "바이오 실리콘 백색 화장실 방수실리콘 주방 곰팡이방지 다우실707 1개",
+     "productUrl": "https://ader.naver.com/v1/sVzkNzf0zqKTtNDP1voPX__73ANqzUCVXKdTqLiXNbZv7GnQjUDquPpKoCKSnd75",
+     "imageUrl": "https://shopping-phinf.pstatic.net/main_8772494/87724947499.2.jpg?type=f300",
+     "priceKrw": 2080,
+     "originalPriceKrw": null,
+     "sellerName": "아주접착몰",
+     "sellerUrl": null,
+     "brand": null,
+     "categoryPath": [],
+     "reviewCount": 286,
+     "deliveryFeeKrw": null,
+     "sourceUrl": "https://search.shopping.naver.com/search/all?query=%EC%8B%A4%EB%A6%AC%EC%BD%98%20%EC%8B%A4"
+    },
+    {
+     "title": "바이오 실리콘 다우실707 화장실 주방 곰팡이방지 1박스(25EA) 백색",
+     "productUrl": "https://ader.naver.com/v1/cRTyycru82VS-Zh-38uqqGIiWbHRyhm6htRSvlo-thg5u77hWKiocnw5gMfx14ck",
+     "imageUrl": "https://shopping-phinf.pstatic.net/main_8307045/83070459383.2.jpg?type=f300",
+     "priceKrw": 52250,
+     "originalPriceKrw": null,
+     "sellerName": "아주접착몰",
+     "sellerUrl": null,
+     "brand": null,
+     "categoryPath": [],
+     "reviewCount": 214,
+     "deliveryFeeKrw": null,
+     "sourceUrl": "https://search.shopping.naver.com/search/all?query=%EC%8B%A4%EB%A6%AC%EC%BD%98%20%EC%8B%A4"
+    }
+   ]
+  },
+  {
+   "id": "khadinakbar~naver-product-shopping-scraper",
+   "q": "도어락",
+   "http": 201,
+   "status": "SUCCEEDED",
+   "secs": 48,
+   "usd": 0.00005,
+   "charged": {
+    "apify-actor-start": 1,
+    "product-result": 0
+   },
+   "n": 3,
+   "keys": [
+    "productId",
+    "title",
+    "productUrl",
+    "imageUrl",
+    "priceKrw",
+    "originalPriceKrw",
+    "discountPercent",
+    "sellerName",
+    "sellerUrl",
+    "brand",
+    "manufacturer",
+    "categoryPath",
+    "rating",
+    "reviewCount",
+    "deliveryFeeKrw",
+    "availability",
+    "sourceUrl",
+    "scrapedAt"
+   ],
+   "sample": [
+    {
+     "title": "게이트맨 AS2년 즉시잠김 초슬림 푸시풀도어락 IoT 스마트도어락 카드번호키 GP-500R",
+     "productUrl": "https://cr3.shopping.naver.com/v2/bridge/searchGate?nv_mid=85560937465&cat_id=50002359&que",
+     "imageUrl": "https://shopping-phinf.pstatic.net/main_8556093/85560937465.7.jpg?type=f300",
+     "priceKrw": 330280,
+     "originalPriceKrw": null,
+     "sellerName": "게이트맨 공식브랜드스토어",
+     "sellerUrl": null,
+     "brand": null,
+     "categoryPath": [],
+     "reviewCount": 2331,
+     "deliveryFeeKrw": null,
+     "sourceUrl": "https://search.shopping.naver.com/search/all?query=%EB%8F%84%EC%96%B4%EB%9D%BD"
+    },
+    {
+     "title": "코콤 현관문 도어락 아파트 현관 무타공도어락 디지털 번호키 교체 설치 NH310",
+     "productUrl": "https://cr3.shopping.naver.com/v2/bridge/searchGate?nv_mid=89586731467&cat_id=50002359&que",
+     "imageUrl": "https://shopping-phinf.pstatic.net/main_8958673/89586731467.3.jpg?type=f300",
+     "priceKrw": 54000,
+     "originalPriceKrw": null,
+     "sellerName": "진성홈테크",
+     "sellerUrl": null,
+     "brand": null,
+     "categoryPath": [],
+     "reviewCount": 1532,
+     "deliveryFeeKrw": null,
+     "sourceUrl": "https://search.shopping.naver.com/search/all?query=%EB%8F%84%EC%96%B4%EB%9D%BD"
+    },
+    {
+     "title": "게이트맨 지문인식도어락 2026년 무타공 현관문도어락 즉시잠김 푸시풀 현관 번호키 330",
+     "productUrl": "https://cr3.shopping.naver.com/v2/bridge/searchGate?nv_mid=91016542296&cat_id=50002359&que",
+     "imageUrl": "https://shopping-phinf.pstatic.net/main_9101654/91016542296.5.jpg?type=f300",
+     "priceKrw": 179000,
+     "originalPriceKrw": null,
+     "sellerName": "문지기닷컴",
+     "sellerUrl": null,
+     "brand": null,
+     "categoryPath": [],
+     "reviewCount": 1164,
+     "deliveryFeeKrw": null,
+     "sourceUrl": "https://search.shopping.naver.com/search/all?query=%EB%8F%84%EC%96%B4%EB%9D%BD"
+    }
+   ]
+  }
+ ],
+ "used": 0.5828783937888383
+}
