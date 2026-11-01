@@ -2,7 +2,7 @@ name: probe-apify
 on:
   push:
     branches: [probe-apify]
-    paths: ['probe/*.mjs', '.github/workflows/probe-apify.yml']
+    paths: ['probe/NEXT']
 permissions:
   contents: write
 jobs:
@@ -16,8 +16,7 @@ jobs:
       - name: 시험
         env:
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
-          STEP: ${{ github.event.head_commit.message }}
         run: |
-          f=$(ls -t probe/apify-*.mjs | head -1); node "$f"
+          node "probe/$(cat probe/NEXT)"
           git config user.name probe; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add probe/out; git commit -qm "probe 결과 [skip ci]" || true; git push -q
