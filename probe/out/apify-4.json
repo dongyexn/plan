@@ -1,0 +1,80 @@
+{
+ "runs": [
+  {
+   "act": "searchapi/naver-shopping-scraper",
+   "status": "FAILED",
+   "started": "2026-11-01T06:57:37.298Z",
+   "usd": 0.0010557216352969408,
+   "log": [
+    "2026-11-01T06:57:38.829Z Will run command: xvfb-run -a -s \"-ac -screen 0 1920x1080x24+32 -nolisten tcp\" /bin/bash -o pipefail -c npm start",
+    "2026-11-01T06:57:41.550Z ERROR Naver Shopping Scraper failed"
+   ]
+  },
+  {
+   "act": "johnvc/naver-search-api",
+   "status": "SUCCEEDED",
+   "started": "2026-11-01T06:56:46.454Z",
+   "usd": 0.10885
+  },
+  {
+   "act": "khadinakbar/naver-product-shopping-scraper",
+   "status": "SUCCEEDED",
+   "started": "2026-11-01T06:56:40.967Z",
+   "usd": 0.18005
+  },
+  {
+   "act": "johnvc/naver-search-api",
+   "status": "SUCCEEDED",
+   "started": "2026-11-01T06:56:36.417Z",
+   "usd": 0.10383999999999999
+  },
+  {
+   "act": "khadinakbar/naver-product-shopping-scraper",
+   "status": "SUCCEEDED",
+   "started": "2026-11-01T06:56:34.700Z",
+   "usd": 0.18005
+  },
+  {
+   "act": "johnvc/naver-search-api",
+   "status": "SUCCEEDED",
+   "started": "2026-11-01T06:56:28.355Z",
+   "usd": 0.11886999999999999
+  },
+  {
+   "act": "khadinakbar/naver-product-shopping-scraper",
+   "status": "SUCCEEDED",
+   "started": "2026-11-01T06:56:06.552Z",
+   "usd": 0.18005
+  },
+  {
+   "act": "johnvc/naver-search-api",
+   "status": "SUCCEEDED",
+   "started": "2026-11-01T06:55:21.314Z",
+   "usd": 0.10885
+  },
+  {
+   "act": "khadinakbar/naver-product-shopping-scraper",
+   "status": "SUCCEEDED",
+   "started": "2026-11-01T06:54:41.015Z",
+   "usd": 0.18005
+  },
+  {
+   "act": "johnvc/naver-search-api",
+   "status": "SUCCEEDED",
+   "started": "2026-11-01T06:54:33.858Z",
+   "usd": 0.10383999999999999
+  },
+  {
+   "act": "khadinakbar/naver-product-shopping-scraper",
+   "status": "SUCCEEDED",
+   "started": "2026-11-01T06:54:09.423Z",
+   "usd": 0.18005
+  },
+  {
+   "act": "johnvc/naver-search-api",
+   "status": "SUCCEEDED",
+   "started": "2026-11-01T06:54:00.434Z",
+   "usd": 0.11886999999999999
+  }
+ ]
+}
