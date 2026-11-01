@@ -1,0 +1,401 @@
+{
+ "at": "2026-11-01T06:52:45.081Z",
+ "actors": {
+  "parsebird~naver-shopping-scraper": {
+   "title": "Naver Shopping Scraper",
+   "modified": "2026-09-12T05:14:00.909Z",
+   "stats": {
+    "users30": 2,
+    "runs": 51
+   },
+   "pricing": [
+    {
+     "minimalMaxTotalChargeUsd": null,
+     "pricingModel": "PAY_PER_EVENT",
+     "isPriceChangeNotificationSuppressed": false,
+     "pricingPerEvent": {
+      "actorChargeEvents": {
+       "apify-actor-start": {
+        "eventTitle": "Actor Start",
+        "eventDescription": "Charged when the Actor starts running. Number of events charged depends on Actor memory (one event per GB, minimum one event).",
+        "isOneTimeEvent": true,
+        "eventPriceUsd": 0.00005
+       },
+       "product-scraped": {
+        "eventTitle": "Product",
+        "eventDescription": "Charged once per product returned in the dataset.",
+        "isOneTimeEvent": false,
+        "eventTieredPricingUsd": {
+         "FREE": {
+          "tieredEventPriceUsd": 0.00279
+         },
+         "BRONZE": {
+          "tieredEventPriceUsd": 0.00239
+         },
+         "SILVER": {
+          "tieredEventPriceUsd": 0.00179
+         },
+         "GOLD": {
+          "tieredEventPriceUsd": 0.00139
+         },
+         "PLATINUM": {
+          "tieredEventPriceUsd": 0.00139
+         },
+         "DIAMOND": {
+          "tieredEventPriceUsd": 0.00139
+         }
+        },
+        "isPrimaryEvent": true
+       }
+      }
+     },
+     "startedAt": "2026-09-12T05:13:57.328Z",
+     "createdAt": "2026-09-12T05:13:57.591Z",
+     "apifyMarginPercentage": 0.2
+    }
+   ],
+   "schema": {
+    "mode": {
+     "type": "string",
+     "title": "Mode",
+     "def": "search",
+     "enum": [
+      "search",
+      "url"
+     ],
+     "req": true
+    },
+    "brandStores": {
+     "type": "array",
+     "title": "Brand stores",
+     "def": [
+      "marschoco"
+     ],
+     "req": false
+    },
+    "startUrls": {
+     "type": "array",
+     "title": "Start URLs",
+     "def": [],
+     "req": false
+    },
+    "sort": {
+     "type": "string",
+     "title": "Sort order",
+     "def": "popular",
+     "enum": [
+      "popular",
+      "recent",
+      "price_asc",
+      "price_desc",
+      "review",
+      "sales"
+     ],
+     "req": false
+    },
+    "maxItems": {
+     "type": "integer",
+     "title": "Max items",
+     "def": 20,
+     "req": false
+    },
+    "resumeFromRunId": {
+     "type": "string",
+     "title": "Resume from run ID",
+     "def": "",
+     "req": false
+    },
+    "incrementalMode": {
+     "type": "boolean",
+     "title": "Incremental monitoring mode",
+     "def": false,
+     "req": false
+    },
+    "stateKey": {
+     "type": "string",
+     "title": "Incremental state key",
+     "def": "",
+     "req": false
+    },
+    "emitUnchanged": {
+     "type": "boolean",
+     "title": "Emit unchanged items",
+     "def": false,
+     "req": false
+    },
+    "emitExpired": {
+     "type": "boolean",
+     "title": "Emit expired items",
+     "def": false,
+     "req": false
+    },
+    "proxyConfiguration": {
+     "type": "object",
+     "title": "Proxy configuration",
+     "def": {
+      "useApifyProxy": true,
+      "apifyProxyGroups": [
+       "RESIDENTIAL"
+      ],
+      "apifyProxyCountry": "KR"
+     },
+     "req": false
+    }
+   }
+  },
+  "automation-lab~naver-shopping-product-scraper": {
+   "title": "Naver Shopping Product Scraper",
+   "modified": "2026-09-07T17:01:08.004Z",
+   "stats": {
+    "users30": 6,
+    "runs": 248
+   },
+   "pricing": [
+    {
+     "pricingModel": "PAY_PER_EVENT",
+     "pricingPerEvent": {
+      "actorChargeEvents": {
+       "start": {
+        "eventTitle": "Start",
+        "eventDescription": "One-time fee per run",
+        "eventPriceUsd": 0.005,
+        "isOneTimeEvent": true
+       },
+       "item": {
+        "eventTitle": "Naver product",
+        "eventDescription": "Charged for each validated product saved to the dataset",
+        "isPrimaryEvent": true,
+        "eventTieredPricingUsd": {
+         "FREE": {
+          "tieredEventPriceUsd": 0.0299
+         },
+         "BRONZE": {
+          "tieredEventPriceUsd": 0.026
+         },
+         "SILVER": {
+          "tieredEventPriceUsd": 0.02028
+         },
+         "GOLD": {
+          "tieredEventPriceUsd": 0.0156
+         },
+         "PLATINUM": {
+          "tieredEventPriceUsd": 0.0104
+         },
+         "DIAMOND": {
+          "tieredEventPriceUsd": 0.00728
+         }
+        }
+       }
+      }
+     },
+     "createdAt": "2026-08-03T04:35:08.580Z",
+     "startedAt": "2026-08-03T04:35:08.580Z",
+     "apifyMarginPercentage": 0.2
+    }
+   ],
+   "schema": {
+    "keywords": {
+     "type": "array",
+     "title": "Korean shopping keywords",
+     "def": [
+      "노트북"
+     ],
+     "req": true
+    },
+    "maxItems": {
+     "type": "integer",
+     "title": "Maximum products",
+     "def": 20,
+     "req": false
+    },
+    "includeAds": {
+     "type": "boolean",
+     "title": "Include sponsored products",
+     "def": true,
+     "req": false
+    },
+    "routing": {
+     "type": "string",
+     "title": "Connection routing",
+     "def": "auto",
+     "enum": [
+      "auto",
+      "residentialBrowser"
+     ],
+     "req": false
+    }
+   }
+  },
+  "khadinakbar~naver-product-shopping-scraper": {
+   "title": "Naver Product Shopping Scraper",
+   "modified": "2026-10-19T20:48:52.195Z",
+   "stats": {
+    "users30": 0,
+    "runs": 238
+   },
+   "pricing": [
+    {
+     "pricingModel": "FREE",
+     "startedAt": "2026-11-03T20:48:51.803Z",
+     "isPriceChangeNotificationSuppressed": false,
+     "reasonForChange": "Retiring Actor from Store (integrity review 2026-10-16); no active users.",
+     "createdAt": "2026-10-19T20:48:52.212Z",
+     "apifyMarginPercentage": 0,
+     "notifiedAboutFutureChangeAt": "2026-10-19T20:49:12.710Z"
+    }
+   ],
+   "schema": {
+    "searchQueries": {
+     "type": "array",
+     "title": "Naver Shopping search queries",
+     "def": [
+      "무선이어폰"
+     ],
+     "req": true
+    },
+    "maxResults": {
+     "type": "integer",
+     "title": "Maximum product results",
+     "def": 2,
+     "req": false
+    }
+   }
+  },
+  "searchapi~naver-shopping-scraper": {
+   "title": "Naver Shopping Scraper",
+   "modified": "2026-10-26T13:32:19.669Z",
+   "stats": {
+    "users30": 1,
+    "runs": 127
+   },
+   "pricing": [
+    {
+     "minimalMaxTotalChargeUsd": 0.5,
+     "isPPEPlatformUsagePaidByUser": true,
+     "pricingModel": "PAY_PER_EVENT",
+     "isPriceChangeNotificationSuppressed": false,
+     "pricingPerEvent": {
+      "actorChargeEvents": {
+       "apify-actor-start": {
+        "eventTitle": "Actor Start",
+        "eventDescription": "Charged when the Actor starts running. Number of events charged depends on Actor memory (one event per GB, minimum one event).",
+        "isOneTimeEvent": true,
+        "eventPriceUsd": 0.001
+       },
+       "apify-default-dataset-item": {
+        "eventTitle": "Search Result",
+        "eventDescription": "A complete search result successfully scraped and saved to the dataset.",
+        "isOneTimeEvent": false,
+        "eventPriceUsd": 0.00199,
+        "isPrimaryEvent": true
+       }
+      }
+     },
+     "apifyMarginPercentage": 0.2,
+     "createdAt": "2026-07-26T11:33:01.428Z",
+     "startedAt": "2026-08-10T12:00:00.000Z",
+     "notifiedAboutFutureChangeAt": "2026-07-26T11:33:21.616Z",
+     "notifiedAboutChangeAt": "2026-08-10T12:05:44.571Z"
+    }
+   ],
+   "schema": {
+    "query": {
+     "type": "string",
+     "title": "Search query",
+     "def": "노트북",
+     "req": false
+    },
+    "queries": {
+     "type": "array",
+     "title": "Additional search queries",
+     "def": [],
+     "req": false
+    },
+    "startUrls": {
+     "type": "array",
+     "title": "Brand-store URLs",
+     "def": [],
+     "req": false
+    },
+    "sortBy": {
+     "type": "string",
+     "title": "Sort results",
+     "def": "relevance",
+     "enum": [
+      "relevance",
+      "newest",
+      "reviews"
+     ],
+     "req": false
+    },
+    "maxItemsPerQuery": {
+     "type": "integer",
+     "title": "Maximum products per query",
+     "def": 40,
+     "req": false
+    },
+    "maxPages": {
+     "type": "integer",
+     "title": "Maximum pages per query",
+     "def": 5,
+     "req": false
+    },
+    "maxConcurrency": {
+     "type": "integer",
+     "title": "Maximum concurrency",
+     "def": 2,
+     "req": false
+    },
+    "maxRequestRetries": {
+     "type": "integer",
+     "title": "Maximum request retries",
+     "def": 1,
+     "req": false
+    },
+    "navigationTimeoutSecs": {
+     "type": "integer",
+     "title": "Navigation timeout (seconds)",
+     "def": 45,
+     "req": false
+    },
+    "requestHandlerTimeoutSecs": {
+     "type": "integer",
+     "title": "Search timeout (seconds)",
+     "def": 90,
+     "req": false
+    },
+    "proxyConfiguration": {
+     "type": "object",
+     "title": "Proxy configuration",
+     "def": {
+      "useApifyProxy": true
+     },
+     "req": false
+    }
+   }
+  }
+ },
+ "cors": {
+  "OPTIONS": {
+   "s": 200,
+   "acao": "*",
+   "acah": "User-Agent, Content-Type, Authorization, X-Apify-Request-Origin, X-Apify-Github-Actions-Run-Url, openai-conversation-id, openai-ephemeral-user-id, x-apify-integration-platform, x-apify-integration-app-id, x-apify-integration-ai-tool",
+   "acam": "GET, POST"
+  },
+  "GET": {
+   "s": 401,
+   "acao": "*",
+   "acah": "User-Agent, Content-Type, Authorization, X-Apify-Request-Origin, X-Apify-Github-Actions-Run-Url, openai-conversation-id, openai-ephemeral-user-id, x-apify-integration-platform, x-apify-integration-app-id, x-apify-integration-ai-tool",
+   "acam": "GET"
+  }
+ },
+ "me": {
+  "s": 200,
+  "plan": "FREE",
+  "username": "(있음)"
+ },
+ "limits": {
+  "max": 5,
+  "used": 0.000001782365143299103
+ }
+}
