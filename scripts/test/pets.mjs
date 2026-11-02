@@ -93,12 +93,12 @@ ok((full?'전체 '+keys.length+'종':'표본 '+pick.length+'묶음('+keys.length
   await pg.waitForFunction(()=>window.PETM&&document.querySelector('.wgPet')&&window.__talkFn,null,{timeout:15000}).catch(()=>{});
   await pg.evaluate(()=>{window.curTeam=()=>({id:'tm'});const me=myId(),d=todayStr(),A={[me]:true};
     S.tasks.tm={c:{text:'공통 오늘',date:d,assignees:{}}};
-    S.tasks[me]={r:{text:'나머지',date:addDays(d,5),assignees:A},p:{text:'기간 내일 끝',date:addDays(d,-1),end:addDays(d,1),assignees:A},
+    S.tasks[me]={r:{text:'나머지',date:addDays(d,5),assignees:A},far:{text:'먼 업무',date:addDays(d,9),assignees:A},nd:{text:'기한없음',assignees:A},p:{text:'기간 내일 끝',date:addDays(d,-1),end:addDays(d,1),assignees:A},
       l:{text:'지난 업무',date:addDays(d,-3),assignees:A},o:{text:'오래된 업무',date:addDays(d,-10),assignees:A},q:{text:'기간 진행',date:addDays(d,-4),end:addDays(d,4),assignees:A}};});
   const talk=r=>pg.evaluate(r=>{const mr=Math.random;Math.random=()=>r;try{window.__talkFn();}finally{Math.random=mr;}return document.querySelector('.wgPet .bub').textContent;},r);
   const seq=[];for(let i=0;i<6;i++)seq.push(await talk(.1));
   ok('업무 대사 순서 — 지남 → 오늘 → 내일 마감 → 나머지',/지난 업무 기한 지났어/.test(seq[0])&&/(공통 오늘|기간 진행)/.test(seq[1])&&/(공통 오늘|기간 진행)/.test(seq[2])&&/기간 내일 끝 내일까지/.test(seq[3])&&/나머지/.test(seq[4]),seq);
-  ok('7일 넘은 지난 업무는 말 안 함 · 다 말하면 30분 쉼(일반 대사로)',!seq.some(t=>/오래된/.test(t))&&!/(지난|공통|기간|나머지)/.test(seq[5]),seq);
+  ok('7일 넘은 지난 업무·8일 넘게 남은 업무·기한 없는 업무는 말 안 함 · 다 말하면 30분 쉼(일반 대사로)',!seq.some(t=>/(오래된|먼 업무|기한없음)/.test(t))&&!/(지난|공통|기간|나머지)/.test(seq[5]),seq);
   ok('일반 대사(.9)',!/(지난|공통|기간|나머지)/.test(await talk(.9)));
   const mood=await pg.evaluate(()=>{const me=myId(),k=S.tasks[me];const r1=petMood();S.tasks[me]={o:k.o,q:k.q};const r2=petMood();S.tasks[me]=k;return [r1,r2];});
   ok('기분 — 3일 지난 업무 걱정 · 10일 지난 업무와 진행 중 기간 업무만이면 걱정 아님',mood[0]==='worry'&&mood[1]==='',mood);

@@ -1126,11 +1126,12 @@ body.snap .sbsl:first-of-type{display:none;}
 #view-defect .kc.kc-warn .kv .u,#view-defect .kc.kc-bad .kv .u,#view-defect .kc.ms .kv .u{color:var(--lbl);}
 #view-defect .kc.kc-bad .kv{color:var(--st-lt);}
 #view-defect .kl{font-size:13px;font-weight:500;opacity:.72;margin-bottom:4px;}
+#view-defect .kl.kl-ba{display:flex;align-items:center;justify-content:space-between;gap:6px;opacity:1;}#view-defect .kl.kl-ba>span{opacity:.72;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}#view-defect .kl.kl-ba .ba{flex:none;}   /* 1301 증감 배지 우상단(회의 모드와 같은 배지) — 라벨만 흐리게 */
 #view-defect .kv{font-size:22px;font-weight:700;line-height:1;margin-bottom:4px;}
 #view-defect .kv .u{font-size:11px;font-weight:400;opacity:.72;margin-left:2px;}
 #view-defect .km{font-size:11px;opacity:.68;margin-top:3px;}
 #view-defect .kc-click{cursor:pointer;}
-#view-defect .kc-cta{position:absolute;right:14px;top:18px;display:inline-flex;align-items:center;gap:3px;padding:0;border:0;border-radius:0;background:transparent;color:var(--lbl3);font-size:11px;font-weight:700;line-height:1;transition:color var(--t-fast);pointer-events:none;}
+#view-defect .kc-cta{position:absolute;right:14px;bottom:14px;display:inline-flex;align-items:center;gap:3px;padding:0;border:0;border-radius:0;background:transparent;color:var(--lbl3);font-size:11px;font-weight:700;line-height:1;transition:color var(--t-fast);pointer-events:none;}
 @media (hover:hover) and (pointer:fine){#view-defect .kc-click:hover .kc-cta{color:var(--b500);}}@media not ((hover:hover) and (pointer:fine)){#view-defect .kc-click:active .kc-cta{color:var(--b500);}}
 #view-defect .kc-cta svg{width:13px;height:13px;}
 #view-defect .kc.kc-site .kl{font-size:12px;font-weight:600;opacity:.78;margin-bottom:4px;}
@@ -6723,5 +6724,5 @@ body.mcal-full #fcal .mlN::before{content:'+'}
 <script src="./vendor/firebase-app-check-compat.js"></script>
 <script src="./vendor/purify.min.js"></script>
 <script src="./vendor/lz-string.min.js"></script>
-<script src="./app.js?v=1300"></script>
+<script src="./app.js?v=1301"></script>
 </body></html>
