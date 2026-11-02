@@ -7185,7 +7185,7 @@ function dfMomRender(elId,tot,rowsIn){   /* rowsIn — 다른 지표(세대 레�
   /* 막대는 행별 지연 애니메이션 없이 즉시 표시한다 */
   el.querySelectorAll('.fl').forEach(fl=>{fl.style.width=fl.dataset.w+'%';});
 }
-/* KPI 카드 — 원본 kc 구조(라벨/큰 값/메타 + 우상단 '목록 보기') */
+/* KPI 카드 — 원본 kc 구조(라벨/큰 값/메타). 1301(사용자): 전월대비 증감 배지(k.ba — 회의 모드와 같은 mtgBa)는 우상단, 「목록」은 우하단 */
 /* 1083 KPI 숫자 굴림 — 다시 그린 KPI 의 첫 숫자를 직전 값과 비교해 바뀐 것만 굴린다(기준월·현장 바꿀 때). 처음 그릴 때·인쇄 중엔 그대로 */
 const _kcPrev=new Map();let _kcRaf=0;
 function kcRollScan(){_kcRaf=0;
@@ -7204,7 +7204,7 @@ function kcRollScan(){_kcRaf=0;
     setTimeout(()=>{if(roll.isConnected)roll.replaceWith(b[0]);},500);});}
 function dfKcHTML(list){
   if(!_kcRaf)_kcRaf=requestAnimationFrame(kcRollScan);
-  return '<div class="akpi">'+list.map(k=>`<div class="kc ${k.cls}${(k.act||k.pick)?' kc-click':''}"${k.act?` data-act="rec.list" data-sid="${esc(k.sid||'')}" data-scope="${k.act}"`:k.pick?' data-act="mss.open"':''}${k.tt?` data-tip="${esc(k.tt)}"`:''}><div class="kl">${k.label}</div><div class="kv" data-kk="${esc(String(k.label).replace(/<[^>]*>/g,''))}">${k.valHTML!==undefined?k.valHTML:k.val.toLocaleString()+(k.unit?`<span class="u">${k.unit}</span>`:'')}</div><div class="km">${k.meta}</div>${(k.act||k.pick)?`<span class="kc-cta"><span class="kc-cta-t">목록</span> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></span>`:''}</div>`).join('')+'</div>';
+  return '<div class="akpi">'+list.map(k=>`<div class="kc ${k.cls}${(k.act||k.pick)?' kc-click':''}"${k.act?` data-act="rec.list" data-sid="${esc(k.sid||'')}" data-scope="${k.act}"`:k.pick?' data-act="mss.open"':''}${k.tt?` data-tip="${esc(k.tt)}"`:''}><div class="kl${k.ba?' kl-ba':''}">${k.ba?'<span>'+k.label+'</span>'+k.ba:k.label}</div><div class="kv" data-kk="${esc(String(k.label).replace(/<[^>]*>/g,''))}">${k.valHTML!==undefined?k.valHTML:k.val.toLocaleString()+(k.unit?`<span class="u">${k.unit}</span>`:'')}</div><div class="km">${k.meta}</div>${(k.act||k.pick)?`<span class="kc-cta"><span class="kc-cta-t">목록</span> <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></span>`:''}</div>`).join('')+'</div>';
 }
 /* 주요 이슈 — 게시본 HTML 그대로(원본 .ic 카드). 남이 만든 HTML 이므로 반드시 DOMPurify 로 씻는다 */
 function dfInsightHTML(html){
@@ -7373,10 +7373,10 @@ function rDefectDash(root,d){
   const kpis=dfKcHTML([
     {cls:'bl',label:'관리세대',pick:isMob()&&!WIDGET,   /* 팀 대시보드에서도 이 첫 카드를 눌러 현장을 고른다 */
      valHTML:`${units.toLocaleString()}<span class="u">세대</span>`,meta:`관리대상현장 ${sites.length.toLocaleString()}개`},
-    {cls:'sk',label:'전체 접수',val:tR,unit:'건',meta:`세대당 ${units>0?(tR/units).toFixed(1):'0.0'}건`},
-    {cls:'ms',label:'처리 완료',val:tRes,unit:'건',meta:`처리율 ${rate.toFixed(1)}%`},
-    {cls:'wh'+(tU>0?' kc-warn':''),label:'미처리',val:tU,unit:'건',meta:`세대당 ${units>0?(tU/units).toFixed(1):'0.0'}건`,act:'ul',sid:'',tt:'팀 전체 미처리 목록 보기'},
-    {cls:'wh'+(tLt>0?' kc-bad':''),label:'장기미처리(30일+)',val:tLt,unit:'건',meta:`미처리의 ${tU>0?(tLt/tU*100).toFixed(1):0}%`,act:'lul',sid:'',tt:'팀 전체 장기미처리 목록 보기'}]);
+    {cls:'sk',label:'전체 접수',val:tR,unit:'건',meta:`세대당 ${units>0?(tR/units).toFixed(1):'0.0'}건`,ba:mtgBa(tR-pT,true)},
+    {cls:'ms',label:'처리 완료',val:tRes,unit:'건',meta:`처리율 ${rate.toFixed(1)}%`,ba:mtgBa(tRes-pRes,false)},
+    {cls:'wh'+(tU>0?' kc-warn':''),label:'미처리',val:tU,unit:'건',meta:`세대당 ${units>0?(tU/units).toFixed(1):'0.0'}건`,act:'ul',sid:'',tt:'팀 전체 미처리 목록 보기',ba:mtgBa(tU-pU,true)},
+    {cls:'wh'+(tLt>0?' kc-bad':''),label:'장기미처리(30일+)',val:tLt,unit:'건',meta:`미처리의 ${tU>0?(tLt/tU*100).toFixed(1):0}%`,act:'lul',sid:'',tt:'팀 전체 장기미처리 목록 보기',ba:mtgBa(tLt-pLt,true)}]);
   const dashYears=[...new Set(Object.values(d.wk||{}).flatMap(dfYearsOf))].sort();
   const rmY=S.dfRm.slice(0,4);
   const dashYear=(dashYears.includes(S.dfTrendYearDash)?S.dfTrendYearDash:rmY);
@@ -7783,12 +7783,13 @@ function rDefectSite(root,site){
   const st=k;
   const units=site.units||0;
   const compDate=site.completionDate?` · 준공 ${site.completionDate}`:'';
+  const pv=st.prev;   /* 전월 값(게시본) — 없으면 증감 배지 없음 */
   const kpis=dfKcHTML([
     {cls:'bl kc-site',label:esc(site.region||'-'),pick:isMob()&&!WIDGET,   /* 폰은 이 카드를 눌러 현장을 바꾼다(꺽쇠). 「이 PC 원본」 표시는 상단바(#tbLoc) */valHTML:`<span class="kc-site-nm">${esc(site.name||'-')}</span>`,meta:`${units.toLocaleString()}세대 · ${site.buildings||0}개동${compDate}`},
-    {cls:'sk',label:'전체 접수',val:st.tR||0,unit:'건',meta:`세대당 ${units>0?((st.tR||0)/units).toFixed(1):'0.0'}건`},
-    {cls:'ms',label:'처리 완료',val:st.res||0,unit:'건',meta:`처리율 ${(Number(st.rate)||0).toFixed(1)}%`},
-    {cls:'wh'+((st.unr||0)>0?' kc-warn':''),label:'미처리',val:st.unr||0,unit:'건',meta:`세대당 ${units>0?((st.unr||0)/units).toFixed(1):'0.0'}건`,act:'ul',sid:site.id,tt:'미처리 하자리스트 보기'},
-    {cls:'wh'+((st.lt||0)>0?' kc-bad':''),label:'장기미처리(30일+)',val:st.lt||0,unit:'건',meta:`미처리의 ${(Number(st.ltr)||0).toFixed(1)}%`,act:'lul',sid:site.id,tt:'장기미처리 하자리스트 보기'}]);
+    {cls:'sk',label:'전체 접수',val:st.tR||0,unit:'건',meta:`세대당 ${units>0?((st.tR||0)/units).toFixed(1):'0.0'}건`,ba:pv&&mtgBa((st.tR||0)-(pv.total||0),true)},
+    {cls:'ms',label:'처리 완료',val:st.res||0,unit:'건',meta:`처리율 ${(Number(st.rate)||0).toFixed(1)}%`,ba:pv&&mtgBa((st.res||0)-(pv.res||0),false)},
+    {cls:'wh'+((st.unr||0)>0?' kc-warn':''),label:'미처리',val:st.unr||0,unit:'건',meta:`세대당 ${units>0?((st.unr||0)/units).toFixed(1):'0.0'}건`,act:'ul',sid:site.id,tt:'미처리 하자리스트 보기',ba:pv&&mtgBa((st.unr||0)-(pv.unr||0),true)},
+    {cls:'wh'+((st.lt||0)>0?' kc-bad':''),label:'장기미처리(30일+)',val:st.lt||0,unit:'건',meta:`미처리의 ${(Number(st.ltr)||0).toFixed(1)}%`,act:'lul',sid:site.id,tt:'장기미처리 하자리스트 보기',ba:pv&&mtgBa((st.lt||0)-(pv.lt||0),true)}]);
   /* 탭 — 원본과 같은 구성(공가세대/공가상가는 현장 설정에 따라) */
   const showSedae=site.showVacant!==false,showSangga=!!site.hasCommercial;
   let tab=S.dfTab||'sum';

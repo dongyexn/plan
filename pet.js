@@ -14,7 +14,7 @@ const PET_LINES={   /* 누르기·잡기의 당황 말풍선(tap·drop)은 1295 
   food:['😋'],idle:['일 안하농'],
   today:['오늘 업무 {n}건'],com:['{t} 하자!'],mine:['{t} 해야지','{t} 잊지 마!'],late:['{t} 기한 지났어!'],soon:['{t} 내일까지!']};   /* {n}·{t} 는 숫자·업무 이름으로 바뀐다 · 사용자가 대사 편집 폼에서 고친 값 */
 const petPick=a=>a[Math.floor(Math.random()*a.length)];
-const PET_SAID={},PET_COOL=30*60000,PET_LATE=7;   /* PET_LATE — 지난 업무 알림은 마감 뒤 7일까지(1298 사용자) — 그보다 오래된 건 말하지도 걱정하지도 않는다 */   /* 업무 대사 — 업무별 마지막으로 말한 때 · 같은 업무는 30분 쉰다(1297) */
+const PET_SAID={},PET_COOL=30*60000,PET_LATE=7,PET_AHEAD=7;   /* PET_AHEAD — 앞으로 할 업무는 7일 앞까지만 말한다(1301 사용자) */   /* PET_LATE — 지난 업무 알림은 마감 뒤 7일까지(1298 사용자) — 그보다 오래된 건 말하지도 걱정하지도 않는다 */   /* 업무 대사 — 업무별 마지막으로 말한 때 · 같은 업무는 30분 쉰다(1297) */
 /* 펫 기분(1294) — 내 업무 기준. 기한 지난 미완료가 있으면 'worry', 오늘까지 할 것이 없고 오늘 날짜 업무를 하나라도 끝냈으면 'happy' */
 /* 마감일 — 기간 업무(시작~끝)는 끝나는 날. 시작일로 보면 진행 중인 기간 업무가 「지남」이 됐다(1295 사용자) */
 function petEnd(sid,iid,it){const d=taskDate(sid,iid,it)||'';return !(it.recur&&it.recur.f)&&it.end&&it.end>d?it.end:d;}
@@ -112,10 +112,10 @@ function petMake(){let drg=false,shd=null,land=null,sh=null,el,bd,img,bub,ballEl
     else{const sl=petSlot();say(sl?petPick(PET_LINES[sl]):cfg.lines&&cfg.lines.length?petPick(cfg.lines):cfg.say||petPick(PET_LINES.idle),2600);}
     talkNext();};
   /* 업무 대사 후보(f = 담당자 있음 → 채운 말풍선, 달력 막대와 같은 판정) — 위젯 「내 업무」 팝업과 같은 목록: 공통(담당자 없는 미완료) · 내 미완료(보류 제외).
-     1297(사용자): 순서 = 기한 지남(late) → 오늘 할 것(today) → 내일 마감(soon) → 나머지. 한 번 말한 업무는 30분 쉰다(PET_SAID) — 앞 묶음이 다 쉬면 다음 묶음, 다 쉬면 null */
+     1297(사용자): 순서 = 기한 지남(late) → 오늘 할 것(today) → 내일 마감(soon) → 나머지(7일 앞까지 · 기한 없는 업무 제외). 한 번 말한 업무는 30분 쉰다(PET_SAID) — 앞 묶음이 다 쉬면 다음 묶음, 다 쉬면 null */
   const taskPick=()=>{const t=todayStr(),t1=addDays(t,1),now=Date.now();
     const m=(a,k)=>a.map(x=>({k,x,id:x.sid+'|'+x.iid,t:x.it.text||'',d:taskDate(x.sid,x.iid,x.it)||'',e:petEnd(x.sid,x.iid,x.it),f:Object.keys(x.it.assignees||{}).length>0})).filter(x=>x.t);   /* 색(planColor)은 고른 하나만 — 업무 수천 건이어도 가볍게(1299) */
-    const t7=addDays(t,-PET_LATE),A=[...m(teamTasks(),'com'),...m(mineTasks(),'mine')].filter(x=>!(now-(PET_SAID[x.id]||0)<PET_COOL)&&!(x.e&&x.e<t7));
+    const t7=addDays(t,-PET_LATE),tf=addDays(t,PET_AHEAD),A=[...m(teamTasks(),'com'),...m(mineTasks(),'mine')].filter(x=>!(now-(PET_SAID[x.id]||0)<PET_COOL)&&!(x.e&&x.e<t7)&&x.d&&x.d<=tf);   /* 1301: 날짜 있고 시작이 오늘~7일 앞까지(이미 시작한 것 포함)만 */
     const B=x=>x.e&&x.e<t?0:x.e===t?1:x.e===t1?2:x.d&&x.d<=t?1:3;   /* 마감이 내일이면 진행 중인 기간 업무도 「내일까지」 */
     for(let b=0;b<4;b++){const L=A.filter(x=>B(x)===b);if(L.length){const c=petPick(L);c.b=['late','today','soon','rest'][b];c.c=planColor(taskAsPlan(c.x.sid,c.x.iid,c.x.it));PET_SAID[c.id]=now;return c;}}
     return null;};
