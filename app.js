@@ -5175,10 +5175,10 @@ function _calcImpl(items,site,rm){
   for(const i of all){
     if(i.receiptDate>rmEnd)continue;
     const t=i.trade||'기타';
-    const o=_trm[t]||(_trm[t]={t,r:0,res:0,u:0,lt:0,d0:0,d30:0,d60:0,co:{},pu:0,plt:0});
+    const o=_trm[t]||(_trm[t]={t,r:0,res:0,u:0,lt:0,d0:0,d30:0,d60:0,co:{},lco:{},pu:0,plt:0});
     o.r++;
     const done=i.status==='처리'&&i.completionDate&&i.completionDate<=rmEnd;
-    if(done)o.res++;else{o.u++;const dd=daysBetween(i.receiptDate,rmEnd);if(dd>=60){o.d60++;o.lt++;}else if(dd>=30){o.d30++;o.lt++;}else o.d0++;}
+    if(done)o.res++;else{o.u++;const dd=daysBetween(i.receiptDate,rmEnd);if(dd>=60){o.d60++;o.lt++;}else if(dd>=30){o.d30++;o.lt++;}else o.d0++;if(dd>=30&&i.contractor)o.lco[i.contractor]=(o.lco[i.contractor]||0)+1;}
     if(i.contractor)o.co[i.contractor]=(o.co[i.contractor]||0)+1;
   }
   for(const i of all){ // 전월 기준 역산(증감용) — rmEnd 범위가 pmEnd 를 포함하므로 _trm 에 항목 존재 보장
@@ -5187,18 +5187,19 @@ function _calcImpl(items,site,rm){
     const done=i.status==='처리'&&i.completionDate&&i.completionDate<=pmEnd;
     if(!done){o.pu++;if(daysBetween(i.receiptDate,pmEnd)>=30)o.plt++;}
   }
-  const trAgg=Object.values(_trm).sort((a,b)=>b.u-a.u).map(o=>({t:o.t,r:o.r,res:o.res,u:o.u,lt:o.lt,d0:o.d0,d30:o.d30,d60:o.d60,coTop:Object.entries(o.co).sort((a,b)=>b[1]-a[1])[0]?.[0]||'-',coN:Object.keys(o.co).length,pu:o.pu,plt:o.plt}));
+  const trAgg=Object.values(_trm).sort((a,b)=>b.u-a.u).map(o=>({t:o.t,r:o.r,res:o.res,u:o.u,lt:o.lt,d0:o.d0,d30:o.d30,d60:o.d60,coTop:Object.entries(o.co).sort((a,b)=>b[1]-a[1])[0]?.[0]||'-',ltCo:Object.entries(o.lco).sort((a,b)=>b[1]-a[1])[0]?.[0]||'-',coN:Object.keys(o.co).length,pu:o.pu,plt:o.plt}));
   // 시공업체별 집계(coAgg) — 같은 원본을 업체로 묶음. 표 축 전환용, 게시본에도 실려 뷰어가 같은 표를 본다.
   // 업체가 빈 행은 '(미기재)'로 따로 센다 — 숨기면 합계가 안 맞는다.
   const _com={};
   for(const i of all){
     if(i.receiptDate>rmEnd)continue;
     const c=i.contractor||'(미기재)';
-    const o=_com[c]||(_com[c]={c,r:0,res:0,u:0,lt:0,d0:0,d30:0,d60:0,tr:{},pu:0,plt:0});
+    const o=_com[c]||(_com[c]={c,r:0,res:0,u:0,lt:0,d0:0,d30:0,d60:0,tr:{},ltr:{},pu:0,plt:0});
     o.r++;
     const done=i.status==='처리'&&i.completionDate&&i.completionDate<=rmEnd;
-    if(done)o.res++;else{o.u++;const dd=daysBetween(i.receiptDate,rmEnd);if(dd>=60){o.d60++;o.lt++;}else if(dd>=30){o.d30++;o.lt++;}else o.d0++;}
-    const tr=i.trade||'기타';o.tr[tr]=(o.tr[tr]||0)+1;
+    const tr=i.trade||'기타';
+    if(done)o.res++;else{o.u++;const dd=daysBetween(i.receiptDate,rmEnd);if(dd>=60){o.d60++;o.lt++;}else if(dd>=30){o.d30++;o.lt++;}else o.d0++;if(dd>=30)o.ltr[tr]=(o.ltr[tr]||0)+1;}
+    o.tr[tr]=(o.tr[tr]||0)+1;
   }
   for(const i of all){
     if(i.receiptDate>pmEnd)continue;
@@ -5206,7 +5207,7 @@ function _calcImpl(items,site,rm){
     const done=i.status==='처리'&&i.completionDate&&i.completionDate<=pmEnd;
     if(!done){o.pu++;if(daysBetween(i.receiptDate,pmEnd)>=30)o.plt++;}
   }
-  const coAgg=Object.values(_com).sort((a,b)=>b.u-a.u).map(o=>({c:o.c,r:o.r,res:o.res,u:o.u,lt:o.lt,d0:o.d0,d30:o.d30,d60:o.d60,trTop:Object.entries(o.tr).sort((a,b)=>b[1]-a[1])[0]?.[0]||'-',trN:Object.keys(o.tr).length,pu:o.pu,plt:o.plt}));
+  const coAgg=Object.values(_com).sort((a,b)=>b.u-a.u).map(o=>({c:o.c,r:o.r,res:o.res,u:o.u,lt:o.lt,d0:o.d0,d30:o.d30,d60:o.d60,trTop:Object.entries(o.tr).sort((a,b)=>b[1]-a[1])[0]?.[0]||'-',ltTr:Object.entries(o.ltr).sort((a,b)=>b[1]-a[1])[0]?.[0]||'-',trN:Object.keys(o.tr).length,pu:o.pu,plt:o.plt}));
   return{tR,res,unr,rate,lt,ltr,prev:{total:pT,res:pRes,unr:pUnr,rate:pRate,lt:pLt,ltr:pLtr,dd:[pd0,pd30,pd60]},weekly:calcW(ref,rmEnd,pmEnd),monthly:calcMo(all),top,topPrev,topLt,topLtPrev,dd:[d0,d30,d60],vT,vRes,vUnr,vRate,vLt,vUnits,vTop,vTopPrev,vacU,vacS,rpb,dtb,critT,critUnr,critPrevUnr,critUl,rm,pm,rmEnd,pmEnd,ul,lul,trAgg,coAgg};
 }
 function isStoreLabel(s){return /[강산살상성싱][가거기]/.test(String(s||''));}
@@ -7994,7 +7995,7 @@ function dfSnapBoot(){
    원본은 calc() 행에서 만들지만 여기서는 게시본 kpi(=calc 전체)·weekly 가 같은 값을 준다 */
 const RP_COL=['#08213f','#14395f','#22537f','#3a6f9f','#6b96bd','#b9c9d8'];
 const rpN=v=>Number(v||0).toLocaleString();
-const rpDelta=d=>d===0?'— 0':`<span class="${d>0?'up':'dn2'}">${d>0?'▲ ':'▼ '}${rpN(Math.abs(d))}</span>`;
+const rpDelta=(d,good)=>d===0?'— 0':`<span class="${(d>0)!==!!good?'up':'dn2'}">${d>0?'▲ ':'▼ '}${rpN(Math.abs(d))}</span>`;   /* good = 늘면 좋은 값(처리 완료) — 늘면 초록 · 줄면 빨강(1302) */
 const rpPct=(a,b)=>b?(a/b*100).toFixed(1)+'%':'0.0%';
 
 /* 보고서 월별 처리 현황 — 화면 표와 같은 월말 스냅샷·지표(dfMetrics). 연도 필터는 지표 계산 뒤에 */
@@ -8060,8 +8061,9 @@ function rpDonut(list,cap,maxN,H){
   let a0=-Math.PI/2,s='';const L=[],P=(r,a)=>[cx+r*Math.cos(a),cy+r*Math.sin(a)],f=v=>v.toFixed(2);
   rows.forEach((r,i)=>{const a1=a0+r.v/T*Math.PI*2,big=a1-a0>Math.PI?1:0,[x0,y0]=P(Ro,a0),[x1,y1]=P(Ro,a1),[x2,y2]=P(Ri,a1),[x3,y3]=P(Ri,a0);
     s+=`<path d="M${f(x0)},${f(y0)}A${Ro},${Ro} 0 ${big} 1 ${f(x1)},${f(y1)}L${f(x2)},${f(y2)}A${Ri},${Ri} 0 ${big} 0 ${f(x3)},${f(y3)}Z" fill="${RP_DN[Math.min(i,RP_DN.length-1)]}" stroke="#fff" stroke-width="1"/>`;
-    if(i<5){const am=(a0+a1)/2;L.push({i,am,right:Math.cos(am)>=0,y:cy+Math.sin(am)*(Ro+10)});}a0=a1;});
-  const GAP=Math.max(23,Math.min(28,H/5)),nL=Math.max(1,Math.min(L.length,Math.floor((H-22)/GAP)+1));L.splice(nL);   /* 이름표 두 줄이 겹치지 않을 만큼만 — 낮은 도넛은 큰 것부터 줄인다 */
+    const oth=rows[rows.length-1].n==='기타';   /* 1302: 「기타」가 있으면 이름표는 위 4개 + 기타 — 큰 회색이 이름 없이 남지 않게 */
+    if(i<(oth?4:5)||(oth&&i===rows.length-1)){const am=(a0+a1)/2;L.push({i,am,right:Math.cos(am)>=0,y:cy+Math.sin(am)*(Ro+10)});}a0=a1;});
+  const GAP=Math.max(23,Math.min(28,H/5)),nL=Math.max(1,Math.min(L.length,Math.floor((H-22)/GAP)+1));if(L.length>nL&&rows[L[L.length-1].i].n==='기타')L.splice(nL-1,L.length-nL);else L.splice(nL);   /* 줄일 땐 기타는 남긴다 */   /* 이름표 두 줄이 겹치지 않을 만큼만 — 낮은 도넛은 큰 것부터 줄인다 */
   [true,false].forEach(sd=>{const q=L.filter(l=>l.right===sd).sort((p,r)=>p.y-r.y);   /* 이름표끼리 겹치지 않게 아래로 밀고, 넘치면 위로 당긴다 */
     for(let k=1;k<q.length;k++)if(q[k].y-q[k-1].y<GAP)q[k].y=q[k-1].y+GAP;
     const over=q.length?q[q.length-1].y-(H-11):0;if(over>0)q.forEach(l=>{l.y-=over;});
@@ -8109,8 +8111,10 @@ function rpIss(ss,mo,team){   /* ss=[{name,c}] c=게시본 kpi · mo=월말 누�
   const dd=x=>x.c.dd||[0,0,0],pdd=x=>(x.c.prev&&x.c.prev.dd)||[0,0,0],plt=x=>(x.c.prev&&x.c.prev.lt)||0;
   const unr=sum(x=>x.c.unr),lt=sum(x=>x.c.lt),d60=sum(x=>dd(x)[2]),pd60=sum(x=>pdd(x)[2]);
   const top=o=>Object.entries(o).sort((a,b)=>b[1]-a[1]).map(e=>e[0])[0];
+  /* 1302: 업체·공종은 장기미처리 기준(처리계획 표와 같게) — 새 게시본 ltCo·ltTr, 옛 게시본은 장기 상위 5(topLt)의 업체 → 없으면 전체 기준 coTop */
+  const ltCo=(c,r)=>{if(r.ltCo&&r.ltCo!=='-')return r.ltCo;const t=(c.topLt||[]).find(y=>y.t===r.t&&!y.isO&&!y.isT);return t&&t.co&&t.co!=='-'?t.co:r.coTop;};
   const T={};ss.forEach(x=>(x.c.trAgg||[]).forEach(r=>{const o=T[r.t]=T[r.t]||{t:r.t,lt:0,plt:0,d60:0,u:0,co:{}};
-    o.lt+=r.lt||0;o.plt+=r.plt||0;o.d60+=r.d60||0;o.u+=r.u||0;if(r.coTop&&r.coTop!=='-')o.co[r.coTop]=(o.co[r.coTop]||0)+(r.lt||0);}));
+    o.lt+=r.lt||0;o.plt+=r.plt||0;o.d60+=r.d60||0;o.u+=r.u||0;const k=ltCo(x.c,r);if(k&&k!=='-')o.co[k]=(o.co[k]||0)+(r.lt||0);}));
   const tr=Object.values(T);
   /* ① 장기 고착 — 60일 넘긴 미처리(없으면 칸 없음) */
   if(d60){const t=tr.slice().sort((a,b)=>b.d60-a.d60)[0],s1=team?ss.slice().sort((a,b)=>dd(b)[2]-dd(a)[2])[0]:null;
@@ -8120,13 +8124,13 @@ function rpIss(ss,mo,team){   /* ss=[{name,c}] c=게시본 kpi · mo=월말 누�
   if(team){const x=ss.map(o=>({o,dl:(o.c.lt||0)-plt(o)})).sort((a,b)=>b.dl-a.dl)[0];
     if(x&&x.dl>0){const c=x.o.c,tt=(c.trAgg||[]).slice().sort((a,b)=>((b.lt||0)-(b.plt||0))-((a.lt||0)-(a.plt||0)))[0];
       out.push({c:'장기 증가 1위 현장',v:rpSg(x.dl),t:`${dfShortSite(x.o.name)} · 장기 ${rpN(c.lt)}건`,
-        m:`전월 ${rpN(plt(x.o))}건 → ${B(rpN(c.lt))}건 · 미처리의 ${rpPct(c.lt,c.unr)}${tt?` · 증가 공종 ${B(esc(tt.t))} ${rpSg((tt.lt||0)-(tt.plt||0))}건(${esc(dfDash(tt.coTop))})`:''}`});}}
+        m:`전월 ${rpN(plt(x.o))}건 → ${B(rpN(c.lt))}건 · 미처리의 ${rpPct(c.lt,c.unr)}${tt?` · 증가 공종 ${B(esc(tt.t))} ${rpSg((tt.lt||0)-(tt.plt||0))}건(${esc(dfDash(ltCo(c,tt)))})`:''}`});}}
   else{const x=tr.map(o=>({o,dl:o.lt-o.plt})).sort((a,b)=>b.dl-a.dl)[0];
     if(x&&x.dl>0)out.push({c:'장기 증가 1위 공종',v:rpSg(x.dl),t:`${x.o.t} · 장기 ${rpN(x.o.lt)}건`,
       m:`전월 ${rpN(x.o.plt)}건 → ${B(rpN(x.o.lt))}건 · 시공업체 ${B(esc(dfDash(top(x.o.co))))} · 미처리 ${rpN(x.o.u)}건 중 ${rpPct(x.o.lt,x.o.u)}`});}
   /* ③ 장기 최다 업체 — 장기미처리를 가장 많이 쥔 시공업체 */
   {const co={};ss.forEach(x=>(x.c.coAgg||[]).forEach(r=>{if(!r.c||r.c==='(미기재)')return;const o=co[r.c]=co[r.c]||{c:r.c,lt:0,plt:0,u:0,n:0,tr:{}};
-      o.lt+=r.lt||0;o.plt+=r.plt||0;o.u+=r.u||0;o.n++;if(r.trTop)o.tr[r.trTop]=(o.tr[r.trTop]||0)+(r.lt||0);}));
+      o.lt+=r.lt||0;o.plt+=r.plt||0;o.u+=r.u||0;o.n++;const t=r.ltTr&&r.ltTr!=='-'?r.ltTr:r.trTop;if(t)o.tr[t]=(o.tr[t]||0)+(r.lt||0);}));   /* 주 공종 = 장기 기준(새 게시본 ltTr) */
     const c=Object.values(co).sort((a,b)=>b.lt-a.lt)[0];
     if(c&&c.lt){const t=top(c.tr);
       out.push({c:'장기 최다 업체',v:rpN(c.lt),t:`${c.c} · 전월 대비 ${rpSg(c.lt-c.plt)}건`,
@@ -8159,7 +8163,7 @@ function rptDashboard(){
 
   const kpi=rpKpi([
     {k:'전체 접수',v:tR,d:`세대당 ${units?(tR/units).toFixed(1):'0.0'}건 · ${rpDelta(tR-pR)}`},
-    {k:'처리 완료',v:res,d:`처리율 <b>${rpPct(res,tR)}</b> · ${rpDelta(res-pRes)}`},
+    {k:'처리 완료',v:res,d:`처리율 <b>${rpPct(res,tR)}</b> · ${rpDelta(res-pRes,true)}`},
     {k:'미처리',v:unr,d:`세대당 ${units?(unr/units).toFixed(1):'0.0'}건 · ${rpDelta(unr-pUnr)}`},
     {k:'장기미처리',v:lt,d:`미처리의 <b>${rpPct(lt,unr)}</b> · ${rpDelta(lt-pLt)}`}]);
 
@@ -8245,7 +8249,7 @@ function rptSite(sid){
 
   const kpi=rpKpi([
     {k:'전체 접수',v:c.tR,d:`세대당 ${site.units?((c.tR||0)/site.units).toFixed(1):'0.0'}건 · ${rpDelta((c.tR||0)-(p.total||0))}`},
-    {k:'처리 완료',v:c.res,d:`처리율 <b>${rpPct(c.res,c.tR)}</b> · ${rpDelta((c.res||0)-(p.res||0))}`},
+    {k:'처리 완료',v:c.res,d:`처리율 <b>${rpPct(c.res,c.tR)}</b> · ${rpDelta((c.res||0)-(p.res||0),true)}`},
     {k:'미처리',v:c.unr,d:`세대당 ${site.units?((c.unr||0)/site.units).toFixed(1):'0.0'}건 · ${rpDelta((c.unr||0)-(p.unr||0))}`},
     {k:'장기미처리',v:c.lt,d:`미처리의 <b>${rpPct(c.lt,c.unr)}</b> · ${rpDelta((c.lt||0)-(p.lt||0))}`}]);
   const trend=`<div class="rp-tr">${rpTrend(c.weekly||[])}</div>`+RP_LG;
